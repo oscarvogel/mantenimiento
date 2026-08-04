@@ -1,0 +1,68 @@
+# =============================================================================
+# CodeIgniter 4
+# =============================================================================
+/.env
+/env
+/vendor/
+/writable/cache/*
+!/writable/cache/index.html
+!/writable/cache/.gitkeep
+/writable/logs/*
+!/writable/logs/index.html
+!/writable/logs/.gitkeep
+/writable/session/*
+!/writable/session/index.html
+!/writable/session/.gitkeep
+/writable/uploads/*
+!/writable/uploads/index.html
+!/writable/uploads/.gitkeep
+/writable/debugbar/*
+!/writable/debugbar/index.html
+!/writable/debugbar/.gitkeep
+/spark
+
+# =============================================================================
+# PHP y herramientas
+# =============================================================================
+*.log
+*.pid
+*.seed
+*.pid.lock
+composer.phar
+.phpunit.result.cache
+.phpunit.cache/
+
+# =============================================================================
+# IDEs
+# =============================================================================
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+*~
+
+# =============================================================================
+# Sistema operativo
+# =============================================================================
+.DS_Store
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# =============================================================================
+# Deploys y backups
+# =============================================================================
+/deploy_*/
+/backup_*/
+*.tar.gz
+*.zip
+*.bak
+
+# =============================================================================
+# Adjuntos privados
+# =============================================================================
+# Si por la configuración del hosting la ruta privada vive dentro del repo,
+# mantenerla ignorada por defecto.
+/private/
+/storage/adjuntos/
