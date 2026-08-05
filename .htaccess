@@ -1,0 +1,29 @@
+# ----------------------------------------------------------------------
+# CodeIgniter 4 - htaccess minimalista para Ferozo
+# ----------------------------------------------------------------------
+# Sin directivas `Options` (Ferozo a veces no las permite y tira 500).
+# Solo RewriteEngine + redirect a index.php + proteccion del .env.
+# El resto de las carpetas privadas tienen su propio .htaccess con deny.
+# ----------------------------------------------------------------------
+
+RewriteEngine On
+
+# Forzar HTTPS
+RewriteCond %{HTTPS} !=on
+RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
+
+# Redirigir trailing slashes (excepto la raiz)
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_URI} (.+)/$
+RewriteRule ^ %1 [L,R=301]
+
+# Reescribir a index.php si la URL no es un archivo ni un directorio real
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [L]
+
+# Bloquear acceso directo al .env
+<Files ".env">
+    Order allow,deny
+    Deny from all
+</Files>
