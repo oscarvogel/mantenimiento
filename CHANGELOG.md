@@ -94,3 +94,31 @@ la especificación funcional.
   como `mantenimiento`, lo que producia nombres de tabla prefijados;
   se dejo limpio para que las tablas se llamen `usuarios`, `empresas`,
   etc.).
+## [0.2] - 5 de agosto de 2026
+
+### Agregado
+- Pantalla basica de login con autenticacion contra la tabla `usuarios`
+  (password_verify sobre `password_hash` con bcrypt).
+- Sesiones de CodeIgniter para mantener al usuario logueado.
+- Filtro `auth` que protege `/dashboard` y `/logout`; redirige a `/login`
+  si no hay sesion.
+- Modelo `UsuarioModel` con helpers:
+  - `findByEmail($email)` para login
+  - `roles($id)`, `sucursales($id)`, `permisos($id)` para hidratar la sesion
+  - `hasPermission($id, $clave)` para chequeos futuros
+  - `touchLastAccess($id)` en cada login exitoso
+- Controlador `Login` con `index`, `authenticate`, `logout`.
+- Controlador `Dashboard` como ejemplo de pagina protegida.
+- Vistas `login.php` y `dashboard.php` con Bootstrap 5 (cargado por CDN).
+- Sesion hidratada con `usuario_id`, `nombre`, `email`, `empresa_id`, `roles`,
+  `permisos`, `sucursales` para uso futuro en filtros de autorizacion.
+- Proteccion CSRF activa en todos los forms POST (el form de login incluye
+  `csrf_field()` automaticamente).
+- Credenciales de demo: `admin@mantenimiento.local` / `Admin1234`.
+
+### Probado
+- GET /login renderiza el form con CSRF token
+- POST /login/authenticate con credenciales validas redirige (303) a /dashboard
+- GET /dashboard con sesion muestra el usuario, roles, permisos (20) y sucursales
+- GET /logout destruye la sesion y redirige a /login
+- GET /dashboard sin sesion redirige a /login con mensaje
