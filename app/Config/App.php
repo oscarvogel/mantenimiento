@@ -40,7 +40,7 @@ class App extends BaseConfig
      *
      * Tipicamente index.php. Si el servidor lo oculta de las URLs, dejar vacio.
      */
-    public string $indexPage = 'index.php';
+    public string $indexPage = '';
 
     /**
      * --------------------------------------------------------------------------
