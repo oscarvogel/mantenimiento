@@ -70,6 +70,32 @@ la especificación funcional.
   órdenes reales** completado por usuarios finales antes del despliegue
   general.
 
+## [0.3] - 5 de agosto de 2026
+
+### Cambiado
+- **Subdominio mantenimiento.vogelconsultoria.com.ar descartado.**
+  La URL canonica del sistema pasa a ser unicamente
+  `https://vogelconsultoria.com.ar/mantenimiento/`. El subdominio
+  se habia creado apuntando via CNAME al apex, pero Ferozo no emitio el
+  cert Let's Encrypt especifico mientras no se configure el vhost en el
+  panel; mientras tanto servia el cert wildcard
+  `CN=*.ferozo.com` (Sectigo), que los navegadores modernos
+  rechazan con `NET::ERR_CERT_COMMON_NAME_INVALID`.
+- `README.md`, `docs/DEPLOY_FEROZO.md` y `.env.example`
+  actualizados para reflejar la URL unica y la leccion aprendida.
+- Seccion 10 de `docs/DEPLOY_FEROZO.md` renombrada de
+  Migracion futura a subdominio a Subdominio descartado.
+
+### Agregado
+- `docs/SUBDOMINIO_DESCARTADO.md` con el rationale completo,
+  acciones de cleanup y leccion para futuras sesiones.
+
+### Pendiente (manual)
+- Oscar debe sacar los CNAMEs `mantenimiento` y
+  `www.mantenimiento` desde el panel de NIC.ar para
+  `vogelconsultoria.com.ar`.
+- No configurar el vhost del subdominio en Ferozo: queda abandonado.
+
 ## [1.0] - 2026-08-04
 
 ### Agregado

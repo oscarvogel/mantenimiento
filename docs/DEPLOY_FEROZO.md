@@ -336,45 +336,33 @@ raros).
 
 ---
 
-## 10. Migracion futura a subdominio
+## 10. Subdominio descartado
 
-Cuando se quiera pasar de `https://vogelconsultoria.com.ar/mantenimiento/`
-a `https://mantenimiento.vogelconsultoria.com.ar/`:
+Esta guia incluia antes una seccion de **Migracion futura a subdominio**
+que proponia mover la app a `https://mantenimiento.vogelconsultoria.com.ar/`.
+Esa opcion fue **descartada** el 5 de agosto de 2026.
 
-1. **Crear el subdominio** desde el panel de Ferozo (DNS + vhost + cert
-   TLS via Let's Encrypt). Ferozo emite el cert automaticamente.
+Resumen del motivo:
 
-2. **Configurar el DocumentRoot** del subdominio para que apunte a
-   `/home/<usuario>/vogelconsultoria.com.ar/public_html/mantenimiento/`.
-   Es el mismo directorio que ya tiene todos los archivos, no hay que
-   mover nada.
+- Ferozo emite el cert Let's Encrypt para un subdominio solo cuando se
+  configura el vhost en el panel. Mientras tanto, sirve el cert wildcard
+  generico `CN=*.ferozo.com` (Sectigo), que los navegadores modernos
+  rechazan con `NET::ERR_CERT_COMMON_NAME_INVALID` para cualquier
+  hostname que no sea `*.ferozo.com`.
+- La autodeteccion de `baseURL` en `app/Config/App.php` ya funciona bien
+  con el subdirectorio (`SCRIPT_NAME = /mantenimiento/index.php`) y la
+  URL actual es estable.
+- Mantener dos URLs activas (subdirectorio + subdominio) sin redirect 301
+  desde el subdominio al subdirectorio duplica superficie de ataque y de
+  mantenimiento sin beneficio claro para el cliente.
 
-3. **Esperar a que el cert TLS este emitido** (suele tardar entre 5
-   minutos y 1 hora).
+URL canonica: `https://vogelconsultoria.com.ar/mantenimiento/`.
 
-4. **Probar**:
-   - `https://mantenimiento.vogelconsultoria.com.ar/` debe mostrar la
-     misma pantalla de CI4.
-   - `https://vogelconsultoria.com.ar/mantenimiento/` debe seguir
-     funcionando con el cert del dominio principal.
+Detalle completo, acciones de cleanup y leccion aprendida en
+`docs/SUBDOMINIO_DESCARTADO.md`. Si en algun momento se quiere reactivar
+el subdominio, leer ese documento antes de tocar nada.
 
-5. La autodeteccion de `baseURL` en `app/Config/App.php` calcula la URL
-   a partir de la peticion HTTP entrante (`$_SERVER['SCRIPT_NAME']`), asi
-   que automaticamente usa la URL correcta. No hay que cambiar nada en
-   el codigo.
-
-Opcional, despues de validar que el subdominio funciona:
-
-6. **Redirect permanente 301** desde el subdirectorio hacia el
-   subdominio (para SEO y para que los usuarios viejos lleguen al
-   nuevo):
-   - NO se recomienda cambiar el `.htaccess` que esta en el
-     subdirectorio (rompe el rewrite). Mejor agregar el redirect
-     desde el panel de Ferozo si tiene esa opcion, o crear un
-     subdominio que redirija.
-   - Si no hay opcion de redirect en el panel, dejar ambas URLs
-     funcionando en paralelo. Los usuarios iran migrando solos.
-
+---
 ---
 
 ## 11. Rotacion de credenciales
@@ -461,11 +449,9 @@ sin el `/mantenimiento/`, y aparece "Not Found".
 app.baseURL = 'https://vogelconsultoria.com.ar/mantenimiento/'
 ```
 
-Si migras a `mantenimiento.vogelconsultoria.com.ar/`, cambialo por:
-
-```
-app.baseURL = 'https://mantenimiento.vogelconsultoria.com.ar/'
-```
-
 Tambien dejar `app.indexPage = ''` (vacio) para que el rewrite de Apache
 funcione sin `index.php` en la URL.
+
+Nota historica: este apartado mencionaba antes la posibilidad de migrar a
+`mantenimiento.vogelconsultoria.com.ar/`. Esa opcion fue descartada; ver
+`docs/SUBDOMINIO_DESCARTADO.md` para el detalle.

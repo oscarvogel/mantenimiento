@@ -22,10 +22,9 @@ implementación, leer la spec completa.
 - [ ] Etapa 4 — solicitudes, avisos y órdenes de trabajo.
 - [ ] Etapa 5 — alertas, reportes, auditoría, pruebas, piloto y cierre.
 
-El bootstrap actual instala CodeIgniter 4 v4.7.4 con autodetección de
-`baseURL` y un `.htaccess` listo para Ferozo. La misma instalación sirve a
-`https://vogelconsultoria.com.ar/mantenimiento/` y a
-`https://mantenimiento.vogelconsultoria.com.ar/`. Ver
+El bootstrap actual instala CodeIgniter 4 v4.7.4 con autodeteccion de
+`baseURL` y un `.htaccess` listo para Ferozo. La URL canonica del
+deploy es `https://vogelconsultoria.com.ar/mantenimiento/`. Ver
 [`docs/DEPLOY_FEROZO.md`](docs/DEPLOY_FEROZO.md) para el paso a paso.
 
 ---
