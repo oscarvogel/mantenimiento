@@ -79,3 +79,18 @@ la especificación funcional.
 - Modelo de datos con 30+ tablas organizadas por dominios funcionales.
 - Pantallas, reglas de negocio, pruebas mínimas obligatorias y
   entregables del proyecto.
+## [0.1] - 5 de agosto de 2026
+
+### Agregado
+- Primera migracion de CodeIgniter: `CreateEmpresasTable` (tabla `empresas` con
+  id, razon_social, nombre_fantasia, cuit, email, telefono, estado,
+  created_at, updated_at, created_by, updated_by, deleted_at, segun la
+  seccion 5.1 de la especificacion).
+- Conexion a la base de datos `a0110632_mant` en Ferozo verificada: charset
+  `utf8mb4`, MySQL 8.4.8-8, password en `.env` con `DBPrefix` vacio.
+
+### Cambiado
+- `.env` en el server: `database.default.DBPrefix` ahora vacio (estaba
+  como `mantenimiento`, lo que producia nombres de tabla prefijados;
+  se dejo limpio para que las tablas se llamen `usuarios`, `empresas`,
+  etc.).
