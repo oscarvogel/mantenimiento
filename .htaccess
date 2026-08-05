@@ -1,64 +1,29 @@
 # ----------------------------------------------------------------------
-# CodeIgniter 4 - htaccess raiz (estructura plana para Ferozo / FTP)
+# CodeIgniter 4 - htaccess minimalista para Ferozo
 # ----------------------------------------------------------------------
-# Este .htaccess vive en la raiz del proyecto (public_html/mantenimiento/).
-# No usa RewriteBase: las reglas se resuelven relativas a este directorio.
+# Sin directivas `Options` (Ferozo a veces no las permite y tira 500).
+# Solo RewriteEngine + redirect a index.php + proteccion del .env.
+# El resto de las carpetas privadas tienen su propio .htaccess con deny.
 # ----------------------------------------------------------------------
 
-Options -Indexes
+RewriteEngine On
 
-<IfModule mod_rewrite.c>
-    Options +FollowSymlinks
-    RewriteEngine On
+# Forzar HTTPS
+RewriteCond %{HTTPS} !=on
+RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
 
-    # Forzar HTTPS
-    RewriteCond %{HTTPS} !=on
-    RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
+# Redirigir trailing slashes (excepto la raiz)
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_URI} (.+)/$
+RewriteRule ^ %1 [L,R=301]
 
-    # Redirigir trailing slashes (excepto la raiz)
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteCond %{REQUEST_URI} (.+)/$
-    RewriteRule ^ %1 [L,R=301]
+# Reescribir a index.php si la URL no es un archivo ni un directorio real
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [L]
 
-    # Reescribir a index.php si la URL no es un archivo ni un directorio real
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteRule ^([\s\S]*)$ index.php/$1 [L,NC,QSA]
-
-    # Preservar el header Authorization cuando llega detras de un proxy
-    RewriteCond %{HTTP:Authorization} .
-    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
-</IfModule>
-
-<IfModule !mod_rewrite.c>
-    # Si mod_rewrite no esta disponible, todo cae en index.php.
-    ErrorDocument 404 index.php
-</IfModule>
-
-ServerSignature Off
-
-# ----------------------------------------------------------------------
-# Bloquear acceso directo a archivos sensibles
-# ----------------------------------------------------------------------
-<FilesMatch "^(\.env|\.env\..*|composer\.(json|lock)|spark|preload\.php|phpunit\.dist\.xml)$">
-    <IfModule mod_authz_core.c>
-        Require all denied
-    </IfModule>
-    <IfModule !mod_authz_core.c>
-        Deny from all
-    </IfModule>
-</FilesMatch>
-
-# ----------------------------------------------------------------------
-# Bloquear acceso a directorios privados
-# ----------------------------------------------------------------------
-# Protege app/, vendor/, writable/, tests/ y builds/ de acceso web directo.
-# Esto es necesario porque los .htaccess internos no se suben con vendor/
-# (esta en .gitignore) y el de writable/ puede no funcionar en todos los
-# hostings.
-<IfModule mod_authz_core.c>
-    RedirectMatch 403 ^/?(app|vendor|writable|tests|builds)/.*$
-</IfModule>
-<IfModule !mod_authz_core.c>
-    RedirectMatch 403 ^/?(app|vendor|writable|tests|builds)/.*$
-</IfModule>
+# Bloquear acceso directo al .env
+<Files ".env">
+    Order allow,deny
+    Deny from all
+</Files>
