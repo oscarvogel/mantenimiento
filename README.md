@@ -13,6 +13,23 @@ implementación, leer la spec completa.
 
 ---
 
+## 0. Estado del proyecto
+
+- [x] Etapa 0 — bootstrap del framework y guía de despliegue (rama `etapa-0-bootstrap`).
+- [ ] Etapa 1 — base del sistema: empresas, sucursales, usuarios, roles, permisos, catálogos.
+- [ ] Etapa 2 — equipos, lecturas e importaciones.
+- [ ] Etapa 3 — mantenimiento preventivo y motor de vencimientos.
+- [ ] Etapa 4 — solicitudes, avisos y órdenes de trabajo.
+- [ ] Etapa 5 — alertas, reportes, auditoría, pruebas, piloto y cierre.
+
+El bootstrap actual instala CodeIgniter 4 v4.7.4 con autodetección de
+`baseURL` y un `.htaccess` listo para Ferozo. La misma instalación sirve a
+`https://vogelconsultoria.com.ar/mantenimiento/` y a
+`https://mantenimiento.vogelconsultoria.com.ar/`. Ver
+[`docs/DEPLOY_FEROZO.md`](docs/DEPLOY_FEROZO.md) para el paso a paso.
+
+---
+
 ## 1. Resumen del alcance
 
 - Mantenimiento preventivo y correctivo.
@@ -26,7 +43,7 @@ implementación, leer la spec completa.
   auditoría.
 - Interfaz web responsive, usable desde el teléfono, con **QR imprimible por
   equipo** y bandeja personal `Mi trabajo` para los técnicos.
-- **Piloto controlado** con 5 a 10 equipos representativos antes del despliegue
+- Piloto controlado con 5 a 10 equipos representativos antes del despliegue
   general.
 
 Fuera de alcance de la primera versión (ver spec, sección 2.2): integración con
@@ -42,12 +59,12 @@ responsive, por lo que ya no se considera excluida.
 
 | Capa | Elección | Comentario |
 |---|---|---|
-| Lenguaje | PHP 8.2 o superior | El hosting dispone de PHP 8.4 FPM. |
-| Framework | CodeIgniter 4 | Aplicación monolítica con vistas en servidor. |
+| Lenguaje | PHP 8.2+ (objetivo PHP 8.4) | Ferozo dispone de PHP 8.4 FPM. |
+| Framework | CodeIgniter 4 v4.7.4 | Aplicación monolítica con vistas en servidor. |
 | Base de datos | MySQL o MariaDB | Importes con `DECIMAL`, nunca `FLOAT`/`DOUBLE`. |
 | UI | Bootstrap 5 | Diseño responsive, sin frontend separado. |
 | Interactividad | JavaScript liviano o Alpine.js | Solo para interacciones puntuales. |
-| Dependencias | Composer | `vendor/` debe incluirse en el deploy si el server no puede correr Composer. |
+| Dependencias | Composer | `vendor/` commiteado en esta etapa (4 MB). |
 | PDF | Dompdf o equivalente | Compatible con el hosting. |
 | Hojas de cálculo | PhpSpreadsheet o equivalente | Para importaciones Excel/CSV. |
 | Correo | SMTP autenticado | Con reintento y registro de errores. |
@@ -66,9 +83,32 @@ Los archivos privados (adjuntos, manuales) deben quedar **fuera** de
 `public_html` cuando el hosting lo permita. Si no es posible, se protegen con
 controlador de descarga autorizado.
 
+### 2.2 Decisión de stack (PHP sobre Python/Laravel)
+
+Este proyecto se mantiene en **PHP + CodeIgniter 4** y no en Laravel ni en
+Python por estas razones:
+
+- **Ferozo como destino de deploy.** El hosting compartido ya está pago y
+  resuelve TLS, backups, cron y SMTP. CodeIgniter 4 se instala con un
+  `git pull` y `php spark migrate`; Laravel requiere scheduler, queue
+  workers, `storage:link`, `key:generate` y varias caches que se rompen en
+  cada deploy, lo que ya dio problemas en este hosting.
+- **CRUD administrativo maduro.** El sistema es formularios, listados,
+  reportes y un par de automatizaciones. CI4 cubre el caso con menos
+  ceremonia que Laravel y sin la curva de Filament.
+- **Web responsive + QR + bandeja personal.** La spec no pide frontend
+  separado. CI4 lo entrega con vistas server-rendered y un poco de JS.
+- **Costo de operación bajo.** Sin VPS, sin Docker, sin mantener gunicorn
+  ni systemd. El programador puede hacer `git push` y listo.
+
+Si en algún momento se necesita lógica avanzada (motor de vencimientos con
+muchas reglas, OCR de facturas, integraciones profundas con Gestya), se
+puede sumar un microservicio Python chico que se consuma por HTTP sin
+reescribir el monolito.
+
 ---
 
-## 3. Estructura propuesta
+## 3. Estructura del repositorio
 
 La aplicación es un monolito organizado por dominios funcionales. La versión
 1.1 agrega explícitamente los dominios **Solicitudes** y **Avisos** y
@@ -76,27 +116,40 @@ extiende **Órdenes** con prioridad, criticidad, responsable, motivos de
 espera y fechas de detención.
 
 ```text
-app/
-├── Dominios/
-│   ├── Empresas        # Empresas, sucursales
-│   ├── Usuarios        # Usuarios, roles, permisos, acceso por sucursal
-│   ├── Equipos         # Tipos, marcas, modelos, equipos, adjuntos, relaciones, QR
-│   ├── Lecturas        # Lecturas de kilómetros y horómetro
-│   ├── Planes          # Tipos de servicio, tareas, plantillas, planes
-│   ├── Solicitudes     # Solicitudes de mantenimiento, comentarios, avisos de plan
-│   ├── Ordenes         # Órdenes de trabajo, tareas, repuestos, garantías, vínculos
-│   ├── Proveedores     # Talleres propios y proveedores externos
-│   ├── Importaciones   # Carga y validación de archivos
-│   ├── Alertas         # Configuración, ejecuciones y notificaciones
-│   ├── Reportes        # Reportes y exportaciones
-│   └── Auditoria       # Bitácora de operaciones sensibles
-├── Common/             # Helpers, traits, middlewares, servicios comunes
-├── Views/              # Layouts y vistas por dominio
-└── Controllers/        # Controladores que orquestan los dominios
+.
+├── app/                      # Código de la aplicación (CodeIgniter 4)
+│   ├── Config/               # Configuraciones (App, Database, Routes, etc.)
+│   ├── Controllers/
+│   ├── Models/
+│   ├── Views/
+│   ├── Filters/
+│   ├── Helpers/
+│   └── ...
+├── public/                   # Único directorio expuesto al web server
+│   ├── index.php             # Front controller
+│   ├── .htaccess             # Rewrite + HTTPS forzado, válido para Ferozo
+│   └── assets/               # CSS, JS, imágenes
+├── writable/                 # Logs, caché, sesión, uploads temporales
+│   ├── cache/
+│   ├── logs/
+│   ├── session/
+│   └── uploads/
+├── tests/                    # PHPUnit
+├── vendor/                   # Dependencias Composer (commiteado por ahora)
+├── docs/
+│   ├── ESPECIFICACION_SISTEMA_MANTENIMIENTO.md
+│   └── DEPLOY_FEROZO.md
+├── .env.example              # Plantilla de configuración
+├── .gitignore
+├── CHANGELOG.md
+├── composer.json
+├── composer.lock
+├── spark                     # CLI de CodeIgniter
+└── README.md                 # Este archivo
 ```
 
 Las migraciones y los seeders iniciales (roles, permisos, estados, catálogos)
-son parte de los entregables.
+son parte de los entregables de la etapa 1.
 
 ---
 
@@ -218,17 +271,31 @@ y aprobarse antes de desarrollarse.
 
 ---
 
-## 9. Cómo arrancar
+## 9. Cómo arrancar (entorno local)
 
-1. Clonar el repositorio.
-2. Copiar `.env.example` a `.env` y completar las credenciales.
-3. Instalar dependencias: `composer install`.
-4. Crear la base de datos y aplicar migraciones: `php spark migrate`.
-5. Cargar los seeders iniciales: `php spark db:seed InitialSeeder`.
-6. Levantar el servidor de desarrollo: `php spark serve`.
+```bash
+# 1. Clonar el repositorio
+git clone https://github.com/oscarvogel/mantenimiento.git
+cd mantenimiento
 
-El deploy a Ferozo y la configuración del cron diario se documentarán en
-`docs/DEPLOY.md` cuando el primer entorno esté en pie.
+# 2. Instalar dependencias (si vendor/ no esta commiteado)
+composer install --no-dev --optimize-autoloader
+
+# 3. Configurar el entorno
+cp .env.example .env
+php spark key:generate
+# Editar .env con las credenciales reales
+
+# 4. Crear la base de datos y correr migraciones
+php spark migrate
+
+# 5. Levantar el servidor de desarrollo
+php spark serve
+# Abre http://localhost:8080/ en el navegador
+```
+
+Para instrucciones de deploy en Ferozo, ver
+[`docs/DEPLOY_FEROZO.md`](docs/DEPLOY_FEROZO.md).
 
 ---
 
