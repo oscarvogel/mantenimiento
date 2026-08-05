@@ -445,3 +445,27 @@ guardan en la memoria persistente de Mavis.
 Si el programador o Mavis encuentran un problema que no esta
 documentado aca, agregar una entrada a esta guia. El objetivo es que
 el deploy sea repetible por cualquiera sin tener que pedir ayuda.
+
+---
+
+## 15. Nota: `app.baseURL` en Ferozo
+
+En Ferozo, la autodeteccion del `baseURL` desde `SCRIPT_NAME` no funciona
+bien (devuelve la raiz del dominio en vez del subdirectorio). El sintoma
+es que despues del login el redirect va a `https://dominio.com/login/...`
+sin el `/mantenimiento/`, y aparece "Not Found".
+
+**Fix**: poner la URL fija en el `.env`:
+
+```
+app.baseURL = 'https://vogelconsultoria.com.ar/mantenimiento/'
+```
+
+Si migras a `mantenimiento.vogelconsultoria.com.ar/`, cambialo por:
+
+```
+app.baseURL = 'https://mantenimiento.vogelconsultoria.com.ar/'
+```
+
+Tambien dejar `app.indexPage = ''` (vacio) para que el rewrite de Apache
+funcione sin `index.php` en la URL.
