@@ -4,25 +4,37 @@ Aplicación web para administrar el mantenimiento preventivo y correctivo de una
 flota heterogénea: camiones, tractores, acoplados, máquinas, vehículos livianos
 y otros tipos de equipo que puedan incorporarse a futuro.
 
-El documento rector del proyecto es la especificación funcional y técnica que
-se encuentra en [`docs/ESPECIFICACION_SISTEMA_MANTENIMIENTO.md`](docs/ESPECIFICACION_SISTEMA_MANTENIMIENTO.md).
-Antes de tomar decisiones de diseño o implementación, leerla completa.
+El documento rector del proyecto es la especificación funcional y técnica
+versión **1.1** que se encuentra en
+[`docs/ESPECIFICACION_SISTEMA_MANTENIMIENTO.md`](docs/ESPECIFICACION_SISTEMA_MANTENIMIENTO.md).
+El historial de cambios del documento está en
+[`CHANGELOG.md`](CHANGELOG.md). Antes de tomar decisiones de diseño o
+implementación, leer la spec completa.
 
 ---
 
 ## 1. Resumen del alcance
 
 - Mantenimiento preventivo y correctivo.
+- Circuito de **solicitudes** separado del circuito de **órdenes de trabajo**:
+  fallas, inspecciones o avisos preventivos se registran como solicitudes y un
+  responsable las revisa antes de generar una orden.
 - Múltiples empresas y sucursales.
 - Aproximadamente cinco o seis usuarios en la primera etapa, sin tope artificial.
 - Equipos con historial, lecturas de kilómetros y horómetro, planes preventivos,
   órdenes de trabajo, repuestos, garantías, alertas por correo, reportes y
   auditoría.
+- Interfaz web responsive, usable desde el teléfono, con **QR imprimible por
+  equipo** y bandeja personal `Mi trabajo` para los técnicos.
+- **Piloto controlado** con 5 a 10 equipos representativos antes del despliegue
+  general.
 
 Fuera de alcance de la primera versión (ver spec, sección 2.2): integración con
 Gestya por API, inventario completo, compras y cuentas corrientes, gestión de
-neumáticos por posición, GPS/telemetría, WhatsApp, app móvil nativa, portal de
-proveedores, presupuestos avanzados, funciones contables.
+neumáticos por posición, GPS/telemetría, WhatsApp, **trabajo sin conexión u
+operación offline**, portal de proveedores, presupuestos avanzados, funciones
+contables. La versión 1.1 sustituye la app móvil nativa por la aplicación web
+responsive, por lo que ya no se considera excluida.
 
 ---
 
@@ -58,17 +70,21 @@ controlador de descarga autorizado.
 
 ## 3. Estructura propuesta
 
-La aplicación es un monolito organizado por dominios funcionales:
+La aplicación es un monolito organizado por dominios funcionales. La versión
+1.1 agrega explícitamente los dominios **Solicitudes** y **Avisos** y
+extiende **Órdenes** con prioridad, criticidad, responsable, motivos de
+espera y fechas de detención.
 
 ```text
 app/
 ├── Dominios/
 │   ├── Empresas        # Empresas, sucursales
 │   ├── Usuarios        # Usuarios, roles, permisos, acceso por sucursal
-│   ├── Equipos         # Tipos, marcas, modelos, equipos, adjuntos, relaciones
+│   ├── Equipos         # Tipos, marcas, modelos, equipos, adjuntos, relaciones, QR
 │   ├── Lecturas        # Lecturas de kilómetros y horómetro
 │   ├── Planes          # Tipos de servicio, tareas, plantillas, planes
-│   ├── Ordenes         # Órdenes de trabajo, tareas, repuestos, garantías
+│   ├── Solicitudes     # Solicitudes de mantenimiento, comentarios, avisos de plan
+│   ├── Ordenes         # Órdenes de trabajo, tareas, repuestos, garantías, vínculos
 │   ├── Proveedores     # Talleres propios y proveedores externos
 │   ├── Importaciones   # Carga y validación de archivos
 │   ├── Alertas         # Configuración, ejecuciones y notificaciones
@@ -87,18 +103,22 @@ son parte de los entregables.
 ## 4. Etapas de desarrollo
 
 El plan sugerido por la spec (sección 15) es de **8 a 10 semanas calendario**
-y se organiza en cinco etapas:
+y se organiza en cinco etapas. La versión 1.1 modifica la etapa 4 para
+incluir solicitudes, avisos, revisión y agrupación antes del flujo completo
+de órdenes.
 
 1. **Base del sistema** — Proyecto, configuración, autenticación, empresas,
    sucursales, roles, permisos, catálogos generales.
-2. **Equipos y lecturas** — Equipos, adjuntos, relaciones, lecturas manuales,
-   importaciones básicas.
+2. **Equipos y lecturas** — Equipos, adjuntos, relaciones, QR, lecturas
+   manuales, importaciones básicas.
 3. **Mantenimiento preventivo** — Servicios, tareas, plantillas, planes,
    motor de vencimientos, panel de próximos/vencidos.
-4. **Órdenes de trabajo** — Flujo completo, tareas, repuestos, costos,
-   garantías, PDF e impresión.
+4. **Solicitudes, avisos y órdenes de trabajo** — Solicitudes, revisión y
+   agrupación de avisos preventivos o correctivos, flujo completo de
+   órdenes, tareas, repuestos, costos, garantías, PDF e impresión.
 5. **Alertas, reportes y cierre** — Correos y tarea programada, reportes y
-   exportaciones, auditoría, pruebas, documentación y despliegue.
+   exportaciones, auditoría, pruebas, documentación, despliegue y
+   acompañamiento del piloto.
 
 ---
 
@@ -116,13 +136,23 @@ Resumen de la sección 9 de la spec:
 - Las correcciones sensibles requieren motivo y auditoría.
 - Todos los listados se paginan y filtran del lado del servidor.
 - Los reportes respetan permisos y sucursales autorizadas.
+- Las solicitudes duplicadas se vinculan o se agrupan; nunca se duplican
+  silenciosamente.
+- La prioridad del solicitante es orientativa; la prioridad final la define
+  el responsable.
+- Todo estado de espera exige motivo visible.
+- La interfaz de campo debe minimizar campos y clics.
+- Los indicadores deben mostrar `sin datos suficientes` cuando falten datos
+  mínimos, en lugar de inventar un valor.
 
 ---
 
 ## 6. Pruebas mínimas obligatorias
 
-La spec, sección 13, define 18 casos críticos que el programador debe cubrir
-como mínimo. Los principales son:
+La spec, sección 13, define **26 casos críticos** que el programador debe
+cubrir como mínimo. La versión 1.1 agrega ocho (19 a 26) vinculados a
+solicitudes, bandeja personal, motivo de espera y control de notificaciones.
+Los principales:
 
 - Vencimiento por fecha, por kilómetros, por horómetro, y combinado.
 - Estado `SIN_DATOS` cuando falta lectura.
@@ -134,6 +164,14 @@ como mínimo. Los principales son:
 - Prevención de correos duplicados al correr el proceso de alertas dos veces.
 - Restricción de datos por sucursal y de acciones por permiso.
 - Descarga autorizada de adjuntos privados.
+- Creación rápida de solicitud desde el teléfono.
+- Detección y agrupación de solicitudes duplicadas.
+- Conversión trazable de solicitudes a una orden.
+- Bandeja `Mi trabajo` por técnico.
+- Cierre de correctiva con causa, acción y resultado.
+- Motivo obligatorio al poner una orden en espera.
+- Cálculo de detención solo con fechas válidas.
+- Prevención de tormenta de notificaciones.
 
 ---
 
@@ -153,6 +191,7 @@ Definidos en la spec, sección 12:
 - Configuración documentada de la tarea programada.
 - Pruebas automatizadas de las reglas críticas.
 - Procedimiento de copia de seguridad y recuperación.
+- Informe del piloto con equipos reales.
 
 ---
 
@@ -200,7 +239,7 @@ El deploy a Ferozo y la configuración del cron diario se documentarán en
   `fix(planes): recálculo al finalizar orden`, `docs(spec): aclarar criterio
   de vencimiento combinado`.
 - PRs chicos, con descripción del problema, la solución y cómo se probó.
-- Antes de mergear, verificar que pasan los 18 casos de prueba críticos de
+- Antes de mergear, verificar que pasan los 26 casos de prueba críticos de
   la spec.
 
 ---

@@ -2,10 +2,12 @@
 
 ## Sistema de gestión de mantenimiento de equipos
 
-**Versión:** 1.0  
-**Fecha:** 4 de agosto de 2026  
+**Versión:** 1.1  
+**Fecha:** 5 de agosto de 2026  
 **Estado:** Documento base para desarrollo  
 **Objetivo:** definir la primera versión operativa del sistema y evitar interpretaciones ambiguas de alcance.
+
+**Criterio de diseño:** la versión 1.1 incorpora el contraste realizado con sistemas CMMS y de mantenimiento de flotas consolidados, además de problemas de adopción informados por usuarios de mantenimiento. Se prioriza un circuito simple, móvil y trazable antes que una acumulación de funciones administrativas.
 
 ---
 
@@ -48,6 +50,12 @@ La solución debe admitir varias sucursales y aproximadamente cinco o seis usuar
 17. Alertas por correo electrónico.
 18. Archivos adjuntos.
 19. Auditoría de operaciones importantes.
+20. Solicitudes de mantenimiento o fallas separadas de las órdenes de trabajo.
+21. Revisión, aprobación, postergación, agrupación y rechazo justificado de solicitudes.
+22. Asignación de responsable y seguimiento de tiempos de atención.
+23. Comentarios y novedades cronológicas dentro de solicitudes y órdenes.
+24. Acceso rápido desde teléfono para informar una falla con fotografía.
+25. Identificación del equipo mediante código QR como facilidad de acceso, sin requerir una aplicación nativa.
 
 ### 2.2 Fuera de alcance
 
@@ -61,12 +69,46 @@ No forman parte de esta primera versión:
 - GPS, telemetría o captura automática de lecturas.
 - Alertas por WhatsApp.
 - Aplicación móvil nativa.
+- Trabajo sin conexión u operación offline.
 - Portal para proveedores externos.
 - Presupuestos y autorizaciones de reparación avanzadas.
 - Costos presupuestados versus reales avanzados.
 - Funciones contables o de facturación.
 
 Estas funciones podrán desarrollarse posteriormente mediante presupuestos separados.
+
+### 2.3 Circuito funcional completo
+
+El siguiente diagrama resume el recorrido principal que debe soportar la primera versión:
+
+```mermaid
+flowchart TD
+    A["Equipo registrado"] --> B["Plan asignado"]
+    B --> C["Lectura de uso"]
+    C --> D["Evaluar vencimiento"]
+    D --> E{"¿Requiere intervención?"}
+    E -->|No| C
+    E -->|Sí| F["Aviso de mantenimiento"]
+    F --> G{"Revisión responsable"}
+    G -->|Aprobar| H["Orden de trabajo"]
+    G -->|Postergar| D
+    G -->|Descartar| I["Cerrar con motivo"]
+    H --> J["Ejecutar y finalizar"]
+    J --> K["Historial y nuevo vencimiento"]
+    K --> C
+```
+
+Una orden también podrá originarse directamente por una falla, una inspección, una garantía o una carga manual, sin esperar un vencimiento preventivo.
+
+### 2.4 Principios operativos obligatorios
+
+1. **La solicitud no es una orden.** Una falla, observación o pedido debe poder registrarse rápidamente y luego ser revisado antes de consumir recursos del taller.
+2. **La carga de campo debe ser breve.** Informar una falla no debe exigir completar datos propios de planificación, costos o cierre.
+3. **No generar órdenes masivas sin revisión.** Los vencimientos crean avisos accionables; una regla configurable puede agrupar avisos del mismo equipo y evitar duplicados.
+4. **El técnico trabaja desde una lista personal.** Debe ver primero sus órdenes asignadas, prioridad, equipo, ubicación y bloqueo actual.
+5. **El cierre debe producir datos útiles.** No se admitirá finalizar con una observación vacía o genérica: se requiere trabajo realizado, resultado, lecturas aplicables y causa cuando sea correctivo.
+6. **Las notificaciones deben ser accionables.** Se priorizan resúmenes y cambios relevantes; no se enviará un correo por cada modificación menor.
+7. **El sistema debe funcionar correctamente en navegador móvil.** La primera versión no incluye aplicación nativa ni modo sin conexión.
 
 ---
 
@@ -87,6 +129,16 @@ Estas funciones podrán desarrollarse posteriormente mediante presupuestos separ
 - Tareas programadas de Ferozo para el proceso diario de alertas.
 
 No se desarrollará un frontend separado ni una API completa en esta etapa. La estructura interna deberá permitir incorporar una API en el futuro.
+
+```mermaid
+flowchart TD
+    U["Usuario web"] --> W["Aplicación CodeIgniter"]
+    W --> DB[("MySQL / MariaDB")]
+    W --> FS["Adjuntos privados"]
+    W --> SMTP["Servidor SMTP"]
+    CRON["Tarea programada"] --> W
+    W --> PDF["Órdenes PDF"]
+```
 
 ### 3.2 Requisitos del alojamiento conocidos
 
@@ -129,7 +181,8 @@ App
 |---|---|
 | Administrador | Acceso completo, configuración, usuarios, catálogos, auditoría y anulaciones. |
 | Responsable de mantenimiento | Equipos, lecturas, planes, órdenes, trabajos, repuestos, garantías y reportes. |
-| Operador | Cargar lecturas, abrir y actualizar órdenes según autorización. |
+| Técnico u operador | Consultar trabajo asignado, cargar lecturas, iniciar, actualizar y cerrar tareas u órdenes según autorización. |
+| Solicitante | Informar fallas o necesidades, adjuntar evidencia y consultar el estado de sus solicitudes. |
 | Consulta | Visualizar paneles, equipos, órdenes e historial sin modificar información. |
 
 ### 4.2 Reglas de acceso
@@ -215,6 +268,22 @@ Reglas:
 
 **Motivo del diseño:** cada equipo puede heredar una plantilla, pero el plan queda materializado para permitir excepciones individuales sin alterar los demás equipos.
 
+#### Relaciones centrales del mantenimiento
+
+Este esquema no reemplaza las migraciones, pero muestra las dependencias que el programador debe preservar:
+
+```mermaid
+erDiagram
+    EQUIPOS ||--o{ LECTURAS_EQUIPO : registra
+    EQUIPOS ||--o{ PLANES_MANTENIMIENTO : posee
+    TIPOS_SERVICIO ||--o{ PLANES_MANTENIMIENTO : define
+    PLANES_MANTENIMIENTO ||--o{ ORDENES_TRABAJO : origina
+    EQUIPOS ||--o{ ORDENES_TRABAJO : recibe
+    ORDENES_TRABAJO ||--o{ ORDEN_TAREAS : contiene
+    ORDENES_TRABAJO ||--o{ ORDEN_REPUESTOS : utiliza
+    PROVEEDORES ||--o{ ORDENES_TRABAJO : atiende
+```
+
 #### Regla de vencimiento combinado
 
 Un plan puede utilizar uno o varios criterios:
@@ -243,6 +312,36 @@ Resultado: VENCIDO por fecha, aunque todavía no llegó a 100.000 km.
 
 Cuando una orden preventiva se finaliza, el sistema debe actualizar las bases del plan con la fecha y las lecturas de salida de la orden y recalcular sus próximos vencimientos.
 
+#### Flujo de carga de una lectura
+
+```mermaid
+flowchart TD
+    A["Ingresar km y/o horas"] --> B{"¿Hay algún valor?"}
+    B -->|No| X["Rechazar"]
+    B -->|Sí| C{"¿Valores válidos?"}
+    C -->|No| X
+    C -->|Sí| D{"¿Retrocede la lectura?"}
+    D -->|No| E["Guardar lectura"]
+    D -->|Sí| F{"¿Permiso y motivo?"}
+    F -->|No| X
+    F -->|Sí| E
+    E --> G["Actualizar equipo"]
+    G --> H["Reevaluar planes"]
+```
+
+#### Decisión del estado de un plan
+
+```mermaid
+flowchart TD
+    A["Obtener plan y última lectura"] --> B{"¿Faltan datos necesarios?"}
+    B -->|Sí| S["SIN_DATOS"]
+    B -->|No| C{"¿Algún criterio venció?"}
+    C -->|Sí| V["VENCIDO"]
+    C -->|No| D{"¿Algún criterio está en anticipación?"}
+    D -->|Sí| P["PROXIMO"]
+    D -->|No| O["AL_DIA"]
+```
+
 ### 5.6 Proveedores y talleres
 
 | Tabla | Finalidad | Campos esenciales |
@@ -252,11 +351,56 @@ Cuando una orden preventiva se finaliza, el sistema debe actualizar las bases de
 
 **Motivo del diseño:** una orden debe distinguir claramente si el trabajo se realiza internamente o por un tercero, sin implementar todavía compras ni cuentas corrientes.
 
-### 5.7 Órdenes de trabajo
+### 5.7 Solicitudes, fallas y avisos
 
 | Tabla | Finalidad | Campos esenciales |
 |---|---|---|
-| `ordenes_trabajo` | Encabezado y estado de cada intervención. | id, numero, empresa_id, sucursal_id, equipo_id, origen, plan_id, fecha_apertura, fecha_programada, fecha_inicio, fecha_finalizacion, tipo_taller, taller_propio_id, proveedor_id, chofer_momento, km_ingreso, horas_ingreso, km_salida, horas_salida, falla_informada, diagnostico, estado, costo_mano_obra, costo_repuestos, otros_costos, costo_total, observaciones |
+| `solicitudes_mantenimiento` | Registra una falla, inspección, observación o necesidad antes de decidir si corresponde una orden. | id, numero, empresa_id, sucursal_id, equipo_id, origen, titulo, descripcion, prioridad_solicitada, criticidad_operativa, equipo_puede_operar, solicitante_usuario_id, solicitante_nombre, fecha_solicitud, estado, responsable_revision_id, fecha_revision, decision, motivo_decision, solicitud_padre_id |
+| `solicitud_adjuntos` | Conserva fotografías, videos cortos o documentos que ayuden a identificar el problema. | id, solicitud_id, nombre_original, ruta_privada, mime_type, tamanio, descripcion |
+| `solicitud_comentarios` | Registra aclaraciones y novedades sin sobrescribir la descripción original. | id, solicitud_id, usuario_id, comentario, fecha, es_interno |
+| `avisos_plan` | Materializa o registra el evento de un plan próximo/vencido para revisión, agrupación e idempotencia. | id, plan_id, equipo_id, estado_calculado, criterio_disparador, fecha_deteccion, valor_actual, valor_objetivo, estado_gestion, orden_id, fecha_resolucion |
+
+**Motivo del diseño:** los productos maduros distinguen el problema o recordatorio del trabajo autorizado. Esta separación evita dos extremos frecuentes: que nadie registre fallas porque el formulario es largo, o que cada aviso genere automáticamente una orden y oculte los problemas importantes entre duplicados.
+
+Estados de solicitud recomendados:
+
+- `NUEVA`.
+- `EN_REVISION`.
+- `APROBADA`.
+- `POSTERGADA`.
+- `AGRUPADA`.
+- `RECHAZADA`.
+- `CONVERTIDA_OT`.
+
+Reglas:
+
+- La carga rápida requiere solamente equipo, título o descripción, condición operativa y, opcionalmente, fotografía.
+- La prioridad final la define el responsable; la indicada por el solicitante es orientativa.
+- Antes de crear una solicitud se deben mostrar posibles duplicados abiertos del mismo equipo.
+- El responsable puede agrupar solicitudes relacionadas; nunca deben eliminarse ni perder su autoría.
+- Aprobar no obliga a crear la orden inmediatamente: puede dejarse programada con responsable y fecha objetivo.
+- Rechazar, postergar o agrupar requiere un motivo.
+- La solicitud debe conservar un enlace a la orden resultante y la orden a sus solicitudes de origen.
+
+```mermaid
+flowchart TD
+    A["Falla, inspección o aviso preventivo"] --> B["Solicitud o aviso"]
+    B --> C{"¿Existe duplicado abierto?"}
+    C -->|Sí| D["Vincular o agrupar"]
+    C -->|No| E["Revisión responsable"]
+    D --> E
+    E --> F{"Decisión"}
+    F -->|Aprobar| G["Planificar y crear OT"]
+    F -->|Postergar| H["Nueva fecha o condición"]
+    F -->|Rechazar| I["Cerrar con motivo"]
+```
+
+### 5.8 Órdenes de trabajo
+
+| Tabla | Finalidad | Campos esenciales |
+|---|---|---|
+| `ordenes_trabajo` | Encabezado y estado de cada intervención. | id, numero, empresa_id, sucursal_id, equipo_id, origen, plan_id, prioridad, criticidad, responsable_usuario_id, fecha_apertura, fecha_objetivo, fecha_programada, fecha_inicio, fecha_finalizacion, tipo_taller, taller_propio_id, proveedor_id, chofer_momento, km_ingreso, horas_ingreso, km_salida, horas_salida, falla_informada, diagnostico, causa_codigo, resultado_codigo, estado, motivo_espera, equipo_fuera_servicio, inicio_detencion, fin_detencion, costo_mano_obra, costo_repuestos, otros_costos, costo_total, observaciones |
+| `orden_solicitudes` | Vincula una orden con una o varias solicitudes o avisos que serán atendidos juntos. | orden_id, solicitud_id, es_principal |
 | `orden_tareas` | Trabajos solicitados y resultado de cada tarea. | id, orden_id, tarea_id, descripcion_solicitada, trabajo_realizado, estado, responsable, fecha_inicio, fecha_fin, observaciones |
 | `orden_repuestos` | Repuestos utilizados en la intervención. | id, orden_id, orden_tarea_id, codigo, descripcion, marca, numero_serie_lote, cantidad, precio_unitario, proveedor_id, comprobante, fecha_colocacion, garantia_fecha, garantia_km, garantia_horas, repuesto_retirado, observaciones |
 | `orden_adjuntos` | Facturas, fotografías, presupuestos y comprobantes. | id, orden_id, tipo, nombre_original, ruta_privada, mime_type, tamanio, descripcion |
@@ -281,18 +425,26 @@ Cuando una orden preventiva se finaliza, el sistema debe actualizar las bases de
 
 #### Estados y transiciones
 
-```text
-BORRADOR -> EMITIDA -> EN_PROCESO -> FINALIZADA
-                      |            
-                      +-> EN_ESPERA_REPUESTOS -> EN_PROCESO
-
-BORRADOR o EMITIDA -> CANCELADA
+```mermaid
+stateDiagram-v2
+    [*] --> BORRADOR
+    BORRADOR --> EMITIDA: autorizar
+    BORRADOR --> CANCELADA: cancelar
+    EMITIDA --> EN_PROCESO: iniciar
+    EMITIDA --> CANCELADA: cancelar
+    EN_PROCESO --> EN_ESPERA_REPUESTOS: suspender
+    EN_ESPERA_REPUESTOS --> EN_PROCESO: reanudar
+    EN_PROCESO --> FINALIZADA: cerrar
+    FINALIZADA --> EN_PROCESO: reabrir con permiso
+    CANCELADA --> [*]
+    FINALIZADA --> [*]
 ```
 
 Reglas:
 
 - Una orden finalizada no se elimina.
 - Para finalizar se requieren fecha, lecturas de salida y al menos un trabajo realizado.
+- En una orden correctiva se requiere causa, acción realizada y resultado; se evitarán cierres con textos genéricos como “listo” o “reparado”.
 - Las lecturas de salida no pueden ser inferiores a las de ingreso.
 - Al finalizar, se registra una nueva lectura del equipo si corresponde.
 - Si la orden está relacionada con un plan, se recalcula el próximo vencimiento.
@@ -300,8 +452,47 @@ Reglas:
 - Reabrir una orden finalizada requiere permiso especial, motivo y auditoría.
 - El costo total debe calcularse como mano de obra + repuestos + otros costos.
 - El chofer se registra como texto histórico opcional; no implica desarrollar la gestión completa de choferes.
+- Debe registrarse quién tiene asignada la orden y la fecha objetivo.
+- El estado de espera exige un motivo: repuesto, proveedor, autorización, disponibilidad del equipo u otro.
+- Cuando el equipo quede detenido, se deben guardar inicio y fin de detención para no inferir indisponibilidad a partir de datos incompletos.
+- Una orden puede resolver varias solicitudes del mismo equipo, pero no puede cerrar solicitudes ajenas sin dejar el vínculo y el resultado.
 
-### 5.8 Garantías
+#### Origen y autorización de una orden
+
+```mermaid
+flowchart TD
+    A{"Origen de necesidad"}
+    A -->|Plan próximo o vencido| B["Aviso automático"]
+    A -->|Falla o inspección| C["Aviso manual"]
+    A -->|Garantía| D["Reclamo relacionado"]
+    B --> E["Revisión responsable"]
+    C --> E
+    D --> E
+    E --> F{"Decisión"}
+    F -->|Aprobar| G["Crear OT numerada"]
+    F -->|Postergar| H["Programar nuevo control"]
+    F -->|Rechazar| I["Cerrar con motivo"]
+```
+
+#### Cierre consistente de una orden
+
+El cierre debe ejecutarse dentro de una única transacción. Si falla cualquier paso, no debe quedar una orden finalizada con lecturas o planes desactualizados.
+
+```mermaid
+flowchart TD
+    A["Solicitar finalización"] --> B["Validar tareas y lecturas"]
+    B --> C{"¿Datos completos?"}
+    C -->|No| X["Informar errores"]
+    C -->|Sí| D["Iniciar transacción"]
+    D --> E["Guardar trabajos, repuestos y costos"]
+    E --> F["Registrar lectura de salida"]
+    F --> G["Actualizar valores del equipo"]
+    G --> H["Recalcular plan relacionado"]
+    H --> I["Marcar OT finalizada"]
+    I --> J["Confirmar transacción"]
+```
+
+### 5.9 Garantías
 
 La información de garantía se registra inicialmente en `orden_repuestos`. Puede vencer por fecha, kilómetros u horas.
 
@@ -316,7 +507,7 @@ No se implementará en esta etapa un circuito jurídico o comercial de reclamos.
 
 Si se implementa esa relación, agregar `orden_repuesto_origen_id` en la nueva orden o una tabla `reclamos_garantia`.
 
-### 5.9 Importaciones
+### 5.10 Importaciones
 
 | Tabla | Finalidad | Campos esenciales |
 |---|---|---|
@@ -340,7 +531,20 @@ Los duplicados deben detectarse mediante claves configuradas:
 - Equipos: empresa + código interno; patente como validación adicional cuando exista.
 - Lecturas: equipo + fecha/hora + valores + origen, con advertencia antes de duplicar.
 
-### 5.10 Alertas y auditoría
+```mermaid
+flowchart TD
+    A["Subir archivo"] --> B["Validar estructura"]
+    B --> C{"¿Encabezados válidos?"}
+    C -->|No| X["Rechazar archivo"]
+    C -->|Sí| D["Validar filas y duplicados"]
+    D --> E["Mostrar vista previa"]
+    E --> F{"Confirmar importación"}
+    F -->|No| G["Cancelar sin cambios"]
+    F -->|Sí| H["Procesar datos"]
+    H --> I["Registrar resultado y errores"]
+```
+
+### 5.11 Alertas y auditoría
 
 | Tabla | Finalidad | Campos esenciales |
 |---|---|---|
@@ -361,8 +565,19 @@ Los duplicados deben detectarse mediante claves configuradas:
 - Recuperación o restablecimiento administrativo de contraseña.
 - Selector de sucursal cuando el usuario tenga más de una.
 - Menú visible según permisos.
+- Inicio adaptado al rol: el técnico no debe atravesar paneles administrativos para llegar a su trabajo.
 
-### 6.2 Panel principal
+### 6.2 Bandeja personal y carga rápida
+
+- Vista `Mi trabajo` con órdenes asignadas, vencidas, de hoy, próximas y en espera.
+- Botón persistente `Informar falla` accesible desde teléfono.
+- Selección del equipo por búsqueda, código/patente o lectura de QR.
+- Formulario breve con descripción, condición operativa y adjunto.
+- Aviso de posibles solicitudes duplicadas antes de confirmar.
+- Confirmación visible con número y estado de la solicitud.
+- Línea de tiempo con comentarios, cambios de estado y responsable.
+
+### 6.3 Panel principal
 
 Indicadores mínimos:
 
@@ -371,6 +586,9 @@ Indicadores mínimos:
 - Órdenes abiertas.
 - Equipos detenidos o en mantenimiento.
 - Equipos sin lectura reciente.
+- Solicitudes nuevas sin revisar.
+- Órdenes bloqueadas por repuestos, proveedor o autorización.
+- Órdenes con cierre incompleto o datos de baja calidad.
 
 Listas de acción:
 
@@ -386,7 +604,7 @@ Filtros:
 - Estado.
 - Rango de fechas.
 
-### 6.3 Equipos
+### 6.4 Equipos
 
 - Listado con búsqueda, filtros y exportación.
 - Alta y edición.
@@ -397,8 +615,9 @@ Filtros:
 - Repuestos colocados y garantías.
 - Adjuntos.
 - Relaciones actuales e históricas con otros equipos.
+- Código QR imprimible para abrir la ficha o informar una falla.
 
-### 6.4 Mantenimiento
+### 6.5 Mantenimiento
 
 - Tipos de servicio.
 - Tareas.
@@ -407,7 +626,16 @@ Filtros:
 - Planes por equipo.
 - Vista de próximos, vencidos y sin datos.
 
-### 6.5 Órdenes
+### 6.6 Solicitudes y avisos
+
+- Bandeja de nuevas, en revisión, postergadas y convertidas.
+- Búsqueda de duplicados y agrupación.
+- Priorización por criticidad, condición operativa y antigüedad.
+- Aprobación, rechazo o postergación con motivo.
+- Conversión de una o varias solicitudes en orden de trabajo.
+- Seguimiento del estado por parte del solicitante.
+
+### 6.7 Órdenes
 
 - Listado y filtros.
 - Alta manual o desde un vencimiento.
@@ -417,14 +645,18 @@ Filtros:
 - Adjuntos.
 - Vista previa e impresión PDF.
 - Historial de cambios.
+- Vista `Mi trabajo` para técnicos.
+- Inicio/pausa/reanudación con motivo de espera.
+- Línea de tiempo de comentarios y novedades.
+- Validación guiada del cierre.
 
-### 6.6 Proveedores y talleres
+### 6.8 Proveedores y talleres
 
 - Listado.
 - Alta, edición e inactivación.
 - Historial de órdenes atendidas.
 
-### 6.7 Importaciones
+### 6.9 Importaciones
 
 - Descarga de plantillas.
 - Carga de archivo.
@@ -433,7 +665,7 @@ Filtros:
 - Confirmación.
 - Historial de importaciones.
 
-### 6.8 Administración
+### 6.10 Administración
 
 - Empresas y sucursales.
 - Usuarios, roles y permisos.
@@ -489,8 +721,23 @@ Requisitos:
 - Bloqueo para impedir ejecuciones simultáneas.
 - Reintento controlado ante fallas temporales de SMTP.
 - Los errores deben quedar registrados aunque no se pueda enviar el correo.
+- Permitir preferencias por destinatario o rol y diferenciar resúmenes diarios de alertas críticas.
+- No notificar comentarios internos o cambios menores por correo salvo suscripción explícita.
 
 Implementación preferida: comando de CodeIgniter ejecutado por la tarea programada de Ferozo. Como alternativa, endpoint HTTPS protegido, únicamente si el hosting no permite PHP CLI.
+
+```mermaid
+flowchart TD
+    A["Cron diario 07:00"] --> B{"¿Ya hay una ejecución activa?"}
+    B -->|Sí| X["Finalizar sin duplicar"]
+    B -->|No| C["Evaluar planes, garantías y órdenes"]
+    C --> D["Agrupar novedades por sucursal"]
+    D --> E{"¿Evento ya notificado?"}
+    E -->|Sí| F["Omitir duplicado"]
+    E -->|No| G["Enviar resumen por SMTP"]
+    G --> H["Registrar resultado"]
+    F --> H
+```
 
 ---
 
@@ -508,6 +755,11 @@ Implementación preferida: comando de CodeIgniter ejecutado por la tarea program
 10. Los adjuntos no deben ser accesibles mediante una URL pública predecible.
 11. Todos los listados deben paginarse y filtrar del lado del servidor.
 12. Los reportes deben respetar permisos y sucursales autorizadas.
+13. Las solicitudes duplicadas deben vincularse o agruparse, no copiarse silenciosamente.
+14. La prioridad del solicitante no reemplaza la clasificación del responsable.
+15. Todo estado de espera debe incluir un motivo visible.
+16. La interfaz de campo debe minimizar campos y clics; la información administrativa se completa durante la revisión o cierre.
+17. Los indicadores no deben calcularse si faltan los datos mínimos; deben mostrar `sin datos suficientes` en lugar de inventar un valor.
 
 ---
 
@@ -538,6 +790,17 @@ Implementación preferida: comando de CodeIgniter ejecutado por la tarea program
 6. Garantías vigentes y próximas a vencer.
 7. Equipos sin lecturas recientes.
 8. Tiempo de detención por equipo, calculado desde las órdenes cuando existan fechas válidas.
+9. Solicitudes por estado, antigüedad, prioridad y equipo.
+10. Tiempo desde solicitud hasta revisión y desde aprobación hasta cierre.
+11. Motivos de espera y órdenes bloqueadas.
+12. Calidad de datos: órdenes cerradas sin causa codificada, sin tiempos válidos o con observaciones insuficientes.
+
+Indicadores como MTBF, MTTR o cumplimiento preventivo solo se mostrarán cuando su definición y datos mínimos estén validados. En la primera versión:
+
+- `MTTR`: promedio de tiempo real de reparación de correctivos con inicio y fin válidos; no equivale automáticamente al tiempo total que la orden permaneció abierta.
+- `Cumplimiento preventivo`: trabajos preventivos completados dentro del umbral acordado dividido por trabajos preventivos vencidos en el período.
+- `Tiempo de respuesta`: tiempo entre la solicitud y su primera revisión.
+- Los equipos sin horas de operación o sin fallas clasificadas no participan de métricas que requieran esos datos.
 
 Los listados principales deben exportarse a Excel o CSV. No se requiere un constructor de reportes personalizado.
 
@@ -582,6 +845,14 @@ El programador deberá cubrir, al menos, los siguientes casos:
 16. Restricción de datos por sucursal.
 17. Restricción de acciones por permiso.
 18. Descarga autorizada de adjuntos privados.
+19. Creación rápida de solicitud desde teléfono.
+20. Detección y agrupación de solicitudes duplicadas.
+21. Conversión trazable de una o varias solicitudes a una orden.
+22. Asignación y visualización de `Mi trabajo` por técnico.
+23. Rechazo de cierre correctivo sin causa, acción y resultado.
+24. Registro obligatorio de motivo al poner una orden en espera.
+25. Cálculo de detención solamente con fechas válidas.
+26. Prevención de una tormenta de notificaciones ante ejecuciones o cambios repetidos.
 
 ---
 
@@ -595,6 +866,9 @@ La primera versión se considerará entregada cuando:
 - Se puedan crear plantillas y aplicarlas a equipos.
 - El sistema clasifique correctamente planes al día, próximos, vencidos y sin datos.
 - Se pueda crear una orden preventiva o correctiva.
+- Se pueda informar una falla desde el teléfono en pocos pasos y seguir su estado.
+- El responsable pueda revisar, agrupar, postergar, rechazar o convertir solicitudes en órdenes.
+- Cada técnico disponga de una bandeja clara con su trabajo asignado.
 - Se pueda imprimir la orden y guardar su PDF.
 - Se puedan registrar tareas, diagnóstico, repuestos, costos y garantías.
 - Al finalizar una orden se actualicen el historial, las lecturas y el plan relacionado.
@@ -604,6 +878,7 @@ La primera versión se considerará entregada cuando:
 - Los roles y restricciones por sucursal funcionen correctamente.
 - Los reportes y exportaciones acordados estén disponibles.
 - Existan copias de seguridad documentadas y una instalación reproducible.
+- Un piloto con equipos, planes y órdenes reales haya sido completado por usuarios finales antes del despliegue general.
 
 ---
 
@@ -629,6 +904,7 @@ La primera versión se considerará entregada cuando:
 
 ### Etapa 4 — Órdenes de trabajo
 
+- Solicitudes, avisos, revisión y agrupación.
 - Flujo completo de órdenes.
 - Tareas, repuestos, costos y garantías.
 - PDF e impresión.
@@ -640,6 +916,14 @@ La primera versión se considerará entregada cuando:
 - Auditoría, pruebas, documentación y despliegue.
 
 Plazo comercial estimado para la primera versión: **8 a 10 semanas**, sujeto a disponibilidad de datos, validaciones y devoluciones del cliente.
+
+```mermaid
+flowchart LR
+    E1["1. Base"] --> E2["2. Equipos"]
+    E2 --> E3["3. Planes"]
+    E3 --> E4["4. Órdenes"]
+    E4 --> E5["5. Alertas y cierre"]
+```
 
 ---
 
@@ -664,7 +948,24 @@ Toda ampliación que modifique de forma material este alcance debe documentarse 
 
 ---
 
-## 17. Definición de terminado por funcionalidad
+## 17. Estrategia de adopción y puesta en marcha
+
+La implementación no debe comenzar con la carga masiva de toda la empresa. Se realizará un piloto controlado con datos reales:
+
+1. Designar un responsable interno del proyecto con capacidad para validar datos y reglas.
+2. Seleccionar entre 5 y 10 equipos representativos.
+3. Cargar sus lecturas, planes y últimos mantenimientos reales.
+4. Ejecutar el circuito completo con al menos un preventivo y un correctivo.
+5. Pedir a solicitantes y técnicos que utilicen el sistema desde sus teléfonos.
+6. Medir cantidad de pasos, campos abandonados, cierres incompletos y duplicados.
+7. Corregir el flujo antes de importar el resto de los equipos.
+8. Capacitar por rol con ejemplos del trabajo real, no mediante una explicación general del sistema.
+
+El piloto se considera aprobado cuando un usuario puede informar una falla, el responsable convertirla en orden y el técnico cerrarla sin asistencia del programador, conservando datos suficientes para reconstruir qué ocurrió.
+
+---
+
+## 18. Definición de terminado por funcionalidad
 
 Una funcionalidad se considera terminada únicamente cuando:
 
@@ -676,4 +977,3 @@ Una funcionalidad se considera terminada únicamente cuando:
 - Maneja errores con mensajes comprensibles.
 - No rompe información histórica.
 - Está documentada cuando requiere configuración u operación especial.
-
