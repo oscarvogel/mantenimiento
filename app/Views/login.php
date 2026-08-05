@@ -25,7 +25,8 @@
                     <div class="alert alert-warning"><?= esc(session()->getFlashdata('error')) ?></div>
                 <?php endif; ?>
 
-                <form method="post" action="/login/authenticate" autocomplete="off">`n                    <?= csrf_field() ?>
+                <form method="post" action="<?= base_url('login/authenticate') ?>" autocomplete="off">
+                    <?= csrf_field() ?>
                     <div class="mb-3">
                         <label for="email" class="form-label">Email</label>
                         <input type="email" class="form-control <?= isset($errors['email']) ? 'is-invalid' : '' ?>"

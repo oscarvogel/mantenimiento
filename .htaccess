@@ -2,15 +2,12 @@
 # CodeIgniter 4 - htaccess minimalista para Ferozo
 # ----------------------------------------------------------------------
 # Sin directivas `Options` (Ferozo a veces no las permite y tira 500).
+# Sin regla de "forzar HTTPS" (Ferozo ya lo hace en el panel, y la regla
+# RewriteRule con %{HTTP_HOST} pierde el path cuando hay un proxy).
 # Solo RewriteEngine + redirect a index.php + proteccion del .env.
-# El resto de las carpetas privadas tienen su propio .htaccess con deny.
 # ----------------------------------------------------------------------
 
 RewriteEngine On
-
-# Forzar HTTPS
-RewriteCond %{HTTPS} !=on
-RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
 
 # Redirigir trailing slashes (excepto la raiz)
 RewriteCond %{REQUEST_FILENAME} !-d
