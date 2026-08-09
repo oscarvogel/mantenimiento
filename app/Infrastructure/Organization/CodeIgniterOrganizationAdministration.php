@@ -89,6 +89,91 @@ final class CodeIgniterOrganizationAdministration implements OrganizationAdminis
         return $companyId;
     }
 
+    public function createCompanyAdministrator(
+        int $companyId,
+        array $data,
+        string $reason,
+        int $actorUserId,
+    ): int {
+        $this->database->transBegin();
+
+        try {
+            $company = $this->database->query(
+                'SELECT id FROM empresas WHERE id = ? AND estado = 1 AND deleted_at IS NULL FOR UPDATE',
+                [$companyId],
+            )->getRowArray();
+            if ($company === null) {
+                throw new DomainException('La empresa no existe o estÃ¡ inactiva.');
+            }
+
+            $existingUser = $this->database->table('usuarios')
+                ->select('id')
+                ->where('email', $data['email'])
+                ->get()->getRowArray();
+            if ($existingUser !== null) {
+                throw new DomainException('Ya existe un usuario con ese email.');
+            }
+
+            $administratorRole = $this->database->query(
+                'SELECT id FROM roles WHERE nombre = ? FOR UPDATE',
+                ['Administrador'],
+            )->getRowArray();
+            if ($administratorRole === null) {
+                throw new DomainException('El rol Administrador no estÃ¡ configurado.');
+            }
+
+            $now = date('Y-m-d H:i:s');
+            $this->database->table('usuarios')->insert([
+                'empresa_id'    => $companyId,
+                'nombre'        => $data['nombre'],
+                'email'         => $data['email'],
+                'password_hash' => password_hash($data['password'], PASSWORD_DEFAULT),
+                'es_superadmin' => 0,
+                'activo'        => 1,
+                'created_at'    => $now,
+                'updated_at'    => $now,
+                'created_by'    => $actorUserId,
+                'updated_by'    => $actorUserId,
+            ]);
+            $userId = (int) $this->database->insertID();
+            if ($userId <= 0) {
+                throw new RuntimeException('No se pudo crear el administrador.');
+            }
+
+            $roleId = (int) $administratorRole['id'];
+            $this->database->table('usuario_roles')->insert([
+                'usuario_id' => $userId,
+                'rol_id'     => $roleId,
+                'created_at' => $now,
+            ]);
+
+            // El rol Administrador representa acceso a todas las sucursales activas
+            // de la empresa, por lo que no necesita filas en usuario_sucursales.
+            $this->appendHistory(
+                $userId,
+                $companyId,
+                'USUARIO_CREADO',
+                [],
+                [
+                    'nombre'      => $data['nombre'],
+                    'email'       => $data['email'],
+                    'roles'       => [$roleId],
+                    'sucursales'  => [],
+                    'alcance'     => 'TODAS_LAS_SUCURSALES',
+                ],
+                $reason,
+                $actorUserId,
+            );
+
+            $this->commitOrFail();
+
+            return $userId;
+        } catch (Throwable $exception) {
+            $this->database->transRollback();
+            throw $exception;
+        }
+    }
+
     public function updateCompany(int $companyId, array $data, int $actorUserId): void
     {
         $exists = $this->database->table('empresas')

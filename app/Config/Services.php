@@ -43,6 +43,7 @@ use App\Application\Reports\GetMaintenanceReport;
 use App\Application\Organization\AssignUserCompanyHandler;
 use App\Application\Organization\AssignUserRolesHandler;
 use App\Application\Organization\CreateCompanyHandler;
+use App\Application\Organization\CreateCompanyAdministratorHandler;
 use App\Application\Organization\GetOrganizationOverview;
 use App\Application\Organization\Port\OrganizationAdministrationPort;
 use App\Application\Organization\Port\TenantAdministrationPort;
@@ -645,6 +646,15 @@ class Services extends BaseService
         }
 
         return new CreateCompanyHandler(static::organizationAdministration());
+    }
+
+    public static function createCompanyAdministrator(bool $getShared = true): CreateCompanyAdministratorHandler
+    {
+        if ($getShared) {
+            return static::getSharedInstance('createCompanyAdministrator');
+        }
+
+        return new CreateCompanyAdministratorHandler(static::organizationAdministration());
     }
 
     public static function updateCompany(bool $getShared = true): UpdateCompanyHandler

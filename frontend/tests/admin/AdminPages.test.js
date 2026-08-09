@@ -41,6 +41,12 @@ describe('SuperAdminPage', () => {
     expect(createForm.get('input[name="csrf_test_name"]').attributes('value')).toBe('secure-token')
 
     expect(wrapper.find('form[action="/superadmin/empresas/1"]').exists()).toBe(true)
+    const administratorForm = wrapper.get('form[action="/superadmin/administradores"]')
+    expect(administratorForm.attributes('method')).toBe('post')
+    expect(administratorForm.get('input[name="csrf_test_name"]').attributes('value')).toBe('secure-token')
+    expect(administratorForm.get('select[name="admin_empresa_id"]').element.value).toBe('1')
+    expect(administratorForm.get('input[name="admin_nombre"]').attributes('value')).toBe('Nueva administradora')
+    expect(administratorForm.get('input[name="admin_password"]').attributes('type')).toBe('password')
     expect(wrapper.find('form[action="/superadmin/usuarios/2/empresa"]').exists()).toBe(true)
     expect(wrapper.find('form[action="/superadmin/usuarios/2/roles"]').exists()).toBe(true)
     expect(wrapper.get('input[name="roles[]"][value="1"]').element.checked).toBe(true)
@@ -49,7 +55,7 @@ describe('SuperAdminPage', () => {
   it('oculta mutaciones cuando el servidor niega permisos', () => {
     const data = {
       ...superAdminData,
-      permissions: { companiesEdit: false, assignCompanies: false, assignRoles: false },
+      permissions: { companiesEdit: false, createCompanyAdministrators: false, assignCompanies: false, assignRoles: false },
     }
     const wrapper = mountPage(SuperAdminPage, data)
 

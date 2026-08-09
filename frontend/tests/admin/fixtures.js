@@ -3,10 +3,16 @@ export const csrf = { name: 'csrf_test_name', hash: 'secure-token' }
 export const superAdminData = {
   csrf,
   flash: { success: 'Empresa creada.', error: '' },
-  permissions: { companiesEdit: true, assignCompanies: true, assignRoles: true },
+  permissions: { companiesEdit: true, createCompanyAdministrators: true, assignCompanies: true, assignRoles: true },
   metrics: { companiesTotal: 2, companiesActive: 1, usersTotal: 2 },
-  actions: { createCompany: '/superadmin/empresas' },
-  oldInput: { razon_social: '', nombre_fantasia: '', cuit: '', email: '', telefono: '' },
+  actions: {
+    createCompany: '/superadmin/empresas',
+    createCompanyAdministrator: '/superadmin/administradores',
+  },
+  oldInput: {
+    razon_social: '', nombre_fantasia: '', cuit: '', email: '', telefono: '',
+    admin_empresa_id: 1, admin_nombre: 'Nueva administradora', admin_email: '', admin_motivo: '',
+  },
   companies: [
     {
       id: 1,

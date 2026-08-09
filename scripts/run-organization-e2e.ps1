@@ -43,6 +43,22 @@ function Get-CsrfToken {
     param([Parameter(Mandatory)] [string]$Html)
 
     $match = [regex]::Match($Html, 'name="csrf_test_name"\s+value="([^"]+)"')
+    if ($match.Success) {
+        return $match.Groups[1].Value
+    }
+
+    $payloadMatch = [regex]::Match(
+        $Html,
+        '<script id="maintenance-app-data" type="application/json">(?<json>.*?)</script>',
+        [System.Text.RegularExpressions.RegexOptions]::Singleline
+    )
+    if ($payloadMatch.Success) {
+        $payload = $payloadMatch.Groups['json'].Value | ConvertFrom-Json
+        if ($payload.data.csrf.name -eq 'csrf_test_name' -and $payload.data.csrf.hash) {
+            return [string] $payload.data.csrf.hash
+        }
+    }
+
     if (-not $match.Success) {
         throw 'No se encontró el token CSRF.'
     }
@@ -180,7 +196,48 @@ try {
     $updatedCompany = (Invoke-MySql "SELECT CONCAT(razon_social,':',telefono,':',estado) FROM empresas WHERE id=$companyId;").Trim()
     if ($updatedCompany -ne 'Empresa Temporal Actualizada SA:456:1') { throw "La edicion de empresa fallo: $updatedCompany" }
 
+    $page = Invoke-WebRequest "http://127.0.0.1:$HttpPort/superadmin/administradores" `
+        -Method Post `
+        -Body @{
+            csrf_test_name = Get-CsrfToken $page.Content
+            admin_empresa_id = $companyId
+            admin_nombre = 'Administradora Nueva'
+            admin_email = 'administradora.nueva@example.test'
+            admin_password = 'ClaveTemporal123'
+            admin_password_confirmation = 'ClaveTemporal123'
+            admin_motivo = 'Alta inicial E2E aprobada'
+        } `
+        -ContentType 'application/x-www-form-urlencoded' -UseBasicParsing -WebSession $superAdmin
+    $newAdministratorId = (Invoke-MySql "SELECT id FROM usuarios WHERE email='administradora.nueva@example.test';" | Select-Object -First 1).Trim()
+    if ($newAdministratorId -notmatch '^\d+$') { throw 'No se creÃ³ el administrador empresarial.' }
+    $administratorState = (Invoke-MySql "SELECT CONCAT(empresa_id,':',activo,':',es_superadmin,':',(SELECT COUNT(*) FROM usuario_roles WHERE usuario_id=$newAdministratorId AND rol_id=(SELECT id FROM roles WHERE nombre='Administrador')),':',(SELECT COUNT(*) FROM usuario_sucursales WHERE usuario_id=$newAdministratorId),':',(SELECT COUNT(*) FROM usuario_acceso_historial WHERE usuario_id=$newAdministratorId AND accion='USUARIO_CREADO')) FROM usuarios WHERE id=$newAdministratorId;").Trim()
+    if ($administratorState -ne "$companyId`:1:0:1:0:1") { throw "El alta atÃ³mica del administrador fallÃ³: $administratorState" }
+
+    $page = Invoke-WebRequest "http://127.0.0.1:$HttpPort/superadmin/administradores" `
+        -Method Post `
+        -Body @{
+            csrf_test_name = Get-CsrfToken $page.Content
+            admin_empresa_id = $companyId
+            admin_nombre = 'Administradora Duplicada'
+            admin_email = 'administradora.nueva@example.test'
+            admin_password = 'OtraClaveTemporal123'
+            admin_password_confirmation = 'OtraClaveTemporal123'
+            admin_motivo = 'Duplicado E2E controlado'
+        } `
+        -ContentType 'application/x-www-form-urlencoded' -UseBasicParsing -WebSession $superAdmin
+    $duplicateState = (Invoke-MySql "SELECT CONCAT((SELECT COUNT(*) FROM usuarios WHERE email='administradora.nueva@example.test'),':',(SELECT COUNT(*) FROM usuario_roles WHERE usuario_id=$newAdministratorId),':',(SELECT COUNT(*) FROM usuario_acceso_historial WHERE usuario_id=$newAdministratorId));").Trim()
+    if ($duplicateState -ne '1:1:1' -or $page.Content -notmatch 'Ya existe un usuario') { throw "El duplicado no fue rechazado sin efectos parciales: $duplicateState" }
+
     Invoke-MySql "INSERT INTO sucursales (empresa_id,codigo,nombre,estado,created_at,updated_at) VALUES ($companyId,'NUEVA','Sucursal Nueva',1,NOW(),NOW());" | Out-Null
+
+    $newAdministrator = New-AuthenticatedSession 'administradora.nueva@example.test' 'ClaveTemporal123'
+    $newAdministratorBranches = Invoke-WebRequest "http://127.0.0.1:$HttpPort/administracion/sucursales" -UseBasicParsing -WebSession $newAdministrator
+    if ($newAdministratorBranches.Content -notmatch '"company":\{"id":[0-9]+,"name":"Temporal"\}' `
+        -or $newAdministratorBranches.Content -notmatch 'Sucursal Nueva') {
+        $pageMatch = [regex]::Match($newAdministratorBranches.Content, '"page":"([^"]+)"')
+        $detectedPage = if ($pageMatch.Success) { $pageMatch.Groups[1].Value } else { 'sin-payload' }
+        throw "El nuevo Administrador no heredÃ³ el alcance completo de su empresa: page=$detectedPage company=$($newAdministratorBranches.Content -match '"name":"Temporal"') branch=$($newAdministratorBranches.Content -match 'Sucursal Nueva')."
+    }
 
     $page = Invoke-WebRequest "http://127.0.0.1:$HttpPort/superadmin/usuarios/1/empresa" `
         -Method Post `
@@ -205,9 +262,9 @@ try {
     if ($companyState -ne '1') { throw 'Se inactivo una empresa con usuarios activos.' }
 
     $administrator = New-AuthenticatedSession 'admin@mantenimiento.local' 'Admin1234'
-    $dashboard = Invoke-WebRequest "http://127.0.0.1:$HttpPort/dashboard" -UseBasicParsing -WebSession $administrator
-    if ($dashboard.Content -notmatch 'Empresa Temporal Actualizada SA' `
-        -or $dashboard.Content -notmatch 'Sucursales disponibles[\s\S]*?Sucursal Nueva') {
+    $administratorBranches = Invoke-WebRequest "http://127.0.0.1:$HttpPort/administracion/sucursales" -UseBasicParsing -WebSession $administrator
+    if ($administratorBranches.Content -notmatch '"company":\{"id":[0-9]+,"name":"Temporal"\}' `
+        -or $administratorBranches.Content -notmatch 'Sucursal Nueva') {
         throw 'El Administrador no heredó todas las sucursales de su nueva empresa.'
     }
 
@@ -218,7 +275,7 @@ try {
     $superAdminCompany = (Invoke-MySql "SELECT COALESCE(CAST(empresa_id AS CHAR),'NULL') FROM usuarios WHERE id=2;").Trim()
     if ($superAdminCompany -ne 'NULL') { throw 'Se asignó empresa al Superadministrador.' }
 
-    Write-Host "ORGANIZATION E2E PASS: login_limitado=ok, empresa=$companyId, edicion=ok, limpieza=$state, roles=$roleState, inactivacion_bloqueada=ok, sucursales_admin=1" -ForegroundColor Green
+    Write-Host "ORGANIZATION E2E PASS: login_limitado=ok, empresa=$companyId, edicion=ok, nuevo_admin=$newAdministratorId, alta_atomica=$administratorState, duplicado=$duplicateState, limpieza=$state, roles=$roleState, inactivacion_bloqueada=ok, sucursales_admin=1" -ForegroundColor Green
 }
 finally {
     if ($server -and -not $server.HasExited) {

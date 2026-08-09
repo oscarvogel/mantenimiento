@@ -5,6 +5,7 @@ import {
   PlusIcon,
   ShieldCheckIcon,
   UserGroupIcon,
+  UserPlusIcon,
 } from '@heroicons/vue/24/outline'
 import AdminFlash from './components/AdminFlash.vue'
 import AdminMetric from './components/AdminMetric.vue'
@@ -85,6 +86,69 @@ const isRoleAssigned = (user, roleId) => user.assignedRoleIds.includes(Number(ro
           </button>
         </div>
       </form>
+    </section>
+
+    <section
+      v-if="data.permissions.createCompanyAdministrators"
+      class="mb-8 overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card"
+      aria-labelledby="create-company-administrator-title"
+    >
+      <div class="flex items-center gap-3 border-b border-border-subtle bg-surface-subtle px-5 py-4 sm:px-6">
+        <span class="flex size-10 items-center justify-center rounded-lg bg-accent-subtle text-accent-active">
+          <UserPlusIcon class="size-5" aria-hidden="true" />
+        </span>
+        <div>
+          <h2 id="create-company-administrator-title" class="font-semibold text-ink">Crear administrador de empresa</h2>
+          <p class="text-sm text-ink-muted">Creá la cuenta inicial y asignale automáticamente el acceso completo a su empresa.</p>
+        </div>
+      </div>
+
+      <form
+        v-if="data.assignableCompanies.length"
+        method="post"
+        :action="data.actions.createCompanyAdministrator"
+        class="grid gap-4 p-5 sm:grid-cols-2 sm:p-6 lg:grid-cols-6"
+      >
+        <CsrfField :csrf="data.csrf" />
+        <label class="block lg:col-span-3">
+          <span class="mb-1.5 block text-sm font-medium text-ink">Empresa <span class="text-danger" aria-hidden="true">*</span></span>
+          <select name="admin_empresa_id" required :value="data.oldInput.admin_empresa_id" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20">
+            <option value="" disabled>Seleccionar empresa</option>
+            <option v-for="company in data.assignableCompanies" :key="company.id" :value="company.id">{{ company.name }}</option>
+          </select>
+        </label>
+        <label class="block lg:col-span-3">
+          <span class="mb-1.5 block text-sm font-medium text-ink">Nombre completo <span class="text-danger" aria-hidden="true">*</span></span>
+          <input name="admin_nombre" maxlength="255" required :value="data.oldInput.admin_nombre" autocomplete="name" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+        </label>
+        <label class="block lg:col-span-3">
+          <span class="mb-1.5 block text-sm font-medium text-ink">Email de acceso <span class="text-danger" aria-hidden="true">*</span></span>
+          <input type="email" name="admin_email" maxlength="255" required :value="data.oldInput.admin_email" autocomplete="email" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+        </label>
+        <label class="block lg:col-span-3">
+          <span class="mb-1.5 block text-sm font-medium text-ink">Motivo <span class="text-danger" aria-hidden="true">*</span></span>
+          <input name="admin_motivo" minlength="5" maxlength="255" required :value="data.oldInput.admin_motivo" placeholder="Ej.: alta inicial aprobada" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/20" />
+        </label>
+        <label class="block lg:col-span-3">
+          <span class="mb-1.5 block text-sm font-medium text-ink">Contraseña temporal <span class="text-danger" aria-hidden="true">*</span></span>
+          <input type="password" name="admin_password" minlength="8" maxlength="255" required autocomplete="new-password" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+        </label>
+        <label class="block lg:col-span-3">
+          <span class="mb-1.5 block text-sm font-medium text-ink">Confirmar contraseña <span class="text-danger" aria-hidden="true">*</span></span>
+          <input type="password" name="admin_password_confirmation" minlength="8" maxlength="255" required autocomplete="new-password" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+        </label>
+        <div class="lg:col-span-6">
+          <p class="mb-3 text-xs leading-5 text-ink-muted">La cuenta se crea activa con el rol Administrador y acceso automático a todas las sucursales actuales y futuras de la empresa.</p>
+          <button type="submit" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover active:bg-accent-active">
+            <UserPlusIcon class="size-5" aria-hidden="true" />
+            Crear administrador
+          </button>
+        </div>
+      </form>
+
+      <div v-else class="px-5 py-6 text-sm text-ink-muted sm:px-6">
+        Primero creá y activá una empresa para poder registrar su administrador.
+      </div>
     </section>
 
     <section aria-labelledby="companies-title" class="mb-9">

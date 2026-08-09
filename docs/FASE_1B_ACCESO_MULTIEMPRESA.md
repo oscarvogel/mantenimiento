@@ -69,6 +69,8 @@ leerán directamente campos enviados por HTTP.
 El panel `/superadmin` permite al Superadministrador:
 
 - listar, crear y editar empresas;
+- crear una cuenta administrativa nueva, asociarla a una empresa activa y
+  asignarle atómicamente el rol `Administrador`;
 - asignar o trasladar un usuario común a una empresa;
 - asignar roles empresariales;
 - registrar un motivo obligatorio para cada cambio de acceso.
@@ -115,8 +117,10 @@ establecer credenciales únicas antes de ejecutar el seeder en Ferozo.
 - `POST /logout` con CSRF: redirige a login y destruye la sesión.
 - PHPUnit: pruebas de invariantes, permisos y serialización del contexto.
 - E2E aislado (`scripts/run-organization-e2e.ps1`): base temporal desde cero,
-  alta y edición de empresa, traslado con revocación de accesos, reasignación de
-  rol, auditoría, bloqueo de inactivación y alcance automático del Administrador.
+  alta y edición de empresa, creación atómica del primer Administrador, rechazo
+  de email duplicado sin efectos parciales, traslado con revocación de accesos,
+  reasignación de rol, auditoría, bloqueo de inactivación y alcance automático
+  del Administrador sobre las sucursales actuales y futuras.
 
 ## Próximo incremento
 

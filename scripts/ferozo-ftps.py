@@ -99,6 +99,85 @@ def backup(client: ftplib.FTP_TLS, remote: str, local: pathlib.Path) -> Stats:
     return stats
 
 
+def backup_resilient(
+    credentials: pathlib.Path,
+    remote: str,
+    local: pathlib.Path,
+    reconnect_every: int = 40,
+) -> Stats:
+    """Descarga un arbol reanudando cada listado o archivo ante cortes FTPS."""
+    local.mkdir(parents=True, exist_ok=True)
+    pending: list[tuple[str, pathlib.Path]] = [(remote, local)]
+    stats = Stats()
+    files_downloaded = 0
+    client = connect(credentials)
+
+    def reconnect(current: ftplib.FTP_TLS) -> ftplib.FTP_TLS:
+        try:
+            current.close()
+        finally:
+            return connect(credentials)
+
+    try:
+        while pending:
+            current_remote, current_local = pending.pop()
+            current_local.mkdir(parents=True, exist_ok=True)
+            listed: list[tuple[str, dict[str, str]]] | None = None
+            last_error: Exception | None = None
+            for _attempt in range(3):
+                try:
+                    listed = entries(client, current_remote)
+                    last_error = None
+                    break
+                except (OSError, EOFError, ftplib.Error) as error:
+                    last_error = error
+                    client = reconnect(client)
+            if listed is None:
+                if last_error is not None:
+                    raise last_error
+                raise RuntimeError('No se pudo listar el directorio remoto.')
+
+            for name, facts in listed:
+                child_remote = current_remote.rstrip('/') + '/' + name
+                child_local = current_local / name
+                kind = facts.get('type', '')
+                if kind == 'dir':
+                    pending.append((child_remote, child_local))
+                    stats = stats.add(directories=1)
+                    continue
+                if kind != 'file':
+                    continue
+
+                if files_downloaded > 0 and files_downloaded % reconnect_every == 0:
+                    client = reconnect(client)
+                last_error = None
+                for _attempt in range(3):
+                    try:
+                        temporary = child_local.with_name(child_local.name + '.part')
+                        with temporary.open('wb') as handle:
+                            client.retrbinary(f'RETR {child_remote}', handle.write)
+                        temporary.replace(child_local)
+                        last_error = None
+                        break
+                    except (OSError, EOFError, ftplib.Error) as error:
+                        last_error = error
+                        client = reconnect(client)
+                if last_error is not None:
+                    raise last_error
+
+                files_downloaded += 1
+                stats = stats.add(files=1, bytes_count=child_local.stat().st_size)
+                if files_downloaded % 100 == 0:
+                    print(f'BACKUP_PROGRESS files={files_downloaded}', flush=True)
+    finally:
+        try:
+            client.quit()
+        except (OSError, ftplib.Error):
+            client.close()
+
+    return stats
+
+
 def ensure_remote_directory(client: ftplib.FTP_TLS, remote: str) -> None:
     current = ""
     for part in remote.strip("/").split("/"):
@@ -234,12 +313,18 @@ def main() -> int:
                 local = pathlib.Path(args.local).resolve()
                 if local.exists() and any(local.iterdir()):
                     raise RuntimeError("El directorio de backup debe estar vacio.")
-                stats = backup(client, args.remote, local)
+                try:
+                    client.quit()
+                except (OSError, ftplib.Error):
+                    client.close()
+                stats = backup_resilient(credentials, args.remote, local)
+                client = None
         finally:
-            try:
-                client.quit()
-            except (OSError, ftplib.Error):
-                client.close()
+            if client is not None:
+                try:
+                    client.quit()
+                except (OSError, ftplib.Error):
+                    client.close()
 
     print(f"{args.operation.upper()}_OK files={stats.files} dirs={stats.directories} bytes={stats.bytes}")
     return 0

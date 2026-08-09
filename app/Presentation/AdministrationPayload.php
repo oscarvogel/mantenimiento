@@ -14,14 +14,25 @@ final class AdministrationPayload
         $companies = $source['companies'] ?? [];
 
         return [
-            'permissions' => ['companiesEdit' => true, 'assignCompanies' => true, 'assignRoles' => true],
+            'permissions' => [
+                'companiesEdit' => true,
+                'createCompanyAdministrators' => true,
+                'assignCompanies' => true,
+                'assignRoles' => true,
+            ],
             'metrics' => [
                 'companiesTotal' => count($companies),
                 'companiesActive' => count(array_filter($companies, fn (array $row): bool => (int) $row['estado'] === 1)),
                 'usersTotal' => count($source['users'] ?? []),
             ],
-            'actions' => ['createCompany' => base_url('superadmin/empresas')],
-            'oldInput' => $this->old(['razon_social', 'nombre_fantasia', 'cuit', 'email', 'telefono']),
+            'actions' => [
+                'createCompany' => base_url('superadmin/empresas'),
+                'createCompanyAdministrator' => base_url('superadmin/administradores'),
+            ],
+            'oldInput' => $this->old([
+                'razon_social', 'nombre_fantasia', 'cuit', 'email', 'telefono',
+                'admin_empresa_id', 'admin_nombre', 'admin_email', 'admin_motivo',
+            ]),
             'companies' => array_map(fn (array $row): array => [
                 'id' => (int) $row['id'], 'razonSocial' => $row['razon_social'],
                 'nombreFantasia' => $row['nombre_fantasia'] ?? '',
