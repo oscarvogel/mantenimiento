@@ -1,0 +1,33 @@
+#!/usr/bin/env php
+<?php
+
+use CodeIgniter\Boot;
+use Config\Paths;
+
+if (str_starts_with(PHP_SAPI, 'cgi')) {
+    exit("The CLI tool requires php-cli; php-cgi is not supported.\n");
+}
+
+$minPhpVersion = '8.2';
+if (version_compare(PHP_VERSION, $minPhpVersion, '<')) {
+    exit(sprintf(
+        "PHP %s or newer is required. Current version: %s\n",
+        $minPhpVersion,
+        PHP_VERSION,
+    ));
+}
+
+error_reporting(E_ALL);
+ini_set('display_errors', '1');
+
+// Production uses a flat FTP layout: index.php and spark both live at root.
+define('FCPATH', __DIR__ . DIRECTORY_SEPARATOR);
+chdir(FCPATH);
+
+require FCPATH . 'app/Config/Paths.php';
+
+$paths = new Paths();
+
+require $paths->systemDirectory . '/Boot.php';
+
+exit(Boot::bootSpark($paths));

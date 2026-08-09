@@ -1,0 +1,41 @@
+{
+  "screenshots": [
+    "docs/screenshots/login/login-desktop.png",
+    "docs/screenshots/login/login-mobile.png"
+  ],
+  "consoleErrors": [],
+  "requestFailures": [],
+  "httpErrors": [],
+  "checks": [
+    {
+      "name": "desktop",
+      "viewport": {
+        "width": 1906,
+        "height": 943
+      },
+      "bodyWidth": 1906,
+      "viewportWidth": 1906,
+      "bodyHeight": 943,
+      "viewportHeight": 943,
+      "mainCount": 1,
+      "formCount": 1,
+      "csrfPresent": true,
+      "backgroundLoaded": true
+    },
+    {
+      "name": "mobile",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "bodyWidth": 390,
+      "viewportWidth": 390,
+      "bodyHeight": 844,
+      "viewportHeight": 844,
+      "mainCount": 1,
+      "formCount": 1,
+      "csrfPresent": true,
+      "backgroundLoaded": true
+    }
+  ]
+}

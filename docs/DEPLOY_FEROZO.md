@@ -1,10 +1,9 @@
 # Despliegue en Ferozo (vía FTP)
 
 Esta guia documenta el deploy del sistema de mantenimiento en el hosting
-Ferozo de Vogel Consultoria. La misma instalacion sirve a dos URLs:
+Ferozo de Vogel Consultoria. La URL canonica y unica es:
 
-- **Subdirectorio** (etapa actual): `https://vogelconsultoria.com.ar/mantenimiento/`
-- **Subdominio dedicado** (migracion posterior): `https://mantenimiento.vogelconsultoria.com.ar/`
+- `https://vogelconsultoria.com.ar/mantenimiento/`
 
 La autodeteccion de `baseURL` que esta en `app/Config/App.php` toma la URL
 del request, asi que el switch de una URL a la otra se hace unicamente
@@ -78,26 +77,33 @@ en `Paths.php` son relativos a `app/Config/`, asi que esto funciona.
 
 ---
 
-## 3. Preparar el zip localmente
+## 3. Preparar el release localmente
 
-El zip `dist/mantenimiento-ftp-v0.zip` (regenerado con cada cambio de la
-rama `etapa-0-bootstrap`) ya tiene todo lo necesario. Si lo regeneras:
+El release debe contener solo el runtime: `app/`, `assets/`, `vendor/`, el
+esqueleto protegido de `writable/`, los archivos raiz de CodeIgniter y el
+`.env` de produccion. No incluir `frontend/`, `tests/`, `docs/`, credenciales,
+capturas ni archivos fuente de imagen.
 
-1. En tu maquina, desde la raiz del repo, correr:
+1. Ejecutar tests, construir Vue y preparar un directorio de staging con
+   dependencias sin paquetes de desarrollo.
+
+2. Construir el ZIP con rutas POSIX reproducibles:
 
    ```bash
-   php scripts/build-deploy-zip.php
+   php -d extension=zip scripts/build-ferozo-archive.php dist/ferozo-release dist/ferozo-release.zip
    ```
 
-   (o el comando que se use en el momento; mirar `dist/` para la version
-   actual).
+3. Verificar el contenido, el hash SHA-256 y los requisitos de plataforma.
 
-2. El zip queda en `dist/mantenimiento-ftp-v0.zip`.
+4. Para inventario, respaldo o carga FTPS reanudable se incluye:
 
-3. Extraer en una carpeta de la maquina (por ejemplo `C:\Users\Ventas\Downloads\`).
-   Queda una carpeta `mantenimiento/` adentro con todo el contenido.
+   ```bash
+   python scripts/ferozo-ftps.py inventory --credentials ferozo-credentials --remote /
+   python scripts/ferozo-ftps.py backup --credentials ferozo-credentials --remote /app --local dist/backup/app
+   python scripts/ferozo-ftps.py upload --credentials ferozo-credentials --remote /app --local dist/ferozo-release/app
+   ```
 
-4. **Editar el archivo `.env`** que esta adentro de la carpeta
+5. **Editar el archivo `.env`** que esta adentro de la carpeta
    `mantenimiento/` antes de subir. Reemplazar los placeholders:
 
    - `database.default.password` con la password real de la BD
@@ -108,6 +114,10 @@ rama `etapa-0-bootstrap`) ya tiene todo lo necesario. Si lo regeneras:
    La `encryption.key` ya viene pregenerada. NO la cambies a menos que
    sepas lo que haces. Si la cambias, todas las sesiones y datos
    encriptados quedan invalidos.
+
+   `uploads.privatePath` e `imports.privatePath` deben ser rutas absolutas
+   fuera de `public_html/mantenimiento/`. Los adaptadores rechazan por diseno
+   cualquier almacenamiento privado dentro del webroot plano.
 
 ---
 
@@ -196,8 +206,10 @@ Pasos:
 Abrir en el navegador:
 
 - `https://vogelconsultoria.com.ar/mantenimiento/`
-  Pantalla de bienvenida de CodeIgniter 4.7.4 con el logo y los
-  estilos.
+  Debe redirigir o presentar el login Vue del sistema.
+
+- `https://vogelconsultoria.com.ar/mantenimiento/login`
+  Debe responder 200, cargar el WebP de fondo y los bundles Vue/Tailwind.
 
 - `https://vogelconsultoria.com.ar/mantenimiento/favicon.ico`
   El icono del framework. Si da 404, el `.htaccess` no se subio.
@@ -206,7 +218,8 @@ Abrir en el navegador:
   **Debe dar 403 Forbidden** (no debe mostrar el contenido). Si muestra
   el archivo, la regla de bloqueo no esta activa.
 
-Si todo eso anda, el deploy esta 100% funcional.
+Ademas, autenticar una cuenta valida y comprobar dashboard y reportes. Tests
+locales y migraciones exitosas no sustituyen esta verificacion HTTP remota.
 
 ---
 
@@ -433,6 +446,20 @@ guardan en la memoria persistente de Mavis.
 Si el programador o Mavis encuentran un problema que no esta
 documentado aca, agregar una entrada a esta guia. El objetivo es que
 el deploy sea repetible por cualquiera sin tener que pedir ayuda.
+
+## 16. Despliegue verificado del 9 de agosto de 2026
+
+- PHP remoto `8.4.23` y extensiones requeridas confirmadas.
+- Release Vue/Tailwind y CodeIgniter aplicado por FTPS sobre la URL canonica.
+- Base actualizada de 8 a 38 migraciones y de 9 a 30 tablas mediante un
+  runner efimero autenticado, eliminado inmediatamente despues de ejecutarse.
+- `InitialSeeder` ejecutado de forma idempotente.
+- Login real, dashboard y reportes respondieron HTTP 200.
+- `.env`, `app/`, `vendor/` y `writable/` respondieron HTTP 403.
+- Login validado con Edge en `1906x943` y `390x844`, sin errores de consola,
+  requests fallidos ni overflow horizontal.
+- El backup SQL previo fue descargado y verificado localmente antes de retirar
+  su copia remota. Los respaldos locales viven bajo `dist/` y no se versionan.
 
 ---
 

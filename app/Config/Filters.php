@@ -26,6 +26,8 @@ class Filters extends BaseFilters
         'pagecache'     => PageCache::class,
         'performance'   => PerformanceMetrics::class,
         'auth'          => \App\Filters\AuthFilter::class,
+        'permission'    => \App\Filters\PermissionFilter::class,
+        'superadmin'    => \App\Filters\SuperAdminFilter::class,
     ];
 
     public array $globals = [

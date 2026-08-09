@@ -3,6 +3,28 @@
 use CodeIgniter\Boot;
 use Config\Paths;
 
+// El servidor de desarrollo de PHP ejecuta este archivo como router. Servir
+// unicamente assets publicos existentes y enviar el resto a CodeIgniter evita
+// exponer codigo PHP o directorios internos en el layout plano.
+if (PHP_SAPI === 'cli-server') {
+    $requestPath = rawurldecode((string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH));
+    $assetsRoot = realpath(__DIR__ . DIRECTORY_SEPARATOR . 'assets');
+    $requestedFile = realpath(__DIR__ . DIRECTORY_SEPARATOR . ltrim($requestPath, '/\\'));
+    $allowedExtensions = ['css', 'js', 'map', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'ico', 'woff', 'woff2'];
+
+    if ($requestPath === '/favicon.ico' && $requestedFile === realpath(__DIR__ . DIRECTORY_SEPARATOR . 'favicon.ico')) {
+        return false;
+    }
+
+    if ($assetsRoot !== false
+        && $requestedFile !== false
+        && is_file($requestedFile)
+        && str_starts_with($requestedFile, $assetsRoot . DIRECTORY_SEPARATOR)
+        && in_array(strtolower(pathinfo($requestedFile, PATHINFO_EXTENSION)), $allowedExtensions, true)) {
+        return false;
+    }
+}
+
 /*
  *---------------------------------------------------------------
  * CHECK PHP VERSION

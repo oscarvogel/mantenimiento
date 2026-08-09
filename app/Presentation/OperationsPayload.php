@@ -1,0 +1,298 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Presentation;
+
+use App\Application\Assets\Attachment\EquipmentAttachmentPage;
+use App\Application\Importations\ImportHistoryPage;
+use App\Application\Importations\ImportPreview;
+use App\Application\Measurement\ReadingHistoryPage;
+
+final class OperationsPayload
+{
+    /** @param array<string,mixed> $source */
+    public function maintenance(array $source): array
+    {
+        $catalogs = $source['assetCatalogs'] ?? [];
+
+        return [
+            'currentDateTime' => date('Y-m-d H:i:s'),
+            'old' => $this->old(['codigo', 'patente', 'fecha_alta', 'anio', 'chasis', 'motor', 'observaciones']),
+            'routes' => [
+                'equipmentIndex' => base_url('mantenimiento/equipos'),
+                'createEquipment' => base_url('mantenimiento/equipos'),
+                'detectDue' => base_url('mantenimiento/vencimientos/detectar'),
+            ],
+            'can' => $source['can'] ?? [],
+            'catalogs' => [
+                'branches' => array_map(fn (array $row): array => ['id' => (int) $row['id'], 'code' => $row['codigo'], 'name' => $row['nombre']], $source['branches'] ?? []),
+                'equipmentTypes' => array_map(fn (array $row): array => ['id' => (int) $row['id'], 'name' => $row['nombre']], $source['equipmentTypes'] ?? []),
+                'brands' => array_map(fn (array $row): array => ['id' => (int) $row['id'], 'name' => $row['nombre']], $catalogs['brands'] ?? []),
+                'models' => array_map(fn (array $row): array => [
+                    'id' => (int) $row['id'], 'name' => $row['nombre'],
+                    'brandName' => $row['marca_nombre'], 'typeName' => $row['tipo_nombre'],
+                ], $catalogs['models'] ?? []),
+                'serviceTypes' => array_map(fn (array $row): array => ['id' => (int) $row['id'], 'name' => $row['nombre']], $source['serviceTypes'] ?? []),
+                'users' => array_map(fn (array $row): array => ['id' => (int) $row['id'], 'name' => $row['nombre']], $source['users'] ?? []),
+            ],
+            'equipments' => array_map(fn (array $row): array => [
+                'id' => (int) $row['id'], 'code' => $row['codigo'], 'plate' => $row['patente'],
+                'typeName' => $row['tipo_nombre'], 'branchName' => $row['sucursal_nombre'], 'status' => $row['estado'],
+                'controlsKm' => (int) $row['controla_km'] === 1, 'controlsHours' => (int) $row['controla_horas'] === 1,
+                'currentKm' => $row['km_actual'] === null ? null : (int) $row['km_actual'],
+                'currentHours' => $row['horas_actuales'],
+                'routes' => [
+                    'detail' => base_url('mantenimiento/equipos/' . $row['id']),
+                    'registerReading' => base_url('mantenimiento/equipos/' . $row['id'] . '/lecturas'),
+                    'assignPlan' => base_url('mantenimiento/equipos/' . $row['id'] . '/planes'),
+                ],
+            ], $source['equipments'] ?? []),
+            'plans' => array_map(fn (array $row): array => [
+                'id' => (int) $row['id'], 'equipmentCode' => $row['equipo_codigo'], 'serviceName' => $row['servicio_nombre'],
+                'computedState' => $row['computed_state'] ?? 'SIN_DATOS', 'nextKm' => $row['proximo_km'],
+                'nextHours' => $row['proximas_horas'], 'nextDate' => $row['proxima_fecha'],
+            ], $source['plans'] ?? []),
+            'notices' => array_map(fn (array $row): array => [
+                'id' => (int) $row['id'], 'equipmentCode' => $row['equipo_codigo'], 'serviceName' => $row['servicio_nombre'],
+                'triggerCriteria' => $row['criterios_disparadores'],
+                'generateOrderUrl' => base_url('mantenimiento/avisos/' . $row['id'] . '/orden'),
+            ], $source['notices'] ?? []),
+            'orders' => array_map(fn (array $row): array => [
+                'id' => (int) $row['id'], 'number' => $row['numero'], 'equipmentCode' => $row['equipo_codigo'],
+                'serviceName' => $row['servicio_nombre'] ?? 'Servicio preventivo',
+                'ownerName' => $row['responsable_nombre'] ?? 'Sin asignar', 'status' => $row['estado'],
+                'startUrl' => base_url('mantenimiento/ordenes/' . $row['id'] . '/iniciar'),
+                'closeUrl' => base_url('mantenimiento/ordenes/' . $row['id'] . '/cerrar'),
+                'tasks' => array_map(fn (array $task): array => [
+                    'id' => (int) $task['id'], 'description' => $task['descripcion_solicitada'], 'status' => $task['estado'],
+                ], $row['tasks'] ?? []),
+            ], $source['orders'] ?? []),
+            'readings' => array_map(fn (array $row): array => [
+                'id' => (int) $row['id'], 'equipmentCode' => $row['equipo_codigo'], 'recordedAt' => $row['fecha_lectura'],
+                'kilometers' => $row['kilometraje'] === null ? null : (int) $row['kilometraje'],
+                'hours' => $row['horometro'], 'origin' => $row['origen'],
+            ], $source['readings'] ?? []),
+        ];
+    }
+
+    /** @param array<string,mixed> $page @param array<string,mixed> $catalogs @param array<string,mixed> $filters */
+    public function assets(array $page, array $catalogs, array $filters, bool $canEdit): array
+    {
+        $query = array_filter([
+            'q' => $filters['q'] ?? null, 'tipo_id' => $filters['type_id'] ?? null,
+            'marca_id' => $filters['brand_id'] ?? null, 'sucursal_id' => $filters['branch_id'] ?? null,
+            'estado' => $filters['status'] ?? null,
+        ], static fn (mixed $value): bool => $value !== null && $value !== '');
+        $base = base_url('mantenimiento/equipos');
+
+        return [
+            'canEdit' => $canEdit,
+            'routes' => [
+                'index' => $base, 'maintenance' => base_url('mantenimiento'),
+                'createBrand' => base_url('mantenimiento/catalogos/marcas'), 'createModel' => base_url('mantenimiento/catalogos/modelos'),
+            ],
+            'filters' => [
+                'q' => $filters['q'] ?? '', 'typeId' => $filters['type_id'] ?? '',
+                'brandId' => $filters['brand_id'] ?? '', 'branchId' => $filters['branch_id'] ?? '',
+                'status' => $filters['status'] ?? '',
+            ],
+            'catalogs' => [
+                'types' => array_map(fn (array $row): array => ['id' => (int) $row['id'], 'name' => $row['nombre'], 'active' => (int) $row['activo'] === 1], $catalogs['types'] ?? []),
+                'brands' => array_map(fn (array $row): array => [
+                    'id' => (int) $row['id'], 'name' => $row['nombre'], 'active' => (int) $row['activo'] === 1,
+                    'updateUrl' => base_url('mantenimiento/catalogos/marcas/' . $row['id']),
+                    'inactivateUrl' => base_url('mantenimiento/catalogos/marcas/' . $row['id'] . '/inactivar'),
+                ], $catalogs['brands'] ?? []),
+                'models' => array_map(fn (array $row): array => [
+                    'id' => (int) $row['id'], 'name' => $row['nombre'], 'brandName' => $row['marca_nombre'],
+                    'typeName' => $row['tipo_nombre'], 'active' => (int) $row['activo'] === 1,
+                    'updateUrl' => base_url('mantenimiento/catalogos/modelos/' . $row['id']),
+                    'inactivateUrl' => base_url('mantenimiento/catalogos/modelos/' . $row['id'] . '/inactivar'),
+                ], $catalogs['models'] ?? []),
+            ],
+            'equipment' => [
+                'total' => (int) ($page['total'] ?? 0),
+                'items' => array_map(fn (array $row): array => [
+                    'id' => (int) $row['id'], 'code' => $row['codigo'], 'typeName' => $row['tipo_nombre'],
+                    'plate' => $row['patente'], 'brandName' => $row['marca_nombre'], 'modelName' => $row['modelo_nombre'],
+                    'year' => $row['anio'], 'branchCode' => $row['sucursal_codigo'], 'branchName' => $row['sucursal_nombre'],
+                    'currentKm' => $row['km_actual'] === null ? null : (int) $row['km_actual'],
+                    'currentHours' => $row['horas_actuales'], 'status' => $row['estado'],
+                    'detailUrl' => base_url('mantenimiento/equipos/' . $row['id']),
+                    'qrUrl' => base_url('mantenimiento/equipos/' . $row['id'] . '/qr.svg'),
+                ], $page['items'] ?? []),
+                'pagination' => $this->pagination((int) ($page['page'] ?? 1), (int) ($page['totalPages'] ?? 1), (int) ($page['total'] ?? 0), $base, $query, 'page'),
+            ],
+        ];
+    }
+
+    /** @param array<string,mixed> $details @param array<string,mixed> $catalogs @param list<array<string,mixed>> $candidates */
+    public function equipmentDetails(array $details, ?ReadingHistoryPage $readings, EquipmentAttachmentPage $attachments, array $catalogs, array $candidates, array $can): array
+    {
+        $equipment = $details['equipment'];
+        $equipmentId = (int) $equipment['id'];
+        $base = base_url('mantenimiento/equipos/' . $equipmentId);
+        $pages = [
+            'page' => $readings?->page ?? 1,
+            'transfer_page' => (int) $details['transferHistoryPage'],
+            'attachment_page' => $attachments->page,
+            'relation_page' => (int) $details['relationsPage'],
+        ];
+
+        return [
+            'maxUploadMb' => max(1, (int) env('uploads.maxSizeMB', 10)),
+            'can' => $can,
+            'routes' => [
+                'index' => base_url('mantenimiento/equipos'), 'maintenance' => base_url('mantenimiento'),
+                'qr' => $base . '/qr.svg', 'update' => $base . '/editar', 'transfer' => $base . '/trasladar',
+                'decommission' => $base . '/baja', 'createRelation' => $base . '/relaciones',
+                'uploadAttachment' => $base . '/adjuntos',
+            ],
+            'equipment' => [
+                'id' => $equipmentId, 'code' => $equipment['codigo'], 'typeName' => $equipment['tipo_nombre'],
+                'branchCode' => $equipment['sucursal_codigo'], 'branchName' => $equipment['sucursal_nombre'],
+                'branchId' => (int) $equipment['sucursal_id'], 'status' => $equipment['estado'],
+                'currentKm' => $equipment['km_actual'] === null ? null : (int) $equipment['km_actual'],
+                'currentHours' => $equipment['horas_actuales'], 'plate' => $equipment['patente'],
+                'startDate' => $equipment['fecha_alta'], 'endDate' => $equipment['fecha_baja'],
+                'brandId' => $equipment['marca_id'], 'modelId' => $equipment['modelo_id'], 'year' => $equipment['anio'],
+                'chassis' => $equipment['chasis'], 'engine' => $equipment['motor'], 'notes' => $equipment['observaciones'],
+                'controlsKm' => (int) $equipment['controla_km'] === 1, 'controlsHours' => (int) $equipment['controla_horas'] === 1,
+            ],
+            'catalogs' => [
+                'brands' => array_map(fn (array $row): array => ['id' => (int) $row['id'], 'name' => $row['nombre']], $catalogs['brands'] ?? []),
+                'models' => array_map(fn (array $row): array => [
+                    'id' => (int) $row['id'], 'name' => $row['nombre'], 'brandName' => $row['marca_nombre'], 'typeName' => $row['tipo_nombre'],
+                ], $catalogs['models'] ?? []),
+            ],
+            'availableBranches' => array_map(fn (array $row): array => ['id' => (int) $row['id'], 'code' => $row['codigo'], 'name' => $row['nombre']], $details['availableBranches'] ?? []),
+            'relatedCandidates' => array_values(array_map(fn (array $row): array => [
+                'id' => (int) $row['id'], 'code' => $row['codigo'], 'typeName' => $row['tipo_nombre'],
+            ], array_filter($candidates, fn (array $row): bool => (int) $row['id'] !== $equipmentId))),
+            'relations' => [
+                'total' => (int) $details['relationsTotal'],
+                'pagination' => $this->pagination((int) $details['relationsPage'], (int) $details['relationsTotalPages'], (int) $details['relationsTotal'], $base, $pages, 'relation_page'),
+                'items' => array_map(fn (array $row): array => [
+                    'id' => (int) $row['id'], 'principalCode' => $row['equipo_principal_codigo'],
+                    'relatedCode' => $row['equipo_relacionado_codigo'], 'type' => $row['tipo_relacion'],
+                    'from' => $row['desde'], 'to' => $row['hasta'], 'userName' => $row['usuario_nombre'],
+                    'notes' => $row['observaciones'], 'finishUrl' => $base . '/relaciones/' . $row['id'] . '/finalizar',
+                ], $details['relations'] ?? []),
+            ],
+            'attachments' => [
+                'total' => $attachments->total,
+                'pagination' => $this->pagination($attachments->page, $attachments->totalPages(), $attachments->total, $base, $pages, 'attachment_page'),
+                'items' => array_map(fn (array $row): array => [
+                    'id' => (int) $row['id'], 'originalName' => $row['nombre_original'], 'mimeType' => $row['mime_type'],
+                    'sizeKb' => number_format(((int) $row['tamanio']) / 1024, 1), 'type' => $row['tipo'],
+                    'description' => $row['descripcion'], 'createdAt' => $row['created_at'], 'createdByName' => $row['created_by_nombre'],
+                    'retiredAt' => $row['retirado_at'], 'retirementReason' => $row['motivo_retiro'],
+                    'downloadUrl' => $base . '/adjuntos/' . $row['id'] . '/descargar',
+                    'retireUrl' => $base . '/adjuntos/' . $row['id'] . '/retirar',
+                ], $attachments->items),
+            ],
+            'readings' => $readings === null ? null : [
+                'total' => $readings->total,
+                'pagination' => $this->pagination($readings->page, $readings->totalPages(), $readings->total, $base, $pages, 'page'),
+                'items' => array_map(fn ($row): array => [
+                    'id' => $row->id, 'recordedAt' => $row->recordedAt->format('Y-m-d H:i:s'),
+                    'kilometers' => $row->kilometers, 'hours' => $row->hours, 'origin' => $row->origin,
+                    'userName' => $row->userName, 'branchId' => $row->branchId, 'annulled' => $row->annulled,
+                    'annulmentReason' => $row->annulmentReason, 'replacementReadingId' => $row->replacementReadingId,
+                    'correctedReadingId' => $row->correctedReadingId, 'correctionReason' => $row->correctionReason,
+                    'correctUrl' => $base . '/lecturas/' . $row->id . '/corregir',
+                ], $readings->items),
+            ],
+            'transfers' => [
+                'total' => (int) $details['transferHistoryTotal'],
+                'pagination' => $this->pagination((int) $details['transferHistoryPage'], (int) $details['transferHistoryTotalPages'], (int) $details['transferHistoryTotal'], $base, $pages, 'transfer_page'),
+                'items' => array_map(fn (array $row): array => [
+                    'id' => (int) $row['id'], 'date' => $row['fecha_movimiento'],
+                    'originCode' => $row['sucursal_origen_codigo'], 'originName' => $row['sucursal_origen_nombre'],
+                    'destinationCode' => $row['sucursal_destino_codigo'], 'destinationName' => $row['sucursal_destino_nombre'],
+                    'reason' => $row['motivo'], 'userName' => $row['usuario_nombre'],
+                ], $details['transferHistory'] ?? []),
+            ],
+        ];
+    }
+
+    public function imports(ImportHistoryPage $page, bool $canUpload): array
+    {
+        $base = base_url('mantenimiento/importaciones');
+
+        return [
+            'canUpload' => $canUpload, 'maxSizeMb' => max(1, (int) env('imports.maxSizeMB', 10)),
+            'routes' => [
+                'upload' => $base,
+                'templates' => ['equipment' => $base . '/plantilla/EQUIPOS', 'readings' => $base . '/plantilla/LECTURAS'],
+            ],
+            'imports' => [
+                'total' => $page->total,
+                'pagination' => $this->pagination($page->page, max(1, (int) ceil($page->total / $page->perPage)), $page->total, $base, [], 'page'),
+                'items' => array_map(fn (array $row): array => [
+                    'id' => (int) $row['id'], 'date' => $row['fecha'], 'userName' => $row['usuario_nombre'] ?? 'Usuario',
+                    'originalFile' => $row['archivo_original'], 'type' => $row['tipo'],
+                    'importedRows' => (int) $row['filas_importadas'], 'errorRows' => (int) $row['filas_error'],
+                    'duplicateRows' => (int) $row['filas_duplicadas'], 'summary' => $row['resumen'], 'status' => $row['estado'],
+                    'detailUrl' => $base . '/' . $row['id'],
+                ], $page->items),
+            ],
+        ];
+    }
+
+    public function importPreview(ImportPreview $preview, bool $canMutate): array
+    {
+        $header = $preview->header;
+        $base = base_url('mantenimiento/importaciones/' . $header['id']);
+
+        return [
+            'canMutate' => $canMutate,
+            'routes' => ['back' => base_url('mantenimiento/importaciones'), 'confirm' => $base . '/confirmar', 'cancel' => $base . '/cancelar'],
+            'header' => [
+                'id' => (int) $header['id'], 'originalFile' => $header['archivo_original'], 'type' => $header['tipo'],
+                'status' => $header['estado'], 'summary' => $header['resumen'], 'totalRows' => (int) $header['filas_totales'],
+                'validRows' => (int) $header['filas_validas'], 'errorRows' => (int) $header['filas_error'],
+                'duplicateRows' => (int) $header['filas_duplicadas'],
+            ],
+            'rows' => [
+                'total' => $preview->total,
+                'pagination' => $this->pagination($preview->page, max(1, (int) ceil($preview->total / $preview->perPage)), $preview->total, $base, [], 'page'),
+                'items' => array_map(fn (array $row): array => [
+                    'rowNumber' => (int) $row['numero_fila'], 'status' => $row['estado'],
+                    'normalizedData' => $row['datos_normalizados'],
+                    'issues' => array_map(fn (array $issue): array => ['field' => $issue['campo'], 'message' => $issue['mensaje']], $row['errores'] ?? []),
+                    'result' => $row['resultado'],
+                ], $preview->rows),
+            ],
+        ];
+    }
+
+    /** @param list<string> $fields */
+    private function old(array $fields): array
+    {
+        $result = [];
+        foreach ($fields as $field) {
+            $result[$field] = old($field) ?? '';
+        }
+
+        return $result;
+    }
+
+    /** @param array<string,mixed> $query */
+    private function pagination(int $page, int $totalPages, int $total, string $base, array $query, string $pageKey): array
+    {
+        $url = static function (int $target) use ($base, $query, $pageKey): string {
+            $parameters = $query;
+            $parameters[$pageKey] = $target;
+
+            return $base . '?' . http_build_query($parameters);
+        };
+
+        return [
+            'page' => $page, 'totalPages' => max(1, $totalPages), 'total' => $total,
+            'previousUrl' => $page > 1 ? $url($page - 1) : null,
+            'nextUrl' => $page < $totalPages ? $url($page + 1) : null,
+        ];
+    }
+}

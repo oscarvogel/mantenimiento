@@ -8,6 +8,7 @@
 # Credenciales locales (NO COMMITEAR)
 # =============================================================================
 /.ferozo-credentials*
+/ferozo-credentials*
 /vendor/
 /writable/cache/*
 !/writable/cache/index.html
@@ -24,7 +25,6 @@
 /writable/debugbar/*
 !/writable/debugbar/index.html
 !/writable/debugbar/.gitkeep
-/spark
 
 # =============================================================================
 # PHP y herramientas
@@ -36,6 +36,9 @@
 composer.phar
 .phpunit.result.cache
 .phpunit.cache/
+/build/
+__pycache__/
+*.py[cod]
 
 # =============================================================================
 # IDEs

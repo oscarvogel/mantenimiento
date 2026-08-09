@@ -1,124 +1,166 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Database\Seeds;
 
 use CodeIgniter\Database\Seeder;
 
 /**
- * Seeder inicial: crea una empresa demo, una sucursal demo, los 5 roles
- * de la spec (seccion 4.1), un set de permisos basicos y un usuario
- * administrador.
+ * Datos mínimos repetibles para desarrollo local.
  *
- * Credenciales del admin:
- *   email:    admin@mantenimiento.local
- *   password: Admin1234
+ * Las relaciones se resuelven por claves naturales: las migraciones pueden
+ * haber creado permisos antes de ejecutar este seeder y, por eso, ningún ID
+ * autoincremental se da por conocido.
  */
-class InitialSeeder extends Seeder
+final class InitialSeeder extends Seeder
 {
-    public function run()
+    public function run(): void
     {
         $now = date('Y-m-d H:i:s');
 
-        // 1) Empresa demo
-        $this->db->table('empresas')->insert([
-            'id'            => 1,
-            'razon_social'  => 'Empresa Demo S.A.',
+        $companyId = $this->ensureRow('empresas', ['cuit' => '30-12345678-9'], [
+            'razon_social' => 'Empresa Demo S.A.',
             'nombre_fantasia' => 'Empresa Demo',
-            'cuit'          => '30-12345678-9',
-            'email'         => 'contacto@empresa-demo.local',
-            'telefono'      => '+54 11 5555-0000',
-            'estado'        => 1,
-            'created_at'    => $now,
-            'updated_at'    => $now,
+            'cuit' => '30-12345678-9',
+            'email' => 'contacto@empresa-demo.local',
+            'telefono' => '+54 11 5555-0000',
+            'estado' => 1,
+            'created_at' => $now,
+            'updated_at' => $now,
         ]);
-
-        // 2) Sucursal demo
-        $this->db->table('sucursales')->insert([
-            'id'            => 1,
-            'empresa_id'    => 1,
-            'codigo'        => 'CENTRAL',
-            'nombre'        => 'Casa Central',
-            'direccion'     => 'Av. Siempre Viva 742',
+        $branchId = $this->ensureRow('sucursales', [
+            'empresa_id' => $companyId,
+            'codigo' => 'CENTRAL',
+        ], [
+            'empresa_id' => $companyId,
+            'codigo' => 'CENTRAL',
+            'nombre' => 'Casa Central',
+            'direccion' => 'Av. Siempre Viva 742',
             'email_alertas' => 'alertas@empresa-demo.local',
-            'estado'        => 1,
-            'created_at'    => $now,
-            'updated_at'    => $now,
+            'estado' => 1,
+            'created_at' => $now,
+            'updated_at' => $now,
         ]);
 
-        // 3) Roles (spec seccion 4.1)
         $roles = [
-            ['id' => 1, 'nombre' => 'Administrador',         'descripcion' => 'Acceso completo, configuracion, usuarios, catalogos, auditoria y anulaciones.'],
-            ['id' => 2, 'nombre' => 'Responsable de mantenimiento', 'descripcion' => 'Equipos, lecturas, planes, ordenes, trabajos, repuestos, garantias y reportes.'],
-            ['id' => 3, 'nombre' => 'Tecnico u operador',    'descripcion' => 'Consultar trabajo asignado, cargar lecturas, iniciar, actualizar y cerrar tareas u ordenes segun autorizacion.'],
-            ['id' => 4, 'nombre' => 'Solicitante',           'descripcion' => 'Informar fallas o necesidades, adjuntar evidencia y consultar el estado de sus solicitudes.'],
-            ['id' => 5, 'nombre' => 'Consulta',               'descripcion' => 'Visualizar paneles, equipos, ordenes e historial sin modificar informacion.'],
+            'Administrador' => 'Acceso completo, configuración, usuarios, catálogos, auditoría y anulaciones.',
+            'Responsable de mantenimiento' => 'Equipos, lecturas, planes, órdenes, trabajos, repuestos, garantías y reportes.',
+            'Tecnico u operador' => 'Consultar trabajo asignado, cargar lecturas, iniciar, actualizar y cerrar tareas u órdenes según autorización.',
+            'Solicitante' => 'Informar fallas o necesidades, adjuntar evidencia y consultar el estado de sus solicitudes.',
+            'Consulta' => 'Visualizar paneles, equipos, órdenes e historial sin modificar información.',
         ];
-        foreach ($roles as $r) {
-            $r['created_at'] = $now;
-            $r['updated_at'] = $now;
-            $this->db->table('roles')->insert($r);
+        $roleIds = [];
+        foreach ($roles as $name => $description) {
+            $roleIds[$name] = $this->ensureRow('roles', ['nombre' => $name], [
+                'nombre' => $name,
+                'descripcion' => $description,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
         }
 
-        // 4) Permisos basicos
-        $permisos = [
-            ['id' => 1,  'clave' => 'empresas.ver',          'descripcion' => 'Ver listado y detalle de empresas'],
-            ['id' => 2,  'clave' => 'empresas.editar',       'descripcion' => 'Crear y modificar empresas'],
-            ['id' => 3,  'clave' => 'sucursales.ver',        'descripcion' => 'Ver listado y detalle de sucursales'],
-            ['id' => 4,  'clave' => 'sucursales.editar',     'descripcion' => 'Crear y modificar sucursales'],
-            ['id' => 5,  'clave' => 'usuarios.ver',         'descripcion' => 'Ver listado y detalle de usuarios'],
-            ['id' => 6,  'clave' => 'usuarios.editar',      'descripcion' => 'Crear, modificar y desactivar usuarios'],
-            ['id' => 7,  'clave' => 'roles.editar',          'descripcion' => 'Administrar roles y permisos'],
-            ['id' => 8,  'clave' => 'equipos.ver',           'descripcion' => 'Ver listado y detalle de equipos'],
-            ['id' => 9,  'clave' => 'equipos.editar',        'descripcion' => 'Crear y modificar equipos'],
-            ['id' => 10, 'clave' => 'lecturas.cargar',       'descripcion' => 'Cargar lecturas de kilometros y horas'],
-            ['id' => 11, 'clave' => 'planes.ver',            'descripcion' => 'Ver planes preventivos'],
-            ['id' => 12, 'clave' => 'planes.editar',         'descripcion' => 'Crear y modificar planes preventivos'],
-            ['id' => 13, 'clave' => 'solicitudes.crear',     'descripcion' => 'Cargar solicitudes de mantenimiento o fallas'],
-            ['id' => 14, 'clave' => 'solicitudes.revisar',   'descripcion' => 'Revisar, aprobar, rechazar o agrupar solicitudes'],
-            ['id' => 15, 'clave' => 'ordenes.ver',           'descripcion' => 'Ver listado y detalle de ordenes de trabajo'],
-            ['id' => 16, 'clave' => 'ordenes.editar',        'descripcion' => 'Crear y modificar ordenes de trabajo'],
-            ['id' => 17, 'clave' => 'ordenes.cerrar',        'descripcion' => 'Finalizar ordenes de trabajo'],
-            ['id' => 18, 'clave' => 'ordenes.mi_trabajo',    'descripcion' => 'Ver y trabajar sobre las ordenes asignadas (bandeja del tecnico)'],
-            ['id' => 19, 'clave' => 'reportes.ver',          'descripcion' => 'Ver reportes y exportar a Excel o CSV'],
-            ['id' => 20, 'clave' => 'auditoria.ver',         'descripcion' => 'Ver la bitacora de auditoria'],
+        $permissions = [
+            'empresas.ver' => 'Ver listado y detalle de empresas',
+            'empresas.editar' => 'Crear y modificar empresas',
+            'sucursales.ver' => 'Ver listado y detalle de sucursales',
+            'sucursales.editar' => 'Crear y modificar sucursales',
+            'usuarios.ver' => 'Ver listado y detalle de usuarios',
+            'usuarios.editar' => 'Crear, modificar y desactivar usuarios',
+            'roles.editar' => 'Administrar roles y permisos',
+            'equipos.ver' => 'Ver listado y detalle de equipos',
+            'equipos.editar' => 'Crear y modificar equipos',
+            'lecturas.cargar' => 'Cargar lecturas de kilómetros y horas',
+            'lecturas.ver' => 'Ver historial de lecturas',
+            'lecturas.corregir' => 'Corregir lecturas con motivo y trazabilidad',
+            'planes.ver' => 'Ver planes preventivos',
+            'planes.editar' => 'Crear y modificar planes preventivos',
+            'solicitudes.crear' => 'Cargar solicitudes de mantenimiento o fallas',
+            'solicitudes.revisar' => 'Revisar, aprobar, rechazar o agrupar solicitudes',
+            'ordenes.ver' => 'Ver listado y detalle de órdenes de trabajo',
+            'ordenes.editar' => 'Crear y modificar órdenes de trabajo',
+            'ordenes.cerrar' => 'Finalizar órdenes de trabajo',
+            'ordenes.mi_trabajo' => 'Ver y trabajar sobre las órdenes asignadas',
+            'reportes.ver' => 'Ver reportes y exportar a Excel o CSV',
+            'auditoria.ver' => 'Ver la bitácora de auditoría',
+            'importaciones.ver' => 'Ver historial y vista previa de importaciones',
+            'importaciones.cargar' => 'Cargar, confirmar y cancelar importaciones',
         ];
-        foreach ($permisos as $p) {
-            $p['created_at'] = $now;
-            $p['updated_at'] = $now;
-            $this->db->table('permisos')->insert($p);
+        $permissionIds = [];
+        foreach ($permissions as $key => $description) {
+            $permissionIds[$key] = $this->ensureRow('permisos', ['clave' => $key], [
+                'clave' => $key,
+                'descripcion' => $description,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
         }
 
-        // 5) Rol -> Permisos
-        // Administrador: todos
-        for ($i = 1; $i <= 20; $i++) {
-            $this->db->table('rol_permisos')->insert(['rol_id' => 1, 'permiso_id' => $i, 'created_at' => $now]);
+        $rolePermissions = [
+            'Administrador' => array_keys($permissions),
+            'Responsable de mantenimiento' => [
+                'sucursales.ver', 'sucursales.editar', 'equipos.ver', 'equipos.editar',
+                'lecturas.cargar', 'lecturas.ver', 'lecturas.corregir', 'planes.ver',
+                'planes.editar', 'ordenes.ver', 'ordenes.editar', 'ordenes.cerrar', 'reportes.ver',
+                'importaciones.ver', 'importaciones.cargar',
+            ],
+            'Tecnico u operador' => ['equipos.ver', 'lecturas.cargar', 'lecturas.ver', 'ordenes.ver', 'ordenes.mi_trabajo'],
+            'Solicitante' => ['solicitudes.crear'],
+            'Consulta' => ['equipos.ver', 'lecturas.ver', 'ordenes.ver', 'reportes.ver', 'importaciones.ver'],
+        ];
+        foreach ($rolePermissions as $roleName => $keys) {
+            foreach ($keys as $key) {
+                $this->ensureRelation('rol_permisos', [
+                    'rol_id' => $roleIds[$roleName],
+                    'permiso_id' => $permissionIds[$key],
+                ], $now);
+            }
         }
-        // Responsable de mantenimiento: 3, 4 (sucursales ver), 5, 6 (usuarios no), 8, 9, 10, 11, 12, 15, 16, 17, 19
-        $r2 = [3, 4, 8, 9, 10, 11, 12, 15, 16, 17, 19];
-        foreach ($r2 as $pid) { $this->db->table('rol_permisos')->insert(['rol_id' => 2, 'permiso_id' => $pid, 'created_at' => $now]); }
-        // Tecnico u operador: 8, 10, 15, 18 (mi trabajo)
-        $r3 = [8, 10, 15, 18];
-        foreach ($r3 as $pid) { $this->db->table('rol_permisos')->insert(['rol_id' => 3, 'permiso_id' => $pid, 'created_at' => $now]); }
-        // Solicitante: 13 (crear solicitudes)
-        $this->db->table('rol_permisos')->insert(['rol_id' => 4, 'permiso_id' => 13, 'created_at' => $now]);
-        // Consulta: 8, 15, 19 (ver equipos, ordenes y reportes)
-        $r5 = [8, 15, 19];
-        foreach ($r5 as $pid) { $this->db->table('rol_permisos')->insert(['rol_id' => 5, 'permiso_id' => $pid, 'created_at' => $now]); }
 
-        // 6) Usuario administrador
-        $this->db->table('usuarios')->insert([
-            'id'            => 1,
-            'empresa_id'    => 1,
-            'nombre'        => 'Administrador',
-            'email'         => 'admin@mantenimiento.local',
+        $adminEmail = 'admin@mantenimiento.local';
+        $adminId = $this->ensureRow('usuarios', ['email' => $adminEmail], [
+            'empresa_id' => $companyId,
+            'nombre' => 'Administrador',
+            'email' => $adminEmail,
             'password_hash' => password_hash('Admin1234', PASSWORD_BCRYPT),
-            'activo'        => 1,
-            'created_at'    => $now,
-            'updated_at'    => $now,
+            'es_superadmin' => 0,
+            'activo' => 1,
+            'created_at' => $now,
+            'updated_at' => $now,
         ]);
+        $this->ensureRelation('usuario_roles', [
+            'usuario_id' => $adminId,
+            'rol_id' => $roleIds['Administrador'],
+        ], $now);
+        $this->ensureRelation('usuario_sucursales', [
+            'usuario_id' => $adminId,
+            'sucursal_id' => $branchId,
+        ], $now);
 
-        // 7) Asignar todos los roles al admin (para desarrollo)
-        $this->db->table('usuario_roles')->insert(['usuario_id' => 1, 'rol_id' => 1, 'created_at' => $now]);
-        $this->db->table('usuario_sucursales')->insert(['usuario_id' => 1, 'sucursal_id' => 1, 'created_at' => $now]);
+        $this->call(SuperAdminSeeder::class);
+        $this->call(VerticalCircuitSeeder::class);
+    }
+
+    /** @param array<string, mixed> $criteria @param array<string, mixed> $data */
+    private function ensureRow(string $table, array $criteria, array $data): int
+    {
+        $row = $this->db->table($table)->select('id')->where($criteria)->get()->getRowArray();
+        if ($row !== null) {
+            return (int) $row['id'];
+        }
+
+        $this->db->table($table)->insert($data);
+
+        return (int) $this->db->insertID();
+    }
+
+    /** @param array<string, int> $relation */
+    private function ensureRelation(string $table, array $relation, string $now): void
+    {
+        if ($this->db->table($table)->where($relation)->countAllResults() !== 0) {
+            return;
+        }
+
+        $this->db->table($table)->insert($relation + ['created_at' => $now]);
     }
 }

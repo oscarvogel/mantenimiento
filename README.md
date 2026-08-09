@@ -11,15 +11,34 @@ El historial de cambios del documento está en
 [`CHANGELOG.md`](CHANGELOG.md). Antes de tomar decisiones de diseño o
 implementación, leer la spec completa.
 
+El primer circuito vertical está diseñado en
+[`docs/FASE_1A_DISENO_CIRCUITO_VERTICAL.md`](docs/FASE_1A_DISENO_CIRCUITO_VERTICAL.md):
+equipo, lectura, plan preventivo, aviso de vencimiento, orden y recálculo tras
+el cierre.
+
+La implementación local navegable de ese circuito está documentada en
+[`docs/FASE_2_CIRCUITO_VERTICAL_PREVENTIVO.md`](docs/FASE_2_CIRCUITO_VERTICAL_PREVENTIVO.md).
+
+La consolidación de ficha, edición, traslado, baja lógica e historial/corrección
+de lecturas está en
+[`docs/FASE_2B_EQUIPOS_Y_LECTURAS.md`](docs/FASE_2B_EQUIPOS_Y_LECTURAS.md).
+
+El modelo de Superadministrador, usuario de una empresa y alcance automático del
+Administrador está documentado en
+[`docs/FASE_1B_ACCESO_MULTIEMPRESA.md`](docs/FASE_1B_ACCESO_MULTIEMPRESA.md).
+
+La administración tenant de sucursales, usuarios, roles y alcance está en
+[`docs/FASE_1C_ADMINISTRACION_EMPRESA.md`](docs/FASE_1C_ADMINISTRACION_EMPRESA.md).
+
 ---
 
 ## 0. Estado del proyecto
 
 - [x] Etapa 0 — bootstrap del framework y guía de despliegue (rama `etapa-0-bootstrap`).
-- [ ] Etapa 1 — base del sistema: empresas, sucursales, usuarios, roles, permisos, catálogos.
-- [ ] Etapa 2 — equipos, lecturas e importaciones.
-- [ ] Etapa 3 — mantenimiento preventivo y motor de vencimientos.
-- [ ] Etapa 4 — solicitudes, avisos y órdenes de trabajo.
+- [x] Etapa 1 — organización, acceso, administración tenant y catálogos mínimos del circuito.
+- [ ] Etapa 2 — en progreso: CRUD esencial de equipos, traslados, baja lógica y lecturas auditadas listos; adjuntos, relaciones, QR e importaciones pendientes.
+- [ ] Etapa 3 — en progreso: motor y plan preventivo mínimo listos; plantillas pendientes.
+- [ ] Etapa 4 — en progreso: avisos y OT preventiva mínima listos; solicitudes y correctivo pendientes.
 - [ ] Etapa 5 — alertas, reportes, auditoría, pruebas, piloto y cierre.
 
 El bootstrap actual instala CodeIgniter 4 v4.7.4 con autodeteccion de
@@ -288,13 +307,38 @@ php spark key:generate
 # 4. Crear la base de datos y correr migraciones
 php spark migrate
 
-# 5. Levantar el servidor de desarrollo
-php spark serve
+# 5. Levantar el servidor de desarrollo en Windows/XAMPP
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\run-local-server.ps1
 # Abre http://localhost:8080/ en el navegador
 ```
 
+Las importaciones XLSX requieren `ext-zip` y `ext-gd`. El script anterior las
+habilita solo para el proceso cuando las DLL de XAMPP están disponibles. CSV no
+depende de esas dos extensiones.
+
 Para instrucciones de deploy en Ferozo, ver
 [`docs/DEPLOY_FEROZO.md`](docs/DEPLOY_FEROZO.md).
+
+### 9.1 Prueba tecnica local (FASE 0A)
+
+Antes de comenzar los modulos funcionales se puede validar localmente PHP,
+extensiones, MariaDB/MySQL, logs, sesiones, SMTP, tareas programadas y el flujo
+HTTP completo:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\run-phase0a.ps1
+```
+
+Tambien se puede ensayar una instalacion limpia, una actualizacion conservando
+`.env` y `writable`, y un rollback:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\rehearse-local-deploy.ps1
+```
+
+El procedimiento, los resultados obtenidos y el limite respecto de Ferozo estan
+documentados en
+[`docs/PRUEBA_TECNICA_LOCAL.md`](docs/PRUEBA_TECNICA_LOCAL.md).
 
 ---
 

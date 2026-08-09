@@ -1,0 +1,64 @@
+export const csrf = { name: 'csrf_test_name', hash: 'secure-token' }
+export const pagination = { page: 1, totalPages: 2, total: 21, previousUrl: null, nextUrl: '?page=2' }
+export const flash = { success: 'Operación completada.', error: '' }
+
+export const maintenanceData = {
+  csrf,
+  flash,
+  currentDateTime: '2026-08-08 15:00:00',
+  old: {},
+  routes: { equipmentIndex: '/mantenimiento/equipos', createEquipment: '/mantenimiento/equipos', detectDue: '/mantenimiento/vencimientos/detectar' },
+  can: { createEquipment: true, registerReading: true, assignPlan: true, detectDue: true, generateOrder: true, editOrder: true, closeOrder: true },
+  catalogs: {
+    branches: [{ id: 1, code: 'CC', name: 'Casa central' }],
+    equipmentTypes: [{ id: 1, name: 'Camión' }],
+    brands: [{ id: 1, name: 'Scania' }],
+    models: [{ id: 1, name: 'R450', brandName: 'Scania', typeName: 'Camión' }],
+    serviceTypes: [{ id: 1, name: 'Service motor' }],
+    users: [{ id: 7, name: 'Técnico Uno' }],
+  },
+  equipments: [{ id: 9, code: 'CAM-01', plate: 'AA123BB', typeName: 'Camión', branchName: 'Casa central', status: 'ACTIVO', controlsKm: true, controlsHours: true, currentKm: 1000, currentHours: 42, routes: { detail: '/mantenimiento/equipos/9', registerReading: '/mantenimiento/equipos/9/lecturas', assignPlan: '/mantenimiento/equipos/9/planes' } }],
+  plans: [{ id: 2, equipmentCode: 'CAM-01', serviceName: 'Service motor', computedState: 'PROXIMO', nextKm: 1500, nextHours: null, nextDate: null }],
+  notices: [{ id: 3, equipmentCode: 'CAM-01', serviceName: 'Service motor', triggerCriteria: 'kilómetros', generateOrderUrl: '/mantenimiento/avisos/3/orden' }],
+  orders: [{ id: 4, number: 'OT-4', equipmentCode: 'CAM-01', serviceName: 'Service motor', ownerName: 'Técnico Uno', status: 'EN_PROCESO', startUrl: '/mantenimiento/ordenes/4/iniciar', closeUrl: '/mantenimiento/ordenes/4/cerrar', tasks: [{ id: 1, description: 'Cambiar aceite', status: 'PENDIENTE' }] }],
+  readings: [{ id: 5, equipmentCode: 'CAM-01', recordedAt: '08/08/2026 15:00', kilometers: 1000, hours: 42, origin: 'MANUAL' }],
+}
+
+export const assetsData = {
+  csrf, flash, canEdit: true,
+  routes: { index: '/mantenimiento/equipos', maintenance: '/mantenimiento', createBrand: '/mantenimiento/catalogos/marcas', createModel: '/mantenimiento/catalogos/modelos' },
+  filters: { q: '', typeId: '', brandId: '', branchId: '', status: '' },
+  catalogs: {
+    types: [{ id: 1, name: 'Camión', active: true }],
+    brands: [{ id: 2, name: 'Scania', active: true, updateUrl: '/mantenimiento/catalogos/marcas/2', inactivateUrl: '/mantenimiento/catalogos/marcas/2/inactivar' }],
+    models: [{ id: 3, name: 'R450', brandName: 'Scania', typeName: 'Camión', active: true, updateUrl: '/mantenimiento/catalogos/modelos/3', inactivateUrl: '/mantenimiento/catalogos/modelos/3/inactivar' }],
+  },
+  equipment: { total: 1, pagination, items: [{ id: 9, code: 'CAM-01', typeName: 'Camión', plate: 'AA123BB', brandName: 'Scania', modelName: 'R450', year: 2023, branchCode: 'CC', branchName: 'Casa central', currentKm: 1000, currentHours: 42, status: 'ACTIVO', detailUrl: '/mantenimiento/equipos/9', qrUrl: '/mantenimiento/equipos/9/qr.svg' }] },
+}
+
+export const equipmentData = {
+  csrf, flash, maxUploadMb: 10,
+  can: { edit: true, correctReadings: true },
+  routes: { index: '/mantenimiento/equipos', maintenance: '/mantenimiento', qr: '/mantenimiento/equipos/9/qr.svg', update: '/mantenimiento/equipos/9/editar', transfer: '/mantenimiento/equipos/9/trasladar', decommission: '/mantenimiento/equipos/9/baja', createRelation: '/mantenimiento/equipos/9/relaciones', uploadAttachment: '/mantenimiento/equipos/9/adjuntos' },
+  equipment: { id: 9, code: 'CAM-01', typeName: 'Camión', branchCode: 'CC', branchName: 'Casa central', branchId: 1, status: 'ACTIVO', currentKm: 1000, currentHours: 42, plate: 'AA123BB', startDate: '2025-01-02', endDate: null, brandId: 2, modelId: 3, year: 2023, chassis: 'CH-1', engine: 'MO-1', notes: 'Unidad piloto', controlsKm: true, controlsHours: true },
+  catalogs: { brands: [{ id: 2, name: 'Scania' }], models: [{ id: 3, name: 'R450', brandName: 'Scania', typeName: 'Camión' }] },
+  availableBranches: [{ id: 2, code: 'N', name: 'Norte' }],
+  relatedCandidates: [{ id: 10, code: 'ACO-01', typeName: 'Acoplado' }],
+  relations: { total: 1, pagination: { ...pagination, total: 1 }, items: [{ id: 1, principalCode: 'CAM-01', relatedCode: 'ACO-01', type: 'TRACTOR_ACOPLADO', from: '2026-08-01 10:00', to: null, userName: 'Admin', notes: '', finishUrl: '/mantenimiento/equipos/9/relaciones/1/finalizar' }] },
+  attachments: { total: 1, pagination: { ...pagination, total: 1 }, items: [{ id: 2, originalName: 'manual.pdf', mimeType: 'application/pdf', sizeKb: '12.0', type: 'MANUAL', description: '', createdAt: '2026-08-08', createdByName: 'Admin', retiredAt: null, retirementReason: '', downloadUrl: '/mantenimiento/equipos/9/adjuntos/2/descargar', retireUrl: '/mantenimiento/equipos/9/adjuntos/2/retirar' }] },
+  readings: { total: 1, pagination: { ...pagination, total: 1 }, items: [{ id: 4, recordedAt: '08/08/2026 12:00', kilometers: 1000, hours: 42, origin: 'MANUAL', userName: 'Admin', branchId: 1, annulled: false, annulmentReason: null, replacementReadingId: null, correctedReadingId: null, correctionReason: null, correctUrl: '/mantenimiento/equipos/9/lecturas/4/corregir' }] },
+  transfers: { total: 1, pagination: { ...pagination, total: 1 }, items: [{ id: 1, date: '2026-08-02', originCode: 'S', originName: 'Sur', destinationCode: 'CC', destinationName: 'Casa central', reason: 'Reasignación', userName: 'Admin' }] },
+}
+
+export const importsData = {
+  csrf, flash, canUpload: true, maxSizeMb: 10,
+  routes: { upload: '/mantenimiento/importaciones', templates: { equipment: '/mantenimiento/importaciones/plantilla/EQUIPOS', readings: '/mantenimiento/importaciones/plantilla/LECTURAS' } },
+  imports: { total: 1, pagination, items: [{ id: 8, date: '2026-08-08', userName: 'Admin', originalFile: 'equipos.xlsx', type: 'EQUIPOS', importedRows: 4, errorRows: 1, duplicateRows: 2, summary: 'Vista previa', status: 'BORRADOR_VALIDADO', detailUrl: '/mantenimiento/importaciones/8' }] },
+}
+
+export const importShowData = {
+  csrf, flash, canMutate: true,
+  routes: { back: '/mantenimiento/importaciones', confirm: '/mantenimiento/importaciones/8/confirmar', cancel: '/mantenimiento/importaciones/8/cancelar' },
+  header: { id: 8, originalFile: 'equipos.xlsx', type: 'EQUIPOS', status: 'BORRADOR_VALIDADO', summary: 'Validado', totalRows: 7, validRows: 4, errorRows: 1, duplicateRows: 2 },
+  rows: { total: 1, pagination, items: [{ rowNumber: 2, status: 'VALIDA', normalizedData: { codigo: 'CAM-01' }, issues: [], result: '' }] },
+}

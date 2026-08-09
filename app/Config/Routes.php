@@ -13,8 +13,73 @@ $routes->get('/', 'Home::index');
 $routes->get('login', 'Login::index');
 $routes->post('login/authenticate', 'Login::authenticate');
 
-// Logout (protegido)
-$routes->get('logout', 'Login::logout', ['filter' => 'auth']);
+// Logout mutante y protegido por CSRF.
+$routes->post('logout', 'Login::logout', ['filter' => 'auth']);
 
 // Dashboard (protegido)
 $routes->get('dashboard', 'Dashboard::index', ['filter' => 'auth']);
+
+// Administración global. El filtro también rechaza cuentas autenticadas no globales.
+$routes->group('superadmin', ['filter' => 'superadmin'], static function ($routes): void {
+    $routes->get('', 'SuperAdmin::index');
+    $routes->post('empresas', 'SuperAdmin::createCompany');
+    $routes->post('empresas/(:num)', 'SuperAdmin::updateCompany/$1');
+    $routes->post('usuarios/(:num)/empresa', 'SuperAdmin::assignCompany/$1');
+    $routes->post('usuarios/(:num)/roles', 'SuperAdmin::assignRoles/$1');
+});
+
+// Administración limitada a la empresa del actor. Auth refresca ActorContext
+// antes de que el filtro de permiso evalúe cada operación.
+$routes->group('administracion', ['filter' => ['auth']], static function ($routes): void {
+    $routes->get('sucursales', 'TenantAdmin::branches', ['filter' => 'permission:sucursales.ver']);
+    $routes->post('sucursales', 'TenantAdmin::createBranch', ['filter' => 'permission:sucursales.editar']);
+    $routes->post('sucursales/(:num)', 'TenantAdmin::updateBranch/$1', ['filter' => 'permission:sucursales.editar']);
+
+    $routes->get('usuarios', 'TenantAdmin::users', ['filter' => 'permission:usuarios.ver']);
+    $routes->post('usuarios', 'TenantAdmin::createUser', ['filter' => ['permission:usuarios.editar', 'permission:roles.editar']]);
+    $routes->post('usuarios/(:num)', 'TenantAdmin::updateUser/$1', ['filter' => 'permission:usuarios.editar']);
+    $routes->post('usuarios/(:num)/acceso', 'TenantAdmin::assignUserAccess/$1', ['filter' => ['permission:usuarios.editar', 'permission:roles.editar']]);
+    $routes->post('usuarios/(:num)/password', 'TenantAdmin::resetUserPassword/$1', ['filter' => 'permission:usuarios.editar']);
+});
+
+// Primer circuito vertical preventivo. Cada mutación valida además empresa y
+// sucursal dentro del caso de uso, no solo el permiso de la ruta.
+$routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes): void {
+    $routes->get('', 'MaintenanceCircuit::index', ['filter' => 'permission:equipos.ver']);
+    $routes->get('equipos', 'AssetManagement::index', ['filter' => 'permission:equipos.ver']);
+    $routes->post('equipos', 'MaintenanceCircuit::createEquipment', ['filter' => 'permission:equipos.editar']);
+    $routes->get('equipos/(:num)', 'EquipmentManagement::show/$1', ['filter' => 'permission:equipos.ver']);
+    $routes->get('equipos/(:num)/qr.svg', 'AssetManagement::qr/$1', ['filter' => 'permission:equipos.ver']);
+    $routes->post('equipos/(:num)/editar', 'EquipmentManagement::update/$1', ['filter' => 'permission:equipos.editar']);
+    $routes->post('equipos/(:num)/trasladar', 'EquipmentManagement::transfer/$1', ['filter' => 'permission:equipos.editar']);
+    $routes->post('equipos/(:num)/baja', 'EquipmentManagement::decommission/$1', ['filter' => 'permission:equipos.editar']);
+    $routes->post('equipos/(:num)/adjuntos', 'EquipmentManagement::uploadAttachment/$1', ['filter' => 'permission:equipos.editar']);
+    $routes->get('equipos/(:num)/adjuntos/(:num)/descargar', 'EquipmentManagement::downloadAttachment/$1/$2', ['filter' => 'permission:equipos.ver']);
+    $routes->post('equipos/(:num)/adjuntos/(:num)/retirar', 'EquipmentManagement::retireAttachment/$1/$2', ['filter' => 'permission:equipos.editar']);
+    $routes->post('equipos/(:num)/relaciones', 'EquipmentManagement::createRelation/$1', ['filter' => 'permission:equipos.editar']);
+    $routes->post('equipos/(:num)/relaciones/(:num)/finalizar', 'EquipmentManagement::finishRelation/$1/$2', ['filter' => 'permission:equipos.editar']);
+    $routes->post('catalogos/marcas', 'AssetManagement::createBrand', ['filter' => 'permission:equipos.editar']);
+    $routes->post('catalogos/marcas/(:num)', 'AssetManagement::renameBrand/$1', ['filter' => 'permission:equipos.editar']);
+    $routes->post('catalogos/marcas/(:num)/inactivar', 'AssetManagement::inactivateBrand/$1', ['filter' => 'permission:equipos.editar']);
+    $routes->post('catalogos/modelos', 'AssetManagement::createModel', ['filter' => 'permission:equipos.editar']);
+    $routes->post('catalogos/modelos/(:num)', 'AssetManagement::renameModel/$1', ['filter' => 'permission:equipos.editar']);
+    $routes->post('catalogos/modelos/(:num)/inactivar', 'AssetManagement::inactivateModel/$1', ['filter' => 'permission:equipos.editar']);
+    $routes->get('importaciones', 'ImportManagement::index', ['filter' => 'permission:importaciones.ver']);
+    $routes->get('importaciones/plantilla/(:segment)', 'ImportManagement::template/$1', ['filter' => 'permission:importaciones.cargar']);
+    $routes->post('importaciones', 'ImportManagement::upload', ['filter' => 'permission:importaciones.cargar']);
+    $routes->get('importaciones/(:num)', 'ImportManagement::show/$1', ['filter' => 'permission:importaciones.ver']);
+    $routes->post('importaciones/(:num)/confirmar', 'ImportManagement::confirm/$1', ['filter' => 'permission:importaciones.cargar']);
+    $routes->post('importaciones/(:num)/cancelar', 'ImportManagement::cancel/$1', ['filter' => 'permission:importaciones.cargar']);
+    $routes->post('equipos/(:num)/lecturas', 'MaintenanceCircuit::registerReading/$1', ['filter' => 'permission:lecturas.cargar']);
+    $routes->post('equipos/(:num)/lecturas/(:num)/corregir', 'EquipmentManagement::correctReading/$1/$2', ['filter' => 'permission:lecturas.corregir']);
+    $routes->post('equipos/(:num)/planes', 'MaintenanceCircuit::assignPlan/$1', ['filter' => 'permission:planes.editar']);
+    $routes->post('vencimientos/detectar', 'MaintenanceCircuit::detectOverdue', ['filter' => 'permission:planes.editar']);
+    $routes->post('avisos/(:num)/orden', 'MaintenanceCircuit::generateOrder/$1', ['filter' => 'permission:ordenes.editar']);
+    $routes->post('ordenes/(:num)/iniciar', 'MaintenanceCircuit::startOrder/$1', ['filter' => 'permission:ordenes.editar']);
+    $routes->post('ordenes/(:num)/cerrar', 'MaintenanceCircuit::closeOrder/$1', ['filter' => 'permission:ordenes.cerrar']);
+});
+
+$routes->group('reportes', ['filter' => ['auth', 'permission:reportes.ver']], static function ($routes): void {
+    $routes->get('', 'Reports::index');
+    $routes->get('exportar', 'Reports::export');
+});

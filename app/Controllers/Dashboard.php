@@ -2,31 +2,64 @@
 
 namespace App\Controllers;
 
-use App\Models\UsuarioModel;
+use App\Application\Dashboard\GetMaintenanceDashboard;
+use App\Infrastructure\Identity\SessionActorContext;
+use App\Presentation\AppShellPayload;
 use CodeIgniter\Controller;
 
 class Dashboard extends Controller
 {
     public function index()
     {
-        $session = session();
-        $usuarioId = $session->get('usuario_id');
+        $actor = (new SessionActorContext())->current();
 
-        $model  = new UsuarioModel();
-        $roles      = $model->roles($usuarioId);
-        $permisos   = $model->permisos($usuarioId);
-        $sucursales = $model->sucursales($usuarioId);
+        if ($actor === null) {
+            return redirect()->to('/login');
+        }
 
-        return view('dashboard', [
-            'usuario'    => [
-                'id'         => $usuarioId,
-                'nombre'     => $session->get('usuario_nombre'),
-                'email'      => $session->get('usuario_email'),
-                'empresa_id' => $session->get('empresa_id'),
-            ],
-            'roles'      => $roles,
-            'permisos'   => $permisos,
-            'sucursales' => $sucursales,
+        $canSeeOperations = ! $actor->isSuperAdmin() && array_filter(
+            ['equipos.ver', 'planes.ver', 'ordenes.ver', 'ordenes.mi_trabajo'],
+            static fn (string $permission): bool => $actor->hasPermission($permission),
+        ) !== [];
+        $operations = $canSeeOperations
+            ? $this->maintenanceDashboard()->execute($actor)
+            : $this->emptyOperations();
+
+        $dashboardPayload = $this->appShell()->for($actor, 'dashboard') + [
+            'page' => 'dashboard',
+            'metrics' => $operations['metrics'],
+            'upcomingMaintenance' => $operations['upcomingMaintenance'],
+        ];
+
+        return view('app', [
+            'appPayload' => $dashboardPayload,
+            'pageTitle' => 'Panel de mantenimiento',
         ]);
+    }
+
+    private function maintenanceDashboard(): GetMaintenanceDashboard
+    {
+        return service('maintenanceDashboard');
+    }
+
+    private function appShell(): AppShellPayload
+    {
+        return service('appShellPayload');
+    }
+
+    /** @return array<string,mixed> */
+    private function emptyOperations(): array
+    {
+        return [
+            'metrics' => [
+                'equipmentTotal' => 0,
+                'equipmentActive' => 0,
+                'maintenanceDueSoon' => 0,
+                'maintenanceOverdue' => 0,
+                'maintenanceScheduled' => 0,
+                'openOrders' => 0,
+            ],
+            'upcomingMaintenance' => [],
+        ];
     }
 }

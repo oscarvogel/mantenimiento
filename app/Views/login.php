@@ -25,6 +25,10 @@
                     <div class="alert alert-warning"><?= esc(session()->getFlashdata('error')) ?></div>
                 <?php endif; ?>
 
+                <?php if (session()->getFlashdata('msg')): ?>
+                    <div class="alert alert-success"><?= esc(session()->getFlashdata('msg')) ?></div>
+                <?php endif; ?>
+
                 <form method="post" action="<?= base_url('login/authenticate') ?>" autocomplete="off">
                     <?= csrf_field() ?>
                     <div class="mb-3">

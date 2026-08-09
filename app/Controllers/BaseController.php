@@ -2,6 +2,7 @@
 
 namespace App\Controllers;
 
+use App\Application\Identity\ActorContext;
 use CodeIgniter\Controller;
 use CodeIgniter\HTTP\RequestInterface;
 use CodeIgniter\HTTP\ResponseInterface;
@@ -41,5 +42,30 @@ abstract class BaseController extends Controller
 
         // Preload any models, libraries, etc, here.
         // $this->session = service('session');
+    }
+
+    /** @param array<string,mixed> $data */
+    protected function renderApp(
+        ActorContext $actor,
+        string $activeNavigation,
+        string $page,
+        string $title,
+        array $data,
+    ): string {
+        /** @var \App\Presentation\AppShellPayload $shell */
+        $shell = service('appShellPayload');
+        $data['csrf'] = ['name' => csrf_token(), 'hash' => csrf_hash()];
+        $data['flash'] = [
+            'success' => session()->getFlashdata('success'),
+            'error' => session()->getFlashdata('error'),
+        ];
+
+        return view('app', [
+            'appPayload' => $shell->for($actor, $activeNavigation) + [
+                'page' => $page,
+                'data' => $data,
+            ],
+            'pageTitle' => $title,
+        ]);
     }
 }

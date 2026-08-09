@@ -1,0 +1,170 @@
+{
+  "screenshots": [
+    "docs/screenshots/ui/dashboard-desktop.png",
+    "docs/screenshots/ui/equipos-desktop.png",
+    "docs/screenshots/ui/ficha-equipo-desktop.png",
+    "docs/screenshots/ui/servicios-desktop.png",
+    "docs/screenshots/ui/importaciones-desktop.png",
+    "docs/screenshots/ui/sucursales-desktop.png",
+    "docs/screenshots/ui/usuarios-desktop.png",
+    "docs/screenshots/ui/reportes-desktop.png",
+    "docs/screenshots/ui/superadmin-desktop.png",
+    "docs/screenshots/ui/dashboard-mobile.png",
+    "docs/screenshots/ui/equipos-mobile.png",
+    "docs/screenshots/ui/ficha-equipo-mobile.png",
+    "docs/screenshots/ui/servicios-mobile.png",
+    "docs/screenshots/ui/importaciones-mobile.png",
+    "docs/screenshots/ui/sucursales-mobile.png",
+    "docs/screenshots/ui/usuarios-mobile.png",
+    "docs/screenshots/ui/reportes-mobile.png",
+    "docs/screenshots/ui/superadmin-mobile.png"
+  ],
+  "consoleErrors": [],
+  "requestFailures": [],
+  "checks": [
+    {
+      "route": "/dashboard",
+      "viewportName": "desktop",
+      "bodyWidth": 1440,
+      "viewportWidth": 1440,
+      "mainCount": 1,
+      "title": "Panel de mantenimiento"
+    },
+    {
+      "route": "/mantenimiento/equipos",
+      "viewportName": "desktop",
+      "bodyWidth": 1440,
+      "viewportWidth": 1440,
+      "mainCount": 1,
+      "title": "Equipos y catálogos"
+    },
+    {
+      "route": "/mantenimiento/equipos/1",
+      "viewportName": "desktop",
+      "bodyWidth": 1440,
+      "viewportWidth": 1440,
+      "mainCount": 1,
+      "title": "Ficha del equipo"
+    },
+    {
+      "route": "/mantenimiento",
+      "viewportName": "desktop",
+      "bodyWidth": 1440,
+      "viewportWidth": 1440,
+      "mainCount": 1,
+      "title": "Mantenimiento preventivo"
+    },
+    {
+      "route": "/mantenimiento/importaciones",
+      "viewportName": "desktop",
+      "bodyWidth": 1440,
+      "viewportWidth": 1440,
+      "mainCount": 1,
+      "title": "Importaciones"
+    },
+    {
+      "route": "/administracion/sucursales",
+      "viewportName": "desktop",
+      "bodyWidth": 1440,
+      "viewportWidth": 1440,
+      "mainCount": 1,
+      "title": "Administración de sucursales"
+    },
+    {
+      "route": "/administracion/usuarios",
+      "viewportName": "desktop",
+      "bodyWidth": 1440,
+      "viewportWidth": 1440,
+      "mainCount": 1,
+      "title": "Administración de usuarios"
+    },
+    {
+      "route": "/reportes",
+      "viewportName": "desktop",
+      "bodyWidth": 1440,
+      "viewportWidth": 1440,
+      "mainCount": 1,
+      "title": "Reportes de mantenimiento"
+    },
+    {
+      "route": "/superadmin",
+      "viewportName": "desktop",
+      "bodyWidth": 1440,
+      "viewportWidth": 1440,
+      "mainCount": 1,
+      "title": "Administración global"
+    },
+    {
+      "route": "/dashboard",
+      "viewportName": "mobile",
+      "bodyWidth": 390,
+      "viewportWidth": 390,
+      "mainCount": 1,
+      "title": "Panel de mantenimiento"
+    },
+    {
+      "route": "/mantenimiento/equipos",
+      "viewportName": "mobile",
+      "bodyWidth": 390,
+      "viewportWidth": 390,
+      "mainCount": 1,
+      "title": "Equipos y catálogos"
+    },
+    {
+      "route": "/mantenimiento/equipos/1",
+      "viewportName": "mobile",
+      "bodyWidth": 390,
+      "viewportWidth": 390,
+      "mainCount": 1,
+      "title": "Ficha del equipo"
+    },
+    {
+      "route": "/mantenimiento",
+      "viewportName": "mobile",
+      "bodyWidth": 390,
+      "viewportWidth": 390,
+      "mainCount": 1,
+      "title": "Mantenimiento preventivo"
+    },
+    {
+      "route": "/mantenimiento/importaciones",
+      "viewportName": "mobile",
+      "bodyWidth": 390,
+      "viewportWidth": 390,
+      "mainCount": 1,
+      "title": "Importaciones"
+    },
+    {
+      "route": "/administracion/sucursales",
+      "viewportName": "mobile",
+      "bodyWidth": 390,
+      "viewportWidth": 390,
+      "mainCount": 1,
+      "title": "Administración de sucursales"
+    },
+    {
+      "route": "/administracion/usuarios",
+      "viewportName": "mobile",
+      "bodyWidth": 390,
+      "viewportWidth": 390,
+      "mainCount": 1,
+      "title": "Administración de usuarios"
+    },
+    {
+      "route": "/reportes",
+      "viewportName": "mobile",
+      "bodyWidth": 390,
+      "viewportWidth": 390,
+      "mainCount": 1,
+      "title": "Reportes de mantenimiento"
+    },
+    {
+      "route": "/superadmin",
+      "viewportName": "mobile",
+      "bodyWidth": 390,
+      "viewportWidth": 390,
+      "mainCount": 1,
+      "title": "Administración global"
+    }
+  ]
+}
