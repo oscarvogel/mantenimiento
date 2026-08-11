@@ -28,13 +28,10 @@ $routes->group('superadmin', ['filter' => 'superadmin'], static function ($route
     $routes->post('usuarios/(:num)/roles', 'SuperAdmin::assignRoles/$1');
 });
 
-// Administración limitada a la empresa del actor. Auth refresca ActorContext
-// antes de que el filtro de permiso evalúe cada operación.
 $routes->group('administracion', ['filter' => ['auth']], static function ($routes): void {
     $routes->get('sucursales', 'TenantAdmin::branches', ['filter' => 'permission:sucursales.ver']);
     $routes->post('sucursales', 'TenantAdmin::createBranch', ['filter' => 'permission:sucursales.editar']);
     $routes->post('sucursales/(:num)', 'TenantAdmin::updateBranch/$1', ['filter' => 'permission:sucursales.editar']);
-
     $routes->get('usuarios', 'TenantAdmin::users', ['filter' => 'permission:usuarios.ver']);
     $routes->post('usuarios', 'TenantAdmin::createUser', ['filter' => ['permission:usuarios.editar', 'permission:roles.editar']]);
     $routes->post('usuarios/(:num)', 'TenantAdmin::updateUser/$1', ['filter' => 'permission:usuarios.editar']);
@@ -42,8 +39,6 @@ $routes->group('administracion', ['filter' => ['auth']], static function ($route
     $routes->post('usuarios/(:num)/password', 'TenantAdmin::resetUserPassword/$1', ['filter' => 'permission:usuarios.editar']);
 });
 
-// Primer circuito vertical preventivo. Cada mutación valida además empresa y
-// sucursal dentro del caso de uso, no solo el permiso de la ruta.
 $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes): void {
     $routes->get('', 'MaintenanceCircuit::index', ['filter' => 'permission:equipos.ver']);
     $routes->get('equipos', 'AssetManagement::index', ['filter' => 'permission:equipos.ver']);
@@ -64,12 +59,15 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->post('catalogos/modelos', 'AssetManagement::createModel', ['filter' => 'permission:equipos.editar']);
     $routes->post('catalogos/modelos/(:num)', 'AssetManagement::renameModel/$1', ['filter' => 'permission:equipos.editar']);
     $routes->post('catalogos/modelos/(:num)/inactivar', 'AssetManagement::inactivateModel/$1', ['filter' => 'permission:equipos.editar']);
+
     $routes->get('importaciones', 'ImportManagement::index', ['filter' => 'permission:importaciones.ver']);
+    $routes->get('importaciones/biblioteca', 'ImportManagement::library', ['filter' => 'permission:importaciones.ver']);
     $routes->get('importaciones/plantilla/(:segment)', 'ImportManagement::template/$1', ['filter' => 'permission:importaciones.cargar']);
     $routes->post('importaciones', 'ImportManagement::upload', ['filter' => 'permission:importaciones.cargar']);
     $routes->get('importaciones/(:num)', 'ImportManagement::show/$1', ['filter' => 'permission:importaciones.ver']);
     $routes->post('importaciones/(:num)/confirmar', 'ImportManagement::confirm/$1', ['filter' => 'permission:importaciones.cargar']);
     $routes->post('importaciones/(:num)/cancelar', 'ImportManagement::cancel/$1', ['filter' => 'permission:importaciones.cargar']);
+
     $routes->post('equipos/(:num)/lecturas', 'MaintenanceCircuit::registerReading/$1', ['filter' => 'permission:lecturas.cargar']);
     $routes->post('equipos/(:num)/lecturas/(:num)/corregir', 'EquipmentManagement::correctReading/$1/$2', ['filter' => 'permission:lecturas.corregir']);
     $routes->post('equipos/(:num)/planes', 'MaintenanceCircuit::assignPlan/$1', ['filter' => 'permission:planes.editar']);

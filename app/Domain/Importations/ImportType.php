@@ -10,6 +10,7 @@ enum ImportType: string
 {
     case EQUIPOS = 'EQUIPOS';
     case LECTURAS = 'LECTURAS';
+    case BIBLIOTECA_PREVENTIVA = 'BIBLIOTECA_PREVENTIVA';
 
     /** @return list<string> */
     public function requiredHeaders(): array
@@ -17,6 +18,7 @@ enum ImportType: string
         return match ($this) {
             self::EQUIPOS => ['sucursal_codigo', 'tipo_equipo', 'codigo', 'fecha_alta'],
             self::LECTURAS => ['equipo_codigo', 'fecha_lectura', 'kilometraje', 'horometro', 'origen'],
+            self::BIBLIOTECA_PREVENTIVA => [],
         };
     }
 
@@ -32,12 +34,13 @@ enum ImportType: string
                 'equipo_codigo', 'fecha_lectura', 'kilometraje', 'horometro',
                 'origen', 'observaciones',
             ],
+            self::BIBLIOTECA_PREVENTIVA => [],
         };
     }
 
     public static function parse(string $value): self
     {
         return self::tryFrom(strtoupper(trim($value)))
-            ?? throw new DomainException('El tipo de importacion debe ser EQUIPOS o LECTURAS.');
+            ?? throw new DomainException('El tipo de importacion debe ser EQUIPOS, LECTURAS o BIBLIOTECA_PREVENTIVA.');
     }
 }
