@@ -11,6 +11,7 @@ use App\Application\PreventiveMaintenance\ListPreventivePlansHandler;
 use App\Infrastructure\Identity\SessionActorContext;
 use App\Presentation\PreventivePlansPayload;
 use CodeIgniter\HTTP\RedirectResponse;
+use DateTimeImmutable;
 use DomainException;
 use InvalidArgumentException;
 use Throwable;
@@ -65,6 +66,9 @@ final class PreventivePlans extends BaseController
                 $intervalKm === null ? null : ($this->nullableNonNegativeInt($this->request->getPost('anticipacion_km')) ?? 0),
                 $intervalHours === null ? null : ($this->hoursTenths($this->request->getPost('anticipacion_horas')) ?? 0),
                 $intervalDays === null ? null : ($this->nullableNonNegativeInt($this->request->getPost('anticipacion_dias')) ?? 0),
+                baseKm: $intervalKm === null ? null : $this->nullableNonNegativeInt($this->request->getPost('base_km')),
+                baseHoursTenths: $intervalHours === null ? null : $this->hoursTenths($this->request->getPost('base_horas')),
+                baseDate: $intervalDays === null ? null : $this->nullableDate($this->request->getPost('base_fecha')),
                 priority: strtoupper(trim((string) ($this->request->getPost('prioridad') ?: 'MEDIA'))),
                 notes: $this->nullableString($this->request->getPost('observaciones')),
             ));
@@ -100,6 +104,21 @@ final class PreventivePlans extends BaseController
     {
         $value = trim((string) $value);
         return $value === '' ? null : $value;
+    }
+
+    private function nullableDate(mixed $value): ?DateTimeImmutable
+    {
+        $value = trim((string) $value);
+        if ($value === '') {
+            return null;
+        }
+
+        $date = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+        if ($date === false || $date->format('Y-m-d') !== $value) {
+            throw new DomainException('La fecha de última realización no es válida.');
+        }
+
+        return $date;
     }
 
     private function requiredPositiveInt(mixed $value, string $field): int

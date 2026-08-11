@@ -20,7 +20,7 @@ use PHPUnit\Framework\TestCase;
 
 final class PreventiveMaintenanceUseCasesTest extends TestCase
 {
-    public function testAssignPlanUsesCurrentReadingAndInjectedClockAsDefaultBases(): void
+    public function testAssignPlanDoesNotInventHistoricalBasesFromCurrentUsageOrClock(): void
     {
         $plans = new FakePlanRepository();
         $assets = new FakePreventiveAssetGateway(new EquipmentForPlan(
@@ -50,12 +50,12 @@ final class PreventiveMaintenanceUseCasesTest extends TestCase
 
         self::assertSame(77, $id);
         self::assertNotNull($plans->saved);
-        self::assertSame(90_000, $plans->saved->baseKm());
-        self::assertSame(100_000, $plans->saved->proximoKm());
-        self::assertSame(1_000, $plans->saved->baseHorasDecimas());
-        self::assertSame(1_500, $plans->saved->proximasHorasDecimas());
-        self::assertSame('2026-01-15', $plans->saved->baseFecha()?->format('Y-m-d'));
-        self::assertSame('2026-02-14', $plans->saved->proximaFecha()?->format('Y-m-d'));
+        self::assertNull($plans->saved->baseKm());
+        self::assertNull($plans->saved->proximoKm());
+        self::assertNull($plans->saved->baseHorasDecimas());
+        self::assertNull($plans->saved->proximasHorasDecimas());
+        self::assertNull($plans->saved->baseFecha());
+        self::assertNull($plans->saved->proximaFecha());
     }
 
     public function testAssignPlanRejectsAResourceOutsideAuthorizedBranches(): void
