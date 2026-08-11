@@ -3,6 +3,7 @@ import EquipmentDetailPage from './EquipmentDetailPage.vue'
 import ImportsIndexPage from './ImportsIndexPage.vue'
 import ImportsShowPage from './ImportsShowPage.vue'
 import MaintenanceOverviewPage from './MaintenanceOverviewPage.vue'
+import PreventiveLibraryPage from './PreventiveLibraryPage.vue'
 import PreventivePlansPage from './PreventivePlansPage.vue'
 
 export {
@@ -11,6 +12,7 @@ export {
   ImportsIndexPage,
   ImportsShowPage,
   MaintenanceOverviewPage,
+  PreventiveLibraryPage,
   PreventivePlansPage,
 }
 
