@@ -49,6 +49,8 @@ final class CodeIgniterPreventiveLibraryReadModel
             ->orderBy('s.nombre', 'ASC')
             ->get()->getResultArray();
 
+        $tasksByService = $this->tasksByService($items);
+
         return [
             'templates' => array_map(static fn (array $row): array => [
                 'id' => (int) $row['id'],
@@ -88,7 +90,52 @@ final class CodeIgniterPreventiveLibraryReadModel
                 'priority' => (string) $row['prioridad'],
                 'active' => (int) $row['activo'] === 1,
                 'notes' => $row['observaciones'] === null ? null : (string) $row['observaciones'],
+                'tasks' => $tasksByService[(int) $row['tipo_servicio_id']] ?? [],
             ], $items),
         ];
+    }
+
+    /**
+     * @param list<array<string,mixed>> $items
+     *
+     * @return array<int,list<array<string,mixed>>>
+     */
+    private function tasksByService(array $items): array
+    {
+        if ($items === [] || ! $this->database->tableExists('tipo_servicio_tareas') || ! $this->database->tableExists('tareas_mantenimiento')) {
+            return [];
+        }
+
+        $serviceIds = array_values(array_unique(array_map(
+            static fn (array $row): int => (int) $row['tipo_servicio_id'],
+            $items,
+        )));
+
+        $rows = $this->database->table('tipo_servicio_tareas st')
+            ->select('st.tipo_servicio_id, st.orden, st.obligatoria, st.observaciones, t.id, t.codigo, t.nombre, t.descripcion, t.requiere_repuesto, t.requiere_control, t.requiere_foto')
+            ->join('tareas_mantenimiento t', 't.id = st.tarea_id', 'inner')
+            ->whereIn('st.tipo_servicio_id', $serviceIds)
+            ->where('t.activo', 1)
+            ->orderBy('st.tipo_servicio_id', 'ASC')
+            ->orderBy('st.orden', 'ASC')
+            ->get()->getResultArray();
+
+        $tasksByService = [];
+        foreach ($rows as $row) {
+            $tasksByService[(int) $row['tipo_servicio_id']][] = [
+                'id' => (int) $row['id'],
+                'code' => (string) $row['codigo'],
+                'name' => (string) $row['nombre'],
+                'description' => $row['descripcion'] === null ? null : (string) $row['descripcion'],
+                'order' => (int) $row['orden'],
+                'mandatory' => (int) $row['obligatoria'] === 1,
+                'requiresPart' => (int) $row['requiere_repuesto'] === 1,
+                'requiresControl' => (int) $row['requiere_control'] === 1,
+                'requiresPhoto' => (int) $row['requiere_foto'] === 1,
+                'observations' => $row['observaciones'] === null ? null : (string) $row['observaciones'],
+            ];
+        }
+
+        return $tasksByService;
     }
 }

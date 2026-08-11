@@ -104,8 +104,11 @@ export const importShowData = {
 export const preventiveLibraryData = {
   csrf, flash, canEdit: true,
   routes: { back: '/mantenimiento/importaciones', downloadTemplate: '/mantenimiento/importaciones/plantilla/BIBLIOTECA_PREVENTIVA' },
-  templates: [{ id: 3, code: 'CAM-GRAL', name: 'Preventivo camiones', scope: 'EMPRESA', equipmentType: 'Camión', brand: null, model: null, active: true, itemCount: 1 }],
-  services: [{ id: 3, code: 'SM', name: 'Service motor', category: 'Motor', active: true, taskCount: 2, materialCount: 1 }],
+  templates: [{ id: 3, code: 'CAM-GRAL', name: 'Preventivo camiones', scope: 'EMPRESA', equipmentType: 'Camión', brand: null, model: null, active: true, itemCount: 2 }],
+  services: [
+    { id: 3, code: 'SM', name: 'Service motor', category: 'Motor', active: true, taskCount: 2, materialCount: 1 },
+    { id: 4, code: 'FR', name: 'Inspección frenos', category: 'Seguridad', active: true, taskCount: 1, materialCount: 0 },
+  ],
   items: [{
     id: 15,
     templateId: 3,
@@ -124,6 +127,32 @@ export const preventiveLibraryData = {
     priority: 'MEDIA',
     active: true,
     notes: 'Aceite y filtros',
+    tasks: [
+      { id: 1, code: 'ACEITE', name: 'Cambiar aceite de motor', description: 'Aceite y filtros', order: 1, mandatory: true, requiresPart: true, requiresControl: true, requiresPhoto: false, observations: 'Usar especificación indicada' },
+      { id: 2, code: 'FILTRO', name: 'Revisar filtro de aire', description: null, order: 2, mandatory: false, requiresPart: false, requiresControl: true, requiresPhoto: false, observations: null },
+    ],
     updateUrl: '/mantenimiento/importaciones/biblioteca/items/15',
+  }, {
+    id: 16,
+    templateId: 3,
+    templateCode: 'CAM-GRAL',
+    templateName: 'Preventivo camiones',
+    equipmentType: 'Camión',
+    serviceTypeId: 4,
+    serviceCode: 'FR',
+    serviceName: 'Inspección frenos',
+    intervalKm: 5000,
+    intervalHours: null,
+    intervalDays: 90,
+    warningKm: 500,
+    warningHours: null,
+    warningDays: 7,
+    priority: 'ALTA',
+    active: true,
+    notes: 'Control de seguridad',
+    tasks: [
+      { id: 3, code: 'FRENOS', name: 'Revisar cintas de freno', description: 'Control visual y ajuste', order: 1, mandatory: true, requiresPart: false, requiresControl: true, requiresPhoto: true, observations: null },
+    ],
+    updateUrl: '/mantenimiento/importaciones/biblioteca/items/16',
   }],
 }

@@ -208,3 +208,20 @@ el archivo local. Como minimo:
 - PHPUnit focalizado: `GetAppShellContextTest.php` paso con `4` tests y `18`
   assertions.
 - PHP lint: sin errores en `AppShellPayload.php` e `ImportManagement.php`.
+
+## Evidencia del ajuste de tareas y buscador del 11 de agosto de 2026
+
+- Se publico un ajuste incremental por FTPS para que la biblioteca preventiva
+  muestre las tareas internas de cada servicio y permita buscar por plantilla,
+  servicio, codigo o tarea.
+- Archivos remotos verificados por SHA-256 contra local:
+  `app/Infrastructure/Importations/CodeIgniterPreventiveLibraryReadModel.php`,
+  `assets/dashboard/.vite/manifest.json`, `main-B4ZvkA7Z.css` y
+  `main-BvZU_YxX.js`.
+- Frontend focalizado: `OperationsPages.test.js` paso con `29` tests.
+- PHP lint: sin errores en
+  `CodeIgniterPreventiveLibraryReadModel.php`.
+- Navegador integrado: la ruta protegida
+  `/mantenimiento/mantenimiento/importaciones/biblioteca` redirigio a login
+  por falta de sesion autenticada en el navegador, y el login cargo los bundles
+  nuevos `main-BvZU_YxX.js` y `main-B4ZvkA7Z.css` sin errores de consola.

@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { ArrowDownTrayIcon } from '@heroicons/vue/24/outline'
 import CsrfInput from './components/CsrfInput.vue'
 import PageHeading from './components/PageHeading.vue'
@@ -13,7 +13,29 @@ const props = defineProps({ data: { type: Object, required: true } })
 const templates = computed(() => props.data.templates ?? [])
 const services = computed(() => props.data.services ?? [])
 const items = computed(() => props.data.items ?? [])
+const searchQuery = ref('')
 const valueOrBlank = (value) => (value === null || value === undefined ? '' : String(value))
+const normalize = (value) => valueOrBlank(value).trim().toLowerCase()
+const itemSearchText = (item) => [
+  item.templateCode,
+  item.templateName,
+  item.equipmentType,
+  item.serviceCode,
+  item.serviceName,
+  item.priority,
+  item.notes,
+  ...(item.tasks ?? []).flatMap((task) => [
+    task.code,
+    task.name,
+    task.description,
+    task.observations,
+  ]),
+].map(normalize).join(' ')
+const filteredItems = computed(() => {
+  const query = normalize(searchQuery.value)
+  if (query === '') return items.value
+  return items.value.filter((item) => itemSearchText(item).includes(query))
+})
 </script>
 
 <template>
@@ -42,10 +64,16 @@ const valueOrBlank = (value) => (value === null || value === undefined ? '' : St
       </article>
     </section>
 
-    <PanelCard title="Planes de biblioteca" :count="items.length" class="mb-6">
+    <PanelCard title="Planes de biblioteca" :count="filteredItems.length" class="mb-6">
+      <div v-if="items.length > 0" class="mb-4 max-w-xl">
+        <FormField label="Buscar" for-id="library-search">
+          <input id="library-search" v-model="searchQuery" name="q" type="search" placeholder="Plantilla, servicio, código o tarea" :class="fieldClass" />
+        </FormField>
+      </div>
       <EmptyState v-if="items.length === 0" title="Todavía no hay planes importados" description="Importá la biblioteca preventiva desde Excel para crear el primer plan de plantilla." />
+      <EmptyState v-else-if="filteredItems.length === 0" title="No hay resultados" description="Probá con otra plantilla, servicio, código o tarea." />
       <div v-else class="grid gap-4">
-        <article v-for="item in items" :key="item.id" class="rounded-xl border border-border bg-white p-4 shadow-sm">
+        <article v-for="item in filteredItems" :key="item.id" class="rounded-xl border border-border bg-white p-4 shadow-sm">
           <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
             <div>
               <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ item.templateCode }} · {{ item.equipmentType }}</p>
@@ -53,6 +81,28 @@ const valueOrBlank = (value) => (value === null || value === undefined ? '' : St
               <p class="mt-1 text-sm text-ink-muted">{{ item.templateName }} · {{ item.serviceCode }}</p>
             </div>
             <StatusBadge :status="item.active ? 'ACTIVO' : 'INACTIVO'" />
+          </div>
+
+          <div class="mb-4 rounded-lg border border-border-subtle bg-surface-subtle p-3">
+            <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Tareas</p>
+            <ul v-if="item.tasks && item.tasks.length > 0" class="mt-2 grid gap-2 lg:grid-cols-2">
+              <li v-for="task in item.tasks" :key="task.id" class="rounded-lg bg-white px-3 py-2 text-sm text-ink shadow-sm">
+                <div class="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <p class="font-semibold">{{ task.name }}</p>
+                    <p class="mt-0.5 font-mono text-xs text-ink-muted">{{ task.code }}</p>
+                  </div>
+                  <span v-if="task.mandatory" class="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">Obligatoria</span>
+                </div>
+                <p v-if="task.description" class="mt-2 text-xs text-ink-muted">{{ task.description }}</p>
+                <div v-if="task.requiresPart || task.requiresControl || task.requiresPhoto" class="mt-2 flex flex-wrap gap-1.5">
+                  <span v-if="task.requiresPart" class="rounded-full bg-surface-raised px-2 py-0.5 text-xs font-semibold text-ink-muted">Repuesto</span>
+                  <span v-if="task.requiresControl" class="rounded-full bg-surface-raised px-2 py-0.5 text-xs font-semibold text-ink-muted">Control</span>
+                  <span v-if="task.requiresPhoto" class="rounded-full bg-surface-raised px-2 py-0.5 text-xs font-semibold text-ink-muted">Foto</span>
+                </div>
+              </li>
+            </ul>
+            <p v-else class="mt-2 text-sm text-ink-muted">Sin tareas cargadas</p>
           </div>
 
           <form method="post" :action="item.updateUrl" class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">

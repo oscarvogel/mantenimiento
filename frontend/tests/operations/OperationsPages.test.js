@@ -85,6 +85,11 @@ describe('preventive-library', () => {
     expect(wrapper.text()).toContain('Planes de biblioteca')
     expect(wrapper.text()).toContain('Preventivo camiones')
     expect(wrapper.text()).toContain('Service motor')
+    expect(wrapper.text()).toContain('Cambiar aceite de motor')
+    expect(wrapper.text()).toContain('ACEITE')
+    expect(wrapper.text()).toContain('Obligatoria')
+    expect(wrapper.text()).toContain('Repuesto')
+    expect(wrapper.text()).toContain('Control')
     expect(form.get('input[name="csrf_test_name"]').attributes('value')).toBe('secure-token')
     expect(form.get('input[name="intervalo_km"]').element.value).toBe('10000')
     expect(form.get('input[name="anticipacion_km"]').element.value).toBe('1000')
@@ -95,6 +100,17 @@ describe('preventive-library', () => {
     expect(form.get('select[name="prioridad"]').element.value).toBe('MEDIA')
     expect(form.get('input[name="activo"]').element.checked).toBe(true)
     expect(form.get('textarea[name="observaciones"]').element.value).toBe('Aceite y filtros')
+  })
+
+  it('filtra planes de biblioteca por servicio, plantilla, codigo o tarea', async () => {
+    const wrapper = render(PreventiveLibraryPage, preventiveLibraryData)
+
+    await wrapper.get('input[type="search"][name="q"]').setValue('frenos')
+
+    expect(wrapper.text()).toContain('Inspección frenos')
+    expect(wrapper.text()).toContain('Revisar cintas de freno')
+    expect(wrapper.find('form[action="/mantenimiento/importaciones/biblioteca/items/15"]').exists()).toBe(false)
+    expect(wrapper.find('form[action="/mantenimiento/importaciones/biblioteca/items/16"]').exists()).toBe(true)
   })
 
   it('deja la biblioteca en modo lectura cuando no hay permiso de carga', () => {
