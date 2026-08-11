@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - feat/issue-15-biblioteca-preventiva
+  pull_request:
+    branches:
+      - main
 
 jobs:
   test:
