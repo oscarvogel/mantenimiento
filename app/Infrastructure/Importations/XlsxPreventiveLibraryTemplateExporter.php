@@ -22,11 +22,11 @@ final class XlsxPreventiveLibraryTemplateExporter
         $book->removeSheetByIndex(0);
         $this->sheet($book, 'INSTRUCCIONES', ['concepto', 'regla'], [
             ['SERVICIO', 'Define que mantenimiento se realiza. No lleva frecuencia.'],
-            ['TAREAS_SERVICIO', 'Define el checklist o pasos del servicio.'],
-            ['REPUESTOS_SERVICIO', 'Define materiales sugeridos; el SKU exacto puede completarse por equipo.'],
+            ['TAREAS_SERVICIO', 'Define checklist/pasos reutilizables.'],
+            ['REPUESTOS_SERVICIO', 'Define materiales sugeridos; SKU y cantidades exactas pueden ajustarse por equipo.'],
             ['PLANTILLAS', 'Agrupa servicios para un tipo de equipo dentro de la empresa.'],
-            ['ITEMS_PLANTILLA', 'Define cuando se ejecuta cada servicio: km, horas, dias y anticipaciones.'],
-            ['IMPORTANTE', 'Los intervalos son una propuesta inicial y deben validarse con fabricante y politica de mantenimiento.'],
+            ['ITEMS_PLANTILLA', 'Define frecuencia, anticipacion y prioridad.'],
+            ['IMPORTANTE', 'Los intervalos son propuesta inicial; validar con fabricante y politica de mantenimiento.'],
         ]);
         $this->sheet($book, 'SERVICIOS', ['codigo_servicio','nombre','descripcion','categoria','activo'], $this->services());
         $this->sheet($book, 'TAREAS_SERVICIO', ['codigo_servicio','orden','codigo_tarea','tarea','descripcion','obligatoria','activo'], $this->tasks());
@@ -36,40 +36,35 @@ final class XlsxPreventiveLibraryTemplateExporter
         ]]);
         $this->sheet($book, 'ITEMS_PLANTILLA', ['codigo_plantilla','codigo_servicio','intervalo_km','intervalo_horas','intervalo_dias','anticipacion_km','anticipacion_horas','anticipacion_dias','prioridad','activo','observaciones'], $this->templateItems());
         $this->sheet($book, 'CATALOGOS', ['prioridades','activo','tipo_item','unidades','ambitos'], [
-            ['BAJA','SI','REPUESTO','UN','EMPRESA'],
-            ['MEDIA','NO','INSUMO','L',''],
-            ['ALTA','','','KG',''],
-            ['CRITICA','','','M',''],
+            ['BAJA','SI','REPUESTO','UN','EMPRESA'], ['MEDIA','NO','INSUMO','L',''], ['ALTA','','','KG',''], ['CRITICA','','','M',''],
         ]);
 
         foreach ($book->getWorksheetIterator() as $sheet) {
             $sheet->freezePane('A2');
-            $sheet->getStyle('1:1')->getFont()->setBold(true);
+            $sheet->getStyle('1:1')->getFont()->setBold(true)->getColor()->setRGB('FFFFFF');
             $sheet->getStyle('1:1')->getFill()->setFillType('solid')->getStartColor()->setRGB('0F4C81');
-            $sheet->getStyle('1:1')->getFont()->getColor()->setRGB('FFFFFF');
             foreach ($sheet->getColumnIterator() as $column) {
-                $column->getColumnDimension()->setAutoSize(true);
+                $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
             }
         }
 
-        $stream = fopen('php://temp', 'w+b');
-        if ($stream === false) {
-            throw new DomainException('No se pudo generar el XLSX de biblioteca preventiva.');
+        $temporary = tempnam(sys_get_temp_dir(), 'mantenimiento_xlsx_');
+        if ($temporary === false) {
+            $book->disconnectWorksheets();
+            throw new DomainException('No se pudo crear el archivo temporal de la plantilla.');
         }
-        (new Xlsx($book))->save($stream);
-        rewind($stream);
-        $contents = stream_get_contents($stream);
-        fclose($stream);
-        $book->disconnectWorksheets();
+        try {
+            (new Xlsx($book))->save($temporary);
+            $contents = file_get_contents($temporary);
+        } finally {
+            $book->disconnectWorksheets();
+            @unlink($temporary);
+        }
         if ($contents === false) {
             throw new DomainException('No se pudo leer el XLSX generado.');
         }
 
-        return new ImportTemplateFile(
-            'plantilla_general_camiones.xlsx',
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            $contents,
-        );
+        return new ImportTemplateFile('plantilla_general_camiones.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', $contents);
     }
 
     /** @param list<string> $headers @param list<list<mixed>> $rows */
@@ -104,34 +99,24 @@ final class XlsxPreventiveLibraryTemplateExporter
         return [
             ['ACEITE-MOTOR',10,'DRENAR-ACEITE','Drenar aceite usado','Drenar completamente el lubricante usado.','SI','SI'],
             ['ACEITE-MOTOR',20,'CAMBIAR-FILTRO-ACEITE','Reemplazar filtro de aceite','Instalar el repuesto correspondiente.','SI','SI'],
-            ['ACEITE-MOTOR',30,'REVISAR-TAPON','Revisar tapón y sello','Controlar tapón, rosca y sello/arandela.','SI','SI'],
-            ['ACEITE-MOTOR',40,'CARGAR-ACEITE','Cargar aceite nuevo','Cargar lubricante aprobado.','SI','SI'],
-            ['ACEITE-MOTOR',50,'CONTROL-PERDIDAS','Controlar pérdidas','Verificar pérdidas luego del arranque.','SI','SI'],
-            ['ACEITE-MOTOR',60,'CONTROL-NIVEL','Verificar nivel final','Recontrolar nivel luego de estabilización.','SI','SI'],
+            ['ACEITE-MOTOR',30,'CARGAR-ACEITE','Cargar aceite nuevo','Cargar lubricante aprobado.','SI','SI'],
+            ['ACEITE-MOTOR',40,'CONTROL-PERDIDAS','Controlar pérdidas','Verificar pérdidas y nivel final.','SI','SI'],
             ['FILTRO-COMB',10,'CAMBIAR-FILTROS-COMB','Reemplazar filtros de combustible','Sustituir elementos aplicables.','SI','SI'],
-            ['FILTRO-COMB',20,'PURGAR-COMB','Purgar circuito','Eliminar aire según procedimiento.','SI','SI'],
-            ['FILTRO-COMB',30,'CONTROL-FUGAS-COMB','Verificar pérdidas','Comprobar estanqueidad.','SI','SI'],
+            ['FILTRO-COMB',20,'PURGAR-COMB','Purgar y controlar circuito','Eliminar aire y comprobar estanqueidad.','SI','SI'],
             ['FILTRO-AIRE',10,'INSPEC-FILTRO-AIRE','Inspeccionar filtro de aire','Evaluar restricción, suciedad y carcasa.','SI','SI'],
             ['FILTRO-AIRE',20,'CAMBIAR-FILTRO-AIRE','Reemplazar filtro si corresponde','Sustituir por intervalo o condición.','NO','SI'],
             ['ENGRASE',10,'ENGRASAR-PUNTOS','Engrasar puntos aplicables','Aplicar grasa según mapa del vehículo.','SI','SI'],
-            ['FRENOS',10,'INSPEC-FRENOS','Inspeccionar componentes de freno','Controlar desgaste y estado visible.','SI','SI'],
-            ['FRENOS',20,'CONTROL-FUGAS-AIRE','Controlar fugas neumáticas','Verificar pérdidas de presión.','SI','SI'],
-            ['FRENOS',30,'PRUEBA-FRENO','Prueba funcional','Verificar funcionamiento con procedimiento seguro.','SI','SI'],
-            ['CAJA-ACEITE',10,'CONTROL-NIVEL-CAJA','Controlar nivel/estado de aceite de caja','Verificar nivel y condición.','SI','SI'],
+            ['FRENOS',10,'INSPEC-FRENOS','Inspeccionar componentes de freno','Controlar desgaste, líneas y fugas.','SI','SI'],
+            ['FRENOS',20,'PRUEBA-FRENO','Prueba funcional','Verificar funcionamiento con procedimiento seguro.','SI','SI'],
+            ['CAJA-ACEITE',10,'CONTROL-CAJA','Controlar caja de velocidades','Verificar nivel, condición y pérdidas.','SI','SI'],
             ['CAJA-ACEITE',20,'CAMBIAR-ACEITE-CAJA','Reemplazar aceite de caja','Drenar y cargar lubricante especificado.','SI','SI'],
-            ['DIFERENCIAL',10,'CONTROL-NIVEL-DIF','Controlar nivel de diferenciales','Revisar nivel y condición.','SI','SI'],
+            ['DIFERENCIAL',10,'CONTROL-DIF','Controlar diferenciales/ejes','Revisar nivel, condición y pérdidas.','SI','SI'],
             ['DIFERENCIAL',20,'CAMBIAR-ACEITE-DIF','Reemplazar lubricante','Drenar/cargar lubricante especificado.','SI','SI'],
-            ['REFRIGERANTE',10,'CONTROL-REFRIG','Controlar nivel y estado','Verificar nivel y condición.','SI','SI'],
-            ['REFRIGERANTE',20,'CONTROL-MANGUERAS-REFRIG','Inspeccionar mangueras y uniones','Buscar pérdidas o deformaciones.','SI','SI'],
-            ['CORREAS',10,'INSPEC-CORREAS','Inspeccionar correas','Controlar grietas, desgaste y tensión.','SI','SI'],
-            ['CORREAS',20,'INSPEC-TENSORES','Inspeccionar tensores y poleas','Controlar juego, ruido y alineación.','SI','SI'],
-            ['SIST-NEUMATICO',10,'CONTROL-FUGAS-NEUM','Controlar fugas del sistema','Revisar pérdida de presión y uniones.','SI','SI'],
-            ['SIST-NEUMATICO',20,'CONTROL-SECADOR','Controlar secador de aire','Evaluar funcionamiento y cartucho.','SI','SI'],
-            ['BATERIAS',10,'CONTROL-BORNES','Controlar bornes y conexiones','Verificar limpieza, ajuste y corrosión.','SI','SI'],
-            ['BATERIAS',20,'MEDIR-BATERIAS','Comprobar estado de baterías','Medir estado con método disponible.','SI','SI'],
-            ['SEGURIDAD',10,'CONTROL-LUCES','Controlar luces y señalización','Verificar luces obligatorias y balizas.','SI','SI'],
-            ['SEGURIDAD',20,'CONTROL-NEUMATICOS','Controlar neumáticos','Estado y daños visibles.','SI','SI'],
-            ['SEGURIDAD',30,'CONTROL-PERDIDAS-GEN','Control general de pérdidas','Motor, transmisión, refrigerante, combustible y aire.','SI','SI'],
+            ['REFRIGERANTE',10,'CONTROL-REFRIG','Controlar refrigerante','Verificar nivel, condición, mangueras y pérdidas.','SI','SI'],
+            ['CORREAS',10,'INSPEC-CORREAS','Inspeccionar correas y tensores','Controlar grietas, desgaste, tensión y poleas.','SI','SI'],
+            ['SIST-NEUMATICO',10,'CONTROL-SIST-NEUM','Controlar sistema neumático','Revisar fugas, depósitos y secador.','SI','SI'],
+            ['BATERIAS',10,'CONTROL-BATERIAS','Controlar baterías y carga','Verificar bornes, estado y sistema de carga.','SI','SI'],
+            ['SEGURIDAD',10,'CONTROL-SEGURIDAD','Inspección general de seguridad','Luces, neumáticos, dirección, suspensión y pérdidas.','SI','SI'],
         ];
     }
 
