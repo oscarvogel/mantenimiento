@@ -73,13 +73,9 @@ final readonly class AsignarPlan
             $command->warningKm,
             $command->warningHoursTenths,
             $command->warningDays,
-            $command->intervalKm === null
-                ? null
-                : ($command->baseKm ?? $equipment->currentUsage->kilometraje()),
-            $command->intervalHoursTenths === null
-                ? null
-                : ($command->baseHoursTenths ?? $equipment->currentUsage->horasDecimas()),
-            $command->intervalDays === null ? null : ($command->baseDate ?? $this->clock->now()),
+            $command->intervalKm === null ? null : $command->baseKm,
+            $command->intervalHoursTenths === null ? null : $command->baseHoursTenths,
+            $command->intervalDays === null ? null : $command->baseDate,
             $command->priority,
             $command->notes,
         );
