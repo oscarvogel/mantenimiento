@@ -20,10 +20,13 @@ const hasOldValues = Object.values(oldValues).some((value) => value !== '' && va
 const formValues = ref({
   intervalo_km: oldValues.intervalo_km || '',
   anticipacion_km: oldValues.anticipacion_km || '',
+  base_km: oldValues.base_km || '',
   intervalo_horas: oldValues.intervalo_horas || '',
   anticipacion_horas: oldValues.anticipacion_horas || '',
+  base_horas: oldValues.base_horas || '',
   intervalo_dias: oldValues.intervalo_dias || '',
   anticipacion_dias: oldValues.anticipacion_dias || '',
+  base_fecha: oldValues.base_fecha || '',
   prioridad: oldValues.prioridad || 'MEDIA',
   observaciones: oldValues.observaciones || '',
 })
@@ -49,10 +52,13 @@ const applyTemplateDefault = (templateDefault) => {
   formValues.value = {
     intervalo_km: valueOrBlank(templateDefault.intervalKm),
     anticipacion_km: valueOrBlank(templateDefault.warningKm),
+    base_km: '',
     intervalo_horas: valueOrBlank(templateDefault.intervalHours),
     anticipacion_horas: valueOrBlank(templateDefault.warningHours),
+    base_horas: '',
     intervalo_dias: valueOrBlank(templateDefault.intervalDays),
     anticipacion_dias: valueOrBlank(templateDefault.warningDays),
+    base_fecha: '',
     prioridad: templateDefault.priority || 'MEDIA',
     observaciones: templateDefault.notes || '',
   }
@@ -71,9 +77,9 @@ watch(selectedEquipmentId, () => {
 watch(selectedServiceId, () => applyTemplateDefault(selectedTemplateDefault.value))
 
 const criterionLabel = (key, criterion) => {
-  if (key === 'kilometers') return `Cada ${criterion.interval} km · base ${criterion.base} · próximo ${criterion.next} km`
-  if (key === 'hours') return `Cada ${criterion.interval} h · base ${criterion.base} · próximo ${criterion.next} h`
-  return `Cada ${criterion.interval} días · base ${criterion.base} · próximo ${criterion.next}`
+  if (key === 'kilometers') return `Cada ${criterion.interval} km · base ${criterion.base ?? 'sin datos'} · próximo ${criterion.next ?? 'sin datos'} km`
+  if (key === 'hours') return `Cada ${criterion.interval} h · base ${criterion.base ?? 'sin datos'} · próximo ${criterion.next ?? 'sin datos'} h`
+  return `Cada ${criterion.interval} días · base ${criterion.base ?? 'sin datos'} · próximo ${criterion.next ?? 'sin datos'}`
 }
 
 const criterionProgress = (key, criterion) => {
@@ -111,17 +117,23 @@ const criterionProgress = (key, criterion) => {
           <p v-if="selectedTemplateDefault" class="rounded-lg bg-success-subtle p-3 text-sm font-semibold text-success-strong md:col-span-2 xl:col-span-4">
             {{ selectedTemplateDefault.templateName }} · intervalos precargados
           </p>
+          <p class="rounded-lg bg-warning-subtle p-3 text-sm text-ink md:col-span-2 xl:col-span-4">
+            La lectura actual del equipo no se usa como última realización. Informá la base histórica si la conocés; si la dejás vacía, ese criterio quedará en <strong>SIN_DATOS</strong> hasta completar el historial.
+          </p>
 
           <template v-if="!selectedEquipment || selectedEquipment.controlsKm">
             <FormField label="Intervalo (km)" for-id="plan-interval-km"><input id="plan-interval-km" v-model="formValues.intervalo_km" type="number" min="1" name="intervalo_km" :class="fieldClass" /></FormField>
             <FormField label="Anticipación (km)" for-id="plan-warning-km"><input id="plan-warning-km" v-model="formValues.anticipacion_km" type="number" min="0" name="anticipacion_km" :class="fieldClass" /></FormField>
+            <FormField label="Último realizado a los km" for-id="plan-base-km" class="md:col-span-2"><input id="plan-base-km" v-model="formValues.base_km" type="number" min="0" name="base_km" placeholder="Dejar vacío si se desconoce" :class="fieldClass" /></FormField>
           </template>
           <template v-if="!selectedEquipment || selectedEquipment.controlsHours">
             <FormField label="Intervalo (horas)" for-id="plan-interval-hours"><input id="plan-interval-hours" v-model="formValues.intervalo_horas" type="number" min="0.1" step="0.1" name="intervalo_horas" :class="fieldClass" /></FormField>
             <FormField label="Anticipación (horas)" for-id="plan-warning-hours"><input id="plan-warning-hours" v-model="formValues.anticipacion_horas" type="number" min="0" step="0.1" name="anticipacion_horas" :class="fieldClass" /></FormField>
+            <FormField label="Último realizado a las horas" for-id="plan-base-hours" class="md:col-span-2"><input id="plan-base-hours" v-model="formValues.base_horas" type="number" min="0" step="0.1" name="base_horas" placeholder="Dejar vacío si se desconoce" :class="fieldClass" /></FormField>
           </template>
           <FormField label="Intervalo (días)" for-id="plan-interval-days"><input id="plan-interval-days" v-model="formValues.intervalo_dias" type="number" min="1" name="intervalo_dias" :class="fieldClass" /></FormField>
           <FormField label="Anticipación (días)" for-id="plan-warning-days"><input id="plan-warning-days" v-model="formValues.anticipacion_dias" type="number" min="0" name="anticipacion_dias" :class="fieldClass" /></FormField>
+          <FormField label="Último realizado en fecha" for-id="plan-base-date" class="md:col-span-2"><input id="plan-base-date" v-model="formValues.base_fecha" type="date" name="base_fecha" :class="fieldClass" /></FormField>
           <FormField label="Prioridad" for-id="plan-priority"><select id="plan-priority" v-model="formValues.prioridad" name="prioridad" :class="fieldClass"><option v-for="priority in ['BAJA', 'MEDIA', 'ALTA', 'CRITICA']" :key="priority" :value="priority">{{ priority === 'CRITICA' ? 'CRÍTICA' : priority }}</option></select></FormField>
           <FormField label="Observaciones" for-id="plan-notes" class="md:col-span-2 xl:col-span-3"><textarea id="plan-notes" v-model="formValues.observaciones" name="observaciones" maxlength="1000" rows="2" :class="fieldClass"></textarea></FormField>
           <p class="text-xs text-ink-muted md:col-span-2 xl:col-span-4">Completá al menos un intervalo. Si combinás criterios, el plan vence cuando se alcanza primero cualquiera de ellos.</p>
