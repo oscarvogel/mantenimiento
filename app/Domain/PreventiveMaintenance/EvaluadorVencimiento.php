@@ -20,30 +20,34 @@ final class EvaluadorVencimiento
         $faltantes = [];
 
         if ($plan->usaFecha()) {
-            $actual   = $fechaActual->setTime(0, 0, 0);
             $objetivo = $plan->proximaFecha();
-            $umbral   = $objetivo->modify('-' . $plan->anticipacionDias() . ' days');
-            $this->clasificar($actual >= $objetivo, $actual >= $umbral, CriterioPlan::FECHA, $vencidos, $proximos);
+            if ($objetivo === null) {
+                $faltantes[] = CriterioPlan::FECHA;
+            } else {
+                $actual = $fechaActual->setTime(0, 0, 0);
+                $umbral = $objetivo->modify('-' . $plan->anticipacionDias() . ' days');
+                $this->clasificar($actual >= $objetivo, $actual >= $umbral, CriterioPlan::FECHA, $vencidos, $proximos);
+            }
         }
 
         if ($plan->usaKilometraje()) {
-            if ($uso->kilometraje() === null) {
+            $objetivo = $plan->proximoKm();
+            if ($uso->kilometraje() === null || $objetivo === null) {
                 $faltantes[] = CriterioPlan::KILOMETRAJE;
             } else {
-                $actual   = $uso->kilometraje();
-                $objetivo = $plan->proximoKm();
-                $umbral   = $objetivo - $plan->anticipacionKm();
+                $actual = $uso->kilometraje();
+                $umbral = $objetivo - $plan->anticipacionKm();
                 $this->clasificar($actual >= $objetivo, $actual >= $umbral, CriterioPlan::KILOMETRAJE, $vencidos, $proximos);
             }
         }
 
         if ($plan->usaHorometro()) {
-            if ($uso->horasDecimas() === null) {
+            $objetivo = $plan->proximasHorasDecimas();
+            if ($uso->horasDecimas() === null || $objetivo === null) {
                 $faltantes[] = CriterioPlan::HOROMETRO;
             } else {
-                $actual   = $uso->horasDecimas();
-                $objetivo = $plan->proximasHorasDecimas();
-                $umbral   = $objetivo - $plan->anticipacionHorasDecimas();
+                $actual = $uso->horasDecimas();
+                $umbral = $objetivo - $plan->anticipacionHorasDecimas();
                 $this->clasificar($actual >= $objetivo, $actual >= $umbral, CriterioPlan::HOROMETRO, $vencidos, $proximos);
             }
         }
