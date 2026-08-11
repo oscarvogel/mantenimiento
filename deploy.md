@@ -180,3 +180,20 @@ el archivo local. Como minimo:
 - Navegador integrado: `/mantenimiento/login` cargo correctamente, con
   bundles `main-3Yzb83AS.js` y `main-DKp65hoD.css`, campos email/password,
   CSRF y sin errores de consola.
+
+## Evidencia del ajuste de biblioteca del 11 de agosto de 2026
+
+- Se publico un ajuste incremental por FTPS para mover la biblioteca
+  preventiva editable a `/mantenimiento/importaciones/biblioteca` y quitarla
+  de `/mantenimiento/planes`.
+- Archivos remotos verificados por SHA-256 contra local:
+  `app/Config/Routes.php`, `app/Controllers/ImportManagement.php`,
+  `app/Infrastructure/Importations/CodeIgniterPreventiveLibraryReadModel.php`,
+  `assets/dashboard/.vite/manifest.json`, `main-BzDMxKQK.js` y
+  `main-DKp65hoD.css`.
+- Frontend: `28` tests de `OperationsPages.test.js` pasaron.
+- PHP lint: sin errores en `Routes.php`, `ImportManagement.php` y
+  `CodeIgniterPreventiveLibraryReadModel.php`.
+- Navegador integrado: las rutas protegidas redirigieron a login por falta de
+  sesion autenticada en el navegador, y el login cargo los bundles nuevos
+  `main-BzDMxKQK.js` y `main-DKp65hoD.css`.

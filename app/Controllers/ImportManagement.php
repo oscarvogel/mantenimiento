@@ -69,11 +69,77 @@ final class ImportManagement extends BaseController
                     'back' => $base,
                     'downloadTemplate' => $base . '/plantilla/BIBLIOTECA_PREVENTIVA',
                 ],
+                'canEdit' => $actor->hasPermission('importaciones.cargar'),
                 'templates' => $overview['templates'],
                 'services' => $overview['services'],
+                'items' => array_map(static fn (array $item): array => $item + [
+                    'updateUrl' => $base . '/biblioteca/items/' . $item['id'],
+                ], $overview['items']),
             ]);
         } catch (Throwable $exception) {
             return $this->failure($exception, '/mantenimiento/importaciones');
+        }
+    }
+
+    public function updateLibraryItem(int $itemId): RedirectResponse
+    {
+        try {
+            $actor = $this->actor();
+            if ($actor->isSuperAdmin() || $actor->companyId() === null || ! $actor->hasPermission('importaciones.cargar')) {
+                throw new DomainException('No tenes permiso para modificar la biblioteca preventiva.');
+            }
+
+            $database = db_connect();
+            $row = $database->table('plantilla_mantenimiento_items i')
+                ->select('i.id')
+                ->join('plantillas_mantenimiento p', 'p.id = i.plantilla_id', 'inner')
+                ->where('i.id', $itemId)
+                ->where('p.empresa_id', $actor->companyId())
+                ->where('p.deleted_at', null)
+                ->get()->getRowArray();
+
+            if ($row === null) {
+                throw new DomainException('El item de biblioteca no existe o pertenece a otra empresa.');
+            }
+
+            $intervalKm = $this->nullableInteger($this->request->getPost('intervalo_km'), 'Intervalo km', 1);
+            $intervalHours = $this->nullableDecimalHour($this->request->getPost('intervalo_horas'), 'Intervalo horas', true);
+            $intervalDays = $this->nullableInteger($this->request->getPost('intervalo_dias'), 'Intervalo dias', 1);
+            if ($intervalKm === null && $intervalHours === null && $intervalDays === null) {
+                throw new DomainException('La biblioteca requiere al menos un intervalo.');
+            }
+
+            $warningKm = $this->nullableInteger($this->request->getPost('anticipacion_km'), 'Anticipacion km', 0);
+            $warningHours = $this->nullableDecimalHour($this->request->getPost('anticipacion_horas'), 'Anticipacion horas', false);
+            $warningDays = $this->nullableInteger($this->request->getPost('anticipacion_dias'), 'Anticipacion dias', 0);
+            $priority = mb_strtoupper(trim((string) ($this->request->getPost('prioridad') ?: 'MEDIA')));
+
+            if (! in_array($priority, ['BAJA', 'MEDIA', 'ALTA', 'CRITICA'], true)) {
+                throw new DomainException('La prioridad de la biblioteca no es valida.');
+            }
+
+            $notes = trim((string) ($this->request->getPost('observaciones') ?? ''));
+            if (mb_strlen($notes) > 1000) {
+                throw new DomainException('Las observaciones no pueden superar 1000 caracteres.');
+            }
+
+            $database->table('plantilla_mantenimiento_items')->where('id', $itemId)->update([
+                'intervalo_km' => $intervalKm,
+                'intervalo_horas' => $intervalHours,
+                'intervalo_dias' => $intervalDays,
+                'anticipacion_km' => $warningKm,
+                'anticipacion_horas' => $warningHours,
+                'anticipacion_dias' => $warningDays,
+                'prioridad' => $priority,
+                'activo' => $this->request->getPost('activo') === null ? 0 : 1,
+                'observaciones' => $notes === '' ? null : $notes,
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+
+            return redirect()->to('/mantenimiento/importaciones/biblioteca')
+                ->with('success', 'Item de biblioteca actualizado.');
+        } catch (Throwable $exception) {
+            return $this->failure($exception, '/mantenimiento/importaciones/biblioteca');
         }
     }
 
@@ -244,5 +310,54 @@ final class ImportManagement extends BaseController
             'error',
             $exception instanceof DomainException ? $exception->getMessage() : 'No se pudo completar la importación.',
         );
+    }
+
+    private function nullableInteger(mixed $value, string $label, int $minimum): ?int
+    {
+        if (is_array($value)) {
+            throw new DomainException("{$label} no es valido.");
+        }
+
+        $normalized = trim((string) ($value ?? ''));
+        if ($normalized === '') {
+            return null;
+        }
+
+        if (! ctype_digit($normalized)) {
+            throw new DomainException("{$label} debe ser un numero entero.");
+        }
+
+        $number = (int) $normalized;
+        if ($number < $minimum) {
+            throw new DomainException("{$label} debe ser mayor o igual a {$minimum}.");
+        }
+
+        return $number;
+    }
+
+    private function nullableDecimalHour(mixed $value, string $label, bool $strictlyPositive): ?string
+    {
+        if (is_array($value)) {
+            throw new DomainException("{$label} no es valido.");
+        }
+
+        $normalized = str_replace(',', '.', trim((string) ($value ?? '')));
+        if ($normalized === '') {
+            return null;
+        }
+
+        if (! preg_match('/^\d+(?:\.\d)?$/', $normalized)) {
+            throw new DomainException("{$label} debe tener como maximo un decimal.");
+        }
+
+        $number = (float) $normalized;
+        if ($strictlyPositive && $number <= 0.0) {
+            throw new DomainException("{$label} debe ser mayor que cero.");
+        }
+        if (! $strictlyPositive && $number < 0.0) {
+            throw new DomainException("{$label} no puede ser negativo.");
+        }
+
+        return number_format($number, 1, '.', '');
     }
 }

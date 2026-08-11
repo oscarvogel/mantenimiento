@@ -65,6 +65,7 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
 
     $routes->get('importaciones', 'ImportManagement::index', ['filter' => 'permission:importaciones.ver']);
     $routes->get('importaciones/biblioteca', 'ImportManagement::library', ['filter' => 'permission:importaciones.ver']);
+    $routes->post('importaciones/biblioteca/items/(:num)', 'ImportManagement::updateLibraryItem/$1', ['filter' => 'permission:importaciones.cargar']);
     $routes->get('importaciones/plantilla/(:segment)', 'ImportManagement::template/$1', ['filter' => 'permission:importaciones.cargar']);
     $routes->post('importaciones', 'ImportManagement::upload', ['filter' => 'permission:importaciones.cargar']);
     $routes->get('importaciones/(:num)', 'ImportManagement::show/$1', ['filter' => 'permission:importaciones.ver']);

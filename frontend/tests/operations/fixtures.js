@@ -100,3 +100,30 @@ export const importShowData = {
   header: { id: 8, originalFile: 'equipos.xlsx', type: 'EQUIPOS', status: 'BORRADOR_VALIDADO', summary: 'Validado', totalRows: 7, validRows: 4, errorRows: 1, duplicateRows: 2 },
   rows: { total: 1, pagination, items: [{ rowNumber: 2, status: 'VALIDA', normalizedData: { codigo: 'CAM-01' }, issues: [], result: '' }] },
 }
+
+export const preventiveLibraryData = {
+  csrf, flash, canEdit: true,
+  routes: { back: '/mantenimiento/importaciones', downloadTemplate: '/mantenimiento/importaciones/plantilla/BIBLIOTECA_PREVENTIVA' },
+  templates: [{ id: 3, code: 'CAM-GRAL', name: 'Preventivo camiones', scope: 'EMPRESA', equipmentType: 'Camión', brand: null, model: null, active: true, itemCount: 1 }],
+  services: [{ id: 3, code: 'SM', name: 'Service motor', category: 'Motor', active: true, taskCount: 2, materialCount: 1 }],
+  items: [{
+    id: 15,
+    templateId: 3,
+    templateCode: 'CAM-GRAL',
+    templateName: 'Preventivo camiones',
+    equipmentType: 'Camión',
+    serviceTypeId: 3,
+    serviceCode: 'SM',
+    serviceName: 'Service motor',
+    intervalKm: 10000,
+    intervalHours: '250.0',
+    intervalDays: 180,
+    warningKm: 1000,
+    warningHours: '25.0',
+    warningDays: 15,
+    priority: 'MEDIA',
+    active: true,
+    notes: 'Aceite y filtros',
+    updateUrl: '/mantenimiento/importaciones/biblioteca/items/15',
+  }],
+}

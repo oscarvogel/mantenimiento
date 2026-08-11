@@ -5,9 +5,10 @@ import EquipmentDetailPage from '../../src/pages/operations/EquipmentDetailPage.
 import ImportsIndexPage from '../../src/pages/operations/ImportsIndexPage.vue'
 import ImportsShowPage from '../../src/pages/operations/ImportsShowPage.vue'
 import MaintenanceOverviewPage from '../../src/pages/operations/MaintenanceOverviewPage.vue'
+import PreventiveLibraryPage from '../../src/pages/operations/PreventiveLibraryPage.vue'
 import PreventivePlansPage from '../../src/pages/operations/PreventivePlansPage.vue'
 import { resolveOperationPage } from '../../src/pages/operations/index.js'
-import { assetsData, equipmentData, importsData, importShowData, maintenanceData, preventivePlansData } from './fixtures.js'
+import { assetsData, equipmentData, importsData, importShowData, maintenanceData, preventiveLibraryData, preventivePlansData } from './fixtures.js'
 
 const wrappers = []
 const render = (component, data) => {
@@ -29,6 +30,7 @@ describe('registro de componentes operativos', () => {
     ['assets-index', AssetsIndexPage],
     ['imports-index', ImportsIndexPage],
     ['imports-show', ImportsShowPage],
+    ['preventive-library', PreventiveLibraryPage],
   ])('resuelve %s', (pageType, component) => {
     expect(resolveOperationPage(pageType)).toBe(component)
   })
@@ -55,10 +57,7 @@ describe('preventive-plans', () => {
     expect(perPage.element.value).toBe('10')
     expect(perPage.findAll('option').map((option) => option.element.value)).toEqual(['5', '10', '25'])
     expect(wrapper.text()).toContain('CAM-01')
-    expect(wrapper.text()).toContain('Biblioteca preventiva importada')
     expect(wrapper.text()).toContain('Preventivo camiones')
-    expect(wrapper.text()).toContain('Service motor')
-    expect(wrapper.text()).toContain('aviso 1000 km')
     expect(wrapper.text()).toContain('Cada 1000 km')
     expect(wrapper.text()).toContain('próximo 10000 km')
   })
@@ -74,9 +73,35 @@ describe('preventive-plans', () => {
   it('oculta el alta sin permiso y conserva el empty state', () => {
     const wrapper = render(PreventivePlansPage, { ...preventivePlansData, canEdit: false, plans: { ...preventivePlansData.plans, total: 0, items: [] } })
     expect(wrapper.find('form[action="/mantenimiento/planes"][method="post"]').exists()).toBe(false)
-    expect(wrapper.text()).toContain('Biblioteca preventiva importada')
-    expect(wrapper.text()).toContain('Preventivo camiones')
     expect(wrapper.text()).toContain('No hay planes preventivos')
+  })
+})
+
+describe('preventive-library', () => {
+  it('muestra y permite editar los planes importados de biblioteca', () => {
+    const wrapper = render(PreventiveLibraryPage, preventiveLibraryData)
+    const form = wrapper.get('form[action="/mantenimiento/importaciones/biblioteca/items/15"][method="post"]')
+
+    expect(wrapper.text()).toContain('Planes de biblioteca')
+    expect(wrapper.text()).toContain('Preventivo camiones')
+    expect(wrapper.text()).toContain('Service motor')
+    expect(form.get('input[name="csrf_test_name"]').attributes('value')).toBe('secure-token')
+    expect(form.get('input[name="intervalo_km"]').element.value).toBe('10000')
+    expect(form.get('input[name="anticipacion_km"]').element.value).toBe('1000')
+    expect(form.get('input[name="intervalo_horas"]').element.value).toBe('250.0')
+    expect(form.get('input[name="anticipacion_horas"]').element.value).toBe('25.0')
+    expect(form.get('input[name="intervalo_dias"]').element.value).toBe('180')
+    expect(form.get('input[name="anticipacion_dias"]').element.value).toBe('15')
+    expect(form.get('select[name="prioridad"]').element.value).toBe('MEDIA')
+    expect(form.get('input[name="activo"]').element.checked).toBe(true)
+    expect(form.get('textarea[name="observaciones"]').element.value).toBe('Aceite y filtros')
+  })
+
+  it('deja la biblioteca en modo lectura cuando no hay permiso de carga', () => {
+    const wrapper = render(PreventiveLibraryPage, { ...preventiveLibraryData, canEdit: false })
+
+    expect(wrapper.find('form[action="/mantenimiento/importaciones/biblioteca/items/15"] button[type="submit"]').exists()).toBe(false)
+    expect(wrapper.get('input[name="intervalo_km"]').attributes()).toHaveProperty('disabled')
   })
 })
 

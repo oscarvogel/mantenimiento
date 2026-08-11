@@ -1,12 +1,19 @@
 <script setup>
+import { computed } from 'vue'
 import { ArrowDownTrayIcon } from '@heroicons/vue/24/outline'
+import CsrfInput from './components/CsrfInput.vue'
 import PageHeading from './components/PageHeading.vue'
 import PanelCard from './components/PanelCard.vue'
 import EmptyState from './components/EmptyState.vue'
+import FormField from './components/FormField.vue'
 import StatusBadge from './components/StatusBadge.vue'
-import { secondaryButton } from './helpers.js'
+import { fieldClass, primaryButton, secondaryButton } from './helpers.js'
 
-defineProps({ data: { type: Object, required: true } })
+const props = defineProps({ data: { type: Object, required: true } })
+const templates = computed(() => props.data.templates ?? [])
+const services = computed(() => props.data.services ?? [])
+const items = computed(() => props.data.items ?? [])
+const valueOrBlank = (value) => (value === null || value === undefined ? '' : String(value))
 </script>
 
 <template>
@@ -27,23 +34,74 @@ defineProps({ data: { type: Object, required: true } })
     <section class="mb-6 grid gap-3 sm:grid-cols-2">
       <article class="rounded-xl border border-border bg-white p-5 shadow-card">
         <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Plantillas</p>
-        <p class="mt-2 text-3xl font-bold text-ink">{{ data.templates.length }}</p>
+        <p class="mt-2 text-3xl font-bold text-ink">{{ templates.length }}</p>
       </article>
       <article class="rounded-xl border border-border bg-white p-5 shadow-card">
         <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Servicios</p>
-        <p class="mt-2 text-3xl font-bold text-ink">{{ data.services.length }}</p>
+        <p class="mt-2 text-3xl font-bold text-ink">{{ services.length }}</p>
       </article>
     </section>
 
-    <PanelCard title="Plantillas de la empresa" :count="data.templates.length" flush class="mb-6">
-      <EmptyState v-if="data.templates.length === 0" title="Todavía no hay plantillas" description="Importá la biblioteca preventiva desde Excel para crear la primera plantilla." />
+    <PanelCard title="Planes de biblioteca" :count="items.length" class="mb-6">
+      <EmptyState v-if="items.length === 0" title="Todavía no hay planes importados" description="Importá la biblioteca preventiva desde Excel para crear el primer plan de plantilla." />
+      <div v-else class="grid gap-4">
+        <article v-for="item in items" :key="item.id" class="rounded-xl border border-border bg-white p-4 shadow-sm">
+          <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ item.templateCode }} · {{ item.equipmentType }}</p>
+              <h3 class="mt-1 text-base font-bold text-ink">{{ item.serviceName }}</h3>
+              <p class="mt-1 text-sm text-ink-muted">{{ item.templateName }} · {{ item.serviceCode }}</p>
+            </div>
+            <StatusBadge :status="item.active ? 'ACTIVO' : 'INACTIVO'" />
+          </div>
+
+          <form method="post" :action="item.updateUrl" class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <CsrfInput :csrf="data.csrf" />
+            <FormField label="Cada km" :for-id="`library-${item.id}-interval-km`">
+              <input :id="`library-${item.id}-interval-km`" name="intervalo_km" type="number" min="1" :value="valueOrBlank(item.intervalKm)" :disabled="!data.canEdit" :class="fieldClass" />
+            </FormField>
+            <FormField label="Avisar antes (km)" :for-id="`library-${item.id}-warning-km`">
+              <input :id="`library-${item.id}-warning-km`" name="anticipacion_km" type="number" min="0" :value="valueOrBlank(item.warningKm)" :disabled="!data.canEdit" :class="fieldClass" />
+            </FormField>
+            <FormField label="Cada horas" :for-id="`library-${item.id}-interval-hours`">
+              <input :id="`library-${item.id}-interval-hours`" name="intervalo_horas" type="number" min="0.1" step="0.1" :value="valueOrBlank(item.intervalHours)" :disabled="!data.canEdit" :class="fieldClass" />
+            </FormField>
+            <FormField label="Avisar antes (horas)" :for-id="`library-${item.id}-warning-hours`">
+              <input :id="`library-${item.id}-warning-hours`" name="anticipacion_horas" type="number" min="0" step="0.1" :value="valueOrBlank(item.warningHours)" :disabled="!data.canEdit" :class="fieldClass" />
+            </FormField>
+            <FormField label="Cada días" :for-id="`library-${item.id}-interval-days`">
+              <input :id="`library-${item.id}-interval-days`" name="intervalo_dias" type="number" min="1" :value="valueOrBlank(item.intervalDays)" :disabled="!data.canEdit" :class="fieldClass" />
+            </FormField>
+            <FormField label="Avisar antes (días)" :for-id="`library-${item.id}-warning-days`">
+              <input :id="`library-${item.id}-warning-days`" name="anticipacion_dias" type="number" min="0" :value="valueOrBlank(item.warningDays)" :disabled="!data.canEdit" :class="fieldClass" />
+            </FormField>
+            <FormField label="Prioridad" :for-id="`library-${item.id}-priority`">
+              <select :id="`library-${item.id}-priority`" name="prioridad" :disabled="!data.canEdit" :class="fieldClass">
+                <option v-for="priority in ['BAJA', 'MEDIA', 'ALTA', 'CRITICA']" :key="priority" :value="priority" :selected="item.priority === priority">{{ priority === 'CRITICA' ? 'CRÍTICA' : priority }}</option>
+              </select>
+            </FormField>
+            <label class="flex min-h-11 items-end gap-2 rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm font-semibold text-ink">
+              <input name="activo" type="checkbox" value="1" :checked="item.active" :disabled="!data.canEdit" class="size-4 rounded border-border text-primary focus:ring-primary/20" />
+              Activo
+            </label>
+            <FormField label="Observaciones" :for-id="`library-${item.id}-notes`" class="md:col-span-2 xl:col-span-4">
+              <textarea :id="`library-${item.id}-notes`" name="observaciones" maxlength="1000" rows="2" :value="item.notes || ''" :disabled="!data.canEdit" :class="fieldClass"></textarea>
+            </FormField>
+            <button v-if="data.canEdit" type="submit" :class="`${primaryButton} md:justify-self-start`">Guardar</button>
+          </form>
+        </article>
+      </div>
+    </PanelCard>
+
+    <PanelCard title="Plantillas de la empresa" :count="templates.length" flush class="mb-6">
+      <EmptyState v-if="templates.length === 0" title="Todavía no hay plantillas" description="Importá la biblioteca preventiva desde Excel para crear la primera plantilla." />
       <div v-else class="overflow-x-auto">
         <table class="w-full min-w-[46rem] text-left text-sm">
           <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
             <tr><th class="px-6 py-3">Código</th><th class="px-6 py-3">Plantilla</th><th class="px-6 py-3">Aplica a</th><th class="px-6 py-3">Servicios</th><th class="px-6 py-3">Estado</th></tr>
           </thead>
           <tbody class="divide-y divide-border-subtle">
-            <tr v-for="item in data.templates" :key="item.id">
+            <tr v-for="item in templates" :key="item.id">
               <td class="px-6 py-4 font-mono text-xs font-semibold text-ink">{{ item.code }}</td>
               <td class="px-6 py-4"><p class="font-semibold text-ink">{{ item.name }}</p><p class="text-xs text-ink-muted">{{ item.scope }}</p></td>
               <td class="px-6 py-4 text-ink-muted">{{ item.equipmentType }}<span v-if="item.brand"> · {{ item.brand }}</span><span v-if="item.model"> {{ item.model }}</span></td>
@@ -55,15 +113,15 @@ defineProps({ data: { type: Object, required: true } })
       </div>
     </PanelCard>
 
-    <PanelCard title="Catálogo de servicios" :count="data.services.length" flush>
-      <EmptyState v-if="data.services.length === 0" title="Todavía no hay servicios" description="Los servicios importados aparecerán acá con su cantidad de tareas y materiales sugeridos." />
+    <PanelCard title="Catálogo de servicios" :count="services.length" flush>
+      <EmptyState v-if="services.length === 0" title="Todavía no hay servicios" description="Los servicios importados aparecerán acá con su cantidad de tareas y materiales sugeridos." />
       <div v-else class="overflow-x-auto">
         <table class="w-full min-w-[48rem] text-left text-sm">
           <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
             <tr><th class="px-6 py-3">Código</th><th class="px-6 py-3">Servicio</th><th class="px-6 py-3">Categoría</th><th class="px-6 py-3">Tareas</th><th class="px-6 py-3">Materiales</th><th class="px-6 py-3">Estado</th></tr>
           </thead>
           <tbody class="divide-y divide-border-subtle">
-            <tr v-for="service in data.services" :key="service.id">
+            <tr v-for="service in services" :key="service.id">
               <td class="px-6 py-4 font-mono text-xs font-semibold text-ink">{{ service.code }}</td>
               <td class="px-6 py-4 font-semibold text-ink">{{ service.name }}</td>
               <td class="px-6 py-4 text-ink-muted">{{ service.category || 'Sin categoría' }}</td>
