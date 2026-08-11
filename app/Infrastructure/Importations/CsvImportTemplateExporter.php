@@ -13,6 +13,10 @@ final class CsvImportTemplateExporter implements ImportTemplateExporter
 {
     public function export(ImportType $type): ImportTemplateFile
     {
+        if ($type === ImportType::BIBLIOTECA_PREVENTIVA) {
+            return (new XlsxPreventiveLibraryTemplateExporter())->export($type);
+        }
+
         $stream = fopen('php://temp', 'w+b');
         if ($stream === false) {
             throw new RuntimeException('No se pudo generar la plantilla de importacion.');
