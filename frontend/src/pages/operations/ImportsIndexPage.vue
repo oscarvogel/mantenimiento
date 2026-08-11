@@ -22,8 +22,8 @@ defineProps({ data: { type: Object, required: true } })
       <div class="mb-5 flex flex-wrap gap-2">
         <a :href="data.routes.templates.equipment" :class="secondaryButton"><ArrowDownTrayIcon class="mr-2 size-4" aria-hidden="true" />Plantilla de equipos</a>
         <a :href="data.routes.templates.readings" :class="secondaryButton"><ArrowDownTrayIcon class="mr-2 size-4" aria-hidden="true" />Plantilla de lecturas</a>
-        <a :href="data.routes.templates.preventiveLibrary" :class="secondaryButton"><ArrowDownTrayIcon class="mr-2 size-4" aria-hidden="true" />Plantilla general de camiones</a>
-        <a :href="data.routes.preventiveLibrary" :class="secondaryButton"><WrenchScrewdriverIcon class="mr-2 size-4" aria-hidden="true" />Ver biblioteca preventiva</a>
+        <a :href="`${data.routes.upload}/plantilla/BIBLIOTECA_PREVENTIVA`" :class="secondaryButton"><ArrowDownTrayIcon class="mr-2 size-4" aria-hidden="true" />Plantilla general de camiones</a>
+        <a :href="`${data.routes.upload}/biblioteca`" :class="secondaryButton"><WrenchScrewdriverIcon class="mr-2 size-4" aria-hidden="true" />Ver biblioteca preventiva</a>
       </div>
       <form method="post" enctype="multipart/form-data" :action="data.routes.upload" class="grid gap-4 md:grid-cols-[16rem_1fr_auto] md:items-end">
         <CsrfInput :csrf="data.csrf" />
