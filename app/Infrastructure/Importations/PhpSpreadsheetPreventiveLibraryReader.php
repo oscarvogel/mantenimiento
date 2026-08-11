@@ -8,6 +8,7 @@ use App\Application\Importations\Port\PreventiveLibraryWorkbookReader;
 use DomainException;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use ZipArchive;
 
 final class PhpSpreadsheetPreventiveLibraryReader implements PreventiveLibraryWorkbookReader
 {
@@ -46,8 +47,15 @@ final class PhpSpreadsheetPreventiveLibraryReader implements PreventiveLibraryWo
             throw new DomainException('No se puede leer XLSX: falta habilitar la extension PHP zip.');
         }
 
+        $sanitizedPath = null;
+
         try {
-            $spreadsheet = IOFactory::load($privatePath);
+            $sanitizedPath = $this->withoutTableMetadata($privatePath);
+            $reader = IOFactory::createReader('Xlsx');
+            $reader->setReadDataOnly(true);
+            $reader->setReadEmptyCells(false);
+            $reader->setLoadSheetsOnly(array_keys(self::REQUIRED_SHEETS));
+            $spreadsheet = $reader->load($sanitizedPath);
             return $this->rows($spreadsheet, $maximumRows);
         } catch (DomainException $exception) {
             throw $exception;
@@ -57,6 +65,9 @@ final class PhpSpreadsheetPreventiveLibraryReader implements PreventiveLibraryWo
             if (isset($spreadsheet) && $spreadsheet instanceof Spreadsheet) {
                 $spreadsheet->disconnectWorksheets();
                 unset($spreadsheet);
+            }
+            if ($sanitizedPath !== null && is_file($sanitizedPath)) {
+                @unlink($sanitizedPath);
             }
         }
     }
@@ -136,6 +147,83 @@ final class PhpSpreadsheetPreventiveLibraryReader implements PreventiveLibraryWo
         }
 
         return $values;
+    }
+
+    private function withoutTableMetadata(string $privatePath): string
+    {
+        $source = new ZipArchive();
+        if ($source->open($privatePath) !== true) {
+            throw new DomainException('No se pudo abrir el XLSX de biblioteca preventiva.');
+        }
+
+        $temporary = tempnam(sys_get_temp_dir(), 'mantenimiento_xlsx_');
+        if ($temporary === false) {
+            $source->close();
+            throw new DomainException('No se pudo crear el archivo temporal de lectura XLSX.');
+        }
+
+        $target = new ZipArchive();
+        if ($target->open($temporary, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            $source->close();
+            @unlink($temporary);
+            throw new DomainException('No se pudo preparar el archivo temporal de lectura XLSX.');
+        }
+
+        try {
+            for ($index = 0; $index < $source->numFiles; $index++) {
+                $name = (string) $source->getNameIndex($index);
+                if ($name === '' || $this->isTableMetadataEntry($name)) {
+                    continue;
+                }
+
+                $contents = $source->getFromIndex($index);
+                if ($contents === false) {
+                    throw new DomainException('No se pudo copiar una parte interna del XLSX.');
+                }
+
+                if ($this->isWorksheetEntry($name)) {
+                    $contents = $this->removeTableParts($contents);
+                } elseif ($this->isWorksheetRelationshipEntry($name)) {
+                    $contents = $this->removeTableRelationships($contents);
+                }
+
+                $target->addFromString($name, $contents);
+            }
+        } finally {
+            $target->close();
+            $source->close();
+        }
+
+        return $temporary;
+    }
+
+    private function isTableMetadataEntry(string $name): bool
+    {
+        return str_starts_with($name, 'xl/tables/');
+    }
+
+    private function isWorksheetEntry(string $name): bool
+    {
+        return preg_match('#^xl/worksheets/sheet\d+\.xml$#', $name) === 1;
+    }
+
+    private function isWorksheetRelationshipEntry(string $name): bool
+    {
+        return preg_match('#^xl/worksheets/_rels/sheet\d+\.xml\.rels$#', $name) === 1;
+    }
+
+    private function removeTableParts(string $xml): string
+    {
+        return preg_replace('#<tableParts\b[^>]*/>|<tableParts\b[^>]*>.*?</tableParts>#s', '', $xml) ?? $xml;
+    }
+
+    private function removeTableRelationships(string $xml): string
+    {
+        return preg_replace(
+            '#<Relationship\b(?=[^>]*Type="[^"]*/table")[^>]*/>|<Relationship\b(?=[^>]*Type="[^"]*/table")[^>]*>.*?</Relationship>#s',
+            '',
+            $xml,
+        ) ?? $xml;
     }
 
     private function normalizeHeader(string $header): string
