@@ -115,6 +115,7 @@ final class OperationsPayload
             'templateId' => (int) $row['template_id'],
             'templateName' => (string) $row['template_name'],
             'equipmentTypeId' => (int) $row['equipment_type_id'],
+            'equipmentTypeName' => (string) $row['equipment_type_name'],
             'serviceTypeId' => (int) $row['service_type_id'],
             'serviceName' => (string) $row['service_name'],
             'intervalKm' => $row['interval_km'],

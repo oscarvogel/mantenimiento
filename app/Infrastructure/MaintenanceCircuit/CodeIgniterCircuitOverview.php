@@ -135,8 +135,9 @@ final class CodeIgniterCircuitOverview implements CircuitOverviewPort
         }
 
         $rows = $this->database->table('plantilla_mantenimiento_items i')
-            ->select('i.id, i.plantilla_id, i.tipo_servicio_id, i.intervalo_km, i.intervalo_horas, i.intervalo_dias, i.anticipacion_km, i.anticipacion_horas, i.anticipacion_dias, i.prioridad, i.observaciones, p.nombre plantilla_nombre, p.tipo_equipo_id, ts.nombre servicio_nombre')
+            ->select('i.id, i.plantilla_id, i.tipo_servicio_id, i.intervalo_km, i.intervalo_horas, i.intervalo_dias, i.anticipacion_km, i.anticipacion_horas, i.anticipacion_dias, i.prioridad, i.observaciones, p.nombre plantilla_nombre, p.tipo_equipo_id, te.nombre tipo_equipo_nombre, ts.nombre servicio_nombre')
             ->join('plantillas_mantenimiento p', 'p.id = i.plantilla_id', 'inner')
+            ->join('tipos_equipo te', 'te.id = p.tipo_equipo_id', 'inner')
             ->join('tipos_servicio ts', 'ts.id = i.tipo_servicio_id', 'inner')
             ->where('p.empresa_id', $companyId)
             ->where('p.activo', 1)
@@ -152,6 +153,7 @@ final class CodeIgniterCircuitOverview implements CircuitOverviewPort
             'template_id' => (int) $row['plantilla_id'],
             'template_name' => (string) $row['plantilla_nombre'],
             'equipment_type_id' => (int) $row['tipo_equipo_id'],
+            'equipment_type_name' => (string) $row['tipo_equipo_nombre'],
             'service_type_id' => (int) $row['tipo_servicio_id'],
             'service_name' => (string) $row['servicio_nombre'],
             'interval_km' => $row['intervalo_km'] === null ? null : (int) $row['intervalo_km'],

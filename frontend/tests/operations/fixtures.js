@@ -22,7 +22,7 @@ export const maintenanceData = {
     brands: [{ id: 1, name: 'Scania' }],
     models: [{ id: 1, name: 'R450', brandName: 'Scania', typeName: 'Camión' }],
     serviceTypes: [{ id: 1, name: 'Service motor' }],
-    templateDefaults: [{ id: 15, templateId: 3, templateName: 'Preventivo camiones', equipmentTypeId: 1, serviceTypeId: 1, serviceName: 'Service motor', intervalKm: 10000, intervalHours: '250.0', intervalDays: 180, warningKm: 1000, warningHours: '25.0', warningDays: 15, priority: 'MEDIA', notes: 'Aceite y filtros' }],
+    templateDefaults: [{ id: 15, templateId: 3, templateName: 'Preventivo camiones', equipmentTypeId: 1, equipmentTypeName: 'Camión', serviceTypeId: 1, serviceName: 'Service motor', intervalKm: 10000, intervalHours: '250.0', intervalDays: 180, warningKm: 1000, warningHours: '25.0', warningDays: 15, priority: 'MEDIA', notes: 'Aceite y filtros' }],
     users: [{ id: 7, name: 'Técnico Uno' }],
   },
   equipments: [{ id: 9, code: 'CAM-01', plate: 'AA123BB', typeId: 1, typeName: 'Camión', branchName: 'Casa central', status: 'ACTIVO', controlsKm: true, controlsHours: true, currentKm: 1000, currentHours: 42, routes: { detail: '/mantenimiento/equipos/9', registerReading: '/mantenimiento/equipos/9/lecturas', assignPlan: '/mantenimiento/equipos/9/planes' } }],
@@ -40,7 +40,7 @@ export const preventivePlansData = {
     equipment: [{ id: 9, code: 'CAM-01', plate: 'AA123BB', branchId: 1, typeId: 1, branchCode: 'CC', branchName: 'Casa central', typeName: 'Camión', controlsKm: true, controlsHours: false, currentKm: 9900, currentHours: null }],
     serviceTypes: [{ id: 3, code: 'SM', name: 'Service motor' }],
     branches: [{ id: 1, code: 'CC', name: 'Casa central' }],
-    templateDefaults: [{ id: 15, templateId: 3, templateName: 'Preventivo camiones', equipmentTypeId: 1, serviceTypeId: 3, serviceName: 'Service motor', intervalKm: 10000, intervalHours: null, intervalDays: 180, warningKm: 1000, warningHours: null, warningDays: 15, priority: 'MEDIA', notes: 'Aceite y filtros' }],
+    templateDefaults: [{ id: 15, templateId: 3, templateName: 'Preventivo camiones', equipmentTypeId: 1, equipmentTypeName: 'Camión', serviceTypeId: 3, serviceName: 'Service motor', intervalKm: 10000, intervalHours: null, intervalDays: 180, warningKm: 1000, warningHours: null, warningDays: 15, priority: 'MEDIA', notes: 'Aceite y filtros' }],
   },
   plans: {
     total: 1,

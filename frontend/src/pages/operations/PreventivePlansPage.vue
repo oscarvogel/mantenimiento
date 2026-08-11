@@ -34,6 +34,22 @@ const defaultsForSelectedEquipment = computed(() => {
   return templateDefaults.value.filter((item) => Number(item.equipmentTypeId) === Number(selectedEquipment.value.typeId))
 })
 const selectedTemplateDefault = computed(() => defaultsForSelectedEquipment.value.find((item) => String(item.serviceTypeId) === selectedServiceId.value) ?? null)
+const groupedTemplateDefaults = computed(() => {
+  const groups = new Map()
+  for (const item of templateDefaults.value) {
+    const key = `${item.templateId}-${item.equipmentTypeId}`
+    if (!groups.has(key)) {
+      groups.set(key, {
+        id: key,
+        templateName: item.templateName,
+        equipmentTypeName: item.equipmentTypeName || 'Tipo de equipo',
+        items: [],
+      })
+    }
+    groups.get(key).items.push(item)
+  }
+  return [...groups.values()]
+})
 const groupedPlans = computed(() => {
   const groups = new Map()
   for (const plan of props.data.plans.items) {
@@ -80,6 +96,12 @@ const criterionProgress = (key, criterion) => {
   if (key === 'date') return `Hoy: ${criterion.current} · anticipación: ${criterion.warning} días`
   return `Actual: ${criterion.current ?? 'sin datos'} · anticipación: ${criterion.warning} ${key === 'kilometers' ? 'km' : 'h'}`
 }
+
+const templateCriteria = (item) => [
+  item.intervalKm !== null ? `Cada ${item.intervalKm} km · aviso ${item.warningKm ?? 0} km` : null,
+  item.intervalHours !== null ? `Cada ${item.intervalHours} h · aviso ${item.warningHours ?? '0.0'} h` : null,
+  item.intervalDays !== null ? `Cada ${item.intervalDays} días · aviso ${item.warningDays ?? 0} días` : null,
+].filter(Boolean)
 </script>
 
 <template>
@@ -128,6 +150,33 @@ const criterionProgress = (key, criterion) => {
           <button type="submit" :class="`${primaryButton} md:justify-self-start`">Crear plan</button>
         </form>
       </details>
+    </PanelCard>
+
+    <PanelCard title="Biblioteca preventiva importada" :count="templateDefaults.length" class="mb-6">
+      <EmptyState v-if="groupedTemplateDefaults.length === 0" title="No hay plantillas preventivas importadas" />
+      <div v-else class="grid gap-4 xl:grid-cols-2">
+        <article v-for="group in groupedTemplateDefaults" :key="group.id" class="rounded-xl border border-border p-4">
+          <div class="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <h3 class="font-bold text-ink">{{ group.templateName }}</h3>
+              <p class="mt-1 text-sm text-ink-muted">{{ group.equipmentTypeName }}</p>
+            </div>
+            <span class="rounded-full bg-surface-muted px-3 py-1 text-xs font-semibold text-ink-muted">{{ group.items.length }} {{ group.items.length === 1 ? 'servicio' : 'servicios' }}</span>
+          </div>
+          <div class="mt-4 divide-y divide-border-subtle">
+            <div v-for="item in group.items" :key="item.id" class="py-3 first:pt-0 last:pb-0">
+              <div class="flex flex-wrap items-start justify-between gap-2">
+                <strong class="text-sm text-ink">{{ item.serviceName }}</strong>
+                <span class="rounded-full bg-primary-subtle px-2.5 py-1 text-xs font-semibold text-primary">{{ item.priority }}</span>
+              </div>
+              <ul class="mt-2 flex flex-wrap gap-2 text-xs text-ink-muted">
+                <li v-for="criterion in templateCriteria(item)" :key="criterion" class="rounded-lg bg-surface-subtle px-3 py-2">{{ criterion }}</li>
+              </ul>
+              <p v-if="item.notes" class="mt-2 text-sm text-ink-muted">{{ item.notes }}</p>
+            </div>
+          </div>
+        </article>
+      </div>
     </PanelCard>
 
     <PanelCard title="Planes asignados por camión" :count="data.plans.total" flush>
