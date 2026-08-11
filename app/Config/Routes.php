@@ -46,12 +46,19 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->post('equipos', 'AssetManagement::createEquipment', ['filter' => 'permission:equipos.editar']);
     $routes->get('planes', 'PreventivePlans::index', ['filter' => 'permission:planes.ver']);
     $routes->post('planes', 'PreventivePlans::create', ['filter' => 'permission:planes.editar']);
+    $routes->post('planes/desde-plantilla', 'PreventivePlans::createFromTemplates', ['filter' => 'permission:planes.editar']);
+    $routes->get('lecturas/rapidas', 'QuickReadings::index', ['filter' => 'permission:equipos.ver']);
+    $routes->post('lecturas/rapidas', 'QuickReadings::store', ['filter' => 'permission:lecturas.cargar']);
+    $routes->post('lecturas/rapidas/fila', 'QuickReadings::storeRow', ['filter' => 'permission:lecturas.cargar']);
     $routes->get('equipos/(:num)', 'EquipmentManagement::show/$1', ['filter' => 'permission:equipos.ver']);
     $routes->get('equipos/(:num)/qr.svg', 'AssetManagement::qr/$1', ['filter' => 'permission:equipos.ver']);
     $routes->post('equipos/(:num)/editar', 'EquipmentManagement::update/$1', ['filter' => 'permission:equipos.editar']);
     $routes->post('equipos/(:num)/trasladar', 'EquipmentManagement::transfer/$1', ['filter' => 'permission:equipos.editar']);
     $routes->post('equipos/(:num)/baja', 'EquipmentManagement::decommission/$1', ['filter' => 'permission:equipos.editar']);
     $routes->post('equipos/(:num)/adjuntos', 'EquipmentManagement::uploadAttachment/$1', ['filter' => 'permission:equipos.editar']);
+    $routes->post('equipos/(:num)/foto-principal', 'EquipmentManagement::uploadPrimaryPhoto/$1', ['filter' => 'permission:equipos.editar']);
+    $routes->get('equipos/(:num)/foto-principal', 'EquipmentManagement::primaryPhoto/$1', ['filter' => 'permission:equipos.ver']);
+    $routes->post('equipos/(:num)/foto-principal/retirar', 'EquipmentManagement::retirePrimaryPhoto/$1', ['filter' => 'permission:equipos.editar']);
     $routes->get('equipos/(:num)/adjuntos/(:num)/descargar', 'EquipmentManagement::downloadAttachment/$1/$2', ['filter' => 'permission:equipos.ver']);
     $routes->post('equipos/(:num)/adjuntos/(:num)/retirar', 'EquipmentManagement::retireAttachment/$1/$2', ['filter' => 'permission:equipos.editar']);
     $routes->post('equipos/(:num)/relaciones', 'EquipmentManagement::createRelation/$1', ['filter' => 'permission:equipos.editar']);
@@ -84,4 +91,15 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
 $routes->group('reportes', ['filter' => ['auth', 'permission:reportes.ver']], static function ($routes): void {
     $routes->get('', 'Reports::index');
     $routes->get('exportar', 'Reports::export');
+});
+
+$routes->group('', ['filter' => ['auth', 'permission:notificaciones.ver']], static function ($routes): void {
+    $routes->get('notificaciones', 'Notifications::index');
+    $routes->get('notificaciones/resumen', 'Notifications::summary');
+    $routes->post('notificaciones/leer/(:num)', 'Notifications::read/$1');
+    $routes->post('notificaciones/leer-todas', 'Notifications::readAll');
+    $routes->post('perfil/notificaciones', 'Notifications::updatePreferences');
+    $routes->post('perfil/notificaciones/webpush', 'Notifications::subscribe');
+    $routes->post('perfil/notificaciones/webpush/eliminar', 'Notifications::unsubscribe');
+    $routes->post('perfil/notificaciones/webpush/prueba', 'Notifications::testPush');
 });

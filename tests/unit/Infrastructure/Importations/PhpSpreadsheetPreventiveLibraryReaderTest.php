@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Infrastructure\Importations;
 
 use App\Infrastructure\Importations\PhpSpreadsheetPreventiveLibraryReader;
+use App\Infrastructure\Importations\XlsxPreventiveLibraryTemplateExporter;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -30,6 +31,17 @@ final class PhpSpreadsheetPreventiveLibraryReaderTest extends TestCase
 
         self::assertStringNotContainsString('/xl/tables/table1.xml', $cleaned);
         self::assertStringContainsString('comments1.xml', $cleaned);
+    }
+
+    public function testGeneratedWorkbookDocumentsBlankTypeAsGenericTemplate(): void
+    {
+        $method = new ReflectionMethod(XlsxPreventiveLibraryTemplateExporter::class, 'instructions');
+        $method->setAccessible(true);
+        $instructions = $method->invoke(new XlsxPreventiveLibraryTemplateExporter());
+        $text = implode(' ', array_map(static fn (array $row): string => implode(' ', $row), $instructions));
+
+        self::assertStringContainsString('tipo_equipo, marca y modelo quedan vacios', $text);
+        self::assertStringContainsString('plantilla es generica', $text);
     }
 
     private function invokePrivateString(string $methodName, string $value): string

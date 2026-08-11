@@ -9,10 +9,11 @@ import PageHeading from './components/PageHeading.vue'
 import PaginationBar from './components/PaginationBar.vue'
 import PanelCard from './components/PanelCard.vue'
 import StatusBadge from './components/StatusBadge.vue'
-import { fieldClass, primaryButton, secondaryButton } from './helpers.js'
+import EquipmentThumbnail from './components/EquipmentThumbnail.vue'
+import { fieldClass, primaryButton, secondaryButton, today } from './helpers.js'
 
 const props = defineProps({ data: { type: Object, required: true } })
-const selectedEquipmentId = ref(String(props.data.old?.equipo_id || ''))
+const selectedEquipmentId = ref(String(props.data.old?.equipo_id || props.data.wizardEquipmentId || ''))
 const selectedServiceId = ref(String(props.data.old?.tipo_servicio_id || ''))
 const selectedEquipment = computed(() => props.data.catalogs.equipment.find((item) => String(item.id) === selectedEquipmentId.value) ?? null)
 const oldValues = props.data.old ?? {}
@@ -32,9 +33,26 @@ const formValues = ref({
 })
 const valueOrBlank = (value) => (value === null || value === undefined ? '' : String(value))
 const templateDefaults = computed(() => props.data.catalogs.templateDefaults ?? [])
+const suggestionInputs = ref({})
+const normalizeText = (value) => String(value ?? '').trim().toLocaleUpperCase('es')
+const templateSpecificity = (item) => item.model ? 4 : item.brand && item.equipmentTypeId ? 3 : item.equipmentTypeId ? 2 : 1
+const suggestedDefaults = computed(() => {
+  const equipment = selectedEquipment.value
+  if (!equipment) return []
+  const compatible = templateDefaults.value.filter((item) =>
+    (!item.equipmentTypeId || Number(item.equipmentTypeId) === Number(equipment.typeId))
+    && (!item.brand || normalizeText(item.brand) === normalizeText(equipment.brandName))
+    && (!item.model || normalizeText(item.model) === normalizeText(equipment.modelName)),
+  ).sort((left, right) => templateSpecificity(right) - templateSpecificity(left) || Number(left.templateId) - Number(right.templateId) || Number(left.id) - Number(right.id))
+  const seen = new Set(equipment.assignedServiceTypeIds ?? [])
+  return compatible.filter((item) => {
+    if (seen.has(Number(item.serviceTypeId))) return false
+    seen.add(Number(item.serviceTypeId))
+    return true
+  })
+})
 const defaultsForSelectedEquipment = computed(() => {
-  if (!selectedEquipment.value) return []
-  return templateDefaults.value.filter((item) => Number(item.equipmentTypeId) === Number(selectedEquipment.value.typeId))
+  return suggestedDefaults.value
 })
 const selectedTemplateDefault = computed(() => defaultsForSelectedEquipment.value.find((item) => String(item.serviceTypeId) === selectedServiceId.value) ?? null)
 const groupedPlans = computed(() => {
@@ -76,6 +94,42 @@ watch(selectedEquipmentId, () => {
 
 watch(selectedServiceId, () => applyTemplateDefault(selectedTemplateDefault.value))
 
+watch(suggestedDefaults, (items) => {
+  const next = {}
+  for (const item of items) {
+    next[item.id] = suggestionInputs.value[item.id] ?? { selected: true, baseKm: '', baseHours: '', baseDate: '' }
+  }
+  suggestionInputs.value = next
+}, { immediate: true })
+
+const addDays = (date, days) => {
+  if (!date) return null
+  const result = new Date(`${date}T00:00:00`)
+  result.setDate(result.getDate() + Number(days))
+  return result.toISOString().slice(0, 10)
+}
+const numeric = (value) => value === '' || value === null || value === undefined ? null : Number(value)
+const suggestionPreview = (item) => {
+  const input = suggestionInputs.value[item.id] ?? {}
+  const nextKm = item.intervalKm && numeric(input.baseKm) !== null ? numeric(input.baseKm) + Number(item.intervalKm) : null
+  const nextHours = item.intervalHours && numeric(input.baseHours) !== null ? numeric(input.baseHours) + Number(item.intervalHours) : null
+  const nextDate = item.intervalDays && input.baseDate ? addDays(input.baseDate, item.intervalDays) : null
+  const missing = (item.intervalKm && (nextKm === null || selectedEquipment.value?.currentKm === null))
+    || (item.intervalHours && (nextHours === null || selectedEquipment.value?.currentHours === null))
+    || (item.intervalDays && nextDate === null)
+  let state = 'SIN_DATOS'
+  if (!missing) {
+    const overdue = (nextKm !== null && Number(selectedEquipment.value.currentKm) >= nextKm)
+      || (nextHours !== null && Number(selectedEquipment.value.currentHours) >= nextHours)
+      || (nextDate !== null && today() >= nextDate)
+    const due = (nextKm !== null && Number(selectedEquipment.value.currentKm) >= nextKm - Number(item.warningKm ?? 0))
+      || (nextHours !== null && Number(selectedEquipment.value.currentHours) >= nextHours - Number(item.warningHours ?? 0))
+      || (nextDate !== null && today() >= addDays(nextDate, -Number(item.warningDays ?? 0)))
+    state = overdue ? 'VENCIDO' : due ? 'PROXIMO' : 'AL_DIA'
+  }
+  return { nextKm, nextHours, nextDate, state }
+}
+
 const criterionLabel = (key, criterion) => {
   if (key === 'kilometers') return `Cada ${criterion.interval} km · base ${criterion.base ?? 'sin datos'} · próximo ${criterion.next ?? 'sin datos'} km`
   if (key === 'hours') return `Cada ${criterion.interval} h · base ${criterion.base ?? 'sin datos'} · próximo ${criterion.next ?? 'sin datos'} h`
@@ -94,6 +148,60 @@ const criterionProgress = (key, criterion) => {
       <template #actions><a :href="data.routes.equipmentIndex" :class="secondaryButton"><TruckIcon class="mr-2 size-5" aria-hidden="true" />Ver camiones</a></template>
     </PageHeading>
     <FlashMessages :flash="data.flash" />
+
+    <PanelCard v-if="data.canEdit" id="planes-desde-plantilla" title="Agregar planes desde plantilla" class="mb-6">
+      <form method="post" :action="data.routes.createFromTemplate" class="space-y-5">
+        <CsrfInput :csrf="data.csrf" />
+        <FormField label="Camión o equipo" for-id="template-equipment" class="max-w-2xl">
+          <select id="template-equipment" v-model="selectedEquipmentId" name="equipo_id" required :class="fieldClass">
+            <option value="" disabled>Seleccionar equipo</option>
+            <option v-for="equipment in data.catalogs.equipment" :key="equipment.id" :value="String(equipment.id)">{{ equipment.code }} · {{ equipment.typeName }} · {{ equipment.branchCode }}</option>
+          </select>
+        </FormField>
+
+        <p v-if="!selectedEquipment" class="rounded-lg bg-info-subtle p-4 text-sm text-ink">Seleccioná un equipo para detectar automáticamente las plantillas compatibles.</p>
+        <p v-else-if="suggestedDefaults.length === 0" class="rounded-lg bg-surface-subtle p-4 text-sm text-ink-muted">No hay servicios nuevos compatibles. Los planes ya asignados no se sugieren nuevamente.</p>
+        <template v-else>
+          <div class="rounded-lg bg-warning-subtle p-4 text-sm text-ink">
+            La lectura actual de <strong>{{ selectedEquipment.code }}</strong> se usa solo para evaluar el estado. Ingresá por separado la última realización conocida de cada servicio; si no la conocés, dejala vacía y el criterio quedará en <strong>SIN_DATOS</strong>.
+          </div>
+          <div class="space-y-4">
+            <article v-for="item in suggestedDefaults" :key="item.id" class="rounded-xl border border-border p-4 sm:p-5">
+              <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <label class="flex items-start gap-3">
+                  <input v-model="suggestionInputs[item.id].selected" type="checkbox" :name="`planes[${item.id}][seleccionado]`" value="1" class="mt-1 size-4 rounded border-border-strong text-primary focus:ring-primary" />
+                  <span><strong class="block text-ink">{{ item.serviceName }}</strong><span class="text-xs text-ink-muted">{{ item.templateName }} · {{ item.model ? 'Modelo' : item.brand ? 'Marca y tipo' : item.equipmentTypeId ? 'Tipo de equipo' : 'Genérica' }}</span></span>
+                </label>
+                <StatusBadge :status="suggestionPreview(item).state" />
+              </div>
+              <div class="mt-4 grid gap-3 md:grid-cols-3">
+                <div v-if="item.intervalKm" class="rounded-lg bg-surface-subtle p-3">
+                  <p class="text-xs font-semibold text-ink-muted">Cada {{ item.intervalKm }} km · anticipación {{ item.warningKm }} km</p>
+                  <label class="mt-2 block text-sm font-medium text-ink" :for="`suggestion-km-${item.id}`">Último realizado a los km</label>
+                  <input :id="`suggestion-km-${item.id}`" v-model="suggestionInputs[item.id].baseKm" type="number" min="0" :max="selectedEquipment.currentKm ?? undefined" :name="`planes[${item.id}][base_km]`" placeholder="Desconocido" :disabled="!suggestionInputs[item.id].selected" :class="fieldClass" />
+                  <p class="mt-2 text-xs text-ink-muted">Próximo: {{ suggestionPreview(item).nextKm === null ? 'sin datos' : `${suggestionPreview(item).nextKm} km` }}</p>
+                </div>
+                <div v-if="item.intervalHours" class="rounded-lg bg-surface-subtle p-3">
+                  <p class="text-xs font-semibold text-ink-muted">Cada {{ item.intervalHours }} h · anticipación {{ item.warningHours }} h</p>
+                  <label class="mt-2 block text-sm font-medium text-ink" :for="`suggestion-hours-${item.id}`">Último realizado a las horas</label>
+                  <input :id="`suggestion-hours-${item.id}`" v-model="suggestionInputs[item.id].baseHours" type="number" min="0" step="0.1" :max="selectedEquipment.currentHours ?? undefined" :name="`planes[${item.id}][base_horas]`" placeholder="Desconocido" :disabled="!suggestionInputs[item.id].selected" :class="fieldClass" />
+                  <p class="mt-2 text-xs text-ink-muted">Próximo: {{ suggestionPreview(item).nextHours === null ? 'sin datos' : `${suggestionPreview(item).nextHours} h` }}</p>
+                </div>
+                <div v-if="item.intervalDays" class="rounded-lg bg-surface-subtle p-3">
+                  <p class="text-xs font-semibold text-ink-muted">Cada {{ item.intervalDays }} días · anticipación {{ item.warningDays }} días</p>
+                  <label class="mt-2 block text-sm font-medium text-ink" :for="`suggestion-date-${item.id}`">Último realizado en fecha</label>
+                  <input :id="`suggestion-date-${item.id}`" v-model="suggestionInputs[item.id].baseDate" type="date" :max="today()" :name="`planes[${item.id}][base_fecha]`" :disabled="!suggestionInputs[item.id].selected" :class="fieldClass" />
+                  <p class="mt-2 text-xs text-ink-muted">Próximo: {{ suggestionPreview(item).nextDate ?? 'sin datos' }}</p>
+                </div>
+              </div>
+              <p v-if="item.notes" class="mt-3 text-sm text-ink-muted">{{ item.notes }}</p>
+            </article>
+          </div>
+          <p class="text-xs text-ink-muted">Podés desmarcar cualquier servicio. La confirmación crea planes y avisos vencidos cuando corresponda, pero nunca genera una orden de trabajo automáticamente.</p>
+          <button type="submit" :class="primaryButton" :disabled="!suggestedDefaults.some((item) => suggestionInputs[item.id]?.selected)">Confirmar planes seleccionados</button>
+        </template>
+      </form>
+    </PanelCard>
 
     <PanelCard v-if="data.canEdit" title="Crear plan preventivo" class="mb-6">
       <details class="rounded-xl border border-border bg-surface-subtle p-4 open:bg-white sm:p-5">
@@ -155,7 +263,7 @@ const criterionProgress = (key, criterion) => {
       <div v-else class="divide-y divide-border-subtle">
         <section v-for="group in groupedPlans" :key="group.equipment.id" class="p-5 sm:p-6">
           <div class="mb-4 flex flex-col justify-between gap-2 sm:flex-row sm:items-start">
-            <div><a v-if="group.equipment.detailUrl" :href="group.equipment.detailUrl" class="text-lg font-bold text-primary hover:text-primary-hover">{{ group.equipment.code }}</a><strong v-else class="text-lg text-ink">{{ group.equipment.code }}</strong><p class="text-sm text-ink-muted">{{ group.equipment.typeName }}<span v-if="group.equipment.plate"> · {{ group.equipment.plate }}</span> · {{ group.branch.code }} / {{ group.branch.name }}</p></div>
+            <div class="flex items-center gap-3"><EquipmentThumbnail :url="group.equipment.photoUrl" :code="group.equipment.code" size="lg" /><div><a v-if="group.equipment.detailUrl" :href="group.equipment.detailUrl" class="text-lg font-bold text-primary hover:text-primary-hover">{{ group.equipment.code }}</a><strong v-else class="text-lg text-ink">{{ group.equipment.code }}</strong><p class="text-sm text-ink-muted">{{ group.equipment.typeName }}<span v-if="group.equipment.plate"> · {{ group.equipment.plate }}</span> · {{ group.branch.code }} / {{ group.branch.name }}</p></div></div>
             <span class="rounded-full bg-surface-muted px-3 py-1 text-xs font-semibold text-ink-muted">{{ group.plans.length }} {{ group.plans.length === 1 ? 'plan' : 'planes' }}</span>
           </div>
           <div class="grid gap-3 xl:grid-cols-2">

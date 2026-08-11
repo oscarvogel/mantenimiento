@@ -1,5 +1,6 @@
 <script setup>
 import { Bars3Icon } from '@heroicons/vue/24/outline'
+import AppNotificationBell from './AppNotificationBell.vue'
 
 defineProps({
   user: {
@@ -9,6 +10,10 @@ defineProps({
   company: {
     type: Object,
     required: true,
+  },
+  notifications: {
+    type: Object,
+    default: () => ({ enabled: false, summaryUrl: '#', centerUrl: '#' }),
   },
 })
 
@@ -32,6 +37,7 @@ const emit = defineEmits(['open-menu'])
     </div>
 
     <div class="flex items-center gap-1 sm:gap-3">
+      <AppNotificationBell v-if="notifications.enabled" v-bind="notifications" />
       <div class="flex min-w-0 items-center gap-3">
         <span class="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary-subtle text-xs font-bold text-primary">
           {{ user.initials }}

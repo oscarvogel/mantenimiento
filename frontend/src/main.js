@@ -6,6 +6,7 @@ import { developmentDashboard } from './data/developmentDashboard.js'
 import { operationPageComponents } from './pages/operations/index.js'
 import { adminPagesByType } from './pages/admin/index.js'
 import { ReportsPage } from './pages/reports/index.js'
+import { NotificationCenterPage } from './pages/notifications/index.js'
 import LoginPage from './pages/login/LoginPage.vue'
 import './styles.css'
 
@@ -38,6 +39,7 @@ export function mountMaintenanceDashboard(element, payload) {
     const pageComponent = operationPageComponents[page]
       ?? adminPagesByType[page]
       ?? (page === 'reports' ? ReportsPage : null)
+      ?? (page === 'notifications' ? NotificationCenterPage : null)
 
     if (pageComponent) {
       const pageData = payload?.data && typeof payload.data === 'object'
@@ -66,4 +68,13 @@ if (root) {
   const serverPayload = payloadFromDocument()
   const payload = serverPayload ?? (import.meta.env.DEV ? developmentDashboard : null)
   mountMaintenanceDashboard(root, payload)
+}
+
+if ('serviceWorker' in navigator) {
+  const manifest = document.querySelector('link[rel="manifest"]')
+  if (manifest?.href) {
+    const serviceWorkerUrl = new URL('service-worker.js', manifest.href)
+    const scope = new URL('./', manifest.href).pathname
+    navigator.serviceWorker.register(serviceWorkerUrl, { scope }).catch(() => {})
+  }
 }

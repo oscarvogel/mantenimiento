@@ -21,8 +21,13 @@ use App\Application\Assets\ListEquipment;
 use App\Application\Assets\ListAvailableAssetBranches;
 use App\Application\Assets\RenderEquipmentQr;
 use App\Application\Assets\Attachment\DownloadEquipmentAttachmentHandler;
+use App\Application\Assets\Attachment\DownloadPrimaryEquipmentPhotoHandler;
+use App\Application\Assets\Attachment\GetPrimaryEquipmentPhotoHandler;
 use App\Application\Assets\Attachment\ListEquipmentAttachmentsHandler;
+use App\Application\Assets\Attachment\ListPrimaryEquipmentPhotos;
+use App\Application\Assets\Attachment\RetirePrimaryEquipmentPhotoHandler;
 use App\Application\Assets\Attachment\RetireEquipmentAttachmentHandler;
+use App\Application\Assets\Attachment\UploadPrimaryEquipmentPhotoHandler;
 use App\Application\Assets\Attachment\UploadEquipmentAttachmentHandler;
 use App\Application\Assets\DecommissionEquipmentHandler;
 use App\Application\Assets\GetEquipmentDetails;
@@ -31,15 +36,20 @@ use App\Application\Assets\UpdateEquipmentHandler;
 use App\Application\Measurement\CorrectReadingHandler;
 use App\Application\Measurement\ListReadingHistoryHandler;
 use App\Application\Measurement\RegisterReadingHandler;
+use App\Application\Measurement\RegisterReadingBatchHandler;
+use App\Application\MaintenanceCircuit\CreateEquipmentWithInitialReading;
 use App\Application\MaintenanceCircuit\DetectOverduePlans;
 use App\Application\MaintenanceCircuit\GetCircuitOverview;
+use App\Application\MaintenanceCircuit\RegisterReadingAndReevaluate;
 use App\Application\MaintenanceCircuit\GeneratePreventiveOrderFromNotice;
 use App\Application\MaintenanceCircuit\ClosePreventiveOrder;
 use App\Application\PreventiveMaintenance\AsignarPlan;
 use App\Application\PreventiveMaintenance\ConsultarVencimientos;
 use App\Application\PreventiveMaintenance\ListPreventivePlansHandler;
+use App\Application\PreventiveMaintenance\MaterializeSuggestedPlans;
 use App\Application\PreventiveMaintenance\MaterializarAvisoVencido;
 use App\Application\PreventiveMaintenance\RecalcularPlanTrasCierre;
+use App\Application\PreventiveMaintenance\ReevaluateEquipmentAfterReading;
 use App\Application\WorkOrders\StartWorkOrder;
 use App\Application\Reports\GetMaintenanceReport;
 use App\Application\Organization\AssignUserCompanyHandler;
@@ -51,8 +61,31 @@ use App\Application\Organization\Port\OrganizationAdministrationPort;
 use App\Application\Organization\Port\TenantAdministrationPort;
 use App\Application\Organization\TenantAdministrationService;
 use App\Application\Organization\UpdateCompanyHandler;
+use App\Application\Notifications\CollectOperationalNotifications;
+use App\Application\Notifications\GetNotificationCenter;
+use App\Application\Notifications\ManageNotificationPreferences;
+use App\Application\Notifications\ManageWebPushSubscriptions;
+use App\Application\Notifications\MarkNotificationRead;
+use App\Application\Notifications\NotificationChannelPolicy;
+use App\Application\Notifications\NotificationDeliverySchedule;
+use App\Application\Notifications\NotificationPreferenceResolution;
+use App\Application\Notifications\NotificationRecipientScopePolicy;
+use App\Application\Notifications\PublishNotifiableEvent;
+use App\Application\Notifications\RunNotificationDispatch;
+use App\Application\Notifications\SendWebPushTest;
 use App\Infrastructure\Organization\CodeIgniterOrganizationAdministration;
 use App\Infrastructure\Organization\CodeIgniterTenantAdministration;
+use App\Infrastructure\Notifications\CodeIgniterEmailNotificationGateway;
+use App\Infrastructure\Notifications\CodeIgniterNotificationDeliveryQueue;
+use App\Infrastructure\Notifications\CodeIgniterNotificationPreferenceStore;
+use App\Infrastructure\Notifications\CodeIgniterNotificationProcessControl;
+use App\Infrastructure\Notifications\CodeIgniterNotificationRecipientResolver;
+use App\Infrastructure\Notifications\CodeIgniterNotificationRepository;
+use App\Infrastructure\Notifications\CodeIgniterNotificationUnitOfWork;
+use App\Infrastructure\Notifications\CodeIgniterOperationalNotificationEventSource;
+use App\Infrastructure\Notifications\CodeIgniterWebPushSubscriptionStore;
+use App\Infrastructure\Notifications\MinishlinkWebPushGateway;
+use App\Infrastructure\Notifications\SystemNotificationClock;
 use App\Infrastructure\Identity\CodeIgniterLoginAttemptLimiter;
 use App\Infrastructure\AppShell\CodeIgniterAppShellReadModel;
 use App\Infrastructure\Dashboard\MaintenanceCircuitDashboardOverview;
@@ -85,13 +118,17 @@ use App\Infrastructure\Assets\EndroidEquipmentQrRenderer;
 use App\Infrastructure\Assets\Attachment\CodeIgniterEquipmentAttachmentEquipmentScope;
 use App\Infrastructure\Assets\Attachment\CodeIgniterEquipmentAttachmentReadModel;
 use App\Infrastructure\Assets\Attachment\CodeIgniterEquipmentAttachmentRepository;
+use App\Infrastructure\Assets\Attachment\CodeIgniterPrimaryEquipmentPhotoRepository;
 use App\Infrastructure\Assets\Attachment\FileinfoEquipmentAttachmentInspector;
 use App\Infrastructure\Assets\Attachment\LocalPrivateAttachmentStorage;
+use App\Infrastructure\Assets\Attachment\GdPrimaryPhotoProcessor;
 use App\Infrastructure\Assets\Attachment\SystemEquipmentAttachmentClock;
 use App\Infrastructure\Measurement\CodeIgniterReadingCorrectionRepository;
 use App\Infrastructure\Measurement\CodeIgniterReadingHistory;
 use App\Infrastructure\Measurement\CodeIgniterReadingRepository;
 use App\Infrastructure\Measurement\CodeIgniterUnitOfWork;
+use App\Infrastructure\Measurement\SystemClock as MeasurementClock;
+use App\Infrastructure\MaintenanceCircuit\CodeIgniterReadingPreventiveUnitOfWork;
 use App\Infrastructure\MaintenanceCircuit\CodeIgniterCircuitOverview;
 use App\Infrastructure\MaintenanceCircuit\CodeIgniterPreventiveOrderClosure;
 use App\Infrastructure\MaintenanceCircuit\CodeIgniterPreventiveOrderFromNotice;
@@ -99,6 +136,8 @@ use App\Infrastructure\PreventiveMaintenance\CodeIgniterMaintenanceNoticeReposit
 use App\Infrastructure\PreventiveMaintenance\CodeIgniterPlanMantenimientoRepository;
 use App\Infrastructure\PreventiveMaintenance\CodeIgniterPreventiveAssetGateway;
 use App\Infrastructure\PreventiveMaintenance\CodeIgniterPreventivePlanReadModel;
+use App\Infrastructure\PreventiveMaintenance\CodeIgniterPreventiveTemplateGateway;
+use App\Infrastructure\PreventiveMaintenance\CodeIgniterPreventiveUnitOfWork;
 use App\Infrastructure\PreventiveMaintenance\CodeIgniterServiceTypeGateway;
 use App\Infrastructure\PreventiveMaintenance\SystemClock;
 use App\Infrastructure\WorkOrders\CodeIgniterWorkOrderRepository;
@@ -107,10 +146,12 @@ use App\Infrastructure\WorkOrders\SystemClock as WorkOrderClock;
 use App\Infrastructure\Reports\CodeIgniterMaintenanceReportReadModel;
 use App\Infrastructure\Reports\SystemReportClock;
 use App\Domain\PreventiveMaintenance\EvaluadorVencimiento;
+use App\Domain\PreventiveMaintenance\ResolverPlantillasCompatibles;
 use App\Presentation\AppShellPayload;
 use App\Presentation\AdministrationPayload;
 use App\Presentation\OperationsPayload;
 use App\Presentation\PreventivePlansPayload;
+use App\Presentation\QuickReadingsPayload;
 use CodeIgniter\Config\BaseService;
 
 /**
@@ -178,6 +219,196 @@ class Services extends BaseService
             new CodeIgniterMaintenanceReportReadModel(db_connect()),
             new SystemReportClock(),
         );
+    }
+
+    public static function notificationClock(bool $getShared = true): SystemNotificationClock
+    {
+        if ($getShared) {
+            return static::getSharedInstance('notificationClock');
+        }
+
+        return new SystemNotificationClock();
+    }
+
+    public static function notificationRepository(bool $getShared = true): CodeIgniterNotificationRepository
+    {
+        if ($getShared) {
+            return static::getSharedInstance('notificationRepository');
+        }
+
+        return new CodeIgniterNotificationRepository(db_connect());
+    }
+
+    public static function notificationPreferenceStore(bool $getShared = true): CodeIgniterNotificationPreferenceStore
+    {
+        if ($getShared) {
+            return static::getSharedInstance('notificationPreferenceStore');
+        }
+
+        return new CodeIgniterNotificationPreferenceStore(
+            static::notificationClock(false),
+            new NotificationPreferenceResolution(),
+            db_connect(),
+        );
+    }
+
+    public static function notificationDeliveryQueue(bool $getShared = true): CodeIgniterNotificationDeliveryQueue
+    {
+        if ($getShared) {
+            return static::getSharedInstance('notificationDeliveryQueue');
+        }
+
+        return new CodeIgniterNotificationDeliveryQueue(
+            static::notificationClock(false),
+            new NotificationDeliverySchedule(),
+            new NotificationChannelPolicy(),
+            static::webPushAvailable(),
+            (string) env('alerts.dailyRunTime', '07:00'),
+            db_connect(),
+        );
+    }
+
+    public static function webPushSubscriptionStore(bool $getShared = true): CodeIgniterWebPushSubscriptionStore
+    {
+        if ($getShared) {
+            return static::getSharedInstance('webPushSubscriptionStore');
+        }
+
+        return new CodeIgniterWebPushSubscriptionStore(static::notificationClock(false), db_connect());
+    }
+
+    public static function webPushGateway(bool $getShared = true): MinishlinkWebPushGateway
+    {
+        if ($getShared) {
+            return static::getSharedInstance('webPushGateway');
+        }
+
+        return new MinishlinkWebPushGateway(
+            static::webPushSubscriptionStore(),
+            filter_var(env('webpush.enabled', false), FILTER_VALIDATE_BOOL),
+            trim((string) env('webpush.subject', '')),
+            trim((string) env('webpush.vapidPublicKey', '')),
+            trim((string) env('webpush.vapidPrivateKey', '')),
+        );
+    }
+
+    public static function notificationRecipients(bool $getShared = true): CodeIgniterNotificationRecipientResolver
+    {
+        if ($getShared) {
+            return static::getSharedInstance('notificationRecipients');
+        }
+
+        return new CodeIgniterNotificationRecipientResolver(new NotificationRecipientScopePolicy(), db_connect());
+    }
+
+    public static function notificationUnitOfWork(bool $getShared = true): CodeIgniterNotificationUnitOfWork
+    {
+        if ($getShared) {
+            return static::getSharedInstance('notificationUnitOfWork');
+        }
+
+        return new CodeIgniterNotificationUnitOfWork(db_connect());
+    }
+
+    public static function publishNotifiableEvent(bool $getShared = true): PublishNotifiableEvent
+    {
+        if ($getShared) {
+            return static::getSharedInstance('publishNotifiableEvent');
+        }
+
+        return new PublishNotifiableEvent(
+            static::notificationRecipients(false),
+            static::notificationRepository(false),
+            static::notificationPreferenceStore(false),
+            static::notificationDeliveryQueue(false),
+            static::notificationUnitOfWork(false),
+        );
+    }
+
+    public static function operationalNotificationCollector(bool $getShared = true): CollectOperationalNotifications
+    {
+        if ($getShared) {
+            return static::getSharedInstance('operationalNotificationCollector');
+        }
+
+        return new CollectOperationalNotifications(
+            new CodeIgniterOperationalNotificationEventSource(
+                static::notificationClock(false),
+                (int) env('alerts.lecturasVencidasDias', 30),
+                (int) env('alerts.ordenDemoradaDias', 5),
+                db_connect(),
+            ),
+            static::publishNotifiableEvent(false),
+        );
+    }
+
+    public static function notificationCenter(bool $getShared = true): GetNotificationCenter
+    {
+        if ($getShared) {
+            return static::getSharedInstance('notificationCenter');
+        }
+
+        return new GetNotificationCenter(static::notificationRepository(false));
+    }
+
+    public static function markNotificationRead(bool $getShared = true): MarkNotificationRead
+    {
+        if ($getShared) {
+            return static::getSharedInstance('markNotificationRead');
+        }
+
+        return new MarkNotificationRead(static::notificationRepository(false), static::notificationClock(false));
+    }
+
+    public static function notificationPreferences(bool $getShared = true): ManageNotificationPreferences
+    {
+        if ($getShared) {
+            return static::getSharedInstance('notificationPreferences');
+        }
+
+        return new ManageNotificationPreferences(static::notificationPreferenceStore(false));
+    }
+
+    public static function webPushSubscriptions(bool $getShared = true): ManageWebPushSubscriptions
+    {
+        if ($getShared) {
+            return static::getSharedInstance('webPushSubscriptions');
+        }
+
+        return new ManageWebPushSubscriptions(static::webPushSubscriptionStore(false));
+    }
+
+    public static function notificationDispatch(bool $getShared = true): RunNotificationDispatch
+    {
+        if ($getShared) {
+            return static::getSharedInstance('notificationDispatch');
+        }
+
+        $clock = static::notificationClock(false);
+
+        return new RunNotificationDispatch(
+            static::notificationDeliveryQueue(false),
+            new CodeIgniterEmailNotificationGateway($clock),
+            static::webPushGateway(false),
+            new CodeIgniterNotificationProcessControl($clock, db_connect()),
+        );
+    }
+
+    public static function webPushTest(bool $getShared = true): SendWebPushTest
+    {
+        if ($getShared) {
+            return static::getSharedInstance('webPushTest');
+        }
+
+        return new SendWebPushTest(static::webPushGateway(false));
+    }
+
+    private static function webPushAvailable(): bool
+    {
+        return filter_var(env('webpush.enabled', false), FILTER_VALIDATE_BOOL)
+            && trim((string) env('webpush.subject', '')) !== ''
+            && trim((string) env('webpush.vapidPublicKey', '')) !== ''
+            && trim((string) env('webpush.vapidPrivateKey', '')) !== '';
     }
 
     public static function appShellPayload(bool $getShared = true): AppShellPayload
@@ -399,6 +630,79 @@ class Services extends BaseService
         );
     }
 
+    public static function primaryEquipmentPhotoRepository(bool $getShared = true): CodeIgniterPrimaryEquipmentPhotoRepository
+    {
+        if ($getShared) {
+            return static::getSharedInstance('primaryEquipmentPhotoRepository');
+        }
+
+        return new CodeIgniterPrimaryEquipmentPhotoRepository(db_connect());
+    }
+
+    public static function listPrimaryEquipmentPhotos(bool $getShared = true): ListPrimaryEquipmentPhotos
+    {
+        if ($getShared) {
+            return static::getSharedInstance('listPrimaryEquipmentPhotos');
+        }
+
+        return new ListPrimaryEquipmentPhotos(static::primaryEquipmentPhotoRepository());
+    }
+
+    public static function getPrimaryEquipmentPhoto(bool $getShared = true): GetPrimaryEquipmentPhotoHandler
+    {
+        if ($getShared) {
+            return static::getSharedInstance('getPrimaryEquipmentPhoto');
+        }
+
+        return new GetPrimaryEquipmentPhotoHandler(static::primaryEquipmentPhotoRepository());
+    }
+
+    public static function uploadPrimaryEquipmentPhoto(bool $getShared = true): UploadPrimaryEquipmentPhotoHandler
+    {
+        if ($getShared) {
+            return static::getSharedInstance('uploadPrimaryEquipmentPhoto');
+        }
+
+        $configuredRoot = trim((string) env('uploads.privatePath', ''));
+        $maximumSizeMb = max(1, (int) env('uploads.primaryPhotoMaxSizeMB', 5));
+
+        return new UploadPrimaryEquipmentPhotoHandler(
+            new FileinfoEquipmentAttachmentInspector(),
+            new LocalPrivateAttachmentStorage($configuredRoot === '' ? null : $configuredRoot),
+            new CodeIgniterEquipmentAttachmentEquipmentScope(db_connect()),
+            new SystemEquipmentAttachmentClock(),
+            static::primaryEquipmentPhotoRepository(),
+            new GdPrimaryPhotoProcessor(),
+            $maximumSizeMb * 1024 * 1024,
+        );
+    }
+
+    public static function downloadPrimaryEquipmentPhoto(bool $getShared = true): DownloadPrimaryEquipmentPhotoHandler
+    {
+        if ($getShared) {
+            return static::getSharedInstance('downloadPrimaryEquipmentPhoto');
+        }
+
+        $configuredRoot = trim((string) env('uploads.privatePath', ''));
+
+        return new DownloadPrimaryEquipmentPhotoHandler(
+            static::primaryEquipmentPhotoRepository(),
+            new LocalPrivateAttachmentStorage($configuredRoot === '' ? null : $configuredRoot),
+        );
+    }
+
+    public static function retirePrimaryEquipmentPhoto(bool $getShared = true): RetirePrimaryEquipmentPhotoHandler
+    {
+        if ($getShared) {
+            return static::getSharedInstance('retirePrimaryEquipmentPhoto');
+        }
+
+        return new RetirePrimaryEquipmentPhotoHandler(
+            static::primaryEquipmentPhotoRepository(),
+            new SystemEquipmentAttachmentClock(),
+        );
+    }
+
     public static function equipmentDetails(bool $getShared = true): GetEquipmentDetails
     {
         if ($getShared) {
@@ -524,6 +828,87 @@ class Services extends BaseService
         );
     }
 
+    public static function measurementClock(bool $getShared = true): MeasurementClock
+    {
+        if ($getShared) {
+            return static::getSharedInstance('measurementClock');
+        }
+
+        return new MeasurementClock();
+    }
+
+    public static function readingPreventiveUnitOfWork(bool $getShared = true): CodeIgniterReadingPreventiveUnitOfWork
+    {
+        if ($getShared) {
+            return static::getSharedInstance('readingPreventiveUnitOfWork');
+        }
+
+        return new CodeIgniterReadingPreventiveUnitOfWork(db_connect());
+    }
+
+    public static function reevaluateEquipmentAfterReading(bool $getShared = true): ReevaluateEquipmentAfterReading
+    {
+        if ($getShared) {
+            return static::getSharedInstance('reevaluateEquipmentAfterReading');
+        }
+
+        $database = db_connect();
+
+        return new ReevaluateEquipmentAfterReading(
+            new CodeIgniterPlanMantenimientoRepository($database),
+            new CodeIgniterPreventiveAssetGateway($database),
+            new SystemClock(),
+            new EvaluadorVencimiento(),
+            new MaterializarAvisoVencido(new CodeIgniterMaintenanceNoticeRepository($database)),
+        );
+    }
+
+    public static function registerReadingAndReevaluate(bool $getShared = true): RegisterReadingAndReevaluate
+    {
+        if ($getShared) {
+            return static::getSharedInstance('registerReadingAndReevaluate');
+        }
+
+        return new RegisterReadingAndReevaluate(
+            static::registerReading(false),
+            static::reevaluateEquipmentAfterReading(false),
+            static::readingPreventiveUnitOfWork(false),
+            static::measurementClock(false),
+        );
+    }
+
+    public static function registerReadingBatch(bool $getShared = true): RegisterReadingBatchHandler
+    {
+        if ($getShared) {
+            return static::getSharedInstance('registerReadingBatch');
+        }
+
+        return new RegisterReadingBatchHandler(static::registerReadingAndReevaluate(false));
+    }
+
+    public static function quickReadingsPayload(bool $getShared = true): QuickReadingsPayload
+    {
+        if ($getShared) {
+            return static::getSharedInstance('quickReadingsPayload');
+        }
+
+        return new QuickReadingsPayload();
+    }
+
+    public static function createEquipmentWithInitialReading(bool $getShared = true): CreateEquipmentWithInitialReading
+    {
+        if ($getShared) {
+            return static::getSharedInstance('createEquipmentWithInitialReading');
+        }
+
+        return new CreateEquipmentWithInitialReading(
+            static::createEquipment(false),
+            static::registerReading(false),
+            static::readingPreventiveUnitOfWork(false),
+            static::measurementClock(false),
+        );
+    }
+
     public static function assignMaintenancePlan(bool $getShared = true): AsignarPlan
     {
         if ($getShared) {
@@ -536,6 +921,26 @@ class Services extends BaseService
             new CodeIgniterPlanMantenimientoRepository($database),
             new CodeIgniterPreventiveAssetGateway($database),
             new CodeIgniterServiceTypeGateway($database),
+            new SystemClock(),
+        );
+    }
+
+    public static function materializeSuggestedPreventivePlans(bool $getShared = true): MaterializeSuggestedPlans
+    {
+        if ($getShared) {
+            return static::getSharedInstance('materializeSuggestedPreventivePlans');
+        }
+
+        $database = db_connect();
+
+        return new MaterializeSuggestedPlans(
+            new CodeIgniterPreventiveTemplateGateway($database),
+            new CodeIgniterPreventiveAssetGateway($database),
+            new CodeIgniterPlanMantenimientoRepository($database),
+            new ResolverPlantillasCompatibles(),
+            new EvaluadorVencimiento(),
+            new MaterializarAvisoVencido(new CodeIgniterMaintenanceNoticeRepository($database)),
+            new CodeIgniterPreventiveUnitOfWork($database),
             new SystemClock(),
         );
     }

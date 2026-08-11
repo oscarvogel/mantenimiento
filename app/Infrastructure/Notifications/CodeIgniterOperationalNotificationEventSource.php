@@ -1,0 +1,129 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Infrastructure\Notifications;
+
+use App\Application\Notifications\Port\NotificationClock;
+use App\Application\Notifications\Port\OperationalNotificationEventSource;
+use App\Domain\Notifications\NotifiableEvent;
+use App\Domain\Notifications\NotificationSeverity;
+use App\Domain\PreventiveMaintenance\EstadoPlan;
+use App\Domain\PreventiveMaintenance\EvaluadorVencimiento;
+use App\Domain\PreventiveMaintenance\PlanMantenimiento;
+use App\Domain\PreventiveMaintenance\UsoActual;
+use CodeIgniter\Database\BaseConnection;
+use Config\Database;
+use DateTimeImmutable;
+
+final class CodeIgniterOperationalNotificationEventSource implements OperationalNotificationEventSource
+{
+    public function __construct(
+        private NotificationClock $clock,
+        private int $staleReadingDays = 30,
+        private int $delayedOrderDays = 5,
+        private ?BaseConnection $db = null,
+    ) {
+        $this->db ??= Database::connect();
+    }
+
+    public function collect(): array
+    {
+        return [...$this->preventiveEvents(), ...$this->staleReadingEvents(), ...$this->workOrderEvents()];
+    }
+
+    /** @return list<NotifiableEvent> */
+    private function preventiveEvents(): array
+    {
+        $rows = $this->db->table('planes_mantenimiento p')
+            ->select('p.*, e.sucursal_id, e.codigo equipo_codigo, e.km_actual, e.horas_actuales, ts.nombre servicio_nombre')
+            ->join('equipos e', 'e.id = p.equipo_id AND e.empresa_id = p.empresa_id', 'inner')
+            ->join('tipos_servicio ts', 'ts.id = p.tipo_servicio_id', 'inner')
+            ->where('p.activo', 1)->where('p.deleted_at', null)->where('e.deleted_at', null)->get()->getResultArray();
+        $events = [];
+        foreach ($rows as $row) {
+            $plan = PlanMantenimiento::reconstituir(
+                (int) $row['id'], (int) $row['empresa_id'], (int) $row['equipo_id'], (int) $row['tipo_servicio_id'],
+                $this->integer($row['intervalo_km']), $this->tenths($row['intervalo_horas']), $this->integer($row['intervalo_dias']),
+                $this->integer($row['anticipacion_km']), $this->tenths($row['anticipacion_horas']), $this->integer($row['anticipacion_dias']),
+                $this->integer($row['base_km']), $this->tenths($row['base_horas']), $this->date($row['base_fecha']),
+                $this->integer($row['proximo_km']), $this->tenths($row['proximas_horas']), $this->date($row['proxima_fecha']),
+                (string) $row['prioridad'], true, $row['observaciones'] === null ? null : (string) $row['observaciones'],
+            );
+            $evaluation = (new EvaluadorVencimiento())->evaluar($plan, new UsoActual($this->integer($row['km_actual']), $this->tenths($row['horas_actuales'])), $this->clock->now());
+            if (! in_array($evaluation->estado(), [EstadoPlan::PROXIMO, EstadoPlan::VENCIDO], true)) { continue; }
+            $overdue = $evaluation->estado() === EstadoPlan::VENCIDO;
+            $cycle = implode(':', [$row['proximo_km'] ?? '-', $row['proximas_horas'] ?? '-', $row['proxima_fecha'] ?? '-']);
+            $type = $overdue ? 'preventivo.vencido' : 'preventivo.proximo';
+            $events[] = new NotifiableEvent(
+                (int) $row['empresa_id'], (int) $row['sucursal_id'], $type,
+                $overdue ? NotificationSeverity::CRITICAL : NotificationSeverity::WARNING,
+                ($overdue ? 'Mantenimiento vencido' : 'Mantenimiento próximo') . ': ' . $row['equipo_codigo'],
+                (string) $row['servicio_nombre'] . ' · criterios: ' . implode(', ', $evaluation->criteriosDisparadores()),
+                'plan_mantenimiento', (string) $row['id'], "{$type}:plan:{$row['id']}:ciclo:{$cycle}",
+                $this->path('mantenimiento/planes') . '?equipo_id=' . (int) $row['equipo_id'], $this->clock->now(),
+            );
+        }
+        return $events;
+    }
+
+    /** @return list<NotifiableEvent> */
+    private function staleReadingEvents(): array
+    {
+        $rows = $this->db->table('equipos e')
+            ->select('e.id, e.empresa_id, e.sucursal_id, e.codigo, MAX(l.fecha_lectura) ultima_lectura')
+            ->join('lecturas_equipo l', 'l.equipo_id = e.id AND l.empresa_id = e.empresa_id AND l.anulada = 0', 'left')
+            ->where('e.estado', 'ACTIVO')->where('e.deleted_at', null)
+            ->groupBy(['e.id', 'e.empresa_id', 'e.sucursal_id', 'e.codigo'])->get()->getResultArray();
+        $cutoff = $this->clock->now()->modify('-' . max(1, $this->staleReadingDays) . ' days');
+        $events = [];
+        foreach ($rows as $row) {
+            $last = $this->date($row['ultima_lectura']);
+            if ($last !== null && $last >= $cutoff) { continue; }
+            $cycle = $last?->format('YmdHis') ?? 'sin_lectura';
+            $events[] = new NotifiableEvent(
+                (int) $row['empresa_id'], (int) $row['sucursal_id'], 'equipo.sin_lectura', NotificationSeverity::WARNING,
+                'Equipo sin lectura reciente: ' . $row['codigo'],
+                $last === null ? 'El equipo todavía no registra lecturas.' : 'Última lectura: ' . $last->format('d/m/Y H:i'),
+                'equipo', (string) $row['id'], "equipo_sin_lectura:equipo:{$row['id']}:ultima:{$cycle}",
+                $this->path('mantenimiento/equipos/' . $row['id']), $this->clock->now(),
+            );
+        }
+        return $events;
+    }
+
+    /** @return list<NotifiableEvent> */
+    private function workOrderEvents(): array
+    {
+        $rows = $this->db->table('ordenes_trabajo o')->select('o.*, e.codigo equipo_codigo')
+            ->join('equipos e', 'e.id = o.equipo_id AND e.empresa_id = o.empresa_id', 'inner')
+            ->whereNotIn('o.estado', ['FINALIZADA', 'CANCELADA'])->get()->getResultArray();
+        $delayedBefore = $this->clock->now()->modify('-' . max(1, $this->delayedOrderDays) . ' days');
+        $events = [];
+        foreach ($rows as $row) {
+            $target = $row['responsable_usuario_id'] === null ? null : [(int) $row['responsable_usuario_id']];
+            if ($target !== null) {
+                $events[] = new NotifiableEvent(
+                    (int) $row['empresa_id'], (int) $row['sucursal_id'], 'orden.asignada', NotificationSeverity::INFO,
+                    'Orden asignada: ' . $row['numero'], 'Equipo ' . $row['equipo_codigo'], 'orden_trabajo', (string) $row['id'],
+                    "orden_asignada:ot:{$row['id']}:usuario:{$row['responsable_usuario_id']}", $this->path('mantenimiento'), $this->clock->now(), $target,
+                );
+            }
+            $reference = $this->date($row['fecha_objetivo']) ?? $this->date($row['fecha_apertura']);
+            if ($reference !== null && $reference < $delayedBefore) {
+                $events[] = new NotifiableEvent(
+                    (int) $row['empresa_id'], (int) $row['sucursal_id'], 'orden.demorada', NotificationSeverity::CRITICAL,
+                    'Orden demorada: ' . $row['numero'], 'Equipo ' . $row['equipo_codigo'] . ' · estado ' . $row['estado'],
+                    'orden_trabajo', (string) $row['id'], "orden_demorada:ot:{$row['id']}:referencia:{$reference->format('Ymd')}",
+                    $this->path('mantenimiento'), $this->clock->now(), $target,
+                );
+            }
+        }
+        return $events;
+    }
+
+    private function integer(mixed $value): ?int { return $value === null ? null : (int) $value; }
+    private function tenths(mixed $value): ?int { return $value === null ? null : (int) round((float) $value * 10); }
+    private function date(mixed $value): ?DateTimeImmutable { return $value === null || $value === '' ? null : new DateTimeImmutable((string) $value); }
+    private function path(string $route): string { return (string) parse_url(base_url($route), PHP_URL_PATH); }
+}

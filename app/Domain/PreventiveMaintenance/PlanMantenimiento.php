@@ -30,6 +30,8 @@ final class PlanMantenimiento
         private readonly string $prioridad,
         private bool $activo,
         private readonly ?string $observaciones,
+        private readonly ?int $origenPlantillaId,
+        private readonly ?int $origenPlantillaItemId,
     ) {
         if ($empresaId <= 0 || $equipoId <= 0 || $tipoServicioId <= 0) {
             throw new InvalidArgumentException('Empresa, equipo y tipo de servicio deben ser validos.');
@@ -37,6 +39,11 @@ final class PlanMantenimiento
 
         $this->validateConfiguration();
         $this->validateTargets();
+
+        if (($this->origenPlantillaId === null) !== ($this->origenPlantillaItemId === null)
+            || ($this->origenPlantillaId !== null && ($this->origenPlantillaId <= 0 || $this->origenPlantillaItemId <= 0))) {
+            throw new InvalidArgumentException('El origen de plantilla del plan no es valido.');
+        }
     }
 
     public static function asignar(
@@ -54,6 +61,8 @@ final class PlanMantenimiento
         ?DateTimeImmutable $baseFecha,
         string $prioridad = 'MEDIA',
         ?string $observaciones = null,
+        ?int $origenPlantillaId = null,
+        ?int $origenPlantillaItemId = null,
     ): self {
         $proximoKm            = $intervaloKm === null || $baseKm === null ? null : $baseKm + $intervaloKm;
         $proximasHorasDecimas = $intervaloHorasDecimas === null || $baseHorasDecimas === null
@@ -83,6 +92,8 @@ final class PlanMantenimiento
             $prioridad,
             true,
             $observaciones,
+            $origenPlantillaId,
+            $origenPlantillaItemId,
         );
     }
 
@@ -106,6 +117,8 @@ final class PlanMantenimiento
         string $prioridad,
         bool $activo,
         ?string $observaciones,
+        ?int $origenPlantillaId = null,
+        ?int $origenPlantillaItemId = null,
     ): self {
         if ($id <= 0) {
             throw new InvalidArgumentException('El identificador del plan debe ser valido.');
@@ -131,6 +144,8 @@ final class PlanMantenimiento
             $prioridad,
             $activo,
             $observaciones,
+            $origenPlantillaId,
+            $origenPlantillaItemId,
         );
     }
 
@@ -279,6 +294,8 @@ final class PlanMantenimiento
     public function prioridad(): string { return $this->prioridad; }
     public function activo(): bool { return $this->activo; }
     public function observaciones(): ?string { return $this->observaciones; }
+    public function origenPlantillaId(): ?int { return $this->origenPlantillaId; }
+    public function origenPlantillaItemId(): ?int { return $this->origenPlantillaItemId; }
     public function usaKilometraje(): bool { return $this->intervaloKm !== null; }
     public function usaHorometro(): bool { return $this->intervaloHorasDecimas !== null; }
     public function usaFecha(): bool { return $this->intervaloDias !== null; }

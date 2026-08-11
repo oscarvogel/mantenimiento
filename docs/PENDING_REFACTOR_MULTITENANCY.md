@@ -1,7 +1,12 @@
-# Refactor de multi-tenancy (pendiente)
+# Refactor de multi-tenancy (resuelto)
 
-Estado: **base de acceso, gestión global y administración tenant implementadas**.
+Estado: **implementado y cubierto por pruebas de aislamiento**.
 Un usuario común pertenece a una sola empresa; el Superadministrador es global.
+
+Este documento reemplaza las decisiones históricas del issue #1. En particular,
+no se agrega `empresa_id` a `usuario_roles` ni se utiliza un helper global basado
+únicamente en la sesión: el alcance se expresa mediante `ActorContext` y se
+aplica dentro de cada puerto/adaptador.
 
 ## Contexto
 
@@ -16,11 +21,13 @@ Decisiones vigentes, incluida la aclaración del 7 de agosto de 2026:
 - Cada usuario no global pertenece a **una sola empresa**. El Superadministrador
   puede asignarlo o trasladarlo a otra empresa.
 - Los roles son **globales** (5 de la spec: Administrador, Responsable de mantenimiento, Tecnico u operador, Solicitante, Consulta).
-- Toda tabla de "datos de negocio" lleva `empresa_id NOT NULL`. Las tablas de catalogo (roles, permisos, tipos_equipo, marcas, modelos, tipos_servicio, tareas_mantenimiento) son globales y NO llevan `empresa_id`.
+- Toda tabla de datos de negocio lleva `empresa_id NOT NULL` cuando corresponde al tenant.
+- Roles, permisos, tipos de equipo, tipos de servicio y tareas son catálogos globales.
+- Marcas y modelos son catálogos propios de cada empresa, como expresa el esquema ejecutable actual y la gestión tenant de activos.
 
-## Que hay que hacer
+## Decisiones implementadas
 
-### 1. Refactor de migraciones existentes
+### 1. Esquema incremental
 
 El esquema confirmado es:
 
@@ -68,7 +75,7 @@ Caso basico: crear dos empresas demo (ademas de la actual), un usuario en cada u
 - El Superadministrador puede listar empresas y gestionar sus asignaciones sin
   heredar permisos empresariales implícitos para operaciones de mantenimiento.
 
-### 4. CRUDs de admin (etapa 1)
+### 4. CRUDs de administración (etapa 1)
 
 Estado del alcance:
 - [x] Listado, alta y edición de empresas (Superadministrador)
@@ -97,7 +104,7 @@ Estado del alcance:
 4. [x] Implementar gestión de empresas y asignaciones para Superadministrador.
 5. [x] Implementar administración de sucursales y usuarios con scope.
 6. [x] Completar pruebas de aislamiento sobre usuarios y sucursales tenant.
-7. Después: circuito vertical de equipos, lecturas, planes y órdenes.
+7. [x] Continuar con el circuito vertical de equipos, lecturas, planes y órdenes.
 
 ## Estimacion
 
@@ -110,4 +117,18 @@ obligatoria del incremento.
 - [x] Se confirma Superadministrador global en v1
 - [x] Cada usuario común pertenece a una sola empresa
 - [x] El Administrador ve todas las sucursales de su empresa
-- [ ] Completar aceptación visual manual en escritorio y móvil antes de avanzar a etapa 2
+- [x] Completar aceptación visual manual en escritorio y móvil de la administración multiempresa.
+
+## Cierre del issue histórico
+
+El issue #1 quedó superado por decisiones posteriores confirmadas con el usuario:
+
+- existe Superadministrador global;
+- un usuario común pertenece a una sola empresa;
+- el Administrador accede automáticamente a las sucursales activas de su empresa;
+- los traslados de usuario revocan accesos anteriores y quedan auditados;
+- las consultas sensibles aplican empresa y sucursal desde `ActorContext`.
+
+Por lo tanto, sus tareas originales de agregar `empresa_id` a `usuario_roles` y
+crear `scope_empresa()` no deben ejecutarse: introducirían duplicación y no
+representan el modelo vigente.

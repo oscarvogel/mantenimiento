@@ -8,6 +8,48 @@ use CodeIgniter\Test\CIUnitTestCase;
 
 final class PreventivePlansPayloadTest extends CIUnitTestCase
 {
+    public function testSerializesAnExistingPlanWithItsCriteria(): void
+    {
+        $payload = (new PreventivePlansPayload())->fromPage(
+            new PreventivePlanPage([[
+                'id' => 12,
+                'equipment_id' => 9,
+                'equipment_code' => 'CAM-01',
+                'equipment_plate' => 'AA123BB',
+                'equipment_type_name' => 'Camión',
+                'branch_id' => 2,
+                'branch_code' => 'CC',
+                'branch_name' => 'Casa central',
+                'service_name' => 'Cambio de aceite',
+                'state' => 'PROXIMO',
+                'priority' => 'MEDIA',
+                'interval_km' => 10000,
+                'warning_km' => 1000,
+                'base_km' => 100,
+                'next_km' => 10100,
+                'current_km' => 9500,
+                'interval_hours' => null,
+                'warning_hours' => null,
+                'base_hours' => null,
+                'next_hours' => null,
+                'current_hours' => null,
+                'interval_days' => null,
+                'warning_days' => null,
+                'base_date' => null,
+                'next_date' => null,
+                'current_date' => '2026-08-11',
+                'notes' => null,
+            ]], 1, 10, 1, [], [], [], []),
+            [],
+            true,
+            true,
+        );
+
+        self::assertSame(10000, $payload['plans']['items'][0]['criteria']['kilometers']['interval']);
+        self::assertSame(9500, $payload['plans']['items'][0]['criteria']['kilometers']['current']);
+        self::assertNull($payload['plans']['items'][0]['criteria']['hours']);
+    }
+
     public function testPaginationLinksPreserveFiltersAndWhitelistedPageSize(): void
     {
         $payload = (new PreventivePlansPayload())->fromPage(
@@ -87,6 +129,8 @@ final class PreventivePlansPayloadTest extends CIUnitTestCase
             'templateName' => 'Preventivo camiones',
             'equipmentTypeId' => 4,
             'equipmentTypeName' => 'Camión',
+            'brand' => null,
+            'model' => null,
             'serviceTypeId' => 6,
             'serviceName' => 'Cambio de aceite',
             'intervalKm' => 10000,
@@ -98,5 +142,23 @@ final class PreventivePlansPayloadTest extends CIUnitTestCase
             'priority' => 'MEDIA',
             'notes' => 'Aceite y filtros',
         ], $payload['catalogs']['templateDefaults'][0]);
+    }
+
+    public function testSerializesGenericTemplateWithoutCastingItsTypeToZero(): void
+    {
+        $payload = (new PreventivePlansPayload())->fromPage(
+            new PreventivePlanPage([], 1, 10, 0, [], [], [], [[
+                'id' => 1, 'template_id' => 1, 'template_name' => 'Genérica',
+                'equipment_type_id' => null, 'equipment_type_name' => 'Genérica',
+                'brand' => null, 'model' => null, 'service_type_id' => 2, 'service_name' => 'Inspección',
+                'interval_km' => null, 'interval_hours' => null, 'interval_days' => 30,
+                'warning_km' => null, 'warning_hours' => null, 'warning_days' => 5,
+                'priority' => 'MEDIA', 'notes' => null,
+            ]]),
+            [], true, true,
+        );
+
+        self::assertNull($payload['catalogs']['templateDefaults'][0]['equipmentTypeId']);
+        self::assertSame('Genérica', $payload['catalogs']['templateDefaults'][0]['equipmentTypeName']);
     }
 }

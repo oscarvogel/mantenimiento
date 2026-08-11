@@ -8,6 +8,10 @@ use App\Application\Identity\ActorContext;
 use App\Application\PreventiveMaintenance\AsignarPlan;
 use App\Application\PreventiveMaintenance\AsignarPlanCommand;
 use App\Application\PreventiveMaintenance\ListPreventivePlansHandler;
+use App\Application\PreventiveMaintenance\MaterializeSuggestedPlans;
+use App\Application\PreventiveMaintenance\MaterializeSuggestedPlansCommand;
+use App\Application\PreventiveMaintenance\PlanTemplateSelection;
+use App\Application\Assets\Attachment\ListPrimaryEquipmentPhotos;
 use App\Infrastructure\Identity\SessionActorContext;
 use App\Presentation\PreventivePlansPayload;
 use CodeIgniter\HTTP\RedirectResponse;
@@ -33,6 +37,12 @@ final class PreventivePlans extends BaseController
             max(1, (int) $this->request->getGet('page')),
             $this->requestedPageSize($this->request->getGet('por_pagina')),
         );
+        $photos = $actor->hasPermission('equipos.ver')
+            ? $this->photos()->execute($actor, array_values(array_unique(array_map(
+                static fn (array $row): int => (int) $row['id'],
+                $page->equipment,
+            ))))
+            : [];
 
         return $this->renderApp(
             $actor,
@@ -44,6 +54,7 @@ final class PreventivePlans extends BaseController
                 $filters,
                 $actor->hasPermission('planes.editar'),
                 $actor->hasPermission('equipos.ver'),
+                $photos,
             ),
         );
     }
@@ -87,6 +98,52 @@ final class PreventivePlans extends BaseController
         }
     }
 
+    public function createFromTemplates(): RedirectResponse
+    {
+        $equipmentId = 0;
+        try {
+            $actor = $this->actor();
+            $equipmentId = $this->requiredPositiveInt($this->request->getPost('equipo_id'), 'equipo');
+            $posted = $this->request->getPost('planes');
+            $selections = [];
+            foreach (is_array($posted) ? $posted : [] as $itemId => $values) {
+                if (! is_array($values) || ! array_key_exists('seleccionado', $values)) {
+                    continue;
+                }
+                $selections[] = new PlanTemplateSelection(
+                    $this->requiredPositiveInt($itemId, 'item de plantilla'),
+                    $this->nullableNonNegativeInt($values['base_km'] ?? null),
+                    $this->hoursTenths($values['base_horas'] ?? null),
+                    $this->nullableDate($values['base_fecha'] ?? null),
+                );
+            }
+
+            $result = $this->materializeSuggested()->execute(new MaterializeSuggestedPlansCommand(
+                $actor,
+                $equipmentId,
+                $selections,
+            ));
+            $message = count($result->planIds) . ' plan(es) asignado(s) desde plantilla.';
+            if ($result->noticeIds !== []) {
+                $message .= ' Se generaron ' . count($result->noticeIds) . ' aviso(s) vencido(s), sin crear ordenes automaticamente.';
+            }
+
+            return redirect()->to('/mantenimiento/planes?equipo_id=' . $equipmentId . '#planes-desde-plantilla')->with('success', $message);
+        } catch (Throwable $exception) {
+            if (! $exception instanceof DomainException && ! $exception instanceof InvalidArgumentException) {
+                log_message('error', 'Fallo la asignacion desde plantilla: {message}', ['message' => $exception->getMessage()]);
+            }
+
+            $target = '/mantenimiento/planes' . ($equipmentId > 0 ? '?equipo_id=' . $equipmentId : '') . '#planes-desde-plantilla';
+            return redirect()->to($target)->withInput()->with(
+                'error',
+                $exception instanceof DomainException || $exception instanceof InvalidArgumentException
+                    ? $exception->getMessage()
+                    : 'No se pudieron asignar los planes desde plantilla.',
+            );
+        }
+    }
+
     private function actor(): ActorContext
     {
         $actor = (new SessionActorContext())->current();
@@ -98,7 +155,9 @@ final class PreventivePlans extends BaseController
 
     private function list(): ListPreventivePlansHandler { return service('listPreventivePlans'); }
     private function assign(): AsignarPlan { return service('assignMaintenancePlan'); }
+    private function materializeSuggested(): MaterializeSuggestedPlans { return service('materializeSuggestedPreventivePlans'); }
     private function payload(): PreventivePlansPayload { return service('preventivePlansPayload'); }
+    private function photos(): ListPrimaryEquipmentPhotos { return service('listPrimaryEquipmentPhotos'); }
 
     private function nullableString(mixed $value): ?string
     {

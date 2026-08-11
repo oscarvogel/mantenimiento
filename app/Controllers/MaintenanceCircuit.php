@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Application\Assets\AssetCatalogService;
+use App\Application\Assets\Attachment\ListPrimaryEquipmentPhotos;
 use App\Application\Identity\ActorContext;
 use App\Application\MaintenanceCircuit\ClosePreventiveOrder;
 use App\Application\MaintenanceCircuit\CircuitOverviewPagination;
@@ -55,6 +56,16 @@ final class MaintenanceCircuit extends BaseController
             'editOrder' => $actor->hasPermission('ordenes.editar'),
             'closeOrder' => $actor->hasPermission('ordenes.cerrar'),
         ];
+        $photoEquipmentIds = [];
+        foreach (['equipments', 'plans', 'notices', 'orders'] as $collection) {
+            foreach ($data[$collection] ?? [] as $row) {
+                $equipmentId = (int) ($row['equipo_id'] ?? $row['equipment_id'] ?? ($collection === 'equipments' ? ($row['id'] ?? 0) : 0));
+                if ($equipmentId > 0) { $photoEquipmentIds[] = $equipmentId; }
+            }
+        }
+        $data['primaryPhotos'] = $actor->hasPermission('equipos.ver')
+            ? $this->primaryPhotos()->execute($actor, array_values(array_unique($photoEquipmentIds)))
+            : [];
 
         return $this->renderApp(
             $actor,
@@ -188,6 +199,7 @@ final class MaintenanceCircuit extends BaseController
     private function generateOrderHandler(): GeneratePreventiveOrderFromNotice { return service('generatePreventiveOrderFromNotice'); }
     private function startOrderHandler(): StartWorkOrder { return service('startWorkOrder'); }
     private function closeOrderHandler(): ClosePreventiveOrder { return service('closePreventiveOrder'); }
+    private function primaryPhotos(): ListPrimaryEquipmentPhotos { return service('listPrimaryEquipmentPhotos'); }
 
     private function overviewPagination(): CircuitOverviewPagination
     {

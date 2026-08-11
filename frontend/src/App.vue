@@ -22,6 +22,7 @@ const shell = computed(() => ({
   user: props.dashboard.user,
   company: props.dashboard.company,
   navigation: props.dashboard.navigation,
+  notifications: props.dashboard.notifications,
   logout: props.dashboard.logout,
 }))
 </script>

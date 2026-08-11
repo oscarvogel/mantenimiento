@@ -41,7 +41,7 @@ final class CodeIgniterPreventiveLibraryReadModel
         $items = $this->database->table('plantilla_mantenimiento_items i')
             ->select('i.id, i.plantilla_id, i.tipo_servicio_id, i.intervalo_km, i.intervalo_horas, i.intervalo_dias, i.anticipacion_km, i.anticipacion_horas, i.anticipacion_dias, i.prioridad, i.activo, i.observaciones, p.codigo plantilla_codigo, p.nombre plantilla_nombre, te.nombre tipo_equipo, s.codigo servicio_codigo, s.nombre servicio_nombre')
             ->join('plantillas_mantenimiento p', 'p.id = i.plantilla_id', 'inner')
-            ->join('tipos_equipo te', 'te.id = p.tipo_equipo_id', 'inner')
+            ->join('tipos_equipo te', 'te.id = p.tipo_equipo_id', 'left')
             ->join('tipos_servicio s', 's.id = i.tipo_servicio_id', 'inner')
             ->where('p.empresa_id', $companyId)
             ->where('p.deleted_at', null)
@@ -57,7 +57,7 @@ final class CodeIgniterPreventiveLibraryReadModel
                 'code' => (string) $row['codigo'],
                 'name' => (string) $row['nombre'],
                 'scope' => (string) $row['ambito'],
-                'equipmentType' => (string) ($row['tipo_equipo'] ?? ''),
+                'equipmentType' => $row['tipo_equipo'] === null ? 'Genérica' : (string) $row['tipo_equipo'],
                 'brand' => $row['marca'],
                 'model' => $row['modelo'],
                 'active' => (int) $row['activo'] === 1,
@@ -77,7 +77,7 @@ final class CodeIgniterPreventiveLibraryReadModel
                 'templateId' => (int) $row['plantilla_id'],
                 'templateCode' => (string) $row['plantilla_codigo'],
                 'templateName' => (string) $row['plantilla_nombre'],
-                'equipmentType' => (string) $row['tipo_equipo'],
+                'equipmentType' => $row['tipo_equipo'] === null ? 'Genérica' : (string) $row['tipo_equipo'],
                 'serviceTypeId' => (int) $row['tipo_servicio_id'],
                 'serviceCode' => (string) $row['servicio_codigo'],
                 'serviceName' => (string) $row['servicio_nombre'],

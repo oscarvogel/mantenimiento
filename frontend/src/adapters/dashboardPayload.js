@@ -85,6 +85,9 @@ export function normalizeAppShellPayload(payload) {
   const user = source.user && typeof source.user === 'object' ? source.user : {}
   const company = source.company && typeof source.company === 'object' ? source.company : {}
   const logout = source.logout && typeof source.logout === 'object' ? source.logout : null
+  const notifications = source.notifications && typeof source.notifications === 'object'
+    ? source.notifications
+    : null
   const navigation = normalizeNavigation(source.navigation)
   const branches = Array.isArray(company.branches)
     ? company.branches
@@ -119,6 +122,13 @@ export function normalizeAppShellPayload(payload) {
               : `${branches.length} sucursales`,
     },
     navigation,
+    notifications: notifications
+      ? {
+          enabled: Boolean(notifications.enabled),
+          summaryUrl: asUrl(notifications.summaryUrl),
+          centerUrl: asUrl(notifications.centerUrl),
+        }
+      : { enabled: false, summaryUrl: '#', centerUrl: '#' },
     logout: logout
       ? {
           href: asUrl(logout.url),

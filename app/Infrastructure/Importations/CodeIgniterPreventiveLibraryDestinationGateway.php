@@ -141,7 +141,7 @@ final class CodeIgniterPreventiveLibraryDestinationGateway implements Preventive
             'codigo' => $code,
             'nombre' => (string) $data['name'],
             'ambito' => 'EMPRESA',
-            'tipo_equipo_id' => (int) $data['equipment_type_id'],
+            'tipo_equipo_id' => ($data['equipment_type_id'] ?? null) === null ? null : (int) $data['equipment_type_id'],
             'marca' => $data['brand'] ?? null,
             'modelo' => $data['model'] ?? null,
             'descripcion' => $data['description'] ?? null,

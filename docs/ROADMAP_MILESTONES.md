@@ -23,7 +23,11 @@ Disponer de una versión operativa del sistema de mantenimiento apta para uso re
 
 La base operativa principal ya fue incorporada mediante el PR #2, incluyendo acceso multiempresa, activos, lecturas, mantenimiento preventivo, órdenes, importaciones, interfaz, dashboard y reportes.
 
-El PR #3 completa la capacidad de Superadministrador para crear administradores de empresa y debe considerarse parte de la preparación de la entrega funcional mientras permanezca abierto.
+El PR #3 original fue cerrado porque mezclaba contextos. Su contenido vigente
+quedó integrado posteriormente en `main` mediante el commit de integración
+`4220799`, incluyendo Superadministrador, edición de equipos, planes preventivos,
+fecha local y paginación. El tracking #14 queda resuelto por esa integración y
+no requiere recrear ramas históricas ni aplicar nuevamente sus cherry-picks.
 
 ### Criterio de cierre
 

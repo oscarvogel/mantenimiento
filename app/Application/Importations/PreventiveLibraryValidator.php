@@ -176,8 +176,14 @@ final class PreventiveLibraryValidator
         if ($companyCode !== '') {
             $issues[] = $this->warning('codigo_empresa', $companyCode, 'La importacion usa siempre la empresa del usuario autenticado; codigo_empresa es informativo.');
         }
-        if ($equipmentType === null) {
+        if ($equipmentTypeName !== '' && $equipmentType === null) {
             $issues[] = $this->error('tipo_equipo', $equipmentTypeName, 'El tipo de equipo no existe o esta inactivo.');
+        }
+        if ($equipmentTypeName === '' && ($brand !== null || $model !== null)) {
+            $issues[] = $this->error('tipo_equipo', null, 'Una plantilla generica no puede restringirse por marca o modelo. Deje los tres campos vacios.');
+        }
+        if ($model !== null && $brand === null) {
+            $issues[] = $this->error('marca', null, 'Una plantilla especifica por modelo tambien debe indicar la marca.');
         }
         if ($actor->companyId() !== $companyId) {
             $issues[] = $this->error('ambito', $scope, 'El actor no pertenece a la empresa destino.');
@@ -185,7 +191,8 @@ final class PreventiveLibraryValidator
 
         return $this->staged($entry, $sequence, 'PLANTILLA', $this->references->companyTemplateByCode($companyId, $code) === null ? 'CREAR' : 'ACTUALIZAR', [
             'company_id' => $companyId, 'template_code' => $code, 'name' => $name, 'scope' => 'EMPRESA',
-            'equipment_type_id' => $equipmentType['id'] ?? null, 'equipment_type_name' => $equipmentType['nombre'] ?? $equipmentTypeName,
+            'equipment_type_id' => $equipmentType['id'] ?? null,
+            'equipment_type_name' => $equipmentType['nombre'] ?? ($equipmentTypeName === '' ? null : $equipmentTypeName),
             'brand' => $brand, 'model' => $model, 'description' => $description, 'active' => $active,
         ], $issues, $duplicate);
     }

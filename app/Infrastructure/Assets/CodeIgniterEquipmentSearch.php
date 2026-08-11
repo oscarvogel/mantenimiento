@@ -26,7 +26,9 @@ final class CodeIgniterEquipmentSearch implements EquipmentListReadModel, Equipm
         $itemsBuilder = $this->base($companyId, $branchIds);
         $this->filters($itemsBuilder, $query, $typeId, $brandId, $branchId, $status);
         $items = $itemsBuilder
-            ->select('e.id, e.codigo, e.patente, e.anio, e.chasis, e.motor, e.km_actual, e.horas_actuales, e.estado, e.fecha_alta, e.fecha_baja, e.sucursal_id, s.codigo sucursal_codigo, s.nombre sucursal_nombre, e.tipo_equipo_id, te.nombre tipo_nombre, e.marca_id, ma.nombre marca_nombre, e.modelo_id, mo.nombre modelo_nombre')
+            ->select('e.id, e.codigo, e.patente, e.anio, e.chasis, e.motor, e.km_actual, e.horas_actuales, e.estado, e.fecha_alta, e.fecha_baja, e.sucursal_id, s.codigo sucursal_codigo, s.nombre sucursal_nombre, e.tipo_equipo_id, te.nombre tipo_nombre, te.controla_km, te.controla_horas, e.marca_id, ma.nombre marca_nombre, e.modelo_id, mo.nombre modelo_nombre')
+            ->select('(SELECT le.id FROM lecturas_equipo le WHERE le.empresa_id = e.empresa_id AND le.equipo_id = e.id AND le.anulada = 0 ORDER BY le.fecha_lectura DESC, le.id DESC LIMIT 1) ultima_lectura_id', false)
+            ->select('(SELECT le.fecha_lectura FROM lecturas_equipo le WHERE le.empresa_id = e.empresa_id AND le.equipo_id = e.id AND le.anulada = 0 ORDER BY le.fecha_lectura DESC, le.id DESC LIMIT 1) ultima_lectura_at', false)
             ->orderBy('e.codigo')->limit($perPage, ($page - 1) * $perPage)->get()->getResultArray();
 
         return ['items' => $items, 'total' => $total];

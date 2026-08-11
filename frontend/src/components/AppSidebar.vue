@@ -2,6 +2,7 @@
 import {
   ArrowRightStartOnRectangleIcon,
   ArrowUpTrayIcon,
+  ArrowPathRoundedSquareIcon,
   BuildingOffice2Icon,
   BuildingStorefrontIcon,
   CalendarDaysIcon,
@@ -45,6 +46,7 @@ const icons = {
   branches: BuildingStorefrontIcon,
   users: UsersIcon,
   chart: ChartBarSquareIcon,
+  readings: ArrowPathRoundedSquareIcon,
   workshop: BuildingOffice2Icon,
   workshops: BuildingOffice2Icon,
   reports: ChartBarSquareIcon,

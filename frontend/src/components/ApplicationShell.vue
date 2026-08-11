@@ -81,7 +81,7 @@ onBeforeUnmount(() => {
     </Transition>
 
     <div class="lg:pl-[17rem]">
-      <AppHeader :user="shell.user" :company="shell.company" @open-menu="sidebarOpen = true" />
+      <AppHeader :user="shell.user" :company="shell.company" :notifications="shell.notifications" @open-menu="sidebarOpen = true" />
 
       <main
         id="main-content"
