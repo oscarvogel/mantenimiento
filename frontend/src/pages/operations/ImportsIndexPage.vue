@@ -1,5 +1,5 @@
 <script setup>
-import { ArrowDownTrayIcon, ArrowUpTrayIcon, EyeIcon } from '@heroicons/vue/24/outline'
+import { ArrowDownTrayIcon, ArrowUpTrayIcon, EyeIcon, WrenchScrewdriverIcon } from '@heroicons/vue/24/outline'
 import CsrfInput from './components/CsrfInput.vue'
 import EmptyState from './components/EmptyState.vue'
 import FlashMessages from './components/FlashMessages.vue'
@@ -15,20 +15,26 @@ defineProps({ data: { type: Object, required: true } })
 
 <template>
   <div>
-    <PageHeading eyebrow="Importaciones" title="Equipos y lecturas" description="Validá el archivo, revisá cada fila y confirmá la persistencia sólo cuando el resultado sea correcto." />
+    <PageHeading eyebrow="Importaciones" title="Equipos, lecturas y biblioteca preventiva" description="Validá el archivo, revisá cada fila y confirmá la persistencia sólo cuando el resultado sea correcto." />
     <FlashMessages :flash="data.flash" />
 
     <PanelCard v-if="data.canUpload" title="Nueva importación" class="mb-6">
       <div class="mb-5 flex flex-wrap gap-2">
         <a :href="data.routes.templates.equipment" :class="secondaryButton"><ArrowDownTrayIcon class="mr-2 size-4" aria-hidden="true" />Plantilla de equipos</a>
         <a :href="data.routes.templates.readings" :class="secondaryButton"><ArrowDownTrayIcon class="mr-2 size-4" aria-hidden="true" />Plantilla de lecturas</a>
+        <a :href="data.routes.templates.preventiveLibrary" :class="secondaryButton"><ArrowDownTrayIcon class="mr-2 size-4" aria-hidden="true" />Plantilla general de camiones</a>
+        <a :href="data.routes.preventiveLibrary" :class="secondaryButton"><WrenchScrewdriverIcon class="mr-2 size-4" aria-hidden="true" />Ver biblioteca preventiva</a>
       </div>
-      <form method="post" enctype="multipart/form-data" :action="data.routes.upload" class="grid gap-4 md:grid-cols-[14rem_1fr_auto] md:items-end">
+      <form method="post" enctype="multipart/form-data" :action="data.routes.upload" class="grid gap-4 md:grid-cols-[16rem_1fr_auto] md:items-end">
         <CsrfInput :csrf="data.csrf" />
         <FormField label="Tipo" for-id="import-type">
-          <select id="import-type" name="tipo" :class="fieldClass"><option value="EQUIPOS">Equipos</option><option value="LECTURAS">Lecturas</option></select>
+          <select id="import-type" name="tipo" :class="fieldClass">
+            <option value="EQUIPOS">Equipos</option>
+            <option value="LECTURAS">Lecturas</option>
+            <option value="BIBLIOTECA_PREVENTIVA">Biblioteca preventiva</option>
+          </select>
         </FormField>
-        <FormField label="Archivo CSV o XLSX" for-id="import-file" :hint="`Máximo ${data.maxSizeMb} MB y 5.000 filas.`">
+        <FormField label="Archivo CSV o XLSX" for-id="import-file" :hint="`Máximo ${data.maxSizeMb} MB y 5.000 filas. La biblioteca preventiva requiere XLSX multihoja.`">
           <input id="import-file" type="file" name="archivo" accept=".csv,.xlsx" required :class="fieldClass" />
         </FormField>
         <button type="submit" :class="primaryButton"><ArrowUpTrayIcon class="mr-2 size-5" aria-hidden="true" />Validar archivo</button>
