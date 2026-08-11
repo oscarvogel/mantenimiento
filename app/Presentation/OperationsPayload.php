@@ -150,7 +150,7 @@ final class OperationsPayload
                 'uploadAttachment' => $base . '/adjuntos',
             ],
             'equipment' => [
-                'id' => $equipmentId, 'code' => $equipment['codigo'], 'typeName' => $equipment['tipo_nombre'],
+                'id' => $equipmentId, 'code' => $equipment['codigo'], 'typeId' => (int) $equipment['tipo_equipo_id'], 'typeName' => $equipment['tipo_nombre'],
                 'branchCode' => $equipment['sucursal_codigo'], 'branchName' => $equipment['sucursal_nombre'],
                 'branchId' => (int) $equipment['sucursal_id'], 'status' => $equipment['estado'],
                 'currentKm' => $equipment['km_actual'] === null ? null : (int) $equipment['km_actual'],
@@ -161,9 +161,13 @@ final class OperationsPayload
                 'controlsKm' => (int) $equipment['controla_km'] === 1, 'controlsHours' => (int) $equipment['controla_horas'] === 1,
             ],
             'catalogs' => [
+                'types' => array_map(fn (array $row): array => [
+                    'id' => (int) $row['id'], 'name' => $row['nombre'],
+                    'controlsKm' => (int) $row['controla_km'] === 1, 'controlsHours' => (int) $row['controla_horas'] === 1,
+                ], $catalogs['types'] ?? []),
                 'brands' => array_map(fn (array $row): array => ['id' => (int) $row['id'], 'name' => $row['nombre']], $catalogs['brands'] ?? []),
                 'models' => array_map(fn (array $row): array => [
-                    'id' => (int) $row['id'], 'name' => $row['nombre'], 'brandName' => $row['marca_nombre'], 'typeName' => $row['tipo_nombre'],
+                    'id' => (int) $row['id'], 'name' => $row['nombre'], 'brandId' => (int) $row['marca_id'], 'typeId' => (int) $row['tipo_equipo_id'], 'brandName' => $row['marca_nombre'], 'typeName' => $row['tipo_nombre'],
                 ], $catalogs['models'] ?? []),
             ],
             'availableBranches' => array_map(fn (array $row): array => ['id' => (int) $row['id'], 'code' => $row['codigo'], 'name' => $row['nombre']], $details['availableBranches'] ?? []),

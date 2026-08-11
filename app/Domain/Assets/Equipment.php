@@ -17,11 +17,11 @@ final class Equipment
         private readonly ?int $id,
         private readonly int $companyId,
         private int $branchId,
-        private readonly EquipmentType $type,
+        private EquipmentType $type,
         private string $code,
         private ?string $plate,
         private string $status,
-        private readonly DateTimeImmutable $registeredAt,
+        private DateTimeImmutable $registeredAt,
         private ?DateTimeImmutable $decommissionedAt,
         private ?string $notes,
         private ?int $currentKilometers,
@@ -198,6 +198,9 @@ final class Equipment
         ?int $year = null,
         ?string $chassis = null,
         ?string $engine = null,
+        ?EquipmentType $type = null,
+        ?DateTimeImmutable $registeredAt = null,
+        ?DateTimeImmutable $today = null,
     ): void
     {
         if ($this->status !== self::ACTIVE) {
@@ -217,6 +220,21 @@ final class Equipment
         $this->code = $normalizedCode;
         $this->plate = $normalizedPlate;
         $this->notes = self::normalizeNullableText($notes);
+        if ($type !== null) {
+            if (! $type->tracksKilometers() && $this->currentKilometers !== null) {
+                throw new DomainException('No se puede usar un tipo que no controle kilometraje porque el equipo ya tiene kilometraje registrado.');
+            }
+            if (! $type->tracksHours() && $this->currentHoursTenths !== null) {
+                throw new DomainException('No se puede usar un tipo que no controle horómetro porque el equipo ya tiene horómetro registrado.');
+            }
+            $this->type = $type;
+        }
+        if ($registeredAt !== null) {
+            if ($today === null || $registeredAt > $today) {
+                throw new DomainException('La fecha de alta no puede ser futura.');
+            }
+            $this->registeredAt = $registeredAt;
+        }
         $this->setTechnicalProfile($brandId, $modelId, $year, $chassis, $engine);
     }
 

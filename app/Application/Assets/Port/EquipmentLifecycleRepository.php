@@ -16,6 +16,8 @@ interface EquipmentLifecycleRepository
 
     public function latestTransferAtForUpdate(int $companyId, int $equipmentId): ?DateTimeImmutable;
 
+    public function hasRecordedUsage(int $companyId, int $equipmentId, string $metric): bool;
+
     public function updateProfile(Equipment $equipment, int $actorUserId): void;
 
     public function decommission(Equipment $equipment, int $actorUserId): void;

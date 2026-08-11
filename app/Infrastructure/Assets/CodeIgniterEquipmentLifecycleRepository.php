@@ -63,6 +63,19 @@ final class CodeIgniterEquipmentLifecycleRepository implements EquipmentLifecycl
         return $row === null ? null : new DateTimeImmutable((string) $row['fecha_movimiento']);
     }
 
+    public function hasRecordedUsage(int $companyId, int $equipmentId, string $metric): bool
+    {
+        if (! in_array($metric, ['kilometraje', 'horometro'], true)) {
+            throw new RuntimeException('La métrica de uso consultada no es válida.');
+        }
+
+        return $this->database->table('lecturas_equipo')
+            ->where('empresa_id', $companyId)
+            ->where('equipo_id', $equipmentId)
+            ->where($metric . ' IS NOT NULL', null, false)
+            ->countAllResults() > 0;
+    }
+
     public function updateProfile(Equipment $equipment, int $actorUserId): void
     {
         $equipmentId = $this->persistedId($equipment);
@@ -73,8 +86,10 @@ final class CodeIgniterEquipmentLifecycleRepository implements EquipmentLifecycl
             ->where('deleted_at', null)
             ->update([
                 'codigo'        => $equipment->code(),
+                'tipo_equipo_id'=> $equipment->type()->id(),
                 'patente'       => $equipment->plate(),
                 'observaciones' => $equipment->notes(),
+                'fecha_alta'    => $equipment->registeredAt()->format('Y-m-d'),
                 'marca_id'      => $equipment->brandId(),
                 'modelo_id'     => $equipment->modelId(),
                 'anio'          => $equipment->year(),

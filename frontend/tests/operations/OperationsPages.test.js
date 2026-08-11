@@ -86,6 +86,8 @@ describe('equipment-detail', () => {
       expect(wrapper.get(`form[action="${action}"]`).attributes('method')).toBe('post')
     }
     expect(wrapper.find('a[href="/mantenimiento/equipos/9/adjuntos/2/descargar"]').exists()).toBe(true)
+    expect(wrapper.get('select[name="tipo_equipo_id"]').element.value).toBe('1')
+    expect(wrapper.get('input[name="fecha_alta"]').element.value).toBe('2025-01-02')
   })
 
   it('mantiene modo consulta para baja y sin permiso de lecturas', () => {

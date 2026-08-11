@@ -77,6 +77,7 @@ use App\Infrastructure\Assets\CodeIgniterEquipmentRelationStatus;
 use App\Infrastructure\Assets\CodeIgniterEquipmentRepository;
 use App\Infrastructure\Assets\CodeIgniterEquipmentSearch;
 use App\Infrastructure\Assets\CodeIgniterEquipmentTypeCatalog;
+use App\Infrastructure\Assets\CodeIgniterEquipmentTypeChangeGuard;
 use App\Infrastructure\Assets\CodeIgniterEquipmentWorkStatus;
 use App\Infrastructure\Assets\EndroidEquipmentQrRenderer;
 use App\Infrastructure\Assets\Attachment\CodeIgniterEquipmentAttachmentEquipmentScope;
@@ -394,6 +395,9 @@ class Services extends BaseService
             new CodeIgniterAssetUnitOfWork($database),
             new CodeIgniterBrandRepository($database),
             new CodeIgniterEquipmentModelRepository($database),
+            new CodeIgniterEquipmentTypeCatalog($database),
+            new \App\Infrastructure\Assets\SystemAssetClock(),
+            new CodeIgniterEquipmentTypeChangeGuard($database),
         );
     }
 

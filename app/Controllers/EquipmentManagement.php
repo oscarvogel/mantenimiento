@@ -188,6 +188,8 @@ final class EquipmentManagement extends BaseController
                 $this->nullableInt($this->request->getPost('anio')),
                 $this->nullableString($this->request->getPost('chasis')),
                 $this->nullableString($this->request->getPost('motor')),
+                (int) $this->request->getPost('tipo_equipo_id'),
+                $this->dateTime((string) $this->request->getPost('fecha_alta'), 'La fecha de alta no es válida.'),
             ));
 
             return $this->success($equipmentId, "Equipo {$result->code} actualizado correctamente.");

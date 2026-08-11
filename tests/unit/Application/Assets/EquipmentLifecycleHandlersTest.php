@@ -6,10 +6,13 @@ use App\Application\Assets\DecommissionEquipmentCommand;
 use App\Application\Assets\DecommissionEquipmentHandler;
 use App\Application\Assets\GetEquipmentDetails;
 use App\Application\Assets\Port\AssetUnitOfWork;
+use App\Application\Assets\Port\AssetClock;
 use App\Application\Assets\Port\BranchScope;
 use App\Application\Assets\Port\EquipmentLifecycleRepository;
 use App\Application\Assets\Port\EquipmentReadModel;
 use App\Application\Assets\Port\EquipmentWorkStatus;
+use App\Application\Assets\Port\EquipmentTypeCatalog;
+use App\Application\Assets\Port\EquipmentTypeChangeGuard;
 use App\Application\Assets\Port\EquipmentRelationStatus;
 use App\Application\Assets\TransferEquipmentCommand;
 use App\Application\Assets\TransferEquipmentHandler;
@@ -67,6 +70,118 @@ final class EquipmentLifecycleHandlersTest extends TestCase
 
         self::assertTrue($repository->profileUpdated);
         self::assertSame('EQ-01', $result->code);
+    }
+
+    public function testUpdatesActiveTypeAndRegistrationDateTransactionally(): void
+    {
+        $repository = new LifecycleEquipmentRepositoryFake(Equipment::create(
+            5, 7, new EquipmentType(1, 'Camión', true, true), 'EQ-01', null, new DateTimeImmutable('2026-08-01'),
+        ));
+        $handler = new UpdateEquipmentHandler(
+            $repository, new ImmediateAssetUnitOfWork(), null, null,
+            new LifecycleEquipmentTypeCatalogFake(new EquipmentType(2, 'Máquina', true, true)),
+            new FixedAssetClock(new DateTimeImmutable('2026-08-10')),
+            new EquipmentTypeChangeGuardFake(),
+        );
+
+        $handler->execute(
+            $this->actor(['equipos.editar'], [7]),
+            new UpdateEquipmentCommand(30, 'EQ-01', null, null, typeId: 2, registeredAt: new DateTimeImmutable('2026-08-09')),
+        );
+
+        self::assertTrue($repository->profileUpdated);
+        self::assertSame(2, $repository->updatedEquipment?->type()->id());
+        self::assertSame('2026-08-09', $repository->updatedEquipment?->registeredAt()->format('Y-m-d'));
+    }
+
+    public function testRejectsTypeThatWouldHideHistoricalKilometers(): void
+    {
+        $repository = new LifecycleEquipmentRepositoryFake(Equipment::create(
+            5, 7, new EquipmentType(1, 'Camión', true, true), 'EQ-01', null, new DateTimeImmutable('2026-08-01'),
+        ));
+        $repository->recordedUsage['kilometraje'] = true;
+        $handler = new UpdateEquipmentHandler(
+            $repository, new ImmediateAssetUnitOfWork(), null, null,
+            new LifecycleEquipmentTypeCatalogFake(new EquipmentType(2, 'Otro', false, true)),
+            null,
+            new EquipmentTypeChangeGuardFake(),
+        );
+
+        $this->expectException(DomainException::class);
+        try {
+            $handler->execute(
+                $this->actor(['equipos.editar'], [7]),
+                new UpdateEquipmentCommand(30, 'EQ-01', null, null, typeId: 2),
+            );
+        } finally {
+            self::assertFalse($repository->profileUpdated);
+        }
+    }
+
+    public function testRejectsTypeChangeWhileWorkOrderIsOpen(): void
+    {
+        $repository = new LifecycleEquipmentRepositoryFake(Equipment::create(
+            5, 7, new EquipmentType(1, 'Camión', true, true), 'EQ-01', null, new DateTimeImmutable('2026-08-01'),
+        ));
+        $handler = new UpdateEquipmentHandler(
+            $repository, new ImmediateAssetUnitOfWork(), null, null,
+            new LifecycleEquipmentTypeCatalogFake(new EquipmentType(2, 'Máquina', true, true)), null,
+            new EquipmentTypeChangeGuardFake(openWorkOrders: true),
+        );
+
+        $this->expectException(DomainException::class);
+        try {
+            $handler->execute(
+                $this->actor(['equipos.editar'], [7]),
+                new UpdateEquipmentCommand(30, 'EQ-01', null, null, typeId: 2),
+            );
+        } finally {
+            self::assertFalse($repository->profileUpdated);
+        }
+    }
+
+    public function testRejectsTypeThatCannotSupportAnActiveHoursPlan(): void
+    {
+        $repository = new LifecycleEquipmentRepositoryFake(Equipment::create(
+            5, 7, new EquipmentType(1, 'Camión', true, true), 'EQ-01', null, new DateTimeImmutable('2026-08-01'),
+        ));
+        $handler = new UpdateEquipmentHandler(
+            $repository, new ImmediateAssetUnitOfWork(), null, null,
+            new LifecycleEquipmentTypeCatalogFake(new EquipmentType(2, 'Acoplado', true, false)), null,
+            new EquipmentTypeChangeGuardFake(activeHoursPlan: true),
+        );
+
+        $this->expectException(DomainException::class);
+        try {
+            $handler->execute(
+                $this->actor(['equipos.editar'], [7]),
+                new UpdateEquipmentCommand(30, 'EQ-01', null, null, typeId: 2),
+            );
+        } finally {
+            self::assertFalse($repository->profileUpdated);
+        }
+    }
+
+    public function testRejectsTypeThatCannotSupportAnActiveKilometersPlan(): void
+    {
+        $repository = new LifecycleEquipmentRepositoryFake(Equipment::create(
+            5, 7, new EquipmentType(1, 'Camión', true, true), 'EQ-01', null, new DateTimeImmutable('2026-08-01'),
+        ));
+        $handler = new UpdateEquipmentHandler(
+            $repository, new ImmediateAssetUnitOfWork(), null, null,
+            new LifecycleEquipmentTypeCatalogFake(new EquipmentType(2, 'Máquina', false, true)), null,
+            new EquipmentTypeChangeGuardFake(activeKilometersPlan: true),
+        );
+
+        $this->expectException(DomainException::class);
+        try {
+            $handler->execute(
+                $this->actor(['equipos.editar'], [7]),
+                new UpdateEquipmentCommand(30, 'EQ-01', null, null, typeId: 2),
+            );
+        } finally {
+            self::assertFalse($repository->profileUpdated);
+        }
     }
 
     public function testRejectsDecommissionWhenEquipmentHasOpenWorkOrder(): void
@@ -254,6 +369,9 @@ final class LifecycleEquipmentRepositoryFake implements EquipmentLifecycleReposi
     public ?array $transferData = null;
     /** @var list<int>|null */
     public ?array $requestedBranches = null;
+    /** @var array<string, bool> */
+    public array $recordedUsage = ['kilometraje' => false, 'horometro' => false];
+    public ?Equipment $updatedEquipment = null;
 
     public function __construct(private ?Equipment $equipment)
     {
@@ -276,9 +394,15 @@ final class LifecycleEquipmentRepositoryFake implements EquipmentLifecycleReposi
         return $this->latestTransferAt;
     }
 
+    public function hasRecordedUsage(int $companyId, int $equipmentId, string $metric): bool
+    {
+        return $this->recordedUsage[$metric] ?? false;
+    }
+
     public function updateProfile(Equipment $equipment, int $actorUserId): void
     {
         $this->profileUpdated = true;
+        $this->updatedEquipment = $equipment;
     }
 
     public function decommission(Equipment $equipment, int $actorUserId): void
@@ -294,6 +418,34 @@ final class LifecycleEquipmentRepositoryFake implements EquipmentLifecycleReposi
             'reason' => $reason,
         ];
     }
+}
+
+final readonly class LifecycleEquipmentTypeCatalogFake implements EquipmentTypeCatalog
+{
+    public function __construct(private ?EquipmentType $type) {}
+    public function findActiveById(int $typeId): ?EquipmentType
+    {
+        return $this->type?->id() === $typeId ? $this->type : null;
+    }
+}
+
+final readonly class FixedAssetClock implements AssetClock
+{
+    public function __construct(private DateTimeImmutable $date) {}
+    public function today(): DateTimeImmutable { return $this->date; }
+}
+
+final readonly class EquipmentTypeChangeGuardFake implements EquipmentTypeChangeGuard
+{
+    public function __construct(
+        private bool $openWorkOrders = false,
+        private bool $activeKilometersPlan = false,
+        private bool $activeHoursPlan = false,
+    ) {}
+
+    public function hasOpenWorkOrders(int $companyId, int $equipmentId): bool { return $this->openWorkOrders; }
+    public function hasActivePlanUsingKilometers(int $companyId, int $equipmentId): bool { return $this->activeKilometersPlan; }
+    public function hasActivePlanUsingHours(int $companyId, int $equipmentId): bool { return $this->activeHoursPlan; }
 }
 
 final class ImmediateAssetUnitOfWork implements AssetUnitOfWork
