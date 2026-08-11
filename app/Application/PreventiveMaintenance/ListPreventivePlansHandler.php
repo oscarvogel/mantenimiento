@@ -108,6 +108,7 @@ final readonly class ListPreventivePlansHandler
             $this->readModel->listActiveEquipment($actor->companyId(), $scope),
             $this->readModel->listActiveServiceTypes(),
             $this->readModel->listActiveBranches($actor->companyId(), $scope),
+            $this->readModel->listTemplateDefaults($actor->companyId()),
         );
     }
 

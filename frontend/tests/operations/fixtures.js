@@ -22,9 +22,10 @@ export const maintenanceData = {
     brands: [{ id: 1, name: 'Scania' }],
     models: [{ id: 1, name: 'R450', brandName: 'Scania', typeName: 'Camión' }],
     serviceTypes: [{ id: 1, name: 'Service motor' }],
+    templateDefaults: [{ id: 15, templateId: 3, templateName: 'Preventivo camiones', equipmentTypeId: 1, serviceTypeId: 1, serviceName: 'Service motor', intervalKm: 10000, intervalHours: '250.0', intervalDays: 180, warningKm: 1000, warningHours: '25.0', warningDays: 15, priority: 'MEDIA', notes: 'Aceite y filtros' }],
     users: [{ id: 7, name: 'Técnico Uno' }],
   },
-  equipments: [{ id: 9, code: 'CAM-01', plate: 'AA123BB', typeName: 'Camión', branchName: 'Casa central', status: 'ACTIVO', controlsKm: true, controlsHours: true, currentKm: 1000, currentHours: 42, routes: { detail: '/mantenimiento/equipos/9', registerReading: '/mantenimiento/equipos/9/lecturas', assignPlan: '/mantenimiento/equipos/9/planes' } }],
+  equipments: [{ id: 9, code: 'CAM-01', plate: 'AA123BB', typeId: 1, typeName: 'Camión', branchName: 'Casa central', status: 'ACTIVO', controlsKm: true, controlsHours: true, currentKm: 1000, currentHours: 42, routes: { detail: '/mantenimiento/equipos/9', registerReading: '/mantenimiento/equipos/9/lecturas', assignPlan: '/mantenimiento/equipos/9/planes' } }],
   plans: [{ id: 2, equipmentCode: 'CAM-01', serviceName: 'Service motor', computedState: 'PROXIMO', nextKm: 1500, nextHours: null, nextDate: null }],
   notices: [{ id: 3, equipmentCode: 'CAM-01', serviceName: 'Service motor', triggerCriteria: 'kilómetros', generateOrderUrl: '/mantenimiento/avisos/3/orden' }],
   orders: [{ id: 4, number: 'OT-4', equipmentCode: 'CAM-01', serviceName: 'Service motor', ownerName: 'Técnico Uno', status: 'EN_PROCESO', startUrl: '/mantenimiento/ordenes/4/iniciar', closeUrl: '/mantenimiento/ordenes/4/cerrar', tasks: [{ id: 1, description: 'Cambiar aceite', status: 'PENDIENTE' }] }],
@@ -36,9 +37,10 @@ export const preventivePlansData = {
   routes: { index: '/mantenimiento/planes', create: '/mantenimiento/planes', equipmentIndex: '/mantenimiento/equipos' },
   filters: { q: '', branchId: '', equipmentId: '', state: '' },
   catalogs: {
-    equipment: [{ id: 9, code: 'CAM-01', plate: 'AA123BB', branchId: 1, branchCode: 'CC', branchName: 'Casa central', typeName: 'Camión', controlsKm: true, controlsHours: false, currentKm: 9900, currentHours: null }],
+    equipment: [{ id: 9, code: 'CAM-01', plate: 'AA123BB', branchId: 1, typeId: 1, branchCode: 'CC', branchName: 'Casa central', typeName: 'Camión', controlsKm: true, controlsHours: false, currentKm: 9900, currentHours: null }],
     serviceTypes: [{ id: 3, code: 'SM', name: 'Service motor' }],
     branches: [{ id: 1, code: 'CC', name: 'Casa central' }],
+    templateDefaults: [{ id: 15, templateId: 3, templateName: 'Preventivo camiones', equipmentTypeId: 1, serviceTypeId: 3, serviceName: 'Service motor', intervalKm: 10000, intervalHours: null, intervalDays: 180, warningKm: 1000, warningHours: null, warningDays: 15, priority: 'MEDIA', notes: 'Aceite y filtros' }],
   },
   plans: {
     total: 1,

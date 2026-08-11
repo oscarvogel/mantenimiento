@@ -19,4 +19,7 @@ interface PreventivePlanReadModel
 
     /** @param list<int>|null $branchIds @return list<array<string,mixed>> */
     public function listActiveBranches(int $companyId, ?array $branchIds): array;
+
+    /** @return list<array<string,mixed>> */
+    public function listTemplateDefaults(int $companyId): array;
 }

@@ -1,4 +1,5 @@
 <script setup>
+import { computed, reactive } from 'vue'
 import { ArrowRightIcon, BoltIcon, PlusIcon } from '@heroicons/vue/24/outline'
 import CsrfInput from './components/CsrfInput.vue'
 import EmptyState from './components/EmptyState.vue'
@@ -10,7 +11,49 @@ import PanelCard from './components/PanelCard.vue'
 import StatusBadge from './components/StatusBadge.vue'
 import { fieldClass, primaryButton, secondaryButton, today } from './helpers.js'
 
-defineProps({ data: { type: Object, required: true } })
+const props = defineProps({ data: { type: Object, required: true } })
+const planForms = reactive({})
+const valueOrBlank = (value) => (value === null || value === undefined ? '' : String(value))
+const templateDefaults = computed(() => props.data.catalogs.templateDefaults ?? [])
+const defaultsForEquipment = (equipment) => templateDefaults.value.filter((item) => Number(item.equipmentTypeId) === Number(equipment.typeId))
+const defaultFor = (equipment, serviceId) => defaultsForEquipment(equipment).find((item) => String(item.serviceTypeId) === String(serviceId)) ?? null
+const applyDefaultToState = (state, templateDefault) => {
+  if (!templateDefault) return
+  state.intervalo_km = valueOrBlank(templateDefault.intervalKm)
+  state.anticipacion_km = valueOrBlank(templateDefault.warningKm)
+  state.intervalo_horas = valueOrBlank(templateDefault.intervalHours)
+  state.anticipacion_horas = valueOrBlank(templateDefault.warningHours)
+  state.intervalo_dias = valueOrBlank(templateDefault.intervalDays)
+  state.anticipacion_dias = valueOrBlank(templateDefault.warningDays)
+  state.prioridad = templateDefault.priority || 'MEDIA'
+  state.observaciones = templateDefault.notes || ''
+}
+const initialServiceId = (equipment) => {
+  const defaults = defaultsForEquipment(equipment)
+  if (defaults.length > 0) return String(defaults[0].serviceTypeId)
+  return props.data.catalogs.serviceTypes[0] ? String(props.data.catalogs.serviceTypes[0].id) : ''
+}
+const stateFor = (equipment) => {
+  if (!planForms[equipment.id]) {
+    const serviceId = initialServiceId(equipment)
+    planForms[equipment.id] = {
+      serviceId,
+      intervalo_km: '',
+      anticipacion_km: '',
+      intervalo_horas: '',
+      anticipacion_horas: '',
+      intervalo_dias: '',
+      anticipacion_dias: '',
+      prioridad: 'MEDIA',
+      observaciones: '',
+    }
+    applyDefaultToState(planForms[equipment.id], defaultFor(equipment, serviceId))
+  }
+  return planForms[equipment.id]
+}
+const selectedPlanDefault = (equipment) => defaultFor(equipment, stateFor(equipment).serviceId)
+const changePlanService = (equipment) => applyDefaultToState(stateFor(equipment), selectedPlanDefault(equipment))
+for (const equipment of props.data.equipments ?? []) stateFor(equipment)
 </script>
 
 <template>
@@ -54,10 +97,16 @@ defineProps({ data: { type: Object, required: true } })
           <details v-if="data.can.assignPlan" class="mt-4 border-t border-border-subtle pt-4">
             <summary class="cursor-pointer font-semibold text-primary">Asignar plan preventivo</summary>
             <form method="post" :action="equipment.routes.assignPlan" class="mt-4 grid gap-3 sm:grid-cols-2">
-              <CsrfInput :csrf="data.csrf" /><FormField label="Servicio" :for-id="`plan-service-${equipment.id}`" class="sm:col-span-2"><select :id="`plan-service-${equipment.id}`" name="tipo_servicio_id" required :class="fieldClass"><option v-for="service in data.catalogs.serviceTypes" :key="service.id" :value="service.id">{{ service.name }}</option></select></FormField>
-              <template v-if="equipment.controlsKm"><FormField label="Cada km" :for-id="`plan-km-${equipment.id}`"><input :id="`plan-km-${equipment.id}`" type="number" min="1" name="intervalo_km" :class="fieldClass" /></FormField><FormField label="Avisar antes (km)" :for-id="`plan-km-warning-${equipment.id}`"><input :id="`plan-km-warning-${equipment.id}`" type="number" min="0" name="anticipacion_km" :class="fieldClass" /></FormField></template>
-              <template v-if="equipment.controlsHours"><FormField label="Cada horas" :for-id="`plan-hours-${equipment.id}`"><input :id="`plan-hours-${equipment.id}`" type="number" min="0.1" step="0.1" name="intervalo_horas" :class="fieldClass" /></FormField><FormField label="Avisar antes (h)" :for-id="`plan-hours-warning-${equipment.id}`"><input :id="`plan-hours-warning-${equipment.id}`" type="number" min="0" step="0.1" name="anticipacion_horas" :class="fieldClass" /></FormField></template>
-              <FormField label="Cada días" :for-id="`plan-days-${equipment.id}`"><input :id="`plan-days-${equipment.id}`" type="number" min="1" name="intervalo_dias" :class="fieldClass" /></FormField><FormField label="Avisar antes (días)" :for-id="`plan-days-warning-${equipment.id}`"><input :id="`plan-days-warning-${equipment.id}`" type="number" min="0" name="anticipacion_dias" :class="fieldClass" /></FormField><button type="submit" :class="primaryButton">Crear plan</button>
+              <CsrfInput :csrf="data.csrf" />
+              <input type="hidden" name="prioridad" :value="stateFor(equipment).prioridad" />
+              <input type="hidden" name="observaciones" :value="stateFor(equipment).observaciones" />
+              <FormField label="Servicio" :for-id="`plan-service-${equipment.id}`" class="sm:col-span-2"><select :id="`plan-service-${equipment.id}`" v-model="stateFor(equipment).serviceId" name="tipo_servicio_id" required :class="fieldClass" @change="changePlanService(equipment)"><option v-for="service in data.catalogs.serviceTypes" :key="service.id" :value="String(service.id)">{{ service.name }}</option></select></FormField>
+              <p v-if="selectedPlanDefault(equipment)" class="rounded-lg bg-success-subtle p-3 text-sm font-semibold text-success-strong sm:col-span-2">
+                {{ selectedPlanDefault(equipment).templateName }} · intervalos precargados
+              </p>
+              <template v-if="equipment.controlsKm"><FormField label="Cada km" :for-id="`plan-km-${equipment.id}`"><input :id="`plan-km-${equipment.id}`" v-model="stateFor(equipment).intervalo_km" type="number" min="1" name="intervalo_km" :class="fieldClass" /></FormField><FormField label="Avisar antes (km)" :for-id="`plan-km-warning-${equipment.id}`"><input :id="`plan-km-warning-${equipment.id}`" v-model="stateFor(equipment).anticipacion_km" type="number" min="0" name="anticipacion_km" :class="fieldClass" /></FormField></template>
+              <template v-if="equipment.controlsHours"><FormField label="Cada horas" :for-id="`plan-hours-${equipment.id}`"><input :id="`plan-hours-${equipment.id}`" v-model="stateFor(equipment).intervalo_horas" type="number" min="0.1" step="0.1" name="intervalo_horas" :class="fieldClass" /></FormField><FormField label="Avisar antes (h)" :for-id="`plan-hours-warning-${equipment.id}`"><input :id="`plan-hours-warning-${equipment.id}`" v-model="stateFor(equipment).anticipacion_horas" type="number" min="0" step="0.1" name="anticipacion_horas" :class="fieldClass" /></FormField></template>
+              <FormField label="Cada días" :for-id="`plan-days-${equipment.id}`"><input :id="`plan-days-${equipment.id}`" v-model="stateFor(equipment).intervalo_dias" type="number" min="1" name="intervalo_dias" :class="fieldClass" /></FormField><FormField label="Avisar antes (días)" :for-id="`plan-days-warning-${equipment.id}`"><input :id="`plan-days-warning-${equipment.id}`" v-model="stateFor(equipment).anticipacion_dias" type="number" min="0" name="anticipacion_dias" :class="fieldClass" /></FormField><button type="submit" :class="primaryButton">Crear plan</button>
             </form>
           </details>
         </article>

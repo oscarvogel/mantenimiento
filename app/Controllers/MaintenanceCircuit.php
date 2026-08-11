@@ -105,6 +105,8 @@ final class MaintenanceCircuit extends BaseController
                 $intervalKm === null ? null : ($this->nullableInt($this->request->getPost('anticipacion_km')) ?? 0),
                 $intervalHours === null ? null : ($this->hoursTenths($this->request->getPost('anticipacion_horas')) ?? 0),
                 $intervalDays === null ? null : ($this->nullableInt($this->request->getPost('anticipacion_dias')) ?? 0),
+                priority: strtoupper(trim((string) ($this->request->getPost('prioridad') ?: 'MEDIA'))),
+                notes: $this->nullableString($this->request->getPost('observaciones')),
             ));
 
             return $this->success("Plan {$planId} asignado correctamente.");

@@ -44,6 +44,7 @@ final class PreventivePlansPayload
                     'code' => (string) $row['codigo'],
                     'plate' => $row['patente'],
                     'branchId' => (int) $row['sucursal_id'],
+                    'typeId' => (int) $row['tipo_equipo_id'],
                     'branchCode' => (string) $row['sucursal_codigo'],
                     'branchName' => (string) $row['sucursal_nombre'],
                     'typeName' => (string) $row['tipo_nombre'],
@@ -58,6 +59,7 @@ final class PreventivePlansPayload
                 'branches' => array_map(static fn (array $row): array => [
                     'id' => (int) $row['id'], 'code' => (string) $row['codigo'], 'name' => (string) $row['nombre'],
                 ], $page->branches),
+                'templateDefaults' => array_map([$this, 'templateDefault'], $page->templateDefaults),
             ],
             'plans' => [
                 'total' => $page->total,
@@ -79,6 +81,27 @@ final class PreventivePlansPayload
                 ], $page->items),
                 'pagination' => $this->pagination($page, $base, $query),
             ],
+        ];
+    }
+
+    /** @param array<string,mixed> $row */
+    private function templateDefault(array $row): array
+    {
+        return [
+            'id' => (int) $row['id'],
+            'templateId' => (int) $row['template_id'],
+            'templateName' => (string) $row['template_name'],
+            'equipmentTypeId' => (int) $row['equipment_type_id'],
+            'serviceTypeId' => (int) $row['service_type_id'],
+            'serviceName' => (string) $row['service_name'],
+            'intervalKm' => $row['interval_km'],
+            'intervalHours' => $row['interval_hours'],
+            'intervalDays' => $row['interval_days'],
+            'warningKm' => $row['warning_km'],
+            'warningHours' => $row['warning_hours'],
+            'warningDays' => $row['warning_days'],
+            'priority' => (string) $row['priority'],
+            'notes' => $row['notes'],
         ];
     }
 

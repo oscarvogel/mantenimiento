@@ -64,11 +64,12 @@ final class OperationsPayload
                     'brandName' => $row['marca_nombre'], 'typeName' => $row['tipo_nombre'],
                 ], $catalogs['models'] ?? []),
                 'serviceTypes' => array_map(fn (array $row): array => ['id' => (int) $row['id'], 'name' => $row['nombre']], $source['serviceTypes'] ?? []),
+                'templateDefaults' => array_map([$this, 'templateDefault'], $source['templateDefaults'] ?? []),
                 'users' => array_map(fn (array $row): array => ['id' => (int) $row['id'], 'name' => $row['nombre']], $source['users'] ?? []),
             ],
             'equipments' => array_map(fn (array $row): array => [
                 'id' => (int) $row['id'], 'code' => $row['codigo'], 'plate' => $row['patente'],
-                'typeName' => $row['tipo_nombre'], 'branchName' => $row['sucursal_nombre'], 'status' => $row['estado'],
+                'typeId' => (int) $row['tipo_equipo_id'], 'typeName' => $row['tipo_nombre'], 'branchName' => $row['sucursal_nombre'], 'status' => $row['estado'],
                 'controlsKm' => (int) $row['controla_km'] === 1, 'controlsHours' => (int) $row['controla_horas'] === 1,
                 'currentKm' => $row['km_actual'] === null ? null : (int) $row['km_actual'],
                 'currentHours' => $row['horas_actuales'],
@@ -103,6 +104,27 @@ final class OperationsPayload
                 'kilometers' => $row['kilometraje'] === null ? null : (int) $row['kilometraje'],
                 'hours' => $row['horometro'], 'origin' => $row['origen'],
             ], $source['readings'] ?? []),
+        ];
+    }
+
+    /** @param array<string,mixed> $row */
+    private function templateDefault(array $row): array
+    {
+        return [
+            'id' => (int) $row['id'],
+            'templateId' => (int) $row['template_id'],
+            'templateName' => (string) $row['template_name'],
+            'equipmentTypeId' => (int) $row['equipment_type_id'],
+            'serviceTypeId' => (int) $row['service_type_id'],
+            'serviceName' => (string) $row['service_name'],
+            'intervalKm' => $row['interval_km'],
+            'intervalHours' => $row['interval_hours'],
+            'intervalDays' => $row['interval_days'],
+            'warningKm' => $row['warning_km'],
+            'warningHours' => $row['warning_hours'],
+            'warningDays' => $row['warning_days'],
+            'priority' => (string) $row['priority'],
+            'notes' => $row['notes'],
         ];
     }
 

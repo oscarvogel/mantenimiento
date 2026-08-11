@@ -11,6 +11,7 @@ final readonly class PreventivePlanPage
      * @param list<array<string,mixed>> $equipment
      * @param list<array<string,mixed>> $serviceTypes
      * @param list<array<string,mixed>> $branches
+     * @param list<array<string,mixed>> $templateDefaults
      */
     public function __construct(
         public array $items,
@@ -20,6 +21,7 @@ final readonly class PreventivePlanPage
         public array $equipment,
         public array $serviceTypes,
         public array $branches,
+        public array $templateDefaults,
     ) {
     }
 

@@ -54,7 +54,7 @@ final readonly class CodeIgniterPreventivePlanReadModel implements PreventivePla
     public function listActiveEquipment(int $companyId, ?array $branchIds): array
     {
         $builder = $this->database->table('equipos e')
-            ->select('e.id, e.codigo, e.patente, e.sucursal_id, e.km_actual, e.horas_actuales, s.codigo sucursal_codigo, s.nombre sucursal_nombre, te.nombre tipo_nombre, te.controla_km, te.controla_horas')
+            ->select('e.id, e.codigo, e.patente, e.sucursal_id, e.tipo_equipo_id, e.km_actual, e.horas_actuales, s.codigo sucursal_codigo, s.nombre sucursal_nombre, te.nombre tipo_nombre, te.controla_km, te.controla_horas')
             ->join('sucursales s', 's.id = e.sucursal_id AND s.empresa_id = e.empresa_id', 'inner')
             ->join('tipos_equipo te', 'te.id = e.tipo_equipo_id', 'inner')
             ->where('e.empresa_id', $companyId)
@@ -67,6 +67,43 @@ final readonly class CodeIgniterPreventivePlanReadModel implements PreventivePla
         $this->scopeBranches($builder, 'e.sucursal_id', $branchIds);
 
         return $builder->get()->getResultArray();
+    }
+
+    public function listTemplateDefaults(int $companyId): array
+    {
+        if (! $this->database->tableExists('plantillas_mantenimiento') || ! $this->database->tableExists('plantilla_mantenimiento_items')) {
+            return [];
+        }
+
+        $rows = $this->database->table('plantilla_mantenimiento_items i')
+            ->select('i.id, i.plantilla_id, i.tipo_servicio_id, i.intervalo_km, i.intervalo_horas, i.intervalo_dias, i.anticipacion_km, i.anticipacion_horas, i.anticipacion_dias, i.prioridad, i.observaciones, p.nombre plantilla_nombre, p.tipo_equipo_id, ts.nombre servicio_nombre')
+            ->join('plantillas_mantenimiento p', 'p.id = i.plantilla_id', 'inner')
+            ->join('tipos_servicio ts', 'ts.id = i.tipo_servicio_id', 'inner')
+            ->where('p.empresa_id', $companyId)
+            ->where('p.activo', 1)
+            ->where('p.deleted_at', null)
+            ->where('i.activo', 1)
+            ->where('ts.activo', 1)
+            ->orderBy('p.nombre', 'ASC')
+            ->orderBy('ts.nombre', 'ASC')
+            ->get()->getResultArray();
+
+        return array_map(fn (array $row): array => [
+            'id' => (int) $row['id'],
+            'template_id' => (int) $row['plantilla_id'],
+            'template_name' => (string) $row['plantilla_nombre'],
+            'equipment_type_id' => (int) $row['tipo_equipo_id'],
+            'service_type_id' => (int) $row['tipo_servicio_id'],
+            'service_name' => (string) $row['servicio_nombre'],
+            'interval_km' => $row['intervalo_km'] === null ? null : (int) $row['intervalo_km'],
+            'interval_hours' => $this->decimalHours(DecimalHours::toTenths($row['intervalo_horas'])),
+            'interval_days' => $row['intervalo_dias'] === null ? null : (int) $row['intervalo_dias'],
+            'warning_km' => $row['anticipacion_km'] === null ? null : (int) $row['anticipacion_km'],
+            'warning_hours' => $this->decimalHours(DecimalHours::toTenths($row['anticipacion_horas'])),
+            'warning_days' => $row['anticipacion_dias'] === null ? null : (int) $row['anticipacion_dias'],
+            'priority' => (string) $row['prioridad'],
+            'notes' => $row['observaciones'] === null ? null : (string) $row['observaciones'],
+        ], $rows);
     }
 
     public function listActiveServiceTypes(): array
@@ -115,6 +152,11 @@ final readonly class CodeIgniterPreventivePlanReadModel implements PreventivePla
             (bool) $row['activo'],
             $row['observaciones'] === null ? null : (string) $row['observaciones'],
         );
+    }
+
+    private function decimalHours(?int $tenths): ?string
+    {
+        return $tenths === null ? null : number_format($tenths / 10, 1, '.', '');
     }
 
     /** @param list<int>|null $branchIds */
