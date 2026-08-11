@@ -24,14 +24,31 @@ export const maintenanceData = {
   readings: [{ id: 5, equipmentCode: 'CAM-01', recordedAt: '08/08/2026 15:00', kilometers: 1000, hours: 42, origin: 'MANUAL' }],
 }
 
+export const preventivePlansData = {
+  csrf, flash, canEdit: true, old: {},
+  routes: { index: '/mantenimiento/planes', create: '/mantenimiento/planes', equipmentIndex: '/mantenimiento/equipos' },
+  filters: { q: '', branchId: '', equipmentId: '', state: '' },
+  catalogs: {
+    equipment: [{ id: 9, code: 'CAM-01', plate: 'AA123BB', branchId: 1, branchCode: 'CC', branchName: 'Casa central', typeName: 'Camión', controlsKm: true, controlsHours: false, currentKm: 9900, currentHours: null }],
+    serviceTypes: [{ id: 3, code: 'SM', name: 'Service motor' }],
+    branches: [{ id: 1, code: 'CC', name: 'Casa central' }],
+  },
+  plans: {
+    total: 1,
+    pagination: { page: 1, totalPages: 1, total: 1, previousUrl: null, nextUrl: null },
+    items: [{ id: 2, equipment: { id: 9, code: 'CAM-01', plate: 'AA123BB', typeName: 'Camión', detailUrl: '/mantenimiento/equipos/9' }, branch: { id: 1, code: 'CC', name: 'Casa central' }, serviceName: 'Service motor', state: 'PROXIMO', priority: 'MEDIA', criteria: { kilometers: { interval: 1000, warning: 200, base: 9000, next: 10000, current: 9900 }, hours: null, date: null }, notes: null }],
+  },
+}
+
 export const assetsData = {
-  csrf, flash, canEdit: true,
-  routes: { index: '/mantenimiento/equipos', maintenance: '/mantenimiento', createBrand: '/mantenimiento/catalogos/marcas', createModel: '/mantenimiento/catalogos/modelos' },
+  csrf, flash, canEdit: true, old: {},
+  routes: { index: '/mantenimiento/equipos', maintenance: '/mantenimiento', createEquipment: '/mantenimiento/equipos', createBrand: '/mantenimiento/catalogos/marcas', createModel: '/mantenimiento/catalogos/modelos' },
   filters: { q: '', typeId: '', brandId: '', branchId: '', status: '' },
   catalogs: {
-    types: [{ id: 1, name: 'Camión', active: true }],
-    brands: [{ id: 2, name: 'Scania', active: true, updateUrl: '/mantenimiento/catalogos/marcas/2', inactivateUrl: '/mantenimiento/catalogos/marcas/2/inactivar' }],
-    models: [{ id: 3, name: 'R450', brandName: 'Scania', typeName: 'Camión', active: true, updateUrl: '/mantenimiento/catalogos/modelos/3', inactivateUrl: '/mantenimiento/catalogos/modelos/3/inactivar' }],
+    branches: [{ id: 1, code: 'CC', name: 'Casa central' }],
+    types: [{ id: 1, name: 'Camión', active: true }, { id: 2, name: 'Acoplado', active: true }],
+    brands: [{ id: 2, name: 'Scania', active: true, updateUrl: '/mantenimiento/catalogos/marcas/2', inactivateUrl: '/mantenimiento/catalogos/marcas/2/inactivar' }, { id: 4, name: 'Volvo', active: true, updateUrl: '/mantenimiento/catalogos/marcas/4', inactivateUrl: '/mantenimiento/catalogos/marcas/4/inactivar' }],
+    models: [{ id: 3, name: 'R450', brandId: 2, typeId: 1, brandName: 'Scania', typeName: 'Camión', active: true, updateUrl: '/mantenimiento/catalogos/modelos/3', inactivateUrl: '/mantenimiento/catalogos/modelos/3/inactivar' }, { id: 5, name: 'FH', brandId: 4, typeId: 1, brandName: 'Volvo', typeName: 'Camión', active: true, updateUrl: '/mantenimiento/catalogos/modelos/5', inactivateUrl: '/mantenimiento/catalogos/modelos/5/inactivar' }],
   },
   equipment: { total: 1, pagination, items: [{ id: 9, code: 'CAM-01', typeName: 'Camión', plate: 'AA123BB', brandName: 'Scania', modelName: 'R450', year: 2023, branchCode: 'CC', branchName: 'Casa central', currentKm: 1000, currentHours: 42, status: 'ACTIVO', detailUrl: '/mantenimiento/equipos/9', qrUrl: '/mantenimiento/equipos/9/qr.svg' }] },
 }

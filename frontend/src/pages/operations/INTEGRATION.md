@@ -4,11 +4,12 @@ Estas páginas son adaptadores de presentación. Reciben read models ya autoriza
 
 ## Montaje
 
-`index.js` exporta los cinco componentes y el registro `operationPageComponents`:
+`index.js` exporta los seis componentes y el registro `operationPageComponents`:
 
 | `pageType` | Componente |
 |---|---|
 | `maintenance-overview` | `MaintenanceOverviewPage` |
+| `preventive-plans` | `PreventivePlansPage` |
 | `equipment-detail` | `EquipmentDetailPage` |
 | `assets-index` | `AssetsIndexPage` |
 | `imports-index` | `ImportsIndexPage` |
@@ -24,6 +25,10 @@ flash: { success: '', error: '' }
 ```
 
 Las URLs son valores del payload, no se concatenan en Vue. Los permisos sólo controlan visibilidad; CodeIgniter debe volver a autorizar cada request.
+
+## `preventive-plans`
+
+`GET /mantenimiento/planes` requiere `planes.ver` y `POST /mantenimiento/planes` requiere `planes.editar`. El payload incluye `canEdit`, rutas, filtros, catalogos autorizados y `plans.items` paginados. Cada plan identifica equipo, sucursal, servicio, prioridad y estado; sus criterios activos exponen intervalo, anticipacion, base, proximo y valor actual. Los estados `AL_DIA`, `PROXIMO`, `VENCIDO` y `SIN_DATOS` llegan calculados por el dominio.
 
 ## `maintenance-overview`
 

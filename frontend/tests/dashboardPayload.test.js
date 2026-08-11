@@ -54,4 +54,15 @@ describe('normalizeDashboardPayload', () => {
     expect(globalDashboard.user.roleLabel).toBe('Superadministrador')
     expect(tenantDashboard.company.scopeLabel).toBe('Sin sucursales asignadas')
   })
+
+  it('prioriza Planes preventivos para los indicadores de mantenimiento', () => {
+    const dashboard = normalizeDashboardPayload({
+      navigation: [
+        { key: 'plans', label: 'Planes preventivos', href: '/mantenimiento/planes' },
+        { key: 'maintenance', label: 'Servicios', href: '/mantenimiento' },
+      ],
+    })
+
+    expect(dashboard.links.maintenance).toBe('/mantenimiento/planes')
+  })
 })

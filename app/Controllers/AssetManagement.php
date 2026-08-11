@@ -7,10 +7,13 @@ namespace App\Controllers;
 use App\Application\Assets\AssetCatalogService;
 use App\Application\Assets\CreateBrandCommand;
 use App\Application\Assets\CreateEquipmentModelCommand;
+use App\Application\Assets\CreateEquipmentCommand;
+use App\Application\Assets\CreateEquipmentHandler;
 use App\Application\Assets\EquipmentListQuery;
 use App\Application\Assets\InactivateBrandCommand;
 use App\Application\Assets\InactivateEquipmentModelCommand;
 use App\Application\Assets\ListEquipment;
+use App\Application\Assets\ListAvailableAssetBranches;
 use App\Application\Assets\RenameBrandCommand;
 use App\Application\Assets\RenameEquipmentModelCommand;
 use App\Application\Assets\RenderEquipmentQr;
@@ -19,6 +22,7 @@ use App\Infrastructure\Identity\SessionActorContext;
 use CodeIgniter\HTTP\RedirectResponse;
 use CodeIgniter\HTTP\ResponseInterface;
 use DomainException;
+use DateTimeImmutable;
 use Throwable;
 
 final class AssetManagement extends BaseController
@@ -55,10 +59,34 @@ final class AssetManagement extends BaseController
                     $this->catalog()->list($actor, $actor->hasPermission('equipos.editar')),
                     $filters,
                     $actor->hasPermission('equipos.editar'),
+                    $this->availableBranches()->execute($actor),
                 ),
             );
         } catch (Throwable $exception) {
             return $this->failure($exception, '/dashboard');
+        }
+    }
+
+    public function createEquipment(): RedirectResponse
+    {
+        try {
+            $result = $this->createEquipmentHandler()->execute($this->actor(), new CreateEquipmentCommand(
+                (int) $this->request->getPost('sucursal_id'),
+                (int) $this->request->getPost('tipo_equipo_id'),
+                (string) $this->request->getPost('codigo'),
+                $this->nullableString($this->request->getPost('patente')),
+                $this->date((string) $this->request->getPost('fecha_alta')),
+                $this->nullableString($this->request->getPost('observaciones')),
+                $this->nullableInt($this->request->getPost('marca_id')),
+                $this->nullableInt($this->request->getPost('modelo_id')),
+                $this->nullableInt($this->request->getPost('anio')),
+                $this->nullableString($this->request->getPost('chasis')),
+                $this->nullableString($this->request->getPost('motor')),
+            ));
+
+            return redirect()->to('/mantenimiento/equipos')->with('success', "Equipo {$result->code} creado correctamente.");
+        } catch (Throwable $exception) {
+            return $this->failure($exception, '/mantenimiento/equipos');
         }
     }
 
@@ -137,6 +165,8 @@ final class AssetManagement extends BaseController
 
     private function catalog(): AssetCatalogService { return service('assetCatalog'); }
     private function equipmentList(): ListEquipment { return service('equipmentList'); }
+    private function availableBranches(): ListAvailableAssetBranches { return service('availableAssetBranches'); }
+    private function createEquipmentHandler(): CreateEquipmentHandler { return service('createEquipment'); }
     private function equipmentQr(): RenderEquipmentQr { return service('equipmentQr'); }
 
     private function catalogMutation(callable $operation, string $message): RedirectResponse
@@ -180,5 +210,16 @@ final class AssetManagement extends BaseController
         }
 
         return (int) $value;
+    }
+
+    private function date(string $value): DateTimeImmutable
+    {
+        $date = DateTimeImmutable::createFromFormat('!Y-m-d', trim($value));
+        $errors = DateTimeImmutable::getLastErrors();
+        if ($date === false || ($errors !== false && ($errors['warning_count'] > 0 || $errors['error_count'] > 0))) {
+            throw new DomainException('La fecha de alta no es válida.');
+        }
+
+        return $date;
     }
 }

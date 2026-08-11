@@ -93,6 +93,23 @@ function Get-CsrfToken {
     param([Parameter(Mandatory)] [string]$Html)
 
     $match = [regex]::Match($Html, 'name="csrf_test_name"\s+value="([^"]+)"')
+    if ($match.Success) {
+        return $match.Groups[1].Value
+    }
+
+    $payloadMatch = [regex]::Match(
+        $Html,
+        '<script\s+id="maintenance-app-data"\s+type="application/json">(?<json>.*?)</script>',
+        [System.Text.RegularExpressions.RegexOptions]::Singleline
+    )
+    if ($payloadMatch.Success) {
+        $payload = $payloadMatch.Groups['json'].Value | ConvertFrom-Json
+        $hash = $payload.data.csrf.hash
+        if (-not [string]::IsNullOrWhiteSpace([string] $hash)) {
+            return [string] $hash
+        }
+    }
+
     if (-not $match.Success) {
         throw 'No se encontro el token CSRF en la respuesta.'
     }

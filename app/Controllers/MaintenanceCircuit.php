@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
-use App\Application\Assets\CreateEquipmentCommand;
-use App\Application\Assets\CreateEquipmentHandler;
 use App\Application\Assets\AssetCatalogService;
 use App\Application\Identity\ActorContext;
 use App\Application\MaintenanceCircuit\ClosePreventiveOrder;
@@ -37,6 +35,10 @@ final class MaintenanceCircuit extends BaseController
             foreach ($this->due()->execute($actor, (int) $actor->companyId()) as $result) {
                 $states[(int) $result['plan']->id()] = $result['evaluation']->estado()->value;
             }
+        } else {
+            // El overview combina varios contextos. No debe serializar planes
+            // cuando el actor solo puede consultar equipos u órdenes.
+            $data['plans'] = [];
         }
         foreach ($data['plans'] as &$plan) {
             $plan['computed_state'] = $states[(int) $plan['id']] ?? 'SIN_DATOS';
@@ -59,29 +61,6 @@ final class MaintenanceCircuit extends BaseController
             'Mantenimiento preventivo',
             service('operationsPayload')->maintenance($data),
         );
-    }
-
-    public function createEquipment(): RedirectResponse
-    {
-        try {
-            $result = $this->createEquipmentHandler()->execute($this->actor(), new CreateEquipmentCommand(
-                (int) $this->request->getPost('sucursal_id'),
-                (int) $this->request->getPost('tipo_equipo_id'),
-                (string) $this->request->getPost('codigo'),
-                $this->nullableString($this->request->getPost('patente')),
-                new DateTimeImmutable((string) $this->request->getPost('fecha_alta')),
-                $this->nullableString($this->request->getPost('observaciones')),
-                $this->nullableInt($this->request->getPost('marca_id')),
-                $this->nullableInt($this->request->getPost('modelo_id')),
-                $this->nullableInt($this->request->getPost('anio')),
-                $this->nullableString($this->request->getPost('chasis')),
-                $this->nullableString($this->request->getPost('motor')),
-            ));
-
-            return $this->success("Equipo {$result->code} creado correctamente.");
-        } catch (Throwable $exception) {
-            return $this->failure($exception);
-        }
     }
 
     public function registerReading(int $equipmentId): RedirectResponse
@@ -198,7 +177,6 @@ final class MaintenanceCircuit extends BaseController
 
     private function overview(): GetCircuitOverview { return service('circuitOverview'); }
     private function due(): ConsultarVencimientos { return service('consultMaintenanceDue'); }
-    private function createEquipmentHandler(): CreateEquipmentHandler { return service('createEquipment'); }
     private function assetCatalog(): AssetCatalogService { return service('assetCatalog'); }
     private function registerReadingHandler(): RegisterReadingHandler { return service('registerReading'); }
     private function assignPlanHandler(): AsignarPlan { return service('assignMaintenancePlan'); }

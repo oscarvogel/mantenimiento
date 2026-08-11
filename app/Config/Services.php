@@ -18,6 +18,7 @@ use App\Application\Assets\CreateEquipmentRelationHandler;
 use App\Application\Assets\FinishEquipmentRelationHandler;
 use App\Application\Assets\GetEquipmentQrPayload;
 use App\Application\Assets\ListEquipment;
+use App\Application\Assets\ListAvailableAssetBranches;
 use App\Application\Assets\RenderEquipmentQr;
 use App\Application\Assets\Attachment\DownloadEquipmentAttachmentHandler;
 use App\Application\Assets\Attachment\ListEquipmentAttachmentsHandler;
@@ -36,6 +37,7 @@ use App\Application\MaintenanceCircuit\GeneratePreventiveOrderFromNotice;
 use App\Application\MaintenanceCircuit\ClosePreventiveOrder;
 use App\Application\PreventiveMaintenance\AsignarPlan;
 use App\Application\PreventiveMaintenance\ConsultarVencimientos;
+use App\Application\PreventiveMaintenance\ListPreventivePlansHandler;
 use App\Application\PreventiveMaintenance\MaterializarAvisoVencido;
 use App\Application\PreventiveMaintenance\RecalcularPlanTrasCierre;
 use App\Application\WorkOrders\StartWorkOrder;
@@ -96,6 +98,7 @@ use App\Infrastructure\MaintenanceCircuit\CodeIgniterPreventiveOrderFromNotice;
 use App\Infrastructure\PreventiveMaintenance\CodeIgniterMaintenanceNoticeRepository;
 use App\Infrastructure\PreventiveMaintenance\CodeIgniterPlanMantenimientoRepository;
 use App\Infrastructure\PreventiveMaintenance\CodeIgniterPreventiveAssetGateway;
+use App\Infrastructure\PreventiveMaintenance\CodeIgniterPreventivePlanReadModel;
 use App\Infrastructure\PreventiveMaintenance\CodeIgniterServiceTypeGateway;
 use App\Infrastructure\PreventiveMaintenance\SystemClock;
 use App\Infrastructure\WorkOrders\CodeIgniterWorkOrderRepository;
@@ -107,6 +110,7 @@ use App\Domain\PreventiveMaintenance\EvaluadorVencimiento;
 use App\Presentation\AppShellPayload;
 use App\Presentation\AdministrationPayload;
 use App\Presentation\OperationsPayload;
+use App\Presentation\PreventivePlansPayload;
 use CodeIgniter\Config\BaseService;
 
 /**
@@ -124,6 +128,28 @@ use CodeIgniter\Config\BaseService;
  */
 class Services extends BaseService
 {
+    public static function preventivePlansPayload(bool $getShared = true): PreventivePlansPayload
+    {
+        if ($getShared) {
+            return static::getSharedInstance('preventivePlansPayload');
+        }
+
+        return new PreventivePlansPayload();
+    }
+
+    public static function listPreventivePlans(bool $getShared = true): ListPreventivePlansHandler
+    {
+        if ($getShared) {
+            return static::getSharedInstance('listPreventivePlans');
+        }
+
+        return new ListPreventivePlansHandler(
+            new CodeIgniterPreventivePlanReadModel(db_connect()),
+            new EvaluadorVencimiento(),
+            new SystemClock(),
+        );
+    }
+
     public static function operationsPayload(bool $getShared = true): OperationsPayload
     {
         if ($getShared) {
@@ -380,6 +406,15 @@ class Services extends BaseService
         }
 
         return new GetEquipmentDetails(new CodeIgniterEquipmentReadModel(db_connect()));
+    }
+
+    public static function availableAssetBranches(bool $getShared = true): ListAvailableAssetBranches
+    {
+        if ($getShared) {
+            return static::getSharedInstance('availableAssetBranches');
+        }
+
+        return new ListAvailableAssetBranches(new CodeIgniterEquipmentReadModel(db_connect()));
     }
 
     public static function updateEquipment(bool $getShared = true): UpdateEquipmentHandler

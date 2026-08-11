@@ -77,7 +77,7 @@ final class OperationsPayload
     }
 
     /** @param array<string,mixed> $page @param array<string,mixed> $catalogs @param array<string,mixed> $filters */
-    public function assets(array $page, array $catalogs, array $filters, bool $canEdit): array
+    public function assets(array $page, array $catalogs, array $filters, bool $canEdit, array $branches = []): array
     {
         $query = array_filter([
             'q' => $filters['q'] ?? null, 'tipo_id' => $filters['type_id'] ?? null,
@@ -88,8 +88,10 @@ final class OperationsPayload
 
         return [
             'canEdit' => $canEdit,
+            'old' => $this->old(['sucursal_id', 'tipo_equipo_id', 'codigo', 'patente', 'marca_id', 'modelo_id', 'fecha_alta', 'anio', 'chasis', 'motor', 'observaciones']),
             'routes' => [
                 'index' => $base, 'maintenance' => base_url('mantenimiento'),
+                'createEquipment' => $base,
                 'createBrand' => base_url('mantenimiento/catalogos/marcas'), 'createModel' => base_url('mantenimiento/catalogos/modelos'),
             ],
             'filters' => [
@@ -98,6 +100,7 @@ final class OperationsPayload
                 'status' => $filters['status'] ?? '',
             ],
             'catalogs' => [
+                'branches' => array_map(fn (array $row): array => ['id' => (int) $row['id'], 'code' => $row['codigo'], 'name' => $row['nombre']], $branches),
                 'types' => array_map(fn (array $row): array => ['id' => (int) $row['id'], 'name' => $row['nombre'], 'active' => (int) $row['activo'] === 1], $catalogs['types'] ?? []),
                 'brands' => array_map(fn (array $row): array => [
                     'id' => (int) $row['id'], 'name' => $row['nombre'], 'active' => (int) $row['activo'] === 1,
@@ -105,7 +108,7 @@ final class OperationsPayload
                     'inactivateUrl' => base_url('mantenimiento/catalogos/marcas/' . $row['id'] . '/inactivar'),
                 ], $catalogs['brands'] ?? []),
                 'models' => array_map(fn (array $row): array => [
-                    'id' => (int) $row['id'], 'name' => $row['nombre'], 'brandName' => $row['marca_nombre'],
+                    'id' => (int) $row['id'], 'name' => $row['nombre'], 'brandId' => (int) $row['marca_id'], 'typeId' => (int) $row['tipo_equipo_id'], 'brandName' => $row['marca_nombre'],
                     'typeName' => $row['tipo_nombre'], 'active' => (int) $row['activo'] === 1,
                     'updateUrl' => base_url('mantenimiento/catalogos/modelos/' . $row['id']),
                     'inactivateUrl' => base_url('mantenimiento/catalogos/modelos/' . $row['id'] . '/inactivar'),

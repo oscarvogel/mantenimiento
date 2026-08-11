@@ -135,7 +135,7 @@ export function normalizeDashboardPayload(payload) {
   const metrics = source.metrics && typeof source.metrics === 'object' ? source.metrics : {}
   const shell = normalizeAppShellPayload(source)
   const equipmentUrl = findNavigationUrl(shell.navigation, ['camion', 'equipo', 'truck'])
-  const maintenanceUrl = findNavigationUrl(shell.navigation, ['mantenimiento', 'servicio', 'maintenance'])
+  const maintenanceUrl = findNavigationUrl(shell.navigation, ['plan', 'preventiv', 'mantenimiento', 'servicio', 'maintenance'])
 
   return {
     ...shell,
