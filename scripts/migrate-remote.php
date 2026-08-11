@@ -77,6 +77,7 @@ if ($environment !== 'production') {
     echo "ERROR: este script solo corre en produccion. CI_ENVIRONMENT='$environment'.\n";
     exit(1);
 }
+defined('ENVIRONMENT') || define('ENVIRONMENT', $environment);
 
 $expectedToken = $env['MIGRATE_TOKEN'] ?? '';
 if ($expectedToken === '' || strlen($expectedToken) < 32) {
@@ -100,20 +101,37 @@ $timestamp = gmdate('Y-m-d\TH:i:s\Z');
 $action    = (isset($_GET['status']) && $_GET['status'] === '1') ? 'status' : 'migrate';
 
 header('Content-Type: text/plain; charset=utf-8');
-echo "=== Mantenimiento :: migracion remota ===\n";
-echo "Timestamp (UTC): $timestamp\n";
-echo "Cliente:         $clientIp\n";
-echo "Accion:          $action\n";
-echo "Release path:    " . FCPATH . "\n";
-echo "----------------------------------------\n";
+$header = [
+    '=== Mantenimiento :: migracion remota ===',
+    "Timestamp (UTC): $timestamp",
+    "Cliente:         $clientIp",
+    "Accion:          $action",
+    'Release path:    ' . FCPATH,
+    '----------------------------------------',
+];
 
-// 3. Bootstrap completo del framework (modo web para tener acceso a servicios).
+// 3. Bootstrap minimo del framework sin despachar controladores web.
 require $paths->systemDirectory . '/Boot.php';
-$exitCode = Boot::bootWeb($paths);
-if ($exitCode !== 0) {
-    echo "ERROR: Boot::bootWeb devolvio codigo $exitCode.\n";
-    exit($exitCode);
-}
+(new class extends Boot {
+    public static function bootForMigrations(Paths $paths): void
+    {
+        static::definePathConstants($paths);
+        if (! defined('APP_NAMESPACE')) {
+            static::loadConstants();
+        }
+        static::checkMissingExtensions();
+        static::loadDotEnv($paths);
+        static::defineEnvironment();
+        static::loadEnvironmentBootstrap($paths);
+        static::loadCommonFunctions();
+        static::loadAutoloader();
+        static::setExceptionHandler();
+        static::initializeKint();
+        static::autoloadHelpers();
+    }
+})::bootForMigrations($paths);
+
+echo implode("\n", $header) . "\n";
 
 // 4. Acceder al runner de migraciones.
 try {

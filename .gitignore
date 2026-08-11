@@ -3,6 +3,8 @@
 # =============================================================================
 /.env
 /env
+/phpunit.xml
+/.env.ferozo.bak.*
 
 # =============================================================================
 # Credenciales locales (NO COMMITEAR)
@@ -25,6 +27,7 @@
 /writable/debugbar/*
 !/writable/debugbar/index.html
 !/writable/debugbar/.gitkeep
+/writable/_diag_backup/
 
 # =============================================================================
 # PHP y herramientas

@@ -84,7 +84,7 @@ final class PhpSpreadsheetPreventiveLibraryReader implements PreventiveLibraryWo
                 throw new DomainException("La hoja {$sheetName} esta vacia.");
             }
 
-            $rawHeaders = array_shift($matrix);
+            $rawHeaders = $this->withoutTrailingEmptyCells(array_shift($matrix));
             $headers = array_map(fn ($value): string => $this->normalizeHeader((string) $value), $rawHeaders);
             if ($headers === [] || in_array('', $headers, true) || count($headers) !== count(array_unique($headers))) {
                 throw new DomainException("La hoja {$sheetName} contiene encabezados vacios o repetidos.");
@@ -126,6 +126,16 @@ final class PhpSpreadsheetPreventiveLibraryReader implements PreventiveLibraryWo
             }
         }
         return true;
+    }
+
+    /** @param list<mixed> $values @return list<mixed> */
+    private function withoutTrailingEmptyCells(array $values): array
+    {
+        while ($values !== [] && trim((string) end($values)) === '') {
+            array_pop($values);
+        }
+
+        return $values;
     }
 
     private function normalizeHeader(string $header): string

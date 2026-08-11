@@ -12,7 +12,7 @@ RewriteEngine On
 # El despliegue usa una raiz publica plana. Estos directorios contienen
 # codigo fuente, dependencias, pruebas o archivos operativos y nunca deben
 # responderse como contenido estatico.
-RewriteRule ^(?:app|docs|frontend|scripts|tests|vendor|writable)(?:/|$) - [F,L,NC]
+RewriteRule ^(?:app|docs|frontend|home|scripts|tests|vendor|writable)(?:/|$) - [F,L,NC]
 
 # Redirigir trailing slashes (excepto la raiz)
 RewriteCond %{REQUEST_FILENAME} !-d
