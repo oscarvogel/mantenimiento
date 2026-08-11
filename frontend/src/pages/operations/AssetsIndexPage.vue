@@ -50,6 +50,11 @@ watch([selectedTypeId, selectedBrandId], () => { selectedModelId.value = '' })
 
     <PanelCard title="Listado de equipos" :count="data.equipment.total" flush class="mb-6">
       <form method="get" :action="data.routes.index" class="grid gap-4 border-b border-border-subtle p-5 sm:grid-cols-2 sm:p-6 xl:grid-cols-5">
+        <input type="hidden" name="per_page" :value="data.filters.perPage" />
+        <input type="hidden" name="brand_page" :value="data.management.brands.pagination.page" />
+        <input type="hidden" name="brand_per_page" :value="data.management.brands.pagination.perPage" />
+        <input type="hidden" name="model_page" :value="data.management.models.pagination.page" />
+        <input type="hidden" name="model_per_page" :value="data.management.models.pagination.perPage" />
         <FormField label="Buscar" for-id="asset-filter-q"><input id="asset-filter-q" name="q" maxlength="100" :value="data.filters.q" placeholder="Código, patente o chasis" :class="fieldClass" /></FormField>
         <FormField label="Tipo" for-id="asset-filter-type"><select id="asset-filter-type" name="tipo_id" :class="fieldClass"><option value="">Todos</option><option v-for="type in data.catalogs.types" :key="type.id" :value="type.id" :selected="String(data.filters.typeId) === String(type.id)">{{ type.name }}</option></select></FormField>
         <FormField label="Marca" for-id="asset-filter-brand"><select id="asset-filter-brand" name="marca_id" :class="fieldClass"><option value="">Todas</option><option v-for="brand in data.catalogs.brands.filter((item) => item.active)" :key="brand.id" :value="brand.id" :selected="String(data.filters.brandId) === String(brand.id)">{{ brand.name }}</option></select></FormField>
@@ -72,20 +77,22 @@ watch([selectedTypeId, selectedBrandId], () => { selectedModelId.value = '' })
     </PanelCard>
 
     <section v-if="data.canEdit" class="grid gap-6 xl:grid-cols-2">
-      <PanelCard title="Marcas" :count="data.catalogs.brands.length">
+      <PanelCard title="Marcas" :count="data.management.brands.total">
         <form method="post" :action="data.routes.createBrand" class="mb-5 flex flex-col gap-2 sm:flex-row">
           <CsrfInput :csrf="data.csrf" /><label class="sr-only" for="new-brand">Nueva marca</label><input id="new-brand" name="nombre" maxlength="100" required placeholder="Nueva marca" :class="fieldClass" /><button type="submit" :class="primaryButton">Crear marca</button>
         </form>
-        <EmptyState v-if="data.catalogs.brands.length === 0" title="No hay marcas" />
-        <ul v-else class="divide-y divide-border-subtle"><li v-for="brand in data.catalogs.brands" :key="brand.id" class="py-4 first:pt-0"><form method="post" :action="brand.updateUrl" class="flex gap-2"><CsrfInput :csrf="data.csrf" /><label class="sr-only" :for="`brand-${brand.id}`">Nombre de marca</label><input :id="`brand-${brand.id}`" name="nombre" maxlength="100" required :value="brand.name" :disabled="!brand.active" :class="fieldClass" /><button type="submit" :disabled="!brand.active" :class="secondaryButton">Guardar</button></form><form v-if="brand.active" method="post" :action="brand.inactivateUrl" class="mt-2"><CsrfInput :csrf="data.csrf" /><button type="submit" :class="dangerButton">Inactivar {{ brand.name }}</button></form><StatusBadge v-else status="BAJA" /></li></ul>
+        <EmptyState v-if="data.management.brands.items.length === 0" title="No hay marcas" />
+        <ul v-else class="divide-y divide-border-subtle"><li v-for="brand in data.management.brands.items" :key="brand.id" class="py-4 first:pt-0"><form method="post" :action="brand.updateUrl" class="flex gap-2"><CsrfInput :csrf="data.csrf" /><label class="sr-only" :for="`brand-${brand.id}`">Nombre de marca</label><input :id="`brand-${brand.id}`" name="nombre" maxlength="100" required :value="brand.name" :disabled="!brand.active" :class="fieldClass" /><button type="submit" :disabled="!brand.active" :class="secondaryButton">Guardar</button></form><form v-if="brand.active" method="post" :action="brand.inactivateUrl" class="mt-2"><CsrfInput :csrf="data.csrf" /><button type="submit" :class="dangerButton">Inactivar {{ brand.name }}</button></form><StatusBadge v-else status="BAJA" /></li></ul>
+        <template #footer><PaginationBar :pagination="data.management.brands.pagination" /></template>
       </PanelCard>
 
-      <PanelCard title="Modelos" :count="data.catalogs.models.length">
+      <PanelCard title="Modelos" :count="data.management.models.total">
         <form method="post" :action="data.routes.createModel" class="mb-5 grid gap-3 sm:grid-cols-2">
           <CsrfInput :csrf="data.csrf" /><FormField label="Marca" for-id="new-model-brand"><select id="new-model-brand" name="marca_id" required :class="fieldClass"><option v-for="brand in data.catalogs.brands.filter((item) => item.active)" :key="brand.id" :value="brand.id">{{ brand.name }}</option></select></FormField><FormField label="Tipo de equipo" for-id="new-model-type"><select id="new-model-type" name="tipo_equipo_id" required :class="fieldClass"><option v-for="type in data.catalogs.types.filter((item) => item.active)" :key="type.id" :value="type.id">{{ type.name }}</option></select></FormField><FormField label="Nombre" for-id="new-model-name"><input id="new-model-name" name="nombre" maxlength="100" required placeholder="Modelo" :class="fieldClass" /></FormField><button type="submit" :class="`${primaryButton} self-end`">Crear modelo</button>
         </form>
-        <EmptyState v-if="data.catalogs.models.length === 0" title="No hay modelos" />
-        <ul v-else class="divide-y divide-border-subtle"><li v-for="model in data.catalogs.models" :key="model.id" class="py-4 first:pt-0"><p class="mb-2 text-xs text-ink-muted">{{ model.brandName }} · {{ model.typeName }}</p><form method="post" :action="model.updateUrl" class="flex gap-2"><CsrfInput :csrf="data.csrf" /><label class="sr-only" :for="`model-${model.id}`">Nombre de modelo</label><input :id="`model-${model.id}`" name="nombre" maxlength="100" required :value="model.name" :disabled="!model.active" :class="fieldClass" /><button type="submit" :disabled="!model.active" :class="secondaryButton">Guardar</button></form><form v-if="model.active" method="post" :action="model.inactivateUrl" class="mt-2"><CsrfInput :csrf="data.csrf" /><button type="submit" :class="dangerButton">Inactivar</button></form><StatusBadge v-else status="BAJA" /></li></ul>
+        <EmptyState v-if="data.management.models.items.length === 0" title="No hay modelos" />
+        <ul v-else class="divide-y divide-border-subtle"><li v-for="model in data.management.models.items" :key="model.id" class="py-4 first:pt-0"><p class="mb-2 text-xs text-ink-muted">{{ model.brandName }} · {{ model.typeName }}</p><form method="post" :action="model.updateUrl" class="flex gap-2"><CsrfInput :csrf="data.csrf" /><label class="sr-only" :for="`model-${model.id}`">Nombre de modelo</label><input :id="`model-${model.id}`" name="nombre" maxlength="100" required :value="model.name" :disabled="!model.active" :class="fieldClass" /><button type="submit" :disabled="!model.active" :class="secondaryButton">Guardar</button></form><form v-if="model.active" method="post" :action="model.inactivateUrl" class="mt-2"><CsrfInput :csrf="data.csrf" /><button type="submit" :class="dangerButton">Inactivar</button></form><StatusBadge v-else status="BAJA" /></li></ul>
+        <template #footer><PaginationBar :pagination="data.management.models.pagination" /></template>
       </PanelCard>
     </section>
   </div>

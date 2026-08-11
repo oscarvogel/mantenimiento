@@ -47,9 +47,20 @@ describe('preventive-plans', () => {
     expect(create.get('input[name="intervalo_km"]').exists()).toBe(true)
     expect(create.find('input[name="intervalo_horas"]').exists()).toBe(false)
     expect(wrapper.get('form[action="/mantenimiento/planes"][method="get"]').attributes('method')).toBe('get')
+    const perPage = wrapper.get('select[aria-label="Registros por página"]')
+    expect(perPage.element.value).toBe('10')
+    expect(perPage.findAll('option').map((option) => option.element.value)).toEqual(['5', '10', '25'])
     expect(wrapper.text()).toContain('CAM-01')
     expect(wrapper.text()).toContain('Cada 1000 km')
     expect(wrapper.text()).toContain('próximo 10000 km')
+  })
+
+  it('conserva filtros y tamaño en los enlaces de paginación recibidos', () => {
+    const nextUrl = '/mantenimiento/planes?q=CAM&sucursal_id=1&equipo_id=9&estado=PROXIMO&por_pagina=5&page=2'
+    const data = { ...preventivePlansData, plans: { ...preventivePlansData.plans, pagination: { ...preventivePlansData.plans.pagination, totalPages: 2, perPage: 5, nextUrl } } }
+    const wrapper = render(PreventivePlansPage, data)
+
+    expect(wrapper.get(`a[href="${nextUrl}"]`).text()).toContain('Siguiente')
   })
 
   it('oculta el alta sin permiso y conserva el empty state', () => {
@@ -70,6 +81,8 @@ describe('maintenance-overview', () => {
     expect(wrapper.get('form[action="/mantenimiento/avisos/3/orden"]').attributes('method')).toBe('post')
     expect(wrapper.get('form[action="/mantenimiento/ordenes/4/cerrar"]').attributes('method')).toBe('post')
     expect(wrapper.findAll('input[name="csrf_test_name"]').every((input) => input.attributes('value') === 'secure-token')).toBe(true)
+    expect(wrapper.findAll('select[aria-label="Registros por página"]')).toHaveLength(5)
+    expect(wrapper.get('a[href*="equipos_page=2"]').attributes('href')).toContain('lecturas_per_page=10')
   })
 
   it('respeta permisos y estados vacíos', () => {
@@ -123,6 +136,21 @@ describe('assets-index', () => {
     expect(wrapper.get('#new-equipment-model option[value=""]').exists()).toBe(true)
     expect(wrapper.findAll('#new-equipment-model option')).toHaveLength(1)
   })
+
+  it('pagina equipos, marcas y modelos de forma independiente sin recortar los catalogos de alta', () => {
+    const wrapper = render(AssetsIndexPage, assetsData)
+    const selectors = wrapper.findAll('select[aria-label="Registros por página"]')
+
+    expect(selectors).toHaveLength(3)
+    expect(selectors.map((selector) => selector.element.value)).toEqual(['10', '5', '10'])
+    expect(selectors.every((selector) => selector.findAll('option').map((option) => option.text()).join(',') === '5,10,25')).toBe(true)
+    expect(wrapper.findAll('input[id^="brand-"]')).toHaveLength(1)
+    expect(wrapper.findAll('input[id^="model-"]')).toHaveLength(1)
+    expect(wrapper.get('#new-equipment-brand').findAll('option')).toHaveLength(3)
+    expect(wrapper.get('#new-equipment-model').findAll('option')).toHaveLength(1)
+    expect(wrapper.find('a[href="?brand_page=2&brand_per_page=5&model_page=1&model_per_page=10"]').exists()).toBe(true)
+    expect(wrapper.find('a[href="?brand_page=1&brand_per_page=5&model_page=2&model_per_page=10"]').exists()).toBe(true)
+  })
 })
 
 describe('equipment-detail', () => {
@@ -152,6 +180,13 @@ describe('equipment-detail', () => {
     const event = new Event('submit', { bubbles: true, cancelable: true })
     form.dispatchEvent(event)
     expect(event.defaultPrevented).toBe(true)
+  })
+
+  it('muestra un selector de tamaño para cada listado paginable de la ficha', () => {
+    const wrapper = render(EquipmentDetailPage, equipmentData)
+    const selectors = wrapper.findAll('select[aria-label="Registros por página"]')
+    expect(selectors).toHaveLength(4)
+    expect(selectors.every((selector) => selector.element.value === '10')).toBe(true)
   })
 })
 

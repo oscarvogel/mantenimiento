@@ -5,6 +5,16 @@ export const superAdminData = {
   flash: { success: 'Empresa creada.', error: '' },
   permissions: { companiesEdit: true, createCompanyAdministrators: true, assignCompanies: true, assignRoles: true },
   metrics: { companiesTotal: 2, companiesActive: 1, usersTotal: 2 },
+  companiesPagination: {
+    page: 1, totalPages: 2, total: 12, perPage: 10,
+    pageKey: 'companies_page', perPageKey: 'companies_per_page',
+    previousUrl: null, nextUrl: '/superadmin?companies_page=2&companies_per_page=10&users_page=1&users_per_page=25',
+  },
+  usersPagination: {
+    page: 1, totalPages: 1, total: 2, perPage: 25,
+    pageKey: 'users_page', perPageKey: 'users_per_page',
+    previousUrl: null, nextUrl: null,
+  },
   actions: {
     createCompany: '/superadmin/empresas',
     createCompanyAdministrator: '/superadmin/administradores',
@@ -79,6 +89,11 @@ export const branchesAdminData = {
   company: { id: 1, name: 'Transportes Sur SA' },
   permissions: { edit: true },
   metrics: { total: 2, active: 1, inactive: 1 },
+  pagination: {
+    page: 1, totalPages: 2, total: 12, perPage: 10,
+    pageKey: 'page', perPageKey: 'per_page', previousUrl: null,
+    nextUrl: '/administracion/sucursales?page=2&per_page=10',
+  },
   actions: { create: '/administracion/sucursales' },
   oldInput: { codigo: 'ROS', nombre: '', direccion: '', emailAlertas: '' },
   branches: [
@@ -109,6 +124,10 @@ export const usersAdminData = {
   company: { id: 1, name: 'Transportes Sur SA' },
   permissions: { create: true, editAccounts: true, editAccess: true, resetPasswords: true },
   metrics: { total: 2, active: 2, inactive: 0 },
+  pagination: {
+    page: 1, totalPages: 1, total: 2, perPage: 5,
+    pageKey: 'page', perPageKey: 'per_page', previousUrl: null, nextUrl: null,
+  },
   actions: { create: '/administracion/usuarios' },
   oldInput: { nombre: '', email: '', motivo: '', roleIds: [2], branchIds: [4] },
   roles: [

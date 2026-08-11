@@ -11,6 +11,7 @@ import AdminMetric from './components/AdminMetric.vue'
 import AdminPageHeading from './components/AdminPageHeading.vue'
 import CsrfField from './components/CsrfField.vue'
 import StatusBadge from './components/StatusBadge.vue'
+import PaginationBar from '../operations/components/PaginationBar.vue'
 
 defineProps({
   data: {
@@ -87,7 +88,7 @@ defineProps({
           <h2 id="branches-list-title" class="text-lg font-bold text-ink">Sucursales registradas</h2>
           <p class="mt-1 text-sm text-ink-muted">El alcance se mantiene limitado a {{ data.company.name }}.</p>
         </div>
-        <span class="rounded-full bg-surface-muted px-3 py-1 text-sm font-semibold text-ink-muted">{{ data.branches.length }}</span>
+        <span class="rounded-full bg-surface-muted px-3 py-1 text-sm font-semibold text-ink-muted">{{ data.metrics.total }}</span>
       </div>
 
       <div v-if="data.branches.length" class="grid gap-4 xl:grid-cols-2">
@@ -152,6 +153,8 @@ defineProps({
         <p class="mt-3 font-semibold text-ink">Todavía no hay sucursales</p>
         <p class="mt-1 text-sm text-ink-muted">Creá la primera ubicación operativa de la empresa.</p>
       </div>
+
+      <PaginationBar :pagination="data.pagination" />
     </section>
   </div>
 </template>

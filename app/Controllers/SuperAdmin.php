@@ -12,6 +12,7 @@ use App\Application\Organization\CreateCompanyAdministratorHandler;
 use App\Application\Organization\GetOrganizationOverview;
 use App\Application\Organization\UpdateCompanyHandler;
 use App\Infrastructure\Identity\SessionActorContext;
+use App\Presentation\PageSize;
 use CodeIgniter\HTTP\RedirectResponse;
 use DomainException;
 use Throwable;
@@ -23,13 +24,23 @@ final class SuperAdmin extends BaseController
         /** @var GetOrganizationOverview $overview */
         $overview = service('organizationOverview');
         $actor = $this->actor();
+        $companiesPage = max(1, (int) $this->request->getGet('companies_page'));
+        $usersPage = max(1, (int) $this->request->getGet('users_page'));
+        $companiesPerPage = PageSize::normalize($this->request->getGet('companies_per_page'));
+        $usersPerPage = PageSize::normalize($this->request->getGet('users_per_page'));
 
         return $this->renderApp(
             $actor,
             'superadmin',
             'superadmin',
             'Administración global',
-            service('administrationPayload')->superadmin($overview->execute($actor)),
+            service('administrationPayload')->superadmin($overview->execute(
+                $actor,
+                $companiesPage,
+                $companiesPerPage,
+                $usersPage,
+                $usersPerPage,
+            )),
         );
     }
 

@@ -17,27 +17,49 @@ final class CodeIgniterOrganizationAdministration implements OrganizationAdminis
     {
     }
 
-    public function overview(): array
+    public function overview(int $companiesPage, int $companiesPerPage, int $usersPage, int $usersPerPage): array
     {
+        $companiesPage = max(1, $companiesPage);
+        $usersPage = max(1, $usersPage);
+        $companiesPerPage = max(1, $companiesPerPage);
+        $usersPerPage = max(1, $usersPerPage);
+        $companiesTotal = $this->database->table('empresas')->where('deleted_at', null)->countAllResults();
+        $companiesPage = min($companiesPage, max(1, (int) ceil($companiesTotal / $companiesPerPage)));
+        $companiesActive = $this->database->table('empresas')->where('deleted_at', null)->where('estado', 1)->countAllResults();
         $companies = $this->database->table('empresas')
             ->select('id, razon_social, nombre_fantasia, cuit, email, telefono, estado')
             ->where('deleted_at', null)
             ->orderBy('razon_social')
+            ->orderBy('id')
+            ->limit($companiesPerPage, ($companiesPage - 1) * $companiesPerPage)
             ->get()->getResultArray();
 
+        $assignableCompanies = $this->database->table('empresas')
+            ->select('id, razon_social, nombre_fantasia')
+            ->where('deleted_at', null)->where('estado', 1)
+            ->orderBy('razon_social')->orderBy('id')->get()->getResultArray();
+
+        $usersTotal = $this->database->table('usuarios')->where('deleted_at', null)->countAllResults();
+        $usersPage = min($usersPage, max(1, (int) ceil($usersTotal / $usersPerPage)));
         $users = $this->database->table('usuarios u')
             ->select('u.id, u.empresa_id, u.nombre, u.email, u.es_superadmin, u.activo, e.razon_social AS empresa_nombre')
             ->join('empresas e', 'e.id = u.empresa_id', 'left')
             ->where('u.deleted_at', null)
             ->orderBy('u.es_superadmin', 'DESC')
             ->orderBy('u.nombre')
+            ->orderBy('u.id')
+            ->limit($usersPerPage, ($usersPage - 1) * $usersPerPage)
             ->get()->getResultArray();
 
-        $roleRows = $this->database->table('usuario_roles ur')
-            ->select('ur.usuario_id, r.id, r.nombre')
-            ->join('roles r', 'r.id = ur.rol_id', 'inner')
-            ->orderBy('r.nombre')
-            ->get()->getResultArray();
+        $roleRows = [];
+        if ($users !== []) {
+            $roleRows = $this->database->table('usuario_roles ur')
+                ->select('ur.usuario_id, r.id, r.nombre')
+                ->join('roles r', 'r.id = ur.rol_id', 'inner')
+                ->whereIn('ur.usuario_id', array_column($users, 'id'))
+                ->orderBy('r.nombre')
+                ->get()->getResultArray();
+        }
         $rolesByUser = [];
 
         foreach ($roleRows as $role) {
@@ -59,7 +81,15 @@ final class CodeIgniterOrganizationAdministration implements OrganizationAdminis
 
         return [
             'companies' => $companies,
+            'assignableCompanies' => $assignableCompanies,
+            'companiesTotal' => $companiesTotal,
+            'companiesActive' => $companiesActive,
+            'companiesPage' => $companiesPage,
+            'companiesPerPage' => $companiesPerPage,
             'users'     => $users,
+            'usersTotal' => $usersTotal,
+            'usersPage' => $usersPage,
+            'usersPerPage' => $usersPerPage,
             'roles'     => $roles,
         ];
     }

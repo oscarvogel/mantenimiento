@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Application\Identity\ActorContext;
 use App\Application\MaintenanceCircuit\GetCircuitOverview;
+use App\Application\MaintenanceCircuit\CircuitOverviewPagination;
 use App\Application\MaintenanceCircuit\Port\CircuitOverviewPort;
 use CodeIgniter\Test\CIUnitTestCase;
 
@@ -14,19 +15,22 @@ final class GetCircuitOverviewTest extends CIUnitTestCase
         $port = new class implements CircuitOverviewPort {
             public array $scope = [];
 
-            public function fetch(int $companyId, ?array $branchIds): array
+            public function fetch(int $companyId, ?array $branchIds, CircuitOverviewPagination $pagination): array
             {
-                $this->scope = [$companyId, $branchIds];
+                $this->scope = [$companyId, $branchIds, $pagination->page('equipments'), $pagination->pageSize('orders')];
 
                 return ['equipments' => []];
             }
         };
         $actor = new ActorContext(1, 7, false, true, ['Administrador'], ['equipos.ver'], []);
 
-        $result = (new GetCircuitOverview($port))->execute($actor);
+        $result = (new GetCircuitOverview($port))->execute($actor, new CircuitOverviewPagination(
+            ['equipments' => 3],
+            ['orders' => 25],
+        ));
 
         $this->assertSame(['equipments' => []], $result);
-        $this->assertSame([7, null], $port->scope);
+        $this->assertSame([7, null, 3, 25], $port->scope);
     }
 
     public function testRestrictedUserPassesOnlyAssignedBranches(): void
@@ -34,7 +38,7 @@ final class GetCircuitOverviewTest extends CIUnitTestCase
         $port = new class implements CircuitOverviewPort {
             public array $scope = [];
 
-            public function fetch(int $companyId, ?array $branchIds): array
+            public function fetch(int $companyId, ?array $branchIds, CircuitOverviewPagination $pagination): array
             {
                 $this->scope = [$companyId, $branchIds];
 
@@ -51,7 +55,7 @@ final class GetCircuitOverviewTest extends CIUnitTestCase
     public function testRejectsSuperAdministratorOutsideTenant(): void
     {
         $port = new class implements CircuitOverviewPort {
-            public function fetch(int $companyId, ?array $branchIds): array
+            public function fetch(int $companyId, ?array $branchIds, CircuitOverviewPagination $pagination): array
             {
                 return [];
             }

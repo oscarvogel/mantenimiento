@@ -17,6 +17,18 @@ final class TenantAdministrationServiceTest extends CIUnitTestCase
         $service->branchesOverview($this->administrator());
 
         self::assertSame(7, $port->lastCompanyId);
+        self::assertSame([1, 10], $port->pagination);
+    }
+
+    public function testForwardsTenantPaginationAfterScopeValidation(): void
+    {
+        $port = new RecordingTenantAdministration();
+        $service = new TenantAdministrationService($port);
+
+        $service->usersOverview($this->administrator(), 3, 25);
+
+        self::assertSame(7, $port->lastCompanyId);
+        self::assertSame([3, 25], $port->pagination);
     }
 
     public function testSuperAdminCannotUseTenantAdministration(): void
@@ -116,17 +128,21 @@ final class RecordingTenantAdministration implements TenantAdministrationPort
     public array $roleIds = [];
     public array $branchIds = [];
     public ?string $reason = null;
+    /** @var array{int, int}|null */
+    public ?array $pagination = null;
 
-    public function branchesOverview(int $companyId): array
+    public function branchesOverview(int $companyId, int $page, int $perPage): array
     {
         $this->lastCompanyId = $companyId;
+        $this->pagination = [$page, $perPage];
 
         return ['company' => [], 'branches' => []];
     }
 
-    public function usersOverview(int $companyId): array
+    public function usersOverview(int $companyId, int $page, int $perPage): array
     {
         $this->lastCompanyId = $companyId;
+        $this->pagination = [$page, $perPage];
 
         return ['company' => [], 'users' => [], 'roles' => [], 'branches' => []];
     }

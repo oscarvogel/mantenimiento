@@ -35,6 +35,22 @@ final class AssetCatalogService
         return $this->readModel->list($companyId, $includeInactive);
     }
 
+    /** @return array{brands:array{items:list<array<string,mixed>>,total:int,page:int,perPage:int,totalPages:int},models:array{items:list<array<string,mixed>>,total:int,page:int,perPage:int,totalPages:int}} */
+    public function paginateManagement(
+        ActorContext $actor,
+        int $brandPage,
+        int $brandsPerPage,
+        int $modelPage,
+        int $modelsPerPage,
+    ): array {
+        $companyId = $this->tenant($actor, 'equipos.editar');
+        if ($brandPage <= 0 || $modelPage <= 0 || ! in_array($brandsPerPage, [5, 10, 25], true) || ! in_array($modelsPerPage, [5, 10, 25], true)) {
+            throw new DomainException('La paginación de marcas y modelos no es válida.');
+        }
+
+        return $this->readModel->paginateManagement($companyId, $brandPage, $brandsPerPage, $modelPage, $modelsPerPage);
+    }
+
     public function createBrand(ActorContext $actor, CreateBrandCommand $command): int
     {
         $companyId = $this->tenant($actor, 'equipos.editar');

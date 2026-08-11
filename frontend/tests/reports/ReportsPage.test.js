@@ -6,7 +6,7 @@ const wrappers = []
 
 const data = {
   branches: [{ id: 9, codigo: 'CEN', nombre: 'Central' }],
-  filters: { branchId: 9, from: '2026-08-01', to: '2026-08-08' },
+  filters: { branchId: 9, from: '2026-08-01', to: '2026-08-08', perPage: 10 },
   metrics: {
     totalCost: { available: true, value: '150000.50', sampleSize: 2 },
     openOrders: { available: true, value: 1, sampleSize: 1 },
@@ -27,7 +27,7 @@ const data = {
   },
   orders: {
     items: [{ id: 1, number: 'OT-001', equipmentCode: 'SCANIA-01', branchName: 'Central', openedAt: '2026-08-01 08:00:00', completedAt: '2026-08-02 10:00:00', status: 'FINALIZADA', origin: 'CORRECTIVO', priority: 'MEDIA', cost: '150000.50' }],
-    pagination: { page: 1, perPage: 20, total: 1, totalPages: 1 },
+    pagination: { page: 1, perPage: 10, total: 1, totalPages: 1 },
   },
 }
 
@@ -54,6 +54,8 @@ describe('ReportsPage', () => {
     expect(wrapper.findAll('[role="meter"]')).toHaveLength(4)
     expect(wrapper.get('form').attributes('action')).toBe('/reportes')
     expect(wrapper.get('select[name="sucursal_id"]').element.value).toBe('9')
+    expect(wrapper.get('select[name="per_page"]').element.value).toBe('10')
+    expect(wrapper.findAll('select[name="per_page"] option').map((option) => option.text())).toEqual(['5', '10', '25'])
     expect(wrapper.get('a[href^="/reportes/exportar"]').text()).toContain('Exportar')
   })
 
@@ -62,7 +64,7 @@ describe('ReportsPage', () => {
       statusDistribution: [],
       costsByEquipment: [],
       evolution: [],
-      orders: { items: [], pagination: { page: 1, perPage: 20, total: 0, totalPages: 1 } },
+      orders: { items: [], pagination: { page: 1, perPage: 10, total: 0, totalPages: 1 } },
     })
 
     expect(wrapper.text()).toContain('No hay órdenes con apertura dentro del período')

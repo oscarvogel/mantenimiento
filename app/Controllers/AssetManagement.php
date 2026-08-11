@@ -19,6 +19,7 @@ use App\Application\Assets\RenameEquipmentModelCommand;
 use App\Application\Assets\RenderEquipmentQr;
 use App\Application\Identity\ActorContext;
 use App\Infrastructure\Identity\SessionActorContext;
+use App\Presentation\PageSize;
 use CodeIgniter\HTTP\RedirectResponse;
 use CodeIgniter\HTTP\ResponseInterface;
 use DomainException;
@@ -38,6 +39,11 @@ final class AssetManagement extends BaseController
                 'branch_id' => $this->nullableInt($this->request->getGet('sucursal_id')),
                 'status' => $this->nullableString($this->request->getGet('estado')),
                 'page' => max(1, (int) $this->request->getGet('page')),
+                'per_page' => PageSize::normalize($this->request->getGet('per_page')),
+                'brand_page' => max(1, (int) $this->request->getGet('brand_page')),
+                'brand_per_page' => PageSize::normalize($this->request->getGet('brand_per_page')),
+                'model_page' => max(1, (int) $this->request->getGet('model_page')),
+                'model_per_page' => PageSize::normalize($this->request->getGet('model_per_page')),
             ];
             $equipment = $this->equipmentList()->execute($actor, new EquipmentListQuery(
                 $filters['q'] === '' ? null : $filters['q'],
@@ -46,8 +52,18 @@ final class AssetManagement extends BaseController
                 $filters['branch_id'],
                 $filters['status'],
                 $filters['page'],
-                20,
+                $filters['per_page'],
             ));
+            $canEdit = $actor->hasPermission('equipos.editar');
+            $management = $canEdit
+                ? $this->catalog()->paginateManagement(
+                    $actor,
+                    $filters['brand_page'],
+                    $filters['brand_per_page'],
+                    $filters['model_page'],
+                    $filters['model_per_page'],
+                )
+                : [];
 
             return $this->renderApp(
                 $actor,
@@ -56,10 +72,11 @@ final class AssetManagement extends BaseController
                 'Equipos y catálogos',
                 service('operationsPayload')->assets(
                     $equipment,
-                    $this->catalog()->list($actor, $actor->hasPermission('equipos.editar')),
+                    $this->catalog()->list($actor, $canEdit),
                     $filters,
-                    $actor->hasPermission('equipos.editar'),
+                    $canEdit,
                     $this->availableBranches()->execute($actor),
+                    $management,
                 ),
             );
         } catch (Throwable $exception) {

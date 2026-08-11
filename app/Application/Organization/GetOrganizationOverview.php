@@ -17,12 +17,18 @@ final class GetOrganizationOverview
     /**
      * @return array{companies: list<array<string, mixed>>, users: list<array<string, mixed>>, roles: list<array<string, mixed>>}
      */
-    public function execute(ActorContext $actor): array
+    public function execute(
+        ActorContext $actor,
+        int $companiesPage = 1,
+        int $companiesPerPage = 10,
+        int $usersPage = 1,
+        int $usersPerPage = 10,
+    ): array
     {
         if (! $actor->isSuperAdmin()) {
             throw new DomainException('La operación requiere acceso de Superadministrador.');
         }
 
-        return $this->administration->overview();
+        return $this->administration->overview($companiesPage, $companiesPerPage, $usersPage, $usersPerPage);
     }
 }

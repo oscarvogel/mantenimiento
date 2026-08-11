@@ -9,12 +9,12 @@ interface TenantAdministrationPort
     /**
      * @return array{company: array<string, mixed>, branches: list<array<string, mixed>>}
      */
-    public function branchesOverview(int $companyId): array;
+    public function branchesOverview(int $companyId, int $page, int $perPage): array;
 
     /**
      * @return array{company: array<string, mixed>, users: list<array<string, mixed>>, roles: list<array<string, mixed>>, branches: list<array<string, mixed>>}
      */
-    public function usersOverview(int $companyId): array;
+    public function usersOverview(int $companyId, int $page, int $perPage): array;
 
     /** @param array{codigo: string, nombre: string, direccion: string|null, email_alertas: string|null} $data */
     public function createBranch(int $companyId, array $data, int $actorUserId): int;

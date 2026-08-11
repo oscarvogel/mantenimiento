@@ -7,6 +7,7 @@ namespace App\Controllers;
 use App\Application\Assets\AssetCatalogService;
 use App\Application\Identity\ActorContext;
 use App\Application\MaintenanceCircuit\ClosePreventiveOrder;
+use App\Application\MaintenanceCircuit\CircuitOverviewPagination;
 use App\Application\MaintenanceCircuit\DetectOverduePlans;
 use App\Application\MaintenanceCircuit\GeneratePreventiveOrderFromNotice;
 use App\Application\MaintenanceCircuit\GetCircuitOverview;
@@ -28,7 +29,7 @@ final class MaintenanceCircuit extends BaseController
     public function index(): string
     {
         $actor = $this->actor();
-        $data = $this->overview()->execute($actor);
+        $data = $this->overview()->execute($actor, $this->overviewPagination());
         $data['assetCatalogs'] = $this->assetCatalog()->list($actor);
         $states = [];
         if ($actor->hasPermission('planes.ver')) {
@@ -39,6 +40,7 @@ final class MaintenanceCircuit extends BaseController
             // El overview combina varios contextos. No debe serializar planes
             // cuando el actor solo puede consultar equipos u órdenes.
             $data['plans'] = [];
+            $data['pagination']['plans'] = ['total' => 0, 'page' => 1, 'perPage' => 10, 'totalPages' => 1];
         }
         foreach ($data['plans'] as &$plan) {
             $plan['computed_state'] = $states[(int) $plan['id']] ?? 'SIN_DATOS';
@@ -184,6 +186,30 @@ final class MaintenanceCircuit extends BaseController
     private function generateOrderHandler(): GeneratePreventiveOrderFromNotice { return service('generatePreventiveOrderFromNotice'); }
     private function startOrderHandler(): StartWorkOrder { return service('startWorkOrder'); }
     private function closeOrderHandler(): ClosePreventiveOrder { return service('closePreventiveOrder'); }
+
+    private function overviewPagination(): CircuitOverviewPagination
+    {
+        $pages = [];
+        $sizes = [];
+        foreach (CircuitOverviewPagination::LISTS as $list) {
+            $pages[$list] = $this->request->getGet($this->paginationKey($list, 'page'));
+            $sizes[$list] = $this->request->getGet($this->paginationKey($list, 'per_page'));
+        }
+
+        return new CircuitOverviewPagination($pages, $sizes);
+    }
+
+    private function paginationKey(string $list, string $suffix): string
+    {
+        return match ($list) {
+            'equipments' => 'equipos_' . $suffix,
+            'plans' => 'planes_' . $suffix,
+            'notices' => 'avisos_' . $suffix,
+            'orders' => 'ordenes_' . $suffix,
+            'readings' => 'lecturas_' . $suffix,
+            default => $list . '_' . $suffix,
+        };
+    }
 
     private function success(string $message): RedirectResponse
     {

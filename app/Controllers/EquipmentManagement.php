@@ -32,6 +32,7 @@ use App\Application\Measurement\CorrectReadingHandler;
 use App\Application\Measurement\ListReadingHistoryHandler;
 use App\Application\Measurement\ListReadingHistoryQuery;
 use App\Infrastructure\Identity\SessionActorContext;
+use App\Presentation\PageSize;
 use CodeIgniter\HTTP\RedirectResponse;
 use CodeIgniter\HTTP\ResponseInterface;
 use DateTimeImmutable;
@@ -48,13 +49,17 @@ final class EquipmentManagement extends BaseController
             $transferPage = max(1, (int) $this->request->getGet('transfer_page'));
             $attachmentPage = max(1, (int) $this->request->getGet('attachment_page'));
             $relationPage = max(1, (int) $this->request->getGet('relation_page'));
-            $details = $this->details()->execute($actor, $equipmentId, $transferPage, 20, $relationPage, 20);
+            $readingPerPage = PageSize::normalize($this->request->getGet('reading_per_page'));
+            $transferPerPage = PageSize::normalize($this->request->getGet('transfer_per_page'));
+            $attachmentPerPage = PageSize::normalize($this->request->getGet('attachment_per_page'));
+            $relationPerPage = PageSize::normalize($this->request->getGet('relation_per_page'));
+            $details = $this->details()->execute($actor, $equipmentId, $transferPage, $transferPerPage, $relationPage, $relationPerPage);
             $readings = $actor->hasPermission('lecturas.ver')
-                ? $this->history()->execute($actor, new ListReadingHistoryQuery($equipmentId, $page, 20))
+                ? $this->history()->execute($actor, new ListReadingHistoryQuery($equipmentId, $page, $readingPerPage))
                 : null;
             $attachments = $this->listAttachments()->execute(
                 $actor,
-                new ListEquipmentAttachmentsQuery($equipmentId, $attachmentPage, 20),
+                new ListEquipmentAttachmentsQuery($equipmentId, $attachmentPage, $attachmentPerPage),
             );
             $catalogs = $this->assetCatalog()->list($actor);
             $relatedCandidates = $actor->hasPermission('equipos.editar')
@@ -75,6 +80,12 @@ final class EquipmentManagement extends BaseController
                     [
                     'edit' => $actor->hasPermission('equipos.editar'),
                     'correctReadings' => $actor->hasPermission('lecturas.corregir'),
+                    ],
+                    [
+                        'readings' => $readingPerPage,
+                        'transfers' => $transferPerPage,
+                        'attachments' => $attachmentPerPage,
+                        'relations' => $relationPerPage,
                     ],
                 ),
             );

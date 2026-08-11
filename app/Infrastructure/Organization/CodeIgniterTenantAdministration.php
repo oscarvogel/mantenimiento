@@ -17,23 +17,42 @@ final class CodeIgniterTenantAdministration implements TenantAdministrationPort
     {
     }
 
-    public function branchesOverview(int $companyId): array
+    public function branchesOverview(int $companyId, int $page, int $perPage): array
     {
+        $page = max(1, $page);
+        $perPage = max(1, $perPage);
+        $total = $this->database->table('sucursales')->where('empresa_id', $companyId)->where('deleted_at', null)->countAllResults();
+        $page = min($page, max(1, (int) ceil($total / $perPage)));
+        $active = $this->database->table('sucursales')->where('empresa_id', $companyId)->where('deleted_at', null)->where('estado', 1)->countAllResults();
+
         return [
             'company'  => $this->company($companyId),
+            'branchesTotal' => $total,
+            'branchesActive' => $active,
+            'branchesPage' => $page,
+            'branchesPerPage' => $perPage,
             'branches' => $this->database->table('sucursales')
                 ->select('id, empresa_id, codigo, nombre, direccion, email_alertas, estado')
                 ->where('empresa_id', $companyId)
                 ->where('deleted_at', null)
                 ->orderBy('estado', 'DESC')
                 ->orderBy('nombre')
+                ->orderBy('id')
+                ->limit($perPage, ($page - 1) * $perPage)
                 ->get()->getResultArray(),
         ];
     }
 
-    public function usersOverview(int $companyId): array
+    public function usersOverview(int $companyId, int $page, int $perPage): array
     {
+        $page = max(1, $page);
+        $perPage = max(1, $perPage);
         $company = $this->company($companyId);
+        $usersTotal = $this->database->table('usuarios')->where('empresa_id', $companyId)
+            ->where('es_superadmin', 0)->where('deleted_at', null)->countAllResults();
+        $page = min($page, max(1, (int) ceil($usersTotal / $perPage)));
+        $usersActive = $this->database->table('usuarios')->where('empresa_id', $companyId)
+            ->where('es_superadmin', 0)->where('deleted_at', null)->where('activo', 1)->countAllResults();
         $users = $this->database->table('usuarios')
             ->select('id, empresa_id, nombre, email, activo, ultimo_acceso')
             ->where('empresa_id', $companyId)
@@ -41,6 +60,8 @@ final class CodeIgniterTenantAdministration implements TenantAdministrationPort
             ->where('deleted_at', null)
             ->orderBy('activo', 'DESC')
             ->orderBy('nombre')
+            ->orderBy('id')
+            ->limit($perPage, ($page - 1) * $perPage)
             ->get()->getResultArray();
 
         $rolesByUser = [];
@@ -93,6 +114,10 @@ final class CodeIgniterTenantAdministration implements TenantAdministrationPort
         return [
             'company'  => $company,
             'users'    => $users,
+            'usersTotal' => $usersTotal,
+            'usersActive' => $usersActive,
+            'usersPage' => $page,
+            'usersPerPage' => $perPage,
             'roles'    => $this->database->table('roles')->select('id, nombre, descripcion')->orderBy('nombre')->get()->getResultArray(),
             'branches' => $this->database->table('sucursales')
                 ->select('id, codigo, nombre, estado')

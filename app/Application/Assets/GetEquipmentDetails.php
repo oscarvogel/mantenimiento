@@ -19,9 +19,9 @@ final class GetEquipmentDetails
         ActorContext $actor,
         int $equipmentId,
         int $transferPage = 1,
-        int $transfersPerPage = 20,
+        int $transfersPerPage = 10,
         int $relationPage = 1,
-        int $relationsPerPage = 20,
+        int $relationsPerPage = 10,
     ): array {
         if ($actor->isSuperAdmin() || $actor->companyId() === null) {
             throw new DomainException('La consulta requiere un actor perteneciente a una empresa.');

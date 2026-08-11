@@ -12,6 +12,7 @@ import AdminMetric from './components/AdminMetric.vue'
 import AdminPageHeading from './components/AdminPageHeading.vue'
 import CsrfField from './components/CsrfField.vue'
 import StatusBadge from './components/StatusBadge.vue'
+import PaginationBar from '../operations/components/PaginationBar.vue'
 
 defineProps({
   data: {
@@ -157,7 +158,7 @@ const isRoleAssigned = (user, roleId) => user.assignedRoleIds.includes(Number(ro
           <h2 id="companies-title" class="text-lg font-bold text-ink">Empresas</h2>
           <p class="mt-1 text-sm text-ink-muted">Datos fiscales, contacto y estado operativo.</p>
         </div>
-        <span class="rounded-full bg-surface-muted px-3 py-1 text-sm font-semibold text-ink-muted">{{ data.companies.length }}</span>
+        <span class="rounded-full bg-surface-muted px-3 py-1 text-sm font-semibold text-ink-muted">{{ data.metrics.companiesTotal }}</span>
       </div>
 
       <div v-if="data.companies.length" class="grid gap-4 xl:grid-cols-2">
@@ -223,6 +224,8 @@ const isRoleAssigned = (user, roleId) => user.assignedRoleIds.includes(Number(ro
         <p class="mt-3 font-semibold text-ink">Todavía no hay empresas</p>
         <p class="mt-1 text-sm text-ink-muted">Creá la primera organización para comenzar a asignar usuarios.</p>
       </div>
+
+      <PaginationBar :pagination="data.companiesPagination" />
     </section>
 
     <section aria-labelledby="global-users-title">
@@ -231,7 +234,7 @@ const isRoleAssigned = (user, roleId) => user.assignedRoleIds.includes(Number(ro
           <h2 id="global-users-title" class="text-lg font-bold text-ink">Usuarios del sistema</h2>
           <p class="mt-1 text-sm text-ink-muted">Empresa y roles efectivos de cada cuenta.</p>
         </div>
-        <span class="rounded-full bg-surface-muted px-3 py-1 text-sm font-semibold text-ink-muted">{{ data.users.length }}</span>
+        <span class="rounded-full bg-surface-muted px-3 py-1 text-sm font-semibold text-ink-muted">{{ data.metrics.usersTotal }}</span>
       </div>
 
       <div class="space-y-4">
@@ -315,6 +318,8 @@ const isRoleAssigned = (user, roleId) => user.assignedRoleIds.includes(Number(ro
           <p class="mt-3 font-semibold text-ink">No hay usuarios para mostrar</p>
         </div>
       </div>
+
+      <PaginationBar :pagination="data.usersPagination" />
     </section>
   </div>
 </template>

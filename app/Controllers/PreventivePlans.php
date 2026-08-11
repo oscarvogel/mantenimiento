@@ -26,7 +26,12 @@ final class PreventivePlans extends BaseController
             'equipment_id' => $this->nullablePositiveInt($this->request->getGet('equipo_id')),
             'state' => strtoupper(trim((string) $this->request->getGet('estado'))),
         ];
-        $page = $this->list()->execute($actor, $filters, max(1, (int) $this->request->getGet('page')));
+        $page = $this->list()->execute(
+            $actor,
+            $filters,
+            max(1, (int) $this->request->getGet('page')),
+            $this->requestedPageSize($this->request->getGet('por_pagina')),
+        );
 
         return $this->renderApp(
             $actor,
@@ -134,5 +139,16 @@ final class PreventivePlans extends BaseController
             throw new DomainException('El valor de horas debe tener como máximo un decimal.');
         }
         return ((int) $matches[1] * 10) + (int) ($matches[2] ?? 0);
+    }
+
+    private function requestedPageSize(mixed $value): int
+    {
+        if (! is_scalar($value) || ! preg_match('/^\d+$/', trim((string) $value))) {
+            return 10;
+        }
+
+        $size = (int) $value;
+
+        return in_array($size, [5, 10, 25], true) ? $size : 10;
     }
 }

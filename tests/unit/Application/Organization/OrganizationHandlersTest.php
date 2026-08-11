@@ -24,6 +24,16 @@ final class OrganizationHandlersTest extends CIUnitTestCase
         $useCase->execute($this->companyAdministrator());
     }
 
+    public function testGlobalOverviewForwardsIndependentPagination(): void
+    {
+        $port = new RecordingOrganizationAdministration();
+        $useCase = new GetOrganizationOverview($port);
+
+        $useCase->execute($this->superAdmin(), 2, 5, 3, 25);
+
+        self::assertSame([2, 5, 3, 25], $port->overviewPagination);
+    }
+
     public function testSuperAdminCanCreateCompany(): void
     {
         $port = new RecordingOrganizationAdministration();
@@ -157,8 +167,13 @@ final class RecordingOrganizationAdministration implements OrganizationAdministr
     /** @var array{int, array{nombre: string, email: string, password: string}, string, int}|null */
     public ?array $administratorCreation = null;
 
-    public function overview(): array
+    /** @var array{int, int, int, int}|null */
+    public ?array $overviewPagination = null;
+
+    public function overview(int $companiesPage, int $companiesPerPage, int $usersPage, int $usersPerPage): array
     {
+        $this->overviewPagination = [$companiesPage, $companiesPerPage, $usersPage, $usersPerPage];
+
         return ['companies' => [], 'users' => [], 'roles' => []];
     }
 

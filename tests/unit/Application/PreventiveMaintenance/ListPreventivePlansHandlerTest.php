@@ -45,15 +45,19 @@ final class ListPreventivePlansHandlerTest extends TestCase
         $handler = new ListPreventivePlansHandler(new FakePreventivePlanReadModel([
             $this->item(1, 10, 7, 'CAM-01', 9_000),
             $this->item(2, 11, 7, 'CAM-02', 9_000),
-            $this->item(3, 12, 8, 'CAM-03', 9_000),
+            $this->item(3, 12, 7, 'CAM-03', 9_000),
+            $this->item(4, 13, 7, 'CAM-04', 9_000),
+            $this->item(5, 14, 7, 'CAM-05', 9_000),
+            $this->item(6, 15, 7, 'CAM-06', 9_000),
+            $this->item(7, 16, 8, 'CAM-07', 9_000),
         ]), new EvaluadorVencimiento(), new FixedPlanListClock());
         $actor = new ActorContext(9, 5, false, false, [], ['planes.ver'], [7]);
 
-        $result = $handler->execute($actor, [], 2, 1);
+        $result = $handler->execute($actor, [], 2, 5);
 
-        self::assertSame(2, $result->total);
+        self::assertSame(6, $result->total);
         self::assertSame(2, $result->totalPages());
-        self::assertSame('CAM-02', $result->items[0]['equipment_code']);
+        self::assertSame('CAM-06', $result->items[0]['equipment_code']);
     }
 
     public function testRejectsActorWithoutReadPermission(): void
@@ -63,6 +67,16 @@ final class ListPreventivePlansHandlerTest extends TestCase
 
         $this->expectException(DomainException::class);
         $handler->execute($actor, []);
+    }
+
+    public function testUsesTenAsDefaultAndNormalizesValuesOutsideStrictWhitelist(): void
+    {
+        $handler = new ListPreventivePlansHandler(new FakePreventivePlanReadModel([]), new EvaluadorVencimiento(), new FixedPlanListClock());
+        $actor = new ActorContext(9, 5, false, true, [], ['planes.ver'], []);
+
+        self::assertSame(10, $handler->execute($actor, [])->perPage);
+        self::assertSame(10, $handler->execute($actor, [], 1, 999)->perPage);
+        self::assertSame(25, $handler->execute($actor, [], 1, 25)->perPage);
     }
 
     private function item(int $planId, int $equipmentId, int $branchId, string $code, int $currentKm): PreventivePlanListItem

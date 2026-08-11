@@ -17,6 +17,7 @@ final class PreventivePlansPayload
             'sucursal_id' => $filters['branch_id'] ?? null,
             'equipo_id' => $filters['equipment_id'] ?? null,
             'estado' => $filters['state'] ?? null,
+            'por_pagina' => $page->perPage,
         ], static fn (mixed $value): bool => $value !== null && $value !== '');
 
         return [
@@ -31,6 +32,7 @@ final class PreventivePlansPayload
                 'branchId' => $filters['branch_id'] ?? '',
                 'equipmentId' => $filters['equipment_id'] ?? '',
                 'state' => (string) ($filters['state'] ?? ''),
+                'perPage' => $page->perPage,
             ],
             'old' => $this->old([
                 'equipo_id', 'tipo_servicio_id', 'intervalo_km', 'intervalo_horas', 'intervalo_dias',
@@ -105,6 +107,10 @@ final class PreventivePlansPayload
             'page' => $page->page,
             'totalPages' => $page->totalPages(),
             'total' => $page->total,
+            'perPage' => $page->perPage,
+            'perPageOptions' => [5, 10, 25],
+            'perPageKey' => 'por_pagina',
+            'pageKey' => 'page',
             'previousUrl' => $page->page > 1 ? $url($page->page - 1) : null,
             'nextUrl' => $page->page < $page->totalPages() ? $url($page->page + 1) : null,
         ];

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\MaintenanceCircuit;
 
+use App\Application\MaintenanceCircuit\CircuitOverviewPagination;
 use App\Application\MaintenanceCircuit\Port\CircuitOverviewPort;
 use CodeIgniter\Database\BaseBuilder;
 use CodeIgniter\Database\BaseConnection;
@@ -15,7 +16,7 @@ final class CodeIgniterCircuitOverview implements CircuitOverviewPort
     {
     }
 
-    public function fetch(int $companyId, ?array $branchIds): array
+    public function fetch(int $companyId, ?array $branchIds, CircuitOverviewPagination $pagination): array
     {
         $company = $this->database->table('empresas')
             ->select('id, razon_social, nombre_fantasia')
@@ -30,40 +31,52 @@ final class CodeIgniterCircuitOverview implements CircuitOverviewPort
             ->where('estado', 1)->where('deleted_at', null)->orderBy('nombre');
         $this->scopeBranches($branches, 'id', $branchIds);
 
-        $equipments = $this->database->table('equipos e')
-            ->select('e.id, e.sucursal_id, e.tipo_equipo_id, e.codigo, e.patente, e.km_actual, e.horas_actuales, e.estado, e.fecha_alta, s.nombre sucursal_nombre, te.nombre tipo_nombre, te.controla_km, te.controla_horas')
-            ->join('sucursales s', 's.id = e.sucursal_id', 'inner')
-            ->join('tipos_equipo te', 'te.id = e.tipo_equipo_id', 'inner')
-            ->where('e.empresa_id', $companyId)->where('e.deleted_at', null)
-            ->orderBy('e.codigo');
-        $this->scopeBranches($equipments, 'e.sucursal_id', $branchIds);
-        $equipmentRows = $equipments->get()->getResultArray();
+        $equipmentPage = $this->paginate(function () use ($companyId, $branchIds): BaseBuilder {
+            $builder = $this->database->table('equipos e')
+                ->select('e.id, e.sucursal_id, e.tipo_equipo_id, e.codigo, e.patente, e.km_actual, e.horas_actuales, e.estado, e.fecha_alta, s.nombre sucursal_nombre, te.nombre tipo_nombre, te.controla_km, te.controla_horas')
+                ->join('sucursales s', 's.id = e.sucursal_id', 'inner')
+                ->join('tipos_equipo te', 'te.id = e.tipo_equipo_id', 'inner')
+                ->where('e.empresa_id', $companyId)->where('e.deleted_at', null)
+                ->orderBy('e.codigo');
+            $this->scopeBranches($builder, 'e.sucursal_id', $branchIds);
+            return $builder;
+        }, $pagination, 'equipments');
+        $equipmentRows = $equipmentPage['items'];
 
-        $plans = $this->database->table('planes_mantenimiento p')
-            ->select('p.*, e.sucursal_id, e.codigo equipo_codigo, e.km_actual, e.horas_actuales, ts.nombre servicio_nombre')
-            ->join('equipos e', 'e.id = p.equipo_id AND e.empresa_id = p.empresa_id', 'inner')
-            ->join('tipos_servicio ts', 'ts.id = p.tipo_servicio_id', 'inner')
-            ->where('p.empresa_id', $companyId)->where('p.activo', 1)->where('p.deleted_at', null)
-            ->orderBy('e.codigo');
-        $this->scopeBranches($plans, 'e.sucursal_id', $branchIds);
+        $planPage = $this->paginate(function () use ($companyId, $branchIds): BaseBuilder {
+            $builder = $this->database->table('planes_mantenimiento p')
+                ->select('p.*, e.sucursal_id, e.codigo equipo_codigo, e.km_actual, e.horas_actuales, ts.nombre servicio_nombre')
+                ->join('equipos e', 'e.id = p.equipo_id AND e.empresa_id = p.empresa_id', 'inner')
+                ->join('tipos_servicio ts', 'ts.id = p.tipo_servicio_id', 'inner')
+                ->where('p.empresa_id', $companyId)->where('p.activo', 1)->where('p.deleted_at', null)
+                ->orderBy('e.codigo');
+            $this->scopeBranches($builder, 'e.sucursal_id', $branchIds);
+            return $builder;
+        }, $pagination, 'plans');
 
-        $notices = $this->database->table('avisos_plan a')
-            ->select('a.id, a.plan_id, a.equipo_id, a.estado_calculado, a.criterios_disparadores, a.fecha_deteccion, a.estado_gestion, e.sucursal_id, e.codigo equipo_codigo, ts.nombre servicio_nombre')
-            ->join('equipos e', 'e.id = a.equipo_id AND e.empresa_id = a.empresa_id', 'inner')
-            ->join('planes_mantenimiento p', 'p.id = a.plan_id AND p.empresa_id = a.empresa_id', 'inner')
-            ->join('tipos_servicio ts', 'ts.id = p.tipo_servicio_id', 'inner')
-            ->where('a.empresa_id', $companyId)->where('a.estado_gestion', 'PENDIENTE')
-            ->orderBy('a.fecha_deteccion', 'DESC');
-        $this->scopeBranches($notices, 'e.sucursal_id', $branchIds);
+        $noticePage = $this->paginate(function () use ($companyId, $branchIds): BaseBuilder {
+            $builder = $this->database->table('avisos_plan a')
+                ->select('a.id, a.plan_id, a.equipo_id, a.estado_calculado, a.criterios_disparadores, a.fecha_deteccion, a.estado_gestion, e.sucursal_id, e.codigo equipo_codigo, ts.nombre servicio_nombre')
+                ->join('equipos e', 'e.id = a.equipo_id AND e.empresa_id = a.empresa_id', 'inner')
+                ->join('planes_mantenimiento p', 'p.id = a.plan_id AND p.empresa_id = a.empresa_id', 'inner')
+                ->join('tipos_servicio ts', 'ts.id = p.tipo_servicio_id', 'inner')
+                ->where('a.empresa_id', $companyId)->where('a.estado_gestion', 'PENDIENTE')
+                ->orderBy('a.fecha_deteccion', 'DESC');
+            $this->scopeBranches($builder, 'e.sucursal_id', $branchIds);
+            return $builder;
+        }, $pagination, 'notices');
 
-        $orders = $this->database->table('ordenes_trabajo o')
-            ->select('o.id, o.numero, o.sucursal_id, o.equipo_id, o.plan_id, o.aviso_plan_id, o.prioridad, o.responsable_usuario_id, o.fecha_apertura, o.fecha_inicio, o.fecha_finalizacion, o.km_ingreso, o.horas_ingreso, o.km_salida, o.horas_salida, o.estado, e.codigo equipo_codigo, ts.nombre servicio_nombre, u.nombre responsable_nombre')
-            ->join('equipos e', 'e.id = o.equipo_id AND e.empresa_id = o.empresa_id', 'inner')
-            ->join('tipos_servicio ts', 'ts.id = o.tipo_servicio_id', 'left')
-            ->join('usuarios u', 'u.id = o.responsable_usuario_id', 'left')
-            ->where('o.empresa_id', $companyId)->orderBy('o.id', 'DESC')->limit(30);
-        $this->scopeBranches($orders, 'o.sucursal_id', $branchIds);
-        $orderRows = $orders->get()->getResultArray();
+        $orderPage = $this->paginate(function () use ($companyId, $branchIds): BaseBuilder {
+            $builder = $this->database->table('ordenes_trabajo o')
+                ->select('o.id, o.numero, o.sucursal_id, o.equipo_id, o.plan_id, o.aviso_plan_id, o.prioridad, o.responsable_usuario_id, o.fecha_apertura, o.fecha_inicio, o.fecha_finalizacion, o.km_ingreso, o.horas_ingreso, o.km_salida, o.horas_salida, o.estado, e.codigo equipo_codigo, ts.nombre servicio_nombre, u.nombre responsable_nombre')
+                ->join('equipos e', 'e.id = o.equipo_id AND e.empresa_id = o.empresa_id', 'inner')
+                ->join('tipos_servicio ts', 'ts.id = o.tipo_servicio_id', 'left')
+                ->join('usuarios u', 'u.id = o.responsable_usuario_id', 'left')
+                ->where('o.empresa_id', $companyId)->orderBy('o.id', 'DESC');
+            $this->scopeBranches($builder, 'o.sucursal_id', $branchIds);
+            return $builder;
+        }, $pagination, 'orders');
+        $orderRows = $orderPage['items'];
 
         $tasksByOrder = [];
         if ($orderRows !== []) {
@@ -81,12 +94,15 @@ final class CodeIgniterCircuitOverview implements CircuitOverviewPort
         }
         unset($order);
 
-        $readings = $this->database->table('lecturas_equipo l')
-            ->select('l.id, l.equipo_id, l.fecha_lectura, l.kilometraje, l.horometro, l.origen, l.motivo_correccion, e.codigo equipo_codigo')
-            ->join('equipos e', 'e.id = l.equipo_id AND e.empresa_id = l.empresa_id', 'inner')
-            ->where('l.empresa_id', $companyId)->where('l.anulada', 0)
-            ->orderBy('l.fecha_lectura', 'DESC')->limit(20);
-        $this->scopeBranches($readings, 'l.sucursal_id', $branchIds);
+        $readingPage = $this->paginate(function () use ($companyId, $branchIds): BaseBuilder {
+            $builder = $this->database->table('lecturas_equipo l')
+                ->select('l.id, l.equipo_id, l.fecha_lectura, l.kilometraje, l.horometro, l.origen, l.motivo_correccion, e.codigo equipo_codigo')
+                ->join('equipos e', 'e.id = l.equipo_id AND e.empresa_id = l.empresa_id', 'inner')
+                ->where('l.empresa_id', $companyId)->where('l.anulada', 0)
+                ->orderBy('l.fecha_lectura', 'DESC');
+            $this->scopeBranches($builder, 'l.sucursal_id', $branchIds);
+            return $builder;
+        }, $pagination, 'readings');
 
         return [
             'company' => $company,
@@ -95,10 +111,43 @@ final class CodeIgniterCircuitOverview implements CircuitOverviewPort
             'serviceTypes' => $this->database->table('tipos_servicio')->select('id, codigo, nombre')->where('activo', 1)->orderBy('nombre')->get()->getResultArray(),
             'users' => $this->database->table('usuarios')->select('id, nombre')->where('empresa_id', $companyId)->where('activo', 1)->where('es_superadmin', 0)->where('deleted_at', null)->orderBy('nombre')->get()->getResultArray(),
             'equipments' => $equipmentRows,
-            'readings' => $readings->get()->getResultArray(),
-            'plans' => $plans->get()->getResultArray(),
-            'notices' => $notices->get()->getResultArray(),
+            'readings' => $readingPage['items'],
+            'plans' => $planPage['items'],
+            'notices' => $noticePage['items'],
             'orders' => $orderRows,
+            'pagination' => [
+                'equipments' => $this->metadata($equipmentPage),
+                'plans' => $this->metadata($planPage),
+                'notices' => $this->metadata($noticePage),
+                'orders' => $this->metadata($orderPage),
+                'readings' => $this->metadata($readingPage),
+            ],
+        ];
+    }
+
+    /**
+     * @param callable():BaseBuilder $query
+     * @return array{items:list<array<string,mixed>>,total:int,page:int,perPage:int,totalPages:int}
+     */
+    private function paginate(callable $query, CircuitOverviewPagination $pagination, string $list): array
+    {
+        $total = $query()->countAllResults();
+        $perPage = $pagination->pageSize($list);
+        $totalPages = max(1, (int) ceil($total / $perPage));
+        $page = min($pagination->page($list), $totalPages);
+        $items = $query()->limit($perPage, ($page - 1) * $perPage)->get()->getResultArray();
+
+        return compact('items', 'total', 'page', 'perPage', 'totalPages');
+    }
+
+    /** @param array{total:int,page:int,perPage:int,totalPages:int} $page */
+    private function metadata(array $page): array
+    {
+        return [
+            'total' => $page['total'],
+            'page' => $page['page'],
+            'perPage' => $page['perPage'],
+            'totalPages' => $page['totalPages'],
         ];
     }
 

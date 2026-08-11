@@ -12,6 +12,9 @@ use DomainException;
 
 final readonly class ListPreventivePlansHandler
 {
+    private const DEFAULT_PER_PAGE = 10;
+    private const ALLOWED_PER_PAGE = [5, 10, 25];
+
     public function __construct(
         private PreventivePlanReadModel $readModel,
         private EvaluadorVencimiento $evaluator,
@@ -20,7 +23,7 @@ final readonly class ListPreventivePlansHandler
     }
 
     /** @param array{q?:string,branch_id?:int|null,equipment_id?:int|null,state?:string} $filters */
-    public function execute(ActorContext $actor, array $filters, int $page = 1, int $perPage = 15): PreventivePlanPage
+    public function execute(ActorContext $actor, array $filters, int $page = 1, int $perPage = self::DEFAULT_PER_PAGE): PreventivePlanPage
     {
         if ($actor->isSuperAdmin() || $actor->companyId() === null || ! $actor->hasPermission('planes.ver')) {
             throw new DomainException('No tiene permiso para consultar planes preventivos.');
@@ -92,7 +95,7 @@ final readonly class ListPreventivePlansHandler
 
         usort($rows, static fn (array $left, array $right): int => [$left['equipment_code'], $left['service_name']] <=> [$right['equipment_code'], $right['service_name']]);
         $page = max(1, $page);
-        $perPage = min(50, max(1, $perPage));
+        $perPage = in_array($perPage, self::ALLOWED_PER_PAGE, true) ? $perPage : self::DEFAULT_PER_PAGE;
         $total = count($rows);
         $lastPage = max(1, (int) ceil($total / $perPage));
         $page = min($page, $lastPage);

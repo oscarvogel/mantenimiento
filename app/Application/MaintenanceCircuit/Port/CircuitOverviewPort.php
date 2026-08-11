@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Application\MaintenanceCircuit\Port;
 
+use App\Application\MaintenanceCircuit\CircuitOverviewPagination;
+
 interface CircuitOverviewPort
 {
     /**
@@ -11,5 +13,5 @@ interface CircuitOverviewPort
      *
      * @return array<string, mixed>
      */
-    public function fetch(int $companyId, ?array $branchIds): array;
+    public function fetch(int $companyId, ?array $branchIds, CircuitOverviewPagination $pagination): array;
 }

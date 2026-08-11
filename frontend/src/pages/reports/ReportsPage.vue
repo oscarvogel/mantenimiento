@@ -57,6 +57,7 @@ const queryUrl = (page) => {
   if (props.data.filters.branchId) params.set('sucursal_id', props.data.filters.branchId)
   params.set('desde', props.data.filters.from)
   params.set('hasta', props.data.filters.to)
+  params.set('per_page', String(props.data.filters.perPage || 10))
   params.set('page', String(page))
   return `${props.urls.index}?${params.toString()}`
 }
@@ -82,7 +83,7 @@ const pagination = computed(() => props.data.orders.pagination)
       </a>
     </div>
 
-    <form :action="urls.index" method="get" class="mt-7 grid gap-4 rounded-xl border border-border bg-surface-raised p-4 shadow-card sm:grid-cols-2 xl:grid-cols-[minmax(12rem,1fr)_repeat(2,minmax(10rem,0.7fr))_auto] xl:items-end">
+    <form :action="urls.index" method="get" class="mt-7 grid gap-4 rounded-xl border border-border bg-surface-raised p-4 shadow-card sm:grid-cols-2 xl:grid-cols-[minmax(12rem,1fr)_repeat(3,minmax(9rem,0.7fr))_auto] xl:items-end">
       <label class="grid gap-1.5 text-sm font-semibold text-ink">
         Sucursal
         <select name="sucursal_id" class="min-h-11 rounded-lg border border-border-strong bg-white px-3 text-sm font-normal text-ink focus:border-border-focus">
@@ -99,6 +100,12 @@ const pagination = computed(() => props.data.orders.pagination)
       <label class="grid gap-1.5 text-sm font-semibold text-ink">
         Hasta
         <input type="date" name="hasta" :value="data.filters.to" required class="min-h-11 rounded-lg border border-border-strong bg-white px-3 text-sm font-normal text-ink focus:border-border-focus" />
+      </label>
+      <label class="grid gap-1.5 text-sm font-semibold text-ink">
+        Resultados por página
+        <select name="per_page" class="min-h-11 rounded-lg border border-border-strong bg-white px-3 text-sm font-normal text-ink focus:border-border-focus">
+          <option v-for="size in [5, 10, 25]" :key="size" :value="size" :selected="Number(data.filters.perPage) === size">{{ size }}</option>
+        </select>
       </label>
       <button type="submit" class="min-h-11 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary-hover">
         Aplicar filtros
