@@ -53,6 +53,23 @@ final class GetAppShellContextTest extends TestCase
         self::assertTrue($plansItem[0]['active']);
         self::assertNotContains('plans', array_column($hidden['navigation'], 'key'));
     }
+
+    public function testShowsPreventiveLibraryAsDirectNavigationItem(): void
+    {
+        $context = new GetAppShellContext(new AppShellReadModelFake());
+        $actor = new ActorContext(7, 5, false, false, ['Responsable'], ['importaciones.ver'], [9]);
+
+        $payload = (new AppShellPayload($context))->for($actor, 'preventive-library');
+        $libraryItem = array_values(array_filter(
+            $payload['navigation'],
+            static fn (array $item): bool => $item['key'] === 'preventive-library',
+        ));
+
+        self::assertCount(1, $libraryItem);
+        self::assertSame('Biblioteca preventiva', $libraryItem[0]['label']);
+        self::assertStringEndsWith('/mantenimiento/importaciones/biblioteca', $libraryItem[0]['href']);
+        self::assertTrue($libraryItem[0]['active']);
+    }
 }
 
 final class AppShellReadModelFake implements AppShellReadModel

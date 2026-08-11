@@ -35,6 +35,7 @@ final readonly class AppShellPayload
             }
             if ($actor->hasPermission('importaciones.ver')) {
                 $navigation[] = $this->item('imports', 'Importaciones', 'mantenimiento/importaciones', 'upload', $active);
+                $navigation[] = $this->item('preventive-library', 'Biblioteca preventiva', 'mantenimiento/importaciones/biblioteca', 'services', $active);
             }
             if ($actor->hasPermission('sucursales.ver')) {
                 $navigation[] = $this->item('branches', 'Sucursales', 'administracion/sucursales', 'branches', $active);

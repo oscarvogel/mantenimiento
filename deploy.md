@@ -197,3 +197,14 @@ el archivo local. Como minimo:
 - Navegador integrado: las rutas protegidas redirigieron a login por falta de
   sesion autenticada en el navegador, y el login cargo los bundles nuevos
   `main-BzDMxKQK.js` y `main-DKp65hoD.css`.
+
+## Evidencia del ajuste de menu del 11 de agosto de 2026
+
+- Se publico un ajuste incremental por FTPS para agregar `Biblioteca
+  preventiva` como item directo del menu lateral.
+- Archivos remotos verificados por SHA-256 contra local:
+  `app/Presentation/AppShellPayload.php` y
+  `app/Controllers/ImportManagement.php`.
+- PHPUnit focalizado: `GetAppShellContextTest.php` paso con `4` tests y `18`
+  assertions.
+- PHP lint: sin errores en `AppShellPayload.php` e `ImportManagement.php`.

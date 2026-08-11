@@ -64,7 +64,7 @@ final class ImportManagement extends BaseController
             $base = base_url('mantenimiento/importaciones');
             $overview = (new CodeIgniterPreventiveLibraryReadModel(db_connect()))->overview($actor->companyId());
 
-            return $this->renderApp($actor, 'imports', 'preventive-library', 'Biblioteca preventiva', [
+            return $this->renderApp($actor, 'preventive-library', 'preventive-library', 'Biblioteca preventiva', [
                 'routes' => [
                     'back' => $base,
                     'downloadTemplate' => $base . '/plantilla/BIBLIOTECA_PREVENTIVA',
