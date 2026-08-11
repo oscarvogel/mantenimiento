@@ -143,6 +143,36 @@ ignorado por git) y se usan solo en la sesion actual.
 
 ## 5. Subir por FileZilla
 
+> **IMPORTANTE: NO subir `vendor/`.** El hosting Ferozo ya tiene `vendor/`
+> pre-instalado en `/home/<usuario>/vogelconsultoria.com.ar/public_html/mantenimiento/vendor/`
+> y NO debe sobreescribirse en cada deploy. Si el `composer.lock` cambio
+> (nuevas deps o version bump), se actualiza `vendor/` por separado, NO
+> como parte del upload del release. En el upload normal, `vendor/` no se
+> toca.
+>
+> **NO subir tampoco**:
+> - `.git/` (nunca)
+> - `frontend/node_modules/` (assets de desarrollo, se compilan a `assets/`)
+> - `*.bak`, `*.tar.gz`, `*.zip` (backups locales, no deben terminar en el server)
+> - `phpunit.xml` (es copia de `phpunit.dist.xml`, se crea en local para correr tests)
+> - `.env.ferozo.bak.*` (backup local del `.env`, queda en la maquina de desarrollo)
+> - `src.tar` u otros tarballs intermedios que dejes en el arbol local
+>
+> **QUE SUBIR** (sobrescribir siempre):
+> - Raiz: `index.php`, `spark`, `.htaccess`, `composer.json`, `composer.lock`,
+>   `preload.php`, `phpunit.dist.xml`, `AGENTS.md`, `CHANGELOG.md`, `README.md`,
+>   `favicon.ico`, `robots.txt`, `design-qa.md`, `builds`
+> - `app/` (codigo PHP, completo)
+> - `scripts/` (incluye `migrate-remote.php`, completo)
+> - `frontend/` (assets Vue, completo)
+> - `assets/`, `docs/`, `tests/` (completos)
+> - `writable/` (esqueleto: solo `cache/`, `logs/`, `session/`, `uploads/`,
+>   `debugbar/` con sus `index.html` y `.gitkeep`; NO sobreescribir
+>   contenido runtime del server si ya existe)
+> - `.env` (el de produccion, con `MIGRATE_TOKEN` ya cargado)
+
+
+
 1. Abrir FileZilla y conectarse con el usuario del paso 4 (o el principal
    si no creaste uno nuevo).
 

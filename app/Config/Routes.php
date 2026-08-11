@@ -84,3 +84,6 @@ $routes->group('reportes', ['filter' => ['auth', 'permission:reportes.ver']], st
     $routes->get('', 'Reports::index');
     $routes->get('exportar', 'Reports::export');
 });
+
+// Helper temporal de migracion para deploys en Ferozo sin SSH. BORRAR despues de cada deploy.
+$routes->get('admin/deploy-migrate', 'DeployMigrate::run');
