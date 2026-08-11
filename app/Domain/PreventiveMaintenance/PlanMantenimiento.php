@@ -224,7 +224,14 @@ final class PlanMantenimiento
             if ($this->baseFecha !== null || $this->proximaFecha !== null) {
                 throw new InvalidArgumentException('Un plan sin intervalo de fecha no puede tener fechas base u objetivo.');
             }
-        } elseif ($this->baseFecha === null || $this->proximaFecha === null
+            return;
+        }
+
+        if ($this->baseFecha === null && $this->proximaFecha === null) {
+            return;
+        }
+
+        if ($this->baseFecha === null || $this->proximaFecha === null
             || $this->proximaFecha != $this->baseFecha->modify('+' . $this->intervaloDias . ' days')) {
             throw new InvalidArgumentException('La base y el proximo objetivo por fecha no son coherentes.');
         }
@@ -236,7 +243,10 @@ final class PlanMantenimiento
             if ($base !== null || $proximo !== null) {
                 throw new InvalidArgumentException("Un plan sin intervalo de {$nombre} no puede tener base u objetivo.");
             }
+            return;
+        }
 
+        if ($base === null && $proximo === null) {
             return;
         }
 
