@@ -64,6 +64,23 @@ function Get-CsrfToken {
     param([Parameter(Mandatory)] [string]$Html)
 
     $match = [regex]::Match($Html, 'name="csrf_test_name"\s+value="([^"]+)"')
+    if ($match.Success) {
+        return $match.Groups[1].Value
+    }
+
+    $payloadMatch = [regex]::Match(
+        $Html,
+        '<script\s+id="maintenance-app-data"\s+type="application/json">(?<json>.*?)</script>',
+        [System.Text.RegularExpressions.RegexOptions]::Singleline
+    )
+    if ($payloadMatch.Success) {
+        $payload = $payloadMatch.Groups['json'].Value | ConvertFrom-Json
+        $hash = $payload.data.csrf.hash
+        if (-not [string]::IsNullOrWhiteSpace([string] $hash)) {
+            return [string] $hash
+        }
+    }
+
     if (-not $match.Success) {
         throw 'No se encontró el token CSRF en la respuesta.'
     }
@@ -227,6 +244,8 @@ database.default.port = 3306
     $detail = Invoke-Form "/mantenimiento/equipos/$equipmentId/editar" @{
         codigo = $updatedCode
         patente = "EDIT$runId"
+        tipo_equipo_id = $equipmentTypeId
+        fecha_alta = '2026-08-01'
         observaciones = 'Ficha actualizada por Fase 2B'
     } $session $detail.Content
     $profile = Invoke-MySqlScalar "SELECT CONCAT(codigo,':',patente) FROM equipos WHERE id=$equipmentId AND empresa_id=$companyId;"
@@ -236,6 +255,8 @@ database.default.port = 3306
     $detail = Invoke-Form "/mantenimiento/equipos/$equipmentId/editar" @{
         codigo = $updatedCode
         patente = "EDIT$runId"
+        tipo_equipo_id = $equipmentTypeId
+        fecha_alta = '2026-08-01'
         observaciones = 'Ficha actualizada por Fase 2B'
     } $session $detail.Content
     if ($detail.Content -notmatch 'actualiz') { throw 'La edición idempotente no informó éxito.' }

@@ -15,7 +15,7 @@ final readonly class EquipmentListQuery
         public ?int $branchId = null,
         public ?string $status = null,
         public int $page = 1,
-        public int $perPage = 20,
+        public int $perPage = 10,
     ) {
         if ($typeId !== null && $typeId <= 0 || $brandId !== null && $brandId <= 0 || $branchId !== null && $branchId <= 0) {
             throw new DomainException('Los filtros de equipos no son válidos.');

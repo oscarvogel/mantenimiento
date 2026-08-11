@@ -7,6 +7,7 @@ namespace App\Controllers;
 use App\Application\Identity\ActorContext;
 use App\Application\Organization\TenantAdministrationService;
 use App\Infrastructure\Identity\SessionActorContext;
+use App\Presentation\PageSize;
 use CodeIgniter\HTTP\RedirectResponse;
 use DomainException;
 use Throwable;
@@ -16,13 +17,15 @@ final class TenantAdmin extends BaseController
     public function branches(): string
     {
         $actor = $this->actor();
+        $page = max(1, (int) $this->request->getGet('page'));
+        $perPage = PageSize::normalize($this->request->getGet('per_page'));
 
         return $this->renderApp(
             $actor,
             'branches',
             'branches-admin',
             'Administración de sucursales',
-            service('administrationPayload')->branches($this->service()->branchesOverview($actor), $actor),
+            service('administrationPayload')->branches($this->service()->branchesOverview($actor, $page, $perPage), $actor),
         );
     }
 
@@ -70,13 +73,15 @@ final class TenantAdmin extends BaseController
     public function users(): string
     {
         $actor = $this->actor();
+        $page = max(1, (int) $this->request->getGet('page'));
+        $perPage = PageSize::normalize($this->request->getGet('per_page'));
 
         return $this->renderApp(
             $actor,
             'users',
             'users-admin',
             'Administración de usuarios',
-            service('administrationPayload')->users($this->service()->usersOverview($actor), $actor),
+            service('administrationPayload')->users($this->service()->usersOverview($actor, $page, $perPage), $actor),
         );
     }
 

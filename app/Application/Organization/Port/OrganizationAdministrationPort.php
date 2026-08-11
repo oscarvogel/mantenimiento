@@ -13,12 +13,22 @@ interface OrganizationAdministrationPort
      *     roles: list<array<string, mixed>>
      * }
      */
-    public function overview(): array;
+    public function overview(int $companiesPage, int $companiesPerPage, int $usersPage, int $usersPerPage): array;
 
     /**
      * @param array{razon_social: string, nombre_fantasia: string|null, cuit: string|null, email: string|null, telefono: string|null} $data
      */
     public function createCompany(array $data, int $actorUserId): int;
+
+    /**
+     * @param array{nombre: string, email: string, password: string} $data
+     */
+    public function createCompanyAdministrator(
+        int $companyId,
+        array $data,
+        string $reason,
+        int $actorUserId,
+    ): int;
 
     /**
      * @param array{razon_social: string, nombre_fantasia: string|null, cuit: string|null, email: string|null, telefono: string|null, estado: int} $data

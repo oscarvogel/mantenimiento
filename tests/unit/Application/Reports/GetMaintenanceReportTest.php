@@ -11,6 +11,17 @@ use PHPUnit\Framework\TestCase;
 
 final class GetMaintenanceReportTest extends TestCase
 {
+    public function testNormalizesUnsupportedPageSizeToTen(): void
+    {
+        $readModel = new MaintenanceReportReadModelFake();
+        $handler = new GetMaintenanceReport($readModel, new FixedReportClock());
+
+        $result = $handler->execute($this->actor(['reportes.ver'], [7]), null, null, null, 1, 999);
+
+        self::assertSame(10, $readModel->lastScope?->perPage);
+        self::assertSame(10, $result['filters']['perPage']);
+    }
+
     public function testUsesLastThirtyDaysAndAuthorizedBranchScopeByDefault(): void
     {
         $readModel = new MaintenanceReportReadModelFake();

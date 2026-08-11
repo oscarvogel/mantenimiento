@@ -24,6 +24,7 @@ $routes->group('superadmin', ['filter' => 'superadmin'], static function ($route
     $routes->get('', 'SuperAdmin::index');
     $routes->post('empresas', 'SuperAdmin::createCompany');
     $routes->post('empresas/(:num)', 'SuperAdmin::updateCompany/$1');
+    $routes->post('administradores', 'SuperAdmin::createCompanyAdministrator');
     $routes->post('usuarios/(:num)/empresa', 'SuperAdmin::assignCompany/$1');
     $routes->post('usuarios/(:num)/roles', 'SuperAdmin::assignRoles/$1');
 });
@@ -42,7 +43,9 @@ $routes->group('administracion', ['filter' => ['auth']], static function ($route
 $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes): void {
     $routes->get('', 'MaintenanceCircuit::index', ['filter' => 'permission:equipos.ver']);
     $routes->get('equipos', 'AssetManagement::index', ['filter' => 'permission:equipos.ver']);
-    $routes->post('equipos', 'MaintenanceCircuit::createEquipment', ['filter' => 'permission:equipos.editar']);
+    $routes->post('equipos', 'AssetManagement::createEquipment', ['filter' => 'permission:equipos.editar']);
+    $routes->get('planes', 'PreventivePlans::index', ['filter' => 'permission:planes.ver']);
+    $routes->post('planes', 'PreventivePlans::create', ['filter' => 'permission:planes.editar']);
     $routes->get('equipos/(:num)', 'EquipmentManagement::show/$1', ['filter' => 'permission:equipos.ver']);
     $routes->get('equipos/(:num)/qr.svg', 'AssetManagement::qr/$1', ['filter' => 'permission:equipos.ver']);
     $routes->post('equipos/(:num)/editar', 'EquipmentManagement::update/$1', ['filter' => 'permission:equipos.editar']);

@@ -15,6 +15,35 @@ final class OperationsPayload
     public function maintenance(array $source): array
     {
         $catalogs = $source['assetCatalogs'] ?? [];
+        $paginationSource = $source['pagination'] ?? [];
+        $paginationKeys = [
+            'equipments' => ['equipos_page', 'equipos_per_page'],
+            'plans' => ['planes_page', 'planes_per_page'],
+            'notices' => ['avisos_page', 'avisos_per_page'],
+            'orders' => ['ordenes_page', 'ordenes_per_page'],
+            'readings' => ['lecturas_page', 'lecturas_per_page'],
+        ];
+        $paginationQuery = [];
+        foreach ($paginationKeys as $list => [$pageKey, $perPageKey]) {
+            $metadata = $paginationSource[$list] ?? [];
+            $paginationQuery[$pageKey] = (int) ($metadata['page'] ?? 1);
+            $paginationQuery[$perPageKey] = (int) ($metadata['perPage'] ?? 10);
+        }
+        $overviewPagination = [];
+        foreach ($paginationKeys as $list => [$pageKey, $perPageKey]) {
+            $metadata = $paginationSource[$list] ?? [];
+            $overviewPagination[$list] = $this->pagination(
+                (int) ($metadata['page'] ?? 1),
+                (int) ($metadata['totalPages'] ?? 1),
+                (int) ($metadata['total'] ?? 0),
+                base_url('mantenimiento'),
+                $paginationQuery,
+                $pageKey,
+                $perPageKey,
+                (int) ($metadata['perPage'] ?? 10),
+            );
+            $overviewPagination[$list]['perPageOptions'] = [5, 10, 25];
+        }
 
         return [
             'currentDateTime' => date('Y-m-d H:i:s'),
@@ -25,6 +54,7 @@ final class OperationsPayload
                 'detectDue' => base_url('mantenimiento/vencimientos/detectar'),
             ],
             'can' => $source['can'] ?? [],
+            'pagination' => $overviewPagination,
             'catalogs' => [
                 'branches' => array_map(fn (array $row): array => ['id' => (int) $row['id'], 'code' => $row['codigo'], 'name' => $row['nombre']], $source['branches'] ?? []),
                 'equipmentTypes' => array_map(fn (array $row): array => ['id' => (int) $row['id'], 'name' => $row['nombre']], $source['equipmentTypes'] ?? []),
@@ -77,27 +107,36 @@ final class OperationsPayload
     }
 
     /** @param array<string,mixed> $page @param array<string,mixed> $catalogs @param array<string,mixed> $filters */
-    public function assets(array $page, array $catalogs, array $filters, bool $canEdit): array
+    public function assets(array $page, array $catalogs, array $filters, bool $canEdit, array $branches = [], array $management = []): array
     {
         $query = array_filter([
             'q' => $filters['q'] ?? null, 'tipo_id' => $filters['type_id'] ?? null,
             'marca_id' => $filters['brand_id'] ?? null, 'sucursal_id' => $filters['branch_id'] ?? null,
             'estado' => $filters['status'] ?? null,
+            'page' => $page['page'] ?? 1,
+            'per_page' => $page['perPage'] ?? 10,
+            'brand_page' => $management['brands']['page'] ?? 1,
+            'brand_per_page' => $management['brands']['perPage'] ?? 10,
+            'model_page' => $management['models']['page'] ?? 1,
+            'model_per_page' => $management['models']['perPage'] ?? 10,
         ], static fn (mixed $value): bool => $value !== null && $value !== '');
         $base = base_url('mantenimiento/equipos');
 
         return [
             'canEdit' => $canEdit,
+            'old' => $this->old(['sucursal_id', 'tipo_equipo_id', 'codigo', 'patente', 'marca_id', 'modelo_id', 'fecha_alta', 'anio', 'chasis', 'motor', 'observaciones']),
             'routes' => [
                 'index' => $base, 'maintenance' => base_url('mantenimiento'),
+                'createEquipment' => $base,
                 'createBrand' => base_url('mantenimiento/catalogos/marcas'), 'createModel' => base_url('mantenimiento/catalogos/modelos'),
             ],
             'filters' => [
                 'q' => $filters['q'] ?? '', 'typeId' => $filters['type_id'] ?? '',
                 'brandId' => $filters['brand_id'] ?? '', 'branchId' => $filters['branch_id'] ?? '',
-                'status' => $filters['status'] ?? '',
+                'status' => $filters['status'] ?? '', 'perPage' => (int) ($page['perPage'] ?? 10),
             ],
             'catalogs' => [
+                'branches' => array_map(fn (array $row): array => ['id' => (int) $row['id'], 'code' => $row['codigo'], 'name' => $row['nombre']], $branches),
                 'types' => array_map(fn (array $row): array => ['id' => (int) $row['id'], 'name' => $row['nombre'], 'active' => (int) $row['activo'] === 1], $catalogs['types'] ?? []),
                 'brands' => array_map(fn (array $row): array => [
                     'id' => (int) $row['id'], 'name' => $row['nombre'], 'active' => (int) $row['activo'] === 1,
@@ -105,7 +144,7 @@ final class OperationsPayload
                     'inactivateUrl' => base_url('mantenimiento/catalogos/marcas/' . $row['id'] . '/inactivar'),
                 ], $catalogs['brands'] ?? []),
                 'models' => array_map(fn (array $row): array => [
-                    'id' => (int) $row['id'], 'name' => $row['nombre'], 'brandName' => $row['marca_nombre'],
+                    'id' => (int) $row['id'], 'name' => $row['nombre'], 'brandId' => (int) $row['marca_id'], 'typeId' => (int) $row['tipo_equipo_id'], 'brandName' => $row['marca_nombre'],
                     'typeName' => $row['tipo_nombre'], 'active' => (int) $row['activo'] === 1,
                     'updateUrl' => base_url('mantenimiento/catalogos/modelos/' . $row['id']),
                     'inactivateUrl' => base_url('mantenimiento/catalogos/modelos/' . $row['id'] . '/inactivar'),
@@ -122,13 +161,17 @@ final class OperationsPayload
                     'detailUrl' => base_url('mantenimiento/equipos/' . $row['id']),
                     'qrUrl' => base_url('mantenimiento/equipos/' . $row['id'] . '/qr.svg'),
                 ], $page['items'] ?? []),
-                'pagination' => $this->pagination((int) ($page['page'] ?? 1), (int) ($page['totalPages'] ?? 1), (int) ($page['total'] ?? 0), $base, $query, 'page'),
+                'pagination' => $this->pagination((int) ($page['page'] ?? 1), (int) ($page['totalPages'] ?? 1), (int) ($page['total'] ?? 0), $base, $query, 'page', 'per_page', (int) ($page['perPage'] ?? 10)),
+            ],
+            'management' => [
+                'brands' => $this->catalogManagementPage($management['brands'] ?? [], $base, $query, 'brand_page', 'brand_per_page', 'brand'),
+                'models' => $this->catalogManagementPage($management['models'] ?? [], $base, $query, 'model_page', 'model_per_page', 'model'),
             ],
         ];
     }
 
     /** @param array<string,mixed> $details @param array<string,mixed> $catalogs @param list<array<string,mixed>> $candidates */
-    public function equipmentDetails(array $details, ?ReadingHistoryPage $readings, EquipmentAttachmentPage $attachments, array $catalogs, array $candidates, array $can): array
+    public function equipmentDetails(array $details, ?ReadingHistoryPage $readings, EquipmentAttachmentPage $attachments, array $catalogs, array $candidates, array $can, array $pageSizes = []): array
     {
         $equipment = $details['equipment'];
         $equipmentId = (int) $equipment['id'];
@@ -138,6 +181,10 @@ final class OperationsPayload
             'transfer_page' => (int) $details['transferHistoryPage'],
             'attachment_page' => $attachments->page,
             'relation_page' => (int) $details['relationsPage'],
+            'reading_per_page' => (int) ($pageSizes['readings'] ?? 10),
+            'transfer_per_page' => (int) ($pageSizes['transfers'] ?? 10),
+            'attachment_per_page' => (int) ($pageSizes['attachments'] ?? 10),
+            'relation_per_page' => (int) ($pageSizes['relations'] ?? 10),
         ];
 
         return [
@@ -150,7 +197,7 @@ final class OperationsPayload
                 'uploadAttachment' => $base . '/adjuntos',
             ],
             'equipment' => [
-                'id' => $equipmentId, 'code' => $equipment['codigo'], 'typeName' => $equipment['tipo_nombre'],
+                'id' => $equipmentId, 'code' => $equipment['codigo'], 'typeId' => (int) $equipment['tipo_equipo_id'], 'typeName' => $equipment['tipo_nombre'],
                 'branchCode' => $equipment['sucursal_codigo'], 'branchName' => $equipment['sucursal_nombre'],
                 'branchId' => (int) $equipment['sucursal_id'], 'status' => $equipment['estado'],
                 'currentKm' => $equipment['km_actual'] === null ? null : (int) $equipment['km_actual'],
@@ -161,9 +208,13 @@ final class OperationsPayload
                 'controlsKm' => (int) $equipment['controla_km'] === 1, 'controlsHours' => (int) $equipment['controla_horas'] === 1,
             ],
             'catalogs' => [
+                'types' => array_map(fn (array $row): array => [
+                    'id' => (int) $row['id'], 'name' => $row['nombre'],
+                    'controlsKm' => (int) $row['controla_km'] === 1, 'controlsHours' => (int) $row['controla_horas'] === 1,
+                ], $catalogs['types'] ?? []),
                 'brands' => array_map(fn (array $row): array => ['id' => (int) $row['id'], 'name' => $row['nombre']], $catalogs['brands'] ?? []),
                 'models' => array_map(fn (array $row): array => [
-                    'id' => (int) $row['id'], 'name' => $row['nombre'], 'brandName' => $row['marca_nombre'], 'typeName' => $row['tipo_nombre'],
+                    'id' => (int) $row['id'], 'name' => $row['nombre'], 'brandId' => (int) $row['marca_id'], 'typeId' => (int) $row['tipo_equipo_id'], 'brandName' => $row['marca_nombre'], 'typeName' => $row['tipo_nombre'],
                 ], $catalogs['models'] ?? []),
             ],
             'availableBranches' => array_map(fn (array $row): array => ['id' => (int) $row['id'], 'code' => $row['codigo'], 'name' => $row['nombre']], $details['availableBranches'] ?? []),
@@ -172,7 +223,7 @@ final class OperationsPayload
             ], array_filter($candidates, fn (array $row): bool => (int) $row['id'] !== $equipmentId))),
             'relations' => [
                 'total' => (int) $details['relationsTotal'],
-                'pagination' => $this->pagination((int) $details['relationsPage'], (int) $details['relationsTotalPages'], (int) $details['relationsTotal'], $base, $pages, 'relation_page'),
+                'pagination' => $this->pagination((int) $details['relationsPage'], (int) $details['relationsTotalPages'], (int) $details['relationsTotal'], $base, $pages, 'relation_page', 'relation_per_page', (int) ($pageSizes['relations'] ?? 10)),
                 'items' => array_map(fn (array $row): array => [
                     'id' => (int) $row['id'], 'principalCode' => $row['equipo_principal_codigo'],
                     'relatedCode' => $row['equipo_relacionado_codigo'], 'type' => $row['tipo_relacion'],
@@ -182,7 +233,7 @@ final class OperationsPayload
             ],
             'attachments' => [
                 'total' => $attachments->total,
-                'pagination' => $this->pagination($attachments->page, $attachments->totalPages(), $attachments->total, $base, $pages, 'attachment_page'),
+                'pagination' => $this->pagination($attachments->page, $attachments->totalPages(), $attachments->total, $base, $pages, 'attachment_page', 'attachment_per_page', (int) ($pageSizes['attachments'] ?? 10)),
                 'items' => array_map(fn (array $row): array => [
                     'id' => (int) $row['id'], 'originalName' => $row['nombre_original'], 'mimeType' => $row['mime_type'],
                     'sizeKb' => number_format(((int) $row['tamanio']) / 1024, 1), 'type' => $row['tipo'],
@@ -194,7 +245,7 @@ final class OperationsPayload
             ],
             'readings' => $readings === null ? null : [
                 'total' => $readings->total,
-                'pagination' => $this->pagination($readings->page, $readings->totalPages(), $readings->total, $base, $pages, 'page'),
+                'pagination' => $this->pagination($readings->page, $readings->totalPages(), $readings->total, $base, $pages, 'page', 'reading_per_page', (int) ($pageSizes['readings'] ?? 10)),
                 'items' => array_map(fn ($row): array => [
                     'id' => $row->id, 'recordedAt' => $row->recordedAt->format('Y-m-d H:i:s'),
                     'kilometers' => $row->kilometers, 'hours' => $row->hours, 'origin' => $row->origin,
@@ -206,7 +257,7 @@ final class OperationsPayload
             ],
             'transfers' => [
                 'total' => (int) $details['transferHistoryTotal'],
-                'pagination' => $this->pagination((int) $details['transferHistoryPage'], (int) $details['transferHistoryTotalPages'], (int) $details['transferHistoryTotal'], $base, $pages, 'transfer_page'),
+                'pagination' => $this->pagination((int) $details['transferHistoryPage'], (int) $details['transferHistoryTotalPages'], (int) $details['transferHistoryTotal'], $base, $pages, 'transfer_page', 'transfer_per_page', (int) ($pageSizes['transfers'] ?? 10)),
                 'items' => array_map(fn (array $row): array => [
                     'id' => (int) $row['id'], 'date' => $row['fecha_movimiento'],
                     'originCode' => $row['sucursal_origen_codigo'], 'originName' => $row['sucursal_origen_nombre'],
@@ -229,7 +280,7 @@ final class OperationsPayload
             ],
             'imports' => [
                 'total' => $page->total,
-                'pagination' => $this->pagination($page->page, max(1, (int) ceil($page->total / $page->perPage)), $page->total, $base, [], 'page'),
+                'pagination' => $this->pagination($page->page, max(1, (int) ceil($page->total / $page->perPage)), $page->total, $base, [], 'page', 'per_page', $page->perPage),
                 'items' => array_map(fn (array $row): array => [
                     'id' => (int) $row['id'], 'date' => $row['fecha'], 'userName' => $row['usuario_nombre'] ?? 'Usuario',
                     'originalFile' => $row['archivo_original'], 'type' => $row['tipo'],
@@ -257,7 +308,7 @@ final class OperationsPayload
             ],
             'rows' => [
                 'total' => $preview->total,
-                'pagination' => $this->pagination($preview->page, max(1, (int) ceil($preview->total / $preview->perPage)), $preview->total, $base, [], 'page'),
+                'pagination' => $this->pagination($preview->page, max(1, (int) ceil($preview->total / $preview->perPage)), $preview->total, $base, [], 'page', 'per_page', $preview->perPage),
                 'items' => array_map(fn (array $row): array => [
                     'rowNumber' => (int) $row['numero_fila'], 'status' => $row['estado'],
                     'normalizedData' => $row['datos_normalizados'],
@@ -265,6 +316,48 @@ final class OperationsPayload
                     'result' => $row['resultado'],
                 ], $preview->rows),
             ],
+        ];
+    }
+
+    /** @param array<string,mixed> $source @param array<string,mixed> $query */
+    private function catalogManagementPage(
+        array $source,
+        string $base,
+        array $query,
+        string $pageKey,
+        string $perPageKey,
+        string $kind,
+    ): array {
+        $items = array_map(function (array $row) use ($kind): array {
+            $id = (int) $row['id'];
+            $base = base_url('mantenimiento/catalogos/' . ($kind === 'brand' ? 'marcas/' : 'modelos/') . $id);
+            $item = [
+                'id' => $id, 'name' => $row['nombre'], 'active' => (int) $row['activo'] === 1,
+                'updateUrl' => $base, 'inactivateUrl' => $base . '/inactivar',
+            ];
+            if ($kind === 'model') {
+                $item += ['brandName' => $row['marca_nombre'], 'typeName' => $row['tipo_nombre']];
+            }
+
+            return $item;
+        }, $source['items'] ?? []);
+        $page = (int) ($source['page'] ?? 1);
+        $perPage = (int) ($source['perPage'] ?? 10);
+        $total = (int) ($source['total'] ?? 0);
+
+        return [
+            'total' => $total,
+            'items' => $items,
+            'pagination' => $this->pagination(
+                $page,
+                (int) ($source['totalPages'] ?? max(1, (int) ceil($total / $perPage))),
+                $total,
+                $base,
+                $query,
+                $pageKey,
+                $perPageKey,
+                $perPage,
+            ),
         ];
     }
 
@@ -280,19 +373,38 @@ final class OperationsPayload
     }
 
     /** @param array<string,mixed> $query */
-    private function pagination(int $page, int $totalPages, int $total, string $base, array $query, string $pageKey): array
+    private function pagination(
+        int $page,
+        int $totalPages,
+        int $total,
+        string $base,
+        array $query,
+        string $pageKey,
+        ?string $perPageKey = null,
+        ?int $perPage = null,
+    ): array
     {
-        $url = static function (int $target) use ($base, $query, $pageKey): string {
+        $url = static function (int $target) use ($base, $query, $pageKey, $perPageKey, $perPage): string {
             $parameters = $query;
             $parameters[$pageKey] = $target;
+            if ($perPageKey !== null && $perPage !== null) {
+                $parameters[$perPageKey] = $perPage;
+            }
 
             return $base . '?' . http_build_query($parameters);
         };
 
-        return [
+        $pagination = [
             'page' => $page, 'totalPages' => max(1, $totalPages), 'total' => $total,
             'previousUrl' => $page > 1 ? $url($page - 1) : null,
             'nextUrl' => $page < $totalPages ? $url($page + 1) : null,
         ];
+        if ($perPageKey !== null && $perPage !== null) {
+            $pagination['pageKey'] = $pageKey;
+            $pagination['perPageKey'] = $perPageKey;
+            $pagination['perPage'] = $perPage;
+        }
+
+        return $pagination;
     }
 }

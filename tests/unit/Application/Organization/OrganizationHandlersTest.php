@@ -6,6 +6,8 @@ use App\Application\Identity\ActorContext;
 use App\Application\Organization\AssignUserCompanyHandler;
 use App\Application\Organization\AssignUserRolesHandler;
 use App\Application\Organization\CreateCompanyHandler;
+use App\Application\Organization\CreateCompanyAdministratorCommand;
+use App\Application\Organization\CreateCompanyAdministratorHandler;
 use App\Application\Organization\GetOrganizationOverview;
 use App\Application\Organization\Port\OrganizationAdministrationPort;
 use CodeIgniter\Test\CIUnitTestCase;
@@ -20,6 +22,16 @@ final class OrganizationHandlersTest extends CIUnitTestCase
         $this->expectException(\DomainException::class);
 
         $useCase->execute($this->companyAdministrator());
+    }
+
+    public function testGlobalOverviewForwardsIndependentPagination(): void
+    {
+        $port = new RecordingOrganizationAdministration();
+        $useCase = new GetOrganizationOverview($port);
+
+        $useCase->execute($this->superAdmin(), 2, 5, 3, 25);
+
+        self::assertSame([2, 5, 3, 25], $port->overviewPagination);
     }
 
     public function testSuperAdminCanCreateCompany(): void
@@ -47,6 +59,58 @@ final class OrganizationHandlersTest extends CIUnitTestCase
         $this->expectException(\DomainException::class);
 
         $useCase->execute($this->superAdmin(), 3, 2, 'no');
+    }
+
+    public function testSuperAdminCanCreateCompanyAdministratorWithNormalizedData(): void
+    {
+        $port = new RecordingOrganizationAdministration();
+        $useCase = new CreateCompanyAdministratorHandler($port);
+
+        $userId = $useCase->execute($this->superAdmin(), new CreateCompanyAdministratorCommand(
+            7,
+            '  Ana Administradora  ',
+            '  ANA@EMPRESA.TEST ',
+            'ClaveSegura123',
+            '  Alta inicial aprobada  ',
+        ));
+
+        $this->assertSame(88, $userId);
+        $this->assertSame([
+            7,
+            ['nombre' => 'Ana Administradora', 'email' => 'ana@empresa.test', 'password' => 'ClaveSegura123'],
+            'Alta inicial aprobada',
+            99,
+        ], $port->administratorCreation);
+    }
+
+    public function testCompanyAdministratorCreationRequiresGlobalActor(): void
+    {
+        $useCase = new CreateCompanyAdministratorHandler(new RecordingOrganizationAdministration());
+
+        $this->expectException(\DomainException::class);
+
+        $useCase->execute($this->companyAdministrator(), new CreateCompanyAdministratorCommand(
+            7,
+            'Ana Administradora',
+            'ana@empresa.test',
+            'ClaveSegura123',
+            'Alta inicial aprobada',
+        ));
+    }
+
+    public function testCompanyAdministratorCreationRejectsShortPassword(): void
+    {
+        $useCase = new CreateCompanyAdministratorHandler(new RecordingOrganizationAdministration());
+
+        $this->expectException(\DomainException::class);
+
+        $useCase->execute($this->superAdmin(), new CreateCompanyAdministratorCommand(
+            7,
+            'Ana Administradora',
+            'ana@empresa.test',
+            'corta',
+            'Alta inicial aprobada',
+        ));
     }
 
     public function testCompanyAssignmentReachesPortWithGlobalActor(): void
@@ -100,8 +164,16 @@ final class RecordingOrganizationAdministration implements OrganizationAdministr
     /** @var array{int, list<int>, string, int}|null */
     public ?array $roleAssignment = null;
 
-    public function overview(): array
+    /** @var array{int, array{nombre: string, email: string, password: string}, string, int}|null */
+    public ?array $administratorCreation = null;
+
+    /** @var array{int, int, int, int}|null */
+    public ?array $overviewPagination = null;
+
+    public function overview(int $companiesPage, int $companiesPerPage, int $usersPage, int $usersPerPage): array
     {
+        $this->overviewPagination = [$companiesPage, $companiesPerPage, $usersPage, $usersPerPage];
+
         return ['companies' => [], 'users' => [], 'roles' => []];
     }
 
@@ -110,6 +182,17 @@ final class RecordingOrganizationAdministration implements OrganizationAdministr
         $this->lastActorUserId = $actorUserId;
 
         return 77;
+    }
+
+    public function createCompanyAdministrator(
+        int $companyId,
+        array $data,
+        string $reason,
+        int $actorUserId,
+    ): int {
+        $this->administratorCreation = [$companyId, $data, $reason, $actorUserId];
+
+        return 88;
     }
 
     public function updateCompany(int $companyId, array $data, int $actorUserId): void

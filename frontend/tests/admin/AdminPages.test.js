@@ -41,15 +41,25 @@ describe('SuperAdminPage', () => {
     expect(createForm.get('input[name="csrf_test_name"]').attributes('value')).toBe('secure-token')
 
     expect(wrapper.find('form[action="/superadmin/empresas/1"]').exists()).toBe(true)
+    const administratorForm = wrapper.get('form[action="/superadmin/administradores"]')
+    expect(administratorForm.attributes('method')).toBe('post')
+    expect(administratorForm.get('input[name="csrf_test_name"]').attributes('value')).toBe('secure-token')
+    expect(administratorForm.get('select[name="admin_empresa_id"]').element.value).toBe('1')
+    expect(administratorForm.get('input[name="admin_nombre"]').attributes('value')).toBe('Nueva administradora')
+    expect(administratorForm.get('input[name="admin_password"]').attributes('type')).toBe('password')
     expect(wrapper.find('form[action="/superadmin/usuarios/2/empresa"]').exists()).toBe(true)
     expect(wrapper.find('form[action="/superadmin/usuarios/2/roles"]').exists()).toBe(true)
     expect(wrapper.get('input[name="roles[]"][value="1"]').element.checked).toBe(true)
+    const pagers = wrapper.findAll('nav[aria-label="Paginación"]')
+    expect(pagers).toHaveLength(2)
+    expect(pagers[0].get('select').element.value).toBe('10')
+    expect(pagers[1].get('select').element.value).toBe('25')
   })
 
   it('oculta mutaciones cuando el servidor niega permisos', () => {
     const data = {
       ...superAdminData,
-      permissions: { companiesEdit: false, assignCompanies: false, assignRoles: false },
+      permissions: { companiesEdit: false, createCompanyAdministrators: false, assignCompanies: false, assignRoles: false },
     }
     const wrapper = mountPage(SuperAdminPage, data)
 
@@ -68,6 +78,7 @@ describe('BranchesAdminPage', () => {
     expect(wrapper.find('form[action="/administracion/sucursales/4"]').exists()).toBe(true)
     expect(wrapper.get('form[action="/administracion/sucursales/4"] input[name="csrf_test_name"]').attributes('value')).toBe('secure-token')
     expect(wrapper.text()).toContain('Recibe alertas en alertas@transportes.test')
+    expect(wrapper.get('nav[aria-label="Paginación"] select').element.value).toBe('10')
   })
 
   it('ofrece una lectura responsive sin formularios si no puede editar', () => {
@@ -102,6 +113,7 @@ describe('UsersAdminPage', () => {
 
     expect(wrapper.get('form[action="/administracion/usuarios"] input[name="roles[]"][value="2"]').element.checked).toBe(true)
     expect(wrapper.get('form[action="/administracion/usuarios/3/acceso"] input[name="sucursales[]"][value="4"]').element.checked).toBe(true)
+    expect(wrapper.get('nav[aria-label="Paginación"] select').element.value).toBe('5')
   })
 
   it('protege visualmente el acceso propio y no ofrece auto-desactivación', () => {

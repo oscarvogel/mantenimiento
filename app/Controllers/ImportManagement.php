@@ -17,14 +17,7 @@ use App\Application\Importations\ListImportsHandler;
 use App\Application\Importations\PreventiveLibraryValidator;
 use App\Domain\Importations\ImportType;
 use App\Infrastructure\Identity\SessionActorContext;
-use App\Infrastructure\Importations\CodeIgniterImportReferenceGateway;
-use App\Infrastructure\Importations\CodeIgniterImportRepository;
-use App\Infrastructure\Importations\CodeIgniterImportUnitOfWork;
-use App\Infrastructure\Importations\CodeIgniterPreventiveLibraryDestinationGateway;
-use App\Infrastructure\Importations\CodeIgniterPreventiveLibraryReadModel;
-use App\Infrastructure\Importations\CodeIgniterPreventiveLibraryReferenceGateway;
-use App\Infrastructure\Importations\LocalPrivateImportFileStorage;
-use App\Infrastructure\Importations\PhpSpreadsheetPreventiveLibraryReader;
+use App\Presentation\PageSize;
 use CodeIgniter\HTTP\RedirectResponse;
 use CodeIgniter\HTTP\ResponseInterface;
 use DomainException;
@@ -37,6 +30,7 @@ final class ImportManagement extends BaseController
         try {
             $actor = $this->actor();
             $page = max(1, (int) $this->request->getGet('page'));
+            $perPage = PageSize::normalize($this->request->getGet('per_page'));
 
             return $this->renderApp(
                 $actor,
@@ -44,7 +38,7 @@ final class ImportManagement extends BaseController
                 'imports-index',
                 'Importaciones',
                 service('operationsPayload')->imports(
-                    $this->listHandler()->execute($actor, $page, 20),
+                    $this->listHandler()->execute($actor, $page, $perPage),
                     $actor->hasPermission('importaciones.cargar'),
                 ),
             );
@@ -123,6 +117,7 @@ final class ImportManagement extends BaseController
         try {
             $actor = $this->actor();
             $page = max(1, (int) $this->request->getGet('page'));
+            $perPage = PageSize::normalize($this->request->getGet('per_page'));
 
             return $this->renderApp(
                 $actor,
@@ -130,7 +125,7 @@ final class ImportManagement extends BaseController
                 'imports-show',
                 'Vista previa de importación',
                 service('operationsPayload')->importPreview(
-                    $this->previewHandler()->execute($actor, $importId, $page, 50),
+                    $this->previewHandler()->execute($actor, $importId, $page, $perPage),
                     $actor->hasPermission('importaciones.cargar'),
                 ),
             );

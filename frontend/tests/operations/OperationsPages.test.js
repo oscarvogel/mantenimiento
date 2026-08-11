@@ -5,8 +5,9 @@ import EquipmentDetailPage from '../../src/pages/operations/EquipmentDetailPage.
 import ImportsIndexPage from '../../src/pages/operations/ImportsIndexPage.vue'
 import ImportsShowPage from '../../src/pages/operations/ImportsShowPage.vue'
 import MaintenanceOverviewPage from '../../src/pages/operations/MaintenanceOverviewPage.vue'
+import PreventivePlansPage from '../../src/pages/operations/PreventivePlansPage.vue'
 import { resolveOperationPage } from '../../src/pages/operations/index.js'
-import { assetsData, equipmentData, importsData, importShowData, maintenanceData } from './fixtures.js'
+import { assetsData, equipmentData, importsData, importShowData, maintenanceData, preventivePlansData } from './fixtures.js'
 
 const wrappers = []
 const render = (component, data) => {
@@ -23,6 +24,7 @@ afterEach(() => {
 describe('registro de componentes operativos', () => {
   it.each([
     ['maintenance-overview', MaintenanceOverviewPage],
+    ['preventive-plans', PreventivePlansPage],
     ['equipment-detail', EquipmentDetailPage],
     ['assets-index', AssetsIndexPage],
     ['imports-index', ImportsIndexPage],
@@ -33,6 +35,38 @@ describe('registro de componentes operativos', () => {
 
   it('rechaza un pageType desconocido', () => {
     expect(resolveOperationPage('admin-users')).toBeNull()
+  })
+})
+
+describe('preventive-plans', () => {
+  it('crea planes con CSRF y muestra criterios por camión', async () => {
+    const wrapper = render(PreventivePlansPage, preventivePlansData)
+    const create = wrapper.get('form[action="/mantenimiento/planes"][method="post"]')
+    expect(create.get('input[name="csrf_test_name"]').attributes('value')).toBe('secure-token')
+    await create.get('select[name="equipo_id"]').setValue('9')
+    expect(create.get('input[name="intervalo_km"]').exists()).toBe(true)
+    expect(create.find('input[name="intervalo_horas"]').exists()).toBe(false)
+    expect(wrapper.get('form[action="/mantenimiento/planes"][method="get"]').attributes('method')).toBe('get')
+    const perPage = wrapper.get('select[aria-label="Registros por página"]')
+    expect(perPage.element.value).toBe('10')
+    expect(perPage.findAll('option').map((option) => option.element.value)).toEqual(['5', '10', '25'])
+    expect(wrapper.text()).toContain('CAM-01')
+    expect(wrapper.text()).toContain('Cada 1000 km')
+    expect(wrapper.text()).toContain('próximo 10000 km')
+  })
+
+  it('conserva filtros y tamaño en los enlaces de paginación recibidos', () => {
+    const nextUrl = '/mantenimiento/planes?q=CAM&sucursal_id=1&equipo_id=9&estado=PROXIMO&por_pagina=5&page=2'
+    const data = { ...preventivePlansData, plans: { ...preventivePlansData.plans, pagination: { ...preventivePlansData.plans.pagination, totalPages: 2, perPage: 5, nextUrl } } }
+    const wrapper = render(PreventivePlansPage, data)
+
+    expect(wrapper.get(`a[href="${nextUrl}"]`).text()).toContain('Siguiente')
+  })
+
+  it('oculta el alta sin permiso y conserva el empty state', () => {
+    const wrapper = render(PreventivePlansPage, { ...preventivePlansData, canEdit: false, plans: { ...preventivePlansData.plans, total: 0, items: [] } })
+    expect(wrapper.find('form[action="/mantenimiento/planes"][method="post"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('No hay planes preventivos')
   })
 })
 
@@ -47,6 +81,8 @@ describe('maintenance-overview', () => {
     expect(wrapper.get('form[action="/mantenimiento/avisos/3/orden"]').attributes('method')).toBe('post')
     expect(wrapper.get('form[action="/mantenimiento/ordenes/4/cerrar"]').attributes('method')).toBe('post')
     expect(wrapper.findAll('input[name="csrf_test_name"]').every((input) => input.attributes('value') === 'secure-token')).toBe(true)
+    expect(wrapper.findAll('select[aria-label="Registros por página"]')).toHaveLength(5)
+    expect(wrapper.get('a[href*="equipos_page=2"]').attributes('href')).toContain('lecturas_per_page=10')
   })
 
   it('respeta permisos y estados vacíos', () => {
@@ -64,17 +100,56 @@ describe('assets-index', () => {
   it('presenta filtros GET, fichas, QR y mutaciones de catálogos', () => {
     const wrapper = render(AssetsIndexPage, assetsData)
 
-    expect(wrapper.get('form[action="/mantenimiento/equipos"]').attributes('method')).toBe('get')
+    expect(wrapper.get('form[action="/mantenimiento/equipos"][method="get"]').attributes('method')).toBe('get')
     expect(wrapper.find('a[href="/mantenimiento/equipos/9"]').exists()).toBe(true)
     expect(wrapper.find('a[href="/mantenimiento/equipos/9/qr.svg"][target="_blank"]').exists()).toBe(true)
     expect(wrapper.get('form[action="/mantenimiento/catalogos/marcas/2/inactivar"]').attributes('method')).toBe('post')
     expect(wrapper.get('form[action="/mantenimiento/catalogos/modelos/3/inactivar"]').attributes('method')).toBe('post')
+    const create = wrapper.get('form[action="/mantenimiento/equipos"][method="post"]')
+    for (const name of ['sucursal_id', 'tipo_equipo_id', 'codigo', 'patente', 'marca_id', 'modelo_id', 'fecha_alta', 'anio', 'chasis', 'motor', 'observaciones']) {
+      expect(create.find(`[name="${name}"]`).exists()).toBe(true)
+    }
+    expect(create.get('input[name="csrf_test_name"]').attributes('value')).toBe('secure-token')
   })
 
   it('oculta edición de catálogos a usuarios de consulta', () => {
     const wrapper = render(AssetsIndexPage, { ...assetsData, canEdit: false })
     expect(wrapper.find('form[action="/mantenimiento/catalogos/marcas"]').exists()).toBe(false)
+    expect(wrapper.find('form[action="/mantenimiento/equipos"][method="post"]').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('Crear marca')
+  })
+
+  it('filtra modelos por la marca y el tipo elegidos en el alta directa', async () => {
+    const wrapper = render(AssetsIndexPage, assetsData)
+    const brand = wrapper.get('#new-equipment-brand')
+    const type = wrapper.get('#new-equipment-type')
+
+    await brand.setValue('2')
+    expect(wrapper.get('#new-equipment-model').text()).toContain('R450')
+    expect(wrapper.get('#new-equipment-model').text()).not.toContain('FH')
+
+    await brand.setValue('4')
+    expect(wrapper.get('#new-equipment-model').text()).toContain('FH')
+    expect(wrapper.get('#new-equipment-model').text()).not.toContain('R450')
+
+    await type.setValue('2')
+    expect(wrapper.get('#new-equipment-model option[value=""]').exists()).toBe(true)
+    expect(wrapper.findAll('#new-equipment-model option')).toHaveLength(1)
+  })
+
+  it('pagina equipos, marcas y modelos de forma independiente sin recortar los catalogos de alta', () => {
+    const wrapper = render(AssetsIndexPage, assetsData)
+    const selectors = wrapper.findAll('select[aria-label="Registros por página"]')
+
+    expect(selectors).toHaveLength(3)
+    expect(selectors.map((selector) => selector.element.value)).toEqual(['10', '5', '10'])
+    expect(selectors.every((selector) => selector.findAll('option').map((option) => option.text()).join(',') === '5,10,25')).toBe(true)
+    expect(wrapper.findAll('input[id^="brand-"]')).toHaveLength(1)
+    expect(wrapper.findAll('input[id^="model-"]')).toHaveLength(1)
+    expect(wrapper.get('#new-equipment-brand').findAll('option')).toHaveLength(3)
+    expect(wrapper.get('#new-equipment-model').findAll('option')).toHaveLength(1)
+    expect(wrapper.find('a[href="?brand_page=2&brand_per_page=5&model_page=1&model_per_page=10"]').exists()).toBe(true)
+    expect(wrapper.find('a[href="?brand_page=1&brand_per_page=5&model_page=2&model_per_page=10"]').exists()).toBe(true)
   })
 })
 
@@ -86,6 +161,8 @@ describe('equipment-detail', () => {
       expect(wrapper.get(`form[action="${action}"]`).attributes('method')).toBe('post')
     }
     expect(wrapper.find('a[href="/mantenimiento/equipos/9/adjuntos/2/descargar"]').exists()).toBe(true)
+    expect(wrapper.get('select[name="tipo_equipo_id"]').element.value).toBe('1')
+    expect(wrapper.get('input[name="fecha_alta"]').element.value).toBe('2025-01-02')
   })
 
   it('mantiene modo consulta para baja y sin permiso de lecturas', () => {
@@ -103,6 +180,13 @@ describe('equipment-detail', () => {
     const event = new Event('submit', { bubbles: true, cancelable: true })
     form.dispatchEvent(event)
     expect(event.defaultPrevented).toBe(true)
+  })
+
+  it('muestra un selector de tamaño para cada listado paginable de la ficha', () => {
+    const wrapper = render(EquipmentDetailPage, equipmentData)
+    const selectors = wrapper.findAll('select[aria-label="Registros por página"]')
+    expect(selectors).toHaveLength(4)
+    expect(selectors.every((selector) => selector.element.value === '10')).toBe(true)
   })
 })
 

@@ -33,4 +33,43 @@ final class CodeIgniterAssetCatalogReadModel implements AssetCatalogReadModel
             'types' => $types->orderBy('nombre')->get()->getResultArray(),
         ];
     }
+
+    public function paginateManagement(
+        int $companyId,
+        int $brandPage,
+        int $brandsPerPage,
+        int $modelPage,
+        int $modelsPerPage,
+    ): array {
+        $brands = $this->database->table('marcas')
+            ->select('id, nombre, activo')
+            ->where('empresa_id', $companyId);
+        $brandTotal = (clone $brands)->countAllResults();
+        $brandTotalPages = max(1, (int) ceil($brandTotal / $brandsPerPage));
+        $brandPage = min($brandPage, $brandTotalPages);
+        $brandItems = $brands->orderBy('nombre')->orderBy('id')
+            ->limit($brandsPerPage, ($brandPage - 1) * $brandsPerPage)->get()->getResultArray();
+
+        $models = $this->database->table('modelos m')
+            ->select('m.id, m.marca_id, m.tipo_equipo_id, m.nombre, m.activo, ma.nombre marca_nombre, te.nombre tipo_nombre')
+            ->join('marcas ma', 'ma.id = m.marca_id AND ma.empresa_id = m.empresa_id', 'inner')
+            ->join('tipos_equipo te', 'te.id = m.tipo_equipo_id', 'inner')
+            ->where('m.empresa_id', $companyId);
+        $modelTotal = (clone $models)->countAllResults();
+        $modelTotalPages = max(1, (int) ceil($modelTotal / $modelsPerPage));
+        $modelPage = min($modelPage, $modelTotalPages);
+        $modelItems = $models->orderBy('ma.nombre')->orderBy('m.nombre')->orderBy('m.id')
+            ->limit($modelsPerPage, ($modelPage - 1) * $modelsPerPage)->get()->getResultArray();
+
+        return [
+            'brands' => [
+                'items' => $brandItems, 'total' => $brandTotal, 'page' => $brandPage, 'perPage' => $brandsPerPage,
+                'totalPages' => $brandTotalPages,
+            ],
+            'models' => [
+                'items' => $modelItems, 'total' => $modelTotal, 'page' => $modelPage, 'perPage' => $modelsPerPage,
+                'totalPages' => $modelTotalPages,
+            ],
+        ];
+    }
 }

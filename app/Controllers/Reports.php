@@ -7,6 +7,7 @@ namespace App\Controllers;
 use App\Application\Identity\ActorContext;
 use App\Application\Reports\GetMaintenanceReport;
 use App\Infrastructure\Identity\SessionActorContext;
+use App\Presentation\PageSize;
 use CodeIgniter\HTTP\RedirectResponse;
 use CodeIgniter\HTTP\ResponseInterface;
 use DomainException;
@@ -24,7 +25,7 @@ final class Reports extends BaseController
                 $this->textQuery('desde'),
                 $this->textQuery('hasta'),
                 max(1, (int) $this->request->getGet('page')),
-                20,
+                $this->perPage(),
             );
             $query = [
                 'sucursal_id' => $report['filters']['branchId'],
@@ -113,6 +114,11 @@ final class Reports extends BaseController
         $value = $this->request->getGet($key);
 
         return is_string($value) ? trim($value) : null;
+    }
+
+    private function perPage(): int
+    {
+        return PageSize::normalize($this->request->getGet('per_page'));
     }
 
     private function csvCell(mixed $value): string

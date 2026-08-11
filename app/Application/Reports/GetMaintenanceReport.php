@@ -25,7 +25,7 @@ final class GetMaintenanceReport
         ?string $from,
         ?string $to,
         int $page = 1,
-        int $perPage = 20,
+        int $perPage = 10,
     ): array {
         $scope = $this->scope($actor, $branchId, $from, $to, $page, $perPage);
         $report = $this->readModel->fetch($scope);
@@ -33,6 +33,7 @@ final class GetMaintenanceReport
             'branchId' => $scope->selectedBranchId,
             'from' => $scope->from->format('Y-m-d'),
             'to' => $scope->to->format('Y-m-d'),
+            'perPage' => $scope->perPage,
         ];
 
         return $report;
@@ -86,7 +87,7 @@ final class GetMaintenanceReport
             $fromDate,
             $toDate,
             max(1, $page),
-            min(100, max(1, $perPage)),
+            in_array($perPage, [5, 10, 25], true) ? $perPage : 10,
         );
     }
 

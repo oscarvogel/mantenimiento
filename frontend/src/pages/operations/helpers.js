@@ -6,7 +6,15 @@ export const secondaryButton = 'inline-flex min-h-10 items-center justify-center
 
 export const dangerButton = 'inline-flex min-h-10 items-center justify-center rounded-lg border border-danger/30 bg-white px-3.5 py-2 text-sm font-semibold text-danger-strong hover:bg-danger-subtle disabled:cursor-not-allowed disabled:opacity-50'
 
-export const today = () => new Date().toISOString().slice(0, 10)
+export const localDateValue = (date) => {
+  const year = String(date.getFullYear()).padStart(4, '0')
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+
+  return `${year}-${month}-${day}`
+}
+
+export const today = () => localDateValue(new Date())
 
 export const nowLocal = () => {
   const date = new Date(Date.now() - new Date().getTimezoneOffset() * 60_000)

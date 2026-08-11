@@ -12,16 +12,36 @@ final class AdministrationPayload
     public function superadmin(array $source): array
     {
         $companies = $source['companies'] ?? [];
+        $companiesTotal = (int) ($source['companiesTotal'] ?? count($companies));
+        $usersTotal = (int) ($source['usersTotal'] ?? count($source['users'] ?? []));
+        $base = base_url('superadmin');
+        $sharedQuery = [
+            'companies_page' => (int) ($source['companiesPage'] ?? 1),
+            'companies_per_page' => (int) ($source['companiesPerPage'] ?? 10),
+            'users_page' => (int) ($source['usersPage'] ?? 1),
+            'users_per_page' => (int) ($source['usersPerPage'] ?? 10),
+        ];
 
         return [
-            'permissions' => ['companiesEdit' => true, 'assignCompanies' => true, 'assignRoles' => true],
-            'metrics' => [
-                'companiesTotal' => count($companies),
-                'companiesActive' => count(array_filter($companies, fn (array $row): bool => (int) $row['estado'] === 1)),
-                'usersTotal' => count($source['users'] ?? []),
+            'permissions' => [
+                'companiesEdit' => true,
+                'createCompanyAdministrators' => true,
+                'assignCompanies' => true,
+                'assignRoles' => true,
             ],
-            'actions' => ['createCompany' => base_url('superadmin/empresas')],
-            'oldInput' => $this->old(['razon_social', 'nombre_fantasia', 'cuit', 'email', 'telefono']),
+            'metrics' => [
+                'companiesTotal' => $companiesTotal,
+                'companiesActive' => (int) ($source['companiesActive'] ?? count(array_filter($companies, fn (array $row): bool => (int) $row['estado'] === 1))),
+                'usersTotal' => $usersTotal,
+            ],
+            'actions' => [
+                'createCompany' => base_url('superadmin/empresas'),
+                'createCompanyAdministrator' => base_url('superadmin/administradores'),
+            ],
+            'oldInput' => $this->old([
+                'razon_social', 'nombre_fantasia', 'cuit', 'email', 'telefono',
+                'admin_empresa_id', 'admin_nombre', 'admin_email', 'admin_motivo',
+            ]),
             'companies' => array_map(fn (array $row): array => [
                 'id' => (int) $row['id'], 'razonSocial' => $row['razon_social'],
                 'nombreFantasia' => $row['nombre_fantasia'] ?? '',
@@ -30,9 +50,13 @@ final class AdministrationPayload
                 'active' => (int) $row['estado'] === 1,
                 'actions' => ['update' => base_url('superadmin/empresas/' . $row['id'])],
             ], $companies),
+            'companiesPagination' => $this->pagination(
+                $base, (int) ($source['companiesPage'] ?? 1), (int) ($source['companiesPerPage'] ?? 10),
+                $companiesTotal, 'companies_page', 'companies_per_page', $sharedQuery,
+            ),
             'assignableCompanies' => array_values(array_map(fn (array $row): array => [
                 'id' => (int) $row['id'], 'name' => $row['nombre_fantasia'] ?: $row['razon_social'],
-            ], array_filter($companies, fn (array $row): bool => (int) $row['estado'] === 1))),
+            ], $source['assignableCompanies'] ?? array_filter($companies, fn (array $row): bool => (int) $row['estado'] === 1))),
             'roles' => $this->roles($source['roles'] ?? []),
             'users' => array_map(fn (array $row): array => [
                 'id' => (int) $row['id'], 'name' => $row['nombre'], 'email' => $row['email'],
@@ -45,6 +69,10 @@ final class AdministrationPayload
                     'assignRoles' => base_url('superadmin/usuarios/' . $row['id'] . '/roles'),
                 ],
             ], $source['users'] ?? []),
+            'usersPagination' => $this->pagination(
+                $base, (int) ($source['usersPage'] ?? 1), (int) ($source['usersPerPage'] ?? 10),
+                $usersTotal, 'users_page', 'users_per_page', $sharedQuery,
+            ),
         ];
     }
 
@@ -57,9 +85,9 @@ final class AdministrationPayload
             'company' => ['id' => (int) $source['company']['id'], 'name' => $source['company']['nombre_fantasia'] ?: $source['company']['razon_social']],
             'permissions' => ['edit' => $actor->hasPermission('sucursales.editar')],
             'metrics' => [
-                'total' => count($branches),
-                'active' => count(array_filter($branches, fn (array $row): bool => (int) $row['estado'] === 1)),
-                'inactive' => count(array_filter($branches, fn (array $row): bool => (int) $row['estado'] !== 1)),
+                'total' => (int) ($source['branchesTotal'] ?? count($branches)),
+                'active' => (int) ($source['branchesActive'] ?? count(array_filter($branches, fn (array $row): bool => (int) $row['estado'] === 1))),
+                'inactive' => (int) ($source['branchesTotal'] ?? count($branches)) - (int) ($source['branchesActive'] ?? count(array_filter($branches, fn (array $row): bool => (int) $row['estado'] === 1))),
             ],
             'actions' => ['create' => base_url('administracion/sucursales')],
             'oldInput' => [
@@ -72,6 +100,11 @@ final class AdministrationPayload
                 'active' => (int) $row['estado'] === 1,
                 'actions' => ['update' => base_url('administracion/sucursales/' . $row['id'])],
             ], $branches),
+            'pagination' => $this->pagination(
+                base_url('administracion/sucursales'), (int) ($source['branchesPage'] ?? 1),
+                (int) ($source['branchesPerPage'] ?? 10), (int) ($source['branchesTotal'] ?? count($branches)),
+                'page', 'per_page', [],
+            ),
         ];
     }
 
@@ -89,9 +122,9 @@ final class AdministrationPayload
                 'editAccess' => $canEditAccess, 'resetPasswords' => $canEditAccounts,
             ],
             'metrics' => [
-                'total' => count($users),
-                'active' => count(array_filter($users, fn (array $row): bool => (int) $row['activo'] === 1)),
-                'inactive' => count(array_filter($users, fn (array $row): bool => (int) $row['activo'] !== 1)),
+                'total' => (int) ($source['usersTotal'] ?? count($users)),
+                'active' => (int) ($source['usersActive'] ?? count(array_filter($users, fn (array $row): bool => (int) $row['activo'] === 1))),
+                'inactive' => (int) ($source['usersTotal'] ?? count($users)) - (int) ($source['usersActive'] ?? count(array_filter($users, fn (array $row): bool => (int) $row['activo'] === 1))),
             ],
             'actions' => ['create' => base_url('administracion/usuarios')],
             'oldInput' => [
@@ -124,6 +157,31 @@ final class AdministrationPayload
                     ],
                 ];
             }, $users),
+            'pagination' => $this->pagination(
+                base_url('administracion/usuarios'), (int) ($source['usersPage'] ?? 1),
+                (int) ($source['usersPerPage'] ?? 10), (int) ($source['usersTotal'] ?? count($users)),
+                'page', 'per_page', [],
+            ),
+        ];
+    }
+
+    /** @param array<string,int> $query */
+    private function pagination(string $base, int $page, int $perPage, int $total, string $pageKey, string $perPageKey, array $query): array
+    {
+        $totalPages = max(1, (int) ceil($total / $perPage));
+        $url = static function (int $target) use ($base, $query, $pageKey, $perPageKey, $perPage): string {
+            $parameters = $query;
+            $parameters[$pageKey] = $target;
+            $parameters[$perPageKey] = $perPage;
+
+            return $base . '?' . http_build_query($parameters);
+        };
+
+        return [
+            'page' => $page, 'totalPages' => $totalPages, 'total' => $total,
+            'perPage' => $perPage, 'pageKey' => $pageKey, 'perPageKey' => $perPageKey,
+            'previousUrl' => $page > 1 ? $url($page - 1) : null,
+            'nextUrl' => $page < $totalPages ? $url($page + 1) : null,
         ];
     }
 

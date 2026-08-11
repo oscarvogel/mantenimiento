@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
-use App\Application\Assets\CreateEquipmentCommand;
-use App\Application\Assets\CreateEquipmentHandler;
 use App\Application\Assets\AssetCatalogService;
 use App\Application\Identity\ActorContext;
 use App\Application\MaintenanceCircuit\ClosePreventiveOrder;
+use App\Application\MaintenanceCircuit\CircuitOverviewPagination;
 use App\Application\MaintenanceCircuit\DetectOverduePlans;
 use App\Application\MaintenanceCircuit\GeneratePreventiveOrderFromNotice;
 use App\Application\MaintenanceCircuit\GetCircuitOverview;
@@ -30,13 +29,18 @@ final class MaintenanceCircuit extends BaseController
     public function index(): string
     {
         $actor = $this->actor();
-        $data = $this->overview()->execute($actor);
+        $data = $this->overview()->execute($actor, $this->overviewPagination());
         $data['assetCatalogs'] = $this->assetCatalog()->list($actor);
         $states = [];
         if ($actor->hasPermission('planes.ver')) {
             foreach ($this->due()->execute($actor, (int) $actor->companyId()) as $result) {
                 $states[(int) $result['plan']->id()] = $result['evaluation']->estado()->value;
             }
+        } else {
+            // El overview combina varios contextos. No debe serializar planes
+            // cuando el actor solo puede consultar equipos u órdenes.
+            $data['plans'] = [];
+            $data['pagination']['plans'] = ['total' => 0, 'page' => 1, 'perPage' => 10, 'totalPages' => 1];
         }
         foreach ($data['plans'] as &$plan) {
             $plan['computed_state'] = $states[(int) $plan['id']] ?? 'SIN_DATOS';
@@ -59,29 +63,6 @@ final class MaintenanceCircuit extends BaseController
             'Mantenimiento preventivo',
             service('operationsPayload')->maintenance($data),
         );
-    }
-
-    public function createEquipment(): RedirectResponse
-    {
-        try {
-            $result = $this->createEquipmentHandler()->execute($this->actor(), new CreateEquipmentCommand(
-                (int) $this->request->getPost('sucursal_id'),
-                (int) $this->request->getPost('tipo_equipo_id'),
-                (string) $this->request->getPost('codigo'),
-                $this->nullableString($this->request->getPost('patente')),
-                new DateTimeImmutable((string) $this->request->getPost('fecha_alta')),
-                $this->nullableString($this->request->getPost('observaciones')),
-                $this->nullableInt($this->request->getPost('marca_id')),
-                $this->nullableInt($this->request->getPost('modelo_id')),
-                $this->nullableInt($this->request->getPost('anio')),
-                $this->nullableString($this->request->getPost('chasis')),
-                $this->nullableString($this->request->getPost('motor')),
-            ));
-
-            return $this->success("Equipo {$result->code} creado correctamente.");
-        } catch (Throwable $exception) {
-            return $this->failure($exception);
-        }
     }
 
     public function registerReading(int $equipmentId): RedirectResponse
@@ -198,7 +179,6 @@ final class MaintenanceCircuit extends BaseController
 
     private function overview(): GetCircuitOverview { return service('circuitOverview'); }
     private function due(): ConsultarVencimientos { return service('consultMaintenanceDue'); }
-    private function createEquipmentHandler(): CreateEquipmentHandler { return service('createEquipment'); }
     private function assetCatalog(): AssetCatalogService { return service('assetCatalog'); }
     private function registerReadingHandler(): RegisterReadingHandler { return service('registerReading'); }
     private function assignPlanHandler(): AsignarPlan { return service('assignMaintenancePlan'); }
@@ -206,6 +186,30 @@ final class MaintenanceCircuit extends BaseController
     private function generateOrderHandler(): GeneratePreventiveOrderFromNotice { return service('generatePreventiveOrderFromNotice'); }
     private function startOrderHandler(): StartWorkOrder { return service('startWorkOrder'); }
     private function closeOrderHandler(): ClosePreventiveOrder { return service('closePreventiveOrder'); }
+
+    private function overviewPagination(): CircuitOverviewPagination
+    {
+        $pages = [];
+        $sizes = [];
+        foreach (CircuitOverviewPagination::LISTS as $list) {
+            $pages[$list] = $this->request->getGet($this->paginationKey($list, 'page'));
+            $sizes[$list] = $this->request->getGet($this->paginationKey($list, 'per_page'));
+        }
+
+        return new CircuitOverviewPagination($pages, $sizes);
+    }
+
+    private function paginationKey(string $list, string $suffix): string
+    {
+        return match ($list) {
+            'equipments' => 'equipos_' . $suffix,
+            'plans' => 'planes_' . $suffix,
+            'notices' => 'avisos_' . $suffix,
+            'orders' => 'ordenes_' . $suffix,
+            'readings' => 'lecturas_' . $suffix,
+            default => $list . '_' . $suffix,
+        };
+    }
 
     private function success(string $message): RedirectResponse
     {

@@ -90,6 +90,38 @@ final class EquipmentTest extends TestCase
         self::assertSame(1, $equipment->type()->id());
     }
 
+    public function testProfileUpdateCanChangeTypeAndRegistrationDateWithoutUsage(): void
+    {
+        $equipment = Equipment::create(1, 2, $this->bothMetrics(), 'EQ-01', null, new DateTimeImmutable('2026-08-08'));
+
+        $equipment->updateProfile(
+            'EQ-01', null, null, type: new EquipmentType(2, 'Máquina', false, true),
+            registeredAt: new DateTimeImmutable('2026-08-09'), today: new DateTimeImmutable('2026-08-10'),
+        );
+
+        self::assertSame(2, $equipment->type()->id());
+        self::assertSame('2026-08-09', $equipment->registeredAt()->format('Y-m-d'));
+    }
+
+    public function testTypeChangeCannotDisableAnExistingUsageSnapshot(): void
+    {
+        $equipment = $this->persistedEquipment(1000, '50.0');
+
+        $this->expectException(DomainException::class);
+        $equipment->updateProfile('EQ-01', null, null, type: new EquipmentType(2, 'Máquina', false, true));
+    }
+
+    public function testRegistrationDateCannotBeFuture(): void
+    {
+        $equipment = Equipment::create(1, 2, $this->bothMetrics(), 'EQ-01', null, new DateTimeImmutable('2026-08-08'));
+
+        $this->expectException(DomainException::class);
+        $equipment->updateProfile(
+            'EQ-01', null, null,
+            registeredAt: new DateTimeImmutable('2026-08-11'), today: new DateTimeImmutable('2026-08-10'),
+        );
+    }
+
     public function testTransferChangesCurrentBranchAndReturnsOrigin(): void
     {
         $equipment = $this->persistedEquipment(1000, null);

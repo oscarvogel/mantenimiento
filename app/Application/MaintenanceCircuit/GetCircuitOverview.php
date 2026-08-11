@@ -15,7 +15,7 @@ final class GetCircuitOverview
     }
 
     /** @return array<string, mixed> */
-    public function execute(ActorContext $actor): array
+    public function execute(ActorContext $actor, ?CircuitOverviewPagination $pagination = null): array
     {
         if ($actor->isSuperAdmin() || $actor->companyId() === null) {
             throw new DomainException('El circuito operativo requiere una cuenta perteneciente a una empresa.');
@@ -28,6 +28,7 @@ final class GetCircuitOverview
         return $this->overview->fetch(
             $actor->companyId(),
             $actor->hasAllCompanyBranches() ? null : $actor->branchIds(),
+            $pagination ?? new CircuitOverviewPagination(),
         );
     }
 

@@ -15,6 +15,7 @@ import AdminMetric from './components/AdminMetric.vue'
 import AdminPageHeading from './components/AdminPageHeading.vue'
 import CsrfField from './components/CsrfField.vue'
 import StatusBadge from './components/StatusBadge.vue'
+import PaginationBar from '../operations/components/PaginationBar.vue'
 
 defineProps({
   data: {
@@ -120,7 +121,7 @@ const includesId = (ids, id) => ids.includes(Number(id))
           <h2 id="users-list-title" class="text-lg font-bold text-ink">Usuarios de la empresa</h2>
           <p class="mt-1 text-sm text-ink-muted">Los cambios sensibles requieren un motivo y quedan auditados.</p>
         </div>
-        <span class="rounded-full bg-surface-muted px-3 py-1 text-sm font-semibold text-ink-muted">{{ data.users.length }}</span>
+        <span class="rounded-full bg-surface-muted px-3 py-1 text-sm font-semibold text-ink-muted">{{ data.metrics.total }}</span>
       </div>
 
       <div class="space-y-4">
@@ -271,6 +272,8 @@ const includesId = (ids, id) => ids.includes(Number(id))
           <p class="mt-1 text-sm text-ink-muted">Creá la primera cuenta de esta empresa.</p>
         </div>
       </div>
+
+      <PaginationBar :pagination="data.pagination" />
     </section>
   </div>
 </template>

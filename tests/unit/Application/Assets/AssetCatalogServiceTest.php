@@ -61,12 +61,45 @@ final class AssetCatalogServiceTest extends TestCase
         $service->list($viewer, true);
     }
 
+    public function testPaginatesBrandAndModelManagementIndependentlyWithinTenant(): void
+    {
+        $readModel = new Phase2CAssetCatalogReadModelFake();
+        $service = $this->service(new Phase2CBrandRepositoryFake(), new Phase2CModelRepositoryFake(), $readModel);
+
+        $result = $service->paginateManagement($this->actor(), 2, 5, 3, 25);
+
+        self::assertSame([5, 2, 5, 3, 25], $readModel->paginationRequest);
+        self::assertSame(12, $result['brands']['total']);
+        self::assertSame(51, $result['models']['total']);
+    }
+
+    public function testViewerCannotRequestCatalogManagementPages(): void
+    {
+        $service = $this->service(new Phase2CBrandRepositoryFake(), new Phase2CModelRepositoryFake());
+        $viewer = new ActorContext(3, 5, false, true, ['Consulta'], ['equipos.ver'], []);
+
+        $this->expectException(DomainException::class);
+        $service->paginateManagement($viewer, 1, 10, 1, 10);
+    }
+
+    public function testRejectsManagementPageSizesOutsideTheSupportedWhitelist(): void
+    {
+        $service = $this->service(new Phase2CBrandRepositoryFake(), new Phase2CModelRepositoryFake());
+
+        $this->expectException(DomainException::class);
+        $service->paginateManagement($this->actor(), 1, 20, 1, 10);
+    }
+
     private function actor(): ActorContext
     {
         return new ActorContext(3, 5, false, true, ['Responsable'], ['equipos.ver', 'equipos.editar'], []);
     }
 
-    private function service(Phase2CBrandRepositoryFake $brands, Phase2CModelRepositoryFake $models): AssetCatalogService
+    private function service(
+        Phase2CBrandRepositoryFake $brands,
+        Phase2CModelRepositoryFake $models,
+        ?AssetCatalogReadModel $readModel = null,
+    ): AssetCatalogService
     {
         return new AssetCatalogService(
             $brands,
@@ -74,11 +107,35 @@ final class AssetCatalogServiceTest extends TestCase
             new class implements EquipmentTypeCatalog {
                 public function findActiveById(int $typeId): ?EquipmentType { return $typeId === 9 ? new EquipmentType(9, 'Tractor', true, true) : null; }
             },
-            new class implements AssetCatalogReadModel {
-                public function list(int $companyId, bool $includeInactive): array { return ['brands' => [], 'models' => [], 'types' => []]; }
-            },
+            $readModel ?? new Phase2CAssetCatalogReadModelFake(),
             new class implements AssetUnitOfWork { public function transactional(callable $operation): mixed { return $operation(); } },
         );
+    }
+}
+
+final class Phase2CAssetCatalogReadModelFake implements AssetCatalogReadModel
+{
+    /** @var array{int,int,int,int,int}|null */
+    public ?array $paginationRequest = null;
+
+    public function list(int $companyId, bool $includeInactive): array
+    {
+        return ['brands' => [], 'models' => [], 'types' => []];
+    }
+
+    public function paginateManagement(
+        int $companyId,
+        int $brandPage,
+        int $brandsPerPage,
+        int $modelPage,
+        int $modelsPerPage,
+    ): array {
+        $this->paginationRequest = [$companyId, $brandPage, $brandsPerPage, $modelPage, $modelsPerPage];
+
+        return [
+            'brands' => ['items' => [], 'total' => 12, 'page' => $brandPage, 'perPage' => $brandsPerPage, 'totalPages' => 3],
+            'models' => ['items' => [], 'total' => 51, 'page' => $modelPage, 'perPage' => $modelsPerPage, 'totalPages' => 3],
+        ];
     }
 }
 

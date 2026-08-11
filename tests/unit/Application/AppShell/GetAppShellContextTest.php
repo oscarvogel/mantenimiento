@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Application\AppShell\GetAppShellContext;
 use App\Application\AppShell\Port\AppShellReadModel;
 use App\Application\Identity\ActorContext;
+use App\Presentation\AppShellPayload;
 use PHPUnit\Framework\TestCase;
 
 final class GetAppShellContextTest extends TestCase
@@ -30,6 +31,27 @@ final class GetAppShellContextTest extends TestCase
         self::assertSame('Administración global', $result['company']['name']);
         self::assertSame([], $result['company']['branches']);
         self::assertTrue($result['user']['isSuperAdmin']);
+    }
+
+    public function testShowsPreventivePlansNavigationOnlyWithReadPermission(): void
+    {
+        $context = new GetAppShellContext(new AppShellReadModelFake());
+        $withPlans = new ActorContext(7, 5, false, false, ['Responsable'], ['planes.ver'], [9]);
+        $withoutPlans = new ActorContext(8, 5, false, false, ['Consulta'], ['equipos.ver'], [9]);
+
+        $visible = (new AppShellPayload($context))->for($withPlans, 'plans');
+        $hidden = (new AppShellPayload($context))->for($withoutPlans, 'equipment');
+
+        $plansItem = array_values(array_filter(
+            $visible['navigation'],
+            static fn (array $item): bool => $item['key'] === 'plans',
+        ));
+
+        self::assertCount(1, $plansItem);
+        self::assertSame('Planes preventivos', $plansItem[0]['label']);
+        self::assertStringEndsWith('/mantenimiento/planes', $plansItem[0]['href']);
+        self::assertTrue($plansItem[0]['active']);
+        self::assertNotContains('plans', array_column($hidden['navigation'], 'key'));
     }
 }
 

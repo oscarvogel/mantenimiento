@@ -14,14 +14,14 @@ final class TenantAdministrationService
     {
     }
 
-    public function branchesOverview(ActorContext $actor): array
+    public function branchesOverview(ActorContext $actor, int $page = 1, int $perPage = 10): array
     {
-        return $this->administration->branchesOverview($this->companyFor($actor, 'sucursales.ver'));
+        return $this->administration->branchesOverview($this->companyFor($actor, 'sucursales.ver'), $page, $perPage);
     }
 
-    public function usersOverview(ActorContext $actor): array
+    public function usersOverview(ActorContext $actor, int $page = 1, int $perPage = 10): array
     {
-        return $this->administration->usersOverview($this->companyFor($actor, 'usuarios.ver'));
+        return $this->administration->usersOverview($this->companyFor($actor, 'usuarios.ver'), $page, $perPage);
     }
 
     public function createBranch(ActorContext $actor, array $data): int

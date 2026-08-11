@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Application\Assets;
 
+use DateTimeImmutable;
+
 final readonly class UpdateEquipmentCommand
 {
     public function __construct(
@@ -16,6 +18,8 @@ final readonly class UpdateEquipmentCommand
         public ?int $year = null,
         public ?string $chassis = null,
         public ?string $engine = null,
+        public ?int $typeId = null,
+        public ?DateTimeImmutable $registeredAt = null,
     ) {
     }
 }

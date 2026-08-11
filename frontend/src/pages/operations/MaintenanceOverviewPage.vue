@@ -5,6 +5,7 @@ import EmptyState from './components/EmptyState.vue'
 import FlashMessages from './components/FlashMessages.vue'
 import FormField from './components/FormField.vue'
 import PageHeading from './components/PageHeading.vue'
+import PaginationBar from './components/PaginationBar.vue'
 import PanelCard from './components/PanelCard.vue'
 import StatusBadge from './components/StatusBadge.vue'
 import { fieldClass, primaryButton, secondaryButton, today } from './helpers.js'
@@ -61,6 +62,7 @@ defineProps({ data: { type: Object, required: true } })
           </details>
         </article>
       </div>
+      <PaginationBar :pagination="data.pagination.equipments" />
     </PanelCard>
 
     <PanelCard title="2. Vencimientos y avisos" class="mb-6">
@@ -69,19 +71,24 @@ defineProps({ data: { type: Object, required: true } })
       <EmptyState v-if="data.plans.length === 0" title="No hay planes activos" />
       <div v-else class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3"><article v-for="plan in data.plans" :key="plan.id" class="rounded-xl border border-border p-4"><div class="flex items-start justify-between gap-3"><strong class="text-ink">{{ plan.equipmentCode }}</strong><StatusBadge :status="plan.computedState || 'SIN_DATOS'" /></div><p class="mt-2 text-sm text-ink">{{ plan.serviceName }}</p><p class="mt-2 text-xs text-ink-muted">Próximo: <span v-if="plan.nextKm !== null">{{ plan.nextKm }} km </span><span v-if="plan.nextHours !== null">{{ plan.nextHours }} h </span><span v-if="plan.nextDate !== null">{{ plan.nextDate }}</span></p></article></div>
 
+      <PaginationBar :pagination="data.pagination.plans" />
+
       <h3 class="mb-3 mt-7 text-sm font-bold uppercase tracking-wide text-ink-muted">Avisos pendientes</h3>
       <EmptyState v-if="data.notices.length === 0" title="No hay avisos vencidos pendientes" />
       <ul v-else class="space-y-3"><li v-for="notice in data.notices" :key="notice.id" class="flex flex-col justify-between gap-4 rounded-xl border border-danger/20 bg-danger-subtle/40 p-4 lg:flex-row lg:items-center"><div><strong class="text-ink">{{ notice.equipmentCode }} · {{ notice.serviceName }}</strong><p class="mt-1 text-sm text-danger-strong">Vencido por {{ notice.triggerCriteria }}</p></div><form v-if="data.can.generateOrder" method="post" :action="notice.generateOrderUrl" class="flex flex-col gap-2 sm:flex-row"><CsrfInput :csrf="data.csrf" /><label class="sr-only" :for="`notice-owner-${notice.id}`">Responsable</label><select :id="`notice-owner-${notice.id}`" name="responsable_usuario_id" :class="fieldClass"><option v-for="user in data.catalogs.users" :key="user.id" :value="user.id">{{ user.name }}</option></select><button type="submit" :class="primaryButton">Generar OT</button></form></li></ul>
+      <PaginationBar :pagination="data.pagination.notices" />
     </PanelCard>
 
     <PanelCard title="3. Órdenes de trabajo" class="mb-6">
       <EmptyState v-if="data.orders.length === 0" title="Todavía no hay órdenes" description="Las órdenes generadas desde avisos aparecerán en esta sección." />
       <div v-else class="grid gap-4 xl:grid-cols-2"><article v-for="order in data.orders" :key="order.id" class="rounded-xl border border-border p-5"><div class="flex items-start justify-between gap-3"><strong class="text-ink">{{ order.number }} · {{ order.equipmentCode }}</strong><StatusBadge :status="order.status" /></div><p class="mt-2 text-sm text-ink-muted">{{ order.serviceName || 'Servicio preventivo' }} · Responsable: {{ order.ownerName || 'Sin asignar' }}</p><ul v-if="order.tasks.length" class="mt-3 space-y-1 text-sm text-ink"><li v-for="task in order.tasks" :key="task.id">{{ task.description }} <span class="text-ink-muted">({{ task.status }})</span></li></ul><form v-if="order.status === 'EMITIDA' && data.can.editOrder" method="post" :action="order.startUrl" class="mt-4"><CsrfInput :csrf="data.csrf" /><button type="submit" :class="secondaryButton">Iniciar orden</button></form><form v-else-if="order.status === 'EN_PROCESO' && data.can.closeOrder" method="post" :action="order.closeUrl" class="mt-5 grid gap-3 border-t border-border-subtle pt-5 sm:grid-cols-3"><CsrfInput :csrf="data.csrf" /><FormField label="Trabajo realizado" :for-id="`order-work-${order.id}`" class="sm:col-span-3"><textarea :id="`order-work-${order.id}`" name="trabajo_realizado" rows="2" required :class="fieldClass"></textarea></FormField><FormField label="Fecha servicio" :for-id="`order-date-${order.id}`"><input :id="`order-date-${order.id}`" type="date" name="fecha_servicio" required :value="today()" :class="fieldClass" /></FormField><FormField label="Km salida" :for-id="`order-km-${order.id}`"><input :id="`order-km-${order.id}`" type="number" min="0" name="km_salida" :class="fieldClass" /></FormField><FormField label="Horas salida" :for-id="`order-hours-${order.id}`"><input :id="`order-hours-${order.id}`" type="number" min="0" step="0.1" name="horas_salida" :class="fieldClass" /></FormField><button type="submit" :class="`${primaryButton} sm:col-span-3 sm:justify-self-start`">Cerrar y recalcular</button></form></article></div>
+      <PaginationBar :pagination="data.pagination.orders" />
     </PanelCard>
 
     <PanelCard title="Historial reciente de lecturas" flush>
       <EmptyState v-if="data.readings.length === 0" title="Sin lecturas registradas" />
       <div v-else class="overflow-x-auto"><table class="w-full min-w-[40rem] text-left text-sm"><thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-6 py-3">Equipo</th><th class="px-6 py-3">Fecha</th><th class="px-6 py-3">Km</th><th class="px-6 py-3">Horas</th><th class="px-6 py-3">Origen</th></tr></thead><tbody class="divide-y divide-border-subtle"><tr v-for="reading in data.readings" :key="reading.id"><td class="px-6 py-4 font-semibold text-ink">{{ reading.equipmentCode }}</td><td class="px-6 py-4 text-ink-muted">{{ reading.recordedAt }}</td><td class="px-6 py-4">{{ reading.kilometers ?? '—' }}</td><td class="px-6 py-4">{{ reading.hours ?? '—' }}</td><td class="px-6 py-4 text-ink-muted">{{ reading.origin }}</td></tr></tbody></table></div>
+      <PaginationBar :pagination="data.pagination.readings" />
     </PanelCard>
   </div>
 </template>
