@@ -201,6 +201,56 @@ Pasos:
 
 ---
 
+## 6.5. Correr migraciones despues del upload
+
+Ferozo no expone SSH ni CLI, asi que php spark migrate no se puede correr en
+el server. La alternativa soportada es scripts/migrate-remote.php, un script
+PHP plano pensado para subirse UNA VEZ por deploy y borrarse al terminar.
+
+### Preparacion (una sola vez por release)
+
+1. Definir MIGRATE_TOKEN en el .env de produccion. Generar el valor con:
+   `
+   php -r "echo bin2hex(random_bytes(32)).PHP_EOL;"
+   `
+   El script exige que el token tenga al menos 32 caracteres.
+
+2. Subir scripts/migrate-remote.php a la RAIZ del release como
+   migrate.php por FTPS (mismo nivel que index.php y spark).
+   NO versionar credenciales ni dejar el script permanente.
+
+### Ejecucion por HTTP
+
+Para ver el estado sin tocar la base:
+`
+curl -sS -H 'X-Migrate-Token: <TOKEN>' \
+  'https://vogelconsultoria.com.ar/mantenimiento/migrate.php?status=1'
+`
+
+Para correr las migraciones pendientes:
+`
+curl -sS -H 'X-Migrate-Token: <TOKEN>' \
+  'https://vogelconsultoria.com.ar/mantenimiento/migrate.php'
+`
+
+El script responde con texto plano: la lista de migraciones aplicadas, los
+mensajes del runner y un OK/ERROR final. Cualquier error de base se ve ahi
+antes que en el log de la app.
+
+### Limpieza (obligatoria)
+
+Borrar migrate.php por FTPS inmediatamente despues de cada deploy. El
+script imprime el recordatorio al final, pero la limpieza la hace el operador.
+
+### Por que un script y no un controller
+
+- Es un helper de deploy, no parte de la aplicacion; no queremos que viva en
+  pp/Controllers/ con un filtro permanente.
+- Al ser standalone, se sube por FTPS en el mismo paso que el resto del
+  release, sin tocar el codigo versionado.
+- Al borrarse despues, la superficie de ataque publica no aumenta entre
+  deploys.
+
 ## 7. Probar
 
 Abrir en el navegador:
