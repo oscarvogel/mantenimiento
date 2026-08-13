@@ -25,8 +25,8 @@ final readonly class AppShellPayload
             $navigation[] = $this->item('superadmin', 'Administración global', 'superadmin', 'building', $active);
         } else {
             if ($actor->hasPermission('equipos.ver')) {
-                $navigation[] = $this->item('equipment', 'Camiones', 'mantenimiento/equipos', 'truck', $active);
-                $navigation[] = $this->item('quick-readings', 'Actualizar km / horas', 'mantenimiento/lecturas/rapidas', 'readings', $active);
+                $navigation[] = $this->item('equipment', 'Equipos', 'mantenimiento/equipos', 'truck', $active);
+                $navigation[] = $this->item('quick-readings', 'Lecturas rápidas', 'mantenimiento/lecturas/rapidas', 'readings', $active);
             }
             if ($actor->hasPermission('planes.ver')) {
                 $navigation[] = $this->item('plans', 'Planes preventivos', 'mantenimiento/planes', 'calendar', $active);

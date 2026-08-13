@@ -41,8 +41,25 @@ describe('registro de componentes operativos', () => {
 })
 
 describe('preventive-plans', () => {
+  it('prioriza el listado y muestra un solo flujo de alta por vez', async () => {
+    const wrapper = render(PreventivePlansPage, preventivePlansData)
+    const listPanel = wrapper.get('form[action="/mantenimiento/planes"][method="get"]').element.closest('section')
+
+    expect(listPanel.className).toContain('order-1')
+    expect(wrapper.find('form[action="/mantenimiento/planes"][method="post"]').exists()).toBe(false)
+
+    await wrapper.get('[data-testid="open-template-plans"]').trigger('click')
+    expect(wrapper.get('#planes-desde-plantilla').classes()).toContain('order-2')
+    expect(wrapper.find('form[action="/mantenimiento/planes"][method="post"]').exists()).toBe(false)
+
+    await wrapper.get('[data-testid="open-manual-plan"]').trigger('click')
+    expect(wrapper.find('#planes-desde-plantilla').exists()).toBe(false)
+    expect(wrapper.get('form[action="/mantenimiento/planes"][method="post"]').exists()).toBe(true)
+  })
+
   it('crea planes con CSRF y muestra criterios por camión', async () => {
     const wrapper = render(PreventivePlansPage, preventivePlansData)
+    await wrapper.get('[data-testid="open-manual-plan"]').trigger('click')
     const create = wrapper.get('form[action="/mantenimiento/planes"][method="post"]')
     expect(create.get('input[name="csrf_test_name"]').attributes('value')).toBe('secure-token')
     await create.get('select[name="equipo_id"]').setValue('9')
@@ -164,17 +181,41 @@ describe('preventive-library', () => {
 })
 
 describe('maintenance-overview', () => {
-  it('conserva rutas POST, CSRF y formularios del circuito', () => {
+  it('prioriza la atención y mantiene una sola carga desplegada', async () => {
     const wrapper = render(MaintenanceOverviewPage, maintenanceData)
 
+    expect(wrapper.text()).toContain('Qué requiere atención hoy')
+    expect(wrapper.find('form[action="/mantenimiento/equipos"]').exists()).toBe(false)
+    expect(wrapper.find('form[action="/mantenimiento/equipos/9/lecturas"]').exists()).toBe(false)
+    expect(wrapper.find('form[action="/mantenimiento/equipos/9/planes"]').exists()).toBe(false)
+
+    await wrapper.get('button[aria-controls="reading-9"]').trigger('click')
+    expect(wrapper.find('form[action="/mantenimiento/equipos/9/lecturas"]').exists()).toBe(true)
+
+    await wrapper.get('button[aria-controls="plan-9"]').trigger('click')
+    expect(wrapper.find('form[action="/mantenimiento/equipos/9/lecturas"]').exists()).toBe(false)
+    expect(wrapper.find('form[action="/mantenimiento/equipos/9/planes"]').exists()).toBe(true)
+  })
+
+  it('conserva rutas POST, CSRF y formularios del circuito', async () => {
+    const wrapper = render(MaintenanceOverviewPage, maintenanceData)
+
+    await wrapper.get('button[aria-controls="overview-create-equipment"]').trigger('click')
     expect(wrapper.get('form[action="/mantenimiento/equipos"]').attributes('method')).toBe('post')
+
+    await wrapper.get('button[aria-controls="reading-9"]').trigger('click')
     expect(wrapper.get('form[action="/mantenimiento/equipos/9/lecturas"]').attributes('method')).toBe('post')
-    expect(wrapper.get('form[action="/mantenimiento/equipos/9/planes"]').attributes('method')).toBe('post')
+
+    await wrapper.get('button[aria-controls="plan-9"]').trigger('click')
     const assignPlan = wrapper.get('form[action="/mantenimiento/equipos/9/planes"]')
+    expect(assignPlan.attributes('method')).toBe('post')
     expect(assignPlan.get('input[name="intervalo_km"]').element.value).toBe('10000')
     expect(assignPlan.get('input[name="anticipacion_km"]').element.value).toBe('1000')
     expect(assignPlan.get('input[name="intervalo_horas"]').element.value).toBe('250.0')
     expect(assignPlan.get('input[name="observaciones"]').element.value).toBe('Aceite y filtros')
+
+    await wrapper.get('button[aria-controls="close-order-4"]').trigger('click')
+
     expect(wrapper.get('form[action="/mantenimiento/vencimientos/detectar"]').attributes('method')).toBe('post')
     expect(wrapper.get('form[action="/mantenimiento/avisos/3/orden"]').attributes('method')).toBe('post')
     expect(wrapper.get('form[action="/mantenimiento/ordenes/4/cerrar"]').attributes('method')).toBe('post')
@@ -189,12 +230,24 @@ describe('maintenance-overview', () => {
 
     expect(wrapper.find('form[action="/mantenimiento/equipos"]').exists()).toBe(false)
     expect(wrapper.text()).toContain('Todavía no hay equipos')
-    expect(wrapper.text()).toContain('No hay planes activos')
+    expect(wrapper.text()).toContain('No hay atención pendiente')
     expect(wrapper.text()).toContain('Todavía no hay órdenes')
   })
 })
 
 describe('assets-index', () => {
+  it('prioriza el listado y mantiene alta y catálogos como paneles colapsables', () => {
+    const wrapper = render(AssetsIndexPage, assetsData)
+    const list = wrapper.get('form[action="/mantenimiento/equipos"][method="get"]').element.closest('section')
+    const createPanel = wrapper.get('#alta-equipo').element
+    const catalogPanel = wrapper.get('form[action="/mantenimiento/catalogos/marcas"]').element.closest('details')
+
+    expect(list.compareDocumentPosition(createPanel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(createPanel.open).toBe(false)
+    expect(catalogPanel.open).toBe(false)
+    expect(wrapper.get('a[href="#alta-equipo"]').text()).toContain('Nuevo equipo')
+  })
+
   it('presenta filtros GET, fichas, QR y mutaciones de catálogos', () => {
     const wrapper = render(AssetsIndexPage, assetsData)
 
@@ -269,6 +322,23 @@ describe('assets-index', () => {
 })
 
 describe('equipment-detail', () => {
+  it('organiza la ficha en pestañas accesibles sin desmontar las operaciones', async () => {
+    const wrapper = render(EquipmentDetailPage, equipmentData)
+    const tabs = wrapper.findAll('[role="tab"]')
+
+    expect(tabs.map((tab) => tab.text())).toEqual(['Resumen', 'Mantenimiento', 'Lecturas', 'Archivos', 'Historial'])
+    expect(wrapper.get('#equipment-tab-resumen').attributes('aria-selected')).toBe('true')
+    expect(wrapper.get('#equipment-panel-lecturas').attributes('style')).toContain('display: none')
+
+    await wrapper.get('#equipment-tab-lecturas').trigger('click')
+
+    expect(wrapper.get('#equipment-tab-lecturas').attributes('aria-selected')).toBe('true')
+    expect(wrapper.get('#equipment-panel-resumen').attributes('style')).toContain('display: none')
+    expect(wrapper.get('#equipment-panel-lecturas').attributes('style') ?? '').not.toContain('display: none')
+    expect(wrapper.find('form[action="/mantenimiento/equipos/9/editar"]').exists()).toBe(true)
+    expect(wrapper.find('form[action="/mantenimiento/equipos/9/lecturas/4/corregir"]').exists()).toBe(true)
+  })
+
   it('conserva todas las operaciones sensibles y descarga privada', () => {
     const wrapper = render(EquipmentDetailPage, equipmentData)
 

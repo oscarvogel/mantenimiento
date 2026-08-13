@@ -7,7 +7,7 @@ defineProps({
 </script>
 
 <template>
-  <section class="overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card">
+  <section class="overflow-hidden rounded-xl border border-border bg-surface-raised">
     <header class="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle px-5 py-4 sm:px-6">
       <h2 class="text-base font-bold text-ink sm:text-lg">{{ title }}</h2>
       <span v-if="count !== null" class="rounded-full bg-surface-muted px-2.5 py-1 text-xs font-bold text-ink-muted">{{ count }}</span>

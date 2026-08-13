@@ -16,7 +16,7 @@ defineProps({
 </script>
 
 <template>
-  <section aria-labelledby="upcoming-title" class="overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card">
+  <section aria-labelledby="upcoming-title" class="overflow-hidden rounded-xl border border-border bg-surface-raised">
     <div class="flex items-center justify-between gap-4 border-b border-border-subtle px-5 py-4 sm:px-6">
       <div>
         <h2 id="upcoming-title" class="text-base font-bold text-ink sm:text-lg">Mantenimientos próximos</h2>

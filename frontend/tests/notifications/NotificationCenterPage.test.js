@@ -1,5 +1,4 @@
-import { mount } from '@vue/test-utils'
-import { flushPromises } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import NotificationCenterPage from '../../src/pages/notifications/NotificationCenterPage.vue'
 
@@ -13,6 +12,10 @@ const data = {
   push: { enabled: false, publicKey: '' },
   csrf: { name: 'csrf_test', hash: 'token' },
   urls: { index: 'http://example.com/notificaciones', read: '/notificaciones/leer', readAll: '/notificaciones/leer-todas', preferences: '/perfil/notificaciones', subscribe: '/push', unsubscribe: '/push/eliminar', test: '/push/prueba' },
+}
+
+const openTab = async (wrapper, label) => {
+  await wrapper.findAll('[role="tab"]').find((tab) => tab.text().includes(label)).trigger('click')
 }
 
 describe('NotificationCenterPage', () => {
@@ -33,7 +36,9 @@ describe('NotificationCenterPage', () => {
     vi.stubGlobal('PushManager', {})
     const wrapper = mount(NotificationCenterPage, { props: { data } })
     await flushPromises()
-    expect(wrapper.get('button[type="button"]').attributes()).toHaveProperty('disabled')
+    await openTab(wrapper, 'Dispositivos')
+    const activate = wrapper.findAll('button[type="button"]').find((button) => button.text().includes('Activar en'))
+    expect(activate.attributes()).toHaveProperty('disabled')
     expect(wrapper.text()).toContain('Web Push todavía no está configurado')
     vi.unstubAllGlobals()
   })
@@ -51,6 +56,7 @@ describe('NotificationCenterPage', () => {
     vi.stubGlobal('fetch', fetchMock)
     const wrapper = mount(NotificationCenterPage, { props: { data: { ...data, push: { enabled: true, publicKey: 'test-key' } } } })
     await flushPromises()
+    await openTab(wrapper, 'Dispositivos')
 
     const testPush = wrapper.findAll('button').find((button) => button.text().includes('Enviar push'))
     await testPush.trigger('click')
@@ -66,5 +72,21 @@ describe('NotificationCenterPage', () => {
     expect(unsubscribe).toHaveBeenCalledOnce()
     expect(wrapper.text()).toContain('Inactivo en este dispositivo')
     vi.unstubAllGlobals()
+  })
+
+  it('separa bandeja, preferencias y dispositivos y edita un evento por vez', async () => {
+    const wrapper = mount(NotificationCenterPage, { props: { data } })
+
+    expect(wrapper.findAll('[role="tab"]')).toHaveLength(3)
+    expect(wrapper.findAll('form')).toHaveLength(2)
+
+    await openTab(wrapper, 'Preferencias')
+
+    expect(wrapper.findAll('form')).toHaveLength(1)
+    expect(wrapper.get('input[name="event_type"]').attributes('value')).toBe('preventivo.vencido')
+    expect(wrapper.get('input[name="internal"]').attributes('value')).toBe('INMEDIATO')
+    expect(wrapper.get('input[name="csrf_test"]').attributes('value')).toBe('token')
+    expect(wrapper.findAll('select[name="email"]')).toHaveLength(1)
+    expect(wrapper.findAll('select[name="push"]')).toHaveLength(1)
   })
 })
