@@ -75,6 +75,25 @@ describe('preventive-plans', () => {
     expect(wrapper.find('form[action="/mantenimiento/planes"][method="post"]').exists()).toBe(false)
     expect(wrapper.text()).toContain('No hay planes preventivos')
   })
+
+  it('permite editar un plan activo con valores precargados', () => {
+    const wrapper = render(PreventivePlansPage, preventivePlansData)
+    const form = wrapper.get('form[action="/mantenimiento/planes/2/editar"][method="post"]')
+
+    expect(form.get('input[name="csrf_test_name"]').attributes('value')).toBe('secure-token')
+    expect(form.get('input[name="intervalo_km"]').element.value).toBe('1000')
+    expect(form.get('input[name="anticipacion_km"]').element.value).toBe('200')
+    expect(form.get('input[name="base_km"]').element.value).toBe('9000')
+    expect(form.get('select[name="prioridad"]').element.value).toBe('MEDIA')
+  })
+
+  it('oculta el formulario de edición de plan sin permiso', () => {
+    const data = { ...preventivePlansData, plans: { ...preventivePlansData.plans, items: [{ ...preventivePlansData.plans.items[0], editUrl: null }] } }
+    const wrapper = render(PreventivePlansPage, data)
+
+    expect(wrapper.find('form[action="/mantenimiento/planes/2/editar"]').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('Editar plan')
+  })
 })
 
 describe('preventive-library', () => {
@@ -118,6 +137,29 @@ describe('preventive-library', () => {
 
     expect(wrapper.find('form[action="/mantenimiento/importaciones/biblioteca/items/15"] button[type="submit"]').exists()).toBe(false)
     expect(wrapper.get('input[name="intervalo_km"]').attributes()).toHaveProperty('disabled')
+  })
+
+  it('permite editar una tarea de biblioteca con valores precargados', () => {
+    const wrapper = render(PreventiveLibraryPage, preventiveLibraryData)
+    const form = wrapper.get('form[action="/mantenimiento/importaciones/biblioteca/tareas/1"][method="post"]')
+
+    expect(form.get('input[name="csrf_test_name"]').attributes('value')).toBe('secure-token')
+    expect(form.get('input[name="tipo_servicio_id"]').attributes('value')).toBe('3')
+    expect(form.get('input[name="nombre"]').element.value).toBe('Cambiar aceite de motor')
+    expect(form.get('input[name="orden"]').element.value).toBe('1')
+    expect(form.get('input[name="duracion_estimada_min"]').element.value).toBe('45')
+    expect(form.get('textarea[name="procedimiento"]').element.value).toBe('Drenar y reemplazar')
+    expect(form.get('input[name="requiere_repuesto"]').element.checked).toBe(true)
+    expect(form.get('input[name="requiere_control"]').element.checked).toBe(true)
+    expect(form.get('input[name="obligatoria"]').element.checked).toBe(true)
+    expect(form.get('input[name="activo"]').element.checked).toBe(true)
+  })
+
+  it('oculta el formulario de edición de tareas sin permiso', () => {
+    const wrapper = render(PreventiveLibraryPage, { ...preventiveLibraryData, canEdit: false })
+
+    expect(wrapper.find('form[action="/mantenimiento/importaciones/biblioteca/tareas/1"]').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('Editar tarea')
   })
 })
 
@@ -166,6 +208,23 @@ describe('assets-index', () => {
       expect(create.find(`[name="${name}"]`).exists()).toBe(true)
     }
     expect(create.get('input[name="csrf_test_name"]').attributes('value')).toBe('secure-token')
+  })
+
+  it('permite asignar planes desde el listado cuando hay permiso', () => {
+    const wrapper = render(AssetsIndexPage, assetsData)
+    const links = wrapper.findAll('a[href="/mantenimiento/planes?equipo_id=9#planes-desde-plantilla"]')
+
+    expect(links).toHaveLength(2)
+    expect(links[0].text()).toContain('Asignar plan')
+    expect(links[1].text()).toContain('Asignar plan')
+  })
+
+  it('oculta el botón de asignar plan sin permiso', () => {
+    const data = { ...assetsData, equipment: { ...assetsData.equipment, items: [{ ...assetsData.equipment.items[0], assignPlanUrl: null }] } }
+    const wrapper = render(AssetsIndexPage, data)
+
+    expect(wrapper.find('a[href="/mantenimiento/planes?equipo_id=9#planes-desde-plantilla"]').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('Asignar plan')
   })
 
   it('oculta edición de catálogos a usuarios de consulta', () => {
@@ -229,13 +288,13 @@ describe('equipment-detail', () => {
     expect(wrapper.find('form[action="/mantenimiento/equipos/9/baja"]').exists()).toBe(false)
   })
 
-  it('permite cancelar la confirmación de baja lógica', () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(false)
+  it('marca la baja lógica con confirmación declarativa destructiva', () => {
     const wrapper = render(EquipmentDetailPage, equipmentData)
-    const form = wrapper.get('form[action="/mantenimiento/equipos/9/baja"]').element
-    const event = new Event('submit', { bubbles: true, cancelable: true })
-    form.dispatchEvent(event)
-    expect(event.defaultPrevented).toBe(true)
+    const form = wrapper.get('form[action="/mantenimiento/equipos/9/baja"]')
+
+    expect(form.attributes('data-confirm')).toBeDefined()
+    expect(form.attributes('data-confirm-danger')).toBe('true')
+    expect(form.attributes('data-confirm-title')).toContain('Dar de baja')
   })
 
   it('muestra un selector de tamaño para cada listado paginable de la ficha', () => {
@@ -273,13 +332,14 @@ describe('imports-show', () => {
     expect(wrapper.text()).toContain('VALIDA')
   })
 
-  it('cancela submit cuando el usuario no confirma persistencia', () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(false)
+  it('marca confirmar y cancelar con confirmación declarativa destructiva', () => {
     const wrapper = render(ImportsShowPage, importShowData)
-    const form = wrapper.get('form[action="/mantenimiento/importaciones/8/confirmar"]').element
-    const event = new Event('submit', { bubbles: true, cancelable: true })
-    form.dispatchEvent(event)
-    expect(event.defaultPrevented).toBe(true)
+    const confirmar = wrapper.get('form[action="/mantenimiento/importaciones/8/confirmar"]')
+    const cancelar = wrapper.get('form[action="/mantenimiento/importaciones/8/cancelar"]')
+
+    expect(confirmar.attributes('data-confirm')).toBeDefined()
+    expect(cancelar.attributes('data-confirm')).toBeDefined()
+    expect(cancelar.attributes('data-confirm-danger')).toBe('true')
   })
 
   it('deshabilita confirmar cuando no hay filas válidas', () => {

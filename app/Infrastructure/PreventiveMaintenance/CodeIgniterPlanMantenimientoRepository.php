@@ -59,6 +59,8 @@ final class CodeIgniterPlanMantenimientoRepository implements PlanMantenimientoR
             'empresa_id'         => $plan->empresaId(),
             'equipo_id'          => $plan->equipoId(),
             'tipo_servicio_id'   => $plan->tipoServicioId(),
+            'origen_plantilla_id' => $plan->origenPlantillaId(),
+            'origen_plantilla_item_id' => $plan->origenPlantillaItemId(),
             'intervalo_km'       => $plan->intervaloKm(),
             'intervalo_horas'    => DecimalHours::fromTenths($plan->intervaloHorasDecimas()),
             'intervalo_dias'     => $plan->intervaloDias(),
@@ -154,6 +156,8 @@ final class CodeIgniterPlanMantenimientoRepository implements PlanMantenimientoR
             (string) $row['prioridad'],
             (bool) $row['activo'],
             $row['observaciones'] === null ? null : (string) $row['observaciones'],
+            isset($row['origen_plantilla_id']) && $row['origen_plantilla_id'] !== null ? (int) $row['origen_plantilla_id'] : null,
+            isset($row['origen_plantilla_item_id']) && $row['origen_plantilla_item_id'] !== null ? (int) $row['origen_plantilla_item_id'] : null,
         );
     }
 }

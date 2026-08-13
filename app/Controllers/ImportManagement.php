@@ -15,6 +15,8 @@ use App\Application\Importations\GenerateImportTemplateHandler;
 use App\Application\Importations\GetImportPreviewHandler;
 use App\Application\Importations\ListImportsHandler;
 use App\Application\Importations\PreventiveLibraryValidator;
+use App\Application\Importations\UpdateLibraryTask;
+use App\Application\Importations\UpdateLibraryTaskCommand;
 use App\Domain\Importations\ImportType;
 use App\Infrastructure\Identity\SessionActorContext;
 use App\Infrastructure\Importations\CodeIgniterImportRepository;
@@ -74,6 +76,10 @@ final class ImportManagement extends BaseController
                 'services' => $overview['services'],
                 'items' => array_map(static fn (array $item): array => $item + [
                     'updateUrl' => $base . '/biblioteca/items/' . $item['id'],
+                    'tasks' => array_map(static fn (array $task): array => $task + [
+                        'updateUrl' => $base . '/biblioteca/tareas/' . $task['id'],
+                        'serviceTypeId' => (int) $item['serviceTypeId'],
+                    ], $item['tasks'] ?? []),
                 ], $overview['items']),
             ]);
         } catch (Throwable $exception) {
@@ -141,6 +147,84 @@ final class ImportManagement extends BaseController
         } catch (Throwable $exception) {
             return $this->failure($exception, '/mantenimiento/importaciones/biblioteca');
         }
+    }
+
+    public function updateLibraryTask(int $taskId): RedirectResponse
+    {
+        try {
+            $actor = $this->actor();
+            if ($actor->isSuperAdmin() || $actor->companyId() === null || ! $actor->hasPermission('importaciones.cargar')) {
+                throw new DomainException('No tenes permiso para modificar la biblioteca preventiva.');
+            }
+
+            $serviceTypeId = $this->requiredPositiveInt($this->request->getPost('tipo_servicio_id'), 'tipo de servicio');
+            $name = trim((string) $this->request->getPost('nombre'));
+            if ($name === '') {
+                throw new DomainException('El nombre de la tarea no puede estar vacio.');
+            }
+            if (mb_strlen($name) > 150) {
+                throw new DomainException('El nombre de la tarea no puede superar 150 caracteres.');
+            }
+
+            $description = $this->limitedNullableString($this->request->getPost('descripcion'), 'La descripcion');
+            $procedure = $this->limitedNullableString($this->request->getPost('procedimiento'), 'El procedimiento');
+            $durationMinutes = $this->nullableInteger($this->request->getPost('duracion_estimada_min'), 'Duracion estimada', 0);
+            $order = $this->requiredPositiveInt($this->request->getPost('orden'), 'orden');
+
+            $notes = trim((string) ($this->request->getPost('observaciones') ?? ''));
+            if (mb_strlen($notes) > 500) {
+                throw new DomainException('Las observaciones no pueden superar 500 caracteres.');
+            }
+
+            $this->taskUpdater()->execute($actor, new UpdateLibraryTaskCommand(
+                taskId: $taskId,
+                serviceTypeId: $serviceTypeId,
+                name: $name,
+                description: $description === '' ? null : $description,
+                procedure: $procedure === '' ? null : $procedure,
+                durationMinutes: $durationMinutes,
+                requiresPart: $this->checked('requiere_repuesto'),
+                requiresControl: $this->checked('requiere_control'),
+                requiresPhoto: $this->checked('requiere_foto'),
+                active: $this->checked('activo'),
+                order: $order,
+                mandatory: $this->checked('obligatoria'),
+                observations: $notes === '' ? null : $notes,
+            ));
+
+            return redirect()->to('/mantenimiento/importaciones/biblioteca')
+                ->with('success', 'Tarea de biblioteca actualizada.');
+        } catch (Throwable $exception) {
+            return $this->failure($exception, '/mantenimiento/importaciones/biblioteca');
+        }
+    }
+
+    private function checked(string $field): bool
+    {
+        return $this->request->getPost($field) !== null;
+    }
+
+    private function limitedNullableString(mixed $value, string $label): string
+    {
+        $normalized = trim((string) ($value ?? ''));
+        if (mb_strlen($normalized) > 2000) {
+            throw new DomainException("{$label} no puede superar 2000 caracteres.");
+        }
+        return $normalized;
+    }
+
+    private function requiredPositiveInt(mixed $value, string $field): int
+    {
+        $parsed = $this->nullableInteger($value, ucfirst($field), 1);
+        if ($parsed === null) {
+            throw new DomainException("Debe indicar un {$field} valido.");
+        }
+        return $parsed;
+    }
+
+    private function taskUpdater(): UpdateLibraryTask
+    {
+        return service('updateLibraryTask');
     }
 
     public function template(string $type): ResponseInterface|RedirectResponse

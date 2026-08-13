@@ -1,3 +1,6 @@
+@import './styles/transitions.css';
+@import './styles/sweetalert2.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

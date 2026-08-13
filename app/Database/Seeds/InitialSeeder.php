@@ -85,6 +85,7 @@ final class InitialSeeder extends Seeder
             'auditoria.ver' => 'Ver la bitácora de auditoría',
             'importaciones.ver' => 'Ver historial y vista previa de importaciones',
             'importaciones.cargar' => 'Cargar, confirmar y cancelar importaciones',
+            'notificaciones.ver' => 'Ver notificaciones y configurar preferencias propias',
         ];
         $permissionIds = [];
         foreach ($permissions as $key => $description) {
@@ -103,10 +104,11 @@ final class InitialSeeder extends Seeder
                 'lecturas.cargar', 'lecturas.ver', 'lecturas.corregir', 'planes.ver',
                 'planes.editar', 'ordenes.ver', 'ordenes.editar', 'ordenes.cerrar', 'reportes.ver',
                 'importaciones.ver', 'importaciones.cargar',
+                'notificaciones.ver',
             ],
-            'Tecnico u operador' => ['equipos.ver', 'lecturas.cargar', 'lecturas.ver', 'ordenes.ver', 'ordenes.mi_trabajo'],
-            'Solicitante' => ['solicitudes.crear'],
-            'Consulta' => ['equipos.ver', 'lecturas.ver', 'ordenes.ver', 'reportes.ver', 'importaciones.ver'],
+            'Tecnico u operador' => ['equipos.ver', 'lecturas.cargar', 'lecturas.ver', 'ordenes.ver', 'ordenes.mi_trabajo', 'notificaciones.ver'],
+            'Solicitante' => ['solicitudes.crear', 'notificaciones.ver'],
+            'Consulta' => ['equipos.ver', 'lecturas.ver', 'ordenes.ver', 'reportes.ver', 'importaciones.ver', 'notificaciones.ver'],
         ];
         foreach ($rolePermissions as $roleName => $keys) {
             foreach ($keys as $key) {
@@ -139,6 +141,7 @@ final class InitialSeeder extends Seeder
 
         $this->call(SuperAdminSeeder::class);
         $this->call(VerticalCircuitSeeder::class);
+        $this->call(NotificationDefaultsSeeder::class);
     }
 
     /** @param array<string, mixed> $criteria @param array<string, mixed> $data */

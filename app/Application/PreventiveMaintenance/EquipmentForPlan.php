@@ -16,6 +16,9 @@ final readonly class EquipmentForPlan
         public bool $tracksKilometres,
         public bool $tracksHours,
         public UsoActual $currentUsage,
+        public int $equipmentTypeId = 0,
+        public ?string $brand = null,
+        public ?string $model = null,
     ) {
     }
 }

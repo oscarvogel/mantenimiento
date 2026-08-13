@@ -1,0 +1,123 @@
+@import 'sweetalert2/dist/sweetalert2.min.css';
+
+.swal2-container.ui-swal-customized {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.swal2-popup.ui-swal-popup {
+  border-radius: 1rem;
+  border: 1px solid #DDE3EA;
+  box-shadow: 0 1px 2px rgba(3, 26, 62, 0.04), 0 8px 24px rgba(3, 26, 62, 0.05);
+  color: #031A3E;
+}
+
+.swal2-title.ui-swal-title {
+  color: #031A3E;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.swal2-html-container.ui-swal-html {
+  color: #526176;
+  line-height: 1.5;
+}
+
+.swal2-actions.ui-swal-actions {
+  margin-top: 1.25rem;
+}
+
+.swal2-confirm.ui-swal-confirm {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.25rem;
+  color: #FEFEFE;
+  background-color: #0862C6;
+  box-shadow: 0 1px 2px rgba(3, 26, 62, 0.04);
+  transition: background-color 120ms ease, transform 120ms ease;
+}
+
+.swal2-confirm.ui-swal-confirm:hover {
+  background-color: #0754A9;
+}
+
+.swal2-confirm.ui-swal-confirm:active {
+  transform: scale(0.98);
+}
+
+.swal2-confirm.ui-swal-confirm:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px #DDE3EA, 0 0 0 4px #0862C6;
+}
+
+.swal2-confirm.ui-swal-danger {
+  background-color: #D63C3C;
+}
+
+.swal2-confirm.ui-swal-danger:hover {
+  background-color: #B52B2B;
+}
+
+.swal2-confirm.ui-swal-danger:focus-visible {
+  box-shadow: 0 0 0 2px #DDE3EA, 0 0 0 4px #D63C3C;
+}
+
+.swal2-cancel.ui-swal-cancel {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 1px solid #C5CDD8;
+  border-radius: 0.5rem;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.25rem;
+  color: #031A3E;
+  background-color: #FEFEFE;
+  box-shadow: 0 1px 2px rgba(3, 26, 62, 0.04);
+  transition: background-color 120ms ease, transform 120ms ease;
+}
+
+.swal2-cancel.ui-swal-cancel:hover {
+  background-color: #F0F3F7;
+}
+
+.swal2-cancel.ui-swal-cancel:active {
+  transform: scale(0.98);
+}
+
+.swal2-cancel.ui-swal-cancel:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px #DDE3EA, 0 0 0 4px #0862C6;
+}
+
+.swal2-close.swal2-close {
+  color: #7B8798;
+}
+
+.swal2-icon.swal2-warning {
+  border-color: rgba(241, 160, 0, 0.4);
+  color: #F1A000;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .swal2-popup {
+    animation: none;
+  }
+  .swal2-icon {
+    animation: none;
+  }
+  .swal2-show,
+  .swal2-noanimation {
+    animation: none;
+  }
+}

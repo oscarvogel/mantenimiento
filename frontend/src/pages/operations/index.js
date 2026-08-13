@@ -5,6 +5,7 @@ import ImportsShowPage from './ImportsShowPage.vue'
 import MaintenanceOverviewPage from './MaintenanceOverviewPage.vue'
 import PreventiveLibraryPage from './PreventiveLibraryPage.vue'
 import PreventivePlansPage from './PreventivePlansPage.vue'
+import QuickReadingsPage from './QuickReadingsPage.vue'
 
 export {
   AssetsIndexPage,
@@ -14,6 +15,7 @@ export {
   MaintenanceOverviewPage,
   PreventiveLibraryPage,
   PreventivePlansPage,
+  QuickReadingsPage,
 }
 
 export const operationPageComponents = Object.freeze({
@@ -24,6 +26,7 @@ export const operationPageComponents = Object.freeze({
   'imports-index': ImportsIndexPage,
   'imports-show': ImportsShowPage,
   'preventive-library': PreventiveLibraryPage,
+  'quick-readings': QuickReadingsPage,
 })
 
 export function resolveOperationPage(pageType) {

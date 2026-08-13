@@ -9,6 +9,8 @@ use App\Application\Assets\CreateBrandCommand;
 use App\Application\Assets\CreateEquipmentModelCommand;
 use App\Application\Assets\CreateEquipmentCommand;
 use App\Application\Assets\CreateEquipmentHandler;
+use App\Application\MaintenanceCircuit\CreateEquipmentWithInitialReading;
+use App\Application\MaintenanceCircuit\CreateEquipmentWithInitialReadingCommand;
 use App\Application\Assets\EquipmentListQuery;
 use App\Application\Assets\InactivateBrandCommand;
 use App\Application\Assets\InactivateEquipmentModelCommand;
@@ -17,6 +19,7 @@ use App\Application\Assets\ListAvailableAssetBranches;
 use App\Application\Assets\RenameBrandCommand;
 use App\Application\Assets\RenameEquipmentModelCommand;
 use App\Application\Assets\RenderEquipmentQr;
+use App\Application\Assets\Attachment\ListPrimaryEquipmentPhotos;
 use App\Application\Identity\ActorContext;
 use App\Infrastructure\Identity\SessionActorContext;
 use App\Presentation\PageSize;
@@ -55,6 +58,11 @@ final class AssetManagement extends BaseController
                 $filters['per_page'],
             ));
             $canEdit = $actor->hasPermission('equipos.editar');
+            $canEditPlans = $actor->hasPermission('planes.editar');
+            $photos = $this->primaryPhotos()->execute(
+                $actor,
+                array_map(static fn (array $row): int => (int) $row['id'], $equipment['items']),
+            );
             $management = $canEdit
                 ? $this->catalog()->paginateManagement(
                     $actor,
@@ -77,6 +85,8 @@ final class AssetManagement extends BaseController
                     $canEdit,
                     $this->availableBranches()->execute($actor),
                     $management,
+                    $photos,
+                    $canEditPlans,
                 ),
             );
         } catch (Throwable $exception) {
@@ -87,7 +97,7 @@ final class AssetManagement extends BaseController
     public function createEquipment(): RedirectResponse
     {
         try {
-            $result = $this->createEquipmentHandler()->execute($this->actor(), new CreateEquipmentCommand(
+            $result = $this->createEquipmentWithReading()->execute($this->actor(), new CreateEquipmentWithInitialReadingCommand(new CreateEquipmentCommand(
                 (int) $this->request->getPost('sucursal_id'),
                 (int) $this->request->getPost('tipo_equipo_id'),
                 (string) $this->request->getPost('codigo'),
@@ -99,9 +109,16 @@ final class AssetManagement extends BaseController
                 $this->nullableInt($this->request->getPost('anio')),
                 $this->nullableString($this->request->getPost('chasis')),
                 $this->nullableString($this->request->getPost('motor')),
+            ),
+                $this->nullableDateTime($this->request->getPost('fecha_lectura_inicial')),
+                $this->nullableInt($this->request->getPost('km_actual_inicial')),
+                $this->nullableString($this->request->getPost('horas_actuales_inicial')),
             ));
+            $equipment = $result['equipment'];
 
-            return redirect()->to('/mantenimiento/equipos')->with('success', "Equipo {$result->code} creado correctamente.");
+            return redirect()
+                ->to('/mantenimiento/planes?equipo_id=' . $equipment->equipmentId . '#planes-desde-plantilla')
+                ->with('success', "Equipo {$equipment->code} creado correctamente. Revisá los planes preventivos sugeridos antes de confirmarlos.");
         } catch (Throwable $exception) {
             return $this->failure($exception, '/mantenimiento/equipos');
         }
@@ -184,7 +201,9 @@ final class AssetManagement extends BaseController
     private function equipmentList(): ListEquipment { return service('equipmentList'); }
     private function availableBranches(): ListAvailableAssetBranches { return service('availableAssetBranches'); }
     private function createEquipmentHandler(): CreateEquipmentHandler { return service('createEquipment'); }
+    private function createEquipmentWithReading(): CreateEquipmentWithInitialReading { return service('createEquipmentWithInitialReading'); }
     private function equipmentQr(): RenderEquipmentQr { return service('equipmentQr'); }
+    private function primaryPhotos(): ListPrimaryEquipmentPhotos { return service('listPrimaryEquipmentPhotos'); }
 
     private function catalogMutation(callable $operation, string $message): RedirectResponse
     {
@@ -237,6 +256,18 @@ final class AssetManagement extends BaseController
             throw new DomainException('La fecha de alta no es válida.');
         }
 
+        return $date;
+    }
+
+    private function nullableDateTime(mixed $value): ?DateTimeImmutable
+    {
+        $value = trim((string) $value);
+        if ($value === '') { return null; }
+        $date = DateTimeImmutable::createFromFormat('!Y-m-d\TH:i', $value);
+        $errors = DateTimeImmutable::getLastErrors();
+        if ($date === false || ($errors !== false && ($errors['warning_count'] > 0 || $errors['error_count'] > 0))) {
+            throw new DomainException('La fecha de lectura inicial no es válida.');
+        }
         return $date;
     }
 }

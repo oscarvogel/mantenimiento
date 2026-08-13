@@ -20,6 +20,11 @@ use App\Application\Assets\Attachment\RetireEquipmentAttachmentCommand;
 use App\Application\Assets\Attachment\RetireEquipmentAttachmentHandler;
 use App\Application\Assets\Attachment\UploadEquipmentAttachmentCommand;
 use App\Application\Assets\Attachment\UploadEquipmentAttachmentHandler;
+use App\Application\Assets\Attachment\DownloadPrimaryEquipmentPhotoHandler;
+use App\Application\Assets\Attachment\GetPrimaryEquipmentPhotoHandler;
+use App\Application\Assets\Attachment\RetirePrimaryEquipmentPhotoHandler;
+use App\Application\Assets\Attachment\UploadPrimaryEquipmentPhotoCommand;
+use App\Application\Assets\Attachment\UploadPrimaryEquipmentPhotoHandler;
 use App\Application\Assets\GetEquipmentDetails;
 use App\Application\Assets\ListEquipment;
 use App\Application\Assets\TransferEquipmentCommand;
@@ -61,6 +66,7 @@ final class EquipmentManagement extends BaseController
                 $actor,
                 new ListEquipmentAttachmentsQuery($equipmentId, $attachmentPage, $attachmentPerPage),
             );
+            $primaryPhoto = $this->getPrimaryPhotoHandler()->execute($actor, $equipmentId);
             $catalogs = $this->assetCatalog()->list($actor);
             $relatedCandidates = $actor->hasPermission('equipos.editar')
                 ? $this->equipmentList()->execute($actor, new EquipmentListQuery(status: 'ACTIVO', perPage: 100))['items']
@@ -87,6 +93,7 @@ final class EquipmentManagement extends BaseController
                         'attachments' => $attachmentPerPage,
                         'relations' => $relationPerPage,
                     ],
+                    $primaryPhoto,
                 ),
             );
         } catch (Throwable $exception) {
@@ -181,6 +188,70 @@ final class EquipmentManagement extends BaseController
             );
 
             return $this->success($equipmentId, "Adjunto #{$attachmentId} retirado; el historial fue conservado.");
+        } catch (Throwable $exception) {
+            return $this->failure($exception, $this->equipmentUrl($equipmentId));
+        }
+    }
+
+    public function uploadPrimaryPhoto(int $equipmentId): RedirectResponse
+    {
+        try {
+            $file = $this->request->getFile('foto');
+            if ($file === null || ! $file->isValid()) {
+                throw new DomainException('Seleccioná una imagen válida.');
+            }
+            $photoId = $this->uploadPrimaryPhotoHandler()->execute($this->actor(), new UploadPrimaryEquipmentPhotoCommand(
+                $equipmentId,
+                $file->getTempName(),
+                $file->getClientName(),
+                $this->nullableString($this->request->getPost('descripcion')),
+            ));
+
+            return $this->success($equipmentId, "Foto principal #{$photoId} guardada correctamente.");
+        } catch (Throwable $exception) {
+            return $this->failure($exception, $this->equipmentUrl($equipmentId));
+        }
+    }
+
+    public function primaryPhoto(int $equipmentId): ResponseInterface|RedirectResponse
+    {
+        try {
+            $photo = $this->downloadPrimaryPhotoHandler()->execute(
+                $this->actor(),
+                $equipmentId,
+                (string) $this->request->getGet('miniatura') === '1',
+            );
+
+            return $this->response
+                ->setHeader('Content-Disposition', 'inline; filename="foto-equipo"')
+                ->setHeader('X-Content-Type-Options', 'nosniff')
+                ->setHeader('Cache-Control', 'private, max-age=300')
+                ->setContentType($photo->mimeType)
+                ->setBody($photo->content);
+        } catch (Throwable $exception) {
+            if (! $exception instanceof DomainException) {
+                log_message('error', 'Falló la entrega de foto principal: {message}', ['message' => $exception->getMessage()]);
+            }
+
+            return $this->response
+                ->setStatusCode(404)
+                ->setHeader('Cache-Control', 'no-store')
+                ->setHeader('X-Content-Type-Options', 'nosniff')
+                ->setContentType('text/plain')
+                ->setBody('Foto no disponible.');
+        }
+    }
+
+    public function retirePrimaryPhoto(int $equipmentId): RedirectResponse
+    {
+        try {
+            $this->retirePrimaryPhotoHandler()->execute(
+                $this->actor(),
+                $equipmentId,
+                (string) $this->request->getPost('motivo'),
+            );
+
+            return $this->success($equipmentId, 'Foto principal retirada; el archivo queda en el historial privado.');
         } catch (Throwable $exception) {
             return $this->failure($exception, $this->equipmentUrl($equipmentId));
         }
@@ -285,6 +356,10 @@ final class EquipmentManagement extends BaseController
     private function listAttachments(): ListEquipmentAttachmentsHandler { return service('listEquipmentAttachments'); }
     private function downloadAttachmentHandler(): DownloadEquipmentAttachmentHandler { return service('downloadEquipmentAttachment'); }
     private function retireAttachmentHandler(): RetireEquipmentAttachmentHandler { return service('retireEquipmentAttachment'); }
+    private function uploadPrimaryPhotoHandler(): UploadPrimaryEquipmentPhotoHandler { return service('uploadPrimaryEquipmentPhoto'); }
+    private function getPrimaryPhotoHandler(): GetPrimaryEquipmentPhotoHandler { return service('getPrimaryEquipmentPhoto'); }
+    private function downloadPrimaryPhotoHandler(): DownloadPrimaryEquipmentPhotoHandler { return service('downloadPrimaryEquipmentPhoto'); }
+    private function retirePrimaryPhotoHandler(): RetirePrimaryEquipmentPhotoHandler { return service('retirePrimaryEquipmentPhoto'); }
 
     private function success(int $equipmentId, string $message): RedirectResponse
     {

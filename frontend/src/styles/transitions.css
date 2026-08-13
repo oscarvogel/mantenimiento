@@ -1,0 +1,135 @@
+/* ============================================================
+   Micro-animaciones globales — solo transform/opacity
+   Duración recomendada 100–250ms, easing suave.
+   ============================================================ */
+
+/* Entrada de vista (fallback cuando no hay View Transitions API) */
+.ui-view-enter {
+  animation: ui-view-enter 180ms ease-out both;
+}
+
+@keyframes ui-view-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 180ms;
+  animation-timing-function: ease-out;
+}
+
+/* Elementos persistentes entre navegaciones multipágina */
+.ui-vt-header,
+.ui-vt-sidebar,
+.ui-vt-content {
+  view-transition-name: ui-vt-persistent;
+}
+
+/* Botones: feedback hover / active / focus / disabled.
+   Se aplica desde helpers.js sin tocar cientos de vistas. */
+.ui-interactive {
+  transition: transform 120ms ease, background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.ui-interactive:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.ui-interactive:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+.ui-interactive:disabled {
+  cursor: not-allowed;
+}
+
+/* Tarjetas interactivas/clickeables */
+.ui-card-interactive {
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.ui-card-interactive:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(3, 26, 62, 0.06), 0 10px 28px rgba(3, 26, 62, 0.08);
+}
+
+.ui-card-interactive:active {
+  transform: translateY(0) scale(0.99);
+}
+
+/* Apertura amigable de <details> con formularios de edición */
+.ui-details-animated summary {
+  transition: opacity 120ms ease, background-color 120ms ease;
+}
+
+.ui-details-animated[open] summary {
+  opacity: 0.72;
+}
+
+.ui-details-animated[open] > summary ~ * {
+  animation: ui-details-open 180ms ease-out both;
+}
+
+@keyframes ui-details-open {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ui-details-animated summary::-webkit-details-marker,
+.ui-details-animated summary::marker {
+  color: currentColor;
+}
+
+/* Sidebar: transición suave de background-color / color */
+.ui-nav-item {
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+/* Tablas: hover suave de fondo sin mover filas */
+.ui-table-hover tbody tr {
+  transition: background-color 150ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-view-enter,
+  .ui-details-animated[open] > summary ~ *,
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+  }
+
+  .ui-interactive,
+  .ui-card-interactive,
+  .ui-details-animated summary,
+  .ui-nav-item,
+  .ui-table-hover tbody tr {
+    transition: none;
+  }
+
+  .ui-interactive:not(:disabled):hover,
+  .ui-card-interactive:hover {
+    transform: none;
+  }
+
+  .ui-interactive:not(:disabled):active,
+  .ui-card-interactive:active {
+    transform: none;
+  }
+}

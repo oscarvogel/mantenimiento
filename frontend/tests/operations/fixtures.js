@@ -45,7 +45,7 @@ export const preventivePlansData = {
   plans: {
     total: 1,
     pagination: { page: 1, totalPages: 1, total: 1, perPage: 10, perPageOptions: [5, 10, 25], perPageKey: 'por_pagina', pageKey: 'page', previousUrl: null, nextUrl: null },
-    items: [{ id: 2, equipment: { id: 9, code: 'CAM-01', plate: 'AA123BB', typeName: 'Camión', detailUrl: '/mantenimiento/equipos/9' }, branch: { id: 1, code: 'CC', name: 'Casa central' }, serviceName: 'Service motor', state: 'PROXIMO', priority: 'MEDIA', criteria: { kilometers: { interval: 1000, warning: 200, base: 9000, next: 10000, current: 9900 }, hours: null, date: null }, notes: null }],
+    items: [{ id: 2, equipment: { id: 9, code: 'CAM-01', plate: 'AA123BB', typeName: 'Camión', detailUrl: '/mantenimiento/equipos/9' }, branch: { id: 1, code: 'CC', name: 'Casa central' }, serviceName: 'Service motor', state: 'PROXIMO', priority: 'MEDIA', editUrl: '/mantenimiento/planes/2/editar', criteria: { kilometers: { interval: 1000, warning: 200, base: 9000, next: 10000, current: 9900 }, hours: null, date: null }, notes: null }],
   },
 }
 
@@ -59,7 +59,7 @@ export const assetsData = {
     brands: [{ id: 2, name: 'Scania', active: true, updateUrl: '/mantenimiento/catalogos/marcas/2', inactivateUrl: '/mantenimiento/catalogos/marcas/2/inactivar' }, { id: 4, name: 'Volvo', active: true, updateUrl: '/mantenimiento/catalogos/marcas/4', inactivateUrl: '/mantenimiento/catalogos/marcas/4/inactivar' }],
     models: [{ id: 3, name: 'R450', brandId: 2, typeId: 1, brandName: 'Scania', typeName: 'Camión', active: true, updateUrl: '/mantenimiento/catalogos/modelos/3', inactivateUrl: '/mantenimiento/catalogos/modelos/3/inactivar' }, { id: 5, name: 'FH', brandId: 4, typeId: 1, brandName: 'Volvo', typeName: 'Camión', active: true, updateUrl: '/mantenimiento/catalogos/modelos/5', inactivateUrl: '/mantenimiento/catalogos/modelos/5/inactivar' }],
   },
-  equipment: { total: 1, pagination, items: [{ id: 9, code: 'CAM-01', typeName: 'Camión', plate: 'AA123BB', brandName: 'Scania', modelName: 'R450', year: 2023, branchCode: 'CC', branchName: 'Casa central', currentKm: 1000, currentHours: 42, status: 'ACTIVO', detailUrl: '/mantenimiento/equipos/9', qrUrl: '/mantenimiento/equipos/9/qr.svg' }] },
+  equipment: { total: 1, pagination, items: [{ id: 9, code: 'CAM-01', typeName: 'Camión', plate: 'AA123BB', brandName: 'Scania', modelName: 'R450', year: 2023, branchCode: 'CC', branchName: 'Casa central', currentKm: 1000, currentHours: 42, status: 'ACTIVO', detailUrl: '/mantenimiento/equipos/9', qrUrl: '/mantenimiento/equipos/9/qr.svg', assignPlanUrl: '/mantenimiento/planes?equipo_id=9#planes-desde-plantilla' }] },
   management: {
     brands: {
       total: 2,
@@ -128,8 +128,8 @@ export const preventiveLibraryData = {
     active: true,
     notes: 'Aceite y filtros',
     tasks: [
-      { id: 1, code: 'ACEITE', name: 'Cambiar aceite de motor', description: 'Aceite y filtros', order: 1, mandatory: true, requiresPart: true, requiresControl: true, requiresPhoto: false, observations: 'Usar especificación indicada' },
-      { id: 2, code: 'FILTRO', name: 'Revisar filtro de aire', description: null, order: 2, mandatory: false, requiresPart: false, requiresControl: true, requiresPhoto: false, observations: null },
+      { id: 1, code: 'ACEITE', name: 'Cambiar aceite de motor', description: 'Aceite y filtros', procedure: 'Drenar y reemplazar', durationMinutes: 45, order: 1, mandatory: true, active: true, requiresPart: true, requiresControl: true, requiresPhoto: false, observations: 'Usar especificación indicada', serviceTypeId: 3, updateUrl: '/mantenimiento/importaciones/biblioteca/tareas/1' },
+      { id: 2, code: 'FILTRO', name: 'Revisar filtro de aire', description: null, procedure: null, durationMinutes: null, order: 2, mandatory: false, active: true, requiresPart: false, requiresControl: true, requiresPhoto: false, observations: null, serviceTypeId: 3, updateUrl: '/mantenimiento/importaciones/biblioteca/tareas/2' },
     ],
     updateUrl: '/mantenimiento/importaciones/biblioteca/items/15',
   }, {
@@ -151,7 +151,7 @@ export const preventiveLibraryData = {
     active: true,
     notes: 'Control de seguridad',
     tasks: [
-      { id: 3, code: 'FRENOS', name: 'Revisar cintas de freno', description: 'Control visual y ajuste', order: 1, mandatory: true, requiresPart: false, requiresControl: true, requiresPhoto: true, observations: null },
+      { id: 3, code: 'FRENOS', name: 'Revisar cintas de freno', description: 'Control visual y ajuste', procedure: null, durationMinutes: 30, order: 1, mandatory: true, active: true, requiresPart: false, requiresControl: true, requiresPhoto: true, observations: null, serviceTypeId: 4, updateUrl: '/mantenimiento/importaciones/biblioteca/tareas/3' },
     ],
     updateUrl: '/mantenimiento/importaciones/biblioteca/items/16',
   }],

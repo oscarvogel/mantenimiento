@@ -8,6 +8,7 @@ use App\Application\Assets\Attachment\EquipmentAttachmentPage;
 use App\Application\Importations\ImportHistoryPage;
 use App\Application\Importations\ImportPreview;
 use App\Application\Measurement\ReadingHistoryPage;
+use App\Application\Assets\Attachment\PrimaryEquipmentPhoto;
 
 final class OperationsPayload
 {
@@ -15,6 +16,7 @@ final class OperationsPayload
     public function maintenance(array $source): array
     {
         $catalogs = $source['assetCatalogs'] ?? [];
+        $primaryPhotos = $source['primaryPhotos'] ?? [];
         $paginationSource = $source['pagination'] ?? [];
         $paginationKeys = [
             'equipments' => ['equipos_page', 'equipos_per_page'],
@@ -78,21 +80,25 @@ final class OperationsPayload
                     'registerReading' => base_url('mantenimiento/equipos/' . $row['id'] . '/lecturas'),
                     'assignPlan' => base_url('mantenimiento/equipos/' . $row['id'] . '/planes'),
                 ],
+                'photoUrl' => isset($primaryPhotos[(int) $row['id']]) ? base_url('mantenimiento/equipos/' . $row['id'] . '/foto-principal?miniatura=1') : null,
             ], $source['equipments'] ?? []),
             'plans' => array_map(fn (array $row): array => [
                 'id' => (int) $row['id'], 'equipmentCode' => $row['equipo_codigo'], 'serviceName' => $row['servicio_nombre'],
                 'computedState' => $row['computed_state'] ?? 'SIN_DATOS', 'nextKm' => $row['proximo_km'],
                 'nextHours' => $row['proximas_horas'], 'nextDate' => $row['proxima_fecha'],
+                'photoUrl' => isset($primaryPhotos[(int) ($row['equipo_id'] ?? 0)]) ? base_url('mantenimiento/equipos/' . $row['equipo_id'] . '/foto-principal?miniatura=1') : null,
             ], $source['plans'] ?? []),
             'notices' => array_map(fn (array $row): array => [
                 'id' => (int) $row['id'], 'equipmentCode' => $row['equipo_codigo'], 'serviceName' => $row['servicio_nombre'],
                 'triggerCriteria' => $row['criterios_disparadores'],
+                'photoUrl' => isset($primaryPhotos[(int) ($row['equipo_id'] ?? 0)]) ? base_url('mantenimiento/equipos/' . $row['equipo_id'] . '/foto-principal?miniatura=1') : null,
                 'generateOrderUrl' => base_url('mantenimiento/avisos/' . $row['id'] . '/orden'),
             ], $source['notices'] ?? []),
             'orders' => array_map(fn (array $row): array => [
                 'id' => (int) $row['id'], 'number' => $row['numero'], 'equipmentCode' => $row['equipo_codigo'],
                 'serviceName' => $row['servicio_nombre'] ?? 'Servicio preventivo',
                 'ownerName' => $row['responsable_nombre'] ?? 'Sin asignar', 'status' => $row['estado'],
+                'photoUrl' => isset($primaryPhotos[(int) ($row['equipo_id'] ?? 0)]) ? base_url('mantenimiento/equipos/' . $row['equipo_id'] . '/foto-principal?miniatura=1') : null,
                 'startUrl' => base_url('mantenimiento/ordenes/' . $row['id'] . '/iniciar'),
                 'closeUrl' => base_url('mantenimiento/ordenes/' . $row['id'] . '/cerrar'),
                 'tasks' => array_map(fn (array $task): array => [
@@ -130,7 +136,7 @@ final class OperationsPayload
     }
 
     /** @param array<string,mixed> $page @param array<string,mixed> $catalogs @param array<string,mixed> $filters */
-    public function assets(array $page, array $catalogs, array $filters, bool $canEdit, array $branches = [], array $management = []): array
+    public function assets(array $page, array $catalogs, array $filters, bool $canEdit, array $branches = [], array $management = [], array $primaryPhotos = [], bool $canEditPlans = false): array
     {
         $query = array_filter([
             'q' => $filters['q'] ?? null, 'tipo_id' => $filters['type_id'] ?? null,
@@ -147,7 +153,7 @@ final class OperationsPayload
 
         return [
             'canEdit' => $canEdit,
-            'old' => $this->old(['sucursal_id', 'tipo_equipo_id', 'codigo', 'patente', 'marca_id', 'modelo_id', 'fecha_alta', 'anio', 'chasis', 'motor', 'observaciones']),
+            'old' => $this->old(['sucursal_id', 'tipo_equipo_id', 'codigo', 'patente', 'marca_id', 'modelo_id', 'fecha_alta', 'anio', 'chasis', 'motor', 'observaciones', 'km_actual_inicial', 'horas_actuales_inicial', 'fecha_lectura_inicial']),
             'routes' => [
                 'index' => $base, 'maintenance' => base_url('mantenimiento'),
                 'createEquipment' => $base,
@@ -160,7 +166,7 @@ final class OperationsPayload
             ],
             'catalogs' => [
                 'branches' => array_map(fn (array $row): array => ['id' => (int) $row['id'], 'code' => $row['codigo'], 'name' => $row['nombre']], $branches),
-                'types' => array_map(fn (array $row): array => ['id' => (int) $row['id'], 'name' => $row['nombre'], 'active' => (int) $row['activo'] === 1], $catalogs['types'] ?? []),
+                'types' => array_map(fn (array $row): array => ['id' => (int) $row['id'], 'name' => $row['nombre'], 'active' => (int) $row['activo'] === 1, 'controlsKm' => (int) $row['controla_km'] === 1, 'controlsHours' => (int) $row['controla_horas'] === 1], $catalogs['types'] ?? []),
                 'brands' => array_map(fn (array $row): array => [
                     'id' => (int) $row['id'], 'name' => $row['nombre'], 'active' => (int) $row['activo'] === 1,
                     'updateUrl' => base_url('mantenimiento/catalogos/marcas/' . $row['id']),
@@ -183,6 +189,8 @@ final class OperationsPayload
                     'currentHours' => $row['horas_actuales'], 'status' => $row['estado'],
                     'detailUrl' => base_url('mantenimiento/equipos/' . $row['id']),
                     'qrUrl' => base_url('mantenimiento/equipos/' . $row['id'] . '/qr.svg'),
+                    'assignPlanUrl' => $canEditPlans ? base_url('mantenimiento/planes?equipo_id=' . $row['id']) . '#planes-desde-plantilla' : null,
+                    'photoUrl' => isset($primaryPhotos[(int) $row['id']]) ? base_url('mantenimiento/equipos/' . $row['id'] . '/foto-principal?miniatura=1') : null,
                 ], $page['items'] ?? []),
                 'pagination' => $this->pagination((int) ($page['page'] ?? 1), (int) ($page['totalPages'] ?? 1), (int) ($page['total'] ?? 0), $base, $query, 'page', 'per_page', (int) ($page['perPage'] ?? 10)),
             ],
@@ -194,7 +202,7 @@ final class OperationsPayload
     }
 
     /** @param array<string,mixed> $details @param array<string,mixed> $catalogs @param list<array<string,mixed>> $candidates */
-    public function equipmentDetails(array $details, ?ReadingHistoryPage $readings, EquipmentAttachmentPage $attachments, array $catalogs, array $candidates, array $can, array $pageSizes = []): array
+    public function equipmentDetails(array $details, ?ReadingHistoryPage $readings, EquipmentAttachmentPage $attachments, array $catalogs, array $candidates, array $can, array $pageSizes = [], ?PrimaryEquipmentPhoto $primaryPhoto = null): array
     {
         $equipment = $details['equipment'];
         $equipmentId = (int) $equipment['id'];
@@ -212,12 +220,16 @@ final class OperationsPayload
 
         return [
             'maxUploadMb' => max(1, (int) env('uploads.maxSizeMB', 10)),
+            'maxPrimaryPhotoMb' => max(1, (int) env('uploads.primaryPhotoMaxSizeMB', 5)),
             'can' => $can,
             'routes' => [
                 'index' => base_url('mantenimiento/equipos'), 'maintenance' => base_url('mantenimiento'),
                 'qr' => $base . '/qr.svg', 'update' => $base . '/editar', 'transfer' => $base . '/trasladar',
                 'decommission' => $base . '/baja', 'createRelation' => $base . '/relaciones',
                 'uploadAttachment' => $base . '/adjuntos',
+                'uploadPrimaryPhoto' => $base . '/foto-principal',
+                'retirePrimaryPhoto' => $base . '/foto-principal/retirar',
+                'addPlansFromTemplate' => base_url('mantenimiento/planes?equipo_id=' . $equipmentId) . '#planes-desde-plantilla',
             ],
             'equipment' => [
                 'id' => $equipmentId, 'code' => $equipment['codigo'], 'typeId' => (int) $equipment['tipo_equipo_id'], 'typeName' => $equipment['tipo_nombre'],
@@ -229,6 +241,13 @@ final class OperationsPayload
                 'brandId' => $equipment['marca_id'], 'modelId' => $equipment['modelo_id'], 'year' => $equipment['anio'],
                 'chassis' => $equipment['chasis'], 'engine' => $equipment['motor'], 'notes' => $equipment['observaciones'],
                 'controlsKm' => (int) $equipment['controla_km'] === 1, 'controlsHours' => (int) $equipment['controla_horas'] === 1,
+            ],
+            'primaryPhoto' => $primaryPhoto === null ? null : [
+                'attachmentId' => $primaryPhoto->attachmentId,
+                'originalName' => $primaryPhoto->originalName,
+                'imageUrl' => $base . '/foto-principal',
+                'thumbnailUrl' => $base . '/foto-principal?miniatura=1',
+                'hasThumbnail' => $primaryPhoto->thumbnailPath !== null,
             ],
             'catalogs' => [
                 'types' => array_map(fn (array $row): array => [

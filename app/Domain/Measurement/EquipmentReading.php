@@ -12,6 +12,8 @@ final class EquipmentReading
     public const MANUAL = 'MANUAL';
     public const WORK_ORDER = 'ORDEN_TRABAJO';
     public const IMPORT = 'IMPORTACION';
+    public const QUICK_ENTRY = 'CARGA_RAPIDA';
+    public const INITIAL_ENTRY = 'ALTA_INICIAL';
 
     private function __construct(
         private readonly ?int $id,
@@ -34,7 +36,7 @@ final class EquipmentReading
         if ($companyId <= 0 || $branchId <= 0 || $equipmentId <= 0 || $userId <= 0) {
             throw new DomainException('El alcance y autor de la lectura deben ser válidos.');
         }
-        if (! in_array($origin, [self::MANUAL, self::WORK_ORDER, self::IMPORT], true)) {
+        if (! in_array($origin, [self::MANUAL, self::WORK_ORDER, self::IMPORT, self::QUICK_ENTRY, self::INITIAL_ENTRY], true)) {
             throw new DomainException('El origen de la lectura no es válido.');
         }
         if ($originReference !== null && mb_strlen($originReference) > 100) {

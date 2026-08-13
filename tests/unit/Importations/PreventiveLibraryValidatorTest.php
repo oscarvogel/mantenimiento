@@ -59,6 +59,35 @@ final class PreventiveLibraryValidatorTest extends TestCase
         self::assertSame('ambito', $staged[0]->issues[0]->field);
     }
 
+    public function testAcceptsGenericTemplateWhenTypeBrandAndModelAreBlank(): void
+    {
+        $staged = (new PreventiveLibraryValidator($this->references()))->validate([[
+            'sheet' => 'PLANTILLAS', 'row' => 2, 'data' => [
+                'codigo_plantilla' => 'GENERICA', 'nombre' => 'Preventivo general', 'ambito' => 'EMPRESA',
+                'codigo_empresa' => '', 'tipo_equipo' => '', 'marca' => '', 'modelo' => '',
+                'descripcion' => 'Aplicable si no existe una regla especifica.', 'activo' => 'SI',
+            ],
+        ]], $this->actor(), 7);
+
+        self::assertSame(ImportRowStatus::VALIDA, $staged[0]->status);
+        self::assertNull($staged[0]->normalized['equipment_type_id']);
+        self::assertNull($staged[0]->normalized['equipment_type_name']);
+    }
+
+    public function testRejectsBrandOrModelRestrictionsWithoutEquipmentType(): void
+    {
+        $staged = (new PreventiveLibraryValidator($this->references()))->validate([[
+            'sheet' => 'PLANTILLAS', 'row' => 2, 'data' => [
+                'codigo_plantilla' => 'INCOHERENTE', 'nombre' => 'Incoherente', 'ambito' => 'EMPRESA',
+                'codigo_empresa' => '', 'tipo_equipo' => '', 'marca' => 'IVECO', 'modelo' => 'TECTOR',
+                'descripcion' => '', 'activo' => 'SI',
+            ],
+        ]], $this->actor(), 7);
+
+        self::assertSame(ImportRowStatus::ERROR, $staged[0]->status);
+        self::assertContains('tipo_equipo', array_map(static fn ($issue): string => $issue->field, $staged[0]->issues));
+    }
+
     private function actor(): ActorContext
     {
         return new ActorContext(12, 7, false, true, ['Administrador'], ['importaciones.ver', 'importaciones.cargar'], []);

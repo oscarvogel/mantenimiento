@@ -9,7 +9,7 @@ use App\Application\PreventiveMaintenance\PreventivePlanPage;
 final class PreventivePlansPayload
 {
     /** @param array<string,mixed> $filters */
-    public function fromPage(PreventivePlanPage $page, array $filters, bool $canEdit, bool $canViewEquipment): array
+    public function fromPage(PreventivePlanPage $page, array $filters, bool $canEdit, bool $canViewEquipment, array $primaryPhotos = []): array
     {
         $base = base_url('mantenimiento/planes');
         $query = array_filter([
@@ -25,6 +25,7 @@ final class PreventivePlansPayload
             'routes' => [
                 'index' => $base,
                 'create' => $base,
+                'createFromTemplate' => $base . '/desde-plantilla',
                 'equipmentIndex' => base_url('mantenimiento/equipos'),
             ],
             'filters' => [
@@ -34,6 +35,7 @@ final class PreventivePlansPayload
                 'state' => (string) ($filters['state'] ?? ''),
                 'perPage' => $page->perPage,
             ],
+            'wizardEquipmentId' => $filters['equipment_id'] ?? '',
             'old' => $this->old([
                 'equipo_id', 'tipo_servicio_id', 'intervalo_km', 'intervalo_horas', 'intervalo_dias',
                 'anticipacion_km', 'anticipacion_horas', 'anticipacion_dias', 'prioridad', 'observaciones',
@@ -48,10 +50,14 @@ final class PreventivePlansPayload
                     'branchCode' => (string) $row['sucursal_codigo'],
                     'branchName' => (string) $row['sucursal_nombre'],
                     'typeName' => (string) $row['tipo_nombre'],
+                    'brandName' => ($row['marca_nombre'] ?? null) === null ? null : (string) $row['marca_nombre'],
+                    'modelName' => ($row['modelo_nombre'] ?? null) === null ? null : (string) $row['modelo_nombre'],
                     'controlsKm' => (int) $row['controla_km'] === 1,
                     'controlsHours' => (int) $row['controla_horas'] === 1,
                     'currentKm' => $row['km_actual'] === null ? null : (int) $row['km_actual'],
                     'currentHours' => $row['horas_actuales'],
+                    'assignedServiceTypeIds' => array_values(array_map('intval', $row['assigned_service_type_ids'] ?? [])),
+                    'photoUrl' => isset($primaryPhotos[(int) $row['id']]) ? base_url('mantenimiento/equipos/' . $row['id'] . '/foto-principal?miniatura=1') : null,
                 ], $page->equipment),
                 'serviceTypes' => array_map(static fn (array $row): array => [
                     'id' => (int) $row['id'], 'code' => (string) $row['codigo'], 'name' => (string) $row['nombre'],
@@ -63,15 +69,17 @@ final class PreventivePlansPayload
             ],
             'plans' => [
                 'total' => $page->total,
-                'items' => array_map(static fn (array $row): array => [
+                'items' => array_map(fn (array $row): array => [
                     'id' => $row['id'],
                     'equipment' => [
                         'id' => $row['equipment_id'], 'code' => $row['equipment_code'], 'plate' => $row['equipment_plate'],
                         'typeName' => $row['equipment_type_name'],
                         'detailUrl' => $canViewEquipment ? base_url('mantenimiento/equipos/' . $row['equipment_id']) : null,
+                        'photoUrl' => isset($primaryPhotos[(int) $row['equipment_id']]) ? base_url('mantenimiento/equipos/' . $row['equipment_id'] . '/foto-principal?miniatura=1') : null,
                     ],
                     'branch' => ['id' => $row['branch_id'], 'code' => $row['branch_code'], 'name' => $row['branch_name']],
                     'serviceName' => $row['service_name'], 'state' => $row['state'], 'priority' => $row['priority'],
+                    'editUrl' => $canEdit ? base_url('mantenimiento/planes/' . $row['id'] . '/editar') : null,
                     'criteria' => [
                         'kilometers' => $this->criterion($row['interval_km'], $row['warning_km'], $row['base_km'], $row['next_km'], $row['current_km']),
                         'hours' => $this->criterion($row['interval_hours'], $row['warning_hours'], $row['base_hours'], $row['next_hours'], $row['current_hours']),
@@ -91,8 +99,10 @@ final class PreventivePlansPayload
             'id' => (int) $row['id'],
             'templateId' => (int) $row['template_id'],
             'templateName' => (string) $row['template_name'],
-            'equipmentTypeId' => (int) $row['equipment_type_id'],
+            'equipmentTypeId' => $row['equipment_type_id'] === null ? null : (int) $row['equipment_type_id'],
             'equipmentTypeName' => (string) $row['equipment_type_name'],
+            'brand' => $row['brand'] ?? null,
+            'model' => $row['model'] ?? null,
             'serviceTypeId' => (int) $row['service_type_id'],
             'serviceName' => (string) $row['service_name'],
             'intervalKm' => $row['interval_km'],

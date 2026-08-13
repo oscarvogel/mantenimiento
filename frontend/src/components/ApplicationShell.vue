@@ -81,11 +81,11 @@ onBeforeUnmount(() => {
     </Transition>
 
     <div class="lg:pl-[17rem]">
-      <AppHeader :user="shell.user" :company="shell.company" @open-menu="sidebarOpen = true" />
+      <AppHeader :user="shell.user" :company="shell.company" :notifications="shell.notifications" @open-menu="sidebarOpen = true" />
 
       <main
         id="main-content"
-        class="mx-auto w-full max-w-[96rem] px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10"
+        class="ui-view-enter ui-vt-content mx-auto w-full max-w-[96rem] px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10"
         tabindex="-1"
       >
         <slot />

@@ -6,7 +6,6 @@ import {
   MapPinIcon,
   PlusIcon,
 } from '@heroicons/vue/24/outline'
-import AdminFlash from './components/AdminFlash.vue'
 import AdminMetric from './components/AdminMetric.vue'
 import AdminPageHeading from './components/AdminPageHeading.vue'
 import CsrfField from './components/CsrfField.vue'
@@ -35,8 +34,6 @@ defineProps({
         </div>
       </template>
     </AdminPageHeading>
-
-    <AdminFlash :success="data.flash.success" :error="data.flash.error" />
 
     <section aria-label="Resumen de sucursales" class="mb-6 grid gap-3 sm:grid-cols-3">
       <AdminMetric label="Registradas" :value="data.metrics.total" />
@@ -106,7 +103,7 @@ defineProps({
             <StatusBadge :active="branch.active" active-label="Activa" inactive-label="Inactiva" />
           </div>
 
-          <form v-if="data.permissions.edit" method="post" :action="branch.actions.update" class="grid gap-4 p-5 sm:grid-cols-12">
+          <form v-if="data.permissions.edit" method="post" :action="branch.actions.update" data-confirm data-confirm-title="¿Guardar los cambios de la sucursal?" data-confirm-text="Los datos operativos de la sucursal se actualizarán." data-confirm-button="Guardar sucursal" class="grid gap-4 p-5 sm:grid-cols-12">
             <CsrfField :csrf="data.csrf" />
             <label class="block sm:col-span-4">
               <span class="mb-1.5 block text-sm font-medium text-ink">Código</span>

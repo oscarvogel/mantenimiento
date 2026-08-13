@@ -279,3 +279,25 @@ Orden recomendado:
 6. pruebas integrales de idempotencia, permisos y fallos de canales.
 
 El issue #8 debe construirse sobre el #7 y no desarrollar un sistema paralelo.
+
+---
+
+## 11. Operación implementada
+
+El comando `php spark notifications:dispatch [clave-ejecucion]` primero detecta eventos operativos y luego procesa la cola multicanal. La tarea de Ferozo debe ejecutarlo a las 07:00 para el resumen diario; las alertas inmediatas pueden procesarse ejecutando el mismo comando con una clave horaria desde una tarea más frecuente.
+
+Eventos producidos por los módulos actualmente disponibles:
+
+- `preventivo.proximo` y `preventivo.vencido`, evaluados con el motor puro existente;
+- `equipo.sin_lectura`, con un ciclo que cambia únicamente cuando cambia la última lectura;
+- `orden.asignada` y `orden.demorada`.
+
+`solicitud.critica` y `garantia.proxima` conservan preferencias y contratos, pero su productor queda pendiente hasta que existan los módulos funcionales de Solicitudes y Garantías. No se simulan datos inexistentes.
+
+La notificación interna siempre se persiste y no puede desactivarse: es la fuente de verdad y el historial recuperable si email o Web Push fallan. Las preferencias de usuario solamente pueden variar email y push; prevalecen sobre los defaults del rol, que a su vez prevalecen sobre el default del sistema.
+
+Los modos `RESUMEN` se programan para la siguiente ocurrencia de `alerts.dailyRunTime` (07:00 por defecto). Web Push deshabilitado o sin VAPID no se encola. Una suscripción ausente se marca como entrega omitida y no se reintenta; los errores transitorios usan backoff y tienen un máximo controlado por el despachador.
+
+La publicación interna y el alta de las entregas se ejecutan en una única transacción. La clave de evento es única por usuario, y la clave de entrega es única por evento, usuario y canal.
+
+El Service Worker no implementa `fetch` ni cachea pantallas autenticadas. Solo recibe push y abre deep links del mismo origen dentro del scope de la aplicación.

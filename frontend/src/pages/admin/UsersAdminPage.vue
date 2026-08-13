@@ -1,16 +1,5 @@
 <script setup>
-import {
-  ChevronDownIcon,
-  ClockIcon,
-  IdentificationIcon,
-  KeyIcon,
-  PlusIcon,
-  ShieldCheckIcon,
-  UserIcon,
-  UserPlusIcon,
-  UsersIcon,
-} from '@heroicons/vue/24/outline'
-import AdminFlash from './components/AdminFlash.vue'
+import { ChevronDownIcon, ClockIcon, IdentificationIcon, KeyIcon, PlusIcon, ShieldCheckIcon, UserIcon, UserPlusIcon, UsersIcon } from '@heroicons/vue/24/outline'
 import AdminMetric from './components/AdminMetric.vue'
 import AdminPageHeading from './components/AdminPageHeading.vue'
 import CsrfField from './components/CsrfField.vue'
@@ -41,8 +30,6 @@ const includesId = (ids, id) => ids.includes(Number(id))
         </div>
       </template>
     </AdminPageHeading>
-
-    <AdminFlash :success="data.flash.success" :error="data.flash.error" />
 
     <section aria-label="Resumen de usuarios" class="mb-6 grid gap-3 sm:grid-cols-3">
       <AdminMetric label="Usuarios" :value="data.metrics.total" />
@@ -204,7 +191,7 @@ const includesId = (ids, id) => ids.includes(Number(id))
                 </div>
               </div>
 
-              <form v-else method="post" :action="user.actions.assignAccess" class="grid gap-4 sm:grid-cols-2">
+              <form v-else method="post" :action="user.actions.assignAccess" data-confirm data-confirm-title="¿Guardar el acceso del usuario?" data-confirm-text="Se asignarán roles y sucursales auditando el motivo del cambio." data-confirm-button="Guardar acceso" class="grid gap-4 sm:grid-cols-2">
                 <CsrfField :csrf="data.csrf" />
                 <fieldset class="rounded-xl border border-border-subtle bg-surface-subtle p-4">
                   <legend class="px-1 text-sm font-semibold text-ink">Roles</legend>
@@ -242,7 +229,7 @@ const includesId = (ids, id) => ids.includes(Number(id))
               Restablecer contraseña
               <ChevronDownIcon class="ml-auto size-5 text-ink-subtle transition-transform group-open:rotate-180" aria-hidden="true" />
             </summary>
-            <form method="post" :action="user.actions.resetPassword" class="grid gap-4 border-t border-border-subtle bg-white px-5 py-5 sm:grid-cols-3 xl:px-6">
+            <form method="post" :action="user.actions.resetPassword" data-confirm data-confirm-title="¿Restablecer la contraseña?" data-confirm-text="El usuario deberá usar la nueva contraseña en su próximo ingreso." data-confirm-button="Restablecer" data-confirm-danger="true" class="grid gap-4 border-t border-border-subtle bg-white px-5 py-5 sm:grid-cols-3 xl:px-6">
               <CsrfField :csrf="data.csrf" />
               <label class="block">
                 <span class="mb-1.5 block text-sm font-medium text-ink">Nueva contraseña</span>

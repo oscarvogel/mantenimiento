@@ -26,6 +26,7 @@ $appJson = json_encode(
     <meta name="theme-color" content="#031A3E">
     <meta name="color-scheme" content="light">
     <link rel="icon" href="<?= esc(base_url('favicon.ico'), 'attr') ?>">
+    <link rel="manifest" href="<?= esc(base_url('manifest.webmanifest'), 'attr') ?>">
     <title><?= esc($pageTitle ?? 'Mantenimiento') ?></title>
     <?php if (isset($preloadImage) && is_string($preloadImage) && $preloadImage !== ''): ?>
         <link rel="preload" as="image" href="<?= esc($preloadImage, 'attr') ?>" type="image/webp" fetchpriority="high">

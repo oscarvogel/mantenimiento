@@ -20,14 +20,7 @@ final class XlsxPreventiveLibraryTemplateExporter
 
         $book = new Spreadsheet();
         $book->removeSheetByIndex(0);
-        $this->sheet($book, 'INSTRUCCIONES', ['concepto', 'regla'], [
-            ['SERVICIO', 'Define que mantenimiento se realiza. No lleva frecuencia.'],
-            ['TAREAS_SERVICIO', 'Define checklist/pasos reutilizables.'],
-            ['REPUESTOS_SERVICIO', 'Define materiales sugeridos; SKU y cantidades exactas pueden ajustarse por equipo.'],
-            ['PLANTILLAS', 'Agrupa servicios para un tipo de equipo dentro de la empresa.'],
-            ['ITEMS_PLANTILLA', 'Define frecuencia, anticipacion y prioridad.'],
-            ['IMPORTANTE', 'Los intervalos son propuesta inicial; validar con fabricante y politica de mantenimiento.'],
-        ]);
+        $this->sheet($book, 'INSTRUCCIONES', ['concepto', 'regla'], $this->instructions());
         $this->sheet($book, 'SERVICIOS', ['codigo_servicio','nombre','descripcion','categoria','activo'], $this->services());
         $this->sheet($book, 'TAREAS_SERVICIO', ['codigo_servicio','orden','codigo_tarea','tarea','descripcion','obligatoria','activo'], $this->tasks());
         $this->sheet($book, 'REPUESTOS_SERVICIO', ['codigo_servicio','codigo_item','descripcion_item','tipo_item','unidad','cantidad_referencia','cantidad_variable','codigo_repuesto_catalogo','obligatorio','observaciones','activo'], $this->materials());
@@ -65,6 +58,19 @@ final class XlsxPreventiveLibraryTemplateExporter
         }
 
         return new ImportTemplateFile('plantilla_general_camiones.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', $contents);
+    }
+
+    /** @return list<list<string>> */
+    private function instructions(): array
+    {
+        return [
+            ['SERVICIO', 'Define que mantenimiento se realiza. No lleva frecuencia.'],
+            ['TAREAS_SERVICIO', 'Define checklist/pasos reutilizables.'],
+            ['REPUESTOS_SERVICIO', 'Define materiales sugeridos; SKU y cantidades exactas pueden ajustarse por equipo.'],
+            ['PLANTILLAS', 'Agrupa servicios por tipo, marca o modelo. Si tipo_equipo, marca y modelo quedan vacios, la plantilla es generica.'],
+            ['ITEMS_PLANTILLA', 'Define frecuencia, anticipacion y prioridad.'],
+            ['IMPORTANTE', 'Los intervalos son propuesta inicial; validar con fabricante y politica de mantenimiento.'],
+        ];
     }
 
     /** @param list<string> $headers @param list<list<mixed>> $rows */
