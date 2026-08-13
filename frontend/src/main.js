@@ -8,7 +8,10 @@ import { adminPagesByType } from './pages/admin/index.js'
 import { ReportsPage } from './pages/reports/index.js'
 import { NotificationCenterPage } from './pages/notifications/index.js'
 import LoginPage from './pages/login/LoginPage.vue'
+import { consumeFlash, installGlobalBehaviors } from './ui/globals.js'
 import './styles.css'
+
+installGlobalBehaviors()
 
 function payloadFromDocument() {
   if (window.__MAINTENANCE_DASHBOARD__ && typeof window.__MAINTENANCE_DASHBOARD__ === 'object') {
@@ -68,6 +71,7 @@ if (root) {
   const serverPayload = payloadFromDocument()
   const payload = serverPayload ?? (import.meta.env.DEV ? developmentDashboard : null)
   mountMaintenanceDashboard(root, payload)
+  if (serverPayload) consumeFlash(serverPayload.data?.flash)
 }
 
 if ('serviceWorker' in navigator) {

@@ -12,6 +12,7 @@ use App\Application\Importations\GenerateImportTemplateHandler;
 use App\Application\Importations\GetImportPreviewHandler;
 use App\Application\Importations\ImportRowValidator;
 use App\Application\Importations\ListImportsHandler;
+use App\Application\Importations\UpdateLibraryTask;
 use App\Application\Assets\CreateEquipmentHandler;
 use App\Application\Assets\AssetCatalogService;
 use App\Application\Assets\CreateEquipmentRelationHandler;
@@ -44,6 +45,7 @@ use App\Application\MaintenanceCircuit\RegisterReadingAndReevaluate;
 use App\Application\MaintenanceCircuit\GeneratePreventiveOrderFromNotice;
 use App\Application\MaintenanceCircuit\ClosePreventiveOrder;
 use App\Application\PreventiveMaintenance\AsignarPlan;
+use App\Application\PreventiveMaintenance\ActualizarPlan;
 use App\Application\PreventiveMaintenance\ConsultarVencimientos;
 use App\Application\PreventiveMaintenance\ListPreventivePlansHandler;
 use App\Application\PreventiveMaintenance\MaterializeSuggestedPlans;
@@ -96,6 +98,7 @@ use App\Infrastructure\Importations\CodeIgniterImportReferenceGateway;
 use App\Infrastructure\Importations\CodeIgniterImportRepository;
 use App\Infrastructure\Importations\CodeIgniterImportUnitOfWork;
 use App\Infrastructure\Importations\CodeIgniterMeasurementImportGateway;
+use App\Infrastructure\Importations\CodeIgniterPreventiveLibraryTaskGateway;
 use App\Infrastructure\Importations\CsvImportTemplateExporter;
 use App\Infrastructure\Importations\LocalPrivateImportFileStorage;
 use App\Infrastructure\Importations\NativeCsvSpreadsheetReader;
@@ -917,12 +920,35 @@ class Services extends BaseService
 
         $database = db_connect();
 
-        return new AsignarPlan(
+return new AsignarPlan(
             new CodeIgniterPlanMantenimientoRepository($database),
             new CodeIgniterPreventiveAssetGateway($database),
             new CodeIgniterServiceTypeGateway($database),
             new SystemClock(),
         );
+    }
+
+    public static function updateMaintenancePlan(bool $getShared = true): ActualizarPlan
+    {
+        if ($getShared) {
+            return static::getSharedInstance('updateMaintenancePlan');
+        }
+
+        $database = db_connect();
+
+        return new ActualizarPlan(
+            new CodeIgniterPlanMantenimientoRepository($database),
+            new CodeIgniterPreventiveAssetGateway($database),
+        );
+    }
+
+    public static function updateLibraryTask(bool $getShared = true): UpdateLibraryTask
+    {
+        if ($getShared) {
+            return static::getSharedInstance('updateLibraryTask');
+        }
+
+        return new UpdateLibraryTask(new CodeIgniterPreventiveLibraryTaskGateway(db_connect()));
     }
 
     public static function materializeSuggestedPreventivePlans(bool $getShared = true): MaterializeSuggestedPlans

@@ -58,6 +58,7 @@ final class AssetManagement extends BaseController
                 $filters['per_page'],
             ));
             $canEdit = $actor->hasPermission('equipos.editar');
+            $canEditPlans = $actor->hasPermission('planes.editar');
             $photos = $this->primaryPhotos()->execute(
                 $actor,
                 array_map(static fn (array $row): int => (int) $row['id'], $equipment['items']),
@@ -85,6 +86,7 @@ final class AssetManagement extends BaseController
                     $this->availableBranches()->execute($actor),
                     $management,
                     $photos,
+                    $canEditPlans,
                 ),
             );
         } catch (Throwable $exception) {

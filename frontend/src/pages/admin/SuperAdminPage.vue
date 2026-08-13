@@ -1,13 +1,5 @@
 <script setup>
-import {
-  BuildingOffice2Icon,
-  IdentificationIcon,
-  PlusIcon,
-  ShieldCheckIcon,
-  UserGroupIcon,
-  UserPlusIcon,
-} from '@heroicons/vue/24/outline'
-import AdminFlash from './components/AdminFlash.vue'
+import { BuildingOffice2Icon, IdentificationIcon, PlusIcon, ShieldCheckIcon, UserGroupIcon, UserPlusIcon } from '@heroicons/vue/24/outline'
 import AdminMetric from './components/AdminMetric.vue'
 import AdminPageHeading from './components/AdminPageHeading.vue'
 import CsrfField from './components/CsrfField.vue'
@@ -38,8 +30,6 @@ const isRoleAssigned = (user, roleId) => user.assignedRoleIds.includes(Number(ro
         </div>
       </template>
     </AdminPageHeading>
-
-    <AdminFlash :success="data.flash.success" :error="data.flash.error" />
 
     <section aria-label="Resumen de administración" class="mb-6 grid gap-3 sm:grid-cols-3">
       <AdminMetric label="Empresas" :value="data.metrics.companiesTotal" />
@@ -176,7 +166,7 @@ const isRoleAssigned = (user, roleId) => user.assignedRoleIds.includes(Number(ro
             <StatusBadge :active="company.active" active-label="Activa" inactive-label="Inactiva" />
           </div>
 
-          <form v-if="data.permissions.companiesEdit" method="post" :action="company.actions.update" class="grid gap-4 p-5 sm:grid-cols-2">
+          <form v-if="data.permissions.companiesEdit" method="post" :action="company.actions.update" data-confirm data-confirm-title="¿Guardar los cambios de la empresa?" data-confirm-text="Los datos de la empresa se actualizarán en el sistema." data-confirm-button="Guardar empresa" class="grid gap-4 p-5 sm:grid-cols-2">
             <CsrfField :csrf="data.csrf" />
             <label class="block">
               <span class="mb-1.5 block text-sm font-medium text-ink">Razón social</span>
@@ -262,7 +252,7 @@ const isRoleAssigned = (user, roleId) => user.assignedRoleIds.includes(Number(ro
           </div>
 
           <div v-else class="grid gap-6 p-5 lg:grid-cols-2 lg:p-6">
-            <form v-if="data.permissions.assignCompanies" method="post" :action="user.actions.assignCompany" class="rounded-xl border border-border-subtle bg-surface-subtle p-4">
+            <form v-if="data.permissions.assignCompanies" method="post" :action="user.actions.assignCompany" data-confirm data-confirm-title="¿Asignar la empresa al usuario?" data-confirm-text="Se actualizará el acceso del usuario con trazabilidad." data-confirm-button="Asignar" class="rounded-xl border border-border-subtle bg-surface-subtle p-4">
               <CsrfField :csrf="data.csrf" />
               <div class="mb-4 flex items-center gap-2">
                 <BuildingOffice2Icon class="size-5 text-accent-active" aria-hidden="true" />
@@ -282,7 +272,7 @@ const isRoleAssigned = (user, roleId) => user.assignedRoleIds.includes(Number(ro
               <button type="submit" class="mt-4 inline-flex min-h-11 items-center justify-center rounded-lg border border-accent-active px-4 py-2.5 text-sm font-semibold text-accent-active transition-colors hover:bg-accent-subtle">Asignar empresa</button>
             </form>
 
-            <form v-if="data.permissions.assignRoles" method="post" :action="user.actions.assignRoles" class="rounded-xl border border-border-subtle bg-surface-subtle p-4">
+            <form v-if="data.permissions.assignRoles" method="post" :action="user.actions.assignRoles" data-confirm data-confirm-title="¿Asignar los roles al usuario?" data-confirm-text="Se actualizarán los permisos del usuario con trazabilidad." data-confirm-button="Asignar" class="rounded-xl border border-border-subtle bg-surface-subtle p-4">
               <CsrfField :csrf="data.csrf" />
               <fieldset>
                 <legend class="mb-3 flex items-center gap-2 font-semibold text-ink">

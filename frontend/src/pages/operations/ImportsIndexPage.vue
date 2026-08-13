@@ -2,7 +2,6 @@
 import { ArrowDownTrayIcon, ArrowUpTrayIcon, EyeIcon, WrenchScrewdriverIcon } from '@heroicons/vue/24/outline'
 import CsrfInput from './components/CsrfInput.vue'
 import EmptyState from './components/EmptyState.vue'
-import FlashMessages from './components/FlashMessages.vue'
 import FormField from './components/FormField.vue'
 import PageHeading from './components/PageHeading.vue'
 import PaginationBar from './components/PaginationBar.vue'
@@ -16,7 +15,6 @@ defineProps({ data: { type: Object, required: true } })
 <template>
   <div>
     <PageHeading eyebrow="Importaciones" title="Equipos, lecturas y biblioteca preventiva" description="Validá el archivo, revisá cada fila y confirmá la persistencia sólo cuando el resultado sea correcto." />
-    <FlashMessages :flash="data.flash" />
 
     <PanelCard v-if="data.canUpload" title="Nueva importación" class="mb-6">
       <div class="mb-5 flex flex-wrap gap-2">

@@ -112,10 +112,9 @@ final class CodeIgniterPreventiveLibraryReadModel
         )));
 
         $rows = $this->database->table('tipo_servicio_tareas st')
-            ->select('st.tipo_servicio_id, st.orden, st.obligatoria, st.observaciones, t.id, t.codigo, t.nombre, t.descripcion, t.requiere_repuesto, t.requiere_control, t.requiere_foto')
+            ->select('st.tipo_servicio_id, st.orden, st.obligatoria, st.observaciones, t.id, t.codigo, t.nombre, t.descripcion, t.procedimiento, t.duracion_estimada_min, t.requiere_repuesto, t.requiere_control, t.requiere_foto, t.activo')
             ->join('tareas_mantenimiento t', 't.id = st.tarea_id', 'inner')
             ->whereIn('st.tipo_servicio_id', $serviceIds)
-            ->where('t.activo', 1)
             ->orderBy('st.tipo_servicio_id', 'ASC')
             ->orderBy('st.orden', 'ASC')
             ->get()->getResultArray();
@@ -127,8 +126,11 @@ final class CodeIgniterPreventiveLibraryReadModel
                 'code' => (string) $row['codigo'],
                 'name' => (string) $row['nombre'],
                 'description' => $row['descripcion'] === null ? null : (string) $row['descripcion'],
+                'procedure' => $row['procedimiento'] === null ? null : (string) $row['procedimiento'],
+                'durationMinutes' => $row['duracion_estimada_min'] === null ? null : (int) $row['duracion_estimada_min'],
                 'order' => (int) $row['orden'],
                 'mandatory' => (int) $row['obligatoria'] === 1,
+                'active' => (int) $row['activo'] === 1,
                 'requiresPart' => (int) $row['requiere_repuesto'] === 1,
                 'requiresControl' => (int) $row['requiere_control'] === 1,
                 'requiresPhoto' => (int) $row['requiere_foto'] === 1,

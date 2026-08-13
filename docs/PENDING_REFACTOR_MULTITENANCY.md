@@ -25,6 +25,14 @@ Decisiones vigentes, incluida la aclaración del 7 de agosto de 2026:
 - Roles, permisos, tipos de equipo, tipos de servicio y tareas son catálogos globales.
 - Marcas y modelos son catálogos propios de cada empresa, como expresa el esquema ejecutable actual y la gestión tenant de activos.
 
+> **Nota vigente (agosto 2026):** `tareas_mantenimiento` y su relación
+> `tipo_servicio_tareas` son catálogos globales: una edición desde la Biblioteca
+> preventiva afecta a todas las empresas que referencian esa tarea. No se
+> introduce `empresa_id` en estas tablas en esta iteración; sigue pendiente el
+> refactor multiempresa del catálogo. La edición se autoriza por
+> `importaciones.cargar` y valida el alcance contra las plantillas de la empresa
+> actual, pero el catálogo compartido es un límite conocido a documentar.
+
 ## Decisiones implementadas
 
 ### 1. Esquema incremental

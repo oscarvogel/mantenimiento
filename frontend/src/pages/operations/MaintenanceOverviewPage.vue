@@ -3,7 +3,6 @@ import { computed, reactive } from 'vue'
 import { ArrowRightIcon, BoltIcon, PlusIcon } from '@heroicons/vue/24/outline'
 import CsrfInput from './components/CsrfInput.vue'
 import EmptyState from './components/EmptyState.vue'
-import FlashMessages from './components/FlashMessages.vue'
 import FormField from './components/FormField.vue'
 import PageHeading from './components/PageHeading.vue'
 import PaginationBar from './components/PaginationBar.vue'
@@ -62,7 +61,6 @@ for (const equipment of props.data.equipments ?? []) stateFor(equipment)
     <PageHeading eyebrow="Circuito vertical" title="Mantenimiento preventivo" description="Equipo → lectura → plan → vencimiento → orden → cierre → próximo servicio.">
       <template #actions><a :href="data.routes.equipmentIndex" :class="secondaryButton">Ver equipos<ArrowRightIcon class="ml-2 size-4" aria-hidden="true" /></a></template>
     </PageHeading>
-    <FlashMessages :flash="data.flash" />
 
     <PanelCard title="1. Equipos y lecturas" :count="data.equipments.length" class="mb-6">
       <details v-if="data.can.createEquipment" class="mb-6 rounded-xl border border-border bg-surface-subtle p-4 open:bg-white sm:p-5">
@@ -125,7 +123,7 @@ for (const equipment of props.data.equipments ?? []) stateFor(equipment)
 
       <h3 class="mb-3 mt-7 text-sm font-bold uppercase tracking-wide text-ink-muted">Avisos pendientes</h3>
       <EmptyState v-if="data.notices.length === 0" title="No hay avisos vencidos pendientes" />
-      <ul v-else class="space-y-3"><li v-for="notice in data.notices" :key="notice.id" class="flex flex-col justify-between gap-4 rounded-xl border border-danger/20 bg-danger-subtle/40 p-4 lg:flex-row lg:items-center"><div class="flex items-center gap-3"><EquipmentThumbnail :url="notice.photoUrl" :code="notice.equipmentCode" /><div><strong class="text-ink">{{ notice.equipmentCode }} · {{ notice.serviceName }}</strong><p class="mt-1 text-sm text-danger-strong">Vencido por {{ notice.triggerCriteria }}</p></div></div><form v-if="data.can.generateOrder" method="post" :action="notice.generateOrderUrl" class="flex flex-col gap-2 sm:flex-row"><CsrfInput :csrf="data.csrf" /><label class="sr-only" :for="`notice-owner-${notice.id}`">Responsable</label><select :id="`notice-owner-${notice.id}`" name="responsable_usuario_id" :class="fieldClass"><option v-for="user in data.catalogs.users" :key="user.id" :value="user.id">{{ user.name }}</option></select><button type="submit" :class="primaryButton">Generar OT</button></form></li></ul>
+      <ul v-else class="space-y-3"><li v-for="notice in data.notices" :key="notice.id" class="flex flex-col justify-between gap-4 rounded-xl border border-danger/20 bg-danger-subtle/40 p-4 lg:flex-row lg:items-center"><div class="flex items-center gap-3"><EquipmentThumbnail :url="notice.photoUrl" :code="notice.equipmentCode" /><div><strong class="text-ink">{{ notice.equipmentCode }} · {{ notice.serviceName }}</strong><p class="mt-1 text-sm text-danger-strong">Vencido por {{ notice.triggerCriteria }}</p></div></div><form v-if="data.can.generateOrder" method="post" :action="notice.generateOrderUrl" data-confirm data-confirm-title="¿Generar la orden de trabajo?" data-confirm-text="Se creará una orden de trabajo para este vencimiento y su responsable." data-confirm-button="Generar OT" class="flex flex-col gap-2 sm:flex-row"><CsrfInput :csrf="data.csrf" /><label class="sr-only" :for="`notice-owner-${notice.id}`">Responsable</label><select :id="`notice-owner-${notice.id}`" name="responsable_usuario_id" :class="fieldClass"><option v-for="user in data.catalogs.users" :key="user.id" :value="user.id">{{ user.name }}</option></select><button type="submit" :class="primaryButton">Generar OT</button></form></li></ul>
       <PaginationBar :pagination="data.pagination.notices" />
     </PanelCard>
 

@@ -126,15 +126,13 @@ describe('UsersAdminPage', () => {
     expect(wrapper.get('form[action="/administracion/usuarios/3"] option[value="0"]').exists()).toBe(true)
   })
 
-  it('muestra los estados vacíos y de error de forma accesible', () => {
+  it('muestra el estado vacío de usuarios de forma accesible', () => {
     const wrapper = mountPage(UsersAdminPage, {
       ...usersAdminData,
-      flash: { success: '', error: 'No se pudo completar la operación.' },
       users: [],
       metrics: { total: 0, active: 0, inactive: 0 },
     })
 
-    expect(wrapper.get('[role="alert"]').text()).toContain('No se pudo completar')
     expect(wrapper.text()).toContain('No hay usuarios para mostrar')
   })
 })

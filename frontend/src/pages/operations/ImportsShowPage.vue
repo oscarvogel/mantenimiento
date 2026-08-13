@@ -2,7 +2,6 @@
 import { CheckCircleIcon, XCircleIcon } from '@heroicons/vue/24/outline'
 import CsrfInput from './components/CsrfInput.vue'
 import EmptyState from './components/EmptyState.vue'
-import FlashMessages from './components/FlashMessages.vue'
 import PageHeading from './components/PageHeading.vue'
 import PaginationBar from './components/PaginationBar.vue'
 import PanelCard from './components/PanelCard.vue'
@@ -10,16 +9,11 @@ import StatusBadge from './components/StatusBadge.vue'
 import { dangerButton, primaryButton } from './helpers.js'
 
 defineProps({ data: { type: Object, required: true } })
-
-const confirmPersist = (event) => {
-  if (!window.confirm('¿Confirmás la persistencia de las filas válidas?')) event.preventDefault()
-}
 </script>
 
 <template>
   <div>
     <PageHeading eyebrow="Vista previa" :title="data.header.originalFile" :description="`${data.header.type} · ${data.header.status}${data.header.summary ? ` · ${data.header.summary}` : ''}`" :back="{ label: 'Volver a importaciones', href: data.routes.back }" />
-    <FlashMessages :flash="data.flash" />
 
     <section aria-label="Resumen de validación" class="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
       <article v-for="metric in [{label:'Total',value:data.header.totalRows,tone:'text-ink'},{label:'Válidas',value:data.header.validRows,tone:'text-success-strong'},{label:'Errores',value:data.header.errorRows,tone:'text-danger-strong'},{label:'Duplicadas',value:data.header.duplicateRows,tone:'text-warning-strong'}]" :key="metric.label" class="rounded-xl border border-border bg-white p-4 shadow-card sm:p-5">
@@ -28,10 +22,10 @@ const confirmPersist = (event) => {
     </section>
 
     <div v-if="data.canMutate && data.header.status === 'BORRADOR_VALIDADO'" class="mb-6 flex flex-col gap-2 sm:flex-row">
-      <form method="post" :action="data.routes.confirm" @submit="confirmPersist">
+      <form method="post" :action="data.routes.confirm" data-confirm data-confirm-title="¿Confirmar la importación?" data-confirm-text="Las filas válidas se persistirán en el sistema. Esta acción no se puede deshacer." data-confirm-button="Confirmar importación">
         <CsrfInput :csrf="data.csrf" /><button type="submit" :disabled="data.header.validRows === 0" :class="primaryButton"><CheckCircleIcon class="mr-2 size-5" aria-hidden="true" />Confirmar importación</button>
       </form>
-      <form method="post" :action="data.routes.cancel">
+      <form method="post" :action="data.routes.cancel" data-confirm data-confirm-title="¿Cancelar el borrador?" data-confirm-text="Las filas validades se descartarán sin persistir nada." data-confirm-button="Cancelar borrador" data-confirm-danger="true">
         <CsrfInput :csrf="data.csrf" /><button type="submit" :class="dangerButton"><XCircleIcon class="mr-2 size-5" aria-hidden="true" />Cancelar borrador</button>
       </form>
     </div>

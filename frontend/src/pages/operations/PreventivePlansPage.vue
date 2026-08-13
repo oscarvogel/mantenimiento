@@ -3,7 +3,6 @@ import { computed, ref, watch } from 'vue'
 import { CalendarDaysIcon, PlusIcon, TruckIcon } from '@heroicons/vue/24/outline'
 import CsrfInput from './components/CsrfInput.vue'
 import EmptyState from './components/EmptyState.vue'
-import FlashMessages from './components/FlashMessages.vue'
 import FormField from './components/FormField.vue'
 import PageHeading from './components/PageHeading.vue'
 import PaginationBar from './components/PaginationBar.vue'
@@ -146,8 +145,7 @@ const criterionProgress = (key, criterion) => {
   <div>
     <PageHeading eyebrow="Planificación" title="Planes preventivos" description="Definí la frecuencia de servicio y consultá los planes activos de cada camión.">
       <template #actions><a :href="data.routes.equipmentIndex" :class="secondaryButton"><TruckIcon class="mr-2 size-5" aria-hidden="true" />Ver camiones</a></template>
-    </PageHeading>
-    <FlashMessages :flash="data.flash" />
+</PageHeading>
 
     <PanelCard v-if="data.canEdit" id="planes-desde-plantilla" title="Agregar planes desde plantilla" class="mb-6">
       <form method="post" :action="data.routes.createFromTemplate" class="space-y-5">
@@ -273,6 +271,31 @@ const criterionProgress = (key, criterion) => {
                 <template v-for="(criterion, key) in plan.criteria" :key="key"><div v-if="criterion" class="rounded-lg bg-surface-subtle p-3"><dt class="font-semibold capitalize text-ink">{{ key === 'kilometers' ? 'Kilometraje' : key === 'hours' ? 'Horómetro' : 'Fecha' }}</dt><dd class="mt-1 text-ink-muted">{{ criterionLabel(key, criterion) }}</dd><dd class="mt-1 text-xs text-ink-subtle">{{ criterionProgress(key, criterion) }}</dd></div></template>
               </dl>
               <p v-if="plan.notes" class="mt-3 text-sm text-ink-muted">{{ plan.notes }}</p>
+              <details v-if="plan.editUrl" class="ui-details-animated mt-4 rounded-xl border border-border bg-surface-subtle p-3 open:bg-white sm:p-4">
+                <summary class="cursor-pointer list-none text-sm font-semibold text-primary">Editar plan</summary>
+                <form method="post" :action="plan.editUrl" data-confirm data-confirm-title="¿Guardar los cambios?" data-confirm-text="Se actualizará la configuración del plan y se recalcularán sus próximos objetivos." data-confirm-button="Guardar cambios" class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  <CsrfInput :csrf="data.csrf" />
+                  <template v-if="plan.criteria.kilometers">
+                    <FormField :label="`Intervalo (km)`" :for-id="`plan-${plan.id}-interval-km`"><input :id="`plan-${plan.id}-interval-km`" name="intervalo_km" type="number" min="1" :value="valueOrBlank(plan.criteria.kilometers.interval)" :class="fieldClass" /></FormField>
+                    <FormField label="Anticipación (km)" :for-id="`plan-${plan.id}-warning-km`"><input :id="`plan-${plan.id}-warning-km`" name="anticipacion_km" type="number" min="0" :value="valueOrBlank(plan.criteria.kilometers.warning)" :class="fieldClass" /></FormField>
+                    <FormField label="Base (km)" :for-id="`plan-${plan.id}-base-km`"><input :id="`plan-${plan.id}-base-km`" name="base_km" type="number" min="0" :value="valueOrBlank(plan.criteria.kilometers.base)" :class="fieldClass" /></FormField>
+                  </template>
+                  <template v-if="plan.criteria.hours">
+                    <FormField label="Intervalo (horas)" :for-id="`plan-${plan.id}-interval-hours`"><input :id="`plan-${plan.id}-interval-hours`" name="intervalo_horas" type="number" min="0.1" step="0.1" :value="valueOrBlank(plan.criteria.hours.interval)" :class="fieldClass" /></FormField>
+                    <FormField label="Anticipación (horas)" :for-id="`plan-${plan.id}-warning-hours`"><input :id="`plan-${plan.id}-warning-hours`" name="anticipacion_horas" type="number" min="0" step="0.1" :value="valueOrBlank(plan.criteria.hours.warning)" :class="fieldClass" /></FormField>
+                    <FormField label="Base (horas)" :for-id="`plan-${plan.id}-base-hours`"><input :id="`plan-${plan.id}-base-hours`" name="base_horas" type="number" min="0" step="0.1" :value="valueOrBlank(plan.criteria.hours.base)" :class="fieldClass" /></FormField>
+                  </template>
+                  <template v-if="plan.criteria.date">
+                    <FormField label="Intervalo (días)" :for-id="`plan-${plan.id}-interval-days`"><input :id="`plan-${plan.id}-interval-days`" name="intervalo_dias" type="number" min="1" :value="valueOrBlank(plan.criteria.date.interval)" :class="fieldClass" /></FormField>
+                    <FormField label="Anticipación (días)" :for-id="`plan-${plan.id}-warning-days`"><input :id="`plan-${plan.id}-warning-days`" name="anticipacion_dias" type="number" min="0" :value="valueOrBlank(plan.criteria.date.warning)" :class="fieldClass" /></FormField>
+                    <FormField label="Base (fecha)" :for-id="`plan-${plan.id}-base-date`"><input :id="`plan-${plan.id}-base-date`" name="base_fecha" type="date" :value="valueOrBlank(plan.criteria.date.base)" :class="fieldClass" /></FormField>
+                  </template>
+                  <FormField label="Prioridad" :for-id="`plan-${plan.id}-priority`"><select :id="`plan-${plan.id}-priority`" name="prioridad" :class="fieldClass"><option v-for="priority in ['BAJA', 'MEDIA', 'ALTA', 'CRITICA']" :key="priority" :value="priority" :selected="plan.priority === priority">{{ priority === 'CRITICA' ? 'CRÍTICA' : priority }}</option></select></FormField>
+                  <FormField label="Observaciones" :for-id="`plan-${plan.id}-notes`" class="md:col-span-2 xl:col-span-3"><textarea :id="`plan-${plan.id}-notes`" name="observaciones" maxlength="1000" rows="2" :value="plan.notes || ''" :class="fieldClass"></textarea></FormField>
+                  <p class="text-xs text-ink-muted md:col-span-2 xl:col-span-4">La base y su próximo objetivo se recalculan. Un plan proveniente de plantilla conserva su origen sin modificar la plantilla.</p>
+                  <button type="submit" :class="`${primaryButton} md:justify-self-start`">Guardar cambios</button>
+                </form>
+              </details>
             </article>
           </div>
         </section>

@@ -45,9 +45,50 @@ final class PreventivePlansPayloadTest extends CIUnitTestCase
             true,
         );
 
-        self::assertSame(10000, $payload['plans']['items'][0]['criteria']['kilometers']['interval']);
+self::assertSame(10000, $payload['plans']['items'][0]['criteria']['kilometers']['interval']);
         self::assertSame(9500, $payload['plans']['items'][0]['criteria']['kilometers']['current']);
         self::assertNull($payload['plans']['items'][0]['criteria']['hours']);
+        self::assertSame('http://127.0.0.1:8080/mantenimiento/planes/12/editar', $payload['plans']['items'][0]['editUrl']);
+    }
+
+    public function testEditUrlIsNullWithoutPermissionToEditPlans(): void
+    {
+        $payload = (new PreventivePlansPayload())->fromPage(
+            new PreventivePlanPage([[
+                'id' => 12,
+                'equipment_id' => 9,
+                'equipment_code' => 'CAM-01',
+                'equipment_plate' => 'AA123BB',
+                'equipment_type_name' => 'Camión',
+                'branch_id' => 2,
+                'branch_code' => 'CC',
+                'branch_name' => 'Casa central',
+                'service_name' => 'Cambio de aceite',
+                'state' => 'PROXIMO',
+                'priority' => 'MEDIA',
+                'interval_km' => 10000,
+                'warning_km' => 1000,
+                'base_km' => 100,
+                'next_km' => 10100,
+                'current_km' => 9500,
+                'interval_hours' => null,
+                'warning_hours' => null,
+                'base_hours' => null,
+                'next_hours' => null,
+                'current_hours' => null,
+                'interval_days' => null,
+                'warning_days' => null,
+                'base_date' => null,
+                'next_date' => null,
+                'current_date' => '2026-08-11',
+                'notes' => null,
+            ]], 1, 10, 1, [], [], [], []),
+            [],
+            false,
+            true,
+        );
+
+        self::assertNull($payload['plans']['items'][0]['editUrl']);
     }
 
     public function testPaginationLinksPreserveFiltersAndWhitelistedPageSize(): void

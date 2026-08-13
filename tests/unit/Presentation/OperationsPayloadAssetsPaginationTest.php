@@ -44,6 +44,20 @@ final class OperationsPayloadAssetsPaginationTest extends TestCase
         self::assertSame('tractor', $query['q']);
     }
 
+    public function testAssignPlanUrlOnlyAppearsWithPermissionToEditPlans(): void
+    {
+        $item = ['id' => 15, 'codigo' => 'CAM-15', 'tipo_nombre' => 'Camión', 'patente' => null, 'marca_nombre' => null, 'modelo_nombre' => null, 'anio' => null, 'sucursal_codigo' => 'CC', 'sucursal_nombre' => 'Central', 'km_actual' => null, 'horas_actuales' => null, 'estado' => 'ACTIVO'];
+        $page = ['items' => [$item], 'total' => 1, 'page' => 1, 'perPage' => 10, 'totalPages' => 1];
+
+        $allowed = (new OperationsPayload())->assets($page, [], [], true, [], [], [], true);
+        $denied = (new OperationsPayload())->assets($page, [], [], true);
+
+        self::assertNotNull($allowed['equipment']['items'][0]['assignPlanUrl']);
+        self::assertStringContainsString('/mantenimiento/planes?equipo_id=15', $allowed['equipment']['items'][0]['assignPlanUrl']);
+        self::assertStringEndsWith('#planes-desde-plantilla', $allowed['equipment']['items'][0]['assignPlanUrl']);
+        self::assertNull($denied['equipment']['items'][0]['assignPlanUrl']);
+    }
+
     public function testEquipmentDetailPagersKeepEveryPageAndSizeParameter(): void
     {
         $payload = (new OperationsPayload())->equipmentDetails(

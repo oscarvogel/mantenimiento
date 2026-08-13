@@ -92,7 +92,10 @@ const filteredItems = computed(() => {
                     <p class="font-semibold">{{ task.name }}</p>
                     <p class="mt-0.5 font-mono text-xs text-ink-muted">{{ task.code }}</p>
                   </div>
-                  <span v-if="task.mandatory" class="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">Obligatoria</span>
+                  <div class="flex flex-wrap items-center gap-1.5">
+                    <span v-if="task.mandatory" class="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">Obligatoria</span>
+                    <span v-if="!task.active" class="rounded-full bg-surface-raised px-2 py-0.5 text-xs font-semibold text-ink-muted">Inactiva</span>
+                  </div>
                 </div>
                 <p v-if="task.description" class="mt-2 text-xs text-ink-muted">{{ task.description }}</p>
                 <div v-if="task.requiresPart || task.requiresControl || task.requiresPhoto" class="mt-2 flex flex-wrap gap-1.5">
@@ -100,12 +103,34 @@ const filteredItems = computed(() => {
                   <span v-if="task.requiresControl" class="rounded-full bg-surface-raised px-2 py-0.5 text-xs font-semibold text-ink-muted">Control</span>
                   <span v-if="task.requiresPhoto" class="rounded-full bg-surface-raised px-2 py-0.5 text-xs font-semibold text-ink-muted">Foto</span>
                 </div>
+                <details v-if="data.canEdit && task.updateUrl" class="ui-details-animated mt-3 border-t border-border-subtle pt-2">
+                  <summary class="cursor-pointer list-none text-xs font-semibold text-primary">Editar tarea</summary>
+                  <form method="post" :action="task.updateUrl" data-confirm data-confirm-title="¿Guardar cambios en la tarea?" data-confirm-text="La tarea es un catálogo compartido: el cambio se aplicará a toda la biblioteca preventiva." data-confirm-button="Guardar tarea" data-confirm-icon="warning" class="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                    <CsrfInput :csrf="data.csrf" />
+                    <input type="hidden" name="tipo_servicio_id" :value="task.serviceTypeId" />
+                    <FormField label="Nombre" :for-id="`task-${task.id}-name`"><input :id="`task-${task.id}-name`" name="nombre" type="text" maxlength="150" :value="task.name" :class="fieldClass" /></FormField>
+                    <FormField label="Orden" :for-id="`task-${task.id}-order`"><input :id="`task-${task.id}-order`" name="orden" type="number" min="1" :value="task.order" :class="fieldClass" /></FormField>
+                    <FormField label="Duración estimada (min)" :for-id="`task-${task.id}-duration`"><input :id="`task-${task.id}-duration`" name="duracion_estimada_min" type="number" min="0" :value="valueOrBlank(task.durationMinutes)" :class="fieldClass" /></FormField>
+                    <label class="flex min-h-11 items-end gap-2 rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm font-semibold text-ink"><input name="obligatoria" type="checkbox" value="1" :checked="task.mandatory" class="size-4 rounded border-border text-primary focus:ring-primary/20" />Obligatoria</label>
+                    <FormField label="Descripción" :for-id="`task-${task.id}-description`" class="md:col-span-2"><textarea :id="`task-${task.id}-description`" name="descripcion" rows="2" :value="task.description || ''" :class="fieldClass"></textarea></FormField>
+                    <FormField label="Procedimiento" :for-id="`task-${task.id}-procedure`" class="md:col-span-2 xl:col-span-4"><textarea :id="`task-${task.id}-procedure`" name="procedimiento" rows="2" :value="task.procedure || ''" :class="fieldClass"></textarea></FormField>
+                    <FormField label="Observaciones de la relación" :for-id="`task-${task.id}-observations`" class="md:col-span-2 xl:col-span-4"><textarea :id="`task-${task.id}-observations`" name="observaciones" maxlength="500" rows="2" :value="task.observations || ''" :class="fieldClass"></textarea></FormField>
+                    <div class="flex flex-wrap items-center gap-4 md:col-span-2 xl:col-span-4">
+                      <label class="flex items-center gap-2 text-sm font-semibold text-ink"><input name="requiere_repuesto" type="checkbox" value="1" :checked="task.requiresPart" class="size-4 rounded border-border text-primary focus:ring-primary/20" />Requiere repuesto</label>
+                      <label class="flex items-center gap-2 text-sm font-semibold text-ink"><input name="requiere_control" type="checkbox" value="1" :checked="task.requiresControl" class="size-4 rounded border-border text-primary focus:ring-primary/20" />Requiere control</label>
+                      <label class="flex items-center gap-2 text-sm font-semibold text-ink"><input name="requiere_foto" type="checkbox" value="1" :checked="task.requiresPhoto" class="size-4 rounded border-border text-primary focus:ring-primary/20" />Requiere foto</label>
+                      <label class="flex items-center gap-2 text-sm font-semibold text-ink"><input name="activo" type="checkbox" value="1" :checked="task.active" class="size-4 rounded border-border text-primary focus:ring-primary/20" />Activa</label>
+                    </div>
+                    <p class="text-xs text-ink-muted md:col-span-2 xl:col-span-4">La tarea y su orden son catálogo compartido: el cambio se aplica a toda la biblioteca.</p>
+                    <button type="submit" :class="`${primaryButton} md:justify-self-start`">Guardar tarea</button>
+                  </form>
+                </details>
               </li>
             </ul>
             <p v-else class="mt-2 text-sm text-ink-muted">Sin tareas cargadas</p>
           </div>
 
-          <form method="post" :action="item.updateUrl" class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <form method="post" :action="item.updateUrl" data-confirm data-confirm-title="¿Guardar cambios en el ítem de biblioteca?" data-confirm-text="El ítem es un catálogo compartido: el cambio afectará a los planes que lo usan." data-confirm-button="Guardar ítem" data-confirm-icon="warning" class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <CsrfInput :csrf="data.csrf" />
             <FormField label="Cada km" :for-id="`library-${item.id}-interval-km`">
               <input :id="`library-${item.id}-interval-km`" name="intervalo_km" type="number" min="1" :value="valueOrBlank(item.intervalKm)" :disabled="!data.canEdit" :class="fieldClass" />

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Application\Identity\ActorContext;
+use App\Application\PreventiveMaintenance\ActualizarPlan;
+use App\Application\PreventiveMaintenance\ActualizarPlanCommand;
 use App\Application\PreventiveMaintenance\AsignarPlan;
 use App\Application\PreventiveMaintenance\AsignarPlanCommand;
 use App\Application\PreventiveMaintenance\ListPreventivePlansHandler;
@@ -98,6 +100,44 @@ final class PreventivePlans extends BaseController
         }
     }
 
+    public function update(int $planId): RedirectResponse
+    {
+        try {
+            $actor = $this->actor();
+            $intervalKm = $this->nullablePositiveInt($this->request->getPost('intervalo_km'));
+            $intervalHours = $this->hoursTenths($this->request->getPost('intervalo_horas'));
+            $intervalDays = $this->nullablePositiveInt($this->request->getPost('intervalo_dias'));
+            $this->updatePlan()->execute(new ActualizarPlanCommand(
+                $actor,
+                (int) $actor->companyId(),
+                $planId,
+                $intervalKm,
+                $intervalHours,
+                $intervalDays,
+                $intervalKm === null ? null : ($this->nullableNonNegativeInt($this->request->getPost('anticipacion_km')) ?? 0),
+                $intervalHours === null ? null : ($this->hoursTenths($this->request->getPost('anticipacion_horas')) ?? 0),
+                $intervalDays === null ? null : ($this->nullableNonNegativeInt($this->request->getPost('anticipacion_dias')) ?? 0),
+                baseKm: $intervalKm === null ? null : $this->nullableNonNegativeInt($this->request->getPost('base_km')),
+                baseHoursTenths: $intervalHours === null ? null : $this->hoursTenths($this->request->getPost('base_horas')),
+                baseDate: $intervalDays === null ? null : $this->nullableDate($this->request->getPost('base_fecha')),
+                priority: strtoupper(trim((string) ($this->request->getPost('prioridad') ?: 'MEDIA'))),
+                notes: $this->nullableString($this->request->getPost('observaciones')),
+            ));
+
+            return redirect()->to('/mantenimiento/planes')->with('success', "Plan {$planId} actualizado correctamente.");
+        } catch (Throwable $exception) {
+            if (! $exception instanceof DomainException && ! $exception instanceof InvalidArgumentException) {
+                log_message('error', 'Falló la actualización del plan preventivo: {message}', ['message' => $exception->getMessage()]);
+            }
+            return redirect()->to('/mantenimiento/planes#planes-asignados')->withInput()->with(
+                'error',
+                $exception instanceof DomainException || $exception instanceof InvalidArgumentException
+                    ? $exception->getMessage()
+                    : 'No se pudo actualizar el plan preventivo.',
+            );
+        }
+    }
+
     public function createFromTemplates(): RedirectResponse
     {
         $equipmentId = 0;
@@ -155,6 +195,7 @@ final class PreventivePlans extends BaseController
 
     private function list(): ListPreventivePlansHandler { return service('listPreventivePlans'); }
     private function assign(): AsignarPlan { return service('assignMaintenancePlan'); }
+    private function updatePlan(): ActualizarPlan { return service('updateMaintenancePlan'); }
     private function materializeSuggested(): MaterializeSuggestedPlans { return service('materializeSuggestedPreventivePlans'); }
     private function payload(): PreventivePlansPayload { return service('preventivePlansPayload'); }
     private function photos(): ListPrimaryEquipmentPhotos { return service('listPrimaryEquipmentPhotos'); }

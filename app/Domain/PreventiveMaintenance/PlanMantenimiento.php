@@ -46,7 +46,7 @@ final class PlanMantenimiento
         }
     }
 
-    public static function asignar(
+public static function asignar(
         int $empresaId,
         int $equipoId,
         int $tipoServicioId,
@@ -64,6 +64,98 @@ final class PlanMantenimiento
         ?int $origenPlantillaId = null,
         ?int $origenPlantillaItemId = null,
     ): self {
+        return self::nuevo(
+            null,
+            $empresaId,
+            $equipoId,
+            $tipoServicioId,
+            $intervaloKm,
+            $intervaloHorasDecimas,
+            $intervaloDias,
+            $anticipacionKm,
+            $anticipacionHorasDecimas,
+            $anticipacionDias,
+            $baseKm,
+            $baseHorasDecimas,
+            $baseFecha,
+            $prioridad,
+            true,
+            $observaciones,
+            $origenPlantillaId,
+            $origenPlantillaItemId,
+        );
+    }
+
+    /**
+     * Reconfigura un plan existente conservando su identidad (id, empresa, equipo,
+     * tipo de servicio y origen de plantilla) y recalcula los proximos objetivos
+     * a partir de las bases informadas.
+     */
+    public static function reconfigurar(
+        int $id,
+        int $empresaId,
+        int $equipoId,
+        int $tipoServicioId,
+        ?int $intervaloKm,
+        ?int $intervaloHorasDecimas,
+        ?int $intervaloDias,
+        ?int $anticipacionKm,
+        ?int $anticipacionHorasDecimas,
+        ?int $anticipacionDias,
+        ?int $baseKm,
+        ?int $baseHorasDecimas,
+        ?DateTimeImmutable $baseFecha,
+        string $prioridad,
+        ?string $observaciones,
+        ?int $origenPlantillaId = null,
+        ?int $origenPlantillaItemId = null,
+    ): self {
+        if ($id <= 0) {
+            throw new InvalidArgumentException('El identificador del plan debe ser valido.');
+        }
+
+        return self::nuevo(
+            $id,
+            $empresaId,
+            $equipoId,
+            $tipoServicioId,
+            $intervaloKm,
+            $intervaloHorasDecimas,
+            $intervaloDias,
+            $anticipacionKm,
+            $anticipacionHorasDecimas,
+            $anticipacionDias,
+            $baseKm,
+            $baseHorasDecimas,
+            $baseFecha,
+            $prioridad,
+            true,
+            $observaciones,
+            $origenPlantillaId,
+            $origenPlantillaItemId,
+        );
+    }
+
+    private static function nuevo(
+        ?int $id,
+        int $empresaId,
+        int $equipoId,
+        int $tipoServicioId,
+        ?int $intervaloKm,
+        ?int $intervaloHorasDecimas,
+        ?int $intervaloDias,
+        ?int $anticipacionKm,
+        ?int $anticipacionHorasDecimas,
+        ?int $anticipacionDias,
+        ?int $baseKm,
+        ?int $baseHorasDecimas,
+        ?DateTimeImmutable $baseFecha,
+        string $prioridad,
+        bool $activo,
+        ?string $observaciones,
+        ?int $origenPlantillaId,
+        ?int $origenPlantillaItemId,
+    ): self {
         $proximoKm            = $intervaloKm === null || $baseKm === null ? null : $baseKm + $intervaloKm;
         $proximasHorasDecimas = $intervaloHorasDecimas === null || $baseHorasDecimas === null
             ? null
@@ -73,7 +165,7 @@ final class PlanMantenimiento
             : self::dateOnly($baseFecha)->modify('+' . $intervaloDias . ' days');
 
         return new self(
-            null,
+            $id,
             $empresaId,
             $equipoId,
             $tipoServicioId,
@@ -90,7 +182,7 @@ final class PlanMantenimiento
             $proximasHorasDecimas,
             $proximaFecha,
             $prioridad,
-            true,
+            $activo,
             $observaciones,
             $origenPlantillaId,
             $origenPlantillaItemId,

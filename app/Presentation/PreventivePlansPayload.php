@@ -79,6 +79,7 @@ final class PreventivePlansPayload
                     ],
                     'branch' => ['id' => $row['branch_id'], 'code' => $row['branch_code'], 'name' => $row['branch_name']],
                     'serviceName' => $row['service_name'], 'state' => $row['state'], 'priority' => $row['priority'],
+                    'editUrl' => $canEdit ? base_url('mantenimiento/planes/' . $row['id'] . '/editar') : null,
                     'criteria' => [
                         'kilometers' => $this->criterion($row['interval_km'], $row['warning_km'], $row['base_km'], $row['next_km'], $row['current_km']),
                         'hours' => $this->criterion($row['interval_hours'], $row['warning_hours'], $row['base_hours'], $row['next_hours'], $row['current_hours']),

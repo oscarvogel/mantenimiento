@@ -136,7 +136,7 @@ final class OperationsPayload
     }
 
     /** @param array<string,mixed> $page @param array<string,mixed> $catalogs @param array<string,mixed> $filters */
-    public function assets(array $page, array $catalogs, array $filters, bool $canEdit, array $branches = [], array $management = [], array $primaryPhotos = []): array
+    public function assets(array $page, array $catalogs, array $filters, bool $canEdit, array $branches = [], array $management = [], array $primaryPhotos = [], bool $canEditPlans = false): array
     {
         $query = array_filter([
             'q' => $filters['q'] ?? null, 'tipo_id' => $filters['type_id'] ?? null,
@@ -189,6 +189,7 @@ final class OperationsPayload
                     'currentHours' => $row['horas_actuales'], 'status' => $row['estado'],
                     'detailUrl' => base_url('mantenimiento/equipos/' . $row['id']),
                     'qrUrl' => base_url('mantenimiento/equipos/' . $row['id'] . '/qr.svg'),
+                    'assignPlanUrl' => $canEditPlans ? base_url('mantenimiento/planes?equipo_id=' . $row['id']) . '#planes-desde-plantilla' : null,
                     'photoUrl' => isset($primaryPhotos[(int) $row['id']]) ? base_url('mantenimiento/equipos/' . $row['id'] . '/foto-principal?miniatura=1') : null,
                 ], $page['items'] ?? []),
                 'pagination' => $this->pagination((int) ($page['page'] ?? 1), (int) ($page['totalPages'] ?? 1), (int) ($page['total'] ?? 0), $base, $query, 'page', 'per_page', (int) ($page['perPage'] ?? 10)),

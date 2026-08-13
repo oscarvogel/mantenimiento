@@ -3,7 +3,6 @@ import { reactive, ref } from 'vue'
 import { ArrowPathIcon, CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
 import CsrfInput from './components/CsrfInput.vue'
 import EmptyState from './components/EmptyState.vue'
-import FlashMessages from './components/FlashMessages.vue'
 import PageHeading from './components/PageHeading.vue'
 import PaginationBar from './components/PaginationBar.vue'
 import PanelCard from './components/PanelCard.vue'
@@ -54,7 +53,6 @@ const submitRows = async () => {
 </script>
 
 <template>
-  <FlashMessages :flash="data.flash" />
   <PageHeading title="Carga rápida de lecturas" eyebrow="Medición de uso" description="Actualizá varios equipos sin salir de la grilla. Cada fila se valida y procesa de manera independiente.">
     <template #actions><a :href="data.routes.assets" :class="secondaryButton">Ver equipos</a></template>
   </PageHeading>
