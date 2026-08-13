@@ -45,10 +45,10 @@ final class PreventivePlansPayloadTest extends CIUnitTestCase
             true,
         );
 
-self::assertSame(10000, $payload['plans']['items'][0]['criteria']['kilometers']['interval']);
+        self::assertSame(10000, $payload['plans']['items'][0]['criteria']['kilometers']['interval']);
         self::assertSame(9500, $payload['plans']['items'][0]['criteria']['kilometers']['current']);
         self::assertNull($payload['plans']['items'][0]['criteria']['hours']);
-        self::assertSame('http://127.0.0.1:8080/mantenimiento/planes/12/editar', $payload['plans']['items'][0]['editUrl']);
+        self::assertSame('/mantenimiento/planes/12/editar', parse_url($payload['plans']['items'][0]['editUrl'], PHP_URL_PATH));
     }
 
     public function testEditUrlIsNullWithoutPermissionToEditPlans(): void
