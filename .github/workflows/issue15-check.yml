@@ -10,11 +10,16 @@ on:
     branches:
       - main
 
+permissions:
+  contents: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
@@ -40,8 +45,15 @@ jobs:
       - name: Frontend build
         working-directory: frontend
         run: npm run build
-      - name: Upload built dashboard assets
-        uses: actions/upload-artifact@v4
-        with:
-          name: dashboard-assets
-          path: assets/dashboard
+      - name: Commit rebuilt dashboard assets
+        if: github.event_name == 'pull_request' && github.head_ref == 'fix/rebuild-assets-post-pr29'
+        run: |
+          if git diff --quiet -- assets/dashboard; then
+            echo "No hay cambios en assets/dashboard"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f assets/dashboard
+          git commit -m "build: regenerar dashboard con UI integrada"
+          git push origin HEAD:${{ github.head_ref }}
