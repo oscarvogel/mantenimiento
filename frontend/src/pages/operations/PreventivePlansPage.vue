@@ -17,6 +17,7 @@ const selectedServiceId = ref(String(props.data.old?.tipo_servicio_id || ''))
 const selectedEquipment = computed(() => props.data.catalogs.equipment.find((item) => String(item.id) === selectedEquipmentId.value) ?? null)
 const oldValues = props.data.old ?? {}
 const hasOldValues = Object.values(oldValues).some((value) => value !== '' && value !== null && value !== undefined)
+const creationMode = ref(props.data.wizardEquipmentId ? 'template' : hasOldValues ? 'manual' : null)
 const formValues = ref({
   intervalo_km: oldValues.intervalo_km || '',
   anticipacion_km: oldValues.anticipacion_km || '',
@@ -139,15 +140,35 @@ const criterionProgress = (key, criterion) => {
   if (key === 'date') return `Hoy: ${criterion.current} · anticipación: ${criterion.warning} días`
   return `Actual: ${criterion.current ?? 'sin datos'} · anticipación: ${criterion.warning} ${key === 'kilometers' ? 'km' : 'h'}`
 }
+
+const visibleStateCounts = computed(() => {
+  const counts = { AL_DIA: 0, PROXIMO: 0, VENCIDO: 0, SIN_DATOS: 0 }
+  for (const plan of props.data.plans.items) {
+    if (Object.hasOwn(counts, plan.state)) counts[plan.state] += 1
+  }
+  return counts
+})
+
+const toggleCreationMode = (mode) => {
+  creationMode.value = creationMode.value === mode ? null : mode
+}
 </script>
 
 <template>
   <div>
-    <PageHeading eyebrow="Planificación" title="Planes preventivos" description="Definí la frecuencia de servicio y consultá los planes activos de cada camión.">
-      <template #actions><a :href="data.routes.equipmentIndex" :class="secondaryButton"><TruckIcon class="mr-2 size-5" aria-hidden="true" />Ver camiones</a></template>
-</PageHeading>
+    <PageHeading eyebrow="Mantenimiento preventivo" title="Planes preventivos" description="Revisá primero el estado de cada unidad y asigná nuevos planes sólo cuando sea necesario.">
+      <template #actions>
+        <div class="flex flex-wrap gap-2">
+          <a :href="data.routes.equipmentIndex" :class="secondaryButton"><TruckIcon class="mr-2 size-5" aria-hidden="true" />Ver equipos</a>
+          <button v-if="data.canEdit" type="button" data-testid="open-template-plans" :class="creationMode === 'template' ? primaryButton : secondaryButton" :aria-expanded="creationMode === 'template'" aria-controls="planes-desde-plantilla" @click="toggleCreationMode('template')">Asignar desde plantilla</button>
+          <button v-if="data.canEdit" type="button" data-testid="open-manual-plan" :class="creationMode === 'manual' ? primaryButton : secondaryButton" :aria-expanded="creationMode === 'manual'" aria-controls="plan-manual" @click="toggleCreationMode('manual')"><PlusIcon class="mr-2 size-4" aria-hidden="true" />Nuevo manual</button>
+        </div>
+      </template>
+    </PageHeading>
 
-    <PanelCard v-if="data.canEdit" id="planes-desde-plantilla" title="Agregar planes desde plantilla" class="mb-6">
+    <div class="flex flex-col">
+
+    <PanelCard v-if="data.canEdit && creationMode === 'template'" id="planes-desde-plantilla" title="Asignar planes desde plantilla" class="order-2 mb-6">
       <form method="post" :action="data.routes.createFromTemplate" class="space-y-5">
         <CsrfInput :csrf="data.csrf" />
         <FormField label="Camión o equipo" for-id="template-equipment" class="max-w-2xl">
@@ -201,10 +222,8 @@ const criterionProgress = (key, criterion) => {
       </form>
     </PanelCard>
 
-    <PanelCard v-if="data.canEdit" title="Crear plan preventivo" class="mb-6">
-      <details class="rounded-xl border border-border bg-surface-subtle p-4 open:bg-white sm:p-5">
-        <summary class="flex cursor-pointer list-none items-center gap-2 font-semibold text-primary"><PlusIcon class="size-5" aria-hidden="true" />Nuevo plan</summary>
-        <form method="post" :action="data.routes.create" class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <PanelCard v-if="data.canEdit && creationMode === 'manual'" id="plan-manual" title="Crear plan preventivo" class="order-3 mb-6">
+        <form method="post" :action="data.routes.create" class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <CsrfInput :csrf="data.csrf" />
           <FormField label="Camión o equipo" for-id="plan-equipment" class="md:col-span-2">
             <select id="plan-equipment" v-model="selectedEquipmentId" name="equipo_id" required :class="fieldClass">
@@ -245,10 +264,9 @@ const criterionProgress = (key, criterion) => {
           <p class="text-xs text-ink-muted md:col-span-2 xl:col-span-4">Completá al menos un intervalo. Si combinás criterios, el plan vence cuando se alcanza primero cualquiera de ellos.</p>
           <button type="submit" :class="`${primaryButton} md:justify-self-start`">Crear plan</button>
         </form>
-      </details>
     </PanelCard>
 
-    <PanelCard title="Planes asignados por camión" :count="data.plans.total" flush>
+    <PanelCard title="Planes por equipo" :count="data.plans.total" flush class="order-1 mb-6">
       <form method="get" :action="data.routes.index" class="grid gap-3 border-b border-border-subtle bg-surface-subtle p-5 md:grid-cols-2 xl:grid-cols-5">
         <FormField label="Buscar" for-id="plans-q"><input id="plans-q" name="q" type="search" placeholder="Patente, código o servicio" :value="data.filters.q" :class="fieldClass" /></FormField>
         <FormField label="Camión" for-id="plans-equipment"><select id="plans-equipment" name="equipo_id" :class="fieldClass"><option value="">Todos</option><option v-for="equipment in data.catalogs.equipment" :key="equipment.id" :value="equipment.id" :selected="String(equipment.id) === String(data.filters.equipmentId)">{{ equipment.code }}</option></select></FormField>
@@ -256,6 +274,13 @@ const criterionProgress = (key, criterion) => {
         <FormField label="Estado" for-id="plans-state"><select id="plans-state" name="estado" :class="fieldClass"><option value="">Todos</option><option v-for="state in ['AL_DIA', 'PROXIMO', 'VENCIDO', 'SIN_DATOS']" :key="state" :value="state" :selected="state === data.filters.state">{{ state.replace('_', ' ') }}</option></select></FormField>
         <div class="flex items-end gap-2"><button type="submit" :class="primaryButton">Filtrar</button><a :href="data.routes.index" :class="secondaryButton">Limpiar</a></div>
       </form>
+
+      <section aria-label="Resumen de planes visibles" class="grid gap-3 border-b border-border-subtle p-5 sm:grid-cols-2 xl:grid-cols-4">
+        <article class="rounded-xl border border-border bg-surface-raised p-4"><p class="text-xs font-bold uppercase tracking-wide text-ink-muted">Planes activos</p><p class="mt-2 text-2xl font-bold text-ink">{{ data.plans.total }}</p></article>
+        <article class="rounded-xl border border-success/20 bg-success-subtle/40 p-4"><p class="text-xs font-bold uppercase tracking-wide text-success-strong">Al día en esta página</p><p class="mt-2 text-2xl font-bold text-ink">{{ visibleStateCounts.AL_DIA }}</p></article>
+        <article class="rounded-xl border border-warning/30 bg-warning-subtle/50 p-4"><p class="text-xs font-bold uppercase tracking-wide text-warning-foreground">Próximos en esta página</p><p class="mt-2 text-2xl font-bold text-ink">{{ visibleStateCounts.PROXIMO }}</p></article>
+        <article class="rounded-xl border border-danger/20 bg-danger-subtle/40 p-4"><p class="text-xs font-bold uppercase tracking-wide text-danger-strong">Vencidos en esta página</p><p class="mt-2 text-2xl font-bold text-ink">{{ visibleStateCounts.VENCIDO }}</p></article>
+      </section>
 
       <EmptyState v-if="groupedPlans.length === 0" title="No hay planes preventivos" description="Creá el primer plan o ajustá los filtros de búsqueda." />
       <div v-else class="divide-y divide-border-subtle">
@@ -302,5 +327,6 @@ const criterionProgress = (key, criterion) => {
       </div>
       <PaginationBar :pagination="data.plans.pagination" />
     </PanelCard>
+    </div>
   </div>
 </template>
