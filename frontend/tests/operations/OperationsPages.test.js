@@ -43,6 +43,7 @@ describe('registro de componentes operativos', () => {
 describe('preventive-plans', () => {
   it('crea planes con CSRF y muestra criterios por camión', async () => {
     const wrapper = render(PreventivePlansPage, preventivePlansData)
+    await wrapper.get('[data-testid="open-manual-plan"]').trigger('click')
     const create = wrapper.get('form[action="/mantenimiento/planes"][method="post"]')
     expect(create.get('input[name="csrf_test_name"]').attributes('value')).toBe('secure-token')
     await create.get('select[name="equipo_id"]').setValue('9')
@@ -203,19 +204,25 @@ describe('preventive-library', () => {
 })
 
 describe('maintenance-overview', () => {
-  it('conserva rutas POST, CSRF y formularios del circuito', () => {
+  it('conserva rutas POST, CSRF y formularios del circuito', async () => {
     const wrapper = render(MaintenanceOverviewPage, maintenanceData)
 
+    await wrapper.get('button[aria-controls="overview-create-equipment"]').trigger('click')
     expect(wrapper.get('form[action="/mantenimiento/equipos"]').attributes('method')).toBe('post')
+
+    await wrapper.get('button[aria-controls="reading-9"]').trigger('click')
     expect(wrapper.get('form[action="/mantenimiento/equipos/9/lecturas"]').attributes('method')).toBe('post')
-    expect(wrapper.get('form[action="/mantenimiento/equipos/9/planes"]').attributes('method')).toBe('post')
+
+    await wrapper.get('button[aria-controls="plan-9"]').trigger('click')
     const assignPlan = wrapper.get('form[action="/mantenimiento/equipos/9/planes"]')
+    expect(assignPlan.attributes('method')).toBe('post')
     expect(assignPlan.get('input[name="intervalo_km"]').element.value).toBe('10000')
     expect(assignPlan.get('input[name="anticipacion_km"]').element.value).toBe('1000')
     expect(assignPlan.get('input[name="intervalo_horas"]').element.value).toBe('250.0')
     expect(assignPlan.get('input[name="observaciones"]').element.value).toBe('Aceite y filtros')
     expect(wrapper.get('form[action="/mantenimiento/vencimientos/detectar"]').attributes('method')).toBe('post')
     expect(wrapper.get('form[action="/mantenimiento/avisos/3/orden"]').attributes('method')).toBe('post')
+    await wrapper.get('button[aria-controls="close-order-4"]').trigger('click')
     expect(wrapper.get('form[action="/mantenimiento/ordenes/4/cerrar"]').attributes('method')).toBe('post')
     expect(wrapper.findAll('input[name="csrf_test_name"]').every((input) => input.attributes('value') === 'secure-token')).toBe(true)
     expect(wrapper.findAll('select[aria-label="Registros por página"]')).toHaveLength(5)
@@ -228,7 +235,7 @@ describe('maintenance-overview', () => {
 
     expect(wrapper.find('form[action="/mantenimiento/equipos"]').exists()).toBe(false)
     expect(wrapper.text()).toContain('Todavía no hay equipos')
-    expect(wrapper.text()).toContain('No hay planes activos')
+    expect(wrapper.text()).toContain('No hay atención pendiente')
     expect(wrapper.text()).toContain('Todavía no hay órdenes')
   })
 })
