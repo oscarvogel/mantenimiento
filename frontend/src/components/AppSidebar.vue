@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from 'vue'
 import {
   ArrowRightStartOnRectangleIcon,
   ArrowUpTrayIcon,
@@ -16,7 +17,7 @@ import {
 } from '@heroicons/vue/24/outline'
 import BrandMark from './BrandMark.vue'
 
-defineProps({
+const props = defineProps({
   navigation: {
     type: Array,
     required: true,
@@ -32,6 +33,23 @@ defineProps({
 })
 
 const emit = defineEmits(['close'])
+
+const navigationGroups = computed(() => {
+  const definitions = [
+    { key: 'operation', label: 'Operación', items: ['dashboard', 'equipment', 'quick-readings', 'plans', 'maintenance'] },
+    { key: 'management', label: 'Gestión', items: ['imports', 'preventive-library', 'reports'] },
+    { key: 'administration', label: 'Administración', items: ['superadmin', 'branches', 'users'] },
+  ]
+  const knownKeys = new Set(definitions.flatMap((group) => group.items))
+  const groups = definitions
+    .map((group) => ({ ...group, items: props.navigation.filter((item) => group.items.includes(item.key)) }))
+    .filter((group) => group.items.length > 0)
+  const remaining = props.navigation.filter((item) => !knownKeys.has(item.key))
+
+  if (remaining.length > 0) groups.push({ key: 'other', label: 'Más', items: remaining })
+
+  return groups
+})
 
 const icons = {
   dashboard: HomeIcon,
@@ -56,8 +74,8 @@ const iconFor = (name) => icons[name] ?? ClipboardDocumentCheckIcon
 </script>
 
 <template>
-  <aside class="flex h-full w-[17rem] flex-col bg-surface-inverse text-ink-inverse">
-    <div class="flex h-[4.75rem] items-center justify-between border-b border-brand-800 px-6">
+  <aside class="flex h-full w-[15rem] flex-col bg-surface-inverse text-ink-inverse">
+    <div class="flex h-[4.5rem] items-center justify-between border-b border-brand-800 px-5">
       <BrandMark />
       <button
         v-if="mobile"
@@ -70,12 +88,13 @@ const iconFor = (name) => icons[name] ?? ClipboardDocumentCheckIcon
       </button>
     </div>
 
-    <nav aria-label="Navegación principal" class="flex-1 overflow-y-auto px-4 py-6">
-      <p class="mb-3 px-3 text-[0.6875rem] font-semibold uppercase tracking-[0.16em] text-brand-300">
-        Operación
-      </p>
-      <ul class="space-y-1">
-        <li v-for="item in navigation" :key="item.key">
+    <nav aria-label="Navegación principal" class="flex-1 overflow-y-auto px-3 py-5">
+      <section v-for="group in navigationGroups" :key="group.key" class="mb-5 last:mb-0">
+        <h2 class="mb-2 px-3 text-[0.625rem] font-semibold uppercase tracking-[0.14em] text-brand-300">
+          {{ group.label }}
+        </h2>
+        <ul class="space-y-1">
+          <li v-for="item in group.items" :key="item.key">
           <span
             v-if="item.disabled"
             class="flex min-h-11 cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-brand-400"
@@ -110,8 +129,9 @@ const iconFor = (name) => icons[name] ?? ClipboardDocumentCheckIcon
               {{ item.badge }}
             </span>
           </a>
-        </li>
-      </ul>
+          </li>
+        </ul>
+      </section>
     </nav>
 
     <div v-if="logout" class="border-t border-brand-800 p-4">

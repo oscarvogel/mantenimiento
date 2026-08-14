@@ -52,8 +52,7 @@ const icons = {
 </script>
 
 <template>
-  <article :class="['relative overflow-hidden rounded-xl border border-border bg-surface-raised p-5 shadow-card sm:p-6', href !== '#' && 'ui-card-interactive']">
-    <span class="absolute inset-y-0 left-0 w-1" :class="toneStyles[props.tone].accent" aria-hidden="true"></span>
+  <article :class="['relative overflow-hidden rounded-xl border border-border bg-surface-raised p-5 sm:p-6', href !== '#' && 'ui-card-interactive']">
     <div class="flex items-start justify-between gap-4">
       <div>
         <p class="text-sm font-medium text-ink-muted">{{ label }}</p>

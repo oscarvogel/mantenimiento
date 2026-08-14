@@ -21,7 +21,7 @@ const emit = defineEmits(['open-menu'])
 </script>
 
 <template>
-  <header class="sticky top-0 z-20 flex h-[4.75rem] items-center border-b border-border bg-surface-raised px-4 sm:px-6 lg:px-8">
+  <header class="sticky top-0 z-20 flex h-[4.5rem] items-center border-b border-border bg-surface-raised px-4 sm:px-6 lg:px-7 xl:px-9">
     <button
       type="button"
       class="mr-3 rounded-lg p-2 text-ink-muted hover:bg-surface-muted hover:text-ink lg:hidden"
