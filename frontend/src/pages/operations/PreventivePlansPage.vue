@@ -93,6 +93,7 @@ const equipmentLabel = (equipment) => [equipment.code, equipment.plate, equipmen
       <div class="mb-5">
         <h2 class="text-base font-bold text-ink">Crear plan manual</h2>
         <p class="mt-1 text-sm text-ink-muted">Usalo sólo cuando el equipo necesite una frecuencia excepcional que no corresponda a una plantilla de la biblioteca. Si existe una referencia compatible, se precarga como punto de partida y podés modificarla.</p>
+        <p v-if="manualTemplateDefault" class="mt-2 text-xs font-semibold text-primary">Referencia compatible: {{ manualTemplateDefault.templateName }}</p>
       </div>
       <form method="post" :action="data.routes.create" class="grid gap-4 md:grid-cols-3">
         <CsrfInput :csrf="data.csrf" />
