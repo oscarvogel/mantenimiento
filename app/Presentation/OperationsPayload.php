@@ -187,6 +187,8 @@ final class OperationsPayload
                     'id' => (int) $row['id'], 'code' => $row['codigo'], 'typeName' => $row['tipo_nombre'],
                     'plate' => $row['patente'], 'brandName' => $row['marca_nombre'], 'modelName' => $row['modelo_nombre'],
                     'year' => $row['anio'], 'branchCode' => $row['sucursal_codigo'], 'branchName' => $row['sucursal_nombre'],
+                    'controlsKm' => (int) ($row['controla_km'] ?? 0) === 1,
+                    'controlsHours' => (int) ($row['controla_horas'] ?? 0) === 1,
                     'currentKm' => $row['km_actual'] === null ? null : (int) $row['km_actual'],
                     'currentHours' => $row['horas_actuales'], 'status' => $row['estado'],
                     'detailUrl' => base_url('mantenimiento/equipos/' . $row['id']),

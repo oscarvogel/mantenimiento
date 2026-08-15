@@ -47,6 +47,7 @@ describe('preventive-plans', () => {
     const create = wrapper.get('form[action="/mantenimiento/planes"][method="post"]')
     expect(create.get('input[name="csrf_test_name"]').attributes('value')).toBe('secure-token')
     await create.get('select[name="equipo_id"]').setValue('9')
+    await create.get('select[name="tipo_servicio_id"]').setValue('3')
     expect(create.get('input[name="intervalo_km"]').exists()).toBe(true)
     expect(create.get('input[name="intervalo_km"]').element.value).toBe('10000')
     expect(create.get('input[name="anticipacion_km"]').element.value).toBe('1000')
@@ -59,7 +60,7 @@ describe('preventive-plans', () => {
     expect(perPage.findAll('option').map((option) => option.element.value)).toEqual(['5', '10', '25'])
     expect(wrapper.text()).toContain('CAM-01')
     expect(wrapper.text()).toContain('Preventivo camiones')
-    expect(wrapper.text()).toContain('Cada 1000 km')
+    expect(wrapper.text()).toContain('Frecuencia 1000 km')
     expect(wrapper.text()).toContain('próximo 10000 km')
   })
 

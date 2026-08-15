@@ -58,6 +58,28 @@ final class OperationsPayloadAssetsPaginationTest extends TestCase
         self::assertNull($denied['equipment']['items'][0]['assignPlanUrl']);
     }
 
+    public function testEquipmentPayloadExposesUsageCapabilitiesForTheList(): void
+    {
+        $page = [
+            'items' => [[
+                'id' => 15, 'codigo' => 'CAM-15', 'tipo_nombre' => 'Camión', 'patente' => null,
+                'marca_nombre' => null, 'modelo_nombre' => null, 'anio' => null,
+                'sucursal_codigo' => 'PR', 'sucursal_nombre' => 'Puerto Rico',
+                'controla_km' => 1, 'controla_horas' => 0,
+                'km_actual' => 12500, 'horas_actuales' => null, 'estado' => 'ACTIVO',
+            ]],
+            'total' => 1, 'page' => 1, 'perPage' => 10, 'totalPages' => 1,
+        ];
+
+        $payload = (new OperationsPayload())->assets($page, [], [], true);
+        $equipment = $payload['equipment']['items'][0];
+
+        self::assertTrue($equipment['controlsKm']);
+        self::assertFalse($equipment['controlsHours']);
+        self::assertSame(12500, $equipment['currentKm']);
+        self::assertNull($equipment['currentHours']);
+    }
+
     public function testEquipmentDetailPagersKeepEveryPageAndSizeParameter(): void
     {
         $payload = (new OperationsPayload())->equipmentDetails(
