@@ -98,6 +98,8 @@ final class OperationsPayload
                 'id' => (int) $row['id'], 'number' => $row['numero'], 'equipmentCode' => $row['equipo_codigo'],
                 'serviceName' => $row['servicio_nombre'] ?? 'Servicio preventivo',
                 'ownerName' => $row['responsable_nombre'] ?? 'Sin asignar', 'status' => $row['estado'],
+                'controlsKm' => (int) ($row['controla_km'] ?? 0) === 1, 'controlsHours' => (int) ($row['controla_horas'] ?? 0) === 1,
+                'currentKm' => $row['km_actual'] === null ? null : (int) $row['km_actual'], 'currentHours' => $row['horas_actuales'] ?? null,
                 'photoUrl' => isset($primaryPhotos[(int) ($row['equipo_id'] ?? 0)]) ? base_url('mantenimiento/equipos/' . $row['equipo_id'] . '/foto-principal?miniatura=1') : null,
                 'startUrl' => base_url('mantenimiento/ordenes/' . $row['id'] . '/iniciar'),
                 'closeUrl' => base_url('mantenimiento/ordenes/' . $row['id'] . '/cerrar'),
@@ -108,7 +110,7 @@ final class OperationsPayload
             'readings' => array_map(fn (array $row): array => [
                 'id' => (int) $row['id'], 'equipmentCode' => $row['equipo_codigo'], 'recordedAt' => $row['fecha_lectura'],
                 'kilometers' => $row['kilometraje'] === null ? null : (int) $row['kilometraje'],
-                'hours' => $row['horometro'], 'origin' => $row['origen'],
+                'hours' => $row['horometro'], 'origin' => $row['origen'], 'branchName' => $row['sucursal_nombre'] ?? null,
             ], $source['readings'] ?? []),
         ];
     }
@@ -120,8 +122,8 @@ final class OperationsPayload
             'id' => (int) $row['id'],
             'templateId' => (int) $row['template_id'],
             'templateName' => (string) $row['template_name'],
-            'equipmentTypeId' => (int) $row['equipment_type_id'],
-            'equipmentTypeName' => (string) $row['equipment_type_name'],
+            'equipmentTypeId' => $row['equipment_type_id'] === null ? null : (int) $row['equipment_type_id'],
+            'equipmentTypeName' => $row['equipment_type_name'] ?: 'Genérica',
             'serviceTypeId' => (int) $row['service_type_id'],
             'serviceName' => (string) $row['service_name'],
             'intervalKm' => $row['interval_km'],
@@ -354,7 +356,7 @@ final class OperationsPayload
                 'items' => array_map(fn (array $row): array => [
                     'rowNumber' => (int) $row['numero_fila'], 'status' => $row['estado'],
                     'normalizedData' => $row['datos_normalizados'],
-                    'issues' => array_map(fn (array $issue): array => ['field' => $issue['campo'], 'message' => $issue['mensaje']], $row['errores'] ?? []),
+                    'issues' => array_map(fn (array $issue): array => ['field' => $issue['campo'], 'value' => $issue['valor'] ?? null, 'message' => $issue['mensaje']], $row['errores'] ?? []),
                     'result' => $row['resultado'],
                 ], $preview->rows),
             ],

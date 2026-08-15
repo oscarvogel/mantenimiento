@@ -231,7 +231,7 @@ async function safeReadError(response) {
                 :class="fieldClass"
               ></textarea>
             </FormField>
-            <FormField label="Observaciones de la relación" :for-id="'task-modal-' + localTask.id + '-observations'" class="md:col-span-2">
+            <FormField label="Indicaciones para esta tarea dentro del servicio" :for-id="'task-modal-' + localTask.id + '-observations'" class="md:col-span-2">
               <textarea
                 :id="'task-modal-' + localTask.id + '-observations'"
                 name="observaciones"

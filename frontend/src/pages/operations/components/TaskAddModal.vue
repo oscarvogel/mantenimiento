@@ -289,7 +289,7 @@ async function onSubmit() {
               <div class="grid gap-3 md:grid-cols-2">
                 <FormField label="Orden" :for-id="'task-relation-order-' + item.id"><input :id="'task-relation-order-' + item.id" v-model.number="relation.order" type="number" min="1" step="1" required :class="fieldClass" /></FormField>
                 <label class="flex items-center gap-2 self-end pb-3 text-sm font-semibold text-ink"><input v-model="relation.mandatory" type="checkbox" class="size-4 rounded border-border text-primary" />Obligatoria</label>
-                <FormField label="Observaciones de la relación" :for-id="'task-relation-notes-' + item.id" class="md:col-span-2"><textarea :id="'task-relation-notes-' + item.id" v-model="relation.observations" rows="2" maxlength="500" :class="fieldClass"></textarea></FormField>
+                <FormField label="Indicaciones para esta tarea dentro del servicio" :for-id="'task-relation-notes-' + item.id" class="md:col-span-2"><textarea :id="'task-relation-notes-' + item.id" v-model="relation.observations" rows="2" maxlength="500" :class="fieldClass"></textarea></FormField>
               </div>
             </div>
 

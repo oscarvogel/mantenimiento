@@ -216,6 +216,11 @@ const includesId = (ids, id) => ids.includes(Number(id))
                   <span class="mb-1.5 block text-sm font-medium text-ink">Motivo de la asignación</span>
                   <input name="motivo" minlength="5" maxlength="255" required class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
                 </label>
+                <div class="rounded-xl border border-primary/20 bg-primary-subtle p-4 text-sm text-ink sm:col-span-2">
+                  <p class="font-semibold">Resumen de acceso</p>
+                  <p class="mt-1 text-ink-muted">Marcá los roles y sucursales de arriba. El servidor volverá a validar el alcance antes de guardar.</p>
+                  <p class="mt-2 text-xs font-semibold text-primary">Actualmente: {{ user.roles.map((role) => role.name).join(', ') || 'sin roles' }} · {{ user.allCompanyBranches ? 'todas las sucursales activas' : `${user.branches.length} sucursal(es)` }}</p>
+                </div>
                 <div class="sm:col-span-2">
                   <button type="submit" class="inline-flex min-h-11 items-center justify-center rounded-lg border border-primary px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary-subtle">Guardar acceso</button>
                 </div>

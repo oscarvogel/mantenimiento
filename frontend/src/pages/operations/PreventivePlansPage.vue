@@ -17,11 +17,12 @@ const libraryUrl = computed(() => String(props.data.routes.index ?? '').replace(
 const clearUrl = computed(() => props.data.routes.index)
 const old = computed(() => props.data.old ?? {})
 const selectedManualEquipmentId = ref(String(props.data.old?.equipo_id ?? ''))
+const selectedManualServiceId = ref(String(props.data.old?.tipo_servicio_id ?? ''))
 const selectedManualEquipment = computed(() => props.data.catalogs.equipment.find((equipment) => String(equipment.id) === selectedManualEquipmentId.value) ?? null)
 const manualTemplateDefault = computed(() => {
   const equipment = selectedManualEquipment.value
   if (!equipment) return null
-  return (props.data.catalogs.templateDefaults ?? []).find((item) => !item.equipmentTypeId || Number(item.equipmentTypeId) === Number(equipment.typeId)) ?? null
+  return (props.data.catalogs.templateDefaults ?? []).find((item) => (!item.equipmentTypeId || Number(item.equipmentTypeId) === Number(equipment.typeId)) && (!selectedManualServiceId.value || Number(item.serviceTypeId) === Number(selectedManualServiceId.value))) ?? null
 })
 const manualValue = (oldKey, templateKey) => {
   const preserved = old.value?.[oldKey]
@@ -94,6 +95,7 @@ const equipmentLabel = (equipment) => [equipment.code, equipment.plate, equipmen
         <h2 class="text-base font-bold text-ink">Crear plan manual</h2>
         <p class="mt-1 text-sm text-ink-muted">Usalo sólo cuando el equipo necesite una frecuencia excepcional que no corresponda a una plantilla de la biblioteca. Si existe una referencia compatible, se precarga como punto de partida y podés modificarla.</p>
         <p v-if="manualTemplateDefault" class="mt-2 text-xs font-semibold text-primary">Referencia compatible: {{ manualTemplateDefault.templateName }}</p>
+        <p v-if="manualTemplateDefault" class="mt-2 rounded-lg bg-primary-subtle px-3 py-2 text-xs text-ink">Vista previa: con la base actual, el próximo servicio se calculará sumando la frecuencia al valor registrado. La validación final se hace al guardar.</p>
       </div>
       <form method="post" :action="data.routes.create" class="grid gap-4 md:grid-cols-3">
         <CsrfInput :csrf="data.csrf" />
@@ -106,16 +108,16 @@ const equipmentLabel = (equipment) => [equipment.code, equipment.plate, equipmen
           </select>
         </FormField>
         <FormField label="Servicio" for-id="plan-service">
-          <select id="plan-service" name="tipo_servicio_id" required :class="fieldClass">
+          <select id="plan-service" v-model="selectedManualServiceId" name="tipo_servicio_id" required :class="fieldClass">
             <option value="" disabled :selected="!old.tipo_servicio_id && !manualTemplateDefault">Seleccionar servicio</option>
             <option v-for="service in data.catalogs.serviceTypes" :key="service.id" :value="service.id" :selected="String(old.tipo_servicio_id || manualTemplateDefault?.serviceTypeId || '') === String(service.id)">{{ service.code }} · {{ service.name }}</option>
           </select>
         </FormField>
 
         <template v-if="selectedManualEquipment?.controlsKm !== false">
-          <FormField label="Cada (km)" for-id="manual-interval-km"><input id="manual-interval-km" name="intervalo_km" type="number" min="1" :value="manualValue('intervalo_km', 'intervalKm')" :class="fieldClass" /></FormField>
-          <FormField label="Anticipación (km)" for-id="manual-warning-km"><input id="manual-warning-km" name="anticipacion_km" type="number" min="0" :value="manualValue('anticipacion_km', 'warningKm')" :class="fieldClass" /></FormField>
-          <FormField label="Base km" for-id="manual-base-km"><input id="manual-base-km" name="base_km" type="number" min="0" :value="old.base_km" :class="fieldClass" /></FormField>
+          <FormField label="Avisar cada tantos kilómetros" for-id="manual-interval-km"><input id="manual-interval-km" name="intervalo_km" type="number" min="1" :value="manualValue('intervalo_km', 'intervalKm')" :class="fieldClass" /></FormField>
+          <FormField label="Avisar antes (kilómetros)" for-id="manual-warning-km"><input id="manual-warning-km" name="anticipacion_km" type="number" min="0" :value="manualValue('anticipacion_km', 'warningKm')" :class="fieldClass" /></FormField>
+          <FormField label="Comenzar a contar desde (km)" for-id="manual-base-km"><input id="manual-base-km" name="base_km" type="number" min="0" :value="old.base_km" :class="fieldClass" /></FormField>
         </template>
 
         <template v-if="selectedManualEquipment?.controlsHours !== false">

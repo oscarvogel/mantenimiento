@@ -69,8 +69,9 @@ final class CodeIgniterCircuitOverview implements CircuitOverviewPort
 
         $orderPage = $this->paginate(function () use ($companyId, $branchIds): BaseBuilder {
             $builder = $this->database->table('ordenes_trabajo o')
-                ->select('o.id, o.numero, o.sucursal_id, o.equipo_id, o.plan_id, o.aviso_plan_id, o.prioridad, o.responsable_usuario_id, o.fecha_apertura, o.fecha_inicio, o.fecha_finalizacion, o.km_ingreso, o.horas_ingreso, o.km_salida, o.horas_salida, o.estado, e.codigo equipo_codigo, ts.nombre servicio_nombre, u.nombre responsable_nombre')
+                ->select('o.id, o.numero, o.sucursal_id, o.equipo_id, o.plan_id, o.aviso_plan_id, o.prioridad, o.responsable_usuario_id, o.fecha_apertura, o.fecha_inicio, o.fecha_finalizacion, o.km_ingreso, o.horas_ingreso, o.km_salida, o.horas_salida, o.estado, e.codigo equipo_codigo, e.km_actual, e.horas_actuales, te.controla_km, te.controla_horas, ts.nombre servicio_nombre, u.nombre responsable_nombre')
                 ->join('equipos e', 'e.id = o.equipo_id AND e.empresa_id = o.empresa_id', 'inner')
+                ->join('tipos_equipo te', 'te.id = e.tipo_equipo_id', 'inner')
                 ->join('tipos_servicio ts', 'ts.id = o.tipo_servicio_id', 'left')
                 ->join('usuarios u', 'u.id = o.responsable_usuario_id', 'left')
                 ->where('o.empresa_id', $companyId)->orderBy('o.id', 'DESC');
@@ -97,8 +98,9 @@ final class CodeIgniterCircuitOverview implements CircuitOverviewPort
 
         $readingPage = $this->paginate(function () use ($companyId, $branchIds): BaseBuilder {
             $builder = $this->database->table('lecturas_equipo l')
-                ->select('l.id, l.equipo_id, l.fecha_lectura, l.kilometraje, l.horometro, l.origen, l.motivo_correccion, e.codigo equipo_codigo')
+                ->select('l.id, l.equipo_id, l.fecha_lectura, l.kilometraje, l.horometro, l.origen, l.motivo_correccion, e.codigo equipo_codigo, s.nombre sucursal_nombre')
                 ->join('equipos e', 'e.id = l.equipo_id AND e.empresa_id = l.empresa_id', 'inner')
+                ->join('sucursales s', 's.id = l.sucursal_id AND s.empresa_id = l.empresa_id', 'inner')
                 ->where('l.empresa_id', $companyId)->where('l.anulada', 0)
                 ->orderBy('l.fecha_lectura', 'DESC');
             $this->scopeBranches($builder, 'l.sucursal_id', $branchIds);
@@ -137,7 +139,7 @@ final class CodeIgniterCircuitOverview implements CircuitOverviewPort
         $rows = $this->database->table('plantilla_mantenimiento_items i')
             ->select('i.id, i.plantilla_id, i.tipo_servicio_id, i.intervalo_km, i.intervalo_horas, i.intervalo_dias, i.anticipacion_km, i.anticipacion_horas, i.anticipacion_dias, i.prioridad, i.observaciones, p.nombre plantilla_nombre, p.tipo_equipo_id, te.nombre tipo_equipo_nombre, ts.nombre servicio_nombre')
             ->join('plantillas_mantenimiento p', 'p.id = i.plantilla_id', 'inner')
-            ->join('tipos_equipo te', 'te.id = p.tipo_equipo_id', 'inner')
+            ->join('tipos_equipo te', 'te.id = p.tipo_equipo_id', 'left')
             ->join('tipos_servicio ts', 'ts.id = i.tipo_servicio_id', 'inner')
             ->where('p.empresa_id', $companyId)
             ->where('p.activo', 1)

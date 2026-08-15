@@ -1,10 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import { localDateValue } from '../../src/pages/operations/helpers.js'
+import { formatHours, formatKilometers, formatReadingOrigin, localDateValue, readingDelta } from '../../src/pages/operations/helpers.js'
 
 describe('helpers de fechas operativas', () => {
   it('conserva la fecha calendario local sin convertirla a UTC', () => {
     const localNight = new Date(2026, 7, 10, 22, 30)
 
     expect(localDateValue(localNight)).toBe('2026-08-10')
+  })
+
+  it('formatea lecturas con separador local y origen humano', () => {
+    expect(formatKilometers(12500)).toBe('12.500 km')
+    expect(formatHours('1250.5')).toBe('1.250,5 h')
+    expect(readingDelta(100, '108')).toBe(8)
+    expect(formatReadingOrigin('CARGA_RAPIDA')).toBe('Carga rápida')
   })
 })

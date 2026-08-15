@@ -1,6 +1,6 @@
 <script setup>
 import { ArrowDownTrayIcon, QrCodeIcon } from '@heroicons/vue/24/outline'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import CsrfInput from './components/CsrfInput.vue'
 import EmptyState from './components/EmptyState.vue'
 import FormField from './components/FormField.vue'
@@ -9,9 +9,26 @@ import PaginationBar from './components/PaginationBar.vue'
 import PanelCard from './components/PanelCard.vue'
 import StatusBadge from './components/StatusBadge.vue'
 import EquipmentThumbnail from './components/EquipmentThumbnail.vue'
-import { dangerButton, fieldClass, nowLocal, primaryButton, secondaryButton, today } from './helpers.js'
+import { dangerButton, fieldClass, formatHours, formatKilometers, formatReadingOrigin, nowLocal, primaryButton, secondaryButton, today } from './helpers.js'
 
-defineProps({ data: { type: Object, required: true } })
+const props = defineProps({ data: { type: Object, required: true } })
+const data = computed(() => {
+  const readings = props.data.readings
+  if (!readings) return props.data
+  return {
+    ...props.data,
+    readings: {
+      ...readings,
+      items: readings.items.map((reading) => ({
+        ...reading,
+        kilometersLabel: reading.kilometers === null ? '—' : formatKilometers(reading.kilometers),
+        hoursLabel: reading.hours === null ? '—' : formatHours(reading.hours),
+        origin: formatReadingOrigin(reading.origin),
+        branchId: reading.branchName || 'actual',
+      })),
+    },
+  }
+})
 
 const tabs = [
   { id: 'resumen', label: 'Resumen' },

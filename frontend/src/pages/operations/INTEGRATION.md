@@ -55,10 +55,10 @@ Las URLs son valores del payload, no se concatenan en Vue. Los permisos sólo co
   plans: [{ id, equipmentCode, serviceName, computedState, nextKm, nextHours, nextDate }],
   notices: [{ id, equipmentCode, serviceName, triggerCriteria, generateOrderUrl }],
   orders: [{
-    id, number, equipmentCode, serviceName, ownerName, status, startUrl, closeUrl,
+    id, number, equipmentCode, serviceName, ownerName, status, controlsKm, controlsHours, currentKm, currentHours, startUrl, closeUrl,
     tasks: [{ id, description, status }]
   }],
-  readings: [{ id, equipmentCode, recordedAt, kilometers, hours, origin }]
+  readings: [{ id, equipmentCode, recordedAt, kilometers, hours, origin, branchName }]
 }
 ```
 
