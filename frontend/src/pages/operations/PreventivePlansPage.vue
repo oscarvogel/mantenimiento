@@ -16,6 +16,18 @@ const localSearch = ref(props.data.filters?.q ?? '')
 const libraryUrl = computed(() => String(props.data.routes.index ?? '').replace(/\/planes(?:\?.*)?$/, '/importaciones/biblioteca'))
 const clearUrl = computed(() => props.data.routes.index)
 const old = computed(() => props.data.old ?? {})
+const selectedManualEquipmentId = ref(String(props.data.old?.equipo_id ?? ''))
+const selectedManualEquipment = computed(() => props.data.catalogs.equipment.find((equipment) => String(equipment.id) === selectedManualEquipmentId.value) ?? null)
+const manualTemplateDefault = computed(() => {
+  const equipment = selectedManualEquipment.value
+  if (!equipment) return null
+  return (props.data.catalogs.templateDefaults ?? []).find((item) => !item.equipmentTypeId || Number(item.equipmentTypeId) === Number(equipment.typeId)) ?? null
+})
+const manualValue = (oldKey, templateKey) => {
+  const preserved = old.value?.[oldKey]
+  if (preserved !== '' && preserved !== null && preserved !== undefined) return preserved
+  return manualTemplateDefault.value?.[templateKey] ?? ''
+}
 
 const normalize = (value) => String(value ?? '')
   .normalize('NFD')
@@ -80,39 +92,43 @@ const equipmentLabel = (equipment) => [equipment.code, equipment.plate, equipmen
     <section v-if="data.canEdit && showManualForm" class="mb-6 rounded-2xl border border-border bg-white p-5 shadow-card sm:p-6">
       <div class="mb-5">
         <h2 class="text-base font-bold text-ink">Crear plan manual</h2>
-        <p class="mt-1 text-sm text-ink-muted">Usalo sólo cuando el equipo necesite una frecuencia excepcional que no corresponda a una plantilla de la biblioteca.</p>
+        <p class="mt-1 text-sm text-ink-muted">Usalo sólo cuando el equipo necesite una frecuencia excepcional que no corresponda a una plantilla de la biblioteca. Si existe una referencia compatible, se precarga como punto de partida y podés modificarla.</p>
       </div>
       <form method="post" :action="data.routes.create" class="grid gap-4 md:grid-cols-3">
         <CsrfInput :csrf="data.csrf" />
         <FormField label="Equipo" for-id="plan-equipment" class="md:col-span-2">
-          <select id="plan-equipment" name="equipo_id" required :class="fieldClass">
-            <option value="" disabled :selected="!old.equipo_id">Seleccionar equipo</option>
-            <option v-for="equipment in data.catalogs.equipment" :key="equipment.id" :value="equipment.id" :selected="String(old.equipo_id) === String(equipment.id)">
+          <select id="plan-equipment" v-model="selectedManualEquipmentId" name="equipo_id" required :class="fieldClass">
+            <option value="" disabled>Seleccionar equipo</option>
+            <option v-for="equipment in data.catalogs.equipment" :key="equipment.id" :value="String(equipment.id)">
               {{ equipmentLabel(equipment) }}
             </option>
           </select>
         </FormField>
         <FormField label="Servicio" for-id="plan-service">
           <select id="plan-service" name="tipo_servicio_id" required :class="fieldClass">
-            <option value="" disabled :selected="!old.tipo_servicio_id">Seleccionar servicio</option>
-            <option v-for="service in data.catalogs.serviceTypes" :key="service.id" :value="service.id" :selected="String(old.tipo_servicio_id) === String(service.id)">{{ service.code }} · {{ service.name }}</option>
+            <option value="" disabled :selected="!old.tipo_servicio_id && !manualTemplateDefault">Seleccionar servicio</option>
+            <option v-for="service in data.catalogs.serviceTypes" :key="service.id" :value="service.id" :selected="String(old.tipo_servicio_id || manualTemplateDefault?.serviceTypeId || '') === String(service.id)">{{ service.code }} · {{ service.name }}</option>
           </select>
         </FormField>
 
-        <FormField label="Cada (km)" for-id="manual-interval-km"><input id="manual-interval-km" name="intervalo_km" type="number" min="1" :value="old.intervalo_km" :class="fieldClass" /></FormField>
-        <FormField label="Anticipación (km)" for-id="manual-warning-km"><input id="manual-warning-km" name="anticipacion_km" type="number" min="0" :value="old.anticipacion_km" :class="fieldClass" /></FormField>
-        <FormField label="Base km" for-id="manual-base-km"><input id="manual-base-km" name="base_km" type="number" min="0" :value="old.base_km" :class="fieldClass" /></FormField>
+        <template v-if="selectedManualEquipment?.controlsKm !== false">
+          <FormField label="Cada (km)" for-id="manual-interval-km"><input id="manual-interval-km" name="intervalo_km" type="number" min="1" :value="manualValue('intervalo_km', 'intervalKm')" :class="fieldClass" /></FormField>
+          <FormField label="Anticipación (km)" for-id="manual-warning-km"><input id="manual-warning-km" name="anticipacion_km" type="number" min="0" :value="manualValue('anticipacion_km', 'warningKm')" :class="fieldClass" /></FormField>
+          <FormField label="Base km" for-id="manual-base-km"><input id="manual-base-km" name="base_km" type="number" min="0" :value="old.base_km" :class="fieldClass" /></FormField>
+        </template>
 
-        <FormField label="Cada (horas)" for-id="manual-interval-hours"><input id="manual-interval-hours" name="intervalo_horas" type="number" min="0.1" step="0.1" :value="old.intervalo_horas" :class="fieldClass" /></FormField>
-        <FormField label="Anticipación (horas)" for-id="manual-warning-hours"><input id="manual-warning-hours" name="anticipacion_horas" type="number" min="0" step="0.1" :value="old.anticipacion_horas" :class="fieldClass" /></FormField>
-        <FormField label="Base horas" for-id="manual-base-hours"><input id="manual-base-hours" name="base_horas" type="number" min="0" step="0.1" :value="old.base_horas" :class="fieldClass" /></FormField>
+        <template v-if="selectedManualEquipment?.controlsHours !== false">
+          <FormField label="Cada (horas)" for-id="manual-interval-hours"><input id="manual-interval-hours" name="intervalo_horas" type="number" min="0.1" step="0.1" :value="manualValue('intervalo_horas', 'intervalHours')" :class="fieldClass" /></FormField>
+          <FormField label="Anticipación (horas)" for-id="manual-warning-hours"><input id="manual-warning-hours" name="anticipacion_horas" type="number" min="0" step="0.1" :value="manualValue('anticipacion_horas', 'warningHours')" :class="fieldClass" /></FormField>
+          <FormField label="Base horas" for-id="manual-base-hours"><input id="manual-base-hours" name="base_horas" type="number" min="0" step="0.1" :value="old.base_horas" :class="fieldClass" /></FormField>
+        </template>
 
-        <FormField label="Cada (días)" for-id="manual-interval-days"><input id="manual-interval-days" name="intervalo_dias" type="number" min="1" :value="old.intervalo_dias" :class="fieldClass" /></FormField>
-        <FormField label="Anticipación (días)" for-id="manual-warning-days"><input id="manual-warning-days" name="anticipacion_dias" type="number" min="0" :value="old.anticipacion_dias" :class="fieldClass" /></FormField>
+        <FormField label="Cada (días)" for-id="manual-interval-days"><input id="manual-interval-days" name="intervalo_dias" type="number" min="1" :value="manualValue('intervalo_dias', 'intervalDays')" :class="fieldClass" /></FormField>
+        <FormField label="Anticipación (días)" for-id="manual-warning-days"><input id="manual-warning-days" name="anticipacion_dias" type="number" min="0" :value="manualValue('anticipacion_dias', 'warningDays')" :class="fieldClass" /></FormField>
         <FormField label="Base fecha" for-id="manual-base-date"><input id="manual-base-date" name="base_fecha" type="date" :max="today()" :value="old.base_fecha" :class="fieldClass" /></FormField>
 
-        <FormField label="Prioridad" for-id="manual-priority"><select id="manual-priority" name="prioridad" :class="fieldClass"><option v-for="priority in ['BAJA','MEDIA','ALTA','CRITICA']" :key="priority" :value="priority" :selected="String(old.prioridad || 'MEDIA') === priority">{{ priority === 'CRITICA' ? 'CRÍTICA' : priority }}</option></select></FormField>
-        <FormField label="Observaciones" for-id="manual-notes" class="md:col-span-2"><input id="manual-notes" name="observaciones" maxlength="1000" :value="old.observaciones" :class="fieldClass" /></FormField>
+        <FormField label="Prioridad" for-id="manual-priority"><select id="manual-priority" name="prioridad" :class="fieldClass"><option v-for="priority in ['BAJA','MEDIA','ALTA','CRITICA']" :key="priority" :value="priority" :selected="String(old.prioridad || manualTemplateDefault?.priority || 'MEDIA') === priority">{{ priority === 'CRITICA' ? 'CRÍTICA' : priority }}</option></select></FormField>
+        <FormField label="Observaciones" for-id="manual-notes" class="md:col-span-2"><input id="manual-notes" name="observaciones" maxlength="1000" :value="old.observaciones || manualTemplateDefault?.notes || ''" :class="fieldClass" /></FormField>
         <div class="md:col-span-3 flex justify-end"><button type="submit" :class="primaryButton">Crear plan manual</button></div>
       </form>
     </section>
