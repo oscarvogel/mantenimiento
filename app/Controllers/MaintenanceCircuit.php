@@ -51,7 +51,6 @@ final class MaintenanceCircuit extends BaseController
             'createEquipment' => $actor->hasPermission('equipos.editar'),
             'registerReading' => $actor->hasPermission('lecturas.cargar'),
             'assignPlan' => $actor->hasPermission('planes.editar'),
-            'detectDue' => $actor->hasPermission('planes.editar'),
             'generateOrder' => $actor->hasPermission('ordenes.editar'),
             'editOrder' => $actor->hasPermission('ordenes.editar'),
             'closeOrder' => $actor->hasPermission('ordenes.cerrar'),
@@ -174,7 +173,7 @@ final class MaintenanceCircuit extends BaseController
                 'observaciones' => $this->request->getPost('observaciones'),
             ]);
 
-            return $this->success("{$result['numero']} finalizada y próximo servicio recalculado.");
+            return $this->success($this->closeSuccessMessage($result));
         } catch (Throwable $exception) {
             return $this->failure($exception);
         }
@@ -200,6 +199,25 @@ final class MaintenanceCircuit extends BaseController
     private function startOrderHandler(): StartWorkOrder { return service('startWorkOrder'); }
     private function closeOrderHandler(): ClosePreventiveOrder { return service('closePreventiveOrder'); }
     private function primaryPhotos(): ListPrimaryEquipmentPhotos { return service('listPrimaryEquipmentPhotos'); }
+
+    /** @param array<string,mixed> $result */
+    private function closeSuccessMessage(array $result): string
+    {
+        $next = [];
+        if (($result['proximo_km'] ?? null) !== null) {
+            $next[] = number_format((float) $result['proximo_km'], 0, ',', '.') . ' km';
+        }
+        if (($result['proximas_horas'] ?? null) !== null) {
+            $next[] = number_format((float) $result['proximas_horas'], 1, ',', '.') . ' h';
+        }
+        if (($result['proxima_fecha'] ?? null) !== null && (string) $result['proxima_fecha'] !== '') {
+            $date = DateTimeImmutable::createFromFormat('!Y-m-d', (string) $result['proxima_fecha']);
+            $next[] = $date === false ? (string) $result['proxima_fecha'] : $date->format('d/m/Y');
+        }
+
+        $message = "{$result['numero']} finalizada. Lecturas y próximo mantenimiento actualizados.";
+        return $next === [] ? $message : $message . ' Próximo: ' . implode(' · ', $next) . '.';
+    }
 
     private function overviewPagination(): CircuitOverviewPagination
     {

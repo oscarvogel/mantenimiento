@@ -37,8 +37,8 @@ Las URLs son valores del payload, no se concatenan en Vue. Los permisos sólo co
   csrf, flash,
   currentDateTime: 'Y-m-d H:i:s',
   old: { codigo, patente, fecha_alta, anio, chasis, motor, observaciones },
-  routes: { equipmentIndex, createEquipment, detectDue },
-  can: { createEquipment, registerReading, assignPlan, detectDue, generateOrder, editOrder, closeOrder },
+  routes: { equipmentIndex, createEquipment },
+  can: { createEquipment, registerReading, assignPlan, generateOrder, editOrder, closeOrder },
   catalogs: {
     branches: [{ id, code, name }],
     equipmentTypes: [{ id, name }],

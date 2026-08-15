@@ -280,7 +280,7 @@ GET  /equipos/{id}
 POST /equipos/{id}/lecturas
 POST /equipos/{id}/planes
 GET  /mantenimiento/vencimientos
-POST /mantenimiento/vencimientos/detectar
+POST /mantenimiento/vencimientos/detectar   # diagnóstico manual, no flujo diario
 POST /avisos-plan/{id}/ordenes
 GET  /ordenes/{id}
 POST /ordenes/{id}/iniciar

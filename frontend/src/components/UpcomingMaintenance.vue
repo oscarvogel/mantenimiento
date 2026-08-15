@@ -45,6 +45,7 @@ defineProps({
               <th scope="col" class="px-6 py-3">Sucursal</th>
               <th scope="col" class="px-6 py-3">Restante</th>
               <th scope="col" class="px-6 py-3">Estado</th>
+              <th scope="col" class="px-6 py-3 text-right">Acción</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-border-subtle">
@@ -55,6 +56,9 @@ defineProps({
               <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-ink">{{ item.remaining }}</td>
               <td class="px-6 py-4">
                 <MaintenanceStatus :status="item.tone" :label="item.statusLabel" />
+              </td>
+              <td class="px-6 py-4 text-right">
+                <a v-if="item.actionUrl && item.actionLabel" :href="item.actionUrl" class="inline-flex min-h-9 items-center rounded-lg bg-primary-subtle px-3 py-1.5 text-xs font-semibold text-primary hover:bg-brand-100">{{ item.actionLabel }}</a>
               </td>
             </tr>
           </tbody>
@@ -75,6 +79,7 @@ defineProps({
               <span class="font-semibold text-ink">{{ item.remaining }}</span>
               <span class="text-ink-muted">{{ item.branch }}</span>
             </div>
+            <a v-if="item.actionUrl && item.actionLabel" :href="item.actionUrl" class="mt-4 inline-flex min-h-10 w-full items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary-hover">{{ item.actionLabel }}</a>
           </article>
         </li>
       </ul>

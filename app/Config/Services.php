@@ -46,6 +46,7 @@ use App\Application\MaintenanceCircuit\GeneratePreventiveOrderFromNotice;
 use App\Application\MaintenanceCircuit\ClosePreventiveOrder;
 use App\Application\PreventiveMaintenance\AsignarPlan;
 use App\Application\PreventiveMaintenance\ActualizarPlan;
+use App\Application\PreventiveMaintenance\DetectOverduePlansAutomatically;
 use App\Application\PreventiveMaintenance\ConsultarVencimientos;
 use App\Application\PreventiveMaintenance\ListPreventivePlansHandler;
 use App\Application\PreventiveMaintenance\MaterializeSuggestedPlans;
@@ -138,6 +139,7 @@ use App\Infrastructure\MaintenanceCircuit\CodeIgniterPreventiveOrderFromNotice;
 use App\Infrastructure\PreventiveMaintenance\CodeIgniterMaintenanceNoticeRepository;
 use App\Infrastructure\PreventiveMaintenance\CodeIgniterPlanMantenimientoRepository;
 use App\Infrastructure\PreventiveMaintenance\CodeIgniterPreventiveAssetGateway;
+use App\Infrastructure\PreventiveMaintenance\CodeIgniterActiveCompanyCatalog;
 use App\Infrastructure\PreventiveMaintenance\CodeIgniterPreventivePlanReadModel;
 use App\Infrastructure\PreventiveMaintenance\CodeIgniterPreventiveTemplateGateway;
 use App\Infrastructure\PreventiveMaintenance\CodeIgniterPreventiveUnitOfWork;
@@ -1012,6 +1014,20 @@ return new AsignarPlan(
         }
 
         return new DetectOverduePlans(
+            static::consultMaintenanceDue(false),
+            static::materializeOverdueNotice(false),
+            new SystemClock(),
+        );
+    }
+
+    public static function detectOverduePlansAutomatically(bool $getShared = true): DetectOverduePlansAutomatically
+    {
+        if ($getShared) {
+            return static::getSharedInstance('detectOverduePlansAutomatically');
+        }
+
+        return new DetectOverduePlansAutomatically(
+            new CodeIgniterActiveCompanyCatalog(db_connect()),
             static::consultMaintenanceDue(false),
             static::materializeOverdueNotice(false),
             new SystemClock(),

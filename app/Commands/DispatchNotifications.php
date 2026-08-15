@@ -16,8 +16,9 @@ final class DispatchNotifications extends BaseCommand
     public function run(array $params): void
     {
         $key = $params[0] ?? service('notificationClock')->now()->format('Y-m-d-H');
+        $overdue = service('detectOverduePlansAutomatically')->execute();
         $collected = service('operationalNotificationCollector')->execute();
         $dispatched = service('notificationDispatch')->execute((string) $key, (int) env('alerts.lockTimeoutSeconds', 900));
-        CLI::write(json_encode(['collected' => $collected, 'dispatched' => $dispatched], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE), 'green');
+        CLI::write(json_encode(['overdue' => $overdue, 'collected' => $collected, 'dispatched' => $dispatched], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE), 'green');
     }
 }

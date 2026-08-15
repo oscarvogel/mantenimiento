@@ -162,11 +162,6 @@
         <section class="card shadow-sm mb-4">
             <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
                 <h2 class="h5 mb-0">2. Vencimientos y avisos</h2>
-                <?php if ($can['detectDue']): ?>
-                    <form method="post" action="<?= base_url('mantenimiento/vencimientos/detectar') ?>" class="mb-0">
-                        <?= csrf_field() ?><button class="btn btn-warning btn-sm" type="submit">Detectar vencidos</button>
-                    </form>
-                <?php endif; ?>
             </div>
             <div class="card-body">
                 <div class="row g-3 mb-4">

@@ -1,6 +1,6 @@
 <script setup>
 import { computed, reactive, ref } from 'vue'
-import { ArrowRightIcon, BoltIcon, PlusIcon, WrenchScrewdriverIcon } from '@heroicons/vue/24/outline'
+import { ArrowRightIcon, PlusIcon, WrenchScrewdriverIcon } from '@heroicons/vue/24/outline'
 import CsrfInput from './components/CsrfInput.vue'
 import EmptyState from './components/EmptyState.vue'
 import EquipmentThumbnail from './components/EquipmentThumbnail.vue'
@@ -9,6 +9,7 @@ import PageHeading from './components/PageHeading.vue'
 import PaginationBar from './components/PaginationBar.vue'
 import PanelCard from './components/PanelCard.vue'
 import StatusBadge from './components/StatusBadge.vue'
+import UsageReadingInput from './components/UsageReadingInput.vue'
 import { fieldClass, formatHours, formatKilometers, formatReadingOrigin, primaryButton, secondaryButton, today } from './helpers.js'
 
 const props = defineProps({ data: { type: Object, required: true } })
@@ -23,6 +24,7 @@ const data = computed(() => ({
 }))
 const activeAction = ref(Object.keys(props.data.old ?? {}).length > 0 ? 'create-equipment' : null)
 const planForms = reactive({})
+const closeForms = reactive({})
 
 const visiblePlanCounts = computed(() => {
   const counts = { PROXIMO: 0, VENCIDO: 0, SIN_DATOS: 0 }
@@ -77,7 +79,19 @@ const stateFor = (equipment) => {
 }
 const selectedPlanDefault = (equipment) => defaultFor(equipment, stateFor(equipment).serviceId)
 const changePlanService = (equipment) => applyDefaultToState(stateFor(equipment), selectedPlanDefault(equipment))
+const closeStateFor = (order) => {
+  if (!closeForms[order.id]) {
+    closeForms[order.id] = {
+      kilometers: '',
+      hours: '',
+      currentKm: order.currentKm,
+      currentHours: order.currentHours,
+    }
+  }
+  return closeForms[order.id]
+}
 for (const equipment of props.data.equipments ?? []) stateFor(equipment)
+for (const order of props.data.orders ?? []) closeStateFor(order)
 </script>
 
 <template>
@@ -138,9 +152,6 @@ for (const equipment of props.data.equipments ?? []) stateFor(equipment)
 
     <div class="mb-6 grid gap-6 xl:grid-cols-[minmax(0,1.65fr)_minmax(18rem,0.8fr)]">
       <PanelCard title="Atención requerida" :count="data.pagination.notices.total">
-        <template v-if="data.can.detectDue" #header-actions>
-          <form method="post" :action="data.routes.detectDue"><CsrfInput :csrf="data.csrf" /><button type="submit" class="inline-flex min-h-10 items-center rounded-lg bg-accent px-3.5 py-2 text-sm font-semibold text-accent-foreground hover:bg-accent-hover"><BoltIcon class="mr-2 size-5" aria-hidden="true" />Detectar vencidos</button></form>
-        </template>
         <EmptyState v-if="data.notices.length === 0 && data.plans.length === 0" title="No hay atención pendiente" description="Los vencimientos y planes próximos aparecerán acá." />
         <ul v-if="data.notices.length" class="divide-y divide-border-subtle">
           <li v-for="notice in data.notices" :key="notice.id" class="flex flex-col gap-4 py-4 first:pt-0 lg:flex-row lg:items-center lg:justify-between">
@@ -164,7 +175,20 @@ for (const equipment of props.data.equipments ?? []) stateFor(equipment)
             <ul v-if="order.tasks.length" class="mt-3 space-y-1 text-sm text-ink"><li v-for="task in order.tasks" :key="task.id">{{ task.description }} <span class="text-ink-muted">({{ task.status }})</span></li></ul>
             <form v-if="order.status === 'EMITIDA' && data.can.editOrder" method="post" :action="order.startUrl" class="mt-4"><CsrfInput :csrf="data.csrf" /><button type="submit" :class="secondaryButton">Iniciar orden</button></form>
             <button v-else-if="order.status === 'EN_PROCESO' && data.can.closeOrder" type="button" :class="`${secondaryButton} mt-4`" :aria-expanded="isActionOpen(`close-order-${order.id}`)" :aria-controls="`close-order-${order.id}`" @click="toggleAction(`close-order-${order.id}`)"><WrenchScrewdriverIcon class="mr-2 size-4" aria-hidden="true" />Cerrar orden</button>
-<form v-if="order.status === 'EN_PROCESO' && data.can.closeOrder && isActionOpen(`close-order-${order.id}`)" :id="`close-order-${order.id}`" method="post" :action="order.closeUrl" class="mt-5 grid gap-3 border-t border-border-subtle pt-5"><CsrfInput :csrf="data.csrf" /><FormField label="Trabajo realizado" :for-id="`order-work-${order.id}`"><textarea :id="`order-work-${order.id}`" name="trabajo_realizado" rows="2" required :class="fieldClass"></textarea></FormField><FormField label="Fecha servicio" :for-id="`order-date-${order.id}`"><input :id="`order-date-${order.id}`" type="date" name="fecha_servicio" required :value="today()" :class="fieldClass" /></FormField><div v-if="order.controlsKm" class="rounded-lg bg-surface-subtle p-3 text-sm"><strong>Kilometraje de salida</strong><p class="text-xs text-ink-muted">Actual: {{ formatKilometers(order.currentKm) }} · ingresá el total al cerrar</p><input :id="`order-km-${order.id}`" type="text" inputmode="numeric" name="km_salida" :class="`${fieldClass} mt-2`" /></div><div v-if="order.controlsHours" class="rounded-lg bg-surface-subtle p-3 text-sm"><strong>Horómetro de salida</strong><p class="text-xs text-ink-muted">Actual: {{ formatHours(order.currentHours) }} · ingresá el total al cerrar</p><input :id="`order-hours-${order.id}`" type="text" inputmode="decimal" name="horas_salida" :class="`${fieldClass} mt-2`" /></div><p class="text-xs text-ink-muted sm:col-span-2">Al cerrar, se registra la lectura de salida y se recalcula el próximo servicio del equipo.</p><button type="submit" :class="primaryButton">Cerrar orden y recalcular</button></form>
+            <form v-if="order.status === 'EN_PROCESO' && data.can.closeOrder && isActionOpen(`close-order-${order.id}`)" :id="`close-order-${order.id}`" method="post" :action="order.closeUrl" class="mt-5 grid gap-3 border-t border-border-subtle pt-5">
+              <CsrfInput :csrf="data.csrf" />
+              <FormField label="Trabajo realizado" :for-id="`order-work-${order.id}`"><textarea :id="`order-work-${order.id}`" name="trabajo_realizado" rows="2" required :class="fieldClass"></textarea></FormField>
+              <FormField label="Fecha servicio" :for-id="`order-date-${order.id}`"><input :id="`order-date-${order.id}`" type="date" name="fecha_servicio" required :value="today()" :class="fieldClass" /></FormField>
+              <UsageReadingInput
+                v-model="closeForms[order.id]"
+                :equipment="order"
+                :names="{ kilometers: 'km_salida', hours: 'horas_salida' }"
+                :labels="{ kilometers: 'Nueva lectura de kilometraje', hours: 'Nueva lectura de horómetro', current: 'Actual' }"
+                :id-prefix="`order-${order.id}-reading`"
+              />
+              <p class="text-xs text-ink-muted sm:col-span-2">Al cerrar la orden se actualizarán las lecturas y el próximo mantenimiento automáticamente.</p>
+              <button type="submit" :class="primaryButton">Cerrar orden</button>
+            </form>
           </article>
         </div>
         <PaginationBar :pagination="data.pagination.orders" />

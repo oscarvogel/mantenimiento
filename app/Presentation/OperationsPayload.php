@@ -53,7 +53,6 @@ final class OperationsPayload
             'routes' => [
                 'equipmentIndex' => base_url('mantenimiento/equipos'),
                 'createEquipment' => base_url('mantenimiento/equipos'),
-                'detectDue' => base_url('mantenimiento/vencimientos/detectar'),
             ],
             'can' => $source['can'] ?? [],
             'pagination' => $overviewPagination,

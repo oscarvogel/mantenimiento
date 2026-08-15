@@ -72,7 +72,8 @@ vencimiento por kilómetros de forma simple:
 2. Registrar `10000` km.
 3. Asignar Cambio de aceite cada `1000` km, con anticipación `100` km.
 4. Registrar una nueva lectura de `11000` km.
-5. Ejecutar **Detectar vencidos**.
+5. Ejecutar `php spark notifications:dispatch` (en producción lo realiza la tarea
+   programada; la ruta manual queda como diagnóstico).
 6. Generar la OT y luego iniciarla.
 7. Cerrarla con `11010` km.
 8. Confirmar que queda finalizada y que el próximo objetivo pasa a `12010` km.

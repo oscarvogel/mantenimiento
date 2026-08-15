@@ -10,6 +10,7 @@ const props = defineProps({
   showDate: { type: Boolean, default: false },
   showNotes: { type: Boolean, default: false },
   names: { type: Object, default: () => ({ kilometers: 'kilometers', hours: 'hours', recordedAt: 'recordedAt', notes: 'notes' }) },
+  labels: { type: Object, default: () => ({ kilometers: 'Kilometraje total actual', hours: 'Horómetro total actual', current: 'Último registrado' }) },
   idPrefix: { type: String, default: 'reading' },
 })
 const emit = defineEmits(['update:modelValue', 'update:recordedAt', 'update:notes', 'focus-next'])
@@ -32,13 +33,13 @@ const hoursDelta = computed(() => deltaText('hours', 'h'))
 
 <template>
   <div class="grid gap-3 sm:grid-cols-2">
-    <FormField v-if="equipment.controlsKm" label="Kilometraje total actual" :for-id="`${idPrefix}-km`">
-      <span class="mb-1 block text-xs font-normal text-ink-muted">Último registrado: {{ formatKilometers(modelValue.currentKm) }}</span>
+    <FormField v-if="equipment.controlsKm" :label="labels.kilometers" :for-id="`${idPrefix}-km`">
+      <span class="mb-1 block text-xs font-normal text-ink-muted">{{ labels.current }}: {{ formatKilometers(modelValue.currentKm) }}</span>
       <input :id="`${idPrefix}-km`" data-reading-input="true" :name="names.kilometers" type="text" inputmode="numeric" autocomplete="off" :value="modelValue.kilometers" placeholder="Ingresá el total del equipo" :disabled="csrfDisabled" :class="fieldClass" @keydown.enter.prevent="emit('focus-next', $event)" @input="update('kilometers', $event.target.value)" />
       <p v-if="kmDelta" class="mt-1 text-xs" :class="warning('kilometers') ? 'text-danger-strong' : 'text-ink-muted'">{{ warning('kilometers') ? 'El valor es menor al último registro.' : kmDelta }}</p>
     </FormField>
-    <FormField v-if="equipment.controlsHours" label="Horómetro total actual" :for-id="`${idPrefix}-hours`">
-      <span class="mb-1 block text-xs font-normal text-ink-muted">Último registrado: {{ formatHours(modelValue.currentHours) }}</span>
+    <FormField v-if="equipment.controlsHours" :label="labels.hours" :for-id="`${idPrefix}-hours`">
+      <span class="mb-1 block text-xs font-normal text-ink-muted">{{ labels.current }}: {{ formatHours(modelValue.currentHours) }}</span>
       <input :id="`${idPrefix}-hours`" data-reading-input="true" :name="names.hours" type="text" inputmode="decimal" autocomplete="off" :value="modelValue.hours" placeholder="Ingresá el total del equipo" :disabled="csrfDisabled" :class="fieldClass" @keydown.enter.prevent="emit('focus-next', $event)" @input="update('hours', $event.target.value)" />
       <p v-if="hoursInvalid" class="mt-1 text-xs text-danger-strong">El horómetro debe ser un número positivo con un decimal como máximo. Podés usar coma o punto.</p>
       <p v-else-if="hoursDelta" class="mt-1 text-xs" :class="warning('hours') ? 'text-danger-strong' : 'text-ink-muted'">{{ warning('hours') ? 'El valor es menor al último registro.' : hoursDelta }}</p>

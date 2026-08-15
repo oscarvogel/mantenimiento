@@ -67,6 +67,9 @@ const normalizeUpcoming = (items) => {
       tone: statusTones[item.status] ?? 'inactive',
       statusLabel: asText(item.statusLabel, 'Sin datos'),
       priority: asCount(item.priority),
+      detailUrl: item.detailUrl ? asUrl(item.detailUrl, '#') : null,
+      actionUrl: item.actionUrl ? asUrl(item.actionUrl, '#') : null,
+      actionLabel: item.actionLabel ? asText(item.actionLabel) : null,
     }))
 }
 
@@ -146,6 +149,7 @@ export function normalizeDashboardPayload(payload) {
   const shell = normalizeAppShellPayload(source)
   const equipmentUrl = findNavigationUrl(shell.navigation, ['camion', 'equipo', 'truck'])
   const maintenanceUrl = findNavigationUrl(shell.navigation, ['plan', 'preventiv', 'mantenimiento', 'servicio', 'maintenance'])
+  const sourceLinks = source.links && typeof source.links === 'object' ? source.links : {}
 
   return {
     ...shell,
@@ -159,8 +163,10 @@ export function normalizeDashboardPayload(payload) {
     },
     upcomingMaintenance: normalizeUpcoming(source.upcomingMaintenance),
     links: {
-      equipment: equipmentUrl,
-      maintenance: maintenanceUrl,
+      equipment: asUrl(sourceLinks.equipment, equipmentUrl),
+      maintenance: asUrl(sourceLinks.maintenance, maintenanceUrl),
+      maintenanceDueSoon: asUrl(sourceLinks.maintenanceDueSoon, maintenanceUrl),
+      maintenanceOverdue: asUrl(sourceLinks.maintenanceOverdue, maintenanceUrl),
     },
   }
 }

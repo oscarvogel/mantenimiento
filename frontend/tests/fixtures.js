@@ -14,6 +14,12 @@ export const dashboardPayload = {
     maintenanceScheduled: 8,
     openOrders: 3,
   },
+  links: {
+    equipment: '/mantenimiento/equipos',
+    maintenance: '/mantenimiento/planes',
+    maintenanceDueSoon: '/mantenimiento/planes?estado=PROXIMO',
+    maintenanceOverdue: '/mantenimiento/planes?estado=VENCIDO',
+  },
   upcomingMaintenance: [
     {
       planId: 15,
@@ -25,6 +31,9 @@ export const dashboardPayload = {
       status: 'PROXIMO',
       statusLabel: 'Próximo',
       priority: 2,
+      detailUrl: '/mantenimiento/equipos/9',
+      actionUrl: '/mantenimiento/planes?equipo_id=9&estado=PROXIMO',
+      actionLabel: 'Ver plan',
     },
   ],
   logout: {
