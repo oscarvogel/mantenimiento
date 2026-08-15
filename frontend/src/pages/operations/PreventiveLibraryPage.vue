@@ -15,9 +15,11 @@ import PageHeading from './components/PageHeading.vue'
 import StatusBadge from './components/StatusBadge.vue'
 import TaskAddModal from './components/TaskAddModal.vue'
 import TaskEditModal from './components/TaskEditModal.vue'
+import { useAlerts } from '../../composables/useAlerts.js'
 import { fieldClass, primaryButton, secondaryButton } from './helpers.js'
 
 const props = defineProps({ data: { type: Object, required: true } })
+const alerts = useAlerts()
 
 const templates = computed(() => props.data.templates ?? [])
 const services = computed(() => props.data.services ?? [])
@@ -127,7 +129,7 @@ function persistEditHint(item) {
 }
 
 function showActionError(message) {
-  if (typeof window !== 'undefined') window.alert(message)
+  alerts.error('No se pudo completar la acción', message)
 }
 
 const modalOpen = ref(false)
@@ -221,7 +223,14 @@ async function detachTask(item, task) {
     return
   }
   const serviceName = item.serviceName || 'este servicio'
-  if (!window.confirm(`¿Quitar “${task.name}” de “${serviceName}”?\n\nLa tarea seguirá existiendo en el catálogo y podrá volver a utilizarse.`)) return
+  const accepted = await alerts.confirm({
+    title: `¿Quitar “${task.name}” de “${serviceName}”?`,
+    text: 'La tarea seguirá existiendo en el catálogo y podrá volver a utilizarse.',
+    button: 'Quitar',
+    cancel: 'Cancelar',
+    danger: true,
+  })
+  if (!accepted) return
 
   persistEditHint(item)
   const body = new FormData()
