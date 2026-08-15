@@ -2,6 +2,10 @@
 
 Estas instrucciones aplican a todo el repositorio.
 
+## Criterio de producto obligatorio
+
+El sistema debe diseñarse y validarse como una herramienta para una persona que lo usa todos los días, no como una interfaz que simplemente responde al backend. Cada flujo debe priorizar lenguaje humano, valores aplicables, prevención de errores, continuidad de contexto y feedback accionable.
+
 ## Protocolo obligatorio de inicio
 
 1. Antes de analizar, planificar o modificar código, localizar y leer completa la skill `clean-ddd-hexagonal` y las referencias que correspondan a la tarea.

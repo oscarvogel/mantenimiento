@@ -23,10 +23,16 @@ export const nowLocal = () => {
 
 export const parseFlexibleNumber = (value) => {
   if (value === null || value === undefined || String(value).trim() === '') return null
-  const normalized = String(value).trim().replace(',', '.')
-  if (!/^\d+(?:\.\d+)?$/.test(normalized)) return null
+  const raw = String(value).trim()
+  if (!/^\d+(?:[.,]\d)?$/.test(raw)) return null
+  const normalized = raw.replace(',', '.')
   const parsed = Number(normalized)
   return Number.isFinite(parsed) ? parsed : null
+}
+
+export const normalizeDecimalInput = (value) => {
+  const raw = String(value ?? '').trim()
+  return /^\d+(?:[.,]\d)?$/.test(raw) ? raw.replace(',', '.') : raw
 }
 
 export const formatNumberEs = (value, maximumFractionDigits = 1) => {

@@ -117,7 +117,7 @@
                                             </div>
                                             <div class="col-sm-4">
                                                 <label class="form-label small" for="hours-<?= esc($equipment['id']) ?>">Horómetro</label>
-                                                <input class="form-control" id="hours-<?= esc($equipment['id']) ?>" type="number" min="0" step="0.1" name="horometro" <?= (int) $equipment['controla_horas'] !== 1 ? 'disabled' : '' ?>>
+                                                <input class="form-control" id="hours-<?= esc($equipment['id']) ?>" type="text" inputmode="decimal" name="horometro" <?= (int) $equipment['controla_horas'] !== 1 ? 'disabled' : '' ?>>
                                             </div>
                                             <div class="col-sm-4 d-flex align-items-end">
                                                 <button class="btn btn-outline-primary w-100" type="submit">Cargar lectura</button>
@@ -223,7 +223,7 @@
                                         <div class="col-12"><label class="form-label small">Trabajo realizado</label><textarea class="form-control" name="trabajo_realizado" rows="2" required></textarea></div>
                                         <div class="col-sm-4"><label class="form-label small">Fecha servicio</label><input class="form-control" type="date" name="fecha_servicio" required value="<?= date('Y-m-d') ?>"></div>
                                         <div class="col-sm-4"><label class="form-label small">Km salida</label><input class="form-control" type="number" min="0" name="km_salida"></div>
-                                        <div class="col-sm-4"><label class="form-label small">Horas salida</label><input class="form-control" type="number" min="0" step="0.1" name="horas_salida"></div>
+                                        <div class="col-sm-4"><label class="form-label small">Horas salida</label><input class="form-control" type="text" inputmode="decimal" name="horas_salida"></div>
                                         <div class="col-12"><button class="btn btn-success" type="submit">Cerrar y recalcular</button></div>
                                     </form>
                                 <?php endif; ?>

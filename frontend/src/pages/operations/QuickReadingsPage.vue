@@ -8,7 +8,7 @@ import PaginationBar from './components/PaginationBar.vue'
 import PanelCard from './components/PanelCard.vue'
 import EquipmentThumbnail from './components/EquipmentThumbnail.vue'
 import UsageReadingInput from './components/UsageReadingInput.vue'
-import { fieldClass, nowLocal, primaryButton, secondaryButton } from './helpers.js'
+import { fieldClass, normalizeDecimalInput, nowLocal, primaryButton, secondaryButton } from './helpers.js'
 
 const props = defineProps({ data: { type: Object, required: true } })
 const results = ref([...props.data.results])
@@ -24,7 +24,7 @@ const submitRows = async () => {
   saving.value = true; results.value = []
   for (const equipment of readyRows.value) {
     const values = rows[equipment.id]; values.status = 'saving'
-    const body = new FormData(); body.append(csrf.name, csrf.hash); body.append('equipmentId', String(equipment.id)); body.append('kilometers', values.kilometers); body.append('hours', values.hours); body.append('recordedAt', values.recordedAt); body.append('notes', values.notes)
+    const body = new FormData(); body.append(csrf.name, csrf.hash); body.append('equipmentId', String(equipment.id)); body.append('kilometers', values.kilometers); body.append('hours', normalizeDecimalInput(values.hours)); body.append('recordedAt', values.recordedAt); body.append('notes', values.notes)
     try {
       const response = await fetch(props.data.routes.submitRow, { method: 'POST', body, credentials: 'same-origin', headers: { Accept: 'application/json' } }); const payload = await response.json(); if (payload.csrf) Object.assign(csrf, payload.csrf)
       const result = payload.result ?? { rowNumber: results.value.length + 1, equipmentId: equipment.id, success: false, message: payload.error ?? 'No se pudo guardar la fila.', plansEvaluated: 0, overduePlans: 0 }; results.value.push(result); values.status = result.success ? 'saved' : 'error'
