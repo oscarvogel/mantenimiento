@@ -10,7 +10,7 @@ final class DashboardPayloadTest extends TestCase
 {
     public function testBuildsScopedDeepLinksForMetricsAndMaintenanceRows(): void
     {
-        $actor = new ActorContext(7, 5, false, true, ['Administrador'], ['equipos.ver', 'planes.ver'], []);
+        $actor = new ActorContext(7, 5, false, true, ['Administrador'], ['equipos.ver', 'planes.ver', 'ordenes.editar'], []);
         $payload = (new DashboardPayload())->fromOperations($actor, [
             'metrics' => ['maintenanceOverdue' => 1],
             'upcomingMaintenance' => [[
@@ -23,6 +23,21 @@ final class DashboardPayloadTest extends TestCase
         self::assertStringContainsString('equipo_id=14', $payload['upcomingMaintenance'][0]['actionUrl']);
         self::assertSame('Atender', $payload['upcomingMaintenance'][0]['actionLabel']);
         self::assertStringContainsString('/mantenimiento/equipos/14', $payload['upcomingMaintenance'][0]['detailUrl']);
+    }
+
+    public function testUsesReadOnlyLabelForOverduePlansWithoutOrderPermission(): void
+    {
+        $actor = new ActorContext(7, 5, false, true, ['Consulta'], ['equipos.ver', 'planes.ver'], []);
+        $payload = (new DashboardPayload())->fromOperations($actor, [
+            'metrics' => ['maintenanceOverdue' => 1],
+            'upcomingMaintenance' => [[
+                'planId' => 12, 'equipmentId' => 14, 'equipmentCode' => 'CAM-14',
+                'status' => 'VENCIDO', 'statusLabel' => 'Vencido',
+            ]],
+        ]);
+
+        self::assertSame('Ver vencido', $payload['upcomingMaintenance'][0]['actionLabel']);
+        self::assertStringContainsString('equipo_id=14', $payload['upcomingMaintenance'][0]['actionUrl']);
     }
 
     public function testHidesActionsWithoutPermissions(): void

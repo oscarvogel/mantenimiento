@@ -50,6 +50,14 @@ describe('UsageReadingInput', () => {
     expect(wrapper.text()).toContain('El valor es menor al último registro.')
   })
 
+  it('rechaza kilometraje decimal con un mensaje independiente del horómetro', async () => {
+    const wrapper = render({ controlsKm: true, controlsHours: false }, { currentKm: 1000 })
+    await wrapper.get('input[name="kilometers"]').setValue('1000,5')
+    await wrapper.setProps({ modelValue: wrapper.emitted('update:modelValue').at(-1)[0] })
+    expect(wrapper.text()).toContain('El kilometraje debe ser un número entero positivo.')
+    expect(wrapper.text()).not.toContain('El horómetro debe ser')
+  })
+
   it('acepta coma decimal, muestra el delta y conserva el valor para el POST', async () => {
     const wrapper = render({ controlsKm: false, controlsHours: true }, { currentHours: '1250.4' })
     const hours = wrapper.get('input[name="hours"]')

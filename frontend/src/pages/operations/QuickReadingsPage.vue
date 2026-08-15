@@ -8,7 +8,7 @@ import PaginationBar from './components/PaginationBar.vue'
 import PanelCard from './components/PanelCard.vue'
 import EquipmentThumbnail from './components/EquipmentThumbnail.vue'
 import UsageReadingInput from './components/UsageReadingInput.vue'
-import { fieldClass, formatHours, formatKilometers, normalizeDecimalInput, nowLocal, primaryButton, readingDelta, secondaryButton } from './helpers.js'
+import { fieldClass, formatHours, formatKilometers, kilometersDelta, normalizeDecimalInput, nowLocal, primaryButton, readingDelta, secondaryButton } from './helpers.js'
 
 const props = defineProps({ data: { type: Object, required: true } })
 const results = ref([...props.data.results])
@@ -40,14 +40,14 @@ const formatDelta = (delta, unit) => {
 }
 const successFeedback = (row) => {
   const values = []
-  if (row.currentHours !== null && row.currentHours !== undefined) values.push(`Horómetro actualizado a ${formatHours(row.currentHours)}`)
-  if (row.currentKilometers !== null && row.currentKilometers !== undefined) values.push(`Kilometraje actualizado a ${formatKilometers(row.currentKilometers)}`)
+  if (row.submittedHours === true && row.currentHours !== null && row.currentHours !== undefined) values.push(`Horómetro actualizado a ${formatHours(row.currentHours)}`)
+  if (row.submittedKilometers === true && row.currentKilometers !== null && row.currentKilometers !== undefined) values.push(`Kilometraje actualizado a ${formatKilometers(row.currentKilometers)}`)
   return values.join(' · ') || row.message || 'Lectura guardada.'
 }
 const deltaFeedback = (row) => {
   const values = []
-  if (row.hoursDelta !== null && row.hoursDelta !== undefined) values.push(`${formatDelta(row.hoursDelta, 'h')} desde la lectura anterior`)
-  if (row.kilometersDelta !== null && row.kilometersDelta !== undefined) values.push(`${formatDelta(row.kilometersDelta, 'km')} desde la lectura anterior`)
+  if (row.submittedHours === true && row.hoursDelta !== null && row.hoursDelta !== undefined) values.push(`${formatDelta(row.hoursDelta, 'h')} desde la lectura anterior`)
+  if (row.submittedKilometers === true && row.kilometersDelta !== null && row.kilometersDelta !== undefined) values.push(`${formatDelta(row.kilometersDelta, 'km')} desde la lectura anterior`)
   return values.join(' · ')
 }
 const overdueFeedback = (row) => {
@@ -101,6 +101,7 @@ const submitRows = async () => {
     currentSavingIndex.value += 1
     const values = rows[equipment.id]
     const previous = { kilometers: values.currentKm, hours: values.currentHours }
+    const submitted = { kilometers: values.kilometers !== '', hours: values.hours !== '' }
     values.status = 'saving'
     const body = new FormData()
     body.append(csrf.name, csrf.hash)
@@ -120,10 +121,12 @@ const submitRows = async () => {
         continue
       }
       const result = parsed.payload.result
+      result.submittedKilometers = submitted.kilometers
+      result.submittedHours = submitted.hours
       result.previousKilometers = previous.kilometers
       result.previousHours = previous.hours
-      result.kilometersDelta = readingDelta(previous.kilometers, result.currentKilometers)
-      result.hoursDelta = readingDelta(previous.hours, result.currentHours)
+      result.kilometersDelta = submitted.kilometers ? kilometersDelta(previous.kilometers, result.currentKilometers) : null
+      result.hoursDelta = submitted.hours ? readingDelta(previous.hours, result.currentHours) : null
       results.value.push(result)
       values.status = result.success ? 'saved' : 'error'
       if (result.success) {

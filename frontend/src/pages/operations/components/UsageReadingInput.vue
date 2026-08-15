@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import FormField from './FormField.vue'
-import { fieldClass, formatHours, formatKilometers, parseFlexibleNumber, readingDelta } from '../helpers.js'
+import { fieldClass, formatHours, formatKilometers, kilometersDelta, parseFlexibleNumber, parseKilometers, readingDelta } from '../helpers.js'
 
 const props = defineProps({
   equipment: { type: Object, required: true },
@@ -16,17 +16,21 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'update:recordedAt', 'update:notes', 'focus-next'])
 const update = (key, value) => emit('update:modelValue', { ...props.modelValue, [key]: value })
 const deltaText = (key, unit) => {
-  const delta = readingDelta(props.modelValue[`current${key === 'kilometers' ? 'Km' : 'Hours'}`], props.modelValue[key])
+  const delta = key === 'kilometers'
+    ? kilometersDelta(props.modelValue.currentKm, props.modelValue.kilometers)
+    : readingDelta(props.modelValue.currentHours, props.modelValue.hours)
   if (delta === null) return null
   if (delta === 0) return 'Sin variación'
   return `${delta > 0 ? '+' : ''}${unit === 'km' ? Math.round(delta).toLocaleString('es-AR') : delta.toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ${unit}`
 }
 const warning = (key) => {
-  const current = parseFlexibleNumber(props.modelValue[`current${key === 'kilometers' ? 'Km' : 'Hours'}`])
-  const next = parseFlexibleNumber(props.modelValue[key])
+  const parser = key === 'kilometers' ? parseKilometers : parseFlexibleNumber
+  const current = parser(props.modelValue[`current${key === 'kilometers' ? 'Km' : 'Hours'}`])
+  const next = parser(props.modelValue[key])
   return current !== null && next !== null && next < current
 }
 const hoursInvalid = computed(() => props.modelValue.hours !== '' && parseFlexibleNumber(props.modelValue.hours) === null)
+const kmInvalid = computed(() => props.modelValue.kilometers !== '' && parseKilometers(props.modelValue.kilometers) === null)
 const kmDelta = computed(() => deltaText('kilometers', 'km'))
 const hoursDelta = computed(() => deltaText('hours', 'h'))
 </script>
@@ -36,7 +40,8 @@ const hoursDelta = computed(() => deltaText('hours', 'h'))
     <FormField v-if="equipment.controlsKm" :label="labels.kilometers" :for-id="`${idPrefix}-km`">
       <span class="mb-1 block text-xs font-normal text-ink-muted">{{ labels.current }}: {{ formatKilometers(modelValue.currentKm) }}</span>
       <input :id="`${idPrefix}-km`" data-reading-input="true" :name="names.kilometers" type="text" inputmode="numeric" autocomplete="off" :value="modelValue.kilometers" placeholder="Ingresá el total del equipo" :disabled="csrfDisabled" :class="fieldClass" @keydown.enter.prevent="emit('focus-next', $event)" @input="update('kilometers', $event.target.value)" />
-      <p v-if="kmDelta" class="mt-1 text-xs" :class="warning('kilometers') ? 'text-danger-strong' : 'text-ink-muted'">{{ warning('kilometers') ? 'El valor es menor al último registro.' : kmDelta }}</p>
+      <p v-if="kmInvalid" class="mt-1 text-xs text-danger-strong">El kilometraje debe ser un número entero positivo.</p>
+      <p v-else-if="kmDelta" class="mt-1 text-xs" :class="warning('kilometers') ? 'text-danger-strong' : 'text-ink-muted'">{{ warning('kilometers') ? 'El valor es menor al último registro.' : kmDelta }}</p>
     </FormField>
     <FormField v-if="equipment.controlsHours" :label="labels.hours" :for-id="`${idPrefix}-hours`">
       <span class="mb-1 block text-xs font-normal text-ink-muted">{{ labels.current }}: {{ formatHours(modelValue.currentHours) }}</span>

@@ -13,13 +13,14 @@ final class DashboardPayload
     {
         $canEquipment = $actor->hasPermission('equipos.ver');
         $canPlans = $actor->hasPermission('planes.ver');
+        $canOrders = $actor->hasPermission('ordenes.editar');
         $equipmentUrl = $canEquipment ? base_url('mantenimiento/equipos') : '#';
         $plansUrl = $canPlans ? base_url('mantenimiento/planes') : '#';
 
         return [
             'metrics' => $operations['metrics'] ?? [],
             'upcomingMaintenance' => array_map(
-                fn (array $item): array => $this->maintenanceItem($item, $canEquipment, $canPlans),
+                fn (array $item): array => $this->maintenanceItem($item, $canEquipment, $canPlans, $canOrders),
                 $operations['upcomingMaintenance'] ?? [],
             ),
             'links' => [
@@ -32,7 +33,7 @@ final class DashboardPayload
     }
 
     /** @param array<string,mixed> $item @return array<string,mixed> */
-    private function maintenanceItem(array $item, bool $canEquipment, bool $canPlans): array
+    private function maintenanceItem(array $item, bool $canEquipment, bool $canPlans, bool $canOrders): array
     {
         $equipmentId = (int) ($item['equipmentId'] ?? 0);
         $status = (string) ($item['status'] ?? 'SIN_DATOS');
@@ -44,7 +45,7 @@ final class DashboardPayload
             : null;
         $actionUrl = $planUrl ?? $detailUrl;
         $actionLabel = $planUrl !== null
-            ? ($status === 'VENCIDO' ? 'Atender' : 'Ver plan')
+            ? ($status === 'VENCIDO' ? ($canOrders ? 'Atender' : 'Ver vencido') : 'Ver plan')
             : ($detailUrl !== null ? 'Ver equipo' : null);
 
         return $item + [

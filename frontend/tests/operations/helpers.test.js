@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatHours, formatKilometers, formatReadingOrigin, localDateValue, normalizeDecimalInput, parseFlexibleNumber, readingDelta } from '../../src/pages/operations/helpers.js'
+import { formatHours, formatKilometers, formatReadingOrigin, kilometersDelta, localDateValue, normalizeDecimalInput, parseFlexibleNumber, parseKilometers, readingDelta } from '../../src/pages/operations/helpers.js'
 
 describe('helpers de fechas operativas', () => {
   it('conserva la fecha calendario local sin convertirla a UTC', () => {
@@ -19,5 +19,9 @@ describe('helpers de fechas operativas', () => {
     expect(parseFlexibleNumber('1250,55')).toBeNull()
     expect(parseFlexibleNumber('1.250,5')).toBeNull()
     expect(parseFlexibleNumber('1,250.5')).toBeNull()
+    expect(parseKilometers('12500')).toBe(12500)
+    expect(parseKilometers('12500,5')).toBeNull()
+    expect(parseKilometers('12500.5')).toBeNull()
+    expect(kilometersDelta(12000, '12500')).toBe(500)
   })
 })

@@ -30,6 +30,17 @@ export const parseFlexibleNumber = (value) => {
   return Number.isFinite(parsed) ? parsed : null
 }
 
+// El kilometraje representa unidades enteras. No reutilizar el parser decimal
+// del horómetro: aceptar una coma o un punto aquí produciría un valor que el
+// backend no puede persistir.
+export const parseKilometers = (value) => {
+  if (value === null || value === undefined || String(value).trim() === '') return null
+  const raw = String(value).trim()
+  if (!/^\d+$/.test(raw)) return null
+  const parsed = Number(raw)
+  return Number.isSafeInteger(parsed) ? parsed : null
+}
+
 export const normalizeDecimalInput = (value) => {
   const raw = String(value ?? '').trim()
   return /^\d+(?:[.,]\d)?$/.test(raw) ? raw.replace(',', '.') : raw
@@ -53,9 +64,11 @@ export const formatReadingOrigin = (origin) => ({
   MANUAL: 'Carga manual',
 }[String(origin ?? '').toUpperCase()] ?? (origin || 'Carga manual'))
 
-export const readingDelta = (current, next) => {
-  const currentNumber = parseFlexibleNumber(current)
-  const nextNumber = parseFlexibleNumber(next)
+export const readingDelta = (current, next, parser = parseFlexibleNumber) => {
+  const currentNumber = parser(current)
+  const nextNumber = parser(next)
   if (currentNumber === null || nextNumber === null) return null
   return nextNumber - currentNumber
 }
+
+export const kilometersDelta = (current, next) => readingDelta(current, next, parseKilometers)

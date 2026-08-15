@@ -60,6 +60,8 @@ final class RegisterReadingBatchHandlerTest extends TestCase
         self::assertSame(1, $result->failed());
         self::assertTrue($result->rows[0]['success']);
         self::assertSame(1_100, $result->rows[0]['currentKilometers']);
+        self::assertTrue($result->rows[0]['submittedKilometers']);
+        self::assertFalse($result->rows[0]['submittedHours']);
         self::assertFalse($result->rows[1]['success']);
         self::assertCount(1, $readings->items);
         self::assertSame('CARGA_RAPIDA', $readings->items[0]->origin());

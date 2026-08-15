@@ -96,6 +96,20 @@ describe('QuickReadingsPage', () => {
     expect(wrapper.get('input[name="readings[1][hours]"]').element.value).toBe('')
   })
 
+  it('solo informa la métrica que se envió aunque el backend devuelva ambas actuales', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({
+      csrf: { name: 'csrf_test_name', hash: 'next-token' },
+      result: { ...successPayload(1, '1258.4').result, currentKilometers: 1200, currentHours: '1258.4', submittedKilometers: false, submittedHours: true },
+    })))
+    const wrapper = render(dataFor(1))
+    await wrapper.get('input[name="readings[1][hours]"]').setValue('1258,4')
+    await wrapper.get('form[method="post"][action="/mantenimiento/lecturas/rapidas"]').trigger('submit')
+    await flushPromises()
+    expect(wrapper.text()).toContain('Horómetro actualizado a 1.258,4 h')
+    expect(wrapper.text()).not.toContain('Kilometraje actualizado')
+    expect(wrapper.text()).not.toContain('+200 km')
+  })
+
   it('asocia el error de validación al equipo correcto', async () => {
     vi.stubGlobal('fetch', vi.fn()
       .mockResolvedValueOnce(jsonResponse({ error: 'La lectura retrocede respecto del último valor.', csrf: { name: 'csrf_test_name', hash: 'next-token' } }, 422))
