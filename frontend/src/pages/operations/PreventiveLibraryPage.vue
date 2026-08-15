@@ -6,8 +6,10 @@ import {
   ChevronRightIcon,
   MagnifyingGlassIcon,
   PencilSquareIcon,
+  TrashIcon,
 } from '@heroicons/vue/24/outline'
 import EmptyState from './components/EmptyState.vue'
+import FrequencyEditModal from './components/FrequencyEditModal.vue'
 import PageHeading from './components/PageHeading.vue'
 import StatusBadge from './components/StatusBadge.vue'
 import TaskEditModal from './components/TaskEditModal.vue'
@@ -136,12 +138,20 @@ function persistEditHint(item) {
   }
 }
 
+function showActionError(message) {
+  if (typeof window !== 'undefined') window.alert(message)
+}
+
 const modalOpen = ref(false)
 const modalTask = ref(null)
 const modalItem = ref(null)
 
 function openTaskModal(item, task) {
   if (!props.data.canEdit) return
+  if (!task.updateUrl) {
+    showActionError('No está disponible la URL para editar esta tarea. Recargá la página y, si continúa, revisá el payload de Biblioteca.')
+    return
+  }
   modalItem.value = item
   modalTask.value = task
   persistEditHint(item)
@@ -158,10 +168,88 @@ function onTaskSaved() {
   closeTaskModal()
 }
 
-function onFrequencyClick() {
-  // Placeholder del issue #24. La acción queda visible y deshabilitada cuando
-  // no hay permisos, o visible y sin handler cuando los hay: la edición de
-  // frecuencia se aborda en otro PR para no ampliar alcance aquí.
+const frequencyModalOpen = ref(false)
+const frequencyItem = ref(null)
+
+function openFrequencyModal(item) {
+  if (!props.data.canEdit) return
+  if (!item.updateUrl) {
+    showActionError('No está disponible la URL para editar la frecuencia de este servicio.')
+    return
+  }
+  frequencyItem.value = item
+  persistEditHint(item)
+  frequencyModalOpen.value = true
+}
+
+function closeFrequencyModal() {
+  frequencyModalOpen.value = false
+  frequencyItem.value = null
+}
+
+function onFrequencySaved() {
+  closeFrequencyModal()
+}
+
+function taskDetachUrl(task) {
+  if (task.detachUrl) return task.detachUrl
+  if (task.updateUrl) return task.updateUrl.replace(/\/$/, '') + '/desvincular'
+  return ''
+}
+
+async function safeReadError(response) {
+  try {
+    const contentType = response.headers.get('content-type') || ''
+    if (contentType.includes('application/json')) {
+      const payload = await response.json()
+      return payload?.error || payload?.message || ''
+    }
+    const text = await response.text()
+    return text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 240)
+  } catch {
+    return ''
+  }
+}
+
+async function detachTask(item, task) {
+  if (!props.data.canEdit) return
+  const url = taskDetachUrl(task)
+  if (!url) {
+    showActionError('No está disponible la URL para quitar esta tarea del servicio.')
+    return
+  }
+
+  const serviceName = item.serviceName || 'este servicio'
+  if (!window.confirm(`¿Quitar “${task.name}” de “${serviceName}”?\n\nLa tarea seguirá existiendo en el catálogo y podrá volver a utilizarse.`)) {
+    return
+  }
+
+  persistEditHint(item)
+  const body = new FormData()
+  if (props.data.csrf?.name && props.data.csrf?.hash) {
+    body.append(props.data.csrf.name, props.data.csrf.hash)
+  }
+  body.append('tipo_servicio_id', String(item.serviceTypeId))
+  body.append('item_id', String(item.id))
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      body,
+      credentials: 'same-origin',
+      headers: {
+        Accept: 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+    })
+    if (!response.ok) {
+      showActionError((await safeReadError(response)) || 'No se pudo quitar la tarea del servicio.')
+      return
+    }
+    window.location.reload()
+  } catch (error) {
+    showActionError(error?.message || 'Error de red al quitar la tarea del servicio.')
+  }
 }
 
 function readStoredHints() {
@@ -320,9 +408,9 @@ watch(selectedTemplateId, () => {
           <button
             type="button"
             :class="secondaryButton"
-            :disabled="!data.canEdit"
-            :title="data.canEdit ? 'Editar frecuencia (próximamente #24)' : 'Solo lectura'"
-            @click="onFrequencyClick"
+            :disabled="!data.canEdit || !item.updateUrl"
+            :title="!data.canEdit ? 'Solo lectura' : (!item.updateUrl ? 'Falta URL de edición' : 'Editar frecuencia')"
+            @click="openFrequencyModal(item)"
           >
             <PencilSquareIcon class="mr-1.5 size-4" aria-hidden="true" />Editar frecuencia
           </button>
@@ -354,13 +442,26 @@ watch(selectedTemplateId, () => {
                   class="rounded-full bg-surface-muted px-2 py-0.5 text-[11px] font-semibold text-ink-muted"
                 >{{ chip }}</span>
               </div>
-              <button
-                v-if="data.canEdit && task.updateUrl"
-                type="button"
-                :class="primaryButton"
-                class="!min-h-9 !px-3 !py-1.5 text-xs"
-                @click="openTaskModal(item, task)"
-              >Editar</button>
+              <div v-if="data.canEdit" class="flex items-center gap-2">
+                <button
+                  type="button"
+                  :class="primaryButton"
+                  class="!min-h-9 !px-3 !py-1.5 text-xs"
+                  :disabled="!task.updateUrl"
+                  :title="task.updateUrl ? 'Editar tarea' : 'Falta URL de edición'"
+                  @click="openTaskModal(item, task)"
+                >Editar</button>
+                <button
+                  type="button"
+                  :class="secondaryButton"
+                  class="!min-h-9 !px-3 !py-1.5 text-xs"
+                  :disabled="!taskDetachUrl(task)"
+                  :title="taskDetachUrl(task) ? 'Quitar tarea de este servicio' : 'Falta URL para quitar la tarea'"
+                  @click="detachTask(item, task)"
+                >
+                  <TrashIcon class="mr-1.5 size-4" aria-hidden="true" />Quitar
+                </button>
+              </div>
             </li>
           </ul>
         </div>
@@ -374,6 +475,14 @@ watch(selectedTemplateId, () => {
       :can-edit="data.canEdit"
       @close="closeTaskModal"
       @saved="onTaskSaved"
+    />
+    <FrequencyEditModal
+      :open="frequencyModalOpen"
+      :item="frequencyItem"
+      :csrf="data.csrf"
+      :can-edit="data.canEdit"
+      @close="closeFrequencyModal"
+      @saved="onFrequencySaved"
     />
   </div>
 </template>
