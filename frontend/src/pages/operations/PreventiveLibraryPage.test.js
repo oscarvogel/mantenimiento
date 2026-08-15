@@ -1,6 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
+import Swal from 'sweetalert2'
 import PreventiveLibraryPage from './PreventiveLibraryPage.vue'
+
+vi.mock('sweetalert2', () => ({
+  default: {
+    fire: vi.fn(),
+    isLoading: vi.fn(() => false),
+  },
+}))
 
 const baseData = () => ({
   routes: {
@@ -115,6 +123,7 @@ const baseData = () => ({
 
 beforeEach(() => {
   window.localStorage.clear()
+  Swal.fire.mockResolvedValue({ isConfirmed: false })
 })
 
 afterEach(() => {
@@ -208,6 +217,32 @@ describe('PreventiveLibraryPage', () => {
     await flushPromises()
 
     expect(document.querySelector('[role="dialog"][aria-modal="true"]')).toBeNull()
+
+    wrapper.unmount()
+  })
+
+  it('confirma quitar una tarea mediante SweetAlert y no usa el confirm nativo', async () => {
+    const wrapper = mount(PreventiveLibraryPage, {
+      props: { data: baseData() },
+    })
+    const nativeConfirm = vi.spyOn(window, 'confirm')
+    const firstServiceToggle = wrapper.findAll('button[aria-expanded]')[0]
+    await firstServiceToggle.trigger('click')
+
+    const removeButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Quitar')
+    expect(removeButton).toBeDefined()
+    await removeButton.trigger('click')
+    await flushPromises()
+
+    expect(nativeConfirm).not.toHaveBeenCalled()
+    expect(Swal.fire).toHaveBeenCalledWith(expect.objectContaining({
+      title: '¿Quitar “Cambiar aceite motor” de “Cambio de aceite de motor”?',
+      text: 'La tarea seguirá existiendo en el catálogo y podrá volver a utilizarse.',
+      confirmButtonText: 'Quitar',
+      cancelButtonText: 'Cancelar',
+      showCancelButton: true,
+      icon: 'warning',
+    }))
 
     wrapper.unmount()
   })

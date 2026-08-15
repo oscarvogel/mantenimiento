@@ -27,6 +27,7 @@ use App\Infrastructure\Importations\CodeIgniterPreventiveLibraryReferenceGateway
 use App\Infrastructure\Importations\LocalPrivateImportFileStorage;
 use App\Infrastructure\Importations\PhpSpreadsheetPreventiveLibraryReader;
 use App\Presentation\PageSize;
+use App\Presentation\PreventiveLibraryPayload;
 use CodeIgniter\HTTP\RedirectResponse;
 use CodeIgniter\HTTP\ResponseInterface;
 use DomainException;
@@ -74,13 +75,7 @@ final class ImportManagement extends BaseController
                 'canEdit' => $actor->hasPermission('importaciones.cargar'),
                 'templates' => $overview['templates'],
                 'services' => $overview['services'],
-                'items' => array_map(static fn (array $item): array => $item + [
-                    'updateUrl' => $base . '/biblioteca/items/' . $item['id'],
-                    'tasks' => array_map(static fn (array $task): array => $task + [
-                        'updateUrl' => $base . '/biblioteca/tareas/' . $task['id'],
-                        'serviceTypeId' => (int) $item['serviceTypeId'],
-                    ], $item['tasks'] ?? []),
-                ], $overview['items']),
+                'items' => (new PreventiveLibraryPayload())->items($overview['items'], $base),
             ]);
         } catch (Throwable $exception) {
             return $this->failure($exception, '/mantenimiento/importaciones');
