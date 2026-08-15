@@ -56,7 +56,8 @@ function statusBadge(state) {
     VENCIDO: 'bg-danger-subtle text-danger-strong',
     SIN_DATOS: 'bg-surface-muted text-ink-muted',
   }
-  return `<span class="inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${classes[normalized] ?? classes.SIN_DATOS}">${labels[normalized] ?? normalized || 'SIN DATOS'}</span>`
+  const label = labels[normalized] ?? (normalized || 'SIN DATOS')
+  return `<span class="inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${classes[normalized] ?? classes.SIN_DATOS}">${label}</span>`
 }
 
 function createPanel(sourceUrl) {
