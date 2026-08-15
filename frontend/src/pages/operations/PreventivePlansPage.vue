@@ -1,332 +1,210 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
-import { CalendarDaysIcon, PlusIcon, TruckIcon } from '@heroicons/vue/24/outline'
+import { computed, ref } from 'vue'
+import { BookOpenIcon, PlusIcon, TruckIcon } from '@heroicons/vue/24/outline'
 import CsrfInput from './components/CsrfInput.vue'
 import EmptyState from './components/EmptyState.vue'
 import FormField from './components/FormField.vue'
 import PageHeading from './components/PageHeading.vue'
 import PaginationBar from './components/PaginationBar.vue'
-import PanelCard from './components/PanelCard.vue'
 import StatusBadge from './components/StatusBadge.vue'
-import EquipmentThumbnail from './components/EquipmentThumbnail.vue'
 import { fieldClass, primaryButton, secondaryButton, today } from './helpers.js'
 
 const props = defineProps({ data: { type: Object, required: true } })
-const selectedEquipmentId = ref(String(props.data.old?.equipo_id || props.data.wizardEquipmentId || ''))
-const selectedServiceId = ref(String(props.data.old?.tipo_servicio_id || ''))
-const selectedEquipment = computed(() => props.data.catalogs.equipment.find((item) => String(item.id) === selectedEquipmentId.value) ?? null)
-const oldValues = props.data.old ?? {}
-const hasOldValues = Object.values(oldValues).some((value) => value !== '' && value !== null && value !== undefined)
-const creationMode = ref(props.data.wizardEquipmentId ? 'template' : hasOldValues ? 'manual' : null)
-const formValues = ref({
-  intervalo_km: oldValues.intervalo_km || '',
-  anticipacion_km: oldValues.anticipacion_km || '',
-  base_km: oldValues.base_km || '',
-  intervalo_horas: oldValues.intervalo_horas || '',
-  anticipacion_horas: oldValues.anticipacion_horas || '',
-  base_horas: oldValues.base_horas || '',
-  intervalo_dias: oldValues.intervalo_dias || '',
-  anticipacion_dias: oldValues.anticipacion_dias || '',
-  base_fecha: oldValues.base_fecha || '',
-  prioridad: oldValues.prioridad || 'MEDIA',
-  observaciones: oldValues.observaciones || '',
-})
-const valueOrBlank = (value) => (value === null || value === undefined ? '' : String(value))
-const templateDefaults = computed(() => props.data.catalogs.templateDefaults ?? [])
-const suggestionInputs = ref({})
-const normalizeText = (value) => String(value ?? '').trim().toLocaleUpperCase('es')
-const templateSpecificity = (item) => item.model ? 4 : item.brand && item.equipmentTypeId ? 3 : item.equipmentTypeId ? 2 : 1
-const suggestedDefaults = computed(() => {
-  const equipment = selectedEquipment.value
-  if (!equipment) return []
-  const compatible = templateDefaults.value.filter((item) =>
-    (!item.equipmentTypeId || Number(item.equipmentTypeId) === Number(equipment.typeId))
-    && (!item.brand || normalizeText(item.brand) === normalizeText(equipment.brandName))
-    && (!item.model || normalizeText(item.model) === normalizeText(equipment.modelName)),
-  ).sort((left, right) => templateSpecificity(right) - templateSpecificity(left) || Number(left.templateId) - Number(right.templateId) || Number(left.id) - Number(right.id))
-  const seen = new Set(equipment.assignedServiceTypeIds ?? [])
-  return compatible.filter((item) => {
-    if (seen.has(Number(item.serviceTypeId))) return false
-    seen.add(Number(item.serviceTypeId))
-    return true
-  })
-})
-const defaultsForSelectedEquipment = computed(() => {
-  return suggestedDefaults.value
-})
-const selectedTemplateDefault = computed(() => defaultsForSelectedEquipment.value.find((item) => String(item.serviceTypeId) === selectedServiceId.value) ?? null)
-const groupedPlans = computed(() => {
-  const groups = new Map()
-  for (const plan of props.data.plans.items) {
-    const key = String(plan.equipment.id)
-    if (!groups.has(key)) groups.set(key, { equipment: plan.equipment, branch: plan.branch, plans: [] })
-    groups.get(key).plans.push(plan)
-  }
-  return [...groups.values()]
+
+const showManualForm = ref(false)
+const localSearch = ref(props.data.filters?.q ?? '')
+const libraryUrl = computed(() => String(props.data.routes.index ?? '').replace(/\/planes(?:\?.*)?$/, '/importaciones/biblioteca'))
+const clearUrl = computed(() => props.data.routes.index)
+const old = computed(() => props.data.old ?? {})
+
+const normalize = (value) => String(value ?? '')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLocaleLowerCase('es')
+  .trim()
+
+const visiblePlans = computed(() => {
+  const query = normalize(localSearch.value)
+  if (!query) return props.data.plans.items
+  return props.data.plans.items.filter((plan) => normalize([
+    plan.equipment.code,
+    plan.equipment.plate,
+    plan.equipment.typeName,
+    plan.branch.code,
+    plan.branch.name,
+    plan.serviceName,
+    plan.state,
+    plan.priority,
+    plan.notes,
+  ].filter(Boolean).join(' ')).includes(query))
 })
 
-const applyTemplateDefault = (templateDefault) => {
-  if (!templateDefault) return
-  formValues.value = {
-    intervalo_km: valueOrBlank(templateDefault.intervalKm),
-    anticipacion_km: valueOrBlank(templateDefault.warningKm),
-    base_km: '',
-    intervalo_horas: valueOrBlank(templateDefault.intervalHours),
-    anticipacion_horas: valueOrBlank(templateDefault.warningHours),
-    base_horas: '',
-    intervalo_dias: valueOrBlank(templateDefault.intervalDays),
-    anticipacion_dias: valueOrBlank(templateDefault.warningDays),
-    base_fecha: '',
-    prioridad: templateDefault.priority || 'MEDIA',
-    observaciones: templateDefault.notes || '',
-  }
+const criterionText = (key, criterion) => {
+  if (!criterion) return null
+  if (key === 'kilometers') return `Cada ${criterion.interval} km · próximo ${criterion.next ?? 'sin datos'} km`
+  if (key === 'hours') return `Cada ${criterion.interval} h · próximo ${criterion.next ?? 'sin datos'} h`
+  return `Cada ${criterion.interval} días · próximo ${criterion.next ?? 'sin datos'}`
 }
 
-watch(selectedEquipmentId, () => {
-  const defaults = defaultsForSelectedEquipment.value
-  if (defaults.length === 0) return
-  if (!defaults.some((item) => String(item.serviceTypeId) === selectedServiceId.value)) {
-    selectedServiceId.value = String(defaults[0].serviceTypeId)
-    return
-  }
-  applyTemplateDefault(selectedTemplateDefault.value)
-}, { immediate: !hasOldValues })
+const planCriteria = (plan) => [
+  ['kilometers', plan.criteria.kilometers],
+  ['hours', plan.criteria.hours],
+  ['date', plan.criteria.date],
+].filter(([, criterion]) => criterion)
 
-watch(selectedServiceId, () => applyTemplateDefault(selectedTemplateDefault.value))
-
-watch(suggestedDefaults, (items) => {
-  const next = {}
-  for (const item of items) {
-    next[item.id] = suggestionInputs.value[item.id] ?? { selected: true, baseKm: '', baseHours: '', baseDate: '' }
-  }
-  suggestionInputs.value = next
-}, { immediate: true })
-
-const addDays = (date, days) => {
-  if (!date) return null
-  const result = new Date(`${date}T00:00:00`)
-  result.setDate(result.getDate() + Number(days))
-  return result.toISOString().slice(0, 10)
-}
-const numeric = (value) => value === '' || value === null || value === undefined ? null : Number(value)
-const suggestionPreview = (item) => {
-  const input = suggestionInputs.value[item.id] ?? {}
-  const nextKm = item.intervalKm && numeric(input.baseKm) !== null ? numeric(input.baseKm) + Number(item.intervalKm) : null
-  const nextHours = item.intervalHours && numeric(input.baseHours) !== null ? numeric(input.baseHours) + Number(item.intervalHours) : null
-  const nextDate = item.intervalDays && input.baseDate ? addDays(input.baseDate, item.intervalDays) : null
-  const missing = (item.intervalKm && (nextKm === null || selectedEquipment.value?.currentKm === null))
-    || (item.intervalHours && (nextHours === null || selectedEquipment.value?.currentHours === null))
-    || (item.intervalDays && nextDate === null)
-  let state = 'SIN_DATOS'
-  if (!missing) {
-    const overdue = (nextKm !== null && Number(selectedEquipment.value.currentKm) >= nextKm)
-      || (nextHours !== null && Number(selectedEquipment.value.currentHours) >= nextHours)
-      || (nextDate !== null && today() >= nextDate)
-    const due = (nextKm !== null && Number(selectedEquipment.value.currentKm) >= nextKm - Number(item.warningKm ?? 0))
-      || (nextHours !== null && Number(selectedEquipment.value.currentHours) >= nextHours - Number(item.warningHours ?? 0))
-      || (nextDate !== null && today() >= addDays(nextDate, -Number(item.warningDays ?? 0)))
-    state = overdue ? 'VENCIDO' : due ? 'PROXIMO' : 'AL_DIA'
-  }
-  return { nextKm, nextHours, nextDate, state }
-}
-
-const criterionLabel = (key, criterion) => {
-  if (key === 'kilometers') return `Cada ${criterion.interval} km · base ${criterion.base ?? 'sin datos'} · próximo ${criterion.next ?? 'sin datos'} km`
-  if (key === 'hours') return `Cada ${criterion.interval} h · base ${criterion.base ?? 'sin datos'} · próximo ${criterion.next ?? 'sin datos'} h`
-  return `Cada ${criterion.interval} días · base ${criterion.base ?? 'sin datos'} · próximo ${criterion.next ?? 'sin datos'}`
-}
-
-const criterionProgress = (key, criterion) => {
-  if (key === 'date') return `Hoy: ${criterion.current} · anticipación: ${criterion.warning} días`
-  return `Actual: ${criterion.current ?? 'sin datos'} · anticipación: ${criterion.warning} ${key === 'kilometers' ? 'km' : 'h'}`
-}
-
-const visibleStateCounts = computed(() => {
-  const counts = { AL_DIA: 0, PROXIMO: 0, VENCIDO: 0, SIN_DATOS: 0 }
-  for (const plan of props.data.plans.items) {
-    if (Object.hasOwn(counts, plan.state)) counts[plan.state] += 1
-  }
-  return counts
-})
-
-const toggleCreationMode = (mode) => {
-  creationMode.value = creationMode.value === mode ? null : mode
-}
+const equipmentLabel = (equipment) => [equipment.code, equipment.plate, equipment.typeName, equipment.branchCode].filter(Boolean).join(' · ')
 </script>
 
 <template>
   <div>
-    <PageHeading eyebrow="Mantenimiento preventivo" title="Planes preventivos" description="Revisá primero el estado de cada unidad y asigná nuevos planes sólo cuando sea necesario.">
+    <PageHeading
+      eyebrow="Mantenimiento preventivo"
+      title="Planes preventivos"
+      description="Administrá los planes ya asignados. Las plantillas, tareas y repuestos se gestionan en la Biblioteca preventiva."
+    >
       <template #actions>
         <div class="flex flex-wrap gap-2">
-          <a :href="data.routes.equipmentIndex" :class="secondaryButton"><TruckIcon class="mr-2 size-5" aria-hidden="true" />Ver equipos</a>
-          <button v-if="data.canEdit" type="button" data-testid="open-template-plans" :class="creationMode === 'template' ? primaryButton : secondaryButton" :aria-expanded="creationMode === 'template'" aria-controls="planes-desde-plantilla" @click="toggleCreationMode('template')">Asignar desde plantilla</button>
-          <button v-if="data.canEdit" type="button" data-testid="open-manual-plan" :class="creationMode === 'manual' ? primaryButton : secondaryButton" :aria-expanded="creationMode === 'manual'" aria-controls="plan-manual" @click="toggleCreationMode('manual')"><PlusIcon class="mr-2 size-4" aria-hidden="true" />Nuevo manual</button>
+          <a :href="data.routes.equipmentIndex" :class="secondaryButton">
+            <TruckIcon class="mr-2 size-5" aria-hidden="true" />Ver equipos
+          </a>
+          <a :href="libraryUrl" :class="secondaryButton">
+            <BookOpenIcon class="mr-2 size-5" aria-hidden="true" />Biblioteca preventiva
+          </a>
+          <button v-if="data.canEdit" type="button" :class="showManualForm ? primaryButton : secondaryButton" @click="showManualForm = !showManualForm">
+            <PlusIcon class="mr-2 size-4" aria-hidden="true" />Nuevo manual
+          </button>
         </div>
       </template>
     </PageHeading>
 
-    <div class="flex flex-col">
-
-    <PanelCard v-if="data.canEdit && creationMode === 'template'" id="planes-desde-plantilla" title="Asignar planes desde plantilla" class="order-2 mb-6">
-      <form method="post" :action="data.routes.createFromTemplate" class="space-y-5">
+    <section v-if="data.canEdit && showManualForm" class="mb-6 rounded-2xl border border-border bg-white p-5 shadow-card sm:p-6">
+      <div class="mb-5">
+        <h2 class="text-base font-bold text-ink">Crear plan manual</h2>
+        <p class="mt-1 text-sm text-ink-muted">Usalo sólo cuando el equipo necesite una frecuencia excepcional que no corresponda a una plantilla de la biblioteca.</p>
+      </div>
+      <form method="post" :action="data.routes.create" class="grid gap-4 md:grid-cols-3">
         <CsrfInput :csrf="data.csrf" />
-        <FormField label="Camión o equipo" for-id="template-equipment" class="max-w-2xl">
-          <select id="template-equipment" v-model="selectedEquipmentId" name="equipo_id" required :class="fieldClass">
-            <option value="" disabled>Seleccionar equipo</option>
-            <option v-for="equipment in data.catalogs.equipment" :key="equipment.id" :value="String(equipment.id)">{{ equipment.code }} · {{ equipment.typeName }} · {{ equipment.branchCode }}</option>
+        <FormField label="Equipo" for-id="plan-equipment" class="md:col-span-2">
+          <select id="plan-equipment" name="equipo_id" required :class="fieldClass">
+            <option value="" disabled :selected="!old.equipo_id">Seleccionar equipo</option>
+            <option v-for="equipment in data.catalogs.equipment" :key="equipment.id" :value="equipment.id" :selected="String(old.equipo_id) === String(equipment.id)">
+              {{ equipmentLabel(equipment) }}
+            </option>
+          </select>
+        </FormField>
+        <FormField label="Servicio" for-id="plan-service">
+          <select id="plan-service" name="tipo_servicio_id" required :class="fieldClass">
+            <option value="" disabled :selected="!old.tipo_servicio_id">Seleccionar servicio</option>
+            <option v-for="service in data.catalogs.serviceTypes" :key="service.id" :value="service.id" :selected="String(old.tipo_servicio_id) === String(service.id)">{{ service.code }} · {{ service.name }}</option>
           </select>
         </FormField>
 
-        <p v-if="!selectedEquipment" class="rounded-lg bg-info-subtle p-4 text-sm text-ink">Seleccioná un equipo para detectar automáticamente las plantillas compatibles.</p>
-        <p v-else-if="suggestedDefaults.length === 0" class="rounded-lg bg-surface-subtle p-4 text-sm text-ink-muted">No hay servicios nuevos compatibles. Los planes ya asignados no se sugieren nuevamente.</p>
-        <template v-else>
-          <div class="rounded-lg bg-warning-subtle p-4 text-sm text-ink">
-            La lectura actual de <strong>{{ selectedEquipment.code }}</strong> se usa solo para evaluar el estado. Ingresá por separado la última realización conocida de cada servicio; si no la conocés, dejala vacía y el criterio quedará en <strong>SIN_DATOS</strong>.
-          </div>
-          <div class="space-y-4">
-            <article v-for="item in suggestedDefaults" :key="item.id" class="rounded-xl border border-border p-4 sm:p-5">
-              <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <label class="flex items-start gap-3">
-                  <input v-model="suggestionInputs[item.id].selected" type="checkbox" :name="`planes[${item.id}][seleccionado]`" value="1" class="mt-1 size-4 rounded border-border-strong text-primary focus:ring-primary" />
-                  <span><strong class="block text-ink">{{ item.serviceName }}</strong><span class="text-xs text-ink-muted">{{ item.templateName }} · {{ item.model ? 'Modelo' : item.brand ? 'Marca y tipo' : item.equipmentTypeId ? 'Tipo de equipo' : 'Genérica' }}</span></span>
-                </label>
-                <StatusBadge :status="suggestionPreview(item).state" />
-              </div>
-              <div class="mt-4 grid gap-3 md:grid-cols-3">
-                <div v-if="item.intervalKm" class="rounded-lg bg-surface-subtle p-3">
-                  <p class="text-xs font-semibold text-ink-muted">Cada {{ item.intervalKm }} km · anticipación {{ item.warningKm }} km</p>
-                  <label class="mt-2 block text-sm font-medium text-ink" :for="`suggestion-km-${item.id}`">Último realizado a los km</label>
-                  <input :id="`suggestion-km-${item.id}`" v-model="suggestionInputs[item.id].baseKm" type="number" min="0" :max="selectedEquipment.currentKm ?? undefined" :name="`planes[${item.id}][base_km]`" placeholder="Desconocido" :disabled="!suggestionInputs[item.id].selected" :class="fieldClass" />
-                  <p class="mt-2 text-xs text-ink-muted">Próximo: {{ suggestionPreview(item).nextKm === null ? 'sin datos' : `${suggestionPreview(item).nextKm} km` }}</p>
-                </div>
-                <div v-if="item.intervalHours" class="rounded-lg bg-surface-subtle p-3">
-                  <p class="text-xs font-semibold text-ink-muted">Cada {{ item.intervalHours }} h · anticipación {{ item.warningHours }} h</p>
-                  <label class="mt-2 block text-sm font-medium text-ink" :for="`suggestion-hours-${item.id}`">Último realizado a las horas</label>
-                  <input :id="`suggestion-hours-${item.id}`" v-model="suggestionInputs[item.id].baseHours" type="number" min="0" step="0.1" :max="selectedEquipment.currentHours ?? undefined" :name="`planes[${item.id}][base_horas]`" placeholder="Desconocido" :disabled="!suggestionInputs[item.id].selected" :class="fieldClass" />
-                  <p class="mt-2 text-xs text-ink-muted">Próximo: {{ suggestionPreview(item).nextHours === null ? 'sin datos' : `${suggestionPreview(item).nextHours} h` }}</p>
-                </div>
-                <div v-if="item.intervalDays" class="rounded-lg bg-surface-subtle p-3">
-                  <p class="text-xs font-semibold text-ink-muted">Cada {{ item.intervalDays }} días · anticipación {{ item.warningDays }} días</p>
-                  <label class="mt-2 block text-sm font-medium text-ink" :for="`suggestion-date-${item.id}`">Último realizado en fecha</label>
-                  <input :id="`suggestion-date-${item.id}`" v-model="suggestionInputs[item.id].baseDate" type="date" :max="today()" :name="`planes[${item.id}][base_fecha]`" :disabled="!suggestionInputs[item.id].selected" :class="fieldClass" />
-                  <p class="mt-2 text-xs text-ink-muted">Próximo: {{ suggestionPreview(item).nextDate ?? 'sin datos' }}</p>
-                </div>
-              </div>
-              <p v-if="item.notes" class="mt-3 text-sm text-ink-muted">{{ item.notes }}</p>
-            </article>
-          </div>
-          <p class="text-xs text-ink-muted">Podés desmarcar cualquier servicio. La confirmación crea planes y avisos vencidos cuando corresponda, pero nunca genera una orden de trabajo automáticamente.</p>
-          <button type="submit" :class="primaryButton" :disabled="!suggestedDefaults.some((item) => suggestionInputs[item.id]?.selected)">Confirmar planes seleccionados</button>
-        </template>
-      </form>
-    </PanelCard>
+        <FormField label="Cada (km)" for-id="manual-interval-km"><input id="manual-interval-km" name="intervalo_km" type="number" min="1" :value="old.intervalo_km" :class="fieldClass" /></FormField>
+        <FormField label="Anticipación (km)" for-id="manual-warning-km"><input id="manual-warning-km" name="anticipacion_km" type="number" min="0" :value="old.anticipacion_km" :class="fieldClass" /></FormField>
+        <FormField label="Base km" for-id="manual-base-km"><input id="manual-base-km" name="base_km" type="number" min="0" :value="old.base_km" :class="fieldClass" /></FormField>
 
-    <PanelCard v-if="data.canEdit && creationMode === 'manual'" id="plan-manual" title="Crear plan preventivo" class="order-3 mb-6">
-        <form method="post" :action="data.routes.create" class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <CsrfInput :csrf="data.csrf" />
-          <FormField label="Camión o equipo" for-id="plan-equipment" class="md:col-span-2">
-            <select id="plan-equipment" v-model="selectedEquipmentId" name="equipo_id" required :class="fieldClass">
-              <option value="" disabled>Seleccionar equipo</option>
-              <option v-for="equipment in data.catalogs.equipment" :key="equipment.id" :value="String(equipment.id)">{{ equipment.code }} · {{ equipment.typeName }} · {{ equipment.branchCode }}</option>
+        <FormField label="Cada (horas)" for-id="manual-interval-hours"><input id="manual-interval-hours" name="intervalo_horas" type="number" min="0.1" step="0.1" :value="old.intervalo_horas" :class="fieldClass" /></FormField>
+        <FormField label="Anticipación (horas)" for-id="manual-warning-hours"><input id="manual-warning-hours" name="anticipacion_horas" type="number" min="0" step="0.1" :value="old.anticipacion_horas" :class="fieldClass" /></FormField>
+        <FormField label="Base horas" for-id="manual-base-hours"><input id="manual-base-hours" name="base_horas" type="number" min="0" step="0.1" :value="old.base_horas" :class="fieldClass" /></FormField>
+
+        <FormField label="Cada (días)" for-id="manual-interval-days"><input id="manual-interval-days" name="intervalo_dias" type="number" min="1" :value="old.intervalo_dias" :class="fieldClass" /></FormField>
+        <FormField label="Anticipación (días)" for-id="manual-warning-days"><input id="manual-warning-days" name="anticipacion_dias" type="number" min="0" :value="old.anticipacion_dias" :class="fieldClass" /></FormField>
+        <FormField label="Base fecha" for-id="manual-base-date"><input id="manual-base-date" name="base_fecha" type="date" :max="today()" :value="old.base_fecha" :class="fieldClass" /></FormField>
+
+        <FormField label="Prioridad" for-id="manual-priority"><select id="manual-priority" name="prioridad" :class="fieldClass"><option v-for="priority in ['BAJA','MEDIA','ALTA','CRITICA']" :key="priority" :value="priority" :selected="String(old.prioridad || 'MEDIA') === priority">{{ priority === 'CRITICA' ? 'CRÍTICA' : priority }}</option></select></FormField>
+        <FormField label="Observaciones" for-id="manual-notes" class="md:col-span-2"><input id="manual-notes" name="observaciones" maxlength="1000" :value="old.observaciones" :class="fieldClass" /></FormField>
+        <div class="md:col-span-3 flex justify-end"><button type="submit" :class="primaryButton">Crear plan manual</button></div>
+      </form>
+    </section>
+
+    <section class="overflow-hidden rounded-2xl border border-border bg-white shadow-card">
+      <div class="border-b border-border bg-surface-subtle p-4 sm:p-5">
+        <form method="get" :action="data.routes.index" class="grid gap-3 md:grid-cols-[minmax(15rem,1.3fr)_minmax(14rem,1fr)_minmax(11rem,.8fr)_auto] md:items-end">
+          <FormField label="Buscar" for-id="plans-search">
+            <input id="plans-search" v-model="localSearch" name="q" type="search" placeholder="Patente, equipo o servicio" :class="fieldClass" />
+          </FormField>
+          <FormField label="Equipo" for-id="plans-equipment">
+            <select id="plans-equipment" name="equipo_id" :class="fieldClass">
+              <option value="">Todos</option>
+              <option v-for="equipment in data.catalogs.equipment" :key="equipment.id" :value="equipment.id" :selected="String(data.filters.equipmentId) === String(equipment.id)">{{ equipmentLabel(equipment) }}</option>
             </select>
           </FormField>
-          <FormField label="Tipo de servicio" for-id="plan-service" class="md:col-span-2">
-            <select id="plan-service" v-model="selectedServiceId" name="tipo_servicio_id" required :class="fieldClass"><option value="" disabled>Seleccionar servicio</option><option v-for="service in data.catalogs.serviceTypes" :key="service.id" :value="String(service.id)">{{ service.name }}</option></select>
+          <FormField label="Estado" for-id="plans-state">
+            <select id="plans-state" name="estado" :class="fieldClass">
+              <option value="">Todos</option>
+              <option v-for="state in ['AL_DIA','PROXIMO','VENCIDO','SIN_DATOS']" :key="state" :value="state" :selected="data.filters.state === state">{{ state.replace('_', ' ') }}</option>
+            </select>
           </FormField>
-
-          <div v-if="selectedEquipment" class="rounded-lg bg-primary-subtle p-3 text-sm text-ink md:col-span-2 xl:col-span-4">
-            <strong>{{ selectedEquipment.code }}</strong> controla
-            <span v-if="selectedEquipment.controlsKm"> kilometraje (actual: {{ selectedEquipment.currentKm ?? 'sin datos' }})</span><span v-if="selectedEquipment.controlsKm && selectedEquipment.controlsHours"> y</span><span v-if="selectedEquipment.controlsHours"> horómetro (actual: {{ selectedEquipment.currentHours ?? 'sin datos' }})</span><span v-if="!selectedEquipment.controlsKm && !selectedEquipment.controlsHours"> solamente fecha</span>.
+          <div class="flex gap-2">
+            <button type="submit" :class="primaryButton">Filtrar</button>
+            <a :href="clearUrl" :class="secondaryButton">Limpiar</a>
           </div>
-          <p v-if="selectedTemplateDefault" class="rounded-lg bg-success-subtle p-3 text-sm font-semibold text-success-strong md:col-span-2 xl:col-span-4">
-            {{ selectedTemplateDefault.templateName }} · intervalos precargados
-          </p>
-          <p class="rounded-lg bg-warning-subtle p-3 text-sm text-ink md:col-span-2 xl:col-span-4">
-            La lectura actual del equipo no se usa como última realización. Informá la base histórica si la conocés; si la dejás vacía, ese criterio quedará en <strong>SIN_DATOS</strong> hasta completar el historial.
-          </p>
-
-          <template v-if="!selectedEquipment || selectedEquipment.controlsKm">
-            <FormField label="Intervalo (km)" for-id="plan-interval-km"><input id="plan-interval-km" v-model="formValues.intervalo_km" type="number" min="1" name="intervalo_km" :class="fieldClass" /></FormField>
-            <FormField label="Anticipación (km)" for-id="plan-warning-km"><input id="plan-warning-km" v-model="formValues.anticipacion_km" type="number" min="0" name="anticipacion_km" :class="fieldClass" /></FormField>
-            <FormField label="Último realizado a los km" for-id="plan-base-km" class="md:col-span-2"><input id="plan-base-km" v-model="formValues.base_km" type="number" min="0" name="base_km" placeholder="Dejar vacío si se desconoce" :class="fieldClass" /></FormField>
-          </template>
-          <template v-if="!selectedEquipment || selectedEquipment.controlsHours">
-            <FormField label="Intervalo (horas)" for-id="plan-interval-hours"><input id="plan-interval-hours" v-model="formValues.intervalo_horas" type="number" min="0.1" step="0.1" name="intervalo_horas" :class="fieldClass" /></FormField>
-            <FormField label="Anticipación (horas)" for-id="plan-warning-hours"><input id="plan-warning-hours" v-model="formValues.anticipacion_horas" type="number" min="0" step="0.1" name="anticipacion_horas" :class="fieldClass" /></FormField>
-            <FormField label="Último realizado a las horas" for-id="plan-base-hours" class="md:col-span-2"><input id="plan-base-hours" v-model="formValues.base_horas" type="number" min="0" step="0.1" name="base_horas" placeholder="Dejar vacío si se desconoce" :class="fieldClass" /></FormField>
-          </template>
-          <FormField label="Intervalo (días)" for-id="plan-interval-days"><input id="plan-interval-days" v-model="formValues.intervalo_dias" type="number" min="1" name="intervalo_dias" :class="fieldClass" /></FormField>
-          <FormField label="Anticipación (días)" for-id="plan-warning-days"><input id="plan-warning-days" v-model="formValues.anticipacion_dias" type="number" min="0" name="anticipacion_dias" :class="fieldClass" /></FormField>
-          <FormField label="Último realizado en fecha" for-id="plan-base-date" class="md:col-span-2"><input id="plan-base-date" v-model="formValues.base_fecha" type="date" name="base_fecha" :class="fieldClass" /></FormField>
-          <FormField label="Prioridad" for-id="plan-priority"><select id="plan-priority" v-model="formValues.prioridad" name="prioridad" :class="fieldClass"><option v-for="priority in ['BAJA', 'MEDIA', 'ALTA', 'CRITICA']" :key="priority" :value="priority">{{ priority === 'CRITICA' ? 'CRÍTICA' : priority }}</option></select></FormField>
-          <FormField label="Observaciones" for-id="plan-notes" class="md:col-span-2 xl:col-span-3"><textarea id="plan-notes" v-model="formValues.observaciones" name="observaciones" maxlength="1000" rows="2" :class="fieldClass"></textarea></FormField>
-          <p class="text-xs text-ink-muted md:col-span-2 xl:col-span-4">Completá al menos un intervalo. Si combinás criterios, el plan vence cuando se alcanza primero cualquiera de ellos.</p>
-          <button type="submit" :class="`${primaryButton} md:justify-self-start`">Crear plan</button>
         </form>
-    </PanelCard>
-
-    <PanelCard title="Planes por equipo" :count="data.plans.total" flush class="order-1 mb-6">
-      <form method="get" :action="data.routes.index" class="grid gap-3 border-b border-border-subtle bg-surface-subtle p-5 md:grid-cols-2 xl:grid-cols-5">
-        <FormField label="Buscar" for-id="plans-q"><input id="plans-q" name="q" type="search" placeholder="Patente, código o servicio" :value="data.filters.q" :class="fieldClass" /></FormField>
-        <FormField label="Camión" for-id="plans-equipment"><select id="plans-equipment" name="equipo_id" :class="fieldClass"><option value="">Todos</option><option v-for="equipment in data.catalogs.equipment" :key="equipment.id" :value="equipment.id" :selected="String(equipment.id) === String(data.filters.equipmentId)">{{ equipment.code }}</option></select></FormField>
-        <FormField label="Sucursal" for-id="plans-branch"><select id="plans-branch" name="sucursal_id" :class="fieldClass"><option value="">Todas</option><option v-for="branch in data.catalogs.branches" :key="branch.id" :value="branch.id" :selected="String(branch.id) === String(data.filters.branchId)">{{ branch.code }} · {{ branch.name }}</option></select></FormField>
-        <FormField label="Estado" for-id="plans-state"><select id="plans-state" name="estado" :class="fieldClass"><option value="">Todos</option><option v-for="state in ['AL_DIA', 'PROXIMO', 'VENCIDO', 'SIN_DATOS']" :key="state" :value="state" :selected="state === data.filters.state">{{ state.replace('_', ' ') }}</option></select></FormField>
-        <div class="flex items-end gap-2"><button type="submit" :class="primaryButton">Filtrar</button><a :href="data.routes.index" :class="secondaryButton">Limpiar</a></div>
-      </form>
-
-      <section aria-label="Resumen de planes visibles" class="grid gap-3 border-b border-border-subtle p-5 sm:grid-cols-2 xl:grid-cols-4">
-        <article class="rounded-xl border border-border bg-surface-raised p-4"><p class="text-xs font-bold uppercase tracking-wide text-ink-muted">Planes activos</p><p class="mt-2 text-2xl font-bold text-ink">{{ data.plans.total }}</p></article>
-        <article class="rounded-xl border border-success/20 bg-success-subtle/40 p-4"><p class="text-xs font-bold uppercase tracking-wide text-success-strong">Al día en esta página</p><p class="mt-2 text-2xl font-bold text-ink">{{ visibleStateCounts.AL_DIA }}</p></article>
-        <article class="rounded-xl border border-warning/30 bg-warning-subtle/50 p-4"><p class="text-xs font-bold uppercase tracking-wide text-warning-foreground">Próximos en esta página</p><p class="mt-2 text-2xl font-bold text-ink">{{ visibleStateCounts.PROXIMO }}</p></article>
-        <article class="rounded-xl border border-danger/20 bg-danger-subtle/40 p-4"><p class="text-xs font-bold uppercase tracking-wide text-danger-strong">Vencidos en esta página</p><p class="mt-2 text-2xl font-bold text-ink">{{ visibleStateCounts.VENCIDO }}</p></article>
-      </section>
-
-      <EmptyState v-if="groupedPlans.length === 0" title="No hay planes preventivos" description="Creá el primer plan o ajustá los filtros de búsqueda." />
-      <div v-else class="divide-y divide-border-subtle">
-        <section v-for="group in groupedPlans" :key="group.equipment.id" class="p-5 sm:p-6">
-          <div class="mb-4 flex flex-col justify-between gap-2 sm:flex-row sm:items-start">
-            <div class="flex items-center gap-3"><EquipmentThumbnail :url="group.equipment.photoUrl" :code="group.equipment.code" size="lg" /><div><a v-if="group.equipment.detailUrl" :href="group.equipment.detailUrl" class="text-lg font-bold text-primary hover:text-primary-hover">{{ group.equipment.code }}</a><strong v-else class="text-lg text-ink">{{ group.equipment.code }}</strong><p class="text-sm text-ink-muted">{{ group.equipment.typeName }}<span v-if="group.equipment.plate"> · {{ group.equipment.plate }}</span> · {{ group.branch.code }} / {{ group.branch.name }}</p></div></div>
-            <span class="rounded-full bg-surface-muted px-3 py-1 text-xs font-semibold text-ink-muted">{{ group.plans.length }} {{ group.plans.length === 1 ? 'plan' : 'planes' }}</span>
-          </div>
-          <div class="grid gap-3 xl:grid-cols-2">
-            <article v-for="plan in group.plans" :key="plan.id" class="rounded-xl border border-border p-4">
-              <div class="flex flex-wrap items-start justify-between gap-2"><div><h3 class="font-semibold text-ink">{{ plan.serviceName }}</h3><p class="mt-1 text-xs text-ink-muted">Prioridad {{ plan.priority }}</p></div><StatusBadge :status="plan.state" /></div>
-              <dl class="mt-4 space-y-3 text-sm">
-                <template v-for="(criterion, key) in plan.criteria" :key="key"><div v-if="criterion" class="rounded-lg bg-surface-subtle p-3"><dt class="font-semibold capitalize text-ink">{{ key === 'kilometers' ? 'Kilometraje' : key === 'hours' ? 'Horómetro' : 'Fecha' }}</dt><dd class="mt-1 text-ink-muted">{{ criterionLabel(key, criterion) }}</dd><dd class="mt-1 text-xs text-ink-subtle">{{ criterionProgress(key, criterion) }}</dd></div></template>
-              </dl>
-              <p v-if="plan.notes" class="mt-3 text-sm text-ink-muted">{{ plan.notes }}</p>
-              <details v-if="plan.editUrl" class="ui-details-animated mt-4 rounded-xl border border-border bg-surface-subtle p-3 open:bg-white sm:p-4">
-                <summary class="cursor-pointer list-none text-sm font-semibold text-primary">Editar plan</summary>
-                <form method="post" :action="plan.editUrl" data-confirm data-confirm-title="¿Guardar los cambios?" data-confirm-text="Se actualizará la configuración del plan y se recalcularán sus próximos objetivos." data-confirm-button="Guardar cambios" class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                  <CsrfInput :csrf="data.csrf" />
-                  <template v-if="plan.criteria.kilometers">
-                    <FormField :label="`Intervalo (km)`" :for-id="`plan-${plan.id}-interval-km`"><input :id="`plan-${plan.id}-interval-km`" name="intervalo_km" type="number" min="1" :value="valueOrBlank(plan.criteria.kilometers.interval)" :class="fieldClass" /></FormField>
-                    <FormField label="Anticipación (km)" :for-id="`plan-${plan.id}-warning-km`"><input :id="`plan-${plan.id}-warning-km`" name="anticipacion_km" type="number" min="0" :value="valueOrBlank(plan.criteria.kilometers.warning)" :class="fieldClass" /></FormField>
-                    <FormField label="Base (km)" :for-id="`plan-${plan.id}-base-km`"><input :id="`plan-${plan.id}-base-km`" name="base_km" type="number" min="0" :value="valueOrBlank(plan.criteria.kilometers.base)" :class="fieldClass" /></FormField>
-                  </template>
-                  <template v-if="plan.criteria.hours">
-                    <FormField label="Intervalo (horas)" :for-id="`plan-${plan.id}-interval-hours`"><input :id="`plan-${plan.id}-interval-hours`" name="intervalo_horas" type="number" min="0.1" step="0.1" :value="valueOrBlank(plan.criteria.hours.interval)" :class="fieldClass" /></FormField>
-                    <FormField label="Anticipación (horas)" :for-id="`plan-${plan.id}-warning-hours`"><input :id="`plan-${plan.id}-warning-hours`" name="anticipacion_horas" type="number" min="0" step="0.1" :value="valueOrBlank(plan.criteria.hours.warning)" :class="fieldClass" /></FormField>
-                    <FormField label="Base (horas)" :for-id="`plan-${plan.id}-base-hours`"><input :id="`plan-${plan.id}-base-hours`" name="base_horas" type="number" min="0" step="0.1" :value="valueOrBlank(plan.criteria.hours.base)" :class="fieldClass" /></FormField>
-                  </template>
-                  <template v-if="plan.criteria.date">
-                    <FormField label="Intervalo (días)" :for-id="`plan-${plan.id}-interval-days`"><input :id="`plan-${plan.id}-interval-days`" name="intervalo_dias" type="number" min="1" :value="valueOrBlank(plan.criteria.date.interval)" :class="fieldClass" /></FormField>
-                    <FormField label="Anticipación (días)" :for-id="`plan-${plan.id}-warning-days`"><input :id="`plan-${plan.id}-warning-days`" name="anticipacion_dias" type="number" min="0" :value="valueOrBlank(plan.criteria.date.warning)" :class="fieldClass" /></FormField>
-                    <FormField label="Base (fecha)" :for-id="`plan-${plan.id}-base-date`"><input :id="`plan-${plan.id}-base-date`" name="base_fecha" type="date" :value="valueOrBlank(plan.criteria.date.base)" :class="fieldClass" /></FormField>
-                  </template>
-                  <FormField label="Prioridad" :for-id="`plan-${plan.id}-priority`"><select :id="`plan-${plan.id}-priority`" name="prioridad" :class="fieldClass"><option v-for="priority in ['BAJA', 'MEDIA', 'ALTA', 'CRITICA']" :key="priority" :value="priority" :selected="plan.priority === priority">{{ priority === 'CRITICA' ? 'CRÍTICA' : priority }}</option></select></FormField>
-                  <FormField label="Observaciones" :for-id="`plan-${plan.id}-notes`" class="md:col-span-2 xl:col-span-3"><textarea :id="`plan-${plan.id}-notes`" name="observaciones" maxlength="1000" rows="2" :value="plan.notes || ''" :class="fieldClass"></textarea></FormField>
-                  <p class="text-xs text-ink-muted md:col-span-2 xl:col-span-4">La base y su próximo objetivo se recalculan. Un plan proveniente de plantilla conserva su origen sin modificar la plantilla.</p>
-                  <button type="submit" :class="`${primaryButton} md:justify-self-start`">Guardar cambios</button>
-                </form>
-              </details>
-            </article>
-          </div>
-        </section>
       </div>
-      <PaginationBar :pagination="data.plans.pagination" />
-    </PanelCard>
-    </div>
+
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-5">
+        <div>
+          <h2 class="font-bold text-ink">Planes asignados</h2>
+          <p class="mt-0.5 text-xs text-ink-muted">{{ data.plans.total }} plan(es) en total · {{ visiblePlans.length }} visible(s) en esta página</p>
+        </div>
+        <a :href="libraryUrl" class="text-sm font-semibold text-primary hover:underline">Administrar plantillas y tareas →</a>
+      </div>
+
+      <EmptyState v-if="visiblePlans.length === 0" title="No hay planes para mostrar" description="Probá limpiando los filtros o asigná un plan desde la ficha del equipo." class="m-5" />
+
+      <div v-else class="overflow-x-auto">
+        <table class="ui-table-hover w-full min-w-[66rem] text-left text-sm">
+          <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
+            <tr>
+              <th class="px-4 py-3">Equipo</th>
+              <th class="px-4 py-3">Servicio</th>
+              <th class="px-4 py-3">Frecuencia / próximo</th>
+              <th class="px-4 py-3">Prioridad</th>
+              <th class="px-4 py-3">Estado</th>
+              <th class="px-4 py-3 text-right">Acción</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-border-subtle">
+            <template v-for="plan in visiblePlans" :key="plan.id">
+              <tr>
+                <td class="px-4 py-3">
+                  <a v-if="plan.equipment.detailUrl" :href="plan.equipment.detailUrl" class="font-bold text-primary hover:underline">{{ plan.equipment.code }}</a>
+                  <strong v-else class="text-ink">{{ plan.equipment.code }}</strong>
+                  <p class="mt-0.5 text-xs text-ink-muted">{{ [plan.equipment.plate, plan.equipment.typeName, plan.branch.code].filter(Boolean).join(' · ') }}</p>
+                </td>
+                <td class="px-4 py-3"><strong class="text-ink">{{ plan.serviceName }}</strong><p v-if="plan.notes" class="mt-0.5 max-w-xs truncate text-xs text-ink-muted">{{ plan.notes }}</p></td>
+                <td class="px-4 py-3"><p v-for="([key, criterion]) in planCriteria(plan)" :key="key" class="text-xs text-ink">{{ criterionText(key, criterion) }}</p><span v-if="planCriteria(plan).length === 0" class="text-xs text-ink-muted">Sin frecuencia</span></td>
+                <td class="px-4 py-3 text-xs font-semibold text-ink">{{ plan.priority === 'CRITICA' ? 'CRÍTICA' : plan.priority }}</td>
+                <td class="px-4 py-3"><StatusBadge :status="plan.state" /></td>
+                <td class="px-4 py-3 text-right"><button v-if="data.canEdit && plan.editUrl" type="button" :class="secondaryButton" :aria-controls="`edit-plan-${plan.id}`" @click="plan._editing = !plan._editing">{{ plan._editing ? 'Cerrar' : 'Editar' }}</button></td>
+              </tr>
+              <tr v-if="data.canEdit && plan.editUrl && plan._editing" :id="`edit-plan-${plan.id}`" class="bg-surface-subtle/60">
+                <td colspan="6" class="px-4 py-4">
+                  <form method="post" :action="plan.editUrl" class="grid gap-3 md:grid-cols-4">
+                    <CsrfInput :csrf="data.csrf" />
+                    <FormField label="Cada km" :for-id="`edit-km-${plan.id}`"><input :id="`edit-km-${plan.id}`" name="intervalo_km" type="number" min="1" :value="plan.criteria.kilometers?.interval" :class="fieldClass" /></FormField>
+                    <FormField label="Anticipación km" :for-id="`edit-wkm-${plan.id}`"><input :id="`edit-wkm-${plan.id}`" name="anticipacion_km" type="number" min="0" :value="plan.criteria.kilometers?.warning" :class="fieldClass" /></FormField>
+                    <FormField label="Base km" :for-id="`edit-bkm-${plan.id}`"><input :id="`edit-bkm-${plan.id}`" name="base_km" type="number" min="0" :value="plan.criteria.kilometers?.base" :class="fieldClass" /></FormField>
+                    <div></div>
+                    <FormField label="Cada horas" :for-id="`edit-hours-${plan.id}`"><input :id="`edit-hours-${plan.id}`" name="intervalo_horas" type="number" min="0.1" step="0.1" :value="plan.criteria.hours?.interval" :class="fieldClass" /></FormField>
+                    <FormField label="Anticipación horas" :for-id="`edit-whours-${plan.id}`"><input :id="`edit-whours-${plan.id}`" name="anticipacion_horas" type="number" min="0" step="0.1" :value="plan.criteria.hours?.warning" :class="fieldClass" /></FormField>
+                    <FormField label="Base horas" :for-id="`edit-bhours-${plan.id}`"><input :id="`edit-bhours-${plan.id}`" name="base_horas" type="number" min="0" step="0.1" :value="plan.criteria.hours?.base" :class="fieldClass" /></FormField>
+                    <div></div>
+                    <FormField label="Cada días" :for-id="`edit-days-${plan.id}`"><input :id="`edit-days-${plan.id}`" name="intervalo_dias" type="number" min="1" :value="plan.criteria.date?.interval" :class="fieldClass" /></FormField>
+                    <FormField label="Anticipación días" :for-id="`edit-wdays-${plan.id}`"><input :id="`edit-wdays-${plan.id}`" name="anticipacion_dias" type="number" min="0" :value="plan.criteria.date?.warning" :class="fieldClass" /></FormField>
+                    <FormField label="Base fecha" :for-id="`edit-bdate-${plan.id}`"><input :id="`edit-bdate-${plan.id}`" name="base_fecha" type="date" :max="today()" :value="plan.criteria.date?.base" :class="fieldClass" /></FormField>
+                    <FormField label="Prioridad" :for-id="`edit-priority-${plan.id}`"><select :id="`edit-priority-${plan.id}`" name="prioridad" :class="fieldClass"><option v-for="priority in ['BAJA','MEDIA','ALTA','CRITICA']" :key="priority" :value="priority" :selected="priority === plan.priority">{{ priority === 'CRITICA' ? 'CRÍTICA' : priority }}</option></select></FormField>
+                    <FormField label="Observaciones" :for-id="`edit-notes-${plan.id}`" class="md:col-span-3"><input :id="`edit-notes-${plan.id}`" name="observaciones" maxlength="1000" :value="plan.notes" :class="fieldClass" /></FormField>
+                    <div class="flex items-end justify-end"><button type="submit" :class="primaryButton">Guardar cambios</button></div>
+                  </form>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="border-t border-border px-4 py-4 sm:px-5"><PaginationBar :pagination="data.plans.pagination" /></div>
+    </section>
   </div>
 </template>
