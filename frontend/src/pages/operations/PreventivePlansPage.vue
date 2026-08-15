@@ -70,7 +70,7 @@ const equipmentLabel = (equipment) => [equipment.code, equipment.plate, equipmen
           <a :href="libraryUrl" :class="secondaryButton">
             <BookOpenIcon class="mr-2 size-5" aria-hidden="true" />Biblioteca preventiva
           </a>
-          <button v-if="data.canEdit" type="button" :class="showManualForm ? primaryButton : secondaryButton" @click="showManualForm = !showManualForm">
+          <button v-if="data.canEdit" type="button" data-testid="open-manual-plan" :class="showManualForm ? primaryButton : secondaryButton" @click="showManualForm = !showManualForm">
             <PlusIcon class="mr-2 size-4" aria-hidden="true" />Nuevo manual
           </button>
         </div>
@@ -150,7 +150,7 @@ const equipmentLabel = (equipment) => [equipment.code, equipment.plate, equipmen
         <a :href="libraryUrl" class="text-sm font-semibold text-primary hover:underline">Administrar plantillas y tareas →</a>
       </div>
 
-      <EmptyState v-if="visiblePlans.length === 0" title="No hay planes para mostrar" description="Probá limpiando los filtros o asigná un plan desde la ficha del equipo." class="m-5" />
+      <EmptyState v-if="visiblePlans.length === 0" title="No hay planes preventivos" description="Probá limpiando los filtros o asigná un plan desde la ficha del equipo." class="m-5" />
 
       <div v-else class="overflow-x-auto">
         <table class="ui-table-hover w-full min-w-[66rem] text-left text-sm">
@@ -178,7 +178,7 @@ const equipmentLabel = (equipment) => [equipment.code, equipment.plate, equipmen
                 <td class="px-4 py-3"><StatusBadge :status="plan.state" /></td>
                 <td class="px-4 py-3 text-right"><button v-if="data.canEdit && plan.editUrl" type="button" :class="secondaryButton" :aria-controls="`edit-plan-${plan.id}`" @click="plan._editing = !plan._editing">{{ plan._editing ? 'Cerrar' : 'Editar' }}</button></td>
               </tr>
-              <tr v-if="data.canEdit && plan.editUrl && plan._editing" :id="`edit-plan-${plan.id}`" class="bg-surface-subtle/60">
+              <tr v-if="data.canEdit && plan.editUrl" v-show="plan._editing" :id="`edit-plan-${plan.id}`" class="bg-surface-subtle/60">
                 <td colspan="6" class="px-4 py-4">
                   <form method="post" :action="plan.editUrl" class="grid gap-3 md:grid-cols-4">
                     <CsrfInput :csrf="data.csrf" />
