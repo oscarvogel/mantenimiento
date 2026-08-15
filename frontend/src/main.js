@@ -8,6 +8,7 @@ import { adminPagesByType } from './pages/admin/index.js'
 import { ReportsPage } from './pages/reports/index.js'
 import { NotificationCenterPage } from './pages/notifications/index.js'
 import LoginPage from './pages/login/LoginPage.vue'
+import { installEquipmentComboboxes } from './ui/equipmentCombobox.js'
 import { consumeFlash, installGlobalBehaviors } from './ui/globals.js'
 import './styles.css'
 
@@ -71,6 +72,9 @@ if (root) {
   const serverPayload = payloadFromDocument()
   const payload = serverPayload ?? (import.meta.env.DEV ? developmentDashboard : null)
   mountMaintenanceDashboard(root, payload)
+  if (payload?.page === 'preventive-plans') {
+    installEquipmentComboboxes(root, payload?.data?.catalogs?.equipment ?? [])
+  }
   if (serverPayload) consumeFlash(serverPayload.data?.flash)
 }
 
