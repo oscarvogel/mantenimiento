@@ -1,8 +1,10 @@
 name: Issue 15 check
 
 on:
+  workflow_dispatch:
   push:
     branches:
+      - main
       - feat/issue-15-biblioteca-preventiva
   pull_request:
     branches:

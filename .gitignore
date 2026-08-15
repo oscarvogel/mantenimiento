@@ -80,3 +80,11 @@ $RECYCLE.BIN/
 
 # Builds locales de deploy (zips para subir por FTP)
 /dist/
+
+# =============================================================================
+# Artefactos de scraping y debugging manual
+# =============================================================================
+# Cookies exportadas y paginas capturadas durante pruebas con curl/Invoke-WebRequest
+# o sesiones de Playwright. Son temporales, no parte del codigo.
+/cookies*.txt
+/superadmin.html

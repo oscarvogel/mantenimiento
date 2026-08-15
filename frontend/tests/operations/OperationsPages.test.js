@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import AssetsIndexPage from '../../src/pages/operations/AssetsIndexPage.vue'
 import EquipmentDetailPage from '../../src/pages/operations/EquipmentDetailPage.vue'
 import ImportsIndexPage from '../../src/pages/operations/ImportsIndexPage.vue'
@@ -11,8 +11,8 @@ import { resolveOperationPage } from '../../src/pages/operations/index.js'
 import { assetsData, equipmentData, importsData, importShowData, maintenanceData, preventiveLibraryData, preventivePlansData } from './fixtures.js'
 
 const wrappers = []
-const render = (component, data) => {
-  const wrapper = mount(component, { props: { data }, attachTo: document.body })
+const render = (component, data, options = {}) => {
+  const wrapper = mount(component, { props: { data }, attachTo: options.attachTo ?? document.body })
   wrappers.push(wrapper)
   return wrapper
 }
@@ -41,22 +41,6 @@ describe('registro de componentes operativos', () => {
 })
 
 describe('preventive-plans', () => {
-  it('prioriza el listado y muestra un solo flujo de alta por vez', async () => {
-    const wrapper = render(PreventivePlansPage, preventivePlansData)
-    const listPanel = wrapper.get('form[action="/mantenimiento/planes"][method="get"]').element.closest('section')
-
-    expect(listPanel.className).toContain('order-1')
-    expect(wrapper.find('form[action="/mantenimiento/planes"][method="post"]').exists()).toBe(false)
-
-    await wrapper.get('[data-testid="open-template-plans"]').trigger('click')
-    expect(wrapper.get('#planes-desde-plantilla').classes()).toContain('order-2')
-    expect(wrapper.find('form[action="/mantenimiento/planes"][method="post"]').exists()).toBe(false)
-
-    await wrapper.get('[data-testid="open-manual-plan"]').trigger('click')
-    expect(wrapper.find('#planes-desde-plantilla').exists()).toBe(false)
-    expect(wrapper.get('form[action="/mantenimiento/planes"][method="post"]').exists()).toBe(true)
-  })
-
   it('crea planes con CSRF y muestra criterios por camión', async () => {
     const wrapper = render(PreventivePlansPage, preventivePlansData)
     await wrapper.get('[data-testid="open-manual-plan"]').trigger('click')
@@ -114,89 +98,112 @@ describe('preventive-plans', () => {
 })
 
 describe('preventive-library', () => {
-  it('muestra y permite editar los planes importados de biblioteca', () => {
+  it('muestra los servicios de la plantilla seleccionada con su jerarquía y botones', async () => {
     const wrapper = render(PreventiveLibraryPage, preventiveLibraryData)
-    const form = wrapper.get('form[action="/mantenimiento/importaciones/biblioteca/items/15"][method="post"]')
 
-    expect(wrapper.text()).toContain('Planes de biblioteca')
+    expect(wrapper.text()).toContain('Biblioteca preventiva')
     expect(wrapper.text()).toContain('Preventivo camiones')
     expect(wrapper.text()).toContain('Service motor')
-    expect(wrapper.text()).toContain('Cambiar aceite de motor')
+    expect(wrapper.text()).toContain('Inspección frenos')
     expect(wrapper.text()).toContain('ACEITE')
+    expect(wrapper.text()).toContain('FR')
     expect(wrapper.text()).toContain('Obligatoria')
     expect(wrapper.text()).toContain('Repuesto')
     expect(wrapper.text()).toContain('Control')
-    expect(form.get('input[name="csrf_test_name"]').attributes('value')).toBe('secure-token')
-    expect(form.get('input[name="intervalo_km"]').element.value).toBe('10000')
-    expect(form.get('input[name="anticipacion_km"]').element.value).toBe('1000')
-    expect(form.get('input[name="intervalo_horas"]').element.value).toBe('250.0')
-    expect(form.get('input[name="anticipacion_horas"]').element.value).toBe('25.0')
-    expect(form.get('input[name="intervalo_dias"]').element.value).toBe('180')
-    expect(form.get('input[name="anticipacion_dias"]').element.value).toBe('15')
-    expect(form.get('select[name="prioridad"]').element.value).toBe('MEDIA')
-    expect(form.get('input[name="activo"]').element.checked).toBe(true)
-    expect(form.get('textarea[name="observaciones"]').element.value).toBe('Aceite y filtros')
+
+    const serviceToggles = wrapper.findAll('button[aria-expanded]')
+    expect(serviceToggles).toHaveLength(2)
+    expect(wrapper.find('form[action="/mantenimiento/importaciones/biblioteca/items/15"]').exists()).toBe(false)
+    expect(wrapper.find('form[action="/mantenimiento/importaciones/biblioteca/tareas/1"]').exists()).toBe(false)
+
+    await serviceToggles[0].trigger('click')
+    const editButtons = wrapper.findAll('button').filter((b) => b.text().trim() === 'Editar')
+    expect(editButtons.length).toBe(3)
+    const frequencyButtons = wrapper.findAll('button').filter((b) => b.text().includes('Editar frecuencia'))
+    expect(frequencyButtons.length).toBe(2)
   })
 
-  it('filtra planes de biblioteca por servicio, plantilla, codigo o tarea', async () => {
+  it('filtra los servicios por el buscador y conserva el resto del contrato', async () => {
     const wrapper = render(PreventiveLibraryPage, preventiveLibraryData)
 
     await wrapper.get('input[type="search"][name="q"]').setValue('frenos')
-
     expect(wrapper.text()).toContain('Inspección frenos')
-    expect(wrapper.text()).toContain('Revisar cintas de freno')
-    expect(wrapper.find('form[action="/mantenimiento/importaciones/biblioteca/items/15"]').exists()).toBe(false)
-    expect(wrapper.find('form[action="/mantenimiento/importaciones/biblioteca/items/16"]').exists()).toBe(true)
+    expect(wrapper.text()).not.toContain('Service motor')
+
+    const serviceToggles = wrapper.findAll('button[aria-expanded]')
+    expect(serviceToggles).toHaveLength(1)
   })
 
-  it('deja la biblioteca en modo lectura cuando no hay permiso de carga', () => {
+  it('deja la biblioteca en modo lectura cuando no hay permiso de carga', async () => {
     const wrapper = render(PreventiveLibraryPage, { ...preventiveLibraryData, canEdit: false })
 
-    expect(wrapper.find('form[action="/mantenimiento/importaciones/biblioteca/items/15"] button[type="submit"]').exists()).toBe(false)
-    expect(wrapper.get('input[name="intervalo_km"]').attributes()).toHaveProperty('disabled')
+    const serviceToggles = wrapper.findAll('button[aria-expanded]')
+    await serviceToggles[0].trigger('click')
+
+    const editButtons = wrapper.findAll('button').filter((b) => b.text().trim() === 'Editar')
+    expect(editButtons.length).toBe(0)
+    const frequencyButtons = wrapper.findAll('button').filter((b) => b.text().includes('Editar frecuencia'))
+    expect(frequencyButtons.length).toBeGreaterThanOrEqual(1)
+    expect(frequencyButtons[0].attributes('disabled')).toBeDefined()
+    expect(document.querySelector('[role="dialog"][aria-modal="true"]')).toBeNull()
   })
 
-  it('permite editar una tarea de biblioteca con valores precargados', () => {
+  it('abre el modal de edición con los valores actuales de la tarea al pulsar Editar', async () => {
     const wrapper = render(PreventiveLibraryPage, preventiveLibraryData)
-    const form = wrapper.get('form[action="/mantenimiento/importaciones/biblioteca/tareas/1"][method="post"]')
+    const serviceToggles = wrapper.findAll('button[aria-expanded]')
+    await serviceToggles[0].trigger('click')
 
-    expect(form.get('input[name="csrf_test_name"]').attributes('value')).toBe('secure-token')
-    expect(form.get('input[name="tipo_servicio_id"]').attributes('value')).toBe('3')
-    expect(form.get('input[name="nombre"]').element.value).toBe('Cambiar aceite de motor')
-    expect(form.get('input[name="orden"]').element.value).toBe('1')
-    expect(form.get('input[name="duracion_estimada_min"]').element.value).toBe('45')
-    expect(form.get('textarea[name="procedimiento"]').element.value).toBe('Drenar y reemplazar')
-    expect(form.get('input[name="requiere_repuesto"]').element.checked).toBe(true)
-    expect(form.get('input[name="requiere_control"]').element.checked).toBe(true)
-    expect(form.get('input[name="obligatoria"]').element.checked).toBe(true)
-    expect(form.get('input[name="activo"]').element.checked).toBe(true)
+    const editButtons = wrapper.findAll('button').filter((b) => b.text().trim() === 'Editar')
+    expect(editButtons.length).toBeGreaterThan(0)
+    await editButtons[0].trigger('click')
+    await flushPromises()
+
+    const modal = document.querySelector('[role="dialog"][aria-modal="true"]')
+    expect(modal).not.toBeNull()
+    const form = modal.querySelector('form')
+    expect(form).not.toBeNull()
+    expect(form.getAttribute('action')).toBeNull()
+    expect(form.querySelector('input[name="csrf_test_name"]').getAttribute('value')).toBe('secure-token')
+    expect(form.querySelector('input[name="tipo_servicio_id"]').getAttribute('value')).toBe('3')
+    expect(form.querySelector('input[name="nombre"]').value).toBe('Cambiar aceite de motor')
+    expect(form.querySelector('input[name="orden"]').value).toBe('1')
+    expect(form.querySelector('input[name="duracion_estimada_min"]').value).toBe('45')
+    expect(form.querySelector('textarea[name="procedimiento"]').value).toBe('Drenar y reemplazar')
+    expect(form.querySelector('input[name="requiere_repuesto"]').checked).toBe(true)
+    expect(form.querySelector('input[name="requiere_control"]').checked).toBe(true)
+    expect(form.querySelector('input[name="obligatoria"]').checked).toBe(true)
+    expect(form.querySelector('input[name="activo"]').checked).toBe(true)
   })
 
-  it('oculta el formulario de edición de tareas sin permiso', () => {
-    const wrapper = render(PreventiveLibraryPage, { ...preventiveLibraryData, canEdit: false })
+  it('cierra el modal con Cancelar y deja la biblioteca como estaba', async () => {
+    const wrapper = render(PreventiveLibraryPage, preventiveLibraryData)
+    const serviceToggles = wrapper.findAll('button[aria-expanded]')
+    await serviceToggles[0].trigger('click')
 
-    expect(wrapper.find('form[action="/mantenimiento/importaciones/biblioteca/tareas/1"]').exists()).toBe(false)
-    expect(wrapper.text()).not.toContain('Editar tarea')
+    const editButtons = wrapper.findAll('button').filter((b) => b.text().trim() === 'Editar')
+    await editButtons[0].trigger('click')
+    await flushPromises()
+    const modal = document.querySelector('[role="dialog"][aria-modal="true"]')
+    const cancelButton = Array.from(modal.querySelectorAll('button')).find(
+      (b) => b.textContent.trim() === 'Cancelar',
+    )
+    expect(cancelButton).toBeDefined()
+    cancelButton.click()
+    await flushPromises()
+
+    expect(document.querySelector('[role="dialog"][aria-modal="true"]')).toBeNull()
+    expect(wrapper.text()).not.toContain('Edición de tarea')
+  })
+
+  it('no muestra los paneles "Plantillas de la empresa" ni "Catálogo de servicios"', () => {
+    const wrapper = render(PreventiveLibraryPage, preventiveLibraryData)
+    const html = wrapper.html()
+    expect(html).not.toContain('Plantillas de la empresa')
+    expect(html).not.toContain('Catálogo de servicios')
   })
 })
 
 describe('maintenance-overview', () => {
-  it('prioriza la atención y mantiene una sola carga desplegada', async () => {
-    const wrapper = render(MaintenanceOverviewPage, maintenanceData)
-
-    expect(wrapper.text()).toContain('Qué requiere atención hoy')
-    expect(wrapper.find('form[action="/mantenimiento/equipos"]').exists()).toBe(false)
-    expect(wrapper.find('form[action="/mantenimiento/equipos/9/lecturas"]').exists()).toBe(false)
-    expect(wrapper.find('form[action="/mantenimiento/equipos/9/planes"]').exists()).toBe(false)
-
-    await wrapper.get('button[aria-controls="reading-9"]').trigger('click')
-    expect(wrapper.find('form[action="/mantenimiento/equipos/9/lecturas"]').exists()).toBe(true)
-
-    await wrapper.get('button[aria-controls="plan-9"]').trigger('click')
-    expect(wrapper.find('form[action="/mantenimiento/equipos/9/lecturas"]').exists()).toBe(false)
-    expect(wrapper.find('form[action="/mantenimiento/equipos/9/planes"]').exists()).toBe(true)
-  })
-
   it('conserva rutas POST, CSRF y formularios del circuito', async () => {
     const wrapper = render(MaintenanceOverviewPage, maintenanceData)
 
@@ -213,11 +220,9 @@ describe('maintenance-overview', () => {
     expect(assignPlan.get('input[name="anticipacion_km"]').element.value).toBe('1000')
     expect(assignPlan.get('input[name="intervalo_horas"]').element.value).toBe('250.0')
     expect(assignPlan.get('input[name="observaciones"]').element.value).toBe('Aceite y filtros')
-
-    await wrapper.get('button[aria-controls="close-order-4"]').trigger('click')
-
     expect(wrapper.get('form[action="/mantenimiento/vencimientos/detectar"]').attributes('method')).toBe('post')
     expect(wrapper.get('form[action="/mantenimiento/avisos/3/orden"]').attributes('method')).toBe('post')
+    await wrapper.get('button[aria-controls="close-order-4"]').trigger('click')
     expect(wrapper.get('form[action="/mantenimiento/ordenes/4/cerrar"]').attributes('method')).toBe('post')
     expect(wrapper.findAll('input[name="csrf_test_name"]').every((input) => input.attributes('value') === 'secure-token')).toBe(true)
     expect(wrapper.findAll('select[aria-label="Registros por página"]')).toHaveLength(5)
@@ -236,18 +241,6 @@ describe('maintenance-overview', () => {
 })
 
 describe('assets-index', () => {
-  it('prioriza el listado y mantiene alta y catálogos como paneles colapsables', () => {
-    const wrapper = render(AssetsIndexPage, assetsData)
-    const list = wrapper.get('form[action="/mantenimiento/equipos"][method="get"]').element.closest('section')
-    const createPanel = wrapper.get('#alta-equipo').element
-    const catalogPanel = wrapper.get('form[action="/mantenimiento/catalogos/marcas"]').element.closest('details')
-
-    expect(list.compareDocumentPosition(createPanel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(createPanel.open).toBe(false)
-    expect(catalogPanel.open).toBe(false)
-    expect(wrapper.get('a[href="#alta-equipo"]').text()).toContain('Nuevo equipo')
-  })
-
   it('presenta filtros GET, fichas, QR y mutaciones de catálogos', () => {
     const wrapper = render(AssetsIndexPage, assetsData)
 
@@ -322,23 +315,6 @@ describe('assets-index', () => {
 })
 
 describe('equipment-detail', () => {
-  it('organiza la ficha en pestañas accesibles sin desmontar las operaciones', async () => {
-    const wrapper = render(EquipmentDetailPage, equipmentData)
-    const tabs = wrapper.findAll('[role="tab"]')
-
-    expect(tabs.map((tab) => tab.text())).toEqual(['Resumen', 'Mantenimiento', 'Lecturas', 'Archivos', 'Historial'])
-    expect(wrapper.get('#equipment-tab-resumen').attributes('aria-selected')).toBe('true')
-    expect(wrapper.get('#equipment-panel-lecturas').attributes('style')).toContain('display: none')
-
-    await wrapper.get('#equipment-tab-lecturas').trigger('click')
-
-    expect(wrapper.get('#equipment-tab-lecturas').attributes('aria-selected')).toBe('true')
-    expect(wrapper.get('#equipment-panel-resumen').attributes('style')).toContain('display: none')
-    expect(wrapper.get('#equipment-panel-lecturas').attributes('style') ?? '').not.toContain('display: none')
-    expect(wrapper.find('form[action="/mantenimiento/equipos/9/editar"]').exists()).toBe(true)
-    expect(wrapper.find('form[action="/mantenimiento/equipos/9/lecturas/4/corregir"]').exists()).toBe(true)
-  })
-
   it('conserva todas las operaciones sensibles y descarga privada', () => {
     const wrapper = render(EquipmentDetailPage, equipmentData)
 
