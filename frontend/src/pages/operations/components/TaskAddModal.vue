@@ -72,6 +72,15 @@ watch(
 watch(query, (value) => {
   if (!props.open || mode.value !== 'existing') return
   if (searchTimer.value) clearTimeout(searchTimer.value)
+
+  const selectedLabel = selectedTask.value
+    ? selectedTask.value.code + ' - ' + selectedTask.value.name
+    : null
+  if (selectedLabel === value) {
+    results.value = []
+    return
+  }
+
   selectedTask.value = null
   if (value.trim().length < 2) {
     results.value = []
@@ -236,12 +245,8 @@ async function onSubmit() {
         </header>
 
         <div class="flex border-b border-border-subtle px-5 pt-3">
-          <button type="button" class="border-b-2 px-3 py-2 text-sm font-semibold" :class="mode === 'existing' ? 'border-primary text-primary' : 'border-transparent text-ink-muted'" @click="setMode('existing')">
-            Buscar existente
-          </button>
-          <button type="button" class="border-b-2 px-3 py-2 text-sm font-semibold" :class="mode === 'new' ? 'border-primary text-primary' : 'border-transparent text-ink-muted'" @click="setMode('new')">
-            Crear nueva
-          </button>
+          <button type="button" class="border-b-2 px-3 py-2 text-sm font-semibold" :class="mode === 'existing' ? 'border-primary text-primary' : 'border-transparent text-ink-muted'" @click="setMode('existing')">Buscar existente</button>
+          <button type="button" class="border-b-2 px-3 py-2 text-sm font-semibold" :class="mode === 'new' ? 'border-primary text-primary' : 'border-transparent text-ink-muted'" @click="setMode('new')">Crear nueva</button>
         </div>
 
         <form class="flex max-h-[75vh] flex-col" @submit.prevent="onSubmit">
@@ -251,57 +256,26 @@ async function onSubmit() {
               <div class="relative md:col-span-2">
                 <label class="mb-1 block text-xs font-semibold text-ink-muted" :for="'task-search-' + item.id">Buscar por código o nombre</label>
                 <MagnifyingGlassIcon class="pointer-events-none absolute left-3 top-[2.35rem] size-4 text-ink-subtle" aria-hidden="true" />
-                <input
-                  :id="'task-search-' + item.id"
-                  ref="searchInput"
-                  v-model="query"
-                  type="search"
-                  autocomplete="off"
-                  placeholder="Escribí al menos 2 caracteres"
-                  :class="fieldClass + ' pl-9'"
-                />
+                <input :id="'task-search-' + item.id" ref="searchInput" v-model="query" type="search" autocomplete="off" placeholder="Escribí al menos 2 caracteres" :class="fieldClass + ' pl-9'" />
                 <div v-if="query.trim().length >= 2 && !selectedTask" class="absolute z-10 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-border bg-white shadow-lg">
                   <p v-if="searching" class="px-3 py-2 text-sm text-ink-muted">Buscando…</p>
-                  <button
-                    v-for="task in results"
-                    :key="task.id"
-                    type="button"
-                    class="flex w-full items-center justify-between gap-3 border-b border-border-subtle px-3 py-2 text-left last:border-0"
-                    :class="task.alreadyLinked ? 'cursor-not-allowed bg-surface-muted opacity-60' : 'hover:bg-surface-subtle'"
-                    :disabled="task.alreadyLinked"
-                    @click="selectTask(task)"
-                  >
-                    <span class="min-w-0">
-                      <span class="block truncate text-sm font-semibold text-ink">{{ task.name }}</span>
-                      <span class="font-mono text-xs text-ink-muted">{{ task.code }}</span>
-                    </span>
+                  <button v-for="task in results" :key="task.id" type="button" class="flex w-full items-center justify-between gap-3 border-b border-border-subtle px-3 py-2 text-left last:border-0" :class="task.alreadyLinked ? 'cursor-not-allowed bg-surface-muted opacity-60' : 'hover:bg-surface-subtle'" :disabled="task.alreadyLinked" @click="selectTask(task)">
+                    <span class="min-w-0"><span class="block truncate text-sm font-semibold text-ink">{{ task.name }}</span><span class="font-mono text-xs text-ink-muted">{{ task.code }}</span></span>
                     <span v-if="task.alreadyLinked" class="shrink-0 rounded-full bg-surface-muted px-2 py-0.5 text-[11px] font-semibold text-ink-muted">Ya agregada</span>
                     <span v-else-if="!task.active" class="shrink-0 rounded-full bg-warning-subtle px-2 py-0.5 text-[11px] font-semibold text-warning-strong">Inactiva</span>
                   </button>
                   <p v-if="!searching && results.length === 0" class="px-3 py-2 text-sm text-ink-muted">Sin coincidencias.</p>
                 </div>
               </div>
-              <p v-if="selectedTask" class="rounded-lg bg-primary/5 px-3 py-2 text-sm text-ink md:col-span-2">
-                Seleccionada: <strong>{{ selectedTask.code }} · {{ selectedTask.name }}</strong>
-              </p>
+              <p v-if="selectedTask" class="rounded-lg bg-primary/5 px-3 py-2 text-sm text-ink md:col-span-2">Seleccionada: <strong>{{ selectedTask.code }} · {{ selectedTask.name }}</strong></p>
             </template>
 
             <template v-else>
-              <FormField label="Código" :for-id="'new-task-code-' + item.id">
-                <input :id="'new-task-code-' + item.id" v-model="newTask.code" name="codigo" type="text" maxlength="50" required :class="fieldClass" />
-              </FormField>
-              <FormField label="Nombre" :for-id="'new-task-name-' + item.id">
-                <input :id="'new-task-name-' + item.id" v-model="newTask.name" name="nombre" type="text" maxlength="150" required :class="fieldClass" />
-              </FormField>
-              <FormField label="Descripción" :for-id="'new-task-description-' + item.id" class="md:col-span-2">
-                <textarea :id="'new-task-description-' + item.id" v-model="newTask.description" rows="2" :class="fieldClass"></textarea>
-              </FormField>
-              <FormField label="Procedimiento" :for-id="'new-task-procedure-' + item.id" class="md:col-span-2">
-                <textarea :id="'new-task-procedure-' + item.id" v-model="newTask.procedure" rows="2" :class="fieldClass"></textarea>
-              </FormField>
-              <FormField label="Duración estimada (min)" :for-id="'new-task-duration-' + item.id">
-                <input :id="'new-task-duration-' + item.id" v-model="newTask.durationMinutes" type="number" min="0" step="1" :class="fieldClass" />
-              </FormField>
+              <FormField label="Código" :for-id="'new-task-code-' + item.id"><input :id="'new-task-code-' + item.id" v-model="newTask.code" name="codigo" type="text" maxlength="50" required :class="fieldClass" /></FormField>
+              <FormField label="Nombre" :for-id="'new-task-name-' + item.id"><input :id="'new-task-name-' + item.id" v-model="newTask.name" name="nombre" type="text" maxlength="150" required :class="fieldClass" /></FormField>
+              <FormField label="Descripción" :for-id="'new-task-description-' + item.id" class="md:col-span-2"><textarea :id="'new-task-description-' + item.id" v-model="newTask.description" rows="2" :class="fieldClass"></textarea></FormField>
+              <FormField label="Procedimiento" :for-id="'new-task-procedure-' + item.id" class="md:col-span-2"><textarea :id="'new-task-procedure-' + item.id" v-model="newTask.procedure" rows="2" :class="fieldClass"></textarea></FormField>
+              <FormField label="Duración estimada (min)" :for-id="'new-task-duration-' + item.id"><input :id="'new-task-duration-' + item.id" v-model="newTask.durationMinutes" type="number" min="0" step="1" :class="fieldClass" /></FormField>
               <div class="flex flex-wrap items-center gap-x-4 gap-y-2 self-end pb-2">
                 <label class="flex items-center gap-2 text-sm font-semibold text-ink"><input v-model="newTask.active" type="checkbox" class="size-4 rounded border-border text-primary" />Activa</label>
                 <label class="flex items-center gap-2 text-sm font-semibold text-ink"><input v-model="newTask.requiresPart" type="checkbox" class="size-4 rounded border-border text-primary" />Repuesto</label>
@@ -313,13 +287,9 @@ async function onSubmit() {
             <div class="mt-2 border-t border-border-subtle pt-3 md:col-span-2">
               <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-muted">En este servicio</p>
               <div class="grid gap-3 md:grid-cols-2">
-                <FormField label="Orden" :for-id="'task-relation-order-' + item.id">
-                  <input :id="'task-relation-order-' + item.id" v-model.number="relation.order" type="number" min="1" step="1" required :class="fieldClass" />
-                </FormField>
+                <FormField label="Orden" :for-id="'task-relation-order-' + item.id"><input :id="'task-relation-order-' + item.id" v-model.number="relation.order" type="number" min="1" step="1" required :class="fieldClass" /></FormField>
                 <label class="flex items-center gap-2 self-end pb-3 text-sm font-semibold text-ink"><input v-model="relation.mandatory" type="checkbox" class="size-4 rounded border-border text-primary" />Obligatoria</label>
-                <FormField label="Observaciones de la relación" :for-id="'task-relation-notes-' + item.id" class="md:col-span-2">
-                  <textarea :id="'task-relation-notes-' + item.id" v-model="relation.observations" rows="2" maxlength="500" :class="fieldClass"></textarea>
-                </FormField>
+                <FormField label="Observaciones de la relación" :for-id="'task-relation-notes-' + item.id" class="md:col-span-2"><textarea :id="'task-relation-notes-' + item.id" v-model="relation.observations" rows="2" maxlength="500" :class="fieldClass"></textarea></FormField>
               </div>
             </div>
 
@@ -328,9 +298,7 @@ async function onSubmit() {
 
           <footer class="flex flex-wrap items-center justify-end gap-2 border-t border-border-subtle bg-surface-subtle px-5 py-3">
             <button type="button" :class="secondaryButton" :disabled="submitting" @click="close">Cancelar</button>
-            <button type="submit" :class="primaryButton" :disabled="submitting || !canEdit">
-              {{ submitting ? 'Guardando…' : (mode === 'existing' ? 'Agregar tarea' : 'Crear y agregar') }}
-            </button>
+            <button type="submit" :class="primaryButton" :disabled="submitting || !canEdit">{{ submitting ? 'Guardando…' : (mode === 'existing' ? 'Agregar tarea' : 'Crear y agregar') }}</button>
           </footer>
         </form>
       </div>
