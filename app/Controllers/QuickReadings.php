@@ -33,7 +33,7 @@ final class QuickReadings extends BaseController
         $page = $this->equipment()->execute($actor, new EquipmentListQuery(
             query: $filters['q'], typeId: $filters['typeId'], branchId: $filters['branchId'],
             status: 'ACTIVO', page: max(1, (int) $this->request->getGet('page')),
-            perPage: PageSize::normalize($this->request->getGet('per_page')),
+            perPage: PageSize::normalize($this->request->getGet('per_page') ?? 25),
         ));
         $photoMap = $this->photos()->execute(
             $actor,
