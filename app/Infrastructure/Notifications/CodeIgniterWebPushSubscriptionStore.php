@@ -59,6 +59,21 @@ final class CodeIgniterWebPushSubscriptionStore implements WebPushSubscriptionSt
         return $this->db->table('webpush_subscriptions')->select('endpoint, p256dh, auth, content_encoding')->where('usuario_id', $userId)->where('activo', 1)->get()->getResultArray();
     }
 
+    public function markDelivered(string $endpoint): void
+    {
+        $this->db->table('webpush_subscriptions')->where('endpoint_hash', hash('sha256', $endpoint))->where('activo', 1)->update([
+            'ultimo_uso' => $this->clock->now()->format('Y-m-d H:i:s'),
+            'ultimo_error' => null,
+        ]);
+    }
+
+    public function markFailed(string $endpoint, string $error): void
+    {
+        $this->db->table('webpush_subscriptions')->where('endpoint_hash', hash('sha256', $endpoint))->where('activo', 1)->update([
+            'ultimo_error' => mb_substr($error, 0, 1000),
+        ]);
+    }
+
     public function markInvalid(string $endpoint, string $error): void
     {
         $this->db->table('webpush_subscriptions')->where('endpoint_hash', hash('sha256', $endpoint))->update([
