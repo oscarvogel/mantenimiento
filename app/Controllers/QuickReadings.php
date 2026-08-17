@@ -10,15 +10,21 @@ use App\Application\Assets\ListAvailableAssetBranches;
 use App\Application\Assets\ListEquipment;
 use App\Application\Assets\Attachment\ListPrimaryEquipmentPhotos;
 use App\Application\Identity\ActorContext;
+use App\Application\MaintenanceCircuit\GeneratePreventiveOrderFromNotice;
+use App\Application\MaintenanceCircuit\GetQuickReadingMaintenanceSnapshot;
 use App\Application\Measurement\RegisterReadingBatchHandler;
 use App\Application\Measurement\RegisterReadingBatchItem;
 use App\Application\Measurement\Port\Clock;
+use App\Domain\PreventiveMaintenance\EvaluadorVencimiento;
 use App\Infrastructure\Identity\SessionActorContext;
+use App\Infrastructure\MaintenanceCircuit\CodeIgniterQuickReadingMaintenanceReadModel;
+use App\Infrastructure\PreventiveMaintenance\CodeIgniterPreventivePlanReadModel;
+use App\Infrastructure\PreventiveMaintenance\SystemClock as PreventiveClock;
 use App\Presentation\PageSize;
+use CodeIgniter\HTTP\ResponseInterface;
 use DateTimeImmutable;
 use DomainException;
 use Throwable;
-use CodeIgniter\HTTP\ResponseInterface;
 
 final class QuickReadings extends BaseController
 {
@@ -35,11 +41,10 @@ final class QuickReadings extends BaseController
             status: 'ACTIVO', page: max(1, (int) $this->request->getGet('page')),
             perPage: PageSize::normalize($this->request->getGet('per_page') ?? 25),
         ));
-        $photoMap = $this->photos()->execute(
-            $actor,
-            array_map(static fn (array $row): int => (int) $row['id'], $page['items']),
-        );
+        $equipmentIds = array_map(static fn (array $row): int => (int) $row['id'], $page['items']);
+        $photoMap = $this->photos()->execute($actor, $equipmentIds);
         $catalogs = $this->catalog()->list($actor);
+        $maintenance = $this->maintenanceSnapshot()->execute($actor, $equipmentIds);
 
         return $this->renderApp(
             $actor,
@@ -52,7 +57,9 @@ final class QuickReadings extends BaseController
                 $photoMap,
                 $this->branches()->execute($actor),
                 $catalogs['types'] ?? [],
+                $maintenance,
                 $actor->hasPermission('lecturas.cargar'),
+                $actor->hasPermission('ordenes.editar'),
                 $this->clock()->now(),
             ),
         );
@@ -96,20 +103,23 @@ final class QuickReadings extends BaseController
     public function storeRow(): ResponseInterface
     {
         try {
+            $actor = $this->actor();
             $equipmentId = $this->requiredPositiveInt($this->request->getPost('equipmentId'));
             $kilometers = $this->nullableInt($this->request->getPost('kilometers'));
             $hours = $this->nullableString($this->request->getPost('hours'));
             if ($kilometers === null && $hours === null) {
                 throw new DomainException('Ingresá kilómetros u horas para guardar esta fila.');
             }
-            $result = $this->batch()->execute($this->actor(), [$this->batchItem(1, $equipmentId, [
+            $result = $this->batch()->execute($actor, [$this->batchItem(1, $equipmentId, [
                 'recordedAt' => $this->request->getPost('recordedAt'),
                 'notes' => $this->request->getPost('notes'),
             ], $kilometers, $hours)]);
             $row = $result->rows[0];
+            $maintenance = $row['success'] ? ($this->maintenanceSnapshot()->execute($actor, [$equipmentId])[$equipmentId] ?? null) : null;
 
             return $this->response->setStatusCode($row['success'] ? 200 : 422)->setJSON([
                 'result' => $row,
+                'maintenance' => $maintenance,
                 'csrf' => ['name' => csrf_token(), 'hash' => csrf_hash()],
             ]);
         } catch (Throwable $exception) {
@@ -119,6 +129,36 @@ final class QuickReadings extends BaseController
 
             return $this->response->setStatusCode($exception instanceof DomainException ? 422 : 500)->setJSON([
                 'error' => $exception instanceof DomainException ? $exception->getMessage() : 'No se pudo guardar la fila.',
+                'csrf' => ['name' => csrf_token(), 'hash' => csrf_hash()],
+            ]);
+        }
+    }
+
+    public function generateOrder(int $noticeId): ResponseInterface
+    {
+        try {
+            $actor = $this->actor();
+            $equipmentId = $this->requiredPositiveInt($this->request->getPost('equipmentId'));
+            $orderId = $this->generateOrderHandler()->execute(
+                $actor,
+                $noticeId,
+                $this->nullableInt($this->request->getPost('responsable_usuario_id')),
+            );
+            $maintenance = $this->maintenanceSnapshot()->execute($actor, [$equipmentId])[$equipmentId] ?? null;
+
+            return $this->response->setJSON([
+                'orderId' => $orderId,
+                'maintenance' => $maintenance,
+                'printUrl' => base_url('mantenimiento/ordenes/' . $orderId . '/imprimir'),
+                'csrf' => ['name' => csrf_token(), 'hash' => csrf_hash()],
+            ]);
+        } catch (Throwable $exception) {
+            if (! $exception instanceof DomainException) {
+                log_message('error', 'Falló la generación rápida de OT: {message}', ['message' => $exception->getMessage()]);
+            }
+
+            return $this->response->setStatusCode($exception instanceof DomainException ? 422 : 500)->setJSON([
+                'error' => $exception instanceof DomainException ? $exception->getMessage() : 'No se pudo generar la orden de trabajo.',
                 'csrf' => ['name' => csrf_token(), 'hash' => csrf_hash()],
             ]);
         }
@@ -138,7 +178,19 @@ final class QuickReadings extends BaseController
     private function catalog(): AssetCatalogService { return service('assetCatalog'); }
     private function photos(): ListPrimaryEquipmentPhotos { return service('listPrimaryEquipmentPhotos'); }
     private function batch(): RegisterReadingBatchHandler { return service('registerReadingBatch'); }
+    private function generateOrderHandler(): GeneratePreventiveOrderFromNotice { return service('generatePreventiveOrderFromNotice'); }
     private function clock(): Clock { return service('measurementClock'); }
+
+    private function maintenanceSnapshot(): GetQuickReadingMaintenanceSnapshot
+    {
+        $database = db_connect();
+        return new GetQuickReadingMaintenanceSnapshot(
+            new CodeIgniterPreventivePlanReadModel($database),
+            new CodeIgniterQuickReadingMaintenanceReadModel($database),
+            new EvaluadorVencimiento(),
+            new PreventiveClock(),
+        );
+    }
 
     /** @param array<string,mixed> $row */
     private function batchItem(int $rowNumber, int $equipmentId, array $row, ?int $kilometers, ?string $hours): RegisterReadingBatchItem
