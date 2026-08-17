@@ -12,5 +12,7 @@ interface WebPushSubscriptionStore
     public function deactivate(int $userId, string $endpoint): bool;
     /** @return list<array<string,mixed>> */
     public function activeForUser(int $userId): array;
+    public function markDelivered(string $endpoint): void;
+    public function markFailed(string $endpoint, string $error): void;
     public function markInvalid(string $endpoint, string $error): void;
 }
