@@ -1,14 +1,24 @@
 <script setup>
-import { computed, reactive, ref } from 'vue'
-import { ArrowPathIcon, CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
+import { computed, onBeforeUnmount, reactive, ref } from 'vue'
+import { ArrowPathIcon, CheckCircleIcon, ExclamationTriangleIcon, MagnifyingGlassIcon } from '@heroicons/vue/24/outline'
 import CsrfInput from './components/CsrfInput.vue'
 import EmptyState from './components/EmptyState.vue'
 import PageHeading from './components/PageHeading.vue'
 import PaginationBar from './components/PaginationBar.vue'
 import PanelCard from './components/PanelCard.vue'
-import EquipmentThumbnail from './components/EquipmentThumbnail.vue'
-import UsageReadingInput from './components/UsageReadingInput.vue'
-import { fieldClass, formatHours, formatKilometers, kilometersDelta, normalizeDecimalInput, nowLocal, primaryButton, readingDelta, secondaryButton } from './helpers.js'
+import {
+  fieldClass,
+  formatHours,
+  formatKilometers,
+  kilometersDelta,
+  normalizeDecimalInput,
+  nowLocal,
+  parseFlexibleNumber,
+  parseKilometers,
+  primaryButton,
+  readingDelta,
+  secondaryButton,
+} from './helpers.js'
 
 const props = defineProps({ data: { type: Object, required: true } })
 const results = ref([...props.data.results])
@@ -16,53 +26,112 @@ const saving = ref(false)
 const totalToSave = ref(0)
 const currentSavingIndex = ref(0)
 const commonRecordedAt = ref(props.data.recordedAtDefault || nowLocal())
+const filters = reactive({
+  q: props.data.filters.q || '',
+  branchId: props.data.filters.branchId || '',
+  typeId: props.data.filters.typeId || '',
+})
 const rows = reactive(Object.fromEntries(props.data.equipment.items.map((equipment) => [equipment.id, {
-  kilometers: '', hours: '', recordedAt: commonRecordedAt.value, notes: '', currentKm: equipment.currentKm,
-  currentHours: equipment.currentHours, status: 'pending', dateCustomized: false,
+  kilometers: '',
+  hours: '',
+  recordedAt: commonRecordedAt.value,
+  currentKm: equipment.currentKm,
+  currentHours: equipment.currentHours,
+  status: 'pending',
+  message: '',
 }])))
 const csrf = reactive({ ...props.data.csrf })
+let filterTimer = null
 
-const readyRows = computed(() => props.data.equipment.items.filter(({ id }) => rows[id].kilometers !== '' || rows[id].hours !== ''))
+const enteredRows = computed(() => props.data.equipment.items.filter(({ id }) => rows[id].kilometers !== '' || rows[id].hours !== ''))
+const kilometerError = (equipment) => {
+  const value = rows[equipment.id].kilometers
+  if (value === '') return null
+  const next = parseKilometers(value)
+  if (next === null) return 'Ingresá kilómetros enteros, sin puntos ni comas.'
+  const current = parseKilometers(rows[equipment.id].currentKm)
+  if (current !== null && next < current) return `No puede ser menor a ${formatKilometers(current)}.`
+  return null
+}
+const hoursError = (equipment) => {
+  const value = rows[equipment.id].hours
+  if (value === '') return null
+  const next = parseFlexibleNumber(value)
+  if (next === null) return 'Ingresá horas con un decimal como máximo.'
+  const current = parseFlexibleNumber(rows[equipment.id].currentHours)
+  if (current !== null && next < current) return `No puede ser menor a ${formatHours(current)}.`
+  return null
+}
+const rowHasError = (equipment) => Boolean(kilometerError(equipment) || hoursError(equipment))
+const readyRows = computed(() => enteredRows.value.filter((equipment) => !rowHasError(equipment)))
+const invalidRows = computed(() => enteredRows.value.filter((equipment) => rowHasError(equipment)))
+const visibleEquipment = computed(() => {
+  const query = filters.q.trim().toLocaleLowerCase('es')
+  if (!query) return props.data.equipment.items
+  return props.data.equipment.items.filter((equipment) => [equipment.code, equipment.plate, equipment.typeName, equipment.branchName]
+    .some((value) => String(value ?? '').toLocaleLowerCase('es').includes(query)))
+})
 const saveButtonLabel = computed(() => {
   if (saving.value) return `Guardando ${currentSavingIndex.value} de ${totalToSave.value}…`
   if (readyRows.value.length) return `Guardar ${readyRows.value.length} lectura${readyRows.value.length === 1 ? '' : 's'}`
-  return 'Ingresá al menos una lectura'
+  return invalidRows.value.length ? 'Corregí las lecturas marcadas' : 'Ingresá al menos una lectura'
 })
-const statusLabel = (status) => ({ pending: 'Pendiente', saving: 'Guardando', saved: 'Guardada', error: 'Error' }[status] ?? 'Pendiente')
 const equipmentFor = (equipmentId) => props.data.equipment.items.find((item) => item.id === equipmentId)
+const rowStatusLabel = (equipment) => {
+  if (rowHasError(equipment)) return 'Revisar'
+  return ({ pending: 'Sin cambios', saving: 'Guardando…', saved: 'Guardada', error: 'Error' }[rows[equipment.id].status] ?? 'Sin cambios')
+}
+const rowStatusClass = (equipment) => {
+  if (rowHasError(equipment) || rows[equipment.id].status === 'error') return 'text-danger-strong'
+  if (rows[equipment.id].status === 'saved') return 'text-success-strong'
+  if (rows[equipment.id].status === 'saving') return 'text-primary'
+  return enteredRows.value.some(({ id }) => id === equipment.id) ? 'text-warning-strong' : 'text-ink-muted'
+}
 const formatDelta = (delta, unit) => {
-  if (delta === null || delta === undefined) return null
-  if (delta === 0) return 'Sin variación'
+  if (delta === null || delta === undefined || delta === 0) return null
   const formatted = unit === 'km'
     ? Math.round(Math.abs(delta)).toLocaleString('es-AR')
     : Math.abs(delta).toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
   return `${delta > 0 ? '+' : '-'}${formatted} ${unit}`
 }
-const successFeedback = (row) => {
-  const values = []
-  if (row.submittedHours === true && row.currentHours !== null && row.currentHours !== undefined) values.push(`Horómetro actualizado a ${formatHours(row.currentHours)}`)
-  if (row.submittedKilometers === true && row.currentKilometers !== null && row.currentKilometers !== undefined) values.push(`Kilometraje actualizado a ${formatKilometers(row.currentKilometers)}`)
-  return values.join(' · ') || row.message || 'Lectura guardada.'
+const inputDelta = (equipment, key) => {
+  const values = rows[equipment.id]
+  const delta = key === 'kilometers'
+    ? kilometersDelta(values.currentKm, values.kilometers)
+    : readingDelta(values.currentHours, values.hours)
+  return formatDelta(delta, key === 'kilometers' ? 'km' : 'h')
 }
-const deltaFeedback = (row) => {
+const currentReadingText = (equipment) => {
   const values = []
-  if (row.submittedHours === true && row.hoursDelta !== null && row.hoursDelta !== undefined) values.push(`${formatDelta(row.hoursDelta, 'h')} desde la lectura anterior`)
-  if (row.submittedKilometers === true && row.kilometersDelta !== null && row.kilometersDelta !== undefined) values.push(`${formatDelta(row.kilometersDelta, 'km')} desde la lectura anterior`)
-  return values.join(' · ')
-}
-const overdueFeedback = (row) => {
-  if (!row.overduePlans) return ''
-  return `${row.overduePlans} mantenimiento${row.overduePlans === 1 ? '' : 's'} quedó${row.overduePlans === 1 ? '' : 'aron'} vencido${row.overduePlans === 1 ? '' : 's'}.`
+  if (equipment.controlsKm) values.push(formatKilometers(rows[equipment.id].currentKm))
+  if (equipment.controlsHours) values.push(formatHours(rows[equipment.id].currentHours))
+  return values.join(' · ') || 'Sin contador configurado'
 }
 const applyCommonRecordedAt = () => {
-  props.data.equipment.items.forEach(({ id }) => {
-    if (!rows[id].dateCustomized) rows[id].recordedAt = commonRecordedAt.value
-  })
+  props.data.equipment.items.forEach(({ id }) => { rows[id].recordedAt = commonRecordedAt.value })
 }
 const refreshTimestamp = () => {
   commonRecordedAt.value = nowLocal()
   applyCommonRecordedAt()
 }
+const navigateFilters = () => {
+  const url = new URL(props.data.routes.index, window.location.origin)
+  if (filters.q.trim()) url.searchParams.set('q', filters.q.trim())
+  if (filters.branchId) url.searchParams.set('sucursal_id', filters.branchId)
+  if (filters.typeId) url.searchParams.set('tipo_id', filters.typeId)
+  url.searchParams.set('per_page', String(props.data.filters.perPage || 25))
+  window.location.assign(url.toString())
+}
+const scheduleSearch = () => {
+  window.clearTimeout(filterTimer)
+  filterTimer = window.setTimeout(navigateFilters, 450)
+}
+const applyCatalogFilter = () => {
+  window.clearTimeout(filterTimer)
+  navigateFilters()
+}
+onBeforeUnmount(() => window.clearTimeout(filterTimer))
+
 const responsePayload = async (response) => {
   const contentType = response.headers?.get?.('content-type') || ''
   const body = await response.text()
@@ -76,7 +145,7 @@ const responsePayload = async (response) => {
   }
   if (response.status >= 500) return { payload: null, error: 'El servidor no pudo guardar la lectura. Intentá nuevamente.', kind: 'server' }
   if (response.url?.includes('/login') || contentType.includes('text/html')) {
-    return { payload: null, error: 'La sesión pudo haber vencido o el servidor devolvió una página inesperada. Volvé a iniciar sesión.', kind: 'session' }
+    return { payload: null, error: 'La sesión pudo haber vencido. Volvé a iniciar sesión.', kind: 'session' }
   }
   if (!response.ok) return { payload: null, error: `La validación del servidor rechazó esta lectura (HTTP ${response.status}).`, kind: 'validation' }
   return { payload: null, error: 'El servidor devolvió una respuesta inesperada.', kind: 'server' }
@@ -103,13 +172,14 @@ const submitRows = async () => {
     const previous = { kilometers: values.currentKm, hours: values.currentHours }
     const submitted = { kilometers: values.kilometers !== '', hours: values.hours !== '' }
     values.status = 'saving'
+    values.message = ''
     const body = new FormData()
     body.append(csrf.name, csrf.hash)
     body.append('equipmentId', String(equipment.id))
     body.append('kilometers', values.kilometers)
     body.append('hours', normalizeDecimalInput(values.hours))
     body.append('recordedAt', values.recordedAt)
-    body.append('notes', values.notes)
+    body.append('notes', '')
     try {
       const response = await fetch(props.data.routes.submitRow, { method: 'POST', body, credentials: 'same-origin', headers: { Accept: 'application/json' } })
       const parsed = await responsePayload(response)
@@ -118,6 +188,7 @@ const submitRows = async () => {
         const error = resultError(equipment, parsed.payload?.error || parsed.error || 'No se pudo guardar la fila.', parsed.kind || 'validation')
         results.value.push(error)
         values.status = 'error'
+        values.message = error.message
         continue
       }
       const result = parsed.payload.result
@@ -129,16 +200,18 @@ const submitRows = async () => {
       result.hoursDelta = submitted.hours ? readingDelta(previous.hours, result.currentHours) : null
       results.value.push(result)
       values.status = result.success ? 'saved' : 'error'
+      values.message = result.message || (result.success ? 'Lectura guardada.' : 'No se pudo guardar la lectura.')
       if (result.success) {
         values.currentKm = result.currentKilometers
         values.currentHours = result.currentHours
         values.kilometers = ''
         values.hours = ''
-        values.notes = ''
       }
     } catch {
+      const error = resultError(equipment, 'No se pudo conectar con el servidor. Revisá tu conexión e intentá nuevamente.')
       values.status = 'error'
-      results.value.push(resultError(equipment, 'No se pudo conectar con el servidor. Revisá tu conexión e intentá nuevamente.'))
+      values.message = error.message
+      results.value.push(error)
     }
   }
   saving.value = false
@@ -146,19 +219,170 @@ const submitRows = async () => {
 const focusNextReadingInput = (event) => {
   const form = event.target?.form
   if (!form) return
-  const inputs = [...form.querySelectorAll('[data-reading-input="true"]')].filter((input) => !input.disabled)
-  const next = inputs[inputs.indexOf(event.target) + 1]
-  if (next) next.focus()
+  const inputs = [...form.querySelectorAll('[data-reading-input="true"]')].filter((input) => !input.disabled && input.offsetParent !== null)
+  const current = inputs.indexOf(event.target)
+  const next = inputs[current + 1]
+  if (next) {
+    next.focus()
+    next.select?.()
+  }
 }
 </script>
 
 <template>
-  <PageHeading title="Carga rápida de lecturas" eyebrow="Medición de uso" description="Actualizá varios equipos sin salir de la grilla. Cada fila se valida y procesa de manera independiente."><template #actions><a :href="data.routes.assets" :class="secondaryButton">Ver equipos</a></template></PageHeading>
-  <PanelCard title="Buscar equipos" class="mb-6"><form method="get" :action="data.routes.index" class="grid gap-4 md:grid-cols-4"><label class="text-sm font-semibold text-ink">Código, patente o chasis<input name="q" :value="data.filters.q" :class="`${fieldClass} mt-1`" /></label><label class="text-sm font-semibold text-ink">Sucursal<select name="sucursal_id" :value="data.filters.branchId" :class="`${fieldClass} mt-1`"><option value="">Todas</option><option v-for="branch in data.catalogs.branches" :key="branch.id" :value="branch.id">{{ branch.name }}</option></select></label><label class="text-sm font-semibold text-ink">Tipo<select name="tipo_id" :value="data.filters.typeId" :class="`${fieldClass} mt-1`"><option value="">Todos</option><option v-for="type in data.catalogs.types" :key="type.id" :value="type.id">{{ type.name }}</option></select></label><button type="submit" :class="`${secondaryButton} self-end`">Filtrar</button></form></PanelCard>
-  <PanelCard v-if="results.length" title="Resultado de la última carga" :count="results.length" class="mb-6" aria-live="polite"><ul class="divide-y divide-border-subtle"><li v-for="row in results" :key="`${row.rowNumber}-${row.equipmentId}`" class="flex gap-3 py-3 text-sm"><CheckCircleIcon v-if="row.success" class="size-5 shrink-0 text-success" aria-hidden="true" /><ExclamationTriangleIcon v-else class="size-5 shrink-0 text-danger" aria-hidden="true" /><span><strong>{{ equipmentFor(row.equipmentId)?.code || 'Equipo' }}:</strong><template v-if="row.success"><span class="block">{{ successFeedback(row) }}</span><span v-if="deltaFeedback(row)" class="block text-ink-muted">{{ deltaFeedback(row) }}</span><span v-if="overdueFeedback(row)" class="block font-semibold text-warning-strong">{{ overdueFeedback(row) }}</span><span v-if="row.plansEvaluated" class="block text-xs text-ink-subtle">{{ row.plansEvaluated }} planes reevaluados</span></template><span v-else class="block">{{ row.message }}</span></span></li></ul></PanelCard>
-  <form method="post" :action="data.routes.submit" @submit.prevent="submitRows"><CsrfInput :csrf="data.csrf" /><PanelCard title="Equipos activos" :count="data.equipment.total">
-    <div class="mb-5 rounded-xl border border-primary/20 bg-primary-subtle p-4"><div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><label class="text-sm font-semibold text-ink">Fecha y hora de esta carga<span class="mt-1 block text-xs font-normal text-ink-muted">Se aplica a todas las filas nuevas. Podés cambiarla solo en una fila si hace falta.</span><input v-model="commonRecordedAt" type="datetime-local" :class="`${fieldClass} mt-2 sm:w-72`" @change="applyCommonRecordedAt" /></label><button type="button" :class="secondaryButton" @click="refreshTimestamp">Usar hora actual</button></div></div>
-    <EmptyState v-if="data.equipment.items.length === 0" title="No hay equipos para los filtros seleccionados" /><div v-else class="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3"><fieldset v-for="equipment in data.equipment.items" :key="equipment.id" class="rounded-xl border border-border bg-white p-4 shadow-sm"><legend class="sr-only">Lectura para {{ equipment.code }}</legend><div class="flex items-start gap-3"><EquipmentThumbnail :url="equipment.photoUrl" :code="equipment.code" size="lg" /><div class="min-w-0"><a :href="equipment.detailUrl" class="font-bold text-primary hover:underline">{{ equipment.code }}</a><p class="truncate text-sm text-ink-muted">{{ equipment.plate || 'Sin patente' }} · {{ equipment.typeName }}</p><p class="text-xs text-ink-subtle">{{ equipment.branchName }} · Última lectura: {{ equipment.lastReadingAt || 'sin lecturas válidas' }}</p></div></div><div class="mt-4"><UsageReadingInput :equipment="equipment" :model-value="rows[equipment.id]" :csrf-disabled="!data.canRegister || saving" :show-notes="true" :names="{ kilometers: `readings[${equipment.id}][kilometers]`, hours: `readings[${equipment.id}][hours]`, notes: `readings[${equipment.id}][notes]` }" :id-prefix="`quick-${equipment.id}`" @update:model-value="(value) => Object.assign(rows[equipment.id], value)" @update:notes="(value) => { rows[equipment.id].notes = value }" @focus-next="focusNextReadingInput" /></div><div class="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border-subtle pt-3 text-xs"><span class="font-semibold" :class="rows[equipment.id].status === 'error' ? 'text-danger-strong' : rows[equipment.id].status === 'saved' ? 'text-success-strong' : 'text-ink-muted'">{{ statusLabel(rows[equipment.id].status) }}</span><label class="text-ink-muted"><input v-model="rows[equipment.id].dateCustomized" type="checkbox" class="mr-1" />Usar fecha individual</label><input v-if="rows[equipment.id].dateCustomized" v-model="rows[equipment.id].recordedAt" type="datetime-local" :disabled="!data.canRegister || saving" :class="`${fieldClass} w-auto`" /></div></fieldset></div>
-    <template #footer><div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><PaginationBar :pagination="data.equipment.pagination" /><button v-if="data.canRegister && data.equipment.items.length" type="submit" :disabled="saving || readyRows.length === 0" :class="primaryButton"><ArrowPathIcon class="mr-2 size-5" :class="saving ? 'animate-spin' : ''" aria-hidden="true" />{{ saveButtonLabel }}</button></div></template>
-  </PanelCard></form>
+  <PageHeading
+    title="Lecturas rápidas"
+    eyebrow="Kilómetros y horas"
+    description="Buscá un móvil, ingresá su lectura y seguí con Enter. Guardá todas las lecturas cargadas al final."
+  />
+
+  <form method="post" :action="data.routes.submit" @submit.prevent="submitRows">
+    <CsrfInput :csrf="data.csrf" />
+    <PanelCard title="Equipos activos" :count="data.equipment.total">
+      <div class="mb-4 grid gap-3 border-b border-border-subtle pb-4 xl:grid-cols-[minmax(18rem,1fr)_14rem_14rem_auto] xl:items-end">
+        <label class="block text-sm font-semibold text-ink">
+          Buscar móvil
+          <span class="relative mt-1 block">
+            <MagnifyingGlassIcon class="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-ink-subtle" aria-hidden="true" />
+            <input
+              v-model="filters.q"
+              type="search"
+              autocomplete="off"
+              placeholder="Código, patente o chasis…"
+              :class="`${fieldClass} pl-10`"
+              @input="scheduleSearch"
+            />
+          </span>
+        </label>
+        <label class="block text-sm font-semibold text-ink">
+          Sucursal
+          <select v-model="filters.branchId" :class="`${fieldClass} mt-1`" @change="applyCatalogFilter">
+            <option value="">Todas</option>
+            <option v-for="branch in data.catalogs.branches" :key="branch.id" :value="branch.id">{{ branch.name }}</option>
+          </select>
+        </label>
+        <label class="block text-sm font-semibold text-ink">
+          Tipo
+          <select v-model="filters.typeId" :class="`${fieldClass} mt-1`" @change="applyCatalogFilter">
+            <option value="">Todos</option>
+            <option v-for="type in data.catalogs.types" :key="type.id" :value="type.id">{{ type.name }}</option>
+          </select>
+        </label>
+        <div class="flex items-end gap-2 xl:justify-end">
+          <label class="min-w-0 flex-1 text-sm font-semibold text-ink xl:w-52 xl:flex-none">
+            Fecha y hora
+            <input v-model="commonRecordedAt" type="datetime-local" :class="`${fieldClass} mt-1`" @change="applyCommonRecordedAt" />
+          </label>
+          <button type="button" :class="`${secondaryButton} shrink-0`" title="Usar fecha y hora actual" @click="refreshTimestamp">Ahora</button>
+        </div>
+      </div>
+
+      <div v-if="results.length" class="mb-4 flex flex-wrap gap-2 text-xs" aria-live="polite">
+        <span class="font-semibold text-ink-muted">Última carga:</span>
+        <span v-for="row in results" :key="`${row.rowNumber}-${row.equipmentId}`" class="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1" :class="row.success ? 'text-success-strong' : 'text-danger-strong'">
+          <CheckCircleIcon v-if="row.success" class="size-4" aria-hidden="true" />
+          <ExclamationTriangleIcon v-else class="size-4" aria-hidden="true" />
+          {{ equipmentFor(row.equipmentId)?.code || 'Equipo' }}
+        </span>
+      </div>
+
+      <EmptyState v-if="data.equipment.items.length === 0" title="No hay equipos para los filtros seleccionados" />
+      <EmptyState v-else-if="visibleEquipment.length === 0" title="No hay coincidencias en esta página" />
+
+      <div v-else class="overflow-x-auto rounded-xl border border-border">
+        <table class="w-full min-w-[860px] border-collapse text-sm">
+          <thead class="bg-surface-muted text-left text-xs font-bold uppercase tracking-wide text-ink-muted">
+            <tr>
+              <th class="sticky left-0 z-10 w-52 bg-surface-muted px-4 py-3">Equipo</th>
+              <th class="w-44 px-4 py-3">Tipo / sucursal</th>
+              <th class="w-44 px-4 py-3">Última lectura</th>
+              <th class="px-4 py-3">Nueva lectura</th>
+              <th class="w-36 px-4 py-3">Estado</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-border-subtle bg-white">
+            <tr v-for="equipment in visibleEquipment" :key="equipment.id" class="align-top hover:bg-surface-muted/50">
+              <td class="sticky left-0 z-[1] bg-white px-4 py-3 group-hover:bg-surface-muted">
+                <div class="font-bold text-primary">{{ equipment.code }}</div>
+                <div class="mt-0.5 text-xs text-ink-muted">{{ equipment.plate || 'Sin patente' }}</div>
+              </td>
+              <td class="px-4 py-3">
+                <div class="font-medium text-ink">{{ equipment.typeName }}</div>
+                <div class="mt-0.5 text-xs text-ink-muted">{{ equipment.branchName }}</div>
+              </td>
+              <td class="px-4 py-3">
+                <div class="font-semibold tabular-nums text-ink">{{ currentReadingText(equipment) }}</div>
+                <div class="mt-0.5 text-xs text-ink-subtle">{{ equipment.lastReadingAt || 'Sin lectura previa' }}</div>
+              </td>
+              <td class="px-4 py-2.5">
+                <div class="flex flex-wrap gap-3">
+                  <div v-if="equipment.controlsKm" class="min-w-48 flex-1">
+                    <div class="relative">
+                      <input
+                        :id="`quick-${equipment.id}-km`"
+                        v-model="rows[equipment.id].kilometers"
+                        data-reading-input="true"
+                        type="text"
+                        inputmode="numeric"
+                        autocomplete="off"
+                        placeholder="Kilómetros"
+                        :disabled="!data.canRegister || saving"
+                        :class="`${fieldClass} pr-10 font-semibold tabular-nums ${kilometerError(equipment) ? 'border-danger focus:border-danger focus:ring-danger/15' : ''}`"
+                        @keydown.enter.prevent="focusNextReadingInput"
+                      />
+                      <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-ink-muted">km</span>
+                    </div>
+                    <p v-if="kilometerError(equipment)" class="mt-1 text-xs font-medium text-danger-strong">{{ kilometerError(equipment) }}</p>
+                    <p v-else-if="inputDelta(equipment, 'kilometers')" class="mt-1 text-xs text-ink-muted">{{ inputDelta(equipment, 'kilometers') }}</p>
+                  </div>
+                  <div v-if="equipment.controlsHours" class="min-w-48 flex-1">
+                    <div class="relative">
+                      <input
+                        :id="`quick-${equipment.id}-hours`"
+                        v-model="rows[equipment.id].hours"
+                        data-reading-input="true"
+                        type="text"
+                        inputmode="decimal"
+                        autocomplete="off"
+                        placeholder="Horómetro"
+                        :disabled="!data.canRegister || saving"
+                        :class="`${fieldClass} pr-8 font-semibold tabular-nums ${hoursError(equipment) ? 'border-danger focus:border-danger focus:ring-danger/15' : ''}`"
+                        @keydown.enter.prevent="focusNextReadingInput"
+                      />
+                      <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-ink-muted">h</span>
+                    </div>
+                    <p v-if="hoursError(equipment)" class="mt-1 text-xs font-medium text-danger-strong">{{ hoursError(equipment) }}</p>
+                    <p v-else-if="inputDelta(equipment, 'hours')" class="mt-1 text-xs text-ink-muted">{{ inputDelta(equipment, 'hours') }}</p>
+                  </div>
+                </div>
+              </td>
+              <td class="px-4 py-3">
+                <span class="font-semibold" :class="rowStatusClass(equipment)">{{ rowStatusLabel(equipment) }}</span>
+                <p v-if="rows[equipment.id].message" class="mt-1 max-w-44 text-xs text-ink-muted">{{ rows[equipment.id].message }}</p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div v-if="invalidRows.length" class="mt-3 text-sm font-medium text-danger-strong" aria-live="polite">
+        {{ invalidRows.length }} lectura{{ invalidRows.length === 1 ? '' : 's' }} con datos para revisar. Las válidas se pueden guardar igualmente.
+      </div>
+
+      <template #footer>
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <PaginationBar :pagination="data.equipment.pagination" />
+          <div class="flex flex-col items-stretch gap-2 sm:items-end">
+            <span class="text-xs text-ink-muted">
+              {{ enteredRows.length }} cargada{{ enteredRows.length === 1 ? '' : 's' }} · {{ readyRows.length }} lista{{ readyRows.length === 1 ? '' : 's' }} para guardar
+            </span>
+            <button v-if="data.canRegister && data.equipment.items.length" type="submit" :disabled="saving || readyRows.length === 0" :class="primaryButton">
+              <ArrowPathIcon class="mr-2 size-5" :class="saving ? 'animate-spin' : ''" aria-hidden="true" />
+              {{ saveButtonLabel }}
+            </button>
+          </div>
+        </div>
+      </template>
+    </PanelCard>
+  </form>
 </template>
