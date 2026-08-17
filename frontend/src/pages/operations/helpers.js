@@ -20,3 +20,55 @@ export const nowLocal = () => {
   const date = new Date(Date.now() - new Date().getTimezoneOffset() * 60_000)
   return date.toISOString().slice(0, 16)
 }
+
+export const parseFlexibleNumber = (value) => {
+  if (value === null || value === undefined || String(value).trim() === '') return null
+  const raw = String(value).trim()
+  if (!/^\d+(?:[.,]\d)?$/.test(raw)) return null
+  const normalized = raw.replace(',', '.')
+  const parsed = Number(normalized)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+// El kilometraje representa unidades enteras. No reutilizar el parser decimal
+// del horómetro: aceptar una coma o un punto aquí produciría un valor que el
+// backend no puede persistir.
+export const parseKilometers = (value) => {
+  if (value === null || value === undefined || String(value).trim() === '') return null
+  const raw = String(value).trim()
+  if (!/^\d+$/.test(raw)) return null
+  const parsed = Number(raw)
+  return Number.isSafeInteger(parsed) ? parsed : null
+}
+
+export const normalizeDecimalInput = (value) => {
+  const raw = String(value ?? '').trim()
+  return /^\d+(?:[.,]\d)?$/.test(raw) ? raw.replace(',', '.') : raw
+}
+
+export const formatNumberEs = (value, maximumFractionDigits = 1) => {
+  if (value === null || value === undefined || value === '') return 'sin datos'
+  const number = Number(value)
+  if (!Number.isFinite(number)) return 'sin datos'
+  return new Intl.NumberFormat('es-AR', { maximumFractionDigits, minimumFractionDigits: 0 }).format(number)
+}
+
+export const formatKilometers = (value) => value === null || value === undefined || value === '' ? 'sin datos' : `${formatNumberEs(value, 0)} km`
+export const formatHours = (value) => value === null || value === undefined || value === '' ? 'sin datos' : `${formatNumberEs(value, 1)} h`
+
+export const formatReadingOrigin = (origin) => ({
+  CARGA_RAPIDA: 'Carga rápida',
+  ORDEN_TRABAJO: 'Cierre de orden',
+  ALTA_INICIAL: 'Lectura inicial',
+  IMPORTACION: 'Importación',
+  MANUAL: 'Carga manual',
+}[String(origin ?? '').toUpperCase()] ?? (origin || 'Carga manual'))
+
+export const readingDelta = (current, next, parser = parseFlexibleNumber) => {
+  const currentNumber = parser(current)
+  const nextNumber = parser(next)
+  if (currentNumber === null || nextNumber === null) return null
+  return nextNumber - currentNumber
+}
+
+export const kilometersDelta = (current, next) => readingDelta(current, next, parseKilometers)

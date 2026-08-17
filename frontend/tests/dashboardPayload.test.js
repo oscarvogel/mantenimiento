@@ -12,6 +12,9 @@ describe('normalizeDashboardPayload', () => {
     expect(dashboard.metrics.maintenanceDueSoon).toBe(5)
     expect(dashboard.upcomingMaintenance[0].status).toBe('PROXIMO')
     expect(dashboard.upcomingMaintenance[0].tone).toBe('due')
+    expect(dashboard.upcomingMaintenance[0].actionLabel).toBe('Ver plan')
+    expect(dashboard.upcomingMaintenance[0].actionUrl).toContain('equipo_id=9')
+    expect(dashboard.links.maintenanceOverdue).toBe('/mantenimiento/planes?estado=VENCIDO')
     expect(dashboard.navigation[1].href).toBe('/mantenimiento/equipos')
   })
 
@@ -64,5 +67,28 @@ describe('normalizeDashboardPayload', () => {
     })
 
     expect(dashboard.links.maintenance).toBe('/mantenimiento/planes')
+  })
+
+  it('oculta acciones y filtros cuando no existen permisos de destino', () => {
+    const dashboard = normalizeDashboardPayload({
+      metrics: { maintenanceOverdue: 2 },
+      upcomingMaintenance: [{ planId: 2, equipmentId: 9, status: 'VENCIDO' }],
+    })
+
+    expect(dashboard.links.maintenanceOverdue).toBe('#')
+    expect(dashboard.upcomingMaintenance[0].actionUrl).toBe(null)
+    expect(dashboard.upcomingMaintenance[0].actionLabel).toBe(null)
+  })
+
+  it('conserva el CTA contextual para lectura y gestión de vencidos', () => {
+    const readOnly = normalizeDashboardPayload({
+      upcomingMaintenance: [{ planId: 2, equipmentId: 9, status: 'VENCIDO', actionLabel: 'Ver vencido', actionUrl: '/mantenimiento/planes?equipo_id=9&estado=VENCIDO' }],
+    })
+    const manager = normalizeDashboardPayload({
+      upcomingMaintenance: [{ planId: 2, equipmentId: 9, status: 'VENCIDO', actionLabel: 'Atender', actionUrl: '/mantenimiento/planes?equipo_id=9&estado=VENCIDO' }],
+    })
+
+    expect(readOnly.upcomingMaintenance[0].actionLabel).toBe('Ver vencido')
+    expect(manager.upcomingMaintenance[0].actionLabel).toBe('Atender')
   })
 })

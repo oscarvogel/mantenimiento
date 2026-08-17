@@ -36,9 +36,11 @@ final class UsageMeasurement
             return null;
         }
 
-        $normalized = trim((string) $hours);
+        // La coma y el punto son separadores decimales equivalentes. No se
+        // interpretan separadores de miles ni formatos con ambos separadores.
+        $normalized = str_replace(',', '.', trim((string) $hours));
         if (! preg_match('/^\d+(?:\.\d)?$/', $normalized)) {
-            throw new DomainException('El horómetro debe ser un número no negativo con una cifra decimal como máximo.');
+            throw new DomainException('El horómetro debe ser un número positivo con un decimal como máximo. Podés usar coma o punto.');
         }
 
         [$whole, $decimal] = array_pad(explode('.', $normalized, 2), 2, '0');

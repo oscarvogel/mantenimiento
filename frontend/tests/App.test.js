@@ -33,6 +33,7 @@ describe('Dashboard', () => {
     expect(wrapper.text()).toContain('Scania R450')
     expect(wrapper.text()).toContain('Próximo')
     expect(wrapper.find('a[href="/mantenimiento/equipos"]').exists()).toBe(true)
+    expect(wrapper.find('a[href="/mantenimiento/planes?equipo_id=9&estado=PROXIMO"]').exists()).toBe(true)
     expect(wrapper.text()).toContain('Sucursal Centro')
   })
 

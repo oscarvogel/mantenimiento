@@ -6,7 +6,7 @@ namespace App\Application\Measurement;
 
 final readonly class RegisterReadingBatchResult
 {
-    /** @param list<array{rowNumber:int,equipmentId:int,success:bool,message:string,readingId:int|null,currentKilometers:int|null,currentHours:string|null,plansEvaluated:int,overduePlans:int,noticeIds:list<int>}> $rows */
+    /** @param list<array{rowNumber:int,equipmentId:int,success:bool,message:string,readingId:int|null,currentKilometers:int|null,currentHours:string|null,submittedKilometers:bool,submittedHours:bool,plansEvaluated:int,overduePlans:int,noticeIds:list<int>}> $rows */
     public function __construct(public array $rows)
     {
     }

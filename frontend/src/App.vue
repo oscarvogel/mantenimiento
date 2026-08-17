@@ -74,14 +74,14 @@ const shell = computed(() => ({
             label="Próximos"
             :value="dashboard.metrics.maintenanceDueSoon"
             tone="due"
-            :href="dashboard.links.maintenance"
+            :href="dashboard.links.maintenanceDueSoon"
             link-label="Revisar próximos"
           />
           <MetricCard
             label="Vencidos"
             :value="dashboard.metrics.maintenanceOverdue"
             tone="overdue"
-            :href="dashboard.links.maintenance"
+            :href="dashboard.links.maintenanceOverdue"
             link-label="Atender vencidos"
             class="sm:col-span-2 xl:col-span-1"
           />

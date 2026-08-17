@@ -30,6 +30,23 @@ final readonly class ConsultarVencimientos
 
         $actorData  = $actor->toArray();
         $branchScope = $actorData['all_company_branches'] ? null : $actorData['branch_ids'];
+
+        return $this->evaluate($companyId, $branchScope);
+    }
+
+    /** @param list<int>|null $branchScope */
+    public function executeScoped(int $companyId, ?array $branchScope = null): array
+    {
+        if ($companyId <= 0) {
+            throw new DomainException('La empresa para evaluar vencimientos no es válida.');
+        }
+
+        return $this->evaluate($companyId, $branchScope);
+    }
+
+    /** @param list<int>|null $branchScope */
+    private function evaluate(int $companyId, ?array $branchScope): array
+    {
         $results     = [];
 
         foreach ($this->plans->listActiveScoped($companyId, $branchScope) as $plan) {

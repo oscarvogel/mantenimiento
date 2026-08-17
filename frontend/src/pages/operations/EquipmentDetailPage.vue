@@ -1,6 +1,6 @@
 <script setup>
 import { ArrowDownTrayIcon, QrCodeIcon } from '@heroicons/vue/24/outline'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import CsrfInput from './components/CsrfInput.vue'
 import EmptyState from './components/EmptyState.vue'
 import FormField from './components/FormField.vue'
@@ -9,9 +9,26 @@ import PaginationBar from './components/PaginationBar.vue'
 import PanelCard from './components/PanelCard.vue'
 import StatusBadge from './components/StatusBadge.vue'
 import EquipmentThumbnail from './components/EquipmentThumbnail.vue'
-import { dangerButton, fieldClass, nowLocal, primaryButton, secondaryButton, today } from './helpers.js'
+import { dangerButton, fieldClass, formatHours, formatKilometers, formatReadingOrigin, nowLocal, primaryButton, secondaryButton, today } from './helpers.js'
 
-defineProps({ data: { type: Object, required: true } })
+const props = defineProps({ data: { type: Object, required: true } })
+const data = computed(() => {
+  const readings = props.data.readings
+  if (!readings) return props.data
+  return {
+    ...props.data,
+    readings: {
+      ...readings,
+      items: readings.items.map((reading) => ({
+        ...reading,
+        kilometersLabel: reading.kilometers === null ? '—' : formatKilometers(reading.kilometers),
+        hoursLabel: reading.hours === null ? '—' : formatHours(reading.hours),
+        origin: formatReadingOrigin(reading.origin),
+        branchId: reading.branchName || 'actual',
+      })),
+    },
+  }
+})
 
 const tabs = [
   { id: 'resumen', label: 'Resumen' },
@@ -133,7 +150,7 @@ const activeTab = ref('resumen')
     <PanelCard title="Historial de lecturas" :count="data.readings?.total ?? null">
       <p v-if="data.readings === null" class="text-sm text-ink-muted">No tenés permiso para consultar lecturas.</p>
       <EmptyState v-else-if="data.readings.items.length === 0" title="No hay lecturas registradas" />
-      <div v-else class="overflow-x-auto"><table class="w-full min-w-[56rem] text-left text-sm"><thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-4 py-3">Fecha</th><th class="px-4 py-3">Valores</th><th class="px-4 py-3">Origen y autor</th><th class="px-4 py-3">Estado</th><th class="px-4 py-3">Acción</th></tr></thead><tbody class="divide-y divide-border-subtle"><tr v-for="reading in data.readings.items" :key="reading.id" :class="reading.annulled ? 'bg-surface-subtle text-ink-muted' : ''"><td class="px-4 py-4">{{ reading.recordedAt }}</td><td class="px-4 py-4">{{ reading.kilometers === null ? '—' : `${reading.kilometers} km` }}<br>{{ reading.hours === null ? '—' : `${reading.hours} h` }}</td><td class="px-4 py-4">{{ reading.origin }}<br><span class="text-xs text-ink-muted">{{ reading.userName }} · sucursal #{{ reading.branchId }}</span></td><td class="px-4 py-4"><StatusBadge :status="reading.annulled ? 'ANULADA' : reading.correctedReadingId ? 'CORRECCION' : 'VALIDA'" /><p v-if="reading.annulmentReason || reading.correctionReason" class="mt-1 text-xs">{{ reading.annulmentReason || reading.correctionReason }}</p><p v-if="reading.replacementReadingId" class="text-xs">Reemplazada por #{{ reading.replacementReadingId }}</p></td><td class="px-4 py-4"><details v-if="data.can.correctReadings && !reading.annulled" class="ui-details-animated"><summary :class="secondaryButton">Corregir</summary><form method="post" :action="reading.correctUrl" data-confirm data-confirm-title="¿Guardar la corrección de esta lectura?" data-confirm-text="Se registrará como corrección auditada del historial del equipo." data-confirm-button="Guardar corrección" class="mt-3 w-80 rounded-xl border border-border bg-white p-4 shadow-card"><CsrfInput :csrf="data.csrf" /><FormField label="Kilómetros" :for-id="`correct-km-${reading.id}`"><input :id="`correct-km-${reading.id}`" type="number" min="0" name="kilometraje" :value="reading.kilometers" :disabled="!data.equipment.controlsKm" :class="fieldClass" /></FormField><FormField label="Horómetro" :for-id="`correct-hours-${reading.id}`" class="mt-3"><input :id="`correct-hours-${reading.id}`" type="number" min="0" step="0.1" name="horometro" :value="reading.hours" :disabled="!data.equipment.controlsHours" :class="fieldClass" /></FormField><FormField label="Motivo obligatorio" :for-id="`correct-reason-${reading.id}`" class="mt-3"><textarea :id="`correct-reason-${reading.id}`" name="motivo" minlength="5" maxlength="255" rows="2" required :class="fieldClass"></textarea></FormField><FormField label="Observaciones" :for-id="`correct-notes-${reading.id}`" class="mt-3"><textarea :id="`correct-notes-${reading.id}`" name="observaciones" rows="2" :class="fieldClass"></textarea></FormField><button type="submit" :class="`${primaryButton} mt-3`">Guardar corrección auditada</button></form></details></td></tr></tbody></table></div>
+      <div v-else class="overflow-x-auto"><table class="w-full min-w-[56rem] text-left text-sm"><thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-4 py-3">Fecha</th><th class="px-4 py-3">Valores</th><th class="px-4 py-3">Origen y autor</th><th class="px-4 py-3">Estado</th><th class="px-4 py-3">Acción</th></tr></thead><tbody class="divide-y divide-border-subtle"><tr v-for="reading in data.readings.items" :key="reading.id" :class="reading.annulled ? 'bg-surface-subtle text-ink-muted' : ''"><td class="px-4 py-4">{{ reading.recordedAt }}</td><td class="px-4 py-4">{{ reading.kilometersLabel }}<br>{{ reading.hoursLabel }}</td><td class="px-4 py-4">{{ reading.origin }}<br><span class="text-xs text-ink-muted">{{ reading.userName }} · {{ reading.branchId }}</span></td><td class="px-4 py-4"><StatusBadge :status="reading.annulled ? 'ANULADA' : reading.correctedReadingId ? 'CORRECCION' : 'VALIDA'" /><p v-if="reading.annulmentReason || reading.correctionReason" class="mt-1 text-xs">{{ reading.annulmentReason || reading.correctionReason }}</p><p v-if="reading.replacementReadingId" class="text-xs">Reemplazada por #{{ reading.replacementReadingId }}</p></td><td class="px-4 py-4"><details v-if="data.can.correctReadings && !reading.annulled" class="ui-details-animated"><summary :class="secondaryButton">Corregir</summary><form method="post" :action="reading.correctUrl" data-confirm data-confirm-title="¿Guardar la corrección de esta lectura?" data-confirm-text="Se registrará como corrección auditada del historial del equipo." data-confirm-button="Guardar corrección" class="mt-3 w-80 rounded-xl border border-border bg-white p-4 shadow-card"><CsrfInput :csrf="data.csrf" /><FormField label="Kilómetros" :for-id="`correct-km-${reading.id}`"><input :id="`correct-km-${reading.id}`" type="number" min="0" name="kilometraje" :value="reading.kilometers" :disabled="!data.equipment.controlsKm" :class="fieldClass" /></FormField><FormField label="Horómetro total actual" :for-id="`correct-hours-${reading.id}`" class="mt-3"><input :id="`correct-hours-${reading.id}`" type="text" inputmode="decimal" autocomplete="off" name="horometro" :value="reading.hours" :disabled="!data.equipment.controlsHours" :class="fieldClass" /></FormField><FormField label="Motivo obligatorio" :for-id="`correct-reason-${reading.id}`" class="mt-3"><textarea :id="`correct-reason-${reading.id}`" name="motivo" minlength="5" maxlength="255" rows="2" required :class="fieldClass"></textarea></FormField><FormField label="Observaciones" :for-id="`correct-notes-${reading.id}`" class="mt-3"><textarea :id="`correct-notes-${reading.id}`" name="observaciones" rows="2" :class="fieldClass"></textarea></FormField><button type="submit" :class="`${primaryButton} mt-3`">Guardar corrección auditada</button></form></details></td></tr></tbody></table></div>
       <template v-if="data.readings" #footer><PaginationBar :pagination="data.readings.pagination" /></template>
     </PanelCard>
     </div>

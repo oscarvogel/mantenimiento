@@ -284,7 +284,7 @@ El issue #8 debe construirse sobre el #7 y no desarrollar un sistema paralelo.
 
 ## 11. Operación implementada
 
-El comando `php spark notifications:dispatch [clave-ejecucion]` primero detecta eventos operativos y luego procesa la cola multicanal. La tarea de Ferozo debe ejecutarlo a las 07:00 para el resumen diario; las alertas inmediatas pueden procesarse ejecutando el mismo comando con una clave horaria desde una tarea más frecuente.
+El comando `php spark notifications:dispatch [clave-ejecucion]` primero reevalúa y materializa los avisos preventivos vencidos de todas las empresas activas, luego detecta eventos operativos y procesa la cola multicanal. La tarea de Ferozo debe ejecutarlo a las 07:00 para el resumen diario; las alertas inmediatas pueden procesarse ejecutando el mismo comando con una clave horaria desde una tarea más frecuente. La materialización conserva la clave de ciclo única, por lo que repetir la tarea no duplica avisos.
 
 Eventos producidos por los módulos actualmente disponibles:
 

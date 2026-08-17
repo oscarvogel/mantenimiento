@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Application\Dashboard\GetMaintenanceDashboard;
 use App\Infrastructure\Identity\SessionActorContext;
 use App\Presentation\AppShellPayload;
+use App\Presentation\DashboardPayload;
 use CodeIgniter\Controller;
 
 class Dashboard extends Controller
@@ -25,10 +26,8 @@ class Dashboard extends Controller
             ? $this->maintenanceDashboard()->execute($actor)
             : $this->emptyOperations();
 
-        $dashboardPayload = $this->appShell()->for($actor, 'dashboard') + [
+        $dashboardPayload = $this->appShell()->for($actor, 'dashboard') + $this->dashboardPayload()->fromOperations($actor, $operations) + [
             'page' => 'dashboard',
-            'metrics' => $operations['metrics'],
-            'upcomingMaintenance' => $operations['upcomingMaintenance'],
         ];
 
         return view('app', [
@@ -45,6 +44,11 @@ class Dashboard extends Controller
     private function appShell(): AppShellPayload
     {
         return service('appShellPayload');
+    }
+
+    private function dashboardPayload(): DashboardPayload
+    {
+        return new DashboardPayload();
     }
 
     /** @return array<string,mixed> */

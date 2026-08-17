@@ -7,8 +7,8 @@ export const maintenanceData = {
   flash,
   currentDateTime: '2026-08-08 15:00:00',
   old: {},
-  routes: { equipmentIndex: '/mantenimiento/equipos', createEquipment: '/mantenimiento/equipos', detectDue: '/mantenimiento/vencimientos/detectar' },
-  can: { createEquipment: true, registerReading: true, assignPlan: true, detectDue: true, generateOrder: true, editOrder: true, closeOrder: true },
+  routes: { equipmentIndex: '/mantenimiento/equipos', createEquipment: '/mantenimiento/equipos' },
+  can: { createEquipment: true, registerReading: true, assignPlan: true, generateOrder: true, editOrder: true, closeOrder: true },
   pagination: {
     equipments: { page: 1, totalPages: 2, total: 11, perPage: 10, perPageOptions: [5, 10, 25], pageKey: 'equipos_page', perPageKey: 'equipos_per_page', previousUrl: null, nextUrl: '/mantenimiento?equipos_page=2&equipos_per_page=10&planes_page=1&planes_per_page=10&avisos_page=1&avisos_per_page=10&ordenes_page=1&ordenes_per_page=10&lecturas_page=1&lecturas_per_page=10' },
     plans: { page: 1, totalPages: 1, total: 1, perPage: 10, perPageOptions: [5, 10, 25], pageKey: 'planes_page', perPageKey: 'planes_per_page', previousUrl: null, nextUrl: null },
