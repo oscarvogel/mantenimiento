@@ -231,6 +231,8 @@ final class FakeWebPushSubscriptionStore implements WebPushSubscriptionStore
     public function upsert(WebPushSubscription $subscription): int { $this->subscriptions[] = $subscription; return count($this->subscriptions); }
     public function deactivate(int $userId, string $endpoint): bool { return false; }
     public function activeForUser(int $userId): array { return []; }
+    public function markDelivered(string $endpoint): void {}
+    public function markFailed(string $endpoint, string $error): void {}
     public function markInvalid(string $endpoint, string $error): void {}
 }
 final class FakeNotificationProcessControl implements NotificationProcessControl

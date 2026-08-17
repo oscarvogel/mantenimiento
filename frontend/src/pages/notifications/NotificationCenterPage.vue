@@ -39,12 +39,17 @@ function base64UrlToUint8Array(value) {
   return Uint8Array.from([...raw].map((char) => char.charCodeAt(0)))
 }
 function appScope() {
-  return new URL(props.data.urls.index).pathname.replace(/\/notificaciones$/, '') || '/'
+  const path = new URL(props.data.urls.index).pathname.replace(/\/notificaciones$/, '').replace(/\/$/, '')
+  return path === '/' ? '' : path
+}
+function scopedPath(file = '') {
+  const base = appScope()
+  return `${base}/${file}`.replace(/\/+$/, '/')
 }
 async function refreshPushStatus() {
   if (!pushConfigured.value) { pushStatus.value = 'Web Push todavía no está configurado en el servidor.'; return }
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) { pushStatus.value = 'Este navegador no admite Web Push.'; return }
-  const registration = await navigator.serviceWorker.getRegistration(`${appScope()}/`)
+  const registration = await navigator.serviceWorker.getRegistration(scopedPath())
   currentSubscription.value = await registration?.pushManager.getSubscription() ?? null
   pushStatus.value = currentSubscription.value
     ? 'Activo en este dispositivo.'
@@ -57,7 +62,7 @@ async function activatePush() {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) throw new Error('Este navegador no admite Web Push.')
     if (!props.data.push?.enabled || !props.data.push?.publicKey) throw new Error('Web Push todavía no está configurado en el servidor.')
     const base = appScope()
-    const registration = await navigator.serviceWorker.register(`${base}/service-worker.js`, { scope: `${base}/` })
+    const registration = await navigator.serviceWorker.register(scopedPath('service-worker.js'), { scope: scopedPath() })
     const permission = await Notification.requestPermission()
     if (permission !== 'granted') throw new Error('El permiso no fue concedido.')
     const subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64UrlToUint8Array(props.data.push.publicKey) })
