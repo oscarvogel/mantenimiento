@@ -74,6 +74,21 @@ describe('NotificationCenterPage', () => {
     vi.unstubAllGlobals()
   })
 
+  it('resuelve el scope raíz sin generar una URL doble', async () => {
+    const getRegistration = vi.fn(() => Promise.resolve({ pushManager: { getSubscription: () => Promise.resolve(null) } }))
+    Object.defineProperty(navigator, 'serviceWorker', { configurable: true, value: { getRegistration } })
+    vi.stubGlobal('PushManager', {})
+    vi.stubGlobal('Notification', { permission: 'default', requestPermission: vi.fn() })
+
+    const wrapper = mount(NotificationCenterPage, { props: { data: { ...data, push: { enabled: true, publicKey: 'test-key' } } } })
+    await flushPromises()
+    await openTab(wrapper, 'Dispositivos')
+
+    expect(getRegistration).toHaveBeenCalledWith('/')
+    expect(wrapper.text()).toContain('Inactivo en este dispositivo.')
+    vi.unstubAllGlobals()
+  })
+
   it('separa bandeja, preferencias y dispositivos y edita un evento por vez', async () => {
     const wrapper = mount(NotificationCenterPage, { props: { data } })
 
