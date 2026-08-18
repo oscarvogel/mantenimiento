@@ -7,7 +7,7 @@ const query = ref('')
 const showForm = ref(false)
 const editing = ref(null)
 const services = ref((props.data.services ?? []).map((service) => ({ ...service, tasks: [...(service.tasks ?? [])] })))
-const taskForm = ref({ code: '', name: '', order: 1, mandatory: true })
+const taskForm = ref({ name: '', order: 1, mandatory: true })
 const taskBusy = ref(false)
 const taskError = ref('')
 
@@ -30,7 +30,7 @@ function startCreate() {
 }
 function startEdit(service) {
   editing.value = { ...service, tasks: [...(service.tasks ?? [])] }
-  taskForm.value = { code: '', name: '', order: (service.tasks?.length ?? 0) + 1, mandatory: true }
+  taskForm.value = { name: '', order: (service.tasks?.length ?? 0) + 1, mandatory: true }
   taskError.value = ''
   showForm.value = true
 }
@@ -42,7 +42,6 @@ async function createTask() {
   taskError.value = ''
   const form = new FormData()
   form.append(props.data.csrf.name, props.data.csrf.hash)
-  form.append('codigo', taskForm.value.code)
   form.append('nombre', taskForm.value.name)
   form.append('orden', String(taskForm.value.order))
   if (taskForm.value.mandatory) form.append('obligatoria', '1')
@@ -64,7 +63,7 @@ async function createTask() {
       service.tasks = [...editing.value.tasks]
       service.tareas_count = editing.value.tasks.length
     }
-    taskForm.value = { code: '', name: '', order: editing.value.tasks.length + 1, mandatory: true }
+    taskForm.value = { name: '', order: editing.value.tasks.length + 1, mandatory: true }
   } catch (error) {
     taskError.value = error instanceof Error ? error.message : 'No se pudo agregar la tarea.'
   } finally {
@@ -106,16 +105,14 @@ function advance(service) {
       <div class="flex items-start justify-between gap-4">
         <div>
           <h2 class="text-lg font-bold text-ink">{{ editing ? `Editar ${editing.nombre}` : 'Nuevo servicio de mantenimiento' }}</h2>
-          <p class="mt-1 text-sm text-ink-muted">La frecuencia pertenece al servicio y será la misma para los equipos que lo usen.</p>
+          <p class="mt-1 text-sm text-ink-muted">La frecuencia pertenece al servicio y será la misma para los equipos que lo usen. El código interno se genera automáticamente.</p>
         </div>
         <button type="button" class="text-sm font-semibold text-ink-muted hover:text-ink" @click="showForm = false">Cerrar</button>
       </div>
       <form :action="formAction" method="post" class="mt-5 space-y-5">
         <input type="hidden" :name="data.csrf.name" :value="data.csrf.hash" />
+        <input v-if="editing" type="hidden" name="codigo" :value="value('codigo')" />
         <div class="grid gap-4 md:grid-cols-2">
-          <label class="text-sm font-semibold text-ink">Código
-            <input name="codigo" required maxlength="50" :value="value('codigo')" class="mt-1.5 min-h-11 w-full rounded-lg border border-border bg-white px-3 py-2 font-normal" placeholder="SERV-MOTOR" />
-          </label>
           <label class="text-sm font-semibold text-ink">Nombre
             <input name="nombre" required maxlength="150" :value="value('nombre')" class="mt-1.5 min-h-11 w-full rounded-lg border border-border bg-white px-3 py-2 font-normal" placeholder="Servicio motor" />
           </label>
@@ -178,29 +175,28 @@ function advance(service) {
           <form v-if="data.canEdit" :action="`${data.urls.base}/${service.id}/estado`" method="post" class="mt-4 border-t border-border pt-3">
             <input type="hidden" :name="data.csrf.name" :value="data.csrf.hash" /><input type="hidden" name="activo" :value="service.activo ? '0' : '1'" />
             <button class="text-sm font-semibold" :class="service.activo ? 'text-danger' : 'text-success'">{{ service.activo ? 'Inactivar servicio' : 'Activar servicio' }}</button>
-      </form>
+          </form>
 
-      <section v-if="editing" class="mt-6 border-t border-border pt-5">
-        <div class="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h3 class="font-bold text-ink">Tareas del servicio</h3>
-            <p class="mt-1 text-sm text-ink-muted">La OT preventiva necesita al menos una tarea activa.</p>
-          </div>
-          <span class="text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ editing.tasks.length }} tarea(s)</span>
-        </div>
-        <ul v-if="editing.tasks.length" class="mt-3 space-y-2">
-          <li v-for="task in editing.tasks" :key="task.id" class="rounded-lg border border-border bg-white px-3 py-2 text-sm">
-            <strong>{{ task.name }}</strong><span class="ml-2 text-xs text-ink-muted">{{ task.code }} · orden {{ task.order }}</span>
-          </li>
-        </ul>
-        <form data-task-form class="mt-4 grid gap-3 rounded-lg border border-dashed border-border p-3 sm:grid-cols-[1fr_1.5fr_7rem_auto] sm:items-end" @submit.prevent="createTask">
-          <label class="text-xs font-semibold text-ink">Código<input v-model="taskForm.code" name="tarea_codigo" required maxlength="50" class="mt-1 min-h-10 w-full rounded-lg border border-border px-3 py-2 text-sm font-normal" /></label>
-          <label class="text-xs font-semibold text-ink">Nombre<input v-model="taskForm.name" name="tarea_nombre" required maxlength="150" class="mt-1 min-h-10 w-full rounded-lg border border-border px-3 py-2 text-sm font-normal" /></label>
-          <label class="text-xs font-semibold text-ink">Orden<input v-model="taskForm.order" name="tarea_orden" type="number" min="1" required class="mt-1 min-h-10 w-full rounded-lg border border-border px-3 py-2 text-sm font-normal" /></label>
-          <button type="submit" :disabled="taskBusy" class="min-h-10 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground">{{ taskBusy ? 'Agregando…' : 'Agregar tarea' }}</button>
-        </form>
-        <p v-if="taskError" class="mt-2 text-sm font-semibold text-danger-strong">{{ taskError }}</p>
-      </section>
+          <section v-if="editing && Number(editing.id) === Number(service.id)" class="mt-6 border-t border-border pt-5">
+            <div class="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h3 class="font-bold text-ink">Tareas del servicio</h3>
+                <p class="mt-1 text-sm text-ink-muted">La OT preventiva necesita al menos una tarea activa. El código interno se genera automáticamente.</p>
+              </div>
+              <span class="text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ editing.tasks.length }} tarea(s)</span>
+            </div>
+            <ul v-if="editing.tasks.length" class="mt-3 space-y-2">
+              <li v-for="task in editing.tasks" :key="task.id" class="rounded-lg border border-border bg-white px-3 py-2 text-sm">
+                <strong>{{ task.name }}</strong><span class="ml-2 text-xs text-ink-muted">orden {{ task.order }}</span>
+              </li>
+            </ul>
+            <form data-task-form class="mt-4 grid gap-3 rounded-lg border border-dashed border-border p-3 sm:grid-cols-[minmax(0,1fr)_7rem_auto] sm:items-end" @submit.prevent="createTask">
+              <label class="text-xs font-semibold text-ink">Nombre<input v-model="taskForm.name" name="tarea_nombre" required maxlength="150" class="mt-1 min-h-10 w-full rounded-lg border border-border px-3 py-2 text-sm font-normal" placeholder="Filtro aceite" /></label>
+              <label class="text-xs font-semibold text-ink">Orden<input v-model="taskForm.order" name="tarea_orden" type="number" min="1" required class="mt-1 min-h-10 w-full rounded-lg border border-border px-3 py-2 text-sm font-normal" /></label>
+              <button type="submit" :disabled="taskBusy" class="min-h-10 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground">{{ taskBusy ? 'Agregando…' : 'Agregar tarea' }}</button>
+            </form>
+            <p v-if="taskError" class="mt-2 text-sm font-semibold text-danger-strong">{{ taskError }}</p>
+          </section>
         </article>
       </div>
       <div v-else class="mt-4 rounded-xl border border-dashed border-border bg-surface p-8 text-center">
