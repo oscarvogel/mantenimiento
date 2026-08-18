@@ -1,6 +1,6 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
-import { BookOpenIcon, PlusIcon, TruckIcon } from '@heroicons/vue/24/outline'
+import { BookOpenIcon, PlusIcon, TruckIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 import CsrfInput from './components/CsrfInput.vue'
 import EmptyState from './components/EmptyState.vue'
 import FormField from './components/FormField.vue'
@@ -12,6 +12,7 @@ import { fieldClass, formatNumberEs, primaryButton, secondaryButton, today } fro
 const props = defineProps({ data: { type: Object, required: true } })
 
 const showManualForm = ref(false)
+const editingPlan = ref(null)
 const localSearch = ref(props.data.filters?.q ?? '')
 const libraryUrl = computed(() => String(props.data.routes.index ?? '').replace(/\/planes(?:\?.*)?$/, '/importaciones/biblioteca'))
 const clearUrl = computed(() => props.data.routes.index)
@@ -19,6 +20,10 @@ const old = computed(() => props.data.old ?? {})
 const selectedManualEquipmentId = ref(String(props.data.old?.equipo_id ?? ''))
 const selectedManualServiceId = ref(String(props.data.old?.tipo_servicio_id ?? ''))
 const selectedManualEquipment = computed(() => props.data.catalogs.equipment.find((equipment) => String(equipment.id) === selectedManualEquipmentId.value) ?? null)
+const editingEquipment = computed(() => {
+  if (!editingPlan.value) return null
+  return props.data.catalogs.equipment.find((equipment) => Number(equipment.id) === Number(editingPlan.value.equipment.id)) ?? null
+})
 const manualTemplateDefault = computed(() => {
   const equipment = selectedManualEquipment.value
   if (!equipment || !selectedManualServiceId.value) return null
@@ -141,6 +146,8 @@ const planCriteria = (plan) => [
 ].filter(([, criterion]) => criterion)
 
 const equipmentLabel = (equipment) => [equipment.code, equipment.plate, equipment.typeName, equipment.branchCode].filter(Boolean).join(' · ')
+const openEditModal = (plan) => { editingPlan.value = plan }
+const closeEditModal = () => { editingPlan.value = null }
 </script>
 
 <template>
@@ -177,9 +184,7 @@ const equipmentLabel = (equipment) => [equipment.code, equipment.plate, equipmen
         <FormField label="Equipo" for-id="plan-equipment" class="md:col-span-2">
           <select id="plan-equipment" v-model="selectedManualEquipmentId" name="equipo_id" required :class="fieldClass">
             <option value="" disabled>Seleccionar equipo</option>
-            <option v-for="equipment in data.catalogs.equipment" :key="equipment.id" :value="String(equipment.id)">
-              {{ equipmentLabel(equipment) }}
-            </option>
+            <option v-for="equipment in data.catalogs.equipment" :key="equipment.id" :value="String(equipment.id)">{{ equipmentLabel(equipment) }}</option>
           </select>
         </FormField>
         <FormField label="Servicio" for-id="plan-service">
@@ -244,9 +249,7 @@ const equipmentLabel = (equipment) => [equipment.code, equipment.plate, equipmen
     <section class="overflow-hidden rounded-2xl border border-border bg-white shadow-card">
       <div class="border-b border-border bg-surface-subtle p-4 sm:p-5">
         <form method="get" :action="data.routes.index" class="grid gap-3 md:grid-cols-[minmax(15rem,1.3fr)_minmax(14rem,1fr)_minmax(11rem,.8fr)_auto] md:items-end">
-          <FormField label="Buscar" for-id="plans-search">
-            <input id="plans-search" v-model="localSearch" name="q" type="search" placeholder="Patente, equipo o servicio" :class="fieldClass" />
-          </FormField>
+          <FormField label="Buscar" for-id="plans-search"><input id="plans-search" v-model="localSearch" name="q" type="search" placeholder="Patente, equipo o servicio" :class="fieldClass" /></FormField>
           <FormField label="Equipo" for-id="plans-equipment">
             <select id="plans-equipment" name="equipo_id" :class="fieldClass">
               <option value="">Todos</option>
@@ -259,10 +262,7 @@ const equipmentLabel = (equipment) => [equipment.code, equipment.plate, equipmen
               <option v-for="state in ['AL_DIA','PROXIMO','VENCIDO','SIN_DATOS']" :key="state" :value="state" :selected="data.filters.state === state">{{ state.replace('_', ' ') }}</option>
             </select>
           </FormField>
-          <div class="flex gap-2">
-            <button type="submit" :class="primaryButton">Filtrar</button>
-            <a :href="clearUrl" :class="secondaryButton">Limpiar</a>
-          </div>
+          <div class="flex gap-2"><button type="submit" :class="primaryButton">Filtrar</button><a :href="clearUrl" :class="secondaryButton">Limpiar</a></div>
         </form>
       </div>
 
@@ -280,55 +280,75 @@ const equipmentLabel = (equipment) => [equipment.code, equipment.plate, equipmen
         <table class="ui-table-hover w-full min-w-[66rem] text-left text-sm">
           <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
             <tr>
-              <th class="px-4 py-3">Equipo</th>
-              <th class="px-4 py-3">Servicio</th>
-              <th class="px-4 py-3">Frecuencia / próximo</th>
-              <th class="px-4 py-3">Prioridad</th>
-              <th class="px-4 py-3">Estado</th>
-              <th class="px-4 py-3 text-right">Acción</th>
+              <th class="px-4 py-3">Equipo</th><th class="px-4 py-3">Servicio</th><th class="px-4 py-3">Frecuencia / próximo</th><th class="px-4 py-3">Prioridad</th><th class="px-4 py-3">Estado</th><th class="px-4 py-3 text-right">Acción</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-border-subtle">
-            <template v-for="plan in visiblePlans" :key="plan.id">
-              <tr>
-                <td class="px-4 py-3">
-                  <a v-if="plan.equipment.detailUrl" :href="plan.equipment.detailUrl" class="font-bold text-primary hover:underline">{{ plan.equipment.code }}</a>
-                  <strong v-else class="text-ink">{{ plan.equipment.code }}</strong>
-                  <p class="mt-0.5 text-xs text-ink-muted">{{ [plan.equipment.plate, plan.equipment.typeName, plan.branch.code].filter(Boolean).join(' · ') }}</p>
-                </td>
-                <td class="px-4 py-3"><strong class="text-ink">{{ plan.serviceName }}</strong><p v-if="plan.notes" class="mt-0.5 max-w-xs truncate text-xs text-ink-muted">{{ plan.notes }}</p></td>
-                <td class="px-4 py-3"><p v-for="([key, criterion]) in planCriteria(plan)" :key="key" class="text-xs text-ink">{{ criterionText(key, criterion) }}</p><span v-if="planCriteria(plan).length === 0" class="text-xs text-ink-muted">Sin frecuencia</span></td>
-                <td class="px-4 py-3 text-xs font-semibold text-ink">{{ plan.priority === 'CRITICA' ? 'CRÍTICA' : plan.priority }}</td>
-                <td class="px-4 py-3"><StatusBadge :status="plan.state" /></td>
-                <td class="px-4 py-3 text-right"><button v-if="data.canEdit && plan.editUrl" type="button" :class="secondaryButton" :aria-controls="`edit-plan-${plan.id}`" @click="plan._editing = !plan._editing">{{ plan._editing ? 'Cerrar' : 'Editar' }}</button></td>
-              </tr>
-              <tr v-if="data.canEdit && plan.editUrl" v-show="plan._editing" :id="`edit-plan-${plan.id}`" class="bg-surface-subtle/60">
-                <td colspan="6" class="px-4 py-4">
-                  <form method="post" :action="plan.editUrl" class="grid gap-3 md:grid-cols-4">
-                    <CsrfInput :csrf="data.csrf" />
-                    <FormField label="Frecuencia (kilómetros)" :for-id="`edit-km-${plan.id}`"><input :id="`edit-km-${plan.id}`" name="intervalo_km" type="number" min="1" :value="plan.criteria.kilometers?.interval" :class="fieldClass" /></FormField>
-                    <FormField label="Avisar antes (kilómetros)" :for-id="`edit-wkm-${plan.id}`"><input :id="`edit-wkm-${plan.id}`" name="anticipacion_km" type="number" min="0" :value="plan.criteria.kilometers?.warning" :class="fieldClass" /></FormField>
-                    <FormField label="Último mantenimiento realizado a (km)" :for-id="`edit-bkm-${plan.id}`"><input :id="`edit-bkm-${plan.id}`" name="base_km" type="number" min="0" :value="plan.criteria.kilometers?.base" :class="fieldClass" /></FormField>
-                    <div></div>
-                    <FormField label="Frecuencia (horas)" :for-id="`edit-hours-${plan.id}`"><input :id="`edit-hours-${plan.id}`" name="intervalo_horas" type="number" min="0.1" step="0.1" :value="plan.criteria.hours?.interval" :class="fieldClass" /></FormField>
-                    <FormField label="Avisar antes (horas)" :for-id="`edit-whours-${plan.id}`"><input :id="`edit-whours-${plan.id}`" name="anticipacion_horas" type="number" min="0" step="0.1" :value="plan.criteria.hours?.warning" :class="fieldClass" /></FormField>
-                    <FormField label="Último mantenimiento realizado a (h)" :for-id="`edit-bhours-${plan.id}`"><input :id="`edit-bhours-${plan.id}`" name="base_horas" type="number" min="0" step="0.1" :value="plan.criteria.hours?.base" :class="fieldClass" /></FormField>
-                    <div></div>
-                    <FormField label="Frecuencia (días)" :for-id="`edit-days-${plan.id}`"><input :id="`edit-days-${plan.id}`" name="intervalo_dias" type="number" min="1" :value="plan.criteria.date?.interval" :class="fieldClass" /></FormField>
-                    <FormField label="Avisar antes (días)" :for-id="`edit-wdays-${plan.id}`"><input :id="`edit-wdays-${plan.id}`" name="anticipacion_dias" type="number" min="0" :value="plan.criteria.date?.warning" :class="fieldClass" /></FormField>
-                    <FormField label="Último mantenimiento realizado el" :for-id="`edit-bdate-${plan.id}`"><input :id="`edit-bdate-${plan.id}`" name="base_fecha" type="date" :max="today()" :value="plan.criteria.date?.base" :class="fieldClass" /></FormField>
-                    <FormField label="Prioridad" :for-id="`edit-priority-${plan.id}`"><select :id="`edit-priority-${plan.id}`" name="prioridad" :class="fieldClass"><option v-for="priority in ['BAJA','MEDIA','ALTA','CRITICA']" :key="priority" :value="priority" :selected="priority === plan.priority">{{ priority === 'CRITICA' ? 'CRÍTICA' : priority }}</option></select></FormField>
-                    <FormField label="Observaciones" :for-id="`edit-notes-${plan.id}`" class="md:col-span-3"><input :id="`edit-notes-${plan.id}`" name="observaciones" maxlength="1000" :value="plan.notes" :class="fieldClass" /></FormField>
-                    <div class="flex items-end justify-end"><button type="submit" :class="primaryButton">Guardar cambios</button></div>
-                  </form>
-                </td>
-              </tr>
-            </template>
+            <tr v-for="plan in visiblePlans" :key="plan.id">
+              <td class="px-4 py-3">
+                <a v-if="plan.equipment.detailUrl" :href="plan.equipment.detailUrl" class="font-bold text-primary hover:underline">{{ plan.equipment.code }}</a>
+                <strong v-else class="text-ink">{{ plan.equipment.code }}</strong>
+                <p class="mt-0.5 text-xs text-ink-muted">{{ [plan.equipment.plate, plan.equipment.typeName, plan.branch.code].filter(Boolean).join(' · ') }}</p>
+              </td>
+              <td class="px-4 py-3"><strong class="text-ink">{{ plan.serviceName }}</strong><p v-if="plan.notes" class="mt-0.5 max-w-xs truncate text-xs text-ink-muted">{{ plan.notes }}</p></td>
+              <td class="px-4 py-3"><p v-for="([key, criterion]) in planCriteria(plan)" :key="key" class="text-xs text-ink">{{ criterionText(key, criterion) }}</p><span v-if="planCriteria(plan).length === 0" class="text-xs text-ink-muted">Sin frecuencia</span></td>
+              <td class="px-4 py-3 text-xs font-semibold text-ink">{{ plan.priority === 'CRITICA' ? 'CRÍTICA' : plan.priority }}</td>
+              <td class="px-4 py-3"><StatusBadge :status="plan.state" /></td>
+              <td class="px-4 py-3 text-right"><button v-if="data.canEdit && plan.editUrl" type="button" :class="secondaryButton" :data-testid="`edit-plan-${plan.id}`" @click="openEditModal(plan)">Editar</button></td>
+            </tr>
           </tbody>
         </table>
       </div>
 
       <div class="border-t border-border px-4 py-4 sm:px-5"><PaginationBar :pagination="data.plans.pagination" /></div>
     </section>
+
+    <div
+      v-if="editingPlan"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4"
+      role="dialog"
+      aria-modal="true"
+      :aria-labelledby="`edit-plan-title-${editingPlan.id}`"
+      data-testid="edit-plan-modal"
+      @click.self="closeEditModal"
+    >
+      <section class="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-2xl border border-border bg-white shadow-2xl">
+        <header class="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-border bg-white px-5 py-4 sm:px-6">
+          <div>
+            <p class="text-xs font-bold uppercase tracking-wide text-primary">Editar plan preventivo</p>
+            <h2 :id="`edit-plan-title-${editingPlan.id}`" class="mt-1 text-xl font-bold text-ink">{{ editingPlan.serviceName }}</h2>
+            <p class="mt-1 text-sm text-ink-muted">{{ editingPlan.equipment.code }} · {{ [editingPlan.equipment.plate, editingPlan.equipment.typeName, editingPlan.branch.code].filter(Boolean).join(' · ') }}</p>
+          </div>
+          <button type="button" class="rounded-lg p-2 text-ink-muted hover:bg-surface-subtle hover:text-ink" aria-label="Cerrar edición" @click="closeEditModal"><XMarkIcon class="size-5" aria-hidden="true" /></button>
+        </header>
+
+        <form method="post" :action="editingPlan.editUrl" class="grid gap-4 p-5 md:grid-cols-3 sm:p-6">
+          <CsrfInput :csrf="data.csrf" />
+
+          <template v-if="editingEquipment?.controlsKm">
+            <FormField label="Frecuencia (kilómetros)" :for-id="`edit-km-${editingPlan.id}`"><input :id="`edit-km-${editingPlan.id}`" name="intervalo_km" type="number" min="1" :value="editingPlan.criteria.kilometers?.interval" :class="fieldClass" /></FormField>
+            <FormField label="Avisar antes (kilómetros)" :for-id="`edit-wkm-${editingPlan.id}`"><input :id="`edit-wkm-${editingPlan.id}`" name="anticipacion_km" type="number" min="0" :value="editingPlan.criteria.kilometers?.warning" :class="fieldClass" /></FormField>
+            <FormField label="Último mantenimiento realizado a (km)" :for-id="`edit-bkm-${editingPlan.id}`"><input :id="`edit-bkm-${editingPlan.id}`" name="base_km" type="number" min="0" :value="editingPlan.criteria.kilometers?.base" :class="fieldClass" /></FormField>
+          </template>
+
+          <template v-if="editingEquipment?.controlsHours">
+            <FormField label="Frecuencia (horas)" :for-id="`edit-hours-${editingPlan.id}`"><input :id="`edit-hours-${editingPlan.id}`" name="intervalo_horas" type="number" min="0.1" step="0.1" :value="editingPlan.criteria.hours?.interval" :class="fieldClass" /></FormField>
+            <FormField label="Avisar antes (horas)" :for-id="`edit-whours-${editingPlan.id}`"><input :id="`edit-whours-${editingPlan.id}`" name="anticipacion_horas" type="number" min="0" step="0.1" :value="editingPlan.criteria.hours?.warning" :class="fieldClass" /></FormField>
+            <FormField label="Último mantenimiento realizado a (h)" :for-id="`edit-bhours-${editingPlan.id}`"><input :id="`edit-bhours-${editingPlan.id}`" name="base_horas" type="number" min="0" step="0.1" :value="editingPlan.criteria.hours?.base" :class="fieldClass" /></FormField>
+          </template>
+
+          <FormField label="Frecuencia (días)" :for-id="`edit-days-${editingPlan.id}`"><input :id="`edit-days-${editingPlan.id}`" name="intervalo_dias" type="number" min="1" :value="editingPlan.criteria.date?.interval" :class="fieldClass" /></FormField>
+          <FormField label="Avisar antes (días)" :for-id="`edit-wdays-${editingPlan.id}`"><input :id="`edit-wdays-${editingPlan.id}`" name="anticipacion_dias" type="number" min="0" :value="editingPlan.criteria.date?.warning" :class="fieldClass" /></FormField>
+          <FormField label="Último mantenimiento realizado el" :for-id="`edit-bdate-${editingPlan.id}`"><input :id="`edit-bdate-${editingPlan.id}`" name="base_fecha" type="date" :max="today()" :value="editingPlan.criteria.date?.base" :class="fieldClass" /></FormField>
+          <FormField label="Prioridad" :for-id="`edit-priority-${editingPlan.id}`"><select :id="`edit-priority-${editingPlan.id}`" name="prioridad" :class="fieldClass"><option v-for="priority in ['BAJA','MEDIA','ALTA','CRITICA']" :key="priority" :value="priority" :selected="priority === editingPlan.priority">{{ priority === 'CRITICA' ? 'CRÍTICA' : priority }}</option></select></FormField>
+          <FormField label="Observaciones" :for-id="`edit-notes-${editingPlan.id}`" class="md:col-span-2"><input :id="`edit-notes-${editingPlan.id}`" name="observaciones" maxlength="1000" :value="editingPlan.notes" :class="fieldClass" /></FormField>
+
+          <div class="md:col-span-3 flex flex-wrap justify-end gap-2 border-t border-border pt-4">
+            <button type="button" :class="secondaryButton" @click="closeEditModal">Cancelar</button>
+            <button type="submit" :class="primaryButton">Guardar cambios</button>
+          </div>
+        </form>
+      </section>
+    </div>
   </div>
 </template>
