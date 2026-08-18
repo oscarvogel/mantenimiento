@@ -27,9 +27,9 @@ Excel queda fuera del P0. Si se retoma, debe escribir sobre el mismo catálogo d
 - materiales/repuestos;
 - empresa y estado.
 
-La asignación Equipo ↔ Servicio conserva solamente lo específico del equipo: bases/última realización, estado, observaciones y trazabilidad. Durante el cutover sigue persistida físicamente en `planes_mantenimiento`, pero frecuencia y anticipación ya no deben ser entradas del operador.
+La asignación Equipo ↔ Servicio conserva solamente lo específico del equipo: bases/última realización, estado, observaciones y trazabilidad. Durante el cutover sigue persistida físicamente en `planes_mantenimiento`.
 
-## Corte implementado en PR #77
+## Cortes implementados en PR #77
 
 ### Catálogo único
 
@@ -51,16 +51,26 @@ El drawer de equipos pasó de `Agregar planes/plantillas` a **Asignar servicios*
 
 El caso de uso de asignación ignora frecuencia/anticipación recibida por formularios legacy y obtiene la definición activa directamente de `tipos_servicio` con scope de empresa. La prioridad también se toma del Servicio.
 
-Esto permite mantener temporalmente `planes_mantenimiento` sin que continúe siendo fuente de configuración para nuevas asignaciones.
+### Motor de vencimientos
+
+La lectura y evaluación de asignaciones existentes ya toma la configuración actual desde `tipos_servicio`:
+
+- intervalo km/horas/días;
+- anticipación km/horas/días;
+- prioridad.
+
+La base sigue saliendo de la asignación (`planes_mantenimiento` durante el cutover), pero `proximo_km`, `proximas_horas` y `proxima_fecha` se derivan dinámicamente como `base + frecuencia` y dejan de ser fuente de verdad.
+
+Consecuencia: si se cambia la frecuencia de un Servicio, todas sus asignaciones se recalculan con esa nueva definición sin editar equipo por equipo.
 
 ## Siguiente corte
 
-1. hacer que lectura/evaluación de asignaciones existentes hidrate frecuencia desde Servicio, no desde columnas duplicadas del plan;
-2. adaptar edición para que sólo permita bases/última realización y observaciones;
-3. adaptar cierre de OT para recalcular usando la definición vigente del Servicio;
-4. resetear datos preventivos de prueba;
-5. retirar columnas de frecuencia/origen de plantilla y tablas de Plantillas;
-6. eliminar endpoints/componentes legacy de Biblioteca.
+1. adaptar edición de asignación para permitir sólo bases/última realización y observaciones;
+2. adaptar cierre de OT para recalcular usando la definición vigente del Servicio;
+3. resetear datos preventivos de prueba;
+4. retirar columnas de frecuencia/prioridad/próximo objetivo/origen de plantilla de la asignación;
+5. retirar tablas y código de Plantillas/Biblioteca;
+6. adaptar importación al catálogo único sólo si se decide conservarla.
 
 ## Invariantes
 
@@ -68,6 +78,7 @@ Esto permite mantener temporalmente `planes_mantenimiento` sin que continúe sie
 - una asignación no redefine frecuencia;
 - el mismo Servicio activo no puede estar dos veces en el mismo Equipo;
 - cualquier criterio configurado vence por el primero alcanzado;
+- cambiar frecuencia/anticipación/prioridad del Servicio impacta sus asignaciones;
 - cierre de OT preventiva actualiza la base de la asignación en la misma transacción;
 - tareas y materiales históricos de una OT no cambian si luego se edita el Servicio;
 - empresa, sucursal y permisos se validan en servidor.
