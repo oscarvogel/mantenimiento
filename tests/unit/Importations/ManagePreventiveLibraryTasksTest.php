@@ -111,7 +111,7 @@ final class ManagePreventiveLibraryTasksTest extends TestCase
         $gateway->duplicateByCode = ['id' => 3, 'code' => 'FILTRO', 'name' => 'Filtro existente'];
 
         $this->expectException(DomainException::class);
-        $this->expectExceptionMessage('Ya existe la tarea FILTRO');
+        $this->expectExceptionMessage('Ya existe una tarea con ese código.');
 
         (new ManagePreventiveLibraryTasks($gateway))->createAndLink(
             $this->actor(), 4, 'filtro', 'Otra', null, null, null,
