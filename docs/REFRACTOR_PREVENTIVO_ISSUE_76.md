@@ -67,6 +67,23 @@ La primera migración agrega `empresa_id` nullable de forma transitoria para no 
 
 No se debe exponer a una empresa un servicio perteneciente a otra.
 
+## Avance implementado en PR #77
+
+La fase de fundaciones ya está acompañada por el primer corte funcional del catálogo único:
+
+- nueva pantalla `/mantenimiento/servicios`;
+- alta manual de servicios sin depender de Excel;
+- edición, activación e inactivación;
+- frecuencia y anticipación configuradas directamente en el Servicio;
+- validación de al menos un criterio de frecuencia y anticipación menor al intervalo;
+- prioridad del Servicio;
+- scope de empresa y permisos validados en servidor y en el caso de uso;
+- conteo visible de tareas y materiales asociados;
+- navegación separada: `Mantenimiento` para operación y `Servicios de mantenimiento` para el catálogo;
+- `Biblioteca preventiva` deja de mostrarse como módulo de navegación.
+
+Los endpoints legacy de Biblioteca permanecen temporalmente para no romper el importador ni la administración de tareas durante el cutover. No representan un segundo catálogo.
+
 ## Estrategia de implementación
 
 ### Fase A — Fundaciones sin romper el flujo actual
@@ -77,11 +94,11 @@ No se debe exponer a una empresa un servicio perteneciente a otra.
 
 ### Fase B — Catálogo único de Servicios (#74)
 
-- CRUD de Servicio de mantenimiento;
-- frecuencia/anticipación en el Servicio;
-- tareas y materiales dentro del mismo detalle;
+- CRUD de Servicio de mantenimiento; **iniciado**;
+- frecuencia/anticipación en el Servicio; **implementado en el primer corte**;
+- tareas y materiales dentro del mismo detalle; **siguiente corte**;
 - importar Excel al mismo catálogo;
-- dejar de presentar `Biblioteca preventiva` como módulo separado.
+- dejar de presentar `Biblioteca preventiva` como módulo separado; **navegación ya ajustada**.
 
 ### Fase C — Asignación directa (#73)
 
