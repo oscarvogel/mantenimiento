@@ -30,12 +30,12 @@ const data = {
 }
 
 describe('configuración de tareas del servicio', () => {
-  it('permite agregar una tarea al editar un servicio', async () => {
+  it('permite agregar una tarea sin pedir código técnico', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
         ok: true,
-        task: { id: 91, code: 'CAMBIO-ACEITE', name: 'Cambiar aceite', active: true, order: 1, mandatory: true },
+        task: { id: 91, code: 'TAR-CAMBIAR-ACEITE', name: 'Cambiar aceite', active: true, order: 1, mandatory: true },
       }),
     })
 
@@ -43,7 +43,7 @@ describe('configuración de tareas del servicio', () => {
     await wrapper.get('button[aria-label="Editar Servicio PR77"]').trigger('click')
 
     expect(wrapper.text()).toContain('Tareas del servicio')
-    await wrapper.get('input[name="tarea_codigo"]').setValue('CAMBIO-ACEITE')
+    expect(wrapper.find('input[name="tarea_codigo"]').exists()).toBe(false)
     await wrapper.get('input[name="tarea_nombre"]').setValue('Cambiar aceite')
     await wrapper.get('form[data-task-form]').trigger('submit')
 
@@ -52,5 +52,11 @@ describe('configuración de tareas del servicio', () => {
       expect.objectContaining({ method: 'POST' }),
     )
     expect(wrapper.text()).toContain('Cambiar aceite')
+  })
+
+  it('no pide código al crear un servicio', async () => {
+    const wrapper = mount(MaintenanceServicesPage, { props: { data } })
+    await wrapper.get('button').trigger('click')
+    expect(wrapper.find('input[name="codigo"]').exists()).toBe(false)
   })
 })
