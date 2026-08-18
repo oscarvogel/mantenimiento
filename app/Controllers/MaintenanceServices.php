@@ -60,7 +60,16 @@ final class MaintenanceServices extends BaseController
 
     private function materialPayload(): array
     {
-        return ['descripcion'=>$this->request->getPost('descripcion'),'tipo_item'=>$this->request->getPost('tipo_item'),'unidad'=>$this->request->getPost('unidad'),'cantidad'=>$this->request->getPost('cantidad'),'cantidad_variable'=>$this->request->getPost('cantidad_variable'),'obligatorio'=>$this->request->getPost('obligatorio'),'observaciones'=>$this->request->getPost('observaciones')];
+        return [
+            'tarea_id'=>$this->request->getPost('tarea_id'),
+            'descripcion'=>$this->request->getPost('descripcion'),
+            'tipo_item'=>$this->request->getPost('tipo_item'),
+            'unidad'=>$this->request->getPost('unidad'),
+            'cantidad'=>$this->request->getPost('cantidad'),
+            'cantidad_variable'=>$this->request->getPost('cantidad_variable'),
+            'obligatorio'=>$this->request->getPost('obligatorio'),
+            'observaciones'=>$this->request->getPost('observaciones')
+        ];
     }
 
     private function payload(): array
