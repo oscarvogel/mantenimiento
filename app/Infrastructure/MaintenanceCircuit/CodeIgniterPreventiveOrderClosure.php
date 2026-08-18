@@ -15,6 +15,7 @@ use App\Infrastructure\Assets\CodeIgniterEquipmentRepository;
 use App\Infrastructure\Measurement\CodeIgniterReadingRepository;
 use App\Infrastructure\Measurement\CodeIgniterUnitOfWork;
 use App\Infrastructure\PreventiveMaintenance\CodeIgniterPlanMantenimientoRepository;
+use App\Infrastructure\PreventiveMaintenance\CodeIgniterServiceTypeGateway;
 use App\Infrastructure\PreventiveMaintenance\DecimalHours;
 use App\Infrastructure\WorkOrders\CodeIgniterWorkOrderRepository;
 use App\Infrastructure\WorkOrders\CodeIgniterWorkOrderTransaction;
@@ -40,7 +41,10 @@ final class CodeIgniterPreventiveOrderClosure implements PreventiveOrderClosureP
             new CodeIgniterReadingRepository($this->database),
             new CodeIgniterUnitOfWork($this->database),
         );
-        $recalculate = new RecalcularPlanTrasCierre(new CodeIgniterPlanMantenimientoRepository($this->database));
+        $recalculate = new RecalcularPlanTrasCierre(
+            new CodeIgniterPlanMantenimientoRepository($this->database),
+            new CodeIgniterServiceTypeGateway($this->database),
+        );
         $actor = new ActorContext(
             $actorUserId,
             $companyId,
