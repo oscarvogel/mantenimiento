@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { compatibleTemplates, matchesTemplateQuery, templateSpecificity } from './quickPlanAssignment.js'
+import { assignmentContextFromUrl, compatibleTemplates, matchesTemplateQuery, templateSpecificity } from './quickPlanAssignment.js'
 
 const equipment = {
   id: 28,
@@ -39,5 +39,19 @@ describe('quick plan assignment', () => {
     expect(templateSpecificity({ brand: 'Y', equipmentTypeId: 1 })).toBe(3)
     expect(templateSpecificity({ equipmentTypeId: 1 })).toBe(2)
     expect(templateSpecificity({})).toBe(1)
+  })
+
+  it('obtiene el equipo correcto desde el enlace Asignar plan del listado', () => {
+    const context = assignmentContextFromUrl(
+      '/mantenimiento/planes?equipo_id=28#planes-desde-plantilla',
+      'https://vogelconsultoria.com.ar/mantenimiento/equipos',
+    )
+
+    expect(context?.equipmentId).toBe(28)
+    expect(context?.sourceUrl).toContain('equipo_id=28')
+  })
+
+  it('no intercepta enlaces ajenos a planes', () => {
+    expect(assignmentContextFromUrl('/mantenimiento/equipos/28', 'https://example.com/')).toBeNull()
   })
 })
