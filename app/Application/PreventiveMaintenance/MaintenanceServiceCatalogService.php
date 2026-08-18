@@ -25,7 +25,7 @@ final readonly class MaintenanceServiceCatalogService
     public function create(ActorContext $actor, array $input): int
     {
         $this->requirePermission($actor, 'planes.editar');
-        return $this->catalog->create($this->companyId($actor), $actor->userId(), $this->validate($input));
+        return $this->catalog->create($this->companyId($actor), $actor->userId(), $this->validate($input, true));
     }
 
     /** @param array<string,mixed> $input */
@@ -44,12 +44,15 @@ final readonly class MaintenanceServiceCatalogService
     }
 
     /** @param array<string,mixed> $input @return array<string,mixed> */
-    private function validate(array $input): array
+    private function validate(array $input, bool $generateCode = false): array
     {
-        $code = strtoupper(trim((string) ($input['codigo'] ?? '')));
         $name = trim((string) ($input['nombre'] ?? ''));
-        if ($code === '' || $name === '') throw new DomainException('Código y nombre son obligatorios.');
-        if (mb_strlen($code) > 50 || mb_strlen($name) > 150) throw new DomainException('Código o nombre exceden el largo permitido.');
+        if ($name === '') throw new DomainException('El nombre es obligatorio.');
+        if (mb_strlen($name) > 150) throw new DomainException('El nombre excede el largo permitido.');
+
+        $code = strtoupper(trim((string) ($input['codigo'] ?? '')));
+        if ($generateCode && $code === '') $code = $this->codeFromName($name);
+        if ($code === '' || mb_strlen($code) > 50) throw new DomainException('El código del servicio no es válido.');
 
         $km = $this->positiveInt($input['intervalo_km'] ?? null, 'intervalo en km');
         $hours = $this->positiveDecimal($input['intervalo_horas'] ?? null, 'intervalo en horas');
@@ -81,6 +84,16 @@ final readonly class MaintenanceServiceCatalogService
             'anticipacion_dias' => $days === null ? null : ($advanceDays ?? 0),
             'prioridad' => $priority,
         ];
+    }
+
+    private function codeFromName(string $name): string
+    {
+        $ascii = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $name);
+        $base = strtoupper((string) ($ascii === false ? $name : $ascii));
+        $base = preg_replace('/[^A-Z0-9]+/', '-', $base) ?? '';
+        $base = trim($base, '-');
+        if ($base === '') $base = 'SERVICIO';
+        return mb_substr('SERV-' . $base, 0, 50);
     }
 
     private function companyId(ActorContext $actor): int
