@@ -10,6 +10,7 @@ import { NotificationCenterPage } from './pages/notifications/index.js'
 import LoginPage from './pages/login/LoginPage.vue'
 import { installEquipmentComboboxes } from './ui/equipmentCombobox.js'
 import { installEquipmentAssignedPlans } from './ui/equipmentAssignedPlans.js'
+import { installLibraryTaskStatus } from './ui/libraryTaskStatus.js'
 import { installQuickPlanAssignment } from './ui/quickPlanAssignment.js'
 import { installTemplateServicePicker } from './ui/templateServicePicker.js'
 import { consumeFlash, installGlobalBehaviors } from './ui/globals.js'
@@ -84,6 +85,9 @@ if (root) {
   }
   if (payload?.page === 'equipment-detail') {
     installEquipmentAssignedPlans(root, payload)
+  }
+  if (payload?.page === 'preventive-library') {
+    installLibraryTaskStatus(root, payload)
   }
   if (serverPayload) consumeFlash(serverPayload.data?.flash)
 }
