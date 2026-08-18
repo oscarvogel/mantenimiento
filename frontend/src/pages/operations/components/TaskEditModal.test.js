@@ -35,17 +35,24 @@ describe('TaskEditModal', () => {
 
     const wrapper = mount(TaskEditModal, {
       props: {
-        open: true,
+        open: false,
         task: task(),
         csrf: { name: 'csrf_test_name', hash: 'HASH123' },
         canEdit: true,
       },
       attachTo: document.body,
     })
+
+    // El componente permanece montado en la página y el modal se inicializa
+    // cuando `open` cambia de false a true, igual que en el flujo real.
+    await wrapper.setProps({ open: true })
     await flushPromises()
 
     const active = wrapper.find('input[name="activo"]')
     const requiresPhoto = wrapper.find('input[name="requiere_foto"]')
+    expect(active.exists()).toBe(true)
+    expect(requiresPhoto.exists()).toBe(true)
+
     await active.setValue(false)
     await requiresPhoto.setValue(true)
     await flushPromises()
