@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { assignmentContextFromUrl, compatibleTemplates, matchesTemplateQuery, templateSpecificity } from './quickPlanAssignment.js'
+import { assignmentContextFromUrl, availableManualServices, compatibleTemplates, matchesTemplateQuery, templateSpecificity } from './quickPlanAssignment.js'
 
 const equipment = {
   id: 28,
@@ -24,6 +24,16 @@ describe('quick plan assignment', () => {
     expect(result.map((item) => item.id)).toEqual([5, 2])
     expect(result.some((item) => item.serviceTypeId === 20)).toBe(false)
     expect(result.some((item) => item.serviceTypeId === 30)).toBe(false)
+  })
+
+  it('ofrece para creación directa sólo servicios todavía no asignados', () => {
+    const services = [
+      { id: 10, code: 'ACEITE', name: 'Cambio de aceite' },
+      { id: 20, code: 'FILTRO', name: 'Filtro de aire' },
+      { id: 30, code: 'FRENOS', name: 'Frenos' },
+    ]
+
+    expect(availableManualServices(equipment, services).map((item) => item.id)).toEqual([10, 30])
   })
 
   it('busca por servicio, plantilla, notas, marca o modelo', () => {
