@@ -33,9 +33,7 @@ final readonly class CodeIgniterMaintenanceServiceCatalog implements Maintenance
             return $row;
         }, $builder->get()->getResultArray()));
 
-        if ($services === []) {
-            return $services;
-        }
+        if ($services === []) return $services;
 
         $tasksByService = [];
         $serviceIds = array_column($services, 'id');
@@ -60,17 +58,14 @@ final readonly class CodeIgniterMaintenanceServiceCatalog implements Maintenance
             ];
         }
 
-        foreach ($services as &$service) {
-            $service['tasks'] = $tasksByService[$service['id']] ?? [];
-        }
+        foreach ($services as &$service) $service['tasks'] = $tasksByService[$service['id']] ?? [];
         unset($service);
-
         return $services;
     }
 
     public function create(int $companyId, int $actorId, array $data): int
     {
-        $this->ensureCodeAvailable((string) $data['codigo']);
+        $data['codigo'] = $this->uniqueCode((string) $data['codigo']);
         $now = date('Y-m-d H:i:s');
         $this->db->table('tipos_servicio')->insert($data + [
             'empresa_id' => $companyId,
@@ -105,20 +100,32 @@ final readonly class CodeIgniterMaintenanceServiceCatalog implements Maintenance
 
     private function findScoped(int $companyId, int $serviceId): array
     {
-        $row = $this->db->table('tipos_servicio')
-            ->select('id, empresa_id, codigo')
-            ->where('id', $serviceId)
-            ->where('empresa_id', $companyId)
-            ->get()->getRowArray();
+        $row = $this->db->table('tipos_servicio')->select('id, empresa_id, codigo')
+            ->where('id', $serviceId)->where('empresa_id', $companyId)->get()->getRowArray();
         if ($row === null) throw new DomainException('El servicio no existe o no pertenece a la empresa activa.');
         return $row;
     }
 
-    private function ensureCodeAvailable(string $code, ?int $exceptId = null): void
+    private function uniqueCode(string $base): string
     {
-        // La restricción física legacy de código sigue siendo global durante el cutover.
+        if ($this->codeAvailable($base)) return $base;
+        for ($suffix = 2; $suffix <= 9999; $suffix++) {
+            $tail = '-' . $suffix;
+            $candidate = mb_substr($base, 0, 50 - mb_strlen($tail)) . $tail;
+            if ($this->codeAvailable($candidate)) return $candidate;
+        }
+        throw new DomainException('No se pudo generar un código único para el servicio.');
+    }
+
+    private function codeAvailable(string $code, ?int $exceptId = null): bool
+    {
         $builder = $this->db->table('tipos_servicio')->where('codigo', $code);
         if ($exceptId !== null) $builder->where('id !=', $exceptId);
-        if ($builder->countAllResults() > 0) throw new DomainException('Ya existe un servicio con ese código.');
+        return $builder->countAllResults() === 0;
+    }
+
+    private function ensureCodeAvailable(string $code, ?int $exceptId = null): void
+    {
+        if (! $this->codeAvailable($code, $exceptId)) throw new DomainException('Ya existe un servicio con ese código.');
     }
 }
