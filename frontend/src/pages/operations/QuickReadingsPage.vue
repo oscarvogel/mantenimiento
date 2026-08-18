@@ -57,10 +57,16 @@ const maintenanceCounts = computed(() => {
   props.data.equipment.items.forEach(({ id }) => { const state = maintenance[id]?.state || 'SIN_PLAN'; if (Object.hasOwn(counts, state)) counts[state] += 1 })
   return counts
 })
+const normalizeSearch = (value) => String(value ?? '')
+  .trim()
+  .toLocaleLowerCase('es')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .replace(/[\s-]+/g, '')
 const visibleEquipment = computed(() => {
-  const query = search.value.trim().toLocaleLowerCase('es')
+  const query = normalizeSearch(search.value)
   return props.data.equipment.items.filter((equipment) => {
-    const matches = !query || [equipment.code, equipment.plate, equipment.chassis, equipment.typeName, equipment.branchName].some((value) => String(value ?? '').toLocaleLowerCase('es').includes(query))
+    const matches = !query || [equipment.code, equipment.plate, equipment.chassis, equipment.typeName, equipment.branchName].some((value) => normalizeSearch(value).includes(query))
     return matches && (!statusFilter.value || (maintenance[equipment.id]?.state || 'SIN_PLAN') === statusFilter.value)
   })
 })
@@ -74,11 +80,28 @@ const formatPlanPoint = (plan, prefix) => {
   if (plan[`${prefix}Date`]) values.push(plan[`${prefix}Date`].split('-').reverse().join('/'))
   return values.join(' · ') || 'Sin base'
 }
+const missingCriterionLabel = (criterion, plan, equipment) => {
+  if (criterion === 'KILOMETRAJE') {
+    if (plan.baseKm === null || plan.baseKm === undefined) return 'Falta última realización en km'
+    if (rows[equipment.id]?.currentKm === null || rows[equipment.id]?.currentKm === undefined) return 'Falta lectura de kilometraje'
+    return 'Falta dato de kilometraje'
+  }
+  if (criterion === 'HOROMETRO') {
+    if (plan.baseHours === null || plan.baseHours === undefined) return 'Falta última realización en horas'
+    if (rows[equipment.id]?.currentHours === null || rows[equipment.id]?.currentHours === undefined) return 'Falta lectura de horómetro'
+    return 'Falta dato de horómetro'
+  }
+  if (criterion === 'FECHA') return 'Falta fecha de última realización'
+  return 'Falta información del plan'
+}
+const missingPlanDetails = (equipment) => (maintenance[equipment.id]?.plans || []).flatMap((plan) =>
+  (plan.missingCriteria || []).map((criterion) => `${plan.serviceName}: ${missingCriterionLabel(criterion, plan, equipment)}`),
+)
 const preventiveLabel = (equipment) => {
   const snapshot = maintenance[equipment.id] || { state: 'SIN_PLAN' }
   const critical = snapshot.primaryPlan?.critical
   if (snapshot.state === 'SIN_PLAN') return 'Sin plan'
-  if (snapshot.state === 'PROBLEMA') return 'Faltan datos'
+  if (snapshot.state === 'PROBLEMA') return missingPlanDetails(equipment)[0]?.split(': ').slice(1).join(': ') || 'Faltan datos'
   if (!critical) return snapshot.state === 'OK' ? 'Al día' : snapshot.state
   const absolute = Math.abs(Number(critical.value))
   const formatted = critical.unit === 'km' ? Math.round(absolute).toLocaleString('es-AR') : absolute.toLocaleString('es-AR', { minimumFractionDigits: critical.unit === 'h' ? 1 : 0, maximumFractionDigits: 1 })
@@ -193,7 +216,7 @@ const focusNextReadingInput = (event) => {
               <td class="px-3 py-2"><div class="relative max-w-52"><input :id="`quick-reading-${equipment.id}`" v-model="rows[equipment.id].value" data-reading-input="true" :data-equipment-id="equipment.id" type="text" :inputmode="readingKey(equipment) === 'hours' ? 'decimal' : 'numeric'" autocomplete="off" placeholder="Ingresar lectura" :disabled="!data.canRegister || saving" :class="`${fieldClass} pr-10 font-semibold tabular-nums ${rowError(equipment) ? 'border-danger' : ''}`" @keydown.enter.prevent="focusNextReadingInput" /><span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-ink-muted">{{ readingUnit(equipment) }}</span></div><p v-if="rowError(equipment)" class="mt-1 text-xs font-semibold text-danger-strong">{{ rowError(equipment) }}</p><p v-else-if="inputDelta(equipment)" class="mt-1 text-xs text-ink-muted">{{ inputDelta(equipment) }} desde la última</p><p v-if="rows[equipment.id].message" class="mt-1 text-xs" :class="rows[equipment.id].status === 'error' ? 'text-danger-strong' : 'text-success-strong'">{{ rows[equipment.id].message }}</p></td>
               <td class="px-3 py-2"><template v-if="primaryPlan(equipment)"><div class="font-medium">{{ primaryPlan(equipment).serviceName }}</div><div class="text-xs text-ink-muted">{{ formatPlanPoint(primaryPlan(equipment), 'base') }}</div></template><span v-else>—</span></td>
               <td class="px-3 py-2"><template v-if="primaryPlan(equipment)"><div class="font-medium">{{ primaryPlan(equipment).serviceName }}</div><div class="text-xs text-ink-muted">{{ formatPlanPoint(primaryPlan(equipment), 'next') }}</div></template><span v-else>—</span></td>
-              <td class="px-3 py-2"><span class="inline-flex rounded-full border px-2.5 py-1 text-xs font-bold" :class="preventiveClass(equipment)">{{ preventiveLabel(equipment) }}</span><div v-if="maintenance[equipment.id]?.planCount > 1" class="mt-1 text-[11px] text-ink-subtle">+{{ maintenance[equipment.id].planCount - 1 }} planes</div></td>
+              <td class="px-3 py-2"><span class="inline-flex rounded-full border px-2.5 py-1 text-xs font-bold" :class="preventiveClass(equipment)">{{ preventiveLabel(equipment) }}</span><details v-if="missingPlanDetails(equipment).length" class="mt-1 text-[11px] text-danger-strong"><summary class="cursor-pointer font-semibold">Ver faltantes</summary><div v-for="detail in missingPlanDetails(equipment)" :key="detail" class="mt-1">{{ detail }}</div></details><div v-else-if="maintenance[equipment.id]?.planCount > 1" class="mt-1 text-[11px] text-ink-subtle">+{{ maintenance[equipment.id].planCount - 1 }} planes</div></td>
               <td class="px-3 py-2"><template v-if="primaryPlan(equipment)?.order"><div class="text-xs font-bold text-success-strong">{{ primaryPlan(equipment).order.number }}</div><a :href="`${data.routes.workOrderBase}/${primaryPlan(equipment).order.id}/imprimir`" target="_blank" rel="noopener" :class="`${secondaryButton} mt-1 px-2 py-1 text-xs`"><PrinterIcon class="mr-1 size-4" />Imprimir</a></template><button v-else-if="data.canGenerateOrder && primaryPlan(equipment)?.noticeId" type="button" :disabled="orderSaving[equipment.id]" :class="`${primaryButton} px-2 py-1 text-xs`" @click="generateOrder(equipment)"><ArrowPathIcon v-if="orderSaving[equipment.id]" class="mr-1 size-4 animate-spin" /><WrenchScrewdriverIcon v-else class="mr-1 size-4" />{{ orderSaving[equipment.id] ? 'Generando…' : 'Generar OT' }}</button><span v-else-if="maintenance[equipment.id]?.state === 'PROXIMO'" class="text-xs font-semibold text-warning-strong">Próximo service</span><span v-else class="text-xs text-ink-subtle">—</span><p v-if="orderErrors[equipment.id]" class="mt-1 text-xs text-danger-strong">{{ orderErrors[equipment.id] }}</p></td>
             </tr>
           </tbody>

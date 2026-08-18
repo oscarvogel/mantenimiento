@@ -23,7 +23,7 @@ const baseData = () => ({
     total: 2,
     items: [
       {
-        id: 10, code: 'AB499OK', plate: 'AB499OK', chassis: 'CH-10', typeName: 'Camión', branchName: 'TSA Argentina',
+        id: 10, code: 'AB499OK', plate: 'AB-499-OK', chassis: 'CH-10', typeName: 'Camión', branchName: 'TSA Argentina',
         controlsKm: true, controlsHours: false, currentKm: 125430, currentHours: null, lastReadingAt: '2026-08-16 08:00:00',
       },
       {
@@ -59,6 +59,50 @@ describe('QuickReadingsPage', () => {
     expect(wrapper.findAll('tbody tr')).toHaveLength(1)
     expect(wrapper.text()).toContain('MOT-03')
     expect(wrapper.text()).not.toContain('AB499OK')
+  })
+
+  it('busca código o patente sin distinguir mayúsculas, espacios ni guiones', async () => {
+    const wrapper = mount(QuickReadingsPage, { props: { data: baseData() } })
+    const search = wrapper.find('input[type="search"]')
+
+    await search.setValue('ab499ok')
+    expect(wrapper.findAll('tbody tr')).toHaveLength(1)
+    expect(wrapper.text()).toContain('AB499OK')
+
+    await search.setValue('ab 499 ok')
+    expect(wrapper.findAll('tbody tr')).toHaveLength(1)
+    expect(wrapper.text()).toContain('AB-499-OK')
+  })
+
+  it('explica qué dato falta cuando un plan preventivo queda SIN_DATOS', () => {
+    const data = baseData()
+    data.equipment.items[0].maintenance = {
+      state: 'PROBLEMA',
+      planCount: 2,
+      primaryPlan: {
+        planId: 1, serviceName: 'Cambio de aceite de motor', state: 'SIN_DATOS', displayState: 'PROBLEMA',
+        baseKm: null, baseHours: null, baseDate: null, nextKm: null, nextHours: null, nextDate: null,
+        missingCriteria: ['KILOMETRAJE'], critical: null,
+      },
+      plans: [
+        {
+          planId: 1, serviceName: 'Cambio de aceite de motor', state: 'SIN_DATOS', displayState: 'PROBLEMA',
+          baseKm: null, baseHours: null, baseDate: null, nextKm: null, nextHours: null, nextDate: null,
+          missingCriteria: ['KILOMETRAJE'], critical: null,
+        },
+        {
+          planId: 2, serviceName: 'Filtros de combustible', state: 'SIN_DATOS', displayState: 'PROBLEMA',
+          baseKm: 120000, baseHours: null, baseDate: null, nextKm: 140000, nextHours: null, nextDate: null,
+          missingCriteria: ['FECHA'], critical: null,
+        },
+      ],
+    }
+
+    const wrapper = mount(QuickReadingsPage, { props: { data } })
+    expect(wrapper.text()).toContain('Falta última realización en km')
+    expect(wrapper.text()).toContain('Ver faltantes')
+    expect(wrapper.text()).toContain('Cambio de aceite de motor: Falta última realización en km')
+    expect(wrapper.text()).toContain('Filtros de combustible: Falta fecha de última realización')
   })
 
   it('valida una lectura menor a la actual sin impedir guardar otras filas válidas', async () => {
