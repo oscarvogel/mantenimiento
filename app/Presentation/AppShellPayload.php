@@ -28,15 +28,15 @@ final readonly class AppShellPayload
                 $navigation[] = $this->item('equipment', 'Equipos', 'mantenimiento/equipos', 'truck', $active);
                 $navigation[] = $this->item('quick-readings', 'Lecturas rápidas', 'mantenimiento/lecturas/rapidas', 'readings', $active);
             }
+            if ($this->canSeeOperations($actor)) {
+                $navigation[] = $this->item('maintenance', 'Mantenimiento', 'mantenimiento', 'wrench', $active);
+            }
             if ($actor->hasPermission('planes.ver')) {
                 $navigation[] = $this->item('plans', 'Planes preventivos', 'mantenimiento/planes', 'calendar', $active);
-            }
-            if ($this->canSeeOperations($actor)) {
-                $navigation[] = $this->item('maintenance', 'Servicios', 'mantenimiento', 'wrench', $active);
+                $navigation[] = $this->item('services', 'Servicios de mantenimiento', 'mantenimiento/servicios', 'services', $active);
             }
             if ($actor->hasPermission('importaciones.ver')) {
                 $navigation[] = $this->item('imports', 'Importaciones', 'mantenimiento/importaciones', 'upload', $active);
-                $navigation[] = $this->item('preventive-library', 'Biblioteca preventiva', 'mantenimiento/importaciones/biblioteca', 'services', $active);
             }
             if ($actor->hasPermission('sucursales.ver')) {
                 $navigation[] = $this->item('branches', 'Sucursales', 'administracion/sucursales', 'branches', $active);
