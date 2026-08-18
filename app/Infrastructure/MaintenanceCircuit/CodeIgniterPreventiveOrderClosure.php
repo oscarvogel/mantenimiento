@@ -95,7 +95,7 @@ final class CodeIgniterPreventiveOrderClosure implements PreventiveOrderClosureP
                 ));
             }
 
-            $recalculate->execute(
+            $next = $recalculate->execute(
                 $companyId,
                 (int) $prepared->workOrder->planId(),
                 $branchIds,
@@ -106,16 +106,13 @@ final class CodeIgniterPreventiveOrderClosure implements PreventiveOrderClosureP
             );
             $repository->save($prepared->workOrder, $actorUserId);
 
-            $plan = $this->database->table('planes_mantenimiento')
-                ->select('proximo_km, proximas_horas, proxima_fecha')
-                ->where('empresa_id', $companyId)->where('id', (int) $prepared->workOrder->planId())
-                ->get()->getRowArray();
-
             return [
                 'numero' => $prepared->workOrder->number()->value(),
-                'proximo_km' => $plan['proximo_km'] ?? null,
-                'proximas_horas' => $plan['proximas_horas'] ?? null,
-                'proxima_fecha' => $plan['proxima_fecha'] ?? null,
+                'proximo_km' => $next['proximo_km'],
+                'proximas_horas' => $next['proximas_horas_decimas'] === null
+                    ? null
+                    : number_format($next['proximas_horas_decimas'] / 10, 1, '.', ''),
+                'proxima_fecha' => $next['proxima_fecha'],
             ];
         });
     }
