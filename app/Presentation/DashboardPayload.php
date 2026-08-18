@@ -12,7 +12,11 @@ final class DashboardPayload
     public function fromOperations(ActorContext $actor, array $operations): array
     {
         $canEquipment = $actor->hasPermission('equipos.ver');
+        $canEditEquipment = $actor->hasPermission('equipos.editar');
         $canPlans = $actor->hasPermission('planes.ver');
+        $canEditPlans = $actor->hasPermission('planes.editar');
+        $canLoadReadings = $actor->hasPermission('lecturas.cargar');
+        $canImports = $actor->hasPermission('importaciones.ver');
         $canOrders = $actor->hasPermission('ordenes.editar');
         $equipmentUrl = $canEquipment ? base_url('mantenimiento/equipos') : '#';
         $plansUrl = $canPlans ? base_url('mantenimiento/planes') : '#';
@@ -25,9 +29,15 @@ final class DashboardPayload
             ),
             'links' => [
                 'equipment' => $equipmentUrl,
+                'equipmentCreate' => $canEditEquipment ? $equipmentUrl . '#nuevo-equipo' : '#',
                 'maintenance' => $plansUrl,
+                'assignPlan' => $canEditPlans ? $plansUrl : '#',
+                'registerMaintenance' => $canEquipment ? $equipmentUrl : '#',
+                'quickReadings' => $canLoadReadings ? base_url('mantenimiento/lecturas/rapidas') : '#',
+                'library' => $canImports ? base_url('mantenimiento/importaciones/biblioteca') : '#',
                 'maintenanceDueSoon' => $canPlans ? $this->plansFilterUrl('PROXIMO') : '#',
                 'maintenanceOverdue' => $canPlans ? $this->plansFilterUrl('VENCIDO') : '#',
+                'maintenanceMissingData' => $canPlans ? $this->plansFilterUrl('SIN_DATOS') : '#',
             ],
         ];
     }

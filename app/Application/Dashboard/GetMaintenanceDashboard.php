@@ -48,11 +48,13 @@ final class GetMaintenanceDashboard
 
         $statusCounts = array_fill_keys(array_column(EstadoPlan::cases(), 'value'), 0);
         $maintenance = [];
+        $equipmentIdsWithPlans = [];
         foreach ($evaluations as $result) {
             $plan = $result['plan'];
             $evaluation = $result['evaluation'];
             $state = $evaluation->estado()->value;
             $statusCounts[$state]++;
+            $equipmentIdsWithPlans[$plan->equipoId()] = true;
             $row = $planRows[(int) $plan->id()] ?? null;
             if ($row === null) {
                 continue;
@@ -76,6 +78,11 @@ final class GetMaintenanceDashboard
         ][$right['status']]);
 
         $activeEquipment = count(array_filter($equipment, static fn (array $item): bool => $item['estado'] === 'ACTIVO'));
+        $equipmentWithoutPlans = count(array_filter(
+            $equipment,
+            static fn (array $item): bool => $item['estado'] === 'ACTIVO'
+                && ! isset($equipmentIdsWithPlans[(int) $item['id']]),
+        ));
         $openOrders = count(array_filter($orders, static fn (array $item): bool => ! in_array($item['estado'], ['FINALIZADA', 'CANCELADA'], true)));
 
         return [
@@ -84,8 +91,11 @@ final class GetMaintenanceDashboard
             'metrics' => [
                 'equipmentTotal' => count($equipment),
                 'equipmentActive' => $activeEquipment,
+                'equipmentWithoutPlans' => $equipmentWithoutPlans,
+                'plansConfigured' => count($planRows),
                 'maintenanceDueSoon' => $statusCounts[EstadoPlan::PROXIMO->value],
                 'maintenanceOverdue' => $statusCounts[EstadoPlan::VENCIDO->value],
+                'maintenanceMissingData' => $statusCounts[EstadoPlan::SIN_DATOS->value],
                 'maintenanceScheduled' => $statusCounts[EstadoPlan::AL_DIA->value],
                 'openOrders' => $openOrders,
             ],
