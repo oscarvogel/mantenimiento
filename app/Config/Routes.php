@@ -77,6 +77,7 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->post('importaciones/biblioteca/items/(:num)', 'ImportManagement::updateLibraryItem/$1', ['filter' => 'permission:importaciones.cargar']);
     $routes->get('importaciones/biblioteca/tareas/buscar', 'LibraryTaskCatalog::search', ['filter' => 'permission:importaciones.cargar']);
     $routes->post('importaciones/biblioteca/tareas/(:num)', 'ImportManagement::updateLibraryTask/$1', ['filter' => 'permission:importaciones.cargar']);
+    $routes->post('importaciones/biblioteca/tareas/(:num)/estado', 'LibraryTaskCatalog::status/$1', ['filter' => 'permission:importaciones.cargar']);
     $routes->post('importaciones/biblioteca/tareas/(:num)/desvincular', 'LibraryTaskLinks::detach/$1', ['filter' => 'permission:importaciones.cargar']);
     $routes->post('importaciones/biblioteca/servicios/(:num)/tareas', 'LibraryTaskCatalog::link/$1', ['filter' => 'permission:importaciones.cargar']);
     $routes->post('importaciones/biblioteca/servicios/(:num)/tareas/nueva', 'LibraryTaskCatalog::createAndLink/$1', ['filter' => 'permission:importaciones.cargar']);
