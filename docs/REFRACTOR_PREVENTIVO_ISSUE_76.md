@@ -10,111 +10,57 @@ El dominio preventivo converge a tres conceptos visibles:
 
 No se crearán nuevas entidades paralelas para representar lo mismo.
 
-## Mapeo del esquema actual
+## Decisión de cutover
 
-### Se conservan y evolucionan
+La Biblioteca preventiva y sus Plantillas se descartan. No se migran sus datos de prueba al modelo nuevo. Los Servicios y sus asignaciones se reconstruyen desde la UI nueva.
 
-- `tipos_servicio` → pasa a ser la entidad maestra visible **Servicio de mantenimiento**.
-- `tareas_mantenimiento` → catálogo reusable de tareas.
-- `tipo_servicio_tareas` → relación Servicio ↔ Tarea.
-- `tipo_servicio_materiales` → relación Servicio ↔ material/repuesto sugerido.
-- `avisos_plan` → se conserva como aviso de una asignación próxima/vencida mientras el nombre físico `plan_id` siga en compatibilidad.
-- `ordenes_trabajo`, `orden_tareas` y relaciones existentes → se conservan; deben seguir guardando el snapshot histórico de la ejecución.
+Excel queda fuera del P0. Si se retoma, debe escribir sobre el mismo catálogo de Servicios.
 
-### Se reutiliza como compatibilidad y luego se simplifica
+## Fuente de verdad
 
-- `planes_mantenimiento` → representa transitoriamente la asignación Equipo ↔ Servicio.
+`tipos_servicio` es la definición maestra del Servicio:
 
-Durante la transición mantiene sus columnas actuales para no romper el motor de vencimientos. Una vez que todos los lectores/escritores tomen frecuencia y anticipación desde `tipos_servicio`, las columnas duplicadas de frecuencia/anticipación y origen de plantilla se retirarán mediante una migración posterior.
+- frecuencia km / horas / días;
+- anticipación km / horas / días;
+- prioridad;
+- tareas;
+- materiales/repuestos;
+- empresa y estado.
 
-### Se retiran después del cutover
+La asignación Equipo ↔ Servicio conserva solamente lo específico del equipo: bases/última realización, estado, observaciones y trazabilidad. Durante el cutover sigue persistida físicamente en `planes_mantenimiento`, pero frecuencia y anticipación ya no deben ser entradas del operador.
 
-- `plantillas_mantenimiento`.
-- `plantilla_mantenimiento_items`.
-- gateways/casos de uso/UI cuyo único propósito sea materializar plantillas en planes.
+## Corte implementado en PR #77
 
-No se eliminan en la primera migración para mantener la rama ejecutable y permitir un cutover controlado.
+### Catálogo único
 
-## Fuente de verdad de frecuencia
+- `/mantenimiento/servicios` crea y edita Servicios sin Excel;
+- frecuencia y anticipación pertenecen al Servicio;
+- navegación deja de exponer Biblioteca preventiva;
+- tareas se administran contra el Servicio y no contra Plantillas.
 
-La fuente de verdad objetivo es `tipos_servicio`:
+### Asignación directa desde Equipo
 
-- `intervalo_km`
-- `intervalo_horas`
-- `intervalo_dias`
-- `anticipacion_km`
-- `anticipacion_horas`
-- `anticipacion_dias`
-- `prioridad`
+El drawer de equipos pasó de `Agregar planes/plantillas` a **Asignar servicios**:
 
-Debe existir al menos un intervalo válido para que un servicio pueda asignarse como preventivo.
+1. busca servicios activos de la empresa;
+2. excluye servicios ya asignados;
+3. excluye servicios incompatibles con las lecturas que controla el equipo;
+4. muestra frecuencia, anticipación y prioridad sólo como información;
+5. solicita únicamente la última realización/base aplicable (km, horas y/o fecha);
+6. permite asignar varios servicios en una operación de UI.
 
-La asignación Equipo ↔ Servicio conserva solamente:
+El caso de uso de asignación ignora frecuencia/anticipación recibida por formularios legacy y obtiene la definición activa directamente de `tipos_servicio` con scope de empresa. La prioridad también se toma del Servicio.
 
-- empresa/equipo/servicio;
-- base km/horas/fecha;
-- estado activo;
-- observaciones específicas;
-- trazabilidad.
+Esto permite mantener temporalmente `planes_mantenimiento` sin que continúe siendo fuente de configuración para nuevas asignaciones.
 
-No habrá overrides de frecuencia por equipo en esta etapa.
+## Siguiente corte
 
-## Multiempresa
-
-`tipos_servicio` hoy es global. El modelo objetivo necesita scope explícito por empresa.
-
-La primera migración agrega `empresa_id` nullable de forma transitoria para no inventar una pertenencia de registros existentes. Como los datos preventivos actuales son de prueba, el cutover definitivo podrá resetear esos datos y luego exigir `empresa_id NOT NULL` con unicidad `empresa_id + codigo`.
-
-No se debe exponer a una empresa un servicio perteneciente a otra.
-
-## Avance implementado en PR #77
-
-La fase de fundaciones ya está acompañada por el primer corte funcional del catálogo único:
-
-- nueva pantalla `/mantenimiento/servicios`;
-- alta manual de servicios sin depender de Excel;
-- edición, activación e inactivación;
-- frecuencia y anticipación configuradas directamente en el Servicio;
-- validación de al menos un criterio de frecuencia y anticipación menor al intervalo;
-- prioridad del Servicio;
-- scope de empresa y permisos validados en servidor y en el caso de uso;
-- conteo visible de tareas y materiales asociados;
-- navegación separada: `Mantenimiento` para operación y `Servicios de mantenimiento` para el catálogo;
-- `Biblioteca preventiva` deja de mostrarse como módulo de navegación.
-
-Los endpoints legacy de Biblioteca permanecen temporalmente para no romper el importador ni la administración de tareas durante el cutover. No representan un segundo catálogo.
-
-## Estrategia de implementación
-
-### Fase A — Fundaciones sin romper el flujo actual
-
-- agregar a `tipos_servicio` empresa, frecuencia, anticipación, prioridad y auditoría necesarias;
-- mantener las tablas/columnas legacy para compatibilidad;
-- documentar el modelo y agregar cobertura de migración.
-
-### Fase B — Catálogo único de Servicios (#74)
-
-- CRUD de Servicio de mantenimiento; **iniciado**;
-- frecuencia/anticipación en el Servicio; **implementado en el primer corte**;
-- tareas y materiales dentro del mismo detalle; **siguiente corte**;
-- importar Excel al mismo catálogo;
-- dejar de presentar `Biblioteca preventiva` como módulo separado; **navegación ya ajustada**.
-
-### Fase C — Asignación directa (#73)
-
-- reemplazar `Asignar plan` por `Asignar servicio`;
-- elegir servicios activos de la empresa;
-- cargar base/última realización;
-- impedir duplicados Equipo + Servicio;
-- calcular vencimientos usando definición del Servicio.
-
-### Fase D — Cutover
-
-- adaptar avisos, lecturas rápidas, dashboard y OT al nuevo contrato;
-- retirar materialización desde plantillas;
-- eliminar tablas de plantillas y columnas duplicadas del plan/asignación;
-- actualizar importación, navegación y textos;
-- ejecutar/resetear datos preventivos de prueba de forma explícita y documentada.
+1. hacer que lectura/evaluación de asignaciones existentes hidrate frecuencia desde Servicio, no desde columnas duplicadas del plan;
+2. adaptar edición para que sólo permita bases/última realización y observaciones;
+3. adaptar cierre de OT para recalcular usando la definición vigente del Servicio;
+4. resetear datos preventivos de prueba;
+5. retirar columnas de frecuencia/origen de plantilla y tablas de Plantillas;
+6. eliminar endpoints/componentes legacy de Biblioteca.
 
 ## Invariantes
 
