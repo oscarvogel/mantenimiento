@@ -218,12 +218,12 @@ const setupSteps = computed(() => {
             :key="step.label"
             :href="step.href"
             class="rounded-lg border p-4 transition hover:shadow-sm"
-            :class="step.done ? 'border-success/30 bg-success-subtle' : 'border-border bg-canvas'"
+            :class="step.done ? 'border-success/30 bg-success-subtle' : 'border-border bg-surface-subtle'"
           >
             <div class="flex items-center gap-3">
               <span
                 class="flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-bold"
-                :class="step.done ? 'bg-success text-white' : 'bg-muted text-ink-muted'"
+                :class="step.done ? 'bg-success text-white' : 'bg-surface-muted text-ink-muted'"
               >
                 {{ step.done ? '✓' : index + 1 }}
               </span>
