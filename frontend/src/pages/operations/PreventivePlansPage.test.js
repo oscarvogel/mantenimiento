@@ -77,12 +77,11 @@ describe('PreventivePlansPage', () => {
     expect(modal.text()).toContain('Cambio de aceite de motor')
     expect(modal.text()).toContain('AC532DD')
     expect(modal.find('form').attributes('action')).toBe('/mantenimiento/planes/77/editar')
-    expect(modal.find('#edit-km-77').element.value).toBe('20000')
-    expect(modal.find('#edit-wkm-77').element.value).toBe('1000')
     expect(modal.find('#edit-bkm-77').element.value).toBe('120000')
-    expect(modal.find('#edit-days-77').element.value).toBe('365')
     expect(modal.find('#edit-bdate-77').element.value).toBe('2026-08-01')
-    expect(modal.find('#edit-priority-77').element.value).toBe('ALTA')
+    expect(modal.find('input[name="intervalo_km"]').exists()).toBe(false)
+    expect(modal.find('input[name="anticipacion_km"]').exists()).toBe(false)
+    expect(modal.find('input[name="prioridad"]').exists()).toBe(false)
     expect(modal.find('#edit-notes-77').element.value).toBe('Propuesta general.')
   })
 
@@ -91,7 +90,7 @@ describe('PreventivePlansPage', () => {
     const wrapper = mount(PreventivePlansPage, { props: { data } })
 
     await wrapper.find('[data-testid="edit-plan-77"]').trigger('click')
-    await wrapper.find('#edit-km-77').setValue('25000')
+    await wrapper.find('#edit-bkm-77').setValue('125000')
     await wrapper.find('[data-testid="edit-plan-modal"] button[type="button"]:last-of-type').trigger('click')
 
     expect(wrapper.find('[data-testid="edit-plan-modal"]').exists()).toBe(false)
@@ -102,7 +101,7 @@ describe('PreventivePlansPage', () => {
     const wrapper = mount(PreventivePlansPage, { props: { data: baseData() } })
     await wrapper.find('[data-testid="edit-plan-77"]').trigger('click')
 
-    expect(wrapper.find('#edit-hours-77').exists()).toBe(false)
-    expect(wrapper.find('#edit-km-77').exists()).toBe(true)
+    expect(wrapper.find('#edit-bhours-77').exists()).toBe(false)
+    expect(wrapper.find('#edit-bkm-77').exists()).toBe(true)
   })
 })

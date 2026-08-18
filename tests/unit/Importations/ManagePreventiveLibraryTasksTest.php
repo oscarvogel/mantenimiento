@@ -125,7 +125,7 @@ final class ManagePreventiveLibraryTasksTest extends TestCase
         $gateway->ownedService = false;
 
         $this->expectException(DomainException::class);
-        $this->expectExceptionMessage('no pertenece a la biblioteca de esta empresa');
+        $this->expectExceptionMessage('no existe o no pertenece a la empresa activa');
 
         (new ManagePreventiveLibraryTasks($gateway))->search($this->actor(), 'filtro', 99);
     }
@@ -136,14 +136,14 @@ final class ManagePreventiveLibraryTasksTest extends TestCase
         $actor = new ActorContext(12, 7, false, false, ['Consulta'], ['importaciones.ver'], []);
 
         $this->expectException(DomainException::class);
-        $this->expectExceptionMessage('No tenes permiso');
+        $this->expectExceptionMessage('No tenés permiso');
 
         (new ManagePreventiveLibraryTasks($gateway))->search($actor, 'filtro', 4);
     }
 
     private function actor(): ActorContext
     {
-        return new ActorContext(12, 7, false, true, ['Administrador'], ['importaciones.ver', 'importaciones.cargar'], []);
+        return new ActorContext(12, 7, false, true, ['Administrador'], ['planes.ver', 'planes.editar'], []);
     }
 
     private function gateway(): object

@@ -31,7 +31,7 @@ final class ManagePreventiveLibraryTaskStatusTest extends TestCase
         $manager = new ManagePreventiveLibraryTasks($gateway);
 
         $this->expectException(DomainException::class);
-        $this->expectExceptionMessage('No tenes permiso');
+        $this->expectExceptionMessage('No tenés permiso');
         $manager->setActive($this->actor([]), 10, 20, false);
     }
 

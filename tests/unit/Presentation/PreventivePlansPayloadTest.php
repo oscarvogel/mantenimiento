@@ -116,7 +116,7 @@ final class PreventivePlansPayloadTest extends CIUnitTestCase
         ], $nextQuery);
     }
 
-    public function testSerializesTemplateDefaultsForPlanCreation(): void
+    public function testDoesNotExposeLegacyTemplateDefaultsForPlanCreation(): void
     {
         $payload = (new PreventivePlansPayload())->fromPage(
             new PreventivePlanPage(
@@ -164,28 +164,10 @@ final class PreventivePlansPayloadTest extends CIUnitTestCase
         );
 
         self::assertSame(4, $payload['catalogs']['equipment'][0]['typeId']);
-        self::assertSame([
-            'id' => 15,
-            'templateId' => 3,
-            'templateName' => 'Preventivo camiones',
-            'equipmentTypeId' => 4,
-            'equipmentTypeName' => 'Camión',
-            'brand' => null,
-            'model' => null,
-            'serviceTypeId' => 6,
-            'serviceName' => 'Cambio de aceite',
-            'intervalKm' => 10000,
-            'intervalHours' => null,
-            'intervalDays' => 180,
-            'warningKm' => 1000,
-            'warningHours' => null,
-            'warningDays' => 15,
-            'priority' => 'MEDIA',
-            'notes' => 'Aceite y filtros',
-        ], $payload['catalogs']['templateDefaults'][0]);
+        self::assertSame([], $payload['catalogs']['templateDefaults']);
     }
 
-    public function testSerializesGenericTemplateWithoutCastingItsTypeToZero(): void
+    public function testDoesNotExposeLegacyGenericTemplateDefaults(): void
     {
         $payload = (new PreventivePlansPayload())->fromPage(
             new PreventivePlanPage([], 1, 10, 0, [], [], [], [[
@@ -199,7 +181,6 @@ final class PreventivePlansPayloadTest extends CIUnitTestCase
             [], true, true,
         );
 
-        self::assertNull($payload['catalogs']['templateDefaults'][0]['equipmentTypeId']);
-        self::assertSame('Genérica', $payload['catalogs']['templateDefaults'][0]['equipmentTypeName']);
+        self::assertSame([], $payload['catalogs']['templateDefaults']);
     }
 }

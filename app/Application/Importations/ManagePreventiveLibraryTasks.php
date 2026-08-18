@@ -161,7 +161,11 @@ final readonly class ManagePreventiveLibraryTasks
 
     private function editableCompanyId(ActorContext $actor): int
     {
-        if ($actor->isSuperAdmin() || $actor->companyId() === null || ! $actor->hasPermission('planes.editar')) {
+        if (
+            $actor->isSuperAdmin()
+            || $actor->companyId() === null
+            || (! $actor->hasPermission('planes.editar') && ! $actor->hasPermission('importaciones.cargar'))
+        ) {
             throw new DomainException('No tenés permiso para modificar servicios de mantenimiento.');
         }
         return $actor->companyId();

@@ -48,18 +48,20 @@ describe('TaskEditModal', () => {
     await wrapper.setProps({ open: true })
     await flushPromises()
 
-    const active = wrapper.find('input[name="activo"]')
-    const requiresPhoto = wrapper.find('input[name="requiere_foto"]')
-    expect(active.exists()).toBe(true)
-    expect(requiresPhoto.exists()).toBe(true)
+    const active = document.querySelector('[role="dialog"] input[name="activo"]')
+    const requiresPhoto = document.querySelector('[role="dialog"] input[name="requiere_foto"]')
+    expect(active).not.toBeNull()
+    expect(requiresPhoto).not.toBeNull()
 
-    await active.setValue(false)
-    await requiresPhoto.setValue(true)
+    active.checked = false
+    active.dispatchEvent(new Event('change', { bubbles: true }))
+    requiresPhoto.checked = true
+    requiresPhoto.dispatchEvent(new Event('change', { bubbles: true }))
     await flushPromises()
 
     expect(fetchMock).not.toHaveBeenCalled()
 
-    await wrapper.find('form').trigger('submit')
+    document.querySelector('[role="dialog"] form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
     await flushPromises()
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
