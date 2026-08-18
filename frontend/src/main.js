@@ -79,8 +79,10 @@ if (root) {
     installEquipmentComboboxes(root, payload?.data?.catalogs?.equipment ?? [])
     installTemplateServicePicker(root, payload?.data?.catalogs ?? {})
   }
-  if (payload?.page === 'equipment-detail') {
+  if (['equipment-detail', 'assets-index'].includes(payload?.page)) {
     installQuickPlanAssignment(root, payload)
+  }
+  if (payload?.page === 'equipment-detail') {
     installEquipmentAssignedPlans(root, payload)
   }
   if (serverPayload) consumeFlash(serverPayload.data?.flash)

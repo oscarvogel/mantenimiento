@@ -46,6 +46,17 @@ export function matchesTemplateQuery(item, query) {
   return haystack.includes(needle)
 }
 
+export function assignmentContextFromUrl(href, baseUrl = 'http://localhost/') {
+  try {
+    const url = new URL(href, baseUrl)
+    const equipmentId = Number(url.searchParams.get('equipo_id') ?? 0)
+    if (!equipmentId || !url.pathname.includes('/planes')) return null
+    return { equipmentId, sourceUrl: url.toString() }
+  } catch {
+    return null
+  }
+}
+
 function escapeHtml(value) {
   return String(value ?? '')
     .replaceAll('&', '&amp;')
@@ -114,11 +125,10 @@ function createDrawer() {
 }
 
 export function installQuickPlanAssignment(root, serverPayload) {
-  if (!root || serverPayload?.page !== 'equipment-detail') return
+  if (!root || !['equipment-detail', 'assets-index'].includes(serverPayload?.page)) return
 
-  const equipmentId = Number(serverPayload?.data?.equipment?.id ?? 0)
-  const sourceUrl = serverPayload?.data?.routes?.addPlansFromTemplate
-  if (!equipmentId || !sourceUrl) return
+  let equipmentId = Number(serverPayload?.data?.equipment?.id ?? 0)
+  let sourceUrl = serverPayload?.data?.routes?.addPlansFromTemplate ?? ''
 
   const drawer = createDrawer()
   const equipmentLabel = drawer.querySelector('[data-quick-plan-equipment]')
@@ -130,7 +140,6 @@ export function installQuickPlanAssignment(root, serverPayload) {
   const count = drawer.querySelector('[data-quick-plan-count]')
   const selected = new Set()
   let currentPayload = null
-  let currentEquipment = null
   let currentTemplates = []
   let busy = false
 
@@ -177,7 +186,7 @@ export function installQuickPlanAssignment(root, serverPayload) {
   const hydrate = (payload) => {
     currentPayload = payload
     const data = payload?.data ?? {}
-    currentEquipment = (data.catalogs?.equipment ?? []).find((item) => Number(item.id) === equipmentId) ?? null
+    const currentEquipment = (data.catalogs?.equipment ?? []).find((item) => Number(item.id) === equipmentId) ?? null
     if (!currentEquipment) throw new Error('El equipo ya no está disponible para asignar planes.')
     currentTemplates = compatibleTemplates(currentEquipment, data.catalogs?.templateDefaults ?? [])
     equipmentLabel.textContent = `${currentEquipment.code} · ${currentEquipment.typeName} · ${currentEquipment.branchName}`
@@ -261,7 +270,17 @@ export function installQuickPlanAssignment(root, serverPayload) {
 
   root.addEventListener('click', async (event) => {
     const anchor = event.target.closest('a')
-    if (!anchor || anchor.href !== sourceUrl) return
+    if (!anchor) return
+
+    if (serverPayload.page === 'assets-index') {
+      const context = assignmentContextFromUrl(anchor.href, window.location.href)
+      if (!context) return
+      equipmentId = context.equipmentId
+      sourceUrl = context.sourceUrl
+    } else if (anchor.href !== sourceUrl) {
+      return
+    }
+
     event.preventDefault()
     drawer.classList.remove('hidden')
     document.body.classList.add('overflow-hidden')
