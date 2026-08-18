@@ -10,16 +10,14 @@ use DomainException;
 
 final readonly class CodeIgniterMaintenanceServiceCatalog implements MaintenanceServiceCatalog
 {
-    public function __construct(private BaseConnection $db)
-    {
-    }
+    public function __construct(private BaseConnection $db) {}
 
     public function listForCompany(int $companyId): array
     {
         $builder = $this->db->table('tipos_servicio s')
             ->select('s.id, s.empresa_id, s.codigo, s.nombre, s.descripcion, s.categoria, s.intervalo_km, s.intervalo_horas, s.intervalo_dias, s.anticipacion_km, s.anticipacion_horas, s.anticipacion_dias, s.prioridad, s.activo')
             ->select('(SELECT COUNT(*) FROM tipo_servicio_tareas st WHERE st.tipo_servicio_id = s.id) AS tareas_count', false)
-            ->select('(SELECT COUNT(*) FROM tipo_servicio_materiales sm WHERE sm.tipo_servicio_id = s.id AND sm.activo = 1) AS materiales_count', false)
+            ->select('(SELECT COUNT(*) FROM tipo_servicio_materiales sm WHERE sm.tipo_servicio_id = s.id AND sm.tarea_id IS NOT NULL AND sm.activo = 1) AS materiales_count', false)
             ->where('s.empresa_id', $companyId)
             ->orderBy('s.activo', 'DESC')->orderBy('s.nombre', 'ASC');
 
@@ -30,7 +28,6 @@ final readonly class CodeIgniterMaintenanceServiceCatalog implements Maintenance
             $row['tareas_count'] = (int) $row['tareas_count'];
             $row['materiales_count'] = (int) $row['materiales_count'];
             $row['tasks'] = [];
-            $row['materials'] = [];
             return $row;
         }, $builder->get()->getResultArray()));
 
@@ -44,35 +41,41 @@ final readonly class CodeIgniterMaintenanceServiceCatalog implements Maintenance
             ->whereIn('st.tipo_servicio_id', $serviceIds)
             ->orderBy('st.tipo_servicio_id', 'ASC')->orderBy('st.orden', 'ASC')
             ->get()->getResultArray();
+
         foreach ($taskRows as $task) {
             $serviceId = (int) $task['tipo_servicio_id'];
             $tasksByService[$serviceId][] = [
                 'id' => (int) $task['tarea_id'], 'code' => (string) $task['codigo'], 'name' => (string) $task['nombre'],
                 'active' => (bool) $task['activo'], 'order' => (int) $task['orden'], 'mandatory' => (bool) $task['obligatoria'],
-                'observations' => $task['observaciones'],
+                'observations' => $task['observaciones'], 'materials' => [],
             ];
         }
 
-        $materialsByService = [];
+        $materialsByTask = [];
         $materialRows = $this->db->table('tipo_servicio_materiales')
-            ->select('id, tipo_servicio_id, descripcion, tipo_item, unidad, cantidad_referencia, cantidad_variable, obligatorio, observaciones, activo')
+            ->select('id, tipo_servicio_id, tarea_id, descripcion, tipo_item, unidad, cantidad_referencia, cantidad_variable, obligatorio, observaciones, activo')
             ->whereIn('tipo_servicio_id', $serviceIds)
-            ->orderBy('tipo_servicio_id', 'ASC')->orderBy('id', 'ASC')
+            ->where('tarea_id IS NOT NULL', null, false)
+            ->orderBy('tipo_servicio_id', 'ASC')->orderBy('tarea_id', 'ASC')->orderBy('id', 'ASC')
             ->get()->getResultArray();
+
         foreach ($materialRows as $row) {
-            $serviceId = (int) $row['tipo_servicio_id'];
-            $materialsByService[$serviceId][] = [
-                'id' => (int) $row['id'], 'description' => (string) $row['descripcion'], 'type' => (string) $row['tipo_item'],
+            $taskId = (int) $row['tarea_id'];
+            $materialsByTask[$taskId][] = [
+                'id' => (int) $row['id'], 'taskId' => $taskId, 'description' => (string) $row['descripcion'], 'type' => (string) $row['tipo_item'],
                 'unit' => (string) $row['unidad'], 'quantity' => $row['cantidad_referencia'] === null ? null : (string) $row['cantidad_referencia'],
                 'variableQuantity' => (bool) $row['cantidad_variable'], 'mandatory' => (bool) $row['obligatorio'],
                 'observations' => $row['observaciones'], 'active' => (bool) $row['activo'],
             ];
         }
 
-        foreach ($services as &$service) {
-            $service['tasks'] = $tasksByService[$service['id']] ?? [];
-            $service['materials'] = $materialsByService[$service['id']] ?? [];
+        foreach ($tasksByService as &$tasks) {
+            foreach ($tasks as &$task) $task['materials'] = $materialsByTask[$task['id']] ?? [];
+            unset($task);
         }
+        unset($tasks);
+
+        foreach ($services as &$service) $service['tasks'] = $tasksByService[$service['id']] ?? [];
         unset($service);
         return $services;
     }
@@ -109,10 +112,11 @@ final readonly class CodeIgniterMaintenanceServiceCatalog implements Maintenance
     public function createMaterial(int $companyId, int $serviceId, int $actorId, array $data): array
     {
         $this->findScoped($companyId, $serviceId);
+        $this->assertTaskBelongsToService($serviceId, (int) $data['tarea_id']);
         $now = date('Y-m-d H:i:s');
         $code = 'MAT-' . $serviceId . '-' . strtoupper(substr(hash('sha256', $data['descripcion'] . microtime(true)), 0, 10));
         $this->db->table('tipo_servicio_materiales')->insert([
-            'tipo_servicio_id' => $serviceId, 'codigo' => $code, 'descripcion' => $data['descripcion'],
+            'tipo_servicio_id' => $serviceId, 'tarea_id' => $data['tarea_id'], 'codigo' => $code, 'descripcion' => $data['descripcion'],
             'tipo_item' => $data['tipo_item'], 'unidad' => $data['unidad'], 'cantidad_referencia' => $data['cantidad_referencia'],
             'cantidad_variable' => $data['cantidad_variable'] ? 1 : 0, 'codigo_repuesto_catalogo' => null,
             'obligatorio' => $data['obligatorio'] ? 1 : 0, 'observaciones' => $data['observaciones'], 'activo' => 1,
@@ -127,8 +131,9 @@ final readonly class CodeIgniterMaintenanceServiceCatalog implements Maintenance
     {
         $this->findScoped($companyId, $serviceId);
         $this->findMaterial($serviceId, $materialId);
+        $this->assertTaskBelongsToService($serviceId, (int) $data['tarea_id']);
         $this->db->table('tipo_servicio_materiales')->where('id', $materialId)->where('tipo_servicio_id', $serviceId)->update([
-            'descripcion' => $data['descripcion'], 'tipo_item' => $data['tipo_item'], 'unidad' => $data['unidad'],
+            'tarea_id' => $data['tarea_id'], 'descripcion' => $data['descripcion'], 'tipo_item' => $data['tipo_item'], 'unidad' => $data['unidad'],
             'cantidad_referencia' => $data['cantidad_referencia'], 'cantidad_variable' => $data['cantidad_variable'] ? 1 : 0,
             'obligatorio' => $data['obligatorio'] ? 1 : 0, 'observaciones' => $data['observaciones'], 'updated_at' => date('Y-m-d H:i:s'),
         ]);
@@ -146,9 +151,18 @@ final readonly class CodeIgniterMaintenanceServiceCatalog implements Maintenance
 
     private function materialResponse(int $id, array $data, bool $active): array
     {
-        return ['id' => $id, 'description' => $data['descripcion'], 'type' => $data['tipo_item'], 'unit' => $data['unidad'],
+        return ['id' => $id, 'taskId' => (int) $data['tarea_id'], 'description' => $data['descripcion'], 'type' => $data['tipo_item'], 'unit' => $data['unidad'],
             'quantity' => $data['cantidad_referencia'], 'variableQuantity' => $data['cantidad_variable'], 'mandatory' => $data['obligatorio'],
             'observations' => $data['observaciones'], 'active' => $active];
+    }
+
+    private function assertTaskBelongsToService(int $serviceId, int $taskId): void
+    {
+        $exists = $this->db->table('tipo_servicio_tareas')
+            ->where('tipo_servicio_id', $serviceId)
+            ->where('tarea_id', $taskId)
+            ->countAllResults() > 0;
+        if (! $exists) throw new DomainException('La tarea no pertenece al servicio indicado.');
     }
 
     private function findScoped(int $companyId, int $serviceId): array
