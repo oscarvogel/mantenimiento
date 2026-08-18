@@ -1,0 +1,94 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Infrastructure\PreventiveMaintenance;
+
+use App\Application\PreventiveMaintenance\Port\MaintenanceServiceCatalog;
+use CodeIgniter\Database\BaseConnection;
+use DomainException;
+use Throwable;
+
+final readonly class CodeIgniterMaintenanceServiceCatalog implements MaintenanceServiceCatalog
+{
+    public function __construct(private BaseConnection $db)
+    {
+    }
+
+    public function listForCompany(int $companyId): array
+    {
+        $builder = $this->db->table('tipos_servicio s')
+            ->select('s.id, s.empresa_id, s.codigo, s.nombre, s.descripcion, s.categoria, s.intervalo_km, s.intervalo_horas, s.intervalo_dias, s.anticipacion_km, s.anticipacion_horas, s.anticipacion_dias, s.prioridad, s.activo')
+            ->select('(SELECT COUNT(*) FROM tipo_servicio_tareas st WHERE st.tipo_servicio_id = s.id) AS tareas_count', false)
+            ->select('(SELECT COUNT(*) FROM tipo_servicio_materiales sm WHERE sm.tipo_servicio_id = s.id AND sm.activo = 1) AS materiales_count', false)
+            ->groupStart()->where('s.empresa_id', $companyId)->orWhere('s.empresa_id', null)->groupEnd()
+            ->orderBy('s.activo', 'DESC')->orderBy('s.nombre', 'ASC');
+
+        return array_values(array_map(static function (array $row): array {
+            $row['id'] = (int) $row['id'];
+            $row['empresa_id'] = $row['empresa_id'] === null ? null : (int) $row['empresa_id'];
+            $row['activo'] = (bool) $row['activo'];
+            $row['tareas_count'] = (int) $row['tareas_count'];
+            $row['materiales_count'] = (int) $row['materiales_count'];
+            return $row;
+        }, $builder->get()->getResultArray()));
+    }
+
+    public function create(int $companyId, int $actorId, array $data): int
+    {
+        $this->ensureCodeAvailable($companyId, (string) $data['codigo']);
+        $now = date('Y-m-d H:i:s');
+        $this->db->table('tipos_servicio')->insert($data + [
+            'empresa_id' => $companyId,
+            'activo' => 1,
+            'created_by' => $actorId,
+            'updated_by' => $actorId,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        $id = (int) $this->db->insertID();
+        if ($id <= 0) throw new DomainException('No se pudo crear el servicio de mantenimiento.');
+        return $id;
+    }
+
+    public function update(int $companyId, int $serviceId, int $actorId, array $data): void
+    {
+        $row = $this->findScoped($companyId, $serviceId);
+        $this->ensureCodeAvailable($companyId, (string) $data['codigo'], $serviceId);
+        $payload = $data + ['updated_by' => $actorId, 'updated_at' => date('Y-m-d H:i:s')];
+        // Los registros legacy sin empresa se adoptan por la empresa que los edita durante el cutover.
+        if ($row['empresa_id'] === null) $payload['empresa_id'] = $companyId;
+        $this->db->table('tipos_servicio')->where('id', $serviceId)->update($payload);
+    }
+
+    public function setActive(int $companyId, int $serviceId, int $actorId, bool $active): void
+    {
+        $row = $this->findScoped($companyId, $serviceId);
+        $payload = [
+            'activo' => $active ? 1 : 0,
+            'updated_by' => $actorId,
+            'updated_at' => date('Y-m-d H:i:s'),
+        ];
+        if ($row['empresa_id'] === null) $payload['empresa_id'] = $companyId;
+        $this->db->table('tipos_servicio')->where('id', $serviceId)->update($payload);
+    }
+
+    private function findScoped(int $companyId, int $serviceId): array
+    {
+        $row = $this->db->table('tipos_servicio')
+            ->select('id, empresa_id, codigo')
+            ->where('id', $serviceId)
+            ->groupStart()->where('empresa_id', $companyId)->orWhere('empresa_id', null)->groupEnd()
+            ->get()->getRowArray();
+        if ($row === null) throw new DomainException('El servicio no existe o no pertenece a la empresa activa.');
+        return $row;
+    }
+
+    private function ensureCodeAvailable(int $companyId, string $code, ?int $exceptId = null): void
+    {
+        // Mientras exista la restricción legacy global sobre `codigo`, evitamos un error SQL opaco.
+        $builder = $this->db->table('tipos_servicio')->where('codigo', $code);
+        if ($exceptId !== null) $builder->where('id !=', $exceptId);
+        if ($builder->countAllResults() > 0) throw new DomainException('Ya existe un servicio con ese código.');
+    }
+}
