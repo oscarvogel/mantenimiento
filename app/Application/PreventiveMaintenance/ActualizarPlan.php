@@ -20,36 +20,37 @@ final readonly class ActualizarPlan
     public function execute(ActualizarPlanCommand $command): int
     {
         if (! $command->actor->hasPermission('planes.editar')) {
-            throw new DomainException('No tiene permiso para modificar planes de mantenimiento.');
+            throw new DomainException('No tiene permiso para modificar asignaciones de mantenimiento.');
         }
 
         if (! $command->actor->canAccessCompany($command->companyId) || $command->actor->isSuperAdmin()) {
-            throw new DomainException('El plan solicitado queda fuera del alcance empresarial del usuario.');
+            throw new DomainException('La asignación solicitada queda fuera del alcance empresarial del usuario.');
         }
 
         $branchScope = $this->branchScope($command->actor->toArray());
-        $plan        = $this->plans->findScoped($command->companyId, $command->planId, $branchScope);
+        $plan = $this->plans->findScoped($command->companyId, $command->planId, $branchScope);
 
         if ($plan === null) {
-            throw new DomainException('El plan no existe o queda fuera del alcance autorizado.');
+            throw new DomainException('La asignación no existe o queda fuera del alcance autorizado.');
         }
 
         $equipment = $this->assets->findScoped($command->companyId, $plan->equipoId(), $branchScope);
-
         if ($equipment === null || ! $equipment->active) {
-            throw new DomainException('El equipo del plan no existe o esta inactivo.');
+            throw new DomainException('El equipo de la asignación no existe o está inactivo.');
         }
 
         if (! $command->actor->canAccessBranch($command->companyId, $equipment->branchId)) {
-            throw new DomainException('La sucursal del equipo no esta autorizada.');
+            throw new DomainException('La sucursal del equipo no está autorizada.');
         }
 
-        if ($command->intervalKm !== null && ! $equipment->tracksKilometres) {
-            throw new DomainException('El equipo no controla kilometraje.');
+        // La definición del Servicio ya viene hidratada en el plan desde tipos_servicio.
+        // Una asignación sólo puede cambiar datos propios del equipo: última realización/base
+        // y observaciones. Frecuencia, anticipación y prioridad no se aceptan como overrides.
+        if ($plan->usaKilometraje() && ! $equipment->tracksKilometres) {
+            throw new DomainException('El Servicio requiere kilometraje y el equipo no lo controla.');
         }
-
-        if ($command->intervalHoursTenths !== null && ! $equipment->tracksHours) {
-            throw new DomainException('El equipo no controla horometro.');
+        if ($plan->usaHorometro() && ! $equipment->tracksHours) {
+            throw new DomainException('El Servicio requiere horómetro y el equipo no lo controla.');
         }
 
         $updated = PlanMantenimiento::reconfigurar(
@@ -57,19 +58,17 @@ final readonly class ActualizarPlan
             $plan->empresaId(),
             $plan->equipoId(),
             $plan->tipoServicioId(),
-            $command->intervalKm,
-            $command->intervalHoursTenths,
-            $command->intervalDays,
-            $command->warningKm,
-            $command->warningHoursTenths,
-            $command->warningDays,
-            $command->intervalKm === null ? null : $command->baseKm,
-            $command->intervalHoursTenths === null ? null : $command->baseHoursTenths,
-            $command->intervalDays === null ? null : $command->baseDate,
-            $command->priority,
+            $plan->intervaloKm(),
+            $plan->intervaloHorasDecimas(),
+            $plan->intervaloDias(),
+            $plan->anticipacionKm(),
+            $plan->anticipacionHorasDecimas(),
+            $plan->anticipacionDias(),
+            $plan->usaKilometraje() ? $command->baseKm : null,
+            $plan->usaHorometro() ? $command->baseHoursTenths : null,
+            $plan->usaFecha() ? $command->baseDate : null,
+            $plan->prioridad(),
             $command->notes,
-            $plan->origenPlantillaId(),
-            $plan->origenPlantillaItemId(),
         );
 
         return $this->plans->save($updated, $command->actor->userId());
