@@ -17,6 +17,25 @@ const render = (component, data, options = {}) => {
   return wrapper
 }
 
+const openEquipmentModal = async (wrapper) => {
+  const button = wrapper.findAll('button').find((candidate) => candidate.text() === 'Nuevo equipo')
+  expect(button).toBeDefined()
+  await button.trigger('click')
+  await flushPromises()
+  return document.body.querySelector('[role="dialog"][aria-labelledby="new-equipment-title"]')
+}
+
+const teleportedElement = (selector) => document.body.querySelector(selector)
+
+const setTeleportedSelectValue = async (selector, value) => {
+  const select = teleportedElement(selector)
+  expect(select).not.toBeNull()
+  select.value = value
+  select.dispatchEvent(new Event('change', { bubbles: true }))
+  await flushPromises()
+  return select
+}
+
 afterEach(() => {
   wrappers.splice(0).forEach((wrapper) => wrapper.unmount())
   vi.restoreAllMocks()
@@ -250,11 +269,20 @@ describe('assets-index', () => {
     expect(wrapper.find('a[href="/mantenimiento/equipos/9/qr.svg"][target="_blank"]').exists()).toBe(true)
     expect(wrapper.get('form[action="/mantenimiento/catalogos/marcas/2/inactivar"]').attributes('method')).toBe('post')
     expect(wrapper.get('form[action="/mantenimiento/catalogos/modelos/3/inactivar"]').attributes('method')).toBe('post')
-    const create = wrapper.get('form[action="/mantenimiento/equipos"][method="post"]')
+    const create = teleportedElement('form[action="/mantenimiento/equipos"][method="post"]')
+    expect(create).toBeNull()
+  })
+
+  it('abre el alta de equipo en un modal con CSRF y todos sus campos', async () => {
+    const wrapper = render(AssetsIndexPage, assetsData)
+    const modal = await openEquipmentModal(wrapper)
+
+    expect(modal).not.toBeNull()
+    const create = modal.querySelector('form[action="/mantenimiento/equipos"][method="post"]')
     for (const name of ['sucursal_id', 'tipo_equipo_id', 'codigo', 'patente', 'marca_id', 'modelo_id', 'fecha_alta', 'anio', 'chasis', 'motor', 'observaciones']) {
-      expect(create.find(`[name="${name}"]`).exists()).toBe(true)
+      expect(create.querySelector(`[name="${name}"]`)).not.toBeNull()
     }
-    expect(create.get('input[name="csrf_test_name"]').attributes('value')).toBe('secure-token')
+    expect(create.querySelector('input[name="csrf_test_name"]').getAttribute('value')).toBe('secure-token')
   })
 
   it('permite asignar planes desde el listado cuando hay permiso', () => {
@@ -283,23 +311,22 @@ describe('assets-index', () => {
 
   it('filtra modelos por la marca y el tipo elegidos en el alta directa', async () => {
     const wrapper = render(AssetsIndexPage, assetsData)
-    const brand = wrapper.get('#new-equipment-brand')
-    const type = wrapper.get('#new-equipment-type')
+    await openEquipmentModal(wrapper)
 
-    await brand.setValue('2')
-    expect(wrapper.get('#new-equipment-model').text()).toContain('R450')
-    expect(wrapper.get('#new-equipment-model').text()).not.toContain('FH')
+    await setTeleportedSelectValue('#new-equipment-brand', '2')
+    expect(teleportedElement('#new-equipment-model').textContent).toContain('R450')
+    expect(teleportedElement('#new-equipment-model').textContent).not.toContain('FH')
 
-    await brand.setValue('4')
-    expect(wrapper.get('#new-equipment-model').text()).toContain('FH')
-    expect(wrapper.get('#new-equipment-model').text()).not.toContain('R450')
+    await setTeleportedSelectValue('#new-equipment-brand', '4')
+    expect(teleportedElement('#new-equipment-model').textContent).toContain('FH')
+    expect(teleportedElement('#new-equipment-model').textContent).not.toContain('R450')
 
-    await type.setValue('2')
-    expect(wrapper.get('#new-equipment-model option[value=""]').exists()).toBe(true)
-    expect(wrapper.findAll('#new-equipment-model option')).toHaveLength(1)
+    await setTeleportedSelectValue('#new-equipment-type', '2')
+    expect(teleportedElement('#new-equipment-model option[value=""]')).not.toBeNull()
+    expect(teleportedElement('#new-equipment-model').querySelectorAll('option')).toHaveLength(1)
   })
 
-  it('pagina equipos, marcas y modelos de forma independiente sin recortar los catalogos de alta', () => {
+  it('pagina equipos, marcas y modelos de forma independiente sin recortar los catalogos de alta', async () => {
     const wrapper = render(AssetsIndexPage, assetsData)
     const selectors = wrapper.findAll('select[aria-label="Registros por página"]')
 
@@ -308,8 +335,9 @@ describe('assets-index', () => {
     expect(selectors.every((selector) => selector.findAll('option').map((option) => option.text()).join(',') === '5,10,25')).toBe(true)
     expect(wrapper.findAll('input[id^="brand-"]')).toHaveLength(1)
     expect(wrapper.findAll('input[id^="model-"]')).toHaveLength(1)
-    expect(wrapper.get('#new-equipment-brand').findAll('option')).toHaveLength(3)
-    expect(wrapper.get('#new-equipment-model').findAll('option')).toHaveLength(1)
+    await openEquipmentModal(wrapper)
+    expect(teleportedElement('#new-equipment-brand').querySelectorAll('option')).toHaveLength(3)
+    expect(teleportedElement('#new-equipment-model').querySelectorAll('option')).toHaveLength(1)
     expect(wrapper.find('a[href="?brand_page=2&brand_per_page=5&model_page=1&model_per_page=10"]').exists()).toBe(true)
     expect(wrapper.find('a[href="?brand_page=1&brand_per_page=5&model_page=2&model_per_page=10"]').exists()).toBe(true)
   })
