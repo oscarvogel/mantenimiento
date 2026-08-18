@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { PlusIcon, PencilSquareIcon, ArrowUpTrayIcon } from '@heroicons/vue/24/outline'
+import { PlusIcon, PencilSquareIcon } from '@heroicons/vue/24/outline'
 
 const props = defineProps({ data: { type: Object, required: true } })
 const query = ref('')
@@ -54,14 +54,9 @@ function advance(service) {
           Acá se define qué se hace, cada cuánto, con cuánto aviso y qué tareas o repuestos requiere. Después estos servicios se asignan a los equipos.
         </p>
       </div>
-      <div class="flex flex-wrap gap-2">
-        <a v-if="data.urls.import" :href="data.urls.import" class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-ink hover:bg-surface-subtle">
-          <ArrowUpTrayIcon class="size-5" /> Importar servicios
-        </a>
-        <button v-if="data.canEdit" type="button" class="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary-hover" @click="startCreate">
-          <PlusIcon class="size-5" /> Nuevo servicio
-        </button>
-      </div>
+      <button v-if="data.canEdit" type="button" class="inline-flex min-h-11 items-center gap-2 self-start rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary-hover sm:self-auto" @click="startCreate">
+        <PlusIcon class="size-5" /> Nuevo servicio
+      </button>
     </header>
 
     <section v-if="showForm" class="rounded-xl border border-primary/20 bg-surface p-5 shadow-sm">
@@ -145,7 +140,7 @@ function advance(service) {
       </div>
       <div v-else class="mt-4 rounded-xl border border-dashed border-border bg-surface p-8 text-center">
         <h3 class="font-bold text-ink">{{ data.services?.length ? 'No hay coincidencias' : 'Todavía no hay servicios de mantenimiento' }}</h3>
-        <p class="mt-2 text-sm text-ink-muted">{{ data.services?.length ? 'Probá con otra búsqueda.' : 'Creá el primero desde el sistema. Excel queda como opción para cargas masivas.' }}</p>
+        <p class="mt-2 text-sm text-ink-muted">{{ data.services?.length ? 'Probá con otra búsqueda.' : 'Creá el primero directamente desde el sistema.' }}</p>
         <button v-if="data.canEdit && !data.services?.length" type="button" class="mt-4 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground" @click="startCreate">Crear primer servicio</button>
       </div>
     </section>
