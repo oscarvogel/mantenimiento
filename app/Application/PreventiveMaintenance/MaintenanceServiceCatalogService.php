@@ -17,24 +17,28 @@ final readonly class MaintenanceServiceCatalogService
     /** @return list<array<string,mixed>> */
     public function list(ActorContext $actor): array
     {
+        $this->requirePermission($actor, 'planes.ver');
         return $this->catalog->listForCompany($this->companyId($actor));
     }
 
     /** @param array<string,mixed> $input */
     public function create(ActorContext $actor, array $input): int
     {
+        $this->requirePermission($actor, 'planes.editar');
         return $this->catalog->create($this->companyId($actor), $actor->userId(), $this->validate($input));
     }
 
     /** @param array<string,mixed> $input */
     public function update(ActorContext $actor, int $serviceId, array $input): void
     {
+        $this->requirePermission($actor, 'planes.editar');
         if ($serviceId <= 0) throw new DomainException('El servicio indicado no es válido.');
         $this->catalog->update($this->companyId($actor), $serviceId, $actor->userId(), $this->validate($input));
     }
 
     public function setActive(ActorContext $actor, int $serviceId, bool $active): void
     {
+        $this->requirePermission($actor, 'planes.editar');
         if ($serviceId <= 0) throw new DomainException('El servicio indicado no es válido.');
         $this->catalog->setActive($this->companyId($actor), $serviceId, $actor->userId(), $active);
     }
@@ -83,6 +87,11 @@ final readonly class MaintenanceServiceCatalogService
     {
         if ($actor->isSuperAdmin() || $actor->companyId() === null) throw new DomainException('Seleccione una empresa para administrar servicios.');
         return (int) $actor->companyId();
+    }
+
+    private function requirePermission(ActorContext $actor, string $permission): void
+    {
+        if (! $actor->hasPermission($permission)) throw new DomainException('No tiene permiso para administrar servicios de mantenimiento.');
     }
 
     private function nullableText(mixed $value): ?string
