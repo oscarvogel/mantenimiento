@@ -162,6 +162,7 @@ final class ManagePreventiveLibraryTasksTest extends TestCase
             public ?array $lastCreatedRelation = null;
             public ?int $searchedCompanyId = null;
             public ?int $searchedServiceTypeId = null;
+            public ?array $lastStatusChange = null;
 
             public function search(int $companyId, string $query, ?int $serviceTypeId, int $limit = 20): array
             {
@@ -206,6 +207,11 @@ final class ManagePreventiveLibraryTasksTest extends TestCase
                 $this->lastCreatedTask = $task;
                 $this->lastCreatedRelation = $relation;
                 return $this->nextTaskId;
+            }
+
+            public function setActive(int $companyId, int $serviceTypeId, int $taskId, bool $active): void
+            {
+                $this->lastStatusChange = compact('companyId', 'serviceTypeId', 'taskId', 'active');
             }
         };
     }
