@@ -23,8 +23,9 @@ final class MaintenanceServiceCatalogServiceTest extends TestCase
         $catalog = new InMemoryMaintenanceServiceCatalog();
         $useCase = new MaintenanceServiceCatalogService($catalog);
         $actor = new ActorContext(9, 5, false, true, ['Responsable'], ['planes.editar'], []);
-        $material = $useCase->createMaterial($actor, 7, ['descripcion'=>'Filtro aceite','cantidad'=>'2','unidad'=>'UN','tipo_item'=>'repuesto']);
+        $material = $useCase->createMaterial($actor, 7, ['tarea_id'=>3,'descripcion'=>'Filtro aceite','cantidad'=>'2','unidad'=>'UN','tipo_item'=>'repuesto']);
         self::assertSame('Filtro aceite',$material['description']);
+        self::assertSame(3,$catalog->materialCreated['tarea_id']);
         self::assertSame('2.000',$catalog->materialCreated['cantidad_referencia']);
         self::assertSame('UN',$catalog->materialCreated['unidad']);
         self::assertSame('REPUESTO',$catalog->materialCreated['tipo_item']);
