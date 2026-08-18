@@ -23,6 +23,7 @@ final class MaintenanceServices extends BaseController
             'urls' => [
                 'create' => base_url('mantenimiento/servicios'),
                 'base' => base_url('mantenimiento/servicios'),
+                'taskSearch' => base_url('mantenimiento/servicios/tareas/buscar'),
                 'import' => $actor->hasPermission('importaciones.cargar') ? base_url('mantenimiento/importaciones') : null,
             ],
         ]);

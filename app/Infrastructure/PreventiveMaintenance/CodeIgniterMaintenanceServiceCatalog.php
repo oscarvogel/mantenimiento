@@ -23,14 +23,49 @@ final readonly class CodeIgniterMaintenanceServiceCatalog implements Maintenance
             ->groupStart()->where('s.empresa_id', $companyId)->orWhere('s.empresa_id', null)->groupEnd()
             ->orderBy('s.activo', 'DESC')->orderBy('s.nombre', 'ASC');
 
-        return array_values(array_map(static function (array $row): array {
+        $services = array_values(array_map(static function (array $row): array {
             $row['id'] = (int) $row['id'];
             $row['empresa_id'] = $row['empresa_id'] === null ? null : (int) $row['empresa_id'];
             $row['activo'] = (bool) $row['activo'];
             $row['tareas_count'] = (int) $row['tareas_count'];
             $row['materiales_count'] = (int) $row['materiales_count'];
+            $row['tasks'] = [];
             return $row;
         }, $builder->get()->getResultArray()));
+
+        if ($services === []) {
+            return $services;
+        }
+
+        $tasksByService = [];
+        $serviceIds = array_column($services, 'id');
+        $taskRows = $this->db->table('tipo_servicio_tareas st')
+            ->select('st.tipo_servicio_id, st.tarea_id, st.orden, st.obligatoria, st.observaciones, t.codigo, t.nombre, t.activo')
+            ->join('tareas_mantenimiento t', 't.id = st.tarea_id', 'inner')
+            ->whereIn('st.tipo_servicio_id', $serviceIds)
+            ->orderBy('st.tipo_servicio_id', 'ASC')
+            ->orderBy('st.orden', 'ASC')
+            ->get()->getResultArray();
+
+        foreach ($taskRows as $task) {
+            $serviceId = (int) $task['tipo_servicio_id'];
+            $tasksByService[$serviceId][] = [
+                'id' => (int) $task['tarea_id'],
+                'code' => (string) $task['codigo'],
+                'name' => (string) $task['nombre'],
+                'active' => (bool) $task['activo'],
+                'order' => (int) $task['orden'],
+                'mandatory' => (bool) $task['obligatoria'],
+                'observations' => $task['observaciones'],
+            ];
+        }
+
+        foreach ($services as &$service) {
+            $service['tasks'] = $tasksByService[$service['id']] ?? [];
+        }
+        unset($service);
+
+        return $services;
     }
 
     public function create(int $companyId, int $actorId, array $data): int
