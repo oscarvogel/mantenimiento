@@ -60,15 +60,15 @@ final class ResetPreventiveTestData extends BaseCommand
 
             foreach (['avisos_plan', 'planes_mantenimiento', 'plantilla_mantenimiento_items', 'plantillas_mantenimiento', 'tipo_servicio_materiales', 'tipo_servicio_tareas'] as $table) {
                 if ($db->tableExists($table)) {
-                    $db->table($table)->emptyTable();
+                    $db->table($table)->delete();
                 }
             }
 
             if ($db->tableExists('tareas_mantenimiento')) {
-                $db->table('tareas_mantenimiento')->emptyTable();
+                $db->table('tareas_mantenimiento')->delete();
             }
             if ($db->tableExists('tipos_servicio')) {
-                $db->table('tipos_servicio')->emptyTable();
+                $db->table('tipos_servicio')->delete();
             }
 
             $db->transComplete();
@@ -84,9 +84,7 @@ final class ResetPreventiveTestData extends BaseCommand
 
             return EXIT_SUCCESS;
         } catch (Throwable $exception) {
-            if ($db->transStatus() !== false) {
-                $db->transRollback();
-            }
+            $db->transRollback();
             CLI::error($exception->getMessage());
             return EXIT_ERROR;
         }
