@@ -6,8 +6,10 @@ namespace App\Commands;
 
 use CodeIgniter\CLI\BaseCommand;
 use CodeIgniter\CLI\CLI;
+use CodeIgniter\CLI\Commands;
 use CodeIgniter\Database\BaseConnection;
 use Config\Database;
+use Psr\Log\LoggerInterface;
 use Throwable;
 
 final class ResetPreventiveTestData extends BaseCommand
@@ -19,6 +21,14 @@ final class ResetPreventiveTestData extends BaseCommand
     protected $options = [
         '--confirm' => 'Debe ser exactamente RESET-PREVENTIVO. El comando está bloqueado en producción.',
     ];
+
+    public function __construct(LoggerInterface $logger, Commands $commands, ?BaseConnection $database = null)
+    {
+        parent::__construct($logger, $commands);
+        $this->database = $database;
+    }
+
+    private ?BaseConnection $database;
 
     public function run(array $params): int
     {
@@ -33,7 +43,7 @@ final class ResetPreventiveTestData extends BaseCommand
             return EXIT_ERROR;
         }
 
-        $db = Database::connect();
+        $db = $this->database ?? Database::connect();
 
         try {
             $db->transException(true)->transStart();

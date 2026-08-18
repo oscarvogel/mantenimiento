@@ -19,7 +19,18 @@ final class ResetPreventiveTestDataTest extends CIUnitTestCase
         }
 
         parent::setUp();
-        $this->resetDb = Database::connect();
+        $this->resetDb = Database::connect([
+            'DSN'         => '',
+            'hostname'    => '127.0.0.1',
+            'username'    => '',
+            'password'    => '',
+            'database'    => ':memory:',
+            'DBDriver'    => 'SQLite3',
+            'DBPrefix'    => 'db_',
+            'pConnect'    => false,
+            'DBDebug'     => true,
+            'foreignKeys' => true,
+        ], false);
         $this->resetDb->query('DROP TABLE IF EXISTS db_equipos');
         $this->resetDb->query('DROP TABLE IF EXISTS db_tipos_servicio');
         $this->resetDb->query('CREATE TABLE db_tipos_servicio (id INTEGER PRIMARY KEY, nombre VARCHAR(100))');
@@ -41,7 +52,7 @@ final class ResetPreventiveTestDataTest extends CIUnitTestCase
 
     public function testResetDeletesPreventiveRowsWithoutDeletingEquipment(): void
     {
-        $exitCode = (new ResetPreventiveTestData(service('logger'), service('commands')))
+        $exitCode = (new ResetPreventiveTestData(service('logger'), service('commands'), $this->resetDb))
             ->run(['confirm' => 'RESET-PREVENTIVO']);
 
         $this->assertSame(EXIT_SUCCESS, $exitCode);
@@ -56,7 +67,7 @@ final class ResetPreventiveTestDataTest extends CIUnitTestCase
 
         try {
             CLI::init();
-            $exitCode = (new ResetPreventiveTestData(service('logger'), service('commands')))->run([]);
+            $exitCode = (new ResetPreventiveTestData(service('logger'), service('commands'), $this->resetDb))->run([]);
         } finally {
             if ($previousArgv === null) {
                 unset($_SERVER['argv']);
