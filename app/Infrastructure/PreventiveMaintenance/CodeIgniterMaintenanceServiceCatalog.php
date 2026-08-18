@@ -7,7 +7,6 @@ namespace App\Infrastructure\PreventiveMaintenance;
 use App\Application\PreventiveMaintenance\Port\MaintenanceServiceCatalog;
 use CodeIgniter\Database\BaseConnection;
 use DomainException;
-use Throwable;
 
 final readonly class CodeIgniterMaintenanceServiceCatalog implements MaintenanceServiceCatalog
 {
@@ -36,7 +35,7 @@ final readonly class CodeIgniterMaintenanceServiceCatalog implements Maintenance
 
     public function create(int $companyId, int $actorId, array $data): int
     {
-        $this->ensureCodeAvailable($companyId, (string) $data['codigo']);
+        $this->ensureCodeAvailable((string) $data['codigo']);
         $now = date('Y-m-d H:i:s');
         $this->db->table('tipos_servicio')->insert($data + [
             'empresa_id' => $companyId,
@@ -54,7 +53,7 @@ final readonly class CodeIgniterMaintenanceServiceCatalog implements Maintenance
     public function update(int $companyId, int $serviceId, int $actorId, array $data): void
     {
         $row = $this->findScoped($companyId, $serviceId);
-        $this->ensureCodeAvailable($companyId, (string) $data['codigo'], $serviceId);
+        $this->ensureCodeAvailable((string) $data['codigo'], $serviceId);
         $payload = $data + ['updated_by' => $actorId, 'updated_at' => date('Y-m-d H:i:s')];
         // Los registros legacy sin empresa se adoptan por la empresa que los edita durante el cutover.
         if ($row['empresa_id'] === null) $payload['empresa_id'] = $companyId;
@@ -84,7 +83,7 @@ final readonly class CodeIgniterMaintenanceServiceCatalog implements Maintenance
         return $row;
     }
 
-    private function ensureCodeAvailable(int $companyId, string $code, ?int $exceptId = null): void
+    private function ensureCodeAvailable(string $code, ?int $exceptId = null): void
     {
         // Mientras exista la restricción legacy global sobre `codigo`, evitamos un error SQL opaco.
         $builder = $this->db->table('tipos_servicio')->where('codigo', $code);
