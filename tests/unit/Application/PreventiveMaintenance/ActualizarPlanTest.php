@@ -18,11 +18,11 @@ final class ActualizarPlanTest extends TestCase
     {
         return PlanMantenimiento::reconstituir(
             12, 5, 20, 3,
-            10_000, null, null,
-            1_000, null, null,
-            90_000, null, null,
-            100_000, null, null,
-            'MEDIA', true, 'Original', 7, 21,
+            10_000, null, 30,
+            1_000, null, 5,
+            90_000, null, new DateTimeImmutable('2026-01-01'),
+            100_000, null, new DateTimeImmutable('2026-01-31'),
+            'ALTA', true, 'Original',
         );
     }
 
@@ -53,19 +53,27 @@ final class ActualizarPlanTest extends TestCase
         $useCase->execute($this->command($actor));
     }
 
-    public function testRejectsIntervalForCriterionEquipmentDoesNotTrack(): void
+    public function testRejectsServiceCriterionEquipmentDoesNotTrack(): void
     {
         $actor = new ActorContext(9, 5, false, true, ['Responsable'], ['planes.editar'], []);
+        $plan = PlanMantenimiento::reconstituir(
+            12, 5, 20, 3,
+            null, 500, null,
+            null, 50, null,
+            null, 1_000, null,
+            null, 1_500, null,
+            'MEDIA', true, null,
+        );
         $asset = new ReconfigurableAssetGateway(new EquipmentForPlan(
             20, 5, 7, true, true, false, new UsoActual(90_000, null),
         ));
-        $useCase = new ActualizarPlan(new ReconfigurablePlanRepository(), $asset);
+        $useCase = new ActualizarPlan(new ReconfigurablePlanRepository($plan), $asset);
 
         $this->expectException(DomainException::class);
-        $useCase->execute($this->command($actor, intervalHoursTenths: 500));
+        $useCase->execute($this->command($actor, baseHoursTenths: 1_100));
     }
 
-    public function testSavesReconfiguredPlanPreservingIdentityAndUpdater(): void
+    public function testUpdatesOnlyEquipmentBaseAndNotesKeepingServiceDefinition(): void
     {
         $actor = new ActorContext(9, 5, false, true, ['Responsable'], ['planes.editar'], []);
         $plans = new ReconfigurablePlanRepository($this->existingPlan());
@@ -73,20 +81,28 @@ final class ActualizarPlanTest extends TestCase
 
         $id = $useCase->execute($this->command(
             $actor,
-            intervalKm: 20_000,
+            intervalKm: 99_999,
+            warningKm: 9_999,
             baseKm: 150_000,
-            priority: 'ALTA',
+            baseDate: new DateTimeImmutable('2026-02-10'),
+            priority: 'CRITICA',
             notes: 'Nuevo ciclo',
         ));
 
         self::assertSame(12, $id);
         self::assertNotNull($plans->saved);
-        self::assertSame(150_000, $plans->saved->baseKm());
-        self::assertSame(170_000, $plans->saved->proximoKm());
+        self::assertSame(10_000, $plans->saved->intervaloKm());
+        self::assertSame(1_000, $plans->saved->anticipacionKm());
+        self::assertSame(30, $plans->saved->intervaloDias());
+        self::assertSame(5, $plans->saved->anticipacionDias());
         self::assertSame('ALTA', $plans->saved->prioridad());
+        self::assertSame(150_000, $plans->saved->baseKm());
+        self::assertSame(160_000, $plans->saved->proximoKm());
+        self::assertSame('2026-02-10', $plans->saved->baseFecha()?->format('Y-m-d'));
+        self::assertSame('2026-03-12', $plans->saved->proximaFecha()?->format('Y-m-d'));
         self::assertSame('Nuevo ciclo', $plans->saved->observaciones());
-        self::assertSame(7, $plans->saved->origenPlantillaId());
-        self::assertSame(21, $plans->saved->origenPlantillaItemId());
+        self::assertNull($plans->saved->origenPlantillaId());
+        self::assertNull($plans->saved->origenPlantillaItemId());
         self::assertSame(9, $plans->lastActorUserId);
     }
 
@@ -94,7 +110,10 @@ final class ActualizarPlanTest extends TestCase
         ActorContext $actor,
         ?int $intervalKm = 10_000,
         ?int $intervalHoursTenths = null,
+        ?int $warningKm = 1_000,
         ?int $baseKm = 95_000,
+        ?int $baseHoursTenths = null,
+        ?DateTimeImmutable $baseDate = null,
         string $priority = 'MEDIA',
         ?string $notes = 'Ajuste',
     ): ActualizarPlanCommand {
@@ -105,12 +124,12 @@ final class ActualizarPlanTest extends TestCase
             $intervalKm,
             $intervalHoursTenths,
             null,
-            1_000,
+            $warningKm,
             null,
             null,
             baseKm: $baseKm,
-            baseHoursTenths: null,
-            baseDate: null,
+            baseHoursTenths: $baseHoursTenths,
+            baseDate: $baseDate,
             priority: $priority,
             notes: $notes,
         );
