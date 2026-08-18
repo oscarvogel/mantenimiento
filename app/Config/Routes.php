@@ -51,6 +51,10 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->post('servicios', 'MaintenanceServices::create', ['filter' => 'permission:planes.editar']);
     $routes->post('servicios/(:num)', 'MaintenanceServices::update/$1', ['filter' => 'permission:planes.editar']);
     $routes->post('servicios/(:num)/estado', 'MaintenanceServices::status/$1', ['filter' => 'permission:planes.editar']);
+    $routes->get('servicios/tareas/buscar', 'LibraryTaskCatalog::search', ['filter' => 'permission:planes.editar']);
+    $routes->post('servicios/(:num)/tareas', 'LibraryTaskCatalog::link/$1', ['filter' => 'permission:planes.editar']);
+    $routes->post('servicios/(:num)/tareas/nueva', 'LibraryTaskCatalog::createAndLink/$1', ['filter' => 'permission:planes.editar']);
+    $routes->post('servicios/(:num)/tareas/(:num)/estado', 'LibraryTaskCatalog::status/$2', ['filter' => 'permission:planes.editar']);
 
     $routes->get('planes', 'PreventivePlans::index', ['filter' => 'permission:planes.ver']);
     $routes->post('planes', 'PreventivePlans::create', ['filter' => 'permission:planes.editar']);
@@ -81,8 +85,8 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->post('catalogos/modelos/(:num)/inactivar', 'AssetManagement::inactivateModel/$1', ['filter' => 'permission:equipos.editar']);
 
     $routes->get('importaciones', 'ImportManagement::index', ['filter' => 'permission:importaciones.ver']);
-    // Compatibilidad temporal: la biblioteca deja de aparecer en navegación,
-    // pero sus endpoints siguen disponibles mientras se migra el importador a Servicios.
+    // Endpoints legacy temporalmente accesibles sólo para no romper código viejo durante el cutover.
+    // No se exponen en navegación ni forman parte del nuevo flujo funcional.
     $routes->get('importaciones/biblioteca', 'ImportManagement::library', ['filter' => 'permission:importaciones.ver']);
     $routes->post('importaciones/biblioteca/items/(:num)', 'ImportManagement::updateLibraryItem/$1', ['filter' => 'permission:importaciones.cargar']);
     $routes->get('importaciones/biblioteca/tareas/buscar', 'LibraryTaskCatalog::search', ['filter' => 'permission:importaciones.cargar']);
