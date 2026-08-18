@@ -16,4 +16,12 @@ interface MaintenanceServiceCatalog
     public function update(int $companyId, int $serviceId, int $actorId, array $data): void;
 
     public function setActive(int $companyId, int $serviceId, int $actorId, bool $active): void;
+
+    /** @param array<string,mixed> $data @return array<string,mixed> */
+    public function createMaterial(int $companyId, int $serviceId, int $actorId, array $data): array;
+
+    /** @param array<string,mixed> $data @return array<string,mixed> */
+    public function updateMaterial(int $companyId, int $serviceId, int $materialId, int $actorId, array $data): array;
+
+    public function setMaterialActive(int $companyId, int $serviceId, int $materialId, int $actorId, bool $active): void;
 }
