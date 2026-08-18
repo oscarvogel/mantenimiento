@@ -58,6 +58,9 @@ final readonly class MaintenanceServiceCatalogService
 
     private function validateMaterial(array $input): array
     {
+        $taskId = filter_var($input['tarea_id'] ?? null, FILTER_VALIDATE_INT);
+        if ($taskId === false || $taskId === null || $taskId <= 0) throw new DomainException('Indicá la tarea a la que corresponde el repuesto o insumo.');
+
         $description = trim((string) ($input['descripcion'] ?? ''));
         if ($description === '' || mb_strlen($description) > 255) throw new DomainException('Indicá un repuesto o insumo válido.');
         $unit = strtoupper(trim((string) ($input['unidad'] ?? 'UN')));
@@ -67,6 +70,7 @@ final readonly class MaintenanceServiceCatalogService
         $type = strtoupper(trim((string) ($input['tipo_item'] ?? 'REPUESTO')));
         if (! in_array($type, ['REPUESTO', 'INSUMO'], true)) throw new DomainException('El tipo debe ser REPUESTO o INSUMO.');
         return [
+            'tarea_id' => (int) $taskId,
             'descripcion' => $description,
             'tipo_item' => $type,
             'unidad' => $unit,
