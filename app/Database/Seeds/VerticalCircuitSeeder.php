@@ -25,10 +25,23 @@ final class VerticalCircuitSeeder extends Seeder
             'activo' => 1, 'created_at' => $now, 'updated_at' => $now,
         ]);
 
-        $serviceTypeId = $this->ensureRow('tipos_servicio', 'codigo', 'CAMBIO-ACEITE', [
-            'codigo' => 'CAMBIO-ACEITE', 'nombre' => 'Cambio de aceite y filtros',
+        $company = $this->db->table('empresas')->select('id')->where('cuit', '30-12345678-9')->get()->getRowArray();
+        if ($company === null) {
+            return;
+        }
+        $companyId = (int) $company['id'];
+
+        $serviceTypeId = $this->ensureService($companyId, 'CAMBIO-ACEITE', [
+            'empresa_id' => $companyId,
+            'codigo' => 'CAMBIO-ACEITE',
+            'nombre' => 'Cambio de aceite y filtros',
             'descripcion' => 'Servicio preventivo base para probar el primer circuito vertical.',
-            'activo' => 1, 'created_at' => $now, 'updated_at' => $now,
+            'intervalo_km' => 10000,
+            'anticipacion_km' => 1000,
+            'prioridad' => 'MEDIA',
+            'activo' => 1,
+            'created_at' => $now,
+            'updated_at' => $now,
         ]);
         $taskId = $this->ensureRow('tareas_mantenimiento', 'codigo', 'ACEITE-FILTROS', [
             'codigo' => 'ACEITE-FILTROS', 'nombre' => 'Cambiar aceite y filtros',
@@ -54,6 +67,22 @@ final class VerticalCircuitSeeder extends Seeder
 
         $this->db->table($table)->insert($data);
 
+        return (int) $this->db->insertID();
+    }
+
+    /** @param array<string, mixed> $data */
+    private function ensureService(int $companyId, string $code, array $data): int
+    {
+        $existing = $this->db->table('tipos_servicio')
+            ->select('id')
+            ->where('empresa_id', $companyId)
+            ->where('codigo', $code)
+            ->get()->getRowArray();
+        if ($existing !== null) {
+            return (int) $existing['id'];
+        }
+
+        $this->db->table('tipos_servicio')->insert($data);
         return (int) $this->db->insertID();
     }
 }
