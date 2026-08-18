@@ -119,7 +119,7 @@ final class FakePreventivePlanReadModel implements PreventivePlanReadModel
     }
 
     public function listActiveEquipment(int $companyId, ?array $branchIds): array { return []; }
-    public function listActiveServiceTypes(): array { return []; }
+    public function listActiveServiceTypes(int $companyId): array { return []; }
     public function listActiveBranches(int $companyId, ?array $branchIds): array { return []; }
     public function listTemplateDefaults(int $companyId): array { return []; }
 }
