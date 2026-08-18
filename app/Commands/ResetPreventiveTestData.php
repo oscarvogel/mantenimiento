@@ -6,6 +6,7 @@ namespace App\Commands;
 
 use CodeIgniter\CLI\BaseCommand;
 use CodeIgniter\CLI\CLI;
+use CodeIgniter\Database\BaseConnection;
 use Config\Database;
 use Throwable;
 
@@ -26,7 +27,7 @@ final class ResetPreventiveTestData extends BaseCommand
             return EXIT_ERROR;
         }
 
-        $confirm = $params['confirm'] ?? CLI::getOption('confirm');
+        $confirm = $this->confirmation($params);
         if ($confirm !== 'RESET-PREVENTIVO') {
             CLI::error('Confirmación inválida. Usá --confirm=RESET-PREVENTIVO.');
             return EXIT_ERROR;
@@ -60,15 +61,15 @@ final class ResetPreventiveTestData extends BaseCommand
 
             foreach (['avisos_plan', 'planes_mantenimiento', 'plantilla_mantenimiento_items', 'plantillas_mantenimiento', 'tipo_servicio_materiales', 'tipo_servicio_tareas'] as $table) {
                 if ($db->tableExists($table)) {
-                    $db->table($table)->delete();
+                    $this->deleteAllRows($db, $table);
                 }
             }
 
             if ($db->tableExists('tareas_mantenimiento')) {
-                $db->table('tareas_mantenimiento')->delete();
+                $this->deleteAllRows($db, 'tareas_mantenimiento');
             }
             if ($db->tableExists('tipos_servicio')) {
-                $db->table('tipos_servicio')->delete();
+                $this->deleteAllRows($db, 'tipos_servicio');
             }
 
             $db->transComplete();
@@ -88,5 +89,32 @@ final class ResetPreventiveTestData extends BaseCommand
             CLI::error($exception->getMessage());
             return EXIT_ERROR;
         }
+    }
+
+    /**
+     * CodeIgniter CLI 4.7 parses --name=value as an option key containing '='.
+     * Keep accepting the documented form as well as --name value.
+     *
+     * @param array<int|string, string|null> $params
+     */
+    private function confirmation(array $params): ?string
+    {
+        $confirm = $params['confirm'] ?? CLI::getOption('confirm');
+        if (is_string($confirm)) {
+            return $confirm;
+        }
+
+        foreach (CLI::getOptions() as $name => $value) {
+            if (is_string($name) && str_starts_with($name, 'confirm=')) {
+                return substr($name, strlen('confirm='));
+            }
+        }
+
+        return null;
+    }
+
+    private function deleteAllRows(BaseConnection $db, string $table): void
+    {
+        $db->table($table)->where('1 = 1', null, false)->delete();
     }
 }
