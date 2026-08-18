@@ -161,8 +161,8 @@ final readonly class ManagePreventiveLibraryTasks
 
     private function editableCompanyId(ActorContext $actor): int
     {
-        if ($actor->isSuperAdmin() || $actor->companyId() === null || ! $actor->hasPermission('importaciones.cargar')) {
-            throw new DomainException('No tenes permiso para modificar la biblioteca preventiva.');
+        if ($actor->isSuperAdmin() || $actor->companyId() === null || ! $actor->hasPermission('planes.editar')) {
+            throw new DomainException('No tenés permiso para modificar servicios de mantenimiento.');
         }
         return $actor->companyId();
     }
@@ -171,7 +171,7 @@ final readonly class ManagePreventiveLibraryTasks
     {
         $this->assertPositive($serviceTypeId, 'servicio');
         if (! $this->tasks->serviceBelongsToCompany($companyId, $serviceTypeId)) {
-            throw new DomainException('El servicio no pertenece a la biblioteca de esta empresa.');
+            throw new DomainException('El servicio no existe o no pertenece a la empresa activa.');
         }
     }
 
