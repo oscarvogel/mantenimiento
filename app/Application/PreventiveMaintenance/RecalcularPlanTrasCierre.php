@@ -26,6 +26,7 @@ final readonly class RecalcularPlanTrasCierre
      * la base/última realización específica del equipo.
      *
      * @param list<int>|null $branchIds
+     * @return array{proximo_km:?int,proximas_horas_decimas:?int,proxima_fecha:?string}
      */
     public function execute(
         int $companyId,
@@ -35,7 +36,7 @@ final readonly class RecalcularPlanTrasCierre
         ?int $outputKm,
         ?int $outputHoursTenths,
         int $actorUserId,
-    ): void {
+    ): array {
         $plan = $this->plans->findScoped($companyId, $planId, $branchIds, true);
 
         if ($plan === null) {
@@ -67,5 +68,11 @@ final readonly class RecalcularPlanTrasCierre
 
         $updated->recalcularDesdeCierre($completedAt, $outputKm, $outputHoursTenths);
         $this->plans->save($updated, $actorUserId);
+
+        return [
+            'proximo_km' => $updated->proximoKm(),
+            'proximas_horas_decimas' => $updated->proximasHorasDecimas(),
+            'proxima_fecha' => $updated->proximaFecha()?->format('Y-m-d'),
+        ];
     }
 }
