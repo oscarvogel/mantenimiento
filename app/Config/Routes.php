@@ -45,8 +45,6 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->get('equipos', 'AssetManagement::index', ['filter' => 'permission:equipos.ver']);
     $routes->post('equipos', 'AssetManagement::createEquipment', ['filter' => 'permission:equipos.editar']);
 
-    // Catálogo único de Servicios de mantenimiento. Frecuencia, anticipación,
-    // tareas y materiales pertenecen al servicio; el equipo sólo lo asigna.
     $routes->get('servicios', 'MaintenanceServices::index', ['filter' => 'permission:planes.ver']);
     $routes->post('servicios', 'MaintenanceServices::create', ['filter' => 'permission:planes.editar']);
     $routes->post('servicios/(:num)', 'MaintenanceServices::update/$1', ['filter' => 'permission:planes.editar']);
@@ -55,6 +53,9 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->post('servicios/(:num)/tareas', 'LibraryTaskCatalog::link/$1', ['filter' => 'permission:planes.editar']);
     $routes->post('servicios/(:num)/tareas/nueva', 'LibraryTaskCatalog::createAndLink/$1', ['filter' => 'permission:planes.editar']);
     $routes->post('servicios/(:num)/tareas/(:num)/estado', 'LibraryTaskCatalog::status/$2', ['filter' => 'permission:planes.editar']);
+    $routes->post('servicios/(:num)/materiales', 'MaintenanceServices::createMaterial/$1', ['filter' => 'permission:planes.editar']);
+    $routes->post('servicios/(:num)/materiales/(:num)', 'MaintenanceServices::updateMaterial/$1/$2', ['filter' => 'permission:planes.editar']);
+    $routes->post('servicios/(:num)/materiales/(:num)/estado', 'MaintenanceServices::materialStatus/$1/$2', ['filter' => 'permission:planes.editar']);
 
     $routes->get('planes', 'PreventivePlans::index', ['filter' => 'permission:planes.ver']);
     $routes->post('planes', 'PreventivePlans::create', ['filter' => 'permission:planes.editar']);
@@ -85,8 +86,6 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->post('catalogos/modelos/(:num)/inactivar', 'AssetManagement::inactivateModel/$1', ['filter' => 'permission:equipos.editar']);
 
     $routes->get('importaciones', 'ImportManagement::index', ['filter' => 'permission:importaciones.ver']);
-    // Endpoints legacy temporalmente accesibles sólo para no romper código viejo durante el cutover.
-    // No se exponen en navegación ni forman parte del nuevo flujo funcional.
     $routes->get('importaciones/biblioteca', 'ImportManagement::library', ['filter' => 'permission:importaciones.ver']);
     $routes->post('importaciones/biblioteca/items/(:num)', 'ImportManagement::updateLibraryItem/$1', ['filter' => 'permission:importaciones.cargar']);
     $routes->get('importaciones/biblioteca/tareas/buscar', 'LibraryTaskCatalog::search', ['filter' => 'permission:importaciones.cargar']);
