@@ -146,6 +146,19 @@ final readonly class ManagePreventiveLibraryTasks
         ];
     }
 
+    public function setActive(ActorContext $actor, int $serviceTypeId, int $taskId, bool $active): void
+    {
+        $companyId = $this->editableCompanyId($actor);
+        $this->assertOwnedService($companyId, $serviceTypeId);
+        $this->assertPositive($taskId, 'tarea');
+
+        if (! $this->tasks->relationExists($serviceTypeId, $taskId)) {
+            throw new DomainException('La tarea no pertenece al servicio indicado.');
+        }
+
+        $this->tasks->setActive($companyId, $serviceTypeId, $taskId, $active);
+    }
+
     private function editableCompanyId(ActorContext $actor): int
     {
         if ($actor->isSuperAdmin() || $actor->companyId() === null || ! $actor->hasPermission('importaciones.cargar')) {
