@@ -30,4 +30,6 @@ interface PreventiveLibraryTaskCatalogGateway
      * @return int ID de la tarea creada
      */
     public function createAndLink(int $serviceTypeId, array $task, array $relation): int;
+
+    public function setActive(int $companyId, int $serviceTypeId, int $taskId, bool $active): void;
 }
