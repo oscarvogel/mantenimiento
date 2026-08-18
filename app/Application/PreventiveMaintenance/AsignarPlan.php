@@ -24,34 +24,35 @@ final readonly class AsignarPlan
     public function execute(AsignarPlanCommand $command): int
     {
         if (! $command->actor->hasPermission('planes.editar')) {
-            throw new DomainException('No tiene permiso para asignar planes de mantenimiento.');
+            throw new DomainException('No tiene permiso para asignar servicios de mantenimiento.');
         }
 
         if (! $command->actor->canAccessCompany($command->companyId) || $command->actor->isSuperAdmin()) {
-            throw new DomainException('El plan solicitado queda fuera del alcance empresarial del usuario.');
+            throw new DomainException('La asignación solicitada queda fuera del alcance empresarial del usuario.');
         }
 
         $branchScope = $this->branchScope($command->actor->toArray());
         $equipment   = $this->assets->findScoped($command->companyId, $command->equipmentId, $branchScope);
 
         if ($equipment === null || ! $equipment->active) {
-            throw new DomainException('El equipo no existe, esta inactivo o queda fuera del alcance autorizado.');
+            throw new DomainException('El equipo no existe, está inactivo o queda fuera del alcance autorizado.');
         }
 
         if (! $command->actor->canAccessBranch($command->companyId, $equipment->branchId)) {
-            throw new DomainException('La sucursal del equipo no esta autorizada.');
+            throw new DomainException('La sucursal del equipo no está autorizada.');
         }
 
-        if (! $this->serviceTypes->isActive($command->serviceTypeId)) {
-            throw new DomainException('El tipo de servicio no existe o esta inactivo.');
+        $service = $this->serviceTypes->findActiveDefinition($command->companyId, $command->serviceTypeId);
+        if ($service === null) {
+            throw new DomainException('El servicio no existe, está inactivo o pertenece a otra empresa.');
         }
 
-        if ($command->intervalKm !== null && ! $equipment->tracksKilometres) {
-            throw new DomainException('El equipo no controla kilometraje.');
+        if ($service['intervalKm'] !== null && ! $equipment->tracksKilometres) {
+            throw new DomainException('Este servicio controla kilometraje y el equipo no registra kilómetros.');
         }
 
-        if ($command->intervalHoursTenths !== null && ! $equipment->tracksHours) {
-            throw new DomainException('El equipo no controla horometro.');
+        if ($service['intervalHoursTenths'] !== null && ! $equipment->tracksHours) {
+            throw new DomainException('Este servicio controla horómetro y el equipo no registra horas.');
         }
 
         if ($this->plans->existsActive(
@@ -60,23 +61,23 @@ final readonly class AsignarPlan
             $command->serviceTypeId,
             $branchScope,
         )) {
-            throw new DomainException('Ya existe un plan activo para el equipo y tipo de servicio.');
+            throw new DomainException('Este servicio ya está asignado al equipo.');
         }
 
         $plan = PlanMantenimiento::asignar(
             $command->companyId,
             $command->equipmentId,
             $command->serviceTypeId,
-            $command->intervalKm,
-            $command->intervalHoursTenths,
-            $command->intervalDays,
-            $command->warningKm,
-            $command->warningHoursTenths,
-            $command->warningDays,
-            $command->intervalKm === null ? null : $command->baseKm,
-            $command->intervalHoursTenths === null ? null : $command->baseHoursTenths,
-            $command->intervalDays === null ? null : $command->baseDate,
-            $command->priority,
+            $service['intervalKm'],
+            $service['intervalHoursTenths'],
+            $service['intervalDays'],
+            $service['warningKm'],
+            $service['warningHoursTenths'],
+            $service['warningDays'],
+            $service['intervalKm'] === null ? null : $command->baseKm,
+            $service['intervalHoursTenths'] === null ? null : $command->baseHoursTenths,
+            $service['intervalDays'] === null ? null : $command->baseDate,
+            $service['priority'],
             $command->notes,
         );
 
