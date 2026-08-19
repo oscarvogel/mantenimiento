@@ -38,6 +38,10 @@ function startEdit(service) {
   materialError.value = ''
   showForm.value = true
 }
+function closeForm() {
+  showForm.value = false
+  editing.value = null
+}
 function syncEditingToService() {
   const service = services.value.find((item) => Number(item.id) === Number(editing.value?.id))
   if (!service || !editing.value) return
@@ -167,7 +171,7 @@ function quantityLabel(material) {
     <section v-if="showForm" class="rounded-xl border border-primary/20 bg-surface p-5 shadow-sm">
       <div class="flex items-start justify-between gap-4">
         <div><h2 class="text-lg font-bold text-ink">{{ editing ? `Editar ${editing.nombre}` : 'Nuevo servicio de mantenimiento' }}</h2><p class="mt-1 text-sm text-ink-muted">La frecuencia pertenece al servicio. Los códigos internos se generan automáticamente.</p></div>
-        <button type="button" class="text-sm font-semibold text-ink-muted" @click="showForm=false">Cerrar</button>
+        <button type="button" class="text-sm font-semibold text-ink-muted" @click="closeForm">Cerrar</button>
       </div>
       <form :action="formAction" method="post" class="mt-5 space-y-5">
         <input type="hidden" :name="data.csrf.name" :value="data.csrf.hash" />
@@ -180,7 +184,7 @@ function quantityLabel(material) {
         <label class="block text-sm font-semibold text-ink">Descripción<textarea name="descripcion" rows="2" :value="value('descripcion')" class="mt-1.5 w-full rounded-lg border border-border bg-white px-3 py-2 font-normal"></textarea></label>
         <div><h3 class="font-bold text-ink">Frecuencia</h3><p class="mt-1 text-sm text-ink-muted">Si hay varios criterios, vence cuando se alcanza el primero.</p><div class="mt-3 grid gap-4 md:grid-cols-3"><label class="text-sm font-semibold text-ink">Cada km<input name="intervalo_km" type="number" min="1" :value="value('intervalo_km')" class="mt-1.5 min-h-11 w-full rounded-lg border border-border px-3 py-2 font-normal" /></label><label class="text-sm font-semibold text-ink">Cada horas<input name="intervalo_horas" inputmode="decimal" :value="value('intervalo_horas')" class="mt-1.5 min-h-11 w-full rounded-lg border border-border px-3 py-2 font-normal" /></label><label class="text-sm font-semibold text-ink">Cada días<input name="intervalo_dias" type="number" min="1" :value="value('intervalo_dias')" class="mt-1.5 min-h-11 w-full rounded-lg border border-border px-3 py-2 font-normal" /></label></div></div>
         <div><h3 class="font-bold text-ink">Avisar antes</h3><div class="mt-3 grid gap-4 md:grid-cols-3"><label class="text-sm font-semibold text-ink">Km antes<input name="anticipacion_km" type="number" min="0" :value="value('anticipacion_km')" class="mt-1.5 min-h-11 w-full rounded-lg border border-border px-3 py-2 font-normal" /></label><label class="text-sm font-semibold text-ink">Horas antes<input name="anticipacion_horas" inputmode="decimal" :value="value('anticipacion_horas')" class="mt-1.5 min-h-11 w-full rounded-lg border border-border px-3 py-2 font-normal" /></label><label class="text-sm font-semibold text-ink">Días antes<input name="anticipacion_dias" type="number" min="0" :value="value('anticipacion_dias')" class="mt-1.5 min-h-11 w-full rounded-lg border border-border px-3 py-2 font-normal" /></label></div></div>
-        <div class="flex justify-end gap-2"><button type="button" class="min-h-11 rounded-lg border border-border px-4 py-2 text-sm font-semibold" @click="showForm=false">Cancelar</button><button type="submit" class="min-h-11 rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground">{{ editing ? 'Guardar cambios' : 'Crear servicio' }}</button></div>
+        <div class="flex justify-end gap-2"><button type="button" class="min-h-11 rounded-lg border border-border px-4 py-2 text-sm font-semibold" @click="closeForm">Cancelar</button><button type="submit" class="min-h-11 rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground">{{ editing ? 'Guardar cambios' : 'Crear servicio' }}</button></div>
       </form>
     </section>
 
