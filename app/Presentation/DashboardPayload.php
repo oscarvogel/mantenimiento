@@ -16,10 +16,10 @@ final class DashboardPayload
         $canPlans = $actor->hasPermission('planes.ver');
         $canEditPlans = $actor->hasPermission('planes.editar');
         $canLoadReadings = $actor->hasPermission('lecturas.cargar');
-        $canImports = $actor->hasPermission('importaciones.ver');
         $canOrders = $actor->hasPermission('ordenes.editar');
         $equipmentUrl = $canEquipment ? base_url('mantenimiento/equipos') : '#';
         $plansUrl = $canPlans ? base_url('mantenimiento/planes') : '#';
+        $servicesUrl = $canPlans ? base_url('mantenimiento/servicios') : '#';
 
         return [
             'metrics' => $operations['metrics'] ?? [],
@@ -30,11 +30,13 @@ final class DashboardPayload
             'links' => [
                 'equipment' => $equipmentUrl,
                 'equipmentCreate' => $canEditEquipment ? $equipmentUrl . '#nuevo-equipo' : '#',
-                'maintenance' => $plansUrl,
+                'maintenance' => $canPlans ? base_url('mantenimiento') : '#',
+                'services' => $servicesUrl,
                 'assignPlan' => $canEditPlans ? $plansUrl : '#',
                 'registerMaintenance' => $canEquipment ? $equipmentUrl : '#',
                 'quickReadings' => $canLoadReadings ? base_url('mantenimiento/lecturas/rapidas') : '#',
-                'library' => $canImports ? base_url('mantenimiento/importaciones/biblioteca') : '#',
+                // Alias temporal para consumidores viejos. Ya no apunta a Biblioteca.
+                'library' => $servicesUrl,
                 'maintenanceDueSoon' => $canPlans ? $this->plansFilterUrl('PROXIMO') : '#',
                 'maintenanceOverdue' => $canPlans ? $this->plansFilterUrl('VENCIDO') : '#',
                 'maintenanceMissingData' => $canPlans ? $this->plansFilterUrl('SIN_DATOS') : '#',
@@ -55,7 +57,7 @@ final class DashboardPayload
             : null;
         $actionUrl = $planUrl ?? $detailUrl;
         $actionLabel = $planUrl !== null
-            ? ($status === 'VENCIDO' ? ($canOrders ? 'Atender' : 'Ver vencido') : 'Ver plan')
+            ? ($status === 'VENCIDO' ? ($canOrders ? 'Atender' : 'Ver vencido') : 'Ver mantenimiento')
             : ($detailUrl !== null ? 'Ver equipo' : null);
 
         return $item + [

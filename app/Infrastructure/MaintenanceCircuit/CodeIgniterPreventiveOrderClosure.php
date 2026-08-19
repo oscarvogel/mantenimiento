@@ -15,6 +15,7 @@ use App\Infrastructure\Assets\CodeIgniterEquipmentRepository;
 use App\Infrastructure\Measurement\CodeIgniterReadingRepository;
 use App\Infrastructure\Measurement\CodeIgniterUnitOfWork;
 use App\Infrastructure\PreventiveMaintenance\CodeIgniterPlanMantenimientoRepository;
+use App\Infrastructure\PreventiveMaintenance\CodeIgniterServiceTypeGateway;
 use App\Infrastructure\PreventiveMaintenance\DecimalHours;
 use App\Infrastructure\WorkOrders\CodeIgniterWorkOrderRepository;
 use App\Infrastructure\WorkOrders\CodeIgniterWorkOrderTransaction;
@@ -40,7 +41,10 @@ final class CodeIgniterPreventiveOrderClosure implements PreventiveOrderClosureP
             new CodeIgniterReadingRepository($this->database),
             new CodeIgniterUnitOfWork($this->database),
         );
-        $recalculate = new RecalcularPlanTrasCierre(new CodeIgniterPlanMantenimientoRepository($this->database));
+        $recalculate = new RecalcularPlanTrasCierre(
+            new CodeIgniterPlanMantenimientoRepository($this->database),
+            new CodeIgniterServiceTypeGateway($this->database),
+        );
         $actor = new ActorContext(
             $actorUserId,
             $companyId,
@@ -91,7 +95,7 @@ final class CodeIgniterPreventiveOrderClosure implements PreventiveOrderClosureP
                 ));
             }
 
-            $recalculate->execute(
+            $next = $recalculate->execute(
                 $companyId,
                 (int) $prepared->workOrder->planId(),
                 $branchIds,
@@ -102,16 +106,13 @@ final class CodeIgniterPreventiveOrderClosure implements PreventiveOrderClosureP
             );
             $repository->save($prepared->workOrder, $actorUserId);
 
-            $plan = $this->database->table('planes_mantenimiento')
-                ->select('proximo_km, proximas_horas, proxima_fecha')
-                ->where('empresa_id', $companyId)->where('id', (int) $prepared->workOrder->planId())
-                ->get()->getRowArray();
-
             return [
                 'numero' => $prepared->workOrder->number()->value(),
-                'proximo_km' => $plan['proximo_km'] ?? null,
-                'proximas_horas' => $plan['proximas_horas'] ?? null,
-                'proxima_fecha' => $plan['proxima_fecha'] ?? null,
+                'proximo_km' => $next['proximo_km'],
+                'proximas_horas' => $next['proximas_horas_decimas'] === null
+                    ? null
+                    : number_format($next['proximas_horas_decimas'] / 10, 1, '.', ''),
+                'proxima_fecha' => $next['proxima_fecha'],
             ];
         });
     }

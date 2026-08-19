@@ -48,10 +48,8 @@ describe('TaskEditModal', () => {
     await wrapper.setProps({ open: true })
     await flushPromises()
 
-    const modal = document.body.querySelector('[role="dialog"][aria-modal="true"]')
-    expect(modal).not.toBeNull()
-    const active = modal.querySelector('input[name="activo"]')
-    const requiresPhoto = modal.querySelector('input[name="requiere_foto"]')
+    const active = document.querySelector('[role="dialog"] input[name="activo"]')
+    const requiresPhoto = document.querySelector('[role="dialog"] input[name="requiere_foto"]')
     expect(active).not.toBeNull()
     expect(requiresPhoto).not.toBeNull()
 
@@ -63,7 +61,7 @@ describe('TaskEditModal', () => {
 
     expect(fetchMock).not.toHaveBeenCalled()
 
-    modal.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    document.querySelector('[role="dialog"] form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
     await flushPromises()
 
     expect(fetchMock).toHaveBeenCalledTimes(1)

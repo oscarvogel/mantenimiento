@@ -22,15 +22,19 @@ final readonly class CodeIgniterPreventivePlanReadModel implements PreventivePla
     {
         $builder = $this->database->table('planes_mantenimiento p')
             ->select('p.*, e.sucursal_id, e.codigo equipo_codigo, e.patente equipo_patente, e.km_actual, e.horas_actuales, s.codigo sucursal_codigo, s.nombre sucursal_nombre, te.nombre tipo_equipo_nombre, ts.nombre servicio_nombre')
+            ->select('ts.intervalo_km service_intervalo_km, ts.intervalo_horas service_intervalo_horas, ts.intervalo_dias service_intervalo_dias')
+            ->select('ts.anticipacion_km service_anticipacion_km, ts.anticipacion_horas service_anticipacion_horas, ts.anticipacion_dias service_anticipacion_dias')
+            ->select('ts.prioridad service_prioridad')
             ->join('equipos e', 'e.id = p.equipo_id AND e.empresa_id = p.empresa_id', 'inner')
             ->join('sucursales s', 's.id = e.sucursal_id AND s.empresa_id = e.empresa_id', 'inner')
             ->join('tipos_equipo te', 'te.id = e.tipo_equipo_id', 'inner')
-            ->join('tipos_servicio ts', 'ts.id = p.tipo_servicio_id', 'inner')
+            ->join('tipos_servicio ts', 'ts.id = p.tipo_servicio_id AND ts.empresa_id = p.empresa_id', 'inner')
             ->where('p.empresa_id', $companyId)
             ->where('p.activo', 1)
             ->where('p.deleted_at', null)
             ->where('e.deleted_at', null)
             ->where('s.deleted_at', null)
+            ->where('ts.activo', 1)
             ->orderBy('e.codigo', 'ASC')
             ->orderBy('ts.nombre', 'ASC');
         $this->scopeBranches($builder, 'e.sucursal_id', $branchIds);
@@ -69,24 +73,20 @@ final readonly class CodeIgniterPreventivePlanReadModel implements PreventivePla
         $this->scopeBranches($builder, 'e.sucursal_id', $branchIds);
 
         $equipment = $builder->get()->getResultArray();
-        if ($equipment === []) {
-            return [];
-        }
+        if ($equipment === []) return [];
 
         $assigned = [];
-        $planRows = $this->database->table('planes_mantenimiento')
-            ->select('equipo_id, tipo_servicio_id')
-            ->where('empresa_id', $companyId)
-            ->where('activo', 1)
-            ->where('deleted_at', null)
-            ->whereIn('equipo_id', array_column($equipment, 'id'))
+        $planRows = $this->database->table('planes_mantenimiento p')
+            ->select('p.equipo_id, p.tipo_servicio_id')
+            ->join('tipos_servicio ts', 'ts.id = p.tipo_servicio_id AND ts.empresa_id = p.empresa_id', 'inner')
+            ->where('p.empresa_id', $companyId)
+            ->where('p.activo', 1)
+            ->where('p.deleted_at', null)
+            ->where('ts.activo', 1)
+            ->whereIn('p.equipo_id', array_column($equipment, 'id'))
             ->get()->getResultArray();
-        foreach ($planRows as $plan) {
-            $assigned[(int) $plan['equipo_id']][] = (int) $plan['tipo_servicio_id'];
-        }
-        foreach ($equipment as &$row) {
-            $row['assigned_service_type_ids'] = array_values(array_unique($assigned[(int) $row['id']] ?? []));
-        }
+        foreach ($planRows as $plan) $assigned[(int) $plan['equipo_id']][] = (int) $plan['tipo_servicio_id'];
+        foreach ($equipment as &$row) $row['assigned_service_type_ids'] = array_values(array_unique($assigned[(int) $row['id']] ?? []));
         unset($row);
 
         return $equipment;
@@ -94,55 +94,14 @@ final readonly class CodeIgniterPreventivePlanReadModel implements PreventivePla
 
     public function listTemplateDefaults(int $companyId): array
     {
-        if (! $this->database->tableExists('plantillas_mantenimiento') || ! $this->database->tableExists('plantilla_mantenimiento_items')) {
-            return [];
-        }
-
-        $rows = $this->database->table('plantilla_mantenimiento_items i')
-            ->select('i.id, i.plantilla_id, i.tipo_servicio_id, i.intervalo_km, i.intervalo_horas, i.intervalo_dias, i.anticipacion_km, i.anticipacion_horas, i.anticipacion_dias, i.prioridad, i.observaciones, p.nombre plantilla_nombre, p.tipo_equipo_id, p.marca, p.modelo, te.nombre tipo_equipo_nombre, ts.nombre servicio_nombre')
-            ->join('plantillas_mantenimiento p', 'p.id = i.plantilla_id', 'inner')
-            ->join('tipos_equipo te', 'te.id = p.tipo_equipo_id', 'left')
-            ->join('tipos_servicio ts', 'ts.id = i.tipo_servicio_id', 'inner')
-            ->groupStart()
-                ->where('p.empresa_id', $companyId)
-                ->orGroupStart()
-                    ->where('p.empresa_id', null)
-                    ->where('p.ambito', 'GLOBAL')
-                ->groupEnd()
-            ->groupEnd()
-            ->where('p.activo', 1)
-            ->where('p.deleted_at', null)
-            ->where('i.activo', 1)
-            ->where('ts.activo', 1)
-            ->orderBy('p.nombre', 'ASC')
-            ->orderBy('ts.nombre', 'ASC')
-            ->get()->getResultArray();
-
-        return array_map(fn (array $row): array => [
-            'id' => (int) $row['id'],
-            'template_id' => (int) $row['plantilla_id'],
-            'template_name' => (string) $row['plantilla_nombre'],
-            'equipment_type_id' => $row['tipo_equipo_id'] === null ? null : (int) $row['tipo_equipo_id'],
-            'equipment_type_name' => $row['tipo_equipo_nombre'] === null ? 'Genérica' : (string) $row['tipo_equipo_nombre'],
-            'brand' => $row['marca'] === null ? null : (string) $row['marca'],
-            'model' => $row['modelo'] === null ? null : (string) $row['modelo'],
-            'service_type_id' => (int) $row['tipo_servicio_id'],
-            'service_name' => (string) $row['servicio_nombre'],
-            'interval_km' => $row['intervalo_km'] === null ? null : (int) $row['intervalo_km'],
-            'interval_hours' => $this->decimalHours(DecimalHours::toTenths($row['intervalo_horas'])),
-            'interval_days' => $row['intervalo_dias'] === null ? null : (int) $row['intervalo_dias'],
-            'warning_km' => $row['intervalo_km'] === null ? null : ($row['anticipacion_km'] === null ? 0 : (int) $row['anticipacion_km']),
-            'warning_hours' => $row['intervalo_horas'] === null ? null : $this->decimalHours(DecimalHours::toTenths($row['anticipacion_horas']) ?? 0),
-            'warning_days' => $row['intervalo_dias'] === null ? null : ($row['anticipacion_dias'] === null ? 0 : (int) $row['anticipacion_dias']),
-            'priority' => (string) $row['prioridad'],
-            'notes' => $row['observaciones'] === null ? null : (string) $row['observaciones'],
-        ], $rows);
+        return [];
     }
 
-    public function listActiveServiceTypes(): array
+    public function listActiveServiceTypes(int $companyId): array
     {
         return $this->database->table('tipos_servicio')
-            ->select('id, codigo, nombre')
+            ->select('id, codigo, nombre, descripcion, categoria, intervalo_km, intervalo_horas, intervalo_dias, anticipacion_km, anticipacion_horas, anticipacion_dias, prioridad')
+            ->where('empresa_id', $companyId)
             ->where('activo', 1)
             ->orderBy('nombre', 'ASC')
             ->get()->getResultArray();
@@ -164,42 +123,49 @@ final readonly class CodeIgniterPreventivePlanReadModel implements PreventivePla
     /** @param array<string,mixed> $row */
     private function hydratePlan(array $row): PlanMantenimiento
     {
+        $intervalKm = $row['service_intervalo_km'] === null ? null : (int) $row['service_intervalo_km'];
+        $intervalHoursTenths = DecimalHours::toTenths($row['service_intervalo_horas']);
+        $intervalDays = $row['service_intervalo_dias'] === null ? null : (int) $row['service_intervalo_dias'];
+        $warningKm = $intervalKm === null ? null : ($row['service_anticipacion_km'] === null ? 0 : (int) $row['service_anticipacion_km']);
+        $warningHoursTenths = $intervalHoursTenths === null ? null : (DecimalHours::toTenths($row['service_anticipacion_horas']) ?? 0);
+        $warningDays = $intervalDays === null ? null : ($row['service_anticipacion_dias'] === null ? 0 : (int) $row['service_anticipacion_dias']);
+
+        $baseKm = $intervalKm === null || $row['base_km'] === null ? null : (int) $row['base_km'];
+        $baseHoursTenths = $intervalHoursTenths === null ? null : DecimalHours::toTenths($row['base_horas']);
+        $baseDate = $intervalDays === null || $row['base_fecha'] === null ? null : new DateTimeImmutable((string) $row['base_fecha']);
+        $nextKm = $baseKm === null ? null : $baseKm + $intervalKm;
+        $nextHoursTenths = $baseHoursTenths === null ? null : $baseHoursTenths + $intervalHoursTenths;
+        $nextDate = $baseDate === null ? null : $baseDate->modify('+' . $intervalDays . ' days');
+
         return PlanMantenimiento::reconstituir(
             (int) $row['id'],
             (int) $row['empresa_id'],
             (int) $row['equipo_id'],
             (int) $row['tipo_servicio_id'],
-            $row['intervalo_km'] === null ? null : (int) $row['intervalo_km'],
-            DecimalHours::toTenths($row['intervalo_horas']),
-            $row['intervalo_dias'] === null ? null : (int) $row['intervalo_dias'],
-            $row['anticipacion_km'] === null ? null : (int) $row['anticipacion_km'],
-            DecimalHours::toTenths($row['anticipacion_horas']),
-            $row['anticipacion_dias'] === null ? null : (int) $row['anticipacion_dias'],
-            $row['base_km'] === null ? null : (int) $row['base_km'],
-            DecimalHours::toTenths($row['base_horas']),
-            $row['base_fecha'] === null ? null : new DateTimeImmutable((string) $row['base_fecha']),
-            $row['proximo_km'] === null ? null : (int) $row['proximo_km'],
-            DecimalHours::toTenths($row['proximas_horas']),
-            $row['proxima_fecha'] === null ? null : new DateTimeImmutable((string) $row['proxima_fecha']),
-            (string) $row['prioridad'],
+            $intervalKm,
+            $intervalHoursTenths,
+            $intervalDays,
+            $warningKm,
+            $warningHoursTenths,
+            $warningDays,
+            $baseKm,
+            $baseHoursTenths,
+            $baseDate,
+            $nextKm,
+            $nextHoursTenths,
+            $nextDate,
+            (string) $row['service_prioridad'],
             (bool) $row['activo'],
             $row['observaciones'] === null ? null : (string) $row['observaciones'],
-            isset($row['origen_plantilla_id']) && $row['origen_plantilla_id'] !== null ? (int) $row['origen_plantilla_id'] : null,
-            isset($row['origen_plantilla_item_id']) && $row['origen_plantilla_item_id'] !== null ? (int) $row['origen_plantilla_item_id'] : null,
+            null,
+            null,
         );
-    }
-
-    private function decimalHours(?int $tenths): ?string
-    {
-        return $tenths === null ? null : number_format($tenths / 10, 1, '.', '');
     }
 
     /** @param list<int>|null $branchIds */
     private function scopeBranches(BaseBuilder $builder, string $column, ?array $branchIds): void
     {
-        if ($branchIds === null) {
-            return;
-        }
+        if ($branchIds === null) return;
         if ($branchIds === []) {
             $builder->where('1 = 0', null, false);
             return;

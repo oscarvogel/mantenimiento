@@ -60,27 +60,24 @@ describe('registro de componentes operativos', () => {
 })
 
 describe('preventive-plans', () => {
-  it('crea planes con CSRF y muestra criterios por camión', async () => {
+  it('muestra asignaciones con su definición de servicio y permite editar la última realización', async () => {
     const wrapper = render(PreventivePlansPage, preventivePlansData)
-    await wrapper.get('[data-testid="open-manual-plan"]').trigger('click')
-    const create = wrapper.get('form[action="/mantenimiento/planes"][method="post"]')
-    expect(create.get('input[name="csrf_test_name"]').attributes('value')).toBe('secure-token')
-    await create.get('select[name="equipo_id"]').setValue('9')
-    await create.get('select[name="tipo_servicio_id"]').setValue('3')
-    expect(create.get('input[name="intervalo_km"]').exists()).toBe(true)
-    expect(create.get('input[name="intervalo_km"]').element.value).toBe('10000')
-    expect(create.get('input[name="anticipacion_km"]').element.value).toBe('1000')
-    expect(create.get('input[name="intervalo_dias"]').element.value).toBe('180')
-    expect(wrapper.text()).toContain('Preventivo camiones')
-    expect(create.find('input[name="intervalo_horas"]').exists()).toBe(false)
+    expect(wrapper.find('form[action="/mantenimiento/planes"][method="post"]').exists()).toBe(false)
+    expect(wrapper.get('a[href="/mantenimiento/servicios"]').exists()).toBe(true)
     expect(wrapper.get('form[action="/mantenimiento/planes"][method="get"]').attributes('method')).toBe('get')
     const perPage = wrapper.get('select[aria-label="Registros por página"]')
     expect(perPage.element.value).toBe('10')
     expect(perPage.findAll('option').map((option) => option.element.value)).toEqual(['5', '10', '25'])
     expect(wrapper.text()).toContain('CAM-01')
-    expect(wrapper.text()).toContain('Preventivo camiones')
-    expect(wrapper.text()).toContain('Frecuencia 1000 km')
+    expect(wrapper.text()).toContain('Cada 1000 km')
     expect(wrapper.text()).toContain('próximo 10000 km')
+
+    await wrapper.get('[data-testid="edit-plan-2"]').trigger('click')
+    const modal = document.body.querySelector('[data-testid="edit-plan-modal"]')
+    expect(modal).not.toBeNull()
+    expect(modal.querySelector('input[name="csrf_test_name"]').value).toBe('secure-token')
+    expect(modal.querySelector('input[name="base_km"]').value).toBe('9000')
+    expect(modal.querySelector('input[name="intervalo_km"]')).toBeNull()
   })
 
   it('conserva filtros y tamaño en los enlaces de paginación recibidos', () => {
@@ -94,24 +91,17 @@ describe('preventive-plans', () => {
   it('oculta el alta sin permiso y conserva el empty state', () => {
     const wrapper = render(PreventivePlansPage, { ...preventivePlansData, canEdit: false, plans: { ...preventivePlansData.plans, total: 0, items: [] } })
     expect(wrapper.find('form[action="/mantenimiento/planes"][method="post"]').exists()).toBe(false)
-    expect(wrapper.text()).toContain('No hay planes preventivos')
+    expect(wrapper.text()).toContain('No hay servicios asignados')
   })
 
-  it('permite editar un plan activo con valores precargados', async () => {
+  it('permite editar la última realización con valores precargados', async () => {
     const wrapper = render(PreventivePlansPage, preventivePlansData)
     await wrapper.get('[data-testid="edit-plan-2"]').trigger('click')
-    await flushPromises()
+    const form = document.body.querySelector('form[action="/mantenimiento/planes/2/editar"][method="post"]')
 
-    const modal = document.body.querySelector('[role="dialog"][data-testid="edit-plan-modal"]')
-    expect(modal).not.toBeNull()
-    const form = modal.querySelector('form[action="/mantenimiento/planes/2/editar"][method="post"]')
-    expect(form).not.toBeNull()
-
-    expect(form.querySelector('input[name="csrf_test_name"]').getAttribute('value')).toBe('secure-token')
-    expect(form.querySelector('input[name="intervalo_km"]').value).toBe('1000')
-    expect(form.querySelector('input[name="anticipacion_km"]').value).toBe('200')
+    expect(form.querySelector('input[name="csrf_test_name"]').value).toBe('secure-token')
     expect(form.querySelector('input[name="base_km"]').value).toBe('9000')
-    expect(form.querySelector('select[name="prioridad"]').value).toBe('MEDIA')
+    expect(form.querySelector('input[name="intervalo_km"]')).toBeNull()
   })
 
   it('oculta el formulario de edición de plan sin permiso', () => {
