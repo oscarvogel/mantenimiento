@@ -7,7 +7,7 @@ import FormField from './components/FormField.vue'
 import PageHeading from './components/PageHeading.vue'
 import PaginationBar from './components/PaginationBar.vue'
 import StatusBadge from './components/StatusBadge.vue'
-import { fieldClass, primaryButton, secondaryButton, today } from './helpers.js'
+import { fieldClass, formatNumberEs, primaryButton, secondaryButton, today } from './helpers.js'
 
 const props = defineProps({ data: { type: Object, required: true } })
 
@@ -43,6 +43,45 @@ const planCriteria = (plan) => [
   ['hours', plan.criteria.hours],
   ['date', plan.criteria.date],
 ].filter(([, criterion]) => criterion)
+
+const displayDate = (value) => {
+  const match = String(value ?? '').match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : 'sin datos'
+}
+
+const formatMetric = (value, key) => {
+  if (value === null || value === undefined || value === '') return 'sin datos'
+  return key === 'hours' ? formatNumberEs(Number(value), 1) : formatNumberEs(Number(value), 0)
+}
+
+const differenceText = (key, criterion) => {
+  if (criterion.difference === null || criterion.difference === undefined) return 'Faltan datos para calcular'
+  const difference = Number(criterion.difference)
+  if (key === 'date') {
+    if (difference > 0) return `Faltan ${difference} día${difference === 1 ? '' : 's'}`
+    if (difference < 0) return `Vencido hace ${Math.abs(difference)} día${Math.abs(difference) === 1 ? '' : 's'}`
+    return 'Vence hoy'
+  }
+  const unit = key === 'hours' ? 'h' : 'km'
+  const formatted = formatMetric(Math.abs(difference), key)
+  if (difference > 0) return `Faltan ${formatted} ${unit}`
+  if (difference < 0) return `Vencido por ${formatted} ${unit}`
+  return 'Vence con la lectura actual'
+}
+
+const criterionLabel = (key) => key === 'kilometers' ? 'KM' : key === 'hours' ? 'HORAS' : 'FECHA'
+const criterionFrequency = (key, criterion) => {
+  if (key === 'kilometers') return `Cada ${formatMetric(criterion.interval, key)} km`
+  if (key === 'hours') return `Cada ${formatMetric(criterion.interval, key)} h`
+  return `Cada ${criterion.interval} días`
+}
+const criterionCurrent = (key, criterion) => {
+  if (key === 'date') return null
+  return `Actual: ${formatMetric(criterion.current, key)} ${key === 'hours' ? 'h' : 'km'}`
+}
+const criterionNext = (key, criterion) => key === 'date'
+  ? `Próximo: ${displayDate(criterion.next)}`
+  : `Próximo: ${formatMetric(criterion.next, key)} ${key === 'hours' ? 'h' : 'km'}`
 
 const criterionText = (key, criterion) => {
   if (key === 'kilometers') return `Cada ${criterion.interval} km · próximo ${criterion.next ?? 'sin datos'} km`
@@ -105,24 +144,43 @@ const closeEditModal = () => { editingPlan.value = null }
       <EmptyState v-if="visiblePlans.length === 0" title="No hay servicios asignados" description="Probá limpiando los filtros o asigná un servicio desde la ficha del equipo." class="m-5" />
 
       <div v-else class="overflow-x-auto">
-        <table class="ui-table-hover w-full min-w-[66rem] text-left text-sm">
+        <table class="ui-table-hover w-full min-w-[72rem] text-left text-sm">
           <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
             <tr>
-              <th class="px-4 py-3">Equipo</th><th class="px-4 py-3">Servicio</th><th class="px-4 py-3">Frecuencia / próximo</th><th class="px-4 py-3">Prioridad</th><th class="px-4 py-3">Estado</th><th class="px-4 py-3 text-right">Acción</th>
+              <th class="px-4 py-3">Equipo</th><th class="px-4 py-3">Servicio</th><th class="px-4 py-3">Situación / próximo</th><th class="px-4 py-3">Prioridad</th><th class="px-4 py-3">Estado</th><th class="px-4 py-3 text-right">Acción</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-border-subtle">
             <tr v-for="plan in visiblePlans" :key="plan.id">
-              <td class="px-4 py-3">
+              <td class="px-4 py-3 align-top">
                 <a v-if="plan.equipment.detailUrl" :href="plan.equipment.detailUrl" class="font-bold text-primary hover:underline">{{ plan.equipment.code }}</a>
                 <strong v-else class="text-ink">{{ plan.equipment.code }}</strong>
                 <p class="mt-0.5 text-xs text-ink-muted">{{ [plan.equipment.plate, plan.equipment.typeName, plan.branch.code].filter(Boolean).join(' · ') }}</p>
               </td>
-              <td class="px-4 py-3"><strong class="text-ink">{{ plan.serviceName }}</strong><p v-if="plan.notes" class="mt-0.5 max-w-xs truncate text-xs text-ink-muted">{{ plan.notes }}</p></td>
-              <td class="px-4 py-3"><p v-for="([key, criterion]) in planCriteria(plan)" :key="key" class="text-xs text-ink">{{ criterionText(key, criterion) }}</p></td>
-              <td class="px-4 py-3 text-xs font-semibold text-ink">{{ plan.priority === 'CRITICA' ? 'CRÍTICA' : plan.priority }}</td>
-              <td class="px-4 py-3"><StatusBadge :status="plan.state" /></td>
-              <td class="px-4 py-3 text-right"><button v-if="data.canEdit && plan.editUrl" type="button" :class="secondaryButton" :data-testid="`edit-plan-${plan.id}`" @click="openEditModal(plan)">Última realización</button></td>
+              <td class="px-4 py-3 align-top"><strong class="text-ink">{{ plan.serviceName }}</strong><p v-if="plan.notes" class="mt-0.5 max-w-xs truncate text-xs text-ink-muted">{{ plan.notes }}</p></td>
+              <td class="px-4 py-3 align-top">
+                <div v-for="([key, criterion]) in planCriteria(plan)" :key="key" class="mb-3 last:mb-0">
+                  <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
+                    <strong class="text-ink">{{ criterionLabel(key) }}</strong>
+                    <span class="text-ink-muted">{{ criterionFrequency(key, criterion) }}</span>
+                  </div>
+                  <p v-if="criterionCurrent(key, criterion)" class="mt-0.5 text-xs text-ink-muted">{{ criterionCurrent(key, criterion) }}</p>
+                  <p class="text-xs text-ink">{{ criterionNext(key, criterion) }}</p>
+                  <p class="mt-0.5 text-xs font-bold" :class="Number(criterion.difference) < 0 ? 'text-danger' : plan.state === 'PROXIMO' ? 'text-warning-strong' : 'text-ink'">{{ differenceText(key, criterion) }}</p>
+                </div>
+                <span v-if="planCriteria(plan).length === 0" class="text-xs text-ink-muted">Sin frecuencia</span>
+              </td>
+              <td class="px-4 py-3 align-top text-xs font-semibold text-ink">{{ plan.priority === 'CRITICA' ? 'CRÍTICA' : plan.priority }}</td>
+              <td class="px-4 py-3 align-top"><StatusBadge :status="plan.state" /></td>
+              <td class="px-4 py-3 align-top">
+                <div class="flex flex-col items-stretch gap-2 sm:items-end">
+                  <form v-if="plan.generateOrderUrl" method="post" :action="plan.generateOrderUrl">
+                    <CsrfInput :csrf="data.csrf" />
+                    <button type="submit" :class="primaryButton" :data-testid="`generate-order-${plan.id}`">Generar OT</button>
+                  </form>
+                  <button v-if="data.canEdit && plan.editUrl" type="button" :class="secondaryButton" :data-testid="`edit-plan-${plan.id}`" @click="openEditModal(plan)">Última realización</button>
+                </div>
+              </td>
             </tr>
           </tbody>
         </table>
