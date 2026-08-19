@@ -111,7 +111,7 @@ final class CodeIgniterCircuitOverview implements CircuitOverviewPort
             'company' => $company,
             'branches' => $branches->get()->getResultArray(),
             'equipmentTypes' => $this->database->table('tipos_equipo')->select('id, nombre, controla_km, controla_horas')->where('activo', 1)->orderBy('nombre')->get()->getResultArray(),
-            'serviceTypes' => $this->database->table('tipos_servicio')->select('id, codigo, nombre')->where('activo', 1)->orderBy('nombre')->get()->getResultArray(),
+            'serviceTypes' => $this->database->table('tipos_servicio')->select('id, codigo, nombre')->where('empresa_id', $companyId)->where('activo', 1)->orderBy('nombre')->get()->getResultArray(),
             'templateDefaults' => $this->templateDefaults($companyId),
             'users' => $this->database->table('usuarios')->select('id, nombre')->where('empresa_id', $companyId)->where('activo', 1)->where('es_superadmin', 0)->where('deleted_at', null)->orderBy('nombre')->get()->getResultArray(),
             'equipments' => $equipmentRows,
