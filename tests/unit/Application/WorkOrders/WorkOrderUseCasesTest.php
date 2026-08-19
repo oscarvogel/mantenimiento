@@ -54,6 +54,39 @@ final class WorkOrderUseCasesTest extends TestCase
         self::assertSame(77, $id);
         self::assertSame(WorkOrderStatus::ISSUED, $repository->order?->status());
         self::assertSame('OT-2026-000001', $repository->order?->number()->value());
+        self::assertSame(5, $repository->order?->preventiveNoticeId());
+        self::assertSame(1, $transaction->calls);
+    }
+
+    public function testGeneratesIssuedPreventiveOrderDirectlyFromPlanWithoutNotice(): void
+    {
+        $repository = new InMemoryWorkOrderRepository();
+        $transaction = new ImmediateWorkOrderTransaction();
+        $handler = new GeneratePreventiveWorkOrder(
+            $repository,
+            new FixedWorkOrderNumberGenerator(),
+            $transaction,
+            new FixedClock(),
+        );
+
+        $id = $handler->execute($this->actor(['ordenes.editar']), new GeneratePreventiveWorkOrderCommand(
+            1,
+            2,
+            3,
+            4,
+            null,
+            6,
+            10,
+            'MEDIA',
+            1100,
+            null,
+            [['catalog_task_id' => 9, 'description' => 'Realizar service preventivo', 'required' => true, 'sequence' => 1]],
+        ));
+
+        self::assertSame(77, $id);
+        self::assertSame(WorkOrderStatus::ISSUED, $repository->order?->status());
+        self::assertSame(4, $repository->order?->planId());
+        self::assertNull($repository->order?->preventiveNoticeId());
         self::assertSame(1, $transaction->calls);
     }
 
@@ -69,7 +102,7 @@ final class WorkOrderUseCasesTest extends TestCase
         $this->expectException(DomainException::class);
         $handler->execute($this->actor(['ordenes.editar']), new GeneratePreventiveWorkOrderCommand(
             2, 2, 3, 4, 5, 6, 10, 'MEDIA', null, null,
-            [['catalog_task_id' => null, 'description' => 'InspecciÃ³n', 'required' => true, 'sequence' => 1]],
+            [['catalog_task_id' => null, 'description' => 'Inspección', 'required' => true, 'sequence' => 1]],
         ));
     }
 
@@ -91,7 +124,7 @@ final class WorkOrderUseCasesTest extends TestCase
 
         $prepared = $handler->execute(
             $this->actor(['ordenes.cerrar']),
-            new PreparePreventiveWorkOrderClosureCommand(50, [70 => 'Se realizÃ³ el service preventivo completo.'], 1120, null),
+            new PreparePreventiveWorkOrderClosureCommand(50, [70 => 'Se realizó el service preventivo completo.'], 1120, null),
         );
 
         self::assertSame(WorkOrderStatus::COMPLETED, $prepared->workOrder->status());
