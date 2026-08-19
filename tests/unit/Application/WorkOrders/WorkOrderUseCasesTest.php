@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tests\Unit\Application\WorkOrders;
 
 use App\Application\Identity\ActorContext;
+use App\Application\WorkOrders\ChangeWorkOrderState;
+use App\Application\WorkOrders\ChangeWorkOrderStateCommand;
 use App\Application\WorkOrders\GeneratePreventiveWorkOrder;
 use App\Application\WorkOrders\GeneratePreventiveWorkOrderCommand;
 use App\Application\WorkOrders\Port\Clock;
@@ -69,7 +71,7 @@ final class WorkOrderUseCasesTest extends TestCase
         $this->expectException(DomainException::class);
         $handler->execute($this->actor(['ordenes.editar']), new GeneratePreventiveWorkOrderCommand(
             2, 2, 3, 4, 5, 6, 10, 'MEDIA', null, null,
-            [['catalog_task_id' => null, 'description' => 'InspecciÃ³n', 'required' => true, 'sequence' => 1]],
+            [['catalog_task_id' => null, 'description' => 'Inspección', 'required' => true, 'sequence' => 1]],
         ));
     }
 
@@ -84,6 +86,62 @@ final class WorkOrderUseCasesTest extends TestCase
         self::assertSame(1, $repository->saveCalls);
     }
 
+    public function testPutsInProgressOrderOnHoldForParts(): void
+    {
+        $repository = new InMemoryWorkOrderRepository($this->persistedOrder(WorkOrderStatus::IN_PROGRESS));
+        $transaction = new ImmediateWorkOrderTransaction();
+        $handler = new ChangeWorkOrderState($repository, $transaction, new FixedClock());
+
+        $handler->execute($this->actor(['ordenes.editar']), new ChangeWorkOrderStateCommand(
+            50,
+            'esperar_repuestos',
+            'Esperando filtro de aceite',
+        ));
+
+        self::assertSame(WorkOrderStatus::WAITING_FOR_PARTS, $repository->order?->status());
+        self::assertSame('Esperando filtro de aceite', $repository->order?->waitingReason());
+        self::assertSame(1, $repository->saveCalls);
+        self::assertSame(1, $transaction->calls);
+    }
+
+    public function testResumesOrderWaitingForParts(): void
+    {
+        $order = $this->persistedOrder(WorkOrderStatus::IN_PROGRESS);
+        $order->putOnHold('Esperando filtro de aceite', new DateTimeImmutable('2026-08-08 09:30:00'), 10);
+        $order->releaseStateChanges();
+        $repository = new InMemoryWorkOrderRepository($order);
+        $handler = new ChangeWorkOrderState($repository, new ImmediateWorkOrderTransaction(), new FixedClock());
+
+        $handler->execute($this->actor(['ordenes.editar']), new ChangeWorkOrderStateCommand(50, 'reanudar'));
+
+        self::assertSame(WorkOrderStatus::IN_PROGRESS, $repository->order?->status());
+        self::assertNull($repository->order?->waitingReason());
+    }
+
+    public function testCancelsIssuedOrderWithReason(): void
+    {
+        $repository = new InMemoryWorkOrderRepository($this->persistedOrder(WorkOrderStatus::ISSUED));
+        $handler = new ChangeWorkOrderState($repository, new ImmediateWorkOrderTransaction(), new FixedClock());
+
+        $handler->execute($this->actor(['ordenes.editar']), new ChangeWorkOrderStateCommand(
+            50,
+            'cancelar',
+            'Trabajo ya realizado previamente',
+        ));
+
+        self::assertSame(WorkOrderStatus::CANCELLED, $repository->order?->status());
+        self::assertSame('Trabajo ya realizado previamente', $repository->order?->cancellationReason());
+    }
+
+    public function testRejectsInvalidLifecycleTransition(): void
+    {
+        $repository = new InMemoryWorkOrderRepository($this->persistedOrder(WorkOrderStatus::ISSUED));
+        $handler = new ChangeWorkOrderState($repository, new ImmediateWorkOrderTransaction(), new FixedClock());
+
+        $this->expectException(DomainException::class);
+        $handler->execute($this->actor(['ordenes.editar']), new ChangeWorkOrderStateCommand(50, 'reanudar'));
+    }
+
     public function testPreparesClosureWithoutPersistingCrossContextEffects(): void
     {
         $repository = new InMemoryWorkOrderRepository($this->persistedOrder(WorkOrderStatus::IN_PROGRESS));
@@ -91,7 +149,7 @@ final class WorkOrderUseCasesTest extends TestCase
 
         $prepared = $handler->execute(
             $this->actor(['ordenes.cerrar']),
-            new PreparePreventiveWorkOrderClosureCommand(50, [70 => 'Se realizÃ³ el service preventivo completo.'], 1120, null),
+            new PreparePreventiveWorkOrderClosureCommand(50, [70 => 'Se realizó el service preventivo completo.'], 1120, null),
         );
 
         self::assertSame(WorkOrderStatus::COMPLETED, $prepared->workOrder->status());
