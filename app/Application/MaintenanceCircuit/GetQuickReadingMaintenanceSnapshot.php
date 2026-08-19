@@ -119,29 +119,57 @@ final readonly class GetQuickReadingMaintenanceSnapshot
         foreach ([['key' => 'km', 'unit' => 'km'], ['key' => 'hours', 'unit' => 'h'], ['key' => 'days', 'unit' => 'días']] as $criterion) {
             $value = $remaining[$criterion['key']];
             if ($value !== null) {
-                $values[] = ['value' => $value, 'unit' => $criterion['unit']];
+                $values[] = ['key' => $criterion['key'], 'value' => $value, 'unit' => $criterion['unit']];
             }
         }
         if ($values === []) {
             return null;
         }
 
+        $critical = null;
         if ($state === EstadoPlan::VENCIDO) {
             $overdue = array_values(array_filter($values, static fn (array $item): bool => $item['value'] <= 0));
             if ($overdue !== []) {
                 usort($overdue, static fn (array $a, array $b): int => $a['value'] <=> $b['value']);
-                return $overdue[0];
+                $critical = $overdue[0];
             }
         }
 
-        $positive = array_values(array_filter($values, static fn (array $item): bool => $item['value'] >= 0));
-        if ($positive !== []) {
-            usort($positive, static fn (array $a, array $b): int => $a['value'] <=> $b['value']);
-            return $positive[0];
+        if ($critical === null) {
+            $positive = array_values(array_filter($values, static fn (array $item): bool => $item['value'] >= 0));
+            if ($positive !== []) {
+                usort($positive, static fn (array $a, array $b): int => $a['value'] <=> $b['value']);
+                $critical = $positive[0];
+            }
         }
 
-        usort($values, static fn (array $a, array $b): int => abs($a['value']) <=> abs($b['value']));
-        return $values[0];
+        if ($critical === null) {
+            usort($values, static fn (array $a, array $b): int => abs($a['value']) <=> abs($b['value']));
+            $critical = $values[0];
+        }
+
+        $supplemental = [];
+        foreach ($values as $item) {
+            if ($item['key'] === $critical['key']) {
+                continue;
+            }
+            $supplemental[] = $this->formatRemainingMetric($item['value'], $item['unit']);
+        }
+
+        return [
+            'value' => $critical['value'],
+            'unit' => implode(' · ', array_filter([$critical['unit'], ...$supplemental])),
+        ];
+    }
+
+    private function formatRemainingMetric(int|float $value, string $unit): string
+    {
+        $absolute = abs($value);
+        $formatted = $unit === 'km'
+            ? number_format((float) round($absolute), 0, ',', '.')
+            : number_format((float) $absolute, $unit === 'h' ? 1 : 0, ',', '.');
+
+        return ($value < 0 ? 'vencido ' : '') . $formatted . ' ' . $unit;
     }
 
     /** @param array<string,mixed> $plan @return array{int,float|string,int} */
