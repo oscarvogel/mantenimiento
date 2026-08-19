@@ -2,6 +2,19 @@
 
 Estas instrucciones aplican a todo el repositorio.
 
+## Entorno de prueba obligatorio
+
+Cuando una tarea diga probar, levantar, reconstruir o deployar en prueba, el destino obligatorio es el Docker remoto de `fasa_195`. No usar PHP/MariaDB local de Windows, `php -S`, ni otro fallback local salvo autorización explícita del usuario.
+
+Antes de modificar o probar el entorno:
+
+1. Verificar por SSH que el host sea `fasa_195`.
+2. Inspeccionar allí `docker ps` y el `docker compose` del proyecto.
+3. Confirmar el nombre del stack, puerto, checkout/commit y que no sea producción.
+4. Ejecutar únicamente sobre el stack de prueba identificado, preservando sus volúmenes.
+
+Si `fasa_195` no es accesible o el stack no puede identificarse con seguridad, informar el bloqueo y detenerse. La ausencia de Docker en Windows nunca habilita un entorno local alternativo.
+
 ## Criterio de producto obligatorio
 
 El sistema debe diseñarse y validarse como una herramienta para una persona que lo usa todos los días, no como una interfaz que simplemente responde al backend. Cada flujo debe priorizar lenguaje humano, valores aplicables, prevención de errores, continuidad de contexto y feedback accionable.

@@ -69,9 +69,38 @@ final class CodeIgniterPreventiveOrderClosure implements PreventiveOrderClosureP
             if ($taskRows === []) {
                 throw new DomainException('La orden no existe, no tiene tareas o queda fuera del alcance autorizado.');
             }
+
             $workByTask = [];
+            $deferredResults = [];
+            $taskResults = is_array($closure['tareas'] ?? null) ? $closure['tareas'] : null;
             foreach ($taskRows as $task) {
-                $workByTask[(int) $task['id']] = (string) $closure['trabajo_realizado'];
+                $taskId = (int) $task['id'];
+                if ($taskResults === null) {
+                    $workByTask[$taskId] = (string) $closure['trabajo_realizado'];
+                    continue;
+                }
+
+                $result = $taskResults[$taskId] ?? null;
+                if (! is_array($result)) {
+                    throw new DomainException('Debe indicar el resultado de todas las tareas de la OT.');
+                }
+
+                $status = (string) ($result['resultado'] ?? '');
+                $detail = (string) ($result['detalle'] ?? '');
+                if ($status === 'REALIZADA') {
+                    $workByTask[$taskId] = $detail !== '' ? $detail : 'Tarea realizada.';
+                    continue;
+                }
+
+                if (! in_array($status, ['PENDIENTE', 'NO_APLICA'], true)) {
+                    throw new DomainException('El resultado informado para una tarea no es válido.');
+                }
+
+                // El agregado actual exige completar las tareas para ejecutar el cierre.
+                // Se prepara el cierre dentro de la misma UoW y, tras persistir la OT,
+                // se conserva explícitamente el resultado operativo real de la tarea.
+                $workByTask[$taskId] = ($status === 'PENDIENTE' ? 'No realizada: ' : 'No aplica: ') . $detail;
+                $deferredResults[$taskId] = ['estado' => $status, 'detalle' => $detail];
             }
 
             $prepared = $prepare->execute($actor, new PreparePreventiveWorkOrderClosureCommand(
@@ -105,6 +134,20 @@ final class CodeIgniterPreventiveOrderClosure implements PreventiveOrderClosureP
                 $actorUserId,
             );
             $repository->save($prepared->workOrder, $actorUserId);
+
+            foreach ($deferredResults as $taskId => $result) {
+                $this->database->table('orden_tareas')
+                    ->where('empresa_id', $companyId)
+                    ->where('orden_id', $orderId)
+                    ->where('id', $taskId)
+                    ->update([
+                        'estado' => $result['estado'],
+                        'trabajo_realizado' => null,
+                        'fecha_fin' => null,
+                        'observaciones' => $result['detalle'],
+                        'updated_at' => date('Y-m-d H:i:s'),
+                    ]);
+            }
 
             return [
                 'numero' => $prepared->workOrder->number()->value(),

@@ -187,6 +187,10 @@ final class WorkOrder
 
     public function resume(DateTimeImmutable $occurredAt, int $actorUserId): void
     {
+        if ($this->status !== WorkOrderStatus::WAITING_FOR_PARTS) {
+            throw new DomainException('Solo una OT en espera de repuestos puede reanudarse.');
+        }
+
         $this->waitingReason = null;
         $this->transitionTo(WorkOrderStatus::IN_PROGRESS, $occurredAt, $actorUserId, 'OT reanudada');
     }

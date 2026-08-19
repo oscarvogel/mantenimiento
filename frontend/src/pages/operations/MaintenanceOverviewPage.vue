@@ -10,6 +10,7 @@ import PaginationBar from './components/PaginationBar.vue'
 import PanelCard from './components/PanelCard.vue'
 import StatusBadge from './components/StatusBadge.vue'
 import UsageReadingInput from './components/UsageReadingInput.vue'
+import WorkOrderClosureModal from './components/WorkOrderClosureModal.vue'
 import { fieldClass, formatHours, formatKilometers, formatReadingOrigin, primaryButton, secondaryButton, today } from './helpers.js'
 
 const props = defineProps({ data: { type: Object, required: true } })
@@ -25,6 +26,7 @@ const data = computed(() => ({
 const activeAction = ref(Object.keys(props.data.old ?? {}).length > 0 ? 'create-equipment' : null)
 const planForms = reactive({})
 const closeForms = reactive({})
+const activeCloseOrder = ref(null)
 
 const visiblePlanCounts = computed(() => {
   const counts = { PROXIMO: 0, VENCIDO: 0, SIN_DATOS: 0 }
@@ -86,9 +88,23 @@ const closeStateFor = (order) => {
       hours: '',
       currentKm: order.currentKm,
       currentHours: order.currentHours,
+      tasks: {},
+    }
+  }
+  for (const task of order.tasks ?? []) {
+    if (!closeForms[order.id].tasks[task.id]) {
+      closeForms[order.id].tasks[task.id] = { resultado: '', detalle: '' }
     }
   }
   return closeForms[order.id]
+}
+const openCloseModal = (order) => {
+  closeStateFor(order)
+  activeCloseOrder.value = order
+}
+const closeCloseModal = () => { activeCloseOrder.value = null }
+const updateCloseForm = (value) => {
+  if (activeCloseOrder.value) closeForms[activeCloseOrder.value.id] = value
 }
 for (const equipment of props.data.equipments ?? []) stateFor(equipment)
 for (const order of props.data.orders ?? []) closeStateFor(order)
@@ -174,21 +190,7 @@ for (const order of props.data.orders ?? []) closeStateFor(order)
             <p class="mt-2 text-sm text-ink-muted">{{ order.serviceName || 'Servicio preventivo' }} · Responsable: {{ order.ownerName || 'Sin asignar' }}</p>
             <ul v-if="order.tasks.length" class="mt-3 space-y-1 text-sm text-ink"><li v-for="task in order.tasks" :key="task.id">{{ task.description }} <span class="text-ink-muted">({{ task.status }})</span></li></ul>
             <form v-if="order.status === 'EMITIDA' && data.can.editOrder" method="post" :action="order.startUrl" class="mt-4"><CsrfInput :csrf="data.csrf" /><button type="submit" :class="secondaryButton">Iniciar orden</button></form>
-            <button v-else-if="order.status === 'EN_PROCESO' && data.can.closeOrder" type="button" :class="`${secondaryButton} mt-4`" :aria-expanded="isActionOpen(`close-order-${order.id}`)" :aria-controls="`close-order-${order.id}`" @click="toggleAction(`close-order-${order.id}`)"><WrenchScrewdriverIcon class="mr-2 size-4" aria-hidden="true" />Cerrar orden</button>
-            <form v-if="order.status === 'EN_PROCESO' && data.can.closeOrder && isActionOpen(`close-order-${order.id}`)" :id="`close-order-${order.id}`" method="post" :action="order.closeUrl" class="mt-5 grid gap-3 border-t border-border-subtle pt-5">
-              <CsrfInput :csrf="data.csrf" />
-              <FormField label="Trabajo realizado" :for-id="`order-work-${order.id}`"><textarea :id="`order-work-${order.id}`" name="trabajo_realizado" rows="2" required :class="fieldClass"></textarea></FormField>
-              <FormField label="Fecha servicio" :for-id="`order-date-${order.id}`"><input :id="`order-date-${order.id}`" type="date" name="fecha_servicio" required :value="today()" :class="fieldClass" /></FormField>
-              <UsageReadingInput
-                v-model="closeForms[order.id]"
-                :equipment="order"
-                :names="{ kilometers: 'km_salida', hours: 'horas_salida' }"
-                :labels="{ kilometers: 'Nueva lectura de kilometraje', hours: 'Nueva lectura de horómetro', current: 'Actual' }"
-                :id-prefix="`order-${order.id}-reading`"
-              />
-              <p class="text-xs text-ink-muted sm:col-span-2">Al cerrar la orden se actualizarán las lecturas y el próximo mantenimiento automáticamente.</p>
-              <button type="submit" :class="primaryButton">Cerrar orden</button>
-            </form>
+            <button v-else-if="order.status === 'EN_PROCESO' && data.can.closeOrder" type="button" :class="`${secondaryButton} mt-4`" aria-haspopup="dialog" @click="openCloseModal(order)"><WrenchScrewdriverIcon class="mr-2 size-4" aria-hidden="true" />Cerrar orden</button>
           </article>
         </div>
         <PaginationBar :pagination="data.pagination.orders" />
@@ -217,5 +219,14 @@ for (const order of props.data.orders ?? []) closeStateFor(order)
       <div v-else class="overflow-x-auto"><table class="w-full min-w-[40rem] text-left text-sm"><thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-6 py-3">Equipo</th><th class="px-6 py-3">Fecha</th><th class="px-6 py-3">Km</th><th class="px-6 py-3">Horas</th><th class="px-6 py-3">Origen</th></tr></thead><tbody class="divide-y divide-border-subtle"><tr v-for="reading in data.readings" :key="reading.id"><td class="px-6 py-4 font-semibold text-ink">{{ reading.equipmentCode }}</td><td class="px-6 py-4 text-ink-muted">{{ reading.recordedAt }}</td><td class="px-6 py-4">{{ reading.kilometers ?? '—' }}</td><td class="px-6 py-4">{{ reading.hours ?? '—' }}</td><td class="px-6 py-4 text-ink-muted">{{ reading.origin }}</td></tr></tbody></table></div>
       <PaginationBar :pagination="data.pagination.readings" />
     </PanelCard>
+
+    <WorkOrderClosureModal
+      v-if="activeCloseOrder"
+      :order="activeCloseOrder"
+      :csrf="data.csrf"
+      :form-state="closeStateFor(activeCloseOrder)"
+      @close="closeCloseModal"
+      @update:form-state="updateCloseForm"
+    />
   </div>
 </template>
