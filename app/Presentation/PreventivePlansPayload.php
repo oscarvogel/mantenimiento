@@ -23,8 +23,9 @@ final class PreventivePlansPayload
 
         $planIds = array_values(array_filter(array_map(static fn (array $row): int => (int) $row['id'], $page->items)));
         $openOrdersByPlan = [];
-        if ($planIds !== []) {
-            $rows = db_connect()->table('ordenes_trabajo')
+        $database = db_connect();
+        if ($planIds !== [] && $database->tableExists('ordenes_trabajo')) {
+            $rows = $database->table('ordenes_trabajo')
                 ->select('id, numero, plan_id, estado')
                 ->whereIn('plan_id', $planIds)
                 ->whereNotIn('estado', ['FINALIZADA', 'CANCELADA'])
