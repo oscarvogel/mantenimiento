@@ -76,4 +76,25 @@ describe('V3.1.5 · cierre de orden de trabajo', () => {
     expect(form.textContent).toContain('No aplica')
     expect(form.querySelector('input[name="fecha_servicio"]')).not.toBeNull()
   })
+
+  it('solo exige detalle cuando la tarea no fue realizada', async () => {
+    const modal = await openCloseModal(makeData({ controlsKm: true, controlsHours: false }))
+    const form = modal.querySelector('form')
+    const result = form.querySelector('select[name="trabajo_realizado[1][resultado]"]')
+    const detail = form.querySelector('textarea[name="trabajo_realizado[1][detalle]"]')
+
+    expect(detail.required).toBe(false)
+    result.value = 'PENDIENTE'
+    result.dispatchEvent(new Event('change', { bubbles: true }))
+    await nextTick()
+    expect(detail.required).toBe(true)
+    result.value = 'NO_APLICA'
+    result.dispatchEvent(new Event('change', { bubbles: true }))
+    await nextTick()
+    expect(detail.required).toBe(true)
+    result.value = 'REALIZADA'
+    result.dispatchEvent(new Event('change', { bubbles: true }))
+    await nextTick()
+    expect(detail.required).toBe(false)
+  })
 })

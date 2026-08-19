@@ -82,9 +82,9 @@ const updateFormState = (value) => emit('update:formState', value)
                       v-model="formState.tasks[task.id].detalle"
                       :name="`trabajo_realizado[${task.id}][detalle]`"
                       rows="2"
-                      minlength="5"
+                      :minlength="['PENDIENTE', 'NO_APLICA'].includes(formState.tasks[task.id].resultado) ? 5 : undefined"
                       maxlength="1000"
-                      required
+                      :required="['PENDIENTE', 'NO_APLICA'].includes(formState.tasks[task.id].resultado)"
                       placeholder="Ej.: filtro reemplazado / sin repuesto disponible"
                       :class="fieldClass"
                     ></textarea>

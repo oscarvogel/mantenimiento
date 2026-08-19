@@ -92,7 +92,7 @@ final class ClosePreventiveOrder
             }
 
             $detail = trim((string) ($row['detalle'] ?? ''));
-            if (mb_strlen($detail) < 5) {
+            if ($result !== 'REALIZADA' && mb_strlen($detail) < 5) {
                 throw new DomainException('Cada tarea debe incluir un detalle o motivo de al menos 5 caracteres.');
             }
             if (mb_strlen($detail) > 1000) {

@@ -68,6 +68,29 @@ final class ClosePreventiveOrderTest extends CIUnitTestCase
         $this->assertNull($port->closure['tareas']);
     }
 
+    public function testAllowsEmptyDetailForPerformedTask(): void
+    {
+        $port = new class implements PreventiveOrderClosurePort {
+            public array $closure = [];
+
+            public function close(int $companyId, ?array $branchIds, int $orderId, array $closure, int $actorUserId): array
+            {
+                $this->closure = $closure;
+                return ['numero' => 'OT-2026-000001'];
+            }
+        };
+        $actor = new ActorContext(9, 3, false, true, ['Administrador'], ['ordenes.cerrar'], []);
+
+        (new ClosePreventiveOrder($port))->execute($actor, 12, [
+            'trabajo_realizado' => [
+                '41' => ['resultado' => 'REALIZADA', 'detalle' => ''],
+            ],
+            'fecha_servicio' => '2026-08-08',
+        ]);
+
+        $this->assertSame('', $port->closure['tareas'][41]['detalle']);
+    }
+
     public function testRejectsTaskClosureWithoutAnyPerformedTask(): void
     {
         $port = new class implements PreventiveOrderClosurePort {
@@ -82,6 +105,26 @@ final class ClosePreventiveOrderTest extends CIUnitTestCase
         (new ClosePreventiveOrder($port))->execute($actor, 12, [
             'trabajo_realizado' => [
                 '41' => ['resultado' => 'PENDIENTE', 'detalle' => 'Sin repuesto disponible'],
+            ],
+            'fecha_servicio' => '2026-08-08',
+        ]);
+    }
+
+    public function testRejectsEmptyDetailForPendingTask(): void
+    {
+        $port = new class implements PreventiveOrderClosurePort {
+            public function close(int $companyId, ?array $branchIds, int $orderId, array $closure, int $actorUserId): array
+            {
+                self::fail('The port must not be called.');
+            }
+        };
+        $actor = new ActorContext(9, 3, false, true, ['Administrador'], ['ordenes.cerrar'], []);
+
+        $this->expectException(DomainException::class);
+        (new ClosePreventiveOrder($port))->execute($actor, 12, [
+            'trabajo_realizado' => [
+                '41' => ['resultado' => 'PENDIENTE', 'detalle' => ''],
+                '42' => ['resultado' => 'REALIZADA', 'detalle' => ''],
             ],
             'fecha_servicio' => '2026-08-08',
         ]);

@@ -88,7 +88,7 @@ final class CodeIgniterPreventiveOrderClosure implements PreventiveOrderClosureP
                 $status = (string) ($result['resultado'] ?? '');
                 $detail = (string) ($result['detalle'] ?? '');
                 if ($status === 'REALIZADA') {
-                    $workByTask[$taskId] = $detail;
+                    $workByTask[$taskId] = $detail !== '' ? $detail : 'Tarea realizada.';
                     continue;
                 }
 
