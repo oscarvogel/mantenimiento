@@ -30,6 +30,10 @@ function editButton(wrapper) {
   return wrapper.findAll('button').find((button) => button.text().includes('Editar'))
 }
 
+function buttonByText(wrapper, text) {
+  return wrapper.findAll('button').find((button) => button.text().trim() === text)
+}
+
 describe('configuración de tareas del servicio', () => {
   it('permite agregar una tarea sin pedir código técnico', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
@@ -72,5 +76,32 @@ describe('configuración de tareas del servicio', () => {
     const newService = wrapper.findAll('button').find((button) => button.text().includes('Nuevo servicio'))
     await newService.trigger('click')
     expect(wrapper.find('input[name="codigo"]').exists()).toBe(false)
+  })
+
+  it('contrae las tareas al cerrar la edición', async () => {
+    const wrapper = mount(MaintenanceServicesPage, { props: { data } })
+    expect(wrapper.text()).not.toContain('Tareas del servicio')
+
+    await editButton(wrapper).trigger('click')
+    expect(wrapper.text()).toContain('Editar Servicio PR77')
+    expect(wrapper.text()).toContain('Tareas del servicio')
+
+    await buttonByText(wrapper, 'Cerrar').trigger('click')
+    expect(wrapper.text()).not.toContain('Editar Servicio PR77')
+    expect(wrapper.text()).not.toContain('Tareas del servicio')
+    expect(wrapper.text()).not.toContain('Nueva tarea')
+  })
+
+  it('contrae las tareas al cancelar la edición y permite editar nuevamente', async () => {
+    const wrapper = mount(MaintenanceServicesPage, { props: { data } })
+
+    await editButton(wrapper).trigger('click')
+    expect(wrapper.text()).toContain('Tareas del servicio')
+
+    await buttonByText(wrapper, 'Cancelar').trigger('click')
+    expect(wrapper.text()).not.toContain('Tareas del servicio')
+
+    await editButton(wrapper).trigger('click')
+    expect(wrapper.text()).toContain('Tareas del servicio')
   })
 })
