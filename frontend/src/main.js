@@ -14,6 +14,7 @@ import { installLibraryTaskStatus } from './ui/libraryTaskStatus.js'
 import { installPreventiveOrderFlow } from './ui/preventiveOrderFlow.js'
 import { installQuickPlanAssignment } from './ui/quickPlanAssignment.js'
 import { installTemplateServicePicker } from './ui/templateServicePicker.js'
+import { installWorkOrderTaskClosure } from './ui/workOrderTaskClosure.js'
 import { consumeFlash, installGlobalBehaviors } from './ui/globals.js'
 import './styles.css'
 
@@ -90,6 +91,9 @@ if (root) {
   }
   if (payload?.page === 'preventive-library') {
     installLibraryTaskStatus(root, payload)
+  }
+  if (payload?.page === 'maintenance-overview') {
+    installWorkOrderTaskClosure(root, payload)
   }
   if (serverPayload) consumeFlash(serverPayload.data?.flash)
 }
