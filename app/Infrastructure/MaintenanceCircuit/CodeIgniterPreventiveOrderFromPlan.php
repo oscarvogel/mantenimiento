@@ -59,11 +59,14 @@ final readonly class CodeIgniterPreventiveOrderFromPlan
                 throw new DomainException('La asignación preventiva no existe o queda fuera del alcance autorizado.');
             }
 
+            // El lock del plan serializa dos intentos concurrentes para la misma asignación.
+            // La OT preventiva puede venir del flujo histórico (PREVENTIVO) o del nuevo
+            // flujo Servicio → Equipo → Ejecución (PREVENTIVO_VENCIDO); la identidad
+            // operativa para evitar duplicados es empresa + plan + estado abierto.
             $existing = $this->database->table('ordenes_trabajo')
                 ->select('id')
                 ->where('empresa_id', $companyId)
                 ->where('plan_id', $planId)
-                ->where('origen', 'PREVENTIVO')
                 ->whereNotIn('estado', ['FINALIZADA', 'CANCELADA'])
                 ->orderBy('id', 'DESC')
                 ->get(1)->getRowArray();
