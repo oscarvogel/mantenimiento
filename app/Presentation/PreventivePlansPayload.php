@@ -5,11 +5,12 @@ declare(strict_types=1);
 namespace App\Presentation;
 
 use App\Application\PreventiveMaintenance\PreventivePlanPage;
+use DateTimeImmutable;
 
 final class PreventivePlansPayload
 {
     /** @param array<string,mixed> $filters */
-    public function fromPage(PreventivePlanPage $page, array $filters, bool $canEdit, bool $canViewEquipment, array $primaryPhotos = []): array
+    public function fromPage(PreventivePlanPage $page, array $filters, bool $canEdit, bool $canViewEquipment, array $primaryPhotos = [], bool $canManageOrders = false): array
     {
         $base = base_url('mantenimiento/planes');
         $query = array_filter([
@@ -22,6 +23,7 @@ final class PreventivePlansPayload
 
         return [
             'canEdit' => $canEdit,
+            'canManageOrders' => $canManageOrders,
             'routes' => [
                 'index' => $base,
                 'create' => $base,
@@ -87,10 +89,13 @@ final class PreventivePlansPayload
                     'branch' => ['id' => $row['branch_id'], 'code' => $row['branch_code'], 'name' => $row['branch_name']],
                     'serviceName' => $row['service_name'], 'state' => $row['state'], 'priority' => $row['priority'],
                     'editUrl' => $canEdit ? base_url('mantenimiento/planes/' . $row['id'] . '/editar') : null,
+                    'generateOrderUrl' => $canManageOrders && in_array($row['state'], ['PROXIMO', 'VENCIDO'], true)
+                        ? base_url('mantenimiento/planes/' . $row['id'] . '/orden')
+                        : null,
                     'criteria' => [
-                        'kilometers' => $this->criterion($row['interval_km'], $row['warning_km'], $row['base_km'], $row['next_km'], $row['current_km']),
-                        'hours' => $this->criterion($row['interval_hours'], $row['warning_hours'], $row['base_hours'], $row['next_hours'], $row['current_hours']),
-                        'date' => $this->criterion($row['interval_days'], $row['warning_days'], $row['base_date'], $row['next_date'], $row['current_date']),
+                        'kilometers' => $this->criterion($row['interval_km'], $row['warning_km'], $row['base_km'], $row['next_km'], $row['current_km'], 'number'),
+                        'hours' => $this->criterion($row['interval_hours'], $row['warning_hours'], $row['base_hours'], $row['next_hours'], $row['current_hours'], 'number'),
+                        'date' => $this->criterion($row['interval_days'], $row['warning_days'], $row['base_date'], $row['next_date'], $row['current_date'], 'date'),
                     ],
                     'notes' => $row['notes'],
                 ], $page->items),
@@ -99,10 +104,26 @@ final class PreventivePlansPayload
         ];
     }
 
-    /** @return array{interval:mixed,warning:mixed,base:mixed,next:mixed,current:mixed}|null */
-    private function criterion(mixed $interval, mixed $warning, mixed $base, mixed $next, mixed $current): ?array
+    /** @return array{interval:mixed,warning:mixed,base:mixed,next:mixed,current:mixed,difference:int|float|null}|null */
+    private function criterion(mixed $interval, mixed $warning, mixed $base, mixed $next, mixed $current, string $kind): ?array
     {
-        return $interval === null ? null : compact('interval', 'warning', 'base', 'next', 'current');
+        if ($interval === null) return null;
+
+        $difference = null;
+        if ($next !== null && $current !== null) {
+            if ($kind === 'date') {
+                $nextDate = DateTimeImmutable::createFromFormat('!Y-m-d', (string) $next);
+                $currentDate = DateTimeImmutable::createFromFormat('!Y-m-d', (string) $current);
+                if ($nextDate !== false && $currentDate !== false) {
+                    $difference = (int) $currentDate->diff($nextDate)->format('%r%a');
+                }
+            } else {
+                $difference = (float) $next - (float) $current;
+                if (floor($difference) === $difference) $difference = (int) $difference;
+            }
+        }
+
+        return compact('interval', 'warning', 'base', 'next', 'current', 'difference');
     }
 
     /** @param list<string> $fields @return array<string,mixed> */
