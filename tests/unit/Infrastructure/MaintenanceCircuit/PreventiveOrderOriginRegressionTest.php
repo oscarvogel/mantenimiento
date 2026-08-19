@@ -14,8 +14,8 @@ final class PreventiveOrderOriginRegressionTest extends TestCase
 
         self::assertIsString($source);
         self::assertStringNotContainsString("->where('origen', 'PREVENTIVO')", $source);
-        self::assertStringContainsString("->where('plan_id', $planId)", $source);
+        self::assertStringContainsString("->where('plan_id', \$planId)", $source);
         self::assertStringContainsString("->whereNotIn('estado', ['FINALIZADA', 'CANCELADA'])", $source);
-        self::assertStringContainsString("FOR UPDATE", $source);
+        self::assertStringContainsString('FOR UPDATE', $source);
     }
 }
