@@ -78,6 +78,18 @@ describe('configuración de tareas del servicio', () => {
     expect(wrapper.find('input[name="codigo"]').exists()).toBe(false)
   })
 
+  it('usa el ancho completo del catálogo mientras el servicio está en edición', async () => {
+    const wrapper = mount(MaintenanceServicesPage, { props: { data } })
+    const article = wrapper.get('article')
+    expect(article.classes()).not.toContain('lg:col-span-2')
+
+    await editButton(wrapper).trigger('click')
+    expect(article.classes()).toContain('lg:col-span-2')
+
+    await buttonByText(wrapper, 'Cerrar').trigger('click')
+    expect(article.classes()).not.toContain('lg:col-span-2')
+  })
+
   it('contrae las tareas al cerrar la edición', async () => {
     const wrapper = mount(MaintenanceServicesPage, { props: { data } })
     expect(wrapper.text()).not.toContain('Tareas del servicio')
