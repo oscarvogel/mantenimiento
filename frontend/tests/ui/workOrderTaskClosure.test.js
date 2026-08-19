@@ -57,4 +57,32 @@ describe('workOrderTaskClosure', () => {
     expect(root.querySelector('#order-work-8').hidden).toBe(false)
     expect(root.querySelector('[name="trabajo_realizado[50][resultado]"]')).toBeNull()
   })
+
+  it('instala el cierre cuando Vue agrega el formulario después del montaje', async () => {
+    document.body.innerHTML = '<div id="root"></div>'
+
+    const root = document.getElementById('root')
+    const stop = installWorkOrderTaskClosure(root, {
+      data: {
+        orders: [{
+          id: 9,
+          status: 'EN_PROCESO',
+          tasks: [{ id: 51, description: 'Filtro aceite', status: 'PENDIENTE' }],
+        }],
+      },
+    })
+
+    root.innerHTML = `
+      <form id="close-order-9">
+        <label for="order-work-9">Trabajo realizado</label>
+        <textarea id="order-work-9" name="trabajo_realizado" required></textarea>
+      </form>
+    `
+
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(root.querySelector('#order-work-9').hidden).toBe(true)
+    expect(root.querySelector('[data-testid="task-closure-9"]')).not.toBeNull()
+    stop?.()
+  })
 })
