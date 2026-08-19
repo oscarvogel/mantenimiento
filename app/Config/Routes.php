@@ -108,6 +108,9 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->post('avisos/(:num)/orden', 'MaintenanceCircuit::generateOrder/$1', ['filter' => 'permission:ordenes.editar']);
     $routes->get('ordenes/(:num)/imprimir', 'MaintenanceCircuit::printOrder/$1');
     $routes->post('ordenes/(:num)/iniciar', 'MaintenanceCircuit::startOrder/$1', ['filter' => 'permission:ordenes.editar']);
+    $routes->post('ordenes/(:num)/esperar-repuestos', 'WorkOrderLifecycle::waitForParts/$1', ['filter' => 'permission:ordenes.editar']);
+    $routes->post('ordenes/(:num)/reanudar', 'WorkOrderLifecycle::resume/$1', ['filter' => 'permission:ordenes.editar']);
+    $routes->post('ordenes/(:num)/cancelar', 'WorkOrderLifecycle::cancel/$1', ['filter' => 'permission:ordenes.editar']);
     $routes->post('ordenes/(:num)/cerrar', 'MaintenanceCircuit::closeOrder/$1', ['filter' => 'permission:ordenes.cerrar']);
 });
 
