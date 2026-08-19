@@ -50,7 +50,7 @@ final class WorkOrder
         int $branchId,
         int $equipmentId,
         int $planId,
-        int $preventiveNoticeId,
+        ?int $preventiveNoticeId,
         int $serviceTypeId,
         string $priority,
         int $responsibleUserId,
@@ -60,10 +60,13 @@ final class WorkOrder
         array $tasks,
         int $actorUserId,
     ): self {
-        foreach ([$companyId, $branchId, $equipmentId, $planId, $preventiveNoticeId, $serviceTypeId, $responsibleUserId, $actorUserId] as $id) {
+        foreach ([$companyId, $branchId, $equipmentId, $planId, $serviceTypeId, $responsibleUserId, $actorUserId] as $id) {
             if ($id <= 0) {
-                throw new DomainException('Las referencias de la OT preventiva deben ser vÃ¡lidas.');
+                throw new DomainException('Las referencias de la OT preventiva deben ser válidas.');
             }
+        }
+        if ($preventiveNoticeId !== null && $preventiveNoticeId <= 0) {
+            throw new DomainException('El aviso preventivo asociado debe ser válido.');
         }
         if ($tasks === []) {
             throw new DomainException('La OT preventiva debe contener al menos una tarea.');
@@ -72,7 +75,7 @@ final class WorkOrder
         self::assertUsageValue($inputKilometres, $inputHours, 'ingreso');
         $priority = mb_strtoupper(trim($priority));
         if (! in_array($priority, ['BAJA', 'MEDIA', 'ALTA', 'CRITICA'], true)) {
-            throw new DomainException('La prioridad de la OT no es vÃ¡lida.');
+            throw new DomainException('La prioridad de la OT no es válida.');
         }
 
         $order = new self(
@@ -211,7 +214,7 @@ final class WorkOrder
             throw new DomainException('Solo una OT en proceso puede finalizarse.');
         }
         if ($this->startedAt !== null && $closure->completedAt() < $this->startedAt) {
-            throw new DomainException('La fecha de finalizaciÃ³n no puede ser anterior al inicio.');
+            throw new DomainException('La fecha de finalización no puede ser anterior al inicio.');
         }
 
         $completedTasks = array_filter($this->tasks, static fn (WorkOrderTask $task): bool => $task->isCompleted());
@@ -228,13 +231,13 @@ final class WorkOrder
             throw new DomainException('El kilometraje de salida es obligatorio para esta OT.');
         }
         if ($this->inputHours !== null && $closure->outputHours() === null) {
-            throw new DomainException('El horÃ³metro de salida es obligatorio para esta OT.');
+            throw new DomainException('El horómetro de salida es obligatorio para esta OT.');
         }
         if ($closure->outputKilometres() !== null && $this->inputKilometres !== null && $closure->outputKilometres() < $this->inputKilometres) {
             throw new DomainException('El kilometraje de salida no puede ser inferior al de ingreso.');
         }
         if ($closure->outputHours() !== null && $this->inputHours !== null && (float) $closure->outputHours() < (float) $this->inputHours) {
-            throw new DomainException('El horÃ³metro de salida no puede ser inferior al de ingreso.');
+            throw new DomainException('El horómetro de salida no puede ser inferior al de ingreso.');
         }
 
         $this->completedAt = $closure->completedAt();
@@ -286,7 +289,7 @@ final class WorkOrder
             throw new DomainException(sprintf('El kilometraje de %s no puede ser negativo.', $label));
         }
         if ($hours !== null && (! is_numeric($hours) || (float) $hours < 0)) {
-            throw new DomainException(sprintf('El horÃ³metro de %s no es vÃ¡lido.', $label));
+            throw new DomainException(sprintf('El horómetro de %s no es válido.', $label));
         }
     }
 
