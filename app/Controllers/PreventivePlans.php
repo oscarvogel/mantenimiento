@@ -12,6 +12,7 @@ use App\Application\PreventiveMaintenance\AsignarPlan;
 use App\Application\PreventiveMaintenance\AsignarPlanCommand;
 use App\Application\PreventiveMaintenance\ListPreventivePlansHandler;
 use App\Infrastructure\Identity\SessionActorContext;
+use App\Infrastructure\MaintenanceCircuit\CodeIgniterPreventiveOrderFromPlan;
 use App\Presentation\PreventivePlansPayload;
 use CodeIgniter\HTTP\RedirectResponse;
 use DateTimeImmutable;
@@ -54,6 +55,7 @@ final class PreventivePlans extends BaseController
                 $actor->hasPermission('planes.editar'),
                 $actor->hasPermission('equipos.ver'),
                 $photos,
+                $actor->hasPermission('ordenes.editar'),
             ),
         );
     }
@@ -124,6 +126,23 @@ final class PreventivePlans extends BaseController
             return redirect()->to('/mantenimiento/planes')->withInput()->with(
                 'error',
                 $this->safeMessage($exception, 'No se pudo actualizar la última realización.'),
+            );
+        }
+    }
+
+    public function generateOrder(int $planId): RedirectResponse
+    {
+        try {
+            $orderId = (new CodeIgniterPreventiveOrderFromPlan(db_connect()))->generate($this->actor(), $planId);
+
+            return redirect()->to('/mantenimiento/ordenes/' . $orderId . '/imprimir')
+                ->with('success', "OT preventiva #{$orderId} disponible.");
+        } catch (Throwable $exception) {
+            $this->logUnexpected('Falló la generación de la OT preventiva desde la asignación', $exception);
+
+            return redirect()->to('/mantenimiento/planes')->with(
+                'error',
+                $this->safeMessage($exception, 'No se pudo generar la orden de trabajo.'),
             );
         }
     }
