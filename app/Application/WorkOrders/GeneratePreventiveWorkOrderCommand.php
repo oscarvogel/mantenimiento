@@ -14,7 +14,7 @@ final readonly class GeneratePreventiveWorkOrderCommand
         public int $branchId,
         public int $equipmentId,
         public int $planId,
-        public int $preventiveNoticeId,
+        public ?int $preventiveNoticeId,
         public int $serviceTypeId,
         public int $responsibleUserId,
         public string $priority,
