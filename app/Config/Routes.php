@@ -61,6 +61,7 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->post('planes', 'PreventivePlans::create', ['filter' => 'permission:planes.editar']);
     $routes->post('planes/desde-plantilla', 'PreventivePlans::createFromTemplates', ['filter' => 'permission:planes.editar']);
     $routes->post('planes/(:num)/editar', 'PreventivePlans::update/$1', ['filter' => 'permission:planes.editar']);
+    $routes->post('planes/(:num)/orden', 'PreventivePlans::generateOrder/$1', ['filter' => 'permission:ordenes.editar']);
     $routes->get('lecturas/rapidas', 'QuickReadings::index', ['filter' => 'permission:equipos.ver']);
     $routes->post('lecturas/rapidas', 'QuickReadings::store', ['filter' => 'permission:lecturas.cargar']);
     $routes->post('lecturas/rapidas/fila', 'QuickReadings::storeRow', ['filter' => 'permission:lecturas.cargar']);
