@@ -89,7 +89,9 @@ export function installWorkOrderTaskClosure(root, payload) {
       section.appendChild(card)
     }
 
-    form.insertBefore(section, legacyTextarea.parentElement ?? legacyTextarea)
+    const legacyContainer = legacyTextarea.parentElement
+    const anchor = legacyContainer && legacyContainer !== form ? legacyContainer : legacyTextarea
+    form.insertBefore(section, anchor)
     form.dataset.taskClosureInstalled = '1'
   }
 }
