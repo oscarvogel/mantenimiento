@@ -97,15 +97,21 @@ describe('preventive-plans', () => {
     expect(wrapper.text()).toContain('No hay planes preventivos')
   })
 
-  it('permite editar un plan activo con valores precargados', () => {
+  it('permite editar un plan activo con valores precargados', async () => {
     const wrapper = render(PreventivePlansPage, preventivePlansData)
-    const form = wrapper.get('form[action="/mantenimiento/planes/2/editar"][method="post"]')
+    await wrapper.get('[data-testid="edit-plan-2"]').trigger('click')
+    await flushPromises()
 
-    expect(form.get('input[name="csrf_test_name"]').attributes('value')).toBe('secure-token')
-    expect(form.get('input[name="intervalo_km"]').element.value).toBe('1000')
-    expect(form.get('input[name="anticipacion_km"]').element.value).toBe('200')
-    expect(form.get('input[name="base_km"]').element.value).toBe('9000')
-    expect(form.get('select[name="prioridad"]').element.value).toBe('MEDIA')
+    const modal = document.body.querySelector('[role="dialog"][data-testid="edit-plan-modal"]')
+    expect(modal).not.toBeNull()
+    const form = modal.querySelector('form[action="/mantenimiento/planes/2/editar"][method="post"]')
+    expect(form).not.toBeNull()
+
+    expect(form.querySelector('input[name="csrf_test_name"]').getAttribute('value')).toBe('secure-token')
+    expect(form.querySelector('input[name="intervalo_km"]').value).toBe('1000')
+    expect(form.querySelector('input[name="anticipacion_km"]').value).toBe('200')
+    expect(form.querySelector('input[name="base_km"]').value).toBe('9000')
+    expect(form.querySelector('select[name="prioridad"]').value).toBe('MEDIA')
   })
 
   it('oculta el formulario de edición de plan sin permiso', () => {
