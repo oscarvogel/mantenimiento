@@ -11,6 +11,7 @@ import LoginPage from './pages/login/LoginPage.vue'
 import { installEquipmentComboboxes } from './ui/equipmentCombobox.js'
 import { installEquipmentAssignedPlans } from './ui/equipmentAssignedPlans.js'
 import { installLibraryTaskStatus } from './ui/libraryTaskStatus.js'
+import { installPreventiveOrderFlow } from './ui/preventiveOrderFlow.js'
 import { installQuickPlanAssignment } from './ui/quickPlanAssignment.js'
 import { installTemplateServicePicker } from './ui/templateServicePicker.js'
 import { consumeFlash, installGlobalBehaviors } from './ui/globals.js'
@@ -79,6 +80,7 @@ if (root) {
   if (payload?.page === 'preventive-plans') {
     installEquipmentComboboxes(root, payload?.data?.catalogs?.equipment ?? [])
     installTemplateServicePicker(root, payload?.data?.catalogs ?? {})
+    installPreventiveOrderFlow(root, payload)
   }
   if (['equipment-detail', 'assets-index'].includes(payload?.page)) {
     installQuickPlanAssignment(root, payload)

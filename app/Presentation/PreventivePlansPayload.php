@@ -21,6 +21,29 @@ final class PreventivePlansPayload
             'por_pagina' => $page->perPage,
         ], static fn (mixed $value): bool => $value !== null && $value !== '');
 
+        $planIds = array_values(array_filter(array_map(static fn (array $row): int => (int) $row['id'], $page->items)));
+        $openOrdersByPlan = [];
+        $database = db_connect();
+        if ($planIds !== [] && $database->tableExists('ordenes_trabajo')) {
+            $rows = $database->table('ordenes_trabajo')
+                ->select('id, numero, plan_id, estado')
+                ->whereIn('plan_id', $planIds)
+                ->whereNotIn('estado', ['FINALIZADA', 'CANCELADA'])
+                ->orderBy('id', 'DESC')
+                ->get()->getResultArray();
+            foreach ($rows as $row) {
+                $planId = (int) $row['plan_id'];
+                if (! isset($openOrdersByPlan[$planId])) {
+                    $openOrdersByPlan[$planId] = [
+                        'id' => (int) $row['id'],
+                        'number' => (string) $row['numero'],
+                        'status' => (string) $row['estado'],
+                        'printUrl' => base_url('mantenimiento/ordenes/' . $row['id'] . '/imprimir'),
+                    ];
+                }
+            }
+        }
+
         return [
             'canEdit' => $canEdit,
             'canManageOrders' => $canManageOrders,
@@ -89,9 +112,12 @@ final class PreventivePlansPayload
                     'branch' => ['id' => $row['branch_id'], 'code' => $row['branch_code'], 'name' => $row['branch_name']],
                     'serviceName' => $row['service_name'], 'state' => $row['state'], 'priority' => $row['priority'],
                     'editUrl' => $canEdit ? base_url('mantenimiento/planes/' . $row['id'] . '/editar') : null,
-                    'generateOrderUrl' => $canManageOrders && in_array($row['state'], ['PROXIMO', 'VENCIDO'], true)
-                        ? base_url('mantenimiento/planes/' . $row['id'] . '/orden')
-                        : null,
+                    'openOrder' => $openOrdersByPlan[(int) $row['id']] ?? null,
+                    'generateOrderUrl' => $canManageOrders
+                        && ! isset($openOrdersByPlan[(int) $row['id']])
+                        && in_array($row['state'], ['PROXIMO', 'VENCIDO'], true)
+                            ? base_url('mantenimiento/planes/' . $row['id'] . '/orden')
+                            : null,
                     'criteria' => [
                         'kilometers' => $this->criterion($row['interval_km'], $row['warning_km'], $row['base_km'], $row['next_km'], $row['current_km'], 'number'),
                         'hours' => $this->criterion($row['interval_hours'], $row['warning_hours'], $row['base_hours'], $row['next_hours'], $row['current_hours'], 'number'),
