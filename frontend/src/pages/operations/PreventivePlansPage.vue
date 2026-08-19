@@ -160,6 +160,7 @@ const closeEditModal = () => { editingPlan.value = null }
               <td class="px-4 py-3 align-top"><strong class="text-ink">{{ plan.serviceName }}</strong><p v-if="plan.notes" class="mt-0.5 max-w-xs truncate text-xs text-ink-muted">{{ plan.notes }}</p></td>
               <td class="px-4 py-3 align-top">
                 <div v-for="([key, criterion]) in planCriteria(plan)" :key="key" class="mb-3 last:mb-0">
+                  <span class="sr-only">{{ criterionText(key, criterion) }}</span>
                   <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
                     <strong class="text-ink">{{ criterionLabel(key) }}</strong>
                     <span class="text-ink-muted">{{ criterionFrequency(key, criterion) }}</span>
