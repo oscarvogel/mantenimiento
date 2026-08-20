@@ -23,18 +23,48 @@ afterEach(() => {
 })
 
 describe('Dashboard', () => {
-  it('muestra resumen, navegación real y mantenimiento próximo', () => {
+  it('muestra el centro operativo con KPIs, prioridades, acciones y próximos', () => {
     const wrapper = mountDashboard()
 
     expect(wrapper.get('h1').text()).toContain('Ana')
-    expect(wrapper.text()).toContain('24')
-    expect(wrapper.text()).toContain('5')
-    expect(wrapper.text()).toContain('2')
+    expect(wrapper.text()).toContain('Esto es lo que necesita atención hoy')
+    expect(wrapper.text()).toContain('OT abiertas')
+    expect(wrapper.text()).toContain('Requieren atención hoy')
+    expect(wrapper.text()).toContain('Acciones rápidas')
+    expect(wrapper.text()).toContain('Estado del sistema')
+    expect(wrapper.text()).toContain('Volvo FH')
+    expect(wrapper.text()).toContain('Vencido por 3 días')
     expect(wrapper.text()).toContain('Scania R450')
     expect(wrapper.text()).toContain('Próximo')
     expect(wrapper.find('a[href="/mantenimiento/equipos"]').exists()).toBe(true)
+    expect(wrapper.find('a[href="/mantenimiento/lecturas/rapidas"]').exists()).toBe(true)
     expect(wrapper.find('a[href="/mantenimiento/planes?equipo_id=9&estado=PROXIMO"]').exists()).toBe(true)
     expect(wrapper.text()).toContain('Sucursal Centro')
+  })
+
+  it('no marca el control preventivo como operativo si faltan servicios o datos', () => {
+    const wrapper = mountDashboard()
+
+    expect(wrapper.text()).toContain('2 equipos pendientes')
+    expect(wrapper.text()).toContain('1 asignación necesita datos')
+    expect(wrapper.text()).toContain('Completá los puntos pendientes')
+    expect(wrapper.text()).toContain('Completar configuración')
+  })
+
+  it('marca el control preventivo listo solo cuando las condiciones están completas', () => {
+    const wrapper = mountDashboard({
+      ...dashboardPayload,
+      metrics: {
+        ...dashboardPayload.metrics,
+        equipmentWithoutPlans: 0,
+        maintenanceMissingData: 0,
+        plansConfigured: 24,
+      },
+    })
+
+    expect(wrapper.text()).toContain('Todos los equipos activos tienen servicio')
+    expect(wrapper.text()).toContain('El sistema puede controlar vencimientos')
+    expect(wrapper.text()).not.toContain('Completar configuración')
   })
 
   it('mantiene el cierre de sesión como POST con CSRF', () => {
@@ -62,6 +92,7 @@ describe('Dashboard', () => {
     loading.unmount()
 
     const empty = mountDashboard({ ...dashboardPayload, upcomingMaintenance: [] })
+    expect(empty.text()).toContain('No hay mantenimientos urgentes')
     expect(empty.text()).toContain('No hay mantenimientos próximos')
   })
 
@@ -69,6 +100,7 @@ describe('Dashboard', () => {
     const wrapper = mountDashboard(null)
 
     expect(wrapper.text()).toContain('todavía no recibió información del servidor')
+    expect(wrapper.text()).toContain('No hay mantenimientos urgentes')
     expect(wrapper.text()).toContain('No hay mantenimientos próximos')
   })
 })
