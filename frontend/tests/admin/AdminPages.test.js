@@ -1,3 +1,4 @@
+import { nextTick } from 'vue'
 import { afterEach, describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import {
@@ -30,12 +31,18 @@ describe('registro de páginas administrativas', () => {
 })
 
 describe('SuperAdminDemoPage', () => {
-  it('expone el generador demo y conserva la administración global', () => {
+  it('conserva la administración global y abre el generador por evento del sidebar', async () => {
     const wrapper = mountPage(SuperAdminDemoPage, superAdminData)
 
-    expect(wrapper.text()).toContain('Empresa demo')
-    expect(wrapper.get('button').text()).toContain('Empresa demo')
     expect(wrapper.text()).toContain('Empresas y acceso de usuarios')
+    expect(document.body.textContent).not.toContain('Crear empresa demo')
+
+    window.dispatchEvent(new CustomEvent('maintenance:open-demo-company'))
+    await nextTick()
+
+    expect(document.body.textContent).toContain('Empresa demo')
+    expect(document.body.textContent).toContain('Crear empresa demo')
+    expect(document.body.querySelector('form[action$="/superadmin/demo"]')).not.toBeNull()
   })
 })
 
