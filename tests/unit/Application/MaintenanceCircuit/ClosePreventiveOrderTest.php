@@ -33,6 +33,10 @@ final class ClosePreventiveOrderTest extends CIUnitTestCase
             'km_salida'          => '10000',
             'horas_salida'       => '125,4',
             'observaciones'      => ' Sin novedades ',
+            'costo_mano_obra'    => '12500,50',
+            'costo_repuestos'    => '32400.25',
+            'otros_costos'       => '99.25',
+            'costo_total'        => '1.00',
         ]);
 
         $this->assertSame('OT-2026-000001', $result['numero']);
@@ -43,7 +47,74 @@ final class ClosePreventiveOrderTest extends CIUnitTestCase
         $this->assertSame('PENDIENTE', $port->arguments[3]['tareas'][42]['resultado']);
         $this->assertSame('No había repuesto disponible', $port->arguments[3]['tareas'][42]['detalle']);
         $this->assertSame('125.4', $port->arguments[3]['horas_salida']);
+        $this->assertSame('12500.50', $port->arguments[3]['costo_mano_obra']);
+        $this->assertSame('32400.25', $port->arguments[3]['costo_repuestos']);
+        $this->assertSame('99.25', $port->arguments[3]['otros_costos']);
+        $this->assertSame('45000.00', $port->arguments[3]['costo_total']);
         $this->assertSame(9, $port->arguments[4]);
+    }
+
+    public function testDefaultsEmptyCostsToZero(): void
+    {
+        $port = new class implements PreventiveOrderClosurePort {
+            public array $closure = [];
+
+            public function close(int $companyId, ?array $branchIds, int $orderId, array $closure, int $actorUserId): array
+            {
+                $this->closure = $closure;
+                return ['numero' => 'OT-2026-000001'];
+            }
+        };
+        $actor = new ActorContext(9, 3, false, true, ['Administrador'], ['ordenes.cerrar'], []);
+
+        (new ClosePreventiveOrder($port))->execute($actor, 12, [
+            'trabajo_realizado' => 'Cambio de filtros',
+            'fecha_servicio' => '2026-08-08',
+            'costo_mano_obra' => '',
+            'costo_repuestos' => null,
+        ]);
+
+        $this->assertSame('0.00', $port->closure['costo_mano_obra']);
+        $this->assertSame('0.00', $port->closure['costo_repuestos']);
+        $this->assertSame('0.00', $port->closure['otros_costos']);
+        $this->assertSame('0.00', $port->closure['costo_total']);
+    }
+
+    public function testRejectsNegativeCostBeforeCallingPort(): void
+    {
+        $port = new class implements PreventiveOrderClosurePort {
+            public function close(int $companyId, ?array $branchIds, int $orderId, array $closure, int $actorUserId): array
+            {
+                self::fail('The port must not be called.');
+            }
+        };
+        $actor = new ActorContext(9, 3, false, true, ['Administrador'], ['ordenes.cerrar'], []);
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('costo de mano de obra');
+        (new ClosePreventiveOrder($port))->execute($actor, 12, [
+            'trabajo_realizado' => 'Cambio de filtros',
+            'fecha_servicio' => '2026-08-08',
+            'costo_mano_obra' => '-0.01',
+        ]);
+    }
+
+    public function testRejectsCostWithMoreThanTwoDecimals(): void
+    {
+        $port = new class implements PreventiveOrderClosurePort {
+            public function close(int $companyId, ?array $branchIds, int $orderId, array $closure, int $actorUserId): array
+            {
+                self::fail('The port must not be called.');
+            }
+        };
+        $actor = new ActorContext(9, 3, false, true, ['Administrador'], ['ordenes.cerrar'], []);
+
+        $this->expectException(DomainException::class);
+        (new ClosePreventiveOrder($port))->execute($actor, 12, [
+            'trabajo_realizado' => 'Cambio de filtros',
+            'fecha_servicio' => '2026-08-08',
+            'otros_costos' => '10.999',
+        ]);
     }
 
     public function testKeepsLegacyGlobalWorkTextForCompatibility(): void

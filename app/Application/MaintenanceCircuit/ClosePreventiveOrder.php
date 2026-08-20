@@ -11,6 +11,9 @@ use DomainException;
 
 final class ClosePreventiveOrder
 {
+    private const MAX_MONEY_INTEGER_DIGITS = 12;
+    private const MAX_MONEY_CENTS = 99_999_999_999_999;
+
     public function __construct(private readonly PreventiveOrderClosurePort $closure)
     {
     }
@@ -40,6 +43,10 @@ final class ClosePreventiveOrder
             throw new DomainException('La fecha del servicio no es válida.');
         }
 
+        $laborCost = $this->nonNegativeMoney($input['costo_mano_obra'] ?? null, 'costo de mano de obra');
+        $partsCost = $this->nonNegativeMoney($input['costo_repuestos'] ?? null, 'costo de repuestos');
+        $otherCosts = $this->nonNegativeMoney($input['otros_costos'] ?? null, 'otros costos');
+
         $closure = [
             'trabajo_realizado' => $performedWork,
             'tareas'             => $taskResults,
@@ -47,6 +54,10 @@ final class ClosePreventiveOrder
             'km_salida'          => $this->nullableNonNegativeInteger($input['km_salida'] ?? null, 'kilometraje'),
             'horas_salida'       => $this->nullableNonNegativeDecimal($input['horas_salida'] ?? null, 'horómetro'),
             'observaciones'      => $this->nullable($input['observaciones'] ?? null),
+            'costo_mano_obra'    => $laborCost,
+            'costo_repuestos'    => $partsCost,
+            'otros_costos'       => $otherCosts,
+            'costo_total'        => $this->sumMoney($laborCost, $partsCost, $otherCosts),
         ];
 
         return $this->closure->close(
@@ -133,6 +144,42 @@ final class ClosePreventiveOrder
         }
 
         return number_format((float) $value, 1, '.', '');
+    }
+
+    private function nonNegativeMoney(mixed $value, string $label): string
+    {
+        if ($value === null || trim((string) $value) === '') {
+            return '0.00';
+        }
+
+        $normalized = str_replace(',', '.', trim((string) $value));
+        if (! preg_match('/^\d+(?:\.\d{1,2})?$/', $normalized)) {
+            throw new DomainException("El {$label} debe ser un importe no negativo con hasta dos decimales.");
+        }
+
+        [$integer, $decimal] = array_pad(explode('.', $normalized, 2), 2, '');
+        $integer = ltrim($integer, '0');
+        $integer = $integer === '' ? '0' : $integer;
+        if (strlen($integer) > self::MAX_MONEY_INTEGER_DIGITS) {
+            throw new DomainException("El {$label} supera el importe máximo permitido.");
+        }
+
+        return $integer . '.' . str_pad($decimal, 2, '0');
+    }
+
+    private function sumMoney(string ...$values): string
+    {
+        $totalCents = 0;
+        foreach ($values as $value) {
+            [$integer, $decimal] = explode('.', $value, 2);
+            $totalCents += ((int) $integer * 100) + (int) $decimal;
+        }
+
+        if ($totalCents > self::MAX_MONEY_CENTS) {
+            throw new DomainException('El costo total supera el importe máximo permitido.');
+        }
+
+        return intdiv($totalCents, 100) . '.' . str_pad((string) ($totalCents % 100), 2, '0', STR_PAD_LEFT);
     }
 
     private function nullable(mixed $value): ?string
