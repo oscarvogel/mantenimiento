@@ -117,7 +117,7 @@ final class CorrectiveWorkOrders extends BaseController
 
             $database->transException(true)->transStart();
             $row = $database->query(
-                'SELECT id, numero, empresa_id, sucursal_id, estado, origen FROM ordenes_trabajo WHERE id = ? AND empresa_id = ? FOR UPDATE',
+                'SELECT id, numero, empresa_id, sucursal_id, estado, origen, diagnostico FROM ordenes_trabajo WHERE id = ? AND empresa_id = ? FOR UPDATE',
                 [$orderId, $scope->companyId()],
             )->getRowArray();
             if ($row === null || (string) $row['origen'] !== 'CORRECTIVO') {
@@ -133,7 +133,7 @@ final class CorrectiveWorkOrders extends BaseController
                 ->where('empresa_id', $scope->companyId())
                 ->update([
                     'trabajo_realizado' => $workPerformed,
-                    'diagnostico' => $diagnosis,
+                    'diagnostico' => $diagnosis ?? $row['diagnostico'],
                     'km_salida' => $outputKm,
                     'horas_salida' => $outputHours,
                     'costo_mano_obra' => $labor,
@@ -187,7 +187,9 @@ final class CorrectiveWorkOrders extends BaseController
     private function positiveInt(mixed $value, string $message): int
     {
         $number = filter_var($value, FILTER_VALIDATE_INT);
-        if ($number === false || (int) $number <= 0) throw new DomainException($message);
+        if ($number === false || (int) $number <= 0) {
+            throw new DomainException($message);
+        }
         return (int) $number;
     }
 
@@ -203,7 +205,9 @@ final class CorrectiveWorkOrders extends BaseController
         $value = trim((string) $value);
         if ($value === '') return null;
         $number = filter_var($value, FILTER_VALIDATE_INT);
-        if ($number === false || (int) $number < 0) throw new DomainException($message);
+        if ($number === false || (int) $number < 0) {
+            throw new DomainException($message);
+        }
         return (int) $number;
     }
 
@@ -211,7 +215,9 @@ final class CorrectiveWorkOrders extends BaseController
     {
         $value = str_replace(',', '.', trim((string) $value));
         if ($value === '') return null;
-        if (! is_numeric($value) || (float) $value < 0) throw new DomainException($message);
+        if (! is_numeric($value) || (float) $value < 0) {
+            throw new DomainException($message);
+        }
         return number_format((float) $value, 1, '.', '');
     }
 
@@ -219,7 +225,9 @@ final class CorrectiveWorkOrders extends BaseController
     {
         $value = str_replace(',', '.', trim((string) $value));
         if ($value === '') return 0.0;
-        if (! is_numeric($value) || (float) $value < 0) throw new DomainException($message);
+        if (! is_numeric($value) || (float) $value < 0) {
+            throw new DomainException($message);
+        }
         return round((float) $value, 2);
     }
 
