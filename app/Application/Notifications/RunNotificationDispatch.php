@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Notifications;
 
+use App\Application\Notifications\Port\CompanyNotificationDeliveryQueue;
 use App\Application\Notifications\Port\EmailNotificationGateway;
 use App\Application\Notifications\Port\NotificationDeliveryQueue;
 use App\Application\Notifications\Port\NotificationProcessControl;
@@ -15,6 +16,7 @@ final readonly class RunNotificationDispatch
 {
     public function __construct(
         private NotificationDeliveryQueue $deliveries,
+        private CompanyNotificationDeliveryQueue $companyDeliveries,
         private EmailNotificationGateway $email,
         private WebPushGateway $push,
         private NotificationProcessControl $processes,
@@ -34,10 +36,11 @@ final readonly class RunNotificationDispatch
         try {
             $executionId = $this->processes->start($process, $executionKey);
             if ($executionId === null) {
-                return ['email_sent' => 0, 'push_sent' => 0, 'failed' => 0, 'expired' => 0, 'skipped' => 0, 'already_completed' => 1];
+                return ['email_sent' => 0, 'company_email_sent' => 0, 'push_sent' => 0, 'failed' => 0, 'expired' => 0, 'skipped' => 0, 'already_completed' => 1];
             }
-            $summary = ['email_sent' => 0, 'push_sent' => 0, 'failed' => 0, 'expired' => 0, 'skipped' => 0, 'already_completed' => 0];
+            $summary = ['email_sent' => 0, 'company_email_sent' => 0, 'push_sent' => 0, 'failed' => 0, 'expired' => 0, 'skipped' => 0, 'already_completed' => 0];
             $this->dispatchEmail($summary, $limit);
+            $this->dispatchCompanyEmail($summary, $limit);
             $this->dispatchPush($summary, $limit);
             $this->processes->finish($executionId, $summary);
 
@@ -69,6 +72,29 @@ final readonly class RunNotificationDispatch
             } catch (Throwable $exception) {
                 foreach ($items as $item) {
                     $this->deliveries->failed($item['id'], $exception->getMessage(), $item['intentos'] < 3);
+                    $summary['failed']++;
+                }
+            }
+        }
+    }
+
+    /** @param array<string,int> $summary */
+    private function dispatchCompanyEmail(array &$summary, int $limit): void
+    {
+        $groups = [];
+        foreach ($this->companyDeliveries->due($limit) as $delivery) {
+            $groups[$delivery['email']][] = $delivery;
+        }
+        foreach ($groups as $recipient => $items) {
+            try {
+                $this->email->sendDigest($recipient, $items);
+                foreach ($items as $item) {
+                    $this->companyDeliveries->delivered($item['id']);
+                    $summary['company_email_sent']++;
+                }
+            } catch (Throwable $exception) {
+                foreach ($items as $item) {
+                    $this->companyDeliveries->failed($item['id'], $exception->getMessage(), $item['intentos'] < 3);
                     $summary['failed']++;
                 }
             }
