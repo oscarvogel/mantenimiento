@@ -31,7 +31,7 @@ final class DemoAdmin extends BaseController
         try {
             $this->ensureDemoSchema();
 
-            $seeder = new DemoCompanySeeder();
+            $seeder = $this->createDemoSeeder();
             $seeder->configure(
                 (string) $this->request->getPost('demo_email'),
                 (string) $this->request->getPost('demo_password'),
@@ -76,5 +76,10 @@ final class DemoAdmin extends BaseController
         if (! $database->fieldExists('es_demo', 'empresas') || ! $database->fieldExists('demo_expira_at', 'empresas')) {
             throw new RuntimeException('La estructura requerida para la empresa demo todavía no está disponible.');
         }
+    }
+
+    private function createDemoSeeder(): DemoCompanySeeder
+    {
+        return new DemoCompanySeeder(config('Database'), db_connect());
     }
 }
