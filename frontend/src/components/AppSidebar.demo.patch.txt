@@ -1,1 +1,0 @@
-Pendiente integrar en AppSidebar.vue: agregar acceso "Empresa demo" en grupo Administración y disparar CustomEvent('maintenance:open-demo-company'). Este archivo es temporal de implementación y puede eliminarse luego de integrar el cambio real.
