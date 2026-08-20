@@ -1184,6 +1184,41 @@ return new AsignarPlan(
         return new LocalPrivateImportFileStorage($configuredRoot, $maximumSizeMb * 1024 * 1024);
     }
 
+    // --- Chatbot ---
+
+    public static function startConversation(bool $getShared = true): \App\Application\Chatbot\Handler\StartConversationHandler
+    {
+        if ($getShared) {
+            return static::getSharedInstance('startConversation');
+        }
+
+        $database = db_connect();
+
+        return new \App\Application\Chatbot\Handler\StartConversationHandler(
+            new \App\Infrastructure\Chatbot\Persistence\CodeIgniterConversationRepository($database),
+        );
+    }
+
+    public static function processMessage(bool $getShared = true): \App\Application\Chatbot\Handler\ProcessMessageHandler
+    {
+        if ($getShared) {
+            return static::getSharedInstance('processMessage');
+        }
+
+        $database = db_connect();
+
+        return new \App\Application\Chatbot\Handler\ProcessMessageHandler(
+            new \App\Infrastructure\Chatbot\Persistence\CodeIgniterMessageRepository($database),
+            new \App\Infrastructure\Chatbot\Tools\StaticToolRegistry(),
+            new \App\Infrastructure\Chatbot\AI\MiniMaxProvider(
+                \App\Infrastructure\Chatbot\AI\AIProviderConfig::fromEnv(),
+            ),
+            new \App\Infrastructure\Chatbot\Tools\ToolExecutor($database),
+            new \App\Infrastructure\Chatbot\Persistence\SystemChatClock(),
+            new \App\Infrastructure\Chatbot\Persistence\CodeIgniterConversationRepository($database),
+        );
+    }
+
     /*
      * public static function example($getShared = true)
      * {
