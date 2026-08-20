@@ -8,12 +8,12 @@ use App\Domain\Notifications\NotifiableEvent;
 
 interface CompanyNotificationDeliveryQueue
 {
-    public function schedule(NotifiableEvent $event, ?string $recipient): void;
+    public function scheduleCompany(NotifiableEvent $event): void;
 
     /** @return list<array<string,mixed>> */
-    public function due(int $limit): array;
+    public function dueCompany(int $limit): array;
 
-    public function delivered(int $deliveryId): void;
+    public function deliveredCompany(int $deliveryId): void;
 
-    public function failed(int $deliveryId, string $error, bool $retryable): void;
+    public function failedCompany(int $deliveryId, string $error, bool $retryable): void;
 }
