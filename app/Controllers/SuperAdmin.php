@@ -51,6 +51,8 @@ final class SuperAdmin extends BaseController
             'nombre_fantasia'=> 'permit_empty|max_length[255]',
             'cuit'           => 'permit_empty|max_length[20]',
             'email'          => 'permit_empty|valid_email|max_length[255]',
+            'email_notificaciones' => 'permit_empty|valid_email|max_length[255]',
+            'notificaciones_email_habilitadas' => 'required|in_list[0,1]',
             'telefono'       => 'permit_empty|max_length[50]',
         ])) {
             return $this->validationFailure();
@@ -64,6 +66,8 @@ final class SuperAdmin extends BaseController
                 'nombre_fantasia' => $this->nullablePost('nombre_fantasia'),
                 'cuit'            => $this->nullablePost('cuit'),
                 'email'           => $this->nullablePost('email'),
+                'email_notificaciones' => $this->nullablePost('email_notificaciones'),
+                'notificaciones_email_habilitadas' => (int) $this->request->getPost('notificaciones_email_habilitadas'),
                 'telefono'        => $this->nullablePost('telefono'),
             ]);
 
@@ -80,6 +84,8 @@ final class SuperAdmin extends BaseController
             'nombre_fantasia'=> 'permit_empty|max_length[255]',
             'cuit'           => 'permit_empty|max_length[20]',
             'email'          => 'permit_empty|valid_email|max_length[255]',
+            'email_notificaciones' => 'permit_empty|valid_email|max_length[255]',
+            'notificaciones_email_habilitadas' => 'required|in_list[0,1]',
             'telefono'       => 'permit_empty|max_length[50]',
             'estado'         => 'required|in_list[0,1]',
         ])) {
@@ -94,6 +100,8 @@ final class SuperAdmin extends BaseController
                 'nombre_fantasia' => $this->nullablePost('nombre_fantasia'),
                 'cuit'            => $this->nullablePost('cuit'),
                 'email'           => $this->nullablePost('email'),
+                'email_notificaciones' => $this->nullablePost('email_notificaciones'),
+                'notificaciones_email_habilitadas' => (int) $this->request->getPost('notificaciones_email_habilitadas'),
                 'telefono'        => $this->nullablePost('telefono'),
                 'estado'          => (int) $this->request->getPost('estado'),
             ]);
