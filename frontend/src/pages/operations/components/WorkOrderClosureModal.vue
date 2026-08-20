@@ -20,6 +20,21 @@ const taskResults = [
 ]
 const modalTitle = computed(() => `Cerrar ${props.order.number}`)
 const updateFormState = (value) => emit('update:formState', value)
+const numericCost = (value) => {
+  const normalized = String(value ?? '').trim().replace(',', '.')
+  if (normalized === '') return 0
+  const parsed = Number(normalized)
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0
+}
+const costTotal = computed(() => (
+  numericCost(props.formState.costo_mano_obra)
+  + numericCost(props.formState.costo_repuestos)
+  + numericCost(props.formState.otros_costos)
+))
+const formattedCostTotal = computed(() => costTotal.value.toLocaleString('es-AR', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+}))
 </script>
 
 <template>
@@ -109,7 +124,60 @@ const updateFormState = (value) => emit('update:formState', value)
               </div>
             </div>
 
-            <p class="rounded-lg bg-info-subtle px-3 py-2 text-xs text-info-strong">Al confirmar, se guardará el resultado de cada tarea, se actualizarán las lecturas y se recalculará el próximo mantenimiento.</p>
+            <fieldset class="grid gap-4 rounded-xl border border-border bg-surface-subtle p-4">
+              <div>
+                <legend class="text-base font-bold text-ink">Costos del servicio</legend>
+                <p class="mt-1 text-sm text-ink-muted">Opcionales. Si no se informan, la orden se cierra con costo $ 0,00.</p>
+              </div>
+              <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <FormField label="Mano de obra" :for-id="`order-${order.id}-labor-cost`">
+                  <input
+                    :id="`order-${order.id}-labor-cost`"
+                    v-model="formState.costo_mano_obra"
+                    type="number"
+                    name="costo_mano_obra"
+                    min="0"
+                    step="0.01"
+                    inputmode="decimal"
+                    placeholder="0,00"
+                    :class="fieldClass"
+                  />
+                </FormField>
+                <FormField label="Repuestos / insumos" :for-id="`order-${order.id}-parts-cost`">
+                  <input
+                    :id="`order-${order.id}-parts-cost`"
+                    v-model="formState.costo_repuestos"
+                    type="number"
+                    name="costo_repuestos"
+                    min="0"
+                    step="0.01"
+                    inputmode="decimal"
+                    placeholder="0,00"
+                    :class="fieldClass"
+                  />
+                </FormField>
+                <FormField label="Otros costos" :for-id="`order-${order.id}-other-costs`">
+                  <input
+                    :id="`order-${order.id}-other-costs`"
+                    v-model="formState.otros_costos"
+                    type="number"
+                    name="otros_costos"
+                    min="0"
+                    step="0.01"
+                    inputmode="decimal"
+                    placeholder="0,00"
+                    :class="fieldClass"
+                  />
+                </FormField>
+                <div class="rounded-lg border border-primary/20 bg-primary-subtle px-4 py-3" data-testid="work-order-cost-total">
+                  <p class="text-xs font-bold uppercase tracking-wide text-primary">Total</p>
+                  <p class="mt-1 text-xl font-bold text-ink">$ {{ formattedCostTotal }}</p>
+                </div>
+              </div>
+              <p class="text-xs text-ink-muted">El total definitivo se recalcula en el servidor a partir de los tres importes.</p>
+            </fieldset>
+
+            <p class="rounded-lg bg-info-subtle px-3 py-2 text-xs text-info-strong">Al confirmar, se guardará el resultado de cada tarea, se actualizarán las lecturas, los costos informados y se recalculará el próximo mantenimiento.</p>
 
             <div class="flex flex-wrap justify-end gap-2 border-t border-border-subtle pt-4">
               <button type="button" :class="secondaryButton" @click="emit('close')">Cancelar</button>
