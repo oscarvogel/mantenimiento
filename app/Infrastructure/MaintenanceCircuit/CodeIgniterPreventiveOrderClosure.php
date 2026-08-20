@@ -96,9 +96,6 @@ final class CodeIgniterPreventiveOrderClosure implements PreventiveOrderClosureP
                     throw new DomainException('El resultado informado para una tarea no es válido.');
                 }
 
-                // El agregado actual exige completar las tareas para ejecutar el cierre.
-                // Se prepara el cierre dentro de la misma UoW y, tras persistir la OT,
-                // se conserva explícitamente el resultado operativo real de la tarea.
                 $workByTask[$taskId] = ($status === 'PENDIENTE' ? 'No realizada: ' : 'No aplica: ') . $detail;
                 $deferredResults[$taskId] = ['estado' => $status, 'detalle' => $detail];
             }
@@ -134,6 +131,7 @@ final class CodeIgniterPreventiveOrderClosure implements PreventiveOrderClosureP
                 $actorUserId,
             );
             $repository->save($prepared->workOrder, $actorUserId);
+            $this->persistCosts($companyId, $orderId, $closure, $actorUserId);
 
             foreach ($deferredResults as $taskId => $result) {
                 $this->database->table('orden_tareas')
@@ -156,7 +154,28 @@ final class CodeIgniterPreventiveOrderClosure implements PreventiveOrderClosureP
                     ? null
                     : number_format($next['proximas_horas_decimas'] / 10, 1, '.', ''),
                 'proxima_fecha' => $next['proxima_fecha'],
+                'costo_total' => $closure['costo_total'],
             ];
         });
+    }
+
+    /** @param array<string,mixed> $closure */
+    private function persistCosts(int $companyId, int $orderId, array $closure, int $actorUserId): void
+    {
+        $updated = $this->database->table('ordenes_trabajo')
+            ->where('empresa_id', $companyId)
+            ->where('id', $orderId)
+            ->update([
+                'costo_mano_obra' => $closure['costo_mano_obra'],
+                'costo_repuestos' => $closure['costo_repuestos'],
+                'otros_costos' => $closure['otros_costos'],
+                'costo_total' => $closure['costo_total'],
+                'updated_at' => date('Y-m-d H:i:s'),
+                'updated_by' => $actorUserId,
+            ]);
+
+        if (! $updated) {
+            throw new DomainException('No se pudieron guardar los costos de la orden de trabajo.');
+        }
     }
 }
