@@ -28,7 +28,7 @@ final class AddCompanyNotificationEmail extends Migration
 
         $this->forge->addField([
             'id' => ['type' => 'BIGINT', 'unsigned' => true, 'auto_increment' => true],
-            'empresa_id' => ['type' => 'BIGINT', 'unsigned' => true],
+            'empresa_id' => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true],
             'tipo_evento' => ['type' => 'VARCHAR', 'constraint' => 100],
             'destinatario' => ['type' => 'VARCHAR', 'constraint' => 255, 'null' => true],
             'clave_entrega' => ['type' => 'VARCHAR', 'constraint' => 220],
