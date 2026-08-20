@@ -27,6 +27,7 @@ $routes->group('superadmin', ['filter' => 'superadmin'], static function ($route
     $routes->post('administradores', 'SuperAdmin::createCompanyAdministrator');
     $routes->post('usuarios/(:num)/empresa', 'SuperAdmin::assignCompany/$1');
     $routes->post('usuarios/(:num)/roles', 'SuperAdmin::assignRoles/$1');
+    $routes->post('demo', 'DemoAdmin::provision');
 });
 
 $routes->group('administracion', ['filter' => ['auth']], static function ($routes): void {
