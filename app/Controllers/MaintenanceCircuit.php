@@ -189,6 +189,9 @@ final class MaintenanceCircuit extends BaseController
                 'km_salida' => $this->request->getPost('km_salida'),
                 'horas_salida' => $this->request->getPost('horas_salida'),
                 'observaciones' => $this->request->getPost('observaciones'),
+                'costo_mano_obra' => $this->request->getPost('costo_mano_obra'),
+                'costo_repuestos' => $this->request->getPost('costo_repuestos'),
+                'otros_costos' => $this->request->getPost('otros_costos'),
             ]);
 
             return $this->success($this->closeSuccessMessage($result));
