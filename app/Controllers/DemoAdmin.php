@@ -29,6 +29,8 @@ final class DemoAdmin extends BaseController
         $reset = (string) $this->request->getPost('demo_accion') === 'regenerar';
 
         try {
+            $this->ensureDemoSchema();
+
             $seeder = new DemoCompanySeeder();
             $seeder->configure(
                 (string) $this->request->getPost('demo_email'),
@@ -55,6 +57,24 @@ final class DemoAdmin extends BaseController
                 'error',
                 'No se pudo generar la empresa demo. Código de diagnóstico: ' . $errorId . '.',
             );
+        }
+    }
+
+    private function ensureDemoSchema(): void
+    {
+        $database = db_connect();
+        if ($database->fieldExists('es_demo', 'empresas') && $database->fieldExists('demo_expira_at', 'empresas')) {
+            return;
+        }
+
+        $migrations = service('migrations');
+        if (! $migrations->latest()) {
+            throw new RuntimeException('No se pudieron aplicar las migraciones pendientes necesarias para la empresa demo.');
+        }
+
+        $database = db_connect();
+        if (! $database->fieldExists('es_demo', 'empresas') || ! $database->fieldExists('demo_expira_at', 'empresas')) {
+            throw new RuntimeException('La estructura requerida para la empresa demo todavía no está disponible.');
         }
     }
 }
