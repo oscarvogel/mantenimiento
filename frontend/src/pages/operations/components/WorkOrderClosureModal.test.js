@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
+import { nextTick } from 'vue'
 import { mount } from '@vue/test-utils'
 import WorkOrderClosureModal from './WorkOrderClosureModal.vue'
 
@@ -41,9 +42,15 @@ const mountModal = () => {
   return wrapper
 }
 
+const setInputValue = async (element, value) => {
+  element.value = value
+  element.dispatchEvent(new Event('input', { bubbles: true }))
+  await nextTick()
+}
+
 describe('WorkOrderClosureModal', () => {
   it('muestra los tres costos opcionales y actualiza el total en tiempo real', async () => {
-    const wrapper = mountModal()
+    mountModal()
 
     const labor = document.querySelector('input[name="costo_mano_obra"]')
     const parts = document.querySelector('input[name="costo_repuestos"]')
@@ -55,9 +62,9 @@ describe('WorkOrderClosureModal', () => {
     expect(labor.min).toBe('0')
     expect(labor.step).toBe('0.01')
 
-    await wrapper.find('input[name="costo_mano_obra"]').setValue('100.50')
-    await wrapper.find('input[name="costo_repuestos"]').setValue('200')
-    await wrapper.find('input[name="otros_costos"]').setValue('10.25')
+    await setInputValue(labor, '100.50')
+    await setInputValue(parts, '200')
+    await setInputValue(others, '10.25')
 
     const total = document.querySelector('[data-testid="work-order-cost-total"]')
     expect(total).not.toBeNull()
