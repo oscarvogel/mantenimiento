@@ -117,6 +117,15 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->post('ordenes/(:num)/cerrar-correctiva', 'CorrectiveWorkOrders::close/$1', ['filter' => 'permission:ordenes.cerrar']);
 });
 
+$routes->group('mantenimiento/chatbot', ['filter' => ['auth']], function ($routes) {
+    $routes->get('/',               'Chatbot::index');
+    $routes->post('conversaciones', 'Chatbot::startConversation', ['filter' => 'permission:chatbot.usar']);
+    $routes->post('mensajes',       'Chatbot::sendMessage',       ['filter' => 'permission:chatbot.usar']);
+    $routes->post('mensajes/stream','Chatbot::sendMessageStream', ['filter' => 'permission:chatbot.usar']);
+    $routes->post('confirmar',      'Chatbot::confirmTool',       ['filter' => 'permission:chatbot.usar']);
+    $routes->get('historial',       'Chatbot::history',           ['filter' => 'permission:chatbot.usar']);
+});
+
 $routes->group('reportes', ['filter' => ['auth', 'permission:reportes.ver']], static function ($routes): void {
     $routes->get('', 'Reports::index');
     $routes->get('exportar', 'Reports::export');
