@@ -16,7 +16,6 @@ final readonly class RunNotificationDispatch
 {
     public function __construct(
         private NotificationDeliveryQueue $deliveries,
-        private CompanyNotificationDeliveryQueue $companyDeliveries,
         private EmailNotificationGateway $email,
         private WebPushGateway $push,
         private NotificationProcessControl $processes,
@@ -81,20 +80,24 @@ final readonly class RunNotificationDispatch
     /** @param array<string,int> $summary */
     private function dispatchCompanyEmail(array &$summary, int $limit): void
     {
+        if (! $this->deliveries instanceof CompanyNotificationDeliveryQueue) {
+            return;
+        }
+
         $groups = [];
-        foreach ($this->companyDeliveries->due($limit) as $delivery) {
+        foreach ($this->deliveries->dueCompany($limit) as $delivery) {
             $groups[$delivery['email']][] = $delivery;
         }
         foreach ($groups as $recipient => $items) {
             try {
                 $this->email->sendDigest($recipient, $items);
                 foreach ($items as $item) {
-                    $this->companyDeliveries->delivered($item['id']);
+                    $this->deliveries->deliveredCompany($item['id']);
                     $summary['company_email_sent']++;
                 }
             } catch (Throwable $exception) {
                 foreach ($items as $item) {
-                    $this->companyDeliveries->failed($item['id'], $exception->getMessage(), $item['intentos'] < 3);
+                    $this->deliveries->failedCompany($item['id'], $exception->getMessage(), $item['intentos'] < 3);
                     $summary['failed']++;
                 }
             }
