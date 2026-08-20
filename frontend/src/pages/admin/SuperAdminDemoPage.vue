@@ -12,7 +12,7 @@ defineProps({
 
 <template>
   <div>
-    <SuperAdminPage :data="data" />
     <DemoCompanyPanel :data="data" />
+    <SuperAdminPage :data="data" />
   </div>
 </template>
