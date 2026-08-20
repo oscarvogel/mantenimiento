@@ -33,6 +33,46 @@
             <div class="alert alert-danger" role="alert"><?= esc(session()->getFlashdata('error')) ?></div>
         <?php endif; ?>
 
+        <section class="card border-info shadow-sm mb-4">
+            <div class="card-header bg-info-subtle d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div>
+                    <h2 class="h5 mb-1">Empresa demo</h2>
+                    <div class="small text-muted">Genera una empresa ya poblada para presentar el sistema a un tercero.</div>
+                </div>
+                <span class="badge text-bg-info">Solo superadmin</span>
+            </div>
+            <div class="card-body">
+                <form method="post" action="<?= base_url('superadmin/demo') ?>" class="row g-3">
+                    <?= csrf_field() ?>
+                    <div class="col-md-5">
+                        <label class="form-label" for="demo_email">Email de acceso demo</label>
+                        <input class="form-control" type="email" id="demo_email" name="demo_email" maxlength="255" required value="<?= esc(old('demo_email', 'demo@mantenimiento.local')) ?>">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label" for="demo_password">Contraseña</label>
+                        <input class="form-control" type="password" id="demo_password" name="demo_password" minlength="8" maxlength="255" required autocomplete="new-password">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label" for="demo_password_confirmation">Repetir contraseña</label>
+                        <input class="form-control" type="password" id="demo_password_confirmation" name="demo_password_confirmation" minlength="8" maxlength="255" required autocomplete="new-password">
+                    </div>
+                    <div class="col-md-1">
+                        <label class="form-label" for="demo_dias">Días</label>
+                        <input class="form-control" type="number" id="demo_dias" name="demo_dias" min="1" max="90" required value="<?= esc(old('demo_dias', '15')) ?>">
+                    </div>
+                    <div class="col-12">
+                        <div class="alert alert-light border small mb-3">
+                            Se generan 6 equipos, lecturas históricas, servicios, planes OK/próximos/vencidos y órdenes de trabajo. Las fechas se calculan respecto del día de generación.
+                        </div>
+                        <div class="d-flex flex-wrap gap-2">
+                            <button class="btn btn-info" type="submit" name="demo_accion" value="crear">Crear empresa demo</button>
+                            <button class="btn btn-outline-danger" type="submit" name="demo_accion" value="regenerar" onclick="return confirm('Esto eliminará los datos actuales de la empresa demo y volverá a generarlos. ¿Continuar?')">Regenerar demo</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </section>
+
         <section class="card shadow-sm mb-4">
             <div class="card-header"><h2 class="h5 mb-0">Crear empresa</h2></div>
             <div class="card-body">
