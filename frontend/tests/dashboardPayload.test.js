@@ -21,6 +21,7 @@ describe('normalizeDashboardPayload', () => {
     expect(dashboard.upcomingMaintenance[1].actionUrl).toContain('equipo_id=9')
     expect(dashboard.links.quickReadings).toBe('/mantenimiento/lecturas/rapidas')
     expect(dashboard.links.assignPlan).toBe('/mantenimiento/planes')
+    expect(dashboard.links.orders).toBe('/mantenimiento')
     expect(dashboard.links.maintenanceMissingData).toBe('/mantenimiento/planes?estado=SIN_DATOS')
     expect(dashboard.links.maintenanceOverdue).toBe('/mantenimiento/planes?estado=VENCIDO')
     expect(dashboard.navigation[1].href).toBe('/mantenimiento/equipos')
@@ -30,7 +31,7 @@ describe('normalizeDashboardPayload', () => {
     const dashboard = normalizeDashboardPayload({
       metrics: { equipmentTotal: -4, maintenanceDueSoon: '3.8', maintenanceOverdue: 'invalid' },
       navigation: [{ label: 'Ataque', href: 'javascript:alert(1)' }],
-      links: { quickReadings: 'javascript:alert(1)' },
+      links: { quickReadings: 'javascript:alert(1)', orders: 'javascript:alert(1)' },
       upcomingMaintenance: [{ planId: 1, status: 'inventado' }],
     })
 
@@ -39,6 +40,7 @@ describe('normalizeDashboardPayload', () => {
     expect(dashboard.metrics.maintenanceOverdue).toBe(0)
     expect(dashboard.navigation[0].href).toBe('#')
     expect(dashboard.links.quickReadings).toBe('#')
+    expect(dashboard.links.orders).toBe('#')
     expect(dashboard.upcomingMaintenance[0].status).toBe('SIN_DATOS')
     expect(dashboard.upcomingMaintenance[0].tone).toBe('inactive')
   })
@@ -55,6 +57,7 @@ describe('normalizeDashboardPayload', () => {
     expect(dashboard.metrics.maintenanceDueSoon).toBe(0)
     expect(dashboard.metrics.maintenanceOverdue).toBe(0)
     expect(dashboard.metrics.maintenanceMissingData).toBe(0)
+    expect(dashboard.links.orders).toBe('#')
   })
 
   it('contempla el modo global y la ausencia de sucursales', () => {
@@ -71,7 +74,7 @@ describe('normalizeDashboardPayload', () => {
     expect(tenantDashboard.company.scopeLabel).toBe('Sin sucursales asignadas')
   })
 
-  it('prioriza Planes preventivos para los indicadores de mantenimiento', () => {
+  it('prioriza Planes preventivos para los indicadores de mantenimiento sin inventar acceso a órdenes', () => {
     const dashboard = normalizeDashboardPayload({
       navigation: [
         { key: 'plans', label: 'Planes preventivos', href: '/mantenimiento/planes' },
@@ -80,7 +83,7 @@ describe('normalizeDashboardPayload', () => {
     })
 
     expect(dashboard.links.maintenance).toBe('/mantenimiento/planes')
-    expect(dashboard.links.orders).toBe('/mantenimiento/planes')
+    expect(dashboard.links.orders).toBe('#')
   })
 
   it('oculta acciones y filtros cuando no existen permisos de destino', () => {
@@ -92,6 +95,7 @@ describe('normalizeDashboardPayload', () => {
     expect(dashboard.links.maintenanceOverdue).toBe('#')
     expect(dashboard.links.assignPlan).toBe('#')
     expect(dashboard.links.quickReadings).toBe('#')
+    expect(dashboard.links.orders).toBe('#')
     expect(dashboard.upcomingMaintenance[0].actionUrl).toBe(null)
     expect(dashboard.upcomingMaintenance[0].actionLabel).toBe(null)
   })
