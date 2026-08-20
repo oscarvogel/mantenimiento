@@ -9,11 +9,19 @@ describe('normalizeDashboardPayload', () => {
     expect(dashboard.available).toBe(true)
     expect(dashboard.user.name).toBe('Ana Pérez')
     expect(dashboard.metrics.equipmentTotal).toBe(24)
+    expect(dashboard.metrics.equipmentWithoutPlans).toBe(2)
+    expect(dashboard.metrics.plansConfigured).toBe(18)
     expect(dashboard.metrics.maintenanceDueSoon).toBe(5)
-    expect(dashboard.upcomingMaintenance[0].status).toBe('PROXIMO')
-    expect(dashboard.upcomingMaintenance[0].tone).toBe('due')
-    expect(dashboard.upcomingMaintenance[0].actionLabel).toBe('Ver plan')
-    expect(dashboard.upcomingMaintenance[0].actionUrl).toContain('equipo_id=9')
+    expect(dashboard.metrics.maintenanceMissingData).toBe(1)
+    expect(dashboard.metrics.openOrders).toBe(3)
+    expect(dashboard.upcomingMaintenance[0].status).toBe('VENCIDO')
+    expect(dashboard.upcomingMaintenance[0].tone).toBe('overdue')
+    expect(dashboard.upcomingMaintenance[1].status).toBe('PROXIMO')
+    expect(dashboard.upcomingMaintenance[1].actionLabel).toBe('Ver plan')
+    expect(dashboard.upcomingMaintenance[1].actionUrl).toContain('equipo_id=9')
+    expect(dashboard.links.quickReadings).toBe('/mantenimiento/lecturas/rapidas')
+    expect(dashboard.links.assignPlan).toBe('/mantenimiento/planes')
+    expect(dashboard.links.maintenanceMissingData).toBe('/mantenimiento/planes?estado=SIN_DATOS')
     expect(dashboard.links.maintenanceOverdue).toBe('/mantenimiento/planes?estado=VENCIDO')
     expect(dashboard.navigation[1].href).toBe('/mantenimiento/equipos')
   })
@@ -22,6 +30,7 @@ describe('normalizeDashboardPayload', () => {
     const dashboard = normalizeDashboardPayload({
       metrics: { equipmentTotal: -4, maintenanceDueSoon: '3.8', maintenanceOverdue: 'invalid' },
       navigation: [{ label: 'Ataque', href: 'javascript:alert(1)' }],
+      links: { quickReadings: 'javascript:alert(1)' },
       upcomingMaintenance: [{ planId: 1, status: 'inventado' }],
     })
 
@@ -29,6 +38,7 @@ describe('normalizeDashboardPayload', () => {
     expect(dashboard.metrics.maintenanceDueSoon).toBe(3)
     expect(dashboard.metrics.maintenanceOverdue).toBe(0)
     expect(dashboard.navigation[0].href).toBe('#')
+    expect(dashboard.links.quickReadings).toBe('#')
     expect(dashboard.upcomingMaintenance[0].status).toBe('SIN_DATOS')
     expect(dashboard.upcomingMaintenance[0].tone).toBe('inactive')
   })
@@ -40,8 +50,11 @@ describe('normalizeDashboardPayload', () => {
     expect(dashboard.navigation).toEqual([])
     expect(dashboard.upcomingMaintenance).toEqual([])
     expect(dashboard.metrics.equipmentTotal).toBe(0)
+    expect(dashboard.metrics.equipmentWithoutPlans).toBe(0)
+    expect(dashboard.metrics.plansConfigured).toBe(0)
     expect(dashboard.metrics.maintenanceDueSoon).toBe(0)
     expect(dashboard.metrics.maintenanceOverdue).toBe(0)
+    expect(dashboard.metrics.maintenanceMissingData).toBe(0)
   })
 
   it('contempla el modo global y la ausencia de sucursales', () => {
@@ -67,6 +80,7 @@ describe('normalizeDashboardPayload', () => {
     })
 
     expect(dashboard.links.maintenance).toBe('/mantenimiento/planes')
+    expect(dashboard.links.orders).toBe('/mantenimiento/planes')
   })
 
   it('oculta acciones y filtros cuando no existen permisos de destino', () => {
@@ -76,6 +90,8 @@ describe('normalizeDashboardPayload', () => {
     })
 
     expect(dashboard.links.maintenanceOverdue).toBe('#')
+    expect(dashboard.links.assignPlan).toBe('#')
+    expect(dashboard.links.quickReadings).toBe('#')
     expect(dashboard.upcomingMaintenance[0].actionUrl).toBe(null)
     expect(dashboard.upcomingMaintenance[0].actionLabel).toBe(null)
   })
