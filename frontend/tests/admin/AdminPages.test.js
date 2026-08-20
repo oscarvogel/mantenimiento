@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import {
   BranchesAdminPage,
+  SuperAdminDemoPage,
   SuperAdminPage,
   UsersAdminPage,
   adminPagesByType,
@@ -22,9 +23,19 @@ afterEach(() => {
 
 describe('registro de páginas administrativas', () => {
   it('exporta los tres componentes por pageType', () => {
-    expect(adminPagesByType.superadmin).toBe(SuperAdminPage)
+    expect(adminPagesByType.superadmin).toBe(SuperAdminDemoPage)
     expect(adminPagesByType['branches-admin']).toBe(BranchesAdminPage)
     expect(adminPagesByType['users-admin']).toBe(UsersAdminPage)
+  })
+})
+
+describe('SuperAdminDemoPage', () => {
+  it('expone el generador demo y conserva la administración global', () => {
+    const wrapper = mountPage(SuperAdminDemoPage, superAdminData)
+
+    expect(wrapper.text()).toContain('Empresa demo')
+    expect(wrapper.get('button').text()).toContain('Empresa demo')
+    expect(wrapper.text()).toContain('Empresas y acceso de usuarios')
   })
 })
 
