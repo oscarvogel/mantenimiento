@@ -1,6 +1,11 @@
 <script setup>
 import { ArrowRightIcon } from '@heroicons/vue/20/solid'
-import { ClockIcon, ExclamationTriangleIcon, TruckIcon } from '@heroicons/vue/24/outline'
+import {
+  ClipboardDocumentListIcon,
+  ClockIcon,
+  ExclamationTriangleIcon,
+  TruckIcon,
+} from '@heroicons/vue/24/outline'
 
 const props = defineProps({
   label: {
@@ -14,7 +19,7 @@ const props = defineProps({
   tone: {
     type: String,
     default: 'primary',
-    validator: (value) => ['primary', 'due', 'overdue'].includes(value),
+    validator: (value) => ['primary', 'due', 'overdue', 'orders'].includes(value),
   },
   href: {
     type: String,
@@ -30,17 +35,18 @@ const toneStyles = {
   primary: {
     icon: 'bg-primary-subtle text-primary',
     value: 'text-ink',
-    accent: 'bg-primary',
   },
   due: {
     icon: 'bg-warning-subtle text-warning-strong',
     value: 'text-warning-strong',
-    accent: 'bg-maintenance-due',
   },
   overdue: {
     icon: 'bg-danger-subtle text-danger',
     value: 'text-danger-strong',
-    accent: 'bg-maintenance-overdue',
+  },
+  orders: {
+    icon: 'bg-violet-50 text-violet-700',
+    value: 'text-ink',
   },
 }
 
@@ -48,6 +54,7 @@ const icons = {
   primary: TruckIcon,
   due: ClockIcon,
   overdue: ExclamationTriangleIcon,
+  orders: ClipboardDocumentListIcon,
 }
 </script>
 
