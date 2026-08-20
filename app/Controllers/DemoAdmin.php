@@ -45,13 +45,15 @@ final class DemoAdmin extends BaseController
         } catch (RuntimeException $exception) {
             return redirect()->to('/superadmin')->withInput()->with('error', $exception->getMessage());
         } catch (Throwable $exception) {
-            log_message('error', 'Falló la generación de empresa demo: {message}', [
+            $errorId = 'DEMO-' . date('YmdHis') . '-' . strtoupper(substr(bin2hex(random_bytes(3)), 0, 6));
+            log_message('error', '[{errorId}] Falló la generación de empresa demo: {message}', [
+                'errorId' => $errorId,
                 'message' => $exception->getMessage(),
             ]);
 
             return redirect()->to('/superadmin')->withInput()->with(
                 'error',
-                'No se pudo generar la empresa demo. Revise que las migraciones estén actualizadas.',
+                'No se pudo generar la empresa demo. Código de diagnóstico: ' . $errorId . '.',
             );
         }
     }
