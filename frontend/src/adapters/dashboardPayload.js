@@ -177,7 +177,7 @@ export function normalizeDashboardPayload(payload) {
       maintenanceDueSoon: asUrl(sourceLinks.maintenanceDueSoon, maintenanceUrl),
       maintenanceOverdue: asUrl(sourceLinks.maintenanceOverdue, maintenanceUrl),
       maintenanceMissingData: asUrl(sourceLinks.maintenanceMissingData, maintenanceUrl),
-      orders: asUrl(sourceLinks.orders, maintenanceUrl),
+      orders: asUrl(sourceLinks.orders),
     },
   }
 }
