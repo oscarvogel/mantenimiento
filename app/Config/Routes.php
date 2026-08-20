@@ -106,12 +106,14 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->post('equipos/(:num)/planes', 'MaintenanceCircuit::assignPlan/$1', ['filter' => 'permission:planes.editar']);
     $routes->post('vencimientos/detectar', 'MaintenanceCircuit::detectOverdue', ['filter' => 'permission:planes.editar']);
     $routes->post('avisos/(:num)/orden', 'MaintenanceCircuit::generateOrder/$1', ['filter' => 'permission:ordenes.editar']);
+    $routes->post('ordenes/correctivas', 'CorrectiveWorkOrders::create', ['filter' => 'permission:ordenes.editar']);
     $routes->get('ordenes/(:num)/imprimir', 'MaintenanceCircuit::printOrder/$1');
     $routes->post('ordenes/(:num)/iniciar', 'MaintenanceCircuit::startOrder/$1', ['filter' => 'permission:ordenes.editar']);
     $routes->post('ordenes/(:num)/esperar-repuestos', 'WorkOrderLifecycle::waitForParts/$1', ['filter' => 'permission:ordenes.editar']);
     $routes->post('ordenes/(:num)/reanudar', 'WorkOrderLifecycle::resume/$1', ['filter' => 'permission:ordenes.editar']);
     $routes->post('ordenes/(:num)/cancelar', 'WorkOrderLifecycle::cancel/$1', ['filter' => 'permission:ordenes.editar']);
     $routes->post('ordenes/(:num)/cerrar', 'MaintenanceCircuit::closeOrder/$1', ['filter' => 'permission:ordenes.cerrar']);
+    $routes->post('ordenes/(:num)/cerrar-correctiva', 'CorrectiveWorkOrders::close/$1', ['filter' => 'permission:ordenes.cerrar']);
 });
 
 $routes->group('reportes', ['filter' => ['auth', 'permission:reportes.ver']], static function ($routes): void {
