@@ -2,10 +2,12 @@
 /** @var array<string,mixed> $order */
 $esc = static fn (mixed $value): string => esc((string) ($value ?? ''));
 $fmtNumber = static fn (mixed $value, int $decimals = 0): string => $value === null || $value === '' ? '—' : number_format((float) $value, $decimals, ',', '.');
+$fmtMoney = static fn (mixed $value): string => '$ ' . number_format((float) ($value ?? 0), 2, ',', '.');
 $fmtDate = static function (mixed $value): string {
     if ($value === null || $value === '') { return '—'; }
     try { return (new DateTimeImmutable((string) $value))->format('d/m/Y H:i'); } catch (Throwable) { return (string) $value; }
 };
+$isCorrective = ($order['origen'] ?? '') === 'CORRECTIVO';
 ?>
 <!doctype html>
 <html lang="es">
@@ -31,6 +33,9 @@ $fmtDate = static function (mixed $value): string {
         th, td { border: 1px solid #9ca3af; padding: 8px; vertical-align: top; }
         th { background: #f3f4f6; text-align: left; }
         .notes { min-height: 64px; border: 1px solid #9ca3af; padding: 8px; white-space: pre-wrap; font-size: 13px; }
+        .costs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; font-size: 12px; }
+        .costs div { border: 1px solid #9ca3af; padding: 8px; }
+        .costs strong { display: block; margin-bottom: 4px; }
         .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; margin-top: 48px; font-size: 12px; text-align: center; }
         .signature { border-top: 1px solid #111827; padding-top: 6px; }
         @media print {
@@ -40,7 +45,7 @@ $fmtDate = static function (mixed $value): string {
             .sheet { width: auto; min-height: 0; margin: 0; padding: 0; box-shadow: none; }
         }
         @media (max-width: 640px) {
-            .meta { grid-template-columns: 1fr; }
+            .meta, .costs { grid-template-columns: 1fr; }
             .sheet { padding: 20px; }
         }
     </style>
@@ -51,7 +56,7 @@ $fmtDate = static function (mixed $value): string {
         <header class="header">
             <div>
                 <h1>Orden de trabajo</h1>
-                <div><?= $esc($order['servicio_nombre'] ?? 'Mantenimiento') ?></div>
+                <div><?= $esc($isCorrective ? 'Correctiva' : ($order['servicio_nombre'] ?? 'Mantenimiento preventivo')) ?></div>
             </div>
             <div class="number">
                 <?= $esc($order['numero'] ?? ('#' . $order['id'])) ?><br>
@@ -60,6 +65,7 @@ $fmtDate = static function (mixed $value): string {
         </header>
 
         <section class="meta">
+            <div><strong>Tipo</strong> <?= $esc($isCorrective ? 'CORRECTIVA' : 'PREVENTIVA') ?></div>
             <div><strong>Equipo</strong> <?= $esc($order['equipo_codigo'] ?? '') ?></div>
             <div><strong>Patente</strong> <?= $esc($order['equipo_patente'] ?: '—') ?></div>
             <div><strong>Chasis</strong> <?= $esc($order['equipo_chasis'] ?: '—') ?></div>
@@ -68,28 +74,45 @@ $fmtDate = static function (mixed $value): string {
             <div><strong>Prioridad</strong> <?= $esc($order['prioridad'] ?? '') ?></div>
             <div><strong>Apertura</strong> <?= $esc($fmtDate($order['fecha_apertura'] ?? null)) ?></div>
             <div><strong>Inicio</strong> <?= $esc($fmtDate($order['fecha_inicio'] ?? null)) ?></div>
-            <div><strong>Km ingreso</strong> <?= $esc($fmtNumber($order['km_ingreso'] ?? null)) ?></div>
-            <div><strong>Horas ingreso</strong> <?= $esc($fmtNumber($order['horas_ingreso'] ?? null, 1)) ?></div>
+            <div><strong>Finalización</strong> <?= $esc($fmtDate($order['fecha_finalizacion'] ?? null)) ?></div>
+            <div><strong>Km ingreso / salida</strong> <?= $esc($fmtNumber($order['km_ingreso'] ?? null)) ?> / <?= $esc($fmtNumber($order['km_salida'] ?? null)) ?></div>
+            <div><strong>Horas ingreso / salida</strong> <?= $esc($fmtNumber($order['horas_ingreso'] ?? null, 1)) ?> / <?= $esc($fmtNumber($order['horas_salida'] ?? null, 1)) ?></div>
         </section>
 
-        <h2>Tareas del servicio</h2>
-        <table>
-            <thead><tr><th style="width:42px">#</th><th>Tarea</th><th style="width:110px">Estado</th><th>Trabajo realizado</th></tr></thead>
-            <tbody>
-            <?php if (($order['tasks'] ?? []) === []): ?>
-                <tr><td colspan="4">La orden no tiene tareas cargadas.</td></tr>
-            <?php else: ?>
-                <?php foreach ($order['tasks'] as $index => $task): ?>
-                    <tr>
-                        <td><?= $index + 1 ?></td>
-                        <td><?= $esc($task['description'] ?? '') ?><?= ! empty($task['required']) ? ' *' : '' ?></td>
-                        <td><?= $esc($task['status'] ?? '') ?></td>
-                        <td><?= $esc($task['workDone'] ?: '') ?></td>
-                    </tr>
-                <?php endforeach ?>
-            <?php endif ?>
-            </tbody>
-        </table>
+        <?php if ($isCorrective): ?>
+            <h2>Problema reportado / diagnóstico</h2>
+            <div class="notes"><?= $esc($order['diagnostico'] ?: '') ?></div>
+
+            <h2>Trabajo realizado</h2>
+            <div class="notes"><?= $esc($order['trabajo_realizado'] ?: 'Pendiente de completar') ?></div>
+        <?php else: ?>
+            <h2>Tareas del servicio</h2>
+            <table>
+                <thead><tr><th style="width:42px">#</th><th>Tarea</th><th style="width:110px">Estado</th><th>Trabajo realizado</th></tr></thead>
+                <tbody>
+                <?php if (($order['tasks'] ?? []) === []): ?>
+                    <tr><td colspan="4">La orden no tiene tareas cargadas.</td></tr>
+                <?php else: ?>
+                    <?php foreach ($order['tasks'] as $index => $task): ?>
+                        <tr>
+                            <td><?= $index + 1 ?></td>
+                            <td><?= $esc($task['description'] ?? '') ?><?= ! empty($task['required']) ? ' *' : '' ?></td>
+                            <td><?= $esc($task['status'] ?? '') ?></td>
+                            <td><?= $esc($task['workDone'] ?: '') ?></td>
+                        </tr>
+                    <?php endforeach ?>
+                <?php endif ?>
+                </tbody>
+            </table>
+        <?php endif ?>
+
+        <h2>Costos del servicio</h2>
+        <section class="costs">
+            <div><strong>Mano de obra</strong><?= $esc($fmtMoney($order['costo_mano_obra'] ?? 0)) ?></div>
+            <div><strong>Repuestos / insumos</strong><?= $esc($fmtMoney($order['costo_repuestos'] ?? 0)) ?></div>
+            <div><strong>Otros costos</strong><?= $esc($fmtMoney($order['otros_costos'] ?? 0)) ?></div>
+            <div><strong>Total</strong><?= $esc($fmtMoney($order['costo_total'] ?? 0)) ?></div>
+        </section>
 
         <h2>Observaciones</h2>
         <div class="notes"><?= $esc($order['observaciones'] ?: '') ?></div>

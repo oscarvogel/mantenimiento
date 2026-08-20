@@ -18,7 +18,11 @@ const taskResults = [
   { value: 'PENDIENTE', label: 'Pendiente / no realizada' },
   { value: 'NO_APLICA', label: 'No aplica' },
 ]
+const isCorrective = computed(() => props.order.serviceName === 'OT correctiva')
 const modalTitle = computed(() => `Cerrar ${props.order.number}`)
+const closeAction = computed(() => isCorrective.value
+  ? String(props.order.closeUrl).replace(/\/cerrar$/, '/cerrar-correctiva')
+  : props.order.closeUrl)
 const updateFormState = (value) => emit('update:formState', value)
 const numericCost = (value) => {
   const normalized = String(value ?? '').trim().replace(',', '.')
@@ -55,7 +59,9 @@ const formattedCostTotal = computed(() => costTotal.value.toLocaleString('es-AR'
           <div>
             <p class="text-xs font-bold uppercase tracking-[0.14em] text-primary">Cierre de orden</p>
             <h2 id="work-order-closure-title" class="mt-1 text-xl font-bold text-ink">{{ modalTitle }}</h2>
-            <p class="mt-1 text-sm text-ink-muted">Marcá el resultado de cada tarea y dejá el detalle o motivo correspondiente.</p>
+            <p class="mt-1 text-sm text-ink-muted">
+              {{ isCorrective ? 'Describí el trabajo realizado y completá los importes del servicio.' : 'Marcá el resultado de cada tarea y dejá el detalle o motivo correspondiente.' }}
+            </p>
           </div>
           <button type="button" :class="secondaryButton" aria-label="Cerrar ventana de cierre" @click="emit('close')">
             <XMarkIcon class="size-5" aria-hidden="true" />
@@ -63,10 +69,10 @@ const formattedCostTotal = computed(() => costTotal.value.toLocaleString('es-AR'
         </header>
 
         <div class="overflow-y-auto px-5 py-5 sm:px-6">
-          <form method="post" :action="order.closeUrl" class="grid gap-5">
+          <form method="post" :action="closeAction" class="grid gap-5">
             <CsrfInput :csrf="csrf" />
 
-            <fieldset class="grid gap-3">
+            <fieldset v-if="!isCorrective" class="grid gap-3">
               <legend class="text-base font-bold text-ink">Tareas de la orden</legend>
               <p class="text-sm text-ink-muted">Completá las {{ order.tasks.length }} tarea{{ order.tasks.length === 1 ? '' : 's' }} antes de confirmar el cierre.</p>
 
@@ -108,6 +114,22 @@ const formattedCostTotal = computed(() => costTotal.value.toLocaleString('es-AR'
               </article>
             </fieldset>
 
+            <fieldset v-else class="grid gap-3 rounded-xl border border-border bg-surface-subtle p-4">
+              <FormField label="Trabajo realizado" :for-id="`order-${order.id}-work-performed`" hint="Describí concretamente qué se reparó o reemplazó. Mínimo 5 caracteres.">
+                <textarea
+                  :id="`order-${order.id}-work-performed`"
+                  v-model="formState.trabajo_realizado_correctivo"
+                  name="trabajo_realizado_correctivo"
+                  rows="5"
+                  minlength="5"
+                  maxlength="5000"
+                  required
+                  placeholder="Ej.: Se reemplazó manguera hidráulica de retorno, se repuso aceite y se verificaron pérdidas."
+                  :class="fieldClass"
+                ></textarea>
+              </FormField>
+            </fieldset>
+
             <div class="grid gap-4 border-t border-border-subtle pt-4 sm:grid-cols-2">
               <FormField label="Fecha servicio" :for-id="`order-${order.id}-date`">
                 <input :id="`order-${order.id}-date`" type="date" name="fecha_servicio" required :value="today()" :class="fieldClass" />
@@ -127,47 +149,17 @@ const formattedCostTotal = computed(() => costTotal.value.toLocaleString('es-AR'
             <fieldset class="grid gap-4 rounded-xl border border-border bg-surface-subtle p-4">
               <div>
                 <legend class="text-base font-bold text-ink">Costos del servicio</legend>
-                <p class="mt-1 text-sm text-ink-muted">Opcionales. Si no se informan, la orden se cierra con costo $ 0,00.</p>
+                <p class="mt-1 text-sm text-ink-muted">Informá los montos del cierre. Si un concepto no tuvo costo, dejalo en 0.</p>
               </div>
               <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <FormField label="Mano de obra" :for-id="`order-${order.id}-labor-cost`">
-                  <input
-                    :id="`order-${order.id}-labor-cost`"
-                    v-model="formState.costo_mano_obra"
-                    type="number"
-                    name="costo_mano_obra"
-                    min="0"
-                    step="0.01"
-                    inputmode="decimal"
-                    placeholder="0,00"
-                    :class="fieldClass"
-                  />
+                  <input :id="`order-${order.id}-labor-cost`" v-model="formState.costo_mano_obra" type="number" name="costo_mano_obra" min="0" step="0.01" inputmode="decimal" placeholder="0,00" :class="fieldClass" />
                 </FormField>
                 <FormField label="Repuestos / insumos" :for-id="`order-${order.id}-parts-cost`">
-                  <input
-                    :id="`order-${order.id}-parts-cost`"
-                    v-model="formState.costo_repuestos"
-                    type="number"
-                    name="costo_repuestos"
-                    min="0"
-                    step="0.01"
-                    inputmode="decimal"
-                    placeholder="0,00"
-                    :class="fieldClass"
-                  />
+                  <input :id="`order-${order.id}-parts-cost`" v-model="formState.costo_repuestos" type="number" name="costo_repuestos" min="0" step="0.01" inputmode="decimal" placeholder="0,00" :class="fieldClass" />
                 </FormField>
                 <FormField label="Otros costos" :for-id="`order-${order.id}-other-costs`">
-                  <input
-                    :id="`order-${order.id}-other-costs`"
-                    v-model="formState.otros_costos"
-                    type="number"
-                    name="otros_costos"
-                    min="0"
-                    step="0.01"
-                    inputmode="decimal"
-                    placeholder="0,00"
-                    :class="fieldClass"
-                  />
+                  <input :id="`order-${order.id}-other-costs`" v-model="formState.otros_costos" type="number" name="otros_costos" min="0" step="0.01" inputmode="decimal" placeholder="0,00" :class="fieldClass" />
                 </FormField>
                 <div class="rounded-lg border border-primary/20 bg-primary-subtle px-4 py-3" data-testid="work-order-cost-total">
                   <p class="text-xs font-bold uppercase tracking-wide text-primary">Total</p>
@@ -177,7 +169,9 @@ const formattedCostTotal = computed(() => costTotal.value.toLocaleString('es-AR'
               <p class="text-xs text-ink-muted">El total definitivo se recalcula en el servidor a partir de los tres importes.</p>
             </fieldset>
 
-            <p class="rounded-lg bg-info-subtle px-3 py-2 text-xs text-info-strong">Al confirmar, se guardará el resultado de cada tarea, se actualizarán las lecturas, los costos informados y se recalculará el próximo mantenimiento.</p>
+            <p class="rounded-lg bg-info-subtle px-3 py-2 text-xs text-info-strong">
+              {{ isCorrective ? 'Al confirmar, se guardará el trabajo realizado, las lecturas y los costos sin afectar ningún plan preventivo.' : 'Al confirmar, se guardará el resultado de cada tarea, se actualizarán las lecturas, los costos informados y se recalculará el próximo mantenimiento.' }}
+            </p>
 
             <div class="flex flex-wrap justify-end gap-2 border-t border-border-subtle pt-4">
               <button type="button" :class="secondaryButton" @click="emit('close')">Cancelar</button>
