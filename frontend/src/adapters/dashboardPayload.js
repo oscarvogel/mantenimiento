@@ -156,17 +156,28 @@ export function normalizeDashboardPayload(payload) {
     metrics: {
       equipmentTotal: asCount(metrics.equipmentTotal),
       equipmentActive: asCount(metrics.equipmentActive),
+      equipmentWithoutPlans: asCount(metrics.equipmentWithoutPlans),
+      plansConfigured: asCount(metrics.plansConfigured),
       maintenanceDueSoon: asCount(metrics.maintenanceDueSoon),
       maintenanceOverdue: asCount(metrics.maintenanceOverdue),
+      maintenanceMissingData: asCount(metrics.maintenanceMissingData),
       maintenanceScheduled: asCount(metrics.maintenanceScheduled),
       openOrders: asCount(metrics.openOrders),
     },
     upcomingMaintenance: normalizeUpcoming(source.upcomingMaintenance),
     links: {
       equipment: asUrl(sourceLinks.equipment, equipmentUrl),
+      equipmentCreate: asUrl(sourceLinks.equipmentCreate),
       maintenance: asUrl(sourceLinks.maintenance, maintenanceUrl),
+      services: asUrl(sourceLinks.services),
+      assignPlan: asUrl(sourceLinks.assignPlan),
+      registerMaintenance: asUrl(sourceLinks.registerMaintenance),
+      quickReadings: asUrl(sourceLinks.quickReadings),
+      library: asUrl(sourceLinks.library),
       maintenanceDueSoon: asUrl(sourceLinks.maintenanceDueSoon, maintenanceUrl),
       maintenanceOverdue: asUrl(sourceLinks.maintenanceOverdue, maintenanceUrl),
+      maintenanceMissingData: asUrl(sourceLinks.maintenanceMissingData, maintenanceUrl),
+      orders: asUrl(sourceLinks.orders),
     },
   }
 }

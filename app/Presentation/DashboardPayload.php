@@ -35,6 +35,7 @@ final class DashboardPayload
                 'assignPlan' => $canEditPlans ? $plansUrl : '#',
                 'registerMaintenance' => $canEquipment ? $equipmentUrl : '#',
                 'quickReadings' => $canLoadReadings ? base_url('mantenimiento/lecturas/rapidas') : '#',
+                'orders' => $canOrders ? base_url('mantenimiento') : '#',
                 // Alias temporal para consumidores viejos. Ya no apunta a Biblioteca.
                 'library' => $servicesUrl,
                 'maintenanceDueSoon' => $canPlans ? $this->plansFilterUrl('PROXIMO') : '#',
