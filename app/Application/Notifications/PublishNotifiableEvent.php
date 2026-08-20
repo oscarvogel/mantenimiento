@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Application\Notifications;
 
+use App\Application\Notifications\Port\CompanyNotificationDeliveryQueue;
+use App\Application\Notifications\Port\CompanyNotificationRecipientResolver;
 use App\Application\Notifications\Port\NotificationDeliveryQueue;
 use App\Application\Notifications\Port\NotificationPreferenceStore;
 use App\Application\Notifications\Port\NotificationRecipientResolver;
@@ -20,6 +22,8 @@ final readonly class PublishNotifiableEvent
         private NotificationPreferenceStore $preferences,
         private NotificationDeliveryQueue $deliveries,
         private NotificationUnitOfWork $unitOfWork,
+        private CompanyNotificationRecipientResolver $companyRecipients,
+        private CompanyNotificationDeliveryQueue $companyDeliveries,
     ) {
     }
 
@@ -27,7 +31,9 @@ final readonly class PublishNotifiableEvent
     public function execute(NotifiableEvent $event): array
     {
         $recipients = $this->recipients->resolve($event);
-        return $this->unitOfWork->transactional(function () use ($event, $recipients): array {
+        $companyRecipient = $this->companyRecipients->resolve($event->companyId());
+
+        return $this->unitOfWork->transactional(function () use ($event, $recipients, $companyRecipient): array {
             $created = 0;
             $duplicates = 0;
             foreach ($recipients as $recipient) {
@@ -44,6 +50,11 @@ final readonly class PublishNotifiableEvent
                 $this->deliveries->schedule($notificationId, $recipient->userId, $event->logicalKey(), $event->severity(), $preference);
                 $created++;
             }
+
+            // Este destinatario pertenece a la empresa, no a un usuario. Por eso no
+            // hereda preferencias personales ni genera Web Push.
+            $this->companyDeliveries->schedule($event, $companyRecipient);
+
             return ['created' => $created, 'duplicates' => $duplicates, 'recipients' => count($recipients)];
         });
     }
