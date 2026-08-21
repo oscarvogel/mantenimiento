@@ -161,4 +161,115 @@ final class ProcessMessageHandlerTest extends TestCase
         $this->assertEmpty($result->pendingToolCalls);
         $this->assertCount(2, $result->messages);
     }
+
+    public function testConfirmedToolCallsAreExecutedWithoutCallingProviderAgain(): void
+    {
+        $writeTool = ToolDefinition::write(
+            name: 'registrar_lectura',
+            description: 'Registra una lectura',
+            parameters: ['equipmentId' => ['type' => 'integer']],
+            permission: 'lecturas.cargar',
+        );
+
+        $msgRepo = $this->createMock(MessageRepository::class);
+        $msgRepo->method('findForConversation')->willReturn([]);
+
+        $convRepo = $this->createMock(ConversationRepository::class);
+        $convRepo->method('find')->willReturn(
+            Conversation::reconstitute(1, 1, 1, null, new \DateTimeImmutable(), new \DateTimeImmutable())
+        );
+
+        $ai = $this->createMock(AIProvider::class);
+        $ai->expects($this->once())
+            ->method('sendMessage')
+            ->willReturn(new AIResponse(content: 'Lectura registrada.'));
+
+        $executor = $this->createMock(ToolExecutor::class);
+        $executor->expects($this->once())
+            ->method('execute')
+            ->with('registrar_lectura', ['equipmentId' => 14], $this->anything())
+            ->willReturn(ToolCallResult::success('call_2', 'registrar_lectura', ['readingId' => 99]));
+
+        $registry = new class ($writeTool) implements ToolRegistry {
+            public function __construct(private readonly ToolDefinition $tool) {}
+            public function all(): array { return [$this->tool]; }
+            public function find(string $name): ?ToolDefinition { return $name === $this->tool->name ? $this->tool : null; }
+        };
+
+        $handler = new ProcessMessageHandler(
+            messages: $msgRepo,
+            toolRegistry: $registry,
+            aiProvider: $ai,
+            toolExecutor: $executor,
+            clock: new class implements ChatClock {
+                public function now(): \DateTimeImmutable { return new \DateTimeImmutable(); }
+            },
+            conversations: $convRepo,
+        );
+
+        $actor = ActorContext::fromArray([
+            'user_id' => 1,
+            'company_id' => 1,
+            'super_admin' => false,
+            'all_company_branches' => false,
+            'roles' => ['tecnico'],
+            'permissions' => ['chatbot.usar', 'equipos.ver', 'lecturas.cargar'],
+            'branch_ids' => [1],
+        ]);
+
+        $result = $handler->execute($actor, new SendMessageCommand(
+            conversationId: 1,
+            content: '',
+            confirmedToolCalls: [
+                ['id' => 'call_2', 'name' => 'registrar_lectura', 'arguments' => ['equipmentId' => 14]],
+            ],
+        ));
+
+        $this->assertEmpty($result->pendingToolCalls);
+        $this->assertCount(1, $result->messages);
+        $this->assertSame('assistant', $result->messages[0]->role);
+        $this->assertSame('Lectura registrada.', $result->messages[0]->content);
+    }
+
+    public function testEmptyUserMessageIsNotPersistedOnConfirmation(): void
+    {
+        $msgRepo = $this->createMock(MessageRepository::class);
+        $msgRepo->expects($this->once())
+            ->method('append')
+            ->with($this->callback(function (Message $m) {
+                return $m->role === 'assistant' && $m->content === 'Listo.';
+            }))
+            ->willReturn(1);
+        $msgRepo->method('findForConversation')->willReturn([]);
+
+        $convRepo = $this->createMock(ConversationRepository::class);
+        $convRepo->method('find')->willReturn(
+            Conversation::reconstitute(1, 1, 1, null, new \DateTimeImmutable(), new \DateTimeImmutable())
+        );
+
+        $ai = $this->createMock(AIProvider::class);
+        $ai->method('sendMessage')->willReturn(new AIResponse(content: 'Listo.'));
+
+        $registry = new class implements ToolRegistry {
+            public function all(): array { return []; }
+            public function find(string $name): ?ToolDefinition { return null; }
+        };
+
+        $handler = new ProcessMessageHandler(
+            messages: $msgRepo,
+            toolRegistry: $registry,
+            aiProvider: $ai,
+            toolExecutor: $this->createMock(ToolExecutor::class),
+            clock: new class implements ChatClock {
+                public function now(): \DateTimeImmutable { return new \DateTimeImmutable(); }
+            },
+            conversations: $convRepo,
+        );
+
+        $handler->execute($this->createActor(), new SendMessageCommand(
+            conversationId: 1,
+            content: '',
+            confirmedToolCalls: [],
+        ));
+    }
 }

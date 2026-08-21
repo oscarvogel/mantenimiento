@@ -28,16 +28,43 @@ final class MessageTest extends TestCase
         $this->assertSame('assistant', $msg->role);
     }
 
-    public function testCreateToolMessage(): void
+    public function testCreateToolMessagePersistsStructuredMetadata(): void
     {
         $result = [['id' => 14, 'codigo' => 'CAM-014']];
-        $msg = Message::tool(conversationId: 1, toolCallId: 'call_123', name: 'buscar_equipo', result: $result);
+        $msg = Message::tool(
+            conversationId: 1,
+            toolCallId: 'call_123',
+            toolName: 'buscar_equipo',
+            arguments: ['query' => 'CAM-014'],
+            result: $result,
+            success: true,
+        );
 
         $this->assertSame('tool', $msg->role);
         $this->assertSame('call_123', $msg->toolCallId);
-        $decoded = json_decode($msg->content, true);
-        $this->assertSame('buscar_equipo', $decoded['name']);
-        $this->assertSame($result, $decoded['result']);
+        $this->assertIsArray($msg->toolCalls);
+        $this->assertSame('buscar_equipo', $msg->toolCalls['name']);
+        $this->assertSame(['query' => 'CAM-014'], $msg->toolCalls['arguments']);
+        $this->assertSame($result, $msg->toolCalls['result']);
+        $this->assertTrue($msg->toolCalls['success']);
+        $this->assertArrayNotHasKey('error', $msg->toolCalls);
+    }
+
+    public function testToolFailureMessageIncludesErrorDetail(): void
+    {
+        $msg = Message::tool(
+            conversationId: 1,
+            toolCallId: 'call_err',
+            toolName: 'registrar_lectura',
+            arguments: ['equipmentId' => 14, 'kilometers' => -5],
+            result: [],
+            success: false,
+            errorMessage: 'Los kilómetros no pueden ser negativos.',
+        );
+
+        $this->assertFalse($msg->toolCalls['success']);
+        $this->assertSame('Los kilómetros no pueden ser negativos.', $msg->toolCalls['error']);
+        $this->assertStringContainsString('registrar_lectura', $msg->content);
     }
 
     public function testReconstituteFromDb(): void
