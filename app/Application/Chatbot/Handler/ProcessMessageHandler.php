@@ -18,6 +18,7 @@ use App\Domain\Chatbot\ChatError;
 use App\Domain\Chatbot\Conversation;
 use App\Domain\Chatbot\Message;
 use App\Domain\Chatbot\ToolCallResult;
+use App\Application\Chatbot\Support\MarkdownTextCleaner;
 
 final class ProcessMessageHandler
 {
@@ -128,7 +129,7 @@ TXT;
 
         $assistantMessage = Message::assistant(
             $command->conversationId,
-            $aiResponse->content,
+            MarkdownTextCleaner::normalize($aiResponse->content),
             $aiResponse->tokensUsed,
         );
         $this->messages->append($assistantMessage);
@@ -158,7 +159,7 @@ TXT;
 
         $assistantMessage = Message::assistant(
             $command->conversationId,
-            $aiResponse->content,
+            MarkdownTextCleaner::normalize($aiResponse->content),
             $aiResponse->tokensUsed,
         );
         $this->messages->append($assistantMessage);
