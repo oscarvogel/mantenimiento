@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Notifications;
 
+use App\Application\Notifications\Port\CompanyNotificationDeliveryQueue;
 use App\Application\Notifications\Port\EmailNotificationGateway;
 use App\Application\Notifications\Port\NotificationDeliveryQueue;
 use App\Application\Notifications\Port\NotificationProcessControl;
@@ -34,10 +35,11 @@ final readonly class RunNotificationDispatch
         try {
             $executionId = $this->processes->start($process, $executionKey);
             if ($executionId === null) {
-                return ['email_sent' => 0, 'push_sent' => 0, 'failed' => 0, 'expired' => 0, 'skipped' => 0, 'already_completed' => 1];
+                return ['email_sent' => 0, 'company_email_sent' => 0, 'push_sent' => 0, 'failed' => 0, 'expired' => 0, 'skipped' => 0, 'already_completed' => 1];
             }
-            $summary = ['email_sent' => 0, 'push_sent' => 0, 'failed' => 0, 'expired' => 0, 'skipped' => 0, 'already_completed' => 0];
+            $summary = ['email_sent' => 0, 'company_email_sent' => 0, 'push_sent' => 0, 'failed' => 0, 'expired' => 0, 'skipped' => 0, 'already_completed' => 0];
             $this->dispatchEmail($summary, $limit);
+            $this->dispatchCompanyEmail($summary, $limit);
             $this->dispatchPush($summary, $limit);
             $this->processes->finish($executionId, $summary);
 
@@ -69,6 +71,42 @@ final readonly class RunNotificationDispatch
             } catch (Throwable $exception) {
                 foreach ($items as $item) {
                     $this->deliveries->failed($item['id'], $exception->getMessage(), $item['intentos'] < 3);
+                    $summary['failed']++;
+                }
+            }
+        }
+    }
+
+    /** @param array<string,int> $summary */
+    private function dispatchCompanyEmail(array &$summary, int $limit): void
+    {
+        if (! $this->deliveries instanceof CompanyNotificationDeliveryQueue) {
+            return;
+        }
+
+        // El mismo email puede ser utilizado por más de una empresa (por ejemplo,
+        // un grupo empresario). Nunca mezclar eventos de tenants distintos en un digest.
+        $groups = [];
+        foreach ($this->deliveries->dueCompany($limit) as $delivery) {
+            $companyId = (int) ($delivery['empresa_id'] ?? 0);
+            $recipient = (string) ($delivery['email'] ?? '');
+            $groups[$companyId . '|' . $recipient] = [
+                'recipient' => $recipient,
+                'items' => [...($groups[$companyId . '|' . $recipient]['items'] ?? []), $delivery],
+            ];
+        }
+        foreach ($groups as $group) {
+            $recipient = $group['recipient'];
+            $items = $group['items'];
+            try {
+                $this->email->sendDigest($recipient, $items);
+                foreach ($items as $item) {
+                    $this->deliveries->deliveredCompany($item['id']);
+                    $summary['company_email_sent']++;
+                }
+            } catch (Throwable $exception) {
+                foreach ($items as $item) {
+                    $this->deliveries->failedCompany($item['id'], $exception->getMessage(), $item['intentos'] < 3);
                     $summary['failed']++;
                 }
             }
