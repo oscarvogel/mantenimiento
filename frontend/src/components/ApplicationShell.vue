@@ -2,6 +2,7 @@
 import { onBeforeUnmount, ref, watch } from 'vue'
 import AppHeader from './AppHeader.vue'
 import AppSidebar from './AppSidebar.vue'
+import ChatWidget from '../pages/operations/components/ChatWidget.vue'
 
 defineProps({
   shell: {
@@ -92,4 +93,6 @@ onBeforeUnmount(() => {
       </main>
     </div>
   </div>
+
+  <ChatWidget />
 </template>

@@ -1,0 +1,47 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Infrastructure\Chatbot\Tools;
+
+use App\Application\Assets\Port\EquipmentListReadModel;
+use App\Application\Identity\ActorContext;
+use App\Domain\Chatbot\ToolHandler;
+
+final class SearchEquipmentTool implements ToolHandler
+{
+    public function __construct(
+        private readonly EquipmentListReadModel $equipment,
+    ) {}
+
+    /**
+     * @param array<string, mixed> $args
+     * @return array<string, mixed>
+     */
+    public function execute(array $args, ActorContext $actor): array
+    {
+        $query = trim((string) ($args['query'] ?? ''));
+        if ($query === '') {
+            return ['items' => [], 'total' => 0];
+        }
+
+        $companyId = $actor->companyId();
+        if ($companyId === null) {
+            return ['items' => [], 'total' => 0];
+        }
+
+        $branchIds = $actor->hasAllCompanyBranches() ? null : $actor->branchIds();
+
+        return $this->equipment->search(
+            companyId: $companyId,
+            branchIds: $branchIds,
+            query: $query,
+            typeId: null,
+            brandId: null,
+            branchId: null,
+            status: null,
+            page: 1,
+            perPage: 10,
+        );
+    }
+}
