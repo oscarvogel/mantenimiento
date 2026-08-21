@@ -14,11 +14,15 @@ use App\Application\Chatbot\Port\ToolExecutor;
 use App\Application\Chatbot\Port\ToolRegistry;
 use App\Application\Chatbot\Result\MessageProcessedResult;
 use App\Application\Identity\ActorContext;
+use App\Domain\Chatbot\ChatError;
 use App\Domain\Chatbot\Conversation;
 use App\Domain\Chatbot\Message;
+use App\Domain\Chatbot\ToolCallResult;
 
 final class ProcessMessageHandler
 {
+    private const MAX_TOOL_ROUNDS = 4;
+
     public function __construct(
         private readonly MessageRepository $messages,
         private readonly ToolRegistry $toolRegistry,
@@ -40,29 +44,35 @@ final class ProcessMessageHandler
         $this->messages->append($userMessage);
 
         $history = $this->messages->findForConversation($command->conversationId, limit: 20);
-
+        $providerMessages = $this->toProviderMessages($history);
         $toolsForUser = $this->toolsForActor($actor);
+        $aiResponse = $this->askProvider($providerMessages, $toolsForUser, $onChunk);
 
-        $aiResponse = $onChunk === null
-            ? $this->aiProvider->sendMessage($this->toProviderMessages($history), $toolsForUser)
-            : $this->aiProvider->sendMessageStreaming($this->toProviderMessages($history), $toolsForUser, $onChunk);
+        $round = 0;
+        while ($aiResponse->toolCalls !== []) {
+            if ($round >= self::MAX_TOOL_ROUNDS) {
+                throw ChatError::providerError('Se alcanzó el límite de pasos de herramientas para esta consulta.');
+            }
+            $round++;
 
-        if ($aiResponse->toolCalls !== []) {
             $pendingWrites = [];
+            $toolProviderMessages = [];
 
             foreach ($aiResponse->toolCalls as $tc) {
-                $toolDef = $this->toolRegistry->find($tc['name']);
+                $toolDef = $this->toolRegistry->find((string) ($tc['name'] ?? ''));
                 if ($toolDef === null) {
                     continue;
                 }
 
                 if ($toolDef->isWrite && $toolDef->confirmationRequired) {
                     $pendingWrites[] = $tc;
-                } else {
-                    $result = $this->toolExecutor->execute($tc['name'], $tc['arguments'], $actor);
-                    $toolMsg = $this->buildToolMessage($command->conversationId, $tc, $result);
-                    $this->messages->append($toolMsg);
+                    continue;
                 }
+
+                $result = $this->toolExecutor->execute($tc['name'], $tc['arguments'], $actor);
+                $toolMsg = $this->buildToolMessage($command->conversationId, $tc, $result);
+                $this->messages->append($toolMsg);
+                $toolProviderMessages[] = $this->toolMessageForProvider($toolMsg);
             }
 
             if ($pendingWrites !== []) {
@@ -73,10 +83,12 @@ final class ProcessMessageHandler
                 );
             }
 
-            $historyAfterTools = $this->messages->findForConversation($command->conversationId, limit: 20);
-            $aiResponse = $onChunk === null
-                ? $this->aiProvider->sendMessage($this->toProviderMessages($historyAfterTools), $toolsForUser)
-                : $this->aiProvider->sendMessageStreaming($this->toProviderMessages($historyAfterTools), $toolsForUser, $onChunk);
+            $providerMessages[] = $this->assistantToolCallsForProvider($aiResponse);
+            foreach ($toolProviderMessages as $providerToolMessage) {
+                $providerMessages[] = $providerToolMessage;
+            }
+
+            $aiResponse = $this->askProvider($providerMessages, $toolsForUser, $onChunk);
         }
 
         $assistantMessage = Message::assistant(
@@ -89,14 +101,8 @@ final class ProcessMessageHandler
         return new MessageProcessedResult(messages: [$userMessage, $assistantMessage], streaming: $onChunk !== null);
     }
 
-    /**
-     * Ejecuta los tool_calls que el usuario confirmó desde el frontend
-     * sin volver a invocar al proveedor de IA. Persiste cada tool call con
-     * resultado y luego pide al proveedor la respuesta final.
-     */
     private function executeConfirmedToolCalls(ActorContext $actor, SendMessageCommand $command, Conversation $conversation, ?callable $onChunk = null): MessageProcessedResult
     {
-        $executed = [];
         foreach ($command->confirmedToolCalls as $tc) {
             $name = (string) ($tc['name'] ?? '');
             if ($name === '') {
@@ -109,15 +115,11 @@ final class ProcessMessageHandler
             }
 
             $result = $this->toolExecutor->execute($name, $tc['arguments'] ?? [], $actor);
-            $toolMsg = $this->buildToolMessage($command->conversationId, $tc, $result);
-            $this->messages->append($toolMsg);
-            $executed[] = $toolMsg;
+            $this->messages->append($this->buildToolMessage($command->conversationId, $tc, $result));
         }
 
         $history = $this->messages->findForConversation($command->conversationId, limit: 20);
-        $aiResponse = $onChunk === null
-            ? $this->aiProvider->sendMessage($this->toProviderMessages($history), $this->toolsForActor($actor))
-            : $this->aiProvider->sendMessageStreaming($this->toProviderMessages($history), $this->toolsForActor($actor), $onChunk);
+        $aiResponse = $this->askProvider($this->toProviderMessages($history), $this->toolsForActor($actor), $onChunk);
 
         $assistantMessage = Message::assistant(
             $command->conversationId,
@@ -129,40 +131,26 @@ final class ProcessMessageHandler
         return new MessageProcessedResult(messages: [$assistantMessage], streaming: $onChunk !== null);
     }
 
-    /**
-     * Carga una conversación y valida que el actor tenga acceso a ella:
-     * la conversación debe pertenecer a la empresa del actor (o ser el
-     * Superadministrador global) y al usuario autenticado. Cualquier
-     * divergencia se traduce en `ChatError::conversationAccessDenied()`.
-     *
-     * Centraliza la verificación para todos los endpoints que reciben
-     * `conversationId` del cliente (sendMessage, confirmTool, history).
-     */
     private function loadAccessibleConversation(ActorContext $actor, int $conversationId): Conversation
     {
         $conversation = $this->conversations->find($conversationId);
         if ($conversation === null) {
-            throw \App\Domain\Chatbot\ChatError::conversationAccessDenied();
+            throw ChatError::conversationAccessDenied();
         }
 
         if (! $actor->isSuperAdmin()) {
             if ($conversation->empresaId !== $actor->companyId()) {
-                throw \App\Domain\Chatbot\ChatError::conversationAccessDenied();
+                throw ChatError::conversationAccessDenied();
             }
             if ($conversation->usuarioId !== $actor->userId()) {
-                throw \App\Domain\Chatbot\ChatError::conversationAccessDenied();
+                throw ChatError::conversationAccessDenied();
             }
         }
 
         return $conversation;
     }
 
-    /**
-     * Construye el mensaje de tipo tool con datos normalizados:
-     * tool_call_id apunta a la invocación original; tool_calls JSON tiene
-     * nombre, argumentos invocados y resultado (éxito/error) para auditoría.
-     */
-    private function buildToolMessage(int $conversationId, array $tc, \App\Domain\Chatbot\ToolCallResult $result): Message
+    private function buildToolMessage(int $conversationId, array $tc, ToolCallResult $result): Message
     {
         return Message::tool(
             conversationId: $conversationId,
@@ -175,9 +163,7 @@ final class ProcessMessageHandler
         );
     }
 
-    /**
-     * @return ToolDefinition[]
-     */
+    /** @return array<int, \App\Domain\Chatbot\ToolDefinition> */
     private function toolsForActor(ActorContext $actor): array
     {
         return array_values(array_filter(
@@ -189,9 +175,60 @@ final class ProcessMessageHandler
     /** @return array<int, array<string, mixed>> */
     private function toProviderMessages(array $messages): array
     {
-        return array_map(fn (Message $m) => [
-            'role' => $m->role,
-            'content' => $m->content,
-        ], $messages);
+        return array_map(function (Message $message): array {
+            if ($message->role === 'tool') {
+                return $this->toolMessageForProvider($message);
+            }
+
+            return [
+                'role' => $message->role,
+                'content' => $message->content,
+            ];
+        }, $messages);
+    }
+
+    /** @return array<string, mixed> */
+    private function assistantToolCallsForProvider(AIResponse $response): array
+    {
+        return [
+            'role' => 'assistant',
+            'content' => $response->content !== '' ? $response->content : null,
+            'tool_calls' => array_map(static fn (array $tc): array => [
+                'id' => (string) ($tc['id'] ?? ''),
+                'type' => 'function',
+                'function' => [
+                    'name' => (string) ($tc['name'] ?? ''),
+                    'arguments' => json_encode($tc['arguments'] ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                ],
+            ], $response->toolCalls),
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function toolMessageForProvider(Message $message): array
+    {
+        $payload = $message->toolCalls ?? [];
+
+        return [
+            'role' => 'tool',
+            'tool_call_id' => $message->toolCallId ?? '',
+            'content' => json_encode([
+                'name' => $payload['name'] ?? null,
+                'success' => $payload['success'] ?? false,
+                'result' => $payload['result'] ?? [],
+                'error' => $payload['error'] ?? null,
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        ];
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $providerMessages
+     * @param array<int, \App\Domain\Chatbot\ToolDefinition> $tools
+     */
+    private function askProvider(array $providerMessages, array $tools, ?callable $onChunk): AIResponse
+    {
+        return $onChunk === null
+            ? $this->aiProvider->sendMessage($providerMessages, $tools)
+            : $this->aiProvider->sendMessageStreaming($providerMessages, $tools, $onChunk);
     }
 }
