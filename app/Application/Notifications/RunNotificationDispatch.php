@@ -84,11 +84,20 @@ final readonly class RunNotificationDispatch
             return;
         }
 
+        // El mismo email puede ser utilizado por más de una empresa (por ejemplo,
+        // un grupo empresario). Nunca mezclar eventos de tenants distintos en un digest.
         $groups = [];
         foreach ($this->deliveries->dueCompany($limit) as $delivery) {
-            $groups[$delivery['email']][] = $delivery;
+            $companyId = (int) ($delivery['empresa_id'] ?? 0);
+            $recipient = (string) ($delivery['email'] ?? '');
+            $groups[$companyId . '|' . $recipient] = [
+                'recipient' => $recipient,
+                'items' => [...($groups[$companyId . '|' . $recipient]['items'] ?? []), $delivery],
+            ];
         }
-        foreach ($groups as $recipient => $items) {
+        foreach ($groups as $group) {
+            $recipient = $group['recipient'];
+            $items = $group['items'];
             try {
                 $this->email->sendDigest($recipient, $items);
                 foreach ($items as $item) {
