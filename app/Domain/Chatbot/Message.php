@@ -13,6 +13,7 @@ final class Message
         public readonly int $conversationId,
         public readonly string $role,
         public readonly string $content,
+        /** @var array<string, mixed>|null */
         public readonly ?array $toolCalls,
         public readonly ?string $toolCallId,
         public readonly ?int $tokensUsed,
@@ -34,10 +35,48 @@ final class Message
         return new self(null, $conversationId, 'system', $content, null, null, null, new DateTimeImmutable());
     }
 
-    public static function tool(int $conversationId, string $toolCallId, string $name, array $result): self
-    {
-        $encoded = json_encode(['name' => $name, 'result' => $result], JSON_THROW_ON_ERROR);
-        return new self(null, $conversationId, 'tool', $encoded, null, $toolCallId, null, new DateTimeImmutable());
+    /**
+     * Construye un mensaje `tool` con la metadata necesaria para auditoría:
+     * argumentos invocados, resultado y flag de éxito. El campo `content`
+     * contiene una versión legible para mostrar en la conversación, mientras
+     * que `tool_calls` (JSON) guarda la estructura para análisis.
+     *
+     * @param array<string, mixed>      $arguments
+     * @param array<string, mixed>|list $result
+     */
+    public static function tool(
+        int $conversationId,
+        string $toolCallId,
+        string $toolName,
+        array $arguments,
+        array $result,
+        bool $success = true,
+        ?string $errorMessage = null,
+    ): self {
+        $payload = [
+            'name' => $toolName,
+            'arguments' => $arguments,
+            'result' => $result,
+            'success' => $success,
+        ];
+        if ($errorMessage !== null) {
+            $payload['error'] = $errorMessage;
+        }
+
+        $readable = $success
+            ? sprintf('[%s ejecutado correctamente]', $toolName)
+            : sprintf('[%s falló: %s]', $toolName, $errorMessage ?? 'error desconocido');
+
+        return new self(
+            null,
+            $conversationId,
+            'tool',
+            $readable,
+            $payload,
+            $toolCallId,
+            null,
+            new DateTimeImmutable(),
+        );
     }
 
     public static function reconstitute(
