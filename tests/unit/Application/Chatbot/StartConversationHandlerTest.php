@@ -33,6 +33,11 @@ final class StartConversationHandlerTest extends TestCase
             {
                 return [];
             }
+
+            public function findOwned(int $id, int $usuarioId, int $empresaId): ?Conversation
+            {
+                return null;
+            }
         };
 
         $handler = new StartConversationHandler($repo);

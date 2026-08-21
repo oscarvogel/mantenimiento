@@ -136,11 +136,29 @@ final class Chatbot extends BaseController
     public function history(): ResponseInterface
     {
         try {
+            $actor = $this->actor();
             $conversationId = (int) $this->request->getGet('conversationId');
             $offset = (int) ($this->request->getGet('offset') ?? 0);
             $limit = (int) ($this->request->getGet('limit') ?? 50);
 
-            $msgRepo = new \App\Infrastructure\Chatbot\Persistence\CodeIgniterMessageRepository(db_connect());
+            $database = db_connect();
+            $convRepo = new \App\Infrastructure\Chatbot\Persistence\CodeIgniterConversationRepository($database);
+
+            $companyId = $actor->companyId();
+            if ($companyId === null) {
+                return $this->jsonError(new \DomainException('Sin empresa asociada.'), 422);
+            }
+
+            if ($actor->isSuperAdmin()) {
+                $conversation = $convRepo->find($conversationId);
+            } else {
+                $conversation = $convRepo->findOwned($conversationId, $actor->userId(), $companyId);
+            }
+            if ($conversation === null) {
+                return $this->jsonError(\App\Domain\Chatbot\ChatError::conversationAccessDenied(), 404);
+            }
+
+            $msgRepo = new \App\Infrastructure\Chatbot\Persistence\CodeIgniterMessageRepository($database);
             $messages = $msgRepo->findForConversation($conversationId, $limit, $offset);
 
             $data = array_map(fn($m) => [

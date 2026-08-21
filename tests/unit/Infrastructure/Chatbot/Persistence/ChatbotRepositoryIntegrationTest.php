@@ -138,4 +138,26 @@ final class ChatbotRepositoryIntegrationTest extends TestCase
         $this->assertNull($loaded[0]->toolCalls);
         $this->assertSame('call_bad', $loaded[0]->toolCallId);
     }
+
+    public function testFindOwnedReturnsOnlyWhenUserAndCompanyMatch(): void
+    {
+        $idUserA = $this->conversations->save(Conversation::create(usuarioId: 1, empresaId: 5));
+        $this->conversations->save(Conversation::create(usuarioId: 2, empresaId: 5));
+        $this->conversations->save(Conversation::create(usuarioId: 1, empresaId: 9));
+
+        // Usuario A tiene acceso solo a su propia conversación
+        $own = $this->conversations->findOwned($idUserA, 1, 5);
+        $this->assertNotNull($own);
+        $this->assertSame(1, $own->usuarioId);
+        $this->assertSame(5, $own->empresaId);
+
+        // Misma conversación pero distinto usuario → null
+        $this->assertNull($this->conversations->findOwned($idUserA, 2, 5));
+
+        // Misma conversación pero distinta empresa → null
+        $this->assertNull($this->conversations->findOwned($idUserA, 1, 9));
+
+        // Conversación inexistente → null
+        $this->assertNull($this->conversations->findOwned(999, 1, 5));
+    }
 }

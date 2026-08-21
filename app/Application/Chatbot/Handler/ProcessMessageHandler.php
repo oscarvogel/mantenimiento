@@ -14,6 +14,7 @@ use App\Application\Chatbot\Port\ToolExecutor;
 use App\Application\Chatbot\Port\ToolRegistry;
 use App\Application\Chatbot\Result\MessageProcessedResult;
 use App\Application\Identity\ActorContext;
+use App\Domain\Chatbot\Conversation;
 use App\Domain\Chatbot\Message;
 
 final class ProcessMessageHandler
@@ -29,16 +30,10 @@ final class ProcessMessageHandler
 
     public function execute(ActorContext $actor, SendMessageCommand $command, ?callable $onChunk = null): MessageProcessedResult
     {
-        $conversation = $this->conversations->find($command->conversationId);
-        if ($conversation === null) {
-            throw new \DomainException('La conversación no existe.');
-        }
-        if (! $actor->canAccessCompany($conversation->empresaId)) {
-            throw new \DomainException('No tenés acceso a esta conversación.');
-        }
+        $conversation = $this->loadAccessibleConversation($actor, $command->conversationId);
 
         if ($command->confirmedToolCalls !== null) {
-            return $this->executeConfirmedToolCalls($actor, $command, $onChunk);
+            return $this->executeConfirmedToolCalls($actor, $command, $conversation, $onChunk);
         }
 
         $userMessage = Message::user($command->conversationId, $command->content);
@@ -99,7 +94,7 @@ final class ProcessMessageHandler
      * sin volver a invocar al proveedor de IA. Persiste cada tool call con
      * resultado y luego pide al proveedor la respuesta final.
      */
-    private function executeConfirmedToolCalls(ActorContext $actor, SendMessageCommand $command, ?callable $onChunk = null): MessageProcessedResult
+    private function executeConfirmedToolCalls(ActorContext $actor, SendMessageCommand $command, Conversation $conversation, ?callable $onChunk = null): MessageProcessedResult
     {
         $executed = [];
         foreach ($command->confirmedToolCalls as $tc) {
@@ -132,6 +127,34 @@ final class ProcessMessageHandler
         $this->messages->append($assistantMessage);
 
         return new MessageProcessedResult(messages: [$assistantMessage], streaming: $onChunk !== null);
+    }
+
+    /**
+     * Carga una conversación y valida que el actor tenga acceso a ella:
+     * la conversación debe pertenecer a la empresa del actor (o ser el
+     * Superadministrador global) y al usuario autenticado. Cualquier
+     * divergencia se traduce en `ChatError::conversationAccessDenied()`.
+     *
+     * Centraliza la verificación para todos los endpoints que reciben
+     * `conversationId` del cliente (sendMessage, confirmTool, history).
+     */
+    private function loadAccessibleConversation(ActorContext $actor, int $conversationId): Conversation
+    {
+        $conversation = $this->conversations->find($conversationId);
+        if ($conversation === null) {
+            throw \App\Domain\Chatbot\ChatError::conversationAccessDenied();
+        }
+
+        if (! $actor->isSuperAdmin()) {
+            if ($conversation->empresaId !== $actor->companyId()) {
+                throw \App\Domain\Chatbot\ChatError::conversationAccessDenied();
+            }
+            if ($conversation->usuarioId !== $actor->userId()) {
+                throw \App\Domain\Chatbot\ChatError::conversationAccessDenied();
+            }
+        }
+
+        return $conversation;
     }
 
     /**

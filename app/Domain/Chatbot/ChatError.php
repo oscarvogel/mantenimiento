@@ -18,6 +18,11 @@ final class ChatError extends RuntimeException
         return new self("No tenés permiso para usar la herramienta '{$tool}'.");
     }
 
+    public static function conversationAccessDenied(): self
+    {
+        return new self('No tenés acceso a esta conversación.');
+    }
+
     public static function providerError(string $message): self
     {
         return new self("Error del proveedor de IA: {$message}");

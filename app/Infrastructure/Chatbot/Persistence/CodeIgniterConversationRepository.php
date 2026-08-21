@@ -44,6 +44,28 @@ final class CodeIgniterConversationRepository implements ConversationRepository
         );
     }
 
+    public function findOwned(int $id, int $usuarioId, int $empresaId): ?Conversation
+    {
+        $row = $this->database->table('conversaciones')
+            ->where('id', $id)
+            ->where('usuario_id', $usuarioId)
+            ->where('empresa_id', $empresaId)
+            ->get()
+            ->getRowArray();
+        if ($row === null) {
+            return null;
+        }
+
+        return Conversation::reconstitute(
+            id: (int) $row['id'],
+            usuarioId: (int) $row['usuario_id'],
+            empresaId: (int) $row['empresa_id'],
+            titulo: $row['titulo'],
+            createdAt: new \DateTimeImmutable($row['created_at']),
+            updatedAt: new \DateTimeImmutable($row['updated_at']),
+        );
+    }
+
     public function findByUser(int $usuarioId, int $empresaId, int $limit = 20, int $offset = 0): array
     {
         $rows = $this->database->table('conversaciones')
