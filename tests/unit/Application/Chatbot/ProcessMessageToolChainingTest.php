@@ -86,6 +86,10 @@ final class ProcessMessageToolChainingTest extends TestCase
             {
                 return array_values(array_filter($this->items, static fn (Message $m): bool => $m->conversationId === $conversationId));
             }
+            public function countForConversation(int $conversationId): int
+            {
+                return count(array_filter($this->items, static fn (Message $m): bool => $m->conversationId === $conversationId));
+            }
         };
 
         $conversations = new class implements ConversationRepository {
