@@ -215,9 +215,23 @@ const isRoleAssigned = (user, roleId) => user.assignedRoleIds.includes(Number(ro
               <input type="checkbox" name="notificaciones_email_habilitadas" value="1" :checked="company.notificationEmailEnabled" class="mt-0.5 size-4 rounded border-border-strong text-primary focus:ring-primary" />
               <span><span class="block text-sm font-medium text-ink">Enviar notificaciones de mantenimiento por email</span><span class="mt-1 block text-xs leading-5 text-ink-muted">Al desactivarlo se conserva el correo configurado, pero no se generan entregas empresariales.</span></span>
             </label>
-            <div class="sm:col-span-2">
+            <div class="flex flex-wrap gap-2 sm:col-span-2">
               <button type="submit" class="inline-flex min-h-11 items-center justify-center rounded-lg border border-primary px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary-subtle">Guardar empresa</button>
+              <button
+                type="submit"
+                :formaction="`${company.actions.update}/notificaciones/prueba`"
+                formnovalidate
+                data-confirm
+                data-confirm-title="¿Enviar correo de prueba?"
+                data-confirm-text="Se enviará usando el destinatario actualmente guardado para esta empresa."
+                data-confirm-button="Enviar prueba"
+                :disabled="!company.active || !company.notificationEmailEnabled || (!company.notificationEmail && !company.email)"
+                class="inline-flex min-h-11 items-center justify-center rounded-lg border border-accent-active px-4 py-2.5 text-sm font-semibold text-accent-active transition-colors hover:bg-accent-subtle disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Enviar correo de prueba
+              </button>
             </div>
+            <p class="sm:col-span-2 text-xs leading-5 text-ink-muted">La prueba usa la configuración guardada. Si cambiaste el correo, guardá primero la empresa y después enviá la prueba.</p>
           </form>
 
           <dl v-else class="grid gap-4 p-5 text-sm sm:grid-cols-2">
