@@ -84,6 +84,8 @@ import ChatMessage from './ChatMessage.vue'
 import ChatToolConfirm from './ChatToolConfirm.vue'
 import ChatVoiceButton from './ChatVoiceButton.vue'
 
+const REQUEST_TIMEOUT_MS = 30000
+
 const isOpen = ref(false)
 const messages = ref([])
 const pendingToolCalls = ref([])
@@ -178,19 +180,35 @@ const sendMessage = async () => {
     body.append('content', sentContent)
 
     activeController = new AbortController()
+    const timeoutId = setTimeout(() => {
+      if (activeController) {
+        try { activeController.abort('timeout') } catch (_) { /* noop */ }
+      }
+    }, REQUEST_TIMEOUT_MS)
+
+    const csrfToken = getCsrfToken()
+    console.log('[chatbot] POST /mensajes, conv:', conversationId.value, 'hasCsrf:', !!csrfToken)
+
     const res = await fetch('/mantenimiento/chatbot/mensajes', {
       method: 'POST',
       body,
       credentials: 'same-origin',
-      headers: { 'X-CSRF-TOKEN': getCsrfToken(), 'Accept': 'application/json' },
+      headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
       signal: activeController.signal,
     })
+    clearTimeout(timeoutId)
+
+    console.log('[chatbot] Response status:', res.status, 'ok:', res.ok)
 
     if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`)
+      const errorBody = await res.text().catch(() => '')
+      console.error('[chatbot] HTTP error body:', errorBody)
+      throw new Error(`HTTP ${res.status}: ${errorBody.substring(0, 200)}`)
     }
 
     const data = await res.json()
+    console.log('[chatbot] Response data keys:', Object.keys(data), 'messages:', data.messages?.length)
+
     if (data.error) {
       throw new Error(data.error)
     }
@@ -199,11 +217,15 @@ const sendMessage = async () => {
     if (Array.isArray(data.messages)) {
       const assistantMsg = data.messages.find((m) => m.role === 'assistant')
       streamingMsg.content = assistantMsg?.content ?? '(respuesta vacía)'
+      console.log('[chatbot] Assistant content len:', streamingMsg.content.length)
+    } else {
+      streamingMsg.content = '(sin mensajes en la respuesta)'
     }
     streamingMsg.streaming = false
   } catch (e) {
+    console.error('[chatbot] sendMessage error:', e.name, e.message)
     if (e.name === 'AbortError') {
-      streamingMsg.content = '(cancelado)'
+      streamingMsg.content = '(cancelado o tiempo agotado)'
     } else {
       isConnected.value = false
       lastError.value = `No pude comunicarme con el asistente. (${e.message}). Reintentá.`
