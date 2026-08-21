@@ -214,15 +214,21 @@ const sendMessage = async () => {
     }
 
     isConnected.value = true
+    let assistantText = '(sin respuesta)'
     if (Array.isArray(data.messages)) {
       const assistantMsg = data.messages.find((m) => m.role === 'assistant')
-      streamingMsg.content = assistantMsg?.content ?? '(respuesta vacía)'
-      console.log('[chatbot] After set:', streamingMsg.content.substring(0, 50), 'msg in arr:', messages.value.includes(streamingMsg))
-    } else {
-      streamingMsg.content = '(sin mensajes en la respuesta)'
+      assistantText = assistantMsg?.content ?? '(respuesta vacía)'
     }
-    streamingMsg.streaming = false
-    console.log('[chatbot] streamingMsg.streaming:', streamingMsg.streaming, 'streamingText:', streamingText.value.length, 'loading:', loading.value)
+    const idx = messages.value.findIndex((m) => m.tempId === streamingMsg.tempId)
+    if (idx >= 0) {
+      messages.value[idx] = {
+        tempId: streamingMsg.tempId,
+        role: 'assistant',
+        content: assistantText,
+        streaming: false,
+      }
+    }
+    console.log('[chatbot] Replaced message at idx', idx, 'content len:', assistantText.length)
   } catch (e) {
     console.error('[chatbot] sendMessage error:', e.name, e.message)
     if (e.name === 'AbortError') {
