@@ -50,300 +50,75 @@ const isRoleAssigned = (user, roleId) => user.assignedRoleIds.includes(Number(ro
 
       <form method="post" :action="data.actions.createCompany" class="grid gap-4 p-5 sm:grid-cols-2 sm:p-6 lg:grid-cols-6">
         <CsrfField :csrf="data.csrf" />
-        <label class="block lg:col-span-3">
-          <span class="mb-1.5 block text-sm font-medium text-ink">Razón social <span class="text-danger" aria-hidden="true">*</span></span>
-          <input name="razon_social" maxlength="255" required :value="data.oldInput.razon_social" autocomplete="organization" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/20" />
-        </label>
-        <label class="block lg:col-span-3">
-          <span class="mb-1.5 block text-sm font-medium text-ink">Nombre de fantasía</span>
-          <input name="nombre_fantasia" maxlength="255" :value="data.oldInput.nombre_fantasia" autocomplete="organization" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
-        </label>
-        <label class="block sm:col-span-1 lg:col-span-2">
-          <span class="mb-1.5 block text-sm font-medium text-ink">CUIT</span>
-          <input name="cuit" maxlength="20" :value="data.oldInput.cuit" inputmode="numeric" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
-        </label>
-        <label class="block sm:col-span-1 lg:col-span-2">
-          <span class="mb-1.5 block text-sm font-medium text-ink">Email general</span>
-          <input type="email" name="email" maxlength="255" :value="data.oldInput.email" autocomplete="email" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
-        </label>
-        <label class="block sm:col-span-1 lg:col-span-2">
-          <span class="mb-1.5 block text-sm font-medium text-ink">Teléfono</span>
-          <input name="telefono" maxlength="50" :value="data.oldInput.telefono" autocomplete="tel" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
-        </label>
-        <label class="block sm:col-span-2 lg:col-span-4">
-          <span class="mb-1.5 block text-sm font-medium text-ink">Correo para notificaciones de mantenimiento</span>
-          <input type="email" name="email_notificaciones" maxlength="255" :value="data.oldInput.email_notificaciones" placeholder="alertas@empresa.com" autocomplete="email" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/20" />
-          <span class="mt-1.5 block text-xs leading-5 text-ink-muted">Recibirá preventivos próximos o vencidos, OT y alertas operativas. Si queda vacío se usa el email general.</span>
-        </label>
-        <label class="flex items-start gap-3 rounded-lg border border-border bg-surface-subtle p-3 sm:col-span-2 lg:col-span-2">
-          <input type="hidden" name="notificaciones_email_habilitadas" value="0" />
-          <input type="checkbox" name="notificaciones_email_habilitadas" value="1" checked class="mt-0.5 size-4 rounded border-border-strong text-primary focus:ring-primary" />
-          <span><span class="block text-sm font-medium text-ink">Enviar notificaciones por email</span><span class="mt-1 block text-xs leading-5 text-ink-muted">Podés desactivar el canal sin borrar el destinatario.</span></span>
-        </label>
-        <div class="sm:col-span-2 lg:col-span-6">
-          <button type="submit" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary-hover active:bg-primary-active">
-            <BuildingOffice2Icon class="size-5" aria-hidden="true" />
-            Crear empresa
-          </button>
-        </div>
+        <label class="block lg:col-span-3"><span class="mb-1.5 block text-sm font-medium text-ink">Razón social <span class="text-danger" aria-hidden="true">*</span></span><input name="razon_social" maxlength="255" required :value="data.oldInput.razon_social" autocomplete="organization" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/20" /></label>
+        <label class="block lg:col-span-3"><span class="mb-1.5 block text-sm font-medium text-ink">Nombre de fantasía</span><input name="nombre_fantasia" maxlength="255" :value="data.oldInput.nombre_fantasia" autocomplete="organization" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" /></label>
+        <label class="block sm:col-span-1 lg:col-span-2"><span class="mb-1.5 block text-sm font-medium text-ink">CUIT</span><input name="cuit" maxlength="20" :value="data.oldInput.cuit" inputmode="numeric" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" /></label>
+        <label class="block sm:col-span-1 lg:col-span-2"><span class="mb-1.5 block text-sm font-medium text-ink">Email general</span><input type="email" name="email" maxlength="255" :value="data.oldInput.email" autocomplete="email" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" /></label>
+        <label class="block sm:col-span-1 lg:col-span-2"><span class="mb-1.5 block text-sm font-medium text-ink">Teléfono</span><input name="telefono" maxlength="50" :value="data.oldInput.telefono" autocomplete="tel" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" /></label>
+        <label class="block sm:col-span-2 lg:col-span-4"><span class="mb-1.5 block text-sm font-medium text-ink">Correo para notificaciones de mantenimiento</span><input type="email" name="email_notificaciones" maxlength="255" :value="data.oldInput.email_notificaciones" placeholder="alertas@empresa.com" autocomplete="email" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/20" /><span class="mt-1.5 block text-xs leading-5 text-ink-muted">Recibirá preventivos próximos o vencidos, OT y alertas operativas. Si queda vacío se usa el email general.</span></label>
+        <label class="flex items-start gap-3 rounded-lg border border-border bg-surface-subtle p-3 sm:col-span-2 lg:col-span-2"><input type="hidden" name="notificaciones_email_habilitadas" value="0" /><input type="checkbox" name="notificaciones_email_habilitadas" value="1" checked class="mt-0.5 size-4 rounded border-border-strong text-primary focus:ring-primary" /><span><span class="block text-sm font-medium text-ink">Enviar notificaciones por email</span><span class="mt-1 block text-xs leading-5 text-ink-muted">Podés desactivar el canal sin borrar el destinatario.</span></span></label>
+        <div class="sm:col-span-2 lg:col-span-6"><button type="submit" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary-hover active:bg-primary-active"><BuildingOffice2Icon class="size-5" aria-hidden="true" />Crear empresa</button></div>
       </form>
     </section>
 
-    <section
-      v-if="data.permissions.createCompanyAdministrators"
-      class="mb-8 overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card"
-      aria-labelledby="create-company-administrator-title"
-    >
-      <div class="flex items-center gap-3 border-b border-border-subtle bg-surface-subtle px-5 py-4 sm:px-6">
-        <span class="flex size-10 items-center justify-center rounded-lg bg-accent-subtle text-accent-active">
-          <UserPlusIcon class="size-5" aria-hidden="true" />
-        </span>
-        <div>
-          <h2 id="create-company-administrator-title" class="font-semibold text-ink">Crear administrador de empresa</h2>
-          <p class="text-sm text-ink-muted">Creá la cuenta inicial y asignale automáticamente el acceso completo a su empresa.</p>
-        </div>
-      </div>
-
-      <form
-        v-if="data.assignableCompanies.length"
-        method="post"
-        :action="data.actions.createCompanyAdministrator"
-        class="grid gap-4 p-5 sm:grid-cols-2 sm:p-6 lg:grid-cols-6"
-      >
+    <section v-if="data.permissions.createCompanyAdministrators" class="mb-8 overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card" aria-labelledby="create-company-administrator-title">
+      <div class="flex items-center gap-3 border-b border-border-subtle bg-surface-subtle px-5 py-4 sm:px-6"><span class="flex size-10 items-center justify-center rounded-lg bg-accent-subtle text-accent-active"><UserPlusIcon class="size-5" aria-hidden="true" /></span><div><h2 id="create-company-administrator-title" class="font-semibold text-ink">Crear administrador de empresa</h2><p class="text-sm text-ink-muted">Creá la cuenta inicial y asignale automáticamente el acceso completo a su empresa.</p></div></div>
+      <form v-if="data.assignableCompanies.length" method="post" :action="data.actions.createCompanyAdministrator" class="grid gap-4 p-5 sm:grid-cols-2 sm:p-6 lg:grid-cols-6">
         <CsrfField :csrf="data.csrf" />
-        <label class="block lg:col-span-3">
-          <span class="mb-1.5 block text-sm font-medium text-ink">Empresa <span class="text-danger" aria-hidden="true">*</span></span>
-          <select name="admin_empresa_id" required :value="data.oldInput.admin_empresa_id" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20">
-            <option value="" disabled>Seleccionar empresa</option>
-            <option v-for="company in data.assignableCompanies" :key="company.id" :value="company.id">{{ company.name }}</option>
-          </select>
-        </label>
-        <label class="block lg:col-span-3">
-          <span class="mb-1.5 block text-sm font-medium text-ink">Nombre completo <span class="text-danger" aria-hidden="true">*</span></span>
-          <input name="admin_nombre" maxlength="255" required :value="data.oldInput.admin_nombre" autocomplete="name" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
-        </label>
-        <label class="block lg:col-span-3">
-          <span class="mb-1.5 block text-sm font-medium text-ink">Email de acceso <span class="text-danger" aria-hidden="true">*</span></span>
-          <input type="email" name="admin_email" maxlength="255" required :value="data.oldInput.admin_email" autocomplete="email" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
-        </label>
-        <label class="block lg:col-span-3">
-          <span class="mb-1.5 block text-sm font-medium text-ink">Motivo <span class="text-danger" aria-hidden="true">*</span></span>
-          <input name="admin_motivo" minlength="5" maxlength="255" required :value="data.oldInput.admin_motivo" placeholder="Ej.: alta inicial aprobada" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/20" />
-        </label>
-        <label class="block lg:col-span-3">
-          <span class="mb-1.5 block text-sm font-medium text-ink">Contraseña temporal <span class="text-danger" aria-hidden="true">*</span></span>
-          <input type="password" name="admin_password" minlength="8" maxlength="255" required autocomplete="new-password" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
-        </label>
-        <label class="block lg:col-span-3">
-          <span class="mb-1.5 block text-sm font-medium text-ink">Confirmar contraseña <span class="text-danger" aria-hidden="true">*</span></span>
-          <input type="password" name="admin_password_confirmation" minlength="8" maxlength="255" required autocomplete="new-password" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
-        </label>
-        <div class="lg:col-span-6">
-          <p class="mb-3 text-xs leading-5 text-ink-muted">La cuenta se crea activa con el rol Administrador y acceso automático a todas las sucursales actuales y futuras de la empresa.</p>
-          <button type="submit" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover active:bg-accent-active">
-            <UserPlusIcon class="size-5" aria-hidden="true" />
-            Crear administrador
-          </button>
-        </div>
+        <label class="block lg:col-span-3"><span class="mb-1.5 block text-sm font-medium text-ink">Empresa <span class="text-danger" aria-hidden="true">*</span></span><select name="admin_empresa_id" required :value="data.oldInput.admin_empresa_id" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20"><option value="" disabled>Seleccionar empresa</option><option v-for="company in data.assignableCompanies" :key="company.id" :value="company.id">{{ company.name }}</option></select></label>
+        <label class="block lg:col-span-3"><span class="mb-1.5 block text-sm font-medium text-ink">Nombre completo <span class="text-danger" aria-hidden="true">*</span></span><input name="admin_nombre" maxlength="255" required :value="data.oldInput.admin_nombre" autocomplete="name" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" /></label>
+        <label class="block lg:col-span-3"><span class="mb-1.5 block text-sm font-medium text-ink">Email de acceso <span class="text-danger" aria-hidden="true">*</span></span><input type="email" name="admin_email" maxlength="255" required :value="data.oldInput.admin_email" autocomplete="email" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" /></label>
+        <label class="block lg:col-span-3"><span class="mb-1.5 block text-sm font-medium text-ink">Motivo <span class="text-danger" aria-hidden="true">*</span></span><input name="admin_motivo" minlength="5" maxlength="255" required :value="data.oldInput.admin_motivo" placeholder="Ej.: alta inicial aprobada" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/20" /></label>
+        <label class="block lg:col-span-3"><span class="mb-1.5 block text-sm font-medium text-ink">Contraseña temporal <span class="text-danger" aria-hidden="true">*</span></span><input type="password" name="admin_password" minlength="8" maxlength="255" required autocomplete="new-password" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" /></label>
+        <label class="block lg:col-span-3"><span class="mb-1.5 block text-sm font-medium text-ink">Confirmar contraseña <span class="text-danger" aria-hidden="true">*</span></span><input type="password" name="admin_password_confirmation" minlength="8" maxlength="255" required autocomplete="new-password" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" /></label>
+        <div class="lg:col-span-6"><p class="mb-3 text-xs leading-5 text-ink-muted">La cuenta se crea activa con el rol Administrador y acceso automático a todas las sucursales actuales y futuras de la empresa.</p><button type="submit" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover active:bg-accent-active"><UserPlusIcon class="size-5" aria-hidden="true" />Crear administrador</button></div>
       </form>
-
-      <div v-else class="px-5 py-6 text-sm text-ink-muted sm:px-6">
-        Primero creá y activá una empresa para poder registrar su administrador.
-      </div>
+      <div v-else class="px-5 py-6 text-sm text-ink-muted sm:px-6">Primero creá y activá una empresa para poder registrar su administrador.</div>
     </section>
 
     <section aria-labelledby="companies-title" class="mb-9">
-      <div class="mb-4 flex items-center justify-between gap-3">
-        <div>
-          <h2 id="companies-title" class="text-lg font-bold text-ink">Empresas</h2>
-          <p class="mt-1 text-sm text-ink-muted">Datos fiscales, contacto y destinatario de alertas.</p>
-        </div>
-        <span class="rounded-full bg-surface-muted px-3 py-1 text-sm font-semibold text-ink-muted">{{ data.metrics.companiesTotal }}</span>
-      </div>
-
+      <div class="mb-4 flex items-center justify-between gap-3"><div><h2 id="companies-title" class="text-lg font-bold text-ink">Empresas</h2><p class="mt-1 text-sm text-ink-muted">Datos fiscales, contacto y destinatario de alertas.</p></div><span class="rounded-full bg-surface-muted px-3 py-1 text-sm font-semibold text-ink-muted">{{ data.metrics.companiesTotal }}</span></div>
       <div v-if="data.companies.length" class="grid gap-4 xl:grid-cols-2">
         <article v-for="company in data.companies" :key="company.id" class="overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card">
-          <div class="flex items-start justify-between gap-4 border-b border-border-subtle px-5 py-4">
-            <div class="flex min-w-0 items-center gap-3">
-              <span class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary-subtle text-primary">
-                <BuildingOffice2Icon class="size-5" aria-hidden="true" />
-              </span>
-              <div class="min-w-0">
-                <h3 class="truncate font-semibold text-ink">{{ company.displayName }}</h3>
-                <p class="text-xs font-medium text-ink-subtle">Empresa #{{ company.id }}</p>
-              </div>
-            </div>
-            <StatusBadge :active="company.active" active-label="Activa" inactive-label="Inactiva" />
-          </div>
-
+          <div class="flex items-start justify-between gap-4 border-b border-border-subtle px-5 py-4"><div class="flex min-w-0 items-center gap-3"><span class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary-subtle text-primary"><BuildingOffice2Icon class="size-5" aria-hidden="true" /></span><div class="min-w-0"><h3 class="truncate font-semibold text-ink">{{ company.displayName }}</h3><p class="text-xs font-medium text-ink-subtle">Empresa #{{ company.id }}</p></div></div><StatusBadge :active="company.active" active-label="Activa" inactive-label="Inactiva" /></div>
           <form v-if="data.permissions.companiesEdit" method="post" :action="company.actions.update" data-confirm data-confirm-title="¿Guardar los cambios de la empresa?" data-confirm-text="Los datos de la empresa se actualizarán en el sistema." data-confirm-button="Guardar empresa" class="grid gap-4 p-5 sm:grid-cols-2">
             <CsrfField :csrf="data.csrf" />
-            <label class="block">
-              <span class="mb-1.5 block text-sm font-medium text-ink">Razón social</span>
-              <input name="razon_social" required maxlength="255" :value="company.razonSocial" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
-            </label>
-            <label class="block">
-              <span class="mb-1.5 block text-sm font-medium text-ink">Nombre de fantasía</span>
-              <input name="nombre_fantasia" maxlength="255" :value="company.nombreFantasia" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
-            </label>
-            <label class="block">
-              <span class="mb-1.5 block text-sm font-medium text-ink">CUIT</span>
-              <input name="cuit" maxlength="20" :value="company.cuit" inputmode="numeric" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
-            </label>
-            <label class="block">
-              <span class="mb-1.5 block text-sm font-medium text-ink">Email general</span>
-              <input type="email" name="email" maxlength="255" :value="company.email" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
-            </label>
-            <label class="block sm:col-span-2">
-              <span class="mb-1.5 block text-sm font-medium text-ink">Correo para notificaciones de mantenimiento</span>
-              <input type="email" name="email_notificaciones" maxlength="255" :value="company.notificationEmail" placeholder="Usará el email general si queda vacío" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/20" />
-              <span class="mt-1.5 block text-xs leading-5 text-ink-muted">Destino de preventivos próximos/vencidos, OT y demás alertas operativas de esta empresa.</span>
-            </label>
-            <label class="block">
-              <span class="mb-1.5 block text-sm font-medium text-ink">Teléfono</span>
-              <input name="telefono" maxlength="50" :value="company.telefono" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
-            </label>
-            <label class="block">
-              <span class="mb-1.5 block text-sm font-medium text-ink">Estado</span>
-              <select name="estado" :value="company.active ? '1' : '0'" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20">
-                <option value="1">Activa</option>
-                <option value="0">Inactiva</option>
-              </select>
-            </label>
-            <label class="flex items-start gap-3 rounded-lg border border-border bg-surface-subtle p-3 sm:col-span-2">
-              <input type="hidden" name="notificaciones_email_habilitadas" value="0" />
-              <input type="checkbox" name="notificaciones_email_habilitadas" value="1" :checked="company.notificationEmailEnabled" class="mt-0.5 size-4 rounded border-border-strong text-primary focus:ring-primary" />
-              <span><span class="block text-sm font-medium text-ink">Enviar notificaciones de mantenimiento por email</span><span class="mt-1 block text-xs leading-5 text-ink-muted">Al desactivarlo se conserva el correo configurado, pero no se generan entregas empresariales.</span></span>
-            </label>
-            <div class="flex flex-wrap gap-2 sm:col-span-2">
-              <button type="submit" class="inline-flex min-h-11 items-center justify-center rounded-lg border border-primary px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary-subtle">Guardar empresa</button>
-              <button
-                type="submit"
-                :formaction="`${company.actions.update}/notificaciones/prueba`"
-                formnovalidate
-                data-confirm
-                data-confirm-title="¿Enviar correo de prueba?"
-                data-confirm-text="Se enviará usando el destinatario actualmente guardado para esta empresa."
-                data-confirm-button="Enviar prueba"
-                :disabled="!company.active || !company.notificationEmailEnabled || (!company.notificationEmail && !company.email)"
-                class="inline-flex min-h-11 items-center justify-center rounded-lg border border-accent-active px-4 py-2.5 text-sm font-semibold text-accent-active transition-colors hover:bg-accent-subtle disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Enviar correo de prueba
-              </button>
-            </div>
+            <label class="block"><span class="mb-1.5 block text-sm font-medium text-ink">Razón social</span><input name="razon_social" required maxlength="255" :value="company.razonSocial" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" /></label>
+            <label class="block"><span class="mb-1.5 block text-sm font-medium text-ink">Nombre de fantasía</span><input name="nombre_fantasia" maxlength="255" :value="company.nombreFantasia" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" /></label>
+            <label class="block"><span class="mb-1.5 block text-sm font-medium text-ink">CUIT</span><input name="cuit" maxlength="20" :value="company.cuit" inputmode="numeric" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" /></label>
+            <label class="block"><span class="mb-1.5 block text-sm font-medium text-ink">Email general</span><input type="email" name="email" maxlength="255" :value="company.email" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" /></label>
+            <label class="block sm:col-span-2"><span class="mb-1.5 block text-sm font-medium text-ink">Correo para notificaciones de mantenimiento</span><input type="email" name="email_notificaciones" maxlength="255" :value="company.notificationEmail" placeholder="Usará el email general si queda vacío" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/20" /><span class="mt-1.5 block text-xs leading-5 text-ink-muted">Destino de preventivos próximos/vencidos, OT y demás alertas operativas de esta empresa.</span></label>
+            <label class="block"><span class="mb-1.5 block text-sm font-medium text-ink">Teléfono</span><input name="telefono" maxlength="50" :value="company.telefono" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" /></label>
+            <label class="block"><span class="mb-1.5 block text-sm font-medium text-ink">Estado</span><select name="estado" :value="company.active ? '1' : '0'" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20"><option value="1">Activa</option><option value="0">Inactiva</option></select></label>
+            <label class="flex items-start gap-3 rounded-lg border border-border bg-surface-subtle p-3 sm:col-span-2"><input type="hidden" name="notificaciones_email_habilitadas" value="0" /><input type="checkbox" name="notificaciones_email_habilitadas" value="1" :checked="company.notificationEmailEnabled" class="mt-0.5 size-4 rounded border-border-strong text-primary focus:ring-primary" /><span><span class="block text-sm font-medium text-ink">Enviar notificaciones de mantenimiento por email</span><span class="mt-1 block text-xs leading-5 text-ink-muted">Al desactivarlo se conserva el correo configurado, pero no se generan entregas empresariales.</span></span></label>
+            <div class="flex flex-wrap gap-2 sm:col-span-2"><button type="submit" class="inline-flex min-h-11 items-center justify-center rounded-lg border border-primary px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary-subtle">Guardar empresa</button></div>
             <p class="sm:col-span-2 text-xs leading-5 text-ink-muted">La prueba usa la configuración guardada. Si cambiaste el correo, guardá primero la empresa y después enviá la prueba.</p>
           </form>
-
-          <dl v-else class="grid gap-4 p-5 text-sm sm:grid-cols-2">
-            <div><dt class="text-ink-subtle">Razón social</dt><dd class="mt-1 font-medium text-ink">{{ company.razonSocial }}</dd></div>
-            <div><dt class="text-ink-subtle">CUIT</dt><dd class="mt-1 font-medium text-ink">{{ company.cuit || '—' }}</dd></div>
-            <div><dt class="text-ink-subtle">Email general</dt><dd class="mt-1 break-all font-medium text-ink">{{ company.email || '—' }}</dd></div>
-            <div><dt class="text-ink-subtle">Teléfono</dt><dd class="mt-1 font-medium text-ink">{{ company.telefono || '—' }}</dd></div>
-            <div class="sm:col-span-2"><dt class="text-ink-subtle">Notificaciones de mantenimiento</dt><dd class="mt-1 break-all font-medium text-ink">{{ company.notificationEmail || company.email || 'Sin destinatario' }}</dd><dd class="mt-1 text-xs text-ink-muted">{{ company.notificationEmail ? 'Correo específico' : (company.email ? 'Fallback al email general' : 'No se enviarán emails') }} · {{ company.notificationEmailEnabled ? 'Habilitadas' : 'Deshabilitadas' }}</dd></div>
-          </dl>
+          <form v-if="data.permissions.companiesEdit" method="post" :action="`${company.actions.update}/notificaciones/prueba`" data-confirm data-confirm-title="¿Enviar correo de prueba?" data-confirm-text="Se enviará usando el destinatario actualmente guardado para esta empresa." data-confirm-button="Enviar prueba" class="border-t border-border-subtle px-5 py-4">
+            <CsrfField :csrf="data.csrf" />
+            <button type="submit" :disabled="!company.active || !company.notificationEmailEnabled || (!company.notificationEmail && !company.email)" class="inline-flex min-h-11 items-center justify-center rounded-lg border border-accent-active px-4 py-2.5 text-sm font-semibold text-accent-active transition-colors hover:bg-accent-subtle disabled:cursor-not-allowed disabled:opacity-50">Enviar correo de prueba</button>
+          </form>
+          <dl v-else class="grid gap-4 p-5 text-sm sm:grid-cols-2"><div><dt class="text-ink-subtle">Razón social</dt><dd class="mt-1 font-medium text-ink">{{ company.razonSocial }}</dd></div><div><dt class="text-ink-subtle">CUIT</dt><dd class="mt-1 font-medium text-ink">{{ company.cuit || '—' }}</dd></div><div><dt class="text-ink-subtle">Email general</dt><dd class="mt-1 break-all font-medium text-ink">{{ company.email || '—' }}</dd></div><div><dt class="text-ink-subtle">Teléfono</dt><dd class="mt-1 font-medium text-ink">{{ company.telefono || '—' }}</dd></div><div class="sm:col-span-2"><dt class="text-ink-subtle">Notificaciones de mantenimiento</dt><dd class="mt-1 break-all font-medium text-ink">{{ company.notificationEmail || company.email || 'Sin destinatario' }}</dd><dd class="mt-1 text-xs text-ink-muted">{{ company.notificationEmail ? 'Correo específico' : (company.email ? 'Fallback al email general' : 'No se enviarán emails') }} · {{ company.notificationEmailEnabled ? 'Habilitadas' : 'Deshabilitadas' }}</dd></div></dl>
         </article>
       </div>
-
-      <div v-else class="rounded-xl border border-dashed border-border-strong bg-surface-raised px-6 py-10 text-center">
-        <BuildingOffice2Icon class="mx-auto size-10 text-ink-subtle" aria-hidden="true" />
-        <p class="mt-3 font-semibold text-ink">Todavía no hay empresas</p>
-        <p class="mt-1 text-sm text-ink-muted">Creá la primera organización para comenzar a asignar usuarios.</p>
-      </div>
-
+      <div v-else class="rounded-xl border border-dashed border-border-strong bg-surface-raised px-6 py-10 text-center"><BuildingOffice2Icon class="mx-auto size-10 text-ink-subtle" aria-hidden="true" /><p class="mt-3 font-semibold text-ink">Todavía no hay empresas</p><p class="mt-1 text-sm text-ink-muted">Creá la primera organización para comenzar a asignar usuarios.</p></div>
       <PaginationBar :pagination="data.companiesPagination" />
     </section>
 
     <section aria-labelledby="global-users-title">
-      <div class="mb-4 flex items-center justify-between gap-3">
-        <div>
-          <h2 id="global-users-title" class="text-lg font-bold text-ink">Usuarios del sistema</h2>
-          <p class="mt-1 text-sm text-ink-muted">Empresa y roles efectivos de cada cuenta.</p>
-        </div>
-        <span class="rounded-full bg-surface-muted px-3 py-1 text-sm font-semibold text-ink-muted">{{ data.metrics.usersTotal }}</span>
-      </div>
-
+      <div class="mb-4 flex items-center justify-between gap-3"><div><h2 id="global-users-title" class="text-lg font-bold text-ink">Usuarios del sistema</h2><p class="mt-1 text-sm text-ink-muted">Empresa y roles efectivos de cada cuenta.</p></div><span class="rounded-full bg-surface-muted px-3 py-1 text-sm font-semibold text-ink-muted">{{ data.metrics.usersTotal }}</span></div>
       <div class="space-y-4">
         <article v-for="user in data.users" :key="user.id" class="overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card">
-          <div class="flex flex-col gap-3 border-b border-border-subtle px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-            <div class="flex min-w-0 items-center gap-3">
-              <span class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-surface-muted text-ink-muted">
-                <UserGroupIcon class="size-5" aria-hidden="true" />
-              </span>
-              <div class="min-w-0">
-                <h3 class="truncate font-semibold text-ink">{{ user.name }}</h3>
-                <p class="truncate text-sm text-ink-muted">{{ user.email }}</p>
-              </div>
-            </div>
-            <div class="flex flex-wrap items-center gap-2">
-              <span v-if="user.isSuperAdmin" class="inline-flex rounded-full bg-danger-subtle px-2.5 py-1 text-xs font-semibold text-danger-strong">Superadministrador</span>
-              <span v-else class="inline-flex rounded-full bg-primary-subtle px-2.5 py-1 text-xs font-semibold text-primary">{{ user.companyName || 'Sin empresa' }}</span>
-              <StatusBadge :active="user.active" />
-            </div>
-          </div>
-
-          <div v-if="user.isSuperAdmin" class="flex items-start gap-3 p-5 text-sm text-ink-muted">
-            <ShieldCheckIcon class="size-5 shrink-0 text-danger" aria-hidden="true" />
-            Esta cuenta tiene capacidad global y no utiliza roles empresariales.
-          </div>
-
+          <div class="flex flex-col gap-3 border-b border-border-subtle px-5 py-4 sm:flex-row sm:items-center sm:justify-between"><div class="flex min-w-0 items-center gap-3"><span class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-surface-muted text-ink-muted"><UserGroupIcon class="size-5" aria-hidden="true" /></span><div class="min-w-0"><h3 class="truncate font-semibold text-ink">{{ user.name }}</h3><p class="truncate text-sm text-ink-muted">{{ user.email }}</p></div></div><div class="flex flex-wrap items-center gap-2"><span v-if="user.isSuperAdmin" class="inline-flex rounded-full bg-danger-subtle px-2.5 py-1 text-xs font-semibold text-danger-strong">Superadministrador</span><span v-else class="inline-flex rounded-full bg-primary-subtle px-2.5 py-1 text-xs font-semibold text-primary">{{ user.companyName || 'Sin empresa' }}</span><StatusBadge :active="user.active" /></div></div>
+          <div v-if="user.isSuperAdmin" class="flex items-start gap-3 p-5 text-sm text-ink-muted"><ShieldCheckIcon class="size-5 shrink-0 text-danger" aria-hidden="true" />Esta cuenta tiene capacidad global y no utiliza roles empresariales.</div>
           <div v-else class="grid gap-6 p-5 lg:grid-cols-2 lg:p-6">
-            <form v-if="data.permissions.assignCompanies" method="post" :action="user.actions.assignCompany" data-confirm data-confirm-title="¿Asignar la empresa al usuario?" data-confirm-text="Se actualizará el acceso del usuario con trazabilidad." data-confirm-button="Asignar" class="rounded-xl border border-border-subtle bg-surface-subtle p-4">
-              <CsrfField :csrf="data.csrf" />
-              <div class="mb-4 flex items-center gap-2">
-                <BuildingOffice2Icon class="size-5 text-accent-active" aria-hidden="true" />
-                <h4 class="font-semibold text-ink">Empresa asignada</h4>
-              </div>
-              <label class="block">
-                <span class="mb-1.5 block text-sm font-medium text-ink">Empresa</span>
-                <select name="empresa_id" required :value="user.companyId" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20">
-                  <option v-for="company in data.assignableCompanies" :key="company.id" :value="company.id">{{ company.name }}</option>
-                </select>
-              </label>
-              <label class="mt-3 block">
-                <span class="mb-1.5 block text-sm font-medium text-ink">Motivo del cambio</span>
-                <input name="motivo" minlength="5" maxlength="255" required placeholder="Ej.: reasignación organizativa" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/20" />
-              </label>
-              <p class="mt-2 text-xs leading-5 text-warning-strong">Un traslado retira los roles y sucursales anteriores.</p>
-              <button type="submit" class="mt-4 inline-flex min-h-11 items-center justify-center rounded-lg border border-accent-active px-4 py-2.5 text-sm font-semibold text-accent-active transition-colors hover:bg-accent-subtle">Asignar empresa</button>
-            </form>
-
-            <form v-if="data.permissions.assignRoles" method="post" :action="user.actions.assignRoles" data-confirm data-confirm-title="¿Asignar los roles al usuario?" data-confirm-text="Se actualizarán los permisos del usuario con trazabilidad." data-confirm-button="Asignar" class="rounded-xl border border-border-subtle bg-surface-subtle p-4">
-              <CsrfField :csrf="data.csrf" />
-              <fieldset>
-                <legend class="mb-3 flex items-center gap-2 font-semibold text-ink">
-                  <IdentificationIcon class="size-5 text-primary" aria-hidden="true" />
-                  Roles empresariales
-                </legend>
-                <div class="grid gap-2 sm:grid-cols-2">
-                  <label v-for="role in data.roles" :key="role.id" class="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-border bg-white px-3 py-2 text-sm text-ink transition-colors hover:border-primary/50">
-                    <input type="checkbox" name="roles[]" :value="role.id" :checked="isRoleAssigned(user, role.id)" class="size-4 rounded border-border-strong text-primary focus:ring-primary" />
-                    <span>{{ role.name }}</span>
-                  </label>
-                </div>
-              </fieldset>
-              <label class="mt-3 block">
-                <span class="mb-1.5 block text-sm font-medium text-ink">Motivo de la asignación</span>
-                <input name="motivo" minlength="5" maxlength="255" required placeholder="Ej.: responsabilidades aprobadas" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/20" />
-              </label>
-              <button type="submit" class="mt-4 inline-flex min-h-11 items-center justify-center rounded-lg border border-primary px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary-subtle">Guardar roles</button>
-            </form>
-
-            <div v-if="!data.permissions.assignCompanies && !data.permissions.assignRoles" class="lg:col-span-2">
-              <p class="text-sm font-medium text-ink-muted">No tenés permisos para modificar este acceso.</p>
-              <div class="mt-3 flex flex-wrap gap-2">
-                <span v-for="role in user.roles" :key="role.id" class="rounded-full bg-primary-subtle px-2.5 py-1 text-xs font-semibold text-primary">{{ role.name }}</span>
-                <span v-if="!user.roles.length" class="text-sm text-ink-subtle">Sin roles asignados</span>
-              </div>
-            </div>
+            <form v-if="data.permissions.assignCompanies" method="post" :action="user.actions.assignCompany" data-confirm data-confirm-title="¿Asignar la empresa al usuario?" data-confirm-text="Se actualizará el acceso del usuario con trazabilidad." data-confirm-button="Asignar" class="rounded-xl border border-border-subtle bg-surface-subtle p-4"><CsrfField :csrf="data.csrf" /><div class="mb-4 flex items-center gap-2"><BuildingOffice2Icon class="size-5 text-accent-active" aria-hidden="true" /><h4 class="font-semibold text-ink">Empresa asignada</h4></div><label class="block"><span class="mb-1.5 block text-sm font-medium text-ink">Empresa</span><select name="empresa_id" required :value="user.companyId" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20"><option v-for="company in data.assignableCompanies" :key="company.id" :value="company.id">{{ company.name }}</option></select></label><label class="mt-3 block"><span class="mb-1.5 block text-sm font-medium text-ink">Motivo del cambio</span><input name="motivo" minlength="5" maxlength="255" required placeholder="Ej.: reasignación organizativa" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/20" /></label><p class="mt-2 text-xs leading-5 text-warning-strong">Un traslado retira los roles y sucursales anteriores.</p><button type="submit" class="mt-4 inline-flex min-h-11 items-center justify-center rounded-lg border border-accent-active px-4 py-2.5 text-sm font-semibold text-accent-active transition-colors hover:bg-accent-subtle">Asignar empresa</button></form>
+            <form v-if="data.permissions.assignRoles" method="post" :action="user.actions.assignRoles" data-confirm data-confirm-title="¿Asignar los roles al usuario?" data-confirm-text="Se actualizarán los permisos del usuario con trazabilidad." data-confirm-button="Asignar" class="rounded-xl border border-border-subtle bg-surface-subtle p-4"><CsrfField :csrf="data.csrf" /><fieldset><legend class="mb-3 flex items-center gap-2 font-semibold text-ink"><IdentificationIcon class="size-5 text-primary" aria-hidden="true" />Roles empresariales</legend><div class="grid gap-2 sm:grid-cols-2"><label v-for="role in data.roles" :key="role.id" class="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-border bg-white px-3 py-2 text-sm text-ink transition-colors hover:border-primary/50"><input type="checkbox" name="roles[]" :value="role.id" :checked="isRoleAssigned(user, role.id)" class="size-4 rounded border-border-strong text-primary focus:ring-primary" /><span>{{ role.name }}</span></label></div></fieldset><label class="mt-3 block"><span class="mb-1.5 block text-sm font-medium text-ink">Motivo de la asignación</span><input name="motivo" minlength="5" maxlength="255" required placeholder="Ej.: responsabilidades aprobadas" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/20" /></label><button type="submit" class="mt-4 inline-flex min-h-11 items-center justify-center rounded-lg border border-primary px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary-subtle">Guardar roles</button></form>
+            <div v-if="!data.permissions.assignCompanies && !data.permissions.assignRoles" class="lg:col-span-2"><p class="text-sm font-medium text-ink-muted">No tenés permisos para modificar este acceso.</p><div class="mt-3 flex flex-wrap gap-2"><span v-for="role in user.roles" :key="role.id" class="rounded-full bg-primary-subtle px-2.5 py-1 text-xs font-semibold text-primary">{{ role.name }}</span><span v-if="!user.roles.length" class="text-sm text-ink-subtle">Sin roles asignados</span></div></div>
           </div>
         </article>
-
-        <div v-if="!data.users.length" class="rounded-xl border border-dashed border-border-strong bg-surface-raised px-6 py-10 text-center">
-          <UserGroupIcon class="mx-auto size-10 text-ink-subtle" aria-hidden="true" />
-          <p class="mt-3 font-semibold text-ink">No hay usuarios para mostrar</p>
-        </div>
+        <div v-if="!data.users.length" class="rounded-xl border border-dashed border-border-strong bg-surface-raised px-6 py-10 text-center"><UserGroupIcon class="mx-auto size-10 text-ink-subtle" aria-hidden="true" /><p class="mt-3 font-semibold text-ink">No hay usuarios para mostrar</p></div>
       </div>
-
       <PaginationBar :pagination="data.usersPagination" />
     </section>
   </div>
