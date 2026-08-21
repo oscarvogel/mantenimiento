@@ -1213,7 +1213,9 @@ return new AsignarPlan(
             new \App\Infrastructure\Chatbot\AI\MiniMaxProvider(
                 \App\Infrastructure\Chatbot\AI\AIProviderConfig::fromEnv(),
             ),
-            new \App\Infrastructure\Chatbot\Tools\ToolExecutor($database),
+            new \App\Infrastructure\Chatbot\Tools\ToolExecutor(
+                new \App\Infrastructure\Assets\CodeIgniterEquipmentSearch($database),
+            ),
             new \App\Infrastructure\Chatbot\Persistence\SystemChatClock(),
             new \App\Infrastructure\Chatbot\Persistence\CodeIgniterConversationRepository($database),
         );

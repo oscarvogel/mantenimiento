@@ -108,6 +108,9 @@ final class Chatbot extends BaseController
             $actor = $this->actor();
             $conversationId = (int) $this->request->getPost('conversationId');
             $toolCalls = json_decode((string) ($this->request->getPost('toolCalls') ?? '[]'), true);
+            if (! is_array($toolCalls)) {
+                $toolCalls = [];
+            }
 
             $handler = service('processMessage');
             $result = $handler->execute($actor, new SendMessageCommand(
@@ -120,6 +123,8 @@ final class Chatbot extends BaseController
                 'id' => $m->id,
                 'role' => $m->role,
                 'content' => $m->content,
+                'toolCalls' => $m->toolCalls,
+                'toolCallId' => $m->toolCallId,
             ], $result->messages);
 
             return $this->jsonOk(['messages' => $messages]);
@@ -152,40 +157,65 @@ final class Chatbot extends BaseController
         }
     }
 
-    public function sendMessageStream(): ResponseInterface
+    public function sendMessageStream(): void
     {
-        $this->response->setHeader('Content-Type', 'text/event-stream')
-            ->setHeader('Cache-Control', 'no-cache')
-            ->setHeader('Connection', 'keep-alive');
+        $sse = new \App\Infrastructure\Chatbot\SSE\StreamingResponse($this->response);
+        $sse->sendHeaders();
 
-        $actor = $this->actor();
+        $actor = $this->safeActor();
+        if ($actor === null) {
+            $sse->sendError('Sesión inválida o expirada.');
+            $sse->sendDone();
+            return;
+        }
+
         $conversationId = (int) $this->request->getPost('conversationId');
         $content = (string) ($this->request->getPost('content') ?? '');
+        $toolCallsRaw = $this->request->getPost('toolCalls');
+        $confirmedToolCalls = is_string($toolCallsRaw) ? json_decode($toolCallsRaw, true) : null;
+        if (! is_array($confirmedToolCalls)) {
+            $confirmedToolCalls = null;
+        }
 
-        $sse = new \App\Infrastructure\Chatbot\SSE\StreamingResponse($this->response);
+        ignore_user_abort(false);
+        @set_time_limit(0);
 
         try {
             $handler = service('processMessage');
-            $result = $handler->execute($actor, new SendMessageCommand(
-                conversationId: $conversationId,
-                content: $content,
-            ));
-
-            foreach ($result->messages as $msg) {
-                if ($msg->role === 'assistant') {
-                    $sse->sendChunk($msg->content);
-                }
-            }
+            $result = $handler->execute(
+                $actor,
+                new SendMessageCommand(
+                    conversationId: $conversationId,
+                    content: $content,
+                    confirmedToolCalls: $confirmedToolCalls,
+                ),
+                static function (string $chunk) use ($sse): void {
+                    $sse->sendChunk($chunk);
+                },
+            );
 
             if ($result->pendingToolCalls !== []) {
-                $sse->sendToolCall($result->pendingToolCalls);
+                $sse->sendPendingTools($result->pendingToolCalls);
             }
 
             $sse->sendDone();
-        } catch (Throwable $e) {
+        } catch (ChatError $e) {
             $sse->sendError($e->getMessage());
+            $sse->sendDone();
+        } catch (Throwable $e) {
+            log_message('error', 'Chatbot SSE error: ' . $e->getMessage());
+            $sse->sendError('Error interno del asistente.');
+            $sse->sendDone();
         }
+    }
 
-        return $this->response;
+    private function safeActor(): ?\App\Application\Identity\ActorContext
+    {
+        try {
+            return $this->actor();
+        } catch (\DomainException) {
+            $this->response->setStatusCode(401);
+            return null;
+        }
     }
 }

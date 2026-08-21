@@ -13,15 +13,13 @@ use App\Infrastructure\Chatbot\AI\DTOs\MiniMaxResponse;
 
 final class MiniMaxProvider implements AIProvider
 {
-    private const ENDPOINT = 'https://api.minimax.chat/v1/text/chatcompletion_pro';
-
     public function __construct(
         private readonly AIProviderConfig $config,
     ) {}
 
     public function sendMessage(array $messages, array $tools = []): AIResponse
     {
-        return $this->call($messages, $tools, stream: false);
+        return $this->call($messages, $tools, stream: false, onChunk: null);
     }
 
     public function sendMessageStreaming(array $messages, array $tools = [], callable $onChunk = null): AIResponse
@@ -34,8 +32,11 @@ final class MiniMaxProvider implements AIProvider
         if (! $this->config->enabled) {
             throw ChatError::providerError('El chatbot está deshabilitado. Configure ai.enabled=true en .env');
         }
+        if ($stream && $onChunk === null) {
+            throw new \InvalidArgumentException('sendMessageStreaming requiere un callback $onChunk.');
+        }
 
-        $functionTools = array_map(fn(ToolDefinition $t) => $t->toFunctionCallingFormat(), $tools);
+        $functionTools = array_map(fn (ToolDefinition $t) => $t->toFunctionCallingFormat(), $tools);
 
         $request = new MiniMaxRequest(
             model: $this->config->model,
@@ -44,44 +45,79 @@ final class MiniMaxProvider implements AIProvider
             stream: $stream,
         );
 
-        $ch = curl_init(self::ENDPOINT);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => json_encode($request->toArray(), JSON_THROW_ON_ERROR),
-            CURLOPT_HTTPHEADER => [
-                'Authorization: Bearer ' . $this->config->apiKey,
-                'Content-Type: application/json',
-            ],
-            CURLOPT_TIMEOUT => $this->config->timeoutSeconds,
-        ]);
+        $payload = json_encode($request->toArray(), JSON_THROW_ON_ERROR);
 
-        $raw = curl_exec($ch);
-        $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $error = curl_error($ch);
-        curl_close($ch);
-
-        if ($raw === false || $error !== '') {
-            throw ChatError::providerError("Error de conexión: {$error}");
+        $headers = [
+            'Authorization: Bearer ' . $this->config->apiKey,
+            'Content-Type: application/json',
+            'Accept: application/json',
+        ];
+        if ($stream) {
+            $headers[] = 'Accept: text/event-stream';
         }
 
-        $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+        $streamBuffer = new MiniMaxStreamBuffer($onChunk);
+
+        $ch = curl_init($this->config->baseUrl);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => ! $stream,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $payload,
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_TIMEOUT => $stream ? 0 : $this->config->timeoutSeconds,
+            CURLOPT_CONNECTTIMEOUT => $this->config->timeoutSeconds,
+        ]);
+
+        if ($stream) {
+            curl_setopt($ch, CURLOPT_WRITEFUNCTION, static function ($ch, string $chunk) use ($streamBuffer): int {
+                $streamBuffer->append($chunk);
+                return strlen($chunk);
+            });
+        }
+
+        $raw = curl_exec($ch);
+        if ($raw === false) {
+            $error = curl_error($ch);
+            curl_close($ch);
+            throw ChatError::providerError("Error de conexión: {$error}");
+        }
+        $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
 
         if ($httpCode !== 200) {
-            $msg = $data['error']['message'] ?? "HTTP {$httpCode}";
+            $msg = $this->extractErrorMessage((string) $raw) ?? "HTTP {$httpCode}";
             throw ChatError::providerError($msg);
         }
 
-        $response = MiniMaxResponse::fromArray($data);
-
-        if ($onChunk !== null && $response->content !== '') {
-            $onChunk($response->content);
+        if ($stream) {
+            $content = $streamBuffer->accumulatedContent();
+            $toolCalls = $streamBuffer->accumulatedToolCalls();
+            $tokensUsed = $streamBuffer->accumulatedTokens();
+        } else {
+            $data = json_decode((string) $raw, true, 512, JSON_THROW_ON_ERROR);
+            $response = MiniMaxResponse::fromArray($data);
+            $content = $response->content;
+            $toolCalls = $response->toolCalls;
+            $tokensUsed = $response->tokensUsed;
         }
 
         return new AIResponse(
-            content: $response->content,
-            toolCalls: $response->toolCalls,
-            tokensUsed: $response->tokensUsed,
+            content: $content,
+            toolCalls: $toolCalls,
+            tokensUsed: $tokensUsed,
         );
+    }
+
+    private function extractErrorMessage(string $raw): ?string
+    {
+        if ($raw === '') {
+            return null;
+        }
+        try {
+            $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+            return $data['error']['message'] ?? null;
+        } catch (\Throwable) {
+            return null;
+        }
     }
 }

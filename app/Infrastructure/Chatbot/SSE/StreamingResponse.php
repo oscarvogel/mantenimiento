@@ -6,6 +6,15 @@ namespace App\Infrastructure\Chatbot\SSE;
 
 use CodeIgniter\HTTP\ResponseInterface;
 
+/**
+ * Helper para emitir Server-Sent Events estándar para chat.
+ *
+ * Formato esperado por el frontend (texto/event-stream):
+ *   event: chunk\ndata: "...texto..."\n\n
+ *   event: pending_tools\ndata: {...}\n\n
+ *   event: error\ndata: "mensaje"\n\n
+ *   event: done\ndata: \n\n
+ */
 final class StreamingResponse
 {
     public function __construct(
@@ -14,39 +23,50 @@ final class StreamingResponse
 
     public function sendHeaders(): void
     {
-        $this->response->setHeader('Content-Type', 'text/event-stream')
-            ->setHeader('Cache-Control', 'no-cache')
+        $this->response
+            ->setHeader('Content-Type', 'text/event-stream; charset=utf-8')
+            ->setHeader('Cache-Control', 'no-cache, no-transform')
             ->setHeader('Connection', 'keep-alive')
-            ->setHeader('X-Accel-Buffering', 'no');
-    }
-
-    public function sendEvent(string $event, string $data): void
-    {
-        echo "event: {$event}\n";
-        echo "data: " . json_encode($data, JSON_THROW_ON_ERROR) . "\n\n";
-        if (ob_get_level() > 0) {
-            ob_flush();
-        }
-        flush();
+            ->setHeader('X-Accel-Buffering', 'no')
+            ->setHeader('X-Content-Type-Options', 'nosniff');
     }
 
     public function sendChunk(string $text): void
     {
-        $this->sendEvent('chunk', $text);
+        $this->write("event: chunk\ndata: " . $this->escape($text) . "\n\n");
     }
 
-    public function sendToolCall(array $toolCall): void
+    /**
+     * @param array<int, array<string, mixed>>|array<string, mixed> $toolCalls
+     */
+    public function sendPendingTools(array $toolCalls): void
     {
-        $this->sendEvent('tool_call', json_encode($toolCall, JSON_THROW_ON_ERROR));
+        $encoded = json_encode($toolCalls, JSON_THROW_ON_ERROR);
+        $this->write("event: pending_tools\ndata: {$encoded}\n\n");
     }
 
     public function sendDone(): void
     {
-        $this->sendEvent('done', '');
+        $this->write("event: done\ndata: \n\n");
     }
 
     public function sendError(string $message): void
     {
-        $this->sendEvent('error', $message);
+        $this->write("event: error\ndata: " . $this->escape($message) . "\n\n");
+    }
+
+    private function write(string $payload): void
+    {
+        echo $payload;
+        if (function_exists('ob_get_level') && ob_get_level() > 0) {
+            @ob_flush();
+        }
+        @flush();
+    }
+
+    private function escape(string $text): string
+    {
+        // SSE requiere escape de \n a \\n dentro del data. Mantener acentos y caracteres.
+        return str_replace(["\r", "\n"], ['\\r', '\\n'], $text);
     }
 }

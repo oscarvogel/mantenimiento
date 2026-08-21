@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Chatbot\Tools;
 
+use App\Application\Assets\Port\EquipmentListReadModel;
 use App\Application\Identity\ActorContext;
 use App\Domain\Chatbot\ToolHandler;
-use CodeIgniter\Database\BaseConnection;
 
 final class SearchEquipmentTool implements ToolHandler
 {
     public function __construct(
-        private readonly BaseConnection $database,
+        private readonly EquipmentListReadModel $equipment,
     ) {}
 
     /**
@@ -22,30 +22,26 @@ final class SearchEquipmentTool implements ToolHandler
     {
         $query = trim((string) ($args['query'] ?? ''));
         if ($query === '') {
-            return [];
+            return ['items' => [], 'total' => 0];
         }
 
         $companyId = $actor->companyId();
         if ($companyId === null) {
-            return [];
+            return ['items' => [], 'total' => 0];
         }
 
-        $builder = $this->database->table('equipos')->where('empresa_id', $companyId);
+        $branchIds = $actor->hasAllCompanyBranches() ? null : $actor->branchIds();
 
-        $builder->groupStart()
-            ->like('codigo', $query)
-            ->orLike('patente', $query)
-            ->orLike('nombre', $query)
-            ->groupEnd();
-
-        $rows = $builder->limit(10)->get()->getResultArray();
-
-        return array_map(fn($row) => [
-            'id' => (int) $row['id'],
-            'codigo' => $row['codigo'] ?? '',
-            'patente' => $row['patente'] ?? '',
-            'nombre' => $row['nombre'] ?? '',
-            'estado' => $row['estado'] ?? '',
-        ], $rows);
+        return $this->equipment->search(
+            companyId: $companyId,
+            branchIds: $branchIds,
+            query: $query,
+            typeId: null,
+            brandId: null,
+            branchId: null,
+            status: null,
+            page: 1,
+            perPage: 10,
+        );
     }
 }
