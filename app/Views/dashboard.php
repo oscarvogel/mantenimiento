@@ -26,6 +26,7 @@ $dashboardJson = json_encode(
     <meta name="theme-color" content="#031A3E">
     <meta name="color-scheme" content="light">
     <title>Panel de mantenimiento</title>
+    <meta name="csrf-token" content="<?= esc(csrf_hash(), 'attr') ?>">
     <?php foreach (($entry['css'] ?? []) as $stylesheet): ?>
         <link rel="stylesheet" href="<?= esc(base_url('assets/dashboard/' . $stylesheet), 'attr') ?>">
     <?php endforeach; ?>
