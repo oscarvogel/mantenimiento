@@ -17,7 +17,7 @@ final class AIProviderConfig
 {
     /** @var array<string, string> */
     private const ENDPOINTS = [
-        'minimax' => 'https://api.minimax.chat/v1/text/chatcompletion_pro',
+        'minimax' => 'https://api.minimax.io/v1/chat/completions',
         'openai'  => 'https://api.openai.com/v1/chat/completions',
         'custom'  => '',
     ];

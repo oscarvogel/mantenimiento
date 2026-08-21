@@ -178,28 +178,42 @@ const sendMessage = async () => {
     body.append('content', sentContent)
 
     activeController = new AbortController()
-    const res = await fetch('/mantenimiento/chatbot/mensajes/stream', {
+    const res = await fetch('/mantenimiento/chatbot/mensajes', {
       method: 'POST',
       body,
       credentials: 'same-origin',
-      headers: { 'X-CSRF-TOKEN': getCsrfToken(), 'Accept': 'text/event-stream' },
+      headers: { 'X-CSRF-TOKEN': getCsrfToken(), 'Accept': 'application/json' },
       signal: activeController.signal,
     })
 
-    if (!res.ok || !res.body) {
+    if (!res.ok) {
       throw new Error(`HTTP ${res.status}`)
     }
 
+    const data = await res.json()
+    if (data.error) {
+      throw new Error(data.error)
+    }
+
     isConnected.value = true
-    await readSse(res.body, streamingMsg)
+    if (Array.isArray(data.messages)) {
+      const assistantMsg = data.messages.find((m) => m.role === 'assistant')
+      streamingMsg.content = assistantMsg?.content ?? '(respuesta vacía)'
+      if (Array.isArray(data.messages) && data.messages.length > 0) {
+        if (typeof csrfHash.value === 'string') {
+          csrfHash.value = data.csrf?.hash ?? csrfHash.value
+          csrfName.value = data.csrf?.name ?? csrfName.value
+        }
+      }
+    }
+    streamingMsg.streaming = false
   } catch (e) {
     if (e.name === 'AbortError') {
-      streamingText.value = '(cancelado)'
+      streamingMsg.content = '(cancelado)'
     } else {
       isConnected.value = false
       lastError.value = 'No pude comunicarme con el asistente. Reintentá.'
     }
-    streamingMsg.content = streamingText.value
     streamingMsg.streaming = false
   } finally {
     loading.value = false
@@ -282,25 +296,36 @@ const confirmTool = async (toolCall) => {
     body.append('toolCalls', JSON.stringify([toolCall]))
 
     activeController = new AbortController()
-    const res = await fetch('/mantenimiento/chatbot/mensajes/stream', {
+    const res = await fetch('/mantenimiento/chatbot/mensajes', {
       method: 'POST',
       body,
       credentials: 'same-origin',
-      headers: { 'X-CSRF-TOKEN': getCsrfToken(), 'Accept': 'text/event-stream' },
+      headers: { 'X-CSRF-TOKEN': getCsrfToken(), 'Accept': 'application/json' },
       signal: activeController.signal,
     })
 
-    if (!res.ok || !res.body) {
+    if (!res.ok) {
       throw new Error(`HTTP ${res.status}`)
     }
+    const data = await res.json()
+    if (data.error) {
+      throw new Error(data.error)
+    }
     isConnected.value = true
-    await readSse(res.body, streamingMsg)
+    if (Array.isArray(data.messages)) {
+      const assistantMsg = data.messages.find((m) => m.role === 'assistant')
+      streamingMsg.content = assistantMsg?.content ?? '(respuesta vacía)'
+      if (data.csrf) {
+        csrfHash.value = data.csrf.hash
+        csrfName.value = data.csrf.name
+      }
+    }
+    streamingMsg.streaming = false
   } catch (e) {
     if (e.name !== 'AbortError') {
       isConnected.value = false
       lastError.value = 'No pude ejecutar la acción confirmada.'
     }
-    streamingMsg.content = streamingText.value
     streamingMsg.streaming = false
   } finally {
     loading.value = false
