@@ -199,12 +199,6 @@ const sendMessage = async () => {
     if (Array.isArray(data.messages)) {
       const assistantMsg = data.messages.find((m) => m.role === 'assistant')
       streamingMsg.content = assistantMsg?.content ?? '(respuesta vacía)'
-      if (Array.isArray(data.messages) && data.messages.length > 0) {
-        if (typeof csrfHash.value === 'string') {
-          csrfHash.value = data.csrf?.hash ?? csrfHash.value
-          csrfName.value = data.csrf?.name ?? csrfName.value
-        }
-      }
     }
     streamingMsg.streaming = false
   } catch (e) {
@@ -315,10 +309,6 @@ const confirmTool = async (toolCall) => {
     if (Array.isArray(data.messages)) {
       const assistantMsg = data.messages.find((m) => m.role === 'assistant')
       streamingMsg.content = assistantMsg?.content ?? '(respuesta vacía)'
-      if (data.csrf) {
-        csrfHash.value = data.csrf.hash
-        csrfName.value = data.csrf.name
-      }
     }
     streamingMsg.streaming = false
   } catch (e) {
