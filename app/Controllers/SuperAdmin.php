@@ -12,6 +12,9 @@ use App\Application\Organization\CreateCompanyAdministratorHandler;
 use App\Application\Organization\GetOrganizationOverview;
 use App\Application\Organization\UpdateCompanyHandler;
 use App\Infrastructure\Identity\SessionActorContext;
+use App\Infrastructure\Notifications\CodeIgniterCompanyNotificationRecipientResolver;
+use App\Infrastructure\Notifications\CodeIgniterEmailNotificationGateway;
+use App\Infrastructure\Notifications\SystemNotificationClock;
 use App\Presentation\PageSize;
 use CodeIgniter\HTTP\RedirectResponse;
 use DomainException;
@@ -107,6 +110,32 @@ final class SuperAdmin extends BaseController
             ]);
 
             return redirect()->to('/superadmin')->with('success', 'Empresa actualizada correctamente.');
+        } catch (Throwable $exception) {
+            return $this->operationFailure($exception);
+        }
+    }
+
+    public function testCompanyNotificationEmail(int $companyId): RedirectResponse
+    {
+        try {
+            $recipient = (new CodeIgniterCompanyNotificationRecipientResolver(db_connect()))->resolve($companyId);
+            if ($recipient === null) {
+                throw new DomainException('La empresa no tiene un correo de notificaciones habilitado. Guardá un destinatario válido y habilitá el envío antes de probar.');
+            }
+
+            (new CodeIgniterEmailNotificationGateway(new SystemNotificationClock()))->sendDigest($recipient, [[
+                'titulo' => 'Correo de prueba',
+                'resumen' => 'La configuración SMTP y el destinatario de mantenimiento funcionan correctamente para esta empresa.',
+                'url' => base_url('superadmin'),
+            ]]);
+
+            log_message('notice', 'Superadministrador {actor} envió correo de prueba para empresa {company} a {recipient}.', [
+                'actor' => $this->actor()->userId(),
+                'company' => $companyId,
+                'recipient' => $recipient,
+            ]);
+
+            return redirect()->to('/superadmin')->with('success', 'Correo de prueba enviado a ' . $recipient . '.');
         } catch (Throwable $exception) {
             return $this->operationFailure($exception);
         }
