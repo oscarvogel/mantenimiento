@@ -6,7 +6,7 @@ namespace App\Database\Migrations;
 
 use CodeIgniter\Database\Migration;
 
-final class AddDemoFieldsToEmpresas extends Migration
+final class AddDemoFieldsToEmpresasV2 extends Migration
 {
     public function up(): void
     {

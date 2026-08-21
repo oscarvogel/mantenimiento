@@ -6,7 +6,7 @@ namespace App\Controllers;
 
 use App\Application\Chatbot\Command\SendMessageCommand;
 use App\Application\Chatbot\Command\StartConversationCommand;
-use App\Application\Identity\SessionActorContext;
+use App\Infrastructure\Identity\SessionActorContext;
 use App\Domain\Chatbot\ChatError;
 use CodeIgniter\HTTP\ResponseInterface;
 use Throwable;
