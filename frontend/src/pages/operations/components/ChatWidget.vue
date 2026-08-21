@@ -85,6 +85,7 @@ import ChatToolConfirm from './ChatToolConfirm.vue'
 import ChatVoiceButton from './ChatVoiceButton.vue'
 
 const REQUEST_TIMEOUT_MS = 30000
+const CHAT_STORAGE_KEY = 'mantenimiento.chatbot.conv'
 
 const isOpen = ref(false)
 const messages = ref([])
@@ -98,11 +99,17 @@ const isConnected = ref(true)
 const messagesContainer = ref(null)
 let tempIdCounter = 0
 let activeController = null
+let hasRestoredSession = false
 
 const toggle = () => {
   isOpen.value = !isOpen.value
-  if (isOpen.value && conversationId.value === null) {
-    startConversation()
+  if (isOpen.value && conversationId.value === null && !hasRestoredSession) {
+    hasRestoredSession = true
+    restoreConversation().then((restored) => {
+      if (!restored && conversationId.value === null) {
+        startConversation()
+      }
+    })
   }
 }
 
@@ -133,6 +140,9 @@ const startConversation = async () => {
     }
     const data = await res.json()
     conversationId.value = data.conversation.id
+    try {
+      window.localStorage.setItem(CHAT_STORAGE_KEY, String(conversationId.value))
+    } catch (_) { /* ignorar errores de storage */ }
     messages.value.push({
       tempId: ++tempIdCounter,
       role: 'assistant',
@@ -140,6 +150,50 @@ const startConversation = async () => {
     })
   } catch (e) {
     lastError.value = 'No pude iniciar la conversación. Reintentá más tarde.'
+  }
+}
+
+const restoreConversation = async () => {
+  let stored = null
+  try {
+    stored = window.localStorage.getItem(CHAT_STORAGE_KEY)
+  } catch (_) { /* ignorar */ }
+  if (!stored) return false
+  const convId = parseInt(stored, 10)
+  if (!convId || isNaN(convId)) return false
+
+  try {
+    const res = await fetch(`/mantenimiento/chatbot/historial?conversationId=${convId}`, {
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: { 'Accept': 'application/json' },
+    })
+    if (!res.ok) {
+      // El servidor rechazo la conv (expirada, no accesible, etc): limpiarla
+      try { window.localStorage.removeItem(CHAT_STORAGE_KEY) } catch (_) {}
+      return false
+    }
+    const data = await res.json()
+    if (!data.messages || data.messages.length === 0) {
+      // Conv existe pero sin mensajes: limpiar (era valida pero ya no sirve)
+      try { window.localStorage.removeItem(CHAT_STORAGE_KEY) } catch (_) {}
+      return false
+    }
+    conversationId.value = convId
+    for (const m of data.messages) {
+      messages.value.push({
+        tempId: ++tempIdCounter,
+        role: m.role,
+        content: m.content ?? '',
+      })
+    }
+    if (data.csrf?.hash) {
+      const meta = document.querySelector('meta[name="csrf-token"]')
+      if (meta) meta.setAttribute('content', data.csrf.hash)
+    }
+    return true
+  } catch (_) {
+    return false
   }
 }
 

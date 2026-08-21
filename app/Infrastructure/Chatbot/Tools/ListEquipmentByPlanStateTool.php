@@ -44,6 +44,7 @@ final class ListEquipmentByPlanStateTool implements ToolHandler
         $page = $handler->execute($actor, ['state' => $state], page: 1, perPage: 100);
 
         $byEquipment = [];
+        $today = new \DateTimeImmutable('today');
         foreach ($page->items as $row) {
             $eid = (int) $row['equipment_id'];
             if (! isset($byEquipment[$eid])) {
@@ -56,12 +57,47 @@ final class ListEquipmentByPlanStateTool implements ToolHandler
                     'plans' => [],
                 ];
             }
+
+            $parts = [];
+            if ($row['next_km'] !== null && $row['current_km'] !== null) {
+                $diff = (int) $row['current_km'] - (int) $row['next_km'];
+                if ($diff > 0) {
+                    $parts[] = 'Km ' . number_format((int) $row['next_km'], 0, ',', '.')
+                        . ' (alcanzado en ' . number_format((int) $row['current_km'], 0, ',', '.')
+                        . ', +' . number_format($diff, 0, ',', '.') . ' vencido)';
+                }
+            }
+            if ($row['next_hours'] !== null && $row['current_hours'] !== null) {
+                $diffH = (float) $row['current_hours'] - (float) $row['next_hours'];
+                if ($diffH > 0) {
+                    $parts[] = 'Horas ' . number_format((float) $row['next_hours'], 1, ',', '.')
+                        . ' (alcanzado en ' . number_format((float) $row['current_hours'], 1, ',', '.')
+                        . ', +' . number_format($diffH, 1, ',', '.') . ' vencido)';
+                }
+            }
+            if ($row['next_date'] !== null) {
+                $target = new \DateTimeImmutable((string) $row['next_date']);
+                $daysLate = (int) $today->diff($target)->format('%r%a') * -1;
+                if ($daysLate > 0) {
+                    $parts[] = 'Fecha objetivo ' . $row['next_date']
+                        . ' (vencida hace ' . $daysLate . ' días)';
+                }
+            }
+            $vencimientoTexto = $parts === [] ? null : implode(' + ', $parts);
+
             $byEquipment[$eid]['plans'][] = [
                 'service_name' => $row['service_name'],
                 'priority' => $row['priority'],
+                'interval_km' => $row['interval_km'],
+                'interval_hours' => $row['interval_hours'],
+                'interval_days' => $row['interval_days'],
                 'next_date' => $row['next_date'],
-                'current_km' => $row['current_km'],
                 'next_km' => $row['next_km'],
+                'next_hours' => $row['next_hours'],
+                'current_km' => $row['current_km'],
+                'current_hours' => $row['current_hours'],
+                'current_date' => $row['current_date'],
+                'vencimiento' => $vencimientoTexto,
                 'equipment_url' => '/mantenimiento/equipos/' . $eid,
                 'plans_url' => '/mantenimiento/planes?equipo_id=' . $eid,
             ];
