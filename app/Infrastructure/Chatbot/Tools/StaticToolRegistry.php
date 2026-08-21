@@ -27,7 +27,7 @@ final class StaticToolRegistry implements ToolRegistry
             description: 'Consulta los planes preventivos activos de un equipo ya resuelto. Si el usuario indicó código, patente o nombre, usar primero buscar_equipo para obtener un equipment_id inequívoco. Devuelve estado, intervalos, base, próximo objetivo, lectura actual y enlaces.',
             parameters: [
                 'equipment_id' => ['type' => 'integer', 'description' => 'ID interno del equipo obtenido con buscar_equipo'],
-                'state' => ['type' => 'string', 'description' => 'Filtro opcional: AL_DIA, PROXIMO, VENCIDO o SIN_DATOS'],
+                'state' => ['type' => 'string', 'description' => 'Filtro opcional: AL_DIA, PROXIMO, VENCIDO o SIN_DATOS', 'required' => false],
             ],
             permission: 'planes.ver',
             handlerClass: ConsultEquipmentPlansTool::class,
