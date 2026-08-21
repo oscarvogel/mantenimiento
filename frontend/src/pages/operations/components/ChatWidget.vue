@@ -217,11 +217,12 @@ const sendMessage = async () => {
     if (Array.isArray(data.messages)) {
       const assistantMsg = data.messages.find((m) => m.role === 'assistant')
       streamingMsg.content = assistantMsg?.content ?? '(respuesta vacía)'
-      console.log('[chatbot] Assistant content len:', streamingMsg.content.length)
+      console.log('[chatbot] After set:', streamingMsg.content.substring(0, 50), 'msg in arr:', messages.value.includes(streamingMsg))
     } else {
       streamingMsg.content = '(sin mensajes en la respuesta)'
     }
     streamingMsg.streaming = false
+    console.log('[chatbot] streamingMsg.streaming:', streamingMsg.streaming, 'streamingText:', streamingText.value.length, 'loading:', loading.value)
   } catch (e) {
     console.error('[chatbot] sendMessage error:', e.name, e.message)
     if (e.name === 'AbortError') {
