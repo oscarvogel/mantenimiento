@@ -212,7 +212,7 @@ const sendMessage = async () => {
       streamingMsg.content = '(cancelado)'
     } else {
       isConnected.value = false
-      lastError.value = 'No pude comunicarme con el asistente. Reintentá.'
+      lastError.value = `No pude comunicarme con el asistente. (${e.message}). Reintentá.`
     }
     streamingMsg.streaming = false
   } finally {
