@@ -19,6 +19,7 @@ final class ToolExecutor implements ToolExecutorPort
     {
         $this->handlers['buscar_equipo'] = new SearchEquipmentTool($equipmentListReadModel);
         $this->handlers['consultar_planes_equipo'] = new ConsultEquipmentPlansTool();
+        $this->handlers['listar_equipos_por_estado_plan'] = new ListEquipmentByPlanStateTool();
     }
 
     public function execute(string $toolName, array $args, ActorContext $actor): ToolCallResult

@@ -97,10 +97,8 @@ final class Chatbot extends BaseController
         } catch (ChatError $e) {
             return $this->jsonError($e);
         } catch (Throwable $e) {
-            $debug = $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine();
-            log_message('error', 'Chatbot error: ' . $debug);
-            file_put_contents('/tmp/chatbot-debug.log', $debug . "\n" . $e->getTraceAsString() . "\n", FILE_APPEND);
-            return $this->jsonError(new \RuntimeException('Error interno del asistente. [' . substr($e->getMessage(), 0, 100) . ']'), 500);
+            log_message('error', 'Chatbot error: ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
+            return $this->jsonError(new \RuntimeException('Error interno del asistente.'), 500);
         }
     }
 

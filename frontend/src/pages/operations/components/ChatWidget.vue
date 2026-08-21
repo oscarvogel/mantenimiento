@@ -187,8 +187,6 @@ const sendMessage = async () => {
     }, REQUEST_TIMEOUT_MS)
 
     const csrfToken = getCsrfToken()
-    console.log('[chatbot] POST /mensajes, conv:', conversationId.value, 'hasCsrf:', !!csrfToken)
-
     const res = await fetch('/mantenimiento/chatbot/mensajes', {
       method: 'POST',
       body,
@@ -198,17 +196,12 @@ const sendMessage = async () => {
     })
     clearTimeout(timeoutId)
 
-    console.log('[chatbot] Response status:', res.status, 'ok:', res.ok)
-
     if (!res.ok) {
       const errorBody = await res.text().catch(() => '')
-      console.error('[chatbot] HTTP error body:', errorBody)
       throw new Error(`HTTP ${res.status}: ${errorBody.substring(0, 200)}`)
     }
 
     const data = await res.json()
-    console.log('[chatbot] Response data keys:', Object.keys(data), 'messages:', data.messages?.length)
-
     if (data.error) {
       throw new Error(data.error)
     }

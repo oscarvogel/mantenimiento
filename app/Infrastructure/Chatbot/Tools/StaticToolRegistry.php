@@ -32,6 +32,17 @@ final class StaticToolRegistry implements ToolRegistry
             permission: 'planes.ver',
             handlerClass: ConsultEquipmentPlansTool::class,
         ));
+
+        $this->register(ToolDefinition::read(
+            name: 'listar_equipos_por_estado_plan',
+            description: 'Lista los equipos que tienen planes preventivos en el estado indicado (VENCIDO, PROXIMO, AL_DIA, SIN_DATOS). Devuelve codigo, patente, sucursal y los servicios afectados por equipo, agrupados para responder "que camiones tienen planes vencidos/proximos" sin pedir identificador. Limita a 20 equipos por respuesta; si hay mas, devuelve truncated=true y la URL de la lista completa.',
+            parameters: [
+                'state' => ['type' => 'string', 'description' => 'Estado a buscar: VENCIDO, PROXIMO, AL_DIA o SIN_DATOS'],
+                'limit' => ['type' => 'integer', 'description' => 'Maximo de equipos a devolver (default 20, max 20)', 'required' => false],
+            ],
+            permission: 'planes.ver',
+            handlerClass: ListEquipmentByPlanStateTool::class,
+        ));
     }
 
     public function register(ToolDefinition $tool): void
