@@ -29,7 +29,9 @@ final class DemoAdmin extends BaseController
         $reset = (string) $this->request->getPost('demo_accion') === 'regenerar';
 
         try {
-            $seeder = new DemoCompanySeeder();
+            $this->ensureDemoSchema();
+
+            $seeder = $this->createDemoSeeder();
             $seeder->configure(
                 (string) $this->request->getPost('demo_email'),
                 (string) $this->request->getPost('demo_password'),
@@ -45,14 +47,39 @@ final class DemoAdmin extends BaseController
         } catch (RuntimeException $exception) {
             return redirect()->to('/superadmin')->withInput()->with('error', $exception->getMessage());
         } catch (Throwable $exception) {
-            log_message('error', 'Falló la generación de empresa demo: {message}', [
+            $errorId = 'DEMO-' . date('YmdHis') . '-' . strtoupper(substr(bin2hex(random_bytes(3)), 0, 6));
+            log_message('error', '[{errorId}] Falló la generación de empresa demo: {message}', [
+                'errorId' => $errorId,
                 'message' => $exception->getMessage(),
             ]);
 
             return redirect()->to('/superadmin')->withInput()->with(
                 'error',
-                'No se pudo generar la empresa demo. Revise que las migraciones estén actualizadas.',
+                'No se pudo generar la empresa demo. Código de diagnóstico: ' . $errorId . '.',
             );
         }
+    }
+
+    private function ensureDemoSchema(): void
+    {
+        $database = db_connect();
+        if ($database->fieldExists('es_demo', 'empresas') && $database->fieldExists('demo_expira_at', 'empresas')) {
+            return;
+        }
+
+        $migrations = service('migrations');
+        if (! $migrations->latest()) {
+            throw new RuntimeException('No se pudieron aplicar las migraciones pendientes necesarias para la empresa demo.');
+        }
+
+        $database = db_connect();
+        if (! $database->fieldExists('es_demo', 'empresas') || ! $database->fieldExists('demo_expira_at', 'empresas')) {
+            throw new RuntimeException('La estructura requerida para la empresa demo todavía no está disponible.');
+        }
+    }
+
+    private function createDemoSeeder(): DemoCompanySeeder
+    {
+        return new DemoCompanySeeder(config('Database'), db_connect());
     }
 }
