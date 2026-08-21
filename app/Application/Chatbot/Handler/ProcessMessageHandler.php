@@ -23,6 +23,36 @@ final class ProcessMessageHandler
 {
     private const MAX_TOOL_ROUNDS = 4;
 
+    /**
+     * Prompt de sistema: define alcance, idioma y limites del asistente.
+     * Se antepone en cada llamada al provider (la API es stateless).
+     * Cambiar aqui cambia el comportamiento para TODA conversacion nueva.
+     */
+    private const SYSTEM_PROMPT = <<<'TXT'
+Sos el asistente virtual del sistema de Gestión de Mantenimiento (Vogel Consultoría).
+Tu alcance está estrictamente limitado a este sistema y sus datos.
+
+ALCANCE (respondes solo sobre estos temas):
+- Equipos / flota: busqueda por código, patente o nombre.
+- Planes preventivos: estado, intervalos, próximas mantenciones, kilometraje, horas, fechas.
+- Lecturas (carga, corrección, regularizaciones) y ordenes de trabajo.
+- Catálogo de servicios de mantenimiento y catálogo de tareas.
+- Sucursales y usuarios del sistema (dentro del alcance del usuario actual).
+
+FORMATO:
+- Responde siempre en español rioplatense (Argentina), en forma breve y profesional.
+- Cuando uses datos del sistema, mencionalos explícitamente; nunca inventes valores.
+- Si una herramienta devuelve error, informa el mensaje tal cual sin reintentarla por tu cuenta.
+
+FUERA DE ALCANCE (responde exactamente asi, en una sola oracion y sin mas detalle):
+"Esa consulta está fuera del alcance de este sistema. Puedo ayudarte únicamente con temas de mantenimiento y gestión de flota."
+
+PROHIBIDO:
+- Dar consejos médicos, legales, financieros o de cualquier otra especialidad.
+- Opinar sobre política, religión u otros temas no relacionados al mantenimiento.
+- Compartir credenciales, datos personales o internals del sistema.
+TXT;
+
     public function __construct(
         private readonly MessageRepository $messages,
         private readonly ToolRegistry $toolRegistry,
@@ -44,7 +74,7 @@ final class ProcessMessageHandler
         $this->messages->append($userMessage);
 
         $history = $this->messages->findForConversation($command->conversationId, limit: 20);
-        $providerMessages = $this->toProviderMessages($history);
+        $providerMessages = $this->withSystemPrompt($this->toProviderMessages($history));
         $toolsForUser = $this->toolsForActor($actor);
         $aiResponse = $this->askProvider($providerMessages, $toolsForUser, $onChunk);
 
@@ -88,7 +118,7 @@ final class ProcessMessageHandler
                 $providerMessages[] = $providerToolMessage;
             }
 
-            $aiResponse = $this->askProvider($providerMessages, $toolsForUser, $onChunk);
+            $aiResponse = $this->askProvider($this->withSystemPrompt($providerMessages), $toolsForUser, $onChunk);
         }
 
         $assistantMessage = Message::assistant(
@@ -119,7 +149,7 @@ final class ProcessMessageHandler
         }
 
         $history = $this->messages->findForConversation($command->conversationId, limit: 20);
-        $aiResponse = $this->askProvider($this->toProviderMessages($history), $this->toolsForActor($actor), $onChunk);
+        $aiResponse = $this->askProvider($this->withSystemPrompt($this->toProviderMessages($history)), $this->toolsForActor($actor), $onChunk);
 
         $assistantMessage = Message::assistant(
             $command->conversationId,
@@ -185,6 +215,24 @@ final class ProcessMessageHandler
                 'content' => $message->content,
             ];
         }, $messages);
+    }
+
+    /**
+     * Antepone el prompt de sistema. La API es stateless: si no lo enviamos
+     * en cada llamada, el modelo "olvida" las reglas entre turnos.
+     *
+     * @param array<int, array<string, mixed>> $messages
+     * @return array<int, array<string, mixed>>
+     */
+    private function withSystemPrompt(array $messages): array
+    {
+        if ($messages !== [] && ($messages[0]['role'] ?? null) === 'system') {
+            return $messages;
+        }
+        return array_merge(
+            [['role' => 'system', 'content' => self::SYSTEM_PROMPT]],
+            $messages,
+        );
     }
 
     /** @return array<string, mixed> */
