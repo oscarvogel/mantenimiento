@@ -156,7 +156,7 @@ TXT;
         SendMessageCommand $command,
         Message $userMessage,
     ): ?MessageProcessedResult {
-        $identifier = $this->extractExplicitIdentifierForMeasurement($command->content);
+        $identifier = $this->extractExplicitIdentifierForMeasurement($command->content, $command->conversationId);
         if ($identifier === null || ! $actor->hasPermission('equipos.ver')) {
             return null;
         }
@@ -263,10 +263,12 @@ TXT;
         return $this->finishDeterministic($command->conversationId, $userMessage, $text);
     }
 
-    private function extractExplicitIdentifierForMeasurement(string $content): ?string
+    private function extractExplicitIdentifierForMeasurement(string $content, int $conversationId): ?string
     {
         $normalized = mb_strtolower(trim($content), 'UTF-8');
-        if (preg_match('/\b(km|kilometraje|kilómetros?|kilometros?|horas?|horómetro|horometro|lectura)\b/u', $normalized) !== 1) {
+        $hasMeasurementIntent = preg_match('/\b(km|kilometraje|kilómetros?|kilometros?|horas?|horómetro|horometro|lectura)\b/u', $normalized) === 1;
+
+        if (! $hasMeasurementIntent && ! $this->inheritsPreviousMeasurementIntent($content, $conversationId)) {
             return null;
         }
 
@@ -285,6 +287,28 @@ TXT;
         }
 
         return null;
+    }
+
+    private function inheritsPreviousMeasurementIntent(string $content, int $conversationId): bool
+    {
+        $normalized = mb_strtolower(trim($content), 'UTF-8');
+        if (preg_match('/^y\s+(?:(?:el|la|ese|esa)\s+)?[a-z0-9][a-z0-9._-]{3,}\s*[?.!]*$/iu', $normalized) !== 1) {
+            return false;
+        }
+
+        $history = $this->messages->findForConversation($conversationId, limit: 20);
+        $userMessages = array_values(array_filter(
+            $history,
+            static fn (Message $message): bool => $message->role === 'user',
+        ));
+        if (count($userMessages) < 2) {
+            return false;
+        }
+
+        $previous = $userMessages[count($userMessages) - 2]->content;
+        $previousNormalized = mb_strtolower(trim($previous), 'UTF-8');
+
+        return preg_match('/\b(km|kilometraje|kilómetros?|kilometros?|horas?|horómetro|horometro|lectura)\b/u', $previousNormalized) === 1;
     }
 
     private function finishDeterministic(int $conversationId, Message $userMessage, string $content): MessageProcessedResult
