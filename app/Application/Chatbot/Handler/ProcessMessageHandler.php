@@ -292,7 +292,7 @@ TXT;
     private function inheritsPreviousMeasurementIntent(string $content, int $conversationId): bool
     {
         $normalized = mb_strtolower(trim($content), 'UTF-8');
-        if (preg_match('/^y\s+(?:(?:el|la|ese|esa)\s+)?[a-z0-9][a-z0-9._-]{3,}\s*[?.!]*$/iu', $normalized) !== 1) {
+        if (preg_match('/^(?:y\s+)?(?:(?:el|la|ese|esa)\s+)?[a-z0-9][a-z0-9._-]{3,}\s*[?.!]*$/iu', $normalized) !== 1) {
             return false;
         }
 
