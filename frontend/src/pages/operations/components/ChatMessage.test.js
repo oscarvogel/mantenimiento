@@ -47,4 +47,19 @@ describe('ChatMessage', () => {
     expect(wrapper.find('a').exists()).toBe(false)
     expect(wrapper.text()).toContain('javascript:alert(1)')
   })
+
+  it('rechaza una URL con dos esquemas concatenados', () => {
+    const broken = 'https://demo.stg.vogelconsultoria.comhttp://192.168.0.195:8090/mantenimiento/equipos/98'
+    const wrapper = mount(ChatMessage, {
+      props: {
+        message: {
+          role: 'assistant',
+          content: `Ver detalle: ${broken}`,
+        },
+      },
+    })
+
+    expect(wrapper.find('a').exists()).toBe(false)
+    expect(wrapper.text()).toContain(broken)
+  })
 })
