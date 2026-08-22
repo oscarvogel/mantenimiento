@@ -17,6 +17,7 @@ $appJson = json_encode(
     JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
         | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT,
 );
+header('Cache-Control: no-store, must-revalidate');
 ?>
 <!doctype html>
 <html lang="es">
@@ -27,6 +28,7 @@ $appJson = json_encode(
     <meta name="color-scheme" content="light">
     <link rel="icon" href="<?= esc(base_url('favicon.ico'), 'attr') ?>">
     <link rel="manifest" href="<?= esc(base_url('manifest.webmanifest'), 'attr') ?>">
+    <meta name="csrf-token" content="<?= esc(csrf_hash(), 'attr') ?>">
     <title><?= esc($pageTitle ?? 'Mantenimiento') ?></title>
     <?php if (isset($preloadImage) && is_string($preloadImage) && $preloadImage !== ''): ?>
         <link rel="preload" as="image" href="<?= esc($preloadImage, 'attr') ?>" type="image/webp" fetchpriority="high">
@@ -39,6 +41,6 @@ $appJson = json_encode(
     <div id="maintenance-app"></div>
     <noscript><p>Esta aplicación necesita JavaScript habilitado para funcionar.</p></noscript>
     <script id="maintenance-app-data" type="application/json"><?= $appJson ?></script>
-    <script type="module" src="<?= esc(base_url('assets/dashboard/' . $entry['file']), 'attr') ?>"></script>
+    <script type="module" src="<?= esc(base_url('assets/dashboard/' . $entry['file']), 'attr') ?>?v=<?= esc($entry['file'], 'attr') ?>"></script>
 </body>
 </html>

@@ -30,8 +30,11 @@ final class MiniMaxResponse
             ];
         }
 
+        $content = preg_replace('/<think>.*?<\/think>/s', '', $message['content'] ?? '') ?? '';
+        $content = trim($content);
+
         return new self(
-            content: $message['content'] ?? '',
+            content: $content,
             toolCalls: $toolCalls,
             tokensUsed: $data['usage']['total_tokens'] ?? null,
         );

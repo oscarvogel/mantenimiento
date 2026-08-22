@@ -6,7 +6,7 @@ namespace App\Controllers;
 
 use App\Application\Chatbot\Command\SendMessageCommand;
 use App\Application\Chatbot\Command\StartConversationCommand;
-use App\Application\Identity\SessionActorContext;
+use App\Infrastructure\Identity\SessionActorContext;
 use App\Domain\Chatbot\ChatError;
 use CodeIgniter\HTTP\ResponseInterface;
 use Throwable;
@@ -97,7 +97,7 @@ final class Chatbot extends BaseController
         } catch (ChatError $e) {
             return $this->jsonError($e);
         } catch (Throwable $e) {
-            log_message('error', 'Chatbot error: ' . $e->getMessage());
+            log_message('error', 'Chatbot error: ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
             return $this->jsonError(new \RuntimeException('Error interno del asistente.'), 500);
         }
     }

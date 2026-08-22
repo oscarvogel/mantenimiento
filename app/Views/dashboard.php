@@ -17,6 +17,7 @@ $dashboardJson = json_encode(
     JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
         | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT,
 );
+header('Cache-Control: no-store, must-revalidate');
 ?>
 <!doctype html>
 <html lang="es">
@@ -26,6 +27,7 @@ $dashboardJson = json_encode(
     <meta name="theme-color" content="#031A3E">
     <meta name="color-scheme" content="light">
     <title>Panel de mantenimiento</title>
+    <meta name="csrf-token" content="<?= esc(csrf_hash(), 'attr') ?>">
     <?php foreach (($entry['css'] ?? []) as $stylesheet): ?>
         <link rel="stylesheet" href="<?= esc(base_url('assets/dashboard/' . $stylesheet), 'attr') ?>">
     <?php endforeach; ?>
@@ -36,6 +38,6 @@ $dashboardJson = json_encode(
         <p>Este panel necesita JavaScript habilitado para funcionar.</p>
     </noscript>
     <script id="maintenance-dashboard-data" type="application/json"><?= $dashboardJson ?></script>
-    <script type="module" src="<?= esc(base_url('assets/dashboard/' . $entry['file']), 'attr') ?>"></script>
+    <script type="module" src="<?= esc(base_url('assets/dashboard/' . $entry['file']), 'attr') ?>?v=<?= esc($entry['file'], 'attr') ?>"></script>
 </body>
 </html>

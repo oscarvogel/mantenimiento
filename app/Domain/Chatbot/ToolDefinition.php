@@ -60,6 +60,8 @@ final class ToolDefinition
     public function toFunctionCallingFormat(): array
     {
         $properties = [];
+        $required = [];
+
         foreach ($this->parameters as $key => $def) {
             $property = [
                 'type' => $def['type'] ?? 'string',
@@ -68,6 +70,10 @@ final class ToolDefinition
                 $property['description'] = $def['description'];
             }
             $properties[$key] = $property;
+
+            if (($def['required'] ?? true) === true) {
+                $required[] = $key;
+            }
         }
 
         return [
@@ -78,7 +84,7 @@ final class ToolDefinition
                 'parameters' => [
                     'type' => 'object',
                     'properties' => $properties,
-                    'required' => array_keys($this->parameters),
+                    'required' => $required,
                 ],
             ],
         ];

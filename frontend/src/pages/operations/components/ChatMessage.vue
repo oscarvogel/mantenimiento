@@ -24,10 +24,19 @@ const props = defineProps({
 })
 
 const renderedContent = computed(() => {
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
   let text = (props.message.content || '')
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.*?)\*/g, '<em>$1</em>')
     .replace(/\n/g, '<br>')
+  if (origin) {
+    // Convertir paths relativos del sistema a URLs absolutas para que
+    // el click funcione desde cualquier contexto (links externos, copy/paste, etc).
+    text = text.replace(
+      /(?<!\/)(\/mantenimiento\/[A-Za-z0-9_\-\/\?#=&%]+)/g,
+      (m) => origin + m,
+    )
+  }
   return text
 })
 </script>

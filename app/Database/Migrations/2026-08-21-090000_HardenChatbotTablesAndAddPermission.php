@@ -29,7 +29,7 @@ final class HardenChatbotTablesAndAddPermission extends Migration
             return;
         }
 
-        $driver = $db->getDriver();
+        $driver = $db->DBDriver;
         if ($driver !== 'MySQLi') {
             return;
         }
@@ -64,7 +64,7 @@ final class HardenChatbotTablesAndAddPermission extends Migration
 
     private function hardenMensajesDown(BaseConnection $db): void
     {
-        if ($db->getDriver() !== 'MySQLi') {
+        if ($db->DBDriver !== 'MySQLi') {
             return;
         }
         try {

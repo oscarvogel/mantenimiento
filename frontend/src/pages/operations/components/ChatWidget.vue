@@ -84,6 +84,9 @@ import ChatMessage from './ChatMessage.vue'
 import ChatToolConfirm from './ChatToolConfirm.vue'
 import ChatVoiceButton from './ChatVoiceButton.vue'
 
+const REQUEST_TIMEOUT_MS = 30000
+const CHAT_STORAGE_KEY = 'mantenimiento.chatbot.conv'
+
 const isOpen = ref(false)
 const messages = ref([])
 const pendingToolCalls = ref([])
@@ -96,11 +99,17 @@ const isConnected = ref(true)
 const messagesContainer = ref(null)
 let tempIdCounter = 0
 let activeController = null
+let hasRestoredSession = false
 
 const toggle = () => {
   isOpen.value = !isOpen.value
-  if (isOpen.value && conversationId.value === null) {
-    startConversation()
+  if (isOpen.value && conversationId.value === null && !hasRestoredSession) {
+    hasRestoredSession = true
+    restoreConversation().then((restored) => {
+      if (!restored && conversationId.value === null) {
+        startConversation()
+      }
+    })
   }
 }
 
@@ -131,6 +140,9 @@ const startConversation = async () => {
     }
     const data = await res.json()
     conversationId.value = data.conversation.id
+    try {
+      window.localStorage.setItem(CHAT_STORAGE_KEY, String(conversationId.value))
+    } catch (_) { /* ignorar errores de storage */ }
     messages.value.push({
       tempId: ++tempIdCounter,
       role: 'assistant',
@@ -138,6 +150,50 @@ const startConversation = async () => {
     })
   } catch (e) {
     lastError.value = 'No pude iniciar la conversación. Reintentá más tarde.'
+  }
+}
+
+const restoreConversation = async () => {
+  let stored = null
+  try {
+    stored = window.localStorage.getItem(CHAT_STORAGE_KEY)
+  } catch (_) { /* ignorar */ }
+  if (!stored) return false
+  const convId = parseInt(stored, 10)
+  if (!convId || isNaN(convId)) return false
+
+  try {
+    const res = await fetch(`/mantenimiento/chatbot/historial?conversationId=${convId}`, {
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: { 'Accept': 'application/json' },
+    })
+    if (!res.ok) {
+      // El servidor rechazo la conv (expirada, no accesible, etc): limpiarla
+      try { window.localStorage.removeItem(CHAT_STORAGE_KEY) } catch (_) {}
+      return false
+    }
+    const data = await res.json()
+    if (!data.messages || data.messages.length === 0) {
+      // Conv existe pero sin mensajes: limpiar (era valida pero ya no sirve)
+      try { window.localStorage.removeItem(CHAT_STORAGE_KEY) } catch (_) {}
+      return false
+    }
+    conversationId.value = convId
+    for (const m of data.messages) {
+      messages.value.push({
+        tempId: ++tempIdCounter,
+        role: m.role,
+        content: m.content ?? '',
+      })
+    }
+    if (data.csrf?.hash) {
+      const meta = document.querySelector('meta[name="csrf-token"]')
+      if (meta) meta.setAttribute('content', data.csrf.hash)
+    }
+    return true
+  } catch (_) {
+    return false
   }
 }
 
@@ -178,28 +234,56 @@ const sendMessage = async () => {
     body.append('content', sentContent)
 
     activeController = new AbortController()
-    const res = await fetch('/mantenimiento/chatbot/mensajes/stream', {
+    const timeoutId = setTimeout(() => {
+      if (activeController) {
+        try { activeController.abort('timeout') } catch (_) { /* noop */ }
+      }
+    }, REQUEST_TIMEOUT_MS)
+
+    const csrfToken = getCsrfToken()
+    const res = await fetch('/mantenimiento/chatbot/mensajes', {
       method: 'POST',
       body,
       credentials: 'same-origin',
-      headers: { 'X-CSRF-TOKEN': getCsrfToken(), 'Accept': 'text/event-stream' },
+      headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
       signal: activeController.signal,
     })
+    clearTimeout(timeoutId)
 
-    if (!res.ok || !res.body) {
-      throw new Error(`HTTP ${res.status}`)
+    if (!res.ok) {
+      const errorBody = await res.text().catch(() => '')
+      throw new Error(`HTTP ${res.status}: ${errorBody.substring(0, 200)}`)
+    }
+
+    const data = await res.json()
+    if (data.error) {
+      throw new Error(data.error)
     }
 
     isConnected.value = true
-    await readSse(res.body, streamingMsg)
+    let assistantText = '(sin respuesta)'
+    if (Array.isArray(data.messages)) {
+      const assistantMsg = data.messages.find((m) => m.role === 'assistant')
+      assistantText = assistantMsg?.content ?? '(respuesta vacía)'
+    }
+    const idx = messages.value.findIndex((m) => m.tempId === streamingMsg.tempId)
+    if (idx >= 0) {
+      messages.value[idx] = {
+        tempId: streamingMsg.tempId,
+        role: 'assistant',
+        content: assistantText,
+        streaming: false,
+      }
+    }
+    console.log('[chatbot] Replaced message at idx', idx, 'content len:', assistantText.length)
   } catch (e) {
+    console.error('[chatbot] sendMessage error:', e.name, e.message)
     if (e.name === 'AbortError') {
-      streamingText.value = '(cancelado)'
+      streamingMsg.content = '(cancelado o tiempo agotado)'
     } else {
       isConnected.value = false
-      lastError.value = 'No pude comunicarme con el asistente. Reintentá.'
+      lastError.value = `No pude comunicarme con el asistente. (${e.message}). Reintentá.`
     }
-    streamingMsg.content = streamingText.value
     streamingMsg.streaming = false
   } finally {
     loading.value = false
@@ -282,25 +366,32 @@ const confirmTool = async (toolCall) => {
     body.append('toolCalls', JSON.stringify([toolCall]))
 
     activeController = new AbortController()
-    const res = await fetch('/mantenimiento/chatbot/mensajes/stream', {
+    const res = await fetch('/mantenimiento/chatbot/mensajes', {
       method: 'POST',
       body,
       credentials: 'same-origin',
-      headers: { 'X-CSRF-TOKEN': getCsrfToken(), 'Accept': 'text/event-stream' },
+      headers: { 'X-CSRF-TOKEN': getCsrfToken(), 'Accept': 'application/json' },
       signal: activeController.signal,
     })
 
-    if (!res.ok || !res.body) {
+    if (!res.ok) {
       throw new Error(`HTTP ${res.status}`)
     }
+    const data = await res.json()
+    if (data.error) {
+      throw new Error(data.error)
+    }
     isConnected.value = true
-    await readSse(res.body, streamingMsg)
+    if (Array.isArray(data.messages)) {
+      const assistantMsg = data.messages.find((m) => m.role === 'assistant')
+      streamingMsg.content = assistantMsg?.content ?? '(respuesta vacía)'
+    }
+    streamingMsg.streaming = false
   } catch (e) {
     if (e.name !== 'AbortError') {
       isConnected.value = false
       lastError.value = 'No pude ejecutar la acción confirmada.'
     }
-    streamingMsg.content = streamingText.value
     streamingMsg.streaming = false
   } finally {
     loading.value = false
