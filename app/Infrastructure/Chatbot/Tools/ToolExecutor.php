@@ -21,6 +21,8 @@ final class ToolExecutor implements ToolExecutorPort
     {
         $links = new ChatbotEntityLinkBuilder();
         $this->handlers['buscar_equipo'] = new SearchEquipmentTool($equipmentListReadModel, $links);
+        $this->handlers['consultar_equipo'] = new ConsultEquipmentTool($links);
+        $this->handlers['consultar_ultima_lectura'] = new ConsultLatestReadingTool($links);
         $this->handlers['consultar_planes_equipo'] = new ConsultEquipmentPlansTool(links: $links);
         $this->handlers['listar_equipos_por_estado_plan'] = new ListEquipmentByPlanStateTool(links: $links);
 
