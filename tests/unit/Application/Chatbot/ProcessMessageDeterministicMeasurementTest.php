@@ -89,6 +89,49 @@ final class ProcessMessageDeterministicMeasurementTest extends TestCase
         self::assertStringContainsString('http://192.168.0.195:8090/mantenimiento/equipos/92', $result->messages[1]->content);
     }
 
+    public function testEllipticFollowUpWithNewIdentifierInheritsPreviousMeasurementIntent(): void
+    {
+        [$handler, $executor, $provider, $messages] = $this->makeHandler([
+            'buscar_equipo' => ToolCallResult::success('s2', 'buscar_equipo', [
+                'items' => [[
+                    'id' => 98,
+                    'codigo' => 'DEMO98-CAM01',
+                    'patente' => null,
+                ]],
+                'total' => 1,
+                'query' => 'DEMO98-CAM01',
+                'exact_match' => true,
+                'suggestions' => [],
+            ]),
+            'consultar_ultima_lectura' => ToolCallResult::success('r2', 'consultar_ultima_lectura', [
+                'equipment_id' => 98,
+                'has_reading' => true,
+                'reading' => [
+                    'kilometers' => 123456,
+                    'hours' => null,
+                    'recorded_at' => '2026-08-22 12:45:00',
+                    'annulled' => false,
+                ],
+                'links' => [
+                    'detail' => 'http://192.168.0.195:8090/mantenimiento/equipos/98',
+                ],
+            ]),
+        ]);
+
+        $messages->append(Message::user(1, 'que km tiene AA0000BB'));
+        $messages->append(Message::assistant(1, 'No encontré un equipo con código, patente o chasis AA0000BB.'));
+
+        $result = $handler->execute($this->actor(), new SendMessageCommand(1, 'y el DEMO98-CAM01'));
+
+        self::assertSame([
+            ['buscar_equipo', ['query' => 'DEMO98-CAM01']],
+            ['consultar_ultima_lectura', ['equipment_id' => 98]],
+        ], $executor->executed);
+        self::assertSame(0, $provider->calls);
+        self::assertStringContainsString('DEMO98-CAM01', $result->messages[1]->content);
+        self::assertStringContainsString('123.456 km', $result->messages[1]->content);
+    }
+
     private function actor(): ActorContext
     {
         return ActorContext::fromArray([
@@ -171,6 +214,7 @@ final class ProcessMessageDeterministicMeasurementTest extends TestCase
             ),
             $executor,
             $provider,
+            $messages,
         ];
     }
 }
