@@ -13,6 +13,8 @@ use DomainException;
 
 final class ConsultLatestReadingTool implements ToolHandler
 {
+    private const LOOKBACK = 20;
+
     public function __construct(
         private readonly ChatbotEntityLinkBuilder $links,
         private readonly ?ListReadingHistoryHandler $history = null,
@@ -27,8 +29,14 @@ final class ConsultLatestReadingTool implements ToolHandler
         }
 
         $handler = $this->history ?? new ListReadingHistoryHandler(new CodeIgniterReadingHistory(db_connect()));
-        $page = $handler->execute($actor, new ListReadingHistoryQuery($equipmentId, 1, 1));
-        $item = $page->items[0] ?? null;
+        $page = $handler->execute($actor, new ListReadingHistoryQuery($equipmentId, 1, self::LOOKBACK));
+        $item = null;
+        foreach ($page->items as $candidate) {
+            if (! $candidate->annulled) {
+                $item = $candidate;
+                break;
+            }
+        }
 
         if ($item === null) {
             return [
@@ -48,7 +56,7 @@ final class ConsultLatestReadingTool implements ToolHandler
                 'kilometers' => $item->kilometers,
                 'hours' => $item->hours,
                 'origin' => $item->origin,
-                'annulled' => $item->annulled,
+                'annulled' => false,
             ],
             'links' => $this->links->equipment($equipmentId),
         ];
