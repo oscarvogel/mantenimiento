@@ -34,6 +34,20 @@ describe('ChatMessage', () => {
     expect(wrapper.findAll('a')).toHaveLength(1)
   })
 
+  it('conserva negrita sin usar HTML arbitrario', () => {
+    const wrapper = mount(ChatMessage, {
+      props: {
+        message: {
+          role: 'assistant',
+          content: 'El equipo **CA-EX-01** tiene 205.500 km.',
+        },
+      },
+    })
+
+    expect(wrapper.get('strong').text()).toBe('CA-EX-01')
+    expect(wrapper.text()).toContain('205.500 km')
+  })
+
   it('no convierte protocolos inseguros en links', () => {
     const wrapper = mount(ChatMessage, {
       props: {
