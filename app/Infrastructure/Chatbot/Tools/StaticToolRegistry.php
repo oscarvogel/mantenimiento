@@ -16,15 +16,15 @@ final class StaticToolRegistry implements ToolRegistry
     {
         $this->register(ToolDefinition::read(
             name: 'buscar_equipo',
-            description: 'Busca un equipo por código, patente o nombre. Devuelve ficha resumida con estado, ubicación, datos técnicos y enlaces navegables. Usar solo cuando todavía no se conoce un equipment_id inequívoco.',
-            parameters: ['query' => ['type' => 'string', 'description' => 'Código, patente o nombre del equipo']],
+            description: 'Busca un equipo por código, patente o chasis. Usar solo cuando todavía no se conoce un equipment_id inequívoco o cuando el usuario escribió explícitamente un identificador nuevo. Para identificadores devuelve exact_match=true solo si existe coincidencia exacta. Si exact_match=false e items está vacío, NO usar suggestions como equipo confirmado: ofrecerlas y pedir confirmación.',
+            parameters: ['query' => ['type' => 'string', 'description' => 'Código, patente o chasis escrito por el usuario']],
             permission: 'equipos.ver',
             handlerClass: SearchEquipmentTool::class,
         ));
 
         $this->register(ToolDefinition::read(
             name: 'consultar_equipo',
-            description: 'Consulta la ficha resumida de un equipo ya identificado por equipment_id. Usar para responder estado, sucursal, kilometraje actual, horas actuales, marca/modelo y datos básicos. Si el equipo ya apareció antes en la conversación con su ID, reutilizar ese ID sin volver a buscarlo.',
+            description: 'Consulta la ficha resumida de un equipo ya identificado por equipment_id. Usar para responder estado, sucursal, kilometraje actual, horas actuales, marca/modelo y datos básicos. Si el equipo ya apareció antes en la conversación con su ID y el usuario usa una referencia como "el camión" o "ese equipo", reutilizar ese ID.',
             parameters: [
                 'equipment_id' => ['type' => 'integer', 'description' => 'ID interno del equipo previamente resuelto'],
             ],
@@ -34,7 +34,7 @@ final class StaticToolRegistry implements ToolRegistry
 
         $this->register(ToolDefinition::read(
             name: 'consultar_ultima_lectura',
-            description: 'Obtiene la última lectura registrada de kilómetros y/o horas de un equipo ya identificado. Usar para preguntas como "cuántos km tiene", "cuántas horas tiene" o "cuál fue la última lectura". Si el equipment_id ya está en el historial de la conversación, reutilizarlo sin volver a buscar.',
+            description: 'Obtiene la última lectura registrada de kilómetros y/o horas de un equipo ya identificado. Es la tool preferida para preguntas como "cuántos km tiene", "cuántas horas tiene", "qué kilometraje tiene" o "cuál fue la última lectura". No usar tools de planes para esas preguntas.',
             parameters: [
                 'equipment_id' => ['type' => 'integer', 'description' => 'ID interno del equipo previamente resuelto'],
             ],
@@ -44,7 +44,7 @@ final class StaticToolRegistry implements ToolRegistry
 
         $this->register(ToolDefinition::read(
             name: 'consultar_planes_equipo',
-            description: 'Consulta los planes preventivos activos de un equipo ya resuelto. Si el usuario indicó código, patente o nombre y todavía no existe un equipment_id en el contexto, usar primero buscar_equipo. Si el equipo ya fue resuelto en la conversación, reutilizar su equipment_id. Devuelve estado, intervalos, base, próximo objetivo, lectura actual y enlaces.',
+            description: 'Consulta planes preventivos activos de un equipo ya resuelto. Usar únicamente cuando la intención sea mantenimiento preventivo, vencimientos, próximos servicios o planes. Si el usuario indicó un identificador nuevo y no existe equipment_id confirmado, usar primero buscar_equipo. No usar esta tool para contestar solo kilometraje u horas.',
             parameters: [
                 'equipment_id' => ['type' => 'integer', 'description' => 'ID interno del equipo obtenido previamente'],
                 'state' => ['type' => 'string', 'description' => 'Filtro opcional: AL_DIA, PROXIMO, VENCIDO o SIN_DATOS', 'required' => false],
@@ -55,7 +55,7 @@ final class StaticToolRegistry implements ToolRegistry
 
         $this->register(ToolDefinition::read(
             name: 'listar_equipos_por_estado_plan',
-            description: 'Lista los equipos con planes preventivos en el estado indicado (VENCIDO, PROXIMO, AL_DIA, SIN_DATOS). Cada plan incluye cuánto falta o cuánto se superó el objetivo y enlaces al equipo/planes.',
+            description: 'Lista equipos con planes preventivos en el estado indicado (VENCIDO, PROXIMO, AL_DIA, SIN_DATOS). Usar solo para intención preventiva. Cada plan incluye cuánto falta o cuánto se superó el objetivo y links generados por backend.',
             parameters: [
                 'state' => ['type' => 'string', 'description' => 'Estado a buscar: VENCIDO, PROXIMO, AL_DIA o SIN_DATOS'],
                 'limit' => ['type' => 'integer', 'description' => 'Máximo de equipos a devolver (default 20, max 20)', 'required' => false],
@@ -66,7 +66,7 @@ final class StaticToolRegistry implements ToolRegistry
 
         $this->register(ToolDefinition::read(
             name: 'listar_ordenes_trabajo',
-            description: 'Lista órdenes de trabajo con filtros por estado, equipo, origen y fechas. ESTA es la tool obligatoria para preguntas como "qué OT tengo abiertas", "qué órdenes están abiertas", "qué OT tengo pendientes" o "qué órdenes están en proceso". No responder esas preguntas con planes preventivos. Devuelve enlaces absolutos para abrir/imprimir la OT y ver el equipo.',
+            description: 'Lista órdenes de trabajo con filtros por estado, equipo, origen y fechas. ESTA es la tool obligatoria para preguntas como "qué OT tengo abiertas", "qué órdenes están abiertas", "qué OT tengo pendientes" o "qué órdenes están en proceso". No responder esas preguntas con planes preventivos. Devuelve links generados por backend.',
             parameters: [
                 'state' => ['type' => 'string', 'description' => 'Estado opcional en lenguaje natural: abierta, pendiente, en proceso, espera repuestos, cerrada/finalizada o cancelada', 'required' => false],
                 'states' => ['type' => 'array', 'description' => 'Lista opcional de estados', 'required' => false],
@@ -82,7 +82,7 @@ final class StaticToolRegistry implements ToolRegistry
 
         $this->register(ToolDefinition::read(
             name: 'consultar_orden_trabajo',
-            description: 'Consulta el detalle completo de una OT ya identificada: equipo, estado, servicio, fechas, tareas, costos disponibles y enlaces navegables.',
+            description: 'Consulta el detalle completo de una OT ya identificada: equipo, estado, servicio, fechas, tareas, costos disponibles y links generados por backend.',
             parameters: [
                 'work_order_id' => ['type' => 'integer', 'description' => 'ID interno de la orden de trabajo'],
             ],
