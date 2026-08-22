@@ -289,26 +289,75 @@ TXT;
         return null;
     }
 
+    private const ELLIPTIC_FOLLOW_UP_PATTERN = '/^(?:y\s+)?(?:(?:el|la|ese|esa)\s+)?[a-z0-9][a-z0-9._-]{3,}\s*[?.!]*$/iu';
+
+    private const MEASUREMENT_INTENT_PATTERN = '/\b(km|kilometraje|kilómetros?|kilometros?|horas?|horómetro|horometro|lectura)\b/u';
+
+    /**
+     * Palabras que marcan un cambio de tema explicito y cortan la herencia
+     * de intencion: si aparecen en un user message previo, el seguimiento
+     * eliptico actual NO debe reusar la intencion de medicion anterior.
+     */
+    private const TOPIC_CHANGE_KEYWORDS_PATTERN = '/\b(planes?|mantenimientos?|preventivos?|preventivas?|correctiv[oa]s?|ot\b|ord(e|é)n(es)?|trabajos?|servicios?|tareas?|vencimientos?|pr(ó|o)ximos?|lectura\s+de\s+trabajo|cerrar|cerrad[oa]|finalizad[oa]|asignaci(ó|o)n)\b/u';
+
+    /**
+     * Limite de user messages que se inspeccionan hacia atras al evaluar
+     * la herencia de intencion. Es un limite defensivo: en conversaciones
+     * muy largas la lectura del historial no debe extenderse indefinidamente.
+     */
+    private const INTENT_HISTORY_LOOKBACK = 10;
+
     private function inheritsPreviousMeasurementIntent(string $content, int $conversationId): bool
     {
         $normalized = mb_strtolower(trim($content), 'UTF-8');
-        if (preg_match('/^(?:y\s+)?(?:(?:el|la|ese|esa)\s+)?[a-z0-9][a-z0-9._-]{3,}\s*[?.!]*$/iu', $normalized) !== 1) {
+        if (preg_match(self::ELLIPTIC_FOLLOW_UP_PATTERN, $normalized) !== 1) {
             return false;
         }
 
-        $history = $this->messages->findForConversation($conversationId, limit: 20);
+        $history = $this->messages->findForConversation($conversationId, limit: 50);
         $userMessages = array_values(array_filter(
             $history,
             static fn (Message $message): bool => $message->role === 'user',
         ));
+        // Excluimos el mensaje actual (que termina de agregarse al inicio del handler).
         if (count($userMessages) < 2) {
             return false;
         }
+        $previousUserMessages = array_slice($userMessages, 0, count($userMessages) - 1);
+        $previousUserMessages = array_reverse($previousUserMessages);
 
-        $previous = $userMessages[count($userMessages) - 2]->content;
-        $previousNormalized = mb_strtolower(trim($previous), 'UTF-8');
+        $inspected = 0;
+        foreach ($previousUserMessages as $candidate) {
+            if ($inspected >= self::INTENT_HISTORY_LOOKBACK) {
+                return false;
+            }
+            $inspected++;
 
-        return preg_match('/\b(km|kilometraje|kilómetros?|kilometros?|horas?|horómetro|horometro|lectura)\b/u', $previousNormalized) === 1;
+            $candidateNormalized = mb_strtolower(trim($candidate->content), 'UTF-8');
+
+            // Cambio de tema explicito: no heredar.
+            if (preg_match(self::TOPIC_CHANGE_KEYWORDS_PATTERN, $candidateNormalized) === 1
+                && preg_match(self::MEASUREMENT_INTENT_PATTERN, $candidateNormalized) !== 1) {
+                return false;
+            }
+
+            // Si el candidato previo es tambien un seguimiento eliptico del mismo tipo,
+            // seguimos buscando hacia atras: la intencion vivia antes de el.
+            if (preg_match(self::ELLIPTIC_FOLLOW_UP_PATTERN, $candidateNormalized) === 1) {
+                continue;
+            }
+
+            // Si el candidato previo explicita medicion, heredamos.
+            if (preg_match(self::MEASUREMENT_INTENT_PATTERN, $candidateNormalized) === 1) {
+                return true;
+            }
+
+            // Otro tipo de mensaje (no eliptico, no medicion, sin keyword de cambio
+            // detectada arriba): conservador, no heredar.
+            return false;
+        }
+
+        return false;
     }
 
     private function finishDeterministic(int $conversationId, Message $userMessage, string $content): MessageProcessedResult
