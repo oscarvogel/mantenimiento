@@ -18,6 +18,8 @@
               target="_blank"
               rel="noopener noreferrer"
             >{{ token.label }}</a>
+            <strong v-else-if="token.type === 'strong'">{{ token.text }}</strong>
+            <em v-else-if="token.type === 'em'">{{ token.text }}</em>
             <span v-else>{{ token.text }}</span>
           </template>
           <br v-if="lineIndex < renderedLines.length - 1">
@@ -43,8 +45,6 @@ const safeHref = (rawHref) => {
 
   try {
     if (/^https?:\/\//i.test(href)) {
-      // Una URL válida no puede contener un segundo esquema HTTP embebido.
-      // Esto corta explícitamente regresiones del tipo baseA + baseB.
       const schemes = href.match(/https?:\/\//gi) || []
       if (schemes.length !== 1) return null
 
@@ -65,8 +65,9 @@ const safeHref = (rawHref) => {
 
 const tokenizeLine = (line) => {
   const tokens = []
-  // Markdown links seguros + URLs absolutas + rutas históricas relativas del sistema.
-  const pattern = /\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/mantenimiento\/[^\s)]+)\)|(https?:\/\/[^\s<>()]+|\/mantenimiento\/[A-Za-z0-9_\-\/.?&=#%]+)/g
+  // Solo un subconjunto seguro de Markdown: links http(s), negrita e itálica.
+  // El contenido siempre se renderiza mediante interpolación Vue; no se usa v-html.
+  const pattern = /\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/mantenimiento\/[^\s)]+)\)|(\*\*([^*]+)\*\*)|(\*([^*]+)\*)|(https?:\/\/[^\s<>()]+|\/mantenimiento\/[A-Za-z0-9_\-\/.?&=#%]+)/g
   let lastIndex = 0
   let match
 
@@ -75,18 +76,22 @@ const tokenizeLine = (line) => {
       tokens.push({ type: 'text', text: line.slice(lastIndex, match.index) })
     }
 
-    const markdownLabel = match[1]
-    const rawHref = match[2] || match[3]
-    const href = safeHref(rawHref)
-    if (href) {
-      tokens.push({
-        type: 'link',
-        href,
-        label: markdownLabel || rawHref,
-      })
-    } else {
-      tokens.push({ type: 'text', text: match[0] })
+    if (match[1] && match[2]) {
+      const href = safeHref(match[2])
+      tokens.push(href
+        ? { type: 'link', href, label: match[1] }
+        : { type: 'text', text: match[0] })
+    } else if (match[3] && match[4]) {
+      tokens.push({ type: 'strong', text: match[4] })
+    } else if (match[5] && match[6]) {
+      tokens.push({ type: 'em', text: match[6] })
+    } else if (match[7]) {
+      const href = safeHref(match[7])
+      tokens.push(href
+        ? { type: 'link', href, label: match[7] }
+        : { type: 'text', text: match[0] })
     }
+
     lastIndex = pattern.lastIndex
   }
 
