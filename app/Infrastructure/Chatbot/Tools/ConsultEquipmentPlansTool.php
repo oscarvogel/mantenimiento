@@ -13,6 +13,7 @@ final class ConsultEquipmentPlansTool implements ToolHandler
 {
     public function __construct(
         private readonly ?ListPreventivePlansHandler $plans = null,
+        private readonly ?ChatbotEntityLinkBuilder $links = null,
     ) {}
 
     /**
@@ -35,6 +36,9 @@ final class ConsultEquipmentPlansTool implements ToolHandler
         /** @var ListPreventivePlansHandler $handler */
         $handler = $this->plans ?? service('listPreventivePlans');
         $page = $handler->execute($actor, $filters, page: 1, perPage: 25);
+        $linkBuilder = $this->links ?? new ChatbotEntityLinkBuilder();
+        $equipmentLinks = $linkBuilder->equipment($equipmentId);
+        $planLinks = $linkBuilder->planList($equipmentId, $state !== '' ? $state : null);
 
         $summary = [
             'VENCIDO' => 0,
@@ -43,15 +47,17 @@ final class ConsultEquipmentPlansTool implements ToolHandler
             'SIN_DATOS' => 0,
         ];
 
-        $items = array_map(static function (array $item) use (&$summary, $equipmentId): array {
+        $items = array_map(static function (array $item) use (&$summary, $equipmentLinks, $planLinks): array {
             $computedState = (string) ($item['state'] ?? 'SIN_DATOS');
             if (array_key_exists($computedState, $summary)) {
                 $summary[$computedState]++;
             }
 
             return $item + [
-                'equipment_url' => '/mantenimiento/equipos/' . $equipmentId,
-                'plans_url' => '/mantenimiento/planes?equipo_id=' . $equipmentId,
+                'links' => [
+                    'equipment' => $equipmentLinks['detail'],
+                    'plans' => $planLinks['detail'],
+                ],
             ];
         }, $page->items);
 
@@ -61,6 +67,10 @@ final class ConsultEquipmentPlansTool implements ToolHandler
             'summary' => $summary,
             'items' => $items,
             'has_more' => $page->total > count($items),
+            'links' => [
+                'equipment' => $equipmentLinks['detail'],
+                'plans' => $planLinks['detail'],
+            ],
         ];
     }
 }

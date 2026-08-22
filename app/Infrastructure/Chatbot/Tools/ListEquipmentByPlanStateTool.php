@@ -12,10 +12,6 @@ use DomainException;
 /**
  * Lista equipos con planes preventivos en el estado indicado.
  * Reusa ListPreventivePlansHandler: aplica state filter y agrupa por equipo.
- *
- * El handler de planes devuelve una fila por plan; aqui agrupamos por equipo
- * para que el chatbot pueda responder "que camiones tienen planes vencidos"
- * de forma directa sin pedir un identificador.
  */
 final class ListEquipmentByPlanStateTool implements ToolHandler
 {
@@ -24,6 +20,7 @@ final class ListEquipmentByPlanStateTool implements ToolHandler
 
     public function __construct(
         private readonly ?ListPreventivePlansHandler $plans = null,
+        private readonly ?ChatbotEntityLinkBuilder $links = null,
     ) {}
 
     /**
@@ -42,18 +39,24 @@ final class ListEquipmentByPlanStateTool implements ToolHandler
         /** @var ListPreventivePlansHandler $handler */
         $handler = $this->plans ?? service('listPreventivePlans');
         $page = $handler->execute($actor, ['state' => $state], page: 1, perPage: 100);
+        $linkBuilder = $this->links ?? new ChatbotEntityLinkBuilder();
 
         $byEquipment = [];
         $today = new \DateTimeImmutable('today');
         foreach ($page->items as $row) {
             $eid = (int) $row['equipment_id'];
             if (! isset($byEquipment[$eid])) {
+                $equipmentLinks = $linkBuilder->equipment($eid);
                 $byEquipment[$eid] = [
                     'equipment_id' => $eid,
                     'equipment_code' => $row['equipment_code'],
                     'equipment_plate' => $row['equipment_plate'],
                     'equipment_type_name' => $row['equipment_type_name'],
                     'branch_name' => $row['branch_name'],
+                    'links' => [
+                        'equipment' => $equipmentLinks['detail'],
+                        'plans' => $linkBuilder->planList($eid, $state)['detail'],
+                    ],
                     'plans' => [],
                 ];
             }
@@ -98,8 +101,10 @@ final class ListEquipmentByPlanStateTool implements ToolHandler
                 'current_hours' => $row['current_hours'],
                 'current_date' => $row['current_date'],
                 'vencimiento' => $vencimientoTexto,
-                'equipment_url' => '/mantenimiento/equipos/' . $eid,
-                'plans_url' => '/mantenimiento/planes?equipo_id=' . $eid,
+                'links' => [
+                    'equipment' => $byEquipment[$eid]['links']['equipment'],
+                    'plans' => $byEquipment[$eid]['links']['plans'],
+                ],
             ];
         }
 
@@ -116,7 +121,7 @@ final class ListEquipmentByPlanStateTool implements ToolHandler
             'returned' => count($shown),
             'truncated' => $totalEquipment > count($shown),
             'items' => $shown,
-            'list_url' => '/mantenimiento/planes?estado=' . $state,
+            'links' => $linkBuilder->planList(null, $state),
         ];
     }
 }

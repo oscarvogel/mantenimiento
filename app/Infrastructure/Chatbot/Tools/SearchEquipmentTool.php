@@ -12,6 +12,7 @@ final class SearchEquipmentTool implements ToolHandler
 {
     public function __construct(
         private readonly EquipmentListReadModel $equipment,
+        private readonly ?ChatbotEntityLinkBuilder $links = null,
     ) {}
 
     /**
@@ -31,8 +32,7 @@ final class SearchEquipmentTool implements ToolHandler
         }
 
         $branchIds = $actor->hasAllCompanyBranches() ? null : $actor->branchIds();
-
-        return $this->equipment->search(
+        $result = $this->equipment->search(
             companyId: $companyId,
             branchIds: $branchIds,
             query: $query,
@@ -43,5 +43,17 @@ final class SearchEquipmentTool implements ToolHandler
             page: 1,
             perPage: 10,
         );
+
+        $linkBuilder = $this->links ?? new ChatbotEntityLinkBuilder();
+        $result['items'] = array_map(static function (array $item) use ($linkBuilder): array {
+            $equipmentId = (int) ($item['id'] ?? 0);
+            if ($equipmentId <= 0) {
+                return $item;
+            }
+
+            return $item + ['links' => $linkBuilder->equipment($equipmentId)];
+        }, $result['items'] ?? []);
+
+        return $result;
     }
 }
