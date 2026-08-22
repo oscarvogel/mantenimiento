@@ -6,7 +6,7 @@
     title="Abrir asistente IA"
   >
     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 14.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
     </svg>
   </button>
 
@@ -30,6 +30,12 @@
     </div>
 
     <div ref="messagesContainer" class="flex-1 overflow-y-auto p-4 space-y-3">
+      <div
+        v-if="historyTruncated"
+        class="text-center text-[11px] text-gray-400"
+      >
+        Mostrando los últimos {{ CHAT_VISIBLE_HISTORY_LIMIT }} mensajes
+      </div>
       <ChatMessage
         v-for="msg in messages"
         :key="msg.tempId"
@@ -86,6 +92,7 @@ import ChatVoiceButton from './ChatVoiceButton.vue'
 
 const REQUEST_TIMEOUT_MS = 30000
 const CHAT_STORAGE_KEY = 'mantenimiento.chatbot.conv'
+const CHAT_VISIBLE_HISTORY_LIMIT = 10
 
 const isOpen = ref(false)
 const messages = ref([])
@@ -97,21 +104,10 @@ const conversationId = ref(null)
 const lastError = ref('')
 const isConnected = ref(true)
 const messagesContainer = ref(null)
+const historyTruncated = ref(false)
 let tempIdCounter = 0
 let activeController = null
 let hasRestoredSession = false
-
-const toggle = () => {
-  isOpen.value = !isOpen.value
-  if (isOpen.value && conversationId.value === null && !hasRestoredSession) {
-    hasRestoredSession = true
-    restoreConversation().then((restored) => {
-      if (!restored && conversationId.value === null) {
-        startConversation()
-      }
-    })
-  }
-}
 
 const scrollToBottom = () => {
   nextTick(() => {
@@ -119,6 +115,25 @@ const scrollToBottom = () => {
       messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
     }
   })
+}
+
+const toggle = () => {
+  isOpen.value = !isOpen.value
+  if (!isOpen.value) return
+
+  if (conversationId.value !== null) {
+    scrollToBottom()
+    return
+  }
+
+  if (!hasRestoredSession) {
+    hasRestoredSession = true
+    restoreConversation().then((restored) => {
+      if (!restored && conversationId.value === null) {
+        startConversation()
+      }
+    })
+  }
 }
 
 const getCsrfToken = () => {
@@ -148,6 +163,7 @@ const startConversation = async () => {
       role: 'assistant',
       content: 'Hola, soy tu asistente de mantenimiento. ¿En qué puedo ayudarte?',
     })
+    scrollToBottom()
   } catch (e) {
     lastError.value = 'No pude iniciar la conversación. Reintentá más tarde.'
   }
@@ -169,28 +185,29 @@ const restoreConversation = async () => {
       headers: { 'Accept': 'application/json' },
     })
     if (!res.ok) {
-      // El servidor rechazo la conv (expirada, no accesible, etc): limpiarla
       try { window.localStorage.removeItem(CHAT_STORAGE_KEY) } catch (_) {}
       return false
     }
     const data = await res.json()
     if (!data.messages || data.messages.length === 0) {
-      // Conv existe pero sin mensajes: limpiar (era valida pero ya no sirve)
       try { window.localStorage.removeItem(CHAT_STORAGE_KEY) } catch (_) {}
       return false
     }
+
     conversationId.value = convId
-    for (const m of data.messages) {
-      messages.value.push({
-        tempId: ++tempIdCounter,
-        role: m.role,
-        content: m.content ?? '',
-      })
-    }
+    const recentMessages = data.messages.slice(-CHAT_VISIBLE_HISTORY_LIMIT)
+    historyTruncated.value = data.messages.length > CHAT_VISIBLE_HISTORY_LIMIT
+    messages.value = recentMessages.map((m) => ({
+      tempId: ++tempIdCounter,
+      role: m.role,
+      content: m.content ?? '',
+    }))
+
     if (data.csrf?.hash) {
       const meta = document.querySelector('meta[name="csrf-token"]')
       if (meta) meta.setAttribute('content', data.csrf.hash)
     }
+    scrollToBottom()
     return true
   } catch (_) {
     return false
@@ -275,7 +292,6 @@ const sendMessage = async () => {
         streaming: false,
       }
     }
-    console.log('[chatbot] Replaced message at idx', idx, 'content len:', assistantText.length)
   } catch (e) {
     console.error('[chatbot] sendMessage error:', e.name, e.message)
     if (e.name === 'AbortError') {

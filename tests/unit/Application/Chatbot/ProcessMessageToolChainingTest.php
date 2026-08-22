@@ -127,7 +127,10 @@ final class ProcessMessageToolChainingTest extends TestCase
         $this->assertSame(['buscar_equipo', ['query' => 'AB123CD']], $executor->executed[0]);
         $this->assertSame(['consultar_planes_equipo', ['equipment_id' => 14]], $executor->executed[1]);
         $this->assertCount(3, $provider->calls);
-        $this->assertStringContainsString('"id":14', $provider->calls[1][2]['content']);
-        $this->assertStringContainsString('"state":"PROXIMO"', $provider->calls[2][4]['content']);
+        $this->assertStringContainsString('"id":14', $provider->calls[1][3]['content']);
+        $this->assertStringContainsString('"state":"PROXIMO"', $provider->calls[2][5]['content']);
+        $this->assertStringContainsString('Nunca construyas, completes, corrijas, combines ni infieras URLs', $provider->calls[0][0]['content']);
+        $this->assertStringContainsString('exact_match=false', $provider->calls[0][0]['content']);
+        $this->assertStringContainsString('NUNCA planes', $provider->calls[0][0]['content']);
     }
 }

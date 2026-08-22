@@ -13,40 +13,49 @@ use App\Application\Chatbot\Port\MessageRepository;
 use App\Application\Chatbot\Port\ToolExecutor;
 use App\Application\Chatbot\Port\ToolRegistry;
 use App\Application\Chatbot\Result\MessageProcessedResult;
+use App\Application\Chatbot\Support\MarkdownTextCleaner;
 use App\Application\Identity\ActorContext;
 use App\Domain\Chatbot\ChatError;
 use App\Domain\Chatbot\Conversation;
 use App\Domain\Chatbot\Message;
 use App\Domain\Chatbot\ToolCallResult;
-use App\Application\Chatbot\Support\MarkdownTextCleaner;
 
 final class ProcessMessageHandler
 {
     private const MAX_TOOL_ROUNDS = 4;
 
-    /**
-     * Prompt de sistema: define alcance, idioma y limites del asistente.
-     * Se antepone en cada llamada al provider (la API es stateless).
-     * Cambiar aqui cambia el comportamiento para TODA conversacion nueva.
-     */
     private const SYSTEM_PROMPT = <<<'TXT'
 Sos el asistente virtual del sistema de Gestión de Mantenimiento (Vogel Consultoría).
 Tu alcance está estrictamente limitado a este sistema y sus datos.
 
 ALCANCE (respondes solo sobre estos temas):
-- Equipos / flota: busqueda individual por código, patente o nombre; listados por estado de plan.
+- Equipos / flota: busqueda individual por código, patente o chasis; listados por estado de plan.
 - Planes preventivos: estado (AL_DIA, PROXIMO, VENCIDO, SIN_DATOS), intervalos, próximas mantenciones, kilometraje, horas, fechas.
 - Lecturas (carga, corrección, regularizaciones) y ordenes de trabajo.
 - Catálogo de servicios de mantenimiento y catálogo de tareas.
 - Sucursales y usuarios del sistema (dentro del alcance del usuario actual).
 
+REGLAS DE TOOLS (selección inequívoca - OBLIGATORIO):
+- Preguntas sobre OT abiertas/pendientes/en proceso/cerradas → usar listar_ordenes_trabajo o consultar_orden_trabajo, NUNCA planes. Ej: "qué OT tengo abierta" → listar_ordenes_trabajo.
+- Preguntas sobre kilometraje/horas actuales o última lectura → OBLIGATORIO usar consultar_equipo o consultar_ultima_lectura, NUNCA planes. Si el usuario da código/patente/chasis y todavía no hay equipment_id, resolver primero con buscar_equipo.
+- Si un equipo ya fue resuelto y luego el usuario dice "el camión", "el equipo" o "cuantos km tiene el camion" SIN nuevo código, REUTILIZAR OBLIGATORIAMENTE ese equipment_id con consultar_ultima_lectura, NUNCA inventar otro id ni volver a buscar.
+- Si el usuario escribe EXPLÍCITAMENTE un nuevo código, patente o chasis, DEBES llamar INMEDIATAMENTE a buscar_equipo con ese valor, sin pedir confirmación y sin reutilizar el equipo anterior.
+- Si buscar_equipo devuelve exact_match=false e items vacío, NO usar ninguna sugerencia como si fuera el equipo correcto. Informar que no hubo coincidencia exacta y, si hay suggestions, ofrecerlas para confirmación del usuario.
+- NUNCA inventes kilometraje, horas, fechas, IDs ni entidades; si una herramienta no devuelve el dato, dilo. Herramientas de planes SOLO para consultas preventivas (vencido, próximo, plan, mantenimiento programado).
+
+REGLAS DE LINKS (OBLIGATORIO):
+- Nunca construyas, completes, corrijas, combines ni infieras URLs.
+- Solamente podés mostrar una URL cuando esté presente literalmente dentro del campo links devuelto por una herramienta.
+- Copiá esa URL exactamente, sin prefijarla, concatenarla ni cambiar dominio, protocolo, puerto, path o query string.
+- Si la herramienta no devuelve un link, no inventes uno.
+
 FORMATO DE LAS RESPUESTAS:
-- Responde siempre en español riopratense (Argentina), en forma breve y profesional.
+- Responde siempre en español rioplatense (Argentina), en forma breve y profesional.
 - Escribi SIEMPRE en prosa con bullets (listas con "- ..."). NO uses tablas markdown.
 - Para listar equipos/resultados, una linea corta por item, sin alineacion ni columnas.
 - Separa los datos del sistema con espacios y unidades (ej. "121.250 km", "10 dias", "4975 horas"), no agrupes en columnas.
-- Si hay URLs utiles para profundizar (detalle del equipo o lista filtrada), mencionalas en una linea aparte al final como "Ver detalle: /mantenimiento/equipos/85".
-- Cierra ofreciendo el siguiente paso cuando aplique, en una sola oracion ("¿Querés que abra el detalle de alguno para generar la orden de trabajo?").
+- Si una herramienta devuelve URLs útiles en links, podés mostrarlas en una línea aparte como link Markdown usando exactamente esa URL.
+- Cierra ofreciendo el siguiente paso cuando aplique, en una sola oracion.
 - Cuando uses datos del sistema, mencionalos explicitamente; nunca inventes valores.
 - Si una herramienta devuelve error, informa el mensaje tal cual sin reintentarla por tu cuenta.
 
@@ -78,6 +87,11 @@ TXT;
 
         $userMessage = Message::user($command->conversationId, $command->content);
         $this->messages->append($userMessage);
+
+        $deterministic = $this->tryHandleExplicitMeasurementLookup($actor, $command, $userMessage);
+        if ($deterministic !== null) {
+            return $deterministic;
+        }
 
         $history = $this->messages->findForConversation($command->conversationId, limit: 20);
         $providerMessages = $this->withSystemPrompt($this->toProviderMessages($history));
@@ -135,6 +149,223 @@ TXT;
         $this->messages->append($assistantMessage);
 
         return new MessageProcessedResult(messages: [$userMessage, $assistantMessage], streaming: $onChunk !== null);
+    }
+
+    private function tryHandleExplicitMeasurementLookup(
+        ActorContext $actor,
+        SendMessageCommand $command,
+        Message $userMessage,
+    ): ?MessageProcessedResult {
+        $identifier = $this->extractExplicitIdentifierForMeasurement($command->content, $command->conversationId);
+        if ($identifier === null || ! $actor->hasPermission('equipos.ver')) {
+            return null;
+        }
+
+        $searchCall = [
+            'id' => 'det_search_' . uniqid(),
+            'name' => 'buscar_equipo',
+            'arguments' => ['query' => $identifier],
+        ];
+        $searchResult = $this->toolExecutor->execute('buscar_equipo', $searchCall['arguments'], $actor);
+        $this->messages->append($this->buildToolMessage($command->conversationId, $searchCall, $searchResult));
+
+        if (! $searchResult->success) {
+            return $this->finishDeterministic($command->conversationId, $userMessage, $searchResult->errorMessage ?? 'No pude buscar el equipo.');
+        }
+
+        $payload = is_array($searchResult->result) ? $searchResult->result : [];
+        $items = is_array($payload['items'] ?? null) ? $payload['items'] : [];
+        $exactMatch = ($payload['exact_match'] ?? null) === true;
+
+        if (! $exactMatch || count($items) !== 1) {
+            $text = 'No encontré un equipo con código, patente o chasis **' . $identifier . '**.';
+            $suggestions = is_array($payload['suggestions'] ?? null) ? $payload['suggestions'] : [];
+            if ($suggestions !== []) {
+                $labels = [];
+                foreach (array_slice($suggestions, 0, 3) as $suggestion) {
+                    if (! is_array($suggestion)) {
+                        continue;
+                    }
+                    $code = trim((string) ($suggestion['codigo'] ?? ''));
+                    $plate = trim((string) ($suggestion['patente'] ?? ''));
+                    $labels[] = trim($code . ($plate !== '' ? ' (' . $plate . ')' : ''));
+                }
+                if ($labels !== []) {
+                    $text .= ' Encontré como posibles coincidencias: ' . implode(', ', $labels) . '. Confirmame cuál querés consultar.';
+                }
+            }
+            return $this->finishDeterministic($command->conversationId, $userMessage, $text);
+        }
+
+        $equipment = $items[0];
+        $equipmentId = (int) ($equipment['id'] ?? 0);
+        if ($equipmentId <= 0) {
+            return $this->finishDeterministic($command->conversationId, $userMessage, 'Encontré el equipo, pero no pude resolver su identificador interno.');
+        }
+
+        $toolName = $actor->hasPermission('lecturas.ver') ? 'consultar_ultima_lectura' : 'consultar_equipo';
+        $metricCall = [
+            'id' => 'det_metric_' . uniqid(),
+            'name' => $toolName,
+            'arguments' => ['equipment_id' => $equipmentId],
+        ];
+        $metricResult = $this->toolExecutor->execute($toolName, $metricCall['arguments'], $actor);
+        $this->messages->append($this->buildToolMessage($command->conversationId, $metricCall, $metricResult));
+
+        if (! $metricResult->success) {
+            return $this->finishDeterministic($command->conversationId, $userMessage, $metricResult->errorMessage ?? 'No pude consultar la lectura del equipo.');
+        }
+
+        $result = is_array($metricResult->result) ? $metricResult->result : [];
+        $code = trim((string) ($equipment['codigo'] ?? $result['code'] ?? $identifier));
+        $plate = trim((string) ($equipment['patente'] ?? $result['plate'] ?? ''));
+        $title = $code !== '' ? $code : $identifier;
+        if ($plate !== '' && strcasecmp($plate, $title) !== 0) {
+            $title .= ' (' . $plate . ')';
+        }
+
+        $km = null;
+        $hours = null;
+        $recordedAt = null;
+        if ($toolName === 'consultar_ultima_lectura') {
+            $reading = is_array($result['reading'] ?? null) ? $result['reading'] : [];
+            $km = $reading['kilometers'] ?? null;
+            $hours = $reading['hours'] ?? null;
+            $recordedAt = $reading['recorded_at'] ?? null;
+        } else {
+            $km = $result['current_km'] ?? null;
+            $hours = $result['current_hours'] ?? null;
+        }
+
+        $parts = [];
+        if ($km !== null && $km !== '') {
+            $parts[] = number_format((float) $km, 0, ',', '.') . ' km';
+        }
+        if ($hours !== null && $hours !== '') {
+            $formattedHours = rtrim(rtrim(number_format((float) $hours, 1, ',', '.'), '0'), ',');
+            $parts[] = $formattedHours . ' horas';
+        }
+
+        $text = $parts === []
+            ? 'El equipo **' . $title . '** no tiene una lectura vigente de kilómetros u horas.'
+            : 'El equipo **' . $title . '** registra **' . implode('** y **', $parts) . '**.';
+
+        if ($recordedAt !== null && $recordedAt !== '') {
+            $text .= ' Última lectura: ' . $recordedAt . '.';
+        }
+
+        $links = is_array($result['links'] ?? null) ? $result['links'] : [];
+        $detail = trim((string) ($links['detail'] ?? ''));
+        if ($detail !== '') {
+            $text .= "\n\n[Ver equipo](" . $detail . ')';
+        }
+
+        return $this->finishDeterministic($command->conversationId, $userMessage, $text);
+    }
+
+    private function extractExplicitIdentifierForMeasurement(string $content, int $conversationId): ?string
+    {
+        $normalized = mb_strtolower(trim($content), 'UTF-8');
+        $hasMeasurementIntent = preg_match('/\b(km|kilometraje|kilómetros?|kilometros?|horas?|horómetro|horometro|lectura)\b/u', $normalized) === 1;
+
+        if (! $hasMeasurementIntent && ! $this->inheritsPreviousMeasurementIntent($content, $conversationId)) {
+            return null;
+        }
+
+        if (preg_match_all('/\b[A-Za-z0-9][A-Za-z0-9._-]{3,}\b/', $content, $matches) !== 1 && empty($matches[0])) {
+            return null;
+        }
+
+        $stop = ['cuantos', 'cuantas', 'tiene', 'movil', 'móvil', 'camion', 'camión', 'equipo', 'lectura', 'ultima', 'última', 'horas', 'hora', 'kilometraje'];
+        foreach (array_reverse($matches[0] ?? []) as $candidate) {
+            if (in_array(mb_strtolower($candidate, 'UTF-8'), $stop, true)) {
+                continue;
+            }
+            if (preg_match('/[0-9]/', $candidate) === 1) {
+                return strtoupper($candidate);
+            }
+        }
+
+        return null;
+    }
+
+    private const ELLIPTIC_FOLLOW_UP_PATTERN = '/^(?:y\s+)?(?:(?:el|la|ese|esa)\s+)?[a-z0-9][a-z0-9._-]{3,}\s*[?.!]*$/iu';
+
+    private const MEASUREMENT_INTENT_PATTERN = '/\b(km|kilometraje|kilómetros?|kilometros?|horas?|horómetro|horometro|lectura)\b/u';
+
+    /**
+     * Palabras que marcan un cambio de tema explicito y cortan la herencia
+     * de intencion: si aparecen en un user message previo, el seguimiento
+     * eliptico actual NO debe reusar la intencion de medicion anterior.
+     */
+    private const TOPIC_CHANGE_KEYWORDS_PATTERN = '/\b(planes?|mantenimientos?|preventivos?|preventivas?|correctiv[oa]s?|ot\b|ord(e|é)n(es)?|trabajos?|servicios?|tareas?|vencimientos?|pr(ó|o)ximos?|lectura\s+de\s+trabajo|cerrar|cerrad[oa]|finalizad[oa]|asignaci(ó|o)n)\b/u';
+
+    /**
+     * Limite de user messages que se inspeccionan hacia atras al evaluar
+     * la herencia de intencion. Es un limite defensivo: en conversaciones
+     * muy largas la lectura del historial no debe extenderse indefinidamente.
+     */
+    private const INTENT_HISTORY_LOOKBACK = 10;
+
+    private function inheritsPreviousMeasurementIntent(string $content, int $conversationId): bool
+    {
+        $normalized = mb_strtolower(trim($content), 'UTF-8');
+        if (preg_match(self::ELLIPTIC_FOLLOW_UP_PATTERN, $normalized) !== 1) {
+            return false;
+        }
+
+        $history = $this->messages->findForConversation($conversationId, limit: 50);
+        $userMessages = array_values(array_filter(
+            $history,
+            static fn (Message $message): bool => $message->role === 'user',
+        ));
+        // Excluimos el mensaje actual (que termina de agregarse al inicio del handler).
+        if (count($userMessages) < 2) {
+            return false;
+        }
+        $previousUserMessages = array_slice($userMessages, 0, count($userMessages) - 1);
+        $previousUserMessages = array_reverse($previousUserMessages);
+
+        $inspected = 0;
+        foreach ($previousUserMessages as $candidate) {
+            if ($inspected >= self::INTENT_HISTORY_LOOKBACK) {
+                return false;
+            }
+            $inspected++;
+
+            $candidateNormalized = mb_strtolower(trim($candidate->content), 'UTF-8');
+
+            // Cambio de tema explicito: no heredar.
+            if (preg_match(self::TOPIC_CHANGE_KEYWORDS_PATTERN, $candidateNormalized) === 1
+                && preg_match(self::MEASUREMENT_INTENT_PATTERN, $candidateNormalized) !== 1) {
+                return false;
+            }
+
+            // Si el candidato previo es tambien un seguimiento eliptico del mismo tipo,
+            // seguimos buscando hacia atras: la intencion vivia antes de el.
+            if (preg_match(self::ELLIPTIC_FOLLOW_UP_PATTERN, $candidateNormalized) === 1) {
+                continue;
+            }
+
+            // Si el candidato previo explicita medicion, heredamos.
+            if (preg_match(self::MEASUREMENT_INTENT_PATTERN, $candidateNormalized) === 1) {
+                return true;
+            }
+
+            // Otro tipo de mensaje (no eliptico, no medicion, sin keyword de cambio
+            // detectada arriba): conservador, no heredar.
+            return false;
+        }
+
+        return false;
+    }
+
+    private function finishDeterministic(int $conversationId, Message $userMessage, string $content): MessageProcessedResult
+    {
+        $assistant = Message::assistant($conversationId, MarkdownTextCleaner::normalize($content));
+        $this->messages->append($assistant);
+
+        return new MessageProcessedResult(messages: [$userMessage, $assistant], streaming: false);
     }
 
     private function executeConfirmedToolCalls(ActorContext $actor, SendMessageCommand $command, Conversation $conversation, ?callable $onChunk = null): MessageProcessedResult
@@ -199,7 +430,6 @@ TXT;
         );
     }
 
-    /** @return array<int, \App\Domain\Chatbot\ToolDefinition> */
     private function toolsForActor(ActorContext $actor): array
     {
         return array_values(array_filter(
@@ -208,7 +438,6 @@ TXT;
         ));
     }
 
-    /** @return array<int, array<string, mixed>> */
     private function toProviderMessages(array $messages): array
     {
         return array_map(function (Message $message): array {
@@ -223,13 +452,6 @@ TXT;
         }, $messages);
     }
 
-    /**
-     * Antepone el prompt de sistema. La API es stateless: si no lo enviamos
-     * en cada llamada, el modelo "olvida" las reglas entre turnos.
-     *
-     * @param array<int, array<string, mixed>> $messages
-     * @return array<int, array<string, mixed>>
-     */
     private function withSystemPrompt(array $messages): array
     {
         if ($messages !== [] && ($messages[0]['role'] ?? null) === 'system') {
@@ -241,7 +463,6 @@ TXT;
         );
     }
 
-    /** @return array<string, mixed> */
     private function assistantToolCallsForProvider(AIResponse $response): array
     {
         return [
@@ -258,7 +479,6 @@ TXT;
         ];
     }
 
-    /** @return array<string, mixed> */
     private function toolMessageForProvider(Message $message): array
     {
         $payload = $message->toolCalls ?? [];
@@ -275,10 +495,6 @@ TXT;
         ];
     }
 
-    /**
-     * @param array<int, array<string, mixed>> $providerMessages
-     * @param array<int, \App\Domain\Chatbot\ToolDefinition> $tools
-     */
     private function askProvider(array $providerMessages, array $tools, ?callable $onChunk): AIResponse
     {
         return $onChunk === null

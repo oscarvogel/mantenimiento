@@ -87,8 +87,14 @@ final class ListWorkOrdersTool implements ToolHandler
         ];
 
         $normalized = [];
+        // Estados abiertos: ABIERTA incluye todas las OT no finalizadas
+        $openStates = ['EMITIDA', 'EN_PROCESO', 'EN_ESPERA_REPUESTOS', 'BORRADOR'];
         foreach ($values as $raw) {
             $key = strtoupper(trim(str_replace('-', ' ', (string) $raw)));
+            if ($key === 'ABIERTA' || $key === 'ABIERTAS' || $key === 'ABIERTO' || $key === 'ABIERTOS') {
+                foreach ($openStates as $s) { $normalized[] = $s; }
+                continue;
+            }
             if (! isset($map[$key])) {
                 throw new DomainException('Estado de OT inválido: ' . (string) $raw);
             }
