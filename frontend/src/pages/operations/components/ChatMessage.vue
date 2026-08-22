@@ -43,6 +43,11 @@ const safeHref = (rawHref) => {
 
   try {
     if (/^https?:\/\//i.test(href)) {
+      // Una URL válida no puede contener un segundo esquema HTTP embebido.
+      // Esto corta explícitamente regresiones del tipo baseA + baseB.
+      const schemes = href.match(/https?:\/\//gi) || []
+      if (schemes.length !== 1) return null
+
       const url = new URL(href)
       return ['http:', 'https:'].includes(url.protocol) ? url.href : null
     }
