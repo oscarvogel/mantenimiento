@@ -132,6 +132,31 @@ final class ProcessMessageDeterministicMeasurementTest extends TestCase
         self::assertStringContainsString('123.456 km', $result->messages[1]->content);
     }
 
+    public function testEllipticFollowUpWithoutYUsesIdentifierWrittenByUser(): void
+    {
+        [$handler, $executor, $provider, $messages] = $this->makeHandler([
+            'buscar_equipo' => ToolCallResult::success('s3', 'buscar_equipo', [
+                'items' => [],
+                'total' => 0,
+                'query' => 'NEB021',
+                'exact_match' => false,
+                'suggestions' => [],
+            ]),
+        ]);
+
+        $messages->append(Message::user(1, 'que km tiene AA0000BB'));
+        $messages->append(Message::assistant(1, 'No encontré un equipo con código, patente o chasis AA0000BB.'));
+
+        $result = $handler->execute($this->actor(), new SendMessageCommand(1, 'el NEB021?'));
+
+        self::assertSame([
+            ['buscar_equipo', ['query' => 'NEB021']],
+        ], $executor->executed);
+        self::assertSame(0, $provider->calls);
+        self::assertStringContainsString('NEB021', $result->messages[1]->content);
+        self::assertStringNotContainsString('CA-EX-01', $result->messages[1]->content);
+    }
+
     private function actor(): ActorContext
     {
         return ActorContext::fromArray([
