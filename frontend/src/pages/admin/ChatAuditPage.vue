@@ -12,6 +12,12 @@ const total = ref(0)
 const selected = ref(null)
 const detailLoading = ref(false)
 const showCompanyFilter = computed(() => props.data.showCompanyFilter !== false)
+const apiUrl = computed(() => {
+  if (props.data.apiUrl) return props.data.apiUrl.replace(/\/$/, '')
+  const current = window.location.pathname
+  const root = current.includes('/superadmin') ? current.split('/superadmin')[0] : current.split('/administracion')[0]
+  return `${root}/mantenimiento/chatbot/auditoria`.replace(/\/+/g, '/')
+})
 
 function qs(targetPage = 1) {
   const p = new URLSearchParams({ page: String(targetPage), perPage: '25' })
@@ -22,7 +28,7 @@ function qs(targetPage = 1) {
 async function load(targetPage = 1) {
   loading.value = true; error.value = ''
   try {
-    const response = await fetch(`${props.data.apiUrl}?${qs(targetPage)}`, { headers: { Accept: 'application/json' } })
+    const response = await fetch(`${apiUrl.value}?${qs(targetPage)}`, { headers: { Accept: 'application/json' } })
     if (!response.ok) throw new Error(response.status === 403 ? 'No tenés permiso para ver esta auditoría.' : 'No se pudo cargar la auditoría.')
     const payload = await response.json()
     items.value = payload.items ?? []
@@ -35,7 +41,7 @@ async function load(targetPage = 1) {
 async function openDetail(id) {
   detailLoading.value = true; error.value = ''
   try {
-    const response = await fetch(`${props.data.apiUrl}/${id}`, { headers: { Accept: 'application/json' } })
+    const response = await fetch(`${apiUrl.value}/${id}`, { headers: { Accept: 'application/json' } })
     if (!response.ok) throw new Error('No se pudo abrir la conversación.')
     selected.value = (await response.json()).conversation
   } catch (e) { error.value = e.message } finally { detailLoading.value = false }
@@ -54,7 +60,7 @@ onMounted(() => load(1))
 <template>
   <section class="space-y-5">
     <header>
-      <h1 class="text-2xl font-bold text-slate-900">{{ data.title }}</h1>
+      <h1 class="text-2xl font-bold text-slate-900">{{ data.title || 'Auditoría del chatbot' }}</h1>
       <p class="mt-1 text-sm text-slate-500">{{ data.subtitle }}</p>
     </header>
 
