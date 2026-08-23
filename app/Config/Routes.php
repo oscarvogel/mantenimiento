@@ -140,6 +140,14 @@ $routes->group('mantenimiento/chatbot', ['filter' => ['auth', 'permission:chatbo
     $routes->get('historial',       'Chatbot::history');
 });
 
+// Auditoría administrativa: el controlador resuelve el alcance real desde el
+// ActorContext. No se usa permission filter acá porque el superadmin global no
+// hereda permisos de tenant; el permiso de empresa se valida dentro del caso de uso.
+$routes->group('mantenimiento/chatbot/auditoria', ['filter' => ['auth']], static function ($routes): void {
+    $routes->get('', 'ChatbotAudit::index');
+    $routes->get('(:num)', 'ChatbotAudit::show/$1');
+});
+
 $routes->group('reportes', ['filter' => ['auth', 'permission:reportes.ver']], static function ($routes): void {
     $routes->get('', 'Reports::index');
     $routes->get('exportar', 'Reports::export');
