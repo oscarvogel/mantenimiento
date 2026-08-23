@@ -27,4 +27,15 @@ describe('ChatMessage', () => {
 
     expect(wrapper.get('a').attributes('href')).toBe(`${window.location.origin}/mantenimiento/planes?estado=VENCIDO`)
   })
+
+  it('corrige enlaces antiguos de planes cuando la app vive en subdirectorio', () => {
+    window.history.pushState({}, '', '/mantenimiento/dashboard')
+    const wrapper = mount(ChatMessage, {
+      props: {
+        message: { role: 'assistant', content: `[planes](${window.location.origin}/mantenimiento/planes?estado=VENCIDO)` },
+      },
+    })
+
+    expect(wrapper.get('a').attributes('href')).toBe(`${window.location.origin}/mantenimiento/mantenimiento/planes?estado=VENCIDO`)
+  })
 })

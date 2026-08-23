@@ -34,6 +34,18 @@ const safeHref = (value) => {
   try {
     const url = new URL(String(value).trim(), window.location.origin)
     if (!['http:', 'https:'].includes(url.protocol)) return null
+
+    // Compatibilidad con respuestas antiguas: antes el modelo podia emitir
+    // /mantenimiento/planes o /mantenimiento/equipos, pero en el deploy plano
+    // esas rutas viven bajo el grupo /mantenimiento adicional.
+    if (
+      url.origin === window.location.origin
+      && window.location.pathname.startsWith('/mantenimiento/')
+      && /^\/mantenimiento\/(?:planes|equipos)(?:\/|$)/.test(url.pathname)
+    ) {
+      url.pathname = `/mantenimiento${url.pathname}`
+    }
+
     return url.href
   } catch (_) {
     return null
