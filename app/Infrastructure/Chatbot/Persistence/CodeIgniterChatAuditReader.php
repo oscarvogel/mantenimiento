@@ -103,7 +103,7 @@ final class CodeIgniterChatAuditReader
             $messages[] = [
                 'id' => (int) $messageRow['id'],
                 'role' => $messageRow['role'],
-                'content' => $messageRow['content'],
+                'content' => $this->sanitizeToolContent((string) $messageRow['role'], (string) $messageRow['content']),
                 'toolCalls' => $this->sanitizer->sanitize($toolCalls),
                 'toolCallId' => $messageRow['tool_call_id'],
                 'tokensUsed' => $messageRow['tokens_used'] === null ? null : (int) $messageRow['tokens_used'],
@@ -170,6 +170,23 @@ final class CodeIgniterChatAuditReader
         }
 
         return [$clauses === [] ? '' : 'WHERE ' . implode(' AND ', $clauses), $bindings];
+    }
+
+    private function sanitizeToolContent(string $role, string $content): string
+    {
+        if ($role !== 'tool') {
+            return $content;
+        }
+
+        $decoded = $this->decodeJson($content);
+        if ($decoded === null) {
+            return $content;
+        }
+
+        $sanitized = $this->sanitizer->sanitize($decoded);
+        $encoded = json_encode($sanitized, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        return is_string($encoded) ? $encoded : $content;
     }
 
     /** @return array<mixed>|null */
