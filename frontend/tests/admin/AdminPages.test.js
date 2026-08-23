@@ -6,6 +6,7 @@ import {
   SuperAdminDemoPage,
   SuperAdminPage,
   UsersAdminPage,
+  UsersAdminWithAuditPage,
   adminPagesByType,
 } from '../../src/pages/admin/index.js'
 import { branchesAdminData, superAdminData, usersAdminData } from './fixtures.js'
@@ -23,10 +24,10 @@ afterEach(() => {
 })
 
 describe('registro de páginas administrativas', () => {
-  it('exporta los tres componentes por pageType', () => {
+  it('exporta los componentes por pageType', () => {
     expect(adminPagesByType.superadmin).toBe(SuperAdminDemoPage)
     expect(adminPagesByType['branches-admin']).toBe(BranchesAdminPage)
-    expect(adminPagesByType['users-admin']).toBe(UsersAdminPage)
+    expect(adminPagesByType['users-admin']).toBe(UsersAdminWithAuditPage)
   })
 })
 
