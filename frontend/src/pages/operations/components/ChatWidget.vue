@@ -130,7 +130,7 @@ const getCsrfToken = () => {
 
 const startConversation = async () => {
   try {
-    const res = await fetch('/mantenimiento/chatbot/conversaciones', {
+    const res = await fetch('/mantenimiento/mantenimiento/chatbot/conversaciones', {
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'X-CSRF-TOKEN': getCsrfToken(), 'Accept': 'application/json' },
@@ -163,7 +163,7 @@ const restoreConversation = async () => {
   if (!convId || isNaN(convId)) return false
 
   try {
-    const res = await fetch(`/mantenimiento/chatbot/historial?conversationId=${convId}`, {
+    const res = await fetch(`/mantenimiento/mantenimiento/chatbot/historial?conversationId=${convId}`, {
       method: 'GET',
       credentials: 'same-origin',
       headers: { 'Accept': 'application/json' },
@@ -241,7 +241,7 @@ const sendMessage = async () => {
     }, REQUEST_TIMEOUT_MS)
 
     const csrfToken = getCsrfToken()
-    const res = await fetch('/mantenimiento/chatbot/mensajes', {
+    const res = await fetch('/mantenimiento/mantenimiento/chatbot/mensajes', {
       method: 'POST',
       body,
       credentials: 'same-origin',
@@ -366,7 +366,7 @@ const confirmTool = async (toolCall) => {
     body.append('toolCalls', JSON.stringify([toolCall]))
 
     activeController = new AbortController()
-    const res = await fetch('/mantenimiento/chatbot/mensajes', {
+    const res = await fetch('/mantenimiento/mantenimiento/chatbot/mensajes', {
       method: 'POST',
       body,
       credentials: 'same-origin',

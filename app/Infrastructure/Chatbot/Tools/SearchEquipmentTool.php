@@ -51,7 +51,12 @@ final class SearchEquipmentTool implements ToolHandler
                 return $item;
             }
 
-            return $item + ['links' => $linkBuilder->equipment($equipmentId)];
+            // El ID y los enlaces deben salir siempre del mismo registro. No
+            // usar union de arrays: si una fuente agregara una clave vieja,
+            // podria conservar un ID/link de otro equipo.
+            $item['equipment_id'] = $equipmentId;
+            $item['links'] = $linkBuilder->equipment($equipmentId);
+            return $item;
         }, $result['items'] ?? []);
 
         return $result;

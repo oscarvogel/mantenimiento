@@ -23,20 +23,67 @@ const props = defineProps({
   streaming: { type: Boolean, default: false },
 })
 
-const renderedContent = computed(() => {
-  const origin = typeof window !== 'undefined' ? window.location.origin : ''
-  let text = (props.message.content || '')
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.*?)\*/g, '<em>$1</em>')
-    .replace(/\n/g, '<br>')
-  if (origin) {
-    // Convertir paths relativos del sistema a URLs absolutas para que
-    // el click funcione desde cualquier contexto (links externos, copy/paste, etc).
-    text = text.replace(
-      /(?<!\/)(\/mantenimiento\/[A-Za-z0-9_\-\/\?#=&%]+)/g,
-      (m) => origin + m,
-    )
+const escapeHtml = (value) => String(value)
+  .replaceAll('&', '&amp;')
+  .replaceAll('<', '&lt;')
+  .replaceAll('>', '&gt;')
+  .replaceAll('"', '&quot;')
+  .replaceAll("'", '&#039;')
+
+const safeHref = (value) => {
+  try {
+    const url = new URL(String(value).trim(), window.location.origin)
+    if (!['http:', 'https:'].includes(url.protocol)) return null
+
+    // Compatibilidad con respuestas antiguas: antes el modelo podia emitir
+    // /mantenimiento/planes o /mantenimiento/equipos, pero en el deploy plano
+    // esas rutas viven bajo el grupo /mantenimiento adicional.
+    if (
+      url.origin === window.location.origin
+      && window.location.pathname.startsWith('/mantenimiento/')
+      && /^\/mantenimiento\/(?:planes|equipos)(?:\/|$)/.test(url.pathname)
+    ) {
+      url.pathname = `/mantenimiento${url.pathname}`
+    }
+
+    return url.href
+  } catch (_) {
+    return null
   }
-  return text
+}
+
+const renderLink = (label, href, links) => {
+  const absolute = safeHref(href)
+  if (!absolute) return `${label} (${href})`
+
+  const token = `@@CHAT_LINK_${links.length}@@`
+  links.push(`<a href="${escapeHtml(absolute)}" target="_self" rel="noopener noreferrer" class="text-blue-700 underline break-words">${escapeHtml(label)}</a>`)
+  return token
+}
+
+const renderMarkdown = (value) => {
+  const links = []
+  let text = String(value ?? '')
+
+  // Primero extraemos Markdown para no transformar también el href interno.
+  text = text.replace(/\[([^\]\n]+)\]\(([^)\s]+)\)/g, (_, label, href) => renderLink(label, href, links))
+
+  // También hacemos clickeables las URLs que el proveedor entregue sin Markdown.
+  text = text.replace(/(?<![\w"'=])((?:https?:\/\/|\/mantenimiento\/)[^\s<>()]+)/g, (match) => {
+    const trailing = match.match(/[.,;:!?¿¡]+$/)?.[0] ?? ''
+    const href = trailing ? match.slice(0, -trailing.length) : match
+    return renderLink(href, href, links) + trailing
+  })
+
+  text = escapeHtml(text)
+    .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, '<em>$1</em>')
+    .replace(/\n/g, '<br>')
+
+  return text.replace(/@@CHAT_LINK_(\d+)@@/g, (_, index) => links[Number(index)] ?? '')
+}
+
+const renderedContent = computed(() => {
+  return renderMarkdown(props.message.content)
 })
 </script>

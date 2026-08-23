@@ -19,6 +19,20 @@ $routes->post('logout', 'Login::logout', ['filter' => 'auth']);
 // Dashboard (protegido)
 $routes->get('dashboard', 'Dashboard::index', ['filter' => 'auth']);
 
+// Compatibilidad con enlaces antiguos emitidos antes de conocer el prefijo
+// interno del grupo `mantenimiento` en el deploy plano.
+$routes->get('planes', static function () {
+    $query = service('request')->getUri()->getQuery();
+    $target = base_url('mantenimiento/planes');
+    return redirect()->to($query === '' ? $target : $target . '?' . $query);
+}, ['filter' => ['auth', 'permission:planes.ver']]);
+
+$routes->get('equipos/(:num)', static function (string $equipmentId) {
+    $query = service('request')->getUri()->getQuery();
+    $target = base_url('mantenimiento/equipos/' . (int) $equipmentId);
+    return redirect()->to($query === '' ? $target : $target . '?' . $query);
+}, ['filter' => ['auth', 'permission:equipos.ver']]);
+
 // Administración global. El filtro también rechaza cuentas autenticadas no globales.
 $routes->group('superadmin', ['filter' => 'superadmin'], static function ($routes): void {
     $routes->get('', 'SuperAdmin::index');
