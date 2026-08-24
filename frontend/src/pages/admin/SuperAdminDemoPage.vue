@@ -11,7 +11,7 @@ defineProps({
   },
 })
 
-const section = ref('administration')
+const section = ref(new URLSearchParams(window.location.search).get('section') === 'chat-audit' ? 'chat-audit' : 'administration')
 </script>
 
 <template>
