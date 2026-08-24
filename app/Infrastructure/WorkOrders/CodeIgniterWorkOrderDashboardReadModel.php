@@ -31,10 +31,12 @@ final class CodeIgniterWorkOrderDashboardReadModel implements WorkOrderDashboard
             ->limit($perPage, ($page - 1) * $perPage)
             ->get()->getResultArray();
 
+        $tasksByOrder = $this->tasksByOrder(array_map(static fn (array $row): int => (int) $row['id'], $items));
         foreach ($items as &$row) {
             $ageDays = max(0, (int) ($row['antiguedad_dias'] ?? 0));
             $row['antiguedad_dias'] = $ageDays;
             $row['demorada'] = in_array((string) $row['estado'], self::OPEN_STATES, true) && $ageDays >= self::DELAY_DAYS;
+            $row['tareas'] = $tasksByOrder[(int) $row['id']] ?? [];
         }
         unset($row);
 
@@ -86,7 +88,7 @@ final class CodeIgniterWorkOrderDashboardReadModel implements WorkOrderDashboard
     {
         $companyId = (int) $actor->companyId();
         $builder = $this->database->table('ordenes_trabajo o')
-            ->select("o.id, o.numero, o.origen, o.prioridad, o.estado, o.sucursal_id, o.equipo_id, o.responsable_usuario_id, o.fecha_apertura, o.fecha_inicio, o.fecha_finalizacion, o.km_ingreso, o.horas_ingreso, e.codigo equipo_codigo, e.patente equipo_patente, s.nombre sucursal_nombre, CASE WHEN o.origen = 'CORRECTIVO' THEN 'OT correctiva' ELSE ts.nombre END servicio_nombre, u.nombre responsable_nombre, DATEDIFF(CURDATE(), DATE(o.fecha_apertura)) antiguedad_dias", false)
+            ->select("o.id, o.numero, o.origen, o.prioridad, o.estado, o.sucursal_id, o.equipo_id, o.responsable_usuario_id, o.fecha_apertura, o.fecha_inicio, o.fecha_finalizacion, o.km_ingreso, o.horas_ingreso, o.diagnostico, o.observaciones, o.costo_mano_obra, o.costo_repuestos, o.otros_costos, o.costo_total, e.codigo equipo_codigo, e.patente equipo_patente, e.km_actual equipo_km_actual, e.horas_actuales equipo_horas_actuales, s.nombre sucursal_nombre, CASE WHEN o.origen = 'CORRECTIVO' THEN 'OT correctiva' ELSE ts.nombre END servicio_nombre, u.nombre responsable_nombre, DATEDIFF(CURDATE(), DATE(o.fecha_apertura)) antiguedad_dias", false)
             ->join('equipos e', 'e.id = o.equipo_id AND e.empresa_id = o.empresa_id', 'inner')
             ->join('sucursales s', 's.id = o.sucursal_id AND s.empresa_id = o.empresa_id', 'inner')
             ->join('tipos_servicio ts', 'ts.id = o.tipo_servicio_id', 'left')
@@ -106,6 +108,27 @@ final class CodeIgniterWorkOrderDashboardReadModel implements WorkOrderDashboard
         }
 
         return $builder;
+    }
+
+    /** @param list<int> $orderIds @return array<int,list<array<string,mixed>>> */
+    private function tasksByOrder(array $orderIds): array
+    {
+        if ($orderIds === []) {
+            return [];
+        }
+
+        $rows = $this->database->table('orden_tareas')
+            ->select('id, orden_id, descripcion_solicitada, estado, trabajo_realizado')
+            ->whereIn('orden_id', $orderIds)
+            ->orderBy('id', 'ASC')
+            ->get()->getResultArray();
+
+        $grouped = [];
+        foreach ($rows as $row) {
+            $grouped[(int) $row['orden_id']][] = $row;
+        }
+
+        return $grouped;
     }
 
     /** @return array<string,int> */
