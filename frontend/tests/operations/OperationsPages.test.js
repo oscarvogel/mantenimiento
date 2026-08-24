@@ -223,8 +223,14 @@ describe('maintenance-overview', () => {
   it('conserva rutas POST, CSRF y formularios del circuito', async () => {
     const wrapper = render(MaintenanceOverviewPage, maintenanceData)
 
-    await wrapper.get('button[aria-controls="overview-create-equipment"]').trigger('click')
-    expect(wrapper.get('form[action="/mantenimiento/equipos"]').attributes('method')).toBe('post')
+    const correctiveButton = wrapper.findAll('button').find((button) => button.text().includes('Nueva OT correctiva'))
+    expect(correctiveButton).toBeDefined()
+    await correctiveButton.trigger('click')
+    await flushPromises()
+    const correctiveForm = wrapper.get('form[action="/mantenimiento/ordenes/correctivas"]')
+    expect(correctiveForm.attributes('method')).toBe('post')
+    expect(correctiveForm.get('input[name="csrf_test_name"]').attributes('value')).toBe('secure-token')
+    expect(wrapper.find('form[action="/mantenimiento/equipos"]').exists()).toBe(false)
 
     await wrapper.get('button[aria-controls="reading-9"]').trigger('click')
     expect(wrapper.get('form[action="/mantenimiento/equipos/9/lecturas"]').attributes('method')).toBe('post')
