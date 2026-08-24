@@ -32,6 +32,9 @@ final readonly class AppShellPayload
             if ($this->canSeeOperations($actor)) {
                 $navigation[] = $this->item('maintenance', 'Mantenimiento', 'mantenimiento', 'wrench', $active);
             }
+            if ($actor->hasPermission('ordenes.ver') || $actor->hasPermission('ordenes.mi_trabajo')) {
+                $navigation[] = $this->item('work-orders', 'Órdenes de trabajo', 'mantenimiento/ordenes', 'wrench', $active);
+            }
             if ($actor->hasPermission('planes.ver')) {
                 $navigation[] = $this->item('plans', 'Planes preventivos', 'mantenimiento/planes', 'calendar', $active);
                 $navigation[] = $this->item('services', 'Servicios de mantenimiento', 'mantenimiento/servicios', 'services', $active);
