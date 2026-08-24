@@ -31,6 +31,7 @@ const correctiveEquipmentId = ref('')
 const correctiveSearch = ref('')
 const correctiveOrderUrl = computed(() => String(props.data.routes.createEquipment ?? '').replace(/\/equipos\/?$/, '/ordenes/correctivas'))
 const quickReadingsUrl = computed(() => String(props.data.routes.createEquipment ?? '').replace(/\/equipos\/?$/, '/lecturas/rapidas'))
+const printOrderUrl = (order) => String(order.printUrl ?? order.startUrl ?? '').replace(/\/iniciar\/?$/, '/imprimir')
 
 const normalizeSearch = (value) => String(value ?? '').toLocaleLowerCase('es').replace(/[\s-]+/g, '')
 const filteredCorrectiveEquipments = computed(() => {
@@ -206,8 +207,11 @@ for (const order of props.data.orders ?? []) closeStateFor(order)
             <div class="flex items-start justify-between gap-3"><div class="flex items-center gap-3"><EquipmentThumbnail :url="order.photoUrl" :code="order.equipmentCode" /><strong class="text-ink">{{ order.number }} · {{ order.equipmentCode }}</strong></div><StatusBadge :status="order.status" /></div>
             <p class="mt-2 text-sm text-ink-muted">{{ order.serviceName || 'Servicio preventivo' }} · Responsable: {{ order.ownerName || 'Sin asignar' }}</p>
             <ul v-if="order.tasks.length" class="mt-3 space-y-1 text-sm text-ink"><li v-for="task in order.tasks" :key="task.id">{{ task.description }} <span class="text-ink-muted">({{ task.status }})</span></li></ul>
-            <form v-if="order.status === 'EMITIDA' && data.can.editOrder" method="post" :action="order.startUrl" class="mt-4"><CsrfInput :csrf="data.csrf" /><button type="submit" :class="secondaryButton">Iniciar orden</button></form>
-            <button v-else-if="order.status === 'EN_PROCESO' && data.can.closeOrder" type="button" :class="`${secondaryButton} mt-4`" aria-haspopup="dialog" @click="openCloseModal(order)"><WrenchScrewdriverIcon class="mr-2 size-4" aria-hidden="true" />Cerrar orden</button>
+            <div class="mt-4 flex flex-wrap gap-2">
+              <a :href="printOrderUrl(order)" target="_blank" rel="noopener" :class="secondaryButton">Imprimir OT</a>
+              <form v-if="order.status === 'EMITIDA' && data.can.editOrder" method="post" :action="order.startUrl"><CsrfInput :csrf="data.csrf" /><button type="submit" :class="secondaryButton">Iniciar orden</button></form>
+              <button v-else-if="order.status === 'EN_PROCESO' && data.can.closeOrder" type="button" :class="secondaryButton" aria-haspopup="dialog" @click="openCloseModal(order)"><WrenchScrewdriverIcon class="mr-2 size-4" aria-hidden="true" />Cerrar orden</button>
+            </div>
           </article>
         </div>
         <PaginationBar :pagination="data.pagination.orders" />
