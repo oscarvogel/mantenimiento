@@ -1,0 +1,1 @@
+Issue #83 dashboard operativo de órdenes cubierto por tests frontend dedicados.
