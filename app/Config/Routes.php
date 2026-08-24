@@ -121,6 +121,7 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->post('equipos/(:num)/planes', 'MaintenanceCircuit::assignPlan/$1', ['filter' => 'permission:planes.editar']);
     $routes->post('vencimientos/detectar', 'MaintenanceCircuit::detectOverdue', ['filter' => 'permission:planes.editar']);
     $routes->post('avisos/(:num)/orden', 'MaintenanceCircuit::generateOrder/$1', ['filter' => 'permission:ordenes.editar']);
+    $routes->get('ordenes', 'WorkOrders::index', ['filter' => 'permission:ordenes.ver']);
     $routes->post('ordenes/correctivas', 'CorrectiveWorkOrders::create', ['filter' => 'permission:ordenes.editar']);
     $routes->get('ordenes/(:num)/imprimir', 'MaintenanceCircuit::printOrder/$1');
     $routes->post('ordenes/(:num)/iniciar', 'MaintenanceCircuit::startOrder/$1', ['filter' => 'permission:ordenes.editar']);
