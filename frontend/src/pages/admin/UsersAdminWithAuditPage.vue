@@ -10,7 +10,7 @@ const props = defineProps({
   },
 })
 
-const section = ref('users')
+const section = ref(new URLSearchParams(window.location.search).get('section') === 'chat-audit' ? 'chat-audit' : 'users')
 </script>
 
 <template>

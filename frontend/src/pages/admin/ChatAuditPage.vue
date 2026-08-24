@@ -16,7 +16,7 @@ const apiUrl = computed(() => {
   if (props.data.apiUrl) return props.data.apiUrl.replace(/\/$/, '')
   const current = window.location.pathname
   const root = current.includes('/superadmin') ? current.split('/superadmin')[0] : current.split('/administracion')[0]
-  return `${root}/mantenimiento/chatbot/auditoria`.replace(/\/+/g, '/')
+  return `${root}/chatbot/auditoria`.replace(/\/+/g, '/')
 })
 
 function qs(targetPage = 1) {

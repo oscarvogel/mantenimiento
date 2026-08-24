@@ -23,6 +23,7 @@ final readonly class AppShellPayload
 
         if ($actor->isSuperAdmin()) {
             $navigation[] = $this->item('superadmin', 'Administración global', 'superadmin', 'building', $active);
+            $navigation[] = $this->item('chatbot-audit', 'Auditoría del chatbot', 'superadmin?section=chat-audit', 'audit', $active);
         } else {
             if ($actor->hasPermission('equipos.ver')) {
                 $navigation[] = $this->item('equipment', 'Equipos', 'mantenimiento/equipos', 'truck', $active);
@@ -43,6 +44,9 @@ final readonly class AppShellPayload
             }
             if ($actor->hasPermission('usuarios.ver')) {
                 $navigation[] = $this->item('users', 'Usuarios', 'administracion/usuarios', 'users', $active);
+            }
+            if ($actor->hasPermission('chatbot.auditoria.empresa')) {
+                $navigation[] = $this->item('chatbot-audit', 'Historial del chatbot', 'administracion/usuarios?section=chat-audit', 'audit', $active);
             }
             if ($actor->hasPermission('reportes.ver')) {
                 $navigation[] = $this->item('reports', 'Reportes', 'reportes', 'chart', $active);

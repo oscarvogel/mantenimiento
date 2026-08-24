@@ -10,6 +10,7 @@ import {
   CalendarDaysIcon,
   ChartBarSquareIcon,
   ClipboardDocumentCheckIcon,
+  ClipboardDocumentListIcon,
   HomeIcon,
   TruckIcon,
   UsersIcon,
@@ -39,7 +40,7 @@ const navigationGroups = computed(() => {
   const definitions = [
     { key: 'operation', label: 'Operación', items: ['dashboard', 'equipment', 'quick-readings', 'plans', 'maintenance'] },
     { key: 'management', label: 'Gestión', items: ['imports', 'preventive-library', 'reports'] },
-    { key: 'administration', label: 'Administración', items: ['superadmin', 'branches', 'users'] },
+    { key: 'administration', label: 'Administración', items: ['superadmin', 'chatbot-audit', 'branches', 'users'] },
   ]
   const knownKeys = new Set(definitions.flatMap((group) => group.items))
   const groups = definitions
@@ -69,6 +70,7 @@ const icons = {
   workshop: BuildingOffice2Icon,
   workshops: BuildingOffice2Icon,
   reports: ChartBarSquareIcon,
+  audit: ClipboardDocumentListIcon,
 }
 
 const iconFor = (name) => icons[name] ?? ClipboardDocumentCheckIcon
