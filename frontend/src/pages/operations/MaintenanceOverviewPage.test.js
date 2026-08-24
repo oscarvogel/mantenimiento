@@ -84,4 +84,30 @@ describe('MaintenanceOverviewPage', () => {
     expect(dialog.text()).toContain('Seleccionado: AB499OK · AB-499-OK')
     expect(dialog.find('input[name="equipo_id"]').element.value).toBe('10')
   })
+
+  it('muestra Imprimir OT en cada orden y abre la impresión existente en otra pestaña', () => {
+    const data = baseData()
+    data.pagination.orders.total = 1
+    data.orders = [{
+      id: 31,
+      number: 'OT-00031',
+      equipmentCode: 'AB499OK',
+      photoUrl: null,
+      status: 'EMITIDA',
+      serviceName: 'Frenos',
+      ownerName: 'Técnico Uno',
+      tasks: [],
+      startUrl: '/mantenimiento/ordenes/31/iniciar',
+      currentKm: 125430,
+      currentHours: null,
+    }]
+
+    const wrapper = mount(MaintenanceOverviewPage, { props: { data } })
+    const printLink = wrapper.findAll('a').find((link) => link.text().includes('Imprimir OT'))
+
+    expect(printLink).toBeDefined()
+    expect(printLink.attributes('href')).toBe('/mantenimiento/ordenes/31/imprimir')
+    expect(printLink.attributes('target')).toBe('_blank')
+    expect(printLink.attributes('rel')).toContain('noopener')
+  })
 })
