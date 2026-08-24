@@ -8,6 +8,7 @@ use App\Application\Identity\ActorContext;
 use App\Application\WorkOrders\ListWorkOrdersDashboard;
 use App\Infrastructure\Identity\SessionActorContext;
 use App\Infrastructure\WorkOrders\CodeIgniterWorkOrderDashboardReadModel;
+use App\Presentation\WorkOrdersPayload;
 use DomainException;
 
 final class WorkOrders extends BaseController
@@ -31,7 +32,7 @@ final class WorkOrders extends BaseController
             'work-orders',
             'work-orders-index',
             'Órdenes de trabajo',
-            service('operationsPayload')->workOrders($data, $filters, [
+            (new WorkOrdersPayload())->build($data, $filters, [
                 'editOrder' => $actor->hasPermission('ordenes.editar'),
                 'closeOrder' => $actor->hasPermission('ordenes.cerrar'),
             ]),
