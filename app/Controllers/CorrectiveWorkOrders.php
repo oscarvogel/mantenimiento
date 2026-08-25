@@ -170,7 +170,10 @@ final class CorrectiveWorkOrders extends BaseController
             }
 
             $returnToEquipment = (string) $this->request->getPost('volver_equipo') === '1';
-            $target = $returnToEquipment ? '/mantenimiento/equipos/' . $equipmentId : '/mantenimiento';
+            $returnToOrders = (string) $this->request->getPost('volver_ordenes') === '1';
+            $target = $returnToEquipment
+                ? '/mantenimiento/equipos/' . $equipmentId
+                : ($returnToOrders ? '/mantenimiento/ordenes' : '/mantenimiento');
 
             return redirect()->to($target)->with('success', $message);
         } catch (Throwable $exception) {
@@ -291,7 +294,11 @@ final class CorrectiveWorkOrders extends BaseController
         if (! $exception instanceof DomainException) {
             log_message('error', 'Falló una OT correctiva: {message}', ['message' => $exception->getMessage()]);
         }
-        return redirect()->to('/mantenimiento')->withInput()->with(
+        $target = (string) $this->request->getPost('volver_ordenes') === '1'
+            ? '/mantenimiento/ordenes'
+            : '/mantenimiento';
+
+        return redirect()->to($target)->withInput()->with(
             'error',
             $exception instanceof DomainException ? $exception->getMessage() : 'No se pudo completar la operación de la OT correctiva.',
         );
