@@ -69,7 +69,7 @@ final class WorkOrdersPayload
             'routes' => [
                 'index' => $base,
                 'maintenance' => base_url('mantenimiento'),
-                'registerCorrective' => base_url('mantenimiento') . '?ot_correctiva=1',
+                'registerCorrective' => base_url('mantenimiento/ordenes/correctivas'),
             ],
             'filters' => [
                 'q' => $filters['q'] ?? '',
@@ -84,6 +84,7 @@ final class WorkOrdersPayload
             'delayDays' => (int) ($source['delayDays'] ?? 0),
             'branches' => array_map(static fn (array $row): array => ['id' => (int) $row['id'], 'name' => (string) $row['nombre']], $source['branches'] ?? []),
             'owners' => array_map(static fn (array $row): array => ['id' => (int) $row['id'], 'name' => (string) $row['nombre']], $source['owners'] ?? []),
+            'correctiveEquipments' => $source['correctiveEquipments'] ?? [],
             'orders' => $items,
             'pagination' => [
                 'page' => (int) ($source['page'] ?? 1),
