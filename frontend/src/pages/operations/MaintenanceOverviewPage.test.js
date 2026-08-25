@@ -8,25 +8,9 @@ const baseData = () => ({
   csrf: { name: 'csrf_test', hash: 'HASH123' },
   currentDateTime: '2026-08-24 17:00:00',
   old: {},
-  routes: {
-    equipmentIndex: '/mantenimiento/equipos',
-    createEquipment: '/mantenimiento/equipos',
-  },
-  can: {
-    createEquipment: true,
-    registerReading: true,
-    assignPlan: false,
-    generateOrder: false,
-    editOrder: true,
-    closeOrder: false,
-  },
-  pagination: {
-    equipments: { ...pagination(), total: 3 },
-    plans: pagination(),
-    notices: pagination(),
-    orders: pagination(),
-    readings: pagination(),
-  },
+  routes: { equipmentIndex: '/mantenimiento/equipos', createEquipment: '/mantenimiento/equipos' },
+  can: { createEquipment: true, registerReading: true, assignPlan: false, generateOrder: false, editOrder: true, closeOrder: false },
+  pagination: { equipments: { ...pagination(), total: 3 }, plans: pagination(), notices: pagination(), orders: pagination(), readings: pagination() },
   catalogs: {
     branches: [], equipmentTypes: [], brands: [], models: [], serviceTypes: [], templateDefaults: [],
     users: [{ id: 7, name: 'Técnico Uno' }],
@@ -43,77 +27,66 @@ const baseData = () => ({
   plans: [], notices: [], orders: [], readings: [],
 })
 
-afterEach(() => {
-  window.history.replaceState({}, '', '/')
-})
+afterEach(() => window.history.replaceState({}, '', '/'))
 
 describe('MaintenanceOverviewPage', () => {
-  it('reemplaza el alta rápida de equipos por acciones operativas compactas', () => {
+  it('ofrece registrar un correctivo realizado como acción operativa', () => {
     const wrapper = mount(MaintenanceOverviewPage, { props: { data: baseData() } })
-
-    expect(wrapper.text()).toContain('Nueva OT correctiva')
+    expect(wrapper.text()).toContain('Registrar correctivo realizado')
     expect(wrapper.text()).toContain('Registrar lectura')
     expect(wrapper.text()).toContain('Administrar equipos')
     expect(wrapper.text()).not.toContain('Nuevo equipo')
-    expect(wrapper.text()).not.toContain('Crear equipo')
-    expect(wrapper.find('form[action="/mantenimiento/equipos"]').exists()).toBe(false)
   })
 
-  it('busca la OT sobre el catálogo completo aunque el equipo no esté en la página visible', async () => {
+  it('busca el equipo sobre el catálogo completo aunque no esté en la página visible', async () => {
     const wrapper = mount(MaintenanceOverviewPage, { props: { data: baseData() } })
-    const quickAction = wrapper.findAll('button').find((button) => button.text().includes('Nueva OT correctiva'))
+    const quickAction = wrapper.findAll('button').find((button) => button.text().includes('Registrar correctivo realizado'))
     await quickAction.trigger('click')
-
     const dialog = wrapper.find('[role="dialog"]')
     const search = dialog.find('input[type="search"]')
     await search.setValue('ae 223 wn')
-
     expect(dialog.text()).toContain('AE223WN')
     await dialog.findAll('button').find((button) => button.text().includes('AE223WN')).trigger('click')
     expect(dialog.find('input[name="equipo_id"]').element.value).toBe('30')
   })
 
-  it('abre el modal, busca por patente y prepara el flujo existente de OT correctiva', async () => {
+  it('prepara una carga única que finaliza el correctivo y admite evidencia', async () => {
     const wrapper = mount(MaintenanceOverviewPage, { props: { data: baseData() } })
-    const quickAction = wrapper.findAll('button').find((button) => button.text().includes('Nueva OT correctiva'))
+    const quickAction = wrapper.findAll('button').find((button) => button.text().includes('Registrar correctivo realizado'))
     await quickAction.trigger('click')
-
     const dialog = wrapper.find('[role="dialog"]')
-    expect(dialog.exists()).toBe(true)
-    expect(dialog.text()).toContain('Nueva OT correctiva')
+    expect(dialog.text()).toContain('Registrar trabajo realizado')
+    expect(dialog.text()).toContain('sin abrir ni iniciar una OT')
 
     const search = dialog.find('input[type="search"]')
-    await search.setValue('ab 499 ok')
-    expect(dialog.text()).toContain('AB499OK')
-    expect(dialog.text()).not.toContain('MOT-03')
-
+    await search.setValue('ab-499-ok')
     await dialog.findAll('button').find((button) => button.text().includes('AB499OK')).trigger('click')
-    expect(dialog.text()).toContain('Seleccionado: AB499OK · AB-499-OK')
 
     const form = dialog.find('form')
     expect(form.attributes('action')).toBe('/mantenimiento/ordenes/correctivas')
-    expect(form.find('input[name="equipo_id"]').element.value).toBe('10')
+    expect(form.attributes('enctype')).toBe('multipart/form-data')
     expect(form.find('textarea[name="problema_reportado"]').attributes('required')).toBeDefined()
-    expect(form.find('select[name="prioridad"] option:checked').text()).toBe('Normal')
-    expect(form.find('textarea[name="observaciones"]').exists()).toBe(true)
+    expect(form.find('textarea[name="trabajo_realizado_correctivo"]').attributes('required')).toBeDefined()
+    expect(form.find('input[name="km_salida"]').exists()).toBe(true)
+    expect(form.find('input[name="evidencia"]').attributes('accept')).toContain('application/pdf')
+    expect(form.text()).toContain('FINALIZADA')
   })
 
-  it('desde una tarjeta abre el mismo modal con el equipo fijo y sin volver a pedirlo', async () => {
+  it('desde una tarjeta abre con el equipo fijo y sin volver a pedirlo', async () => {
     const wrapper = mount(MaintenanceOverviewPage, { props: { data: baseData() } })
-    const cardButton = wrapper.findAll('button').filter((button) => button.text().includes('Nueva OT correctiva'))[1]
+    const cardButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Registrar correctivo')
     await cardButton.trigger('click')
-
     const dialog = wrapper.find('[role="dialog"]')
     expect(dialog.text()).toContain('Equipo de esta ficha')
     expect(dialog.text()).toContain('AB499OK · AB-499-OK')
     expect(dialog.find('input[type="search"]').exists()).toBe(false)
     expect(dialog.find('input[name="equipo_id"]').element.value).toBe('10')
+    expect(dialog.find('input[name="volver_equipo"]').element.value).toBe('1')
   })
 
   it('puede abrirse desde una ficha por query con el equipo fijo', () => {
     window.history.replaceState({}, '', '/mantenimiento?ot_correctiva=1&equipo_id=30')
     const wrapper = mount(MaintenanceOverviewPage, { props: { data: baseData() } })
-
     const dialog = wrapper.find('[role="dialog"]')
     expect(dialog.exists()).toBe(true)
     expect(dialog.text()).toContain('AE223WN')
@@ -124,23 +97,9 @@ describe('MaintenanceOverviewPage', () => {
   it('muestra Imprimir OT en cada orden y abre la impresión existente en otra pestaña', () => {
     const data = baseData()
     data.pagination.orders.total = 1
-    data.orders = [{
-      id: 31,
-      number: 'OT-00031',
-      equipmentCode: 'AB499OK',
-      photoUrl: null,
-      status: 'EMITIDA',
-      serviceName: 'Frenos',
-      ownerName: 'Técnico Uno',
-      tasks: [],
-      startUrl: '/mantenimiento/ordenes/31/iniciar',
-      currentKm: 125430,
-      currentHours: null,
-    }]
-
+    data.orders = [{ id: 31, number: 'OT-00031', equipmentCode: 'AB499OK', photoUrl: null, status: 'EMITIDA', serviceName: 'Frenos', ownerName: 'Técnico Uno', tasks: [], startUrl: '/mantenimiento/ordenes/31/iniciar', currentKm: 125430, currentHours: null }]
     const wrapper = mount(MaintenanceOverviewPage, { props: { data } })
     const printLink = wrapper.findAll('a').find((link) => link.text().includes('Imprimir OT'))
-
     expect(printLink).toBeDefined()
     expect(printLink.attributes('href')).toBe('/mantenimiento/ordenes/31/imprimir')
     expect(printLink.attributes('target')).toBe('_blank')
