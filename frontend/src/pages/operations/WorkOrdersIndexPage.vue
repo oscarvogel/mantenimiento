@@ -2,6 +2,7 @@
 import { computed, reactive, ref } from 'vue'
 import { ArrowPathIcon, ChevronDownIcon, MagnifyingGlassIcon, PlusIcon, PrinterIcon, WrenchScrewdriverIcon } from '@heroicons/vue/24/outline'
 import CsrfInput from './components/CsrfInput.vue'
+import CorrectiveWorkRegistrationModal from './components/CorrectiveWorkRegistrationModal.vue'
 import EmptyState from './components/EmptyState.vue'
 import PageHeading from './components/PageHeading.vue'
 import StatusBadge from './components/StatusBadge.vue'
@@ -11,6 +12,7 @@ import { fieldClass, primaryButton, secondaryButton } from './helpers.js'
 const props = defineProps({ data: { type: Object, required: true } })
 const closeForms = reactive({})
 const activeCloseOrder = ref(null)
+const correctiveModalOpen = ref(false)
 const expandedOrders = ref([])
 
 const kpiCards = computed(() => [
@@ -69,7 +71,7 @@ for (const order of props.data.orders ?? []) closeStateFor(order)
   <div>
     <PageHeading eyebrow="Taller" title="Órdenes de trabajo" description="Consultá las órdenes existentes o registrá rápidamente un trabajo correctivo realizado.">
       <template #actions>
-        <a v-if="data.can.editOrder" :href="data.routes.registerCorrective" :class="primaryButton"><PlusIcon class="mr-2 size-4" aria-hidden="true" />Registrar correctivo</a>
+        <button v-if="data.can.editOrder" type="button" :class="primaryButton" aria-haspopup="dialog" @click="correctiveModalOpen = true"><PlusIcon class="mr-2 size-4" aria-hidden="true" />Registrar correctivo</button>
         <a :href="data.routes.maintenance" :class="secondaryButton">Volver a Mantenimiento</a>
       </template>
     </PageHeading>
@@ -135,6 +137,7 @@ for (const order of props.data.orders ?? []) closeStateFor(order)
 
     <nav v-if="data.pagination.totalPages > 1" class="mt-6 flex items-center justify-between gap-3" aria-label="Paginación de órdenes"><a v-if="data.pagination.previousUrl" :href="data.pagination.previousUrl" :class="secondaryButton">Anterior</a><span v-else></span><span class="text-sm text-ink-muted">Página {{ data.pagination.page }} de {{ data.pagination.totalPages }}</span><a v-if="data.pagination.nextUrl" :href="data.pagination.nextUrl" :class="secondaryButton">Siguiente</a><span v-else></span></nav>
 
+    <CorrectiveWorkRegistrationModal v-if="correctiveModalOpen" :data="data" @close="correctiveModalOpen = false" />
     <WorkOrderClosureModal
       v-if="activeCloseOrder"
       :order="{ ...activeCloseOrder, closeUrl: activeCloseOrder.routes.close }"
