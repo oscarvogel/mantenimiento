@@ -9,6 +9,8 @@ use App\Application\Chatbot\Port\ToolExecutor as ToolExecutorPort;
 use App\Application\Identity\ActorContext;
 use App\Domain\Chatbot\ToolCallResult;
 use App\Domain\Chatbot\ToolHandler;
+use App\Infrastructure\WorkOrders\CodeIgniterChatbotWorkOrderListReadModel;
+use App\Infrastructure\WorkOrders\CodeIgniterWorkOrderPrintReadModel;
 
 final class ToolExecutor implements ToolExecutorPort
 {
@@ -21,6 +23,16 @@ final class ToolExecutor implements ToolExecutorPort
         $this->handlers['buscar_equipo'] = new SearchEquipmentTool($equipmentListReadModel, $links);
         $this->handlers['consultar_planes_equipo'] = new ConsultEquipmentPlansTool(links: $links);
         $this->handlers['listar_equipos_por_estado_plan'] = new ListEquipmentByPlanStateTool(links: $links);
+
+        $database = db_connect();
+        $this->handlers['listar_ordenes_trabajo'] = new ListWorkOrdersTool(
+            new CodeIgniterChatbotWorkOrderListReadModel($database),
+            $links,
+        );
+        $this->handlers['consultar_orden_trabajo'] = new ConsultWorkOrderTool(
+            new CodeIgniterWorkOrderPrintReadModel($database),
+            $links,
+        );
     }
 
     public function execute(string $toolName, array $args, ActorContext $actor): ToolCallResult
