@@ -78,7 +78,7 @@ final class CodeIgniterNotificationDeliveryQueue implements NotificationDelivery
     public function due(string $channel, int $limit): array
     {
         return $this->db->table('notificacion_entregas d')
-            ->select('d.id, d.notificacion_id, n.usuario_id, u.email, d.canal, n.titulo, n.resumen, n.url, n.severidad, d.intentos')
+            ->select('d.id, d.notificacion_id, n.usuario_id, n.sucursal_id, u.email, d.canal, n.titulo, n.resumen, n.url, n.severidad, d.intentos')
             ->join('notificaciones n', 'n.id = d.notificacion_id', 'inner')
             ->join('usuarios u', 'u.id = n.usuario_id AND u.activo = 1 AND u.deleted_at IS NULL', 'inner')
             ->where('d.canal', strtoupper($channel))
