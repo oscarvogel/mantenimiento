@@ -93,6 +93,7 @@ import ChatVoiceButton from './ChatVoiceButton.vue'
 const REQUEST_TIMEOUT_MS = 30000
 const CHAT_STORAGE_KEY = 'mantenimiento.chatbot.conv'
 const CHAT_VISIBLE_HISTORY_LIMIT = 10
+const CHATBOT_BASE_PATH = '/mantenimiento/mantenimiento/chatbot'
 
 const isOpen = ref(false)
 const messages = ref([])
@@ -145,7 +146,7 @@ const getCsrfToken = () => {
 
 const startConversation = async () => {
   try {
-    const res = await fetch('/mantenimiento/chatbot/conversaciones', {
+    const res = await fetch(`${CHATBOT_BASE_PATH}/conversaciones`, {
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'X-CSRF-TOKEN': getCsrfToken(), 'Accept': 'application/json' },
@@ -179,7 +180,7 @@ const restoreConversation = async () => {
   if (!convId || isNaN(convId)) return false
 
   try {
-    const res = await fetch(`/mantenimiento/chatbot/historial?conversationId=${convId}`, {
+    const res = await fetch(`${CHATBOT_BASE_PATH}/historial?conversationId=${convId}`, {
       method: 'GET',
       credentials: 'same-origin',
       headers: { 'Accept': 'application/json' },
@@ -258,7 +259,7 @@ const sendMessage = async () => {
     }, REQUEST_TIMEOUT_MS)
 
     const csrfToken = getCsrfToken()
-    const res = await fetch('/mantenimiento/chatbot/mensajes', {
+    const res = await fetch(`${CHATBOT_BASE_PATH}/mensajes`, {
       method: 'POST',
       body,
       credentials: 'same-origin',
@@ -382,7 +383,7 @@ const confirmTool = async (toolCall) => {
     body.append('toolCalls', JSON.stringify([toolCall]))
 
     activeController = new AbortController()
-    const res = await fetch('/mantenimiento/chatbot/mensajes', {
+    const res = await fetch(`${CHATBOT_BASE_PATH}/mensajes`, {
       method: 'POST',
       body,
       credentials: 'same-origin',
