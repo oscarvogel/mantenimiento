@@ -46,8 +46,8 @@ const quickActions = computed(() => [
   },
   {
     label: 'Nueva OT',
-    description: 'Crear desde un mantenimiento',
-    href: props.dashboard.links.orders,
+    description: 'Crear una OT correctiva rápida',
+    href: props.dashboard.links.correctiveOrder,
     icon: ClipboardDocumentListIcon,
   },
   {
