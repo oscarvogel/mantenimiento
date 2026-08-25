@@ -38,6 +38,7 @@ const section = ref(new URLSearchParams(window.location.search).get('section') =
         title: 'Historial del chatbot',
         subtitle: `Conversaciones de ${data.company?.name || 'tu empresa'}`,
         showCompanyFilter: false,
+        apiUrl: data.endpoints?.chatbotAudit,
       }"
     />
   </div>
