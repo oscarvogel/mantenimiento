@@ -157,6 +157,14 @@ const attentionSummaryUrl = computed(() => {
             <ArrowPathIcon class="size-5" aria-hidden="true" />
             Registrar lectura
           </a>
+          <a
+            v-if="dashboard.links.correctiveOrder !== '#'"
+            :href="dashboard.links.correctiveOrder"
+            class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary-hover"
+          >
+            <WrenchScrewdriverIcon class="size-5" aria-hidden="true" />
+            Nueva OT
+          </a>
         </div>
       </header>
 
