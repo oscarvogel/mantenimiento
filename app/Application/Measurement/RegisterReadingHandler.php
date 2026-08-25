@@ -23,7 +23,7 @@ final class RegisterReadingHandler
 
     public function execute(ActorContext $actor, RegisterReadingCommand $command): RegisterReadingResult
     {
-        $companyId = $this->tenantCompany($actor);
+        $companyId = $this->tenantCompany($actor, $command);
 
         return $this->unitOfWork->transactional(function () use ($actor, $command, $companyId): RegisterReadingResult {
             $equipment = $this->equipment->findForUpdate($command->equipmentId, $companyId);
@@ -66,12 +66,16 @@ final class RegisterReadingHandler
         });
     }
 
-    private function tenantCompany(ActorContext $actor): int
+    private function tenantCompany(ActorContext $actor, RegisterReadingCommand $command): int
     {
         if ($actor->isSuperAdmin() || $actor->companyId() === null) {
             throw new DomainException('La operación requiere un actor perteneciente a una empresa.');
         }
-        if (! $actor->hasPermission('lecturas.cargar')) {
+
+        $canLoadReading = $actor->hasPermission('lecturas.cargar');
+        $canRecordWorkOrderReading = $command->origin === EquipmentReading::WORK_ORDER
+            && ($actor->hasPermission('ordenes.cerrar') || $actor->hasPermission('ordenes.editar'));
+        if (! $canLoadReading && ! $canRecordWorkOrderReading) {
             throw new DomainException('No tenés permiso para cargar lecturas.');
         }
 

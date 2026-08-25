@@ -38,12 +38,13 @@ const tabs = [
   { id: 'historial', label: 'Historial' },
 ]
 const activeTab = ref('resumen')
+const correctiveOrderUrl = computed(() => `${props.data.routes.maintenance}?ot_correctiva=1&equipo_id=${props.data.equipment.id}`)
 </script>
 
 <template>
   <div>
     <PageHeading eyebrow="Ficha del equipo" :title="data.equipment.code" :description="`${data.equipment.typeName} · ${data.equipment.branchCode} · ${data.equipment.branchName}`" :back="{ label: 'Volver al listado', href: data.routes.index }">
-      <template #actions><div class="flex flex-wrap gap-2"><a :href="data.routes.qr" target="_blank" rel="noopener" :class="secondaryButton"><QrCodeIcon class="mr-2 size-5" aria-hidden="true" />Ver QR</a><a v-if="data.can.edit" :href="data.routes.addPlansFromTemplate" :class="secondaryButton">Agregar planes desde plantilla</a><a :href="data.routes.maintenance" :class="secondaryButton">Circuito preventivo</a></div></template>
+      <template #actions><div class="flex flex-wrap gap-2"><a v-if="data.equipment.status === 'ACTIVO'" :href="correctiveOrderUrl" :class="primaryButton">Nueva OT correctiva</a><a :href="data.routes.qr" target="_blank" rel="noopener" :class="secondaryButton"><QrCodeIcon class="mr-2 size-5" aria-hidden="true" />Ver QR</a><a v-if="data.can.edit" :href="data.routes.addPlansFromTemplate" :class="secondaryButton">Agregar planes desde plantilla</a><a :href="data.routes.maintenance" :class="secondaryButton">Circuito preventivo</a></div></template>
     </PageHeading>
 
     <nav class="mb-6 overflow-x-auto border-b border-border" aria-label="Secciones de la ficha">
