@@ -59,6 +59,15 @@ abstract class BaseController extends Controller
             'success' => session()->getFlashdata('success'),
             'error' => session()->getFlashdata('error'),
         ];
+        $data['endpoints'] = array_merge(
+            is_array($data['endpoints'] ?? null) ? $data['endpoints'] : [],
+            [
+                // Nunca deducir este prefijo desde window.location: en producción
+                // existe un subdirectorio externo /mantenimiento y además el grupo
+                // interno de rutas también se llama mantenimiento.
+                'chatbotAudit' => base_url('mantenimiento/chatbot/auditoria'),
+            ],
+        );
 
         return view('app', [
             'appPayload' => $shell->for($actor, $activeNavigation) + [
