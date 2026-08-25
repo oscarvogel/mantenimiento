@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Application\Identity\ActorContext;
+use App\Application\MaintenanceCircuit\RegisterReadingAndReevaluate;
+use App\Application\Measurement\RegisterReadingCommand;
 use App\Application\WorkOrders\WorkOrderActorScope;
+use App\Domain\Measurement\EquipmentReading;
 use App\Infrastructure\Identity\SessionActorContext;
 use App\Infrastructure\WorkOrders\CodeIgniterWorkOrderNumberGenerator;
 use CodeIgniter\HTTP\RedirectResponse;
@@ -117,7 +120,7 @@ final class CorrectiveWorkOrders extends BaseController
 
             $database->transException(true)->transStart();
             $row = $database->query(
-                'SELECT id, numero, empresa_id, sucursal_id, estado, origen, diagnostico FROM ordenes_trabajo WHERE id = ? AND empresa_id = ? FOR UPDATE',
+                'SELECT id, numero, empresa_id, sucursal_id, equipo_id, estado, origen, diagnostico FROM ordenes_trabajo WHERE id = ? AND empresa_id = ? FOR UPDATE',
                 [$orderId, $scope->companyId()],
             )->getRowArray();
             if ($row === null || (string) $row['origen'] !== 'CORRECTIVO') {
@@ -156,9 +159,28 @@ final class CorrectiveWorkOrders extends BaseController
                 'comentario' => 'OT correctiva finalizada',
                 'created_at' => $now,
             ]);
+
+            if ($outputKm !== null || $outputHours !== null) {
+                $this->registerReadingAndReevaluate()->execute($actor, new RegisterReadingCommand(
+                    (int) $row['equipo_id'],
+                    $completedAt,
+                    $outputKm,
+                    $outputHours,
+                    EquipmentReading::WORK_ORDER,
+                    'OT#' . $orderId,
+                    null,
+                    'Lectura registrada al cerrar ' . (string) $row['numero'],
+                ));
+            }
+
             $database->transComplete();
 
-            return redirect()->to('/mantenimiento')->with('success', (string) $row['numero'] . ' correctiva finalizada. Costo total: $ ' . number_format($total, 2, ',', '.'));
+            $message = (string) $row['numero'] . ' correctiva finalizada. Costo total: $ ' . number_format($total, 2, ',', '.');
+            if ($outputKm !== null || $outputHours !== null) {
+                $message .= ' La lectura del equipo quedó actualizada.';
+            }
+
+            return redirect()->to('/mantenimiento')->with('success', $message);
         } catch (Throwable $exception) {
             return $this->failure($exception);
         }
@@ -171,6 +193,11 @@ final class CorrectiveWorkOrders extends BaseController
             throw new DomainException('No existe un contexto autenticado válido.');
         }
         return $actor;
+    }
+
+    private function registerReadingAndReevaluate(): RegisterReadingAndReevaluate
+    {
+        return service('registerReadingAndReevaluate');
     }
 
     private function failure(Throwable $exception): RedirectResponse
