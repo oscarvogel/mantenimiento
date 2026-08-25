@@ -59,9 +59,17 @@ final readonly class RunNotificationDispatch
     {
         $groups = [];
         foreach ($this->deliveries->due('EMAIL', $limit) as $delivery) {
-            $groups[$delivery['email']][] = $delivery;
+            $recipient = (string) ($delivery['email'] ?? '');
+            $branchId = (int) ($delivery['sucursal_id'] ?? 0);
+            $key = $recipient . '|sucursal:' . $branchId;
+            $groups[$key] = [
+                'recipient' => $recipient,
+                'items' => [...($groups[$key]['items'] ?? []), $delivery],
+            ];
         }
-        foreach ($groups as $recipient => $items) {
+        foreach ($groups as $group) {
+            $recipient = $group['recipient'];
+            $items = $group['items'];
             try {
                 $this->email->sendDigest($recipient, $items);
                 foreach ($items as $item) {
@@ -84,8 +92,6 @@ final readonly class RunNotificationDispatch
             return;
         }
 
-        // El mismo email puede ser utilizado por más de una empresa (por ejemplo,
-        // un grupo empresario). Nunca mezclar eventos de tenants distintos en un digest.
         $groups = [];
         foreach ($this->deliveries->dueCompany($limit) as $delivery) {
             $companyId = (int) ($delivery['empresa_id'] ?? 0);

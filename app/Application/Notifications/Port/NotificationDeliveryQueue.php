@@ -11,7 +11,7 @@ interface NotificationDeliveryQueue
 {
     public function schedule(int $notificationId, int $userId, string $eventKey, NotificationSeverity $severity, NotificationPreference $preference): void;
 
-    /** @return list<array{id:int,notification_id:int,usuario_id:int,email:string,canal:string,titulo:string,resumen:string,url:?string,severidad:string,intentos:int}> */
+    /** @return list<array{id:int,notification_id:int,usuario_id:int,sucursal_id?:int,email:string,canal:string,titulo:string,resumen:string,url:?string,severidad:string,intentos:int}> */
     public function due(string $channel, int $limit): array;
 
     public function delivered(int $deliveryId): void;
