@@ -1,18 +1,12 @@
 <script setup>
 import { ref } from 'vue'
-import {
-  ChartBarSquareIcon,
-  ClipboardDocumentCheckIcon,
-  EyeIcon,
-  EyeSlashIcon,
-  ShieldCheckIcon,
-  TruckIcon,
-  WrenchScrewdriverIcon,
-} from '@heroicons/vue/24/outline'
+import { EyeIcon, EyeSlashIcon, ShieldCheckIcon } from '@heroicons/vue/24/outline'
 
 defineProps({ data: { type: Object, required: true } })
 
 const passwordVisible = ref(false)
+const baseUrl = document.body?.dataset?.baseUrl ?? '/'
+const brandAsset = (name) => `${baseUrl}assets/brand/${name}.svg`
 </script>
 
 <template>
@@ -28,9 +22,14 @@ const passwordVisible = ref(false)
     >
       <div class="flex flex-col justify-center px-6 py-8 sm:px-10 sm:py-10 lg:px-14 lg:py-12">
         <div class="mb-8 flex items-center gap-3">
-          <span class="flex size-11 items-center justify-center rounded-xl bg-accent text-accent-foreground shadow-sm">
-            <WrenchScrewdriverIcon class="size-6" aria-hidden="true" />
-          </span>
+          <img
+            :src="brandAsset('logo-mark')"
+            alt=""
+            class="size-11 shrink-0 rounded-xl shadow-sm"
+            width="44"
+            height="44"
+            aria-hidden="true"
+          />
           <div>
             <p class="text-base font-bold leading-tight text-ink">Mantenimiento</p>
             <p class="mt-0.5 text-xs font-medium text-ink-muted">Gestión de flota</p>
@@ -123,17 +122,17 @@ const passwordVisible = ref(false)
         <div class="mt-8 border-t border-border-subtle pt-6">
           <div class="grid grid-cols-3 gap-2 sm:gap-3">
             <div class="rounded-xl bg-surface-muted p-3">
-              <TruckIcon class="size-5 text-primary" aria-hidden="true" />
+              <img :src="brandAsset('icon-equipment')" alt="" class="size-6" width="24" height="24" aria-hidden="true" />
               <p class="mt-2 text-sm font-bold text-ink">Equipos</p>
               <p class="mt-1 hidden text-[0.68rem] font-semibold uppercase tracking-wide text-ink-muted sm:block">Estado y uso</p>
             </div>
             <div class="rounded-xl bg-surface-muted p-3">
-              <ClipboardDocumentCheckIcon class="size-5 text-primary" aria-hidden="true" />
+              <img :src="brandAsset('icon-services')" alt="" class="size-6" width="24" height="24" aria-hidden="true" />
               <p class="mt-2 text-sm font-bold text-ink">Servicios</p>
               <p class="mt-1 hidden text-[0.68rem] font-semibold uppercase tracking-wide text-ink-muted sm:block">Planes y OT</p>
             </div>
             <div class="rounded-xl bg-surface-muted p-3">
-              <ChartBarSquareIcon class="size-5 text-primary" aria-hidden="true" />
+              <img :src="brandAsset('icon-reports')" alt="" class="size-6" width="24" height="24" aria-hidden="true" />
               <p class="mt-2 text-sm font-bold text-ink">Reportes</p>
               <p class="mt-1 hidden text-[0.68rem] font-semibold uppercase tracking-wide text-ink-muted sm:block">Decisiones claras</p>
             </div>
@@ -157,9 +156,18 @@ const passwordVisible = ref(false)
             Equipos, lecturas, servicios y órdenes en una sola herramienta operativa para toda la empresa.
           </div>
           <div class="mt-5 flex flex-wrap gap-2">
-            <span class="rounded-full border border-white/30 bg-brand-950/55 px-3 py-2 text-xs font-semibold text-white">Control preventivo</span>
-            <span class="rounded-full border border-white/30 bg-brand-950/55 px-3 py-2 text-xs font-semibold text-white">Multiempresa</span>
-            <span class="rounded-full border border-white/30 bg-brand-950/55 px-3 py-2 text-xs font-semibold text-white">Historial trazable</span>
+            <span class="inline-flex items-center gap-2 rounded-full border border-white/30 bg-brand-950/55 px-3 py-2 text-xs font-semibold text-white">
+              <img :src="brandAsset('icon-preventive')" alt="" class="size-5 rounded-md" width="20" height="20" aria-hidden="true" />
+              Control preventivo
+            </span>
+            <span class="inline-flex items-center gap-2 rounded-full border border-white/30 bg-brand-950/55 px-3 py-2 text-xs font-semibold text-white">
+              <img :src="brandAsset('icon-multicompany')" alt="" class="size-5 rounded-md" width="20" height="20" aria-hidden="true" />
+              Multiempresa
+            </span>
+            <span class="inline-flex items-center gap-2 rounded-full border border-white/30 bg-brand-950/55 px-3 py-2 text-xs font-semibold text-white">
+              <img :src="brandAsset('icon-history')" alt="" class="size-5 rounded-md" width="20" height="20" aria-hidden="true" />
+              Historial trazable
+            </span>
           </div>
         </div>
       </div>

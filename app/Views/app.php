@@ -26,7 +26,7 @@ header('Cache-Control: no-store, must-revalidate');
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#031A3E">
     <meta name="color-scheme" content="light">
-    <link rel="icon" href="<?= esc(base_url('favicon.ico'), 'attr') ?>">
+    <link rel="icon" type="image/svg+xml" href="<?= esc(base_url('assets/brand/logo-mark.svg'), 'attr') ?>">
     <link rel="manifest" href="<?= esc(base_url('manifest.webmanifest'), 'attr') ?>">
     <meta name="csrf-token" content="<?= esc(csrf_hash(), 'attr') ?>">
     <title><?= esc($pageTitle ?? 'Mantenimiento') ?></title>
@@ -37,7 +37,7 @@ header('Cache-Control: no-store, must-revalidate');
         <link rel="stylesheet" href="<?= esc(base_url('assets/dashboard/' . $stylesheet), 'attr') ?>">
     <?php endforeach; ?>
 </head>
-<body>
+<body data-base-url="<?= esc(rtrim(base_url(), '/') . '/', 'attr') ?>">
     <div id="maintenance-app"></div>
     <noscript><p>Esta aplicación necesita JavaScript habilitado para funcionar.</p></noscript>
     <script id="maintenance-app-data" type="application/json"><?= $appJson ?></script>
