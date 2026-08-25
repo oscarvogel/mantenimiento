@@ -10,7 +10,17 @@ final class NotificationDefaultsSeeder extends Seeder
 {
     public function run(): void
     {
-        $events = ['preventivo.vencido', 'preventivo.proximo', 'orden.asignada', 'orden.demorada', 'solicitud.critica', 'equipo.sin_lectura', 'garantia.proxima'];
+        $events = [
+            'preventivo.vencido',
+            'preventivo.proximo',
+            'orden.asignada',
+            'orden.proxima_objetivo',
+            'orden.demorada',
+            'orden.espera_repuestos',
+            'solicitud.critica',
+            'equipo.sin_lectura',
+            'garantia.proxima',
+        ];
         foreach ($this->db->table('roles')->select('id, nombre')->get()->getResultArray() as $role) {
             foreach ($events as $event) {
                 $defaults = $this->defaults((string) $role['nombre'], $event);
