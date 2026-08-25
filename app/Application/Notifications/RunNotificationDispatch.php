@@ -125,15 +125,22 @@ final readonly class RunNotificationDispatch
         foreach ($this->deliveries->due('PUSH', $limit) as $delivery) {
             try {
                 $result = $this->push->sendToUser($delivery['usuario_id'], $delivery['titulo'], $delivery['resumen'], $delivery['url']);
-                if ($result['sent'] === 0 && $result['expired'] === 0) {
+                $summary['push_sent'] += $result['sent'];
+                $summary['expired'] += $result['expired'];
+                $summary['failed'] += $result['failed'];
+
+                if ($result['sent'] === 0 && $result['expired'] === 0 && $result['failed'] === 0) {
                     $this->deliveries->skipped($delivery['id'], 'No existen dispositivos activos para el destinatario.');
                     $summary['skipped']++;
                     continue;
                 }
+
+                if ($result['sent'] === 0 && $result['failed'] > 0 && $result['expired'] === 0) {
+                    $this->deliveries->failed($delivery['id'], 'Falló la entrega Web Push en todos los dispositivos activos.', $delivery['intentos'] < 3);
+                    continue;
+                }
+
                 $this->deliveries->delivered($delivery['id']);
-                $summary['push_sent'] += $result['sent'];
-                $summary['expired'] += $result['expired'];
-                $summary['failed'] += $result['failed'];
             } catch (Throwable $exception) {
                 $this->deliveries->failed($delivery['id'], $exception->getMessage(), $delivery['intentos'] < 3);
                 $summary['failed']++;
