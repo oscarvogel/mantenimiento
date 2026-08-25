@@ -48,6 +48,19 @@ final class WorkOrders extends BaseController
         return $actor;
     }
 
+    private function nullableInt(mixed $value): ?int
+    {
+        $value = trim((string) $value);
+        if ($value === '') {
+            return null;
+        }
+        if (filter_var($value, FILTER_VALIDATE_INT) === false) {
+            throw new DomainException('Se recibió un número entero inválido.');
+        }
+
+        return (int) $value;
+    }
+
     private function dashboard(): ListWorkOrdersDashboard
     {
         return new ListWorkOrdersDashboard(new CodeIgniterWorkOrderDashboardReadModel(db_connect()));
