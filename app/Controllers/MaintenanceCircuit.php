@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Application\Assets\AssetCatalogService;
+use App\Application\Assets\EquipmentListQuery;
+use App\Application\Assets\ListEquipment;
 use App\Application\Assets\Attachment\ListPrimaryEquipmentPhotos;
 use App\Application\Identity\ActorContext;
 use App\Application\MaintenanceCircuit\ClosePreventiveOrder;
@@ -67,12 +69,17 @@ final class MaintenanceCircuit extends BaseController
             ? $this->primaryPhotos()->execute($actor, array_values(array_unique($photoEquipmentIds)))
             : [];
 
+        $payload = service('operationsPayload')->maintenance($data);
+        $payload['correctiveEquipments'] = $data['can']['editOrder']
+            ? $this->correctiveEquipmentOptions($actor)
+            : [];
+
         return $this->renderApp(
             $actor,
             'maintenance',
             'maintenance-overview',
             'Mantenimiento preventivo',
-            service('operationsPayload')->maintenance($data),
+            $payload,
         );
     }
 
@@ -211,6 +218,7 @@ final class MaintenanceCircuit extends BaseController
     }
 
     private function overview(): GetCircuitOverview { return service('circuitOverview'); }
+    private function equipment(): ListEquipment { return service('equipmentList'); }
     private function due(): ConsultarVencimientos { return service('consultMaintenanceDue'); }
     private function assetCatalog(): AssetCatalogService { return service('assetCatalog'); }
     private function registerReadingHandler(): RegisterReadingHandler { return service('registerReading'); }
@@ -221,6 +229,29 @@ final class MaintenanceCircuit extends BaseController
     private function closeOrderHandler(): ClosePreventiveOrder { return service('closePreventiveOrder'); }
     private function primaryPhotos(): ListPrimaryEquipmentPhotos { return service('listPrimaryEquipmentPhotos'); }
     private function printableOrder(): GetPrintableWorkOrder { return new GetPrintableWorkOrder(new CodeIgniterWorkOrderPrintReadModel(db_connect())); }
+
+    /** @return list<array<string,mixed>> */
+    private function correctiveEquipmentOptions(ActorContext $actor): array
+    {
+        $page = $this->equipment()->execute($actor, new EquipmentListQuery(
+            status: 'ACTIVO',
+            page: 1,
+            perPage: 100,
+        ));
+
+        return array_map(static fn (array $row): array => [
+            'id' => (int) $row['id'],
+            'code' => (string) $row['codigo'],
+            'plate' => $row['patente'] ?? null,
+            'typeId' => (int) $row['tipo_equipo_id'],
+            'typeName' => (string) $row['tipo_nombre'],
+            'branchName' => (string) $row['sucursal_nombre'],
+            'controlsKm' => (int) ($row['controla_km'] ?? 0) === 1,
+            'controlsHours' => (int) ($row['controla_horas'] ?? 0) === 1,
+            'currentKm' => $row['km_actual'] === null ? null : (int) $row['km_actual'],
+            'currentHours' => $row['horas_actuales'] ?? null,
+        ], $page['items'] ?? []);
+    }
 
     /** @param array<string,mixed> $result */
     private function closeSuccessMessage(array $result): string
