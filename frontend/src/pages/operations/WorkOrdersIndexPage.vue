@@ -1,6 +1,6 @@
 <script setup>
 import { computed, reactive, ref } from 'vue'
-import { ArrowPathIcon, ChevronDownIcon, MagnifyingGlassIcon, PrinterIcon, WrenchScrewdriverIcon } from '@heroicons/vue/24/outline'
+import { ArrowPathIcon, ChevronDownIcon, MagnifyingGlassIcon, PlusIcon, PrinterIcon, WrenchScrewdriverIcon } from '@heroicons/vue/24/outline'
 import CsrfInput from './components/CsrfInput.vue'
 import EmptyState from './components/EmptyState.vue'
 import PageHeading from './components/PageHeading.vue'
@@ -67,8 +67,11 @@ for (const order of props.data.orders ?? []) closeStateFor(order)
 
 <template>
   <div>
-    <PageHeading eyebrow="Taller" title="Órdenes de trabajo" description="Buscá, priorizá y retomá cualquier OT desde un único lugar.">
-      <template #actions><a :href="data.routes.maintenance" :class="secondaryButton">Volver a Mantenimiento</a></template>
+    <PageHeading eyebrow="Taller" title="Órdenes de trabajo" description="Consultá las órdenes existentes o registrá rápidamente un trabajo correctivo realizado.">
+      <template #actions>
+        <a v-if="data.can.editOrder" :href="data.routes.registerCorrective" :class="primaryButton"><PlusIcon class="mr-2 size-4" aria-hidden="true" />Registrar correctivo</a>
+        <a :href="data.routes.maintenance" :class="secondaryButton">Volver a Mantenimiento</a>
+      </template>
     </PageHeading>
 
     <section aria-label="Indicadores de órdenes" class="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
@@ -90,7 +93,7 @@ for (const order of props.data.orders ?? []) closeStateFor(order)
       <div><h2 class="text-lg font-bold text-ink">Órdenes que requieren atención</h2><p class="text-sm text-ink-muted">{{ data.pagination.total }} OT encontradas · demorada desde {{ data.delayDays }} días abierta.</p></div>
     </div>
 
-    <EmptyState v-if="data.orders.length === 0" title="No se encontraron órdenes" description="Probá cambiar los filtros de búsqueda." />
+    <EmptyState v-if="data.orders.length === 0" title="No se encontraron órdenes" description="Probá cambiar los filtros de búsqueda o registrá el correctivo si todavía no existe." />
     <div v-else class="space-y-3">
       <article v-for="order in data.orders" :id="`orden-${order.id}`" :key="order.id" class="scroll-mt-24 rounded-xl border border-border bg-surface-raised p-4 sm:p-5">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
