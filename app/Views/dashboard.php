@@ -32,7 +32,7 @@ header('Cache-Control: no-store, must-revalidate');
         <link rel="stylesheet" href="<?= esc(base_url('assets/dashboard/' . $stylesheet), 'attr') ?>">
     <?php endforeach; ?>
 </head>
-<body>
+<body data-base-url="<?= esc(rtrim(base_url(), '/') . '/', 'attr') ?>">
     <div id="maintenance-dashboard"></div>
     <noscript>
         <p>Este panel necesita JavaScript habilitado para funcionar.</p>
