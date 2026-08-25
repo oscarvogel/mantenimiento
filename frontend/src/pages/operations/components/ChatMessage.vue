@@ -44,35 +44,36 @@ const safeHref = (rawHref) => {
   if (!href) return null
 
   try {
-    if (/^https?:\/\//i.test(href)) {
+    const isAbsolute = /^https?:\/\//i.test(href)
+    if (isAbsolute) {
       const schemes = href.match(/https?:\/\//gi) || []
       if (schemes.length !== 1) return null
-
-      const url = new URL(href)
-      return ['http:', 'https:'].includes(url.protocol) ? url.href : null
+    } else if (!href.startsWith('/mantenimiento/')) {
+      return null
     }
 
-    if (href.startsWith('/mantenimiento/')) {
-      const origin = typeof window !== 'undefined' ? window.location.origin : ''
-      if (!origin) return href
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+    if (!isAbsolute && !origin) return href
 
-      const url = new URL(href, `${origin}/`)
-      // Compatibilidad con respuestas antiguas: en el deploy plano, los links
-      // históricos de planes/equipos requieren el grupo /mantenimiento adicional.
-      if (
-        typeof window !== 'undefined'
-        && window.location.pathname.startsWith('/mantenimiento/')
-        && /^\/mantenimiento\/(?:planes|equipos)(?:\/|$)/.test(url.pathname)
-      ) {
-        url.pathname = `/mantenimiento${url.pathname}`
-      }
-      return url.href
+    const url = isAbsolute ? new URL(href) : new URL(href, `${origin}/`)
+    if (!['http:', 'https:'].includes(url.protocol)) return null
+
+    // Compatibilidad con respuestas antiguas: en el deploy plano, los links
+    // históricos de planes/equipos requieren el grupo /mantenimiento adicional.
+    // Se aplica igual a links absolutos y relativos, pero solo al mismo origen.
+    if (
+      typeof window !== 'undefined'
+      && url.origin === window.location.origin
+      && window.location.pathname.startsWith('/mantenimiento/')
+      && /^\/mantenimiento\/(?:planes|equipos)(?:\/|$)/.test(url.pathname)
+    ) {
+      url.pathname = `/mantenimiento${url.pathname}`
     }
+
+    return url.href
   } catch (_) {
     return null
   }
-
-  return null
 }
 
 const tokenizeLine = (line) => {
