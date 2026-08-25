@@ -3,7 +3,7 @@ import { mount } from '@vue/test-utils'
 import WorkOrdersIndexPage from './WorkOrdersIndexPage.vue'
 
 const data = () => ({
-  routes: { index: '/mantenimiento/ordenes', maintenance: '/mantenimiento' },
+  routes: { index: '/mantenimiento/ordenes', maintenance: '/mantenimiento', registerCorrective: '/mantenimiento?ot_correctiva=1' },
   filters: { q: '', status: '', branchId: '', ownerId: '', attention: '' },
   can: { editOrder: true, closeOrder: true },
   csrf: { name: 'csrf_test', hash: 'SECURE' },
@@ -39,6 +39,21 @@ describe('WorkOrdersIndexPage', () => {
     expect(wrapper.find('select[name="estado"]').exists()).toBe(true)
     expect(wrapper.find('select[name="sucursal_id"]').exists()).toBe(true)
     expect(wrapper.find('select[name="responsable_id"]').exists()).toBe(true)
+  })
+
+  it('permite lanzar un correctivo rápido desde el listado si la OT no existe', () => {
+    const wrapper = mount(WorkOrdersIndexPage, { props: { data: data() } })
+    const link = wrapper.find('a[href="/mantenimiento?ot_correctiva=1"]')
+    expect(link.exists()).toBe(true)
+    expect(link.text()).toContain('Registrar correctivo')
+    expect(wrapper.text()).toContain('registrá rápidamente un trabajo correctivo realizado')
+  })
+
+  it('oculta el registro rápido sin permiso para editar órdenes', () => {
+    const payload = data()
+    payload.can.editOrder = false
+    const wrapper = mount(WorkOrdersIndexPage, { props: { data: payload } })
+    expect(wrapper.find('a[href="/mantenimiento?ot_correctiva=1"]').exists()).toBe(false)
   })
 
   it('prioriza datos accionables y expone imprimir/iniciar/reanudar', () => {
