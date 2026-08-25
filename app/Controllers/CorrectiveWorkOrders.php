@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Application\Assets\Attachment\UploadEquipmentAttachmentCommand;
+use App\Application\Assets\Attachment\UploadEquipmentAttachmentHandler;
 use App\Application\Identity\ActorContext;
 use App\Application\MaintenanceCircuit\RegisterReadingAndReevaluate;
 use App\Application\Measurement\RegisterReadingCommand;
@@ -39,19 +41,45 @@ final class CorrectiveWorkOrders extends BaseController
             if (! in_array($priority, ['BAJA', 'MEDIA', 'ALTA', 'CRITICA'], true)) {
                 throw new DomainException('La prioridad de la OT no es válida.');
             }
+
             $problem = trim((string) $this->request->getPost('problema_reportado'));
             if (mb_strlen($problem) < 5) {
-                throw new DomainException('Describí el problema reportado con al menos 5 caracteres.');
+                throw new DomainException('Describí el problema o motivo con al menos 5 caracteres.');
+            }
+            $workPerformed = trim((string) $this->request->getPost('trabajo_realizado_correctivo'));
+            if (mb_strlen($workPerformed) < 5) {
+                throw new DomainException('Indicá el trabajo realizado con al menos 5 caracteres.');
             }
 
-            $openedAt = new DateTimeImmutable((string) ($this->request->getPost('fecha_apertura') ?: 'now'));
+            $serviceAt = new DateTimeImmutable((string) ($this->request->getPost('fecha_servicio') ?: $this->request->getPost('fecha_apertura') ?: 'now'));
             $responsibleUserId = $this->nullablePositiveInt($this->request->getPost('responsable_usuario_id'));
-            $inputKm = $this->nullableNonNegativeInt($this->request->getPost('km_ingreso'), 'El kilometraje de ingreso no es válido.');
-            $inputHours = $this->nullableDecimal($this->request->getPost('horas_ingreso'), 'El horómetro de ingreso no es válido.');
+
+            $kmValue = $this->request->getPost('km_salida');
+            if ($kmValue === null || trim((string) $kmValue) === '') {
+                $kmValue = $this->request->getPost('km_ingreso');
+            }
+            $hoursValue = $this->request->getPost('horas_salida');
+            if ($hoursValue === null || trim((string) $hoursValue) === '') {
+                $hoursValue = $this->request->getPost('horas_ingreso');
+            }
+            $outputKm = $this->nullableNonNegativeInt($kmValue, 'El kilometraje informado no es válido.');
+            $outputHours = $this->nullableDecimal($hoursValue, 'El horómetro informado no es válido.');
+
+            $labor = $this->money($this->request->getPost('costo_mano_obra'), 'El costo de mano de obra no es válido.');
+            $parts = $this->money($this->request->getPost('costo_repuestos'), 'El costo de repuestos no es válido.');
+            $other = $this->money($this->request->getPost('otros_costos'), 'El valor de otros costos no es válido.');
+            $total = round($labor + $parts + $other, 2);
+            $observations = $this->nullableString($this->request->getPost('observaciones'));
             $now = date('Y-m-d H:i:s');
 
+            $evidence = $this->request->getFile('evidencia');
+            $hasEvidence = $evidence !== null && $evidence->getError() !== UPLOAD_ERR_NO_FILE;
+            if ($hasEvidence && ! $evidence->isValid()) {
+                throw new DomainException('La evidencia seleccionada no es un archivo válido.');
+            }
+
             $database->transException(true)->transStart();
-            $number = (new CodeIgniterWorkOrderNumberGenerator($database))->next($scope->companyId(), (int) $openedAt->format('Y'));
+            $number = (new CodeIgniterWorkOrderNumberGenerator($database))->next($scope->companyId(), (int) $serviceAt->format('Y'));
             $database->table('ordenes_trabajo')->insert([
                 'numero' => $number->value(),
                 'empresa_id' => $scope->companyId(),
@@ -63,12 +91,20 @@ final class CorrectiveWorkOrders extends BaseController
                 'tipo_servicio_id' => null,
                 'prioridad' => $priority,
                 'responsable_usuario_id' => $responsibleUserId,
-                'fecha_apertura' => $openedAt->format('Y-m-d H:i:s'),
-                'km_ingreso' => $inputKm,
-                'horas_ingreso' => $inputHours,
+                'fecha_apertura' => $serviceAt->format('Y-m-d H:i:s'),
+                'fecha_finalizacion' => $serviceAt->format('Y-m-d 23:59:59'),
+                'km_ingreso' => null,
+                'horas_ingreso' => null,
+                'km_salida' => $outputKm,
+                'horas_salida' => $outputHours,
                 'diagnostico' => $problem,
-                'trabajo_realizado' => null,
-                'estado' => 'EMITIDA',
+                'trabajo_realizado' => $workPerformed,
+                'costo_mano_obra' => $labor,
+                'costo_repuestos' => $parts,
+                'otros_costos' => $other,
+                'costo_total' => $total,
+                'observaciones' => $observations,
+                'estado' => 'FINALIZADA',
                 'created_at' => $now,
                 'updated_at' => $now,
                 'created_by' => $actor->userId(),
@@ -76,26 +112,76 @@ final class CorrectiveWorkOrders extends BaseController
             ]);
             $orderId = (int) $database->insertID();
             if ($orderId <= 0) {
-                throw new DomainException('No se pudo crear la OT correctiva.');
+                throw new DomainException('No se pudo registrar la OT correctiva.');
             }
+
             $database->table('orden_estado_historial')->insert([
                 'empresa_id' => $scope->companyId(),
                 'orden_id' => $orderId,
                 'estado_anterior' => null,
-                'estado_nuevo' => 'EMITIDA',
+                'estado_nuevo' => 'FINALIZADA',
                 'fecha' => $now,
                 'usuario_id' => $actor->userId(),
-                'comentario' => 'OT correctiva creada manualmente',
+                'comentario' => 'Trabajo correctivo ya realizado registrado administrativamente',
                 'created_at' => $now,
             ]);
+
+            if ($outputKm !== null || $outputHours !== null) {
+                $this->registerReadingAndReevaluate()->execute($actor, new RegisterReadingCommand(
+                    $equipmentId,
+                    $serviceAt,
+                    $outputKm,
+                    $outputHours,
+                    EquipmentReading::WORK_ORDER,
+                    'OT#' . $orderId,
+                    null,
+                    'Lectura registrada con trabajo correctivo ' . $number->value(),
+                ));
+            }
+
+            $attachmentId = null;
+            if ($hasEvidence && $evidence !== null) {
+                $attachmentId = $this->uploadAttachmentHandler()->execute(
+                    $actor,
+                    new UploadEquipmentAttachmentCommand(
+                        $equipmentId,
+                        $evidence->getTempName(),
+                        $evidence->getClientName(),
+                        'COMPROBANTE',
+                        'Evidencia de ' . $number->value() . ' · ' . $workPerformed,
+                        'ordenes.editar',
+                    ),
+                );
+                $database->table('equipo_adjuntos')
+                    ->where('id', $attachmentId)
+                    ->where('empresa_id', $scope->companyId())
+                    ->where('equipo_id', $equipmentId)
+                    ->update(['orden_id' => $orderId, 'updated_at' => $now]);
+            }
+
             $database->transComplete();
 
-            return redirect()->to('/mantenimiento')->with('success', $number->value() . ' correctiva creada correctamente.');
+            $message = $number->value() . ' correctiva registrada como trabajo realizado.';
+            if ($outputKm !== null || $outputHours !== null) {
+                $message .= ' La lectura del equipo quedó actualizada.';
+            }
+            if ($attachmentId !== null) {
+                $message .= ' Evidencia #' . $attachmentId . ' adjuntada.';
+            }
+
+            $returnToEquipment = (string) $this->request->getPost('volver_equipo') === '1';
+            $target = $returnToEquipment ? '/mantenimiento/equipos/' . $equipmentId : '/mantenimiento';
+
+            return redirect()->to($target)->with('success', $message);
         } catch (Throwable $exception) {
             return $this->failure($exception);
         }
     }
 
+    /**
+     * Conservado para órdenes correctivas históricas que todavía estén abiertas.
+     * Las nuevas correctivas se registran directamente como FINALIZADA en create().
+     */
     public function close(int $orderId): RedirectResponse
     {
         try {
@@ -156,7 +242,7 @@ final class CorrectiveWorkOrders extends BaseController
                 'estado_nuevo' => 'FINALIZADA',
                 'fecha' => $now,
                 'usuario_id' => $actor->userId(),
-                'comentario' => 'OT correctiva finalizada',
+                'comentario' => 'OT correctiva histórica finalizada',
                 'created_at' => $now,
             ]);
 
@@ -175,12 +261,7 @@ final class CorrectiveWorkOrders extends BaseController
 
             $database->transComplete();
 
-            $message = (string) $row['numero'] . ' correctiva finalizada. Costo total: $ ' . number_format($total, 2, ',', '.');
-            if ($outputKm !== null || $outputHours !== null) {
-                $message .= ' La lectura del equipo quedó actualizada.';
-            }
-
-            return redirect()->to('/mantenimiento')->with('success', $message);
+            return redirect()->to('/mantenimiento')->with('success', (string) $row['numero'] . ' correctiva histórica finalizada.');
         } catch (Throwable $exception) {
             return $this->failure($exception);
         }
@@ -198,6 +279,11 @@ final class CorrectiveWorkOrders extends BaseController
     private function registerReadingAndReevaluate(): RegisterReadingAndReevaluate
     {
         return service('registerReadingAndReevaluate');
+    }
+
+    private function uploadAttachmentHandler(): UploadEquipmentAttachmentHandler
+    {
+        return service('uploadEquipmentAttachment');
     }
 
     private function failure(Throwable $exception): RedirectResponse
