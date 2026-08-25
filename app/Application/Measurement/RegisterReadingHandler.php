@@ -74,7 +74,7 @@ final class RegisterReadingHandler
 
         $canLoadReading = $actor->hasPermission('lecturas.cargar');
         $canRecordWorkOrderReading = $command->origin === EquipmentReading::WORK_ORDER
-            && $actor->hasPermission('ordenes.cerrar');
+            && ($actor->hasPermission('ordenes.cerrar') || $actor->hasPermission('ordenes.editar'));
         if (! $canLoadReading && ! $canRecordWorkOrderReading) {
             throw new DomainException('No tenés permiso para cargar lecturas.');
         }
