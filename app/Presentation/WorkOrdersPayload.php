@@ -66,7 +66,11 @@ final class WorkOrdersPayload
         }, $source['items'] ?? []);
 
         return [
-            'routes' => ['index' => $base, 'maintenance' => base_url('mantenimiento')],
+            'routes' => [
+                'index' => $base,
+                'maintenance' => base_url('mantenimiento'),
+                'registerCorrective' => base_url('mantenimiento') . '?ot_correctiva=1',
+            ],
             'filters' => [
                 'q' => $filters['q'] ?? '',
                 'status' => $filters['status'] ?? '',
