@@ -129,5 +129,8 @@ final class ProcessMessageToolChainingTest extends TestCase
         $this->assertCount(3, $provider->calls);
         $this->assertStringContainsString('"id":14', $provider->calls[1][3]['content']);
         $this->assertStringContainsString('"state":"PROXIMO"', $provider->calls[2][5]['content']);
+        $this->assertStringContainsString('Nunca construyas, completes, corrijas, combines ni infieras URLs', $provider->calls[0][0]['content']);
+        $this->assertStringContainsString('exact_match=false', $provider->calls[0][0]['content']);
+        $this->assertStringContainsString('NUNCA planes', $provider->calls[0][0]['content']);
     }
 }

@@ -78,7 +78,6 @@ final class ListWorkOrdersTool implements ToolHandler
             'ESPERA REPUESTOS' => 'ESPERA_REPUESTOS',
             'EN ESPERA REPUESTOS' => 'ESPERA_REPUESTOS',
             'ESPERA_REPUESTOS' => 'ESPERA_REPUESTOS',
-            'EN_ESPERA_REPUESTOS' => 'ESPERA_REPUESTOS',
             'FINALIZADA' => 'FINALIZADA',
             'FINALIZADAS' => 'FINALIZADA',
             'CERRADA' => 'FINALIZADA',
@@ -88,8 +87,16 @@ final class ListWorkOrdersTool implements ToolHandler
         ];
 
         $normalized = [];
+        // ABIERTA representa cualquier OT que todavía requiere atención.
+        $openStates = ['EMITIDA', 'EN_PROCESO', 'ESPERA_REPUESTOS', 'BORRADOR'];
         foreach ($values as $raw) {
             $key = strtoupper(trim(str_replace('-', ' ', (string) $raw)));
+            if ($key === 'ABIERTA' || $key === 'ABIERTAS' || $key === 'ABIERTO' || $key === 'ABIERTOS') {
+                foreach ($openStates as $state) {
+                    $normalized[] = $state;
+                }
+                continue;
+            }
             if (! isset($map[$key])) {
                 throw new DomainException('Estado de OT inválido: ' . (string) $raw);
             }
