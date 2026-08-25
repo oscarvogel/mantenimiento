@@ -29,19 +29,24 @@ const activeCloseOrder = ref(null)
 const correctiveModalOpen = ref(false)
 const correctiveEquipmentId = ref('')
 const correctiveSearch = ref('')
+const correctiveEquipmentLocked = ref(false)
 const correctiveOrderUrl = computed(() => String(props.data.routes.createEquipment ?? '').replace(/\/equipos\/?$/, '/ordenes/correctivas'))
 const quickReadingsUrl = computed(() => String(props.data.routes.createEquipment ?? '').replace(/\/equipos\/?$/, '/lecturas/rapidas'))
 const printOrderUrl = (order) => String(order.printUrl ?? order.startUrl ?? '').replace(/\/iniciar\/?$/, '/imprimir')
 
+const correctiveEquipments = computed(() => {
+  const complete = props.data.correctiveEquipments ?? []
+  return complete.length > 0 ? complete : (props.data.equipments ?? [])
+})
 const normalizeSearch = (value) => String(value ?? '').toLocaleLowerCase('es').replace(/[\s-]+/g, '')
 const filteredCorrectiveEquipments = computed(() => {
   const term = normalizeSearch(correctiveSearch.value)
-  const equipments = props.data.equipments ?? []
+  const equipments = correctiveEquipments.value
   if (!term) return equipments
   return equipments.filter((equipment) => [equipment.code, equipment.plate, equipment.typeName, equipment.branchName]
     .some((value) => normalizeSearch(value).includes(term)))
 })
-const selectedCorrectiveEquipment = computed(() => (props.data.equipments ?? []).find((equipment) => String(equipment.id) === String(correctiveEquipmentId.value)) ?? null)
+const selectedCorrectiveEquipment = computed(() => correctiveEquipments.value.find((equipment) => String(equipment.id) === String(correctiveEquipmentId.value)) ?? null)
 
 const visiblePlanCounts = computed(() => {
   const counts = { PROXIMO: 0, VENCIDO: 0, SIN_DATOS: 0 }
@@ -56,15 +61,17 @@ const toggleAction = (action) => {
   activeAction.value = activeAction.value === action ? null : action
 }
 const isActionOpen = (action) => activeAction.value === action
-const openCorrectiveModal = (equipment = null) => {
+const openCorrectiveModal = (equipment = null, locked = Boolean(equipment)) => {
   correctiveEquipmentId.value = equipment ? String(equipment.id) : ''
   correctiveSearch.value = equipment ? [equipment.code, equipment.plate].filter(Boolean).join(' · ') : ''
+  correctiveEquipmentLocked.value = Boolean(equipment && locked)
   correctiveModalOpen.value = true
 }
 const closeCorrectiveModal = () => {
   correctiveModalOpen.value = false
   correctiveEquipmentId.value = ''
   correctiveSearch.value = ''
+  correctiveEquipmentLocked.value = false
 }
 const selectCorrectiveEquipment = (equipment) => {
   correctiveEquipmentId.value = String(equipment.id)
@@ -141,6 +148,15 @@ const updateCloseForm = (value) => {
 }
 for (const equipment of props.data.equipments ?? []) stateFor(equipment)
 for (const order of props.data.orders ?? []) closeStateFor(order)
+
+const initialQuery = new URLSearchParams(window.location.search)
+if (initialQuery.get('ot_correctiva') === '1') {
+  const requestedEquipmentId = initialQuery.get('equipo_id')
+  const requestedEquipment = requestedEquipmentId
+    ? correctiveEquipments.value.find((equipment) => String(equipment.id) === String(requestedEquipmentId)) ?? null
+    : null
+  openCorrectiveModal(requestedEquipment, Boolean(requestedEquipment))
+}
 </script>
 
 <template>
@@ -251,12 +267,18 @@ for (const order of props.data.orders ?? []) closeStateFor(order)
           <CsrfInput :csrf="data.csrf" />
           <input type="hidden" name="equipo_id" :value="correctiveEquipmentId" />
           <FormField label="Equipo *" for-id="corrective-equipment-search" class="sm:col-span-2">
-            <div class="relative"><MagnifyingGlassIcon class="pointer-events-none absolute left-3 top-3 size-5 text-ink-subtle" aria-hidden="true" /><input id="corrective-equipment-search" v-model="correctiveSearch" type="search" autocomplete="off" required placeholder="Buscar por código o patente" :class="`${fieldClass} pl-10`" @input="correctiveEquipmentId = ''" /></div>
-            <div v-if="!selectedCorrectiveEquipment" class="mt-2 max-h-44 overflow-y-auto rounded-xl border border-border bg-surface">
-              <button v-for="equipment in filteredCorrectiveEquipments" :key="equipment.id" type="button" class="flex w-full items-center justify-between gap-3 border-b border-border-subtle px-3 py-2 text-left last:border-0 hover:bg-surface-muted" @click="selectCorrectiveEquipment(equipment)"><span><strong class="text-sm text-ink">{{ equipment.code }}</strong><span v-if="equipment.plate" class="ml-2 text-xs text-ink-muted">{{ equipment.plate }}</span></span><span class="text-xs text-ink-subtle">{{ equipment.typeName }}</span></button>
-              <p v-if="filteredCorrectiveEquipments.length === 0" class="px-3 py-3 text-sm text-ink-muted">No se encontraron equipos.</p>
+            <div v-if="correctiveEquipmentLocked && selectedCorrectiveEquipment" class="rounded-xl border border-success/20 bg-success-subtle px-4 py-3">
+              <p class="text-xs font-semibold uppercase tracking-wide text-success-strong">Equipo de esta ficha</p>
+              <p class="mt-1 font-bold text-ink">{{ selectedCorrectiveEquipment.code }}<span v-if="selectedCorrectiveEquipment.plate"> · {{ selectedCorrectiveEquipment.plate }}</span></p>
             </div>
-            <p v-else class="mt-2 rounded-lg bg-success-subtle px-3 py-2 text-sm font-semibold text-success-strong">Seleccionado: {{ selectedCorrectiveEquipment.code }}<span v-if="selectedCorrectiveEquipment.plate"> · {{ selectedCorrectiveEquipment.plate }}</span></p>
+            <template v-else>
+              <div class="relative"><MagnifyingGlassIcon class="pointer-events-none absolute left-3 top-3 size-5 text-ink-subtle" aria-hidden="true" /><input id="corrective-equipment-search" v-model="correctiveSearch" type="search" autocomplete="off" required placeholder="Buscar por código o patente" :class="`${fieldClass} pl-10`" @input="correctiveEquipmentId = ''" /></div>
+              <div v-if="!selectedCorrectiveEquipment" class="mt-2 max-h-44 overflow-y-auto rounded-xl border border-border bg-surface">
+                <button v-for="equipment in filteredCorrectiveEquipments" :key="equipment.id" type="button" class="flex w-full items-center justify-between gap-3 border-b border-border-subtle px-3 py-2 text-left last:border-0 hover:bg-surface-muted" @click="selectCorrectiveEquipment(equipment)"><span><strong class="text-sm text-ink">{{ equipment.code }}</strong><span v-if="equipment.plate" class="ml-2 text-xs text-ink-muted">{{ equipment.plate }}</span></span><span class="text-xs text-ink-subtle">{{ equipment.typeName }}</span></button>
+                <p v-if="filteredCorrectiveEquipments.length === 0" class="px-3 py-3 text-sm text-ink-muted">No se encontraron equipos.</p>
+              </div>
+              <p v-else class="mt-2 rounded-lg bg-success-subtle px-3 py-2 text-sm font-semibold text-success-strong">Seleccionado: {{ selectedCorrectiveEquipment.code }}<span v-if="selectedCorrectiveEquipment.plate"> · {{ selectedCorrectiveEquipment.plate }}</span></p>
+            </template>
           </FormField>
           <FormField label="Fecha *" for-id="corrective-date"><input id="corrective-date" type="date" name="fecha_apertura" :value="today()" required :class="fieldClass" /></FormField>
           <FormField label="Prioridad *" for-id="corrective-priority"><select id="corrective-priority" name="prioridad" required :class="fieldClass"><option value="MEDIA" selected>Normal</option><option value="ALTA">Alta</option><option value="CRITICA">Urgente</option></select></FormField>
