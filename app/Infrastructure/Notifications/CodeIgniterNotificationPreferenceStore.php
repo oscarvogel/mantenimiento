@@ -22,20 +22,20 @@ final class CodeIgniterNotificationPreferenceStore implements NotificationPrefer
     public function resolve(int $userId, string $eventType): NotificationPreference
     {
         $userRow = $this->db->table('preferencias_notificacion')->where('usuario_id', $userId)->where('tipo_evento', $eventType)->get()->getRowArray();
-        $roleRow = null;
+        $rolePreference = null;
         if ($userRow === null) {
-            $roleRow = $this->db->table('preferencias_notificacion_rol p')
+            $roleRows = $this->db->table('preferencias_notificacion_rol p')
                 ->select('p.modo_interno, p.modo_email, p.modo_push')
                 ->join('usuario_roles ur', 'ur.rol_id = p.rol_id', 'inner')
                 ->where('ur.usuario_id', $userId)
                 ->where('p.tipo_evento', $eventType)
-                ->orderBy('p.id')
-                ->get()->getRowArray();
+                ->get()->getResultArray();
+            $rolePreference = $this->combineRolePreferences($roleRows);
         }
 
         return $this->resolution->resolve(
             $userRow === null ? null : $this->hydrate($userRow),
-            $roleRow === null ? null : $this->hydrate($roleRow),
+            $rolePreference,
         );
     }
 
@@ -68,6 +68,34 @@ final class CodeIgniterNotificationPreferenceStore implements NotificationPrefer
             $result[$eventType] = $this->resolve($userId, $eventType);
         }
         return $result;
+    }
+
+    /** @param list<array<string,mixed>> $rows */
+    private function combineRolePreferences(array $rows): ?NotificationPreference
+    {
+        if ($rows === []) {
+            return null;
+        }
+
+        $preferences = array_map(fn (array $row): NotificationPreference => $this->hydrate($row), $rows);
+
+        return new NotificationPreference(
+            $this->mostPermissive(array_map(static fn (NotificationPreference $p): DeliveryMode => $p->internal, $preferences)),
+            $this->mostPermissive(array_map(static fn (NotificationPreference $p): DeliveryMode => $p->email, $preferences)),
+            $this->mostPermissive(array_map(static fn (NotificationPreference $p): DeliveryMode => $p->push, $preferences)),
+        );
+    }
+
+    /** @param list<DeliveryMode> $modes */
+    private function mostPermissive(array $modes): DeliveryMode
+    {
+        foreach ([DeliveryMode::IMMEDIATE, DeliveryMode::CRITICAL_ONLY, DeliveryMode::DAILY_DIGEST, DeliveryMode::DISABLED] as $candidate) {
+            if (in_array($candidate, $modes, true)) {
+                return $candidate;
+            }
+        }
+
+        return DeliveryMode::DISABLED;
     }
 
     /** @param array<string,mixed> $row */
