@@ -178,6 +178,7 @@ export function normalizeDashboardPayload(payload) {
       maintenanceOverdue: asUrl(sourceLinks.maintenanceOverdue, maintenanceUrl),
       maintenanceMissingData: asUrl(sourceLinks.maintenanceMissingData, maintenanceUrl),
       orders: asUrl(sourceLinks.orders),
+      correctiveOrder: asUrl(sourceLinks.correctiveOrder),
     },
   }
 }
