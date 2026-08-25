@@ -27,7 +27,7 @@ final class CodeIgniterOrganizationAdministration implements OrganizationAdminis
         $companiesPage = min($companiesPage, max(1, (int) ceil($companiesTotal / $companiesPerPage)));
         $companiesActive = $this->database->table('empresas')->where('deleted_at', null)->where('estado', 1)->countAllResults();
         $companies = $this->database->table('empresas')
-            ->select('id, razon_social, nombre_fantasia, cuit, email, telefono, estado')
+            ->select('id, razon_social, nombre_fantasia, cuit, email, email_notificaciones, notificaciones_email_habilitadas, telefono, estado')
             ->where('deleted_at', null)
             ->orderBy('razon_social')
             ->orderBy('id')

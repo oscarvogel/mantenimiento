@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Notifications;
 
+use App\Application\Notifications\Port\CompanyNotificationDeliveryQueue;
 use App\Application\Notifications\Port\NotificationDeliveryQueue;
 use App\Application\Notifications\Port\NotificationPreferenceStore;
 use App\Application\Notifications\Port\NotificationRecipientResolver;
@@ -27,6 +28,7 @@ final readonly class PublishNotifiableEvent
     public function execute(NotifiableEvent $event): array
     {
         $recipients = $this->recipients->resolve($event);
+
         return $this->unitOfWork->transactional(function () use ($event, $recipients): array {
             $created = 0;
             $duplicates = 0;
@@ -44,6 +46,13 @@ final readonly class PublishNotifiableEvent
                 $this->deliveries->schedule($notificationId, $recipient->userId, $event->logicalKey(), $event->severity(), $preference);
                 $created++;
             }
+
+            // El destinatario empresarial es independiente de usuarios, preferencias
+            // personales y Web Push. El adaptador que soporta esta capacidad lo audita.
+            if ($this->deliveries instanceof CompanyNotificationDeliveryQueue) {
+                $this->deliveries->scheduleCompany($event);
+            }
+
             return ['created' => $created, 'duplicates' => $duplicates, 'recipients' => count($recipients)];
         });
     }
