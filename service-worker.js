@@ -22,8 +22,25 @@ self.addEventListener('notificationclick', (event) => {
   const target = candidate.origin === scope.origin && candidate.pathname.startsWith(scope.pathname)
     ? candidate.href
     : new URL('./notificaciones', self.registration.scope).href
-  event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
-    const existing = clients.find((client) => client.url === target)
-    return existing ? existing.focus() : self.clients.openWindow(target)
+
+  event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (clients) => {
+    const exact = clients.find((client) => client.url === target)
+    if (exact) return exact.focus()
+
+    const inApp = clients.find((client) => {
+      try {
+        const current = new URL(client.url)
+        return current.origin === scope.origin && current.pathname.startsWith(scope.pathname)
+      } catch (_) {
+        return false
+      }
+    })
+
+    if (inApp) {
+      await inApp.navigate(target)
+      return inApp.focus()
+    }
+
+    return self.clients.openWindow(target)
   }))
 })
