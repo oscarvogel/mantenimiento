@@ -16,7 +16,8 @@ const csrfState = ref({ ...(props.data.csrf ?? {}) })
 const csrf = computed(() => csrfState.value)
 const eventTypes = [
   ['preventivo.vencido', 'Preventivo vencido'], ['preventivo.proximo', 'Preventivo próximo'],
-  ['orden.asignada', 'Orden asignada'], ['orden.demorada', 'Orden demorada'],
+  ['orden.asignada', 'Orden asignada'], ['orden.proxima_objetivo', 'Orden próxima a objetivo'],
+  ['orden.demorada', 'Orden demorada'], ['orden.espera_repuestos', 'Orden en espera de repuestos'],
   ['solicitud.critica', 'Solicitud crítica'], ['equipo.sin_lectura', 'Equipo sin lectura'],
   ['garantia.proxima', 'Garantía próxima'],
 ]
@@ -61,7 +62,6 @@ async function activatePush() {
   try {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) throw new Error('Este navegador no admite Web Push.')
     if (!props.data.push?.enabled || !props.data.push?.publicKey) throw new Error('Web Push todavía no está configurado en el servidor.')
-    const base = appScope()
     const registration = await navigator.serviceWorker.register(scopedPath('service-worker.js'), { scope: scopedPath() })
     const permission = await Notification.requestPermission()
     if (permission !== 'granted') throw new Error('El permiso no fue concedido.')
@@ -173,7 +173,7 @@ async function sendTestPush() {
     >
       <div class="max-w-3xl">
         <h2 class="text-lg font-bold text-ink">Preferencias por evento</h2>
-        <p class="mt-1 text-sm text-ink-muted">Editá un tipo de aviso por vez. La notificación interna siempre queda disponible como historial.</p>
+        <p class="mt-1 text-sm text-ink-muted">Los valores mostrados son los efectivos actuales. Al guardar, tu elección personal pasa a prevalecer sobre los defaults de tus roles.</p>
         <label class="mt-5 grid gap-1.5 text-sm font-semibold text-ink">
           Tipo de aviso
           <select v-model="selectedEventType" class="min-h-11 rounded-lg border border-border-strong bg-white px-3 font-normal">
