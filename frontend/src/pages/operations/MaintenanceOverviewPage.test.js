@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import MaintenanceOverviewPage from './MaintenanceOverviewPage.vue'
 
@@ -21,7 +21,7 @@ const baseData = () => ({
     closeOrder: false,
   },
   pagination: {
-    equipments: { ...pagination(), total: 2 },
+    equipments: { ...pagination(), total: 3 },
     plans: pagination(),
     notices: pagination(),
     orders: pagination(),
@@ -35,7 +35,16 @@ const baseData = () => ({
     { id: 10, code: 'AB499OK', plate: 'AB-499-OK', typeId: 1, typeName: 'Camión', branchName: 'Central', status: 'ACTIVO', controlsKm: true, controlsHours: false, currentKm: 125430, currentHours: null, photoUrl: null, routes: { detail: '/mantenimiento/equipos/10', registerReading: '/mantenimiento/equipos/10/lecturas', assignPlan: '/mantenimiento/equipos/10/planes' } },
     { id: 20, code: 'MOT-03', plate: null, typeId: 2, typeName: 'Máquina', branchName: 'Central', status: 'ACTIVO', controlsKm: false, controlsHours: true, currentKm: null, currentHours: '8340.0', photoUrl: null, routes: { detail: '/mantenimiento/equipos/20', registerReading: '/mantenimiento/equipos/20/lecturas', assignPlan: '/mantenimiento/equipos/20/planes' } },
   ],
+  correctiveEquipments: [
+    { id: 10, code: 'AB499OK', plate: 'AB-499-OK', typeId: 1, typeName: 'Camión', branchName: 'Central', controlsKm: true, controlsHours: false, currentKm: 125430, currentHours: null },
+    { id: 20, code: 'MOT-03', plate: null, typeId: 2, typeName: 'Máquina', branchName: 'Central', controlsKm: false, controlsHours: true, currentKm: null, currentHours: '8340.0' },
+    { id: 30, code: 'AE223WN', plate: 'AE223WN', typeId: 1, typeName: 'Camión', branchName: 'Norte', controlsKm: true, controlsHours: false, currentKm: 101250, currentHours: null },
+  ],
   plans: [], notices: [], orders: [], readings: [],
+})
+
+afterEach(() => {
+  window.history.replaceState({}, '', '/')
 })
 
 describe('MaintenanceOverviewPage', () => {
@@ -48,6 +57,20 @@ describe('MaintenanceOverviewPage', () => {
     expect(wrapper.text()).not.toContain('Nuevo equipo')
     expect(wrapper.text()).not.toContain('Crear equipo')
     expect(wrapper.find('form[action="/mantenimiento/equipos"]').exists()).toBe(false)
+  })
+
+  it('busca la OT sobre el catálogo completo aunque el equipo no esté en la página visible', async () => {
+    const wrapper = mount(MaintenanceOverviewPage, { props: { data: baseData() } })
+    const quickAction = wrapper.findAll('button').find((button) => button.text().includes('Nueva OT correctiva'))
+    await quickAction.trigger('click')
+
+    const dialog = wrapper.find('[role="dialog"]')
+    const search = dialog.find('input[type="search"]')
+    await search.setValue('ae 223 wn')
+
+    expect(dialog.text()).toContain('AE223WN')
+    await dialog.findAll('button').find((button) => button.text().includes('AE223WN')).trigger('click')
+    expect(dialog.find('input[name="equipo_id"]').element.value).toBe('30')
   })
 
   it('abre el modal, busca por patente y prepara el flujo existente de OT correctiva', async () => {
@@ -75,14 +98,27 @@ describe('MaintenanceOverviewPage', () => {
     expect(form.find('textarea[name="observaciones"]').exists()).toBe(true)
   })
 
-  it('desde una tarjeta abre el mismo modal con el equipo ya seleccionado', async () => {
+  it('desde una tarjeta abre el mismo modal con el equipo fijo y sin volver a pedirlo', async () => {
     const wrapper = mount(MaintenanceOverviewPage, { props: { data: baseData() } })
     const cardButton = wrapper.findAll('button').filter((button) => button.text().includes('Nueva OT correctiva'))[1]
     await cardButton.trigger('click')
 
     const dialog = wrapper.find('[role="dialog"]')
-    expect(dialog.text()).toContain('Seleccionado: AB499OK · AB-499-OK')
+    expect(dialog.text()).toContain('Equipo de esta ficha')
+    expect(dialog.text()).toContain('AB499OK · AB-499-OK')
+    expect(dialog.find('input[type="search"]').exists()).toBe(false)
     expect(dialog.find('input[name="equipo_id"]').element.value).toBe('10')
+  })
+
+  it('puede abrirse desde una ficha por query con el equipo fijo', () => {
+    window.history.replaceState({}, '', '/mantenimiento?ot_correctiva=1&equipo_id=30')
+    const wrapper = mount(MaintenanceOverviewPage, { props: { data: baseData() } })
+
+    const dialog = wrapper.find('[role="dialog"]')
+    expect(dialog.exists()).toBe(true)
+    expect(dialog.text()).toContain('AE223WN')
+    expect(dialog.find('input[type="search"]').exists()).toBe(false)
+    expect(dialog.find('input[name="equipo_id"]').element.value).toBe('30')
   })
 
   it('muestra Imprimir OT en cada orden y abre la impresión existente en otra pestaña', () => {
