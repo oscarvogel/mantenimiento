@@ -19,6 +19,20 @@ $routes->post('logout', 'Login::logout', ['filter' => 'auth']);
 // Dashboard (protegido)
 $routes->get('dashboard', 'Dashboard::index', ['filter' => 'auth']);
 
+// Compatibilidad con enlaces antiguos emitidos antes de conocer el prefijo
+// interno del grupo `mantenimiento` en el deploy plano.
+$routes->get('planes', static function () {
+    $query = service('request')->getUri()->getQuery();
+    $target = base_url('mantenimiento/planes');
+    return redirect()->to($query === '' ? $target : $target . '?' . $query);
+}, ['filter' => ['auth', 'permission:planes.ver']]);
+
+$routes->get('equipos/(:num)', static function (string $equipmentId) {
+    $query = service('request')->getUri()->getQuery();
+    $target = base_url('mantenimiento/equipos/' . (int) $equipmentId);
+    return redirect()->to($query === '' ? $target : $target . '?' . $query);
+}, ['filter' => ['auth', 'permission:equipos.ver']]);
+
 // Administración global. El filtro también rechaza cuentas autenticadas no globales.
 $routes->group('superadmin', ['filter' => 'superadmin'], static function ($routes): void {
     $routes->get('', 'SuperAdmin::index');
@@ -108,6 +122,7 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->post('equipos/(:num)/planes', 'MaintenanceCircuit::assignPlan/$1', ['filter' => 'permission:planes.editar']);
     $routes->post('vencimientos/detectar', 'MaintenanceCircuit::detectOverdue', ['filter' => 'permission:planes.editar']);
     $routes->post('avisos/(:num)/orden', 'MaintenanceCircuit::generateOrder/$1', ['filter' => 'permission:ordenes.editar']);
+    $routes->get('ordenes', 'WorkOrders::index', ['filter' => 'permission:ordenes.ver']);
     $routes->post('ordenes/correctivas', 'CorrectiveWorkOrders::create', ['filter' => 'permission:ordenes.editar']);
     $routes->get('ordenes/(:num)/imprimir', 'MaintenanceCircuit::printOrder/$1');
     $routes->post('ordenes/(:num)/iniciar', 'MaintenanceCircuit::startOrder/$1', ['filter' => 'permission:ordenes.editar']);
@@ -116,6 +131,23 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->post('ordenes/(:num)/cancelar', 'WorkOrderLifecycle::cancel/$1', ['filter' => 'permission:ordenes.editar']);
     $routes->post('ordenes/(:num)/cerrar', 'MaintenanceCircuit::closeOrder/$1', ['filter' => 'permission:ordenes.cerrar']);
     $routes->post('ordenes/(:num)/cerrar-correctiva', 'CorrectiveWorkOrders::close/$1', ['filter' => 'permission:ordenes.cerrar']);
+});
+
+$routes->group('mantenimiento/chatbot', ['filter' => ['auth', 'permission:chatbot.usar']], function ($routes) {
+    $routes->get('/',               'Chatbot::index');
+    $routes->post('conversaciones', 'Chatbot::startConversation');
+    $routes->post('mensajes',       'Chatbot::sendMessage');
+    $routes->post('mensajes/stream','Chatbot::sendMessageStream');
+    $routes->post('confirmar',      'Chatbot::confirmTool');
+    $routes->get('historial',       'Chatbot::history');
+});
+
+// Auditoría administrativa: el controlador resuelve el alcance real desde el
+// ActorContext. No se usa permission filter acá porque el superadmin global no
+// hereda permisos de tenant; el permiso de empresa se valida dentro del caso de uso.
+$routes->group('mantenimiento/chatbot/auditoria', ['filter' => ['auth']], static function ($routes): void {
+    $routes->get('', 'ChatbotAudit::index');
+    $routes->get('(:num)', 'ChatbotAudit::show/$1');
 });
 
 $routes->group('reportes', ['filter' => ['auth', 'permission:reportes.ver']], static function ($routes): void {
