@@ -3,7 +3,7 @@ import { mount } from '@vue/test-utils'
 import WorkOrdersIndexPage from './WorkOrdersIndexPage.vue'
 
 const data = () => ({
-  routes: { index: '/mantenimiento/ordenes', maintenance: '/mantenimiento' },
+  routes: { index: '/mantenimiento/ordenes', maintenance: '/mantenimiento', registerCorrective: '/mantenimiento/ordenes/correctivas' },
   filters: { q: '', status: '', branchId: '', ownerId: '', attention: '' },
   can: { editOrder: true, closeOrder: true },
   csrf: { name: 'csrf_test', hash: 'SECURE' },
@@ -11,6 +11,10 @@ const data = () => ({
   delayDays: 3,
   branches: [{ id: 2, name: 'Garuhapé' }],
   owners: [{ id: 7, name: 'Técnico Uno' }],
+  correctiveEquipments: [
+    { id: 9, code: 'CAM-01', plate: 'AA123BB', typeName: 'Camión', branchName: 'Garuhapé', controlsKm: true, controlsHours: false, currentKm: 120500, currentHours: null },
+    { id: 12, code: 'AE223WN', plate: 'AE-223-WN', typeName: 'Camión', branchName: 'Norte', controlsKm: true, controlsHours: false, currentKm: 101250, currentHours: null },
+  ],
   pagination: { page: 1, totalPages: 1, total: 3, perPage: 25, previousUrl: null, nextUrl: null },
   orders: [
     {
@@ -39,6 +43,36 @@ describe('WorkOrdersIndexPage', () => {
     expect(wrapper.find('select[name="estado"]').exists()).toBe(true)
     expect(wrapper.find('select[name="sucursal_id"]').exists()).toBe(true)
     expect(wrapper.find('select[name="responsable_id"]').exists()).toBe(true)
+  })
+
+  it('lanza un correctivo rápido sin abandonar el listado', async () => {
+    const wrapper = mount(WorkOrdersIndexPage, { props: { data: data() } })
+    const button = wrapper.findAll('button').find((item) => item.text().includes('Registrar correctivo'))
+    expect(button).toBeDefined()
+    await button.trigger('click')
+
+    const dialog = wrapper.find('[role="dialog"]')
+    expect(dialog.exists()).toBe(true)
+    expect(dialog.text()).toContain('Registrar trabajo realizado')
+    const search = dialog.find('input[type="search"]')
+    await search.setValue('ae 223 wn')
+    expect(dialog.text()).toContain('AE223WN')
+    await dialog.findAll('button').find((item) => item.text().includes('AE223WN')).trigger('click')
+
+    const form = dialog.find('form')
+    expect(form.attributes('action')).toBe('/mantenimiento/ordenes/correctivas')
+    expect(form.attributes('enctype')).toBe('multipart/form-data')
+    expect(form.find('input[name="volver_ordenes"]').element.value).toBe('1')
+    expect(form.find('input[name="equipo_id"]').element.value).toBe('12')
+    expect(form.find('textarea[name="trabajo_realizado_correctivo"]').exists()).toBe(true)
+    expect(form.find('input[name="evidencia"]').exists()).toBe(true)
+  })
+
+  it('oculta el registro rápido sin permiso para editar órdenes', () => {
+    const payload = data()
+    payload.can.editOrder = false
+    const wrapper = mount(WorkOrdersIndexPage, { props: { data: payload } })
+    expect(wrapper.findAll('button').some((item) => item.text().includes('Registrar correctivo'))).toBe(false)
   })
 
   it('prioriza datos accionables y expone imprimir/iniciar/reanudar', () => {
