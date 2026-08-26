@@ -53,7 +53,7 @@ const loadSummary = async () => {
 
 const toggle = async () => {
   open.value = !open.value
-  if (open.value) await loadSummary()
+  if (open.value && !error.value) await loadSummary()
 }
 
 const closeOnOutside = (event) => {
