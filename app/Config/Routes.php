@@ -127,6 +127,7 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->post('ordenes/importar', 'WorkOrderDocumentImports::upload', ['filter' => 'permission:ordenes.editar']);
     $routes->get('ordenes/importar/(:num)', 'WorkOrderDocumentImports::show/$1', ['filter' => 'permission:ordenes.editar']);
     $routes->post('ordenes/importar/(:num)/analizar', 'WorkOrderDocumentImports::analyze/$1', ['filter' => 'permission:ordenes.editar']);
+    $routes->post('ordenes/importar/(:num)/confirmar', 'WorkOrderDocumentImports::confirm/$1', ['filter' => 'permission:ordenes.editar']);
     $routes->get('ordenes/importar/(:num)/documento', 'WorkOrderDocumentImports::document/$1', ['filter' => 'permission:ordenes.editar']);
     $routes->post('ordenes/correctivas', 'CorrectiveWorkOrders::create', ['filter' => 'permission:ordenes.editar']);
     $routes->get('ordenes/(:num)/imprimir', 'MaintenanceCircuit::printOrder/$1');
