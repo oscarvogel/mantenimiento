@@ -66,6 +66,9 @@ final class ConfirmWorkOrderDocumentImport
         }
         $this->assertReadingProgression($equipment, $km, $hours, (bool) ($proposal['confirmReadingRollback'] ?? false));
 
+        [$correctiveCost, $preventiveCost] = $this->costAllocation($action, $proposal);
+        $currency = strtoupper($this->nullable($proposal['currency'] ?? null) ?? 'ARS');
+
         $works = is_array($proposal['works'] ?? null) ? $proposal['works'] : [];
         $materials = is_array($proposal['materials'] ?? null) ? $proposal['materials'] : [];
         $corrective = $this->worksOf($works, 'correctivo');
@@ -77,7 +80,7 @@ final class ConfirmWorkOrderDocumentImport
             throw new DomainException('No hay trabajos preventivos seleccionados.');
         }
 
-        return $this->gateway->transaction(function () use ($actor, $importId, $action, $proposal, $equipment, $date, $km, $hours, $corrective, $preventive, $materials): array {
+        return $this->gateway->transaction(function () use ($actor, $importId, $action, $proposal, $equipment, $date, $km, $hours, $corrective, $preventive, $materials, $correctiveCost, $preventiveCost, $currency): array {
             $lockedImport = $this->gateway->lockImport($actor->companyId(), $importId);
             if ($lockedImport === null) {
                 throw new DomainException('La importación dejó de estar disponible.');
@@ -108,6 +111,8 @@ final class ConfirmWorkOrderDocumentImport
                     $this->nullable($proposal['supplier'] ?? null),
                     $this->nullable($proposal['concept'] ?? null),
                     $this->nullable($proposal['observations'] ?? null),
+                    $correctiveCost,
+                    $currency,
                     $corrective,
                     $materials,
                 );
@@ -165,15 +170,19 @@ final class ConfirmWorkOrderDocumentImport
                     throw new DomainException('Faltan tareas obligatorias del plan sin evidencia en el documento. Revisalas y confirmá explícitamente el registro preventivo parcial.');
                 }
 
+                $preventiveNotes = array_values(array_filter([
+                    $this->nullable($proposal['observations'] ?? null),
+                    $preventiveCost !== null ? 'Importe asignado desde documento: ' . $currency . ' ' . $preventiveCost : null,
+                ]));
                 $this->closePreventive->execute($actor, $preventiveOrderId, [
                     'trabajo_realizado' => $taskResults,
                     'fecha_servicio' => $date->format('Y-m-d'),
                     'km_salida' => $km,
                     'horas_salida' => $hours,
-                    'observaciones' => $this->nullable($proposal['observations'] ?? null),
+                    'observaciones' => $preventiveNotes === [] ? null : implode("\n", $preventiveNotes),
                     'costo_mano_obra' => '0',
                     'costo_repuestos' => '0',
-                    'otros_costos' => '0',
+                    'otros_costos' => $preventiveCost ?? '0',
                 ]);
                 $this->imports->linkWorkOrder($importId, $actor->companyId(), $preventiveOrderId, 'PREVENTIVA');
                 $orders[] = ['orderId' => $preventiveOrderId, 'kind' => 'PREVENTIVA'];
@@ -237,6 +246,35 @@ final class ConfirmWorkOrderDocumentImport
         return strtolower(trim((string) $type)) === 'horas'
             ? [null, number_format((float) $normalized, 1, '.', '')]
             : [(int) round((float) $normalized), null];
+    }
+
+    /** @param array<string,mixed> $proposal @return array{0:?string,1:?string} */
+    private function costAllocation(string $action, array $proposal): array
+    {
+        $total = $this->money($proposal['totalAmount'] ?? null);
+        if ($total === null) return [null, null];
+        if ($action === 'corrective') return [$total, null];
+        if ($action === 'preventive') return [null, $total];
+
+        $corrective = $this->money($proposal['correctiveAmount'] ?? null);
+        $preventive = $this->money($proposal['preventiveAmount'] ?? null);
+        if ($corrective === null || $preventive === null) {
+            throw new DomainException('Distribuí el importe total entre la OT correctiva y la preventiva antes de crear ambas.');
+        }
+        if (abs(((float) $corrective + (float) $preventive) - (float) $total) > 0.009) {
+            throw new DomainException('La suma asignada a las dos OT debe coincidir con el importe total del documento.');
+        }
+        return [$corrective, $preventive];
+    }
+
+    private function money(mixed $value): ?string
+    {
+        if ($value === null || trim((string) $value) === '') return null;
+        $normalized = str_replace([' ', ','], ['', '.'], trim((string) $value));
+        if (! is_numeric($normalized) || (float) $normalized < 0) {
+            throw new DomainException('El importe detectado no es válido.');
+        }
+        return number_format((float) $normalized, 2, '.', '');
     }
 
     private function nullable(mixed $value): ?string
