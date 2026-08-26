@@ -21,6 +21,8 @@ final readonly class WorkOrderDocumentAnalysis
         public ?string $supplier,
         public ?string $concept,
         public ?string $observations,
+        public ?float $totalAmount,
+        public ?string $currency,
         public array $works,
         public array $materials,
         public array $confidence,

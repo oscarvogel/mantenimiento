@@ -9,6 +9,9 @@ const props = defineProps({ data: { type: Object, required: true } })
 const proposal = reactive(JSON.parse(JSON.stringify(props.data.import?.proposal ?? {})))
 const contextLoading = ref(false)
 const contextError = ref('')
+const pendingAction = ref(null)
+const submitting = ref(false)
+const confirmForm = ref(null)
 const analysis = computed(() => props.data.import?.analysis ?? proposal.analysis ?? {})
 const works = computed(() => proposal.works ?? [])
 const correctiveWorks = computed(() => works.value.filter((item) => item.included !== false && item.classification === 'correctivo'))
@@ -37,12 +40,49 @@ const confidenceLabel = (value) => {
   return 'Revisar'
 }
 const formatReading = (value) => value === null || value === undefined || value === '' ? 'No detectada' : Number(value).toLocaleString('es-AR')
+const parseMoney = (value) => {
+  if (value === null || value === undefined || value === '') return null
+  const number = Number(String(value).replace(',', '.'))
+  return Number.isFinite(number) && number >= 0 ? number : null
+}
+const formatMoney = (value) => {
+  const number = parseMoney(value)
+  if (number === null) return 'No detectado'
+  return number.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
 const confirmLabel = (action) => ({ corrective: 'Crear OT correctiva', preventive: 'Crear OT preventiva', both: 'Crear ambas OT' }[action])
-const submitConfirmation = (event, action) => {
-  const question = action === 'both'
-    ? 'Se crearán una OT correctiva y una preventiva y se registrará la realización del plan. ¿Confirmás?'
-    : `Se creará la ${action === 'corrective' ? 'OT correctiva' : 'OT preventiva'} con los datos revisados. ¿Confirmás?`
-  if (!window.confirm(question)) event.preventDefault()
+const confirmationTitle = computed(() => pendingAction.value ? confirmLabel(pendingAction.value) : '')
+const confirmationDescription = computed(() => pendingAction.value === 'both'
+  ? 'Se crearán dos órdenes vinculadas al mismo documento. La lectura se registrará una sola vez y el importe no se duplicará.'
+  : pendingAction.value === 'preventive'
+    ? 'Se registrará la realización preventiva con el plan seleccionado y se recalculará el próximo mantenimiento.'
+    : 'Se creará una OT correctiva finalizada con los trabajos revisados del documento.')
+const allocationValid = computed(() => {
+  if (pendingAction.value !== 'both') return true
+  const total = parseMoney(proposal.totalAmount)
+  if (total === null) return true
+  const corrective = parseMoney(proposal.correctiveAmount)
+  const preventive = parseMoney(proposal.preventiveAmount)
+  return corrective !== null && preventive !== null && Math.abs((corrective + preventive) - total) < 0.01
+})
+const allocationError = computed(() => {
+  if (pendingAction.value !== 'both' || allocationValid.value || parseMoney(proposal.totalAmount) === null) return ''
+  return 'Distribuí el importe entre ambas OT. La suma debe coincidir con el total del documento.'
+})
+const openConfirmation = (action) => {
+  if (submitting.value) return
+  pendingAction.value = action
+  if (action === 'corrective') proposal.correctiveAmount = proposal.totalAmount ?? null
+  if (action === 'preventive') proposal.preventiveAmount = proposal.totalAmount ?? null
+}
+const closeConfirmation = () => {
+  if (submitting.value) return
+  pendingAction.value = null
+}
+const confirmCreation = () => {
+  if (!pendingAction.value || submitting.value || !confirmForm.value || !allocationValid.value) return
+  submitting.value = true
+  confirmForm.value.requestSubmit()
 }
 
 watch(() => proposal.selectedEquipmentId, async (equipmentId, previous) => {
@@ -83,7 +123,7 @@ watch(() => proposal.selectedEquipmentId, async (equipmentId, previous) => {
         <input type="hidden" name="idempotency_key" :value="`ot-doc-${Date.now()}-${Math.random().toString(16).slice(2)}`" />
         <label class="block"><span class="mb-1 block text-sm font-semibold text-ink">Sucursal</span><select name="sucursal_id" required :class="fieldClass"><option value="">Seleccionar sucursal</option><option v-for="branch in data.branches" :key="branch.id" :value="branch.id">{{ branch.name }}</option></select></label>
         <label class="block"><span class="mb-1 block text-sm font-semibold text-ink">Documento</span><input name="documento" type="file" required accept="image/jpeg,image/png,application/pdf" class="block min-h-12 w-full rounded-xl border border-dashed border-border-strong bg-surface px-4 py-3 text-sm text-ink file:mr-4 file:rounded-lg file:border-0 file:bg-primary file:px-4 file:py-2 file:font-semibold file:text-white hover:border-primary/50" /></label>
-        <div class="rounded-xl bg-surface p-4 text-sm text-ink-muted"><strong class="text-ink">La IA no crea nada automáticamente.</strong> Primero vas a revisar patente/equipo, lectura, tareas y repuestos; después podrás elegir OT correctiva, preventiva o ambas.</div>
+        <div class="rounded-xl bg-surface p-4 text-sm text-ink-muted"><strong class="text-ink">La IA no crea nada automáticamente.</strong> Primero vas a revisar patente/equipo, lectura, importe, tareas y repuestos; después podrás elegir OT correctiva, preventiva o ambas.</div>
         <button type="submit" :class="primaryButton"><ArrowUpTrayIcon class="mr-2 size-4" />Subir y analizar</button>
       </form>
     </section>
@@ -105,6 +145,7 @@ watch(() => proposal.selectedEquipmentId, async (equipmentId, previous) => {
             <label class="rounded-xl bg-surface p-3"><span class="text-xs font-bold uppercase text-ink-muted">Lectura</span><div class="mt-2 grid grid-cols-[7rem_1fr] gap-2"><select v-model="proposal.readingType" :disabled="isConfirmed" :class="fieldClass"><option value="km">km</option><option value="horas">horas</option></select><input v-model="proposal.readingValue" inputmode="decimal" :disabled="isConfirmed" :class="fieldClass" /></div><span class="mt-1 block text-xs text-ink-muted">Detectada: {{ formatReading(analysis.readingValue) }} {{ analysis.readingType || '' }}</span><span v-if="selectedEquipment" class="mt-1 block text-xs text-ink-muted">Actual del equipo: {{ proposal.readingType === 'horas' ? `${formatReading(selectedEquipment.currentHours)} h` : `${formatReading(selectedEquipment.currentKm)} km` }}</span></label>
             <label class="rounded-xl bg-surface p-3"><span class="text-xs font-bold uppercase text-ink-muted">Taller/proveedor</span><input v-model="proposal.supplier" :disabled="isConfirmed" :class="`${fieldClass} mt-2`" /></label>
             <label class="rounded-xl bg-surface p-3 sm:col-span-2"><span class="text-xs font-bold uppercase text-ink-muted">Concepto / diagnóstico</span><input v-model="proposal.concept" :disabled="isConfirmed" :class="`${fieldClass} mt-2`" /></label>
+            <label class="rounded-xl bg-surface p-3 sm:col-span-2 lg:col-span-1"><span class="text-xs font-bold uppercase text-ink-muted">Importe total</span><div class="mt-2 grid grid-cols-[6rem_1fr] gap-2"><input v-model="proposal.currency" maxlength="3" :disabled="isConfirmed" :class="fieldClass" placeholder="ARS" /><input v-model="proposal.totalAmount" inputmode="decimal" :disabled="isConfirmed" :class="fieldClass" placeholder="0,00" /></div><span class="mt-1 block text-xs text-ink-muted">Detectado: {{ analysis.totalAmount == null ? 'no detectado' : `${analysis.currency || 'ARS'} ${formatMoney(analysis.totalAmount)}` }} · confianza {{ confidenceLabel(analysis.confidence?.total_amount) }}</span></label>
           </div>
           <p v-if="contextError" class="mt-4 rounded-xl border border-danger/30 bg-danger/10 p-3 text-sm text-danger-strong">{{ contextError }}</p>
           <div v-if="readingRegression" class="mt-4 rounded-xl border border-warning/30 bg-warning/10 p-3 text-sm text-ink">
@@ -147,8 +188,43 @@ watch(() => proposal.selectedEquipmentId, async (equipmentId, previous) => {
         <h2 class="text-lg font-bold text-ink">Crear desde este documento</h2>
         <p v-if="isConfirmed" class="mt-1 text-sm font-semibold text-success">Este documento ya fue confirmado. Las acciones de creación quedaron bloqueadas para evitar duplicados.</p>
         <p v-else class="mt-1 text-sm text-ink-muted">Nada se graba hasta que elijas una de estas acciones. La misma lectura se registra una sola vez aunque se creen ambas OT.</p>
-        <form v-if="!isConfirmed" method="post" :action="data.routes.confirm" class="mt-4 flex flex-wrap gap-2"><CsrfInput :csrf="data.csrf" /><input type="hidden" name="proposal_json" :value="JSON.stringify(proposal)" /><button v-for="action in ['corrective','preventive','both']" :key="action" type="submit" name="action" :value="action" :disabled="contextLoading || (action === 'corrective' ? !canCorrective : action === 'preventive' ? !canPreventive : !canBoth)" :class="primaryButton" @click="submitConfirmation($event, action)">{{ confirmLabel(action) }}</button></form>
+        <form v-if="!isConfirmed" ref="confirmForm" method="post" :action="data.routes.confirm" class="mt-4 flex flex-wrap gap-2" @submit="submitting = true"><CsrfInput :csrf="data.csrf" /><input type="hidden" name="proposal_json" :value="JSON.stringify(proposal)" /><input type="hidden" name="action" :value="pendingAction || ''" /><button v-for="action in ['corrective','preventive','both']" :key="action" type="button" :disabled="contextLoading || submitting || (action === 'corrective' ? !canCorrective : action === 'preventive' ? !canPreventive : !canBoth)" :class="primaryButton" @click="openConfirmation(action)">{{ confirmLabel(action) }}</button></form>
         <a :href="data.routes.newImport" :class="`${secondaryButton} mt-4`">Importar otro documento</a>
+      </section>
+    </div>
+
+    <div v-if="pendingAction" class="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4" role="presentation" @click.self="closeConfirmation" @keydown.esc="closeConfirmation">
+      <section role="dialog" aria-modal="true" aria-labelledby="work-order-confirm-title" class="w-full max-w-lg rounded-2xl border border-border bg-surface-raised p-6 shadow-2xl">
+        <p class="text-xs font-bold uppercase tracking-wide text-primary">Confirmar creación</p>
+        <h2 id="work-order-confirm-title" class="mt-1 text-xl font-bold text-ink">{{ confirmationTitle }}</h2>
+        <p class="mt-2 text-sm text-ink-muted">{{ confirmationDescription }}</p>
+
+        <dl class="mt-5 divide-y divide-border rounded-xl border border-border bg-surface px-4 text-sm">
+          <div class="flex items-center justify-between gap-4 py-3"><dt class="text-ink-muted">Equipo</dt><dd class="text-right font-semibold text-ink">{{ selectedEquipment?.code || 'Sin equipo' }}{{ selectedEquipment?.plate ? ` · ${selectedEquipment.plate}` : '' }}</dd></div>
+          <div class="flex items-center justify-between gap-4 py-3"><dt class="text-ink-muted">Fecha del trabajo</dt><dd class="text-right font-semibold text-ink">{{ proposal.serviceDate || 'Sin fecha' }}</dd></div>
+          <div v-if="proposal.readingValue !== null && proposal.readingValue !== undefined && proposal.readingValue !== ''" class="flex items-center justify-between gap-4 py-3"><dt class="text-ink-muted">Lectura a registrar</dt><dd class="text-right font-semibold text-ink">{{ formatReading(proposal.readingValue) }} {{ proposal.readingType === 'horas' ? 'h' : 'km' }}</dd></div>
+          <div v-if="parseMoney(proposal.totalAmount) !== null" class="flex items-center justify-between gap-4 py-3"><dt class="text-ink-muted">Importe del documento</dt><dd class="text-right font-semibold text-ink">{{ proposal.currency || 'ARS' }} {{ formatMoney(proposal.totalAmount) }}</dd></div>
+          <div v-if="pendingAction !== 'corrective'" class="flex items-center justify-between gap-4 py-3"><dt class="text-ink-muted">Plan preventivo</dt><dd class="text-right font-semibold text-ink">{{ selectedPlan?.servicio_nombre || `Plan #${proposal.selectedPlanId}` }}</dd></div>
+          <div v-if="pendingAction !== 'preventive'" class="flex items-center justify-between gap-4 py-3"><dt class="text-ink-muted">Trabajos correctivos</dt><dd class="font-semibold text-ink">{{ correctiveWorks.length }}</dd></div>
+          <div v-if="pendingAction !== 'corrective'" class="flex items-center justify-between gap-4 py-3"><dt class="text-ink-muted">Trabajos preventivos</dt><dd class="font-semibold text-ink">{{ preventiveWorks.length }}</dd></div>
+        </dl>
+
+        <div v-if="pendingAction === 'both' && parseMoney(proposal.totalAmount) !== null" class="mt-4 rounded-xl border border-border bg-surface p-4">
+          <p class="text-sm font-semibold text-ink">Distribución del importe</p>
+          <p class="mt-1 text-xs text-ink-muted">Para no duplicar el costo, indicá cuánto corresponde a cada OT.</p>
+          <div class="mt-3 grid gap-3 sm:grid-cols-2">
+            <label><span class="mb-1 block text-xs font-bold uppercase text-ink-muted">Correctiva</span><input v-model="proposal.correctiveAmount" inputmode="decimal" :class="fieldClass" /></label>
+            <label><span class="mb-1 block text-xs font-bold uppercase text-ink-muted">Preventiva</span><input v-model="proposal.preventiveAmount" inputmode="decimal" :class="fieldClass" /></label>
+          </div>
+          <p v-if="allocationError" class="mt-2 text-sm font-semibold text-warning">{{ allocationError }}</p>
+        </div>
+
+        <div v-if="partialPreventive && pendingAction !== 'corrective'" class="mt-4 rounded-xl border border-warning/30 bg-warning/10 p-3 text-sm text-ink"><ExclamationTriangleIcon class="mr-1 inline size-4" />La realización preventiva es parcial; las tareas sin evidencia quedarán pendientes.</div>
+
+        <div class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <button type="button" :disabled="submitting" :class="secondaryButton" @click="closeConfirmation">Cancelar</button>
+          <button type="button" :disabled="submitting || !allocationValid" :class="primaryButton" @click="confirmCreation">{{ submitting ? 'Creando OT…' : 'Confirmar y crear' }}</button>
+        </div>
       </section>
     </div>
   </div>
