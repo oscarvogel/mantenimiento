@@ -98,6 +98,8 @@ final class CodeIgniterWorkOrderDocumentCreationGateway implements WorkOrderDocu
         ?string $supplier,
         ?string $concept,
         ?string $observations,
+        ?string $documentCost,
+        ?string $currency,
         array $works,
         array $materials,
     ): int {
@@ -110,8 +112,10 @@ final class CodeIgniterWorkOrderDocumentCreationGateway implements WorkOrderDocu
         $notes = array_values(array_filter([
             $observations,
             $supplier ? 'Taller/proveedor: ' . $supplier : null,
+            $documentCost !== null ? 'Importe asignado desde documento: ' . ($currency ? $currency . ' ' : '') . $documentCost : null,
             $materialText !== '' ? 'Repuestos/consumibles detectados: ' . $materialText : null,
         ]));
+        $cost = $documentCost ?? '0.00';
         $now = date('Y-m-d H:i:s');
         $this->db->table('ordenes_trabajo')->insert([
             'numero' => $number,
@@ -134,8 +138,8 @@ final class CodeIgniterWorkOrderDocumentCreationGateway implements WorkOrderDocu
             'trabajo_realizado' => $performed,
             'costo_mano_obra' => 0,
             'costo_repuestos' => 0,
-            'otros_costos' => 0,
-            'costo_total' => 0,
+            'otros_costos' => $cost,
+            'costo_total' => $cost,
             'observaciones' => $notes === [] ? null : implode("\n", $notes),
             'estado' => 'FINALIZADA',
             'created_at' => $now,
