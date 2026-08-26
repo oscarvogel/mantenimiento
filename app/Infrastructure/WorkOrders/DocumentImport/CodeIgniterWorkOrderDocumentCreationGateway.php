@@ -70,7 +70,7 @@ final class CodeIgniterWorkOrderDocumentCreationGateway implements WorkOrderDocu
     public function workOrderTasks(int $companyId, int $workOrderId): array
     {
         $rows = $this->db->table('orden_tareas t')
-            ->select('t.id,t.descripcion,t.obligatoria')
+            ->select('t.id,t.descripcion_solicitada,t.obligatoria')
             ->join('ordenes_trabajo o', 'o.id=t.orden_id AND o.empresa_id=t.empresa_id', 'inner')
             ->where('t.empresa_id', $companyId)
             ->where('t.orden_id', $workOrderId)
@@ -79,7 +79,7 @@ final class CodeIgniterWorkOrderDocumentCreationGateway implements WorkOrderDocu
 
         return array_map(static fn (array $row): array => [
             'id' => (int) $row['id'],
-            'name' => (string) $row['descripcion'],
+            'name' => (string) $row['descripcion_solicitada'],
             'required' => (bool) $row['obligatoria'],
         ], $rows);
     }
