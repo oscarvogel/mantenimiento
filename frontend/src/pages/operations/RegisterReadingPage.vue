@@ -26,6 +26,7 @@ const searchUrl = computed(() => {
   if (search.value.trim()) url.searchParams.set('q', search.value.trim())
   return url.toString()
 })
+const submitSearch = () => window.location.assign(searchUrl.value)
 const currentLabel = computed(() => {
   if (!selected.value) return '—'
   const values = []
@@ -104,7 +105,7 @@ const save = async () => {
     />
 
     <PanelCard title="1. Buscar equipo">
-      <form method="get" :action="data.routes.index" class="flex flex-col gap-3 sm:flex-row" @submit.prevent="window.location.assign(searchUrl)">
+      <form method="get" :action="data.routes.index" class="flex flex-col gap-3 sm:flex-row" @submit.prevent="submitSearch">
         <label class="min-w-0 flex-1">
           <span class="sr-only">Buscar equipo</span>
           <span class="relative block">

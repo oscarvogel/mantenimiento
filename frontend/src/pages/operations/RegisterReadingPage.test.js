@@ -40,6 +40,26 @@ describe('RegisterReadingPage', () => {
     expect(wrapper.text()).not.toContain('Horómetro actual')
   })
 
+  it('envía la búsqueda al endpoint con el texto ingresado', async () => {
+    const assign = vi.fn()
+    const originalWindow = globalThis.window
+    const testWindow = Object.create(originalWindow)
+    Object.defineProperty(testWindow, 'location', {
+      value: { origin: 'http://test.local', search: '', assign },
+      configurable: true,
+    })
+    vi.stubGlobal('window', testWindow)
+
+    try {
+      const wrapper = mount(RegisterReadingPage, { props: { data: data() } })
+      await wrapper.find('input[type="search"]').setValue('AA123BB')
+      await wrapper.find('form').trigger('submit')
+      expect(assign).toHaveBeenCalledWith('http://test.local/mantenimiento/lecturas/rapidas?q=AA123BB')
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('bloquea una lectura regresiva con un mensaje concreto', async () => {
     const wrapper = mount(RegisterReadingPage, { props: { data: data() } })
     await wrapper.findAll('button[type="button"]')[0].trigger('click')
