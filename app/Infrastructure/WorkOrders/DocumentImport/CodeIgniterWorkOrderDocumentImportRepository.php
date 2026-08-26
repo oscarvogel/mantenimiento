@@ -17,24 +17,13 @@ final class CodeIgniterWorkOrderDocumentImportRepository implements WorkOrderDoc
     {
         $now = $import->createdAt()->format('Y-m-d H:i:s');
         $this->db->table('ot_document_imports')->insert([
-            'empresa_id' => $import->companyId(),
-            'sucursal_id' => $import->branchId(),
-            'created_by' => $import->createdBy(),
-            'original_name' => $import->originalName(),
-            'stored_name' => $import->storedName(),
-            'private_relative_path' => $import->privateRelativePath(),
-            'mime_type' => $import->mimeType(),
-            'size_bytes' => $import->sizeBytes(),
-            'sha256' => $import->sha256(),
-            'idempotency_key' => $import->idempotencyKey(),
-            'status' => $import->status(),
-            'created_at' => $now,
-            'updated_at' => $now,
+            'empresa_id' => $import->companyId(), 'sucursal_id' => $import->branchId(), 'created_by' => $import->createdBy(),
+            'original_name' => $import->originalName(), 'stored_name' => $import->storedName(), 'private_relative_path' => $import->privateRelativePath(),
+            'mime_type' => $import->mimeType(), 'size_bytes' => $import->sizeBytes(), 'sha256' => $import->sha256(),
+            'idempotency_key' => $import->idempotencyKey(), 'status' => $import->status(), 'created_at' => $now, 'updated_at' => $now,
         ]);
         $id = (int) $this->db->insertID();
-        if ($id <= 0) {
-            throw new DomainException('No se pudo registrar el documento de taller.');
-        }
+        if ($id <= 0) throw new DomainException('No se pudo registrar el documento de taller.');
         return $id;
     }
 
@@ -42,9 +31,7 @@ final class CodeIgniterWorkOrderDocumentImportRepository implements WorkOrderDoc
     {
         $builder = $this->db->table('ot_document_imports')->where('id', $importId)->where('empresa_id', $companyId);
         if ($branchIds !== null) {
-            if ($branchIds === []) {
-                return null;
-            }
+            if ($branchIds === []) return null;
             $builder->whereIn('sucursal_id', array_map('intval', $branchIds));
         }
         return $builder->get()->getRowArray() ?: null;
@@ -54,18 +41,13 @@ final class CodeIgniterWorkOrderDocumentImportRepository implements WorkOrderDoc
     {
         $this->updateScoped($importId, $companyId, [
             'analysis_json' => $analysis === [] ? null : json_encode($analysis, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
-            'analysis_error' => $error,
-            'status' => $status,
-            'updated_at' => date('Y-m-d H:i:s'),
+            'analysis_error' => $error, 'status' => $status, 'updated_at' => date('Y-m-d H:i:s'),
         ]);
     }
 
     public function saveProposal(int $importId, int $companyId, array $proposal): void
     {
-        $this->updateScoped($importId, $companyId, [
-            'proposal_json' => json_encode($proposal, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
-            'updated_at' => date('Y-m-d H:i:s'),
-        ]);
+        $this->updateScoped($importId, $companyId, ['proposal_json' => json_encode($proposal, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE), 'updated_at' => date('Y-m-d H:i:s')]);
     }
 
     public function findByIdempotencyKey(int $companyId, string $idempotencyKey): ?int
@@ -77,15 +59,11 @@ final class CodeIgniterWorkOrderDocumentImportRepository implements WorkOrderDoc
     public function linkWorkOrder(int $importId, int $companyId, int $workOrderId, string $kind): void
     {
         $kind = strtoupper(trim($kind));
-        if (! in_array($kind, ['CORRECTIVA', 'PREVENTIVA'], true)) {
-            throw new DomainException('El tipo de vínculo de OT no es válido.');
-        }
-        $this->db->table('ot_document_import_orders')->ignore(true)->insert([
-            'empresa_id' => $companyId,
-            'import_id' => $importId,
-            'orden_id' => $workOrderId,
-            'kind' => $kind,
-            'created_at' => date('Y-m-d H:i:s'),
+        if (! in_array($kind, ['CORRECTIVA', 'PREVENTIVA'], true)) throw new DomainException('El tipo de vínculo de OT no es válido.');
+        $exists = $this->db->table('ot_document_import_orders')->where('empresa_id', $companyId)->where('import_id', $importId)->where('orden_id', $workOrderId)->countAllResults() > 0;
+        if ($exists) return;
+        $this->db->table('ot_document_import_orders')->insert([
+            'empresa_id' => $companyId, 'import_id' => $importId, 'orden_id' => $workOrderId, 'kind' => $kind, 'created_at' => date('Y-m-d H:i:s'),
         ]);
     }
 
@@ -93,8 +71,6 @@ final class CodeIgniterWorkOrderDocumentImportRepository implements WorkOrderDoc
     private function updateScoped(int $importId, int $companyId, array $data): void
     {
         $this->db->table('ot_document_imports')->where('id', $importId)->where('empresa_id', $companyId)->update($data);
-        if ($this->db->affectedRows() < 0) {
-            throw new DomainException('No se pudo actualizar la importación documental.');
-        }
+        if ($this->db->affectedRows() < 0) throw new DomainException('No se pudo actualizar la importación documental.');
     }
 }
