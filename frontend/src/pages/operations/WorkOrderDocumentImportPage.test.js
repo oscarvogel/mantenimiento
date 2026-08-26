@@ -60,6 +60,7 @@ const payload = () => ({
 
 afterEach(() => {
   vi.unstubAllGlobals()
+  vi.restoreAllMocks()
   document.body.innerHTML = ''
 })
 
@@ -112,5 +113,26 @@ describe('WorkOrderDocumentImportPage', () => {
     expect(fetch).toHaveBeenCalledWith('/mantenimiento/ordenes/importar/7?equipment_id=11', expect.any(Object))
     expect(wrapper.text()).toContain('Service 40.000 km')
     expect(wrapper.findAll('option').some((option) => option.text().includes('coincidencia 80%'))).toBe(true)
+  })
+
+  it('usa un modal integrado en lugar del confirm nativo al crear una OT', async () => {
+    const nativeConfirm = vi.spyOn(window, 'confirm')
+    const data = payload()
+    data.import.proposal.readingValue = 1186000
+    const wrapper = mount(WorkOrderDocumentImportPage, { props: { data } })
+
+    const corrective = wrapper.findAll('button').find((button) => button.text().includes('Crear OT correctiva'))
+    await corrective.trigger('click')
+
+    expect(nativeConfirm).not.toHaveBeenCalled()
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('Confirmar creación')
+    expect(wrapper.text()).toContain('CAM-01 · OIU270')
+    expect(wrapper.text()).toContain('1.186.000 km')
+    expect(wrapper.find('input[name="action"]').element.value).toBe('corrective')
+
+    const cancel = wrapper.findAll('button').find((button) => button.text() === 'Cancelar')
+    await cancel.trigger('click')
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
   })
 })
