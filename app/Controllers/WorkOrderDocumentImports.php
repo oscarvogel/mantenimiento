@@ -7,6 +7,7 @@ namespace App\Controllers;
 use App\Application\Identity\ActorContext;
 use App\Application\WorkOrders\DocumentImport\AnalyzeWorkOrderDocument;
 use App\Application\WorkOrders\DocumentImport\ConfirmWorkOrderDocumentImport;
+use App\Application\WorkOrders\DocumentImport\PreventivePlanMatcher;
 use App\Application\WorkOrders\DocumentImport\UploadWorkOrderDocumentCommand;
 use App\Application\WorkOrders\DocumentImport\UploadWorkOrderDocumentHandler;
 use App\Application\WorkOrders\GeneratePreventiveWorkOrder;
@@ -22,6 +23,7 @@ use App\Infrastructure\WorkOrders\DocumentImport\MiniMaxWorkOrderDocumentAnalyze
 use App\Infrastructure\WorkOrders\DocumentImport\PrivateWorkOrderDocumentStorage;
 use CodeIgniter\HTTP\DownloadResponse;
 use CodeIgniter\HTTP\RedirectResponse;
+use CodeIgniter\HTTP\ResponseInterface;
 use DomainException;
 use Throwable;
 
@@ -110,9 +112,64 @@ final class WorkOrderDocumentImports extends BaseController
                 'reanalyze' => base_url('mantenimiento/ordenes/importar/' . $id . '/analizar'),
                 'download' => base_url('mantenimiento/ordenes/importar/' . $id . '/documento'),
                 'confirm' => base_url('mantenimiento/ordenes/importar/' . $id . '/confirmar'),
+                'equipmentContextBase' => base_url('mantenimiento/ordenes/importar/' . $id . '/equipos'),
             ],
             'csrf' => ['name' => csrf_token(), 'hash' => csrf_hash()],
         ]);
+    }
+
+    public function equipmentContext(int $id, int $equipmentId): ResponseInterface
+    {
+        try {
+            $actor = $this->actor();
+            $this->assertCanEdit($actor);
+            $db = db_connect();
+            $imports = new CodeIgniterWorkOrderDocumentImportRepository($db);
+            $row = $imports->findForActor($id, $actor->companyId(), $actor->hasAllCompanyBranches() ? null : $actor->branchIds());
+            if ($row === null) throw new DomainException('El documento no existe o no está autorizado.');
+
+            $equipment = $db->table('equipos')
+                ->select('id,codigo,patente,sucursal_id,km_actual,horas_actuales')
+                ->where('id', $equipmentId)
+                ->where('empresa_id', $actor->companyId())
+                ->where('sucursal_id', (int) $row['sucursal_id'])
+                ->where('estado', 'ACTIVO')
+                ->where('deleted_at', null)
+                ->get()->getRowArray();
+            if ($equipment === null) throw new DomainException('El equipo seleccionado no pertenece a la sucursal del documento.');
+
+            $proposal = $this->decode($row['proposal_json'] ?? null) ?? [];
+            $plans = $this->plansForEquipment($actor->companyId(), $equipmentId);
+            $plans = (new PreventivePlanMatcher())->match(
+                $plans,
+                (new CodeIgniterMaintenanceServiceCatalog($db))->listForCompany($actor->companyId()),
+                is_array($proposal['works'] ?? null) ? $proposal['works'] : [],
+                is_array($proposal['materials'] ?? null) ? $proposal['materials'] : [],
+            );
+            $selectedPlanId = null;
+            foreach ($plans as $plan) {
+                if (($plan['suggested'] ?? false) === true) {
+                    $selectedPlanId = (int) $plan['id'];
+                    break;
+                }
+            }
+
+            return $this->response->setJSON([
+                'equipment' => [
+                    'id' => (int) $equipment['id'],
+                    'code' => (string) $equipment['codigo'],
+                    'plate' => $equipment['patente'],
+                    'currentKm' => $equipment['km_actual'] === null ? null : (int) $equipment['km_actual'],
+                    'currentHours' => $equipment['horas_actuales'],
+                ],
+                'preventivePlans' => $plans,
+                'selectedPlanId' => $selectedPlanId,
+            ]);
+        } catch (Throwable $exception) {
+            return $this->response
+                ->setStatusCode($exception instanceof DomainException ? 422 : 500)
+                ->setJSON(['error' => $exception instanceof DomainException ? $exception->getMessage() : 'No se pudo actualizar el contexto del equipo.']);
+        }
     }
 
     public function analyze(int $id): RedirectResponse
@@ -233,6 +290,19 @@ final class WorkOrderDocumentImports extends BaseController
             'id' => (int) $row['id'], 'code' => (string) $row['codigo'], 'plate' => $row['patente'],
             'currentKm' => $row['km_actual'] === null ? null : (int) $row['km_actual'], 'currentHours' => $row['horas_actuales'],
         ], $rows);
+    }
+
+    /** @return list<array<string,mixed>> */
+    private function plansForEquipment(int $companyId, int $equipmentId): array
+    {
+        return db_connect()->table('planes_mantenimiento p')
+            ->select('p.id,p.tipo_servicio_id,p.intervalo_km,p.intervalo_horas,p.intervalo_dias,p.proximo_km,p.proximas_horas,p.proxima_fecha,p.prioridad,ts.nombre AS servicio_nombre')
+            ->join('tipos_servicio ts', 'ts.id=p.tipo_servicio_id', 'left')
+            ->where('p.empresa_id', $companyId)
+            ->where('p.equipo_id', $equipmentId)
+            ->where('p.activo', 1)
+            ->where('p.deleted_at', null)
+            ->get()->getResultArray();
     }
 
     /** @return array<string,mixed>|null */
