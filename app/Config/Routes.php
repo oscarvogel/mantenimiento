@@ -127,6 +127,12 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->post('vencimientos/detectar', 'MaintenanceCircuit::detectOverdue', ['filter' => 'permission:planes.editar']);
     $routes->post('avisos/(:num)/orden', 'MaintenanceCircuit::generateOrder/$1', ['filter' => 'permission:ordenes.editar']);
     $routes->get('ordenes', 'WorkOrders::index', ['filter' => 'permission:ordenes.ver']);
+    $routes->get('ordenes/importar', 'WorkOrderDocumentImports::index', ['filter' => 'permission:ordenes.editar']);
+    $routes->post('ordenes/importar', 'WorkOrderDocumentImports::upload', ['filter' => 'permission:ordenes.editar']);
+    $routes->get('ordenes/importar/(:num)', 'WorkOrderDocumentImports::show/$1', ['filter' => 'permission:ordenes.editar']);
+    $routes->post('ordenes/importar/(:num)/analizar', 'WorkOrderDocumentImports::analyze/$1', ['filter' => 'permission:ordenes.editar']);
+    $routes->post('ordenes/importar/(:num)/confirmar', 'WorkOrderDocumentImports::confirm/$1', ['filter' => 'permission:ordenes.editar']);
+    $routes->get('ordenes/importar/(:num)/documento', 'WorkOrderDocumentImports::document/$1', ['filter' => 'permission:ordenes.editar']);
     $routes->post('ordenes/correctivas', 'CorrectiveWorkOrders::create', ['filter' => 'permission:ordenes.editar']);
     $routes->get('ordenes/(:num)/imprimir', 'MaintenanceCircuit::printOrder/$1');
     $routes->post('ordenes/(:num)/iniciar', 'MaintenanceCircuit::startOrder/$1', ['filter' => 'permission:ordenes.editar']);
