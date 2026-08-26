@@ -61,6 +61,7 @@ final class AnalyzeWorkOrderDocument
                 ->where('empresa_id', $companyId)
                 ->where('sucursal_id', $branchId)
                 ->where('estado', 'ACTIVO')
+                ->where('deleted_at', null)
                 ->get()->getResultArray();
             foreach ($rows as $row) {
                 if (self::normalizePlate((string) ($row['patente'] ?? '')) === $plate) {
@@ -78,14 +79,7 @@ final class AnalyzeWorkOrderDocument
                 ->where('equipo_id', (int) $equipment['id'])
                 ->where('anulada', 0)
                 ->orderBy('fecha_lectura', 'DESC')->orderBy('id', 'DESC')->get(1)->getRowArray();
-            $plans = $this->db->table('planes_mantenimiento p')
-                ->select('p.id,p.tipo_servicio_id,p.intervalo_km,p.intervalo_horas,p.intervalo_dias,p.proximo_km,p.proximas_horas,p.proxima_fecha,p.prioridad,ts.nombre AS servicio_nombre')
-                ->join('tipos_servicio ts', 'ts.id=p.tipo_servicio_id', 'left')
-                ->where('p.empresa_id', $companyId)
-                ->where('p.equipo_id', (int) $equipment['id'])
-                ->where('p.activo', 1)
-                ->where('p.deleted_at', null)
-                ->get()->getResultArray();
+            $plans = $this->plansForEquipment($companyId, (int) $equipment['id']);
         }
 
         $works = array_map(static function (array $work): array {
@@ -97,6 +91,13 @@ final class AnalyzeWorkOrderDocument
         }, is_array($analysis['works'] ?? null) ? $analysis['works'] : []);
         $materials = is_array($analysis['materials'] ?? null) ? $analysis['materials'] : [];
         $plans = $this->planMatcher->match($plans, $this->serviceCatalog->listForCompany($companyId), $works, $materials);
+        $suggestedPlan = null;
+        foreach ($plans as $plan) {
+            if (($plan['suggested'] ?? false) === true) {
+                $suggestedPlan = (int) $plan['id'];
+                break;
+            }
+        }
 
         return [
             'analysis' => $analysis,
@@ -108,7 +109,7 @@ final class AnalyzeWorkOrderDocument
             'supplier' => $analysis['supplier'] ?? null,
             'concept' => $analysis['concept'] ?? null,
             'observations' => $analysis['observations'] ?? null,
-            'selectedPlanId' => isset($plans[0]['suggested']) ? (int) $plans[0]['id'] : null,
+            'selectedPlanId' => $suggestedPlan,
             'equipment' => $equipment,
             'equipmentMatches' => $equipmentMatches,
             'equipmentResolution' => $equipment !== null ? 'UNICA' : ($equipmentMatches === [] ? 'NO_ENCONTRADO' : 'AMBIGUA'),
@@ -120,6 +121,19 @@ final class AnalyzeWorkOrderDocument
             'canCreateCorrective' => count(array_filter($works, static fn (array $w): bool => ($w['classification'] ?? '') === 'correctivo')) > 0,
             'canCreatePreventive' => count(array_filter($works, static fn (array $w): bool => ($w['classification'] ?? '') === 'preventivo')) > 0,
         ];
+    }
+
+    /** @return list<array<string,mixed>> */
+    private function plansForEquipment(int $companyId, int $equipmentId): array
+    {
+        return $this->db->table('planes_mantenimiento p')
+            ->select('p.id,p.tipo_servicio_id,p.intervalo_km,p.intervalo_horas,p.intervalo_dias,p.proximo_km,p.proximas_horas,p.proxima_fecha,p.prioridad,ts.nombre AS servicio_nombre')
+            ->join('tipos_servicio ts', 'ts.id=p.tipo_servicio_id', 'left')
+            ->where('p.empresa_id', $companyId)
+            ->where('p.equipo_id', $equipmentId)
+            ->where('p.activo', 1)
+            ->where('p.deleted_at', null)
+            ->get()->getResultArray();
     }
 
     /** @param array<string,mixed> $analysis @param array<string,mixed>|null $equipment */
