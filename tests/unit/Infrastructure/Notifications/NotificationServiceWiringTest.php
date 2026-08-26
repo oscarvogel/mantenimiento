@@ -14,4 +14,13 @@ final class NotificationServiceWiringTest extends TestCase
 
         self::assertInstanceOf(CollectOperationalNotifications::class, $collector);
     }
+
+    public function testDemoHourPlansUseDateOffsetsMatchingTheirInterval(): void
+    {
+        $seeder = file_get_contents(APPPATH . 'Database/Seeds/DemoCompanySeeder.php');
+
+        self::assertIsString($seeder);
+        self::assertMatchesRegularExpression("~'VENCIDO_H'.*'-188 days'.*'-8 days'~s", $seeder);
+        self::assertMatchesRegularExpression("~'PROXIMO_H'.*'-168 days'.*'\\+12 days'~s", $seeder);
+    }
 }
