@@ -130,6 +130,8 @@ final class MiniMaxWorkOrderDocumentAnalyzer implements WorkOrderDocumentAnalyze
     private function decodeJson(string $content): array
     {
         $content = trim($content);
+        $content = preg_replace('/<think\\b[^>]*>.*?<\\/think>/is', '', $content) ?? $content;
+        $content = trim($content);
         $content = preg_replace('/^```(?:json)?\s*|\s*```$/i', '', $content) ?? $content;
         $decoded = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
         if (! is_array($decoded)) {
