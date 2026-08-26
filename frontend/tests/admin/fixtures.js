@@ -123,6 +123,7 @@ export const usersAdminData = {
   flash: { success: '', error: '' },
   company: { id: 1, name: 'Transportes Sur SA' },
   permissions: { create: true, editAccounts: true, editAccess: true, resetPasswords: true },
+  chatAudit: { apiUrl: '/mantenimiento/mantenimiento/chatbot/auditoria' },
   metrics: { total: 2, active: 2, inactive: 0 },
   pagination: {
     page: 1, totalPages: 1, total: 2, perPage: 5,

@@ -28,6 +28,6 @@ describe('historial tenant del chatbot', () => {
     expect(wrapper.text()).toContain(usersAdminData.company.name)
     expect(wrapper.find('input[placeholder="ID empresa"]').exists()).toBe(false)
     expect(fetch).toHaveBeenCalledOnce()
-    expect(String(fetch.mock.calls[0][0])).toContain('/mantenimiento/chatbot/auditoria')
+    expect(String(fetch.mock.calls[0][0])).toBe("/mantenimiento/mantenimiento/chatbot/auditoria?page=1&perPage=25")
   })
 })
