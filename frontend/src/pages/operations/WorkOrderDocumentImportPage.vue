@@ -1,12 +1,12 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
-import { ArrowLeftIcon, ArrowPathIcon, DocumentArrowUpIcon, DocumentTextIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
+import { ArrowLeftIcon, ArrowPathIcon, ArrowUpTrayIcon, DocumentTextIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
 import CsrfInput from './components/CsrfInput.vue'
 import PageHeading from './components/PageHeading.vue'
 import { fieldClass, primaryButton, secondaryButton } from './helpers.js'
 
 const props = defineProps({ data: { type: Object, required: true } })
-const proposal = reactive(structuredClone(props.data.import?.proposal ?? {}))
+const proposal = reactive(JSON.parse(JSON.stringify(props.data.import?.proposal ?? {})))
 const contextLoading = ref(false)
 const contextError = ref('')
 const analysis = computed(() => props.data.import?.analysis ?? proposal.analysis ?? {})
@@ -77,14 +77,14 @@ watch(() => proposal.selectedEquipmentId, async (equipmentId, previous) => {
     </PageHeading>
 
     <section v-if="data.mode === 'upload'" class="mx-auto max-w-3xl rounded-2xl border border-border bg-surface-raised p-6 shadow-sm">
-      <div class="mb-5 flex items-start gap-4"><div class="rounded-xl bg-primary/10 p-3 text-primary"><DocumentArrowUpIcon class="size-7" /></div><div><h2 class="text-lg font-bold text-ink">Foto o PDF de la orden del taller</h2><p class="mt-1 text-sm text-ink-muted">Formatos admitidos: JPG, PNG y PDF. El original queda guardado para auditoría.</p></div></div>
+      <div class="mb-5 flex items-start gap-4"><div class="rounded-xl bg-primary/10 p-3 text-primary"><ArrowUpTrayIcon class="size-7" /></div><div><h2 class="text-lg font-bold text-ink">Foto o PDF de la orden del taller</h2><p class="mt-1 text-sm text-ink-muted">Formatos admitidos: JPG, PNG y PDF. El original queda guardado para auditoría.</p></div></div>
       <form method="post" :action="data.routes.upload" enctype="multipart/form-data" class="space-y-5">
         <CsrfInput :csrf="data.csrf" />
         <input type="hidden" name="idempotency_key" :value="`ot-doc-${Date.now()}-${Math.random().toString(16).slice(2)}`" />
         <label class="block"><span class="mb-1 block text-sm font-semibold text-ink">Sucursal</span><select name="sucursal_id" required :class="fieldClass"><option value="">Seleccionar sucursal</option><option v-for="branch in data.branches" :key="branch.id" :value="branch.id">{{ branch.name }}</option></select></label>
         <label class="block"><span class="mb-1 block text-sm font-semibold text-ink">Documento</span><input name="documento" type="file" required accept="image/jpeg,image/png,application/pdf" class="block min-h-12 w-full rounded-xl border border-dashed border-border-strong bg-surface px-4 py-3 text-sm text-ink file:mr-4 file:rounded-lg file:border-0 file:bg-primary file:px-4 file:py-2 file:font-semibold file:text-white hover:border-primary/50" /></label>
         <div class="rounded-xl bg-surface p-4 text-sm text-ink-muted"><strong class="text-ink">La IA no crea nada automáticamente.</strong> Primero vas a revisar patente/equipo, lectura, tareas y repuestos; después podrás elegir OT correctiva, preventiva o ambas.</div>
-        <button type="submit" :class="primaryButton"><DocumentArrowUpIcon class="mr-2 size-4" />Subir y analizar</button>
+        <button type="submit" :class="primaryButton"><ArrowUpTrayIcon class="mr-2 size-4" />Subir y analizar</button>
       </form>
     </section>
 
