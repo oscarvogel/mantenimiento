@@ -32,7 +32,8 @@ async function load(targetPage = 1) {
     const response = await fetch(`${apiUrl.value}?${qs(targetPage)}`, { headers: { Accept: 'application/json' } })
     if (!response.ok) throw new Error(response.status === 403 ? 'No tenés permiso para ver esta auditoría.' : 'No se pudo cargar la auditoría.')
     const payload = await response.json()
-    items.value = payload.items ?? []
+    const itemsData = payload.data ?? payload.items ?? []
+    items.value = Array.isArray(itemsData) ? itemsData : []
     page.value = payload.pagination?.page ?? targetPage
     pages.value = payload.pagination?.pages ?? 0
     total.value = payload.pagination?.total ?? 0
@@ -43,8 +44,8 @@ async function openDetail(id) {
   detailLoading.value = true; error.value = ''
   try {
     const response = await fetch(`${apiUrl.value}/${id}`, { headers: { Accept: 'application/json' } })
-    if (!response.ok) throw new Error('No se pudo abrir la conversación.')
-    selected.value = (await response.json()).conversation
+    const payload = await response.json()
+    selected.value = payload.data ?? payload.conversation ?? null
   } catch (e) { error.value = e.message } finally { detailLoading.value = false }
 }
 
