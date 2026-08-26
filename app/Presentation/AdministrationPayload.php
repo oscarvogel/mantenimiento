@@ -37,6 +37,7 @@ final class AdministrationPayload
             'actions' => [
                 'createCompany' => base_url('superadmin/empresas'),
                 'createCompanyAdministrator' => base_url('superadmin/administradores'),
+                'dispatchNotifications' => base_url('superadmin/notificaciones/despachar'),
             ],
             'chatAudit' => [
                 'apiUrl' => base_url('mantenimiento/chatbot/auditoria'),
