@@ -1,6 +1,6 @@
 <script setup>
 import { computed, reactive, ref } from 'vue'
-import { ArrowPathIcon, ChevronDownIcon, MagnifyingGlassIcon, PlusIcon, PrinterIcon, WrenchScrewdriverIcon } from '@heroicons/vue/24/outline'
+import { ArrowPathIcon, ChevronDownIcon, DocumentArrowUpIcon, MagnifyingGlassIcon, PlusIcon, PrinterIcon, WrenchScrewdriverIcon } from '@heroicons/vue/24/outline'
 import CsrfInput from './components/CsrfInput.vue'
 import CorrectiveWorkRegistrationModal from './components/CorrectiveWorkRegistrationModal.vue'
 import EmptyState from './components/EmptyState.vue'
@@ -71,6 +71,7 @@ for (const order of props.data.orders ?? []) closeStateFor(order)
   <div>
     <PageHeading eyebrow="Taller" title="Órdenes de trabajo" description="Consultá las órdenes existentes o registrá rápidamente un trabajo correctivo realizado.">
       <template #actions>
+        <a v-if="data.can.editOrder" :href="data.routes.importDocument" :class="secondaryButton"><DocumentArrowUpIcon class="mr-2 size-4" aria-hidden="true" />Importar orden de taller</a>
         <button v-if="data.can.editOrder" type="button" :class="primaryButton" aria-haspopup="dialog" @click="correctiveModalOpen = true"><PlusIcon class="mr-2 size-4" aria-hidden="true" />Registrar correctivo</button>
         <a :href="data.routes.maintenance" :class="secondaryButton">Volver a Mantenimiento</a>
       </template>
