@@ -48,6 +48,11 @@ final class ConfirmWorkOrderDocumentImport
 
         $import = $this->imports->findForActor($importId, $actor->companyId(), $actor->hasAllCompanyBranches() ? null : $actor->branchIds());
         if ($import === null) throw new DomainException('El documento no existe o no está autorizado.');
+        $storedProposal = $this->decodeProposal($import['proposal_json'] ?? null);
+        $possibleDuplicates = is_array($storedProposal['possibleDuplicates'] ?? null) ? $storedProposal['possibleDuplicates'] : [];
+        if ($possibleDuplicates !== [] && ! (bool) ($proposal['confirmPossibleDuplicate'] ?? false)) {
+            throw new DomainException('Existe una importación anterior muy similar. Revisá la advertencia y confirmá expresamente que corresponde continuar.');
+        }
 
         $equipmentId = (int) ($proposal['selectedEquipmentId'] ?? 0);
         $equipment = $this->gateway->equipment($actor->companyId(), $equipmentId);
@@ -218,12 +223,8 @@ final class ConfirmWorkOrderDocumentImport
     private function assertReadingProgression(array $equipment, ?int $km, ?string $hours, bool $confirmedRollback): void
     {
         $regression = false;
-        if ($km !== null && $equipment['km_actual'] !== null && $km < (int) $equipment['km_actual']) {
-            $regression = true;
-        }
-        if ($hours !== null && $equipment['horas_actuales'] !== null && (float) $hours < (float) $equipment['horas_actuales']) {
-            $regression = true;
-        }
+        if ($km !== null && $equipment['km_actual'] !== null && $km < (int) $equipment['km_actual']) $regression = true;
+        if ($hours !== null && $equipment['horas_actuales'] !== null && (float) $hours < (float) $equipment['horas_actuales']) $regression = true;
         if ($regression && ! $confirmedRollback) {
             throw new DomainException('La lectura del documento es menor que la lectura actual del equipo. Confirmá expresamente que revisaste esta diferencia antes de continuar.');
         }
@@ -271,10 +272,16 @@ final class ConfirmWorkOrderDocumentImport
     {
         if ($value === null || trim((string) $value) === '') return null;
         $normalized = str_replace([' ', ','], ['', '.'], trim((string) $value));
-        if (! is_numeric($normalized) || (float) $normalized < 0) {
-            throw new DomainException('El importe detectado no es válido.');
-        }
+        if (! is_numeric($normalized) || (float) $normalized < 0) throw new DomainException('El importe detectado no es válido.');
         return number_format((float) $normalized, 2, '.', '');
+    }
+
+    /** @return array<string,mixed> */
+    private function decodeProposal(mixed $json): array
+    {
+        if (! is_string($json) || trim($json) === '') return [];
+        $decoded = json_decode($json, true);
+        return is_array($decoded) ? $decoded : [];
     }
 
     private function nullable(mixed $value): ?string
