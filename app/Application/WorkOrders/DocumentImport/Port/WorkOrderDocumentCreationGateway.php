@@ -39,6 +39,8 @@ interface WorkOrderDocumentCreationGateway
         ?string $supplier,
         ?string $concept,
         ?string $observations,
+        ?string $documentCost,
+        ?string $currency,
         array $works,
         array $materials,
     ): int;
