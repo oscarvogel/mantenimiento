@@ -19,6 +19,9 @@ $routes->post('logout', 'Login::logout', ['filter' => 'auth']);
 // Dashboard (protegido)
 $routes->get('dashboard', 'Dashboard::index', ['filter' => 'auth']);
 
+// Cron web para hosting sin PHP CLI. El token se valida dentro del controlador.
+$routes->get('cron/notificaciones/(:segment)', 'NotificationCron::dispatch/$1');
+
 // Compatibilidad con enlaces antiguos emitidos antes de conocer el prefijo
 // interno del grupo `mantenimiento` en el deploy plano.
 $routes->get('planes', static function () {
@@ -39,6 +42,7 @@ $routes->group('superadmin', ['filter' => 'superadmin'], static function ($route
     $routes->post('empresas', 'SuperAdmin::createCompany');
     $routes->post('empresas/(:num)', 'SuperAdmin::updateCompany/$1');
     $routes->post('empresas/(:num)/notificaciones/prueba', 'SuperAdmin::testCompanyNotificationEmail/$1');
+    $routes->post('notificaciones/despachar', 'NotificationCron::manual');
     $routes->post('administradores', 'SuperAdmin::createCompanyAdministrator');
     $routes->post('usuarios/(:num)/empresa', 'SuperAdmin::assignCompany/$1');
     $routes->post('usuarios/(:num)/roles', 'SuperAdmin::assignRoles/$1');
