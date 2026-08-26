@@ -15,7 +15,8 @@ final class ListEquipment
     /** @return array{items:list<array<string,mixed>>,total:int,page:int,perPage:int,totalPages:int} */
     public function execute(ActorContext $actor, EquipmentListQuery $query): array
     {
-        if ($actor->isSuperAdmin() || $actor->companyId() === null || ! $actor->hasPermission('equipos.ver')) {
+        $canListEquipment = $actor->hasPermission('equipos.ver') || $actor->hasPermission('lecturas.cargar');
+        if ($actor->isSuperAdmin() || $actor->companyId() === null || ! $canListEquipment) {
             throw new DomainException('No tenés permiso para consultar equipos de una empresa.');
         }
         if ($query->branchId !== null && ! $actor->canAccessBranch($actor->companyId(), $query->branchId)) {
