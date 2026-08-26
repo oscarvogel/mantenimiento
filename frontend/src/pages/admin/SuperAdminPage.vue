@@ -37,6 +37,19 @@ const isRoleAssigned = (user, roleId) => user.assignedRoleIds.includes(Number(ro
       <AdminMetric label="Usuarios" :value="data.metrics.usersTotal" tone="muted" />
     </section>
 
+    <section v-if="data.permissions.companiesEdit" class="mb-8 flex flex-col gap-4 rounded-xl border border-border bg-surface-raised p-5 shadow-card sm:flex-row sm:items-center sm:justify-between sm:p-6" aria-labelledby="notification-process-title">
+      <div>
+        <h2 id="notification-process-title" class="font-semibold text-ink">Procesar notificaciones ahora</h2>
+        <p class="mt-1 max-w-2xl text-sm leading-6 text-ink-muted">Detecta vencimientos, genera eventos pendientes y despacha email y Web Push según las preferencias configuradas. La idempotencia evita duplicar el mismo ciclo.</p>
+      </div>
+      <form method="post" :action="data.actions.dispatchNotifications" data-confirm data-confirm-title="¿Ejecutar el ciclo de notificaciones?" data-confirm-text="Se procesarán los eventos y canales pendientes con la configuración actual." data-confirm-button="Ejecutar ahora" class="shrink-0">
+        <CsrfField :csrf="data.csrf" />
+        <button type="submit" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary-hover active:bg-primary-active">
+          Ejecutar ahora
+        </button>
+      </form>
+    </section>
+
     <section v-if="data.permissions.companiesEdit" class="mb-8 overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card" aria-labelledby="create-company-title">
       <div class="flex items-center gap-3 border-b border-border-subtle bg-surface-subtle px-5 py-4 sm:px-6">
         <span class="flex size-10 items-center justify-center rounded-lg bg-primary-subtle text-primary">

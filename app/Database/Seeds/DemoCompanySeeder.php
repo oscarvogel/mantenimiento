@@ -309,8 +309,8 @@ final class DemoCompanySeeder extends Seeder
             'VENCIDO_KM' => [$equipment['IVECO'], $services['ACEITE20'], 20000, null, 180, 1500, null, 15, 100000, null, '-190 days', 120000, null, '-10 days'],
             'PROXIMO_KM' => [$equipment['ATEGO'], $services['FRENOS'], 30000, null, 180, 2500, null, 20, 58000, null, '-173 days', 88000, null, '+7 days'],
             'OK_KM' => [$equipment['VOLVO'], $services['ACEITE20'], 20000, null, 180, 1500, null, 15, 180000, null, '-30 days', 200000, null, '+150 days'],
-            'VENCIDO_H' => [$equipment['MOTON'], $services['HORAS500'], null, 500.0, 180, null, 50.0, 20, null, 4400.0, '-200 days', null, 4900.0, '-8 days'],
-            'PROXIMO_H' => [$equipment['EXCAV'], $services['HORAS500'], null, 500.0, 180, null, 50.0, 20, null, 2800.0, '-165 days', null, 3300.0, '+12 days'],
+            'VENCIDO_H' => [$equipment['MOTON'], $services['HORAS500'], null, 500.0, 180, null, 50.0, 20, null, 4400.0, '-188 days', null, 4900.0, '-8 days'],
+            'PROXIMO_H' => [$equipment['EXCAV'], $services['HORAS500'], null, 500.0, 180, null, 50.0, 20, null, 2800.0, '-168 days', null, 3300.0, '+12 days'],
             'SIN_LECTURA' => [$equipment['AUTOE'], $services['HIDRAULICO'], null, 1000.0, 365, null, 80.0, 30, null, 900.0, '-350 days', null, 1900.0, '+15 days'],
         ];
         $ids = [];

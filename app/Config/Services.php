@@ -341,6 +341,7 @@ class Services extends BaseService
                 static::notificationClock(false),
                 (int) env('alerts.lecturasVencidasDias', 30),
                 (int) env('alerts.ordenDemoradaDias', 5),
+                2,
                 db_connect(),
             ),
             static::publishNotifiableEvent(false),
