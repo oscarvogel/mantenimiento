@@ -42,8 +42,8 @@ final class NotificationWebCronContractTest extends TestCase
         $routes = file_get_contents(APPPATH . 'Config/Routes.php');
 
         self::assertIsString($routes);
-        self::assertStringContainsString("$routes->get('cron/notificaciones/(:segment)', 'NotificationCron::dispatch/$1');", $routes);
-        self::assertStringContainsString("$routes->group('superadmin', ['filter' => 'superadmin']", $routes);
-        self::assertStringContainsString("$routes->post('notificaciones/despachar', 'NotificationCron::manual');", $routes);
+        self::assertStringContainsString("\$routes->get('cron/notificaciones/(:segment)', 'NotificationCron::dispatch/\$1');", $routes);
+        self::assertStringContainsString("\$routes->group('superadmin', ['filter' => 'superadmin']", $routes);
+        self::assertStringContainsString("\$routes->post('notificaciones/despachar', 'NotificationCron::manual');", $routes);
     }
 }
