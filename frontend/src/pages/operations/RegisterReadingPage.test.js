@@ -4,15 +4,28 @@ import RegisterReadingPage from './RegisterReadingPage.vue'
 
 const data = () => ({
   csrf: { name: 'csrf_test', hash: 'HASH1' },
+  canRegister: true,
+  canGenerateOrder: false,
   recordedAtDefault: '2026-08-26T08:30',
-  routes: { index: '/mantenimiento/lecturas/rapidas', submitRow: '/mantenimiento/lecturas/rapidas/fila' },
-  filters: { q: '' },
-  equipment: {
-    items: [
-      { id: 10, code: 'CAM-25', plate: 'AA123BB', typeName: 'Camión', branchName: 'Central', controlsKm: true, controlsHours: false, currentKm: 185000, currentHours: null, maintenance: { state: 'OK', primaryPlan: { critical: { value: 1580, unit: 'km' } } } },
-      { id: 20, code: 'TR-04', plate: null, typeName: 'Tractor', branchName: 'Central', controlsKm: false, controlsHours: true, currentKm: null, currentHours: 8420, maintenance: { state: 'SIN_PLAN', primaryPlan: null } },
-    ],
+  routes: {
+    index: '/mantenimiento/lecturas/rapidas',
+    submit: '/mantenimiento/lecturas/rapidas',
+    submitRow: '/mantenimiento/lecturas/rapidas/fila',
+    generateOrderBase: '/mantenimiento/lecturas/rapidas/avisos',
+    workOrderBase: '/mantenimiento/ordenes',
+    assets: '/mantenimiento/equipos',
   },
+  filters: { q: '', branchId: '', typeId: '', perPage: 25 },
+  catalogs: { branches: [], types: [] },
+  equipment: {
+    total: 2,
+    items: [
+      { id: 10, code: 'CAM-25', plate: 'AA123BB', chassis: 'CH-10', typeName: 'Camión', branchName: 'Central', controlsKm: true, controlsHours: false, currentKm: 185000, currentHours: null, maintenance: { state: 'OK', primaryPlan: { critical: { value: 1580, unit: 'km' } }, plans: [], planCount: 1 } },
+      { id: 20, code: 'TR-04', plate: null, chassis: 'CH-20', typeName: 'Tractor', branchName: 'Central', controlsKm: false, controlsHours: true, currentKm: null, currentHours: 8420, maintenance: { state: 'SIN_PLAN', primaryPlan: null, plans: [], planCount: 0 } },
+    ],
+    pagination: { page: 1, totalPages: 1, total: 2, previousUrl: null, nextUrl: null, pageKey: 'page', perPageKey: 'per_page', perPage: 25 },
+  },
+  results: [],
 })
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); window.history.replaceState({}, '', '/') })
