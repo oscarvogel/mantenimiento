@@ -37,7 +37,7 @@ const isRoleAssigned = (user, roleId) => user.assignedRoleIds.includes(Number(ro
       <AdminMetric label="Usuarios" :value="data.metrics.usersTotal" tone="muted" />
     </section>
 
-    <section class="mb-8 flex flex-col gap-4 rounded-xl border border-border bg-surface-raised p-5 shadow-card sm:flex-row sm:items-center sm:justify-between sm:p-6" aria-labelledby="notification-process-title">
+    <section v-if="data.permissions.companiesEdit" class="mb-8 flex flex-col gap-4 rounded-xl border border-border bg-surface-raised p-5 shadow-card sm:flex-row sm:items-center sm:justify-between sm:p-6" aria-labelledby="notification-process-title">
       <div>
         <h2 id="notification-process-title" class="font-semibold text-ink">Procesar notificaciones ahora</h2>
         <p class="mt-1 max-w-2xl text-sm leading-6 text-ink-muted">Detecta vencimientos, genera eventos pendientes y despacha email y Web Push según las preferencias configuradas. La idempotencia evita duplicar el mismo ciclo.</p>
