@@ -18,6 +18,9 @@ interface WorkOrderDocumentCreationGateway
     /** @return array<string,mixed>|null */
     public function preventivePlan(int $companyId, int $equipmentId, int $planId): ?array;
 
+    /** @return list<array{id:int,name:string,required:bool}> */
+    public function workOrderTasks(int $companyId, int $workOrderId): array;
+
     /**
      * @param list<array<string,mixed>> $works
      * @param list<array<string,mixed>> $materials
