@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\WorkOrders\DocumentImport;
 
 use App\Application\Identity\ActorContext;
+use App\Application\PreventiveMaintenance\Port\MaintenanceServiceCatalog;
 use App\Application\WorkOrders\DocumentImport\Port\WorkOrderDocumentAnalyzer;
 use App\Application\WorkOrders\DocumentImport\Port\WorkOrderDocumentImportRepository;
 use App\Application\WorkOrders\DocumentImport\Port\WorkOrderDocumentStorage;
@@ -20,6 +21,8 @@ final class AnalyzeWorkOrderDocument
         private readonly WorkOrderDocumentStorage $storage,
         private readonly WorkOrderDocumentAnalyzer $analyzer,
         private readonly BaseConnection $db,
+        private readonly MaintenanceServiceCatalog $serviceCatalog,
+        private readonly PreventivePlanMatcher $planMatcher = new PreventivePlanMatcher(),
     ) {}
 
     /** @return array<string,mixed> */
@@ -92,17 +95,27 @@ final class AnalyzeWorkOrderDocument
             }
             return [...$work, 'classification' => $classification, 'included' => true];
         }, is_array($analysis['works'] ?? null) ? $analysis['works'] : []);
+        $materials = is_array($analysis['materials'] ?? null) ? $analysis['materials'] : [];
+        $plans = $this->planMatcher->match($plans, $this->serviceCatalog->listForCompany($companyId), $works, $materials);
 
         return [
             'analysis' => $analysis,
             'normalizedPlate' => $plate,
+            'selectedEquipmentId' => $equipment === null ? null : (int) $equipment['id'],
+            'serviceDate' => $analysis['serviceDate'] ?? null,
+            'readingType' => $analysis['readingType'] ?? null,
+            'readingValue' => $analysis['readingValue'] ?? null,
+            'supplier' => $analysis['supplier'] ?? null,
+            'concept' => $analysis['concept'] ?? null,
+            'observations' => $analysis['observations'] ?? null,
+            'selectedPlanId' => isset($plans[0]['suggested']) ? (int) $plans[0]['id'] : null,
             'equipment' => $equipment,
             'equipmentMatches' => $equipmentMatches,
             'equipmentResolution' => $equipment !== null ? 'UNICA' : ($equipmentMatches === [] ? 'NO_ENCONTRADO' : 'AMBIGUA'),
             'lastReading' => $lastReading,
             'readingWarning' => $this->readingWarning($analysis, $equipment),
             'works' => $works,
-            'materials' => $analysis['materials'] ?? [],
+            'materials' => $materials,
             'preventivePlans' => $plans,
             'canCreateCorrective' => count(array_filter($works, static fn (array $w): bool => ($w['classification'] ?? '') === 'correctivo')) > 0,
             'canCreatePreventive' => count(array_filter($works, static fn (array $w): bool => ($w['classification'] ?? '') === 'preventivo')) > 0,
