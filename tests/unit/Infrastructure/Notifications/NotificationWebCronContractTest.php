@@ -46,4 +46,17 @@ final class NotificationWebCronContractTest extends TestCase
         self::assertStringContainsString("\$routes->group('superadmin', ['filter' => 'superadmin']", $routes);
         self::assertStringContainsString("\$routes->post('notificaciones/despachar', 'NotificationCron::manual');", $routes);
     }
+
+    public function testSuperadminExposesTheManualDispatchActionWithCsrfProtectedForm(): void
+    {
+        $payload = file_get_contents(APPPATH . 'Presentation/AdministrationPayload.php');
+        $page = file_get_contents(ROOTPATH . 'frontend/src/pages/admin/SuperAdminPage.vue');
+
+        self::assertIsString($payload);
+        self::assertIsString($page);
+        self::assertStringContainsString("'dispatchNotifications' => base_url('superadmin/notificaciones/despachar')", $payload);
+        self::assertStringContainsString(':action="data.actions.dispatchNotifications"', $page);
+        self::assertStringContainsString('<CsrfField :csrf="data.csrf" />', $page);
+        self::assertStringContainsString('Procesar notificaciones ahora', $page);
+    }
 }
