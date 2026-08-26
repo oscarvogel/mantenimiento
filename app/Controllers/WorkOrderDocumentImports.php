@@ -6,10 +6,17 @@ namespace App\Controllers;
 
 use App\Application\Identity\ActorContext;
 use App\Application\WorkOrders\DocumentImport\AnalyzeWorkOrderDocument;
+use App\Application\WorkOrders\DocumentImport\ConfirmWorkOrderDocumentImport;
 use App\Application\WorkOrders\DocumentImport\UploadWorkOrderDocumentCommand;
 use App\Application\WorkOrders\DocumentImport\UploadWorkOrderDocumentHandler;
+use App\Application\WorkOrders\GeneratePreventiveWorkOrder;
 use App\Infrastructure\Identity\SessionActorContext;
 use App\Infrastructure\PreventiveMaintenance\CodeIgniterMaintenanceServiceCatalog;
+use App\Infrastructure\WorkOrders\CodeIgniterWorkOrderNumberGenerator;
+use App\Infrastructure\WorkOrders\CodeIgniterWorkOrderRepository;
+use App\Infrastructure\WorkOrders\CodeIgniterWorkOrderTransaction;
+use App\Infrastructure\WorkOrders\SystemClock as WorkOrderClock;
+use App\Infrastructure\WorkOrders\DocumentImport\CodeIgniterWorkOrderDocumentCreationGateway;
 use App\Infrastructure\WorkOrders\DocumentImport\CodeIgniterWorkOrderDocumentImportRepository;
 use App\Infrastructure\WorkOrders\DocumentImport\MiniMaxWorkOrderDocumentAnalyzer;
 use App\Infrastructure\WorkOrders\DocumentImport\PrivateWorkOrderDocumentStorage;
@@ -83,6 +90,10 @@ final class WorkOrderDocumentImports extends BaseController
 
         return $this->renderApp($actor, 'work-orders', 'work-order-document-import', 'Revisar orden de taller', [
             'mode' => 'review',
+            'can' => [
+                'closePreventive' => $actor->hasPermission('ordenes.cerrar'),
+                'registerReading' => $actor->hasPermission('lecturas.cargar'),
+            ],
             'import' => [
                 'id' => (int) $row['id'],
                 'originalName' => (string) $row['original_name'],
@@ -98,6 +109,7 @@ final class WorkOrderDocumentImports extends BaseController
                 'newImport' => base_url('mantenimiento/ordenes/importar'),
                 'reanalyze' => base_url('mantenimiento/ordenes/importar/' . $id . '/analizar'),
                 'download' => base_url('mantenimiento/ordenes/importar/' . $id . '/documento'),
+                'confirm' => base_url('mantenimiento/ordenes/importar/' . $id . '/confirmar'),
             ],
             'csrf' => ['name' => csrf_token(), 'hash' => csrf_hash()],
         ]);
@@ -114,6 +126,25 @@ final class WorkOrderDocumentImports extends BaseController
             return redirect()->to(base_url('mantenimiento/ordenes/importar/' . $id))->with('success', 'Documento analizado nuevamente.');
         } catch (Throwable $exception) {
             return redirect()->to(base_url('mantenimiento/ordenes/importar/' . $id))->with('error', $exception->getMessage());
+        }
+    }
+
+    public function confirm(int $id): RedirectResponse
+    {
+        $actor = $this->actor();
+        $this->assertCanEdit($actor);
+        try {
+            $proposalRaw = (string) $this->request->getPost('proposal_json');
+            $proposal = json_decode($proposalRaw, true, 512, JSON_THROW_ON_ERROR);
+            if (! is_array($proposal)) throw new DomainException('La propuesta enviada no es válida.');
+            $action = (string) $this->request->getPost('action');
+            $result = $this->confirmer()->execute($actor, $id, $action, $proposal);
+            $labels = array_map(static fn (array $row): string => $row['kind'] . ' #' . $row['orderId'], $result['orders']);
+            $message = 'Importación confirmada: ' . implode(' · ', $labels) . '.';
+            if ($result['readingRegistered']) $message .= ' La lectura quedó registrada una sola vez.';
+            return redirect()->to(base_url('mantenimiento/ordenes/importar/' . $id))->with('success', $message);
+        } catch (Throwable $exception) {
+            return redirect()->to(base_url('mantenimiento/ordenes/importar/' . $id))->with('error', $exception instanceof DomainException ? $exception->getMessage() : 'No se pudo crear la OT desde el documento: ' . $exception->getMessage());
         }
     }
 
@@ -142,6 +173,26 @@ final class WorkOrderDocumentImports extends BaseController
         );
     }
 
+    private function confirmer(): ConfirmWorkOrderDocumentImport
+    {
+        $db = db_connect();
+        $imports = new CodeIgniterWorkOrderDocumentImportRepository($db);
+        return new ConfirmWorkOrderDocumentImport(
+            $imports,
+            new CodeIgniterWorkOrderDocumentCreationGateway($db),
+            new CodeIgniterWorkOrderNumberGenerator($db),
+            new GeneratePreventiveWorkOrder(
+                new CodeIgniterWorkOrderRepository($db),
+                new CodeIgniterWorkOrderNumberGenerator($db),
+                new CodeIgniterWorkOrderTransaction($db),
+                new WorkOrderClock(),
+            ),
+            service('startWorkOrder'),
+            service('closePreventiveOrder'),
+            service('registerReadingAndReevaluate'),
+        );
+    }
+
     private function actor(): ActorContext
     {
         $actor = (new SessionActorContext())->current();
@@ -165,9 +216,7 @@ final class WorkOrderDocumentImports extends BaseController
             ->where('empresa_id', $actor->companyId())->where('estado', 1)->where('deleted_at', null)->orderBy('nombre');
         if (! $actor->hasAllCompanyBranches()) {
             $ids = $actor->branchIds();
-            if ($ids === []) {
-                return [];
-            }
+            if ($ids === []) return [];
             $builder->whereIn('id', $ids);
         }
         return array_map(static fn (array $row): array => ['id' => (int) $row['id'], 'name' => (string) $row['nombre']], $builder->get()->getResultArray());
@@ -176,27 +225,20 @@ final class WorkOrderDocumentImports extends BaseController
     /** @return list<array<string,mixed>> */
     private function equipmentOptions(ActorContext $actor, int $branchId): array
     {
-        if (! $actor->hasAllCompanyBranches() && ! in_array($branchId, $actor->branchIds(), true)) {
-            return [];
-        }
+        if (! $actor->hasAllCompanyBranches() && ! in_array($branchId, $actor->branchIds(), true)) return [];
         $rows = db_connect()->table('equipos')->select('id,codigo,patente,km_actual,horas_actuales')
             ->where('empresa_id', $actor->companyId())->where('sucursal_id', $branchId)->where('estado', 'ACTIVO')->where('deleted_at', null)
             ->orderBy('codigo')->get()->getResultArray();
         return array_map(static fn (array $row): array => [
-            'id' => (int) $row['id'],
-            'code' => (string) $row['codigo'],
-            'plate' => $row['patente'],
-            'currentKm' => $row['km_actual'] === null ? null : (int) $row['km_actual'],
-            'currentHours' => $row['horas_actuales'],
+            'id' => (int) $row['id'], 'code' => (string) $row['codigo'], 'plate' => $row['patente'],
+            'currentKm' => $row['km_actual'] === null ? null : (int) $row['km_actual'], 'currentHours' => $row['horas_actuales'],
         ], $rows);
     }
 
     /** @return array<string,mixed>|null */
     private function decode(mixed $json): ?array
     {
-        if (! is_string($json) || trim($json) === '') {
-            return null;
-        }
+        if (! is_string($json) || trim($json) === '') return null;
         $decoded = json_decode($json, true);
         return is_array($decoded) ? $decoded : null;
     }
