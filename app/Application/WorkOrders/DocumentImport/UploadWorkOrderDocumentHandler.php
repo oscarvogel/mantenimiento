@@ -21,7 +21,7 @@ final class UploadWorkOrderDocumentHandler
         private readonly int $maximumSizeBytes = 10_485_760,
     ) {}
 
-    public function execute(ActorContext $actor, UploadWorkOrderDocumentCommand $command): int
+    public function execute(ActorContext $actor, UploadWorkOrderDocumentCommand $command): UploadWorkOrderDocumentResult
     {
         if ($actor->isSuperAdmin() || $actor->companyId() === null) {
             throw new DomainException('La importación de OT requiere una empresa activa.');
@@ -38,7 +38,7 @@ final class UploadWorkOrderDocumentHandler
 
         $existing = $this->imports->findByIdempotencyKey($actor->companyId(), $command->idempotencyKey);
         if ($existing !== null) {
-            return $existing;
+            return new UploadWorkOrderDocumentResult($existing, true);
         }
         if (! is_file($command->temporaryPath)) {
             throw new DomainException('El documento temporal no está disponible.');
@@ -64,6 +64,11 @@ final class UploadWorkOrderDocumentHandler
             throw new DomainException('No se pudo calcular la huella del documento.');
         }
 
+        $duplicate = $this->imports->findBySha256($actor->companyId(), $sha256);
+        if ($duplicate !== null) {
+            return new UploadWorkOrderDocumentResult($duplicate, true);
+        }
+
         $stored = $this->storage->store($command->temporaryPath, $actor->companyId(), $extension);
         try {
             $import = WorkOrderDocumentImport::create(
@@ -80,7 +85,7 @@ final class UploadWorkOrderDocumentHandler
                 createdAt: new DateTimeImmutable(),
                 maxSizeBytes: $this->maximumSizeBytes,
             );
-            return $this->imports->add($import);
+            return new UploadWorkOrderDocumentResult($this->imports->add($import), false);
         } catch (Throwable $exception) {
             $this->storage->delete($stored->privateRelativePath);
             throw $exception;
