@@ -9,6 +9,8 @@ interface WorkOrderDocumentCreationGateway
     /** @template T @param callable():T $operation @return T */
     public function transaction(callable $operation): mixed;
 
+    public function lockImportForConfirmation(int $companyId, int $importId): void;
+
     /** @return array<string,mixed>|null */
     public function equipment(int $companyId, int $equipmentId): ?array;
 
