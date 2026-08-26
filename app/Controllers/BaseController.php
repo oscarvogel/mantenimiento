@@ -58,6 +58,7 @@ abstract class BaseController extends Controller
         $data['flash'] = [
             'success' => session()->getFlashdata('success'),
             'error' => session()->getFlashdata('error'),
+            'warning' => session()->getFlashdata('warning'),
         ];
 
         return view('app', [

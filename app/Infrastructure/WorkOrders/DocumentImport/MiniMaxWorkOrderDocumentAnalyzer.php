@@ -20,9 +20,6 @@ final class MiniMaxWorkOrderDocumentAnalyzer implements WorkOrderDocumentAnalyze
     public static function fromEnv(): self
     {
         $apiKey = trim((string) (env('ai.apiKey') ?: env('MINIMAX_API_KEY')));
-        if ($apiKey === '') {
-            throw new RuntimeException('Falta configurar la API key de MiniMax.');
-        }
         return new self(
             $apiKey,
             trim((string) (env('ai.documentModel') ?: env('ai.model') ?: 'MiniMax-M3')),
@@ -33,6 +30,9 @@ final class MiniMaxWorkOrderDocumentAnalyzer implements WorkOrderDocumentAnalyze
 
     public function analyze(string $absolutePath, string $mimeType): WorkOrderDocumentAnalysis
     {
+        if (trim($this->apiKey) === '') {
+            throw new RuntimeException('Falta configurar la API key de MiniMax.');
+        }
         if (! is_file($absolutePath)) {
             throw new RuntimeException('El documento a analizar no existe.');
         }
