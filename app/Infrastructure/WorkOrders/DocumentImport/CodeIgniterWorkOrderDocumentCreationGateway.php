@@ -67,6 +67,23 @@ final class CodeIgniterWorkOrderDocumentCreationGateway implements WorkOrderDocu
         return $plan;
     }
 
+    public function workOrderTasks(int $companyId, int $workOrderId): array
+    {
+        $rows = $this->db->table('orden_tareas t')
+            ->select('t.id,t.descripcion,t.obligatoria')
+            ->join('ordenes_trabajo o', 'o.id=t.orden_id AND o.empresa_id=t.empresa_id', 'inner')
+            ->where('t.empresa_id', $companyId)
+            ->where('t.orden_id', $workOrderId)
+            ->orderBy('t.orden')
+            ->get()->getResultArray();
+
+        return array_map(static fn (array $row): array => [
+            'id' => (int) $row['id'],
+            'name' => (string) $row['descripcion'],
+            'required' => (bool) $row['obligatoria'],
+        ], $rows);
+    }
+
     public function createCompletedCorrective(
         int $companyId,
         int $branchId,
