@@ -5,6 +5,7 @@ import {
   ArrowUpTrayIcon,
   ArrowPathRoundedSquareIcon,
   BeakerIcon,
+  BellIcon,
   BuildingOffice2Icon,
   BuildingStorefrontIcon,
   CalendarDaysIcon,
@@ -39,7 +40,7 @@ const emit = defineEmits(['close'])
 const navigationGroups = computed(() => {
   const definitions = [
     { key: 'operation', label: 'Operación', items: ['dashboard', 'equipment', 'quick-readings', 'plans', 'maintenance'] },
-    { key: 'management', label: 'Gestión', items: ['imports', 'preventive-library', 'reports'] },
+    { key: 'management', label: 'Gestión', items: ['notifications', 'imports', 'preventive-library', 'reports'] },
     { key: 'administration', label: 'Administración', items: ['superadmin', 'chatbot-audit', 'branches', 'users'] },
   ]
   const knownKeys = new Set(definitions.flatMap((group) => group.items))
@@ -71,6 +72,7 @@ const icons = {
   workshops: BuildingOffice2Icon,
   reports: ChartBarSquareIcon,
   audit: ClipboardDocumentListIcon,
+  notifications: BellIcon,
 }
 
 const iconFor = (name) => icons[name] ?? ClipboardDocumentCheckIcon
