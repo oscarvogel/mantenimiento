@@ -70,6 +70,27 @@ final class GetAppShellContextTest extends TestCase
         self::assertStringEndsWith('/mantenimiento/servicios', $servicesItem[0]['href']);
         self::assertTrue($servicesItem[0]['active']);
     }
+
+    public function testShowsRegisterKmHoursOnlyWithReadingLoadPermission(): void
+    {
+        $context = new GetAppShellContext(new AppShellReadModelFake());
+        $reader = new ActorContext(7, 5, false, false, ['Operador'], ['lecturas.cargar'], [9]);
+        $equipmentOnly = new ActorContext(8, 5, false, false, ['Consulta'], ['equipos.ver'], [9]);
+
+        $visible = (new AppShellPayload($context))->for($reader, 'quick-readings');
+        $hidden = (new AppShellPayload($context))->for($equipmentOnly, 'equipment');
+
+        $readingItem = array_values(array_filter(
+            $visible['navigation'],
+            static fn (array $item): bool => $item['key'] === 'quick-readings',
+        ));
+
+        self::assertCount(1, $readingItem);
+        self::assertSame('Registrar km/horas', $readingItem[0]['label']);
+        self::assertStringEndsWith('/mantenimiento/lecturas/rapidas', $readingItem[0]['href']);
+        self::assertTrue($readingItem[0]['active']);
+        self::assertNotContains('quick-readings', array_column($hidden['navigation'], 'key'));
+    }
 }
 
 final class AppShellReadModelFake implements AppShellReadModel
