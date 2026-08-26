@@ -1,5 +1,5 @@
 <script setup>
-import { computed, reactive } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { ArrowLeftIcon, ArrowPathIcon, DocumentArrowUpIcon, DocumentTextIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
 import CsrfInput from './components/CsrfInput.vue'
 import PageHeading from './components/PageHeading.vue'
@@ -7,13 +7,28 @@ import { fieldClass, primaryButton, secondaryButton } from './helpers.js'
 
 const props = defineProps({ data: { type: Object, required: true } })
 const proposal = reactive(structuredClone(props.data.import?.proposal ?? {}))
+const contextLoading = ref(false)
+const contextError = ref('')
 const analysis = computed(() => props.data.import?.analysis ?? proposal.analysis ?? {})
 const works = computed(() => proposal.works ?? [])
 const correctiveWorks = computed(() => works.value.filter((item) => item.included !== false && item.classification === 'correctivo'))
 const preventiveWorks = computed(() => works.value.filter((item) => item.included !== false && item.classification === 'preventivo'))
 const isConfirmed = computed(() => props.data.import?.status === 'CONFIRMADO')
-const canCorrective = computed(() => !isConfirmed.value && Number(proposal.selectedEquipmentId || 0) > 0 && correctiveWorks.value.length > 0)
-const canPreventive = computed(() => !isConfirmed.value && props.data.can?.closePreventive && Number(proposal.selectedEquipmentId || 0) > 0 && Number(proposal.selectedPlanId || 0) > 0 && preventiveWorks.value.length > 0)
+const selectedEquipment = computed(() => (props.data.equipmentOptions ?? []).find((item) => Number(item.id) === Number(proposal.selectedEquipmentId)) ?? null)
+const selectedPlan = computed(() => (proposal.preventivePlans ?? []).find((item) => Number(item.id) === Number(proposal.selectedPlanId)) ?? null)
+const readingRegression = computed(() => {
+  if (!selectedEquipment.value || proposal.readingValue === null || proposal.readingValue === undefined || proposal.readingValue === '') return false
+  const value = Number(String(proposal.readingValue).replace(',', '.'))
+  if (!Number.isFinite(value)) return false
+  if (proposal.readingType === 'horas') return selectedEquipment.value.currentHours !== null && selectedEquipment.value.currentHours !== undefined && value < Number(selectedEquipment.value.currentHours)
+  return selectedEquipment.value.currentKm !== null && selectedEquipment.value.currentKm !== undefined && value < Number(selectedEquipment.value.currentKm)
+})
+const readingPermissionOk = computed(() => proposal.readingValue === null || proposal.readingValue === undefined || proposal.readingValue === '' || props.data.can?.registerReading)
+const partialPreventive = computed(() => Boolean(selectedPlan.value && selectedPlan.value.requiredTasksEvidenced === false))
+const readingConfirmed = computed(() => !readingRegression.value || proposal.confirmReadingRollback === true)
+const partialConfirmed = computed(() => !partialPreventive.value || proposal.confirmPartialPreventive === true)
+const canCorrective = computed(() => !isConfirmed.value && readingPermissionOk.value && readingConfirmed.value && Number(proposal.selectedEquipmentId || 0) > 0 && correctiveWorks.value.length > 0)
+const canPreventive = computed(() => !isConfirmed.value && readingPermissionOk.value && readingConfirmed.value && partialConfirmed.value && props.data.can?.closePreventive && Number(proposal.selectedEquipmentId || 0) > 0 && Number(proposal.selectedPlanId || 0) > 0 && preventiveWorks.value.length > 0)
 const canBoth = computed(() => canCorrective.value && canPreventive.value)
 const confidenceLabel = (value) => {
   const number = Number(value ?? 0)
@@ -29,6 +44,30 @@ const submitConfirmation = (event, action) => {
     : `Se creará la ${action === 'corrective' ? 'OT correctiva' : 'OT preventiva'} con los datos revisados. ¿Confirmás?`
   if (!window.confirm(question)) event.preventDefault()
 }
+
+watch(() => proposal.selectedEquipmentId, async (equipmentId, previous) => {
+  if (isConfirmed.value || !equipmentId || Number(equipmentId) === Number(previous) || !props.data.routes?.equipmentContext) return
+  contextLoading.value = true
+  contextError.value = ''
+  try {
+    const response = await fetch(`${props.data.routes.equipmentContext}?equipment_id=${encodeURIComponent(equipmentId)}`, {
+      headers: { Accept: 'application/json' },
+      credentials: 'same-origin',
+    })
+    const payload = await response.json()
+    if (!response.ok) throw new Error(payload.error || 'No se pudo actualizar el equipo.')
+    proposal.preventivePlans = payload.preventivePlans ?? []
+    proposal.selectedPlanId = payload.selectedPlanId ?? null
+    proposal.confirmPartialPreventive = false
+    proposal.confirmReadingRollback = false
+  } catch (error) {
+    proposal.preventivePlans = []
+    proposal.selectedPlanId = null
+    contextError.value = error instanceof Error ? error.message : 'No se pudo actualizar el contexto del equipo.'
+  } finally {
+    contextLoading.value = false
+  }
+})
 </script>
 
 <template>
@@ -61,14 +100,18 @@ const submitConfirmation = (event, action) => {
         <article class="rounded-2xl border border-border bg-surface-raised p-5 shadow-sm">
           <h2 class="text-lg font-bold text-ink">Datos a confirmar</h2>
           <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <label class="rounded-xl bg-surface p-3"><span class="text-xs font-bold uppercase text-ink-muted">Equipo</span><select v-model.number="proposal.selectedEquipmentId" :disabled="isConfirmed" :class="`${fieldClass} mt-2`"><option :value="null">Seleccionar equipo</option><option v-for="equipment in data.equipmentOptions" :key="equipment.id" :value="equipment.id">{{ equipment.code }}{{ equipment.plate ? ` · ${equipment.plate}` : '' }}</option></select><span class="mt-1 block text-xs text-ink-muted">Patente IA: {{ analysis.plate || 'no detectada' }} · confianza {{ confidenceLabel(analysis.confidence?.plate) }}</span></label>
+            <label class="rounded-xl bg-surface p-3"><span class="text-xs font-bold uppercase text-ink-muted">Equipo</span><select v-model.number="proposal.selectedEquipmentId" :disabled="isConfirmed || contextLoading" :class="`${fieldClass} mt-2`"><option :value="null">Seleccionar equipo</option><option v-for="equipment in data.equipmentOptions" :key="equipment.id" :value="equipment.id">{{ equipment.code }}{{ equipment.plate ? ` · ${equipment.plate}` : '' }}</option></select><span class="mt-1 block text-xs text-ink-muted">Patente IA: {{ analysis.plate || 'no detectada' }} · confianza {{ confidenceLabel(analysis.confidence?.plate) }}</span><span v-if="contextLoading" class="mt-1 block text-xs text-primary">Actualizando planes del equipo…</span></label>
             <label class="rounded-xl bg-surface p-3"><span class="text-xs font-bold uppercase text-ink-muted">Fecha del trabajo</span><input v-model="proposal.serviceDate" type="date" :disabled="isConfirmed" :class="`${fieldClass} mt-2`" /></label>
-            <label class="rounded-xl bg-surface p-3"><span class="text-xs font-bold uppercase text-ink-muted">Lectura</span><div class="mt-2 grid grid-cols-[7rem_1fr] gap-2"><select v-model="proposal.readingType" :disabled="isConfirmed" :class="fieldClass"><option value="km">km</option><option value="horas">horas</option></select><input v-model="proposal.readingValue" inputmode="decimal" :disabled="isConfirmed" :class="fieldClass" /></div><span class="mt-1 block text-xs text-ink-muted">Detectada: {{ formatReading(analysis.readingValue) }} {{ analysis.readingType || '' }}</span></label>
+            <label class="rounded-xl bg-surface p-3"><span class="text-xs font-bold uppercase text-ink-muted">Lectura</span><div class="mt-2 grid grid-cols-[7rem_1fr] gap-2"><select v-model="proposal.readingType" :disabled="isConfirmed" :class="fieldClass"><option value="km">km</option><option value="horas">horas</option></select><input v-model="proposal.readingValue" inputmode="decimal" :disabled="isConfirmed" :class="fieldClass" /></div><span class="mt-1 block text-xs text-ink-muted">Detectada: {{ formatReading(analysis.readingValue) }} {{ analysis.readingType || '' }}</span><span v-if="selectedEquipment" class="mt-1 block text-xs text-ink-muted">Actual del equipo: {{ proposal.readingType === 'horas' ? `${formatReading(selectedEquipment.currentHours)} h` : `${formatReading(selectedEquipment.currentKm)} km` }}</span></label>
             <label class="rounded-xl bg-surface p-3"><span class="text-xs font-bold uppercase text-ink-muted">Taller/proveedor</span><input v-model="proposal.supplier" :disabled="isConfirmed" :class="`${fieldClass} mt-2`" /></label>
             <label class="rounded-xl bg-surface p-3 sm:col-span-2"><span class="text-xs font-bold uppercase text-ink-muted">Concepto / diagnóstico</span><input v-model="proposal.concept" :disabled="isConfirmed" :class="`${fieldClass} mt-2`" /></label>
           </div>
-          <p v-if="proposal.readingWarning" class="mt-4 rounded-xl border border-warning/30 bg-warning/10 p-3 text-sm font-semibold text-ink"><ExclamationTriangleIcon class="mr-1 inline size-4" />{{ proposal.readingWarning }}</p>
-          <p v-if="proposal.readingValue && !data.can?.registerReading && !preventiveWorks.length" class="mt-3 text-sm text-warning">Tu perfil no tiene permiso para cargar lecturas; una correctiva con lectura no podrá confirmarse.</p>
+          <p v-if="contextError" class="mt-4 rounded-xl border border-danger/30 bg-danger/10 p-3 text-sm text-danger-strong">{{ contextError }}</p>
+          <div v-if="readingRegression" class="mt-4 rounded-xl border border-warning/30 bg-warning/10 p-3 text-sm text-ink">
+            <p class="font-semibold"><ExclamationTriangleIcon class="mr-1 inline size-4" />La lectura ingresada es menor que la lectura actual del equipo.</p>
+            <label v-if="!isConfirmed" class="mt-2 flex items-start gap-2"><input v-model="proposal.confirmReadingRollback" type="checkbox" class="mt-1 size-4 rounded border-border-strong text-primary" /><span>Revisé la lectura y confirmo que deseo registrarla de esta manera.</span></label>
+          </div>
+          <p v-if="proposal.readingValue && !data.can?.registerReading" class="mt-3 text-sm text-warning">Tu perfil no tiene permiso para cargar lecturas; quitá la lectura o solicitá ese permiso antes de confirmar.</p>
         </article>
       </section>
 
@@ -79,14 +122,32 @@ const submitConfirmation = (event, action) => {
 
       <section class="grid gap-4 lg:grid-cols-2">
         <article class="rounded-2xl border border-border bg-surface-raised p-5 shadow-sm"><h2 class="font-bold text-ink">Repuestos y consumibles detectados</h2><ul class="mt-3 space-y-2 text-sm"><li v-for="(item, index) in proposal.materials" :key="index" class="flex justify-between gap-4 rounded-lg bg-surface px-3 py-2"><span>{{ item.description }}</span><strong>{{ item.quantity ?? '—' }} {{ item.unit || '' }}</strong></li><li v-if="!proposal.materials?.length" class="text-ink-muted">No se detectaron materiales.</li></ul></article>
-        <article class="rounded-2xl border border-border bg-surface-raised p-5 shadow-sm"><h2 class="font-bold text-ink">Plan preventivo a registrar</h2><select v-model.number="proposal.selectedPlanId" :disabled="isConfirmed" :class="`${fieldClass} mt-3`"><option :value="null">No seleccionar plan</option><option v-for="plan in proposal.preventivePlans" :key="plan.id" :value="plan.id">{{ plan.servicio_nombre || `Plan #${plan.id}` }} · coincidencia {{ plan.matchScore || 0 }}%</option></select><div v-if="proposal.selectedPlanId" class="mt-3 text-sm text-ink-muted"><template v-for="plan in proposal.preventivePlans" :key="plan.id"><div v-if="Number(plan.id) === Number(proposal.selectedPlanId)"><p><strong class="text-ink">Coincidencias:</strong> {{ plan.matchScore || 0 }}%</p><ul v-if="plan.matchedItems?.length" class="mt-2 list-disc space-y-1 pl-5"><li v-for="(match, i) in plan.matchedItems" :key="i">{{ match.catalog }}</li></ul></div></template></div><p v-if="!data.can?.closePreventive" class="mt-3 text-sm text-warning">Tu perfil puede revisar la propuesta, pero necesita permiso de cierre de OT para registrar un preventivo ya realizado.</p></article>
+        <article class="rounded-2xl border border-border bg-surface-raised p-5 shadow-sm">
+          <h2 class="font-bold text-ink">Plan preventivo a registrar</h2>
+          <select v-model.number="proposal.selectedPlanId" :disabled="isConfirmed || contextLoading" :class="`${fieldClass} mt-3`"><option :value="null">No seleccionar plan</option><option v-for="plan in proposal.preventivePlans" :key="plan.id" :value="plan.id">{{ plan.servicio_nombre || `Plan #${plan.id}` }} · coincidencia {{ plan.matchScore || 0 }}%</option></select>
+          <div v-if="selectedPlan" class="mt-3 text-sm text-ink-muted">
+            <p><strong class="text-ink">Coincidencia:</strong> {{ selectedPlan.matchScore || 0 }}% · {{ selectedPlan.evidencedTaskCount || 0 }} tareas evidenciadas</p>
+            <ul v-if="selectedPlan.taskMatches?.length" class="mt-3 space-y-2">
+              <li v-for="task in selectedPlan.taskMatches" :key="task.taskId" class="rounded-lg bg-surface px-3 py-2">
+                <div class="flex items-start justify-between gap-3"><span class="font-semibold text-ink">{{ task.taskName }}</span><span :class="task.evidenced ? 'text-success' : 'text-warning'">{{ task.evidenced ? 'Evidenciada' : 'Sin evidencia' }}</span></div>
+                <p v-if="task.matchedDescription" class="mt-1 text-xs">Documento: {{ task.matchedDescription }}</p>
+                <p v-if="task.required && !task.evidenced" class="mt-1 text-xs font-semibold text-warning">Tarea obligatoria del plan.</p>
+              </li>
+            </ul>
+            <div v-if="partialPreventive && !isConfirmed" class="mt-3 rounded-xl border border-warning/30 bg-warning/10 p-3 text-sm text-ink">
+              <p class="font-semibold">El documento no evidencia todas las tareas obligatorias del plan.</p>
+              <label class="mt-2 flex items-start gap-2"><input v-model="proposal.confirmPartialPreventive" type="checkbox" class="mt-1 size-4 rounded border-border-strong text-primary" /><span>Confirmo que corresponde registrar igualmente esta realización preventiva parcial. Las tareas sin evidencia quedarán pendientes.</span></label>
+            </div>
+          </div>
+          <p v-if="!data.can?.closePreventive" class="mt-3 text-sm text-warning">Tu perfil puede revisar la propuesta, pero necesita permiso de cierre de OT para registrar un preventivo ya realizado.</p>
+        </article>
       </section>
 
       <section class="rounded-2xl border border-primary/20 bg-primary/5 p-5">
         <h2 class="text-lg font-bold text-ink">Crear desde este documento</h2>
         <p v-if="isConfirmed" class="mt-1 text-sm font-semibold text-success">Este documento ya fue confirmado. Las acciones de creación quedaron bloqueadas para evitar duplicados.</p>
         <p v-else class="mt-1 text-sm text-ink-muted">Nada se graba hasta que elijas una de estas acciones. La misma lectura se registra una sola vez aunque se creen ambas OT.</p>
-        <form v-if="!isConfirmed" method="post" :action="data.routes.confirm" class="mt-4 flex flex-wrap gap-2"><CsrfInput :csrf="data.csrf" /><input type="hidden" name="proposal_json" :value="JSON.stringify(proposal)" /><button v-for="action in ['corrective','preventive','both']" :key="action" type="submit" name="action" :value="action" :disabled="action === 'corrective' ? !canCorrective : action === 'preventive' ? !canPreventive : !canBoth" :class="primaryButton" @click="submitConfirmation($event, action)">{{ confirmLabel(action) }}</button></form>
+        <form v-if="!isConfirmed" method="post" :action="data.routes.confirm" class="mt-4 flex flex-wrap gap-2"><CsrfInput :csrf="data.csrf" /><input type="hidden" name="proposal_json" :value="JSON.stringify(proposal)" /><button v-for="action in ['corrective','preventive','both']" :key="action" type="submit" name="action" :value="action" :disabled="contextLoading || (action === 'corrective' ? !canCorrective : action === 'preventive' ? !canPreventive : !canBoth)" :class="primaryButton" @click="submitConfirmation($event, action)">{{ confirmLabel(action) }}</button></form>
         <a :href="data.routes.newImport" :class="`${secondaryButton} mt-4`">Importar otro documento</a>
       </section>
     </div>
