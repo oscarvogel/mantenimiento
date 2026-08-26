@@ -4,21 +4,33 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Application\AI\CompanyAiAccess;
 use App\Application\Chatbot\Command\SendMessageCommand;
 use App\Application\Chatbot\Command\StartConversationCommand;
-use App\Infrastructure\Identity\SessionActorContext;
+use App\Application\Identity\ActorContext;
 use App\Domain\Chatbot\ChatError;
+use App\Infrastructure\Identity\SessionActorContext;
 use CodeIgniter\HTTP\ResponseInterface;
+use DomainException;
 use Throwable;
 
 final class Chatbot extends BaseController
 {
-    private function actor(): \App\Application\Identity\ActorContext
+    private function actor(): ActorContext
     {
         $actor = (new SessionActorContext())->current();
         if ($actor === null) {
-            throw new \DomainException('No existe un contexto autenticado válido.');
+            throw new DomainException('No existe un contexto autenticado válido.');
         }
+
+        return $actor;
+    }
+
+    private function aiActor(): ActorContext
+    {
+        $actor = $this->actor();
+        (new CompanyAiAccess(db_connect()))->assertEnabledForCompany($actor->companyId());
+
         return $actor;
     }
 
@@ -37,10 +49,16 @@ final class Chatbot extends BaseController
         ]);
     }
 
-    public function index(): string
+    public function index(): string|ResponseInterface
     {
+        try {
+            $actor = $this->aiActor();
+        } catch (DomainException $e) {
+            return $this->response->setStatusCode(403)->setBody($e->getMessage());
+        }
+
         return $this->renderApp(
-            actor: $this->actor(),
+            actor: $actor,
             activeNavigation: 'chatbot',
             page: 'chatbot',
             title: 'Asistente IA',
@@ -52,7 +70,7 @@ final class Chatbot extends BaseController
     {
         try {
             $handler = service('startConversation');
-            $result = $handler->execute($this->actor(), new StartConversationCommand());
+            $result = $handler->execute($this->aiActor(), new StartConversationCommand());
 
             return $this->jsonOk([
                 'conversation' => [
@@ -61,6 +79,8 @@ final class Chatbot extends BaseController
                     'titulo' => $result->conversation->titulo,
                 ],
             ]);
+        } catch (DomainException $e) {
+            return $this->jsonError($e, $e->getMessage() === CompanyAiAccess::DISABLED_MESSAGE ? 403 : 422);
         } catch (Throwable $e) {
             return $this->jsonError($e);
         }
@@ -69,7 +89,7 @@ final class Chatbot extends BaseController
     public function sendMessage(): ResponseInterface
     {
         try {
-            $actor = $this->actor();
+            $actor = $this->aiActor();
             $conversationId = (int) $this->request->getPost('conversationId');
             $content = (string) ($this->request->getPost('content') ?? '');
             $confirmedRaw = $this->request->getPost('confirmedToolCalls');
@@ -94,6 +114,8 @@ final class Chatbot extends BaseController
                 'messages' => $messages,
                 'pendingToolCalls' => $result->pendingToolCalls,
             ]);
+        } catch (DomainException $e) {
+            return $this->jsonError($e, $e->getMessage() === CompanyAiAccess::DISABLED_MESSAGE ? 403 : 422);
         } catch (ChatError $e) {
             return $this->jsonError($e);
         } catch (Throwable $e) {
@@ -105,7 +127,7 @@ final class Chatbot extends BaseController
     public function confirmTool(): ResponseInterface
     {
         try {
-            $actor = $this->actor();
+            $actor = $this->aiActor();
             $conversationId = (int) $this->request->getPost('conversationId');
             $toolCalls = json_decode((string) ($this->request->getPost('toolCalls') ?? '[]'), true);
             if (! is_array($toolCalls)) {
@@ -128,6 +150,8 @@ final class Chatbot extends BaseController
             ], $result->messages);
 
             return $this->jsonOk(['messages' => $messages]);
+        } catch (DomainException $e) {
+            return $this->jsonError($e, $e->getMessage() === CompanyAiAccess::DISABLED_MESSAGE ? 403 : 422);
         } catch (Throwable $e) {
             return $this->jsonError($e);
         }
@@ -136,31 +160,27 @@ final class Chatbot extends BaseController
     public function history(): ResponseInterface
     {
         try {
-            $actor = $this->actor();
+            $actor = $this->aiActor();
             $conversationId = (int) $this->request->getGet('conversationId');
             $offset = (int) ($this->request->getGet('offset') ?? 0);
             $limit = (int) ($this->request->getGet('limit') ?? 50);
 
             $database = db_connect();
             $convRepo = new \App\Infrastructure\Chatbot\Persistence\CodeIgniterConversationRepository($database);
-
             $companyId = $actor->companyId();
             if ($companyId === null) {
-                return $this->jsonError(new \DomainException('Sin empresa asociada.'), 422);
+                return $this->jsonError(new DomainException('Sin empresa asociada.'), 422);
             }
 
-            if ($actor->isSuperAdmin()) {
-                $conversation = $convRepo->find($conversationId);
-            } else {
-                $conversation = $convRepo->findOwned($conversationId, $actor->userId(), $companyId);
-            }
+            $conversation = $actor->isSuperAdmin()
+                ? $convRepo->find($conversationId)
+                : $convRepo->findOwned($conversationId, $actor->userId(), $companyId);
             if ($conversation === null) {
-                return $this->jsonError(\App\Domain\Chatbot\ChatError::conversationAccessDenied(), 404);
+                return $this->jsonError(ChatError::conversationAccessDenied(), 404);
             }
 
             $msgRepo = new \App\Infrastructure\Chatbot\Persistence\CodeIgniterMessageRepository($database);
             $messages = $msgRepo->findForConversation($conversationId, $limit, $offset);
-
             $data = array_map(fn($m) => [
                 'id' => $m->id,
                 'role' => $m->role,
@@ -170,6 +190,8 @@ final class Chatbot extends BaseController
             ], $messages);
 
             return $this->jsonOk(['messages' => $data]);
+        } catch (DomainException $e) {
+            return $this->jsonError($e, $e->getMessage() === CompanyAiAccess::DISABLED_MESSAGE ? 403 : 422);
         } catch (Throwable $e) {
             return $this->jsonError($e);
         }
@@ -180,9 +202,9 @@ final class Chatbot extends BaseController
         $sse = new \App\Infrastructure\Chatbot\SSE\StreamingResponse($this->response);
         $sse->sendHeaders();
 
-        $actor = $this->safeActor();
+        $actor = $this->safeAiActor();
         if ($actor === null) {
-            $sse->sendError('Sesión inválida o expirada.');
+            $sse->sendError(CompanyAiAccess::DISABLED_MESSAGE);
             $sse->sendDone();
             return;
         }
@@ -227,12 +249,12 @@ final class Chatbot extends BaseController
         }
     }
 
-    private function safeActor(): ?\App\Application\Identity\ActorContext
+    private function safeAiActor(): ?ActorContext
     {
         try {
-            return $this->actor();
-        } catch (\DomainException) {
-            $this->response->setStatusCode(401);
+            return $this->aiActor();
+        } catch (DomainException $e) {
+            $this->response->setStatusCode($e->getMessage() === CompanyAiAccess::DISABLED_MESSAGE ? 403 : 401);
             return null;
         }
     }
