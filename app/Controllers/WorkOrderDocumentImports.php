@@ -80,8 +80,13 @@ final class WorkOrderDocumentImports extends BaseController
         }
     }
 
-    public function show(int $id): string
+    public function show(int $id): string|ResponseInterface
     {
+        $contextEquipmentId = filter_var($this->request->getGet('equipment_id'), FILTER_VALIDATE_INT);
+        if ($contextEquipmentId !== false && (int) $contextEquipmentId > 0) {
+            return $this->equipmentContext($id, (int) $contextEquipmentId);
+        }
+
         $actor = $this->actor();
         $this->assertCanEdit($actor);
         $imports = new CodeIgniterWorkOrderDocumentImportRepository(db_connect());
@@ -112,7 +117,7 @@ final class WorkOrderDocumentImports extends BaseController
                 'reanalyze' => base_url('mantenimiento/ordenes/importar/' . $id . '/analizar'),
                 'download' => base_url('mantenimiento/ordenes/importar/' . $id . '/documento'),
                 'confirm' => base_url('mantenimiento/ordenes/importar/' . $id . '/confirmar'),
-                'equipmentContextBase' => base_url('mantenimiento/ordenes/importar/' . $id . '/equipos'),
+                'equipmentContext' => base_url('mantenimiento/ordenes/importar/' . $id),
             ],
             'csrf' => ['name' => csrf_token(), 'hash' => csrf_hash()],
         ]);
