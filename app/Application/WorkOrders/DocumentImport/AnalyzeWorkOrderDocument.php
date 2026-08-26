@@ -54,7 +54,7 @@ final class AnalyzeWorkOrderDocument
         $equipmentMatches = [];
         if ($plate !== '') {
             $rows = $this->db->table('equipos')
-                ->select('id,codigo,patente,marca,modelo,sucursal_id,km_actual,horas_actuales,controla_km,controla_horas')
+                ->select('id,codigo,patente,sucursal_id,km_actual,horas_actuales,marca_id,modelo_id')
                 ->where('empresa_id', $companyId)
                 ->where('sucursal_id', $branchId)
                 ->where('estado', 'ACTIVO')
@@ -70,16 +70,18 @@ final class AnalyzeWorkOrderDocument
         $lastReading = null;
         $plans = [];
         if ($equipment !== null) {
-            $lastReading = $this->db->table('equipo_lecturas')
+            $lastReading = $this->db->table('lecturas_equipo')
                 ->where('empresa_id', $companyId)
                 ->where('equipo_id', (int) $equipment['id'])
+                ->where('anulada', 0)
                 ->orderBy('fecha_lectura', 'DESC')->orderBy('id', 'DESC')->get(1)->getRowArray();
             $plans = $this->db->table('planes_mantenimiento p')
-                ->select('p.id,p.nombre,p.estado,p.tipo_servicio_id,ts.nombre AS servicio_nombre')
+                ->select('p.id,p.tipo_servicio_id,p.intervalo_km,p.intervalo_horas,p.intervalo_dias,p.proximo_km,p.proximas_horas,p.proxima_fecha,p.prioridad,ts.nombre AS servicio_nombre')
                 ->join('tipos_servicio ts', 'ts.id=p.tipo_servicio_id', 'left')
                 ->where('p.empresa_id', $companyId)
                 ->where('p.equipo_id', (int) $equipment['id'])
-                ->where('p.estado', 'ACTIVO')
+                ->where('p.activo', 1)
+                ->where('p.deleted_at', null)
                 ->get()->getResultArray();
         }
 
