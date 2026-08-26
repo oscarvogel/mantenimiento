@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\WorkOrders\DocumentImport;
 
+use App\Application\AI\CompanyAiAccess;
 use App\Application\Identity\ActorContext;
 use App\Application\PreventiveMaintenance\Port\MaintenanceServiceCatalog;
 use App\Application\WorkOrders\DocumentImport\Port\WorkOrderDocumentAnalyzer;
@@ -29,6 +30,8 @@ final class AnalyzeWorkOrderDocument
     public function execute(ActorContext $actor, int $importId): array
     {
         [$companyId, $branchIds] = $this->scope($actor);
+        (new CompanyAiAccess($this->db))->assertEnabledForCompany($companyId);
+
         $import = $this->imports->findForActor($importId, $companyId, $branchIds);
         if ($import === null) {
             throw new DomainException('La importación no existe o no está autorizada.');
