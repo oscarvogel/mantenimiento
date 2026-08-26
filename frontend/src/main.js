@@ -8,6 +8,7 @@ import { adminPagesByType } from './pages/admin/index.js'
 import { ReportsPage } from './pages/reports/index.js'
 import { NotificationCenterPage } from './pages/notifications/index.js'
 import LoginPage from './pages/login/LoginPage.vue'
+import { installContextualReadingActions } from './ui/contextualReadingActions.js'
 import { installEquipmentComboboxes } from './ui/equipmentCombobox.js'
 import { installEquipmentAssignedPlans } from './ui/equipmentAssignedPlans.js'
 import { installLibraryTaskStatus } from './ui/libraryTaskStatus.js'
@@ -84,6 +85,7 @@ if (root) {
   }
   if (['equipment-detail', 'assets-index'].includes(payload?.page)) {
     installQuickPlanAssignment(root, payload)
+    installContextualReadingActions(root, payload)
   }
   if (payload?.page === 'equipment-detail') {
     installEquipmentAssignedPlans(root, payload)
