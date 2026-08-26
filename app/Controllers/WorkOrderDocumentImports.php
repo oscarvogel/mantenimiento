@@ -9,6 +9,7 @@ use App\Application\WorkOrders\DocumentImport\AnalyzeWorkOrderDocument;
 use App\Application\WorkOrders\DocumentImport\UploadWorkOrderDocumentCommand;
 use App\Application\WorkOrders\DocumentImport\UploadWorkOrderDocumentHandler;
 use App\Infrastructure\Identity\SessionActorContext;
+use App\Infrastructure\PreventiveMaintenance\CodeIgniterMaintenanceServiceCatalog;
 use App\Infrastructure\WorkOrders\DocumentImport\CodeIgniterWorkOrderDocumentImportRepository;
 use App\Infrastructure\WorkOrders\DocumentImport\MiniMaxWorkOrderDocumentAnalyzer;
 use App\Infrastructure\WorkOrders\DocumentImport\PrivateWorkOrderDocumentStorage;
@@ -91,6 +92,7 @@ final class WorkOrderDocumentImports extends BaseController
                 'analysis' => $this->decode($row['analysis_json'] ?? null),
                 'proposal' => $this->decode($row['proposal_json'] ?? null),
             ],
+            'equipmentOptions' => $this->equipmentOptions($actor, (int) $row['sucursal_id']),
             'routes' => [
                 'orders' => base_url('mantenimiento/ordenes'),
                 'newImport' => base_url('mantenimiento/ordenes/importar'),
@@ -130,7 +132,14 @@ final class WorkOrderDocumentImports extends BaseController
 
     private function analyzer(CodeIgniterWorkOrderDocumentImportRepository $imports, PrivateWorkOrderDocumentStorage $storage): AnalyzeWorkOrderDocument
     {
-        return new AnalyzeWorkOrderDocument($imports, $storage, MiniMaxWorkOrderDocumentAnalyzer::fromEnv(), db_connect());
+        $db = db_connect();
+        return new AnalyzeWorkOrderDocument(
+            $imports,
+            $storage,
+            MiniMaxWorkOrderDocumentAnalyzer::fromEnv(),
+            $db,
+            new CodeIgniterMaintenanceServiceCatalog($db),
+        );
     }
 
     private function actor(): ActorContext
@@ -152,7 +161,8 @@ final class WorkOrderDocumentImports extends BaseController
     /** @return list<array{id:int,name:string}> */
     private function branches(ActorContext $actor): array
     {
-        $builder = db_connect()->table('sucursales')->select('id,nombre')->where('empresa_id', $actor->companyId())->where('activa', 1)->orderBy('nombre');
+        $builder = db_connect()->table('sucursales')->select('id,nombre')
+            ->where('empresa_id', $actor->companyId())->where('estado', 1)->where('deleted_at', null)->orderBy('nombre');
         if (! $actor->hasAllCompanyBranches()) {
             $ids = $actor->branchIds();
             if ($ids === []) {
@@ -161,6 +171,24 @@ final class WorkOrderDocumentImports extends BaseController
             $builder->whereIn('id', $ids);
         }
         return array_map(static fn (array $row): array => ['id' => (int) $row['id'], 'name' => (string) $row['nombre']], $builder->get()->getResultArray());
+    }
+
+    /** @return list<array<string,mixed>> */
+    private function equipmentOptions(ActorContext $actor, int $branchId): array
+    {
+        if (! $actor->hasAllCompanyBranches() && ! in_array($branchId, $actor->branchIds(), true)) {
+            return [];
+        }
+        $rows = db_connect()->table('equipos')->select('id,codigo,patente,km_actual,horas_actuales')
+            ->where('empresa_id', $actor->companyId())->where('sucursal_id', $branchId)->where('estado', 'ACTIVO')->where('deleted_at', null)
+            ->orderBy('codigo')->get()->getResultArray();
+        return array_map(static fn (array $row): array => [
+            'id' => (int) $row['id'],
+            'code' => (string) $row['codigo'],
+            'plate' => $row['patente'],
+            'currentKm' => $row['km_actual'] === null ? null : (int) $row['km_actual'],
+            'currentHours' => $row['horas_actuales'],
+        ], $rows);
     }
 
     /** @return array<string,mixed>|null */
