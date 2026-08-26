@@ -23,4 +23,14 @@ final class NotificationServiceWiringTest extends TestCase
         self::assertMatchesRegularExpression("~'VENCIDO_H'.*'-188 days'.*'-8 days'~s", $seeder);
         self::assertMatchesRegularExpression("~'PROXIMO_H'.*'-168 days'.*'\\+12 days'~s", $seeder);
     }
+
+    public function testInvalidHistoricalPlansAreLoggedAndSkippedByTheEventSource(): void
+    {
+        $source = file_get_contents(APPPATH . 'Infrastructure/Notifications/CodeIgniterOperationalNotificationEventSource.php');
+
+        self::assertIsString($source);
+        self::assertStringContainsString('catch (InvalidArgumentException $exception)', $source);
+        self::assertStringContainsString("log_message('warning'", $source);
+        self::assertStringContainsString('continue;', $source);
+    }
 }

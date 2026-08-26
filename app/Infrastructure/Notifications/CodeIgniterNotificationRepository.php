@@ -9,7 +9,6 @@ use App\Application\Notifications\Port\NotificationRepository;
 use App\Domain\Notifications\Notification;
 use CodeIgniter\Database\BaseBuilder;
 use CodeIgniter\Database\BaseConnection;
-use CodeIgniter\Database\Exceptions\DatabaseException;
 use Config\Database;
 use DateTimeImmutable;
 
@@ -23,30 +22,27 @@ final class CodeIgniterNotificationRepository implements NotificationRepository
     public function createIfAbsent(Notification $notification): ?int
     {
         $event = $notification->event();
-        try {
-            $inserted = $this->db->table('notificaciones')->insert([
-                'empresa_id' => $event->companyId(),
-                'sucursal_id' => $event->branchId(),
-                'usuario_id' => $notification->recipientUserId(),
-                'tipo_evento' => $event->type(),
-                'severidad' => $event->severity()->value,
-                'titulo' => $event->title(),
-                'resumen' => $event->summary(),
-                'entidad_tipo' => $event->entityType(),
-                'entidad_id' => $event->entityId(),
-                'url' => $event->url(),
-                'clave_evento' => $notification->idempotencyKey(),
-                'estado' => 'PENDIENTE',
-                'created_at' => $event->occurredAt()->format('Y-m-d H:i:s'),
-            ]);
+        $inserted = $this->db->table('notificaciones')->ignore(true)->insert([
+            'empresa_id' => $event->companyId(),
+            'sucursal_id' => $event->branchId(),
+            'usuario_id' => $notification->recipientUserId(),
+            'tipo_evento' => $event->type(),
+            'severidad' => $event->severity()->value,
+            'titulo' => $event->title(),
+            'resumen' => $event->summary(),
+            'entidad_tipo' => $event->entityType(),
+            'entidad_id' => $event->entityId(),
+            'url' => $event->url(),
+            'clave_evento' => $notification->idempotencyKey(),
+            'estado' => 'PENDIENTE',
+            'created_at' => $event->occurredAt()->format('Y-m-d H:i:s'),
+        ]);
 
-            return $inserted ? (int) $this->db->insertID() : null;
-        } catch (DatabaseException $exception) {
-            if (str_contains(strtolower($exception->getMessage()), 'duplicate')) {
-                return null;
-            }
-            throw $exception;
+        if (! $inserted || $this->db->affectedRows() !== 1) {
+            return null;
         }
+
+        return (int) $this->db->insertID();
     }
 
     public function listForUser(int $companyId, int $userId, ?array $branchIds, int $page, int $perPage): NotificationCenterPage

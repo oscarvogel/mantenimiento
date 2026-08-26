@@ -16,6 +16,7 @@ use App\Domain\WorkOrders\WorkOrderStatus;
 use CodeIgniter\Database\BaseConnection;
 use Config\Database;
 use DateTimeImmutable;
+use InvalidArgumentException;
 
 final class CodeIgniterOperationalNotificationEventSource implements OperationalNotificationEventSource
 {
@@ -44,14 +45,23 @@ final class CodeIgniterOperationalNotificationEventSource implements Operational
             ->where('p.activo', 1)->where('p.deleted_at', null)->where('e.deleted_at', null)->get()->getResultArray();
         $events = [];
         foreach ($rows as $row) {
-            $plan = PlanMantenimiento::reconstituir(
-                (int) $row['id'], (int) $row['empresa_id'], (int) $row['equipo_id'], (int) $row['tipo_servicio_id'],
-                $this->integer($row['intervalo_km']), $this->tenths($row['intervalo_horas']), $this->integer($row['intervalo_dias']),
-                $this->integer($row['anticipacion_km']), $this->tenths($row['anticipacion_horas']), $this->integer($row['anticipacion_dias']),
-                $this->integer($row['base_km']), $this->tenths($row['base_horas']), $this->date($row['base_fecha']),
-                $this->integer($row['proximo_km']), $this->tenths($row['proximas_horas']), $this->date($row['proxima_fecha']),
-                (string) $row['prioridad'], true, $row['observaciones'] === null ? null : (string) $row['observaciones'],
-            );
+            try {
+                $plan = PlanMantenimiento::reconstituir(
+                    (int) $row['id'], (int) $row['empresa_id'], (int) $row['equipo_id'], (int) $row['tipo_servicio_id'],
+                    $this->integer($row['intervalo_km']), $this->tenths($row['intervalo_horas']), $this->integer($row['intervalo_dias']),
+                    $this->integer($row['anticipacion_km']), $this->tenths($row['anticipacion_horas']), $this->integer($row['anticipacion_dias']),
+                    $this->integer($row['base_km']), $this->tenths($row['base_horas']), $this->date($row['base_fecha']),
+                    $this->integer($row['proximo_km']), $this->tenths($row['proximas_horas']), $this->date($row['proxima_fecha']),
+                    (string) $row['prioridad'], true, $row['observaciones'] === null ? null : (string) $row['observaciones'],
+                );
+            } catch (InvalidArgumentException $exception) {
+                log_message('warning', 'Se omitió el plan {plan} de la empresa {company} por datos inválidos: {message}', [
+                    'plan' => (int) $row['id'],
+                    'company' => (int) $row['empresa_id'],
+                    'message' => $exception->getMessage(),
+                ]);
+                continue;
+            }
             $evaluation = (new EvaluadorVencimiento())->evaluar($plan, new UsoActual($this->integer($row['km_actual']), $this->tenths($row['horas_actuales'])), $this->clock->now());
             if (! in_array($evaluation->estado(), [EstadoPlan::PROXIMO, EstadoPlan::VENCIDO], true)) { continue; }
             $overdue = $evaluation->estado() === EstadoPlan::VENCIDO;

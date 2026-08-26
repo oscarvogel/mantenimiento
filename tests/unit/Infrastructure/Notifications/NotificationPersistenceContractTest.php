@@ -61,4 +61,23 @@ final class NotificationPersistenceContractTest extends TestCase
         self::assertStringContainsString('{$eventKey}:usuario:{$userId}:email', $source);
         self::assertStringContainsString('{$eventKey}:usuario:{$userId}:push', $source);
     }
+
+    public function testNotificationRepositoryUsesAnInsertThatKeepsDuplicateRetriesTransactional(): void
+    {
+        $source = file_get_contents(APPPATH . 'Infrastructure/Notifications/CodeIgniterNotificationRepository.php');
+
+        self::assertIsString($source);
+        self::assertStringContainsString('->ignore(true)->insert', $source);
+        self::assertStringNotContainsString('catch (DatabaseException $exception)', $source);
+    }
+
+    public function testDispatchCastsDatabaseIdentifiersBeforeCallingStrictPorts(): void
+    {
+        $source = file_get_contents(APPPATH . 'Application/Notifications/RunNotificationDispatch.php');
+
+        self::assertIsString($source);
+        self::assertSame(4, substr_count($source, '(int) $item[\'id\']'));
+        self::assertSame(4, substr_count($source, '(int) $delivery[\'id\']'));
+        self::assertStringContainsString('(int) $delivery[\'usuario_id\']', $source);
+    }
 }

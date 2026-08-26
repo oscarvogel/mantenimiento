@@ -73,12 +73,12 @@ final readonly class RunNotificationDispatch
             try {
                 $this->email->sendDigest($recipient, $items);
                 foreach ($items as $item) {
-                    $this->deliveries->delivered($item['id']);
+                    $this->deliveries->delivered((int) $item['id']);
                     $summary['email_sent']++;
                 }
             } catch (Throwable $exception) {
                 foreach ($items as $item) {
-                    $this->deliveries->failed($item['id'], $exception->getMessage(), $item['intentos'] < 3);
+                    $this->deliveries->failed((int) $item['id'], $exception->getMessage(), (int) $item['intentos'] < 3);
                     $summary['failed']++;
                 }
             }
@@ -107,12 +107,12 @@ final readonly class RunNotificationDispatch
             try {
                 $this->email->sendDigest($recipient, $items);
                 foreach ($items as $item) {
-                    $this->deliveries->deliveredCompany($item['id']);
+                    $this->deliveries->deliveredCompany((int) $item['id']);
                     $summary['company_email_sent']++;
                 }
             } catch (Throwable $exception) {
                 foreach ($items as $item) {
-                    $this->deliveries->failedCompany($item['id'], $exception->getMessage(), $item['intentos'] < 3);
+                    $this->deliveries->failedCompany((int) $item['id'], $exception->getMessage(), (int) $item['intentos'] < 3);
                     $summary['failed']++;
                 }
             }
@@ -124,25 +124,25 @@ final readonly class RunNotificationDispatch
     {
         foreach ($this->deliveries->due('PUSH', $limit) as $delivery) {
             try {
-                $result = $this->push->sendToUser($delivery['usuario_id'], $delivery['titulo'], $delivery['resumen'], $delivery['url']);
+                $result = $this->push->sendToUser((int) $delivery['usuario_id'], $delivery['titulo'], $delivery['resumen'], $delivery['url']);
                 $summary['push_sent'] += $result['sent'];
                 $summary['expired'] += $result['expired'];
                 $summary['failed'] += $result['failed'];
 
                 if ($result['sent'] === 0 && $result['expired'] === 0 && $result['failed'] === 0) {
-                    $this->deliveries->skipped($delivery['id'], 'No existen dispositivos activos para el destinatario.');
+                    $this->deliveries->skipped((int) $delivery['id'], 'No existen dispositivos activos para el destinatario.');
                     $summary['skipped']++;
                     continue;
                 }
 
                 if ($result['sent'] === 0 && $result['failed'] > 0 && $result['expired'] === 0) {
-                    $this->deliveries->failed($delivery['id'], 'Falló la entrega Web Push en todos los dispositivos activos.', $delivery['intentos'] < 3);
+                    $this->deliveries->failed((int) $delivery['id'], 'Falló la entrega Web Push en todos los dispositivos activos.', (int) $delivery['intentos'] < 3);
                     continue;
                 }
 
-                $this->deliveries->delivered($delivery['id']);
+                $this->deliveries->delivered((int) $delivery['id']);
             } catch (Throwable $exception) {
-                $this->deliveries->failed($delivery['id'], $exception->getMessage(), $delivery['intentos'] < 3);
+                $this->deliveries->failed((int) $delivery['id'], $exception->getMessage(), (int) $delivery['intentos'] < 3);
                 $summary['failed']++;
             }
         }
