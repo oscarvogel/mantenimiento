@@ -62,12 +62,18 @@ final class WorkOrderDocumentImports extends BaseController
             }
             $imports = new CodeIgniterWorkOrderDocumentImportRepository(db_connect());
             $storage = new PrivateWorkOrderDocumentStorage();
-            $id = (new UploadWorkOrderDocumentHandler($storage, $imports))->execute($actor, new UploadWorkOrderDocumentCommand(
+            $result = (new UploadWorkOrderDocumentHandler($storage, $imports))->execute($actor, new UploadWorkOrderDocumentCommand(
                 branchId: $branchId,
                 temporaryPath: $file->getTempName(),
                 originalName: $file->getClientName(),
                 idempotencyKey: $idempotencyKey,
             ));
+            $id = $result->importId;
+
+            if ($result->duplicateExact) {
+                return redirect()->to(base_url('mantenimiento/ordenes/importar/' . $id))
+                    ->with('warning', 'Este documento ya había sido importado. Te llevamos a la importación existente y no se volvió a ejecutar la IA.');
+            }
 
             try {
                 $this->analyzer($imports, $storage)->execute($actor, $id);

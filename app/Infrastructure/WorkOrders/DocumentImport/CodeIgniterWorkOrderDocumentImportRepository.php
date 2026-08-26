@@ -56,6 +56,18 @@ final class CodeIgniterWorkOrderDocumentImportRepository implements WorkOrderDoc
         return $row === null ? null : (int) $row['id'];
     }
 
+    public function findBySha256(int $companyId, string $sha256): ?int
+    {
+        $row = $this->db->table('ot_document_imports')
+            ->select('id')
+            ->where('empresa_id', $companyId)
+            ->where('sha256', strtolower(trim($sha256)))
+            ->orderBy('id', 'ASC')
+            ->get(1)
+            ->getRowArray();
+        return $row === null ? null : (int) $row['id'];
+    }
+
     public function linkWorkOrder(int $importId, int $companyId, int $workOrderId, string $kind): void
     {
         $kind = strtoupper(trim($kind));

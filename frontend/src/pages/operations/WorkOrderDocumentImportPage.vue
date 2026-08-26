@@ -19,6 +19,8 @@ const preventiveWorks = computed(() => works.value.filter((item) => item.include
 const isConfirmed = computed(() => props.data.import?.status === 'CONFIRMADO')
 const selectedEquipment = computed(() => (props.data.equipmentOptions ?? []).find((item) => Number(item.id) === Number(proposal.selectedEquipmentId)) ?? null)
 const selectedPlan = computed(() => (proposal.preventivePlans ?? []).find((item) => Number(item.id) === Number(proposal.selectedPlanId)) ?? null)
+const possibleDuplicates = computed(() => proposal.possibleDuplicates ?? [])
+const duplicateConfirmed = computed(() => possibleDuplicates.value.length === 0 || proposal.confirmPossibleDuplicate === true)
 const readingRegression = computed(() => {
   if (!selectedEquipment.value || proposal.readingValue === null || proposal.readingValue === undefined || proposal.readingValue === '') return false
   const value = Number(String(proposal.readingValue).replace(',', '.'))
@@ -30,8 +32,8 @@ const readingPermissionOk = computed(() => proposal.readingValue === null || pro
 const partialPreventive = computed(() => Boolean(selectedPlan.value && selectedPlan.value.requiredTasksEvidenced === false))
 const readingConfirmed = computed(() => !readingRegression.value || proposal.confirmReadingRollback === true)
 const partialConfirmed = computed(() => !partialPreventive.value || proposal.confirmPartialPreventive === true)
-const canCorrective = computed(() => !isConfirmed.value && readingPermissionOk.value && readingConfirmed.value && Number(proposal.selectedEquipmentId || 0) > 0 && correctiveWorks.value.length > 0)
-const canPreventive = computed(() => !isConfirmed.value && readingPermissionOk.value && readingConfirmed.value && partialConfirmed.value && props.data.can?.closePreventive && Number(proposal.selectedEquipmentId || 0) > 0 && Number(proposal.selectedPlanId || 0) > 0 && preventiveWorks.value.length > 0)
+const canCorrective = computed(() => !isConfirmed.value && duplicateConfirmed.value && readingPermissionOk.value && readingConfirmed.value && Number(proposal.selectedEquipmentId || 0) > 0 && correctiveWorks.value.length > 0)
+const canPreventive = computed(() => !isConfirmed.value && duplicateConfirmed.value && readingPermissionOk.value && readingConfirmed.value && partialConfirmed.value && props.data.can?.closePreventive && Number(proposal.selectedEquipmentId || 0) > 0 && Number(proposal.selectedPlanId || 0) > 0 && preventiveWorks.value.length > 0)
 const canBoth = computed(() => canCorrective.value && canPreventive.value)
 const confidenceLabel = (value) => {
   const number = Number(value ?? 0)
@@ -156,6 +158,12 @@ watch(() => proposal.selectedEquipmentId, async (equipmentId, previous) => {
         </article>
       </section>
 
+      <section v-if="possibleDuplicates.length" class="rounded-2xl border border-warning/40 bg-warning/10 p-5">
+        <div class="flex items-start gap-3"><ExclamationTriangleIcon class="mt-0.5 size-6 shrink-0 text-warning" /><div class="min-w-0"><h2 class="font-bold text-ink">Posible documento duplicado</h2><p class="mt-1 text-sm text-ink-muted">Encontramos una importación anterior muy parecida. Revisala antes de crear otra OT.</p></div></div>
+        <ul class="mt-4 space-y-2 text-sm"><li v-for="candidate in possibleDuplicates" :key="candidate.importId" class="rounded-xl border border-warning/20 bg-surface-raised p-3"><div class="flex flex-wrap items-center justify-between gap-2"><span class="font-semibold text-ink">Importación #{{ candidate.importId }} · {{ candidate.status }}</span><a :href="`${data.routes.newImport}/${candidate.importId}`" target="_blank" class="font-semibold text-primary hover:underline">Ver importación</a></div><p class="mt-1 text-xs text-ink-muted">Coincidencias: {{ candidate.reasons?.join(', ') || 'datos similares' }}</p></li></ul>
+        <label v-if="!isConfirmed" class="mt-4 flex items-start gap-2 text-sm text-ink"><input v-model="proposal.confirmPossibleDuplicate" type="checkbox" class="mt-1 size-4 rounded border-border-strong text-primary" /><span>Revisé la importación anterior y confirmo que este documento corresponde a un trabajo distinto y debe continuar.</span></label>
+      </section>
+
       <section class="rounded-2xl border border-border bg-surface-raised p-5 shadow-sm">
         <div class="flex flex-wrap items-end justify-between gap-3"><div><p class="text-xs font-bold uppercase tracking-wide text-ink-muted">Trabajos interpretados</p><h2 class="mt-1 text-lg font-bold text-ink">Revisá qué fue correctivo y qué fue preventivo</h2></div><div class="text-sm text-ink-muted"><strong class="text-ink">{{ correctiveWorks.length }}</strong> correctivos · <strong class="text-ink">{{ preventiveWorks.length }}</strong> preventivos</div></div>
         <div class="mt-4 overflow-x-auto"><table class="min-w-full text-left text-sm"><thead><tr class="border-b border-border text-xs uppercase tracking-wide text-ink-muted"><th class="px-2 py-3">Incluir</th><th class="px-2 py-3">Trabajo</th><th class="px-2 py-3">Clasificación</th><th class="px-2 py-3">Confianza</th></tr></thead><tbody><tr v-for="(item, index) in proposal.works" :key="index" class="border-b border-border/70 align-top"><td class="px-2 py-3"><input v-model="item.included" :disabled="isConfirmed" type="checkbox" class="size-4 rounded border-border-strong text-primary" /></td><td class="px-2 py-3"><input v-model="item.description" :disabled="isConfirmed" :class="fieldClass" /><p v-if="item.source_text && item.source_text !== item.description" class="mt-1 max-w-xl text-xs text-ink-muted">Original: {{ item.source_text }}</p></td><td class="px-2 py-3"><select v-model="item.classification" :disabled="isConfirmed" :class="fieldClass"><option value="correctivo">Correctivo</option><option value="preventivo">Preventivo</option><option value="revisar">Revisar</option></select></td><td class="px-2 py-3"><span :class="item.confidence >= .85 ? 'font-semibold text-success' : item.confidence >= .6 ? 'font-semibold text-warning' : 'font-semibold text-danger'">{{ Math.round((item.confidence || 0) * 100) }}%</span></td></tr></tbody></table></div>
@@ -188,6 +196,7 @@ watch(() => proposal.selectedEquipmentId, async (equipmentId, previous) => {
         <h2 class="text-lg font-bold text-ink">Crear desde este documento</h2>
         <p v-if="isConfirmed" class="mt-1 text-sm font-semibold text-success">Este documento ya fue confirmado. Las acciones de creación quedaron bloqueadas para evitar duplicados.</p>
         <p v-else class="mt-1 text-sm text-ink-muted">Nada se graba hasta que elijas una de estas acciones. La misma lectura se registra una sola vez aunque se creen ambas OT.</p>
+        <p v-if="possibleDuplicates.length && !duplicateConfirmed && !isConfirmed" class="mt-2 text-sm font-semibold text-warning">Confirmá primero la revisión del posible duplicado.</p>
         <form v-if="!isConfirmed" ref="confirmForm" method="post" :action="data.routes.confirm" class="mt-4 flex flex-wrap gap-2" @submit="submitting = true"><CsrfInput :csrf="data.csrf" /><input type="hidden" name="proposal_json" :value="JSON.stringify(proposal)" /><input type="hidden" name="action" :value="pendingAction || ''" /><button v-for="action in ['corrective','preventive','both']" :key="action" type="button" :disabled="contextLoading || submitting || (action === 'corrective' ? !canCorrective : action === 'preventive' ? !canPreventive : !canBoth)" :class="primaryButton" @click="openConfirmation(action)">{{ confirmLabel(action) }}</button></form>
         <a :href="data.routes.newImport" :class="`${secondaryButton} mt-4`">Importar otro documento</a>
       </section>

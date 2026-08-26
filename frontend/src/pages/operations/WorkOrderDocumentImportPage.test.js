@@ -43,6 +43,8 @@ const payload = () => ({
       currency: 'ARS',
       correctiveAmount: null,
       preventiveAmount: null,
+      possibleDuplicates: [],
+      confirmPossibleDuplicate: false,
       works: [
         { description: 'Cambiar filtros de aceite', classification: 'preventivo', included: true, confidence: 0.95 },
         { description: 'Reparar pérdida de aire', classification: 'correctivo', included: true, confidence: 0.92 },
@@ -73,11 +75,9 @@ afterEach(() => {
 describe('WorkOrderDocumentImportPage', () => {
   it('bloquea lectura regresiva hasta confirmacion explicita', async () => {
     const wrapper = mount(WorkOrderDocumentImportPage, { props: { data: payload() } })
-
     expect(wrapper.text()).toContain('La lectura ingresada es menor que la lectura actual del equipo')
     const corrective = wrapper.findAll('button').find((button) => button.text().includes('Crear OT correctiva'))
     expect(corrective.attributes('disabled')).toBeDefined()
-
     const rollbackCheckbox = wrapper.findAll('input[type="checkbox"]').find((input) => input.element.parentElement?.textContent.includes('Revisé la lectura'))
     await rollbackCheckbox.setValue(true)
     expect(corrective.attributes('disabled')).toBeUndefined()
@@ -87,14 +87,11 @@ describe('WorkOrderDocumentImportPage', () => {
     const data = payload()
     data.import.proposal.readingValue = 1186000
     const wrapper = mount(WorkOrderDocumentImportPage, { props: { data } })
-
     expect(wrapper.text()).toContain('Controlar refrigerante')
     expect(wrapper.text()).toContain('Sin evidencia')
     expect(wrapper.text()).toContain('Tarea obligatoria del plan')
-
     const preventive = wrapper.findAll('button').find((button) => button.text().includes('Crear OT preventiva'))
     expect(preventive.attributes('disabled')).toBeDefined()
-
     const partialCheckbox = wrapper.findAll('input[type="checkbox"]').find((input) => input.element.parentElement?.textContent.includes('realización preventiva parcial'))
     await partialCheckbox.setValue(true)
     expect(preventive.attributes('disabled')).toBeUndefined()
@@ -103,19 +100,14 @@ describe('WorkOrderDocumentImportPage', () => {
   it('recarga planes al cambiar manualmente el equipo', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({
-        preventivePlans: [{ id: 8, servicio_nombre: 'Service 40.000 km', matchScore: 80, requiredTasksEvidenced: true, taskMatches: [] }],
-        selectedPlanId: 8,
-      }),
+      json: async () => ({ preventivePlans: [{ id: 8, servicio_nombre: 'Service 40.000 km', matchScore: 80, requiredTasksEvidenced: true, taskMatches: [] }], selectedPlanId: 8 }),
     }))
     const data = payload()
     data.import.proposal.readingValue = 950000
     const wrapper = mount(WorkOrderDocumentImportPage, { props: { data } })
-
     const equipmentSelect = wrapper.findAll('select').find((select) => select.text().includes('CAM-01') && select.text().includes('CAM-02'))
     await equipmentSelect.setValue('11')
     await flushPromises()
-
     expect(fetch).toHaveBeenCalledWith('/mantenimiento/ordenes/importar/7?equipment_id=11', expect.any(Object))
     expect(wrapper.text()).toContain('Service 40.000 km')
     expect(wrapper.findAll('option').some((option) => option.text().includes('coincidencia 80%'))).toBe(true)
@@ -126,10 +118,8 @@ describe('WorkOrderDocumentImportPage', () => {
     const data = payload()
     data.import.proposal.readingValue = 1186000
     const wrapper = mount(WorkOrderDocumentImportPage, { props: { data } })
-
     const corrective = wrapper.findAll('button').find((button) => button.text().includes('Crear OT correctiva'))
     await corrective.trigger('click')
-
     expect(nativeConfirm).not.toHaveBeenCalled()
     expect(wrapper.find('[role="dialog"]').exists()).toBe(true)
     expect(wrapper.text()).toContain('Confirmar creación')
@@ -137,7 +127,6 @@ describe('WorkOrderDocumentImportPage', () => {
     expect(wrapper.text()).toContain('1.186.000 km')
     expect(wrapper.text()).toContain('ARS 813.382,00')
     expect(wrapper.find('input[name="action"]').element.value).toBe('corrective')
-
     const cancel = wrapper.findAll('button').find((button) => button.text() === 'Cancelar')
     await cancel.trigger('click')
     expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
@@ -148,23 +137,35 @@ describe('WorkOrderDocumentImportPage', () => {
     data.import.proposal.readingValue = 1186000
     data.import.proposal.confirmPartialPreventive = true
     const wrapper = mount(WorkOrderDocumentImportPage, { props: { data } })
-
     expect(wrapper.text()).toContain('Importe total')
     expect(wrapper.text()).toContain('ARS 813.382,00')
-
     const both = wrapper.findAll('button').find((button) => button.text().includes('Crear ambas OT'))
     await both.trigger('click')
-
     expect(wrapper.text()).toContain('Distribución del importe')
     expect(wrapper.text()).toContain('La suma debe coincidir con el total del documento')
     const confirm = wrapper.findAll('button').find((button) => button.text() === 'Confirmar y crear')
     expect(confirm.attributes('disabled')).toBeDefined()
-
     const allocationInputs = wrapper.findAll('[role="dialog"] input[inputmode="decimal"]')
     await allocationInputs[0].setValue('500000')
     await allocationInputs[1].setValue('313382')
-
     expect(wrapper.text()).not.toContain('La suma debe coincidir con el total del documento')
     expect(confirm.attributes('disabled')).toBeUndefined()
+  })
+
+  it('advierte un posible duplicado semantico y exige confirmarlo antes de crear', async () => {
+    const data = payload()
+    data.import.proposal.readingValue = 1186000
+    data.import.proposal.possibleDuplicates = [{ importId: 3, status: 'CONFIRMADO', score: 11, reasons: ['mismo equipo', 'misma fecha', 'mismo importe'] }]
+    const wrapper = mount(WorkOrderDocumentImportPage, { props: { data } })
+
+    expect(wrapper.text()).toContain('Posible documento duplicado')
+    expect(wrapper.text()).toContain('Importación #3')
+    expect(wrapper.text()).toContain('mismo equipo, misma fecha, mismo importe')
+    const corrective = wrapper.findAll('button').find((button) => button.text().includes('Crear OT correctiva'))
+    expect(corrective.attributes('disabled')).toBeDefined()
+
+    const checkbox = wrapper.findAll('input[type="checkbox"]').find((input) => input.element.parentElement?.textContent.includes('trabajo distinto'))
+    await checkbox.setValue(true)
+    expect(corrective.attributes('disabled')).toBeUndefined()
   })
 })
