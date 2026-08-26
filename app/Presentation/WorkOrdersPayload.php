@@ -70,6 +70,7 @@ final class WorkOrdersPayload
                 'index' => $base,
                 'maintenance' => base_url('mantenimiento'),
                 'registerCorrective' => base_url('mantenimiento/ordenes/correctivas'),
+                'importDocument' => base_url('mantenimiento/ordenes/importar'),
             ],
             'filters' => [
                 'q' => $filters['q'] ?? '',
