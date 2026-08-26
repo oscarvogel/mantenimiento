@@ -28,7 +28,9 @@ const payload = () => ({
       plate: 'OIU 270',
       readingType: 'km',
       readingValue: 1180076,
-      confidence: { plate: 0.99 },
+      totalAmount: 813382,
+      currency: 'ARS',
+      confidence: { plate: 0.99, total_amount: 0.93 },
     },
     proposal: {
       selectedEquipmentId: 10,
@@ -37,6 +39,10 @@ const payload = () => ({
       readingValue: 1180076,
       supplier: 'Mecánica Tony',
       concept: 'Reparación',
+      totalAmount: 813382,
+      currency: 'ARS',
+      correctiveAmount: null,
+      preventiveAmount: null,
       works: [
         { description: 'Cambiar filtros de aceite', classification: 'preventivo', included: true, confidence: 0.95 },
         { description: 'Reparar pérdida de aire', classification: 'correctivo', included: true, confidence: 0.92 },
@@ -129,10 +135,36 @@ describe('WorkOrderDocumentImportPage', () => {
     expect(wrapper.text()).toContain('Confirmar creación')
     expect(wrapper.text()).toContain('CAM-01 · OIU270')
     expect(wrapper.text()).toContain('1.186.000 km')
+    expect(wrapper.text()).toContain('ARS 813.382,00')
     expect(wrapper.find('input[name="action"]').element.value).toBe('corrective')
 
     const cancel = wrapper.findAll('button').find((button) => button.text() === 'Cancelar')
     await cancel.trigger('click')
     expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
+  })
+
+  it('exige distribuir el total para crear correctiva y preventiva sin duplicar costos', async () => {
+    const data = payload()
+    data.import.proposal.readingValue = 1186000
+    data.import.proposal.confirmPartialPreventive = true
+    const wrapper = mount(WorkOrderDocumentImportPage, { props: { data } })
+
+    expect(wrapper.text()).toContain('Importe total')
+    expect(wrapper.text()).toContain('ARS 813.382,00')
+
+    const both = wrapper.findAll('button').find((button) => button.text().includes('Crear ambas OT'))
+    await both.trigger('click')
+
+    expect(wrapper.text()).toContain('Distribución del importe')
+    expect(wrapper.text()).toContain('La suma debe coincidir con el total del documento')
+    const confirm = wrapper.findAll('button').find((button) => button.text() === 'Confirmar y crear')
+    expect(confirm.attributes('disabled')).toBeDefined()
+
+    const allocationInputs = wrapper.findAll('[role="dialog"] input[inputmode="decimal"]')
+    await allocationInputs[0].setValue('500000')
+    await allocationInputs[1].setValue('313382')
+
+    expect(wrapper.text()).not.toContain('La suma debe coincidir con el total del documento')
+    expect(confirm.attributes('disabled')).toBeUndefined()
   })
 })
