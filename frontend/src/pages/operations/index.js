@@ -7,6 +7,7 @@ import MaintenanceServicesPage from './MaintenanceServicesPage.vue'
 import PreventiveLibraryPage from './PreventiveLibraryPage.vue'
 import PreventivePlansPage from './PreventivePlansPage.vue'
 import QuickReadingsPage from './QuickReadingsPage.vue'
+import RegisterReadingPage from './RegisterReadingPage.vue'
 import WorkOrdersIndexPage from './WorkOrdersIndexPage.vue'
 
 export {
@@ -19,6 +20,7 @@ export {
   PreventiveLibraryPage,
   PreventivePlansPage,
   QuickReadingsPage,
+  RegisterReadingPage,
   WorkOrdersIndexPage,
 }
 
@@ -31,7 +33,7 @@ export const operationPageComponents = Object.freeze({
   'imports-index': ImportsIndexPage,
   'imports-show': ImportsShowPage,
   'preventive-library': PreventiveLibraryPage,
-  'quick-readings': QuickReadingsPage,
+  'quick-readings': RegisterReadingPage,
   'work-orders-index': WorkOrdersIndexPage,
 })
 
