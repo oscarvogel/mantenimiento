@@ -46,7 +46,7 @@ final class NotificationPersistenceContractTest extends TestCase
         self::assertStringContainsString('return null;', $source);
         self::assertStringContainsString("=== 'FALLIDA'", $source);
         self::assertStringContainsString("'estado' => 'EN_PROCESO'", $source);
-        self::assertStringContainsString("where('token', $token)->delete()", $source);
+        self::assertStringContainsString("where('token', \$token)->delete()", $source);
     }
 
     public function testDeliveryQueuePersistsRetryStateAndUsesUniqueDeliveryKeys(): void
@@ -55,9 +55,9 @@ final class NotificationPersistenceContractTest extends TestCase
 
         self::assertIsString($source);
         self::assertStringContainsString('->ignore(true)->insert', $source);
-        self::assertStringContainsString("'estado' => $retryable ? 'REINTENTO' : 'FALLIDA'", $source);
-        self::assertStringContainsString("'intentos' => $attempts", $source);
-        self::assertStringContainsString("'ultimo_error' => mb_substr($error, 0, 1000)", $source);
+        self::assertStringContainsString("'estado' => \$retryable ? 'REINTENTO' : 'FALLIDA'", $source);
+        self::assertStringContainsString("'intentos' => \$attempts", $source);
+        self::assertStringContainsString("'ultimo_error' => mb_substr(\$error, 0, 1000)", $source);
         self::assertStringContainsString('{$eventKey}:usuario:{$userId}:email', $source);
         self::assertStringContainsString('{$eventKey}:usuario:{$userId}:push', $source);
     }
