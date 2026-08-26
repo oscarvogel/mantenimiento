@@ -157,6 +157,8 @@ final class MiniMaxWorkOrderDocumentAnalyzer implements WorkOrderDocumentAnalyze
             $this->nullableString($data['supplier'] ?? null),
             $this->nullableString($data['concept'] ?? null),
             $this->nullableString($data['observations'] ?? null),
+            is_numeric($data['total_amount'] ?? null) ? max(0.0, (float) $data['total_amount']) : null,
+            $this->nullableString($data['currency'] ?? null),
             $works,
             $materials,
             array_map(static fn ($value): float => max(0.0, min(1.0, (float) $value)), array_filter($confidence, 'is_numeric')),
@@ -200,8 +202,11 @@ final class MiniMaxWorkOrderDocumentAnalyzer implements WorkOrderDocumentAnalyze
     {
         return <<<'PROMPT'
 Analizá esta orden/comprobante de taller mecánico. Respondé EXCLUSIVAMENTE JSON válido, sin markdown ni comentarios. No inventes datos que no estén visibles. Clasificá cada trabajo como "correctivo", "preventivo" o "revisar". La confianza debe ser 0..1.
+
+IMPORTANTE SOBRE EL IMPORTE: buscá especialmente el TOTAL final del comprobante, aunque esté manuscrito, encerrado en un recuadro, al pie o en un margen. Devolvé ese importe como número puro sin separadores de miles (por ejemplo, $ 813.382 => 813382). No sumes valores parciales si el total no es legible. Si no podés identificar un total con seguridad, devolvé null. Para pesos argentinos usá currency="ARS" cuando el contexto sea inequívoco.
+
 Schema exacto:
-{"plate":string|null,"brand":string|null,"model":string|null,"service_date":"YYYY-MM-DD"|null,"reading_type":"km"|"horas"|null,"reading_value":number|null,"supplier":string|null,"concept":string|null,"observations":string|null,"works":[{"description":string,"classification":"correctivo"|"preventivo"|"revisar","quantity":number|null,"unit":string|null,"confidence":number,"source_text":string}],"materials":[{"description":string,"quantity":number|null,"unit":string|null,"confidence":number,"source_text":string}],"confidence":{"plate":number,"service_date":number,"reading_value":number,"supplier":number}}
+{"plate":string|null,"brand":string|null,"model":string|null,"service_date":"YYYY-MM-DD"|null,"reading_type":"km"|"horas"|null,"reading_value":number|null,"supplier":string|null,"concept":string|null,"observations":string|null,"total_amount":number|null,"currency":string|null,"works":[{"description":string,"classification":"correctivo"|"preventivo"|"revisar","quantity":number|null,"unit":string|null,"confidence":number,"source_text":string}],"materials":[{"description":string,"quantity":number|null,"unit":string|null,"confidence":number,"source_text":string}],"confidence":{"plate":number,"service_date":number,"reading_value":number,"supplier":number,"total_amount":number}}
 Separá trabajos realizados de repuestos/consumibles. Un service periódico, filtros, aceites, correas o inspecciones programables son candidatos preventivos; reparaciones de fallas/pérdidas/diagnóstico son correctivas. Si es ambiguo usá revisar.
 PROMPT;
     }
