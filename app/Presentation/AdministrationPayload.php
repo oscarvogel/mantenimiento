@@ -38,6 +38,9 @@ final class AdministrationPayload
                 'createCompany' => base_url('superadmin/empresas'),
                 'createCompanyAdministrator' => base_url('superadmin/administradores'),
             ],
+            'chatAudit' => [
+                'apiUrl' => base_url('mantenimiento/chatbot/auditoria'),
+            ],
             'oldInput' => $this->old([
                 'razon_social', 'nombre_fantasia', 'cuit', 'email', 'email_notificaciones', 'telefono',
                 'admin_empresa_id', 'admin_nombre', 'admin_email', 'admin_motivo',
