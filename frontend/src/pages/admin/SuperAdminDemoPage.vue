@@ -42,6 +42,7 @@ const section = ref(new URLSearchParams(window.location.search).get('section') =
         title: 'Auditoría global del chatbot',
         subtitle: 'Conversaciones de todas las empresas',
         showCompanyFilter: true,
+        apiUrl: data.chatAudit?.apiUrl,
       }"
     />
   </div>
