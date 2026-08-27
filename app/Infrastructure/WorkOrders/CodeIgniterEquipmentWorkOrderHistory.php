@@ -93,11 +93,19 @@ final readonly class CodeIgniterEquipmentWorkOrderHistory
 
         $from = trim((string) ($filters['from'] ?? ''));
         if ($from !== '') {
-            $builder->where('DATE(COALESCE(o.fecha_finalizacion, o.fecha_apertura)) >=', $from, false);
+            $builder->where(
+                'DATE(COALESCE(o.fecha_finalizacion, o.fecha_apertura)) >= ' . $this->database->escape($from),
+                null,
+                false,
+            );
         }
         $to = trim((string) ($filters['to'] ?? ''));
         if ($to !== '') {
-            $builder->where('DATE(COALESCE(o.fecha_finalizacion, o.fecha_apertura)) <=', $to, false);
+            $builder->where(
+                'DATE(COALESCE(o.fecha_finalizacion, o.fecha_apertura)) <= ' . $this->database->escape($to),
+                null,
+                false,
+            );
         }
 
         return $builder;
