@@ -73,6 +73,26 @@ const normalizeUpcoming = (items) => {
     }))
 }
 
+const normalizeReadingAttention = (items) => {
+  if (!Array.isArray(items)) return []
+
+  return items
+    .filter((item) => item && typeof item === 'object')
+    .map((item, index) => ({
+      equipmentId: asCount(item.equipmentId),
+      equipment: asText(item.equipment, `Equipo ${index + 1}`),
+      branchName: asText(item.branchName),
+      status: item.status === 'DESACTUALIZADA' ? 'DESACTUALIZADA' : 'SIN_LECTURA',
+      statusLabel: asText(item.statusLabel, item.status === 'DESACTUALIZADA' ? 'Lectura antigua' : 'Sin lectura'),
+      lastReadingDate: item.lastReadingDate ? asText(item.lastReadingDate) : null,
+      daysSinceReading: item.daysSinceReading === null || item.daysSinceReading === undefined
+        ? null
+        : asCount(item.daysSinceReading),
+      detail: asText(item.detail, 'Revisar información del equipo'),
+      detailUrl: item.detailUrl ? asUrl(item.detailUrl, '#') : null,
+    }))
+}
+
 const findNavigationUrl = (navigation, matchers) => {
   const item = navigation.find((entry) => {
     if (entry.disabled) return false
@@ -153,6 +173,7 @@ export function normalizeDashboardPayload(payload) {
 
   return {
     ...shell,
+    view: source.view === 'managerial' ? 'managerial' : 'operational',
     metrics: {
       equipmentTotal: asCount(metrics.equipmentTotal),
       equipmentActive: asCount(metrics.equipmentActive),
@@ -162,8 +183,14 @@ export function normalizeDashboardPayload(payload) {
       maintenanceOverdue: asCount(metrics.maintenanceOverdue),
       maintenanceMissingData: asCount(metrics.maintenanceMissingData),
       maintenanceScheduled: asCount(metrics.maintenanceScheduled),
+      preventiveCompliance: Math.min(100, asCount(metrics.preventiveCompliance)),
       openOrders: asCount(metrics.openOrders),
+      openCorrectiveOrders: asCount(metrics.openCorrectiveOrders),
+      equipmentWithoutReading: asCount(metrics.equipmentWithoutReading),
+      equipmentWithStaleReading: asCount(metrics.equipmentWithStaleReading),
+      staleReadingDays: asCount(metrics.staleReadingDays) || 7,
     },
+    readingAttention: normalizeReadingAttention(source.readingAttention),
     upcomingMaintenance: normalizeUpcoming(source.upcomingMaintenance),
     links: {
       equipment: asUrl(sourceLinks.equipment, equipmentUrl),
