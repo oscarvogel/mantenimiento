@@ -27,7 +27,7 @@ const data = computed(() => {
         branchId: reading.branchName || 'actual',
       })),
     },
-    workOrderHistory: workOrderHistory === null ? null : workOrderHistory === undefined ? undefined : {
+    workOrderHistory: !workOrderHistory ? null : {
       ...workOrderHistory,
       items: workOrderHistory.items.map((order) => ({
         ...order,
@@ -170,8 +170,8 @@ const historyResetUrl = computed(() => `${window.location.pathname}?history_acti
 
     <div id="equipment-panel-historial" v-show="activeTab === 'historial'" role="tabpanel" aria-labelledby="equipment-tab-historial">
       <PanelCard title="Historial de mantenimiento / Órdenes de trabajo" :count="data.workOrderHistory?.total ?? null">
-        <p v-if="data.workOrderHistory === null" class="text-sm text-ink-muted">No tenés permiso para consultar órdenes de trabajo.</p>
-        <template v-else>
+        <p v-if="!data.workOrderHistory" class="text-sm text-ink-muted">No tenés permiso para consultar órdenes de trabajo.</p>
+        <div v-else>
           <form method="get" class="mb-5 grid gap-3 border-b border-border-subtle pb-5 md:grid-cols-2 xl:grid-cols-[minmax(16rem,1.6fr)_minmax(10rem,0.7fr)_minmax(9rem,0.7fr)_minmax(9rem,0.7fr)_auto] xl:items-end">
             <input type="hidden" name="history_active" value="1" />
             <input type="hidden" name="history_per_page" :value="data.workOrderHistory.pagination.perPage" />
@@ -198,8 +198,8 @@ const historyResetUrl = computed(() => `${window.location.pathname}?history_acti
               </tbody>
             </table>
           </div>
-          <template #footer><PaginationBar :pagination="data.workOrderHistory.pagination" /></template>
-        </template>
+        </div>
+        <template v-if="data.workOrderHistory" #footer><PaginationBar :pagination="data.workOrderHistory.pagination" /></template>
       </PanelCard>
     </div>
   </div>
