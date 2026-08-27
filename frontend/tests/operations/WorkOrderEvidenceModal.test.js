@@ -44,7 +44,11 @@ describe('WorkOrderEvidenceModal', () => {
     expect(document.body.textContent).toContain('comprobante.pdf')
     expect(document.body.querySelectorAll('a[href*="/adjuntos/"]').length).toBeGreaterThanOrEqual(4)
 
-    await wrapper.find('button[aria-label="Cerrar evidencias"]').trigger('click')
+    const closeButton = document.body.querySelector('button[aria-label="Cerrar evidencias"]')
+    expect(closeButton).not.toBeNull()
+    closeButton.click()
+    await wrapper.vm.$nextTick()
+
     expect(wrapper.emitted('close')).toHaveLength(1)
     wrapper.unmount()
   })
