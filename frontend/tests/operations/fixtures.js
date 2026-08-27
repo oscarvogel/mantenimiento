@@ -85,7 +85,12 @@ export const equipmentData = {
   relations: { total: 1, pagination: { ...pagination, total: 1 }, items: [{ id: 1, principalCode: 'CAM-01', relatedCode: 'ACO-01', type: 'TRACTOR_ACOPLADO', from: '2026-08-01 10:00', to: null, userName: 'Admin', notes: '', finishUrl: '/mantenimiento/equipos/9/relaciones/1/finalizar' }] },
   attachments: { total: 1, pagination: { ...pagination, total: 1 }, items: [{ id: 2, originalName: 'manual.pdf', mimeType: 'application/pdf', sizeKb: '12.0', type: 'MANUAL', description: '', createdAt: '2026-08-08', createdByName: 'Admin', retiredAt: null, retirementReason: '', downloadUrl: '/mantenimiento/equipos/9/adjuntos/2/descargar', retireUrl: '/mantenimiento/equipos/9/adjuntos/2/retirar' }] },
   readings: { total: 1, pagination: { ...pagination, total: 1 }, items: [{ id: 4, recordedAt: '08/08/2026 12:00', kilometers: 1000, hours: 42, origin: 'MANUAL', userName: 'Admin', branchId: 1, annulled: false, annulmentReason: null, replacementReadingId: null, correctedReadingId: null, correctionReason: null, correctUrl: '/mantenimiento/equipos/9/lecturas/4/corregir' }] },
-  transfers: { total: 1, pagination: { ...pagination, total: 1 }, items: [{ id: 1, date: '2026-08-02', originCode: 'S', originName: 'Sur', destinationCode: 'CC', destinationName: 'Casa central', reason: 'Reasignación', userName: 'Admin' }] },
+  workOrderHistory: {
+    total: 1,
+    filters: { q: '', type: '', from: '', to: '' },
+    pagination: { ...pagination, total: 1, pageKey: 'history_page', perPageKey: 'history_per_page' },
+    items: [{ id: 6, number: 'OT-6', date: '2026-08-02', typeLabel: 'Correctiva', serviceName: 'Reparación', work: 'Cambiar bomba de agua', kilometers: 950, hours: null, status: 'FINALIZADA', printUrl: '/mantenimiento/ordenes/6/imprimir' }],
+  },
 }
 
 export const importsData = {
