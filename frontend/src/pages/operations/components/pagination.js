@@ -4,8 +4,8 @@ export function pageSizeUrl(pagination, size, href = window.location.href) {
   const selected = allowed.includes(parsed) ? parsed : 10
   const url = new URL(href)
 
-  url.searchParams.set(pagination.perPageKey || 'per_page', String(selected))
-  url.searchParams.set(pagination.pageKey || 'page', '1')
+  url.searchParams.set(pagination.perPageKey || pagination.perPageParam || 'per_page', String(selected))
+  url.searchParams.set(pagination.pageKey || pagination.pageParam || 'page', '1')
 
   return url.toString()
 }

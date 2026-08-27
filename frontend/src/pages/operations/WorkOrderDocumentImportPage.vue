@@ -28,11 +28,20 @@ const readingRegression = computed(() => {
   if (proposal.readingType === 'horas') return selectedEquipment.value.currentHours !== null && selectedEquipment.value.currentHours !== undefined && value < Number(selectedEquipment.value.currentHours)
   return selectedEquipment.value.currentKm !== null && selectedEquipment.value.currentKm !== undefined && value < Number(selectedEquipment.value.currentKm)
 })
+const historicalCorrectiveReading = computed(() => {
+  if (!readingRegression.value || !proposal.serviceDate) return false
+  const serviceDate = new Date(`${proposal.serviceDate}T00:00:00`)
+  if (Number.isNaN(serviceDate.getTime())) return false
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return serviceDate < today
+})
 const readingPermissionOk = computed(() => proposal.readingValue === null || proposal.readingValue === undefined || proposal.readingValue === '' || props.data.can?.registerReading)
 const partialPreventive = computed(() => Boolean(selectedPlan.value && selectedPlan.value.requiredTasksEvidenced === false))
 const readingConfirmed = computed(() => !readingRegression.value || proposal.confirmReadingRollback === true)
+const correctiveReadingConfirmed = computed(() => historicalCorrectiveReading.value || readingConfirmed.value)
 const partialConfirmed = computed(() => !partialPreventive.value || proposal.confirmPartialPreventive === true)
-const canCorrective = computed(() => !isConfirmed.value && duplicateConfirmed.value && readingPermissionOk.value && readingConfirmed.value && Number(proposal.selectedEquipmentId || 0) > 0 && correctiveWorks.value.length > 0)
+const canCorrective = computed(() => !isConfirmed.value && duplicateConfirmed.value && readingPermissionOk.value && correctiveReadingConfirmed.value && Number(proposal.selectedEquipmentId || 0) > 0 && correctiveWorks.value.length > 0)
 const canPreventive = computed(() => !isConfirmed.value && duplicateConfirmed.value && readingPermissionOk.value && readingConfirmed.value && partialConfirmed.value && props.data.can?.closePreventive && Number(proposal.selectedEquipmentId || 0) > 0 && Number(proposal.selectedPlanId || 0) > 0 && preventiveWorks.value.length > 0)
 const canBoth = computed(() => canCorrective.value && canPreventive.value)
 const confidenceLabel = (value) => {
@@ -58,7 +67,9 @@ const confirmationDescription = computed(() => pendingAction.value === 'both'
   ? 'Se crearán dos órdenes vinculadas al mismo documento. La lectura se registrará una sola vez y el importe no se duplicará.'
   : pendingAction.value === 'preventive'
     ? 'Se registrará la realización preventiva con el plan seleccionado y se recalculará el próximo mantenimiento.'
-    : 'Se creará una OT correctiva finalizada con los trabajos revisados del documento.')
+    : historicalCorrectiveReading.value
+      ? 'Se creará una OT correctiva histórica. La lectura quedará en la OT y no modificará la lectura actual del equipo.'
+      : 'Se creará una OT correctiva finalizada con los trabajos revisados del documento.')
 const allocationValid = computed(() => {
   if (pendingAction.value !== 'both') return true
   const total = parseMoney(proposal.totalAmount)
@@ -151,8 +162,13 @@ watch(() => proposal.selectedEquipmentId, async (equipmentId, previous) => {
           </div>
           <p v-if="contextError" class="mt-4 rounded-xl border border-danger/30 bg-danger/10 p-3 text-sm text-danger-strong">{{ contextError }}</p>
           <div v-if="readingRegression" class="mt-4 rounded-xl border border-warning/30 bg-warning/10 p-3 text-sm text-ink">
-            <p class="font-semibold"><ExclamationTriangleIcon class="mr-1 inline size-4" />La lectura ingresada es menor que la lectura actual del equipo.</p>
-            <label v-if="!isConfirmed" class="mt-2 flex items-start gap-2"><input v-model="proposal.confirmReadingRollback" type="checkbox" class="mt-1 size-4 rounded border-border-strong text-primary" /><span>Revisé la lectura y confirmo que deseo registrarla de esta manera.</span></label>
+            <template v-if="historicalCorrectiveReading">
+              <p class="font-semibold"><ExclamationTriangleIcon class="mr-1 inline size-4" />Lectura histórica</p>
+              <p class="mt-1">El documento indica {{ formatReading(proposal.readingValue) }} {{ proposal.readingType === 'horas' ? 'h' : 'km' }} al {{ proposal.serviceDate }}. La lectura actual del equipo es {{ proposal.readingType === 'horas' ? `${formatReading(selectedEquipment?.currentHours)} h` : `${formatReading(selectedEquipment?.currentKm)} km` }}.</p>
+              <p class="mt-1 font-medium">Si creás una OT correctiva, esta lectura quedará únicamente en la OT y no modificará la lectura actual del equipo.</p>
+            </template>
+            <p v-else class="font-semibold"><ExclamationTriangleIcon class="mr-1 inline size-4" />La lectura ingresada es menor que la lectura actual del equipo.</p>
+            <label v-if="!isConfirmed && (!historicalCorrectiveReading || preventiveWorks.length > 0)" class="mt-2 flex items-start gap-2"><input v-model="proposal.confirmReadingRollback" type="checkbox" class="mt-1 size-4 rounded border-border-strong text-primary" /><span>{{ historicalCorrectiveReading ? 'Para crear una OT preventiva o ambas, revisé la lectura y confirmo que deseo continuar con esta diferencia.' : 'Revisé la lectura y confirmo que deseo registrarla de esta manera.' }}</span></label>
           </div>
           <p v-if="proposal.readingValue && !data.can?.registerReading" class="mt-3 text-sm text-warning">Tu perfil no tiene permiso para cargar lecturas; quitá la lectura o solicitá ese permiso antes de confirmar.</p>
         </article>
@@ -211,7 +227,7 @@ watch(() => proposal.selectedEquipmentId, async (equipmentId, previous) => {
         <dl class="mt-5 divide-y divide-border rounded-xl border border-border bg-surface px-4 text-sm">
           <div class="flex items-center justify-between gap-4 py-3"><dt class="text-ink-muted">Equipo</dt><dd class="text-right font-semibold text-ink">{{ selectedEquipment?.code || 'Sin equipo' }}{{ selectedEquipment?.plate ? ` · ${selectedEquipment.plate}` : '' }}</dd></div>
           <div class="flex items-center justify-between gap-4 py-3"><dt class="text-ink-muted">Fecha del trabajo</dt><dd class="text-right font-semibold text-ink">{{ proposal.serviceDate || 'Sin fecha' }}</dd></div>
-          <div v-if="proposal.readingValue !== null && proposal.readingValue !== undefined && proposal.readingValue !== ''" class="flex items-center justify-between gap-4 py-3"><dt class="text-ink-muted">Lectura a registrar</dt><dd class="text-right font-semibold text-ink">{{ formatReading(proposal.readingValue) }} {{ proposal.readingType === 'horas' ? 'h' : 'km' }}</dd></div>
+          <div v-if="proposal.readingValue !== null && proposal.readingValue !== undefined && proposal.readingValue !== ''" class="flex items-center justify-between gap-4 py-3"><dt class="text-ink-muted">{{ historicalCorrectiveReading && pendingAction === 'corrective' ? 'Lectura histórica de la OT' : 'Lectura a registrar' }}</dt><dd class="text-right font-semibold text-ink">{{ formatReading(proposal.readingValue) }} {{ proposal.readingType === 'horas' ? 'h' : 'km' }}</dd></div>
           <div v-if="parseMoney(proposal.totalAmount) !== null" class="flex items-center justify-between gap-4 py-3"><dt class="text-ink-muted">Importe del documento</dt><dd class="text-right font-semibold text-ink">{{ proposal.currency || 'ARS' }} {{ formatMoney(proposal.totalAmount) }}</dd></div>
           <div v-if="pendingAction !== 'corrective'" class="flex items-center justify-between gap-4 py-3"><dt class="text-ink-muted">Plan preventivo</dt><dd class="text-right font-semibold text-ink">{{ selectedPlan?.servicio_nombre || `Plan #${proposal.selectedPlanId}` }}</dd></div>
           <div v-if="pendingAction !== 'preventive'" class="flex items-center justify-between gap-4 py-3"><dt class="text-ink-muted">Trabajos correctivos</dt><dd class="font-semibold text-ink">{{ correctiveWorks.length }}</dd></div>

@@ -69,7 +69,11 @@ final class ConfirmWorkOrderDocumentImport
         if (($km !== null || $hours !== null) && ! $actor->hasPermission('lecturas.cargar')) {
             throw new DomainException('No tenés permiso para registrar la lectura detectada en el documento.');
         }
-        $this->assertReadingProgression($equipment, $km, $hours, (bool) ($proposal['confirmReadingRollback'] ?? false));
+
+        $historicalCorrectiveReading = $this->isHistoricalCorrectiveReading($action, $date, $equipment, $km, $hours);
+        if (! $historicalCorrectiveReading) {
+            $this->assertReadingProgression($equipment, $km, $hours, (bool) ($proposal['confirmReadingRollback'] ?? false));
+        }
 
         [$correctiveCost, $preventiveCost] = $this->costAllocation($action, $proposal);
         $currency = strtoupper($this->nullable($proposal['currency'] ?? null) ?? 'ARS');
@@ -85,7 +89,7 @@ final class ConfirmWorkOrderDocumentImport
             throw new DomainException('No hay trabajos preventivos seleccionados.');
         }
 
-        return $this->gateway->transaction(function () use ($actor, $importId, $action, $proposal, $equipment, $date, $km, $hours, $corrective, $preventive, $materials, $correctiveCost, $preventiveCost, $currency): array {
+        return $this->gateway->transaction(function () use ($actor, $importId, $action, $proposal, $equipment, $date, $km, $hours, $historicalCorrectiveReading, $corrective, $preventive, $materials, $correctiveCost, $preventiveCost, $currency): array {
             $lockedImport = $this->gateway->lockImport($actor->companyId(), $importId);
             if ($lockedImport === null) {
                 throw new DomainException('La importación dejó de estar disponible.');
@@ -94,7 +98,7 @@ final class ConfirmWorkOrderDocumentImport
             if ($existingOrders !== []) {
                 return [
                     'orders' => $existingOrders,
-                    'readingRegistered' => $km !== null || $hours !== null,
+                    'readingRegistered' => ($km !== null || $hours !== null) && ! $historicalCorrectiveReading,
                 ];
             }
 
@@ -115,7 +119,7 @@ final class ConfirmWorkOrderDocumentImport
                     $hours,
                     $this->nullable($proposal['supplier'] ?? null),
                     $this->nullable($proposal['concept'] ?? null),
-                    $this->nullable($proposal['observations'] ?? null),
+                    $this->historicalObservation($proposal['observations'] ?? null, $historicalCorrectiveReading, $date, $equipment, $km, $hours),
                     $correctiveCost,
                     $currency,
                     $corrective,
@@ -194,7 +198,7 @@ final class ConfirmWorkOrderDocumentImport
                 $readingRegistered = $km !== null || $hours !== null;
             }
 
-            if ($action === 'corrective' && ($km !== null || $hours !== null)) {
+            if ($action === 'corrective' && ($km !== null || $hours !== null) && ! $historicalCorrectiveReading) {
                 $this->registerReading->execute($actor, new RegisterReadingCommand(
                     (int) $equipment['id'],
                     $date,
@@ -220,6 +224,22 @@ final class ConfirmWorkOrderDocumentImport
     }
 
     /** @param array<string,mixed> $equipment */
+    private function isHistoricalCorrectiveReading(string $action, DateTimeImmutable $date, array $equipment, ?int $km, ?string $hours): bool
+    {
+        if ($action !== 'corrective' || $date >= new DateTimeImmutable('today')) {
+            return false;
+        }
+
+        if ($km !== null && $equipment['km_actual'] !== null && $km < (int) $equipment['km_actual']) {
+            return true;
+        }
+
+        return $hours !== null
+            && $equipment['horas_actuales'] !== null
+            && (float) $hours < (float) $equipment['horas_actuales'];
+    }
+
+    /** @param array<string,mixed> $equipment */
     private function assertReadingProgression(array $equipment, ?int $km, ?string $hours, bool $confirmedRollback): void
     {
         $regression = false;
@@ -228,6 +248,30 @@ final class ConfirmWorkOrderDocumentImport
         if ($regression && ! $confirmedRollback) {
             throw new DomainException('La lectura del documento es menor que la lectura actual del equipo. Confirmá expresamente que revisaste esta diferencia antes de continuar.');
         }
+    }
+
+    /** @param array<string,mixed> $equipment */
+    private function historicalObservation(mixed $observations, bool $historical, DateTimeImmutable $date, array $equipment, ?int $km, ?string $hours): ?string
+    {
+        $base = $this->nullable($observations);
+        if (! $historical) {
+            return $base;
+        }
+
+        $unit = $km !== null ? 'km' : 'h';
+        $historicalValue = $km !== null ? number_format($km, 0, ',', '.') : number_format((float) $hours, 1, ',', '.');
+        $currentValue = $km !== null
+            ? ($equipment['km_actual'] === null ? 'sin lectura actual' : number_format((int) $equipment['km_actual'], 0, ',', '.') . ' km')
+            : ($equipment['horas_actuales'] === null ? 'sin lectura actual' : number_format((float) $equipment['horas_actuales'], 1, ',', '.') . ' h');
+        $note = sprintf(
+            'Lectura histórica de la OT: %s %s al %s. Lectura actual del equipo al momento de la carga: %s. No se modificó la lectura actual.',
+            $historicalValue,
+            $unit,
+            $date->format('d/m/Y'),
+            $currentValue,
+        );
+
+        return $base === null ? $note : $base . "\n" . $note;
     }
 
     private function serviceDate(mixed $value): DateTimeImmutable

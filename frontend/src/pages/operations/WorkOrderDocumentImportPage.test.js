@@ -73,8 +73,22 @@ afterEach(() => {
 })
 
 describe('WorkOrderDocumentImportPage', () => {
-  it('bloquea lectura regresiva hasta confirmacion explicita', async () => {
+  it('permite una OT correctiva historica sin tratar su lectura como retroceso operativo', () => {
     const wrapper = mount(WorkOrderDocumentImportPage, { props: { data: payload() } })
+    expect(wrapper.text()).toContain('Lectura histórica')
+    expect(wrapper.text()).toContain('no modificará la lectura actual del equipo')
+    const corrective = wrapper.findAll('button').find((button) => button.text().includes('Crear OT correctiva'))
+    expect(corrective.attributes('disabled')).toBeUndefined()
+  })
+
+  it('bloquea una lectura regresiva actual hasta confirmacion explicita', async () => {
+    const data = payload()
+    const today = new Date()
+    const yyyy = today.getFullYear()
+    const mm = String(today.getMonth() + 1).padStart(2, '0')
+    const dd = String(today.getDate()).padStart(2, '0')
+    data.import.proposal.serviceDate = `${yyyy}-${mm}-${dd}`
+    const wrapper = mount(WorkOrderDocumentImportPage, { props: { data } })
     expect(wrapper.text()).toContain('La lectura ingresada es menor que la lectura actual del equipo')
     const corrective = wrapper.findAll('button').find((button) => button.text().includes('Crear OT correctiva'))
     expect(corrective.attributes('disabled')).toBeDefined()

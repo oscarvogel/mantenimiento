@@ -27,10 +27,11 @@ final class CorrectiveWorkOrders extends BaseController
             $scope = WorkOrderActorScope::forPermission($actor, 'ordenes.editar');
             $database = db_connect();
             $equipmentId = $this->positiveInt($this->request->getPost('equipo_id'), 'El equipo es obligatorio.');
-            $equipment = $database->table('equipos')
-                ->select('id, empresa_id, sucursal_id')
-                ->where('id', $equipmentId)
-                ->where('empresa_id', $scope->companyId())
+            $equipment = $database->table('equipos e')
+                ->select('e.id, e.empresa_id, e.sucursal_id, te.controla_km, te.controla_horas')
+                ->join('tipos_equipo te', 'te.id = e.tipo_equipo_id')
+                ->where('e.id', $equipmentId)
+                ->where('e.empresa_id', $scope->companyId())
                 ->get()->getRowArray();
             if ($equipment === null) {
                 throw new DomainException('El equipo seleccionado no existe en la empresa activa.');
@@ -64,6 +65,7 @@ final class CorrectiveWorkOrders extends BaseController
             }
             $outputKm = $this->nullableNonNegativeInt($kmValue, 'El kilometraje informado no es válido.');
             $outputHours = $this->nullableDecimal($hoursValue, 'El horómetro informado no es válido.');
+            $this->assertRequiredReading($equipment, $outputKm, $outputHours);
 
             $labor = $this->money($this->request->getPost('costo_mano_obra'), 'El costo de mano de obra no es válido.');
             $parts = $this->money($this->request->getPost('costo_repuestos'), 'El costo de repuestos no es válido.');
@@ -126,18 +128,16 @@ final class CorrectiveWorkOrders extends BaseController
                 'created_at' => $now,
             ]);
 
-            if ($outputKm !== null || $outputHours !== null) {
-                $this->registerReadingAndReevaluate()->execute($actor, new RegisterReadingCommand(
-                    $equipmentId,
-                    $serviceAt,
-                    $outputKm,
-                    $outputHours,
-                    EquipmentReading::WORK_ORDER,
-                    'OT#' . $orderId,
-                    null,
-                    'Lectura registrada con trabajo correctivo ' . $number->value(),
-                ));
-            }
+            $this->registerReadingAndReevaluate()->execute($actor, new RegisterReadingCommand(
+                $equipmentId,
+                $serviceAt,
+                $outputKm,
+                $outputHours,
+                EquipmentReading::WORK_ORDER,
+                'OT#' . $orderId,
+                null,
+                'Lectura registrada con trabajo correctivo ' . $number->value(),
+            ));
 
             $attachmentId = null;
             if ($hasEvidence && $evidence !== null) {
@@ -161,10 +161,7 @@ final class CorrectiveWorkOrders extends BaseController
 
             $database->transComplete();
 
-            $message = $number->value() . ' correctiva registrada como trabajo realizado.';
-            if ($outputKm !== null || $outputHours !== null) {
-                $message .= ' La lectura del equipo quedó actualizada.';
-            }
+            $message = $number->value() . ' correctiva registrada como trabajo realizado. La lectura del equipo quedó actualizada.';
             if ($attachmentId !== null) {
                 $message .= ' Evidencia #' . $attachmentId . ' adjuntada.';
             }
@@ -209,7 +206,7 @@ final class CorrectiveWorkOrders extends BaseController
 
             $database->transException(true)->transStart();
             $row = $database->query(
-                'SELECT id, numero, empresa_id, sucursal_id, equipo_id, estado, origen, diagnostico FROM ordenes_trabajo WHERE id = ? AND empresa_id = ? FOR UPDATE',
+                'SELECT ot.id, ot.numero, ot.empresa_id, ot.sucursal_id, ot.equipo_id, ot.estado, ot.origen, ot.diagnostico, te.controla_km, te.controla_horas FROM ordenes_trabajo ot INNER JOIN equipos e ON e.id = ot.equipo_id INNER JOIN tipos_equipo te ON te.id = e.tipo_equipo_id WHERE ot.id = ? AND ot.empresa_id = ? FOR UPDATE',
                 [$orderId, $scope->companyId()],
             )->getRowArray();
             if ($row === null || (string) $row['origen'] !== 'CORRECTIVO') {
@@ -219,6 +216,7 @@ final class CorrectiveWorkOrders extends BaseController
             if (! in_array((string) $row['estado'], ['EMITIDA', 'EN_PROCESO', 'ESPERA_REPUESTOS'], true)) {
                 throw new DomainException('La OT correctiva no se encuentra en un estado que permita cerrarla.');
             }
+            $this->assertRequiredReading($row, $outputKm, $outputHours);
 
             $database->table('ordenes_trabajo')
                 ->where('id', $orderId)
@@ -249,24 +247,36 @@ final class CorrectiveWorkOrders extends BaseController
                 'created_at' => $now,
             ]);
 
-            if ($outputKm !== null || $outputHours !== null) {
-                $this->registerReadingAndReevaluate()->execute($actor, new RegisterReadingCommand(
-                    (int) $row['equipo_id'],
-                    $completedAt,
-                    $outputKm,
-                    $outputHours,
-                    EquipmentReading::WORK_ORDER,
-                    'OT#' . $orderId,
-                    null,
-                    'Lectura registrada al cerrar ' . (string) $row['numero'],
-                ));
-            }
+            $this->registerReadingAndReevaluate()->execute($actor, new RegisterReadingCommand(
+                (int) $row['equipo_id'],
+                $completedAt,
+                $outputKm,
+                $outputHours,
+                EquipmentReading::WORK_ORDER,
+                'OT#' . $orderId,
+                null,
+                'Lectura registrada al cerrar ' . (string) $row['numero'],
+            ));
 
             $database->transComplete();
 
-            return redirect()->to('/mantenimiento')->with('success', (string) $row['numero'] . ' correctiva histórica finalizada.');
+            return redirect()->to('/mantenimiento')->with('success', (string) $row['numero'] . ' correctiva histórica finalizada. La lectura del equipo quedó actualizada.');
         } catch (Throwable $exception) {
             return $this->failure($exception);
+        }
+    }
+
+    /** @param array<string,mixed> $equipment */
+    private function assertRequiredReading(array $equipment, ?int $kilometers, ?string $hours): void
+    {
+        if ((int) ($equipment['controla_km'] ?? 0) === 1 && $kilometers === null) {
+            throw new DomainException('El kilometraje es obligatorio para registrar una OT correctiva de este equipo.');
+        }
+        if ((int) ($equipment['controla_horas'] ?? 0) === 1 && $hours === null) {
+            throw new DomainException('El horómetro es obligatorio para registrar una OT correctiva de este equipo.');
+        }
+        if ((int) ($equipment['controla_km'] ?? 0) !== 1 && (int) ($equipment['controla_horas'] ?? 0) !== 1) {
+            throw new DomainException('El tipo de equipo debe controlar kilómetros u horas para registrar una OT correctiva.');
         }
     }
 
