@@ -60,7 +60,7 @@ const formattedCostTotal = computed(() => costTotal.value.toLocaleString('es-AR'
             <p class="text-xs font-bold uppercase tracking-[0.14em] text-primary">Cierre de orden</p>
             <h2 id="work-order-closure-title" class="mt-1 text-xl font-bold text-ink">{{ modalTitle }}</h2>
             <p class="mt-1 text-sm text-ink-muted">
-              {{ isCorrective ? 'Describí el trabajo realizado y completá los importes del servicio.' : 'Marcá el resultado de cada tarea y dejá el detalle o motivo correspondiente.' }}
+              {{ isCorrective ? 'Describí el trabajo realizado, informá la lectura del equipo y completá los importes del servicio.' : 'Marcá el resultado de cada tarea y dejá el detalle o motivo correspondiente.' }}
             </p>
           </div>
           <button type="button" :class="secondaryButton" aria-label="Cerrar ventana de cierre" @click="emit('close')">
@@ -138,6 +138,7 @@ const formattedCostTotal = computed(() => costTotal.value.toLocaleString('es-AR'
                 <UsageReadingInput
                   :model-value="formState"
                   :equipment="order"
+                  :required="isCorrective"
                   :names="{ kilometers: 'km_salida', hours: 'horas_salida' }"
                   :labels="{ kilometers: 'Nueva lectura de kilometraje', hours: 'Nueva lectura de horómetro', current: 'Actual' }"
                   :id-prefix="`order-${order.id}-reading`"
@@ -170,7 +171,7 @@ const formattedCostTotal = computed(() => costTotal.value.toLocaleString('es-AR'
             </fieldset>
 
             <p class="rounded-lg bg-info-subtle px-3 py-2 text-xs text-info-strong">
-              {{ isCorrective ? 'Al confirmar, se guardará el trabajo realizado, las lecturas y los costos sin afectar ningún plan preventivo.' : 'Al confirmar, se guardará el resultado de cada tarea, se actualizarán las lecturas, los costos informados y se recalculará el próximo mantenimiento.' }}
+              {{ isCorrective ? 'Al confirmar, la lectura es obligatoria y quedará registrada junto con el trabajo realizado y los costos.' : 'Al confirmar, se guardará el resultado de cada tarea, se actualizarán las lecturas, los costos informados y se recalculará el próximo mantenimiento.' }}
             </p>
 
             <div class="flex flex-wrap justify-end gap-2 border-t border-border-subtle pt-4">
