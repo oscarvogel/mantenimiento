@@ -504,7 +504,7 @@ final class EquipmentManagement extends BaseController
     private function retireAttachmentHandler(): RetireEquipmentAttachmentHandler { return service('retireEquipmentAttachment'); }
     private function uploadPrimaryPhotoHandler(): UploadPrimaryEquipmentPhotoHandler { return service('uploadPrimaryEquipmentPhoto'); }
     private function getPrimaryPhotoHandler(): GetPrimaryEquipmentPhotoHandler { return service('getPrimaryEquipmentPhoto'); }
-    private function downloadPrimaryPhotoHandler(): DownloadPrimaryEquipmentPhotoHandler { return service('downloadPrimaryPhoto'); }
+    private function downloadPrimaryPhotoHandler(): DownloadPrimaryEquipmentPhotoHandler { return service('downloadPrimaryEquipmentPhoto'); }
     private function retirePrimaryPhotoHandler(): RetirePrimaryEquipmentPhotoHandler { return service('retirePrimaryEquipmentPhoto'); }
 
     private function success(int $equipmentId, string $message): RedirectResponse
