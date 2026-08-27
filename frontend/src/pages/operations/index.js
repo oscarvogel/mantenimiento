@@ -35,7 +35,7 @@ export const operationPageComponents = Object.freeze({
   'imports-index': ImportsIndexPage,
   'imports-show': ImportsShowPage,
   'preventive-library': PreventiveLibraryPage,
-  'quick-readings': RegisterReadingPage,
+  'quick-readings': QuickReadingsPage,
   'work-order-document-import': WorkOrderDocumentImportPage,
   'work-orders-index': WorkOrdersIndexPage,
 })
