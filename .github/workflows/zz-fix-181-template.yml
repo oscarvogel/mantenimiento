@@ -10,23 +10,24 @@ permissions:
 
 jobs:
   patch:
-    if: github.actor != 'github-actions[bot]'
+    if: ${{ github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: feat/issues-180-181-maintenance-history
       - name: Patch Vue template
-        shell: python
+        shell: bash
         run: |
+          python - <<'PY'
           from pathlib import Path
           path = Path('frontend/src/pages/operations/EquipmentDetailPage.vue')
           text = path.read_text()
           old = '''        <p v-if="data.workOrderHistory === null" class="text-sm text-ink-muted">No tenés permiso para consultar órdenes de trabajo.</p>
-        <template v-else>
+          <template v-else>
 '''
           new = '''        <p v-if="!data.workOrderHistory" class="text-sm text-ink-muted">No tenés permiso para consultar órdenes de trabajo.</p>
-        <div v-else>
+          <div v-else>
 '''
           if old not in text:
               raise SystemExit('No se encontró apertura esperada')
@@ -34,12 +35,13 @@ jobs:
           old = '''          <template #footer><PaginationBar :pagination="data.workOrderHistory.pagination" /></template>
         </template>
       </PanelCard>'''
-          new = '''        </div>
+          new = '''          </div>
         <template v-if="data.workOrderHistory" #footer><PaginationBar :pagination="data.workOrderHistory.pagination" /></template>
       </PanelCard>'''
           if old not in text:
               raise SystemExit('No se encontró cierre esperado')
           path.write_text(text.replace(old, new, 1))
+          PY
       - name: Commit patch and remove helper workflow
         run: |
           git config user.name "github-actions[bot]"
