@@ -1,5 +1,6 @@
 import { createApp } from 'vue'
 import App from './App.vue'
+import ManagerialApp from './ManagerialApp.vue'
 import PageHost from './PageHost.vue'
 import { normalizeAppShellPayload, normalizeDashboardPayload } from './adapters/dashboardPayload.js'
 import { developmentDashboard } from './data/developmentDashboard.js'
@@ -67,9 +68,10 @@ export function mountMaintenanceDashboard(element, payload) {
     }
   }
 
-  return createApp(App, {
-    dashboard: normalizeDashboardPayload(payload),
-  }).mount(element)
+  const dashboard = normalizeDashboardPayload(payload)
+  const dashboardComponent = dashboard.view === 'managerial' ? ManagerialApp : App
+
+  return createApp(dashboardComponent, { dashboard }).mount(element)
 }
 
 const root = document.getElementById('maintenance-app')
