@@ -380,7 +380,7 @@ final class EquipmentManagement extends BaseController
             return $base . '?' . http_build_query($params) . '#equipment-panel-historial';
         };
 
-        $items = array_map(static function (array $row): array {
+        $items = array_map(static function (array $row) use ($equipmentId): array {
             $origin = (string) $row['origen'];
             $tasks = array_map(static function (array $task): string {
                 $description = trim((string) ($task['descripcion_solicitada'] ?? ''));
@@ -401,6 +401,23 @@ final class EquipmentManagement extends BaseController
             $hours = $row['horas_salida'] ?? $row['horas_ingreso'];
             $orderId = (int) $row['id'];
             $number = (string) $row['numero'];
+            $evidence = array_map(static function (array $attachment) use ($equipmentId): array {
+                $attachmentId = (int) $attachment['id'];
+                $url = base_url('mantenimiento/equipos/' . $equipmentId . '/adjuntos/' . $attachmentId . '/descargar');
+                $mimeType = (string) ($attachment['mime_type'] ?? 'application/octet-stream');
+
+                return [
+                    'id' => $attachmentId,
+                    'originalName' => (string) ($attachment['nombre_original'] ?? 'Evidencia'),
+                    'mimeType' => $mimeType,
+                    'sizeKb' => round(((int) ($attachment['tamanio'] ?? 0)) / 1024, 1),
+                    'description' => (string) ($attachment['descripcion'] ?? ''),
+                    'createdAt' => substr((string) ($attachment['created_at'] ?? ''), 0, 16),
+                    'isImage' => str_starts_with($mimeType, 'image/'),
+                    'downloadUrl' => $url,
+                    'previewUrl' => $url,
+                ];
+            }, $row['evidence'] ?? []);
 
             return [
                 'id' => $orderId,
@@ -413,6 +430,8 @@ final class EquipmentManagement extends BaseController
                 'work' => $work,
                 'kilometers' => $kilometers === null ? null : (int) $kilometers,
                 'hours' => $hours === null ? null : (string) $hours,
+                'evidenceCount' => count($evidence),
+                'evidence' => $evidence,
                 'viewUrl' => base_url('mantenimiento/ordenes') . '?q=' . rawurlencode($number),
                 'printUrl' => base_url('mantenimiento/ordenes/' . $orderId . '/imprimir'),
             ];
@@ -485,7 +504,7 @@ final class EquipmentManagement extends BaseController
     private function retireAttachmentHandler(): RetireEquipmentAttachmentHandler { return service('retireEquipmentAttachment'); }
     private function uploadPrimaryPhotoHandler(): UploadPrimaryEquipmentPhotoHandler { return service('uploadPrimaryEquipmentPhoto'); }
     private function getPrimaryPhotoHandler(): GetPrimaryEquipmentPhotoHandler { return service('getPrimaryEquipmentPhoto'); }
-    private function downloadPrimaryPhotoHandler(): DownloadPrimaryEquipmentPhotoHandler { return service('downloadPrimaryEquipmentPhoto'); }
+    private function downloadPrimaryPhotoHandler(): DownloadPrimaryEquipmentPhotoHandler { return service('downloadPrimaryPhoto'); }
     private function retirePrimaryPhotoHandler(): RetirePrimaryEquipmentPhotoHandler { return service('retirePrimaryEquipmentPhoto'); }
 
     private function success(int $equipmentId, string $message): RedirectResponse
