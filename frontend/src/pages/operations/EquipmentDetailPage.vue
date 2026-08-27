@@ -14,10 +14,10 @@ import { dangerButton, fieldClass, formatHours, formatKilometers, formatReadingO
 const props = defineProps({ data: { type: Object, required: true } })
 const data = computed(() => {
   const readings = props.data.readings
-  if (!readings) return props.data
+  const workOrderHistory = props.data.workOrderHistory
   return {
     ...props.data,
-    readings: {
+    readings: readings === null ? null : readings === undefined ? undefined : {
       ...readings,
       items: readings.items.map((reading) => ({
         ...reading,
@@ -25,6 +25,16 @@ const data = computed(() => {
         hoursLabel: reading.hours === null ? '—' : formatHours(reading.hours),
         origin: formatReadingOrigin(reading.origin),
         branchId: reading.branchName || 'actual',
+      })),
+    },
+    workOrderHistory: workOrderHistory === null ? null : workOrderHistory === undefined ? undefined : {
+      ...workOrderHistory,
+      items: workOrderHistory.items.map((order) => ({
+        ...order,
+        readingLabel: [
+          order.kilometers === null ? null : formatKilometers(order.kilometers),
+          order.hours === null ? null : formatHours(order.hours),
+        ].filter(Boolean).join(' · ') || 'Sin lectura histórica',
       })),
     },
   }
@@ -37,8 +47,10 @@ const tabs = [
   { id: 'archivos', label: 'Archivos' },
   { id: 'historial', label: 'Historial' },
 ]
-const activeTab = ref('resumen')
+const initialQuery = new URLSearchParams(window.location.search)
+const activeTab = ref(initialQuery.get('history_active') === '1' ? 'historial' : 'resumen')
 const correctiveOrderUrl = computed(() => `${props.data.routes.maintenance}?ot_correctiva=1&equipo_id=${props.data.equipment.id}`)
+const historyResetUrl = computed(() => `${window.location.pathname}?history_active=1#equipment-panel-historial`)
 </script>
 
 <template>
@@ -157,11 +169,38 @@ const correctiveOrderUrl = computed(() => `${props.data.routes.maintenance}?ot_c
     </div>
 
     <div id="equipment-panel-historial" v-show="activeTab === 'historial'" role="tabpanel" aria-labelledby="equipment-tab-historial">
-    <PanelCard title="Historial de traslados" :count="data.transfers.total">
-      <EmptyState v-if="data.transfers.items.length === 0" title="Este equipo todavía no fue trasladado" />
-      <div v-else class="overflow-x-auto"><table class="w-full min-w-[48rem] text-left text-sm"><thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-4 py-3">Fecha</th><th class="px-4 py-3">Origen</th><th class="px-4 py-3">Destino</th><th class="px-4 py-3">Motivo</th><th class="px-4 py-3">Registró</th></tr></thead><tbody class="divide-y divide-border-subtle"><tr v-for="movement in data.transfers.items" :key="movement.id"><td class="px-4 py-4">{{ movement.date }}</td><td class="px-4 py-4">{{ movement.originCode }} · {{ movement.originName }}</td><td class="px-4 py-4">{{ movement.destinationCode }} · {{ movement.destinationName }}</td><td class="px-4 py-4 text-ink-muted">{{ movement.reason }}</td><td class="px-4 py-4">{{ movement.userName }}</td></tr></tbody></table></div>
-      <template #footer><PaginationBar :pagination="data.transfers.pagination" /></template>
-    </PanelCard>
+      <PanelCard title="Historial de mantenimiento / Órdenes de trabajo" :count="data.workOrderHistory?.total ?? null">
+        <p v-if="data.workOrderHistory === null" class="text-sm text-ink-muted">No tenés permiso para consultar órdenes de trabajo.</p>
+        <template v-else>
+          <form method="get" class="mb-5 grid gap-3 border-b border-border-subtle pb-5 md:grid-cols-2 xl:grid-cols-[minmax(16rem,1.6fr)_minmax(10rem,0.7fr)_minmax(9rem,0.7fr)_minmax(9rem,0.7fr)_auto] xl:items-end">
+            <input type="hidden" name="history_active" value="1" />
+            <input type="hidden" name="history_per_page" :value="data.workOrderHistory.pagination.perPage" />
+            <FormField label="Buscar tarea o trabajo" for-id="history-search" hint="Ej.: bomba de agua, correa, aceite"><input id="history-search" name="history_q" :value="data.workOrderHistory.filters.q" placeholder="Buscar en tareas y trabajos realizados" :class="fieldClass" /></FormField>
+            <FormField label="Tipo de OT" for-id="history-type"><select id="history-type" name="history_type" :value="data.workOrderHistory.filters.type" :class="fieldClass"><option value="">Todas</option><option value="CORRECTIVO">Correctivas</option><option value="PREVENTIVO">Preventivas</option></select></FormField>
+            <FormField label="Desde" for-id="history-from"><input id="history-from" type="date" name="history_from" :value="data.workOrderHistory.filters.from" :class="fieldClass" /></FormField>
+            <FormField label="Hasta" for-id="history-to"><input id="history-to" type="date" name="history_to" :value="data.workOrderHistory.filters.to" :class="fieldClass" /></FormField>
+            <div class="flex flex-wrap gap-2"><button type="submit" :class="primaryButton">Buscar</button><a :href="historyResetUrl" :class="secondaryButton">Limpiar</a></div>
+          </form>
+
+          <EmptyState v-if="data.workOrderHistory.items.length === 0" title="No hay órdenes para los filtros indicados" description="Las OT correctivas y preventivas del equipo aparecerán en este historial." />
+          <div v-else class="overflow-x-auto">
+            <table class="ui-table-hover w-full min-w-[76rem] text-left text-sm">
+              <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-4 py-3">OT / Fecha</th><th class="px-4 py-3">Tipo</th><th class="px-4 py-3">Tarea / trabajo realizado</th><th class="px-4 py-3">Km / horas</th><th class="px-4 py-3">Estado</th><th class="px-4 py-3">Acciones</th></tr></thead>
+              <tbody class="divide-y divide-border-subtle">
+                <tr v-for="order in data.workOrderHistory.items" :key="order.id">
+                  <td class="px-4 py-4"><strong class="text-ink">{{ order.number }}</strong><br><span class="text-xs text-ink-muted">{{ order.date }}</span></td>
+                  <td class="px-4 py-4"><span class="font-semibold text-ink">{{ order.typeLabel }}</span><br><span class="text-xs text-ink-muted">{{ order.serviceName }}</span></td>
+                  <td class="max-w-xl px-4 py-4"><p class="font-medium text-ink">{{ order.work }}</p></td>
+                  <td class="whitespace-nowrap px-4 py-4 font-semibold text-ink">{{ order.readingLabel }}</td>
+                  <td class="px-4 py-4"><StatusBadge :status="order.status" /></td>
+                  <td class="px-4 py-4"><div class="flex flex-wrap gap-2"><a :href="order.viewUrl" :class="secondaryButton">Ver OT</a><a :href="order.printUrl" target="_blank" rel="noopener" :class="secondaryButton">Imprimir</a></div></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <template #footer><PaginationBar :pagination="data.workOrderHistory.pagination" /></template>
+        </template>
+      </PanelCard>
     </div>
   </div>
 </template>
