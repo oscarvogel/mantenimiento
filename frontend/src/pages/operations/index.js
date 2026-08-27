@@ -1,5 +1,6 @@
 import AssetsIndexPage from './AssetsIndexPage.vue'
 import EquipmentDetailPage from './EquipmentDetailPage.vue'
+import EquipmentDetailHistoryEvidencePage from './EquipmentDetailHistoryEvidencePage.vue'
 import ImportsIndexPage from './ImportsIndexPage.vue'
 import ImportsShowPage from './ImportsShowPage.vue'
 import MaintenanceOverviewPage from './MaintenanceOverviewPage.vue'
@@ -14,6 +15,7 @@ import WorkOrdersIndexPage from './WorkOrdersIndexPage.vue'
 export {
   AssetsIndexPage,
   EquipmentDetailPage,
+  EquipmentDetailHistoryEvidencePage,
   ImportsIndexPage,
   ImportsShowPage,
   MaintenanceOverviewPage,
@@ -30,7 +32,7 @@ export const operationPageComponents = Object.freeze({
   'maintenance-overview': MaintenanceOverviewPage,
   'maintenance-services': MaintenanceServicesPage,
   'preventive-plans': PreventivePlansPage,
-  'equipment-detail': EquipmentDetailPage,
+  'equipment-detail': EquipmentDetailHistoryEvidencePage,
   'assets-index': AssetsIndexPage,
   'imports-index': ImportsIndexPage,
   'imports-show': ImportsShowPage,
