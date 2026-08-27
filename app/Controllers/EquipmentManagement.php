@@ -37,6 +37,7 @@ use App\Application\Measurement\CorrectReadingHandler;
 use App\Application\Measurement\ListReadingHistoryHandler;
 use App\Application\Measurement\ListReadingHistoryQuery;
 use App\Infrastructure\Identity\SessionActorContext;
+use App\Infrastructure\WorkOrders\CodeIgniterEquipmentWorkOrderHistory;
 use App\Presentation\PageSize;
 use CodeIgniter\HTTP\RedirectResponse;
 use CodeIgniter\HTTP\ResponseInterface;
@@ -54,10 +55,19 @@ final class EquipmentManagement extends BaseController
             $transferPage = max(1, (int) $this->request->getGet('transfer_page'));
             $attachmentPage = max(1, (int) $this->request->getGet('attachment_page'));
             $relationPage = max(1, (int) $this->request->getGet('relation_page'));
+            $historyPage = max(1, (int) $this->request->getGet('history_page'));
             $readingPerPage = PageSize::normalize($this->request->getGet('reading_per_page'));
             $transferPerPage = PageSize::normalize($this->request->getGet('transfer_per_page'));
             $attachmentPerPage = PageSize::normalize($this->request->getGet('attachment_per_page'));
             $relationPerPage = PageSize::normalize($this->request->getGet('relation_per_page'));
+            $historyPerPage = PageSize::normalize($this->request->getGet('history_per_page'));
+            $historyFilters = [
+                'q' => mb_substr(trim((string) $this->request->getGet('history_q')), 0, 150),
+                'type' => $this->historyType((string) $this->request->getGet('history_type')),
+                'from' => $this->historyDate((string) $this->request->getGet('history_from')),
+                'to' => $this->historyDate((string) $this->request->getGet('history_to')),
+            ];
+
             $details = $this->details()->execute($actor, $equipmentId, $transferPage, $transferPerPage, $relationPage, $relationPerPage);
             $readings = $actor->hasPermission('lecturas.ver')
                 ? $this->history()->execute($actor, new ListReadingHistoryQuery($equipmentId, $page, $readingPerPage))
@@ -72,29 +82,38 @@ final class EquipmentManagement extends BaseController
                 ? $this->equipmentList()->execute($actor, new EquipmentListQuery(status: 'ACTIVO', perPage: 100))['items']
                 : [];
 
+            $payload = service('operationsPayload')->equipmentDetails(
+                $details,
+                $readings,
+                $attachments,
+                $catalogs,
+                $relatedCandidates,
+                [
+                    'edit' => $actor->hasPermission('equipos.editar'),
+                    'correctReadings' => $actor->hasPermission('lecturas.corregir'),
+                ],
+                [
+                    'readings' => $readingPerPage,
+                    'transfers' => $transferPerPage,
+                    'attachments' => $attachmentPerPage,
+                    'relations' => $relationPerPage,
+                ],
+                $primaryPhoto,
+            );
+            $payload['workOrderHistory'] = $this->workOrderHistory(
+                $actor,
+                $equipmentId,
+                $historyFilters,
+                $historyPage,
+                $historyPerPage,
+            );
+
             return $this->renderApp(
                 $actor,
                 'equipment',
                 'equipment-detail',
                 'Ficha del equipo',
-                service('operationsPayload')->equipmentDetails(
-                    $details,
-                    $readings,
-                    $attachments,
-                    $catalogs,
-                    $relatedCandidates,
-                    [
-                    'edit' => $actor->hasPermission('equipos.editar'),
-                    'correctReadings' => $actor->hasPermission('lecturas.corregir'),
-                    ],
-                    [
-                        'readings' => $readingPerPage,
-                        'transfers' => $transferPerPage,
-                        'attachments' => $attachmentPerPage,
-                        'relations' => $relationPerPage,
-                    ],
-                    $primaryPhoto,
-                ),
+                $payload,
             );
         } catch (Throwable $exception) {
             return $this->failure($exception, '/mantenimiento');
@@ -330,6 +349,114 @@ final class EquipmentManagement extends BaseController
         } catch (Throwable $exception) {
             return $this->failure($exception, $this->equipmentUrl($equipmentId));
         }
+    }
+
+    /**
+     * @param array{q:string,type:string,from:string,to:string} $filters
+     * @return array<string,mixed>|null
+     */
+    private function workOrderHistory(ActorContext $actor, int $equipmentId, array $filters, int $page, int $perPage): ?array
+    {
+        if (! $actor->hasPermission('ordenes.ver') && ! $actor->hasPermission('ordenes.mi_trabajo')) {
+            return null;
+        }
+
+        $result = (new CodeIgniterEquipmentWorkOrderHistory(db_connect()))
+            ->search($actor, $equipmentId, $filters, $page, $perPage);
+        $base = base_url('mantenimiento/equipos/' . $equipmentId);
+        $query = array_filter([
+            'history_active' => '1',
+            'history_q' => $filters['q'],
+            'history_type' => $filters['type'],
+            'history_from' => $filters['from'],
+            'history_to' => $filters['to'],
+            'history_per_page' => $result['perPage'],
+        ], static fn (mixed $value): bool => $value !== '');
+        $pageUrl = static function (int $targetPage, int $targetPerPage) use ($base, $query): string {
+            $params = $query;
+            $params['history_page'] = $targetPage;
+            $params['history_per_page'] = $targetPerPage;
+
+            return $base . '?' . http_build_query($params) . '#equipment-panel-historial';
+        };
+
+        $items = array_map(static function (array $row): array {
+            $origin = (string) $row['origen'];
+            $tasks = array_map(static function (array $task): string {
+                $description = trim((string) ($task['descripcion_solicitada'] ?? ''));
+                $done = trim((string) ($task['trabajo_realizado'] ?? ''));
+                if ($description !== '' && $done !== '' && $description !== $done) {
+                    return $description . ': ' . $done;
+                }
+                return $done !== '' ? $done : $description;
+            }, $row['tasks'] ?? []);
+            $tasks = array_values(array_filter($tasks, static fn (string $value): bool => $value !== ''));
+            $headerWork = trim((string) ($row['trabajo_realizado'] ?? ''));
+            $diagnosis = trim((string) ($row['diagnostico'] ?? ''));
+            $work = $origin === 'CORRECTIVO'
+                ? ($headerWork !== '' ? $headerWork : ($diagnosis !== '' ? $diagnosis : 'Sin detalle informado'))
+                : ($tasks !== [] ? implode(' · ', $tasks) : (string) $row['servicio_nombre']);
+            $date = (string) ($row['fecha_finalizacion'] ?: $row['fecha_apertura']);
+            $kilometers = $row['km_salida'] ?? $row['km_ingreso'];
+            $hours = $row['horas_salida'] ?? $row['horas_ingreso'];
+            $orderId = (int) $row['id'];
+            $number = (string) $row['numero'];
+
+            return [
+                'id' => $orderId,
+                'number' => $number,
+                'date' => substr($date, 0, 10),
+                'type' => $origin === 'CORRECTIVO' ? 'CORRECTIVA' : 'PREVENTIVA',
+                'typeLabel' => $origin === 'CORRECTIVO' ? 'Correctiva' : 'Preventiva',
+                'status' => (string) $row['estado'],
+                'serviceName' => (string) $row['servicio_nombre'],
+                'work' => $work,
+                'kilometers' => $kilometers === null ? null : (int) $kilometers,
+                'hours' => $hours === null ? null : (string) $hours,
+                'viewUrl' => base_url('mantenimiento/ordenes') . '?q=' . rawurlencode($number),
+                'printUrl' => base_url('mantenimiento/ordenes/' . $orderId . '/imprimir'),
+            ];
+        }, $result['items']);
+
+        return [
+            'total' => $result['total'],
+            'filters' => $filters,
+            'items' => $items,
+            'pagination' => [
+                'page' => $result['page'],
+                'totalPages' => $result['totalPages'],
+                'total' => $result['total'],
+                'perPage' => $result['perPage'],
+                'perPageOptions' => [5, 10, 25],
+                'pageParam' => 'history_page',
+                'perPageParam' => 'history_per_page',
+                'previousUrl' => $result['page'] > 1 ? $pageUrl($result['page'] - 1, $result['perPage']) : null,
+                'nextUrl' => $result['page'] < $result['totalPages'] ? $pageUrl($result['page'] + 1, $result['perPage']) : null,
+                'baseUrl' => $base,
+                'query' => $query,
+            ],
+        ];
+    }
+
+    private function historyType(string $value): string
+    {
+        $value = strtoupper(trim($value));
+        return in_array($value, ['CORRECTIVO', 'PREVENTIVO'], true) ? $value : '';
+    }
+
+    private function historyDate(string $value): string
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return '';
+        }
+        $date = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+        $errors = DateTimeImmutable::getLastErrors();
+        if ($date === false || ($errors !== false && ($errors['warning_count'] > 0 || $errors['error_count'] > 0))) {
+            throw new DomainException('El rango de fechas del historial no es válido.');
+        }
+
+        return $date->format('Y-m-d');
     }
 
     private function actor(): ActorContext
