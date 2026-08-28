@@ -15,6 +15,8 @@ use DomainException;
 
 final class GetMaintenanceDashboard
 {
+    private const STALE_READING_DAYS = 7;
+
     public function __construct(
         private readonly DashboardOverview $overview,
         private readonly DashboardDuePlans $duePlans,
@@ -32,6 +34,9 @@ final class GetMaintenanceDashboard
         $overview = $this->overview->fetch($actor);
         $equipment = $actor->hasPermission('equipos.ver') ? $overview['equipments'] : [];
         $orders = $actor->hasPermission('ordenes.ver') ? $overview['orders'] : [];
+        $readings = $actor->hasPermission('lecturas.ver') || $actor->hasPermission('lecturas.cargar')
+            ? ($overview['readings'] ?? [])
+            : [];
         $evaluations = $actor->hasPermission('planes.ver')
             ? $this->duePlans->fetch($actor, $actor->companyId())
             : [];
@@ -84,6 +89,16 @@ final class GetMaintenanceDashboard
                 && ! isset($equipmentIdsWithPlans[(int) $item['id']]),
         ));
         $openOrders = count(array_filter($orders, static fn (array $item): bool => ! in_array($item['estado'], ['FINALIZADA', 'CANCELADA'], true)));
+        $openCorrectiveOrders = count(array_filter($orders, static fn (array $item): bool => ($item['origen'] ?? '') === 'CORRECTIVO'
+            && ! in_array($item['estado'], ['FINALIZADA', 'CANCELADA'], true)));
+
+        $readingControl = $this->readingControl($equipment, $readings, $branchNames);
+        $preventiveTotal = $statusCounts[EstadoPlan::AL_DIA->value]
+            + $statusCounts[EstadoPlan::PROXIMO->value]
+            + $statusCounts[EstadoPlan::VENCIDO->value];
+        $preventiveCompliance = $preventiveTotal > 0
+            ? (int) round(($statusCounts[EstadoPlan::AL_DIA->value] / $preventiveTotal) * 100)
+            : null;
 
         return [
             'company' => $overview['company'],
@@ -97,9 +112,96 @@ final class GetMaintenanceDashboard
                 'maintenanceOverdue' => $statusCounts[EstadoPlan::VENCIDO->value],
                 'maintenanceMissingData' => $statusCounts[EstadoPlan::SIN_DATOS->value],
                 'maintenanceScheduled' => $statusCounts[EstadoPlan::AL_DIA->value],
+                'preventiveCompliance' => $preventiveCompliance,
                 'openOrders' => $openOrders,
+                'openCorrectiveOrders' => $openCorrectiveOrders,
+                'equipmentWithoutReading' => $readingControl['withoutReading'],
+                'equipmentWithStaleReading' => $readingControl['staleReading'],
+                'staleReadingDays' => self::STALE_READING_DAYS,
             ],
+            'readingAttention' => $readingControl['attention'],
             'upcomingMaintenance' => array_slice($maintenance, 0, 8),
+        ];
+    }
+
+    /**
+     * @param list<array<string,mixed>> $equipment
+     * @param list<array<string,mixed>> $readings
+     * @param array<int,string> $branchNames
+     * @return array{withoutReading:int,staleReading:int,attention:list<array<string,mixed>>}
+     */
+    private function readingControl(array $equipment, array $readings, array $branchNames): array
+    {
+        $latestByEquipment = [];
+        foreach ($readings as $reading) {
+            $equipmentId = (int) ($reading['equipo_id'] ?? 0);
+            if ($equipmentId > 0 && ! isset($latestByEquipment[$equipmentId])) {
+                $latestByEquipment[$equipmentId] = $reading;
+            }
+        }
+
+        $today = $this->clock->today();
+        $withoutReading = 0;
+        $staleReading = 0;
+        $attention = [];
+
+        foreach ($equipment as $item) {
+            if (($item['estado'] ?? '') !== 'ACTIVO') {
+                continue;
+            }
+            $equipmentId = (int) ($item['id'] ?? 0);
+            if ($equipmentId <= 0) {
+                continue;
+            }
+            $equipmentLabel = (string) ($item['codigo'] ?? $item['patente'] ?? ('Equipo #' . $equipmentId));
+            $branchId = (int) ($item['sucursal_id'] ?? 0);
+            $branchName = (string) ($item['sucursal_nombre'] ?? ($branchId > 0 ? ($branchNames[$branchId] ?? '') : ''));
+            $latest = $latestByEquipment[$equipmentId] ?? null;
+            if ($latest === null || empty($latest['fecha_lectura'])) {
+                $withoutReading++;
+                $attention[] = [
+                    'equipmentId' => $equipmentId,
+                    'equipment' => $equipmentLabel,
+                    'branchName' => $branchName,
+                    'status' => 'SIN_LECTURA',
+                    'statusLabel' => 'Sin lectura',
+                    'lastReadingDate' => null,
+                    'daysSinceReading' => null,
+                    'detail' => 'Nunca registró km/horas',
+                ];
+                continue;
+            }
+
+            $lastDate = new DateTimeImmutable((string) $latest['fecha_lectura']);
+            $days = max(0, (int) $lastDate->diff($today)->format('%r%a'));
+            if ($days <= self::STALE_READING_DAYS) {
+                continue;
+            }
+
+            $staleReading++;
+            $attention[] = [
+                'equipmentId' => $equipmentId,
+                'equipment' => $equipmentLabel,
+                'branchName' => $branchName,
+                'status' => 'DESACTUALIZADA',
+                'statusLabel' => 'Lectura antigua',
+                'lastReadingDate' => $lastDate->format('Y-m-d'),
+                'daysSinceReading' => $days,
+                'detail' => "Hace {$days} días que no registra km/horas",
+            ];
+        }
+
+        usort($attention, static function (array $left, array $right): int {
+            $leftDays = $left['daysSinceReading'] ?? PHP_INT_MAX;
+            $rightDays = $right['daysSinceReading'] ?? PHP_INT_MAX;
+
+            return $rightDays <=> $leftDays;
+        });
+
+        return [
+            'withoutReading' => $withoutReading,
+            'staleReading' => $staleReading,
+            'attention' => array_slice($attention, 0, 8),
         ];
     }
 

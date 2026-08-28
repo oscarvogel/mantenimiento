@@ -13,7 +13,7 @@ const props = defineProps({
     required: true,
   },
   value: {
-    type: Number,
+    type: [Number, String],
     required: true,
   },
   tone: {

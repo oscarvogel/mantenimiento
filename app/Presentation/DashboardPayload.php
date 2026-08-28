@@ -20,9 +20,19 @@ final class DashboardPayload
         $equipmentUrl = $canEquipment ? base_url('mantenimiento/equipos') : '#';
         $plansUrl = $canPlans ? base_url('mantenimiento/planes') : '#';
         $servicesUrl = $canPlans ? base_url('mantenimiento/servicios') : '#';
+        $managerial = in_array('Administrador', $actor->roles(), true);
 
         return [
+            'view' => $managerial ? 'managerial' : 'operational',
             'metrics' => $operations['metrics'] ?? [],
+            'readingAttention' => array_map(
+                static fn (array $item): array => $item + [
+                    'detailUrl' => $canEquipment && (int) ($item['equipmentId'] ?? 0) > 0
+                        ? base_url('mantenimiento/equipos/' . (int) $item['equipmentId'])
+                        : null,
+                ],
+                $operations['readingAttention'] ?? [],
+            ),
             'upcomingMaintenance' => array_map(
                 fn (array $item): array => $this->maintenanceItem($item, $canEquipment, $canPlans, $canOrders),
                 $operations['upcomingMaintenance'] ?? [],
