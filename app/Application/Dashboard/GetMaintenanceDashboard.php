@@ -149,14 +149,20 @@ final class GetMaintenanceDashboard
             if (($item['estado'] ?? '') !== 'ACTIVO') {
                 continue;
             }
-            $equipmentId = (int) $item['id'];
+            $equipmentId = (int) ($item['id'] ?? 0);
+            if ($equipmentId <= 0) {
+                continue;
+            }
+            $equipmentLabel = (string) ($item['codigo'] ?? $item['patente'] ?? ('Equipo #' . $equipmentId));
+            $branchId = (int) ($item['sucursal_id'] ?? 0);
+            $branchName = (string) ($item['sucursal_nombre'] ?? ($branchId > 0 ? ($branchNames[$branchId] ?? '') : ''));
             $latest = $latestByEquipment[$equipmentId] ?? null;
             if ($latest === null || empty($latest['fecha_lectura'])) {
                 $withoutReading++;
                 $attention[] = [
                     'equipmentId' => $equipmentId,
-                    'equipment' => (string) $item['codigo'],
-                    'branchName' => (string) ($item['sucursal_nombre'] ?? $branchNames[(int) $item['sucursal_id']] ?? ''),
+                    'equipment' => $equipmentLabel,
+                    'branchName' => $branchName,
                     'status' => 'SIN_LECTURA',
                     'statusLabel' => 'Sin lectura',
                     'lastReadingDate' => null,
@@ -175,8 +181,8 @@ final class GetMaintenanceDashboard
             $staleReading++;
             $attention[] = [
                 'equipmentId' => $equipmentId,
-                'equipment' => (string) $item['codigo'],
-                'branchName' => (string) ($item['sucursal_nombre'] ?? $branchNames[(int) $item['sucursal_id']] ?? ''),
+                'equipment' => $equipmentLabel,
+                'branchName' => $branchName,
                 'status' => 'DESACTUALIZADA',
                 'statusLabel' => 'Lectura antigua',
                 'lastReadingDate' => $lastDate->format('Y-m-d'),
