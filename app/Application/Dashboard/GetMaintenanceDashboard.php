@@ -98,7 +98,7 @@ final class GetMaintenanceDashboard
             + $statusCounts[EstadoPlan::VENCIDO->value];
         $preventiveCompliance = $preventiveTotal > 0
             ? (int) round(($statusCounts[EstadoPlan::AL_DIA->value] / $preventiveTotal) * 100)
-            : 100;
+            : null;
 
         return [
             'company' => $overview['company'],

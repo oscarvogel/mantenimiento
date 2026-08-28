@@ -60,6 +60,12 @@ describe('normalizeDashboardPayload', () => {
     expect(dashboard.links.orders).toBe('#')
   })
 
+  it('preserves missing preventive compliance data instead of converting it to zero', () => {
+    const dashboard = normalizeDashboardPayload({ metrics: { preventiveCompliance: null } })
+
+    expect(dashboard.metrics.preventiveCompliance).toBe(null)
+  })
+
   it('contempla el modo global y la ausencia de sucursales', () => {
     const globalDashboard = normalizeDashboardPayload({
       mode: 'global',

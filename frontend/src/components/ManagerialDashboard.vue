@@ -18,6 +18,11 @@ const props = defineProps({
 })
 
 const metrics = computed(() => props.dashboard.metrics || {})
+const preventiveComplianceLabel = computed(() => (
+  metrics.value.preventiveCompliance === null
+    ? 'Sin datos'
+    : `${metrics.value.preventiveCompliance}%`
+))
 const preventiveTotal = computed(() => (
   (metrics.value.maintenanceScheduled ?? 0)
   + (metrics.value.maintenanceDueSoon ?? 0)
@@ -115,7 +120,7 @@ const executiveAlerts = computed(() => [
 
     <section aria-label="Indicadores gerenciales" class="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
       <MetricCard label="Equipos activos" :value="metrics.equipmentActive ?? metrics.equipmentTotal" tone="primary" :href="dashboard.links.equipment" link-label="Ver flota" />
-      <MetricCard label="Cumplimiento" :value="`${metrics.preventiveCompliance ?? 100}%`" tone="primary" :href="dashboard.links.maintenance" link-label="Ver preventivos" />
+      <MetricCard label="Cumplimiento" :value="preventiveComplianceLabel" tone="primary" :href="dashboard.links.maintenance" link-label="Ver preventivos" />
       <MetricCard label="Preventivos vencidos" :value="metrics.maintenanceOverdue ?? 0" tone="overdue" :href="dashboard.links.maintenanceOverdue" link-label="Atender" />
       <MetricCard label="OT abiertas" :value="metrics.openOrders ?? 0" tone="orders" :href="dashboard.links.orders" link-label="Ver órdenes" />
       <MetricCard label="Sin lectura" :value="metrics.equipmentWithoutReading ?? 0" tone="due" :href="dashboard.links.equipment" link-label="Revisar equipos" />
@@ -131,7 +136,7 @@ const executiveAlerts = computed(() => [
               <p class="mt-1 text-sm text-ink-muted">Distribución actual de los servicios planificados.</p>
             </div>
             <div class="text-left sm:text-right">
-              <p class="text-3xl font-bold tracking-tight text-ink">{{ metrics.preventiveCompliance ?? 100 }}%</p>
+              <p class="text-3xl font-bold tracking-tight text-ink">{{ preventiveComplianceLabel }}</p>
               <p class="text-xs font-medium text-ink-muted">de cumplimiento</p>
             </div>
           </div>

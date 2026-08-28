@@ -48,6 +48,17 @@ final class GetMaintenanceDashboardTest extends TestCase
         self::assertSame([], $result['upcomingMaintenance']);
     }
 
+    public function testReportsMissingPreventiveComplianceDataWhenThereAreNoEvaluablePlans(): void
+    {
+        $result = (new GetMaintenanceDashboard(
+            new DashboardOverviewFake(),
+            new DashboardDuePlansFake([]),
+            new DashboardClockFake(),
+        ))->execute($this->actor(['equipos.ver', 'planes.ver']));
+
+        self::assertNull($result['metrics']['preventiveCompliance']);
+    }
+
     /** @param list<string> $permissions */
     private function actor(array $permissions): ActorContext
     {

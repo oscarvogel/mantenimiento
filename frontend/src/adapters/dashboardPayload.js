@@ -18,6 +18,13 @@ const asCount = (value) => {
   return Number.isFinite(count) && count >= 0 ? Math.trunc(count) : 0
 }
 
+const asPercentage = (value) => {
+  if (value === null || value === undefined || value === '') return null
+
+  const percentage = Number(value)
+  return Number.isFinite(percentage) && percentage >= 0 ? Math.min(100, Math.trunc(percentage)) : null
+}
+
 const initialsFor = (name) =>
   name
     .split(/\s+/)
@@ -183,7 +190,7 @@ export function normalizeDashboardPayload(payload) {
       maintenanceOverdue: asCount(metrics.maintenanceOverdue),
       maintenanceMissingData: asCount(metrics.maintenanceMissingData),
       maintenanceScheduled: asCount(metrics.maintenanceScheduled),
-      preventiveCompliance: Math.min(100, asCount(metrics.preventiveCompliance)),
+      preventiveCompliance: asPercentage(metrics.preventiveCompliance),
       openOrders: asCount(metrics.openOrders),
       openCorrectiveOrders: asCount(metrics.openCorrectiveOrders),
       equipmentWithoutReading: asCount(metrics.equipmentWithoutReading),
