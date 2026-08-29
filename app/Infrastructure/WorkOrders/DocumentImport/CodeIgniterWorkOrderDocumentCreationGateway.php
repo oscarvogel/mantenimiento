@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\WorkOrders\DocumentImport;
 
 use App\Application\WorkOrders\DocumentImport\Port\WorkOrderDocumentCreationGateway;
+use App\Domain\WorkOrders\HistoricalCostSnapshot;
 use CodeIgniter\Database\BaseConnection;
 use DomainException;
 
@@ -165,6 +166,8 @@ final class CodeIgniterWorkOrderDocumentCreationGateway implements WorkOrderDocu
 
     public function markConfirmed(int $companyId, int $importId, int $equipmentId, array $proposal): void
     {
+        $this->freezeHistoricalCosts($companyId, $importId, $proposal);
+
         $this->db->table('ot_document_imports')->where('id', $importId)->where('empresa_id', $companyId)->update([
             'equipo_id' => $equipmentId,
             'proposal_json' => json_encode($proposal, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
@@ -172,5 +175,42 @@ final class CodeIgniterWorkOrderDocumentCreationGateway implements WorkOrderDocu
             'confirmed_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
+    }
+
+    /** @param array<string,mixed> $proposal */
+    private function freezeHistoricalCosts(int $companyId, int $importId, array $proposal): void
+    {
+        $orders = $this->linkedOrders($companyId, $importId);
+        if ($orders === []) {
+            return;
+        }
+
+        $currency = strtoupper(trim((string) ($proposal['currency'] ?? 'ARS')));
+        $serviceDate = trim((string) ($proposal['serviceDate'] ?? ''));
+        $isSplit = count($orders) > 1;
+
+        foreach ($orders as $order) {
+            $amount = $isSplit
+                ? (($order['kind'] ?? '') === 'PREVENTIVA' ? ($proposal['preventiveAmount'] ?? null) : ($proposal['correctiveAmount'] ?? null))
+                : ($proposal['totalAmount'] ?? null);
+
+            if ($amount === null || trim((string) $amount) === '') {
+                continue;
+            }
+
+            $snapshot = HistoricalCostSnapshot::fromInput(
+                $currency,
+                (string) $amount,
+                $proposal['exchangeRate'] ?? null,
+                isset($proposal['exchangeRateDate']) ? (string) $proposal['exchangeRateDate'] : null,
+                isset($proposal['exchangeRateSource']) ? (string) $proposal['exchangeRateSource'] : null,
+                $serviceDate,
+            );
+
+            $this->db->table('ordenes_trabajo')
+                ->where('id', (int) $order['orderId'])
+                ->where('empresa_id', $companyId)
+                ->update($snapshot->toPersistence());
+        }
     }
 }
