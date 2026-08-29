@@ -35,11 +35,6 @@ final class UploadWorkOrderDocumentHandler
         if (! $actor->hasAllCompanyBranches() && ! in_array($command->branchId, $actor->branchIds(), true)) {
             throw new DomainException('No tenés acceso a la sucursal seleccionada.');
         }
-
-        $existing = $this->imports->findByIdempotencyKey($actor->companyId(), $command->idempotencyKey);
-        if ($existing !== null) {
-            return new UploadWorkOrderDocumentResult($existing, true);
-        }
         if (! is_file($command->temporaryPath)) {
             throw new DomainException('El documento temporal no está disponible.');
         }
@@ -64,9 +59,19 @@ final class UploadWorkOrderDocumentHandler
             throw new DomainException('No se pudo calcular la huella del documento.');
         }
 
+        // El contenido es la fuente de verdad para un duplicado exacto. Una clave de
+        // idempotencia puede quedar reutilizada por el cliente entre selecciones de archivo;
+        // nunca debe hacer que dos documentos con bytes distintos sean tratados como iguales.
         $duplicate = $this->imports->findBySha256($actor->companyId(), $sha256);
         if ($duplicate !== null) {
             return new UploadWorkOrderDocumentResult($duplicate, true);
+        }
+
+        $idempotencyKey = $command->idempotencyKey;
+        if ($this->imports->findByIdempotencyKey($actor->companyId(), $idempotencyKey) !== null) {
+            // El mismo contenido ya habría sido devuelto por SHA-256 arriba. Si llegamos
+            // acá, la clave pertenece a otro archivo y debe renovarse para no bloquearlo.
+            $idempotencyKey = bin2hex(random_bytes(24));
         }
 
         $stored = $this->storage->store($command->temporaryPath, $actor->companyId(), $extension);
@@ -81,7 +86,7 @@ final class UploadWorkOrderDocumentHandler
                 mimeType: $mime,
                 sizeBytes: (int) $size,
                 sha256: $sha256,
-                idempotencyKey: $command->idempotencyKey,
+                idempotencyKey: $idempotencyKey,
                 createdAt: new DateTimeImmutable(),
                 maxSizeBytes: $this->maximumSizeBytes,
             );
