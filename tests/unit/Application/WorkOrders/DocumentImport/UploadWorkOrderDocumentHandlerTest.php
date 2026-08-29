@@ -57,6 +57,54 @@ final class UploadWorkOrderDocumentHandlerTest extends TestCase
         self::assertCount(1, $imports->documents);
     }
 
+    public function testDifferentBytesWithDifferentKeysCreateDifferentImports(): void
+    {
+        $differentFile = $this->differentPngFixture();
+        try {
+            $storage = new InMemoryDocumentStorage();
+            $imports = new InMemoryDocumentImportRepository();
+            $handler = new UploadWorkOrderDocumentHandler($storage, $imports);
+            $actor = $this->actor(11);
+
+            $first = $handler->execute($actor, $this->command('first-upload', 'misma-foto.png'));
+            $second = $handler->execute($actor, $this->command('second-upload', 'misma-foto.png', $differentFile));
+
+            self::assertFalse($first->duplicateExact);
+            self::assertFalse($second->duplicateExact);
+            self::assertNotSame($first->importId, $second->importId);
+            self::assertNotSame($imports->documents[$first->importId]->sha256(), $imports->documents[$second->importId]->sha256());
+            self::assertSame(2, $storage->stores);
+            self::assertCount(2, $imports->documents);
+        } finally {
+            @unlink($differentFile);
+        }
+    }
+
+    public function testReusedIdempotencyKeyWithDifferentBytesDoesNotReturnPreviousImport(): void
+    {
+        $differentFile = $this->differentPngFixture();
+        try {
+            $storage = new InMemoryDocumentStorage();
+            $imports = new InMemoryDocumentImportRepository();
+            $handler = new UploadWorkOrderDocumentHandler($storage, $imports);
+            $actor = $this->actor(11);
+            $reusedKey = 'stale-browser-key';
+
+            $first = $handler->execute($actor, $this->command($reusedKey, 'orden.png'));
+            $second = $handler->execute($actor, $this->command($reusedKey, 'orden.png', $differentFile));
+
+            self::assertFalse($first->duplicateExact);
+            self::assertFalse($second->duplicateExact);
+            self::assertNotSame($first->importId, $second->importId);
+            self::assertNotSame($imports->documents[$first->importId]->sha256(), $imports->documents[$second->importId]->sha256());
+            self::assertNotSame($imports->documents[$first->importId]->idempotencyKey(), $imports->documents[$second->importId]->idempotencyKey());
+            self::assertSame(2, $storage->stores);
+            self::assertCount(2, $imports->documents);
+        } finally {
+            @unlink($differentFile);
+        }
+    }
+
     public function testSameSha256DoesNotCollideAcrossCompanies(): void
     {
         $storage = new InMemoryDocumentStorage();
@@ -78,9 +126,23 @@ final class UploadWorkOrderDocumentHandlerTest extends TestCase
         return new ActorContext(11, $companyId, false, true, ['Administrador'], ['ordenes.editar'], [7]);
     }
 
-    private function command(string $key, string $name = 'orden-taller.png'): UploadWorkOrderDocumentCommand
+    private function command(string $key, string $name = 'orden-taller.png', ?string $path = null): UploadWorkOrderDocumentCommand
     {
-        return new UploadWorkOrderDocumentCommand(7, $this->fixture, $name, $key);
+        return new UploadWorkOrderDocumentCommand(7, $path ?? $this->fixture, $name, $key);
+    }
+
+    private function differentPngFixture(): string
+    {
+        $temporaryPath = tempnam(sys_get_temp_dir(), 'ot-doc-');
+        if ($temporaryPath === false) {
+            self::fail('No se pudo crear el archivo temporal para el test.');
+        }
+        $contents = file_get_contents($this->fixture);
+        if ($contents === false) {
+            self::fail('No se pudo leer el fixture PNG.');
+        }
+        file_put_contents($temporaryPath, $contents . "\nissue-191-different-content");
+        return $temporaryPath;
     }
 }
 
