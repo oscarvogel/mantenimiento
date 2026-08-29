@@ -4,11 +4,14 @@ import { ArrowLeftIcon, ArrowPathIcon, ArrowUpTrayIcon, DocumentTextIcon, Exclam
 import CsrfInput from './components/CsrfInput.vue'
 import PageHeading from './components/PageHeading.vue'
 import { fieldClass, primaryButton, secondaryButton } from './helpers.js'
+import { calculateArs, fetchHistoricalBcraQuote, isForeignCurrency } from './exchangeRate.js'
 
 const props = defineProps({ data: { type: Object, required: true } })
 const proposal = reactive(JSON.parse(JSON.stringify(props.data.import?.proposal ?? {})))
 const contextLoading = ref(false)
 const contextError = ref('')
+const exchangeLoading = ref(false)
+const exchangeError = ref('')
 const pendingAction = ref(null)
 const submitting = ref(false)
 const confirmForm = ref(null)
@@ -21,6 +24,13 @@ const selectedEquipment = computed(() => (props.data.equipmentOptions ?? []).fin
 const selectedPlan = computed(() => (proposal.preventivePlans ?? []).find((item) => Number(item.id) === Number(proposal.selectedPlanId)) ?? null)
 const possibleDuplicates = computed(() => proposal.possibleDuplicates ?? [])
 const duplicateConfirmed = computed(() => possibleDuplicates.value.length === 0 || proposal.confirmPossibleDuplicate === true)
+const foreignCurrency = computed(() => isForeignCurrency(proposal.currency))
+const equivalentArs = computed(() => foreignCurrency.value ? calculateArs(proposal.totalAmount, proposal.exchangeRate) : parseMoney(proposal.totalAmount))
+const exchangeValid = computed(() => !foreignCurrency.value || (
+  Number(String(proposal.exchangeRate ?? '').replace(',', '.')) > 0
+  && /^\d{4}-\d{2}-\d{2}$/.test(String(proposal.exchangeRateDate ?? ''))
+  && String(proposal.exchangeRateSource ?? '').trim() !== ''
+))
 const readingRegression = computed(() => {
   if (!selectedEquipment.value || proposal.readingValue === null || proposal.readingValue === undefined || proposal.readingValue === '') return false
   const value = Number(String(proposal.readingValue).replace(',', '.'))
@@ -41,8 +51,8 @@ const partialPreventive = computed(() => Boolean(selectedPlan.value && selectedP
 const readingConfirmed = computed(() => !readingRegression.value || proposal.confirmReadingRollback === true)
 const correctiveReadingConfirmed = computed(() => historicalCorrectiveReading.value || readingConfirmed.value)
 const partialConfirmed = computed(() => !partialPreventive.value || proposal.confirmPartialPreventive === true)
-const canCorrective = computed(() => !isConfirmed.value && duplicateConfirmed.value && readingPermissionOk.value && correctiveReadingConfirmed.value && Number(proposal.selectedEquipmentId || 0) > 0 && correctiveWorks.value.length > 0)
-const canPreventive = computed(() => !isConfirmed.value && duplicateConfirmed.value && readingPermissionOk.value && readingConfirmed.value && partialConfirmed.value && props.data.can?.closePreventive && Number(proposal.selectedEquipmentId || 0) > 0 && Number(proposal.selectedPlanId || 0) > 0 && preventiveWorks.value.length > 0)
+const canCorrective = computed(() => !isConfirmed.value && exchangeValid.value && duplicateConfirmed.value && readingPermissionOk.value && correctiveReadingConfirmed.value && Number(proposal.selectedEquipmentId || 0) > 0 && correctiveWorks.value.length > 0)
+const canPreventive = computed(() => !isConfirmed.value && exchangeValid.value && duplicateConfirmed.value && readingPermissionOk.value && readingConfirmed.value && partialConfirmed.value && props.data.can?.closePreventive && Number(proposal.selectedEquipmentId || 0) > 0 && Number(proposal.selectedPlanId || 0) > 0 && preventiveWorks.value.length > 0)
 const canBoth = computed(() => canCorrective.value && canPreventive.value)
 const confidenceLabel = (value) => {
   const number = Number(value ?? 0)
@@ -51,7 +61,7 @@ const confidenceLabel = (value) => {
   return 'Revisar'
 }
 const formatReading = (value) => value === null || value === undefined || value === '' ? 'No detectada' : Number(value).toLocaleString('es-AR')
-const parseMoney = (value) => {
+function parseMoney(value) {
   if (value === null || value === undefined || value === '') return null
   const number = Number(String(value).replace(',', '.'))
   return Number.isFinite(number) && number >= 0 ? number : null
@@ -60,6 +70,24 @@ const formatMoney = (value) => {
   const number = parseMoney(value)
   if (number === null) return 'No detectado'
   return number.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+const refreshExchangeRate = async () => {
+  if (isConfirmed.value || !foreignCurrency.value || !proposal.serviceDate || exchangeLoading.value) return
+  exchangeLoading.value = true
+  exchangeError.value = ''
+  try {
+    const quote = await fetchHistoricalBcraQuote(proposal.currency, proposal.serviceDate)
+    proposal.exchangeRate = quote.rate.toFixed(6)
+    proposal.exchangeRateDate = quote.date
+    proposal.exchangeRateSource = 'BCRA'
+  } catch (error) {
+    exchangeError.value = error instanceof Error ? error.message : 'No se pudo obtener la cotización histórica del BCRA.'
+  } finally {
+    exchangeLoading.value = false
+  }
+}
+const markExchangeRateManual = () => {
+  if (!isConfirmed.value && foreignCurrency.value) proposal.exchangeRateSource = 'manual'
 }
 const confirmLabel = (action) => ({ corrective: 'Crear OT correctiva', preventive: 'Crear OT preventiva', both: 'Crear ambas OT' }[action])
 const confirmationTitle = computed(() => pendingAction.value ? confirmLabel(pendingAction.value) : '')
@@ -93,7 +121,7 @@ const closeConfirmation = () => {
   pendingAction.value = null
 }
 const confirmCreation = () => {
-  if (!pendingAction.value || submitting.value || !confirmForm.value || !allocationValid.value) return
+  if (!pendingAction.value || submitting.value || !confirmForm.value || !allocationValid.value || !exchangeValid.value) return
   submitting.value = true
   confirmForm.value.requestSubmit()
 }
@@ -121,6 +149,20 @@ watch(() => proposal.selectedEquipmentId, async (equipmentId, previous) => {
     contextLoading.value = false
   }
 })
+
+watch([() => proposal.currency, () => proposal.serviceDate], async ([currency, serviceDate], previous) => {
+  if (isConfirmed.value) return
+  if (!isForeignCurrency(currency)) {
+    proposal.exchangeRate = null
+    proposal.exchangeRateDate = null
+    proposal.exchangeRateSource = null
+    exchangeError.value = ''
+    return
+  }
+  const previousCurrency = previous?.[0]
+  const previousDate = previous?.[1]
+  if (serviceDate && (currency !== previousCurrency || serviceDate !== previousDate)) await refreshExchangeRate()
+}, { immediate: true })
 </script>
 
 <template>
@@ -160,6 +202,23 @@ watch(() => proposal.selectedEquipmentId, async (equipmentId, previous) => {
             <label class="rounded-xl bg-surface p-3 sm:col-span-2"><span class="text-xs font-bold uppercase text-ink-muted">Concepto / diagnóstico</span><input v-model="proposal.concept" :disabled="isConfirmed" :class="`${fieldClass} mt-2`" /></label>
             <label class="rounded-xl bg-surface p-3 sm:col-span-2 lg:col-span-1"><span class="text-xs font-bold uppercase text-ink-muted">Importe total</span><div class="mt-2 grid grid-cols-[6rem_1fr] gap-2"><input v-model="proposal.currency" maxlength="3" :disabled="isConfirmed" :class="fieldClass" placeholder="ARS" /><input v-model="proposal.totalAmount" inputmode="decimal" :disabled="isConfirmed" :class="fieldClass" placeholder="0,00" /></div><span class="mt-1 block text-xs text-ink-muted">Detectado: {{ analysis.totalAmount == null ? 'no detectado' : `${analysis.currency || 'ARS'} ${formatMoney(analysis.totalAmount)}` }} · confianza {{ confidenceLabel(analysis.confidence?.total_amount) }}</span></label>
           </div>
+
+          <div v-if="foreignCurrency && parseMoney(proposal.totalAmount) !== null" class="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-4">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div><p class="text-xs font-bold uppercase tracking-wide text-ink-muted">Conversión histórica</p><p class="mt-1 text-sm text-ink-muted">La cotización queda congelada al confirmar la OT y no se recalcula después.</p></div>
+              <button v-if="!isConfirmed" type="button" :disabled="exchangeLoading || !proposal.serviceDate" :class="secondaryButton" @click="refreshExchangeRate"><ArrowPathIcon class="mr-2 size-4" />{{ exchangeLoading ? 'Consultando…' : 'Actualizar cotización' }}</button>
+            </div>
+            <div class="mt-4 grid gap-3 sm:grid-cols-3">
+              <label><span class="mb-1 block text-xs font-bold uppercase text-ink-muted">Tipo de cambio</span><div class="flex items-center gap-2"><span class="text-sm font-semibold text-ink">1 {{ String(proposal.currency || '').toUpperCase() }} =</span><input v-model="proposal.exchangeRate" inputmode="decimal" :disabled="isConfirmed" :class="fieldClass" @input="markExchangeRateManual" /><span class="text-sm font-semibold text-ink">ARS</span></div></label>
+              <label><span class="mb-1 block text-xs font-bold uppercase text-ink-muted">Fecha cotización</span><input v-model="proposal.exchangeRateDate" type="date" :disabled="isConfirmed" :max="proposal.serviceDate" :class="fieldClass" @input="markExchangeRateManual" /></label>
+              <label><span class="mb-1 block text-xs font-bold uppercase text-ink-muted">Origen</span><input v-model="proposal.exchangeRateSource" :disabled="isConfirmed" :class="fieldClass" placeholder="BCRA / manual" /></label>
+            </div>
+            <div class="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-surface-raised px-4 py-3"><span class="text-sm font-semibold text-ink-muted">TOTAL EN ARS</span><strong class="text-xl text-ink">$ {{ formatMoney(equivalentArs) }}</strong></div>
+            <p v-if="exchangeError" class="mt-3 text-sm font-semibold text-warning">{{ exchangeError }} Podés ingresar manualmente la cotización contable utilizada por la empresa.</p>
+            <p v-else-if="!exchangeValid" class="mt-3 text-sm font-semibold text-warning">Completá tipo de cambio, fecha y origen antes de confirmar.</p>
+            <p v-else class="mt-2 text-xs text-ink-muted">Cotización: {{ proposal.exchangeRateSource }} · Fecha efectiva: {{ proposal.exchangeRateDate }}</p>
+          </div>
+
           <p v-if="contextError" class="mt-4 rounded-xl border border-danger/30 bg-danger/10 p-3 text-sm text-danger-strong">{{ contextError }}</p>
           <div v-if="readingRegression" class="mt-4 rounded-xl border border-warning/30 bg-warning/10 p-3 text-sm text-ink">
             <template v-if="historicalCorrectiveReading">
@@ -213,7 +272,8 @@ watch(() => proposal.selectedEquipmentId, async (equipmentId, previous) => {
         <p v-if="isConfirmed" class="mt-1 text-sm font-semibold text-success">Este documento ya fue confirmado. Las acciones de creación quedaron bloqueadas para evitar duplicados.</p>
         <p v-else class="mt-1 text-sm text-ink-muted">Nada se graba hasta que elijas una de estas acciones. La misma lectura se registra una sola vez aunque se creen ambas OT.</p>
         <p v-if="possibleDuplicates.length && !duplicateConfirmed && !isConfirmed" class="mt-2 text-sm font-semibold text-warning">Confirmá primero la revisión del posible duplicado.</p>
-        <form v-if="!isConfirmed" ref="confirmForm" method="post" :action="data.routes.confirm" class="mt-4 flex flex-wrap gap-2" @submit="submitting = true"><CsrfInput :csrf="data.csrf" /><input type="hidden" name="proposal_json" :value="JSON.stringify(proposal)" /><input type="hidden" name="action" :value="pendingAction || ''" /><button v-for="action in ['corrective','preventive','both']" :key="action" type="button" :disabled="contextLoading || submitting || (action === 'corrective' ? !canCorrective : action === 'preventive' ? !canPreventive : !canBoth)" :class="primaryButton" @click="openConfirmation(action)">{{ confirmLabel(action) }}</button></form>
+        <p v-if="foreignCurrency && !exchangeValid && !isConfirmed" class="mt-2 text-sm font-semibold text-warning">Completá la cotización histórica antes de crear la OT.</p>
+        <form v-if="!isConfirmed" ref="confirmForm" method="post" :action="data.routes.confirm" class="mt-4 flex flex-wrap gap-2" @submit="submitting = true"><CsrfInput :csrf="data.csrf" /><input type="hidden" name="proposal_json" :value="JSON.stringify(proposal)" /><input type="hidden" name="action" :value="pendingAction || ''" /><button v-for="action in ['corrective','preventive','both']" :key="action" type="button" :disabled="contextLoading || exchangeLoading || submitting || (action === 'corrective' ? !canCorrective : action === 'preventive' ? !canPreventive : !canBoth)" :class="primaryButton" @click="openConfirmation(action)">{{ confirmLabel(action) }}</button></form>
         <a :href="data.routes.newImport" :class="`${secondaryButton} mt-4`">Importar otro documento</a>
       </section>
     </div>
@@ -229,6 +289,7 @@ watch(() => proposal.selectedEquipmentId, async (equipmentId, previous) => {
           <div class="flex items-center justify-between gap-4 py-3"><dt class="text-ink-muted">Fecha del trabajo</dt><dd class="text-right font-semibold text-ink">{{ proposal.serviceDate || 'Sin fecha' }}</dd></div>
           <div v-if="proposal.readingValue !== null && proposal.readingValue !== undefined && proposal.readingValue !== ''" class="flex items-center justify-between gap-4 py-3"><dt class="text-ink-muted">{{ historicalCorrectiveReading && pendingAction === 'corrective' ? 'Lectura histórica de la OT' : 'Lectura a registrar' }}</dt><dd class="text-right font-semibold text-ink">{{ formatReading(proposal.readingValue) }} {{ proposal.readingType === 'horas' ? 'h' : 'km' }}</dd></div>
           <div v-if="parseMoney(proposal.totalAmount) !== null" class="flex items-center justify-between gap-4 py-3"><dt class="text-ink-muted">Importe del documento</dt><dd class="text-right font-semibold text-ink">{{ proposal.currency || 'ARS' }} {{ formatMoney(proposal.totalAmount) }}</dd></div>
+          <div v-if="foreignCurrency && equivalentArs !== null" class="flex items-center justify-between gap-4 py-3"><dt class="text-ink-muted">Equivalente histórico</dt><dd class="text-right font-semibold text-ink">ARS {{ formatMoney(equivalentArs) }}<span class="block text-xs font-normal text-ink-muted">1 {{ String(proposal.currency || '').toUpperCase() }} = {{ proposal.exchangeRate }} ARS · {{ proposal.exchangeRateSource }} · {{ proposal.exchangeRateDate }}</span></dd></div>
           <div v-if="pendingAction !== 'corrective'" class="flex items-center justify-between gap-4 py-3"><dt class="text-ink-muted">Plan preventivo</dt><dd class="text-right font-semibold text-ink">{{ selectedPlan?.servicio_nombre || `Plan #${proposal.selectedPlanId}` }}</dd></div>
           <div v-if="pendingAction !== 'preventive'" class="flex items-center justify-between gap-4 py-3"><dt class="text-ink-muted">Trabajos correctivos</dt><dd class="font-semibold text-ink">{{ correctiveWorks.length }}</dd></div>
           <div v-if="pendingAction !== 'corrective'" class="flex items-center justify-between gap-4 py-3"><dt class="text-ink-muted">Trabajos preventivos</dt><dd class="font-semibold text-ink">{{ preventiveWorks.length }}</dd></div>
@@ -248,7 +309,7 @@ watch(() => proposal.selectedEquipmentId, async (equipmentId, previous) => {
 
         <div class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <button type="button" :disabled="submitting" :class="secondaryButton" @click="closeConfirmation">Cancelar</button>
-          <button type="button" :disabled="submitting || !allocationValid" :class="primaryButton" @click="confirmCreation">{{ submitting ? 'Creando OT…' : 'Confirmar y crear' }}</button>
+          <button type="button" :disabled="submitting || !allocationValid || !exchangeValid" :class="primaryButton" @click="confirmCreation">{{ submitting ? 'Creando OT…' : 'Confirmar y crear' }}</button>
         </div>
       </section>
     </div>
