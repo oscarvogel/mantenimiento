@@ -14,12 +14,14 @@ defineProps({ data: { type: Object, required: true } })
 
 <template>
   <div>
-    <PageHeading eyebrow="Importaciones" title="Equipos, lecturas y biblioteca preventiva" description="Validá el archivo, revisá cada fila y confirmá la persistencia sólo cuando el resultado sea correcto." />
+    <PageHeading eyebrow="Importaciones" title="Equipos, unidades, lecturas y vencimientos" description="Validá el archivo, revisá cada fila y confirmá la persistencia sólo cuando el resultado sea correcto." />
 
     <PanelCard v-if="data.canUpload" title="Nueva importación" class="mb-6">
       <div class="mb-5 flex flex-wrap gap-2">
         <a :href="data.routes.templates.equipment" :class="secondaryButton"><ArrowDownTrayIcon class="mr-2 size-4" aria-hidden="true" />Plantilla de equipos</a>
+        <a :href="data.routes.templates.transportUnits" :class="secondaryButton"><ArrowDownTrayIcon class="mr-2 size-4" aria-hidden="true" />Plantilla de unidades de transporte</a>
         <a :href="data.routes.templates.readings" :class="secondaryButton"><ArrowDownTrayIcon class="mr-2 size-4" aria-hidden="true" />Plantilla de lecturas</a>
+        <a :href="data.routes.templates.expirations" :class="secondaryButton"><ArrowDownTrayIcon class="mr-2 size-4" aria-hidden="true" />Plantilla de vencimientos</a>
         <a :href="`${data.routes.upload}/plantilla/BIBLIOTECA_PREVENTIVA`" :class="secondaryButton"><ArrowDownTrayIcon class="mr-2 size-4" aria-hidden="true" />Plantilla general de camiones</a>
         <a :href="`${data.routes.upload}/biblioteca`" :class="secondaryButton"><WrenchScrewdriverIcon class="mr-2 size-4" aria-hidden="true" />Ver biblioteca preventiva</a>
       </div>
@@ -28,11 +30,13 @@ defineProps({ data: { type: Object, required: true } })
         <FormField label="Tipo" for-id="import-type">
           <select id="import-type" name="tipo" :class="fieldClass">
             <option value="EQUIPOS">Equipos</option>
+            <option value="UNIDADES_TRANSPORTE">Unidades de transporte TSA</option>
             <option value="LECTURAS">Lecturas</option>
+            <option value="VENCIMIENTOS">Vencimientos</option>
             <option value="BIBLIOTECA_PREVENTIVA">Biblioteca preventiva</option>
           </select>
         </FormField>
-        <FormField label="Archivo CSV o XLSX" for-id="import-file" :hint="`Máximo ${data.maxSizeMb} MB y 5.000 filas. La biblioteca preventiva requiere XLSX multihoja.`">
+        <FormField label="Archivo CSV o XLSX" for-id="import-file" :hint="`Máximo ${data.maxSizeMb} MB y 5.000 filas. Unidades TSA y vencimientos requieren XLSX; la biblioteca preventiva también es XLSX multihoja.`">
           <input id="import-file" type="file" name="archivo" accept=".csv,.xlsx" required :class="fieldClass" />
         </FormField>
         <button type="submit" :class="primaryButton"><ArrowUpTrayIcon class="mr-2 size-5" aria-hidden="true" />Validar archivo</button>

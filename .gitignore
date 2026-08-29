@@ -80,6 +80,10 @@ $RECYCLE.BIN/
 /private/
 /storage/adjuntos/
 
+# Planillas reales entregadas por clientes (se cargan desde la interfaz, no se versionan)
+/UNIDADES TRANSPORTE TSA - PAWLUK MARIELA (ARG-BR)-SOLO TRACTOR (1).xlsx
+/VENCIMIENTOS (1).xlsx
+
 # Builds locales de deploy (zips para subir por FTP)
 /dist/
 

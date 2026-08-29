@@ -93,6 +93,7 @@ const overdueFeedback = (row) => {
   if (!row.overduePlans) return ''
   return `${row.overduePlans} mantenimiento${row.overduePlans === 1 ? '' : 's'} quedó${row.overduePlans === 1 ? '' : 'aron'} vencido${row.overduePlans === 1 ? '' : 's'}.`
 }
+const equipmentFor = (equipmentId) => props.data.equipment.items.find(({ id }) => String(id) === String(equipmentId)) || null
 const primaryPlan = (equipment) => maintenance[equipment.id]?.primaryPlan || null
 const formatPlanPoint = (plan, prefix) => {
   if (!plan) return '—'

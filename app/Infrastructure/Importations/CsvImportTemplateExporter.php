@@ -16,6 +16,9 @@ final class CsvImportTemplateExporter implements ImportTemplateExporter
         if ($type === ImportType::BIBLIOTECA_PREVENTIVA) {
             return (new XlsxPreventiveLibraryTemplateExporter())->export($type);
         }
+        if (in_array($type, [ImportType::UNIDADES_TRANSPORTE, ImportType::VENCIMIENTOS], true)) {
+            return (new XlsxImportTemplateExporter())->export($type);
+        }
 
         $stream = fopen('php://temp', 'w+b');
         if ($stream === false) {

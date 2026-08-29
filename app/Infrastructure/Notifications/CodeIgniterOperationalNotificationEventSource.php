@@ -32,7 +32,51 @@ final class CodeIgniterOperationalNotificationEventSource implements Operational
 
     public function collect(): array
     {
-        return [...$this->preventiveEvents(), ...$this->staleReadingEvents(), ...$this->workOrderEvents()];
+        return [...$this->preventiveEvents(), ...$this->expirationEvents(), ...$this->staleReadingEvents(), ...$this->workOrderEvents()];
+    }
+
+    /** @return list<NotifiableEvent> */
+    private function expirationEvents(): array
+    {
+        // La migración puede aún no estar aplicada en una instalación legacy.
+        // En ese caso no se interrumpe el resto del ciclo de notificaciones.
+        if (! $this->db->tableExists('vencimientos')) {
+            return [];
+        }
+
+        $rows = $this->db->table('vencimientos v')
+            ->select('v.id, v.empresa_id, v.sucursal_id, v.equipo_id, v.fecha_vencimiento, t.nombre tipo_nombre, t.dias_aviso_previo, e.codigo equipo_codigo')
+            ->join('tipos_vencimiento t', 't.id = v.tipo_vencimiento_id AND t.empresa_id = v.empresa_id', 'inner')
+            ->join('equipos e', 'e.id = v.equipo_id AND e.empresa_id = v.empresa_id', 'inner')
+            ->where('v.sujeto_tipo', 'EQUIPO')->where('v.activo', 1)->where('v.deleted_at', null)
+            ->where('t.activo', 1)->where('t.deleted_at', null)->where('e.estado', 'ACTIVO')->where('e.deleted_at', null)
+            ->get()->getResultArray();
+
+        $now = $this->clock->now();
+        $today = $now->format('Y-m-d');
+        $events = [];
+        foreach ($rows as $row) {
+            $expires = (string) $row['fecha_vencimiento'];
+            $date = $this->date($expires);
+            if ($date === null) {
+                continue;
+            }
+            $days = max(0, (int) ($row['dias_aviso_previo'] ?? 30));
+            $windowEnd = $now->modify('+' . $days . ' days')->format('Y-m-d');
+            $overdue = $expires < $today;
+            if (! $overdue && $expires > $windowEnd) {
+                continue;
+            }
+            $type = $overdue ? 'vencimiento.vencido' : 'vencimiento.proximo';
+            $events[] = new NotifiableEvent(
+                (int) $row['empresa_id'], (int) $row['sucursal_id'], $type,
+                ($overdue ? 'Vencimiento vencido: ' : 'Vencimiento próximo: ') . $row['equipo_codigo'],
+                (string) $row['tipo_nombre'] . ' · vence el ' . $date->format('d/m/Y'),
+                'vencimiento', (string) $row['id'], "{$type}:vencimiento:{$row['id']}:fecha:{$expires}",
+                $this->path('mantenimiento/equipos/' . (int) $row['equipo_id']), $now,
+            );
+        }
+        return $events;
     }
 
     /** @return list<NotifiableEvent> */

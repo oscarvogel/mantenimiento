@@ -99,11 +99,14 @@ use App\Infrastructure\Importations\CodeIgniterImportReferenceGateway;
 use App\Infrastructure\Importations\CodeIgniterImportRepository;
 use App\Infrastructure\Importations\CodeIgniterImportUnitOfWork;
 use App\Infrastructure\Importations\CodeIgniterMeasurementImportGateway;
+use App\Infrastructure\Expirations\CodeIgniterExpirationImportGateway;
 use App\Infrastructure\Importations\CodeIgniterPreventiveLibraryTaskGateway;
 use App\Infrastructure\Importations\CsvImportTemplateExporter;
 use App\Infrastructure\Importations\LocalPrivateImportFileStorage;
 use App\Infrastructure\Importations\NativeCsvSpreadsheetReader;
 use App\Infrastructure\Importations\PhpSpreadsheetReader;
+use App\Infrastructure\Importations\TsaExpirationWorkbookReader;
+use App\Infrastructure\Importations\TsaUnitsWorkbookReader;
 use App\Infrastructure\Assets\CodeIgniterBranchScope;
 use App\Infrastructure\Assets\CodeIgniterAssetUnitOfWork;
 use App\Infrastructure\Assets\CodeIgniterAssetCatalogReadModel;
@@ -454,6 +457,11 @@ class Services extends BaseService
             self::privateImportStorage(),
             new CodeIgniterImportRepository($database),
             new ImportRowValidator(new CodeIgniterImportReferenceGateway($database)),
+            5000,
+            [
+                'UNIDADES_TRANSPORTE' => new TsaUnitsWorkbookReader(),
+                'VENCIMIENTOS' => new TsaExpirationWorkbookReader(),
+            ],
         );
     }
 
@@ -471,6 +479,8 @@ class Services extends BaseService
             new CodeIgniterMeasurementImportGateway($database),
             new CodeIgniterImportUnitOfWork($database),
             self::privateImportStorage(),
+            200,
+            new CodeIgniterExpirationImportGateway($database),
         );
     }
 
