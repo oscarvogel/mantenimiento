@@ -1,5 +1,6 @@
 const normalizeText = (value) => String(value ?? '').trim().toLocaleUpperCase('es')
 
+// Helpers legacy mantenidos mientras se retiran los últimos consumidores de plantillas.
 export function templateSpecificity(item) {
   if (item.model) return 4
   if (item.brand && item.equipmentTypeId) return 3
@@ -9,10 +10,8 @@ export function templateSpecificity(item) {
 
 export function compatibleTemplates(equipment, templateDefaults) {
   if (!equipment) return []
-
   const assigned = new Set((equipment.assignedServiceTypeIds ?? []).map(Number))
   const seen = new Set(assigned)
-
   return [...(templateDefaults ?? [])]
     .filter((item) =>
       (!item.equipmentTypeId || Number(item.equipmentTypeId) === Number(equipment.typeId))
@@ -33,17 +32,36 @@ export function compatibleTemplates(equipment, templateDefaults) {
 export function matchesTemplateQuery(item, query) {
   const needle = normalizeText(query)
   if (!needle) return true
-
-  const haystack = normalizeText([
+  return normalizeText([
     item.serviceName,
     item.templateName,
     item.notes,
     item.brand,
     item.model,
     item.equipmentTypeName,
-  ].filter(Boolean).join(' '))
+  ].filter(Boolean).join(' ')).includes(needle)
+}
 
-  return haystack.includes(needle)
+export function assignmentContextFromUrl(href, baseUrl = 'http://localhost/') {
+  try {
+    const url = new URL(href, baseUrl)
+    const equipmentId = Number(url.searchParams.get('equipo_id') ?? 0)
+    if (!equipmentId || !url.pathname.includes('/planes')) return null
+    return { equipmentId, sourceUrl: url.toString() }
+  } catch {
+    return null
+  }
+}
+
+export function assignableServices(equipment, services) {
+  if (!equipment) return []
+  const assigned = new Set((equipment.assignedServiceTypeIds ?? []).map(Number))
+  return [...(services ?? [])].filter((service) => {
+    if (assigned.has(Number(service.id))) return false
+    if (service.intervalKm && !equipment.controlsKm) return false
+    if (service.intervalHours && !equipment.controlsHours) return false
+    return true
+  })
 }
 
 function escapeHtml(value) {
@@ -64,17 +82,18 @@ function parseAppPayload(html) {
 
 function intervalSummary(item) {
   const parts = []
-  if (item.intervalKm) parts.push(`Cada ${item.intervalKm} km`)
-  if (item.intervalHours) parts.push(`Cada ${item.intervalHours} h`)
-  if (item.intervalDays) parts.push(`Cada ${item.intervalDays} días`)
-  return parts.join(' · ') || 'Frecuencia sin informar'
+  if (item.intervalKm) parts.push(`cada ${Number(item.intervalKm).toLocaleString('es-AR')} km`)
+  if (item.intervalHours) parts.push(`cada ${item.intervalHours} h`)
+  if (item.intervalDays) parts.push(`cada ${item.intervalDays} días`)
+  return parts.join(' · ') || 'Sin frecuencia'
 }
 
-function scopeLabel(item) {
-  if (item.model) return `Modelo ${item.model}`
-  if (item.brand) return `Marca ${item.brand}`
-  if (item.equipmentTypeId) return item.equipmentTypeName || 'Tipo de equipo'
-  return 'Plantilla genérica'
+function warningSummary(item) {
+  const parts = []
+  if (item.warningKm) parts.push(`${Number(item.warningKm).toLocaleString('es-AR')} km`)
+  if (item.warningHours) parts.push(`${item.warningHours} h`)
+  if (item.warningDays) parts.push(`${item.warningDays} días`)
+  return parts.length ? `Avisar ${parts.join(' / ')} antes` : 'Sin anticipación'
 }
 
 function createDrawer() {
@@ -87,25 +106,25 @@ function createDrawer() {
       <header class="flex items-start justify-between gap-4 border-b border-border px-5 py-5 sm:px-7">
         <div>
           <p class="text-xs font-bold uppercase tracking-wider text-primary">Mantenimiento preventivo</p>
-          <h2 id="quick-plan-title" class="mt-1 text-xl font-bold text-ink">Agregar planes</h2>
+          <h2 id="quick-plan-title" class="mt-1 text-xl font-bold text-ink">Asignar servicios</h2>
           <p class="mt-1 text-sm text-ink-muted" data-quick-plan-equipment></p>
         </div>
-        <button type="button" data-quick-plan-close class="rounded-lg border border-border px-3 py-2 text-sm font-semibold text-ink hover:bg-surface-subtle" aria-label="Cerrar">Cerrar</button>
+        <button type="button" data-quick-plan-close class="rounded-lg border border-border px-3 py-2 text-sm font-semibold text-ink hover:bg-surface-subtle">Cerrar</button>
       </header>
       <div class="border-b border-border bg-surface-subtle px-5 py-4 sm:px-7">
-        <label for="quick-plan-search" class="text-sm font-semibold text-ink">Buscar plan</label>
-        <input id="quick-plan-search" data-quick-plan-search type="search" autocomplete="off" placeholder="Nombre, servicio, plantilla, marca o modelo…" class="mt-2 w-full rounded-lg border border-border-strong bg-white px-3 py-2.5 text-sm text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />
-        <p class="mt-2 text-xs text-ink-muted">Se muestran sólo planes compatibles que todavía no están asignados al equipo.</p>
+        <label for="quick-plan-search" class="text-sm font-semibold text-ink">Buscar servicio</label>
+        <input id="quick-plan-search" data-quick-plan-search type="search" autocomplete="off" placeholder="Motor, frenos, hidráulica…" class="mt-2 w-full rounded-lg border border-border-strong bg-white px-3 py-2.5 text-sm text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />
+        <p class="mt-2 text-xs text-ink-muted">La frecuencia y la anticipación ya vienen definidas por el servicio. Acá sólo indicás desde qué última realización debe empezar a contar.</p>
       </div>
       <div class="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-7">
         <div data-quick-plan-feedback class="mb-4 hidden rounded-lg px-4 py-3 text-sm font-medium"></div>
-        <div data-quick-plan-loading class="rounded-lg bg-surface-subtle p-4 text-sm text-ink-muted">Cargando planes compatibles…</div>
+        <div data-quick-plan-loading class="rounded-lg bg-surface-subtle p-4 text-sm text-ink-muted">Cargando servicios…</div>
         <div data-quick-plan-results class="space-y-3"></div>
       </div>
       <footer class="border-t border-border bg-white px-5 py-4 sm:px-7">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p class="text-sm text-ink-muted"><strong data-quick-plan-count>0</strong> seleccionados</p>
-          <button type="button" data-quick-plan-submit class="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-primary-strong disabled:cursor-not-allowed disabled:opacity-50" disabled>Agregar seleccionados</button>
+          <button type="button" data-quick-plan-submit class="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-primary-strong disabled:cursor-not-allowed disabled:opacity-50" disabled>Asignar seleccionados</button>
         </div>
       </footer>
     </section>`
@@ -114,12 +133,10 @@ function createDrawer() {
 }
 
 export function installQuickPlanAssignment(root, serverPayload) {
-  if (!root || serverPayload?.page !== 'equipment-detail') return
+  if (!root || !['equipment-detail', 'assets-index'].includes(serverPayload?.page)) return
 
-  const equipmentId = Number(serverPayload?.data?.equipment?.id ?? 0)
-  const sourceUrl = serverPayload?.data?.routes?.addPlansFromTemplate
-  if (!equipmentId || !sourceUrl) return
-
+  let equipmentId = Number(serverPayload?.data?.equipment?.id ?? 0)
+  let sourceUrl = serverPayload?.data?.routes?.addPlansFromTemplate ?? ''
   const drawer = createDrawer()
   const equipmentLabel = drawer.querySelector('[data-quick-plan-equipment]')
   const loading = drawer.querySelector('[data-quick-plan-loading]')
@@ -131,7 +148,7 @@ export function installQuickPlanAssignment(root, serverPayload) {
   const selected = new Set()
   let currentPayload = null
   let currentEquipment = null
-  let currentTemplates = []
+  let currentServices = []
   let busy = false
 
   const showFeedback = (message, isError = false) => {
@@ -144,30 +161,35 @@ export function installQuickPlanAssignment(root, serverPayload) {
     submit.disabled = busy || selected.size === 0
   }
 
+  const baseFields = (service) => {
+    const fields = []
+    if (service.intervalKm) fields.push(`<label class="text-xs font-semibold text-ink">Último km<input data-base-km="${service.id}" type="number" min="0" value="${currentEquipment?.currentKm ?? ''}" class="mt-1 min-h-10 w-full rounded-lg border border-border px-3 py-2 font-normal" /></label>`)
+    if (service.intervalHours) fields.push(`<label class="text-xs font-semibold text-ink">Últimas horas<input data-base-hours="${service.id}" inputmode="decimal" value="${currentEquipment?.currentHours ?? ''}" class="mt-1 min-h-10 w-full rounded-lg border border-border px-3 py-2 font-normal" /></label>`)
+    if (service.intervalDays) fields.push(`<label class="text-xs font-semibold text-ink">Última fecha<input data-base-date="${service.id}" type="date" class="mt-1 min-h-10 w-full rounded-lg border border-border px-3 py-2 font-normal" /></label>`)
+    return fields.length ? `<div class="mt-4 grid gap-3 sm:grid-cols-3">${fields.join('')}</div>` : ''
+  }
+
   const render = () => {
-    const visible = currentTemplates.filter((item) => matchesTemplateQuery(item, search.value))
-    selected.forEach((id) => {
-      if (!currentTemplates.some((item) => Number(item.id) === Number(id))) selected.delete(id)
-    })
+    const needle = normalizeText(search.value)
+    const visible = currentServices.filter((service) => !needle || normalizeText([service.code, service.name, service.category, service.description].filter(Boolean).join(' ')).includes(needle))
     updateSelection()
 
     if (!visible.length) {
-      results.innerHTML = `<div class="rounded-xl border border-dashed border-border-strong p-6 text-center"><p class="font-semibold text-ink">${currentTemplates.length ? 'No hay coincidencias' : 'No hay planes nuevos compatibles'}</p><p class="mt-1 text-sm text-ink-muted">${currentTemplates.length ? 'Probá con otra búsqueda.' : 'Los servicios compatibles ya están asignados o no existen plantillas para este equipo.'}</p></div>`
+      results.innerHTML = `<div class="rounded-xl border border-dashed border-border-strong p-6 text-center"><p class="font-semibold text-ink">${currentServices.length ? 'No hay coincidencias' : 'No hay servicios disponibles para asignar'}</p><p class="mt-1 text-sm text-ink-muted">${currentServices.length ? 'Probá con otra búsqueda.' : 'Creá servicios de mantenimiento o revisá cuáles ya están asignados a este equipo.'}</p></div>`
       return
     }
 
-    results.innerHTML = visible.map((item) => {
-      const checked = selected.has(Number(item.id))
-      return `<article class="rounded-xl border ${checked ? 'border-primary bg-brand-50' : 'border-border bg-white'} p-4" data-template-card="${Number(item.id)}">
+    results.innerHTML = visible.map((service) => {
+      const checked = selected.has(Number(service.id))
+      return `<article class="rounded-xl border ${checked ? 'border-primary bg-brand-50' : 'border-border bg-white'} p-4">
         <div class="flex items-start gap-3">
-          <input type="checkbox" data-template-select="${Number(item.id)}" ${checked ? 'checked' : ''} class="mt-1 size-4 rounded border-border-strong text-primary focus:ring-primary" aria-label="Seleccionar ${escapeHtml(item.serviceName)}" />
+          <input type="checkbox" data-service-select="${service.id}" ${checked ? 'checked' : ''} class="mt-1 size-4 rounded border-border-strong text-primary focus:ring-primary" />
           <div class="min-w-0 flex-1">
-            <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-              <div><h3 class="font-bold text-ink">${escapeHtml(item.serviceName)}</h3><p class="mt-1 text-xs text-ink-muted">${escapeHtml(item.templateName)} · ${escapeHtml(scopeLabel(item))}</p></div>
-              <button type="button" data-template-add="${Number(item.id)}" class="shrink-0 rounded-lg border border-primary px-3 py-2 text-sm font-bold text-primary hover:bg-brand-50">+ Agregar</button>
-            </div>
-            <p class="mt-3 text-sm font-semibold text-ink">${escapeHtml(intervalSummary(item))}</p>
-            ${item.notes ? `<p class="mt-2 text-sm text-ink-muted">${escapeHtml(item.notes)}</p>` : ''}
+            <div class="flex flex-wrap items-center gap-2"><h3 class="font-bold text-ink">${escapeHtml(service.name)}</h3><span class="rounded-full bg-surface-muted px-2 py-0.5 text-xs font-semibold text-ink-muted">${escapeHtml(service.code)}</span></div>
+            ${service.description ? `<p class="mt-1 text-sm text-ink-muted">${escapeHtml(service.description)}</p>` : ''}
+            <p class="mt-3 text-sm font-semibold text-ink">${escapeHtml(intervalSummary(service))}</p>
+            <p class="mt-1 text-sm text-ink-muted">${escapeHtml(warningSummary(service))} · Prioridad ${escapeHtml(service.priority)}</p>
+            ${checked ? baseFields(service) : ''}
           </div>
         </div>
       </article>`
@@ -178,8 +200,8 @@ export function installQuickPlanAssignment(root, serverPayload) {
     currentPayload = payload
     const data = payload?.data ?? {}
     currentEquipment = (data.catalogs?.equipment ?? []).find((item) => Number(item.id) === equipmentId) ?? null
-    if (!currentEquipment) throw new Error('El equipo ya no está disponible para asignar planes.')
-    currentTemplates = compatibleTemplates(currentEquipment, data.catalogs?.templateDefaults ?? [])
+    if (!currentEquipment) throw new Error('El equipo ya no está disponible para asignar servicios.')
+    currentServices = assignableServices(currentEquipment, data.catalogs?.serviceTypes ?? [])
     equipmentLabel.textContent = `${currentEquipment.code} · ${currentEquipment.typeName} · ${currentEquipment.branchName}`
     loading.classList.add('hidden')
     render()
@@ -190,8 +212,32 @@ export function installQuickPlanAssignment(root, serverPayload) {
     results.innerHTML = ''
     feedback.classList.add('hidden')
     const response = await fetch(sourceUrl.split('#')[0], { headers: { Accept: 'text/html' }, credentials: 'same-origin' })
-    if (!response.ok) throw new Error('No se pudo cargar la lista de planes.')
+    if (!response.ok) throw new Error('No se pudo cargar la lista de servicios.')
     hydrate(parseAppPayload(await response.text()))
+  }
+
+  const fieldValue = (selector) => drawer.querySelector(selector)?.value?.trim() || ''
+
+  const assignOne = async (serviceId) => {
+    const data = currentPayload.data
+    const form = new FormData()
+    form.append(data.csrf.name, data.csrf.hash)
+    form.append('equipo_id', String(equipmentId))
+    form.append('tipo_servicio_id', String(serviceId))
+    const km = fieldValue(`[data-base-km="${serviceId}"]`)
+    const hours = fieldValue(`[data-base-hours="${serviceId}"]`)
+    const date = fieldValue(`[data-base-date="${serviceId}"]`)
+    if (km) form.append('base_km', km)
+    if (hours) form.append('base_horas', hours)
+    if (date) form.append('base_fecha', date)
+
+    const response = await fetch(data.routes.create, {
+      method: 'POST', body: form, credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    })
+    if (!response.ok) throw new Error('No se pudo asignar uno de los servicios seleccionados.')
+    const payload = parseAppPayload(await response.text())
+    if (payload?.data?.flash?.error) throw new Error(payload.data.flash.error)
+    currentPayload = payload
   }
 
   const postSelections = async (ids) => {
@@ -199,54 +245,32 @@ export function installQuickPlanAssignment(root, serverPayload) {
     busy = true
     updateSelection()
     feedback.classList.add('hidden')
-
     try {
-      const data = currentPayload.data
-      const form = new FormData()
-      form.append(data.csrf.name, data.csrf.hash)
-      form.append('equipo_id', String(equipmentId))
-      ids.forEach((id) => form.append(`planes[${id}][seleccionado]`, '1'))
-
-      const response = await fetch(data.routes.createFromTemplate, {
-        method: 'POST',
-        body: form,
-        credentials: 'same-origin',
-        headers: { 'X-Requested-With': 'XMLHttpRequest' },
-      })
-      if (!response.ok) throw new Error('No se pudieron asignar los planes seleccionados.')
-
-      const payload = parseAppPayload(await response.text())
-      if (payload?.data?.flash?.error) throw new Error(payload.data.flash.error)
-
+      for (const id of ids) await assignOne(id)
       selected.clear()
-      hydrate(payload)
-      showFeedback(payload?.data?.flash?.success || `${ids.length} plan(es) agregado(s) correctamente.`)
+      await load()
+      showFeedback(`${ids.length} servicio${ids.length === 1 ? '' : 's'} asignado${ids.length === 1 ? '' : 's'} correctamente.`)
     } catch (error) {
-      showFeedback(error instanceof Error ? error.message : 'No se pudieron asignar los planes.', true)
+      showFeedback(error instanceof Error ? error.message : 'No se pudieron asignar los servicios.', true)
     } finally {
       busy = false
       updateSelection()
     }
   }
 
-  drawer.addEventListener('click', (event) => {
-    const close = event.target.closest('[data-quick-plan-close]')
-    if (close) {
-      drawer.classList.add('hidden')
-      document.body.classList.remove('overflow-hidden')
-      return
-    }
-
-    const add = event.target.closest('[data-template-add]')
-    if (add) postSelections([Number(add.dataset.templateAdd)])
-  })
-
   drawer.addEventListener('change', (event) => {
-    const checkbox = event.target.closest('[data-template-select]')
+    const checkbox = event.target.closest('[data-service-select]')
     if (!checkbox) return
-    const id = Number(checkbox.dataset.templateSelect)
+    const id = Number(checkbox.dataset.serviceSelect)
     checkbox.checked ? selected.add(id) : selected.delete(id)
     render()
+  })
+
+  drawer.addEventListener('click', (event) => {
+    if (event.target.closest('[data-quick-plan-close]')) {
+      drawer.classList.add('hidden')
+      document.body.classList.remove('overflow-hidden')
+    }
   })
 
   search.addEventListener('input', render)
@@ -261,20 +285,26 @@ export function installQuickPlanAssignment(root, serverPayload) {
 
   root.addEventListener('click', async (event) => {
     const anchor = event.target.closest('a')
-    if (!anchor || anchor.href !== sourceUrl) return
+    if (!anchor) return
+    if (serverPayload.page === 'assets-index') {
+      const context = assignmentContextFromUrl(anchor.href, window.location.href)
+      if (!context) return
+      equipmentId = context.equipmentId
+      sourceUrl = context.sourceUrl
+    } else if (anchor.href !== sourceUrl) return
+
     event.preventDefault()
     drawer.classList.remove('hidden')
     document.body.classList.add('overflow-hidden')
     search.value = ''
     selected.clear()
     updateSelection()
-
     try {
       await load()
       search.focus()
     } catch (error) {
       loading.classList.add('hidden')
-      showFeedback(error instanceof Error ? error.message : 'No se pudo abrir el selector de planes.', true)
+      showFeedback(error instanceof Error ? error.message : 'No se pudo abrir el selector de servicios.', true)
     }
   })
 }

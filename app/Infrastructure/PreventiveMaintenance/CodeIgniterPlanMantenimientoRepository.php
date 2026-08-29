@@ -55,6 +55,9 @@ final class CodeIgniterPlanMantenimientoRepository implements PlanMantenimientoR
             throw new RuntimeException('El actor que guarda el plan debe ser valido.');
         }
 
+        // Compatibilidad temporal de persistencia: mientras las columnas legacy sigan
+        // existiendo se mantienen sincronizadas. La fuente de verdad al leer ya es
+        // `tipos_servicio`; estas columnas se eliminarán en el cutover final de #76.
         $data = [
             'empresa_id'         => $plan->empresaId(),
             'equipo_id'          => $plan->equipoId(),
@@ -107,10 +110,15 @@ final class CodeIgniterPlanMantenimientoRepository implements PlanMantenimientoR
     {
         $builder = $this->db->table('planes_mantenimiento pm')
             ->select('pm.*')
+            ->select('ts.intervalo_km service_intervalo_km, ts.intervalo_horas service_intervalo_horas, ts.intervalo_dias service_intervalo_dias')
+            ->select('ts.anticipacion_km service_anticipacion_km, ts.anticipacion_horas service_anticipacion_horas, ts.anticipacion_dias service_anticipacion_dias')
+            ->select('ts.prioridad service_prioridad')
             ->join('equipos e', 'e.id = pm.equipo_id AND e.empresa_id = pm.empresa_id', 'inner')
+            ->join('tipos_servicio ts', 'ts.id = pm.tipo_servicio_id AND ts.empresa_id = pm.empresa_id', 'inner')
             ->where('pm.empresa_id', $companyId)
             ->where('pm.deleted_at', null)
-            ->where('e.deleted_at', null);
+            ->where('e.deleted_at', null)
+            ->where('ts.activo', 1);
 
         if ($branchIds === []) {
             $builder->where('1 = 0', null, false);
@@ -136,28 +144,45 @@ final class CodeIgniterPlanMantenimientoRepository implements PlanMantenimientoR
     /** @param array<string, mixed> $row */
     private function hydrate(array $row): PlanMantenimiento
     {
+        $intervalKm = $row['service_intervalo_km'] === null ? null : (int) $row['service_intervalo_km'];
+        $intervalHoursTenths = DecimalHours::toTenths($row['service_intervalo_horas']);
+        $intervalDays = $row['service_intervalo_dias'] === null ? null : (int) $row['service_intervalo_dias'];
+        $warningKm = $intervalKm === null ? null : ($row['service_anticipacion_km'] === null ? 0 : (int) $row['service_anticipacion_km']);
+        $warningHoursTenths = $intervalHoursTenths === null ? null : (DecimalHours::toTenths($row['service_anticipacion_horas']) ?? 0);
+        $warningDays = $intervalDays === null ? null : ($row['service_anticipacion_dias'] === null ? 0 : (int) $row['service_anticipacion_dias']);
+
+        $baseKm = $intervalKm === null || $row['base_km'] === null ? null : (int) $row['base_km'];
+        $baseHoursTenths = $intervalHoursTenths === null ? null : DecimalHours::toTenths($row['base_horas']);
+        $baseDate = $intervalDays === null || $row['base_fecha'] === null ? null : new DateTimeImmutable((string) $row['base_fecha']);
+
+        // Los próximos objetivos se derivan siempre de Servicio + base del equipo.
+        // No se confía en los `proximo_*` persistidos por el modelo legacy.
+        $nextKm = $baseKm === null ? null : $baseKm + $intervalKm;
+        $nextHoursTenths = $baseHoursTenths === null ? null : $baseHoursTenths + $intervalHoursTenths;
+        $nextDate = $baseDate === null ? null : $baseDate->modify('+' . $intervalDays . ' days');
+
         return PlanMantenimiento::reconstituir(
             (int) $row['id'],
             (int) $row['empresa_id'],
             (int) $row['equipo_id'],
             (int) $row['tipo_servicio_id'],
-            $row['intervalo_km'] === null ? null : (int) $row['intervalo_km'],
-            DecimalHours::toTenths($row['intervalo_horas']),
-            $row['intervalo_dias'] === null ? null : (int) $row['intervalo_dias'],
-            $row['anticipacion_km'] === null ? null : (int) $row['anticipacion_km'],
-            DecimalHours::toTenths($row['anticipacion_horas']),
-            $row['anticipacion_dias'] === null ? null : (int) $row['anticipacion_dias'],
-            $row['base_km'] === null ? null : (int) $row['base_km'],
-            DecimalHours::toTenths($row['base_horas']),
-            $row['base_fecha'] === null ? null : new DateTimeImmutable((string) $row['base_fecha']),
-            $row['proximo_km'] === null ? null : (int) $row['proximo_km'],
-            DecimalHours::toTenths($row['proximas_horas']),
-            $row['proxima_fecha'] === null ? null : new DateTimeImmutable((string) $row['proxima_fecha']),
-            (string) $row['prioridad'],
+            $intervalKm,
+            $intervalHoursTenths,
+            $intervalDays,
+            $warningKm,
+            $warningHoursTenths,
+            $warningDays,
+            $baseKm,
+            $baseHoursTenths,
+            $baseDate,
+            $nextKm,
+            $nextHoursTenths,
+            $nextDate,
+            (string) $row['service_prioridad'],
             (bool) $row['activo'],
             $row['observaciones'] === null ? null : (string) $row['observaciones'],
-            isset($row['origen_plantilla_id']) && $row['origen_plantilla_id'] !== null ? (int) $row['origen_plantilla_id'] : null,
-            isset($row['origen_plantilla_item_id']) && $row['origen_plantilla_item_id'] !== null ? (int) $row['origen_plantilla_item_id'] : null,
+            null,
+            null,
         );
     }
 }

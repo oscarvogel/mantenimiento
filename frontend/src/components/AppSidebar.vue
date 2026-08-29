@@ -4,11 +4,14 @@ import {
   ArrowRightStartOnRectangleIcon,
   ArrowUpTrayIcon,
   ArrowPathRoundedSquareIcon,
+  BeakerIcon,
+  BellIcon,
   BuildingOffice2Icon,
   BuildingStorefrontIcon,
   CalendarDaysIcon,
   ChartBarSquareIcon,
   ClipboardDocumentCheckIcon,
+  ClipboardDocumentListIcon,
   HomeIcon,
   TruckIcon,
   UsersIcon,
@@ -37,8 +40,8 @@ const emit = defineEmits(['close'])
 const navigationGroups = computed(() => {
   const definitions = [
     { key: 'operation', label: 'Operación', items: ['dashboard', 'equipment', 'quick-readings', 'plans', 'maintenance'] },
-    { key: 'management', label: 'Gestión', items: ['imports', 'preventive-library', 'reports'] },
-    { key: 'administration', label: 'Administración', items: ['superadmin', 'branches', 'users'] },
+    { key: 'management', label: 'Gestión', items: ['notifications', 'imports', 'preventive-library', 'reports'] },
+    { key: 'administration', label: 'Administración', items: ['superadmin', 'chatbot-audit', 'branches', 'users'] },
   ]
   const knownKeys = new Set(definitions.flatMap((group) => group.items))
   const groups = definitions
@@ -68,9 +71,17 @@ const icons = {
   workshop: BuildingOffice2Icon,
   workshops: BuildingOffice2Icon,
   reports: ChartBarSquareIcon,
+  audit: ClipboardDocumentListIcon,
+  notifications: BellIcon,
 }
 
 const iconFor = (name) => icons[name] ?? ClipboardDocumentCheckIcon
+const showDemoEntry = computed(() => props.navigation.some((item) => item.key === 'superadmin'))
+
+const openDemoCompany = () => {
+  window.dispatchEvent(new CustomEvent('maintenance:open-demo-company'))
+  emit('close')
+}
 </script>
 
 <template>
@@ -95,40 +106,46 @@ const iconFor = (name) => icons[name] ?? ClipboardDocumentCheckIcon
         </h2>
         <ul class="space-y-1">
           <li v-for="item in group.items" :key="item.key">
-          <span
-            v-if="item.disabled"
-            class="flex min-h-11 cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-brand-400"
-            aria-disabled="true"
-          >
-            <component :is="iconFor(item.icon)" class="size-5 shrink-0" aria-hidden="true" />
-            <span class="min-w-0 flex-1 truncate">{{ item.label }}</span>
-            <span v-if="item.badge" class="rounded-full bg-brand-800 px-2 py-0.5 text-[0.6875rem] font-bold text-brand-200">
-              {{ item.badge }}
+            <span
+              v-if="item.disabled"
+              class="flex min-h-11 cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-brand-400"
+              aria-disabled="true"
+            >
+              <component :is="iconFor(item.icon)" class="size-5 shrink-0" aria-hidden="true" />
+              <span class="min-w-0 flex-1 truncate">{{ item.label }}</span>
+              <span v-if="item.badge" class="rounded-full bg-brand-800 px-2 py-0.5 text-[0.6875rem] font-bold text-brand-200">
+                {{ item.badge }}
+              </span>
             </span>
-          </span>
-          <a
-            v-else
-            :href="item.href"
-            class="group flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors"
-            :class="
-              item.active
-                ? 'bg-brand-800 text-white shadow-inner'
-                : 'text-brand-100 hover:bg-brand-900 hover:text-white'
-            "
-            :aria-current="item.active ? 'page' : undefined"
-            @click="emit('close')"
-          >
-            <component
-              :is="iconFor(item.icon)"
-              class="size-5 shrink-0"
-              :class="item.active ? 'text-accent' : 'text-brand-300 group-hover:text-brand-100'"
-              aria-hidden="true"
-            />
-            <span class="min-w-0 flex-1 truncate">{{ item.label }}</span>
-            <span v-if="item.badge" class="rounded-full bg-brand-700 px-2 py-0.5 text-[0.6875rem] font-bold text-white">
-              {{ item.badge }}
-            </span>
-          </a>
+            <a
+              v-else
+              :href="item.href"
+              class="group flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors"
+              :class="item.active ? 'bg-brand-800 text-white shadow-inner' : 'text-brand-100 hover:bg-brand-900 hover:text-white'"
+              :aria-current="item.active ? 'page' : undefined"
+              @click="emit('close')"
+            >
+              <component
+                :is="iconFor(item.icon)"
+                class="size-5 shrink-0"
+                :class="item.active ? 'text-accent' : 'text-brand-300 group-hover:text-brand-100'"
+                aria-hidden="true"
+              />
+              <span class="min-w-0 flex-1 truncate">{{ item.label }}</span>
+              <span v-if="item.badge" class="rounded-full bg-brand-700 px-2 py-0.5 text-[0.6875rem] font-bold text-white">
+                {{ item.badge }}
+              </span>
+            </a>
+          </li>
+          <li v-if="group.key === 'administration' && showDemoEntry">
+            <button
+              type="button"
+              class="group flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-brand-100 transition-colors hover:bg-brand-900 hover:text-white"
+              @click="openDemoCompany"
+            >
+              <BeakerIcon class="size-5 shrink-0 text-brand-300 group-hover:text-brand-100" aria-hidden="true" />
+              <span class="min-w-0 flex-1 truncate">Empresa demo</span>
+            </button>
           </li>
         </ul>
       </section>

@@ -1,13 +1,17 @@
 import { useAlerts } from '../composables/useAlerts.js'
 
-function attributesFrom(form) {
+function attributesFrom(form, submitter) {
+  const source = submitter instanceof HTMLElement ? submitter.dataset : {}
+
   return {
-    title: form.dataset.confirmTitle,
-    text: form.dataset.confirmText,
-    button: form.dataset.confirmButton,
-    cancel: form.dataset.confirmCancel,
-    icon: form.dataset.confirmIcon,
-    danger: form.dataset.confirmDanger === 'true' || form.dataset.confirmDanger === '1',
+    title: source.confirmTitle ?? form.dataset.confirmTitle,
+    text: source.confirmText ?? form.dataset.confirmText,
+    button: source.confirmButton ?? form.dataset.confirmButton,
+    cancel: source.confirmCancel ?? form.dataset.confirmCancel,
+    icon: source.confirmIcon ?? form.dataset.confirmIcon,
+    danger: source.confirmDanger !== undefined
+      ? source.confirmDanger === 'true' || source.confirmDanger === '1'
+      : form.dataset.confirmDanger === 'true' || form.dataset.confirmDanger === '1',
   }
 }
 
@@ -15,8 +19,8 @@ function findSubmitButton(form) {
   return form.querySelector('button[type="submit"]')
 }
 
-function markSubmitting(form) {
-  const submit = findSubmitButton(form)
+function markSubmitting(form, submitter) {
+  const submit = submitter instanceof HTMLButtonElement ? submitter : findSubmitButton(form)
   if (!submit || submit.disabled) return
 
   const original = submit.value || submit.textContent.trim()
@@ -26,8 +30,8 @@ function markSubmitting(form) {
   submit.textContent = 'Guardando…'
 }
 
-function restoreSubmitButton(form) {
-  const submit = findSubmitButton(form)
+function restoreSubmitButton(form, submitter) {
+  const submit = submitter instanceof HTMLButtonElement ? submitter : findSubmitButton(form)
   if (!submit) return
 
   if (submit.dataset.originalLabel) {
@@ -47,27 +51,32 @@ export function installConfirmForms() {
 
     const form = target.closest('form[data-confirm]')
     if (!form) return
+    const submitter = event.submitter instanceof HTMLElement ? event.submitter : null
 
     if (form.dataset.confirmed === 'true') {
       // Segundo submit: la confirmación ya fue aceptada. No volver a mostrar
       // SweetAlert; activar el estado de guardado y dejar avanzar el submit nativo.
-      markSubmitting(form)
+      markSubmitting(form, submitter)
       return
     }
 
     event.preventDefault()
 
-    confirm(attributesFrom(form)).then((accepted) => {
+    confirm(attributesFrom(form, submitter)).then((accepted) => {
       if (!accepted) return
 
       form.dataset.confirmed = 'true'
-      // requestSubmit() corre la validación HTML primero; si falla, no dispara
-      // el evento submit y el botón no queda bloqueado (se restaura en invalid).
+      // Preservar el submitter mantiene formaction/formmethod en formularios
+      // con más de una acción (por ejemplo Guardar y Enviar prueba).
       try {
-        form.requestSubmit()
+        if (submitter instanceof HTMLButtonElement || submitter instanceof HTMLInputElement) {
+          form.requestSubmit(submitter)
+        } else {
+          form.requestSubmit()
+        }
       } catch {
         delete form.dataset.confirmed
-        restoreSubmitButton(form)
+        restoreSubmitButton(form, submitter)
       }
     })
   })
@@ -81,7 +90,7 @@ export function installConfirmForms() {
       const form = control instanceof Element ? control.closest('form[data-confirm]') : null
       if (!form) return
       delete form.dataset.confirmed
-      restoreSubmitButton(form)
+      restoreSubmitButton(form, null)
     },
     true,
   )

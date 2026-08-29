@@ -43,13 +43,16 @@ final readonly class MinishlinkWebPushGateway implements WebPushGateway
 
         $result = ['sent' => 0, 'expired' => 0, 'failed' => 0];
         foreach ($webPush->flush() as $report) {
+            $endpoint = $report->getEndpoint();
             if ($report->isSuccess()) {
                 $result['sent']++;
+                $this->subscriptions->markDelivered($endpoint);
             } elseif ($report->isSubscriptionExpired()) {
                 $result['expired']++;
-                $this->subscriptions->markInvalid($report->getEndpoint(), $report->getReason());
+                $this->subscriptions->markInvalid($endpoint, $report->getReason());
             } else {
                 $result['failed']++;
+                $this->subscriptions->markFailed($endpoint, $report->getReason());
             }
         }
         return $result;

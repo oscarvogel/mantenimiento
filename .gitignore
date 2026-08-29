@@ -2,6 +2,8 @@
 # CodeIgniter 4
 # =============================================================================
 /.env
+/.env.*
+!/.env.example
 /env
 /phpunit.xml
 /.env.ferozo.bak.*

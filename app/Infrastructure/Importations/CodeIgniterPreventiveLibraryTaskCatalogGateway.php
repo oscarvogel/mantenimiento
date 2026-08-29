@@ -6,6 +6,7 @@ namespace App\Infrastructure\Importations;
 
 use App\Application\Importations\Port\PreventiveLibraryTaskCatalogGateway;
 use CodeIgniter\Database\BaseConnection;
+use DomainException;
 use RuntimeException;
 use Throwable;
 
@@ -51,12 +52,10 @@ final readonly class CodeIgniterPreventiveLibraryTaskCatalogGateway implements P
 
     public function serviceBelongsToCompany(int $companyId, int $serviceTypeId): bool
     {
-        return $this->database->table('plantilla_mantenimiento_items i')
-            ->join('plantillas_mantenimiento p', 'p.id = i.plantilla_id', 'inner')
-            ->where('i.tipo_servicio_id', $serviceTypeId)
-            ->where('p.empresa_id', $companyId)
-            ->where('p.deleted_at', null)
-            ->countAllResults() > 0;
+        return $this->database->table('tipos_servicio')
+            ->where('id', $serviceTypeId)
+            ->where('empresa_id', $companyId)
+            ->countAllResults() === 1;
     }
 
     public function findTask(int $taskId): ?array
@@ -171,6 +170,30 @@ final readonly class CodeIgniterPreventiveLibraryTaskCatalogGateway implements P
         } catch (Throwable $exception) {
             $this->database->transRollback();
             throw $exception;
+        }
+    }
+
+    public function setActive(int $companyId, int $serviceTypeId, int $taskId, bool $active): void
+    {
+        $service = $this->database->table('tipos_servicio')
+            ->select('id')
+            ->where('id', $serviceTypeId)
+            ->where('empresa_id', $companyId)
+            ->get()->getRowArray();
+
+        if ($service === null || ! $this->relationExists($serviceTypeId, $taskId)) {
+            throw new DomainException('La tarea no pertenece a un servicio de esta empresa.');
+        }
+
+        $ok = $this->database->table('tareas_mantenimiento')
+            ->where('id', $taskId)
+            ->update([
+                'activo' => $active ? 1 : 0,
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+
+        if ($ok !== true) {
+            throw new RuntimeException('No se pudo actualizar el estado de la tarea.');
         }
     }
 }

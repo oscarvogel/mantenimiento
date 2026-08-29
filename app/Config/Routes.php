@@ -19,14 +19,34 @@ $routes->post('logout', 'Login::logout', ['filter' => 'auth']);
 // Dashboard (protegido)
 $routes->get('dashboard', 'Dashboard::index', ['filter' => 'auth']);
 
+// Cron web para hosting sin PHP CLI. El token se valida dentro del controlador.
+$routes->get('cron/notificaciones/(:segment)', 'NotificationCron::dispatch/$1');
+
+// Compatibilidad con enlaces antiguos emitidos antes de conocer el prefijo
+// interno del grupo `mantenimiento` en el deploy plano.
+$routes->get('planes', static function () {
+    $query = service('request')->getUri()->getQuery();
+    $target = base_url('mantenimiento/planes');
+    return redirect()->to($query === '' ? $target : $target . '?' . $query);
+}, ['filter' => ['auth', 'permission:planes.ver']]);
+
+$routes->get('equipos/(:num)', static function (string $equipmentId) {
+    $query = service('request')->getUri()->getQuery();
+    $target = base_url('mantenimiento/equipos/' . (int) $equipmentId);
+    return redirect()->to($query === '' ? $target : $target . '?' . $query);
+}, ['filter' => ['auth', 'permission:equipos.ver']]);
+
 // Administración global. El filtro también rechaza cuentas autenticadas no globales.
 $routes->group('superadmin', ['filter' => 'superadmin'], static function ($routes): void {
     $routes->get('', 'SuperAdmin::index');
     $routes->post('empresas', 'SuperAdmin::createCompany');
     $routes->post('empresas/(:num)', 'SuperAdmin::updateCompany/$1');
+    $routes->post('empresas/(:num)/notificaciones/prueba', 'SuperAdmin::testCompanyNotificationEmail/$1');
+    $routes->post('notificaciones/despachar', 'NotificationCron::manual');
     $routes->post('administradores', 'SuperAdmin::createCompanyAdministrator');
     $routes->post('usuarios/(:num)/empresa', 'SuperAdmin::assignCompany/$1');
     $routes->post('usuarios/(:num)/roles', 'SuperAdmin::assignRoles/$1');
+    $routes->post('demo', 'DemoAdmin::provision');
 });
 
 $routes->group('administracion', ['filter' => ['auth']], static function ($routes): void {
@@ -44,13 +64,28 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->get('', 'MaintenanceCircuit::index', ['filter' => 'permission:equipos.ver']);
     $routes->get('equipos', 'AssetManagement::index', ['filter' => 'permission:equipos.ver']);
     $routes->post('equipos', 'AssetManagement::createEquipment', ['filter' => 'permission:equipos.editar']);
+
+    $routes->get('servicios', 'MaintenanceServices::index', ['filter' => 'permission:planes.ver']);
+    $routes->post('servicios', 'MaintenanceServices::create', ['filter' => 'permission:planes.editar']);
+    $routes->post('servicios/(:num)', 'MaintenanceServices::update/$1', ['filter' => 'permission:planes.editar']);
+    $routes->post('servicios/(:num)/estado', 'MaintenanceServices::status/$1', ['filter' => 'permission:planes.editar']);
+    $routes->get('servicios/tareas/buscar', 'LibraryTaskCatalog::search', ['filter' => 'permission:planes.editar']);
+    $routes->post('servicios/(:num)/tareas', 'LibraryTaskCatalog::link/$1', ['filter' => 'permission:planes.editar']);
+    $routes->post('servicios/(:num)/tareas/nueva', 'LibraryTaskCatalog::createAndLink/$1', ['filter' => 'permission:planes.editar']);
+    $routes->post('servicios/(:num)/tareas/(:num)/estado', 'LibraryTaskCatalog::status/$2', ['filter' => 'permission:planes.editar']);
+    $routes->post('servicios/(:num)/materiales', 'MaintenanceServices::createMaterial/$1', ['filter' => 'permission:planes.editar']);
+    $routes->post('servicios/(:num)/materiales/(:num)', 'MaintenanceServices::updateMaterial/$1/$2', ['filter' => 'permission:planes.editar']);
+    $routes->post('servicios/(:num)/materiales/(:num)/estado', 'MaintenanceServices::materialStatus/$1/$2', ['filter' => 'permission:planes.editar']);
+
     $routes->get('planes', 'PreventivePlans::index', ['filter' => 'permission:planes.ver']);
     $routes->post('planes', 'PreventivePlans::create', ['filter' => 'permission:planes.editar']);
     $routes->post('planes/desde-plantilla', 'PreventivePlans::createFromTemplates', ['filter' => 'permission:planes.editar']);
     $routes->post('planes/(:num)/editar', 'PreventivePlans::update/$1', ['filter' => 'permission:planes.editar']);
+    $routes->post('planes/(:num)/orden', 'PreventivePlans::generateOrder/$1', ['filter' => 'permission:ordenes.editar']);
     $routes->get('lecturas/rapidas', 'QuickReadings::index', ['filter' => 'permission:equipos.ver']);
     $routes->post('lecturas/rapidas', 'QuickReadings::store', ['filter' => 'permission:lecturas.cargar']);
     $routes->post('lecturas/rapidas/fila', 'QuickReadings::storeRow', ['filter' => 'permission:lecturas.cargar']);
+    $routes->post('lecturas/rapidas/avisos/(:num)/orden', 'QuickReadings::generateOrder/$1', ['filter' => 'permission:ordenes.editar']);
     $routes->get('equipos/(:num)', 'EquipmentManagement::show/$1', ['filter' => 'permission:equipos.ver']);
     $routes->get('equipos/(:num)/qr.svg', 'AssetManagement::qr/$1', ['filter' => 'permission:equipos.ver']);
     $routes->post('equipos/(:num)/editar', 'EquipmentManagement::update/$1', ['filter' => 'permission:equipos.editar']);
@@ -76,6 +111,7 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->post('importaciones/biblioteca/items/(:num)', 'ImportManagement::updateLibraryItem/$1', ['filter' => 'permission:importaciones.cargar']);
     $routes->get('importaciones/biblioteca/tareas/buscar', 'LibraryTaskCatalog::search', ['filter' => 'permission:importaciones.cargar']);
     $routes->post('importaciones/biblioteca/tareas/(:num)', 'ImportManagement::updateLibraryTask/$1', ['filter' => 'permission:importaciones.cargar']);
+    $routes->post('importaciones/biblioteca/tareas/(:num)/estado', 'LibraryTaskCatalog::status/$1', ['filter' => 'permission:importaciones.cargar']);
     $routes->post('importaciones/biblioteca/tareas/(:num)/desvincular', 'LibraryTaskLinks::detach/$1', ['filter' => 'permission:importaciones.cargar']);
     $routes->post('importaciones/biblioteca/servicios/(:num)/tareas', 'LibraryTaskCatalog::link/$1', ['filter' => 'permission:importaciones.cargar']);
     $routes->post('importaciones/biblioteca/servicios/(:num)/tareas/nueva', 'LibraryTaskCatalog::createAndLink/$1', ['filter' => 'permission:importaciones.cargar']);
@@ -90,8 +126,38 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->post('equipos/(:num)/planes', 'MaintenanceCircuit::assignPlan/$1', ['filter' => 'permission:planes.editar']);
     $routes->post('vencimientos/detectar', 'MaintenanceCircuit::detectOverdue', ['filter' => 'permission:planes.editar']);
     $routes->post('avisos/(:num)/orden', 'MaintenanceCircuit::generateOrder/$1', ['filter' => 'permission:ordenes.editar']);
+    $routes->get('ordenes', 'WorkOrders::index', ['filter' => 'permission:ordenes.ver']);
+    $routes->get('ordenes/importar', 'WorkOrderDocumentImports::index', ['filter' => 'permission:ordenes.editar']);
+    $routes->post('ordenes/importar', 'WorkOrderDocumentImports::upload', ['filter' => 'permission:ordenes.editar']);
+    $routes->get('ordenes/importar/(:num)', 'WorkOrderDocumentImports::show/$1', ['filter' => 'permission:ordenes.editar']);
+    $routes->post('ordenes/importar/(:num)/analizar', 'WorkOrderDocumentImports::analyze/$1', ['filter' => 'permission:ordenes.editar']);
+    $routes->post('ordenes/importar/(:num)/confirmar', 'WorkOrderDocumentImports::confirm/$1', ['filter' => 'permission:ordenes.editar']);
+    $routes->get('ordenes/importar/(:num)/documento', 'WorkOrderDocumentImports::document/$1', ['filter' => 'permission:ordenes.editar']);
+    $routes->post('ordenes/correctivas', 'CorrectiveWorkOrders::create', ['filter' => 'permission:ordenes.editar']);
+    $routes->get('ordenes/(:num)/imprimir', 'MaintenanceCircuit::printOrder/$1');
     $routes->post('ordenes/(:num)/iniciar', 'MaintenanceCircuit::startOrder/$1', ['filter' => 'permission:ordenes.editar']);
+    $routes->post('ordenes/(:num)/esperar-repuestos', 'WorkOrderLifecycle::waitForParts/$1', ['filter' => 'permission:ordenes.editar']);
+    $routes->post('ordenes/(:num)/reanudar', 'WorkOrderLifecycle::resume/$1', ['filter' => 'permission:ordenes.editar']);
+    $routes->post('ordenes/(:num)/cancelar', 'WorkOrderLifecycle::cancel/$1', ['filter' => 'permission:ordenes.editar']);
     $routes->post('ordenes/(:num)/cerrar', 'MaintenanceCircuit::closeOrder/$1', ['filter' => 'permission:ordenes.cerrar']);
+    $routes->post('ordenes/(:num)/cerrar-correctiva', 'CorrectiveWorkOrders::close/$1', ['filter' => 'permission:ordenes.cerrar']);
+});
+
+$routes->group('mantenimiento/chatbot', ['filter' => ['auth', 'permission:chatbot.usar']], function ($routes) {
+    $routes->get('/',               'Chatbot::index');
+    $routes->post('conversaciones', 'Chatbot::startConversation');
+    $routes->post('mensajes',       'Chatbot::sendMessage');
+    $routes->post('mensajes/stream','Chatbot::sendMessageStream');
+    $routes->post('confirmar',      'Chatbot::confirmTool');
+    $routes->get('historial',       'Chatbot::history');
+});
+
+// Auditoría administrativa: el controlador resuelve el alcance real desde el
+// ActorContext. No se usa permission filter acá porque el superadmin global no
+// hereda permisos de tenant; el permiso de empresa se valida dentro del caso de uso.
+$routes->group('mantenimiento/chatbot/auditoria', ['filter' => ['auth']], static function ($routes): void {
+    $routes->get('', 'ChatbotAudit::index');
+    $routes->get('(:num)', 'ChatbotAudit::show/$1');
 });
 
 $routes->group('reportes', ['filter' => ['auth', 'permission:reportes.ver']], static function ($routes): void {

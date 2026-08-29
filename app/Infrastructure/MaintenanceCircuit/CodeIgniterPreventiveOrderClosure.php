@@ -15,6 +15,7 @@ use App\Infrastructure\Assets\CodeIgniterEquipmentRepository;
 use App\Infrastructure\Measurement\CodeIgniterReadingRepository;
 use App\Infrastructure\Measurement\CodeIgniterUnitOfWork;
 use App\Infrastructure\PreventiveMaintenance\CodeIgniterPlanMantenimientoRepository;
+use App\Infrastructure\PreventiveMaintenance\CodeIgniterServiceTypeGateway;
 use App\Infrastructure\PreventiveMaintenance\DecimalHours;
 use App\Infrastructure\WorkOrders\CodeIgniterWorkOrderRepository;
 use App\Infrastructure\WorkOrders\CodeIgniterWorkOrderTransaction;
@@ -40,7 +41,10 @@ final class CodeIgniterPreventiveOrderClosure implements PreventiveOrderClosureP
             new CodeIgniterReadingRepository($this->database),
             new CodeIgniterUnitOfWork($this->database),
         );
-        $recalculate = new RecalcularPlanTrasCierre(new CodeIgniterPlanMantenimientoRepository($this->database));
+        $recalculate = new RecalcularPlanTrasCierre(
+            new CodeIgniterPlanMantenimientoRepository($this->database),
+            new CodeIgniterServiceTypeGateway($this->database),
+        );
         $actor = new ActorContext(
             $actorUserId,
             $companyId,
@@ -65,9 +69,35 @@ final class CodeIgniterPreventiveOrderClosure implements PreventiveOrderClosureP
             if ($taskRows === []) {
                 throw new DomainException('La orden no existe, no tiene tareas o queda fuera del alcance autorizado.');
             }
+
             $workByTask = [];
+            $deferredResults = [];
+            $taskResults = is_array($closure['tareas'] ?? null) ? $closure['tareas'] : null;
             foreach ($taskRows as $task) {
-                $workByTask[(int) $task['id']] = (string) $closure['trabajo_realizado'];
+                $taskId = (int) $task['id'];
+                if ($taskResults === null) {
+                    $workByTask[$taskId] = (string) $closure['trabajo_realizado'];
+                    continue;
+                }
+
+                $result = $taskResults[$taskId] ?? null;
+                if (! is_array($result)) {
+                    throw new DomainException('Debe indicar el resultado de todas las tareas de la OT.');
+                }
+
+                $status = (string) ($result['resultado'] ?? '');
+                $detail = (string) ($result['detalle'] ?? '');
+                if ($status === 'REALIZADA') {
+                    $workByTask[$taskId] = $detail !== '' ? $detail : 'Tarea realizada.';
+                    continue;
+                }
+
+                if (! in_array($status, ['PENDIENTE', 'NO_APLICA'], true)) {
+                    throw new DomainException('El resultado informado para una tarea no es válido.');
+                }
+
+                $workByTask[$taskId] = ($status === 'PENDIENTE' ? 'No realizada: ' : 'No aplica: ') . $detail;
+                $deferredResults[$taskId] = ['estado' => $status, 'detalle' => $detail];
             }
 
             $prepared = $prepare->execute($actor, new PreparePreventiveWorkOrderClosureCommand(
@@ -91,7 +121,7 @@ final class CodeIgniterPreventiveOrderClosure implements PreventiveOrderClosureP
                 ));
             }
 
-            $recalculate->execute(
+            $next = $recalculate->execute(
                 $companyId,
                 (int) $prepared->workOrder->planId(),
                 $branchIds,
@@ -101,18 +131,51 @@ final class CodeIgniterPreventiveOrderClosure implements PreventiveOrderClosureP
                 $actorUserId,
             );
             $repository->save($prepared->workOrder, $actorUserId);
+            $this->persistCosts($companyId, $orderId, $closure, $actorUserId);
 
-            $plan = $this->database->table('planes_mantenimiento')
-                ->select('proximo_km, proximas_horas, proxima_fecha')
-                ->where('empresa_id', $companyId)->where('id', (int) $prepared->workOrder->planId())
-                ->get()->getRowArray();
+            foreach ($deferredResults as $taskId => $result) {
+                $this->database->table('orden_tareas')
+                    ->where('empresa_id', $companyId)
+                    ->where('orden_id', $orderId)
+                    ->where('id', $taskId)
+                    ->update([
+                        'estado' => $result['estado'],
+                        'trabajo_realizado' => null,
+                        'fecha_fin' => null,
+                        'observaciones' => $result['detalle'],
+                        'updated_at' => date('Y-m-d H:i:s'),
+                    ]);
+            }
 
             return [
                 'numero' => $prepared->workOrder->number()->value(),
-                'proximo_km' => $plan['proximo_km'] ?? null,
-                'proximas_horas' => $plan['proximas_horas'] ?? null,
-                'proxima_fecha' => $plan['proxima_fecha'] ?? null,
+                'proximo_km' => $next['proximo_km'],
+                'proximas_horas' => $next['proximas_horas_decimas'] === null
+                    ? null
+                    : number_format($next['proximas_horas_decimas'] / 10, 1, '.', ''),
+                'proxima_fecha' => $next['proxima_fecha'],
+                'costo_total' => $closure['costo_total'],
             ];
         });
+    }
+
+    /** @param array<string,mixed> $closure */
+    private function persistCosts(int $companyId, int $orderId, array $closure, int $actorUserId): void
+    {
+        $updated = $this->database->table('ordenes_trabajo')
+            ->where('empresa_id', $companyId)
+            ->where('id', $orderId)
+            ->update([
+                'costo_mano_obra' => $closure['costo_mano_obra'],
+                'costo_repuestos' => $closure['costo_repuestos'],
+                'otros_costos' => $closure['otros_costos'],
+                'costo_total' => $closure['costo_total'],
+                'updated_at' => date('Y-m-d H:i:s'),
+                'updated_by' => $actorUserId,
+            ]);
+
+        if (! $updated) {
+            throw new DomainException('No se pudieron guardar los costos de la orden de trabajo.');
+        }
     }
 }

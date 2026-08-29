@@ -30,11 +30,37 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
         foreach ($notifications as $notification) {
             $title = htmlspecialchars((string) $notification['titulo'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
             $summary = htmlspecialchars((string) $notification['resumen'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-            $items .= "<li><strong>{$title}</strong><br>{$summary}</li>";
+            $link = $this->notificationLink($notification['url'] ?? null);
+            $action = $link === null
+                ? ''
+                : '<br><a href="' . htmlspecialchars($link, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '">Ver detalle</a>';
+            $items .= "<li><strong>{$title}</strong><br>{$summary}{$action}</li>";
         }
         $email->setMessage('<h1>Resumen de mantenimiento</h1><ul>' . $items . '</ul>');
         if (! $email->send(false)) {
             throw new RuntimeException('El servidor SMTP rechazó el resumen.');
         }
+    }
+
+    private function notificationLink(mixed $url): ?string
+    {
+        $value = trim((string) $url);
+        if ($value === '') {
+            return null;
+        }
+        if (filter_var($value, FILTER_VALIDATE_URL) !== false) {
+            return $value;
+        }
+        if (! str_starts_with($value, '/')) {
+            return null;
+        }
+
+        $base = parse_url(base_url());
+        if (! is_array($base) || ! isset($base['scheme'], $base['host'])) {
+            return null;
+        }
+        $port = isset($base['port']) ? ':' . (int) $base['port'] : '';
+
+        return $base['scheme'] . '://' . $base['host'] . $port . $value;
     }
 }

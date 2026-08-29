@@ -1,9 +1,12 @@
+import { nextTick } from 'vue'
 import { afterEach, describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import {
   BranchesAdminPage,
+  SuperAdminDemoPage,
   SuperAdminPage,
   UsersAdminPage,
+  UsersAdminWithAuditPage,
   adminPagesByType,
 } from '../../src/pages/admin/index.js'
 import { branchesAdminData, superAdminData, usersAdminData } from './fixtures.js'
@@ -21,10 +24,26 @@ afterEach(() => {
 })
 
 describe('registro de páginas administrativas', () => {
-  it('exporta los tres componentes por pageType', () => {
-    expect(adminPagesByType.superadmin).toBe(SuperAdminPage)
+  it('exporta los componentes por pageType', () => {
+    expect(adminPagesByType.superadmin).toBe(SuperAdminDemoPage)
     expect(adminPagesByType['branches-admin']).toBe(BranchesAdminPage)
-    expect(adminPagesByType['users-admin']).toBe(UsersAdminPage)
+    expect(adminPagesByType['users-admin']).toBe(UsersAdminWithAuditPage)
+  })
+})
+
+describe('SuperAdminDemoPage', () => {
+  it('conserva la administración global y abre el generador por evento del sidebar', async () => {
+    const wrapper = mountPage(SuperAdminDemoPage, superAdminData)
+
+    expect(wrapper.text()).toContain('Empresas y acceso de usuarios')
+    expect(document.body.textContent).not.toContain('Crear empresa demo')
+
+    window.dispatchEvent(new CustomEvent('maintenance:open-demo-company'))
+    await nextTick()
+
+    expect(document.body.textContent).toContain('Empresa demo')
+    expect(document.body.textContent).toContain('Crear empresa demo')
+    expect(document.body.querySelector('form[action$="/superadmin/demo"]')).not.toBeNull()
   })
 })
 

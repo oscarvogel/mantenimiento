@@ -81,6 +81,32 @@ final class LibraryTaskCatalog extends BaseController
         }
     }
 
+    public function status(int $taskId): ResponseInterface
+    {
+        try {
+            $rawActive = $this->request->getPost('activo');
+            if (! in_array((string) $rawActive, ['0', '1'], true)) {
+                throw new DomainException('Indicá un estado válido para la tarea.');
+            }
+
+            $active = (string) $rawActive === '1';
+            $serviceTypeId = $this->requiredPositiveInt(
+                $this->request->getPost('tipo_servicio_id'),
+                'servicio',
+            );
+
+            $this->manager()->setActive($this->actor(), $serviceTypeId, $taskId, $active);
+
+            return $this->response->setJSON([
+                'ok' => true,
+                'message' => $active ? 'Tarea activada.' : 'Tarea desactivada.',
+                'active' => $active,
+            ]);
+        } catch (Throwable $exception) {
+            return $this->jsonFailure($exception);
+        }
+    }
+
     private function actor(): ActorContext
     {
         $actor = (new SessionActorContext())->current();

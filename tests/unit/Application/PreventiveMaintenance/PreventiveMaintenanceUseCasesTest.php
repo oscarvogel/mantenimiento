@@ -20,7 +20,7 @@ use PHPUnit\Framework\TestCase;
 
 final class PreventiveMaintenanceUseCasesTest extends TestCase
 {
-    public function testAssignPlanDoesNotInventHistoricalBasesFromCurrentUsageOrClock(): void
+    public function testAssignPlanUsesServiceDefinitionAndDoesNotInventHistoricalBases(): void
     {
         $plans = new FakePlanRepository();
         $assets = new FakePreventiveAssetGateway(new EquipmentForPlan(
@@ -32,7 +32,21 @@ final class PreventiveMaintenanceUseCasesTest extends TestCase
             true,
             new UsoActual(90_000, 1_000),
         ));
-        $useCase = new AsignarPlan($plans, $assets, new FakeServiceTypeGateway(true), new FixedPreventiveClock('2026-01-15'));
+        $useCase = new AsignarPlan(
+            $plans,
+            $assets,
+            new FakeServiceTypeGateway([
+                'id' => 3,
+                'intervalKm' => 20_000,
+                'intervalHoursTenths' => 750,
+                'intervalDays' => 60,
+                'warningKm' => 2_000,
+                'warningHoursTenths' => 100,
+                'warningDays' => 7,
+                'priority' => 'ALTA',
+            ]),
+            new FixedPreventiveClock('2026-01-15'),
+        );
         $actor = new ActorContext(9, 5, false, false, ['Responsable'], ['planes.editar'], [7]);
 
         $id = $useCase->execute(new AsignarPlanCommand(
@@ -50,6 +64,13 @@ final class PreventiveMaintenanceUseCasesTest extends TestCase
 
         self::assertSame(77, $id);
         self::assertNotNull($plans->saved);
+        self::assertSame(20_000, $plans->saved->intervaloKm());
+        self::assertSame(750, $plans->saved->intervaloHorasDecimas());
+        self::assertSame(60, $plans->saved->intervaloDias());
+        self::assertSame(2_000, $plans->saved->anticipacionKm());
+        self::assertSame(100, $plans->saved->anticipacionHorasDecimas());
+        self::assertSame(7, $plans->saved->anticipacionDias());
+        self::assertSame('ALTA', $plans->saved->prioridad());
         self::assertNull($plans->saved->baseKm());
         self::assertNull($plans->saved->proximoKm());
         self::assertNull($plans->saved->baseHorasDecimas());
@@ -63,7 +84,7 @@ final class PreventiveMaintenanceUseCasesTest extends TestCase
         $useCase = new AsignarPlan(
             new FakePlanRepository(),
             new FakePreventiveAssetGateway(null),
-            new FakeServiceTypeGateway(true),
+            new FakeServiceTypeGateway(null),
             new FixedPreventiveClock('2026-01-15'),
         );
         $actor = new ActorContext(9, 5, false, false, ['Responsable'], ['planes.editar'], [7]);
@@ -164,13 +185,13 @@ final readonly class FakePreventiveAssetGateway implements PreventiveAssetGatewa
 
 final readonly class FakeServiceTypeGateway implements ServiceTypeGateway
 {
-    public function __construct(private bool $active)
+    public function __construct(private ?array $definition)
     {
     }
 
-    public function isActive(int $serviceTypeId): bool
+    public function findActiveDefinition(int $companyId, int $serviceTypeId): ?array
     {
-        return $this->active;
+        return $this->definition;
     }
 }
 

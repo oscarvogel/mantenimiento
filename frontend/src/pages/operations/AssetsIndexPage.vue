@@ -1,5 +1,5 @@
 <script setup>
-import { CalendarDaysIcon, ChevronDownIcon, FunnelIcon, PlusIcon, QrCodeIcon, Squares2X2Icon, WrenchScrewdriverIcon } from '@heroicons/vue/24/outline'
+import { CalendarDaysIcon, ChevronDownIcon, FunnelIcon, PlusIcon, QrCodeIcon, Squares2X2Icon, WrenchScrewdriverIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 import { computed, ref, watch } from 'vue'
 import CsrfInput from './components/CsrfInput.vue'
 import EmptyState from './components/EmptyState.vue'
@@ -19,10 +19,24 @@ const selectedType = computed(() => props.data.catalogs.types.find((type) => Str
 const compatibleModels = computed(() => props.data.catalogs.models.filter((model) => (
   model.active && String(model.brandId) === selectedBrandId.value && String(model.typeId) === selectedTypeId.value
 )))
+const hasEquipmentOldInput = Boolean(
+  props.data.old.fecha_alta
+  || props.data.old.codigo
+  || props.data.old.patente
+  || props.data.old.chasis
+  || props.data.old.motor
+  || props.data.old.km_actual_inicial
+  || props.data.old.horas_actuales_inicial
+  || props.data.old.fecha_lectura_inicial
+  || props.data.old.observaciones
+)
+const equipmentModalOpen = ref(hasEquipmentOldInput)
 const usageLabel = (formatter, value) => {
   const formatted = formatter(value)
   return formatted === 'sin datos' ? 'Sin datos' : formatted
 }
+const openEquipmentModal = () => { equipmentModalOpen.value = true }
+const closeEquipmentModal = () => { equipmentModalOpen.value = false }
 watch([selectedTypeId, selectedBrandId], () => { selectedModelId.value = '' })
 </script>
 
@@ -31,7 +45,7 @@ watch([selectedTypeId, selectedBrandId], () => { selectedModelId.value = '' })
     <PageHeading eyebrow="Registro de activos" title="Equipos" description="Consultá la flota y accedé a la ficha completa de cada unidad.">
       <template #actions>
         <div class="flex flex-wrap gap-2">
-          <a v-if="data.canEdit" href="#alta-equipo" :class="primaryButton"><PlusIcon class="mr-2 size-5" aria-hidden="true" />Nuevo equipo</a>
+          <button v-if="data.canEdit" type="button" :class="primaryButton" @click="openEquipmentModal"><PlusIcon class="mr-2 size-5" aria-hidden="true" />Nuevo equipo</button>
           <a :href="data.routes.maintenance" :class="secondaryButton"><WrenchScrewdriverIcon class="mr-2 size-5" aria-hidden="true" />Circuito preventivo</a>
         </div>
       </template>
@@ -65,37 +79,6 @@ watch([selectedTypeId, selectedBrandId], () => { selectedModelId.value = '' })
       <template #footer><PaginationBar :pagination="data.equipment.pagination" /></template>
     </PanelCard>
 
-    <details v-if="data.canEdit" id="alta-equipo" class="ui-details-animated group mb-6 scroll-mt-6 overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card">
-      <summary class="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 sm:px-6">
-        <span>
-          <span class="block font-bold text-ink">Registrar un nuevo equipo</span>
-          <span class="mt-1 block text-sm font-normal text-ink-muted">Abrí este panel únicamente cuando necesites dar de alta una unidad.</span>
-        </span>
-        <ChevronDownIcon class="size-5 shrink-0 text-ink-muted transition-transform group-open:rotate-180" aria-hidden="true" />
-      </summary>
-      <div class="border-t border-border-subtle p-5 sm:p-6">
-        <form v-if="data.catalogs.branches.length" method="post" :action="data.routes.createEquipment" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <CsrfInput :csrf="data.csrf" />
-          <FormField label="Sucursal" for-id="new-equipment-branch"><select id="new-equipment-branch" name="sucursal_id" required :class="fieldClass"><option v-for="branch in data.catalogs.branches" :key="branch.id" :value="branch.id" :selected="String(data.old.sucursal_id) === String(branch.id)">{{ branch.code }} · {{ branch.name }}</option></select></FormField>
-          <FormField label="Tipo de equipo" for-id="new-equipment-type"><select id="new-equipment-type" v-model="selectedTypeId" name="tipo_equipo_id" required :class="fieldClass"><option v-for="type in data.catalogs.types.filter((item) => item.active)" :key="type.id" :value="String(type.id)">{{ type.name }}</option></select></FormField>
-          <FormField label="Código interno" for-id="new-equipment-code"><input id="new-equipment-code" name="codigo" maxlength="50" required :value="data.old.codigo" class="uppercase" :class="fieldClass" /></FormField>
-          <FormField label="Patente" for-id="new-equipment-plate"><input id="new-equipment-plate" name="patente" maxlength="20" :value="data.old.patente" class="uppercase" :class="fieldClass" /></FormField>
-          <FormField label="Marca" for-id="new-equipment-brand"><select id="new-equipment-brand" v-model="selectedBrandId" name="marca_id" :class="fieldClass"><option value="">Sin informar</option><option v-for="brand in data.catalogs.brands.filter((item) => item.active)" :key="brand.id" :value="String(brand.id)">{{ brand.name }}</option></select></FormField>
-          <FormField label="Modelo" for-id="new-equipment-model"><select id="new-equipment-model" v-model="selectedModelId" name="modelo_id" :disabled="!selectedBrandId || !selectedTypeId" :class="fieldClass"><option value="">{{ selectedBrandId && selectedTypeId ? 'Sin informar' : 'Seleccioná marca y tipo' }}</option><option v-for="model in compatibleModels" :key="model.id" :value="String(model.id)">{{ model.name }}</option></select></FormField>
-          <FormField label="Fecha de alta" for-id="new-equipment-date"><input id="new-equipment-date" type="date" name="fecha_alta" required :value="data.old.fecha_alta || today()" :max="today()" :class="fieldClass" /></FormField>
-          <FormField label="Año" for-id="new-equipment-year"><input id="new-equipment-year" type="number" min="1900" max="9999" name="anio" :value="data.old.anio" :class="fieldClass" /></FormField>
-          <FormField label="Chasis" for-id="new-equipment-chassis"><input id="new-equipment-chassis" name="chasis" maxlength="100" :value="data.old.chasis" class="uppercase" :class="fieldClass" /></FormField>
-          <FormField label="Motor" for-id="new-equipment-engine"><input id="new-equipment-engine" name="motor" maxlength="100" :value="data.old.motor" class="uppercase" :class="fieldClass" /></FormField>
-          <FormField v-if="selectedType?.controlsKm" label="Kilometraje actual (opcional)" for-id="new-equipment-current-km" hint="Es una lectura actual; no se usa como base histórica del plan."><input id="new-equipment-current-km" type="number" min="0" name="km_actual_inicial" :value="data.old.km_actual_inicial" :class="fieldClass" /></FormField>
-          <FormField v-if="selectedType?.controlsHours" label="Horómetro actual (opcional)" for-id="new-equipment-current-hours" hint="Podés usar coma o punto; es una lectura actual y no se usa como base histórica del plan."><input id="new-equipment-current-hours" type="text" inputmode="decimal" autocomplete="off" name="horas_actuales_inicial" :value="data.old.horas_actuales_inicial" :class="fieldClass" /></FormField>
-          <FormField v-if="selectedType?.controlsKm || selectedType?.controlsHours" label="Fecha de lectura actual" for-id="new-equipment-reading-date"><input id="new-equipment-reading-date" type="datetime-local" name="fecha_lectura_inicial" :value="data.old.fecha_lectura_inicial || nowLocal()" :class="fieldClass" /></FormField>
-          <FormField label="Observaciones" for-id="new-equipment-notes" class="sm:col-span-2"><textarea id="new-equipment-notes" name="observaciones" rows="3" :value="data.old.observaciones" :class="fieldClass"></textarea></FormField>
-          <div class="flex items-end"><button type="submit" :class="primaryButton">Crear equipo</button></div>
-        </form>
-        <EmptyState v-else title="No hay sucursales disponibles" description="Necesitás una sucursal activa y autorizada para registrar equipos." />
-      </div>
-    </details>
-
     <details v-if="data.canEdit" class="ui-details-animated group overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card">
       <summary class="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 sm:px-6">
         <span class="flex items-center gap-3">
@@ -124,5 +107,59 @@ watch([selectedTypeId, selectedBrandId], () => { selectedModelId.value = '' })
       </PanelCard>
       </section>
     </details>
+
+    <Teleport to="body">
+      <div
+        v-if="data.canEdit && equipmentModalOpen"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-[1px]"
+        @click.self="closeEquipmentModal"
+      >
+        <section
+          class="flex max-h-[calc(100vh-2rem)] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-border bg-surface-raised shadow-2xl"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="new-equipment-title"
+        >
+          <header class="flex items-start justify-between gap-4 border-b border-border-subtle px-5 py-4 sm:px-6">
+            <div>
+              <p class="text-xs font-bold uppercase tracking-[0.14em] text-primary">Registro de activos</p>
+              <h2 id="new-equipment-title" class="mt-1 text-xl font-bold text-ink">Nuevo equipo</h2>
+              <p class="mt-1 text-sm text-ink-muted">Completá los datos de la unidad y guardala sin salir del listado.</p>
+            </div>
+            <button type="button" :class="secondaryButton" aria-label="Cerrar formulario de nuevo equipo" @click="closeEquipmentModal">
+              <XMarkIcon class="size-5" aria-hidden="true" />
+            </button>
+          </header>
+
+          <div class="overflow-y-auto p-5 sm:p-6">
+            <form v-if="data.catalogs.branches.length" method="post" :action="data.routes.createEquipment" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <CsrfInput :csrf="data.csrf" />
+              <FormField label="Sucursal" for-id="new-equipment-branch"><select id="new-equipment-branch" name="sucursal_id" required :class="fieldClass"><option v-for="branch in data.catalogs.branches" :key="branch.id" :value="branch.id" :selected="String(data.old.sucursal_id) === String(branch.id)">{{ branch.code }} · {{ branch.name }}</option></select></FormField>
+              <FormField label="Tipo de equipo" for-id="new-equipment-type"><select id="new-equipment-type" v-model="selectedTypeId" name="tipo_equipo_id" required :class="fieldClass"><option v-for="type in data.catalogs.types.filter((item) => item.active)" :key="type.id" :value="String(type.id)">{{ type.name }}</option></select></FormField>
+              <FormField label="Código interno" for-id="new-equipment-code"><input id="new-equipment-code" name="codigo" maxlength="50" required :value="data.old.codigo" class="uppercase" :class="fieldClass" /></FormField>
+              <FormField label="Patente" for-id="new-equipment-plate"><input id="new-equipment-plate" name="patente" maxlength="20" :value="data.old.patente" class="uppercase" :class="fieldClass" /></FormField>
+              <FormField label="Marca" for-id="new-equipment-brand"><select id="new-equipment-brand" v-model="selectedBrandId" name="marca_id" :class="fieldClass"><option value="">Sin informar</option><option v-for="brand in data.catalogs.brands.filter((item) => item.active)" :key="brand.id" :value="String(brand.id)">{{ brand.name }}</option></select></FormField>
+              <FormField label="Modelo" for-id="new-equipment-model"><select id="new-equipment-model" v-model="selectedModelId" name="modelo_id" :disabled="!selectedBrandId || !selectedTypeId" :class="fieldClass"><option value="">{{ selectedBrandId && selectedTypeId ? 'Sin informar' : 'Seleccioná marca y tipo' }}</option><option v-for="model in compatibleModels" :key="model.id" :value="String(model.id)">{{ model.name }}</option></select></FormField>
+              <FormField label="Fecha de alta" for-id="new-equipment-date"><input id="new-equipment-date" type="date" name="fecha_alta" required :value="data.old.fecha_alta || today()" :max="today()" :class="fieldClass" /></FormField>
+              <FormField label="Año" for-id="new-equipment-year"><input id="new-equipment-year" type="number" min="1900" max="9999" name="anio" :value="data.old.anio" :class="fieldClass" /></FormField>
+              <FormField label="Chasis" for-id="new-equipment-chassis"><input id="new-equipment-chassis" name="chasis" maxlength="100" :value="data.old.chasis" class="uppercase" :class="fieldClass" /></FormField>
+              <FormField label="Motor" for-id="new-equipment-engine"><input id="new-equipment-engine" name="motor" maxlength="100" :value="data.old.motor" class="uppercase" :class="fieldClass" /></FormField>
+              <FormField v-if="selectedType?.controlsKm" label="Kilometraje actual (opcional)" for-id="new-equipment-current-km" hint="Es una lectura actual; no se usa como base histórica del plan."><input id="new-equipment-current-km" type="number" min="0" name="km_actual_inicial" :value="data.old.km_actual_inicial" :class="fieldClass" /></FormField>
+              <FormField v-if="selectedType?.controlsHours" label="Horómetro actual (opcional)" for-id="new-equipment-current-hours" hint="Podés usar coma o punto; es una lectura actual y no se usa como base histórica del plan."><input id="new-equipment-current-hours" type="text" inputmode="decimal" autocomplete="off" name="horas_actuales_inicial" :value="data.old.horas_actuales_inicial" :class="fieldClass" /></FormField>
+              <FormField v-if="selectedType?.controlsKm || selectedType?.controlsHours" label="Fecha de lectura actual" for-id="new-equipment-reading-date"><input id="new-equipment-reading-date" type="datetime-local" name="fecha_lectura_inicial" :value="data.old.fecha_lectura_inicial || nowLocal()" :class="fieldClass" /></FormField>
+              <FormField label="Observaciones" for-id="new-equipment-notes" class="sm:col-span-2"><textarea id="new-equipment-notes" name="observaciones" rows="3" :value="data.old.observaciones" :class="fieldClass"></textarea></FormField>
+              <div class="flex flex-wrap items-center justify-end gap-2 border-t border-border-subtle pt-4 sm:col-span-2 xl:col-span-4">
+                <button type="button" :class="secondaryButton" @click="closeEquipmentModal">Cancelar</button>
+                <button type="submit" :class="primaryButton">Crear equipo</button>
+              </div>
+            </form>
+            <div v-else>
+              <EmptyState title="No hay sucursales disponibles" description="Necesitás una sucursal activa y autorizada para registrar equipos." />
+              <div class="mt-4 flex justify-end"><button type="button" :class="secondaryButton" @click="closeEquipmentModal">Cerrar</button></div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </Teleport>
   </div>
 </template>

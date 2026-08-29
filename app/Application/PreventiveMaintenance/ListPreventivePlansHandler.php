@@ -45,21 +45,13 @@ final readonly class ListPreventivePlansHandler
         $rows = [];
         $now = $this->clock->now();
         foreach ($this->readModel->listActive($actor->companyId(), $scope) as $item) {
-            if ($branchId !== null && $branchId > 0 && $item->branchId !== $branchId) {
-                continue;
-            }
-            if ($equipmentId > 0 && $item->plan->equipoId() !== $equipmentId) {
-                continue;
-            }
-            if ($query !== '' && ! str_contains(mb_strtolower($item->equipmentCode . ' ' . ($item->equipmentPlate ?? '') . ' ' . $item->serviceName), $query)) {
-                continue;
-            }
+            if ($branchId !== null && $branchId > 0 && $item->branchId !== $branchId) continue;
+            if ($equipmentId > 0 && $item->plan->equipoId() !== $equipmentId) continue;
+            if ($query !== '' && ! str_contains(mb_strtolower($item->equipmentCode . ' ' . ($item->equipmentPlate ?? '') . ' ' . $item->serviceName), $query)) continue;
 
             $evaluation = $this->evaluator->evaluar($item->plan, $item->currentUsage, $now);
             $computedState = $evaluation->estado()->value;
-            if ($state !== '' && $computedState !== $state) {
-                continue;
-            }
+            if ($state !== '' && $computedState !== $state) continue;
 
             $plan = $item->plan;
             $rows[] = [
@@ -106,9 +98,9 @@ final readonly class ListPreventivePlansHandler
             $perPage,
             $total,
             $this->readModel->listActiveEquipment($actor->companyId(), $scope),
-            $this->readModel->listActiveServiceTypes(),
+            $this->readModel->listActiveServiceTypes($actor->companyId()),
             $this->readModel->listActiveBranches($actor->companyId(), $scope),
-            $this->readModel->listTemplateDefaults($actor->companyId()),
+            [],
         );
     }
 

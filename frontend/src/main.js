@@ -1,5 +1,6 @@
 import { createApp } from 'vue'
 import App from './App.vue'
+import ManagerialApp from './ManagerialApp.vue'
 import PageHost from './PageHost.vue'
 import { normalizeAppShellPayload, normalizeDashboardPayload } from './adapters/dashboardPayload.js'
 import { developmentDashboard } from './data/developmentDashboard.js'
@@ -8,8 +9,11 @@ import { adminPagesByType } from './pages/admin/index.js'
 import { ReportsPage } from './pages/reports/index.js'
 import { NotificationCenterPage } from './pages/notifications/index.js'
 import LoginPage from './pages/login/LoginPage.vue'
+import { installContextualReadingActions } from './ui/contextualReadingActions.js'
 import { installEquipmentComboboxes } from './ui/equipmentCombobox.js'
 import { installEquipmentAssignedPlans } from './ui/equipmentAssignedPlans.js'
+import { installLibraryTaskStatus } from './ui/libraryTaskStatus.js'
+import { installPreventiveOrderFlow } from './ui/preventiveOrderFlow.js'
 import { installQuickPlanAssignment } from './ui/quickPlanAssignment.js'
 import { installTemplateServicePicker } from './ui/templateServicePicker.js'
 import { consumeFlash, installGlobalBehaviors } from './ui/globals.js'
@@ -64,9 +68,10 @@ export function mountMaintenanceDashboard(element, payload) {
     }
   }
 
-  return createApp(App, {
-    dashboard: normalizeDashboardPayload(payload),
-  }).mount(element)
+  const dashboard = normalizeDashboardPayload(payload)
+  const dashboardComponent = dashboard.view === 'managerial' ? ManagerialApp : App
+
+  return createApp(dashboardComponent, { dashboard }).mount(element)
 }
 
 const root = document.getElementById('maintenance-app')
@@ -78,10 +83,17 @@ if (root) {
   if (payload?.page === 'preventive-plans') {
     installEquipmentComboboxes(root, payload?.data?.catalogs?.equipment ?? [])
     installTemplateServicePicker(root, payload?.data?.catalogs ?? {})
+    installPreventiveOrderFlow(root, payload)
+  }
+  if (['equipment-detail', 'assets-index'].includes(payload?.page)) {
+    installQuickPlanAssignment(root, payload)
+    installContextualReadingActions(root, payload)
   }
   if (payload?.page === 'equipment-detail') {
-    installQuickPlanAssignment(root, payload)
     installEquipmentAssignedPlans(root, payload)
+  }
+  if (payload?.page === 'preventive-library') {
+    installLibraryTaskStatus(root, payload)
   }
   if (serverPayload) consumeFlash(serverPayload.data?.flash)
 }

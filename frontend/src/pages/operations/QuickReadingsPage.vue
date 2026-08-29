@@ -1,14 +1,12 @@
 <script setup>
 import { computed, reactive, ref } from 'vue'
-import { ArrowPathIcon, CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
+import { ArrowPathIcon, CheckCircleIcon, ExclamationTriangleIcon, MagnifyingGlassIcon, PrinterIcon, WrenchScrewdriverIcon } from '@heroicons/vue/24/outline'
 import CsrfInput from './components/CsrfInput.vue'
 import EmptyState from './components/EmptyState.vue'
 import PageHeading from './components/PageHeading.vue'
 import PaginationBar from './components/PaginationBar.vue'
 import PanelCard from './components/PanelCard.vue'
-import EquipmentThumbnail from './components/EquipmentThumbnail.vue'
-import UsageReadingInput from './components/UsageReadingInput.vue'
-import { fieldClass, formatHours, formatKilometers, kilometersDelta, normalizeDecimalInput, nowLocal, primaryButton, readingDelta, secondaryButton } from './helpers.js'
+import { fieldClass, formatHours, formatKilometers, kilometersDelta, normalizeDecimalInput, nowLocal, parseFlexibleNumber, parseKilometers, primaryButton, readingDelta, secondaryButton } from './helpers.js'
 
 const props = defineProps({ data: { type: Object, required: true } })
 const results = ref([...props.data.results])
@@ -16,20 +14,63 @@ const saving = ref(false)
 const totalToSave = ref(0)
 const currentSavingIndex = ref(0)
 const commonRecordedAt = ref(props.data.recordedAtDefault || nowLocal())
+const search = ref(props.data.filters.q || '')
+const statusFilter = ref('')
 const rows = reactive(Object.fromEntries(props.data.equipment.items.map((equipment) => [equipment.id, {
-  kilometers: '', hours: '', recordedAt: commonRecordedAt.value, notes: '', currentKm: equipment.currentKm,
-  currentHours: equipment.currentHours, status: 'pending', dateCustomized: false,
+  value: '', recordedAt: commonRecordedAt.value, currentKm: equipment.currentKm, currentHours: equipment.currentHours, status: 'pending', message: '', dateCustomized: false,
 }])))
+const maintenance = reactive(Object.fromEntries(props.data.equipment.items.map((equipment) => [equipment.id, equipment.maintenance || { state: 'SIN_PLAN', primaryPlan: null, plans: [], planCount: 0 }])))
+const orderSaving = reactive({})
+const orderErrors = reactive({})
 const csrf = reactive({ ...props.data.csrf })
 
-const readyRows = computed(() => props.data.equipment.items.filter(({ id }) => rows[id].kilometers !== '' || rows[id].hours !== ''))
-const saveButtonLabel = computed(() => {
-  if (saving.value) return `Guardando ${currentSavingIndex.value} de ${totalToSave.value}…`
-  if (readyRows.value.length) return `Guardar ${readyRows.value.length} lectura${readyRows.value.length === 1 ? '' : 's'}`
-  return 'Ingresá al menos una lectura'
+const readingKey = (equipment) => equipment.controlsHours && !equipment.controlsKm ? 'hours' : 'kilometers'
+const readingUnit = (equipment) => readingKey(equipment) === 'hours' ? 'h' : 'km'
+const currentValue = (equipment) => readingKey(equipment) === 'hours' ? rows[equipment.id].currentHours : rows[equipment.id].currentKm
+const formattedCurrent = (equipment) => readingKey(equipment) === 'hours' ? formatHours(rows[equipment.id].currentHours) : formatKilometers(rows[equipment.id].currentKm)
+const parsedValue = (equipment) => readingKey(equipment) === 'hours' ? parseFlexibleNumber(rows[equipment.id].value) : parseKilometers(rows[equipment.id].value)
+const parsedCurrent = (equipment) => readingKey(equipment) === 'hours' ? parseFlexibleNumber(currentValue(equipment)) : parseKilometers(currentValue(equipment))
+const rowError = (equipment) => {
+  if (rows[equipment.id].value === '') return ''
+  const next = parsedValue(equipment)
+  if (next === null || next < 0) return readingKey(equipment) === 'hours' ? 'Ingresá un horómetro válido.' : 'Ingresá un kilometraje entero válido.'
+  const current = parsedCurrent(equipment)
+  return current !== null && next < current ? `No puede ser menor a ${formattedCurrent(equipment)}.` : ''
+}
+const inputDelta = (equipment) => {
+  if (rows[equipment.id].value === '' || rowError(equipment)) return ''
+  const delta = readingKey(equipment) === 'hours'
+    ? readingDelta(rows[equipment.id].currentHours, rows[equipment.id].value)
+    : kilometersDelta(rows[equipment.id].currentKm, rows[equipment.id].value)
+  if (delta === null || delta === undefined || delta === 0) return ''
+  const abs = Math.abs(delta)
+  const number = readingKey(equipment) === 'hours'
+    ? abs.toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+    : Math.round(abs).toLocaleString('es-AR')
+  return `${delta > 0 ? '+' : '-'}${number} ${readingUnit(equipment)}`
+}
+const enteredRows = computed(() => props.data.equipment.items.filter(({ id }) => rows[id].value !== ''))
+const readyRows = computed(() => enteredRows.value.filter((equipment) => !rowError(equipment)))
+const invalidRows = computed(() => enteredRows.value.filter((equipment) => Boolean(rowError(equipment))))
+const maintenanceCounts = computed(() => {
+  const counts = { OK: 0, PROXIMO: 0, VENCIDO: 0, PROBLEMA: 0, SIN_PLAN: 0 }
+  props.data.equipment.items.forEach(({ id }) => { const state = maintenance[id]?.state || 'SIN_PLAN'; if (Object.hasOwn(counts, state)) counts[state] += 1 })
+  return counts
 })
-const statusLabel = (status) => ({ pending: 'Pendiente', saving: 'Guardando', saved: 'Guardada', error: 'Error' }[status] ?? 'Pendiente')
-const equipmentFor = (equipmentId) => props.data.equipment.items.find((item) => item.id === equipmentId)
+const normalizeSearch = (value) => String(value ?? '')
+  .trim()
+  .toLocaleLowerCase('es')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .replace(/[\s-]+/g, '')
+const visibleEquipment = computed(() => {
+  const query = normalizeSearch(search.value)
+  return props.data.equipment.items.filter((equipment) => {
+    const matches = !query || [equipment.code, equipment.plate, equipment.chassis, equipment.typeName, equipment.branchName].some((value) => normalizeSearch(value).includes(query))
+    return matches && (!statusFilter.value || (maintenance[equipment.id]?.state || 'SIN_PLAN') === statusFilter.value)
+  })
+})
+const saveButtonLabel = computed(() => saving.value ? `Guardando ${currentSavingIndex.value} de ${totalToSave.value}…` : readyRows.value.length ? `Guardar ${readyRows.value.length} lectura${readyRows.value.length === 1 ? '' : 's'}` : invalidRows.value.length ? 'Corregí las lecturas marcadas' : 'Ingresá al menos una lectura')
 const formatDelta = (delta, unit) => {
   if (delta === null || delta === undefined) return null
   if (delta === 0) return 'Sin variación'
@@ -40,125 +81,182 @@ const formatDelta = (delta, unit) => {
 }
 const successFeedback = (row) => {
   const values = []
-  if (row.submittedHours === true && row.currentHours !== null && row.currentHours !== undefined) values.push(`Horómetro actualizado a ${formatHours(row.currentHours)}`)
   if (row.submittedKilometers === true && row.currentKilometers !== null && row.currentKilometers !== undefined) values.push(`Kilometraje actualizado a ${formatKilometers(row.currentKilometers)}`)
+  if (row.submittedHours === true && row.currentHours !== null && row.currentHours !== undefined) values.push(`Horómetro actualizado a ${formatHours(row.currentHours)}`)
   return values.join(' · ') || row.message || 'Lectura guardada.'
 }
-const deltaFeedback = (row) => {
-  const values = []
-  if (row.submittedHours === true && row.hoursDelta !== null && row.hoursDelta !== undefined) values.push(`${formatDelta(row.hoursDelta, 'h')} desde la lectura anterior`)
-  if (row.submittedKilometers === true && row.kilometersDelta !== null && row.kilometersDelta !== undefined) values.push(`${formatDelta(row.kilometersDelta, 'km')} desde la lectura anterior`)
-  return values.join(' · ')
-}
+const deltaFeedback = (row) => [
+  row.submittedKilometers === true && row.kilometersDelta !== null && row.kilometersDelta !== undefined ? `${formatDelta(row.kilometersDelta, 'km')} desde la lectura anterior` : null,
+  row.submittedHours === true && row.hoursDelta !== null && row.hoursDelta !== undefined ? `${formatDelta(row.hoursDelta, 'h')} desde la lectura anterior` : null,
+].filter(Boolean).join(' · ')
 const overdueFeedback = (row) => {
   if (!row.overduePlans) return ''
   return `${row.overduePlans} mantenimiento${row.overduePlans === 1 ? '' : 's'} quedó${row.overduePlans === 1 ? '' : 'aron'} vencido${row.overduePlans === 1 ? '' : 's'}.`
 }
-const applyCommonRecordedAt = () => {
-  props.data.equipment.items.forEach(({ id }) => {
-    if (!rows[id].dateCustomized) rows[id].recordedAt = commonRecordedAt.value
-  })
+const primaryPlan = (equipment) => maintenance[equipment.id]?.primaryPlan || null
+const formatPlanPoint = (plan, prefix) => {
+  if (!plan) return '—'
+  const values = []
+  if (plan[`${prefix}Km`] !== null && plan[`${prefix}Km`] !== undefined) values.push(`${Number(plan[`${prefix}Km`]).toLocaleString('es-AR')} km`)
+  if (plan[`${prefix}Hours`] !== null && plan[`${prefix}Hours`] !== undefined) values.push(`${Number(plan[`${prefix}Hours`]).toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} h`)
+  if (plan[`${prefix}Date`]) values.push(plan[`${prefix}Date`].split('-').reverse().join('/'))
+  return values.join(' · ') || 'Sin base'
 }
-const refreshTimestamp = () => {
-  commonRecordedAt.value = nowLocal()
-  applyCommonRecordedAt()
+const missingCriterionLabel = (criterion, plan, equipment) => {
+  if (criterion === 'KILOMETRAJE') {
+    if (plan.baseKm === null || plan.baseKm === undefined) return 'Falta última realización en km'
+    if (rows[equipment.id]?.currentKm === null || rows[equipment.id]?.currentKm === undefined) return 'Falta lectura de kilometraje'
+    return 'Falta dato de kilometraje'
+  }
+  if (criterion === 'HOROMETRO') {
+    if (plan.baseHours === null || plan.baseHours === undefined) return 'Falta última realización en horas'
+    if (rows[equipment.id]?.currentHours === null || rows[equipment.id]?.currentHours === undefined) return 'Falta lectura de horómetro'
+    return 'Falta dato de horómetro'
+  }
+  if (criterion === 'FECHA') return 'Falta fecha de última realización'
+  return 'Falta información del plan'
+}
+const missingPlanDetails = (equipment) => (maintenance[equipment.id]?.plans || []).flatMap((plan) =>
+  (plan.missingCriteria || []).map((criterion) => `${plan.serviceName}: ${missingCriterionLabel(criterion, plan, equipment)}`),
+)
+const preventiveLabel = (equipment) => {
+  const snapshot = maintenance[equipment.id] || { state: 'SIN_PLAN' }
+  const critical = snapshot.primaryPlan?.critical
+  if (snapshot.state === 'SIN_PLAN') return 'Sin plan'
+  if (snapshot.state === 'PROBLEMA') return missingPlanDetails(equipment)[0]?.split(': ').slice(1).join(': ') || 'Faltan datos'
+  if (!critical) return snapshot.state === 'OK' ? 'Al día' : snapshot.state
+  const absolute = Math.abs(Number(critical.value))
+  const formatted = critical.unit === 'km' ? Math.round(absolute).toLocaleString('es-AR') : absolute.toLocaleString('es-AR', { minimumFractionDigits: critical.unit === 'h' ? 1 : 0, maximumFractionDigits: 1 })
+  return snapshot.state === 'VENCIDO' ? `Vencido ${formatted} ${critical.unit}` : `Faltan ${formatted} ${critical.unit}`
+}
+const preventiveClass = (equipment) => ({ OK: 'border-success/30 bg-success-subtle/50 text-success-strong', PROXIMO: 'border-warning/40 bg-warning-subtle/60 text-warning-strong', VENCIDO: 'border-danger/30 bg-danger-subtle/60 text-danger-strong', PROBLEMA: 'border-danger/30 bg-danger-subtle/40 text-danger-strong', SIN_PLAN: 'border-border bg-surface-muted text-ink-muted' }[maintenance[equipment.id]?.state || 'SIN_PLAN'])
+const applyCommonRecordedAt = () => props.data.equipment.items.forEach(({ id }) => {
+  if (!rows[id].dateCustomized) rows[id].recordedAt = commonRecordedAt.value
+})
+const refreshTimestamp = () => { commonRecordedAt.value = nowLocal(); applyCommonRecordedAt() }
+const changeCatalogFilter = (key, value) => {
+  const url = new URL(props.data.routes.index, window.location.origin)
+  if (key === 'branch' && value) url.searchParams.set('sucursal_id', value)
+  if (key === 'type' && value) url.searchParams.set('tipo_id', value)
+  const otherKey = key === 'branch' ? 'tipo_id' : 'sucursal_id'
+  const otherValue = key === 'branch' ? props.data.filters.typeId : props.data.filters.branchId
+  if (otherValue) url.searchParams.set(otherKey, otherValue)
+  url.searchParams.set('per_page', String(props.data.filters.perPage || 50))
+  window.location.assign(url.toString())
 }
 const responsePayload = async (response) => {
   const contentType = response.headers?.get?.('content-type') || ''
   const body = await response.text()
   let payload = null
-  if (body.trim() && (contentType.includes('json') || body.trim().startsWith('{'))) {
-    try { payload = JSON.parse(body) } catch { payload = null }
-  }
-  if (payload) {
-    const kind = response.status >= 500 ? 'server' : response.status === 401 || response.status === 403 ? 'session' : response.status >= 400 ? 'validation' : null
-    return { payload, error: null, kind }
-  }
-  if (response.status >= 500) return { payload: null, error: 'El servidor no pudo guardar la lectura. Intentá nuevamente.', kind: 'server' }
-  if (response.url?.includes('/login') || contentType.includes('text/html')) {
-    return { payload: null, error: 'La sesión pudo haber vencido o el servidor devolvió una página inesperada. Volvé a iniciar sesión.', kind: 'session' }
-  }
-  if (!response.ok) return { payload: null, error: `La validación del servidor rechazó esta lectura (HTTP ${response.status}).`, kind: 'validation' }
-  return { payload: null, error: 'El servidor devolvió una respuesta inesperada.', kind: 'server' }
+  if (body.trim() && (contentType.includes('json') || body.trim().startsWith('{'))) { try { payload = JSON.parse(body) } catch { payload = null } }
+  if (payload) return { payload, error: null, kind: response.status >= 500 ? 'server' : response.status === 401 || response.status === 403 ? 'session' : response.status >= 400 ? 'validation' : null }
+  if (response.status >= 500) return { payload: null, error: 'El servidor no pudo completar la operación. Intentá nuevamente.', kind: 'server' }
+  if (response.url?.includes('/login') || contentType.includes('text/html')) return { payload: null, error: 'La sesión pudo haber vencido. Volvé a iniciar sesión.', kind: 'session' }
+  return { payload: null, error: !response.ok ? `La validación del servidor rechazó la operación (HTTP ${response.status}).` : 'El servidor devolvió una respuesta inesperada.', kind: 'validation' }
 }
-const resultError = (equipment, message, kind = 'network') => ({
-  rowNumber: results.value.length + 1,
-  equipmentId: equipment.id,
-  success: false,
-  message,
-  errorKind: kind,
-  plansEvaluated: 0,
-  overduePlans: 0,
-})
 const submitRows = async () => {
   if (!readyRows.value.length || saving.value) return
   const batch = [...readyRows.value]
-  totalToSave.value = batch.length
-  currentSavingIndex.value = 0
-  saving.value = true
-  results.value = []
+  totalToSave.value = batch.length; currentSavingIndex.value = 0; saving.value = true; results.value = []
   for (const equipment of batch) {
     currentSavingIndex.value += 1
-    const values = rows[equipment.id]
-    const previous = { kilometers: values.currentKm, hours: values.currentHours }
-    const submitted = { kilometers: values.kilometers !== '', hours: values.hours !== '' }
-    values.status = 'saving'
+    const row = rows[equipment.id]
+    const previous = { kilometers: row.currentKm, hours: row.currentHours }
+    row.status = 'saving'; row.message = ''
     const body = new FormData()
     body.append(csrf.name, csrf.hash)
     body.append('equipmentId', String(equipment.id))
-    body.append('kilometers', values.kilometers)
-    body.append('hours', normalizeDecimalInput(values.hours))
-    body.append('recordedAt', values.recordedAt)
-    body.append('notes', values.notes)
+    body.append('kilometers', readingKey(equipment) === 'kilometers' ? row.value : '')
+    body.append('hours', readingKey(equipment) === 'hours' ? normalizeDecimalInput(row.value) : '')
+    body.append('recordedAt', row.recordedAt)
+    body.append('notes', '')
     try {
-      const response = await fetch(props.data.routes.submitRow, { method: 'POST', body, credentials: 'same-origin', headers: { Accept: 'application/json' } })
-      const parsed = await responsePayload(response)
+      const parsed = await responsePayload(await fetch(props.data.routes.submitRow, { method: 'POST', body, credentials: 'same-origin', headers: { Accept: 'application/json' } }))
       if (parsed.payload?.csrf) Object.assign(csrf, parsed.payload.csrf)
-      if (!parsed.payload?.result) {
-        const error = resultError(equipment, parsed.payload?.error || parsed.error || 'No se pudo guardar la fila.', parsed.kind || 'validation')
-        results.value.push(error)
-        values.status = 'error'
-        continue
-      }
+      if (!parsed.payload?.result) { row.status = 'error'; row.message = parsed.payload?.error || parsed.error || 'No se pudo guardar la lectura.'; results.value.push({ rowNumber: currentSavingIndex.value, equipmentId: equipment.id, success: false, message: row.message }); continue }
       const result = parsed.payload.result
-      result.submittedKilometers = submitted.kilometers
-      result.submittedHours = submitted.hours
-      result.previousKilometers = previous.kilometers
-      result.previousHours = previous.hours
-      result.kilometersDelta = submitted.kilometers ? kilometersDelta(previous.kilometers, result.currentKilometers) : null
-      result.hoursDelta = submitted.hours ? readingDelta(previous.hours, result.currentHours) : null
+      result.submittedKilometers = readingKey(equipment) === 'kilometers'
+      result.submittedHours = readingKey(equipment) === 'hours'
+      result.previousKilometers = result.submittedKilometers ? previous.kilometers : null
+      result.previousHours = result.submittedHours ? previous.hours : null
+      result.kilometersDelta = result.submittedKilometers ? kilometersDelta(previous.kilometers, result.currentKilometers) : null
+      result.hoursDelta = result.submittedHours ? readingDelta(previous.hours, result.currentHours) : null
       results.value.push(result)
-      values.status = result.success ? 'saved' : 'error'
+      row.status = result.success ? 'saved' : 'error'; row.message = result.message || (result.success ? 'Lectura guardada.' : 'No se pudo guardar la lectura.')
       if (result.success) {
-        values.currentKm = result.currentKilometers
-        values.currentHours = result.currentHours
-        values.kilometers = ''
-        values.hours = ''
-        values.notes = ''
+        row.currentKm = result.currentKilometers; row.currentHours = result.currentHours; row.value = ''
+        if (parsed.payload?.maintenance) maintenance[equipment.id] = parsed.payload.maintenance
       }
     } catch {
-      values.status = 'error'
-      results.value.push(resultError(equipment, 'No se pudo conectar con el servidor. Revisá tu conexión e intentá nuevamente.'))
+      row.status = 'error'; row.message = 'No se pudo conectar con el servidor.'; results.value.push({ rowNumber: currentSavingIndex.value, equipmentId: equipment.id, success: false, message: row.message })
     }
   }
   saving.value = false
 }
+const generateOrder = async (equipment) => {
+  const plan = primaryPlan(equipment)
+  if (!plan?.noticeId || orderSaving[equipment.id]) return
+  orderSaving[equipment.id] = true; orderErrors[equipment.id] = ''
+  const body = new FormData(); body.append(csrf.name, csrf.hash); body.append('equipmentId', String(equipment.id))
+  try {
+    const parsed = await responsePayload(await fetch(`${props.data.routes.generateOrderBase}/${plan.noticeId}/orden`, { method: 'POST', body, credentials: 'same-origin', headers: { Accept: 'application/json' } }))
+    if (parsed.payload?.csrf) Object.assign(csrf, parsed.payload.csrf)
+    if (!parsed.payload?.orderId) { orderErrors[equipment.id] = parsed.payload?.error || parsed.error || 'No se pudo generar la OT.'; return }
+    if (parsed.payload.maintenance) maintenance[equipment.id] = parsed.payload.maintenance
+  } catch { orderErrors[equipment.id] = 'No se pudo conectar con el servidor para generar la OT.' } finally { orderSaving[equipment.id] = false }
+}
 const focusNextReadingInput = (event) => {
-  const form = event.target?.form
-  if (!form) return
-  const inputs = [...form.querySelectorAll('[data-reading-input="true"]')].filter((input) => !input.disabled)
+  const inputs = [...event.target.form.querySelectorAll('[data-reading-input="true"]')].filter((input) => !input.disabled && input.offsetParent !== null)
   const next = inputs[inputs.indexOf(event.target) + 1]
-  if (next) next.focus()
+  if (next) { next.focus(); next.select?.() }
 }
 </script>
 
 <template>
-  <PageHeading title="Carga rápida de lecturas" eyebrow="Medición de uso" description="Actualizá varios equipos sin salir de la grilla. Cada fila se valida y procesa de manera independiente."><template #actions><a :href="data.routes.assets" :class="secondaryButton">Ver equipos</a></template></PageHeading>
-  <PanelCard title="Buscar equipos" class="mb-6"><form method="get" :action="data.routes.index" class="grid gap-4 md:grid-cols-4"><label class="text-sm font-semibold text-ink">Código, patente o chasis<input name="q" :value="data.filters.q" :class="`${fieldClass} mt-1`" /></label><label class="text-sm font-semibold text-ink">Sucursal<select name="sucursal_id" :value="data.filters.branchId" :class="`${fieldClass} mt-1`"><option value="">Todas</option><option v-for="branch in data.catalogs.branches" :key="branch.id" :value="branch.id">{{ branch.name }}</option></select></label><label class="text-sm font-semibold text-ink">Tipo<select name="tipo_id" :value="data.filters.typeId" :class="`${fieldClass} mt-1`"><option value="">Todos</option><option v-for="type in data.catalogs.types" :key="type.id" :value="type.id">{{ type.name }}</option></select></label><button type="submit" :class="`${secondaryButton} self-end`">Filtrar</button></form></PanelCard>
-  <PanelCard v-if="results.length" title="Resultado de la última carga" :count="results.length" class="mb-6" aria-live="polite"><ul class="divide-y divide-border-subtle"><li v-for="row in results" :key="`${row.rowNumber}-${row.equipmentId}`" class="flex gap-3 py-3 text-sm"><CheckCircleIcon v-if="row.success" class="size-5 shrink-0 text-success" aria-hidden="true" /><ExclamationTriangleIcon v-else class="size-5 shrink-0 text-danger" aria-hidden="true" /><span><strong>{{ equipmentFor(row.equipmentId)?.code || 'Equipo' }}:</strong><template v-if="row.success"><span class="block">{{ successFeedback(row) }}</span><span v-if="deltaFeedback(row)" class="block text-ink-muted">{{ deltaFeedback(row) }}</span><span v-if="overdueFeedback(row)" class="block font-semibold text-warning-strong">{{ overdueFeedback(row) }}</span><span v-if="row.plansEvaluated" class="block text-xs text-ink-subtle">{{ row.plansEvaluated }} planes reevaluados</span></template><span v-else class="block">{{ row.message }}</span></span></li></ul></PanelCard>
-  <form method="post" :action="data.routes.submit" @submit.prevent="submitRows"><CsrfInput :csrf="data.csrf" /><PanelCard title="Equipos activos" :count="data.equipment.total">
-    <div class="mb-5 rounded-xl border border-primary/20 bg-primary-subtle p-4"><div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><label class="text-sm font-semibold text-ink">Fecha y hora de esta carga<span class="mt-1 block text-xs font-normal text-ink-muted">Se aplica a todas las filas nuevas. Podés cambiarla solo en una fila si hace falta.</span><input v-model="commonRecordedAt" type="datetime-local" :class="`${fieldClass} mt-2 sm:w-72`" @change="applyCommonRecordedAt" /></label><button type="button" :class="secondaryButton" @click="refreshTimestamp">Usar hora actual</button></div></div>
-    <EmptyState v-if="data.equipment.items.length === 0" title="No hay equipos para los filtros seleccionados" /><div v-else class="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3"><fieldset v-for="equipment in data.equipment.items" :key="equipment.id" class="rounded-xl border border-border bg-white p-4 shadow-sm"><legend class="sr-only">Lectura para {{ equipment.code }}</legend><div class="flex items-start gap-3"><EquipmentThumbnail :url="equipment.photoUrl" :code="equipment.code" size="lg" /><div class="min-w-0"><a :href="equipment.detailUrl" class="font-bold text-primary hover:underline">{{ equipment.code }}</a><p class="truncate text-sm text-ink-muted">{{ equipment.plate || 'Sin patente' }} · {{ equipment.typeName }}</p><p class="text-xs text-ink-subtle">{{ equipment.branchName }} · Última lectura: {{ equipment.lastReadingAt || 'sin lecturas válidas' }}</p></div></div><div class="mt-4"><UsageReadingInput :equipment="equipment" :model-value="rows[equipment.id]" :csrf-disabled="!data.canRegister || saving" :show-notes="true" :names="{ kilometers: `readings[${equipment.id}][kilometers]`, hours: `readings[${equipment.id}][hours]`, notes: `readings[${equipment.id}][notes]` }" :id-prefix="`quick-${equipment.id}`" @update:model-value="(value) => Object.assign(rows[equipment.id], value)" @update:notes="(value) => { rows[equipment.id].notes = value }" @focus-next="focusNextReadingInput" /></div><div class="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border-subtle pt-3 text-xs"><span class="font-semibold" :class="rows[equipment.id].status === 'error' ? 'text-danger-strong' : rows[equipment.id].status === 'saved' ? 'text-success-strong' : 'text-ink-muted'">{{ statusLabel(rows[equipment.id].status) }}</span><label class="text-ink-muted"><input v-model="rows[equipment.id].dateCustomized" type="checkbox" class="mr-1" />Usar fecha individual</label><input v-if="rows[equipment.id].dateCustomized" v-model="rows[equipment.id].recordedAt" type="datetime-local" :disabled="!data.canRegister || saving" :class="`${fieldClass} w-auto`" /></div></fieldset></div>
-    <template #footer><div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><PaginationBar :pagination="data.equipment.pagination" /><button v-if="data.canRegister && data.equipment.items.length" type="submit" :disabled="saving || readyRows.length === 0" :class="primaryButton"><ArrowPathIcon class="mr-2 size-5" :class="saving ? 'animate-spin' : ''" aria-hidden="true" />{{ saveButtonLabel }}</button></div></template>
-  </PanelCard></form>
+  <PageHeading title="Lecturas rápidas" eyebrow="Carga y mantenimiento preventivo" description="Cargá la flota con Enter, guardá y resolvé los vencimientos desde la misma pantalla." />
+  <form method="post" :action="data.routes.submit" @submit.prevent="submitRows">
+    <CsrfInput :csrf="data.csrf" />
+    <PanelCard title="Equipos activos" :count="data.equipment.total">
+      <div class="mb-3 grid gap-3 border-b border-border-subtle pb-3 xl:grid-cols-[minmax(18rem,1fr)_13rem_13rem_auto] xl:items-end">
+        <label class="block text-sm font-semibold text-ink">Buscar móvil<span class="relative mt-1 block"><MagnifyingGlassIcon class="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-ink-subtle" /><input v-model="search" data-quick-search type="search" autocomplete="off" placeholder="Código, patente o chasis…" :class="`${fieldClass} pl-10`" /></span></label>
+        <label class="block text-sm font-semibold text-ink">Sucursal<select :value="data.filters.branchId" :class="`${fieldClass} mt-1`" @change="changeCatalogFilter('branch', $event.target.value)"><option value="">Todas</option><option v-for="branch in data.catalogs.branches" :key="branch.id" :value="branch.id">{{ branch.name }}</option></select></label>
+        <label class="block text-sm font-semibold text-ink">Tipo<select :value="data.filters.typeId" :class="`${fieldClass} mt-1`" @change="changeCatalogFilter('type', $event.target.value)"><option value="">Todos</option><option v-for="type in data.catalogs.types" :key="type.id" :value="type.id">{{ type.name }}</option></select></label>
+        <div class="flex items-end gap-2"><label class="text-sm font-semibold text-ink">Fecha y hora<input v-model="commonRecordedAt" type="datetime-local" :class="`${fieldClass} mt-1`" @change="applyCommonRecordedAt" /></label><button type="button" :class="secondaryButton" @click="refreshTimestamp">Ahora</button></div>
+      </div>
+
+      <div class="mb-3 flex flex-wrap gap-2 text-xs font-semibold">
+        <button v-for="item in [{key:'',label:'Todos',count:data.equipment.items.length},{key:'VENCIDO',label:'Vencidos',count:maintenanceCounts.VENCIDO},{key:'PROXIMO',label:'Próximos',count:maintenanceCounts.PROXIMO},{key:'PROBLEMA',label:'Problemas',count:maintenanceCounts.PROBLEMA},{key:'SIN_PLAN',label:'Sin plan',count:maintenanceCounts.SIN_PLAN}]" :key="item.key" type="button" class="rounded-full border border-border px-3 py-1.5" :class="statusFilter === item.key ? 'bg-primary-subtle text-primary' : 'text-ink-muted'" @click="statusFilter = item.key">{{ item.label }} {{ item.count }}</button>
+      </div>
+
+      <div v-if="results.length" class="mb-3 flex flex-wrap gap-2 text-xs" aria-live="polite"><span class="font-semibold text-ink-muted">Última carga:</span><span v-for="result in results" :key="`${result.rowNumber}-${result.equipmentId}`" class="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1" :class="result.success ? 'text-success-strong' : 'text-danger-strong'"><CheckCircleIcon v-if="result.success" class="size-4" /><ExclamationTriangleIcon v-else class="size-4" />{{ props.data.equipment.items.find((item) => item.id === result.equipmentId)?.code }}</span></div>
+      <div v-if="results.length" class="mb-5 rounded-xl border border-border-subtle bg-surface-subtle px-4" aria-live="polite">
+        <div v-for="result in results" :key="`feedback-${result.rowNumber}-${result.equipmentId}`" class="flex gap-3 border-b border-border-subtle py-3 text-sm last:border-0">
+          <CheckCircleIcon v-if="result.success" class="size-5 shrink-0 text-success" aria-hidden="true" />
+          <ExclamationTriangleIcon v-else class="size-5 shrink-0 text-danger" aria-hidden="true" />
+          <span class="min-w-0"><strong>{{ equipmentFor(result.equipmentId)?.code || 'Equipo' }}</strong><template v-if="result.success"><span class="block">{{ successFeedback(result) }}</span><span v-if="deltaFeedback(result)" class="block text-ink-muted">{{ deltaFeedback(result) }}</span><span v-if="overdueFeedback(result)" class="block font-semibold text-warning-strong">{{ overdueFeedback(result) }}</span><span v-if="result.plansEvaluated" class="block text-xs text-ink-subtle">{{ result.plansEvaluated }} planes reevaluados</span></template><span v-else class="block">{{ result.message }}</span></span>
+        </div>
+      </div>
+
+      <EmptyState v-if="data.equipment.items.length === 0" title="No hay equipos para los filtros seleccionados" />
+      <EmptyState v-else-if="visibleEquipment.length === 0" title="No hay coincidencias" description="Probá con otro código, patente o chasis." />
+      <div v-else class="overflow-x-auto rounded-xl border border-border">
+        <table class="w-full min-w-[1240px] border-collapse text-sm">
+          <thead class="bg-surface-muted text-left text-xs font-bold uppercase tracking-wide text-ink-muted"><tr><th class="px-3 py-2">Equipo</th><th class="px-3 py-2">Última lectura</th><th class="px-3 py-2">Nueva lectura</th><th class="px-3 py-2">Último service</th><th class="px-3 py-2">Próximo service</th><th class="px-3 py-2">Estado</th><th class="px-3 py-2">Acción</th></tr></thead>
+          <tbody class="divide-y divide-border-subtle bg-white">
+            <tr v-for="equipment in visibleEquipment" :key="equipment.id" class="hover:bg-surface-muted/40">
+              <td class="px-3 py-2"><strong class="text-primary">{{ equipment.code }}</strong><div class="text-xs text-ink-muted">{{ equipment.plate || 'Sin patente' }}</div></td>
+              <td class="px-3 py-2 font-semibold tabular-nums">{{ formattedCurrent(equipment) }}</td>
+              <td class="px-3 py-2"><div class="relative max-w-52"><input :id="`quick-reading-${equipment.id}`" v-model="rows[equipment.id].value" data-reading-input="true" :data-equipment-id="equipment.id" type="text" :inputmode="readingKey(equipment) === 'hours' ? 'decimal' : 'numeric'" autocomplete="off" placeholder="Ingresar lectura" :disabled="!data.canRegister || saving" :class="`${fieldClass} pr-10 font-semibold tabular-nums ${rowError(equipment) ? 'border-danger' : ''}`" @keydown.enter.prevent="focusNextReadingInput" /><span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-ink-muted">{{ readingUnit(equipment) }}</span></div><p v-if="rowError(equipment)" class="mt-1 text-xs font-semibold text-danger-strong">{{ rowError(equipment) }}</p><p v-else-if="inputDelta(equipment)" class="mt-1 text-xs text-ink-muted">{{ inputDelta(equipment) }} desde la última</p><p v-if="rows[equipment.id].message" class="mt-1 text-xs" :class="rows[equipment.id].status === 'error' ? 'text-danger-strong' : 'text-success-strong'">{{ rows[equipment.id].message }}</p><label class="mt-2 block text-xs text-ink-muted"><input v-model="rows[equipment.id].dateCustomized" type="checkbox" class="mr-1" />Usar fecha individual</label><input v-if="rows[equipment.id].dateCustomized" v-model="rows[equipment.id].recordedAt" type="datetime-local" :disabled="!data.canRegister || saving" :class="`${fieldClass} mt-1`" /></td>
+              <td class="px-3 py-2"><template v-if="primaryPlan(equipment)"><div class="font-medium">{{ primaryPlan(equipment).serviceName }}</div><div class="text-xs text-ink-muted">{{ formatPlanPoint(primaryPlan(equipment), 'base') }}</div></template><span v-else>—</span></td>
+              <td class="px-3 py-2"><template v-if="primaryPlan(equipment)"><div class="font-medium">{{ primaryPlan(equipment).serviceName }}</div><div class="text-xs text-ink-muted">{{ formatPlanPoint(primaryPlan(equipment), 'next') }}</div></template><span v-else>—</span></td>
+              <td class="px-3 py-2"><span class="inline-flex rounded-full border px-2.5 py-1 text-xs font-bold" :class="preventiveClass(equipment)">{{ preventiveLabel(equipment) }}</span><details v-if="missingPlanDetails(equipment).length" class="mt-1 text-[11px] text-danger-strong"><summary class="cursor-pointer font-semibold">Ver faltantes</summary><div v-for="detail in missingPlanDetails(equipment)" :key="detail" class="mt-1">{{ detail }}</div></details><div v-else-if="maintenance[equipment.id]?.planCount > 1" class="mt-1 text-[11px] text-ink-subtle">+{{ maintenance[equipment.id].planCount - 1 }} planes</div></td>
+              <td class="px-3 py-2"><template v-if="primaryPlan(equipment)?.order"><div class="text-xs font-bold text-success-strong">{{ primaryPlan(equipment).order.number }}</div><a :href="`${data.routes.workOrderBase}/${primaryPlan(equipment).order.id}/imprimir`" target="_blank" rel="noopener" :class="`${secondaryButton} mt-1 px-2 py-1 text-xs`"><PrinterIcon class="mr-1 size-4" />Imprimir</a></template><button v-else-if="data.canGenerateOrder && primaryPlan(equipment)?.noticeId" type="button" :disabled="orderSaving[equipment.id]" :class="`${primaryButton} px-2 py-1 text-xs`" @click="generateOrder(equipment)"><ArrowPathIcon v-if="orderSaving[equipment.id]" class="mr-1 size-4 animate-spin" /><WrenchScrewdriverIcon v-else class="mr-1 size-4" />{{ orderSaving[equipment.id] ? 'Generando…' : 'Generar OT' }}</button><span v-else-if="maintenance[equipment.id]?.state === 'PROXIMO'" class="text-xs font-semibold text-warning-strong">Próximo service</span><span v-else class="text-xs text-ink-subtle">—</span><p v-if="orderErrors[equipment.id]" class="mt-1 text-xs text-danger-strong">{{ orderErrors[equipment.id] }}</p></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div v-if="invalidRows.length" class="mt-3 text-sm font-semibold text-danger-strong">{{ invalidRows.length }} lectura{{ invalidRows.length === 1 ? '' : 's' }} para corregir. Las válidas se pueden guardar.</div>
+      <template #footer><div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><PaginationBar :pagination="data.equipment.pagination" /><div class="text-right"><div class="mb-1 text-xs text-ink-muted">{{ readyRows.length }} lista{{ readyRows.length === 1 ? '' : 's' }} para guardar</div><button v-if="data.canRegister && data.equipment.items.length" type="submit" :disabled="saving || !readyRows.length" :class="primaryButton"><ArrowPathIcon class="mr-2 size-5" :class="saving ? 'animate-spin' : ''" />{{ saveButtonLabel }}</button></div></div></template>
+    </PanelCard>
+  </form>
 </template>

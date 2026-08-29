@@ -11,6 +11,15 @@ if (PHP_SAPI === 'cli-server') {
     $assetsRoot = realpath(__DIR__ . DIRECTORY_SEPARATOR . 'assets');
     $requestedFile = realpath(__DIR__ . DIRECTORY_SEPARATOR . ltrim($requestPath, '/\\'));
     $allowedExtensions = ['css', 'js', 'map', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'ico', 'woff', 'woff2'];
+    $allowedRootFiles = [
+        realpath(__DIR__ . DIRECTORY_SEPARATOR . 'service-worker.js') => 'application/javascript; charset=UTF-8',
+        realpath(__DIR__ . DIRECTORY_SEPARATOR . 'manifest.webmanifest') => 'application/manifest+json; charset=UTF-8',
+    ];
+
+    if ($requestedFile !== false && isset($allowedRootFiles[$requestedFile])) {
+        header('Content-Type: ' . $allowedRootFiles[$requestedFile]);
+        return false;
+    }
 
     if ($requestPath === '/favicon.ico' && $requestedFile === realpath(__DIR__ . DIRECTORY_SEPARATOR . 'favicon.ico')) {
         return false;

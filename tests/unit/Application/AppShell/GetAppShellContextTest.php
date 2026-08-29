@@ -54,21 +54,42 @@ final class GetAppShellContextTest extends TestCase
         self::assertNotContains('plans', array_column($hidden['navigation'], 'key'));
     }
 
-    public function testShowsPreventiveLibraryAsDirectNavigationItem(): void
+    public function testShowsMaintenanceServicesAsDirectNavigationItem(): void
     {
         $context = new GetAppShellContext(new AppShellReadModelFake());
-        $actor = new ActorContext(7, 5, false, false, ['Responsable'], ['importaciones.ver'], [9]);
+        $actor = new ActorContext(7, 5, false, false, ['Responsable'], ['planes.ver'], [9]);
 
-        $payload = (new AppShellPayload($context))->for($actor, 'preventive-library');
-        $libraryItem = array_values(array_filter(
+        $payload = (new AppShellPayload($context))->for($actor, 'services');
+        $servicesItem = array_values(array_filter(
             $payload['navigation'],
-            static fn (array $item): bool => $item['key'] === 'preventive-library',
+            static fn (array $item): bool => $item['key'] === 'services',
         ));
 
-        self::assertCount(1, $libraryItem);
-        self::assertSame('Biblioteca preventiva', $libraryItem[0]['label']);
-        self::assertStringEndsWith('/mantenimiento/importaciones/biblioteca', $libraryItem[0]['href']);
-        self::assertTrue($libraryItem[0]['active']);
+        self::assertCount(1, $servicesItem);
+        self::assertSame('Servicios de mantenimiento', $servicesItem[0]['label']);
+        self::assertStringEndsWith('/mantenimiento/servicios', $servicesItem[0]['href']);
+        self::assertTrue($servicesItem[0]['active']);
+    }
+
+    public function testShowsRegisterKmHoursOnlyWithReadingLoadPermission(): void
+    {
+        $context = new GetAppShellContext(new AppShellReadModelFake());
+        $reader = new ActorContext(7, 5, false, false, ['Operador'], ['lecturas.cargar'], [9]);
+        $equipmentOnly = new ActorContext(8, 5, false, false, ['Consulta'], ['equipos.ver'], [9]);
+
+        $visible = (new AppShellPayload($context))->for($reader, 'quick-readings');
+        $hidden = (new AppShellPayload($context))->for($equipmentOnly, 'equipment');
+
+        $readingItem = array_values(array_filter(
+            $visible['navigation'],
+            static fn (array $item): bool => $item['key'] === 'quick-readings',
+        ));
+
+        self::assertCount(1, $readingItem);
+        self::assertSame('Registrar km/horas', $readingItem[0]['label']);
+        self::assertStringEndsWith('/mantenimiento/lecturas/rapidas', $readingItem[0]['href']);
+        self::assertTrue($readingItem[0]['active']);
+        self::assertNotContains('quick-readings', array_column($hidden['navigation'], 'key'));
     }
 }
 

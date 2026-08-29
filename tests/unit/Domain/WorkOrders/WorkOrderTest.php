@@ -64,6 +64,16 @@ final class WorkOrderTest extends TestCase
         $order->putOnHold('no', $this->date('09:30'), 10);
     }
 
+    public function testCannotResumeIssuedOrder(): void
+    {
+        $order = $this->draftOrder();
+        $order->authorize($this->date('08:01'), 10);
+
+        $this->expectException(DomainException::class);
+
+        $order->resume($this->date('09:00'), 10);
+    }
+
     private function draftOrder(): WorkOrder
     {
         $task = WorkOrderTask::reconstitute(

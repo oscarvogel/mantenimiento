@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Application\Assets\AssetCatalogService;
+use App\Application\Assets\EquipmentListQuery;
+use App\Application\Assets\ListEquipment;
 use App\Application\Assets\Attachment\ListPrimaryEquipmentPhotos;
 use App\Application\Identity\ActorContext;
 use App\Application\MaintenanceCircuit\ClosePreventiveOrder;
@@ -17,10 +19,13 @@ use App\Application\Measurement\RegisterReadingHandler;
 use App\Application\PreventiveMaintenance\AsignarPlan;
 use App\Application\PreventiveMaintenance\AsignarPlanCommand;
 use App\Application\PreventiveMaintenance\ConsultarVencimientos;
+use App\Application\WorkOrders\GetPrintableWorkOrder;
 use App\Application\WorkOrders\StartWorkOrder;
 use App\Application\WorkOrders\StartWorkOrderCommand;
 use App\Infrastructure\Identity\SessionActorContext;
+use App\Infrastructure\WorkOrders\CodeIgniterWorkOrderPrintReadModel;
 use CodeIgniter\HTTP\RedirectResponse;
+use CodeIgniter\HTTP\ResponseInterface;
 use DateTimeImmutable;
 use DomainException;
 use Throwable;
@@ -38,8 +43,6 @@ final class MaintenanceCircuit extends BaseController
                 $states[(int) $result['plan']->id()] = $result['evaluation']->estado()->value;
             }
         } else {
-            // El overview combina varios contextos. No debe serializar planes
-            // cuando el actor solo puede consultar equipos u órdenes.
             $data['plans'] = [];
             $data['pagination']['plans'] = ['total' => 0, 'page' => 1, 'perPage' => 10, 'totalPages' => 1];
         }
@@ -66,12 +69,17 @@ final class MaintenanceCircuit extends BaseController
             ? $this->primaryPhotos()->execute($actor, array_values(array_unique($photoEquipmentIds)))
             : [];
 
+        $payload = service('operationsPayload')->maintenance($data);
+        $payload['correctiveEquipments'] = $data['can']['editOrder']
+            ? $this->correctiveEquipmentOptions($actor)
+            : [];
+
         return $this->renderApp(
             $actor,
             'maintenance',
             'maintenance-overview',
             'Mantenimiento preventivo',
-            service('operationsPayload')->maintenance($data),
+            $payload,
         );
     }
 
@@ -151,6 +159,23 @@ final class MaintenanceCircuit extends BaseController
         }
     }
 
+    public function printOrder(int $orderId): string|ResponseInterface
+    {
+        try {
+            $order = $this->printableOrder()->execute($this->actor(), $orderId);
+
+            return view('maintenance/work_order_print', ['order' => $order]);
+        } catch (Throwable $exception) {
+            if (! $exception instanceof DomainException) {
+                log_message('error', 'Falló la impresión de OT: {message}', ['message' => $exception->getMessage()]);
+            }
+
+            return $this->response
+                ->setStatusCode($exception instanceof DomainException ? 404 : 500)
+                ->setBody($exception instanceof DomainException ? $exception->getMessage() : 'No se pudo preparar la orden para imprimir.');
+        }
+    }
+
     public function startOrder(int $orderId): RedirectResponse
     {
         try {
@@ -171,6 +196,9 @@ final class MaintenanceCircuit extends BaseController
                 'km_salida' => $this->request->getPost('km_salida'),
                 'horas_salida' => $this->request->getPost('horas_salida'),
                 'observaciones' => $this->request->getPost('observaciones'),
+                'costo_mano_obra' => $this->request->getPost('costo_mano_obra'),
+                'costo_repuestos' => $this->request->getPost('costo_repuestos'),
+                'otros_costos' => $this->request->getPost('otros_costos'),
             ]);
 
             return $this->success($this->closeSuccessMessage($result));
@@ -190,6 +218,7 @@ final class MaintenanceCircuit extends BaseController
     }
 
     private function overview(): GetCircuitOverview { return service('circuitOverview'); }
+    private function equipment(): ListEquipment { return service('equipmentList'); }
     private function due(): ConsultarVencimientos { return service('consultMaintenanceDue'); }
     private function assetCatalog(): AssetCatalogService { return service('assetCatalog'); }
     private function registerReadingHandler(): RegisterReadingHandler { return service('registerReading'); }
@@ -199,6 +228,49 @@ final class MaintenanceCircuit extends BaseController
     private function startOrderHandler(): StartWorkOrder { return service('startWorkOrder'); }
     private function closeOrderHandler(): ClosePreventiveOrder { return service('closePreventiveOrder'); }
     private function primaryPhotos(): ListPrimaryEquipmentPhotos { return service('listPrimaryEquipmentPhotos'); }
+    private function printableOrder(): GetPrintableWorkOrder { return new GetPrintableWorkOrder(new CodeIgniterWorkOrderPrintReadModel(db_connect())); }
+
+    /** @return list<array<string,mixed>> */
+    private function correctiveEquipmentOptions(ActorContext $actor): array
+    {
+        $page = $this->equipment()->execute($actor, new EquipmentListQuery(
+            status: 'ACTIVO',
+            page: 1,
+            perPage: 100,
+        ));
+
+        return array_map(static fn (array $row): array => [
+            'id' => (int) $row['id'],
+            'code' => (string) $row['codigo'],
+            'plate' => $row['patente'] ?? null,
+            'typeId' => (int) $row['tipo_equipo_id'],
+            'typeName' => (string) $row['tipo_nombre'],
+            'branchName' => (string) $row['sucursal_nombre'],
+            'controlsKm' => (int) ($row['controla_km'] ?? 0) === 1,
+            'controlsHours' => (int) ($row['controla_horas'] ?? 0) === 1,
+            'currentKm' => $row['km_actual'] === null ? null : (int) $row['km_actual'],
+            'currentHours' => $row['horas_actuales'] ?? null,
+        ], $page['items'] ?? []);
+    }
+
+    /** @param array<string,mixed> $result */
+    private function closeSuccessMessage(array $result): string
+    {
+        $next = [];
+        if (($result['proximo_km'] ?? null) !== null) {
+            $next[] = number_format((float) $result['proximo_km'], 0, ',', '.') . ' km';
+        }
+        if (($result['proximas_horas'] ?? null) !== null) {
+            $next[] = number_format((float) $result['proximas_horas'], 1, ',', '.') . ' h';
+        }
+        if (($result['proxima_fecha'] ?? null) !== null && (string) $result['proxima_fecha'] !== '') {
+            $date = DateTimeImmutable::createFromFormat('!Y-m-d', (string) $result['proxima_fecha']);
+            $next[] = $date === false ? (string) $result['proxima_fecha'] : $date->format('d/m/Y');
+        }
+
+        $message = "{$result['numero']} finalizada. Lecturas y próximo mantenimiento actualizados.";
+        return $next === [] ? $message : $message . ' Próximo: ' . implode(' · ', $next) . '.';
+    }
 
     /** @param array<string,mixed> $result */
     private function closeSuccessMessage(array $result): string

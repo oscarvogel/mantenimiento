@@ -69,9 +69,12 @@ class Security extends BaseConfig
      * CSRF Regenerate
      * --------------------------------------------------------------------------
      *
-     * Regenerate CSRF Token on every submission.
+     * La interfaz Vue realiza varias operaciones POST sin recargar la pagina.
+     * Mantener un token estable durante la sesion evita que una primera accion
+     * invalide el token que ya tienen abiertos los modales y formularios AJAX.
+     * La validacion CSRF sigue activa; solo se deshabilita la rotacion por POST.
      */
-    public bool $regenerate = true;
+    public bool $regenerate = false;
 
     /**
      * --------------------------------------------------------------------------

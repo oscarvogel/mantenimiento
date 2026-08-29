@@ -3,177 +3,130 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import QuickReadingsPage from '../../src/pages/operations/QuickReadingsPage.vue'
 
-const deferred = () => {
-  let resolve
-  const promise = new Promise((done) => { resolve = done })
-  return { promise, resolve }
-}
-const jsonResponse = (payload, status = 200) => ({
-  ok: status >= 200 && status < 300,
-  status,
-  url: '/mantenimiento/lecturas/rapidas/fila',
-  headers: { get: () => 'application/json' },
-  text: async () => JSON.stringify(payload),
+const response = (payload, status = 200, url = '/mantenimiento/lecturas/rapidas/fila') => ({
+  ok: status >= 200 && status < 300, status, url,
+  headers: { get: () => 'application/json' }, text: async () => JSON.stringify(payload),
 })
-const htmlResponse = (status = 200, url = '/login') => ({
-  ok: status >= 200 && status < 300,
-  status,
-  url,
-  headers: { get: () => 'text/html; charset=UTF-8' },
-  text: async () => '<html>respuesta</html>',
-})
-const successPayload = (equipmentId, currentHours = '1258.4') => ({
-  csrf: { name: 'csrf_test_name', hash: 'next-token' },
-  result: { rowNumber: 1, equipmentId, success: true, message: 'Lectura registrada y planes reevaluados.', currentKilometers: null, currentHours, plansEvaluated: 4, overduePlans: 1, noticeIds: [] },
+const maintenance = (state = 'PROXIMO', overrides = {}) => ({
+  state,
+  planCount: 1,
+  primaryPlan: {
+    planId: 10, serviceName: 'Service motor', state, displayState: state,
+    baseKm: 985624, baseHours: null, baseDate: null,
+    nextKm: 995624, nextHours: null, nextDate: null,
+    critical: { value: state === 'VENCIDO' ? -7514 : 6124, unit: 'km' },
+    noticeId: state === 'VENCIDO' ? 44 : null, order: null,
+    ...overrides,
+  },
+  plans: [],
 })
 const dataFor = (count = 2) => ({
-  csrf: { name: 'csrf_test_name', hash: 'secure-token' },
-  results: [],
-  recordedAtDefault: '2026-08-15T10:00',
-  filters: { q: '', branchId: '', typeId: '' },
-  routes: { index: '/mantenimiento/lecturas/rapidas', submit: '/mantenimiento/lecturas/rapidas', submitRow: '/mantenimiento/lecturas/rapidas/fila', assets: '/mantenimiento/equipos' },
-  canRegister: true,
-  catalogs: { branches: [{ id: 1, name: 'Casa central' }], types: [{ id: 1, name: 'Camión' }] },
+  csrf: { name: 'csrf_test_name', hash: 'secure-token' }, results: [], canRegister: true, canGenerateOrder: true,
+  recordedAtDefault: '2026-08-17T15:00', filters: { q: '', branchId: '', typeId: '', perPage: 50 },
+  routes: {
+    index: '/mantenimiento/lecturas/rapidas', submit: '/mantenimiento/lecturas/rapidas', submitRow: '/mantenimiento/lecturas/rapidas/fila',
+    generateOrderBase: '/mantenimiento/lecturas/rapidas/avisos', workOrderBase: '/mantenimiento/ordenes', assets: '/mantenimiento/equipos',
+  },
+  catalogs: { branches: [{ id: 1, name: 'Central' }], types: [{ id: 1, name: 'Camión' }] },
   equipment: {
     total: count,
-    pagination: { page: 1, totalPages: 1, total: count, perPage: 10, perPageOptions: [5, 10, 25], pageKey: 'page', perPageKey: 'per_page', previousUrl: null, nextUrl: null },
-    items: Array.from({ length: count }, (_, index) => ({ id: index + 1, code: `CAM-${String(index + 1).padStart(2, '0')}`, plate: `AA${index + 1}`, typeName: 'Camión', branchName: 'Casa central', controlsKm: true, controlsHours: true, currentKm: 1000 + index, currentHours: '1250.4', detailUrl: `/mantenimiento/equipos/${index + 1}` })),
+    pagination: { page: 1, totalPages: 1, total: count, perPage: 50, pageKey: 'page', perPageKey: 'per_page', previousUrl: null, nextUrl: null },
+    items: Array.from({ length: count }, (_, index) => ({
+      id: index + 1, code: `CAM-${index + 1}`, plate: `AA${index + 1}`, chassis: `CH-${index + 1}`,
+      typeName: 'Camión', branchName: 'Central', controlsKm: true, controlsHours: true,
+      currentKm: 988754 + index, currentHours: '1250.4', lastReadingAt: '2026-08-16 10:00:00',
+      maintenance: maintenance(index === 0 ? 'PROXIMO' : 'OK'),
+    })),
   },
 })
 const render = (data = dataFor()) => mount(QuickReadingsPage, { props: { data }, attachTo: document.body })
 
-afterEach(() => {
-  vi.unstubAllGlobals()
-  document.body.innerHTML = ''
-})
+afterEach(() => { vi.unstubAllGlobals(); document.body.innerHTML = '' })
 
 describe('QuickReadingsPage', () => {
-  it('deshabilita guardar cuando no hay lecturas', () => {
-    const wrapper = render()
-    const button = wrapper.get('form[method="post"][action="/mantenimiento/lecturas/rapidas"] button[type="submit"]')
-    expect(button.attributes('disabled')).toBeDefined()
-    expect(button.text()).toContain('Ingresá al menos una lectura')
-  })
-
-  it('indica la cantidad de lecturas listas para guardar', async () => {
+  it('muestra una sola entrada operativa por equipo y prioriza km si controla ambos contadores', () => {
     const wrapper = render(dataFor(3))
-    await wrapper.get('input[name="readings[1][kilometers]"]').setValue('1100')
-    await wrapper.get('input[name="readings[2][hours]"]').setValue('1251,4')
+    expect(wrapper.findAll('[data-reading-input="true"]')).toHaveLength(3)
+    expect(wrapper.get('#quick-reading-1').attributes('inputmode')).toBe('numeric')
+    expect(wrapper.text()).toContain('Último service')
+    expect(wrapper.text()).toContain('Próximo service')
+  })
+
+  it('usa horómetro como único contador cuando el equipo no controla km', () => {
+    const data = dataFor(1)
+    data.equipment.items[0].controlsKm = false
+    data.equipment.items[0].controlsHours = true
+    const wrapper = render(data)
+    expect(wrapper.findAll('[data-reading-input="true"]')).toHaveLength(1)
+    expect(wrapper.get('#quick-reading-1').attributes('inputmode')).toBe('decimal')
+    expect(wrapper.text()).toContain('1.250,4 h')
+  })
+
+  it('filtra instantáneamente por patente o chasis sin navegar', async () => {
+    const wrapper = render(dataFor(3))
+    await wrapper.get('[data-quick-search]').setValue('CH-2')
+    expect(wrapper.findAll('[data-reading-input="true"]')).toHaveLength(1)
+    expect(wrapper.text()).toContain('CAM-2')
+    expect(wrapper.text()).not.toContain('CAM-1')
+  })
+
+  it('valida lectura menor pero permite guardar las filas válidas', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => response({
+      csrf: { name: 'csrf_test_name', hash: 'next' },
+      result: { rowNumber: 1, equipmentId: 2, success: true, message: 'Lectura registrada.', currentKilometers: 989500, currentHours: '1250.4' },
+      maintenance: maintenance('OK'),
+    })))
+    const wrapper = render(dataFor(2))
+    await wrapper.get('#quick-reading-1').setValue('900000')
+    await wrapper.get('#quick-reading-2').setValue('989500')
     await nextTick()
-    expect(wrapper.get('form[method="post"][action="/mantenimiento/lecturas/rapidas"] button[type="submit"]').text()).toContain('Guardar 2 lecturas')
-  })
-
-  it('muestra progreso real mientras guarda cuatro filas', async () => {
-    const pending = [deferred(), deferred(), deferred(), deferred()]
-    let call = 0
-    vi.stubGlobal('fetch', vi.fn(() => pending[call++].promise))
-    const wrapper = render(dataFor(4))
-    for (const id of [1, 2, 3, 4]) await wrapper.get(`input[name="readings[${id}][hours]"]`).setValue(`125${id},4`)
-
-    const submit = wrapper.get('form[method="post"][action="/mantenimiento/lecturas/rapidas"]')
-    const saving = submit.trigger('submit')
-    await nextTick()
-    expect(wrapper.get('form[method="post"][action="/mantenimiento/lecturas/rapidas"] button[type="submit"]').text()).toContain('Guardando 1 de 4…')
-    pending[0].resolve(jsonResponse(successPayload(1, '1251.4')))
+    expect(wrapper.text()).toContain('No puede ser menor')
+    expect(wrapper.get('button[type="submit"]').text()).toContain('Guardar 1 lectura')
+    await wrapper.get('form').trigger('submit')
     await flushPromises()
-    expect(wrapper.get('form[method="post"][action="/mantenimiento/lecturas/rapidas"] button[type="submit"]').text()).toContain('Guardando 2 de 4…')
-    pending[1].resolve(jsonResponse(successPayload(2, '1252.4')))
-    pending[2].resolve(jsonResponse(successPayload(3, '1253.4')))
-    pending[3].resolve(jsonResponse(successPayload(4, '1254.4')))
-    await saving
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(wrapper.get('#quick-reading-1').element.value).toBe('900000')
   })
 
-  it('identifica el equipo y conserva el delta antes de limpiar la fila', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(successPayload(1, '1258.4'))))
-    const wrapper = render(dataFor(1))
-    await wrapper.get('input[name="readings[1][hours]"]').setValue('1258,4')
-    await wrapper.get('form[method="post"][action="/mantenimiento/lecturas/rapidas"]').trigger('submit')
-    await flushPromises()
-    expect(wrapper.text()).toContain('CAM-01')
-    expect(wrapper.text()).toContain('Horómetro actualizado a 1.258,4 h')
-    expect(wrapper.text()).toContain('+8,0 h desde la lectura anterior')
-    expect(wrapper.text()).toContain('1 mantenimiento quedó vencido.')
-    expect(wrapper.get('input[name="readings[1][hours]"]').element.value).toBe('')
-  })
-
-  it('solo informa la métrica que se envió aunque el backend devuelva ambas actuales', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({
-      csrf: { name: 'csrf_test_name', hash: 'next-token' },
-      result: { ...successPayload(1, '1258.4').result, currentKilometers: 1200, currentHours: '1258.4', submittedKilometers: false, submittedHours: true },
+  it('actualiza el mantenimiento en la misma fila después de guardar', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => response({
+      csrf: { name: 'csrf_test_name', hash: 'next' },
+      result: { rowNumber: 1, equipmentId: 1, success: true, message: 'Lectura registrada.', currentKilometers: 996000, currentHours: '1250.4' },
+      maintenance: maintenance('VENCIDO', { critical: { value: -376, unit: 'km' }, noticeId: 44 }),
     })))
     const wrapper = render(dataFor(1))
-    await wrapper.get('input[name="readings[1][hours]"]').setValue('1258,4')
-    await wrapper.get('form[method="post"][action="/mantenimiento/lecturas/rapidas"]').trigger('submit')
+    await wrapper.get('#quick-reading-1').setValue('996000')
+    await wrapper.get('form').trigger('submit')
     await flushPromises()
-    expect(wrapper.text()).toContain('Horómetro actualizado a 1.258,4 h')
-    expect(wrapper.text()).not.toContain('Kilometraje actualizado')
-    expect(wrapper.text()).not.toContain('+200 km')
+    expect(wrapper.text()).toContain('Vencido 376 km')
+    expect(wrapper.text()).toContain('Generar OT')
   })
 
-  it('asocia el error de validación al equipo correcto', async () => {
-    vi.stubGlobal('fetch', vi.fn()
-      .mockResolvedValueOnce(jsonResponse({ error: 'La lectura retrocede respecto del último valor.', csrf: { name: 'csrf_test_name', hash: 'next-token' } }, 422))
-      .mockResolvedValueOnce(jsonResponse(successPayload(2, '1252.4'))))
-    const wrapper = render(dataFor(2))
-    await wrapper.get('input[name="readings[1][hours]"]').setValue('1249,4')
-    await wrapper.get('input[name="readings[2][hours]"]').setValue('1252,4')
-    await wrapper.get('form[method="post"][action="/mantenimiento/lecturas/rapidas"]').trigger('submit')
+  it('genera la OT desde la fila y ofrece impresión inmediatamente', async () => {
+    const data = dataFor(1)
+    data.equipment.items[0].maintenance = maintenance('VENCIDO')
+    vi.stubGlobal('fetch', vi.fn(async () => response({
+      orderId: 1234, csrf: { name: 'csrf_test_name', hash: 'next' },
+      maintenance: maintenance('VENCIDO', { noticeId: null, order: { id: 1234, number: 'OT-2026-1234', status: 'EMITIDA' } }),
+    }, 200, '/mantenimiento/lecturas/rapidas/avisos/44/orden')))
+    const wrapper = render(data)
+    await wrapper.get('button').findAll
+    const button = wrapper.findAll('button').find((item) => item.text().includes('Generar OT'))
+    await button.trigger('click')
     await flushPromises()
-    const text = wrapper.text()
-    expect(text).toContain('CAM-01')
-    expect(text).toContain('La lectura retrocede respecto del último valor.')
-    expect(text).toContain('CAM-02')
-    expect(wrapper.text()).toContain('Guardada')
+    expect(wrapper.text()).toContain('OT-2026-1234')
+    expect(wrapper.get('a[href="/mantenimiento/ordenes/1234/imprimir"]').text()).toContain('Imprimir')
   })
 
-  it('distingue una respuesta HTML de una falla de red', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => htmlResponse()))
-    const wrapper = render(dataFor(1))
-    await wrapper.get('input[name="readings[1][hours]"]').setValue('1251,4')
-    await wrapper.get('form[method="post"][action="/mantenimiento/lecturas/rapidas"]').trigger('submit')
-    await flushPromises()
-    expect(wrapper.text()).toContain('La sesión pudo haber vencido')
-    expect(wrapper.text()).not.toContain('No se pudo conectar con el servidor')
-  })
-
-  it('aplica la fecha común solo a las filas sin fecha personalizada', async () => {
-    const wrapper = render(dataFor(2))
-    const common = wrapper.findAll('input[type="datetime-local"]')[0]
-    await common.setValue('2026-08-16T11:30')
-    await common.trigger('change')
-    expect(wrapper.vm.rows[1].recordedAt).toBe('2026-08-16T11:30')
-    expect(wrapper.vm.rows[2].recordedAt).toBe('2026-08-16T11:30')
-  })
-
-  it('mantiene la fecha individual cuando cambia la fecha común', async () => {
-    const wrapper = render(dataFor(2))
-    const checkbox = wrapper.findAll('input[type="checkbox"]')[0]
-    await checkbox.setValue(true)
-    const individual = wrapper.findAll('input[type="datetime-local"]')[1]
-    await individual.setValue('2026-08-16T08:00')
-    const common = wrapper.findAll('input[type="datetime-local"]')[0]
-    await common.setValue('2026-08-17T12:00')
-    await common.trigger('change')
-    expect(wrapper.vm.rows[1].recordedAt).toBe('2026-08-16T08:00')
-    expect(wrapper.vm.rows[2].recordedAt).toBe('2026-08-17T12:00')
-  })
-
-  it('mueve Enter al siguiente campo operativo sin enviar el formulario', async () => {
+  it('Enter avanza al siguiente móvil sin enviar', async () => {
     const wrapper = render(dataFor(2))
     const inputs = wrapper.findAll('[data-reading-input="true"]')
+    Object.defineProperty(inputs[0].element, 'offsetParent', { configurable: true, get: () => document.body })
+    Object.defineProperty(inputs[1].element, 'offsetParent', { configurable: true, get: () => document.body })
+    const submit = vi.fn()
+    wrapper.get('form').element.addEventListener('submit', submit)
     await inputs[0].trigger('keydown.enter')
     expect(document.activeElement).toBe(inputs[1].element)
-  })
-
-  it('no produce un submit accidental al pulsar Enter', async () => {
-    const wrapper = render(dataFor(2))
-    const form = wrapper.get('form[method="post"][action="/mantenimiento/lecturas/rapidas"]')
-    const submitSpy = vi.fn()
-    form.element.addEventListener('submit', submitSpy)
-    const fetchSpy = vi.fn()
-    vi.stubGlobal('fetch', fetchSpy)
-    await wrapper.find('[data-reading-input="true"]').trigger('keydown.enter')
-    expect(submitSpy).not.toHaveBeenCalled()
-    expect(fetchSpy).not.toHaveBeenCalled()
+    expect(submit).not.toHaveBeenCalled()
   })
 })

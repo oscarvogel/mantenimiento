@@ -37,6 +37,19 @@ const isRoleAssigned = (user, roleId) => user.assignedRoleIds.includes(Number(ro
       <AdminMetric label="Usuarios" :value="data.metrics.usersTotal" tone="muted" />
     </section>
 
+    <section v-if="data.permissions.companiesEdit" class="mb-8 flex flex-col gap-4 rounded-xl border border-border bg-surface-raised p-5 shadow-card sm:flex-row sm:items-center sm:justify-between sm:p-6" aria-labelledby="notification-process-title">
+      <div>
+        <h2 id="notification-process-title" class="font-semibold text-ink">Procesar notificaciones ahora</h2>
+        <p class="mt-1 max-w-2xl text-sm leading-6 text-ink-muted">Detecta vencimientos, genera eventos pendientes y despacha email y Web Push según las preferencias configuradas. La idempotencia evita duplicar el mismo ciclo.</p>
+      </div>
+      <form method="post" :action="data.actions.dispatchNotifications" data-confirm data-confirm-title="¿Ejecutar el ciclo de notificaciones?" data-confirm-text="Se procesarán los eventos y canales pendientes con la configuración actual." data-confirm-button="Ejecutar ahora" class="shrink-0">
+        <CsrfField :csrf="data.csrf" />
+        <button type="submit" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary-hover active:bg-primary-active">
+          Ejecutar ahora
+        </button>
+      </form>
+    </section>
+
     <section v-if="data.permissions.companiesEdit" class="mb-8 overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card" aria-labelledby="create-company-title">
       <div class="flex items-center gap-3 border-b border-border-subtle bg-surface-subtle px-5 py-4 sm:px-6">
         <span class="flex size-10 items-center justify-center rounded-lg bg-primary-subtle text-primary">
@@ -63,12 +76,22 @@ const isRoleAssigned = (user, roleId) => user.assignedRoleIds.includes(Number(ro
           <input name="cuit" maxlength="20" :value="data.oldInput.cuit" inputmode="numeric" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
         </label>
         <label class="block sm:col-span-1 lg:col-span-2">
-          <span class="mb-1.5 block text-sm font-medium text-ink">Email</span>
+          <span class="mb-1.5 block text-sm font-medium text-ink">Email general</span>
           <input type="email" name="email" maxlength="255" :value="data.oldInput.email" autocomplete="email" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
         </label>
         <label class="block sm:col-span-1 lg:col-span-2">
           <span class="mb-1.5 block text-sm font-medium text-ink">Teléfono</span>
           <input name="telefono" maxlength="50" :value="data.oldInput.telefono" autocomplete="tel" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+        </label>
+        <label class="block sm:col-span-2 lg:col-span-4">
+          <span class="mb-1.5 block text-sm font-medium text-ink">Correo para notificaciones de mantenimiento</span>
+          <input type="email" name="email_notificaciones" maxlength="255" :value="data.oldInput.email_notificaciones" placeholder="alertas@empresa.com" autocomplete="email" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          <span class="mt-1.5 block text-xs leading-5 text-ink-muted">Recibirá preventivos próximos o vencidos, OT y alertas operativas. Si queda vacío se usa el email general.</span>
+        </label>
+        <label class="flex items-start gap-3 rounded-lg border border-border bg-surface-subtle p-3 sm:col-span-2 lg:col-span-2">
+          <input type="hidden" name="notificaciones_email_habilitadas" value="0" />
+          <input type="checkbox" name="notificaciones_email_habilitadas" value="1" checked class="mt-0.5 size-4 rounded border-border-strong text-primary focus:ring-primary" />
+          <span><span class="block text-sm font-medium text-ink">Enviar notificaciones por email</span><span class="mt-1 block text-xs leading-5 text-ink-muted">Podés desactivar el canal sin borrar el destinatario.</span></span>
         </label>
         <div class="sm:col-span-2 lg:col-span-6">
           <button type="submit" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary-hover active:bg-primary-active">
@@ -146,7 +169,7 @@ const isRoleAssigned = (user, roleId) => user.assignedRoleIds.includes(Number(ro
       <div class="mb-4 flex items-center justify-between gap-3">
         <div>
           <h2 id="companies-title" class="text-lg font-bold text-ink">Empresas</h2>
-          <p class="mt-1 text-sm text-ink-muted">Datos fiscales, contacto y estado operativo.</p>
+          <p class="mt-1 text-sm text-ink-muted">Datos fiscales, contacto y destinatario de alertas.</p>
         </div>
         <span class="rounded-full bg-surface-muted px-3 py-1 text-sm font-semibold text-ink-muted">{{ data.metrics.companiesTotal }}</span>
       </div>
@@ -181,8 +204,13 @@ const isRoleAssigned = (user, roleId) => user.assignedRoleIds.includes(Number(ro
               <input name="cuit" maxlength="20" :value="company.cuit" inputmode="numeric" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
             </label>
             <label class="block">
-              <span class="mb-1.5 block text-sm font-medium text-ink">Email</span>
+              <span class="mb-1.5 block text-sm font-medium text-ink">Email general</span>
               <input type="email" name="email" maxlength="255" :value="company.email" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+            </label>
+            <label class="block sm:col-span-2">
+              <span class="mb-1.5 block text-sm font-medium text-ink">Correo para notificaciones de mantenimiento</span>
+              <input type="email" name="email_notificaciones" maxlength="255" :value="company.notificationEmail" placeholder="Usará el email general si queda vacío" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/20" />
+              <span class="mt-1.5 block text-xs leading-5 text-ink-muted">Destino de preventivos próximos/vencidos, OT y demás alertas operativas de esta empresa.</span>
             </label>
             <label class="block">
               <span class="mb-1.5 block text-sm font-medium text-ink">Teléfono</span>
@@ -195,16 +223,36 @@ const isRoleAssigned = (user, roleId) => user.assignedRoleIds.includes(Number(ro
                 <option value="0">Inactiva</option>
               </select>
             </label>
-            <div class="sm:col-span-2">
+            <label class="flex items-start gap-3 rounded-lg border border-border bg-surface-subtle p-3 sm:col-span-2">
+              <input type="hidden" name="notificaciones_email_habilitadas" value="0" />
+              <input type="checkbox" name="notificaciones_email_habilitadas" value="1" :checked="company.notificationEmailEnabled" class="mt-0.5 size-4 rounded border-border-strong text-primary focus:ring-primary" />
+              <span><span class="block text-sm font-medium text-ink">Enviar notificaciones de mantenimiento por email</span><span class="mt-1 block text-xs leading-5 text-ink-muted">Al desactivarlo se conserva el correo configurado, pero no se generan entregas empresariales.</span></span>
+            </label>
+            <div class="flex flex-wrap gap-2 sm:col-span-2">
               <button type="submit" class="inline-flex min-h-11 items-center justify-center rounded-lg border border-primary px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary-subtle">Guardar empresa</button>
+              <button
+                type="submit"
+                :formaction="`${company.actions.update}/notificaciones/prueba`"
+                formnovalidate
+                data-confirm
+                data-confirm-title="¿Enviar correo de prueba?"
+                data-confirm-text="Se enviará usando el destinatario actualmente guardado para esta empresa."
+                data-confirm-button="Enviar prueba"
+                :disabled="!company.active || !company.notificationEmailEnabled || (!company.notificationEmail && !company.email)"
+                class="inline-flex min-h-11 items-center justify-center rounded-lg border border-accent-active px-4 py-2.5 text-sm font-semibold text-accent-active transition-colors hover:bg-accent-subtle disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Enviar correo de prueba
+              </button>
             </div>
+            <p class="sm:col-span-2 text-xs leading-5 text-ink-muted">La prueba usa la configuración guardada. Si cambiaste el correo, guardá primero la empresa y después enviá la prueba.</p>
           </form>
 
           <dl v-else class="grid gap-4 p-5 text-sm sm:grid-cols-2">
             <div><dt class="text-ink-subtle">Razón social</dt><dd class="mt-1 font-medium text-ink">{{ company.razonSocial }}</dd></div>
             <div><dt class="text-ink-subtle">CUIT</dt><dd class="mt-1 font-medium text-ink">{{ company.cuit || '—' }}</dd></div>
-            <div><dt class="text-ink-subtle">Email</dt><dd class="mt-1 break-all font-medium text-ink">{{ company.email || '—' }}</dd></div>
+            <div><dt class="text-ink-subtle">Email general</dt><dd class="mt-1 break-all font-medium text-ink">{{ company.email || '—' }}</dd></div>
             <div><dt class="text-ink-subtle">Teléfono</dt><dd class="mt-1 font-medium text-ink">{{ company.telefono || '—' }}</dd></div>
+            <div class="sm:col-span-2"><dt class="text-ink-subtle">Notificaciones de mantenimiento</dt><dd class="mt-1 break-all font-medium text-ink">{{ company.notificationEmail || company.email || 'Sin destinatario' }}</dd><dd class="mt-1 text-xs text-ink-muted">{{ company.notificationEmail ? 'Correo específico' : (company.email ? 'Fallback al email general' : 'No se enviarán emails') }} · {{ company.notificationEmailEnabled ? 'Habilitadas' : 'Deshabilitadas' }}</dd></div>
           </dl>
         </article>
       </div>

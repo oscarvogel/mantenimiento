@@ -7,7 +7,7 @@ namespace App\Presentation;
 final class PageSize
 {
     public const DEFAULT = 10;
-    public const ALLOWED = [5, 10, 25];
+    public const ALLOWED = [5, 10, 25, 50, 100];
 
     public static function normalize(mixed $value): int
     {

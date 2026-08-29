@@ -12,6 +12,7 @@ final readonly class UploadEquipmentAttachmentCommand
         public string $originalName,
         public string $type,
         public ?string $description = null,
+        public string $requiredPermission = 'equipos.editar',
     ) {
     }
 }

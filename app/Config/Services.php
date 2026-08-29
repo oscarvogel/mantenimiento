@@ -341,6 +341,7 @@ class Services extends BaseService
                 static::notificationClock(false),
                 (int) env('alerts.lecturasVencidasDias', 30),
                 (int) env('alerts.ordenDemoradaDias', 5),
+                2,
                 db_connect(),
             ),
             static::publishNotifiableEvent(false),
@@ -1182,6 +1183,43 @@ return new AsignarPlan(
         $maximumSizeMb = max(1, (int) env('imports.maxSizeMB', 10));
 
         return new LocalPrivateImportFileStorage($configuredRoot, $maximumSizeMb * 1024 * 1024);
+    }
+
+    // --- Chatbot ---
+
+    public static function startConversation(bool $getShared = true): \App\Application\Chatbot\Handler\StartConversationHandler
+    {
+        if ($getShared) {
+            return static::getSharedInstance('startConversation');
+        }
+
+        $database = db_connect();
+
+        return new \App\Application\Chatbot\Handler\StartConversationHandler(
+            new \App\Infrastructure\Chatbot\Persistence\CodeIgniterConversationRepository($database),
+        );
+    }
+
+    public static function processMessage(bool $getShared = true): \App\Application\Chatbot\Handler\ProcessMessageHandler
+    {
+        if ($getShared) {
+            return static::getSharedInstance('processMessage');
+        }
+
+        $database = db_connect();
+
+        return new \App\Application\Chatbot\Handler\ProcessMessageHandler(
+            new \App\Infrastructure\Chatbot\Persistence\CodeIgniterMessageRepository($database),
+            new \App\Infrastructure\Chatbot\Tools\StaticToolRegistry(),
+            new \App\Infrastructure\Chatbot\AI\MiniMaxProvider(
+                \App\Infrastructure\Chatbot\AI\AIProviderConfig::fromEnv(),
+            ),
+            new \App\Infrastructure\Chatbot\Tools\ToolExecutor(
+                new \App\Infrastructure\Assets\CodeIgniterEquipmentSearch($database),
+            ),
+            new \App\Infrastructure\Chatbot\Persistence\SystemChatClock(),
+            new \App\Infrastructure\Chatbot\Persistence\CodeIgniterConversationRepository($database),
+        );
     }
 
     /*

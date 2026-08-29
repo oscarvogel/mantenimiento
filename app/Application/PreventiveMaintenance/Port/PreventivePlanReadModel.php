@@ -15,7 +15,7 @@ interface PreventivePlanReadModel
     public function listActiveEquipment(int $companyId, ?array $branchIds): array;
 
     /** @return list<array<string,mixed>> */
-    public function listActiveServiceTypes(): array;
+    public function listActiveServiceTypes(int $companyId): array;
 
     /** @param list<int>|null $branchIds @return list<array<string,mixed>> */
     public function listActiveBranches(int $companyId, ?array $branchIds): array;

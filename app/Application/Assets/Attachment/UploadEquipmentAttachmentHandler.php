@@ -31,7 +31,7 @@ final class UploadEquipmentAttachmentHandler
 
     public function execute(ActorContext $actor, UploadEquipmentAttachmentCommand $command): int
     {
-        [$companyId, $branchIds] = $this->tenantScope($actor, 'equipos.editar');
+        [$companyId, $branchIds] = $this->tenantScope($actor, $command->requiredPermission);
         $branchId = $this->equipmentScope->currentBranchId($companyId, $command->equipmentId, $branchIds);
         if ($branchId === null) {
             throw new DomainException('El equipo no existe o no está autorizado para el actor.');

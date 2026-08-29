@@ -42,6 +42,45 @@ export function planNextSummary(plan) {
   return parts.join(' · ') || 'Sin datos'
 }
 
+export function planLastSummary(plan) {
+  const parts = []
+  const criteria = plan?.criteria ?? {}
+  if (criteria.kilometers?.base !== null && criteria.kilometers?.base !== undefined) parts.push(`${criteria.kilometers.base} km`)
+  if (criteria.hours?.base !== null && criteria.hours?.base !== undefined) parts.push(`${criteria.hours.base} h`)
+  if (criteria.date?.base) parts.push(String(criteria.date.base))
+  return parts.join(' · ') || 'Sin datos'
+}
+
+export function planHasLastData(plan) {
+  return planLastSummary(plan) !== 'Sin datos'
+}
+
+function appendIfPresent(params, key, value) {
+  if (value !== null && value !== undefined && value !== '') params.set(key, String(value))
+}
+
+export function buildPlanUpdateParams(plan, values, csrf) {
+  const params = new URLSearchParams()
+  const criteria = plan?.criteria ?? {}
+
+  appendIfPresent(params, 'intervalo_km', criteria.kilometers?.interval)
+  appendIfPresent(params, 'intervalo_horas', criteria.hours?.interval)
+  appendIfPresent(params, 'intervalo_dias', criteria.date?.interval)
+  appendIfPresent(params, 'anticipacion_km', criteria.kilometers?.warning ?? 0)
+  appendIfPresent(params, 'anticipacion_horas', criteria.hours?.warning ?? 0)
+  appendIfPresent(params, 'anticipacion_dias', criteria.date?.warning ?? 0)
+
+  if (criteria.kilometers) appendIfPresent(params, 'base_km', values.baseKm)
+  if (criteria.hours) appendIfPresent(params, 'base_horas', values.baseHours)
+  if (criteria.date) appendIfPresent(params, 'base_fecha', values.baseDate)
+
+  params.set('prioridad', plan?.priority || 'MEDIA')
+  if (plan?.notes) params.set('observaciones', plan.notes)
+  if (csrf?.name && csrf?.hash) params.set(csrf.name, csrf.hash)
+
+  return params
+}
+
 function statusBadge(state) {
   const normalized = normalizePlanState(state)
   const labels = {
@@ -98,6 +137,7 @@ function renderPlans(panel, plans) {
   summary.textContent = plans.length === 1 ? '1 plan activo para este equipo' : `${plans.length} planes activos para este equipo`
 
   if (!plans.length) {
+    content.className = 'p-5'
     content.innerHTML = `
       <div class="rounded-xl border border-dashed border-border-strong p-6 text-center">
         <p class="font-semibold text-ink">Este equipo todavía no tiene planes preventivos asignados.</p>
@@ -108,11 +148,12 @@ function renderPlans(panel, plans) {
 
   content.className = 'overflow-x-auto'
   content.innerHTML = `
-    <table class="ui-table-hover w-full min-w-[54rem] text-left text-sm">
+    <table class="ui-table-hover w-full min-w-[68rem] text-left text-sm">
       <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
         <tr>
           <th class="px-4 py-3">Servicio</th>
           <th class="px-4 py-3">Frecuencia</th>
+          <th class="px-4 py-3">Último</th>
           <th class="px-4 py-3">Próximo</th>
           <th class="px-4 py-3">Estado</th>
           <th class="px-4 py-3">Prioridad</th>
@@ -126,12 +167,112 @@ function renderPlans(panel, plans) {
               ${plan.notes ? `<p class="mt-0.5 max-w-xs truncate text-xs text-ink-muted">${escapeHtml(plan.notes)}</p>` : ''}
             </td>
             <td class="px-4 py-3 text-sm text-ink">${escapeHtml(planFrequencySummary(plan))}</td>
+            <td class="px-4 py-3">
+              <div class="text-sm font-semibold text-ink">${escapeHtml(planLastSummary(plan))}</div>
+              ${plan.editUrl ? `<button type="button" data-edit-plan-last="${Number(plan.id)}" class="mt-1 text-xs font-semibold text-primary hover:underline">${planHasLastData(plan) ? 'Editar última realización' : 'Registrar último mantenimiento'}</button>` : ''}
+            </td>
             <td class="px-4 py-3 text-sm font-semibold text-ink">${escapeHtml(planNextSummary(plan))}</td>
             <td class="px-4 py-3">${statusBadge(plan.state)}</td>
             <td class="px-4 py-3 text-xs font-semibold text-ink">${escapeHtml(plan.priority === 'CRITICA' ? 'CRÍTICA' : plan.priority || 'MEDIA')}</td>
           </tr>`).join('')}
       </tbody>
     </table>`
+}
+
+function createLastMaintenanceModal() {
+  let modal = document.querySelector('[data-plan-last-modal]')
+  if (modal) return modal
+
+  modal = document.createElement('div')
+  modal.dataset.planLastModal = 'true'
+  modal.className = 'fixed inset-0 z-50 hidden items-center justify-center bg-black/40 p-4'
+  modal.innerHTML = `
+    <div class="w-full max-w-lg rounded-2xl bg-white shadow-xl" role="dialog" aria-modal="true" aria-labelledby="plan-last-title">
+      <form data-plan-last-form>
+        <div class="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
+          <div>
+            <h3 id="plan-last-title" class="text-lg font-bold text-ink">Registrar última realización</h3>
+            <p data-plan-last-service class="mt-1 text-sm text-ink-muted"></p>
+          </div>
+          <button type="button" data-plan-last-close class="rounded-lg px-2 py-1 text-xl leading-none text-ink-muted hover:bg-surface-muted" aria-label="Cerrar">×</button>
+        </div>
+        <div class="space-y-4 px-5 py-5">
+          <div data-plan-last-km class="hidden">
+            <label class="mb-1 block text-sm font-semibold text-ink" for="plan-last-km-input">Kilometraje de la última realización</label>
+            <div class="flex items-center gap-2">
+              <input id="plan-last-km-input" name="base_km" type="number" min="0" step="1" inputmode="numeric" class="w-full rounded-xl border border-border px-3 py-2 text-sm" placeholder="Ej. 120000">
+              <span class="text-sm text-ink-muted">km</span>
+            </div>
+          </div>
+          <div data-plan-last-hours class="hidden">
+            <label class="mb-1 block text-sm font-semibold text-ink" for="plan-last-hours-input">Horómetro de la última realización</label>
+            <div class="flex items-center gap-2">
+              <input id="plan-last-hours-input" name="base_horas" type="number" min="0" step="0.1" inputmode="decimal" class="w-full rounded-xl border border-border px-3 py-2 text-sm" placeholder="Ej. 3450.5">
+              <span class="text-sm text-ink-muted">h</span>
+            </div>
+          </div>
+          <div data-plan-last-date class="hidden">
+            <label class="mb-1 block text-sm font-semibold text-ink" for="plan-last-date-input">Fecha de la última realización</label>
+            <input id="plan-last-date-input" name="base_fecha" type="date" class="w-full rounded-xl border border-border px-3 py-2 text-sm">
+          </div>
+          <div data-plan-last-feedback class="hidden rounded-xl px-3 py-2 text-sm"></div>
+          <p class="text-xs text-ink-muted">Al guardar se recalculan automáticamente el próximo vencimiento y el estado del plan.</p>
+        </div>
+        <div class="flex justify-end gap-2 border-t border-border px-5 py-4">
+          <button type="button" data-plan-last-close class="rounded-xl border border-border px-4 py-2 text-sm font-semibold text-ink">Cancelar</button>
+          <button type="submit" data-plan-last-submit class="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white">Guardar</button>
+        </div>
+      </form>
+    </div>`
+
+  document.body.appendChild(modal)
+  return modal
+}
+
+function setModalFeedback(modal, message, isError = false) {
+  const feedback = modal.querySelector('[data-plan-last-feedback]')
+  if (!feedback) return
+  if (!message) {
+    feedback.className = 'hidden rounded-xl px-3 py-2 text-sm'
+    feedback.textContent = ''
+    return
+  }
+  feedback.textContent = message
+  feedback.className = `rounded-xl px-3 py-2 text-sm ${isError ? 'bg-danger-subtle text-danger-strong' : 'bg-success-subtle text-success-strong'}`
+}
+
+function openLastMaintenanceModal(modal, plan) {
+  modal.dataset.planId = String(plan.id)
+  modal.querySelector('[data-plan-last-service]').textContent = plan.serviceName || 'Plan preventivo'
+  modal.querySelector('#plan-last-title').textContent = planHasLastData(plan) ? 'Editar última realización' : 'Registrar última realización'
+
+  const criteria = plan.criteria ?? {}
+  const kmBlock = modal.querySelector('[data-plan-last-km]')
+  const hoursBlock = modal.querySelector('[data-plan-last-hours]')
+  const dateBlock = modal.querySelector('[data-plan-last-date]')
+  const kmInput = modal.querySelector('#plan-last-km-input')
+  const hoursInput = modal.querySelector('#plan-last-hours-input')
+  const dateInput = modal.querySelector('#plan-last-date-input')
+
+  kmBlock.classList.toggle('hidden', !criteria.kilometers)
+  hoursBlock.classList.toggle('hidden', !criteria.hours)
+  dateBlock.classList.toggle('hidden', !criteria.date)
+  kmInput.value = criteria.kilometers?.base ?? ''
+  hoursInput.value = criteria.hours?.base ?? ''
+  dateInput.value = criteria.date?.base ?? ''
+
+  setModalFeedback(modal, '')
+  modal.classList.remove('hidden')
+  modal.classList.add('flex')
+  const firstVisibleInput = [kmInput, hoursInput, dateInput].find((input) => !input.closest('.hidden'))
+  firstVisibleInput?.focus()
+}
+
+function closeLastMaintenanceModal(modal) {
+  modal.classList.add('hidden')
+  modal.classList.remove('flex')
+  delete modal.dataset.planId
+  setModalFeedback(modal, '')
 }
 
 function renderUnavailable(panel) {
@@ -156,7 +297,11 @@ export function installEquipmentAssignedPlans(root, serverPayload) {
   const panel = createPanel(sourceUrl)
   if (!panel) return
 
+  const modal = createLastMaintenanceModal()
+  let plans = []
+  let csrf = serverPayload?.data?.csrf ?? null
   let refreshing = false
+
   const refresh = async () => {
     if (refreshing) return
     refreshing = true
@@ -167,13 +312,70 @@ export function installEquipmentAssignedPlans(root, serverPayload) {
       })
       if (!response.ok) throw new Error('No se pudieron consultar los planes.')
       const payload = parseAppPayload(await response.text())
-      renderPlans(panel, assignedPlansForEquipment(payload, equipmentId))
+      csrf = payload?.data?.csrf ?? csrf
+      plans = assignedPlansForEquipment(payload, equipmentId)
+      renderPlans(panel, plans)
     } catch {
       renderUnavailable(panel)
     } finally {
       refreshing = false
     }
   }
+
+  panel.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-edit-plan-last]')
+    if (!button) return
+    const plan = plans.find((item) => Number(item.id) === Number(button.dataset.editPlanLast))
+    if (!plan?.editUrl) return
+    openLastMaintenanceModal(modal, plan)
+  })
+
+  modal.addEventListener('click', (event) => {
+    if (event.target === modal || event.target.closest('[data-plan-last-close]')) closeLastMaintenanceModal(modal)
+  })
+
+  modal.querySelector('[data-plan-last-form]').addEventListener('submit', async (event) => {
+    event.preventDefault()
+    const plan = plans.find((item) => Number(item.id) === Number(modal.dataset.planId))
+    if (!plan?.editUrl) return
+
+    const submit = modal.querySelector('[data-plan-last-submit]')
+    submit.disabled = true
+    submit.textContent = 'Guardando…'
+    setModalFeedback(modal, '')
+
+    try {
+      const values = {
+        baseKm: modal.querySelector('#plan-last-km-input').value,
+        baseHours: modal.querySelector('#plan-last-hours-input').value,
+        baseDate: modal.querySelector('#plan-last-date-input').value,
+      }
+      const response = await fetch(plan.editUrl, {
+        method: 'POST',
+        headers: {
+          Accept: 'text/html',
+          'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+        },
+        credentials: 'same-origin',
+        body: buildPlanUpdateParams(plan, values, csrf),
+      })
+      if (!response.ok) throw new Error('No se pudo guardar la última realización.')
+
+      const payload = parseAppPayload(await response.text())
+      csrf = payload?.data?.csrf ?? csrf
+      const serverError = payload?.data?.flash?.error
+      if (serverError) throw new Error(serverError)
+
+      setModalFeedback(modal, 'Última realización guardada correctamente.')
+      await refresh()
+      window.setTimeout(() => closeLastMaintenanceModal(modal), 450)
+    } catch (error) {
+      setModalFeedback(modal, error?.message || 'No se pudo guardar la última realización.', true)
+    } finally {
+      submit.disabled = false
+      submit.textContent = 'Guardar'
+    }
+  })
 
   refresh()
 

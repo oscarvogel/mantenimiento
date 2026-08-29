@@ -69,7 +69,7 @@ final class CodeIgniterCircuitOverview implements CircuitOverviewPort
 
         $orderPage = $this->paginate(function () use ($companyId, $branchIds): BaseBuilder {
             $builder = $this->database->table('ordenes_trabajo o')
-                ->select('o.id, o.numero, o.sucursal_id, o.equipo_id, o.plan_id, o.aviso_plan_id, o.prioridad, o.responsable_usuario_id, o.fecha_apertura, o.fecha_inicio, o.fecha_finalizacion, o.km_ingreso, o.horas_ingreso, o.km_salida, o.horas_salida, o.estado, e.codigo equipo_codigo, e.km_actual, e.horas_actuales, te.controla_km, te.controla_horas, ts.nombre servicio_nombre, u.nombre responsable_nombre')
+                ->select("o.id, o.numero, o.sucursal_id, o.equipo_id, o.plan_id, o.aviso_plan_id, o.origen, o.prioridad, o.responsable_usuario_id, o.fecha_apertura, o.fecha_inicio, o.fecha_finalizacion, o.km_ingreso, o.horas_ingreso, o.km_salida, o.horas_salida, o.estado, e.codigo equipo_codigo, e.km_actual, e.horas_actuales, te.controla_km, te.controla_horas, CASE WHEN o.origen = 'CORRECTIVO' THEN 'OT correctiva' ELSE ts.nombre END servicio_nombre, u.nombre responsable_nombre", false)
                 ->join('equipos e', 'e.id = o.equipo_id AND e.empresa_id = o.empresa_id', 'inner')
                 ->join('tipos_equipo te', 'te.id = e.tipo_equipo_id', 'inner')
                 ->join('tipos_servicio ts', 'ts.id = o.tipo_servicio_id', 'left')
@@ -111,7 +111,7 @@ final class CodeIgniterCircuitOverview implements CircuitOverviewPort
             'company' => $company,
             'branches' => $branches->get()->getResultArray(),
             'equipmentTypes' => $this->database->table('tipos_equipo')->select('id, nombre, controla_km, controla_horas')->where('activo', 1)->orderBy('nombre')->get()->getResultArray(),
-            'serviceTypes' => $this->database->table('tipos_servicio')->select('id, codigo, nombre')->where('activo', 1)->orderBy('nombre')->get()->getResultArray(),
+            'serviceTypes' => $this->serviceTypes($companyId),
             'templateDefaults' => $this->templateDefaults($companyId),
             'users' => $this->database->table('usuarios')->select('id, nombre')->where('empresa_id', $companyId)->where('activo', 1)->where('es_superadmin', 0)->where('deleted_at', null)->orderBy('nombre')->get()->getResultArray(),
             'equipments' => $equipmentRows,
@@ -172,6 +172,23 @@ final class CodeIgniterCircuitOverview implements CircuitOverviewPort
     private function decimalHours(?int $tenths): ?string
     {
         return $tenths === null ? null : number_format($tenths / 10, 1, '.', '');
+    }
+
+    /** @return list<array<string,mixed>> */
+    private function serviceTypes(int $companyId): array
+    {
+        $builder = $this->database->table('tipos_servicio')
+            ->select('id, codigo, nombre')
+            ->where('activo', 1);
+
+        if ($this->database->fieldExists('empresa_id', 'tipos_servicio')) {
+            $builder->groupStart()
+                ->where('empresa_id', $companyId)
+                ->orWhere('empresa_id', null)
+                ->groupEnd();
+        }
+
+        return $builder->orderBy('nombre')->get()->getResultArray();
     }
 
     /**

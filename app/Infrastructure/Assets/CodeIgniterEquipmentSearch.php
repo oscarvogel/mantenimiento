@@ -60,7 +60,11 @@ final class CodeIgniterEquipmentSearch implements EquipmentListReadModel, Equipm
     private function filters(BaseBuilder $builder, ?string $query, ?int $typeId, ?int $brandId, ?int $branchId, ?string $status): void
     {
         if ($query !== null) {
-            $builder->groupStart()->like('e.codigo', $query)->orLike('e.patente', $query)->orLike('e.chasis', $query)->groupEnd();
+            $builder->groupStart()
+                ->like('e.codigo', $query, 'both', null, true)
+                ->orLike('e.patente', $query, 'both', null, true)
+                ->orLike('e.chasis', $query, 'both', null, true)
+                ->groupEnd();
         }
         if ($typeId !== null) { $builder->where('e.tipo_equipo_id', $typeId); }
         if ($brandId !== null) { $builder->where('e.marca_id', $brandId); }
