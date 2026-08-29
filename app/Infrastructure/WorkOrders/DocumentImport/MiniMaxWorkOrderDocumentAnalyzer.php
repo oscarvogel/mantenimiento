@@ -162,6 +162,7 @@ final class MiniMaxWorkOrderDocumentAnalyzer implements WorkOrderDocumentAnalyze
             $works,
             $materials,
             array_map(static fn ($value): float => max(0.0, min(1.0, (float) $value)), array_filter($confidence, 'is_numeric')),
+            $this->normalizeLanguage($data['source_language'] ?? null),
         );
     }
 
@@ -198,15 +199,32 @@ final class MiniMaxWorkOrderDocumentAnalyzer implements WorkOrderDocumentAnalyze
         return $value === '' ? null : $value;
     }
 
+    private function normalizeLanguage(mixed $value): ?string
+    {
+        $language = strtolower(trim((string) $value));
+        if ($language === '') {
+            return null;
+        }
+        if (str_starts_with($language, 'es') || in_array($language, ['spanish', 'español', 'espanol'], true)) {
+            return 'es';
+        }
+        if (str_starts_with($language, 'pt') || in_array($language, ['portuguese', 'português', 'portugues'], true)) {
+            return 'pt';
+        }
+        return substr($language, 0, 10);
+    }
+
     private function prompt(): string
     {
         return <<<'PROMPT'
 Analizá esta orden/comprobante de taller mecánico. Respondé EXCLUSIVAMENTE JSON válido, sin markdown ni comentarios. No inventes datos que no estén visibles. Clasificá cada trabajo como "correctivo", "preventivo" o "revisar". La confianza debe ser 0..1.
 
+IDIOMA Y NORMALIZACIÓN: detectá automáticamente el idioma original del documento y devolvelo en source_language usando ISO 639-1 cuando sea posible (por ejemplo "es" o "pt"). Los documentos normalmente estarán en español o portugués. TODOS los campos textuales destinados al sistema deben quedar redactados en ESPAÑOL, aunque el documento esté en portugués u otro idioma. Esto incluye concept, observations, works[].description y materials[].description. Conservá el significado técnico y usá terminología natural de mantenimiento en español. No traduzcas ni alteres patente, marca, modelo, proveedor/nombre comercial, números de pieza, códigos, CUIT/CNPJ, números de comprobante, fechas, importes, moneda, km/horas, cantidades ni otros identificadores técnicos. En source_text conservá literalmente el texto original visible del documento, en su idioma original, para auditoría.
+
 IMPORTANTE SOBRE EL IMPORTE: buscá especialmente el TOTAL final del comprobante, aunque esté manuscrito, encerrado en un recuadro, al pie o en un margen. Devolvé ese importe como número puro sin separadores de miles (por ejemplo, $ 813.382 => 813382). No sumes valores parciales si el total no es legible. Si no podés identificar un total con seguridad, devolvé null. Para pesos argentinos usá currency="ARS" cuando el contexto sea inequívoco.
 
 Schema exacto:
-{"plate":string|null,"brand":string|null,"model":string|null,"service_date":"YYYY-MM-DD"|null,"reading_type":"km"|"horas"|null,"reading_value":number|null,"supplier":string|null,"concept":string|null,"observations":string|null,"total_amount":number|null,"currency":string|null,"works":[{"description":string,"classification":"correctivo"|"preventivo"|"revisar","quantity":number|null,"unit":string|null,"confidence":number,"source_text":string}],"materials":[{"description":string,"quantity":number|null,"unit":string|null,"confidence":number,"source_text":string}],"confidence":{"plate":number,"service_date":number,"reading_value":number,"supplier":number,"total_amount":number}}
+{"source_language":string|null,"plate":string|null,"brand":string|null,"model":string|null,"service_date":"YYYY-MM-DD"|null,"reading_type":"km"|"horas"|null,"reading_value":number|null,"supplier":string|null,"concept":string|null,"observations":string|null,"total_amount":number|null,"currency":string|null,"works":[{"description":string,"classification":"correctivo"|"preventivo"|"revisar","quantity":number|null,"unit":string|null,"confidence":number,"source_text":string}],"materials":[{"description":string,"quantity":number|null,"unit":string|null,"confidence":number,"source_text":string}],"confidence":{"plate":number,"service_date":number,"reading_value":number,"supplier":number,"total_amount":number}}
 Separá trabajos realizados de repuestos/consumibles. Un service periódico, filtros, aceites, correas o inspecciones programables son candidatos preventivos; reparaciones de fallas/pérdidas/diagnóstico son correctivas. Si es ambiguo usá revisar.
 PROMPT;
     }

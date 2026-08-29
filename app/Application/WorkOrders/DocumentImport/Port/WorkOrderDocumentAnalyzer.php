@@ -26,6 +26,7 @@ final readonly class WorkOrderDocumentAnalysis
         public array $works,
         public array $materials,
         public array $confidence,
+        public ?string $sourceLanguage = null,
     ) {}
 
     /** @return array<string,mixed> */
