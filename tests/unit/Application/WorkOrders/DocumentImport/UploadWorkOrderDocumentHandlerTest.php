@@ -57,6 +57,25 @@ final class UploadWorkOrderDocumentHandlerTest extends TestCase
         self::assertCount(1, $imports->documents);
     }
 
+    public function testSameBytesInDifferentBranchesCreateIndependentImports(): void
+    {
+        $storage = new InMemoryDocumentStorage();
+        $imports = new InMemoryDocumentImportRepository();
+        $handler = new UploadWorkOrderDocumentHandler($storage, $imports);
+        $actor = $this->actor(11);
+
+        $argentina = $handler->execute($actor, $this->command('argentina-upload', branchId: 7));
+        $brasil = $handler->execute($actor, $this->command('brasil-upload', branchId: 8));
+
+        self::assertFalse($argentina->duplicateExact);
+        self::assertFalse($brasil->duplicateExact);
+        self::assertNotSame($argentina->importId, $brasil->importId);
+        self::assertSame(7, $imports->documents[$argentina->importId]->branchId());
+        self::assertSame(8, $imports->documents[$brasil->importId]->branchId());
+        self::assertSame(2, $storage->stores);
+        self::assertCount(2, $imports->documents);
+    }
+
     public function testDifferentBytesWithDifferentKeysCreateDifferentImports(): void
     {
         $differentFile = $this->differentPngFixture();
@@ -123,12 +142,12 @@ final class UploadWorkOrderDocumentHandlerTest extends TestCase
 
     private function actor(int $companyId): ActorContext
     {
-        return new ActorContext(11, $companyId, false, true, ['Administrador'], ['ordenes.editar'], [7]);
+        return new ActorContext(11, $companyId, false, true, ['Administrador'], ['ordenes.editar'], [7, 8]);
     }
 
-    private function command(string $key, string $name = 'orden-taller.png', ?string $path = null): UploadWorkOrderDocumentCommand
+    private function command(string $key, string $name = 'orden-taller.png', ?string $path = null, int $branchId = 7): UploadWorkOrderDocumentCommand
     {
-        return new UploadWorkOrderDocumentCommand(7, $path ?? $this->fixture, $name, $key);
+        return new UploadWorkOrderDocumentCommand($branchId, $path ?? $this->fixture, $name, $key);
     }
 
     private function differentPngFixture(): string
@@ -185,10 +204,10 @@ final class InMemoryDocumentImportRepository implements WorkOrderDocumentImportR
         return null;
     }
 
-    public function findBySha256(int $companyId, string $sha256): ?int
+    public function findBySha256(int $companyId, int $branchId, string $sha256): ?int
     {
         foreach ($this->documents as $id => $document) {
-            if ($document->companyId() === $companyId && $document->sha256() === $sha256) return $id;
+            if ($document->companyId() === $companyId && $document->branchId() === $branchId && $document->sha256() === $sha256) return $id;
         }
         return null;
     }

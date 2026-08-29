@@ -21,7 +21,7 @@ interface WorkOrderDocumentImportRepository
 
     public function findByIdempotencyKey(int $companyId, string $idempotencyKey): ?int;
 
-    public function findBySha256(int $companyId, string $sha256): ?int;
+    public function findBySha256(int $companyId, int $branchId, string $sha256): ?int;
 
     public function linkWorkOrder(int $importId, int $companyId, int $workOrderId, string $kind): void;
 }
