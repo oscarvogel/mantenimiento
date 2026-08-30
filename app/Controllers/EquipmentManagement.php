@@ -37,7 +37,9 @@ use App\Application\Measurement\CorrectReadingHandler;
 use App\Application\Measurement\ListReadingHistoryHandler;
 use App\Application\Measurement\ListReadingHistoryQuery;
 use App\Infrastructure\Identity\SessionActorContext;
+use App\Infrastructure\WorkOrders\CodeIgniterEquipmentWorkOrderEvidenceReadModel;
 use App\Infrastructure\WorkOrders\CodeIgniterEquipmentWorkOrderHistory;
+use App\Infrastructure\WorkOrders\DocumentImport\PrivateWorkOrderDocumentStorage;
 use App\Presentation\PageSize;
 use CodeIgniter\HTTP\RedirectResponse;
 use CodeIgniter\HTTP\ResponseInterface;
@@ -188,6 +190,28 @@ final class EquipmentManagement extends BaseController
             return $this->response
                 ->download($download->originalName, $download->content, false)
                 ->setContentType($download->mimeType)
+                ->setHeader('X-Content-Type-Options', 'nosniff');
+        } catch (Throwable $exception) {
+            return $this->failure($exception, $this->equipmentUrl($equipmentId));
+        }
+    }
+
+    public function downloadWorkOrderImport(int $equipmentId, int $orderId, int $importId): ResponseInterface|RedirectResponse
+    {
+        try {
+            $actor = $this->actor();
+            $document = (new CodeIgniterEquipmentWorkOrderEvidenceReadModel(db_connect()))
+                ->findImportedDocumentForOrder($actor, $equipmentId, $orderId, $importId);
+            if ($document === null) {
+                throw new DomainException('El documento no existe o no está autorizado para esta orden.');
+            }
+
+            $path = (new PrivateWorkOrderDocumentStorage())->absolutePath((string) $document['private_relative_path']);
+
+            return $this->response
+                ->download($path, null)
+                ->setFileName((string) $document['nombre_original'])
+                ->setContentType((string) $document['mime_type'])
                 ->setHeader('X-Content-Type-Options', 'nosniff');
         } catch (Throwable $exception) {
             return $this->failure($exception, $this->equipmentUrl($equipmentId));
@@ -401,13 +425,17 @@ final class EquipmentManagement extends BaseController
             $hours = $row['horas_salida'] ?? $row['horas_ingreso'];
             $orderId = (int) $row['id'];
             $number = (string) $row['numero'];
-            $evidence = array_map(static function (array $attachment) use ($equipmentId): array {
+            $evidence = array_map(static function (array $attachment) use ($equipmentId, $orderId): array {
+                $source = (string) ($attachment['source'] ?? 'equipment_attachment');
                 $attachmentId = (int) $attachment['id'];
-                $url = base_url('mantenimiento/equipos/' . $equipmentId . '/adjuntos/' . $attachmentId . '/descargar');
+                $url = $source === 'ot_document_import'
+                    ? base_url('mantenimiento/equipos/' . $equipmentId . '/ordenes/' . $orderId . '/importaciones/' . $attachmentId . '/documento')
+                    : base_url('mantenimiento/equipos/' . $equipmentId . '/adjuntos/' . $attachmentId . '/descargar');
                 $mimeType = (string) ($attachment['mime_type'] ?? 'application/octet-stream');
 
                 return [
                     'id' => $attachmentId,
+                    'source' => $source,
                     'originalName' => (string) ($attachment['nombre_original'] ?? 'Evidencia'),
                     'mimeType' => $mimeType,
                     'sizeKb' => round(((int) ($attachment['tamanio'] ?? 0)) / 1024, 1),
