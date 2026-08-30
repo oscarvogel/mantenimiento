@@ -33,12 +33,14 @@ final readonly class CodeIgniterEquipmentWorkOrderHistory
             ->limit($perPage, ($page - 1) * $perPage)
             ->get()->getResultArray();
 
-        $tasks = $this->tasksByOrder(
-            (int) $actor->companyId(),
-            array_map(static fn (array $row): int => (int) $row['id'], $items),
-        );
+        $orderIds = array_map(static fn (array $row): int => (int) $row['id'], $items);
+        $companyId = (int) $actor->companyId();
+        $tasks = $this->tasksByOrder($companyId, $orderIds);
+        $evidence = $this->evidenceByOrder($companyId, $equipmentId, $orderIds);
         foreach ($items as &$row) {
-            $row['tasks'] = $tasks[(int) $row['id']] ?? [];
+            $orderId = (int) $row['id'];
+            $row['tasks'] = $tasks[$orderId] ?? [];
+            $row['evidence'] = $evidence[$orderId] ?? [];
         }
         unset($row);
 
@@ -130,6 +132,35 @@ final readonly class CodeIgniterEquipmentWorkOrderHistory
         $grouped = [];
         foreach ($rows as $row) {
             $grouped[(int) $row['orden_id']][] = $row;
+        }
+
+        return $grouped;
+    }
+
+    /** @param list<int> $orderIds @return array<int,list<array<string,mixed>>> */
+    private function evidenceByOrder(int $companyId, int $equipmentId, array $orderIds): array
+    {
+        if ($orderIds === []) {
+            return [];
+        }
+
+        $rows = $this->database->table('equipo_adjuntos')
+            ->select('id, orden_id, nombre_original, mime_type, tamanio, descripcion, created_at')
+            ->where('empresa_id', $companyId)
+            ->where('equipo_id', $equipmentId)
+            ->where('retirado_at', null)
+            ->whereIn('orden_id', $orderIds)
+            ->orderBy('orden_id', 'ASC')
+            ->orderBy('created_at', 'DESC')
+            ->orderBy('id', 'DESC')
+            ->get()->getResultArray();
+
+        $grouped = [];
+        foreach ($rows as $row) {
+            $orderId = (int) ($row['orden_id'] ?? 0);
+            if ($orderId > 0) {
+                $grouped[$orderId][] = $row;
+            }
         }
 
         return $grouped;
