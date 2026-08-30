@@ -96,6 +96,7 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->get('equipos/(:num)/foto-principal', 'EquipmentManagement::primaryPhoto/$1', ['filter' => 'permission:equipos.ver']);
     $routes->post('equipos/(:num)/foto-principal/retirar', 'EquipmentManagement::retirePrimaryPhoto/$1', ['filter' => 'permission:equipos.editar']);
     $routes->get('equipos/(:num)/adjuntos/(:num)/descargar', 'EquipmentManagement::downloadAttachment/$1/$2', ['filter' => 'permission:equipos.ver']);
+    $routes->get('equipos/(:num)/ordenes/(:num)/importaciones/(:num)/documento', 'EquipmentManagement::downloadWorkOrderImport/$1/$2/$3', ['filter' => 'permission:equipos.ver']);
     $routes->post('equipos/(:num)/adjuntos/(:num)/retirar', 'EquipmentManagement::retireAttachment/$1/$2', ['filter' => 'permission:equipos.editar']);
     $routes->post('equipos/(:num)/relaciones', 'EquipmentManagement::createRelation/$1', ['filter' => 'permission:equipos.editar']);
     $routes->post('equipos/(:num)/relaciones/(:num)/finalizar', 'EquipmentManagement::finishRelation/$1/$2', ['filter' => 'permission:equipos.editar']);
