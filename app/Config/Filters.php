@@ -32,7 +32,7 @@ class Filters extends BaseFilters
 
     public array $globals = [
         'before' => [
-            'csrf' => ['except' => []],
+            'csrf' => ['except' => ['internal/cron/notifications/dispatch']],
         ],
         'after'  => [
             'toolbar' => ['except' => ['login', 'dashboard']],

@@ -9,7 +9,6 @@ use App\Application\Notifications\Port\EmailNotificationGateway;
 use App\Application\Notifications\Port\NotificationDeliveryQueue;
 use App\Application\Notifications\Port\NotificationProcessControl;
 use App\Application\Notifications\Port\WebPushGateway;
-use RuntimeException;
 use Throwable;
 
 final readonly class RunNotificationDispatch
@@ -28,16 +27,16 @@ final readonly class RunNotificationDispatch
         $process = 'notificaciones:despachar';
         $token = $this->processes->acquire($process, $lockTtl);
         if ($token === null) {
-            throw new RuntimeException('Ya existe una ejecución de notificaciones activa.');
+            throw new NotificationDispatchInProgress('Ya existe una ejecución de notificaciones activa.');
         }
 
         $executionId = null;
         try {
             $executionId = $this->processes->start($process, $executionKey);
             if ($executionId === null) {
-                return ['email_sent' => 0, 'company_email_sent' => 0, 'push_sent' => 0, 'failed' => 0, 'expired' => 0, 'skipped' => 0, 'already_completed' => 1];
+                return ['email_sent' => 0, 'company_email_sent' => 0, 'push_sent' => 0, 'failed' => 0, 'retry' => 0, 'expired' => 0, 'skipped' => 0, 'already_completed' => 1];
             }
-            $summary = ['email_sent' => 0, 'company_email_sent' => 0, 'push_sent' => 0, 'failed' => 0, 'expired' => 0, 'skipped' => 0, 'already_completed' => 0];
+            $summary = ['email_sent' => 0, 'company_email_sent' => 0, 'push_sent' => 0, 'failed' => 0, 'retry' => 0, 'expired' => 0, 'skipped' => 0, 'already_completed' => 0];
             $this->dispatchEmail($summary, $limit);
             $this->dispatchCompanyEmail($summary, $limit);
             $this->dispatchPush($summary, $limit);
@@ -78,8 +77,10 @@ final readonly class RunNotificationDispatch
                 }
             } catch (Throwable $exception) {
                 foreach ($items as $item) {
-                    $this->deliveries->failed((int) $item['id'], $exception->getMessage(), (int) $item['intentos'] < 3);
+                    $retryable = (int) $item['intentos'] < 3;
+                    $this->deliveries->failed((int) $item['id'], $exception->getMessage(), $retryable);
                     $summary['failed']++;
+                    $summary['retry'] += $retryable ? 1 : 0;
                 }
             }
         }
@@ -112,8 +113,10 @@ final readonly class RunNotificationDispatch
                 }
             } catch (Throwable $exception) {
                 foreach ($items as $item) {
-                    $this->deliveries->failedCompany((int) $item['id'], $exception->getMessage(), (int) $item['intentos'] < 3);
+                    $retryable = (int) $item['intentos'] < 3;
+                    $this->deliveries->failedCompany((int) $item['id'], $exception->getMessage(), $retryable);
                     $summary['failed']++;
+                    $summary['retry'] += $retryable ? 1 : 0;
                 }
             }
         }
@@ -136,14 +139,18 @@ final readonly class RunNotificationDispatch
                 }
 
                 if ($result['sent'] === 0 && $result['failed'] > 0 && $result['expired'] === 0) {
-                    $this->deliveries->failed((int) $delivery['id'], 'Falló la entrega Web Push en todos los dispositivos activos.', (int) $delivery['intentos'] < 3);
+                    $retryable = (int) $delivery['intentos'] < 3;
+                    $this->deliveries->failed((int) $delivery['id'], 'Falló la entrega Web Push en todos los dispositivos activos.', $retryable);
+                    $summary['retry'] += $retryable ? 1 : 0;
                     continue;
                 }
 
                 $this->deliveries->delivered((int) $delivery['id']);
             } catch (Throwable $exception) {
-                $this->deliveries->failed((int) $delivery['id'], $exception->getMessage(), (int) $delivery['intentos'] < 3);
+                $retryable = (int) $delivery['intentos'] < 3;
+                $this->deliveries->failed((int) $delivery['id'], $exception->getMessage(), $retryable);
                 $summary['failed']++;
+                $summary['retry'] += $retryable ? 1 : 0;
             }
         }
     }
