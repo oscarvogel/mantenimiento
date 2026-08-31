@@ -30,6 +30,25 @@ foreach ([
 }
 
 $environment = getenv();
+$processEnvironment = @file_get_contents('/proc/self/environ');
+
+if (is_string($processEnvironment) && $processEnvironment !== '') {
+    $environment = [];
+
+    foreach (explode("\0", $processEnvironment) as $entry) {
+        if ($entry === '' || ! str_contains($entry, '=')) {
+            continue;
+        }
+
+        [$key, $value] = explode('=', $entry, 2);
+        $environment[$key] = getenv($key);
+
+        if ($environment[$key] === false) {
+            $environment[$key] = $value;
+        }
+    }
+}
+
 $lines = [];
 
 foreach ($environment as $key => $value) {

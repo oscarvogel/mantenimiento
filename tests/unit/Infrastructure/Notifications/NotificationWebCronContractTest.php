@@ -82,6 +82,15 @@ final class NotificationWebCronContractTest extends TestCase
         self::assertStringContainsString('legacy', strtolower($controller));
     }
 
+    public function testCoolifyEntrypointReadsDottedRuntimeVariablesFromProcessEnvironment(): void
+    {
+        $entrypoint = file_get_contents(ROOTPATH . 'docker/entrypoint.php');
+
+        self::assertIsString($entrypoint);
+        self::assertStringContainsString("file_get_contents('/proc/self/environ')", $entrypoint);
+        self::assertStringContainsString('getenv($key)', $entrypoint);
+    }
+
     public function testSuperadminExposesTheManualDispatchActionWithCsrfProtectedForm(): void
     {
         $payload = file_get_contents(APPPATH . 'Presentation/AdministrationPayload.php');
