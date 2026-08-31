@@ -76,6 +76,7 @@ use App\Application\Notifications\NotificationPreferenceResolution;
 use App\Application\Notifications\NotificationRecipientScopePolicy;
 use App\Application\Notifications\PublishNotifiableEvent;
 use App\Application\Notifications\RunNotificationDispatch;
+use App\Application\Notifications\RunNotificationCycle;
 use App\Application\Notifications\SendWebPushTest;
 use App\Infrastructure\Organization\CodeIgniterOrganizationAdministration;
 use App\Infrastructure\Organization\CodeIgniterTenantAdministration;

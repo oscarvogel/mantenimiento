@@ -27,6 +27,14 @@ final class NotificationWebCronContractTest extends TestCase
         self::assertStringNotContainsString('new RunNotificationCycle(', $controller);
     }
 
+    public function testNotificationCycleServiceImportsItsApplicationUseCase(): void
+    {
+        $services = file_get_contents(APPPATH . 'Config/Services.php');
+
+        self::assertIsString($services);
+        self::assertStringContainsString('use App\\Application\\Notifications\\RunNotificationCycle;', $services);
+    }
+
     public function testWebCronRequiresExplicitEnablementAndASecretWithMinimumLength(): void
     {
         $controller = file_get_contents(APPPATH . 'Controllers/NotificationCron.php');
