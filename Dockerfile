@@ -53,9 +53,8 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-di
 COPY docker/apache/coolify.conf /etc/apache2/conf-available/coolify.conf
 RUN a2enconf coolify
 
-# Permisos y entrypoint
-COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
+# Permisos y entrypoint PHP: conserva variables runtime con puntos antes de Apache
+COPY docker/entrypoint.php /usr/local/bin/entrypoint.php
 
 EXPOSE 80
 
@@ -64,5 +63,5 @@ VOLUME ["/var/www/html/writable", "/data/priv"]
 
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD curl -fsS http://localhost/login >/dev/null || exit 1
 
-ENTRYPOINT ["entrypoint.sh"]
+ENTRYPOINT ["php", "/usr/local/bin/entrypoint.php"]
 CMD ["apache2-foreground"]

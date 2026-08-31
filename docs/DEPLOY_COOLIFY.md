@@ -93,10 +93,10 @@ Todas estas variables deben quedar **Runtime: disponible en el contenedor** y
 Coolify los vuelca a un script shell y el build falla con `command not found`.
 No cambiar a variables de build para resolver un fallo del contenedor.
 
-El `docker/entrypoint.sh` materializa las variables runtime en un `.env` efímero
-dentro del contenedor antes de iniciar Apache. Esto es necesario porque Apache
-no conserva en sus procesos hijos las variables con puntos; CI4 usa ese archivo
-para cargar `app.baseURL` y `database.default.*`. El valor `staging` no es un
+El `docker/entrypoint.php` materializa las variables runtime en un `.env` efímero
+dentro del contenedor antes de iniciar Apache. Esto es necesario porque el shell
+de arranque puede descartar variables con puntos; CI4 usa ese archivo para cargar
+`app.baseURL` y `database.default.*`. El valor `staging` no es un
 entorno válido para el bootstrap de CI4: este Docker de prueba usa
 `CI_ENVIRONMENT=development` y sigue siendo un recurso separado de producción.
 
