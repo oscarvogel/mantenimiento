@@ -46,12 +46,13 @@ Cargar exactamente estas keys (vaciar las no requeridas):
 CI_ENVIRONMENT=development
 app.baseURL=http://bdqictyu4q5xkfuh6aoh7sr8.186.5.245.12.sslip.io/
 app.forceGlobalSecureRequests=false
-database.default.hostname=we7ppyik29cgwvfpf1plkw1y
-database.default.database=mantenimiento_staging
-database.default.username=<generado por Coolify>
-database.default.password=<generado>
-database.default.DBDriver=MySQLi
-database.default.port=3306
+# En Coolify usar aliases con guion bajo para que Apache/PHP los herede:
+database_default_hostname=we7ppyik29cgwvfpf1plkw1y
+database_default_database=mantenimiento_staging
+database_default_username=<generado por Coolify>
+database_default_password=<generado>
+database_default_DBDriver=MySQLi
+database_default_port=3306
 encryption.key=<php spark key:generate - 32 hex>
 auth.maxLoginAttempts=5
 auth.lockoutMinutes=15
@@ -88,15 +89,13 @@ quedan deshabilitadas (`webpush.enabled=false`, `ai.enabled=false`).
 ### Flags obligatorios de variables en Coolify
 
 Todas estas variables deben quedar **Runtime: disponible en el contenedor** y
-**Buildtime: no disponible durante el build**. Los nombres CI4 contienen puntos
-(`app.baseURL`, `database.default.hostname`, etc.); si se marcan como buildtime,
-Coolify los vuelca a un script shell y el build falla con `command not found`.
+**Buildtime: no disponible durante el build**. Para la conexión de base de datos
+usar los aliases `database_default_*`: Coolify conserva los nombres con puntos
+para la terminal/CLI, pero no los entrega de forma confiable al proceso Apache.
+CI4 resuelve esos aliases mediante `BaseConfig`, sin copiar secretos a la imagen.
 No cambiar a variables de build para resolver un fallo del contenedor.
 
-El `docker/entrypoint.php` materializa las variables runtime en un `.env` efímero
-dentro del contenedor antes de iniciar Apache. Esto es necesario porque el shell
-de arranque puede descartar variables con puntos; CI4 usa ese archivo para cargar
-`app.baseURL` y `database.default.*`. El valor `staging` no es un
+El valor `staging` no es un
 entorno válido para el bootstrap de CI4: este Docker de prueba usa
 `CI_ENVIRONMENT=development` y sigue siendo un recurso separado de producción.
 
@@ -108,7 +107,7 @@ responda `/login` con HTTP 200 y el deploy muestre el SHA esperado.
 ```bash
 # dentro del contenedor App (Coolify Terminal o docker exec):
 php spark migrate
-php spark migrate:status   # debe listar 60 filas, última AddAiEnabledToEmpresas
+php spark migrate:status   # debe listar 60 filas; última migración actual del repo
 php spark db:seed InitialSeeder           # catálogo base y permisos
 php spark db:seed DemoCompanySeeder       # datos ficticios + usuario demo para E2E
 ```
