@@ -2,18 +2,40 @@
 
 Estas instrucciones aplican a todo el repositorio.
 
-## Entorno de prueba obligatorio
+## Infraestructura canónica obligatoria
 
-Cuando una tarea diga probar, levantar, reconstruir o deployar en prueba, el destino obligatorio es el Docker remoto de `fasa_195`. No usar PHP/MariaDB local de Windows, `php -S`, ni otro fallback local salvo autorización explícita del usuario.
+Esta sección es la fuente de verdad operativa para cualquier agente, Codex o persona que trabaje en este repositorio. No volver a inferir, redescubrir ni preguntar qué servidor corresponde salvo que el usuario indique explícitamente un cambio de infraestructura.
 
-Antes de modificar o probar el entorno:
+### Staging / prueba
 
-1. Verificar por SSH que el host sea `fasa_195`.
-2. Inspeccionar allí `docker ps` y el `docker compose` del proyecto.
-3. Confirmar el nombre del stack, puerto, checkout/commit y que no sea producción.
-4. Ejecutar únicamente sobre el stack de prueba identificado, preservando sus volúmenes.
+- **Servidor obligatorio:** `fasa_189` (`192.168.0.189`).
+- **Plataforma:** Docker + Coolify.
+- **Proyecto/entorno:** `mantenimiento` / `staging`.
+- Las tareas de probar, levantar, reconstruir, desplegar o hacer smoke en prueba deben ejecutarse exclusivamente en este staging.
+- Antes de operar, inspeccionar los recursos Docker/Coolify existentes, confirmar App/DB, SHA desplegado y que no se está operando producción.
+- Preservar volúmenes y datos del staging salvo instrucción explícita.
+- No usar PHP/MariaDB local de Windows, `php -S` ni otro fallback local como sustituto del staging salvo autorización explícita.
+- `php spark` puede utilizarse dentro del contenedor de staging cuando el procedimiento documentado lo requiera.
+- Leer `docs/DEPLOY_COOLIFY.md` antes de cualquier tarea de staging.
 
-Si `fasa_195` no es accesible o el stack no puede identificarse con seguridad, informar el bloqueo y detenerse. La ausencia de Docker en Windows nunca habilita un entorno local alternativo.
+### Producción
+
+- **Hosting:** Ferozo.
+- **Deploy:** FTPS según `docs/DEPLOY_FEROZO.md`.
+- **No hay SSH operativo en producción.**
+- **No hay CLI operativo en producción.**
+- **No se puede depender de `php spark` en producción.**
+- No proponer procedimientos productivos que requieran shell, `php spark`, Composer, MySQL CLI o comandos equivalentes.
+- Migraciones, backups y procesos programados productivos deben usar únicamente mecanismos explícitamente compatibles y documentados para Ferozo.
+- La URL canónica productiva es `https://vogelconsultoria.com.ar/mantenimiento/`.
+
+### Regla anti-confusión
+
+`staging = fasa_189 / Docker / Coolify`
+
+`producción = Ferozo / FTPS / sin SSH / sin CLI / sin php spark`
+
+No operar ningún otro host de pruebas para este proyecto salvo instrucción explícita y vigente del usuario. Las referencias históricas a otros servidores no son destinos operativos válidos.
 
 ## Criterio de producto obligatorio
 
@@ -24,9 +46,9 @@ El sistema debe diseñarse y validarse como una herramienta para una persona que
 1. Antes de analizar, planificar o modificar código, localizar y leer completa la skill `clean-ddd-hexagonal` y las referencias que correspondan a la tarea.
 2. El uso de `clean-ddd-hexagonal` es obligatorio en todas las tareas de este proyecto, incluso si el cambio parece pequeño. Debe usarse con criterio: DDD para lenguaje y límites, Hexagonal para puertos y adaptadores, y Clean Architecture para la dirección de dependencias.
 3. Si la skill no está instalada o no puede leerse, detener los cambios de código, instalarla mediante la skill/herramienta `skill-installer` desde una fuente aprobada y comprobar que su `SKILL.md` sea accesible. No continuar la implementación hasta que esté disponible.
-4. Leer completa `docs/ESPECIFICACION_SISTEMA_MANTENIMIENTO.md`. Para tareas de despliegue, leer además `docs/DEPLOY_FEROZO.md` y `docs/SUBDOMINIO_DESCARTADO.md`. Para cambios de empresa, sucursal, usuario, rol o permisos, leer también `docs/PENDING_REFACTOR_MULTITENANCY.md`.
+4. Leer completa `docs/ESPECIFICACION_SISTEMA_MANTENIMIENTO.md`. Para tareas de staging/deploy, leer `docs/DEPLOY_COOLIFY.md`; para producción, leer `docs/DEPLOY_FEROZO.md` y `docs/SUBDOMINIO_DESCARTADO.md`. Para cambios de empresa, sucursal, usuario, rol o permisos, leer también `docs/PENDING_REFACTOR_MULTITENANCY.md`.
 5. Inspeccionar `git status`, las rutas, migraciones, modelos, tests y configuración real antes de aceptar una hipótesis. Preservar siempre los cambios locales del usuario.
-6. No asumir que documentación y checkout coinciden. Cuando haya contradicción, mostrar evidencia y tratar el código ejecutable como estado actual, sin alterar decisiones funcionales explícitas de la especificación.
+6. No asumir que documentación y checkout coinciden. Cuando haya contradicción, mostrar evidencia y tratar el código ejecutable como estado actual, sin alterar decisiones funcionales explícitas de la especificación. La sección **Infraestructura canónica obligatoria** de este archivo prevalece sobre referencias históricas de infraestructura.
 
 ## Arquitectura acordada
 
