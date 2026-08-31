@@ -1,5 +1,12 @@
 # Deploy en Coolify — Staging aislado
 
+> **ENTORNO CANÓNICO DE STAGING: `fasa_189`. Mantenimiento staging corre exclusivamente en Docker/Coolify sobre `fasa_189`. No buscar ni operar `fasa_195` salvo instrucción explícita.**
+
+```text
+staging = fasa_189 / Docker / Coolify
+producción = Ferozo / FTPS / sin CLI
+```
+
 > **Objetivo:** desplegar y validar la rama `main` en el staging aislado de Coolify para E2E #144/#146.
 > **Servidor obligatorio de pruebas:** `fasa_189` (`192.168.0.189`).
 > **NO tocar producción Ferozo** (`vogelconsultoria.com.ar/mantenimiento`). **NO usar DB productiva.**
@@ -8,6 +15,9 @@ La configuración de prueba vigente vive en el proyecto `mantenimiento`, environ
 `staging`, en `fasa_189`. No crear un Docker de producción en este proyecto: antes de
 cualquier operación, `production` debe mostrar **0 recursos**. Si aparece cualquier
 recurso allí, detenerse e informar el bloqueo.
+
+`fasa_195` está fuera del circuito canónico de este proyecto. No inspeccionarlo ni
+operarlo para tareas de mantenimiento salvo instrucción explícita del usuario.
 
 ---
 
@@ -155,7 +165,8 @@ con el usuario demo creado por `DemoCompanySeeder`.
 ## 8. Qué NO hacer
 
 - No crear, iniciar ni desplegar una Application/Database en el environment `production` de este proyecto.
-- No usar `fasa_195` ni PHP/MariaDB local de Windows para esta prueba.
+- No usar otro host ni PHP/MariaDB local de Windows para esta prueba; el único
+  destino canónico es `fasa_189` mediante Docker/Coolify.
 - No apuntar staging a DB de producción.
 - No copiar `SMTPHost/User/Pass` de producción a staging.
 - No versionar `.env` ni `.ferozo-credentials`.

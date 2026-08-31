@@ -1,5 +1,12 @@
 # QA del motor de notificaciones
 
+> **ENTORNO CANÓNICO DE STAGING: `fasa_189`. Mantenimiento staging corre exclusivamente en Docker/Coolify sobre `fasa_189`. No buscar ni operar `fasa_195` salvo instrucción explícita.**
+
+```text
+staging = fasa_189 / Docker / Coolify
+producción = Ferozo / FTPS / sin CLI
+```
+
 Este documento cierra el gate técnico del issue #146 y define cómo validar el motor antes de considerar completo el issue padre #7.
 
 ## Contratos de persistencia
@@ -13,7 +20,7 @@ Este documento cierra el gate técnico del issue #146 y define cómo validar el 
 
 ## Smoke test de staging
 
-Ambiente objetivo obligatorio: staging interno `fasa_195`, puerto `8090`.
+Ambiente objetivo obligatorio: staging interno `fasa_189`, puerto `8090`.
 
 1. Aplicar migraciones con el mecanismo normal del proyecto.
 2. Ingresar con un usuario con `notificaciones.ver`.

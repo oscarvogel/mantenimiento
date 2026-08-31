@@ -1,5 +1,11 @@
 # Invariantes operativas de Ferozo
 
+> **Separación canónica:** `staging = fasa_189 / Docker / Coolify`; `producción = Ferozo / FTPS / sin CLI`.
+>
+> Ferozo no tiene SSH, no tiene `php spark` y no tiene CLI. No usar `fasa_195`
+> para este proyecto salvo instrucción explícita; el staging canónico es
+> `fasa_189`.
+
 Estas reglas son decisiones operativas ya confirmadas del proyecto `mantenimiento`. No requieren una nueva autorizacion del usuario en cada deploy. Solo se debe detener el proceso si aparece una incompatibilidad tecnica nueva, evidencia de que la regla dejo de ser valida, o un riesgo real para datos/produccion.
 
 ## 1. Destino de produccion
@@ -10,7 +16,8 @@ La produccion publica es:
 
 El hosting es Ferozo y el despliegue productivo se realiza por FTPS. Ferozo no dispone de SSH operativo para este proyecto.
 
-`fasa_195` es exclusivamente el entorno Docker remoto de prueba/staging. Nunca debe confundirse con produccion.
+El staging canónico es `fasa_189`, administrado con Docker/Coolify. Nunca debe
+confundirse con producción Ferozo.
 
 ## 2. Rutas del chatbot en Ferozo
 

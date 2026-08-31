@@ -45,7 +45,9 @@ El bootstrap actual instala CodeIgniter 4 v4.7.4 con autodeteccion de
 `baseURL` y un `.htaccess` listo para Ferozo. La URL canonica del
 deploy es `https://vogelconsultoria.com.ar/mantenimiento/`. Ver
 [`docs/DEPLOY_FEROZO.md`](docs/DEPLOY_FEROZO.md) para el paso a paso.
-Para staging aislado en Coolify (Docker + DB separada + job `notifications:dispatch`) ver [`docs/DEPLOY_COOLIFY.md`](docs/DEPLOY_COOLIFY.md).
+La infraestructura canónica es `staging = fasa_189 / Docker / Coolify` y
+`producción = Ferozo / FTPS / sin CLI`. Para staging aislado en Coolify, con
+Docker y DB separada más el job `notifications:dispatch`, ver [`docs/DEPLOY_COOLIFY.md`](docs/DEPLOY_COOLIFY.md).
 Los errores reproducibles conocidos están registrados en
 [`docs/ERRORES_CONOCIDOS.md`](docs/ERRORES_CONOCIDOS.md).
 

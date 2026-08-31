@@ -1,5 +1,11 @@
 # Despliegue en Ferozo (vía FTP)
 
+> **Separación canónica:** `staging = fasa_189 / Docker / Coolify`; `producción = Ferozo / FTPS / sin CLI`.
+>
+> **Ferozo no tiene SSH, no tiene `php spark` y no tiene CLI.** Las pruebas y
+> validaciones de staging se realizan exclusivamente en `fasa_189` mediante
+> Docker/Coolify. No usar `fasa_195` para este proyecto salvo instrucción explícita.
+
 Esta guia documenta el deploy del sistema de mantenimiento en el hosting
 Ferozo de Vogel Consultoria. La URL canonica y unica es:
 
