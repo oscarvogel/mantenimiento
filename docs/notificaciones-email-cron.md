@@ -15,11 +15,22 @@ email.SMTPUser = "usuario"
 email.SMTPPass = "secreto"
 email.SMTPPort = 587
 email.SMTPCrypto = "tls"
+app.appTimezone = "America/Argentina/Buenos_Aires"
 alerts.dailyRunTime = "07:00"
 alerts.lockTimeoutSeconds = 900
 ```
 
-La nomenclatura exacta puede variar según la configuración vigente de `Config\Email`; antes de activar el cron se debe validar con un envío real en staging.
+El cron HTTP usa además estas variables:
+
+```ini
+alerts.webCronEnabled = false
+alerts.webCronToken = <SECRETO_ALEATORIO_DE_AL_MENOS_32_CARACTERES>
+alerts.webCronRateLimit = 6
+alerts.webCronRateWindowSeconds = 60
+```
+
+Antes de activar el cron se debe validar con un envío real en staging. El token
+no debe aparecer en URLs, capturas, logs ni commits.
 
 ## Ejecución manual
 
@@ -48,6 +59,19 @@ Ejemplo Linux/cron:
 ```
 
 En hosting donde PHP tenga otra ruta, reemplazar `/usr/bin/php` por la ruta real del binario CLI.
+
+Para el camino HTTP seguro, el contrato implementado es:
+
+```text
+POST /mantenimiento/internal/cron/notifications/dispatch
+X-Cron-Token: <TOKEN>
+```
+
+El endpoint no acepta tokens por query string. `401` indica ausencia de token,
+`403` token incorrecto, `405` método no permitido, `409` lock activo y `429`
+rate limiting. La respuesta exitosa es técnica y redacted, sin destinatarios
+ni secretos. El GET `/cron/notificaciones/<TOKEN>` se conserva sólo como
+legacy/deprecated hasta verificar el scheduler real de Ferozo.
 
 ## Reglas de entrega
 

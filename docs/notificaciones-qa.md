@@ -26,7 +26,7 @@ Ambiente objetivo obligatorio: staging interno `fasa_189`, puerto `8090`.
 2. Ingresar con un usuario con `notificaciones.ver`.
 3. Confirmar que la campana aparece y que `/notificaciones/resumen` responde sin 404/403.
 4. Generar un evento controlado de preventivo próximo o vencido.
-5. Ejecutar el ciclo. En Docker/staging puede usarse `php spark notifications:dispatch`; para validar el camino de producción habilitar temporalmente `alerts.webCronEnabled` y llamar `/cron/notificaciones/<TOKEN>`.
+5. Ejecutar el ciclo. En Docker/staging puede usarse `php spark notifications:dispatch`; para validar el camino HTTP habilitar temporalmente `alerts.webCronEnabled` y probar `POST /internal/cron/notifications/dispatch` con `X-Cron-Token` (o `Authorization: Bearer`).
 6. Verificar que la notificación aparece una sola vez en el centro interno.
 7. Ejecutar nuevamente el mismo ciclo dentro de la misma clave horaria y confirmar que no duplica la notificación ni la entrega.
 8. Marcar una notificación como leída y luego todas; confirmar que el contador se actualiza.
@@ -34,11 +34,12 @@ Ambiente objetivo obligatorio: staging interno `fasa_189`, puerto `8090`.
 10. Con Web Push habilitado, verificar suscripción, entrega y deep link.
 11. Forzar una falla temporal de canal en un entorno controlado y comprobar `REINTENTO`, incremento de `intentos`, `proximo_intento` y `ultimo_error`.
 12. Intentar lanzar dos dispatch simultáneos y comprobar que el segundo es rechazado mientras el lock esté vigente.
-13. Probar el cron web deshabilitado (404), token inválido (401) y token válido (JSON `ok: true`).
+13. Probar el cron web deshabilitado (404), token ausente (401), token inválido (403), método GET (405), token válido (JSON técnico sin emails/tokens) y límite excedido (429).
+14. No retirar aún `GET /cron/notificaciones/<TOKEN>`: verificar primero en el panel real de Ferozo si una tarea existente lo utiliza.
 
 ## Producción Ferozo
 
-Producción no depende de `php spark`: Ferozo no dispone de SSH/CLI operativo para este flujo. Configurar el cron HTTPS documentado en `docs/notificaciones-cron-ferozo.md`, con secreto exclusivo en `.env` y `alerts.webCronEnabled = true` únicamente después del smoke de staging.
+Producción no depende de `php spark`: configurar el mecanismo HTTP sólo después de verificar en el panel real de Ferozo si soporta POST y headers personalizados. El endpoint nuevo es `POST /internal/cron/notifications/dispatch` con secreto exclusivo en `.env`; `GET /cron/notificaciones/<TOKEN>` queda temporalmente deprecated. Activar `alerts.webCronEnabled = true` únicamente después del smoke de staging.
 
 El comando CLI y el endpoint HTTP ejecutan el mismo caso de uso `RunNotificationCycle`; no existen reglas paralelas de recolección o despacho.
 

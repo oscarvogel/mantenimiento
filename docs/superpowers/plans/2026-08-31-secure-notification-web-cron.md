@@ -141,7 +141,7 @@ Expected: PASS with no raw IP in the generated key.
 
 - [ ] **Step 1: Write failing route/security contracts**
 
-Cover the following source/HTTP contract: POST \`/internal/cron/notifications/dispatch\`; GET on that same path maps to \`405\` with \`Allow: POST\`; \`X-Cron-Token\` and \`Authorization: Bearer\` are accepted; missing/incorrect tokens return \`401\`; disabled endpoint remains \`404\`; invalid attempts are rate limited to \`429\`; the legacy GET route remains present and is explicitly deprecated.
+Cover the following source/HTTP contract: POST \`/internal/cron/notifications/dispatch\`; GET on that same path maps to \`405\` with \`Allow: POST\`; \`X-Cron-Token\` and \`Authorization: Bearer\` are accepted; missing tokens return \`401\`, incorrect tokens \`403\`; disabled endpoint remains \`404\`; invalid attempts are rate limited to \`429\`; the legacy GET route remains present and is explicitly deprecated.
 
 - [ ] **Step 2: Run the tests and verify RED**
 
@@ -153,7 +153,7 @@ Expected: failure because the route is currently GET-only with a path token and 
 
 - [ ] **Step 3: Implement the controller adapter**
 
-Add a POST \`dispatch()\` action that checks the rate limiter, reads \`X-Cron-Token\` or a Bearer token from headers, compares with \`hash_equals\`, calls \`service('notificationCycle')->execute(null, ...)\`, and maps the result to counts only. Map lock contention to \`409\`, rate limiting to \`429\`, authentication failure to \`401\`, and unexpected failures to generic \`500\` without exception messages. Keep \`legacyDispatch(string $token)\` for the old route, mark it deprecated in comments/docs/logging, and do not add new uses of it.
+Add a POST \`dispatch()\` action that checks the rate limiter, reads \`X-Cron-Token\` or a Bearer token from headers, compares with \`hash_equals\`, calls \`service('notificationCycle')->execute(null, ...)\`, and maps the result to counts only. Map lock contention to \`409\`, rate limiting to \`429\`, missing authentication to \`401\`, incorrect authentication to \`403\`, and unexpected failures to generic \`500\` without exception messages. Keep \`legacyDispatch(string $token)\` for the old route, mark it deprecated in comments/docs/logging, and do not add new uses of it.
 
 - [ ] **Step 4: Configure routing and CSRF deliberately**
 
@@ -231,4 +231,4 @@ git push -u origin codex/issue-144-ferozo-web-cron-secure
 
 - [ ] **Step 5: Validate staging only after code verification**
 
-Inspect SSH target \`fasa_195\`, confirm Docker stack \`/home/ferreteria/mantenimiento-staging\`, containers, checkout and port \`8090\`; preserve volumes and \`.env\`. Run the new endpoint with a staging token and SMTP test configuration only if the user has configured them. Do not touch Ferozo production, do not alter production \`.env\`, and do not remove the legacy endpoint before scheduler verification.
+Inspect SSH target \`fasa_189\`, confirm the Coolify staging application, containers, checkout and exposed route; preserve volumes and \`.env\`. Run the new endpoint with a staging token and SMTP test configuration only if the user has configured them. Do not touch Ferozo production, do not alter production \`.env\`, and do not remove the legacy endpoint before scheduler verification.

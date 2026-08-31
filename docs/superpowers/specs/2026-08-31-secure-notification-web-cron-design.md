@@ -18,7 +18,7 @@ Habilitar el dispatch programado en Ferozo sin SSH, shell, PHP CLI ni `php spark
 2. Crear `POST /internal/cron/notifications/dispatch`.
 3. Autenticar con `X-Cron-Token`; aceptar también `Authorization: Bearer` como alias de header, nunca query string.
 4. Mantener `GET /cron/notificaciones/<TOKEN>` temporalmente como legacy/deprecated para no romper una tarea Ferozo desconocida. No será la ruta documentada para nuevas configuraciones.
-5. Rechazar el método GET de la ruta nueva con `405` y `Allow: POST`. Token ausente o incorrecto devuelve `401`; endpoint deshabilitado continúa devolviendo `404` para no revelar su existencia.
+5. Rechazar el método GET de la ruta nueva con `405` y `Allow: POST`. Token ausente devuelve `401`, token incorrecto devuelve `403`; endpoint deshabilitado continúa devolviendo `404` para no revelar su existencia.
 6. Aplicar el `Throttler` nativo de CodeIgniter por IP hasheada, con límites configurables en `.env`; devolver `429` y `Retry-After` cuando corresponda.
 7. Configurar `SystemNotificationClock` con `Config\App::$appTimezone`, manteniendo la inyección opcional de timezone para pruebas deterministas.
 8. Reducir la respuesta HTTP a conteos técnicos: clave de ejecución horaria, vencimientos contados, eventos recolectados/creados/duplicados y contadores de dispatch. No incluir destinatarios, emails, payloads, credenciales, tokens ni excepciones.
@@ -46,4 +46,4 @@ No se habilitará producción ni se afirmará que Ferozo admite POST o headers h
 - Tests unitarios del reloj, rate limiter y contrato de composición.
 - Tests de rutas y contrato HTTP para POST, GET/405, autenticación, redacción y legacy.
 - Regresión de la suite de notificaciones existente.
-- Staging remoto `fasa_195:8090` únicamente, preservando volúmenes y configuración; no se ejecutará ningún cambio productivo en esta rama.
+- Staging remoto `fasa_189` mediante Docker/Coolify únicamente, preservando volúmenes y configuración; no se ejecutará ningún cambio productivo en esta rama.

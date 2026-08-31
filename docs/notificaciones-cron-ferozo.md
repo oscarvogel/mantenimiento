@@ -14,8 +14,11 @@ El hosting de producción no dispone de SSH ni de PHP CLI. Por ese motivo, `php 
 En el `.env` real, no versionado:
 
 ```ini
+app.appTimezone = America/Argentina/Buenos_Aires
 alerts.webCronEnabled = true
 alerts.webCronToken = <SECRETO_ALEATORIO_DE_AL_MENOS_32_CARACTERES>
+alerts.webCronRateLimit = 6
+alerts.webCronRateWindowSeconds = 60
 alerts.lockTimeoutSeconds = 900
 ```
 
@@ -27,17 +30,44 @@ php -r "echo bin2hex(random_bytes(32)).PHP_EOL;"
 
 No reutilizar `MIGRATE_TOKEN` ni ninguna contraseña SMTP/DB.
 
-## URL para la tarea programada de Ferozo
+## Endpoint nuevo
 
-Configurar una tarea HTTP que invoque diariamente, inicialmente a las 07:00 hora de Argentina:
+El endpoint seguro es:
 
 ```text
-https://vogelconsultoria.com.ar/mantenimiento/cron/notificaciones/<TOKEN>
+POST https://vogelconsultoria.com.ar/mantenimiento/internal/cron/notifications/dispatch
+X-Cron-Token: <SECRETO_ALEATORIO_DE_AL_MENOS_32_CARACTERES>
 ```
 
-El token forma parte de la URL porque el cron web del hosting puede no permitir headers personalizados. Debe tratarse como secreto: no compartir capturas del panel, rotarlo si se expone y no registrarlo en documentación, issues ni commits.
+También acepta `Authorization: Bearer <TOKEN>` para clientes que no permitan
+`X-Cron-Token`. No se aceptan tokens en query string ni en el cuerpo de la
+solicitud. La respuesta sólo contiene estado, clave de ejecución y contadores
+técnicos; nunca emails, tokens, secretos ni trazas.
 
-Con `alerts.webCronEnabled = false` la ruta responde 404. Con token incorrecto responde 401. Con token válido devuelve JSON con `overdue`, `collected` y `dispatched`.
+Los estados previstos son: `404` si está deshabilitado, `401` si falta el
+token, `403` si es incorrecto, `405` para métodos no permitidos, `409` si ya
+hay un despacho activo, `429` si se excede el límite por IP y `500` ante una
+falla técnica. Un éxito devuelve `200` con `overdue`, `collected`, `sent`,
+`retry`, `skipped` y `errors`.
+
+El panel real de Ferozo todavía debe verificarse. No asumir que sus tareas
+programadas soportan POST o headers personalizados; la decisión del mecanismo
+productivo queda pendiente de esa comprobación.
+
+## URL legacy conservada
+
+Se mantiene temporalmente:
+
+```text
+GET https://vogelconsultoria.com.ar/mantenimiento/cron/notificaciones/<TOKEN>
+```
+
+Está marcada como legacy/deprecated y comparte lock, idempotencia, reintentos,
+rate limiting y trazabilidad con el endpoint nuevo. No retirarla ni migrar la
+tarea existente hasta revisar el panel real de Ferozo y confirmar que ninguna
+configuración depende de ella. Una vez confirmado, deshabilitar la tarea
+legacy, rotar el secreto si fue expuesto en URLs/logs y retirar la ruta en un
+PR separado.
 
 ## Garantías operativas
 
@@ -65,9 +95,10 @@ Para producción no se requiere consola. El backend expone además `POST /supera
 1. Validar primero en `fasa_189:8090` según `AGENTS.md`.
 2. Configurar SMTP/VAPID sólo en el entorno de prueba.
 3. Generar un preventivo próximo/vencido controlado.
-4. Ejecutar el ciclo una vez y confirmar campana, email y push según preferencias.
-5. Repetir la misma ejecución y confirmar ausencia de duplicados.
-6. Forzar una falla temporal de canal y confirmar auditoría/reintento.
-7. Recién después configurar la URL del cron web en Ferozo.
+4. Probar `POST` con header, ausencia de token, token incorrecto, `GET` y rate limiting.
+5. Ejecutar el ciclo una vez y confirmar campana, email y push según preferencias.
+6. Repetir la misma ejecución y confirmar ausencia de duplicados.
+7. Forzar una falla temporal de canal y confirmar auditoría/reintento.
+8. Recién después verificar el panel real de Ferozo y decidir el mecanismo productivo.
 
 Nunca probar el primer disparo directamente contra producción.
