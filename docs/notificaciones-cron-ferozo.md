@@ -1,5 +1,12 @@
 # Cron de notificaciones en Ferozo
 
+> **ENTORNO CANÓNICO DE STAGING: `fasa_189`. Mantenimiento staging corre exclusivamente en Docker/Coolify sobre `fasa_189`. No buscar ni operar `fasa_195` salvo instrucción explícita.**
+
+```text
+staging = fasa_189 / Docker / Coolify
+producción = Ferozo / FTPS / sin CLI
+```
+
 El hosting de producción no dispone de SSH ni de PHP CLI. Por ese motivo, `php spark notifications:dispatch` queda como herramienta de desarrollo/staging y producción utiliza un endpoint HTTPS protegido que ejecuta el mismo caso de uso.
 
 ## Configuración de producción
@@ -55,7 +62,7 @@ Para producción no se requiere consola. El backend expone además `POST /supera
 
 ## Smoke antes de producción
 
-1. Validar primero en `fasa_195:8090` según `AGENTS.md`.
+1. Validar primero en `fasa_189:8090` según `AGENTS.md`.
 2. Configurar SMTP/VAPID sólo en el entorno de prueba.
 3. Generar un preventivo próximo/vencido controlado.
 4. Ejecutar el ciclo una vez y confirmar campana, email y push según preferencias.

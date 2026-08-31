@@ -1,5 +1,10 @@
 # Migraciones en producción Ferozo
 
+> **Separación canónica:** `staging = fasa_189 / Docker / Coolify`; `producción = Ferozo / FTPS / sin CLI`.
+>
+> Este documento sólo describe producción Ferozo. No usar `fasa_195` para este
+> proyecto salvo instrucción explícita; el staging canónico es `fasa_189`.
+
 En producción **no se ejecuta `php spark migrate`**. El mecanismo soportado es el helper HTTP `scripts/migrate.php`.
 
 ## Flujo
