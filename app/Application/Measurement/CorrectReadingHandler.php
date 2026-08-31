@@ -9,17 +9,23 @@ use App\Application\Identity\ActorContext;
 use App\Application\Measurement\Port\ReadingCorrectionRepository;
 use App\Application\Measurement\Port\ReadingRepository;
 use App\Application\Measurement\Port\UnitOfWork;
+use App\Application\Measurement\Port\WorkOrderReadingCorrectionSynchronizer;
 use App\Domain\Measurement\UsageMeasurement;
 use DomainException;
 
 final class CorrectReadingHandler
 {
+    private readonly ?WorkOrderReadingCorrectionSynchronizer $workOrderSynchronizer;
+
     public function __construct(
         private readonly EquipmentRepository $equipment,
         private readonly ReadingRepository $readings,
         private readonly ReadingCorrectionRepository $corrections,
         private readonly UnitOfWork $unitOfWork,
+        ?WorkOrderReadingCorrectionSynchronizer $workOrderSynchronizer = null,
     ) {
+        $this->workOrderSynchronizer = $workOrderSynchronizer
+            ?? ($corrections instanceof WorkOrderReadingCorrectionSynchronizer ? $corrections : null);
     }
 
     public function execute(ActorContext $actor, CorrectReadingCommand $command): CorrectReadingResult
@@ -57,6 +63,15 @@ final class CorrectReadingHandler
             );
             $correctionId = $this->readings->append($correction);
             $this->corrections->markAnnulled($original);
+            $this->workOrderSynchronizer?->synchronizeFinalizedWorkOrder(
+                $original,
+                $replacement,
+                $correctionId,
+                $actor->userId(),
+                $command->reason,
+                $command->notes,
+                $command->correctedAt,
+            );
             $current = $this->corrections->recalculateCurrentUsage(
                 $companyId,
                 $equipment->branchId(),
