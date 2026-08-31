@@ -5,13 +5,15 @@ declare(strict_types=1);
 namespace App\Infrastructure\Measurement;
 
 use App\Application\Measurement\Port\ReadingCorrectionRepository;
+use App\Application\Measurement\Port\WorkOrderReadingCorrectionSynchronizer;
 use App\Domain\Measurement\EquipmentReading;
 use App\Domain\Measurement\UsageMeasurement;
+use App\Infrastructure\Notifications\CodeIgniterCompanyNotificationRecipientResolver;
 use CodeIgniter\Database\BaseConnection;
 use DateTimeImmutable;
 use RuntimeException;
 
-final class CodeIgniterReadingCorrectionRepository implements ReadingCorrectionRepository
+final class CodeIgniterReadingCorrectionRepository implements ReadingCorrectionRepository, WorkOrderReadingCorrectionSynchronizer
 {
     public function __construct(private readonly BaseConnection $database)
     {
@@ -78,6 +80,112 @@ final class CodeIgniterReadingCorrectionRepository implements ReadingCorrectionR
         }
     }
 
+    public function synchronizeFinalizedWorkOrder(
+        EquipmentReading $original,
+        UsageMeasurement $replacement,
+        int $correctionReadingId,
+        int $actorUserId,
+        string $reason,
+        ?string $notes,
+        DateTimeImmutable $correctedAt,
+    ): void {
+        if ($original->origin() !== EquipmentReading::WORK_ORDER) {
+            return;
+        }
+
+        $reference = trim((string) $original->originReference());
+        if (preg_match('/^OT#(\d+)$/', $reference, $matches) !== 1) {
+            return;
+        }
+
+        $orderId = (int) $matches[1];
+        $row = $this->database->query(
+            'SELECT id, numero, empresa_id, sucursal_id, equipo_id, estado, km_salida, horas_salida, trabajo_realizado '
+            . 'FROM ordenes_trabajo WHERE id = ? AND empresa_id = ? AND equipo_id = ? FOR UPDATE',
+            [$orderId, $original->companyId(), $original->equipmentId()],
+        )->getRowArray();
+
+        if ($row === null) {
+            throw new RuntimeException('La lectura referencia una OT que no existe o no pertenece al equipo.');
+        }
+        if ((string) $row['estado'] !== 'FINALIZADA') {
+            return;
+        }
+
+        $oldKm = $row['km_salida'] === null ? null : (int) $row['km_salida'];
+        $oldHours = $row['horas_salida'] === null ? null : (string) $row['horas_salida'];
+        $newKm = $replacement->kilometers();
+        $newHours = $replacement->hours();
+        $timestamp = $correctedAt->format('Y-m-d H:i:s');
+
+        $this->database->table('ordenes_trabajo')
+            ->where('id', $orderId)
+            ->where('empresa_id', $original->companyId())
+            ->where('equipo_id', $original->equipmentId())
+            ->where('estado', 'FINALIZADA')
+            ->update([
+                'km_salida' => $newKm,
+                'horas_salida' => $newHours,
+                'updated_at' => $timestamp,
+                'updated_by' => $actorUserId,
+            ]);
+
+        if ($this->database->affectedRows() !== 1) {
+            throw new RuntimeException('La OT cerrada cambió durante la rectificación.');
+        }
+
+        $detail = 'Rectificación de lectura en OT cerrada. '
+            . 'KM: ' . $this->displayValue($oldKm) . ' → ' . $this->displayValue($newKm)
+            . '; Horas: ' . $this->displayValue($oldHours) . ' → ' . $this->displayValue($newHours)
+            . '; motivo: ' . trim($reason)
+            . '; lectura de corrección #' . $correctionReadingId;
+        $notes = trim((string) $notes);
+        if ($notes !== '') {
+            $detail .= '; observaciones: ' . $notes;
+        }
+
+        $this->database->table('orden_estado_historial')->insert([
+            'empresa_id' => $original->companyId(),
+            'orden_id' => $orderId,
+            'estado_anterior' => 'FINALIZADA',
+            'estado_nuevo' => 'FINALIZADA',
+            'fecha' => $timestamp,
+            'usuario_id' => $actorUserId,
+            'comentario' => mb_substr($detail, 0, 255),
+            'created_at' => $timestamp,
+        ]);
+
+        $recipient = (new CodeIgniterCompanyNotificationRecipientResolver($this->database))
+            ->resolve($original->companyId());
+        $missingRecipient = $recipient === null;
+        $actor = $this->database->table('usuarios')
+            ->select('nombre')
+            ->where('id', $actorUserId)
+            ->where('empresa_id', $original->companyId())
+            ->get()->getRowArray();
+        $actorName = trim((string) ($actor['nombre'] ?? ''));
+        $actorLabel = $actorName === '' ? 'usuario #' . $actorUserId : $actorName . ' (#' . $actorUserId . ')';
+        $title = 'OT ' . (string) $row['numero'] . ' rectificada después de su cierre';
+        $summary = 'Equipo #' . $original->equipmentId()
+            . '. KM: ' . $this->displayValue($oldKm) . ' → ' . $this->displayValue($newKm)
+            . '. Horas: ' . $this->displayValue($oldHours) . ' → ' . $this->displayValue($newHours)
+            . '. Motivo: ' . trim($reason)
+            . '. Modificado por ' . $actorLabel . '.';
+
+        $this->database->table('notificacion_empresa_entregas')->ignore(true)->insert([
+            'empresa_id' => $original->companyId(),
+            'tipo_evento' => 'orden.rectificada',
+            'destinatario' => $recipient,
+            'clave_entrega' => 'orden.rectificada:' . $orderId . ':lectura:' . $correctionReadingId . ':empresa:' . $original->companyId() . ':email',
+            'titulo' => $title,
+            'resumen' => mb_substr($summary, 0, 1000),
+            'url' => '/mantenimiento/equipos/' . $original->equipmentId(),
+            'estado' => $missingRecipient ? 'OMITIDA' : 'PENDIENTE',
+            'ultimo_error' => $missingRecipient ? 'Empresa sin destinatario de notificaciones por email habilitado.' : null,
+            'created_at' => $timestamp,
+        ]);
+    }
+
     public function recalculateCurrentUsage(
         int $companyId,
         int $branchId,
@@ -121,5 +229,10 @@ final class CodeIgniterReadingCorrectionRepository implements ReadingCorrectionR
             ->getRowArray();
 
         return $row[$column] ?? null;
+    }
+
+    private function displayValue(int|string|null $value): string
+    {
+        return $value === null || trim((string) $value) === '' ? '—' : (string) $value;
     }
 }
