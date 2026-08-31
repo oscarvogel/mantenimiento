@@ -1,7 +1,13 @@
 # Deploy en Coolify — Staging aislado
 
-> **Objetivo:** desplegar `main@0454e01` en Coolify de forma aislada para E2E #144/#146.
+> **Objetivo:** desplegar y validar la rama `main` en el staging aislado de Coolify para E2E #144/#146.
+> **Servidor obligatorio de pruebas:** `fasa_189` (`192.168.0.189`).
 > **NO tocar producción Ferozo** (`vogelconsultoria.com.ar/mantenimiento`). **NO usar DB productiva.**
+
+La configuración de prueba vigente vive en el proyecto `mantenimiento`, environment
+`staging`, en `fasa_189`. No crear un Docker de producción en este proyecto: antes de
+cualquier operación, `production` debe mostrar **0 recursos**. Si aparece cualquier
+recurso allí, detenerse e informar el bloqueo.
 
 ---
 
@@ -9,29 +15,38 @@
 
 - **App:** `Dockerfile` multi-stage (node:22 + php:8.4-apache) con layout plano (index.php + spark en raíz, sin `public/`).
 - **Frontend:** Vite build dentro del Dockerfile → `assets/dashboard/.vite/manifest.json`.
-- **DB:** MariaDB 11 recurso Coolify separado, interno `mariadb-staging:3306`.
+- **Servidor Coolify:** `localhost` dentro de `fasa_189`, red Docker `coolify`.
+- **DB:** MariaDB 11 como recurso Coolify separado, privado y sin puerto público.
+  El hostname interno lo genera Coolify; en la configuración vigente es
+  `we7ppyik29cgwvfpf1plkw1y:3306`.
 - **Volumes Coolify:**
   - `/var/www/html/writable` → cache/logs/session (persistente, 755, www-data)
   - `/data/priv` → `adjuntos` + `importaciones` fuera del webroot (`uploads.privatePath=/data/priv/adjuntos`, `imports.privatePath=/data/priv/importaciones`)
 
 ## 2. Crear recursos en Coolify
 
-1. **Proyecto** `mantenimiento` → **Environment** `staging` (nuevo, aislado de `production`).
+1. Verificar que el proyecto `mantenimiento` tenga `production = 0 recursos` y que
+   los únicos recursos de prueba estén en `staging`.
 2. **Application → Dockerfile:**
-   - Repo `https://github.com/oscarvogel/mantenimiento`, Branch `main`, Commit `0454e01`, Auto Deploy OFF.
+   - Recurso existente: `mantenimiento-staging`.
+   - Repo `https://github.com/oscarvogel/mantenimiento`, Branch `main`, commit resuelto por Coolify.
+     Registrar y confirmar el SHA completo de cada deploy; no usar un SHA histórico fijo.
+   - Auto Deploy OFF: el deploy se inicia manualmente desde Coolify.
    - Build Pack: `Dockerfile` (raíz). Port `80`, Healthcheck `GET /login` 200.
-3. **Database → MariaDB 11:** nombre `mantenimiento_staging`, user/pass generados, Network mismo que App.
-4. **Domain:** `mantenimiento-staging.<dominio>` con HTTPS Let's Encrypt, Force HTTPS ON.
+3. **Database → MariaDB 11:** recurso existente `mantenimiento-mariadb-staging`,
+   base `mantenimiento_staging`, credenciales propias y red `coolify` compartida con App.
+4. **Domain vigente:** `http://bdqictyu4q5xkfuh6aoh7sr8.186.5.245.12.sslip.io/`.
+   Si se reemplaza por un dominio HTTPS, actualizar `app.baseURL` y activar Force HTTPS.
 
 ## 3. Variables (Coolify Secrets — nunca versionar)
 
 Cargar exactamente estas keys (vaciar las no requeridas):
 
 ```
-CI_ENVIRONMENT=production
-app.baseURL=https://mantenimiento-staging.<dominio>/
-app.forceGlobalSecureRequests=true
-database.default.hostname=mariadb-staging
+CI_ENVIRONMENT=development
+app.baseURL=http://bdqictyu4q5xkfuh6aoh7sr8.186.5.245.12.sslip.io/
+app.forceGlobalSecureRequests=false
+database.default.hostname=we7ppyik29cgwvfpf1plkw1y
 database.default.database=mantenimiento_staging
 database.default.username=<generado por Coolify>
 database.default.password=<generado>
@@ -66,21 +81,49 @@ imports.maxSizeMB=10
 ai.enabled=false
 ```
 
-**Faltantes a cargar manualmente por vos:** `encryption.key` (generar), `database.*.password` (lo genera Coolify al crear DB, copiar al App), dominio real en `app.baseURL`, y si querés probar email real, `email.SMTP*`. **VAPID y AI key quedan deshabilitados** (`webpush.enabled=false`, `ai.enabled=false`) hasta tener claves reales.
+**Faltantes a cargar manualmente:** `encryption.key` y la contraseña propia de la
+MariaDB de staging. Nunca copiar credenciales de producción. Las claves VAPID y AI
+quedan deshabilitadas (`webpush.enabled=false`, `ai.enabled=false`).
 
-## 4. Migraciones y seeders (una vez creado el App)
+### Flags obligatorios de variables en Coolify
+
+Todas estas variables deben quedar **Runtime: disponible en el contenedor** y
+**Buildtime: no disponible durante el build**. Los nombres CI4 contienen puntos
+(`app.baseURL`, `database.default.hostname`, etc.); si se marcan como buildtime,
+Coolify los vuelca a un script shell y el build falla con `command not found`.
+No cambiar a variables de build para resolver un fallo del contenedor.
+
+El `docker/entrypoint.sh` materializa las variables runtime en un `.env` efímero
+dentro del contenedor antes de iniciar Apache. Esto es necesario porque Apache
+no conserva en sus procesos hijos las variables con puntos; CI4 usa ese archivo
+para cargar `app.baseURL` y `database.default.*`. El valor `staging` no es un
+entorno válido para el bootstrap de CI4: este Docker de prueba usa
+`CI_ENVIRONMENT=development` y sigue siendo un recurso separado de producción.
+
+## 4. FASE 6 — migraciones y seeders
+
+No ejecutar esta sección hasta que ambos recursos estén `running/healthy`, el App
+responda `/login` con HTTP 200 y el deploy muestre el SHA esperado.
 
 ```bash
 # dentro del contenedor App (Coolify Terminal o docker exec):
 php spark migrate
 php spark migrate:status   # debe listar 60 filas, última AddAiEnabledToEmpresas
-php spark db:seed InitialSeeder           # idempotente: Empresa Demo + admin@mantenimiento.local / Admin1234
-php spark db:seed DemoCompanySeeder       # opcional staging/demo para E2E
+php spark db:seed InitialSeeder           # catálogo base y permisos
+php spark db:seed DemoCompanySeeder       # datos ficticios + usuario demo para E2E
 ```
+
+Para todas las verificaciones manuales y E2E de staging usar exclusivamente el
+usuario demo `demo@mantenimiento.local` con contraseña `Demo12345`. No usar el
+usuario administrativo base como evidencia de aceptación.
 
 ## 5. Build / verificación
 
 Build ya corre en Dockerfile: `composer install --no-dev` + `npm ci && npm run build`.
+
+La imagen incluye `curl` y el healthcheck de Coolify usa el comando válido
+`curl -fsS http://localhost/login`. No desactivar el healthcheck para ocultar un
+fallo de la aplicación.
 
 Post-deploy:
 
@@ -88,18 +131,23 @@ Post-deploy:
 curl -I https://mantenimiento-staging.<dominio>/login          # 200
 curl -I https://mantenimiento-staging.<dominio>/.env            # 403
 curl -I https://mantenimiento-staging.<dominio>/app             # 403 (coolify.conf)
+curl -I https://mantenimiento-staging.<dominio>/vendor          # 403/inaccesible
+curl -I https://mantenimiento-staging.<dominio>/cron/notificaciones/probe # 404
 ```
 
-Login debe cargar Vue + `assets/dashboard/assets/main-*.js|css` sin 404.
+Verificar además `/.env` con 403/inaccesible, `/app` y `/vendor` con 403/inaccesibles,
+y todos los assets referenciados por `/login` sin 404. Completar un login funcional
+con el usuario demo creado por `DemoCompanySeeder`.
 
 ## 6. Job programado notifications:dispatch
 
+- **Precondición:** App `running/healthy`, `/login` 200 y migraciones verificadas.
 - **Tipo:** Coolify **Scheduled Task** dentro del App (no HTTP).
 - **Comando:** `php spark notifications:dispatch`
 - **Schedule:** `0 10 * * *` (07:00 AR = 10:00 UTC, respeta `alerts.dailyRunTime=07:00`). Para prueba inicial podés usar `*/15 * * * *` y volver a diario.
 - **Lock:** tabla `bloqueos_proceso` TTL 900s (`CodeIgniterNotificationProcessControl.php:22`), idempotencia `ejecuciones_programadas.clave_ejecucion=Y-m-d-H`.
 - **Logs:** `writable/logs/*` + tabla `ejecuciones_programadas` (resumen JSON).
-- **HTTP legacy:** `GET /cron/notificaciones/<TOKEN>` se conserva (`Routes.php:23`, `NotificationCron.php:14`) pero con `alerts.webCronEnabled=false` responde 404 en staging.
+- **HTTP legacy:** `GET /cron/notificaciones/<TOKEN>` se conserva (`Routes.php:23`, `NotificationCron.php:14`) pero con `alerts.webCronEnabled=false` responde 404 en staging. Probar con un token ficticio; nunca exponer el token real.
 
 ## 7. Apache / AllowOverride
 
@@ -107,12 +155,21 @@ Login debe cargar Vue + `assets/dashboard/assets/main-*.js|css` sin 404.
 
 ## 8. Qué NO hacer
 
+- No crear, iniciar ni desplegar una Application/Database en el environment `production` de este proyecto.
+- No usar `fasa_195` ni PHP/MariaDB local de Windows para esta prueba.
 - No apuntar staging a DB de producción.
 - No copiar `SMTPHost/User/Pass` de producción a staging.
 - No versionar `.env` ni `.ferozo-credentials`.
 - No mergear este PR sin CI verde.
-- No correr smoke #144/#146 hasta `login` 200 + `migrate:status` OK.
+- No correr smoke #144/#146 hasta `running/healthy` en App y MariaDB, SHA confirmado,
+  `/login` 200, `migrate:status` OK y las verificaciones HTTP/seguridad aprobadas.
 
-## 9. Rollback
+## 9. Informe de salida
+
+Solo informar **STAGING LISTO PARA SMOKE #144/#146** cuando se hayan aprobado todos
+los gates anteriores. En caso contrario, informar el bloqueo exacto, conservar el
+deploy fallido en Coolify y no ejecutar el smoke completo.
+
+## 10. Rollback
 
 En Coolify: Re-deploy al SHA anterior o `git revert` del merge. `writable` y `/data/priv` son volumes, no se pierden.
