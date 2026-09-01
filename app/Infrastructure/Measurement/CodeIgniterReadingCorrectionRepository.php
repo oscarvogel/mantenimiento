@@ -8,7 +8,8 @@ use App\Application\Measurement\Port\ReadingCorrectionRepository;
 use App\Application\Measurement\Port\WorkOrderReadingCorrectionSynchronizer;
 use App\Domain\Measurement\EquipmentReading;
 use App\Domain\Measurement\UsageMeasurement;
-use App\Infrastructure\Notifications\CodeIgniterCompanyNotificationRecipientResolver;
+use App\Domain\Notifications\NotifiableEvent;
+use App\Domain\Notifications\NotificationSeverity;
 use CodeIgniter\Database\BaseConnection;
 use DateTimeImmutable;
 use RuntimeException;
@@ -88,14 +89,14 @@ final class CodeIgniterReadingCorrectionRepository implements ReadingCorrectionR
         string $reason,
         ?string $notes,
         DateTimeImmutable $correctedAt,
-    ): void {
+    ): ?NotifiableEvent {
         if ($original->origin() !== EquipmentReading::WORK_ORDER) {
-            return;
+            return null;
         }
 
         $reference = trim((string) $original->originReference());
         if (preg_match('/^OT#(\d+)$/', $reference, $matches) !== 1) {
-            return;
+            return null;
         }
 
         $orderId = (int) $matches[1];
@@ -109,7 +110,7 @@ final class CodeIgniterReadingCorrectionRepository implements ReadingCorrectionR
             throw new RuntimeException('La lectura referencia una OT que no existe o no pertenece al equipo.');
         }
         if ((string) $row['estado'] !== 'FINALIZADA') {
-            return;
+            return null;
         }
 
         $oldKm = $row['km_salida'] === null ? null : (int) $row['km_salida'];
@@ -155,9 +156,6 @@ final class CodeIgniterReadingCorrectionRepository implements ReadingCorrectionR
             'created_at' => $timestamp,
         ]);
 
-        $recipient = (new CodeIgniterCompanyNotificationRecipientResolver($this->database))
-            ->resolve($original->companyId());
-        $missingRecipient = $recipient === null;
         $actor = $this->database->table('usuarios')
             ->select('nombre')
             ->where('id', $actorUserId)
@@ -172,18 +170,19 @@ final class CodeIgniterReadingCorrectionRepository implements ReadingCorrectionR
             . '. Motivo: ' . trim($reason)
             . '. Modificado por ' . $actorLabel . '.';
 
-        $this->database->table('notificacion_empresa_entregas')->ignore(true)->insert([
-            'empresa_id' => $original->companyId(),
-            'tipo_evento' => 'orden.rectificada',
-            'destinatario' => $recipient,
-            'clave_entrega' => 'orden.rectificada:' . $orderId . ':lectura:' . $correctionReadingId . ':empresa:' . $original->companyId() . ':email',
-            'titulo' => $title,
-            'resumen' => mb_substr($summary, 0, 1000),
-            'url' => '/mantenimiento/equipos/' . $original->equipmentId(),
-            'estado' => $missingRecipient ? 'OMITIDA' : 'PENDIENTE',
-            'ultimo_error' => $missingRecipient ? 'Empresa sin destinatario de notificaciones por email habilitado.' : null,
-            'created_at' => $timestamp,
-        ]);
+        return new NotifiableEvent(
+            $original->companyId(),
+            (int) $row['sucursal_id'],
+            'orden.rectificada',
+            NotificationSeverity::CRITICAL,
+            $title,
+            mb_substr($summary, 0, 1000),
+            'orden_trabajo',
+            (string) $orderId,
+            'orden.rectificada:ot:' . $orderId . ':lectura:' . $correctionReadingId,
+            '/mantenimiento/equipos/' . $original->equipmentId(),
+            $correctedAt,
+        );
     }
 
     public function recalculateCurrentUsage(

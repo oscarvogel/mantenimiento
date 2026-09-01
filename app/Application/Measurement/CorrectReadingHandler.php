@@ -10,6 +10,7 @@ use App\Application\Measurement\Port\ReadingCorrectionRepository;
 use App\Application\Measurement\Port\ReadingRepository;
 use App\Application\Measurement\Port\UnitOfWork;
 use App\Application\Measurement\Port\WorkOrderReadingCorrectionSynchronizer;
+use App\Application\Notifications\Port\NotifiableEventPublisher;
 use App\Domain\Measurement\UsageMeasurement;
 use DomainException;
 
@@ -23,6 +24,7 @@ final class CorrectReadingHandler
         private readonly ReadingCorrectionRepository $corrections,
         private readonly UnitOfWork $unitOfWork,
         ?WorkOrderReadingCorrectionSynchronizer $workOrderSynchronizer = null,
+        private readonly ?NotifiableEventPublisher $notificationPublisher = null,
     ) {
         $this->workOrderSynchronizer = $workOrderSynchronizer
             ?? ($corrections instanceof WorkOrderReadingCorrectionSynchronizer ? $corrections : null);
@@ -63,7 +65,7 @@ final class CorrectReadingHandler
             );
             $correctionId = $this->readings->append($correction);
             $this->corrections->markAnnulled($original);
-            $this->workOrderSynchronizer?->synchronizeFinalizedWorkOrder(
+            $notification = $this->workOrderSynchronizer?->synchronizeFinalizedWorkOrder(
                 $original,
                 $replacement,
                 $correctionId,
@@ -72,6 +74,9 @@ final class CorrectReadingHandler
                 $command->notes,
                 $command->correctedAt,
             );
+            if ($notification !== null) {
+                $this->notificationPublisher?->publish($notification);
+            }
             $current = $this->corrections->recalculateCurrentUsage(
                 $companyId,
                 $equipment->branchId(),

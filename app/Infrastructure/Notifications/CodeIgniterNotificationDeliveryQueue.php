@@ -25,6 +25,7 @@ final class CodeIgniterNotificationDeliveryQueue implements NotificationDelivery
         'orden.preventiva_generada',
         'orden.generada_preventiva',
         'orden.demorada',
+        'orden.rectificada',
         'equipo.sin_lectura',
         'garantia.proxima',
     ];
