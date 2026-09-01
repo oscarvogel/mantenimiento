@@ -9,14 +9,53 @@ use App\Application\Measurement\CorrectReadingHandler;
 use App\Application\Measurement\Port\ReadingCorrectionRepository;
 use App\Application\Measurement\Port\ReadingRepository;
 use App\Application\Measurement\Port\UnitOfWork;
+use App\Application\Measurement\Port\WorkOrderReadingCorrectionSynchronizer;
+use App\Application\Notifications\Port\NotifiableEventPublisher;
 use App\Domain\Assets\Equipment;
 use App\Domain\Assets\EquipmentType;
 use App\Domain\Measurement\EquipmentReading;
 use App\Domain\Measurement\UsageMeasurement;
+use App\Domain\Notifications\NotifiableEvent;
+use App\Domain\Notifications\NotificationSeverity;
 use PHPUnit\Framework\TestCase;
 
 final class CorrectReadingHandlerTest extends TestCase
 {
+    public function testPublishesCriticalNotificationReturnedForFinalizedWorkOrder(): void
+    {
+        $publisher = new CorrectionNotificationPublisherFake();
+        $event = new NotifiableEvent(
+            5,
+            7,
+            'orden.rectificada',
+            NotificationSeverity::CRITICAL,
+            'OT-2026-000001 rectificada después de su cierre',
+            'Se modificó el kilometraje de una OT cerrada.',
+            'orden_trabajo',
+            '44',
+            'orden_rectificada:ot:44:lectura:82',
+            '/mantenimiento/equipos/10',
+            new DateTimeImmutable('2026-08-08 12:00:00'),
+        );
+        $handler = new CorrectReadingHandler(
+            new CorrectionEquipmentRepositoryFake($this->equipment()),
+            new CorrectionAppendRepositoryFake(),
+            new ReadingCorrectionRepositoryFake($this->reading(), UsageMeasurement::from(1400, '35.5')),
+            new CorrectionUnitOfWorkFake(),
+            new CorrectionWorkOrderSynchronizerFake($event),
+            $publisher,
+        );
+
+        $handler->execute(
+            $this->actor(['lecturas.corregir'], [9]),
+            new CorrectReadingCommand(10, 81, 950, '19.5', 'Corrección de OT cerrada', new DateTimeImmutable('2026-08-08 12:00:00')),
+        );
+
+        self::assertSame($event, $publisher->published);
+        self::assertSame(NotificationSeverity::CRITICAL, $publisher->published?->severity());
+        self::assertSame('orden.rectificada', $publisher->published?->type());
+    }
+
     public function testCorrectsHistoricalReadingFromPreviousBranchAndRecalculatesFullEquipmentProjection(): void
     {
         $equipment = $this->equipment(branchId: 9);
@@ -246,5 +285,32 @@ final class CorrectionUnitOfWorkFake implements UnitOfWork
             $this->rollbacks++;
             throw $exception;
         }
+    }
+}
+
+final readonly class CorrectionWorkOrderSynchronizerFake implements WorkOrderReadingCorrectionSynchronizer
+{
+    public function __construct(private NotifiableEvent $event) {}
+
+    public function synchronizeFinalizedWorkOrder(
+        EquipmentReading $original,
+        UsageMeasurement $replacement,
+        int $correctionReadingId,
+        int $actorUserId,
+        string $reason,
+        ?string $notes,
+        DateTimeImmutable $correctedAt,
+    ): ?NotifiableEvent {
+        return $this->event;
+    }
+}
+
+final class CorrectionNotificationPublisherFake implements NotifiableEventPublisher
+{
+    public ?NotifiableEvent $published = null;
+
+    public function publish(NotifiableEvent $event): void
+    {
+        $this->published = $event;
     }
 }

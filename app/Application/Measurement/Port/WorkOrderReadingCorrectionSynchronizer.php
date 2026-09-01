@@ -6,6 +6,7 @@ namespace App\Application\Measurement\Port;
 
 use App\Domain\Measurement\EquipmentReading;
 use App\Domain\Measurement\UsageMeasurement;
+use App\Domain\Notifications\NotifiableEvent;
 use DateTimeImmutable;
 
 interface WorkOrderReadingCorrectionSynchronizer
@@ -18,5 +19,5 @@ interface WorkOrderReadingCorrectionSynchronizer
         string $reason,
         ?string $notes,
         DateTimeImmutable $correctedAt,
-    ): void;
+    ): ?NotifiableEvent;
 }

@@ -6,6 +6,7 @@ namespace App\Application\Notifications;
 
 use App\Application\Notifications\Port\CompanyNotificationDeliveryQueue;
 use App\Application\Notifications\Port\NotificationDeliveryQueue;
+use App\Application\Notifications\Port\NotifiableEventPublisher;
 use App\Application\Notifications\Port\NotificationPreferenceStore;
 use App\Application\Notifications\Port\NotificationRecipientResolver;
 use App\Application\Notifications\Port\NotificationRepository;
@@ -13,7 +14,7 @@ use App\Application\Notifications\Port\NotificationUnitOfWork;
 use App\Domain\Notifications\NotifiableEvent;
 use App\Domain\Notifications\Notification;
 
-final readonly class PublishNotifiableEvent
+final readonly class PublishNotifiableEvent implements NotifiableEventPublisher
 {
     public function __construct(
         private NotificationRecipientResolver $recipients,
@@ -55,5 +56,10 @@ final readonly class PublishNotifiableEvent
 
             return ['created' => $created, 'duplicates' => $duplicates, 'recipients' => count($recipients)];
         });
+    }
+
+    public function publish(NotifiableEvent $event): void
+    {
+        $this->execute($event);
     }
 }

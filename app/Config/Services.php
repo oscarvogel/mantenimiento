@@ -799,6 +799,8 @@ class Services extends BaseService
             new CodeIgniterReadingRepository($database),
             new CodeIgniterReadingCorrectionRepository($database),
             new CodeIgniterUnitOfWork($database),
+            null,
+            static::publishNotifiableEvent(false),
         );
     }
 
