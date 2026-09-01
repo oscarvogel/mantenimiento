@@ -70,15 +70,18 @@ use App\Application\Notifications\ManageNotificationPreferences;
 use App\Application\Notifications\ManageWebPushSubscriptions;
 use App\Application\Notifications\MarkNotificationRead;
 use App\Application\Notifications\NotificationChannelPolicy;
+use App\Application\Notifications\Port\NotificationCronRateLimiter;
 use App\Application\Notifications\NotificationDeliverySchedule;
 use App\Application\Notifications\NotificationPreferenceResolution;
 use App\Application\Notifications\NotificationRecipientScopePolicy;
 use App\Application\Notifications\PublishNotifiableEvent;
 use App\Application\Notifications\RunNotificationDispatch;
+use App\Application\Notifications\RunNotificationCycle;
 use App\Application\Notifications\SendWebPushTest;
 use App\Infrastructure\Organization\CodeIgniterOrganizationAdministration;
 use App\Infrastructure\Organization\CodeIgniterTenantAdministration;
 use App\Infrastructure\Notifications\CodeIgniterEmailNotificationGateway;
+use App\Infrastructure\Notifications\CodeIgniterNotificationCronRateLimiter;
 use App\Infrastructure\Notifications\CodeIgniterNotificationDeliveryQueue;
 use App\Infrastructure\Notifications\CodeIgniterNotificationPreferenceStore;
 use App\Infrastructure\Notifications\CodeIgniterNotificationProcessControl;
@@ -233,6 +236,33 @@ class Services extends BaseService
         }
 
         return new SystemNotificationClock();
+    }
+
+    public static function notificationCycle(bool $getShared = true): RunNotificationCycle
+    {
+        if ($getShared) {
+            return static::getSharedInstance('notificationCycle');
+        }
+
+        return new RunNotificationCycle(
+            static::detectOverduePlansAutomatically(),
+            static::operationalNotificationCollector(),
+            static::notificationDispatch(),
+            static::notificationClock(),
+        );
+    }
+
+    public static function notificationCronRateLimiter(bool $getShared = true): NotificationCronRateLimiter
+    {
+        if ($getShared) {
+            return static::getSharedInstance('notificationCronRateLimiter');
+        }
+
+        return new CodeIgniterNotificationCronRateLimiter(
+            service('throttler'),
+            (int) env('alerts.webCronRateLimit', 6),
+            (int) env('alerts.webCronRateWindowSeconds', 60),
+        );
     }
 
     public static function notificationRepository(bool $getShared = true): CodeIgniterNotificationRepository

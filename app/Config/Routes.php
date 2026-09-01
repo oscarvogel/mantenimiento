@@ -19,8 +19,13 @@ $routes->post('logout', 'Login::logout', ['filter' => 'auth']);
 // Dashboard (protegido)
 $routes->get('dashboard', 'Dashboard::index', ['filter' => 'auth']);
 
-// Cron web para hosting sin PHP CLI. El token se valida dentro del controlador.
-$routes->get('cron/notificaciones/(:segment)', 'NotificationCron::dispatch/$1');
+// Cron web seguro para hosting sin PHP CLI. Usa POST + X-Cron-Token y no CSRF.
+$routes->post('internal/cron/notifications/dispatch', 'NotificationCron::dispatch');
+$routes->get('internal/cron/notifications/dispatch', 'NotificationCron::methodNotAllowed');
+$routes->match(['put', 'patch', 'delete', 'options'], 'internal/cron/notifications/dispatch', 'NotificationCron::methodNotAllowed');
+
+// Legacy: conservar hasta verificar que ninguna tarea Ferozo dependa de esta URL.
+$routes->get('cron/notificaciones/(:segment)', 'NotificationCron::legacyDispatch/$1');
 
 // Compatibilidad con enlaces antiguos emitidos antes de conocer el prefijo
 // interno del grupo `mantenimiento` en el deploy plano.

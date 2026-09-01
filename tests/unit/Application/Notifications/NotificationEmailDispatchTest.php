@@ -41,6 +41,7 @@ final class NotificationEmailDispatchTest extends TestCase
 
         self::assertSame([[7, true]], $queue->failedIds);
         self::assertSame(1, $result['failed']);
+        self::assertSame(1, $result['retry']);
     }
 
     public function testRepeatedExecutionKeyIsNoOp(): void

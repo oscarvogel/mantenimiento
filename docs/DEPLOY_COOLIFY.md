@@ -156,7 +156,8 @@ con el usuario demo creado por `DemoCompanySeeder`.
 - **Schedule:** `0 10 * * *` (07:00 AR = 10:00 UTC, respeta `alerts.dailyRunTime=07:00`). Para prueba inicial podés usar `*/15 * * * *` y volver a diario.
 - **Lock:** tabla `bloqueos_proceso` TTL 900s (`CodeIgniterNotificationProcessControl.php:22`), idempotencia `ejecuciones_programadas.clave_ejecucion=Y-m-d-H`.
 - **Logs:** `writable/logs/*` + tabla `ejecuciones_programadas` (resumen JSON).
-- **HTTP legacy:** `GET /cron/notificaciones/<TOKEN>` se conserva (`Routes.php:23`, `NotificationCron.php:14`) pero con `alerts.webCronEnabled=false` responde 404 en staging. Probar con un token ficticio; nunca exponer el token real.
+- **HTTP seguro:** `POST /internal/cron/notifications/dispatch` con `X-Cron-Token` (o `Authorization: Bearer`) devuelve sólo un resumen técnico redacted. `GET /internal/cron/notifications/dispatch` devuelve 405; token ausente 401; incorrecto 403; lock activo 409; rate limit 429. `alerts.webCronEnabled=false` devuelve 404.
+- **HTTP legacy:** `GET /cron/notificaciones/<TOKEN>` se conserva y está deprecated (`Routes.php`, `NotificationCron.php`) hasta confirmar en el panel real de Ferozo que ninguna tarea existente depende de esa URL. Probar con un token ficticio; nunca exponer el token real.
 
 ## 7. Apache / AllowOverride
 

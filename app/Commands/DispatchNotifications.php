@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Commands;
 
-use App\Application\Notifications\RunNotificationCycle;
 use CodeIgniter\CLI\BaseCommand;
 use CodeIgniter\CLI\CLI;
 
@@ -16,13 +15,7 @@ final class DispatchNotifications extends BaseCommand
 
     public function run(array $params): void
     {
-        $cycle = new RunNotificationCycle(
-            service('detectOverduePlansAutomatically'),
-            service('operationalNotificationCollector'),
-            service('notificationDispatch'),
-            service('notificationClock'),
-        );
-        $result = $cycle->execute($params[0] ?? null, (int) env('alerts.lockTimeoutSeconds', 900));
+        $result = service('notificationCycle')->execute($params[0] ?? null, (int) env('alerts.lockTimeoutSeconds', 900));
 
         CLI::write(json_encode($result, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE), 'green');
     }

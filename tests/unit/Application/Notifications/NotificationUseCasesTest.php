@@ -101,6 +101,7 @@ final class NotificationUseCasesTest extends TestCase
         $result = (new RunNotificationDispatch($queue, new FailingEmailGateway(), new SuccessfulPushGateway(), $process))->execute('2026-08-12');
 
         self::assertSame(1, $result['failed']);
+        self::assertSame(1, $result['retry']);
         self::assertSame(1, $result['push_sent']);
         self::assertSame([[1, true]], $queue->failed);
         self::assertSame([2], $queue->delivered);
