@@ -51,6 +51,25 @@ const fleetReadingCoverage = computed(() => {
   return Math.max(0, Math.round(((total - problems) / total) * 100))
 })
 
+const readingQualityBars = computed(() => {
+  const active = Math.max(Number(metrics.value.equipmentActive ?? metrics.value.equipmentTotal ?? 0), 0)
+  const stale = Math.max(Number(metrics.value.equipmentWithStaleReading ?? 0), 0)
+  const missing = Math.max(Number(metrics.value.equipmentWithoutReading ?? 0), 0)
+  const updated = Math.max(active - stale - missing, 0)
+  const bars = [
+    { key: 'updated', label: 'Actualizadas', value: updated, className: 'bg-success' },
+    { key: 'stale', label: 'Antiguas', value: stale, className: 'bg-warning' },
+    { key: 'missing', label: 'Sin lectura', value: missing, className: 'bg-danger' },
+  ]
+  const maxValue = Math.max(...bars.map((bar) => bar.value), 1)
+  const maxHeight = 112
+
+  return bars.map((bar) => ({
+    ...bar,
+    height: bar.value === 0 ? 0 : Math.max(4, Math.round((bar.value / maxValue) * maxHeight)),
+  }))
+})
+
 const executiveAlerts = computed(() => [
   {
     label: 'Preventivos vencidos',
@@ -267,24 +286,25 @@ const executiveAlerts = computed(() => [
         <section class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="reading-chart-title">
           <h2 id="reading-chart-title" class="text-base font-bold text-ink sm:text-lg">Calidad de información</h2>
           <p class="mt-1 text-sm text-ink-muted">Cobertura de lecturas de la flota activa.</p>
-          <div class="mt-5 flex items-end gap-3 rounded-lg bg-surface-subtle px-4 py-5" style="height: 190px">
-            <div class="flex min-w-0 flex-1 flex-col items-center justify-end gap-2">
-              <span class="text-xs font-bold text-ink">{{ fleetReadingCoverage }}%</span>
-              <div class="w-full max-w-16 rounded-t-md bg-success" :style="{ height: `${Math.max(fleetReadingCoverage, 4)}px` }" />
-              <span class="text-center text-xs text-ink-muted">Actualizadas</span>
-            </div>
-            <div class="flex min-w-0 flex-1 flex-col items-center justify-end gap-2">
-              <span class="text-xs font-bold text-ink">{{ metrics.equipmentWithStaleReading ?? 0 }}</span>
-              <div class="w-full max-w-16 rounded-t-md bg-warning" :style="{ height: `${Math.max((metrics.equipmentWithStaleReading ?? 0) * 12, 4)}px` }" />
-              <span class="text-center text-xs text-ink-muted">Antiguas</span>
-            </div>
-            <div class="flex min-w-0 flex-1 flex-col items-center justify-end gap-2">
-              <span class="text-xs font-bold text-ink">{{ metrics.equipmentWithoutReading ?? 0 }}</span>
-              <div class="w-full max-w-16 rounded-t-md bg-danger" :style="{ height: `${Math.max((metrics.equipmentWithoutReading ?? 0) * 12, 4)}px` }" />
-              <span class="text-center text-xs text-ink-muted">Sin lectura</span>
+          <div class="mt-5 grid h-52 grid-cols-3 items-end gap-3 overflow-hidden rounded-lg bg-surface-subtle px-4 py-5">
+            <div
+              v-for="bar in readingQualityBars"
+              :key="bar.key"
+              class="flex min-w-0 flex-col items-center justify-end gap-2"
+            >
+              <span class="text-xs font-bold text-ink">{{ bar.value }}</span>
+              <div class="flex h-32 w-full items-end justify-center overflow-hidden">
+                <div
+                  :data-testid="`reading-quality-${bar.key}`"
+                  class="w-full max-w-16 rounded-t-md transition-[height]"
+                  :class="bar.className"
+                  :style="{ height: `${bar.height}px` }"
+                />
+              </div>
+              <span class="text-center text-xs text-ink-muted">{{ bar.label }}</span>
             </div>
           </div>
-          <p class="mt-3 text-xs leading-5 text-ink-muted">Se considera antigua una lectura con más de {{ metrics.staleReadingDays ?? 7 }} días.</p>
+          <p class="mt-3 text-xs leading-5 text-ink-muted">Se considera antigua una lectura con más de {{ metrics.staleReadingDays ?? 7 }} días. Cobertura actual: {{ fleetReadingCoverage }}%.</p>
         </section>
       </aside>
     </div>
