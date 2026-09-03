@@ -26,6 +26,6 @@ final class GetEquipmentQrPayload
             throw new DomainException('El equipo no existe o no está autorizado para el actor.');
         }
 
-        return new EquipmentQrPayload((int) $row['id'], (string) $row['codigo'], '/mantenimiento/equipos/' . $row['id']);
+        return new EquipmentQrPayload((int) $row['id'], (string) $row['codigo'], '/mantenimiento/equipos/' . $row['id'] . '/operar');
     }
 }
