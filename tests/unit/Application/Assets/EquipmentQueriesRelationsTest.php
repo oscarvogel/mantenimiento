@@ -92,7 +92,7 @@ final class EquipmentQueriesRelationsTest extends TestCase
         self::assertSame('2026-08-09', $repository->relation?->endedAt()?->format('Y-m-d'));
     }
 
-    public function testQrReturnsCanonicalAuthenticatedDetailReference(): void
+    public function testQrReturnsCanonicalAuthenticatedDriverPortalReference(): void
     {
         $read = new class implements EquipmentQrReadModel {
             public ?array $scope = null;
@@ -104,12 +104,12 @@ final class EquipmentQueriesRelationsTest extends TestCase
         };
         $payload = (new GetEquipmentQrPayload($read))->execute($this->actor(['equipos.ver'], [7]), 10);
 
-        self::assertSame('/mantenimiento/equipos/10', $payload->relativePath);
+        self::assertSame('/mantenimiento/equipos/10/operar', $payload->relativePath);
         self::assertSame('mantenimiento:equipo:10', $payload->canonicalReference());
         self::assertSame([7], $read->scope);
     }
 
-    public function testRenderedQrUsesAbsoluteEquipmentUrlWithoutCouplingApplicationToLibrary(): void
+    public function testRenderedQrUsesAbsoluteDriverPortalUrlWithoutCouplingApplicationToLibrary(): void
     {
         $read = new class implements EquipmentQrReadModel {
             public function findScoped(int $companyId, int $equipmentId, ?array $branchIds): ?array
@@ -132,7 +132,7 @@ final class EquipmentQueriesRelationsTest extends TestCase
             'https://example.test/',
         );
 
-        self::assertSame('https://example.test/mantenimiento/equipos/10', $result->targetUrl);
+        self::assertSame('https://example.test/mantenimiento/equipos/10/operar', $result->targetUrl);
         self::assertSame($result->targetUrl, $renderer->value);
         self::assertSame('<svg />', $result->svg);
     }

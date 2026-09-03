@@ -102,11 +102,15 @@ final class InitialSeeder extends Seeder
             'Responsable de mantenimiento' => [
                 'sucursales.ver', 'sucursales.editar', 'equipos.ver', 'equipos.editar',
                 'lecturas.cargar', 'lecturas.ver', 'lecturas.corregir', 'planes.ver',
-                'planes.editar', 'ordenes.ver', 'ordenes.editar', 'ordenes.cerrar', 'reportes.ver',
+                'planes.editar', 'solicitudes.crear', 'solicitudes.revisar',
+                'ordenes.ver', 'ordenes.editar', 'ordenes.cerrar', 'reportes.ver',
                 'importaciones.ver', 'importaciones.cargar',
                 'notificaciones.ver',
             ],
-            'Tecnico u operador' => ['equipos.ver', 'lecturas.cargar', 'lecturas.ver', 'ordenes.ver', 'ordenes.mi_trabajo', 'notificaciones.ver'],
+            'Tecnico u operador' => [
+                'equipos.ver', 'lecturas.cargar', 'lecturas.ver', 'solicitudes.crear',
+                'ordenes.ver', 'ordenes.mi_trabajo', 'notificaciones.ver',
+            ],
             'Solicitante' => ['solicitudes.crear', 'notificaciones.ver'],
             'Consulta' => ['equipos.ver', 'lecturas.ver', 'ordenes.ver', 'reportes.ver', 'importaciones.ver', 'notificaciones.ver'],
         ];
