@@ -27,6 +27,9 @@ final readonly class ReadingHistoryItem
         public ?int $annulledBy,
         public ?string $annulledByName,
         public ?string $annulmentReason,
+        public ?string $originReference = null,
+        public ?int $workOrderId = null,
+        public ?string $workOrderNumber = null,
     ) {
     }
 }

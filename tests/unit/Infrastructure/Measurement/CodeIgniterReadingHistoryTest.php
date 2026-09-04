@@ -33,7 +33,7 @@ final class CodeIgniterReadingHistoryTest extends TestCase
         $this->database->query(
             'CREATE TABLE lecturas_equipo ('
             . 'id INTEGER PRIMARY KEY, empresa_id INTEGER, sucursal_id INTEGER, equipo_id INTEGER, '
-            . 'fecha_lectura TEXT, kilometraje INTEGER NULL, horometro TEXT NULL, origen TEXT, '
+            . 'fecha_lectura TEXT, kilometraje INTEGER NULL, horometro TEXT NULL, origen TEXT, referencia_origen TEXT NULL, '
             . 'usuario_id INTEGER, observaciones TEXT NULL, motivo_correccion TEXT NULL, '
             . 'lectura_corregida_id INTEGER NULL, anulada INTEGER, anulada_at TEXT NULL, '
             . 'anulada_por INTEGER NULL, motivo_anulacion TEXT NULL)'
