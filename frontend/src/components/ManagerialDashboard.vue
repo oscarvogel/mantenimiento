@@ -56,17 +56,17 @@ const readingQualityBars = computed(() => {
   const stale = Math.max(Number(metrics.value.equipmentWithStaleReading ?? 0), 0)
   const missing = Math.max(Number(metrics.value.equipmentWithoutReading ?? 0), 0)
   const updated = Math.max(active - stale - missing, 0)
+  const toPercentage = (value) => (active > 0 ? Math.round((value / active) * 100) : 0)
   const bars = [
-    { key: 'updated', label: 'Actualizadas', value: updated, className: 'bg-success' },
-    { key: 'stale', label: 'Antiguas', value: stale, className: 'bg-warning' },
-    { key: 'missing', label: 'Sin lectura', value: missing, className: 'bg-danger' },
+    { key: 'updated', label: 'Actualizadas', value: toPercentage(updated), className: 'bg-success' },
+    { key: 'stale', label: 'Antiguas', value: toPercentage(stale), className: 'bg-warning' },
+    { key: 'missing', label: 'Sin lectura', value: toPercentage(missing), className: 'bg-danger' },
   ]
-  const maxValue = Math.max(...bars.map((bar) => bar.value), 1)
   const maxHeight = 112
 
   return bars.map((bar) => ({
     ...bar,
-    height: bar.value === 0 ? 0 : Math.max(4, Math.round((bar.value / maxValue) * maxHeight)),
+    height: bar.value === 0 ? 0 : Math.max(4, Math.round((bar.value / 100) * maxHeight)),
   }))
 })
 
@@ -285,14 +285,14 @@ const executiveAlerts = computed(() => [
 
         <section class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="reading-chart-title">
           <h2 id="reading-chart-title" class="text-base font-bold text-ink sm:text-lg">Calidad de información</h2>
-          <p class="mt-1 text-sm text-ink-muted">Cobertura de lecturas de la flota activa.</p>
+          <p class="mt-1 text-sm text-ink-muted">Distribución porcentual del estado de las lecturas de la flota activa.</p>
           <div class="mt-5 grid h-52 grid-cols-3 items-end gap-3 overflow-hidden rounded-lg bg-surface-subtle px-4 py-5">
             <div
               v-for="bar in readingQualityBars"
               :key="bar.key"
               class="flex min-w-0 flex-col items-center justify-end gap-2"
             >
-              <span class="text-xs font-bold text-ink">{{ bar.value }}</span>
+              <span class="text-xs font-bold text-ink">{{ bar.value }}%</span>
               <div class="flex h-32 w-full items-end justify-center overflow-hidden">
                 <div
                   :data-testid="`reading-quality-${bar.key}`"
