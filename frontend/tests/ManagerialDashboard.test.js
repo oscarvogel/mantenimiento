@@ -30,7 +30,7 @@ describe('ManagerialDashboard', () => {
     expect(complianceCard.text()).not.toContain('100%')
   })
 
-  it('scales reading-quality bars proportionally without overflowing the chart', () => {
+  it('shows reading-quality bars as percentages of the active fleet', () => {
     const wrapper = mount(ManagerialDashboard, {
       props: {
         dashboard: normalizeDashboardPayload({
@@ -39,8 +39,8 @@ describe('ManagerialDashboard', () => {
           company: { name: 'TSA Demo Dashboard' },
           metrics: {
             equipmentActive: 25,
-            equipmentWithStaleReading: 8,
-            equipmentWithoutReading: 17,
+            equipmentWithStaleReading: 9,
+            equipmentWithoutReading: 8,
           },
           links: {},
         }),
@@ -53,9 +53,12 @@ describe('ManagerialDashboard', () => {
     const stale = wrapper.get('[data-testid="reading-quality-stale"]')
     const missing = wrapper.get('[data-testid="reading-quality-missing"]')
 
-    expect(updated.attributes('style')).toContain('height: 0px')
-    expect(stale.attributes('style')).toContain('height: 53px')
-    expect(missing.attributes('style')).toContain('height: 112px')
-    expect(wrapper.text()).toContain('Cobertura actual: 0%')
+    expect(updated.attributes('style')).toContain('height: 36px')
+    expect(stale.attributes('style')).toContain('height: 40px')
+    expect(missing.attributes('style')).toContain('height: 36px')
+    expect(updated.element.parentElement.parentElement.textContent).toContain('32%')
+    expect(stale.element.parentElement.parentElement.textContent).toContain('36%')
+    expect(missing.element.parentElement.parentElement.textContent).toContain('32%')
+    expect(wrapper.text()).toContain('Cobertura actual: 32%')
   })
 })
