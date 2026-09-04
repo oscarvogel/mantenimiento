@@ -90,3 +90,11 @@ $RECYCLE.BIN/
 # o sesiones de Playwright. Son temporales, no parte del codigo.
 /cookies*.txt
 /superadmin.html
+
+# Artefactos de Playwright y testing
+/.playwright-cli/
+/_internal/
+/output/
+/remote-manifest-before-*.json
+/tmp/
+/test_temp.log
