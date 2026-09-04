@@ -21,6 +21,9 @@ use App\Application\Assets\RenameEquipmentModelCommand;
 use App\Application\Assets\RenderEquipmentQr;
 use App\Application\Assets\Attachment\ListPrimaryEquipmentPhotos;
 use App\Application\Identity\ActorContext;
+use App\Application\PublicEquipmentAccess\IssuePublicEquipmentToken;
+use App\Infrastructure\PublicEquipmentAccess\CodeIgniterPublicEquipmentTokenRepository;
+use App\Infrastructure\Assets\EndroidEquipmentQrRenderer;
 use App\Infrastructure\Identity\SessionActorContext;
 use App\Presentation\PageSize;
 use CodeIgniter\HTTP\RedirectResponse;
@@ -175,13 +178,47 @@ final class AssetManagement extends BaseController
     public function qr(int $equipmentId): ResponseInterface|RedirectResponse
     {
         try {
-            $result = $this->equipmentQr()->execute($this->actor(), $equipmentId, base_url());
+            $actor = $this->actor();
+            if ($actor->companyId() === null || ! $actor->hasPermission('equipos.ver')) {
+                throw new DomainException('No tenés permiso para obtener el QR del equipo.');
+            }
+
+            $repository = new CodeIgniterPublicEquipmentTokenRepository(db_connect());
+            $token = $repository->activePlainTokenForEquipment($actor->companyId(), $equipmentId);
+            if ($token === null) {
+                if (! $actor->hasPermission('equipos.editar')) {
+                    throw new DomainException('El equipo todavía no tiene QR público. Pedí a un administrador que lo genere.');
+                }
+                $token = (new IssuePublicEquipmentToken($repository))
+                    ->execute($actor, $equipmentId, new DateTimeImmutable('now'))
+                    ->plainToken;
+            }
+
+            $target = base_url('mantenimiento/publico/equipo/' . rawurlencode($token) . '/lectura');
+            $svg = (new EndroidEquipmentQrRenderer())->renderSvg($target);
 
             return $this->response
                 ->setContentType('image/svg+xml')
-                ->setHeader('Content-Disposition', 'inline; filename="equipo-' . $result->equipmentId . '-qr.svg"')
+                ->setHeader('Content-Disposition', 'inline; filename="equipo-' . $equipmentId . '-qr.svg"')
                 ->setHeader('X-Content-Type-Options', 'nosniff')
-                ->setBody($result->svg);
+                ->setBody($svg);
+        } catch (Throwable $exception) {
+            return $this->failure($exception, '/mantenimiento/equipos');
+        }
+    }
+
+    public function regenerateQr(int $equipmentId): RedirectResponse
+    {
+        try {
+            $actor = $this->actor();
+            $repository = new CodeIgniterPublicEquipmentTokenRepository(db_connect());
+            (new IssuePublicEquipmentToken($repository))
+                ->execute($actor, $equipmentId, new DateTimeImmutable('now'));
+
+            return redirect()->to('/mantenimiento/equipos')->with(
+                'success',
+                'QR regenerado. El código anterior dejó de ser válido.',
+            );
         } catch (Throwable $exception) {
             return $this->failure($exception, '/mantenimiento/equipos');
         }
