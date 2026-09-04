@@ -36,6 +36,7 @@
 
         <form method="post">
             <?= csrf_field() ?>
+            <input type="hidden" name="request_key" value="<?= esc($requestKey) ?>">
             <?php if ((int) $equipment['controla_km'] === 1): ?>
                 <label for="kilometers">Kilómetros actuales</label>
                 <input id="kilometers" name="kilometers" type="number" inputmode="numeric" min="0"
@@ -50,6 +51,13 @@
 
             <label for="notes">Observación (opcional)</label>
             <textarea id="notes" name="notes" rows="3" maxlength="500"><?= esc(old('notes')) ?></textarea>
+
+            <?php if ($largeJump): ?>
+                <label style="font-weight:500">
+                    <input type="checkbox" name="confirm_large_jump" value="1" required style="width:auto">
+                    Confirmo que revisé el valor y es correcto.
+                </label>
+            <?php endif ?>
 
             <button type="submit">Registrar lectura</button>
         </form>
