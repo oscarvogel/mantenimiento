@@ -24,6 +24,7 @@ use App\Application\Identity\ActorContext;
 use App\Application\PublicEquipmentAccess\IssuePublicEquipmentToken;
 use App\Infrastructure\PublicEquipmentAccess\CodeIgniterPublicEquipmentTokenRepository;
 use App\Infrastructure\Assets\EndroidEquipmentQrRenderer;
+use App\Infrastructure\Diagnostics\QrTechnicalFailureReporter;
 use App\Infrastructure\Identity\SessionActorContext;
 use App\Presentation\PageSize;
 use CodeIgniter\HTTP\RedirectResponse;
@@ -34,6 +35,18 @@ use Throwable;
 
 final class AssetManagement extends BaseController
 {
+    public function __construct(?QrTechnicalFailureReporter $qrFailureReporter = null)
+    {
+        $this->qrFailureReporter = $qrFailureReporter ?? new QrTechnicalFailureReporter(
+            static function (string $entry): void {
+                log_message('error', $entry);
+            },
+            static fn (): string => 'QR-' . strtoupper(bin2hex(random_bytes(6))),
+        );
+    }
+
+    private readonly QrTechnicalFailureReporter $qrFailureReporter;
+
     public function index(): string|RedirectResponse
     {
         try {
@@ -211,7 +224,7 @@ final class AssetManagement extends BaseController
                 ->setHeader('X-Content-Type-Options', 'nosniff')
                 ->setBody($svg);
         } catch (Throwable $exception) {
-            return $this->failure($exception, '/mantenimiento/equipos');
+            return $this->failure($exception, '/mantenimiento/equipos', 'QR');
         }
     }
 
@@ -228,7 +241,7 @@ final class AssetManagement extends BaseController
                 'QR regenerado. El código anterior dejó de ser válido.',
             );
         } catch (Throwable $exception) {
-            return $this->failure($exception, '/mantenimiento/equipos');
+            return $this->failure($exception, '/mantenimiento/equipos', 'QR');
         }
     }
 
@@ -261,16 +274,27 @@ final class AssetManagement extends BaseController
         }
     }
 
-    private function failure(Throwable $exception, string $target): RedirectResponse
+    private function failure(Throwable $exception, string $target, ?string $operation = null): RedirectResponse
     {
+        $userMessage = $exception instanceof DomainException
+            ? $exception->getMessage()
+            : 'No se pudo completar la operación.';
+
         if (! $exception instanceof DomainException) {
-            log_message('error', 'Falló la gestión de activos: {message}', ['message' => $exception->getMessage()]);
+            if ($operation === 'QR') {
+                try {
+                    $userMessage = $this->qrFailureReporter->report($exception)->userMessage();
+                } catch (Throwable $reportingException) {
+                    log_message('critical', 'No se pudo registrar el diagnóstico del fallo QR: {class}', [
+                        'class' => $reportingException::class,
+                    ]);
+                }
+            } else {
+                log_message('error', 'Falló la gestión de activos: {message}', ['message' => $exception->getMessage()]);
+            }
         }
 
-        return redirect()->to($target)->withInput()->with(
-            'error',
-            $exception instanceof DomainException ? $exception->getMessage() : 'No se pudo completar la operación.',
-        );
+        return redirect()->to($target)->withInput()->with('error', $userMessage);
     }
 
     private function nullableString(mixed $value): ?string

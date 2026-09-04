@@ -6,7 +6,6 @@ namespace App\Infrastructure\PublicEquipmentAccess;
 
 use App\Application\PublicEquipmentAccess\Port\PublicEquipmentTokenRepository;
 use CodeIgniter\Database\BaseConnection;
-use Throwable;
 
 final class CodeIgniterPublicEquipmentTokenRepository implements PublicEquipmentTokenRepository
 {
@@ -27,11 +26,7 @@ final class CodeIgniterPublicEquipmentTokenRepository implements PublicEquipment
             return null;
         }
 
-        try {
-            return service('encrypter')->decrypt(base64_decode((string) $row['token_cifrado'], true));
-        } catch (Throwable) {
-            return null;
-        }
+        return service('encrypter')->decrypt(base64_decode((string) $row['token_cifrado'], true));
     }
 
     public function replaceActiveToken(
