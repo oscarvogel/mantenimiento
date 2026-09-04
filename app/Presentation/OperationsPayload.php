@@ -192,6 +192,7 @@ final class OperationsPayload
                     'currentHours' => $row['horas_actuales'], 'status' => $row['estado'],
                     'detailUrl' => base_url('mantenimiento/equipos/' . $row['id']),
                     'qrUrl' => base_url('mantenimiento/equipos/' . $row['id'] . '/qr.svg'),
+                    'regenerateQrUrl' => $canEdit ? base_url('mantenimiento/equipos/' . $row['id'] . '/qr/regenerar') : null,
                     'assignPlanUrl' => $canEditPlans ? base_url('mantenimiento/planes?equipo_id=' . $row['id']) . '#planes-desde-plantilla' : null,
                     'photoUrl' => isset($primaryPhotos[(int) $row['id']]) ? base_url('mantenimiento/equipos/' . $row['id'] . '/foto-principal?miniatura=1') : null,
                 ], $page['items'] ?? []),
