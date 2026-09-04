@@ -31,6 +31,7 @@ final class IssuePublicEquipmentToken
             $actor->companyId(),
             $equipmentId,
             $hash,
+            $token,
             $actor->userId(),
             $now->format('Y-m-d H:i:s'),
         )) {
