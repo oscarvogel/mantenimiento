@@ -99,6 +99,7 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->post('equipos/(:num)/incidencias', 'EquipmentOperations::reportIncident/$1', ['filter' => 'permission:solicitudes.crear']);
     $routes->get('equipos/(:num)', 'EquipmentManagement::show/$1', ['filter' => 'permission:equipos.ver']);
     $routes->get('equipos/(:num)/qr.svg', 'AssetManagement::qr/$1', ['filter' => 'permission:equipos.ver']);
+    $routes->post('equipos/(:num)/qr/regenerar', 'AssetManagement::regenerateQr/$1', ['filter' => 'permission:equipos.editar']);
     $routes->post('equipos/(:num)/editar', 'EquipmentManagement::update/$1', ['filter' => 'permission:equipos.editar']);
     $routes->post('equipos/(:num)/trasladar', 'EquipmentManagement::transfer/$1', ['filter' => 'permission:equipos.editar']);
     $routes->post('equipos/(:num)/baja', 'EquipmentManagement::decommission/$1', ['filter' => 'permission:equipos.editar']);
