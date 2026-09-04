@@ -195,7 +195,15 @@ final class AssetManagement extends BaseController
             }
 
             $target = base_url('mantenimiento/publico/equipo/' . rawurlencode($token) . '/lectura');
-            $svg = (new EndroidEquipmentQrRenderer())->renderSvg($target);
+            $previousErrorReporting = error_reporting(E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED);
+            $previousDisplayErrors = ini_get('display_errors');
+            ini_set('display_errors', '0');
+            try {
+                $svg = (new EndroidEquipmentQrRenderer())->renderSvg($target);
+            } finally {
+                error_reporting($previousErrorReporting);
+                ini_set('display_errors', $previousDisplayErrors);
+            }
 
             return $this->response
                 ->setContentType('image/svg+xml')
