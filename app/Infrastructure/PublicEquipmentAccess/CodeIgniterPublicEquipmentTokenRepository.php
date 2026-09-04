@@ -16,21 +16,29 @@ final class CodeIgniterPublicEquipmentTokenRepository implements PublicEquipment
 
     public function activeTokenHashForEquipment(int $companyId, int $equipmentId): ?string
     {
-        $row = $this->database->table('equipo_tokens_publicos')
-            ->select('token_hash')
-            ->where('empresa_id', $companyId)
-            ->where('equipo_id', $equipmentId)
-            ->where('activo', 1)
-            ->get()
-            ->getRowArray();
-
+        $row = $this->activeRow($companyId, $equipmentId, 'token_hash');
         return $row === null ? null : (string) $row['token_hash'];
+    }
+
+    public function activePlainTokenForEquipment(int $companyId, int $equipmentId): ?string
+    {
+        $row = $this->activeRow($companyId, $equipmentId, 'token_cifrado');
+        if ($row === null || empty($row['token_cifrado'])) {
+            return null;
+        }
+
+        try {
+            return service('encrypter')->decrypt(base64_decode((string) $row['token_cifrado'], true));
+        } catch (Throwable) {
+            return null;
+        }
     }
 
     public function replaceActiveToken(
         int $companyId,
         int $equipmentId,
         string $tokenHash,
+        string $plainToken,
         ?int $actorUserId,
         string $occurredAt,
     ): bool {
@@ -45,6 +53,8 @@ final class CodeIgniterPublicEquipmentTokenRepository implements PublicEquipment
         if ($equipment === null) {
             return false;
         }
+
+        $encrypted = base64_encode(service('encrypter')->encrypt($plainToken));
 
         $this->database->transBegin();
         try {
@@ -62,6 +72,7 @@ final class CodeIgniterPublicEquipmentTokenRepository implements PublicEquipment
                 'empresa_id' => $companyId,
                 'equipo_id' => $equipmentId,
                 'token_hash' => $tokenHash,
+                'token_cifrado' => $encrypted,
                 'activo' => 1,
                 'created_by' => $actorUserId,
                 'created_at' => $occurredAt,
@@ -103,5 +114,18 @@ final class CodeIgniterPublicEquipmentTokenRepository implements PublicEquipment
             'patente' => $row['patente'] === null ? null : (string) $row['patente'],
             'estado' => (string) $row['estado'],
         ];
+    }
+
+    /** @return array<string,mixed>|null */
+    private function activeRow(int $companyId, int $equipmentId, string $select): ?array
+    {
+        return $this->database->table('equipo_tokens_publicos')
+            ->select($select)
+            ->where('empresa_id', $companyId)
+            ->where('equipo_id', $equipmentId)
+            ->where('activo', 1)
+            ->where('revoked_at', null)
+            ->get()
+            ->getRowArray();
     }
 }
