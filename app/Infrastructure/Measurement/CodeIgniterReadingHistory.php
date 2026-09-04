@@ -56,8 +56,8 @@ final class CodeIgniterReadingHistory implements ReadingHistoryPort
             $row['kilometraje'] === null ? null : (int) $row['kilometraje'],
             $row['horometro'] === null ? null : (string) $row['horometro'],
             (string) $row['origen'],
-            (int) $row['usuario_id'],
-            (string) $row['usuario_nombre'],
+            $row['usuario_id'] === null ? null : (int) $row['usuario_id'],
+            $row['usuario_nombre'] === null ? 'Anónimo (QR)' : (string) $row['usuario_nombre'],
             $row['observaciones'] === null ? null : (string) $row['observaciones'],
             $row['motivo_correccion'] === null ? null : (string) $row['motivo_correccion'],
             $row['lectura_corregida_id'] === null ? null : (int) $row['lectura_corregida_id'],
@@ -81,7 +81,7 @@ final class CodeIgniterReadingHistory implements ReadingHistoryPort
                 'e.id = l.equipo_id AND e.empresa_id = l.empresa_id',
                 'inner',
             )
-            ->join('usuarios u', 'u.id = l.usuario_id', 'inner')
+            ->join('usuarios u', 'u.id = l.usuario_id', 'left')
             ->join('usuarios ua', 'ua.id = l.anulada_por', 'left')
             ->where('l.empresa_id', $companyId)
             ->where('l.equipo_id', $equipmentId)

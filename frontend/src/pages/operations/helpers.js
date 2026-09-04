@@ -62,6 +62,8 @@ export const formatReadingOrigin = (origin) => ({
   ALTA_INICIAL: 'Lectura inicial',
   IMPORTACION: 'Importación',
   MANUAL: 'Carga manual',
+  QR_ANONIMO: 'QR anónimo',
+  DEMO: 'Demo',
 }[String(origin ?? '').toUpperCase()] ?? (origin || 'Carga manual'))
 
 export const readingDelta = (current, next, parser = parseFlexibleNumber) => {
