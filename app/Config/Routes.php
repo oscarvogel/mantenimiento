@@ -13,6 +13,10 @@ $routes->get('/', 'Home::index');
 $routes->get('login', 'Login::index');
 $routes->post('login/authenticate', 'Login::authenticate');
 
+// Acceso público por QR: sólo lectura de uso, sin sesión ni navegación interna.
+$routes->get('mantenimiento/publico/equipo/(:segment)/lectura', 'PublicEquipmentReadings::show/$1');
+$routes->post('mantenimiento/publico/equipo/(:segment)/lectura', 'PublicEquipmentReadings::store/$1');
+
 // Logout mutante y protegido por CSRF.
 $routes->post('logout', 'Login::logout', ['filter' => 'auth']);
 
