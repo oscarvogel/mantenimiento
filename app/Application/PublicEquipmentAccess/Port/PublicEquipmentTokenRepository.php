@@ -8,10 +8,13 @@ interface PublicEquipmentTokenRepository
 {
     public function activeTokenHashForEquipment(int $companyId, int $equipmentId): ?string;
 
+    public function activePlainTokenForEquipment(int $companyId, int $equipmentId): ?string;
+
     public function replaceActiveToken(
         int $companyId,
         int $equipmentId,
         string $tokenHash,
+        string $plainToken,
         ?int $actorUserId,
         string $occurredAt,
     ): bool;
