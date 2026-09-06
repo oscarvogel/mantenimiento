@@ -6,6 +6,8 @@ Referencia: issue #142, sub-issue de #7.
 |---|---|---|---|---|
 | `preventivo.proximo` | El evaluador preventivo devuelve `PROXIMO` | WARNING | Usuarios habilitados por scope/preferencias | Plan / `/mantenimiento/planes?equipo_id=…` |
 | `preventivo.vencido` | El evaluador preventivo devuelve `VENCIDO` | CRITICAL | Usuarios habilitados por scope/preferencias | Plan / `/mantenimiento/planes?equipo_id=…` |
+| `vencimiento.proximo` | Vencimiento activo de equipo dentro de los días de aviso del tipo | WARNING | Usuarios habilitados por scope/preferencias | Equipo / `/mantenimiento/equipos/{id}` |
+| `vencimiento.vencido` | Vencimiento activo de equipo anterior a la fecha actual | CRITICAL | Usuarios habilitados por scope/preferencias | Equipo / `/mantenimiento/equipos/{id}` |
 | `equipo.sin_lectura` | Equipo activo sin lectura o con última lectura anterior al umbral configurado | WARNING | Usuarios habilitados por scope/preferencias | Equipo / `/mantenimiento/equipos/{id}` |
 | `orden.asignada` | OT abierta con `responsable_usuario_id` | INFO | Responsable de la OT | OT / `/mantenimiento/ordenes?orden_id=…` |
 | `orden.proxima_objetivo` | `fecha_objetivo` entre ahora y el umbral de próximos días | WARNING | Responsable si existe; si no, resolución normal por scope | OT / `/mantenimiento/ordenes?orden_id=…` |
@@ -17,6 +19,7 @@ Referencia: issue #142, sub-issue de #7.
 Cada productor usa una `event_key` estable por ciclo lógico:
 
 - preventivos: plan + próximo km/horas/fecha;
+- vencimientos: registro + fecha de vencimiento + estado calculado;
 - lectura desactualizada: equipo + fecha de última lectura;
 - asignación: OT + responsable;
 - objetivo próximo: OT + fecha objetivo;

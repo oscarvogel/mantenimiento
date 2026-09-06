@@ -43,6 +43,37 @@ final class ImportRowValidatorTest extends TestCase
         self::assertTrue(count(array_filter($row->issues, static fn ($issue): bool => $issue->severity === 'ERROR')) >= 2);
     }
 
+    public function testExpirationValidatesEquipmentScopeAndNormalizesTheImportContract(): void
+    {
+        $validator = new ImportRowValidator(new ImportReferenceGatewayFake());
+        $validator->beginFile();
+
+        $row = $validator->validate(ImportType::VENCIMIENTOS, [
+            'equipo_codigo' => 'cam-2', 'tipo_vencimiento' => 'seguro',
+            'fecha_vencimiento' => '22/08/2027', 'fecha_emision' => '',
+            'numero_documento' => '', 'observaciones' => '',
+        ], 2, $this->actor([7]), 5);
+
+        self::assertSame(ImportRowStatus::VALIDA, $row->status);
+        self::assertSame(10, $row->normalized['equipment_id']);
+        self::assertSame(7, $row->normalized['branch_id']);
+        self::assertSame('POLIZA', $row->normalized['expiration_type']);
+        self::assertSame('2027-08-22', $row->normalized['expiration_date']);
+    }
+
+    public function testExpirationDoesNotSilentlyAcceptDriverRows(): void
+    {
+        $validator = new ImportRowValidator(new ImportReferenceGatewayFake());
+        $row = $validator->validate(ImportType::VENCIMIENTOS, [
+            'equipo_codigo' => '', 'tipo_vencimiento' => 'LICENCIA_CHOFER',
+            'fecha_vencimiento' => '2030-05-09', 'fecha_emision' => '',
+            'numero_documento' => '', 'observaciones' => 'No importado: chofer',
+        ], 2, $this->actor([7]), 5);
+
+        self::assertSame(ImportRowStatus::ERROR, $row->status);
+        self::assertNotEmpty(array_filter($row->issues, static fn ($issue): bool => $issue->field === 'tipo_vencimiento'));
+    }
+
     /** @param list<int> $branches */
     private function actor(array $branches): ActorContext
     {

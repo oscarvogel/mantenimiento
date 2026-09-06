@@ -47,7 +47,7 @@ describe('QuickReadingsPage', () => {
     expect(wrapper.text()).toContain('125.430 km')
     expect(wrapper.text()).toContain('8.340 h')
     expect(wrapper.text()).not.toContain('Observación opcional')
-    expect(wrapper.text()).not.toContain('Usar fecha individual')
+    expect(wrapper.text()).toContain('Usar fecha individual')
     expect(wrapper.text()).not.toContain('Ver equipos')
     expect(wrapper.findAll('input[type="datetime-local"]')).toHaveLength(1)
     expect(wrapper.findAll('[data-reading-input="true"]')).toHaveLength(2)

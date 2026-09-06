@@ -17,7 +17,7 @@ const commonRecordedAt = ref(props.data.recordedAtDefault || nowLocal())
 const search = ref(props.data.filters.q || '')
 const statusFilter = ref('')
 const rows = reactive(Object.fromEntries(props.data.equipment.items.map((equipment) => [equipment.id, {
-  value: '', recordedAt: commonRecordedAt.value, currentKm: equipment.currentKm, currentHours: equipment.currentHours, status: 'pending', message: '',
+  value: '', recordedAt: commonRecordedAt.value, currentKm: equipment.currentKm, currentHours: equipment.currentHours, status: 'pending', message: '', dateCustomized: false,
 }])))
 const maintenance = reactive(Object.fromEntries(props.data.equipment.items.map((equipment) => [equipment.id, equipment.maintenance || { state: 'SIN_PLAN', primaryPlan: null, plans: [], planCount: 0 }])))
 const orderSaving = reactive({})
@@ -71,6 +71,29 @@ const visibleEquipment = computed(() => {
   })
 })
 const saveButtonLabel = computed(() => saving.value ? `Guardando ${currentSavingIndex.value} de ${totalToSave.value}…` : readyRows.value.length ? `Guardar ${readyRows.value.length} lectura${readyRows.value.length === 1 ? '' : 's'}` : invalidRows.value.length ? 'Corregí las lecturas marcadas' : 'Ingresá al menos una lectura')
+const formatDelta = (delta, unit) => {
+  if (delta === null || delta === undefined) return null
+  if (delta === 0) return 'Sin variación'
+  const formatted = unit === 'km'
+    ? Math.round(Math.abs(delta)).toLocaleString('es-AR')
+    : Math.abs(delta).toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+  return `${delta > 0 ? '+' : '-'}${formatted} ${unit}`
+}
+const successFeedback = (row) => {
+  const values = []
+  if (row.submittedKilometers === true && row.currentKilometers !== null && row.currentKilometers !== undefined) values.push(`Kilometraje actualizado a ${formatKilometers(row.currentKilometers)}`)
+  if (row.submittedHours === true && row.currentHours !== null && row.currentHours !== undefined) values.push(`Horómetro actualizado a ${formatHours(row.currentHours)}`)
+  return values.join(' · ') || row.message || 'Lectura guardada.'
+}
+const deltaFeedback = (row) => [
+  row.submittedKilometers === true && row.kilometersDelta !== null && row.kilometersDelta !== undefined ? `${formatDelta(row.kilometersDelta, 'km')} desde la lectura anterior` : null,
+  row.submittedHours === true && row.hoursDelta !== null && row.hoursDelta !== undefined ? `${formatDelta(row.hoursDelta, 'h')} desde la lectura anterior` : null,
+].filter(Boolean).join(' · ')
+const overdueFeedback = (row) => {
+  if (!row.overduePlans) return ''
+  return `${row.overduePlans} mantenimiento${row.overduePlans === 1 ? '' : 's'} quedó${row.overduePlans === 1 ? '' : 'aron'} vencido${row.overduePlans === 1 ? '' : 's'}.`
+}
+const equipmentFor = (equipmentId) => props.data.equipment.items.find(({ id }) => String(id) === String(equipmentId)) || null
 const primaryPlan = (equipment) => maintenance[equipment.id]?.primaryPlan || null
 const formatPlanPoint = (plan, prefix) => {
   if (!plan) return '—'
@@ -108,7 +131,9 @@ const preventiveLabel = (equipment) => {
   return snapshot.state === 'VENCIDO' ? `Vencido ${formatted} ${critical.unit}` : `Faltan ${formatted} ${critical.unit}`
 }
 const preventiveClass = (equipment) => ({ OK: 'border-success/30 bg-success-subtle/50 text-success-strong', PROXIMO: 'border-warning/40 bg-warning-subtle/60 text-warning-strong', VENCIDO: 'border-danger/30 bg-danger-subtle/60 text-danger-strong', PROBLEMA: 'border-danger/30 bg-danger-subtle/40 text-danger-strong', SIN_PLAN: 'border-border bg-surface-muted text-ink-muted' }[maintenance[equipment.id]?.state || 'SIN_PLAN'])
-const applyCommonRecordedAt = () => props.data.equipment.items.forEach(({ id }) => { rows[id].recordedAt = commonRecordedAt.value })
+const applyCommonRecordedAt = () => props.data.equipment.items.forEach(({ id }) => {
+  if (!rows[id].dateCustomized) rows[id].recordedAt = commonRecordedAt.value
+})
 const refreshTimestamp = () => { commonRecordedAt.value = nowLocal(); applyCommonRecordedAt() }
 const changeCatalogFilter = (key, value) => {
   const url = new URL(props.data.routes.index, window.location.origin)
@@ -137,7 +162,7 @@ const submitRows = async () => {
   for (const equipment of batch) {
     currentSavingIndex.value += 1
     const row = rows[equipment.id]
-    const previous = currentValue(equipment)
+    const previous = { kilometers: row.currentKm, hours: row.currentHours }
     row.status = 'saving'; row.message = ''
     const body = new FormData()
     body.append(csrf.name, csrf.hash)
@@ -153,8 +178,10 @@ const submitRows = async () => {
       const result = parsed.payload.result
       result.submittedKilometers = readingKey(equipment) === 'kilometers'
       result.submittedHours = readingKey(equipment) === 'hours'
-      result.previousKilometers = result.submittedKilometers ? previous : null
-      result.previousHours = result.submittedHours ? previous : null
+      result.previousKilometers = result.submittedKilometers ? previous.kilometers : null
+      result.previousHours = result.submittedHours ? previous.hours : null
+      result.kilometersDelta = result.submittedKilometers ? kilometersDelta(previous.kilometers, result.currentKilometers) : null
+      result.hoursDelta = result.submittedHours ? readingDelta(previous.hours, result.currentHours) : null
       results.value.push(result)
       row.status = result.success ? 'saved' : 'error'; row.message = result.message || (result.success ? 'Lectura guardada.' : 'No se pudo guardar la lectura.')
       if (result.success) {
@@ -203,6 +230,13 @@ const focusNextReadingInput = (event) => {
       </div>
 
       <div v-if="results.length" class="mb-3 flex flex-wrap gap-2 text-xs" aria-live="polite"><span class="font-semibold text-ink-muted">Última carga:</span><span v-for="result in results" :key="`${result.rowNumber}-${result.equipmentId}`" class="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1" :class="result.success ? 'text-success-strong' : 'text-danger-strong'"><CheckCircleIcon v-if="result.success" class="size-4" /><ExclamationTriangleIcon v-else class="size-4" />{{ props.data.equipment.items.find((item) => item.id === result.equipmentId)?.code }}</span></div>
+      <div v-if="results.length" class="mb-5 rounded-xl border border-border-subtle bg-surface-subtle px-4" aria-live="polite">
+        <div v-for="result in results" :key="`feedback-${result.rowNumber}-${result.equipmentId}`" class="flex gap-3 border-b border-border-subtle py-3 text-sm last:border-0">
+          <CheckCircleIcon v-if="result.success" class="size-5 shrink-0 text-success" aria-hidden="true" />
+          <ExclamationTriangleIcon v-else class="size-5 shrink-0 text-danger" aria-hidden="true" />
+          <span class="min-w-0"><strong>{{ equipmentFor(result.equipmentId)?.code || 'Equipo' }}</strong><template v-if="result.success"><span class="block">{{ successFeedback(result) }}</span><span v-if="deltaFeedback(result)" class="block text-ink-muted">{{ deltaFeedback(result) }}</span><span v-if="overdueFeedback(result)" class="block font-semibold text-warning-strong">{{ overdueFeedback(result) }}</span><span v-if="result.plansEvaluated" class="block text-xs text-ink-subtle">{{ result.plansEvaluated }} planes reevaluados</span></template><span v-else class="block">{{ result.message }}</span></span>
+        </div>
+      </div>
 
       <EmptyState v-if="data.equipment.items.length === 0" title="No hay equipos para los filtros seleccionados" />
       <EmptyState v-else-if="visibleEquipment.length === 0" title="No hay coincidencias" description="Probá con otro código, patente o chasis." />
@@ -213,7 +247,7 @@ const focusNextReadingInput = (event) => {
             <tr v-for="equipment in visibleEquipment" :key="equipment.id" class="hover:bg-surface-muted/40">
               <td class="px-3 py-2"><strong class="text-primary">{{ equipment.code }}</strong><div class="text-xs text-ink-muted">{{ equipment.plate || 'Sin patente' }}</div></td>
               <td class="px-3 py-2 font-semibold tabular-nums">{{ formattedCurrent(equipment) }}</td>
-              <td class="px-3 py-2"><div class="relative max-w-52"><input :id="`quick-reading-${equipment.id}`" v-model="rows[equipment.id].value" data-reading-input="true" :data-equipment-id="equipment.id" type="text" :inputmode="readingKey(equipment) === 'hours' ? 'decimal' : 'numeric'" autocomplete="off" placeholder="Ingresar lectura" :disabled="!data.canRegister || saving" :class="`${fieldClass} pr-10 font-semibold tabular-nums ${rowError(equipment) ? 'border-danger' : ''}`" @keydown.enter.prevent="focusNextReadingInput" /><span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-ink-muted">{{ readingUnit(equipment) }}</span></div><p v-if="rowError(equipment)" class="mt-1 text-xs font-semibold text-danger-strong">{{ rowError(equipment) }}</p><p v-else-if="inputDelta(equipment)" class="mt-1 text-xs text-ink-muted">{{ inputDelta(equipment) }} desde la última</p><p v-if="rows[equipment.id].message" class="mt-1 text-xs" :class="rows[equipment.id].status === 'error' ? 'text-danger-strong' : 'text-success-strong'">{{ rows[equipment.id].message }}</p></td>
+              <td class="px-3 py-2"><div class="relative max-w-52"><input :id="`quick-reading-${equipment.id}`" v-model="rows[equipment.id].value" data-reading-input="true" :data-equipment-id="equipment.id" type="text" :inputmode="readingKey(equipment) === 'hours' ? 'decimal' : 'numeric'" autocomplete="off" placeholder="Ingresar lectura" :disabled="!data.canRegister || saving" :class="`${fieldClass} pr-10 font-semibold tabular-nums ${rowError(equipment) ? 'border-danger' : ''}`" @keydown.enter.prevent="focusNextReadingInput" /><span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-ink-muted">{{ readingUnit(equipment) }}</span></div><p v-if="rowError(equipment)" class="mt-1 text-xs font-semibold text-danger-strong">{{ rowError(equipment) }}</p><p v-else-if="inputDelta(equipment)" class="mt-1 text-xs text-ink-muted">{{ inputDelta(equipment) }} desde la última</p><p v-if="rows[equipment.id].message" class="mt-1 text-xs" :class="rows[equipment.id].status === 'error' ? 'text-danger-strong' : 'text-success-strong'">{{ rows[equipment.id].message }}</p><label class="mt-2 block text-xs text-ink-muted"><input v-model="rows[equipment.id].dateCustomized" type="checkbox" class="mr-1" />Usar fecha individual</label><input v-if="rows[equipment.id].dateCustomized" v-model="rows[equipment.id].recordedAt" type="datetime-local" :disabled="!data.canRegister || saving" :class="`${fieldClass} mt-1`" /></td>
               <td class="px-3 py-2"><template v-if="primaryPlan(equipment)"><div class="font-medium">{{ primaryPlan(equipment).serviceName }}</div><div class="text-xs text-ink-muted">{{ formatPlanPoint(primaryPlan(equipment), 'base') }}</div></template><span v-else>—</span></td>
               <td class="px-3 py-2"><template v-if="primaryPlan(equipment)"><div class="font-medium">{{ primaryPlan(equipment).serviceName }}</div><div class="text-xs text-ink-muted">{{ formatPlanPoint(primaryPlan(equipment), 'next') }}</div></template><span v-else>—</span></td>
               <td class="px-3 py-2"><span class="inline-flex rounded-full border px-2.5 py-1 text-xs font-bold" :class="preventiveClass(equipment)">{{ preventiveLabel(equipment) }}</span><details v-if="missingPlanDetails(equipment).length" class="mt-1 text-[11px] text-danger-strong"><summary class="cursor-pointer font-semibold">Ver faltantes</summary><div v-for="detail in missingPlanDetails(equipment)" :key="detail" class="mt-1">{{ detail }}</div></details><div v-else-if="maintenance[equipment.id]?.planCount > 1" class="mt-1 text-[11px] text-ink-subtle">+{{ maintenance[equipment.id].planCount - 1 }} planes</div></td>

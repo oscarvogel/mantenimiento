@@ -6,6 +6,7 @@ namespace App\Application\Importations;
 
 use App\Application\Identity\ActorContext;
 use App\Application\Importations\Port\AssetImportGateway;
+use App\Application\Importations\Port\ExpirationImportGateway;
 use App\Application\Importations\Port\ImportRepository;
 use App\Application\Importations\Port\ImportUnitOfWork;
 use App\Application\Importations\Port\MeasurementImportGateway;
@@ -23,6 +24,7 @@ final class ConfirmImportHandler
         private readonly ImportUnitOfWork $unitOfWork,
         private readonly PrivateImportFileStorage $files,
         private readonly int $batchSize = 200,
+        private readonly ?ExpirationImportGateway $expirations = null,
     ) {
     }
 
@@ -54,7 +56,7 @@ final class ConfirmImportHandler
                         continue;
                     }
                     try {
-                        if ($draft->type === ImportType::EQUIPOS) {
+                        if ($draft->type === ImportType::EQUIPOS || $draft->type === ImportType::UNIDADES_TRANSPORTE) {
                             $payload = $this->assetData($data, $companyId, $actor->userId(), $draft->id);
                             if ($this->assets->isDuplicate($companyId, $payload->code)) {
                                 $this->imports->markRowDuplicate($row['id'], 'Equipo duplicado al momento de confirmar.');
@@ -62,7 +64,7 @@ final class ConfirmImportHandler
                                 continue;
                             }
                             $destinationId = $this->assets->import($payload);
-                        } else {
+                        } elseif ($draft->type === ImportType::LECTURAS) {
                             $payload = $this->measurementData($data, $companyId, $actor->userId(), $draft->id);
                             if ($this->measurements->isDuplicate($payload)) {
                                 $this->imports->markRowDuplicate($row['id'], 'Lectura duplicada al momento de confirmar.');
@@ -70,6 +72,19 @@ final class ConfirmImportHandler
                                 continue;
                             }
                             $destinationId = $this->measurements->import($payload);
+                        } elseif ($draft->type === ImportType::VENCIMIENTOS) {
+                            if ($this->expirations === null) {
+                                throw new DomainException('La importación de vencimientos no está disponible en este entorno.');
+                            }
+                            $payload = $this->expirationData($data, $companyId, $actor->userId(), $draft->id);
+                            if ($this->expirations->isDuplicate($payload)) {
+                                $this->imports->markRowDuplicate($row['id'], 'Vencimiento duplicado al momento de confirmar.');
+                                $duplicates++;
+                                continue;
+                            }
+                            $destinationId = $this->expirations->import($payload);
+                        } else {
+                            throw new DomainException('El tipo de importación no tiene un destino configurado.');
                         }
                         $this->imports->markRowImported($row['id'], $destinationId);
                         $imported++;
@@ -112,6 +127,23 @@ final class ConfirmImportHandler
             $companyId, (int) $data['branch_id'], (int) $data['equipment_id'], (string) $data['recorded_at'],
             isset($data['kilometers']) ? (int) $data['kilometers'] : null, $data['hours'] ?? null,
             (string) $data['origin'], (string) $data['source_origin'], $data['notes'] ?? null, $actorId, $importId,
+        );
+    }
+
+    /** @param array<string,mixed> $data */
+    private function expirationData(array $data, int $companyId, int $actorId, int $importId): ExpirationImportData
+    {
+        return new ExpirationImportData(
+            $companyId,
+            (int) $data['branch_id'],
+            (int) $data['equipment_id'],
+            (string) $data['expiration_type'],
+            (string) $data['expiration_date'],
+            $data['issue_date'] ?? null,
+            $data['document_number'] ?? null,
+            $data['notes'] ?? null,
+            $actorId,
+            $importId,
         );
     }
 

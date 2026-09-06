@@ -21,6 +21,8 @@ final class CreateImportDraftHandler
         private readonly ImportRepository $imports,
         private readonly ImportRowValidator $validator,
         private readonly int $maximumRows = 5000,
+        /** @var array<string, SpreadsheetReader> */
+        private readonly array $readersByType = [],
     ) {
     }
 
@@ -40,7 +42,8 @@ final class CreateImportDraftHandler
                 $companyId, $type, $stored->originalName, $stored->path, $stored->mediaType,
                 $stored->sha256, $origin, $actor->userId(),
             );
-            $sheet = $this->reader->read($stored->path, $this->maximumRows);
+            $reader = $this->readersByType[$type->value] ?? $this->reader;
+            $sheet = $reader->read($stored->path, $this->maximumRows);
             $this->validateHeaders($type, $sheet->headers);
             if ($sheet->rows === []) {
                 throw new DomainException('El archivo no contiene filas de datos.');

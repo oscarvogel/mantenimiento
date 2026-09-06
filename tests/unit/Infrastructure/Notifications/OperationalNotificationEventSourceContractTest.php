@@ -15,6 +15,8 @@ final class OperationalNotificationEventSourceContractTest extends TestCase
         foreach ([
             'preventivo.proximo',
             'preventivo.vencido',
+            'vencimiento.proximo',
+            'vencimiento.vencido',
             'equipo.sin_lectura',
             'orden.asignada',
             'orden.proxima_objetivo',
@@ -30,6 +32,8 @@ final class OperationalNotificationEventSourceContractTest extends TestCase
         self::assertStringContainsString('orden_espera_repuestos:ot:', $source);
         self::assertStringContainsString('equipo_sin_lectura:equipo:', $source);
         self::assertStringContainsString('ciclo:{$cycle}', $source);
+        self::assertStringContainsString('NotificationSeverity::WARNING', $source);
+        self::assertStringContainsString('NotificationSeverity::CRITICAL', $source);
     }
 
     public function testWaitingNotificationUsesTheDomainWorkOrderStatus(): void
