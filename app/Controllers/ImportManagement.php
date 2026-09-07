@@ -5,6 +5,10 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Application\Identity\ActorContext;
+use App\Application\Employees\CreateDriverAssignmentPreview;
+use App\Application\Employees\DriverAssignmentImportPreviewBuilder;
+use App\Infrastructure\Employees\CodeIgniterDriverAssignmentPreviewCatalog;
+use App\Infrastructure\Employees\PhpSpreadsheetDriverAssignmentWorkbookReader;
 use App\Application\Importations\CancelImportHandler;
 use App\Application\Importations\ConfirmImportHandler;
 use App\Application\Importations\ConfirmPreventiveLibraryImportHandler;
@@ -258,6 +262,42 @@ final class ImportManagement extends BaseController
             return redirect()->to('/mantenimiento/importaciones/' . $result->importId)->with(
                 'success',
                 "Vista previa creada: {$result->validRows} válidas, {$result->errorRows} con error y {$result->duplicateRows} duplicadas.",
+            );
+        } catch (Throwable $exception) {
+            return $this->failure($exception, '/mantenimiento/importaciones');
+        }
+    }
+
+    public function driverAssignmentsPreview(): string|RedirectResponse
+    {
+        try {
+            $file = $this->request->getFile('archivo_choferes');
+            if ($file === null || ! $file->isValid()) {
+                throw new DomainException('Seleccioná un archivo XLSX válido para choferes.');
+            }
+
+            $extension = mb_strtolower((string) $file->getClientExtension());
+            if ($extension !== 'xlsx') {
+                throw new DomainException('La importación de choferes requiere un archivo XLSX.');
+            }
+
+            $actor = $this->actor();
+            $database = db_connect();
+            $preview = (new CreateDriverAssignmentPreview(
+                new PhpSpreadsheetDriverAssignmentWorkbookReader(),
+                new CodeIgniterDriverAssignmentPreviewCatalog($database),
+                new DriverAssignmentImportPreviewBuilder(),
+            ))->execute($actor, $file->getTempName());
+
+            return $this->renderApp(
+                $actor,
+                'imports',
+                'driver-assignments-preview',
+                'Vista previa de choferes',
+                service('operationsPayload')->driverAssignmentPreview(
+                    $preview,
+                    $file->getClientName(),
+                ),
             );
         } catch (Throwable $exception) {
             return $this->failure($exception, '/mantenimiento/importaciones');
