@@ -322,6 +322,7 @@ final class OperationsPayload
             'canUpload' => $canUpload, 'maxSizeMb' => max(1, (int) env('imports.maxSizeMB', 10)),
             'routes' => [
                 'upload' => $base,
+                'driverAssignmentsPreview' => $base . '/choferes/preview',
                 'templates' => ['equipment' => $base . '/plantilla/EQUIPOS', 'readings' => $base . '/plantilla/LECTURAS'],
             ],
             'imports' => [
