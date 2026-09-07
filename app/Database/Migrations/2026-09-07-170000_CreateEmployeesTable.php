@@ -46,7 +46,7 @@ final class CreateEmployeesTable extends Migration
         $this->ensurePermission('empleados.ver', 'Consultar empleados y su afectación a móviles');
         $this->ensurePermission('empleados.editar', 'Crear, editar, dar de baja y asignar empleados');
 
-        foreach (['Administrador de empresa', 'Responsable de mantenimiento'] as $roleName) {
+        foreach (['Administrador', 'Responsable de mantenimiento'] as $roleName) {
             $this->grantPermission($roleName, 'empleados.ver');
             $this->grantPermission($roleName, 'empleados.editar');
         }
