@@ -34,7 +34,7 @@ final class DriverAssignmentImportPreviewBuilder
             if (array_key_exists('activo', $employee) && ! (bool) $employee['activo']) {
                 continue;
             }
-            $name = self::normalizeName(trim((string) $employee['nombre'] . ' ' . (string) $employee['apellido']);
+            $name = self::normalizeName(trim((string) $employee['nombre'] . ' ' . (string) $employee['apellido']));
             if ($name === '') {
                 continue;
             }
