@@ -307,6 +307,8 @@ final class ImportManagement extends BaseController
                 'userId' => $actor->userId(),
                 'companyId' => $actor->companyId(),
                 'rows' => $sessionRows,
+                'originalFile' => $file->getClientName(),
+                'sha256' => hash_file('sha256', $file->getTempName()) ?: str_repeat('0', 64),
                 'createdAt' => time(),
             ]);
 
@@ -347,10 +349,42 @@ final class ImportManagement extends BaseController
             }
 
             $database = db_connect();
-            $result = (new ConfirmDriverAssignmentsImport(
-                new CodeIgniterEmployeeRepository($database),
-                new CodeIgniterEmployeeAssignmentRepository($database),
-            ))->execute($actor, $draft['rows']);
+            $database->transBegin();
+
+            try {
+                $result = (new ConfirmDriverAssignmentsImport(
+                    new CodeIgniterEmployeeRepository($database),
+                    new CodeIgniterEmployeeAssignmentRepository($database),
+                ))->execute($actor, $draft['rows']);
+
+                $detailJson = json_encode([
+                    'rows' => $draft['rows'],
+                    'result' => $result,
+                ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+
+                $database->table('driver_assignment_import_audit')->insert([
+                    'empresa_id' => (int) $actor->companyId(),
+                    'usuario_id' => $actor->userId(),
+                    'archivo_original' => (string) ($draft['originalFile'] ?? 'choferes.xlsx'),
+                    'sha256' => (string) ($draft['sha256'] ?? str_repeat('0', 64)),
+                    'filas_totales' => count($draft['rows']),
+                    'empleados_creados' => $result['createdEmployees'],
+                    'asignaciones_actualizadas' => $result['assignedDrivers'],
+                    'sin_cambios' => $result['unchanged'],
+                    'sin_chofer' => $result['withoutDriver'],
+                    'detalle_json' => $detailJson,
+                    'created_at' => date('Y-m-d H:i:s'),
+                ]);
+
+                if (! $database->transStatus()) {
+                    throw new \RuntimeException('No se pudo guardar la auditoría de la importación.');
+                }
+
+                $database->transCommit();
+            } catch (Throwable $exception) {
+                $database->transRollback();
+                throw $exception;
+            }
 
             session()->remove($key);
 
