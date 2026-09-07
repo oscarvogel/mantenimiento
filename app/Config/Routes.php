@@ -131,6 +131,7 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->get('importaciones/plantilla/(:segment)', 'ImportManagement::template/$1', ['filter' => 'permission:importaciones.cargar']);
     $routes->post('importaciones', 'ImportManagement::upload', ['filter' => 'permission:importaciones.cargar']);
     $routes->post('importaciones/choferes/preview', 'ImportManagement::driverAssignmentsPreview', ['filter' => ['permission:importaciones.cargar', 'permission:empleados.editar']]);
+    $routes->post('importaciones/choferes/confirmar', 'ImportManagement::confirmDriverAssignments', ['filter' => ['permission:importaciones.cargar', 'permission:empleados.editar']]);
     $routes->get('importaciones/(:num)', 'ImportManagement::show/$1', ['filter' => 'permission:importaciones.ver']);
     $routes->post('importaciones/(:num)/confirmar', 'ImportManagement::confirm/$1', ['filter' => 'permission:importaciones.cargar']);
     $routes->post('importaciones/(:num)/cancelar', 'ImportManagement::cancel/$1', ['filter' => 'permission:importaciones.cargar']);
