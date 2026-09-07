@@ -1,5 +1,6 @@
 <script setup>
 import { ArrowLeftIcon, CheckCircleIcon, ExclamationTriangleIcon, XCircleIcon } from '@heroicons/vue/24/outline'
+import CsrfInput from './components/CsrfInput.vue'
 import PageHeading from './components/PageHeading.vue'
 import PanelCard from './components/PanelCard.vue'
 import { secondaryButton } from './helpers.js'
@@ -78,6 +79,25 @@ function statusIcon(status) {
             </tr>
           </tbody>
         </table>
+      </div>
+    </PanelCard>
+
+    <PanelCard title="Confirmación" class="mt-6">
+      <div v-if="data.canConfirm" class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p class="text-sm text-ink-muted">
+          No hay errores ni advertencias. Al confirmar se crearán los empleados faltantes y se actualizarán las asignaciones de chofer.
+        </p>
+        <form method="post" :action="data.routes.confirm">
+          <CsrfInput :csrf="data.csrf" />
+          <input type="hidden" name="preview_token" :value="data.previewToken" />
+          <button type="submit" class="inline-flex items-center justify-center rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">
+            Confirmar importación
+          </button>
+        </form>
+      </div>
+      <div v-else class="flex items-start gap-3 rounded-lg border border-warning-200 bg-warning-50 p-4 text-sm text-warning-strong">
+        <ExclamationTriangleIcon class="mt-0.5 size-5 shrink-0" aria-hidden="true" />
+        <p>La importación no puede confirmarse mientras existan errores o empleados ambiguos.</p>
       </div>
     </PanelCard>
   </div>
