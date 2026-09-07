@@ -340,10 +340,15 @@ final class OperationsPayload
     }
 
     /** @param array{rows:list<\App\Application\Employees\DriverAssignmentPreviewRow>,summary:array{total:int,ok:int,warnings:int,errors:int}} $preview */
-    public function driverAssignmentPreview(array $preview, string $originalFile): array
+    public function driverAssignmentPreview(array $preview, string $originalFile, string $previewToken): array
     {
         return [
-            'routes' => ['back' => base_url('mantenimiento/importaciones')],
+            'routes' => [
+                'back' => base_url('mantenimiento/importaciones'),
+                'confirm' => base_url('mantenimiento/importaciones/choferes/confirmar'),
+            ],
+            'previewToken' => $previewToken,
+            'canConfirm' => (int) $preview['summary']['warnings'] === 0 && (int) $preview['summary']['errors'] === 0,
             'header' => [
                 'originalFile' => $originalFile,
                 'totalRows' => (int) $preview['summary']['total'],
