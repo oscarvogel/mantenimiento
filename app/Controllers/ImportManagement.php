@@ -6,8 +6,11 @@ namespace App\Controllers;
 
 use App\Application\Identity\ActorContext;
 use App\Application\Employees\CreateDriverAssignmentPreview;
+use App\Application\Employees\ConfirmDriverAssignmentsImport;
 use App\Application\Employees\DriverAssignmentImportPreviewBuilder;
 use App\Infrastructure\Employees\CodeIgniterDriverAssignmentPreviewCatalog;
+use App\Infrastructure\Employees\CodeIgniterEmployeeAssignmentRepository;
+use App\Infrastructure\Employees\CodeIgniterEmployeeRepository;
 use App\Infrastructure\Employees\PhpSpreadsheetDriverAssignmentWorkbookReader;
 use App\Application\Importations\CancelImportHandler;
 use App\Application\Importations\ConfirmImportHandler;
@@ -289,6 +292,24 @@ final class ImportManagement extends BaseController
                 new DriverAssignmentImportPreviewBuilder(),
             ))->execute($actor, $file->getTempName());
 
+            $token = bin2hex(random_bytes(16));
+            $sessionRows = array_map(static fn ($row): array => [
+                'status' => $row->status,
+                'equipmentId' => $row->equipmentId,
+                'employeeId' => $row->employeeId,
+                'action' => $row->action,
+                'driverName' => $row->source->driverName,
+                'plate' => $row->source->plate,
+                'sheet' => $row->source->sheet,
+                'rowNumber' => $row->source->rowNumber,
+            ], $preview['rows']);
+            session()->set('driver_assignments_import_' . $token, [
+                'userId' => $actor->userId(),
+                'companyId' => $actor->companyId(),
+                'rows' => $sessionRows,
+                'createdAt' => time(),
+            ]);
+
             return $this->renderApp(
                 $actor,
                 'imports',
@@ -297,6 +318,50 @@ final class ImportManagement extends BaseController
                 service('operationsPayload')->driverAssignmentPreview(
                     $preview,
                     $file->getClientName(),
+                    $token,
+                ),
+            );
+        } catch (Throwable $exception) {
+            return $this->failure($exception, '/mantenimiento/importaciones');
+        }
+    }
+
+    public function confirmDriverAssignments(): RedirectResponse
+    {
+        try {
+            $actor = $this->actor();
+            $token = trim((string) $this->request->getPost('preview_token'));
+            if (! preg_match('/^[a-f0-9]{32}$/', $token)) {
+                throw new DomainException('La vista previa de choferes no es válida.');
+            }
+
+            $key = 'driver_assignments_import_' . $token;
+            $draft = session()->get($key);
+            if (! is_array($draft)
+                || (int) ($draft['userId'] ?? 0) !== $actor->userId()
+                || (int) ($draft['companyId'] ?? 0) !== (int) $actor->companyId()
+                || time() - (int) ($draft['createdAt'] ?? 0) > 1800
+                || ! is_array($draft['rows'] ?? null)) {
+                session()->remove($key);
+                throw new DomainException('La vista previa venció o no pertenece a tu sesión. Volvé a cargar el archivo.');
+            }
+
+            $database = db_connect();
+            $result = (new ConfirmDriverAssignmentsImport(
+                new CodeIgniterEmployeeRepository($database),
+                new CodeIgniterEmployeeAssignmentRepository($database),
+            ))->execute($actor, $draft['rows']);
+
+            session()->remove($key);
+
+            return redirect()->to('/mantenimiento/importaciones')->with(
+                'success',
+                sprintf(
+                    'Choferes confirmados: %d empleados creados, %d asignaciones actualizadas, %d sin cambios y %d móviles sin chofer informado.',
+                    $result['createdEmployees'],
+                    $result['assignedDrivers'],
+                    $result['unchanged'],
+                    $result['withoutDriver'],
                 ),
             );
         } catch (Throwable $exception) {
