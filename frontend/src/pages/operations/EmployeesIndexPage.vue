@@ -97,6 +97,7 @@ const openTerminate = (employee) => {
                 <th class="px-5 py-3">Legajo</th>
                 <th class="px-5 py-3">Contacto</th>
                 <th class="px-5 py-3">Estado</th>
+                <th class="px-5 py-3">Vencimientos</th>
                 <th class="px-5 py-3 text-right">Acciones</th>
               </tr>
             </thead>
@@ -128,6 +129,16 @@ const openTerminate = (employee) => {
                     {{ employee.active ? 'Activo' : 'Baja' }}
                   </span>
                   <div v-if="!employee.active && employee.terminatedAt" class="mt-1 text-xs text-ink-muted">{{ employee.terminatedAt }}</div>
+                </td>
+                <td class="px-5 py-4">
+                  <span v-if="employee.expirations.length === 0" class="text-xs text-ink-muted">Sin vencimientos</span>
+                  <div v-else class="space-y-1">
+                    <div v-for="expiration in employee.expirations.slice(0, 2)" :key="expiration.id" class="flex items-center gap-2">
+                      <StatusBadge :status="expiration.status" />
+                      <span class="text-xs text-ink">{{ expiration.typeName }} · {{ expiration.expiresAt }}</span>
+                    </div>
+                    <span v-if="employee.expirations.length > 2" class="text-xs text-ink-muted">+{{ employee.expirations.length - 2 }} más</span>
+                  </div>
                 </td>
                 <td class="px-5 py-4">
                   <div v-if="data.canEdit && employee.active" class="flex justify-end gap-2">
@@ -176,6 +187,12 @@ const openTerminate = (employee) => {
               </span>
             </div>
             <p v-if="employee.phone || employee.email" class="mt-2 text-sm text-ink-muted">{{ employee.phone || employee.email }}</p>
+            <div v-if="employee.expirations.length" class="mt-3 space-y-1">
+              <div v-for="expiration in employee.expirations.slice(0, 2)" :key="expiration.id" class="flex items-center gap-2 text-xs">
+                <StatusBadge :status="expiration.status" />
+                <span>{{ expiration.typeName }} · {{ expiration.expiresAt }}</span>
+              </div>
+            </div>
             <div class="mt-4 flex gap-2">
               <a :href="employee.historyUrl" :class="secondaryButton" class="flex-1">Historial</a>
               <button v-if="data.canEdit && employee.active" type="button" :class="secondaryButton" class="flex-1" @click="openEdit(employee)">Editar</button>
