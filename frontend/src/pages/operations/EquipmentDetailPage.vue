@@ -148,6 +148,26 @@ const historyResetUrl = computed(() => `${window.location.pathname}?history_acti
       </div>
     </PanelCard>
 
+    <PanelCard title="Vencimientos" :count="data.expirations?.length ?? 0" class="mb-6">
+      <EmptyState v-if="!data.expirations || data.expirations.length === 0" title="No hay vencimientos registrados" description="Los vencimientos importados o cargados para este móvil aparecerán acá." />
+      <div v-else class="overflow-x-auto">
+        <table class="w-full min-w-[44rem] text-left text-sm">
+          <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
+            <tr><th class="px-4 py-3">Tipo</th><th class="px-4 py-3">Vence</th><th class="px-4 py-3">Estado</th><th class="px-4 py-3">Documento</th><th class="px-4 py-3">Origen</th></tr>
+          </thead>
+          <tbody class="divide-y divide-border-subtle">
+            <tr v-for="expiration in data.expirations" :key="expiration.id">
+              <td class="px-4 py-4 font-semibold text-ink">{{ expiration.typeName }}</td>
+              <td class="px-4 py-4">{{ expiration.expiresAt }}<div class="text-xs text-ink-muted">{{ expiration.daysUntil >= 0 ? `faltan ${expiration.daysUntil} días` : `${Math.abs(expiration.daysUntil)} días vencido` }}</div></td>
+              <td class="px-4 py-4"><StatusBadge :status="expiration.status" /></td>
+              <td class="px-4 py-4 text-ink-muted">{{ expiration.documentNumber || '—' }}</td>
+              <td class="px-4 py-4 text-ink-muted">{{ expiration.origin }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </PanelCard>
+
     <section v-if="data.can.edit" class="mb-6 grid gap-6 xl:grid-cols-2">
       <PanelCard title="Datos del equipo">
         <details v-if="data.equipment.status === 'ACTIVO'" class="ui-details-animated group">
