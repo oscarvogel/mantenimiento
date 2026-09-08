@@ -177,6 +177,7 @@ const historyResetUrl = computed(() => `${window.location.pathname}?history_acti
           <FormField label="Nombre" for-id="equipment-expiration-type-name"><input id="equipment-expiration-type-name" name="nombre" maxlength="100" required :class="fieldClass" /></FormField>
           <FormField label="Aplica a" for-id="equipment-expiration-type-applies"><select id="equipment-expiration-type-applies" name="aplica_a" :class="fieldClass"><option value="EQUIPO">Equipos</option><option value="AMBOS">Equipos y empleados</option></select></FormField>
           <FormField label="Avisar antes (días)" for-id="equipment-expiration-warning"><input id="equipment-expiration-warning" type="number" min="0" max="3650" name="dias_aviso_previo" value="30" required :class="fieldClass" /></FormField>
+          <label class="flex items-end gap-2 pb-2 text-sm font-medium text-ink"><input type="checkbox" name="requiere_documento" value="1" /> Requiere documento</label>
           <div class="flex items-end"><button type="submit" :class="secondaryButton">Crear tipo</button></div>
         </form>
       </details>
