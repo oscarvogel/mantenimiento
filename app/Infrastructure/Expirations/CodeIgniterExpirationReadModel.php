@@ -26,7 +26,6 @@ final class CodeIgniterExpirationReadModel
             ->where('v.sujeto_tipo', 'EQUIPO')
             ->where('v.activo', 1)
             ->where('v.deleted_at', null)
-            ->where('t.activo', 1)
             ->where('t.deleted_at', null)
             ->orderBy('v.fecha_vencimiento', 'ASC')
             ->get()->getResultArray();
