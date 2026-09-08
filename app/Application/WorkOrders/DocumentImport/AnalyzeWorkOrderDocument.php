@@ -93,6 +93,12 @@ final class AnalyzeWorkOrderDocument
             return [...$work, 'classification' => $classification, 'included' => true];
         }, is_array($analysis['works'] ?? null) ? $analysis['works'] : []);
         $materials = is_array($analysis['materials'] ?? null) ? $analysis['materials'] : [];
+        if ($works === []) {
+            $fallbackWork = self::fallbackCorrectiveWork($analysis, $materials);
+            if ($fallbackWork !== null) {
+                $works[] = $fallbackWork;
+            }
+        }
         $plans = $this->planMatcher->match($plans, $this->serviceCatalog->listForCompany($companyId), $works, $materials);
         $suggestedPlan = null;
         foreach ($plans as $plan) {
@@ -139,6 +145,46 @@ final class AnalyzeWorkOrderDocument
             'confirmPossibleDuplicate' => false,
             'canCreateCorrective' => count(array_filter($works, static fn (array $w): bool => ($w['classification'] ?? '') === 'correctivo')) > 0,
             'canCreatePreventive' => count(array_filter($works, static fn (array $w): bool => ($w['classification'] ?? '') === 'preventivo')) > 0,
+        ];
+    }
+
+    /** @param array<string,mixed> $analysis @param list<array<string,mixed>> $materials @return array<string,mixed>|null */
+    private static function fallbackCorrectiveWork(array $analysis, array $materials): ?array
+    {
+        $concept = trim((string) ($analysis['concept'] ?? ''));
+        $description = $concept;
+        $sourceText = $concept;
+        $confidence = 0.5;
+
+        if ($description === '') {
+            foreach ($materials as $material) {
+                if (! is_array($material)) {
+                    continue;
+                }
+                $materialDescription = trim((string) ($material['description'] ?? ''));
+                if ($materialDescription === '') {
+                    continue;
+                }
+                $description = 'Compra / provisión de repuesto: ' . $materialDescription;
+                $sourceText = trim((string) ($material['source_text'] ?? $materialDescription));
+                $confidence = max(0.0, min(1.0, (float) ($material['confidence'] ?? 0.5)));
+                break;
+            }
+        }
+
+        if ($description === '') {
+            return null;
+        }
+
+        return [
+            'description' => $description,
+            'classification' => 'correctivo',
+            'quantity' => null,
+            'unit' => null,
+            'confidence' => $confidence,
+            'source_text' => $sourceText,
+            'included' => true,
+            'fallback' => true,
         ];
     }
 
