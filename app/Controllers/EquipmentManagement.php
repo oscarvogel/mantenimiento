@@ -114,6 +114,12 @@ final class EquipmentManagement extends BaseController
             );
 
             $payload['driverAssignment'] = $this->driverAssignmentPayload($actor, $equipmentId);
+            $expirationReadModel = new CodeIgniterExpirationReadModel(db_connect());
+            $payload['expirations'] = $expirationReadModel->forEquipment((int) $actor->companyId(), $equipmentId);
+            $payload['expirationTypes'] = $expirationReadModel->types(
+                (int) $actor->companyId(),
+                \App\Domain\Expirations\ExpirationSubjectType::EQUIPMENT,
+            );
 
             return $this->renderApp(
                 $actor,
