@@ -17,7 +17,7 @@ use Throwable;
 
 final class Employees extends BaseController
 {
-    public function index(): string|RedirectResponse
+    public function index(): string|ResponseInterface
     {
         try {
             $actor = $this->actor();
@@ -114,7 +114,17 @@ final class Employees extends BaseController
                 ],
             ]);
         } catch (Throwable $exception) {
-            return $this->failure($exception);
+            if (! $exception instanceof DomainException) {
+                log_message('error', 'Falló la carga de empleados: {message}', ['message' => $exception->getMessage()]);
+            }
+
+            return $this->response
+                ->setStatusCode($exception instanceof DomainException ? 400 : 500)
+                ->setHeader('Cache-Control', 'no-store')
+                ->setContentType('text/plain')
+                ->setBody($exception instanceof DomainException
+                    ? $exception->getMessage()
+                    : 'No se pudo cargar la gestión de empleados. Revisá que las migraciones del módulo estén aplicadas.');
         }
     }
 
