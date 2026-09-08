@@ -93,15 +93,15 @@ const activeCount = computed(() => props.data.employees.filter((employee) => emp
             </summary>
             <form method="post" :action="employee.updateUrl" class="grid gap-4 border-t border-border-subtle p-4 lg:grid-cols-3">
               <CsrfInput :csrf="data.csrf" />
-              <FormField label="Nombre *"><input name="nombre" :value="employee.firstName" required maxlength="100" :class="fieldClass" /></FormField>
-              <FormField label="Apellido"><input name="apellido" :value="employee.lastName" maxlength="100" :class="fieldClass" /></FormField>
-              <FormField label="Documento"><input name="documento" :value="employee.document" maxlength="30" :class="fieldClass" /></FormField>
-              <FormField label="CUIL"><input name="cuil" :value="employee.cuil" maxlength="30" :class="fieldClass" /></FormField>
-              <FormField label="Legajo"><input name="legajo" :value="employee.employeeNumber" maxlength="50" :class="fieldClass" /></FormField>
-              <FormField label="Fecha de ingreso"><input name="fecha_ingreso" type="date" :value="employee.hiredAt" :class="fieldClass" /></FormField>
-              <FormField label="Teléfono"><input name="telefono" :value="employee.phone" maxlength="50" :class="fieldClass" /></FormField>
-              <FormField label="Email"><input name="email" type="email" :value="employee.email" maxlength="150" :class="fieldClass" /></FormField>
-              <FormField label="Observaciones" class="lg:col-span-3"><textarea name="observaciones" rows="2" maxlength="1000" :class="fieldClass">{{ employee.notes || '' }}</textarea></FormField>
+              <FormField label="Nombre *" :for-id="`edit-name-${employee.id}`"><input :id="`edit-name-${employee.id}`" name="nombre" :value="employee.firstName" required maxlength="100" :class="fieldClass" /></FormField>
+              <FormField label="Apellido" :for-id="`edit-lastname-${employee.id}`"><input :id="`edit-lastname-${employee.id}`" name="apellido" :value="employee.lastName" maxlength="100" :class="fieldClass" /></FormField>
+              <FormField label="Documento" :for-id="`edit-document-${employee.id}`"><input :id="`edit-document-${employee.id}`" name="documento" :value="employee.document" maxlength="30" :class="fieldClass" /></FormField>
+              <FormField label="CUIL" :for-id="`edit-cuil-${employee.id}`"><input :id="`edit-cuil-${employee.id}`" name="cuil" :value="employee.cuil" maxlength="30" :class="fieldClass" /></FormField>
+              <FormField label="Legajo" :for-id="`edit-number-${employee.id}`"><input :id="`edit-number-${employee.id}`" name="legajo" :value="employee.employeeNumber" maxlength="50" :class="fieldClass" /></FormField>
+              <FormField label="Fecha de ingreso" :for-id="`edit-hired-${employee.id}`"><input :id="`edit-hired-${employee.id}`" name="fecha_ingreso" type="date" :value="employee.hiredAt" :class="fieldClass" /></FormField>
+              <FormField label="Teléfono" :for-id="`edit-phone-${employee.id}`"><input :id="`edit-phone-${employee.id}`" name="telefono" :value="employee.phone" maxlength="50" :class="fieldClass" /></FormField>
+              <FormField label="Email" :for-id="`edit-email-${employee.id}`"><input :id="`edit-email-${employee.id}`" name="email" type="email" :value="employee.email" maxlength="150" :class="fieldClass" /></FormField>
+              <FormField label="Observaciones" :for-id="`edit-notes-${employee.id}`" class="lg:col-span-3"><textarea :id="`edit-notes-${employee.id}`" name="observaciones" rows="2" maxlength="1000" :value="employee.notes || ''" :class="fieldClass"></textarea></FormField>
               <div class="lg:col-span-3"><button type="submit" :class="primaryButton">Guardar cambios</button></div>
             </form>
           </details>
@@ -112,8 +112,8 @@ const activeCount = computed(() => props.data.employees.filter((employee) => emp
             </summary>
             <form method="post" :action="employee.terminateUrl" class="grid gap-4 border-t border-danger/20 p-4 md:grid-cols-[12rem_1fr_auto] md:items-end">
               <CsrfInput :csrf="data.csrf" />
-              <FormField label="Fecha de baja"><input name="fecha_baja" type="date" :class="fieldClass" /></FormField>
-              <FormField label="Motivo *"><input name="motivo_baja" required maxlength="500" :class="fieldClass" /></FormField>
+              <FormField label="Fecha de baja" :for-id="`terminate-date-${employee.id}`"><input :id="`terminate-date-${employee.id}`" name="fecha_baja" type="date" :class="fieldClass" /></FormField>
+              <FormField label="Motivo *" :for-id="`terminate-reason-${employee.id}`"><input :id="`terminate-reason-${employee.id}`" name="motivo_baja" required maxlength="500" :class="fieldClass" /></FormField>
               <button type="submit" :class="secondaryButton">Confirmar baja</button>
             </form>
           </details>
