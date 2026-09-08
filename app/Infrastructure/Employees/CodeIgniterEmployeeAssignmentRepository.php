@@ -69,7 +69,7 @@ final class CodeIgniterEmployeeAssignmentRepository implements EmployeeAssignmen
         ?bool $current = null,
     ): array {
         $builder = $this->database->table('employee_equipment_assignments a')
-            ->select('a.id, a.empleado_id, a.equipo_id, a.rol, a.fecha_desde, a.fecha_hasta, a.observaciones, emp.nombre empleado_nombre, emp.apellido empleado_apellido, emp.activo empleado_activo, e.codigo equipo_codigo, e.patente equipo_patente, s.nombre sucursal_nombre')
+            ->select('a.id, a.empleado_id, a.equipo_id, a.rol, a.fecha_desde, a.fecha_hasta, a.observaciones, emp.nombre empleado_nombre, emp.apellido empleado_apellido, emp.activo empleado_activo, emp.foto_path empleado_foto_path, e.codigo equipo_codigo, e.patente equipo_patente, s.nombre sucursal_nombre')
             ->join('empleados emp', 'emp.id = a.empleado_id AND emp.empresa_id = a.empresa_id')
             ->join('equipos e', 'e.id = a.equipo_id AND e.empresa_id = a.empresa_id')
             ->join('sucursales s', 's.id = e.sucursal_id', 'left')
