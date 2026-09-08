@@ -202,13 +202,42 @@ final class Expirations extends BaseController
                 throw new DomainException('La fecha de emisión no puede ser posterior al vencimiento.');
             }
 
+            $type = $db->table('tipos_vencimiento')
+                ->select('requiere_documento')
+                ->where('empresa_id', $companyId)
+                ->where('id', (int) $row['tipo_vencimiento_id'])
+                ->where('deleted_at', null)
+                ->get()->getRowArray();
+            if ($type === null) {
+                throw new DomainException('El tipo de vencimiento ya no existe.');
+            }
+
+            $documentNumber = $this->nullable('numero_documento', 100);
+            if ((int) $type['requiere_documento'] === 1 && $documentNumber === null) {
+                throw new DomainException('Este tipo de vencimiento requiere número de documento.');
+            }
+
+            $subjectField = $subjectType === ExpirationSubjectType::EQUIPMENT ? 'equipo_id' : 'empleado_id';
+            $subjectId = (int) $row[$subjectField];
+            $duplicate = $db->table('vencimientos')
+                ->where('empresa_id', $companyId)
+                ->where('tipo_vencimiento_id', (int) $row['tipo_vencimiento_id'])
+                ->where($subjectField, $subjectId)
+                ->where('fecha_vencimiento', $expiresAt->format('Y-m-d'))
+                ->where('id !=', $expirationId)
+                ->where('deleted_at', null)
+                ->countAllResults() > 0;
+            if ($duplicate) {
+                throw new DomainException('Ya existe ese vencimiento para la misma fecha.');
+            }
+
             $db->table('vencimientos')
                 ->where('empresa_id', $companyId)
                 ->where('id', $expirationId)
                 ->update([
                     'fecha_emision' => $issuedAt?->format('Y-m-d'),
                     'fecha_vencimiento' => $expiresAt->format('Y-m-d'),
-                    'numero_documento' => $this->nullable('numero_documento', 100),
+                    'numero_documento' => $documentNumber,
                     'observaciones' => $this->nullable('observaciones', 2000),
                     'updated_by' => $actor->userId(),
                     'updated_at' => date('Y-m-d H:i:s'),
