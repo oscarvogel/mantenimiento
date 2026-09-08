@@ -19,11 +19,16 @@ use App\Application\Measurement\RegisterReadingHandler;
 use App\Application\PreventiveMaintenance\AsignarPlan;
 use App\Application\PreventiveMaintenance\AsignarPlanCommand;
 use App\Application\PreventiveMaintenance\ConsultarVencimientos;
+use App\Application\WorkOrders\ChangeWorkOrderState;
+use App\Application\WorkOrders\ChangeWorkOrderStateCommand;
 use App\Application\WorkOrders\GetPrintableWorkOrder;
 use App\Application\WorkOrders\StartWorkOrder;
 use App\Application\WorkOrders\StartWorkOrderCommand;
 use App\Infrastructure\Identity\SessionActorContext;
 use App\Infrastructure\WorkOrders\CodeIgniterWorkOrderPrintReadModel;
+use App\Infrastructure\WorkOrders\CodeIgniterWorkOrderRepository;
+use App\Infrastructure\WorkOrders\CodeIgniterWorkOrderTransaction;
+use App\Infrastructure\WorkOrders\SystemClock as WorkOrderClock;
 use CodeIgniter\HTTP\RedirectResponse;
 use CodeIgniter\HTTP\ResponseInterface;
 use DateTimeImmutable;
@@ -187,6 +192,31 @@ final class MaintenanceCircuit extends BaseController
         }
     }
 
+    public function cancelOrder(int $orderId): RedirectResponse
+    {
+        try {
+            $this->cancelOrderHandler()->execute(
+                $this->actor(),
+                new ChangeWorkOrderStateCommand(
+                    $orderId,
+                    'cancelar',
+                    $this->nullableString($this->request->getPost('motivo')),
+                ),
+            );
+
+            return redirect()->to(base_url('mantenimiento/ordenes'))->with('success', 'Orden cancelada correctamente.');
+        } catch (Throwable $exception) {
+            if (! $exception instanceof DomainException) {
+                log_message('error', 'Falló la anulación de OT: {message}', ['message' => $exception->getMessage()]);
+            }
+
+            return redirect()->to(base_url('mantenimiento/ordenes'))->withInput()->with(
+                'error',
+                $exception instanceof DomainException ? $exception->getMessage() : 'No se pudo anular la orden.',
+            );
+        }
+    }
+
     public function closeOrder(int $orderId): RedirectResponse
     {
         try {
@@ -226,6 +256,16 @@ final class MaintenanceCircuit extends BaseController
     private function detect(): DetectOverduePlans { return service('detectOverduePlans'); }
     private function generateOrderHandler(): GeneratePreventiveOrderFromNotice { return service('generatePreventiveOrderFromNotice'); }
     private function startOrderHandler(): StartWorkOrder { return service('startWorkOrder'); }
+    private function cancelOrderHandler(): ChangeWorkOrderState
+    {
+        $db = db_connect();
+
+        return new ChangeWorkOrderState(
+            new CodeIgniterWorkOrderRepository($db),
+            new CodeIgniterWorkOrderTransaction($db),
+            new WorkOrderClock(),
+        );
+    }
     private function closeOrderHandler(): ClosePreventiveOrder { return service('closePreventiveOrder'); }
     private function primaryPhotos(): ListPrimaryEquipmentPhotos { return service('listPrimaryEquipmentPhotos'); }
     private function printableOrder(): GetPrintableWorkOrder { return new GetPrintableWorkOrder(new CodeIgniterWorkOrderPrintReadModel(db_connect())); }
