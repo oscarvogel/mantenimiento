@@ -38,8 +38,18 @@ const title = computed(() => isEditing.value ? 'Editar empleado' : 'Nuevo emplea
           </button>
         </header>
 
-        <form method="post" :action="action" class="grid gap-4 p-6 lg:grid-cols-3">
+        <form method="post" :action="action" enctype="multipart/form-data" class="grid gap-4 p-6 lg:grid-cols-3">
           <CsrfInput :csrf="csrf" />
+          <div class="lg:col-span-3 flex items-center gap-4 rounded-lg border border-border-subtle bg-surface-subtle/40 p-4">
+            <div class="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border-subtle bg-white text-lg font-bold text-ink-muted">
+              <img v-if="employee?.photoUrl" :src="employee.photoUrl" :alt="`Foto de ${employee.fullName}`" class="h-full w-full object-cover" />
+              <span v-else>{{ (employee?.firstName || 'N').slice(0, 1).toUpperCase() }}</span>
+            </div>
+            <FormField label="Foto del empleado" for-id="modal-employee-photo" class="flex-1">
+              <input id="modal-employee-photo" name="foto" type="file" accept="image/jpeg,image/png,image/webp" :class="fieldClass" />
+              <p class="mt-1 text-xs text-ink-muted">JPG, PNG o WEBP. Máximo 5 MB.</p>
+            </FormField>
+          </div>
           <FormField label="Nombre *" for-id="modal-employee-name"><input id="modal-employee-name" name="nombre" :value="employee?.firstName || ''" required maxlength="100" autofocus :class="fieldClass" /></FormField>
           <FormField label="Apellido" for-id="modal-employee-lastname"><input id="modal-employee-lastname" name="apellido" :value="employee?.lastName || ''" maxlength="100" :class="fieldClass" /></FormField>
           <FormField label="Documento" for-id="modal-employee-document"><input id="modal-employee-document" name="documento" :value="employee?.document || ''" maxlength="30" :class="fieldClass" /></FormField>
