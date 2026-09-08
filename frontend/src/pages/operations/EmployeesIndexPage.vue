@@ -13,13 +13,24 @@ import { fieldClass, primaryButton, secondaryButton } from './helpers.js'
 
 const props = defineProps({ data: { type: Object, required: true } })
 
+const data = computed(() => ({
+  ...props.data,
+  employees: (props.data.employees ?? []).map((employee) => ({
+    ...employee,
+    expirations: employee.expirations ?? [],
+  })),
+  expirationTypes: props.data.expirationTypes ?? [],
+  expirationTypeCatalog: props.data.expirationTypeCatalog ?? [],
+  expirationRoutes: props.data.expirationRoutes ?? { create: '#', createType: '#' },
+}))
+
 const formEmployee = ref(undefined)
 const terminationEmployee = ref(null)
 
-const activeCount = computed(() => props.data.employees.filter((employee) => employee.active).length)
+const activeCount = computed(() => data.value.employees.filter((employee) => employee.active).length)
 const selectedHistoryEmployee = computed(() => {
-  const id = String(props.data.historyFilters.employeeId || '')
-  return props.data.employeeCatalog.find((employee) => String(employee.id) === id) || null
+  const id = String(data.value.historyFilters.employeeId || '')
+  return data.value.employeeCatalog.find((employee) => String(employee.id) === id) || null
 })
 
 const openCreate = () => {
