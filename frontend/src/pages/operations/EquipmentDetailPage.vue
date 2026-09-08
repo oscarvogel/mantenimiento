@@ -17,6 +17,9 @@ const data = computed(() => {
   const workOrderHistory = props.data.workOrderHistory
   return {
     ...props.data,
+    expirations: props.data.expirations ?? [],
+    expirationTypes: props.data.expirationTypes ?? [],
+    expirationRoutes: props.data.expirationRoutes ?? { create: '#', createType: '#' },
     readings: readings === null ? null : readings === undefined ? undefined : {
       ...readings,
       items: readings.items.map((reading) => ({
