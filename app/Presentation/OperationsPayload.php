@@ -323,7 +323,10 @@ final class OperationsPayload
             'routes' => [
                 'upload' => $base,
                 'driverAssignmentsPreview' => $base . '/choferes/preview',
-                'templates' => ['equipment' => $base . '/plantilla/EQUIPOS', 'readings' => $base . '/plantilla/LECTURAS'],
+                'templates' => [
+                    'equipment' => $base . '/plantilla/EQUIPOS',
+                    'readings' => $base . '/plantilla/LECTURAS',
+                ],
             ],
             'imports' => [
                 'total' => $page->total,
