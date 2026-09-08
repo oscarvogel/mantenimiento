@@ -64,6 +64,26 @@ final class CodeIgniterExpirationReadModel
         return $grouped;
     }
 
+    /** @return list<array{id:int,name:string,appliesTo:string,warningDays:int,requiresDocument:bool,active:bool,toggleUrl:string}> */
+    public function catalog(int $companyId): array
+    {
+        return array_map(static fn (array $row): array => [
+            'id' => (int) $row['id'],
+            'name' => (string) $row['nombre'],
+            'appliesTo' => (string) $row['aplica_a'],
+            'warningDays' => (int) $row['dias_aviso_previo'],
+            'requiresDocument' => (int) $row['requiere_documento'] === 1,
+            'active' => (int) $row['activo'] === 1,
+            'toggleUrl' => base_url('mantenimiento/vencimientos/tipos/' . (int) $row['id'] . '/estado'),
+        ], $this->database->table('tipos_vencimiento')
+            ->select('id, nombre, aplica_a, dias_aviso_previo, requiere_documento, activo')
+            ->where('empresa_id', $companyId)
+            ->where('deleted_at', null)
+            ->orderBy('activo', 'DESC')
+            ->orderBy('nombre', 'ASC')
+            ->get()->getResultArray());
+    }
+
     /** @return list<array{id:int,name:string,appliesTo:string,warningDays:int,requiresDocument:bool}> */
     public function types(int $companyId, ExpirationSubjectType $subjectType): array
     {
