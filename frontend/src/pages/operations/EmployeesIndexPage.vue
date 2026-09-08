@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { ClockIcon, MagnifyingGlassIcon, PencilSquareIcon, UserMinusIcon, UserPlusIcon } from '@heroicons/vue/24/outline'
 import CsrfInput from './components/CsrfInput.vue'
 import EmptyState from './components/EmptyState.vue'
+import EmployeeExpirationModal from './components/EmployeeExpirationModal.vue'
 import EmployeeFormModal from './components/EmployeeFormModal.vue'
 import EmployeeTerminationModal from './components/EmployeeTerminationModal.vue'
 import FormField from './components/FormField.vue'
@@ -26,6 +27,7 @@ const data = computed(() => ({
 
 const formEmployee = ref(undefined)
 const terminationEmployee = ref(null)
+const expirationEmployee = ref(null)
 
 const activeCount = computed(() => data.value.employees.filter((employee) => employee.active).length)
 const selectedHistoryEmployee = computed(() => {
@@ -36,16 +38,25 @@ const selectedHistoryEmployee = computed(() => {
 const openCreate = () => {
   formEmployee.value = null
   terminationEmployee.value = null
+  expirationEmployee.value = null
 }
 
 const openEdit = (employee) => {
   formEmployee.value = employee
   terminationEmployee.value = null
+  expirationEmployee.value = null
 }
 
 const openTerminate = (employee) => {
   terminationEmployee.value = employee
   formEmployee.value = undefined
+  expirationEmployee.value = null
+}
+
+const openExpiration = (employee) => {
+  expirationEmployee.value = employee
+  formEmployee.value = undefined
+  terminationEmployee.value = null
 }
 </script>
 
@@ -204,25 +215,9 @@ const openTerminate = (employee) => {
                     <a :href="employee.historyUrl" :class="secondaryButton">
                       <ClockIcon class="mr-1.5 size-4" aria-hidden="true" />Historial
                     </a>
-                    <details class="ui-details-animated">
-                      <summary :class="secondaryButton">Vencimiento</summary>
-                      <form method="post" :action="data.expirationRoutes.create" class="mt-2 grid w-80 gap-3 rounded-xl border border-border bg-white p-4 shadow-card">
-                        <CsrfInput :csrf="data.csrf" />
-                        <input type="hidden" name="sujeto_tipo" value="EMPLEADO" />
-                        <input type="hidden" name="sujeto_id" :value="employee.id" />
-                        <input type="hidden" name="return_to" value="/mantenimiento/empleados" />
-                        <FormField label="Tipo" :for-id="`employee-expiration-type-${employee.id}`">
-                          <select :id="`employee-expiration-type-${employee.id}`" name="tipo_vencimiento_id" required :class="fieldClass">
-                            <option value="">Seleccionar</option>
-                            <option v-for="type in data.expirationTypes" :key="type.id" :value="type.id">{{ type.name }}</option>
-                          </select>
-                        </FormField>
-                        <FormField label="Fecha de emisión" :for-id="`employee-expiration-issued-${employee.id}`"><input :id="`employee-expiration-issued-${employee.id}`" type="date" name="fecha_emision" :class="fieldClass" /></FormField>
-                        <FormField label="Fecha de vencimiento" :for-id="`employee-expiration-date-${employee.id}`"><input :id="`employee-expiration-date-${employee.id}`" type="date" name="fecha_vencimiento" required :class="fieldClass" /></FormField>
-                        <FormField label="Documento" :for-id="`employee-expiration-document-${employee.id}`"><input :id="`employee-expiration-document-${employee.id}`" name="numero_documento" maxlength="100" :class="fieldClass" /></FormField>
-                        <button type="submit" :class="primaryButton">Registrar</button>
-                      </form>
-                    </details>
+                    <button type="button" :class="secondaryButton" @click="openExpiration(employee)">
+                      Vencimiento
+                    </button>
                     <button type="button" :class="secondaryButton" @click="openEdit(employee)">
                       <PencilSquareIcon class="mr-1.5 size-4" aria-hidden="true" />Editar
                     </button>
@@ -271,19 +266,14 @@ const openTerminate = (employee) => {
                 <span>{{ expiration.typeName }} · {{ expiration.expiresAt }}</span>
               </div>
             </div>
-            <details v-if="data.canEdit && employee.active" class="ui-details-animated mt-4">
-              <summary :class="secondaryButton">Registrar vencimiento</summary>
-              <form method="post" :action="data.expirationRoutes.create" class="mt-3 grid gap-3 rounded-xl border border-border bg-white p-4">
-                <CsrfInput :csrf="data.csrf" />
-                <input type="hidden" name="sujeto_tipo" value="EMPLEADO" />
-                <input type="hidden" name="sujeto_id" :value="employee.id" />
-                <input type="hidden" name="return_to" value="/mantenimiento/empleados" />
-                <select name="tipo_vencimiento_id" required :class="fieldClass"><option value="">Tipo de vencimiento</option><option v-for="type in data.expirationTypes" :key="type.id" :value="type.id">{{ type.name }}</option></select>
-                <input type="date" name="fecha_vencimiento" required :class="fieldClass" />
-                <input name="numero_documento" maxlength="100" placeholder="Documento" :class="fieldClass" />
-                <button type="submit" :class="primaryButton">Registrar</button>
-              </form>
-            </details>
+            <button
+              v-if="data.canEdit && employee.active"
+              type="button"
+              :class="`${secondaryButton} mt-4 w-full`"
+              @click="openExpiration(employee)"
+            >
+              Registrar vencimiento
+            </button>
             <div class="mt-4 flex gap-2">
               <a :href="employee.historyUrl" :class="secondaryButton" class="flex-1">Historial</a>
               <button v-if="data.canEdit && employee.active" type="button" :class="secondaryButton" class="flex-1" @click="openEdit(employee)">Editar</button>
@@ -438,6 +428,15 @@ const openTerminate = (employee) => {
       :employee="terminationEmployee"
       :csrf="data.csrf"
       @close="terminationEmployee = null"
+    />
+
+    <EmployeeExpirationModal
+      v-if="expirationEmployee"
+      :employee="expirationEmployee"
+      :expiration-types="data.expirationTypes"
+      :create-url="data.expirationRoutes.create"
+      :csrf="data.csrf"
+      @close="expirationEmployee = null"
     />
   </div>
 </template>
