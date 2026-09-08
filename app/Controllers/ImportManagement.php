@@ -5,6 +5,13 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Application\Identity\ActorContext;
+use App\Application\Employees\CreateDriverAssignmentPreview;
+use App\Application\Employees\ConfirmDriverAssignmentsImport;
+use App\Application\Employees\DriverAssignmentImportPreviewBuilder;
+use App\Infrastructure\Employees\CodeIgniterDriverAssignmentPreviewCatalog;
+use App\Infrastructure\Employees\CodeIgniterEmployeeAssignmentRepository;
+use App\Infrastructure\Employees\CodeIgniterEmployeeRepository;
+use App\Infrastructure\Employees\PhpSpreadsheetDriverAssignmentWorkbookReader;
 use App\Application\Importations\CancelImportHandler;
 use App\Application\Importations\ConfirmImportHandler;
 use App\Application\Importations\ConfirmPreventiveLibraryImportHandler;
@@ -258,6 +265,138 @@ final class ImportManagement extends BaseController
             return redirect()->to('/mantenimiento/importaciones/' . $result->importId)->with(
                 'success',
                 "Vista previa creada: {$result->validRows} válidas, {$result->errorRows} con error y {$result->duplicateRows} duplicadas.",
+            );
+        } catch (Throwable $exception) {
+            return $this->failure($exception, '/mantenimiento/importaciones');
+        }
+    }
+
+    public function driverAssignmentsPreview(): string|RedirectResponse
+    {
+        try {
+            $file = $this->request->getFile('archivo_choferes');
+            if ($file === null || ! $file->isValid()) {
+                throw new DomainException('Seleccioná un archivo XLSX válido para choferes.');
+            }
+
+            $extension = mb_strtolower((string) $file->getClientExtension());
+            if ($extension !== 'xlsx') {
+                throw new DomainException('La importación de choferes requiere un archivo XLSX.');
+            }
+
+            $actor = $this->actor();
+            $database = db_connect();
+            $preview = (new CreateDriverAssignmentPreview(
+                new PhpSpreadsheetDriverAssignmentWorkbookReader(),
+                new CodeIgniterDriverAssignmentPreviewCatalog($database),
+                new DriverAssignmentImportPreviewBuilder(),
+            ))->execute($actor, $file->getTempName());
+
+            $token = bin2hex(random_bytes(16));
+            $sessionRows = array_map(static fn ($row): array => [
+                'status' => $row->status,
+                'equipmentId' => $row->equipmentId,
+                'employeeId' => $row->employeeId,
+                'action' => $row->action,
+                'driverName' => $row->source->driverName,
+                'plate' => $row->source->plate,
+                'sheet' => $row->source->sheet,
+                'rowNumber' => $row->source->rowNumber,
+            ], $preview['rows']);
+            session()->set('driver_assignments_import_' . $token, [
+                'userId' => $actor->userId(),
+                'companyId' => $actor->companyId(),
+                'rows' => $sessionRows,
+                'originalFile' => $file->getClientName(),
+                'sha256' => hash_file('sha256', $file->getTempName()) ?: str_repeat('0', 64),
+                'createdAt' => time(),
+            ]);
+
+            return $this->renderApp(
+                $actor,
+                'imports',
+                'driver-assignments-preview',
+                'Vista previa de choferes',
+                service('operationsPayload')->driverAssignmentPreview(
+                    $preview,
+                    $file->getClientName(),
+                    $token,
+                ),
+            );
+        } catch (Throwable $exception) {
+            return $this->failure($exception, '/mantenimiento/importaciones');
+        }
+    }
+
+    public function confirmDriverAssignments(): RedirectResponse
+    {
+        try {
+            $actor = $this->actor();
+            $token = trim((string) $this->request->getPost('preview_token'));
+            if (! preg_match('/^[a-f0-9]{32}$/', $token)) {
+                throw new DomainException('La vista previa de choferes no es válida.');
+            }
+
+            $key = 'driver_assignments_import_' . $token;
+            $draft = session()->get($key);
+            if (! is_array($draft)
+                || (int) ($draft['userId'] ?? 0) !== $actor->userId()
+                || (int) ($draft['companyId'] ?? 0) !== (int) $actor->companyId()
+                || time() - (int) ($draft['createdAt'] ?? 0) > 1800
+                || ! is_array($draft['rows'] ?? null)) {
+                session()->remove($key);
+                throw new DomainException('La vista previa venció o no pertenece a tu sesión. Volvé a cargar el archivo.');
+            }
+
+            $database = db_connect();
+            $database->transBegin();
+
+            try {
+                $result = (new ConfirmDriverAssignmentsImport(
+                    new CodeIgniterEmployeeRepository($database),
+                    new CodeIgniterEmployeeAssignmentRepository($database),
+                ))->execute($actor, $draft['rows']);
+
+                $detailJson = json_encode([
+                    'rows' => $draft['rows'],
+                    'result' => $result,
+                ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+
+                $database->table('driver_assignment_import_audit')->insert([
+                    'empresa_id' => (int) $actor->companyId(),
+                    'usuario_id' => $actor->userId(),
+                    'archivo_original' => (string) ($draft['originalFile'] ?? 'choferes.xlsx'),
+                    'sha256' => (string) ($draft['sha256'] ?? str_repeat('0', 64)),
+                    'filas_totales' => count($draft['rows']),
+                    'empleados_creados' => $result['createdEmployees'],
+                    'asignaciones_actualizadas' => $result['assignedDrivers'],
+                    'sin_cambios' => $result['unchanged'],
+                    'sin_chofer' => $result['withoutDriver'],
+                    'detalle_json' => $detailJson,
+                    'created_at' => date('Y-m-d H:i:s'),
+                ]);
+
+                if (! $database->transStatus()) {
+                    throw new \RuntimeException('No se pudo guardar la auditoría de la importación.');
+                }
+
+                $database->transCommit();
+            } catch (Throwable $exception) {
+                $database->transRollback();
+                throw $exception;
+            }
+
+            session()->remove($key);
+
+            return redirect()->to('/mantenimiento/importaciones')->with(
+                'success',
+                sprintf(
+                    'Choferes confirmados: %d empleados creados, %d asignaciones actualizadas, %d sin cambios y %d móviles sin chofer informado.',
+                    $result['createdEmployees'],
+                    $result['assignedDrivers'],
+                    $result['unchanged'],
+                    $result['withoutDriver'],
+                ),
             );
         } catch (Throwable $exception) {
             return $this->failure($exception, '/mantenimiento/importaciones');

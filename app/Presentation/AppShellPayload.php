@@ -41,6 +41,9 @@ final readonly class AppShellPayload
                 $navigation[] = $this->item('plans', 'Planes preventivos', 'mantenimiento/planes', 'calendar', $active);
                 $navigation[] = $this->item('services', 'Servicios de mantenimiento', 'mantenimiento/servicios', 'services', $active);
             }
+            if ($actor->hasPermission('empleados.ver')) {
+                $navigation[] = $this->item('employees', 'Empleados / choferes', 'mantenimiento/empleados', 'users', $active);
+            }
             if ($actor->hasPermission('importaciones.ver')) {
                 $navigation[] = $this->item('imports', 'Importaciones', 'mantenimiento/importaciones', 'upload', $active);
             }

@@ -37,6 +37,19 @@ defineProps({ data: { type: Object, required: true } })
         </FormField>
         <button type="submit" :class="primaryButton"><ArrowUpTrayIcon class="mr-2 size-5" aria-hidden="true" />Validar archivo</button>
       </form>
+
+      <div class="my-6 border-t border-border-subtle"></div>
+
+      <form method="post" enctype="multipart/form-data" :action="data.routes.driverAssignmentsPreview" class="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
+        <CsrfInput :csrf="data.csrf" />
+        <FormField label="Choferes por móvil (XLSX)" for-id="drivers-file" hint="Lee hojas como Argentina/Brasil y busca cada móvil por patente. Primero muestra una vista previa: no modifica datos.">
+          <input id="drivers-file" type="file" name="archivo_choferes" accept=".xlsx" required :class="fieldClass" />
+        </FormField>
+        <button type="submit" :class="primaryButton">
+          <ArrowUpTrayIcon class="mr-2 size-5" aria-hidden="true" />
+          Revisar choferes
+        </button>
+      </form>
     </PanelCard>
 
     <PanelCard title="Historial de importaciones" :count="data.imports.total" flush>

@@ -102,6 +102,52 @@ const historyResetUrl = computed(() => `${window.location.pathname}?history_acti
       </div>
     </PanelCard>
 
+    <PanelCard v-if="data.driverAssignment" title="Chofer asignado" class="mb-6">
+      <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,0.9fr)]">
+        <div>
+          <p class="text-xs uppercase tracking-wide text-ink-muted">Chofer actual</p>
+          <p class="mt-2 text-lg font-semibold text-ink">{{ data.driverAssignment.current?.name || 'Sin chofer asignado' }}</p>
+          <p v-if="data.driverAssignment.current" class="mt-1 text-sm text-ink-muted">
+            Desde {{ data.driverAssignment.current.from }}
+            <span v-if="data.driverAssignment.current.notes"> · {{ data.driverAssignment.current.notes }}</span>
+          </p>
+
+          <form v-if="data.driverAssignment.canEdit && data.equipment.status === 'ACTIVO'" method="post" :action="data.driverAssignment.assignUrl" class="mt-5 grid gap-4 sm:grid-cols-2">
+            <CsrfInput :csrf="data.csrf" />
+            <FormField label="Empleado / chofer" for-id="equipment-driver">
+              <select id="equipment-driver" name="empleado_id" required :class="fieldClass">
+                <option value="">Seleccionar chofer</option>
+                <option v-for="employee in data.driverAssignment.employees" :key="employee.id" :value="employee.id" :selected="String(employee.id) === String(data.driverAssignment.current?.employeeId || '')">
+                  {{ employee.name }}
+                </option>
+              </select>
+            </FormField>
+            <FormField label="Desde" for-id="equipment-driver-from">
+              <input id="equipment-driver-from" type="date" name="fecha_desde" required :value="today()" :max="today()" :class="fieldClass" />
+            </FormField>
+            <FormField label="Observaciones" for-id="equipment-driver-notes" class="sm:col-span-2">
+              <input id="equipment-driver-notes" name="observaciones" maxlength="1000" placeholder="Ej.: cambio de unidad" :class="fieldClass" />
+            </FormField>
+            <button type="submit" :class="`${primaryButton} sm:justify-self-start`">
+              {{ data.driverAssignment.current ? 'Cambiar chofer' : 'Asignar chofer' }}
+            </button>
+          </form>
+        </div>
+
+        <div>
+          <p class="mb-3 text-xs uppercase tracking-wide text-ink-muted">Historial reciente</p>
+          <EmptyState v-if="data.driverAssignment.history.length === 0" title="Sin historial de choferes" />
+          <ul v-else class="divide-y divide-border-subtle rounded-xl border border-border">
+            <li v-for="item in data.driverAssignment.history" :key="item.id" class="px-4 py-3">
+              <p class="font-semibold text-ink">{{ item.name }}</p>
+              <p class="mt-1 text-xs text-ink-muted">{{ item.from }} → {{ item.to || 'Actual' }}</p>
+              <p v-if="item.notes" class="mt-1 text-xs text-ink-muted">{{ item.notes }}</p>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </PanelCard>
+
     <section v-if="data.can.edit" class="mb-6 grid gap-6 xl:grid-cols-2">
       <PanelCard title="Datos del equipo">
         <details v-if="data.equipment.status === 'ACTIVO'" class="ui-details-animated group">

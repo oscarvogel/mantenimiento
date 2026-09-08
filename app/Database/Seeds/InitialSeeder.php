@@ -70,6 +70,8 @@ final class InitialSeeder extends Seeder
             'roles.editar' => 'Administrar roles y permisos',
             'equipos.ver' => 'Ver listado y detalle de equipos',
             'equipos.editar' => 'Crear y modificar equipos',
+            'empleados.ver' => 'Consultar empleados y su afectación a móviles',
+            'empleados.editar' => 'Crear, editar, dar de baja y asignar empleados',
             'lecturas.cargar' => 'Cargar lecturas de kilómetros y horas',
             'lecturas.ver' => 'Ver historial de lecturas',
             'lecturas.corregir' => 'Corregir lecturas con motivo y trazabilidad',
@@ -101,6 +103,7 @@ final class InitialSeeder extends Seeder
             'Administrador' => array_keys($permissions),
             'Responsable de mantenimiento' => [
                 'sucursales.ver', 'sucursales.editar', 'equipos.ver', 'equipos.editar',
+                'empleados.ver', 'empleados.editar',
                 'lecturas.cargar', 'lecturas.ver', 'lecturas.corregir', 'planes.ver',
                 'planes.editar', 'solicitudes.crear', 'solicitudes.revisar',
                 'ordenes.ver', 'ordenes.editar', 'ordenes.cerrar', 'reportes.ver',

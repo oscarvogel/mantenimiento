@@ -322,6 +322,7 @@ final class OperationsPayload
             'canUpload' => $canUpload, 'maxSizeMb' => max(1, (int) env('imports.maxSizeMB', 10)),
             'routes' => [
                 'upload' => $base,
+                'driverAssignmentsPreview' => $base . '/choferes/preview',
                 'templates' => ['equipment' => $base . '/plantilla/EQUIPOS', 'readings' => $base . '/plantilla/LECTURAS'],
             ],
             'imports' => [
@@ -335,6 +336,40 @@ final class OperationsPayload
                     'detailUrl' => $base . '/' . $row['id'],
                 ], $page->items),
             ],
+        ];
+    }
+
+    /** @param array{rows:list<\App\Application\Employees\DriverAssignmentPreviewRow>,summary:array{total:int,ok:int,warnings:int,errors:int}} $preview */
+    public function driverAssignmentPreview(array $preview, string $originalFile, string $previewToken): array
+    {
+        return [
+            'routes' => [
+                'back' => base_url('mantenimiento/importaciones'),
+                'confirm' => base_url('mantenimiento/importaciones/choferes/confirmar'),
+            ],
+            'previewToken' => $previewToken,
+            'canConfirm' => (int) $preview['summary']['warnings'] === 0 && (int) $preview['summary']['errors'] === 0,
+            'header' => [
+                'originalFile' => $originalFile,
+                'totalRows' => (int) $preview['summary']['total'],
+                'okRows' => (int) $preview['summary']['ok'],
+                'warningRows' => (int) $preview['summary']['warnings'],
+                'errorRows' => (int) $preview['summary']['errors'],
+            ],
+            'rows' => array_map(static fn ($row): array => [
+                'sheet' => $row->source->sheet,
+                'rowNumber' => $row->source->rowNumber,
+                'brand' => $row->source->brand,
+                'plate' => $row->source->plate,
+                'normalizedPlate' => $row->source->normalizedPlate,
+                'driverName' => $row->source->driverName,
+                'status' => $row->status,
+                'equipmentId' => $row->equipmentId,
+                'employeeId' => $row->employeeId,
+                'employeeCandidateIds' => $row->employeeCandidateIds,
+                'action' => $row->action,
+                'message' => $row->message,
+            ], $preview['rows']),
         ];
     }
 

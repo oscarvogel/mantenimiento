@@ -32,6 +32,9 @@ use App\Application\Assets\TransferEquipmentHandler;
 use App\Application\Assets\UpdateEquipmentCommand;
 use App\Application\Assets\UpdateEquipmentHandler;
 use App\Application\Identity\ActorContext;
+use App\Application\Employees\EmployeeService;
+use App\Infrastructure\Employees\CodeIgniterEmployeeAssignmentRepository;
+use App\Infrastructure\Employees\CodeIgniterEmployeeRepository;
 use App\Application\Measurement\CorrectReadingCommand;
 use App\Application\Measurement\CorrectReadingHandler;
 use App\Application\Measurement\ListReadingHistoryHandler;
@@ -110,6 +113,8 @@ final class EquipmentManagement extends BaseController
                 $historyPerPage,
             );
 
+            $payload['driverAssignment'] = $this->driverAssignmentPayload($actor, $equipmentId);
+
             return $this->renderApp(
                 $actor,
                 'equipment',
@@ -119,6 +124,38 @@ final class EquipmentManagement extends BaseController
             );
         } catch (Throwable $exception) {
             return $this->failure($exception, '/mantenimiento');
+        }
+    }
+
+    public function assignDriver(int $equipmentId): RedirectResponse
+    {
+        try {
+            $actor = $this->actor();
+            $employeeId = (int) $this->request->getPost('empleado_id');
+            if ($employeeId <= 0) {
+                throw new DomainException('Seleccioná un chofer válido.');
+            }
+
+            $date = $this->dateTime(
+                (string) $this->request->getPost('fecha_desde'),
+                'La fecha de asignación del chofer no es válida.',
+            );
+
+            $database = db_connect();
+            (new EmployeeService(
+                new CodeIgniterEmployeeRepository($database),
+                new CodeIgniterEmployeeAssignmentRepository($database),
+            ))->assignDriver(
+                $actor,
+                $employeeId,
+                $equipmentId,
+                $date,
+                $this->nullableString($this->request->getPost('observaciones')),
+            );
+
+            return $this->success($equipmentId, 'Chofer asignado correctamente; el historial anterior fue conservado.');
+        } catch (Throwable $exception) {
+            return $this->failure($exception, $this->equipmentUrl($equipmentId));
         }
     }
 
@@ -482,6 +519,71 @@ final class EquipmentManagement extends BaseController
                 'baseUrl' => $base,
                 'query' => $query,
             ],
+        ];
+    }
+
+    /** @return array<string,mixed>|null */
+    private function driverAssignmentPayload(ActorContext $actor, int $equipmentId): ?array
+    {
+        if (! $actor->hasPermission('empleados.ver') || $actor->companyId() === null) {
+            return null;
+        }
+
+        $database = db_connect();
+        $companyId = $actor->companyId();
+
+        $current = $database->table('employee_equipment_assignments a')
+            ->select('a.id, a.empleado_id, a.fecha_desde, a.observaciones, e.nombre, e.apellido')
+            ->join('empleados e', 'e.id = a.empleado_id', 'inner')
+            ->where('a.empresa_id', $companyId)
+            ->where('a.equipo_id', $equipmentId)
+            ->where('a.rol', 'CHOFER')
+            ->where('a.fecha_hasta', null)
+            ->get()->getRowArray();
+
+        $history = $database->table('employee_equipment_assignments a')
+            ->select('a.id, a.empleado_id, a.fecha_desde, a.fecha_hasta, a.observaciones, e.nombre, e.apellido')
+            ->join('empleados e', 'e.id = a.empleado_id', 'inner')
+            ->where('a.empresa_id', $companyId)
+            ->where('a.equipo_id', $equipmentId)
+            ->where('a.rol', 'CHOFER')
+            ->orderBy('a.fecha_desde', 'DESC')
+            ->limit(25)
+            ->get()->getResultArray();
+
+        $canEdit = $actor->hasPermission('empleados.editar');
+        $employees = $canEdit
+            ? $database->table('empleados')
+                ->select('id, nombre, apellido')
+                ->where('empresa_id', $companyId)
+                ->where('activo', 1)
+                ->where('deleted_at', null)
+                ->orderBy('apellido', 'ASC')
+                ->orderBy('nombre', 'ASC')
+                ->get()->getResultArray()
+            : [];
+
+        return [
+            'canEdit' => $canEdit,
+            'assignUrl' => base_url('mantenimiento/equipos/' . $equipmentId . '/chofer'),
+            'current' => $current === null ? null : [
+                'employeeId' => (int) $current['empleado_id'],
+                'name' => trim((string) $current['nombre'] . ' ' . (string) $current['apellido']),
+                'from' => (string) $current['fecha_desde'],
+                'notes' => $current['observaciones'],
+            ],
+            'employees' => array_map(static fn (array $row): array => [
+                'id' => (int) $row['id'],
+                'name' => trim((string) $row['nombre'] . ' ' . (string) $row['apellido']),
+            ], $employees),
+            'history' => array_map(static fn (array $row): array => [
+                'id' => (int) $row['id'],
+                'employeeId' => (int) $row['empleado_id'],
+                'name' => trim((string) $row['nombre'] . ' ' . (string) $row['apellido']),
+                'from' => (string) $row['fecha_desde'],
+                'to' => $row['fecha_hasta'] === null ? null : (string) $row['fecha_hasta'],
+                'notes' => $row['observaciones'],
+            ], $history),
         ];
     }
 

@@ -25,6 +25,8 @@ $routes->get('dashboard', 'Dashboard::index', ['filter' => 'auth']);
 
 // Cron web seguro para hosting sin PHP CLI. Usa POST + X-Cron-Token y no CSRF.
 $routes->post('internal/cron/notifications/dispatch', 'NotificationCron::dispatch');
+$routes->post('internal/deploy/migrate', 'NotificationCron::migrate');
+$routes->get('internal/deploy/migrate', 'NotificationCron::methodNotAllowed');
 $routes->get('internal/cron/notifications/dispatch', 'NotificationCron::methodNotAllowed');
 $routes->match(['put', 'patch', 'delete', 'options'], 'internal/cron/notifications/dispatch', 'NotificationCron::methodNotAllowed');
 
@@ -101,6 +103,7 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->get('equipos/(:num)/qr.svg', 'AssetManagement::qr/$1', ['filter' => 'permission:equipos.ver']);
     $routes->post('equipos/(:num)/qr/regenerar', 'AssetManagement::regenerateQr/$1', ['filter' => 'permission:equipos.editar']);
     $routes->post('equipos/(:num)/editar', 'EquipmentManagement::update/$1', ['filter' => 'permission:equipos.editar']);
+    $routes->post('equipos/(:num)/chofer', 'EquipmentManagement::assignDriver/$1', ['filter' => 'permission:empleados.editar']);
     $routes->post('equipos/(:num)/trasladar', 'EquipmentManagement::transfer/$1', ['filter' => 'permission:equipos.editar']);
     $routes->post('equipos/(:num)/baja', 'EquipmentManagement::decommission/$1', ['filter' => 'permission:equipos.editar']);
     $routes->post('equipos/(:num)/adjuntos', 'EquipmentManagement::uploadAttachment/$1', ['filter' => 'permission:equipos.editar']);
@@ -119,6 +122,12 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->post('catalogos/modelos/(:num)', 'AssetManagement::renameModel/$1', ['filter' => 'permission:equipos.editar']);
     $routes->post('catalogos/modelos/(:num)/inactivar', 'AssetManagement::inactivateModel/$1', ['filter' => 'permission:equipos.editar']);
 
+    $routes->get('empleados', 'Employees::index', ['filter' => 'permission:empleados.ver']);
+    $routes->post('empleados', 'Employees::create', ['filter' => 'permission:empleados.editar']);
+    $routes->post('empleados/(:num)', 'Employees::update/$1', ['filter' => 'permission:empleados.editar']);
+    $routes->get('empleados/(:num)/foto', 'Employees::photo/$1', ['filter' => 'permission:empleados.ver']);
+    $routes->post('empleados/(:num)/baja', 'Employees::terminate/$1', ['filter' => 'permission:empleados.editar']);
+
     $routes->get('importaciones', 'ImportManagement::index', ['filter' => 'permission:importaciones.ver']);
     $routes->get('importaciones/biblioteca', 'ImportManagement::library', ['filter' => 'permission:importaciones.ver']);
     $routes->post('importaciones/biblioteca/items/(:num)', 'ImportManagement::updateLibraryItem/$1', ['filter' => 'permission:importaciones.cargar']);
@@ -130,6 +139,8 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->post('importaciones/biblioteca/servicios/(:num)/tareas/nueva', 'LibraryTaskCatalog::createAndLink/$1', ['filter' => 'permission:importaciones.cargar']);
     $routes->get('importaciones/plantilla/(:segment)', 'ImportManagement::template/$1', ['filter' => 'permission:importaciones.cargar']);
     $routes->post('importaciones', 'ImportManagement::upload', ['filter' => 'permission:importaciones.cargar']);
+    $routes->post('importaciones/choferes/preview', 'ImportManagement::driverAssignmentsPreview', ['filter' => ['permission:importaciones.cargar', 'permission:empleados.editar']]);
+    $routes->post('importaciones/choferes/confirmar', 'ImportManagement::confirmDriverAssignments', ['filter' => ['permission:importaciones.cargar', 'permission:empleados.editar']]);
     $routes->get('importaciones/(:num)', 'ImportManagement::show/$1', ['filter' => 'permission:importaciones.ver']);
     $routes->post('importaciones/(:num)/confirmar', 'ImportManagement::confirm/$1', ['filter' => 'permission:importaciones.cargar']);
     $routes->post('importaciones/(:num)/cancelar', 'ImportManagement::cancel/$1', ['filter' => 'permission:importaciones.cargar']);
