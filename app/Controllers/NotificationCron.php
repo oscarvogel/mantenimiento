@@ -73,14 +73,12 @@ final class NotificationCron extends BaseController
                 'message' => 'Migraciones pendientes aplicadas correctamente.',
             ]);
         } catch (Throwable $exception) {
-            log_message('error', 'Falló ejecución HTTP de migraciones: {message}', [
-                'message' => $exception->getMessage(),
-            ]);
+            log_message('error', 'Falló ejecución HTTP de migraciones.');
 
             return $this->response->setStatusCode(500)->setJSON([
                 'status' => 'error',
                 'error' => 'migration_failed',
-                'message' => ENVIRONMENT === 'development' ? $exception->getMessage() : 'Falló la ejecución de migraciones.',
+                'message' => 'Falló la ejecución de migraciones.',
             ]);
         }
     }
