@@ -10,7 +10,7 @@ final class DashboardPayloadTest extends TestCase
 {
     public function testBuildsScopedDeepLinksForMetricsAndMaintenanceRows(): void
     {
-        $actor = new ActorContext(7, 5, false, true, ['Administrador'], ['equipos.ver', 'planes.ver', 'ordenes.editar'], []);
+        $actor = new ActorContext(7, 5, false, true, ['Administrador'], ['equipos.ver', 'planes.ver', 'ordenes.ver', 'ordenes.editar'], []);
         $payload = (new DashboardPayload())->fromOperations($actor, [
             'metrics' => ['maintenanceOverdue' => 1],
             'upcomingMaintenance' => [[
@@ -23,6 +23,7 @@ final class DashboardPayloadTest extends TestCase
         self::assertStringContainsString('equipo_id=14', $payload['upcomingMaintenance'][0]['actionUrl']);
         self::assertSame('Atender', $payload['upcomingMaintenance'][0]['actionLabel']);
         self::assertStringContainsString('/mantenimiento/equipos/14', $payload['upcomingMaintenance'][0]['detailUrl']);
+        self::assertStringContainsString('/reportes', $payload['links']['financialDetail']);
     }
 
     public function testUsesReadOnlyLabelForOverduePlansWithoutOrderPermission(): void
@@ -49,6 +50,7 @@ final class DashboardPayloadTest extends TestCase
         ]);
 
         self::assertSame('#', $payload['links']['maintenanceOverdue']);
+        self::assertSame('#', $payload['links']['financialDetail']);
         self::assertNull($payload['upcomingMaintenance'][0]['actionUrl']);
         self::assertNull($payload['upcomingMaintenance'][0]['actionLabel']);
     }
