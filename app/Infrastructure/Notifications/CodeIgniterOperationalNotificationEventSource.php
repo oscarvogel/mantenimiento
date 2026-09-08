@@ -54,7 +54,6 @@ final class CodeIgniterOperationalNotificationEventSource implements Operational
             ->join('empleados emp', 'emp.id = v.empleado_id AND emp.empresa_id = v.empresa_id', 'left')
             ->where('v.activo', 1)
             ->where('v.deleted_at', null)
-            ->where('t.activo', 1)
             ->where('t.deleted_at', null)
             ->get()->getResultArray();
 
