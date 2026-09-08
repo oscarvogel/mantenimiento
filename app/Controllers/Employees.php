@@ -118,6 +118,10 @@ final class Employees extends BaseController
                     (int) $actor->companyId(),
                     \App\Domain\Expirations\ExpirationSubjectType::EMPLOYEE,
                 ),
+                'expirationRoutes' => [
+                    'create' => base_url('mantenimiento/vencimientos'),
+                    'createType' => base_url('mantenimiento/vencimientos/tipos'),
+                ],
                 'canEdit' => $actor->hasPermission('empleados.editar'),
                 'routes' => [
                     'index' => base_url('mantenimiento/empleados'),
