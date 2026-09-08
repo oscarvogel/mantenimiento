@@ -15,6 +15,10 @@ const formEmployee = ref(undefined)
 const terminationEmployee = ref(null)
 
 const activeCount = computed(() => props.data.employees.filter((employee) => employee.active).length)
+const selectedHistoryEmployee = computed(() => {
+  const id = String(props.data.historyFilters.employeeId || '')
+  return props.data.employeeCatalog.find((employee) => String(employee.id) === id) || null
+})
 
 const openCreate = () => {
   formEmployee.value = null
@@ -99,8 +103,16 @@ const openTerminate = (employee) => {
             <tbody class="divide-y divide-border-subtle">
               <tr v-for="employee in data.employees" :key="employee.id" class="hover:bg-brand-50/50">
                 <td class="px-5 py-4">
-                  <div class="font-semibold text-ink">{{ employee.fullName }}</div>
-                  <div v-if="employee.importedIncomplete" class="mt-1 text-xs font-medium text-warning-strong">Datos incompletos</div>
+                  <div class="flex items-center gap-3">
+                    <div class="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border-subtle bg-surface-subtle text-sm font-bold text-ink-muted">
+                      <img v-if="employee.photoUrl" :src="employee.photoUrl" :alt="`Foto de ${employee.fullName}`" class="h-full w-full object-cover" />
+                      <span v-else>{{ employee.firstName.slice(0, 1).toUpperCase() }}</span>
+                    </div>
+                    <div>
+                      <div class="font-semibold text-ink">{{ employee.fullName }}</div>
+                      <div v-if="employee.importedIncomplete" class="mt-1 text-xs font-medium text-warning-strong">Datos incompletos</div>
+                    </div>
+                  </div>
                 </td>
                 <td class="px-5 py-4 text-ink-muted">{{ employee.document || '—' }}</td>
                 <td class="px-5 py-4 text-ink-muted">{{ employee.employeeNumber || '—' }}</td>
@@ -143,12 +155,18 @@ const openTerminate = (employee) => {
         <ul class="divide-y divide-border-subtle md:hidden">
           <li v-for="employee in data.employees" :key="employee.id" class="p-5">
             <div class="flex items-start justify-between gap-3">
-              <div class="min-w-0">
-                <p class="truncate font-semibold text-ink">{{ employee.fullName }}</p>
+              <div class="flex min-w-0 items-center gap-3">
+                <div class="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border-subtle bg-surface-subtle text-sm font-bold text-ink-muted">
+                  <img v-if="employee.photoUrl" :src="employee.photoUrl" :alt="`Foto de ${employee.fullName}`" class="h-full w-full object-cover" />
+                  <span v-else>{{ employee.firstName.slice(0, 1).toUpperCase() }}</span>
+                </div>
+                <div class="min-w-0">
+                  <p class="truncate font-semibold text-ink">{{ employee.fullName }}</p>
                 <p class="mt-1 text-xs text-ink-muted">
                   {{ employee.document ? 'DNI ' + employee.document : 'Sin documento' }}
                   <span v-if="employee.employeeNumber"> · {{ employee.employeeNumber }}</span>
                 </p>
+                </div>
               </div>
               <span
                 :class="employee.active ? 'bg-success-soft text-success-strong' : 'bg-surface-subtle text-ink-muted'"
@@ -177,6 +195,14 @@ const openTerminate = (employee) => {
 
     <PanelCard id="historial-asignaciones" title="Historial de asignaciones" :count="data.assignmentHistory.length" class="mt-6" flush>
       <div class="border-b border-border-subtle p-5">
+        <div v-if="selectedHistoryEmployee" class="mb-4 flex flex-wrap items-center gap-2">
+          <span class="text-sm font-semibold text-ink">Historial filtrado por:</span>
+          <span class="inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1.5 text-sm font-semibold text-brand-700">
+            <img v-if="selectedHistoryEmployee.photoUrl" :src="selectedHistoryEmployee.photoUrl" :alt="`Foto de ${selectedHistoryEmployee.name}`" class="size-6 rounded-full object-cover" />
+            {{ selectedHistoryEmployee.name }}
+          </span>
+          <a :href="`${data.routes.index}#historial-asignaciones`" class="text-sm font-semibold text-brand-700 hover:underline">Quitar filtro</a>
+        </div>
         <form method="get" :action="data.routes.index" class="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(14rem,1fr)_minmax(12rem,1fr)_10rem_10rem_11rem_auto] xl:items-end">
           <FormField label="Chofer" for-id="history-driver">
             <select id="history-driver" name="chofer_id" :class="fieldClass">
@@ -237,8 +263,13 @@ const openTerminate = (employee) => {
             <tbody class="divide-y divide-border-subtle">
               <tr v-for="assignment in data.assignmentHistory" :key="assignment.id" class="hover:bg-brand-50/50">
                 <td class="px-5 py-4">
-                  <div class="font-semibold text-ink">{{ assignment.employeeName }}</div>
-                  <div v-if="!assignment.employeeActive" class="mt-1 text-xs text-ink-muted">Empleado dado de baja</div>
+                  <div class="flex items-center gap-3">
+                    <img v-if="assignment.employeePhotoUrl" :src="assignment.employeePhotoUrl" :alt="`Foto de ${assignment.employeeName}`" class="size-9 rounded-full border border-border-subtle object-cover" />
+                    <div>
+                      <div class="font-semibold text-ink">{{ assignment.employeeName }}</div>
+                      <div v-if="!assignment.employeeActive" class="mt-1 text-xs text-ink-muted">Empleado dado de baja</div>
+                    </div>
+                  </div>
                 </td>
                 <td class="px-5 py-4">
                   <a :href="assignment.equipmentUrl" class="font-semibold text-brand-700 hover:underline">{{ assignment.equipmentCode }}</a>
