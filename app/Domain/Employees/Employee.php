@@ -117,6 +117,32 @@ final class Employee
         );
     }
 
+    public function updateProfile(
+        string $firstName,
+        string $lastName = '',
+        ?string $document = null,
+        ?string $cuil = null,
+        ?string $employeeNumber = null,
+        ?string $phone = null,
+        ?string $email = null,
+        ?DateTimeImmutable $hiredAt = null,
+        ?string $notes = null,
+    ): void {
+        if (! $this->active) {
+            throw new DomainException('No se puede editar un empleado dado de baja.');
+        }
+
+        $this->firstName = self::requiredText($firstName, 100, 'El nombre');
+        $this->lastName = self::optionalText($lastName, 100) ?? '';
+        $this->document = self::optionalText($document, 30);
+        $this->cuil = self::optionalText($cuil, 30);
+        $this->employeeNumber = self::optionalText($employeeNumber, 50);
+        $this->phone = self::optionalText($phone, 50);
+        $this->email = self::optionalEmail($email);
+        $this->hiredAt = $hiredAt;
+        $this->notes = self::optionalText($notes, 1000);
+    }
+
     public function terminate(DateTimeImmutable $date, string $reason): void
     {
         if (! $this->active) {
