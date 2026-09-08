@@ -19,6 +19,16 @@ interface EmployeeAssignmentRepository
     /** @return list<array<string,mixed>> */
     public function historyForEquipment(int $companyId, int $equipmentId): array;
 
+    /** @return list<array<string,mixed>> */
+    public function assignmentHistory(
+        int $companyId,
+        ?int $employeeId = null,
+        ?string $equipmentSearch = null,
+        ?DateTimeImmutable $from = null,
+        ?DateTimeImmutable $to = null,
+        ?bool $current = null,
+    ): array;
+
     public function assignDriver(
         int $companyId,
         int $employeeId,
