@@ -152,7 +152,7 @@ for (const order of props.data.orders ?? []) closeStateFor(order)
           </div>
           <button type="button" :class="secondaryButton" aria-label="Cerrar" @click="closeCancelModal">×</button>
         </div>
-        <form method="post" :action="activeCancelOrder.routes.cancel" class="mt-5 space-y-4">
+        <form method="post" :action="`${data.routes.index}/${activeCancelOrder.id}/cancelar`" class="mt-5 space-y-4">
           <CsrfInput :csrf="data.csrf" />
           <label class="block">
             <span class="mb-1 block text-sm font-semibold text-ink">Motivo de anulación</span>
