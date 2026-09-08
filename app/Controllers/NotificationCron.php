@@ -36,7 +36,7 @@ final class NotificationCron extends BaseController
     public function migrate(): ResponseInterface
     {
         $provided = trim((string) $this->headerToken());
-        $expected = trim((string) env('alerts.webCronToken', ''));
+        $expected = trim((string) env('MIGRATE_TOKEN', ''));
 
         if ($provided === '') {
             log_message('warning', 'Intento rechazado de migración HTTP sin token.');
@@ -48,7 +48,7 @@ final class NotificationCron extends BaseController
         }
 
         if (strlen($expected) < 32 || ! hash_equals($expected, $provided)) {
-            log_message('warning', 'Intento rechazado de migración HTTP con token inválido.');
+            log_message('warning', 'Intento rechazado de migración HTTP con MIGRATE_TOKEN inválido.');
 
             return $this->response->setStatusCode(403)->setJSON([
                 'status' => 'error',
