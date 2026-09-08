@@ -117,6 +117,8 @@ final class CodeIgniterExpirationReadModel
             'status' => $expiration->statusAt($today)->value,
             'daysUntil' => $expiration->daysUntil($today),
             'origin' => (string) $row['origen'],
+            'updateUrl' => base_url('mantenimiento/vencimientos/' . (int) $row['id']),
+            'deactivateUrl' => base_url('mantenimiento/vencimientos/' . (int) $row['id'] . '/retirar'),
         ];
     }
 }
