@@ -120,6 +120,11 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->post('catalogos/modelos/(:num)', 'AssetManagement::renameModel/$1', ['filter' => 'permission:equipos.editar']);
     $routes->post('catalogos/modelos/(:num)/inactivar', 'AssetManagement::inactivateModel/$1', ['filter' => 'permission:equipos.editar']);
 
+    $routes->get('empleados', 'Employees::index', ['filter' => 'permission:empleados.ver']);
+    $routes->post('empleados', 'Employees::create', ['filter' => 'permission:empleados.editar']);
+    $routes->post('empleados/(:num)', 'Employees::update/$1', ['filter' => 'permission:empleados.editar']);
+    $routes->post('empleados/(:num)/baja', 'Employees::terminate/$1', ['filter' => 'permission:empleados.editar']);
+
     $routes->get('importaciones', 'ImportManagement::index', ['filter' => 'permission:importaciones.ver']);
     $routes->get('importaciones/biblioteca', 'ImportManagement::library', ['filter' => 'permission:importaciones.ver']);
     $routes->post('importaciones/biblioteca/items/(:num)', 'ImportManagement::updateLibraryItem/$1', ['filter' => 'permission:importaciones.cargar']);
