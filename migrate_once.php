@@ -57,12 +57,24 @@ function loadEnv(string $path): array
 
 function envValue(array $env, string $key, ?string $default = null): ?string
 {
-    $runtime = getenv($key);
-    if ($runtime !== false && $runtime !== '') {
-        return (string) $runtime;
+    $aliases = [$key];
+
+    if (str_starts_with($key, 'database.default.')) {
+        $aliases[] = 'database_default_' . substr($key, strlen('database.default.'));
     }
 
-    return $env[$key] ?? $default;
+    foreach ($aliases as $alias) {
+        $runtime = getenv($alias);
+        if ($runtime !== false && $runtime !== '') {
+            return (string) $runtime;
+        }
+
+        if (isset($env[$alias]) && $env[$alias] !== '') {
+            return $env[$alias];
+        }
+    }
+
+    return $default;
 }
 
 function tableExists(mysqli $db, string $table): bool
