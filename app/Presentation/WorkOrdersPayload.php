@@ -60,6 +60,7 @@ final class WorkOrdersPayload
                     'start' => base_url('mantenimiento/ordenes/' . $id . '/iniciar'),
                     'waitParts' => base_url('mantenimiento/ordenes/' . $id . '/esperar-repuestos'),
                     'resume' => base_url('mantenimiento/ordenes/' . $id . '/reanudar'),
+                    'cancel' => base_url('mantenimiento/ordenes/' . $id . '/cancelar'),
                     'close' => base_url('mantenimiento/ordenes/' . $id . '/cerrar'),
                 ],
             ];

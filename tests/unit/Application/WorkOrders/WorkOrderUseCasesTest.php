@@ -166,6 +166,24 @@ final class WorkOrderUseCasesTest extends TestCase
         self::assertSame('Trabajo ya realizado previamente', $repository->order?->cancellationReason());
     }
 
+    public function testCancelsInProgressOrderWithReason(): void
+    {
+        $repository = new InMemoryWorkOrderRepository($this->persistedOrder(WorkOrderStatus::IN_PROGRESS));
+        $handler = new ChangeWorkOrderState($repository, new ImmediateWorkOrderTransaction(), new FixedClock());
+
+        $handler->execute($this->actor(['ordenes.editar']), new ChangeWorkOrderStateCommand(
+            50,
+            'cancelar',
+            'Orden duplicada',
+        ));
+
+        self::assertSame(WorkOrderStatus::CANCELLED, $repository->order?->status());
+        self::assertSame('Orden duplicada', $repository->order?->cancellationReason());
+        self::assertNull($repository->order?->completedAt());
+        self::assertNull($repository->order?->outputKilometres());
+        self::assertNull($repository->order?->outputHours());
+    }
+
     public function testRejectsInvalidLifecycleTransition(): void
     {
         $repository = new InMemoryWorkOrderRepository($this->persistedOrder(WorkOrderStatus::ISSUED));

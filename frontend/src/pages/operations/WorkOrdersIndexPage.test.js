@@ -18,13 +18,13 @@ const data = () => ({
   pagination: { page: 1, totalPages: 1, total: 3, perPage: 25, previousUrl: null, nextUrl: null },
   orders: [
     {
-      id: 31, number: 'OT-00031', origin: 'PREVENTIVO', priority: 'ALTA', status: 'EMITIDA', equipmentCode: 'CAM-01', plate: 'AA123BB', branchName: 'Garuhapé', serviceName: 'Servicio motor', ownerName: 'Técnico Uno', openedAt: '2026-08-20 08:00:00', startedAt: null, finishedAt: null, ageDays: 4, delayed: true, entryKm: 120000, entryHours: null, currentKm: 120500, currentHours: null, diagnosis: null, notes: 'Control general', costs: { labor: 0, parts: 0, other: 0, total: 0 }, tasks: [{ id: 81, description: 'Cambiar aceite', status: 'PENDIENTE', workPerformed: null }], routes: { print: '/mantenimiento/ordenes/31/imprimir', start: '/mantenimiento/ordenes/31/iniciar', resume: '/mantenimiento/ordenes/31/reanudar', close: '/mantenimiento/ordenes/31/cerrar' },
+      id: 31, number: 'OT-00031', origin: 'PREVENTIVO', priority: 'ALTA', status: 'EMITIDA', equipmentCode: 'CAM-01', plate: 'AA123BB', branchName: 'Garuhapé', serviceName: 'Servicio motor', ownerName: 'Técnico Uno', openedAt: '2026-08-20 08:00:00', startedAt: null, finishedAt: null, ageDays: 4, delayed: true, entryKm: 120000, entryHours: null, currentKm: 120500, currentHours: null, diagnosis: null, notes: 'Control general', costs: { labor: 0, parts: 0, other: 0, total: 0 }, tasks: [{ id: 81, description: 'Cambiar aceite', status: 'PENDIENTE', workPerformed: null }], routes: { print: '/mantenimiento/ordenes/31/imprimir', start: '/mantenimiento/ordenes/31/iniciar', resume: '/mantenimiento/ordenes/31/reanudar', cancel: '/mantenimiento/ordenes/31/cancelar', close: '/mantenimiento/ordenes/31/cerrar' },
     },
     {
-      id: 32, number: 'OT-00032', origin: 'CORRECTIVO', priority: 'MEDIA', status: 'ESPERA_REPUESTOS', equipmentCode: 'TR-04', plate: null, branchName: 'Garuhapé', serviceName: 'OT correctiva', ownerName: 'Técnico Uno', openedAt: '2026-08-24 08:00:00', startedAt: '2026-08-24 09:00:00', finishedAt: null, ageDays: 0, delayed: false, entryKm: null, entryHours: '8420.0', currentKm: null, currentHours: '8420.0', diagnosis: 'Pérdida hidráulica', notes: null, costs: { labor: 0, parts: 0, other: 0, total: 0 }, tasks: [], routes: { print: '/mantenimiento/ordenes/32/imprimir', start: '/mantenimiento/ordenes/32/iniciar', resume: '/mantenimiento/ordenes/32/reanudar', close: '/mantenimiento/ordenes/32/cerrar' },
+      id: 32, number: 'OT-00032', origin: 'CORRECTIVO', priority: 'MEDIA', status: 'ESPERA_REPUESTOS', equipmentCode: 'TR-04', plate: null, branchName: 'Garuhapé', serviceName: 'OT correctiva', ownerName: 'Técnico Uno', openedAt: '2026-08-24 08:00:00', startedAt: '2026-08-24 09:00:00', finishedAt: null, ageDays: 0, delayed: false, entryKm: null, entryHours: '8420.0', currentKm: null, currentHours: '8420.0', diagnosis: 'Pérdida hidráulica', notes: null, costs: { labor: 0, parts: 0, other: 0, total: 0 }, tasks: [], routes: { print: '/mantenimiento/ordenes/32/imprimir', start: '/mantenimiento/ordenes/32/iniciar', resume: '/mantenimiento/ordenes/32/reanudar', cancel: '/mantenimiento/ordenes/32/cancelar', close: '/mantenimiento/ordenes/32/cerrar' },
     },
     {
-      id: 33, number: 'OT-00033', origin: 'PREVENTIVO', priority: 'MEDIA', status: 'EN_PROCESO', equipmentCode: 'CAM-09', plate: 'AB999CD', branchName: 'Garuhapé', serviceName: 'Frenos', ownerName: 'Técnico Uno', openedAt: '2026-08-23 08:00:00', startedAt: '2026-08-23 09:00:00', finishedAt: null, ageDays: 1, delayed: false, entryKm: 99000, entryHours: null, currentKm: 99100, currentHours: null, diagnosis: null, notes: null, costs: { labor: 0, parts: 0, other: 0, total: 0 }, tasks: [{ id: 91, description: 'Revisar pastillas', status: 'PENDIENTE', workPerformed: null }], routes: { print: '/mantenimiento/ordenes/33/imprimir', start: '/mantenimiento/ordenes/33/iniciar', resume: '/mantenimiento/ordenes/33/reanudar', close: '/mantenimiento/ordenes/33/cerrar' },
+      id: 33, number: 'OT-00033', origin: 'PREVENTIVO', priority: 'MEDIA', status: 'EN_PROCESO', equipmentCode: 'CAM-09', plate: 'AB999CD', branchName: 'Garuhapé', serviceName: 'Frenos', ownerName: 'Técnico Uno', openedAt: '2026-08-23 08:00:00', startedAt: '2026-08-23 09:00:00', finishedAt: null, ageDays: 1, delayed: false, entryKm: 99000, entryHours: null, currentKm: 99100, currentHours: null, diagnosis: null, notes: null, costs: { labor: 0, parts: 0, other: 0, total: 0 }, tasks: [{ id: 91, description: 'Revisar pastillas', status: 'PENDIENTE', workPerformed: null }], routes: { print: '/mantenimiento/ordenes/33/imprimir', start: '/mantenimiento/ordenes/33/iniciar', resume: '/mantenimiento/ordenes/33/reanudar', cancel: '/mantenimiento/ordenes/33/cancelar', close: '/mantenimiento/ordenes/33/cerrar' },
     },
   ],
 })
@@ -94,6 +94,21 @@ describe('WorkOrdersIndexPage', () => {
     expect(wrapper.text()).toContain('Cambiar aceite')
     expect(wrapper.text()).toContain('Control general')
     expect(wrapper.text()).toContain('Total: $ 0,00')
+  })
+
+  it('permite anular una OT activa con motivo obligatorio', async () => {
+    const wrapper = mount(WorkOrdersIndexPage, { props: { data: data() }, attachTo: document.body })
+    const order = wrapper.find('#orden-33')
+    const cancelButton = order.findAll('button').find((button) => button.text().trim() === 'Anular')
+    expect(cancelButton).toBeDefined()
+
+    await cancelButton.trigger('click')
+    const modal = document.body.querySelector('[data-testid="work-order-cancel-modal"]')
+    expect(modal).not.toBeNull()
+    expect(modal.textContent).toContain('Anular OT-00033')
+    expect(modal.querySelector('form').getAttribute('action')).toBe('/mantenimiento/ordenes/33/cancelar')
+    expect(modal.querySelector('textarea[name="motivo"]').required).toBe(true)
+    expect(modal.querySelector('textarea[name="motivo"]').minLength).toBe(5)
   })
 
   it('abre el mismo modal de cierre desde una OT en proceso', async () => {

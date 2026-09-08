@@ -12,6 +12,7 @@ import { fieldClass, primaryButton, secondaryButton } from './helpers.js'
 const props = defineProps({ data: { type: Object, required: true } })
 const closeForms = reactive({})
 const activeCloseOrder = ref(null)
+const activeCancelOrder = ref(null)
 const correctiveModalOpen = ref(false)
 const expandedOrders = ref([])
 
@@ -61,6 +62,8 @@ const openCloseModal = (order) => {
   activeCloseOrder.value = order
 }
 const closeCloseModal = () => { activeCloseOrder.value = null }
+const openCancelModal = (order) => { activeCancelOrder.value = order }
+const closeCancelModal = () => { activeCancelOrder.value = null }
 const updateCloseForm = (value) => {
   if (activeCloseOrder.value) closeForms[activeCloseOrder.value.id] = value
 }
@@ -110,6 +113,7 @@ for (const order of props.data.orders ?? []) closeStateFor(order)
             <a :href="order.routes.print" target="_blank" rel="noopener" :class="secondaryButton"><PrinterIcon class="mr-2 size-4" />Imprimir</a>
             <form v-if="order.status === 'EMITIDA' && data.can.editOrder" method="post" :action="order.routes.start"><CsrfInput :csrf="data.csrf" /><button type="submit" :class="primaryButton">Iniciar</button></form>
             <form v-if="order.status === 'ESPERA_REPUESTOS' && data.can.editOrder" method="post" :action="order.routes.resume"><CsrfInput :csrf="data.csrf" /><button type="submit" :class="primaryButton"><ArrowPathIcon class="mr-2 size-4" />Reanudar</button></form>
+            <button v-if="['EMITIDA', 'EN_PROCESO', 'ESPERA_REPUESTOS'].includes(order.status) && data.can.editOrder" type="button" :class="secondaryButton" aria-haspopup="dialog" @click="openCancelModal(order)">Anular</button>
             <button v-if="order.status === 'EN_PROCESO' && data.can.closeOrder" type="button" :class="primaryButton" aria-haspopup="dialog" @click="openCloseModal(order)"><WrenchScrewdriverIcon class="mr-2 size-4" />Cerrar</button>
           </div>
         </div>
@@ -137,6 +141,30 @@ for (const order of props.data.orders ?? []) closeStateFor(order)
     </div>
 
     <nav v-if="data.pagination.totalPages > 1" class="mt-6 flex items-center justify-between gap-3" aria-label="Paginación de órdenes"><a v-if="data.pagination.previousUrl" :href="data.pagination.previousUrl" :class="secondaryButton">Anterior</a><span v-else></span><span class="text-sm text-ink-muted">Página {{ data.pagination.page }} de {{ data.pagination.totalPages }}</span><a v-if="data.pagination.nextUrl" :href="data.pagination.nextUrl" :class="secondaryButton">Siguiente</a><span v-else></span></nav>
+
+    <div v-if="activeCancelOrder" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" data-testid="work-order-cancel-modal">
+      <div class="w-full max-w-lg rounded-2xl bg-surface-raised p-6 shadow-xl">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <p class="text-xs font-bold uppercase tracking-wide text-danger-strong">Anular orden</p>
+            <h2 class="mt-1 text-xl font-bold text-ink">Anular {{ activeCancelOrder.number }}</h2>
+            <p class="mt-2 text-sm text-ink-muted">La orden quedará cancelada y fuera del circuito operativo. No se registrarán trabajos, lecturas ni costos.</p>
+          </div>
+          <button type="button" :class="secondaryButton" aria-label="Cerrar" @click="closeCancelModal">×</button>
+        </div>
+        <form method="post" :action="activeCancelOrder.routes.cancel" class="mt-5 space-y-4">
+          <CsrfInput :csrf="data.csrf" />
+          <label class="block">
+            <span class="mb-1 block text-sm font-semibold text-ink">Motivo de anulación</span>
+            <textarea name="motivo" required minlength="5" maxlength="255" rows="3" :class="fieldClass" placeholder="Ej.: Orden duplicada"></textarea>
+          </label>
+          <div class="flex justify-end gap-2">
+            <button type="button" :class="secondaryButton" @click="closeCancelModal">Volver</button>
+            <button type="submit" :class="primaryButton">Confirmar anulación</button>
+          </div>
+        </form>
+      </div>
+    </div>
 
     <CorrectiveWorkRegistrationModal v-if="correctiveModalOpen" :data="data" @close="correctiveModalOpen = false" />
     <WorkOrderClosureModal

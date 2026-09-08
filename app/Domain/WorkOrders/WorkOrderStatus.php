@@ -18,8 +18,8 @@ enum WorkOrderStatus: string
         return match ($this) {
             self::DRAFT => in_array($target, [self::ISSUED, self::CANCELLED], true),
             self::ISSUED => in_array($target, [self::IN_PROGRESS, self::CANCELLED], true),
-            self::IN_PROGRESS => in_array($target, [self::WAITING_FOR_PARTS, self::COMPLETED], true),
-            self::WAITING_FOR_PARTS => $target === self::IN_PROGRESS,
+            self::IN_PROGRESS => in_array($target, [self::WAITING_FOR_PARTS, self::COMPLETED, self::CANCELLED], true),
+            self::WAITING_FOR_PARTS => in_array($target, [self::IN_PROGRESS, self::CANCELLED], true),
             self::COMPLETED => $target === self::IN_PROGRESS,
             self::CANCELLED => false,
         };
