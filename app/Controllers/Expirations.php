@@ -8,12 +8,101 @@ use App\Application\Identity\ActorContext;
 use App\Domain\Expirations\ExpirationSubjectType;
 use App\Infrastructure\Identity\SessionActorContext;
 use CodeIgniter\HTTP\RedirectResponse;
+use CodeIgniter\HTTP\ResponseInterface;
 use DateTimeImmutable;
 use DomainException;
 use Throwable;
 
 final class Expirations extends BaseController
 {
+    public function typesIndex(): string|ResponseInterface
+    {
+        try {
+            $actor = $this->actor();
+            $this->assertCanEditAny($actor);
+            $readModel = new \App\Infrastructure\Expirations\CodeIgniterExpirationReadModel(db_connect());
+
+            return $this->renderApp($actor, 'masters-expirations', 'expiration-types-master', 'Tipos de vencimiento', [
+                'types' => $readModel->catalog((int) $actor->companyId()),
+                'routes' => [
+                    'create' => base_url('mantenimiento/vencimientos/tipos'),
+                    'index' => base_url('mantenimiento/maestros/vencimientos'),
+                ],
+            ]);
+        } catch (Throwable $exception) {
+            if (! $exception instanceof DomainException) {
+                log_message('error', 'Falló la carga del maestro de vencimientos: {message}', ['message' => $exception->getMessage()]);
+            }
+
+            return $this->response
+                ->setStatusCode($exception instanceof DomainException ? 403 : 500)
+                ->setHeader('Cache-Control', 'no-store')
+                ->setContentType('text/plain')
+                ->setBody($exception instanceof DomainException ? $exception->getMessage() : 'No se pudo cargar el maestro de tipos de vencimiento.');
+        }
+    }
+
+    public function updateType(int $typeId): RedirectResponse
+    {
+        $returnTo = $this->returnTo();
+        try {
+            $actor = $this->actor();
+            $this->assertCanEditAny($actor);
+            $companyId = (int) $actor->companyId();
+            $db = db_connect();
+
+            $current = $db->table('tipos_vencimiento')
+                ->select('id')
+                ->where('empresa_id', $companyId)
+                ->where('id', $typeId)
+                ->where('deleted_at', null)
+                ->get()->getRowArray();
+            if ($current === null) {
+                throw new DomainException('El tipo de vencimiento no existe.');
+            }
+
+            $name = trim((string) $this->request->getPost('nombre'));
+            if ($name === '' || mb_strlen($name) > 100) {
+                throw new DomainException('El nombre del tipo es obligatorio y admite hasta 100 caracteres.');
+            }
+            $appliesTo = mb_strtoupper(trim((string) $this->request->getPost('aplica_a')));
+            if (! in_array($appliesTo, ['EQUIPO', 'EMPLEADO', 'AMBOS'], true)) {
+                throw new DomainException('El tipo debe aplicar a EQUIPO, EMPLEADO o AMBOS.');
+            }
+            $warningDays = (int) $this->request->getPost('dias_aviso_previo');
+            if ($warningDays < 0 || $warningDays > 3650) {
+                throw new DomainException('Los días de aviso previo deben estar entre 0 y 3650.');
+            }
+
+            $duplicate = $db->table('tipos_vencimiento')
+                ->where('empresa_id', $companyId)
+                ->where('nombre', $name)
+                ->where('id !=', $typeId)
+                ->where('deleted_at', null)
+                ->countAllResults() > 0;
+            if ($duplicate) {
+                throw new DomainException('Ya existe un tipo de vencimiento con ese nombre.');
+            }
+
+            $db->table('tipos_vencimiento')
+                ->where('empresa_id', $companyId)
+                ->where('id', $typeId)
+                ->update([
+                    'nombre' => $name,
+                    'aplica_a' => $appliesTo,
+                    'descripcion' => $this->nullable('descripcion', 500),
+                    'dias_aviso_previo' => $warningDays,
+                    'requiere_documento' => $this->request->getPost('requiere_documento') === null ? 0 : 1,
+                    'updated_by' => $actor->userId(),
+                    'updated_at' => date('Y-m-d H:i:s'),
+                ]);
+
+            return redirect()->to($returnTo)->with('success', 'Tipo de vencimiento actualizado.');
+        } catch (Throwable $exception) {
+            return $this->failure($exception, $returnTo);
+        }
+    }
+
     public function createType(): RedirectResponse
     {
         $returnTo = $this->returnTo();
