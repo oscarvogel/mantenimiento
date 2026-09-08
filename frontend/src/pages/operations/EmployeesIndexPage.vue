@@ -1,8 +1,9 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { MagnifyingGlassIcon, PencilSquareIcon, UserMinusIcon, UserPlusIcon } from '@heroicons/vue/24/outline'
-import CsrfInput from './components/CsrfInput.vue'
 import EmptyState from './components/EmptyState.vue'
+import EmployeeFormModal from './components/EmployeeFormModal.vue'
+import EmployeeTerminationModal from './components/EmployeeTerminationModal.vue'
 import FormField from './components/FormField.vue'
 import PageHeading from './components/PageHeading.vue'
 import PanelCard from './components/PanelCard.vue'
@@ -10,20 +11,24 @@ import { fieldClass, primaryButton, secondaryButton } from './helpers.js'
 
 const props = defineProps({ data: { type: Object, required: true } })
 
-const showCreate = ref(false)
-const editingId = ref(null)
-const terminatingId = ref(null)
+const formEmployee = ref(undefined)
+const terminationEmployee = ref(null)
 
 const activeCount = computed(() => props.data.employees.filter((employee) => employee.active).length)
 
-const toggleEdit = (employeeId) => {
-  editingId.value = editingId.value === employeeId ? null : employeeId
-  terminatingId.value = null
+const openCreate = () => {
+  formEmployee.value = null
+  terminationEmployee.value = null
 }
 
-const toggleTerminate = (employeeId) => {
-  terminatingId.value = terminatingId.value === employeeId ? null : employeeId
-  editingId.value = null
+const openEdit = (employee) => {
+  formEmployee.value = employee
+  terminationEmployee.value = null
+}
+
+const openTerminate = (employee) => {
+  terminationEmployee.value = employee
+  formEmployee.value = undefined
 }
 </script>
 
@@ -60,39 +65,15 @@ const toggleTerminate = (employeeId) => {
           <button type="submit" :class="primaryButton">Buscar</button>
         </form>
 
-        <button
-          v-if="data.canEdit"
-          type="button"
-          :class="secondaryButton"
-          class="shrink-0"
-          @click="showCreate = !showCreate"
-        >
+        <button v-if="data.canEdit" type="button" :class="secondaryButton" class="shrink-0" @click="openCreate">
           <UserPlusIcon class="mr-2 size-5" aria-hidden="true" />
-          {{ showCreate ? 'Cerrar alta' : 'Nuevo empleado' }}
+          Nuevo empleado
         </button>
       </div>
 
       <p class="mt-3 text-sm text-ink-muted">
         {{ data.employees.length }} resultado{{ data.employees.length === 1 ? '' : 's' }} · {{ activeCount }} activo{{ activeCount === 1 ? '' : 's' }}
       </p>
-    </PanelCard>
-
-    <PanelCard v-if="data.canEdit && showCreate" title="Alta de empleado" class="mb-6">
-      <form method="post" :action="data.routes.create" class="grid gap-4 lg:grid-cols-3">
-        <CsrfInput :csrf="data.csrf" />
-        <FormField label="Nombre *" for-id="employee-name"><input id="employee-name" name="nombre" required maxlength="100" :class="fieldClass" /></FormField>
-        <FormField label="Apellido" for-id="employee-lastname"><input id="employee-lastname" name="apellido" maxlength="100" :class="fieldClass" /></FormField>
-        <FormField label="Documento" for-id="employee-document"><input id="employee-document" name="documento" maxlength="30" :class="fieldClass" /></FormField>
-        <FormField label="CUIL" for-id="employee-cuil"><input id="employee-cuil" name="cuil" maxlength="30" :class="fieldClass" /></FormField>
-        <FormField label="Legajo" for-id="employee-number"><input id="employee-number" name="legajo" maxlength="50" :class="fieldClass" /></FormField>
-        <FormField label="Fecha de ingreso" for-id="employee-hired"><input id="employee-hired" name="fecha_ingreso" type="date" :class="fieldClass" /></FormField>
-        <FormField label="Teléfono" for-id="employee-phone"><input id="employee-phone" name="telefono" maxlength="50" :class="fieldClass" /></FormField>
-        <FormField label="Email" for-id="employee-email"><input id="employee-email" name="email" type="email" maxlength="150" :class="fieldClass" /></FormField>
-        <FormField label="Observaciones" for-id="employee-notes" class="lg:col-span-3"><textarea id="employee-notes" name="observaciones" rows="2" maxlength="1000" :class="fieldClass"></textarea></FormField>
-        <div class="lg:col-span-3 flex justify-end">
-          <button type="submit" :class="primaryButton"><UserPlusIcon class="mr-2 size-5" aria-hidden="true" />Guardar empleado</button>
-        </div>
-      </form>
     </PanelCard>
 
     <PanelCard title="Resultados" :count="data.employees.length" flush>
@@ -116,73 +97,42 @@ const toggleTerminate = (employeeId) => {
               </tr>
             </thead>
             <tbody class="divide-y divide-border-subtle">
-              <template v-for="employee in data.employees" :key="employee.id">
-                <tr class="hover:bg-brand-50/50">
-                  <td class="px-5 py-4">
-                    <div class="font-semibold text-ink">{{ employee.fullName }}</div>
-                    <div v-if="employee.importedIncomplete" class="mt-1 text-xs font-medium text-warning-strong">Datos incompletos</div>
-                  </td>
-                  <td class="px-5 py-4 text-ink-muted">{{ employee.document || '—' }}</td>
-                  <td class="px-5 py-4 text-ink-muted">{{ employee.employeeNumber || '—' }}</td>
-                  <td class="px-5 py-4 text-ink-muted">
-                    <div>{{ employee.phone || '—' }}</div>
-                    <div v-if="employee.email" class="text-xs">{{ employee.email }}</div>
-                  </td>
-                  <td class="px-5 py-4">
-                    <span
-                      :class="employee.active ? 'bg-success-soft text-success-strong' : 'bg-surface-subtle text-ink-muted'"
-                      class="rounded-full px-2.5 py-1 text-xs font-semibold"
+              <tr v-for="employee in data.employees" :key="employee.id" class="hover:bg-brand-50/50">
+                <td class="px-5 py-4">
+                  <div class="font-semibold text-ink">{{ employee.fullName }}</div>
+                  <div v-if="employee.importedIncomplete" class="mt-1 text-xs font-medium text-warning-strong">Datos incompletos</div>
+                </td>
+                <td class="px-5 py-4 text-ink-muted">{{ employee.document || '—' }}</td>
+                <td class="px-5 py-4 text-ink-muted">{{ employee.employeeNumber || '—' }}</td>
+                <td class="px-5 py-4 text-ink-muted">
+                  <div>{{ employee.phone || '—' }}</div>
+                  <div v-if="employee.email" class="text-xs">{{ employee.email }}</div>
+                </td>
+                <td class="px-5 py-4">
+                  <span
+                    :class="employee.active ? 'bg-success-soft text-success-strong' : 'bg-surface-subtle text-ink-muted'"
+                    class="rounded-full px-2.5 py-1 text-xs font-semibold"
+                  >
+                    {{ employee.active ? 'Activo' : 'Baja' }}
+                  </span>
+                  <div v-if="!employee.active && employee.terminatedAt" class="mt-1 text-xs text-ink-muted">{{ employee.terminatedAt }}</div>
+                </td>
+                <td class="px-5 py-4">
+                  <div v-if="data.canEdit && employee.active" class="flex justify-end gap-2">
+                    <button type="button" :class="secondaryButton" @click="openEdit(employee)">
+                      <PencilSquareIcon class="mr-1.5 size-4" aria-hidden="true" />Editar
+                    </button>
+                    <button
+                      type="button"
+                      class="inline-flex items-center rounded-md border border-danger/30 px-3 py-2 text-sm font-semibold text-danger-strong hover:bg-danger/5"
+                      @click="openTerminate(employee)"
                     >
-                      {{ employee.active ? 'Activo' : 'Baja' }}
-                    </span>
-                    <div v-if="!employee.active && employee.terminatedAt" class="mt-1 text-xs text-ink-muted">{{ employee.terminatedAt }}</div>
-                  </td>
-                  <td class="px-5 py-4">
-                    <div v-if="data.canEdit && employee.active" class="flex justify-end gap-2">
-                      <button type="button" :class="secondaryButton" @click="toggleEdit(employee.id)">
-                        <PencilSquareIcon class="mr-1.5 size-4" aria-hidden="true" />Editar
-                      </button>
-                      <button type="button" class="inline-flex items-center rounded-md border border-danger/30 px-3 py-2 text-sm font-semibold text-danger-strong hover:bg-danger/5" @click="toggleTerminate(employee.id)">
-                        <UserMinusIcon class="mr-1.5 size-4" aria-hidden="true" />Baja
-                      </button>
-                    </div>
-                    <div v-else class="text-right text-xs text-ink-muted">Sin acciones</div>
-                  </td>
-                </tr>
-
-                <tr v-if="editingId === employee.id">
-                  <td colspan="6" class="bg-surface-subtle/50 px-5 py-5">
-                    <form method="post" :action="employee.updateUrl" class="grid gap-4 lg:grid-cols-3">
-                      <CsrfInput :csrf="data.csrf" />
-                      <FormField label="Nombre *" :for-id="`edit-name-${employee.id}`"><input :id="`edit-name-${employee.id}`" name="nombre" :value="employee.firstName" required maxlength="100" :class="fieldClass" /></FormField>
-                      <FormField label="Apellido" :for-id="`edit-lastname-${employee.id}`"><input :id="`edit-lastname-${employee.id}`" name="apellido" :value="employee.lastName" maxlength="100" :class="fieldClass" /></FormField>
-                      <FormField label="Documento" :for-id="`edit-document-${employee.id}`"><input :id="`edit-document-${employee.id}`" name="documento" :value="employee.document" maxlength="30" :class="fieldClass" /></FormField>
-                      <FormField label="CUIL" :for-id="`edit-cuil-${employee.id}`"><input :id="`edit-cuil-${employee.id}`" name="cuil" :value="employee.cuil" maxlength="30" :class="fieldClass" /></FormField>
-                      <FormField label="Legajo" :for-id="`edit-number-${employee.id}`"><input :id="`edit-number-${employee.id}`" name="legajo" :value="employee.employeeNumber" maxlength="50" :class="fieldClass" /></FormField>
-                      <FormField label="Fecha de ingreso" :for-id="`edit-hired-${employee.id}`"><input :id="`edit-hired-${employee.id}`" name="fecha_ingreso" type="date" :value="employee.hiredAt" :class="fieldClass" /></FormField>
-                      <FormField label="Teléfono" :for-id="`edit-phone-${employee.id}`"><input :id="`edit-phone-${employee.id}`" name="telefono" :value="employee.phone" maxlength="50" :class="fieldClass" /></FormField>
-                      <FormField label="Email" :for-id="`edit-email-${employee.id}`"><input :id="`edit-email-${employee.id}`" name="email" type="email" :value="employee.email" maxlength="150" :class="fieldClass" /></FormField>
-                      <FormField label="Observaciones" :for-id="`edit-notes-${employee.id}`" class="lg:col-span-3"><textarea :id="`edit-notes-${employee.id}`" name="observaciones" rows="2" maxlength="1000" :value="employee.notes || ''" :class="fieldClass"></textarea></FormField>
-                      <div class="lg:col-span-3 flex justify-end gap-2">
-                        <button type="button" :class="secondaryButton" @click="editingId = null">Cancelar</button>
-                        <button type="submit" :class="primaryButton">Guardar cambios</button>
-                      </div>
-                    </form>
-                  </td>
-                </tr>
-
-                <tr v-if="terminatingId === employee.id">
-                  <td colspan="6" class="bg-danger/5 px-5 py-5">
-                    <form method="post" :action="employee.terminateUrl" class="grid gap-4 md:grid-cols-[12rem_1fr_auto_auto] md:items-end">
-                      <CsrfInput :csrf="data.csrf" />
-                      <FormField label="Fecha de baja" :for-id="`terminate-date-${employee.id}`"><input :id="`terminate-date-${employee.id}`" name="fecha_baja" type="date" :class="fieldClass" /></FormField>
-                      <FormField label="Motivo *" :for-id="`terminate-reason-${employee.id}`"><input :id="`terminate-reason-${employee.id}`" name="motivo_baja" required maxlength="500" :class="fieldClass" /></FormField>
-                      <button type="button" :class="secondaryButton" @click="terminatingId = null">Cancelar</button>
-                      <button type="submit" class="inline-flex items-center justify-center rounded-md border border-danger/30 px-4 py-2 text-sm font-semibold text-danger-strong hover:bg-danger/5">Confirmar baja</button>
-                    </form>
-                  </td>
-                </tr>
-              </template>
+                      <UserMinusIcon class="mr-1.5 size-4" aria-hidden="true" />Baja
+                    </button>
+                  </div>
+                  <div v-else class="text-right text-xs text-ink-muted">Sin acciones</div>
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -206,43 +156,33 @@ const toggleTerminate = (employeeId) => {
             </div>
             <p v-if="employee.phone || employee.email" class="mt-2 text-sm text-ink-muted">{{ employee.phone || employee.email }}</p>
             <div v-if="data.canEdit && employee.active" class="mt-4 flex gap-2">
-              <button type="button" :class="secondaryButton" class="flex-1" @click="toggleEdit(employee.id)">Editar</button>
-              <button type="button" class="flex-1 rounded-md border border-danger/30 px-3 py-2 text-sm font-semibold text-danger-strong" @click="toggleTerminate(employee.id)">Dar de baja</button>
-            </div>
-
-            <div v-if="editingId === employee.id" class="mt-4 rounded-lg border border-border-subtle bg-surface-subtle/50 p-4">
-              <form method="post" :action="employee.updateUrl" class="grid gap-3">
-                <CsrfInput :csrf="data.csrf" />
-                <FormField label="Nombre *" :for-id="`mobile-edit-name-${employee.id}`"><input :id="`mobile-edit-name-${employee.id}`" name="nombre" :value="employee.firstName" required maxlength="100" :class="fieldClass" /></FormField>
-                <FormField label="Apellido" :for-id="`mobile-edit-lastname-${employee.id}`"><input :id="`mobile-edit-lastname-${employee.id}`" name="apellido" :value="employee.lastName" maxlength="100" :class="fieldClass" /></FormField>
-                <FormField label="Documento" :for-id="`mobile-edit-document-${employee.id}`"><input :id="`mobile-edit-document-${employee.id}`" name="documento" :value="employee.document" maxlength="30" :class="fieldClass" /></FormField>
-                <FormField label="Legajo" :for-id="`mobile-edit-number-${employee.id}`"><input :id="`mobile-edit-number-${employee.id}`" name="legajo" :value="employee.employeeNumber" maxlength="50" :class="fieldClass" /></FormField>
-                <input type="hidden" name="cuil" :value="employee.cuil || ''" />
-                <input type="hidden" name="telefono" :value="employee.phone || ''" />
-                <input type="hidden" name="email" :value="employee.email || ''" />
-                <input type="hidden" name="fecha_ingreso" :value="employee.hiredAt || ''" />
-                <input type="hidden" name="observaciones" :value="employee.notes || ''" />
-                <div class="flex justify-end gap-2">
-                  <button type="button" :class="secondaryButton" @click="editingId = null">Cancelar</button>
-                  <button type="submit" :class="primaryButton">Guardar</button>
-                </div>
-              </form>
-            </div>
-
-            <div v-if="terminatingId === employee.id" class="mt-4 rounded-lg border border-danger/20 bg-danger/5 p-4">
-              <form method="post" :action="employee.terminateUrl" class="grid gap-3">
-                <CsrfInput :csrf="data.csrf" />
-                <FormField label="Fecha de baja" :for-id="`mobile-terminate-date-${employee.id}`"><input :id="`mobile-terminate-date-${employee.id}`" name="fecha_baja" type="date" :class="fieldClass" /></FormField>
-                <FormField label="Motivo *" :for-id="`mobile-terminate-reason-${employee.id}`"><input :id="`mobile-terminate-reason-${employee.id}`" name="motivo_baja" required maxlength="500" :class="fieldClass" /></FormField>
-                <div class="flex justify-end gap-2">
-                  <button type="button" :class="secondaryButton" @click="terminatingId = null">Cancelar</button>
-                  <button type="submit" class="rounded-md border border-danger/30 px-4 py-2 text-sm font-semibold text-danger-strong">Confirmar baja</button>
-                </div>
-              </form>
+              <button type="button" :class="secondaryButton" class="flex-1" @click="openEdit(employee)">Editar</button>
+              <button
+                type="button"
+                class="flex-1 rounded-md border border-danger/30 px-3 py-2 text-sm font-semibold text-danger-strong"
+                @click="openTerminate(employee)"
+              >
+                Dar de baja
+              </button>
             </div>
           </li>
         </ul>
       </template>
     </PanelCard>
+
+    <EmployeeFormModal
+      v-if="formEmployee !== undefined"
+      :employee="formEmployee"
+      :create-url="data.routes.create"
+      :csrf="data.csrf"
+      @close="formEmployee = undefined"
+    />
+
+    <EmployeeTerminationModal
+      v-if="terminationEmployee"
+      :employee="terminationEmployee"
+      :csrf="data.csrf"
+      @close="terminationEmployee = null"
+    />
   </div>
 </template>
