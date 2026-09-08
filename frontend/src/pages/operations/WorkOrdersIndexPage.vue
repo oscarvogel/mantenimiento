@@ -142,7 +142,8 @@ for (const order of props.data.orders ?? []) closeStateFor(order)
 
     <nav v-if="data.pagination.totalPages > 1" class="mt-6 flex items-center justify-between gap-3" aria-label="Paginación de órdenes"><a v-if="data.pagination.previousUrl" :href="data.pagination.previousUrl" :class="secondaryButton">Anterior</a><span v-else></span><span class="text-sm text-ink-muted">Página {{ data.pagination.page }} de {{ data.pagination.totalPages }}</span><a v-if="data.pagination.nextUrl" :href="data.pagination.nextUrl" :class="secondaryButton">Siguiente</a><span v-else></span></nav>
 
-    <div v-if="activeCancelOrder" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" data-testid="work-order-cancel-modal">
+    <Teleport to="body">
+      <div v-if="activeCancelOrder" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" data-testid="work-order-cancel-modal">
       <div class="w-full max-w-lg rounded-2xl bg-surface-raised p-6 shadow-xl">
         <div class="flex items-start justify-between gap-4">
           <div>
@@ -164,7 +165,8 @@ for (const order of props.data.orders ?? []) closeStateFor(order)
           </div>
         </form>
       </div>
-    </div>
+      </div>
+    </Teleport>
 
     <CorrectiveWorkRegistrationModal v-if="correctiveModalOpen" :data="data" @close="correctiveModalOpen = false" />
     <WorkOrderClosureModal
