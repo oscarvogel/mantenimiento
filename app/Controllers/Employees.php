@@ -10,6 +10,7 @@ use App\Infrastructure\Employees\CodeIgniterEmployeeAssignmentRepository;
 use App\Infrastructure\Employees\CodeIgniterEmployeeRepository;
 use App\Infrastructure\Identity\SessionActorContext;
 use CodeIgniter\HTTP\RedirectResponse;
+use CodeIgniter\HTTP\ResponseInterface;
 use DateTimeImmutable;
 use DomainException;
 use Throwable;
@@ -63,6 +64,8 @@ final class Employees extends BaseController
                     'email' => $row['email'] ?? null,
                     'hiredAt' => $row['fecha_ingreso'] ?? null,
                     'notes' => $row['observaciones'] ?? null,
+                    'hasPhoto' => ! empty($row['foto_path']),
+                    'photoUrl' => empty($row['foto_path']) ? null : base_url('mantenimiento/empleados/' . (int) $row['id'] . '/foto'),
                     'active' => (int) $row['activo'] === 1,
                     'terminatedAt' => $row['fecha_baja'] ?? null,
                     'terminationReason' => $row['motivo_baja'] ?? null,
@@ -76,6 +79,7 @@ final class Employees extends BaseController
                     'employeeId' => (int) $row['empleado_id'],
                     'employeeName' => trim((string) $row['empleado_nombre'] . ' ' . (string) ($row['empleado_apellido'] ?? '')),
                     'employeeActive' => (int) ($row['empleado_activo'] ?? 0) === 1,
+                    'employeePhotoUrl' => empty($row['empleado_foto_path']) ? null : base_url('mantenimiento/empleados/' . (int) $row['empleado_id'] . '/foto'),
                     'equipmentId' => (int) $row['equipo_id'],
                     'equipmentCode' => (string) $row['equipo_codigo'],
                     'equipmentPlate' => $row['equipo_patente'] ?? null,
@@ -90,6 +94,7 @@ final class Employees extends BaseController
                     'id' => (int) $row['id'],
                     'name' => trim((string) $row['nombre'] . ' ' . (string) ($row['apellido'] ?? '')),
                     'active' => (int) $row['activo'] === 1,
+                    'photoUrl' => empty($row['foto_path']) ? null : base_url('mantenimiento/empleados/' . (int) $row['id'] . '/foto'),
                 ], $employeeCatalog),
                 'filters' => [
                     'q' => $search,
@@ -116,8 +121,9 @@ final class Employees extends BaseController
     public function create(): RedirectResponse
     {
         try {
+            $actor = $this->actor();
             $id = $this->service()->create(
-                $this->actor(),
+                $actor,
                 (string) $this->request->getPost('nombre'),
                 (string) $this->request->getPost('apellido'),
                 $this->nullable('documento'),
@@ -128,6 +134,7 @@ final class Employees extends BaseController
                 $this->dateOrNull('fecha_ingreso'),
                 $this->nullable('observaciones'),
             );
+            $this->storePhotoIfUploaded($actor, $id);
 
             return redirect()->to('/mantenimiento/empleados')->with('success', "Empleado {$id} creado correctamente.");
         } catch (Throwable $exception) {
@@ -138,8 +145,9 @@ final class Employees extends BaseController
     public function update(int $employeeId): RedirectResponse
     {
         try {
+            $actor = $this->actor();
             $this->service()->update(
-                $this->actor(),
+                $actor,
                 $employeeId,
                 (string) $this->request->getPost('nombre'),
                 (string) $this->request->getPost('apellido'),
@@ -151,10 +159,58 @@ final class Employees extends BaseController
                 $this->dateOrNull('fecha_ingreso'),
                 $this->nullable('observaciones'),
             );
+            $this->storePhotoIfUploaded($actor, $employeeId);
 
             return redirect()->to('/mantenimiento/empleados')->with('success', 'Empleado actualizado correctamente.');
         } catch (Throwable $exception) {
             return $this->failure($exception);
+        }
+    }
+
+    public function photo(int $employeeId): ResponseInterface
+    {
+        try {
+            $actor = $this->actor();
+            if (! $actor->hasPermission('empleados.ver')) {
+                throw new DomainException('No tenés permiso para ver empleados.');
+            }
+            $companyId = (int) $actor->companyId();
+            $row = db_connect()->table('empleados')
+                ->select('foto_path')
+                ->where('empresa_id', $companyId)
+                ->where('id', $employeeId)
+                ->where('deleted_at', null)
+                ->get()->getRowArray();
+
+            if ($row === null || empty($row['foto_path'])) {
+                throw new DomainException('Foto no disponible.');
+            }
+
+            $relative = (string) $row['foto_path'];
+            $expectedPrefix = 'empleados/' . $companyId . '/' . $employeeId . '/';
+            if (! str_starts_with($relative, $expectedPrefix)) {
+                throw new DomainException('Foto no disponible.');
+            }
+
+            $path = '/data/priv/' . $relative;
+            if (! is_file($path) || ! is_readable($path)) {
+                throw new DomainException('Foto no disponible.');
+            }
+
+            $mime = mime_content_type($path) ?: 'application/octet-stream';
+            return $this->response
+                ->setHeader('Content-Disposition', 'inline; filename="foto-empleado"')
+                ->setHeader('X-Content-Type-Options', 'nosniff')
+                ->setHeader('Cache-Control', 'private, max-age=300')
+                ->setContentType($mime)
+                ->setBody((string) file_get_contents($path));
+        } catch (Throwable $exception) {
+            return $this->response
+                ->setStatusCode(404)
+                ->setHeader('Cache-Control', 'no-store')
+                ->setHeader('X-Content-Type-Options', 'nosniff')
+                ->setContentType('text/plain')
+                ->setBody('Foto no disponible.');
         }
     }
 
@@ -187,6 +243,68 @@ final class Employees extends BaseController
             throw new DomainException('No existe un contexto autenticado válido.');
         }
         return $actor;
+    }
+
+    private function storePhotoIfUploaded(ActorContext $actor, int $employeeId): void
+    {
+        $file = $this->request->getFile('foto');
+        if ($file === null || $file->getError() === UPLOAD_ERR_NO_FILE) {
+            return;
+        }
+        if (! $file->isValid()) {
+            throw new DomainException('La foto seleccionada no es válida.');
+        }
+        if ($file->getSize() > 5 * 1024 * 1024) {
+            throw new DomainException('La foto no puede superar los 5 MB.');
+        }
+
+        $mime = (string) $file->getMimeType();
+        $extensions = [
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+        ];
+        if (! isset($extensions[$mime])) {
+            throw new DomainException('La foto debe ser JPG, PNG o WEBP.');
+        }
+
+        $companyId = (int) $actor->companyId();
+        $database = db_connect();
+        $employee = $database->table('empleados')
+            ->select('id, foto_path')
+            ->where('empresa_id', $companyId)
+            ->where('id', $employeeId)
+            ->where('deleted_at', null)
+            ->get()->getRowArray();
+        if ($employee === null) {
+            throw new DomainException('El empleado no existe en la empresa.');
+        }
+
+        $directory = '/data/priv/empleados/' . $companyId . '/' . $employeeId;
+        if (! is_dir($directory) && ! mkdir($directory, 0750, true) && ! is_dir($directory)) {
+            throw new DomainException('No se pudo preparar el almacenamiento de la foto.');
+        }
+
+        $filename = 'perfil-' . bin2hex(random_bytes(8)) . '.' . $extensions[$mime];
+        $file->move($directory, $filename, true);
+        $relative = 'empleados/' . $companyId . '/' . $employeeId . '/' . $filename;
+
+        $oldRelative = empty($employee['foto_path']) ? null : (string) $employee['foto_path'];
+        $database->table('empleados')
+            ->where('empresa_id', $companyId)
+            ->where('id', $employeeId)
+            ->update([
+                'foto_path' => $relative,
+                'updated_at' => date('Y-m-d H:i:s'),
+                'updated_by' => $actor->userId(),
+            ]);
+
+        if ($oldRelative !== null && str_starts_with($oldRelative, 'empleados/' . $companyId . '/' . $employeeId . '/')) {
+            $oldPath = '/data/priv/' . $oldRelative;
+            if (is_file($oldPath) && $oldPath !== $directory . '/' . $filename) {
+                @unlink($oldPath);
+            }
+        }
     }
 
     private function nullableIntGet(string $field): ?int
