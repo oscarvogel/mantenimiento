@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Dashboard;
 
 use App\Application\Dashboard\Port\DashboardDuePlans;
+use App\Application\Dashboard\Port\DashboardFinancialSummary;
 use App\Application\Dashboard\Port\DashboardOverview;
 use App\Application\Dashboard\Port\DashboardClock;
 use App\Application\Identity\ActorContext;
@@ -20,6 +21,7 @@ final class GetMaintenanceDashboard
     public function __construct(
         private readonly DashboardOverview $overview,
         private readonly DashboardDuePlans $duePlans,
+        private readonly DashboardFinancialSummary $financialSummary,
         private readonly DashboardClock $clock,
     ) {
     }
@@ -32,6 +34,9 @@ final class GetMaintenanceDashboard
         }
 
         $overview = $this->overview->fetch($actor);
+        $financial = $actor->hasPermission('ordenes.ver')
+            ? $this->financialSummary->fetch($actor, $this->clock->today())
+            : $this->emptyFinancialSummary();
         $equipment = $actor->hasPermission('equipos.ver') ? $overview['equipments'] : [];
         $orders = $actor->hasPermission('ordenes.ver') ? $overview['orders'] : [];
         $readings = $actor->hasPermission('lecturas.ver') || $actor->hasPermission('lecturas.cargar')
@@ -121,6 +126,26 @@ final class GetMaintenanceDashboard
             ],
             'readingAttention' => $readingControl['attention'],
             'upcomingMaintenance' => array_slice($maintenance, 0, 8),
+            'financial' => $financial,
+        ];
+    }
+
+    /** @return array<string,mixed> */
+    private function emptyFinancialSummary(): array
+    {
+        return [
+            'period' => $this->clock->today()->format('Y-m'),
+            'periodLabel' => '',
+            'currentMonthArs' => 0.0,
+            'previousMonthArs' => 0.0,
+            'variationPercentage' => null,
+            'preventiveArs' => 0.0,
+            'correctiveArs' => 0.0,
+            'averagePerEquipmentArs' => 0.0,
+            'equipmentWithCost' => 0,
+            'missingExchangeRateCount' => 0,
+            'history' => [],
+            'topEquipment' => [],
         ];
     }
 
