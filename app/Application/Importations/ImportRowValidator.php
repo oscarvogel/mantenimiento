@@ -6,6 +6,7 @@ namespace App\Application\Importations;
 
 use App\Application\Identity\ActorContext;
 use App\Application\Importations\Port\ImportReferenceGateway;
+use App\Domain\Expirations\ExpirationSubjectType;
 use App\Domain\Importations\ImportRowStatus;
 use App\Domain\Importations\ImportType;
 use DateTimeImmutable;
@@ -20,6 +21,8 @@ final class ImportRowValidator
     private array $readingKeys = [];
     /** @var array<int, array{km:int|null,hours:int|null}> */
     private array $latestUsage = [];
+    /** @var array<string, true> */
+    private array $expirationKeys = [];
 
     public function __construct(private readonly ImportReferenceGateway $references)
     {
@@ -31,14 +34,115 @@ final class ImportRowValidator
         $this->plates = [];
         $this->readingKeys = [];
         $this->latestUsage = [];
+        $this->expirationKeys = [];
     }
 
     /** @param array<string, string|null> $row */
     public function validate(ImportType $type, array $row, int $rowNumber, ActorContext $actor, int $companyId): StagedImportRow
     {
-        return $type === ImportType::EQUIPOS
-            ? $this->equipment($row, $rowNumber, $actor, $companyId)
-            : $this->reading($row, $rowNumber, $actor, $companyId);
+        return match ($type) {
+            ImportType::EQUIPOS, ImportType::UNIDADES_TRANSPORTE => $this->equipment($row, $rowNumber, $actor, $companyId),
+            ImportType::LECTURAS => $this->reading($row, $rowNumber, $actor, $companyId),
+            ImportType::VENCIMIENTOS => $this->expiration($row, $rowNumber, $actor, $companyId),
+            ImportType::BIBLIOTECA_PREVENTIVA => new StagedImportRow($rowNumber, ImportRowStatus::ERROR, $row, [], [
+                $this->error('_archivo', null, 'La biblioteca preventiva usa su flujo específico.'),
+            ]),
+        };
+    }
+
+    /** @param array<string,string|null> $row */
+    private function expiration(array $row, int $rowNumber, ActorContext $actor, int $companyId): StagedImportRow
+    {
+        $issues = [];
+        $subjectRaw = mb_strtoupper($this->text($row['sujeto_tipo'] ?? null));
+        $subjectType = match ($subjectRaw) {
+            'EQUIPO', 'MOVIL', 'MÓVIL' => ExpirationSubjectType::EQUIPMENT,
+            'EMPLEADO', 'CHOFER' => ExpirationSubjectType::EMPLOYEE,
+            default => null,
+        };
+        if ($subjectType === null) {
+            $issues[] = $this->error('sujeto_tipo', $subjectRaw, 'El sujeto debe ser EQUIPO o EMPLEADO.');
+        }
+
+        $equipment = null;
+        $employee = null;
+        $branchId = null;
+        $subjectId = null;
+
+        if ($subjectType === ExpirationSubjectType::EQUIPMENT) {
+            $equipmentCode = mb_strtoupper($this->text($row['equipo_codigo'] ?? null));
+            $equipment = $equipmentCode === '' ? null : $this->references->activeEquipmentByCode($companyId, $equipmentCode);
+            if ($equipment === null) {
+                $issues[] = $this->error('equipo_codigo', $equipmentCode, 'El equipo no existe, está inactivo o pertenece a otra empresa.');
+            } else {
+                $subjectId = (int) $equipment['id'];
+                $branchId = (int) $equipment['sucursal_id'];
+                if (! $actor->canAccessBranch($companyId, $branchId)) {
+                    $issues[] = $this->error('equipo_codigo', $equipmentCode, 'La sucursal actual del equipo no está autorizada para el actor.');
+                }
+            }
+        } elseif ($subjectType === ExpirationSubjectType::EMPLOYEE) {
+            $employeeName = $this->text($row['empleado_nombre'] ?? null);
+            $employee = $employeeName === '' ? null : $this->references->activeEmployeeByName($companyId, $employeeName);
+            if ($employee === null) {
+                $issues[] = $this->error('empleado_nombre', $employeeName, 'No se encontró un único empleado activo con ese nombre.');
+            } else {
+                $subjectId = (int) $employee['id'];
+            }
+        }
+
+        $type = mb_strtoupper($this->text($row['tipo_vencimiento'] ?? null));
+        $type = match ($type) {
+            'SEGURO', 'SEGURO_AUTOMOTOR', 'POLIZA_SEGURO' => 'POLIZA',
+            'ITV' => 'VTV',
+            'LICENCIA', 'REGISTRO' => 'LICENCIA_CHOFER',
+            default => $type,
+        };
+        $allowed = $subjectType === ExpirationSubjectType::EMPLOYEE
+            ? ['LICENCIA_CHOFER', 'PSICOFISICO', 'ART', 'CURSO_CARGAS_PELIGROSAS', 'CARNET_HABILITANTE']
+            : ['VTV', 'SENASA', 'POLIZA', 'CRVL', 'MATAFUEGO', 'HABILITACION'];
+        if ($type === '' || ! in_array($type, $allowed, true)) {
+            $issues[] = $this->error('tipo_vencimiento', $type, 'El tipo de vencimiento no es válido para el sujeto informado.');
+        }
+
+        $expirationDate = $this->date($row['fecha_vencimiento'] ?? null, false);
+        if ($expirationDate === null) {
+            $issues[] = $this->error('fecha_vencimiento', $this->text($row['fecha_vencimiento'] ?? null), 'La fecha debe tener formato AAAA-MM-DD o DD/MM/AAAA.');
+        }
+        $issueDate = $this->date($row['fecha_emision'] ?? null, false);
+        if ($this->text($row['fecha_emision'] ?? null) !== '' && $issueDate === null) {
+            $issues[] = $this->error('fecha_emision', $this->text($row['fecha_emision'] ?? null), 'La fecha debe tener formato AAAA-MM-DD o DD/MM/AAAA.');
+        }
+        if ($issueDate !== null && $expirationDate !== null && $issueDate > $expirationDate) {
+            $issues[] = $this->error('fecha_emision', $issueDate, 'La fecha de emisión no puede ser posterior al vencimiento.');
+        }
+
+        $documentNumber = $this->limitedText($row['numero_documento'] ?? null, 100, 'numero_documento', $issues);
+        $notes = $this->limitedText($row['observaciones'] ?? null, 2000, 'observaciones', $issues);
+
+        $duplicate = false;
+        if ($subjectType !== null && $subjectId !== null && $expirationDate !== null && $type !== '') {
+            $key = implode('|', [$subjectType->value, $subjectId, $type, $expirationDate]);
+            if (isset($this->expirationKeys[$key])) {
+                $duplicate = true;
+                $issues[] = $this->warning('fecha_vencimiento', $expirationDate, 'Vencimiento duplicado en el archivo; la fila se omitirá al confirmar.');
+            }
+            $this->expirationKeys[$key] = true;
+        }
+
+        $hasErrors = $this->hasErrors($issues);
+        $status = $hasErrors ? ImportRowStatus::ERROR : ($duplicate ? ImportRowStatus::DUPLICADA : ImportRowStatus::VALIDA);
+
+        return new StagedImportRow($rowNumber, $status, $row, [
+            'subject_type' => $subjectType?->value,
+            'subject_id' => $subjectId,
+            'branch_id' => $branchId,
+            'expiration_type' => $type,
+            'expiration_date' => $expirationDate,
+            'issue_date' => $issueDate,
+            'document_number' => $documentNumber,
+            'notes' => $notes,
+        ], $issues);
     }
 
     /** @param array<string, string|null> $row */
