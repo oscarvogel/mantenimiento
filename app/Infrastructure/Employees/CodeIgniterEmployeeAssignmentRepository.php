@@ -60,6 +60,59 @@ final class CodeIgniterEmployeeAssignmentRepository implements EmployeeAssignmen
             ->get()->getResultArray();
     }
 
+    public function assignmentHistory(
+        int $companyId,
+        ?int $employeeId = null,
+        ?string $equipmentSearch = null,
+        ?DateTimeImmutable $from = null,
+        ?DateTimeImmutable $to = null,
+        ?bool $current = null,
+    ): array {
+        $builder = $this->database->table('employee_equipment_assignments a')
+            ->select('a.id, a.empleado_id, a.equipo_id, a.rol, a.fecha_desde, a.fecha_hasta, a.observaciones, emp.nombre empleado_nombre, emp.apellido empleado_apellido, emp.activo empleado_activo, e.codigo equipo_codigo, e.patente equipo_patente, s.nombre sucursal_nombre')
+            ->join('empleados emp', 'emp.id = a.empleado_id AND emp.empresa_id = a.empresa_id')
+            ->join('equipos e', 'e.id = a.equipo_id AND e.empresa_id = a.empresa_id')
+            ->join('sucursales s', 's.id = e.sucursal_id', 'left')
+            ->where('a.empresa_id', $companyId)
+            ->where('a.rol', EmployeeEquipmentAssignment::ROLE_DRIVER);
+
+        if ($employeeId !== null && $employeeId > 0) {
+            $builder->where('a.empleado_id', $employeeId);
+        }
+
+        $equipmentSearch = trim((string) $equipmentSearch);
+        if ($equipmentSearch !== '') {
+            $builder->groupStart()
+                ->like('e.codigo', $equipmentSearch)
+                ->orLike('e.patente', $equipmentSearch)
+                ->groupEnd();
+        }
+
+        if ($from !== null) {
+            $builder->groupStart()
+                ->where('a.fecha_hasta >=', $from->format('Y-m-d'))
+                ->orWhere('a.fecha_hasta', null)
+                ->groupEnd();
+        }
+
+        if ($to !== null) {
+            $builder->where('a.fecha_desde <=', $to->format('Y-m-d'));
+        }
+
+        if ($current === true) {
+            $builder->where('a.fecha_hasta', null);
+        } elseif ($current === false) {
+            $builder->where('a.fecha_hasta !=', null);
+        }
+
+        return $builder
+            ->orderBy('a.fecha_desde', 'DESC')
+            ->orderBy('a.id', 'DESC')
+            ->limit(500)
+            ->get()
+            ->getResultArray();
+    }
+
     public function assignDriver(
         int $companyId,
         int $employeeId,
