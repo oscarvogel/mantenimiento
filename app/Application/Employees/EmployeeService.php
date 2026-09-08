@@ -57,6 +57,37 @@ final class EmployeeService
         return $this->employees->add($employee, $actor->userId());
     }
 
+    public function update(
+        ActorContext $actor,
+        int $employeeId,
+        string $firstName,
+        string $lastName = '',
+        ?string $document = null,
+        ?string $cuil = null,
+        ?string $employeeNumber = null,
+        ?string $phone = null,
+        ?string $email = null,
+        ?DateTimeImmutable $hiredAt = null,
+        ?string $notes = null,
+    ): void {
+        $companyId = $this->tenant($actor, 'empleados.editar');
+        $employee = $this->employees->findForUpdate($companyId, $employeeId);
+        if ($employee === null) {
+            throw new DomainException('El empleado no existe en la empresa.');
+        }
+
+        $employee->updateProfile($firstName, $lastName, $document, $cuil, $employeeNumber, $phone, $email, $hiredAt, $notes);
+
+        if ($employee->document() !== null && $this->employees->documentExists($companyId, $employee->document(), $employeeId)) {
+            throw new DomainException('Ya existe otro empleado con ese documento en la empresa.');
+        }
+        if ($employee->employeeNumber() !== null && $this->employees->employeeNumberExists($companyId, $employee->employeeNumber(), $employeeId)) {
+            throw new DomainException('Ya existe otro empleado con ese legajo en la empresa.');
+        }
+
+        $this->employees->save($employee, $actor->userId());
+    }
+
     public function assignDriver(
         ActorContext $actor,
         int $employeeId,
