@@ -30,6 +30,45 @@ describe('ManagerialDashboard', () => {
     expect(complianceCard.text()).not.toContain('100%')
   })
 
+  it('shows monthly financial KPIs and top equipment costs', () => {
+    const wrapper = mount(ManagerialDashboard, {
+      props: {
+        dashboard: normalizeDashboardPayload({
+          view: 'managerial',
+          user: { name: 'Admin Demo' },
+          company: { name: 'TSA Demo Dashboard' },
+          metrics: {},
+          financial: {
+            periodLabel: 'Sep 2026',
+            currentMonthArs: 4850000,
+            previousMonthArs: 4300000,
+            variationPercentage: 12.8,
+            preventiveArs: 2100000,
+            correctiveArs: 2750000,
+            averagePerEquipmentArs: 194000,
+            equipmentWithCost: 25,
+            history: [
+              { month: '2026-08', label: 'Ago', totalArs: 4300000 },
+              { month: '2026-09', label: 'Sep', totalArs: 4850000 },
+            ],
+            topEquipment: [
+              { equipmentId: 4, equipmentCode: 'CAM-04', totalArs: 980000 },
+            ],
+          },
+          links: { financialDetail: '/reportes', equipment: '/mantenimiento/equipos' },
+        }),
+        firstName: 'Admin',
+      },
+    })
+    wrappers.push(wrapper)
+
+    expect(wrapper.text()).toContain('Resumen financiero del mes')
+    expect(wrapper.text()).toContain('$ 4.850.000')
+    expect(wrapper.text()).toContain('+12,8% vs. mes anterior')
+    expect(wrapper.text()).toContain('CAM-04')
+    expect(wrapper.text()).toContain('$ 980.000')
+  })
+
   it('shows reading-quality bars as percentages of the active fleet', () => {
     const wrapper = mount(ManagerialDashboard, {
       props: {

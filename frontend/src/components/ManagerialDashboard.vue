@@ -18,6 +18,22 @@ const props = defineProps({
 })
 
 const metrics = computed(() => props.dashboard.metrics || {})
+const financial = computed(() => props.dashboard.financial || {})
+const formatCurrency = (value) => new Intl.NumberFormat('es-AR', {
+  style: 'currency',
+  currency: 'ARS',
+  maximumFractionDigits: 0,
+}).format(Number(value) || 0)
+const financialHistoryMax = computed(() => Math.max(
+  1,
+  ...(financial.value.history || []).map((item) => Number(item.totalArs) || 0),
+))
+const financialVariationLabel = computed(() => {
+  const value = financial.value.variationPercentage
+  if (value === null || value === undefined) return 'Sin base comparable'
+  const sign = Number(value) > 0 ? '+' : ''
+  return `${sign}${Number(value).toFixed(1).replace('.', ',')}% vs. mes anterior`
+})
 const preventiveComplianceLabel = computed(() => (
   metrics.value.preventiveCompliance === null
     ? 'Sin datos'
@@ -144,6 +160,90 @@ const executiveAlerts = computed(() => [
       <MetricCard label="OT abiertas" :value="metrics.openOrders ?? 0" tone="orders" :href="dashboard.links.orders" link-label="Ver órdenes" />
       <MetricCard label="Sin lectura" :value="metrics.equipmentWithoutReading ?? 0" tone="due" :href="dashboard.links.equipment" link-label="Revisar equipos" />
       <MetricCard label="Lectura antigua" :value="metrics.equipmentWithStaleReading ?? 0" tone="due" :href="dashboard.links.equipment" link-label="Revisar lecturas" />
+    </section>
+
+    <section class="mt-6 rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="financial-title">
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 id="financial-title" class="text-base font-bold text-ink sm:text-lg">Resumen financiero del mes</h2>
+          <p class="mt-1 text-sm text-ink-muted">
+            Costos reales de órdenes finalizadas{{ financial.periodLabel ? ` · ${financial.periodLabel}` : '' }}.
+          </p>
+        </div>
+        <a
+          v-if="dashboard.links.financialDetail !== '#'"
+          :href="dashboard.links.financialDetail"
+          class="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary-hover"
+        >
+          Ver detalle <ArrowRightIcon class="size-4" aria-hidden="true" />
+        </a>
+      </div>
+
+      <div class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <div class="rounded-lg bg-surface-subtle p-4">
+          <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Gastos del mes</p>
+          <p class="mt-2 text-2xl font-bold tracking-tight text-ink">{{ formatCurrency(financial.currentMonthArs) }}</p>
+          <p class="mt-1 text-xs" :class="Number(financial.variationPercentage) > 0 ? 'text-danger' : 'text-ink-muted'">{{ financialVariationLabel }}</p>
+        </div>
+        <div class="rounded-lg bg-surface-subtle p-4">
+          <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Preventivo</p>
+          <p class="mt-2 text-xl font-bold text-ink">{{ formatCurrency(financial.preventiveArs) }}</p>
+        </div>
+        <div class="rounded-lg bg-surface-subtle p-4">
+          <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Correctivo</p>
+          <p class="mt-2 text-xl font-bold text-ink">{{ formatCurrency(financial.correctiveArs) }}</p>
+        </div>
+        <div class="rounded-lg bg-surface-subtle p-4">
+          <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Promedio / equipo</p>
+          <p class="mt-2 text-xl font-bold text-ink">{{ formatCurrency(financial.averagePerEquipmentArs) }}</p>
+          <p class="mt-1 text-xs text-ink-muted">{{ financial.equipmentWithCost ?? 0 }} con gasto</p>
+        </div>
+        <div class="rounded-lg bg-surface-subtle p-4">
+          <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Mes anterior</p>
+          <p class="mt-2 text-xl font-bold text-ink">{{ formatCurrency(financial.previousMonthArs) }}</p>
+        </div>
+      </div>
+
+      <div
+        v-if="financial.missingExchangeRateCount"
+        class="mt-4 rounded-lg border border-warning/30 bg-warning-subtle px-4 py-3 text-sm text-warning-strong"
+      >
+        {{ financial.missingExchangeRateCount }} gasto(s) en moneda extranjera no se incluyeron porque no tienen importe histórico congelado en ARS.
+      </div>
+
+      <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(18rem,0.8fr)]">
+        <div>
+          <h3 class="text-sm font-bold text-ink">Evolución últimos 6 meses</h3>
+          <div class="mt-4 flex h-44 items-end gap-3 rounded-lg bg-surface-subtle px-4 py-4">
+            <div v-for="item in financial.history" :key="item.month" class="flex min-w-0 flex-1 flex-col items-center justify-end gap-2">
+              <span class="text-[11px] font-semibold text-ink-muted">{{ formatCurrency(item.totalArs) }}</span>
+              <div class="flex h-28 w-full items-end justify-center">
+                <div
+                  class="w-full max-w-16 rounded-t-md bg-primary"
+                  :style="{ height: `${item.totalArs > 0 ? Math.max(4, Math.round((item.totalArs / financialHistoryMax) * 112)) : 0}px` }"
+                />
+              </div>
+              <span class="text-xs text-ink-muted">{{ item.label }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h3 class="text-sm font-bold text-ink">Top 5 equipos por costo</h3>
+          <div v-if="financial.topEquipment?.length" class="mt-3 divide-y divide-border-subtle rounded-lg border border-border-subtle">
+            <a
+              v-for="item in financial.topEquipment"
+              :key="item.equipmentId"
+              :href="dashboard.links.equipment !== '#' ? `${dashboard.links.equipment}/${item.equipmentId}` : '#'"
+              class="flex items-center justify-between gap-3 px-3.5 py-3 hover:bg-primary-subtle/40"
+            >
+              <span class="truncate text-sm font-semibold text-ink">{{ item.equipmentCode }}</span>
+              <strong class="shrink-0 text-sm text-ink">{{ formatCurrency(item.totalArs) }}</strong>
+            </a>
+          </div>
+          <p v-else class="mt-3 rounded-lg bg-surface-subtle px-4 py-5 text-sm text-ink-muted">Todavía no hay costos finalizados en el mes.</p>
+        </div>
+      </div>
     </section>
 
     <div class="mt-6 grid items-start gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(20rem,0.85fr)]">
