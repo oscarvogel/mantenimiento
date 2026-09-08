@@ -8,6 +8,7 @@ use App\Application\Employees\EmployeeService;
 use App\Application\Identity\ActorContext;
 use App\Infrastructure\Employees\CodeIgniterEmployeeAssignmentRepository;
 use App\Infrastructure\Employees\CodeIgniterEmployeeRepository;
+use App\Infrastructure\Expirations\CodeIgniterExpirationReadModel;
 use App\Infrastructure\Identity\SessionActorContext;
 use CodeIgniter\HTTP\RedirectResponse;
 use CodeIgniter\HTTP\ResponseInterface;
@@ -50,6 +51,11 @@ final class Employees extends BaseController
                 $historyCurrent,
             );
             $employeeCatalog = $this->service()->list($actor, null, null);
+            $expirationReadModel = new CodeIgniterExpirationReadModel(db_connect());
+            $employeeExpirations = $expirationReadModel->forEmployees(
+                (int) $actor->companyId(),
+                array_map(static fn (array $row): int => (int) $row['id'], $employees),
+            );
 
             return $this->renderApp($actor, 'employees', 'employees-index', 'Empleados y choferes', [
                 'employees' => array_map(static fn (array $row): array => [
@@ -73,6 +79,7 @@ final class Employees extends BaseController
                     'updateUrl' => base_url('mantenimiento/empleados/' . (int) $row['id']),
                     'terminateUrl' => base_url('mantenimiento/empleados/' . (int) $row['id'] . '/baja'),
                     'historyUrl' => base_url('mantenimiento/empleados?chofer_id=' . (int) $row['id'] . '#historial-asignaciones'),
+                    'expirations' => $employeeExpirations[(int) $row['id']] ?? [],
                 ], $employees),
                 'assignmentHistory' => array_map(static fn (array $row): array => [
                     'id' => (int) $row['id'],
@@ -106,6 +113,15 @@ final class Employees extends BaseController
                     'from' => $historyFrom?->format('Y-m-d') ?? '',
                     'to' => $historyTo?->format('Y-m-d') ?? '',
                     'status' => $historyStatusRaw === '' ? 'todas' : $historyStatusRaw,
+                ],
+                'expirationTypes' => $expirationReadModel->types(
+                    (int) $actor->companyId(),
+                    \App\Domain\Expirations\ExpirationSubjectType::EMPLOYEE,
+                ),
+                'expirationTypeCatalog' => $expirationReadModel->catalog((int) $actor->companyId()),
+                'expirationRoutes' => [
+                    'create' => base_url('mantenimiento/vencimientos'),
+                    'createType' => base_url('mantenimiento/vencimientos/tipos'),
                 ],
                 'canEdit' => $actor->hasPermission('empleados.editar'),
                 'routes' => [

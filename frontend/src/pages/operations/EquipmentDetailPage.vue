@@ -17,6 +17,9 @@ const data = computed(() => {
   const workOrderHistory = props.data.workOrderHistory
   return {
     ...props.data,
+    expirations: props.data.expirations ?? [],
+    expirationTypes: props.data.expirationTypes ?? [],
+    expirationRoutes: props.data.expirationRoutes ?? { create: '#', createType: '#' },
     readings: readings === null ? null : readings === undefined ? undefined : {
       ...readings,
       items: readings.items.map((reading) => ({
@@ -145,6 +148,72 @@ const historyResetUrl = computed(() => `${window.location.pathname}?history_acti
             </li>
           </ul>
         </div>
+      </div>
+    </PanelCard>
+
+    <PanelCard title="Vencimientos" :count="data.expirations?.length ?? 0" class="mb-6">
+      <form v-if="data.can.edit && data.equipment.status === 'ACTIVO'" method="post" :action="data.expirationRoutes.create" class="mb-6 grid gap-4 border-b border-border-subtle pb-6 md:grid-cols-2 xl:grid-cols-5">
+        <CsrfInput :csrf="data.csrf" />
+        <input type="hidden" name="sujeto_tipo" value="EQUIPO" />
+        <input type="hidden" name="sujeto_id" :value="data.equipment.id" />
+        <input type="hidden" name="return_to" :value="`/mantenimiento/equipos/${data.equipment.id}`" />
+        <FormField label="Tipo" for-id="equipment-expiration-type">
+          <select id="equipment-expiration-type" name="tipo_vencimiento_id" required :class="fieldClass">
+            <option value="">Seleccionar</option>
+            <option v-for="type in data.expirationTypes" :key="type.id" :value="type.id">{{ type.name }}</option>
+          </select>
+        </FormField>
+        <FormField label="Fecha de emisión" for-id="equipment-expiration-issued"><input id="equipment-expiration-issued" type="date" name="fecha_emision" :class="fieldClass" /></FormField>
+        <FormField label="Fecha de vencimiento" for-id="equipment-expiration-date"><input id="equipment-expiration-date" type="date" name="fecha_vencimiento" required :class="fieldClass" /></FormField>
+        <FormField label="Documento" for-id="equipment-expiration-document"><input id="equipment-expiration-document" name="numero_documento" maxlength="100" :class="fieldClass" /></FormField>
+        <div class="flex items-end"><button type="submit" :class="primaryButton">Registrar vencimiento</button></div>
+        <FormField label="Observaciones" for-id="equipment-expiration-notes" class="md:col-span-2 xl:col-span-5"><textarea id="equipment-expiration-notes" name="observaciones" maxlength="2000" rows="2" :class="fieldClass"></textarea></FormField>
+      </form>
+      <details v-if="data.can.edit" class="ui-details-animated mb-6">
+        <summary :class="secondaryButton">Nuevo tipo de vencimiento</summary>
+        <form method="post" :action="data.expirationRoutes.createType" class="mt-3 grid gap-3 rounded-xl border border-border p-4 md:grid-cols-4">
+          <CsrfInput :csrf="data.csrf" />
+          <input type="hidden" name="return_to" :value="`/mantenimiento/equipos/${data.equipment.id}`" />
+          <FormField label="Nombre" for-id="equipment-expiration-type-name"><input id="equipment-expiration-type-name" name="nombre" maxlength="100" required :class="fieldClass" /></FormField>
+          <FormField label="Aplica a" for-id="equipment-expiration-type-applies"><select id="equipment-expiration-type-applies" name="aplica_a" :class="fieldClass"><option value="EQUIPO">Equipos</option><option value="AMBOS">Equipos y empleados</option></select></FormField>
+          <FormField label="Avisar antes (días)" for-id="equipment-expiration-warning"><input id="equipment-expiration-warning" type="number" min="0" max="3650" name="dias_aviso_previo" value="30" required :class="fieldClass" /></FormField>
+          <label class="flex items-end gap-2 pb-2 text-sm font-medium text-ink"><input type="checkbox" name="requiere_documento" value="1" /> Requiere documento</label>
+          <div class="flex items-end"><button type="submit" :class="secondaryButton">Crear tipo</button></div>
+        </form>
+      </details>
+      <EmptyState v-if="!data.expirations || data.expirations.length === 0" title="No hay vencimientos registrados" description="Los vencimientos importados o cargados para este móvil aparecerán acá." />
+      <div v-else class="overflow-x-auto">
+        <table class="w-full min-w-[44rem] text-left text-sm">
+          <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
+            <tr><th class="px-4 py-3">Tipo</th><th class="px-4 py-3">Vence</th><th class="px-4 py-3">Estado</th><th class="px-4 py-3">Documento</th><th class="px-4 py-3">Origen</th></tr>
+          </thead>
+          <tbody class="divide-y divide-border-subtle">
+            <tr v-for="expiration in data.expirations" :key="expiration.id">
+              <td class="px-4 py-4 font-semibold text-ink">{{ expiration.typeName }}</td>
+              <td class="px-4 py-4">{{ expiration.expiresAt }}<div class="text-xs text-ink-muted">{{ expiration.daysUntil >= 0 ? `faltan ${expiration.daysUntil} días` : `${Math.abs(expiration.daysUntil)} días vencido` }}</div></td>
+              <td class="px-4 py-4"><StatusBadge :status="expiration.status" /></td>
+              <td class="px-4 py-4 text-ink-muted">{{ expiration.documentNumber || '—' }}</td>
+              <td class="px-4 py-4 text-ink-muted">
+                {{ expiration.origin }}
+                <details v-if="data.can.edit" class="ui-details-animated mt-2">
+                  <summary class="cursor-pointer text-xs font-semibold text-brand-700">Editar</summary>
+                  <form method="post" :action="expiration.updateUrl" class="mt-2 grid min-w-[18rem] gap-2 rounded-lg border border-border bg-white p-3">
+                    <CsrfInput :csrf="data.csrf" />
+                    <input type="hidden" name="return_to" :value="`/mantenimiento/equipos/${data.equipment.id}`" />
+                    <input type="date" name="fecha_emision" :value="expiration.issuedAt" :class="fieldClass" />
+                    <input type="date" name="fecha_vencimiento" required :value="expiration.expiresAt" :class="fieldClass" />
+                    <input name="numero_documento" maxlength="100" :value="expiration.documentNumber" placeholder="Documento" :class="fieldClass" />
+                    <textarea name="observaciones" maxlength="2000" rows="2" :value="expiration.notes" placeholder="Observaciones" :class="fieldClass"></textarea>
+                    <div class="flex gap-2">
+                      <button type="submit" :class="primaryButton">Guardar</button>
+                      <button type="submit" :formaction="expiration.deactivateUrl" :class="dangerButton">Retirar</button>
+                    </div>
+                  </form>
+                </details>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </PanelCard>
 

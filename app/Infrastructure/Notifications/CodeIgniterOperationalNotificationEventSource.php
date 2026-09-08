@@ -32,7 +32,97 @@ final class CodeIgniterOperationalNotificationEventSource implements Operational
 
     public function collect(): array
     {
-        return [...$this->preventiveEvents(), ...$this->staleReadingEvents(), ...$this->workOrderEvents()];
+        return [
+            ...$this->preventiveEvents(),
+            ...$this->expirationEvents(),
+            ...$this->staleReadingEvents(),
+            ...$this->workOrderEvents(),
+        ];
+    }
+
+    /** @return list<NotifiableEvent> */
+    private function expirationEvents(): array
+    {
+        if (! $this->db->tableExists('vencimientos') || ! $this->db->tableExists('tipos_vencimiento')) {
+            return [];
+        }
+
+        $rows = $this->db->table('vencimientos v')
+            ->select('v.id, v.empresa_id, v.sucursal_id, v.sujeto_tipo, v.equipo_id, v.empleado_id, v.fecha_vencimiento, t.nombre tipo_nombre, t.dias_aviso_previo, e.codigo equipo_codigo, emp.nombre empleado_nombre, emp.apellido empleado_apellido')
+            ->join('tipos_vencimiento t', 't.id = v.tipo_vencimiento_id AND t.empresa_id = v.empresa_id', 'inner')
+            ->join('equipos e', 'e.id = v.equipo_id AND e.empresa_id = v.empresa_id', 'left')
+            ->join('empleados emp', 'emp.id = v.empleado_id AND emp.empresa_id = v.empresa_id', 'left')
+            ->where('v.activo', 1)
+            ->where('v.deleted_at', null)
+            ->where('t.deleted_at', null)
+            ->get()->getResultArray();
+
+        $now = $this->clock->now();
+        $today = new DateTimeImmutable($now->format('Y-m-d'));
+        $events = [];
+
+        foreach ($rows as $row) {
+            $expiresAt = $this->date($row['fecha_vencimiento']);
+            if ($expiresAt === null) {
+                continue;
+            }
+
+            $expiresDate = new DateTimeImmutable($expiresAt->format('Y-m-d'));
+            $warningDays = max(0, (int) ($row['dias_aviso_previo'] ?? 30));
+            $overdue = $expiresDate < $today;
+            if (! $overdue && $expiresDate > $today->modify('+' . $warningDays . ' days')) {
+                continue;
+            }
+
+            $isEmployee = (string) $row['sujeto_tipo'] === 'EMPLEADO';
+            if ($isEmployee) {
+                if ($row['empleado_id'] === null) {
+                    continue;
+                }
+                $subjectId = (int) $row['empleado_id'];
+                $subjectName = trim((string) ($row['empleado_nombre'] ?? '') . ' ' . (string) ($row['empleado_apellido'] ?? ''));
+                if ($subjectName === '') {
+                    $subjectName = 'Empleado #' . $subjectId;
+                }
+                $entityType = 'empleado';
+                $url = $this->path('mantenimiento/empleados') . '?q=' . rawurlencode($subjectName);
+                $type = $overdue ? 'empleado.vencimiento_vencido' : 'empleado.vencimiento_proximo';
+            } else {
+                if ($row['equipo_id'] === null) {
+                    continue;
+                }
+                $subjectId = (int) $row['equipo_id'];
+                $subjectName = trim((string) ($row['equipo_codigo'] ?? ''));
+                if ($subjectName === '') {
+                    $subjectName = 'Equipo #' . $subjectId;
+                }
+                $entityType = 'equipo';
+                $url = $this->path('mantenimiento/equipos/' . $subjectId);
+                $type = $overdue ? 'equipo.vencimiento_vencido' : 'equipo.vencimiento_proximo';
+            }
+
+            $days = (int) $today->diff($expiresDate)->format('%r%a');
+            $summary = (string) $row['tipo_nombre'] . ' · vence el ' . $expiresDate->format('d/m/Y');
+            $summary .= $overdue
+                ? ' · ' . abs($days) . ' día' . (abs($days) === 1 ? '' : 's') . ' vencido'
+                : ' · faltan ' . $days . ' día' . ($days === 1 ? '' : 's');
+
+            $events[] = new NotifiableEvent(
+                (int) $row['empresa_id'],
+                $row['sucursal_id'] === null ? null : (int) $row['sucursal_id'],
+                $type,
+                $overdue ? NotificationSeverity::CRITICAL : NotificationSeverity::WARNING,
+                ($overdue ? 'Vencimiento vencido: ' : 'Vencimiento próximo: ') . $subjectName,
+                $summary,
+                $entityType,
+                (string) $subjectId,
+                "{$type}:vencimiento:{$row['id']}:fecha:{$expiresDate->format('Ymd')}",
+                $url,
+                $now,
+            );
+        }
+
+        return $events;
     }
 
     /** @return list<NotifiableEvent> */

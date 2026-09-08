@@ -1,38 +1,62 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { ClockIcon, MagnifyingGlassIcon, PencilSquareIcon, UserMinusIcon, UserPlusIcon } from '@heroicons/vue/24/outline'
+import CsrfInput from './components/CsrfInput.vue'
 import EmptyState from './components/EmptyState.vue'
+import EmployeeExpirationModal from './components/EmployeeExpirationModal.vue'
 import EmployeeFormModal from './components/EmployeeFormModal.vue'
 import EmployeeTerminationModal from './components/EmployeeTerminationModal.vue'
 import FormField from './components/FormField.vue'
 import PageHeading from './components/PageHeading.vue'
 import PanelCard from './components/PanelCard.vue'
+import StatusBadge from './components/StatusBadge.vue'
 import { fieldClass, primaryButton, secondaryButton } from './helpers.js'
 
 const props = defineProps({ data: { type: Object, required: true } })
 
+const data = computed(() => ({
+  ...props.data,
+  employees: (props.data.employees ?? []).map((employee) => ({
+    ...employee,
+    expirations: employee.expirations ?? [],
+  })),
+  expirationTypes: props.data.expirationTypes ?? [],
+  expirationTypeCatalog: props.data.expirationTypeCatalog ?? [],
+  expirationRoutes: props.data.expirationRoutes ?? { create: '#', createType: '#' },
+}))
+
 const formEmployee = ref(undefined)
 const terminationEmployee = ref(null)
+const expirationEmployee = ref(null)
 
-const activeCount = computed(() => props.data.employees.filter((employee) => employee.active).length)
+const activeCount = computed(() => data.value.employees.filter((employee) => employee.active).length)
 const selectedHistoryEmployee = computed(() => {
-  const id = String(props.data.historyFilters.employeeId || '')
-  return props.data.employeeCatalog.find((employee) => String(employee.id) === id) || null
+  const id = String(data.value.historyFilters.employeeId || '')
+  return data.value.employeeCatalog.find((employee) => String(employee.id) === id) || null
 })
 
 const openCreate = () => {
   formEmployee.value = null
   terminationEmployee.value = null
+  expirationEmployee.value = null
 }
 
 const openEdit = (employee) => {
   formEmployee.value = employee
   terminationEmployee.value = null
+  expirationEmployee.value = null
 }
 
 const openTerminate = (employee) => {
   terminationEmployee.value = employee
   formEmployee.value = undefined
+  expirationEmployee.value = null
+}
+
+const openExpiration = (employee) => {
+  expirationEmployee.value = employee
+  formEmployee.value = undefined
+  terminationEmployee.value = null
 }
 </script>
 
@@ -80,6 +104,39 @@ const openTerminate = (employee) => {
       </p>
     </PanelCard>
 
+    <PanelCard v-if="data.canEdit" title="Catálogo de tipos de vencimiento" class="mb-6">
+      <form method="post" :action="data.expirationRoutes.createType" class="grid gap-4 md:grid-cols-5">
+        <CsrfInput :csrf="data.csrf" />
+        <input type="hidden" name="return_to" value="/mantenimiento/empleados" />
+        <FormField label="Nombre" for-id="employee-expiration-type-name"><input id="employee-expiration-type-name" name="nombre" maxlength="100" required :class="fieldClass" /></FormField>
+        <FormField label="Aplica a" for-id="employee-expiration-type-applies"><select id="employee-expiration-type-applies" name="aplica_a" :class="fieldClass"><option value="EMPLEADO">Empleados</option><option value="AMBOS">Empleados y equipos</option></select></FormField>
+        <FormField label="Avisar antes (días)" for-id="employee-expiration-warning"><input id="employee-expiration-warning" type="number" min="0" max="3650" name="dias_aviso_previo" value="30" required :class="fieldClass" /></FormField>
+        <label class="flex items-end gap-2 pb-2 text-sm font-medium text-ink"><input type="checkbox" name="requiere_documento" value="1" /> Requiere documento</label>
+        <div class="flex items-end"><button type="submit" :class="secondaryButton">Crear tipo</button></div>
+      </form>
+      <div v-if="data.expirationTypeCatalog?.length" class="mt-5 overflow-x-auto">
+        <table class="w-full min-w-[42rem] text-left text-sm">
+          <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-4 py-3">Tipo</th><th class="px-4 py-3">Aplica a</th><th class="px-4 py-3">Aviso</th><th class="px-4 py-3">Documento</th><th class="px-4 py-3">Estado</th><th class="px-4 py-3 text-right">Acción</th></tr></thead>
+          <tbody class="divide-y divide-border-subtle">
+            <tr v-for="type in data.expirationTypeCatalog" :key="type.id">
+              <td class="px-4 py-3 font-semibold text-ink">{{ type.name }}</td>
+              <td class="px-4 py-3 text-ink-muted">{{ type.appliesTo }}</td>
+              <td class="px-4 py-3 text-ink-muted">{{ type.warningDays }} días</td>
+              <td class="px-4 py-3 text-ink-muted">{{ type.requiresDocument ? 'Sí' : 'No' }}</td>
+              <td class="px-4 py-3"><span :class="type.active ? 'bg-success-soft text-success-strong' : 'bg-surface-subtle text-ink-muted'" class="rounded-full px-2.5 py-1 text-xs font-semibold">{{ type.active ? 'Activo' : 'Inactivo' }}</span></td>
+              <td class="px-4 py-3 text-right">
+                <form method="post" :action="type.toggleUrl">
+                  <CsrfInput :csrf="data.csrf" />
+                  <input type="hidden" name="return_to" value="/mantenimiento/empleados" />
+                  <button type="submit" :class="secondaryButton">{{ type.active ? 'Inactivar' : 'Activar' }}</button>
+                </form>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </PanelCard>
+
     <PanelCard title="Resultados" :count="data.employees.length" flush>
       <EmptyState
         v-if="data.employees.length === 0"
@@ -97,6 +154,7 @@ const openTerminate = (employee) => {
                 <th class="px-5 py-3">Legajo</th>
                 <th class="px-5 py-3">Contacto</th>
                 <th class="px-5 py-3">Estado</th>
+                <th class="px-5 py-3">Vencimientos</th>
                 <th class="px-5 py-3 text-right">Acciones</th>
               </tr>
             </thead>
@@ -130,10 +188,36 @@ const openTerminate = (employee) => {
                   <div v-if="!employee.active && employee.terminatedAt" class="mt-1 text-xs text-ink-muted">{{ employee.terminatedAt }}</div>
                 </td>
                 <td class="px-5 py-4">
+                  <span v-if="employee.expirations.length === 0" class="text-xs text-ink-muted">Sin vencimientos</span>
+                  <div v-else class="space-y-1">
+                    <details v-for="expiration in employee.expirations" :key="expiration.id" class="ui-details-animated">
+                      <summary class="flex cursor-pointer items-center gap-2">
+                        <StatusBadge :status="expiration.status" />
+                        <span class="text-xs text-ink">{{ expiration.typeName }} · {{ expiration.expiresAt }}</span>
+                      </summary>
+                      <form v-if="data.canEdit && employee.active" method="post" :action="expiration.updateUrl" class="mt-2 grid min-w-[18rem] gap-2 rounded-lg border border-border bg-white p-3 shadow-card">
+                        <CsrfInput :csrf="data.csrf" />
+                        <input type="hidden" name="return_to" value="/mantenimiento/empleados" />
+                        <input type="date" name="fecha_emision" :value="expiration.issuedAt" :class="fieldClass" />
+                        <input type="date" name="fecha_vencimiento" required :value="expiration.expiresAt" :class="fieldClass" />
+                        <input name="numero_documento" maxlength="100" :value="expiration.documentNumber" placeholder="Documento" :class="fieldClass" />
+                        <textarea name="observaciones" maxlength="2000" rows="2" :value="expiration.notes" placeholder="Observaciones" :class="fieldClass"></textarea>
+                        <div class="flex gap-2">
+                          <button type="submit" :class="primaryButton">Guardar</button>
+                          <button type="submit" :formaction="expiration.deactivateUrl" class="inline-flex items-center rounded-md border border-danger/30 px-3 py-2 text-sm font-semibold text-danger-strong hover:bg-danger/5">Retirar</button>
+                        </div>
+                      </form>
+                    </details>
+                  </div>
+                </td>
+                <td class="px-5 py-4">
                   <div v-if="data.canEdit && employee.active" class="flex justify-end gap-2">
                     <a :href="employee.historyUrl" :class="secondaryButton">
                       <ClockIcon class="mr-1.5 size-4" aria-hidden="true" />Historial
                     </a>
+                    <button type="button" :class="secondaryButton" @click="openExpiration(employee)">
+                      Vencimiento
+                    </button>
                     <button type="button" :class="secondaryButton" @click="openEdit(employee)">
                       <PencilSquareIcon class="mr-1.5 size-4" aria-hidden="true" />Editar
                     </button>
@@ -176,6 +260,20 @@ const openTerminate = (employee) => {
               </span>
             </div>
             <p v-if="employee.phone || employee.email" class="mt-2 text-sm text-ink-muted">{{ employee.phone || employee.email }}</p>
+            <div v-if="employee.expirations.length" class="mt-3 space-y-1">
+              <div v-for="expiration in employee.expirations.slice(0, 2)" :key="expiration.id" class="flex items-center gap-2 text-xs">
+                <StatusBadge :status="expiration.status" />
+                <span>{{ expiration.typeName }} · {{ expiration.expiresAt }}</span>
+              </div>
+            </div>
+            <button
+              v-if="data.canEdit && employee.active"
+              type="button"
+              :class="`${secondaryButton} mt-4 w-full`"
+              @click="openExpiration(employee)"
+            >
+              Registrar vencimiento
+            </button>
             <div class="mt-4 flex gap-2">
               <a :href="employee.historyUrl" :class="secondaryButton" class="flex-1">Historial</a>
               <button v-if="data.canEdit && employee.active" type="button" :class="secondaryButton" class="flex-1" @click="openEdit(employee)">Editar</button>
@@ -330,6 +428,15 @@ const openTerminate = (employee) => {
       :employee="terminationEmployee"
       :csrf="data.csrf"
       @close="terminationEmployee = null"
+    />
+
+    <EmployeeExpirationModal
+      v-if="expirationEmployee"
+      :employee="expirationEmployee"
+      :expiration-types="data.expirationTypes"
+      :create-url="data.expirationRoutes.create"
+      :csrf="data.csrf"
+      @close="expirationEmployee = null"
     />
   </div>
 </template>

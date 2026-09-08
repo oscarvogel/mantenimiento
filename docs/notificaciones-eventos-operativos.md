@@ -7,6 +7,10 @@ Referencia: issue #142, sub-issue de #7.
 | `preventivo.proximo` | El evaluador preventivo devuelve `PROXIMO` | WARNING | Usuarios habilitados por scope/preferencias | Plan / `/mantenimiento/planes?equipo_id=…` |
 | `preventivo.vencido` | El evaluador preventivo devuelve `VENCIDO` | CRITICAL | Usuarios habilitados por scope/preferencias | Plan / `/mantenimiento/planes?equipo_id=…` |
 | `equipo.sin_lectura` | Equipo activo sin lectura o con última lectura anterior al umbral configurado | WARNING | Usuarios habilitados por scope/preferencias | Equipo / `/mantenimiento/equipos/{id}` |
+| `equipo.vencimiento_proximo` | Vencimiento activo del equipo dentro de la ventana de aviso del tipo | WARNING | Usuarios habilitados por scope/preferencias | Equipo / `/mantenimiento/equipos/{id}` |
+| `equipo.vencimiento_vencido` | Fecha de vencimiento del equipo anterior a hoy | CRITICAL | Usuarios habilitados por scope/preferencias | Equipo / `/mantenimiento/equipos/{id}` |
+| `empleado.vencimiento_proximo` | Vencimiento activo del empleado dentro de la ventana de aviso del tipo | WARNING | Usuarios habilitados por scope/preferencias | Empleado / `/mantenimiento/empleados?q=…` |
+| `empleado.vencimiento_vencido` | Fecha de vencimiento del empleado anterior a hoy | CRITICAL | Usuarios habilitados por scope/preferencias | Empleado / `/mantenimiento/empleados?q=…` |
 | `orden.asignada` | OT abierta con `responsable_usuario_id` | INFO | Responsable de la OT | OT / `/mantenimiento/ordenes?orden_id=…` |
 | `orden.proxima_objetivo` | `fecha_objetivo` entre ahora y el umbral de próximos días | WARNING | Responsable si existe; si no, resolución normal por scope | OT / `/mantenimiento/ordenes?orden_id=…` |
 | `orden.demorada` | `fecha_objetivo` vencida; si no existe, apertura anterior al umbral de demora | CRITICAL | Responsable si existe; si no, resolución normal por scope | OT / `/mantenimiento/ordenes?orden_id=…` |
@@ -18,6 +22,7 @@ Cada productor usa una `event_key` estable por ciclo lógico:
 
 - preventivos: plan + próximo km/horas/fecha;
 - lectura desactualizada: equipo + fecha de última lectura;
+- vencimientos: registro de vencimiento + fecha de vencimiento;
 - asignación: OT + responsable;
 - objetivo próximo: OT + fecha objetivo;
 - demora: OT + fecha objetivo o apertura usada como referencia;

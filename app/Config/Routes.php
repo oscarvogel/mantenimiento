@@ -128,6 +128,12 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->get('empleados/(:num)/foto', 'Employees::photo/$1', ['filter' => 'permission:empleados.ver']);
     $routes->post('empleados/(:num)/baja', 'Employees::terminate/$1', ['filter' => 'permission:empleados.editar']);
 
+    $routes->post('vencimientos/tipos', 'Expirations::createType');
+    $routes->post('vencimientos/tipos/(:num)/estado', 'Expirations::toggleType/$1');
+    $routes->post('vencimientos', 'Expirations::create');
+    $routes->post('vencimientos/(:num)', 'Expirations::update/$1');
+    $routes->post('vencimientos/(:num)/retirar', 'Expirations::deactivate/$1');
+
     $routes->get('importaciones', 'ImportManagement::index', ['filter' => 'permission:importaciones.ver']);
     $routes->get('importaciones/biblioteca', 'ImportManagement::library', ['filter' => 'permission:importaciones.ver']);
     $routes->post('importaciones/biblioteca/items/(:num)', 'ImportManagement::updateLibraryItem/$1', ['filter' => 'permission:importaciones.cargar']);
