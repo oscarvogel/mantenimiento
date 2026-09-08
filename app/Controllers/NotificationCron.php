@@ -33,6 +33,58 @@ final class NotificationCron extends BaseController
             ->setJSON(['status' => 'error', 'error' => 'method_not_allowed']);
     }
 
+    public function migrate(): ResponseInterface
+    {
+        $provided = trim((string) $this->headerToken());
+        $expected = trim((string) env('alerts.webCronToken', ''));
+
+        if ($provided === '') {
+            log_message('warning', 'Intento rechazado de migración HTTP sin token.');
+
+            return $this->response->setStatusCode(401)->setJSON([
+                'status' => 'error',
+                'error' => 'unauthorized',
+            ]);
+        }
+
+        if (strlen($expected) < 32 || ! hash_equals($expected, $provided)) {
+            log_message('warning', 'Intento rechazado de migración HTTP con token inválido.');
+
+            return $this->response->setStatusCode(403)->setJSON([
+                'status' => 'error',
+                'error' => 'forbidden',
+            ]);
+        }
+
+        try {
+            $runner = service('migrations');
+            $result = $runner->latest();
+
+            if ($result === false) {
+                throw new \RuntimeException('CodeIgniter informó fallo al ejecutar las migraciones.');
+            }
+
+            log_message('notice', 'Migraciones HTTP ejecutadas correctamente.');
+
+            return $this->response->setJSON([
+                'status' => 'ok',
+                'environment' => ENVIRONMENT,
+                'database' => (string) env('database.default.database', ''),
+                'message' => 'Migraciones pendientes aplicadas correctamente.',
+            ]);
+        } catch (Throwable $exception) {
+            log_message('error', 'Falló ejecución HTTP de migraciones: {message}', [
+                'message' => $exception->getMessage(),
+            ]);
+
+            return $this->response->setStatusCode(500)->setJSON([
+                'status' => 'error',
+                'error' => 'migration_failed',
+                'message' => ENVIRONMENT === 'development' ? $exception->getMessage() : 'Falló la ejecución de migraciones.',
+            ]);
+        }
+    }
+
     private function dispatchWithToken(?string $provided): ResponseInterface
     {
         if (! filter_var(env('alerts.webCronEnabled', false), FILTER_VALIDATE_BOOL)) {
