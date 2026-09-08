@@ -18,6 +18,17 @@ const asCount = (value) => {
   return Number.isFinite(count) && count >= 0 ? Math.trunc(count) : 0
 }
 
+const asMoney = (value) => {
+  const amount = Number(value)
+  return Number.isFinite(amount) && amount >= 0 ? amount : 0
+}
+
+const asSignedPercentage = (value) => {
+  if (value === null || value === undefined || value === '') return null
+  const percentage = Number(value)
+  return Number.isFinite(percentage) ? percentage : null
+}
+
 const asPercentage = (value) => {
   if (value === null || value === undefined || value === '') return null
 
@@ -177,6 +188,7 @@ export function normalizeDashboardPayload(payload) {
   const equipmentUrl = findNavigationUrl(shell.navigation, ['camion', 'equipo', 'truck'])
   const maintenanceUrl = findNavigationUrl(shell.navigation, ['plan', 'preventiv', 'mantenimiento', 'servicio', 'maintenance'])
   const sourceLinks = source.links && typeof source.links === 'object' ? source.links : {}
+  const financial = source.financial && typeof source.financial === 'object' ? source.financial : {}
 
   return {
     ...shell,
@@ -197,6 +209,32 @@ export function normalizeDashboardPayload(payload) {
       equipmentWithStaleReading: asCount(metrics.equipmentWithStaleReading),
       staleReadingDays: asCount(metrics.staleReadingDays) || 7,
     },
+    financial: {
+      period: asText(financial.period),
+      periodLabel: asText(financial.periodLabel),
+      currentMonthArs: asMoney(financial.currentMonthArs),
+      previousMonthArs: asMoney(financial.previousMonthArs),
+      variationPercentage: asSignedPercentage(financial.variationPercentage),
+      preventiveArs: asMoney(financial.preventiveArs),
+      correctiveArs: asMoney(financial.correctiveArs),
+      averagePerEquipmentArs: asMoney(financial.averagePerEquipmentArs),
+      equipmentWithCost: asCount(financial.equipmentWithCost),
+      missingExchangeRateCount: asCount(financial.missingExchangeRateCount),
+      history: Array.isArray(financial.history)
+        ? financial.history.map((item) => ({
+            month: asText(item?.month),
+            label: asText(item?.label),
+            totalArs: asMoney(item?.totalArs),
+          }))
+        : [],
+      topEquipment: Array.isArray(financial.topEquipment)
+        ? financial.topEquipment.map((item) => ({
+            equipmentId: asCount(item?.equipmentId),
+            equipmentCode: asText(item?.equipmentCode, 'Equipo'),
+            totalArs: asMoney(item?.totalArs),
+          }))
+        : [],
+    },
     readingAttention: normalizeReadingAttention(source.readingAttention),
     upcomingMaintenance: normalizeUpcoming(source.upcomingMaintenance),
     links: {
@@ -212,6 +250,7 @@ export function normalizeDashboardPayload(payload) {
       maintenanceOverdue: asUrl(sourceLinks.maintenanceOverdue, maintenanceUrl),
       maintenanceMissingData: asUrl(sourceLinks.maintenanceMissingData, maintenanceUrl),
       orders: asUrl(sourceLinks.orders),
+      financialDetail: asUrl(sourceLinks.financialDetail),
       correctiveOrder: asUrl(sourceLinks.correctiveOrder),
     },
   }
