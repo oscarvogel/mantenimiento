@@ -49,6 +49,14 @@ final class WorkOrdersPayload
                     'other' => (float) ($row['otros_costos'] ?? 0),
                     'total' => (float) ($row['costo_total'] ?? 0),
                 ],
+                'historicalCost' => [
+                    'currency' => $row['moneda_original'] ?: null,
+                    'originalAmount' => $row['importe_original'] === null ? null : (float) $row['importe_original'],
+                    'exchangeRateArs' => $row['tipo_cambio_ars'] === null ? null : (float) $row['tipo_cambio_ars'],
+                    'exchangeRateDate' => $row['fecha_tipo_cambio'] ?: null,
+                    'exchangeRateSource' => $row['origen_tipo_cambio'] ?: null,
+                    'amountArs' => $row['importe_ars'] === null ? null : (float) $row['importe_ars'],
+                ],
                 'tasks' => array_map(static fn (array $task): array => [
                     'id' => (int) $task['id'],
                     'description' => (string) $task['descripcion_solicitada'],
