@@ -41,6 +41,7 @@ const navigationGroups = computed(() => {
   const definitions = [
     { key: 'operation', label: 'Operación', items: ['dashboard', 'equipment', 'quick-readings', 'plans', 'maintenance'] },
     { key: 'management', label: 'Gestión', items: ['employees', 'notifications', 'imports', 'preventive-library', 'reports'] },
+    { key: 'masters', label: 'Maestros', items: ['masters-expirations'] },
     { key: 'administration', label: 'Administración', items: ['superadmin', 'chatbot-audit', 'branches', 'users'] },
   ]
   const knownKeys = new Set(definitions.flatMap((group) => group.items))
