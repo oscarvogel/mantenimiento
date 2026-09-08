@@ -123,6 +123,7 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->get('empleados', 'Employees::index', ['filter' => 'permission:empleados.ver']);
     $routes->post('empleados', 'Employees::create', ['filter' => 'permission:empleados.editar']);
     $routes->post('empleados/(:num)', 'Employees::update/$1', ['filter' => 'permission:empleados.editar']);
+    $routes->get('empleados/(:num)/foto', 'Employees::photo/$1', ['filter' => 'permission:empleados.ver']);
     $routes->post('empleados/(:num)/baja', 'Employees::terminate/$1', ['filter' => 'permission:empleados.editar']);
 
     $routes->get('importaciones', 'ImportManagement::index', ['filter' => 'permission:importaciones.ver']);
