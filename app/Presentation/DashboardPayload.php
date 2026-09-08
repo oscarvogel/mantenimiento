@@ -25,6 +25,7 @@ final class DashboardPayload
         return [
             'view' => $managerial ? 'managerial' : 'operational',
             'metrics' => $operations['metrics'] ?? [],
+            'financial' => $operations['financial'] ?? [],
             'readingAttention' => array_map(
                 static fn (array $item): array => $item + [
                     'detailUrl' => $canEquipment && (int) ($item['equipmentId'] ?? 0) > 0
@@ -46,6 +47,7 @@ final class DashboardPayload
                 'registerMaintenance' => $canEquipment ? $equipmentUrl : '#',
                 'quickReadings' => $canLoadReadings ? base_url('mantenimiento/lecturas/rapidas') : '#',
                 'orders' => $canOrders ? base_url('mantenimiento') : '#',
+                'financialDetail' => $actor->hasPermission('ordenes.ver') ? base_url('reportes') : '#',
                 'correctiveOrder' => $canOrders ? base_url('mantenimiento?ot_correctiva=1') : '#',
                 // Alias temporal para consumidores viejos. Ya no apunta a Biblioteca.
                 'library' => $servicesUrl,
