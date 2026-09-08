@@ -94,6 +94,7 @@ use App\Infrastructure\Notifications\MinishlinkWebPushGateway;
 use App\Infrastructure\Notifications\SystemNotificationClock;
 use App\Infrastructure\Identity\CodeIgniterLoginAttemptLimiter;
 use App\Infrastructure\AppShell\CodeIgniterAppShellReadModel;
+use App\Infrastructure\Dashboard\CodeIgniterDashboardFinancialSummary;
 use App\Infrastructure\Dashboard\MaintenanceCircuitDashboardOverview;
 use App\Infrastructure\Dashboard\PreventiveDashboardDuePlans;
 use App\Infrastructure\Dashboard\SystemDashboardClock;
@@ -470,6 +471,7 @@ class Services extends BaseService
         return new GetMaintenanceDashboard(
             new MaintenanceCircuitDashboardOverview(static::circuitOverview(false)),
             new PreventiveDashboardDuePlans(static::consultMaintenanceDue(false)),
+            new CodeIgniterDashboardFinancialSummary(db_connect()),
             new SystemDashboardClock(),
         );
     }

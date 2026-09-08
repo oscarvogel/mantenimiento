@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Application\Dashboard\GetMaintenanceDashboard;
 use App\Application\Dashboard\Port\DashboardDuePlans;
+use App\Application\Dashboard\Port\DashboardFinancialSummary;
 use App\Application\Dashboard\Port\DashboardOverview;
 use App\Application\Dashboard\Port\DashboardClock;
 use App\Application\Identity\ActorContext;
@@ -22,7 +23,7 @@ final class GetMaintenanceDashboardTest extends TestCase
             $this->dueResult(10, 100, EstadoPlan::PROXIMO, [CriterioPlan::KILOMETRAJE]),
             $this->dueResult(11, 101, EstadoPlan::VENCIDO, [CriterioPlan::KILOMETRAJE]),
         ]);
-        $result = (new GetMaintenanceDashboard($overview, $due, new DashboardClockFake()))->execute($this->actor([
+        $result = (new GetMaintenanceDashboard($overview, $due, new DashboardFinancialSummaryFake(), new DashboardClockFake()))->execute($this->actor([
             'equipos.ver', 'planes.ver', 'ordenes.ver',
         ]));
 
@@ -33,12 +34,14 @@ final class GetMaintenanceDashboardTest extends TestCase
         self::assertSame(1, $result['metrics']['openOrders']);
         self::assertSame('VENCIDO', $result['upcomingMaintenance'][0]['status']);
         self::assertSame('Vencido por 200 km', $result['upcomingMaintenance'][0]['remaining']);
+        self::assertSame(125000.0, $result['financial']['currentMonthArs']);
+        self::assertSame(25.0, $result['financial']['variationPercentage']);
     }
 
     public function testDoesNotExposeMaintenanceOrOrdersWithoutTheirPermissions(): void
     {
         $due = new DashboardDuePlansFake([$this->dueResult(10, 100, EstadoPlan::VENCIDO, [CriterioPlan::KILOMETRAJE])]);
-        $result = (new GetMaintenanceDashboard(new DashboardOverviewFake(), $due, new DashboardClockFake()))->execute(
+        $result = (new GetMaintenanceDashboard(new DashboardOverviewFake(), $due, new DashboardFinancialSummaryFake(), new DashboardClockFake()))->execute(
             $this->actor(['equipos.ver']),
         );
 
@@ -53,6 +56,7 @@ final class GetMaintenanceDashboardTest extends TestCase
         $result = (new GetMaintenanceDashboard(
             new DashboardOverviewFake(),
             new DashboardDuePlansFake([]),
+            new DashboardFinancialSummaryFake(),
             new DashboardClockFake(),
         ))->execute($this->actor(['equipos.ver', 'planes.ver']));
 
@@ -133,5 +137,27 @@ final class DashboardClockFake implements DashboardClock
     public function today(): \DateTimeImmutable
     {
         return new \DateTimeImmutable('2026-08-08');
+    }
+}
+
+
+final class DashboardFinancialSummaryFake implements DashboardFinancialSummary
+{
+    public function fetch(ActorContext $actor, \DateTimeImmutable $today): array
+    {
+        return [
+            'period' => '2026-08',
+            'periodLabel' => 'Ago 2026',
+            'currentMonthArs' => 125000.0,
+            'previousMonthArs' => 100000.0,
+            'variationPercentage' => 25.0,
+            'preventiveArs' => 75000.0,
+            'correctiveArs' => 50000.0,
+            'averagePerEquipmentArs' => 62500.0,
+            'equipmentWithCost' => 2,
+            'missingExchangeRateCount' => 0,
+            'history' => [],
+            'topEquipment' => [],
+        ];
     }
 }
