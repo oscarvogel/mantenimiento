@@ -29,6 +29,27 @@ final class Employees extends BaseController
             $search = trim((string) $this->request->getGet('q'));
             $employees = $this->service()->list($actor, $active, $search === '' ? null : $search);
 
+            $historyEmployeeId = $this->nullableIntGet('chofer_id');
+            $historyEquipmentSearch = trim((string) $this->request->getGet('movil'));
+            $historyFrom = $this->dateGetOrNull('desde');
+            $historyTo = $this->dateGetOrNull('hasta');
+            $historyStatusRaw = trim((string) $this->request->getGet('vigencia'));
+            $historyCurrent = match ($historyStatusRaw) {
+                'vigentes' => true,
+                'historicas' => false,
+                default => null,
+            };
+            $assignmentRepository = new CodeIgniterEmployeeAssignmentRepository(db_connect());
+            $assignmentHistory = $assignmentRepository->assignmentHistory(
+                (int) $actor->companyId(),
+                $historyEmployeeId,
+                $historyEquipmentSearch === '' ? null : $historyEquipmentSearch,
+                $historyFrom,
+                $historyTo,
+                $historyCurrent,
+            );
+            $employeeCatalog = $this->service()->list($actor, null, null);
+
             return $this->renderApp($actor, 'employees', 'employees-index', 'Empleados y choferes', [
                 'employees' => array_map(static fn (array $row): array => [
                     'id' => (int) $row['id'],
@@ -48,10 +69,38 @@ final class Employees extends BaseController
                     'importedIncomplete' => (int) ($row['importado_incompleto'] ?? 0) === 1,
                     'updateUrl' => base_url('mantenimiento/empleados/' . (int) $row['id']),
                     'terminateUrl' => base_url('mantenimiento/empleados/' . (int) $row['id'] . '/baja'),
+                    'historyUrl' => base_url('mantenimiento/empleados?chofer_id=' . (int) $row['id'] . '#historial-asignaciones'),
                 ], $employees),
+                'assignmentHistory' => array_map(static fn (array $row): array => [
+                    'id' => (int) $row['id'],
+                    'employeeId' => (int) $row['empleado_id'],
+                    'employeeName' => trim((string) $row['empleado_nombre'] . ' ' . (string) ($row['empleado_apellido'] ?? '')),
+                    'employeeActive' => (int) ($row['empleado_activo'] ?? 0) === 1,
+                    'equipmentId' => (int) $row['equipo_id'],
+                    'equipmentCode' => (string) $row['equipo_codigo'],
+                    'equipmentPlate' => $row['equipo_patente'] ?? null,
+                    'branchName' => $row['sucursal_nombre'] ?? null,
+                    'startsAt' => (string) $row['fecha_desde'],
+                    'endsAt' => $row['fecha_hasta'] ?? null,
+                    'current' => empty($row['fecha_hasta']),
+                    'notes' => $row['observaciones'] ?? null,
+                    'equipmentUrl' => base_url('mantenimiento/equipos/' . (int) $row['equipo_id']),
+                ], $assignmentHistory),
+                'employeeCatalog' => array_map(static fn (array $row): array => [
+                    'id' => (int) $row['id'],
+                    'name' => trim((string) $row['nombre'] . ' ' . (string) ($row['apellido'] ?? '')),
+                    'active' => (int) $row['activo'] === 1,
+                ], $employeeCatalog),
                 'filters' => [
                     'q' => $search,
                     'status' => $status === '' ? 'activos' : $status,
+                ],
+                'historyFilters' => [
+                    'employeeId' => $historyEmployeeId ?? '',
+                    'equipment' => $historyEquipmentSearch,
+                    'from' => $historyFrom?->format('Y-m-d') ?? '',
+                    'to' => $historyTo?->format('Y-m-d') ?? '',
+                    'status' => $historyStatusRaw === '' ? 'todas' : $historyStatusRaw,
                 ],
                 'canEdit' => $actor->hasPermission('empleados.editar'),
                 'routes' => [
@@ -138,6 +187,21 @@ final class Employees extends BaseController
             throw new DomainException('No existe un contexto autenticado válido.');
         }
         return $actor;
+    }
+
+    private function nullableIntGet(string $field): ?int
+    {
+        $value = trim((string) $this->request->getGet($field));
+        if ($value === '' || ! ctype_digit($value) || (int) $value <= 0) {
+            return null;
+        }
+        return (int) $value;
+    }
+
+    private function dateGetOrNull(string $field): ?DateTimeImmutable
+    {
+        $value = trim((string) $this->request->getGet($field));
+        return $value === '' ? null : new DateTimeImmutable($value);
     }
 
     private function nullable(string $field): ?string
