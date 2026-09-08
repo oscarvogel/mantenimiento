@@ -144,11 +144,24 @@ const openTerminate = (employee) => {
                 <td class="px-5 py-4">
                   <span v-if="employee.expirations.length === 0" class="text-xs text-ink-muted">Sin vencimientos</span>
                   <div v-else class="space-y-1">
-                    <div v-for="expiration in employee.expirations.slice(0, 2)" :key="expiration.id" class="flex items-center gap-2">
-                      <StatusBadge :status="expiration.status" />
-                      <span class="text-xs text-ink">{{ expiration.typeName }} · {{ expiration.expiresAt }}</span>
-                    </div>
-                    <span v-if="employee.expirations.length > 2" class="text-xs text-ink-muted">+{{ employee.expirations.length - 2 }} más</span>
+                    <details v-for="expiration in employee.expirations" :key="expiration.id" class="ui-details-animated">
+                      <summary class="flex cursor-pointer items-center gap-2">
+                        <StatusBadge :status="expiration.status" />
+                        <span class="text-xs text-ink">{{ expiration.typeName }} · {{ expiration.expiresAt }}</span>
+                      </summary>
+                      <form v-if="data.canEdit && employee.active" method="post" :action="expiration.updateUrl" class="mt-2 grid min-w-[18rem] gap-2 rounded-lg border border-border bg-white p-3 shadow-card">
+                        <CsrfInput :csrf="data.csrf" />
+                        <input type="hidden" name="return_to" value="/mantenimiento/empleados" />
+                        <input type="date" name="fecha_emision" :value="expiration.issuedAt" :class="fieldClass" />
+                        <input type="date" name="fecha_vencimiento" required :value="expiration.expiresAt" :class="fieldClass" />
+                        <input name="numero_documento" maxlength="100" :value="expiration.documentNumber" placeholder="Documento" :class="fieldClass" />
+                        <textarea name="observaciones" maxlength="2000" rows="2" :value="expiration.notes" placeholder="Observaciones" :class="fieldClass"></textarea>
+                        <div class="flex gap-2">
+                          <button type="submit" :class="primaryButton">Guardar</button>
+                          <button type="submit" :formaction="expiration.deactivateUrl" class="inline-flex items-center rounded-md border border-danger/30 px-3 py-2 text-sm font-semibold text-danger-strong hover:bg-danger/5">Retirar</button>
+                        </div>
+                      </form>
+                    </details>
                   </div>
                 </td>
                 <td class="px-5 py-4">
