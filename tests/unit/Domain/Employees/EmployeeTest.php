@@ -33,6 +33,45 @@ final class EmployeeTest extends TestCase
         self::assertSame('Baja laboral', $employee->terminationReason());
     }
 
+    public function testUpdatesProfileWithoutLosingIdentityOrStatus(): void
+    {
+        $employee = Employee::reconstitute(
+            12,
+            7,
+            'ARIEL',
+            'RODRIGUEZ',
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            true,
+            null,
+            null,
+            true,
+        );
+
+        $employee->updateProfile(
+            'Ariel',
+            'Rodriguez',
+            '30111222',
+            '20-30111222-3',
+            'CHO-12',
+            '3764000000',
+            'ariel@example.com',
+            new DateTimeImmutable('2026-09-01'),
+            'Ficha revisada',
+        );
+
+        self::assertSame(12, $employee->id());
+        self::assertTrue($employee->isActive());
+        self::assertSame('Ariel Rodriguez', $employee->fullName());
+        self::assertSame('30111222', $employee->document());
+        self::assertSame('CHO-12', $employee->employeeNumber());
+    }
+
     public function testRejectsInvalidEmail(): void
     {
         $this->expectException(DomainException::class);
