@@ -71,6 +71,29 @@ final class CodeIgniterImportReferenceGateway implements ImportReferenceGateway
         ];
     }
 
+    public function activeEmployeeByName(int $companyId, string $name): ?array
+    {
+        $needle = $this->normalizeName($name);
+        if ($needle === '') {
+            return null;
+        }
+
+        $matches = [];
+        foreach ($this->database->table('empleados')
+            ->select('id, nombre, apellido')
+            ->where('empresa_id', $companyId)
+            ->where('activo', 1)
+            ->where('deleted_at', null)
+            ->get()->getResultArray() as $row) {
+            $fullName = trim((string) $row['nombre'] . ' ' . (string) ($row['apellido'] ?? ''));
+            if ($this->normalizeName($fullName) === $needle) {
+                $matches[] = ['id' => (int) $row['id'], 'nombre' => $fullName];
+            }
+        }
+
+        return count($matches) === 1 ? $matches[0] : null;
+    }
+
     public function equipmentCodeExists(int $companyId, string $code): bool
     {
         return $this->database->table('equipos')->where('empresa_id', $companyId)
@@ -81,6 +104,13 @@ final class CodeIgniterImportReferenceGateway implements ImportReferenceGateway
     {
         return $this->database->table('equipos')->where('empresa_id', $companyId)
             ->where('patente', mb_strtoupper(trim($plate)))->where('deleted_at', null)->countAllResults() > 0;
+    }
+
+    private function normalizeName(string $value): string
+    {
+        $value = mb_strtoupper(trim(preg_replace('/\s+/u', ' ', $value) ?? ''));
+        $normalized = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value);
+        return preg_replace('/[^A-Z0-9 ]/', '', $normalized === false ? $value : $normalized) ?? '';
     }
 
     public function readingDuplicateExists(int $companyId, int $equipmentId, string $recordedAt, ?int $kilometers, ?string $hours, string $origin): bool
