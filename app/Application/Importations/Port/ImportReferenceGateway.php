@@ -21,6 +21,9 @@ interface ImportReferenceGateway
     /** @return array{id:int,sucursal_id:int,controla_km:bool,controla_horas:bool,km_actual:int|null,horas_actuales:string|null}|null */
     public function activeEquipmentByCode(int $companyId, string $code): ?array;
 
+    /** @return array{id:int,nombre:string}|null */
+    public function activeEmployeeByName(int $companyId, string $name): ?array;
+
     public function equipmentCodeExists(int $companyId, string $code): bool;
 
     public function equipmentPlateExists(int $companyId, string $plate): bool;
