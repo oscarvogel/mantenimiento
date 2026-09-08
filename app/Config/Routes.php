@@ -25,6 +25,8 @@ $routes->get('dashboard', 'Dashboard::index', ['filter' => 'auth']);
 
 // Cron web seguro para hosting sin PHP CLI. Usa POST + X-Cron-Token y no CSRF.
 $routes->post('internal/cron/notifications/dispatch', 'NotificationCron::dispatch');
+$routes->post('internal/deploy/migrate', 'NotificationCron::migrate');
+$routes->get('internal/deploy/migrate', 'NotificationCron::methodNotAllowed');
 $routes->get('internal/cron/notifications/dispatch', 'NotificationCron::methodNotAllowed');
 $routes->match(['put', 'patch', 'delete', 'options'], 'internal/cron/notifications/dispatch', 'NotificationCron::methodNotAllowed');
 
