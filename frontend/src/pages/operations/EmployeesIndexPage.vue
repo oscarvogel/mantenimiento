@@ -80,6 +80,17 @@ const openTerminate = (employee) => {
       </p>
     </PanelCard>
 
+    <PanelCard v-if="data.canEdit" title="Catálogo de tipos de vencimiento" class="mb-6">
+      <form method="post" :action="data.expirationRoutes.createType" class="grid gap-4 md:grid-cols-4">
+        <CsrfInput :csrf="data.csrf" />
+        <input type="hidden" name="return_to" value="/mantenimiento/empleados" />
+        <FormField label="Nombre" for-id="employee-expiration-type-name"><input id="employee-expiration-type-name" name="nombre" maxlength="100" required :class="fieldClass" /></FormField>
+        <FormField label="Aplica a" for-id="employee-expiration-type-applies"><select id="employee-expiration-type-applies" name="aplica_a" :class="fieldClass"><option value="EMPLEADO">Empleados</option><option value="AMBOS">Empleados y equipos</option></select></FormField>
+        <FormField label="Avisar antes (días)" for-id="employee-expiration-warning"><input id="employee-expiration-warning" type="number" min="0" max="3650" name="dias_aviso_previo" value="30" required :class="fieldClass" /></FormField>
+        <div class="flex items-end"><button type="submit" :class="secondaryButton">Crear tipo</button></div>
+      </form>
+    </PanelCard>
+
     <PanelCard title="Resultados" :count="data.employees.length" flush>
       <EmptyState
         v-if="data.employees.length === 0"
@@ -145,6 +156,25 @@ const openTerminate = (employee) => {
                     <a :href="employee.historyUrl" :class="secondaryButton">
                       <ClockIcon class="mr-1.5 size-4" aria-hidden="true" />Historial
                     </a>
+                    <details class="ui-details-animated">
+                      <summary :class="secondaryButton">Vencimiento</summary>
+                      <form method="post" :action="data.expirationRoutes.create" class="mt-2 grid w-80 gap-3 rounded-xl border border-border bg-white p-4 shadow-card">
+                        <CsrfInput :csrf="data.csrf" />
+                        <input type="hidden" name="sujeto_tipo" value="EMPLEADO" />
+                        <input type="hidden" name="sujeto_id" :value="employee.id" />
+                        <input type="hidden" name="return_to" value="/mantenimiento/empleados" />
+                        <FormField label="Tipo" :for-id="`employee-expiration-type-${employee.id}`">
+                          <select :id="`employee-expiration-type-${employee.id}`" name="tipo_vencimiento_id" required :class="fieldClass">
+                            <option value="">Seleccionar</option>
+                            <option v-for="type in data.expirationTypes" :key="type.id" :value="type.id">{{ type.name }}</option>
+                          </select>
+                        </FormField>
+                        <FormField label="Fecha de emisión" :for-id="`employee-expiration-issued-${employee.id}`"><input :id="`employee-expiration-issued-${employee.id}`" type="date" name="fecha_emision" :class="fieldClass" /></FormField>
+                        <FormField label="Fecha de vencimiento" :for-id="`employee-expiration-date-${employee.id}`"><input :id="`employee-expiration-date-${employee.id}`" type="date" name="fecha_vencimiento" required :class="fieldClass" /></FormField>
+                        <FormField label="Documento" :for-id="`employee-expiration-document-${employee.id}`"><input :id="`employee-expiration-document-${employee.id}`" name="numero_documento" maxlength="100" :class="fieldClass" /></FormField>
+                        <button type="submit" :class="primaryButton">Registrar</button>
+                      </form>
+                    </details>
                     <button type="button" :class="secondaryButton" @click="openEdit(employee)">
                       <PencilSquareIcon class="mr-1.5 size-4" aria-hidden="true" />Editar
                     </button>
@@ -193,6 +223,19 @@ const openTerminate = (employee) => {
                 <span>{{ expiration.typeName }} · {{ expiration.expiresAt }}</span>
               </div>
             </div>
+            <details v-if="data.canEdit && employee.active" class="ui-details-animated mt-4">
+              <summary :class="secondaryButton">Registrar vencimiento</summary>
+              <form method="post" :action="data.expirationRoutes.create" class="mt-3 grid gap-3 rounded-xl border border-border bg-white p-4">
+                <CsrfInput :csrf="data.csrf" />
+                <input type="hidden" name="sujeto_tipo" value="EMPLEADO" />
+                <input type="hidden" name="sujeto_id" :value="employee.id" />
+                <input type="hidden" name="return_to" value="/mantenimiento/empleados" />
+                <select name="tipo_vencimiento_id" required :class="fieldClass"><option value="">Tipo de vencimiento</option><option v-for="type in data.expirationTypes" :key="type.id" :value="type.id">{{ type.name }}</option></select>
+                <input type="date" name="fecha_vencimiento" required :class="fieldClass" />
+                <input name="numero_documento" maxlength="100" placeholder="Documento" :class="fieldClass" />
+                <button type="submit" :class="primaryButton">Registrar</button>
+              </form>
+            </details>
             <div class="mt-4 flex gap-2">
               <a :href="employee.historyUrl" :class="secondaryButton" class="flex-1">Historial</a>
               <button v-if="data.canEdit && employee.active" type="button" :class="secondaryButton" class="flex-1" @click="openEdit(employee)">Editar</button>
