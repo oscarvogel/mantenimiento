@@ -85,9 +85,10 @@ final class CodeIgniterImportReferenceGateway implements ImportReferenceGateway
             ->where('activo', 1)
             ->where('deleted_at', null)
             ->get()->getResultArray() as $row) {
-            $fullName = trim((string) $row['nombre'] . ' ' . (string) ($row['apellido'] ?? ''));
-            if ($this->normalizeName($fullName) === $needle) {
-                $matches[] = ['id' => (int) $row['id'], 'nombre' => $fullName];
+            $firstLast = trim((string) $row['nombre'] . ' ' . (string) ($row['apellido'] ?? ''));
+            $lastFirst = trim((string) ($row['apellido'] ?? '') . ' ' . (string) $row['nombre']);
+            if (in_array($needle, [$this->normalizeName($firstLast), $this->normalizeName($lastFirst)], true)) {
+                $matches[] = ['id' => (int) $row['id'], 'nombre' => $firstLast];
             }
         }
 
