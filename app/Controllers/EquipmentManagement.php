@@ -122,7 +122,6 @@ final class EquipmentManagement extends BaseController
             );
             $payload['expirationRoutes'] = [
                 'create' => base_url('mantenimiento/vencimientos'),
-                'createType' => base_url('mantenimiento/vencimientos/tipos'),
             ];
 
             return $this->renderApp(
