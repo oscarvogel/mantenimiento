@@ -1,10 +1,13 @@
 <template>
   <button
+    type="button"
     @click="toggleRecording"
     :class="[
-      'w-8 h-8 rounded-full flex items-center justify-center transition-colors',
+      'ui-interactive flex min-h-10 min-w-10 items-center justify-center rounded-full transition-colors',
       isRecording ? 'bg-red-500 text-white animate-pulse' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
     ]"
+    :aria-label="isRecording ? 'Detener grabación de voz' : 'Grabar mensaje de voz'"
+    :aria-pressed="isRecording"
     :title="isRecording ? 'Detener' : 'Grabar voz'"
   >
     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">

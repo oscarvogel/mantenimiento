@@ -24,9 +24,23 @@ header('Cache-Control: no-store, must-revalidate');
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#031A3E">
-    <meta name="color-scheme" content="light">
+    <meta id="theme-color" name="theme-color" content="#f7f9fc">
+    <meta name="color-scheme" content="light dark">
     <title>Panel de mantenimiento</title>
+    <script>
+        (() => {
+            try {
+                const stored = localStorage.getItem('maintenance-theme');
+                const theme = stored === 'dark' || stored === 'light' ? stored : 'light';
+                document.documentElement.dataset.theme = theme;
+                document.documentElement.classList.toggle('dark', theme === 'dark');
+                document.documentElement.style.colorScheme = theme;
+                document.getElementById('theme-color')?.setAttribute('content', theme === 'dark' ? '#0c1523' : '#f7f9fc');
+            } catch (_) {
+                document.documentElement.dataset.theme = 'light';
+            }
+        })();
+    </script>
     <meta name="csrf-token" content="<?= esc(csrf_hash(), 'attr') ?>">
     <?php foreach (($entry['css'] ?? []) as $stylesheet): ?>
         <link rel="stylesheet" href="<?= esc(base_url('assets/dashboard/' . $stylesheet), 'attr') ?>">

@@ -17,8 +17,11 @@ import { installPreventiveOrderFlow } from './ui/preventiveOrderFlow.js'
 import { installQuickPlanAssignment } from './ui/quickPlanAssignment.js'
 import { installTemplateServicePicker } from './ui/templateServicePicker.js'
 import { consumeFlash, installGlobalBehaviors } from './ui/globals.js'
+import { installScrollReveal } from './ui/scrollReveal.js'
+import { initializeTheme } from './ui/theme.js'
 import './styles.css'
 
+initializeTheme()
 installGlobalBehaviors()
 
 function payloadFromDocument() {
@@ -43,7 +46,9 @@ export function mountMaintenanceDashboard(element, payload) {
   const page = typeof payload?.page === 'string' ? payload.page : 'dashboard'
   if (page === 'login') {
     const pageData = payload?.data && typeof payload.data === 'object' ? payload.data : {}
-    return createApp(LoginPage, { data: pageData }).mount(element)
+    const app = createApp(LoginPage, { data: pageData })
+    installScrollReveal(app)
+    return app.mount(element)
   }
 
   if (page !== 'dashboard') {
@@ -60,18 +65,22 @@ export function mountMaintenanceDashboard(element, payload) {
         ? { data: pageData.report ?? pageData.data ?? {}, urls: pageData.urls ?? {} }
         : { data: pageData }
 
-      return createApp(PageHost, {
+      const app = createApp(PageHost, {
         shell: normalizeAppShellPayload(payload),
         pageComponent,
         pageProps,
-      }).mount(element)
+      })
+      installScrollReveal(app)
+      return app.mount(element)
     }
   }
 
   const dashboard = normalizeDashboardPayload(payload)
   const dashboardComponent = dashboard.view === 'managerial' ? ManagerialApp : App
 
-  return createApp(dashboardComponent, { dashboard }).mount(element)
+  const app = createApp(dashboardComponent, { dashboard })
+  installScrollReveal(app)
+  return app.mount(element)
 }
 
 const root = document.getElementById('maintenance-app')

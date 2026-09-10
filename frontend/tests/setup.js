@@ -1,8 +1,12 @@
 import { afterEach } from 'vitest'
 import { config } from '@vue/test-utils'
+import { scrollRevealDirective } from '../src/ui/scrollReveal.js'
 
 config.global.stubs = {
   transition: false,
+}
+config.global.directives = {
+  reveal: scrollRevealDirective,
 }
 
 if (typeof HTMLFormElement !== 'undefined') {

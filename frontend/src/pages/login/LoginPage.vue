@@ -57,7 +57,7 @@ const brandAsset = (name) => `${baseUrl}assets/brand/${name}.svg`
           {{ data.alert.message }}
         </div>
 
-        <form method="post" :action="data.action" autocomplete="on" class="mt-7 space-y-5">
+        <form method="post" :action="data.action" autocomplete="on" class="mt-7 space-y-5" data-submit-feedback data-loading-label="Ingresando…">
           <input type="hidden" :name="data.csrf.name" :value="data.csrf.hash" />
 
           <div>
@@ -75,7 +75,7 @@ const brandAsset = (name) => `${baseUrl}assets/brand/${name}.svg`
               class="mt-2 block min-h-12 w-full rounded-xl border border-border bg-brand-50 px-4 py-3 text-sm text-ink shadow-sm outline-none transition placeholder:text-ink-subtle focus:border-border-focus focus:bg-white focus:ring-4 focus:ring-primary/10"
               placeholder="nombre@empresa.com"
             />
-            <p v-if="data.errors?.email" id="login-email-error" class="mt-2 text-sm font-medium text-danger-strong">
+            <p v-if="data.errors?.email" id="login-email-error" role="alert" class="mt-2 text-sm font-medium text-danger-strong">
               {{ data.errors.email }}
             </p>
           </div>
@@ -106,7 +106,7 @@ const brandAsset = (name) => `${baseUrl}assets/brand/${name}.svg`
                 <EyeIcon v-else class="size-5" aria-hidden="true" />
               </button>
             </div>
-            <p v-if="data.errors?.password" id="login-password-error" class="mt-2 text-sm font-medium text-danger-strong">
+            <p v-if="data.errors?.password" id="login-password-error" role="alert" class="mt-2 text-sm font-medium text-danger-strong">
               {{ data.errors.password }}
             </p>
           </div>

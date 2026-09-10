@@ -120,7 +120,7 @@ const executiveAlerts = computed(() => [
 
 <template>
   <div>
-    <header class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+    <header v-reveal class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
       <div>
         <div class="inline-flex items-center gap-2 rounded-full bg-primary-subtle px-3 py-1 text-xs font-bold uppercase tracking-wide text-primary">
           <ChartBarIcon class="size-4" aria-hidden="true" />
@@ -137,7 +137,7 @@ const executiveAlerts = computed(() => [
         <a
           v-if="dashboard.links.equipment !== '#'"
           :href="dashboard.links.equipment"
-          class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-primary bg-surface px-4 py-2.5 text-sm font-semibold text-primary transition hover:bg-primary-subtle"
+          class="ui-interactive inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-primary bg-surface px-4 py-2.5 text-sm font-semibold text-primary transition hover:bg-primary-subtle"
         >
           <TruckIcon class="size-5" aria-hidden="true" />
           Ver flota
@@ -145,7 +145,7 @@ const executiveAlerts = computed(() => [
         <a
           v-if="dashboard.links.maintenance !== '#'"
           :href="dashboard.links.maintenance"
-          class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary-hover"
+          class="ui-interactive inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary-hover"
         >
           <WrenchScrewdriverIcon class="size-5" aria-hidden="true" />
           Ver mantenimiento
@@ -153,7 +153,7 @@ const executiveAlerts = computed(() => [
       </div>
     </header>
 
-    <section aria-label="Indicadores gerenciales" class="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+    <section v-reveal="{ delay: 40 }" aria-label="Indicadores gerenciales" class="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
       <MetricCard label="Equipos activos" :value="metrics.equipmentActive ?? metrics.equipmentTotal" tone="primary" :href="dashboard.links.equipment" link-label="Ver flota" />
       <MetricCard label="Cumplimiento" :value="preventiveComplianceLabel" tone="primary" :href="dashboard.links.maintenance" link-label="Ver preventivos" />
       <MetricCard label="Preventivos vencidos" :value="metrics.maintenanceOverdue ?? 0" tone="overdue" :href="dashboard.links.maintenanceOverdue" link-label="Atender" />
@@ -162,7 +162,7 @@ const executiveAlerts = computed(() => [
       <MetricCard label="Lectura antigua" :value="metrics.equipmentWithStaleReading ?? 0" tone="due" :href="dashboard.links.equipment" link-label="Revisar lecturas" />
     </section>
 
-    <section class="mt-6 rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="financial-title">
+    <section v-reveal="{ delay: 80 }" class="mt-6 rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="financial-title">
       <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 id="financial-title" class="text-base font-bold text-ink sm:text-lg">Resumen financiero del mes</h2>
@@ -248,7 +248,7 @@ const executiveAlerts = computed(() => [
 
     <div class="mt-6 grid items-start gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(20rem,0.85fr)]">
       <main class="min-w-0 space-y-6">
-        <section class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="health-title">
+        <section v-reveal="{ delay: 100 }" class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="health-title">
           <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h2 id="health-title" class="text-base font-bold text-ink sm:text-lg">Salud del mantenimiento preventivo</h2>
@@ -277,7 +277,7 @@ const executiveAlerts = computed(() => [
           </div>
         </section>
 
-        <section class="overflow-hidden rounded-xl border border-border bg-surface-raised" aria-labelledby="readings-title">
+        <section v-reveal="{ delay: 140 }" class="overflow-hidden rounded-xl border border-border bg-surface-raised" aria-labelledby="readings-title">
           <div class="flex items-center justify-between gap-4 border-b border-border-subtle px-5 py-4 sm:px-6">
             <div>
               <h2 id="readings-title" class="text-base font-bold text-ink sm:text-lg">Control de lecturas</h2>
@@ -321,7 +321,7 @@ const executiveAlerts = computed(() => [
           </div>
         </section>
 
-        <section class="overflow-hidden rounded-xl border border-border bg-surface-raised" aria-labelledby="maintenance-attention-title">
+        <section v-reveal="{ delay: 180 }" class="overflow-hidden rounded-xl border border-border bg-surface-raised" aria-labelledby="maintenance-attention-title">
           <div class="flex items-center justify-between gap-4 border-b border-border-subtle px-5 py-4 sm:px-6">
             <div>
               <h2 id="maintenance-attention-title" class="text-base font-bold text-ink sm:text-lg">Mantenimientos que requieren seguimiento</h2>
@@ -358,7 +358,7 @@ const executiveAlerts = computed(() => [
       </main>
 
       <aside class="space-y-6">
-        <section class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="executive-title">
+        <section v-reveal="{ delay: 120 }" class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="executive-title">
           <h2 id="executive-title" class="text-base font-bold text-ink sm:text-lg">Atención ejecutiva</h2>
           <p class="mt-1 text-sm text-ink-muted">Lo que conviene revisar primero.</p>
           <div class="mt-4 space-y-2.5">
@@ -366,7 +366,7 @@ const executiveAlerts = computed(() => [
               v-for="alert in executiveAlerts"
               :key="alert.label"
               :href="alert.href"
-              class="group flex items-center gap-3 rounded-lg border border-border-subtle bg-surface px-3.5 py-3 transition hover:border-primary/30 hover:bg-primary-subtle/40"
+              class="ui-card-interactive group flex items-center gap-3 rounded-lg border border-border-subtle bg-surface px-3.5 py-3 transition hover:border-primary/30 hover:bg-primary-subtle/40"
             >
               <span class="flex size-10 shrink-0 items-center justify-center rounded-lg" :class="alert.urgent ? 'bg-danger-subtle text-danger' : 'bg-success-subtle text-success'">
                 <ExclamationTriangleIcon v-if="alert.urgent" class="size-5" aria-hidden="true" />
@@ -383,7 +383,7 @@ const executiveAlerts = computed(() => [
           </div>
         </section>
 
-        <section class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="reading-chart-title">
+        <section v-reveal="{ delay: 160 }" class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="reading-chart-title">
           <h2 id="reading-chart-title" class="text-base font-bold text-ink sm:text-lg">Calidad de información</h2>
           <p class="mt-1 text-sm text-ink-muted">Distribución porcentual del estado de las lecturas de la flota activa.</p>
           <div class="mt-5 grid h-52 grid-cols-3 items-end gap-3 overflow-hidden rounded-lg bg-surface-subtle px-4 py-5">
