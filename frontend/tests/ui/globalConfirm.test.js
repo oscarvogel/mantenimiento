@@ -149,6 +149,16 @@ describe('useAlerts: tipos de alerta', () => {
       timer,
     }))
   })
+
+  it('deja que la superficie y el overlay respondan al tema actual', () => {
+    const alerts = useAlerts()
+
+    alerts.error('No se pudo guardar', 'Revisá los datos e intentá nuevamente.')
+
+    const options = Swal.fire.mock.calls[0][0]
+    expect(options.background).toBeUndefined()
+    expect(options.customClass.container).toBe('ui-swal-customized')
+  })
 })
 
 describe('consumeFlash: flash del servidor → SweetAlert centralizado', () => {

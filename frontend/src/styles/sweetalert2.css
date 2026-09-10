@@ -23,6 +23,27 @@
   line-height: 1.5;
 }
 
+.swal2-container.ui-swal-customized {
+  background: rgb(var(--surface-inverse) / 0.72);
+}
+
+.swal2-input,
+.swal2-file,
+.swal2-textarea,
+.swal2-select {
+  border-color: rgb(var(--border-strong));
+  color: rgb(var(--ink));
+  background: rgb(var(--surface));
+}
+
+.swal2-input:focus,
+.swal2-file:focus,
+.swal2-textarea:focus,
+.swal2-select:focus {
+  border-color: rgb(var(--border-focus));
+  box-shadow: 0 0 0 3px rgb(var(--primary) / 0.18);
+}
+
 .swal2-actions.ui-swal-actions {
   margin-top: 1.25rem;
 }
@@ -108,6 +129,31 @@
 .swal2-icon.swal2-warning {
   border-color: rgb(var(--warning) / 0.4);
   color: rgb(var(--warning));
+}
+
+.swal2-icon.swal2-success {
+  border-color: rgb(var(--success) / 0.5);
+  color: rgb(var(--success-strong));
+}
+
+.swal2-icon.swal2-error {
+  border-color: rgb(var(--danger) / 0.5);
+  color: rgb(var(--danger-strong));
+}
+
+.swal2-icon.swal2-info,
+.swal2-icon.swal2-question {
+  border-color: rgb(var(--info) / 0.5);
+  color: rgb(var(--info-strong));
+}
+
+.swal2-validation-message {
+  color: rgb(var(--danger-strong));
+  background: rgb(var(--danger-subtle));
+}
+
+.swal2-timer-progress-bar {
+  background: rgb(var(--primary));
 }
 
 @media (prefers-reduced-motion: reduce) {
