@@ -19,7 +19,7 @@ const data = computed(() => {
     ...props.data,
     expirations: props.data.expirations ?? [],
     expirationTypes: props.data.expirationTypes ?? [],
-    expirationRoutes: props.data.expirationRoutes ?? { create: '#', createType: '#' },
+    expirationRoutes: props.data.expirationRoutes ?? { create: '#' },
     readings: readings === null ? null : readings === undefined ? undefined : {
       ...readings,
       items: readings.items.map((reading) => ({
@@ -169,18 +169,6 @@ const historyResetUrl = computed(() => `${window.location.pathname}?history_acti
         <div class="flex items-end"><button type="submit" :class="primaryButton">Registrar vencimiento</button></div>
         <FormField label="Observaciones" for-id="equipment-expiration-notes" class="md:col-span-2 xl:col-span-5"><textarea id="equipment-expiration-notes" name="observaciones" maxlength="2000" rows="2" :class="fieldClass"></textarea></FormField>
       </form>
-      <details v-if="data.can.edit" class="ui-details-animated mb-6">
-        <summary :class="secondaryButton">Nuevo tipo de vencimiento</summary>
-        <form method="post" :action="data.expirationRoutes.createType" class="mt-3 grid gap-3 rounded-xl border border-border p-4 md:grid-cols-4">
-          <CsrfInput :csrf="data.csrf" />
-          <input type="hidden" name="return_to" :value="`/mantenimiento/equipos/${data.equipment.id}`" />
-          <FormField label="Nombre" for-id="equipment-expiration-type-name"><input id="equipment-expiration-type-name" name="nombre" maxlength="100" required :class="fieldClass" /></FormField>
-          <FormField label="Aplica a" for-id="equipment-expiration-type-applies"><select id="equipment-expiration-type-applies" name="aplica_a" :class="fieldClass"><option value="EQUIPO">Equipos</option><option value="AMBOS">Equipos y empleados</option></select></FormField>
-          <FormField label="Avisar antes (días)" for-id="equipment-expiration-warning"><input id="equipment-expiration-warning" type="number" min="0" max="3650" name="dias_aviso_previo" value="30" required :class="fieldClass" /></FormField>
-          <label class="flex items-end gap-2 pb-2 text-sm font-medium text-ink"><input type="checkbox" name="requiere_documento" value="1" /> Requiere documento</label>
-          <div class="flex items-end"><button type="submit" :class="secondaryButton">Crear tipo</button></div>
-        </form>
-      </details>
       <EmptyState v-if="!data.expirations || data.expirations.length === 0" title="No hay vencimientos registrados" description="Los vencimientos importados o cargados para este móvil aparecerán acá." />
       <div v-else class="overflow-x-auto">
         <table class="w-full min-w-[44rem] text-left text-sm">

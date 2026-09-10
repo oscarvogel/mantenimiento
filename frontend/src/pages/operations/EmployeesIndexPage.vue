@@ -21,8 +21,7 @@ const data = computed(() => ({
     expirations: employee.expirations ?? [],
   })),
   expirationTypes: props.data.expirationTypes ?? [],
-  expirationTypeCatalog: props.data.expirationTypeCatalog ?? [],
-  expirationRoutes: props.data.expirationRoutes ?? { create: '#', createType: '#' },
+  expirationRoutes: props.data.expirationRoutes ?? { create: '#' },
 }))
 
 const formEmployee = ref(undefined)
@@ -102,39 +101,6 @@ const openExpiration = (employee) => {
       <p class="mt-3 text-sm text-ink-muted">
         {{ data.employees.length }} resultado{{ data.employees.length === 1 ? '' : 's' }} · {{ activeCount }} activo{{ activeCount === 1 ? '' : 's' }}
       </p>
-    </PanelCard>
-
-    <PanelCard v-if="data.canEdit" title="Catálogo de tipos de vencimiento" class="mb-6">
-      <form method="post" :action="data.expirationRoutes.createType" class="grid gap-4 md:grid-cols-5">
-        <CsrfInput :csrf="data.csrf" />
-        <input type="hidden" name="return_to" value="/mantenimiento/empleados" />
-        <FormField label="Nombre" for-id="employee-expiration-type-name"><input id="employee-expiration-type-name" name="nombre" maxlength="100" required :class="fieldClass" /></FormField>
-        <FormField label="Aplica a" for-id="employee-expiration-type-applies"><select id="employee-expiration-type-applies" name="aplica_a" :class="fieldClass"><option value="EMPLEADO">Empleados</option><option value="AMBOS">Empleados y equipos</option></select></FormField>
-        <FormField label="Avisar antes (días)" for-id="employee-expiration-warning"><input id="employee-expiration-warning" type="number" min="0" max="3650" name="dias_aviso_previo" value="30" required :class="fieldClass" /></FormField>
-        <label class="flex items-end gap-2 pb-2 text-sm font-medium text-ink"><input type="checkbox" name="requiere_documento" value="1" /> Requiere documento</label>
-        <div class="flex items-end"><button type="submit" :class="secondaryButton">Crear tipo</button></div>
-      </form>
-      <div v-if="data.expirationTypeCatalog?.length" class="mt-5 overflow-x-auto">
-        <table class="w-full min-w-[42rem] text-left text-sm">
-          <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-4 py-3">Tipo</th><th class="px-4 py-3">Aplica a</th><th class="px-4 py-3">Aviso</th><th class="px-4 py-3">Documento</th><th class="px-4 py-3">Estado</th><th class="px-4 py-3 text-right">Acción</th></tr></thead>
-          <tbody class="divide-y divide-border-subtle">
-            <tr v-for="type in data.expirationTypeCatalog" :key="type.id">
-              <td class="px-4 py-3 font-semibold text-ink">{{ type.name }}</td>
-              <td class="px-4 py-3 text-ink-muted">{{ type.appliesTo }}</td>
-              <td class="px-4 py-3 text-ink-muted">{{ type.warningDays }} días</td>
-              <td class="px-4 py-3 text-ink-muted">{{ type.requiresDocument ? 'Sí' : 'No' }}</td>
-              <td class="px-4 py-3"><span :class="type.active ? 'bg-success-soft text-success-strong' : 'bg-surface-subtle text-ink-muted'" class="rounded-full px-2.5 py-1 text-xs font-semibold">{{ type.active ? 'Activo' : 'Inactivo' }}</span></td>
-              <td class="px-4 py-3 text-right">
-                <form method="post" :action="type.toggleUrl">
-                  <CsrfInput :csrf="data.csrf" />
-                  <input type="hidden" name="return_to" value="/mantenimiento/empleados" />
-                  <button type="submit" :class="secondaryButton">{{ type.active ? 'Inactivar' : 'Activar' }}</button>
-                </form>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
     </PanelCard>
 
     <PanelCard title="Resultados" :count="data.employees.length" flush>
