@@ -1,6 +1,8 @@
 <script setup>
 import { Bars3Icon } from '@heroicons/vue/24/outline'
+import { ref } from 'vue'
 import AppNotificationBell from './AppNotificationBell.vue'
+import ThemeToggle from './ThemeToggle.vue'
 
 defineProps({
   user: {
@@ -15,18 +17,30 @@ defineProps({
     type: Object,
     default: () => ({ enabled: false, summaryUrl: '#', centerUrl: '#' }),
   },
+  menuOpen: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit = defineEmits(['open-menu'])
+const menuButton = ref(null)
+
+defineExpose({
+  focusMenuButton: () => menuButton.value?.focus(),
+})
 </script>
 
 <template>
   <header class="sticky top-0 z-20 flex h-[4.5rem] items-center border-b border-border bg-surface-raised px-4 sm:px-6 lg:px-7 xl:px-9">
     <button
+      ref="menuButton"
       type="button"
-      class="mr-3 rounded-lg p-2 text-ink-muted hover:bg-surface-muted hover:text-ink lg:hidden"
-      aria-label="Abrir menú principal"
+      class="ui-interactive mr-3 rounded-lg p-2 text-ink-muted hover:bg-surface-muted hover:text-ink lg:hidden"
+      :aria-label="menuOpen ? 'Cerrar menú principal' : 'Abrir menú principal'"
       @click="emit('open-menu')"
+      aria-controls="mobile-main-menu"
+      :aria-expanded="menuOpen"
     >
       <Bars3Icon class="size-6" aria-hidden="true" />
     </button>
@@ -37,6 +51,7 @@ const emit = defineEmits(['open-menu'])
     </div>
 
     <div class="flex items-center gap-1 sm:gap-3">
+      <ThemeToggle />
       <AppNotificationBell v-if="notifications.enabled" v-bind="notifications" />
       <div class="flex min-w-0 items-center gap-3">
         <span class="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary-subtle text-xs font-bold text-primary">

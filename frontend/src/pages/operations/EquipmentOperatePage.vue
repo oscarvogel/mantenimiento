@@ -1,5 +1,5 @@
 <script setup>
-import { computed, reactive, ref } from 'vue'
+import { computed, nextTick, reactive, ref } from 'vue'
 import { CheckCircleIcon, ExclamationTriangleIcon, WrenchScrewdriverIcon } from '@heroicons/vue/24/outline'
 import PanelCard from './components/PanelCard.vue'
 import { fieldClass, formatHours, formatKilometers, normalizeDecimalInput, parseFlexibleNumber, parseKilometers, primaryButton } from './helpers.js'
@@ -14,6 +14,7 @@ const notes = ref('')
 const readingSaving = ref(false)
 const readingMessage = ref('')
 const readingError = ref('')
+const readingErrorField = ref('kilometers')
 const incident = ref('')
 const incidentSaving = ref(false)
 const incidentMessage = ref('')
@@ -37,21 +38,43 @@ const lastReadingDate = computed(() => {
 const validateReading = () => {
   if (equipment.controlsKm) {
     const next = parseKilometers(kilometers.value)
-    if (next === null) return 'Ingresá un kilometraje válido.'
-    if (equipment.currentKm != null && next < Number(equipment.currentKm)) return `El kilometraje no puede ser menor a ${formatKilometers(equipment.currentKm)}.`
+    if (next === null) {
+      readingErrorField.value = 'kilometers'
+      return 'Ingresá un kilometraje válido.'
+    }
+    if (equipment.currentKm != null && next < Number(equipment.currentKm)) {
+      readingErrorField.value = 'kilometers'
+      return `El kilometraje no puede ser menor a ${formatKilometers(equipment.currentKm)}.`
+    }
   }
   if (equipment.controlsHours) {
     const next = parseFlexibleNumber(hours.value)
-    if (next === null) return 'Ingresá un horómetro válido.'
-    if (equipment.currentHours != null && next < Number(equipment.currentHours)) return `El horómetro no puede ser menor a ${formatHours(equipment.currentHours)}.`
+    if (next === null) {
+      readingErrorField.value = 'hours'
+      return 'Ingresá un horómetro válido.'
+    }
+    if (equipment.currentHours != null && next < Number(equipment.currentHours)) {
+      readingErrorField.value = 'hours'
+      return `El horómetro no puede ser menor a ${formatHours(equipment.currentHours)}.`
+    }
   }
   return ''
+}
+
+const focusReadingField = () => {
+  nextTick(() => {
+    const id = `reading-${readingErrorField.value}`
+    document.getElementById(id)?.focus()
+  })
 }
 
 const saveReading = async () => {
   readingError.value = validateReading()
   readingMessage.value = ''
-  if (readingError.value || readingSaving.value) return
+  if (readingError.value || readingSaving.value) {
+    if (readingError.value) focusReadingField()
+    return
+  }
   readingSaving.value = true
   const body = new FormData()
   body.append(csrf.name, csrf.hash)
@@ -142,14 +165,14 @@ const reportIncident = async () => {
     </section>
 
     <PanelCard v-if="data.can.registerReading" title="Registrar km / horas">
-      <form class="grid gap-4 sm:grid-cols-2" @submit.prevent="saveReading">
+      <form class="grid gap-4 sm:grid-cols-2" :aria-busy="readingSaving" @submit.prevent="saveReading">
         <label v-if="equipment.controlsKm" class="block">
           <span class="mb-1.5 block text-sm font-semibold text-ink">Kilometraje actual</span>
-          <input v-model="kilometers" type="text" inputmode="numeric" autocomplete="off" placeholder="Ej. 185420" :class="fieldClass" />
+          <input id="reading-kilometers" v-model="kilometers" type="text" inputmode="numeric" autocomplete="off" placeholder="Ej. 185420" :class="fieldClass" :aria-invalid="readingErrorField === 'kilometers' && Boolean(readingError)" :aria-describedby="readingErrorField === 'kilometers' && readingError ? 'reading-error' : undefined" @input="readingError = ''" />
         </label>
         <label v-if="equipment.controlsHours" class="block">
           <span class="mb-1.5 block text-sm font-semibold text-ink">Horómetro actual</span>
-          <input v-model="hours" type="text" inputmode="decimal" autocomplete="off" placeholder="Ej. 8420,5" :class="fieldClass" />
+          <input id="reading-hours" v-model="hours" type="text" inputmode="decimal" autocomplete="off" placeholder="Ej. 8420,5" :class="fieldClass" :aria-invalid="readingErrorField === 'hours' && Boolean(readingError)" :aria-describedby="readingErrorField === 'hours' && readingError ? 'reading-error' : undefined" @input="readingError = ''" />
         </label>
         <label class="block">
           <span class="mb-1.5 block text-sm font-semibold text-ink">Fecha y hora</span>
@@ -159,18 +182,19 @@ const reportIncident = async () => {
           <span class="mb-1.5 block text-sm font-semibold text-ink">Observación <span class="font-normal text-ink-muted">(opcional)</span></span>
           <textarea v-model="notes" rows="2" :class="fieldClass" placeholder="Ej. lectura semanal" />
         </label>
-        <p v-if="readingError" class="sm:col-span-2 rounded-lg bg-danger-subtle px-4 py-3 text-sm font-medium text-danger-strong">{{ readingError }}</p>
-        <p v-if="readingMessage" class="sm:col-span-2 flex gap-2 rounded-lg bg-success-subtle px-4 py-3 text-sm font-medium text-success-strong"><CheckCircleIcon class="size-5" />{{ readingMessage }}</p>
+        <p v-if="readingError" id="reading-error" role="alert" aria-live="assertive" class="sm:col-span-2 rounded-lg bg-danger-subtle px-4 py-3 text-sm font-medium text-danger-strong">{{ readingError }}</p>
+        <p v-if="readingMessage" role="status" aria-live="polite" class="sm:col-span-2 flex gap-2 rounded-lg bg-success-subtle px-4 py-3 text-sm font-medium text-success-strong"><CheckCircleIcon class="size-5" />{{ readingMessage }}</p>
         <button type="submit" :disabled="readingSaving" :class="`${primaryButton} sm:col-span-2 sm:w-fit`">{{ readingSaving ? 'Guardando…' : 'Guardar lectura' }}</button>
       </form>
     </PanelCard>
 
     <PanelCard v-if="data.can.reportIncident" title="Reportar un problema">
       <p class="mb-3 text-sm text-ink-muted">No hace falta completar una orden de trabajo. Contá qué viste y mantenimiento lo revisará.</p>
-      <form class="space-y-3" @submit.prevent="reportIncident">
-        <textarea v-model="incident" rows="4" maxlength="2000" :class="fieldClass" placeholder="Ej. ruido fuerte en rueda delantera derecha al frenar" />
-        <p v-if="incidentError" class="rounded-lg bg-danger-subtle px-4 py-3 text-sm font-medium text-danger-strong">{{ incidentError }}</p>
-        <p v-if="incidentMessage" class="rounded-lg bg-success-subtle px-4 py-3 text-sm font-medium text-success-strong">{{ incidentMessage }}</p>
+      <form class="space-y-3" :aria-busy="incidentSaving" @submit.prevent="reportIncident">
+        <label for="incident-description" class="sr-only">Descripción del problema</label>
+        <textarea id="incident-description" v-model="incident" rows="4" maxlength="2000" :class="fieldClass" :aria-invalid="Boolean(incidentError)" :aria-describedby="incidentError ? 'incident-error' : undefined" placeholder="Ej. ruido fuerte en rueda delantera derecha al frenar" />
+        <p v-if="incidentError" id="incident-error" role="alert" aria-live="assertive" class="rounded-lg bg-danger-subtle px-4 py-3 text-sm font-medium text-danger-strong">{{ incidentError }}</p>
+        <p v-if="incidentMessage" role="status" aria-live="polite" class="rounded-lg bg-success-subtle px-4 py-3 text-sm font-medium text-success-strong">{{ incidentMessage }}</p>
         <button type="submit" :disabled="incidentSaving" :class="primaryButton">{{ incidentSaving ? 'Enviando…' : 'Reportar incidencia' }}</button>
       </form>
     </PanelCard>

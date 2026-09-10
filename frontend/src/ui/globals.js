@@ -13,6 +13,57 @@ const flashHandlers = {
 
 export function installGlobalBehaviors() {
   installConfirmForms()
+  installNativeFormFeedback()
+}
+
+function isFormControl(target) {
+  return target instanceof HTMLInputElement
+    || target instanceof HTMLSelectElement
+    || target instanceof HTMLTextAreaElement
+    || target instanceof HTMLButtonElement
+  }
+
+function installNativeFormFeedback() {
+  document.addEventListener('invalid', (event) => {
+    const control = event.target
+    if (!isFormControl(control)) return
+
+    control.setAttribute('aria-invalid', 'true')
+    const form = control.form
+    if (!form || form.dataset.validationFocusQueued === 'true') return
+
+    form.dataset.validationFocusQueued = 'true'
+    queueMicrotask(() => {
+      delete form.dataset.validationFocusQueued
+      if (control.isConnected && !control.disabled) control.focus()
+    })
+  }, true)
+
+  document.addEventListener('input', clearInvalidState)
+  document.addEventListener('change', clearInvalidState)
+
+  document.addEventListener('submit', (event) => {
+    const form = event.target
+    if (!(form instanceof HTMLFormElement) || !form.matches('[data-submit-feedback]')) return
+
+    const submitter = event.submitter instanceof HTMLButtonElement || event.submitter instanceof HTMLInputElement
+      ? event.submitter
+      : form.querySelector('button[type="submit"], input[type="submit"]')
+    if (!submitter || submitter.disabled) return
+
+    form.setAttribute('aria-busy', 'true')
+    submitter.dataset.originalFeedbackLabel = submitter.value || submitter.textContent.trim()
+    submitter.disabled = true
+    const loadingLabel = form.dataset.loadingLabel || 'Procesando…'
+    if ('value' in submitter && submitter instanceof HTMLInputElement) submitter.value = loadingLabel
+    else submitter.textContent = loadingLabel
+  })
+}
+
+function clearInvalidState(event) {
+  const control = event.target
+  if (!isFormControl(control) || !control.hasAttribute('aria-invalid') || !control.checkValidity()) return
+  control.removeAttribute('aria-invalid')
 }
 
 export function consumeFlash(flash) {

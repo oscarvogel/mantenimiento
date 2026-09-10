@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-hidden="true">
+
+<path d="M18 24c0-5 4-9 9-9h28c5 0 9 4 9 9v23c0 5-4 9-9 9H40l-12 11V56h-1c-5 0-9-4-9-9V24Z" fill="none" stroke="#082B58" stroke-width="5" stroke-linejoin="round"/>
+<text x="30" y="40" fill="#1976D2" font-family="Arial,sans-serif" font-size="18" font-weight="700">IA</text>
+<circle cx="65" cy="61" r="14" fill="none" stroke="#1976D2" stroke-width="5"/>
+<path d="m75 71 9 9" stroke="#1976D2" stroke-width="5" stroke-linecap="round"/>
+<path d="M78 17v10M73 22h10M80 12l-4 4M76 26l4 4" stroke="#FF9818" stroke-width="4" stroke-linecap="round"/>
+</svg>

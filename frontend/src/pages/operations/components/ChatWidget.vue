@@ -2,7 +2,8 @@
   <button
     v-if="!isOpen"
     @click="toggle"
-    class="fixed bottom-6 right-6 z-50 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 flex items-center justify-center transition-colors"
+    class="ui-interactive fixed bottom-6 right-6 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary-hover"
+    aria-label="Abrir asistente IA"
     title="Abrir asistente IA"
   >
     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -12,24 +13,27 @@
 
   <div
     v-if="isOpen"
-    class="fixed bottom-6 right-6 z-50 w-96 h-[500px] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col"
+    class="fixed inset-x-4 bottom-4 z-50 flex h-[min(500px,calc(100dvh-2rem))] flex-col rounded-2xl border border-gray-200 bg-white shadow-2xl sm:inset-x-auto sm:right-6 sm:w-96"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="chat-widget-title"
   >
     <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-blue-600 text-white rounded-t-2xl">
       <div class="flex items-center gap-2">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
         </svg>
-        <span class="font-medium text-sm">Asistente IA</span>
+        <span id="chat-widget-title" class="font-medium text-sm">Asistente IA</span>
         <span v-if="!isConnected" class="text-[10px] bg-red-500 text-white px-1.5 py-0.5 rounded">offline</span>
       </div>
-      <button @click="toggle" class="text-white/80 hover:text-white" title="Cerrar asistente">
+      <button type="button" @click="toggle" class="ui-interactive min-h-10 min-w-10 rounded-lg text-white/80 hover:text-white" aria-label="Cerrar asistente" title="Cerrar asistente">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
         </svg>
       </button>
     </div>
 
-    <div ref="messagesContainer" class="flex-1 overflow-y-auto p-4 space-y-3">
+    <div ref="messagesContainer" class="flex-1 overflow-y-auto p-4 space-y-3" role="log" aria-live="polite" aria-relevant="additions text">
       <div
         v-if="historyTruncated"
         class="text-center text-[11px] text-gray-400"
@@ -49,20 +53,22 @@
         @confirm="confirmTool(tc)"
         @cancel="cancelTool(tc)"
       />
-      <div v-if="loading && streamingText === ''" class="text-center text-gray-400 text-sm py-2">
+      <div v-if="loading && streamingText === ''" role="status" aria-live="polite" class="text-center text-gray-400 text-sm py-2">
         Pensando...
       </div>
     </div>
 
-    <div v-if="lastError" class="bg-red-50 border-t border-red-200 px-3 py-2 text-xs text-red-700">
+    <div v-if="lastError" class="bg-red-50 border-t border-red-200 px-3 py-2 text-xs text-red-700" role="alert">
       {{ lastError }}
-      <button class="ml-2 underline" @click="lastError = ''">Descartar</button>
+      <button type="button" class="ui-interactive ml-2 min-h-8 rounded px-1 underline" @click="lastError = ''">Descartar</button>
     </div>
 
     <div class="border-t border-gray-200 p-3">
       <form @submit.prevent="sendMessage" class="flex items-center gap-2">
         <ChatVoiceButton @transcript="onVoiceTranscript" />
+        <label for="chat-message-input" class="sr-only">Mensaje para el asistente</label>
         <input
+          id="chat-message-input"
           v-model="input"
           type="text"
           placeholder="Escribí tu mensaje..."
@@ -72,7 +78,8 @@
         <button
           type="submit"
           :disabled="!input.trim() || loading"
-          class="w-8 h-8 bg-blue-600 text-white rounded-lg flex items-center justify-center hover:bg-blue-700 disabled:opacity-50"
+          class="ui-interactive flex min-h-10 min-w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground hover:bg-primary-hover disabled:opacity-50"
+          aria-label="Enviar mensaje"
           title="Enviar"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -95,7 +102,11 @@ const CHAT_STORAGE_KEY = 'mantenimiento.chatbot.conv'
 const CHAT_VISIBLE_HISTORY_LIMIT = 10
 const CHATBOT_BASE_PATH = '/mantenimiento/mantenimiento/chatbot'
 
-const isOpen = ref(false)
+const props = defineProps({
+  autoOpen: { type: Boolean, default: false },
+})
+
+const isOpen = ref(props.autoOpen)
 const messages = ref([])
 const pendingToolCalls = ref([])
 const input = ref('')
@@ -118,10 +129,8 @@ const scrollToBottom = () => {
   })
 }
 
-const toggle = () => {
-  isOpen.value = !isOpen.value
+const ensureConversation = () => {
   if (!isOpen.value) return
-
   if (conversationId.value !== null) {
     scrollToBottom()
     return
@@ -135,6 +144,11 @@ const toggle = () => {
       }
     })
   }
+}
+
+const toggle = () => {
+  isOpen.value = !isOpen.value
+  if (isOpen.value) ensureConversation()
 }
 
 const getCsrfToken = () => {
@@ -428,6 +442,7 @@ const onVoiceTranscript = (text) => {
 }
 
 onMounted(() => {
+  if (isOpen.value) ensureConversation()
   window.addEventListener('beforeunload', abortActive)
 })
 

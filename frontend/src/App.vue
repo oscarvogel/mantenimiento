@@ -115,10 +115,23 @@ const attentionSummaryUrl = computed(() => {
   if (maintenanceMissingData.value > 0) return props.dashboard.links.maintenanceMissingData
   return props.dashboard.links.maintenance
 })
+
+const scrollCta = computed(() => {
+  const quickReadings = props.dashboard.links.quickReadings || '#'
+  const correctiveOrder = props.dashboard.links.correctiveOrder || '#'
+  const href = quickReadings !== '#' ? quickReadings : correctiveOrder
+  return href && href !== '#'
+    ? {
+        href,
+        label: quickReadings !== '#' ? 'Registrar lectura' : 'Nueva OT',
+        description: quickReadings !== '#' ? 'Actualizar km u horas' : 'Registrar un trabajo',
+      }
+    : null
+})
 </script>
 
 <template>
-  <ApplicationShell :shell="shell">
+  <ApplicationShell :shell="shell" :scroll-cta="scrollCta">
     <DashboardLoading v-if="loading" />
     <template v-else>
       <div
@@ -130,7 +143,7 @@ const attentionSummaryUrl = computed(() => {
       </div>
 
       <!-- Bloque A: encabezado operativo -->
-      <header class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+      <header v-reveal class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p class="text-sm font-semibold text-primary">Centro de operaciones</p>
           <h1 class="mt-1 text-balance text-3xl font-bold tracking-tight text-ink sm:text-4xl">
@@ -144,7 +157,7 @@ const attentionSummaryUrl = computed(() => {
           <a
             v-if="dashboard.links.equipment !== '#'"
             :href="dashboard.links.equipment"
-            class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary-hover"
+            class="ui-interactive inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary-hover"
           >
             <TruckIcon class="size-5" aria-hidden="true" />
             Ver equipos
@@ -152,7 +165,7 @@ const attentionSummaryUrl = computed(() => {
           <a
             v-if="dashboard.links.quickReadings !== '#'"
             :href="dashboard.links.quickReadings"
-            class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-primary bg-surface px-4 py-2.5 text-sm font-semibold text-primary transition hover:bg-primary-subtle"
+            class="ui-interactive inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-primary bg-surface px-4 py-2.5 text-sm font-semibold text-primary transition hover:bg-primary-subtle"
           >
             <ArrowPathIcon class="size-5" aria-hidden="true" />
             Registrar lectura
@@ -160,7 +173,7 @@ const attentionSummaryUrl = computed(() => {
           <a
             v-if="dashboard.links.correctiveOrder !== '#'"
             :href="dashboard.links.correctiveOrder"
-            class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary-hover"
+            class="ui-interactive inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary-hover"
           >
             <WrenchScrewdriverIcon class="size-5" aria-hidden="true" />
             Nueva OT
@@ -170,7 +183,7 @@ const attentionSummaryUrl = computed(() => {
 
       <template v-if="dashboard.mode !== 'global'">
         <!-- Bloque B: KPIs -->
-        <section aria-label="Indicadores principales" class="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <section v-reveal="{ delay: 40 }" aria-label="Indicadores principales" class="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <MetricCard label="Equipos" :value="dashboard.metrics.equipmentTotal" tone="primary" :href="dashboard.links.equipment" link-label="Ver flota" />
           <MetricCard label="Próximos" :value="dashboard.metrics.maintenanceDueSoon" tone="due" :href="dashboard.links.maintenanceDueSoon" link-label="Revisar próximos" />
           <MetricCard label="Vencidos" :value="dashboard.metrics.maintenanceOverdue" tone="overdue" :href="dashboard.links.maintenanceOverdue" link-label="Atender vencidos" />
@@ -181,7 +194,7 @@ const attentionSummaryUrl = computed(() => {
         <div class="mt-6 grid items-start gap-6 xl:grid-cols-[minmax(0,2.1fr)_minmax(18rem,0.9fr)]">
           <main class="min-w-0 space-y-6">
             <!-- C1: requieren atención -->
-            <section aria-labelledby="attention-title" class="overflow-hidden rounded-xl border border-border bg-surface-raised">
+            <section v-reveal="{ delay: 80 }" aria-labelledby="attention-title" class="overflow-hidden rounded-xl border border-border bg-surface-raised">
               <div class="flex items-center justify-between gap-4 border-b border-border-subtle px-5 py-4 sm:px-6">
                 <div>
                   <h2 id="attention-title" class="text-base font-bold text-ink sm:text-lg">Requieren atención hoy</h2>
@@ -231,19 +244,19 @@ const attentionSummaryUrl = computed(() => {
             </section>
 
             <!-- C2: próximos -->
-            <UpcomingMaintenance :items="dashboard.upcomingMaintenance" :maintenance-url="dashboard.links.maintenance" />
+            <UpcomingMaintenance v-reveal="{ delay: 120 }" :items="dashboard.upcomingMaintenance" :maintenance-url="dashboard.links.maintenance" />
           </main>
 
           <aside class="space-y-6">
             <!-- C3: acciones rápidas -->
-            <section v-if="quickActions.length" aria-labelledby="quick-actions-title" class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6">
+            <section v-if="quickActions.length" v-reveal="{ delay: 100 }" aria-labelledby="quick-actions-title" class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6">
               <h2 id="quick-actions-title" class="text-base font-bold text-ink sm:text-lg">Acciones rápidas</h2>
               <div class="mt-4 space-y-2.5">
                 <a
                   v-for="action in quickActions"
                   :key="action.label"
                   :href="action.href"
-                  class="group flex items-center gap-3 rounded-lg border border-border-subtle bg-surface px-3.5 py-3 transition hover:border-primary/30 hover:bg-primary-subtle/40"
+                  class="ui-card-interactive group flex items-center gap-3 rounded-lg border border-border-subtle bg-surface px-3.5 py-3 transition hover:border-primary/30 hover:bg-primary-subtle/40"
                 >
                   <span class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary-subtle text-primary">
                     <component :is="action.icon" class="size-5" aria-hidden="true" />
@@ -258,7 +271,7 @@ const attentionSummaryUrl = computed(() => {
             </section>
 
             <!-- C4: estado del sistema -->
-            <section aria-labelledby="system-status-title" class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6">
+            <section v-reveal="{ delay: 140 }" aria-labelledby="system-status-title" class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6">
               <h2 id="system-status-title" class="text-base font-bold text-ink sm:text-lg">Estado del sistema</h2>
               <div class="mt-4 divide-y divide-border-subtle overflow-hidden rounded-lg border border-border-subtle">
                 <a

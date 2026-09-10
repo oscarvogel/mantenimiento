@@ -17,10 +17,23 @@ const shell = computed(() => ({
   notifications: props.dashboard.notifications,
   logout: props.dashboard.logout,
 }))
+
+const scrollCta = computed(() => {
+  const quickReadings = props.dashboard.links.quickReadings || '#'
+  const correctiveOrder = props.dashboard.links.correctiveOrder || '#'
+  const href = quickReadings !== '#' ? quickReadings : correctiveOrder
+  return href && href !== '#'
+    ? {
+        href,
+        label: quickReadings !== '#' ? 'Registrar lectura' : 'Nueva OT',
+        description: quickReadings !== '#' ? 'Actualizar km u horas' : 'Registrar un trabajo',
+      }
+    : null
+})
 </script>
 
 <template>
-  <ApplicationShell :shell="shell">
+  <ApplicationShell :shell="shell" :scroll-cta="scrollCta">
     <DashboardLoading v-if="loading" />
     <template v-else>
       <div

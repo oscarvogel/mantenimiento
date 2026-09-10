@@ -21,8 +21,8 @@ const logoUrl = `${baseUrl}assets/brand/logo-mark.svg`
       aria-hidden="true"
     />
     <div v-if="!compact" class="min-w-0">
-      <p class="truncate text-base font-bold tracking-tight text-ink-inverse">Mantenimiento</p>
-      <p class="truncate text-xs font-medium text-brand-200">Gestión de flota</p>
+      <p class="truncate text-base font-bold tracking-tight text-ink">Mantenimiento</p>
+      <p class="truncate text-xs font-medium text-ink-muted">Gestión de flota</p>
     </div>
   </div>
 </template>

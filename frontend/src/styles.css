@@ -5,13 +5,157 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * The palette is intentionally expressed as semantic RGB channels. Tailwind
+ * utilities can then keep their opacity modifiers while the theme changes the
+ * meaning of a surface, ink, border or action color in one place.
+ */
+:root {
+  --brand-950: 3 26 62;
+  --brand-900: 6 35 78;
+  --brand-800: 8 50 100;
+  --brand-700: 10 67 127;
+  --brand-600: 8 98 198;
+  --brand-500: 22 117 221;
+  --brand-400: 67 143 229;
+  --brand-300: 126 178 238;
+  --brand-200: 183 212 246;
+  --brand-100: 223 237 252;
+  --brand-50: 242 248 254;
+
+  --primary: 8 98 198;
+  --primary-hover: 7 84 169;
+  --primary-active: 6 71 143;
+  --primary-subtle: 231 241 252;
+  --primary-foreground: 254 254 254;
+  --accent: 241 160 0;
+  --accent-hover: 217 143 0;
+  --accent-active: 190 125 0;
+  --accent-subtle: 255 244 214;
+  --accent-foreground: 3 26 62;
+
+  --surface: 254 254 254;
+  --surface-subtle: 247 249 252;
+  --surface-muted: 240 243 247;
+  --surface-raised: 255 255 255;
+  --surface-inverse: 3 26 62;
+  --ink: 3 26 62;
+  --ink-strong: 3 26 62;
+  --ink-muted: 82 97 118;
+  --ink-subtle: 123 135 152;
+  --ink-inverse: 254 254 254;
+  --border: 221 227 234;
+  --border-strong: 197 205 216;
+  --border-subtle: 233 237 242;
+  --border-focus: 8 98 198;
+
+  --success: 22 128 74;
+  --success-strong: 17 102 59;
+  --success-subtle: 229 245 237;
+  --success-foreground: 255 255 255;
+  --warning: 241 160 0;
+  --warning-strong: 185 121 0;
+  --warning-subtle: 255 244 214;
+  --warning-foreground: 61 41 0;
+  --danger: 214 60 60;
+  --danger-strong: 181 43 43;
+  --danger-subtle: 252 232 232;
+  --danger-foreground: 255 255 255;
+  --info: 8 98 198;
+  --info-strong: 6 75 153;
+  --info-subtle: 231 241 252;
+  --info-foreground: 255 255 255;
+  --maintenance-ok: 22 128 74;
+  --maintenance-due: 241 160 0;
+  --maintenance-overdue: 214 60 60;
+  --maintenance-scheduled: 8 98 198;
+  --maintenance-inactive: 123 135 152;
+
+  --shadow-rgb: 3 26 62;
+  --sidebar-surface-rgb: 255 255 255;
+  --sidebar-scroll-thumb: 126 178 238;
+}
+
+html[data-theme='dark'] {
+  --brand-950: 4 19 42;
+  --brand-900: 5 29 61;
+  --brand-800: 8 43 83;
+  --brand-700: 10 62 116;
+  --brand-600: 65 145 232;
+  --brand-500: 83 163 244;
+  --brand-400: 112 183 248;
+  --brand-300: 157 205 252;
+  --brand-200: 190 222 253;
+  --brand-100: 216 235 253;
+  --brand-50: 232 243 254;
+
+  --primary: 76 163 255;
+  --primary-hover: 103 181 255;
+  --primary-active: 128 194 255;
+  --primary-subtle: 24 54 88;
+  --primary-foreground: 3 26 62;
+  --accent: 255 184 77;
+  --accent-hover: 255 197 107;
+  --accent-active: 227 154 41;
+  --accent-subtle: 88 60 19;
+  --accent-foreground: 32 22 5;
+
+  --surface: 16 26 42;
+  --surface-subtle: 12 21 35;
+  --surface-muted: 30 42 60;
+  --surface-raised: 20 31 48;
+  --surface-inverse: 4 19 42;
+  --ink: 235 242 250;
+  --ink-strong: 248 251 255;
+  --ink-muted: 171 187 207;
+  --ink-subtle: 132 151 176;
+  --ink-inverse: 248 251 255;
+  --border: 53 71 94;
+  --border-strong: 74 96 124;
+  --border-subtle: 40 56 78;
+  --border-focus: 103 181 255;
+
+  --success: 70 210 137;
+  --success-strong: 116 232 163;
+  --success-subtle: 23 72 50;
+  --success-foreground: 5 25 17;
+  --warning: 255 191 77;
+  --warning-strong: 255 213 125;
+  --warning-subtle: 86 58 10;
+  --warning-foreground: 36 25 5;
+  --danger: 255 113 113;
+  --danger-strong: 255 146 146;
+  --danger-subtle: 91 31 31;
+  --danger-foreground: 40 8 8;
+  --info: 76 163 255;
+  --info-strong: 128 194 255;
+  --info-subtle: 24 54 88;
+  --info-foreground: 3 26 62;
+  --maintenance-ok: 70 210 137;
+  --maintenance-due: 255 191 77;
+  --maintenance-overdue: 255 113 113;
+  --maintenance-scheduled: 76 163 255;
+  --maintenance-inactive: 132 151 176;
+
+  --shadow-rgb: 0 0 0;
+  --sidebar-surface-rgb: 4 19 42;
+  --sidebar-scroll-thumb: 112 183 248;
+}
+
 @layer base {
   html {
     color-scheme: light;
+    background-color: rgb(var(--surface-subtle));
+    accent-color: rgb(var(--primary));
+  }
+
+  html[data-theme='dark'] {
+    color-scheme: dark;
   }
 
   body {
     @apply m-0 min-w-[320px] bg-surface-subtle font-sans text-ink antialiased;
+    transition: background-color 220ms ease, color 220ms ease;
   }
 
   button,
@@ -22,10 +166,124 @@
   button {
     font: inherit;
   }
+
+  ::selection {
+    color: rgb(var(--primary-foreground));
+    background-color: rgb(var(--primary));
+  }
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
+}
+
+/* Compatibility bridge for the few legacy administrative views that still
+ * use raw slate/white utilities. New UI should use the semantic tokens above. */
+html[data-theme='dark'] .bg-white {
+  background-color: rgb(var(--surface-raised)) !important;
+}
+
+html[data-theme='dark'] .bg-slate-50,
+html[data-theme='dark'] .bg-slate-100,
+html[data-theme='dark'] .bg-gray-100 {
+  background-color: rgb(var(--surface-muted)) !important;
+}
+
+html[data-theme='dark'] .bg-gray-200,
+html[data-theme='dark'] .bg-gray-300,
+html[data-theme='dark'] .bg-gray-400 {
+  background-color: rgb(var(--border-strong)) !important;
+}
+
+html[data-theme='dark'] .bg-slate-900,
+html[data-theme='dark'] .bg-slate-950\/40,
+html[data-theme='dark'] .bg-slate-950\/45,
+html[data-theme='dark'] .bg-slate-950\/55 {
+  background-color: rgb(var(--surface-inverse) / 0.92) !important;
+}
+
+html[data-theme='dark'] .text-slate-900,
+html[data-theme='dark'] .text-slate-800,
+html[data-theme='dark'] .text-gray-800,
+html[data-theme='dark'] .text-blue-900 {
+  color: rgb(var(--ink-strong)) !important;
+}
+
+html[data-theme='dark'] .text-slate-600,
+html[data-theme='dark'] .text-slate-500,
+html[data-theme='dark'] .text-gray-700,
+html[data-theme='dark'] .text-gray-600,
+html[data-theme='dark'] .text-gray-400 {
+  color: rgb(var(--ink-muted)) !important;
+}
+
+html[data-theme='dark'] .border-slate-200,
+html[data-theme='dark'] .border-gray-200,
+html[data-theme='dark'] .border-gray-300 {
+  border-color: rgb(var(--border)) !important;
+}
+
+html[data-theme='dark'] .hover\:bg-slate-100:hover,
+html[data-theme='dark'] .hover\:bg-gray-100:hover {
+  background-color: rgb(var(--surface-muted)) !important;
+}
+
+html[data-theme='dark'] .bg-yellow-50,
+html[data-theme='dark'] .bg-amber-50,
+html[data-theme='dark'] .bg-amber-100 {
+  background-color: rgb(var(--warning-subtle)) !important;
+}
+
+html[data-theme='dark'] .bg-red-50 {
+  background-color: rgb(var(--danger-subtle)) !important;
+}
+
+html[data-theme='dark'] .bg-red-500 {
+  background-color: rgb(var(--danger)) !important;
+}
+
+html[data-theme='dark'] .bg-amber-600 {
+  background-color: rgb(var(--warning)) !important;
+}
+
+html[data-theme='dark'] .bg-amber-700 {
+  background-color: rgb(var(--warning-strong)) !important;
+}
+
+html[data-theme='dark'] .bg-blue-600 {
+  background-color: rgb(var(--primary)) !important;
+}
+
+html[data-theme='dark'] .bg-violet-50 {
+  background-color: rgb(var(--primary-subtle)) !important;
+}
+
+html[data-theme='dark'] .text-red-700 {
+  color: rgb(var(--danger-strong)) !important;
+}
+
+html[data-theme='dark'] .text-yellow-800,
+html[data-theme='dark'] .text-amber-600,
+html[data-theme='dark'] .text-amber-700,
+html[data-theme='dark'] .text-amber-800 {
+  color: rgb(var(--warning-strong)) !important;
+}
+
+html[data-theme='dark'] .text-blue-700,
+html[data-theme='dark'] .text-violet-700 {
+  color: rgb(var(--primary)) !important;
+}
+
+html[data-theme='dark'] .border-red-200 {
+  border-color: rgb(var(--danger) / 0.55) !important;
+}
+
+html[data-theme='dark'] .border-amber-200 {
+  border-color: rgb(var(--warning) / 0.55) !important;
+}
+
+html[data-theme='dark'] .ring-blue-500 {
+  --tw-ring-color: rgb(var(--border-focus));
 }

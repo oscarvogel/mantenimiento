@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import {
   ArrowRightStartOnRectangleIcon,
   ArrowUpTrayIcon,
@@ -76,7 +76,42 @@ const icons = {
 }
 
 const iconFor = (name) => icons[name] ?? ClipboardDocumentCheckIcon
+const customIconBaseUrl = document.body?.dataset?.baseUrl ?? ''
+const currentTheme = ref(document.documentElement.dataset.theme ?? 'light')
+const customIconNames = {
+  dashboard: 'inicio',
+  equipment: 'equipos',
+  'quick-readings': 'lecturas',
+  plans: 'planes',
+  maintenance: 'mantenimiento',
+  employees: 'empleados',
+  notifications: 'notificaciones',
+  imports: 'importaciones',
+  'preventive-library': 'biblioteca-preventiva',
+  reports: 'reportes',
+  superadmin: 'superadmin',
+  'chatbot-audit': 'auditoria-ia',
+  branches: 'sucursales',
+  users: 'usuarios',
+  'work-orders': 'ordenes-trabajo',
+  services: 'servicios-mantenimiento',
+  logout: 'cerrar-sesion',
+}
+const customIconName = (item) => customIconNames[item.key] ?? customIconNames[item.icon] ?? null
+const customIconUrl = (item) => {
+  const name = customIconName(item)
+  const variant = currentTheme.value === 'dark' ? 'dark' : 'light'
+  return name && customIconBaseUrl ? `${customIconBaseUrl}assets/brand/icons/${variant}/${name}.svg` : null
+}
+const logoutIconUrl = computed(() => customIconUrl({ key: 'logout', icon: 'logout' }))
 const showDemoEntry = computed(() => props.navigation.some((item) => item.key === 'superadmin'))
+
+const syncTheme = (event) => {
+  currentTheme.value = event.detail?.theme ?? document.documentElement.dataset.theme ?? 'light'
+}
+
+onMounted(() => window.addEventListener('maintenance:theme-change', syncTheme))
+onBeforeUnmount(() => window.removeEventListener('maintenance:theme-change', syncTheme))
 
 const openDemoCompany = () => {
   window.dispatchEvent(new CustomEvent('maintenance:open-demo-company'))
@@ -85,13 +120,13 @@ const openDemoCompany = () => {
 </script>
 
 <template>
-  <aside class="flex h-full w-[15rem] flex-col bg-surface-inverse text-ink-inverse">
-    <div class="flex h-[4.5rem] items-center justify-between border-b border-brand-800 px-5">
+  <aside class="ui-sidebar-surface flex h-full w-full flex-col bg-surface-raised text-ink">
+    <div class="flex h-[4.5rem] items-center justify-between border-b border-border px-5">
       <BrandMark />
       <button
         v-if="mobile"
         type="button"
-        class="rounded-md p-2 text-brand-200 hover:bg-brand-900 hover:text-white lg:hidden"
+        class="ui-interactive rounded-md p-2 text-ink-muted hover:bg-surface-muted hover:text-ink lg:hidden"
         aria-label="Cerrar menú principal"
         @click="emit('close')"
       >
@@ -99,40 +134,59 @@ const openDemoCompany = () => {
       </button>
     </div>
 
-    <nav aria-label="Navegación principal" class="flex-1 overflow-y-auto px-3 py-5">
+    <nav aria-label="Navegación principal" class="ui-sidebar-scroll flex-1 overflow-y-auto px-3 py-5">
       <section v-for="group in navigationGroups" :key="group.key" class="mb-5 last:mb-0">
-        <h2 class="mb-2 px-3 text-[0.625rem] font-semibold uppercase tracking-[0.14em] text-brand-300">
+        <h2 class="mb-2 px-3 text-[0.625rem] font-semibold uppercase tracking-[0.14em] text-primary">
           {{ group.label }}
         </h2>
         <ul class="space-y-1">
           <li v-for="item in group.items" :key="item.key">
             <span
               v-if="item.disabled"
-              class="flex min-h-11 cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-brand-400"
+              class="flex min-h-11 cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-ink-subtle"
               aria-disabled="true"
             >
-              <component :is="iconFor(item.icon)" class="size-5 shrink-0" aria-hidden="true" />
+              <img
+                v-if="customIconUrl(item)"
+                :src="customIconUrl(item)"
+                alt=""
+                class="size-6 shrink-0"
+                width="24"
+                height="24"
+                aria-hidden="true"
+              />
+              <component v-else :is="iconFor(item.icon)" class="size-5 shrink-0" aria-hidden="true" />
               <span class="min-w-0 flex-1 truncate">{{ item.label }}</span>
-              <span v-if="item.badge" class="rounded-full bg-brand-800 px-2 py-0.5 text-[0.6875rem] font-bold text-brand-200">
+              <span v-if="item.badge" class="rounded-full bg-surface-muted px-2 py-0.5 text-[0.6875rem] font-bold text-ink-muted">
                 {{ item.badge }}
               </span>
             </span>
             <a
               v-else
               :href="item.href"
-              class="group flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors"
-              :class="item.active ? 'bg-brand-800 text-white shadow-inner' : 'text-brand-100 hover:bg-brand-900 hover:text-white'"
+              class="ui-nav-item group flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium"
+              :class="item.active ? 'bg-primary-subtle text-primary shadow-inner' : 'text-ink-muted hover:bg-surface-muted hover:text-ink'"
               :aria-current="item.active ? 'page' : undefined"
               @click="emit('close')"
             >
+              <img
+                v-if="customIconUrl(item)"
+                :src="customIconUrl(item)"
+                alt=""
+                class="size-6 shrink-0"
+                width="24"
+                height="24"
+                aria-hidden="true"
+              />
               <component
+                v-else
                 :is="iconFor(item.icon)"
                 class="size-5 shrink-0"
-                :class="item.active ? 'text-accent' : 'text-brand-300 group-hover:text-brand-100'"
+                :class="item.active ? 'text-primary' : 'text-ink-subtle group-hover:text-ink'"
                 aria-hidden="true"
               />
               <span class="min-w-0 flex-1 truncate">{{ item.label }}</span>
-              <span v-if="item.badge" class="rounded-full bg-brand-700 px-2 py-0.5 text-[0.6875rem] font-bold text-white">
+              <span v-if="item.badge" class="rounded-full bg-primary px-2 py-0.5 text-[0.6875rem] font-bold text-primary-foreground">
                 {{ item.badge }}
               </span>
             </a>
@@ -140,10 +194,10 @@ const openDemoCompany = () => {
           <li v-if="group.key === 'administration' && showDemoEntry">
             <button
               type="button"
-              class="group flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-brand-100 transition-colors hover:bg-brand-900 hover:text-white"
+              class="ui-interactive group flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-ink-muted hover:bg-surface-muted hover:text-ink"
               @click="openDemoCompany"
             >
-              <BeakerIcon class="size-5 shrink-0 text-brand-300 group-hover:text-brand-100" aria-hidden="true" />
+              <BeakerIcon class="size-5 shrink-0 text-ink-subtle group-hover:text-ink" aria-hidden="true" />
               <span class="min-w-0 flex-1 truncate">Empresa demo</span>
             </button>
           </li>
@@ -151,23 +205,41 @@ const openDemoCompany = () => {
       </section>
     </nav>
 
-    <div v-if="logout" class="border-t border-brand-800 p-4">
+    <div v-if="logout" class="border-t border-border p-4">
       <form v-if="logout.method === 'post'" :action="logout.href" method="post">
         <input v-if="logout.csrfName" type="hidden" :name="logout.csrfName" :value="logout.csrfValue" />
         <button
           type="submit"
-          class="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-brand-200 transition-colors hover:bg-brand-900 hover:text-white"
+          class="ui-interactive flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-ink-muted hover:bg-surface-muted hover:text-ink"
         >
-          <ArrowRightStartOnRectangleIcon class="size-5" aria-hidden="true" />
+          <img
+            v-if="logoutIconUrl"
+            :src="logoutIconUrl"
+            alt=""
+            class="size-6 shrink-0"
+            width="24"
+            height="24"
+            aria-hidden="true"
+          />
+          <ArrowRightStartOnRectangleIcon v-else class="size-5" aria-hidden="true" />
           Cerrar sesión
         </button>
       </form>
       <a
         v-else
         :href="logout.href"
-        class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-brand-200 transition-colors hover:bg-brand-900 hover:text-white"
+        class="ui-interactive flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-ink-muted hover:bg-surface-muted hover:text-ink"
       >
-        <ArrowRightStartOnRectangleIcon class="size-5" aria-hidden="true" />
+        <img
+          v-if="logoutIconUrl"
+          :src="logoutIconUrl"
+          alt=""
+          class="size-6 shrink-0"
+          width="24"
+          height="24"
+          aria-hidden="true"
+        />
+        <ArrowRightStartOnRectangleIcon v-else class="size-5" aria-hidden="true" />
         Cerrar sesión
       </a>
     </div>
