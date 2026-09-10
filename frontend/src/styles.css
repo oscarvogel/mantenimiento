@@ -122,7 +122,9 @@ html[data-theme='dark'] {
   --warning: 255 191 77;
   --warning-strong: 255 213 125;
   --warning-subtle: 86 58 10;
-  --warning-foreground: 36 25 5;
+  /* Warning surfaces are dark in this theme, so their foreground must stay
+   * light enough for badges, notices and KPI labels. */
+  --warning-foreground: 255 226 161;
   --danger: 255 113 113;
   --danger-strong: 255 146 146;
   --danger-subtle: 91 31 31;

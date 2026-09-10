@@ -17,41 +17,59 @@ defineProps({ data: { type: Object, required: true } })
     <PageHeading eyebrow="Importaciones" title="Equipos, unidades, lecturas y vencimientos" description="Validá el archivo, revisá cada fila y confirmá la persistencia sólo cuando el resultado sea correcto." />
 
     <PanelCard v-if="data.canUpload" title="Nueva importación" class="mb-6">
-      <div class="mb-5 flex flex-wrap gap-2">
-        <a :href="data.routes.templates.equipment" :class="secondaryButton"><ArrowDownTrayIcon class="mr-2 size-4" aria-hidden="true" />Plantilla de equipos</a>
-        <a :href="data.routes.templates.readings" :class="secondaryButton"><ArrowDownTrayIcon class="mr-2 size-4" aria-hidden="true" />Plantilla de lecturas</a>
-        <a :href="`${data.routes.upload}/plantilla/BIBLIOTECA_PREVENTIVA`" :class="secondaryButton"><ArrowDownTrayIcon class="mr-2 size-4" aria-hidden="true" />Plantilla general de camiones</a>
-        <a :href="`${data.routes.upload}/biblioteca`" :class="secondaryButton"><WrenchScrewdriverIcon class="mr-2 size-4" aria-hidden="true" />Ver biblioteca preventiva</a>
+      <div class="space-y-5">
+        <section class="rounded-xl border border-border-subtle bg-surface-subtle/60 p-4 sm:p-5" aria-labelledby="import-templates-title">
+          <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div>
+              <h3 id="import-templates-title" class="text-sm font-bold text-ink">Plantillas disponibles</h3>
+              <p class="mt-1 max-w-2xl text-sm text-ink-muted">Descargá una estructura lista para completar antes de validar una carga.</p>
+            </div>
+            <div class="flex flex-wrap gap-2 xl:justify-end">
+              <a :href="data.routes.templates.equipment" :class="secondaryButton"><ArrowDownTrayIcon class="mr-2 size-4" aria-hidden="true" />Plantilla de equipos</a>
+              <a :href="data.routes.templates.readings" :class="secondaryButton"><ArrowDownTrayIcon class="mr-2 size-4" aria-hidden="true" />Plantilla de lecturas</a>
+              <a :href="`${data.routes.upload}/plantilla/BIBLIOTECA_PREVENTIVA`" :class="secondaryButton"><ArrowDownTrayIcon class="mr-2 size-4" aria-hidden="true" />Plantilla general de camiones</a>
+              <a :href="`${data.routes.upload}/biblioteca`" :class="secondaryButton"><WrenchScrewdriverIcon class="mr-2 size-4" aria-hidden="true" />Ver biblioteca preventiva</a>
+            </div>
+          </div>
+        </section>
+
+        <section class="rounded-xl border border-border-subtle bg-surface-subtle/40 p-4 sm:p-5" aria-labelledby="import-file-title">
+          <div class="mb-4">
+            <h3 id="import-file-title" class="text-sm font-bold text-ink">Validar archivo</h3>
+            <p class="mt-1 text-sm text-ink-muted">Elegí el tipo de información y cargá el archivo correspondiente.</p>
+          </div>
+          <form method="post" enctype="multipart/form-data" :action="data.routes.upload" class="grid gap-4 lg:grid-cols-[minmax(13rem,16rem)_minmax(0,1fr)_auto] lg:items-start">
+            <CsrfInput :csrf="data.csrf" />
+            <FormField label="Tipo de importación" for-id="import-type">
+              <select id="import-type" name="tipo" :class="fieldClass">
+                <option value="EQUIPOS">Equipos</option>
+                <option value="UNIDADES_TRANSPORTE">Unidades de transporte TSA</option>
+                <option value="LECTURAS">Lecturas</option>
+                <option value="VENCIMIENTOS">Vencimientos TSA (móviles y choferes)</option>
+                <option value="BIBLIOTECA_PREVENTIVA">Biblioteca preventiva</option>
+              </select>
+            </FormField>
+            <FormField label="Archivo CSV o XLSX" for-id="import-file" :hint="`Máximo ${data.maxSizeMb} MB y 5.000 filas. Unidades TSA, vencimientos TSA y biblioteca preventiva requieren XLSX.`">
+              <input id="import-file" type="file" name="archivo" accept=".csv,.xlsx" required :class="fieldClass" />
+            </FormField>
+            <button type="submit" :class="`${primaryButton} lg:mt-6 lg:min-w-40`"><ArrowUpTrayIcon class="mr-2 size-5" aria-hidden="true" />Validar archivo</button>
+          </form>
+        </section>
+
+        <section class="rounded-xl border border-border-subtle bg-surface-subtle/40 p-4 sm:p-5" aria-labelledby="driver-import-title">
+          <div class="mb-4">
+            <h3 id="driver-import-title" class="text-sm font-bold text-ink">Choferes por móvil</h3>
+            <p class="mt-1 text-sm text-ink-muted">Revisá la asignación de cada chofer a su móvil mediante un archivo XLSX.</p>
+          </div>
+          <form method="post" enctype="multipart/form-data" :action="data.routes.driverAssignmentsPreview" class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+            <CsrfInput :csrf="data.csrf" />
+            <FormField label="Archivo XLSX" for-id="drivers-file" hint="Lee hojas como Argentina/Brasil y busca cada móvil por patente. Primero muestra una vista previa: no modifica datos.">
+              <input id="drivers-file" type="file" name="archivo_choferes" accept=".xlsx" required :class="fieldClass" />
+            </FormField>
+            <button type="submit" :class="`${primaryButton} lg:mt-6 lg:min-w-40`"><ArrowUpTrayIcon class="mr-2 size-5" aria-hidden="true" />Revisar choferes</button>
+          </form>
+        </section>
       </div>
-      <form method="post" enctype="multipart/form-data" :action="data.routes.upload" class="grid gap-4 md:grid-cols-[16rem_1fr_auto] md:items-end">
-        <CsrfInput :csrf="data.csrf" />
-        <FormField label="Tipo" for-id="import-type">
-          <select id="import-type" name="tipo" :class="fieldClass">
-            <option value="EQUIPOS">Equipos</option>
-            <option value="UNIDADES_TRANSPORTE">Unidades de transporte TSA</option>
-            <option value="LECTURAS">Lecturas</option>
-            <option value="VENCIMIENTOS">Vencimientos TSA (móviles y choferes)</option>
-            <option value="BIBLIOTECA_PREVENTIVA">Biblioteca preventiva</option>
-          </select>
-        </FormField>
-        <FormField label="Archivo CSV o XLSX" for-id="import-file" :hint="`Máximo ${data.maxSizeMb} MB y 5.000 filas. Unidades TSA, vencimientos TSA y biblioteca preventiva requieren XLSX.`">
-          <input id="import-file" type="file" name="archivo" accept=".csv,.xlsx" required :class="fieldClass" />
-        </FormField>
-        <button type="submit" :class="primaryButton"><ArrowUpTrayIcon class="mr-2 size-5" aria-hidden="true" />Validar archivo</button>
-      </form>
-
-      <div class="my-6 border-t border-border-subtle"></div>
-
-      <form method="post" enctype="multipart/form-data" :action="data.routes.driverAssignmentsPreview" class="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
-        <CsrfInput :csrf="data.csrf" />
-        <FormField label="Choferes por móvil (XLSX)" for-id="drivers-file" hint="Lee hojas como Argentina/Brasil y busca cada móvil por patente. Primero muestra una vista previa: no modifica datos.">
-          <input id="drivers-file" type="file" name="archivo_choferes" accept=".xlsx" required :class="fieldClass" />
-        </FormField>
-        <button type="submit" :class="primaryButton">
-          <ArrowUpTrayIcon class="mr-2 size-5" aria-hidden="true" />
-          Revisar choferes
-        </button>
-      </form>
     </PanelCard>
 
     <PanelCard title="Historial de importaciones" :count="data.imports.total" flush>
