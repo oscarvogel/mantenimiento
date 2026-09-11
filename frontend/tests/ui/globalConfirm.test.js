@@ -219,6 +219,15 @@ describe('prefers-reduced-motion', () => {
     expect(options.customClass.confirmButton).toContain('ui-swal-danger')
     expect(options.showClass).toBeDefined()
   })
+
+  it('desactiva por completo las transiciones que impiden cerrar el modal', () => {
+    const alerts = useAlerts()
+
+    alerts.success('Importación cancelada')
+
+    const options = Swal.fire.mock.calls.at(-1)[0]
+    expect(options.animation).toBe(false)
+  })
 })
 
 describe('sin banners duplicados', () => {

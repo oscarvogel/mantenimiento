@@ -166,6 +166,12 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .swal2-container.ui-swal-customized,
+  .swal2-container.ui-swal-customized * {
+    animation: none !important;
+    transition: none !important;
+  }
+
   .swal2-popup {
     animation: none;
   }
