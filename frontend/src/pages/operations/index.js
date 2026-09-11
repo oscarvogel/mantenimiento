@@ -40,7 +40,7 @@ export const operationPageComponents = Object.freeze({
   'maintenance-overview': MaintenanceOverviewPage,
   'maintenance-services': MaintenanceServicesPage,
   'preventive-plans': PreventivePlansPage,
-  'equipment-detail': EquipmentDetailHistoryEvidencePage,
+  'equipment-detail': EquipmentDetailPage,
   'equipment-operate': EquipmentOperatePage,
   'driver-assignments-preview': DriverAssignmentsPreviewPage,
   'employees-index': EmployeesIndexPage,
