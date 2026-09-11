@@ -19,13 +19,20 @@ final class Expirations extends BaseController
     {
         try {
             $actor = $this->actor();
-            if (! $actor->hasPermission('equipos.ver') && ! $actor->hasPermission('empleados.ver')) {
+            $canSeeEquipment = $actor->hasPermission('equipos.ver');
+            $canSeeEmployees = $actor->hasPermission('empleados.ver');
+            if (! $canSeeEquipment && ! $canSeeEmployees) {
                 throw new DomainException('No tenés permiso para consultar vencimientos.');
             }
 
             $subject = mb_strtoupper(trim((string) $this->request->getGet('tipo')));
             if (! in_array($subject, ['TODOS', 'EQUIPO', 'EMPLEADO'], true)) {
                 $subject = 'TODOS';
+            }
+            if (! $canSeeEquipment) {
+                $subject = 'EMPLEADO';
+            } elseif (! $canSeeEmployees) {
+                $subject = 'EQUIPO';
             }
             $status = mb_strtolower(trim((string) $this->request->getGet('estado')));
             if (! in_array($status, ['todos', 'vencidos', '7', '15', '30', 'vigentes'], true)) {
@@ -68,6 +75,8 @@ final class Expirations extends BaseController
                     'index' => base_url('mantenimiento/vencimientos'),
                     'types' => base_url('mantenimiento/maestros/vencimientos'),
                 ],
+                'canSeeEquipment' => $canSeeEquipment,
+                'canSeeEmployees' => $canSeeEmployees,
                 'canManageTypes' => $actor->hasPermission('equipos.editar') || $actor->hasPermission('empleados.editar'),
             ]);
         } catch (Throwable $exception) {
