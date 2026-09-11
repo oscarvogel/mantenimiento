@@ -13,6 +13,7 @@ interface WhatsAppNotificationGateway
         string $externalRef,
         ?string $actorId = null,
         ?string $actorName = null,
+        ?string $instanceId = null,
     ): array;
 
     public function available(): bool;
