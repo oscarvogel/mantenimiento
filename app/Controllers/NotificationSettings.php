@@ -55,9 +55,13 @@ final class NotificationSettings extends BaseController
                 'webPush' => $this->status((bool) $settings['webpush_enabled'], $webPushConfigured),
                 'whatsApp' => $this->status((bool) $settings['whatsapp_enabled'], $whatsAppConfigured),
             ],
+            'migration' => [
+                'required' => ! db_connect()->tableExists('configuracion_canales_globales'),
+            ],
             'actions' => [
                 'save' => base_url('superadmin/configuracion/notificaciones'),
                 'testEmail' => base_url('superadmin/configuracion/notificaciones/probar-email'),
+                'migrate' => base_url('superadmin/configuracion/notificaciones/migrar'),
             ],
         ];
 
@@ -98,6 +102,33 @@ final class NotificationSettings extends BaseController
                 'error',
                 $exception instanceof DomainException ? $exception->getMessage() : 'No se pudo guardar la configuración.',
             );
+        }
+    }
+
+    public function migrate(): RedirectResponse
+    {
+        try {
+            $this->actor();
+            $runner = service('migrations');
+            $result = $runner->latest();
+
+            if ($result === false) {
+                throw new \RuntimeException('CodeIgniter informó fallo al ejecutar las migraciones.');
+            }
+
+            log_message('notice', 'Superadministrador ejecutó migraciones desde configuración de notificaciones.', [
+                'actor' => $this->actor()->userId(),
+            ]);
+
+            return redirect()->to('/superadmin/configuracion/notificaciones')
+                ->with('success', 'Migraciones aplicadas correctamente. Ya podés guardar la configuración.');
+        } catch (Throwable $exception) {
+            log_message('error', 'Falló ejecución de migraciones desde Superadmin: {message}', [
+                'message' => $exception->getMessage(),
+            ]);
+
+            return redirect()->to('/superadmin/configuracion/notificaciones')
+                ->with('error', 'No se pudieron aplicar las migraciones. Revisá el log del sistema.');
         }
     }
 
