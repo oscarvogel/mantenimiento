@@ -167,7 +167,7 @@ final class CodeIgniterExpirationReadModel
         $builder = $this->database->table('sucursales')
             ->select('id, nombre')
             ->where('empresa_id', $companyId)
-            ->where('activo', 1)
+            ->where('estado', 1)
             ->where('deleted_at', null)
             ->orderBy('nombre', 'ASC');
 
