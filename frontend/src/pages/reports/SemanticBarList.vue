@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import CountUp from '../../components/CountUp.vue'
 
 const props = defineProps({
   items: { type: Array, required: true },
@@ -24,7 +25,7 @@ const widthFor = (value) => {
     <li v-for="item in items" :key="item[labelKey]" class="space-y-1.5">
       <div class="flex items-center justify-between gap-3 text-sm">
         <span class="min-w-0 truncate font-medium text-ink">{{ item[labelKey] }}</span>
-        <span class="shrink-0 tabular-nums text-ink-muted">{{ valueFormatter(item[valueKey]) }}</span>
+        <span class="shrink-0 tabular-nums text-ink-muted"><CountUp :value="Number(item[valueKey]) || 0" :formatter="valueFormatter" /></span>
       </div>
       <div
         class="h-2.5 overflow-hidden rounded-full bg-surface-muted"
@@ -34,7 +35,7 @@ const widthFor = (value) => {
         :aria-valuemax="maximum"
         :aria-valuenow="Number(item[valueKey]) || 0"
       >
-        <div class="h-full rounded-full bg-primary" :style="{ width: `${widthFor(item[valueKey])}%` }"></div>
+        <div class="ui-bar-fill h-full rounded-full bg-primary" :style="{ width: `${widthFor(item[valueKey])}%` }"></div>
       </div>
     </li>
   </ul>

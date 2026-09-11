@@ -49,7 +49,7 @@ defineProps({
             </tr>
           </thead>
           <tbody class="divide-y divide-border-subtle">
-            <tr v-for="item in items" :key="item.id" class="group hover:bg-brand-50/70">
+            <tr v-for="(item, index) in items" :key="item.id" :style="{ '--ui-stagger-index': index }" class="ui-stagger-item group hover:bg-surface-muted">
               <th scope="row" class="px-6 py-4 text-sm font-semibold text-ink">{{ item.equipment }}</th>
               <td class="px-6 py-4 text-sm text-ink-muted">{{ item.service }}</td>
               <td class="px-6 py-4 text-sm text-ink-muted">{{ item.branch }}</td>
@@ -66,7 +66,7 @@ defineProps({
       </div>
 
       <ul class="divide-y divide-border-subtle md:hidden">
-        <li v-for="item in items" :key="item.id">
+        <li v-for="(item, index) in items" :key="item.id" :style="{ '--ui-stagger-index': index }" class="ui-stagger-item">
           <article class="px-5 py-4">
             <div class="flex items-start justify-between gap-3">
               <div class="min-w-0">

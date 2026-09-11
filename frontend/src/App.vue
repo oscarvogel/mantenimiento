@@ -157,7 +157,7 @@ const scrollCta = computed(() => {
           <a
             v-if="dashboard.links.equipment !== '#'"
             :href="dashboard.links.equipment"
-            class="ui-interactive inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary-hover"
+            class="ui-interactive ui-glare inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary-hover"
           >
             <TruckIcon class="size-5" aria-hidden="true" />
             Ver equipos
@@ -173,7 +173,7 @@ const scrollCta = computed(() => {
           <a
             v-if="dashboard.links.correctiveOrder !== '#'"
             :href="dashboard.links.correctiveOrder"
-            class="ui-interactive inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary-hover"
+            class="ui-interactive ui-glare inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary-hover"
           >
             <WrenchScrewdriverIcon class="size-5" aria-hidden="true" />
             Nueva OT
@@ -212,10 +212,11 @@ const scrollCta = computed(() => {
 
               <div v-if="attentionItems.length" class="divide-y divide-border-subtle">
                 <a
-                  v-for="item in attentionItems"
+                  v-for="(item, index) in attentionItems"
                   :key="item.id"
                   :href="item.actionUrl || item.detailUrl || attentionSummaryUrl"
-                  class="group flex items-center gap-4 px-5 py-4 transition hover:bg-brand-50/70 sm:px-6"
+                  :style="{ '--ui-stagger-index': index }"
+                  class="ui-stagger-item group flex items-center gap-4 px-5 py-4 transition hover:bg-surface-muted sm:px-6"
                 >
                   <span
                     class="flex size-11 shrink-0 items-center justify-center rounded-lg"

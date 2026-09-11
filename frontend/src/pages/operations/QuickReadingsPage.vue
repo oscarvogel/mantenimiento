@@ -57,6 +57,13 @@ const maintenanceCounts = computed(() => {
   props.data.equipment.items.forEach(({ id }) => { const state = maintenance[id]?.state || 'SIN_PLAN'; if (Object.hasOwn(counts, state)) counts[state] += 1 })
   return counts
 })
+const statusFilters = computed(() => [
+  { key: '', label: 'Todos', count: props.data.equipment.items.length },
+  { key: 'VENCIDO', label: 'Vencidos', count: maintenanceCounts.value.VENCIDO },
+  { key: 'PROXIMO', label: 'Próximos', count: maintenanceCounts.value.PROXIMO },
+  { key: 'PROBLEMA', label: 'Problemas', count: maintenanceCounts.value.PROBLEMA },
+  { key: 'SIN_PLAN', label: 'Sin plan', count: maintenanceCounts.value.SIN_PLAN },
+])
 const normalizeSearch = (value) => String(value ?? '')
   .trim()
   .toLocaleLowerCase('es')
@@ -183,6 +190,9 @@ const focusNextReadingInput = (event) => {
   const inputs = [...event.target.form.querySelectorAll('[data-reading-input="true"]')].filter((input) => !input.disabled && input.offsetParent !== null)
   const next = inputs[inputs.indexOf(event.target) + 1]
   if (next) { next.focus(); next.select?.() }
+  if (next) return
+  const equipment = props.data.equipment.items.find((item) => String(item.id) === String(event.target.dataset.equipmentId))
+  if (equipment && !rowError(equipment) && readyRows.value.length && !saving.value) event.target.form?.requestSubmit()
 }
 </script>
 
@@ -195,12 +205,14 @@ const focusNextReadingInput = (event) => {
         <label class="block text-sm font-semibold text-ink">Buscar móvil<span class="relative mt-1 block"><MagnifyingGlassIcon class="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-ink-subtle" /><input v-model="search" data-quick-search type="search" autocomplete="off" placeholder="Código, patente o chasis…" :class="`${fieldClass} pl-10`" /></span></label>
         <label class="block text-sm font-semibold text-ink">Sucursal<select :value="data.filters.branchId" :class="`${fieldClass} mt-1`" @change="changeCatalogFilter('branch', $event.target.value)"><option value="">Todas</option><option v-for="branch in data.catalogs.branches" :key="branch.id" :value="branch.id">{{ branch.name }}</option></select></label>
         <label class="block text-sm font-semibold text-ink">Tipo<select :value="data.filters.typeId" :class="`${fieldClass} mt-1`" @change="changeCatalogFilter('type', $event.target.value)"><option value="">Todos</option><option v-for="type in data.catalogs.types" :key="type.id" :value="type.id">{{ type.name }}</option></select></label>
-        <div class="flex items-end gap-2"><label class="text-sm font-semibold text-ink">Fecha y hora<input v-model="commonRecordedAt" type="datetime-local" :class="`${fieldClass} mt-1`" @change="applyCommonRecordedAt" /></label><button type="button" :class="secondaryButton" @click="refreshTimestamp">Ahora</button></div>
+        <div class="flex items-end gap-2"><label class="text-sm font-semibold text-ink">Fecha de lectura<input v-model="commonRecordedAt" type="datetime-local" :class="`${fieldClass} mt-1`" @change="applyCommonRecordedAt" /></label><button type="button" :class="secondaryButton" title="Usar fecha y hora actual" aria-label="Usar fecha y hora actual" @click="refreshTimestamp">Usar ahora</button></div>
       </div>
 
       <div class="mb-3 flex flex-wrap gap-2 text-xs font-semibold">
-        <button v-for="item in [{key:'',label:'Todos',count:data.equipment.items.length},{key:'VENCIDO',label:'Vencidos',count:maintenanceCounts.VENCIDO},{key:'PROXIMO',label:'Próximos',count:maintenanceCounts.PROXIMO},{key:'PROBLEMA',label:'Problemas',count:maintenanceCounts.PROBLEMA},{key:'SIN_PLAN',label:'Sin plan',count:maintenanceCounts.SIN_PLAN}]" :key="item.key" type="button" class="rounded-full border border-border px-3 py-1.5" :class="statusFilter === item.key ? 'bg-primary-subtle text-primary' : 'text-ink-muted'" @click="statusFilter = item.key">{{ item.label }} {{ item.count }}</button>
+        <button v-for="item in statusFilters" :key="item.key" type="button" class="ui-interactive rounded-full border px-3 py-1.5" :class="statusFilter === item.key ? 'border-primary bg-primary text-primary-foreground shadow-sm' : 'border-border bg-surface-raised text-ink-muted hover:border-primary/40 hover:bg-primary-subtle/40'" :aria-pressed="statusFilter === item.key" @click="statusFilter = item.key">{{ item.label }} {{ item.count }}</button>
       </div>
+
+      <p class="mb-3 text-xs text-ink-muted">Ingresá una lectura y presioná Enter para avanzar. Al terminar, se guardan las lecturas válidas.</p>
 
       <div v-if="results.length" class="mb-3 flex flex-wrap gap-2 text-xs" aria-live="polite"><span class="font-semibold text-ink-muted">Última carga:</span><span v-for="result in results" :key="`${result.rowNumber}-${result.equipmentId}`" class="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1" :class="result.success ? 'text-success-strong' : 'text-danger-strong'"><CheckCircleIcon v-if="result.success" class="size-4" /><ExclamationTriangleIcon v-else class="size-4" />{{ props.data.equipment.items.find((item) => item.id === result.equipmentId)?.code }}</span></div>
 
@@ -216,14 +228,14 @@ const focusNextReadingInput = (event) => {
               <td class="px-3 py-2"><div class="relative max-w-52"><input :id="`quick-reading-${equipment.id}`" v-model="rows[equipment.id].value" data-reading-input="true" :data-equipment-id="equipment.id" type="text" :inputmode="readingKey(equipment) === 'hours' ? 'decimal' : 'numeric'" autocomplete="off" placeholder="Ingresar lectura" :disabled="!data.canRegister || saving" :class="`${fieldClass} pr-10 font-semibold tabular-nums ${rowError(equipment) ? 'border-danger' : ''}`" @keydown.enter.prevent="focusNextReadingInput" /><span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-ink-muted">{{ readingUnit(equipment) }}</span></div><p v-if="rowError(equipment)" class="mt-1 text-xs font-semibold text-danger-strong">{{ rowError(equipment) }}</p><p v-else-if="inputDelta(equipment)" class="mt-1 text-xs text-ink-muted">{{ inputDelta(equipment) }} desde la última</p><p v-if="rows[equipment.id].message" class="mt-1 text-xs" :class="rows[equipment.id].status === 'error' ? 'text-danger-strong' : 'text-success-strong'">{{ rows[equipment.id].message }}</p></td>
               <td class="px-3 py-2"><template v-if="primaryPlan(equipment)"><div class="font-medium">{{ primaryPlan(equipment).serviceName }}</div><div class="text-xs text-ink-muted">{{ formatPlanPoint(primaryPlan(equipment), 'base') }}</div></template><span v-else>—</span></td>
               <td class="px-3 py-2"><template v-if="primaryPlan(equipment)"><div class="font-medium">{{ primaryPlan(equipment).serviceName }}</div><div class="text-xs text-ink-muted">{{ formatPlanPoint(primaryPlan(equipment), 'next') }}</div></template><span v-else>—</span></td>
-              <td class="px-3 py-2"><span class="inline-flex rounded-full border px-2.5 py-1 text-xs font-bold" :class="preventiveClass(equipment)">{{ preventiveLabel(equipment) }}</span><details v-if="missingPlanDetails(equipment).length" class="mt-1 text-[11px] text-danger-strong"><summary class="cursor-pointer font-semibold">Ver faltantes</summary><div v-for="detail in missingPlanDetails(equipment)" :key="detail" class="mt-1">{{ detail }}</div></details><div v-else-if="maintenance[equipment.id]?.planCount > 1" class="mt-1 text-[11px] text-ink-subtle">+{{ maintenance[equipment.id].planCount - 1 }} planes</div></td>
+              <td class="px-3 py-2"><a v-if="maintenance[equipment.id]?.state === 'SIN_PLAN' && equipment.assignPlanUrl" :href="equipment.assignPlanUrl" class="inline-flex rounded-full border border-warning/40 bg-warning-subtle px-2.5 py-1 text-xs font-bold text-warning-strong hover:border-warning hover:bg-warning-subtle" title="Asignar un plan preventivo">Sin plan · Asignar</a><span v-else class="inline-flex rounded-full border px-2.5 py-1 text-xs font-bold" :class="preventiveClass(equipment)">{{ preventiveLabel(equipment) }}</span><details v-if="missingPlanDetails(equipment).length" class="mt-1 text-[11px] text-danger-strong"><summary class="cursor-pointer font-semibold">Ver faltantes</summary><div v-for="detail in missingPlanDetails(equipment)" :key="detail" class="mt-1">{{ detail }}</div></details><div v-else-if="maintenance[equipment.id]?.planCount > 1" class="mt-1 text-[11px] text-ink-subtle">+{{ maintenance[equipment.id].planCount - 1 }} planes</div></td>
               <td class="px-3 py-2"><template v-if="primaryPlan(equipment)?.order"><div class="text-xs font-bold text-success-strong">{{ primaryPlan(equipment).order.number }}</div><a :href="`${data.routes.workOrderBase}/${primaryPlan(equipment).order.id}/imprimir`" target="_blank" rel="noopener" :class="`${secondaryButton} mt-1 px-2 py-1 text-xs`"><PrinterIcon class="mr-1 size-4" />Imprimir</a></template><button v-else-if="data.canGenerateOrder && primaryPlan(equipment)?.noticeId" type="button" :disabled="orderSaving[equipment.id]" :class="`${primaryButton} px-2 py-1 text-xs`" @click="generateOrder(equipment)"><ArrowPathIcon v-if="orderSaving[equipment.id]" class="mr-1 size-4 animate-spin" /><WrenchScrewdriverIcon v-else class="mr-1 size-4" />{{ orderSaving[equipment.id] ? 'Generando…' : 'Generar OT' }}</button><span v-else-if="maintenance[equipment.id]?.state === 'PROXIMO'" class="text-xs font-semibold text-warning-strong">Próximo service</span><span v-else class="text-xs text-ink-subtle">—</span><p v-if="orderErrors[equipment.id]" class="mt-1 text-xs text-danger-strong">{{ orderErrors[equipment.id] }}</p></td>
             </tr>
           </tbody>
         </table>
       </div>
       <div v-if="invalidRows.length" class="mt-3 text-sm font-semibold text-danger-strong">{{ invalidRows.length }} lectura{{ invalidRows.length === 1 ? '' : 's' }} para corregir. Las válidas se pueden guardar.</div>
-      <template #footer><div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><PaginationBar :pagination="data.equipment.pagination" /><div class="text-right"><div class="mb-1 text-xs text-ink-muted">{{ readyRows.length }} lista{{ readyRows.length === 1 ? '' : 's' }} para guardar</div><button v-if="data.canRegister && data.equipment.items.length" type="submit" :disabled="saving || !readyRows.length" :class="primaryButton"><ArrowPathIcon class="mr-2 size-5" :class="saving ? 'animate-spin' : ''" />{{ saveButtonLabel }}</button></div></div></template>
+      <template #footer><div class="grid gap-4 border-t border-border-subtle px-5 py-4 sm:px-6 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center"><PaginationBar :pagination="data.equipment.pagination" embedded compact-single-page /><div class="flex flex-col gap-1.5 sm:items-end"><div class="text-xs text-ink-muted">{{ readyRows.length }} lectura{{ readyRows.length === 1 ? '' : 's' }} lista{{ readyRows.length === 1 ? '' : 's' }} para guardar</div><button v-if="data.canRegister && data.equipment.items.length" type="submit" :disabled="saving || !readyRows.length" :class="`${primaryButton} w-full sm:w-auto`"><ArrowPathIcon class="mr-2 size-5" :class="saving ? 'animate-spin' : ''" />{{ saveButtonLabel }}</button></div></div></template>
     </PanelCard>
   </form>
 </template>

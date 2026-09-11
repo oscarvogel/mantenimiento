@@ -21,7 +21,7 @@ const maintenance = (state = 'PROXIMO', overrides = {}) => ({
   plans: [],
 })
 const dataFor = (count = 2) => ({
-  csrf: { name: 'csrf_test_name', hash: 'secure-token' }, results: [], canRegister: true, canGenerateOrder: true,
+  csrf: { name: 'csrf_test_name', hash: 'secure-token' }, results: [], canRegister: true, canGenerateOrder: true, canAssignPlan: true,
   recordedAtDefault: '2026-08-17T15:00', filters: { q: '', branchId: '', typeId: '', perPage: 50 },
   routes: {
     index: '/mantenimiento/lecturas/rapidas', submit: '/mantenimiento/lecturas/rapidas', submitRow: '/mantenimiento/lecturas/rapidas/fila',
@@ -35,7 +35,7 @@ const dataFor = (count = 2) => ({
       id: index + 1, code: `CAM-${index + 1}`, plate: `AA${index + 1}`, chassis: `CH-${index + 1}`,
       typeName: 'Camión', branchName: 'Central', controlsKm: true, controlsHours: true,
       currentKm: 988754 + index, currentHours: '1250.4', lastReadingAt: '2026-08-16 10:00:00',
-      maintenance: maintenance(index === 0 ? 'PROXIMO' : 'OK'),
+      maintenance: maintenance(index === 0 ? 'PROXIMO' : 'OK'), assignPlanUrl: `/mantenimiento/planes?equipo_id=${index + 1}#planes-desde-plantilla`,
     })),
   },
 })
@@ -50,6 +50,16 @@ describe('QuickReadingsPage', () => {
     expect(wrapper.get('#quick-reading-1').attributes('inputmode')).toBe('numeric')
     expect(wrapper.text()).toContain('Último service')
     expect(wrapper.text()).toContain('Próximo service')
+  })
+
+  it('hace accionables los filtros de estado y los equipos sin plan', () => {
+    const data = dataFor(1)
+    data.equipment.items[0].maintenance = { state: 'SIN_PLAN', primaryPlan: null, plans: [], planCount: 0 }
+    const wrapper = render(data)
+
+    expect(wrapper.get('button[aria-pressed="true"]').text()).toContain('Todos 1')
+    expect(wrapper.get('a[href="/mantenimiento/planes?equipo_id=1#planes-desde-plantilla"]').text()).toContain('Sin plan')
+    expect(wrapper.get('a[href="/mantenimiento/planes?equipo_id=1#planes-desde-plantilla"]').text()).toContain('Asignar')
   })
 
   it('usa horómetro como único contador cuando el equipo no controla km', () => {
@@ -128,5 +138,19 @@ describe('QuickReadingsPage', () => {
     await inputs[0].trigger('keydown.enter')
     expect(document.activeElement).toBe(inputs[1].element)
     expect(submit).not.toHaveBeenCalled()
+  })
+
+  it('envía las lecturas válidas al presionar Enter en la última fila', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => response({ result: { success: true, currentKilometers: 989000, currentHours: '1250.4' } })))
+    const wrapper = render(dataFor(1))
+    const input = wrapper.get('#quick-reading-1')
+    Object.defineProperty(input.element, 'offsetParent', { configurable: true, get: () => document.body })
+    await input.setValue('989000')
+    const submit = vi.fn()
+    wrapper.get('form').element.addEventListener('submit', submit)
+
+    await input.trigger('keydown.enter')
+
+    expect(submit).toHaveBeenCalled()
   })
 })

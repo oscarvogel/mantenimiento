@@ -7,6 +7,7 @@ const reducedMotion = () =>
 
 const alertDefaults = {
   customClass: {
+    container: 'ui-swal-customized',
     popup: 'ui-swal-popup',
     title: 'ui-swal-title',
     htmlContainer: 'ui-swal-html',
@@ -15,13 +16,10 @@ const alertDefaults = {
     cancelButton: 'ui-swal-cancel',
     denounceButton: 'ui-swal-confirm',
   },
-  confirmButtonColor: '#0862C6',
-  cancelButtonColor: '#F0F3F7',
   buttonsStyling: false,
   reverseButtons: true,
   width: 440,
   padding: '1.5rem',
-  background: '#FEFEFE',
   showCloseButton: true,
   focusConfirm: true,
   allowOutsideClick: () => !Swal.isLoading(),
@@ -77,6 +75,7 @@ export function useAlerts() {
         reverseButtons: true,
         buttonsStyling: false,
         customClass: {
+          container: 'ui-swal-customized',
           popup: 'ui-swal-popup',
           title: 'ui-swal-title',
           htmlContainer: 'ui-swal-html',
@@ -84,11 +83,8 @@ export function useAlerts() {
           confirmButton: danger ? 'ui-swal-confirm ui-swal-danger' : 'ui-swal-confirm',
           cancelButton: 'ui-swal-cancel',
         },
-        confirmButtonColor: danger ? '#D63C3C' : '#0862C6',
-        cancelButtonColor: '#F0F3F7',
         width: 440,
         padding: '1.5rem',
-        background: '#FEFEFE',
         showCloseButton: true,
         focusConfirm: true,
         allowOutsideClick: () => !Swal.isLoading(),

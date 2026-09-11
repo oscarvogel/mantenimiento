@@ -48,7 +48,7 @@ final class CodeIgniterCircuitOverview implements CircuitOverviewPort
             $builder = $this->database->table('planes_mantenimiento p')
                 ->select('p.*, e.sucursal_id, e.codigo equipo_codigo, e.km_actual, e.horas_actuales, ts.nombre servicio_nombre')
                 ->join('equipos e', 'e.id = p.equipo_id AND e.empresa_id = p.empresa_id', 'inner')
-                ->join('tipos_servicio ts', 'ts.id = p.tipo_servicio_id', 'inner')
+                ->join('tipos_servicio ts', $this->serviceJoin('p'), 'inner')
                 ->where('p.empresa_id', $companyId)->where('p.activo', 1)->where('p.deleted_at', null)
                 ->orderBy('e.codigo');
             $this->scopeBranches($builder, 'e.sucursal_id', $branchIds);
@@ -60,7 +60,7 @@ final class CodeIgniterCircuitOverview implements CircuitOverviewPort
                 ->select('a.id, a.plan_id, a.equipo_id, a.estado_calculado, a.criterios_disparadores, a.fecha_deteccion, a.estado_gestion, e.sucursal_id, e.codigo equipo_codigo, ts.nombre servicio_nombre')
                 ->join('equipos e', 'e.id = a.equipo_id AND e.empresa_id = a.empresa_id', 'inner')
                 ->join('planes_mantenimiento p', 'p.id = a.plan_id AND p.empresa_id = a.empresa_id', 'inner')
-                ->join('tipos_servicio ts', 'ts.id = p.tipo_servicio_id', 'inner')
+                ->join('tipos_servicio ts', $this->serviceJoin('p'), 'inner')
                 ->where('a.empresa_id', $companyId)->where('a.estado_gestion', 'PENDIENTE')
                 ->orderBy('a.fecha_deteccion', 'DESC');
             $this->scopeBranches($builder, 'e.sucursal_id', $branchIds);
@@ -72,7 +72,7 @@ final class CodeIgniterCircuitOverview implements CircuitOverviewPort
                 ->select("o.id, o.numero, o.sucursal_id, o.equipo_id, o.plan_id, o.aviso_plan_id, o.origen, o.prioridad, o.responsable_usuario_id, o.fecha_apertura, o.fecha_inicio, o.fecha_finalizacion, o.km_ingreso, o.horas_ingreso, o.km_salida, o.horas_salida, o.estado, e.codigo equipo_codigo, e.km_actual, e.horas_actuales, te.controla_km, te.controla_horas, CASE WHEN o.origen = 'CORRECTIVO' THEN 'OT correctiva' ELSE ts.nombre END servicio_nombre, u.nombre responsable_nombre", false)
                 ->join('equipos e', 'e.id = o.equipo_id AND e.empresa_id = o.empresa_id', 'inner')
                 ->join('tipos_equipo te', 'te.id = e.tipo_equipo_id', 'inner')
-                ->join('tipos_servicio ts', 'ts.id = o.tipo_servicio_id', 'left')
+                ->join('tipos_servicio ts', $this->serviceJoin('o'), 'left')
                 ->join('usuarios u', 'u.id = o.responsable_usuario_id', 'left')
                 ->where('o.empresa_id', $companyId)->orderBy('o.id', 'DESC');
             $this->scopeBranches($builder, 'o.sucursal_id', $branchIds);
@@ -215,6 +215,15 @@ final class CodeIgniterCircuitOverview implements CircuitOverviewPort
             'perPage' => $page['perPage'],
             'totalPages' => $page['totalPages'],
         ];
+    }
+
+    private function serviceJoin(string $ownerAlias): string
+    {
+        if (! $this->database->fieldExists('empresa_id', 'tipos_servicio')) {
+            return "ts.id = {$ownerAlias}.tipo_servicio_id";
+        }
+
+        return "ts.id = {$ownerAlias}.tipo_servicio_id AND (ts.empresa_id = {$ownerAlias}.empresa_id OR ts.empresa_id IS NULL)";
     }
 
     /** @param list<int>|null $branchIds */

@@ -28,6 +28,63 @@ describe('ManagerialDashboard', () => {
     expect(complianceCard).toBeDefined()
     expect(complianceCard.text()).toContain('Sin datos')
     expect(complianceCard.text()).not.toContain('100%')
+    expect(wrapper.get('[aria-label="Indicadores gerenciales"]').findAll('article')).toHaveLength(5)
+    expect(wrapper.text()).toContain('Lecturas pendientes')
+  })
+
+  it('shows a compact financial empty state when there are no costs', () => {
+    const wrapper = mount(ManagerialDashboard, {
+      props: {
+        dashboard: normalizeDashboardPayload({
+          view: 'managerial',
+          user: { name: 'Admin Demo' },
+          company: { name: 'TSA Demo Dashboard' },
+          metrics: {},
+          financial: {},
+          links: {},
+        }),
+        firstName: 'Admin',
+      },
+    })
+    wrappers.push(wrapper)
+
+    expect(wrapper.get('[data-testid="financial-empty"]').text()).toContain('Todavía no hay costos registrados')
+    expect(wrapper.text()).not.toContain('Evolución últimos 6 meses')
+  })
+
+  it('shows only actionable executive alerts and a clear state otherwise', () => {
+    const wrapper = mount(ManagerialDashboard, {
+      props: {
+        dashboard: normalizeDashboardPayload({
+          view: 'managerial',
+          user: { name: 'Admin Demo' },
+          company: { name: 'TSA Demo Dashboard' },
+          metrics: { equipmentWithoutReading: 1 },
+          links: {},
+        }),
+        firstName: 'Admin',
+      },
+    })
+    wrappers.push(wrapper)
+
+    const executivePanel = wrapper.get('[aria-labelledby="executive-title"]')
+    expect(executivePanel.text()).toContain('Equipos sin lectura')
+    expect(executivePanel.text()).not.toContain('Lecturas antiguas')
+
+    const clearWrapper = mount(ManagerialDashboard, {
+      props: {
+        dashboard: normalizeDashboardPayload({
+          view: 'managerial',
+          user: { name: 'Admin Demo' },
+          company: { name: 'TSA Demo Dashboard' },
+          metrics: {},
+          links: {},
+        }),
+        firstName: 'Admin',
+      },
+    })
+    wrappers.push(clearWrapper)
+    expect(clearWrapper.get('[aria-labelledby="executive-title"]').text()).toContain('No hay alertas ejecutivas pendientes')
   })
 
   it('shows monthly financial KPIs and top equipment costs', () => {

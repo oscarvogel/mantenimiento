@@ -28,7 +28,7 @@ final readonly class CodeIgniterPreventivePlanReadModel implements PreventivePla
             ->join('equipos e', 'e.id = p.equipo_id AND e.empresa_id = p.empresa_id', 'inner')
             ->join('sucursales s', 's.id = e.sucursal_id AND s.empresa_id = e.empresa_id', 'inner')
             ->join('tipos_equipo te', 'te.id = e.tipo_equipo_id', 'inner')
-            ->join('tipos_servicio ts', 'ts.id = p.tipo_servicio_id AND ts.empresa_id = p.empresa_id', 'inner')
+            ->join('tipos_servicio ts', $this->serviceJoin('p'), 'inner')
             ->where('p.empresa_id', $companyId)
             ->where('p.activo', 1)
             ->where('p.deleted_at', null)
@@ -78,7 +78,7 @@ final readonly class CodeIgniterPreventivePlanReadModel implements PreventivePla
         $assigned = [];
         $planRows = $this->database->table('planes_mantenimiento p')
             ->select('p.equipo_id, p.tipo_servicio_id')
-            ->join('tipos_servicio ts', 'ts.id = p.tipo_servicio_id AND ts.empresa_id = p.empresa_id', 'inner')
+            ->join('tipos_servicio ts', $this->serviceJoin('p'), 'inner')
             ->where('p.empresa_id', $companyId)
             ->where('p.activo', 1)
             ->where('p.deleted_at', null)
@@ -99,12 +99,20 @@ final readonly class CodeIgniterPreventivePlanReadModel implements PreventivePla
 
     public function listActiveServiceTypes(int $companyId): array
     {
-        return $this->database->table('tipos_servicio')
+        $builder = $this->database->table('tipos_servicio')
             ->select('id, codigo, nombre, descripcion, categoria, intervalo_km, intervalo_horas, intervalo_dias, anticipacion_km, anticipacion_horas, anticipacion_dias, prioridad')
-            ->where('empresa_id', $companyId)
             ->where('activo', 1)
             ->orderBy('nombre', 'ASC')
-            ->get()->getResultArray();
+        ;
+
+        if ($this->database->fieldExists('empresa_id', 'tipos_servicio')) {
+            $builder->groupStart()
+                ->where('empresa_id', $companyId)
+                ->orWhere('empresa_id', null)
+                ->groupEnd();
+        }
+
+        return $builder->get()->getResultArray();
     }
 
     public function listActiveBranches(int $companyId, ?array $branchIds): array
@@ -123,12 +131,19 @@ final readonly class CodeIgniterPreventivePlanReadModel implements PreventivePla
     /** @param array<string,mixed> $row */
     private function hydratePlan(array $row): PlanMantenimiento
     {
-        $intervalKm = $row['service_intervalo_km'] === null ? null : (int) $row['service_intervalo_km'];
-        $intervalHoursTenths = DecimalHours::toTenths($row['service_intervalo_horas']);
-        $intervalDays = $row['service_intervalo_dias'] === null ? null : (int) $row['service_intervalo_dias'];
-        $warningKm = $intervalKm === null ? null : ($row['service_anticipacion_km'] === null ? 0 : (int) $row['service_anticipacion_km']);
-        $warningHoursTenths = $intervalHoursTenths === null ? null : (DecimalHours::toTenths($row['service_anticipacion_horas']) ?? 0);
-        $warningDays = $intervalDays === null ? null : ($row['service_anticipacion_dias'] === null ? 0 : (int) $row['service_anticipacion_dias']);
+        $usesLegacyCriteria = $row['service_intervalo_km'] === null
+            && $row['service_intervalo_horas'] === null
+            && $row['service_intervalo_dias'] === null;
+        $intervalKm = ($usesLegacyCriteria ? $row['intervalo_km'] : $row['service_intervalo_km']) === null
+            ? null
+            : (int) ($usesLegacyCriteria ? $row['intervalo_km'] : $row['service_intervalo_km']);
+        $intervalHoursTenths = DecimalHours::toTenths($usesLegacyCriteria ? $row['intervalo_horas'] : $row['service_intervalo_horas']);
+        $intervalDays = ($usesLegacyCriteria ? $row['intervalo_dias'] : $row['service_intervalo_dias']) === null
+            ? null
+            : (int) ($usesLegacyCriteria ? $row['intervalo_dias'] : $row['service_intervalo_dias']);
+        $warningKm = $intervalKm === null ? null : (($usesLegacyCriteria ? $row['anticipacion_km'] : $row['service_anticipacion_km']) === null ? 0 : (int) ($usesLegacyCriteria ? $row['anticipacion_km'] : $row['service_anticipacion_km']));
+        $warningHoursTenths = $intervalHoursTenths === null ? null : (DecimalHours::toTenths($usesLegacyCriteria ? $row['anticipacion_horas'] : $row['service_anticipacion_horas']) ?? 0);
+        $warningDays = $intervalDays === null ? null : (($usesLegacyCriteria ? $row['anticipacion_dias'] : $row['service_anticipacion_dias']) === null ? 0 : (int) ($usesLegacyCriteria ? $row['anticipacion_dias'] : $row['service_anticipacion_dias']));
 
         $baseKm = $intervalKm === null || $row['base_km'] === null ? null : (int) $row['base_km'];
         $baseHoursTenths = $intervalHoursTenths === null ? null : DecimalHours::toTenths($row['base_horas']);
@@ -154,7 +169,7 @@ final readonly class CodeIgniterPreventivePlanReadModel implements PreventivePla
             $nextKm,
             $nextHoursTenths,
             $nextDate,
-            (string) $row['service_prioridad'],
+            (string) (($usesLegacyCriteria ? $row['prioridad'] : $row['service_prioridad']) ?: 'MEDIA'),
             (bool) $row['activo'],
             $row['observaciones'] === null ? null : (string) $row['observaciones'],
             null,
@@ -171,5 +186,14 @@ final readonly class CodeIgniterPreventivePlanReadModel implements PreventivePla
             return;
         }
         $builder->whereIn($column, $branchIds);
+    }
+
+    private function serviceJoin(string $planAlias): string
+    {
+        if (! $this->database->fieldExists('empresa_id', 'tipos_servicio')) {
+            return "ts.id = {$planAlias}.tipo_servicio_id";
+        }
+
+        return "ts.id = {$planAlias}.tipo_servicio_id AND (ts.empresa_id = {$planAlias}.empresa_id OR ts.empresa_id IS NULL)";
     }
 }

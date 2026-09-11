@@ -114,7 +114,7 @@ final class CodeIgniterPlanMantenimientoRepository implements PlanMantenimientoR
             ->select('ts.anticipacion_km service_anticipacion_km, ts.anticipacion_horas service_anticipacion_horas, ts.anticipacion_dias service_anticipacion_dias')
             ->select('ts.prioridad service_prioridad')
             ->join('equipos e', 'e.id = pm.equipo_id AND e.empresa_id = pm.empresa_id', 'inner')
-            ->join('tipos_servicio ts', 'ts.id = pm.tipo_servicio_id AND ts.empresa_id = pm.empresa_id', 'inner')
+            ->join('tipos_servicio ts', $this->serviceJoin('pm'), 'inner')
             ->where('pm.empresa_id', $companyId)
             ->where('pm.deleted_at', null)
             ->where('e.deleted_at', null)
@@ -127,6 +127,15 @@ final class CodeIgniterPlanMantenimientoRepository implements PlanMantenimientoR
         }
 
         return $builder;
+    }
+
+    private function serviceJoin(string $planAlias): string
+    {
+        if (! $this->db->fieldExists('empresa_id', 'tipos_servicio')) {
+            return "ts.id = {$planAlias}.tipo_servicio_id";
+        }
+
+        return "ts.id = {$planAlias}.tipo_servicio_id AND (ts.empresa_id = {$planAlias}.empresa_id OR ts.empresa_id IS NULL)";
     }
 
     /** @return array<string, mixed>|null */
@@ -144,12 +153,19 @@ final class CodeIgniterPlanMantenimientoRepository implements PlanMantenimientoR
     /** @param array<string, mixed> $row */
     private function hydrate(array $row): PlanMantenimiento
     {
-        $intervalKm = $row['service_intervalo_km'] === null ? null : (int) $row['service_intervalo_km'];
-        $intervalHoursTenths = DecimalHours::toTenths($row['service_intervalo_horas']);
-        $intervalDays = $row['service_intervalo_dias'] === null ? null : (int) $row['service_intervalo_dias'];
-        $warningKm = $intervalKm === null ? null : ($row['service_anticipacion_km'] === null ? 0 : (int) $row['service_anticipacion_km']);
-        $warningHoursTenths = $intervalHoursTenths === null ? null : (DecimalHours::toTenths($row['service_anticipacion_horas']) ?? 0);
-        $warningDays = $intervalDays === null ? null : ($row['service_anticipacion_dias'] === null ? 0 : (int) $row['service_anticipacion_dias']);
+        $usesLegacyCriteria = $row['service_intervalo_km'] === null
+            && $row['service_intervalo_horas'] === null
+            && $row['service_intervalo_dias'] === null;
+        $intervalKm = ($usesLegacyCriteria ? $row['intervalo_km'] : $row['service_intervalo_km']) === null
+            ? null
+            : (int) ($usesLegacyCriteria ? $row['intervalo_km'] : $row['service_intervalo_km']);
+        $intervalHoursTenths = DecimalHours::toTenths($usesLegacyCriteria ? $row['intervalo_horas'] : $row['service_intervalo_horas']);
+        $intervalDays = ($usesLegacyCriteria ? $row['intervalo_dias'] : $row['service_intervalo_dias']) === null
+            ? null
+            : (int) ($usesLegacyCriteria ? $row['intervalo_dias'] : $row['service_intervalo_dias']);
+        $warningKm = $intervalKm === null ? null : (($usesLegacyCriteria ? $row['anticipacion_km'] : $row['service_anticipacion_km']) === null ? 0 : (int) ($usesLegacyCriteria ? $row['anticipacion_km'] : $row['service_anticipacion_km']));
+        $warningHoursTenths = $intervalHoursTenths === null ? null : (DecimalHours::toTenths($usesLegacyCriteria ? $row['anticipacion_horas'] : $row['service_anticipacion_horas']) ?? 0);
+        $warningDays = $intervalDays === null ? null : (($usesLegacyCriteria ? $row['anticipacion_dias'] : $row['service_anticipacion_dias']) === null ? 0 : (int) ($usesLegacyCriteria ? $row['anticipacion_dias'] : $row['service_anticipacion_dias']));
 
         $baseKm = $intervalKm === null || $row['base_km'] === null ? null : (int) $row['base_km'];
         $baseHoursTenths = $intervalHoursTenths === null ? null : DecimalHours::toTenths($row['base_horas']);
@@ -178,7 +194,7 @@ final class CodeIgniterPlanMantenimientoRepository implements PlanMantenimientoR
             $nextKm,
             $nextHoursTenths,
             $nextDate,
-            (string) $row['service_prioridad'],
+            (string) (($usesLegacyCriteria ? $row['prioridad'] : $row['service_prioridad']) ?: 'MEDIA'),
             (bool) $row['activo'],
             $row['observaciones'] === null ? null : (string) $row['observaciones'],
             null,
