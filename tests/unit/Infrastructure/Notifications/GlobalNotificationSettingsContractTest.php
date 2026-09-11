@@ -37,6 +37,23 @@ final class GlobalNotificationSettingsContractTest extends TestCase
         self::assertStringContainsString("'source' => 'database'", $store);
     }
 
+    public function testSuperadminCanApplyPendingMigrationsWithoutCli(): void
+    {
+        $routes = file_get_contents(APPPATH . 'Config/Routes.php');
+        $controller = file_get_contents(APPPATH . 'Controllers/NotificationSettings.php');
+        $page = file_get_contents(ROOTPATH . 'frontend/src/pages/admin/NotificationSettingsPage.vue');
+
+        self::assertIsString($routes);
+        self::assertIsString($controller);
+        self::assertIsString($page);
+        self::assertStringContainsString("configuracion/notificaciones/migrar", $routes);
+        self::assertStringContainsString("service('migrations')", $controller);
+        self::assertStringContainsString("->latest()", $controller);
+        self::assertStringContainsString('Aplicar migraciones', $page);
+        self::assertStringContainsString(':action="data.actions.migrate"', $page);
+        self::assertStringContainsString('<CsrfField :csrf="data.csrf" />', $page);
+    }
+
     public function testEmailGatewayIsWiredToGlobalSettings(): void
     {
         $services = file_get_contents(APPPATH . 'Config/Services.php');
