@@ -161,7 +161,7 @@ describe('useAlerts: tipos de alerta', () => {
     expect(options.customClass.container).toBe('ui-swal-customized')
   })
 
-  it('cierra una alerta una sola vez al pulsar OK', () => {
+  it('deja que SweetAlert gestione el cierre del botón OK', () => {
     installGlobalBehaviors()
     const alerts = useAlerts()
     const popup = document.createElement('div')
@@ -172,10 +172,10 @@ describe('useAlerts: tipos de alerta', () => {
 
     alerts.success('Importación procesada')
     const options = Swal.fire.mock.calls.at(-1)[0]
-    options.didOpen(popup)
     confirmButton.click()
 
-    expect(Swal.close).toHaveBeenCalledTimes(1)
+    expect(options.didOpen).toBeUndefined()
+    expect(Swal.close).not.toHaveBeenCalled()
   })
 })
 
