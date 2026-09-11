@@ -9,6 +9,8 @@ use App\Application\Notifications\Port\EmailNotificationGateway;
 use App\Application\Notifications\Port\NotificationDeliveryQueue;
 use App\Application\Notifications\Port\NotificationProcessControl;
 use App\Application\Notifications\Port\WebPushGateway;
+use App\Application\Notifications\Port\WhatsAppNotificationDeliveryQueue;
+use App\Application\Notifications\Port\WhatsAppNotificationGateway;
 use Throwable;
 
 final readonly class RunNotificationDispatch
@@ -18,6 +20,8 @@ final readonly class RunNotificationDispatch
         private EmailNotificationGateway $email,
         private WebPushGateway $push,
         private NotificationProcessControl $processes,
+        private ?WhatsAppNotificationDeliveryQueue $whatsAppDeliveries = null,
+        private ?WhatsAppNotificationGateway $whatsApp = null,
     ) {
     }
 
@@ -34,12 +38,13 @@ final readonly class RunNotificationDispatch
         try {
             $executionId = $this->processes->start($process, $executionKey);
             if ($executionId === null) {
-                return ['email_sent' => 0, 'company_email_sent' => 0, 'push_sent' => 0, 'failed' => 0, 'retry' => 0, 'expired' => 0, 'skipped' => 0, 'already_completed' => 1];
+                return ['email_sent' => 0, 'company_email_sent' => 0, 'push_sent' => 0, 'whatsapp_sent' => 0, 'failed' => 0, 'retry' => 0, 'expired' => 0, 'skipped' => 0, 'already_completed' => 1];
             }
-            $summary = ['email_sent' => 0, 'company_email_sent' => 0, 'push_sent' => 0, 'failed' => 0, 'retry' => 0, 'expired' => 0, 'skipped' => 0, 'already_completed' => 0];
+            $summary = ['email_sent' => 0, 'company_email_sent' => 0, 'push_sent' => 0, 'whatsapp_sent' => 0, 'failed' => 0, 'retry' => 0, 'expired' => 0, 'skipped' => 0, 'already_completed' => 0];
             $this->dispatchEmail($summary, $limit);
             $this->dispatchCompanyEmail($summary, $limit);
             $this->dispatchPush($summary, $limit);
+            $this->dispatchWhatsApp($summary, $limit);
             $this->processes->finish($executionId, $summary);
 
             return $summary;
@@ -118,6 +123,38 @@ final readonly class RunNotificationDispatch
                     $summary['failed']++;
                     $summary['retry'] += $retryable ? 1 : 0;
                 }
+            }
+        }
+    }
+
+    /** @param array<string,int> $summary */
+    private function dispatchWhatsApp(array &$summary, int $limit): void
+    {
+        if ($this->whatsAppDeliveries === null || $this->whatsApp === null || ! $this->whatsApp->available()) {
+            return;
+        }
+
+        foreach ($this->whatsAppDeliveries->due($limit) as $delivery) {
+            try {
+                $result = $this->whatsApp->sendText(
+                    (string) ($delivery['telefono'] ?? ''),
+                    (string) ($delivery['mensaje'] ?? ''),
+                    (string) ($delivery['external_ref'] ?? ''),
+                    null,
+                    null,
+                    empty($delivery['instance_id']) ? null : (string) $delivery['instance_id'],
+                );
+                $this->whatsAppDeliveries->accepted(
+                    (int) $delivery['id'],
+                    $result['messageId'],
+                    $result['status'],
+                );
+                $summary['whatsapp_sent']++;
+            } catch (Throwable $exception) {
+                $retryable = (int) ($delivery['intentos'] ?? 0) < 3;
+                $this->whatsAppDeliveries->failed((int) $delivery['id'], $exception->getMessage(), $retryable);
+                $summary['failed']++;
+                $summary['retry'] += $retryable ? 1 : 0;
             }
         }
     }

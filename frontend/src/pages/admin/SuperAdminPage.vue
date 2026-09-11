@@ -1,5 +1,5 @@
 <script setup>
-import { BuildingOffice2Icon, IdentificationIcon, PlusIcon, ShieldCheckIcon, UserGroupIcon, UserPlusIcon } from '@heroicons/vue/24/outline'
+import { BuildingOffice2Icon, ChatBubbleLeftRightIcon, IdentificationIcon, PlusIcon, ShieldCheckIcon, UserGroupIcon, UserPlusIcon } from '@heroicons/vue/24/outline'
 import AdminMetric from './components/AdminMetric.vue'
 import AdminPageHeading from './components/AdminPageHeading.vue'
 import CsrfField from './components/CsrfField.vue'
@@ -37,10 +37,23 @@ const isRoleAssigned = (user, roleId) => user.assignedRoleIds.includes(Number(ro
       <AdminMetric label="Usuarios" :value="data.metrics.usersTotal" tone="muted" />
     </section>
 
+    <section class="mb-8 flex flex-col gap-4 rounded-xl border border-border bg-surface-raised p-5 shadow-card sm:flex-row sm:items-center sm:justify-between sm:p-6" aria-labelledby="migration-process-title">
+      <div>
+        <h2 id="migration-process-title" class="font-semibold text-ink">Aplicar migraciones pendientes</h2>
+        <p class="mt-1 max-w-2xl text-sm leading-6 text-ink-muted">Para pruebas y despliegues: aplica las migraciones pendientes de la base actual con un clic.</p>
+      </div>
+      <form method="post" :action="data.actions.applyMigrations" data-confirm data-confirm-title="¿Aplicar migraciones pendientes?" data-confirm-text="Se ejecutarán únicamente las migraciones que todavía no fueron aplicadas." data-confirm-button="Aplicar migraciones" class="shrink-0">
+        <CsrfField :csrf="data.csrf" />
+        <button type="submit" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-primary px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary-subtle">
+          Aplicar migraciones
+        </button>
+      </form>
+    </section>
+
     <section v-if="data.permissions.companiesEdit" class="mb-8 flex flex-col gap-4 rounded-xl border border-border bg-surface-raised p-5 shadow-card sm:flex-row sm:items-center sm:justify-between sm:p-6" aria-labelledby="notification-process-title">
       <div>
         <h2 id="notification-process-title" class="font-semibold text-ink">Procesar notificaciones ahora</h2>
-        <p class="mt-1 max-w-2xl text-sm leading-6 text-ink-muted">Detecta vencimientos, genera eventos pendientes y despacha email y Web Push según las preferencias configuradas. La idempotencia evita duplicar el mismo ciclo.</p>
+        <p class="mt-1 max-w-2xl text-sm leading-6 text-ink-muted">Detecta vencimientos, genera eventos pendientes y despacha Email, Web Push y WhatsApp según la configuración disponible. La idempotencia evita duplicar el mismo ciclo.</p>
       </div>
       <form method="post" :action="data.actions.dispatchNotifications" data-confirm data-confirm-title="¿Ejecutar el ciclo de notificaciones?" data-confirm-text="Se procesarán los eventos y canales pendientes con la configuración actual." data-confirm-button="Ejecutar ahora" class="shrink-0">
         <CsrfField :csrf="data.csrf" />
@@ -48,6 +61,58 @@ const isRoleAssigned = (user, roleId) => user.assignedRoleIds.includes(Number(ro
           Ejecutar ahora
         </button>
       </form>
+    </section>
+
+    <section v-if="data.permissions.companiesEdit && data.whatsapp" class="mb-8 overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card" aria-labelledby="whatsapp-config-title">
+      <div class="flex items-center gap-3 border-b border-border-subtle bg-surface-subtle px-5 py-4 sm:px-6">
+        <span class="flex size-10 items-center justify-center rounded-lg bg-primary-subtle text-primary">
+          <ChatBubbleLeftRightIcon class="size-5" aria-hidden="true" />
+        </span>
+        <div class="min-w-0">
+          <h2 id="whatsapp-config-title" class="font-semibold text-ink">Configuración de WhatsApp</h2>
+          <p class="text-sm text-ink-muted">Estado del gateway central usado para enviar avisos a choferes.</p>
+        </div>
+      </div>
+
+      <div class="grid gap-4 p-5 sm:grid-cols-2 sm:p-6 lg:grid-cols-4">
+        <div class="rounded-lg border border-border bg-surface-subtle p-4">
+          <span class="text-xs font-semibold uppercase tracking-wide text-ink-subtle">Canal</span>
+          <p class="mt-1 text-sm font-semibold text-ink">{{ data.whatsapp.enabled ? 'Habilitado' : 'Deshabilitado' }}</p>
+        </div>
+        <div class="rounded-lg border border-border bg-surface-subtle p-4">
+          <span class="text-xs font-semibold uppercase tracking-wide text-ink-subtle">API key</span>
+          <p class="mt-1 text-sm font-semibold text-ink">{{ data.whatsapp.apiKeyConfigured ? 'Configurada' : 'Sin configurar' }}</p>
+        </div>
+        <div class="rounded-lg border border-border bg-surface-subtle p-4">
+          <span class="text-xs font-semibold uppercase tracking-wide text-ink-subtle">Instancia emisora</span>
+          <p class="mt-1 break-all text-sm font-semibold text-ink">{{ data.whatsapp.instanceId || 'Sin definir' }}</p>
+        </div>
+        <div class="rounded-lg border border-border bg-surface-subtle p-4">
+          <span class="text-xs font-semibold uppercase tracking-wide text-ink-subtle">Estado</span>
+          <p class="mt-1 text-sm font-semibold" :class="data.whatsapp.available ? 'text-success' : 'text-danger'">
+            {{ data.whatsapp.available ? 'Lista para enviar' : 'Configuración incompleta' }}
+          </p>
+        </div>
+
+        <div class="sm:col-span-2 lg:col-span-4 rounded-lg border border-border bg-surface-subtle p-4">
+          <p class="text-sm font-medium text-ink">URL del gateway</p>
+          <p class="mt-1 break-all font-mono text-xs text-ink-muted">{{ data.whatsapp.apiUrl || 'Sin configurar' }}</p>
+          <p class="mt-2 text-xs leading-5 text-ink-muted">
+            La API key no se muestra por seguridad. El número emisor pertenece a la instancia conectada en Vogel WhatsApp API; Mantenimiento sólo selecciona la instancia por <code>instanceId</code>.
+          </p>
+        </div>
+
+        <form method="post" :action="data.whatsapp.testAction" class="sm:col-span-2 lg:col-span-4 flex flex-col gap-3 rounded-lg border border-border p-4 sm:flex-row sm:items-end">
+          <CsrfField :csrf="data.csrf" />
+          <label class="block flex-1">
+            <span class="mb-1.5 block text-sm font-medium text-ink">Celular para prueba</span>
+            <input name="telefono_prueba" inputmode="tel" maxlength="30" placeholder="Ej. 3764123456 o 5493764123456" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          </label>
+          <button type="submit" :disabled="!data.whatsapp.available" class="inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm disabled:cursor-not-allowed disabled:opacity-50">
+            Enviar prueba
+          </button>
+        </form>
+      </div>
     </section>
 
     <section v-if="data.permissions.companiesEdit" class="mb-8 overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card" aria-labelledby="create-company-title">
@@ -87,6 +152,16 @@ const isRoleAssigned = (user, roleId) => user.assignedRoleIds.includes(Number(ro
           <span class="mb-1.5 block text-sm font-medium text-ink">Correo para notificaciones de mantenimiento</span>
           <input type="email" name="email_notificaciones" maxlength="255" :value="data.oldInput.email_notificaciones" placeholder="alertas@empresa.com" autocomplete="email" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/20" />
           <span class="mt-1.5 block text-xs leading-5 text-ink-muted">Recibirá preventivos próximos o vencidos, OT y alertas operativas. Si queda vacío se usa el email general.</span>
+        </label>
+        <label class="flex items-start gap-3 rounded-lg border border-border bg-surface-subtle p-3 sm:col-span-2 lg:col-span-2">
+          <input type="hidden" name="notificaciones_whatsapp_habilitadas" value="0" />
+          <input type="checkbox" name="notificaciones_whatsapp_habilitadas" value="1" class="mt-0.5 size-4 rounded border-border-strong text-primary focus:ring-primary" />
+          <span><span class="block text-sm font-medium text-ink">Habilitar WhatsApp para esta empresa</span><span class="mt-1 block text-xs leading-5 text-ink-muted">Los vencimientos podrán notificarse al chofer asignado.</span></span>
+        </label>
+        <label class="block sm:col-span-2 lg:col-span-2">
+          <span class="mb-1.5 block text-sm font-medium text-ink">Instance ID WhatsApp</span>
+          <input name="whatsapp_instance_id" maxlength="100" placeholder="default" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          <span class="mt-1.5 block text-xs leading-5 text-ink-muted">Si queda vacío usa la instancia global configurada.</span>
         </label>
         <label class="flex items-start gap-3 rounded-lg border border-border bg-surface-subtle p-3 sm:col-span-2 lg:col-span-2">
           <input type="hidden" name="notificaciones_email_habilitadas" value="0" />
@@ -222,6 +297,15 @@ const isRoleAssigned = (user, roleId) => user.assignedRoleIds.includes(Number(ro
                 <option value="1">Activa</option>
                 <option value="0">Inactiva</option>
               </select>
+            </label>
+            <label class="block">
+              <span class="mb-1.5 block text-sm font-medium text-ink">Instance ID WhatsApp</span>
+              <input name="whatsapp_instance_id" maxlength="100" :value="company.whatsappInstanceId" placeholder="Usará la instancia global" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+            </label>
+            <label class="flex items-start gap-3 rounded-lg border border-border bg-surface-subtle p-3">
+              <input type="hidden" name="notificaciones_whatsapp_habilitadas" value="0" />
+              <input type="checkbox" name="notificaciones_whatsapp_habilitadas" value="1" :checked="company.whatsappEnabled" class="mt-0.5 size-4 rounded border-border-strong text-primary focus:ring-primary" />
+              <span><span class="block text-sm font-medium text-ink">WhatsApp habilitado</span><span class="mt-1 block text-xs leading-5 text-ink-muted">Permite avisos al chofer de esta empresa.</span></span>
             </label>
             <label class="flex items-start gap-3 rounded-lg border border-border bg-surface-subtle p-3 sm:col-span-2">
               <input type="hidden" name="notificaciones_email_habilitadas" value="0" />

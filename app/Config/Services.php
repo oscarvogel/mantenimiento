@@ -331,6 +331,34 @@ class Services extends BaseService
         );
     }
 
+    public static function whatsAppGateway(bool $getShared = true): VogelWhatsAppApiGateway
+    {
+        if ($getShared) {
+            return static::getSharedInstance('whatsAppGateway');
+        }
+
+        return new VogelWhatsAppApiGateway(
+            filter_var(env('whatsapp.enabled', false), FILTER_VALIDATE_BOOL),
+            trim((string) env('whatsapp.apiUrl', '')),
+            trim((string) env('whatsapp.apiKey', '')),
+            trim((string) env('whatsapp.instanceId', 'default')),
+            max(1, (int) env('whatsapp.timeoutSeconds', 15)),
+        );
+    }
+
+    public static function whatsAppNotificationDeliveryQueue(bool $getShared = true): CodeIgniterWhatsAppNotificationDeliveryQueue
+    {
+        if ($getShared) {
+            return static::getSharedInstance('whatsAppNotificationDeliveryQueue');
+        }
+
+        return new CodeIgniterWhatsAppNotificationDeliveryQueue(
+            static::notificationClock(false),
+            static::whatsAppGateway(false),
+            db_connect(),
+        );
+    }
+
     public static function notificationRecipients(bool $getShared = true): CodeIgniterNotificationRecipientResolver
     {
         if ($getShared) {
@@ -361,6 +389,7 @@ class Services extends BaseService
             static::notificationPreferenceStore(false),
             static::notificationDeliveryQueue(false),
             static::notificationUnitOfWork(false),
+            static::whatsAppNotificationDeliveryQueue(false),
         );
     }
 
@@ -431,6 +460,8 @@ class Services extends BaseService
             new CodeIgniterEmailNotificationGateway($clock),
             static::webPushGateway(false),
             new CodeIgniterNotificationProcessControl($clock, db_connect()),
+            static::whatsAppNotificationDeliveryQueue(false),
+            static::whatsAppGateway(false),
         );
     }
 
