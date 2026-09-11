@@ -37,7 +37,7 @@ const isRoleAssigned = (user, roleId) => user.assignedRoleIds.includes(Number(ro
       <AdminMetric label="Usuarios" :value="data.metrics.usersTotal" tone="muted" />
     </section>
 
-    <section v-if="data.permissions.companiesEdit" class="mb-8 flex flex-col gap-4 rounded-xl border border-border bg-surface-raised p-5 shadow-card sm:flex-row sm:items-center sm:justify-between sm:p-6" aria-labelledby="migration-process-title">
+    <section class="mb-8 flex flex-col gap-4 rounded-xl border border-border bg-surface-raised p-5 shadow-card sm:flex-row sm:items-center sm:justify-between sm:p-6" aria-labelledby="migration-process-title">
       <div>
         <h2 id="migration-process-title" class="font-semibold text-ink">Aplicar migraciones pendientes</h2>
         <p class="mt-1 max-w-2xl text-sm leading-6 text-ink-muted">Para pruebas y despliegues: aplica las migraciones pendientes de la base actual con un clic.</p>
