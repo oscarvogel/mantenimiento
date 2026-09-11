@@ -27,6 +27,21 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             return;
         }
 
+        $company = $this->db->table('empresas')
+            ->select('notificaciones_whatsapp_habilitadas, whatsapp_instance_id')
+            ->where('id', $event->companyId())
+            ->where('estado', 1)
+            ->where('deleted_at', null)
+            ->get()
+            ->getRowArray();
+        if ($company === null || (int) ($company['notificaciones_whatsapp_habilitadas'] ?? 0) !== 1) {
+            return;
+        }
+        $instanceId = trim((string) ($company['whatsapp_instance_id'] ?? ''));
+        if ($instanceId === '') {
+            $instanceId = trim((string) env('whatsapp.instanceId', 'default'));
+        }
+
         if (! in_array($event->type(), ['equipo.vencimiento_proximo', 'equipo.vencimiento_vencido'], true)
             || $event->entityType() !== 'equipo') {
             return;
@@ -68,6 +83,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
                 'clave_entrega' => $key,
                 'external_ref' => 'mantenimiento:' . $event->logicalKey() . ':chofer:' . $employeeId,
                 'telefono' => null,
+                'instance_id' => $instanceId,
                 'mensaje' => $this->message($event, $driver),
                 'estado' => 'OMITIDA',
                 'ultimo_error' => 'El chofer asignado no tiene un celular válido para WhatsApp.',
@@ -85,6 +101,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             'clave_entrega' => $key,
             'external_ref' => 'mantenimiento:' . $event->logicalKey() . ':chofer:' . $employeeId,
             'telefono' => $phone,
+            'instance_id' => $instanceId,
             'mensaje' => $this->message($event, $driver),
             'estado' => 'PENDIENTE',
             'created_at' => $now,
