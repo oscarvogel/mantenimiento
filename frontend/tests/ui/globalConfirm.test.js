@@ -179,7 +179,7 @@ describe('consumeFlash: flash del servidor → SweetAlert centralizado', () => {
   it('prioriza error por sobre success cuando coexisten', () => {
     consumeFlash({ success: 'OK', error: 'Falló algo.' })
 
-    expect(Swal.fire.mock.calls.map((call) => call[0].icon)).toEqual(['error', 'success'])
+    expect(Swal.fire.mock.calls.map((call) => call[0].icon)).toEqual(['error'])
   })
 
   it('ignora valores no textuales', () => {

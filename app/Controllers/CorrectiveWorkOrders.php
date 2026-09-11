@@ -116,6 +116,7 @@ final class CorrectiveWorkOrders extends BaseController
             if ($orderId <= 0) {
                 throw new DomainException('No se pudo registrar la OT correctiva.');
             }
+            $this->persistParts($database, $scope->companyId(), $orderId);
 
             $database->table('orden_estado_historial')->insert([
                 'empresa_id' => $scope->companyId(),
@@ -236,6 +237,7 @@ final class CorrectiveWorkOrders extends BaseController
                     'updated_at' => $now,
                     'updated_by' => $actor->userId(),
                 ]);
+            $this->persistParts($database, $scope->companyId(), $orderId);
             $database->table('orden_estado_historial')->insert([
                 'empresa_id' => $scope->companyId(),
                 'orden_id' => $orderId,
@@ -365,5 +367,29 @@ final class CorrectiveWorkOrders extends BaseController
     {
         $value = trim((string) $value);
         return $value === '' ? null : $value;
+    }
+
+    private function persistParts(object $database, int $companyId, int $orderId): void
+    {
+        $parts = $this->request->getPost('repuestos');
+        if ($parts === null || $parts === '') return;
+        if (! is_array($parts)) throw new DomainException('El detalle de repuestos no es válido.');
+        foreach ($parts as $part) {
+            if (! is_array($part)) throw new DomainException('El detalle de un repuesto no es válido.');
+            $description = trim((string) ($part['descripcion'] ?? ''));
+            if ($description === '') continue;
+            if (mb_strlen($description) > 255) throw new DomainException('La descripción de un repuesto es demasiado extensa.');
+            $quantity = str_replace(',', '.', trim((string) ($part['cantidad'] ?? '1')));
+            $price = str_replace(',', '.', trim((string) ($part['precio_unitario'] ?? '0')));
+            if (! preg_match('/^\d+(?:\.\d{1,3})?$/', $quantity) || (float) $quantity <= 0 || ! preg_match('/^\d+(?:\.\d{1,2})?$/', $price)) throw new DomainException('La cantidad o el precio del repuesto no son válidos.');
+            $database->table('orden_repuestos')->insert([
+                'empresa_id' => $companyId, 'orden_id' => $orderId, 'codigo' => $this->nullableString($part['codigo'] ?? null),
+                'descripcion' => $description, 'marca' => $this->nullableString($part['marca'] ?? null), 'cantidad' => $quantity,
+                'precio_unitario' => $price, 'fecha_colocacion' => $this->nullableString($part['fecha_colocacion'] ?? null),
+                'garantia_fecha' => $this->nullableString($part['garantia_fecha'] ?? null), 'garantia_km' => $this->nullableString($part['garantia_km'] ?? null),
+                'garantia_horas' => $this->nullableString($part['garantia_horas'] ?? null), 'observaciones' => $this->nullableString($part['observaciones'] ?? null),
+                'created_at' => date('Y-m-d H:i:s'), 'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+        }
     }
 }

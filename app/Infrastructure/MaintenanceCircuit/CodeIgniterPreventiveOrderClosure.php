@@ -132,6 +132,7 @@ final class CodeIgniterPreventiveOrderClosure implements PreventiveOrderClosureP
             );
             $repository->save($prepared->workOrder, $actorUserId);
             $this->persistCosts($companyId, $orderId, $closure, $actorUserId);
+            $this->persistParts($companyId, $orderId, $closure['repuestos'] ?? [], $actorUserId);
 
             foreach ($deferredResults as $taskId => $result) {
                 $this->database->table('orden_tareas')
@@ -176,6 +177,18 @@ final class CodeIgniterPreventiveOrderClosure implements PreventiveOrderClosureP
 
         if (! $updated) {
             throw new DomainException('No se pudieron guardar los costos de la orden de trabajo.');
+        }
+    }
+
+    /** @param list<array<string,mixed>> $parts */
+    private function persistParts(int $companyId, int $orderId, array $parts, int $actorUserId): void
+    {
+        $this->database->table('orden_repuestos')->where('empresa_id', $companyId)->where('orden_id', $orderId)->delete();
+        foreach ($parts as $part) {
+            $this->database->table('orden_repuestos')->insert([
+                'empresa_id' => $companyId, 'orden_id' => $orderId, ...$part,
+                'created_at' => date('Y-m-d H:i:s'), 'updated_at' => date('Y-m-d H:i:s'),
+            ]);
         }
     }
 }

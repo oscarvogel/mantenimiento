@@ -37,12 +37,18 @@ final readonly class AppShellPayload
             if ($actor->hasPermission('ordenes.ver') || $actor->hasPermission('ordenes.mi_trabajo')) {
                 $navigation[] = $this->item('work-orders', 'Órdenes de trabajo', 'mantenimiento/ordenes', 'wrench', $active);
             }
+            if ($actor->hasPermission('solicitudes.crear') || $actor->hasPermission('solicitudes.revisar')) {
+                $navigation[] = $this->item('work-requests', 'Solicitudes', 'mantenimiento/solicitudes', 'audit', $active);
+            }
             if ($actor->hasPermission('planes.ver')) {
                 $navigation[] = $this->item('plans', 'Planes preventivos', 'mantenimiento/planes', 'calendar', $active);
                 $navigation[] = $this->item('services', 'Servicios de mantenimiento', 'mantenimiento/servicios', 'services', $active);
             }
             if ($actor->hasPermission('empleados.ver')) {
                 $navigation[] = $this->item('employees', 'Empleados / choferes', 'mantenimiento/empleados', 'users', $active);
+            }
+            if ($actor->hasPermission('proveedores.ver')) {
+                $navigation[] = $this->item('providers', 'Proveedores y talleres', 'mantenimiento/proveedores', 'workshops', $active);
             }
             if ($actor->hasPermission('equipos.editar') || $actor->hasPermission('empleados.editar')) {
                 $navigation[] = $this->item('masters-expirations', 'Tipos de vencimiento', 'mantenimiento/maestros/vencimientos', 'calendar', $active);

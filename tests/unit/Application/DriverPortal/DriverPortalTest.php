@@ -123,4 +123,14 @@ final class DriverPortalWorkRequestFake implements WorkRequestRepository
         $this->userId = $userId;
         return $this->result;
     }
+
+    public function listScoped(int $companyId, ?array $branchIds, array $filters, int $page, int $perPage, ?int $reportedBy): array
+    {
+        return ['items' => [], 'total' => 0, 'page' => $page, 'perPage' => $perPage, 'totalPages' => 1];
+    }
+
+    public function reviewScoped(int $companyId, ?array $branchIds, int $requestId, string $status, ?string $reason, int $reviewedBy, ?int $groupRequestId): bool
+    {
+        return false;
+    }
 }

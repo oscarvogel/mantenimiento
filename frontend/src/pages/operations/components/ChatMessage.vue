@@ -3,10 +3,10 @@
     <div
       class="max-w-[80%] rounded-xl px-4 py-2 text-sm"
       :class="message.role === 'user'
-        ? 'bg-blue-600 text-white'
+          ? 'bg-primary text-primary-foreground'
         : message.role === 'assistant'
-          ? 'bg-gray-100 text-gray-800'
-          : 'bg-yellow-50 text-yellow-800 text-xs'"
+          ? 'bg-surface-muted text-ink'
+          : 'bg-warning-subtle text-warning-foreground text-xs'"
     >
       <div v-if="message.role === 'assistant'" class="prose prose-sm max-w-none break-words">
         <template v-for="(line, lineIndex) in renderedLines" :key="`line-${lineIndex}`">
@@ -14,7 +14,7 @@
             <a
               v-if="token.type === 'link'"
               :href="token.href"
-              class="font-medium text-blue-700 underline decoration-blue-400 underline-offset-2 hover:text-blue-900"
+              class="font-medium text-primary underline decoration-primary/60 underline-offset-2 hover:text-primary-hover"
               target="_self"
               rel="noopener noreferrer"
             >{{ token.label }}</a>
@@ -26,7 +26,7 @@
         </template>
       </div>
       <div v-else>{{ message.content }}</div>
-      <div v-if="message.role === 'assistant' && streaming" class="inline-block w-2 h-4 bg-gray-400 animate-pulse ml-0.5" />
+      <div v-if="message.role === 'assistant' && streaming" class="ml-0.5 inline-block h-4 w-2 animate-pulse bg-ink-subtle" />
     </div>
   </div>
 </template>

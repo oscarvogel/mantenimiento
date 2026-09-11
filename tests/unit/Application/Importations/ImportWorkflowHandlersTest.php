@@ -166,6 +166,7 @@ final class WorkflowReferenceGatewayFake implements ImportReferenceGateway
     public function activeEmployeeByName(int $companyId, string $name): ?array { return ['id' => 44, 'nombre' => 'ARIEL RODRIGUEZ']; }
 
     public function activeEquipmentByCode(int $companyId, string $code): ?array { return null; }
+    public function activeEquipmentByCodeOrPlate(int $companyId, string $value): ?array { return null; }
     public function equipmentCodeExists(int $companyId, string $code): bool { return in_array($code, $this->duplicateCodes, true); }
     public function equipmentPlateExists(int $companyId, string $plate): bool { return false; }
     public function readingDuplicateExists(int $companyId, int $equipmentId, string $recordedAt, ?int $kilometers, ?string $hours, string $origin): bool { return false; }

@@ -18,6 +18,11 @@ const tone = {
   BAJA: 'bg-surface-muted text-ink-muted',
   ANULADA: 'bg-surface-muted text-ink-muted',
   CANCELADA: 'bg-surface-muted text-ink-muted',
+  PENDIENTE: 'bg-warning-subtle text-warning-foreground',
+  POSTERGADA: 'bg-warning-subtle text-warning-foreground',
+  APROBADA: 'bg-success-subtle text-success-strong',
+  AGRUPADA: 'bg-info-subtle text-info-strong',
+  RECHAZADA: 'bg-danger-subtle text-danger-strong',
   RETIRADO: 'bg-surface-muted text-ink-muted',
 }
 </script>

@@ -88,6 +88,8 @@ final class InitialSeeder extends Seeder
             'importaciones.ver' => 'Ver historial y vista previa de importaciones',
             'importaciones.cargar' => 'Cargar, confirmar y cancelar importaciones',
             'notificaciones.ver' => 'Ver notificaciones y configurar preferencias propias',
+            'proveedores.ver' => 'Consultar proveedores y talleres',
+            'proveedores.editar' => 'Crear, editar e inactivar proveedores y talleres',
         ];
         $permissionIds = [];
         foreach ($permissions as $key => $description) {
@@ -109,6 +111,7 @@ final class InitialSeeder extends Seeder
                 'ordenes.ver', 'ordenes.editar', 'ordenes.cerrar', 'reportes.ver',
                 'importaciones.ver', 'importaciones.cargar',
                 'notificaciones.ver',
+                'proveedores.ver', 'proveedores.editar',
             ],
             'Tecnico u operador' => [
                 'equipos.ver', 'lecturas.cargar', 'lecturas.ver', 'solicitudes.crear',

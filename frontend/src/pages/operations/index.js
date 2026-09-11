@@ -11,10 +11,12 @@ import MaintenanceOverviewPage from './MaintenanceOverviewPage.vue'
 import MaintenanceServicesPage from './MaintenanceServicesPage.vue'
 import PreventiveLibraryPage from './PreventiveLibraryPage.vue'
 import PreventivePlansPage from './PreventivePlansPage.vue'
+import ProvidersIndexPage from './ProvidersIndexPage.vue'
 import QuickReadingsPage from './QuickReadingsPage.vue'
 import RegisterReadingPage from './RegisterReadingPage.vue'
 import WorkOrderDocumentImportPage from './WorkOrderDocumentImportPage.vue'
 import WorkOrdersIndexPage from './WorkOrdersIndexPage.vue'
+import WorkRequestsIndexPage from './WorkRequestsIndexPage.vue'
 
 export {
   AssetsIndexPage,
@@ -30,10 +32,12 @@ export {
   MaintenanceServicesPage,
   PreventiveLibraryPage,
   PreventivePlansPage,
+  ProvidersIndexPage,
   QuickReadingsPage,
   RegisterReadingPage,
   WorkOrderDocumentImportPage,
   WorkOrdersIndexPage,
+  WorkRequestsIndexPage,
 }
 
 export const operationPageComponents = Object.freeze({
@@ -52,6 +56,8 @@ export const operationPageComponents = Object.freeze({
   'quick-readings': QuickReadingsPage,
   'work-order-document-import': WorkOrderDocumentImportPage,
   'work-orders-index': WorkOrdersIndexPage,
+  'work-requests-index': WorkRequestsIndexPage,
+  'providers-index': ProvidersIndexPage,
 })
 
 export function resolveOperationPage(pageType) {

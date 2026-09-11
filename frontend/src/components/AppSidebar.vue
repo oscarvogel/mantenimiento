@@ -39,8 +39,8 @@ const emit = defineEmits(['close'])
 
 const navigationGroups = computed(() => {
   const definitions = [
-    { key: 'operation', label: 'Operación', items: ['dashboard', 'equipment', 'quick-readings', 'plans', 'maintenance'] },
-    { key: 'management', label: 'Gestión', items: ['employees', 'notifications', 'imports', 'preventive-library', 'reports'] },
+    { key: 'operation', label: 'Operación', items: ['dashboard', 'equipment', 'quick-readings', 'plans', 'maintenance', 'work-requests'] },
+    { key: 'management', label: 'Gestión', items: ['employees', 'providers', 'notifications', 'imports', 'preventive-library', 'reports'] },
     { key: 'masters', label: 'Maestros', items: ['masters-expirations'] },
     { key: 'administration', label: 'Administración', items: ['superadmin', 'chatbot-audit', 'branches', 'users'] },
   ]
@@ -71,6 +71,7 @@ const icons = {
   readings: ArrowPathRoundedSquareIcon,
   workshop: BuildingOffice2Icon,
   workshops: BuildingOffice2Icon,
+  providers: BuildingOffice2Icon,
   reports: ChartBarSquareIcon,
   audit: ClipboardDocumentListIcon,
   notifications: BellIcon,
@@ -80,6 +81,7 @@ const iconFor = (name) => icons[name] ?? ClipboardDocumentCheckIcon
 const visibleLabel = (item) => item.key === 'services' ? 'Servicios' : item.label
 const customIconBaseUrl = document.body?.dataset?.baseUrl ?? ''
 const currentTheme = ref(document.documentElement.dataset.theme ?? 'light')
+const failedCustomIcons = ref(new Set())
 const customIconNames = {
   dashboard: 'inicio',
   equipment: 'equipos',
@@ -100,10 +102,18 @@ const customIconNames = {
   logout: 'cerrar-sesion',
 }
 const customIconName = (item) => customIconNames[item.key] ?? customIconNames[item.icon] ?? null
+const customIconKey = (item) => `${currentTheme.value}:${customIconName(item) ?? ''}`
 const customIconUrl = (item) => {
   const name = customIconName(item)
   const variant = currentTheme.value === 'dark' ? 'dark' : 'light'
-  return name && customIconBaseUrl ? `${customIconBaseUrl}assets/brand/icons/${variant}/${name}.svg` : null
+  return name && customIconBaseUrl && !failedCustomIcons.value.has(customIconKey(item))
+    ? `${customIconBaseUrl}assets/brand/icons/${variant}/${name}.svg`
+    : null
+}
+const markCustomIconFailed = (item) => {
+  const next = new Set(failedCustomIcons.value)
+  next.add(customIconKey(item))
+  failedCustomIcons.value = next
 }
 const logoutIconUrl = computed(() => customIconUrl({ key: 'logout', icon: 'logout' }))
 const showDemoEntry = computed(() => props.navigation.some((item) => item.key === 'superadmin'))
@@ -156,6 +166,7 @@ const openDemoCompany = () => {
                 width="24"
                 height="24"
                 aria-hidden="true"
+                @error="markCustomIconFailed(item)"
               />
               <component v-else :is="iconFor(item.icon)" class="size-5 shrink-0" aria-hidden="true" />
               <span class="min-w-0 flex-1 leading-5" :title="item.label">{{ visibleLabel(item) }}</span>
@@ -179,6 +190,7 @@ const openDemoCompany = () => {
                 width="24"
                 height="24"
                 aria-hidden="true"
+                @error="markCustomIconFailed(item)"
               />
               <component
                 v-else
@@ -222,6 +234,7 @@ const openDemoCompany = () => {
             width="24"
             height="24"
             aria-hidden="true"
+            @error="markCustomIconFailed(logout)"
           />
           <ArrowRightStartOnRectangleIcon v-else class="size-5" aria-hidden="true" />
           Cerrar sesión
@@ -240,6 +253,7 @@ const openDemoCompany = () => {
           width="24"
           height="24"
           aria-hidden="true"
+          @error="markCustomIconFailed(logout)"
         />
         <ArrowRightStartOnRectangleIcon v-else class="size-5" aria-hidden="true" />
         Cerrar sesión

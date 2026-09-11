@@ -40,3 +40,16 @@ No se marcan como implementados hasta disponer de una fuente de verdad suficient
 - espera por proveedor/autorización: el dominio de OT sólo modela explícitamente `EN_ESPERA_REPUESTOS`; no se infieren estados inexistentes a partir de texto libre.
 
 Cuando esos módulos o historiales existan, deben publicar a través del mismo motor central y no enviar email directamente.
+
+## Estado del checkout local 2026-09-11
+
+El checkout ya cuenta con la bandeja de solicitudes y la tabla de
+`orden_repuestos`. Por eso `solicitud.nueva` y `garantia.proxima` ya tienen una
+fuente de datos local y se integran al motor central, conservando scope e
+idempotencia. El smoke de email y Web Push sigue requiriendo SMTP, VAPID y
+navegador configurados.
+
+> Nota de actualización: la sección histórica “Eventos bloqueados por modelo
+> actual” describe el estado anterior a estas migraciones. Para el checkout
+> vigente, solicitudes y garantías deben evaluarse según las fuentes y eventos
+> implementados en esta sección.

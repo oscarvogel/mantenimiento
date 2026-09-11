@@ -38,11 +38,34 @@ describe('WorkOrdersIndexPage', () => {
     const wrapper = mount(WorkOrdersIndexPage, { props: { data: data() } })
     expect(wrapper.text()).toContain('OT abiertas')
     expect(wrapper.text()).toContain('Demoradas')
+    expect(wrapper.text()).toContain('Órdenes registradas')
+    expect(wrapper.text()).not.toContain('demorada desde')
     expect(wrapper.find('a[href="/mantenimiento/ordenes?atencion=delayed"]').exists()).toBe(true)
     expect(wrapper.find('input[name="q"]').attributes('placeholder')).toContain('Número')
     expect(wrapper.find('select[name="estado"]').exists()).toBe(true)
     expect(wrapper.find('select[name="sucursal_id"]').exists()).toBe(true)
     expect(wrapper.find('select[name="responsable_id"]').exists()).toBe(true)
+    expect(wrapper.findAll('a[href="/mantenimiento/ordenes"]').some((link) => link.text().includes('Limpiar filtros'))).toBe(false)
+  })
+
+  it('contextualiza la bandeja de demoradas y permite limpiar filtros', () => {
+    const payload = data()
+    payload.filters = { ...payload.filters, attention: 'delayed', q: 'OT-00031' }
+    payload.pagination = { ...payload.pagination, total: 1 }
+
+    const wrapper = mount(WorkOrdersIndexPage, { props: { data: payload } })
+
+    expect(wrapper.text()).toContain('Órdenes que requieren atención')
+    expect(wrapper.text()).toContain('1 OT encontrada · abiertas desde 3 días o más.')
+    expect(wrapper.findAll('a[href="/mantenimiento/ordenes"]').some((link) => link.text().includes('Limpiar filtros'))).toBe(true)
+  })
+
+  it('prioriza una distribución compacta para indicadores y acciones en móvil', () => {
+    const wrapper = mount(WorkOrdersIndexPage, { props: { data: data() } })
+
+    expect(wrapper.get('[aria-label="Indicadores de órdenes"]').classes()).toContain('grid-cols-2')
+    expect(wrapper.find('.w-full.flex-col').exists()).toBe(true)
+    expect(wrapper.findAll('a').some((link) => link.text().includes('Volver a Mantenimiento'))).toBe(false)
   })
 
   it('lanza un correctivo rápido sin abandonar el listado', async () => {
@@ -78,6 +101,7 @@ describe('WorkOrdersIndexPage', () => {
   it('prioriza datos accionables y expone imprimir/iniciar/reanudar', () => {
     const wrapper = mount(WorkOrdersIndexPage, { props: { data: data() } })
     expect(wrapper.text()).toContain('OT-00031 · CAM-01')
+    expect(wrapper.text()).toContain('Fecha de apertura:')
     expect(wrapper.text()).toContain('DEMORADA')
     expect(wrapper.find('a[href="/mantenimiento/ordenes/31/imprimir"]').attributes('target')).toBe('_blank')
     expect(wrapper.find('form[action="/mantenimiento/ordenes/31/iniciar"]').exists()).toBe(true)

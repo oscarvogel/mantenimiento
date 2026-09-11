@@ -39,6 +39,12 @@ const formattedCostTotal = computed(() => costTotal.value.toLocaleString('es-AR'
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 }))
+const newPart = () => ({ codigo: '', descripcion: '', cantidad: '1', precio_unitario: '0', marca: '', numero_serie_lote: '', comprobante: '', garantia_fecha: '', garantia_km: '', garantia_horas: '', observaciones: '' })
+const addPart = () => {
+  if (!Array.isArray(props.formState.repuestos)) props.formState.repuestos = []
+  props.formState.repuestos.push(newPart())
+}
+const removePart = (index) => { props.formState.repuestos?.splice(index, 1) }
 </script>
 
 <template>
@@ -168,6 +174,23 @@ const formattedCostTotal = computed(() => costTotal.value.toLocaleString('es-AR'
                 </div>
               </div>
               <p class="text-xs text-ink-muted">El total definitivo se recalcula en el servidor a partir de los tres importes.</p>
+            </fieldset>
+
+            <fieldset class="grid gap-4 rounded-xl border border-border bg-surface-subtle p-4">
+              <div class="flex flex-wrap items-start justify-between gap-3"><div><legend class="text-base font-bold text-ink">Repuestos e insumos</legend><p class="mt-1 text-sm text-ink-muted">Registrá lo colocado para conservar trazabilidad y, si corresponde, sus límites de garantía.</p></div><button type="button" :class="secondaryButton" @click="addPart">Agregar repuesto</button></div>
+              <div v-if="formState.repuestos?.length" class="grid gap-3">
+                <article v-for="(part, index) in formState.repuestos" :key="index" class="grid gap-3 rounded-lg border border-border-subtle bg-surface-raised p-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <FormField label="Descripción *" :for-id="`order-${order.id}-part-${index}-description`" class="sm:col-span-2"><input :id="`order-${order.id}-part-${index}-description`" v-model="part.descripcion" :name="`repuestos[${index}][descripcion]`" required maxlength="255" placeholder="Ej.: Filtro de aceite" :class="fieldClass" /></FormField>
+                  <FormField label="Código" :for-id="`order-${order.id}-part-${index}-code`"><input :id="`order-${order.id}-part-${index}-code`" v-model="part.codigo" :name="`repuestos[${index}][codigo]`" maxlength="100" :class="fieldClass" /></FormField>
+                  <FormField label="Cantidad" :for-id="`order-${order.id}-part-${index}-quantity`"><input :id="`order-${order.id}-part-${index}-quantity`" v-model="part.cantidad" :name="`repuestos[${index}][cantidad]`" type="number" min="0.001" step="0.001" required :class="fieldClass" /></FormField>
+                  <FormField label="Precio unitario" :for-id="`order-${order.id}-part-${index}-price`"><input :id="`order-${order.id}-part-${index}-price`" v-model="part.precio_unitario" :name="`repuestos[${index}][precio_unitario]`" type="number" min="0" step="0.01" :class="fieldClass" /></FormField>
+                  <FormField label="Marca" :for-id="`order-${order.id}-part-${index}-brand`"><input :id="`order-${order.id}-part-${index}-brand`" v-model="part.marca" :name="`repuestos[${index}][marca]`" maxlength="100" :class="fieldClass" /></FormField>
+                  <FormField label="Garantía hasta" :for-id="`order-${order.id}-part-${index}-warranty-date`"><input :id="`order-${order.id}-part-${index}-warranty-date`" v-model="part.garantia_fecha" :name="`repuestos[${index}][garantia_fecha]`" type="date" :class="fieldClass" /></FormField>
+                  <FormField label="Garantía en km" :for-id="`order-${order.id}-part-${index}-warranty-km`"><input :id="`order-${order.id}-part-${index}-warranty-km`" v-model="part.garantia_km" :name="`repuestos[${index}][garantia_km]`" type="number" min="0" :class="fieldClass" /></FormField>
+                  <div class="flex items-end justify-end sm:col-span-2 lg:col-span-4"><button type="button" class="text-sm font-semibold text-danger-strong hover:text-danger" @click="removePart(index)">Quitar repuesto</button></div>
+                </article>
+              </div>
+              <p v-else class="text-sm text-ink-muted">No se registraron repuestos en esta orden.</p>
             </fieldset>
 
             <p class="rounded-lg bg-info-subtle px-3 py-2 text-xs text-info-strong">

@@ -78,6 +78,37 @@ describe('configuración de tareas del servicio', () => {
     expect(wrapper.find('input[name="codigo"]').exists()).toBe(false)
   })
 
+  it('muestra un CTA para crear el primer servicio', async () => {
+    const wrapper = mount(MaintenanceServicesPage, { props: { data: { ...data, services: [] } } })
+    const createButton = buttonByText(wrapper, 'Crear primer servicio')
+
+    expect(createButton.exists()).toBe(true)
+    await createButton.trigger('click')
+    expect(wrapper.text()).toContain('Nuevo servicio de mantenimiento')
+  })
+
+  it('permite limpiar una búsqueda sin coincidencias', async () => {
+    const wrapper = mount(MaintenanceServicesPage, { props: { data } })
+    await wrapper.find('input[type="search"]').setValue('sin coincidencias')
+
+    expect(wrapper.text()).toContain('No hay coincidencias')
+    const clearButton = buttonByText(wrapper, 'Limpiar búsqueda')
+    expect(clearButton.exists()).toBe(true)
+
+    await clearButton.trigger('click')
+    expect(wrapper.text()).toContain('Servicio PR77')
+  })
+
+  it('usa superficies semánticas y etiquetas claras en el formulario', async () => {
+    const wrapper = mount(MaintenanceServicesPage, { props: { data } })
+    await wrapper.findAll('button').find((button) => button.text().includes('Nuevo servicio')).trigger('click')
+
+    expect(wrapper.text()).toContain('Intervalo en horas')
+    expect(wrapper.text()).toContain('Avisar con anticipación')
+    expect(wrapper.find('input[name="intervalo_km"]').classes()).toContain('bg-surface-raised')
+    expect(wrapper.find('textarea[name="descripcion"]').classes()).toContain('bg-surface-raised')
+  })
+
   it('usa el ancho completo del catálogo mientras el servicio está en edición', async () => {
     const wrapper = mount(MaintenanceServicesPage, { props: { data } })
     const article = wrapper.get('article')

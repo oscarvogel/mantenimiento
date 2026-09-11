@@ -13,18 +13,18 @@
 
   <div
     v-if="isOpen"
-    class="fixed inset-x-4 bottom-4 z-50 flex h-[min(500px,calc(100dvh-2rem))] flex-col rounded-2xl border border-gray-200 bg-white shadow-2xl sm:inset-x-auto sm:right-6 sm:w-96"
+    class="fixed inset-x-4 bottom-4 z-50 flex h-[min(500px,calc(100dvh-2rem))] flex-col rounded-2xl border border-border bg-surface-raised shadow-2xl sm:inset-x-auto sm:right-6 sm:w-96"
     role="dialog"
     aria-modal="true"
     aria-labelledby="chat-widget-title"
   >
-    <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-blue-600 text-white rounded-t-2xl">
+    <div class="flex items-center justify-between rounded-t-2xl border-b border-primary/30 bg-primary px-4 py-3 text-primary-foreground">
       <div class="flex items-center gap-2">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
         </svg>
         <span id="chat-widget-title" class="font-medium text-sm">Asistente IA</span>
-        <span v-if="!isConnected" class="text-[10px] bg-red-500 text-white px-1.5 py-0.5 rounded">offline</span>
+        <span v-if="!isConnected" class="rounded bg-danger px-1.5 py-0.5 text-[10px] text-danger-foreground">offline</span>
       </div>
       <button type="button" @click="toggle" class="ui-interactive min-h-10 min-w-10 rounded-lg text-white/80 hover:text-white" aria-label="Cerrar asistente" title="Cerrar asistente">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -36,7 +36,7 @@
     <div ref="messagesContainer" class="flex-1 overflow-y-auto p-4 space-y-3" role="log" aria-live="polite" aria-relevant="additions text">
       <div
         v-if="historyTruncated"
-        class="text-center text-[11px] text-gray-400"
+        class="text-center text-[11px] text-ink-subtle"
       >
         Mostrando los últimos {{ CHAT_VISIBLE_HISTORY_LIMIT }} mensajes
       </div>
@@ -53,7 +53,7 @@
         @confirm="confirmTool(tc)"
         @cancel="cancelTool(tc)"
       />
-      <div v-if="loading && streamingText === ''" role="status" aria-live="polite" class="text-center text-gray-400 text-sm py-2">
+      <div v-if="loading && streamingText === ''" role="status" aria-live="polite" class="py-2 text-center text-sm text-ink-subtle">
         Pensando...
       </div>
     </div>
@@ -63,7 +63,7 @@
       <button type="button" class="ui-interactive ml-2 min-h-8 rounded px-1 underline" @click="lastError = ''">Descartar</button>
     </div>
 
-    <div class="border-t border-gray-200 p-3">
+    <div class="border-t border-border p-3">
       <form @submit.prevent="sendMessage" class="flex items-center gap-2">
         <ChatVoiceButton @transcript="onVoiceTranscript" />
         <label for="chat-message-input" class="sr-only">Mensaje para el asistente</label>
@@ -72,7 +72,7 @@
           v-model="input"
           type="text"
           placeholder="Escribí tu mensaje..."
-          class="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          class="min-w-0 flex-1 rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-border-focus"
           :disabled="loading"
         />
         <button

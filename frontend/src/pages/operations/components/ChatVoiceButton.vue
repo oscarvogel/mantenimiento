@@ -4,7 +4,7 @@
     @click="toggleRecording"
     :class="[
       'ui-interactive flex min-h-10 min-w-10 items-center justify-center rounded-full transition-colors',
-      isRecording ? 'bg-red-500 text-white animate-pulse' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+      isRecording ? 'animate-pulse bg-danger text-danger-foreground' : 'bg-surface-muted text-ink-muted hover:bg-border-strong'
     ]"
     :aria-label="isRecording ? 'Detener grabación de voz' : 'Grabar mensaje de voz'"
     :aria-pressed="isRecording"

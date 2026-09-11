@@ -110,7 +110,7 @@ const stopEdit = () => {
 
     <Teleport to="body">
       <div v-if="editing" class="fixed inset-0 z-[80] flex items-center justify-center bg-black/45 p-4" role="presentation" @mousedown.self="stopEdit">
-        <section role="dialog" aria-modal="true" aria-labelledby="edit-expiration-type-title" class="w-full max-w-lg rounded-xl bg-white shadow-2xl">
+        <section role="dialog" aria-modal="true" aria-labelledby="edit-expiration-type-title" class="w-full max-w-lg rounded-xl bg-surface-raised shadow-2xl">
           <header class="border-b border-border-subtle px-6 py-4">
             <h2 id="edit-expiration-type-title" class="text-lg font-bold text-ink">Editar tipo de vencimiento</h2>
           </header>

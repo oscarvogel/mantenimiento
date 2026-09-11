@@ -1,7 +1,6 @@
 <script setup>
 import {
   BellAlertIcon,
-  BuildingOffice2Icon,
   EnvelopeIcon,
   MapPinIcon,
   PlusIcon,
@@ -26,14 +25,7 @@ defineProps({
       :eyebrow="data.company.name"
       title="Sucursales"
       description="Administrá las bases, talleres y ubicaciones operativas de tu empresa."
-    >
-      <template #aside>
-        <div class="inline-flex items-center gap-2 self-start rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold text-ink-muted shadow-sm">
-          <BuildingOffice2Icon class="size-5 text-primary" aria-hidden="true" />
-          Una sola empresa
-        </div>
-      </template>
-    </AdminPageHeading>
+    />
 
     <section aria-label="Resumen de sucursales" class="mb-6 grid gap-3 sm:grid-cols-3">
       <AdminMetric label="Registradas" :value="data.metrics.total" />
@@ -41,8 +33,8 @@ defineProps({
       <AdminMetric label="Inactivas" :value="data.metrics.inactive" tone="muted" />
     </section>
 
-    <section v-if="data.permissions.edit" class="mb-8 overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card" aria-labelledby="new-branch-title">
-      <div class="flex items-center gap-3 border-b border-border-subtle bg-surface-subtle px-5 py-4 sm:px-6">
+    <details v-if="data.permissions.edit" :open="Boolean(data.oldInput.codigo || data.oldInput.nombre || data.oldInput.direccion || data.oldInput.emailAlertas || data.flash?.error)" class="ui-details-animated mb-8 overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card" aria-labelledby="new-branch-title">
+      <summary class="flex cursor-pointer items-center gap-3 border-b border-border-subtle bg-surface-subtle px-5 py-4 sm:px-6">
         <span class="flex size-10 items-center justify-center rounded-lg bg-primary-subtle text-primary">
           <PlusIcon class="size-5" aria-hidden="true" />
         </span>
@@ -50,25 +42,25 @@ defineProps({
           <h2 id="new-branch-title" class="font-semibold text-ink">Nueva sucursal</h2>
           <p class="text-sm text-ink-muted">Definí su identificación y el canal de alertas.</p>
         </div>
-      </div>
+      </summary>
 
       <form method="post" :action="data.actions.create" class="grid gap-4 p-5 sm:grid-cols-2 sm:p-6 lg:grid-cols-12">
         <CsrfField :csrf="data.csrf" />
         <label class="block lg:col-span-3">
           <span class="mb-1.5 block text-sm font-medium text-ink">Código <span class="text-danger" aria-hidden="true">*</span></span>
-          <input name="codigo" maxlength="20" required :value="data.oldInput.codigo" autocapitalize="characters" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm font-semibold uppercase text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          <input name="codigo" maxlength="20" required :value="data.oldInput.codigo" autocapitalize="characters" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm font-semibold uppercase text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
         </label>
         <label class="block lg:col-span-5">
           <span class="mb-1.5 block text-sm font-medium text-ink">Nombre <span class="text-danger" aria-hidden="true">*</span></span>
-          <input name="nombre" maxlength="255" required :value="data.oldInput.nombre" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          <input name="nombre" maxlength="255" required :value="data.oldInput.nombre" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
         </label>
         <label class="block lg:col-span-4">
           <span class="mb-1.5 block text-sm font-medium text-ink">Email de alertas</span>
-          <input type="email" name="email_alertas" maxlength="255" :value="data.oldInput.emailAlertas" autocomplete="email" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          <input type="email" name="email_alertas" maxlength="255" :value="data.oldInput.emailAlertas" autocomplete="email" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
         </label>
         <label class="block sm:col-span-2 lg:col-span-12">
           <span class="mb-1.5 block text-sm font-medium text-ink">Dirección</span>
-          <input name="direccion" maxlength="255" :value="data.oldInput.direccion" autocomplete="street-address" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          <input name="direccion" maxlength="255" :value="data.oldInput.direccion" autocomplete="street-address" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
         </label>
         <div class="sm:col-span-2 lg:col-span-12">
           <button type="submit" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary-hover active:bg-primary-active">
@@ -77,7 +69,7 @@ defineProps({
           </button>
         </div>
       </form>
-    </section>
+    </details>
 
     <section aria-labelledby="branches-list-title">
       <div class="mb-4 flex items-center justify-between gap-3">
@@ -88,7 +80,7 @@ defineProps({
         <span class="rounded-full bg-surface-muted px-3 py-1 text-sm font-semibold text-ink-muted">{{ data.metrics.total }}</span>
       </div>
 
-      <div v-if="data.branches.length" class="grid gap-4 xl:grid-cols-2">
+      <div v-if="data.branches.length" :class="['grid gap-4', data.branches.length === 1 ? 'xl:grid-cols-1' : 'xl:grid-cols-2']">
         <article v-for="branch in data.branches" :key="branch.id" class="overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card">
           <div class="flex items-start justify-between gap-4 border-b border-border-subtle px-5 py-4">
             <div class="flex min-w-0 items-center gap-3">
@@ -107,23 +99,23 @@ defineProps({
             <CsrfField :csrf="data.csrf" />
             <label class="block sm:col-span-4">
               <span class="mb-1.5 block text-sm font-medium text-ink">Código</span>
-              <input name="codigo" maxlength="20" required :value="branch.code" autocapitalize="characters" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm font-semibold uppercase text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+              <input name="codigo" maxlength="20" required :value="branch.code" autocapitalize="characters" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm font-semibold uppercase text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
             </label>
             <label class="block sm:col-span-8">
               <span class="mb-1.5 block text-sm font-medium text-ink">Nombre</span>
-              <input name="nombre" maxlength="255" required :value="branch.name" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+              <input name="nombre" maxlength="255" required :value="branch.name" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
             </label>
             <label class="block sm:col-span-12">
               <span class="mb-1.5 block text-sm font-medium text-ink">Dirección</span>
-              <input name="direccion" maxlength="255" :value="branch.address" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+              <input name="direccion" maxlength="255" :value="branch.address" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
             </label>
             <label class="block sm:col-span-8">
               <span class="mb-1.5 block text-sm font-medium text-ink">Email de alertas</span>
-              <input type="email" name="email_alertas" maxlength="255" :value="branch.alertEmail" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+              <input type="email" name="email_alertas" maxlength="255" :value="branch.alertEmail" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
             </label>
             <label class="block sm:col-span-4">
               <span class="mb-1.5 block text-sm font-medium text-ink">Estado</span>
-              <select name="estado" :value="branch.active ? '1' : '0'" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20">
+              <select name="estado" :value="branch.active ? '1' : '0'" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20">
                 <option value="1">Activa</option>
                 <option value="0">Inactiva</option>
               </select>
@@ -151,7 +143,7 @@ defineProps({
         <p class="mt-1 text-sm text-ink-muted">Creá la primera ubicación operativa de la empresa.</p>
       </div>
 
-      <PaginationBar :pagination="data.pagination" />
+      <PaginationBar v-if="Number(data.pagination.totalPages) > 1 && data.branches.length > 0" :pagination="data.pagination" />
     </section>
   </div>
 </template>

@@ -55,6 +55,18 @@ final class WorkOrdersPayload
                     'status' => (string) $task['estado'],
                     'workPerformed' => $task['trabajo_realizado'] ?: null,
                 ], $row['tareas'] ?? []),
+                'parts' => array_map(static fn (array $part): array => [
+                    'id' => (int) $part['id'],
+                    'code' => $part['codigo'] ?: null,
+                    'description' => (string) $part['descripcion'],
+                    'brand' => $part['marca'] ?: null,
+                    'quantity' => (float) $part['cantidad'],
+                    'unitPrice' => (float) $part['precio_unitario'],
+                    'supplierName' => $part['proveedor_nombre'] ?: null,
+                    'warrantyDate' => $part['garantia_fecha'] ?: null,
+                    'warrantyKm' => $part['garantia_km'] === null ? null : (int) $part['garantia_km'],
+                    'warrantyHours' => $part['garantia_horas'] === null ? null : (float) $part['garantia_horas'],
+                ], $row['repuestos'] ?? []),
                 'routes' => [
                     'print' => base_url('mantenimiento/ordenes/' . $id . '/imprimir'),
                     'start' => base_url('mantenimiento/ordenes/' . $id . '/iniciar'),

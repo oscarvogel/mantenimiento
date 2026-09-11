@@ -58,6 +58,7 @@ final class ClosePreventiveOrder
             'costo_repuestos'    => $partsCost,
             'otros_costos'       => $otherCosts,
             'costo_total'        => $this->sumMoney($laborCost, $partsCost, $otherCosts),
+            'repuestos'          => $this->normalizeParts($input['repuestos'] ?? null),
         ];
 
         return $this->closure->close(
@@ -187,5 +188,54 @@ final class ClosePreventiveOrder
         $value = trim((string) $value);
 
         return $value === '' ? null : $value;
+    }
+
+    /** @return list<array<string,mixed>> */
+    private function normalizeParts(mixed $value): array
+    {
+        if ($value === null || $value === '') return [];
+        if (! is_array($value)) throw new DomainException('El detalle de repuestos no es válido.');
+        $parts = [];
+        foreach ($value as $row) {
+            if (! is_array($row)) throw new DomainException('El detalle de un repuesto no es válido.');
+            $description = trim((string) ($row['descripcion'] ?? ''));
+            if ($description === '') continue;
+            if (mb_strlen($description) > 255) throw new DomainException('La descripción de un repuesto es demasiado extensa.');
+            $quantity = str_replace(',', '.', trim((string) ($row['cantidad'] ?? '1')));
+            $unitPrice = str_replace(',', '.', trim((string) ($row['precio_unitario'] ?? '0')));
+            if (! preg_match('/^\d+(?:\.\d{1,3})?$/', $quantity) || (float) $quantity <= 0) throw new DomainException('La cantidad de un repuesto no es válida.');
+            $parts[] = [
+                'codigo' => $this->nullable($row['codigo'] ?? null),
+                'descripcion' => $description,
+                'marca' => $this->nullable($row['marca'] ?? null),
+                'numero_serie_lote' => $this->nullable($row['numero_serie_lote'] ?? null),
+                'cantidad' => $quantity,
+                'precio_unitario' => $this->nonNegativeMoney($unitPrice, 'precio unitario del repuesto'),
+                'proveedor_id' => $this->nullablePositiveInteger($row['proveedor_id'] ?? null),
+                'comprobante' => $this->nullable($row['comprobante'] ?? null),
+                'fecha_colocacion' => $this->nullableDate($row['fecha_colocacion'] ?? null),
+                'garantia_fecha' => $this->nullableDate($row['garantia_fecha'] ?? null),
+                'garantia_km' => $this->nullableNonNegativeInteger($row['garantia_km'] ?? null, 'kilómetros de garantía'),
+                'garantia_horas' => $this->nullableNonNegativeDecimal($row['garantia_horas'] ?? null, 'horas de garantía'),
+                'observaciones' => $this->nullable($row['observaciones'] ?? null),
+            ];
+        }
+        return $parts;
+    }
+
+    private function nullablePositiveInteger(mixed $value): ?int
+    {
+        if ($value === null || trim((string) $value) === '') return null;
+        if (filter_var($value, FILTER_VALIDATE_INT) === false || (int) $value <= 0) throw new DomainException('El proveedor indicado no es válido.');
+        return (int) $value;
+    }
+
+    private function nullableDate(mixed $value): ?string
+    {
+        $value = trim((string) $value);
+        if ($value === '') return null;
+        $date = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+        if ($date === false || $date->format('Y-m-d') !== $value) throw new DomainException('La fecha de garantía no es válida.');
+        return $value;
     }
 }

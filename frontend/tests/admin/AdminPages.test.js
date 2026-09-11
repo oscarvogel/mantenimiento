@@ -112,6 +112,23 @@ describe('BranchesAdminPage', () => {
   })
 })
 
+describe('BranchesAdminPage single-item layout', () => {
+  it('collapses creation and hides pagination for a single branch', () => {
+    const wrapper = mountPage(BranchesAdminPage, {
+      ...branchesAdminData,
+      metrics: { total: 1, active: 1, inactive: 0 },
+      pagination: { ...branchesAdminData.pagination, totalPages: 1, total: 1, nextUrl: null },
+      oldInput: { codigo: '', nombre: '', direccion: '', emailAlertas: '' },
+      branches: [branchesAdminData.branches[0]],
+    })
+
+    expect(wrapper.get('details[aria-labelledby="new-branch-title"]').attributes('open')).toBeUndefined()
+    expect(wrapper.find('nav').exists()).toBe(false)
+    expect(wrapper.find('[class*="xl:grid-cols-1"]').exists()).toBe(true)
+    expect(wrapper.get('input[name="codigo"]').classes()).toContain('bg-surface-raised')
+  })
+})
+
 describe('UsersAdminPage', () => {
   it('preserva alta, cuenta, acceso y restablecimiento como formularios POST con CSRF', () => {
     const wrapper = mountPage(UsersAdminPage, usersAdminData)
@@ -132,7 +149,7 @@ describe('UsersAdminPage', () => {
 
     expect(wrapper.get('form[action="/administracion/usuarios"] input[name="roles[]"][value="2"]').element.checked).toBe(true)
     expect(wrapper.get('form[action="/administracion/usuarios/3/acceso"] input[name="sucursales[]"][value="4"]').element.checked).toBe(true)
-    expect(wrapper.get('nav[aria-label="Paginación"] select').element.value).toBe('5')
+    expect(wrapper.find('nav[aria-label="Paginación"]').exists()).toBe(false)
   })
 
   it('protege visualmente el acceso propio y no ofrece auto-desactivación', () => {
@@ -153,5 +170,35 @@ describe('UsersAdminPage', () => {
     })
 
     expect(wrapper.text()).toContain('No hay usuarios para mostrar')
+  })
+
+  it('mantiene la paginación cuando hay más de una página', () => {
+    const wrapper = mountPage(UsersAdminPage, {
+      ...usersAdminData,
+      pagination: {
+        ...usersAdminData.pagination,
+        totalPages: 2,
+        total: 7,
+        nextUrl: '/administracion/usuarios?page=2',
+      },
+    })
+
+    expect(wrapper.get('nav[aria-label="Paginación"] select').element.value).toBe('5')
+  })
+
+  it('colapsa el alta sin errores y conserva los campos con tokens de tema', () => {
+    const wrapper = mountPage(UsersAdminPage, {
+      ...usersAdminData,
+      users: [usersAdminData.users[0]],
+      metrics: { total: 1, active: 1, inactive: 0 },
+      pagination: { ...usersAdminData.pagination, totalPages: 1, total: 1, nextUrl: null },
+      oldInput: { nombre: '', email: '', motivo: '', roleIds: [], branchIds: [] },
+      flash: { success: '', error: '' },
+    })
+
+    expect(wrapper.get('details[aria-labelledby="new-user-title"]').attributes('open')).toBeUndefined()
+    expect(wrapper.find('nav[aria-label="Paginación"]').exists()).toBe(false)
+    expect(wrapper.get('input[name="nombre"]').classes()).toContain('bg-surface-raised')
+    expect(wrapper.get('input[name="motivo"]').classes()).not.toContain('bg-white')
   })
 })

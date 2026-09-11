@@ -12,11 +12,11 @@ final class ExpirationNotificationRecipientPermissionContractTest extends TestCa
         self::assertIsString($source);
 
         self::assertStringContainsString(
-            "str_starts_with($type, 'empleado.vencimiento_') => 'empleados.ver'",
+            'str_starts_with($type, \'empleado.vencimiento_\') => \'empleados.ver\'',
             $source,
         );
         self::assertStringContainsString(
-            "str_starts_with($type, 'equipo.vencimiento_') => 'equipos.ver'",
+            'str_starts_with($type, \'equipo.vencimiento_\') => \'equipos.ver\'',
             $source,
         );
     }
