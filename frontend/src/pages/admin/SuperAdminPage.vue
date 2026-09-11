@@ -141,6 +141,16 @@ const isRoleAssigned = (user, roleId) => user.assignedRoleIds.includes(Number(ro
           <span class="mt-1.5 block text-xs leading-5 text-ink-muted">Recibirá preventivos próximos o vencidos, OT y alertas operativas. Si queda vacío se usa el email general.</span>
         </label>
         <label class="flex items-start gap-3 rounded-lg border border-border bg-surface-subtle p-3 sm:col-span-2 lg:col-span-2">
+          <input type="hidden" name="notificaciones_whatsapp_habilitadas" value="0" />
+          <input type="checkbox" name="notificaciones_whatsapp_habilitadas" value="1" class="mt-0.5 size-4 rounded border-border-strong text-primary focus:ring-primary" />
+          <span><span class="block text-sm font-medium text-ink">Habilitar WhatsApp para esta empresa</span><span class="mt-1 block text-xs leading-5 text-ink-muted">Los vencimientos podrán notificarse al chofer asignado.</span></span>
+        </label>
+        <label class="block sm:col-span-2 lg:col-span-2">
+          <span class="mb-1.5 block text-sm font-medium text-ink">Instance ID WhatsApp</span>
+          <input name="whatsapp_instance_id" maxlength="100" placeholder="default" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          <span class="mt-1.5 block text-xs leading-5 text-ink-muted">Si queda vacío usa la instancia global configurada.</span>
+        </label>
+        <label class="flex items-start gap-3 rounded-lg border border-border bg-surface-subtle p-3 sm:col-span-2 lg:col-span-2">
           <input type="hidden" name="notificaciones_email_habilitadas" value="0" />
           <input type="checkbox" name="notificaciones_email_habilitadas" value="1" checked class="mt-0.5 size-4 rounded border-border-strong text-primary focus:ring-primary" />
           <span><span class="block text-sm font-medium text-ink">Enviar notificaciones por email</span><span class="mt-1 block text-xs leading-5 text-ink-muted">Podés desactivar el canal sin borrar el destinatario.</span></span>
@@ -274,6 +284,15 @@ const isRoleAssigned = (user, roleId) => user.assignedRoleIds.includes(Number(ro
                 <option value="1">Activa</option>
                 <option value="0">Inactiva</option>
               </select>
+            </label>
+            <label class="block">
+              <span class="mb-1.5 block text-sm font-medium text-ink">Instance ID WhatsApp</span>
+              <input name="whatsapp_instance_id" maxlength="100" :value="company.whatsappInstanceId" placeholder="Usará la instancia global" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+            </label>
+            <label class="flex items-start gap-3 rounded-lg border border-border bg-surface-subtle p-3">
+              <input type="hidden" name="notificaciones_whatsapp_habilitadas" value="0" />
+              <input type="checkbox" name="notificaciones_whatsapp_habilitadas" value="1" :checked="company.whatsappEnabled" class="mt-0.5 size-4 rounded border-border-strong text-primary focus:ring-primary" />
+              <span><span class="block text-sm font-medium text-ink">WhatsApp habilitado</span><span class="mt-1 block text-xs leading-5 text-ink-muted">Permite avisos al chofer de esta empresa.</span></span>
             </label>
             <label class="flex items-start gap-3 rounded-lg border border-border bg-surface-subtle p-3 sm:col-span-2">
               <input type="hidden" name="notificaciones_email_habilitadas" value="0" />
