@@ -29,12 +29,7 @@ const daysLabel = (days) => {
   return `Vence en ${value} día${value === 1 ? '' : 's'}`
 }
 
-const statusFor = (item) => {
-  const days = Number(item.daysUntil)
-  if (days < 0) return 'VENCIDO'
-  if (days <= Number(item.warningDays ?? 30)) return 'PROXIMO'
-  return 'AL_DIA'
-}
+const statusFor = (item) => item.status || (Number(item.daysUntil) < 0 ? 'VENCIDO' : 'AL_DIA')
 </script>
 
 <template>
@@ -88,9 +83,9 @@ const statusFor = (item) => {
 
         <FormField label="Tipo" for-id="expiration-subject">
           <select id="expiration-subject" name="tipo" :class="fieldClass">
-            <option value="TODOS" :selected="data.filters.subject === 'TODOS'">Todos</option>
-            <option value="EQUIPO" :selected="data.filters.subject === 'EQUIPO'">Equipos</option>
-            <option value="EMPLEADO" :selected="data.filters.subject === 'EMPLEADO'">Empleados</option>
+            <option v-if="data.canSeeEquipment && data.canSeeEmployees" value="TODOS" :selected="data.filters.subject === 'TODOS'">Todos</option>
+            <option v-if="data.canSeeEquipment" value="EQUIPO" :selected="data.filters.subject === 'EQUIPO'">Equipos</option>
+            <option v-if="data.canSeeEmployees" value="EMPLEADO" :selected="data.filters.subject === 'EMPLEADO'">Empleados</option>
           </select>
         </FormField>
 
