@@ -9,6 +9,8 @@ use App\Application\Notifications\Port\EmailNotificationGateway;
 use App\Application\Notifications\Port\NotificationDeliveryQueue;
 use App\Application\Notifications\Port\NotificationProcessControl;
 use App\Application\Notifications\Port\WebPushGateway;
+use App\Application\Notifications\Port\WhatsAppNotificationDeliveryQueue;
+use App\Application\Notifications\Port\WhatsAppNotificationGateway;
 use Throwable;
 
 final readonly class RunNotificationDispatch
