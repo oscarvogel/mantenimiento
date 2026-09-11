@@ -1,6 +1,6 @@
 {
   "src/main.js": {
-    "file": "assets/main-ChPs6Bwt.js",
+    "file": "assets/main-DJUosGxb.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
@@ -8,11 +8,11 @@
       "src/pages/operations/components/ChatWidget.vue"
     ],
     "css": [
-      "assets/main-kDQcdlxa.css"
+      "assets/main-CENBSRy1.css"
     ]
   },
   "src/pages/operations/components/ChatWidget.vue": {
-    "file": "assets/ChatWidget-Bracv8i5.js",
+    "file": "assets/ChatWidget-DNqbQK6J.js",
     "name": "ChatWidget",
     "src": "src/pages/operations/components/ChatWidget.vue",
     "isDynamicEntry": true,

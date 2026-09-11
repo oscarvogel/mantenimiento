@@ -19,7 +19,7 @@ describe('V3.1.3 · planes preventivos operativos', () => {
 
     expect(wrapper.find('form[action="/mantenimiento/planes"][method="post"]').exists()).toBe(false)
     expect(wrapper.find('a[href="/mantenimiento/servicios"]').exists()).toBe(true)
-    expect(wrapper.text()).toContain('Servicios asignados')
+    expect(wrapper.text()).toContain('Planes preventivos asignados')
     expect(wrapper.text()).toContain('Cada 1000 km')
     expect(wrapper.text()).toContain('próximo 10000 km')
   })

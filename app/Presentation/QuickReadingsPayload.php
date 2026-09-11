@@ -20,6 +20,7 @@ final class QuickReadingsPayload
         array $maintenance,
         bool $canRegister,
         bool $canGenerateOrder,
+        bool $canAssignPlan,
         \DateTimeImmutable $now,
     ): array {
         $base = base_url('mantenimiento/lecturas/rapidas');
@@ -55,7 +56,7 @@ final class QuickReadingsPayload
             'maintenance' => $maintenance,
             'equipment' => [
                 'total' => (int) $page['total'],
-                'items' => array_map(function (array $row) use ($photos, $maintenance): array {
+                'items' => array_map(function (array $row) use ($photos, $maintenance, $canAssignPlan): array {
                     $id = (int) $row['id'];
                     $photo = $photos[$id] ?? null;
 
@@ -71,6 +72,7 @@ final class QuickReadingsPayload
                         'lastReadingAt' => $row['ultima_lectura_at'],
                         'maintenance' => $maintenance[$id] ?? ['state' => 'SIN_PLAN', 'primaryPlan' => null, 'plans' => [], 'planCount' => 0],
                         'detailUrl' => base_url('mantenimiento/equipos/' . $id),
+                        'assignPlanUrl' => $canAssignPlan ? base_url('mantenimiento/planes?equipo_id=' . $id) . '#planes-desde-plantilla' : null,
                         'photoUrl' => $photo === null ? null : base_url('mantenimiento/equipos/' . $id . '/foto-principal?miniatura=1'),
                     ];
                 }, $page['items']),

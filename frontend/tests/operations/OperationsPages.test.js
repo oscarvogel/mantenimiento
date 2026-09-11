@@ -61,7 +61,14 @@ describe('registro de componentes operativos', () => {
 
 describe('preventive-plans', () => {
   it('muestra asignaciones con su definición de servicio y permite editar la última realización', async () => {
-    const wrapper = render(PreventivePlansPage, preventivePlansData)
+    const data = {
+      ...preventivePlansData,
+      plans: {
+        ...preventivePlansData.plans,
+        pagination: { ...preventivePlansData.plans.pagination, totalPages: 2 },
+      },
+    }
+    const wrapper = render(PreventivePlansPage, data)
     expect(wrapper.find('form[action="/mantenimiento/planes"][method="post"]').exists()).toBe(false)
     expect(wrapper.get('a[href="/mantenimiento/servicios"]').exists()).toBe(true)
     expect(wrapper.get('form[action="/mantenimiento/planes"][method="get"]').attributes('method')).toBe('get')
@@ -91,7 +98,7 @@ describe('preventive-plans', () => {
   it('oculta el alta sin permiso y conserva el empty state', () => {
     const wrapper = render(PreventivePlansPage, { ...preventivePlansData, canEdit: false, plans: { ...preventivePlansData.plans, total: 0, items: [] } })
     expect(wrapper.find('form[action="/mantenimiento/planes"][method="post"]').exists()).toBe(false)
-    expect(wrapper.text()).toContain('No hay servicios asignados')
+    expect(wrapper.text()).toContain('No hay planes asignados')
   })
 
   it('permite editar la última realización con valores precargados', async () => {
@@ -266,8 +273,17 @@ describe('maintenance-overview', () => {
 describe('assets-index', () => {
   it('presenta filtros GET, fichas, QR y mutaciones de catálogos', () => {
     const wrapper = render(AssetsIndexPage, assetsData)
+    const singleEquipmentPage = render(AssetsIndexPage, {
+      ...assetsData,
+      equipment: {
+        ...assetsData.equipment,
+        pagination: { ...assetsData.equipment.pagination, total: 1, totalPages: 1, nextUrl: null },
+      },
+    })
 
     expect(wrapper.get('form[action="/mantenimiento/equipos"][method="get"]').attributes('method')).toBe('get')
+    expect(singleEquipmentPage.get('[aria-label="Paginación"]').text()).toContain('1 registro')
+    expect(singleEquipmentPage.get('[aria-label="Paginación"]').text()).not.toContain('1 registros')
     expect(wrapper.find('a[href="/mantenimiento/equipos/9"]').exists()).toBe(true)
     expect(wrapper.find('a[href="/mantenimiento/equipos/9/qr.svg"][target="_blank"]').exists()).toBe(true)
     expect(wrapper.get('form[action="/mantenimiento/catalogos/marcas/2/inactivar"]').attributes('method')).toBe('post')

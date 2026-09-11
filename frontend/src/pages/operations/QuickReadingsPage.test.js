@@ -110,7 +110,7 @@ describe('QuickReadingsPage', () => {
     await wrapper.find('#quick-reading-10').setValue('120000')
     await wrapper.find('#quick-reading-20').setValue('8350,5')
     expect(wrapper.text()).toContain('No puede ser menor a 125.430 km.')
-    expect(wrapper.text()).toContain('1 lista para guardar')
+    expect(wrapper.text()).toContain('1 lectura lista para guardar')
     expect(wrapper.find('button[type="submit"]').text()).toContain('Guardar 1 lectura')
     expect(wrapper.find('button[type="submit"]').attributes('disabled')).toBeUndefined()
   })

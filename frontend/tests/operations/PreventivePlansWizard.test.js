@@ -9,7 +9,7 @@ describe('administración compacta de planes preventivos', () => {
 
     expect(wrapper.find('form[action="/mantenimiento/planes/desde-plantilla"]').exists()).toBe(false)
     expect(wrapper.find('a[href="/mantenimiento/servicios"]').exists()).toBe(true)
-    expect(wrapper.text()).toContain('Servicios asignados')
+    expect(wrapper.text()).toContain('Planes preventivos asignados')
     expect(wrapper.text()).toContain('Servicios de mantenimiento')
   })
 

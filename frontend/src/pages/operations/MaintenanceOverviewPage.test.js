@@ -34,8 +34,34 @@ describe('MaintenanceOverviewPage', () => {
     const wrapper = mount(MaintenanceOverviewPage, { props: { data: baseData() } })
     expect(wrapper.text()).toContain('Registrar correctivo realizado')
     expect(wrapper.text()).toContain('Registrar lectura')
-    expect(wrapper.text()).toContain('Administrar equipos')
+    expect(wrapper.text()).not.toContain('Administrar equipos')
     expect(wrapper.text()).not.toContain('Nuevo equipo')
+  })
+
+  it('mantiene coherente la atención requerida cuando solo hay planes sin datos', () => {
+    const data = baseData()
+    data.pagination.plans = { ...pagination(), total: 1 }
+    data.plans = [{ id: 41, equipmentCode: 'DEMO-093939', serviceName: 'Cambio de aceite', computedState: 'SIN_DATOS', nextKm: 12010, nextHours: null, nextDate: null, photoUrl: null }]
+
+    const wrapper = mount(MaintenanceOverviewPage, { props: { data } })
+    const attention = wrapper.findAll('section').find((section) => section.text().includes('Atención requerida'))
+
+    expect(attention.text()).toContain('Atención requerida')
+    expect(attention.text()).toContain('1')
+    expect(attention.text()).toContain('Falta registrar una lectura para calcular el próximo vencimiento.')
+    expect(attention.text()).not.toContain('Próximo: 12010 km')
+    expect(attention.findAll('nav')).toHaveLength(1)
+  })
+
+  it('no presenta planes al día como atención pendiente', () => {
+    const data = baseData()
+    data.pagination.plans = { ...pagination(), total: 1 }
+    data.plans = [{ id: 42, equipmentCode: 'DEMO-AL-DIA', serviceName: 'Inspección', computedState: 'AL_DIA', nextKm: 15000, nextHours: null, nextDate: null, photoUrl: null }]
+
+    const wrapper = mount(MaintenanceOverviewPage, { props: { data } })
+
+    expect(wrapper.text()).toContain('No hay atención pendiente')
+    expect(wrapper.text()).not.toContain('DEMO-AL-DIA')
   })
 
   it('busca el equipo sobre el catálogo completo aunque no esté en la página visible', async () => {

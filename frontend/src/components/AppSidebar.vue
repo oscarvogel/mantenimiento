@@ -76,6 +76,7 @@ const icons = {
 }
 
 const iconFor = (name) => icons[name] ?? ClipboardDocumentCheckIcon
+const visibleLabel = (item) => item.key === 'services' ? 'Servicios' : item.label
 const customIconBaseUrl = document.body?.dataset?.baseUrl ?? ''
 const currentTheme = ref(document.documentElement.dataset.theme ?? 'light')
 const customIconNames = {
@@ -156,7 +157,7 @@ const openDemoCompany = () => {
                 aria-hidden="true"
               />
               <component v-else :is="iconFor(item.icon)" class="size-5 shrink-0" aria-hidden="true" />
-              <span class="min-w-0 flex-1 truncate">{{ item.label }}</span>
+              <span class="min-w-0 flex-1 leading-5" :title="item.label">{{ visibleLabel(item) }}</span>
               <span v-if="item.badge" class="rounded-full bg-surface-muted px-2 py-0.5 text-[0.6875rem] font-bold text-ink-muted">
                 {{ item.badge }}
               </span>
@@ -185,7 +186,7 @@ const openDemoCompany = () => {
                 :class="item.active ? 'text-primary' : 'text-ink-subtle group-hover:text-ink'"
                 aria-hidden="true"
               />
-              <span class="min-w-0 flex-1 truncate">{{ item.label }}</span>
+              <span class="min-w-0 flex-1 leading-5" :title="item.label">{{ visibleLabel(item) }}</span>
               <span v-if="item.badge" class="rounded-full bg-primary px-2 py-0.5 text-[0.6875rem] font-bold text-primary-foreground">
                 {{ item.badge }}
               </span>

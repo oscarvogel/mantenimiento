@@ -2,9 +2,9 @@ export const fieldClass = 'block min-h-11 w-full rounded-lg border border-border
 
 export const primaryButton = 'ui-interactive ui-glare inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary-hover active:bg-primary-active disabled:cursor-not-allowed disabled:opacity-50'
 
-export const secondaryButton = 'ui-interactive inline-flex min-h-10 items-center justify-center rounded-lg border border-border-strong bg-white px-3.5 py-2 text-sm font-semibold text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50'
+export const secondaryButton = 'ui-interactive inline-flex min-h-10 items-center justify-center rounded-lg border border-border-strong bg-surface-raised px-3.5 py-2 text-sm font-semibold text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50'
 
-export const dangerButton = 'ui-interactive inline-flex min-h-10 items-center justify-center rounded-lg border border-danger/30 bg-white px-3.5 py-2 text-sm font-semibold text-danger-strong hover:bg-danger-subtle disabled:cursor-not-allowed disabled:opacity-50'
+export const dangerButton = 'ui-interactive inline-flex min-h-10 items-center justify-center rounded-lg border border-danger/30 bg-surface-raised px-3.5 py-2 text-sm font-semibold text-danger-strong hover:bg-danger-subtle disabled:cursor-not-allowed disabled:opacity-50'
 
 export const localDateValue = (date) => {
   const year = String(date.getFullYear()).padStart(4, '0')

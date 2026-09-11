@@ -60,6 +60,7 @@ final class QuickReadings extends BaseController
                 $maintenance,
                 $actor->hasPermission('lecturas.cargar'),
                 $actor->hasPermission('ordenes.editar'),
+                $actor->hasPermission('planes.editar'),
                 $this->clock()->now(),
             ),
         );

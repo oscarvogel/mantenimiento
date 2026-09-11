@@ -104,4 +104,22 @@ describe('PreventivePlansPage', () => {
     expect(wrapper.find('#edit-bhours-77').exists()).toBe(false)
     expect(wrapper.find('#edit-bkm-77').exists()).toBe(true)
   })
+
+  it('ofrece filtro por sucursal y estados legibles', () => {
+    const wrapper = mount(PreventivePlansPage, { props: { data: baseData() } })
+
+    expect(wrapper.find('#plans-branch').exists()).toBe(true)
+    expect(wrapper.findAll('#plans-branch option').map((option) => option.text())).toContain('TSAARG · TSA Argentina')
+    expect(wrapper.find('#plans-state').text()).toContain('Sin datos suficientes')
+  })
+
+  it('oculta la paginación cuando no hay planes', () => {
+    const data = baseData()
+    data.plans = { ...data.plans, total: 0, items: [] }
+    const wrapper = mount(PreventivePlansPage, { props: { data } })
+
+    expect(wrapper.find('nav[aria-label="Paginación"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('No hay planes asignados')
+    expect(wrapper.text()).toContain('Ver equipos')
+  })
 })

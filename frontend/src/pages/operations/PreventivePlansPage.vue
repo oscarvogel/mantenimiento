@@ -15,6 +15,12 @@ const editingPlan = ref(null)
 const localSearch = ref(props.data.filters?.q ?? '')
 const clearUrl = computed(() => props.data.routes.index)
 const servicesUrl = computed(() => String(props.data.routes.index ?? '').replace(/\/planes(?:\?.*)?$/, '/servicios'))
+const stateOptions = [
+  ['AL_DIA', 'Al día'],
+  ['PROXIMO', 'Próximo'],
+  ['VENCIDO', 'Vencido'],
+  ['SIN_DATOS', 'Sin datos suficientes'],
+]
 
 const normalize = (value) => String(value ?? '')
   .normalize('NFD')
@@ -98,12 +104,12 @@ const closeEditModal = () => { editingPlan.value = null }
   <div>
     <PageHeading
       eyebrow="Mantenimiento preventivo"
-      title="Servicios asignados"
-      description="Consultá los servicios asignados a cada equipo. La frecuencia y la anticipación se definen una sola vez en el Servicio; acá sólo se registra la última realización del equipo."
+      title="Planes preventivos asignados"
+      description="Consultá qué mantenimiento tiene asignado cada equipo. La frecuencia se define en el Servicio y acá registrás la última realización."
     >
       <template #actions>
         <div class="flex flex-wrap gap-2">
-          <a :href="data.routes.equipmentIndex" :class="secondaryButton">
+          <a :href="data.routes.equipmentIndex" :class="primaryButton">
             <TruckIcon class="mr-2 size-5" aria-hidden="true" />Ver equipos
           </a>
           <a :href="servicesUrl" :class="secondaryButton">
@@ -113,9 +119,9 @@ const closeEditModal = () => { editingPlan.value = null }
       </template>
     </PageHeading>
 
-    <section class="overflow-hidden rounded-2xl border border-border bg-white shadow-card">
+    <section class="overflow-hidden rounded-2xl border border-border bg-surface-raised shadow-card">
       <div class="border-b border-border bg-surface-subtle p-4 sm:p-5">
-        <form method="get" :action="data.routes.index" class="grid gap-3 md:grid-cols-[minmax(15rem,1.3fr)_minmax(14rem,1fr)_minmax(11rem,.8fr)_auto] md:items-end">
+        <form method="get" :action="data.routes.index" class="grid gap-3 md:grid-cols-[minmax(15rem,1.3fr)_minmax(14rem,1fr)_minmax(12rem,.9fr)_minmax(11rem,.8fr)_auto] md:items-end">
           <FormField label="Buscar" for-id="plans-search"><input id="plans-search" v-model="localSearch" name="q" type="search" placeholder="Patente, equipo o servicio" :class="fieldClass" /></FormField>
           <FormField label="Equipo" for-id="plans-equipment">
             <select id="plans-equipment" name="equipo_id" :class="fieldClass">
@@ -123,10 +129,16 @@ const closeEditModal = () => { editingPlan.value = null }
               <option v-for="equipment in data.catalogs.equipment" :key="equipment.id" :value="equipment.id" :selected="String(data.filters.equipmentId) === String(equipment.id)">{{ equipmentLabel(equipment) }}</option>
             </select>
           </FormField>
+          <FormField label="Sucursal" for-id="plans-branch">
+            <select id="plans-branch" name="sucursal_id" :class="fieldClass">
+              <option value="">Todas</option>
+              <option v-for="branch in data.catalogs.branches" :key="branch.id" :value="branch.id" :selected="String(data.filters.branchId) === String(branch.id)">{{ branch.code }} · {{ branch.name }}</option>
+            </select>
+          </FormField>
           <FormField label="Estado" for-id="plans-state">
             <select id="plans-state" name="estado" :class="fieldClass">
               <option value="">Todos</option>
-              <option v-for="state in ['AL_DIA','PROXIMO','VENCIDO','SIN_DATOS']" :key="state" :value="state" :selected="data.filters.state === state">{{ state.replace('_', ' ') }}</option>
+              <option v-for="([value, label]) in stateOptions" :key="value" :value="value" :selected="data.filters.state === value">{{ label }}</option>
             </select>
           </FormField>
           <div class="flex gap-2"><button type="submit" :class="primaryButton">Filtrar</button><a :href="clearUrl" :class="secondaryButton">Limpiar</a></div>
@@ -135,13 +147,19 @@ const closeEditModal = () => { editingPlan.value = null }
 
       <div class="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-5">
         <div>
-          <h2 class="font-bold text-ink">Asignaciones activas</h2>
-          <p class="mt-0.5 text-xs text-ink-muted">{{ data.plans.total }} asignación(es) · {{ visiblePlans.length }} visible(s) en esta página</p>
+          <h2 class="font-bold text-ink">Planes asignados</h2>
+          <p class="mt-0.5 text-xs text-ink-muted">{{ visiblePlans.length }} {{ visiblePlans.length === 1 ? 'plan visible' : 'planes visibles' }} en esta página · {{ data.plans.total }} en total</p>
         </div>
         <a :href="data.routes.equipmentIndex" class="text-sm font-semibold text-primary hover:underline">Asignar servicios desde Equipos →</a>
       </div>
 
-      <EmptyState v-if="visiblePlans.length === 0" title="No hay servicios asignados" description="Probá limpiando los filtros o asigná un servicio desde la ficha del equipo." class="m-5" />
+      <div v-if="visiblePlans.length === 0" class="m-5 rounded-xl border border-border-subtle bg-surface-subtle">
+        <EmptyState :title="data.plans.total === 0 ? 'No hay planes asignados' : 'No encontramos planes con esos filtros'" :description="data.plans.total === 0 ? 'Asigná un servicio desde la ficha de un equipo para comenzar.' : 'Probá limpiando los filtros o seleccioná otra sucursal, equipo o estado.'" />
+        <div class="flex flex-wrap justify-center gap-2 border-t border-border-subtle px-5 pb-5 pt-4">
+          <a :href="data.routes.equipmentIndex" :class="primaryButton">Ver equipos</a>
+          <a :href="clearUrl" :class="secondaryButton">Limpiar filtros</a>
+        </div>
+      </div>
 
       <div v-else class="overflow-x-auto">
         <table class="ui-table-hover w-full min-w-[72rem] text-left text-sm">
@@ -179,7 +197,7 @@ const closeEditModal = () => { editingPlan.value = null }
                     <CsrfInput :csrf="data.csrf" />
                     <button type="submit" :class="primaryButton" :data-testid="`generate-order-${plan.id}`">Generar OT</button>
                   </form>
-                  <button v-if="data.canEdit && plan.editUrl" type="button" :class="secondaryButton" :data-testid="`edit-plan-${plan.id}`" @click="openEditModal(plan)">Última realización</button>
+                  <button v-if="data.canEdit && plan.editUrl" type="button" :class="secondaryButton" :data-testid="`edit-plan-${plan.id}`" @click="openEditModal(plan)">Actualizar última realización</button>
                 </div>
               </td>
             </tr>
@@ -187,12 +205,12 @@ const closeEditModal = () => { editingPlan.value = null }
         </table>
       </div>
 
-      <div class="border-t border-border px-4 py-4 sm:px-5"><PaginationBar :pagination="data.plans.pagination" /></div>
+        <div v-if="Number(data.plans.pagination.totalPages) > 1 && visiblePlans.length > 0" class="border-t border-border px-4 py-4 sm:px-5"><PaginationBar :pagination="data.plans.pagination" /></div>
     </section>
 
     <div v-if="editingPlan" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4" role="dialog" aria-modal="true" data-testid="edit-plan-modal" @click.self="closeEditModal">
-      <section class="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-border bg-white shadow-2xl">
-        <header class="flex items-start justify-between gap-4 border-b border-border bg-white px-5 py-4 sm:px-6">
+      <section class="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-border bg-surface-raised shadow-2xl">
+        <header class="flex items-start justify-between gap-4 border-b border-border bg-surface-raised px-5 py-4 sm:px-6">
           <div>
             <p class="text-xs font-bold uppercase tracking-wide text-primary">Última realización</p>
             <h2 class="mt-1 text-xl font-bold text-ink">{{ editingPlan.serviceName }}</h2>

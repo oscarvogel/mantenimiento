@@ -57,6 +57,20 @@ const visiblePlanCounts = computed(() => {
   }
   return counts
 })
+const attentionPlans = computed(() => (props.data.plans ?? []).filter((plan) => (plan.computedState || 'SIN_DATOS') !== 'AL_DIA'))
+const attentionCount = computed(() => (Number(props.data.pagination?.notices?.total) || 0) + attentionPlans.value.length)
+const hasPaginationRows = (pagination) => Number(pagination?.total) > 0
+const planSummary = (plan) => {
+  if ((plan.computedState || 'SIN_DATOS') === 'SIN_DATOS') return 'Falta registrar una lectura para calcular el próximo vencimiento.'
+
+  const nextValues = [
+    plan.nextKm === null || plan.nextKm === undefined ? null : `${plan.nextKm} km`,
+    plan.nextHours === null || plan.nextHours === undefined ? null : `${plan.nextHours} h`,
+    plan.nextDate === null || plan.nextDate === undefined ? null : plan.nextDate,
+  ].filter(Boolean)
+
+  return nextValues.length ? `Próximo: ${nextValues.join(' · ')}` : 'Sin próximo vencimiento informado.'
+}
 
 const toggleAction = (action) => {
   activeAction.value = activeAction.value === action ? null : action
@@ -144,21 +158,28 @@ if (initialQuery.get('ot_correctiva') === '1') {
 
     <section aria-label="Resumen operativo" class="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <article class="rounded-xl border border-danger/20 bg-danger-subtle/40 p-4"><p class="text-xs font-bold uppercase tracking-wide text-danger-strong">Avisos pendientes</p><p class="mt-2 text-3xl font-bold text-ink"><CountUp :value="Number(data.pagination.notices.total) || 0" /></p></article>
-      <article class="rounded-xl border border-warning/30 bg-warning-subtle/50 p-4"><p class="text-xs font-bold uppercase tracking-wide text-warning-foreground">Próximos en esta página</p><p class="mt-2 text-3xl font-bold text-ink"><CountUp :value="visiblePlanCounts.PROXIMO" /></p></article>
+      <article class="rounded-xl border border-warning/30 bg-warning-subtle/50 p-4"><p class="text-xs font-bold uppercase tracking-wide text-warning-foreground">Próximos servicios</p><p class="mt-2 text-3xl font-bold text-ink"><CountUp :value="visiblePlanCounts.PROXIMO" /></p></article>
       <article class="rounded-xl border border-info/20 bg-info-subtle/50 p-4"><p class="text-xs font-bold uppercase tracking-wide text-info-strong">Órdenes visibles</p><p class="mt-2 text-3xl font-bold text-ink"><CountUp :value="Number(data.pagination.orders.total) || 0" /></p></article>
       <article class="rounded-xl border border-border bg-surface-raised p-4"><p class="text-xs font-bold uppercase tracking-wide text-ink-muted">Planes sin datos</p><p class="mt-2 text-3xl font-bold text-ink"><CountUp :value="visiblePlanCounts.SIN_DATOS" /></p></article>
     </section>
 
     <section class="mb-6 rounded-xl border border-border bg-surface-raised p-4 sm:p-5" aria-labelledby="quick-actions-title">
-      <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"><div><h2 id="quick-actions-title" class="font-bold text-ink">Acciones rápidas</h2><p class="mt-1 text-sm text-ink-muted">Accedé a las tareas operativas frecuentes sin perder de vista la jornada.</p></div><div class="flex flex-wrap gap-2"><button v-if="data.can.editOrder" type="button" :class="primaryButton" aria-haspopup="dialog" @click="openCorrectiveModal()"><PlusIcon class="mr-2 size-4" aria-hidden="true" />Registrar correctivo realizado<span class="sr-only"> · Nueva OT correctiva</span></button><a v-if="data.can.registerReading" :href="quickReadingsUrl" :class="secondaryButton">Registrar lectura</a><a :href="data.routes.equipmentIndex" :class="secondaryButton">Administrar equipos</a></div></div>
+      <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"><div><h2 id="quick-actions-title" class="font-bold text-ink">Acciones rápidas</h2><p class="mt-1 text-sm text-ink-muted">Accedé a las tareas operativas frecuentes sin perder de vista la jornada.</p></div><div class="flex flex-wrap gap-2"><a v-if="data.can.registerReading" :href="quickReadingsUrl" :class="primaryButton">Registrar lectura</a><button v-if="data.can.editOrder" type="button" :class="data.can.registerReading ? secondaryButton : primaryButton" aria-haspopup="dialog" @click="openCorrectiveModal()"><PlusIcon class="mr-2 size-4" aria-hidden="true" />Registrar correctivo realizado<span class="sr-only"> · Nueva OT correctiva</span></button></div></div>
     </section>
 
-    <div class="mb-6 grid gap-6 xl:grid-cols-[minmax(0,1.65fr)_minmax(18rem,0.8fr)]">
-      <PanelCard title="Atención requerida" :count="data.pagination.notices.total">
-        <EmptyState v-if="data.notices.length === 0 && data.plans.length === 0" title="No hay atención pendiente" description="Los vencimientos y planes próximos aparecerán acá." />
-        <ul v-if="data.notices.length" class="divide-y divide-border-subtle"><li v-for="notice in data.notices" :key="notice.id" class="flex flex-col gap-4 py-4 first:pt-0 lg:flex-row lg:items-center lg:justify-between"><div class="flex items-start gap-3"><StatusBadge status="VENCIDO" /><div><strong class="text-ink">{{ notice.equipmentCode }} · {{ notice.serviceName }}</strong><p class="mt-1 text-sm text-danger-strong">Vencido por {{ notice.triggerCriteria }}</p></div></div><form v-if="data.can.generateOrder" method="post" :action="notice.generateOrderUrl" data-confirm data-confirm-title="¿Generar la orden de trabajo?" data-confirm-text="Se creará una orden de trabajo para este vencimiento y su responsable." data-confirm-button="Generar OT" class="flex flex-col gap-2 sm:flex-row"><CsrfInput :csrf="data.csrf" /><label class="sr-only" :for="`notice-owner-${notice.id}`">Responsable</label><select :id="`notice-owner-${notice.id}`" name="responsable_usuario_id" :class="fieldClass"><option v-for="user in data.catalogs.users" :key="user.id" :value="user.id">{{ user.name }}</option></select><button type="submit" :class="primaryButton">Generar OT</button></form></li></ul>
-        <div v-if="data.plans.length" class="mt-2 divide-y divide-border-subtle border-t border-border-subtle"><article v-for="plan in data.plans" :key="plan.id" class="flex items-center justify-between gap-3 py-4"><div class="flex items-center gap-3"><EquipmentThumbnail :url="plan.photoUrl" :code="plan.equipmentCode" size="sm" /><div><strong class="text-ink">{{ plan.equipmentCode }}</strong><p class="mt-1 text-sm text-ink-muted">{{ plan.serviceName }}</p><p class="mt-1 text-xs text-ink-subtle">Próximo: <span v-if="plan.nextKm !== null">{{ plan.nextKm }} km </span><span v-if="plan.nextHours !== null">{{ plan.nextHours }} h </span><span v-if="plan.nextDate !== null">{{ plan.nextDate }}</span></p></div></div><StatusBadge :status="plan.computedState || 'SIN_DATOS'" /></article></div>
-        <PaginationBar :pagination="data.pagination.notices" /><PaginationBar :pagination="data.pagination.plans" />
+    <div class="mb-6 grid items-start gap-6 xl:grid-cols-[minmax(0,1.65fr)_minmax(18rem,0.8fr)]">
+      <PanelCard title="Atención requerida" :count="attentionCount">
+        <EmptyState v-if="data.notices.length === 0 && attentionPlans.length === 0" title="No hay atención pendiente" description="Los vencimientos y planes que requieran revisión aparecerán acá." />
+        <section v-if="data.notices.length" aria-labelledby="maintenance-notices-title">
+          <h3 id="maintenance-notices-title" class="mb-2 text-xs font-bold uppercase tracking-wide text-ink-muted">Avisos vencidos</h3>
+          <ul class="divide-y divide-border-subtle"><li v-for="notice in data.notices" :key="notice.id" class="flex flex-col gap-4 py-4 first:pt-0 lg:flex-row lg:items-center lg:justify-between"><div class="flex items-start gap-3"><StatusBadge status="VENCIDO" /><div><strong class="text-ink">{{ notice.equipmentCode }} · {{ notice.serviceName }}</strong><p class="mt-1 text-sm text-danger-strong">Vencido por {{ notice.triggerCriteria }}</p></div></div><form v-if="data.can.generateOrder" method="post" :action="notice.generateOrderUrl" data-confirm data-confirm-title="¿Generar la orden de trabajo?" data-confirm-text="Se creará una orden de trabajo para este vencimiento y su responsable." data-confirm-button="Generar OT" class="flex flex-col gap-2 sm:flex-row"><CsrfInput :csrf="data.csrf" /><label class="sr-only" :for="`notice-owner-${notice.id}`">Responsable</label><select :id="`notice-owner-${notice.id}`" name="responsable_usuario_id" :class="fieldClass"><option v-for="user in data.catalogs.users" :key="user.id" :value="user.id">{{ user.name }}</option></select><button type="submit" :class="primaryButton">Generar OT</button></form></li></ul>
+          <PaginationBar v-if="hasPaginationRows(data.pagination.notices)" :pagination="data.pagination.notices" compact-single-page />
+        </section>
+        <section v-if="attentionPlans.length" class="mt-5 border-t border-border-subtle pt-5" aria-labelledby="maintenance-plans-title">
+          <h3 id="maintenance-plans-title" class="mb-2 text-xs font-bold uppercase tracking-wide text-ink-muted">Planes a revisar</h3>
+          <div class="divide-y divide-border-subtle"><article v-for="plan in attentionPlans" :key="plan.id" class="flex flex-col items-start justify-between gap-3 py-4 first:pt-0 sm:flex-row sm:items-center"><div class="flex items-start gap-3"><EquipmentThumbnail :url="plan.photoUrl" :code="plan.equipmentCode" size="sm" /><div><strong class="text-ink">{{ plan.equipmentCode }}</strong><p class="mt-1 text-sm text-ink-muted">{{ plan.serviceName }}</p><p class="mt-1 text-xs text-ink-subtle">{{ planSummary(plan) }}</p></div></div><div class="flex shrink-0 items-center gap-3"><a v-if="plan.computedState === 'SIN_DATOS' && data.can.registerReading" :href="quickReadingsUrl" class="text-sm font-semibold text-primary hover:text-primary-hover">Registrar lectura</a><StatusBadge :status="plan.computedState || 'SIN_DATOS'" /></div></article></div>
+          <PaginationBar v-if="hasPaginationRows(data.pagination.plans)" :pagination="data.pagination.plans" compact-single-page />
+        </section>
       </PanelCard>
 
       <PanelCard title="Órdenes de trabajo" :count="data.pagination.orders.total">

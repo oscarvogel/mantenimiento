@@ -19,12 +19,19 @@ final class CodeIgniterServiceTypeGateway implements ServiceTypeGateway
 
     public function findActiveDefinition(int $companyId, int $serviceTypeId): ?array
     {
-        $row = $this->db->table('tipos_servicio')
+        $builder = $this->db->table('tipos_servicio')
             ->select('id, intervalo_km, intervalo_horas, intervalo_dias, anticipacion_km, anticipacion_horas, anticipacion_dias, prioridad')
             ->where('id', $serviceTypeId)
-            ->where('empresa_id', $companyId)
-            ->where('activo', 1)
-            ->get()->getRowArray();
+            ->where('activo', 1);
+
+        if ($this->db->fieldExists('empresa_id', 'tipos_servicio')) {
+            $builder->groupStart()
+                ->where('empresa_id', $companyId)
+                ->orWhere('empresa_id', null)
+                ->groupEnd();
+        }
+
+        $row = $builder->get()->getRowArray();
 
         if ($row === null) {
             return null;
