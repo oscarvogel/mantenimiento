@@ -25,6 +25,29 @@ const toneClass = (tone) => ({
       description="Configurá la infraestructura de envío una sola vez. Los destinatarios siguen definiéndose por empresa y usuario."
     />
 
+    <section
+      v-if="data.migration?.required"
+      class="rounded-xl border border-warning/40 bg-warning-subtle p-5 shadow-card sm:p-6"
+    >
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 class="font-semibold text-warning-strong">Falta preparar la base de datos</h2>
+          <p class="mt-1 text-sm text-warning-strong">
+            Esta función necesita una migración nueva. No hace falta consola: podés aplicarla desde acá.
+          </p>
+        </div>
+        <form method="post" :action="data.actions.migrate">
+          <CsrfField :csrf="data.csrf" />
+          <button
+            type="submit"
+            class="inline-flex min-h-11 items-center justify-center rounded-lg bg-warning px-4 py-2.5 text-sm font-semibold text-warning-foreground"
+          >
+            Aplicar migraciones
+          </button>
+        </form>
+      </div>
+    </section>
+
     <div class="rounded-xl border border-border bg-surface-raised px-5 py-4 text-sm text-ink-muted shadow-card">
       <strong class="text-ink">Origen actual:</strong>
       {{ data.settings.source === 'database' ? 'configuración guardada en el sistema' : 'variables de entorno (.env)' }}.
