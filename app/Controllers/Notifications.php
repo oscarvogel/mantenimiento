@@ -21,6 +21,7 @@ final class Notifications extends BaseController
     {
         try {
             $actor = $this->actor();
+            service('operationalNotificationCollector')->execute();
             $page = service('notificationCenter')->execute($actor, max(1, (int) $this->request->getGet('page')), (int) $this->request->getGet('per_page'));
             $preferences = service('notificationPreferences')->list($actor);
 
@@ -53,6 +54,7 @@ final class Notifications extends BaseController
     public function summary(): ResponseInterface
     {
         try {
+            service('operationalNotificationCollector')->execute();
             $page = service('notificationCenter')->execute($this->actor(), 1, 5);
             return $this->response->setJSON(['unread' => $page->unread, 'items' => $page->items]);
         } catch (Throwable) {
