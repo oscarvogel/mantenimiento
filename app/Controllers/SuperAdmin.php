@@ -14,7 +14,6 @@ use App\Application\Organization\UpdateCompanyHandler;
 use App\Infrastructure\Identity\SessionActorContext;
 use App\Infrastructure\Notifications\CodeIgniterCompanyNotificationRecipientResolver;
 use App\Infrastructure\Notifications\CodeIgniterEmailNotificationGateway;
-use App\Infrastructure\Notifications\SystemNotificationClock;
 use App\Presentation\PageSize;
 use CodeIgniter\HTTP\RedirectResponse;
 use DomainException;
@@ -152,7 +151,7 @@ final class SuperAdmin extends BaseController
             if ($recipient === null) {
                 throw new DomainException('La empresa no tiene un correo de notificaciones habilitado. Guardá un destinatario válido y habilitá el envío antes de probar.');
             }
-            (new CodeIgniterEmailNotificationGateway(new SystemNotificationClock()))->sendDigest($recipient, [[
+            service('globalNotificationEmailGateway')->sendDigest($recipient, [[
                 'titulo' => 'Correo de prueba',
                 'resumen' => 'La configuración SMTP y el destinatario de mantenimiento funcionan correctamente para esta empresa.',
                 'url' => base_url('superadmin'),
