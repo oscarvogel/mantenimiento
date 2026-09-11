@@ -78,6 +78,29 @@ final class SuperAdmin extends BaseController
         return $this->renderApp($actor, 'superadmin', 'superadmin', 'Administración global', $payload);
     }
 
+    public function applyPendingMigrations(): RedirectResponse
+    {
+        try {
+            $runner = service('migrations');
+            $result = $runner->latest();
+            if ($result === false) {
+                throw new \RuntimeException('CodeIgniter informó fallo al ejecutar las migraciones.');
+            }
+
+            log_message('notice', 'Superadministrador {actor} aplicó migraciones pendientes desde la interfaz.', [
+                'actor' => $this->actor()->userId(),
+            ]);
+
+            return redirect()->to('/superadmin')->with('success', 'Migraciones pendientes aplicadas correctamente.');
+        } catch (Throwable $exception) {
+            log_message('error', 'Falló aplicación manual de migraciones desde Superadmin: {message}', [
+                'message' => $exception->getMessage(),
+            ]);
+
+            return redirect()->to('/superadmin')->with('error', 'No se pudieron aplicar las migraciones pendientes.');
+        }
+    }
+
     public function createCompany(): RedirectResponse
     {
         if (! $this->validate([
