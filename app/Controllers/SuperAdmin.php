@@ -13,7 +13,6 @@ use App\Application\Organization\GetOrganizationOverview;
 use App\Application\Organization\UpdateCompanyHandler;
 use App\Infrastructure\Identity\SessionActorContext;
 use App\Infrastructure\Notifications\CodeIgniterCompanyNotificationRecipientResolver;
-use App\Infrastructure\Notifications\CodeIgniterEmailNotificationGateway;
 use App\Presentation\PageSize;
 use CodeIgniter\HTTP\RedirectResponse;
 use DomainException;
