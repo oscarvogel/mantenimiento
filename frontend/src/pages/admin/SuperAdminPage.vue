@@ -1,5 +1,5 @@
 <script setup>
-import { BuildingOffice2Icon, IdentificationIcon, PlusIcon, ShieldCheckIcon, UserGroupIcon, UserPlusIcon } from '@heroicons/vue/24/outline'
+import { BuildingOffice2Icon, ChatBubbleLeftRightIcon, IdentificationIcon, PlusIcon, ShieldCheckIcon, UserGroupIcon, UserPlusIcon } from '@heroicons/vue/24/outline'
 import AdminMetric from './components/AdminMetric.vue'
 import AdminPageHeading from './components/AdminPageHeading.vue'
 import CsrfField from './components/CsrfField.vue'
@@ -48,6 +48,58 @@ const isRoleAssigned = (user, roleId) => user.assignedRoleIds.includes(Number(ro
           Ejecutar ahora
         </button>
       </form>
+    </section>
+
+    <section v-if="data.permissions.companiesEdit && data.whatsapp" class="mb-8 overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card" aria-labelledby="whatsapp-config-title">
+      <div class="flex items-center gap-3 border-b border-border-subtle bg-surface-subtle px-5 py-4 sm:px-6">
+        <span class="flex size-10 items-center justify-center rounded-lg bg-primary-subtle text-primary">
+          <ChatBubbleLeftRightIcon class="size-5" aria-hidden="true" />
+        </span>
+        <div class="min-w-0">
+          <h2 id="whatsapp-config-title" class="font-semibold text-ink">Configuración de WhatsApp</h2>
+          <p class="text-sm text-ink-muted">Estado del gateway central usado para enviar avisos a choferes.</p>
+        </div>
+      </div>
+
+      <div class="grid gap-4 p-5 sm:grid-cols-2 sm:p-6 lg:grid-cols-4">
+        <div class="rounded-lg border border-border bg-surface-subtle p-4">
+          <span class="text-xs font-semibold uppercase tracking-wide text-ink-subtle">Canal</span>
+          <p class="mt-1 text-sm font-semibold text-ink">{{ data.whatsapp.enabled ? 'Habilitado' : 'Deshabilitado' }}</p>
+        </div>
+        <div class="rounded-lg border border-border bg-surface-subtle p-4">
+          <span class="text-xs font-semibold uppercase tracking-wide text-ink-subtle">API key</span>
+          <p class="mt-1 text-sm font-semibold text-ink">{{ data.whatsapp.apiKeyConfigured ? 'Configurada' : 'Sin configurar' }}</p>
+        </div>
+        <div class="rounded-lg border border-border bg-surface-subtle p-4">
+          <span class="text-xs font-semibold uppercase tracking-wide text-ink-subtle">Instancia emisora</span>
+          <p class="mt-1 break-all text-sm font-semibold text-ink">{{ data.whatsapp.instanceId || 'Sin definir' }}</p>
+        </div>
+        <div class="rounded-lg border border-border bg-surface-subtle p-4">
+          <span class="text-xs font-semibold uppercase tracking-wide text-ink-subtle">Estado</span>
+          <p class="mt-1 text-sm font-semibold" :class="data.whatsapp.available ? 'text-success' : 'text-danger'">
+            {{ data.whatsapp.available ? 'Lista para enviar' : 'Configuración incompleta' }}
+          </p>
+        </div>
+
+        <div class="sm:col-span-2 lg:col-span-4 rounded-lg border border-border bg-surface-subtle p-4">
+          <p class="text-sm font-medium text-ink">URL del gateway</p>
+          <p class="mt-1 break-all font-mono text-xs text-ink-muted">{{ data.whatsapp.apiUrl || 'Sin configurar' }}</p>
+          <p class="mt-2 text-xs leading-5 text-ink-muted">
+            La API key no se muestra por seguridad. El número emisor pertenece a la instancia conectada en Vogel WhatsApp API; Mantenimiento sólo selecciona la instancia por <code>instanceId</code>.
+          </p>
+        </div>
+
+        <form method="post" :action="data.whatsapp.testAction" class="sm:col-span-2 lg:col-span-4 flex flex-col gap-3 rounded-lg border border-border p-4 sm:flex-row sm:items-end">
+          <CsrfField :csrf="data.csrf" />
+          <label class="block flex-1">
+            <span class="mb-1.5 block text-sm font-medium text-ink">Celular para prueba</span>
+            <input name="telefono_prueba" inputmode="tel" maxlength="30" placeholder="Ej. 3764123456 o 5493764123456" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          </label>
+          <button type="submit" :disabled="!data.whatsapp.available" class="inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm disabled:cursor-not-allowed disabled:opacity-50">
+            Enviar prueba
+          </button>
+        </form>
+      </div>
     </section>
 
     <section v-if="data.permissions.companiesEdit" class="mb-8 overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card" aria-labelledby="create-company-title">
