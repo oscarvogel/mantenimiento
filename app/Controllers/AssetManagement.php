@@ -59,10 +59,6 @@ final class AssetManagement extends BaseController
                 'status' => $this->nullableString($this->request->getGet('estado')),
                 'page' => max(1, (int) $this->request->getGet('page')),
                 'per_page' => PageSize::normalize($this->request->getGet('per_page')),
-                'brand_page' => max(1, (int) $this->request->getGet('brand_page')),
-                'brand_per_page' => PageSize::normalize($this->request->getGet('brand_per_page')),
-                'model_page' => max(1, (int) $this->request->getGet('model_page')),
-                'model_per_page' => PageSize::normalize($this->request->getGet('model_per_page')),
             ];
             $equipment = $this->equipmentList()->execute($actor, new EquipmentListQuery(
                 $filters['q'] === '' ? null : $filters['q'],
@@ -79,34 +75,55 @@ final class AssetManagement extends BaseController
                 $actor,
                 array_map(static fn (array $row): int => (int) $row['id'], $equipment['items']),
             );
-            $management = $canEdit
-                ? $this->catalog()->paginateManagement(
-                    $actor,
-                    $filters['brand_page'],
-                    $filters['brand_per_page'],
-                    $filters['model_page'],
-                    $filters['model_per_page'],
-                )
-                : [];
-
             return $this->renderApp(
                 $actor,
                 'equipment',
                 'assets-index',
-                'Equipos y catálogos',
+                'Equipos',
                 service('operationsPayload')->assets(
                     $equipment,
                     $this->catalog()->list($actor, $canEdit),
                     $filters,
                     $canEdit,
                     $this->availableBranches()->execute($actor),
-                    $management,
+                    [],
                     $photos,
                     $canEditPlans,
                 ),
             );
         } catch (Throwable $exception) {
             return $this->failure($exception, '/dashboard');
+        }
+    }
+
+    public function catalogs(): string|RedirectResponse
+    {
+        try {
+            $actor = $this->actor();
+            $brandPage = max(1, (int) $this->request->getGet('brand_page'));
+            $brandPerPage = PageSize::normalize($this->request->getGet('brand_per_page'));
+            $modelPage = max(1, (int) $this->request->getGet('model_page'));
+            $modelPerPage = PageSize::normalize($this->request->getGet('model_per_page'));
+            $management = $this->catalog()->paginateManagement(
+                $actor,
+                $brandPage,
+                $brandPerPage,
+                $modelPage,
+                $modelPerPage,
+            );
+
+            return $this->renderApp(
+                $actor,
+                'masters-equipment',
+                'equipment-catalogs-master',
+                'Catálogos de equipos',
+                service('operationsPayload')->equipmentCatalogs(
+                    $this->catalog()->list($actor, true),
+                    $management,
+                ),
+            );
+        } catch (Throwable $exception) {
+            return $this->failure($exception, '/mantenimiento/equipos');
         }
     }
 
@@ -268,9 +285,9 @@ final class AssetManagement extends BaseController
         try {
             $operation();
 
-            return redirect()->to('/mantenimiento/equipos')->with('success', $message);
+            return redirect()->to('/mantenimiento/maestros/equipos')->with('success', $message);
         } catch (Throwable $exception) {
-            return $this->failure($exception, '/mantenimiento/equipos');
+            return $this->failure($exception, '/mantenimiento/maestros/equipos');
         }
     }
 
