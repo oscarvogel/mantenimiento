@@ -33,6 +33,22 @@ const formatEntry = (order) => {
   return values.length ? values.join(' · ') : 'Sin lectura de ingreso'
 }
 const formatMoney = (value) => Number(value ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+const currencyPrefix = (currency) => {
+  const code = String(currency || 'ARS').toUpperCase()
+  if (code === 'ARS') return '$'
+  if (code === 'BRL') return 'R$'
+  return code
+}
+const formatCurrencyMoney = (value, currency) => `${currencyPrefix(currency)} ${formatMoney(value)}`
+const hasForeignHistoricalCost = (order) => {
+  const historical = order.historicalCost
+  return Boolean(historical?.currency && historical.currency !== 'ARS' && historical.originalAmount !== null)
+}
+const formatExchangeRateDate = (value) => {
+  if (!value) return ''
+  const [year, month, day] = String(value).split('-')
+  return year && month && day ? `${day}/${month}/${year}` : value
+}
 const isExpanded = (orderId) => expandedOrders.value.includes(orderId)
 const toggleDetail = (orderId) => {
   expandedOrders.value = isExpanded(orderId)
@@ -134,8 +150,20 @@ for (const order of props.data.orders ?? []) closeStateFor(order)
             <h4 class="font-bold text-ink">Tareas y costos</h4>
             <ul v-if="order.tasks.length" class="mt-3 space-y-2 text-sm"><li v-for="task in order.tasks" :key="task.id"><strong class="text-ink">{{ task.description }}</strong><span class="text-ink-muted"> · {{ task.status }}</span><p v-if="task.workPerformed" class="mt-1 text-ink-muted">{{ task.workPerformed }}</p></li></ul>
             <p v-else class="mt-3 text-sm text-ink-muted">Esta orden no tiene tareas preventivas asociadas.</p>
-            <p class="mt-4 border-t border-border-subtle pt-3 text-sm text-ink-muted">Costos: mano de obra $ {{ formatMoney(order.costs.labor) }} · repuestos $ {{ formatMoney(order.costs.parts) }} · otros $ {{ formatMoney(order.costs.other) }}</p>
-            <p class="mt-1 font-bold text-ink">Total: $ {{ formatMoney(order.costs.total) }}</p>
+            <template v-if="hasForeignHistoricalCost(order)">
+              <p class="mt-4 border-t border-border-subtle pt-3 text-sm text-ink-muted">Costos originales: mano de obra {{ formatCurrencyMoney(order.costs.labor, order.historicalCost.currency) }} · repuestos {{ formatCurrencyMoney(order.costs.parts, order.historicalCost.currency) }} · otros {{ formatCurrencyMoney(order.costs.other, order.historicalCost.currency) }}</p>
+              <p class="mt-1 font-bold text-ink">Total original: {{ formatCurrencyMoney(order.historicalCost.originalAmount, order.historicalCost.currency) }}</p>
+              <dl class="mt-3 grid gap-1 text-sm">
+                <div v-if="order.historicalCost.exchangeRateArs !== null"><dt class="inline text-ink-muted">Tipo de cambio histórico: </dt><dd class="inline font-semibold text-ink">1 {{ order.historicalCost.currency }} = $ {{ formatMoney(order.historicalCost.exchangeRateArs) }} ARS</dd></div>
+                <div v-if="order.historicalCost.exchangeRateDate"><dt class="inline text-ink-muted">Fecha cotización: </dt><dd class="inline text-ink">{{ formatExchangeRateDate(order.historicalCost.exchangeRateDate) }}</dd></div>
+                <div v-if="order.historicalCost.exchangeRateSource"><dt class="inline text-ink-muted">Origen cotización: </dt><dd class="inline text-ink">{{ order.historicalCost.exchangeRateSource }}</dd></div>
+              </dl>
+              <p v-if="order.historicalCost.amountArs !== null" class="mt-2 font-bold text-ink">Total histórico ARS: $ {{ formatMoney(order.historicalCost.amountArs) }}</p>
+            </template>
+            <template v-else>
+              <p class="mt-4 border-t border-border-subtle pt-3 text-sm text-ink-muted">Costos: mano de obra $ {{ formatMoney(order.costs.labor) }} · repuestos $ {{ formatMoney(order.costs.parts) }} · otros $ {{ formatMoney(order.costs.other) }}</p>
+              <p class="mt-1 font-bold text-ink">Total: $ {{ formatMoney(order.costs.total) }}</p>
+            </template>
           </section>
         </div>
       </article>
