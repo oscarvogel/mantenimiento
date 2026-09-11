@@ -52,6 +52,7 @@ final class VogelWhatsAppApiGateway implements WhatsAppNotificationGateway
         string $externalRef,
         ?string $actorId = null,
         ?string $actorName = null,
+        ?string $instanceId = null,
     ): array {
         if (! $this->available()) {
             throw new RuntimeException('El canal WhatsApp no está configurado o está deshabilitado.');
@@ -62,8 +63,13 @@ final class VogelWhatsAppApiGateway implements WhatsAppNotificationGateway
             throw new RuntimeException('El número de WhatsApp no tiene un formato válido.');
         }
 
+        $effectiveInstanceId = trim((string) ($instanceId ?? $this->instanceId));
+        if ($effectiveInstanceId === '') {
+            throw new RuntimeException('No se definió una instancia de WhatsApp para el envío.');
+        }
+
         $url = rtrim($this->apiUrl, '/')
-            . '/api/v1/instances/' . rawurlencode($this->instanceId) . '/messages';
+            . '/api/v1/instances/' . rawurlencode($effectiveInstanceId) . '/messages';
 
         $payload = [
             'phone' => $normalized,
