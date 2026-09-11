@@ -1,5 +1,6 @@
 <script setup>
-import { CheckCircleIcon, XCircleIcon } from '@heroicons/vue/24/outline'
+import { CheckCircleIcon, ExclamationTriangleIcon, XCircleIcon, XMarkIcon } from '@heroicons/vue/24/outline'
+import { ref } from 'vue'
 import CsrfInput from './components/CsrfInput.vue'
 import CountUp from '../../components/CountUp.vue'
 import EmptyState from './components/EmptyState.vue'
@@ -10,6 +11,39 @@ import StatusBadge from './components/StatusBadge.vue'
 import { dangerButton, formatNumberEs, primaryButton } from './helpers.js'
 
 defineProps({ data: { type: Object, required: true } })
+
+const confirmForm = ref(null)
+const cancelForm = ref(null)
+const pendingAction = ref(null)
+
+const openConfirmation = (action) => {
+  pendingAction.value = action
+}
+
+const closeConfirmation = () => {
+  pendingAction.value = null
+}
+
+const submitPendingAction = () => {
+  const form = pendingAction.value === 'confirm' ? confirmForm.value : cancelForm.value
+  pendingAction.value = null
+  form?.requestSubmit()
+}
+
+const confirmationCopy = () => pendingAction.value === 'confirm'
+  ? {
+      title: '¿Confirmar la importación?',
+      text: 'Las filas válidas se persistirán en el sistema. Las filas con error no se importarán.',
+      button: 'Confirmar importación',
+      danger: false,
+    }
+  : {
+      title: '¿Cancelar el borrador?',
+      text: 'El borrador se descartará sin persistir filas.',
+      button: 'Cancelar borrador',
+      danger: true,
+    }
+
 const labels = { codigo: 'Código interno', code: 'Código interno', patente: 'Patente', plate: 'Patente', sucursal_codigo: 'Sucursal', branch_code: 'Sucursal', tipo_equipo: 'Tipo de equipo', marca: 'Marca', modelo: 'Modelo', anio: 'Año', fecha_alta: 'Fecha de alta', registered_at: 'Fecha de alta', equipo_codigo: 'Equipo', equipo_code: 'Equipo', fecha_lectura: 'Fecha de lectura', recorded_at: 'Fecha de lectura', kilometraje: 'Kilometraje', kilometers: 'Kilometraje', horometro: 'Horómetro', hours: 'Horómetro' }
 const humanRows = (row) => Object.entries(row.normalizedData ?? {}).filter(([key, value]) => labels[key] && value !== null && value !== '').map(([key, value]) => ({ label: labels[key], value: typeof value === 'number' ? formatNumberEs(value, key.includes('hora') || key === 'hours' ? 1 : 0) : value }))
 const issueLabel = (field) => labels[field] ?? field
@@ -26,13 +60,68 @@ const issueLabel = (field) => labels[field] ?? field
     </section>
 
     <div v-if="data.canMutate && data.header.status === 'BORRADOR_VALIDADO'" class="mb-6 flex flex-col gap-2 sm:flex-row">
-      <form method="post" :action="data.routes.confirm" data-confirm data-confirm-title="¿Confirmar la importación?" data-confirm-text="Las filas válidas se persistirán en el sistema. Esta acción no se puede deshacer." data-confirm-button="Confirmar importación">
-        <CsrfInput :csrf="data.csrf" /><button type="submit" :disabled="data.header.validRows === 0" :class="primaryButton"><CheckCircleIcon class="mr-2 size-5" aria-hidden="true" />Confirmar importación</button>
+      <form ref="confirmForm" method="post" :action="data.routes.confirm">
+        <CsrfInput :csrf="data.csrf" />
+        <button type="button" :disabled="data.header.validRows === 0" :class="primaryButton" @click="openConfirmation('confirm')">
+          <CheckCircleIcon class="mr-2 size-5" aria-hidden="true" />Confirmar importación
+        </button>
       </form>
-      <form method="post" :action="data.routes.cancel" data-confirm data-confirm-title="¿Cancelar el borrador?" data-confirm-text="Las filas validades se descartarán sin persistir nada." data-confirm-button="Cancelar borrador" data-confirm-danger="true">
-        <CsrfInput :csrf="data.csrf" /><button type="submit" :class="dangerButton"><XCircleIcon class="mr-2 size-5" aria-hidden="true" />Cancelar borrador</button>
+      <form ref="cancelForm" method="post" :action="data.routes.cancel">
+        <CsrfInput :csrf="data.csrf" />
+        <button type="button" :class="dangerButton" @click="openConfirmation('cancel')">
+          <XCircleIcon class="mr-2 size-5" aria-hidden="true" />Cancelar borrador
+        </button>
       </form>
     </div>
+
+    <Teleport to="body">
+      <div
+        v-if="pendingAction"
+        class="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/45 p-4"
+        role="presentation"
+        @click.self="closeConfirmation"
+        @keydown.esc.window="closeConfirmation"
+      >
+        <section
+          class="relative w-full max-w-md rounded-2xl border border-border bg-white p-6 shadow-2xl"
+          role="dialog"
+          aria-modal="true"
+          :aria-labelledby="`import-confirm-title-${pendingAction}`"
+        >
+          <button
+            type="button"
+            class="absolute right-4 top-4 rounded-lg p-1.5 text-ink-muted transition hover:bg-surface-subtle hover:text-ink"
+            aria-label="Cerrar"
+            @click="closeConfirmation"
+          >
+            <XMarkIcon class="size-6" aria-hidden="true" />
+          </button>
+
+          <div class="mx-auto flex size-16 items-center justify-center rounded-full bg-warning-soft text-warning-strong">
+            <ExclamationTriangleIcon class="size-9" aria-hidden="true" />
+          </div>
+          <h2 :id="`import-confirm-title-${pendingAction}`" class="mt-5 text-center text-2xl font-bold text-ink">
+            {{ confirmationCopy().title }}
+          </h2>
+          <p class="mx-auto mt-3 max-w-sm text-center leading-6 text-ink-muted">
+            {{ confirmationCopy().text }}
+          </p>
+
+          <div class="mt-7 flex justify-end gap-3">
+            <button type="button" class="rounded-lg border border-border bg-white px-4 py-2.5 font-semibold text-ink hover:bg-surface-subtle" @click="closeConfirmation">
+              Volver
+            </button>
+            <button
+              type="button"
+              :class="confirmationCopy().danger ? dangerButton : primaryButton"
+              @click="submitPendingAction"
+            >
+              {{ confirmationCopy().button }}
+            </button>
+          </div>
+        </section>
+      </div>
+    </Teleport>
 
     <PanelCard title="Filas validadas" :count="data.rows.total" flush>
       <EmptyState v-if="data.rows.items.length === 0" title="No hay filas visibles" description="No hay resultados dentro de tu alcance para esta página." />
