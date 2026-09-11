@@ -79,11 +79,10 @@ final class VogelWhatsAppApiGateway implements WhatsAppNotificationGateway
         }
 
         try {
-            $client = service('curlrequest', [
+            $client = service('curlrequest');
+            $response = $client->post($url, [
                 'timeout' => max(1, $this->timeoutSeconds),
                 'http_errors' => false,
-            ], false);
-            $response = $client->post($url, [
                 'headers' => [
                     'x-api-key' => $this->apiKey,
                     'Accept' => 'application/json',
