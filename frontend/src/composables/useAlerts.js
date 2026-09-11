@@ -22,6 +22,7 @@ const alertDefaults = {
   padding: '1.5rem',
   showCloseButton: true,
   focusConfirm: true,
+  animation: false,
   allowOutsideClick: () => !Swal.isLoading(),
   allowEscapeKey: true,
 }
@@ -33,12 +34,6 @@ const reduceAnimations = (options, fallback) => ({
   ...(fallback && { timer: undefined, timerProgressBar: false }),
 })
 
-const wireDismissControls = (popup) => {
-  const close = () => Swal.close()
-  popup?.querySelector('.swal2-confirm')?.addEventListener('click', close, { once: true })
-  popup?.querySelector('.swal2-close')?.addEventListener('click', close, { once: true })
-}
-
 const alert = (icon, title, text, options = {}) =>
   Swal.fire({
     icon,
@@ -46,10 +41,6 @@ const alert = (icon, title, text, options = {}) =>
     text: text || undefined,
     ...alertDefaults,
     ...(reducedMotion() ? reduceAnimations(options, icon === 'success') : options),
-    didOpen: (popup) => {
-      wireDismissControls(popup)
-      if (typeof options.didOpen === 'function') options.didOpen(popup)
-    },
   })
 
 export function useAlerts() {
@@ -97,6 +88,7 @@ export function useAlerts() {
         padding: '1.5rem',
         showCloseButton: true,
         focusConfirm: true,
+        animation: false,
         allowOutsideClick: () => !Swal.isLoading(),
         allowEscapeKey: true,
         ...(reducedMotion() && { showClass: { popup: '' }, hideClass: { popup: '' } }),
