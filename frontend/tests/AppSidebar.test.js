@@ -7,6 +7,7 @@ const navigation = [
   { key: 'equipment', label: 'Equipos', href: '/mantenimiento/equipos', icon: 'truck', active: true },
   { key: 'imports', label: 'Importaciones', href: '/mantenimiento/importaciones', icon: 'upload' },
   { key: 'reports', label: 'Reportes', href: '/reportes', icon: 'chart' },
+  { key: 'masters-expirations', label: 'Tipos de vencimiento', href: '/mantenimiento/maestros/vencimientos', icon: 'calendar' },
   { key: 'branches', label: 'Sucursales', href: '/administracion/sucursales', icon: 'branches' },
 ]
 
@@ -17,6 +18,7 @@ describe('AppSidebar', () => {
     expect(wrapper.findAll('nav section h2').map((node) => node.text())).toEqual([
       'Operación',
       'Gestión',
+      'Maestros',
       'Administración',
     ])
     expect(wrapper.findAll('nav a')).toHaveLength(navigation.length)

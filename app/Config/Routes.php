@@ -128,7 +128,9 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->get('empleados/(:num)/foto', 'Employees::photo/$1', ['filter' => 'permission:empleados.ver']);
     $routes->post('empleados/(:num)/baja', 'Employees::terminate/$1', ['filter' => 'permission:empleados.editar']);
 
+    $routes->get('maestros/vencimientos', 'Expirations::typesIndex');
     $routes->post('vencimientos/tipos', 'Expirations::createType');
+    $routes->post('vencimientos/tipos/(:num)', 'Expirations::updateType/$1');
     $routes->post('vencimientos/tipos/(:num)/estado', 'Expirations::toggleType/$1');
     $routes->post('vencimientos', 'Expirations::create');
     $routes->post('vencimientos/(:num)', 'Expirations::update/$1');

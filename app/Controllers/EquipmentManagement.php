@@ -40,6 +40,7 @@ use App\Application\Measurement\CorrectReadingHandler;
 use App\Application\Measurement\ListReadingHistoryHandler;
 use App\Application\Measurement\ListReadingHistoryQuery;
 use App\Infrastructure\Identity\SessionActorContext;
+use App\Infrastructure\Expirations\CodeIgniterExpirationReadModel;
 use App\Infrastructure\WorkOrders\CodeIgniterEquipmentWorkOrderEvidenceReadModel;
 use App\Infrastructure\WorkOrders\CodeIgniterEquipmentWorkOrderHistory;
 use App\Infrastructure\WorkOrders\DocumentImport\PrivateWorkOrderDocumentStorage;
@@ -114,15 +115,24 @@ final class EquipmentManagement extends BaseController
             );
 
             $payload['driverAssignment'] = $this->driverAssignmentPayload($actor, $equipmentId);
-            $expirationReadModel = new CodeIgniterExpirationReadModel(db_connect());
-            $payload['expirations'] = $expirationReadModel->forEquipment((int) $actor->companyId(), $equipmentId);
-            $payload['expirationTypes'] = $expirationReadModel->types(
-                (int) $actor->companyId(),
-                \App\Domain\Expirations\ExpirationSubjectType::EQUIPMENT,
-            );
+            $payload['expirations'] = [];
+            $payload['expirationTypes'] = [];
+            try {
+                $expirationReadModel = new CodeIgniterExpirationReadModel(db_connect());
+                $payload['expirations'] = $expirationReadModel->forEquipment((int) $actor->companyId(), $equipmentId);
+                $payload['expirationTypes'] = $expirationReadModel->types(
+                    (int) $actor->companyId(),
+                    \App\Domain\Expirations\ExpirationSubjectType::EQUIPMENT,
+                );
+            } catch (Throwable $exception) {
+                log_message(
+                    'error',
+                    'No se pudieron cargar los vencimientos de la ficha del equipo: {message}',
+                    ['message' => $exception->getMessage()],
+                );
+            }
             $payload['expirationRoutes'] = [
                 'create' => base_url('mantenimiento/vencimientos'),
-                'createType' => base_url('mantenimiento/vencimientos/tipos'),
             ];
 
             return $this->renderApp(
