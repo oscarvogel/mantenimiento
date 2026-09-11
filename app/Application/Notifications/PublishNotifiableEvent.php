@@ -11,6 +11,7 @@ use App\Application\Notifications\Port\NotificationPreferenceStore;
 use App\Application\Notifications\Port\NotificationRecipientResolver;
 use App\Application\Notifications\Port\NotificationRepository;
 use App\Application\Notifications\Port\NotificationUnitOfWork;
+use App\Application\Notifications\Port\WhatsAppNotificationDeliveryQueue;
 use App\Domain\Notifications\NotifiableEvent;
 use App\Domain\Notifications\Notification;
 
