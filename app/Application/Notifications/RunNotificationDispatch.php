@@ -140,6 +140,9 @@ final readonly class RunNotificationDispatch
                     (string) ($delivery['telefono'] ?? ''),
                     (string) ($delivery['mensaje'] ?? ''),
                     (string) ($delivery['external_ref'] ?? ''),
+                    null,
+                    null,
+                    empty($delivery['instance_id']) ? null : (string) $delivery['instance_id'],
                 );
                 $this->whatsAppDeliveries->accepted(
                     (int) $delivery['id'],
