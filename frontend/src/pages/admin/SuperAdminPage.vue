@@ -141,7 +141,7 @@ const sections = [
           {{ showCreateCompany ? 'Cerrar alta' : 'Nueva empresa' }}
         </button>
         <button
-          v-if="activeSection === 'companies' && data.permissions.createCompanyAdministrators && showCreateAdministrator"
+          v-if="data.permissions.createCompanyAdministrators"
           type="button"
           class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-border-strong px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted"
           @click="showCreateAdministrator = !showCreateAdministrator"
@@ -205,7 +205,7 @@ const sections = [
     </section>
 
     <section
-      v-if="data.permissions.createCompanyAdministrators"
+      v-if="activeSection === 'companies' && data.permissions.createCompanyAdministrators && showCreateAdministrator"
       class="mb-8 overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card"
       aria-labelledby="create-company-administrator-title"
     >
