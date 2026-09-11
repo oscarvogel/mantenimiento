@@ -66,6 +66,9 @@ final readonly class CodeIgniterGlobalNotificationSettingsStore implements Globa
         $smtpPass = trim((string) ($settings['smtp_pass'] ?? ''));
         $webPushPrivate = trim((string) ($settings['webpush_private_key'] ?? ''));
         $whatsAppKey = trim((string) ($settings['whatsapp_api_key'] ?? ''));
+        $smtpPassToStore = $smtpPass !== '' ? $smtpPass : (string) ($current['smtp_pass'] ?? '');
+        $webPushPrivateToStore = $webPushPrivate !== '' ? $webPushPrivate : (string) ($current['webpush_private_key'] ?? '');
+        $whatsAppKeyToStore = $whatsAppKey !== '' ? $whatsAppKey : (string) ($current['whatsapp_api_key'] ?? '');
 
         $payload = [
             'id' => 1,
@@ -74,7 +77,7 @@ final readonly class CodeIgniterGlobalNotificationSettingsStore implements Globa
             'smtp_host' => $this->nullable($settings['smtp_host'] ?? null),
             'smtp_port' => (int) ($settings['smtp_port'] ?? 587),
             'smtp_user' => $this->nullable($settings['smtp_user'] ?? null),
-            'smtp_pass_encrypted' => $smtpPass !== '' ? $this->encrypt($smtpPass) : $this->existingEncrypted('smtp_pass_encrypted'),
+            'smtp_pass_encrypted' => $smtpPassToStore !== '' ? $this->encrypt($smtpPassToStore) : null,
             'smtp_crypto' => $this->nullable($settings['smtp_crypto'] ?? null),
             'smtp_from_email' => $this->nullable($settings['smtp_from_email'] ?? null),
             'smtp_from_name' => $this->nullable($settings['smtp_from_name'] ?? null),
@@ -82,10 +85,10 @@ final readonly class CodeIgniterGlobalNotificationSettingsStore implements Globa
             'webpush_enabled' => ! empty($settings['webpush_enabled']) ? 1 : 0,
             'webpush_subject' => $this->nullable($settings['webpush_subject'] ?? null),
             'webpush_public_key' => $this->nullable($settings['webpush_public_key'] ?? null),
-            'webpush_private_key_encrypted' => $webPushPrivate !== '' ? $this->encrypt($webPushPrivate) : $this->existingEncrypted('webpush_private_key_encrypted'),
+            'webpush_private_key_encrypted' => $webPushPrivateToStore !== '' ? $this->encrypt($webPushPrivateToStore) : null,
             'whatsapp_enabled' => ! empty($settings['whatsapp_enabled']) ? 1 : 0,
             'whatsapp_api_url' => $this->nullable($settings['whatsapp_api_url'] ?? null),
-            'whatsapp_api_key_encrypted' => $whatsAppKey !== '' ? $this->encrypt($whatsAppKey) : $this->existingEncrypted('whatsapp_api_key_encrypted'),
+            'whatsapp_api_key_encrypted' => $whatsAppKeyToStore !== '' ? $this->encrypt($whatsAppKeyToStore) : null,
             'whatsapp_instance_id' => $this->nullable($settings['whatsapp_instance_id'] ?? 'default'),
             'updated_by' => $actorId,
             'updated_at' => date('Y-m-d H:i:s'),
@@ -98,13 +101,6 @@ final readonly class CodeIgniterGlobalNotificationSettingsStore implements Globa
         } else {
             $this->database->table(self::TABLE)->insert($payload);
         }
-    }
-
-    private function existingEncrypted(string $field): ?string
-    {
-        $row = $this->database->table(self::TABLE)->select($field)->where('id', 1)->get()->getRowArray();
-
-        return $row === null ? null : ($row[$field] ?? null);
     }
 
     private function encrypt(string $value): string
