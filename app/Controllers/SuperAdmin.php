@@ -47,6 +47,15 @@ final class SuperAdmin extends BaseController
         }
 
         $payload = service('administrationPayload')->superadmin($data);
+        $whatsAppGateway = service('whatsAppGateway');
+        $payload['whatsapp'] = [
+            'enabled' => filter_var(env('whatsapp.enabled', false), FILTER_VALIDATE_BOOL),
+            'available' => $whatsAppGateway->available(),
+            'apiUrl' => trim((string) env('whatsapp.apiUrl', '')),
+            'apiKeyConfigured' => trim((string) env('whatsapp.apiKey', '')) !== '',
+            'instanceId' => trim((string) env('whatsapp.instanceId', 'default')),
+            'testAction' => base_url('superadmin/whatsapp/prueba'),
+        ];
         $payload['aiCompanyControls'] = array_map(static fn (array $company): array => [
             'id' => (int) $company['id'],
             'displayName' => $company['nombre_fantasia'] ?: $company['razon_social'],
@@ -161,6 +170,41 @@ final class SuperAdmin extends BaseController
                 'actor' => $this->actor()->userId(), 'company' => $companyId, 'recipient' => $recipient,
             ]);
             return redirect()->to('/superadmin')->with('success', 'Correo de prueba enviado a ' . $recipient . '.');
+        } catch (Throwable $exception) {
+            return $this->operationFailure($exception);
+        }
+    }
+
+    public function testWhatsApp(): RedirectResponse
+    {
+        $phone = trim((string) $this->request->getPost('telefono_prueba'));
+        if ($phone === '') {
+            return redirect()->to('/superadmin')->withInput()->with('error', 'Ingresá un celular para la prueba de WhatsApp.');
+        }
+
+        try {
+            $gateway = service('whatsAppGateway');
+            if (! $gateway->available()) {
+                throw new DomainException('WhatsApp no está disponible. Revisá URL, API key, instanceId y que el canal esté habilitado.');
+            }
+
+            $normalized = $gateway->normalizePhone($phone);
+            if ($normalized === null) {
+                throw new DomainException('El celular de prueba no tiene un formato válido.');
+            }
+
+            $result = $gateway->sendText(
+                $normalized,
+                'Mensaje de prueba del Sistema de Mantenimiento. La integración con WhatsApp está funcionando correctamente.',
+                'mantenimiento:superadmin:prueba:' . date('YmdHis'),
+                (string) $this->actor()->userId(),
+                'Superadmin Mantenimiento',
+            );
+
+            return redirect()->to('/superadmin')->with(
+                'success',
+                'WhatsApp de prueba aceptado para ' . $normalized . '. Message ID: ' . $result['messageId'],
+            );
         } catch (Throwable $exception) {
             return $this->operationFailure($exception);
         }
