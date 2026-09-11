@@ -43,7 +43,7 @@ final class AdministrationPayload
                 'apiUrl' => base_url('mantenimiento/chatbot/auditoria'),
             ],
             'oldInput' => $this->old([
-                'razon_social', 'nombre_fantasia', 'cuit', 'email', 'email_notificaciones', 'telefono',
+                'razon_social', 'nombre_fantasia', 'cuit', 'email', 'email_notificaciones', 'notificaciones_whatsapp_habilitadas', 'whatsapp_instance_id', 'telefono',
                 'admin_empresa_id', 'admin_nombre', 'admin_email', 'admin_motivo',
             ]),
             'companies' => array_map(fn (array $row): array => [
@@ -53,6 +53,8 @@ final class AdministrationPayload
                 'cuit' => $row['cuit'] ?? '', 'email' => $row['email'] ?? '',
                 'notificationEmail' => $row['email_notificaciones'] ?? '',
                 'notificationEmailEnabled' => (int) ($row['notificaciones_email_habilitadas'] ?? 1) === 1,
+                'whatsappEnabled' => (int) ($row['notificaciones_whatsapp_habilitadas'] ?? 0) === 1,
+                'whatsappInstanceId' => $row['whatsapp_instance_id'] ?? '',
                 'telefono' => $row['telefono'] ?? '',
                 'active' => (int) $row['estado'] === 1,
                 'actions' => ['update' => base_url('superadmin/empresas/' . $row['id'])],
