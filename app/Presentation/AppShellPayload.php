@@ -45,6 +45,9 @@ final readonly class AppShellPayload
                 $navigation[] = $this->item('employees', 'Empleados / choferes', 'mantenimiento/empleados', 'users', $active);
             }
             if ($actor->hasPermission('equipos.editar') || $actor->hasPermission('empleados.editar')) {
+                if ($actor->hasPermission('equipos.editar')) {
+                    $navigation[] = $this->item('masters-equipment', 'Catálogos de equipos', 'mantenimiento/maestros/equipos', 'equipment', $active);
+                }
                 $navigation[] = $this->item('masters-expirations', 'Tipos de vencimiento', 'mantenimiento/maestros/vencimientos', 'calendar', $active);
             }
             if ($actor->hasPermission('importaciones.ver')) {
