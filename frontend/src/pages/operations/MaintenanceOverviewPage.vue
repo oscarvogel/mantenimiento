@@ -2,6 +2,7 @@
 import { computed, reactive, ref } from 'vue'
 import { ArrowRightIcon, MagnifyingGlassIcon, PlusIcon, WrenchScrewdriverIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 import CsrfInput from './components/CsrfInput.vue'
+import CountUp from '../../components/CountUp.vue'
 import EmptyState from './components/EmptyState.vue'
 import EquipmentThumbnail from './components/EquipmentThumbnail.vue'
 import FormField from './components/FormField.vue'
@@ -142,10 +143,10 @@ if (initialQuery.get('ot_correctiva') === '1') {
     </PageHeading>
 
     <section aria-label="Resumen operativo" class="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      <article class="rounded-xl border border-danger/20 bg-danger-subtle/40 p-4"><p class="text-xs font-bold uppercase tracking-wide text-danger-strong">Avisos pendientes</p><p class="mt-2 text-3xl font-bold text-ink">{{ data.pagination.notices.total }}</p></article>
-      <article class="rounded-xl border border-warning/30 bg-warning-subtle/50 p-4"><p class="text-xs font-bold uppercase tracking-wide text-warning-foreground">Próximos en esta página</p><p class="mt-2 text-3xl font-bold text-ink">{{ visiblePlanCounts.PROXIMO }}</p></article>
-      <article class="rounded-xl border border-info/20 bg-info-subtle/50 p-4"><p class="text-xs font-bold uppercase tracking-wide text-info-strong">Órdenes visibles</p><p class="mt-2 text-3xl font-bold text-ink">{{ data.pagination.orders.total }}</p></article>
-      <article class="rounded-xl border border-border bg-surface-raised p-4"><p class="text-xs font-bold uppercase tracking-wide text-ink-muted">Planes sin datos</p><p class="mt-2 text-3xl font-bold text-ink">{{ visiblePlanCounts.SIN_DATOS }}</p></article>
+      <article class="rounded-xl border border-danger/20 bg-danger-subtle/40 p-4"><p class="text-xs font-bold uppercase tracking-wide text-danger-strong">Avisos pendientes</p><p class="mt-2 text-3xl font-bold text-ink"><CountUp :value="Number(data.pagination.notices.total) || 0" /></p></article>
+      <article class="rounded-xl border border-warning/30 bg-warning-subtle/50 p-4"><p class="text-xs font-bold uppercase tracking-wide text-warning-foreground">Próximos en esta página</p><p class="mt-2 text-3xl font-bold text-ink"><CountUp :value="visiblePlanCounts.PROXIMO" /></p></article>
+      <article class="rounded-xl border border-info/20 bg-info-subtle/50 p-4"><p class="text-xs font-bold uppercase tracking-wide text-info-strong">Órdenes visibles</p><p class="mt-2 text-3xl font-bold text-ink"><CountUp :value="Number(data.pagination.orders.total) || 0" /></p></article>
+      <article class="rounded-xl border border-border bg-surface-raised p-4"><p class="text-xs font-bold uppercase tracking-wide text-ink-muted">Planes sin datos</p><p class="mt-2 text-3xl font-bold text-ink"><CountUp :value="visiblePlanCounts.SIN_DATOS" /></p></article>
     </section>
 
     <section class="mb-6 rounded-xl border border-border bg-surface-raised p-4 sm:p-5" aria-labelledby="quick-actions-title">

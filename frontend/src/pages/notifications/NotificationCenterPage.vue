@@ -151,7 +151,7 @@ async function sendTestPush() {
         <p class="mt-1 text-sm text-ink-muted">{{ notificationPage.unread }} sin leer de {{ notificationPage.total }} recientes.</p>
       </div>
       <div v-if="notificationPage.items.length" class="divide-y divide-border-subtle">
-        <article v-for="item in notificationPage.items" :key="item.id" class="flex gap-3 p-4 sm:p-5" :class="!item.readAt && 'bg-primary-subtle/40'">
+        <article v-for="(item, index) in notificationPage.items" :key="item.id" :style="{ '--ui-stagger-index': index }" class="ui-stagger-item flex gap-3 p-4 sm:p-5" :class="!item.readAt && 'bg-primary-subtle/40'">
           <BellIcon class="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
           <div class="min-w-0 flex-1">
             <div class="flex flex-wrap items-center gap-2"><h3 class="font-semibold text-ink">{{ item.title }}</h3><span class="rounded-full bg-surface-muted px-2 py-0.5 text-xs text-ink-muted">{{ item.severity }}</span></div>

@@ -34,7 +34,7 @@ onBeforeUnmount(() => {
     <a
       v-if="visible && href !== '#'"
       :href="href"
-      class="ui-scroll-cta ui-interactive fixed bottom-4 left-4 right-24 z-30 flex min-h-12 items-center justify-between gap-3 rounded-xl bg-primary px-4 py-2.5 text-primary-foreground shadow-lg shadow-brand-950/20 sm:hidden"
+      class="ui-scroll-cta ui-interactive ui-glare fixed bottom-4 left-4 right-24 z-30 flex min-h-12 items-center justify-between gap-3 rounded-xl bg-primary px-4 py-2.5 text-primary-foreground shadow-lg shadow-brand-950/20 sm:hidden"
     >
       <span class="min-w-0">
         <span class="block truncate text-sm font-bold">{{ label }}</span>
@@ -44,4 +44,3 @@ onBeforeUnmount(() => {
     </a>
   </Transition>
 </template>
-

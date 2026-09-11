@@ -1,6 +1,7 @@
 <script setup>
 import { ArrowLeftIcon, CheckCircleIcon, ExclamationTriangleIcon, XCircleIcon } from '@heroicons/vue/24/outline'
 import CsrfInput from './components/CsrfInput.vue'
+import CountUp from '../../components/CountUp.vue'
 import PageHeading from './components/PageHeading.vue'
 import PanelCard from './components/PanelCard.vue'
 import { secondaryButton } from './helpers.js'
@@ -38,10 +39,10 @@ function statusIcon(status) {
     <PanelCard title="Resumen" class="mb-6">
       <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <div><p class="text-xs uppercase tracking-wide text-ink-muted">Archivo</p><p class="mt-1 font-semibold text-ink">{{ data.header.originalFile }}</p></div>
-        <div><p class="text-xs uppercase tracking-wide text-ink-muted">Filas</p><p class="mt-1 text-2xl font-semibold text-ink">{{ data.header.totalRows }}</p></div>
-        <div><p class="text-xs uppercase tracking-wide text-ink-muted">OK</p><p class="mt-1 text-2xl font-semibold text-success-strong">{{ data.header.okRows }}</p></div>
-        <div><p class="text-xs uppercase tracking-wide text-ink-muted">Advertencias</p><p class="mt-1 text-2xl font-semibold text-warning-strong">{{ data.header.warningRows }}</p></div>
-        <div><p class="text-xs uppercase tracking-wide text-ink-muted">Errores</p><p class="mt-1 text-2xl font-semibold text-danger-strong">{{ data.header.errorRows }}</p></div>
+        <div><p class="text-xs uppercase tracking-wide text-ink-muted">Filas</p><p class="mt-1 text-2xl font-semibold text-ink"><CountUp :value="Number(data.header.totalRows) || 0" /></p></div>
+        <div><p class="text-xs uppercase tracking-wide text-ink-muted">OK</p><p class="mt-1 text-2xl font-semibold text-success-strong"><CountUp :value="Number(data.header.okRows) || 0" /></p></div>
+        <div><p class="text-xs uppercase tracking-wide text-ink-muted">Advertencias</p><p class="mt-1 text-2xl font-semibold text-warning-strong"><CountUp :value="Number(data.header.warningRows) || 0" /></p></div>
+        <div><p class="text-xs uppercase tracking-wide text-ink-muted">Errores</p><p class="mt-1 text-2xl font-semibold text-danger-strong"><CountUp :value="Number(data.header.errorRows) || 0" /></p></div>
       </div>
     </PanelCard>
 

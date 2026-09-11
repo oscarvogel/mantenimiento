@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from 'vue'
 import { ArrowRightIcon } from '@heroicons/vue/20/solid'
 import {
   ClipboardDocumentListIcon,
@@ -6,6 +7,7 @@ import {
   ExclamationTriangleIcon,
   TruckIcon,
 } from '@heroicons/vue/24/outline'
+import CountUp from './CountUp.vue'
 
 const props = defineProps({
   label: {
@@ -15,6 +17,10 @@ const props = defineProps({
   value: {
     type: [Number, String],
     required: true,
+  },
+  suffix: {
+    type: String,
+    default: '',
   },
   tone: {
     type: String,
@@ -56,14 +62,22 @@ const icons = {
   overdue: ExclamationTriangleIcon,
   orders: ClipboardDocumentListIcon,
 }
+
+const isNumericValue = computed(() => {
+  if (props.value === null || props.value === undefined || props.value === '') return false
+  return Number.isFinite(Number(props.value))
+})
 </script>
 
 <template>
-  <article :class="['relative overflow-hidden rounded-xl border border-border bg-surface-raised p-5 sm:p-6', href !== '#' && 'ui-card-interactive']">
+  <article :class="['relative overflow-hidden rounded-xl border border-border bg-surface-raised p-5 sm:p-6', href !== '#' && 'ui-card-interactive ui-glare']">
     <div class="flex items-start justify-between gap-4">
       <div>
         <p class="text-sm font-medium text-ink-muted">{{ label }}</p>
-        <p class="mt-2 text-3xl font-bold tracking-tight" :class="toneStyles[props.tone].value">{{ value }}</p>
+        <p class="mt-2 text-3xl font-bold tracking-tight" :class="toneStyles[props.tone].value">
+          <CountUp v-if="isNumericValue" :value="Number(value)" :suffix="suffix" />
+          <template v-else>{{ value }}</template>
+        </p>
       </div>
       <span class="flex size-11 items-center justify-center rounded-lg" :class="toneStyles[props.tone].icon">
         <component :is="icons[props.tone]" class="size-6" aria-hidden="true" />

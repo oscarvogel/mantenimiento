@@ -1,6 +1,7 @@
 <script setup>
 import { CheckCircleIcon, XCircleIcon } from '@heroicons/vue/24/outline'
 import CsrfInput from './components/CsrfInput.vue'
+import CountUp from '../../components/CountUp.vue'
 import EmptyState from './components/EmptyState.vue'
 import PageHeading from './components/PageHeading.vue'
 import PaginationBar from './components/PaginationBar.vue'
@@ -20,7 +21,7 @@ const issueLabel = (field) => labels[field] ?? field
 
     <section aria-label="Resumen de validación" class="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
       <article v-for="metric in [{label:'Total',value:data.header.totalRows,tone:'text-ink'},{label:'Válidas',value:data.header.validRows,tone:'text-success-strong'},{label:'Errores',value:data.header.errorRows,tone:'text-danger-strong'},{label:'Duplicadas',value:data.header.duplicateRows,tone:'text-warning-strong'}]" :key="metric.label" class="rounded-xl border border-border bg-white p-4 shadow-card sm:p-5">
-        <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ metric.label }}</p><p class="mt-2 text-2xl font-bold" :class="metric.tone">{{ metric.value }}</p>
+        <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ metric.label }}</p><p class="mt-2 text-2xl font-bold" :class="metric.tone"><CountUp :value="Number(metric.value) || 0" /></p>
       </article>
     </section>
 

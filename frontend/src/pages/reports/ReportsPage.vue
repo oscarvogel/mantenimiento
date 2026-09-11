@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { ArrowDownTrayIcon, ChartBarSquareIcon, FunnelIcon } from '@heroicons/vue/24/outline'
+import CountUp from '../../components/CountUp.vue'
 import ReportMetricCard from './ReportMetricCard.vue'
 import SemanticBarList from './SemanticBarList.vue'
 
@@ -40,11 +41,11 @@ const statusTone = (status) => ({
 const metrics = computed(() => {
   const source = props.data.metrics
   return {
-    totalCost: { ...source.totalCost, displayValue: source.totalCost.available ? money(source.totalCost.value) : '' },
-    openOrders: { ...source.openOrders, displayValue: number.format(source.openOrders.value) },
-    completedOrders: { ...source.completedOrders, displayValue: number.format(source.completedOrders.value) },
-    downtimeHours: { ...source.downtimeHours, displayValue: source.downtimeHours.available ? `${source.downtimeHours.value} h` : '' },
-    mttrHours: { ...source.mttrHours, displayValue: source.mttrHours.available ? `${source.mttrHours.value} h` : '' },
+    totalCost: { ...source.totalCost, displayValue: source.totalCost.available ? money(source.totalCost.value) : '', formatter: money },
+    openOrders: { ...source.openOrders, displayValue: number.format(source.openOrders.value), formatter: number.format },
+    completedOrders: { ...source.completedOrders, displayValue: number.format(source.completedOrders.value), formatter: number.format },
+    downtimeHours: { ...source.downtimeHours, displayValue: source.downtimeHours.available ? `${source.downtimeHours.value} h` : '', formatter: (value) => `${value} h` },
+    mttrHours: { ...source.mttrHours, displayValue: source.mttrHours.available ? `${source.mttrHours.value} h` : '', formatter: (value) => `${value} h` },
   }
 })
 const statusItems = computed(() => props.data.statusDistribution.map((item) => ({ ...item, label: statusLabel(item.status) })))
@@ -131,10 +132,10 @@ const pagination = computed(() => props.data.orders.pagination)
     <section v-else-if="activeTab === 'quality'" id="report-panel-quality" role="tabpanel" aria-labelledby="report-tab-quality" class="mt-6 rounded-xl border border-border bg-surface-raised p-5 sm:p-6">
       <h2 class="text-lg font-bold text-ink">Calidad y disponibilidad de datos</h2>
       <dl class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <div class="rounded-lg bg-surface-muted p-4"><dt class="text-xs font-semibold uppercase tracking-wide text-ink-muted">OT finalizadas</dt><dd class="mt-1 text-xl font-bold text-ink">{{ data.quality.completedOrders }}</dd></div>
-        <div class="rounded-lg bg-surface-muted p-4"><dt class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Detenciones válidas</dt><dd class="mt-1 text-xl font-bold text-success-strong">{{ data.quality.validDowntimeSamples }}</dd></div>
-        <div class="rounded-lg bg-surface-muted p-4"><dt class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Detenciones inválidas</dt><dd class="mt-1 text-xl font-bold text-danger-strong">{{ data.quality.invalidDowntimeSamples }}</dd></div>
-        <div class="rounded-lg bg-surface-muted p-4"><dt class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Muestra MTTR</dt><dd class="mt-1 text-xl font-bold text-ink">{{ data.quality.correctiveMttrSamples }}</dd></div>
+        <div class="rounded-lg bg-surface-muted p-4"><dt class="text-xs font-semibold uppercase tracking-wide text-ink-muted">OT finalizadas</dt><dd class="mt-1 text-xl font-bold text-ink"><CountUp :value="Number(data.quality.completedOrders) || 0" /></dd></div>
+        <div class="rounded-lg bg-surface-muted p-4"><dt class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Detenciones válidas</dt><dd class="mt-1 text-xl font-bold text-success-strong"><CountUp :value="Number(data.quality.validDowntimeSamples) || 0" /></dd></div>
+        <div class="rounded-lg bg-surface-muted p-4"><dt class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Detenciones inválidas</dt><dd class="mt-1 text-xl font-bold text-danger-strong"><CountUp :value="Number(data.quality.invalidDowntimeSamples) || 0" /></dd></div>
+        <div class="rounded-lg bg-surface-muted p-4"><dt class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Muestra MTTR</dt><dd class="mt-1 text-xl font-bold text-ink"><CountUp :value="Number(data.quality.correctiveMttrSamples) || 0" /></dd></div>
       </dl>
       <ul class="mt-4 list-disc space-y-1 pl-5 text-sm leading-6 text-ink-muted"><li v-for="limitation in data.quality.limitations" :key="limitation">{{ limitation }}</li></ul>
     </section>

@@ -2,6 +2,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { ArrowLeftIcon, ArrowPathIcon, ArrowUpTrayIcon, DocumentTextIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
 import CsrfInput from './components/CsrfInput.vue'
+import CountUp from '../../components/CountUp.vue'
 import PageHeading from './components/PageHeading.vue'
 import { fieldClass, primaryButton, secondaryButton } from './helpers.js'
 import { calculateArs, fetchHistoricalBcraQuote, isForeignCurrency } from './exchangeRate.js'
@@ -213,7 +214,7 @@ watch([() => proposal.currency, () => proposal.serviceDate], async ([currency, s
               <label><span class="mb-1 block text-xs font-bold uppercase text-ink-muted">Fecha cotización</span><input v-model="proposal.exchangeRateDate" type="date" :disabled="isConfirmed" :max="proposal.serviceDate" :class="fieldClass" @input="markExchangeRateManual" /></label>
               <label><span class="mb-1 block text-xs font-bold uppercase text-ink-muted">Origen</span><input v-model="proposal.exchangeRateSource" :disabled="isConfirmed" :class="fieldClass" placeholder="BCRA / manual" /></label>
             </div>
-            <div class="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-surface-raised px-4 py-3"><span class="text-sm font-semibold text-ink-muted">TOTAL EN ARS</span><strong class="text-xl text-ink">$ {{ formatMoney(equivalentArs) }}</strong></div>
+            <div class="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-surface-raised px-4 py-3"><span class="text-sm font-semibold text-ink-muted">TOTAL EN ARS</span><strong class="text-xl text-ink">$ <CountUp :value="Number(equivalentArs) || 0" :formatter="formatMoney" /></strong></div>
             <p v-if="exchangeError" class="mt-3 text-sm font-semibold text-warning">{{ exchangeError }} Podés ingresar manualmente la cotización contable utilizada por la empresa.</p>
             <p v-else-if="!exchangeValid" class="mt-3 text-sm font-semibold text-warning">Completá tipo de cambio, fecha y origen antes de confirmar.</p>
             <p v-else class="mt-2 text-xs text-ink-muted">Cotización: {{ proposal.exchangeRateSource }} · Fecha efectiva: {{ proposal.exchangeRateDate }}</p>

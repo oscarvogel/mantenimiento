@@ -2,6 +2,7 @@
 import { computed, reactive, ref } from 'vue'
 import { ArrowPathIcon, ChevronDownIcon, DocumentArrowUpIcon, MagnifyingGlassIcon, PlusIcon, PrinterIcon, WrenchScrewdriverIcon } from '@heroicons/vue/24/outline'
 import CsrfInput from './components/CsrfInput.vue'
+import CountUp from '../../components/CountUp.vue'
 import CorrectiveWorkRegistrationModal from './components/CorrectiveWorkRegistrationModal.vue'
 import EmptyState from './components/EmptyState.vue'
 import PageHeading from './components/PageHeading.vue'
@@ -81,9 +82,9 @@ for (const order of props.data.orders ?? []) closeStateFor(order)
     </PageHeading>
 
     <section aria-label="Indicadores de órdenes" class="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
-      <a v-for="card in kpiCards" :key="card.label" :href="card.href" class="rounded-xl border border-border bg-surface-raised p-4 transition hover:border-primary/40 hover:shadow-sm">
+      <a v-for="card in kpiCards" :key="card.label" :href="card.href" class="ui-glare rounded-xl border border-border bg-surface-raised p-4 transition hover:border-primary/40 hover:shadow-sm">
         <p class="text-xs font-bold uppercase tracking-wide text-ink-muted">{{ card.label }}</p>
-        <p class="mt-2 text-3xl font-bold text-ink">{{ card.value }}</p>
+        <p class="mt-2 text-3xl font-bold text-ink"><CountUp :value="Number(card.value) || 0" /></p>
       </a>
     </section>
 

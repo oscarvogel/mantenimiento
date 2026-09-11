@@ -2,6 +2,7 @@
 import { ArrowDownTrayIcon, QrCodeIcon } from '@heroicons/vue/24/outline'
 import { computed, ref } from 'vue'
 import CsrfInput from './components/CsrfInput.vue'
+import CountUp from '../../components/CountUp.vue'
 import EmptyState from './components/EmptyState.vue'
 import FormField from './components/FormField.vue'
 import PageHeading from './components/PageHeading.vue'
@@ -54,6 +55,17 @@ const initialQuery = new URLSearchParams(window.location.search)
 const activeTab = ref(initialQuery.get('history_active') === '1' ? 'historial' : 'resumen')
 const correctiveOrderUrl = computed(() => `${props.data.routes.maintenance}?ot_correctiva=1&equipo_id=${props.data.equipment.id}`)
 const historyResetUrl = computed(() => `${window.location.pathname}?history_active=1#equipment-panel-historial`)
+const formatKmValue = (value) => Number(value).toLocaleString('es-AR', { maximumFractionDigits: 0 })
+const formatHoursValue = (value) => Number(value).toLocaleString('es-AR', { maximumFractionDigits: 1 })
+const equipmentSummary = computed(() => {
+  const equipment = data.value.equipment
+  return [
+    { label: 'Kilometraje actual', value: equipment.currentKm ?? 'Sin datos', suffix: ' km', formatter: formatKmValue, numeric: equipment.currentKm !== null && equipment.currentKm !== undefined },
+    { label: 'HorÃ³metro actual', value: equipment.currentHours ?? 'Sin datos', suffix: ' h', formatter: formatHoursValue, numeric: equipment.currentHours !== null && equipment.currentHours !== undefined },
+    { label: 'Patente', value: equipment.plate || 'Sin informar', numeric: false },
+    { label: 'Alta', value: equipment.startDate, numeric: false },
+  ]
+})
 </script>
 
 <template>
@@ -84,7 +96,13 @@ const historyResetUrl = computed(() => `${window.location.pathname}?history_acti
     <div id="equipment-panel-resumen" v-show="activeTab === 'resumen'" role="tabpanel" aria-labelledby="equipment-tab-resumen">
 
     <section aria-label="Resumen del equipo" class="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-      <article v-for="metric in [{label:'Kilometraje actual',value:data.equipment.currentKm === null ? 'Sin datos' : `${data.equipment.currentKm} km`},{label:'Horómetro actual',value:data.equipment.currentHours === null ? 'Sin datos' : `${data.equipment.currentHours} h`},{label:'Patente',value:data.equipment.plate || 'Sin informar'},{label:'Alta',value:data.equipment.startDate}]" :key="metric.label" class="rounded-xl border border-border bg-white p-4 shadow-card"><p class="text-xs text-ink-muted">{{ metric.label }}</p><p class="mt-2 font-bold text-ink">{{ metric.value }}</p></article>
+      <article v-for="metric in equipmentSummary" :key="metric.label" class="rounded-xl border border-border bg-white p-4 shadow-card">
+        <p class="text-xs text-ink-muted">{{ metric.label }}</p>
+        <p class="mt-2 font-bold text-ink">
+          <CountUp v-if="metric.numeric" :value="Number(metric.value)" :suffix="metric.suffix" :formatter="metric.formatter" />
+          <template v-else>{{ metric.value }}</template>
+        </p>
+      </article>
     </section>
     <div class="mb-6 flex items-center gap-3"><StatusBadge :status="data.equipment.status" /><p v-if="data.equipment.endDate" class="text-sm font-medium text-danger-strong">Baja: {{ data.equipment.endDate }}</p></div>
 

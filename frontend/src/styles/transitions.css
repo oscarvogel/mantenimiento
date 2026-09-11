@@ -164,6 +164,62 @@ html[data-theme='dark'] .ui-sidebar-surface {
   transform: translateY(0);
 }
 
+/* React Bits-inspired polish: a restrained light sweep for important CTAs
+ * and cards. It adds feedback without turning tables or navigation into a
+ * continuously animated surface. */
+.ui-glare {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.ui-glare::after {
+  position: absolute;
+  z-index: 0;
+  inset: -60% auto -60% -35%;
+  width: 28%;
+  content: '';
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgb(255 255 255 / 0.04) 35%,
+    rgb(255 255 255 / 0.2) 50%,
+    transparent 65%
+  );
+  opacity: 0;
+  transform: translateX(-100%) rotate(14deg);
+  transition: transform 420ms ease, opacity 160ms ease;
+}
+
+.ui-glare:hover::after,
+.ui-glare:focus-visible::after {
+  opacity: 1;
+  transform: translateX(520%) rotate(14deg);
+}
+
+/* Entrance-only motion for already loaded lists. The data, order and
+ * pagination stay untouched. */
+.ui-stagger-item {
+  animation: ui-stagger-in 320ms ease-out both;
+  animation-delay: calc(var(--ui-stagger-index, 0) * 45ms);
+}
+
+@keyframes ui-stagger-in {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ui-bar-fill {
+  transition: width 500ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 .ui-scroll-cta {
   padding-bottom: max(0.625rem, env(safe-area-inset-bottom));
 }
@@ -294,6 +350,20 @@ html[data-theme='dark'] .ui-sidebar-surface {
   .ui-scroll-reveal.is-visible {
     opacity: 1;
     transform: none;
+    transition: none;
+  }
+
+  .ui-glare::after {
+    display: none;
+  }
+
+  .ui-stagger-item {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .ui-bar-fill {
     transition: none;
   }
 
