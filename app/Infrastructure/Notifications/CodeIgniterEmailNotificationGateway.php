@@ -5,14 +5,16 @@ declare(strict_types=1);
 namespace App\Infrastructure\Notifications;
 
 use App\Application\Notifications\Port\EmailNotificationGateway;
+use App\Application\Notifications\Port\GlobalNotificationSettingsStore;
 use App\Application\Notifications\Port\NotificationClock;
-use Config\Email;
 use RuntimeException;
 
 final class CodeIgniterEmailNotificationGateway implements EmailNotificationGateway
 {
-    public function __construct(private readonly NotificationClock $clock)
-    {
+    public function __construct(
+        private readonly NotificationClock $clock,
+        private readonly GlobalNotificationSettingsStore $settings,
+    ) {
     }
 
     public function sendDigest(string $recipient, array $notifications): void
@@ -20,12 +22,36 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
         if (filter_var($recipient, FILTER_VALIDATE_EMAIL) === false || $notifications === []) {
             throw new RuntimeException('El resumen no tiene un destinatario o contenido válido.');
         }
-        $config = config(Email::class);
+
+        $settings = $this->settings->get();
+        if (! (bool) ($settings['smtp_enabled'] ?? false)) {
+            throw new RuntimeException('El canal de correo está deshabilitado.');
+        }
+
+        $fromEmail = trim((string) ($settings['smtp_from_email'] ?? ''));
+        if (filter_var($fromEmail, FILTER_VALIDATE_EMAIL) === false) {
+            throw new RuntimeException('El remitente de correo no está configurado.');
+        }
+
         $email = service('email');
         $email->clear(true);
-        $email->setFrom($config->fromEmail, $config->fromName ?: 'Mantenimiento');
+        $email->initialize([
+            'protocol' => (string) ($settings['smtp_protocol'] ?? 'smtp'),
+            'SMTPHost' => (string) ($settings['smtp_host'] ?? ''),
+            'SMTPUser' => (string) ($settings['smtp_user'] ?? ''),
+            'SMTPPass' => (string) ($settings['smtp_pass'] ?? ''),
+            'SMTPPort' => (int) ($settings['smtp_port'] ?? 587),
+            'SMTPTimeout' => (int) ($settings['smtp_timeout'] ?? 10),
+            'SMTPCrypto' => (string) ($settings['smtp_crypto'] ?? ''),
+            'mailType' => 'html',
+            'charset' => 'UTF-8',
+            'CRLF' => "\r\n",
+            'newline' => "\r\n",
+        ]);
+        $email->setFrom($fromEmail, trim((string) ($settings['smtp_from_name'] ?? '')) ?: 'Mantenimiento');
         $email->setTo($recipient);
         $email->setSubject('Resumen de mantenimiento - ' . $this->clock->now()->format('d/m/Y'));
+
         $items = '';
         foreach ($notifications as $notification) {
             $title = htmlspecialchars((string) $notification['titulo'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
@@ -36,6 +62,7 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
                 : '<br><a href="' . htmlspecialchars($link, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '">Ver detalle</a>';
             $items .= "<li><strong>{$title}</strong><br>{$summary}{$action}</li>";
         }
+
         $email->setMessage('<h1>Resumen de mantenimiento</h1><ul>' . $items . '</ul>');
         if (! $email->send(false)) {
             throw new RuntimeException('El servidor SMTP rechazó el resumen.');
