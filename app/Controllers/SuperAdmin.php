@@ -91,7 +91,7 @@ final class SuperAdmin extends BaseController
                 'actor' => $this->actor()->userId(),
             ]);
 
-            return redirect()->to('/superadmin')->with('success', 'Migraciones pendientes aplicadas correctamente.');
+            return redirect()->to('/superadmin')->with('success', 'Migraciones pendientes aplicadas correctamente en ' . ENVIRONMENT . '.');
         } catch (Throwable $exception) {
             log_message('error', 'Falló aplicación manual de migraciones desde Superadmin: {message}', [
                 'message' => $exception->getMessage(),
