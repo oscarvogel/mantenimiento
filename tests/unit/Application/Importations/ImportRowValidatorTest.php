@@ -65,6 +65,27 @@ final class ImportRowValidatorTest extends TestCase
         self::assertNull($row->normalized['branch_id']);
     }
 
+    public function testExpirationResolvesEquipmentByPlateEvenOutsideActorBranch(): void
+    {
+        $validator = new ImportRowValidator(new ImportReferenceGatewayFake());
+        $validator->beginFile();
+
+        $row = $validator->validate(ImportType::VENCIMIENTOS, [
+            'sujeto_tipo' => 'EQUIPO',
+            'equipo_codigo' => 'AB264AY',
+            'empleado_nombre' => '',
+            'tipo_vencimiento' => 'POLIZA',
+            'fecha_vencimiento' => '2027-08-22',
+            'fecha_emision' => '',
+            'numero_documento' => '',
+            'observaciones' => '',
+        ], 2, $this->actor([8]), 5);
+
+        self::assertSame(ImportRowStatus::VALIDA, $row->status);
+        self::assertSame(10, $row->normalized['subject_id']);
+        self::assertSame(7, $row->normalized['branch_id']);
+    }
+
     public function testExpirationResolvesEquipmentAndBranch(): void
     {
         $validator = new ImportRowValidator(new ImportReferenceGatewayFake());
@@ -103,6 +124,7 @@ final class ImportReferenceGatewayFake implements ImportReferenceGateway
     public function activeBrandByName(int $companyId, string $name): ?array { return ['id' => 4, 'nombre' => 'Iveco']; }
     public function activeModelByName(int $companyId, int $brandId, int $typeId, string $name): ?array { return ['id' => 6, 'nombre' => 'Tector']; }
     public function activeEquipmentByCode(int $companyId, string $code): ?array { return ['id' => 10, 'sucursal_id' => 7, 'controla_km' => true, 'controla_horas' => true, 'km_actual' => 1000, 'horas_actuales' => '20.0']; }
+    public function activeEquipmentByCodeOrPlate(int $companyId, string $value): ?array { return ['id' => 10, 'sucursal_id' => 7, 'controla_km' => true, 'controla_horas' => true, 'km_actual' => 1000, 'horas_actuales' => '20.0']; }
     public function activeEmployeeByName(int $companyId, string $name): ?array { return ['id' => 44, 'nombre' => 'ARIEL RODRIGUEZ']; }
     public function equipmentCodeExists(int $companyId, string $code): bool { return in_array($code, $this->duplicateCodes, true); }
     public function equipmentPlateExists(int $companyId, string $plate): bool { return in_array($plate, $this->duplicatePlates, true); }
