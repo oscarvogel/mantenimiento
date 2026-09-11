@@ -38,6 +38,7 @@ final class AdministrationPayload
                 'createCompany' => base_url('superadmin/empresas'),
                 'createCompanyAdministrator' => base_url('superadmin/administradores'),
                 'dispatchNotifications' => base_url('superadmin/notificaciones/despachar'),
+                'applyMigrations' => base_url('superadmin/migraciones/aplicar'),
             ],
             'chatAudit' => [
                 'apiUrl' => base_url('mantenimiento/chatbot/auditoria'),
