@@ -426,14 +426,25 @@ describe('imports-show', () => {
     expect(wrapper.text()).toContain('VALIDA')
   })
 
-  it('marca confirmar y cancelar con confirmación declarativa destructiva', () => {
+  it('abre y cierra un modal Vue propio sin depender del confirmador global', async () => {
     const wrapper = render(ImportsShowPage, importShowData)
-    const confirmar = wrapper.get('form[action="/mantenimiento/importaciones/8/confirmar"]')
-    const cancelar = wrapper.get('form[action="/mantenimiento/importaciones/8/cancelar"]')
+    const confirmar = wrapper.findAll('button').find((button) => button.text().includes('Confirmar importación'))
 
-    expect(confirmar.attributes('data-confirm')).toBeDefined()
-    expect(cancelar.attributes('data-confirm')).toBeDefined()
-    expect(cancelar.attributes('data-confirm-danger')).toBe('true')
+    expect(confirmar).toBeDefined()
+    await confirmar.trigger('click')
+    await flushPromises()
+
+    let modal = document.body.querySelector('[role="dialog"][aria-modal="true"]')
+    expect(modal).not.toBeNull()
+    expect(modal.textContent).toContain('¿Confirmar la importación?')
+
+    const volver = Array.from(modal.querySelectorAll('button')).find((button) => button.textContent.trim() === 'Volver')
+    volver.click()
+    await flushPromises()
+
+    modal = document.body.querySelector('[role="dialog"][aria-modal="true"]')
+    expect(modal).toBeNull()
+    expect(wrapper.get('form[action="/mantenimiento/importaciones/8/confirmar"]').attributes('data-confirm')).toBeUndefined()
   })
 
   it('deshabilita confirmar cuando no hay filas válidas', () => {
