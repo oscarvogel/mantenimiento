@@ -66,10 +66,12 @@ use App\Application\Organization\TenantAdministrationService;
 use App\Application\Organization\UpdateCompanyHandler;
 use App\Application\Notifications\CollectOperationalNotifications;
 use App\Application\Notifications\GetNotificationCenter;
+use App\Application\Notifications\GetGlobalNotificationSettings;
 use App\Application\Notifications\ManageNotificationPreferences;
 use App\Application\Notifications\ManageWebPushSubscriptions;
 use App\Application\Notifications\MarkNotificationRead;
 use App\Application\Notifications\NotificationChannelPolicy;
+use App\Application\Notifications\Port\GlobalNotificationSettingsStore;
 use App\Application\Notifications\Port\NotificationCronRateLimiter;
 use App\Application\Notifications\NotificationDeliverySchedule;
 use App\Application\Notifications\NotificationPreferenceResolution;
@@ -78,9 +80,11 @@ use App\Application\Notifications\PublishNotifiableEvent;
 use App\Application\Notifications\RunNotificationDispatch;
 use App\Application\Notifications\RunNotificationCycle;
 use App\Application\Notifications\SendWebPushTest;
+use App\Application\Notifications\UpdateGlobalNotificationSettings;
 use App\Infrastructure\Organization\CodeIgniterOrganizationAdministration;
 use App\Infrastructure\Organization\CodeIgniterTenantAdministration;
 use App\Infrastructure\Notifications\CodeIgniterEmailNotificationGateway;
+use App\Infrastructure\Notifications\CodeIgniterGlobalNotificationSettingsStore;
 use App\Infrastructure\Notifications\CodeIgniterNotificationCronRateLimiter;
 use App\Infrastructure\Notifications\CodeIgniterNotificationDeliveryQueue;
 use App\Infrastructure\Notifications\CodeIgniterNotificationPreferenceStore;
@@ -233,6 +237,45 @@ class Services extends BaseService
         );
     }
 
+    public static function globalNotificationSettingsStore(bool $getShared = true): GlobalNotificationSettingsStore
+    {
+        if ($getShared) {
+            return static::getSharedInstance('globalNotificationSettingsStore');
+        }
+
+        return new CodeIgniterGlobalNotificationSettingsStore(db_connect());
+    }
+
+    public static function globalNotificationSettings(bool $getShared = true): GetGlobalNotificationSettings
+    {
+        if ($getShared) {
+            return static::getSharedInstance('globalNotificationSettings');
+        }
+
+        return new GetGlobalNotificationSettings(static::globalNotificationSettingsStore(false));
+    }
+
+    public static function updateGlobalNotificationSettings(bool $getShared = true): UpdateGlobalNotificationSettings
+    {
+        if ($getShared) {
+            return static::getSharedInstance('updateGlobalNotificationSettings');
+        }
+
+        return new UpdateGlobalNotificationSettings(static::globalNotificationSettingsStore(false));
+    }
+
+    public static function globalNotificationEmailGateway(bool $getShared = true): CodeIgniterEmailNotificationGateway
+    {
+        if ($getShared) {
+            return static::getSharedInstance('globalNotificationEmailGateway');
+        }
+
+        return new CodeIgniterEmailNotificationGateway(
+            static::notificationClock(false),
+            static::globalNotificationSettingsStore(false),
+        );
+    }
+
     public static function notificationClock(bool $getShared = true): SystemNotificationClock
     {
         if ($getShared) {
@@ -322,12 +365,14 @@ class Services extends BaseService
             return static::getSharedInstance('webPushGateway');
         }
 
+        $settings = static::globalNotificationSettingsStore(false)->get();
+
         return new MinishlinkWebPushGateway(
             static::webPushSubscriptionStore(),
-            filter_var(env('webpush.enabled', false), FILTER_VALIDATE_BOOL),
-            trim((string) env('webpush.subject', '')),
-            trim((string) env('webpush.vapidPublicKey', '')),
-            trim((string) env('webpush.vapidPrivateKey', '')),
+            (bool) ($settings['webpush_enabled'] ?? false),
+            trim((string) ($settings['webpush_subject'] ?? '')),
+            trim((string) ($settings['webpush_public_key'] ?? '')),
+            trim((string) ($settings['webpush_private_key'] ?? '')),
         );
     }
 
@@ -428,7 +473,7 @@ class Services extends BaseService
 
         return new RunNotificationDispatch(
             static::notificationDeliveryQueue(false),
-            new CodeIgniterEmailNotificationGateway($clock),
+            static::globalNotificationEmailGateway(false),
             static::webPushGateway(false),
             new CodeIgniterNotificationProcessControl($clock, db_connect()),
         );
@@ -445,10 +490,12 @@ class Services extends BaseService
 
     private static function webPushAvailable(): bool
     {
-        return filter_var(env('webpush.enabled', false), FILTER_VALIDATE_BOOL)
-            && trim((string) env('webpush.subject', '')) !== ''
-            && trim((string) env('webpush.vapidPublicKey', '')) !== ''
-            && trim((string) env('webpush.vapidPrivateKey', '')) !== '';
+        $settings = static::globalNotificationSettingsStore(false)->get();
+
+        return (bool) ($settings['webpush_enabled'] ?? false)
+            && trim((string) ($settings['webpush_subject'] ?? '')) !== ''
+            && trim((string) ($settings['webpush_public_key'] ?? '')) !== ''
+            && trim((string) ($settings['webpush_private_key'] ?? '')) !== '';
     }
 
     public static function appShellPayload(bool $getShared = true): AppShellPayload

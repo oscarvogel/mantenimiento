@@ -54,6 +54,10 @@ $routes->group('superadmin', ['filter' => 'superadmin'], static function ($route
     $routes->post('empresas/(:num)', 'SuperAdmin::updateCompany/$1');
     $routes->post('empresas/(:num)/notificaciones/prueba', 'SuperAdmin::testCompanyNotificationEmail/$1');
     $routes->post('notificaciones/despachar', 'NotificationCron::manual');
+    $routes->get('configuracion/notificaciones', 'NotificationSettings::index');
+    $routes->post('configuracion/notificaciones', 'NotificationSettings::update');
+    $routes->post('configuracion/notificaciones/probar-email', 'NotificationSettings::testEmail');
+    $routes->post('configuracion/notificaciones/migrar', 'NotificationSettings::migrate');
     $routes->post('administradores', 'SuperAdmin::createCompanyAdministrator');
     $routes->post('usuarios/(:num)/empresa', 'SuperAdmin::assignCompany/$1');
     $routes->post('usuarios/(:num)/roles', 'SuperAdmin::assignRoles/$1');
