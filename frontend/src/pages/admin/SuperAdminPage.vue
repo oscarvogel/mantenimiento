@@ -1,5 +1,6 @@
 <script setup>
-import { BuildingOffice2Icon, ChatBubbleLeftRightIcon, IdentificationIcon, PlusIcon, ShieldCheckIcon, UserGroupIcon, UserPlusIcon } from '@heroicons/vue/24/outline'
+import { ref } from 'vue'
+import { BellAlertIcon, BuildingOffice2Icon, ChatBubbleLeftRightIcon, IdentificationIcon, PlusIcon, ShieldCheckIcon, UserGroupIcon, UserPlusIcon } from '@heroicons/vue/24/outline'
 import AdminMetric from './components/AdminMetric.vue'
 import AdminPageHeading from './components/AdminPageHeading.vue'
 import CsrfField from './components/CsrfField.vue'
@@ -14,6 +15,17 @@ defineProps({
 })
 
 const isRoleAssigned = (user, roleId) => user.assignedRoleIds.includes(Number(roleId))
+
+const activeSection = ref('summary')
+const showCreateCompany = ref(false)
+const showCreateAdministrator = ref(false)
+
+const sections = [
+  { key: 'summary', label: 'Resumen' },
+  { key: 'companies', label: 'Empresas' },
+  { key: 'users', label: 'Usuarios' },
+  { key: 'notifications', label: 'Notificaciones' },
+]
 </script>
 
 <template>
@@ -31,16 +43,55 @@ const isRoleAssigned = (user, roleId) => user.assignedRoleIds.includes(Number(ro
       </template>
     </AdminPageHeading>
 
-    <section aria-label="Resumen de administración" class="mb-6 grid gap-3 sm:grid-cols-3">
+    <nav class="mb-6 flex flex-wrap gap-2 rounded-xl border border-border bg-surface-raised p-2 shadow-sm" aria-label="Secciones de administración global">
+      <button
+        v-for="section in sections"
+        :key="section.key"
+        type="button"
+        class="inline-flex min-h-10 items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold transition-colors"
+        :class="activeSection === section.key ? 'bg-primary text-primary-foreground shadow-sm' : 'text-ink-muted hover:bg-surface-muted hover:text-ink'"
+        @click="activeSection = section.key"
+      >
+        {{ section.label }}
+      </button>
+    </nav>
+
+    <section v-if="activeSection === 'summary'" aria-label="Resumen de administración" class="mb-6 grid gap-3 sm:grid-cols-3">
       <AdminMetric label="Empresas" :value="data.metrics.companiesTotal" />
       <AdminMetric label="Empresas activas" :value="data.metrics.companiesActive" tone="success" />
       <AdminMetric label="Usuarios" :value="data.metrics.usersTotal" tone="muted" />
     </section>
 
-    <section class="mb-8 flex flex-col gap-4 rounded-xl border border-border bg-surface-raised p-5 shadow-card sm:flex-row sm:items-center sm:justify-between sm:p-6" aria-labelledby="migration-process-title">
+    <section v-if="activeSection === 'summary'" class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <button type="button" class="group rounded-xl border border-border bg-surface-raised p-5 text-left shadow-sm transition hover:border-primary/30 hover:bg-primary-subtle/30" @click="activeSection = 'companies'">
+        <BuildingOffice2Icon class="size-7 text-primary" aria-hidden="true" />
+        <h2 class="mt-4 font-semibold text-ink">Empresas</h2>
+        <p class="mt-1 text-sm leading-6 text-ink-muted">Datos fiscales, estado y destinatarios de alertas.</p>
+        <span class="mt-4 inline-flex text-sm font-semibold text-primary">Administrar empresas →</span>
+      </button>
+      <button type="button" class="group rounded-xl border border-border bg-surface-raised p-5 text-left shadow-sm transition hover:border-primary/30 hover:bg-primary-subtle/30" @click="activeSection = 'users'">
+        <UserGroupIcon class="size-7 text-primary" aria-hidden="true" />
+        <h2 class="mt-4 font-semibold text-ink">Usuarios</h2>
+        <p class="mt-1 text-sm leading-6 text-ink-muted">Empresa asignada, roles y permisos efectivos.</p>
+        <span class="mt-4 inline-flex text-sm font-semibold text-primary">Administrar usuarios →</span>
+      </button>
+      <button type="button" class="group rounded-xl border border-border bg-surface-raised p-5 text-left shadow-sm transition hover:border-primary/30 hover:bg-primary-subtle/30" @click="activeSection = 'notifications'">
+        <BellAlertIcon class="size-7 text-warning-strong" aria-hidden="true" />
+        <h2 class="mt-4 font-semibold text-ink">Notificaciones</h2>
+        <p class="mt-1 text-sm leading-6 text-ink-muted">Procesá alertas y revisá el canal de correo por empresa.</p>
+        <span class="mt-4 inline-flex text-sm font-semibold text-primary">Gestionar notificaciones →</span>
+      </button>
+      <div class="rounded-xl border border-border bg-surface-raised p-5 shadow-sm">
+        <ShieldCheckIcon class="size-7 text-success" aria-hidden="true" />
+        <h2 class="mt-4 font-semibold text-ink">Alcance global</h2>
+        <p class="mt-1 text-sm leading-6 text-ink-muted">Los cambios realizados aquí impactan en todas las empresas habilitadas.</p>
+      </div>
+    </section>
+
+    <section v-if="activeSection === 'notifications'" class="mb-8 flex flex-col gap-4 rounded-xl border border-border bg-surface-raised p-5 shadow-card sm:flex-row sm:items-center sm:justify-between sm:p-6" aria-labelledby="migration-process-title">
       <div>
         <h2 id="migration-process-title" class="font-semibold text-ink">Aplicar migraciones pendientes</h2>
-        <p class="mt-1 max-w-2xl text-sm leading-6 text-ink-muted">Para pruebas y despliegues: aplica las migraciones pendientes de la base actual con un clic.</p>
+        <p class="mt-1 max-w-2xl text-sm leading-6 text-ink-muted">Aplica únicamente las migraciones pendientes de la base actual, sin necesidad de ejecutar comandos.</p>
       </div>
       <form method="post" :action="data.actions.applyMigrations" data-confirm data-confirm-title="¿Aplicar migraciones pendientes?" data-confirm-text="Se ejecutarán únicamente las migraciones que todavía no fueron aplicadas." data-confirm-button="Aplicar migraciones" class="shrink-0">
         <CsrfField :csrf="data.csrf" />
@@ -50,7 +101,7 @@ const isRoleAssigned = (user, roleId) => user.assignedRoleIds.includes(Number(ro
       </form>
     </section>
 
-    <section v-if="data.permissions.companiesEdit" class="mb-8 flex flex-col gap-4 rounded-xl border border-border bg-surface-raised p-5 shadow-card sm:flex-row sm:items-center sm:justify-between sm:p-6" aria-labelledby="notification-process-title">
+    <section v-if="activeSection === 'notifications' && data.permissions.companiesEdit" class="mb-8 flex flex-col gap-4 rounded-xl border border-border bg-surface-raised p-5 shadow-card sm:flex-row sm:items-center sm:justify-between sm:p-6" aria-labelledby="notification-process-title">
       <div>
         <h2 id="notification-process-title" class="font-semibold text-ink">Procesar notificaciones ahora</h2>
         <p class="mt-1 max-w-2xl text-sm leading-6 text-ink-muted">Detecta vencimientos, genera eventos pendientes y despacha Email, Web Push y WhatsApp según la configuración disponible. La idempotencia evita duplicar el mismo ciclo.</p>
@@ -63,7 +114,7 @@ const isRoleAssigned = (user, roleId) => user.assignedRoleIds.includes(Number(ro
       </form>
     </section>
 
-    <section v-if="data.permissions.companiesEdit && data.whatsapp" class="mb-8 overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card" aria-labelledby="whatsapp-config-title">
+    <section v-if="activeSection === 'notifications' && data.permissions.companiesEdit && data.whatsapp" class="mb-8 overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card" aria-labelledby="whatsapp-config-title">
       <div class="flex items-center gap-3 border-b border-border-subtle bg-surface-subtle px-5 py-4 sm:px-6">
         <span class="flex size-10 items-center justify-center rounded-lg bg-primary-subtle text-primary">
           <ChatBubbleLeftRightIcon class="size-5" aria-hidden="true" />
@@ -97,9 +148,7 @@ const isRoleAssigned = (user, roleId) => user.assignedRoleIds.includes(Number(ro
         <div class="sm:col-span-2 lg:col-span-4 rounded-lg border border-border bg-surface-subtle p-4">
           <p class="text-sm font-medium text-ink">URL del gateway</p>
           <p class="mt-1 break-all font-mono text-xs text-ink-muted">{{ data.whatsapp.apiUrl || 'Sin configurar' }}</p>
-          <p class="mt-2 text-xs leading-5 text-ink-muted">
-            La API key no se muestra por seguridad. El número emisor pertenece a la instancia conectada en Vogel WhatsApp API; Mantenimiento sólo selecciona la instancia por <code>instanceId</code>.
-          </p>
+          <p class="mt-2 text-xs leading-5 text-ink-muted">La API key no se muestra. El número emisor pertenece a la instancia conectada en Vogel WhatsApp API.</p>
         </div>
 
         <form method="post" :action="data.whatsapp.testAction" class="sm:col-span-2 lg:col-span-4 flex flex-col gap-3 rounded-lg border border-border p-4 sm:flex-row sm:items-end">
@@ -115,7 +164,45 @@ const isRoleAssigned = (user, roleId) => user.assignedRoleIds.includes(Number(ro
       </div>
     </section>
 
-    <section v-if="data.permissions.companiesEdit" class="mb-8 overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card" aria-labelledby="create-company-title">
+    <section v-if="activeSection === 'notifications'" class="mb-8 overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card" aria-labelledby="notification-company-status-title">
+      <div class="border-b border-border-subtle px-5 py-4 sm:px-6">
+        <h2 id="notification-company-status-title" class="font-semibold text-ink">Canales por empresa</h2>
+        <p class="mt-1 text-sm text-ink-muted">Verificá rápidamente qué empresas tienen configurado el correo de mantenimiento.</p>
+      </div>
+      <div class="divide-y divide-border-subtle">
+        <div v-for="company in data.companies" :key="company.id" class="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div class="min-w-0">
+            <p class="font-semibold text-ink">{{ company.displayName }}</p>
+            <p class="mt-1 truncate text-sm text-ink-muted">{{ company.notificationEmail || company.email || 'Sin destinatario configurado' }}</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <StatusBadge :active="company.active" active-label="Empresa activa" inactive-label="Empresa inactiva" />
+            <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold" :class="company.notificationEmailEnabled && (company.notificationEmail || company.email) ? 'bg-success-subtle text-success-strong' : 'bg-warning-subtle text-warning-foreground'">
+              {{ company.notificationEmailEnabled && (company.notificationEmail || company.email) ? 'Email habilitado' : 'Email pendiente' }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section v-if="activeSection === 'companies'" class="mb-5 flex flex-col gap-3 rounded-xl border border-border bg-surface-raised p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h2 class="font-semibold text-ink">Empresas</h2>
+        <p class="mt-1 text-sm text-ink-muted">Administrá organizaciones sin tener todos los formularios abiertos al mismo tiempo.</p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <button v-if="data.permissions.companiesEdit" type="button" class="inline-flex min-h-10 items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground" @click="showCreateCompany = !showCreateCompany">
+          <PlusIcon class="size-4" aria-hidden="true" />
+          {{ showCreateCompany ? 'Cerrar alta' : 'Nueva empresa' }}
+        </button>
+        <button v-if="data.permissions.createCompanyAdministrators" type="button" class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-border-strong px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted" @click="showCreateAdministrator = !showCreateAdministrator">
+          <UserPlusIcon class="size-4" aria-hidden="true" />
+          {{ showCreateAdministrator ? 'Cerrar administrador' : 'Nuevo administrador' }}
+        </button>
+      </div>
+    </section>
+
+    <section v-if="activeSection === 'companies' && data.permissions.companiesEdit && showCreateCompany" class="mb-8 overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card" aria-labelledby="create-company-title">
       <div class="flex items-center gap-3 border-b border-border-subtle bg-surface-subtle px-5 py-4 sm:px-6">
         <span class="flex size-10 items-center justify-center rounded-lg bg-primary-subtle text-primary">
           <PlusIcon class="size-5" aria-hidden="true" />
@@ -178,7 +265,7 @@ const isRoleAssigned = (user, roleId) => user.assignedRoleIds.includes(Number(ro
     </section>
 
     <section
-      v-if="data.permissions.createCompanyAdministrators"
+      v-if="activeSection === 'companies' && data.permissions.createCompanyAdministrators && showCreateAdministrator"
       class="mb-8 overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card"
       aria-labelledby="create-company-administrator-title"
     >
@@ -240,7 +327,7 @@ const isRoleAssigned = (user, roleId) => user.assignedRoleIds.includes(Number(ro
       </div>
     </section>
 
-    <section aria-labelledby="companies-title" class="mb-9">
+    <section v-if="activeSection === 'companies'" aria-labelledby="companies-title" class="mb-9">
       <div class="mb-4 flex items-center justify-between gap-3">
         <div>
           <h2 id="companies-title" class="text-lg font-bold text-ink">Empresas</h2>
@@ -252,8 +339,7 @@ const isRoleAssigned = (user, roleId) => user.assignedRoleIds.includes(Number(ro
       <div v-if="data.companies.length" class="grid gap-4 xl:grid-cols-2">
         <article v-for="company in data.companies" :key="company.id" class="overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card">
           <div class="flex items-start justify-between gap-4 border-b border-border-subtle px-5 py-4">
-            <div class="flex min-w-0 items-center gap-3">
-              <span class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary-subtle text-primary">
+            <div class="flex min-w-0 items-center gap-3">              <span class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary-subtle text-primary">
                 <BuildingOffice2Icon class="size-5" aria-hidden="true" />
               </span>
               <div class="min-w-0">
@@ -350,7 +436,7 @@ const isRoleAssigned = (user, roleId) => user.assignedRoleIds.includes(Number(ro
       <PaginationBar :pagination="data.companiesPagination" />
     </section>
 
-    <section aria-labelledby="global-users-title">
+    <section v-if="activeSection === 'users'" aria-labelledby="global-users-title">
       <div class="mb-4 flex items-center justify-between gap-3">
         <div>
           <h2 id="global-users-title" class="text-lg font-bold text-ink">Usuarios del sistema</h2>
@@ -441,7 +527,6 @@ const isRoleAssigned = (user, roleId) => user.assignedRoleIds.includes(Number(ro
         </div>
       </div>
 
-      <PaginationBar :pagination="data.usersPagination" />
-    </section>
+      <PaginationBar :pagination="data.usersPagination" />    </section>
   </div>
 </template>
