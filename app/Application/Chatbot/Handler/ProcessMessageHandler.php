@@ -105,6 +105,11 @@ TXT;
             return $deterministic;
         }
 
+        $healthResponse = $this->tryHandleEquipmentHealthRanking($actor, $command, $userMessage);
+        if ($healthResponse !== null) {
+            return $healthResponse;
+        }
+
         $priorityResponse = $this->tryHandleOperationalPrioritization($actor, $command, $userMessage);
         if ($priorityResponse !== null) {
             return $priorityResponse;
@@ -242,6 +247,83 @@ TXT;
 
         $lines[] = '';
         $lines[] = 'El orden sale del score del backend; no aplico umbrales ni reordeno prioridades por criterio del modelo.';
+
+        return $this->finishDeterministic(
+            $command->conversationId,
+            $userMessage,
+            implode("\n", $lines),
+        );
+    }
+
+    private function tryHandleEquipmentHealthRanking(
+        ActorContext $actor,
+        SendMessageCommand $command,
+        Message $userMessage,
+    ): ?MessageProcessedResult {
+        $normalized = mb_strtolower(trim($command->content), 'UTF-8');
+        $isHealthIntent = preg_match(
+            '/\b(qu[eé]\s+(?:equipo|equipos|m[oó]vil|m[oó]viles|camion|camiones)\s+.*(?:preocupa|preocupan|peor|riesgo)|(?:equipo|equipos|m[oó]vil|m[oó]viles|camion|camiones)\s+.*(?:peor\s+situaci[oó]n|peor\s+estado|m[aá]s\s+riesgo|mayor\s+riesgo)|cu[aá]les\s+son\s+.*(?:equipos|m[oó]viles|camiones).*\s+(?:peor|riesgo)|salud\s+de\s+(?:la\s+)?flota)\b/u',
+            $normalized,
+        ) === 1;
+
+        if (! $isHealthIntent || ! $actor->hasPermission('equipos.ver')) {
+            return null;
+        }
+
+        $limit = 5;
+        if (preg_match('/\b([1-9]|10)\b/u', $normalized, $match) === 1) {
+            $limit = max(1, min(10, (int) $match[1]));
+        }
+
+        $call = [
+            'id' => 'det_equipment_health_' . uniqid(),
+            'name' => 'analizar_salud_equipos',
+            'arguments' => ['limit' => $limit],
+        ];
+
+        $result = $this->toolExecutor->execute($call['name'], $call['arguments'], $actor);
+        $this->messages->append($this->buildToolMessage($command->conversationId, $call, $result));
+
+        if (! $result->success) {
+            return $this->finishDeterministic(
+                $command->conversationId,
+                $userMessage,
+                $result->errorMessage ?? 'No pude analizar la salud de los equipos.',
+            );
+        }
+
+        $payload = is_array($result->result) ? $result->result : [];
+        $equipment = is_array($payload['equipment'] ?? null) ? $payload['equipment'] : [];
+
+        if ($equipment === []) {
+            return $this->finishDeterministic(
+                $command->conversationId,
+                $userMessage,
+                'No encontré equipos activos para analizar con tu alcance actual.',
+            );
+        }
+
+        $lines = ['Estos son los equipos en peor situación según el score de salud de la flota:'];
+        foreach ($equipment as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+
+            $rank = (int) ($item['rank'] ?? 0);
+            $code = trim((string) ($item['code'] ?? 'Equipo'));
+            $risk = trim((string) ($item['risk'] ?? 'NORMAL'));
+            $score = (int) ($item['score'] ?? 0);
+            $reasons = is_array($item['reasons'] ?? null) ? array_values(array_filter(array_map('strval', $item['reasons']))) : [];
+
+            $line = '- ' . ($rank > 0 ? '#' . $rank . ' ' : '') . '**' . $code . '** · riesgo ' . $risk . ' · score ' . $score;
+            if ($reasons !== []) {
+                $line .= ' · ' . implode('; ', $reasons);
+            }
+            $lines[] = $line;
+        }
+
+        $lines[] = '';
+        $lines[] = 'El ranking usa datos del backend; no reordeno equipos ni agrego factores que no estén en el análisis.';
 
         return $this->finishDeterministic(
             $command->conversationId,
