@@ -46,6 +46,25 @@
         <span class="text-xs font-semibold text-ink-muted">Asistente de mantenimiento</span>
       </div>
       <div
+        v-if="historyTruncated"
+        class="text-center text-[11px] text-ink-subtle"
+      >
+        Mostrando los últimos {{ CHAT_VISIBLE_HISTORY_LIMIT }} mensajes
+      </div>
+      <ChatMessage
+        v-for="msg in messages"
+        :key="msg.tempId"
+        :message="msg"
+        :streaming="msg.streaming"
+      />
+      <ChatToolConfirm
+        v-for="(tc, idx) in pendingToolCalls"
+        :key="`tc-${idx}`"
+        :tool-call="tc"
+        @confirm="confirmTool(tc)"
+        @cancel="cancelTool(tc)"
+      />
+      <div
         v-if="briefing && !briefingDismissed"
         class="rounded-xl border border-border bg-surface p-3 text-sm"
         data-testid="chat-proactive-briefing"
@@ -86,25 +105,6 @@
         </div>
       </div>
 
-      <div
-        v-if="historyTruncated"
-        class="text-center text-[11px] text-ink-subtle"
-      >
-        Mostrando los últimos {{ CHAT_VISIBLE_HISTORY_LIMIT }} mensajes
-      </div>
-      <ChatMessage
-        v-for="msg in messages"
-        :key="msg.tempId"
-        :message="msg"
-        :streaming="msg.streaming"
-      />
-      <ChatToolConfirm
-        v-for="(tc, idx) in pendingToolCalls"
-        :key="`tc-${idx}`"
-        :tool-call="tc"
-        @confirm="confirmTool(tc)"
-        @cancel="cancelTool(tc)"
-      />
       <div v-if="loading && streamingText === ''" role="status" aria-live="polite" class="py-2 text-center text-sm text-ink-subtle">
         Pensando...
       </div>
