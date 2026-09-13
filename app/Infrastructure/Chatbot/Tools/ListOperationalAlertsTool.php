@@ -5,13 +5,14 @@ declare(strict_types=1);
 namespace App\Infrastructure\Chatbot\Tools;
 
 use App\Application\Identity\ActorContext;
-use App\Application\Notifications\Port\NotificationRepository;
+use App\Application\Notifications\Port\OperationalNotificationEventSource;
 use App\Domain\Chatbot\ToolHandler;
+use App\Domain\Notifications\NotifiableEvent;
 use DomainException;
 
 final readonly class ListOperationalAlertsTool implements ToolHandler
 {
-    public function __construct(private NotificationRepository $notifications)
+    public function __construct(private OperationalNotificationEventSource $source)
     {
     }
 
@@ -23,43 +24,54 @@ final readonly class ListOperationalAlertsTool implements ToolHandler
 
         $limit = max(1, min(20, (int) ($args['limit'] ?? 10)));
         $severity = strtoupper(trim((string) ($args['severity'] ?? '')));
-        $unreadOnly = ! array_key_exists('unread_only', $args) || (bool) $args['unread_only'];
-        $branchIds = $actor->hasAllCompanyBranches() ? null : $actor->branchIds();
 
-        $page = $this->notifications->listForUser(
-            $actor->companyId(),
-            $actor->userId(),
-            $branchIds,
-            1,
-            25,
+        $events = array_values(array_filter(
+            $this->source->collect(),
+            function (NotifiableEvent $event) use ($actor, $severity): bool {
+                if ($event->companyId() !== $actor->companyId()) {
+                    return false;
+                }
+
+                $branchId = $event->branchId();
+                if ($branchId !== null && ! $actor->hasAllCompanyBranches() && ! in_array($branchId, $actor->branchIds(), true)) {
+                    return false;
+                }
+
+                $recipientUserIds = $event->recipientUserIds();
+                if ($recipientUserIds !== null && ! in_array($actor->userId(), $recipientUserIds, true)) {
+                    return false;
+                }
+
+                return $severity === '' || strtoupper($event->severity()->value) === $severity;
+            },
+        ));
+
+        usort($events, static fn (NotifiableEvent $left, NotifiableEvent $right): int =>
+            self::severityRank($left->severity()->value) <=> self::severityRank($right->severity()->value)
         );
 
-        $items = array_values(array_filter($page->items, static function (array $item) use ($severity, $unreadOnly): bool {
-            if ($unreadOnly && ! empty($item['readAt'])) {
-                return false;
-            }
-            if ($severity !== '' && strtoupper((string) ($item['severity'] ?? '')) !== $severity) {
-                return false;
-            }
-            return true;
-        }));
-
-        $items = array_slice($items, 0, $limit);
+        $events = array_slice($events, 0, $limit);
 
         return [
-            'unread' => $page->unread,
-            'count' => count($items),
-            'items' => array_map(static fn (array $item): array => [
-                'id' => (int) ($item['id'] ?? 0),
-                'type' => (string) ($item['type'] ?? ''),
-                'severity' => (string) ($item['severity'] ?? ''),
-                'title' => (string) ($item['title'] ?? ''),
-                'summary' => (string) ($item['summary'] ?? ''),
-                'links' => [
-                    'detail' => isset($item['url']) && $item['url'] !== null ? (string) $item['url'] : null,
-                ],
-                'created_at' => (string) ($item['createdAt'] ?? ''),
-            ], $items),
+            'count' => count($events),
+            'items' => array_map(static fn (NotifiableEvent $event): array => [
+                'id' => $event->logicalKey(),
+                'type' => $event->type(),
+                'severity' => $event->severity()->value,
+                'title' => $event->title(),
+                'summary' => $event->summary(),
+                'links' => ['detail' => $event->url()],
+                'created_at' => $event->occurredAt()->format(DATE_ATOM),
+            ], $events),
         ];
+    }
+
+    private static function severityRank(string $severity): int
+    {
+        return match ($severity) {
+            'CRITICA' => 0,
+            'ADVERTENCIA' => 1,
+            default => 2,
+        };
     }
 }
