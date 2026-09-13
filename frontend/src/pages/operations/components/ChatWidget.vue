@@ -46,7 +46,7 @@
         <span class="text-xs font-semibold text-ink-muted">Asistente de mantenimiento</span>
       </div>
       <div
-        v-if="briefing?.hasAttention && !briefingDismissed"
+        v-if="briefing && !briefingDismissed"
         class="rounded-xl border border-border bg-surface p-3 text-sm"
         data-testid="chat-proactive-briefing"
       >
@@ -54,7 +54,12 @@
           <div>
             <p class="font-semibold text-ink">{{ briefing.headline }}</p>
             <p class="mt-1 text-xs text-ink-muted">
-              {{ briefing.counts.critical }} críticas · {{ briefing.counts.warning }} advertencias · {{ briefing.counts.info }} informativas
+              <template v-if="briefing.hasAttention">
+                {{ briefing.counts.critical }} críticas · {{ briefing.counts.warning }} advertencias · {{ briefing.counts.info }} informativas
+              </template>
+              <template v-else>
+                No detecté alertas operativas vigentes.
+              </template>
             </p>
           </div>
           <button type="button" class="ui-interactive rounded px-1 text-xs text-ink-subtle" @click="briefingDismissed = true" aria-label="Ocultar resumen">×</button>
