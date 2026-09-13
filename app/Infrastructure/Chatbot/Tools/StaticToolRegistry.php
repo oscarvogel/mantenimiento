@@ -89,6 +89,18 @@ final class StaticToolRegistry implements ToolRegistry
             permission: 'ordenes.ver',
             handlerClass: ConsultWorkOrderTool::class,
         ));
+
+        $this->register(ToolDefinition::read(
+            name: 'listar_alertas_operativas',
+            description: 'Lista alertas operativas del usuario actual usando el mismo centro de notificaciones del sistema. Usar para preguntas como "qué tengo urgente", "qué debería atender hoy", "hay algo vencido" o "qué requiere atención". No recalcular alertas por cuenta propia.',
+            parameters: [
+                'severity' => ['type' => 'string', 'description' => 'Filtro opcional: CRITICA, ADVERTENCIA o INFO', 'required' => false],
+                'unread_only' => ['type' => 'boolean', 'description' => 'Solo no leídas; default true', 'required' => false],
+                'limit' => ['type' => 'integer', 'description' => 'Máximo a devolver (default 10, max 20)', 'required' => false],
+            ],
+            permission: 'notificaciones.ver',
+            handlerClass: ListOperationalAlertsTool::class,
+        ));
     }
 
     public function register(ToolDefinition $tool): void
