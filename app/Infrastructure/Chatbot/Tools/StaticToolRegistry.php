@@ -100,6 +100,16 @@ final class StaticToolRegistry implements ToolRegistry
             permission: 'notificaciones.ver',
             handlerClass: ListOperationalAlertsTool::class,
         ));
+
+        $this->register(ToolDefinition::read(
+            name: 'analizar_salud_equipos',
+            description: 'Analiza la salud/riesgo de los equipos activos con score determinístico basado en preventivos vencidos, correctivos abiertos y recientes, espera de repuestos y antigüedad de lecturas. Usar para preguntas como "qué equipo me preocupa más", "cuáles son los equipos en peor estado" o "qué móviles tienen más riesgo".',
+            parameters: [
+                'limit' => ['type' => 'integer', 'description' => 'Cantidad de equipos a devolver (default 5, max 10)', 'required' => false],
+            ],
+            permission: 'equipos.ver',
+            handlerClass: AnalyzeEquipmentHealthTool::class,
+        ));
     }
 
     public function register(ToolDefinition $tool): void
