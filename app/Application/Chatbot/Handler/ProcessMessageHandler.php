@@ -37,11 +37,13 @@ ALCANCE (respondes solo sobre estos temas):
 
 MODO PROACTIVO:
 - Sos un asistente operacional, no solo un chat de preguntas y respuestas.
-- Cuando el usuario pregunte qué debería atender, qué está urgente, qué está vencido o qué requiere atención, usar OBLIGATORIAMENTE listar_alertas_operativas.
-- Priorizá alertas CRITICA sobre ADVERTENCIA e INFO.
-- No recalcules por tu cuenta lo que ya determina el centro de notificaciones: usá sus alertas como fuente de verdad operacional.
+- Si el usuario pide un LISTADO de alertas vigentes ("qué está vencido", "qué alertas tengo", "mostrame lo crítico"), usar listar_alertas_operativas.
+- Si el usuario pide PRIORIZACIÓN o DECISIÓN ("qué debería atender primero", "qué hago hoy", "ordenáme lo urgente", "por dónde empiezo"), usar OBLIGATORIAMENTE analizar_prioridades_operativas.
+- El ranking de analizar_prioridades_operativas es la fuente de verdad para el orden: NO reordenarlo por intuición del modelo.
+- Explicá brevemente el motivo usando score_components y reason; no inventes factores que la herramienta no haya devuelto.
+- No recalcules por tu cuenta lo que ya determina el backend.
 - Podés recomendar un orden de atención y explicar por qué, pero no marques notificaciones como leídas ni ejecutes cambios sin confirmación.
-- Si no hay alertas pendientes, decilo claramente y ofrecé revisar preventivos u órdenes abiertas.
+- Si no hay prioridades pendientes, decilo claramente y ofrecé revisar preventivos u órdenes abiertas.
 
 REGLAS DE TOOLS (selección inequívoca - OBLIGATORIO):
 - Preguntas sobre OT abiertas/pendientes/en proceso/cerradas → usar listar_ordenes_trabajo o consultar_orden_trabajo, NUNCA planes. Ej: "qué OT tengo abierta" → listar_ordenes_trabajo.
@@ -101,6 +103,11 @@ TXT;
             return $deterministic;
         }
 
+        $priorityResponse = $this->tryHandleOperationalPrioritization($actor, $command, $userMessage);
+        if ($priorityResponse !== null) {
+            return $priorityResponse;
+        }
+
         $history = $this->messages->findForConversation($command->conversationId, limit: 20);
         $providerMessages = $this->withSystemPrompt($this->toProviderMessages($history));
         $toolsForUser = $this->toolsForActor($actor);
@@ -157,6 +164,88 @@ TXT;
         $this->messages->append($assistantMessage);
 
         return new MessageProcessedResult(messages: [$userMessage, $assistantMessage], streaming: $onChunk !== null);
+    }
+
+    private function tryHandleOperationalPrioritization(
+        ActorContext $actor,
+        SendMessageCommand $command,
+        Message $userMessage,
+    ): ?MessageProcessedResult {
+        $normalized = mb_strtolower(trim($command->content), 'UTF-8');
+        $isPriorityIntent = preg_match(
+            '/\b(qu[eé]\s+deber[ií]a\s+atender|qu[eé]\s+hago\s+hoy|por\s+d[oó]nde\s+empiezo|qu[eé]\s+atiendo\s+primero|orden(?:a|á)me\s+lo\s+urgente|prioridades?|m[aá]s\s+urgente|m[aá]s\s+cr[ií]tico)\b/u',
+            $normalized,
+        ) === 1;
+
+        if (! $isPriorityIntent || ! $actor->hasPermission('notificaciones.ver')) {
+            return null;
+        }
+
+        $limit = 5;
+        if (preg_match('/\b([1-9]|10)\b/u', $normalized, $match) === 1) {
+            $limit = max(1, min(10, (int) $match[1]));
+        }
+
+        $call = [
+            'id' => 'det_priorities_' . uniqid(),
+            'name' => 'analizar_prioridades_operativas',
+            'arguments' => ['limit' => $limit],
+        ];
+
+        $result = $this->toolExecutor->execute($call['name'], $call['arguments'], $actor);
+        $this->messages->append($this->buildToolMessage($command->conversationId, $call, $result));
+
+        if (! $result->success) {
+            return $this->finishDeterministic(
+                $command->conversationId,
+                $userMessage,
+                $result->errorMessage ?? 'No pude analizar las prioridades operativas.',
+            );
+        }
+
+        $payload = is_array($result->result) ? $result->result : [];
+        $priorities = is_array($payload['priorities'] ?? null) ? $payload['priorities'] : [];
+
+        if ($priorities === []) {
+            return $this->finishDeterministic(
+                $command->conversationId,
+                $userMessage,
+                'No detecté prioridades operativas pendientes con los datos actuales.',
+            );
+        }
+
+        $lines = ['Te sugiero este orden de atención según el ranking operativo actual:'];
+        foreach ($priorities as $priority) {
+            if (! is_array($priority)) {
+                continue;
+            }
+
+            $rank = (int) ($priority['rank'] ?? 0);
+            $title = trim((string) ($priority['title'] ?? 'Prioridad operativa'));
+            $summary = trim((string) ($priority['summary'] ?? ''));
+            $score = (int) ($priority['score'] ?? 0);
+            $severity = trim((string) ($priority['severity'] ?? ''));
+
+            $line = '- ' . ($rank > 0 ? '#' . $rank . ' ' : '') . '**' . $title . '**';
+            if ($severity !== '') {
+                $line .= ' · ' . $severity;
+            }
+            $line .= ' · score ' . $score;
+            if ($summary !== '') {
+                $line .= ' · ' . $summary;
+            }
+
+            $lines[] = $line;
+        }
+
+        $lines[] = '';
+        $lines[] = 'El orden sale del score del backend; no aplico umbrales ni reordeno prioridades por criterio del modelo.';
+
+        return $this->finishDeterministic(
+            $command->conversationId,
+            $userMessage,
+            implode("\n", $lines),
+        );
     }
 
     private function tryHandleExplicitMeasurementLookup(
