@@ -56,6 +56,10 @@ $routes->group('superadmin', ['filter' => 'superadmin'], static function ($route
     $routes->post('notificaciones/despachar', 'NotificationCron::manual');
     $routes->post('migraciones/aplicar', 'SuperAdmin::applyPendingMigrations');
     $routes->post('whatsapp/prueba', 'SuperAdmin::testWhatsApp');
+    $routes->get('configuracion/notificaciones', 'NotificationSettings::index');
+    $routes->post('configuracion/notificaciones', 'NotificationSettings::update');
+    $routes->post('configuracion/notificaciones/probar-email', 'NotificationSettings::testEmail');
+    $routes->post('configuracion/notificaciones/migrar', 'NotificationSettings::migrate');
     $routes->post('administradores', 'SuperAdmin::createCompanyAdministrator');
     $routes->post('usuarios/(:num)/empresa', 'SuperAdmin::assignCompany/$1');
     $routes->post('usuarios/(:num)/roles', 'SuperAdmin::assignRoles/$1');
@@ -130,6 +134,7 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->get('empleados/(:num)/foto', 'Employees::photo/$1', ['filter' => 'permission:empleados.ver']);
     $routes->post('empleados/(:num)/baja', 'Employees::terminate/$1', ['filter' => 'permission:empleados.editar']);
 
+    $routes->get('vencimientos', 'Expirations::index');
     $routes->get('maestros/vencimientos', 'Expirations::typesIndex');
     $routes->post('vencimientos/tipos', 'Expirations::createType');
     $routes->post('vencimientos/tipos/(:num)', 'Expirations::updateType/$1');
