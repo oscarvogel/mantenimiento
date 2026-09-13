@@ -50,8 +50,7 @@ final class ConfirmImportHandler
                 $rows = $this->imports->pendingRows($draft->id, 0, $this->batchSize);
                 foreach ($rows as $row) {
                     $data = $row['datos_normalizados'];
-                    $branchId = (int) ($data['branch_id'] ?? 0);
-                    if ($branchId <= 0 || ! $actor->canAccessBranch($companyId, $branchId)) {
+                    if (! $this->branchIsAuthorized($actor, $companyId, $draft->type, $data)) {
                         $this->imports->markRowError($row['id'], 'La sucursal ya no esta autorizada para el actor.');
                         $errors++;
                         continue;
@@ -149,6 +148,23 @@ final class ConfirmImportHandler
             $actorId,
             $importId,
         );
+    }
+
+    /** @param array<string,mixed> $data */
+    private function branchIsAuthorized(ActorContext $actor, int $companyId, ImportType $type, array $data): bool
+    {
+        if (
+            $type === ImportType::VENCIMIENTOS
+            && ($data['subject_type'] ?? null) === ExpirationSubjectType::EMPLOYEE->value
+        ) {
+            return true;
+        }
+
+        $branchId = isset($data['branch_id']) && $data['branch_id'] !== null
+            ? (int) $data['branch_id']
+            : 0;
+
+        return $branchId > 0 && $actor->canAccessBranch($companyId, $branchId);
     }
 
     private function tenantCompany(ActorContext $actor, string $permission): int

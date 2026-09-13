@@ -15,6 +15,83 @@ use Throwable;
 
 final class Expirations extends BaseController
 {
+    public function index(): string|ResponseInterface
+    {
+        try {
+            $actor = $this->actor();
+            $canSeeEquipment = $actor->hasPermission('equipos.ver');
+            $canSeeEmployees = $actor->hasPermission('empleados.ver');
+            if (! $canSeeEquipment && ! $canSeeEmployees) {
+                throw new DomainException('No tenés permiso para consultar vencimientos.');
+            }
+
+            $subject = mb_strtoupper(trim((string) $this->request->getGet('tipo')));
+            if (! in_array($subject, ['TODOS', 'EQUIPO', 'EMPLEADO'], true)) {
+                $subject = 'TODOS';
+            }
+            if (! $canSeeEquipment) {
+                $subject = 'EMPLEADO';
+            } elseif (! $canSeeEmployees) {
+                $subject = 'EQUIPO';
+            }
+            $status = mb_strtolower(trim((string) $this->request->getGet('estado')));
+            if (! in_array($status, ['todos', 'vencidos', '7', '15', '30', 'vigentes'], true)) {
+                $status = 'todos';
+            }
+            $branchId = (int) $this->request->getGet('sucursal_id');
+            $search = trim((string) $this->request->getGet('q'));
+
+            $allowedBranches = $actor->hasAllCompanyBranches() ? null : $actor->branchIds();
+            if ($branchId > 0 && $allowedBranches !== null && ! in_array($branchId, $allowedBranches, true)) {
+                throw new DomainException('No tenés acceso a la sucursal seleccionada.');
+            }
+
+            $readModel = new \App\Infrastructure\Expirations\CodeIgniterExpirationReadModel(db_connect());
+            $items = $readModel->upcoming((int) $actor->companyId(), [
+                'subject' => $subject,
+                'status' => $status,
+                'branchId' => $branchId > 0 ? $branchId : null,
+                'q' => $search,
+            ], $allowedBranches);
+
+            $summary = [
+                'total' => count($items),
+                'overdue' => count(array_filter($items, static fn (array $item): bool => (int) $item['daysUntil'] < 0)),
+                'next7' => count(array_filter($items, static fn (array $item): bool => (int) $item['daysUntil'] >= 0 && (int) $item['daysUntil'] <= 7)),
+                'next30' => count(array_filter($items, static fn (array $item): bool => (int) $item['daysUntil'] >= 0 && (int) $item['daysUntil'] <= 30)),
+            ];
+
+            return $this->renderApp($actor, 'expirations', 'expirations-index', 'Próximos vencimientos', [
+                'items' => $items,
+                'summary' => $summary,
+                'branches' => $readModel->branches((int) $actor->companyId(), $allowedBranches),
+                'filters' => [
+                    'subject' => $subject,
+                    'status' => $status,
+                    'branchId' => $branchId > 0 ? $branchId : '',
+                    'q' => $search,
+                ],
+                'routes' => [
+                    'index' => base_url('mantenimiento/vencimientos'),
+                    'types' => base_url('mantenimiento/maestros/vencimientos'),
+                ],
+                'canSeeEquipment' => $canSeeEquipment,
+                'canSeeEmployees' => $canSeeEmployees,
+                'canManageTypes' => $actor->hasPermission('equipos.editar') || $actor->hasPermission('empleados.editar'),
+            ]);
+        } catch (Throwable $exception) {
+            if (! $exception instanceof DomainException) {
+                log_message('error', 'Falló la consulta de próximos vencimientos: {message}', ['message' => $exception->getMessage()]);
+            }
+
+            return $this->response
+                ->setStatusCode($exception instanceof DomainException ? 403 : 500)
+                ->setHeader('Cache-Control', 'no-store')
+                ->setContentType('text/plain')
+                ->setBody($exception instanceof DomainException ? $exception->getMessage() : 'No se pudieron cargar los próximos vencimientos.');
+        }
+    }
+
     public function typesIndex(): string|ResponseInterface
     {
         try {

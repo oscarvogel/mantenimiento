@@ -40,7 +40,7 @@ const emit = defineEmits(['close'])
 const navigationGroups = computed(() => {
   const definitions = [
     { key: 'operation', label: 'Operación', items: ['dashboard', 'equipment', 'quick-readings', 'plans', 'maintenance'] },
-    { key: 'management', label: 'Gestión', items: ['employees', 'notifications', 'imports', 'preventive-library', 'reports'] },
+    { key: 'management', label: 'Gestión', items: ['employees', 'expirations', 'notifications', 'imports', 'preventive-library', 'reports'] },
     { key: 'masters', label: 'Maestros', items: ['masters-expirations'] },
     { key: 'administration', label: 'Administración', items: ['superadmin', 'chatbot-audit', 'branches', 'users'] },
   ]
