@@ -10,6 +10,7 @@ final class ExpandSolicitudesMantenimiento extends Migration
 {
     public function up(): void
     {
+        $this->ensureBaseTable();
         $fields = [];
         if (! $this->db->fieldExists('prioridad', 'solicitudes_mantenimiento')) {
             $fields['prioridad'] = ['type' => 'VARCHAR', 'constraint' => 20, 'default' => 'MEDIA'];
@@ -48,6 +49,34 @@ final class ExpandSolicitudesMantenimiento extends Migration
         if ($this->db->DBDriver === 'MySQLi') {
             $this->dropIndexIfExists('solicitudes_mantenimiento', 'idx_solicitudes_scope_estado_fecha');
         }
+    }
+
+    private function ensureBaseTable(): void
+    {
+        if ($this->db->tableExists('solicitudes_mantenimiento')) {
+            return;
+        }
+
+        $this->forge->addField([
+            'id' => ['type' => 'INT', 'unsigned' => true, 'auto_increment' => true],
+            'empresa_id' => ['type' => 'INT', 'unsigned' => true],
+            'sucursal_id' => ['type' => 'INT', 'unsigned' => true],
+            'equipo_id' => ['type' => 'INT', 'unsigned' => true],
+            'reportado_por' => ['type' => 'INT', 'unsigned' => true],
+            'fecha_reporte' => ['type' => 'DATETIME'],
+            'descripcion' => ['type' => 'TEXT'],
+            'estado' => ['type' => 'VARCHAR', 'constraint' => 20, 'default' => 'PENDIENTE'],
+            'created_at' => ['type' => 'DATETIME', 'null' => true],
+            'updated_at' => ['type' => 'DATETIME', 'null' => true],
+        ]);
+        $this->forge->addPrimaryKey('id');
+        $this->forge->addKey(['empresa_id', 'estado']);
+        $this->forge->addKey(['empresa_id', 'equipo_id', 'fecha_reporte']);
+        $this->forge->addForeignKey('empresa_id', 'empresas', 'id', 'CASCADE', 'RESTRICT');
+        $this->forge->addForeignKey('sucursal_id', 'sucursales', 'id', 'CASCADE', 'RESTRICT');
+        $this->forge->addForeignKey('equipo_id', 'equipos', 'id', 'CASCADE', 'RESTRICT');
+        $this->forge->addForeignKey('reportado_por', 'usuarios', 'id', 'CASCADE', 'RESTRICT');
+        $this->forge->createTable('solicitudes_mantenimiento', true);
     }
 
     private function addIndexIfMissing(string $name, array $columns): void

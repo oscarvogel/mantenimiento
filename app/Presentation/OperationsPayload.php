@@ -205,6 +205,40 @@ final class OperationsPayload
         ];
     }
 
+    /** @param array<string,mixed> $catalogs @param array<string,mixed> $management */
+    public function equipmentCatalogs(array $catalogs, array $management): array
+    {
+        $base = base_url('mantenimiento/maestros/equipos');
+        $query = [
+            'brand_page' => (int) ($management['brands']['page'] ?? 1),
+            'brand_per_page' => (int) ($management['brands']['perPage'] ?? 10),
+            'model_page' => (int) ($management['models']['page'] ?? 1),
+            'model_per_page' => (int) ($management['models']['perPage'] ?? 10),
+        ];
+
+        return [
+            'routes' => [
+                'index' => $base,
+                'createBrand' => base_url('mantenimiento/catalogos/marcas'),
+                'createModel' => base_url('mantenimiento/catalogos/modelos'),
+            ],
+            'catalogs' => [
+                'types' => array_map(fn (array $row): array => [
+                    'id' => (int) $row['id'], 'name' => $row['nombre'], 'active' => (int) $row['activo'] === 1,
+                ], $catalogs['types'] ?? []),
+                'brands' => array_map(fn (array $row): array => [
+                    'id' => (int) $row['id'], 'name' => $row['nombre'], 'active' => (int) $row['activo'] === 1,
+                    'updateUrl' => base_url('mantenimiento/catalogos/marcas/' . $row['id']),
+                    'inactivateUrl' => base_url('mantenimiento/catalogos/marcas/' . $row['id'] . '/inactivar'),
+                ], $catalogs['brands'] ?? []),
+            ],
+            'management' => [
+                'brands' => $this->catalogManagementPage($management['brands'] ?? [], $base, $query, 'brand_page', 'brand_per_page', 'brand'),
+                'models' => $this->catalogManagementPage($management['models'] ?? [], $base, $query, 'model_page', 'model_per_page', 'model'),
+            ],
+        ];
+    }
+
     /** @param array<string,mixed> $details @param array<string,mixed> $catalogs @param list<array<string,mixed>> $candidates */
     public function equipmentDetails(array $details, ?ReadingHistoryPage $readings, EquipmentAttachmentPage $attachments, array $catalogs, array $candidates, array $can, array $pageSizes = [], ?PrimaryEquipmentPhoto $primaryPhoto = null): array
     {

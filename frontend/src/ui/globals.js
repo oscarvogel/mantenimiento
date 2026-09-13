@@ -1,5 +1,4 @@
 import { installConfirmForms } from './confirmForms.js'
-import Swal from 'sweetalert2'
 import { useAlerts } from '../composables/useAlerts.js'
 
 const FLASH_ORDER = ['error', 'warning', 'success', 'info']
@@ -15,28 +14,6 @@ const flashHandlers = {
 export function installGlobalBehaviors() {
   installConfirmForms()
   installNativeFormFeedback()
-  installGlobalAlertDismissal()
-}
-
-function installGlobalAlertDismissal() {
-  document.addEventListener('click', (event) => {
-    const target = event.target
-    if (!(target instanceof Element)) return
-
-    const closeButton = target.closest('.swal2-close')
-    if (closeButton) {
-      Swal.close()
-      return
-    }
-
-    const confirmButton = target.closest('.swal2-confirm')
-    if (!confirmButton) return
-
-    const popup = confirmButton.closest('.swal2-popup')
-    if (popup?.querySelector('.swal2-cancel')) return
-
-    Swal.close()
-  }, true)
 }
 
 function isFormControl(target) {

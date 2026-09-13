@@ -15,6 +15,7 @@ final class CreateProvidersAndOrderParts extends Migration
 
     public function up(): void
     {
+        if (! $this->db->tableExists('proveedores')) {
         $this->forge->addField([
             'id' => ['type' => 'INT', 'unsigned' => true, 'auto_increment' => true],
             'empresa_id' => ['type' => 'INT', 'unsigned' => true],
@@ -39,7 +40,9 @@ final class CreateProvidersAndOrderParts extends Migration
         $this->forge->addUniqueKey(['empresa_id', 'cuit'], 'uq_proveedores_empresa_cuit');
         $this->forge->addForeignKey('empresa_id', 'empresas', 'id', 'RESTRICT', 'RESTRICT', 'fk_proveedores_empresa');
         $this->forge->createTable('proveedores', true);
+        }
 
+        if (! $this->db->tableExists('orden_repuestos')) {
         $this->forge->addField([
             'id' => ['type' => 'INT', 'unsigned' => true, 'auto_increment' => true],
             'empresa_id' => ['type' => 'INT', 'unsigned' => true],
@@ -67,6 +70,7 @@ final class CreateProvidersAndOrderParts extends Migration
         $this->forge->addForeignKey(['empresa_id', 'orden_id'], 'ordenes_trabajo', ['empresa_id', 'id'], 'RESTRICT', 'CASCADE', 'fk_orden_repuestos_orden');
         $this->forge->addForeignKey(['empresa_id', 'proveedor_id'], 'proveedores', ['empresa_id', 'id'], 'RESTRICT', 'RESTRICT', 'fk_orden_repuestos_proveedor_tenant');
         $this->forge->createTable('orden_repuestos', true);
+        }
 
         foreach (self::PERMISSIONS as $key => $description) {
             if ($this->db->table('permisos')->where('clave', $key)->countAllResults() === 0) {
