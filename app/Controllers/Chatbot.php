@@ -87,9 +87,7 @@ final class Chatbot extends BaseController
                 ]);
             }
 
-            $briefing = (new \App\Application\Chatbot\GetProactiveAssistantBriefing(
-                service('notificationRepository'),
-            ))->execute($actor);
+            $briefing = service('proactiveAssistantBriefing')->execute($actor);
 
             return $this->jsonOk(['briefing' => ['available' => true] + $briefing]);
         } catch (DomainException $e) {
