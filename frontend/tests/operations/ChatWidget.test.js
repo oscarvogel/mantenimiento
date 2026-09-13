@@ -23,9 +23,13 @@ describe('ChatWidget', () => {
       },
     })
 
+    expect(wrapper.get('button[title="Abrir asistente IA"] img').attributes('src')).toContain('/assets/brand/chatbot/robot-fab.svg')
+
     await wrapper.get('button[title="Abrir asistente IA"]').trigger('click')
     await flushPromises()
 
+    expect(wrapper.find('[data-testid="chat-robot"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="chat-robot"] img').attributes('alt')).toBe('')
     expect(fetch).toHaveBeenCalledWith(
       '/mantenimiento/mantenimiento/chatbot/conversaciones',
       expect.objectContaining({ method: 'POST' }),

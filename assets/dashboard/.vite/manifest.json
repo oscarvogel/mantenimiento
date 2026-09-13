@@ -1,47 +1,54 @@
 {
-  "_admin-BejU7CZ8.js": {
-    "file": "assets/admin-BejU7CZ8.js",
+  "_admin-L0sqXnh9.js": {
+    "file": "assets/admin-L0sqXnh9.js",
     "name": "admin",
     "imports": [
-      "_vendor-DZeYdUmA.js"
+      "_vendor-ew8NuXLz.js"
     ]
   },
-  "_reports-D2BSF1Yd.js": {
-    "file": "assets/reports-D2BSF1Yd.js",
+  "_chatbot-BsItZzFR.css": {
+    "file": "assets/chatbot-BsItZzFR.css",
+    "src": "_chatbot-BsItZzFR.css"
+  },
+  "_chatbot-CuH3H7WZ.js": {
+    "file": "assets/chatbot-CuH3H7WZ.js",
+    "name": "chatbot",
+    "isDynamicEntry": true,
+    "imports": [
+      "_vendor-ew8NuXLz.js"
+    ],
+    "css": [
+      "assets/chatbot-BsItZzFR.css"
+    ]
+  },
+  "_reports-Byld10hA.js": {
+    "file": "assets/reports-Byld10hA.js",
     "name": "reports",
     "imports": [
-      "_admin-BejU7CZ8.js",
-      "_vendor-DZeYdUmA.js"
+      "_admin-L0sqXnh9.js",
+      "_vendor-ew8NuXLz.js"
     ]
   },
-  "_vendor-DZeYdUmA.js": {
-    "file": "assets/vendor-DZeYdUmA.js",
+  "_vendor-ew8NuXLz.js": {
+    "file": "assets/vendor-ew8NuXLz.js",
     "name": "vendor"
   },
   "src/main.js": {
-    "file": "assets/main-Y6QBJBGG.js",
+    "file": "assets/main-BKuNR1Rv.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
     "imports": [
-      "_vendor-DZeYdUmA.js",
-      "_admin-BejU7CZ8.js",
-      "_reports-D2BSF1Yd.js"
+      "_vendor-ew8NuXLz.js",
+      "_chatbot-CuH3H7WZ.js",
+      "_admin-L0sqXnh9.js",
+      "_reports-Byld10hA.js"
     ],
     "dynamicImports": [
-      "src/pages/operations/components/ChatWidget.vue"
+      "_chatbot-CuH3H7WZ.js"
     ],
     "css": [
-      "assets/main-Dr4Pt-z3.css"
-    ]
-  },
-  "src/pages/operations/components/ChatWidget.vue": {
-    "file": "assets/chatbot-Cnpq1cP0.js",
-    "name": "chatbot",
-    "src": "src/pages/operations/components/ChatWidget.vue",
-    "isDynamicEntry": true,
-    "imports": [
-      "_vendor-DZeYdUmA.js"
+      "assets/main-BpCB328p.css"
     ]
   }
 }
