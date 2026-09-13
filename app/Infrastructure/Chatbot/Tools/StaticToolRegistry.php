@@ -100,6 +100,16 @@ final class StaticToolRegistry implements ToolRegistry
             permission: 'notificaciones.ver',
             handlerClass: ListOperationalAlertsTool::class,
         ));
+
+        $this->register(ToolDefinition::read(
+            name: 'analizar_prioridades_operativas',
+            description: 'Analiza y ordena las prioridades operativas actuales con un score determinístico y auditable. Es la tool obligatoria para preguntas como "qué debería atender primero", "qué hago hoy", "ordenáme lo urgente" o "cuáles son las prioridades".',
+            parameters: [
+                'limit' => ['type' => 'integer', 'description' => 'Cantidad de prioridades a devolver (default 5, max 10)', 'required' => false],
+            ],
+            permission: 'notificaciones.ver',
+            handlerClass: AnalyzeOperationalPrioritiesTool::class,
+        ));
     }
 
     public function register(ToolDefinition $tool): void
