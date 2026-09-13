@@ -103,6 +103,11 @@ TXT;
             return $deterministic;
         }
 
+        $priorityResponse = $this->tryHandleOperationalPrioritization($actor, $command, $userMessage);
+        if ($priorityResponse !== null) {
+            return $priorityResponse;
+        }
+
         $history = $this->messages->findForConversation($command->conversationId, limit: 20);
         $providerMessages = $this->withSystemPrompt($this->toProviderMessages($history));
         $toolsForUser = $this->toolsForActor($actor);
@@ -159,6 +164,88 @@ TXT;
         $this->messages->append($assistantMessage);
 
         return new MessageProcessedResult(messages: [$userMessage, $assistantMessage], streaming: $onChunk !== null);
+    }
+
+    private function tryHandleOperationalPrioritization(
+        ActorContext $actor,
+        SendMessageCommand $command,
+        Message $userMessage,
+    ): ?MessageProcessedResult {
+        $normalized = mb_strtolower(trim($command->content), 'UTF-8');
+        $isPriorityIntent = preg_match(
+            '/\b(qu[eé]\s+deber[ií]a\s+atender|qu[eé]\s+hago\s+hoy|por\s+d[oó]nde\s+empiezo|qu[eé]\s+atiendo\s+primero|orden(?:a|á)me\s+lo\s+urgente|prioridades?|m[aá]s\s+urgente|m[aá]s\s+cr[ií]tico)\b/u',
+            $normalized,
+        ) === 1;
+
+        if (! $isPriorityIntent || ! $actor->hasPermission('notificaciones.ver')) {
+            return null;
+        }
+
+        $limit = 5;
+        if (preg_match('/\b([1-9]|10)\b/u', $normalized, $match) === 1) {
+            $limit = max(1, min(10, (int) $match[1]));
+        }
+
+        $call = [
+            'id' => 'det_priorities_' . uniqid(),
+            'name' => 'analizar_prioridades_operativas',
+            'arguments' => ['limit' => $limit],
+        ];
+
+        $result = $this->toolExecutor->execute($call['name'], $call['arguments'], $actor);
+        $this->messages->append($this->buildToolMessage($command->conversationId, $call, $result));
+
+        if (! $result->success) {
+            return $this->finishDeterministic(
+                $command->conversationId,
+                $userMessage,
+                $result->errorMessage ?? 'No pude analizar las prioridades operativas.',
+            );
+        }
+
+        $payload = is_array($result->result) ? $result->result : [];
+        $priorities = is_array($payload['priorities'] ?? null) ? $payload['priorities'] : [];
+
+        if ($priorities === []) {
+            return $this->finishDeterministic(
+                $command->conversationId,
+                $userMessage,
+                'No detecté prioridades operativas pendientes con los datos actuales.',
+            );
+        }
+
+        $lines = ['Te sugiero este orden de atención según el ranking operativo actual:'];
+        foreach ($priorities as $priority) {
+            if (! is_array($priority)) {
+                continue;
+            }
+
+            $rank = (int) ($priority['rank'] ?? 0);
+            $title = trim((string) ($priority['title'] ?? 'Prioridad operativa'));
+            $summary = trim((string) ($priority['summary'] ?? ''));
+            $score = (int) ($priority['score'] ?? 0);
+            $severity = trim((string) ($priority['severity'] ?? ''));
+
+            $line = '- ' . ($rank > 0 ? '#' . $rank . ' ' : '') . '**' . $title . '**';
+            if ($severity !== '') {
+                $line .= ' · ' . $severity;
+            }
+            $line .= ' · score ' . $score;
+            if ($summary !== '') {
+                $line .= ' · ' . $summary;
+            }
+
+            $lines[] = $line;
+        }
+
+        $lines[] = '';
+        $lines[] = 'El orden sale del score del backend; no aplico umbrales ni reordeno prioridades por criterio del modelo.';
+
+        return $this->finishDeterministic(
+            $command->conversationId,
+            $userMessage,
+            implode("\n", $lines),
+        );
     }
 
     private function tryHandleExplicitMeasurementLookup(
