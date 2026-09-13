@@ -194,6 +194,7 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
 $routes->group('mantenimiento/chatbot', ['filter' => ['auth', 'permission:chatbot.usar']], function ($routes) {
     $routes->get('/',               'Chatbot::index');
     $routes->post('conversaciones', 'Chatbot::startConversation');
+    $routes->get('briefing',          'Chatbot::briefing');
     $routes->post('mensajes',       'Chatbot::sendMessage');
     $routes->post('mensajes/stream','Chatbot::sendMessageStream');
     $routes->post('confirmar',      'Chatbot::confirmTool');

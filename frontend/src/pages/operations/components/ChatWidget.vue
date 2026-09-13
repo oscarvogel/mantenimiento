@@ -7,11 +7,23 @@
     title="Abrir asistente IA"
   >
     <ChatRobot variant="fab" :state="robotState" />
+    <span
+      v-if="briefing?.unread > 0"
+      class="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-danger-foreground"
+      aria-label="Alertas pendientes"
+    >
+      {{ briefing.unread > 99 ? '99+' : briefing.unread }}
+    </span>
   </button>
 
   <div
     v-if="isOpen"
-    class="fixed inset-x-4 bottom-4 z-50 flex h-[min(500px,calc(100dvh-2rem))] flex-col rounded-2xl border border-border bg-surface-raised shadow-2xl sm:inset-x-auto sm:right-6 sm:w-96"
+:class="[
+      'fixed z-50 flex flex-col border border-border bg-surface-raised shadow-2xl transition-all',
+      isMaximized
+        ? 'inset-2 h-[calc(100dvh-1rem)] rounded-2xl sm:inset-6 sm:h-[calc(100dvh-3rem)]'
+        : 'inset-x-4 bottom-4 h-[min(500px,calc(100dvh-2rem))] rounded-2xl sm:inset-x-auto sm:right-6 sm:w-96'
+    ]"
     role="dialog"
     aria-modal="true"
     aria-labelledby="chat-widget-title"
@@ -22,11 +34,27 @@
         <span id="chat-widget-title" class="font-medium text-sm">Asistente IA</span>
         <span v-if="!isConnected" class="rounded bg-danger px-1.5 py-0.5 text-[10px] text-danger-foreground">offline</span>
       </div>
-      <button type="button" @click="toggle" class="ui-interactive min-h-10 min-w-10 rounded-lg text-white/80 hover:text-white" aria-label="Cerrar asistente" title="Cerrar asistente">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
+      <div class="flex items-center gap-1">
+        <button
+          type="button"
+          @click="isMaximized = !isMaximized"
+          class="ui-interactive min-h-10 min-w-10 rounded-lg text-white/80 hover:text-white"
+          :aria-label="isMaximized ? 'Restaurar asistente' : 'Maximizar asistente'"
+          :title="isMaximized ? 'Restaurar' : 'Maximizar'"
+        >
+          <svg v-if="!isMaximized" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3m13 5h3a2 2 0 0 0 2-2v-3" />
+          </svg>
+          <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9H4V4m11 5h5V4M9 15H4v5m11-5h5v5" />
+          </svg>
+        </button>
+        <button type="button" @click="toggle" class="ui-interactive min-h-10 min-w-10 rounded-lg text-white/80 hover:text-white" aria-label="Cerrar asistente" title="Cerrar asistente">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
     </div>
 
     <div ref="messagesContainer" class="flex-1 overflow-y-auto p-4 space-y-3" role="log" aria-live="polite" aria-relevant="additions text">
@@ -57,6 +85,63 @@
         @confirm="confirmTool(tc)"
         @cancel="cancelTool(tc)"
       />
+      <div
+        v-if="briefing && !briefingDismissed"
+        class="rounded-xl border border-border bg-surface p-3 text-sm"
+        data-testid="chat-proactive-briefing"
+      >
+        <div class="flex items-start justify-between gap-2">
+          <div>
+            <p class="font-semibold text-ink">{{ briefing.headline }}</p>
+            <p class="mt-1 text-xs text-ink-muted">
+              <template v-if="briefing.hasAttention">
+                {{ briefing.counts.critical }} críticas · {{ briefing.counts.warning }} advertencias · {{ briefing.counts.info }} informativas
+              </template>
+              <template v-else>
+                No detecté alertas operativas vigentes.
+              </template>
+            </p>
+          </div>
+          <button type="button" class="ui-interactive rounded px-1 text-xs text-ink-subtle" @click="briefingDismissed = true" aria-label="Ocultar resumen">×</button>
+        </div>
+        <ul v-if="briefing.items?.length" class="mt-3 space-y-2">
+          <li v-for="item in briefing.items" :key="item.id" class="rounded-lg bg-surface-raised p-2">
+            <p class="text-xs font-semibold text-ink">{{ item.title }}</p>
+            <p class="mt-0.5 text-[11px] text-ink-muted">{{ item.summary }}</p>
+          </li>
+        </ul>
+        <p v-if="briefing.moreCount > 0" class="mt-2 text-[11px] text-ink-subtle">
+          Hay {{ briefing.moreCount }} avisos más.
+        </p>
+        <div v-if="briefing.suggestions?.length" class="mt-3 flex flex-wrap gap-2">
+          <button
+            v-for="suggestion in briefing.suggestions"
+            :key="suggestion"
+            type="button"
+            class="ui-interactive rounded-full border border-border px-2.5 py-1 text-[11px] text-ink hover:bg-surface-raised"
+            @click="sendSuggestion(suggestion)"
+          >
+            {{ suggestion }}
+          </button>
+        </div>
+      </div>
+
+      <div
+        v-if="briefing?.suggestions?.length && !loading"
+        class="sticky bottom-0 z-10 -mx-1 flex flex-wrap gap-2 rounded-xl border border-border bg-surface/95 p-2 backdrop-blur"
+        data-testid="chat-quick-actions"
+      >
+        <button
+          v-for="suggestion in briefing.suggestions"
+          :key="`quick-${suggestion}`"
+          type="button"
+          class="ui-interactive rounded-full border border-border px-2.5 py-1 text-[11px] text-ink hover:bg-surface-raised"
+          @click="sendSuggestion(suggestion)"
+        >
+          {{ suggestion }}
+        </button>
+      </div>
+
       <div v-if="loading && streamingText === ''" role="status" aria-live="polite" class="py-2 text-center text-sm text-ink-subtle">
         Pensando...
       </div>
@@ -124,6 +209,9 @@ const lastError = ref('')
 const isConnected = ref(true)
 const messagesContainer = ref(null)
 const historyTruncated = ref(false)
+const briefing = ref(null)
+const briefingDismissed = ref(false)
+const isMaximized = ref(false)
 let tempIdCounter = 0
 let activeController = null
 let hasRestoredSession = false
@@ -153,9 +241,29 @@ const scrollToBottom = () => {
   })
 }
 
+const fetchBriefing = async () => {
+  try {
+    const res = await fetch(`${CHATBOT_BASE_PATH}/briefing`, {
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: { 'Accept': 'application/json' },
+    })
+    if (!res.ok) return
+    const data = await res.json()
+    briefing.value = data.briefing ?? null
+    if (data.csrf?.hash) {
+      const meta = document.querySelector('meta[name="csrf-token"]')
+      if (meta) meta.setAttribute('content', data.csrf.hash)
+    }
+  } catch (_) {
+    // El briefing es complementario: no debe dejar offline al chat.
+  }
+}
+
 const ensureConversation = () => {
   if (!isOpen.value) return
   if (conversationId.value !== null) {
+    fetchBriefing()
     scrollToBottom()
     return
   }
@@ -206,6 +314,7 @@ const startConversation = async () => {
       content: 'Hola, soy tu asistente de mantenimiento. ¿En qué puedo ayudarte?',
     })
     robotState.value = 'idle'
+    fetchBriefing()
     scrollToBottom()
   } catch (e) {
     console.error('[chatbot] startConversation error:', e.name, e.message)
@@ -253,6 +362,7 @@ const restoreConversation = async () => {
       const meta = document.querySelector('meta[name="csrf-token"]')
       if (meta) meta.setAttribute('content', data.csrf.hash)
     }
+    fetchBriefing()
     scrollToBottom()
     return true
   } catch (_) {
@@ -274,6 +384,7 @@ const sendMessage = async () => {
 
   const userMsg = { tempId: ++tempIdCounter, role: 'user', content: input.value }
   messages.value.push(userMsg)
+  briefingDismissed.value = true
   const sentContent = input.value
   input.value = ''
   loading.value = true
@@ -341,6 +452,7 @@ const sendMessage = async () => {
       }
     }
     showRobotSuccessBriefly()
+    fetchBriefing()
   } catch (e) {
     console.error('[chatbot] sendMessage error:', e.name, e.message)
     if (e.name === 'AbortError') {
@@ -476,6 +588,12 @@ const confirmTool = async (toolCall) => {
 
 const cancelTool = (toolCall) => {
   pendingToolCalls.value = pendingToolCalls.value.filter((tc) => tc.id !== toolCall.id)
+}
+
+const sendSuggestion = (text) => {
+  if (loading.value) return
+  input.value = text
+  sendMessage()
 }
 
 const onVoiceTranscript = (text) => {

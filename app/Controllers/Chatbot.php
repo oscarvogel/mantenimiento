@@ -66,6 +66,38 @@ final class Chatbot extends BaseController
         );
     }
 
+    public function briefing(): ResponseInterface
+    {
+        try {
+            $actor = $this->aiActor();
+
+            if (! $actor->hasPermission('notificaciones.ver')) {
+                return $this->jsonOk([
+                    'briefing' => [
+                        'available' => false,
+                        'hasAttention' => false,
+                        'level' => 'ok',
+                        'headline' => 'Asistente disponible',
+                        'unread' => 0,
+                        'counts' => ['critical' => 0, 'warning' => 0, 'info' => 0],
+                        'items' => [],
+                        'moreCount' => 0,
+                        'suggestions' => ['Ver estado de preventivos', 'Ver órdenes abiertas'],
+                    ],
+                ]);
+            }
+
+            $briefing = service('proactiveAssistantBriefing')->execute($actor);
+
+            return $this->jsonOk(['briefing' => ['available' => true] + $briefing]);
+        } catch (DomainException $e) {
+            return $this->jsonError($e, $e->getMessage() === CompanyAiAccess::DISABLED_MESSAGE ? 403 : 422);
+        } catch (Throwable $e) {
+            log_message('error', 'Chatbot briefing error: ' . $e->getMessage());
+            return $this->jsonError(new \RuntimeException('No se pudo obtener el resumen operativo.'), 500);
+        }
+    }
+
     public function startConversation(): ResponseInterface
     {
         try {
