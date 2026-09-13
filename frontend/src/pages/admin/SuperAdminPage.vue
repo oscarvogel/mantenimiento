@@ -88,14 +88,14 @@ const sections = [
       </div>
     </section>
 
-    <section v-if="activeSection === 'notifications'" class="mb-8 flex flex-col gap-4 rounded-xl border border-border bg-surface-raised p-5 shadow-card sm:flex-row sm:items-center sm:justify-between sm:p-6" aria-labelledby="migration-process-title">
+    <section v-if="activeSection === 'summary' || activeSection === 'notifications'" class="mb-8 flex flex-col gap-4 rounded-xl border border-primary/30 bg-primary-subtle p-5 shadow-card sm:flex-row sm:items-center sm:justify-between sm:p-6" aria-labelledby="migration-process-title">
       <div>
-        <h2 id="migration-process-title" class="font-semibold text-ink">Aplicar migraciones pendientes</h2>
-        <p class="mt-1 max-w-2xl text-sm leading-6 text-ink-muted">Aplica únicamente las migraciones pendientes de la base actual, sin necesidad de ejecutar comandos.</p>
+        <h2 id="migration-process-title" class="font-semibold text-ink">Base de datos · migraciones pendientes</h2>
+        <p class="mt-1 max-w-2xl text-sm leading-6 text-ink-muted">Ejecuta desde el sistema únicamente las migraciones todavía pendientes. Usalo después de desplegar cambios que agregan tablas o columnas.</p>
       </div>
       <form method="post" :action="data.actions.applyMigrations" data-confirm data-confirm-title="¿Aplicar migraciones pendientes?" data-confirm-text="Se ejecutarán únicamente las migraciones que todavía no fueron aplicadas." data-confirm-button="Aplicar migraciones" class="shrink-0">
         <CsrfField :csrf="data.csrf" />
-        <button type="submit" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-primary px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary-subtle">
+        <button type="submit" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary/90">
           Aplicar migraciones
         </button>
       </form>

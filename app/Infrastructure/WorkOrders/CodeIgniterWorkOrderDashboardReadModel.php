@@ -31,12 +31,15 @@ final class CodeIgniterWorkOrderDashboardReadModel implements WorkOrderDashboard
             ->limit($perPage, ($page - 1) * $perPage)
             ->get()->getResultArray();
 
-        $tasksByOrder = $this->tasksByOrder(array_map(static fn (array $row): int => (int) $row['id'], $items));
+        $orderIds = array_map(static fn (array $row): int => (int) $row['id'], $items);
+        $tasksByOrder = $this->tasksByOrder($orderIds);
+        $partsByOrder = $this->partsByOrder($orderIds);
         foreach ($items as &$row) {
             $ageDays = max(0, (int) ($row['antiguedad_dias'] ?? 0));
             $row['antiguedad_dias'] = $ageDays;
             $row['demorada'] = in_array((string) $row['estado'], self::OPEN_STATES, true) && $ageDays >= self::DELAY_DAYS;
             $row['tareas'] = $tasksByOrder[(int) $row['id']] ?? [];
+            $row['repuestos'] = $partsByOrder[(int) $row['id']] ?? [];
         }
         unset($row);
 
@@ -128,6 +131,19 @@ final class CodeIgniterWorkOrderDashboardReadModel implements WorkOrderDashboard
             $grouped[(int) $row['orden_id']][] = $row;
         }
 
+        return $grouped;
+    }
+
+    /** @param list<int> $orderIds @return array<int,list<array<string,mixed>>> */
+    private function partsByOrder(array $orderIds): array
+    {
+        if ($orderIds === [] || ! $this->database->tableExists('orden_repuestos')) return [];
+        $rows = $this->database->table('orden_repuestos r')
+            ->select('r.id, r.orden_id, r.codigo, r.descripcion, r.marca, r.cantidad, r.precio_unitario, r.garantia_fecha, r.garantia_km, r.garantia_horas, p.razon_social proveedor_nombre')
+            ->join('proveedores p', 'p.id = r.proveedor_id AND p.empresa_id = r.empresa_id', 'left')
+            ->whereIn('r.orden_id', $orderIds)->orderBy('r.id', 'ASC')->get()->getResultArray();
+        $grouped = [];
+        foreach ($rows as $row) $grouped[(int) $row['orden_id']][] = $row;
         return $grouped;
     }
 
