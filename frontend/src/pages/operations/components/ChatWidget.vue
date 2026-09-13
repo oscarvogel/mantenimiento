@@ -7,6 +7,13 @@
     title="Abrir asistente IA"
   >
     <ChatRobot variant="fab" :state="robotState" />
+    <span
+      v-if="briefing?.unread > 0"
+      class="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-danger-foreground"
+      aria-label="Alertas pendientes"
+    >
+      {{ briefing.unread > 99 ? '99+' : briefing.unread }}
+    </span>
   </button>
 
   <div
@@ -38,6 +45,42 @@
         <ChatRobot variant="full" :state="robotState" />
         <span class="text-xs font-semibold text-ink-muted">Asistente de mantenimiento</span>
       </div>
+      <div
+        v-if="briefing?.hasAttention && !briefingDismissed"
+        class="rounded-xl border border-border bg-surface p-3 text-sm"
+        data-testid="chat-proactive-briefing"
+      >
+        <div class="flex items-start justify-between gap-2">
+          <div>
+            <p class="font-semibold text-ink">{{ briefing.headline }}</p>
+            <p class="mt-1 text-xs text-ink-muted">
+              {{ briefing.counts.critical }} críticas · {{ briefing.counts.warning }} advertencias · {{ briefing.counts.info }} informativas
+            </p>
+          </div>
+          <button type="button" class="ui-interactive rounded px-1 text-xs text-ink-subtle" @click="briefingDismissed = true" aria-label="Ocultar resumen">×</button>
+        </div>
+        <ul v-if="briefing.items?.length" class="mt-3 space-y-2">
+          <li v-for="item in briefing.items" :key="item.id" class="rounded-lg bg-surface-raised p-2">
+            <p class="text-xs font-semibold text-ink">{{ item.title }}</p>
+            <p class="mt-0.5 text-[11px] text-ink-muted">{{ item.summary }}</p>
+          </li>
+        </ul>
+        <p v-if="briefing.moreCount > 0" class="mt-2 text-[11px] text-ink-subtle">
+          Hay {{ briefing.moreCount }} avisos más.
+        </p>
+        <div v-if="briefing.suggestions?.length" class="mt-3 flex flex-wrap gap-2">
+          <button
+            v-for="suggestion in briefing.suggestions"
+            :key="suggestion"
+            type="button"
+            class="ui-interactive rounded-full border border-border px-2.5 py-1 text-[11px] text-ink hover:bg-surface-raised"
+            @click="sendSuggestion(suggestion)"
+          >
+            {{ suggestion }}
+          </button>
+        </div>
+      </div>
+
       <div
         v-if="historyTruncated"
         class="text-center text-[11px] text-ink-subtle"
@@ -124,6 +167,8 @@ const lastError = ref('')
 const isConnected = ref(true)
 const messagesContainer = ref(null)
 const historyTruncated = ref(false)
+const briefing = ref(null)
+const briefingDismissed = ref(false)
 let tempIdCounter = 0
 let activeController = null
 let hasRestoredSession = false
@@ -153,9 +198,30 @@ const scrollToBottom = () => {
   })
 }
 
+const fetchBriefing = async () => {
+  try {
+    const res = await fetch(`${CHATBOT_BASE_PATH}/briefing`, {
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: { 'Accept': 'application/json' },
+    })
+    if (!res.ok) return
+    const data = await res.json()
+    briefing.value = data.briefing ?? null
+    briefingDismissed.value = false
+    if (data.csrf?.hash) {
+      const meta = document.querySelector('meta[name="csrf-token"]')
+      if (meta) meta.setAttribute('content', data.csrf.hash)
+    }
+  } catch (_) {
+    // El briefing es complementario: no debe dejar offline al chat.
+  }
+}
+
 const ensureConversation = () => {
   if (!isOpen.value) return
   if (conversationId.value !== null) {
+    fetchBriefing()
     scrollToBottom()
     return
   }
@@ -206,6 +272,7 @@ const startConversation = async () => {
       content: 'Hola, soy tu asistente de mantenimiento. ¿En qué puedo ayudarte?',
     })
     robotState.value = 'idle'
+    fetchBriefing()
     scrollToBottom()
   } catch (e) {
     console.error('[chatbot] startConversation error:', e.name, e.message)
@@ -253,6 +320,7 @@ const restoreConversation = async () => {
       const meta = document.querySelector('meta[name="csrf-token"]')
       if (meta) meta.setAttribute('content', data.csrf.hash)
     }
+    fetchBriefing()
     scrollToBottom()
     return true
   } catch (_) {
@@ -274,6 +342,7 @@ const sendMessage = async () => {
 
   const userMsg = { tempId: ++tempIdCounter, role: 'user', content: input.value }
   messages.value.push(userMsg)
+  briefingDismissed.value = true
   const sentContent = input.value
   input.value = ''
   loading.value = true
@@ -476,6 +545,12 @@ const confirmTool = async (toolCall) => {
 
 const cancelTool = (toolCall) => {
   pendingToolCalls.value = pendingToolCalls.value.filter((tc) => tc.id !== toolCall.id)
+}
+
+const sendSuggestion = (text) => {
+  if (loading.value) return
+  input.value = text
+  sendMessage()
 }
 
 const onVoiceTranscript = (text) => {
