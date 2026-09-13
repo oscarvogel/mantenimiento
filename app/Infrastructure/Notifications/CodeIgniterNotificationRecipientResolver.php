@@ -55,6 +55,8 @@ final class CodeIgniterNotificationRecipientResolver implements NotificationReci
             str_starts_with($type, 'orden.') => 'ordenes.ver',
             str_starts_with($type, 'solicitud.') => 'solicitudes.revisar',
             str_starts_with($type, 'garantia.') => 'ordenes.ver',
+            str_starts_with($type, 'empleado.vencimiento_') => 'empleados.ver',
+            str_starts_with($type, 'equipo.vencimiento_') => 'equipos.ver',
             default => 'equipos.ver',
         };
     }

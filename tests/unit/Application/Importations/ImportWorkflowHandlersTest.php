@@ -8,12 +8,14 @@ use App\Application\Importations\CancelImportHandler;
 use App\Application\Importations\ConfirmImportHandler;
 use App\Application\Importations\CreateImportDraftCommand;
 use App\Application\Importations\CreateImportDraftHandler;
+use App\Application\Importations\ExpirationImportData;
 use App\Application\Importations\ImportDraft;
 use App\Application\Importations\ImportHistoryPage;
 use App\Application\Importations\ImportPreview;
 use App\Application\Importations\ImportRowValidator;
 use App\Application\Importations\MeasurementImportData;
 use App\Application\Importations\Port\AssetImportGateway;
+use App\Application\Importations\Port\ExpirationImportGateway;
 use App\Application\Importations\Port\ImportReferenceGateway;
 use App\Application\Importations\Port\ImportRepository;
 use App\Application\Importations\Port\ImportUnitOfWork;
@@ -22,6 +24,7 @@ use App\Application\Importations\Port\PrivateImportFileStorage;
 use App\Application\Importations\Port\SpreadsheetReader;
 use App\Application\Importations\SpreadsheetData;
 use App\Application\Importations\StoredImportFile;
+use App\Domain\Expirations\ExpirationSubjectType;
 use App\Domain\Importations\ImportStatus;
 use App\Domain\Importations\ImportType;
 use PHPUnit\Framework\TestCase;
@@ -86,6 +89,46 @@ final class ImportWorkflowHandlersTest extends TestCase
         self::assertSame(['CAM-1'], $assets->importedCodes);
         self::assertSame([1 => 'IMPORTADA', 2 => 'DUPLICADA'], $repository->finished);
         self::assertSame(['/private/import.csv'], $files->deleted);
+    }
+
+    public function testConfirmEmployeeExpirationDoesNotRequireBranchId(): void
+    {
+        $repository = new WorkflowImportRepositoryFake();
+        $repository->draft = new ImportDraft(43, 5, ImportType::VENCIMIENTOS, ImportStatus::BORRADOR_VALIDADO, '/private/expirations.xlsx');
+        $repository->pending = [[
+            'id' => 3,
+            'numero_fila' => 2,
+            'estado' => 'VALIDA',
+            'datos_normalizados' => [
+                'subject_type' => ExpirationSubjectType::EMPLOYEE->value,
+                'subject_id' => 44,
+                'branch_id' => null,
+                'expiration_type' => 'LICENCIA_CHOFER',
+                'expiration_date' => '2030-05-09',
+                'issue_date' => null,
+                'document_number' => 'LIC-44',
+                'notes' => null,
+            ],
+        ]];
+
+        $expirations = new WorkflowExpirationGatewayFake();
+        $handler = new ConfirmImportHandler(
+            $repository,
+            new WorkflowAssetGatewayFake(),
+            new WorkflowMeasurementGatewayFake(),
+            new WorkflowUnitOfWorkFake(),
+            new WorkflowFileStorageFake(),
+            expirations: $expirations,
+        );
+
+        $result = $handler->execute($this->actor([7]), 43);
+
+        self::assertSame(1, $result->importedRows);
+        self::assertSame(0, $result->errorRows);
+        self::assertSame([3 => 'IMPORTADA'], $repository->finished);
+        self::assertCount(1, $expirations->imported);
+        self::assertSame(44, $expirations->imported[0]->subjectId);
+        self::assertNull($expirations->imported[0]->branchId);
     }
 
     public function testCancelMarksDraftAndCleansPrivateFileWithoutDestinationWrites(): void
@@ -188,4 +231,22 @@ final class WorkflowMeasurementGatewayFake implements MeasurementImportGateway
 final class WorkflowUnitOfWorkFake implements ImportUnitOfWork
 {
     public function transactional(callable $operation): mixed { return $operation(); }
+}
+
+
+final class WorkflowExpirationGatewayFake implements ExpirationImportGateway
+{
+    /** @var list<ExpirationImportData> */
+    public array $imported = [];
+
+    public function isDuplicate(ExpirationImportData $data): bool
+    {
+        return false;
+    }
+
+    public function import(ExpirationImportData $data): int
+    {
+        $this->imported[] = $data;
+        return 300 + count($this->imported);
+    }
 }

@@ -13,8 +13,6 @@ use App\Application\Organization\GetOrganizationOverview;
 use App\Application\Organization\UpdateCompanyHandler;
 use App\Infrastructure\Identity\SessionActorContext;
 use App\Infrastructure\Notifications\CodeIgniterCompanyNotificationRecipientResolver;
-use App\Infrastructure\Notifications\CodeIgniterEmailNotificationGateway;
-use App\Infrastructure\Notifications\SystemNotificationClock;
 use App\Presentation\PageSize;
 use CodeIgniter\HTTP\RedirectResponse;
 use DomainException;
@@ -47,6 +45,15 @@ final class SuperAdmin extends BaseController
         }
 
         $payload = service('administrationPayload')->superadmin($data);
+        $whatsAppGateway = service('whatsAppGateway');
+        $payload['whatsapp'] = [
+            'enabled' => filter_var(env('whatsapp.enabled', false), FILTER_VALIDATE_BOOL),
+            'available' => $whatsAppGateway->available(),
+            'apiUrl' => trim((string) env('whatsapp.apiUrl', '')),
+            'apiKeyConfigured' => trim((string) env('whatsapp.apiKey', '')) !== '',
+            'instanceId' => trim((string) env('whatsapp.instanceId', 'default')),
+            'testAction' => base_url('superadmin/whatsapp/prueba'),
+        ];
         $payload['aiCompanyControls'] = array_map(static fn (array $company): array => [
             'id' => (int) $company['id'],
             'displayName' => $company['nombre_fantasia'] ?: $company['razon_social'],
@@ -59,12 +66,37 @@ final class SuperAdmin extends BaseController
                 'email' => (string) ($company['email'] ?? ''),
                 'email_notificaciones' => (string) ($company['email_notificaciones'] ?? ''),
                 'notificaciones_email_habilitadas' => (string) ((int) ($company['notificaciones_email_habilitadas'] ?? 1)),
+                'notificaciones_whatsapp_habilitadas' => (string) ((int) ($company['notificaciones_whatsapp_habilitadas'] ?? 0)),
+                'whatsapp_instance_id' => (string) ($company['whatsapp_instance_id'] ?? ''),
                 'telefono' => (string) ($company['telefono'] ?? ''),
                 'estado' => (string) ((int) $company['estado']),
             ],
         ], $data['companies'] ?? []);
 
         return $this->renderApp($actor, 'superadmin', 'superadmin', 'Administración global', $payload);
+    }
+
+    public function applyPendingMigrations(): RedirectResponse
+    {
+        try {
+            $runner = service('migrations');
+            $result = $runner->latest();
+            if ($result === false) {
+                throw new \RuntimeException('CodeIgniter informó fallo al ejecutar las migraciones.');
+            }
+
+            log_message('notice', 'Superadministrador {actor} aplicó migraciones pendientes desde la interfaz.', [
+                'actor' => $this->actor()->userId(),
+            ]);
+
+            return redirect()->to('/superadmin')->with('success', 'Migraciones pendientes aplicadas correctamente en ' . ENVIRONMENT . '.');
+        } catch (Throwable $exception) {
+            log_message('error', 'Falló aplicación manual de migraciones desde Superadmin: {message}', [
+                'message' => $exception->getMessage(),
+            ]);
+
+            return redirect()->to('/superadmin')->with('error', 'No se pudieron aplicar las migraciones pendientes.');
+        }
     }
 
     public function createCompany(): RedirectResponse
@@ -76,6 +108,8 @@ final class SuperAdmin extends BaseController
             'email' => 'permit_empty|valid_email|max_length[255]',
             'email_notificaciones' => 'permit_empty|valid_email|max_length[255]',
             'notificaciones_email_habilitadas' => 'required|in_list[0,1]',
+            'notificaciones_whatsapp_habilitadas' => 'required|in_list[0,1]',
+            'whatsapp_instance_id' => 'permit_empty|max_length[100]',
             'telefono' => 'permit_empty|max_length[50]',
         ])) {
             return $this->validationFailure();
@@ -91,6 +125,8 @@ final class SuperAdmin extends BaseController
                 'email' => $this->nullablePost('email'),
                 'email_notificaciones' => $this->nullablePost('email_notificaciones'),
                 'notificaciones_email_habilitadas' => (int) $this->request->getPost('notificaciones_email_habilitadas'),
+                'notificaciones_whatsapp_habilitadas' => (int) $this->request->getPost('notificaciones_whatsapp_habilitadas'),
+                'whatsapp_instance_id' => $this->nullablePost('whatsapp_instance_id'),
                 'ia_habilitada' => 0,
                 'telefono' => $this->nullablePost('telefono'),
             ]);
@@ -109,6 +145,8 @@ final class SuperAdmin extends BaseController
             'email' => 'permit_empty|valid_email|max_length[255]',
             'email_notificaciones' => 'permit_empty|valid_email|max_length[255]',
             'notificaciones_email_habilitadas' => 'required|in_list[0,1]',
+            'notificaciones_whatsapp_habilitadas' => 'required|in_list[0,1]',
+            'whatsapp_instance_id' => 'permit_empty|max_length[100]',
             'ia_habilitada' => 'permit_empty|in_list[0,1]',
             'telefono' => 'permit_empty|max_length[50]',
             'estado' => 'required|in_list[0,1]',
@@ -135,6 +173,8 @@ final class SuperAdmin extends BaseController
                 'email' => $this->nullablePost('email'),
                 'email_notificaciones' => $this->nullablePost('email_notificaciones'),
                 'notificaciones_email_habilitadas' => (int) $this->request->getPost('notificaciones_email_habilitadas'),
+                'notificaciones_whatsapp_habilitadas' => (int) $this->request->getPost('notificaciones_whatsapp_habilitadas'),
+                'whatsapp_instance_id' => $this->nullablePost('whatsapp_instance_id'),
                 'ia_habilitada' => (int) $postedAi,
                 'telefono' => $this->nullablePost('telefono'),
                 'estado' => (int) $this->request->getPost('estado'),
@@ -152,7 +192,7 @@ final class SuperAdmin extends BaseController
             if ($recipient === null) {
                 throw new DomainException('La empresa no tiene un correo de notificaciones habilitado. Guardá un destinatario válido y habilitá el envío antes de probar.');
             }
-            (new CodeIgniterEmailNotificationGateway(new SystemNotificationClock()))->sendDigest($recipient, [[
+            service('globalNotificationEmailGateway')->sendDigest($recipient, [[
                 'titulo' => 'Correo de prueba',
                 'resumen' => 'La configuración SMTP y el destinatario de mantenimiento funcionan correctamente para esta empresa.',
                 'url' => base_url('superadmin'),
@@ -161,6 +201,41 @@ final class SuperAdmin extends BaseController
                 'actor' => $this->actor()->userId(), 'company' => $companyId, 'recipient' => $recipient,
             ]);
             return redirect()->to('/superadmin')->with('success', 'Correo de prueba enviado a ' . $recipient . '.');
+        } catch (Throwable $exception) {
+            return $this->operationFailure($exception);
+        }
+    }
+
+    public function testWhatsApp(): RedirectResponse
+    {
+        $phone = trim((string) $this->request->getPost('telefono_prueba'));
+        if ($phone === '') {
+            return redirect()->to('/superadmin')->withInput()->with('error', 'Ingresá un celular para la prueba de WhatsApp.');
+        }
+
+        try {
+            $gateway = service('whatsAppGateway');
+            if (! $gateway->available()) {
+                throw new DomainException('WhatsApp no está disponible. Revisá URL, API key, instanceId y que el canal esté habilitado.');
+            }
+
+            $normalized = $gateway->normalizePhone($phone);
+            if ($normalized === null) {
+                throw new DomainException('El celular de prueba no tiene un formato válido.');
+            }
+
+            $result = $gateway->sendText(
+                $normalized,
+                'Mensaje de prueba del Sistema de Mantenimiento. La integración con WhatsApp está funcionando correctamente.',
+                'mantenimiento:superadmin:prueba:' . date('YmdHis'),
+                (string) $this->actor()->userId(),
+                'Superadmin Mantenimiento',
+            );
+
+            return redirect()->to('/superadmin')->with(
+                'success',
+                'WhatsApp de prueba aceptado para ' . $normalized . '. Message ID: ' . $result['messageId'],
+            );
         } catch (Throwable $exception) {
             return $this->operationFailure($exception);
         }

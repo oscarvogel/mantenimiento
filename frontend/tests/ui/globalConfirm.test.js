@@ -3,7 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { defineComponent } from 'vue'
 import Swal from 'sweetalert2'
 import { installConfirmForms } from '../../src/ui/confirmForms.js'
-import { consumeFlash } from '../../src/ui/globals.js'
+import { consumeFlash, installGlobalBehaviors } from '../../src/ui/globals.js'
 import { useAlerts } from '../../src/composables/useAlerts.js'
 import AssetsIndexPage from '../../src/pages/operations/AssetsIndexPage.vue'
 import { assetsData } from '../operations/fixtures.js'
@@ -11,6 +11,7 @@ import { assetsData } from '../operations/fixtures.js'
 vi.mock('sweetalert2', () => ({
   default: {
     fire: vi.fn(),
+    close: vi.fn(),
     isLoading: vi.fn(() => false),
     isVisible: vi.fn(() => false),
   },
@@ -159,6 +160,23 @@ describe('useAlerts: tipos de alerta', () => {
     expect(options.background).toBeUndefined()
     expect(options.customClass.container).toBe('ui-swal-customized')
   })
+
+  it('deja que SweetAlert gestione el cierre del botón OK', () => {
+    installGlobalBehaviors()
+    const alerts = useAlerts()
+    const popup = document.createElement('div')
+    const confirmButton = document.createElement('button')
+    confirmButton.className = 'swal2-confirm'
+    popup.appendChild(confirmButton)
+    document.body.appendChild(popup)
+
+    alerts.success('Importación procesada')
+    const options = Swal.fire.mock.calls.at(-1)[0]
+    confirmButton.click()
+
+    expect(options.didOpen).toBeUndefined()
+    expect(Swal.close).not.toHaveBeenCalled()
+  })
 })
 
 describe('consumeFlash: flash del servidor → SweetAlert centralizado', () => {
@@ -179,7 +197,7 @@ describe('consumeFlash: flash del servidor → SweetAlert centralizado', () => {
   it('prioriza error por sobre success cuando coexisten', () => {
     consumeFlash({ success: 'OK', error: 'Falló algo.' })
 
-    expect(Swal.fire.mock.calls.map((call) => call[0].icon)).toEqual(['error', 'success'])
+    expect(Swal.fire.mock.calls.map((call) => call[0].icon)).toEqual(['error'])
   })
 
   it('ignora valores no textuales', () => {
@@ -200,6 +218,15 @@ describe('prefers-reduced-motion', () => {
     const options = Swal.fire.mock.calls[0][0]
     expect(options.customClass.confirmButton).toContain('ui-swal-danger')
     expect(options.showClass).toBeDefined()
+  })
+
+  it('desactiva por completo las transiciones que impiden cerrar el modal', () => {
+    const alerts = useAlerts()
+
+    alerts.success('Importación cancelada')
+
+    const options = Swal.fire.mock.calls.at(-1)[0]
+    expect(options.animation).toBe(false)
   })
 })
 

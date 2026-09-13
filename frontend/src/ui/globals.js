@@ -74,6 +74,9 @@ export function consumeFlash(flash) {
     const message = flash[key]
     if (typeof message !== 'string' || message === '') continue
     const handler = flashHandlers[key]
-    if (handler) handler(alerts, message)
+    if (handler) {
+      handler(alerts, message)
+      return
+    }
   }
 }

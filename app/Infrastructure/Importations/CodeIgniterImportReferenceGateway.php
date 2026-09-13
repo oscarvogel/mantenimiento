@@ -71,6 +71,44 @@ final class CodeIgniterImportReferenceGateway implements ImportReferenceGateway
         ];
     }
 
+    public function activeEquipmentByCodeOrPlate(int $companyId, string $value): ?array
+    {
+        $needle = $this->normalizeEquipmentIdentity($value);
+        if ($needle === '') {
+            return null;
+        }
+
+        $matches = [];
+        foreach ($this->database->table('equipos e')
+            ->select('e.id, e.sucursal_id, e.codigo, e.patente, e.km_actual, e.horas_actuales, t.controla_km, t.controla_horas')
+            ->join('tipos_equipo t', 't.id = e.tipo_equipo_id')
+            ->where('e.empresa_id', $companyId)
+            ->where('e.estado', 'ACTIVO')
+            ->where('e.deleted_at', null)
+            ->get()->getResultArray() as $row) {
+            $code = $this->normalizeEquipmentIdentity((string) ($row['codigo'] ?? ''));
+            $plate = $this->normalizeEquipmentIdentity((string) ($row['patente'] ?? ''));
+            if ($needle !== $code && $needle !== $plate) {
+                continue;
+            }
+            $matches[] = $row;
+        }
+
+        if (count($matches) !== 1) {
+            return null;
+        }
+        $row = $matches[0];
+
+        return [
+            'id' => (int) $row['id'],
+            'sucursal_id' => (int) $row['sucursal_id'],
+            'controla_km' => (bool) $row['controla_km'],
+            'controla_horas' => (bool) $row['controla_horas'],
+            'km_actual' => $row['km_actual'] === null ? null : (int) $row['km_actual'],
+            'horas_actuales' => $row['horas_actuales'] === null ? null : (string) $row['horas_actuales'],
+        ];
+    }
+
     public function activeEmployeeByName(int $companyId, string $name): ?array
     {
         $needle = $this->normalizeName($name);
@@ -105,6 +143,13 @@ final class CodeIgniterImportReferenceGateway implements ImportReferenceGateway
     {
         return $this->database->table('equipos')->where('empresa_id', $companyId)
             ->where('patente', mb_strtoupper(trim($plate)))->where('deleted_at', null)->countAllResults() > 0;
+    }
+
+    private function normalizeEquipmentIdentity(string $value): string
+    {
+        $value = mb_strtoupper(trim($value));
+        $normalized = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value);
+        return preg_replace('/[^A-Z0-9]/', '', $normalized === false ? $value : $normalized) ?? '';
     }
 
     private function normalizeName(string $value): string

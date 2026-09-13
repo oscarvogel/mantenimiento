@@ -71,15 +71,12 @@ final class ImportRowValidator
 
         if ($subjectType === ExpirationSubjectType::EQUIPMENT) {
             $equipmentCode = mb_strtoupper($this->text($row['equipo_codigo'] ?? null));
-            $equipment = $equipmentCode === '' ? null : $this->references->activeEquipmentByCode($companyId, $equipmentCode);
+            $equipment = $equipmentCode === '' ? null : $this->references->activeEquipmentByCodeOrPlate($companyId, $equipmentCode);
             if ($equipment === null) {
                 $issues[] = $this->error('equipo_codigo', $equipmentCode, 'El equipo no existe, está inactivo o pertenece a otra empresa.');
             } else {
                 $subjectId = (int) $equipment['id'];
                 $branchId = (int) $equipment['sucursal_id'];
-                if (! $actor->canAccessBranch($companyId, $branchId)) {
-                    $issues[] = $this->error('equipo_codigo', $equipmentCode, 'La sucursal actual del equipo no está autorizada para el actor.');
-                }
             }
         } elseif ($subjectType === ExpirationSubjectType::EMPLOYEE) {
             $employeeName = $this->text($row['empleado_nombre'] ?? null);

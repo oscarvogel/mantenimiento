@@ -22,6 +22,7 @@ const alertDefaults = {
   padding: '1.5rem',
   showCloseButton: true,
   focusConfirm: true,
+  animation: false,
   allowOutsideClick: () => !Swal.isLoading(),
   allowEscapeKey: true,
 }
@@ -87,6 +88,7 @@ export function useAlerts() {
         padding: '1.5rem',
         showCloseButton: true,
         focusConfirm: true,
+        animation: false,
         allowOutsideClick: () => !Swal.isLoading(),
         allowEscapeKey: true,
         ...(reducedMotion() && { showClass: { popup: '' }, hideClass: { popup: '' } }),
