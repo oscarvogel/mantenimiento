@@ -22,12 +22,12 @@ final class MiniMaxProvider implements AIProvider
         return $this->call($messages, $tools, stream: false, onChunk: null);
     }
 
-    public function sendMessageStreaming(array $messages, array $tools = [], callable $onChunk = null): AIResponse
+    public function sendMessageStreaming(array $messages, array $tools = [], ?callable $onChunk = null): AIResponse
     {
         return $this->call($messages, $tools, stream: true, onChunk: $onChunk);
     }
 
-    private function call(array $messages, array $tools, bool $stream, callable $onChunk = null): AIResponse
+    private function call(array $messages, array $tools, bool $stream, ?callable $onChunk = null): AIResponse
     {
         if (! $this->config->enabled) {
             throw ChatError::providerError('El chatbot está deshabilitado. Configure ai.enabled=true en .env');
