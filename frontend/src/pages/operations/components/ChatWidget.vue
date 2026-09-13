@@ -192,7 +192,8 @@ const startConversation = async () => {
       headers: { 'X-CSRF-TOKEN': getCsrfToken(), 'Accept': 'application/json' },
     })
     if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`)
+      const errorBody = await res.text().catch(() => '')
+      throw new Error(`HTTP ${res.status}: ${errorBody.substring(0, 200)}`)
     }
     const data = await res.json()
     conversationId.value = data.conversation.id
@@ -207,9 +208,10 @@ const startConversation = async () => {
     robotState.value = 'idle'
     scrollToBottom()
   } catch (e) {
+    console.error('[chatbot] startConversation error:', e.name, e.message)
     robotState.value = 'offline'
     isConnected.value = false
-    lastError.value = 'No pude iniciar la conversación. Reintentá más tarde.'
+    lastError.value = `No pude iniciar la conversación. (${e.message}). Reintentá.`
   }
 }
 
