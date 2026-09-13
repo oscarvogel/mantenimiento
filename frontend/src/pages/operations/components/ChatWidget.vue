@@ -105,7 +105,8 @@ import ChatRobot from './ChatRobot.vue'
 const REQUEST_TIMEOUT_MS = 30000
 const CHAT_STORAGE_KEY = 'mantenimiento.chatbot.conv'
 const CHAT_VISIBLE_HISTORY_LIMIT = 10
-const CHATBOT_BASE_PATH = '/mantenimiento/mantenimiento/chatbot'
+const appBaseUrl = (document.body?.dataset?.baseUrl ?? '/').replace(/\/?$/, '/')
+const CHATBOT_BASE_PATH = `${appBaseUrl}mantenimiento/chatbot`
 
 const props = defineProps({
   autoOpen: { type: Boolean, default: false },
