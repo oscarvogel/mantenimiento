@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace App\Application\Chatbot;
 
 use App\Application\Identity\ActorContext;
-use App\Application\Notifications\Port\NotificationRepository;
+use App\Application\Notifications\Port\OperationalNotificationEventSource;
+use App\Domain\Notifications\NotifiableEvent;
 use DomainException;
 
 final readonly class GetProactiveAssistantBriefing
@@ -25,7 +26,7 @@ final readonly class GetProactiveAssistantBriefing
         'orden.asignada' => 100,
     ];
 
-    public function __construct(private NotificationRepository $notifications)
+    public function __construct(private OperationalNotificationEventSource $source)
     {
     }
 
@@ -36,25 +37,16 @@ final readonly class GetProactiveAssistantBriefing
             throw new DomainException('El briefing proactivo requiere una empresa y permiso de notificaciones.');
         }
 
-        $branchIds = $actor->hasAllCompanyBranches() ? null : $actor->branchIds();
-        $page = $this->notifications->listForUser(
-            $actor->companyId(),
-            $actor->userId(),
-            $branchIds,
-            1,
-            25,
-        );
-
-        $items = array_values(array_filter(
-            $page->items,
-            static fn (array $item): bool => empty($item['readAt']),
+        $events = array_values(array_filter(
+            $this->source->collect(),
+            fn (NotifiableEvent $event): bool => $this->visibleForActor($event, $actor),
         ));
 
-        usort($items, fn (array $left, array $right): int => $this->rank($left) <=> $this->rank($right));
+        usort($events, fn (NotifiableEvent $left, NotifiableEvent $right): int => $this->rank($left) <=> $this->rank($right));
 
-        $critical = count(array_filter($items, static fn (array $item): bool => ($item['severity'] ?? '') === 'CRITICA'));
-        $warning = count(array_filter($items, static fn (array $item): bool => ($item['severity'] ?? '') === 'ADVERTENCIA'));
-        $info = count($items) - $critical - $warning;
+        $critical = count(array_filter($events, static fn (NotifiableEvent $event): bool => $event->severity()->value === 'CRITICA'));
+        $warning = count(array_filter($events, static fn (NotifiableEvent $event): bool => $event->severity()->value === 'ADVERTENCIA'));
+        $info = count($events) - $critical - $warning;
 
         $level = $critical > 0 ? 'critical' : ($warning > 0 ? 'warning' : ($info > 0 ? 'info' : 'ok'));
         $headline = match ($level) {
@@ -65,61 +57,77 @@ final readonly class GetProactiveAssistantBriefing
         };
 
         return [
-            'hasAttention' => $items !== [],
+            'hasAttention' => $events !== [],
             'level' => $level,
             'headline' => $headline,
-            'unread' => $page->unread,
+            'unread' => count($events),
             'counts' => [
                 'critical' => $critical,
                 'warning' => $warning,
                 'info' => max(0, $info),
             ],
-            'items' => array_slice(array_map([$this, 'normalizeItem'], $items), 0, 3),
-            'moreCount' => max(0, count($items) - 3),
-            'suggestions' => $this->suggestions($items),
+            'items' => array_slice(array_map([$this, 'normalizeEvent'], $events), 0, 3),
+            'moreCount' => max(0, count($events) - 3),
+            'suggestions' => $this->suggestions($events),
         ];
     }
 
-    /** @param array<string,mixed> $item */
-    private function rank(array $item): int
+    private function visibleForActor(NotifiableEvent $event, ActorContext $actor): bool
     {
-        $severity = match ((string) ($item['severity'] ?? '')) {
+        if ($event->companyId() !== $actor->companyId()) {
+            return false;
+        }
+
+        $branchId = $event->branchId();
+        if ($branchId !== null && ! $actor->hasAllCompanyBranches() && ! in_array($branchId, $actor->branchIds(), true)) {
+            return false;
+        }
+
+        $recipientUserIds = $event->recipientUserIds();
+        if ($recipientUserIds !== null && ! in_array($actor->userId(), $recipientUserIds, true)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private function rank(NotifiableEvent $event): int
+    {
+        $severity = match ($event->severity()->value) {
             'CRITICA' => 0,
             'ADVERTENCIA' => 1000,
             default => 2000,
         };
 
-        return $severity + (self::TYPE_PRIORITY[(string) ($item['type'] ?? '')] ?? 500);
+        return $severity + (self::TYPE_PRIORITY[$event->type()] ?? 500);
     }
 
-    /** @param array<string,mixed> $item
-     *  @return array<string,mixed>
-     */
-    private function normalizeItem(array $item): array
+    /** @return array<string,mixed> */
+    private function normalizeEvent(NotifiableEvent $event): array
     {
         return [
-            'id' => (int) ($item['id'] ?? 0),
-            'type' => (string) ($item['type'] ?? ''),
-            'severity' => (string) ($item['severity'] ?? ''),
-            'title' => (string) ($item['title'] ?? ''),
-            'summary' => (string) ($item['summary'] ?? ''),
-            'url' => isset($item['url']) && $item['url'] !== null ? (string) $item['url'] : null,
-            'createdAt' => (string) ($item['createdAt'] ?? ''),
+            'id' => $event->logicalKey(),
+            'type' => $event->type(),
+            'severity' => $event->severity()->value,
+            'title' => $event->title(),
+            'summary' => $event->summary(),
+            'url' => $event->url(),
+            'createdAt' => $event->occurredAt()->format(DATE_ATOM),
         ];
     }
 
-    /** @param list<array<string,mixed>> $items
+    /** @param list<NotifiableEvent> $events
      *  @return list<string>
      */
-    private function suggestions(array $items): array
+    private function suggestions(array $events): array
     {
-        if ($items === []) {
+        if ($events === []) {
             return ['Ver estado de preventivos', 'Ver órdenes abiertas'];
         }
 
         $types = array_values(array_unique(array_map(
-            static fn (array $item): string => (string) ($item['type'] ?? ''),
-            $items,
+            static fn (NotifiableEvent $event): string => $event->type(),
+            $events,
         )));
 
         $suggestions = ['Mostrame lo crítico'];
