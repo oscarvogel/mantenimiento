@@ -36,7 +36,13 @@ final class ToolExecutor implements ToolExecutorPort
             $links,
         );
         $this->handlers['listar_alertas_operativas'] = new ListOperationalAlertsTool(
-            new \App\Infrastructure\Notifications\CodeIgniterNotificationRepository($database),
+            new \App\Infrastructure\Notifications\CodeIgniterOperationalNotificationEventSource(
+                new \App\Infrastructure\Notifications\SystemNotificationClock(),
+                (int) env('alerts.lecturasVencidasDias', 30),
+                (int) env('alerts.ordenDemoradaDias', 5),
+                2,
+                $database,
+            ),
         );
     }
 
