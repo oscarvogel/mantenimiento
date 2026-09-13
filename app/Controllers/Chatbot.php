@@ -87,7 +87,6 @@ final class Chatbot extends BaseController
                 ]);
             }
 
-            service('operationalNotificationCollector')->execute();
             $briefing = (new \App\Application\Chatbot\GetProactiveAssistantBriefing(
                 service('notificationRepository'),
             ))->execute($actor);
