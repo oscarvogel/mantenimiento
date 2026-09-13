@@ -458,6 +458,23 @@ class Services extends BaseService
         );
     }
 
+    public static function proactiveAssistantBriefing(bool $getShared = true): \App\Application\Chatbot\GetProactiveAssistantBriefing
+    {
+        if ($getShared) {
+            return static::getSharedInstance('proactiveAssistantBriefing');
+        }
+
+        return new \App\Application\Chatbot\GetProactiveAssistantBriefing(
+            new CodeIgniterOperationalNotificationEventSource(
+                static::notificationClock(false),
+                (int) env('alerts.lecturasVencidasDias', 30),
+                (int) env('alerts.ordenDemoradaDias', 5),
+                2,
+                db_connect(),
+            ),
+        );
+    }
+
     public static function notificationCenter(bool $getShared = true): GetNotificationCenter
     {
         if ($getShared) {
