@@ -66,6 +66,7 @@ const closeStateFor = (order) => {
       costo_mano_obra: '0',
       costo_repuestos: '0',
       otros_costos: '0',
+      repuestos: [],
       tasks: {},
     }
   }
@@ -150,6 +151,7 @@ for (const order of props.data.orders ?? []) closeStateFor(order)
             <h4 class="font-bold text-ink">Tareas y costos</h4>
             <ul v-if="order.tasks.length" class="mt-3 space-y-2 text-sm"><li v-for="task in order.tasks" :key="task.id"><strong class="text-ink">{{ task.description }}</strong><span class="text-ink-muted"> · {{ task.status }}</span><p v-if="task.workPerformed" class="mt-1 text-ink-muted">{{ task.workPerformed }}</p></li></ul>
             <p v-else class="mt-3 text-sm text-ink-muted">Esta orden no tiene tareas preventivas asociadas.</p>
+            <ul v-if="order.parts?.length" class="mt-4 space-y-2 border-t border-border-subtle pt-3 text-sm"><li v-for="part in order.parts" :key="part.id" class="flex flex-wrap justify-between gap-2"><span><strong class="text-ink">{{ part.description }}</strong><span v-if="part.code" class="ml-2 text-xs text-ink-muted">{{ part.code }}</span><span class="ml-2 text-xs text-ink-muted">× {{ part.quantity }}</span><span v-if="part.supplierName" class="block text-xs text-ink-muted">{{ part.supplierName }}</span><span v-if="part.warrantyDate || part.warrantyKm || part.warrantyHours" class="block text-xs text-success-strong">Garantía: {{ part.warrantyDate || 'sin fecha' }}<template v-if="part.warrantyKm"> · {{ part.warrantyKm }} km</template><template v-if="part.warrantyHours"> · {{ part.warrantyHours }} h</template></span></span><span class="font-semibold text-ink">$ {{ formatMoney(part.quantity * part.unitPrice) }}</span></li></ul>
             <template v-if="hasForeignHistoricalCost(order)">
               <p class="mt-4 border-t border-border-subtle pt-3 text-sm text-ink-muted">Costos originales: mano de obra {{ formatCurrencyMoney(order.costs.labor, order.historicalCost.currency) }} · repuestos {{ formatCurrencyMoney(order.costs.parts, order.historicalCost.currency) }} · otros {{ formatCurrencyMoney(order.costs.other, order.historicalCost.currency) }}</p>
               <p class="mt-1 font-bold text-ink">Total original: {{ formatCurrencyMoney(order.historicalCost.originalAmount, order.historicalCost.currency) }}</p>
