@@ -6,6 +6,7 @@ import EquipmentCatalogsMasterPage from './EquipmentCatalogsMasterPage.vue'
 import DriverAssignmentsPreviewPage from './DriverAssignmentsPreviewPage.vue'
 import EmployeesIndexPage from './EmployeesIndexPage.vue'
 import ExpirationTypesMasterPage from './ExpirationTypesMasterPage.vue'
+import ExpirationsIndexPage from './ExpirationsIndexPage.vue'
 import ImportsIndexPage from './ImportsIndexPage.vue'
 import ImportsShowPage from './ImportsShowPage.vue'
 import MaintenanceOverviewPage from './MaintenanceOverviewPage.vue'
@@ -26,6 +27,7 @@ export {
   DriverAssignmentsPreviewPage,
   EmployeesIndexPage,
   ExpirationTypesMasterPage,
+  ExpirationsIndexPage,
   ImportsIndexPage,
   ImportsShowPage,
   MaintenanceOverviewPage,
@@ -48,6 +50,7 @@ export const operationPageComponents = Object.freeze({
   'driver-assignments-preview': DriverAssignmentsPreviewPage,
   'employees-index': EmployeesIndexPage,
   'expiration-types-master': ExpirationTypesMasterPage,
+  'expirations-index': ExpirationsIndexPage,
   'assets-index': AssetsIndexPage,
   'imports-index': ImportsIndexPage,
   'imports-show': ImportsShowPage,
