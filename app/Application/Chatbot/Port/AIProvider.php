@@ -21,7 +21,7 @@ interface AIProvider
      * @param callable(string): void $onChunk
      * @return AIResponse
      */
-    public function sendMessageStreaming(array $messages, array $tools = [], callable $onChunk = null): AIResponse;
+    public function sendMessageStreaming(array $messages, array $tools = [], ?callable $onChunk = null): AIResponse;
 }
 
 final class AIResponse

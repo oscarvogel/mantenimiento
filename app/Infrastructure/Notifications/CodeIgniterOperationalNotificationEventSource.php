@@ -37,6 +37,7 @@ final class CodeIgniterOperationalNotificationEventSource implements Operational
             ...$this->expirationEvents(),
             ...$this->staleReadingEvents(),
             ...$this->workOrderEvents(),
+            ...$this->warrantyEvents(),
         ];
     }
 
@@ -251,6 +252,49 @@ final class CodeIgniterOperationalNotificationEventSource implements Operational
                     $orderUrl, $now, $target,
                 );
             }
+        }
+        return $events;
+    }
+
+    /** @return list<NotifiableEvent> */
+    private function warrantyEvents(): array
+    {
+        if (! $this->db->tableExists('orden_repuestos')) return [];
+        $rows = $this->db->table('orden_repuestos r')
+            ->select('r.id, r.empresa_id, r.orden_id, r.descripcion, r.garantia_fecha, r.garantia_km, r.garantia_horas, o.sucursal_id, o.equipo_id, e.codigo equipo_codigo, e.km_actual, e.horas_actuales')
+            ->join('ordenes_trabajo o', 'o.id = r.orden_id AND o.empresa_id = r.empresa_id', 'inner')
+            ->join('equipos e', 'e.id = o.equipo_id AND e.empresa_id = o.empresa_id', 'inner')
+            ->where('r.garantia_fecha IS NOT NULL OR r.garantia_km IS NOT NULL OR r.garantia_horas IS NOT NULL', null, false)
+            ->get()->getResultArray();
+        $now = $this->clock->now();
+        $today = new DateTimeImmutable($now->format('Y-m-d'));
+        $events = [];
+        foreach ($rows as $row) {
+            $reasons = [];
+            $critical = false;
+            if ($row['garantia_fecha'] !== null) {
+                $date = new DateTimeImmutable((string) $row['garantia_fecha']);
+                $days = (int) $today->diff($date)->format('%r%a');
+                if ($days <= 30) { $reasons[] = 'fecha ' . $date->format('d/m/Y'); $critical = $days < 0; }
+            }
+            if ($row['garantia_km'] !== null && $row['km_actual'] !== null) {
+                $remaining = (int) $row['garantia_km'] - (int) $row['km_actual'];
+                if ($remaining <= 1000) { $reasons[] = 'km restantes ' . max(0, $remaining); $critical = $remaining < 0; }
+            }
+            if ($row['garantia_horas'] !== null && $row['horas_actuales'] !== null) {
+                $remaining = (float) $row['garantia_horas'] - (float) $row['horas_actuales'];
+                if ($remaining <= 100) { $reasons[] = 'horas restantes ' . max(0, $remaining); $critical = $remaining < 0; }
+            }
+            if ($reasons === []) continue;
+            $type = 'garantia.proxima';
+            $events[] = new NotifiableEvent(
+                (int) $row['empresa_id'], (int) $row['sucursal_id'], $type,
+                $critical ? NotificationSeverity::CRITICAL : NotificationSeverity::WARNING,
+                ($critical ? 'Garantía vencida: ' : 'Garantía próxima a vencer: ') . $row['equipo_codigo'],
+                (string) $row['descripcion'] . ' · ' . implode(', ', $reasons),
+                'orden_repuesto', (string) $row['id'], "{$type}:repuesto:{$row['id']}:" . implode('|', $reasons),
+                $this->path('mantenimiento/ordenes?orden_id=' . (int) $row['orden_id']), $now,
+            );
         }
         return $events;
     }

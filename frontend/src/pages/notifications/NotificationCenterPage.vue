@@ -176,7 +176,7 @@ async function sendTestPush() {
         <p class="mt-1 text-sm text-ink-muted">Los valores mostrados son los efectivos actuales. Al guardar, tu elección personal pasa a prevalecer sobre los defaults de tus roles.</p>
         <label class="mt-5 grid gap-1.5 text-sm font-semibold text-ink">
           Tipo de aviso
-          <select v-model="selectedEventType" class="min-h-11 rounded-lg border border-border-strong bg-white px-3 font-normal">
+          <select v-model="selectedEventType" class="min-h-11 rounded-lg border border-border-strong bg-surface-raised px-3 font-normal text-ink">
             <option v-for="event in eventTypes" :key="event[0]" :value="event[0]">{{ event[1] }}</option>
           </select>
         </label>
@@ -187,7 +187,7 @@ async function sendTestPush() {
           <div class="sm:col-span-2"><p class="font-semibold text-ink">{{ selectedEvent[1] }}</p><p class="text-xs text-ink-muted">Canal interno: siempre activo</p></div>
           <label v-for="channel in ['email','push']" :key="channel" class="grid gap-1.5 text-xs font-semibold uppercase tracking-wide text-ink-muted">
             {{ channel }}
-            <select :name="channel" class="min-h-11 rounded-lg border border-border-strong bg-white px-3 text-sm font-normal normal-case text-ink">
+            <select :name="channel" class="min-h-11 rounded-lg border border-border-strong bg-surface-raised px-3 text-sm font-normal normal-case text-ink">
               <option v-for="mode in modes" :key="mode[0]" :value="mode[0]" :selected="(selectedPreferences[channel] ?? (channel === 'email' ? 'RESUMEN' : 'CRITICO')) === mode[0]">{{ mode[1] }}</option>
             </select>
           </label>

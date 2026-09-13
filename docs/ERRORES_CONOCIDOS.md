@@ -80,3 +80,9 @@ sesión y CSRF válidos:
 
 Este registro conserva el diagnóstico; la corrección está en el checkout actual
 y todavía no fue desplegada.
+
+## Estado del checkout local 2026-09-11
+
+La ruta corregida del chatbot permanece implementada y cubierta por Vitest. La
+aceptación definitiva requiere un smoke autenticado con CSRF y proveedor de IA
+configurados en staging; este checkout no despliega automáticamente.

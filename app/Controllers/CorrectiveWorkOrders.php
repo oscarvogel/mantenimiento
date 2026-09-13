@@ -368,6 +368,7 @@ final class CorrectiveWorkOrders extends BaseController
         $value = trim((string) $value);
         return $value === '' ? null : $value;
     }
+
     private function persistParts(object $database, int $companyId, int $orderId): void
     {
         $parts = $this->request->getPost('repuestos');

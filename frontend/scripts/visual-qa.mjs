@@ -99,6 +99,8 @@ async function tenantRun(viewport, viewportName) {
     ['/mantenimiento/equipos', 'equipos'],
     ['/mantenimiento', 'servicios'],
     ['/mantenimiento/importaciones', 'importaciones'],
+    ['/mantenimiento/solicitudes', 'solicitudes'],
+    ['/mantenimiento/proveedores', 'proveedores'],
     ['/administracion/sucursales', 'sucursales'],
     ['/administracion/usuarios', 'usuarios'],
     ['/reportes', 'reportes'],

@@ -77,7 +77,7 @@ final class NotificationPersistenceContractTest extends TestCase
 
         self::assertIsString($source);
         self::assertSame(4, substr_count($source, '(int) $item[\'id\']'));
-        self::assertSame(4, substr_count($source, '(int) $delivery[\'id\']'));
+        self::assertSame(6, substr_count($source, '(int) $delivery[\'id\']'));
         self::assertStringContainsString('(int) $delivery[\'usuario_id\']', $source);
     }
 }

@@ -14,7 +14,7 @@ const emit = defineEmits(['close'])
 <template>
   <Teleport to="body">
     <div class="fixed inset-0 z-[80] flex items-center justify-center bg-black/45 p-4" role="presentation" @mousedown.self="emit('close')">
-      <section role="dialog" aria-modal="true" aria-labelledby="terminate-modal-title" class="w-full max-w-lg rounded-xl bg-white shadow-2xl">
+      <section role="dialog" aria-modal="true" aria-labelledby="terminate-modal-title" class="w-full max-w-lg rounded-xl bg-surface-raised shadow-2xl">
         <header class="flex items-start justify-between border-b border-border-subtle px-6 py-4">
           <div>
             <h2 id="terminate-modal-title" class="text-lg font-bold text-ink">Dar de baja</h2>

@@ -189,6 +189,7 @@ final class ClosePreventiveOrder
 
         return $value === '' ? null : $value;
     }
+
     /** @return list<array<string,mixed>> */
     private function normalizeParts(mixed $value): array
     {

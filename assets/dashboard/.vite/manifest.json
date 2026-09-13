@@ -1,23 +1,54 @@
 {
+  "_admin-CnOCkyCX.js": {
+    "file": "assets/admin-CnOCkyCX.js",
+    "name": "admin",
+    "imports": [
+      "_vendor-BlUexONN.js"
+    ]
+  },
+  "_chatbot-BC4gOwn6.js": {
+    "file": "assets/chatbot-BC4gOwn6.js",
+    "name": "chatbot",
+    "isDynamicEntry": true,
+    "imports": [
+      "_vendor-BlUexONN.js"
+    ],
+    "css": [
+      "assets/chatbot-p1890OXW.css"
+    ]
+  },
+  "_chatbot-p1890OXW.css": {
+    "file": "assets/chatbot-p1890OXW.css",
+    "src": "_chatbot-p1890OXW.css"
+  },
+  "_reports-BCQsUyTr.js": {
+    "file": "assets/reports-BCQsUyTr.js",
+    "name": "reports",
+    "imports": [
+      "_admin-CnOCkyCX.js",
+      "_vendor-BlUexONN.js"
+    ]
+  },
+  "_vendor-BlUexONN.js": {
+    "file": "assets/vendor-BlUexONN.js",
+    "name": "vendor"
+  },
   "src/main.js": {
-    "file": "assets/main-DJUosGxb.js",
+    "file": "assets/main-Ca6EflL4.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
+    "imports": [
+      "_vendor-BlUexONN.js",
+      "_chatbot-BC4gOwn6.js",
+      "_admin-CnOCkyCX.js",
+      "_reports-BCQsUyTr.js"
+    ],
     "dynamicImports": [
-      "src/pages/operations/components/ChatWidget.vue"
+      "_chatbot-BC4gOwn6.js"
     ],
     "css": [
-      "assets/main-CENBSRy1.css"
-    ]
-  },
-  "src/pages/operations/components/ChatWidget.vue": {
-    "file": "assets/ChatWidget-DNqbQK6J.js",
-    "name": "ChatWidget",
-    "src": "src/pages/operations/components/ChatWidget.vue",
-    "isDynamicEntry": true,
-    "imports": [
-      "src/main.js"
+      "assets/main-CfQvYNho.css"
     ]
   }
 }

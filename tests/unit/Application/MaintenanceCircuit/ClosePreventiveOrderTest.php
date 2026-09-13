@@ -214,4 +214,39 @@ final class ClosePreventiveOrderTest extends CIUnitTestCase
         $this->expectException(DomainException::class);
         (new ClosePreventiveOrder($port))->execute($actor, 12, ['fecha_servicio' => '2026-08-08']);
     }
+
+    public function testNormalizesPartsAndWarrantyLimits(): void
+    {
+        $port = new class implements PreventiveOrderClosurePort {
+            public array $closure = [];
+
+            public function close(int $companyId, ?array $branchIds, int $orderId, array $closure, int $actorUserId): array
+            {
+                $this->closure = $closure;
+                return ['numero' => 'OT-2026-000001'];
+            }
+        };
+        $actor = new ActorContext(9, 3, false, true, ['Administrador'], ['ordenes.cerrar'], []);
+
+        (new ClosePreventiveOrder($port))->execute($actor, 12, [
+            'trabajo_realizado' => 'Cambio de filtros',
+            'fecha_servicio' => '2026-08-08',
+            'repuestos' => [[
+                'descripcion' => 'Filtro de aceite',
+                'cantidad' => '2,500',
+                'precio_unitario' => '120,50',
+                'proveedor_id' => '8',
+                'garantia_fecha' => '2027-08-08',
+                'garantia_km' => '15000',
+                'garantia_horas' => '250,5',
+            ]],
+        ]);
+
+        self::assertSame('2.500', $port->closure['repuestos'][0]['cantidad']);
+        self::assertSame('120.50', $port->closure['repuestos'][0]['precio_unitario']);
+        self::assertSame(8, $port->closure['repuestos'][0]['proveedor_id']);
+        self::assertSame('2027-08-08', $port->closure['repuestos'][0]['garantia_fecha']);
+        self::assertSame(15000, $port->closure['repuestos'][0]['garantia_km']);
+        self::assertSame('250.5', $port->closure['repuestos'][0]['garantia_horas']);
+    }
 }

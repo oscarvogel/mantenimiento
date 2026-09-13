@@ -171,6 +171,8 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->post('vencimientos/detectar', 'MaintenanceCircuit::detectOverdue', ['filter' => 'permission:planes.editar']);
     $routes->post('avisos/(:num)/orden', 'MaintenanceCircuit::generateOrder/$1', ['filter' => 'permission:ordenes.editar']);
     $routes->get('ordenes', 'WorkOrders::index', ['filter' => 'permission:ordenes.ver']);
+    // El acceso de lectura es OR (creador o revisor); el caso de uso vuelve a
+    // validarlo para no depender de la composición de filtros de rutas.
     $routes->get('solicitudes', 'WorkRequests::index');
     $routes->post('solicitudes/(:num)/revisar', 'WorkRequests::review/$1', ['filter' => 'permission:solicitudes.revisar']);
     $routes->get('ordenes/importar', 'WorkOrderDocumentImports::index', ['filter' => 'permission:ordenes.editar']);

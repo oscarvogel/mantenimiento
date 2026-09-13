@@ -37,8 +37,8 @@ const includesId = (ids, id) => ids.includes(Number(id))
       <AdminMetric label="Inactivos" :value="data.metrics.inactive" tone="muted" />
     </section>
 
-    <section v-if="data.permissions.create" class="mb-8 overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card" aria-labelledby="new-user-title">
-      <div class="flex items-center gap-3 border-b border-border-subtle bg-surface-subtle px-5 py-4 sm:px-6">
+    <details v-if="data.permissions.create" :open="Boolean(data.oldInput.nombre || data.oldInput.email || data.oldInput.motivo || data.flash?.error)" class="ui-details-animated group mb-8 overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card" aria-labelledby="new-user-title">
+      <summary class="flex cursor-pointer list-none items-center gap-3 border-b border-border-subtle bg-surface-subtle px-5 py-4 hover:bg-surface-muted sm:px-6">
         <span class="flex size-10 items-center justify-center rounded-lg bg-primary-subtle text-primary">
           <UserPlusIcon class="size-5" aria-hidden="true" />
         </span>
@@ -46,32 +46,33 @@ const includesId = (ids, id) => ids.includes(Number(id))
           <h2 id="new-user-title" class="font-semibold text-ink">Nuevo usuario</h2>
           <p class="text-sm text-ink-muted">Creá la cuenta y definí su acceso inicial.</p>
         </div>
-      </div>
+        <ChevronDownIcon class="ml-auto size-5 text-ink-subtle transition-transform group-open:rotate-180" aria-hidden="true" />
+      </summary>
 
       <form method="post" :action="data.actions.create" class="grid gap-5 p-5 sm:grid-cols-2 sm:p-6">
         <CsrfField :csrf="data.csrf" />
         <label class="block">
           <span class="mb-1.5 block text-sm font-medium text-ink">Nombre <span class="text-danger" aria-hidden="true">*</span></span>
-          <input name="nombre" maxlength="255" required :value="data.oldInput.nombre" autocomplete="name" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          <input name="nombre" maxlength="255" required :value="data.oldInput.nombre" autocomplete="name" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
         </label>
         <label class="block">
           <span class="mb-1.5 block text-sm font-medium text-ink">Email <span class="text-danger" aria-hidden="true">*</span></span>
-          <input type="email" name="email" maxlength="255" required :value="data.oldInput.email" autocomplete="email" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          <input type="email" name="email" maxlength="255" required :value="data.oldInput.email" autocomplete="email" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
         </label>
         <label class="block">
           <span class="mb-1.5 block text-sm font-medium text-ink">Contraseña inicial <span class="text-danger" aria-hidden="true">*</span></span>
-          <input type="password" name="password" minlength="8" maxlength="255" required autocomplete="new-password" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          <input type="password" name="password" minlength="8" maxlength="255" required autocomplete="new-password" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
           <span class="mt-1 block text-xs text-ink-subtle">Mínimo 8 caracteres.</span>
         </label>
         <label class="block">
           <span class="mb-1.5 block text-sm font-medium text-ink">Repetir contraseña <span class="text-danger" aria-hidden="true">*</span></span>
-          <input type="password" name="password_confirmation" minlength="8" maxlength="255" required autocomplete="new-password" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          <input type="password" name="password_confirmation" minlength="8" maxlength="255" required autocomplete="new-password" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
         </label>
 
         <fieldset class="rounded-xl border border-border-subtle bg-surface-subtle p-4">
           <legend class="px-1 text-sm font-semibold text-ink">Roles</legend>
           <div class="mt-2 grid gap-2 sm:grid-cols-2">
-            <label v-for="role in data.roles" :key="role.id" class="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-border bg-white px-3 py-2 text-sm text-ink hover:border-primary/50">
+            <label v-for="role in data.roles" :key="role.id" class="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm text-ink transition-colors hover:border-primary/50 hover:bg-surface-muted">
               <input type="checkbox" name="roles[]" :value="role.id" :checked="includesId(data.oldInput.roleIds, role.id)" class="size-4 rounded border-border-strong text-primary focus:ring-primary" />
               <span>{{ role.name }}</span>
             </label>
@@ -81,7 +82,7 @@ const includesId = (ids, id) => ids.includes(Number(id))
         <fieldset class="rounded-xl border border-border-subtle bg-surface-subtle p-4">
           <legend class="px-1 text-sm font-semibold text-ink">Sucursales</legend>
           <div class="mt-2 grid gap-2 sm:grid-cols-2">
-            <label v-for="branch in data.assignableBranches" :key="branch.id" class="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-border bg-white px-3 py-2 text-sm text-ink hover:border-primary/50">
+            <label v-for="branch in data.assignableBranches" :key="branch.id" class="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm text-ink transition-colors hover:border-primary/50 hover:bg-surface-muted">
               <input type="checkbox" name="sucursales[]" :value="branch.id" :checked="includesId(data.oldInput.branchIds, branch.id)" class="size-4 rounded border-border-strong text-primary focus:ring-primary" />
               <span>{{ branch.name }}</span>
             </label>
@@ -91,7 +92,7 @@ const includesId = (ids, id) => ids.includes(Number(id))
 
         <label class="block sm:col-span-2">
           <span class="mb-1.5 block text-sm font-medium text-ink">Motivo del alta <span class="text-danger" aria-hidden="true">*</span></span>
-          <input name="motivo" minlength="5" maxlength="255" required :value="data.oldInput.motivo" placeholder="Ej.: incorporación aprobada" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          <input name="motivo" minlength="5" maxlength="255" required :value="data.oldInput.motivo" placeholder="Ej.: incorporación aprobada" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/20" />
         </label>
         <div class="sm:col-span-2">
           <button type="submit" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary-hover active:bg-primary-active">
@@ -100,7 +101,7 @@ const includesId = (ids, id) => ids.includes(Number(id))
           </button>
         </div>
       </form>
-    </section>
+    </details>
 
     <section aria-labelledby="users-list-title">
       <div class="mb-4 flex items-center justify-between gap-3">
@@ -143,22 +144,22 @@ const includesId = (ids, id) => ids.includes(Number(id))
                 <CsrfField :csrf="data.csrf" />
                 <label class="block">
                   <span class="mb-1.5 block text-sm font-medium text-ink">Nombre</span>
-                  <input name="nombre" maxlength="255" required :value="user.name" autocomplete="name" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                  <input name="nombre" maxlength="255" required :value="user.name" autocomplete="name" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
                 </label>
                 <label class="block">
                   <span class="mb-1.5 block text-sm font-medium text-ink">Email</span>
-                  <input type="email" name="email" maxlength="255" required :value="user.email" autocomplete="email" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                  <input type="email" name="email" maxlength="255" required :value="user.email" autocomplete="email" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
                 </label>
                 <label class="block sm:col-span-1">
                   <span class="mb-1.5 block text-sm font-medium text-ink">Estado</span>
-                  <select name="activo" :value="user.active ? '1' : '0'" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20">
+                  <select name="activo" :value="user.active ? '1' : '0'" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20">
                     <option value="1">Activo</option>
                     <option v-if="user.canDeactivate" value="0">Inactivo</option>
                   </select>
                 </label>
                 <label class="block sm:col-span-1">
                   <span class="mb-1.5 block text-sm font-medium text-ink">Motivo</span>
-                  <input name="motivo" minlength="5" maxlength="255" required class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                  <input name="motivo" minlength="5" maxlength="255" required class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
                 </label>
                 <div class="sm:col-span-2">
                   <button type="submit" class="inline-flex min-h-11 items-center justify-center rounded-lg border border-primary px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary-subtle">Guardar cuenta</button>
@@ -186,8 +187,8 @@ const includesId = (ids, id) => ids.includes(Number(id))
                 <p class="font-semibold">{{ user.isSelf ? 'Tu propio acceso está protegido' : 'Acceso de solo lectura' }}</p>
                 <p class="mt-1 leading-5">{{ user.isSelf ? 'Tus roles y sucursales no se modifican desde esta pantalla.' : 'No tenés permiso para cambiar roles o sucursales.' }}</p>
                 <div class="mt-3 flex flex-wrap gap-2">
-                  <span v-for="role in user.roles" :key="`read-role-${role.id}`" class="rounded-full bg-white/70 px-2.5 py-1 text-xs font-semibold">{{ role.name }}</span>
-                  <span v-for="branch in user.branches" :key="`read-branch-${branch.id}`" class="rounded-full bg-white/70 px-2.5 py-1 text-xs font-semibold">{{ branch.name }}</span>
+                  <span v-for="role in user.roles" :key="`read-role-${role.id}`" class="rounded-full bg-surface-raised/70 px-2.5 py-1 text-xs font-semibold">{{ role.name }}</span>
+                  <span v-for="branch in user.branches" :key="`read-branch-${branch.id}`" class="rounded-full bg-surface-raised/70 px-2.5 py-1 text-xs font-semibold">{{ branch.name }}</span>
                 </div>
               </div>
 
@@ -196,7 +197,7 @@ const includesId = (ids, id) => ids.includes(Number(id))
                 <fieldset class="rounded-xl border border-border-subtle bg-surface-subtle p-4">
                   <legend class="px-1 text-sm font-semibold text-ink">Roles</legend>
                   <div class="mt-2 space-y-2">
-                    <label v-for="role in data.roles" :key="role.id" class="flex min-h-10 cursor-pointer items-center gap-3 rounded-lg px-2 py-1 text-sm text-ink hover:bg-white">
+                    <label v-for="role in data.roles" :key="role.id" class="flex min-h-10 cursor-pointer items-center gap-3 rounded-lg px-2 py-1 text-sm text-ink transition-colors hover:bg-surface-muted">
                       <input type="checkbox" name="roles[]" :value="role.id" :checked="includesId(user.assignedRoleIds, role.id)" class="size-4 rounded border-border-strong text-primary focus:ring-primary" />
                       <span>{{ role.name }}</span>
                     </label>
@@ -206,7 +207,7 @@ const includesId = (ids, id) => ids.includes(Number(id))
                   <legend class="px-1 text-sm font-semibold text-ink">Sucursales</legend>
                   <div v-if="user.allCompanyBranches" class="mb-2 rounded-lg bg-info-subtle px-3 py-2 text-xs font-medium text-info-strong">Acceso automático a todas las sucursales activas.</div>
                   <div class="space-y-2">
-                    <label v-for="branch in data.assignableBranches" :key="branch.id" class="flex min-h-10 cursor-pointer items-center gap-3 rounded-lg px-2 py-1 text-sm text-ink hover:bg-white">
+                    <label v-for="branch in data.assignableBranches" :key="branch.id" class="flex min-h-10 cursor-pointer items-center gap-3 rounded-lg px-2 py-1 text-sm text-ink transition-colors hover:bg-surface-muted">
                       <input type="checkbox" name="sucursales[]" :value="branch.id" :checked="includesId(user.assignedBranchIds, branch.id)" class="size-4 rounded border-border-strong text-primary focus:ring-primary" />
                       <span>{{ branch.name }}</span>
                     </label>
@@ -214,7 +215,7 @@ const includesId = (ids, id) => ids.includes(Number(id))
                 </fieldset>
                 <label class="block sm:col-span-2">
                   <span class="mb-1.5 block text-sm font-medium text-ink">Motivo de la asignación</span>
-                  <input name="motivo" minlength="5" maxlength="255" required class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                  <input name="motivo" minlength="5" maxlength="255" required class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
                 </label>
                 <div class="rounded-xl border border-primary/20 bg-primary-subtle p-4 text-sm text-ink sm:col-span-2">
                   <p class="font-semibold">Resumen de acceso</p>
@@ -234,19 +235,19 @@ const includesId = (ids, id) => ids.includes(Number(id))
               Restablecer contraseña
               <ChevronDownIcon class="ml-auto size-5 text-ink-subtle transition-transform group-open:rotate-180" aria-hidden="true" />
             </summary>
-            <form method="post" :action="user.actions.resetPassword" data-confirm data-confirm-title="¿Restablecer la contraseña?" data-confirm-text="El usuario deberá usar la nueva contraseña en su próximo ingreso." data-confirm-button="Restablecer" data-confirm-danger="true" class="grid gap-4 border-t border-border-subtle bg-white px-5 py-5 sm:grid-cols-3 xl:px-6">
+            <form method="post" :action="user.actions.resetPassword" data-confirm data-confirm-title="¿Restablecer la contraseña?" data-confirm-text="El usuario deberá usar la nueva contraseña en su próximo ingreso." data-confirm-button="Restablecer" data-confirm-danger="true" class="grid gap-4 border-t border-border-subtle bg-surface-raised px-5 py-5 sm:grid-cols-3 xl:px-6">
               <CsrfField :csrf="data.csrf" />
               <label class="block">
                 <span class="mb-1.5 block text-sm font-medium text-ink">Nueva contraseña</span>
-                <input type="password" name="password" minlength="8" maxlength="255" required autocomplete="new-password" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                <input type="password" name="password" minlength="8" maxlength="255" required autocomplete="new-password" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
               </label>
               <label class="block">
                 <span class="mb-1.5 block text-sm font-medium text-ink">Repetir contraseña</span>
-                <input type="password" name="password_confirmation" minlength="8" maxlength="255" required autocomplete="new-password" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                <input type="password" name="password_confirmation" minlength="8" maxlength="255" required autocomplete="new-password" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
               </label>
               <label class="block">
                 <span class="mb-1.5 block text-sm font-medium text-ink">Motivo</span>
-                <input name="motivo" minlength="5" maxlength="255" required class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                <input name="motivo" minlength="5" maxlength="255" required class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
               </label>
               <div class="sm:col-span-3">
                 <button type="submit" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-warning-strong px-4 py-2.5 text-sm font-semibold text-warning-strong transition-colors hover:bg-warning-subtle">
@@ -265,7 +266,7 @@ const includesId = (ids, id) => ids.includes(Number(id))
         </div>
       </div>
 
-      <PaginationBar :pagination="data.pagination" />
+      <PaginationBar v-if="Number(data.pagination.totalPages) > 1 && data.users.length > 0" :pagination="data.pagination" />
     </section>
   </div>
 </template>

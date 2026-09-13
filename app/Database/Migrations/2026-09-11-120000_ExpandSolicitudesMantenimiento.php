@@ -11,7 +11,6 @@ final class ExpandSolicitudesMantenimiento extends Migration
     public function up(): void
     {
         $this->ensureBaseTable();
-
         $fields = [];
         if (! $this->db->fieldExists('prioridad', 'solicitudes_mantenimiento')) {
             $fields['prioridad'] = ['type' => 'VARCHAR', 'constraint' => 20, 'default' => 'MEDIA'];

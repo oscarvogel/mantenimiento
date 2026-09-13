@@ -15,6 +15,7 @@ interface WorkRequestRepository
         string $description,
         string $reportedAt,
     ): ?int;
+
     /** @param list<int>|null $branchIds @param array<string,mixed> $filters */
     public function listScoped(
         int $companyId,

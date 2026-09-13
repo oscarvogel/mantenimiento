@@ -53,6 +53,7 @@ final class CodeIgniterWorkRequestRepository implements WorkRequestRepository
 
         return (int) $this->database->insertID();
     }
+
     public function listScoped(int $companyId, ?array $branchIds, array $filters, int $page, int $perPage, ?int $reportedBy): array
     {
         $base = $this->database->table('solicitudes_mantenimiento s')

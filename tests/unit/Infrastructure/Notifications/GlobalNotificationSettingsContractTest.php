@@ -17,9 +17,9 @@ final class GlobalNotificationSettingsContractTest extends TestCase
         self::assertIsString($page);
         self::assertStringContainsString("group('superadmin', ['filter' => 'superadmin']", $routes);
         self::assertStringContainsString("configuracion/notificaciones", $routes);
-        self::assertStringNotContainsString("data.settings.smtpPass", $page);
-        self::assertStringNotContainsString("data.settings.webPushPrivateKey", $page);
-        self::assertStringNotContainsString("data.settings.whatsAppApiKey", $page);
+        self::assertDoesNotMatchRegularExpression('/data\\.settings\\.smtpPassword(?!Configured)/', $page);
+        self::assertDoesNotMatchRegularExpression('/data\\.settings\\.webPushPrivateKey(?!Configured)/', $page);
+        self::assertDoesNotMatchRegularExpression('/data\\.settings\\.whatsAppApiKey(?!Configured)/', $page);
         self::assertStringContainsString('smtpPasswordConfigured', $controller);
         self::assertStringContainsString('webPushPrivateKeyConfigured', $controller);
         self::assertStringContainsString('whatsAppApiKeyConfigured', $controller);

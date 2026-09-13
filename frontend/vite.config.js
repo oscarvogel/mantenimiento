@@ -10,6 +10,15 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       input: 'src/main.js',
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) return 'vendor'
+          if (id.includes('/pages/operations/components/Chat')) return 'chatbot'
+          if (id.includes('/pages/reports/')) return 'reports'
+          if (id.includes('/pages/admin/')) return 'admin'
+          return undefined
+        },
+      },
     },
   },
   server: {

@@ -179,6 +179,7 @@ final class CodeIgniterPreventiveOrderClosure implements PreventiveOrderClosureP
             throw new DomainException('No se pudieron guardar los costos de la orden de trabajo.');
         }
     }
+
     /** @param list<array<string,mixed>> $parts */
     private function persistParts(int $companyId, int $orderId, array $parts, int $actorUserId): void
     {

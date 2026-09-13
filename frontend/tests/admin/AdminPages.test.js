@@ -48,10 +48,14 @@ describe('SuperAdminDemoPage', () => {
 })
 
 describe('SuperAdminPage', () => {
-  it('conserva acciones POST, CSRF, estados y asignaciones', () => {
+  it('conserva acciones POST, CSRF, estados y asignaciones', async () => {
     const wrapper = mountPage(SuperAdminPage, superAdminData)
 
     expect(wrapper.get('h1').text()).toBe('Empresas y acceso de usuarios')
+
+    await wrapper.findAll('nav button')[1].trigger('click')
+    await wrapper.findAll('button').find((button) => button.text().trim() === 'Nueva empresa').trigger('click')
+    await wrapper.findAll('button').find((button) => button.text().trim() === 'Nuevo administrador').trigger('click')
     expect(wrapper.text()).toContain('Transportes Sur')
     expect(wrapper.text()).toContain('Inactiva')
 
@@ -66,22 +70,25 @@ describe('SuperAdminPage', () => {
     expect(administratorForm.get('select[name="admin_empresa_id"]').element.value).toBe('1')
     expect(administratorForm.get('input[name="admin_nombre"]').attributes('value')).toBe('Nueva administradora')
     expect(administratorForm.get('input[name="admin_password"]').attributes('type')).toBe('password')
+    const companyPager = wrapper.findAll('nav').find((nav) => nav.find('select').exists())
+    expect(companyPager.get('select').element.value).toBe('10')
+
+    await wrapper.findAll('nav button')[2].trigger('click')
     expect(wrapper.find('form[action="/superadmin/usuarios/2/empresa"]').exists()).toBe(true)
     expect(wrapper.find('form[action="/superadmin/usuarios/2/roles"]').exists()).toBe(true)
     expect(wrapper.get('input[name="roles[]"][value="1"]').element.checked).toBe(true)
-    const pagers = wrapper.findAll('nav[aria-label="Paginación"]')
-    expect(pagers).toHaveLength(2)
-    expect(pagers[0].get('select').element.value).toBe('10')
-    expect(pagers[1].get('select').element.value).toBe('25')
+    const usersPager = wrapper.findAll('nav').find((nav) => nav.find('select').exists())
+    expect(usersPager.get('select').element.value).toBe('25')
   })
 
-  it('oculta mutaciones cuando el servidor niega permisos', () => {
+  it('oculta mutaciones cuando el servidor niega permisos', async () => {
     const data = {
       ...superAdminData,
       permissions: { companiesEdit: false, createCompanyAdministrators: false, assignCompanies: false, assignRoles: false },
     }
     const wrapper = mountPage(SuperAdminPage, data)
 
+    await wrapper.findAll('nav button')[2].trigger('click')
     expect(wrapper.find('form').exists()).toBe(false)
     expect(wrapper.text()).toContain('No tenés permisos para modificar este acceso')
   })
@@ -112,6 +119,23 @@ describe('BranchesAdminPage', () => {
   })
 })
 
+describe('BranchesAdminPage single-item layout', () => {
+  it('collapses creation and hides pagination for a single branch', () => {
+    const wrapper = mountPage(BranchesAdminPage, {
+      ...branchesAdminData,
+      metrics: { total: 1, active: 1, inactive: 0 },
+      pagination: { ...branchesAdminData.pagination, totalPages: 1, total: 1, nextUrl: null },
+      oldInput: { codigo: '', nombre: '', direccion: '', emailAlertas: '' },
+      branches: [branchesAdminData.branches[0]],
+    })
+
+    expect(wrapper.get('details[aria-labelledby="new-branch-title"]').attributes('open')).toBeUndefined()
+    expect(wrapper.find('nav').exists()).toBe(false)
+    expect(wrapper.find('[class*="xl:grid-cols-1"]').exists()).toBe(true)
+    expect(wrapper.get('input[name="codigo"]').classes()).toContain('bg-surface-raised')
+  })
+})
+
 describe('UsersAdminPage', () => {
   it('preserva alta, cuenta, acceso y restablecimiento como formularios POST con CSRF', () => {
     const wrapper = mountPage(UsersAdminPage, usersAdminData)
@@ -132,7 +156,7 @@ describe('UsersAdminPage', () => {
 
     expect(wrapper.get('form[action="/administracion/usuarios"] input[name="roles[]"][value="2"]').element.checked).toBe(true)
     expect(wrapper.get('form[action="/administracion/usuarios/3/acceso"] input[name="sucursales[]"][value="4"]').element.checked).toBe(true)
-    expect(wrapper.get('nav[aria-label="Paginación"] select').element.value).toBe('5')
+    expect(wrapper.find('nav[aria-label="Paginación"]').exists()).toBe(false)
   })
 
   it('protege visualmente el acceso propio y no ofrece auto-desactivación', () => {
@@ -153,5 +177,35 @@ describe('UsersAdminPage', () => {
     })
 
     expect(wrapper.text()).toContain('No hay usuarios para mostrar')
+  })
+
+  it('mantiene la paginación cuando hay más de una página', () => {
+    const wrapper = mountPage(UsersAdminPage, {
+      ...usersAdminData,
+      pagination: {
+        ...usersAdminData.pagination,
+        totalPages: 2,
+        total: 7,
+        nextUrl: '/administracion/usuarios?page=2',
+      },
+    })
+
+    expect(wrapper.get('nav[aria-label="Paginación"] select').element.value).toBe('5')
+  })
+
+  it('colapsa el alta sin errores y conserva los campos con tokens de tema', () => {
+    const wrapper = mountPage(UsersAdminPage, {
+      ...usersAdminData,
+      users: [usersAdminData.users[0]],
+      metrics: { total: 1, active: 1, inactive: 0 },
+      pagination: { ...usersAdminData.pagination, totalPages: 1, total: 1, nextUrl: null },
+      oldInput: { nombre: '', email: '', motivo: '', roleIds: [], branchIds: [] },
+      flash: { success: '', error: '' },
+    })
+
+    expect(wrapper.get('details[aria-labelledby="new-user-title"]').attributes('open')).toBeUndefined()
+    expect(wrapper.find('nav[aria-label="Paginación"]').exists()).toBe(false)
+    expect(wrapper.get('input[name="nombre"]').classes()).toContain('bg-surface-raised')
+    expect(wrapper.get('input[name="motivo"]').classes()).not.toContain('bg-white')
   })
 })

@@ -271,7 +271,7 @@ describe('maintenance-overview', () => {
 })
 
 describe('assets-index', () => {
-  it('presenta filtros GET, fichas, QR y mutaciones de catálogos', () => {
+  it('presenta filtros GET, fichas y QR del listado de equipos', () => {
     const wrapper = render(AssetsIndexPage, assetsData)
     const singleEquipmentPage = render(AssetsIndexPage, {
       ...assetsData,
@@ -286,8 +286,6 @@ describe('assets-index', () => {
     expect(singleEquipmentPage.get('[aria-label="Paginación"]').text()).not.toContain('1 registros')
     expect(wrapper.find('a[href="/mantenimiento/equipos/9"]').exists()).toBe(true)
     expect(wrapper.find('a[href="/mantenimiento/equipos/9/qr.svg"][target="_blank"]').exists()).toBe(true)
-    expect(wrapper.get('form[action="/mantenimiento/catalogos/marcas/2/inactivar"]').attributes('method')).toBe('post')
-    expect(wrapper.get('form[action="/mantenimiento/catalogos/modelos/3/inactivar"]').attributes('method')).toBe('post')
     const create = teleportedElement('form[action="/mantenimiento/equipos"][method="post"]')
     expect(create).toBeNull()
   })
@@ -345,20 +343,16 @@ describe('assets-index', () => {
     expect(teleportedElement('#new-equipment-model').querySelectorAll('option')).toHaveLength(1)
   })
 
-  it('pagina equipos, marcas y modelos de forma independiente sin recortar los catalogos de alta', async () => {
+  it('pagina el listado de equipos sin recortar los catalogos del alta', async () => {
     const wrapper = render(AssetsIndexPage, assetsData)
     const selectors = wrapper.findAll('select[aria-label="Registros por página"]')
 
-    expect(selectors).toHaveLength(3)
-    expect(selectors.map((selector) => selector.element.value)).toEqual(['10', '5', '10'])
+    expect(selectors).toHaveLength(1)
+    expect(selectors.map((selector) => selector.element.value)).toEqual(['10'])
     expect(selectors.every((selector) => selector.findAll('option').map((option) => option.text()).join(',') === '5,10,25')).toBe(true)
-    expect(wrapper.findAll('input[id^="brand-"]')).toHaveLength(1)
-    expect(wrapper.findAll('input[id^="model-"]')).toHaveLength(1)
     await openEquipmentModal(wrapper)
     expect(teleportedElement('#new-equipment-brand').querySelectorAll('option')).toHaveLength(3)
     expect(teleportedElement('#new-equipment-model').querySelectorAll('option')).toHaveLength(1)
-    expect(wrapper.find('a[href="?brand_page=2&brand_per_page=5&model_page=1&model_per_page=10"]').exists()).toBe(true)
-    expect(wrapper.find('a[href="?brand_page=1&brand_per_page=5&model_page=2&model_per_page=10"]').exists()).toBe(true)
   })
 })
 

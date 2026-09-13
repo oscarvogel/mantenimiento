@@ -88,6 +88,9 @@ final class InitialSeeder extends Seeder
             'importaciones.ver' => 'Ver historial y vista previa de importaciones',
             'importaciones.cargar' => 'Cargar, confirmar y cancelar importaciones',
             'notificaciones.ver' => 'Ver notificaciones y configurar preferencias propias',
+            'proveedores.ver' => 'Consultar proveedores y talleres',
+            'proveedores.editar' => 'Crear, editar e inactivar proveedores y talleres',
+            'chatbot.usar' => 'Usar el chatbot asistente del sistema de mantenimiento',
         ];
         $permissionIds = [];
         foreach ($permissions as $key => $description) {
@@ -109,12 +112,14 @@ final class InitialSeeder extends Seeder
                 'ordenes.ver', 'ordenes.editar', 'ordenes.cerrar', 'reportes.ver',
                 'importaciones.ver', 'importaciones.cargar',
                 'notificaciones.ver',
+                'proveedores.ver', 'proveedores.editar',
+                'chatbot.usar',
             ],
             'Tecnico u operador' => [
                 'equipos.ver', 'lecturas.cargar', 'lecturas.ver', 'solicitudes.crear',
-                'ordenes.ver', 'ordenes.mi_trabajo', 'notificaciones.ver',
+                'ordenes.ver', 'ordenes.mi_trabajo', 'notificaciones.ver', 'chatbot.usar',
             ],
-            'Solicitante' => ['solicitudes.crear', 'notificaciones.ver'],
+            'Solicitante' => ['solicitudes.crear', 'notificaciones.ver', 'chatbot.usar'],
             'Consulta' => ['equipos.ver', 'lecturas.ver', 'ordenes.ver', 'reportes.ver', 'importaciones.ver', 'notificaciones.ver'],
         ];
         foreach ($rolePermissions as $roleName => $keys) {

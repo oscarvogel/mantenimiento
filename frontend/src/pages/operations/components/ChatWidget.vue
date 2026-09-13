@@ -2,29 +2,25 @@
   <button
     v-if="!isOpen"
     @click="toggle"
-    class="ui-interactive fixed bottom-6 right-6 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary-hover"
+    class="ui-interactive group fixed bottom-6 right-6 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary-hover"
     aria-label="Abrir asistente IA"
     title="Abrir asistente IA"
   >
-    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 14.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-    </svg>
+    <ChatRobot variant="fab" :state="robotState" />
   </button>
 
   <div
     v-if="isOpen"
-    class="fixed inset-x-4 bottom-4 z-50 flex h-[min(500px,calc(100dvh-2rem))] flex-col rounded-2xl border border-gray-200 bg-white shadow-2xl sm:inset-x-auto sm:right-6 sm:w-96"
+    class="fixed inset-x-4 bottom-4 z-50 flex h-[min(500px,calc(100dvh-2rem))] flex-col rounded-2xl border border-border bg-surface-raised shadow-2xl sm:inset-x-auto sm:right-6 sm:w-96"
     role="dialog"
     aria-modal="true"
     aria-labelledby="chat-widget-title"
   >
-    <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-blue-600 text-white rounded-t-2xl">
+    <div class="flex items-center justify-between rounded-t-2xl border-b border-primary/30 bg-primary px-4 py-3 text-primary-foreground">
       <div class="flex items-center gap-2">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-        </svg>
+        <ChatRobot variant="fab" :state="robotState" />
         <span id="chat-widget-title" class="font-medium text-sm">Asistente IA</span>
-        <span v-if="!isConnected" class="text-[10px] bg-red-500 text-white px-1.5 py-0.5 rounded">offline</span>
+        <span v-if="!isConnected" class="rounded bg-danger px-1.5 py-0.5 text-[10px] text-danger-foreground">offline</span>
       </div>
       <button type="button" @click="toggle" class="ui-interactive min-h-10 min-w-10 rounded-lg text-white/80 hover:text-white" aria-label="Cerrar asistente" title="Cerrar asistente">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -35,8 +31,16 @@
 
     <div ref="messagesContainer" class="flex-1 overflow-y-auto p-4 space-y-3" role="log" aria-live="polite" aria-relevant="additions text">
       <div
+        v-if="messages.length <= 1 && pendingToolCalls.length === 0"
+        class="flex flex-col items-center gap-1 py-2 text-center"
+        aria-hidden="true"
+      >
+        <ChatRobot variant="full" :state="robotState" />
+        <span class="text-xs font-semibold text-ink-muted">Asistente de mantenimiento</span>
+      </div>
+      <div
         v-if="historyTruncated"
-        class="text-center text-[11px] text-gray-400"
+        class="text-center text-[11px] text-ink-subtle"
       >
         Mostrando los últimos {{ CHAT_VISIBLE_HISTORY_LIMIT }} mensajes
       </div>
@@ -53,7 +57,7 @@
         @confirm="confirmTool(tc)"
         @cancel="cancelTool(tc)"
       />
-      <div v-if="loading && streamingText === ''" role="status" aria-live="polite" class="text-center text-gray-400 text-sm py-2">
+      <div v-if="loading && streamingText === ''" role="status" aria-live="polite" class="py-2 text-center text-sm text-ink-subtle">
         Pensando...
       </div>
     </div>
@@ -63,7 +67,7 @@
       <button type="button" class="ui-interactive ml-2 min-h-8 rounded px-1 underline" @click="lastError = ''">Descartar</button>
     </div>
 
-    <div class="border-t border-gray-200 p-3">
+    <div class="border-t border-border p-3">
       <form @submit.prevent="sendMessage" class="flex items-center gap-2">
         <ChatVoiceButton @transcript="onVoiceTranscript" />
         <label for="chat-message-input" class="sr-only">Mensaje para el asistente</label>
@@ -72,7 +76,7 @@
           v-model="input"
           type="text"
           placeholder="Escribí tu mensaje..."
-          class="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          class="min-w-0 flex-1 rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-border-focus"
           :disabled="loading"
         />
         <button
@@ -96,11 +100,13 @@ import { ref, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import ChatMessage from './ChatMessage.vue'
 import ChatToolConfirm from './ChatToolConfirm.vue'
 import ChatVoiceButton from './ChatVoiceButton.vue'
+import ChatRobot from './ChatRobot.vue'
 
 const REQUEST_TIMEOUT_MS = 30000
 const CHAT_STORAGE_KEY = 'mantenimiento.chatbot.conv'
 const CHAT_VISIBLE_HISTORY_LIMIT = 10
-const CHATBOT_BASE_PATH = '/mantenimiento/mantenimiento/chatbot'
+const appBaseUrl = (document.body?.dataset?.baseUrl ?? '/').replace(/\/?$/, '/')
+const CHATBOT_BASE_PATH = `${appBaseUrl}mantenimiento/chatbot`
 
 const props = defineProps({
   autoOpen: { type: Boolean, default: false },
@@ -111,6 +117,7 @@ const messages = ref([])
 const pendingToolCalls = ref([])
 const input = ref('')
 const loading = ref(false)
+const robotState = ref('idle')
 const streamingText = ref('')
 const conversationId = ref(null)
 const lastError = ref('')
@@ -120,6 +127,23 @@ const historyTruncated = ref(false)
 let tempIdCounter = 0
 let activeController = null
 let hasRestoredSession = false
+let robotStateResetTimer = null
+
+const resetRobotState = () => {
+  if (robotStateResetTimer) {
+    clearTimeout(robotStateResetTimer)
+    robotStateResetTimer = null
+  }
+}
+
+const showRobotSuccessBriefly = () => {
+  resetRobotState()
+  robotState.value = 'success'
+  robotStateResetTimer = setTimeout(() => {
+    robotState.value = isConnected.value ? 'idle' : 'offline'
+    robotStateResetTimer = null
+  }, 1800)
+}
 
 const scrollToBottom = () => {
   nextTick(() => {
@@ -159,6 +183,8 @@ const getCsrfToken = () => {
 }
 
 const startConversation = async () => {
+  resetRobotState()
+  robotState.value = 'loading'
   try {
     const res = await fetch(`${CHATBOT_BASE_PATH}/conversaciones`, {
       method: 'POST',
@@ -166,7 +192,8 @@ const startConversation = async () => {
       headers: { 'X-CSRF-TOKEN': getCsrfToken(), 'Accept': 'application/json' },
     })
     if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`)
+      const errorBody = await res.text().catch(() => '')
+      throw new Error(`HTTP ${res.status}: ${errorBody.substring(0, 200)}`)
     }
     const data = await res.json()
     conversationId.value = data.conversation.id
@@ -178,9 +205,13 @@ const startConversation = async () => {
       role: 'assistant',
       content: 'Hola, soy tu asistente de mantenimiento. ¿En qué puedo ayudarte?',
     })
+    robotState.value = 'idle'
     scrollToBottom()
   } catch (e) {
-    lastError.value = 'No pude iniciar la conversación. Reintentá más tarde.'
+    console.error('[chatbot] startConversation error:', e.name, e.message)
+    robotState.value = 'offline'
+    isConnected.value = false
+    lastError.value = `No pude iniciar la conversación. (${e.message}). Reintentá.`
   }
 }
 
@@ -249,6 +280,8 @@ const sendMessage = async () => {
   streamingText.value = ''
   pendingToolCalls.value = []
   lastError.value = ''
+  resetRobotState()
+  robotState.value = 'thinking'
   scrollToBottom()
 
   const streamingMsg = {
@@ -307,12 +340,15 @@ const sendMessage = async () => {
         streaming: false,
       }
     }
+    showRobotSuccessBriefly()
   } catch (e) {
     console.error('[chatbot] sendMessage error:', e.name, e.message)
     if (e.name === 'AbortError') {
       streamingMsg.content = '(cancelado o tiempo agotado)'
+      robotState.value = 'error'
     } else {
       isConnected.value = false
+      robotState.value = typeof navigator !== 'undefined' && navigator.onLine === false ? 'offline' : 'error'
       lastError.value = `No pude comunicarme con el asistente. (${e.message}). Reintentá.`
     }
     streamingMsg.streaming = false
@@ -378,6 +414,8 @@ const confirmTool = async (toolCall) => {
   abortActive()
   pendingToolCalls.value = pendingToolCalls.value.filter((tc) => tc.id !== toolCall.id)
   loading.value = true
+  resetRobotState()
+  robotState.value = 'thinking'
   streamingText.value = ''
   lastError.value = ''
   scrollToBottom()
@@ -418,10 +456,14 @@ const confirmTool = async (toolCall) => {
       streamingMsg.content = assistantMsg?.content ?? '(respuesta vacía)'
     }
     streamingMsg.streaming = false
+    showRobotSuccessBriefly()
   } catch (e) {
     if (e.name !== 'AbortError') {
       isConnected.value = false
+      robotState.value = typeof navigator !== 'undefined' && navigator.onLine === false ? 'offline' : 'error'
       lastError.value = 'No pude ejecutar la acción confirmada.'
+    } else {
+      robotState.value = 'error'
     }
     streamingMsg.streaming = false
   } finally {
@@ -447,6 +489,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  resetRobotState()
   abortActive()
   window.removeEventListener('beforeunload', abortActive)
 })

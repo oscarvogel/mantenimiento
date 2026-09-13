@@ -127,7 +127,7 @@ const selectedPlanDefault = (equipment) => defaultFor(equipment, stateFor(equipm
 const changePlanService = (equipment) => applyDefaultToState(stateFor(equipment), selectedPlanDefault(equipment))
 const closeStateFor = (order) => {
   if (!closeForms[order.id]) {
-    closeForms[order.id] = { kilometers: '', hours: '', currentKm: order.currentKm, currentHours: order.currentHours, trabajo_realizado_correctivo: '', costo_mano_obra: '0', costo_repuestos: '0', otros_costos: '0', tasks: {} }
+    closeForms[order.id] = { kilometers: '', hours: '', currentKm: order.currentKm, currentHours: order.currentHours, trabajo_realizado_correctivo: '', costo_mano_obra: '0', costo_repuestos: '0', otros_costos: '0', repuestos: [], tasks: {} }
   }
   for (const task of order.tasks ?? []) {
     if (!closeForms[order.id].tasks[task.id]) closeForms[order.id].tasks[task.id] = { resultado: '', detalle: '' }
@@ -169,7 +169,7 @@ if (initialQuery.get('ot_correctiva') === '1') {
 
     <div class="mb-6 grid items-start gap-6 xl:grid-cols-[minmax(0,1.65fr)_minmax(18rem,0.8fr)]">
       <PanelCard title="Atención requerida" :count="attentionCount">
-        <EmptyState v-if="data.notices.length === 0 && attentionPlans.length === 0" title="No hay atención pendiente" description="Los vencimientos y planes que requieran revisión aparecerán acá." />
+        <EmptyState v-if="data.notices.length === 0 && attentionPlans.length === 0" compact title="No hay atención pendiente" description="Los vencimientos y planes que requieran revisión aparecerán acá." />
         <section v-if="data.notices.length" aria-labelledby="maintenance-notices-title">
           <h3 id="maintenance-notices-title" class="mb-2 text-xs font-bold uppercase tracking-wide text-ink-muted">Avisos vencidos</h3>
           <ul class="divide-y divide-border-subtle"><li v-for="notice in data.notices" :key="notice.id" class="flex flex-col gap-4 py-4 first:pt-0 lg:flex-row lg:items-center lg:justify-between"><div class="flex items-start gap-3"><StatusBadge status="VENCIDO" /><div><strong class="text-ink">{{ notice.equipmentCode }} · {{ notice.serviceName }}</strong><p class="mt-1 text-sm text-danger-strong">Vencido por {{ notice.triggerCriteria }}</p></div></div><form v-if="data.can.generateOrder" method="post" :action="notice.generateOrderUrl" data-confirm data-confirm-title="¿Generar la orden de trabajo?" data-confirm-text="Se creará una orden de trabajo para este vencimiento y su responsable." data-confirm-button="Generar OT" class="flex flex-col gap-2 sm:flex-row"><CsrfInput :csrf="data.csrf" /><label class="sr-only" :for="`notice-owner-${notice.id}`">Responsable</label><select :id="`notice-owner-${notice.id}`" name="responsable_usuario_id" :class="fieldClass"><option v-for="user in data.catalogs.users" :key="user.id" :value="user.id">{{ user.name }}</option></select><button type="submit" :class="primaryButton">Generar OT</button></form></li></ul>

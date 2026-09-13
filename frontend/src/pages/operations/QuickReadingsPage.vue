@@ -221,7 +221,7 @@ const focusNextReadingInput = (event) => {
       <div v-else class="overflow-x-auto rounded-xl border border-border">
         <table class="w-full min-w-[1240px] border-collapse text-sm">
           <thead class="bg-surface-muted text-left text-xs font-bold uppercase tracking-wide text-ink-muted"><tr><th class="px-3 py-2">Equipo</th><th class="px-3 py-2">Última lectura</th><th class="px-3 py-2">Nueva lectura</th><th class="px-3 py-2">Último service</th><th class="px-3 py-2">Próximo service</th><th class="px-3 py-2">Estado</th><th class="px-3 py-2">Acción</th></tr></thead>
-          <tbody class="divide-y divide-border-subtle bg-white">
+          <tbody class="divide-y divide-border-subtle bg-surface-raised">
             <tr v-for="equipment in visibleEquipment" :key="equipment.id" class="hover:bg-surface-muted/40">
               <td class="px-3 py-2"><strong class="text-primary">{{ equipment.code }}</strong><div class="text-xs text-ink-muted">{{ equipment.plate || 'Sin patente' }}</div></td>
               <td class="px-3 py-2 font-semibold tabular-nums">{{ formattedCurrent(equipment) }}</td>
