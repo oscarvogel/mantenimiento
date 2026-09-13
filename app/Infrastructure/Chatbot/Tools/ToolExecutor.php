@@ -35,6 +35,9 @@ final class ToolExecutor implements ToolExecutorPort
             new CodeIgniterWorkOrderPrintReadModel($database),
             $links,
         );
+        $this->handlers['listar_alertas_operativas'] = new ListOperationalAlertsTool(
+            new \App\Infrastructure\Notifications\CodeIgniterNotificationRepository($database),
+        );
     }
 
     public function execute(string $toolName, array $args, ActorContext $actor): ToolCallResult
