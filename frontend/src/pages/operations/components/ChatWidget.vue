@@ -18,7 +18,12 @@
 
   <div
     v-if="isOpen"
-    class="fixed inset-x-4 bottom-4 z-50 flex h-[min(500px,calc(100dvh-2rem))] flex-col rounded-2xl border border-border bg-surface-raised shadow-2xl sm:inset-x-auto sm:right-6 sm:w-96"
+:class="[
+      'fixed z-50 flex flex-col border border-border bg-surface-raised shadow-2xl transition-all',
+      isMaximized
+        ? 'inset-2 h-[calc(100dvh-1rem)] rounded-2xl sm:inset-6 sm:h-[calc(100dvh-3rem)]'
+        : 'inset-x-4 bottom-4 h-[min(500px,calc(100dvh-2rem))] rounded-2xl sm:inset-x-auto sm:right-6 sm:w-96'
+    ]"
     role="dialog"
     aria-modal="true"
     aria-labelledby="chat-widget-title"
@@ -29,11 +34,27 @@
         <span id="chat-widget-title" class="font-medium text-sm">Asistente IA</span>
         <span v-if="!isConnected" class="rounded bg-danger px-1.5 py-0.5 text-[10px] text-danger-foreground">offline</span>
       </div>
-      <button type="button" @click="toggle" class="ui-interactive min-h-10 min-w-10 rounded-lg text-white/80 hover:text-white" aria-label="Cerrar asistente" title="Cerrar asistente">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
+      <div class="flex items-center gap-1">
+        <button
+          type="button"
+          @click="isMaximized = !isMaximized"
+          class="ui-interactive min-h-10 min-w-10 rounded-lg text-white/80 hover:text-white"
+          :aria-label="isMaximized ? 'Restaurar asistente' : 'Maximizar asistente'"
+          :title="isMaximized ? 'Restaurar' : 'Maximizar'"
+        >
+          <svg v-if="!isMaximized" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3m13 5h3a2 2 0 0 0 2-2v-3" />
+          </svg>
+          <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9H4V4m11 5h5V4M9 15H4v5m11-5h5v5" />
+          </svg>
+        </button>
+        <button type="button" @click="toggle" class="ui-interactive min-h-10 min-w-10 rounded-lg text-white/80 hover:text-white" aria-label="Cerrar asistente" title="Cerrar asistente">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
     </div>
 
     <div ref="messagesContainer" class="flex-1 overflow-y-auto p-4 space-y-3" role="log" aria-live="polite" aria-relevant="additions text">
@@ -105,6 +126,22 @@
         </div>
       </div>
 
+      <div
+        v-if="briefing?.suggestions?.length && !loading"
+        class="sticky bottom-0 z-10 -mx-1 flex flex-wrap gap-2 rounded-xl border border-border bg-surface/95 p-2 backdrop-blur"
+        data-testid="chat-quick-actions"
+      >
+        <button
+          v-for="suggestion in briefing.suggestions"
+          :key="`quick-${suggestion}`"
+          type="button"
+          class="ui-interactive rounded-full border border-border px-2.5 py-1 text-[11px] text-ink hover:bg-surface-raised"
+          @click="sendSuggestion(suggestion)"
+        >
+          {{ suggestion }}
+        </button>
+      </div>
+
       <div v-if="loading && streamingText === ''" role="status" aria-live="polite" class="py-2 text-center text-sm text-ink-subtle">
         Pensando...
       </div>
@@ -174,6 +211,7 @@ const messagesContainer = ref(null)
 const historyTruncated = ref(false)
 const briefing = ref(null)
 const briefingDismissed = ref(false)
+const isMaximized = ref(false)
 let tempIdCounter = 0
 let activeController = null
 let hasRestoredSession = false
@@ -213,7 +251,6 @@ const fetchBriefing = async () => {
     if (!res.ok) return
     const data = await res.json()
     briefing.value = data.briefing ?? null
-    briefingDismissed.value = false
     if (data.csrf?.hash) {
       const meta = document.querySelector('meta[name="csrf-token"]')
       if (meta) meta.setAttribute('content', data.csrf.hash)
@@ -415,6 +452,7 @@ const sendMessage = async () => {
       }
     }
     showRobotSuccessBriefly()
+    fetchBriefing()
   } catch (e) {
     console.error('[chatbot] sendMessage error:', e.name, e.message)
     if (e.name === 'AbortError') {
