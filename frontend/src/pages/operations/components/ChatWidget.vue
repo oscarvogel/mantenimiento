@@ -6,7 +6,7 @@
     aria-label="Abrir asistente IA"
     title="Abrir asistente IA"
   >
-    <ChatRobot variant="fab" />
+    <ChatRobot variant="fab" :state="robotState" />
   </button>
 
   <div
@@ -18,7 +18,7 @@
   >
     <div class="flex items-center justify-between rounded-t-2xl border-b border-primary/30 bg-primary px-4 py-3 text-primary-foreground">
       <div class="flex items-center gap-2">
-        <ChatRobot variant="fab" :state="loading ? 'thinking' : 'idle'" />
+        <ChatRobot variant="fab" :state="robotState" />
         <span id="chat-widget-title" class="font-medium text-sm">Asistente IA</span>
         <span v-if="!isConnected" class="rounded bg-danger px-1.5 py-0.5 text-[10px] text-danger-foreground">offline</span>
       </div>
@@ -35,7 +35,7 @@
         class="flex flex-col items-center gap-1 py-2 text-center"
         aria-hidden="true"
       >
-        <ChatRobot variant="full" :state="loading ? 'thinking' : 'idle'" />
+        <ChatRobot variant="full" :state="robotState" />
         <span class="text-xs font-semibold text-ink-muted">Asistente de mantenimiento</span>
       </div>
       <div
@@ -116,6 +116,7 @@ const messages = ref([])
 const pendingToolCalls = ref([])
 const input = ref('')
 const loading = ref(false)
+const robotState = ref('idle')
 const streamingText = ref('')
 const conversationId = ref(null)
 const lastError = ref('')
@@ -125,6 +126,23 @@ const historyTruncated = ref(false)
 let tempIdCounter = 0
 let activeController = null
 let hasRestoredSession = false
+let robotStateResetTimer = null
+
+const resetRobotState = () => {
+  if (robotStateResetTimer) {
+    clearTimeout(robotStateResetTimer)
+    robotStateResetTimer = null
+  }
+}
+
+const showRobotSuccessBriefly = () => {
+  resetRobotState()
+  robotState.value = 'success'
+  robotStateResetTimer = setTimeout(() => {
+    robotState.value = isConnected.value ? 'idle' : 'offline'
+    robotStateResetTimer = null
+  }, 1800)
+}
 
 const scrollToBottom = () => {
   nextTick(() => {
@@ -164,6 +182,8 @@ const getCsrfToken = () => {
 }
 
 const startConversation = async () => {
+  resetRobotState()
+  robotState.value = 'loading'
   try {
     const res = await fetch(`${CHATBOT_BASE_PATH}/conversaciones`, {
       method: 'POST',
@@ -183,8 +203,11 @@ const startConversation = async () => {
       role: 'assistant',
       content: 'Hola, soy tu asistente de mantenimiento. ¿En qué puedo ayudarte?',
     })
+    robotState.value = 'idle'
     scrollToBottom()
   } catch (e) {
+    robotState.value = 'offline'
+    isConnected.value = false
     lastError.value = 'No pude iniciar la conversación. Reintentá más tarde.'
   }
 }
@@ -254,6 +277,8 @@ const sendMessage = async () => {
   streamingText.value = ''
   pendingToolCalls.value = []
   lastError.value = ''
+  resetRobotState()
+  robotState.value = 'thinking'
   scrollToBottom()
 
   const streamingMsg = {
@@ -312,12 +337,15 @@ const sendMessage = async () => {
         streaming: false,
       }
     }
+    showRobotSuccessBriefly()
   } catch (e) {
     console.error('[chatbot] sendMessage error:', e.name, e.message)
     if (e.name === 'AbortError') {
       streamingMsg.content = '(cancelado o tiempo agotado)'
+      robotState.value = 'error'
     } else {
       isConnected.value = false
+      robotState.value = typeof navigator !== 'undefined' && navigator.onLine === false ? 'offline' : 'error'
       lastError.value = `No pude comunicarme con el asistente. (${e.message}). Reintentá.`
     }
     streamingMsg.streaming = false
@@ -383,6 +411,8 @@ const confirmTool = async (toolCall) => {
   abortActive()
   pendingToolCalls.value = pendingToolCalls.value.filter((tc) => tc.id !== toolCall.id)
   loading.value = true
+  resetRobotState()
+  robotState.value = 'thinking'
   streamingText.value = ''
   lastError.value = ''
   scrollToBottom()
@@ -423,10 +453,14 @@ const confirmTool = async (toolCall) => {
       streamingMsg.content = assistantMsg?.content ?? '(respuesta vacía)'
     }
     streamingMsg.streaming = false
+    showRobotSuccessBriefly()
   } catch (e) {
     if (e.name !== 'AbortError') {
       isConnected.value = false
+      robotState.value = typeof navigator !== 'undefined' && navigator.onLine === false ? 'offline' : 'error'
       lastError.value = 'No pude ejecutar la acción confirmada.'
+    } else {
+      robotState.value = 'error'
     }
     streamingMsg.streaming = false
   } finally {
@@ -452,6 +486,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  resetRobotState()
   abortActive()
   window.removeEventListener('beforeunload', abortActive)
 })
