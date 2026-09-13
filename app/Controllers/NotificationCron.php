@@ -141,11 +141,12 @@ final class NotificationCron extends BaseController
             $result = service('notificationCycle')->execute(null, (int) env('alerts.lockTimeoutSeconds', 900));
             $dispatched = $result['dispatched'];
             $message = sprintf(
-                'Ciclo ejecutado. Eventos: %d; emails: %d; emails empresa: %d; push: %d; fallas: %d.',
+                'Ciclo ejecutado. Eventos: %d; emails: %d; emails empresa: %d; push: %d; WhatsApp: %d; fallas: %d.',
                 (int) ($result['collected']['events'] ?? 0),
                 (int) ($dispatched['email_sent'] ?? 0),
                 (int) ($dispatched['company_email_sent'] ?? 0),
                 (int) ($dispatched['push_sent'] ?? 0),
+                (int) ($dispatched['whatsapp_sent'] ?? 0),
                 (int) ($dispatched['failed'] ?? 0),
             );
 
@@ -199,7 +200,8 @@ final class NotificationCron extends BaseController
             ],
             'sent' => (int) ($dispatched['email_sent'] ?? 0)
                 + (int) ($dispatched['company_email_sent'] ?? 0)
-                + (int) ($dispatched['push_sent'] ?? 0),
+                + (int) ($dispatched['push_sent'] ?? 0)
+                + (int) ($dispatched['whatsapp_sent'] ?? 0),
             'retry' => (int) ($dispatched['retry'] ?? 0),
             'skipped' => (int) ($dispatched['skipped'] ?? 0),
             'errors' => (int) ($dispatched['failed'] ?? 0),

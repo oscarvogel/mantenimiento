@@ -11,6 +11,7 @@ use App\Application\Notifications\Port\NotificationPreferenceStore;
 use App\Application\Notifications\Port\NotificationRecipientResolver;
 use App\Application\Notifications\Port\NotificationRepository;
 use App\Application\Notifications\Port\NotificationUnitOfWork;
+use App\Application\Notifications\Port\WhatsAppNotificationDeliveryQueue;
 use App\Domain\Notifications\NotifiableEvent;
 use App\Domain\Notifications\Notification;
 
@@ -22,6 +23,7 @@ final readonly class PublishNotifiableEvent implements NotifiableEventPublisher
         private NotificationPreferenceStore $preferences,
         private NotificationDeliveryQueue $deliveries,
         private NotificationUnitOfWork $unitOfWork,
+        private ?WhatsAppNotificationDeliveryQueue $whatsAppDeliveries = null,
     ) {
     }
 
@@ -53,6 +55,7 @@ final readonly class PublishNotifiableEvent implements NotifiableEventPublisher
             if ($this->deliveries instanceof CompanyNotificationDeliveryQueue) {
                 $this->deliveries->scheduleCompany($event);
             }
+            $this->whatsAppDeliveries?->scheduleDriverForEvent($event);
 
             return ['created' => $created, 'duplicates' => $duplicates, 'recipients' => count($recipients)];
         });

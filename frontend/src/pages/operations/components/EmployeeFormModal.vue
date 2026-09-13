@@ -56,7 +56,7 @@ const title = computed(() => isEditing.value ? 'Editar empleado' : 'Nuevo emplea
           <FormField label="CUIL" for-id="modal-employee-cuil"><input id="modal-employee-cuil" name="cuil" :value="employee?.cuil || ''" maxlength="30" :class="fieldClass" /></FormField>
           <FormField label="Legajo" for-id="modal-employee-number"><input id="modal-employee-number" name="legajo" :value="employee?.employeeNumber || ''" maxlength="50" :class="fieldClass" /></FormField>
           <FormField label="Fecha de ingreso" for-id="modal-employee-hired"><input id="modal-employee-hired" name="fecha_ingreso" type="date" :value="employee?.hiredAt || ''" :class="fieldClass" /></FormField>
-          <FormField label="Teléfono" for-id="modal-employee-phone"><input id="modal-employee-phone" name="telefono" :value="employee?.phone || ''" maxlength="50" :class="fieldClass" /></FormField>
+          <FormField label="Celular / WhatsApp" for-id="modal-employee-phone"><input id="modal-employee-phone" name="telefono" :value="employee?.phone || ''" maxlength="50" inputmode="tel" placeholder="Ej. 3764123456 o 5493764123456" :class="fieldClass" /><p class="mt-1 text-xs text-ink-muted">Se usa para avisos de vencimientos cuando el empleado está asignado como chofer.</p></FormField>
           <FormField label="Email" for-id="modal-employee-email"><input id="modal-employee-email" name="email" type="email" :value="employee?.email || ''" maxlength="150" :class="fieldClass" /></FormField>
           <FormField label="Observaciones" for-id="modal-employee-notes" class="lg:col-span-3"><textarea id="modal-employee-notes" name="observaciones" rows="3" maxlength="1000" :value="employee?.notes || ''" :class="fieldClass"></textarea></FormField>
 
