@@ -135,6 +135,7 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->post('empleados/(:num)/baja', 'Employees::terminate/$1', ['filter' => 'permission:empleados.editar']);
 
     $routes->get('vencimientos', 'Expirations::index');
+    $routes->get('maestros/equipos', 'AssetManagement::catalogs', ['filter' => 'permission:equipos.editar']);
     $routes->get('maestros/vencimientos', 'Expirations::typesIndex');
     $routes->post('vencimientos/tipos', 'Expirations::createType');
     $routes->post('vencimientos/tipos/(:num)', 'Expirations::updateType/$1');
