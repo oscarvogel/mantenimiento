@@ -210,6 +210,25 @@ def print_plan(base_sha: str, head_sha: str, groups: dict[str, list[Change]], *,
             print(f"  {item.status} {item.path}")
         print()
 
+    if groups["ignored"]:
+        print("ARCHIVOS IGNORADOS:")
+        for item in groups["ignored"]:
+            path = item.path.replace("\\", "/")
+            if path.startswith("scripts/"):
+                reason = "script/herramienta local"
+            elif path.endswith(".md") or path.startswith("docs/"):
+                reason = "documentacion"
+            elif path.startswith("tests/"):
+                reason = "tests"
+            elif path.startswith(".github/"):
+                reason = "configuracion GitHub"
+            elif path.startswith("frontend/"):
+                reason = "fuente frontend; se publica el build generado"
+            else:
+                reason = "fuera del runtime productivo"
+            print(f"  {item.status} {item.path}  [{reason}]")
+        print()
+
     if any(item.path == "composer.lock" for item in groups["runtime"]):
         print("ATENCION: composer.lock cambió. vendor/ NO se publicará automáticamente.")
         print()
