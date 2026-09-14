@@ -82,7 +82,7 @@ def git(*args: str) -> str:
     return result.stdout.strip()
 
 
-def ensure_repo_ready(*, allow_non_main: bool, allow_dirty: bool) -> str:
+def ensure_repo_ready(*, allow_non_main: bool, allow_dirty: bool, local_mode_name: str | None = None) -> str:
     branch = git("branch", "--show-current")
     if branch != "main" and not allow_non_main:
         raise RuntimeError(f"El deploy real solo se permite desde main (rama actual: {branch!r}).")
@@ -90,7 +90,8 @@ def ensure_repo_ready(*, allow_non_main: bool, allow_dirty: bool) -> str:
     dirty = git("status", "--porcelain")
     if dirty:
         if allow_dirty:
-            print("WARNING: hay cambios locales sin commit; --dry-run compara solo commits (HEAD).")
+            mode = local_mode_name or "modo local"
+            print(f"WARNING: hay cambios locales sin commit; {mode} compara solo commits (HEAD).")
         else:
             raise RuntimeError("El arbol de trabajo tiene cambios locales. Commit/stash antes del deploy.")
 
@@ -263,10 +264,22 @@ def copy_dashboard_build(destination: pathlib.Path) -> int:
     return sum(1 for item in target_root.rglob("*") if item.is_file())
 
 
+def resolve_npm() -> str:
+    candidates = ["npm.cmd", "npm.exe", "npm"] if os.name == "nt" else ["npm"]
+    for candidate in candidates:
+        resolved = shutil.which(candidate)
+        if resolved:
+            return resolved
+    raise RuntimeError("No se encontró npm en PATH.")
+
+
 def run_frontend_checks_and_build() -> None:
+    npm = resolve_npm()
+
+    print(f"NPM={npm}")
     print("FRONTEND_TESTS=RUNNING")
     result = subprocess.run(
-        ["npm", "test", "--", "--run"],
+        [npm, "test", "--", "--run"],
         cwd=str(ROOT / "frontend"),
         text=True,
     )
@@ -274,7 +287,7 @@ def run_frontend_checks_and_build() -> None:
         raise RuntimeError("Fallaron los tests frontend.")
 
     print("FRONTEND_BUILD=RUNNING")
-    result = subprocess.run(["npm", "run", "build"], cwd=str(ROOT / "frontend"), text=True)
+    result = subprocess.run([npm, "run", "build"], cwd=str(ROOT / "frontend"), text=True)
     if result.returncode != 0:
         raise RuntimeError("Falló el build frontend.")
 
@@ -457,7 +470,12 @@ def main() -> int:
     args = parser.parse_args()
 
     safe_local_mode = args.dry_run or args.prepare_only
-    branch = ensure_repo_ready(allow_non_main=safe_local_mode, allow_dirty=safe_local_mode)
+    local_mode_name = "--prepare-only" if args.prepare_only else "--dry-run" if args.dry_run else None
+    branch = ensure_repo_ready(
+        allow_non_main=safe_local_mode,
+        allow_dirty=safe_local_mode,
+        local_mode_name=local_mode_name,
+    )
     try:
         git("fetch", "origin")
     except Exception:
