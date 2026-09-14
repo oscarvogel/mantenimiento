@@ -446,6 +446,7 @@ def save_state(path: pathlib.Path, head_sha: str) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Deploy incremental seguro a Ferozo.")
     parser.add_argument("--dry-run", action="store_true", help="Solo mostrar el plan; no toca producción.")
+    parser.add_argument("--prepare-only", action="store_true", help="Ejecuta tests/build y arma el release local sin FTP ni migraciones.")
     parser.add_argument("--full", action="store_true", help="Reservado para resincronización completa.")
     parser.add_argument("--from-sha", help="SHA base para calcular el diff (útil en la primera ejecución).")
     parser.add_argument("--credentials", default=str(DEFAULT_CREDENTIALS))
@@ -455,7 +456,8 @@ def main() -> int:
     parser.add_argument("--skip-tests", action="store_true", help="Solo para diagnóstico local; no recomendado.")
     args = parser.parse_args()
 
-    branch = ensure_repo_ready(allow_non_main=args.dry_run, allow_dirty=args.dry_run)
+    safe_local_mode = args.dry_run or args.prepare_only
+    branch = ensure_repo_ready(allow_non_main=safe_local_mode, allow_dirty=safe_local_mode)
     try:
         git("fetch", "origin")
     except Exception:
@@ -502,6 +504,27 @@ def main() -> int:
     head_sha = git("rev-parse", "HEAD")
     changes = parse_changes(base_sha, head_sha)
     groups = classify(changes)
+
+    if args.prepare_only:
+        release = ROOT / "dist" / "ferozo-prepare"
+        if release.exists():
+            shutil.rmtree(release)
+        release.mkdir(parents=True, exist_ok=True)
+
+        count = copy_incremental_tree(groups["runtime"], release)
+        dashboard_count = 0
+        if groups["frontend"]:
+            dashboard_count = copy_dashboard_build(release)
+            print(f"DASHBOARD_FILES_STAGED={dashboard_count}")
+
+        total_staged = count + dashboard_count
+        print(f"FILES_STAGED={total_staged}")
+        print(f"RELEASE_DIR={release}")
+        print("UPLOAD=SKIPPED")
+        print("MIGRATIONS=SKIPPED")
+        print("PREPARE_ONLY=OK")
+        print("PRODUCTION_TOUCHED=NO")
+        return 0
 
     credentials = pathlib.Path(args.credentials).resolve()
     if not credentials.is_file():
