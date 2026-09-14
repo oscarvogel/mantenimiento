@@ -22,7 +22,7 @@ import urllib.request
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
-ROOT = pathlib.Path(__file__).resolve().parents[1]
+ROOT = pathlib.Path(__file__).absolute().parents[1]
 SCRIPTS = ROOT / "scripts"
 FTP_SCRIPT = SCRIPTS / "ferozo-ftps.py"
 MIGRATE_SCRIPT = SCRIPTS / "migrate.php"
@@ -276,17 +276,6 @@ def resolve_npm() -> str:
 def run_npm(args: list[str]) -> subprocess.CompletedProcess[str]:
     npm = resolve_npm()
     frontend = ROOT / "frontend"
-
-    if os.name == "nt" and str(frontend).startswith("\\\\"):
-        # cmd.exe no acepta rutas UNC como cwd. pushd las monta temporalmente
-        # en una letra de unidad y popd la libera al finalizar.
-        command = subprocess.list2cmdline([npm, *args])
-        script = f'pushd "{frontend}" && {command}'
-        return subprocess.run(
-            ["cmd.exe", "/d", "/s", "/c", script],
-            text=True,
-        )
-
     return subprocess.run(
         [npm, *args],
         cwd=str(frontend),
