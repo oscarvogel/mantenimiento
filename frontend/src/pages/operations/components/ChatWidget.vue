@@ -113,17 +113,6 @@
         <p v-if="briefing.moreCount > 0" class="mt-2 text-[11px] text-ink-subtle">
           Hay {{ briefing.moreCount }} avisos más.
         </p>
-        <div v-if="briefing.suggestions?.length" class="mt-3 flex flex-wrap gap-2">
-          <button
-            v-for="suggestion in briefing.suggestions"
-            :key="suggestion"
-            type="button"
-            class="ui-interactive rounded-full border border-border px-2.5 py-1 text-[11px] text-ink hover:bg-surface-raised"
-            @click="sendSuggestion(suggestion)"
-          >
-            {{ suggestion }}
-          </button>
-        </div>
       </div>
 
       <div
