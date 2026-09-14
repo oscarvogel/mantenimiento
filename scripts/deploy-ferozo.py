@@ -273,21 +273,38 @@ def resolve_npm() -> str:
     raise RuntimeError("No se encontró npm en PATH.")
 
 
+def run_npm(args: list[str]) -> subprocess.CompletedProcess[str]:
+    npm = resolve_npm()
+    frontend = ROOT / "frontend"
+
+    if os.name == "nt" and str(frontend).startswith("\\\\"):
+        # cmd.exe no acepta rutas UNC como cwd. pushd las monta temporalmente
+        # en una letra de unidad y popd la libera al finalizar.
+        command = subprocess.list2cmdline([npm, *args])
+        script = f'pushd "{frontend}" && {command}'
+        return subprocess.run(
+            ["cmd.exe", "/d", "/s", "/c", script],
+            text=True,
+        )
+
+    return subprocess.run(
+        [npm, *args],
+        cwd=str(frontend),
+        text=True,
+    )
+
+
 def run_frontend_checks_and_build() -> None:
     npm = resolve_npm()
 
     print(f"NPM={npm}")
     print("FRONTEND_TESTS=RUNNING")
-    result = subprocess.run(
-        [npm, "test", "--", "--run"],
-        cwd=str(ROOT / "frontend"),
-        text=True,
-    )
+    result = run_npm(["test", "--", "--run"])
     if result.returncode != 0:
         raise RuntimeError("Fallaron los tests frontend.")
 
     print("FRONTEND_BUILD=RUNNING")
-    result = subprocess.run([npm, "run", "build"], cwd=str(ROOT / "frontend"), text=True)
+    result = run_npm(["run", "build"])
     if result.returncode != 0:
         raise RuntimeError("Falló el build frontend.")
 
