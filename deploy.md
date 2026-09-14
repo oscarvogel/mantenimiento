@@ -37,7 +37,7 @@ No se usa GitHub Actions ni Coolify para producción. Coolify puede seguir utili
 - El deploy completo se reserva para recuperación, reinstalación o resincronización.
 - Las migraciones se ejecutan **dentro de Ferozo**, porque la base MySQL productiva no es accesible desde GitHub ni desde runners externos.
 - El transporte FTPS reutiliza `scripts/ferozo-ftps.py`.
-- Las migraciones reutilizan `scripts/migrate-remote.php`, publicado temporalmente como `migrate.php`.
+- Las migraciones reutilizan `scripts/migrate.php`, publicado temporalmente como `migrate.php`.
 - Las credenciales FTPS permanecen solo en la máquina local y nunca se versionan.
 
 ## Reglas de seguridad
@@ -57,7 +57,7 @@ El mecanismo de deploy ya cuenta con:
 
 ```text
 scripts/ferozo-ftps.py
-scripts/migrate-remote.php
+scripts/migrate.php
 .ferozo-credentials
 MIGRATE_TOKEN
 ```
@@ -134,6 +134,49 @@ Se reserva para:
 - reparación de un remoto inconsistente.
 
 No debe ser el mecanismo cotidiano.
+
+## Prueba local segura
+
+Para validar el orquestador sin tocar Ferozo:
+
+1. Cambiar a la rama de prueba y actualizarla:
+
+```powershell
+git fetch origin
+git switch feat/deploy-ferozo-orchestrator
+git pull --ff-only
+```
+
+2. Ejecutar un dry-run comparando contra un commit anterior conocido:
+
+```powershell
+py -3 scripts\deploy-ferozo.py --dry-run --from-sha HEAD~1
+```
+
+Ese comando debe terminar con:
+
+```text
+DRY_RUN=OK
+PRODUCTION_TOUCHED=NO
+```
+
+No requiere credenciales FTPS, no sube archivos, no publica `migrate.php` y no ejecuta migraciones.
+
+3. Para probar un rango más real, reemplazar `HEAD~1` por el SHA de la versión actualmente desplegada:
+
+```powershell
+py -3 scripts\deploy-ferozo.py --dry-run --from-sha <SHA_PRODUCTIVO>
+```
+
+4. Revisar que la salida clasifique correctamente runtime, frontend, migraciones y eliminaciones.
+
+La primera ejecución real deberá usar `--from-sha <SHA_PRODUCTIVO>` si todavía no existe `.deploy/production.json` local. Una vez que un deploy real termina completamente OK, el script guarda allí el nuevo SHA como referencia para el siguiente incremental.
+
+### Limitaciones iniciales deliberadas
+
+- `--full` está documentado pero todavía queda bloqueado en el orquestador hasta validarlo por separado.
+- Las eliminaciones remotas detectadas hacen abortar el deploy real; no se borran automáticamente.
+- La verificación remota SHA-256 todavía queda como paso a completar; esta primera versión imprime hashes locales críticos y mantiene los smoke tests HTTP.
 
 ## Preparación local
 
@@ -245,7 +288,7 @@ Las migraciones no se ejecutan desde GitHub ni desde la máquina local contra My
 Copiar temporalmente:
 
 ```text
-scripts/migrate-remote.php -> migrate.php
+scripts/migrate.php -> migrate.php
 ```
 
 ### Consultar estado
