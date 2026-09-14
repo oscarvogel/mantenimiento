@@ -82,14 +82,17 @@ def git(*args: str) -> str:
     return result.stdout.strip()
 
 
-def ensure_repo_ready(*, allow_non_main: bool) -> str:
+def ensure_repo_ready(*, allow_non_main: bool, allow_dirty: bool) -> str:
     branch = git("branch", "--show-current")
     if branch != "main" and not allow_non_main:
         raise RuntimeError(f"El deploy real solo se permite desde main (rama actual: {branch!r}).")
 
     dirty = git("status", "--porcelain")
     if dirty:
-        raise RuntimeError("El arbol de trabajo tiene cambios locales. Commit/stash antes del deploy.")
+        if allow_dirty:
+            print("WARNING: hay cambios locales sin commit; --dry-run compara solo commits (HEAD).")
+        else:
+            raise RuntimeError("El arbol de trabajo tiene cambios locales. Commit/stash antes del deploy.")
 
     return branch
 
@@ -419,7 +422,7 @@ def main() -> int:
     parser.add_argument("--skip-tests", action="store_true", help="Solo para diagnóstico local; no recomendado.")
     args = parser.parse_args()
 
-    branch = ensure_repo_ready(allow_non_main=args.dry_run)
+    branch = ensure_repo_ready(allow_non_main=args.dry_run, allow_dirty=args.dry_run)
     try:
         git("fetch", "origin")
     except Exception:
