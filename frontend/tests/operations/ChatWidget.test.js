@@ -31,7 +31,7 @@ describe('ChatWidget', () => {
     expect(wrapper.find('[data-testid="chat-robot"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="chat-robot"] img').attributes('alt')).toBe('')
     expect(fetch).toHaveBeenCalledWith(
-      '/mantenimiento/mantenimiento/chatbot/conversaciones',
+      '/mantenimiento/chatbot/conversaciones',
       expect.objectContaining({ method: 'POST' }),
     )
   })
