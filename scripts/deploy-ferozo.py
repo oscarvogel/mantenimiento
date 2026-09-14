@@ -186,6 +186,8 @@ def print_plan(base_sha: str, head_sha: str, groups: dict[str, list[Change]], *,
     print(f"FRONTEND_CHANGES  : {len(groups['frontend'])}")
     print(f"DELETIONS         : {len(groups['deleted'])}")
     print(f"IGNORED           : {len(groups['ignored'])}")
+    print(f"FRONTEND_BUILD    : {'REQUIRED' if groups['frontend'] else 'NO'}")
+    print(f"ASSETS_DASHBOARD  : {'FULL_PUBLISH_AFTER_BUILD' if groups['frontend'] else 'DIFF_ONLY'}")
     print()
 
     if groups["runtime"]:
@@ -247,6 +249,18 @@ def copy_incremental_tree(changes: list[Change], destination: pathlib.Path) -> i
         shutil.copy2(source, target)
         copied += 1
     return copied
+
+
+def copy_dashboard_build(destination: pathlib.Path) -> int:
+    source_root = ROOT / "assets" / "dashboard"
+    if not source_root.is_dir():
+        raise RuntimeError("No existe assets/dashboard después del build frontend.")
+
+    target_root = destination / "assets" / "dashboard"
+    if target_root.exists():
+        shutil.rmtree(target_root)
+    shutil.copytree(source_root, target_root)
+    return sum(1 for item in target_root.rglob("*") if item.is_file())
 
 
 def run_frontend_checks_and_build() -> None:
@@ -482,8 +496,9 @@ def main() -> int:
         if groups["frontend"]:
             run_frontend_checks_and_build()
 
-    # El build puede haber cambiado assets versionados/no versionados. Para esta primera
-    # versión se vuelven a calcular los cambios Git antes de armar el árbol incremental.
+    # El build frontend genera nombres con hash y usa emptyOutDir=true. Por eso no se
+    # depende del git diff para publicar esos bundles: si cambió frontend, se publica
+    # completo assets/dashboard/ tal como quedó después del build.
     head_sha = git("rev-parse", "HEAD")
     changes = parse_changes(base_sha, head_sha)
     groups = classify(changes)
@@ -495,8 +510,15 @@ def main() -> int:
     with tempfile.TemporaryDirectory(prefix="mantenimiento-release-") as tmp:
         release = pathlib.Path(tmp)
         count = copy_incremental_tree(groups["runtime"], release)
-        print(f"FILES_STAGED={count}")
-        if count:
+
+        dashboard_count = 0
+        if groups["frontend"]:
+            dashboard_count = copy_dashboard_build(release)
+            print(f"DASHBOARD_FILES_STAGED={dashboard_count}")
+
+        total_staged = count + dashboard_count
+        print(f"FILES_STAGED={total_staged}")
+        if total_staged:
             call_ftps_upload(credentials, release, "/")
             print("UPLOAD=OK")
 
