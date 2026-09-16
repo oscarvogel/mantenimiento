@@ -59,6 +59,22 @@ final class ManagementReportsContractTest extends TestCase
         self::assertStringContainsString('managementMetricTone', $gateway);
     }
 
+    public function testHalfHourCronUsesMinuteKeyAndBoundedBatch(): void
+    {
+        $cycle = file_get_contents(APPPATH . 'Application/Notifications/RunNotificationCycle.php');
+        $controller = file_get_contents(APPPATH . 'Controllers/NotificationCron.php');
+        $docs = file_get_contents(ROOTPATH . 'docs/notificaciones-cron-ferozo.md');
+
+        self::assertIsString($cycle);
+        self::assertIsString($controller);
+        self::assertIsString($docs);
+        self::assertStringContainsString("format('Y-m-d-H-i')", $cycle);
+        self::assertStringContainsString('dispatchLimit', $cycle);
+        self::assertStringContainsString("alerts.webCronBatchLimit", $controller);
+        self::assertStringContainsString('alerts.webCronBatchLimit = 25', $docs);
+        self::assertStringContainsString('cada 30 minutos', $docs);
+    }
+
     public function testCompanyOverviewRemainsUsableBeforeMigration(): void
     {
         $administration = file_get_contents(APPPATH . 'Infrastructure/Organization/CodeIgniterOrganizationAdministration.php');
