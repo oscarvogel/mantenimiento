@@ -56,7 +56,7 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
         $items = '';
         foreach ($notifications as $notification) {
             $title = htmlspecialchars((string) $notification['titulo'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-            $summary = htmlspecialchars((string) $notification['resumen'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+            $summary = nl2br(htmlspecialchars((string) $notification['resumen'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'));
             $link = $this->notificationLink($notification['url'] ?? null);
             $action = $link === null
                 ? ''
