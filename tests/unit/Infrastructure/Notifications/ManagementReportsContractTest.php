@@ -49,7 +49,10 @@ final class ManagementReportsContractTest extends TestCase
         self::assertIsString($gateway);
         self::assertStringContainsString("str_starts_with(\$eventType, 'informe.gerencial.')", $dispatch);
         self::assertStringContainsString("str_starts_with((string) (\$first['tipo_evento'] ?? ''), 'informe.gerencial.')", $gateway);
-        self::assertStringContainsString('<html lang="es">', $gateway);
+        self::assertStringContainsString('<html lang="es-AR">', $gateway);
+        self::assertStringContainsString("setHeader('Content-Language', 'es-AR')", $gateway);
+        self::assertStringContainsString('setAltMessage', $gateway);
+        self::assertStringContainsString('managementReportText', $gateway);
         self::assertStringContainsString('Vogel Consultoría', $gateway);
         self::assertStringContainsString('vogelconsultoria.com.ar', $gateway);
         self::assertStringContainsString('Abrir sistema de mantenimiento', $gateway);
