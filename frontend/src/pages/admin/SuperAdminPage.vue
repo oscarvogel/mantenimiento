@@ -405,6 +405,7 @@ const sections = [
               <div class="mb-3">
                 <p class="text-sm font-semibold text-ink">Informes para dueño / gerencia</p>
                 <p class="mt-1 text-xs leading-5 text-ink-muted">Se envían separados de las alertas operativas. Podés indicar varios correos separados por coma.</p>
+                <p class="mt-2 text-xs leading-5 text-ink-muted">La hora no crea un cron por empresa: el programador global revisa qué informes están vencidos en cada ejecución. En producción puede ejecutarse, por ejemplo, cada 30 minutos.</p>
               </div>
               <label class="block">
                 <span class="mb-1.5 block text-sm font-medium text-ink">Destinatarios de informes</span>
