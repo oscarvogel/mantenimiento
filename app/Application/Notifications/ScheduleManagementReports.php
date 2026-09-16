@@ -78,7 +78,15 @@ final class ScheduleManagementReports
         }
 
         $period = $type === 'DAILY' ? $now->format('Y-m-d') : $now->format('o-\WW');
-        $report = $this->buildReport($companyId, $type, $now);
+        $companyName = trim((string) ($company['nombre_fantasia'] ?? ''));
+        if ($companyName === '') {
+            $companyName = trim((string) ($company['razon_social'] ?? ''));
+        }
+        if ($companyName === '') {
+            $companyName = 'Empresa #' . $companyId;
+        }
+
+        $report = $this->buildReport($companyId, $type, $now, $companyName);
         $queued = 0;
         $duplicates = 0;
 
@@ -150,7 +158,7 @@ final class ScheduleManagementReports
     }
 
     /** @return array{title:string,summary:string} */
-    private function buildReport(int $companyId, string $type, DateTimeImmutable $now): array
+    private function buildReport(int $companyId, string $type, DateTimeImmutable $now, string $companyName): array
     {
         $today = $now->format('Y-m-d');
         $weekStart = $now->modify('-6 days')->format('Y-m-d 00:00:00');
@@ -189,8 +197,8 @@ final class ScheduleManagementReports
         }
 
         return [
-            'title' => $label . ' de mantenimiento · ' . $now->format('d/m/Y'),
-            'summary' => implode("\n", $lines),
+            'title' => $label . ' de mantenimiento · ' . $companyName . ' · ' . $now->format('d/m/Y'),
+            'summary' => 'Empresa: ' . $companyName . "\n" . implode("\n", $lines),
         ];
     }
 
