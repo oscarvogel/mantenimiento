@@ -51,7 +51,12 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
         ]);
         $email->setFrom($fromEmail, trim((string) ($settings['smtp_from_name'] ?? '')) ?: 'Mantenimiento');
         $email->setTo($recipient);
-        $email->setSubject('Resumen de mantenimiento - ' . $this->clock->now()->format('d/m/Y'));
+        $first = $notifications[0] ?? [];
+        $isManagementReport = str_starts_with((string) ($first['tipo_evento'] ?? ''), 'informe.gerencial.');
+        $subject = $isManagementReport
+            ? (string) ($first['titulo'] ?? 'Informe gerencial de mantenimiento')
+            : 'Resumen de mantenimiento - ' . $this->clock->now()->format('d/m/Y');
+        $email->setSubject($subject);
 
         $items = '';
         foreach ($notifications as $notification) {
@@ -64,7 +69,8 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
             $items .= "<li><strong>{$title}</strong><br>{$summary}{$action}</li>";
         }
 
-        $email->setMessage('<h1>Resumen de mantenimiento</h1><ul>' . $items . '</ul>');
+        $heading = $isManagementReport ? htmlspecialchars($subject, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') : 'Resumen de mantenimiento';
+        $email->setMessage('<h1>' . $heading . '</h1><ul>' . $items . '</ul>');
         if (! $email->send(false)) {
             $debugger = $this->sanitizeDebugger((string) $email->printDebugger(['headers']), $settings);
             $message = $this->controlledFailureMessage($debugger, $settings);
