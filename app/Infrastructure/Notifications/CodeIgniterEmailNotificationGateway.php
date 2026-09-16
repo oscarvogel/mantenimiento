@@ -104,6 +104,8 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
         $lines = preg_split('/\R+/', $summary) ?: [];
         $company = '';
         $metrics = [];
+        $readingAlerts = [];
+        $moreReadingAlerts = 0;
 
         foreach ($lines as $line) {
             $line = trim($line);
@@ -112,6 +114,22 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
             }
             if (str_starts_with($line, 'Empresa:')) {
                 $company = trim(substr($line, strlen('Empresa:')));
+                continue;
+            }
+            if (str_starts_with($line, '!LECTURA|')) {
+                $parts = explode('|', $line, 4);
+                if (count($parts) === 4) {
+                    $readingAlerts[] = [
+                        'code' => trim($parts[1]),
+                        'detail' => trim($parts[2]),
+                        'status' => trim($parts[3]),
+                    ];
+                }
+                continue;
+            }
+            if (str_starts_with($line, '!LECTURA_MAS|')) {
+                $parts = explode('|', $line, 2);
+                $moreReadingAlerts = max(0, (int) ($parts[1] ?? 0));
                 continue;
             }
             if (! str_contains($line, ':')) {
@@ -148,6 +166,36 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
             $cards .= '<td width="50%" style="padding:6px;"></td>';
         }
 
+        $readingSection = '';
+        if ($readingAlerts !== []) {
+            $rows = '';
+            foreach ($readingAlerts as $readingAlert) {
+                $code = htmlspecialchars($readingAlert['code'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+                $detail = htmlspecialchars($readingAlert['detail'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+                $status = htmlspecialchars($readingAlert['status'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+                $statusColor = mb_strtolower($readingAlert['status']) === 'sin lectura' ? '#dc2626' : '#d97706';
+
+                $rows .= '<tr><td style="padding:12px 14px;border-top:1px solid #e5e7eb;">'
+                    . '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr>'
+                    . '<td valign="top"><div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:20px;color:#0f172a;font-weight:800;">' . $code . '</div>'
+                    . '<div style="margin-top:2px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#64748b;">' . $detail . '</div></td>'
+                    . '<td valign="top" align="right" style="padding-left:12px;"><span style="display:inline-block;padding:5px 9px;border-radius:999px;background:#fff7ed;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:14px;color:' . $statusColor . ';font-weight:800;white-space:nowrap;">' . $status . '</span></td>'
+                    . '</tr></table></td></tr>';
+            }
+
+            $more = $moreReadingAlerts > 0
+                ? '<tr><td style="padding:10px 14px;border-top:1px solid #e5e7eb;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#64748b;">Hay ' . $moreReadingAlerts . ' equipo(s) más con lecturas pendientes. Abrí el sistema para ver el detalle completo.</td></tr>'
+                : '';
+
+            $readingSection = '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-top:20px;border:1px solid #e5e7eb;border-radius:12px;background:#ffffff;overflow:hidden;">'
+                . '<tr><td style="padding:14px 14px 12px 14px;background:#f8fafc;">'
+                . '<div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:22px;color:#0f172a;font-weight:800;">Control de lecturas</div>'
+                . '<div style="margin-top:3px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#64748b;">Equipos sin km/horas o con información demasiado antigua.</div>'
+                . '</td></tr>'
+                . $rows . $more
+                . '</table>';
+        }
+
         $button = $safeLink === null
             ? ''
             : '<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:24px 0 0 0;"><tr><td style="border-radius:9px;background:#0f172a;">'
@@ -177,6 +225,7 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
             . '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f8fafc;border-radius:14px;"><tr>'
             . $cards
             . '</tr></table>'
+            . $readingSection
             . $button
             . '</td></tr>'
             . '<tr><td style="padding:22px 30px;border-top:1px solid #e5e7eb;background:#f8fafc;">'
