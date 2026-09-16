@@ -53,4 +53,34 @@ describe('ChatWidget', () => {
       expect.objectContaining({ method: 'POST' }),
     )
   })
+  it('muestra una sola fila de acciones rapidas del briefing', async () => {
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ conversation: { id: 123 } }),
+      })
+      .mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          briefing: {
+            headline: 'Hay temas críticos que requieren atención',
+            hasAttention: true,
+            unread: 3,
+            counts: { critical: 1, warning: 1, info: 1 },
+            items: [],
+            moreCount: 0,
+            suggestions: ['Mostrame lo crítico', 'Ver vencimientos pendientes'],
+          },
+        }),
+      }))
+
+    const wrapper = await mountWidget('/')
+    await wrapper.get('button[title="Abrir asistente IA"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.findAll('[data-testid="chat-quick-actions"]')).toHaveLength(1)
+    expect(wrapper.text().match(/Mostrame lo crítico/g) ?? []).toHaveLength(1)
+    expect(wrapper.text().match(/Ver vencimientos pendientes/g) ?? []).toHaveLength(1)
+  })
+
 })
