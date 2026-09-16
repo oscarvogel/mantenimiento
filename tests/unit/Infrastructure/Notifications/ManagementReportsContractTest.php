@@ -57,6 +57,9 @@ final class ManagementReportsContractTest extends TestCase
         self::assertStringContainsString('vogelconsultoria.com.ar', $gateway);
         self::assertStringContainsString('Abrir sistema de mantenimiento', $gateway);
         self::assertStringContainsString('managementMetricTone', $gateway);
+        self::assertStringContainsString('Control de lecturas', $gateway);
+        self::assertStringContainsString('!LECTURA|', file_get_contents(APPPATH . 'Application/Notifications/ScheduleManagementReports.php'));
+        self::assertStringContainsString('staleReadingDetails', file_get_contents(APPPATH . 'Application/Notifications/ScheduleManagementReports.php'));
     }
 
     public function testHalfHourCronUsesMinuteKeyAndBoundedBatch(): void
