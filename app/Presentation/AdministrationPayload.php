@@ -64,7 +64,10 @@ final class AdministrationPayload
                 'whatsappInstanceId' => $row['whatsapp_instance_id'] ?? '',
                 'telefono' => $row['telefono'] ?? '',
                 'active' => (int) $row['estado'] === 1,
-                'actions' => ['update' => base_url('superadmin/empresas/' . $row['id'])],
+                'actions' => [
+                    'update' => base_url('superadmin/empresas/' . $row['id']),
+                    'testManagementReport' => base_url('superadmin/empresas/' . $row['id'] . '/informes/prueba'),
+                ],
             ], $companies),
             'companiesPagination' => $this->pagination(
                 $base, (int) ($source['companiesPage'] ?? 1), (int) ($source['companiesPerPage'] ?? 10),
