@@ -44,6 +44,19 @@ final class ToolExecutor implements ToolExecutorPort
                 $database,
             ),
         );
+        $priorityEvents = new \App\Infrastructure\Notifications\CodeIgniterOperationalNotificationEventSource(
+            new \App\Infrastructure\Notifications\SystemNotificationClock(),
+            (int) env('alerts.lecturasVencidasDias', 30),
+            (int) env('alerts.ordenDemoradaDias', 5),
+            2,
+            $database,
+        );
+        $this->handlers['analizar_prioridades_operativas'] = new AnalyzeOperationalPrioritiesTool(
+            new \App\Infrastructure\Chatbot\ReadModel\CodeIgniterOperationalPriorityReadModel(
+                $priorityEvents,
+                $database,
+            ),
+        );
         $this->handlers['analizar_salud_equipos'] = new AnalyzeEquipmentHealthTool(
             new \App\Infrastructure\Chatbot\ReadModel\CodeIgniterEquipmentHealthReadModel(
                 $database,

@@ -102,6 +102,15 @@ final class StaticToolRegistry implements ToolRegistry
         ));
 
         $this->register(ToolDefinition::read(
+            name: 'analizar_prioridades_operativas',
+            description: 'Analiza y ordena las prioridades operativas actuales con un score determinístico y auditable. Es la tool obligatoria para preguntas como "qué debería atender primero", "qué hago hoy", "ordenáme lo urgente" o "cuáles son las prioridades".',
+            parameters: [
+                'limit' => ['type' => 'integer', 'description' => 'Cantidad de prioridades a devolver (default 5, max 10)', 'required' => false],
+            ],
+            permission: 'notificaciones.ver',
+            handlerClass: AnalyzeOperationalPrioritiesTool::class,
+        ));
+        $this->register(ToolDefinition::read(
             name: 'analizar_salud_equipos',
             description: 'Analiza la salud/riesgo de los equipos activos con score determinístico basado en preventivos vencidos, correctivos abiertos y recientes, espera de repuestos y antigüedad de lecturas. Usar para preguntas como "qué equipo me preocupa más", "cuáles son los equipos en peor estado" o "qué móviles tienen más riesgo".',
             parameters: [
