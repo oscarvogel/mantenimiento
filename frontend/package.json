@@ -10,7 +10,8 @@
     "test:watch": "vitest",
     "qa:visual": "node scripts/visual-qa.mjs",
     "qa:login": "node scripts/login-visual-qa.mjs",
-    "qa:robot": "node scripts/qa-robot.mjs"
+    "qa:robot": "node scripts/qa-robot.mjs",
+    "qa:motion": "node scripts/motion-qa.mjs"
   },
   "dependencies": {
     "@heroicons/vue": "^2.2.0",

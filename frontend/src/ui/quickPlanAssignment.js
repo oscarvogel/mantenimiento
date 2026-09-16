@@ -1,3 +1,5 @@
+import { closeMotionDrawer, openMotionDrawer } from './gsapMotion.js'
+
 const normalizeText = (value) => String(value ?? '').trim().toLocaleUpperCase('es')
 
 // Helpers legacy mantenidos mientras se retiran los últimos consumidores de plantillas.
@@ -101,8 +103,8 @@ function createDrawer() {
   wrapper.dataset.quickPlanDrawer = 'true'
   wrapper.className = 'fixed inset-0 z-[100] hidden'
   wrapper.innerHTML = `
-    <div class="absolute inset-0 bg-slate-950/40" data-quick-plan-close></div>
-    <section role="dialog" aria-modal="true" aria-labelledby="quick-plan-title" class="absolute inset-y-0 right-0 flex w-full max-w-3xl flex-col bg-white shadow-2xl">
+    <div class="absolute inset-0 bg-slate-950/40" data-quick-plan-close data-motion-backdrop></div>
+    <section role="dialog" aria-modal="true" aria-labelledby="quick-plan-title" class="absolute inset-y-0 right-0 flex w-full max-w-3xl flex-col bg-surface-raised shadow-2xl">
       <header class="flex items-start justify-between gap-4 border-b border-border px-5 py-5 sm:px-7">
         <div>
           <p class="text-xs font-bold uppercase tracking-wider text-primary">Mantenimiento preventivo</p>
@@ -113,7 +115,7 @@ function createDrawer() {
       </header>
       <div class="border-b border-border bg-surface-subtle px-5 py-4 sm:px-7">
         <label for="quick-plan-search" class="text-sm font-semibold text-ink">Buscar servicio</label>
-        <input id="quick-plan-search" data-quick-plan-search type="search" autocomplete="off" placeholder="Motor, frenos, hidráulica…" class="mt-2 w-full rounded-lg border border-border-strong bg-white px-3 py-2.5 text-sm text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />
+        <input id="quick-plan-search" data-quick-plan-search type="search" autocomplete="off" placeholder="Motor, frenos, hidráulica…" class="mt-2 w-full rounded-lg border border-border-strong bg-surface px-3 py-2.5 text-sm text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />
         <p class="mt-2 text-xs text-ink-muted">La frecuencia y la anticipación ya vienen definidas por el servicio. Acá sólo indicás desde qué última realización debe empezar a contar.</p>
       </div>
       <div class="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-7">
@@ -121,7 +123,7 @@ function createDrawer() {
         <div data-quick-plan-loading class="rounded-lg bg-surface-subtle p-4 text-sm text-ink-muted">Cargando servicios…</div>
         <div data-quick-plan-results class="space-y-3"></div>
       </div>
-      <footer class="border-t border-border bg-white px-5 py-4 sm:px-7">
+      <footer class="border-t border-border bg-surface-raised px-5 py-4 sm:px-7">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p class="text-sm text-ink-muted"><strong data-quick-plan-count>0</strong> seleccionados</p>
           <button type="button" data-quick-plan-submit class="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-primary-strong disabled:cursor-not-allowed disabled:opacity-50" disabled>Asignar seleccionados</button>
@@ -150,6 +152,14 @@ export function installQuickPlanAssignment(root, serverPayload) {
   let currentEquipment = null
   let currentServices = []
   let busy = false
+  let lastTrigger = null
+
+  const closeDrawer = async () => {
+    if (drawer.classList.contains('hidden')) return
+    await closeMotionDrawer(drawer)
+    document.body.classList.remove('overflow-hidden')
+    lastTrigger?.focus?.()
+  }
 
   const showFeedback = (message, isError = false) => {
     feedback.textContent = message
@@ -181,7 +191,7 @@ export function installQuickPlanAssignment(root, serverPayload) {
 
     results.innerHTML = visible.map((service) => {
       const checked = selected.has(Number(service.id))
-      return `<article class="rounded-xl border ${checked ? 'border-primary bg-brand-50' : 'border-border bg-white'} p-4">
+      return `<article class="rounded-xl border ${checked ? 'border-primary bg-brand-50' : 'border-border bg-surface-raised'} p-4">
         <div class="flex items-start gap-3">
           <input type="checkbox" data-service-select="${service.id}" ${checked ? 'checked' : ''} class="mt-1 size-4 rounded border-border-strong text-primary focus:ring-primary" />
           <div class="min-w-0 flex-1">
@@ -268,8 +278,7 @@ export function installQuickPlanAssignment(root, serverPayload) {
 
   drawer.addEventListener('click', (event) => {
     if (event.target.closest('[data-quick-plan-close]')) {
-      drawer.classList.add('hidden')
-      document.body.classList.remove('overflow-hidden')
+      closeDrawer()
     }
   })
 
@@ -278,8 +287,7 @@ export function installQuickPlanAssignment(root, serverPayload) {
 
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && !drawer.classList.contains('hidden')) {
-      drawer.classList.add('hidden')
-      document.body.classList.remove('overflow-hidden')
+      closeDrawer()
     }
   })
 
@@ -294,7 +302,8 @@ export function installQuickPlanAssignment(root, serverPayload) {
     } else if (anchor.href !== sourceUrl) return
 
     event.preventDefault()
-    drawer.classList.remove('hidden')
+    lastTrigger = anchor
+    await openMotionDrawer(drawer)
     document.body.classList.add('overflow-hidden')
     search.value = ''
     selected.clear()

@@ -143,7 +143,7 @@ const scrollCta = computed(() => {
       </div>
 
       <!-- Bloque A: encabezado operativo -->
-      <header v-reveal class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+      <header v-motion class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p class="text-sm font-semibold text-primary">Centro de operaciones</p>
           <h1 class="mt-1 text-balance text-3xl font-bold tracking-tight text-ink sm:text-4xl">
@@ -183,18 +183,18 @@ const scrollCta = computed(() => {
 
       <template v-if="dashboard.mode !== 'global'">
         <!-- Bloque B: KPIs -->
-        <section v-reveal="{ delay: 40 }" aria-label="Indicadores principales" class="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <MetricCard label="Equipos" :value="dashboard.metrics.equipmentTotal" tone="primary" :href="dashboard.links.equipment" link-label="Ver flota" />
-          <MetricCard label="Próximos" :value="dashboard.metrics.maintenanceDueSoon" tone="due" :href="dashboard.links.maintenanceDueSoon" link-label="Revisar próximos" />
-          <MetricCard label="Vencidos" :value="dashboard.metrics.maintenanceOverdue" tone="overdue" :href="dashboard.links.maintenanceOverdue" link-label="Atender vencidos" />
-          <MetricCard label="OT abiertas" :value="dashboard.metrics.openOrders" tone="orders" :href="dashboard.links.orders" link-label="Ver órdenes" />
+        <section v-motion="{ delay: 0.04, stagger: 0.07, targets: '[data-motion-item]' }" aria-label="Indicadores principales" class="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <MetricCard data-motion-item label="Equipos" :value="dashboard.metrics.equipmentTotal" tone="primary" :href="dashboard.links.equipment" link-label="Ver flota" />
+          <MetricCard data-motion-item label="Próximos" :value="dashboard.metrics.maintenanceDueSoon" tone="due" :href="dashboard.links.maintenanceDueSoon" link-label="Revisar próximos" />
+          <MetricCard data-motion-item label="Vencidos" :value="dashboard.metrics.maintenanceOverdue" tone="overdue" :href="dashboard.links.maintenanceOverdue" link-label="Atender vencidos" />
+          <MetricCard data-motion-item label="OT abiertas" :value="dashboard.metrics.openOrders" tone="orders" :href="dashboard.links.orders" link-label="Ver órdenes" />
         </section>
 
         <!-- Bloque C: contenido operativo 70/30 -->
         <div class="mt-6 grid items-start gap-6 xl:grid-cols-[minmax(0,2.1fr)_minmax(18rem,0.9fr)]">
           <main class="min-w-0 space-y-6">
             <!-- C1: requieren atención -->
-            <section v-reveal="{ delay: 80 }" aria-labelledby="attention-title" class="overflow-hidden rounded-xl border border-border bg-surface-raised">
+            <section v-motion="{ delay: 0.08, stagger: 0.05, targets: '[data-motion-item]' }" aria-labelledby="attention-title" class="overflow-hidden rounded-xl border border-border bg-surface-raised">
               <div class="flex items-center justify-between gap-4 border-b border-border-subtle px-5 py-4 sm:px-6">
                 <div>
                   <h2 id="attention-title" class="text-base font-bold text-ink sm:text-lg">Requieren atención hoy</h2>
@@ -216,6 +216,7 @@ const scrollCta = computed(() => {
                   :key="item.id"
                   :href="item.actionUrl || item.detailUrl || attentionSummaryUrl"
                   :style="{ '--ui-stagger-index': index }"
+                  data-motion-item
                   class="ui-stagger-item group flex items-center gap-4 px-5 py-4 transition hover:bg-surface-muted sm:px-6"
                 >
                   <span
@@ -250,13 +251,14 @@ const scrollCta = computed(() => {
 
           <aside class="space-y-6">
             <!-- C3: acciones rápidas -->
-            <section v-if="quickActions.length" v-reveal="{ delay: 100 }" aria-labelledby="quick-actions-title" class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6">
+            <section v-if="quickActions.length" v-motion="{ delay: 0.1, stagger: 0.05, targets: '[data-motion-item]' }" aria-labelledby="quick-actions-title" class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6">
               <h2 id="quick-actions-title" class="text-base font-bold text-ink sm:text-lg">Acciones rápidas</h2>
               <div class="mt-4 space-y-2.5">
                 <a
                   v-for="action in quickActions"
                   :key="action.label"
                   :href="action.href"
+                  data-motion-item
                   class="ui-card-interactive group flex items-center gap-3 rounded-lg border border-border-subtle bg-surface px-3.5 py-3 transition hover:border-primary/30 hover:bg-primary-subtle/40"
                 >
                   <span class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary-subtle text-primary">
@@ -272,13 +274,14 @@ const scrollCta = computed(() => {
             </section>
 
             <!-- C4: estado del sistema -->
-            <section v-reveal="{ delay: 140 }" aria-labelledby="system-status-title" class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6">
+            <section v-motion="{ delay: 0.14, stagger: 0.05, targets: '[data-motion-item]' }" aria-labelledby="system-status-title" class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6">
               <h2 id="system-status-title" class="text-base font-bold text-ink sm:text-lg">Estado del sistema</h2>
               <div class="mt-4 divide-y divide-border-subtle overflow-hidden rounded-lg border border-border-subtle">
                 <a
                   v-for="status in systemStatus"
                   :key="status.label"
                   :href="status.href"
+                  data-motion-item
                   class="flex items-start gap-3 bg-surface px-3.5 py-3.5 transition hover:bg-surface-subtle"
                 >
                   <span

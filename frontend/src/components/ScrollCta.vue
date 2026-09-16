@@ -1,6 +1,7 @@
 <script setup>
 import { ArrowRightIcon } from '@heroicons/vue/20/solid'
 import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { createScrollTrigger, dialogTransitionHooks, prefersReducedMotion } from '../ui/gsapMotion.js'
 
 defineProps({
   href: { type: String, required: true },
@@ -9,6 +10,11 @@ defineProps({
 })
 
 const visible = ref(false)
+let trigger = null
+let media = null
+let setupTrigger = null
+
+const ctaTransition = dialogTransitionHooks()
 
 const updateVisibility = () => {
   visible.value = window.scrollY > 240
@@ -16,20 +22,35 @@ const updateVisibility = () => {
 
 onMounted(() => {
   updateVisibility()
-  window.addEventListener('scroll', updateVisibility, { passive: true })
+  media = window.matchMedia?.('(prefers-reduced-motion: reduce)')
+  setupTrigger = () => {
+    trigger?.kill()
+    trigger = null
+    updateVisibility()
+    if (prefersReducedMotion()) return
+    trigger = createScrollTrigger({
+      trigger: document.documentElement,
+      start: 'top -240px',
+      end: 'max',
+      onEnter: () => { visible.value = true },
+      onLeaveBack: () => { visible.value = false },
+    })
+  }
+  media?.addEventListener?.('change', setupTrigger)
+  setupTrigger()
 })
 
 onBeforeUnmount(() => {
-  window.removeEventListener('scroll', updateVisibility)
+  trigger?.kill()
+  media?.removeEventListener?.('change', setupTrigger)
 })
 </script>
 
 <template>
   <Transition
-    enter-active-class="transition duration-200 ease-out"
-    enter-from-class="translate-y-3 opacity-0"
-    leave-active-class="transition duration-150 ease-in"
-    leave-to-class="translate-y-3 opacity-0"
+    @before-enter="ctaTransition.beforeEnter"
+    @enter="ctaTransition.enter"
+    @leave="ctaTransition.leave"
   >
     <a
       v-if="visible && href !== '#'"

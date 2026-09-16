@@ -18,6 +18,7 @@ import { installQuickPlanAssignment } from './ui/quickPlanAssignment.js'
 import { installTemplateServicePicker } from './ui/templateServicePicker.js'
 import { consumeFlash, installGlobalBehaviors } from './ui/globals.js'
 import { installScrollReveal } from './ui/scrollReveal.js'
+import { installGsapMotion } from './ui/gsapMotion.js'
 import { initializeTheme } from './ui/theme.js'
 import './styles.css'
 
@@ -48,6 +49,7 @@ export function mountMaintenanceDashboard(element, payload) {
     const pageData = payload?.data && typeof payload.data === 'object' ? payload.data : {}
     const app = createApp(LoginPage, { data: pageData })
     installScrollReveal(app)
+    installGsapMotion(app)
     return app.mount(element)
   }
 
@@ -71,6 +73,7 @@ export function mountMaintenanceDashboard(element, payload) {
         pageProps,
       })
       installScrollReveal(app)
+      installGsapMotion(app)
       return app.mount(element)
     }
   }
@@ -80,6 +83,7 @@ export function mountMaintenanceDashboard(element, payload) {
 
   const app = createApp(dashboardComponent, { dashboard })
   installScrollReveal(app)
+  installGsapMotion(app)
   return app.mount(element)
 }
 

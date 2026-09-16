@@ -1,21 +1,17 @@
 {
-  "_admin-C_23TDz3.js": {
-    "file": "assets/admin-C_23TDz3.js",
+  "_admin-BZVx-sN2.js": {
+    "file": "assets/admin-BZVx-sN2.js",
     "name": "admin",
     "imports": [
-      "_vendor-CnzQlwWE.js"
+      "_vendor-B5nYrata.js"
     ]
   },
-  "_chatbot-Be9r0ii-.css": {
-    "file": "assets/chatbot-Be9r0ii-.css",
-    "src": "_chatbot-Be9r0ii-.css"
-  },
-  "_chatbot-D3bUCFHs.js": {
-    "file": "assets/chatbot-D3bUCFHs.js",
+  "_chatbot-BZaVTZlu.js": {
+    "file": "assets/chatbot-BZaVTZlu.js",
     "name": "chatbot",
     "isDynamicEntry": true,
     "imports": [
-      "_vendor-CnzQlwWE.js"
+      "_vendor-B5nYrata.js"
     ],
     "dynamicImports": [
       "src/pages/operations/components/chatRobotMotion.js"
@@ -24,47 +20,52 @@
       "assets/chatbot-Be9r0ii-.css"
     ]
   },
-  "_reports-Bnu2ZQH8.js": {
-    "file": "assets/reports-Bnu2ZQH8.js",
+  "_chatbot-Be9r0ii-.css": {
+    "file": "assets/chatbot-Be9r0ii-.css",
+    "src": "_chatbot-Be9r0ii-.css"
+  },
+  "_reports-Dj2pylfR.js": {
+    "file": "assets/reports-Dj2pylfR.js",
     "name": "reports",
     "imports": [
-      "_admin-C_23TDz3.js",
-      "_vendor-CnzQlwWE.js"
+      "_admin-BZVx-sN2.js",
+      "_vendor-B5nYrata.js"
     ]
   },
-  "_robot-motion-CzGW6FVa.js": {
-    "file": "assets/robot-motion-CzGW6FVa.js",
+  "_robot-motion-qPypwiJ-.js": {
+    "file": "assets/robot-motion-qPypwiJ-.js",
     "name": "robot-motion"
   },
-  "_vendor-CnzQlwWE.js": {
-    "file": "assets/vendor-CnzQlwWE.js",
+  "_vendor-B5nYrata.js": {
+    "file": "assets/vendor-B5nYrata.js",
     "name": "vendor"
   },
   "src/main.js": {
-    "file": "assets/main-DS5OuK3S.js",
+    "file": "assets/main-4RiWWbjN.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
     "imports": [
-      "_vendor-CnzQlwWE.js",
-      "_chatbot-D3bUCFHs.js",
-      "_admin-C_23TDz3.js",
-      "_reports-Bnu2ZQH8.js"
+      "_vendor-B5nYrata.js",
+      "_robot-motion-qPypwiJ-.js",
+      "_chatbot-BZaVTZlu.js",
+      "_admin-BZVx-sN2.js",
+      "_reports-Dj2pylfR.js"
     ],
     "dynamicImports": [
-      "_chatbot-D3bUCFHs.js"
+      "_chatbot-BZaVTZlu.js"
     ],
     "css": [
-      "assets/main-C4KJaSru.css"
+      "assets/main-jIKsPD81.css"
     ]
   },
   "src/pages/operations/components/chatRobotMotion.js": {
-    "file": "assets/chatRobotMotion-DTbP8jAE.js",
+    "file": "assets/chatRobotMotion-m0eySeMh.js",
     "name": "chatRobotMotion",
     "src": "src/pages/operations/components/chatRobotMotion.js",
     "isDynamicEntry": true,
     "imports": [
-      "_robot-motion-CzGW6FVa.js"
+      "_robot-motion-qPypwiJ-.js"
     ]
   }
 }

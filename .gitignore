@@ -94,6 +94,7 @@ $RECYCLE.BIN/
 # Artefactos de Playwright y testing
 /.playwright-cli/
 /writable/chatbot-gsap-qa/
+/writable/motion-qa/
 /_internal/
 /output/
 /remote-manifest-before-*.json

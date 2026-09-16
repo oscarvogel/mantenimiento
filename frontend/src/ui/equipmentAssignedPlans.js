@@ -1,3 +1,5 @@
+import { closeMotionDrawer, openMotionDrawer } from './gsapMotion.js'
+
 function normalizePlanState(state) {
   return String(state ?? '').toUpperCase()
 }
@@ -106,7 +108,7 @@ function createPanel(sourceUrl) {
   const preventiveActions = maintenancePanel.firstElementChild
   const panel = document.createElement('section')
   panel.dataset.equipmentAssignedPlans = 'true'
-  panel.className = 'mb-6 overflow-hidden rounded-2xl border border-border bg-white shadow-card'
+  panel.className = 'mb-6 overflow-hidden rounded-2xl border border-border bg-surface-raised shadow-card'
   panel.innerHTML = `
     <div class="flex flex-col gap-3 border-b border-border px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
       <div>
@@ -187,7 +189,7 @@ function createLastMaintenanceModal() {
   modal.dataset.planLastModal = 'true'
   modal.className = 'fixed inset-0 z-50 hidden items-center justify-center bg-black/40 p-4'
   modal.innerHTML = `
-    <div class="w-full max-w-lg rounded-2xl bg-white shadow-xl" role="dialog" aria-modal="true" aria-labelledby="plan-last-title">
+    <div class="w-full max-w-lg rounded-2xl bg-surface-raised shadow-xl" role="dialog" aria-modal="true" aria-labelledby="plan-last-title">
       <form data-plan-last-form>
         <div class="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
           <div>
@@ -241,7 +243,7 @@ function setModalFeedback(modal, message, isError = false) {
   feedback.className = `rounded-xl px-3 py-2 text-sm ${isError ? 'bg-danger-subtle text-danger-strong' : 'bg-success-subtle text-success-strong'}`
 }
 
-function openLastMaintenanceModal(modal, plan) {
+async function openLastMaintenanceModal(modal, plan) {
   modal.dataset.planId = String(plan.id)
   modal.querySelector('[data-plan-last-service]').textContent = plan.serviceName || 'Plan preventivo'
   modal.querySelector('#plan-last-title').textContent = planHasLastData(plan) ? 'Editar última realización' : 'Registrar última realización'
@@ -262,14 +264,14 @@ function openLastMaintenanceModal(modal, plan) {
   dateInput.value = criteria.date?.base ?? ''
 
   setModalFeedback(modal, '')
-  modal.classList.remove('hidden')
   modal.classList.add('flex')
+  await openMotionDrawer(modal, { panelSelector: '[role="dialog"]' })
   const firstVisibleInput = [kmInput, hoursInput, dateInput].find((input) => !input.closest('.hidden'))
   firstVisibleInput?.focus()
 }
 
-function closeLastMaintenanceModal(modal) {
-  modal.classList.add('hidden')
+async function closeLastMaintenanceModal(modal) {
+  await closeMotionDrawer(modal, { panelSelector: '[role="dialog"]' })
   modal.classList.remove('flex')
   delete modal.dataset.planId
   setModalFeedback(modal, '')

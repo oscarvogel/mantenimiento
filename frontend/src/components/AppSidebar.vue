@@ -36,6 +36,31 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close'])
+const sidebarScroll = ref(null)
+const sidebarScrollStorageKey = 'maintenance.sidebar.scrollTop'
+
+const sidebarStorage = () => {
+  try {
+    return window.sessionStorage
+  } catch {
+    return null
+  }
+}
+
+const persistSidebarScroll = () => {
+  const nav = sidebarScroll.value
+  const storage = sidebarStorage()
+  if (!nav || !storage) return
+  storage.setItem(sidebarScrollStorageKey, String(nav.scrollTop))
+}
+
+const restoreSidebarScroll = () => {
+  const nav = sidebarScroll.value
+  const storage = sidebarStorage()
+  if (!nav || !storage) return
+  const savedScrollTop = Number(storage.getItem(sidebarScrollStorageKey))
+  if (Number.isFinite(savedScrollTop) && savedScrollTop > 0) nav.scrollTop = savedScrollTop
+}
 
 const navigationGroups = computed(() => {
   const definitions = [
@@ -122,8 +147,16 @@ const syncTheme = (event) => {
   currentTheme.value = event.detail?.theme ?? document.documentElement.dataset.theme ?? 'light'
 }
 
-onMounted(() => window.addEventListener('maintenance:theme-change', syncTheme))
-onBeforeUnmount(() => window.removeEventListener('maintenance:theme-change', syncTheme))
+onMounted(() => {
+  window.addEventListener('maintenance:theme-change', syncTheme)
+  sidebarScroll.value?.addEventListener('scroll', persistSidebarScroll, { passive: true })
+  restoreSidebarScroll()
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('maintenance:theme-change', syncTheme)
+  sidebarScroll.value?.removeEventListener('scroll', persistSidebarScroll)
+  persistSidebarScroll()
+})
 
 const openDemoCompany = () => {
   window.dispatchEvent(new CustomEvent('maintenance:open-demo-company'))
@@ -146,7 +179,7 @@ const openDemoCompany = () => {
       </button>
     </div>
 
-    <nav aria-label="Navegación principal" class="ui-sidebar-scroll flex-1 overflow-y-auto px-3 py-5">
+    <nav ref="sidebarScroll" aria-label="Navegación principal" class="ui-sidebar-scroll flex-1 overflow-y-auto px-3 py-5">
       <section v-for="group in navigationGroups" :key="group.key" class="mb-5 last:mb-0">
         <h2 class="mb-2 px-3 text-[0.625rem] font-semibold uppercase tracking-[0.14em] text-primary">
           {{ group.label }}

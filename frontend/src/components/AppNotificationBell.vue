@@ -1,6 +1,7 @@
 <script setup>
 import { BellIcon } from '@heroicons/vue/24/outline'
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { animateIn, animatePulse, dialogTransitionHooks } from '../ui/gsapMotion.js'
 
 const props = defineProps({
   enabled: { type: Boolean, default: false },
@@ -9,11 +10,15 @@ const props = defineProps({
 })
 
 const root = ref(null)
+const unreadBadge = ref(null)
+const notificationList = ref(null)
 const open = ref(false)
 const loading = ref(false)
 const error = ref(false)
 const unread = ref(0)
 const items = ref([])
+let listMotionContext = null
+const panelTransition = dialogTransitionHooks({ panelSelector: '[data-notification-panel]' })
 
 const label = computed(() => unread.value ? `${unread.value} notificaciones sin leer` : 'Notificaciones')
 
@@ -64,6 +69,30 @@ const closeOnEscape = (event) => {
   if (event.key === 'Escape') open.value = false
 }
 
+const animateNotificationItems = async () => {
+  await nextTick()
+  listMotionContext?.revert()
+  listMotionContext = animateIn(notificationList.value, {
+    targets: '[data-notification-item]',
+    y: 6,
+    duration: 0.2,
+    stagger: 0.04,
+  })
+}
+
+watch(open, (value) => {
+  if (value) animateNotificationItems()
+})
+
+watch(items, () => {
+  if (open.value) animateNotificationItems()
+}, { deep: true })
+
+watch(unread, async () => {
+  await nextTick()
+  animatePulse(unreadBadge.value)
+})
+
 onMounted(() => {
   if (props.enabled) loadSummary()
   document.addEventListener('click', closeOnOutside)
@@ -73,6 +102,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   document.removeEventListener('click', closeOnOutside)
   document.removeEventListener('keydown', closeOnEscape)
+  listMotionContext?.revert()
 })
 </script>
 
@@ -83,17 +113,29 @@ onBeforeUnmount(() => {
       class="relative rounded-lg p-2 text-ink-muted hover:bg-surface-muted hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       :aria-label="label"
       :aria-expanded="open"
+      aria-controls="notification-summary"
       aria-haspopup="dialog"
       @click.stop="toggle"
     >
       <BellIcon class="size-6" aria-hidden="true" />
-      <span v-if="unread" class="absolute right-0 top-0 min-w-4 rounded-full bg-danger px-1 text-center text-[10px] font-bold leading-4 text-white">
+      <span v-if="unread" ref="unreadBadge" class="absolute right-0 top-0 min-w-4 rounded-full bg-danger px-1 text-center text-[10px] font-bold leading-4 text-white">
         {{ unread > 99 ? '99+' : unread }}
       </span>
     </button>
 
+    <span class="sr-only" aria-live="polite">
+      {{ loading ? 'Cargando notificaciones' : error ? 'No se pudo cargar el resumen de notificaciones' : unread ? `${unread} notificaciones sin leer` : '' }}
+    </span>
+
+    <Transition
+      @before-enter="panelTransition.beforeEnter"
+      @enter="panelTransition.enter"
+      @leave="panelTransition.leave"
+    >
     <div
       v-if="open"
+      id="notification-summary"
+      data-notification-panel
       class="fixed inset-x-3 top-[4.25rem] z-50 overflow-hidden rounded-xl border border-border bg-surface-raised shadow-xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-11 sm:w-96"
       role="dialog"
       aria-label="Resumen de notificaciones"
@@ -115,10 +157,11 @@ onBeforeUnmount(() => {
         <p class="text-sm font-medium text-ink">No tenés notificaciones pendientes.</p>
         <p class="mt-1 text-xs text-ink-muted">Los avisos importantes van a aparecer acá.</p>
       </div>
-      <div v-else class="max-h-[26rem] divide-y divide-border overflow-y-auto">
+      <div v-else ref="notificationList" class="max-h-[26rem] divide-y divide-border overflow-y-auto">
         <a
           v-for="item in items"
           :key="item.id"
+          data-notification-item
           :href="item.url || centerUrl"
           class="flex gap-3 px-4 py-3 hover:bg-surface-muted"
         >
@@ -134,5 +177,6 @@ onBeforeUnmount(() => {
         </a>
       </div>
     </div>
+    </Transition>
   </div>
 </template>
