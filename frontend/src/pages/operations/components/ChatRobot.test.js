@@ -1,45 +1,60 @@
-import { mount } from '@vue/test-utils'
-import { nextTick } from 'vue'
-import { afterEach, describe, expect, it } from 'vitest'
+import { enableAutoUnmount, mount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import ChatRobot from './ChatRobot.vue'
 import { applyTheme } from '../../../ui/theme.js'
 
-afterEach(() => {
-  applyTheme('light')
+enableAutoUnmount(afterEach)
+beforeEach(() => {
+  vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener() {}, removeEventListener() {} }))
 })
+afterEach(() => { applyTheme('light'); vi.unstubAllGlobals() })
 
 describe('ChatRobot', () => {
-  it.each(['fab', 'full'])('renderiza la variante %s como imagen decorativa accesible', (variant) => {
+  it.each(['fab', 'full'])('renderiza %s inline como decorativo, sin raster ni elementos enfocables', (variant) => {
     const wrapper = mount(ChatRobot, { props: { variant } })
-    const image = wrapper.get('img')
-
-    expect(image.attributes('src')).toContain(`/assets/brand/chatbot/robot-${variant}.svg`)
-    expect(image.attributes('alt')).toBe('')
+    expect(wrapper.find('img').exists()).toBe(false)
+    expect(wrapper.find('image').exists()).toBe(false)
+    expect(wrapper.get('svg').attributes('focusable')).toBe('false')
     expect(wrapper.attributes('aria-hidden')).toBe('true')
   })
 
-  it('expone el estado de pensamiento para animarlo sin cambiar la lógica del chat', () => {
-    const wrapper = mount(ChatRobot, { props: { state: 'thinking' } })
-
-    expect(wrapper.classes()).toContain('chat-robot--thinking')
-    expect(wrapper.get('img').attributes('src')).toContain('/assets/brand/chatbot/robot-fab-thinking-light.svg')
+  it('permite varios robots sin referencias de degradados cruzadas', () => {
+    const host = mount({ components: { ChatRobot }, template: '<div><ChatRobot /><ChatRobot variant="full" /></div>' })
+    const [first, second] = host.findAllComponents(ChatRobot)
+    const ids = [...first.findAll('[id]'), ...second.findAll('[id]')].map((node) => node.attributes('id'))
+    expect(new Set(ids).size).toBe(ids.length)
+    for (const wrapper of [first, second]) {
+      for (const node of wrapper.findAll('[fill^="url"]')) {
+        const id = node.attributes('fill').slice(5, -1)
+        expect(wrapper.find(`[id="${id}"]`).exists()).toBe(true)
+      }
+    }
   })
 
-  it.each(['loading', 'success', 'error', 'offline'])('resuelve el asset visual del estado %s', (state) => {
-    const wrapper = mount(ChatRobot, { props: { state } })
-
-    expect(wrapper.classes()).toContain(`chat-robot--${state}`)
-    expect(wrapper.get('img').attributes('src')).toContain(`/assets/brand/chatbot/robot-fab-${state}-light.svg`)
+  it.each(['fab', 'full'].flatMap((variant) =>
+    ['thinking', 'loading', 'success', 'error', 'offline'].map((state) => [variant, state]),
+  ))('%s comunica %s aunque el movimiento esté desactivado', async (variant, state) => {
+    const wrapper = mount(ChatRobot, { props: { variant } })
+    const idleEye = wrapper.get('[data-part="eye-left"] path').attributes('d')
+    await wrapper.setProps({ state })
+    expect(wrapper.get('svg').attributes('data-state')).toBe(state)
+    expect(wrapper.get('[data-part="eye-left"] path').attributes('d')).not.toBe(idleEye)
+    expect(wrapper.find('[data-part="status-symbol"]').exists()).toBe(true)
+    await wrapper.setProps({ state: 'idle' })
+    expect(wrapper.find('[data-part="status-symbol"]').exists()).toBe(false)
+    expect(wrapper.get('[data-part="eye-left"] path').attributes('d')).toBe(idleEye)
   })
 
-  it('cambia el asset del estado cuando cambia el tema', async () => {
+  it('conserva el estado del completo al cambiar tema y admite cambiar de variante', async () => {
     const wrapper = mount(ChatRobot, { props: { variant: 'full', state: 'success' } })
-
-    expect(wrapper.get('img').attributes('src')).toContain('robot-full-success-light.svg')
-
+    expect(wrapper.get('svg').attributes('data-state')).toBe('success')
+    expect(wrapper.find('[data-part="clipboard-assembly"] [data-part="hand-right"]').exists()).toBe(true)
     applyTheme('dark')
-    await nextTick()
-
-    expect(wrapper.get('img').attributes('src')).toContain('robot-full-success-dark.svg')
+    expect(wrapper.get('svg').attributes('data-state')).toBe('success')
+    await wrapper.setProps({ variant: 'fab' })
+    expect(wrapper.find('[data-part="body"]').exists()).toBe(false)
+    expect(wrapper.get('svg').attributes('data-state')).toBe('success')
+    await wrapper.setProps({ variant: 'full' })
+    expect(wrapper.find('[data-part="body"]').exists()).toBe(true)
   })
 })

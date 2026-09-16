@@ -1,54 +1,70 @@
 {
-  "_admin-CnOCkyCX.js": {
-    "file": "assets/admin-CnOCkyCX.js",
+  "_admin-C_23TDz3.js": {
+    "file": "assets/admin-C_23TDz3.js",
     "name": "admin",
     "imports": [
-      "_vendor-BlUexONN.js"
+      "_vendor-CnzQlwWE.js"
     ]
   },
-  "_chatbot-BC4gOwn6.js": {
-    "file": "assets/chatbot-BC4gOwn6.js",
+  "_chatbot-Be9r0ii-.css": {
+    "file": "assets/chatbot-Be9r0ii-.css",
+    "src": "_chatbot-Be9r0ii-.css"
+  },
+  "_chatbot-D3bUCFHs.js": {
+    "file": "assets/chatbot-D3bUCFHs.js",
     "name": "chatbot",
     "isDynamicEntry": true,
     "imports": [
-      "_vendor-BlUexONN.js"
+      "_vendor-CnzQlwWE.js"
+    ],
+    "dynamicImports": [
+      "src/pages/operations/components/chatRobotMotion.js"
     ],
     "css": [
-      "assets/chatbot-p1890OXW.css"
+      "assets/chatbot-Be9r0ii-.css"
     ]
   },
-  "_chatbot-p1890OXW.css": {
-    "file": "assets/chatbot-p1890OXW.css",
-    "src": "_chatbot-p1890OXW.css"
-  },
-  "_reports-BCQsUyTr.js": {
-    "file": "assets/reports-BCQsUyTr.js",
+  "_reports-Bnu2ZQH8.js": {
+    "file": "assets/reports-Bnu2ZQH8.js",
     "name": "reports",
     "imports": [
-      "_admin-CnOCkyCX.js",
-      "_vendor-BlUexONN.js"
+      "_admin-C_23TDz3.js",
+      "_vendor-CnzQlwWE.js"
     ]
   },
-  "_vendor-BlUexONN.js": {
-    "file": "assets/vendor-BlUexONN.js",
+  "_robot-motion-CzGW6FVa.js": {
+    "file": "assets/robot-motion-CzGW6FVa.js",
+    "name": "robot-motion"
+  },
+  "_vendor-CnzQlwWE.js": {
+    "file": "assets/vendor-CnzQlwWE.js",
     "name": "vendor"
   },
   "src/main.js": {
-    "file": "assets/main-Ca6EflL4.js",
+    "file": "assets/main-DS5OuK3S.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
     "imports": [
-      "_vendor-BlUexONN.js",
-      "_chatbot-BC4gOwn6.js",
-      "_admin-CnOCkyCX.js",
-      "_reports-BCQsUyTr.js"
+      "_vendor-CnzQlwWE.js",
+      "_chatbot-D3bUCFHs.js",
+      "_admin-C_23TDz3.js",
+      "_reports-Bnu2ZQH8.js"
     ],
     "dynamicImports": [
-      "_chatbot-BC4gOwn6.js"
+      "_chatbot-D3bUCFHs.js"
     ],
     "css": [
-      "assets/main-CfQvYNho.css"
+      "assets/main-C4KJaSru.css"
+    ]
+  },
+  "src/pages/operations/components/chatRobotMotion.js": {
+    "file": "assets/chatRobotMotion-DTbP8jAE.js",
+    "name": "chatRobotMotion",
+    "src": "src/pages/operations/components/chatRobotMotion.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "_robot-motion-CzGW6FVa.js"
     ]
   }
 }

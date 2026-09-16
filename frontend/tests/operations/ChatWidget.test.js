@@ -30,12 +30,14 @@ describe('ChatWidget', () => {
   it('usa base_url en entorno local', async () => {
     const wrapper = await mountWidget('/')
 
-    expect(wrapper.get('button[title="Abrir asistente IA"] img').attributes('src')).toContain('/assets/brand/chatbot/robot-fab.svg')
+    expect(wrapper.get('button[aria-label="Abrir asistente IA"] svg').attributes('data-state')).toBe('idle')
+    expect(wrapper.get('button[aria-label="Abrir asistente IA"] svg').attributes('aria-hidden')).toBe('true')
 
     await wrapper.get('button[title="Abrir asistente IA"]').trigger('click')
     await flushPromises()
 
     expect(wrapper.find('[data-testid="chat-robot"]').exists()).toBe(true)
+    expect(wrapper.find('svg[data-variant="full"] [data-part="clipboard"]').exists()).toBe(true)
     expect(fetch).toHaveBeenCalledWith(
       '/mantenimiento/chatbot/conversaciones',
       expect.objectContaining({ method: 'POST' }),
