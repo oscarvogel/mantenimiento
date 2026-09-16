@@ -185,7 +185,10 @@ final class SuperAdmin extends BaseController
             ];
 
             $database = db_connect();
-            if ($database->fieldExists('informe_diario_habilitado', 'empresas')) {
+            $hasReportInput = $this->request->getPost('emails_informes') !== null
+                || $this->request->getPost('informe_diario_habilitado') !== null
+                || $this->request->getPost('informe_semanal_habilitado') !== null;
+            if ($hasReportInput && $database->fieldExists('informe_diario_habilitado', 'empresas')) {
                 $reportEmails = trim((string) $this->request->getPost('emails_informes'));
                 $this->assertValidReportEmails($reportEmails);
                 $companyData += [
