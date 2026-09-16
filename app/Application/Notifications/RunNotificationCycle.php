@@ -14,6 +14,7 @@ final readonly class RunNotificationCycle
         private CollectOperationalNotifications $collector,
         private RunNotificationDispatch $dispatch,
         private NotificationClock $clock,
+        private ?ScheduleManagementReports $managementReports = null,
     ) {
     }
 
@@ -25,10 +26,14 @@ final readonly class RunNotificationCycle
             $key = $this->clock->now()->format('Y-m-d-H');
         }
 
+        $overdue = $this->detectOverdue->execute();
+        $collected = $this->collector->execute();
+        $this->managementReports?->execute();
+
         return [
             'execution_key' => $key,
-            'overdue' => $this->detectOverdue->execute(),
-            'collected' => $this->collector->execute(),
+            'overdue' => $overdue,
+            'collected' => $collected,
             'dispatched' => $this->dispatch->execute($key, $lockTtl),
         ];
     }
