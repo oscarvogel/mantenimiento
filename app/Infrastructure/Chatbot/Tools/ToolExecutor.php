@@ -57,6 +57,12 @@ final class ToolExecutor implements ToolExecutorPort
                 $database,
             ),
         );
+        $this->handlers['analizar_salud_equipos'] = new AnalyzeEquipmentHealthTool(
+            new \App\Infrastructure\Chatbot\ReadModel\CodeIgniterEquipmentHealthReadModel(
+                $database,
+                (int) env('alerts.lecturasVencidasDias', 30),
+            ),
+        );
     }
 
     public function execute(string $toolName, array $args, ActorContext $actor): ToolCallResult
