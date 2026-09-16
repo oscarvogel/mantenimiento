@@ -57,6 +57,12 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
             ? (string) ($first['titulo'] ?? 'Informe gerencial de mantenimiento')
             : 'Resumen de mantenimiento - ' . $this->clock->now()->format('d/m/Y');
         $email->setSubject($subject);
+        $email->setHeader('Content-Language', 'es-AR');
+        $email->setAltMessage(
+            $isManagementReport
+                ? $this->managementReportText($first, $subject)
+                : 'Resumen automático de mantenimiento. Ingresá al sistema para consultar el detalle.'
+        );
 
         $items = '';
         foreach ($notifications as $notification) {
@@ -148,9 +154,14 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
                 . '<a href="' . $safeLink . '" style="display:inline-block;padding:13px 20px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:18px;color:#ffffff;text-decoration:none;font-weight:700;">Abrir sistema de mantenimiento</a>'
                 . '</td></tr></table>';
 
+        $preheader = 'Informe automático de mantenimiento para ' . ($company === '' ? 'su empresa' : $company) . '. Consulte vencimientos, órdenes y actividad del período.';
+
         return '<!doctype html>'
-            . '<html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>'
-            . '<body style="margin:0;padding:0;background:#f4f7fb;">'
+            . '<html lang="es-AR"><head><meta charset="UTF-8"><meta http-equiv="Content-Language" content="es-AR"><meta name="viewport" content="width=device-width,initial-scale=1"></head>'
+            . '<body lang="es-AR" style="margin:0;padding:0;background:#f4f7fb;">'
+            . '<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;mso-hide:all;font-size:1px;line-height:1px;">'
+            . htmlspecialchars($preheader, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+            . '</div>'
             . '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f4f7fb;">'
             . '<tr><td align="center" style="padding:28px 14px;">'
             . '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:680px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;">'
@@ -175,6 +186,26 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
             . '</td></tr>'
             . '</table>'
             . '</td></tr></table></body></html>';
+    }
+
+    /** @param array<string,mixed> $notification */
+    private function managementReportText(array $notification, string $subject): string
+    {
+        $summary = trim((string) ($notification['resumen'] ?? ''));
+        $link = $this->notificationLink($notification['url'] ?? null);
+
+        $text = $subject . "\n\n";
+        $text .= "Este es un informe automático del Sistema de Mantenimiento.\n\n";
+        if ($summary !== '') {
+            $text .= $summary . "\n\n";
+        }
+        if ($link !== null) {
+            $text .= 'Abrir sistema de mantenimiento: ' . $link . "\n\n";
+        }
+        $text .= "Reporte generado por Vogel Consultoría.\n";
+        $text .= "Más información: https://vogelconsultoria.com.ar\n";
+
+        return $text;
     }
 
     private function managementMetricTone(string $label, string $value): string
