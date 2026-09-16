@@ -161,8 +161,9 @@ final class ScheduleManagementReports
         $upcomingExpirations = $this->expirationCount($companyId, '>=', $today, $now->modify('+30 days')->format('Y-m-d'));
         $openOrders = $this->openOrders($companyId);
         $delayedOrders = $this->delayedOrders($companyId, $now);
-        $closedPeriod = $this->closedOrders($companyId, $type === 'DAILY' ? $now->modify('-1 day')->format('Y-m-d H:i:s') : $weekStart, $tomorrow);
-        $createdPeriod = $this->createdOrders($companyId, $type === 'DAILY' ? $now->modify('-1 day')->format('Y-m-d H:i:s') : $weekStart, $tomorrow);
+        $periodStart = $type === 'DAILY' ? $now->modify('-1 day')->format('Y-m-d H:i:s') : $weekStart;
+        $closedPeriod = $this->closedOrders($companyId, $periodStart, $tomorrow);
+        $createdPeriod = $this->createdOrders($companyId, $periodStart, $tomorrow);
         $staleReadings = $this->staleReadings($companyId, $now);
 
         $label = $type === 'DAILY' ? 'Informe diario' : 'Informe semanal';
@@ -176,6 +177,16 @@ final class ScheduleManagementReports
             'Órdenes cerradas en el período: ' . $closedPeriod,
             'Equipos sin lectura reciente: ' . $staleReadings,
         ];
+
+        if ($type === 'WEEKLY') {
+            $lines[] = 'Preventivos pendientes: ' . $this->preventiveOrdersPending($companyId);
+            $lines[] = 'Preventivos finalizados en la semana: ' . $this->preventiveOrdersClosed($companyId, $periodStart, $tomorrow);
+            $lines[] = 'Costo registrado en OT cerradas: $ ' . number_format($this->closedOrderCost($companyId, $periodStart, $tomorrow), 2, ',', '.');
+            $top = $this->topEquipmentByOrders($companyId, $periodStart, $tomorrow);
+            if ($top !== []) {
+                $lines[] = 'Equipos con más OT: ' . implode(', ', $top);
+            }
+        }
 
         return [
             'title' => $label . ' de mantenimiento · ' . $now->format('d/m/Y'),
@@ -225,7 +236,7 @@ final class ScheduleManagementReports
             return 0;
         }
         return $this->db->table('ordenes_trabajo')->where('empresa_id', $companyId)
-            ->where('estado', 'FINALIZADA')->where('updated_at >=', $from)->where('updated_at <', $to)->countAllResults();
+            ->where('estado', 'FINALIZADA')->where('fecha_finalizacion >=', $from)->where('fecha_finalizacion <', $to)->countAllResults();
     }
 
     private function createdOrders(int $companyId, string $from, string $to): int
@@ -235,6 +246,76 @@ final class ScheduleManagementReports
         }
         return $this->db->table('ordenes_trabajo')->where('empresa_id', $companyId)
             ->where('created_at >=', $from)->where('created_at <', $to)->countAllResults();
+    }
+
+    private function preventiveOrdersPending(int $companyId): int
+    {
+        if (! $this->db->tableExists('ordenes_trabajo')) {
+            return 0;
+        }
+
+        return $this->db->table('ordenes_trabajo')
+            ->where('empresa_id', $companyId)
+            ->where('plan_id IS NOT NULL', null, false)
+            ->whereNotIn('estado', ['FINALIZADA', 'CANCELADA'])
+            ->countAllResults();
+    }
+
+    private function preventiveOrdersClosed(int $companyId, string $from, string $to): int
+    {
+        if (! $this->db->tableExists('ordenes_trabajo')) {
+            return 0;
+        }
+
+        return $this->db->table('ordenes_trabajo')
+            ->where('empresa_id', $companyId)
+            ->where('plan_id IS NOT NULL', null, false)
+            ->where('estado', 'FINALIZADA')
+            ->where('fecha_finalizacion >=', $from)
+            ->where('fecha_finalizacion <', $to)
+            ->countAllResults();
+    }
+
+    private function closedOrderCost(int $companyId, string $from, string $to): float
+    {
+        if (! $this->db->tableExists('ordenes_trabajo')) {
+            return 0.0;
+        }
+
+        $row = $this->db->table('ordenes_trabajo')
+            ->selectSum('costo_total', 'total')
+            ->where('empresa_id', $companyId)
+            ->where('estado', 'FINALIZADA')
+            ->where('fecha_finalizacion >=', $from)
+            ->where('fecha_finalizacion <', $to)
+            ->get()->getRowArray();
+
+        return (float) ($row['total'] ?? 0);
+    }
+
+    /** @return list<string> */
+    private function topEquipmentByOrders(int $companyId, string $from, string $to): array
+    {
+        if (! $this->db->tableExists('ordenes_trabajo') || ! $this->db->tableExists('equipos')) {
+            return [];
+        }
+
+        $rows = $this->db->table('ordenes_trabajo o')
+            ->select('e.codigo, COUNT(o.id) cantidad')
+            ->join('equipos e', 'e.id = o.equipo_id AND e.empresa_id = o.empresa_id', 'inner')
+            ->where('o.empresa_id', $companyId)
+            ->where('o.created_at >=', $from)
+            ->where('o.created_at <', $to)
+            ->groupBy(['e.id', 'e.codigo'])
+            ->orderBy('cantidad', 'DESC')
+            ->orderBy('e.codigo', 'ASC')
+            ->limit(3)
+            ->get()->getResultArray();
+
+        return array_map(
+            static fn (array $row): string => (string) $row['codigo'] . ' (' . (int) $row['cantidad'] . ')',
+            $rows,
+        );
     }
 
     private function staleReadings(int $companyId, DateTimeImmutable $now): int
