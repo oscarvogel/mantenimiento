@@ -173,6 +173,7 @@ final class ScheduleManagementReports
         $closedPeriod = $this->closedOrders($companyId, $periodStart, $tomorrow);
         $createdPeriod = $this->createdOrders($companyId, $periodStart, $tomorrow);
         $staleReadings = $this->staleReadings($companyId, $now);
+        $staleReadingDetails = $this->staleReadingDetails($companyId, $now, 10);
 
         $label = $type === 'DAILY' ? 'Informe diario' : 'Informe semanal';
         $lines = [
@@ -185,6 +186,13 @@ final class ScheduleManagementReports
             'Órdenes cerradas en el período: ' . $closedPeriod,
             'Equipos sin lectura reciente: ' . $staleReadings,
         ];
+
+        foreach ($staleReadingDetails as $detail) {
+            $lines[] = '!LECTURA|' . $detail['code'] . '|' . $detail['detail'] . '|' . $detail['status'];
+        }
+        if ($staleReadings > count($staleReadingDetails)) {
+            $lines[] = '!LECTURA_MAS|' . ($staleReadings - count($staleReadingDetails));
+        }
 
         if ($type === 'WEEKLY') {
             $lines[] = 'Preventivos pendientes: ' . $this->preventiveOrdersPending($companyId);
@@ -339,6 +347,69 @@ final class ScheduleManagementReports
             [$companyId, $companyId, $cutoff],
         )->getRowArray();
         return (int) ($row['total'] ?? 0);
+    }
+
+    /** @return list<array{code:string,detail:string,status:string}> */
+    private function staleReadingDetails(int $companyId, DateTimeImmutable $now, int $limit = 10): array
+    {
+        if (! $this->db->tableExists('equipos') || ! $this->db->tableExists('lecturas_equipo')) {
+            return [];
+        }
+
+        $cutoff = $now->modify('-' . max(1, $this->staleReadingDays) . ' days')->format('Y-m-d H:i:s');
+        $rows = $this->db->query(
+            "SELECT e.codigo, l.ultima
+             FROM equipos e
+             LEFT JOIN (
+                 SELECT equipo_id, MAX(fecha_lectura) ultima
+                 FROM lecturas_equipo
+                 WHERE empresa_id = ? AND anulada = 0
+                 GROUP BY equipo_id
+             ) l ON l.equipo_id = e.id
+             WHERE e.empresa_id = ?
+               AND e.estado = 'ACTIVO'
+               AND e.deleted_at IS NULL
+               AND (l.ultima IS NULL OR l.ultima < ?)
+             ORDER BY CASE WHEN l.ultima IS NULL THEN 0 ELSE 1 END ASC, l.ultima ASC, e.codigo ASC
+             LIMIT " . max(1, min(50, $limit)),
+            [$companyId, $companyId, $cutoff],
+        )->getResultArray();
+
+        $result = [];
+        foreach ($rows as $row) {
+            $code = trim((string) ($row['codigo'] ?? ''));
+            if ($code === '') {
+                $code = 'Equipo sin código';
+            }
+
+            $lastReading = trim((string) ($row['ultima'] ?? ''));
+            if ($lastReading === '') {
+                $result[] = [
+                    'code' => $code,
+                    'detail' => 'Nunca registró km/horas',
+                    'status' => 'Sin lectura',
+                ];
+                continue;
+            }
+
+            try {
+                $last = new DateTimeImmutable($lastReading);
+                $days = max(0, (int) $last->diff($now)->format('%a'));
+                $result[] = [
+                    'code' => $code,
+                    'detail' => 'Hace ' . $days . ' días que no registra km/horas',
+                    'status' => 'Lectura antigua',
+                ];
+            } catch (\Throwable) {
+                $result[] = [
+                    'code' => $code,
+                    'detail' => 'La última lectura registrada es demasiado antigua',
+                    'status' => 'Lectura antigua',
+                ];
+            }
+        }
+
+        return $result;
     }
 
     /** @param array<string,mixed> $where */
