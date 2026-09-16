@@ -298,6 +298,20 @@ class Services extends BaseService
             static::operationalNotificationCollector(),
             static::notificationDispatch(),
             static::notificationClock(),
+            static::managementReports(false),
+        );
+    }
+
+    public static function managementReports(bool $getShared = true): \App\Application\Notifications\ScheduleManagementReports
+    {
+        if ($getShared) {
+            return static::getSharedInstance('managementReports');
+        }
+
+        return new \App\Application\Notifications\ScheduleManagementReports(
+            static::notificationClock(false),
+            db_connect(),
+            (int) env('alerts.lecturasVencidasDias', 30),
         );
     }
 
