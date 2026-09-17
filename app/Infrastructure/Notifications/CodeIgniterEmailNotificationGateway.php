@@ -51,11 +51,13 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
         ]);
         $email->setFrom($fromEmail, trim((string) ($settings['smtp_from_name'] ?? '')) ?: 'Mantenimiento');
         $email->setTo($recipient);
+
         $first = $notifications[0] ?? [];
         $isManagementReport = str_starts_with((string) ($first['tipo_evento'] ?? ''), 'informe.gerencial.');
         $subject = $isManagementReport
             ? (string) ($first['titulo'] ?? 'Informe gerencial de mantenimiento')
             : 'Resumen de mantenimiento - ' . $this->clock->now()->format('d/m/Y');
+
         $email->setSubject($subject);
         $email->setHeader('Content-Language', 'es-AR');
         $email->setAltMessage(
@@ -64,23 +66,12 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
                 : 'Resumen automático de mantenimiento. Ingresá al sistema para consultar el detalle.'
         );
 
-        $items = '';
-        foreach ($notifications as $notification) {
-            $title = htmlspecialchars((string) $notification['titulo'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-            $summary = nl2br(htmlspecialchars((string) $notification['resumen'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'));
-            $link = $this->notificationLink($notification['url'] ?? null);
-            $action = $link === null
-                ? ''
-                : '<br><a href="' . htmlspecialchars($link, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '">Ver detalle</a>';
-            $items .= "<li><strong>{$title}</strong><br>{$summary}{$action}</li>";
-        }
-
         if ($isManagementReport) {
             $email->setMessage($this->managementReportHtml($first, $subject));
         } else {
-            $heading = 'Resumen de mantenimiento';
-            $email->setMessage('<h1>' . $heading . '</h1><ul>' . $items . '</ul>');
+            $email->setMessage($this->standardDigestHtml($notifications));
         }
+
         if (! $email->send(false)) {
             $debugger = $this->sanitizeDebugger((string) $email->printDebugger(['headers']), $settings);
             $message = $this->controlledFailureMessage($debugger, $settings);
@@ -97,50 +88,31 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
         }
     }
 
+    /** @param list<array<string,mixed>> $notifications */
+    private function standardDigestHtml(array $notifications): string
+    {
+        $items = '';
+        foreach ($notifications as $notification) {
+            $title = htmlspecialchars((string) ($notification['titulo'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+            $summary = nl2br(htmlspecialchars((string) ($notification['resumen'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'));
+            $link = $this->notificationLink($notification['url'] ?? null);
+            $action = $link === null
+                ? ''
+                : '<br><a href="' . htmlspecialchars($link, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '">Ver detalle</a>';
+            $items .= "<li><strong>{$title}</strong><br>{$summary}{$action}</li>";
+        }
+
+        return '<h1>Resumen de mantenimiento</h1><ul>' . $items . '</ul>';
+    }
+
     /** @param array<string,mixed> $notification */
     private function managementReportHtml(array $notification, string $subject): string
     {
-        $summary = trim((string) ($notification['resumen'] ?? ''));
-        $lines = preg_split('/\R+/', $summary) ?: [];
-        $company = '';
-        $metrics = [];
-        $readingAlerts = [];
-        $moreReadingAlerts = 0;
-
-        foreach ($lines as $line) {
-            $line = trim($line);
-            if ($line === '') {
-                continue;
-            }
-            if (str_starts_with($line, 'Empresa:')) {
-                $company = trim(substr($line, strlen('Empresa:')));
-                continue;
-            }
-            if (str_starts_with($line, '!LECTURA|')) {
-                $parts = explode('|', $line, 4);
-                if (count($parts) === 4) {
-                    $readingAlerts[] = [
-                        'code' => trim($parts[1]),
-                        'detail' => trim($parts[2]),
-                        'status' => trim($parts[3]),
-                    ];
-                }
-                continue;
-            }
-            if (str_starts_with($line, '!LECTURA_MAS|')) {
-                $parts = explode('|', $line, 2);
-                $moreReadingAlerts = max(0, (int) ($parts[1] ?? 0));
-                continue;
-            }
-            if (! str_contains($line, ':')) {
-                continue;
-            }
-
-            [$label, $value] = array_map('trim', explode(':', $line, 2));
-            if ($label !== '' && $value !== '') {
-                $metrics[] = ['label' => $label, 'value' => $value];
-            }
-        }
+        $parsed = $this->parseManagementSummary((string) ($notification['resumen'] ?? ''));
+        $company = $parsed['company'];
+        $metrics = $parsed['metrics'];
+        $readingAlerts = $parsed['readingAlerts'];
+        $moreReadingAlerts = $parsed['moreReadingAlerts'];
 
         $safeSubject = htmlspecialchars($subject, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
         $safeCompany = htmlspecialchars($company, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
@@ -152,10 +124,20 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
             $label = htmlspecialchars($metric['label'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
             $value = htmlspecialchars($metric['value'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
             $tone = $this->managementMetricTone($metric['label'], $metric['value']);
+            $metricLink = $this->notificationLink($metric['url'] ?? null);
+            $metricAction = '';
+            if ($metricLink !== null) {
+                $actionLabel = htmlspecialchars($metric['action'] ?: 'Ver detalle', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+                $metricAction = '<tr><td style="padding:0 16px 16px 16px;">'
+                    . '<a href="' . htmlspecialchars($metricLink, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '" style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#2563eb;text-decoration:none;font-weight:800;">'
+                    . $actionLabel . ' →</a></td></tr>';
+            }
+
             $cards .= '<td width="50%" valign="top" style="padding:6px;">'
                 . '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border:1px solid #e5e7eb;border-radius:12px;background:#ffffff;">'
                 . '<tr><td style="padding:16px 16px 6px 16px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.3px;">' . $label . '</td></tr>'
-                . '<tr><td style="padding:0 16px 16px 16px;font-family:Arial,Helvetica,sans-serif;font-size:28px;line-height:34px;color:' . $tone . ';font-weight:800;">' . $value . '</td></tr>'
+                . '<tr><td style="padding:0 16px ' . ($metricAction === '' ? '16' : '6') . 'px 16px;font-family:Arial,Helvetica,sans-serif;font-size:28px;line-height:34px;color:' . $tone . ';font-weight:800;">' . $value . '</td></tr>'
+                . $metricAction
                 . '</table></td>';
 
             if ($index % 2 === 1) {
@@ -174,7 +156,6 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
                 $detail = htmlspecialchars($readingAlert['detail'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
                 $status = htmlspecialchars($readingAlert['status'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
                 $statusColor = mb_strtolower($readingAlert['status']) === 'sin lectura' ? '#dc2626' : '#d97706';
-
                 $rows .= '<tr><td style="padding:12px 14px;border-top:1px solid #e5e7eb;">'
                     . '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr>'
                     . '<td valign="top"><div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:20px;color:#0f172a;font-weight:800;">' . $code . '</div>'
@@ -191,9 +172,7 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
                 . '<tr><td style="padding:14px 14px 12px 14px;background:#f8fafc;">'
                 . '<div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:22px;color:#0f172a;font-weight:800;">Control de lecturas</div>'
                 . '<div style="margin-top:3px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#64748b;">Equipos sin km/horas o con información demasiado antigua.</div>'
-                . '</td></tr>'
-                . $rows . $more
-                . '</table>';
+                . '</td></tr>' . $rows . $more . '</table>';
         }
 
         $button = $safeLink === null
@@ -202,57 +181,113 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
                 . '<a href="' . $safeLink . '" style="display:inline-block;padding:13px 20px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:18px;color:#ffffff;text-decoration:none;font-weight:700;">Abrir sistema de mantenimiento</a>'
                 . '</td></tr></table>';
 
-        $preheader = 'Informe automático de mantenimiento para ' . ($company === '' ? 'su empresa' : $company) . '. Consulte vencimientos, órdenes y actividad del período.';
+        $preheader = 'Informe automático de mantenimiento para ' . ($company === '' ? 'su empresa' : $company) . '. Consulte documentación, preventivos, órdenes y actividad del período.';
 
         return '<!doctype html>'
             . '<html lang="es-AR"><head><meta charset="UTF-8"><meta http-equiv="Content-Language" content="es-AR"><meta name="viewport" content="width=device-width,initial-scale=1"></head>'
             . '<body lang="es-AR" style="margin:0;padding:0;background:#f4f7fb;">'
             . '<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;mso-hide:all;font-size:1px;line-height:1px;">'
-            . htmlspecialchars($preheader, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
-            . '</div>'
-            . '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f4f7fb;">'
-            . '<tr><td align="center" style="padding:28px 14px;">'
+            . htmlspecialchars($preheader, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</div>'
+            . '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f4f7fb;"><tr><td align="center" style="padding:28px 14px;">'
             . '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:680px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;">'
             . '<tr><td style="padding:0;background:#0f172a;height:8px;font-size:0;line-height:0;">&nbsp;</td></tr>'
-            . '<tr><td style="padding:28px 30px 20px 30px;">'
-            . '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr>'
-            . '<td valign="top"><div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:18px;color:#2563eb;font-weight:800;letter-spacing:.4px;text-transform:uppercase;">Vogel Consultoría</div>'
+            . '<tr><td style="padding:28px 30px 20px 30px;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr><td valign="top">'
+            . '<div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:18px;color:#2563eb;font-weight:800;letter-spacing:.4px;text-transform:uppercase;">Vogel Consultoría</div>'
             . '<div style="margin-top:8px;font-family:Arial,Helvetica,sans-serif;font-size:28px;line-height:34px;color:#0f172a;font-weight:800;">' . $safeSubject . '</div>'
             . ($safeCompany === '' ? '' : '<div style="margin-top:8px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:20px;color:#64748b;">Resumen ejecutivo para <strong style="color:#334155;">' . $safeCompany . '</strong></div>')
-            . '</td></tr></table>'
-            . '</td></tr>'
+            . '</td></tr></table></td></tr>'
             . '<tr><td style="padding:0 24px 18px 24px;">'
-            . '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f8fafc;border-radius:14px;"><tr>'
-            . $cards
-            . '</tr></table>'
-            . $readingSection
-            . $button
+            . '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f8fafc;border-radius:14px;"><tr>' . $cards . '</tr></table>'
+            . $readingSection . $button
             . '</td></tr>'
             . '<tr><td style="padding:22px 30px;border-top:1px solid #e5e7eb;background:#f8fafc;">'
             . '<div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#64748b;">Reporte automático generado por el Sistema de Mantenimiento.</div>'
             . '<div style="margin-top:5px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#64748b;">Desarrollado por <strong style="color:#0f172a;">Vogel Consultoría</strong> · <a href="https://vogelconsultoria.com.ar" style="color:#2563eb;text-decoration:none;font-weight:700;">vogelconsultoria.com.ar</a></div>'
             . '<div style="margin-top:8px;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:16px;color:#94a3b8;">Sistemas a medida, dashboards ejecutivos, automatización e inteligencia artificial para empresas.</div>'
-            . '</td></tr>'
-            . '</table>'
-            . '</td></tr></table></body></html>';
+            . '</td></tr></table></td></tr></table></body></html>';
+    }
+
+    /**
+     * @return array{company:string,metrics:list<array{label:string,value:string,url:?string,action:string}>,readingAlerts:list<array{code:string,detail:string,status:string}>,moreReadingAlerts:int}
+     */
+    private function parseManagementSummary(string $summary): array
+    {
+        $company = '';
+        $metrics = [];
+        $readingAlerts = [];
+        $moreReadingAlerts = 0;
+
+        foreach (preg_split('/\R+/', trim($summary)) ?: [] as $line) {
+            $line = trim($line);
+            if ($line === '') {
+                continue;
+            }
+            if (str_starts_with($line, 'Empresa:')) {
+                $company = trim(substr($line, strlen('Empresa:')));
+                continue;
+            }
+            if (str_starts_with($line, '!METRICA|')) {
+                $parts = explode('|', $line, 5);
+                if (count($parts) >= 3) {
+                    $metrics[] = [
+                        'label' => trim($parts[1]),
+                        'value' => trim($parts[2]),
+                        'url' => isset($parts[3]) && trim($parts[3]) !== '' ? trim($parts[3]) : null,
+                        'action' => trim($parts[4] ?? ''),
+                    ];
+                }
+                continue;
+            }
+            if (str_starts_with($line, '!LECTURA|')) {
+                $parts = explode('|', $line, 4);
+                if (count($parts) === 4) {
+                    $readingAlerts[] = ['code' => trim($parts[1]), 'detail' => trim($parts[2]), 'status' => trim($parts[3])];
+                }
+                continue;
+            }
+            if (str_starts_with($line, '!LECTURA_MAS|')) {
+                $parts = explode('|', $line, 2);
+                $moreReadingAlerts = max(0, (int) ($parts[1] ?? 0));
+                continue;
+            }
+            if (! str_contains($line, ':')) {
+                continue;
+            }
+            [$label, $value] = array_map('trim', explode(':', $line, 2));
+            if ($label !== '' && $value !== '') {
+                $metrics[] = ['label' => $label, 'value' => $value, 'url' => null, 'action' => ''];
+            }
+        }
+
+        return compact('company', 'metrics', 'readingAlerts', 'moreReadingAlerts');
     }
 
     /** @param array<string,mixed> $notification */
     private function managementReportText(array $notification, string $subject): string
     {
-        $summary = trim((string) ($notification['resumen'] ?? ''));
-        $link = $this->notificationLink($notification['url'] ?? null);
-
+        $parsed = $this->parseManagementSummary((string) ($notification['resumen'] ?? ''));
         $text = $subject . "\n\n";
-        $text .= "Este es un informe automático del Sistema de Mantenimiento.\n\n";
-        if ($summary !== '') {
-            $text .= $summary . "\n\n";
+        if ($parsed['company'] !== '') {
+            $text .= 'Empresa: ' . $parsed['company'] . "\n";
         }
+        foreach ($parsed['metrics'] as $metric) {
+            $text .= $metric['label'] . ': ' . $metric['value'] . "\n";
+            $metricLink = $this->notificationLink($metric['url']);
+            if ($metricLink !== null) {
+                $text .= ($metric['action'] ?: 'Ver detalle') . ': ' . $metricLink . "\n";
+            }
+        }
+        if ($parsed['readingAlerts'] !== []) {
+            $text .= "\nControl de lecturas:\n";
+            foreach ($parsed['readingAlerts'] as $alert) {
+                $text .= '- ' . $alert['code'] . ': ' . $alert['detail'] . ' (' . $alert['status'] . ")\n";
+            }
+        }
+        $link = $this->notificationLink($notification['url'] ?? null);
         if ($link !== null) {
-            $text .= 'Abrir sistema de mantenimiento: ' . $link . "\n\n";
+            $text .= "\nAbrir sistema de mantenimiento: " . $link . "\n";
         }
-        $text .= "Reporte generado por Vogel Consultoría.\n";
-        $text .= "Más información: https://vogelconsultoria.com.ar\n";
+        $text .= "\nReporte generado por Vogel Consultoría.\nMás información: https://vogelconsultoria.com.ar\n";
 
         return $text;
     }
@@ -263,7 +298,7 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
         $number = is_numeric($numeric) ? (float) $numeric : 0.0;
         $normalized = mb_strtolower($label);
 
-        if ($number > 0 && (str_contains($normalized, 'vencidos') || str_contains($normalized, 'demoradas') || str_contains($normalized, 'sin lectura'))) {
+        if ($number > 0 && (str_contains($normalized, 'vencid') || str_contains($normalized, 'demorad') || str_contains($normalized, 'sin lectura'))) {
             return '#dc2626';
         }
         if ($number > 0 && str_contains($normalized, 'próxim')) {
@@ -319,7 +354,6 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
                 $sanitized = str_replace($secret, '[REDACTED]', $sanitized);
             }
         }
-
         return $sanitized;
     }
 
@@ -341,7 +375,6 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
             return null;
         }
         $port = isset($base['port']) ? ':' . (int) $base['port'] : '';
-
         return $base['scheme'] . '://' . $base['host'] . $port . $value;
     }
 }
