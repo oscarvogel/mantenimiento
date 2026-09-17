@@ -62,6 +62,18 @@ final class ManagementReportsContractTest extends TestCase
         self::assertStringContainsString('staleReadingDetails', file_get_contents(APPPATH . 'Application/Notifications/ScheduleManagementReports.php'));
     }
 
+    public function testCompanyPreventiveEmailSupersedesOppositePendingState(): void
+    {
+        $queue = file_get_contents(APPPATH . 'Infrastructure/Notifications/CodeIgniterNotificationDeliveryQueue.php');
+
+        self::assertIsString($queue);
+        self::assertStringContainsString('supersedeOppositePreventiveState', $queue);
+        self::assertStringContainsString("['preventivo.vencido', 'preventivo.proximo']", $queue);
+        self::assertStringContainsString("->whereIn('estado', ['PENDIENTE', 'REINTENTO'])", $queue);
+        self::assertStringContainsString("->like('clave_entrega', ':plan:' . \$event->entityId() . ':', 'both')", $queue);
+        self::assertStringContainsString("'estado' => 'OMITIDA'", $queue);
+    }
+
     public function testHalfHourCronUsesMinuteKeyAndBoundedBatch(): void
     {
         $cycle = file_get_contents(APPPATH . 'Application/Notifications/RunNotificationCycle.php');
