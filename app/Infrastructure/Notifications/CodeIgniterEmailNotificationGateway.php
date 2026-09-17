@@ -63,7 +63,7 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
         $email->setAltMessage(
             $isManagementReport
                 ? $this->managementReportText($first, $subject)
-                : 'Resumen automático de mantenimiento. Ingresá al sistema para consultar el detalle.'
+                : 'Resumen operativo automático del Sistema de Mantenimiento, desarrollado por Vogel Consultoría. Ingresá al sistema para consultar el detalle.'
         );
 
         if ($isManagementReport) {
@@ -91,18 +91,104 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
     /** @param list<array<string,mixed>> $notifications */
     private function standardDigestHtml(array $notifications): string
     {
-        $items = '';
+        $groups = [];
         foreach ($notifications as $notification) {
+            $type = (string) ($notification['tipo_evento'] ?? '');
+            [$category, $badge, $badgeColor, $badgeBackground] = $this->operationalDigestPresentation($type);
+
             $title = htmlspecialchars((string) ($notification['titulo'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
             $summary = nl2br(htmlspecialchars((string) ($notification['resumen'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'));
             $link = $this->notificationLink($notification['url'] ?? null);
             $action = $link === null
                 ? ''
-                : '<br><a href="' . htmlspecialchars($link, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '">Ver detalle</a>';
-            $items .= "<li><strong>{$title}</strong><br>{$summary}{$action}</li>";
+                : '<a href="' . htmlspecialchars($link, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '" style="display:inline-block;margin-top:10px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#2563eb;text-decoration:none;font-weight:800;">Ver detalle →</a>';
+
+            $groups[$category] ??= [];
+            $groups[$category][] = '<tr><td style="padding:14px 16px;border-top:1px solid #e5e7eb;">'
+                . '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr>'
+                . '<td valign="top" style="padding-right:12px;">'
+                . '<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:21px;color:#0f172a;font-weight:800;">' . $title . '</div>'
+                . '<div style="margin-top:4px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:20px;color:#64748b;">' . $summary . '</div>'
+                . $action
+                . '</td>'
+                . '<td valign="top" align="right" style="width:1%;white-space:nowrap;">'
+                . '<span style="display:inline-block;padding:5px 9px;border-radius:999px;background:' . $badgeBackground . ';font-family:Arial,Helvetica,sans-serif;font-size:10px;line-height:14px;color:' . $badgeColor . ';font-weight:800;letter-spacing:.25px;">'
+                . htmlspecialchars($badge, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+                . '</span></td>'
+                . '</tr></table></td></tr>';
         }
 
-        return '<h1>Resumen de mantenimiento</h1><ul>' . $items . '</ul>';
+        $sections = '';
+        foreach ($groups as $category => $rows) {
+            $sections .= '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-top:16px;border:1px solid #e5e7eb;border-radius:12px;background:#ffffff;overflow:hidden;">'
+                . '<tr><td style="padding:13px 16px;background:#f8fafc;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:18px;color:#334155;font-weight:800;text-transform:uppercase;letter-spacing:.35px;">'
+                . htmlspecialchars($category, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+                . '</td></tr>'
+                . implode('', $rows)
+                . '</table>';
+        }
+
+        $dashboardLink = $this->notificationLink((string) parse_url(base_url('dashboard'), PHP_URL_PATH));
+        $button = $dashboardLink === null
+            ? ''
+            : '<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:24px 0 0 0;"><tr><td style="border-radius:9px;background:#0f172a;">'
+                . '<a href="' . htmlspecialchars($dashboardLink, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '" style="display:inline-block;padding:13px 20px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:18px;color:#ffffff;text-decoration:none;font-weight:700;">Abrir sistema de mantenimiento</a>'
+                . '</td></tr></table>';
+
+        $date = $this->clock->now()->format('d/m/Y');
+        $count = count($notifications);
+        $preheader = $count . ' novedad' . ($count === 1 ? '' : 'es') . ' operativa' . ($count === 1 ? '' : 's') . ' de mantenimiento para revisar.';
+
+        return '<!doctype html>'
+            . '<html lang="es-AR"><head><meta charset="UTF-8"><meta http-equiv="Content-Language" content="es-AR"><meta name="viewport" content="width=device-width,initial-scale=1"></head>'
+            . '<body lang="es-AR" style="margin:0;padding:0;background:#f4f7fb;">'
+            . '<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;mso-hide:all;font-size:1px;line-height:1px;">' . htmlspecialchars($preheader, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</div>'
+            . '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f4f7fb;"><tr><td align="center" style="padding:28px 14px;">'
+            . '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:680px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;">'
+            . '<tr><td style="padding:0;background:#0f172a;height:8px;font-size:0;line-height:0;">&nbsp;</td></tr>'
+            . '<tr><td style="padding:28px 30px 12px 30px;">'
+            . '<div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:18px;color:#2563eb;font-weight:800;letter-spacing:.4px;text-transform:uppercase;">Vogel Consultoría</div>'
+            . '<div style="margin-top:8px;font-family:Arial,Helvetica,sans-serif;font-size:28px;line-height:34px;color:#0f172a;font-weight:800;">Resumen de mantenimiento</div>'
+            . '<div style="margin-top:8px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:21px;color:#64748b;">' . $date . ' · ' . $count . ' novedad' . ($count === 1 ? '' : 'es') . ' para revisar</div>'
+            . '</td></tr>'
+            . '<tr><td style="padding:0 24px 22px 24px;">'
+            . $sections
+            . $button
+            . '</td></tr>'
+            . '<tr><td style="padding:22px 30px;border-top:1px solid #e5e7eb;background:#f8fafc;">'
+            . '<div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#64748b;">Notificación automática generada por el Sistema de Mantenimiento.</div>'
+            . '<div style="margin-top:5px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#64748b;">Desarrollado por <strong style="color:#0f172a;">Vogel Consultoría</strong> · <a href="https://vogelconsultoria.com.ar" style="color:#2563eb;text-decoration:none;font-weight:700;">vogelconsultoria.com.ar</a></div>'
+            . '<div style="margin-top:8px;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:16px;color:#94a3b8;">Sistemas a medida, dashboards ejecutivos, automatización e inteligencia artificial para empresas.</div>'
+            . '</td></tr></table></td></tr></table></body></html>';
+    }
+
+    /** @return array{0:string,1:string,2:string,3:string} */
+    private function operationalDigestPresentation(string $type): array
+    {
+        $normalized = mb_strtolower($type);
+
+        if (str_starts_with($normalized, 'preventivo.')) {
+            $category = 'Mantenimiento preventivo';
+        } elseif (str_contains($normalized, 'vencimiento')) {
+            $category = 'Documentación y vencimientos';
+        } elseif (str_starts_with($normalized, 'orden.')) {
+            $category = 'Órdenes de trabajo';
+        } elseif (str_contains($normalized, 'lectura')) {
+            $category = 'Control de lecturas';
+        } elseif (str_contains($normalized, 'garantia')) {
+            $category = 'Garantías';
+        } else {
+            $category = 'Otras novedades';
+        }
+
+        if (str_contains($normalized, 'vencido') || str_contains($normalized, 'demorada')) {
+            return [$category, 'REQUIERE ATENCIÓN', '#b91c1c', '#fee2e2'];
+        }
+        if (str_contains($normalized, 'proximo') || str_contains($normalized, 'próximo') || str_contains($normalized, 'sin_lectura') || str_contains($normalized, 'espera')) {
+            return [$category, 'PRÓXIMO / PENDIENTE', '#b45309', '#ffedd5'];
+        }
+
+        return [$category, 'INFORMATIVO', '#1d4ed8', '#dbeafe'];
     }
 
     /** @param array<string,mixed> $notification */
