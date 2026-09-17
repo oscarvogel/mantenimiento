@@ -62,6 +62,32 @@ final class ManagementReportsContractTest extends TestCase
         self::assertStringContainsString('staleReadingDetails', file_get_contents(APPPATH . 'Application/Notifications/ScheduleManagementReports.php'));
     }
 
+    public function testManagementReportSeparatesDocumentAndPreventiveExpirationsWithDirectLinks(): void
+    {
+        $scheduler = file_get_contents(APPPATH . 'Application/Notifications/ScheduleManagementReports.php');
+        $gateway = file_get_contents(APPPATH . 'Infrastructure/Notifications/CodeIgniterEmailNotificationGateway.php');
+
+        self::assertIsString($scheduler);
+        self::assertIsString($gateway);
+
+        self::assertStringContainsString('Documentación vencida', $scheduler);
+        self::assertStringContainsString('Documentación próxima (30 días)', $scheduler);
+        self::assertStringContainsString('Preventivos vencidos', $scheduler);
+        self::assertStringContainsString('Preventivos próximos', $scheduler);
+        self::assertStringContainsString('/mantenimiento/vencimientos?estado=vencidos', $scheduler);
+        self::assertStringContainsString('/mantenimiento/vencimientos?estado=30', $scheduler);
+        self::assertStringContainsString('/mantenimiento/planes?estado=VENCIDO', $scheduler);
+        self::assertStringContainsString('/mantenimiento/planes?estado=PROXIMO', $scheduler);
+        self::assertStringContainsString('preventiveStateCounts', $scheduler);
+        self::assertStringContainsString('EvaluadorVencimiento', $scheduler);
+        self::assertStringContainsString("->where('p.empresa_id', \$companyId)", $scheduler);
+
+        self::assertStringContainsString('!METRICA|', $scheduler);
+        self::assertStringContainsString('parseManagementSummary', $gateway);
+        self::assertStringContainsString('metricAction', $gateway);
+        self::assertStringContainsString("notificationLink(\$metric['url'])", $gateway);
+    }
+
     public function testCompanyPreventiveEmailSupersedesOppositePendingState(): void
     {
         $queue = file_get_contents(APPPATH . 'Infrastructure/Notifications/CodeIgniterNotificationDeliveryQueue.php');
