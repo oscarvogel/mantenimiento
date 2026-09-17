@@ -62,6 +62,24 @@ final class ManagementReportsContractTest extends TestCase
         self::assertStringContainsString('staleReadingDetails', file_get_contents(APPPATH . 'Application/Notifications/ScheduleManagementReports.php'));
     }
 
+    public function testOperationalDigestUsesVogelBrandedCardLayout(): void
+    {
+        $gateway = file_get_contents(APPPATH . 'Infrastructure/Notifications/CodeIgniterEmailNotificationGateway.php');
+
+        self::assertIsString($gateway);
+        self::assertStringContainsString('standardDigestHtml', $gateway);
+        self::assertStringContainsString('operationalDigestPresentation', $gateway);
+        self::assertStringContainsString('Mantenimiento preventivo', $gateway);
+        self::assertStringContainsString('Documentación y vencimientos', $gateway);
+        self::assertStringContainsString('Órdenes de trabajo', $gateway);
+        self::assertStringContainsString('REQUIERE ATENCIÓN', $gateway);
+        self::assertStringContainsString('PRÓXIMO / PENDIENTE', $gateway);
+        self::assertStringContainsString('Vogel Consultoría', $gateway);
+        self::assertStringContainsString('vogelconsultoria.com.ar', $gateway);
+        self::assertStringContainsString('Abrir sistema de mantenimiento', $gateway);
+        self::assertStringContainsString('Ver detalle →', $gateway);
+    }
+
     public function testManagementReportSeparatesDocumentAndPreventiveExpirationsWithDirectLinks(): void
     {
         $scheduler = file_get_contents(APPPATH . 'Application/Notifications/ScheduleManagementReports.php');
