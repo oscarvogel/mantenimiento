@@ -5,9 +5,14 @@ declare(strict_types=1);
 namespace App\Application\Notifications;
 
 use App\Application\Notifications\Port\NotificationClock;
+use App\Domain\PreventiveMaintenance\EstadoPlan;
+use App\Domain\PreventiveMaintenance\EvaluadorVencimiento;
+use App\Domain\PreventiveMaintenance\PlanMantenimiento;
+use App\Domain\PreventiveMaintenance\UsoActual;
 use CodeIgniter\Database\BaseConnection;
 use DateTimeImmutable;
 use DomainException;
+use InvalidArgumentException;
 
 final class ScheduleManagementReports
 {
@@ -25,13 +30,13 @@ final class ScheduleManagementReports
             return ['companies' => 0, 'queued' => 0, 'duplicates' => 0, 'skipped' => 0];
         }
 
-        $rows = $this->db->table('empresas')
+        $companies = $this->db->table('empresas')
             ->where('estado', 1)
             ->where('deleted_at', null)
             ->get()->getResultArray();
 
-        $summary = ['companies' => count($rows), 'queued' => 0, 'duplicates' => 0, 'skipped' => 0];
-        foreach ($rows as $company) {
+        $summary = ['companies' => count($companies), 'queued' => 0, 'duplicates' => 0, 'skipped' => 0];
+        foreach ($companies as $company) {
             foreach (['DAILY', 'WEEKLY'] as $type) {
                 $result = $this->queueCompany((int) $company['id'], $type, false, $company);
                 $summary[$result] = ($summary[$result] ?? 0) + 1;
@@ -47,7 +52,10 @@ final class ScheduleManagementReports
             throw new DomainException('Primero aplicá la migración de informes gerenciales.');
         }
 
-        $company = $this->db->table('empresas')->where('id', $companyId)->where('deleted_at', null)->get()->getRowArray();
+        $company = $this->db->table('empresas')
+            ->where('id', $companyId)
+            ->where('deleted_at', null)
+            ->get()->getRowArray();
         if ($company === null) {
             throw new DomainException('La empresa no existe.');
         }
@@ -111,14 +119,7 @@ final class ScheduleManagementReports
             }
         }
 
-        if ($queued > 0) {
-            return 'queued';
-        }
-        if ($duplicates > 0) {
-            return 'duplicates';
-        }
-
-        return 'skipped';
+        return $queued > 0 ? 'queued' : ($duplicates > 0 ? 'duplicates' : 'skipped');
     }
 
     /** @param array<string,mixed> $company */
@@ -145,9 +146,8 @@ final class ScheduleManagementReports
             $raw = trim((string) ($company['email'] ?? ''));
         }
 
-        $parts = preg_split('/[,;\r\n]+/', $raw) ?: [];
         $valid = [];
-        foreach ($parts as $part) {
+        foreach (preg_split('/[,;\r\n]+/', $raw) ?: [] as $part) {
             $email = trim($part);
             if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL) !== false) {
                 $valid[strtolower($email)] = $email;
@@ -163,13 +163,14 @@ final class ScheduleManagementReports
         $today = $now->format('Y-m-d');
         $weekStart = $now->modify('-6 days')->format('Y-m-d 00:00:00');
         $tomorrow = $now->modify('+1 day')->format('Y-m-d 00:00:00');
+        $periodStart = $type === 'DAILY' ? $now->modify('-1 day')->format('Y-m-d H:i:s') : $weekStart;
 
+        $documentOverdue = $this->expirationCount($companyId, '<', $today);
+        $documentUpcoming = $this->expirationCount($companyId, '>=', $today, $now->modify('+30 days')->format('Y-m-d'));
+        $preventive = $this->preventiveStateCounts($companyId, $now);
         $activeEquipment = $this->count('equipos', ['empresa_id' => $companyId, 'estado' => 'ACTIVO', 'deleted_at' => null]);
-        $overdueExpirations = $this->expirationCount($companyId, '<', $today);
-        $upcomingExpirations = $this->expirationCount($companyId, '>=', $today, $now->modify('+30 days')->format('Y-m-d'));
         $openOrders = $this->openOrders($companyId);
         $delayedOrders = $this->delayedOrders($companyId, $now);
-        $periodStart = $type === 'DAILY' ? $now->modify('-1 day')->format('Y-m-d H:i:s') : $weekStart;
         $closedPeriod = $this->closedOrders($companyId, $periodStart, $tomorrow);
         $createdPeriod = $this->createdOrders($companyId, $periodStart, $tomorrow);
         $staleReadings = $this->staleReadings($companyId, $now);
@@ -178,8 +179,10 @@ final class ScheduleManagementReports
         $label = $type === 'DAILY' ? 'Informe diario' : 'Informe semanal';
         $lines = [
             'Equipos activos: ' . $activeEquipment,
-            'Vencimientos vencidos: ' . $overdueExpirations,
-            'Vencimientos próximos (30 días): ' . $upcomingExpirations,
+            '!METRICA|Documentación vencida|' . $documentOverdue . '|/mantenimiento/vencimientos?estado=vencidos|Ver documentación vencida',
+            '!METRICA|Documentación próxima (30 días)|' . $documentUpcoming . '|/mantenimiento/vencimientos?estado=30|Ver próximos vencimientos',
+            '!METRICA|Preventivos vencidos|' . $preventive['VENCIDO'] . '|/mantenimiento/planes?estado=VENCIDO|Ver preventivos vencidos',
+            '!METRICA|Preventivos próximos|' . $preventive['PROXIMO'] . '|/mantenimiento/planes?estado=PROXIMO|Ver preventivos próximos',
             'Órdenes abiertas: ' . $openOrders,
             'Órdenes demoradas: ' . $delayedOrders,
             'Órdenes creadas en el período: ' . $createdPeriod,
@@ -208,6 +211,71 @@ final class ScheduleManagementReports
             'title' => $label . ' de mantenimiento · ' . $companyName . ' · ' . $now->format('d/m/Y'),
             'summary' => 'Empresa: ' . $companyName . "\n" . implode("\n", $lines),
         ];
+    }
+
+    /** @return array{VENCIDO:int,PROXIMO:int} */
+    private function preventiveStateCounts(int $companyId, DateTimeImmutable $now): array
+    {
+        $counts = ['VENCIDO' => 0, 'PROXIMO' => 0];
+        if (! $this->db->tableExists('planes_mantenimiento') || ! $this->db->tableExists('equipos')) {
+            return $counts;
+        }
+
+        $rows = $this->db->table('planes_mantenimiento p')
+            ->select('p.*, e.km_actual, e.horas_actuales')
+            ->join('equipos e', 'e.id = p.equipo_id AND e.empresa_id = p.empresa_id', 'inner')
+            ->where('p.empresa_id', $companyId)
+            ->where('p.activo', 1)
+            ->where('p.deleted_at', null)
+            ->where('e.estado', 'ACTIVO')
+            ->where('e.deleted_at', null)
+            ->get()->getResultArray();
+
+        $evaluator = new EvaluadorVencimiento();
+        foreach ($rows as $row) {
+            try {
+                $plan = PlanMantenimiento::reconstituir(
+                    (int) $row['id'],
+                    (int) $row['empresa_id'],
+                    (int) $row['equipo_id'],
+                    (int) $row['tipo_servicio_id'],
+                    $this->integer($row['intervalo_km']),
+                    $this->tenths($row['intervalo_horas']),
+                    $this->integer($row['intervalo_dias']),
+                    $this->integer($row['anticipacion_km']),
+                    $this->tenths($row['anticipacion_horas']),
+                    $this->integer($row['anticipacion_dias']),
+                    $this->integer($row['base_km']),
+                    $this->tenths($row['base_horas']),
+                    $this->date($row['base_fecha']),
+                    $this->integer($row['proximo_km']),
+                    $this->tenths($row['proximas_horas']),
+                    $this->date($row['proxima_fecha']),
+                    (string) $row['prioridad'],
+                    true,
+                    $row['observaciones'] === null ? null : (string) $row['observaciones'],
+                );
+            } catch (InvalidArgumentException $exception) {
+                log_message('warning', 'Informe gerencial omitió plan inválido {plan}: {message}', [
+                    'plan' => (int) $row['id'],
+                    'message' => $exception->getMessage(),
+                ]);
+                continue;
+            }
+
+            $evaluation = $evaluator->evaluar(
+                $plan,
+                new UsoActual($this->integer($row['km_actual']), $this->tenths($row['horas_actuales'])),
+                $now,
+            );
+            if ($evaluation->estado() === EstadoPlan::VENCIDO) {
+                $counts['VENCIDO']++;
+            } elseif ($evaluation->estado() === EstadoPlan::PROXIMO) {
+                $counts['PROXIMO']++;
+            }
+        }
+
+        return $counts;
     }
 
     private function expirationCount(int $companyId, string $operator, string $date, ?string $upper = null): int
@@ -269,7 +337,6 @@ final class ScheduleManagementReports
         if (! $this->db->tableExists('ordenes_trabajo')) {
             return 0;
         }
-
         return $this->db->table('ordenes_trabajo')
             ->where('empresa_id', $companyId)
             ->where('plan_id IS NOT NULL', null, false)
@@ -282,7 +349,6 @@ final class ScheduleManagementReports
         if (! $this->db->tableExists('ordenes_trabajo')) {
             return 0;
         }
-
         return $this->db->table('ordenes_trabajo')
             ->where('empresa_id', $companyId)
             ->where('plan_id IS NOT NULL', null, false)
@@ -297,7 +363,6 @@ final class ScheduleManagementReports
         if (! $this->db->tableExists('ordenes_trabajo')) {
             return 0.0;
         }
-
         $row = $this->db->table('ordenes_trabajo')
             ->selectSum('costo_total', 'total')
             ->where('empresa_id', $companyId)
@@ -305,7 +370,6 @@ final class ScheduleManagementReports
             ->where('fecha_finalizacion >=', $from)
             ->where('fecha_finalizacion <', $to)
             ->get()->getRowArray();
-
         return (float) ($row['total'] ?? 0);
     }
 
@@ -315,7 +379,6 @@ final class ScheduleManagementReports
         if (! $this->db->tableExists('ordenes_trabajo') || ! $this->db->tableExists('equipos')) {
             return [];
         }
-
         $rows = $this->db->table('ordenes_trabajo o')
             ->select('e.codigo, COUNT(o.id) cantidad')
             ->join('equipos e', 'e.id = o.equipo_id AND e.empresa_id = o.empresa_id', 'inner')
@@ -327,11 +390,7 @@ final class ScheduleManagementReports
             ->orderBy('e.codigo', 'ASC')
             ->limit(3)
             ->get()->getResultArray();
-
-        return array_map(
-            static fn (array $row): string => (string) $row['codigo'] . ' (' . (int) $row['cantidad'] . ')',
-            $rows,
-        );
+        return array_map(static fn (array $row): string => (string) $row['codigo'] . ' (' . (int) $row['cantidad'] . ')', $rows);
     }
 
     private function staleReadings(int $companyId, DateTimeImmutable $now): int
@@ -355,21 +414,12 @@ final class ScheduleManagementReports
         if (! $this->db->tableExists('equipos') || ! $this->db->tableExists('lecturas_equipo')) {
             return [];
         }
-
         $cutoff = $now->modify('-' . max(1, $this->staleReadingDays) . ' days')->format('Y-m-d H:i:s');
         $rows = $this->db->query(
             "SELECT e.codigo, l.ultima
              FROM equipos e
-             LEFT JOIN (
-                 SELECT equipo_id, MAX(fecha_lectura) ultima
-                 FROM lecturas_equipo
-                 WHERE empresa_id = ? AND anulada = 0
-                 GROUP BY equipo_id
-             ) l ON l.equipo_id = e.id
-             WHERE e.empresa_id = ?
-               AND e.estado = 'ACTIVO'
-               AND e.deleted_at IS NULL
-               AND (l.ultima IS NULL OR l.ultima < ?)
+             LEFT JOIN (SELECT equipo_id, MAX(fecha_lectura) ultima FROM lecturas_equipo WHERE empresa_id = ? AND anulada = 0 GROUP BY equipo_id) l ON l.equipo_id = e.id
+             WHERE e.empresa_id = ? AND e.estado = 'ACTIVO' AND e.deleted_at IS NULL AND (l.ultima IS NULL OR l.ultima < ?)
              ORDER BY CASE WHEN l.ultima IS NULL THEN 0 ELSE 1 END ASC, l.ultima ASC, e.codigo ASC
              LIMIT " . max(1, min(50, $limit)),
             [$companyId, $companyId, $cutoff],
@@ -377,38 +427,20 @@ final class ScheduleManagementReports
 
         $result = [];
         foreach ($rows as $row) {
-            $code = trim((string) ($row['codigo'] ?? ''));
-            if ($code === '') {
-                $code = 'Equipo sin código';
-            }
-
+            $code = trim((string) ($row['codigo'] ?? '')) ?: 'Equipo sin código';
             $lastReading = trim((string) ($row['ultima'] ?? ''));
             if ($lastReading === '') {
-                $result[] = [
-                    'code' => $code,
-                    'detail' => 'Nunca registró km/horas',
-                    'status' => 'Sin lectura',
-                ];
+                $result[] = ['code' => $code, 'detail' => 'Nunca registró km/horas', 'status' => 'Sin lectura'];
                 continue;
             }
-
             try {
                 $last = new DateTimeImmutable($lastReading);
                 $days = max(0, (int) $last->diff($now)->format('%a'));
-                $result[] = [
-                    'code' => $code,
-                    'detail' => 'Hace ' . $days . ' días que no registra km/horas',
-                    'status' => 'Lectura antigua',
-                ];
+                $result[] = ['code' => $code, 'detail' => 'Hace ' . $days . ' días que no registra km/horas', 'status' => 'Lectura antigua'];
             } catch (\Throwable) {
-                $result[] = [
-                    'code' => $code,
-                    'detail' => 'La última lectura registrada es demasiado antigua',
-                    'status' => 'Lectura antigua',
-                ];
+                $result[] = ['code' => $code, 'detail' => 'La última lectura registrada es demasiado antigua', 'status' => 'Lectura antigua'];
             }
         }
-
         return $result;
     }
 
@@ -423,6 +455,21 @@ final class ScheduleManagementReports
             $builder->where($field, $value);
         }
         return $builder->countAllResults();
+    }
+
+    private function integer(mixed $value): ?int
+    {
+        return $value === null ? null : (int) $value;
+    }
+
+    private function tenths(mixed $value): ?int
+    {
+        return $value === null ? null : (int) round((float) $value * 10);
+    }
+
+    private function date(mixed $value): ?DateTimeImmutable
+    {
+        return $value === null || $value === '' ? null : new DateTimeImmutable((string) $value);
     }
 
     private function available(): bool
