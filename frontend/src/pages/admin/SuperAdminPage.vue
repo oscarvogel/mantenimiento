@@ -88,17 +88,45 @@ const sections = [
       </div>
     </section>
 
-    <section v-if="activeSection === 'summary' || activeSection === 'notifications'" class="mb-8 flex flex-col gap-4 rounded-xl border border-primary/30 bg-primary-subtle p-5 shadow-card sm:flex-row sm:items-center sm:justify-between sm:p-6" aria-labelledby="migration-process-title">
-      <div>
-        <h2 id="migration-process-title" class="font-semibold text-ink">Base de datos · migraciones pendientes</h2>
-        <p class="mt-1 max-w-2xl text-sm leading-6 text-ink-muted">Ejecuta desde el sistema únicamente las migraciones todavía pendientes. Usalo después de desplegar cambios que agregan tablas o columnas.</p>
+    <section v-if="activeSection === 'summary' || activeSection === 'notifications'" class="mb-8 rounded-xl border border-primary/30 bg-primary-subtle p-5 shadow-card sm:p-6" aria-labelledby="migration-process-title">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 id="migration-process-title" class="font-semibold text-ink">Base de datos · migraciones</h2>
+          <p class="mt-1 text-sm leading-6 text-ink-muted">
+            {{ data.migrations.pendingCount > 0 ? `${data.migrations.pendingCount} migración(es) pendiente(s).` : 'Base de datos al día. No hay migraciones pendientes.' }}
+          </p>
+        </div>
+        <form v-if="data.migrations.pendingCount > 0" method="post" :action="data.actions.applyMigrations" data-confirm data-confirm-title="¿Aplicar migraciones pendientes?" data-confirm-text="Se ejecutarán únicamente las migraciones que todavía no fueron aplicadas." data-confirm-button="Aplicar migraciones" class="shrink-0">
+          <CsrfField :csrf="data.csrf" />
+          <button type="submit" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary/90">
+            Aplicar {{ data.migrations.pendingCount }} pendiente(s)
+          </button>
+        </form>
       </div>
-      <form method="post" :action="data.actions.applyMigrations" data-confirm data-confirm-title="¿Aplicar migraciones pendientes?" data-confirm-text="Se ejecutarán únicamente las migraciones que todavía no fueron aplicadas." data-confirm-button="Aplicar migraciones" class="shrink-0">
-        <CsrfField :csrf="data.csrf" />
-        <button type="submit" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary/90">
-          Aplicar migraciones
-        </button>
-      </form>
+
+      <div class="mt-4 grid gap-3 md:grid-cols-3">
+        <div class="rounded-lg border border-border bg-surface-raised p-4">
+          <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Fix #319</p>
+          <p class="mt-1 text-sm font-semibold" :class="data.migrations.target319Registered ? 'text-success' : 'text-warning-strong'">
+            {{ data.migrations.target319Registered ? 'Migración registrada' : 'Migración NO registrada' }}
+          </p>
+        </div>
+        <div class="rounded-lg border border-border bg-surface-raised p-4">
+          <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Duplicados activos</p>
+          <p class="mt-1 text-sm font-semibold text-ink">{{ data.migrations.duplicateActiveGroups }} grupo(s) · {{ data.migrations.duplicateActiveRows }} registro(s)</p>
+        </div>
+        <div class="rounded-lg border border-border bg-surface-raised p-4">
+          <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Migraciones registradas</p>
+          <p class="mt-1 text-sm font-semibold text-ink">{{ data.migrations.appliedCount }}</p>
+        </div>
+      </div>
+
+      <div v-if="data.migrations.pendingCount > 0" class="mt-4 rounded-lg border border-warning/25 bg-warning-subtle p-4">
+        <p class="text-sm font-semibold text-warning-foreground">Pendientes detectadas</p>
+        <ul class="mt-2 space-y-1 font-mono text-xs text-ink-muted">
+          <li v-for="migration in data.migrations.pending" :key="migration">{{ migration }}</li>
+        </ul>
+      </div>
     </section>
 
     <section v-if="activeSection === 'notifications' && data.permissions.companiesEdit" class="mb-8 flex flex-col gap-4 rounded-xl border border-border bg-surface-raised p-5 shadow-card sm:flex-row sm:items-center sm:justify-between sm:p-6" aria-labelledby="notification-process-title">

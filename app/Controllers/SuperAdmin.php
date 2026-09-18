@@ -45,6 +45,7 @@ final class SuperAdmin extends BaseController
         }
 
         $payload = service('administrationPayload')->superadmin($data);
+        $payload['migrations'] = $this->migrationDiagnostics();
         $whatsAppGateway = service('whatsAppGateway');
         $payload['whatsapp'] = [
             'enabled' => filter_var(env('whatsapp.enabled', false), FILTER_VALIDATE_BOOL),
@@ -79,23 +80,40 @@ final class SuperAdmin extends BaseController
     public function applyPendingMigrations(): RedirectResponse
     {
         try {
+            $before = $this->migrationDiagnostics();
+            if (($before['pendingCount'] ?? 0) === 0) {
+                return redirect()->to('/superadmin')->with('success', 'No hay migraciones pendientes.');
+            }
+
             $runner = service('migrations');
             $result = $runner->latest();
             if ($result === false) {
                 throw new \RuntimeException('CodeIgniter informó fallo al ejecutar las migraciones.');
             }
 
-            log_message('notice', 'Superadministrador {actor} aplicó migraciones pendientes desde la interfaz.', [
+            $after = $this->migrationDiagnostics();
+            if (($after['pendingCount'] ?? 0) > 0) {
+                throw new \RuntimeException('El runner terminó pero todavía quedan migraciones pendientes: ' . implode(', ', $after['pending'] ?? []));
+            }
+
+            $applied = array_values(array_diff($before['pending'] ?? [], $after['pending'] ?? []));
+
+            log_message('notice', 'Superadministrador {actor} aplicó migraciones desde la interfaz: {migrations}', [
                 'actor' => $this->actor()->userId(),
+                'migrations' => implode(', ', $applied),
             ]);
 
-            return redirect()->to('/superadmin')->with('success', 'Migraciones pendientes aplicadas correctamente en ' . ENVIRONMENT . '.');
+            $message = $applied === []
+                ? 'No había migraciones nuevas para aplicar.'
+                : 'Migraciones aplicadas: ' . implode(', ', $applied) . '.';
+
+            return redirect()->to('/superadmin')->with('success', $message);
         } catch (Throwable $exception) {
             log_message('error', 'Falló aplicación manual de migraciones desde Superadmin: {message}', [
                 'message' => $exception->getMessage(),
             ]);
 
-            return redirect()->to('/superadmin')->with('error', 'No se pudieron aplicar las migraciones pendientes.');
+            return redirect()->to('/superadmin')->with('error', 'No se pudieron aplicar las migraciones pendientes: ' . $exception->getMessage());
         }
     }
 
@@ -294,6 +312,64 @@ final class SuperAdmin extends BaseController
         } catch (Throwable $exception) {
             return $this->operationFailure($exception);
         }
+    }
+
+    /** @return array{pendingCount:int,pending:list<string>,appliedCount:int,target319Registered:bool,duplicateActiveGroups:int,duplicateActiveRows:int} */
+    private function migrationDiagnostics(): array
+    {
+        $runner = service('migrations');
+        $history = $runner->getHistory();
+        $appliedVersions = [];
+        foreach ($history as $entry) {
+            $version = trim((string) ($entry->version ?? ''));
+            if ($version !== '') {
+                $appliedVersions[$version] = true;
+            }
+        }
+
+        $available = [];
+        foreach (glob(APPPATH . 'Database/Migrations/*.php') ?: [] as $path) {
+            $name = basename($path, '.php');
+            if (preg_match('/^(\\d{4}-\\d{2}-\\d{2}-\\d{6})_(.+)$/', $name, $matches) !== 1) {
+                continue;
+            }
+            $available[$matches[1]] = $name;
+        }
+        ksort($available);
+
+        $pending = [];
+        foreach ($available as $version => $name) {
+            if (! isset($appliedVersions[$version])) {
+                $pending[] = $name;
+            }
+        }
+
+        $duplicateActiveGroups = 0;
+        $duplicateActiveRows = 0;
+        $db = db_connect();
+        if ($db->tableExists('vencimientos')) {
+            $rows = $db->query(
+                "SELECT COUNT(*) AS total
+                 FROM vencimientos
+                 WHERE activo = 1 AND deleted_at IS NULL
+                 GROUP BY empresa_id, tipo_vencimiento_id, sujeto_tipo, COALESCE(equipo_id, 0), COALESCE(empleado_id, 0)
+                 HAVING COUNT(*) > 1"
+            )->getResultArray();
+
+            $duplicateActiveGroups = count($rows);
+            foreach ($rows as $row) {
+                $duplicateActiveRows += (int) ($row['total'] ?? 0);
+            }
+        }
+
+        return [
+            'pendingCount' => count($pending),
+            'pending' => $pending,
+            'appliedCount' => count($appliedVersions),
+            'target319Registered' => isset($appliedVersions['2026-09-18-083000']),
+            'duplicateActiveGroups' => $duplicateActiveGroups,
+            'duplicateActiveRows' => $duplicateActiveRows,
+        ];
     }
 
     private function actor(): \App\Application\Identity\ActorContext
