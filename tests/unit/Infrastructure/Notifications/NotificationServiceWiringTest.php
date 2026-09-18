@@ -39,11 +39,11 @@ final class NotificationServiceWiringTest extends TestCase
         $services = file_get_contents(APPPATH . 'Config/Services.php');
 
         self::assertIsString($services);
-        self::assertStringContainsString("$settings = static::globalNotificationSettingsStore(false)->get();", $services);
-        self::assertStringContainsString("$settings['whatsapp_enabled']", $services);
-        self::assertStringContainsString("$settings['whatsapp_api_url']", $services);
-        self::assertStringContainsString("$settings['whatsapp_api_key']", $services);
-        self::assertStringContainsString("$settings['whatsapp_instance_id']", $services);
+        self::assertStringContainsString('$settings = static::globalNotificationSettingsStore(false)->get();', $services);
+        self::assertStringContainsString("\$settings['whatsapp_enabled']", $services);
+        self::assertStringContainsString("\$settings['whatsapp_api_url']", $services);
+        self::assertStringContainsString("\$settings['whatsapp_api_key']", $services);
+        self::assertStringContainsString("\$settings['whatsapp_instance_id']", $services);
         self::assertStringNotContainsString("env('whatsapp.apiKey'", $services);
     }
 }
