@@ -46,13 +46,14 @@ final class SuperAdmin extends BaseController
 
         $payload = service('administrationPayload')->superadmin($data);
         $payload['migrations'] = $this->migrationDiagnostics();
+        $whatsAppSettings = service('globalNotificationSettingsStore')->get();
         $whatsAppGateway = service('whatsAppGateway');
         $payload['whatsapp'] = [
-            'enabled' => filter_var(env('whatsapp.enabled', false), FILTER_VALIDATE_BOOL),
+            'enabled' => (bool) ($whatsAppSettings['whatsapp_enabled'] ?? false),
             'available' => $whatsAppGateway->available(),
-            'apiUrl' => trim((string) env('whatsapp.apiUrl', '')),
-            'apiKeyConfigured' => trim((string) env('whatsapp.apiKey', '')) !== '',
-            'instanceId' => trim((string) env('whatsapp.instanceId', 'default')),
+            'apiUrl' => trim((string) ($whatsAppSettings['whatsapp_api_url'] ?? '')),
+            'apiKeyConfigured' => (bool) ($whatsAppSettings['whatsapp_api_key_present'] ?? false),
+            'instanceId' => trim((string) ($whatsAppSettings['whatsapp_instance_id'] ?? 'default')),
             'testAction' => base_url('superadmin/whatsapp/prueba'),
         ];
         $payload['aiCompanyControls'] = array_map(static fn (array $company): array => [
