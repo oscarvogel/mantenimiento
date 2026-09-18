@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Notifications;
 
+use App\Application\Notifications\Port\GlobalNotificationSettingsStore;
 use App\Application\Notifications\Port\NotificationClock;
 use App\Application\Notifications\Port\WhatsAppNotificationDeliveryQueue;
 use App\Application\Notifications\Port\WhatsAppNotificationGateway;
@@ -16,6 +17,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
     public function __construct(
         private readonly NotificationClock $clock,
         private readonly WhatsAppNotificationGateway $gateway,
+        private readonly GlobalNotificationSettingsStore $settings,
         private ?BaseConnection $db = null,
     ) {
         $this->db ??= Database::connect();
@@ -69,10 +71,16 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             return;
         }
 
-        $phone = $this->gateway->normalizePhone((string) ($driver['telefono'] ?? ''));
+        $realPhone = $this->gateway->normalizePhone((string) ($driver['telefono'] ?? ''));
         $employeeId = (int) $driver['empleado_id'];
         $key = $event->logicalKey() . ':chofer:' . $employeeId . ':whatsapp';
         $now = $this->clock->now()->format('Y-m-d H:i:s');
+
+        $settings = $this->settings->get();
+        $pilotEnabled = (bool) ($settings['whatsapp_pilot_enabled'] ?? true);
+        $pilotPhone = $this->gateway->normalizePhone((string) ($settings['whatsapp_pilot_phone'] ?? ''));
+        $phone = $pilotEnabled ? $pilotPhone : $realPhone;
+        $message = $this->message($event, $driver, $pilotEnabled, $realPhone !== null);
 
         if ($phone === null) {
             $this->db->table('notificacion_whatsapp_entregas')->ignore(true)->insert([
@@ -84,9 +92,11 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
                 'external_ref' => 'mantenimiento:' . $event->logicalKey() . ':chofer:' . $employeeId,
                 'telefono' => null,
                 'instance_id' => $instanceId,
-                'mensaje' => $this->message($event, $driver),
+                'mensaje' => $message,
                 'estado' => 'OMITIDA',
-                'ultimo_error' => 'El chofer asignado no tiene un celular válido para WhatsApp.',
+                'ultimo_error' => $pilotEnabled
+                    ? 'Modo piloto activo pero no hay un teléfono piloto válido configurado.'
+                    : 'El chofer asignado no tiene un celular válido para WhatsApp.',
                 'created_at' => $now,
                 'updated_at' => $now,
             ]);
@@ -102,7 +112,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             'external_ref' => 'mantenimiento:' . $event->logicalKey() . ':chofer:' . $employeeId,
             'telefono' => $phone,
             'instance_id' => $instanceId,
-            'mensaje' => $this->message($event, $driver),
+            'mensaje' => $message,
             'estado' => 'PENDIENTE',
             'created_at' => $now,
             'updated_at' => $now,
@@ -168,12 +178,18 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
     }
 
     /** @param array<string,mixed> $driver */
-    private function message(NotifiableEvent $event, array $driver): string
+    private function message(NotifiableEvent $event, array $driver, bool $pilotEnabled, bool $realPhoneValid): string
     {
         $name = trim((string) ($driver['nombre'] ?? '') . ' ' . (string) ($driver['apellido'] ?? ''));
         $greeting = $name === '' ? 'Hola.' : 'Hola ' . $name . '.';
+        $pilotHeader = $pilotEnabled
+            ? "🧪 *PRUEBA CONTROLADA · NO ENVIADO AL DESTINATARIO REAL*\n"
+                . "*Destinatario previsto:* " . ($name === '' ? 'Chofer asignado' : $name) . "\n"
+                . "*Teléfono real:* " . ($realPhoneValid ? 'configurado' : 'no válido o no cargado') . "\n\n"
+            : '';
 
-        return "*Vogel Consultoría · Mantenimiento*\n\n"
+        return $pilotHeader
+            . "*Vogel Consultoría · Mantenimiento*\n\n"
             . $greeting . "\n\n"
             . "⚠️ *" . trim($event->title()) . "*\n"
             . rtrim(trim($event->summary()), ".") . ".\n\n"
