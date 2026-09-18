@@ -14,5 +14,7 @@ final class WhatsAppCompanyInstanceFallbackContractTest extends TestCase
         self::assertStringContainsString("$globalSettings = \$this->settings->get();", $queue);
         self::assertStringContainsString("$globalSettings['whatsapp_instance_id']", $queue);
         self::assertStringNotContainsString("env('whatsapp.instanceId'", $queue);
+        self::assertStringContainsString("$rows = \$this->db->table('notificacion_whatsapp_entregas')", $queue);
+        self::assertStringContainsString("$row['instance_id'] = \$instancesByCompany[\$companyId] ?? \$globalInstanceId;", $queue);
     }
 }
