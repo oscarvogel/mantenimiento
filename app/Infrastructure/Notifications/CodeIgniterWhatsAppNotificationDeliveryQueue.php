@@ -171,9 +171,13 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
     private function message(NotifiableEvent $event, array $driver): string
     {
         $name = trim((string) ($driver['nombre'] ?? '') . ' ' . (string) ($driver['apellido'] ?? ''));
-        $prefix = $name === '' ? '' : 'Hola ' . $name . '. ';
+        $greeting = $name === '' ? 'Hola.' : 'Hola ' . $name . '.';
 
-        return $prefix . $event->title() . ".\n" . $event->summary()
-            . ".\nAviso automático del Sistema de Mantenimiento.";
+        return "*Vogel Consultoría · Mantenimiento*\n\n"
+            . $greeting . "\n\n"
+            . "⚠️ *" . trim($event->title()) . "*\n"
+            . rtrim(trim($event->summary()), ".") . ".\n\n"
+            . "Por favor, revisá la situación del equipo y coordiná la regularización con el responsable.\n\n"
+            . "_Aviso automático del Sistema de Mantenimiento._";
     }
 }
