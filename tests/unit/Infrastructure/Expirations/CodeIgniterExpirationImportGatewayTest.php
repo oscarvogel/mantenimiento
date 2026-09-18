@@ -90,4 +90,32 @@ final class CodeIgniterExpirationImportGatewayTest extends TestCase
         self::assertNull($row['equipo_id']);
         self::assertSame('EMPLEADO', $row['sujeto_tipo']);
     }
+    public function testImportingRenewalRetiresPreviousActiveExpiration(): void
+    {
+        $gateway = new CodeIgniterExpirationImportGateway($this->database);
+
+        $oldId = $gateway->import(new ExpirationImportData(5, ExpirationSubjectType::EQUIPMENT, 10, 7, 'CRVL', '2026-01-27', null, null, null, 9, 104));
+        $newId = $gateway->import(new ExpirationImportData(5, ExpirationSubjectType::EQUIPMENT, 10, 7, 'CRVL', '2027-10-07', null, null, null, 10, 105));
+
+        $old = $this->database->table('vencimientos')->where('id', $oldId)->get()->getRowArray();
+        $new = $this->database->table('vencimientos')->where('id', $newId)->get()->getRowArray();
+
+        self::assertSame(0, (int) $old['activo']);
+        self::assertSame(1, (int) $new['activo']);
+    }
+
+    public function testImportingOlderHistoryDoesNotReplaceNewerActiveExpiration(): void
+    {
+        $gateway = new CodeIgniterExpirationImportGateway($this->database);
+
+        $newId = $gateway->import(new ExpirationImportData(5, ExpirationSubjectType::EQUIPMENT, 10, 7, 'CRVL', '2027-10-07', null, null, null, 9, 106));
+        $oldId = $gateway->import(new ExpirationImportData(5, ExpirationSubjectType::EQUIPMENT, 10, 7, 'CRVL', '2026-01-27', null, null, null, 10, 107));
+
+        $new = $this->database->table('vencimientos')->where('id', $newId)->get()->getRowArray();
+        $old = $this->database->table('vencimientos')->where('id', $oldId)->get()->getRowArray();
+
+        self::assertSame(1, (int) $new['activo']);
+        self::assertSame(0, (int) $old['activo']);
+    }
+
 }
