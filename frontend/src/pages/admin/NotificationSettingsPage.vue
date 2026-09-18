@@ -165,6 +165,24 @@ const toneClass = (tone) => ({
           <label class="block sm:col-span-2"><span class="mb-1.5 block text-sm font-medium text-ink">URL del gateway</span><input name="whatsapp_api_url" maxlength="500" :value="data.settings.whatsAppApiUrl" placeholder="https://..." class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink" /></label>
           <label class="block"><span class="mb-1.5 block text-sm font-medium text-ink">API key</span><input type="password" name="whatsapp_api_key" autocomplete="new-password" :placeholder="data.settings.whatsAppApiKeyConfigured ? 'Configurada · dejar vacío para conservar' : 'Ingresar API key'" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink" /></label>
           <label class="block"><span class="mb-1.5 block text-sm font-medium text-ink">Instancia</span><input name="whatsapp_instance_id" maxlength="100" :value="data.settings.whatsAppInstanceId" placeholder="default" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink" /></label>
+
+          <div class="sm:col-span-2 rounded-xl border border-warning/30 bg-warning-subtle p-4">
+            <label class="flex items-start gap-3">
+              <input type="hidden" name="whatsapp_pilot_enabled" value="0" />
+              <input type="checkbox" name="whatsapp_pilot_enabled" value="1" :checked="data.settings.whatsAppPilotEnabled" class="mt-0.5 size-4 rounded border-border-strong text-primary" />
+              <span>
+                <span class="block text-sm font-semibold text-warning-strong">Modo piloto de WhatsApp</span>
+                <span class="mt-1 block text-xs leading-5 text-warning-strong">
+                  Con este modo activo, ningún aviso automático se envía al chofer real. Todos los avisos se redirigen únicamente al teléfono piloto.
+                </span>
+              </span>
+            </label>
+            <label class="mt-4 block">
+              <span class="mb-1.5 block text-sm font-medium text-ink">Teléfono piloto</span>
+              <input name="whatsapp_pilot_phone" maxlength="30" :value="data.settings.whatsAppPilotPhone" placeholder="Ej. 5493764123456" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink" />
+              <span class="mt-1 block text-xs text-ink-muted">Mientras el modo piloto esté activo, éste será el único número que recibirá avisos automáticos.</span>
+            </label>
+          </div>
         </div>
       </section>
 

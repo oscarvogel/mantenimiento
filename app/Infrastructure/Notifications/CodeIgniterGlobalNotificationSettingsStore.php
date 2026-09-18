@@ -51,6 +51,8 @@ final readonly class CodeIgniterGlobalNotificationSettingsStore implements Globa
             'whatsapp_api_key' => $this->decrypt((string) ($row['whatsapp_api_key_encrypted'] ?? '')),
             'whatsapp_api_key_present' => trim((string) ($row['whatsapp_api_key_encrypted'] ?? '')) !== '',
             'whatsapp_instance_id' => (string) ($row['whatsapp_instance_id'] ?? 'default'),
+            'whatsapp_pilot_enabled' => (int) ($row['whatsapp_pilot_enabled'] ?? 1) === 1,
+            'whatsapp_pilot_phone' => (string) ($row['whatsapp_pilot_phone'] ?? ''),
             'updated_at' => (string) ($row['updated_at'] ?? ''),
             'source' => 'database',
         ];
@@ -90,6 +92,8 @@ final readonly class CodeIgniterGlobalNotificationSettingsStore implements Globa
             'whatsapp_api_url' => $this->nullable($settings['whatsapp_api_url'] ?? null),
             'whatsapp_api_key_encrypted' => $whatsAppKeyToStore !== '' ? $this->encrypt($whatsAppKeyToStore) : null,
             'whatsapp_instance_id' => $this->nullable($settings['whatsapp_instance_id'] ?? 'default'),
+            'whatsapp_pilot_enabled' => ! empty($settings['whatsapp_pilot_enabled']) ? 1 : 0,
+            'whatsapp_pilot_phone' => $this->nullable($settings['whatsapp_pilot_phone'] ?? null),
             'updated_by' => $actorId,
             'updated_at' => date('Y-m-d H:i:s'),
         ];
@@ -164,6 +168,8 @@ final readonly class CodeIgniterGlobalNotificationSettingsStore implements Globa
             'whatsapp_api_key' => trim((string) env('whatsapp.apiKey', '')),
             'whatsapp_api_key_present' => trim((string) env('whatsapp.apiKey', '')) !== '',
             'whatsapp_instance_id' => trim((string) env('whatsapp.instanceId', 'default')),
+            'whatsapp_pilot_enabled' => filter_var(env('whatsapp.pilotEnabled', true), FILTER_VALIDATE_BOOL),
+            'whatsapp_pilot_phone' => trim((string) env('whatsapp.pilotPhone', '')),
             'updated_at' => '',
             'source' => 'env',
         ];

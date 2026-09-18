@@ -189,6 +189,18 @@ const sections = [
             Enviar prueba
           </button>
         </form>
+        <form method="post" :action="data.whatsapp.preparePilotAction" class="sm:col-span-2 lg:col-span-4 rounded-lg border border-warning/30 bg-warning-subtle p-4">
+          <CsrfField :csrf="data.csrf" />
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p class="text-sm font-semibold text-warning-strong">Prueba automática segura</p>
+              <p class="mt-1 text-xs leading-5 text-warning-strong">Genera en la empresa demo un chofer ficticio, su asignación a un equipo y un vencimiento próximo. No envía nada todavía.</p>
+            </div>
+            <button type="submit" :disabled="!data.whatsapp.available" class="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg border border-warning px-4 py-2.5 text-sm font-semibold text-warning-strong disabled:cursor-not-allowed disabled:opacity-50">
+              Preparar prueba piloto
+            </button>
+          </div>
+        </form>
       </div>
     </section>
 
