@@ -41,7 +41,8 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
         }
         $instanceId = trim((string) ($company['whatsapp_instance_id'] ?? ''));
         if ($instanceId === '') {
-            $instanceId = trim((string) env('whatsapp.instanceId', 'default'));
+            $globalSettings = $this->settings->get();
+            $instanceId = trim((string) ($globalSettings['whatsapp_instance_id'] ?? 'default'));
         }
 
         if (! in_array($event->type(), ['equipo.vencimiento_proximo', 'equipo.vencimiento_vencido'], true)
@@ -121,7 +122,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
 
     public function due(int $limit): array
     {
-        return $this->db->table('notificacion_whatsapp_entregas')
+        $rows = $this->db->table('notificacion_whatsapp_entregas')
             ->whereIn('estado', ['PENDIENTE', 'REINTENTO'])
             ->where('telefono IS NOT NULL', null, false)
             ->groupStart()
@@ -132,6 +133,36 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             ->limit(max(1, min(1000, $limit)))
             ->get()
             ->getResultArray();
+
+        if ($rows === []) {
+            return [];
+        }
+
+        $globalSettings = $this->settings->get();
+        $globalInstanceId = trim((string) ($globalSettings['whatsapp_instance_id'] ?? 'default'));
+        $companyIds = array_values(array_unique(array_map(static fn (array $row): int => (int) ($row['empresa_id'] ?? 0), $rows)));
+        $instancesByCompany = [];
+
+        if ($companyIds !== []) {
+            foreach ($this->db->table('empresas')
+                ->select('id, whatsapp_instance_id')
+                ->whereIn('id', $companyIds)
+                ->get()
+                ->getResultArray() as $company) {
+                $companyInstanceId = trim((string) ($company['whatsapp_instance_id'] ?? ''));
+                $instancesByCompany[(int) $company['id']] = $companyInstanceId !== ''
+                    ? $companyInstanceId
+                    : $globalInstanceId;
+            }
+        }
+
+        foreach ($rows as &$row) {
+            $companyId = (int) ($row['empresa_id'] ?? 0);
+            $row['instance_id'] = $instancesByCompany[$companyId] ?? $globalInstanceId;
+        }
+        unset($row);
+
+        return $rows;
     }
 
     public function accepted(int $deliveryId, string $messageId, string $status): void
