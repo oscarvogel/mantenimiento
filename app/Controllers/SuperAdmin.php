@@ -328,8 +328,12 @@ final class SuperAdmin extends BaseController
         }
 
         $available = [];
-        foreach (glob(APPPATH . 'Database/Migrations/*.php') ?: [] as $path) {
-            $name = basename($path, '.php');
+        $migrationDir = APPPATH . 'Database/Migrations';
+        foreach (scandir($migrationDir) ?: [] as $filename) {
+            if (! str_ends_with($filename, '.php')) {
+                continue;
+            }
+            $name = basename($filename, '.php');
             if (preg_match('/^(\\d{4}-\\d{2}-\\d{2}-\\d{6})_(.+)$/', $name, $matches) !== 1) {
                 continue;
             }
@@ -366,7 +370,8 @@ final class SuperAdmin extends BaseController
             'pendingCount' => count($pending),
             'pending' => $pending,
             'appliedCount' => count($appliedVersions),
-            'target319Registered' => isset($appliedVersions['2026-09-18-083000']),
+            'target319Registered' => isset($appliedVersions['2026-09-18-083000'])
+                || isset($appliedVersions['2026-09-18-140500']),
             'duplicateActiveGroups' => $duplicateActiveGroups,
             'duplicateActiveRows' => $duplicateActiveRows,
         ];
