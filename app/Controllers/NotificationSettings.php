@@ -58,7 +58,9 @@ final class NotificationSettings extends BaseController
                 'whatsApp' => $this->status((bool) $settings['whatsapp_enabled'], $whatsAppConfigured),
             ],
             'migration' => [
-                'required' => ! db_connect()->tableExists('configuracion_canales_globales'),
+                'required' => ! db_connect()->tableExists('configuracion_canales_globales')
+                    || ! db_connect()->fieldExists('whatsapp_pilot_enabled', 'configuracion_canales_globales')
+                    || ! db_connect()->fieldExists('whatsapp_pilot_phone', 'configuracion_canales_globales'),
             ],
             'actions' => [
                 'save' => base_url('superadmin/configuracion/notificaciones'),
