@@ -55,6 +55,7 @@ final class SuperAdmin extends BaseController
             'apiKeyConfigured' => (bool) ($whatsAppSettings['whatsapp_api_key_present'] ?? false),
             'instanceId' => trim((string) ($whatsAppSettings['whatsapp_instance_id'] ?? 'default')),
             'testAction' => base_url('superadmin/whatsapp/prueba'),
+            'preparePilotAction' => base_url('superadmin/whatsapp/preparar-piloto'),
         ];
         $payload['aiCompanyControls'] = array_map(static fn (array $company): array => [
             'id' => (int) $company['id'],
@@ -221,6 +222,207 @@ final class SuperAdmin extends BaseController
             ]);
             return redirect()->to('/superadmin')->with('success', 'Correo de prueba enviado a ' . $recipient . '.');
         } catch (Throwable $exception) {
+            return $this->operationFailure($exception);
+        }
+    }
+
+    public function prepareWhatsAppPilotScenario(): RedirectResponse
+    {
+        $db = db_connect();
+        $db->transBegin();
+
+        try {
+            $settings = service('globalNotificationSettingsStore')->get();
+            $gateway = service('whatsAppGateway');
+
+            if (! (bool) ($settings['whatsapp_pilot_enabled'] ?? false)) {
+                throw new DomainException('Activá el modo piloto de WhatsApp antes de preparar la prueba.');
+            }
+
+            $pilotPhone = $gateway->normalizePhone((string) ($settings['whatsapp_pilot_phone'] ?? ''));
+            if ($pilotPhone === null) {
+                throw new DomainException('Configurá un teléfono piloto válido antes de preparar la prueba.');
+            }
+
+            $instanceId = trim((string) ($settings['whatsapp_instance_id'] ?? 'default'));
+            if ($instanceId === '') {
+                throw new DomainException('Configurá una instancia de WhatsApp antes de preparar la prueba.');
+            }
+
+            $company = $db->table('empresas')
+                ->where('es_demo', 1)
+                ->where('estado', 1)
+                ->where('deleted_at', null)
+                ->orderBy('id', 'ASC')
+                ->get()->getRowArray();
+            if ($company === null) {
+                throw new DomainException('No existe una empresa demo activa. Creala o regenerala antes de preparar la prueba.');
+            }
+            $companyId = (int) $company['id'];
+
+            $db->table('empresas')->where('id', $companyId)->update([
+                'notificaciones_whatsapp_habilitadas' => 1,
+                'whatsapp_instance_id' => $instanceId,
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+
+            $equipment = $db->table('equipos')
+                ->select('id, sucursal_id, codigo')
+                ->where('empresa_id', $companyId)
+                ->where('codigo', 'DEMO98-CAM01')
+                ->where('estado', 'ACTIVO')
+                ->where('deleted_at', null)
+                ->get()->getRowArray();
+
+            if ($equipment === null) {
+                $equipment = $db->table('equipos')
+                    ->select('id, sucursal_id, codigo')
+                    ->where('empresa_id', $companyId)
+                    ->where('estado', 'ACTIVO')
+                    ->where('deleted_at', null)
+                    ->orderBy('id', 'ASC')
+                    ->get()->getRowArray();
+            }
+            if ($equipment === null) {
+                throw new DomainException('La empresa demo no tiene equipos activos para preparar la prueba.');
+            }
+
+            $equipmentId = (int) $equipment['id'];
+            $now = date('Y-m-d H:i:s');
+            $today = date('Y-m-d');
+
+            $driver = $db->table('empleados')
+                ->where('empresa_id', $companyId)
+                ->where('legajo', 'WA-PILOT-CHOFER')
+                ->get()->getRowArray();
+
+            $driverPayload = [
+                'nombre' => 'Chofer',
+                'apellido' => 'Piloto WhatsApp',
+                'telefono' => '3764000001',
+                'activo' => 1,
+                'deleted_at' => null,
+                'updated_at' => $now,
+            ];
+
+            if ($driver === null) {
+                $db->table('empleados')->insert($driverPayload + [
+                    'empresa_id' => $companyId,
+                    'legajo' => 'WA-PILOT-CHOFER',
+                    'observaciones' => 'Empleado ficticio exclusivo para pruebas controladas de WhatsApp.',
+                    'created_at' => $now,
+                ]);
+                $driverId = (int) $db->insertID();
+            } else {
+                $driverId = (int) $driver['id'];
+                $db->table('empleados')->where('id', $driverId)->where('empresa_id', $companyId)->update($driverPayload);
+            }
+
+            $db->table('employee_equipment_assignments')
+                ->where('empresa_id', $companyId)
+                ->where('equipo_id', $equipmentId)
+                ->where('rol', 'CHOFER')
+                ->where('fecha_hasta', null)
+                ->where('empleado_id !=', $driverId)
+                ->update([
+                    'fecha_hasta' => $today,
+                    'updated_at' => $now,
+                ]);
+
+            $assignment = $db->table('employee_equipment_assignments')
+                ->where('empresa_id', $companyId)
+                ->where('equipo_id', $equipmentId)
+                ->where('empleado_id', $driverId)
+                ->where('rol', 'CHOFER')
+                ->where('fecha_hasta', null)
+                ->get()->getRowArray();
+
+            if ($assignment === null) {
+                $db->table('employee_equipment_assignments')->insert([
+                    'empresa_id' => $companyId,
+                    'empleado_id' => $driverId,
+                    'equipo_id' => $equipmentId,
+                    'rol' => 'CHOFER',
+                    'fecha_desde' => $today,
+                    'fecha_hasta' => null,
+                    'observaciones' => 'Asignación exclusiva para prueba piloto de WhatsApp.',
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+            }
+
+            $type = $db->table('tipos_vencimiento')
+                ->where('empresa_id', $companyId)
+                ->where('nombre', 'PRUEBA WHATSAPP PILOTO')
+                ->get()->getRowArray();
+
+            if ($type === null) {
+                $db->table('tipos_vencimiento')->insert([
+                    'empresa_id' => $companyId,
+                    'nombre' => 'PRUEBA WHATSAPP PILOTO',
+                    'aplica_a' => 'EQUIPO',
+                    'descripcion' => 'Tipo exclusivo para validar notificaciones WhatsApp en modo piloto.',
+                    'dias_aviso_previo' => 30,
+                    'requiere_documento' => 0,
+                    'activo' => 1,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+                $typeId = (int) $db->insertID();
+            } else {
+                $typeId = (int) $type['id'];
+                $db->table('tipos_vencimiento')->where('id', $typeId)->where('empresa_id', $companyId)->update([
+                    'aplica_a' => 'EQUIPO',
+                    'dias_aviso_previo' => 30,
+                    'activo' => 1,
+                    'deleted_at' => null,
+                    'updated_at' => $now,
+                ]);
+            }
+
+            // Eliminar sólo vencimientos de este escenario de prueba para generar una clave lógica nueva en cada ejecución.
+            $db->table('vencimientos')
+                ->where('empresa_id', $companyId)
+                ->where('equipo_id', $equipmentId)
+                ->where('tipo_vencimiento_id', $typeId)
+                ->where('origen', 'PRUEBA_WHATSAPP')
+                ->delete();
+
+            $expiresAt = date('Y-m-d', strtotime('+1 day'));
+            $db->table('vencimientos')->insert([
+                'empresa_id' => $companyId,
+                'sucursal_id' => $equipment['sucursal_id'] === null ? null : (int) $equipment['sucursal_id'],
+                'tipo_vencimiento_id' => $typeId,
+                'sujeto_tipo' => 'EQUIPO',
+                'equipo_id' => $equipmentId,
+                'empleado_id' => null,
+                'fecha_emision' => $today,
+                'fecha_vencimiento' => $expiresAt,
+                'numero_documento' => 'WA-PILOT-' . date('YmdHis'),
+                'observaciones' => 'Escenario generado automáticamente para prueba piloto de WhatsApp.',
+                'origen' => 'PRUEBA_WHATSAPP',
+                'activo' => 1,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+            $expirationId = (int) $db->insertID();
+
+            if ($db->transStatus() === false) {
+                throw new \RuntimeException('La base de datos rechazó la preparación del escenario piloto.');
+            }
+
+            $db->transCommit();
+
+            return redirect()->to('/superadmin')->with(
+                'success',
+                'Prueba piloto preparada: empresa demo, equipo ' . (string) $equipment['codigo']
+                . ', chofer Chofer Piloto WhatsApp, vencimiento #' . $expirationId
+                . ' para ' . date('d/m/Y', strtotime($expiresAt))
+                . '. Destino seguro: ' . $pilotPhone . '. Ahora ejecutá "Procesar notificaciones ahora".',
+            );
+        } catch (Throwable $exception) {
+            $db->transRollback();
+
             return $this->operationFailure($exception);
         }
     }
