@@ -314,6 +314,64 @@ final class SuperAdmin extends BaseController
         }
     }
 
+    /** @return array{pendingCount:int,pending:list<string>,appliedCount:int,target319Registered:bool,duplicateActiveGroups:int,duplicateActiveRows:int} */
+    private function migrationDiagnostics(): array
+    {
+        $runner = service('migrations');
+        $history = $runner->getHistory();
+        $appliedVersions = [];
+        foreach ($history as $entry) {
+            $version = trim((string) ($entry->version ?? ''));
+            if ($version !== '') {
+                $appliedVersions[$version] = true;
+            }
+        }
+
+        $available = [];
+        foreach (glob(APPPATH . 'Database/Migrations/*.php') ?: [] as $path) {
+            $name = basename($path, '.php');
+            if (preg_match('/^(\\d{4}-\\d{2}-\\d{2}-\\d{6})_(.+)$/', $name, $matches) !== 1) {
+                continue;
+            }
+            $available[$matches[1]] = $name;
+        }
+        ksort($available);
+
+        $pending = [];
+        foreach ($available as $version => $name) {
+            if (! isset($appliedVersions[$version])) {
+                $pending[] = $name;
+            }
+        }
+
+        $duplicateActiveGroups = 0;
+        $duplicateActiveRows = 0;
+        $db = db_connect();
+        if ($db->tableExists('vencimientos')) {
+            $rows = $db->query(
+                "SELECT COUNT(*) AS total
+                 FROM vencimientos
+                 WHERE activo = 1 AND deleted_at IS NULL
+                 GROUP BY empresa_id, tipo_vencimiento_id, sujeto_tipo, COALESCE(equipo_id, 0), COALESCE(empleado_id, 0)
+                 HAVING COUNT(*) > 1"
+            )->getResultArray();
+
+            $duplicateActiveGroups = count($rows);
+            foreach ($rows as $row) {
+                $duplicateActiveRows += (int) ($row['total'] ?? 0);
+            }
+        }
+
+        return [
+            'pendingCount' => count($pending),
+            'pending' => $pending,
+            'appliedCount' => count($appliedVersions),
+            'target319Registered' => isset($appliedVersions['2026-09-18-083000']),
+            'duplicateActiveGroups' => $duplicateActiveGroups,
+            'duplicateActiveRows' => $duplicateActiveRows,
+        ];
+    }
+
     private function actor(): \App\Application\Identity\ActorContext
     {
         $actor = (new SessionActorContext())->current();
