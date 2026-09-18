@@ -41,7 +41,8 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
         }
         $instanceId = trim((string) ($company['whatsapp_instance_id'] ?? ''));
         if ($instanceId === '') {
-            $instanceId = trim((string) env('whatsapp.instanceId', 'default'));
+            $globalSettings = $this->settings->get();
+            $instanceId = trim((string) ($globalSettings['whatsapp_instance_id'] ?? 'default'));
         }
 
         if (! in_array($event->type(), ['equipo.vencimiento_proximo', 'equipo.vencimiento_vencido'], true)
