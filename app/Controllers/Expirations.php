@@ -335,6 +335,14 @@ final class Expirations extends BaseController
                 'updated_at' => $now,
             ]);
 
+            (new \App\Infrastructure\Expirations\CodeIgniterExpirationActiveVersionManager($db))->reconcile(
+                $companyId,
+                $typeId,
+                $subjectType,
+                $subjectId,
+                $actor->userId(),
+            );
+
             return redirect()->to($returnTo)->with('success', 'Vencimiento registrado.');
         } catch (Throwable $exception) {
             return $this->failure($exception, $returnTo);
