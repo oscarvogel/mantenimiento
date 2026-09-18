@@ -11,7 +11,7 @@ final class SuperAdminMigrationDiagnosticsContractTest extends TestCase
         $controller = file_get_contents(APPPATH . 'Controllers/SuperAdmin.php');
         self::assertIsString($controller);
 
-        self::assertStringContainsString("$payload['migrations'] = \\$this->migrationDiagnostics();", $controller);
+        self::assertStringContainsString('$payload[\'migrations\'] = $this->migrationDiagnostics();', $controller);
         self::assertStringContainsString('$before = $this->migrationDiagnostics();', $controller);
         self::assertStringContainsString('private function migrationDiagnostics(): array', $controller);
         self::assertStringContainsString("'target319Registered'", $controller);
