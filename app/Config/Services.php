@@ -404,6 +404,7 @@ class Services extends BaseService
         return new CodeIgniterWhatsAppNotificationDeliveryQueue(
             static::notificationClock(false),
             static::whatsAppGateway(false),
+            static::globalNotificationSettingsStore(false),
             db_connect(),
         );
     }
