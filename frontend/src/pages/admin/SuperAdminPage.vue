@@ -88,7 +88,7 @@ const sections = [
       </div>
     </section>
 
-    <section v-if="activeSection === 'summary' || activeSection === 'notifications'" class="mb-8 rounded-xl border border-primary/30 bg-primary-subtle p-5 shadow-card sm:p-6" aria-labelledby="migration-process-title">
+    <section v-if="(activeSection === 'summary' || activeSection === 'notifications') && data.migrations" class="mb-8 rounded-xl border border-primary/30 bg-primary-subtle p-5 shadow-card sm:p-6" aria-labelledby="migration-process-title">
       <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 id="migration-process-title" class="font-semibold text-ink">Base de datos · migraciones</h2>
