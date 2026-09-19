@@ -57,9 +57,12 @@ final class LocalPrivateExpirationEvidenceStorage implements ExpirationEvidenceS
 
         $companyDirectory = $this->root . DIRECTORY_SEPARATOR . $companyId;
         if (! is_dir($companyDirectory)
-            && ! mkdir($companyDirectory, 0700, true)
+            && ! @mkdir($companyDirectory, 0700, true)
             && ! is_dir($companyDirectory)) {
-            throw new RuntimeException('No se pudo crear el directorio privado de evidencias.');
+            throw new RuntimeException(
+                'No se pudo crear el directorio privado de evidencias en ' . $companyDirectory
+                . '. Revisá permisos o configurá expiration.evidenceStorageRoot en una ruta escribible/persistente.',
+            );
         }
         $realRoot = realpath($this->root);
         $realCompanyDirectory = realpath($companyDirectory);
@@ -76,8 +79,8 @@ final class LocalPrivateExpirationEvidenceStorage implements ExpirationEvidenceS
 
         $storedName = bin2hex(random_bytes(24)) . '.' . $extension;
         $destination = $realCompanyDirectory . DIRECTORY_SEPARATOR . $storedName;
-        $source = fopen($sourcePath, 'rb');
-        $target = fopen($destination, 'xb');
+        $source = @fopen($sourcePath, 'rb');
+        $target = @fopen($destination, 'xb');
         if ($source === false || $target === false) {
             if (is_resource($source)) {
                 fclose($source);
