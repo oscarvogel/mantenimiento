@@ -21,8 +21,8 @@ final class ExpirationRenovationHistoryTablesMigrationContractTest extends TestC
         self::assertStringContainsString("'usuario_id'", $migration);
         self::assertStringContainsString("'evidencia_id'", $migration);
         self::assertStringContainsString("addForeignKey('empresa_id', 'empresas', 'id', 'RESTRICT', 'RESTRICT'", $migration);
-        self::assertStringContainsString("['empresa_id', 'vencimiento_id']", $migration);
-        self::assertStringContainsString("'vencimientos'", $migration);
+        self::assertStringContainsString("addForeignKey(\n            'vencimiento_id',\n            'vencimientos',\n            'id'", $migration);
+        self::assertStringContainsString("addForeignKey(\n            'evidencia_id',\n            'vencimiento_evidencias',\n            'id'", $migration);
         self::assertStringContainsString("'RESTRICT', 'RESTRICT'", $migration);
         self::assertStringContainsString("'SET NULL'", $migration);
         self::assertStringContainsString("createTable('vencimiento_renovaciones', true)", $migration);
