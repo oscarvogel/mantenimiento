@@ -703,6 +703,12 @@ final class Expirations extends BaseController
             $message = $exception->getMessage();
         }
 
+        // Diagnóstico temporal exclusivo de la rama de staging #335.
+        // Antes de mergear a main se elimina este detalle técnico.
+        if (! $exception instanceof DomainException) {
+            $message = '[STAGING #335] ' . $exception::class . ': ' . $exception->getMessage();
+        }
+
         return redirect()->to($returnTo)
             ->withInput()
             ->with('error', $message);
