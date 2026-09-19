@@ -11,6 +11,7 @@ use CodeIgniter\HTTP\RedirectResponse;
 use CodeIgniter\HTTP\ResponseInterface;
 use DateTimeImmutable;
 use DomainException;
+use RuntimeException;
 use Throwable;
 
 final class Expirations extends BaseController
@@ -693,8 +694,17 @@ final class Expirations extends BaseController
         if (! $exception instanceof DomainException) {
             log_message('error', 'Falló la gestión de vencimientos: {message}', ['message' => $exception->getMessage()]);
         }
+        $message = $exception instanceof DomainException
+            ? $exception->getMessage()
+            : 'No se pudo completar la operación de vencimientos.';
+
+        if ($exception instanceof RuntimeException
+            && str_contains(mb_strtolower($exception->getMessage()), 'evidencia')) {
+            $message = $exception->getMessage();
+        }
+
         return redirect()->to($returnTo)
             ->withInput()
-            ->with('error', $exception instanceof DomainException ? $exception->getMessage() : 'No se pudo completar la operación de vencimientos.');
+            ->with('error', $message);
     }
 }
