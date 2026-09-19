@@ -11,6 +11,7 @@ use App\Application\Notifications\Port\WhatsAppNotificationGateway;
 use App\Domain\Notifications\NotifiableEvent;
 use CodeIgniter\Database\BaseConnection;
 use Config\Database;
+use Throwable;
 
 final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNotificationDeliveryQueue
 {
@@ -118,6 +119,136 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             'created_at' => $now,
             'updated_at' => $now,
         ]);
+    }
+
+    public function scheduleWeeklyReadingReminders(): void
+    {
+        if (! $this->gateway->available()) {
+            return;
+        }
+
+        $settings = $this->settings->get();
+        $pilotEnabled = (bool) ($settings['whatsapp_pilot_enabled'] ?? true);
+        $pilotPhone = $this->gateway->normalizePhone((string) ($settings['whatsapp_pilot_phone'] ?? ''));
+        $globalInstanceId = trim((string) ($settings['whatsapp_instance_id'] ?? 'default'));
+        $now = $this->clock->now();
+        $weekKey = $now->format('o-\\WW');
+        $timestamp = $now->format('Y-m-d H:i:s');
+
+        $rows = $this->db->table('employee_equipment_assignments a')
+            ->select('a.id assignment_id, a.empresa_id, a.equipo_id, a.empleado_id')
+            ->select('emp.nombre, emp.apellido, emp.telefono')
+            ->select('e.codigo equipo_codigo, e.patente, e.estado equipo_estado')
+            ->select('te.controla_km')
+            ->select('co.notificaciones_whatsapp_habilitadas, co.whatsapp_instance_id')
+            ->select('t.token_cifrado')
+            ->join('empleados emp', 'emp.id = a.empleado_id AND emp.empresa_id = a.empresa_id', 'inner')
+            ->join('equipos e', 'e.id = a.equipo_id AND e.empresa_id = a.empresa_id', 'inner')
+            ->join('tipos_equipo te', 'te.id = e.tipo_equipo_id', 'inner')
+            ->join('empresas co', 'co.id = a.empresa_id', 'inner')
+            ->join('equipo_tokens_publicos t', 't.equipo_id = e.id AND t.empresa_id = e.empresa_id AND t.activo = 1 AND t.revoked_at IS NULL', 'inner')
+            ->where('a.rol', 'CHOFER')
+            ->where('a.fecha_hasta', null)
+            ->where('emp.activo', 1)
+            ->where('emp.deleted_at', null)
+            ->where('e.estado', 'ACTIVO')
+            ->where('e.deleted_at', null)
+            ->where('te.controla_km', 1)
+            ->where('co.estado', 1)
+            ->where('co.deleted_at', null)
+            ->where('co.notificaciones_whatsapp_habilitadas', 1)
+            ->orderBy('a.id', 'DESC')
+            ->get()
+            ->getResultArray();
+
+        $seenEquipment = [];
+        foreach ($rows as $row) {
+            $equipmentId = (int) $row['equipo_id'];
+            if ($equipmentId <= 0 || isset($seenEquipment[$equipmentId])) {
+                continue;
+            }
+            $seenEquipment[$equipmentId] = true;
+
+            $employeeId = (int) $row['empleado_id'];
+            $companyId = (int) $row['empresa_id'];
+            $realPhone = $this->gateway->normalizePhone((string) ($row['telefono'] ?? ''));
+            $phone = $pilotEnabled ? $pilotPhone : $realPhone;
+            $instanceId = trim((string) ($row['whatsapp_instance_id'] ?? ''));
+            if ($instanceId === '') {
+                $instanceId = $globalInstanceId;
+            }
+
+            $name = trim((string) ($row['nombre'] ?? '') . ' ' . (string) ($row['apellido'] ?? ''));
+            $equipmentLabel = trim((string) ($row['equipo_codigo'] ?? ''));
+            $plate = trim((string) ($row['patente'] ?? ''));
+            if ($plate !== '') {
+                $equipmentLabel .= ($equipmentLabel === '' ? '' : ' · ') . $plate;
+            }
+            if ($equipmentLabel === '') {
+                $equipmentLabel = 'Equipo #' . $equipmentId;
+            }
+
+            $token = null;
+            try {
+                $encrypted = (string) ($row['token_cifrado'] ?? '');
+                if ($encrypted !== '') {
+                    $decoded = base64_decode($encrypted, true);
+                    if ($decoded !== false) {
+                        $token = service('encrypter')->decrypt($decoded);
+                    }
+                }
+            } catch (Throwable $exception) {
+                log_message('warning', 'No se pudo recuperar el token QR público para recordatorio semanal del equipo {equipment}: {message}', [
+                    'equipment' => $equipmentId,
+                    'message' => $exception->getMessage(),
+                ]);
+            }
+
+            if (! is_string($token) || trim($token) === '') {
+                continue;
+            }
+
+            $url = base_url('mantenimiento/publico/equipo/' . rawurlencode($token) . '/lectura');
+            $deliveryKey = 'recordatorio_lectura_semanal:empresa:' . $companyId
+                . ':equipo:' . $equipmentId
+                . ':chofer:' . $employeeId
+                . ':semana:' . $weekKey;
+
+            $pilotHeader = $pilotEnabled
+                ? "🧪 *PRUEBA CONTROLADA · NO ENVIADO AL DESTINATARIO REAL*\n"
+                    . "*Destinatario previsto:* " . ($name === '' ? 'Chofer asignado' : $name) . "\n"
+                    . "*Teléfono real:* " . ($realPhone === null ? 'no válido o no cargado' : 'configurado') . "\n\n"
+                : '';
+
+            $message = $pilotHeader
+                . "*Vogel Consultoría · Mantenimiento*\n\n"
+                . ($name === '' ? 'Hola.' : 'Hola ' . $name . '.') . "\n\n"
+                . "🚛 *Recordatorio semanal de kilometraje*\n"
+                . "Por favor, cargá el kilometraje actual de *" . $equipmentLabel . "* para mantener actualizado el seguimiento de mantenimiento.\n\n"
+                . "👉 *Cargar kilometraje:*\n" . $url . "\n\n"
+                . "No necesitás iniciar sesión: el enlace corresponde al acceso QR del equipo.\n\n"
+                . "_Aviso automático del Sistema de Mantenimiento._";
+
+            $this->db->table('notificacion_whatsapp_entregas')->ignore(true)->insert([
+                'empresa_id' => $companyId,
+                'equipo_id' => $equipmentId,
+                'empleado_id' => $employeeId,
+                'tipo_evento' => 'equipo.recordatorio_lectura_semanal',
+                'clave_entrega' => $deliveryKey,
+                'external_ref' => 'mantenimiento:' . $deliveryKey,
+                'telefono' => $phone,
+                'instance_id' => $instanceId,
+                'mensaje' => $message,
+                'estado' => $phone === null ? 'OMITIDA' : 'PENDIENTE',
+                'ultimo_error' => $phone === null
+                    ? ($pilotEnabled
+                        ? 'Modo piloto activo pero no hay un teléfono piloto válido configurado.'
+                        : 'El chofer asignado no tiene un celular válido para WhatsApp.')
+                    : null,
+                'created_at' => $timestamp,
+                'updated_at' => $timestamp,
+            ]);
+        }
     }
 
     public function due(int $limit): array

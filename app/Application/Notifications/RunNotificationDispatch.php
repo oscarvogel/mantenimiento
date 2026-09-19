@@ -134,6 +134,8 @@ final readonly class RunNotificationDispatch
             return;
         }
 
+        $this->whatsAppDeliveries->scheduleWeeklyReadingReminders();
+
         foreach ($this->whatsAppDeliveries->due($limit) as $delivery) {
             try {
                 $result = $this->whatsApp->sendText(
