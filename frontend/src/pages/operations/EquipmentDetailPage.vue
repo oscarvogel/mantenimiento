@@ -1,13 +1,15 @@
 <script setup>
-import { ArrowDownTrayIcon, QrCodeIcon } from '@heroicons/vue/24/outline'
+import { ArrowDownTrayIcon, ArrowPathIcon, ClockIcon, QrCodeIcon } from '@heroicons/vue/24/outline'
 import { computed, ref } from 'vue'
 import CsrfInput from './components/CsrfInput.vue'
 import CountUp from '../../components/CountUp.vue'
 import EmptyState from './components/EmptyState.vue'
 import FormField from './components/FormField.vue'
+import HistorialVencimientoModal from './components/HistorialVencimientoModal.vue'
 import PageHeading from './components/PageHeading.vue'
 import PaginationBar from './components/PaginationBar.vue'
 import PanelCard from './components/PanelCard.vue'
+import RenovarVencimientoModal from './components/RenovarVencimientoModal.vue'
 import StatusBadge from './components/StatusBadge.vue'
 import EquipmentThumbnail from './components/EquipmentThumbnail.vue'
 import { dangerButton, fieldClass, formatHours, formatKilometers, formatReadingOrigin, nowLocal, primaryButton, secondaryButton, today } from './helpers.js'
@@ -57,6 +59,28 @@ const correctiveOrderUrl = computed(() => `${props.data.routes.maintenance}?ot_c
 const historyResetUrl = computed(() => `${window.location.pathname}?history_active=1#equipment-panel-historial`)
 const formatKmValue = (value) => Number(value).toLocaleString('es-AR', { maximumFractionDigits: 0 })
 const formatHoursValue = (value) => Number(value).toLocaleString('es-AR', { maximumFractionDigits: 1 })
+const renewExpiration = ref(null)
+const historyExpiration = ref(null)
+
+function openRenew(expiration) {
+  renewExpiration.value = {
+    id: expiration.id,
+    fecha_vencimiento: expiration.expiresAt,
+    tipo_nombre: expiration.typeName,
+    sujeto_tipo: 'EQUIPO',
+    subject_name: data.value.equipment?.code || `Equipo #${data.value.equipment?.id}`,
+    renewUrl: expiration.renewUrl,
+  }
+}
+
+function openHistory(expiration) {
+  historyExpiration.value = expiration
+}
+
+function onRenewed() {
+  renewExpiration.value = null
+}
+
 const equipmentSummary = computed(() => {
   const equipment = data.value.equipment
   return [
@@ -189,9 +213,9 @@ const equipmentSummary = computed(() => {
       </form>
       <EmptyState v-if="!data.expirations || data.expirations.length === 0" title="No hay vencimientos registrados" description="Los vencimientos importados o cargados para este móvil aparecerán acá." />
       <div v-else class="overflow-x-auto">
-        <table class="w-full min-w-[44rem] text-left text-sm">
+        <table class="w-full min-w-[48rem] text-left text-sm">
           <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
-            <tr><th class="px-4 py-3">Tipo</th><th class="px-4 py-3">Vence</th><th class="px-4 py-3">Estado</th><th class="px-4 py-3">Documento</th><th class="px-4 py-3">Origen</th></tr>
+            <tr><th class="px-4 py-3">Tipo</th><th class="px-4 py-3">Vence</th><th class="px-4 py-3">Estado</th><th class="px-4 py-3">Documento</th><th class="px-4 py-3">Origen</th><th v-if="data.can.edit" class="px-4 py-3 text-right">Acciones</th></tr>
           </thead>
           <tbody class="divide-y divide-border-subtle">
             <tr v-for="expiration in data.expirations" :key="expiration.id">
@@ -216,6 +240,18 @@ const equipmentSummary = computed(() => {
                     </div>
                   </form>
                 </details>
+              </td>
+              <td v-if="data.can.edit" class="px-4 py-4 text-right">
+                <div class="flex flex-wrap justify-end gap-2">
+                  <button type="button" :class="secondaryButton" @click="openRenew(expiration)">
+                    <ArrowPathIcon class="mr-1 size-4" aria-hidden="true" />
+                    Renovar
+                  </button>
+                  <button type="button" :class="secondaryButton" @click="openHistory(expiration)">
+                    <ClockIcon class="mr-1 size-4" aria-hidden="true" />
+                    Historial
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>
@@ -323,5 +359,23 @@ const equipmentSummary = computed(() => {
         <template v-if="data.workOrderHistory" #footer><PaginationBar :pagination="data.workOrderHistory.pagination" /></template>
       </PanelCard>
     </div>
+
+    <RenovarVencimientoModal
+      v-if="renewExpiration"
+      :expiration="renewExpiration"
+      :csrf="data.csrf"
+      :renew-url="renewExpiration.renewUrl"
+      :return-to="`/mantenimiento/equipos/${data.equipment.id}`"
+      @close="renewExpiration = null"
+      @renewed="onRenewed"
+    />
+
+    <HistorialVencimientoModal
+      v-if="historyExpiration"
+      :expiration-id="historyExpiration.id"
+      :history-url="historyExpiration.historyUrl"
+      :csrf="data.csrf"
+      @close="historyExpiration = null"
+    />
   </div>
 </template>

@@ -2,6 +2,8 @@
 
 namespace Config;
 
+use App\Application\Expirations\ConsultarHistorialVencimiento;
+use App\Application\Expirations\RenovarVencimiento;
 use App\Application\Identity\Port\LoginAttemptLimiter;
 use App\Application\AppShell\GetAppShellContext;
 use App\Application\Dashboard\GetMaintenanceDashboard;
@@ -1377,6 +1379,72 @@ return new AsignarPlan(
             ),
             new \App\Infrastructure\Chatbot\Persistence\SystemChatClock(),
             new \App\Infrastructure\Chatbot\Persistence\CodeIgniterConversationRepository($database),
+        );
+    }
+
+    public static function expirationEvidenceStorage(bool $getShared = true): \App\Application\Expirations\Port\ExpirationEvidenceStorage
+    {
+        if ($getShared) {
+            return static::getSharedInstance('expirationEvidenceStorage');
+        }
+
+        return new \App\Infrastructure\Expirations\LocalPrivateExpirationEvidenceStorage();
+    }
+
+    public static function expirationEvidenceReadModel(bool $getShared = true): \App\Application\Expirations\Port\ExpirationEvidenceReadModel
+    {
+        if ($getShared) {
+            return static::getSharedInstance('expirationEvidenceReadModel');
+        }
+
+        return new \App\Infrastructure\Expirations\CodeIgniterExpirationEvidenceReadModel(db_connect());
+    }
+
+    public static function expirationDetailReadModel(bool $getShared = true): \App\Application\Expirations\Port\ExpirationDetailReadModel
+    {
+        if ($getShared) {
+            return static::getSharedInstance('expirationDetailReadModel');
+        }
+
+        return new \App\Infrastructure\Expirations\CodeIgniterExpirationEvidenceReadModel(db_connect());
+    }
+
+    public static function expirationEvidenceDownload(bool $getShared = true): \App\Application\Expirations\Port\ExpirationEvidenceDownload
+    {
+        if ($getShared) {
+            return static::getSharedInstance('expirationEvidenceDownload');
+        }
+
+        return new \App\Infrastructure\Expirations\CodeIgniterExpirationEvidenceDownload(
+            db_connect(),
+            self::expirationEvidenceStorage(false),
+        );
+    }
+
+    public static function renewalVencimiento(bool $getShared = true): RenovarVencimiento
+    {
+        if ($getShared) {
+            return static::getSharedInstance('renewalVencimiento');
+        }
+
+        return new RenovarVencimiento(
+            new \App\Infrastructure\Expirations\CodeIgniterExpirationRenovationGateway(
+                db_connect(),
+                self::expirationEvidenceStorage(false),
+            ),
+            new \App\Infrastructure\Expirations\FileinfoExpirationEvidenceInspector(),
+        );
+    }
+
+    public static function expirationHistory(bool $getShared = true): ConsultarHistorialVencimiento
+    {
+        if ($getShared) {
+            return static::getSharedInstance('expirationHistory');
+        }
+
+        return new ConsultarHistorialVencimiento(
+            self::expirationDetailReadModel(false),
+            self::expirationEvidenceReadModel(false),
         );
     }
 

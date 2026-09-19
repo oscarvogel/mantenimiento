@@ -1,13 +1,15 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { ClockIcon, MagnifyingGlassIcon, PencilSquareIcon, UserMinusIcon, UserPlusIcon } from '@heroicons/vue/24/outline'
+import { ArrowPathIcon, ClockIcon, MagnifyingGlassIcon, PencilSquareIcon, UserMinusIcon, UserPlusIcon } from '@heroicons/vue/24/outline'
 import CsrfInput from './components/CsrfInput.vue'
 import EmptyState from './components/EmptyState.vue'
 import EmployeeExpirationModal from './components/EmployeeExpirationModal.vue'
 import EmployeeFormModal from './components/EmployeeFormModal.vue'
 import EmployeeTerminationModal from './components/EmployeeTerminationModal.vue'
 import FormField from './components/FormField.vue'
+import HistorialVencimientoModal from './components/HistorialVencimientoModal.vue'
 import PageHeading from './components/PageHeading.vue'
+import RenovarVencimientoModal from './components/RenovarVencimientoModal.vue'
 import PanelCard from './components/PanelCard.vue'
 import StatusBadge from './components/StatusBadge.vue'
 import { fieldClass, primaryButton, secondaryButton } from './helpers.js'
@@ -56,6 +58,31 @@ const openExpiration = (employee) => {
   expirationEmployee.value = employee
   formEmployee.value = undefined
   terminationEmployee.value = null
+}
+
+const renewExpiration = ref(null)
+const historyExpiration = ref(null)
+
+function openRenew(employee, expiration) {
+  renewExpiration.value = {
+    id: expiration.id,
+    fecha_vencimiento: expiration.expiresAt,
+    tipo_nombre: expiration.typeName,
+    sujeto_tipo: 'EMPLEADO',
+    subject_name: employee.fullName,
+    renewUrl: expiration.renewUrl,
+  }
+}
+
+function openHistory(employee, expiration) {
+  historyExpiration.value = {
+    id: expiration.id,
+    historyUrl: expiration.historyUrl,
+  }
+}
+
+function onRenewed() {
+  renewExpiration.value = null
 }
 </script>
 
@@ -173,6 +200,16 @@ const openExpiration = (employee) => {
                           <button type="submit" :formaction="expiration.deactivateUrl" class="inline-flex items-center rounded-md border border-danger/30 px-3 py-2 text-sm font-semibold text-danger-strong hover:bg-danger/5">Retirar</button>
                         </div>
                       </form>
+                      <div v-if="data.canEdit && employee.active" class="mt-2 flex flex-wrap gap-2">
+                        <button type="button" :class="secondaryButton" @click="openRenew(employee, expiration)">
+                          <ArrowPathIcon class="mr-1 size-4" aria-hidden="true" />
+                          Renovar
+                        </button>
+                        <button type="button" :class="secondaryButton" @click="openHistory(employee, expiration)">
+                          <ClockIcon class="mr-1 size-4" aria-hidden="true" />
+                          Historial
+                        </button>
+                      </div>
                     </details>
                   </div>
                 </td>
@@ -403,6 +440,24 @@ const openExpiration = (employee) => {
       :create-url="data.expirationRoutes.create"
       :csrf="data.csrf"
       @close="expirationEmployee = null"
+    />
+
+    <RenovarVencimientoModal
+      v-if="renewExpiration"
+      :expiration="renewExpiration"
+      :csrf="data.csrf"
+      :renew-url="renewExpiration.renewUrl"
+      :return-to="data.routes.index"
+      @close="renewExpiration = null"
+      @renewed="onRenewed"
+    />
+
+    <HistorialVencimientoModal
+      v-if="historyExpiration"
+      :expiration-id="historyExpiration.id"
+      :history-url="historyExpiration.historyUrl"
+      :csrf="data.csrf"
+      @close="historyExpiration = null"
     />
   </div>
 </template>

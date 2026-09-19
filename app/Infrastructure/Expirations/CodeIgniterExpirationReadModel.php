@@ -261,6 +261,8 @@ final class CodeIgniterExpirationReadModel
             'origin' => (string) $row['origen'],
             'updateUrl' => base_url('mantenimiento/vencimientos/' . (int) $row['id']),
             'deactivateUrl' => base_url('mantenimiento/vencimientos/' . (int) $row['id'] . '/retirar'),
+            'renewUrl' => base_url('mantenimiento/vencimientos/' . (int) $row['id'] . '/renovar'),
+            'historyUrl' => base_url('mantenimiento/vencimientos/' . (int) $row['id'] . '/historial'),
         ];
     }
 }
