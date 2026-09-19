@@ -29,9 +29,9 @@ final class WhatsAppPilotModeContractTest extends TestCase
         $queue = file_get_contents(APPPATH . 'Infrastructure/Notifications/CodeIgniterWhatsAppNotificationDeliveryQueue.php');
 
         self::assertIsString($queue);
-        self::assertStringContainsString("$pilotEnabled = (bool) (\$settings['whatsapp_pilot_enabled'] ?? true);", $queue);
-        self::assertStringContainsString("$pilotPhone = \$this->gateway->normalizePhone", $queue);
-        self::assertStringContainsString("$phone = \$pilotEnabled ? \$pilotPhone : \$realPhone;", $queue);
+        self::assertStringContainsString('$pilotEnabled = (bool) ($settings[\'whatsapp_pilot_enabled\'] ?? true);', $queue);
+        self::assertStringContainsString('$pilotPhone = $this->gateway->normalizePhone', $queue);
+        self::assertStringContainsString('$phone = $pilotEnabled ? $pilotPhone : $realPhone;', $queue);
         self::assertStringContainsString('PRUEBA CONTROLADA · NO ENVIADO AL DESTINATARIO REAL', $queue);
         self::assertStringContainsString('Modo piloto activo pero no hay un teléfono piloto válido configurado.', $queue);
     }
