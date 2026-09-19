@@ -40,9 +40,9 @@ final class CreateExpirationRenovationHistoryTables extends Migration
         );
         $this->forge->addForeignKey('empresa_id', 'empresas', 'id', 'RESTRICT', 'RESTRICT', 'fk_vencimiento_evidencia_empresa');
         $this->forge->addForeignKey(
-            ['empresa_id', 'vencimiento_id'],
+            'vencimiento_id',
             'vencimientos',
-            ['empresa_id', 'id'],
+            'id',
             'RESTRICT',
             'RESTRICT',
             'fk_vencimiento_evidencia_vencimiento',
@@ -80,18 +80,18 @@ final class CreateExpirationRenovationHistoryTables extends Migration
         );
         $this->forge->addForeignKey('empresa_id', 'empresas', 'id', 'RESTRICT', 'RESTRICT', 'fk_vencimiento_historial_empresa');
         $this->forge->addForeignKey(
-            ['empresa_id', 'vencimiento_id'],
+            'vencimiento_id',
             'vencimientos',
-            ['empresa_id', 'id'],
+            'id',
             'RESTRICT',
             'RESTRICT',
             'fk_vencimiento_historial_vencimiento',
         );
         $this->forge->addForeignKey('usuario_id', 'usuarios', 'id', 'SET NULL', 'RESTRICT', 'fk_vencimiento_historial_usuario');
         $this->forge->addForeignKey(
-            ['empresa_id', 'evidencia_id'],
+            'evidencia_id',
             'vencimiento_evidencias',
-            ['empresa_id', 'id'],
+            'id',
             'SET NULL',
             'RESTRICT',
             'fk_vencimiento_historial_evidencia',
