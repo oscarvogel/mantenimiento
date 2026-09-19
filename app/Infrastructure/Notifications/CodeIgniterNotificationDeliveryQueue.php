@@ -55,6 +55,8 @@ final class CodeIgniterNotificationDeliveryQueue implements NotificationDelivery
         $missingRecipient = $recipient === null;
         $now = $this->clock->now()->format('Y-m-d H:i:s');
 
+        $this->supersedeOppositePreventiveState($event, $now);
+
         $this->db->table('notificacion_empresa_entregas')->ignore(true)->insert([
             'empresa_id' => $event->companyId(),
             'tipo_evento' => $event->type(),
@@ -145,6 +147,26 @@ final class CodeIgniterNotificationDeliveryQueue implements NotificationDelivery
             'ultimo_error' => mb_substr($error, 0, 1000),
             'updated_at' => $this->clock->now()->format('Y-m-d H:i:s'),
         ]);
+    }
+
+    private function supersedeOppositePreventiveState(NotifiableEvent $event, string $now): void
+    {
+        if ($event->entityType() !== 'plan_mantenimiento'
+            || ! in_array($event->type(), ['preventivo.vencido', 'preventivo.proximo'], true)) {
+            return;
+        }
+
+        $oppositeType = $event->type() === 'preventivo.vencido' ? 'preventivo.proximo' : 'preventivo.vencido';
+        $this->db->table('notificacion_empresa_entregas')
+            ->where('empresa_id', $event->companyId())
+            ->where('tipo_evento', $oppositeType)
+            ->whereIn('estado', ['PENDIENTE', 'REINTENTO'])
+            ->like('clave_entrega', ':plan:' . $event->entityId() . ':', 'both')
+            ->update([
+                'estado' => 'OMITIDA',
+                'ultimo_error' => 'Reemplazada por el estado preventivo actual: ' . $event->type(),
+                'updated_at' => $now,
+            ]);
     }
 
     private function enqueue(int $notificationId, string $channel, string $key, DeliveryMode $mode): void
