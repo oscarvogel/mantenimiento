@@ -102,9 +102,12 @@ final readonly class RunNotificationDispatch
         foreach ($this->deliveries->dueCompany($limit) as $delivery) {
             $companyId = (int) ($delivery['empresa_id'] ?? 0);
             $recipient = (string) ($delivery['email'] ?? '');
-            $groups[$companyId . '|' . $recipient] = [
+            $eventType = (string) ($delivery['tipo_evento'] ?? '');
+            $bucket = str_starts_with($eventType, 'informe.gerencial.') ? $eventType : 'operational';
+            $key = $companyId . '|' . $recipient . '|' . $bucket;
+            $groups[$key] = [
                 'recipient' => $recipient,
-                'items' => [...($groups[$companyId . '|' . $recipient]['items'] ?? []), $delivery],
+                'items' => [...($groups[$key]['items'] ?? []), $delivery],
             ];
         }
         foreach ($groups as $group) {
