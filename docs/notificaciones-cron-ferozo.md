@@ -20,6 +20,7 @@ alerts.webCronToken = <SECRETO_ALEATORIO_DE_AL_MENOS_32_CARACTERES>
 alerts.webCronRateLimit = 6
 alerts.webCronRateWindowSeconds = 60
 alerts.lockTimeoutSeconds = 900
+alerts.webCronBatchLimit = 25
 ```
 
 Generar el secreto fuera del servidor, por ejemplo:
@@ -50,9 +51,13 @@ hay un despacho activo, `429` si se excede el límite por IP y `500` ante una
 falla técnica. Un éxito devuelve `200` con `overdue`, `collected`, `sent`,
 `retry`, `skipped` y `errors`.
 
-El panel real de Ferozo todavía debe verificarse. No asumir que sus tareas
-programadas soportan POST o headers personalizados; la decisión del mecanismo
-productivo queda pendiente de esa comprobación.
+El panel real de Ferozo permite ejecutar comandos de shell, por lo que puede
+invocarse el endpoint seguro con `curl`, usando POST y el header
+`X-Cron-Token`.
+
+Para el esquema operativo actual se recomienda ejecutar el cron cada 30 minutos
+y limitar cada corrida a un lote acotado. La cola conserva los pendientes para
+la siguiente ejecución y la idempotencia evita duplicados.
 
 ## URL legacy conservada
 
@@ -102,3 +107,24 @@ Para producción no se requiere consola. El backend expone además `POST /supera
 8. Recién después verificar el panel real de Ferozo y decidir el mecanismo productivo.
 
 Nunca probar el primer disparo directamente contra producción.
+
+
+## Configuración recomendada en Ferozo
+
+Frecuencia:
+
+```text
+cada 30 minutos
+```
+
+Comando:
+
+```bash
+curl -fsS --connect-timeout 10 --max-time 120 -X POST -H "X-Cron-Token: <TOKEN>" "https://vogelconsultoria.com.ar/mantenimiento/internal/cron/notifications/dispatch"
+```
+
+Con `alerts.webCronBatchLimit = 25`, cada pasada despacha como máximo un lote
+acotado por canal. Si existe backlog, queda pendiente para la siguiente corrida.
+
+La clave de ejecución del ciclo tiene precisión de minuto para permitir dos
+corridas válidas dentro de la misma hora (por ejemplo 07:00 y 07:30).
