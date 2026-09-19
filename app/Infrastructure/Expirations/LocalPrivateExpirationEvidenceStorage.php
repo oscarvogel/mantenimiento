@@ -21,6 +21,11 @@ final class LocalPrivateExpirationEvidenceStorage implements ExpirationEvidenceS
 
     public function __construct(?string $root = null)
     {
+        if ($root === null && function_exists('env')) {
+            $configuredRoot = trim((string) env('expiration.evidenceStorageRoot', ''));
+            $root = $configuredRoot === '' ? null : $configuredRoot;
+        }
+
         $projectRoot = defined('ROOTPATH')
             ? rtrim((string) ROOTPATH, '\\/')
             : dirname(__DIR__, 4);
