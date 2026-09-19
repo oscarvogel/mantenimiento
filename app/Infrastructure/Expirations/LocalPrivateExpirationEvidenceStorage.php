@@ -30,11 +30,14 @@ final class LocalPrivateExpirationEvidenceStorage implements ExpirationEvidenceS
             ? rtrim((string) ROOTPATH, '\\/')
             : dirname(__DIR__, 4);
         $this->projectRoot = $projectRoot;
-        $defaultRoot = dirname($projectRoot)
-            . DIRECTORY_SEPARATOR . basename($projectRoot) . '-private'
-            . DIRECTORY_SEPARATOR . 'uploads'
-            . DIRECTORY_SEPARATOR . 'vencimientos';
-        $resolvedRoot = rtrim(trim($root ?? $defaultRoot), '\\/');
+
+        if ($root === null || trim($root) === '') {
+            throw new RuntimeException(
+                'Falta configurar expiration.evidenceStorageRoot con una ruta privada, absoluta, escribible y persistente.',
+            );
+        }
+
+        $resolvedRoot = rtrim(trim($root), '\\/');
         if ($resolvedRoot === '') {
             throw new RuntimeException('La raiz privada de evidencias no puede estar vacia.');
         }
