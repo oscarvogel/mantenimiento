@@ -170,6 +170,12 @@ final class SuperAdmin extends BaseController
             'ia_habilitada' => 'permit_empty|in_list[0,1]',
             'telefono' => 'permit_empty|max_length[50]',
             'estado' => 'required|in_list[0,1]',
+            'emails_informes' => 'permit_empty|max_length[1000]',
+            'informe_diario_habilitado' => 'permit_empty|in_list[0,1]',
+            'informe_diario_hora' => 'permit_empty|regex_match[/^(?:[01]\\d|2[0-3]):[0-5]\\d$/]',
+            'informe_semanal_habilitado' => 'permit_empty|in_list[0,1]',
+            'informe_semanal_dia' => 'permit_empty|in_list[1,2,3,4,5,6,7]',
+            'informe_semanal_hora' => 'permit_empty|regex_match[/^(?:[01]\\d|2[0-3]):[0-5]\\d$/]',
         ])) {
             return $this->validationFailure();
         }
@@ -184,9 +190,7 @@ final class SuperAdmin extends BaseController
                 $postedAi = (string) ((int) ($row['ia_habilitada'] ?? 0));
             }
 
-            /** @var UpdateCompanyHandler $handler */
-            $handler = service('updateCompany');
-            $handler->execute($this->actor(), $companyId, [
+            $companyData = [
                 'razon_social' => trim((string) $this->request->getPost('razon_social')),
                 'nombre_fantasia' => $this->nullablePost('nombre_fantasia'),
                 'cuit' => $this->nullablePost('cuit'),
@@ -198,7 +202,28 @@ final class SuperAdmin extends BaseController
                 'ia_habilitada' => (int) $postedAi,
                 'telefono' => $this->nullablePost('telefono'),
                 'estado' => (int) $this->request->getPost('estado'),
-            ]);
+            ];
+
+            $database = db_connect();
+            $hasReportInput = $this->request->getPost('emails_informes') !== null
+                || $this->request->getPost('informe_diario_habilitado') !== null
+                || $this->request->getPost('informe_semanal_habilitado') !== null;
+            if ($hasReportInput && $database->fieldExists('informe_diario_habilitado', 'empresas')) {
+                $reportEmails = trim((string) $this->request->getPost('emails_informes'));
+                $this->assertValidReportEmails($reportEmails);
+                $companyData += [
+                    'emails_informes' => $reportEmails === '' ? null : $reportEmails,
+                    'informe_diario_habilitado' => (int) ($this->request->getPost('informe_diario_habilitado') ?? 0),
+                    'informe_diario_hora' => trim((string) ($this->request->getPost('informe_diario_hora') ?: '07:00')),
+                    'informe_semanal_habilitado' => (int) ($this->request->getPost('informe_semanal_habilitado') ?? 0),
+                    'informe_semanal_dia' => (int) ($this->request->getPost('informe_semanal_dia') ?: 1),
+                    'informe_semanal_hora' => trim((string) ($this->request->getPost('informe_semanal_hora') ?: '07:00')),
+                ];
+            }
+
+            /** @var UpdateCompanyHandler $handler */
+            $handler = service('updateCompany');
+            $handler->execute($this->actor(), $companyId, $companyData);
             return redirect()->to('/superadmin')->with('success', 'Empresa actualizada correctamente.');
         } catch (Throwable $exception) {
             return $this->operationFailure($exception);
@@ -221,6 +246,35 @@ final class SuperAdmin extends BaseController
                 'actor' => $this->actor()->userId(), 'company' => $companyId, 'recipient' => $recipient,
             ]);
             return redirect()->to('/superadmin')->with('success', 'Correo de prueba enviado a ' . $recipient . '.');
+        } catch (Throwable $exception) {
+            return $this->operationFailure($exception);
+        }
+    }
+
+    public function testCompanyManagementReport(int $companyId): RedirectResponse
+    {
+        try {
+            $type = strtoupper(trim((string) ($this->request->getPost('tipo_informe') ?: 'DAILY')));
+            if (! in_array($type, ['DAILY', 'WEEKLY'], true)) {
+                throw new DomainException('El tipo de informe no es válido.');
+            }
+
+            $queued = service('managementReports')->queueTest($companyId, $type);
+            if ($queued !== 'queued') {
+                throw new DomainException('No se pudo preparar el informe. Revisá que la empresa tenga un destinatario de informes válido.');
+            }
+
+            $result = service('notificationDispatch')->execute(
+                'management-report-test-' . $companyId . '-' . strtolower($type) . '-' . date('YmdHis'),
+            );
+            if ((int) ($result['company_email_sent'] ?? 0) < 1) {
+                throw new DomainException('El informe quedó preparado pero no se confirmó el envío por email. Revisá la configuración SMTP.');
+            }
+
+            return redirect()->to('/superadmin')->with(
+                'success',
+                'Informe ' . ($type === 'DAILY' ? 'diario' : 'semanal') . ' de prueba enviado correctamente.',
+            );
         } catch (Throwable $exception) {
             return $this->operationFailure($exception);
         }
@@ -593,6 +647,21 @@ final class SuperAdmin extends BaseController
     {
         $value = trim((string) $this->request->getPost($field));
         return $value === '' ? null : $value;
+    }
+
+    private function assertValidReportEmails(string $raw): void
+    {
+        if ($raw === '') {
+            return;
+        }
+
+        $emails = preg_split('/[,;\\r\\n]+/', $raw) ?: [];
+        foreach ($emails as $email) {
+            $email = trim($email);
+            if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+                throw new DomainException('Uno de los correos de informes gerenciales no es válido: ' . $email);
+            }
+        }
     }
 
     private function validationFailure(): RedirectResponse
