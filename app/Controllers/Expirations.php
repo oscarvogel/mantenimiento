@@ -480,7 +480,7 @@ final class Expirations extends BaseController
             $uploadedFile = $this->request->getFile('evidencia');
             if ($uploadedFile !== null && $uploadedFile->isValid() && $uploadedFile->getError() === UPLOAD_ERR_OK) {
                 $hasEvidence = true;
-                $evidenceTempPath = $uploadedFile->getTempPath();
+                $evidenceTempPath = $uploadedFile->getTempName();
                 $evidenceOriginalName = $uploadedFile->getClientName() ?: $uploadedFile->getName();
                 $evidenceMime = (string) $uploadedFile->getClientMimeType();
                 $evidenceSize = (int) $uploadedFile->getSize();
@@ -701,12 +701,6 @@ final class Expirations extends BaseController
         if ($exception instanceof RuntimeException
             && str_contains(mb_strtolower($exception->getMessage()), 'evidencia')) {
             $message = $exception->getMessage();
-        }
-
-        // Diagnóstico temporal exclusivo de la rama de staging #335.
-        // Antes de mergear a main se elimina este detalle técnico.
-        if (! $exception instanceof DomainException) {
-            $message = '[STAGING #335] ' . $exception::class . ': ' . $exception->getMessage();
         }
 
         return redirect()->to($returnTo)
