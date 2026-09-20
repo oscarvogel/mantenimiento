@@ -53,9 +53,11 @@ $routes->group('superadmin', ['filter' => 'superadmin'], static function ($route
     $routes->post('empresas', 'SuperAdmin::createCompany');
     $routes->post('empresas/(:num)', 'SuperAdmin::updateCompany/$1');
     $routes->post('empresas/(:num)/notificaciones/prueba', 'SuperAdmin::testCompanyNotificationEmail/$1');
+    $routes->post('empresas/(:num)/informes/prueba', 'SuperAdmin::testCompanyManagementReport/$1');
     $routes->post('notificaciones/despachar', 'NotificationCron::manual');
     $routes->post('migraciones/aplicar', 'SuperAdmin::applyPendingMigrations');
     $routes->post('whatsapp/prueba', 'SuperAdmin::testWhatsApp');
+    $routes->post('whatsapp/preparar-piloto', 'SuperAdmin::prepareWhatsAppPilotScenario');
     $routes->get('configuracion/notificaciones', 'NotificationSettings::index');
     $routes->post('configuracion/notificaciones', 'NotificationSettings::update');
     $routes->post('configuracion/notificaciones/probar-email', 'NotificationSettings::testEmail');

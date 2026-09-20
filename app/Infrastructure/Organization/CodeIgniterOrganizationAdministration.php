@@ -26,8 +26,13 @@ final class CodeIgniterOrganizationAdministration implements OrganizationAdminis
         $companiesTotal = $this->database->table('empresas')->where('deleted_at', null)->countAllResults();
         $companiesPage = min($companiesPage, max(1, (int) ceil($companiesTotal / $companiesPerPage)));
         $companiesActive = $this->database->table('empresas')->where('deleted_at', null)->where('estado', 1)->countAllResults();
+        $companyFields = 'id, razon_social, nombre_fantasia, cuit, email, email_notificaciones, notificaciones_email_habilitadas, notificaciones_whatsapp_habilitadas, whatsapp_instance_id, telefono, estado';
+        if ($this->database->fieldExists('informe_diario_habilitado', 'empresas')) {
+            $companyFields .= ', emails_informes, informe_diario_habilitado, informe_diario_hora, informe_semanal_habilitado, informe_semanal_dia, informe_semanal_hora';
+        }
+
         $companies = $this->database->table('empresas')
-            ->select('id, razon_social, nombre_fantasia, cuit, email, email_notificaciones, notificaciones_email_habilitadas, notificaciones_whatsapp_habilitadas, whatsapp_instance_id, telefono, estado')
+            ->select($companyFields)
             ->where('deleted_at', null)
             ->orderBy('razon_social')
             ->orderBy('id')

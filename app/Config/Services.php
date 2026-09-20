@@ -298,6 +298,20 @@ class Services extends BaseService
             static::operationalNotificationCollector(),
             static::notificationDispatch(),
             static::notificationClock(),
+            static::managementReports(false),
+        );
+    }
+
+    public static function managementReports(bool $getShared = true): \App\Application\Notifications\ScheduleManagementReports
+    {
+        if ($getShared) {
+            return static::getSharedInstance('managementReports');
+        }
+
+        return new \App\Application\Notifications\ScheduleManagementReports(
+            static::notificationClock(false),
+            db_connect(),
+            (int) env('alerts.lecturasVencidasDias', 30),
         );
     }
 
@@ -384,11 +398,13 @@ class Services extends BaseService
             return static::getSharedInstance('whatsAppGateway');
         }
 
+        $settings = static::globalNotificationSettingsStore(false)->get();
+
         return new VogelWhatsAppApiGateway(
-            filter_var(env('whatsapp.enabled', false), FILTER_VALIDATE_BOOL),
-            trim((string) env('whatsapp.apiUrl', '')),
-            trim((string) env('whatsapp.apiKey', '')),
-            trim((string) env('whatsapp.instanceId', 'default')),
+            (bool) ($settings['whatsapp_enabled'] ?? false),
+            trim((string) ($settings['whatsapp_api_url'] ?? '')),
+            trim((string) ($settings['whatsapp_api_key'] ?? '')),
+            trim((string) ($settings['whatsapp_instance_id'] ?? 'default')),
             max(1, (int) env('whatsapp.timeoutSeconds', 15)),
         );
     }
@@ -402,6 +418,7 @@ class Services extends BaseService
         return new CodeIgniterWhatsAppNotificationDeliveryQueue(
             static::notificationClock(false),
             static::whatsAppGateway(false),
+            static::globalNotificationSettingsStore(false),
             db_connect(),
         );
     }

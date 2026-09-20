@@ -113,7 +113,11 @@ final class NotificationCron extends BaseController
 
         try {
             $summary = $this->technicalSummary(
-                service('notificationCycle')->execute(null, (int) env('alerts.lockTimeoutSeconds', 900)),
+                service('notificationCycle')->execute(
+                    null,
+                    (int) env('alerts.lockTimeoutSeconds', 900),
+                    max(1, (int) env('alerts.webCronBatchLimit', 25)),
+                ),
             );
             log_message('notice', 'Cron HTTP de notificaciones ejecutado: {summary}', [
                 'summary' => json_encode($summary, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),

@@ -45,14 +45,17 @@ final class SuperAdmin extends BaseController
         }
 
         $payload = service('administrationPayload')->superadmin($data);
+        $payload['migrations'] = $this->migrationDiagnostics();
+        $whatsAppSettings = service('globalNotificationSettingsStore')->get();
         $whatsAppGateway = service('whatsAppGateway');
         $payload['whatsapp'] = [
-            'enabled' => filter_var(env('whatsapp.enabled', false), FILTER_VALIDATE_BOOL),
+            'enabled' => (bool) ($whatsAppSettings['whatsapp_enabled'] ?? false),
             'available' => $whatsAppGateway->available(),
-            'apiUrl' => trim((string) env('whatsapp.apiUrl', '')),
-            'apiKeyConfigured' => trim((string) env('whatsapp.apiKey', '')) !== '',
-            'instanceId' => trim((string) env('whatsapp.instanceId', 'default')),
+            'apiUrl' => trim((string) ($whatsAppSettings['whatsapp_api_url'] ?? '')),
+            'apiKeyConfigured' => (bool) ($whatsAppSettings['whatsapp_api_key_present'] ?? false),
+            'instanceId' => trim((string) ($whatsAppSettings['whatsapp_instance_id'] ?? 'default')),
             'testAction' => base_url('superadmin/whatsapp/prueba'),
+            'preparePilotAction' => base_url('superadmin/whatsapp/preparar-piloto'),
         ];
         $payload['aiCompanyControls'] = array_map(static fn (array $company): array => [
             'id' => (int) $company['id'],
@@ -79,23 +82,40 @@ final class SuperAdmin extends BaseController
     public function applyPendingMigrations(): RedirectResponse
     {
         try {
+            $before = $this->migrationDiagnostics();
+            if (($before['pendingCount'] ?? 0) === 0) {
+                return redirect()->to('/superadmin')->with('success', 'No hay migraciones pendientes.');
+            }
+
             $runner = service('migrations');
             $result = $runner->latest();
             if ($result === false) {
                 throw new \RuntimeException('CodeIgniter informó fallo al ejecutar las migraciones.');
             }
 
-            log_message('notice', 'Superadministrador {actor} aplicó migraciones pendientes desde la interfaz.', [
+            $after = $this->migrationDiagnostics();
+            if (($after['pendingCount'] ?? 0) > 0) {
+                throw new \RuntimeException('El runner terminó pero todavía quedan migraciones pendientes: ' . implode(', ', $after['pending'] ?? []));
+            }
+
+            $applied = array_values(array_diff($before['pending'] ?? [], $after['pending'] ?? []));
+
+            log_message('notice', 'Superadministrador {actor} aplicó migraciones desde la interfaz: {migrations}', [
                 'actor' => $this->actor()->userId(),
+                'migrations' => implode(', ', $applied),
             ]);
 
-            return redirect()->to('/superadmin')->with('success', 'Migraciones pendientes aplicadas correctamente en ' . ENVIRONMENT . '.');
+            $message = $applied === []
+                ? 'No había migraciones nuevas para aplicar.'
+                : 'Migraciones aplicadas: ' . implode(', ', $applied) . '.';
+
+            return redirect()->to('/superadmin')->with('success', $message);
         } catch (Throwable $exception) {
             log_message('error', 'Falló aplicación manual de migraciones desde Superadmin: {message}', [
                 'message' => $exception->getMessage(),
             ]);
 
-            return redirect()->to('/superadmin')->with('error', 'No se pudieron aplicar las migraciones pendientes.');
+            return redirect()->to('/superadmin')->with('error', 'No se pudieron aplicar las migraciones pendientes: ' . $exception->getMessage());
         }
     }
 
@@ -150,6 +170,12 @@ final class SuperAdmin extends BaseController
             'ia_habilitada' => 'permit_empty|in_list[0,1]',
             'telefono' => 'permit_empty|max_length[50]',
             'estado' => 'required|in_list[0,1]',
+            'emails_informes' => 'permit_empty|max_length[1000]',
+            'informe_diario_habilitado' => 'permit_empty|in_list[0,1]',
+            'informe_diario_hora' => 'permit_empty|regex_match[/^(?:[01]\\d|2[0-3]):[0-5]\\d$/]',
+            'informe_semanal_habilitado' => 'permit_empty|in_list[0,1]',
+            'informe_semanal_dia' => 'permit_empty|in_list[1,2,3,4,5,6,7]',
+            'informe_semanal_hora' => 'permit_empty|regex_match[/^(?:[01]\\d|2[0-3]):[0-5]\\d$/]',
         ])) {
             return $this->validationFailure();
         }
@@ -164,9 +190,7 @@ final class SuperAdmin extends BaseController
                 $postedAi = (string) ((int) ($row['ia_habilitada'] ?? 0));
             }
 
-            /** @var UpdateCompanyHandler $handler */
-            $handler = service('updateCompany');
-            $handler->execute($this->actor(), $companyId, [
+            $companyData = [
                 'razon_social' => trim((string) $this->request->getPost('razon_social')),
                 'nombre_fantasia' => $this->nullablePost('nombre_fantasia'),
                 'cuit' => $this->nullablePost('cuit'),
@@ -178,7 +202,28 @@ final class SuperAdmin extends BaseController
                 'ia_habilitada' => (int) $postedAi,
                 'telefono' => $this->nullablePost('telefono'),
                 'estado' => (int) $this->request->getPost('estado'),
-            ]);
+            ];
+
+            $database = db_connect();
+            $hasReportInput = $this->request->getPost('emails_informes') !== null
+                || $this->request->getPost('informe_diario_habilitado') !== null
+                || $this->request->getPost('informe_semanal_habilitado') !== null;
+            if ($hasReportInput && $database->fieldExists('informe_diario_habilitado', 'empresas')) {
+                $reportEmails = trim((string) $this->request->getPost('emails_informes'));
+                $this->assertValidReportEmails($reportEmails);
+                $companyData += [
+                    'emails_informes' => $reportEmails === '' ? null : $reportEmails,
+                    'informe_diario_habilitado' => (int) ($this->request->getPost('informe_diario_habilitado') ?? 0),
+                    'informe_diario_hora' => trim((string) ($this->request->getPost('informe_diario_hora') ?: '07:00')),
+                    'informe_semanal_habilitado' => (int) ($this->request->getPost('informe_semanal_habilitado') ?? 0),
+                    'informe_semanal_dia' => (int) ($this->request->getPost('informe_semanal_dia') ?: 1),
+                    'informe_semanal_hora' => trim((string) ($this->request->getPost('informe_semanal_hora') ?: '07:00')),
+                ];
+            }
+
+            /** @var UpdateCompanyHandler $handler */
+            $handler = service('updateCompany');
+            $handler->execute($this->actor(), $companyId, $companyData);
             return redirect()->to('/superadmin')->with('success', 'Empresa actualizada correctamente.');
         } catch (Throwable $exception) {
             return $this->operationFailure($exception);
@@ -202,6 +247,236 @@ final class SuperAdmin extends BaseController
             ]);
             return redirect()->to('/superadmin')->with('success', 'Correo de prueba enviado a ' . $recipient . '.');
         } catch (Throwable $exception) {
+            return $this->operationFailure($exception);
+        }
+    }
+
+    public function testCompanyManagementReport(int $companyId): RedirectResponse
+    {
+        try {
+            $type = strtoupper(trim((string) ($this->request->getPost('tipo_informe') ?: 'DAILY')));
+            if (! in_array($type, ['DAILY', 'WEEKLY'], true)) {
+                throw new DomainException('El tipo de informe no es válido.');
+            }
+
+            $queued = service('managementReports')->queueTest($companyId, $type);
+            if ($queued !== 'queued') {
+                throw new DomainException('No se pudo preparar el informe. Revisá que la empresa tenga un destinatario de informes válido.');
+            }
+
+            $result = service('notificationDispatch')->execute(
+                'management-report-test-' . $companyId . '-' . strtolower($type) . '-' . date('YmdHis'),
+            );
+            if ((int) ($result['company_email_sent'] ?? 0) < 1) {
+                throw new DomainException('El informe quedó preparado pero no se confirmó el envío por email. Revisá la configuración SMTP.');
+            }
+
+            return redirect()->to('/superadmin')->with(
+                'success',
+                'Informe ' . ($type === 'DAILY' ? 'diario' : 'semanal') . ' de prueba enviado correctamente.',
+            );
+        } catch (Throwable $exception) {
+            return $this->operationFailure($exception);
+        }
+    }
+
+    public function prepareWhatsAppPilotScenario(): RedirectResponse
+    {
+        $db = db_connect();
+        $db->transBegin();
+
+        try {
+            $settings = service('globalNotificationSettingsStore')->get();
+            $gateway = service('whatsAppGateway');
+
+            if (! (bool) ($settings['whatsapp_pilot_enabled'] ?? false)) {
+                throw new DomainException('Activá el modo piloto de WhatsApp antes de preparar la prueba.');
+            }
+
+            $pilotPhone = $gateway->normalizePhone((string) ($settings['whatsapp_pilot_phone'] ?? ''));
+            if ($pilotPhone === null) {
+                throw new DomainException('Configurá un teléfono piloto válido antes de preparar la prueba.');
+            }
+
+            $instanceId = trim((string) ($settings['whatsapp_instance_id'] ?? 'default'));
+            if ($instanceId === '') {
+                throw new DomainException('Configurá una instancia de WhatsApp antes de preparar la prueba.');
+            }
+
+            $company = $db->table('empresas')
+                ->where('es_demo', 1)
+                ->where('estado', 1)
+                ->where('deleted_at', null)
+                ->orderBy('id', 'ASC')
+                ->get()->getRowArray();
+            if ($company === null) {
+                throw new DomainException('No existe una empresa demo activa. Creala o regenerala antes de preparar la prueba.');
+            }
+            $companyId = (int) $company['id'];
+
+            $db->table('empresas')->where('id', $companyId)->update([
+                'notificaciones_whatsapp_habilitadas' => 1,
+                'whatsapp_instance_id' => $instanceId,
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+
+            $equipment = $db->table('equipos')
+                ->select('id, sucursal_id, codigo')
+                ->where('empresa_id', $companyId)
+                ->where('codigo', 'DEMO98-CAM01')
+                ->where('estado', 'ACTIVO')
+                ->where('deleted_at', null)
+                ->get()->getRowArray();
+
+            if ($equipment === null) {
+                $equipment = $db->table('equipos')
+                    ->select('id, sucursal_id, codigo')
+                    ->where('empresa_id', $companyId)
+                    ->where('estado', 'ACTIVO')
+                    ->where('deleted_at', null)
+                    ->orderBy('id', 'ASC')
+                    ->get()->getRowArray();
+            }
+            if ($equipment === null) {
+                throw new DomainException('La empresa demo no tiene equipos activos para preparar la prueba.');
+            }
+
+            $equipmentId = (int) $equipment['id'];
+            $now = date('Y-m-d H:i:s');
+            $today = date('Y-m-d');
+
+            $driver = $db->table('empleados')
+                ->where('empresa_id', $companyId)
+                ->where('legajo', 'WA-PILOT-CHOFER')
+                ->get()->getRowArray();
+
+            $driverPayload = [
+                'nombre' => 'Chofer',
+                'apellido' => 'Piloto WhatsApp',
+                'telefono' => '3764000001',
+                'activo' => 1,
+                'deleted_at' => null,
+                'updated_at' => $now,
+            ];
+
+            if ($driver === null) {
+                $db->table('empleados')->insert($driverPayload + [
+                    'empresa_id' => $companyId,
+                    'legajo' => 'WA-PILOT-CHOFER',
+                    'observaciones' => 'Empleado ficticio exclusivo para pruebas controladas de WhatsApp.',
+                    'created_at' => $now,
+                ]);
+                $driverId = (int) $db->insertID();
+            } else {
+                $driverId = (int) $driver['id'];
+                $db->table('empleados')->where('id', $driverId)->where('empresa_id', $companyId)->update($driverPayload);
+            }
+
+            $db->table('employee_equipment_assignments')
+                ->where('empresa_id', $companyId)
+                ->where('equipo_id', $equipmentId)
+                ->where('rol', 'CHOFER')
+                ->where('fecha_hasta', null)
+                ->where('empleado_id !=', $driverId)
+                ->update([
+                    'fecha_hasta' => $today,
+                    'updated_at' => $now,
+                ]);
+
+            $assignment = $db->table('employee_equipment_assignments')
+                ->where('empresa_id', $companyId)
+                ->where('equipo_id', $equipmentId)
+                ->where('empleado_id', $driverId)
+                ->where('rol', 'CHOFER')
+                ->where('fecha_hasta', null)
+                ->get()->getRowArray();
+
+            if ($assignment === null) {
+                $db->table('employee_equipment_assignments')->insert([
+                    'empresa_id' => $companyId,
+                    'empleado_id' => $driverId,
+                    'equipo_id' => $equipmentId,
+                    'rol' => 'CHOFER',
+                    'fecha_desde' => $today,
+                    'fecha_hasta' => null,
+                    'observaciones' => 'Asignación exclusiva para prueba piloto de WhatsApp.',
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+            }
+
+            $type = $db->table('tipos_vencimiento')
+                ->where('empresa_id', $companyId)
+                ->where('nombre', 'PRUEBA WHATSAPP PILOTO')
+                ->get()->getRowArray();
+
+            if ($type === null) {
+                $db->table('tipos_vencimiento')->insert([
+                    'empresa_id' => $companyId,
+                    'nombre' => 'PRUEBA WHATSAPP PILOTO',
+                    'aplica_a' => 'EQUIPO',
+                    'descripcion' => 'Tipo exclusivo para validar notificaciones WhatsApp en modo piloto.',
+                    'dias_aviso_previo' => 30,
+                    'requiere_documento' => 0,
+                    'activo' => 1,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+                $typeId = (int) $db->insertID();
+            } else {
+                $typeId = (int) $type['id'];
+                $db->table('tipos_vencimiento')->where('id', $typeId)->where('empresa_id', $companyId)->update([
+                    'aplica_a' => 'EQUIPO',
+                    'dias_aviso_previo' => 30,
+                    'activo' => 1,
+                    'deleted_at' => null,
+                    'updated_at' => $now,
+                ]);
+            }
+
+            // Eliminar sólo vencimientos de este escenario de prueba para generar una clave lógica nueva en cada ejecución.
+            $db->table('vencimientos')
+                ->where('empresa_id', $companyId)
+                ->where('equipo_id', $equipmentId)
+                ->where('tipo_vencimiento_id', $typeId)
+                ->where('origen', 'PRUEBA_WHATSAPP')
+                ->delete();
+
+            $expiresAt = date('Y-m-d', strtotime('+1 day'));
+            $db->table('vencimientos')->insert([
+                'empresa_id' => $companyId,
+                'sucursal_id' => $equipment['sucursal_id'] === null ? null : (int) $equipment['sucursal_id'],
+                'tipo_vencimiento_id' => $typeId,
+                'sujeto_tipo' => 'EQUIPO',
+                'equipo_id' => $equipmentId,
+                'empleado_id' => null,
+                'fecha_emision' => $today,
+                'fecha_vencimiento' => $expiresAt,
+                'numero_documento' => 'WA-PILOT-' . date('YmdHis'),
+                'observaciones' => 'Escenario generado automáticamente para prueba piloto de WhatsApp.',
+                'origen' => 'PRUEBA_WHATSAPP',
+                'activo' => 1,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+            $expirationId = (int) $db->insertID();
+
+            if ($db->transStatus() === false) {
+                throw new \RuntimeException('La base de datos rechazó la preparación del escenario piloto.');
+            }
+
+            $db->transCommit();
+
+            return redirect()->to('/superadmin')->with(
+                'success',
+                'Prueba piloto preparada: empresa demo, equipo ' . (string) $equipment['codigo']
+                . ', chofer Chofer Piloto WhatsApp, vencimiento #' . $expirationId
+                . ' para ' . date('d/m/Y', strtotime($expiresAt))
+                . '. Destino seguro: ' . $pilotPhone . '. Ahora ejecutá "Procesar notificaciones ahora".',
+            );
+        } catch (Throwable $exception) {
+            $db->transRollback();
+
             return $this->operationFailure($exception);
         }
     }
@@ -296,6 +571,69 @@ final class SuperAdmin extends BaseController
         }
     }
 
+    /** @return array{pendingCount:int,pending:list<string>,appliedCount:int,target319Registered:bool,duplicateActiveGroups:int,duplicateActiveRows:int} */
+    private function migrationDiagnostics(): array
+    {
+        $runner = service('migrations');
+        $history = $runner->getHistory();
+        $appliedVersions = [];
+        foreach ($history as $entry) {
+            $version = trim((string) ($entry->version ?? ''));
+            if ($version !== '') {
+                $appliedVersions[$version] = true;
+            }
+        }
+
+        $available = [];
+        $migrationDir = APPPATH . 'Database/Migrations';
+        foreach (scandir($migrationDir) ?: [] as $filename) {
+            if (! str_ends_with($filename, '.php')) {
+                continue;
+            }
+            $name = basename($filename, '.php');
+            if (preg_match('/^(\\d{4}-\\d{2}-\\d{2}-\\d{6})_(.+)$/', $name, $matches) !== 1) {
+                continue;
+            }
+            $available[$matches[1]] = $name;
+        }
+        ksort($available);
+
+        $pending = [];
+        foreach ($available as $version => $name) {
+            if (! isset($appliedVersions[$version])) {
+                $pending[] = $name;
+            }
+        }
+
+        $duplicateActiveGroups = 0;
+        $duplicateActiveRows = 0;
+        $db = db_connect();
+        if ($db->tableExists('vencimientos')) {
+            $rows = $db->query(
+                "SELECT COUNT(*) AS total
+                 FROM vencimientos
+                 WHERE activo = 1 AND deleted_at IS NULL
+                 GROUP BY empresa_id, tipo_vencimiento_id, sujeto_tipo, COALESCE(equipo_id, 0), COALESCE(empleado_id, 0)
+                 HAVING COUNT(*) > 1"
+            )->getResultArray();
+
+            $duplicateActiveGroups = count($rows);
+            foreach ($rows as $row) {
+                $duplicateActiveRows += (int) ($row['total'] ?? 0);
+            }
+        }
+
+        return [
+            'pendingCount' => count($pending),
+            'pending' => $pending,
+            'appliedCount' => count($appliedVersions),
+            'target319Registered' => isset($appliedVersions['2026-09-18-083000'])
+                || isset($appliedVersions['2026-09-18-140500']),
+            'duplicateActiveGroups' => $duplicateActiveGroups,
+            'duplicateActiveRows' => $duplicateActiveRows,
+        ];
+    }
+
     private function actor(): \App\Application\Identity\ActorContext
     {
         $actor = (new SessionActorContext())->current();
@@ -309,6 +647,21 @@ final class SuperAdmin extends BaseController
     {
         $value = trim((string) $this->request->getPost($field));
         return $value === '' ? null : $value;
+    }
+
+    private function assertValidReportEmails(string $raw): void
+    {
+        if ($raw === '') {
+            return;
+        }
+
+        $emails = preg_split('/[,;\\r\\n]+/', $raw) ?: [];
+        foreach ($emails as $email) {
+            $email = trim($email);
+            if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+                throw new DomainException('Uno de los correos de informes gerenciales no es válido: ' . $email);
+            }
+        }
     }
 
     private function validationFailure(): RedirectResponse

@@ -47,6 +47,8 @@ final class NotificationSettings extends BaseController
                 'whatsAppApiUrl' => (string) $settings['whatsapp_api_url'],
                 'whatsAppApiKeyConfigured' => (bool) $settings['whatsapp_api_key_present'],
                 'whatsAppInstanceId' => (string) $settings['whatsapp_instance_id'],
+                'whatsAppPilotEnabled' => (bool) ($settings['whatsapp_pilot_enabled'] ?? true),
+                'whatsAppPilotPhone' => (string) ($settings['whatsapp_pilot_phone'] ?? ''),
                 'source' => (string) $settings['source'],
                 'updatedAt' => (string) $settings['updated_at'],
             ],
@@ -56,7 +58,9 @@ final class NotificationSettings extends BaseController
                 'whatsApp' => $this->status((bool) $settings['whatsapp_enabled'], $whatsAppConfigured),
             ],
             'migration' => [
-                'required' => ! db_connect()->tableExists('configuracion_canales_globales'),
+                'required' => ! db_connect()->tableExists('configuracion_canales_globales')
+                    || ! db_connect()->fieldExists('whatsapp_pilot_enabled', 'configuracion_canales_globales')
+                    || ! db_connect()->fieldExists('whatsapp_pilot_phone', 'configuracion_canales_globales'),
             ],
             'actions' => [
                 'save' => base_url('superadmin/configuracion/notificaciones'),
@@ -90,6 +94,8 @@ final class NotificationSettings extends BaseController
                 'whatsapp_api_url' => $this->request->getPost('whatsapp_api_url'),
                 'whatsapp_api_key' => $this->request->getPost('whatsapp_api_key'),
                 'whatsapp_instance_id' => $this->request->getPost('whatsapp_instance_id'),
+                'whatsapp_pilot_enabled' => $this->checked('whatsapp_pilot_enabled'),
+                'whatsapp_pilot_phone' => $this->request->getPost('whatsapp_pilot_phone'),
             ], $this->actor()->userId());
 
             return redirect()->to('/superadmin/configuracion/notificaciones')->with('success', 'Configuración de notificaciones guardada.');

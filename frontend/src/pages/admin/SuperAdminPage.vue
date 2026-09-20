@@ -88,17 +88,45 @@ const sections = [
       </div>
     </section>
 
-    <section v-if="activeSection === 'summary' || activeSection === 'notifications'" class="mb-8 flex flex-col gap-4 rounded-xl border border-primary/30 bg-primary-subtle p-5 shadow-card sm:flex-row sm:items-center sm:justify-between sm:p-6" aria-labelledby="migration-process-title">
-      <div>
-        <h2 id="migration-process-title" class="font-semibold text-ink">Base de datos · migraciones pendientes</h2>
-        <p class="mt-1 max-w-2xl text-sm leading-6 text-ink-muted">Ejecuta desde el sistema únicamente las migraciones todavía pendientes. Usalo después de desplegar cambios que agregan tablas o columnas.</p>
+    <section v-if="(activeSection === 'summary' || activeSection === 'notifications') && data.migrations" class="mb-8 rounded-xl border border-primary/30 bg-primary-subtle p-5 shadow-card sm:p-6" aria-labelledby="migration-process-title">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 id="migration-process-title" class="font-semibold text-ink">Base de datos · migraciones</h2>
+          <p class="mt-1 text-sm leading-6 text-ink-muted">
+            {{ data.migrations.pendingCount > 0 ? `${data.migrations.pendingCount} migración(es) pendiente(s).` : 'Base de datos al día. No hay migraciones pendientes.' }}
+          </p>
+        </div>
+        <form v-if="data.migrations.pendingCount > 0" method="post" :action="data.actions.applyMigrations" data-confirm data-confirm-title="¿Aplicar migraciones pendientes?" data-confirm-text="Se ejecutarán únicamente las migraciones que todavía no fueron aplicadas." data-confirm-button="Aplicar migraciones" class="shrink-0">
+          <CsrfField :csrf="data.csrf" />
+          <button type="submit" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary/90">
+            Aplicar {{ data.migrations.pendingCount }} pendiente(s)
+          </button>
+        </form>
       </div>
-      <form method="post" :action="data.actions.applyMigrations" data-confirm data-confirm-title="¿Aplicar migraciones pendientes?" data-confirm-text="Se ejecutarán únicamente las migraciones que todavía no fueron aplicadas." data-confirm-button="Aplicar migraciones" class="shrink-0">
-        <CsrfField :csrf="data.csrf" />
-        <button type="submit" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary/90">
-          Aplicar migraciones
-        </button>
-      </form>
+
+      <div class="mt-4 grid gap-3 md:grid-cols-3">
+        <div class="rounded-lg border border-border bg-surface-raised p-4">
+          <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Fix #319</p>
+          <p class="mt-1 text-sm font-semibold" :class="data.migrations.target319Registered ? 'text-success' : 'text-warning-strong'">
+            {{ data.migrations.target319Registered ? 'Migración registrada' : 'Migración NO registrada' }}
+          </p>
+        </div>
+        <div class="rounded-lg border border-border bg-surface-raised p-4">
+          <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Duplicados activos</p>
+          <p class="mt-1 text-sm font-semibold text-ink">{{ data.migrations.duplicateActiveGroups }} grupo(s) · {{ data.migrations.duplicateActiveRows }} registro(s)</p>
+        </div>
+        <div class="rounded-lg border border-border bg-surface-raised p-4">
+          <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Migraciones registradas</p>
+          <p class="mt-1 text-sm font-semibold text-ink">{{ data.migrations.appliedCount }}</p>
+        </div>
+      </div>
+
+      <div v-if="data.migrations.pendingCount > 0" class="mt-4 rounded-lg border border-warning/25 bg-warning-subtle p-4">
+        <p class="text-sm font-semibold text-warning-foreground">Pendientes detectadas</p>
+        <ul class="mt-2 space-y-1 font-mono text-xs text-ink-muted">
+          <li v-for="migration in data.migrations.pending" :key="migration">{{ migration }}</li>
+        </ul>
+      </div>
     </section>
 
     <section v-if="activeSection === 'notifications' && data.permissions.companiesEdit" class="mb-8 flex flex-col gap-4 rounded-xl border border-border bg-surface-raised p-5 shadow-card sm:flex-row sm:items-center sm:justify-between sm:p-6" aria-labelledby="notification-process-title">
@@ -161,6 +189,18 @@ const sections = [
             Enviar prueba
           </button>
         </form>
+        <form method="post" :action="data.whatsapp.preparePilotAction" class="sm:col-span-2 lg:col-span-4 rounded-lg border border-warning/30 bg-warning-subtle p-4">
+          <CsrfField :csrf="data.csrf" />
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p class="text-sm font-semibold text-warning-strong">Prueba automática segura</p>
+              <p class="mt-1 text-xs leading-5 text-warning-strong">Genera en la empresa demo un chofer ficticio, su asignación a un equipo y un vencimiento próximo. No envía nada todavía.</p>
+            </div>
+            <button type="submit" :disabled="!data.whatsapp.available" class="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg border border-warning px-4 py-2.5 text-sm font-semibold text-warning-strong disabled:cursor-not-allowed disabled:opacity-50">
+              Preparar prueba piloto
+            </button>
+          </div>
+        </form>
       </div>
     </section>
 
@@ -179,6 +219,9 @@ const sections = [
             <StatusBadge :active="company.active" active-label="Empresa activa" inactive-label="Empresa inactiva" />
             <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold" :class="company.notificationEmailEnabled && (company.notificationEmail || company.email) ? 'bg-success-subtle text-success-strong' : 'bg-warning-subtle text-warning-foreground'">
               {{ company.notificationEmailEnabled && (company.notificationEmail || company.email) ? 'Email habilitado' : 'Email pendiente' }}
+            </span>
+            <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold" :class="company.dailyReportEnabled || company.weeklyReportEnabled ? 'bg-primary-subtle text-primary' : 'bg-surface-muted text-ink-muted'">
+              {{ company.dailyReportEnabled || company.weeklyReportEnabled ? 'Informes gerenciales activos' : 'Informes gerenciales desactivados' }}
             </span>
           </div>
         </div>
@@ -398,6 +441,50 @@ const sections = [
               <input type="checkbox" name="notificaciones_email_habilitadas" value="1" :checked="company.notificationEmailEnabled" class="mt-0.5 size-4 rounded border-border-strong text-primary focus:ring-primary" />
               <span><span class="block text-sm font-medium text-ink">Enviar notificaciones de mantenimiento por email</span><span class="mt-1 block text-xs leading-5 text-ink-muted">Al desactivarlo se conserva el correo configurado, pero no se generan entregas empresariales.</span></span>
             </label>
+            <div class="rounded-lg border border-border bg-surface-subtle p-4 sm:col-span-2">
+              <div class="mb-3">
+                <p class="text-sm font-semibold text-ink">Informes para dueño / gerencia</p>
+                <p class="mt-1 text-xs leading-5 text-ink-muted">Se envían separados de las alertas operativas. Podés indicar varios correos separados por coma.</p>
+                <p class="mt-2 text-xs leading-5 text-ink-muted">La hora no crea un cron por empresa: el programador global revisa qué informes están vencidos en cada ejecución. En producción puede ejecutarse, por ejemplo, cada 30 minutos.</p>
+              </div>
+              <label class="block">
+                <span class="mb-1.5 block text-sm font-medium text-ink">Destinatarios de informes</span>
+                <input name="emails_informes" maxlength="1000" :value="company.managementReportEmails" placeholder="gerencia@empresa.com, dueño@empresa.com" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                <span class="mt-1 block text-xs text-ink-muted">Si queda vacío se usa el correo de notificaciones y luego el email general.</span>
+              </label>
+              <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                <div class="rounded-lg border border-border bg-white p-3">
+                  <label class="flex items-start gap-3">
+                    <input type="hidden" name="informe_diario_habilitado" value="0" />
+                    <input type="checkbox" name="informe_diario_habilitado" value="1" :checked="company.dailyReportEnabled" class="mt-0.5 size-4 rounded border-border-strong text-primary focus:ring-primary" />
+                    <span class="text-sm font-medium text-ink">Resumen diario</span>
+                  </label>
+                  <label class="mt-3 block">
+                    <span class="mb-1 block text-xs font-medium text-ink-muted">Hora</span>
+                    <input type="time" name="informe_diario_hora" :value="company.dailyReportTime || '07:00'" class="min-h-10 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink" />
+                  </label>
+                </div>
+                <div class="rounded-lg border border-border bg-white p-3">
+                  <label class="flex items-start gap-3">
+                    <input type="hidden" name="informe_semanal_habilitado" value="0" />
+                    <input type="checkbox" name="informe_semanal_habilitado" value="1" :checked="company.weeklyReportEnabled" class="mt-0.5 size-4 rounded border-border-strong text-primary focus:ring-primary" />
+                    <span class="text-sm font-medium text-ink">Resumen semanal</span>
+                  </label>
+                  <div class="mt-3 grid grid-cols-2 gap-2">
+                    <label class="block">
+                      <span class="mb-1 block text-xs font-medium text-ink-muted">Día</span>
+                      <select name="informe_semanal_dia" :value="company.weeklyReportDay || 1" class="min-h-10 w-full rounded-lg border border-border-strong bg-white px-2 py-2 text-sm text-ink">
+                        <option :value="1">Lunes</option><option :value="2">Martes</option><option :value="3">Miércoles</option><option :value="4">Jueves</option><option :value="5">Viernes</option><option :value="6">Sábado</option><option :value="7">Domingo</option>
+                      </select>
+                    </label>
+                    <label class="block">
+                      <span class="mb-1 block text-xs font-medium text-ink-muted">Hora</span>
+                      <input type="time" name="informe_semanal_hora" :value="company.weeklyReportTime || '07:00'" class="min-h-10 w-full rounded-lg border border-border-strong bg-white px-2 py-2 text-sm text-ink" />
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
             <div class="flex flex-wrap gap-2 sm:col-span-2">
               <button type="submit" class="inline-flex min-h-11 items-center justify-center rounded-lg border border-primary px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary-subtle">Guardar empresa</button>
               <button
@@ -413,6 +500,36 @@ const sections = [
               >
                 Enviar correo de prueba
               </button>
+              <button
+                type="submit"
+                :formaction="company.actions.testManagementReport"
+                name="tipo_informe"
+                value="DAILY"
+                formnovalidate
+                data-confirm
+                data-confirm-title="¿Enviar informe diario de prueba?"
+                data-confirm-text="Usará los datos actuales de la empresa y los destinatarios guardados."
+                data-confirm-button="Enviar informe"
+                :disabled="!company.active"
+                class="inline-flex min-h-11 items-center justify-center rounded-lg border border-primary px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary-subtle disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Probar informe diario
+              </button>
+              <button
+                type="submit"
+                :formaction="company.actions.testManagementReport"
+                name="tipo_informe"
+                value="WEEKLY"
+                formnovalidate
+                data-confirm
+                data-confirm-title="¿Enviar informe semanal de prueba?"
+                data-confirm-text="Usará los datos actuales de la empresa y los destinatarios guardados."
+                data-confirm-button="Enviar informe"
+                :disabled="!company.active"
+                class="inline-flex min-h-11 items-center justify-center rounded-lg border border-border-strong px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Probar informe semanal
+              </button>
             </div>
             <p class="sm:col-span-2 text-xs leading-5 text-ink-muted">La prueba usa la configuración guardada. Si cambiaste el correo, guardá primero la empresa y después enviá la prueba.</p>
           </form>
@@ -423,6 +540,7 @@ const sections = [
             <div><dt class="text-ink-subtle">Email general</dt><dd class="mt-1 break-all font-medium text-ink">{{ company.email || '—' }}</dd></div>
             <div><dt class="text-ink-subtle">Teléfono</dt><dd class="mt-1 font-medium text-ink">{{ company.telefono || '—' }}</dd></div>
             <div class="sm:col-span-2"><dt class="text-ink-subtle">Notificaciones de mantenimiento</dt><dd class="mt-1 break-all font-medium text-ink">{{ company.notificationEmail || company.email || 'Sin destinatario' }}</dd><dd class="mt-1 text-xs text-ink-muted">{{ company.notificationEmail ? 'Correo específico' : (company.email ? 'Fallback al email general' : 'No se enviarán emails') }} · {{ company.notificationEmailEnabled ? 'Habilitadas' : 'Deshabilitadas' }}</dd></div>
+            <div class="sm:col-span-2"><dt class="text-ink-subtle">Informes gerenciales</dt><dd class="mt-1 break-all font-medium text-ink">{{ company.managementReportEmails || company.notificationEmail || company.email || 'Sin destinatario' }}</dd><dd class="mt-1 text-xs text-ink-muted">Diario: {{ company.dailyReportEnabled ? company.dailyReportTime : 'deshabilitado' }} · Semanal: {{ company.weeklyReportEnabled ? 'día ' + company.weeklyReportDay + ' · ' + company.weeklyReportTime : 'deshabilitado' }}</dd></div>
           </dl>
         </article>
       </div>

@@ -106,6 +106,14 @@ final class CodeIgniterExpirationImportGateway implements ExpirationImportGatewa
             throw new RuntimeException('No se pudo persistir el vencimiento importado.');
         }
 
+        (new CodeIgniterExpirationActiveVersionManager($this->database))->reconcile(
+            $data->companyId,
+            $typeId,
+            $data->subjectType,
+            $data->subjectId,
+            $data->actorUserId,
+        );
+
         return $id;
     }
 

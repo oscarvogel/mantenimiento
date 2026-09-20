@@ -4,18 +4,21 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Notifications;
 
+use App\Application\Notifications\Port\GlobalNotificationSettingsStore;
 use App\Application\Notifications\Port\NotificationClock;
 use App\Application\Notifications\Port\WhatsAppNotificationDeliveryQueue;
 use App\Application\Notifications\Port\WhatsAppNotificationGateway;
 use App\Domain\Notifications\NotifiableEvent;
 use CodeIgniter\Database\BaseConnection;
 use Config\Database;
+use Throwable;
 
 final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNotificationDeliveryQueue
 {
     public function __construct(
         private readonly NotificationClock $clock,
         private readonly WhatsAppNotificationGateway $gateway,
+        private readonly GlobalNotificationSettingsStore $settings,
         private ?BaseConnection $db = null,
     ) {
         $this->db ??= Database::connect();
@@ -39,7 +42,8 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
         }
         $instanceId = trim((string) ($company['whatsapp_instance_id'] ?? ''));
         if ($instanceId === '') {
-            $instanceId = trim((string) env('whatsapp.instanceId', 'default'));
+            $globalSettings = $this->settings->get();
+            $instanceId = trim((string) ($globalSettings['whatsapp_instance_id'] ?? 'default'));
         }
 
         if (! in_array($event->type(), ['equipo.vencimiento_proximo', 'equipo.vencimiento_vencido'], true)
@@ -69,10 +73,16 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             return;
         }
 
-        $phone = $this->gateway->normalizePhone((string) ($driver['telefono'] ?? ''));
+        $realPhone = $this->gateway->normalizePhone((string) ($driver['telefono'] ?? ''));
         $employeeId = (int) $driver['empleado_id'];
         $key = $event->logicalKey() . ':chofer:' . $employeeId . ':whatsapp';
         $now = $this->clock->now()->format('Y-m-d H:i:s');
+
+        $settings = $this->settings->get();
+        $pilotEnabled = (bool) ($settings['whatsapp_pilot_enabled'] ?? true);
+        $pilotPhone = $this->gateway->normalizePhone((string) ($settings['whatsapp_pilot_phone'] ?? ''));
+        $phone = $pilotEnabled ? $pilotPhone : $realPhone;
+        $message = $this->message($event, $driver, $pilotEnabled, $realPhone !== null);
 
         if ($phone === null) {
             $this->db->table('notificacion_whatsapp_entregas')->ignore(true)->insert([
@@ -84,9 +94,11 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
                 'external_ref' => 'mantenimiento:' . $event->logicalKey() . ':chofer:' . $employeeId,
                 'telefono' => null,
                 'instance_id' => $instanceId,
-                'mensaje' => $this->message($event, $driver),
+                'mensaje' => $message,
                 'estado' => 'OMITIDA',
-                'ultimo_error' => 'El chofer asignado no tiene un celular válido para WhatsApp.',
+                'ultimo_error' => $pilotEnabled
+                    ? 'Modo piloto activo pero no hay un teléfono piloto válido configurado.'
+                    : 'El chofer asignado no tiene un celular válido para WhatsApp.',
                 'created_at' => $now,
                 'updated_at' => $now,
             ]);
@@ -102,16 +114,146 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             'external_ref' => 'mantenimiento:' . $event->logicalKey() . ':chofer:' . $employeeId,
             'telefono' => $phone,
             'instance_id' => $instanceId,
-            'mensaje' => $this->message($event, $driver),
+            'mensaje' => $message,
             'estado' => 'PENDIENTE',
             'created_at' => $now,
             'updated_at' => $now,
         ]);
     }
 
+    public function scheduleWeeklyReadingReminders(): void
+    {
+        if (! $this->gateway->available()) {
+            return;
+        }
+
+        $settings = $this->settings->get();
+        $pilotEnabled = (bool) ($settings['whatsapp_pilot_enabled'] ?? true);
+        $pilotPhone = $this->gateway->normalizePhone((string) ($settings['whatsapp_pilot_phone'] ?? ''));
+        $globalInstanceId = trim((string) ($settings['whatsapp_instance_id'] ?? 'default'));
+        $now = $this->clock->now();
+        $weekKey = $now->format('o-\\WW');
+        $timestamp = $now->format('Y-m-d H:i:s');
+
+        $rows = $this->db->table('employee_equipment_assignments a')
+            ->select('a.id assignment_id, a.empresa_id, a.equipo_id, a.empleado_id')
+            ->select('emp.nombre, emp.apellido, emp.telefono')
+            ->select('e.codigo equipo_codigo, e.patente, e.estado equipo_estado')
+            ->select('te.controla_km')
+            ->select('co.notificaciones_whatsapp_habilitadas, co.whatsapp_instance_id')
+            ->select('t.token_cifrado')
+            ->join('empleados emp', 'emp.id = a.empleado_id AND emp.empresa_id = a.empresa_id', 'inner')
+            ->join('equipos e', 'e.id = a.equipo_id AND e.empresa_id = a.empresa_id', 'inner')
+            ->join('tipos_equipo te', 'te.id = e.tipo_equipo_id', 'inner')
+            ->join('empresas co', 'co.id = a.empresa_id', 'inner')
+            ->join('equipo_tokens_publicos t', 't.equipo_id = e.id AND t.empresa_id = e.empresa_id AND t.activo = 1 AND t.revoked_at IS NULL', 'inner')
+            ->where('a.rol', 'CHOFER')
+            ->where('a.fecha_hasta', null)
+            ->where('emp.activo', 1)
+            ->where('emp.deleted_at', null)
+            ->where('e.estado', 'ACTIVO')
+            ->where('e.deleted_at', null)
+            ->where('te.controla_km', 1)
+            ->where('co.estado', 1)
+            ->where('co.deleted_at', null)
+            ->where('co.notificaciones_whatsapp_habilitadas', 1)
+            ->orderBy('a.id', 'DESC')
+            ->get()
+            ->getResultArray();
+
+        $seenEquipment = [];
+        foreach ($rows as $row) {
+            $equipmentId = (int) $row['equipo_id'];
+            if ($equipmentId <= 0 || isset($seenEquipment[$equipmentId])) {
+                continue;
+            }
+            $seenEquipment[$equipmentId] = true;
+
+            $employeeId = (int) $row['empleado_id'];
+            $companyId = (int) $row['empresa_id'];
+            $realPhone = $this->gateway->normalizePhone((string) ($row['telefono'] ?? ''));
+            $phone = $pilotEnabled ? $pilotPhone : $realPhone;
+            $instanceId = trim((string) ($row['whatsapp_instance_id'] ?? ''));
+            if ($instanceId === '') {
+                $instanceId = $globalInstanceId;
+            }
+
+            $name = trim((string) ($row['nombre'] ?? '') . ' ' . (string) ($row['apellido'] ?? ''));
+            $equipmentLabel = trim((string) ($row['equipo_codigo'] ?? ''));
+            $plate = trim((string) ($row['patente'] ?? ''));
+            if ($plate !== '') {
+                $equipmentLabel .= ($equipmentLabel === '' ? '' : ' · ') . $plate;
+            }
+            if ($equipmentLabel === '') {
+                $equipmentLabel = 'Equipo #' . $equipmentId;
+            }
+
+            $token = null;
+            try {
+                $encrypted = (string) ($row['token_cifrado'] ?? '');
+                if ($encrypted !== '') {
+                    $decoded = base64_decode($encrypted, true);
+                    if ($decoded !== false) {
+                        $token = service('encrypter')->decrypt($decoded);
+                    }
+                }
+            } catch (Throwable $exception) {
+                log_message('warning', 'No se pudo recuperar el token QR público para recordatorio semanal del equipo {equipment}: {message}', [
+                    'equipment' => $equipmentId,
+                    'message' => $exception->getMessage(),
+                ]);
+            }
+
+            if (! is_string($token) || trim($token) === '') {
+                continue;
+            }
+
+            $url = base_url('mantenimiento/publico/equipo/' . rawurlencode($token) . '/lectura');
+            $deliveryKey = 'recordatorio_lectura_semanal:empresa:' . $companyId
+                . ':equipo:' . $equipmentId
+                . ':chofer:' . $employeeId
+                . ':semana:' . $weekKey;
+
+            $pilotHeader = $pilotEnabled
+                ? "🧪 *PRUEBA CONTROLADA · NO ENVIADO AL DESTINATARIO REAL*\n"
+                    . "*Destinatario previsto:* " . ($name === '' ? 'Chofer asignado' : $name) . "\n"
+                    . "*Teléfono real:* " . ($realPhone === null ? 'no válido o no cargado' : 'configurado') . "\n\n"
+                : '';
+
+            $message = $pilotHeader
+                . "*Vogel Consultoría · Mantenimiento*\n\n"
+                . ($name === '' ? 'Hola.' : 'Hola ' . $name . '.') . "\n\n"
+                . "🚛 *Recordatorio semanal de kilometraje*\n"
+                . "Por favor, cargá el kilometraje actual de *" . $equipmentLabel . "* para mantener actualizado el seguimiento de mantenimiento.\n\n"
+                . "👉 *Cargar kilometraje:*\n" . $url . "\n\n"
+                . "No necesitás iniciar sesión: el enlace corresponde al acceso QR del equipo.\n\n"
+                . "_Aviso automático del Sistema de Mantenimiento._";
+
+            $this->db->table('notificacion_whatsapp_entregas')->ignore(true)->insert([
+                'empresa_id' => $companyId,
+                'equipo_id' => $equipmentId,
+                'empleado_id' => $employeeId,
+                'tipo_evento' => 'equipo.recordatorio_lectura_semanal',
+                'clave_entrega' => $deliveryKey,
+                'external_ref' => 'mantenimiento:' . $deliveryKey,
+                'telefono' => $phone,
+                'instance_id' => $instanceId,
+                'mensaje' => $message,
+                'estado' => $phone === null ? 'OMITIDA' : 'PENDIENTE',
+                'ultimo_error' => $phone === null
+                    ? ($pilotEnabled
+                        ? 'Modo piloto activo pero no hay un teléfono piloto válido configurado.'
+                        : 'El chofer asignado no tiene un celular válido para WhatsApp.')
+                    : null,
+                'created_at' => $timestamp,
+                'updated_at' => $timestamp,
+            ]);
+        }
+    }
+
     public function due(int $limit): array
     {
-        return $this->db->table('notificacion_whatsapp_entregas')
+        $rows = $this->db->table('notificacion_whatsapp_entregas')
             ->whereIn('estado', ['PENDIENTE', 'REINTENTO'])
             ->where('telefono IS NOT NULL', null, false)
             ->groupStart()
@@ -122,6 +264,36 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             ->limit(max(1, min(1000, $limit)))
             ->get()
             ->getResultArray();
+
+        if ($rows === []) {
+            return [];
+        }
+
+        $globalSettings = $this->settings->get();
+        $globalInstanceId = trim((string) ($globalSettings['whatsapp_instance_id'] ?? 'default'));
+        $companyIds = array_values(array_unique(array_map(static fn (array $row): int => (int) ($row['empresa_id'] ?? 0), $rows)));
+        $instancesByCompany = [];
+
+        if ($companyIds !== []) {
+            foreach ($this->db->table('empresas')
+                ->select('id, whatsapp_instance_id')
+                ->whereIn('id', $companyIds)
+                ->get()
+                ->getResultArray() as $company) {
+                $companyInstanceId = trim((string) ($company['whatsapp_instance_id'] ?? ''));
+                $instancesByCompany[(int) $company['id']] = $companyInstanceId !== ''
+                    ? $companyInstanceId
+                    : $globalInstanceId;
+            }
+        }
+
+        foreach ($rows as &$row) {
+            $companyId = (int) ($row['empresa_id'] ?? 0);
+            $row['instance_id'] = $instancesByCompany[$companyId] ?? $globalInstanceId;
+        }
+        unset($row);
+
+        return $rows;
     }
 
     public function accepted(int $deliveryId, string $messageId, string $status): void
@@ -168,12 +340,22 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
     }
 
     /** @param array<string,mixed> $driver */
-    private function message(NotifiableEvent $event, array $driver): string
+    private function message(NotifiableEvent $event, array $driver, bool $pilotEnabled, bool $realPhoneValid): string
     {
         $name = trim((string) ($driver['nombre'] ?? '') . ' ' . (string) ($driver['apellido'] ?? ''));
-        $prefix = $name === '' ? '' : 'Hola ' . $name . '. ';
+        $greeting = $name === '' ? 'Hola.' : 'Hola ' . $name . '.';
+        $pilotHeader = $pilotEnabled
+            ? "🧪 *PRUEBA CONTROLADA · NO ENVIADO AL DESTINATARIO REAL*\n"
+                . "*Destinatario previsto:* " . ($name === '' ? 'Chofer asignado' : $name) . "\n"
+                . "*Teléfono real:* " . ($realPhoneValid ? 'configurado' : 'no válido o no cargado') . "\n\n"
+            : '';
 
-        return $prefix . $event->title() . ".\n" . $event->summary()
-            . ".\nAviso automático del Sistema de Mantenimiento.";
+        return $pilotHeader
+            . "*Vogel Consultoría · Mantenimiento*\n\n"
+            . $greeting . "\n\n"
+            . "⚠️ *" . trim($event->title()) . "*\n"
+            . rtrim(trim($event->summary()), ".") . ".\n\n"
+            . "Por favor, revisá la situación del equipo y coordiná la regularización con el responsable.\n\n"
+            . "_Aviso automático del Sistema de Mantenimiento._";
     }
 }
