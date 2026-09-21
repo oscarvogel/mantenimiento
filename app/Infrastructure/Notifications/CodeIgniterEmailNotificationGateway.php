@@ -61,25 +61,13 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
         $email->setAltMessage(
             $isManagementReport
                 ? $this->managementReportText($first, $subject)
-                : 'Resumen automático de mantenimiento. Ingresá al sistema para consultar el detalle.'
+                : $this->operationalDigestText($notifications, $subject)
         );
-
-        $items = '';
-        foreach ($notifications as $notification) {
-            $title = htmlspecialchars((string) $notification['titulo'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-            $summary = nl2br(htmlspecialchars((string) $notification['resumen'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'));
-            $link = $this->notificationLink($notification['url'] ?? null);
-            $action = $link === null
-                ? ''
-                : '<br><a href="' . htmlspecialchars($link, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '">Ver detalle</a>';
-            $items .= "<li><strong>{$title}</strong><br>{$summary}{$action}</li>";
-        }
 
         if ($isManagementReport) {
             $email->setMessage($this->managementReportHtml($first, $subject));
         } else {
-            $heading = 'Resumen de mantenimiento';
-            $email->setMessage('<h1>' . $heading . '</h1><ul>' . $items . '</ul>');
+            $email->setMessage($this->operationalDigestHtml($notifications, $subject));
         }
         if (! $email->send(false)) {
             $debugger = $this->sanitizeDebugger((string) $email->printDebugger(['headers']), $settings);
@@ -95,6 +83,87 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
 
             throw new DomainException($message);
         }
+    }
+
+    /** @param array<int,array<string,mixed>> $notifications */
+    private function operationalDigestHtml(array $notifications, string $subject): string
+    {
+        $safeSubject = htmlspecialchars($subject, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $count = count($notifications);
+        $summaryLabel = $count === 1 ? '1 alerta requiere atención' : $count . ' alertas requieren atención';
+        $rows = '';
+
+        foreach ($notifications as $notification) {
+            $title = htmlspecialchars((string) ($notification['titulo'] ?? 'Aviso de mantenimiento'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+            $summary = nl2br(htmlspecialchars((string) ($notification['resumen'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'));
+            $link = $this->notificationLink($notification['url'] ?? null);
+            $action = $link === null
+                ? ''
+                : '<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-top:12px;"><tr><td style="border-radius:8px;background:#0f172a;">'
+                    . '<a href="' . htmlspecialchars($link, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '" style="display:inline-block;padding:10px 14px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:16px;color:#ffffff;text-decoration:none;font-weight:700;">Ver detalle</a>'
+                    . '</td></tr></table>';
+
+            $rows .= '<tr><td style="padding:0 0 12px 0;">'
+                . '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border:1px solid #e5e7eb;border-radius:12px;background:#ffffff;">'
+                . '<tr><td style="padding:16px 18px;">'
+                . '<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:21px;color:#0f172a;font-weight:800;">' . $title . '</div>'
+                . ($summary === '' ? '' : '<div style="margin-top:6px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:20px;color:#475569;">' . $summary . '</div>')
+                . $action
+                . '</td></tr></table>'
+                . '</td></tr>';
+        }
+
+        $preheader = $summaryLabel . ' en el Sistema de Mantenimiento.';
+
+        return '<!doctype html>'
+            . '<html lang="es-AR"><head><meta charset="UTF-8"><meta http-equiv="Content-Language" content="es-AR"><meta name="viewport" content="width=device-width,initial-scale=1"></head>'
+            . '<body lang="es-AR" style="margin:0;padding:0;background:#f4f7fb;">'
+            . '<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;mso-hide:all;font-size:1px;line-height:1px;">'
+            . htmlspecialchars($preheader, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+            . '</div>'
+            . '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f4f7fb;">'
+            . '<tr><td align="center" style="padding:28px 14px;">'
+            . '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:680px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;">'
+            . '<tr><td style="padding:0;background:#0f172a;height:8px;font-size:0;line-height:0;">&nbsp;</td></tr>'
+            . '<tr><td style="padding:28px 30px 18px 30px;">'
+            . '<div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:18px;color:#2563eb;font-weight:800;letter-spacing:.4px;text-transform:uppercase;">Vogel Consultoría</div>'
+            . '<div style="margin-top:8px;font-family:Arial,Helvetica,sans-serif;font-size:28px;line-height:34px;color:#0f172a;font-weight:800;">' . $safeSubject . '</div>'
+            . '<div style="margin-top:10px;display:inline-block;padding:7px 10px;border-radius:999px;background:#fff7ed;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:16px;color:#c2410c;font-weight:800;">' . htmlspecialchars($summaryLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</div>'
+            . '</td></tr>'
+            . '<tr><td style="padding:0 24px 18px 24px;">'
+            . '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">' . $rows . '</table>'
+            . '</td></tr>'
+            . '<tr><td style="padding:22px 30px;border-top:1px solid #e5e7eb;background:#f8fafc;">'
+            . '<div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#64748b;">Resumen automático generado por el Sistema de Mantenimiento.</div>'
+            . '<div style="margin-top:5px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#64748b;">Desarrollado por <strong style="color:#0f172a;">Vogel Consultoría</strong> · <a href="https://vogelconsultoria.com.ar" style="color:#2563eb;text-decoration:none;font-weight:700;">vogelconsultoria.com.ar</a></div>'
+            . '</td></tr>'
+            . '</table>'
+            . '</td></tr></table></body></html>';
+    }
+
+    /** @param array<int,array<string,mixed>> $notifications */
+    private function operationalDigestText(array $notifications, string $subject): string
+    {
+        $text = $subject . "\n\n";
+        $text .= (count($notifications) === 1 ? "1 alerta requiere atención.\n\n" : count($notifications) . " alertas requieren atención.\n\n");
+
+        foreach ($notifications as $notification) {
+            $text .= (string) ($notification['titulo'] ?? 'Aviso de mantenimiento') . "\n";
+            $summary = trim((string) ($notification['resumen'] ?? ''));
+            if ($summary !== '') {
+                $text .= $summary . "\n";
+            }
+            $link = $this->notificationLink($notification['url'] ?? null);
+            if ($link !== null) {
+                $text .= 'Ver detalle: ' . $link . "\n";
+            }
+            $text .= "\n";
+        }
+
+        $text .= "Generado por el Sistema de Mantenimiento · Vogel Consultoría.\n";
+        $text .= "https://vogelconsultoria.com.ar\n";
+
+        return $text;
     }
 
     /** @param array<string,mixed> $notification */
