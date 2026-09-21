@@ -35,4 +35,19 @@ describe('AppSidebar', () => {
     expect(wrapper.get('nav section h2').text()).toBe('Más')
     expect(wrapper.get('nav a').attributes('href')).toBe('/custom')
   })
+
+  it('conserva la posición de scroll de la navegación entre montajes', async () => {
+    sessionStorage.setItem('maintenance.sidebar.scrollTop', '180')
+    const wrapper = mount(AppSidebar, { props: { navigation } })
+    const nav = wrapper.get('nav')
+
+    expect(nav.element.scrollTop).toBe(180)
+
+    nav.element.scrollTop = 260
+    await nav.trigger('scroll')
+    expect(sessionStorage.getItem('maintenance.sidebar.scrollTop')).toBe('260')
+
+    wrapper.unmount()
+    sessionStorage.removeItem('maintenance.sidebar.scrollTop')
+  })
 })

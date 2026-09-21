@@ -9,12 +9,14 @@ import PaginationBar from './components/PaginationBar.vue'
 import PanelCard from './components/PanelCard.vue'
 import StatusBadge from './components/StatusBadge.vue'
 import { dangerButton, formatNumberEs, primaryButton } from './helpers.js'
+import { dialogTransitionHooks } from '../../ui/gsapMotion.js'
 
 defineProps({ data: { type: Object, required: true } })
 
 const confirmForm = ref(null)
 const cancelForm = ref(null)
 const pendingAction = ref(null)
+const confirmationTransition = dialogTransitionHooks({ panelSelector: '[role="dialog"]' })
 
 const openConfirmation = (action) => {
   pendingAction.value = action
@@ -54,7 +56,7 @@ const issueLabel = (field) => labels[field] ?? field
     <PageHeading eyebrow="Vista previa" :title="data.header.originalFile" :description="`${data.header.type} · ${data.header.status}${data.header.summary ? ` · ${data.header.summary}` : ''}`" :back="{ label: 'Volver a importaciones', href: data.routes.back }" />
 
     <section aria-label="Resumen de validación" class="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-      <article v-for="metric in [{label:'Total',value:data.header.totalRows,tone:'text-ink'},{label:'Válidas',value:data.header.validRows,tone:'text-success-strong'},{label:'Errores',value:data.header.errorRows,tone:'text-danger-strong'},{label:'Duplicadas',value:data.header.duplicateRows,tone:'text-warning-strong'}]" :key="metric.label" class="rounded-xl border border-border bg-white p-4 shadow-card sm:p-5">
+      <article v-for="metric in [{label:'Total',value:data.header.totalRows,tone:'text-ink'},{label:'Válidas',value:data.header.validRows,tone:'text-success-strong'},{label:'Errores',value:data.header.errorRows,tone:'text-danger-strong'},{label:'Duplicadas',value:data.header.duplicateRows,tone:'text-warning-strong'}]" :key="metric.label" class="rounded-xl border border-border bg-surface-raised p-4 shadow-card sm:p-5">
         <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ metric.label }}</p><p class="mt-2 text-2xl font-bold" :class="metric.tone"><CountUp :value="Number(metric.value) || 0" /></p>
       </article>
     </section>
@@ -75,6 +77,11 @@ const issueLabel = (field) => labels[field] ?? field
     </div>
 
     <Teleport to="body">
+      <Transition
+        @before-enter="confirmationTransition.beforeEnter"
+        @enter="confirmationTransition.enter"
+        @leave="confirmationTransition.leave"
+      >
       <div
         v-if="pendingAction"
         class="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/45 p-4"
@@ -83,7 +90,7 @@ const issueLabel = (field) => labels[field] ?? field
         @keydown.esc.window="closeConfirmation"
       >
         <section
-          class="relative w-full max-w-md rounded-2xl border border-border bg-white p-6 shadow-2xl"
+          class="relative w-full max-w-md rounded-2xl border border-border bg-surface-raised p-6 shadow-2xl"
           role="dialog"
           aria-modal="true"
           :aria-labelledby="`import-confirm-title-${pendingAction}`"
@@ -108,7 +115,7 @@ const issueLabel = (field) => labels[field] ?? field
           </p>
 
           <div class="mt-7 flex justify-end gap-3">
-            <button type="button" class="rounded-lg border border-border bg-white px-4 py-2.5 font-semibold text-ink hover:bg-surface-subtle" @click="closeConfirmation">
+            <button type="button" class="rounded-lg border border-border bg-surface px-4 py-2.5 font-semibold text-ink hover:bg-surface-subtle" @click="closeConfirmation">
               Volver
             </button>
             <button
@@ -121,6 +128,7 @@ const issueLabel = (field) => labels[field] ?? field
           </div>
         </section>
       </div>
+      </Transition>
     </Teleport>
 
     <PanelCard title="Filas validadas" :count="data.rows.total" flush>

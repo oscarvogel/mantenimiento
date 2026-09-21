@@ -1,12 +1,14 @@
 import { afterEach } from 'vitest'
 import { config } from '@vue/test-utils'
 import { scrollRevealDirective } from '../src/ui/scrollReveal.js'
+import { gsapMotionDirective } from '../src/ui/gsapMotion.js'
 
 config.global.stubs = {
   transition: false,
 }
 config.global.directives = {
   reveal: scrollRevealDirective,
+  motion: gsapMotionDirective,
 }
 
 if (typeof HTMLFormElement !== 'undefined') {

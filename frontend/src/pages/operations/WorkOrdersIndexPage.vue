@@ -9,6 +9,7 @@ import PageHeading from './components/PageHeading.vue'
 import StatusBadge from './components/StatusBadge.vue'
 import WorkOrderClosureModal from './components/WorkOrderClosureModal.vue'
 import { fieldClass, primaryButton, secondaryButton } from './helpers.js'
+import { dialogTransitionHooks, panelTransitionHooks } from '../../ui/gsapMotion.js'
 
 const props = defineProps({ data: { type: Object, required: true } })
 const closeForms = reactive({})
@@ -16,6 +17,8 @@ const activeCloseOrder = ref(null)
 const activeCancelOrder = ref(null)
 const correctiveModalOpen = ref(false)
 const expandedOrders = ref([])
+const orderDetailTransition = panelTransitionHooks({ duration: 0.22 })
+const modalTransition = dialogTransitionHooks({ panelSelector: '[role="dialog"]' })
 
 const hasActiveFilters = computed(() => {
   const filters = props.data.filters ?? {}
@@ -115,7 +118,7 @@ for (const order of props.data.orders ?? []) closeStateFor(order)
     </PageHeading>
 
     <section aria-label="Indicadores de órdenes" class="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-2 sm:gap-3 xl:grid-cols-6">
-      <a v-for="card in kpiCards" :key="card.label" :href="card.href" class="ui-glare rounded-xl border border-border bg-surface-raised p-3 transition hover:border-primary/40 hover:shadow-sm sm:p-4">
+      <a v-for="card in kpiCards" :key="card.label" :href="card.href" v-motion="{ y: 10 }" class="ui-glare rounded-xl border border-border bg-surface-raised p-3 transition hover:border-primary/40 hover:shadow-sm sm:p-4">
         <p class="text-[0.65rem] font-bold uppercase leading-4 tracking-wide text-ink-muted sm:text-xs">{{ card.label }}</p>
         <p class="mt-1 text-2xl font-bold text-ink sm:mt-2 sm:text-3xl"><CountUp :value="Number(card.value) || 0" /></p>
       </a>
@@ -138,7 +141,7 @@ for (const order of props.data.orders ?? []) closeStateFor(order)
 
     <EmptyState v-if="data.orders.length === 0" title="No se encontraron órdenes" description="Probá cambiar los filtros de búsqueda o registrá el correctivo si todavía no existe." />
     <div v-else class="space-y-3">
-      <article v-for="order in data.orders" :id="`orden-${order.id}`" :key="order.id" class="scroll-mt-24 rounded-xl border border-border bg-surface-raised p-4 sm:p-5">
+      <article v-for="order in data.orders" :id="`orden-${order.id}`" :key="order.id" v-motion="{ y: 10 }" class="scroll-mt-24 rounded-xl border border-border bg-surface-raised p-4 sm:p-5">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div class="min-w-0">
             <div class="flex flex-wrap items-center gap-2"><h3 class="font-bold text-ink">{{ order.number }} · {{ order.equipmentCode }}</h3><StatusBadge :status="order.status" /><span v-if="order.delayed" class="rounded-full bg-danger-subtle px-2 py-1 text-xs font-bold text-danger-strong">DEMORADA</span></div>
@@ -155,6 +158,11 @@ for (const order of props.data.orders ?? []) closeStateFor(order)
           </div>
         </div>
 
+        <Transition
+          @before-enter="orderDetailTransition.beforeEnter"
+          @enter="orderDetailTransition.enter"
+          @leave="orderDetailTransition.leave"
+        >
         <div v-if="isExpanded(order.id)" :id="`detalle-orden-${order.id}`" class="mt-4 grid gap-4 border-t border-border-subtle pt-4 lg:grid-cols-2" data-testid="work-order-detail">
           <section class="rounded-xl bg-surface-subtle p-4">
             <h4 class="font-bold text-ink">Detalle de la intervención</h4>
@@ -187,12 +195,18 @@ for (const order of props.data.orders ?? []) closeStateFor(order)
             </template>
           </section>
         </div>
+        </Transition>
       </article>
     </div>
 
     <nav v-if="data.pagination.totalPages > 1" class="mt-6 flex items-center justify-between gap-3" aria-label="Paginación de órdenes"><a v-if="data.pagination.previousUrl" :href="data.pagination.previousUrl" :class="secondaryButton">Anterior</a><span v-else></span><span class="text-sm text-ink-muted">Página {{ data.pagination.page }} de {{ data.pagination.totalPages }}</span><a v-if="data.pagination.nextUrl" :href="data.pagination.nextUrl" :class="secondaryButton">Siguiente</a><span v-else></span></nav>
 
     <Teleport to="body">
+      <Transition
+        @before-enter="modalTransition.beforeEnter"
+        @enter="modalTransition.enter"
+        @leave="modalTransition.leave"
+      >
       <div v-if="activeCancelOrder" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" data-testid="work-order-cancel-modal">
       <div class="w-full max-w-lg rounded-2xl bg-surface-raised p-6 shadow-xl">
         <div class="flex items-start justify-between gap-4">
@@ -216,9 +230,21 @@ for (const order of props.data.orders ?? []) closeStateFor(order)
         </form>
       </div>
       </div>
+      </Transition>
     </Teleport>
 
+    <Transition
+      @before-enter="modalTransition.beforeEnter"
+      @enter="modalTransition.enter"
+      @leave="modalTransition.leave"
+    >
     <CorrectiveWorkRegistrationModal v-if="correctiveModalOpen" :data="data" @close="correctiveModalOpen = false" />
+    </Transition>
+    <Transition
+      @before-enter="modalTransition.beforeEnter"
+      @enter="modalTransition.enter"
+      @leave="modalTransition.leave"
+    >
     <WorkOrderClosureModal
       v-if="activeCloseOrder"
       :order="{ ...activeCloseOrder, closeUrl: activeCloseOrder.routes.close }"
@@ -227,5 +253,6 @@ for (const order of props.data.orders ?? []) closeStateFor(order)
       @close="closeCloseModal"
       @update:form-state="updateCloseForm"
     />
+    </Transition>
   </div>
 </template>
