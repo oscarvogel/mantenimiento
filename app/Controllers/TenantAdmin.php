@@ -144,7 +144,7 @@ final class TenantAdmin extends BaseController
                 session()->set('usuario_email', mb_strtolower(trim($data['email'])));
             }
 
-            return redirect()->to('/administracion/usuarios')->with('success', 'Usuario actualizado correctamente.');
+            return redirect()->to('/administracion/usuarios')->with('success', 'Usuario actualizado correctamente. Si cambiaste el email, desde ahora debe ingresar con el nuevo correo.');
         } catch (Throwable $exception) {
             return $this->operationFailure('/administracion/usuarios', $exception);
         }
