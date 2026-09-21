@@ -78,6 +78,28 @@ final class TenantAdministrationServiceTest extends CIUnitTestCase
         ], 'Cambio aprobado');
     }
 
+    public function testUpdateUserNormalizesEmailAndPreservesAccountUpdateScope(): void
+    {
+        $port = new RecordingTenantAdministration();
+        $service = new TenantAdministrationService($port);
+
+        $service->updateUser($this->administrator(), 2, [
+            'nombre' => ' Carlos ',
+            'email' => ' GIMENEZCARLOSGABRIEL@GMAIL.COM ',
+            'activo' => 1,
+        ], ' Cambio de correo ');
+
+        self::assertSame(7, $port->lastCompanyId);
+        self::assertSame([
+            'nombre' => 'Carlos',
+            'email' => 'gimenezcarlosgabriel@gmail.com',
+            'activo' => 1,
+        ], $port->userData);
+        self::assertSame('Cambio de correo', $port->reason);
+        self::assertArrayNotHasKey('password', $port->userData);
+        self::assertArrayNotHasKey('password_hash', $port->userData);
+    }
+
     public function testCannotChangeOwnAccess(): void
     {
         $service = new TenantAdministrationService(new RecordingTenantAdministration());
@@ -175,6 +197,8 @@ final class RecordingTenantAdministration implements TenantAdministrationPort
     public function updateUser(int $companyId, int $userId, array $data, string $reason, int $actorUserId): void
     {
         $this->lastCompanyId = $companyId;
+        $this->userData = $data;
+        $this->reason = $reason;
     }
 
     public function assignUserAccess(int $companyId, int $userId, array $roleIds, array $branchIds, string $reason, int $actorUserId): void
