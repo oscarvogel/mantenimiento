@@ -9,6 +9,11 @@
 
 RewriteEngine On
 
+# Ferozo puede resolver `mantenimiento` como directorio antes de que
+# CodeIgniter vea la ruta virtual. Forzar este namespace al front controller
+# evita el 403 genérico de Apache, con o sin trailing slash.
+RewriteRule ^mantenimiento(?:/.*)?$ index.php [L,NC]
+
 # El despliegue usa una raiz publica plana. Estos directorios contienen
 # codigo fuente, dependencias, pruebas o archivos operativos y nunca deben
 # responderse como contenido estatico.
