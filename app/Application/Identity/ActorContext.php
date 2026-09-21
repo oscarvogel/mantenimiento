@@ -57,6 +57,16 @@ final class ActorContext
 
     public function hasPermission(string $permission): bool
     {
+        // El Administrador de empresa administra todo el tenant. Los permisos
+        // explícitos siguen aplicando al resto de los roles y al SuperAdmin
+        // global, que deliberadamente no hereda permisos de una empresa.
+        if (! $this->superAdmin
+            && $this->allCompanyBranches
+            && in_array('Administrador', $this->roles, true)
+        ) {
+            return true;
+        }
+
         return in_array($permission, $this->permissions, true);
     }
 
