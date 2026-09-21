@@ -62,6 +62,20 @@ final class ManagementReportsContractTest extends TestCase
         self::assertStringContainsString('staleReadingDetails', file_get_contents(APPPATH . 'Application/Notifications/ScheduleManagementReports.php'));
     }
 
+    public function testOperationalDigestUsesCorporateEmailTemplate(): void
+    {
+        $gateway = file_get_contents(APPPATH . 'Infrastructure/Notifications/CodeIgniterEmailNotificationGateway.php');
+
+        self::assertIsString($gateway);
+        self::assertStringContainsString('operationalDigestHtml', $gateway);
+        self::assertStringContainsString('operationalDigestText', $gateway);
+        self::assertStringContainsString('alertas requieren atención', $gateway);
+        self::assertStringContainsString('Vogel Consultoría', $gateway);
+        self::assertStringContainsString('Ver detalle', $gateway);
+        self::assertStringContainsString('role="presentation"', $gateway);
+        self::assertStringNotContainsString("'<h1>' . \$heading . '</h1><ul>'", $gateway);
+    }
+
     public function testCompanyPreventiveEmailSupersedesOppositePendingState(): void
     {
         $queue = file_get_contents(APPPATH . 'Infrastructure/Notifications/CodeIgniterNotificationDeliveryQueue.php');
