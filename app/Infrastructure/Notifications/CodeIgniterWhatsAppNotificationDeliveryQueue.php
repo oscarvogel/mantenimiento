@@ -11,6 +11,7 @@ use App\Application\Notifications\Port\WhatsAppNotificationGateway;
 use App\Domain\Notifications\NotifiableEvent;
 use CodeIgniter\Database\BaseConnection;
 use Config\Database;
+use App\Infrastructure\PublicEquipmentAccess\CodeIgniterPublicEquipmentTokenRepository;
 use Throwable;
 
 final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNotificationDeliveryQueue
@@ -151,12 +152,10 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             ->select('e.codigo equipo_codigo, e.patente, e.estado equipo_estado')
             ->select('te.controla_km')
             ->select('co.notificaciones_whatsapp_habilitadas, co.whatsapp_instance_id')
-            ->select('t.token_cifrado')
             ->join('empleados emp', 'emp.id = a.empleado_id AND emp.empresa_id = a.empresa_id', 'inner')
             ->join('equipos e', 'e.id = a.equipo_id AND e.empresa_id = a.empresa_id', 'inner')
             ->join('tipos_equipo te', 'te.id = e.tipo_equipo_id', 'inner')
             ->join('empresas co', 'co.id = a.empresa_id', 'inner')
-            ->join('equipo_tokens_publicos t', 't.equipo_id = e.id AND t.empresa_id = e.empresa_id AND t.activo = 1 AND t.revoked_at IS NULL', 'inner')
             ->where('a.rol', 'CHOFER')
             ->where('a.fecha_hasta', null)
             ->where('emp.activo', 1)
@@ -203,15 +202,10 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
 
             $token = null;
             try {
-                $encrypted = (string) ($row['token_cifrado'] ?? '');
-                if ($encrypted !== '') {
-                    $decoded = base64_decode($encrypted, true);
-                    if ($decoded !== false) {
-                        $token = service('encrypter')->decrypt($decoded);
-                    }
-                }
+                $token = (new CodeIgniterPublicEquipmentTokenRepository($this->db))
+                    ->ensureActivePlainTokenForEquipment($companyId, $equipmentId, $timestamp);
             } catch (Throwable $exception) {
-                log_message('warning', 'No se pudo recuperar el token QR público para recordatorio semanal del equipo {equipment}: {message}', [
+                log_message('warning', 'No se pudo asegurar el acceso público para recordatorio semanal del equipo {equipment}: {message}', [
                     'equipment' => $equipmentId,
                     'message' => $exception->getMessage(),
                 ]);
