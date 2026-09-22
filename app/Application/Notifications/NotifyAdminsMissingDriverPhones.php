@@ -101,7 +101,7 @@ final readonly class NotifyAdminsMissingDriverPhones
                 ->where('u.empresa_id', $companyId)
                 ->where('u.activo', 1)
                 ->where('u.deleted_at', null)
-                ->where('r.nombre', 'Administrador')
+                ->where('r.nombre', 'Responsable de mantenimiento')
                 ->get()
                 ->getResultArray();
 
