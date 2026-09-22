@@ -13,7 +13,34 @@ defineProps({ data: { type: Object, required: true } })
 
 <template>
   <div>
-    <PageHeading eyebrow="Maestros" title="Catálogos de equipos" description="Administrá marcas y modelos utilizados por la flota." />
+    <PageHeading eyebrow="Maestros" title="Catálogos de equipos" description="Administrá tipos, marcas y modelos utilizados por la flota." />
+
+    <section class="mb-6">
+      <PanelCard title="Tipos de equipo" :count="data.catalogs.types.length">
+        <p class="mb-4 text-sm text-ink-muted">Definí qué lectura controla cada tipo. El cambio aplica a todos los equipos que usan ese tipo.</p>
+        <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <form v-for="type in data.catalogs.types" :key="type.id" method="post" :action="type.updateUrl" class="rounded-lg border border-border bg-surface-subtle p-4">
+            <CsrfInput :csrf="data.csrf" />
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <p class="font-semibold text-ink">{{ type.name }}</p>
+                <p v-if="!type.active" class="mt-1 text-xs text-danger">Tipo inactivo</p>
+              </div>
+              <StatusBadge :status="type.active ? 'ACTIVO' : 'BAJA'" />
+            </div>
+            <label class="mt-4 flex items-center gap-2 text-sm text-ink">
+              <input type="checkbox" name="controla_km" value="1" :checked="type.controlsKm" :disabled="!type.active" class="size-4 rounded border-border-strong" />
+              Controla kilómetros
+            </label>
+            <label class="mt-3 flex items-center gap-2 text-sm text-ink">
+              <input type="checkbox" name="controla_horas" value="1" :checked="type.controlsHours" :disabled="!type.active" class="size-4 rounded border-border-strong" />
+              Controla horas
+            </label>
+            <button type="submit" :disabled="!type.active" :class="[secondaryButton, 'mt-4']">Guardar tipo</button>
+          </form>
+        </div>
+      </PanelCard>
+    </section>
 
     <section class="grid gap-6 xl:grid-cols-2">
       <PanelCard title="Marcas" :count="data.management.brands.total">
