@@ -395,6 +395,8 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             . "⚠️ *" . trim($event->title()) . "*\n"
             . rtrim(trim($event->summary()), ".") . ".\n\n"
             . "Por favor, revisá la situación del equipo y coordiná la regularización con el responsable.\n\n"
+            . "🌐 *Vogel Consultoría · Mantenimiento*\n"
+            . "https://vogelconsultoria.com.ar/mantenimiento\n\n"
             . "_Aviso automático del Sistema de Mantenimiento._";
     }
 }
