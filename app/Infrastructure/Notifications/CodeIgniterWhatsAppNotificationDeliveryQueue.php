@@ -347,6 +347,52 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             return [];
         }
 
+        // Segunda defensa: aunque una fila duplicada hubiera quedado en cola por
+        // datos históricos o una carrera, nunca devolver dos recordatorios semanales
+        // equivalentes para despacho. Si ya existe uno aceptado, o ya elegimos uno
+        // equivalente en este mismo batch, el duplicado se omite con auditoría.
+        $seenWeekly = [];
+        $dispatchable = [];
+        foreach ($rows as $row) {
+            if ((string) ($row['tipo_evento'] ?? '') !== 'equipo.recordatorio_lectura_semanal') {
+                $dispatchable[] = $row;
+                continue;
+            }
+
+            $deliveryId = (int) ($row['id'] ?? 0);
+            $deliveryKey = (string) ($row['clave_entrega'] ?? '');
+            $testPosition = strpos($deliveryKey, ':prueba:');
+            $isTest = $testPosition !== false;
+            $baseKey = $isTest ? substr($deliveryKey, 0, $testPosition) : $deliveryKey;
+            $dedupeKey = ($isTest ? 'test|' : 'prod|') . $baseKey;
+
+            $accepted = $this->db->table('notificacion_whatsapp_entregas')
+                ->where('tipo_evento', 'equipo.recordatorio_lectura_semanal')
+                ->where('estado', 'ACEPTADA')
+                ->where('id !=', $deliveryId);
+            if ($isTest) {
+                $accepted->like('clave_entrega', $baseKey . ':prueba:', 'after');
+            } else {
+                $accepted->where('clave_entrega', $baseKey);
+            }
+
+            if (isset($seenWeekly[$dedupeKey]) || $accepted->countAllResults() > 0) {
+                $this->skipped(
+                    $deliveryId,
+                    'Omitido por blindaje anti-duplicado: ya existe un recordatorio semanal equivalente enviado o seleccionado.',
+                );
+                continue;
+            }
+
+            $seenWeekly[$dedupeKey] = true;
+            $dispatchable[] = $row;
+        }
+        $rows = $dispatchable;
+
+        if ($rows === []) {
+            return [];
+        }
+
         $globalSettings = $this->settings->get();
         $globalInstanceId = trim((string) ($globalSettings['whatsapp_instance_id'] ?? 'default'));
         $companyIds = array_values(array_unique(array_map(static fn (array $row): int => (int) ($row['empresa_id'] ?? 0), $rows)));
