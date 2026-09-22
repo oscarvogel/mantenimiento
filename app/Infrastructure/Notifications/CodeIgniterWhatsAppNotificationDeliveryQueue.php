@@ -172,6 +172,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
 
         $seenEquipment = [];
         $scheduled = 0;
+        $limitedCandidates = 0;
         foreach ($rows as $row) {
             $equipmentId = (int) $row['equipo_id'];
             if ($equipmentId <= 0 || isset($seenEquipment[$equipmentId])) {
@@ -216,11 +217,29 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             }
 
             $url = base_url('mantenimiento/publico/equipo/' . rawurlencode($token) . '/lectura');
-            $deliveryKey = 'recordatorio_lectura_semanal:empresa:' . $companyId
+            $baseDeliveryKey = 'recordatorio_lectura_semanal:empresa:' . $companyId
                 . ':equipo:' . $equipmentId
                 . ':chofer:' . $employeeId
-                . ':semana:' . $weekKey
-                . $testSuffix;
+                . ':semana:' . $weekKey;
+            $deliveryKey = $baseDeliveryKey . $testSuffix;
+
+            if ($maxScheduled !== null) {
+                $limitedCandidates++;
+            }
+
+            $existingDelivery = $this->db->table('notificacion_whatsapp_entregas');
+            if ($testSuffix !== '') {
+                $existingDelivery->like('clave_entrega', $baseDeliveryKey . ':prueba:', 'after');
+            } else {
+                $existingDelivery->where('clave_entrega', $baseDeliveryKey);
+            }
+            $alreadyExists = $existingDelivery->countAllResults() > 0;
+            if ($alreadyExists) {
+                if ($maxScheduled !== null && $limitedCandidates >= max(1, $maxScheduled)) {
+                    break;
+                }
+                continue;
+            }
 
             $locale = $this->normalizeLocale((string) ($row['idioma_notificaciones'] ?? 'ES'));
             $pilotHeader = $pilotEnabled
@@ -277,9 +296,9 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
 
             if ($phone !== null && $this->db->affectedRows() > 0) {
                 $scheduled++;
-                if ($maxScheduled !== null && $scheduled >= max(1, $maxScheduled)) {
-                    break;
-                }
+            }
+            if ($maxScheduled !== null && $limitedCandidates >= max(1, $maxScheduled)) {
+                break;
             }
         }
 
