@@ -49,5 +49,12 @@ final class WhatsAppWeeklyReadingReminderContractTest extends TestCase
         self::assertStringContainsString("alerts.whatsappSendIntervalMs", $env);
         self::assertStringContainsString('$phone = $realPhone === null ? null', $queue);
         self::assertStringContainsString('mb_strtoupper($plate) !== mb_strtoupper($equipmentLabel)', $queue);
+        self::assertStringContainsString('co.idioma_notificaciones', $queue);
+        self::assertStringContainsString('Lembrete semanal de quilometragem', $queue);
+        self::assertStringContainsString('Informar quilometragem', $queue);
+        self::assertStringContainsString('scheduleWeeklyReadingReminders(true, $testKey, $batchLimit)', $controller);
+        self::assertStringContainsString("env('alerts.whatsappBatchLimit', 5)", $controller);
+        self::assertStringContainsString("env('alerts.whatsappSendIntervalMs', 2000)", $controller);
+        self::assertStringContainsString('usleep($intervalMs * 1000)', $controller);
     }
 }

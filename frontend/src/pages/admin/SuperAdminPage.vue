@@ -197,7 +197,7 @@ const sections = [
           <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p class="text-sm font-semibold text-ink">Recordatorio semanal de kilometraje</p>
-              <p class="mt-1 text-xs leading-5 text-ink-muted">Fuerza una entrega de prueba con un chofer/equipo real elegible, pero redirige el WhatsApp al teléfono piloto. Incluye exactamente el link QR público para cargar los km.</p>
+              <p class="mt-1 text-xs leading-5 text-ink-muted">Fuerza una entrega de prueba con un chofer/equipo real elegible, pero redirige el WhatsApp al teléfono piloto. Incluye exactamente el link público para cargar los km y respeta el mismo lote máximo que producción.</p>
             </div>
             <button
               type="submit"
@@ -326,6 +326,14 @@ const sections = [
           <span class="mb-1.5 block text-sm font-medium text-ink">Instance ID WhatsApp</span>
           <input name="whatsapp_instance_id" maxlength="100" placeholder="default" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
           <span class="mt-1.5 block text-xs leading-5 text-ink-muted">Si queda vacío usa la instancia global configurada.</span>
+        </label>
+        <label class="block sm:col-span-2 lg:col-span-2">
+          <span class="mb-1.5 block text-sm font-medium text-ink">Idioma de avisos y carga pública</span>
+          <select name="idioma_notificaciones" :value="data.oldInput.idioma_notificaciones || 'ES'" required class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20">
+            <option value="ES">Español</option>
+            <option value="PT">Português</option>
+          </select>
+          <span class="mt-1.5 block text-xs leading-5 text-ink-muted">Define el idioma del recordatorio semanal y de la pantalla pública de kilometraje.</span>
         </label>
         <label class="flex items-start gap-3 rounded-lg border border-border bg-surface-subtle p-3 sm:col-span-2 lg:col-span-2">
           <input type="hidden" name="notificaciones_email_habilitadas" value="0" />
@@ -464,6 +472,14 @@ const sections = [
             <label class="block">
               <span class="mb-1.5 block text-sm font-medium text-ink">Instance ID WhatsApp</span>
               <input name="whatsapp_instance_id" maxlength="100" :value="company.whatsappInstanceId" placeholder="Usará la instancia global" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+            </label>
+            <label class="block">
+              <span class="mb-1.5 block text-sm font-medium text-ink">Idioma de avisos y carga pública</span>
+              <select name="idioma_notificaciones" :value="company.notificationLocale || 'ES'" required class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20">
+                <option value="ES">Español</option>
+                <option value="PT">Português</option>
+              </select>
+              <span class="mt-1.5 block text-xs leading-5 text-ink-muted">Se usa en el recordatorio semanal y en el formulario público abierto desde el link.</span>
             </label>
             <label class="flex items-start gap-3 rounded-lg border border-border bg-surface-subtle p-3">
               <input type="hidden" name="notificaciones_whatsapp_habilitadas" value="0" />

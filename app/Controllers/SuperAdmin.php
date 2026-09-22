@@ -76,6 +76,7 @@ final class SuperAdmin extends BaseController
                 'notificaciones_email_habilitadas' => (string) ((int) ($company['notificaciones_email_habilitadas'] ?? 1)),
                 'notificaciones_whatsapp_habilitadas' => (string) ((int) ($company['notificaciones_whatsapp_habilitadas'] ?? 0)),
                 'whatsapp_instance_id' => (string) ($company['whatsapp_instance_id'] ?? ''),
+                'idioma_notificaciones' => (string) ($company['idioma_notificaciones'] ?? 'ES'),
                 'telefono' => (string) ($company['telefono'] ?? ''),
                 'estado' => (string) ((int) $company['estado']),
             ],
@@ -135,6 +136,7 @@ final class SuperAdmin extends BaseController
             'notificaciones_email_habilitadas' => 'required|in_list[0,1]',
             'notificaciones_whatsapp_habilitadas' => 'required|in_list[0,1]',
             'whatsapp_instance_id' => 'permit_empty|max_length[100]',
+            'idioma_notificaciones' => 'required|in_list[ES,PT]',
             'telefono' => 'permit_empty|max_length[50]',
         ])) {
             return $this->validationFailure();
@@ -152,6 +154,7 @@ final class SuperAdmin extends BaseController
                 'notificaciones_email_habilitadas' => (int) $this->request->getPost('notificaciones_email_habilitadas'),
                 'notificaciones_whatsapp_habilitadas' => (int) $this->request->getPost('notificaciones_whatsapp_habilitadas'),
                 'whatsapp_instance_id' => $this->nullablePost('whatsapp_instance_id'),
+                'idioma_notificaciones' => strtoupper((string) $this->request->getPost('idioma_notificaciones')),
                 'ia_habilitada' => 0,
                 'telefono' => $this->nullablePost('telefono'),
             ]);
@@ -172,6 +175,7 @@ final class SuperAdmin extends BaseController
             'notificaciones_email_habilitadas' => 'required|in_list[0,1]',
             'notificaciones_whatsapp_habilitadas' => 'required|in_list[0,1]',
             'whatsapp_instance_id' => 'permit_empty|max_length[100]',
+            'idioma_notificaciones' => 'required|in_list[ES,PT]',
             'ia_habilitada' => 'permit_empty|in_list[0,1]',
             'telefono' => 'permit_empty|max_length[50]',
             'estado' => 'required|in_list[0,1]',
@@ -204,6 +208,7 @@ final class SuperAdmin extends BaseController
                 'notificaciones_email_habilitadas' => (int) $this->request->getPost('notificaciones_email_habilitadas'),
                 'notificaciones_whatsapp_habilitadas' => (int) $this->request->getPost('notificaciones_whatsapp_habilitadas'),
                 'whatsapp_instance_id' => $this->nullablePost('whatsapp_instance_id'),
+                'idioma_notificaciones' => strtoupper((string) $this->request->getPost('idioma_notificaciones')),
                 'ia_habilitada' => (int) $postedAi,
                 'telefono' => $this->nullablePost('telefono'),
                 'estado' => (int) $this->request->getPost('estado'),
@@ -303,7 +308,9 @@ final class SuperAdmin extends BaseController
 
             $queue = service('whatsAppNotificationDeliveryQueue');
             $testKey = date('YmdHis') . '-actor-' . $this->actor()->userId();
-            $scheduled = $queue->scheduleWeeklyReadingReminders(true, $testKey);
+            $batchLimit = max(1, (int) env('alerts.whatsappBatchLimit', 5));
+            $intervalMs = max(0, min(10000, (int) env('alerts.whatsappSendIntervalMs', 2000)));
+            $scheduled = $queue->scheduleWeeklyReadingReminders(true, $testKey, $batchLimit);
             if ($scheduled < 1) {
                 throw new DomainException('No se encontró ningún chofer elegible con equipo activo, control por km, WhatsApp habilitado y celular válido.');
             }
@@ -328,6 +335,9 @@ final class SuperAdmin extends BaseController
                     $result['status'],
                 );
                 $sent++;
+                if ($sent < $scheduled && $intervalMs > 0) {
+                    usleep($intervalMs * 1000);
+                }
             }
 
             if ($sent < 1) {
