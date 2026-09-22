@@ -32,7 +32,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
         }
 
         $company = $this->db->table('empresas')
-            ->select('notificaciones_whatsapp_habilitadas, whatsapp_instance_id, idioma_notificaciones')
+            ->select('notificaciones_whatsapp_habilitadas, whatsapp_instance_id')
             ->where('id', $event->companyId())
             ->where('estado', 1)
             ->where('deleted_at', null)
@@ -85,8 +85,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
         // También para vencimientos, el piloto sólo redirige destinatarios reales válidos.
         // Si el chofer no tiene celular válido, queda omitido y se informa al administrador.
         $phone = $realPhone === null ? null : ($pilotEnabled ? $pilotPhone : $realPhone);
-        $locale = $this->normalizeLocale((string) ($company['idioma_notificaciones'] ?? 'ES'));
-        $message = $this->message($event, $driver, $pilotEnabled, $realPhone !== null, $locale);
+        $message = $this->message($event, $driver, $pilotEnabled, $realPhone !== null);
 
         if ($phone === null) {
             $this->db->table('notificacion_whatsapp_entregas')->ignore(true)->insert([
@@ -400,34 +399,15 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
     }
 
     /** @param array<string,mixed> $driver */
-    private function message(NotifiableEvent $event, array $driver, bool $pilotEnabled, bool $realPhoneValid, string $locale): string
+    private function message(NotifiableEvent $event, array $driver, bool $pilotEnabled, bool $realPhoneValid): string
     {
         $name = trim((string) ($driver['nombre'] ?? '') . ' ' . (string) ($driver['apellido'] ?? ''));
-        $locale = $this->normalizeLocale($locale);
-        $greeting = $locale === 'PT'
-            ? ($name === '' ? 'Olá.' : 'Olá ' . $name . '.')
-            : ($name === '' ? 'Hola.' : 'Hola ' . $name . '.');
+        $greeting = $name === '' ? 'Hola.' : 'Hola ' . $name . '.';
         $pilotHeader = $pilotEnabled
-            ? ($locale === 'PT'
-                ? "🧪 *TESTE CONTROLADO · NÃO ENVIADO AO DESTINATÁRIO REAL*\n"
-                    . "*Destinatário previsto:* " . ($name === '' ? 'Motorista atribuído' : $name) . "\n"
-                    . "*Telefone real:* " . ($realPhoneValid ? 'configurado' : 'inválido ou não informado') . "\n\n"
-                : "🧪 *PRUEBA CONTROLADA · NO ENVIADO AL DESTINATARIO REAL*\n"
-                    . "*Destinatario previsto:* " . ($name === '' ? 'Chofer asignado' : $name) . "\n"
-                    . "*Teléfono real:* " . ($realPhoneValid ? 'configurado' : 'no válido o no cargado') . "\n\n")
+            ? "🧪 *PRUEBA CONTROLADA · NO ENVIADO AL DESTINATARIO REAL*\n"
+                . "*Destinatario previsto:* " . ($name === '' ? 'Chofer asignado' : $name) . "\n"
+                . "*Teléfono real:* " . ($realPhoneValid ? 'configurado' : 'no válido o no cargado') . "\n\n"
             : '';
-
-        if ($locale === 'PT') {
-            return $pilotHeader
-                . "*Vogel Consultoría · Manutenção*\n\n"
-                . $greeting . "\n\n"
-                . "⚠️ *" . trim($event->title()) . "*\n"
-                . rtrim(trim($event->summary()), ".") . ".\n\n"
-                . "Por favor, verifique a situação do equipamento e coordene a regularização com o responsável.\n\n"
-                . "🌐 *Vogel Consultoría · Manutenção*\n"
-                . "https://vogelconsultoria.com.ar/mantenimiento\n\n"
-                . "_Aviso automático do Sistema de Manutenção._";
-        }
 
         return $pilotHeader
             . "*Vogel Consultoría · Mantenimiento*\n\n"
