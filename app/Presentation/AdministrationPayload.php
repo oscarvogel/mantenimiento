@@ -44,7 +44,7 @@ final class AdministrationPayload
                 'apiUrl' => base_url('mantenimiento/chatbot/auditoria'),
             ],
             'oldInput' => $this->old([
-                'razon_social', 'nombre_fantasia', 'cuit', 'email', 'email_notificaciones', 'notificaciones_whatsapp_habilitadas', 'whatsapp_instance_id', 'telefono',
+                'razon_social', 'nombre_fantasia', 'cuit', 'email', 'email_notificaciones', 'notificaciones_whatsapp_habilitadas', 'whatsapp_instance_id', 'idioma_notificaciones', 'telefono',
                 'admin_empresa_id', 'admin_nombre', 'admin_email', 'admin_motivo',
             ]),
             'companies' => array_map(fn (array $row): array => [
@@ -62,6 +62,7 @@ final class AdministrationPayload
                 'weeklyReportTime' => $row['informe_semanal_hora'] ?? '07:00',
                 'whatsappEnabled' => (int) ($row['notificaciones_whatsapp_habilitadas'] ?? 0) === 1,
                 'whatsappInstanceId' => $row['whatsapp_instance_id'] ?? '',
+                'notificationLocale' => strtoupper((string) ($row['idioma_notificaciones'] ?? 'ES')) === 'PT' ? 'PT' : 'ES',
                 'telefono' => $row['telefono'] ?? '',
                 'active' => (int) $row['estado'] === 1,
                 'actions' => [
