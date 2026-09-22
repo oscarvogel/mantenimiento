@@ -26,7 +26,7 @@ final class PublicEquipmentReadings extends BaseController
             if ($equipment === null) {
                 throw new DomainException($this->tr($locale, 'invalid_access'));
             }
-            $locale = $this->normalizeLocale((string) ($equipment['idioma_notificaciones'] ?? 'ES'));
+            $locale = $this->equipmentLocale($equipment);
 
             return view('public_equipment/reading', [
                 'token' => $token,
@@ -63,7 +63,7 @@ final class PublicEquipmentReadings extends BaseController
             if ($equipment === null) {
                 throw new DomainException($this->tr($locale, 'invalid_access'));
             }
-            $locale = $this->normalizeLocale((string) ($equipment['idioma_notificaciones'] ?? 'ES'));
+            $locale = $this->equipmentLocale($equipment);
             $ipHash = hash('sha256', (string) $this->request->getIPAddress());
 
             if ($requestKey === '' || strlen($requestKey) > 36) {
@@ -229,8 +229,10 @@ final class PublicEquipmentReadings extends BaseController
         return db_connect()->table('equipos e')
             ->select('e.id, e.empresa_id, e.sucursal_id, e.codigo, e.patente, e.km_actual, e.horas_actuales, e.estado')
             ->select('te.nombre tipo_nombre, te.controla_km, te.controla_horas')
-            ->select('co.idioma_notificaciones')
+            ->select('co.idioma_notificaciones empresa_idioma_notificaciones')
+            ->select('s.idioma_notificaciones sucursal_idioma_notificaciones')
             ->join('tipos_equipo te', 'te.id = e.tipo_equipo_id', 'inner')
+            ->join('sucursales s', 's.id = e.sucursal_id AND s.empresa_id = e.empresa_id', 'inner')
             ->join('empresas co', 'co.id = e.empresa_id', 'inner')
             ->where('e.id', $equipmentId)
             ->where('e.empresa_id', $companyId)
@@ -262,6 +264,17 @@ final class PublicEquipmentReadings extends BaseController
             throw new DomainException($this->tr($locale, 'invalid_hours'));
         }
         return round((float) $value, 1);
+    }
+
+    /** @param array<string,mixed> $equipment */
+    private function equipmentLocale(array $equipment): string
+    {
+        $branchLocale = trim((string) ($equipment['sucursal_idioma_notificaciones'] ?? ''));
+        if ($branchLocale !== '') {
+            return $this->normalizeLocale($branchLocale);
+        }
+
+        return $this->normalizeLocale((string) ($equipment['empresa_idioma_notificaciones'] ?? 'ES'));
     }
 
     private function normalizeLocale(string $locale): string
