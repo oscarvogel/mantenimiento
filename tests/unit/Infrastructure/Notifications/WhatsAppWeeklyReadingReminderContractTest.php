@@ -28,7 +28,8 @@ final class WhatsAppWeeklyReadingReminderContractTest extends TestCase
         self::assertStringContainsString("where('a.fecha_hasta', null)", $queue);
         self::assertStringContainsString("where('te.controla_km', 1)", $queue);
         self::assertStringContainsString("where('co.notificaciones_whatsapp_habilitadas', 1)", $queue);
-        self::assertStringContainsString("join('equipo_tokens_publicos t'", $queue);
+        self::assertStringNotContainsString("join('equipo_tokens_publicos t'", $queue);
+        self::assertStringContainsString('ensureActivePlainTokenForEquipment', $queue);
         self::assertStringContainsString('format(\'o-\\\\WW\')', $queue);
         self::assertStringContainsString('recordatorio_lectura_semanal', $queue);
         self::assertStringContainsString('Cargar kilometraje', $queue);
