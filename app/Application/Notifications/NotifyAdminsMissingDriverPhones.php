@@ -39,7 +39,6 @@ final readonly class NotifyAdminsMissingDriverPhones
             ->select('e.id equipo_id, e.codigo equipo_codigo, e.patente')
             ->join('empleados emp', 'emp.id = a.empleado_id AND emp.empresa_id = a.empresa_id', 'inner')
             ->join('equipos e', 'e.id = a.equipo_id AND e.empresa_id = a.empresa_id', 'inner')
-            ->join('tipos_equipo te', 'te.id = e.tipo_equipo_id', 'inner')
             ->join('empresas co', 'co.id = a.empresa_id', 'inner')
             ->where('a.rol', 'CHOFER')
             ->where('a.fecha_hasta', null)
@@ -47,7 +46,6 @@ final readonly class NotifyAdminsMissingDriverPhones
             ->where('emp.deleted_at', null)
             ->where('e.estado', 'ACTIVO')
             ->where('e.deleted_at', null)
-            ->where('te.controla_km', 1)
             ->where('co.estado', 1)
             ->where('co.deleted_at', null)
             ->where('co.notificaciones_whatsapp_habilitadas', 1)
@@ -130,8 +128,8 @@ final readonly class NotifyAdminsMissingDriverPhones
                 null,
                 'chofer.telefono_faltante',
                 NotificationSeverity::WARNING,
-                'Choferes sin celular para recordatorio de km',
-                'Hay ' . count($items) . ' chofer(es) asignados a equipos con control de km sin un celular válido para WhatsApp: ' . $detail . '. Cargá o corregí el teléfono antes del próximo envío.',
+                'Choferes sin celular para notificaciones WhatsApp',
+                'Hay ' . count($items) . ' chofer(es) activos asignados a equipos sin un celular válido para WhatsApp: ' . $detail . '. Cargá o corregí el teléfono para habilitar recordatorios de km y avisos de vencimientos.',
                 'empresa',
                 (string) $companyId,
                 'chofer.telefono_faltante:empresa:' . $companyId . ':semana:' . $weekKey,
