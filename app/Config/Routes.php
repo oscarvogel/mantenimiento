@@ -128,6 +128,7 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->post('equipos/(:num)/adjuntos/(:num)/retirar', 'EquipmentManagement::retireAttachment/$1/$2', ['filter' => 'permission:equipos.editar']);
     $routes->post('equipos/(:num)/relaciones', 'EquipmentManagement::createRelation/$1', ['filter' => 'permission:equipos.editar']);
     $routes->post('equipos/(:num)/relaciones/(:num)/finalizar', 'EquipmentManagement::finishRelation/$1/$2', ['filter' => 'permission:equipos.editar']);
+    $routes->post('catalogos/tipos/(:num)', 'AssetManagement::updateEquipmentType/$1', ['filter' => 'permission:equipos.editar']);
     $routes->post('catalogos/marcas', 'AssetManagement::createBrand', ['filter' => 'permission:equipos.editar']);
     $routes->post('catalogos/marcas/(:num)', 'AssetManagement::renameBrand/$1', ['filter' => 'permission:equipos.editar']);
     $routes->post('catalogos/marcas/(:num)/inactivar', 'AssetManagement::inactivateBrand/$1', ['filter' => 'permission:equipos.editar']);
