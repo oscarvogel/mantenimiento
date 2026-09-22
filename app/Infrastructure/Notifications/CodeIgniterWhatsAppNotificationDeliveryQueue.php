@@ -152,9 +152,11 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             ->select('e.codigo equipo_codigo, e.patente, e.estado equipo_estado')
             ->select('te.controla_km')
             ->select('co.notificaciones_whatsapp_habilitadas, co.whatsapp_instance_id, co.idioma_notificaciones')
+            ->select('s.idioma_notificaciones sucursal_idioma_notificaciones')
             ->join('empleados emp', 'emp.id = a.empleado_id AND emp.empresa_id = a.empresa_id', 'inner')
             ->join('equipos e', 'e.id = a.equipo_id AND e.empresa_id = a.empresa_id', 'inner')
             ->join('tipos_equipo te', 'te.id = e.tipo_equipo_id', 'inner')
+            ->join('sucursales s', 's.id = e.sucursal_id AND s.empresa_id = e.empresa_id', 'inner')
             ->join('empresas co', 'co.id = a.empresa_id', 'inner')
             ->where('a.rol', 'CHOFER')
             ->where('a.fecha_hasta', null)
@@ -241,7 +243,8 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
                 continue;
             }
 
-            $locale = $this->normalizeLocale((string) ($row['idioma_notificaciones'] ?? 'ES'));
+            $branchLocale = trim((string) ($row['sucursal_idioma_notificaciones'] ?? ''));
+            $locale = $this->normalizeLocale($branchLocale !== '' ? $branchLocale : (string) ($row['idioma_notificaciones'] ?? 'ES'));
             $pilotHeader = $pilotEnabled
                 ? ($locale === 'PT'
                     ? "🧪 *TESTE CONTROLADO · NÃO ENVIADO AO DESTINATÁRIO REAL*\n"
