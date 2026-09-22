@@ -89,6 +89,7 @@ final readonly class StaticEquipmentTypeCatalog implements EquipmentTypeCatalog
 {
     public function __construct(private ?EquipmentType $type) {}
     public function findActiveById(int $typeId): ?EquipmentType { return $this->type?->id() === $typeId ? $this->type : null; }
+    public function updateTracking(int $typeId, bool $tracksKilometers, bool $tracksHours): void {}
 }
 
 final readonly class StaticBranchScope implements BranchScope
