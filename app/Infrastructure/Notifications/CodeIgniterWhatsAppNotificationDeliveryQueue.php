@@ -284,6 +284,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
                 'created_at' => $timestamp,
                 'updated_at' => $timestamp,
             ]);
+            $whatsAppInserted = $this->db->affectedRows() > 0;
 
             if ($stage === 'friday' && $testSuffix === '') {
                 $this->notifyMaintenanceResponsible(
@@ -298,7 +299,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
                 );
             }
 
-            if ($phone !== null && $this->db->affectedRows() > 0) {
+            if ($phone !== null && $whatsAppInserted) {
                 $scheduled++;
             }
             if ($maxScheduled !== null && $limitedCandidates >= max(1, $maxScheduled)) {
@@ -447,6 +448,10 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
                 . ':equipo:' . $equipmentId . ':chofer:' . $employeeId
                 . ':semana:' . $weekKey . ':usuario:' . $userId;
 
+            if ($this->db->table('notificaciones')->where('clave_evento', $key)->countAllResults() > 0) {
+                continue;
+            }
+
             $this->db->table('notificaciones')->ignore(true)->insert([
                 'empresa_id' => $companyId,
                 'sucursal_id' => $branchId,
@@ -521,6 +526,20 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
 
             $deliveryId = (int) ($row['id'] ?? 0);
             $deliveryKey = (string) ($row['clave_entrega'] ?? '');
+
+            if ((str_starts_with($deliveryKey, 'seguimiento_lectura_miercoles:')
+                    || str_starts_with($deliveryKey, 'seguimiento_lectura_viernes:'))
+                && $this->hasKilometerReadingSince(
+                    (int) ($row['empresa_id'] ?? 0),
+                    (int) ($row['equipo_id'] ?? 0),
+                    new \DateTimeImmutable((string) ($row['created_at'] ?? 'now')),
+                )) {
+                $this->skipped(
+                    $deliveryId,
+                    'Regularizado: se registró kilometraje después de programar el seguimiento semanal.',
+                );
+                continue;
+            }
             $testPosition = strpos($deliveryKey, ':prueba:');
             $isTest = $testPosition !== false;
             $baseKey = $isTest ? substr($deliveryKey, 0, $testPosition) : $deliveryKey;
