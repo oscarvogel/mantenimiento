@@ -62,5 +62,10 @@ final class WhatsAppWeeklyReadingReminderContractTest extends TestCase
         self::assertStringContainsString('$alreadyExists', $queue);
         self::assertStringContainsString("date('o-\\\\WW')", $controller);
         self::assertStringNotContainsString("date('YmdHis') . '-actor-'", $controller);
+        self::assertStringContainsString("'Omitido por blindaje anti-duplicado:", $queue);
+        self::assertStringContainsString("->where('estado', 'ACEPTADA')", $queue);
+        self::assertStringContainsString('$seenWeekly', $queue);
+        self::assertStringContainsString('$dedupeKey', $queue);
+        self::assertStringContainsString("if (isset(\$seenWeekly[\$dedupeKey]) || \$accepted->countAllResults() > 0)", $queue);
     }
 }
