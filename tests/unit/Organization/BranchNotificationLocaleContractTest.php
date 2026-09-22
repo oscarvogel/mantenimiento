@@ -24,7 +24,7 @@ final class BranchNotificationLocaleContractTest extends TestCase
         self::assertStringContainsString('idioma_notificaciones', $migration);
         self::assertStringContainsString("'null' => true", $migration);
         self::assertStringContainsString('in_list[ES,PT]', $tenant);
-        self::assertStringContainsString("'idioma_notificaciones' => $locale === '' ? null : $locale", $service);
+        self::assertStringContainsString("'idioma_notificaciones' => \$locale === '' ? null : \$locale", $service);
         self::assertStringContainsString("['ES', 'PT']", $service);
         self::assertStringContainsString('idioma_notificaciones', $administration);
         self::assertStringContainsString('notificationLocale', $payload);
