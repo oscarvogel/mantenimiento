@@ -237,6 +237,8 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
                 . "Por favor, cargá el kilometraje actual de *" . $equipmentLabel . "* para mantener actualizado el seguimiento de mantenimiento.\n\n"
                 . "👉 *Cargar kilometraje:*\n" . $url . "\n\n"
                 . "No necesitás iniciar sesión: el enlace corresponde al acceso QR del equipo.\n\n"
+                . "🌐 *Vogel Consultoría · Mantenimiento*\n"
+                . "https://vogelconsultoria.com.ar/mantenimiento\n\n"
                 . "_Aviso automático del Sistema de Mantenimiento._";
 
             $this->db->table('notificacion_whatsapp_entregas')->ignore(true)->insert([
