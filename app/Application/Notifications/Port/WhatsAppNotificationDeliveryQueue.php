@@ -10,7 +10,7 @@ interface WhatsAppNotificationDeliveryQueue
 {
     public function scheduleDriverForEvent(NotifiableEvent $event): void;
 
-    public function scheduleWeeklyReadingReminders(): void;
+    public function scheduleWeeklyReadingReminders(bool $force = false, ?string $testKey = null): int;
 
     /** @return list<array<string,mixed>> */
     public function due(int $limit): array;
