@@ -32,7 +32,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
         }
 
         $company = $this->db->table('empresas')
-            ->select('notificaciones_whatsapp_habilitadas, whatsapp_instance_id')
+            ->select('notificaciones_whatsapp_habilitadas, whatsapp_instance_id, idioma_notificaciones')
             ->where('id', $event->companyId())
             ->where('estado', 1)
             ->where('deleted_at', null)
@@ -85,7 +85,8 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
         // También para vencimientos, el piloto sólo redirige destinatarios reales válidos.
         // Si el chofer no tiene celular válido, queda omitido y se informa al administrador.
         $phone = $realPhone === null ? null : ($pilotEnabled ? $pilotPhone : $realPhone);
-        $message = $this->message($event, $driver, $pilotEnabled, $realPhone !== null);
+        $locale = $this->normalizeLocale((string) ($company['idioma_notificaciones'] ?? 'ES'));
+        $message = $this->message($event, $driver, $pilotEnabled, $realPhone !== null, $locale);
 
         if ($phone === null) {
             $this->db->table('notificacion_whatsapp_entregas')->ignore(true)->insert([
@@ -124,7 +125,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
         ]);
     }
 
-    public function scheduleWeeklyReadingReminders(bool $force = false, ?string $testKey = null): int
+    public function scheduleWeeklyReadingReminders(bool $force = false, ?string $testKey = null, ?int $maxScheduled = null): int
     {
         if (! $this->gateway->available()) {
             return 0;
@@ -151,7 +152,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             ->select('emp.nombre, emp.apellido, emp.telefono')
             ->select('e.codigo equipo_codigo, e.patente, e.estado equipo_estado')
             ->select('te.controla_km')
-            ->select('co.notificaciones_whatsapp_habilitadas, co.whatsapp_instance_id')
+            ->select('co.notificaciones_whatsapp_habilitadas, co.whatsapp_instance_id, co.idioma_notificaciones')
             ->join('empleados emp', 'emp.id = a.empleado_id AND emp.empresa_id = a.empresa_id', 'inner')
             ->join('equipos e', 'e.id = a.equipo_id AND e.empresa_id = a.empresa_id', 'inner')
             ->join('tipos_equipo te', 'te.id = e.tipo_equipo_id', 'inner')
@@ -222,22 +223,38 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
                 . ':semana:' . $weekKey
                 . $testSuffix;
 
+            $locale = $this->normalizeLocale((string) ($row['idioma_notificaciones'] ?? 'ES'));
             $pilotHeader = $pilotEnabled
-                ? "🧪 *PRUEBA CONTROLADA · NO ENVIADO AL DESTINATARIO REAL*\n"
-                    . "*Destinatario previsto:* " . ($name === '' ? 'Chofer asignado' : $name) . "\n"
-                    . "*Teléfono real:* " . ($realPhone === null ? 'no válido o no cargado' : 'configurado') . "\n\n"
+                ? ($locale === 'PT'
+                    ? "🧪 *TESTE CONTROLADO · NÃO ENVIADO AO DESTINATÁRIO REAL*\n"
+                        . "*Destinatário previsto:* " . ($name === '' ? 'Motorista atribuído' : $name) . "\n"
+                        . "*Telefone real:* " . ($realPhone === null ? 'inválido ou não informado' : 'configurado') . "\n\n"
+                    : "🧪 *PRUEBA CONTROLADA · NO ENVIADO AL DESTINATARIO REAL*\n"
+                        . "*Destinatario previsto:* " . ($name === '' ? 'Chofer asignado' : $name) . "\n"
+                        . "*Teléfono real:* " . ($realPhone === null ? 'no válido o no cargado' : 'configurado') . "\n\n")
                 : '';
 
-            $message = $pilotHeader
-                . "*Vogel Consultoría · Mantenimiento*\n\n"
-                . ($name === '' ? 'Hola.' : 'Hola ' . $name . '.') . "\n\n"
-                . "🚛 *Recordatorio semanal de kilometraje*\n"
-                . "Por favor, cargá el kilometraje actual de *" . $equipmentLabel . "* para mantener actualizado el seguimiento de mantenimiento.\n\n"
-                . "👉 *Cargar kilometraje:*\n" . $url . "\n\n"
-                . "No necesitás iniciar sesión: el enlace corresponde al acceso QR del equipo.\n\n"
-                . "🌐 *Vogel Consultoría · Mantenimiento*\n"
-                . "https://vogelconsultoria.com.ar/mantenimiento\n\n"
-                . "_Aviso automático del Sistema de Mantenimiento._";
+            $message = $locale === 'PT'
+                ? $pilotHeader
+                    . "*Vogel Consultoría · Manutenção*\n\n"
+                    . ($name === '' ? 'Olá.' : 'Olá ' . $name . '.') . "\n\n"
+                    . "🚛 *Lembrete semanal de quilometragem*\n"
+                    . "Por favor, informe a quilometragem atual de *" . $equipmentLabel . "* para manter o acompanhamento de manutenção atualizado.\n\n"
+                    . "👉 *Informar quilometragem:*\n" . $url . "\n\n"
+                    . "Não é necessário fazer login: o link corresponde ao acesso público do equipamento.\n\n"
+                    . "🌐 *Vogel Consultoría · Manutenção*\n"
+                    . "https://vogelconsultoria.com.ar/mantenimiento\n\n"
+                    . "_Aviso automático do Sistema de Manutenção._"
+                : $pilotHeader
+                    . "*Vogel Consultoría · Mantenimiento*\n\n"
+                    . ($name === '' ? 'Hola.' : 'Hola ' . $name . '.') . "\n\n"
+                    . "🚛 *Recordatorio semanal de kilometraje*\n"
+                    . "Por favor, cargá el kilometraje actual de *" . $equipmentLabel . "* para mantener actualizado el seguimiento de mantenimiento.\n\n"
+                    . "👉 *Cargar kilometraje:*\n" . $url . "\n\n"
+                    . "No necesitás iniciar sesión: el enlace corresponde al acceso público del equipo.\n\n"
+                    . "🌐 *Vogel Consultoría · Mantenimiento*\n"
+                    . "https://vogelconsultoria.com.ar/mantenimiento\n\n"
+                    . "_Aviso automático del Sistema de Mantenimiento._";
 
             $this->db->table('notificacion_whatsapp_entregas')->ignore(true)->insert([
                 'empresa_id' => $companyId,
@@ -261,6 +278,9 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
 
             if ($phone !== null && $this->db->affectedRows() > 0) {
                 $scheduled++;
+                if ($maxScheduled !== null && $scheduled >= max(1, $maxScheduled)) {
+                    break;
+                }
             }
         }
 
@@ -380,15 +400,34 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
     }
 
     /** @param array<string,mixed> $driver */
-    private function message(NotifiableEvent $event, array $driver, bool $pilotEnabled, bool $realPhoneValid): string
+    private function message(NotifiableEvent $event, array $driver, bool $pilotEnabled, bool $realPhoneValid, string $locale): string
     {
         $name = trim((string) ($driver['nombre'] ?? '') . ' ' . (string) ($driver['apellido'] ?? ''));
-        $greeting = $name === '' ? 'Hola.' : 'Hola ' . $name . '.';
+        $locale = $this->normalizeLocale($locale);
+        $greeting = $locale === 'PT'
+            ? ($name === '' ? 'Olá.' : 'Olá ' . $name . '.')
+            : ($name === '' ? 'Hola.' : 'Hola ' . $name . '.');
         $pilotHeader = $pilotEnabled
-            ? "🧪 *PRUEBA CONTROLADA · NO ENVIADO AL DESTINATARIO REAL*\n"
-                . "*Destinatario previsto:* " . ($name === '' ? 'Chofer asignado' : $name) . "\n"
-                . "*Teléfono real:* " . ($realPhoneValid ? 'configurado' : 'no válido o no cargado') . "\n\n"
+            ? ($locale === 'PT'
+                ? "🧪 *TESTE CONTROLADO · NÃO ENVIADO AO DESTINATÁRIO REAL*\n"
+                    . "*Destinatário previsto:* " . ($name === '' ? 'Motorista atribuído' : $name) . "\n"
+                    . "*Telefone real:* " . ($realPhoneValid ? 'configurado' : 'inválido ou não informado') . "\n\n"
+                : "🧪 *PRUEBA CONTROLADA · NO ENVIADO AL DESTINATARIO REAL*\n"
+                    . "*Destinatario previsto:* " . ($name === '' ? 'Chofer asignado' : $name) . "\n"
+                    . "*Teléfono real:* " . ($realPhoneValid ? 'configurado' : 'no válido o no cargado') . "\n\n")
             : '';
+
+        if ($locale === 'PT') {
+            return $pilotHeader
+                . "*Vogel Consultoría · Manutenção*\n\n"
+                . $greeting . "\n\n"
+                . "⚠️ *" . trim($event->title()) . "*\n"
+                . rtrim(trim($event->summary()), ".") . ".\n\n"
+                . "Por favor, verifique a situação do equipamento e coordene a regularização com o responsável.\n\n"
+                . "🌐 *Vogel Consultoría · Manutenção*\n"
+                . "https://vogelconsultoria.com.ar/mantenimiento\n\n"
+                . "_Aviso automático do Sistema de Manutenção._";
+        }
 
         return $pilotHeader
             . "*Vogel Consultoría · Mantenimiento*\n\n"
@@ -399,5 +438,10 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             . "🌐 *Vogel Consultoría · Mantenimiento*\n"
             . "https://vogelconsultoria.com.ar/mantenimiento\n\n"
             . "_Aviso automático del Sistema de Mantenimiento._";
+    }
+
+    private function normalizeLocale(string $locale): string
+    {
+        return strtoupper(trim($locale)) === 'PT' ? 'PT' : 'ES';
     }
 }
