@@ -20,7 +20,8 @@ final class MissingDriverPhonesAdminNotificationContractTest extends TestCase
         self::assertIsString($dispatch);
         self::assertIsString($queue);
 
-        self::assertStringContainsString("where('r.nombre', 'Administrador')", $service);
+        self::assertStringContainsString("where('r.nombre', 'Responsable de mantenimiento')", $service);
+        self::assertStringNotContainsString("where('r.nombre', 'Administrador')", $service);
         self::assertStringContainsString("chofer.telefono_faltante", $service);
         self::assertStringContainsString("Notification::forRecipient", $service);
         self::assertStringNotContainsString("scheduleCompany(", $service);
