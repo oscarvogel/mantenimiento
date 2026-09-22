@@ -56,7 +56,9 @@ final class WhatsAppWeeklyReadingReminderContractTest extends TestCase
         self::assertStringContainsString("env('alerts.whatsappBatchLimit', 5)", $controller);
         self::assertStringContainsString("env('alerts.whatsappSendIntervalMs', 2000)", $controller);
         self::assertStringContainsString('usleep($intervalMs * 1000)', $controller);
-        self::assertStringContainsString("->where('clave_entrega', $deliveryKey)", $queue);
+        self::assertStringContainsString('$baseDeliveryKey', $queue);
+        self::assertStringContainsString("->where('clave_entrega', $baseDeliveryKey)", $queue);
+        self::assertStringContainsString("->like('clave_entrega', $baseDeliveryKey . ':prueba:', 'after')", $queue);
         self::assertStringContainsString('$alreadyExists', $queue);
         self::assertStringContainsString("date('o-\\\\WW')", $controller);
         self::assertStringNotContainsString("date('YmdHis') . '-actor-'", $controller);
