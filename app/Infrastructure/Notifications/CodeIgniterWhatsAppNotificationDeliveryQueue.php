@@ -181,7 +181,9 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             $employeeId = (int) $row['empleado_id'];
             $companyId = (int) $row['empresa_id'];
             $realPhone = $this->gateway->normalizePhone((string) ($row['telefono'] ?? ''));
-            $phone = $pilotEnabled ? $pilotPhone : $realPhone;
+            // El modo piloto redirige un destinatario REAL válido al teléfono piloto.
+            // Un chofer sin celular válido nunca debe convertirse en destinatario enviable.
+            $phone = $realPhone === null ? null : ($pilotEnabled ? $pilotPhone : $realPhone);
             $instanceId = trim((string) ($row['whatsapp_instance_id'] ?? ''));
             if ($instanceId === '') {
                 $instanceId = $globalInstanceId;
@@ -190,7 +192,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             $name = trim((string) ($row['nombre'] ?? '') . ' ' . (string) ($row['apellido'] ?? ''));
             $equipmentLabel = trim((string) ($row['equipo_codigo'] ?? ''));
             $plate = trim((string) ($row['patente'] ?? ''));
-            if ($plate !== '') {
+            if ($plate !== '' && mb_strtoupper($plate) !== mb_strtoupper($equipmentLabel)) {
                 $equipmentLabel .= ($equipmentLabel === '' ? '' : ' · ') . $plate;
             }
             if ($equipmentLabel === '') {
@@ -217,7 +219,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
                 continue;
             }
 
-            $url = base_url('mantenimiento/publico/equipo/' . rawurlencode($token) . '/lectura');
+            $url = base_url('publico/equipo/' . rawurlencode($token) . '/lectura');
             $deliveryKey = 'recordatorio_lectura_semanal:empresa:' . $companyId
                 . ':equipo:' . $equipmentId
                 . ':chofer:' . $employeeId
@@ -261,7 +263,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
                 'updated_at' => $timestamp,
             ]);
 
-            if ($this->db->affectedRows() > 0) {
+            if ($phone !== null && $this->db->affectedRows() > 0) {
                 $scheduled++;
             }
         }
@@ -299,6 +301,9 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
                 ->where('proximo_intento', null)
                 ->orWhere('proximo_intento <=', $this->clock->now()->format('Y-m-d H:i:s'))
             ->groupEnd()
+            // Primero salen vencimientos/alertas; el recordatorio semanal no debe
+            // demorar una alerta más urgente cuando la cola supera el batch del cron.
+            ->orderBy("tipo_evento = 'equipo.recordatorio_lectura_semanal'", 'ASC', false)
             ->orderBy('id', 'ASC')
             ->limit(max(1, min(1000, $limit)))
             ->get()
