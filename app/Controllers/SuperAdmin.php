@@ -307,12 +307,12 @@ final class SuperAdmin extends BaseController
             }
 
             $queue = service('whatsAppNotificationDeliveryQueue');
-            $testKey = date('YmdHis') . '-actor-' . $this->actor()->userId();
+            $testKey = date('o-\\WW') . '-actor-' . $this->actor()->userId();
             $batchLimit = max(1, (int) env('alerts.whatsappBatchLimit', 5));
             $intervalMs = max(0, min(10000, (int) env('alerts.whatsappSendIntervalMs', 2000)));
             $scheduled = $queue->scheduleWeeklyReadingReminders(true, $testKey, $batchLimit);
             if ($scheduled < 1) {
-                throw new DomainException('No se encontró ningún chofer elegible con equipo activo, control por km, WhatsApp habilitado y celular válido.');
+                throw new DomainException('La prueba semanal ya fue ejecutada para este lote o no hay nuevos choferes elegibles. No se enviaron mensajes duplicados.');
             }
 
             $sent = 0;
