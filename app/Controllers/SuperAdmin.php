@@ -305,7 +305,7 @@ final class SuperAdmin extends BaseController
             $testKey = date('YmdHis') . '-actor-' . $this->actor()->userId();
             $scheduled = $queue->scheduleWeeklyReadingReminders(true, $testKey);
             if ($scheduled < 1) {
-                throw new DomainException('No se encontró ningún chofer elegible con equipo activo, control por km, WhatsApp habilitado y QR público activo.');
+                throw new DomainException('No se encontró ningún chofer elegible con equipo activo, control por km, WhatsApp habilitado y celular válido.');
             }
 
             $sent = 0;
