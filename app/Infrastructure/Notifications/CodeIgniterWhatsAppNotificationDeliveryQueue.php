@@ -219,19 +219,26 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             }
 
             $url = base_url('mantenimiento/publico/equipo/' . rawurlencode($token) . '/lectura');
-            $deliveryKey = 'recordatorio_lectura_semanal:empresa:' . $companyId
+            $baseDeliveryKey = 'recordatorio_lectura_semanal:empresa:' . $companyId
                 . ':equipo:' . $equipmentId
                 . ':chofer:' . $employeeId
-                . ':semana:' . $weekKey
-                . $testSuffix;
+                . ':semana:' . $weekKey;
+            $deliveryKey = $baseDeliveryKey . $testSuffix;
 
             if ($maxScheduled !== null) {
                 $limitedCandidates++;
             }
 
-            $alreadyExists = $this->db->table('notificacion_whatsapp_entregas')
-                ->where('clave_entrega', $deliveryKey)
-                ->countAllResults() > 0;
+            $existingDelivery = $this->db->table('notificacion_whatsapp_entregas');
+            if ($testSuffix !== '') {
+                // Una prueba vieja pudo haber usado un testKey con timestamp.
+                // Cualquier prueba del mismo equipo/chofer/semana ya cuenta como ejecutada,
+                // pero no bloquea la entrega productiva sin sufijo.
+                $existingDelivery->like('clave_entrega', $baseDeliveryKey . ':prueba:', 'after');
+            } else {
+                $existingDelivery->where('clave_entrega', $baseDeliveryKey);
+            }
+            $alreadyExists = $existingDelivery->countAllResults() > 0;
             if ($alreadyExists) {
                 if ($maxScheduled !== null && $limitedCandidates >= max(1, $maxScheduled)) {
                     break;
