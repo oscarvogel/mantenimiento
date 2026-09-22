@@ -174,6 +174,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
 
         $seenEquipment = [];
         $scheduled = 0;
+        $limitedCandidates = 0;
         foreach ($rows as $row) {
             $equipmentId = (int) $row['equipo_id'];
             if ($equipmentId <= 0 || isset($seenEquipment[$equipmentId])) {
@@ -223,6 +224,20 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
                 . ':chofer:' . $employeeId
                 . ':semana:' . $weekKey
                 . $testSuffix;
+
+            if ($maxScheduled !== null) {
+                $limitedCandidates++;
+            }
+
+            $alreadyExists = $this->db->table('notificacion_whatsapp_entregas')
+                ->where('clave_entrega', $deliveryKey)
+                ->countAllResults() > 0;
+            if ($alreadyExists) {
+                if ($maxScheduled !== null && $limitedCandidates >= max(1, $maxScheduled)) {
+                    break;
+                }
+                continue;
+            }
 
             $branchLocale = trim((string) ($row['sucursal_idioma_notificaciones'] ?? ''));
             $locale = $this->normalizeLocale($branchLocale !== '' ? $branchLocale : (string) ($row['idioma_notificaciones'] ?? 'ES'));
@@ -280,9 +295,9 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
 
             if ($phone !== null && $this->db->affectedRows() > 0) {
                 $scheduled++;
-                if ($maxScheduled !== null && $scheduled >= max(1, $maxScheduled)) {
-                    break;
-                }
+            }
+            if ($maxScheduled !== null && $limitedCandidates >= max(1, $maxScheduled)) {
+                break;
             }
         }
 
