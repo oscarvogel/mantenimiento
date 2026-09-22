@@ -139,7 +139,19 @@ final readonly class RunNotificationDispatch
 
         $this->whatsAppDeliveries->scheduleWeeklyReadingReminders();
 
-        foreach ($this->whatsAppDeliveries->due($limit) as $delivery) {
+        $whatsAppLimit = max(1, min(
+            $limit,
+            max(1, (int) env('alerts.whatsappBatchLimit', 5)),
+        ));
+        $intervalMs = max(0, min(10000, (int) env('alerts.whatsappSendIntervalMs', 2000)));
+        $attempt = 0;
+
+        foreach ($this->whatsAppDeliveries->due($whatsAppLimit) as $delivery) {
+            if ($attempt > 0 && $intervalMs > 0) {
+                usleep($intervalMs * 1000);
+            }
+            $attempt++;
+
             try {
                 $result = $this->whatsApp->sendText(
                     (string) ($delivery['telefono'] ?? ''),

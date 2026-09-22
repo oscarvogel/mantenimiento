@@ -299,6 +299,21 @@ class Services extends BaseService
             static::notificationDispatch(),
             static::notificationClock(),
             static::managementReports(false),
+            static::notifyAdminsMissingDriverPhones(false),
+        );
+    }
+
+    public static function notifyAdminsMissingDriverPhones(bool $getShared = true): \App\Application\Notifications\NotifyAdminsMissingDriverPhones
+    {
+        if ($getShared) {
+            return static::getSharedInstance('notifyAdminsMissingDriverPhones');
+        }
+
+        return new \App\Application\Notifications\NotifyAdminsMissingDriverPhones(
+            static::notificationRepository(false),
+            static::notificationClock(false),
+            static::whatsAppGateway(false),
+            db_connect(),
         );
     }
 

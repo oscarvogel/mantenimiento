@@ -32,7 +32,7 @@ final class WhatsAppWeeklyReadingReminderContractTest extends TestCase
         self::assertStringContainsString('format(\'o-\\\\WW\')', $queue);
         self::assertStringContainsString('recordatorio_lectura_semanal', $queue);
         self::assertStringContainsString('Cargar kilometraje', $queue);
-        self::assertStringContainsString('mantenimiento/publico/equipo/', $queue);
+        self::assertStringContainsString("base_url('mantenimiento/publico/equipo/'", $queue);
         self::assertStringContainsString('NO ENVIADO AL DESTINATARIO REAL', $queue);
         self::assertStringContainsString('Vogel Consultoría · Mantenimiento', $queue);
         self::assertStringContainsString('https://vogelconsultoria.com.ar/mantenimiento', $queue);
@@ -44,5 +44,9 @@ final class WhatsAppWeeklyReadingReminderContractTest extends TestCase
         self::assertStringContainsString('whatsapp/probar-recordatorio-km', $routes);
         self::assertStringContainsString('alerts.weeklyReadingReminderDay', $env);
         self::assertStringContainsString('alerts.weeklyReadingReminderTime', $env);
+        self::assertStringContainsString("alerts.whatsappBatchLimit", $env);
+        self::assertStringContainsString("alerts.whatsappSendIntervalMs", $env);
+        self::assertStringContainsString('$phone = $realPhone === null ? null', $queue);
+        self::assertStringContainsString('mb_strtoupper($plate) !== mb_strtoupper($equipmentLabel)', $queue);
     }
 }
