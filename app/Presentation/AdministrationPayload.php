@@ -113,10 +113,14 @@ final class AdministrationPayload
             'oldInput' => [
                 'codigo' => old('codigo') ?? '', 'nombre' => old('nombre') ?? '', 'direccion' => old('direccion') ?? '',
                 'emailAlertas' => old('email_alertas') ?? '',
+                'notificationLocale' => old('idioma_notificaciones') ?? '',
             ],
             'branches' => array_map(fn (array $row): array => [
                 'id' => (int) $row['id'], 'code' => $row['codigo'], 'name' => $row['nombre'],
                 'address' => $row['direccion'] ?? '', 'alertEmail' => $row['email_alertas'] ?? '',
+                'notificationLocale' => in_array(strtoupper((string) ($row['idioma_notificaciones'] ?? '')), ['ES', 'PT'], true)
+                    ? strtoupper((string) $row['idioma_notificaciones'])
+                    : '',
                 'active' => (int) $row['estado'] === 1,
                 'actions' => ['update' => base_url('administracion/sucursales/' . $row['id'])],
             ], $branches),
