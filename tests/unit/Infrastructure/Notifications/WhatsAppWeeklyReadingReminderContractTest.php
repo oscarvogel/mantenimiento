@@ -47,7 +47,7 @@ final class WhatsAppWeeklyReadingReminderContractTest extends TestCase
         self::assertStringContainsString('alerts.weeklyReadingReminderTime', $env);
         self::assertStringContainsString("alerts.whatsappBatchLimit", $env);
         self::assertStringContainsString("alerts.whatsappSendIntervalMs", $env);
-        self::assertStringContainsString("$phone = $realPhone === null ? null", $queue);
-        self::assertStringContainsString("mb_strtoupper($plate) !== mb_strtoupper($equipmentLabel)", $queue);
+        self::assertStringContainsString('$phone = $realPhone === null ? null', $queue);
+        self::assertStringContainsString('mb_strtoupper($plate) !== mb_strtoupper($equipmentLabel)', $queue);
     }
 }
