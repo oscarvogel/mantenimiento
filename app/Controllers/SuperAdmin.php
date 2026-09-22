@@ -54,7 +54,12 @@ final class SuperAdmin extends BaseController
             'apiUrl' => trim((string) ($whatsAppSettings['whatsapp_api_url'] ?? '')),
             'apiKeyConfigured' => (bool) ($whatsAppSettings['whatsapp_api_key_present'] ?? false),
             'instanceId' => trim((string) ($whatsAppSettings['whatsapp_instance_id'] ?? 'default')),
+            'pilotEnabled' => (bool) ($whatsAppSettings['whatsapp_pilot_enabled'] ?? false),
+            'pilotPhoneConfigured' => service('whatsAppGateway')->normalizePhone((string) ($whatsAppSettings['whatsapp_pilot_phone'] ?? '')) !== null,
+            'weeklyReminderDay' => max(1, min(7, (int) env('alerts.weeklyReadingReminderDay', 1))),
+            'weeklyReminderTime' => trim((string) env('alerts.weeklyReadingReminderTime', '08:00')),
             'testAction' => base_url('superadmin/whatsapp/prueba'),
+            'testWeeklyReminderAction' => base_url('superadmin/whatsapp/probar-recordatorio-km'),
             'preparePilotAction' => base_url('superadmin/whatsapp/preparar-piloto'),
         ];
         $payload['aiCompanyControls'] = array_map(static fn (array $company): array => [
@@ -274,6 +279,64 @@ final class SuperAdmin extends BaseController
             return redirect()->to('/superadmin')->with(
                 'success',
                 'Informe ' . ($type === 'DAILY' ? 'diario' : 'semanal') . ' de prueba enviado correctamente.',
+            );
+        } catch (Throwable $exception) {
+            return $this->operationFailure($exception);
+        }
+    }
+
+    public function testWeeklyReadingReminderWhatsApp(): RedirectResponse
+    {
+        try {
+            $settings = service('globalNotificationSettingsStore')->get();
+            $gateway = service('whatsAppGateway');
+
+            if (! (bool) ($settings['whatsapp_pilot_enabled'] ?? false)) {
+                throw new DomainException('Activá el modo piloto de WhatsApp antes de enviar esta prueba.');
+            }
+            if ($gateway->normalizePhone((string) ($settings['whatsapp_pilot_phone'] ?? '')) === null) {
+                throw new DomainException('Configurá un teléfono piloto válido antes de enviar esta prueba.');
+            }
+            if (! $gateway->available()) {
+                throw new DomainException('WhatsApp no está disponible. Revisá URL, API key, instanceId y que el canal esté habilitado.');
+            }
+
+            $queue = service('whatsAppNotificationDeliveryQueue');
+            $testKey = date('YmdHis') . '-actor-' . $this->actor()->userId();
+            $scheduled = $queue->scheduleWeeklyReadingReminders(true, $testKey);
+            if ($scheduled < 1) {
+                throw new DomainException('No se encontró ningún chofer elegible con equipo activo, control por km, WhatsApp habilitado y QR público activo.');
+            }
+
+            $sent = 0;
+            foreach ($queue->due(1000) as $delivery) {
+                if (! str_contains((string) ($delivery['external_ref'] ?? ''), ':prueba:' . $testKey)) {
+                    continue;
+                }
+
+                $result = $gateway->sendText(
+                    (string) ($delivery['telefono'] ?? ''),
+                    (string) ($delivery['mensaje'] ?? ''),
+                    (string) ($delivery['external_ref'] ?? ''),
+                    (string) $this->actor()->userId(),
+                    'Superadmin Mantenimiento',
+                    empty($delivery['instance_id']) ? null : (string) $delivery['instance_id'],
+                );
+                $queue->accepted(
+                    (int) $delivery['id'],
+                    $result['messageId'],
+                    $result['status'],
+                );
+                $sent++;
+            }
+
+            if ($sent < 1) {
+                throw new DomainException('El recordatorio se preparó pero no se encontró la entrega de prueba para despachar.');
+            }
+
+            return redirect()->to('/superadmin')->with(
+                'success',
+                'Prueba semanal enviada al teléfono piloto. Entregas: ' . $sent . '. No se contactó a ningún chofer real.',
             );
         } catch (Throwable $exception) {
             return $this->operationFailure($exception);
