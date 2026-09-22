@@ -221,7 +221,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
                 continue;
             }
 
-            $url = base_url('publico/equipo/' . rawurlencode($token) . '/lectura');
+            $url = base_url('mantenimiento/publico/equipo/' . rawurlencode($token) . '/lectura');
             $deliveryKey = 'recordatorio_lectura_semanal:empresa:' . $companyId
                 . ':equipo:' . $equipmentId
                 . ':chofer:' . $employeeId
