@@ -21,8 +21,8 @@ final class PublicEquipmentLocaleContractTest extends TestCase
         self::assertStringContainsString('Quilometragem atual', $controller);
         self::assertStringContainsString('Registrar leitura', $controller);
         self::assertStringContainsString('Leitura registrada com sucesso', $controller);
-        self::assertStringContainsString("$labels['current_km']", $reading);
-        self::assertStringContainsString("$labels['submit']", $reading);
+        self::assertStringContainsString("\$labels['current_km']", $reading);
+        self::assertStringContainsString("\$labels['submit']", $reading);
         self::assertStringContainsString('$title', $invalid);
     }
 }
