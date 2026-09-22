@@ -157,6 +157,18 @@ final class AssetManagement extends BaseController
         }
     }
 
+    public function updateEquipmentType(int $typeId): RedirectResponse
+    {
+        return $this->catalogMutation(function () use ($typeId): void {
+            $this->catalog()->updateTypeTracking(
+                $this->actor(),
+                $typeId,
+                $this->request->getPost('controla_km') === '1',
+                $this->request->getPost('controla_horas') === '1',
+            );
+        }, 'Tipo de equipo actualizado correctamente.');
+    }
+
     public function createBrand(): RedirectResponse
     {
         return $this->catalogMutation(fn (): int => $this->catalog()->createBrand(

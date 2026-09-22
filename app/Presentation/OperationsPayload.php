@@ -224,7 +224,12 @@ final class OperationsPayload
             ],
             'catalogs' => [
                 'types' => array_map(fn (array $row): array => [
-                    'id' => (int) $row['id'], 'name' => $row['nombre'], 'active' => (int) $row['activo'] === 1,
+                    'id' => (int) $row['id'],
+                    'name' => $row['nombre'],
+                    'active' => (int) $row['activo'] === 1,
+                    'controlsKm' => (int) $row['controla_km'] === 1,
+                    'controlsHours' => (int) $row['controla_horas'] === 1,
+                    'updateUrl' => base_url('mantenimiento/catalogos/tipos/' . $row['id']),
                 ], $catalogs['types'] ?? []),
                 'brands' => array_map(fn (array $row): array => [
                     'id' => (int) $row['id'], 'name' => $row['nombre'], 'active' => (int) $row['activo'] === 1,
