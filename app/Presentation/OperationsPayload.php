@@ -221,6 +221,11 @@ final class OperationsPayload
                 'index' => $base,
                 'createBrand' => base_url('mantenimiento/catalogos/marcas'),
                 'createModel' => base_url('mantenimiento/catalogos/modelos'),
+                'expirationTypes' => base_url('mantenimiento/maestros/vencimientos'),
+                'services' => base_url('mantenimiento/servicios'),
+                'preventiveLibrary' => base_url('mantenimiento/importaciones/biblioteca'),
+                'providers' => base_url('mantenimiento/proveedores'),
+                'branches' => base_url('administracion/sucursales'),
             ],
             'catalogs' => [
                 'types' => array_map(fn (array $row): array => [
