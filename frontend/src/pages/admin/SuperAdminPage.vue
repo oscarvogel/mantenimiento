@@ -179,6 +179,40 @@ const sections = [
           <p class="mt-2 text-xs leading-5 text-ink-muted">La API key no se muestra. El número emisor pertenece a la instancia conectada en Vogel WhatsApp API.</p>
         </div>
 
+        <div class="sm:col-span-2 lg:col-span-4 rounded-lg border border-primary/25 bg-primary-subtle p-4">
+          <p class="text-sm font-semibold text-ink">Un solo cron para todas las automatizaciones</p>
+          <p class="mt-1 text-xs leading-5 text-ink-muted">
+            Ferozo ejecuta el ciclo global de notificaciones. En cada corrida se revisan vencimientos, informes y WhatsApp. El recordatorio de km se habilita una vez por semana desde
+            <strong>día {{ data.whatsapp.weeklyReminderDay }} a las {{ data.whatsapp.weeklyReminderTime }}</strong>; si esa corrida falla, la siguiente lo recupera sin duplicar la semana.
+          </p>
+          <p class="mt-2 text-xs font-medium" :class="data.whatsapp.pilotEnabled && data.whatsapp.pilotPhoneConfigured ? 'text-success-strong' : 'text-warning-strong'">
+            {{ data.whatsapp.pilotEnabled && data.whatsapp.pilotPhoneConfigured
+              ? 'Modo piloto listo: las pruebas de WhatsApp van al celular piloto.'
+              : 'Modo piloto incompleto: activalo y configurá el celular piloto antes de probar.' }}
+          </p>
+        </div>
+
+        <form method="post" :action="data.whatsapp.testWeeklyReminderAction" class="sm:col-span-2 lg:col-span-4 rounded-lg border border-primary/30 bg-white p-4">
+          <CsrfField :csrf="data.csrf" />
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p class="text-sm font-semibold text-ink">Recordatorio semanal de kilometraje</p>
+              <p class="mt-1 text-xs leading-5 text-ink-muted">Fuerza una entrega de prueba con un chofer/equipo real elegible, pero redirige el WhatsApp al teléfono piloto. Incluye exactamente el link QR público para cargar los km.</p>
+            </div>
+            <button
+              type="submit"
+              :disabled="!data.whatsapp.available || !data.whatsapp.pilotEnabled || !data.whatsapp.pilotPhoneConfigured"
+              data-confirm
+              data-confirm-title="¿Enviar prueba del recordatorio semanal?"
+              data-confirm-text="Se enviará únicamente al teléfono piloto y no al chofer real."
+              data-confirm-button="Enviar prueba"
+              class="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Probar recordatorio semanal
+            </button>
+          </div>
+        </form>
+
         <form method="post" :action="data.whatsapp.testAction" class="sm:col-span-2 lg:col-span-4 flex flex-col gap-3 rounded-lg border border-border p-4 sm:flex-row sm:items-end">
           <CsrfField :csrf="data.csrf" />
           <label class="block flex-1">
@@ -193,8 +227,8 @@ const sections = [
           <CsrfField :csrf="data.csrf" />
           <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p class="text-sm font-semibold text-warning-strong">Prueba automática segura</p>
-              <p class="mt-1 text-xs leading-5 text-warning-strong">Genera en la empresa demo un chofer ficticio, su asignación a un equipo y un vencimiento próximo. No envía nada todavía.</p>
+              <p class="text-sm font-semibold text-warning-strong">Vencimiento por WhatsApp · prueba del cron real</p>
+              <p class="mt-1 text-xs leading-5 text-warning-strong">Paso 1: genera en la empresa demo un chofer ficticio, su asignación y un vencimiento próximo. Paso 2: usá “Ejecutar ahora” arriba; así probás exactamente el mismo ciclo global que ejecuta Ferozo, con destino seguro al teléfono piloto.</p>
             </div>
             <button type="submit" :disabled="!data.whatsapp.available" class="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg border border-warning px-4 py-2.5 text-sm font-semibold text-warning-strong disabled:cursor-not-allowed disabled:opacity-50">
               Preparar prueba piloto
