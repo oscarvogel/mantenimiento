@@ -121,10 +121,10 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
         ]);
     }
 
-    public function scheduleWeeklyReadingReminders(): void
+    public function scheduleWeeklyReadingReminders(bool $force = false, ?string $testKey = null): int
     {
         if (! $this->gateway->available()) {
-            return;
+            return 0;
         }
 
         $settings = $this->settings->get();
@@ -132,8 +132,16 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
         $pilotPhone = $this->gateway->normalizePhone((string) ($settings['whatsapp_pilot_phone'] ?? ''));
         $globalInstanceId = trim((string) ($settings['whatsapp_instance_id'] ?? 'default'));
         $now = $this->clock->now();
+
+        if (! $force && ! $this->weeklyReadingReminderIsDue($now)) {
+            return 0;
+        }
+
         $weekKey = $now->format('o-\\WW');
         $timestamp = $now->format('Y-m-d H:i:s');
+        $testSuffix = trim((string) $testKey) === ''
+            ? ''
+            : ':prueba:' . preg_replace('/[^A-Za-z0-9_.-]+/', '-', trim((string) $testKey));
 
         $rows = $this->db->table('employee_equipment_assignments a')
             ->select('a.id assignment_id, a.empresa_id, a.equipo_id, a.empleado_id')
@@ -162,6 +170,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             ->getResultArray();
 
         $seenEquipment = [];
+        $scheduled = 0;
         foreach ($rows as $row) {
             $equipmentId = (int) $row['equipo_id'];
             if ($equipmentId <= 0 || isset($seenEquipment[$equipmentId])) {
@@ -212,7 +221,8 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             $deliveryKey = 'recordatorio_lectura_semanal:empresa:' . $companyId
                 . ':equipo:' . $equipmentId
                 . ':chofer:' . $employeeId
-                . ':semana:' . $weekKey;
+                . ':semana:' . $weekKey
+                . $testSuffix;
 
             $pilotHeader = $pilotEnabled
                 ? "🧪 *PRUEBA CONTROLADA · NO ENVIADO AL DESTINATARIO REAL*\n"
@@ -227,6 +237,8 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
                 . "Por favor, cargá el kilometraje actual de *" . $equipmentLabel . "* para mantener actualizado el seguimiento de mantenimiento.\n\n"
                 . "👉 *Cargar kilometraje:*\n" . $url . "\n\n"
                 . "No necesitás iniciar sesión: el enlace corresponde al acceso QR del equipo.\n\n"
+                . "🌐 *Vogel Consultoría · Mantenimiento*\n"
+                . "https://vogelconsultoria.com.ar/mantenimiento\n\n"
                 . "_Aviso automático del Sistema de Mantenimiento._";
 
             $this->db->table('notificacion_whatsapp_entregas')->ignore(true)->insert([
@@ -248,7 +260,34 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
                 'created_at' => $timestamp,
                 'updated_at' => $timestamp,
             ]);
+
+            if ($this->db->affectedRows() > 0) {
+                $scheduled++;
+            }
         }
+
+        return $scheduled;
+    }
+
+    private function weeklyReadingReminderIsDue(\DateTimeInterface $now): bool
+    {
+        $day = max(1, min(7, (int) env('alerts.weeklyReadingReminderDay', 1)));
+        $time = trim((string) env('alerts.weeklyReadingReminderTime', '08:00'));
+        if (preg_match('/^(\d{1,2}):(\d{2})$/', $time, $matches) !== 1) {
+            $time = '08:00';
+            preg_match('/^(\d{1,2}):(\d{2})$/', $time, $matches);
+        }
+
+        $hour = max(0, min(23, (int) ($matches[1] ?? 8)));
+        $minute = max(0, min(59, (int) ($matches[2] ?? 0)));
+        $weekStart = \DateTimeImmutable::createFromInterface($now)
+            ->modify('monday this week')
+            ->setTime(0, 0);
+        $dueAt = $weekStart
+            ->modify('+' . ($day - 1) . ' days')
+            ->setTime($hour, $minute);
+
+        return $now >= $dueAt;
     }
 
     public function due(int $limit): array
@@ -356,6 +395,8 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             . "⚠️ *" . trim($event->title()) . "*\n"
             . rtrim(trim($event->summary()), ".") . ".\n\n"
             . "Por favor, revisá la situación del equipo y coordiná la regularización con el responsable.\n\n"
+            . "🌐 *Vogel Consultoría · Mantenimiento*\n"
+            . "https://vogelconsultoria.com.ar/mantenimiento\n\n"
             . "_Aviso automático del Sistema de Mantenimiento._";
     }
 }
