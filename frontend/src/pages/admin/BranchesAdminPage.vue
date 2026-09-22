@@ -62,6 +62,15 @@ defineProps({
           <span class="mb-1.5 block text-sm font-medium text-ink">Dirección</span>
           <input name="direccion" maxlength="255" :value="data.oldInput.direccion" autocomplete="street-address" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
         </label>
+        <label class="block lg:col-span-4">
+          <span class="mb-1.5 block text-sm font-medium text-ink">Idioma de avisos</span>
+          <select name="idioma_notificaciones" :value="data.oldInput.notificationLocale || ''" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20">
+            <option value="">Usar idioma de la empresa</option>
+            <option value="ES">Español</option>
+            <option value="PT">Português</option>
+          </select>
+          <span class="mt-1.5 block text-xs text-ink-muted">Afecta WhatsApp y la pantalla pública de lectura.</span>
+        </label>
         <div class="sm:col-span-2 lg:col-span-12">
           <button type="submit" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary-hover active:bg-primary-active">
             <MapPinIcon class="size-5" aria-hidden="true" />
@@ -112,6 +121,14 @@ defineProps({
             <label class="block sm:col-span-8">
               <span class="mb-1.5 block text-sm font-medium text-ink">Email de alertas</span>
               <input type="email" name="email_alertas" maxlength="255" :value="branch.alertEmail" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+            </label>
+            <label class="block sm:col-span-4">
+              <span class="mb-1.5 block text-sm font-medium text-ink">Idioma de avisos</span>
+              <select name="idioma_notificaciones" :value="branch.notificationLocale || ''" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20">
+                <option value="">Usar idioma de la empresa</option>
+                <option value="ES">Español</option>
+                <option value="PT">Português</option>
+              </select>
             </label>
             <label class="block sm:col-span-4">
               <span class="mb-1.5 block text-sm font-medium text-ink">Estado</span>
