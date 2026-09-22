@@ -10,6 +10,8 @@ interface PublicEquipmentTokenRepository
 
     public function activePlainTokenForEquipment(int $companyId, int $equipmentId): ?string;
 
+    public function ensureActivePlainTokenForEquipment(int $companyId, int $equipmentId, string $occurredAt): ?string;
+
     public function replaceActiveToken(
         int $companyId,
         int $equipmentId,
