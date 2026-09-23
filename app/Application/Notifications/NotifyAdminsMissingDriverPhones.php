@@ -127,7 +127,8 @@ final readonly class NotifyAdminsMissingDriverPhones
                 'local' => 'número local sin código internacional',
                 'ar_without_9' => 'Argentina sin 9 o formato incompleto',
                 'br_incomplete' => 'Brasil con formato incompleto',
-                'invalid' => 'otro formato inválido',
+                'cl_incomplete' => 'Chile con formato incompleto',
+                'invalid' => 'otro formato internacional inválido',
             ];
             $parts = [];
             foreach ($labels as $code => $label) {
@@ -154,7 +155,7 @@ final readonly class NotifyAdminsMissingDriverPhones
                 . ' chofer(es) que requieren corrección de teléfono. Resumen: '
                 . implode(', ', $parts)
                 . '. Detalle: ' . $detail
-                . '. Cargá el número completo en formato internacional y sólo dígitos (Argentina 549..., Brasil 55...). Mientras siga observado no se enviarán recordatorios de km ni avisos de vencimientos.';
+                . '. Cargá el número completo en formato internacional y sólo dígitos (Argentina 549..., Brasil 55..., Chile 56...). Mientras siga observado no se enviarán recordatorios de km ni avisos de vencimientos.';
 
             $event = new NotifiableEvent(
                 (int) $companyId,
@@ -231,7 +232,11 @@ final readonly class NotifyAdminsMissingDriverPhones
             return ['code' => 'br_incomplete', 'label' => 'Brasil con formato incompleto'];
         }
 
-        return ['code' => 'invalid', 'label' => 'otro formato inválido'];
+        if (preg_match('/^56[0-9]+$/', $phone) === 1) {
+            return ['code' => 'cl_incomplete', 'label' => 'Chile con formato incompleto'];
+        }
+
+        return ['code' => 'invalid', 'label' => 'otro formato internacional inválido'];
     }
 
     private function weeklyReminderIsDue(DateTimeInterface $now): bool
