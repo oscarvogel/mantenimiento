@@ -310,16 +310,30 @@ final class SuperAdmin extends BaseController
             if (! in_array($stage, ['initial', 'wednesday', 'friday'], true)) {
                 throw new DomainException('La etapa de prueba no es válida.');
             }
+            $scenario = strtolower(trim((string) ($this->request->getPost('escenario') ?: 'missing')));
+            if (! in_array($scenario, ['missing', 'actual'], true)) {
+                throw new DomainException('El escenario de lectura no es válido.');
+            }
 
             $queue = service('whatsAppNotificationDeliveryQueue');
-            $testKey = date('o-\\WW') . '-' . $stage . '-actor-' . $this->actor()->userId();
+            $testKey = date('YmdHis') . '-' . $stage . '-actor-' . $this->actor()->userId();
             $batchLimit = max(1, (int) env('alerts.whatsappBatchLimit', 5));
             $intervalMs = max(0, min(10000, (int) env('alerts.whatsappSendIntervalMs', 2000)));
-            $scheduled = $stage === 'initial'
-                ? $queue->scheduleWeeklyReadingReminders(true, $testKey, $batchLimit)
-                : $queue->scheduleWeeklyReadingReminders(true, $testKey, $batchLimit, $stage);
+            $scheduled = $queue->scheduleWeeklyReadingReminders(
+                true,
+                $testKey,
+                $batchLimit,
+                $stage,
+                $scenario === 'missing',
+            );
             if ($scheduled < 1) {
-                throw new DomainException('La prueba semanal ya fue ejecutada para este lote o no hay nuevos choferes elegibles. No se enviaron mensajes duplicados.');
+                if ($scenario === 'actual' && $stage !== 'initial') {
+                    return redirect()->to('/superadmin')->with(
+                        'success',
+                        'Simulación correcta: no se envió ' . $stage . ' porque los equipos elegibles ya tienen lectura de km esta semana.',
+                    );
+                }
+                throw new DomainException('No hay choferes/equipos elegibles para esta simulación. Revisá el escenario piloto y la configuración de equipos con control de km.');
             }
 
             $sent = 0;
