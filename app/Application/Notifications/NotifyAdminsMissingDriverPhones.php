@@ -82,9 +82,11 @@ final readonly class NotifyAdminsMissingDriverPhones
                 $equipment = 'Equipo #' . $equipmentId;
             }
 
+            $rawPhone = trim((string) ($row['telefono'] ?? ''));
             $missingByCompany[$companyId][$employeeId] = [
                 'name' => $name,
                 'equipment' => $equipment,
+                'phone' => $rawPhone === '' ? '(sin teléfono)' : $rawPhone,
             ];
         }
 
@@ -115,7 +117,7 @@ final readonly class NotifyAdminsMissingDriverPhones
 
             $shown = array_slice($items, 0, 8);
             $detail = implode('; ', array_map(
-                static fn (array $item): string => $item['name'] . ' (' . $item['equipment'] . ')',
+                static fn (array $item): string => $item['name'] . ' (' . $item['equipment'] . ', tel. ' . $item['phone'] . ')',
                 $shown,
             ));
             $remaining = count($items) - count($shown);
@@ -128,8 +130,8 @@ final readonly class NotifyAdminsMissingDriverPhones
                 null,
                 'chofer.telefono_faltante',
                 NotificationSeverity::WARNING,
-                'Choferes sin celular para notificaciones WhatsApp',
-                'Hay ' . count($items) . ' chofer(es) activos asignados a equipos sin un celular válido para WhatsApp: ' . $detail . '. Cargá o corregí el teléfono para habilitar recordatorios de km y avisos de vencimientos.',
+                'Choferes con celular inválido para WhatsApp',
+                'Hay ' . count($items) . ' chofer(es) activos asignados a equipos sin un celular internacional válido para WhatsApp: ' . $detail . '. Cargá el teléfono completo en formato internacional, sólo dígitos (Argentina 549..., Brasil 55...). Hasta corregirlo no se enviarán recordatorios de km ni avisos de vencimientos.',
                 'empresa',
                 (string) $companyId,
                 'chofer.telefono_faltante:empresa:' . $companyId . ':semana:' . $weekKey,

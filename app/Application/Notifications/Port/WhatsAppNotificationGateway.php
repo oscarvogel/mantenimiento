@@ -16,6 +16,9 @@ interface WhatsAppNotificationGateway
         ?string $instanceId = null,
     ): array;
 
+    /** @return array{status:string,providerMessageId:?string,error:?string} */
+    public function getMessageStatus(string $messageId, ?string $instanceId = null): array;
+
     public function available(): bool;
 
     public function normalizePhone(string $phone): ?string;

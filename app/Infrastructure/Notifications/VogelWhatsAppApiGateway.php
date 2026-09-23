@@ -29,21 +29,88 @@ final class VogelWhatsAppApiGateway implements WhatsAppNotificationGateway
 
     public function normalizePhone(string $phone): ?string
     {
-        $digits = preg_replace('/\D+/', '', trim($phone)) ?? '';
-        $digits = ltrim($digits, '0');
-
-        if ($digits === '') {
+        $raw = trim($phone);
+        if ($raw === '' || preg_match('/^[0-9]+$/', $raw) !== 1) {
             return null;
         }
 
-        // Conveniencia para móviles argentinos cargados como código de área + número.
-        if (strlen($digits) === 10) {
-            $digits = '549' . $digits;
-        } elseif (strlen($digits) === 12 && str_starts_with($digits, '54')) {
-            $digits = '549' . substr($digits, 2);
+        // El teléfono debe venir ya cargado en formato internacional.
+        // No se infiere país por longitud, empresa ni sucursal.
+        if (preg_match('/^[1-9][0-9]{9,14}$/', $raw) !== 1) {
+            return null;
         }
 
-        return preg_match('/^[1-9][0-9]{9,14}$/', $digits) === 1 ? $digits : null;
+        // Hoy la operación administrada contempla Argentina y Brasil.
+        // Mantener esta lista explícita evita interpretar un número local como otro país.
+        if (! str_starts_with($raw, '54') && ! str_starts_with($raw, '55')) {
+            return null;
+        }
+
+        if (str_starts_with($raw, '54')) {
+            // Móviles argentinos deben venir como 549 + número nacional.
+            return preg_match('/^549[0-9]{10}$/', $raw) === 1 ? $raw : null;
+        }
+
+        // Brasil: 55 + DDD (2) + abonado (8/9).
+        return preg_match('/^55[0-9]{10,11}$/', $raw) === 1 ? $raw : null;
+    }
+
+    public function getMessageStatus(string $messageId, ?string $instanceId = null): array
+    {
+        if (! $this->available()) {
+            throw new RuntimeException('El canal WhatsApp no está configurado o está deshabilitado.');
+        }
+
+        $messageId = trim($messageId);
+        if ($messageId === '') {
+            throw new RuntimeException('No se indicó el messageId de WhatsApp.');
+        }
+
+        $effectiveInstanceId = trim((string) ($instanceId ?? $this->instanceId));
+        if ($effectiveInstanceId === '') {
+            throw new RuntimeException('No se definió una instancia de WhatsApp para consultar el mensaje.');
+        }
+
+        $url = rtrim($this->apiUrl, '/')
+            . '/api/v1/instances/' . rawurlencode($effectiveInstanceId)
+            . '/messages/' . rawurlencode($messageId);
+
+        try {
+            $client = service('curlrequest');
+            $response = $client->get($url, [
+                'timeout' => max(1, $this->timeoutSeconds),
+                'http_errors' => false,
+                'headers' => [
+                    'x-api-key' => $this->apiKey,
+                    'Accept' => 'application/json',
+                ],
+            ]);
+        } catch (Throwable $exception) {
+            throw new RuntimeException('No se pudo consultar el estado en Vogel WhatsApp API.', 0, $exception);
+        }
+
+        $statusCode = $response->getStatusCode();
+        $body = json_decode((string) $response->getBody(), true);
+        if ($statusCode !== 200 || ! is_array($body) || ! is_array($body['data'] ?? null)) {
+            $detail = is_array($body)
+                ? (string) ($body['message'] ?? $body['error'] ?? '')
+                : '';
+            throw new RuntimeException(
+                'Vogel WhatsApp API rechazó la consulta de estado (HTTP ' . $statusCode . ')'
+                . ($detail === '' ? '.' : ': ' . mb_substr($detail, 0, 300)),
+            );
+        }
+
+        $data = $body['data'];
+        $error = $data['lastError'] ?? $data['error'] ?? null;
+
+        return [
+            'status' => strtolower(trim((string) ($data['status'] ?? ''))),
+            'providerMessageId' => isset($data['providerMessageId']) && trim((string) $data['providerMessageId']) !== ''
+                ? trim((string) $data['providerMessageId'])
+                : null,
+            'error' => $error === null || trim((string) $error) === '' ? null : mb_substr((string) $error, 0, 1000),
+        ];
     }
 
     public function sendText(
