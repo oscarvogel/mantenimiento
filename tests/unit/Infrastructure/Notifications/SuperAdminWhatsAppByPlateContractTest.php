@@ -29,8 +29,12 @@ final class SuperAdminWhatsAppByPlateContractTest extends TestCase
         self::assertStringContainsString('Probar recordatorio por patente/equipo', $page);
         self::assertStringContainsString('name="patente_equipo"', $page);
         self::assertStringContainsString('No ejecuta el cron global ni procesa otros choferes', $page);
+        self::assertStringContainsString('aunque el modo piloto global esté apagado', $page);
+        self::assertStringNotContainsString('Activá el modo piloto de WhatsApp antes de probar una patente.', $controller);
+        self::assertStringContainsString('sin importar el estado del piloto global', $controller);
 
-        self::assertStringContainsString('?int $onlyEquipmentId = null', $queue);
+        self::assertStringContainsString('?int $onlyEquipmentId = null, bool $forcePilotDestination = false', $queue);
+        self::assertStringContainsString('$effectivePilot = $pilotEnabled || $forcePilotDestination', $queue);
         self::assertStringContainsString('$equipmentId !== $onlyEquipmentId', $queue);
         self::assertStringContainsString("resolveActiveToken(hash('sha256', \$token))", $queue);
         self::assertStringContainsString('Token público inconsistente', $queue);
