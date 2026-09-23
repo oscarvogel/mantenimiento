@@ -40,19 +40,24 @@ final class VogelWhatsAppApiGateway implements WhatsAppNotificationGateway
             return null;
         }
 
-        // Hoy la operación administrada contempla Argentina y Brasil.
-        // Mantener esta lista explícita evita interpretar un número local como otro país.
-        if (! str_starts_with($raw, '54') && ! str_starts_with($raw, '55')) {
-            return null;
-        }
-
         if (str_starts_with($raw, '54')) {
-            // Móviles argentinos deben venir como 549 + número nacional.
+            // Argentina móvil: 54 + 9 + 10 dígitos nacionales.
             return preg_match('/^549[0-9]{10}$/', $raw) === 1 ? $raw : null;
         }
 
-        // Brasil: 55 + DDD (2) + abonado (8/9).
-        return preg_match('/^55[0-9]{10,11}$/', $raw) === 1 ? $raw : null;
+        if (str_starts_with($raw, '55')) {
+            // Brasil: 55 + DDD (2) + abonado (8/9).
+            return preg_match('/^55[0-9]{10,11}$/', $raw) === 1 ? $raw : null;
+        }
+
+        if (str_starts_with($raw, '56')) {
+            // Chile: 56 + 9 dígitos nacionales.
+            return preg_match('/^56[0-9]{9}$/', $raw) === 1 ? $raw : null;
+        }
+
+        // Otros países: validación estructural E.164.
+        // Se exige que el número venga completo; nunca se infiere ni agrega país.
+        return $raw;
     }
 
     public function getMessageStatus(string $messageId, ?string $instanceId = null): array
