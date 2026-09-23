@@ -124,7 +124,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
         ]);
     }
 
-    public function scheduleWeeklyReadingReminders(bool $force = false, ?string $testKey = null, ?int $maxScheduled = null, ?string $forcedStage = null): int
+    public function scheduleWeeklyReadingReminders(bool $force = false, ?string $testKey = null, ?int $maxScheduled = null, ?string $forcedStage = null, bool $simulateMissingReading = false): int
     {
         if (! $this->gateway->available()) {
             return 0;
@@ -191,7 +191,8 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             $companyId = (int) $row['empresa_id'];
             $branchId = (int) ($row['sucursal_id'] ?? 0);
 
-            if ($stage !== 'initial' && $this->hasKilometerReadingSince($companyId, $equipmentId, $weekStart)) {
+            if ($stage !== 'initial' && ! $simulateMissingReading
+                && $this->hasKilometerReadingSince($companyId, $equipmentId, $weekStart)) {
                 continue;
             }
 
@@ -232,6 +233,11 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
                 'friday' => 'seguimiento_lectura_viernes',
                 default => 'recordatorio_lectura_semanal',
             };
+            // El simulador piloto debe poder repetirse sin debilitar la idempotencia
+            // productiva. Cada ejecución forzada usa una base aislada por testKey.
+            if ($forcedStage !== '' && $testSuffix !== '') {
+                $keyPrefix = 'simulacion_' . $stage . ':' . substr(hash('sha256', (string) $testKey), 0, 12);
+            }
             $baseDeliveryKey = $keyPrefix . ':empresa:' . $companyId
                 . ':equipo:' . $equipmentId
                 . ':chofer:' . $employeeId
