@@ -207,6 +207,14 @@ const sections = [
                 <option value="friday">Viernes · aviso final + escalamiento</option>
               </select>
             </label>
+            <label class="block max-w-sm">
+              <span class="mb-1.5 block text-sm font-medium text-ink">Escenario de lectura</span>
+              <select name="escenario" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm">
+                <option value="missing">Simular que NO cargó km esta semana</option>
+                <option value="actual">Respetar las lecturas reales de esta semana</option>
+              </select>
+              <span class="mt-1.5 block text-xs text-ink-muted">“Sin lectura” sirve para validar los mensajes. “Lecturas reales” permite comprobar que miércoles/viernes se cancelan después de cargar km.</span>
+            </label>
             <button
               type="submit"
               :disabled="!data.whatsapp.available || !data.whatsapp.pilotEnabled || !data.whatsapp.pilotPhoneConfigured"
