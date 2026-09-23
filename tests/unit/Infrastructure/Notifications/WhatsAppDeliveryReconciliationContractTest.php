@@ -28,8 +28,11 @@ final class WhatsAppDeliveryReconciliationContractTest extends TestCase
         self::assertStringNotContainsString("'549' . \$digits", $gateway);
         self::assertStringContainsString("str_starts_with(\$raw, '54')", $gateway);
         self::assertStringContainsString("str_starts_with(\$raw, '55')", $gateway);
+        self::assertStringContainsString("str_starts_with(\$raw, '56')", $gateway);
         self::assertStringContainsString("preg_match('/^549[0-9]{10}$/', \$raw)", $gateway);
         self::assertStringContainsString("preg_match('/^55[0-9]{10,11}$/', \$raw)", $gateway);
+        self::assertStringContainsString("preg_match('/^56[0-9]{9}$/', \$raw)", $gateway);
+        self::assertStringContainsString('validación estructural E.164', $gateway);
 
         self::assertStringContainsString('getMessageStatus', $gatewayPort);
         self::assertStringContainsString('/messages/', $gateway);
