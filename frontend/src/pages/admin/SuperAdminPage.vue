@@ -212,6 +212,41 @@ const sections = [
           </div>
         </form>
 
+        <form method="post" :action="data.whatsapp.testByPlateAction" class="sm:col-span-2 lg:col-span-4 rounded-lg border border-border bg-white p-4">
+          <CsrfField :csrf="data.csrf" />
+          <div class="flex flex-col gap-4">
+            <div>
+              <p class="text-sm font-semibold text-ink">Probar recordatorio por patente/equipo</p>
+              <p class="mt-1 text-xs leading-5 text-ink-muted">Busca un único equipo activo por patente o código y genera exactamente el mismo mensaje/link del flujo semanal, pero lo envía sólo al teléfono piloto. No ejecuta el cron global ni procesa otros choferes.</p>
+            </div>
+            <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_220px_auto] sm:items-end">
+              <label class="block">
+                <span class="mb-1.5 block text-sm font-medium text-ink">Patente o código</span>
+                <input name="patente_equipo" required autocomplete="off" placeholder="Ej. FKU3A05" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+              </label>
+              <label class="block">
+                <span class="mb-1.5 block text-sm font-medium text-ink">Etapa</span>
+                <select name="etapa" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm">
+                  <option value="initial">Lunes</option>
+                  <option value="wednesday">Miércoles</option>
+                  <option value="friday">Viernes</option>
+                </select>
+              </label>
+              <button
+                type="submit"
+                :disabled="!data.whatsapp.available || !data.whatsapp.pilotEnabled || !data.whatsapp.pilotPhoneConfigured"
+                data-confirm
+                data-confirm-title="¿Probar este equipo?"
+                data-confirm-text="Se enviará un único mensaje al teléfono piloto usando el equipo indicado. No se contactará al chofer real."
+                data-confirm-button="Enviar prueba"
+                class="inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Probar patente
+              </button>
+            </div>
+          </div>
+        </form>
+
         <form method="post" :action="data.whatsapp.testWeeklyReminderAction" class="sm:col-span-2 lg:col-span-4 rounded-lg border border-primary/30 bg-white p-4">
           <CsrfField :csrf="data.csrf" />
           <div class="flex flex-col gap-4">
