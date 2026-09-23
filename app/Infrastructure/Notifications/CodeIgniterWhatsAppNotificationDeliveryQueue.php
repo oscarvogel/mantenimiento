@@ -656,14 +656,11 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             $updates['ultimo_error'] = null;
             $updates['proximo_intento'] = null;
         } elseif ($normalizedStatus === 'failed') {
+            $failure = $error === null || trim($error) === ''
+                ? 'Vogel WhatsApp API informó estado failed sin detalle adicional.'
+                : $error;
             $updates['estado'] = 'FALLIDA';
-            $updates['ultimo_error'] = mb_substr(
-                $error === null || trim($error) === ''
-                    ? 'Vogel WhatsApp API informó estado failed sin detalle adicional.'
-                    : $error,
-                0,
-                1000,
-            );
+            $updates['ultimo_error'] = mb_substr($failure, 0, 1000);
             $updates['proximo_intento'] = null;
         } else {
             $updates['estado'] = 'PENDIENTE_CONFIRMACION';
@@ -675,6 +672,80 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
         $this->db->table('notificacion_whatsapp_entregas')
             ->where('id', $deliveryId)
             ->update($updates);
+
+        if ($normalizedStatus === 'failed') {
+            $this->notifyMaintenanceResponsibleOfWhatsAppFailure(
+                $deliveryId,
+                (string) ($updates['ultimo_error'] ?? 'Fallo de entrega WhatsApp.'),
+            );
+        }
+    }
+
+    private function notifyMaintenanceResponsibleOfWhatsAppFailure(int $deliveryId, string $error): void
+    {
+        $delivery = $this->db->table('notificacion_whatsapp_entregas n')
+            ->select('n.empresa_id, n.equipo_id, n.empleado_id, n.telefono, n.external_ref')
+            ->select('emp.nombre, emp.apellido')
+            ->select('e.codigo equipo_codigo, e.sucursal_id')
+            ->join('empleados emp', 'emp.id = n.empleado_id AND emp.empresa_id = n.empresa_id', 'left')
+            ->join('equipos e', 'e.id = n.equipo_id AND e.empresa_id = n.empresa_id', 'left')
+            ->where('n.id', $deliveryId)
+            ->get()
+            ->getRowArray();
+        if ($delivery === null) {
+            return;
+        }
+
+        $companyId = (int) ($delivery['empresa_id'] ?? 0);
+        if ($companyId <= 0) {
+            return;
+        }
+        $admins = $this->db->table('usuarios u')
+            ->select('DISTINCT u.id', false)
+            ->join('usuario_roles ur', 'ur.usuario_id = u.id', 'inner')
+            ->join('roles r', 'r.id = ur.rol_id', 'inner')
+            ->where('u.empresa_id', $companyId)
+            ->where('u.activo', 1)
+            ->where('u.deleted_at', null)
+            ->where('r.nombre', 'Responsable de mantenimiento')
+            ->get()
+            ->getResultArray();
+
+        $driver = trim((string) ($delivery['nombre'] ?? '') . ' ' . (string) ($delivery['apellido'] ?? ''));
+        $equipment = trim((string) ($delivery['equipo_codigo'] ?? ''));
+        $phone = trim((string) ($delivery['telefono'] ?? ''));
+        $summary = 'Falló el envío WhatsApp'
+            . ($driver === '' ? '' : ' a ' . $driver)
+            . ($equipment === '' ? '' : ' para el equipo ' . $equipment)
+            . ($phone === '' ? '' : ' (destino ' . $phone . ')')
+            . '. Error: ' . mb_substr($error, 0, 500);
+        $createdAt = $this->clock->now()->format('Y-m-d H:i:s');
+
+        foreach ($admins as $admin) {
+            $userId = (int) ($admin['id'] ?? 0);
+            if ($userId <= 0) {
+                continue;
+            }
+            $key = 'whatsapp.fallido:entrega:' . $deliveryId . ':usuario:' . $userId;
+            if ($this->db->table('notificaciones')->where('clave_evento', $key)->countAllResults() > 0) {
+                continue;
+            }
+            $this->db->table('notificaciones')->ignore(true)->insert([
+                'empresa_id' => $companyId,
+                'sucursal_id' => isset($delivery['sucursal_id']) ? (int) $delivery['sucursal_id'] : null,
+                'usuario_id' => $userId,
+                'tipo_evento' => 'whatsapp.entrega_fallida',
+                'severidad' => 'WARNING',
+                'titulo' => 'Falló una notificación WhatsApp',
+                'resumen' => $summary,
+                'entidad_tipo' => 'empleado',
+                'entidad_id' => (string) ((int) ($delivery['empleado_id'] ?? 0)),
+                'url' => '/empleados',
+                'clave_evento' => $key,
+                'estado' => 'PENDIENTE',
+                'created_at' => $createdAt,
+            ]);
+        }
     }
 
     public function skipped(int $deliveryId, string $reason): void
