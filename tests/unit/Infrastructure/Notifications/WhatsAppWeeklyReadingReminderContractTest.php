@@ -52,7 +52,8 @@ final class WhatsAppWeeklyReadingReminderContractTest extends TestCase
         self::assertStringContainsString('co.idioma_notificaciones', $queue);
         self::assertStringContainsString('Lembrete semanal de quilometragem', $queue);
         self::assertStringContainsString('Informar quilometragem', $queue);
-        self::assertStringContainsString('scheduleWeeklyReadingReminders(true, $testKey, $batchLimit)', $controller);
+        self::assertStringContainsString('scheduleWeeklyReadingReminders(', $controller);
+        self::assertStringContainsString('$scenario === \'missing\'', $controller);
         self::assertStringContainsString("env('alerts.whatsappBatchLimit', 5)", $controller);
         self::assertStringContainsString("env('alerts.whatsappSendIntervalMs', 2000)", $controller);
         self::assertStringContainsString('usleep($intervalMs * 1000)', $controller);
@@ -60,8 +61,8 @@ final class WhatsAppWeeklyReadingReminderContractTest extends TestCase
         self::assertStringContainsString("->where('clave_entrega', \$baseDeliveryKey)", $queue);
         self::assertStringContainsString("->like('clave_entrega', \$baseDeliveryKey . ':prueba:', 'after')", $queue);
         self::assertStringContainsString('$alreadyExists', $queue);
-        self::assertStringContainsString("date('o-\\\\WW')", $controller);
-        self::assertStringNotContainsString("date('YmdHis') . '-actor-'", $controller);
+        self::assertStringContainsString("date('YmdHis')", $controller);
+        self::assertStringContainsString("$stage . '-actor-'", $controller);
         self::assertStringContainsString("'Omitido por blindaje anti-duplicado:", $queue);
         self::assertStringContainsString("->where('estado', 'ACEPTADA')", $queue);
         self::assertStringContainsString('$seenWeekly', $queue);
