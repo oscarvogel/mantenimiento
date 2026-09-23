@@ -27,5 +27,11 @@ final class SuperAdminDriverPhoneAuditContractTest extends TestCase
         self::assertStringContainsString('auditDriverPhonesAction', $controller);
         self::assertStringContainsString('Auditar celulares ahora', $page);
         self::assertStringContainsString('No envía WhatsApp a choferes', $page);
+        self::assertStringContainsString('Choferes que requieren corrección', $controller);
+        self::assertStringContainsString('Avisos actualizados', $controller);
+        self::assertStringContainsString('número local sin código internacional', $notifier);
+        self::assertStringContainsString('Argentina sin 9 o formato incompleto', $notifier);
+        self::assertStringContainsString('Brasil con formato incompleto', $notifier);
+        self::assertStringContainsString("'leida_en' => null", $notifier);
     }
 }
