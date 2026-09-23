@@ -82,7 +82,6 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
         $settings = $this->settings->get();
         $pilotEnabled = (bool) ($settings['whatsapp_pilot_enabled'] ?? true);
         $pilotPhone = $this->gateway->normalizePhone((string) ($settings['whatsapp_pilot_phone'] ?? ''));
-        $effectivePilot = $pilotEnabled || $forcePilotDestination;
         // También para vencimientos, el piloto sólo redirige destinatarios reales válidos.
         // Si el chofer no tiene celular válido, queda omitido y se informa al administrador.
         $phone = $realPhone === null ? null : ($pilotEnabled ? $pilotPhone : $realPhone);
@@ -134,6 +133,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
         $settings = $this->settings->get();
         $pilotEnabled = (bool) ($settings['whatsapp_pilot_enabled'] ?? true);
         $pilotPhone = $this->gateway->normalizePhone((string) ($settings['whatsapp_pilot_phone'] ?? ''));
+        $effectivePilot = $pilotEnabled || $forcePilotDestination;
         $globalInstanceId = trim((string) ($settings['whatsapp_instance_id'] ?? 'default'));
         $now = $this->clock->now();
         $forcedStage = strtolower(trim((string) $forcedStage));
