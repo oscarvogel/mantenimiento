@@ -9,8 +9,12 @@ final class WeeklyReadingComplianceContractTest extends TestCase
     public function testWeeklyComplianceFlowIsImplementedAndIdempotent(): void
     {
         $queue = file_get_contents(APPPATH . 'Infrastructure/Notifications/CodeIgniterWhatsAppNotificationDeliveryQueue.php');
+        $controller = file_get_contents(APPPATH . 'Controllers/SuperAdmin.php');
+        $page = file_get_contents(ROOTPATH . 'frontend/src/pages/admin/SuperAdminPage.vue');
 
         self::assertIsString($queue);
+        self::assertIsString($controller);
+        self::assertIsString($page);
         self::assertStringContainsString("return 'wednesday';", $queue);
         self::assertStringContainsString("return 'friday';", $queue);
         self::assertStringContainsString("'seguimiento_lectura_miercoles'", $queue);
@@ -30,5 +34,12 @@ final class WeeklyReadingComplianceContractTest extends TestCase
         self::assertStringContainsString('$dedupeKey', $queue);
         self::assertStringContainsString('$baseDeliveryKey', $queue);
         self::assertStringContainsString("'test|' : 'prod|'", $queue);
+        self::assertStringContainsString("?string $forcedStage = null", $queue);
+        self::assertStringContainsString("['initial', 'wednesday', 'friday']", $queue);
+        self::assertStringContainsString("getPost('etapa')", $controller);
+        self::assertStringContainsString("scheduleWeeklyReadingReminders(true, $testKey, $batchLimit, $stage)", $controller);
+        self::assertStringContainsString('Simulador semanal de kilometraje', $page);
+        self::assertStringContainsString('value="wednesday"', $page);
+        self::assertStringContainsString('value="friday"', $page);
     }
 }
