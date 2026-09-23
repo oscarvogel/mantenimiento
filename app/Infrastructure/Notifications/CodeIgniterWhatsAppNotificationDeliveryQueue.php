@@ -557,7 +557,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
 
             $accepted = $this->db->table('notificacion_whatsapp_entregas')
                 ->where('tipo_evento', 'equipo.recordatorio_lectura_semanal')
-                ->where('estado', 'ACEPTADA')
+                ->whereIn('estado', ['PENDIENTE_CONFIRMACION', 'ACEPTADA'])
                 ->where('id !=', $deliveryId);
             if ($isTest) {
                 $accepted->like('clave_entrega', $baseKey . ':prueba:', 'after');
@@ -612,14 +612,69 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
     public function accepted(int $deliveryId, string $messageId, string $status): void
     {
         $now = $this->clock->now()->format('Y-m-d H:i:s');
+        $normalizedStatus = strtolower(trim($status));
+        $final = in_array($normalizedStatus, ['accepted', 'delivered', 'read'], true);
+
         $this->db->table('notificacion_whatsapp_entregas')->where('id', $deliveryId)->update([
-            'estado' => 'ACEPTADA',
+            'estado' => $final ? 'ACEPTADA' : 'PENDIENTE_CONFIRMACION',
             'gateway_message_id' => $messageId,
-            'gateway_status' => $status,
-            'enviada_en' => $now,
+            'gateway_status' => $normalizedStatus === '' ? 'queued' : $normalizedStatus,
+            'enviada_en' => $final ? $now : null,
             'ultimo_error' => null,
             'updated_at' => $now,
         ]);
+    }
+
+    public function awaitingConfirmation(int $limit): array
+    {
+        return $this->db->table('notificacion_whatsapp_entregas')
+            ->where('estado', 'PENDIENTE_CONFIRMACION')
+            ->where('gateway_message_id IS NOT NULL', null, false)
+            ->orderBy('updated_at', 'ASC')
+            ->limit(max(1, min(1000, $limit)))
+            ->get()
+            ->getResultArray();
+    }
+
+    public function reconcileStatus(
+        int $deliveryId,
+        string $status,
+        ?string $providerMessageId = null,
+        ?string $error = null,
+    ): void {
+        $normalizedStatus = strtolower(trim($status));
+        $now = $this->clock->now()->format('Y-m-d H:i:s');
+        $updates = [
+            'gateway_status' => $normalizedStatus,
+            'provider_message_id' => $providerMessageId,
+            'updated_at' => $now,
+        ];
+
+        if (in_array($normalizedStatus, ['accepted', 'delivered', 'read'], true)) {
+            $updates['estado'] = 'ACEPTADA';
+            $updates['enviada_en'] = $now;
+            $updates['ultimo_error'] = null;
+            $updates['proximo_intento'] = null;
+        } elseif ($normalizedStatus === 'failed') {
+            $updates['estado'] = 'FALLIDA';
+            $updates['ultimo_error'] = mb_substr(
+                $error === null || trim($error) === ''
+                    ? 'Vogel WhatsApp API informó estado failed sin detalle adicional.'
+                    : $error,
+                0,
+                1000,
+            );
+            $updates['proximo_intento'] = null;
+        } else {
+            $updates['estado'] = 'PENDIENTE_CONFIRMACION';
+            if ($error !== null && trim($error) !== '') {
+                $updates['ultimo_error'] = mb_substr($error, 0, 1000);
+            }
+        }
+
+        $this->db->table('notificacion_whatsapp_entregas')
+            ->where('id', $deliveryId)
+            ->update($updates);
     }
 
     public function skipped(int $deliveryId, string $reason): void
