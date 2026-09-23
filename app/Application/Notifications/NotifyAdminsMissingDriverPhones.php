@@ -24,10 +24,10 @@ final readonly class NotifyAdminsMissingDriverPhones
     ) {
     }
 
-    /** @return array{companies:int,drivers:int,notifications:int,duplicates:int} */
+    /** @return array{companies:int,drivers:int,notifications:int,updated:int,duplicates:int} */
     public function execute(bool $force = false): array
     {
-        $summary = ['companies' => 0, 'drivers' => 0, 'notifications' => 0, 'duplicates' => 0];
+        $summary = ['companies' => 0, 'drivers' => 0, 'notifications' => 0, 'updated' => 0, 'duplicates' => 0];
         $now = $this->clock->now();
 
         if (! $force && ! $this->weeklyReminderIsDue($now)) {
@@ -65,7 +65,9 @@ final readonly class NotifyAdminsMissingDriverPhones
             }
             $seenAssignments[$key] = true;
 
-            if ($this->whatsApp->normalizePhone((string) ($row['telefono'] ?? '')) !== null) {
+            $rawPhone = trim((string) ($row['telefono'] ?? ''));
+            $category = $this->phoneObservationCategory($rawPhone);
+            if ($category === null) {
                 continue;
             }
 
@@ -82,11 +84,12 @@ final readonly class NotifyAdminsMissingDriverPhones
                 $equipment = 'Equipo #' . $equipmentId;
             }
 
-            $rawPhone = trim((string) ($row['telefono'] ?? ''));
             $missingByCompany[$companyId][$employeeId] = [
                 'name' => $name,
                 'equipment' => $equipment,
                 'phone' => $rawPhone === '' ? '(sin teléfono)' : $rawPhone,
+                'category' => $category['code'],
+                'reason' => $category['label'],
             ];
         }
 
@@ -115,9 +118,30 @@ final readonly class NotifyAdminsMissingDriverPhones
             $summary['companies']++;
             $summary['drivers'] += count($items);
 
-            $shown = array_slice($items, 0, 8);
+            $counts = [];
+            foreach ($items as $item) {
+                $counts[$item['category']] = ($counts[$item['category']] ?? 0) + 1;
+            }
+            $labels = [
+                'missing' => 'sin teléfono',
+                'local' => 'número local sin código internacional',
+                'ar_without_9' => 'Argentina sin 9 o formato incompleto',
+                'br_incomplete' => 'Brasil con formato incompleto',
+                'invalid' => 'otro formato inválido',
+            ];
+            $parts = [];
+            foreach ($labels as $code => $label) {
+                if (($counts[$code] ?? 0) > 0) {
+                    $parts[] = $counts[$code] . ' ' . $label;
+                }
+            }
+
+            $shown = array_slice($items, 0, 12);
             $detail = implode('; ', array_map(
-                static fn (array $item): string => $item['name'] . ' (' . $item['equipment'] . ', tel. ' . $item['phone'] . ')',
+                static fn (array $item): string => $item['name']
+                    . ' (' . $item['equipment']
+                    . ', tel. ' . $item['phone']
+                    . ', ' . $item['reason'] . ')',
                 $shown,
             ));
             $remaining = count($items) - count($shown);
@@ -125,13 +149,20 @@ final readonly class NotifyAdminsMissingDriverPhones
                 $detail .= '; +' . $remaining . ' más';
             }
 
+            $title = 'Revisión de celulares para WhatsApp';
+            $eventSummary = 'Se detectaron ' . count($items)
+                . ' chofer(es) que requieren corrección de teléfono. Resumen: '
+                . implode(', ', $parts)
+                . '. Detalle: ' . $detail
+                . '. Cargá el número completo en formato internacional y sólo dígitos (Argentina 549..., Brasil 55...). Mientras siga observado no se enviarán recordatorios de km ni avisos de vencimientos.';
+
             $event = new NotifiableEvent(
                 (int) $companyId,
                 null,
                 'chofer.telefono_faltante',
                 NotificationSeverity::WARNING,
-                'Choferes con celular inválido para WhatsApp',
-                'Hay ' . count($items) . ' chofer(es) activos asignados a equipos sin un celular internacional válido para WhatsApp: ' . $detail . '. Cargá el teléfono completo en formato internacional, sólo dígitos (Argentina 549..., Brasil 55...). Hasta corregirlo no se enviarán recordatorios de km ni avisos de vencimientos.',
+                $title,
+                $eventSummary,
                 'empresa',
                 (string) $companyId,
                 'chofer.telefono_faltante:empresa:' . $companyId . ':semana:' . $weekKey,
@@ -140,16 +171,67 @@ final readonly class NotifyAdminsMissingDriverPhones
             );
 
             foreach ($admins as $admin) {
-                $notification = Notification::forRecipient($event, (int) $admin['id']);
-                if ($this->notifications->createIfAbsent($notification) === null) {
+                $userId = (int) $admin['id'];
+                $notification = Notification::forRecipient($event, $userId);
+                if ($this->notifications->createIfAbsent($notification) !== null) {
+                    $summary['notifications']++;
+                    continue;
+                }
+
+                $key = $notification->idempotencyKey();
+                $existing = $this->db->table('notificaciones')
+                    ->select('id')
+                    ->where('empresa_id', $companyId)
+                    ->where('usuario_id', $userId)
+                    ->where('clave_evento', $key)
+                    ->get()
+                    ->getRowArray();
+                if ($existing === null) {
                     $summary['duplicates']++;
                     continue;
                 }
-                $summary['notifications']++;
+
+                $this->db->table('notificaciones')
+                    ->where('id', (int) $existing['id'])
+                    ->update([
+                        'titulo' => $title,
+                        'resumen' => $eventSummary,
+                        'estado' => 'PENDIENTE',
+                        'leida_en' => null,
+                        'updated_at' => $now->format('Y-m-d H:i:s'),
+                    ]);
+                $summary['updated']++;
             }
         }
 
         return $summary;
+    }
+
+    /** @return array{code:string,label:string}|null */
+    private function phoneObservationCategory(string $phone): ?array
+    {
+        $phone = trim($phone);
+        if ($phone === '') {
+            return ['code' => 'missing', 'label' => 'sin teléfono'];
+        }
+
+        if ($this->whatsApp->normalizePhone($phone) !== null) {
+            return null;
+        }
+
+        if (preg_match('/^[0-9]{10}$/', $phone) === 1) {
+            return ['code' => 'local', 'label' => 'número local sin código internacional'];
+        }
+
+        if (preg_match('/^54[0-9]+$/', $phone) === 1 && ! str_starts_with($phone, '549')) {
+            return ['code' => 'ar_without_9', 'label' => 'Argentina sin 9 o formato incompleto'];
+        }
+
+        if (preg_match('/^55[0-9]+$/', $phone) === 1) {
+            return ['code' => 'br_incomplete', 'label' => 'Brasil con formato incompleto'];
+        }
+
+        return ['code' => 'invalid', 'label' => 'otro formato inválido'];
     }
 
     private function weeklyReminderIsDue(DateTimeInterface $now): bool

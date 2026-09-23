@@ -300,9 +300,10 @@ final class SuperAdmin extends BaseController
                 'success',
                 'Auditoría de celulares completada. Empresas con observaciones: '
                 . (int) ($result['companies'] ?? 0)
-                . '. Choferes con teléfono inválido/faltante: ' . (int) ($result['drivers'] ?? 0)
+                . '. Choferes que requieren corrección: ' . (int) ($result['drivers'] ?? 0)
                 . '. Avisos nuevos al Responsable de mantenimiento: ' . (int) ($result['notifications'] ?? 0)
-                . '. Duplicados omitidos: ' . (int) ($result['duplicates'] ?? 0)
+                . '. Avisos actualizados: ' . (int) ($result['updated'] ?? 0)
+                . '. Duplicados no actualizables: ' . (int) ($result['duplicates'] ?? 0)
                 . '. No se enviaron WhatsApp a choferes.',
             );
         } catch (Throwable $exception) {
