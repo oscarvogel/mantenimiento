@@ -59,6 +59,7 @@ $routes->group('superadmin', ['filter' => 'superadmin'], static function ($route
     $routes->post('whatsapp/prueba', 'SuperAdmin::testWhatsApp');
     $routes->post('whatsapp/probar-recordatorio-km', 'SuperAdmin::testWeeklyReadingReminderWhatsApp');
     $routes->post('whatsapp/preparar-piloto', 'SuperAdmin::prepareWhatsAppPilotScenario');
+    $routes->post('whatsapp/auditar-celulares', 'SuperAdmin::auditDriverPhones');
     $routes->get('configuracion/notificaciones', 'NotificationSettings::index');
     $routes->post('configuracion/notificaciones', 'NotificationSettings::update');
     $routes->post('configuracion/notificaciones/probar-email', 'NotificationSettings::testEmail');

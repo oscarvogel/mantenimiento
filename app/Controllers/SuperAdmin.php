@@ -61,6 +61,7 @@ final class SuperAdmin extends BaseController
             'testAction' => base_url('superadmin/whatsapp/prueba'),
             'testWeeklyReminderAction' => base_url('superadmin/whatsapp/probar-recordatorio-km'),
             'preparePilotAction' => base_url('superadmin/whatsapp/preparar-piloto'),
+            'auditDriverPhonesAction' => base_url('superadmin/whatsapp/auditar-celulares'),
         ];
         $payload['aiCompanyControls'] = array_map(static fn (array $company): array => [
             'id' => (int) $company['id'],
@@ -284,6 +285,25 @@ final class SuperAdmin extends BaseController
             return redirect()->to('/superadmin')->with(
                 'success',
                 'Informe ' . ($type === 'DAILY' ? 'diario' : 'semanal') . ' de prueba enviado correctamente.',
+            );
+        } catch (Throwable $exception) {
+            return $this->operationFailure($exception);
+        }
+    }
+
+    public function auditDriverPhones(): RedirectResponse
+    {
+        try {
+            $result = service('notifyAdminsMissingDriverPhones')->execute(true);
+
+            return redirect()->to('/superadmin')->with(
+                'success',
+                'Auditoría de celulares completada. Empresas con observaciones: '
+                . (int) ($result['companies'] ?? 0)
+                . '. Choferes con teléfono inválido/faltante: ' . (int) ($result['drivers'] ?? 0)
+                . '. Avisos nuevos al Responsable de mantenimiento: ' . (int) ($result['notifications'] ?? 0)
+                . '. Duplicados omitidos: ' . (int) ($result['duplicates'] ?? 0)
+                . '. No se enviaron WhatsApp a choferes.',
             );
         } catch (Throwable $exception) {
             return $this->operationFailure($exception);
