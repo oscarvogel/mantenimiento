@@ -124,7 +124,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
         ]);
     }
 
-    public function scheduleWeeklyReadingReminders(bool $force = false, ?string $testKey = null, ?int $maxScheduled = null): int
+    public function scheduleWeeklyReadingReminders(bool $force = false, ?string $testKey = null, ?int $maxScheduled = null, ?string $forcedStage = null): int
     {
         if (! $this->gateway->available()) {
             return 0;
@@ -135,7 +135,11 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
         $pilotPhone = $this->gateway->normalizePhone((string) ($settings['whatsapp_pilot_phone'] ?? ''));
         $globalInstanceId = trim((string) ($settings['whatsapp_instance_id'] ?? 'default'));
         $now = $this->clock->now();
-        $stage = $force ? 'initial' : $this->weeklyReadingStage($now);
+        $forcedStage = strtolower(trim((string) $forcedStage));
+        if ($forcedStage !== '' && ! in_array($forcedStage, ['initial', 'wednesday', 'friday'], true)) {
+            throw new \InvalidArgumentException('La etapa semanal forzada no es válida.');
+        }
+        $stage = $forcedStage !== '' ? $forcedStage : ($force ? 'initial' : $this->weeklyReadingStage($now));
         if ($stage === null) {
             return 0;
         }
