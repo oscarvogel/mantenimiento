@@ -20,7 +20,7 @@ final class SuperAdminWhatsAppByPlateContractTest extends TestCase
 
         self::assertStringContainsString('testWeeklyReadingReminderByPlate', $controller);
         self::assertStringContainsString("getPost('patente_equipo')", $controller);
-        self::assertStringContainsString("'patente-' . $equipmentId", $controller);
+        self::assertStringContainsString("'patente-' . \$equipmentId", $controller);
         self::assertStringContainsString('$equipmentId,', $controller);
         self::assertStringContainsString('la entrega preparada no corresponde al equipo solicitado', $controller);
         self::assertStringContainsString('El token público fue validado contra este mismo equipo', $controller);
@@ -32,7 +32,7 @@ final class SuperAdminWhatsAppByPlateContractTest extends TestCase
 
         self::assertStringContainsString('?int $onlyEquipmentId = null', $queue);
         self::assertStringContainsString('$equipmentId !== $onlyEquipmentId', $queue);
-        self::assertStringContainsString("resolveActiveToken(hash('sha256', $token))", $queue);
+        self::assertStringContainsString("resolveActiveToken(hash('sha256', \$token))", $queue);
         self::assertStringContainsString('Token público inconsistente', $queue);
     }
 }
