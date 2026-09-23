@@ -25,12 +25,12 @@ final readonly class NotifyAdminsMissingDriverPhones
     }
 
     /** @return array{companies:int,drivers:int,notifications:int,duplicates:int} */
-    public function execute(): array
+    public function execute(bool $force = false): array
     {
         $summary = ['companies' => 0, 'drivers' => 0, 'notifications' => 0, 'duplicates' => 0];
         $now = $this->clock->now();
 
-        if (! $this->weeklyReminderIsDue($now)) {
+        if (! $force && ! $this->weeklyReminderIsDue($now)) {
             return $summary;
         }
 
