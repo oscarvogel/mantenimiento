@@ -34,12 +34,12 @@ final class WeeklyReadingComplianceContractTest extends TestCase
         self::assertStringContainsString('$dedupeKey', $queue);
         self::assertStringContainsString('$baseDeliveryKey', $queue);
         self::assertStringContainsString("'test|' : 'prod|'", $queue);
-        self::assertStringContainsString("?string $forcedStage = null, bool $simulateMissingReading = false", $queue);
+        self::assertStringContainsString("?string \$forcedStage = null, bool \$simulateMissingReading = false", $queue);
         self::assertStringContainsString("['initial', 'wednesday', 'friday']", $queue);
         self::assertStringContainsString("getPost('etapa')", $controller);
-        self::assertStringContainsString("$scenario === 'missing'", $controller);
+        self::assertStringContainsString("\$scenario === 'missing'", $controller);
         self::assertStringContainsString("date('YmdHis')", $controller);
-        self::assertStringContainsString("'simulacion_' . $stage", $queue);
+        self::assertStringContainsString("'simulacion_' . \$stage", $queue);
         self::assertStringContainsString('Simulador semanal de kilometraje', $page);
         self::assertStringContainsString('value="wednesday"', $page);
         self::assertStringContainsString('value="friday"', $page);
