@@ -124,7 +124,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
         ]);
     }
 
-    public function scheduleWeeklyReadingReminders(bool $force = false, ?string $testKey = null, ?int $maxScheduled = null, ?string $forcedStage = null, bool $simulateMissingReading = false): int
+    public function scheduleWeeklyReadingReminders(bool $force = false, ?string $testKey = null, ?int $maxScheduled = null, ?string $forcedStage = null, bool $simulateMissingReading = false, ?int $onlyEquipmentId = null): int
     {
         if (! $this->gateway->available()) {
             return 0;
@@ -182,6 +182,9 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
         $limitedCandidates = 0;
         foreach ($rows as $row) {
             $equipmentId = (int) $row['equipo_id'];
+            if ($onlyEquipmentId !== null && $equipmentId !== $onlyEquipmentId) {
+                continue;
+            }
             if ($equipmentId <= 0 || isset($seenEquipment[$equipmentId])) {
                 continue;
             }
@@ -215,8 +218,19 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
 
             $token = null;
             try {
-                $token = (new CodeIgniterPublicEquipmentTokenRepository($this->db))
-                    ->ensureActivePlainTokenForEquipment($companyId, $equipmentId, $timestamp);
+                $tokenRepository = new CodeIgniterPublicEquipmentTokenRepository($this->db);
+                $token = $tokenRepository->ensureActivePlainTokenForEquipment($companyId, $equipmentId, $timestamp);
+                if (is_string($token) && trim($token) !== '') {
+                    $resolved = $tokenRepository->resolveActiveToken(hash('sha256', $token));
+                    if ($resolved === null
+                        || (int) ($resolved['empresa_id'] ?? 0) !== $companyId
+                        || (int) ($resolved['equipo_id'] ?? 0) !== $equipmentId) {
+                        log_message('error', 'Token público inconsistente para equipo {equipment}; se omite el WhatsApp para evitar enlace cruzado.', [
+                            'equipment' => $equipmentId,
+                        ]);
+                        $token = null;
+                    }
+                }
             } catch (Throwable $exception) {
                 log_message('warning', 'No se pudo asegurar el acceso público para seguimiento semanal del equipo {equipment}: {message}', [
                     'equipment' => $equipmentId,
