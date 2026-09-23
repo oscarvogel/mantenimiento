@@ -194,21 +194,37 @@ const sections = [
 
         <form method="post" :action="data.whatsapp.testWeeklyReminderAction" class="sm:col-span-2 lg:col-span-4 rounded-lg border border-primary/30 bg-white p-4">
           <CsrfField :csrf="data.csrf" />
-          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div class="flex flex-col gap-4">
             <div>
-              <p class="text-sm font-semibold text-ink">Recordatorio semanal de kilometraje</p>
-              <p class="mt-1 text-xs leading-5 text-ink-muted">Fuerza una entrega de prueba con un chofer/equipo real elegible, pero redirige el WhatsApp al teléfono piloto. Incluye exactamente el link público para cargar los km y respeta el mismo lote máximo que producción.</p>
+              <p class="text-sm font-semibold text-ink">Simulador semanal de kilometraje</p>
+              <p class="mt-1 text-xs leading-5 text-ink-muted">Simula lunes, miércoles o viernes sin cambiar la fecha del servidor. Sólo funciona con modo piloto activo y todo WhatsApp se redirige al teléfono piloto.</p>
             </div>
+            <label class="block max-w-sm">
+              <span class="mb-1.5 block text-sm font-medium text-ink">Etapa a simular</span>
+              <select name="etapa" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm">
+                <option value="initial">Lunes · recordatorio inicial</option>
+                <option value="wednesday">Miércoles · segundo recordatorio</option>
+                <option value="friday">Viernes · aviso final + escalamiento</option>
+              </select>
+            </label>
+            <label class="block max-w-sm">
+              <span class="mb-1.5 block text-sm font-medium text-ink">Escenario de lectura</span>
+              <select name="escenario" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm">
+                <option value="missing">Simular que NO cargó km esta semana</option>
+                <option value="actual">Respetar las lecturas reales de esta semana</option>
+              </select>
+              <span class="mt-1.5 block text-xs text-ink-muted">“Sin lectura” sirve para validar los mensajes. “Lecturas reales” permite comprobar que miércoles/viernes se cancelan después de cargar km.</span>
+            </label>
             <button
               type="submit"
               :disabled="!data.whatsapp.available || !data.whatsapp.pilotEnabled || !data.whatsapp.pilotPhoneConfigured"
               data-confirm
-              data-confirm-title="¿Enviar prueba del recordatorio semanal?"
-              data-confirm-text="Se enviará únicamente al teléfono piloto y no al chofer real."
-              data-confirm-button="Enviar prueba"
+              data-confirm-title="¿Simular esta etapa semanal?"
+              data-confirm-text="Se evaluará la etapa seleccionada y cualquier WhatsApp se enviará únicamente al teléfono piloto."
+              data-confirm-button="Ejecutar simulación"
               class="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Probar recordatorio semanal
+              Ejecutar simulación
             </button>
           </div>
         </form>

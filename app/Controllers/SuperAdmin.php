@@ -306,13 +306,34 @@ final class SuperAdmin extends BaseController
                 throw new DomainException('WhatsApp no está disponible. Revisá URL, API key, instanceId y que el canal esté habilitado.');
             }
 
+            $stage = strtolower(trim((string) ($this->request->getPost('etapa') ?: 'initial')));
+            if (! in_array($stage, ['initial', 'wednesday', 'friday'], true)) {
+                throw new DomainException('La etapa de prueba no es válida.');
+            }
+            $scenario = strtolower(trim((string) ($this->request->getPost('escenario') ?: 'missing')));
+            if (! in_array($scenario, ['missing', 'actual'], true)) {
+                throw new DomainException('El escenario de lectura no es válido.');
+            }
+
             $queue = service('whatsAppNotificationDeliveryQueue');
-            $testKey = date('o-\\WW') . '-actor-' . $this->actor()->userId();
+            $testKey = date('YmdHis') . '-' . $stage . '-actor-' . $this->actor()->userId();
             $batchLimit = max(1, (int) env('alerts.whatsappBatchLimit', 5));
             $intervalMs = max(0, min(10000, (int) env('alerts.whatsappSendIntervalMs', 2000)));
-            $scheduled = $queue->scheduleWeeklyReadingReminders(true, $testKey, $batchLimit);
+            $scheduled = $queue->scheduleWeeklyReadingReminders(
+                true,
+                $testKey,
+                $batchLimit,
+                $stage,
+                $scenario === 'missing',
+            );
             if ($scheduled < 1) {
-                throw new DomainException('La prueba semanal ya fue ejecutada para este lote o no hay nuevos choferes elegibles. No se enviaron mensajes duplicados.');
+                if ($scenario === 'actual' && $stage !== 'initial') {
+                    return redirect()->to('/superadmin')->with(
+                        'success',
+                        'Simulación correcta: no se envió ' . $stage . ' porque los equipos elegibles ya tienen lectura de km esta semana.',
+                    );
+                }
+                throw new DomainException('No hay choferes/equipos elegibles para esta simulación. Revisá el escenario piloto y la configuración de equipos con control de km.');
             }
 
             $sent = 0;
@@ -346,7 +367,7 @@ final class SuperAdmin extends BaseController
 
             return redirect()->to('/superadmin')->with(
                 'success',
-                'Prueba semanal enviada al teléfono piloto. Entregas: ' . $sent . '. No se contactó a ningún chofer real.',
+                'Prueba semanal (' . $stage . ') enviada al teléfono piloto. Entregas: ' . $sent . '. No se contactó a ningún chofer real.',
             );
         } catch (Throwable $exception) {
             return $this->operationFailure($exception);
