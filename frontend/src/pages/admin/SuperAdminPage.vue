@@ -217,7 +217,7 @@ const sections = [
           <div class="flex flex-col gap-4">
             <div>
               <p class="text-sm font-semibold text-ink">Probar recordatorio por patente/equipo</p>
-              <p class="mt-1 text-xs leading-5 text-ink-muted">Busca un único equipo activo por patente o código y genera exactamente el mismo mensaje/link del flujo semanal, pero lo envía sólo al teléfono piloto. No ejecuta el cron global ni procesa otros choferes.</p>
+              <p class="mt-1 text-xs leading-5 text-ink-muted">Busca un único equipo activo por patente o código y genera exactamente el mismo mensaje/link del flujo semanal, pero lo envía siempre al teléfono piloto configurado, aunque el modo piloto global esté apagado. No ejecuta el cron global ni procesa otros choferes.</p>
             </div>
             <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_220px_auto] sm:items-end">
               <label class="block">
@@ -234,7 +234,7 @@ const sections = [
               </label>
               <button
                 type="submit"
-                :disabled="!data.whatsapp.available || !data.whatsapp.pilotEnabled || !data.whatsapp.pilotPhoneConfigured"
+                :disabled="!data.whatsapp.available || !data.whatsapp.pilotPhoneConfigured"
                 data-confirm
                 data-confirm-title="¿Probar este equipo?"
                 data-confirm-text="Se enviará un único mensaje al teléfono piloto usando el equipo indicado. No se contactará al chofer real."
