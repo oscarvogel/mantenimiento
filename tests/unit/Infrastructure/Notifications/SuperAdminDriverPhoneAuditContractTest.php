@@ -32,6 +32,8 @@ final class SuperAdminDriverPhoneAuditContractTest extends TestCase
         self::assertStringContainsString('número local sin código internacional', $notifier);
         self::assertStringContainsString('Argentina sin 9 o formato incompleto', $notifier);
         self::assertStringContainsString('Brasil con formato incompleto', $notifier);
+        self::assertStringContainsString('Chile con formato incompleto', $notifier);
+        self::assertStringContainsString('Chile 56...', $notifier);
         self::assertStringContainsString("'leida_en' => null", $notifier);
     }
 }
