@@ -318,9 +318,6 @@ final class SuperAdmin extends BaseController
             $settings = service('globalNotificationSettingsStore')->get();
             $gateway = service('whatsAppGateway');
 
-            if (! (bool) ($settings['whatsapp_pilot_enabled'] ?? false)) {
-                throw new DomainException('Activá el modo piloto de WhatsApp antes de probar una patente.');
-            }
             if ($gateway->normalizePhone((string) ($settings['whatsapp_pilot_phone'] ?? '')) === null) {
                 throw new DomainException('Configurá un teléfono piloto internacional válido antes de probar una patente.');
             }
@@ -384,6 +381,7 @@ final class SuperAdmin extends BaseController
                 $stage,
                 true,
                 $equipmentId,
+                true,
             );
             if ($scheduled !== 1) {
                 throw new DomainException('No se pudo preparar la prueba dirigida para ' . $search . '. Revisá control de km, teléfono y configuración WhatsApp.');
@@ -421,7 +419,7 @@ final class SuperAdmin extends BaseController
 
             return redirect()->to('/superadmin')->with(
                 'success',
-                'Prueba dirigida enviada sólo al piloto. Equipo #' . $equipmentId
+                'Prueba dirigida enviada sólo al teléfono piloto configurado, sin importar el estado del piloto global. Equipo #' . $equipmentId
                 . ' · ' . $label
                 . ' · chofer ' . ($driverName === '' ? '(sin nombre)' : $driverName)
                 . ' · etapa ' . $stage
