@@ -124,7 +124,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
         ]);
     }
 
-    public function scheduleWeeklyReadingReminders(bool $force = false, ?string $testKey = null, ?int $maxScheduled = null, ?string $forcedStage = null, bool $simulateMissingReading = false): int
+    public function scheduleWeeklyReadingReminders(bool $force = false, ?string $testKey = null, ?int $maxScheduled = null, ?string $forcedStage = null, bool $simulateMissingReading = false, ?int $onlyEquipmentId = null, bool $forcePilotDestination = false): int
     {
         if (! $this->gateway->available()) {
             return 0;
@@ -133,6 +133,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
         $settings = $this->settings->get();
         $pilotEnabled = (bool) ($settings['whatsapp_pilot_enabled'] ?? true);
         $pilotPhone = $this->gateway->normalizePhone((string) ($settings['whatsapp_pilot_phone'] ?? ''));
+        $effectivePilot = $pilotEnabled || $forcePilotDestination;
         $globalInstanceId = trim((string) ($settings['whatsapp_instance_id'] ?? 'default'));
         $now = $this->clock->now();
         $forcedStage = strtolower(trim((string) $forcedStage));
@@ -182,6 +183,9 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
         $limitedCandidates = 0;
         foreach ($rows as $row) {
             $equipmentId = (int) $row['equipo_id'];
+            if ($onlyEquipmentId !== null && $equipmentId !== $onlyEquipmentId) {
+                continue;
+            }
             if ($equipmentId <= 0 || isset($seenEquipment[$equipmentId])) {
                 continue;
             }
@@ -197,7 +201,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             }
 
             $realPhone = $this->gateway->normalizePhone((string) ($row['telefono'] ?? ''));
-            $phone = $realPhone === null ? null : ($pilotEnabled ? $pilotPhone : $realPhone);
+            $phone = $realPhone === null ? null : ($effectivePilot ? $pilotPhone : $realPhone);
             $instanceId = trim((string) ($row['whatsapp_instance_id'] ?? ''));
             if ($instanceId === '') {
                 $instanceId = $globalInstanceId;
@@ -215,8 +219,19 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
 
             $token = null;
             try {
-                $token = (new CodeIgniterPublicEquipmentTokenRepository($this->db))
-                    ->ensureActivePlainTokenForEquipment($companyId, $equipmentId, $timestamp);
+                $tokenRepository = new CodeIgniterPublicEquipmentTokenRepository($this->db);
+                $token = $tokenRepository->ensureActivePlainTokenForEquipment($companyId, $equipmentId, $timestamp);
+                if (is_string($token) && trim($token) !== '') {
+                    $resolved = $tokenRepository->resolveActiveToken(hash('sha256', $token));
+                    if ($resolved === null
+                        || (int) ($resolved['empresa_id'] ?? 0) !== $companyId
+                        || (int) ($resolved['equipo_id'] ?? 0) !== $equipmentId) {
+                        log_message('error', 'Token público inconsistente para equipo {equipment}; se omite el WhatsApp para evitar enlace cruzado.', [
+                            'equipment' => $equipmentId,
+                        ]);
+                        $token = null;
+                    }
+                }
             } catch (Throwable $exception) {
                 log_message('warning', 'No se pudo asegurar el acceso público para seguimiento semanal del equipo {equipment}: {message}', [
                     'equipment' => $equipmentId,
@@ -263,7 +278,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
 
             $branchLocale = trim((string) ($row['sucursal_idioma_notificaciones'] ?? ''));
             $locale = $this->normalizeLocale($branchLocale !== '' ? $branchLocale : (string) ($row['idioma_notificaciones'] ?? 'ES'));
-            $pilotHeader = $pilotEnabled
+            $pilotHeader = $effectivePilot
                 ? ($locale === 'PT'
                     ? "🧪 *TESTE CONTROLADO · NÃO ENVIADO AO DESTINATÁRIO REAL*\n"
                         . "*Destinatário previsto:* " . ($name === '' ? 'Motorista atribuído' : $name) . "\n"
@@ -287,8 +302,8 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
                 'mensaje' => $message,
                 'estado' => $phone === null ? 'OMITIDA' : 'PENDIENTE',
                 'ultimo_error' => $phone === null
-                    ? ($pilotEnabled
-                        ? 'Modo piloto activo pero no hay un teléfono piloto válido configurado.'
+                    ? ($effectivePilot
+                        ? 'Prueba dirigida/piloto activa pero no hay un teléfono piloto válido configurado.'
                         : 'El chofer asignado no tiene un celular válido para WhatsApp.')
                     : null,
                 'created_at' => $timestamp,

@@ -60,6 +60,7 @@ final class SuperAdmin extends BaseController
             'weeklyReminderTime' => trim((string) env('alerts.weeklyReadingReminderTime', '08:00')),
             'testAction' => base_url('superadmin/whatsapp/prueba'),
             'testWeeklyReminderAction' => base_url('superadmin/whatsapp/probar-recordatorio-km'),
+            'testByPlateAction' => base_url('superadmin/whatsapp/probar-por-patente'),
             'preparePilotAction' => base_url('superadmin/whatsapp/preparar-piloto'),
             'auditDriverPhonesAction' => base_url('superadmin/whatsapp/auditar-celulares'),
         ];
@@ -305,6 +306,124 @@ final class SuperAdmin extends BaseController
                 . '. Avisos actualizados: ' . (int) ($result['updated'] ?? 0)
                 . '. Duplicados no actualizables: ' . (int) ($result['duplicates'] ?? 0)
                 . '. No se enviaron WhatsApp a choferes.',
+            );
+        } catch (Throwable $exception) {
+            return $this->operationFailure($exception);
+        }
+    }
+
+    public function testWeeklyReadingReminderByPlate(): RedirectResponse
+    {
+        try {
+            $settings = service('globalNotificationSettingsStore')->get();
+            $gateway = service('whatsAppGateway');
+
+            if ($gateway->normalizePhone((string) ($settings['whatsapp_pilot_phone'] ?? '')) === null) {
+                throw new DomainException('Configurá un teléfono piloto internacional válido antes de probar una patente.');
+            }
+
+            $search = strtoupper(trim((string) $this->request->getPost('patente_equipo')));
+            if ($search === '') {
+                throw new DomainException('Ingresá una patente o código de equipo.');
+            }
+
+            $stage = strtolower(trim((string) ($this->request->getPost('etapa') ?: 'initial')));
+            if (! in_array($stage, ['initial', 'wednesday', 'friday'], true)) {
+                throw new DomainException('La etapa de prueba no es válida.');
+            }
+
+            $db = db_connect();
+            $matches = $db->table('equipos')
+                ->select('id, empresa_id, codigo, patente')
+                ->where('estado', 'ACTIVO')
+                ->where('deleted_at', null)
+                ->groupStart()
+                    ->where('codigo', $search)
+                    ->orWhere('patente', $search)
+                ->groupEnd()
+                ->get()
+                ->getResultArray();
+
+            if ($matches === []) {
+                throw new DomainException('No se encontró un equipo activo con patente/código ' . $search . '.');
+            }
+            if (count($matches) > 1) {
+                throw new DomainException('La patente/código ' . $search . ' coincide con más de un equipo. Corregí el dato antes de probar.');
+            }
+
+            $equipment = $matches[0];
+            $equipmentId = (int) $equipment['id'];
+            $companyId = (int) $equipment['empresa_id'];
+
+            $driver = $db->table('employee_equipment_assignments a')
+                ->select('emp.nombre, emp.apellido, emp.telefono')
+                ->join('empleados emp', 'emp.id = a.empleado_id AND emp.empresa_id = a.empresa_id', 'inner')
+                ->where('a.empresa_id', $companyId)
+                ->where('a.equipo_id', $equipmentId)
+                ->where('a.rol', 'CHOFER')
+                ->where('a.fecha_hasta', null)
+                ->where('emp.activo', 1)
+                ->where('emp.deleted_at', null)
+                ->orderBy('a.id', 'DESC')
+                ->get()
+                ->getRowArray();
+
+            if ($driver === null) {
+                throw new DomainException('El equipo ' . $search . ' no tiene un chofer activo asignado.');
+            }
+
+            $queue = service('whatsAppNotificationDeliveryQueue');
+            $testKey = 'patente-' . $equipmentId . '-' . date('YmdHis') . '-actor-' . $this->actor()->userId();
+            $scheduled = $queue->scheduleWeeklyReadingReminders(
+                true,
+                $testKey,
+                1,
+                $stage,
+                true,
+                $equipmentId,
+                true,
+            );
+            if ($scheduled !== 1) {
+                throw new DomainException('No se pudo preparar la prueba dirigida para ' . $search . '. Revisá control de km, teléfono y configuración WhatsApp.');
+            }
+
+            $sent = 0;
+            foreach ($queue->due(1000) as $delivery) {
+                if (! str_contains((string) ($delivery['external_ref'] ?? ''), ':prueba:' . $testKey)) {
+                    continue;
+                }
+                if ((int) ($delivery['equipo_id'] ?? 0) !== $equipmentId) {
+                    throw new DomainException('Se bloqueó la prueba: la entrega preparada no corresponde al equipo solicitado.');
+                }
+
+                $result = $gateway->sendText(
+                    (string) ($delivery['telefono'] ?? ''),
+                    (string) ($delivery['mensaje'] ?? ''),
+                    (string) ($delivery['external_ref'] ?? ''),
+                    (string) $this->actor()->userId(),
+                    'Superadmin Mantenimiento',
+                    empty($delivery['instance_id']) ? null : (string) $delivery['instance_id'],
+                );
+                $queue->accepted((int) $delivery['id'], $result['messageId'], $result['status']);
+                $sent++;
+            }
+
+            if ($sent !== 1) {
+                throw new DomainException('La prueba dirigida se preparó pero no se encontró exactamente una entrega para despachar.');
+            }
+
+            $driverName = trim((string) ($driver['nombre'] ?? '') . ' ' . (string) ($driver['apellido'] ?? ''));
+            $label = trim((string) ($equipment['patente'] ?? '')) !== ''
+                ? (string) $equipment['patente']
+                : (string) $equipment['codigo'];
+
+            return redirect()->to('/superadmin')->with(
+                'success',
+                'Prueba dirigida enviada sólo al teléfono piloto configurado, sin importar el estado del piloto global. Equipo #' . $equipmentId
+                . ' · ' . $label
+                . ' · chofer ' . ($driverName === '' ? '(sin nombre)' : $driverName)
+                . ' · etapa ' . $stage
+                . '. El token público fue validado contra este mismo equipo antes del envío.',
             );
         } catch (Throwable $exception) {
             return $this->operationFailure($exception);
