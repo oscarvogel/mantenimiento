@@ -192,6 +192,26 @@ const sections = [
           </p>
         </div>
 
+        <form method="post" :action="data.whatsapp.auditDriverPhonesAction" class="sm:col-span-2 lg:col-span-4 rounded-lg border border-warning/30 bg-warning-subtle p-4">
+          <CsrfField :csrf="data.csrf" />
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p class="text-sm font-semibold text-warning-strong">Auditoría de celulares de choferes</p>
+              <p class="mt-1 text-xs leading-5 text-warning-strong">Revisa los choferes activos asignados a equipos y detecta teléfonos faltantes o sin formato internacional válido. No envía WhatsApp a choferes: genera avisos internos para el Responsable de mantenimiento.</p>
+            </div>
+            <button
+              type="submit"
+              data-confirm
+              data-confirm-title="¿Auditar celulares ahora?"
+              data-confirm-text="Se revisarán los teléfonos de los choferes y se avisará internamente al Responsable de mantenimiento por los datos inválidos. No se enviarán WhatsApp a choferes."
+              data-confirm-button="Auditar ahora"
+              class="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg border border-warning px-4 py-2.5 text-sm font-semibold text-warning-strong"
+            >
+              Auditar celulares ahora
+            </button>
+          </div>
+        </form>
+
         <form method="post" :action="data.whatsapp.testWeeklyReminderAction" class="sm:col-span-2 lg:col-span-4 rounded-lg border border-primary/30 bg-white p-4">
           <CsrfField :csrf="data.csrf" />
           <div class="flex flex-col gap-4">
