@@ -61,7 +61,7 @@ const equipmentSummary = computed(() => {
   const equipment = data.value.equipment
   return [
     { label: 'Kilometraje actual', value: equipment.currentKm ?? 'Sin datos', suffix: ' km', formatter: formatKmValue, numeric: equipment.currentKm !== null && equipment.currentKm !== undefined },
-    { label: 'HorÃ³metro actual', value: equipment.currentHours ?? 'Sin datos', suffix: ' h', formatter: formatHoursValue, numeric: equipment.currentHours !== null && equipment.currentHours !== undefined },
+    { label: 'Horómetro actual', value: equipment.currentHours ?? 'Sin datos', suffix: ' h', formatter: formatHoursValue, numeric: equipment.currentHours !== null && equipment.currentHours !== undefined },
     { label: 'Patente', value: equipment.plate || 'Sin informar', numeric: false },
     { label: 'Alta', value: equipment.startDate, numeric: false },
   ]
