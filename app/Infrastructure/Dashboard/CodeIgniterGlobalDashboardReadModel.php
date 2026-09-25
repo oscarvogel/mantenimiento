@@ -220,6 +220,17 @@ final readonly class CodeIgniterGlobalDashboardReadModel implements GlobalDashbo
                 ->getResultArray();
             $counts = $this->groupedRows($rows, $activeCompanyIds);
         }
+        if ($this->database->tableExists('notificacion_empresa_entregas')) {
+            $rows = $this->database->table('notificacion_empresa_entregas')
+                ->select('empresa_id, COUNT(*) AS total', false)
+                ->whereIn('estado', ['FALLIDA', 'REINTENTO'])
+                ->groupBy('empresa_id')
+                ->get()
+                ->getResultArray();
+            foreach ($this->groupedRows($rows, $activeCompanyIds) as $companyId => $total) {
+                $counts[$companyId] = ($counts[$companyId] ?? 0) + $total;
+            }
+        }
         if ($this->database->tableExists('notificacion_whatsapp_entregas')) {
             $rows = $this->database->table('notificacion_whatsapp_entregas')
                 ->select('empresa_id, COUNT(*) AS total', false)
@@ -294,12 +305,22 @@ final readonly class CodeIgniterGlobalDashboardReadModel implements GlobalDashbo
             return 0;
         }
 
-        return (int) $this->database->table('notificacion_entregas')
+        $total = (int) $this->database->table('notificacion_entregas')
             ->where('canal', 'EMAIL')
             ->where('estado', 'ENVIADA')
             ->where('enviada_en >=', $from->format('Y-m-d H:i:s'))
             ->where('enviada_en <', $to->format('Y-m-d H:i:s'))
             ->countAllResults();
+
+        if ($this->database->tableExists('notificacion_empresa_entregas')) {
+            $total += (int) $this->database->table('notificacion_empresa_entregas')
+                ->where('estado', 'ENVIADA')
+                ->where('enviada_en >=', $from->format('Y-m-d H:i:s'))
+                ->where('enviada_en <', $to->format('Y-m-d H:i:s'))
+                ->countAllResults();
+        }
+
+        return $total;
     }
 
     private function activeDrivers(): int
