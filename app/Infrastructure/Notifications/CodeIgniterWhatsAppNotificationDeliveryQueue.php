@@ -374,46 +374,38 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
     private function weeklyReadingMessage(string $locale, string $stage, string $pilotHeader, string $name, string $equipmentLabel, string $url): string
     {
         if ($locale === 'PT') {
-            $title = match ($stage) {
-                'wednesday' => 'Segundo lembrete de quilometragem',
-                'friday' => 'Aviso final de quilometragem',
-                default => 'Lembrete semanal de quilometragem',
-            };
-            $intro = $stage === 'initial'
-                ? 'Por favor, informe a quilometragem atual'
-                : 'Ainda não registramos a quilometragem desta semana. Por favor, informe a quilometragem atual';
+            $opening = $stage === 'initial'
+                ? 'Precisamos que você informe a quilometragem atual'
+                : 'Ainda falta informar a quilometragem desta semana';
 
             return $pilotHeader
                 . "*Vogel Consultoría · Manutenção*\n\n"
-                . ($name === '' ? 'Olá.' : 'Olá ' . $name . '.') . "\n\n"
-                . "🚛 *" . $title . "*\n"
-                . $intro . " de *" . $equipmentLabel . "*.\n\n"
-                . "👉 *Informar quilometragem:*\n" . $url . "\n\n"
-                . "Não é necessário fazer login: o link corresponde ao acesso público do equipamento.\n\n"
-                . "🌐 *Vogel Consultoría · Manutenção*\n"
-                . "https://vogelconsultoria.com.ar/mantenimiento\n\n"
-                . "_Aviso automático do Sistema de Manutenção._";
+                . ($name === '' ? 'Olá 👋' : 'Olá ' . $name . ' 👋') . "\n\n"
+                . $opening . " do veículo *" . $equipmentLabel . "*.\n\n"
+                . "*Faça assim:*\n"
+                . "1️⃣ Toque no link abaixo.\n"
+                . "2️⃣ Veja o painel do veículo e digite o número que aparece.\n"
+                . "3️⃣ Toque em *Registrar leitura*.\n\n"
+                . "👉 *ABRIR PARA INFORMAR A QUILOMETRAGEM:*\n" . $url . "\n\n"
+                . "Quando aparecer *“Leitura registrada”*, terminou e você já pode fechar a tela. ✅\n\n"
+                . "*Não precisa responder esta mensagem.*";
         }
 
-        $title = match ($stage) {
-            'wednesday' => 'Segundo recordatorio de kilometraje',
-            'friday' => 'Aviso final de kilometraje',
-            default => 'Recordatorio semanal de kilometraje',
-        };
-        $intro = $stage === 'initial'
-            ? 'Por favor, cargá el kilometraje actual'
-            : 'Todavía no registramos el kilometraje de esta semana. Por favor, cargá el kilometraje actual';
+        $opening = $stage === 'initial'
+            ? 'Necesitamos que informes los kilómetros actuales'
+            : 'Todavía falta que informes los kilómetros de esta semana';
 
         return $pilotHeader
             . "*Vogel Consultoría · Mantenimiento*\n\n"
-            . ($name === '' ? 'Hola.' : 'Hola ' . $name . '.') . "\n\n"
-            . "🚛 *" . $title . "*\n"
-            . $intro . " de *" . $equipmentLabel . "*.\n\n"
-            . "👉 *Cargar kilometraje:*\n" . $url . "\n\n"
-            . "No necesitás iniciar sesión: el enlace corresponde al acceso público del equipo.\n\n"
-            . "🌐 *Vogel Consultoría · Mantenimiento*\n"
-            . "https://vogelconsultoria.com.ar/mantenimiento\n\n"
-            . "_Aviso automático del Sistema de Mantenimiento._";
+            . ($name === '' ? 'Hola 👋' : 'Hola ' . $name . ' 👋') . "\n\n"
+            . $opening . " del vehículo *" . $equipmentLabel . "*.\n\n"
+            . "*Hacé esto:*\n"
+            . "1️⃣ Tocá el enlace de abajo.\n"
+            . "2️⃣ Mirá el tablero del vehículo y escribí el número que marca.\n"
+            . "3️⃣ Tocá *Registrar lectura*.\n\n"
+            . "👉 *ABRIR PARA CARGAR LOS KM:*\n" . $url . "\n\n"
+            . "Cuando aparezca *“Lectura registrada”*, ya terminaste y podés cerrar la pantalla. ✅\n\n"
+            . "*No hace falta responder este WhatsApp.*";
     }
 
     private function notifyMaintenanceResponsible(
