@@ -136,11 +136,14 @@ final readonly class CodeIgniterGlobalDashboardReadModel implements GlobalDashbo
             'readingsToday' => $this->countKilometerReadingsToday($today, $tomorrow, $scopeCompanyId),
             'renewalsToday' => $this->countInRange('vencimientos', 'created_at', $today, $tomorrow, ['activo' => 1], $scopeCompanyId),
             'evidenceToday' => $this->countInRange('equipo_adjuntos', 'created_at', $today, $tomorrow, ['retirado_at' => null], $scopeCompanyId),
-            'whatsappSentToday' => $this->countInRange('notificacion_whatsapp_entregas', 'enviada_en', $today, $tomorrow, ['estado' => 'ENVIADA'], $scopeCompanyId),
+            'whatsappSentToday' => $this->countWhatsAppSentToday($today, $tomorrow),
             'emailSentToday' => $this->countEmailSentToday($today, $tomorrow, $scopeCompanyId),
             'chatQueriesToday' => $this->countChatMessagesToday('user', $today, $tomorrow, $scopeCompanyId),
             'chatResponsesToday' => $this->countChatMessagesToday('assistant', $today, $tomorrow, $scopeCompanyId),
         ];
+        if ($scopeCompanyId !== null) {
+            $activity['whatsappSentToday'] = $this->countWhatsAppSentToday($today, $tomorrow, $scopeCompanyId);
+        }
 
         return [
             'filters' => [
@@ -375,6 +378,23 @@ final readonly class CodeIgniterGlobalDashboardReadModel implements GlobalDashbo
             ->where('kilometraje IS NOT NULL', null, false)
             ->where('fecha_lectura >=', $from->format('Y-m-d H:i:s'))
             ->where('fecha_lectura <', $to->format('Y-m-d H:i:s'));
+        if ($companyId !== null) {
+            $builder->where('empresa_id', $companyId);
+        }
+
+        return (int) $builder->countAllResults();
+    }
+
+    private function countWhatsAppSentToday(DateTimeImmutable $from, DateTimeImmutable $to, ?int $companyId = null): int
+    {
+        if (! $this->database->tableExists('notificacion_whatsapp_entregas')) {
+            return 0;
+        }
+
+        $builder = $this->database->table('notificacion_whatsapp_entregas')
+            ->whereIn('estado', ['ACEPTADA', 'ENVIADA'])
+            ->where('enviada_en >=', $from->format('Y-m-d H:i:s'))
+            ->where('enviada_en <', $to->format('Y-m-d H:i:s'));
         if ($companyId !== null) {
             $builder->where('empresa_id', $companyId);
         }
