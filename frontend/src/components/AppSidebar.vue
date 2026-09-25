@@ -41,7 +41,7 @@ const navigationGroups = computed(() => {
   const definitions = [
     { key: 'operation', label: 'Operación', items: ['dashboard', 'equipment', 'quick-readings', 'plans', 'maintenance', 'work-requests'] },
     { key: 'management', label: 'Gestión', items: ['employees', 'expirations', 'providers', 'notifications', 'imports', 'preventive-library', 'reports'] },
-    { key: 'masters', label: 'Maestros', items: ['masters-equipment', 'masters-expirations'] },
+    { key: 'masters', label: 'Maestros', items: ['masters-equipment'] },
     { key: 'administration', label: 'Administración', items: ['superadmin', 'chatbot-audit', 'branches', 'users'] },
   ]
   const knownKeys = new Set(definitions.flatMap((group) => group.items))
@@ -78,7 +78,7 @@ const icons = {
 }
 
 const iconFor = (name) => icons[name] ?? ClipboardDocumentCheckIcon
-const visibleLabel = (item) => item.key === 'services' ? 'Servicios' : item.label
+const visibleLabel = (item) => item.key === 'services' ? 'Servicios' : item.key === 'masters-equipment' ? 'Maestros' : item.label
 const customIconBaseUrl = document.body?.dataset?.baseUrl ?? ''
 const currentTheme = ref(document.documentElement.dataset.theme ?? 'light')
 const failedCustomIcons = ref(new Set())
