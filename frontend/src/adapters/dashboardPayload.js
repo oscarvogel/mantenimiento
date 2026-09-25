@@ -181,6 +181,91 @@ export function normalizeAppShellPayload(payload) {
   }
 }
 
+const normalizeGlobalDashboard = (value) => {
+  const source = value && typeof value === 'object' ? value : {}
+  const metrics = source.metrics && typeof source.metrics === 'object' ? source.metrics : {}
+  const activity = source.activity && typeof source.activity === 'object' ? source.activity : {}
+  const drivers = source.drivers && typeof source.drivers === 'object' ? source.drivers : {}
+  const chatbot = source.chatbot && typeof source.chatbot === 'object' ? source.chatbot : {}
+  const communications = source.communications && typeof source.communications === 'object' ? source.communications : {}
+  const links = source.links && typeof source.links === 'object' ? source.links : {}
+
+  const communication = (item) => {
+    const sourceItem = item && typeof item === 'object' ? item : {}
+    return {
+      status: asText(sourceItem.status, 'Sin datos'),
+      tone: ['success', 'warning', 'danger', 'muted'].includes(sourceItem.tone) ? sourceItem.tone : 'muted',
+      lastRun: sourceItem.lastRun ? asText(String(sourceItem.lastRun)) : null,
+    }
+  }
+
+  return {
+    metrics: {
+      companiesActive: asCount(metrics.companiesActive),
+      companiesTotal: asCount(metrics.companiesTotal),
+      equipmentActive: asCount(metrics.equipmentActive),
+      equipmentTotal: asCount(metrics.equipmentTotal),
+      expirationOverdue: asCount(metrics.expirationOverdue),
+      expirationUpcoming30: asCount(metrics.expirationUpcoming30),
+      pendingReadings: asCount(metrics.pendingReadings),
+      notificationAlerts: asCount(metrics.notificationAlerts),
+    },
+    attention: Array.isArray(source.attention)
+      ? source.attention.filter(Boolean).map((item, index) => ({
+          id: `${asCount(item.companyId)}-${asText(item.actionKey, 'attention')}-${index}`,
+          companyId: asCount(item.companyId),
+          company: asText(item.company, 'Empresa'),
+          label: asText(item.label, 'Requiere revisión'),
+          count: asCount(item.count),
+          tone: item.tone === 'danger' ? 'danger' : 'warning',
+          actionUrl: asUrl(item.actionUrl),
+          actionLabel: asText(item.actionLabel, 'Ver detalle'),
+        }))
+      : [],
+    activity: {
+      readingsToday: asCount(activity.readingsToday),
+      renewalsToday: asCount(activity.renewalsToday),
+      evidenceToday: asCount(activity.evidenceToday),
+      whatsappSentToday: asCount(activity.whatsappSentToday),
+      emailSentToday: asCount(activity.emailSentToday),
+      chatQueriesToday: asCount(activity.chatQueriesToday),
+      chatResponsesToday: asCount(activity.chatResponsesToday),
+    },
+    companies: Array.isArray(source.companies)
+      ? source.companies.filter(Boolean).map((item) => ({
+          id: asCount(item.id),
+          name: asText(item.name, 'Empresa'),
+          equipment: asCount(item.equipment),
+          overdue: asCount(item.overdue),
+          upcoming: asCount(item.upcoming),
+          pendingReadings: asCount(item.pendingReadings),
+          notificationAlerts: asCount(item.notificationAlerts),
+          tone: ['success', 'warning', 'danger'].includes(item.tone) ? item.tone : 'success',
+          actionUrl: asUrl(item.actionUrl),
+        }))
+      : [],
+    communications: {
+      whatsapp: communication(communications.whatsapp),
+      email: communication(communications.email),
+      cron: communication(communications.cron),
+    },
+    drivers: {
+      active: asCount(drivers.active),
+      pendingReadings: asCount(drivers.pendingReadings),
+      readingsToday: asCount(drivers.readingsToday),
+    },
+    chatbot: {
+      queriesToday: asCount(chatbot.queriesToday),
+      responsesToday: asCount(chatbot.responsesToday),
+    },
+    links: {
+      companies: asUrl(links.companies),
+      notifications: asUrl(links.notifications),
+      chatAudit: asUrl(links.chatAudit),
+    },
+  }
+}
+
 export function normalizeDashboardPayload(payload) {
   const source = payload && typeof payload === 'object' ? payload : {}
   const metrics = source.metrics && typeof source.metrics === 'object' ? source.metrics : {}
@@ -235,6 +320,7 @@ export function normalizeDashboardPayload(payload) {
           }))
         : [],
     },
+    global: normalizeGlobalDashboard(source.global),
     readingAttention: normalizeReadingAttention(source.readingAttention),
     upcomingMaintenance: normalizeUpcoming(source.upcomingMaintenance),
     links: {

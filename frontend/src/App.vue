@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { ArrowRightIcon, ChevronRightIcon } from '@heroicons/vue/20/solid'
 import {
   ArrowPathIcon,
+  BuildingOffice2Icon,
   CheckCircleIcon,
   ClipboardDocumentCheckIcon,
   ClipboardDocumentListIcon,
@@ -13,6 +14,7 @@ import {
 } from '@heroicons/vue/24/outline'
 import ApplicationShell from './components/ApplicationShell.vue'
 import DashboardLoading from './components/DashboardLoading.vue'
+import GlobalDashboard from './components/GlobalDashboard.vue'
 import MaintenanceStatus from './components/MaintenanceStatus.vue'
 import MetricCard from './components/MetricCard.vue'
 import UpcomingMaintenance from './components/UpcomingMaintenance.vue'
@@ -153,7 +155,17 @@ const scrollCta = computed(() => {
             {{ dashboard.mode === 'global' ? 'Supervisá la actividad general del sistema.' : 'Esto es lo que necesita atención hoy.' }}
           </p>
         </div>
-        <div v-if="dashboard.mode !== 'global'" class="flex flex-col gap-2 sm:flex-row">
+        <div
+          v-if="dashboard.mode === 'global'"
+          class="hidden min-h-11 items-center gap-3 rounded-xl border border-border bg-surface-raised px-4 shadow-sm md:flex"
+          aria-label="Alcance del tablero"
+        >
+          <BuildingOffice2Icon class="size-5 text-ink-muted" aria-hidden="true" />
+          <span class="text-xs font-medium text-ink-muted">Empresa:</span>
+          <span class="text-sm font-semibold text-ink">Todas las empresas</span>
+          <span class="text-ink-subtle" aria-hidden="true">⌄</span>
+        </div>
+        <div v-else class="flex flex-col gap-2 sm:flex-row">
           <a
             v-if="dashboard.links.equipment !== '#'"
             :href="dashboard.links.equipment"
@@ -181,7 +193,9 @@ const scrollCta = computed(() => {
         </div>
       </header>
 
-      <template v-if="dashboard.mode !== 'global'">
+      <GlobalDashboard v-if="dashboard.mode === 'global'" :data="dashboard.global" />
+
+      <template v-else>
         <!-- Bloque B: KPIs -->
         <section v-reveal="{ delay: 40 }" aria-label="Indicadores principales" class="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <MetricCard label="Equipos" :value="dashboard.metrics.equipmentTotal" tone="primary" :href="dashboard.links.equipment" link-label="Ver flota" />

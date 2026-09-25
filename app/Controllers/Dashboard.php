@@ -2,6 +2,7 @@
 
 namespace App\Controllers;
 
+use App\Application\Dashboard\GetGlobalDashboard;
 use App\Application\Dashboard\GetMaintenanceDashboard;
 use App\Infrastructure\Identity\SessionActorContext;
 use App\Presentation\AppShellPayload;
@@ -26,7 +27,12 @@ class Dashboard extends Controller
             ? $this->maintenanceDashboard()->execute($actor)
             : $this->emptyOperations();
 
-        $dashboardPayload = $this->appShell()->for($actor, 'dashboard') + $this->dashboardPayload()->fromOperations($actor, $operations) + [
+        $pagePayload = $this->dashboardPayload()->fromOperations($actor, $operations);
+        if ($actor->isSuperAdmin()) {
+            $pagePayload += $this->dashboardPayload()->fromGlobal($this->globalDashboard()->execute($actor));
+        }
+
+        $dashboardPayload = $this->appShell()->for($actor, 'dashboard') + $pagePayload + [
             'page' => 'dashboard',
         ];
 
@@ -34,6 +40,11 @@ class Dashboard extends Controller
             'appPayload' => $dashboardPayload,
             'pageTitle' => 'Panel de mantenimiento',
         ]);
+    }
+
+    private function globalDashboard(): GetGlobalDashboard
+    {
+        return service('globalDashboard');
     }
 
     private function maintenanceDashboard(): GetMaintenanceDashboard
