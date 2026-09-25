@@ -32,11 +32,15 @@ final class WhatsAppWeeklyReadingReminderContractTest extends TestCase
         self::assertStringContainsString('ensureActivePlainTokenForEquipment', $queue);
         self::assertStringContainsString('format(\'o-\\\\WW\')', $queue);
         self::assertStringContainsString('recordatorio_lectura_semanal', $queue);
-        self::assertStringContainsString('Cargar kilometraje', $queue);
+        self::assertStringContainsString('ABRIR PARA CARGAR LOS KM', $queue);
+        self::assertStringContainsString('1️⃣ Tocá el enlace de abajo.', $queue);
+        self::assertStringContainsString('2️⃣ Mirá el tablero del vehículo y escribí el número que marca.', $queue);
+        self::assertStringContainsString('3️⃣ Tocá *Registrar lectura*.', $queue);
+        self::assertStringContainsString('No hace falta responder este WhatsApp.', $queue);
         self::assertStringContainsString("base_url('mantenimiento/publico/equipo/'", $queue);
         self::assertStringContainsString('NO ENVIADO AL DESTINATARIO REAL', $queue);
         self::assertStringContainsString('Vogel Consultoría · Mantenimiento', $queue);
-        self::assertStringContainsString('https://vogelconsultoria.com.ar/mantenimiento', $queue);
+        self::assertStringNotContainsString('"https://vogelconsultoria.com.ar/mantenimiento\\n\\n"', $queue);
         self::assertStringContainsString('weeklyReadingReminderIsDue', $queue);
         self::assertStringContainsString("env('alerts.weeklyReadingReminderDay', 1)", $queue);
         self::assertStringContainsString("env('alerts.weeklyReadingReminderTime', '08:00')", $queue);
@@ -50,8 +54,8 @@ final class WhatsAppWeeklyReadingReminderContractTest extends TestCase
         self::assertStringContainsString('$phone = $realPhone === null ? null', $queue);
         self::assertStringContainsString('mb_strtoupper($plate) !== mb_strtoupper($equipmentLabel)', $queue);
         self::assertStringContainsString('co.idioma_notificaciones', $queue);
-        self::assertStringContainsString('Lembrete semanal de quilometragem', $queue);
-        self::assertStringContainsString('Informar quilometragem', $queue);
+        self::assertStringContainsString('ABRIR PARA INFORMAR A QUILOMETRAGEM', $queue);
+        self::assertStringContainsString('Não precisa responder esta mensagem.', $queue);
         self::assertStringContainsString('scheduleWeeklyReadingReminders(', $controller);
         self::assertStringContainsString('$scenario === \'missing\'', $controller);
         self::assertStringContainsString("env('alerts.whatsappBatchLimit', 5)", $controller);
