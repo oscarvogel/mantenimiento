@@ -153,6 +153,9 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->post('vencimientos', 'Expirations::create');
     $routes->post('vencimientos/(:num)', 'Expirations::update/$1');
     $routes->post('vencimientos/(:num)/retirar', 'Expirations::deactivate/$1');
+    $routes->post('vencimientos/(:num)/renovar', 'Expirations::renew/$1', ['filter' => 'permission:equipos.editar|empleados.editar']);
+    $routes->get('vencimientos/(:num)/historial', 'Expirations::historyJson/$1', ['filter' => 'permission:equipos.ver|empleados.ver']);
+    $routes->get('vencimientos/evidencia/(:num)', 'Expirations::downloadEvidence/$1', ['filter' => 'permission:equipos.ver|empleados.ver']);
 
     $routes->get('importaciones', 'ImportManagement::index', ['filter' => 'permission:importaciones.ver']);
     $routes->get('importaciones/biblioteca', 'ImportManagement::library', ['filter' => 'permission:importaciones.ver']);

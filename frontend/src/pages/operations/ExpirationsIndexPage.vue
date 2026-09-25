@@ -1,14 +1,18 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import {
+  ArrowPathIcon,
   ArrowTopRightOnSquareIcon,
   CalendarDaysIcon,
+  ClockIcon,
   ExclamationTriangleIcon,
   MagnifyingGlassIcon,
 } from '@heroicons/vue/24/outline'
 import EmptyState from './components/EmptyState.vue'
 import FormField from './components/FormField.vue'
+import HistorialVencimientoModal from './components/HistorialVencimientoModal.vue'
 import PageHeading from './components/PageHeading.vue'
+import RenovarVencimientoModal from './components/RenovarVencimientoModal.vue'
 import PanelCard from './components/PanelCard.vue'
 import StatusBadge from './components/StatusBadge.vue'
 import { fieldClass, primaryButton, secondaryButton } from './helpers.js'
@@ -30,6 +34,21 @@ const daysLabel = (days) => {
 }
 
 const statusFor = (item) => item.status || (Number(item.daysUntil) < 0 ? 'VENCIDO' : 'AL_DIA')
+
+const renewItem = ref(null)
+const historyItem = ref(null)
+
+function openRenew(item) {
+  renewItem.value = item
+}
+
+function openHistory(item) {
+  historyItem.value = item
+}
+
+function onRenewed() {
+  renewItem.value = null
+}
 </script>
 
 <template>
@@ -136,7 +155,7 @@ const statusFor = (item) => item.status || (Number(item.daysUntil) < 0 ? 'VENCID
                 <th class="px-5 py-3">Situación</th>
                 <th class="px-5 py-3">Sucursal</th>
                 <th class="px-5 py-3">Documento</th>
-                <th class="px-5 py-3 text-right">Acción</th>
+                <th class="px-5 py-3 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-border-subtle">
@@ -164,10 +183,33 @@ const statusFor = (item) => item.status || (Number(item.daysUntil) < 0 ? 'VENCID
                 <td class="px-5 py-4 text-ink-muted">{{ item.branchName || '—' }}</td>
                 <td class="px-5 py-4 text-ink-muted">{{ item.documentNumber || '—' }}</td>
                 <td class="px-5 py-4 text-right">
-                  <a :href="item.subjectUrl" :class="secondaryButton" class="whitespace-nowrap">
-                    Gestionar
-                    <ArrowTopRightOnSquareIcon class="ml-2 size-4" aria-hidden="true" />
-                  </a>
+                  <div class="flex flex-wrap items-center justify-end gap-2">
+                    <button
+                      v-if="data.canManageTypes"
+                      type="button"
+                      :class="secondaryButton"
+                      class="whitespace-nowrap"
+                      data-testid="vencimiento-renovar"
+                      @click="openRenew(item)"
+                    >
+                      <ArrowPathIcon class="mr-1 size-4" aria-hidden="true" />
+                      Renovar
+                    </button>
+                    <button
+                      type="button"
+                      :class="secondaryButton"
+                      class="whitespace-nowrap"
+                      data-testid="vencimiento-historial"
+                      @click="openHistory(item)"
+                    >
+                      <ClockIcon class="mr-1 size-4" aria-hidden="true" />
+                      Historial
+                    </button>
+                    <a :href="item.subjectUrl" :class="secondaryButton" class="whitespace-nowrap">
+                      Gestionar
+                      <ArrowTopRightOnSquareIcon class="ml-2 size-4" aria-hidden="true" />
+                    </a>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -191,13 +233,58 @@ const statusFor = (item) => item.status || (Number(item.daysUntil) < 0 ? 'VENCID
               </span>
             </div>
             <p v-if="item.branchName" class="text-xs text-ink-muted">Sucursal: {{ item.branchName }}</p>
-            <a :href="item.subjectUrl" :class="secondaryButton" class="w-full justify-center">
-              Gestionar
-              <ArrowTopRightOnSquareIcon class="ml-2 size-4" aria-hidden="true" />
-            </a>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-if="data.canManageTypes"
+                type="button"
+                :class="secondaryButton"
+                class="flex-1 justify-center"
+                @click="openRenew(item)"
+              >
+                <ArrowPathIcon class="mr-1 size-4" aria-hidden="true" />
+                Renovar
+              </button>
+              <button
+                type="button"
+                :class="secondaryButton"
+                class="flex-1 justify-center"
+                @click="openHistory(item)"
+              >
+                <ClockIcon class="mr-1 size-4" aria-hidden="true" />
+                Historial
+              </button>
+              <a :href="item.subjectUrl" :class="secondaryButton" class="w-full justify-center">
+                Gestionar
+                <ArrowTopRightOnSquareIcon class="ml-2 size-4" aria-hidden="true" />
+              </a>
+            </div>
           </article>
         </div>
       </template>
     </PanelCard>
+
+    <RenovarVencimientoModal
+      v-if="renewItem"
+      :expiration="{
+        id: renewItem.id,
+        fecha_vencimiento: renewItem.expiresAt,
+        tipo_nombre: renewItem.typeName,
+        sujeto_tipo: renewItem.subjectType,
+        subject_name: renewItem.subjectName,
+      }"
+      :csrf="data.csrf"
+      :renew-url="renewItem.renewUrl"
+      :return-to="data.routes.index"
+      @close="renewItem = null"
+      @renewed="onRenewed"
+    />
+
+    <HistorialVencimientoModal
+      v-if="historyItem"
+      :expiration-id="historyItem.id"
+      :history-url="historyItem.historyUrl"
+      :csrf="data.csrf"
+      @close="historyItem = null"
+    />
   </div>
 </template>

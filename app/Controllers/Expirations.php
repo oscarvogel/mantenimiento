@@ -11,6 +11,7 @@ use CodeIgniter\HTTP\RedirectResponse;
 use CodeIgniter\HTTP\ResponseInterface;
 use DateTimeImmutable;
 use DomainException;
+use RuntimeException;
 use Throwable;
 
 final class Expirations extends BaseController
@@ -457,6 +458,110 @@ final class Expirations extends BaseController
         }
     }
 
+    public function renew(int $expirationId): RedirectResponse
+    {
+        $returnTo = $this->returnTo();
+        try {
+            $actor = $this->actor();
+
+            $subjectType = ExpirationSubjectType::from(
+                (string) $this->request->getPost('sujeto_tipo'),
+            );
+            $this->assertCanEdit($actor, $subjectType);
+
+            $newDate = $this->requiredDate('fecha_vencimiento');
+            $newIssueDate = $this->optionalDate('fecha_emision');
+
+            $evidenceTempPath = null;
+            $evidenceOriginalName = null;
+            $evidenceMime = null;
+            $evidenceSize = null;
+            $hasEvidence = false;
+            $uploadedFile = $this->request->getFile('evidencia');
+            if ($uploadedFile !== null && $uploadedFile->isValid() && $uploadedFile->getError() === UPLOAD_ERR_OK) {
+                $hasEvidence = true;
+                $evidenceTempPath = $uploadedFile->getTempName();
+                $evidenceOriginalName = $uploadedFile->getClientName() ?: $uploadedFile->getName();
+                $evidenceMime = (string) $uploadedFile->getClientMimeType();
+                $evidenceSize = (int) $uploadedFile->getSize();
+            }
+
+            $command = new \App\Application\Expirations\RenovarVencimientoCommand(
+                $expirationId,
+                $newDate,
+                $newIssueDate,
+                trim((string) $this->request->getPost('numero_documento')) ?: null,
+                $this->request->getPost('observaciones') !== null
+                    ? (string) $this->request->getPost('observaciones')
+                    : null,
+                $evidenceTempPath,
+                $evidenceOriginalName,
+                $evidenceMime,
+                $evidenceSize,
+                $subjectType === ExpirationSubjectType::EQUIPMENT
+                    ? 'equipos.editar'
+                    : 'empleados.editar',
+                $hasEvidence,
+            );
+
+            $result = service('renewalVencimiento')->execute($actor, $command, new DateTimeImmutable('now'));
+
+            return redirect()->to($returnTo)->with(
+                'success',
+                'Vencimiento renovado: ' . $result['previousDate'] . ' → ' . $result['newDate'] . '.',
+            );
+        } catch (Throwable $exception) {
+            return $this->failure($exception, $returnTo);
+        }
+    }
+
+    public function historyJson(int $expirationId): \CodeIgniter\HTTP\ResponseInterface
+    {
+        try {
+            $actor = $this->actor();
+            $result = service('expirationHistory')->execute($actor, $expirationId);
+
+            return $this->response->setJSON([
+                'ok' => true,
+                'expiration' => $result['expiration'],
+                'history' => $result['history'],
+            ]);
+        } catch (Throwable $exception) {
+            return $this->response->setStatusCode(404)->setJSON([
+                'ok' => false,
+                'error' => $exception->getMessage(),
+            ]);
+        }
+    }
+
+    public function downloadEvidence(int $evidenceId): \CodeIgniter\HTTP\ResponseInterface
+    {
+        try {
+            $actor = $this->actor();
+            $download = service('expirationEvidenceDownload')->download(
+                (int) $actor->companyId(),
+                $evidenceId,
+            );
+            if ($download === null) {
+                throw new \RuntimeException('La evidencia no existe o no pertenece a tu empresa.');
+            }
+
+            return $this->response
+                ->setHeader('Content-Type', $download->mimeType)
+                ->setHeader('Content-Length', (string) $download->size)
+                ->setHeader(
+                    'Content-Disposition',
+                    'attachment; filename="' . rawurlencode($download->originalName) . '"',
+                )
+                ->setBody($download->content);
+        } catch (Throwable $exception) {
+            return $this->response->setStatusCode(404)->setJSON([
+                'ok' => false,
+                'error' => $exception->getMessage(),
+            ]);
+        }
+    }
+
     private function actor(): ActorContext
     {
         $actor = (new SessionActorContext())->current();
@@ -589,8 +694,17 @@ final class Expirations extends BaseController
         if (! $exception instanceof DomainException) {
             log_message('error', 'Falló la gestión de vencimientos: {message}', ['message' => $exception->getMessage()]);
         }
+        $message = $exception instanceof DomainException
+            ? $exception->getMessage()
+            : 'No se pudo completar la operación de vencimientos.';
+
+        if ($exception instanceof RuntimeException
+            && str_contains(mb_strtolower($exception->getMessage()), 'evidencia')) {
+            $message = $exception->getMessage();
+        }
+
         return redirect()->to($returnTo)
             ->withInput()
-            ->with('error', $exception instanceof DomainException ? $exception->getMessage() : 'No se pudo completar la operación de vencimientos.');
+            ->with('error', $message);
     }
 }
