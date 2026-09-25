@@ -60,6 +60,9 @@ final class ManagementReportsContractTest extends TestCase
         self::assertStringContainsString('Control de lecturas', $gateway);
         self::assertStringContainsString('!LECTURA|', file_get_contents(APPPATH . 'Application/Notifications/ScheduleManagementReports.php'));
         self::assertStringContainsString('staleReadingDetails', file_get_contents(APPPATH . 'Application/Notifications/ScheduleManagementReports.php'));
+        self::assertStringContainsString('weeklyMissingDriverKilometers', file_get_contents(APPPATH . 'Application/Notifications/ScheduleManagementReports.php'));
+        self::assertStringContainsString('!KM_SEMANAL|', file_get_contents(APPPATH . 'Application/Notifications/ScheduleManagementReports.php'));
+        self::assertStringContainsString('Choferes sin carga de km esta semana', $gateway);
     }
 
     public function testOperationalDigestUsesCorporateEmailTemplate(): void
