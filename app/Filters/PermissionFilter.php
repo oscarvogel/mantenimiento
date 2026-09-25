@@ -19,7 +19,10 @@ final class PermissionFilter implements FilterInterface
         if (! is_string($permission) || $permission === '' || $actor === null || ! $actor->hasPermission($permission)) {
             return service('response')
                 ->setStatusCode(403)
-                ->setBody('No tenés permiso para realizar esta acción.');
+                ->setContentType('text/html', 'UTF-8')
+                ->setBody(view('errors/forbidden', [
+                    'message' => 'Tu usuario no tiene permiso para acceder a esta sección.',
+                ]));
         }
     }
 

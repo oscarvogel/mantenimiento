@@ -37,7 +37,9 @@ final class ActorContextTest extends CIUnitTestCase
         $this->assertFalse($actor->canAccessBranch(5, 999));
         $this->assertTrue($actor->hasAllCompanyBranches());
         $this->assertTrue($actor->hasPermission('equipos.ver'));
-        $this->assertFalse($actor->hasPermission('equipos.editar'));
+        $this->assertTrue($actor->hasPermission('equipos.editar'));
+        $this->assertTrue($actor->hasPermission('planes.editar'));
+        $this->assertTrue($actor->hasPermission('ordenes.cerrar'));
     }
 
     public function testRestrictedUserOnlyAccessesAssignedBranches(): void
