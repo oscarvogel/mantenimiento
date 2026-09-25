@@ -21,10 +21,11 @@ final class WeeklyReadingComplianceContractTest extends TestCase
         self::assertStringContainsString("'seguimiento_lectura_viernes'", $queue);
         self::assertStringContainsString('hasKilometerReadingSince', $queue);
         self::assertStringContainsString("where('fecha_lectura >=',", $queue);
-        self::assertStringContainsString("'Segundo recordatorio de kilometraje'", $queue);
-        self::assertStringContainsString("'Aviso final de kilometraje'", $queue);
-        self::assertStringContainsString("'Segundo lembrete de quilometragem'", $queue);
-        self::assertStringContainsString("'Aviso final de quilometragem'", $queue);
+        self::assertStringContainsString("'Todavía falta que informes los kilómetros de esta semana'", $queue);
+        self::assertStringContainsString("'Ainda falta informar a quilometragem desta semana'", $queue);
+        self::assertStringContainsString('Tocá el enlace de abajo.', $queue);
+        self::assertStringContainsString('Tocá *Registrar lectura*.', $queue);
+        self::assertStringContainsString('Não precisa responder esta mensagem.', $queue);
         self::assertStringContainsString("'Responsable de mantenimiento'", $queue);
         self::assertStringContainsString("'Kilometraje semanal pendiente'", $queue);
         self::assertStringContainsString("'equipo.lectura_semanal_incumplida'", $queue);

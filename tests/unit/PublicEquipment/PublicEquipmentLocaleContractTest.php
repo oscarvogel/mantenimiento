@@ -18,7 +18,8 @@ final class PublicEquipmentLocaleContractTest extends TestCase
 
         self::assertStringContainsString('co.idioma_notificaciones', $controller);
         self::assertStringContainsString("'PT'", $controller);
-        self::assertStringContainsString('Quilometragem atual', $controller);
+        self::assertStringContainsString('Quantos quilômetros o painel mostra agora?', $controller);
+        self::assertStringContainsString('Exemplo: se o painel mostra 494497, digite 494497.', $controller);
         self::assertStringContainsString('Registrar leitura', $controller);
         self::assertStringContainsString('Leitura registrada com sucesso', $controller);
         self::assertStringContainsString("\$labels['current_km']", $reading);
