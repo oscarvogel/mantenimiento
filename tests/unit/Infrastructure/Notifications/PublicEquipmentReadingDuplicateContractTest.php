@@ -17,7 +17,7 @@ final class PublicEquipmentReadingDuplicateContractTest extends TestCase
         self::assertStringContainsString("?registrada=1", $controller);
         self::assertStringContainsString("time() - 120", $controller);
         self::assertStringContainsString("'origen', 'QR_ANONIMO'", $controller);
-        self::assertStringContainsString("'referencia_origen', 'PUBLIC_TOKEN#' . $tokenId", $controller);
+        self::assertStringContainsString("'referencia_origen', 'PUBLIC_TOKEN#' . \$tokenId", $controller);
         self::assertStringContainsString("'registered' => $registered", $controller);
         self::assertStringContainsString("'registered_title' => 'Lectura registrada'", $controller);
         self::assertStringContainsString("'registered_title' => 'Leitura registrada'", $controller);
