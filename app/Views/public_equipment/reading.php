@@ -14,6 +14,8 @@
         button{width:100%;margin-top:20px;padding:15px;border:0;border-radius:11px;font-size:1.1rem;font-weight:700;cursor:pointer}
         .msg{padding:12px;border-radius:10px;margin:12px 0}.ok{background:#dcfce7}.err{background:#fee2e2}
         .reading{font-size:.95rem;background:#f8fafc;padding:12px;border-radius:10px}
+        .done{text-align:center;padding:18px 8px 6px}.done h2{margin:0 0 8px;font-size:1.35rem;color:#166534}.done p{margin:0;color:#475569;line-height:1.5}
+        button[disabled]{opacity:.65;cursor:wait}
     </style>
 </head>
 <body>
@@ -34,7 +36,13 @@
             <?php endif ?>
         </div>
 
-        <form method="post">
+        <?php if (! empty($registered)): ?>
+            <div class="done" role="status">
+                <h2><?= esc($labels['registered_title'] ?? 'Lectura registrada') ?></h2>
+                <p><?= esc($labels['registered_help'] ?? 'La lectura quedó guardada correctamente. Ya podés cerrar esta ventana.') ?></p>
+            </div>
+        <?php else: ?>
+        <form method="post" id="reading-form">
             <?= csrf_field() ?>
             <input type="hidden" name="request_key" value="<?= esc($requestKey) ?>">
             <?php if ((int) $equipment['controla_km'] === 1): ?>
@@ -59,8 +67,20 @@
                 </label>
             <?php endif ?>
 
-            <button type="submit"><?= esc($labels['submit'] ?? 'Registrar lectura') ?></button>
+            <button type="submit" id="reading-submit" data-saving-label="<?= esc($labels['saving'] ?? 'Guardando...') ?>"><?= esc($labels['submit'] ?? 'Registrar lectura') ?></button>
         </form>
+        <script>
+        (() => {
+            const form = document.getElementById('reading-form');
+            const button = document.getElementById('reading-submit');
+            if (!form || !button) return;
+            form.addEventListener('submit', () => {
+                button.disabled = true;
+                button.textContent = button.dataset.savingLabel || 'Guardando...';
+            }, { once: true });
+        })();
+        </script>
+        <?php endif ?>
     </section>
 </main>
 </body>
