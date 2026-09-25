@@ -18,11 +18,11 @@ final class PublicEquipmentReadingDuplicateContractTest extends TestCase
         self::assertStringContainsString("time() - 120", $controller);
         self::assertStringContainsString("'origen', 'QR_ANONIMO'", $controller);
         self::assertStringContainsString("'referencia_origen', 'PUBLIC_TOKEN#' . \$tokenId", $controller);
-        self::assertStringContainsString("'registered' => $registered", $controller);
+        self::assertStringContainsString("'registered' => \$registered", $controller);
         self::assertStringContainsString("'registered_title' => 'Lectura registrada'", $controller);
         self::assertStringContainsString("'registered_title' => 'Leitura registrada'", $controller);
 
-        self::assertStringContainsString("if (! empty($registered))", $view);
+        self::assertStringContainsString("if (! empty(\$registered))", $view);
         self::assertStringContainsString("Ya podés cerrar esta ventana", $view);
         self::assertStringContainsString("id=\"reading-submit\"", $view);
         self::assertStringContainsString("button.disabled = true", $view);
