@@ -14,6 +14,7 @@
         button{width:100%;margin-top:20px;padding:15px;border:0;border-radius:11px;font-size:1.1rem;font-weight:700;cursor:pointer}
         .msg{padding:12px;border-radius:10px;margin:12px 0}.ok{background:#dcfce7}.err{background:#fee2e2}
         .reading{font-size:.95rem;background:#f8fafc;padding:12px;border-radius:10px}
+        .help{font-size:.9rem;color:#64748b;margin:6px 0 0;line-height:1.4}
         .done{text-align:center;padding:18px 8px 6px}.done h2{margin:0 0 8px;font-size:1.35rem;color:#166534}.done p{margin:0;color:#475569;line-height:1.5}
         button[disabled]{opacity:.65;cursor:wait}
     </style>
@@ -49,6 +50,7 @@
                 <label for="kilometers"><?= esc($labels['current_km'] ?? 'Kilómetros actuales') ?></label>
                 <input id="kilometers" name="kilometers" type="number" inputmode="numeric" min="0"
                        value="<?= esc(old('kilometers')) ?>" required autofocus>
+                <p class="help"><?= esc($labels['current_km_help'] ?? 'Ejemplo: si el tablero muestra 494497, escribí 494497.') ?></p>
             <?php endif ?>
 
             <?php if ((int) $equipment['controla_horas'] === 1): ?>
