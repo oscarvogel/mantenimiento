@@ -21,10 +21,14 @@ final class PublicEquipmentReadingDuplicateContractTest extends TestCase
         self::assertStringContainsString("'registered' => \$registered", $controller);
         self::assertStringContainsString("'registered_title' => 'Lectura registrada'", $controller);
         self::assertStringContainsString("'registered_title' => 'Leitura registrada'", $controller);
+        self::assertStringContainsString('¿Cuántos kilómetros marca ahora el tablero?', $controller);
+        self::assertStringContainsString('Ejemplo: si el tablero muestra 494497, escribí 494497.', $controller);
+        self::assertStringContainsString('Quantos quilômetros o painel mostra agora?', $controller);
 
         self::assertStringContainsString("if (! empty(\$registered))", $view);
         self::assertStringContainsString("Ya podés cerrar esta ventana", $view);
         self::assertStringContainsString("id=\"reading-submit\"", $view);
         self::assertStringContainsString("button.disabled = true", $view);
+        self::assertStringContainsString("current_km_help", $view);
     }
 }
