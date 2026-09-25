@@ -58,6 +58,38 @@ final class DashboardPayload
         ];
     }
 
+    /** @param array<string,mixed> $global @return array<string,mixed> */
+    public function fromGlobal(array $global): array
+    {
+        $companyUrl = base_url('superadmin');
+        $notificationUrl = base_url('superadmin/configuracion/notificaciones');
+        $chatAuditUrl = base_url('superadmin?section=chat-audit');
+
+        $attention = array_map(static function (array $item) use ($companyUrl, $notificationUrl): array {
+            $actionKey = (string) ($item['actionKey'] ?? '');
+            $actionUrl = $actionKey === 'notifications' ? $notificationUrl : $companyUrl;
+
+            return $item + [
+                'actionUrl' => $actionUrl,
+                'actionLabel' => $actionKey === 'notifications' ? 'Revisar envíos' : 'Ver empresa',
+            ];
+        }, is_array($global['attention'] ?? null) ? $global['attention'] : []);
+
+        $companies = array_map(static fn (array $item): array => $item + [
+            'actionUrl' => $companyUrl,
+        ], is_array($global['companies'] ?? null) ? $global['companies'] : []);
+
+        $global['attention'] = $attention;
+        $global['companies'] = $companies;
+        $global['links'] = [
+            'companies' => $companyUrl,
+            'notifications' => $notificationUrl,
+            'chatAudit' => $chatAuditUrl,
+        ];
+
+        return ['global' => $global];
+    }
+
     /** @param array<string,mixed> $item @return array<string,mixed> */
     private function maintenanceItem(array $item, bool $canEquipment, bool $canPlans, bool $canOrders): array
     {
