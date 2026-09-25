@@ -5,6 +5,7 @@ namespace Config;
 use App\Application\Identity\Port\LoginAttemptLimiter;
 use App\Application\AppShell\GetAppShellContext;
 use App\Application\Dashboard\GetMaintenanceDashboard;
+use App\Application\Dashboard\GetGlobalDashboard;
 use App\Application\Importations\CancelImportHandler;
 use App\Application\Importations\ConfirmImportHandler;
 use App\Application\Importations\CreateImportDraftHandler;
@@ -101,6 +102,7 @@ use App\Infrastructure\Notifications\SystemNotificationClock;
 use App\Infrastructure\Identity\CodeIgniterLoginAttemptLimiter;
 use App\Infrastructure\AppShell\CodeIgniterAppShellReadModel;
 use App\Infrastructure\Dashboard\CodeIgniterDashboardFinancialSummary;
+use App\Infrastructure\Dashboard\CodeIgniterGlobalDashboardReadModel;
 use App\Infrastructure\Dashboard\MaintenanceCircuitDashboardOverview;
 use App\Infrastructure\Dashboard\PreventiveDashboardDuePlans;
 use App\Infrastructure\Dashboard\SystemDashboardClock;
@@ -602,6 +604,17 @@ class Services extends BaseService
             new PreventiveDashboardDuePlans(static::consultMaintenanceDue(false)),
             new CodeIgniterDashboardFinancialSummary(db_connect()),
             new SystemDashboardClock(),
+        );
+    }
+
+    public static function globalDashboard(bool $getShared = true): GetGlobalDashboard
+    {
+        if ($getShared) {
+            return static::getSharedInstance('globalDashboard');
+        }
+
+        return new GetGlobalDashboard(
+            new CodeIgniterGlobalDashboardReadModel(db_connect()),
         );
     }
 
