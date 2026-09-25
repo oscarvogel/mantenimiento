@@ -7,5 +7,5 @@ namespace App\Application\Dashboard\Port;
 interface GlobalDashboardReadModel
 {
     /** @return array<string,mixed> */
-    public function fetch(): array;
+    public function fetch(?int $companyId = null): array;
 }

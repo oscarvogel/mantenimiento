@@ -12,30 +12,35 @@ use PHPUnit\Framework\TestCase;
 
 final class GetGlobalDashboardTest extends TestCase
 {
-    public function testSuperadminCanReadGlobalDashboard(): void
+    public function testSuperadminCanReadGlobalDashboardAndPropagateCompanyFilter(): void
     {
-        $expected = ['metrics' => ['companiesActive' => 3]];
+        $expected = ['metrics' => ['companiesActive' => 1]];
         $readModel = new class($expected) implements GlobalDashboardReadModel {
+            public ?int $requestedCompanyId = null;
+
             public function __construct(private readonly array $payload)
             {
             }
 
-            public function fetch(): array
+            public function fetch(?int $companyId = null): array
             {
+                $this->requestedCompanyId = $companyId;
+
                 return $this->payload;
             }
         };
 
         $actor = new ActorContext(1, null, true, true, ['Superadministrador'], [], []);
-        $result = (new GetGlobalDashboard($readModel))->execute($actor);
+        $result = (new GetGlobalDashboard($readModel))->execute($actor, 17);
 
         self::assertSame($expected, $result);
+        self::assertSame(17, $readModel->requestedCompanyId);
     }
 
     public function testTenantActorCannotReadGlobalDashboard(): void
     {
         $readModel = new class implements GlobalDashboardReadModel {
-            public function fetch(): array
+            public function fetch(?int $companyId = null): array
             {
                 return [];
             }
@@ -44,6 +49,6 @@ final class GetGlobalDashboardTest extends TestCase
         $actor = new ActorContext(2, 10, false, true, ['Administrador'], [], []);
 
         $this->expectException(DomainException::class);
-        (new GetGlobalDashboard($readModel))->execute($actor);
+        (new GetGlobalDashboard($readModel))->execute($actor, 10);
     }
 }
