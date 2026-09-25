@@ -28,10 +28,13 @@ final class PublicEquipmentReadings extends BaseController
             }
             $locale = $this->equipmentLocale($equipment);
 
+            $registered = (string) $this->request->getGet('registrada') === '1';
+
             return view('public_equipment/reading', [
                 'token' => $token,
                 'equipment' => $equipment,
-                'requestKey' => $this->uuid(),
+                'requestKey' => $registered ? '' : $this->uuid(),
+                'registered' => $registered,
                 'success' => session()->getFlashdata('success'),
                 'error' => session()->getFlashdata('error'),
                 'largeJump' => (bool) session()->getFlashdata('large_jump'),
@@ -75,7 +78,7 @@ final class PublicEquipmentReadings extends BaseController
                 ->get()
                 ->getRowArray();
             if ($existing !== null && ($existing['resultado'] ?? '') === 'ACEPTADO') {
-                return redirect()->to($target)->with('success', $this->tr($locale, 'already_registered'));
+                return redirect()->to($target . '?registrada=1')->with('success', $this->tr($locale, 'already_registered'));
             }
 
             $since = date('Y-m-d H:i:s', time() - (self::RATE_WINDOW_MINUTES * 60));
@@ -117,6 +120,26 @@ final class PublicEquipmentReadings extends BaseController
 
             if ($largeJump && (string) $this->request->getPost('confirm_large_jump') !== '1') {
                 throw new DomainException($this->tr($locale, 'large_jump'));
+            }
+
+            $duplicateSince = date('Y-m-d H:i:s', time() - 120);
+            $duplicate = $database->table('lecturas_equipo')
+                ->where('empresa_id', (int) $equipment['empresa_id'])
+                ->where('equipo_id', (int) $equipment['id'])
+                ->where('origen', 'QR_ANONIMO')
+                ->where('referencia_origen', 'PUBLIC_TOKEN#' . $tokenId)
+                ->where('anulada', 0)
+                ->where('created_at >=', $duplicateSince);
+
+            $kilometers === null
+                ? $duplicate->where('kilometraje', null)
+                : $duplicate->where('kilometraje', $kilometers);
+            $hours === null
+                ? $duplicate->where('horometro', null)
+                : $duplicate->where('horometro', $hours);
+
+            if ($duplicate->countAllResults() > 0) {
+                return redirect()->to($target . '?registrada=1')->with('success', $this->tr($locale, 'already_registered'));
             }
 
             $now = date('Y-m-d H:i:s');
@@ -171,7 +194,7 @@ final class PublicEquipmentReadings extends BaseController
                 throw $exception;
             }
 
-            return redirect()->to($target)->with('success', $this->tr($locale, 'success'));
+            return redirect()->to($target . '?registrada=1')->with('success', $this->tr($locale, 'success'));
         } catch (Throwable $exception) {
             if (! $exception instanceof DomainException) {
                 log_message('error', 'Falló lectura QR anónima: {message}', ['message' => $exception->getMessage()]);
@@ -297,6 +320,9 @@ final class PublicEquipmentReadings extends BaseController
                 'notes' => 'Observação (opcional)',
                 'confirm_jump' => 'Confirmo que revisei o valor e ele está correto.',
                 'submit' => 'Registrar leitura',
+            'saving' => 'Salvando...',
+            'registered_title' => 'Leitura registrada',
+            'registered_help' => 'A leitura foi salva corretamente. Você já pode fechar esta janela.',
             ];
         }
 
@@ -309,6 +335,9 @@ final class PublicEquipmentReadings extends BaseController
             'notes' => 'Observación (opcional)',
             'confirm_jump' => 'Confirmo que revisé el valor y es correcto.',
             'submit' => 'Registrar lectura',
+            'saving' => 'Guardando...',
+            'registered_title' => 'Lectura registrada',
+            'registered_help' => 'La lectura quedó guardada correctamente. Ya podés cerrar esta ventana.',
         ];
     }
 
