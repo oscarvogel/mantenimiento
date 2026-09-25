@@ -123,7 +123,7 @@ final readonly class CodeIgniterGlobalDashboardReadModel implements GlobalDashbo
             'readingsToday' => $this->countKilometerReadingsToday($today, $tomorrow),
             'renewalsToday' => $this->countInRange('vencimientos', 'created_at', $today, $tomorrow, ['activo' => 1]),
             'evidenceToday' => $this->countInRange('equipo_adjuntos', 'created_at', $today, $tomorrow, ['retirado_at' => null]),
-            'whatsappSentToday' => $this->countInRange('notificacion_whatsapp_entregas', 'enviada_en', $today, $tomorrow, ['estado' => 'ENVIADA']),
+            'whatsappSentToday' => $this->countWhatsAppSentToday($today, $tomorrow),
             'emailSentToday' => $this->countEmailSentToday($today, $tomorrow),
             'chatQueriesToday' => $this->countInRange('mensajes', 'created_at', $today, $tomorrow, ['role' => 'user']),
             'chatResponsesToday' => $this->countInRange('mensajes', 'created_at', $today, $tomorrow, ['role' => 'assistant']),
@@ -315,6 +315,19 @@ final readonly class CodeIgniterGlobalDashboardReadModel implements GlobalDashbo
             ->where('kilometraje IS NOT NULL', null, false)
             ->where('fecha_lectura >=', $from->format('Y-m-d H:i:s'))
             ->where('fecha_lectura <', $to->format('Y-m-d H:i:s'))
+            ->countAllResults();
+    }
+
+    private function countWhatsAppSentToday(DateTimeImmutable $from, DateTimeImmutable $to): int
+    {
+        if (! $this->database->tableExists('notificacion_whatsapp_entregas')) {
+            return 0;
+        }
+
+        return (int) $this->database->table('notificacion_whatsapp_entregas')
+            ->whereIn('estado', ['ACEPTADA', 'ENVIADA'])
+            ->where('enviada_en >=', $from->format('Y-m-d H:i:s'))
+            ->where('enviada_en <', $to->format('Y-m-d H:i:s'))
             ->countAllResults();
     }
 
