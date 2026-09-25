@@ -40,7 +40,12 @@ final class WhatsAppWeeklyReadingReminderContractTest extends TestCase
         self::assertStringContainsString("base_url('mantenimiento/publico/equipo/'", $queue);
         self::assertStringContainsString('NO ENVIADO AL DESTINATARIO REAL', $queue);
         self::assertStringContainsString('Vogel Consultoría · Mantenimiento', $queue);
-        self::assertStringNotContainsString('"https://vogelconsultoria.com.ar/mantenimiento\\n\\n"', $queue);
+        $weeklyStart = strpos($queue, 'private function weeklyReadingMessage');
+        $weeklyEnd = strpos($queue, 'private function notifyMaintenanceResponsible', $weeklyStart ?: 0);
+        self::assertNotFalse($weeklyStart);
+        self::assertNotFalse($weeklyEnd);
+        $weeklyMessageMethod = substr($queue, (int) $weeklyStart, (int) $weeklyEnd - (int) $weeklyStart);
+        self::assertStringNotContainsString('https://vogelconsultoria.com.ar/mantenimiento', $weeklyMessageMethod);
         self::assertStringContainsString('weeklyReadingReminderIsDue', $queue);
         self::assertStringContainsString("env('alerts.weeklyReadingReminderDay', 1)", $queue);
         self::assertStringContainsString("env('alerts.weeklyReadingReminderTime', '08:00')", $queue);
