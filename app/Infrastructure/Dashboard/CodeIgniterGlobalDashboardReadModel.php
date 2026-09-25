@@ -28,10 +28,11 @@ final readonly class CodeIgniterGlobalDashboardReadModel implements GlobalDashbo
         $activeCompanyIds = array_fill_keys(array_map(static fn (array $row): int => (int) $row['id'], $companies), true);
         $companyTotal = $this->countRows('empresas', static fn ($builder) => $builder->where('deleted_at', null));
 
-        $equipment = $this->database->table('equipos')
-            ->select('id, empresa_id')
-            ->where('estado', 'ACTIVO')
-            ->where('deleted_at', null)
+        $equipment = $this->database->table('equipos e')
+            ->select('e.id, e.empresa_id, te.controla_km')
+            ->join('tipos_equipo te', 'te.id = e.tipo_equipo_id', 'inner')
+            ->where('e.estado', 'ACTIVO')
+            ->where('e.deleted_at', null)
             ->get()
             ->getResultArray();
         $equipment = array_values(array_filter(
@@ -45,6 +46,7 @@ final readonly class CodeIgniterGlobalDashboardReadModel implements GlobalDashbo
             $rows = $this->database->table('lecturas_equipo')
                 ->select('empresa_id, equipo_id, MAX(fecha_lectura) AS ultima_lectura', false)
                 ->where('anulada', 0)
+                ->where('kilometraje IS NOT NULL', null, false)
                 ->groupBy(['empresa_id', 'equipo_id'])
                 ->get()
                 ->getResultArray();
@@ -55,6 +57,9 @@ final readonly class CodeIgniterGlobalDashboardReadModel implements GlobalDashbo
 
         $pendingReadingsByCompany = [];
         foreach ($equipment as $row) {
+            if ((int) ($row['controla_km'] ?? 0) !== 1) {
+                continue;
+            }
             $companyId = (int) $row['empresa_id'];
             $key = $companyId . ':' . (int) $row['id'];
             $lastReading = $latestReadings[$key] ?? '';
@@ -115,7 +120,7 @@ final readonly class CodeIgniterGlobalDashboardReadModel implements GlobalDashbo
         ]);
 
         $activity = [
-            'readingsToday' => $this->countInRange('lecturas_equipo', 'fecha_lectura', $today, $tomorrow, ['anulada' => 0]),
+            'readingsToday' => $this->countKilometerReadingsToday($today, $tomorrow),
             'renewalsToday' => $this->countInRange('vencimientos', 'created_at', $today, $tomorrow, ['activo' => 1]),
             'evidenceToday' => $this->countInRange('equipo_adjuntos', 'created_at', $today, $tomorrow, ['retirado_at' => null]),
             'whatsappSentToday' => $this->countInRange('notificacion_whatsapp_entregas', 'enviada_en', $today, $tomorrow, ['estado' => 'ENVIADA']),
@@ -297,6 +302,20 @@ final readonly class CodeIgniterGlobalDashboardReadModel implements GlobalDashbo
         }
 
         return (int) $builder->countAllResults();
+    }
+
+    private function countKilometerReadingsToday(DateTimeImmutable $from, DateTimeImmutable $to): int
+    {
+        if (! $this->database->tableExists('lecturas_equipo')) {
+            return 0;
+        }
+
+        return (int) $this->database->table('lecturas_equipo')
+            ->where('anulada', 0)
+            ->where('kilometraje IS NOT NULL', null, false)
+            ->where('fecha_lectura >=', $from->format('Y-m-d H:i:s'))
+            ->where('fecha_lectura <', $to->format('Y-m-d H:i:s'))
+            ->countAllResults();
     }
 
     private function countEmailSentToday(DateTimeImmutable $from, DateTimeImmutable $to): int
