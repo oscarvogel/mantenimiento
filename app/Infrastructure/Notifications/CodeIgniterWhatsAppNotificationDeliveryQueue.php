@@ -32,7 +32,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
         }
 
         $company = $this->db->table('empresas')
-            ->select('notificaciones_whatsapp_habilitadas, whatsapp_instance_id')
+            ->select('razon_social, nombre_fantasia, notificaciones_whatsapp_habilitadas, whatsapp_instance_id')
             ->where('id', $event->companyId())
             ->where('estado', 1)
             ->where('deleted_at', null)
@@ -85,7 +85,11 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
         // También para vencimientos, el piloto sólo redirige destinatarios reales válidos.
         // Si el chofer no tiene celular válido, queda omitido y se informa al administrador.
         $phone = $realPhone === null ? null : ($pilotEnabled ? $pilotPhone : $realPhone);
-        $message = $this->message($event, $driver, $pilotEnabled, $realPhone !== null);
+        $companyName = trim((string) ($company['nombre_fantasia'] ?? ''));
+        if ($companyName === '') {
+            $companyName = trim((string) ($company['razon_social'] ?? ''));
+        }
+        $message = $this->message($event, $driver, $pilotEnabled, $realPhone !== null, $companyName);
 
         if ($phone === null) {
             $this->db->table('notificacion_whatsapp_entregas')->ignore(true)->insert([
@@ -157,7 +161,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             ->select('emp.nombre, emp.apellido, emp.telefono')
             ->select('e.codigo equipo_codigo, e.patente, e.estado equipo_estado, e.sucursal_id')
             ->select('te.controla_km')
-            ->select('co.notificaciones_whatsapp_habilitadas, co.whatsapp_instance_id, co.idioma_notificaciones')
+            ->select('co.razon_social, co.nombre_fantasia, co.notificaciones_whatsapp_habilitadas, co.whatsapp_instance_id, co.idioma_notificaciones')
             ->select('s.idioma_notificaciones sucursal_idioma_notificaciones')
             ->join('empleados emp', 'emp.id = a.empleado_id AND emp.empresa_id = a.empresa_id', 'inner')
             ->join('equipos e', 'e.id = a.equipo_id AND e.empresa_id = a.empresa_id', 'inner')
@@ -288,7 +292,11 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
                         . "*Teléfono real:* " . ($realPhone === null ? 'no válido o no cargado' : 'configurado') . "\n\n")
                 : '';
 
-            $message = $this->weeklyReadingMessage($locale, $stage, $pilotHeader, $name, $equipmentLabel, $url);
+            $companyName = trim((string) ($row['nombre_fantasia'] ?? ''));
+            if ($companyName === '') {
+                $companyName = trim((string) ($row['razon_social'] ?? ''));
+            }
+            $message = $this->weeklyReadingMessage($locale, $stage, $pilotHeader, $name, $equipmentLabel, $url, $companyName);
 
             $this->db->table('notificacion_whatsapp_entregas')->ignore(true)->insert([
                 'empresa_id' => $companyId,
@@ -371,7 +379,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             ->countAllResults() > 0;
     }
 
-    private function weeklyReadingMessage(string $locale, string $stage, string $pilotHeader, string $name, string $equipmentLabel, string $url): string
+    private function weeklyReadingMessage(string $locale, string $stage, string $pilotHeader, string $name, string $equipmentLabel, string $url, string $companyName): string
     {
         if ($locale === 'PT') {
             $opening = $stage === 'initial'
@@ -379,7 +387,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
                 : 'Ainda falta informar a quilometragem desta semana';
 
             return $pilotHeader
-                . "*Vogel Consultoría · Manutenção*\n\n"
+                . "*" . ($companyName !== '' ? $companyName : 'Empresa') . " · Manutenção*\n\n"
                 . ($name === '' ? 'Olá 👋' : 'Olá ' . $name . ' 👋') . "\n\n"
                 . $opening . " do veículo *" . $equipmentLabel . "*.\n\n"
                 . "*Faça assim:*\n"
@@ -396,7 +404,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             : 'Todavía falta que informes los kilómetros de esta semana';
 
         return $pilotHeader
-            . "*Vogel Consultoría · Mantenimiento*\n\n"
+            . "*" . ($companyName !== '' ? $companyName : 'Empresa') . " · Mantenimiento*\n\n"
             . ($name === '' ? 'Hola 👋' : 'Hola ' . $name . ' 👋') . "\n\n"
             . $opening . " del vehículo *" . $equipmentLabel . "*.\n\n"
             . "*Hacé esto:*\n"
@@ -786,7 +794,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
     }
 
     /** @param array<string,mixed> $driver */
-    private function message(NotifiableEvent $event, array $driver, bool $pilotEnabled, bool $realPhoneValid): string
+    private function message(NotifiableEvent $event, array $driver, bool $pilotEnabled, bool $realPhoneValid, string $companyName): string
     {
         $name = trim((string) ($driver['nombre'] ?? '') . ' ' . (string) ($driver['apellido'] ?? ''));
         $greeting = $name === '' ? 'Hola.' : 'Hola ' . $name . '.';
@@ -797,7 +805,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             : '';
 
         return $pilotHeader
-            . "*Vogel Consultoría · Mantenimiento*\n\n"
+            . "*" . ($companyName !== '' ? $companyName : 'Empresa') . " · Mantenimiento*\n\n"
             . $greeting . "\n\n"
             . "⚠️ *" . trim($event->title()) . "*\n"
             . rtrim(trim($event->summary()), ".") . ".\n\n"
