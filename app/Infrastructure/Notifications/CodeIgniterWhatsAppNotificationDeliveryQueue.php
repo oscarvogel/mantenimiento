@@ -387,7 +387,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
                 : 'Ainda falta informar a quilometragem desta semana';
 
             return $pilotHeader
-                . "*" . ($companyName !== '' ? $companyName : 'Empresa') . " · Manutenção*\n\n"
+                . "*" . ($companyName !== '' ? $companyName : 'Empresa') . "* · Manutenção\n\n"
                 . ($name === '' ? 'Olá 👋' : 'Olá ' . $name . ' 👋') . "\n\n"
                 . $opening . " do veículo *" . $equipmentLabel . "*.\n\n"
                 . "*Faça assim:*\n"
@@ -404,7 +404,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             : 'Todavía falta que informes los kilómetros de esta semana';
 
         return $pilotHeader
-            . "*" . ($companyName !== '' ? $companyName : 'Empresa') . " · Mantenimiento*\n\n"
+            . "*" . ($companyName !== '' ? $companyName : 'Empresa') . "* · Mantenimiento\n\n"
             . ($name === '' ? 'Hola 👋' : 'Hola ' . $name . ' 👋') . "\n\n"
             . $opening . " del vehículo *" . $equipmentLabel . "*.\n\n"
             . "*Hacé esto:*\n"
@@ -805,7 +805,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             : '';
 
         return $pilotHeader
-            . "*" . ($companyName !== '' ? $companyName : 'Empresa') . " · Mantenimiento*\n\n"
+            . "*" . ($companyName !== '' ? $companyName : 'Empresa') . "* · Mantenimiento\n\n"
             . $greeting . "\n\n"
             . "⚠️ *" . trim($event->title()) . "*\n"
             . rtrim(trim($event->summary()), ".") . ".\n\n"
