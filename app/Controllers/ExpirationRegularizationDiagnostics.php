@@ -21,7 +21,7 @@ final class ExpirationRegularizationDiagnostics extends BaseController
         }
 
         $actor = (new SessionActorContext())->current();
-        if ($actor === null || ! $actor->isGlobalAdministrator()) {
+        if ($actor === null || ! $actor->isSuperAdmin()) {
             return $this->response->setStatusCode(403)->setJSON(['status' => 'error', 'error' => 'forbidden']);
         }
 
@@ -36,13 +36,14 @@ final class ExpirationRegularizationDiagnostics extends BaseController
 
         $candidate = $db->table('vencimientos v')
             ->select('v.id, v.empresa_id')
+            ->join(
+                'vencimiento_regularizaciones r',
+                "r.vencimiento_id = v.id AND r.empresa_id = v.empresa_id AND r.estado = 'PENDIENTE'",
+                'left'
+            )
             ->where('v.activo', 1)
             ->where('v.deleted_at', null)
-            ->whereNotIn('v.id', static function ($builder): void {
-                $builder->select('vencimiento_id')
-                    ->from('vencimiento_regularizaciones')
-                    ->where('estado', 'PENDIENTE');
-            })
+            ->where('r.id', null)
             ->orderBy('v.id', 'ASC')
             ->get()->getRowArray();
 
