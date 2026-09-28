@@ -1,6 +1,6 @@
 {
-  "_admin-DE9j_xvC.js": {
-    "file": "assets/admin-DE9j_xvC.js",
+  "_admin-DfbGgG02.js": {
+    "file": "assets/admin-DfbGgG02.js",
     "name": "admin",
     "imports": [
       "_vendor-DDO_xfJO.js"
@@ -21,11 +21,11 @@
     "file": "assets/chatbot-p1890OXW.css",
     "src": "_chatbot-p1890OXW.css"
   },
-  "_reports-DgrXtKOH.js": {
-    "file": "assets/reports-DgrXtKOH.js",
+  "_reports-BCpaIK2A.js": {
+    "file": "assets/reports-BCpaIK2A.js",
     "name": "reports",
     "imports": [
-      "_admin-DE9j_xvC.js",
+      "_admin-DfbGgG02.js",
       "_vendor-DDO_xfJO.js"
     ]
   },
@@ -34,21 +34,21 @@
     "name": "vendor"
   },
   "src/main.js": {
-    "file": "assets/main-I-9UUbK1.js",
+    "file": "assets/main-BoSc4qwd.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
     "imports": [
       "_vendor-DDO_xfJO.js",
       "_chatbot-CujoLQBj.js",
-      "_admin-DE9j_xvC.js",
-      "_reports-DgrXtKOH.js"
+      "_admin-DfbGgG02.js",
+      "_reports-BCpaIK2A.js"
     ],
     "dynamicImports": [
       "_chatbot-CujoLQBj.js"
     ],
     "css": [
-      "assets/main-2a5jqTUB.css"
+      "assets/main-BuppRTZn.css"
     ]
   }
 }

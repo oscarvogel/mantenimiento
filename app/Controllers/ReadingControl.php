@@ -10,6 +10,16 @@ use App\Application\ReadingControl\ReadingControlQuery;
 use App\Infrastructure\Identity\SessionActorContext;
 use DomainException;
 
+/**
+ * Control de lecturas de kilometraje.
+ *
+ * Pantalla de SOLO CONSULTA. La única acción es `index()`: no existe ninguna
+ * acción de reclamo, no se envía WhatsApp y no se registra ningún envío.
+ *
+ * El acceso se controla con el permiso ya existente `equipos.ver`, que es el
+ * mismo que protege el resto de las consultas de equipos. No se requieren
+ * permisos nuevos ni migraciones.
+ */
 final class ReadingControl extends BaseController
 {
     public function index(): string
@@ -28,10 +38,11 @@ final class ReadingControl extends BaseController
             ->get()
             ->getResultArray();
 
+        // `tipos_equipo` no tiene columna `deleted_at` en el esquema real: se
+        // filtra por `activo`, que es la baja lógica de ese catálogo.
         $types = $this->database->table('tipos_equipo')
             ->select('id, nombre')
             ->where('activo', 1)
-            ->where('deleted_at', null)
             ->where('controla_km', 1)
             ->orderBy('nombre', 'ASC')
             ->get()
@@ -50,10 +61,11 @@ final class ReadingControl extends BaseController
                     'typeId' => $query->typeId,
                     'filter' => $query->filter,
                     'perPage' => $query->perPage,
+                    'page' => $query->page,
+                    'sort' => $query->sort,
                 ],
                 $branches,
                 $types,
-                $actor->hasPermission('lecturas.controlar'),
             ),
         );
     }
@@ -64,6 +76,7 @@ final class ReadingControl extends BaseController
         if ($actor === null) {
             throw new DomainException('No existe un contexto autenticado válido.');
         }
+
         return $actor;
     }
 
@@ -71,5 +84,4 @@ final class ReadingControl extends BaseController
     {
         return service('listReadingControl');
     }
-
 }

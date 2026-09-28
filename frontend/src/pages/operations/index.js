@@ -15,6 +15,7 @@ import PreventiveLibraryPage from './PreventiveLibraryPage.vue'
 import PreventivePlansPage from './PreventivePlansPage.vue'
 import ProvidersIndexPage from './ProvidersIndexPage.vue'
 import QuickReadingsPage from './QuickReadingsPage.vue'
+import ReadingControlPage from './ReadingControlPage.vue'
 import RegisterReadingPage from './RegisterReadingPage.vue'
 import WorkOrderDocumentImportPage from './WorkOrderDocumentImportPage.vue'
 import WorkOrdersIndexPage from './WorkOrdersIndexPage.vue'
@@ -38,6 +39,7 @@ export {
   PreventivePlansPage,
   ProvidersIndexPage,
   QuickReadingsPage,
+  ReadingControlPage,
   RegisterReadingPage,
   WorkOrderDocumentImportPage,
   WorkOrdersIndexPage,
@@ -60,6 +62,7 @@ export const operationPageComponents = Object.freeze({
   'imports-show': ImportsShowPage,
   'preventive-library': PreventiveLibraryPage,
   'quick-readings': QuickReadingsPage,
+  'reading-control': ReadingControlPage,
   'work-order-document-import': WorkOrderDocumentImportPage,
   'work-orders-index': WorkOrdersIndexPage,
   'work-requests-index': WorkRequestsIndexPage,

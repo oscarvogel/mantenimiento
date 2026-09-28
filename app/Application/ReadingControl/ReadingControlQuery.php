@@ -4,97 +4,105 @@ declare(strict_types=1);
 
 namespace App\Application\ReadingControl;
 
-use DateTimeImmutable;
-
+/**
+ * Criterio de entrada de la pantalla de control de lecturas.
+ *
+ * Es solo lectura: no transporta ninguna acción mutante, permiso de reclamo
+ * ni referencia a canales de notificación.
+ *
+ * Todos los parámetros son opcionales. `fromRequest()` debe tolerar que no
+ * exista ninguna clave en el query string, sin emitir warnings de PHP.
+ */
 final class ReadingControlQuery
 {
+    public const SORT_AGE_ASC = 'age_asc';
+
+    public const SORT_AGE_DESC = 'age_desc';
+
+    public const SORT_CODE = 'code';
+
+    public const DEFAULT_PER_PAGE = 25;
+
+    public const MAX_PER_PAGE = 100;
+
     public function __construct(
         public readonly string $query = '',
         public readonly ?int $branchId = null,
         public readonly ?int $typeId = null,
         public readonly string $filter = 'all',
         public readonly int $page = 1,
-        public readonly int $perPage = 25,
+        public readonly int $perPage = self::DEFAULT_PER_PAGE,
+        public readonly string $sort = self::SORT_AGE_ASC,
     ) {
     }
 
+    /**
+     * Construye el criterio desde un query string potencialmente vacío.
+     *
+     * No se usa `$_GET` directamente: la presentación entrega el array ya
+     * isolated y este DTO solo normaliza valores.
+     *
+     * @param array<string, mixed> $get
+     */
     public static function fromRequest(array $get): self
     {
-        $branchId = $get['sucursal_id'] ?? null;
-        $typeId = $get['tipo_id'] ?? null;
+        $query = self::text($get, 'q');
+        $filter = self::text($get, 'filter', 'all');
+        $sort = self::text($get, 'sort', self::SORT_AGE_ASC);
 
         return new self(
-            query: trim((string) ($get['q'] ?? '')),
-            branchId: $branchId !== null && $branchId !== '' ? (int) $branchId : null,
-            typeId: $typeId !== null && $typeId !== '' ? (int) $typeId : null,
-            filter: trim((string) ($get['filter'] ?? 'all')),
-            page: max(1, (int) ($get['page'] ?? 1)),
-            perPage: max(1, min(100, (int) ($get['per_page'] ?? 25))),
+            query: $query,
+            branchId: self::positiveInt($get, 'sucursal_id'),
+            typeId: self::positiveInt($get, 'tipo_id'),
+            filter: $filter === '' ? 'all' : $filter,
+            page: max(1, self::intValue($get['page'] ?? null, 1)),
+            perPage: max(1, min(self::MAX_PER_PAGE, self::intValue($get['per_page'] ?? null, self::DEFAULT_PER_PAGE))),
+            sort: in_array($sort, [self::SORT_AGE_ASC, self::SORT_AGE_DESC, self::SORT_CODE], true)
+                ? $sort
+                : self::SORT_AGE_ASC,
         );
     }
-}
 
-final readonly class EquipmentReadingControlRow
-{
-    public function __construct(
-        public readonly int $equipmentId,
-        public readonly string $equipmentCode,
-        public readonly ?string $equipmentPlate,
-        public readonly string $typeName,
-        public readonly int $branchId,
-        public readonly string $branchName,
-        public readonly bool $controlsKm,
-        public readonly int $driverEmployeeId,
-        public readonly string $driverName,
-        public readonly ?string $driverPhone,
-        public readonly ?int $lastKm,
-        public readonly ?string $lastReadingAt,
-        public readonly int $daysSinceLastReading,
-        public readonly ?int $lastClaimDeliveryId,
-        public readonly ?string $lastClaimAt,
-        public readonly ?string $lastClaimByUser,
-        public readonly ?string $lastClaimStatus,
-        public readonly ?string $lastClaimInstanceId,
-    ) {
-    }
-
-    public function filterMatches(string $filter, DateTimeImmutable $now): bool
+    /**
+     * @param array<string, mixed> $get
+     */
+    private static function text(array $get, string $key, string $default = ''): string
     {
-        switch ($filter) {
-            case 'today':
-                if ($this->lastReadingAt === null) {
-                    return false;
-                }
-                $last = new DateTimeImmutable($this->lastReadingAt);
-                return $last->format('Y-m-d') === $now->format('Y-m-d');
-            case 'not_today':
-                if ($this->lastReadingAt === null) {
-                    return true;
-                }
-                $last = new DateTimeImmutable($this->lastReadingAt);
-                return $last->format('Y-m-d') !== $now->format('Y-m-d');
-            case 'gt_3':
-                return $this->daysSinceLastReading > 3;
-            case 'gt_7':
-                return $this->daysSinceLastReading > 7;
-            case 'all':
-            default:
-                return true;
+        $value = $get[$key] ?? null;
+
+        if (! is_scalar($value)) {
+            return $default;
         }
+
+        $value = trim((string) $value);
+
+        return $value === '' ? $default : $value;
     }
 
-    public function hasDriver(): bool
+    /**
+     * @param array<string, mixed> $get
+     */
+    private static function positiveInt(array $get, string $key): ?int
     {
-        return $this->driverEmployeeId > 0;
+        $value = $get[$key] ?? null;
+
+        if ($value === null || $value === '' || ! is_scalar($value)) {
+            return null;
+        }
+
+        $int = (int) $value;
+
+        return $int > 0 ? $int : null;
     }
 
-    public function hasValidPhone(): bool
+    private static function intValue(mixed $value, int $default): int
     {
-        return $this->driverPhone !== null && trim($this->driverPhone) !== '';
-    }
+        if ($value === null || $value === '' || ! is_scalar($value)) {
+            return $default;
+        }
 
-    public function hasReading(): bool
-    {
-        return $this->lastReadingAt !== null && $this->lastKm !== null;
+        $int = (int) $value;
+
+        return $int === 0 ? $default : $int;
     }
 }

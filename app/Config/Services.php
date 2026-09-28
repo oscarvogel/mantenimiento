@@ -172,8 +172,10 @@ use App\Presentation\AdministrationPayload;
 use App\Presentation\OperationsPayload;
 use App\Presentation\PreventivePlansPayload;
 use App\Application\ReadingControl\ListReadingControl;
+use App\Application\ReadingControl\Port\Clock as ReadingControlClock;
 use App\Presentation\QuickReadingsPayload;
 use App\Presentation\ReadingControl\ReadingControlPayload;
+use App\Infrastructure\ReadingControl\SystemClock as ReadingControlSystemClock;
 use CodeIgniter\Config\BaseService;
 
 /**
@@ -1104,10 +1106,17 @@ class Services extends BaseService
             return static::getSharedInstance('listReadingControl');
         }
 
-        $database = db_connect();
-        return new ListReadingControl($database);
+        return new ListReadingControl(db_connect(), static::readingControlClock());
     }
 
+    public static function readingControlClock(bool $getShared = true): ReadingControlClock
+    {
+        if ($getShared) {
+            return static::getSharedInstance('readingControlClock');
+        }
+
+        return new ReadingControlSystemClock();
+    }
 
     public static function createEquipmentWithInitialReading(bool $getShared = true): CreateEquipmentWithInitialReading
     {
