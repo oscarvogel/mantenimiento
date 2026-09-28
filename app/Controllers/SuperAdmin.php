@@ -62,6 +62,7 @@ final class SuperAdmin extends BaseController
             'testWeeklyReminderAction' => base_url('superadmin/whatsapp/probar-recordatorio-km'),
             'testByPlateAction' => base_url('superadmin/whatsapp/probar-por-patente'),
             'preparePilotAction' => base_url('superadmin/whatsapp/preparar-piloto'),
+            'testExpirationDigestAction' => base_url('superadmin/diagnosticos/vencimientos-whatsapp'),
             'auditDriverPhonesAction' => base_url('superadmin/whatsapp/auditar-celulares'),
         ];
         $payload['aiCompanyControls'] = array_map(static fn (array $company): array => [
