@@ -29,7 +29,12 @@ final class ReadingControl extends BaseController
 
         $data = $this->listReadingControl()->execute($actor, $query);
 
-        $branches = $this->database->table('sucursales')
+        // CodeIgniter\Controller no expone una propiedad `database` ni tiene
+        //::__get(): la conexion se obtiene con db_connect(), como en el resto de
+        // los controladores del proyecto.
+        $database = db_connect();
+
+        $branches = $database->table('sucursales')
             ->select('id, nombre')
             ->where('empresa_id', $actor->companyId())
             ->where('estado', 1)
@@ -40,7 +45,7 @@ final class ReadingControl extends BaseController
 
         // `tipos_equipo` no tiene columna `deleted_at` en el esquema real: se
         // filtra por `activo`, que es la baja lógica de ese catálogo.
-        $types = $this->database->table('tipos_equipo')
+        $types = $database->table('tipos_equipo')
             ->select('id, nombre')
             ->where('activo', 1)
             ->where('controla_km', 1)
