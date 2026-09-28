@@ -13,23 +13,23 @@ use DateTimeImmutable;
 /**
  * Caso de uso de SOLO CONSULTA para el control de lecturas de kilometraje.
  *
- * Decisiones de diseÃ±o relevantes para el hotfix de producciÃ³n:
+ * Decisiones de diseño relevantes para el hotfix de producción:
  *
  * 1. No depende de ninguna tabla de WhatsApp ni de notificaciones. La pantalla
- *    Ãºnicamente informa; no envÃ­a mensajes ni registra reclamos.
+ *    únicamente informa; no envía mensajes ni registra reclamos.
  *
- * 2. La Ãºltima lectura se resuelve con un desreferenciado determinista, de
+ * 2. La última lectura se resuelve con un desreferenciado determinista, de
  *    modo que `fecha_lectura` y `kilometraje` provienen SIEMPRE de la misma
  *    fila. No se usa `MAX(fecha_lectura) ... GROUP BY`, que en MariaDB puede
  *    devolver el kilometraje de otra fila.
  *
- * 3. El filtrado por antigÃ¼edad se resuelve en SQL, sobre la misma expresiÃ³n
- *    que alimenta la fila. De ese modo el total y la paginaciÃ³n se calculan
- *    sobre el conjunto completo y no sobre una pÃ¡gina parcial filtrada en
+ * 3. El filtrado por antigüedad se resuelve en SQL, sobre la misma expresión
+ *    que alimenta la fila. De ese modo el total y la paginación se calculan
+ *    sobre el conjunto completo y no sobre una página parcial filtrada en
  *    memoria.
  *
- * 4. Un equipo tiene a lo sumo una fila: tanto la Ãºltima lectura como el
- *    chofer vigente se resuelven con una Ãºnica fila por equipo, para no
+ * 4. Un equipo tiene a lo sumo una fila: tanto la última lectura como el
+ *    chofer vigente se resuelven con una única fila por equipo, para no
  *    duplicar registros ni falsear el total.
  */
 final class ListReadingControl
@@ -38,13 +38,13 @@ final class ListReadingControl
      * Ãšltima lectura vigente por equipo.
      *
      * El desreferenciado `le.id = (SELECT ... ORDER BY fecha_lectura DESC,
-     * id DESC LIMIT 1)` sigue la convenciÃ³n ya usada en
+     * id DESC LIMIT 1)` sigue la convención ya usada en
      * `Infrastructure/Assets/CodeIgniterEquipmentSearch`. El criterio de
      * desempate por `id DESC` hace el resultado determinista cuando dos
-     * lecturas comparten la misma fecha, y garantiza una Ãºnica fila por equipo.
+     * lecturas comparten la misma fecha, y garantiza una única fila por equipo.
      *
      * No contiene literales de empresa: el aislamiento por `empresa_id` se
-     * aplica en la condiciÃ³n del JOIN, contra la fila ya filtrada de `equipos`.
+     * aplica en la condición del JOIN, contra la fila ya filtrada de `equipos`.
      */
     private const LAST_READING_SQL = <<<'SQL'
         (
@@ -64,9 +64,9 @@ final class ListReadingControl
         SQL;
 
     /**
-     * AsignaciÃ³n de chofer vigente por equipo.
+     * Asignación de chofer vigente por equipo.
      *
-     * Igual criterio: una sola fila por equipo, la mÃ¡s reciente por
+     * Igual criterio: una sola fila por equipo, la más reciente por
      * `fecha_desde` con desempate por `id`.
      */
     private const ACTIVE_DRIVER_SQL = <<<'SQL'
@@ -112,7 +112,7 @@ final class ListReadingControl
         $base = $this->baseBuilder($companyId, $query, $filter);
 
         // El total se cuenta sobre el conjunto filtrado completo, nunca sobre
-        // la pÃ¡gina parcial que se devuelve despuÃ©s.
+        // la página parcial que se devuelve después.
         $total = (int) (clone $base)->countAllResults();
 
         $offset = ($query->page - 1) * $query->perPage;
@@ -207,7 +207,7 @@ final class ListReadingControl
     }
 
     /**
-     * Traduce la semÃ¡ntica del filtro a SQL, usando los mismos lÃ­mites que
+     * Traduce la semántica del filtro a SQL, usando los mismos límites que
      * `ReadingControlFilter::matches()` para que no haya dos definiciones.
      */
     private function applyAntiquityFilter(BaseBuilder $builder, ReadingControlFilter $filter): void
@@ -232,7 +232,7 @@ final class ListReadingControl
             case ReadingControlFilter::GT_7:
                 $days = $filter->daysThreshold() ?? 3;
                 $cutoff = $filter->cutoffFor($days)->format(self::DATE_FORMAT);
-                // Un equipo sin lectura es el caso mÃ¡s antiguo posible y debe
+                // Un equipo sin lectura es el caso más antiguo posible y debe
                 // aparecer en los filtros de demora.
                 $builder->groupStart()
                     ->where($column . ' IS NULL', null, false)

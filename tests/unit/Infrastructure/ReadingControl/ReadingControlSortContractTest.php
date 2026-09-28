@@ -6,9 +6,7 @@ use App\Application\ReadingControl\ListReadingControl;
 use CodeIgniter\Database\BaseBuilder;
 use Config\Database;
 use PHPUnit\Framework\TestCase;
-use ReflectionMethod;
 use Tests\Support\ReadingControl\ReadingControlClockFake;
-use DateTimeImmutable;
 
 /**
  * Regresión del HTTP 500 en producción.

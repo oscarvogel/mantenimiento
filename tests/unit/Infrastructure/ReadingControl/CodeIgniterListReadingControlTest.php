@@ -7,8 +7,6 @@ use App\Application\ReadingControl\ListReadingControl;
 use App\Application\ReadingControl\ReadingControlQuery;
 use CodeIgniter\Database\BaseConnection;
 use Config\Database;
-use DateTimeImmutable;
-use DateTimeZone;
 use PHPUnit\Framework\TestCase;
 use Tests\Support\ReadingControl\ReadingControlClockFake;
 

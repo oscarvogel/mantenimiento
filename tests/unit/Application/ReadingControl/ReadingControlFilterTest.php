@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Application\ReadingControl\ReadingControlFilter;
-use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 
 final class ReadingControlFilterTest extends TestCase
