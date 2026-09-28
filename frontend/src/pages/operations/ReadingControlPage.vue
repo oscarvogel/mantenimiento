@@ -434,13 +434,13 @@ const readingLabel = (item) => {
 
     <div
       v-if="claimTarget"
-      class="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-4 sm:items-center"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="reading-control-claim-title"
       @click.self="closeClaim"
     >
-      <div class="w-full max-w-lg rounded-xl border border-border bg-surface-raised p-5 shadow-xl">
+      <div class="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-surface-raised p-5 shadow-xl">
         <h2 id="reading-control-claim-title" class="text-lg font-semibold text-ink">
           {{ confirmLabel(claimTarget) }}
         </h2>

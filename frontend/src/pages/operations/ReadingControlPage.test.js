@@ -133,6 +133,26 @@ describe('ReadingControlPage · confirmación y envío', () => {
     expect(dialog.text()).toContain('Enviar WhatsApp')
   })
 
+  it('centra el diálogo en el viewport con altura máxima y scroll interno', async () => {
+    const wrapper = mountPage()
+    await claimButton(wrapper).trigger('click')
+
+    const overlay = wrapper.find('[role="dialog"]')
+    expect(overlay.exists()).toBe(true)
+    const overlayClasses = overlay.classes()
+    expect(overlayClasses).toContain('fixed')
+    expect(overlayClasses).toContain('inset-0')
+    expect(overlayClasses).toContain('items-center')
+    expect(overlayClasses).toContain('justify-center')
+    expect(overlayClasses).not.toContain('items-end')
+
+    const panel = overlay.find('div')
+    expect(panel.exists()).toBe(true)
+    const panelClasses = panel.classes()
+    expect(panelClasses).toContain('max-h-[90vh]')
+    expect(panelClasses).toContain('overflow-y-auto')
+  })
+
   it('envía solo equipmentId y el token CSRF, nunca un teléfono', async () => {
     const fetchSpy = vi.fn().mockResolvedValue({
       ok: true,
