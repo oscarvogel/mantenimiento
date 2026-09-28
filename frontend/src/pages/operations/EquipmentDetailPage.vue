@@ -202,13 +202,13 @@ const equipmentSummary = computed(() => {
               <td class="px-4 py-4 text-ink-muted">
                 {{ expiration.origin }}
                 <details v-if="data.can.edit" class="ui-details-animated mt-2">
-                  <summary class="cursor-pointer text-xs font-semibold text-brand-700">Editar</summary>
+                  <summary class="cursor-pointer text-xs font-semibold text-brand-700">Editar vencimiento / corregir fecha</summary>
                   <form method="post" :action="expiration.updateUrl" class="mt-2 grid min-w-[18rem] gap-2 rounded-lg border border-border bg-white p-3">
                     <CsrfInput :csrf="data.csrf" />
                     <input type="hidden" name="return_to" :value="`/mantenimiento/equipos/${data.equipment.id}`" />
-                    <input type="date" name="fecha_emision" :value="expiration.issuedAt" :class="fieldClass" />
-                    <input type="date" name="fecha_vencimiento" required :value="expiration.expiresAt" :class="fieldClass" />
-                    <input name="numero_documento" maxlength="100" :value="expiration.documentNumber" placeholder="Documento" :class="fieldClass" />
+                    <FormField label="Fecha de emisión"><input type="date" name="fecha_emision" :value="expiration.issuedAt" :class="fieldClass" /></FormField>
+                    <FormField label="Fecha de vencimiento"><input type="date" name="fecha_vencimiento" required :value="expiration.expiresAt" :class="fieldClass" /></FormField>
+                    <FormField label="Documento"><input name="numero_documento" maxlength="100" :value="expiration.documentNumber" placeholder="Documento" :class="fieldClass" /></FormField>
                     <textarea name="observaciones" maxlength="2000" rows="2" :value="expiration.notes" placeholder="Observaciones" :class="fieldClass"></textarea>
                     <div class="flex gap-2">
                       <button type="submit" :class="primaryButton">Guardar</button>
