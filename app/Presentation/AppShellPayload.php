@@ -33,7 +33,7 @@ final readonly class AppShellPayload
                 $navigation[] = $this->item('quick-readings', 'Registrar km/horas', 'mantenimiento/lecturas/rapidas', 'readings', $active);
             }
             if ($actor->hasPermission('equipos.ver')) {
-                $navigation[] = $this->item('reading-control', 'Control de lecturas', 'mantenimiento/lecturas/control', 'clipboard-check', $active);
+                $navigation[] = $this->item('reading-control', 'Control de lecturas', 'mantenimiento/lecturas/control', 'clipboard-list', $active);
             }
             if ($this->canSeeOperations($actor)) {
                 $navigation[] = $this->item('maintenance', 'Mantenimiento', 'mantenimiento', 'wrench', $active);

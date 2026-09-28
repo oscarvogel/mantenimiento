@@ -92,6 +92,35 @@ final class ReadingControlReadOnlyContractTest extends TestCase
         self::assertStringNotContainsString('lecturas.controlar', $shell);
     }
 
+    /**
+     * El sidebar descarta los items que no pertenecen a un grupo conocido y los
+     * acumula bajo "Más". Sin esta entrada, "Control de lecturas" no aparecía en
+     * la sección "Operación".
+     */
+    public function testSidebarPlacesReadingControlInsideTheOperationGroup(): void
+    {
+        $sidebar = file_get_contents(ROOTPATH . 'frontend/src/components/AppSidebar.vue');
+
+        self::assertIsString($sidebar);
+        self::assertMatchesRegularExpression(
+            "/key: 'operation'.*'reading-control'/",
+            $sidebar,
+            "El item reading-control debe estar dentro del grupo 'operation'.",
+        );
+    }
+
+    public function testSidebarResolvesAnIconForReadingControl(): void
+    {
+        $shell = (string) file_get_contents(APPPATH . 'Presentation/AppShellPayload.php');
+        $sidebar = (string) file_get_contents(ROOTPATH . 'frontend/src/components/AppSidebar.vue');
+
+        self::assertSame(1, preg_match("/'reading-control'.*'(clipboard-list)'/", $shell));
+
+        if (! preg_match("/'(clipboard-list)':/", $sidebar)) {
+            self::assertSame(1, preg_match("/'/clipboard-check':/", $sidebar), 'El icono debe existir en el mapa de AppSidebar.');
+        }
+    }
+
     public function testNoNewMigrationIsAddedByThisHotfix(): void
     {
         $migrations = glob(APPPATH . 'Database/Migrations/*.php') ?: [];

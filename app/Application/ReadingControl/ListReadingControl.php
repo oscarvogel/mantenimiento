@@ -245,16 +245,27 @@ final class ListReadingControl
         }
     }
 
+    /**
+     * Ordena por antigüedad de la última lectura.
+     *
+     * `orderBy(string $orderBy, string $direction = '', ?bool $escape = null)`:
+     * la dirección es el segundo argumento y el escape el tercero. Se pasa una
+     * expresión ya completa con su propio ASC/DESC y `escape = false`, para
+     * poder ordenar por el marcador `(columna IS NULL)` sin que CodeIgniter
+     * reescriba los identificadores.
+     */
     private function applySort(BaseBuilder $builder, string $sort): BaseBuilder
     {
         return match ($sort) {
             ReadingControlQuery::SORT_AGE_DESC => $builder->orderBy(
                 '(lr.fecha_lectura IS NULL) ASC, lr.fecha_lectura DESC, e.codigo ASC',
+                '',
                 false,
             ),
-            ReadingControlQuery::SORT_CODE => $builder->orderBy('e.codigo ASC', false),
+            ReadingControlQuery::SORT_CODE => $builder->orderBy('e.codigo', 'ASC'),
             default => $builder->orderBy(
                 '(lr.fecha_lectura IS NULL) DESC, lr.fecha_lectura ASC, e.codigo ASC',
+                '',
                 false,
             ),
         };
