@@ -153,7 +153,9 @@ final class ReadingControlReadOnlyContractTest extends TestCase
         self::assertStringContainsString('emp.activo = 1', $reminder);
         self::assertStringContainsString('emp.deleted_at IS NULL', $reminder);
         self::assertStringContainsString('normalizePhone', $reminder);
-        self::assertStringContainsString("'empleado_id' => $employeeId", $reminder);
+        // Concatenación explícita: en una cadena doble, PHP interpolaría
+        // $employeeId y lanzaría Undefined variable.
+        self::assertStringContainsString("'empleado_id' => " . '$employeeId', $reminder);
     }
 
     public function testCrossCompanyIsolationIsEnforcedInTheQuery(): void
