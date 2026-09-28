@@ -12,6 +12,9 @@ import StatusBadge from './components/StatusBadge.vue'
 import EquipmentThumbnail from './components/EquipmentThumbnail.vue'
 import { dangerButton, fieldClass, formatHours, formatKilometers, formatReadingOrigin, nowLocal, primaryButton, secondaryButton, today } from './helpers.js'
 
+const editingExpiration = ref(null)
+const closeExpirationModal = () => { editingExpiration.value = null }
+
 const props = defineProps({ data: { type: Object, required: true } })
 const data = computed(() => {
   const readings = props.data.readings
@@ -201,27 +204,44 @@ const equipmentSummary = computed(() => {
               <td class="px-4 py-4 text-ink-muted">{{ expiration.documentNumber || '—' }}</td>
               <td class="px-4 py-4 text-ink-muted">
                 {{ expiration.origin }}
-                <details v-if="data.can.edit" class="ui-details-animated mt-2">
-                  <summary class="cursor-pointer text-xs font-semibold text-brand-700">Editar</summary>
-                  <form method="post" :action="expiration.updateUrl" class="mt-2 grid min-w-[18rem] gap-2 rounded-lg border border-border bg-white p-3">
-                    <CsrfInput :csrf="data.csrf" />
-                    <input type="hidden" name="return_to" :value="`/mantenimiento/equipos/${data.equipment.id}`" />
-                    <input type="date" name="fecha_emision" :value="expiration.issuedAt" :class="fieldClass" />
-                    <input type="date" name="fecha_vencimiento" required :value="expiration.expiresAt" :class="fieldClass" />
-                    <input name="numero_documento" maxlength="100" :value="expiration.documentNumber" placeholder="Documento" :class="fieldClass" />
-                    <textarea name="observaciones" maxlength="2000" rows="2" :value="expiration.notes" placeholder="Observaciones" :class="fieldClass"></textarea>
-                    <div class="flex gap-2">
-                      <button type="submit" :class="primaryButton">Guardar</button>
-                      <button type="submit" :formaction="expiration.deactivateUrl" :class="dangerButton">Retirar</button>
-                    </div>
-                  </form>
-                </details>
+                <button v-if="data.can.edit" type="button" class="mt-2 text-xs font-semibold text-brand-700 hover:underline" @click="editingExpiration = expiration">
+                  Editar vencimiento
+                </button>
               </td>
             </tr>
           </tbody>
         </table>
       </div>
     </PanelCard>
+
+    <Teleport to="body">
+      <div v-if="editingExpiration" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/55 p-4" @click.self="closeExpirationModal">
+        <div class="w-full max-w-lg rounded-2xl border border-border bg-surface-raised p-6 shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="expiration-edit-title">
+          <div class="mb-5 flex items-start justify-between gap-4">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Vencimiento</p>
+              <h2 id="expiration-edit-title" class="mt-1 text-xl font-bold text-ink">Editar {{ editingExpiration.typeName }}</h2>
+            </div>
+            <button type="button" class="rounded-lg px-3 py-2 text-xl text-ink-muted hover:bg-surface-subtle" aria-label="Cerrar" @click="closeExpirationModal">×</button>
+          </div>
+          <form method="post" :action="editingExpiration.updateUrl" class="grid gap-4">
+            <CsrfInput :csrf="data.csrf" />
+            <input type="hidden" name="return_to" :value="`/mantenimiento/equipos/${data.equipment.id}`" />
+            <FormField label="Fecha de emisión"><input type="date" name="fecha_emision" :value="editingExpiration.issuedAt" :class="fieldClass" /></FormField>
+            <FormField label="Fecha de vencimiento"><input type="date" name="fecha_vencimiento" required :value="editingExpiration.expiresAt" :class="fieldClass" /></FormField>
+            <FormField label="Documento"><input name="numero_documento" maxlength="100" :value="editingExpiration.documentNumber" placeholder="Documento" :class="fieldClass" /></FormField>
+            <FormField label="Observaciones"><textarea name="observaciones" maxlength="2000" rows="3" :value="editingExpiration.notes" :class="fieldClass"></textarea></FormField>
+            <div class="mt-2 flex flex-wrap justify-between gap-3 border-t border-border-subtle pt-4">
+              <button type="submit" :formaction="editingExpiration.deactivateUrl" :class="dangerButton">Retirar vencimiento</button>
+              <div class="flex gap-2">
+                <button type="button" :class="secondaryButton" @click="closeExpirationModal">Cancelar</button>
+                <button type="submit" :class="primaryButton">Guardar cambios</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </Teleport>
 
     <section v-if="data.can.edit" class="mb-6 grid gap-6 xl:grid-cols-2">
       <PanelCard title="Datos del equipo">
