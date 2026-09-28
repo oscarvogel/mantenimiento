@@ -238,7 +238,7 @@ final class ClaimReadingReminderTest extends TestCase
             ['id' => 9, 'empresa_id' => 99, 'nombre' => 'Otra', 'estado' => 1, 'deleted_at' => null, 'idioma_notificaciones' => ''],
         ]);
         $this->db->table('tipos_equipo')->insert([
-            ['id' => 1, 'nombre' => 'Camión', 'controla_km' => 1, 'controla_horas' => 0, 'activo' => 1],
+            'id' => 1, 'nombre' => 'Camión', 'controla_km' => 1, 'controla_horas' => 0, 'activo' => 1,
         ]);
         $this->db->table('equipos')->insertBatch([
             ['id' => 10, 'empresa_id' => 5, 'sucursal_id' => 7, 'tipo_equipo_id' => 1, 'codigo' => 'CAM-01', 'patente' => 'AA123BB', 'chasis' => null, 'km_actual' => null, 'estado' => 'ACTIVO', 'deleted_at' => null],
