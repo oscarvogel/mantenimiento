@@ -172,11 +172,6 @@ use App\Presentation\AdministrationPayload;
 use App\Presentation\OperationsPayload;
 use App\Presentation\PreventivePlansPayload;
 use App\Application\ReadingControl\ListReadingControl;
-use App\Application\ReadingControl\ManualReadingClaimHandler;
-use App\Application\Notifications\Port\WhatsAppNotificationDeliveryQueue;
-use App\Application\Notifications\Port\NotificationClock;
-use App\Application\PublicEquipmentAccess\Port\PublicEquipmentTokenRepository;
-use App\Infrastructure\PublicEquipmentAccess\CodeIgniterPublicEquipmentTokenRepository;
 use App\Presentation\QuickReadingsPayload;
 use App\Presentation\ReadingControl\ReadingControlPayload;
 use CodeIgniter\Config\BaseService;
@@ -1113,19 +1108,6 @@ class Services extends BaseService
         return new ListReadingControl($database);
     }
 
-    public static function manualReadingClaimHandler(bool $getShared = true): ManualReadingClaimHandler
-    {
-        if ($getShared) {
-            return static::getSharedInstance('manualReadingClaimHandler');
-        }
-
-        $database = db_connect();
-        $queue = static::whatsAppNotificationDeliveryQueue(false);
-        $clock = static::notificationClock(false);
-        $tokenRepository = static::publicEquipmentTokenRepository(false);
-
-        return new ManualReadingClaimHandler($database, $queue, $clock, $tokenRepository);
-    }
 
     public static function createEquipmentWithInitialReading(bool $getShared = true): CreateEquipmentWithInitialReading
     {
