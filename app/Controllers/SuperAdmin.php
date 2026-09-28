@@ -48,6 +48,26 @@ final class SuperAdmin extends BaseController
         $payload['migrations'] = $this->migrationDiagnostics();
         $whatsAppSettings = service('globalNotificationSettingsStore')->get();
         $whatsAppGateway = service('whatsAppGateway');
+        $expirationTestEquipment = db_connect()->table('equipos e')
+            ->select('e.id, e.empresa_id, e.codigo, e.patente')
+            ->join('empresas emp', 'emp.id = e.empresa_id', 'inner')
+            ->where('e.estado', 'ACTIVO')
+            ->where('e.deleted_at', null)
+            ->where('emp.estado', 1)
+            ->where('emp.deleted_at', null)
+            ->orderBy('e.codigo', 'ASC')
+            ->get()->getResultArray();
+
+        $payload['expirationTestCompanies'] = array_map(static fn (array $company): array => [
+            'id' => (int) $company['id'],
+            'displayName' => (string) ($company['displayName'] ?? $company['nombre_fantasia'] ?? $company['razon_social'] ?? ('Empresa #' . $company['id'])),
+        ], $data['companies']);
+        $payload['expirationTestEquipment'] = array_map(static fn (array $equipment): array => [
+            'id' => (int) $equipment['id'],
+            'companyId' => (int) $equipment['empresa_id'],
+            'label' => trim((string) ($equipment['codigo'] ?? '')) . (trim((string) ($equipment['patente'] ?? '')) !== '' ? ' · ' . trim((string) $equipment['patente']) : ''),
+        ], $expirationTestEquipment);
+
         $payload['whatsapp'] = [
             'enabled' => (bool) ($whatsAppSettings['whatsapp_enabled'] ?? false),
             'available' => $whatsAppGateway->available(),
