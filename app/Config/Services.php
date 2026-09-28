@@ -171,6 +171,7 @@ use App\Presentation\AppShellPayload;
 use App\Presentation\AdministrationPayload;
 use App\Presentation\OperationsPayload;
 use App\Presentation\PreventivePlansPayload;
+use App\Application\ReadingControl\ClaimReadingReminder;
 use App\Application\ReadingControl\ListReadingControl;
 use App\Application\ReadingControl\Port\Clock as ReadingControlClock;
 use App\Presentation\QuickReadingsPayload;
@@ -1116,6 +1117,21 @@ class Services extends BaseService
         }
 
         return new ReadingControlSystemClock();
+    }
+
+    public static function claimReadingReminder(bool $getShared = true): ClaimReadingReminder
+    {
+        if ($getShared) {
+            return static::getSharedInstance('claimReadingReminder');
+        }
+
+        return new ClaimReadingReminder(
+            db_connect(),
+            static::whatsAppGateway(false),
+            static::whatsAppNotificationDeliveryQueue(false),
+            static::globalNotificationSettingsStore(false),
+            static::notificationClock(),
+        );
     }
 
     public static function createEquipmentWithInitialReading(bool $getShared = true): CreateEquipmentWithInitialReading

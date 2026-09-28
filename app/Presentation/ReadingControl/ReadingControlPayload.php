@@ -25,12 +25,14 @@ final class ReadingControlPayload
      * @param array<string, mixed> $filters
      * @param list<array{id: int|string, nombre: string}> $branches
      * @param list<array{id: int|string, nombre: string}> $types
+     * @param array{enabled: bool, reason: string|null} $claim
      */
     public function build(
         array $data,
         array $filters,
         array $branches,
         array $types,
+        array $claim = ['enabled' => false, 'reason' => null],
     ): array {
         return [
             'results' => array_map(
@@ -52,6 +54,9 @@ final class ReadingControlPayload
                     'hasDriver' => $item->hasDriver(),
                     'hasValidPhone' => $item->hasValidPhone(),
                     'hasReading' => $item->hasReading(),
+                    // El botón solo se ofrece si el subsystem de WhatsApp está
+                    // operativo Y la fila tiene chofer con teléfono.
+                    'canClaim' => $claim['enabled'] && $item->hasDriver() && $item->hasValidPhone(),
                 ],
                 $data['items'],
             ),
@@ -72,10 +77,15 @@ final class ReadingControlPayload
             ],
             'routes' => [
                 'index' => base_url('mantenimiento/lecturas/control'),
+                'claim' => base_url('mantenimiento/lecturas/control/reclamar'),
                 'equipment' => base_url('mantenimiento/equipos'),
                 'quickReadings' => base_url('mantenimiento/lecturas/rapidas'),
             ],
-            'readOnly' => true,
+            'claim' => [
+                'enabled' => (bool) $claim['enabled'],
+                'reason' => $claim['reason'] ?? null,
+            ],
+            'readOnly' => false,
         ];
     }
 

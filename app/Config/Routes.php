@@ -115,6 +115,10 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->post('lecturas/rapidas/avisos/(:num)/orden', 'QuickReadings::generateOrder/$1', ['filter' => 'permission:ordenes.editar']);
 
     $routes->get('lecturas/control', 'ReadingControl::index', ['filter' => ['auth', 'permission:equipos.ver']]);
+    // Reclamo manual de lectura por WhatsApp. POST solamente. El destinatario
+    // lo resuelve el servidor a partir del equipo; el cliente solo manda
+    // equipmentId. CSRF se aplica globalmente en Config\Filters.
+    $routes->post('lecturas/control/reclamar', 'ReadingControl::claim', ['filter' => ['auth', 'permission:lecturas.cargar']]);
     $routes->get('equipos/(:num)/operar', 'EquipmentOperations::show/$1', ['filter' => 'permission:equipos.ver']);
     $routes->post('equipos/(:num)/incidencias', 'EquipmentOperations::reportIncident/$1', ['filter' => 'permission:solicitudes.crear']);
     $routes->get('equipos/(:num)', 'EquipmentManagement::show/$1', ['filter' => 'permission:equipos.ver']);

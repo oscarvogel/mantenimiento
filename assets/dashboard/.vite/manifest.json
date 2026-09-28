@@ -1,17 +1,17 @@
 {
-  "_admin-DfbGgG02.js": {
-    "file": "assets/admin-DfbGgG02.js",
+  "_admin-DoRu6wQy.js": {
+    "file": "assets/admin-DoRu6wQy.js",
     "name": "admin",
     "imports": [
-      "_vendor-DDO_xfJO.js"
+      "_vendor-DQOjbuQd.js"
     ]
   },
-  "_chatbot-CujoLQBj.js": {
-    "file": "assets/chatbot-CujoLQBj.js",
+  "_chatbot-CqAYF7Za.js": {
+    "file": "assets/chatbot-CqAYF7Za.js",
     "name": "chatbot",
     "isDynamicEntry": true,
     "imports": [
-      "_vendor-DDO_xfJO.js"
+      "_vendor-DQOjbuQd.js"
     ],
     "css": [
       "assets/chatbot-p1890OXW.css"
@@ -21,34 +21,34 @@
     "file": "assets/chatbot-p1890OXW.css",
     "src": "_chatbot-p1890OXW.css"
   },
-  "_reports-BCpaIK2A.js": {
-    "file": "assets/reports-BCpaIK2A.js",
+  "_reports-Ds1xyVuq.js": {
+    "file": "assets/reports-Ds1xyVuq.js",
     "name": "reports",
     "imports": [
-      "_admin-DfbGgG02.js",
-      "_vendor-DDO_xfJO.js"
+      "_admin-DoRu6wQy.js",
+      "_vendor-DQOjbuQd.js"
     ]
   },
-  "_vendor-DDO_xfJO.js": {
-    "file": "assets/vendor-DDO_xfJO.js",
+  "_vendor-DQOjbuQd.js": {
+    "file": "assets/vendor-DQOjbuQd.js",
     "name": "vendor"
   },
   "src/main.js": {
-    "file": "assets/main-CwKlFEAu.js",
+    "file": "assets/main-D6Ws3PFQ.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
     "imports": [
-      "_vendor-DDO_xfJO.js",
-      "_chatbot-CujoLQBj.js",
-      "_admin-DfbGgG02.js",
-      "_reports-BCpaIK2A.js"
+      "_vendor-DQOjbuQd.js",
+      "_chatbot-CqAYF7Za.js",
+      "_admin-DoRu6wQy.js",
+      "_reports-Ds1xyVuq.js"
     ],
     "dynamicImports": [
-      "_chatbot-CujoLQBj.js"
+      "_chatbot-CqAYF7Za.js"
     ],
     "css": [
-      "assets/main-BuppRTZn.css"
+      "assets/main-tWWo8QBu.css"
     ]
   }
 }

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use PHPUnit\Framework\TestCase;
+use Tests\Support\ReadingControl\PhpSource;
 
 /**
  * Regresión del segundo HTTP 500 en producción:
@@ -81,16 +82,38 @@ final class ReadingControlControllerContractTest extends TestCase
         self::assertStringNotContainsString('$this->db->', $source);
     }
 
-    public function testControllerExposesOnlyTheReadOnlyIndexAction(): void
+    public function testControllerExposesOnlyTheExpectedActions(): void
     {
         preg_match_all('/public function ([A-Za-z_][A-Za-z0-9_]*)/', $this->controllerSource(), $matches);
-        $publicMethods = array_values(array_diff($matches[1], ['__construct', '__get', '__set']));
+        $inherited = [
+            '__construct', '__get', '__set', 'initController', 'forceHTTPS',
+            'cachePage', 'validate', 'validateData',
+        ];
+        $publicMethods = array_values(array_diff($matches[1], $inherited));
+        sort($publicMethods);
 
-        foreach ($publicMethods as $method) {
-            if (in_array($method, ['initController', 'forceHTTPS', 'cachePage', 'validate', 'validateData'], true)) {
-                continue;
-            }
-            self::assertSame('index', $method, 'El controlador solo debe exponer la acción index().');
-        }
+        // index() es la consulta. claim() es la unica accion mutante, y solo
+        // envia WhatsApp bajo confirmacion explicita del operador.
+        self::assertSame(['claim', 'index'], $publicMethods);
+    }
+
+    public function testClaimUsesServerSideRecipientAndNeverAClientPhone(): void
+    {
+        $code = PhpSource::codeOf(APPPATH . 'Controllers/ReadingControl.php');
+
+        // El cliente solo manda equipmentId: el destinatario lo resuelve el
+        // caso de uso a partir de empresa, equipo, asignacion y chofer.
+        self::assertStringContainsString("getPost('equipmentId')", $code);
+        self::assertStringNotContainsString("getPost('telefono')", $code);
+        self::assertStringNotContainsString("getPost('phone')", $code);
+    }
+
+    public function testClaimMapsExpectedErrorsToJsonAndNeverToWhops(): void
+    {
+        $code = PhpSource::codeOf(APPPATH . 'Controllers/ReadingControl.php');
+
+        self::assertStringContainsString('catch (DomainException', $code);
+        self::assertStringContainsString('jsonError', $code);
+        self::assertStringContainsString('setJSON', $code);
     }
 }
