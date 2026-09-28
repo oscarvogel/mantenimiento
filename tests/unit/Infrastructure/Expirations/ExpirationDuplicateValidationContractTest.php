@@ -22,7 +22,8 @@ final class ExpirationDuplicateValidationContractTest extends TestCase
         $source = file_get_contents(ROOTPATH . 'frontend/src/pages/operations/EquipmentDetailPage.vue');
         self::assertIsString($source);
 
-        self::assertStringContainsString('Editar vencimiento / corregir fecha', $source);
+        self::assertStringContainsString('Editar vencimiento', $source);
+        self::assertStringContainsString('<Teleport to="body">', $source);
         self::assertStringContainsString('label="Fecha de vencimiento"', $source);
     }
 }
