@@ -171,7 +171,12 @@ use App\Presentation\AppShellPayload;
 use App\Presentation\AdministrationPayload;
 use App\Presentation\OperationsPayload;
 use App\Presentation\PreventivePlansPayload;
+use App\Application\ReadingControl\ClaimReadingReminder;
+use App\Application\ReadingControl\ListReadingControl;
+use App\Application\ReadingControl\Port\Clock as ReadingControlClock;
 use App\Presentation\QuickReadingsPayload;
+use App\Presentation\ReadingControl\ReadingControlPayload;
+use App\Infrastructure\ReadingControl\SystemClock as ReadingControlSystemClock;
 use CodeIgniter\Config\BaseService;
 
 /**
@@ -1085,6 +1090,48 @@ class Services extends BaseService
         }
 
         return new QuickReadingsPayload();
+    }
+
+    public static function readingControlPayload(bool $getShared = true): ReadingControlPayload
+    {
+        if ($getShared) {
+            return static::getSharedInstance('readingControlPayload');
+        }
+
+        return new ReadingControlPayload();
+    }
+
+    public static function listReadingControl(bool $getShared = true): ListReadingControl
+    {
+        if ($getShared) {
+            return static::getSharedInstance('listReadingControl');
+        }
+
+        return new ListReadingControl(db_connect(), static::readingControlClock());
+    }
+
+    public static function readingControlClock(bool $getShared = true): ReadingControlClock
+    {
+        if ($getShared) {
+            return static::getSharedInstance('readingControlClock');
+        }
+
+        return new ReadingControlSystemClock();
+    }
+
+    public static function claimReadingReminder(bool $getShared = true): ClaimReadingReminder
+    {
+        if ($getShared) {
+            return static::getSharedInstance('claimReadingReminder');
+        }
+
+        return new ClaimReadingReminder(
+            db_connect(),
+            static::whatsAppGateway(false),
+            static::whatsAppNotificationDeliveryQueue(false),
+            static::globalNotificationSettingsStore(false),
+            static::notificationClock(),
+        );
     }
 
     public static function createEquipmentWithInitialReading(bool $getShared = true): CreateEquipmentWithInitialReading

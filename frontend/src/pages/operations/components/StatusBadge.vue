@@ -24,6 +24,11 @@ const tone = {
   AGRUPADA: 'bg-info-subtle text-info-strong',
   RECHAZADA: 'bg-danger-subtle text-danger-strong',
   RETIRADO: 'bg-surface-muted text-ink-muted',
+  HOY: 'bg-success-subtle text-success-strong',
+  REVISAR: 'bg-warning-subtle text-warning-foreground',
+  ANTIGUO: 'bg-danger-subtle text-danger-strong',
+  SIN_LECTURA: 'bg-danger-subtle text-danger-strong',
+  FUERA_DE_FILTRO: 'bg-surface-muted text-ink-muted',
 }
 </script>
 
