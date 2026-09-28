@@ -113,7 +113,7 @@ final class ListReadingControl
         $lastClaims = [];
         if ($equipmentIds !== []) {
             $claimRows = $this->database->table('notificacion_whatsapp_entregas n')
-                ->select('n.id, n.equipo_id, n.estado, n.enviada_en, n.instance_id, u.nombre u_nombre, u.apellido u_apellido', false)
+                ->select('n.id, n.equipo_id, n.estado, n.enviada_en, n.instance_id, u.nombre u_nombre', false)
                 ->join('usuarios u', 'u.id = n.created_by', 'left')
                 ->where('n.empresa_id', $companyId)
                 ->whereIn('n.equipo_id', $equipmentIds)
@@ -133,7 +133,7 @@ final class ListReadingControl
                         'estado' => (string) $r['estado'],
                         'enviada_en' => $r['enviada_en'] !== null ? (string) $r['enviada_en'] : null,
                         'instance_id' => $r['instance_id'] !== null ? (string) $r['instance_id'] : null,
-                        'user_name' => trim((string) ($r['u_nombre'] ?? '') . ' ' . (string) ($r['u_apellido'] ?? '')),
+                        'user_name' => trim((string) ($r['u_nombre'] ?? '')),
                     ];
                 }
             }
