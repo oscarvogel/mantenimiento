@@ -1,4 +1,4 @@
-import { flushPromises, mount } from '@vue/test-utils'
+import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import ReadingControlPage from './ReadingControlPage.vue'
 
@@ -51,8 +51,19 @@ const mountPage = (overrides) => mount(ReadingControlPage, { props: { data: data
 const claimButton = (wrapper) =>
   wrapper.findAll('button').find((b) => b.text().includes('Reclamar por WhatsApp'))
 
+// El diálogo vive teletransportado bajo document.body, fuera del contenedor
+// de la página (el <main> del shell es containing block de `fixed`): se
+// consulta desde el body y no desde el wrapper.
+const dialogEl = () => document.body.querySelector('[role="dialog"]')
+const dialogText = () => dialogEl()?.textContent ?? ''
+const dialogButton = (text) =>
+  [...document.body.querySelectorAll('[role="dialog"] button')]
+    .map((element) => new DOMWrapper(element))
+    .find((button) => button.text().includes(text))
+
 afterEach(() => {
   vi.unstubAllGlobals()
+  document.body.querySelectorAll('[role="dialog"]').forEach((element) => element.remove())
 })
 
 describe('ReadingControlPage · consulta de lecturas', () => {
@@ -165,35 +176,51 @@ describe('ReadingControlPage · confirmación y envío', () => {
     const wrapper = mountPage()
     await claimButton(wrapper).trigger('click')
 
-    const dialog = wrapper.find('[role="dialog"]')
-    expect(dialog.exists()).toBe(true)
-    expect(dialog.text()).toContain('Enviar recordatorio a')
-    expect(dialog.text()).toContain('CAM-01')
-    expect(dialog.text()).toContain('185.000')
-    expect(dialog.text()).toContain('2026-09-20 08:30')
-    expect(dialog.text()).toContain('8 días')
-    expect(dialog.text()).toContain('Cancelar')
-    expect(dialog.text()).toContain('Enviar WhatsApp')
+    const dialog = dialogEl()
+    expect(dialog).not.toBeNull()
+    expect(dialogText()).toContain('Enviar recordatorio a')
+    expect(dialogText()).toContain('CAM-01')
+    expect(dialogText()).toContain('185.000')
+    expect(dialogText()).toContain('2026-09-20 08:30')
+    expect(dialogText()).toContain('8 días')
+    expect(dialogText()).toContain('Cancelar')
+    expect(dialogText()).toContain('Enviar WhatsApp')
   })
 
   it('centra el diálogo en el viewport con altura máxima y scroll interno', async () => {
     const wrapper = mountPage()
     await claimButton(wrapper).trigger('click')
 
-    const overlay = wrapper.find('[role="dialog"]')
-    expect(overlay.exists()).toBe(true)
-    const overlayClasses = overlay.classes()
-    expect(overlayClasses).toContain('fixed')
-    expect(overlayClasses).toContain('inset-0')
-    expect(overlayClasses).toContain('items-center')
-    expect(overlayClasses).toContain('justify-center')
-    expect(overlayClasses).not.toContain('items-end')
+    const overlay = dialogEl()
+    expect(overlay).not.toBeNull()
+    expect(overlay.classList.contains('fixed')).toBe(true)
+    expect(overlay.classList.contains('inset-0')).toBe(true)
+    expect(overlay.classList.contains('items-center')).toBe(true)
+    expect(overlay.classList.contains('justify-center')).toBe(true)
+    expect(overlay.classList.contains('items-end')).toBe(false)
 
-    const panel = overlay.find('div')
-    expect(panel.exists()).toBe(true)
-    const panelClasses = panel.classes()
-    expect(panelClasses).toContain('max-h-[90vh]')
-    expect(panelClasses).toContain('overflow-y-auto')
+    const panel = overlay.querySelector('div')
+    expect(panel).not.toBeNull()
+    expect(panel.classList.contains('max-h-[90vh]')).toBe(true)
+    expect(panel.classList.contains('overflow-y-auto')).toBe(true)
+  })
+
+  it('teletransporta el diálogo a document.body, fuera del contenedor de la página', async () => {
+    const wrapper = mountPage()
+    await claimButton(wrapper).trigger('click')
+
+    const dialog = document.body.querySelector('[role="dialog"]')
+    expect(dialog).not.toBeNull()
+    // El <main> del shell conserva transform de la animación de entrada y se
+    // vuelve containing block de `fixed`: el diálogo NO debe quedar adentro.
+    expect(wrapper.element.contains(dialog)).toBe(false)
+    expect(dialog.className).toContain('fixed')
+    expect(dialog.className).toContain('inset-0')
+
+    await dialogButton('Cancelar').trigger('click')
+    await flushPromises()
+
+    expect(document.body.querySelector('[role="dialog"]')).toBeNull()
   })
 
   it('envía solo equipmentId y el token CSRF, nunca un teléfono', async () => {
@@ -205,7 +232,7 @@ describe('ReadingControlPage · confirmación y envío', () => {
 
     const wrapper = mountPage()
     await claimButton(wrapper).trigger('click')
-    await wrapper.findAll('[role="dialog"] button').find((b) => b.text().includes('Enviar WhatsApp')).trigger('click')
+    await dialogButton('Enviar WhatsApp').trigger('click')
     await flushPromises()
 
     const [url, options] = fetchSpy.mock.calls[0]
@@ -227,11 +254,11 @@ describe('ReadingControlPage · confirmación y envío', () => {
     const wrapper = mountPage()
     await claimButton(wrapper).trigger('click')
 
-    const sendButton = () => wrapper.findAll('[role="dialog"] button').find((b) => b.text().includes('Enviar') || b.text().includes('Enviando'))
+    const sendButton = () => dialogButton('Enviar') ?? dialogButton('Enviando')
     await sendButton().trigger('click')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Enviando')
+    expect(dialogText()).toContain('Enviando')
     expect(sendButton().attributes('disabled')).toBeDefined()
 
     // Segundo clic durante el envío: no debe dispararse otra petición.
@@ -255,10 +282,10 @@ describe('ReadingControlPage · confirmación y envío', () => {
 
     const wrapper = mountPage()
     await claimButton(wrapper).trigger('click')
-    await wrapper.findAll('[role="dialog"] button').find((b) => b.text().includes('Enviar WhatsApp')).trigger('click')
+    await dialogButton('Enviar WhatsApp').trigger('click')
     await flushPromises()
 
-    expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
+    expect(dialogEl()).toBeNull()
     expect(wrapper.text()).toContain('Reclamo registrado y enviado solo al teléfono piloto')
     expect(wrapper.text()).toContain('no al chofer real')
   })
@@ -272,10 +299,10 @@ describe('ReadingControlPage · confirmación y envío', () => {
 
     const wrapper = mountPage()
     await claimButton(wrapper).trigger('click')
-    await wrapper.findAll('[role="dialog"] button').find((b) => b.text().includes('Enviar WhatsApp')).trigger('click')
+    await dialogButton('Enviar WhatsApp').trigger('click')
     await flushPromises()
 
-    expect(wrapper.find('[role="dialog"]').exists()).toBe(true)
+    expect(dialogEl()).not.toBeNull()
     expect(wrapper.text()).toContain('El equipo no tiene un chofer activo asignado')
   })
 
@@ -284,7 +311,7 @@ describe('ReadingControlPage · confirmación y envío', () => {
 
     const wrapper = mountPage()
     await claimButton(wrapper).trigger('click')
-    await wrapper.findAll('[role="dialog"] button').find((b) => b.text().includes('Enviar WhatsApp')).trigger('click')
+    await dialogButton('Enviar WhatsApp').trigger('click')
     await flushPromises()
 
     expect(wrapper.findAll('tbody tr').length).toBe(1)
@@ -297,10 +324,10 @@ describe('ReadingControlPage · confirmación y envío', () => {
 
     const wrapper = mountPage()
     await claimButton(wrapper).trigger('click')
-    await wrapper.findAll('[role="dialog"] button').find((b) => b.text().includes('Cancelar')).trigger('click')
+    await dialogButton('Cancelar').trigger('click')
     await flushPromises()
 
-    expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
+    expect(dialogEl()).toBeNull()
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 })
