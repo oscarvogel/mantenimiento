@@ -176,8 +176,6 @@ use App\Application\ReadingControl\ManualReadingClaimHandler;
 use App\Application\Notifications\Port\WhatsAppNotificationDeliveryQueue;
 use App\Application\Notifications\Port\NotificationClock;
 use App\Application\PublicEquipmentAccess\Port\PublicEquipmentTokenRepository;
-use App\Infrastructure\Notifications\CodeIgniterWhatsAppNotificationDeliveryQueue;
-use App\Infrastructure\Notifications\CodeIgniterNotificationClock;
 use App\Infrastructure\PublicEquipmentAccess\CodeIgniterPublicEquipmentTokenRepository;
 use App\Presentation\QuickReadingsPayload;
 use App\Presentation\ReadingControl\ReadingControlPayload;
