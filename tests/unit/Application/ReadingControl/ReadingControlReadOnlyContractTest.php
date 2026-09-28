@@ -146,9 +146,12 @@ final class ReadingControlReadOnlyContractTest extends TestCase
     {
         $reminder = PhpSource::codeOf(APPPATH . 'Application/ReadingControl/ClaimReadingReminder.php');
 
-        // empresa -> equipo -> asignacion vigente -> chofer -> telefono
-        self::assertStringContainsString("->where('rol', 'CHOFER')", $reminder);
-        self::assertStringContainsString('fecha_hasta IS NULL', $reminder);
+        // empresa -> equipo -> asignacion vigente -> chofer -> telefono.
+        // El chofer vigente se resuelve con la constante SQL ACTIVE_DRIVER_SQL.
+        self::assertStringContainsString("a.rol = 'CHOFER'", $reminder);
+        self::assertStringContainsString('a.fecha_hasta IS NULL', $reminder);
+        self::assertStringContainsString('emp.activo = 1', $reminder);
+        self::assertStringContainsString('emp.deleted_at IS NULL', $reminder);
         self::assertStringContainsString('normalizePhone', $reminder);
         self::assertStringContainsString("'empleado_id' => $employeeId", $reminder);
     }
@@ -158,8 +161,9 @@ final class ReadingControlReadOnlyContractTest extends TestCase
         $reminder = PhpSource::codeOf(APPPATH . 'Application/ReadingControl/ClaimReadingReminder.php');
 
         self::assertStringContainsString("->where('e.empresa_id', \$companyId)", $reminder);
-        self::assertStringContainsString("->where('a2.empresa_id', a.empresa_id)", $reminder);
+        self::assertStringContainsString('a2.empresa_id = a.empresa_id', $reminder);
         self::assertStringContainsString('emp.empresa_id = drv.empresa_id', $reminder);
+        self::assertStringContainsString('l2.empresa_id = le.empresa_id', $reminder);
     }
 
     public function testPilotAndCompanyConfigurationAreRespected(): void

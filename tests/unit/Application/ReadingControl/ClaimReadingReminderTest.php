@@ -83,9 +83,36 @@ final class RecordingDeliveryQueue implements WhatsAppNotificationDeliveryQueue
     /** @var list<array{deliveryId:int,messageId:string,status:string}> */
     public array $accepted = [];
 
+    private ?\CodeIgniter\Database\BaseConnection $db = null;
+
+    public function bind(\CodeIgniter\Database\BaseConnection $db): void
+    {
+        $this->db = $db;
+    }
+
+    /**
+     * Reproduce el efecto real de `CodeIgniterWhatsAppNotificationDeliveryQueue::
+     * accepted()`: la entrega pasa a ACEPTADA o PENDIENTE_CONFIRMACION.
+     *
+     * Si el doble no escribiera, la prueba no comprobaría que el reclamo
+     * quede efectivamente registrado.
+     */
     public function accepted(int $deliveryId, string $messageId, string $status): void
     {
         $this->accepted[] = ['deliveryId' => $deliveryId, 'messageId' => $messageId, 'status' => $status];
+
+        $normalized = strtolower(trim($status));
+        $final = in_array($normalized, ['accepted', 'delivered', 'read'], true);
+        $now = date('Y-m-d H:i:s');
+
+        $this->db?->table('notificacion_whatsapp_entregas')->where('id', $deliveryId)->update([
+            'estado' => $final ? 'ACEPTADA' : 'PENDIENTE_CONFIRMACION',
+            'gateway_message_id' => $messageId,
+            'gateway_status' => $normalized === '' ? 'queued' : $normalized,
+            'enviada_en' => $final ? $now : null,
+            'ultimo_error' => null,
+            'updated_at' => $now,
+        ]);
     }
 
     public function scheduleDriverForEvent(\App\Domain\Notifications\NotifiableEvent $event): void
@@ -200,6 +227,7 @@ final class ClaimReadingReminderTest extends TestCase
 
         $this->gateway = new RecordingWhatsAppGateway();
         $this->queue = new RecordingDeliveryQueue();
+        $this->queue->bind($this->db);
 
         // El repositorio de tokens públicos cifra el token con
         // service('encrypter'). En test no hay encryption.key configurada y el
