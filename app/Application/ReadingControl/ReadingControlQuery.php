@@ -20,10 +20,13 @@ final class ReadingControlQuery
 
     public static function fromRequest(array $get): self
     {
+        $branchId = $get['sucursal_id'] ?? null;
+        $typeId = $get['tipo_id'] ?? null;
+
         return new self(
             query: trim((string) ($get['q'] ?? '')),
-            branchId: $get['sucursal_id'] !== null && $get['sucursal_id'] !== '' ? (int) $get['sucursal_id'] : null,
-            typeId: $get['tipo_id'] !== null && $get['tipo_id'] !== '' ? (int) $get['tipo_id'] : null,
+            branchId: $branchId !== null && $branchId !== '' ? (int) $branchId : null,
+            typeId: $typeId !== null && $typeId !== '' ? (int) $typeId : null,
             filter: trim((string) ($get['filter'] ?? 'all')),
             page: max(1, (int) ($get['page'] ?? 1)),
             perPage: max(1, min(100, (int) ($get['per_page'] ?? 25))),
