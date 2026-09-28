@@ -198,6 +198,8 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->post('ordenes/(:num)/cerrar-correctiva', 'CorrectiveWorkOrders::close/$1', ['filter' => 'permission:ordenes.cerrar']);
 });
 
+$routes->get('superadmin/diagnosticos/vencimientos-whatsapp', 'ExpirationWhatsAppDiagnostics::run', ['filter' => 'auth']);
+
 $routes->group('mantenimiento/chatbot', ['filter' => ['auth', 'permission:chatbot.usar']], function ($routes) {
     $routes->get('/',               'Chatbot::index');
     $routes->post('conversaciones', 'Chatbot::startConversation');
