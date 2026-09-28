@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { BellAlertIcon, BuildingOffice2Icon, ChatBubbleLeftRightIcon, IdentificationIcon, PlusIcon, ShieldCheckIcon, UserGroupIcon, UserPlusIcon } from '@heroicons/vue/24/outline'
 import AdminMetric from './components/AdminMetric.vue'
 import AdminPageHeading from './components/AdminPageHeading.vue'
@@ -7,7 +7,7 @@ import CsrfField from './components/CsrfField.vue'
 import StatusBadge from './components/StatusBadge.vue'
 import PaginationBar from '../operations/components/PaginationBar.vue'
 
-defineProps({
+const props = defineProps({
   data: {
     type: Object,
     required: true,
@@ -19,6 +19,20 @@ const isRoleAssigned = (user, roleId) => user.assignedRoleIds.includes(Number(ro
 const activeSection = ref('summary')
 const showCreateCompany = ref(false)
 const showCreateAdministrator = ref(false)
+const expirationTestCompanyId = ref('')
+const expirationTestCompanyQuery = ref('')
+const expirationTestEquipmentQuery = ref('')
+const expirationTestEquipmentId = ref('')
+const filteredExpirationCompanies = computed(() => {
+  const q = expirationTestCompanyQuery.value.trim().toLowerCase()
+  return (props.data.expirationTestCompanies || []).filter((company) => !q || company.displayName.toLowerCase().includes(q)).slice(0, 20)
+})
+const filteredExpirationEquipment = computed(() => {
+  const q = expirationTestEquipmentQuery.value.trim().toLowerCase()
+  return (props.data.expirationTestEquipment || []).filter((equipment) => Number(equipment.companyId) === Number(expirationTestCompanyId.value) && (!q || equipment.label.toLowerCase().includes(q))).slice(0, 30)
+})
+const selectExpirationCompany = (company) => { expirationTestCompanyId.value = String(company.id); expirationTestCompanyQuery.value = company.displayName; expirationTestEquipmentId.value = ''; expirationTestEquipmentQuery.value = '' }
+const selectExpirationEquipment = (equipment) => { expirationTestEquipmentId.value = String(equipment.id); expirationTestEquipmentQuery.value = equipment.label }
 
 const sections = [
   { key: 'summary', label: 'Resumen' },
@@ -301,16 +315,26 @@ const sections = [
               <p class="text-sm font-semibold text-ink">Probar WhatsApp de vencimientos · Hito #414</p>
               <p class="mt-1 text-xs leading-5 text-ink-muted">Envía únicamente al teléfono piloto un mensaje controlado con DOS vencimientos agrupados del móvil indicado. No ejecuta el recordatorio de kilómetros ni contacta al chofer real.</p>
             </div>
-            <div class="grid gap-3 sm:grid-cols-[180px_180px_auto] sm:items-end">
-              <label class="block">
-                <span class="mb-1.5 block text-sm font-medium text-ink">Empresa ID</span>
-                <input name="empresa_id" type="number" min="1" required class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm" />
-              </label>
-              <label class="block">
-                <span class="mb-1.5 block text-sm font-medium text-ink">Equipo ID</span>
-                <input name="equipo_id" type="number" min="1" required class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm" />
-              </label>
-              <button type="submit" :disabled="!data.whatsapp.available || !data.whatsapp.pilotPhoneConfigured" data-confirm data-confirm-title="¿Probar resumen de vencimientos?" data-confirm-text="Se enviará UN WhatsApp al teléfono piloto con DOS vencimientos agrupados. No se contactará al chofer real." data-confirm-button="Enviar prueba" class="inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm disabled:cursor-not-allowed disabled:opacity-50">
+            <div class="grid gap-3 sm:grid-cols-[minmax(240px,1fr)_minmax(240px,1fr)_auto] sm:items-end">
+              <div class="relative">
+                <span class="mb-1.5 block text-sm font-medium text-ink">Empresa</span>
+                <input v-model="expirationTestCompanyQuery" autocomplete="off" placeholder="Buscar empresa…" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm" @input="expirationTestCompanyId = ''; expirationTestEquipmentId = ''; expirationTestEquipmentQuery = ''" />
+                <input type="hidden" name="empresa_id" :value="expirationTestCompanyId" />
+                <div v-if="expirationTestCompanyQuery && !expirationTestCompanyId" class="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-border bg-white shadow-xl">
+                  <button v-for="company in filteredExpirationCompanies" :key="company.id" type="button" class="block w-full px-3 py-2 text-left text-sm hover:bg-surface-muted" @click="selectExpirationCompany(company)">{{ company.displayName }}</button>
+                  <p v-if="filteredExpirationCompanies.length === 0" class="px-3 py-2 text-sm text-ink-muted">Sin coincidencias</p>
+                </div>
+              </div>
+              <div class="relative">
+                <span class="mb-1.5 block text-sm font-medium text-ink">Móvil</span>
+                <input v-model="expirationTestEquipmentQuery" :disabled="!expirationTestCompanyId" autocomplete="off" :placeholder="expirationTestCompanyId ? 'Buscar código o patente…' : 'Primero seleccioná una empresa'" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm disabled:cursor-not-allowed disabled:bg-surface-muted" @input="expirationTestEquipmentId = ''" />
+                <input type="hidden" name="equipo_id" :value="expirationTestEquipmentId" />
+                <div v-if="expirationTestCompanyId && expirationTestEquipmentQuery && !expirationTestEquipmentId" class="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-border bg-white shadow-xl">
+                  <button v-for="equipment in filteredExpirationEquipment" :key="equipment.id" type="button" class="block w-full px-3 py-2 text-left text-sm hover:bg-surface-muted" @click="selectExpirationEquipment(equipment)">{{ equipment.label }}</button>
+                  <p v-if="filteredExpirationEquipment.length === 0" class="px-3 py-2 text-sm text-ink-muted">No hay móviles coincidentes en esta empresa</p>
+                </div>
+              </div>
+              <button type="submit" :disabled="!data.whatsapp.available || !data.whatsapp.pilotPhoneConfigured || !expirationTestCompanyId || !expirationTestEquipmentId" data-confirm data-confirm-title="¿Probar resumen de vencimientos?" data-confirm-text="Se enviará UN WhatsApp al teléfono piloto con DOS vencimientos agrupados. No se contactará al chofer real." data-confirm-button="Enviar prueba" class="inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm disabled:cursor-not-allowed disabled:opacity-50">
                 Probar vencimientos
               </button>
             </div>
