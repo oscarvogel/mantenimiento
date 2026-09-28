@@ -22,8 +22,8 @@ final class ExpirationWhatsAppDiagnostics extends BaseController
         }
 
         $db = db_connect();
-        $companyId = max(0, (int) $this->request->getGet('empresa_id'));
-        $equipmentId = max(0, (int) $this->request->getGet('equipo_id'));
+        $companyId = max(0, (int) ($this->request->getPost('empresa_id') ?: $this->request->getGet('empresa_id')));
+        $equipmentId = max(0, (int) ($this->request->getPost('equipo_id') ?: $this->request->getGet('equipo_id')));
         if ($companyId <= 0 || $equipmentId <= 0) {
             return $this->response->setStatusCode(422)->setJSON([
                 'status' => 'error',
@@ -48,8 +48,8 @@ final class ExpirationWhatsAppDiagnostics extends BaseController
             return $this->response->setStatusCode(404)->setJSON(['status' => 'error', 'message' => 'Empresa o móvil inexistente.']);
         }
 
-        $settings = service('globalNotificationSettings')->get();
-        $gateway = service('whatsAppNotificationGateway');
+        $settings = service('globalNotificationSettingsStore')->get();
+        $gateway = service('whatsAppGateway');
         $pilotPhone = $gateway->normalizePhone((string) ($settings['whatsapp_pilot_phone'] ?? ''));
         if ($pilotPhone === null) {
             return $this->response->setStatusCode(409)->setJSON(['status' => 'error', 'message' => 'No hay teléfono piloto WhatsApp válido configurado.']);
@@ -80,7 +80,7 @@ final class ExpirationWhatsAppDiagnostics extends BaseController
             . "_Sistema de mantenimiento desarrollado por Vogel Consultoría._";
 
         try {
-            $result = $gateway->send($pilotPhone, $message, 'mantenimiento:' . $testKey, $instanceId);
+            $result = $gateway->sendText($pilotPhone, $message, 'mantenimiento:' . $testKey, (string) $actor->userId(), 'Superadmin Mantenimiento', $instanceId);
         } catch (Throwable $exception) {
             log_message('error', 'Diagnóstico Hito 414 falló: {message}', ['message' => $exception->getMessage()]);
             return $this->response->setStatusCode(502)->setJSON(['status' => 'error', 'hito' => 414, 'message' => 'No se pudo enviar la prueba piloto.']);
