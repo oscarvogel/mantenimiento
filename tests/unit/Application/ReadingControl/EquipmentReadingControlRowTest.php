@@ -58,9 +58,21 @@ final class EquipmentReadingControlRowTest extends TestCase
 
     public function testAntiquityDrivesTheVisibleStatus(): void
     {
-        self::assertSame('HOY', $this->row(1, '2026-09-28 08:30:00', 0)->status($this->filter(ReadingControlFilter::ALL)));
-        self::assertSame('REVISAR', $this->row(1, '2026-09-27 08:30:00', 1)->status($this->filter(ReadingControlFilter::ALL)));
+        // Sin filtro activo, la fila clasifica por antigüedad pura.
+        self::assertSame('AL_DIA', $this->row(1, '2026-09-28 08:30:00', 0)->status($this->filter(ReadingControlFilter::ALL)));
+        self::assertSame('AL_DIA', $this->row(1, '2026-09-27 08:30:00', 1)->status($this->filter(ReadingControlFilter::ALL)));
+        self::assertSame('REVISAR', $this->row(1, '2026-09-25 08:30:00', 3)->status($this->filter(ReadingControlFilter::ALL)));
         self::assertSame('ANTIGUO', $this->row(1, '2026-09-01 08:30:00', 27)->status($this->filter(ReadingControlFilter::ALL)));
+        self::assertSame('SIN_LECTURA', $this->row(null, null, null)->status($this->filter(ReadingControlFilter::ALL)));
+    }
+
+    public function testTodayFilterMarksOnlyReadingsFromTheCurrentDay(): void
+    {
+        $today = $this->filter(ReadingControlFilter::TODAY);
+
+        self::assertSame('HOY', $this->row(1, '2026-09-28 08:30:00', 0)->status($today));
+        self::assertSame('FUERA_DE_FILTRO', $this->row(1, '2026-09-27 08:30:00', 1)->status($today));
+        self::assertSame('FUERA_DE_FILTRO', $this->row(null, null, null)->status($today));
     }
 
     public function testDriverAndPhoneAreReportedIndependently(): void

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use PHPUnit\Framework\TestCase;
+use Tests\Support\ReadingControl\PhpSource;
 
 /**
  * Auditoría de esquema del control de lecturas.
@@ -85,33 +86,35 @@ final class ReadingControlSchemaContractTest extends TestCase
 
     public function testTheQueryDoesNotReferenceTheWhatsAppDeliveriesTable(): void
     {
-        $source = (string) file_get_contents(APPPATH . 'Application/ReadingControl/ListReadingControl.php');
+        $code = PhpSource::codeOf(APPPATH . 'Application/ReadingControl/ListReadingControl.php');
 
-        self::assertStringNotContainsString('notificacion_whatsapp_entregas', $source);
+        self::assertStringNotContainsString('notificacion_whatsapp_entregas', $code);
     }
 
     public function testLastReadingIsResolvedDeterministically(): void
     {
-        $source = (string) file_get_contents(APPPATH . 'Application/ReadingControl/ListReadingControl.php');
+        // Se lee el código sin comentarios: el docblock explica por qué no se
+        // usa MAX(fecha_lectura), y mentionarla ahí no es una dependencia.
+        $code = PhpSource::codeOf(APPPATH . 'Application/ReadingControl/ListReadingControl.php');
 
         // Regresión: `MAX(fecha_lectura) ... GROUP BY` puede devolver el
         // kilometraje de otra fila. Se exige un desreferenciado con orden
         // explícito y desempate por id.
-        self::assertStringNotContainsString('MAX(fecha_lectura)', $source);
-        self::assertStringContainsString('ORDER BY l2.fecha_lectura DESC, l2.id DESC', $source);
-        self::assertStringContainsString('LIMIT 1', $source);
-        self::assertStringContainsString('anulada = 0', $source);
+        self::assertStringNotContainsString('MAX(fecha_lectura)', $code);
+        self::assertStringContainsString('ORDER BY l2.fecha_lectura DESC, l2.id DESC', $code);
+        self::assertStringContainsString('LIMIT 1', $code);
+        self::assertStringContainsString('anulada = 0', $code);
     }
 
     public function testAntiquityFilterIsAppliedInSqlNotAfterPagination(): void
     {
-        $source = (string) file_get_contents(APPPATH . 'Application/ReadingControl/ListReadingControl.php');
+        $code = PhpSource::codeOf(APPPATH . 'Application/ReadingControl/ListReadingControl.php');
 
         // El total se cuenta sobre el conjunto filtrado completo, antes de
         // aplicar el límite de página.
-        self::assertStringContainsString('countAllResults()', $source);
-        self::assertStringContainsString('applyAntiquityFilter', $source);
-        self::assertStringNotContainsString('filterMatches(', $source, 'El filtrado no debe resignarse a memoria después de paginar.');
+        self::assertStringContainsString('countAllResults()', $code);
+        self::assertStringContainsString('applyAntiquityFilter', $code);
+        self::assertStringNotContainsString('filterMatches(', $code, 'El filtrado no debe resignarse a memoria después de paginar.');
     }
 
     /**

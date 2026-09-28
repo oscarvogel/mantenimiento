@@ -52,7 +52,9 @@ final class ReadingControlSortContractTest extends TestCase
         /** @var BaseBuilder $sorted */
         $sorted = $method->invoke($useCase, $builder, $sort);
 
-        $sql = $sorted->compileSelect();
+        $compile = new ReflectionMethod(BaseBuilder::class, 'compileSelect');
+        $compile->setAccessible(true);
+        $sql = (string) $compile->invoke($sorted);
 
         $position = strripos($sql, 'ORDER BY');
         self::assertIsInt($position, 'La consulta debe terminar en ORDER BY.');

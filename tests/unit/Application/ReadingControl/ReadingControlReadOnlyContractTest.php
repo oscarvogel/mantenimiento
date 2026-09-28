@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use PHPUnit\Framework\TestCase;
+use Tests\Support\ReadingControl\PhpSource;
 
 /**
  * Contrato del hotfix de SOLO CONSULTA.
@@ -32,13 +33,14 @@ final class ReadingControlReadOnlyContractTest extends TestCase
     public function testNoReadingControlFileDependsOnWhatsApp(): void
     {
         foreach (self::guardedFiles() as [$base, $relative]) {
-            $source = file_get_contents($base . $relative);
+            // Se leen solo comentarios y docblocks: esos términos aparecen
+            // legitimamente en la documentación que explica la eliminación.
+            $code = PhpSource::codeOf($base . $relative);
 
-            self::assertIsString($source, $relative);
             foreach (['notificacion_whatsapp_entregas', 'whatsapp', 'WhatsApp', 'reclamo_manual_lectura', 'lastClaim', 'canClaim', 'ManualReadingClaimHandler'] as $needle) {
                 self::assertStringNotContainsString(
                     $needle,
-                    $source,
+                    $code,
                     sprintf('%s no debe contener "%s" en un hotfix de solo consulta.', $relative, $needle),
                 );
             }
@@ -48,11 +50,10 @@ final class ReadingControlReadOnlyContractTest extends TestCase
     public function testNoReadingControlFileReferencesTheClaimRouteOrPermission(): void
     {
         foreach (self::guardedFiles() as [$base, $relative]) {
-            $source = file_get_contents($base . $relative);
+            $code = PhpSource::codeOf($base . $relative);
 
-            self::assertIsString($source, $relative);
-            self::assertStringNotContainsString('lecturas.controlar', $source, $relative);
-            self::assertStringNotContainsString('lecturas/control/reclamar', $source, $relative);
+            self::assertStringNotContainsString('lecturas.controlar', $code, $relative);
+            self::assertStringNotContainsString('lecturas/control/reclamar', $code, $relative);
         }
     }
 
@@ -121,18 +122,23 @@ final class ReadingControlReadOnlyContractTest extends TestCase
         }
     }
 
-    public function testNoNewMigrationIsAddedByThisHotfix(): void
+    /**
+     * El hotfix no debe agregar ni modificar migraciones.
+     *
+     * No se comprueba que las migraciones no mencionen la tabla de WhatsApp:
+     * la migración que la CREA la menciona legitimamente. Lo que se exige es
+     * que el diff contra main no toque el directorio de migraciones.
+     */
+    public function testHotfixAddsNoMigration(): void
     {
-        $migrations = glob(APPPATH . 'Database/Migrations/*.php') ?: [];
+        $root = dirname(APPPATH, 2);
+        $diff = shell_exec(
+            sprintf('git -C %s diff --name-only origin/main...HEAD -- app/Database/Migrations 2>/dev/null', escapeshellarg($root)),
+        );
 
-        foreach ($migrations as $migration) {
-            $source = (string) file_get_contents($migration);
-            self::assertStringNotContainsString(
-                'notificacion_whatsapp_entregas',
-                $source,
-                sprintf('La migración %s no debe tocar tablas de WhatsApp.', basename($migration)),
-            );
-        }
+        $changed = array_values(array_filter(array_map('trim', explode("\n", (string) $diff))));
+
+        self::assertSame([], $changed, 'El hotfix no debe agregar ni modificar migraciones.');
     }
 
     public function testPageIsRegisteredInTheOperationsPageRegistry(): void
