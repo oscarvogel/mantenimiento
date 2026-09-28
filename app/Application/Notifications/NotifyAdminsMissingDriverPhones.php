@@ -167,7 +167,7 @@ final readonly class NotifyAdminsMissingDriverPhones
                 'empresa',
                 (string) $companyId,
                 'chofer.telefono_faltante:empresa:' . $companyId . ':semana:' . $weekKey,
-                '/empleados',
+                '/mantenimiento/empleados',
                 DateTimeImmutable::createFromInterface($now),
             );
 
@@ -197,6 +197,7 @@ final readonly class NotifyAdminsMissingDriverPhones
                     ->update([
                         'titulo' => $title,
                         'resumen' => $eventSummary,
+                        'url' => '/mantenimiento/empleados',
                         'estado' => 'PENDIENTE',
                         'leida_en' => null,
                         'updated_at' => $now->format('Y-m-d H:i:s'),
