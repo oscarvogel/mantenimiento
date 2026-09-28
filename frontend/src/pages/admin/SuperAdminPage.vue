@@ -294,6 +294,29 @@ const sections = [
             Enviar prueba
           </button>
         </form>
+        <form method="post" :action="data.whatsapp.testExpirationDigestAction" class="sm:col-span-2 lg:col-span-4 rounded-lg border border-primary/30 bg-primary-subtle p-4">
+          <CsrfField :csrf="data.csrf" />
+          <div class="flex flex-col gap-4">
+            <div>
+              <p class="text-sm font-semibold text-ink">Probar WhatsApp de vencimientos · Hito #414</p>
+              <p class="mt-1 text-xs leading-5 text-ink-muted">Envía únicamente al teléfono piloto un mensaje controlado con DOS vencimientos agrupados del móvil indicado. No ejecuta el recordatorio de kilómetros ni contacta al chofer real.</p>
+            </div>
+            <div class="grid gap-3 sm:grid-cols-[180px_180px_auto] sm:items-end">
+              <label class="block">
+                <span class="mb-1.5 block text-sm font-medium text-ink">Empresa ID</span>
+                <input name="empresa_id" type="number" min="1" required class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm" />
+              </label>
+              <label class="block">
+                <span class="mb-1.5 block text-sm font-medium text-ink">Equipo ID</span>
+                <input name="equipo_id" type="number" min="1" required class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm" />
+              </label>
+              <button type="submit" :disabled="!data.whatsapp.available || !data.whatsapp.pilotPhoneConfigured" data-confirm data-confirm-title="¿Probar resumen de vencimientos?" data-confirm-text="Se enviará UN WhatsApp al teléfono piloto con DOS vencimientos agrupados. No se contactará al chofer real." data-confirm-button="Enviar prueba" class="inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm disabled:cursor-not-allowed disabled:opacity-50">
+                Probar vencimientos
+              </button>
+            </div>
+          </div>
+        </form>
+
         <form method="post" :action="data.whatsapp.preparePilotAction" class="sm:col-span-2 lg:col-span-4 rounded-lg border border-warning/30 bg-warning-subtle p-4">
           <CsrfField :csrf="data.csrf" />
           <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
