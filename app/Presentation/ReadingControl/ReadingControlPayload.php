@@ -26,6 +26,9 @@ final class ReadingControlPayload
      * @param list<array{id: int|string, nombre: string}> $branches
      * @param list<array{id: int|string, nombre: string}> $types
      * @param array{enabled: bool, reason: string|null} $claim
+     * @param \DateTimeImmutable|null $now Reloj para evaluar la elegibilidad del
+     * reclamo. Si se omite se usa la hora del sistema; el controlador pasa el
+     * mismo reloj del caso de uso de listado para no mezclar jornadas.
      */
     public function build(
         array $data,
@@ -33,7 +36,10 @@ final class ReadingControlPayload
         array $branches,
         array $types,
         array $claim = ['enabled' => false, 'reason' => null],
+        ?\DateTimeImmutable $now = null,
     ): array {
+        $now ??= new \DateTimeImmutable('now');
+
         return [
             'results' => array_map(
                 static fn (EquipmentReadingControlRow $item): array => [
@@ -55,8 +61,10 @@ final class ReadingControlPayload
                     'hasValidPhone' => $item->hasValidPhone(),
                     'hasReading' => $item->hasReading(),
                     // El botón solo se ofrece si el subsystem de WhatsApp está
-                    // operativo Y la fila tiene chofer con teléfono.
-                    'canClaim' => $claim['enabled'] && $item->hasDriver() && $item->hasValidPhone(),
+                    // operativo, la fila tiene chofer con teléfono Y la lectura
+                    // está pendiente/atrasada según `needsClaim()` (GT_3):
+                    // HOY y AL_DIA no habilitan reclamo.
+                    'canClaim' => $claim['enabled'] && $item->hasDriver() && $item->hasValidPhone() && $item->needsClaim($now),
                 ],
                 $data['items'],
             ),

@@ -337,7 +337,7 @@ const readingLabel = (item) => {
                     Reclamar por WhatsApp
                   </button>
                   <span v-else-if="claimAvailable" class="text-xs text-ink-muted">
-                    {{ item.hasDriver ? (item.hasValidPhone ? '—' : 'Sin teléfono') : 'Sin chofer' }}
+                    {{ item.hasDriver ? (item.hasValidPhone ? 'Al día' : 'Sin teléfono') : 'Sin chofer' }}
                   </span>
                   <span v-else class="text-xs text-ink-muted">No disponible</span>
                 </td>
@@ -382,7 +382,7 @@ const readingLabel = (item) => {
               Reclamar por WhatsApp
             </button>
             <p v-else-if="claimAvailable" class="text-center text-xs text-ink-muted">
-              {{ item.hasDriver ? (item.hasValidPhone ? 'Acción no disponible' : 'Sin teléfono cargable') : 'Sin chofer asignado' }}
+              {{ item.hasDriver ? (item.hasValidPhone ? 'Al día' : 'Sin teléfono cargable') : 'Sin chofer asignado' }}
             </p>
           </article>
         </div>

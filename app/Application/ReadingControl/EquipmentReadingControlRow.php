@@ -75,6 +75,21 @@ final readonly class EquipmentReadingControlRow
         return 'FUERA_DE_FILTRO';
     }
 
+    /**
+     * Indica si la fila amerita un reclamo por WhatsApp.
+     *
+     * Reutiliza el criterio existente de "Más de 3 días" (`GT_3`): el reclamo
+     * solo corresponde cuando la última lectura es anterior al corte o cuando
+     * nunca hubo lectura (`SIN_LECTURA`, que `GT_3` ya incluye). `HOY` y
+     * `AL_DIA` no habilitan reclamo. Es la misma regla que aplica el caso de
+     * uso `ClaimReadingReminder` antes de enviar, para no duplicar criterios.
+     */
+    public function needsClaim(\DateTimeImmutable $now): bool
+    {
+        return ReadingControlFilter::fromKey(ReadingControlFilter::GT_3, $now)
+            ->matches($this->lastReadingDate());
+    }
+
     public function lastReadingDate(): ?\DateTimeImmutable
     {
         if ($this->lastReadingAt === null) {

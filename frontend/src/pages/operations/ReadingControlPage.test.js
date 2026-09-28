@@ -117,6 +117,49 @@ describe('ReadingControlPage · botón de reclamo', () => {
   })
 })
 
+describe('ReadingControlPage · elegibilidad del reclamo', () => {
+  it('no ofrece reclamo para lectura de hoy y muestra Al día', () => {
+    const wrapper = mountPage({
+      results: [row({ canClaim: false, daysSinceLastReading: 0, lastReadingAt: '2026-09-28 08:30:00' })],
+    })
+
+    expect(claimButton(wrapper)).toBeUndefined()
+    expect(wrapper.text()).toContain('Al día')
+  })
+
+  it('no ofrece reclamo para equipo al día y muestra Al día', () => {
+    const wrapper = mountPage({
+      results: [row({ canClaim: false, daysSinceLastReading: 2, lastReadingAt: '2026-09-26 08:30:00' })],
+    })
+
+    expect(claimButton(wrapper)).toBeUndefined()
+    expect(wrapper.text()).toContain('Al día')
+  })
+
+  it('ofrece reclamo para equipo atrasado con chofer y teléfono', () => {
+    const wrapper = mountPage({
+      results: [row({ canClaim: true, daysSinceLastReading: 8 })],
+    })
+
+    expect(claimButton(wrapper)).toBeDefined()
+  })
+
+  it('ofrece reclamo para equipo sin lectura con chofer y teléfono', () => {
+    const wrapper = mountPage({
+      results: [row({
+        canClaim: true,
+        hasReading: false,
+        lastKm: null,
+        lastReadingAt: null,
+        daysSinceLastReading: null,
+      })],
+    })
+
+    expect(claimButton(wrapper)).toBeDefined()
+    expect(wrapper.text()).toContain('Sin lectura')
+  })
+})
+
 describe('ReadingControlPage · confirmación y envío', () => {
   it('pide confirmación con chofer, equipo, km, fecha y días', async () => {
     const wrapper = mountPage()

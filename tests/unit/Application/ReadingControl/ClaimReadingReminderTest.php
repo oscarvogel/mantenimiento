@@ -365,6 +365,43 @@ final class ClaimReadingReminderTest extends TestCase
         self::assertSame('wamid.test.1', $this->queue->accepted[0]['messageId']);
     }
 
+    public function testClaimIsRejectedWhenLastReadingIsFromToday(): void
+    {
+        $this->db->table('lecturas_equipo')->insert([
+            'id' => 102, 'empresa_id' => 5, 'sucursal_id' => 7, 'equipo_id' => 10,
+            'fecha_lectura' => '2026-09-28 09:00:00', 'kilometraje' => 186000,
+            'horometro' => null, 'origen' => 'MANUAL', 'usuario_id' => 55, 'anulada' => 0,
+        ]);
+
+        try {
+            $this->useCase()->execute($this->actor(), 10);
+            self::fail('Debía rechazar el reclamo para una lectura de hoy.');
+        } catch (DomainException $exception) {
+            self::assertStringContainsString('cargada hoy', $exception->getMessage());
+        }
+
+        self::assertSame([], $this->gateway->sent, 'No debe enviarse ningún WhatsApp.');
+        self::assertCount(0, $this->deliveries(), 'No debe registrarse ninguna entrega.');
+    }
+
+    public function testClaimIsRejectedWhenEquipmentIsUpToDate(): void
+    {
+        $this->db->table('lecturas_equipo')->insert([
+            'id' => 103, 'empresa_id' => 5, 'sucursal_id' => 7, 'equipo_id' => 10,
+            'fecha_lectura' => '2026-09-27 08:00:00', 'kilometraje' => 185500,
+            'horometro' => null, 'origen' => 'MANUAL', 'usuario_id' => 55, 'anulada' => 0,
+        ]);
+
+        try {
+            $this->useCase()->execute($this->actor(), 10);
+            self::fail('Debía rechazar el reclamo para un equipo al día.');
+        } catch (DomainException $exception) {
+            self::assertStringContainsString('al día', $exception->getMessage());
+        }
+
+        self::assertSame([], $this->gateway->sent, 'No debe enviarse ningún WhatsApp.');
+    }
+
     public function testClaimIsRejectedForEquipmentFromAnotherCompany(): void
     {
         $this->expectException(DomainException::class);
