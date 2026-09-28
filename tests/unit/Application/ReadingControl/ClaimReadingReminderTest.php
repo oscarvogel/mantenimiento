@@ -190,8 +190,7 @@ final class ClaimReadingReminderTest extends TestCase
 
     private function createSchema(): void
     {
-        $this->db->executescript(
-            <<<'SQL'
+        $statements = <<<'SQL'
             CREATE TABLE empresas (id INTEGER PRIMARY KEY, razon_social TEXT, nombre_fantasia TEXT,
                 estado INTEGER, deleted_at TEXT NULL, notificaciones_whatsapp_habilitadas INTEGER,
                 whatsapp_instance_id TEXT, idioma_notificaciones TEXT);
@@ -219,8 +218,13 @@ final class ClaimReadingReminderTest extends TestCase
                 intentos INTEGER, proximo_intento TEXT NULL, enviada_en TEXT NULL, ultimo_error TEXT NULL,
                 created_at TEXT, updated_at TEXT);
             CREATE UNIQUE INDEX ux_clave_entrega ON notificacion_whatsapp_entregas (clave_entrega);
-            SQL
-        );
+            SQL;
+
+        // CodeIgniter\Database\BaseConnection no expone executescript().
+        // Se ejecutan las sentencias de a una.
+        foreach (array_filter(array_map('trim', explode(';', $statements))) as $statement) {
+            $this->db->query($statement);
+        }
     }
 
     private function seed(): void
