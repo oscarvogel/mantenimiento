@@ -59,7 +59,9 @@ final class ReadingControlSortContractTest extends TestCase
         $position = strripos($sql, 'ORDER BY');
         self::assertIsInt($position, 'La consulta debe terminar en ORDER BY.');
 
-        return substr($sql, $position);
+        // CodeIgniter escapa los identificadores con acentos graves cuando el
+        // escape queda habilitado; se normalizan para comparar la expresion.
+        return str_replace('`', '', substr($sql, $position));
     }
 
     public function testDefaultOrderDoesNotRaiseATypeErrorAndSortsOldestFirst(): void
