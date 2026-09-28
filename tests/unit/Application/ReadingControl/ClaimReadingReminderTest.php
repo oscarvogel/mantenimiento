@@ -8,6 +8,7 @@ use App\Application\Notifications\Port\NotificationClock;
 use App\Application\Notifications\Port\WhatsAppNotificationDeliveryQueue;
 use App\Application\Notifications\Port\WhatsAppNotificationGateway;
 use App\Application\ReadingControl\ClaimReadingReminder;
+use CodeIgniter\Config\Services;
 use CodeIgniter\Database\BaseConnection;
 use Config\Database;
 use PHPUnit\Framework\TestCase;
@@ -123,6 +124,21 @@ final class RecordingDeliveryQueue implements WhatsAppNotificationDeliveryQueue
     }
 }
 
+final class ReversibleEncrypterFake
+{
+    public function encrypt(string $value): string
+    {
+        return 'enc:' . base64_encode($value);
+    }
+
+    public function decrypt(string $value): string
+    {
+        $decoded = base64_decode((string) str_starts_with($value, 'enc:') ? substr($value, 4) : $value, true);
+
+        return $decoded === false ? '' : $decoded;
+    }
+}
+
 final class FakeNotificationClock implements NotificationClock
 {
     public function __construct(private DateTimeImmutable $now)
@@ -184,8 +200,20 @@ final class ClaimReadingReminderTest extends TestCase
 
         $this->gateway = new RecordingWhatsAppGateway();
         $this->queue = new RecordingDeliveryQueue();
+
+        // El repositorio de tokens públicos cifra el token con
+        // service('encrypter'). En test no hay encryption.key configurada y el
+        // servicio real lanza EncryptionException, así que se inyecta un doble
+        // reversible: el token debe poder descifrarse para construir el enlace.
+        Services::injectMock('encrypter', new ReversibleEncrypterFake());
+
         $this->createSchema();
         $this->seed();
+    }
+
+    protected function tearDown(): void
+    {
+        Services::injectMock('encrypter', null);
     }
 
     private function createSchema(): void
@@ -209,8 +237,8 @@ final class ClaimReadingReminderTest extends TestCase
                 equipo_id INTEGER, fecha_lectura TEXT, kilometraje INTEGER NULL, horometro REAL NULL,
                 origen TEXT, usuario_id INTEGER, anulada INTEGER);
             CREATE TABLE equipo_tokens_publicos (id INTEGER PRIMARY KEY, empresa_id INTEGER,
-                equipo_id INTEGER, token_hash TEXT, activo INTEGER DEFAULT 1, created_by INTEGER NULL,
-                created_at TEXT, revoked_by INTEGER NULL, revoked_at TEXT NULL);
+                equipo_id INTEGER, token_hash TEXT, token_cifrado TEXT NULL, activo INTEGER DEFAULT 1,
+                created_by INTEGER NULL, created_at TEXT, revoked_by INTEGER NULL, revoked_at TEXT NULL);
             CREATE TABLE notificacion_whatsapp_entregas (id INTEGER PRIMARY KEY, empresa_id INTEGER,
                 equipo_id INTEGER, empleado_id INTEGER, tipo_evento TEXT, clave_entrega TEXT,
                 external_ref TEXT, telefono TEXT NULL, instance_id TEXT NULL, provider_message_id TEXT NULL,
