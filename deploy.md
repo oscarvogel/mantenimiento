@@ -239,16 +239,113 @@ Debe excluir del deploy normal todo lo que no corresponda a runtime productivo, 
 
 ## Build y assets
 
-Si cambia código frontend, el deploy debe ejecutar el build antes de calcular el conjunto final de assets a publicar.
+### Política: los bundles están versionados y CI los verifica
 
-El manifest de Vite debe quedar sincronizado con los bundles reales en:
+`app/Views/app.php` lee `assets/dashboard/.vite/manifest.json` desde el webroot
+y emite a partir de ahí el `<script>` de entrada y sus hojas de estilo. Por eso
+los bundles de `assets/dashboard/` **están versionados**: son parte del runtime
+publicado, no un artefacto local descartable.
 
-```text
-assets/dashboard/.vite/manifest.json
-assets/dashboard/assets/
+Esa decisión obliga a una regla única e innegociable:
+
+> Si cambia el source frontend, el cambio incluye los bundles reconstruidos.
+> Un PR que cambia `frontend/` y no toca `assets/dashboard/` **está incompleto**.
+
+Esto ya se incumplió: entre los 25 commits que tocaron `frontend/`, 22 llegaron
+a `main` sin regenerar los bundles, y CI no lo detectaba porque ejecutaba
+`npm run build` y descartaba el resultado. El síntoma es una UI vieja publicada
+con un source correcto.
+
+### Verificación local
+
+```bash
+npm --prefix frontend run verify:build-sync
 ```
 
-No deben eliminarse bundles antiguos a ciegas durante el upload. Cualquier limpieza remota debe ser explícita y posterior a la verificación del nuevo manifest.
+Reconstruye con la misma cadena que usa el release (`qa:encoding:source` →
+`vite build` → `qa:encoding:build`) y compara contra el índice. Si el build
+reproducible mueve un archivo de `assets/dashboard/`, falla y los lista.
+
+El build es determinista: dos corridas seguidas sobre el mismo source producen
+archivos idénticos byte a byte, así que la comparación es significativa.
+
+### Verificación en CI
+
+`.github/workflows/issue15-check.yml` corre `verify:build-sync` en cada push a
+`main` y en cada PR a `main`. El resultado es el que se quiere:
+
+| Situación | Resultado |
+| --- | --- |
+| Source modificado + bundles stale | **CI falla** |
+| Source modificado + bundles commiteados | CI verde |
+| `main` correctamente construido | CI verde |
+
+El contrato de integridad del manifest y del consumo desde PHP se cubre además
+con `frontend/tests/dashboardAssetsManifest.test.js`, dentro de la suite de
+vitest.
+
+### Limpieza de bundles huérfanos
+
+Los nombres de archivo llevan hash de contenido, así que cada build deja atrás
+los bundles del build anterior. Como el upload por FTPS no borra, el webroot
+acumula historia. La limpieza se hace con `scripts/dashboard-assets.py`, que
+toma el manifest vigente como única fuente de verdad:
+
+```bash
+# Clasificación sin tocar nada (local o remoto)
+python scripts/dashboard-assets.py audit
+python scripts/dashboard-assets.py remote-audit --credentials .ferozo-credentials
+
+# Limpieza; sin --apply solo informa
+python scripts/dashboard-assets.py prune --apply
+python scripts/dashboard-assets.py remote-prune --credentials .ferozo-credentials \
+    --backup-dir .deploy/backup-dashboard-assets --apply
+```
+
+Cada archivo se clasifica como `ACTIVE`, `ORPHAN_CONFIRMED` o `UNKNOWN`, y
+**solo `ORPHAN_CONFIRMED` se elimina**. Se protegen siempre el manifest vigente,
+sus `file`, `css`, `imports` y `dynamicImports` en cierre transitivo, y todo
+archivo que el source versionado nombre. Si el manifest no se puede interpretar,
+si falta la entrada `src/main.js` o si algún bundle declarado no está en el
+destino, la herramienta aborta sin borrar nada: "no se sabe" se conserva.
+
+`remote-prune` descarga cada archivo a `--backup-dir`, escribe su SHA-256 y solo
+después borra; al final relee el webroot y confirma que el manifest y todo lo
+protegido siguen en pie. La lógica tiene casos de prueba propios:
+
+```bash
+python scripts/dashboard-assets.py self-test
+```
+
+`--json <archivo>` vuelca el inventario clasificado completo para revisarlo
+fuera de la terminal, que es lo que hay que adjuntar a una decisión de borrado:
+
+```bash
+python scripts/dashboard-assets.py remote-audit --json .deploy/audit/bundles.json
+```
+
+### Inventario en producción al 2026-09-29 (no aplicado)
+
+Auditoría sobre el webroot real, contra el manifest vigente
+`main-BshvSKBd` / `admin-BUNVn4QY` / `main-Bm3GJUWI` / `chatbot-CqAYF7Za` /
+`chatbot-p1890OXW` / `reports-G_HMV49w` / `vendor-DQOjbuQd`:
+
+| Estado | Archivos | Bytes |
+| --- | --- | --- |
+| `ACTIVE` | 7 | 1 005 019 |
+| `ORPHAN_CONFIRMED` | 171 | 50 978 300 |
+| `UNKNOWN` | 0 | — |
+
+Los huérfanos se concentran en 135 versiones de `main-*` (49,1 MB), que son
+builds completos de distintas fechas. Los 7 activos son exactamente el cierre
+transitivo del manifest y coinciden con lo que sirve `app.php`.
+
+**No se borró ninguno.** La decisión fue explícita: con el desafío anti-bot del
+hosting activo no se podía completar el smoke HTTP posterior que el propio
+issue exige, y sin ese smoke no hay verificación. Un residuo de 48,6 MB no
+justifica esa concentración de riesgo. La herramienta queda lista y probada;
+cuando se quiera recuperar el espacio, es un comando con respaldo y SHA-256
+incluidos.
 
 ## Destino FTPS
 
@@ -256,7 +353,23 @@ Usar FTPS explícito con SSL/TLS en el canal de control.
 
 En la credencial dedicada actual, la raíz `/` del FTP corresponde directamente a la carpeta pública de la aplicación `mantenimiento`.
 
-Si se usa otra credencial, verificar primero con un listado FTPS. El destino correcto debe mostrar en su raíz:
+> **La URL pública contiene `/mantenimiento/`, pero esa carpeta no existe en el
+> servidor.** El hosting mapea `/mantenimiento/` de la URL a la raíz `/` del
+> FTP. Un destino de upload `/mantenimiento/` crearía una subcarpeta fantasma y
+> dejaría el sitio sin los archivos nuevos.
+>
+> Ya ocurrió: el deploy del 2026-09-18 publicó `app/Infrastructure/Expirations/`
+> y la migración `2026-09-18-083000` dentro de `/mantenimiento/`, nunca en la
+> raíz. Producción quedó con la versión anterior de esos archivos y, como los
+> deploys son incrementales, nunca se corrigió: esos archivos no vuelven a
+> aparecer en el diff con una base posterior. La carpeta `mantenimiento/` que
+> quedó como residuo se retiró en el saneamiento de #432.
+>
+> **Regla: el destino de upload es la raíz `/`, sin carpetizar.** Ante la duda,
+> listar la raíz y comprobar que `index.php` está ahí, no dentro de un
+> subdirectorio.
+
+El destino debe mostrar en su raíz:
 
 ```text
 index.php
@@ -359,6 +472,85 @@ Cuando se use navegador, abrir `/mantenimiento/login` y confirmar:
 - formulario visible con email, password y CSRF;
 - bundles Vue/Tailwind cargados;
 - sin errores de consola.
+
+### Desafío anti-bot del hosting
+
+Desde 2026-09-29, `vogelconsultoria.com.ar` responde con una página intermedia
+de openresty (`Server: openresty/1.31.1.1`, título "One moment, please..." o
+"Un momento…", icono `data:,`, recarga automática a los 5 s) en lugar del sitio.
+Aparece tanto en `/login` como en rutas de assets, así que **un `HTTP 200` con
+ese cuerpo no es evidencia de nada**: el tamaño ronda los 12 000 bytes y el
+`Content-Type` es `text/html` incluso para un `.js`.
+
+Cómo trabajar alrededor:
+
+- la respuesta real de `/login` ronda los 2 500 bytes; cualquier cuerpo de ~12 KB
+  es el desafío;
+- `curl` y `urllib` simples no lo resuelven, porque exige ejecutar JavaScript;
+- un navegador real (**sí** se abre el sitio: con Chromium el título de
+  `/login` es `Ingreso - Mantenimiento` y la página trae formulario y CSRF), pero
+  conviene capturar el título de la pestaña y el `content-type` de cada ruta
+  para no confundir un `HTTP 200` del desafío con un `HTTP 200` del sitio. Un
+  bundle `.js` que responda `text/html` está interceptado, no servido.
+
+Mientras el desafío esté activo, los códigos HTTP de un smoke automático no son
+concluyentes: registrarlo así en el reporte en lugar de reportar un falso verde.
+
+## Higiene del webroot
+
+El home FTPS es el webroot real. Además de `app/`, `assets/` y los archivos de
+raíz, la auditoría de #432 encontró en producción residuos que no pertenecen al
+proyecto y que quedaban accesibles por HTTP:
+
+| Residuo | Estado HTTP previo | Origen |
+| --- | --- | --- |
+| `reset-preventive-production.php` | 405 en GET | script one-shot de una intervención de agosto |
+| `rebuild-service-motor-production.php` | 405 en GET | ídem |
+| `probe_root.txt` | 200 legible | sonda de webroot |
+| `mantenimiento/` | 500 en `Expirations.php` | deploy directed a la carpeta equivocada |
+| `test.html`, `test_info.php` | 200 legible | otro proyecto de la misma cuenta |
+
+Los scripts `reset-*` y `rebuild-*` exigen `POST` más un token cuyo hash SHA-256
+está en el propio archivo, así que no son ejecutables sin el secreto, pero
+quedan published y borran solos tras una corrida autorizada: si se loses el
+token, el archivo se elimina. Aun así no tienen razón de estar en el webroot.
+
+Procedimiento para retirar un residuo, sin excepciones:
+
+1. confirmar que no está en el repo (`git ls-files`), que nada lo referencia y
+   que no es necesario en runtime;
+2. descargarlo por FTPS a un backup local y registrar su SHA-256;
+3. verificar que el backup coincide con el tamaño remoto;
+4. borrar, y releer el webroot para confirmar que ya no está;
+5. hacer smoke HTTP y comprobar que no apareció ningún 500.
+
+Sobre `test.html` y `test_info.php`: no pertenecen a este proyecto (referencian
+`/registro_gatos/`) y son seguros de retirar, pero quedan fuera del alcance de
+#432 y no se tocaron. Decisión del usuario: revisarlos por separado.
+
+## Residuos retirados en #432
+
+Ejecutado el 2026-09-29 por FTPS, con respaldo local previo y SHA-256 por
+archivo, y verificado por relectura del webroot:
+
+| Residuo | Bytes | SHA-256 (prefijo) |
+| --- | --- | --- |
+| `reset-preventive-production.php` | 4 944 | `4733399304a4c353` |
+| `rebuild-service-motor-production.php` | 7 012 | `eca9a4a8f90124d8` |
+| `probe_root.txt` | 12 | `04ffe72c1e7e25e7` |
+| `mantenimiento/Expirations.php` | 25 473 | `1b0029ccd5218a02` |
+| `mantenimiento/app/Database/Migrations/2026-09-18-083000_...php` | 1 957 | `1c66cf2c09add43d` |
+| `mantenimiento/app/Infrastructure/Expirations/CodeIgniterExpirationActiveVersionManager.php` | 1 793 | `125adbdd4455eaf4` |
+| `mantenimiento/app/Infrastructure/Expirations/CodeIgniterExpirationImportGateway.php` | 6 644 | `78c7171dea23aee6` |
+
+Los tres últimos son copias de archivos que sí viven en el repo, publicadas por
+el deploy dirigido a la carpeta equivocada. La carpeta `mantenimiento/` quedó
+vacía y se eliminó.
+
+Smoke posterior en navegador real: `/`, `/login`, `/dashboard` y `/superadmin`
+responden con el login (`Ingreso - Mantenimiento`, formulario y CSRF presentes,
+0 errores de consola); el bundle de entrada y el manifest devuelven 200 con su
+`content-type` correcto; los cuatro residuos devuelven 404.
 
 ## Verificación por hash
 

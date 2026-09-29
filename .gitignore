@@ -83,6 +83,10 @@ $RECYCLE.BIN/
 # Builds locales de deploy (zips para subir por FTP)
 /dist/
 
+# Artefactos locales de deploy: copias de stage, respaldos de produccion con
+# sus SHA256 e inventarios FTPS. Nunca deben versionarse.
+/.deploy/
+
 # =============================================================================
 # Artefactos de scraping y debugging manual
 # =============================================================================
