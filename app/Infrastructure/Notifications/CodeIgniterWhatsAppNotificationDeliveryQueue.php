@@ -257,7 +257,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
         }
 
         $employeeId = (int) $driver['empleado_id'];
-        $cycle = preg_replace('/[^A-Za-z0-9_.:-]+/', '-', $event->deduplicationKey());
+        $cycle = preg_replace('/[^A-Za-z0-9_.:-]+/', '-', $event->logicalKey());
         $key = 'preventivo_chofer:empresa:' . $companyId . ':plan:' . $planId . ':chofer:' . $employeeId . ':ciclo:' . $cycle;
         if ($testKey !== null && trim($testKey) !== '') {
             $key .= ':prueba:' . preg_replace('/[^A-Za-z0-9_.-]+/', '-', trim($testKey));
