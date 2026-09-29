@@ -206,183 +206,90 @@ const sections = [
           </p>
         </div>
 
-        <form method="post" :action="data.whatsapp.auditDriverPhonesAction" class="sm:col-span-2 lg:col-span-4 rounded-lg border border-warning/30 bg-warning-subtle p-4">
-          <CsrfField :csrf="data.csrf" />
-          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p class="text-sm font-semibold text-warning-strong">Auditoría de celulares de choferes</p>
-              <p class="mt-1 text-xs leading-5 text-warning-strong">Revisa los choferes activos asignados a equipos y detecta teléfonos faltantes o sin formato internacional válido. No envía WhatsApp a choferes: genera avisos internos para el Responsable de mantenimiento.</p>
-            </div>
-            <button
-              type="submit"
-              data-confirm
-              data-confirm-title="¿Auditar celulares ahora?"
-              data-confirm-text="Se revisarán los teléfonos de los choferes y se avisará internamente al Responsable de mantenimiento por los datos inválidos. No se enviarán WhatsApp a choferes."
-              data-confirm-button="Auditar ahora"
-              class="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg border border-warning px-4 py-2.5 text-sm font-semibold text-warning-strong"
-            >
-              Auditar celulares ahora
-            </button>
+        <div class="sm:col-span-2 lg:col-span-4 overflow-hidden rounded-lg border border-border bg-white">
+          <div class="border-b border-border-subtle px-4 py-3">
+            <p class="text-sm font-semibold text-ink">Herramientas y pruebas</p>
+            <p class="mt-1 text-xs text-ink-muted">Las acciones de diagnóstico quedan agrupadas para no recargar la pantalla.</p>
           </div>
-        </form>
 
-        <form method="post" :action="data.whatsapp.testByPlateAction" class="sm:col-span-2 lg:col-span-4 rounded-lg border border-border bg-white p-4">
-          <CsrfField :csrf="data.csrf" />
-          <div class="flex flex-col gap-4">
-            <div>
-              <p class="text-sm font-semibold text-ink">Probar recordatorio por patente/equipo</p>
-              <p class="mt-1 text-xs leading-5 text-ink-muted">Busca un único equipo activo por patente o código y genera exactamente el mismo mensaje/link del flujo semanal, pero lo envía siempre al teléfono piloto configurado, aunque el modo piloto global esté apagado. No ejecuta el cron global ni procesa otros choferes.</p>
-            </div>
-            <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_220px_auto] sm:items-end">
-              <label class="block">
-                <span class="mb-1.5 block text-sm font-medium text-ink">Patente o código</span>
-                <input name="patente_equipo" required autocomplete="off" placeholder="Ej. FKU3A05" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
-              </label>
-              <label class="block">
-                <span class="mb-1.5 block text-sm font-medium text-ink">Etapa</span>
-                <select name="etapa" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm">
-                  <option value="initial">Lunes</option>
-                  <option value="wednesday">Miércoles</option>
-                  <option value="friday">Viernes</option>
-                </select>
-              </label>
-              <button
-                type="submit"
-                :disabled="!data.whatsapp.available || !data.whatsapp.pilotPhoneConfigured"
-                data-confirm
-                data-confirm-title="¿Probar este equipo?"
-                data-confirm-text="Se enviará un único mensaje al teléfono piloto usando el equipo indicado. No se contactará al chofer real."
-                data-confirm-button="Enviar prueba"
-                class="inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Probar patente
-              </button>
-            </div>
-          </div>
-        </form>
-
-        <form method="post" :action="data.whatsapp.testPreventiveAction" class="sm:col-span-2 lg:col-span-4 rounded-lg border border-warning/30 bg-warning-subtle p-4">
-          <CsrfField :csrf="data.csrf" />
-          <div class="flex flex-col gap-4">
-            <div>
-              <p class="text-sm font-semibold text-ink">Probar aviso de mantenimiento preventivo</p>
-              <p class="mt-1 text-xs leading-5 text-ink-muted">Elegí un plan real. El mensaje usa sus datos actuales y el chofer asignado, pero se envía únicamente al teléfono piloto.</p>
-            </div>
-            <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-              <label class="block">
-                <span class="mb-1.5 block text-sm font-medium text-ink">Plan preventivo</span>
-                <select name="plan_id" required class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm">
+          <details class="border-b border-border-subtle">
+            <summary class="cursor-pointer px-4 py-3 text-sm font-medium text-ink">Pruebas piloto de WhatsApp</summary>
+            <div class="grid gap-4 border-t border-border-subtle bg-surface-subtle p-4 lg:grid-cols-2">
+              <form method="post" :action="data.whatsapp.testPreventiveAction" class="rounded-lg border border-border bg-white p-4">
+                <CsrfField :csrf="data.csrf" />
+                <p class="text-sm font-semibold text-ink">Mantenimiento preventivo</p>
+                <p class="mt-1 text-xs text-ink-muted">Usa un plan real y envía sólo al teléfono piloto.</p>
+                <select name="plan_id" required class="mt-3 min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink">
                   <option value="">Seleccionar equipo y servicio…</option>
                   <option v-for="plan in data.preventiveTestPlans || []" :key="plan.id" :value="plan.id">{{ plan.label }}</option>
                 </select>
-              </label>
-              <button
-                type="submit"
-                :disabled="!data.whatsapp.available || !data.whatsapp.pilotPhoneConfigured || !(data.preventiveTestPlans || []).length"
-                data-confirm
-                data-confirm-title="¿Enviar prueba preventiva?"
-                data-confirm-text="Se usará un mantenimiento real, pero el WhatsApp irá únicamente al teléfono piloto. No se contactará al chofer."
-                data-confirm-button="Enviar prueba"
-                class="inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Probar mantenimiento
-              </button>
-            </div>
-          </div>
-        </form>
+                <button type="submit" :disabled="!data.whatsapp.available || !data.whatsapp.pilotPhoneConfigured || !(data.preventiveTestPlans || []).length" data-confirm data-confirm-title="¿Enviar prueba preventiva?" data-confirm-text="El WhatsApp irá únicamente al teléfono piloto." data-confirm-button="Enviar prueba" class="mt-3 inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50">Probar mantenimiento</button>
+              </form>
 
-        <form method="post" :action="data.whatsapp.testWeeklyReminderAction" class="sm:col-span-2 lg:col-span-4 rounded-lg border border-primary/30 bg-white p-4">
-          <CsrfField :csrf="data.csrf" />
-          <div class="flex flex-col gap-4">
-            <div>
-              <p class="text-sm font-semibold text-ink">Simulador semanal de kilometraje</p>
-              <p class="mt-1 text-xs leading-5 text-ink-muted">Simula lunes, miércoles o viernes sin cambiar la fecha del servidor. Sólo funciona con modo piloto activo y todo WhatsApp se redirige al teléfono piloto.</p>
-            </div>
-            <label class="block max-w-sm">
-              <span class="mb-1.5 block text-sm font-medium text-ink">Etapa a simular</span>
-              <select name="etapa" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm">
-                <option value="initial">Lunes · recordatorio inicial</option>
-                <option value="wednesday">Miércoles · segundo recordatorio</option>
-                <option value="friday">Viernes · aviso final + escalamiento</option>
-              </select>
-            </label>
-            <label class="block max-w-sm">
-              <span class="mb-1.5 block text-sm font-medium text-ink">Escenario de lectura</span>
-              <select name="escenario" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm">
-                <option value="missing">Simular que NO cargó km esta semana</option>
-                <option value="actual">Respetar las lecturas reales de esta semana</option>
-              </select>
-              <span class="mt-1.5 block text-xs text-ink-muted">“Sin lectura” sirve para validar los mensajes. “Lecturas reales” permite comprobar que miércoles/viernes se cancelan después de cargar km.</span>
-            </label>
-            <button
-              type="submit"
-              :disabled="!data.whatsapp.available || !data.whatsapp.pilotEnabled || !data.whatsapp.pilotPhoneConfigured"
-              data-confirm
-              data-confirm-title="¿Simular esta etapa semanal?"
-              data-confirm-text="Se evaluará la etapa seleccionada y cualquier WhatsApp se enviará únicamente al teléfono piloto."
-              data-confirm-button="Ejecutar simulación"
-              class="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Ejecutar simulación
-            </button>
-          </div>
-        </form>
+              <form method="post" :action="data.whatsapp.testByPlateAction" class="rounded-lg border border-border bg-white p-4">
+                <CsrfField :csrf="data.csrf" />
+                <p class="text-sm font-semibold text-ink">Recordatorio de kilometraje</p>
+                <p class="mt-1 text-xs text-ink-muted">Prueba un equipo concreto sin contactar al chofer real.</p>
+                <input name="patente_equipo" required autocomplete="off" placeholder="Patente o código" class="mt-3 min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink" />
+                <select name="etapa" class="mt-2 min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink">
+                  <option value="initial">Lunes</option><option value="wednesday">Miércoles</option><option value="friday">Viernes</option>
+                </select>
+                <button type="submit" :disabled="!data.whatsapp.available || !data.whatsapp.pilotPhoneConfigured" class="mt-3 inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50">Probar kilometraje</button>
+              </form>
 
-        <form method="post" :action="data.whatsapp.testAction" class="sm:col-span-2 lg:col-span-4 flex flex-col gap-3 rounded-lg border border-border p-4 sm:flex-row sm:items-end">
-          <CsrfField :csrf="data.csrf" />
-          <label class="block flex-1">
-            <span class="mb-1.5 block text-sm font-medium text-ink">Celular para prueba</span>
-            <input name="telefono_prueba" inputmode="tel" maxlength="30" placeholder="Ej. 3764123456 o 5493764123456" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
-          </label>
-          <button type="submit" :disabled="!data.whatsapp.available" class="inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm disabled:cursor-not-allowed disabled:opacity-50">
-            Enviar prueba
-          </button>
-        </form>
-        <form method="post" :action="data.whatsapp.testExpirationDigestAction" class="sm:col-span-2 lg:col-span-4 rounded-lg border border-primary/30 bg-primary-subtle p-4">
-          <CsrfField :csrf="data.csrf" />
-          <div class="flex flex-col gap-4">
-            <div>
-              <p class="text-sm font-semibold text-ink">Probar WhatsApp de vencimientos · Hito #414</p>
-              <p class="mt-1 text-xs leading-5 text-ink-muted">Envía únicamente al teléfono piloto un mensaje controlado con DOS vencimientos agrupados del móvil indicado. No ejecuta el recordatorio de kilómetros ni contacta al chofer real.</p>
-            </div>
-            <div class="grid gap-3 sm:grid-cols-[minmax(240px,1fr)_minmax(240px,1fr)_auto] sm:items-end">
-              <div class="relative">
-                <span class="mb-1.5 block text-sm font-medium text-ink">Empresa</span>
-                <input v-model="expirationTestCompanyQuery" autocomplete="off" placeholder="Buscar empresa…" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm" @input="expirationTestCompanyId = ''; expirationTestEquipmentId = ''; expirationTestEquipmentQuery = ''" />
-                <input type="hidden" name="empresa_id" :value="expirationTestCompanyId" />
-                <div v-if="expirationTestCompanyQuery && !expirationTestCompanyId" class="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-border bg-white shadow-xl">
-                  <button v-for="company in filteredExpirationCompanies" :key="company.id" type="button" class="block w-full px-3 py-2 text-left text-sm hover:bg-surface-muted" @click="selectExpirationCompany(company)">{{ company.displayName }}</button>
-                  <p v-if="filteredExpirationCompanies.length === 0" class="px-3 py-2 text-sm text-ink-muted">Sin coincidencias</p>
+              <form method="post" :action="data.whatsapp.testWeeklyReminderAction" class="rounded-lg border border-border bg-white p-4">
+                <CsrfField :csrf="data.csrf" />
+                <p class="text-sm font-semibold text-ink">Simulación semanal</p>
+                <div class="mt-3 grid gap-2 sm:grid-cols-2">
+                  <select name="etapa" class="min-h-11 rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink"><option value="initial">Lunes</option><option value="wednesday">Miércoles</option><option value="friday">Viernes</option></select>
+                  <select name="escenario" class="min-h-11 rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink"><option value="missing">Sin lectura esta semana</option><option value="actual">Lecturas reales</option></select>
                 </div>
-              </div>
-              <div class="relative">
-                <span class="mb-1.5 block text-sm font-medium text-ink">Móvil</span>
-                <input v-model="expirationTestEquipmentQuery" :disabled="!expirationTestCompanyId" autocomplete="off" :placeholder="expirationTestCompanyId ? 'Buscar código o patente…' : 'Primero seleccioná una empresa'" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm disabled:cursor-not-allowed disabled:bg-surface-muted" @input="expirationTestEquipmentId = ''" />
-                <input type="hidden" name="equipo_id" :value="expirationTestEquipmentId" />
-                <div v-if="expirationTestCompanyId && expirationTestEquipmentQuery && !expirationTestEquipmentId" class="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-border bg-white shadow-xl">
-                  <button v-for="equipment in filteredExpirationEquipment" :key="equipment.id" type="button" class="block w-full px-3 py-2 text-left text-sm hover:bg-surface-muted" @click="selectExpirationEquipment(equipment)">{{ equipment.label }}</button>
-                  <p v-if="filteredExpirationEquipment.length === 0" class="px-3 py-2 text-sm text-ink-muted">No hay móviles coincidentes en esta empresa</p>
-                </div>
-              </div>
-              <button type="submit" :disabled="!data.whatsapp.available || !data.whatsapp.pilotPhoneConfigured || !expirationTestCompanyId || !expirationTestEquipmentId" data-confirm data-confirm-title="¿Probar resumen de vencimientos?" data-confirm-text="Se enviará UN WhatsApp al teléfono piloto con DOS vencimientos agrupados. No se contactará al chofer real." data-confirm-button="Enviar prueba" class="inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm disabled:cursor-not-allowed disabled:opacity-50">
-                Probar vencimientos
-              </button>
-            </div>
-          </div>
-        </form>
+                <button type="submit" :disabled="!data.whatsapp.available || !data.whatsapp.pilotEnabled || !data.whatsapp.pilotPhoneConfigured" class="mt-3 inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50">Simular semana</button>
+              </form>
 
-        <form method="post" :action="data.whatsapp.preparePilotAction" class="sm:col-span-2 lg:col-span-4 rounded-lg border border-warning/30 bg-warning-subtle p-4">
-          <CsrfField :csrf="data.csrf" />
-          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p class="text-sm font-semibold text-warning-strong">Vencimiento por WhatsApp · prueba del cron real</p>
-              <p class="mt-1 text-xs leading-5 text-warning-strong">Paso 1: genera en la empresa demo un chofer ficticio, su asignación y un vencimiento próximo. Paso 2: usá “Ejecutar ahora” arriba; así probás exactamente el mismo ciclo global que ejecuta Ferozo, con destino seguro al teléfono piloto.</p>
+              <form method="post" :action="data.whatsapp.testExpirationDigestAction" class="rounded-lg border border-border bg-white p-4">
+                <CsrfField :csrf="data.csrf" />
+                <p class="text-sm font-semibold text-ink">Resumen de vencimientos</p>
+                <p class="mt-1 text-xs text-ink-muted">Diagnóstico Hito #414, sólo al teléfono piloto.</p>
+                <div class="mt-3 grid gap-2">
+                  <select name="empresa_id" required class="min-h-11 rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink">
+                    <option value="">Empresa…</option><option v-for="company in data.expirationTestCompanies || []" :key="company.id" :value="company.id">{{ company.displayName }}</option>
+                  </select>
+                  <select name="equipo_id" required class="min-h-11 rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink">
+                    <option value="">Móvil…</option><option v-for="equipment in data.expirationTestEquipment || []" :key="equipment.id" :value="equipment.id">{{ equipment.label }}</option>
+                  </select>
+                </div>
+                <button type="submit" :disabled="!data.whatsapp.available || !data.whatsapp.pilotPhoneConfigured" class="mt-3 inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50">Probar vencimientos</button>
+              </form>
             </div>
-            <button type="submit" :disabled="!data.whatsapp.available" class="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg border border-warning px-4 py-2.5 text-sm font-semibold text-warning-strong disabled:cursor-not-allowed disabled:opacity-50">
-              Preparar prueba piloto
-            </button>
-          </div>
-        </form>
+          </details>
+
+          <details>
+            <summary class="cursor-pointer px-4 py-3 text-sm font-medium text-ink">Diagnóstico y configuración avanzada</summary>
+            <div class="grid gap-4 border-t border-border-subtle bg-surface-subtle p-4 lg:grid-cols-2">
+              <form method="post" :action="data.whatsapp.auditDriverPhonesAction" class="rounded-lg border border-border bg-white p-4">
+                <CsrfField :csrf="data.csrf" />
+                <p class="text-sm font-semibold text-ink">Auditoría de celulares</p>
+                <p class="mt-1 text-xs text-ink-muted">Detecta choferes con teléfonos faltantes o inválidos. No envía mensajes a choferes.</p>
+                <button type="submit" class="mt-3 inline-flex min-h-11 items-center justify-center rounded-lg border border-border-strong px-4 py-2.5 text-sm font-semibold text-ink">Auditar celulares</button>
+              </form>
+              <form method="post" :action="data.whatsapp.preparePilotAction" class="rounded-lg border border-border bg-white p-4">
+                <CsrfField :csrf="data.csrf" />
+                <p class="text-sm font-semibold text-ink">Preparar escenario del cron</p>
+                <p class="mt-1 text-xs text-ink-muted">Prepara datos demo para validar el ciclo global de notificaciones.</p>
+                <button type="submit" :disabled="!data.whatsapp.available" class="mt-3 inline-flex min-h-11 items-center justify-center rounded-lg border border-border-strong px-4 py-2.5 text-sm font-semibold text-ink disabled:opacity-50">Preparar escenario</button>
+              </form>
+              <form method="post" :action="data.whatsapp.testAction" class="rounded-lg border border-border bg-white p-4 lg:col-span-2">
+                <CsrfField :csrf="data.csrf" />
+                <p class="text-sm font-semibold text-ink">Prueba técnica a un número</p>
+                <div class="mt-3 flex flex-col gap-2 sm:flex-row">
+                  <input name="telefono_prueba" inputmode="tel" maxlength="30" placeholder="Celular de prueba" class="min-h-11 flex-1 rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink" />
+                  <button type="submit" :disabled="!data.whatsapp.available" class="min-h-11 rounded-lg border border-border-strong px-4 py-2.5 text-sm font-semibold text-ink disabled:opacity-50">Enviar prueba técnica</button>
+                </div>
+              </form>
+            </div>
+          </details>
+        </div>
       </div>
     </section>
 
