@@ -261,6 +261,36 @@ const sections = [
           </div>
         </form>
 
+        <form method="post" :action="data.whatsapp.testPreventiveAction" class="sm:col-span-2 lg:col-span-4 rounded-lg border border-warning/30 bg-warning-subtle p-4">
+          <CsrfField :csrf="data.csrf" />
+          <div class="flex flex-col gap-4">
+            <div>
+              <p class="text-sm font-semibold text-ink">Probar aviso de mantenimiento preventivo</p>
+              <p class="mt-1 text-xs leading-5 text-ink-muted">Elegí un plan real. El mensaje usa sus datos actuales y el chofer asignado, pero se envía únicamente al teléfono piloto.</p>
+            </div>
+            <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+              <label class="block">
+                <span class="mb-1.5 block text-sm font-medium text-ink">Plan preventivo</span>
+                <select name="plan_id" required class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm">
+                  <option value="">Seleccionar equipo y servicio…</option>
+                  <option v-for="plan in data.preventiveTestPlans || []" :key="plan.id" :value="plan.id">{{ plan.label }}</option>
+                </select>
+              </label>
+              <button
+                type="submit"
+                :disabled="!data.whatsapp.available || !data.whatsapp.pilotPhoneConfigured || !(data.preventiveTestPlans || []).length"
+                data-confirm
+                data-confirm-title="¿Enviar prueba preventiva?"
+                data-confirm-text="Se usará un mantenimiento real, pero el WhatsApp irá únicamente al teléfono piloto. No se contactará al chofer."
+                data-confirm-button="Enviar prueba"
+                class="inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Probar mantenimiento
+              </button>
+            </div>
+          </div>
+        </form>
+
         <form method="post" :action="data.whatsapp.testWeeklyReminderAction" class="sm:col-span-2 lg:col-span-4 rounded-lg border border-primary/30 bg-white p-4">
           <CsrfField :csrf="data.csrf" />
           <div class="flex flex-col gap-4">
