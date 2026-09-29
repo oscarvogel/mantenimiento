@@ -26,10 +26,11 @@ final class SuperAdminWhatsAppByPlateContractTest extends TestCase
         self::assertStringContainsString('El token público fue validado contra este mismo equipo', $controller);
 
         self::assertStringContainsString('whatsapp/probar-por-patente', $routes);
-        self::assertStringContainsString('Probar recordatorio por patente/equipo', $page);
+        self::assertStringContainsString('Recordatorio de kilometraje', $page);
         self::assertStringContainsString('name="patente_equipo"', $page);
-        self::assertStringContainsString('No ejecuta el cron global ni procesa otros choferes', $page);
-        self::assertStringContainsString('aunque el modo piloto global esté apagado', $page);
+        self::assertStringContainsString('Prueba un equipo concreto sin contactar al chofer real', $page);
+        // La garantía "funciona aunque el piloto global esté apagado" ya no se enuncia
+        // en la página; sigue cubierta por la aserción del controlador de más abajo.
         self::assertStringNotContainsString('Activá el modo piloto de WhatsApp antes de probar una patente.', $controller);
         self::assertStringContainsString('sin importar el estado del piloto global', $controller);
 
