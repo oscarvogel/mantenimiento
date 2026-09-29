@@ -68,6 +68,23 @@ final class SuperAdmin extends BaseController
             'label' => trim((string) ($equipment['codigo'] ?? '')) . (trim((string) ($equipment['patente'] ?? '')) !== '' ? ' · ' . trim((string) $equipment['patente']) : ''),
         ], $expirationTestEquipment);
 
+        $preventiveTestPlans = db_connect()->table('planes_mantenimiento p')
+            ->select('p.id, p.empresa_id, p.equipo_id, e.codigo, e.patente, ts.nombre servicio_nombre')
+            ->join('equipos e', 'e.id = p.equipo_id AND e.empresa_id = p.empresa_id', 'inner')
+            ->join('tipos_servicio ts', 'ts.id = p.tipo_servicio_id', 'inner')
+            ->where('p.activo', 1)->where('p.deleted_at', null)
+            ->where('e.estado', 'ACTIVO')->where('e.deleted_at', null)
+            ->orderBy('e.codigo', 'ASC')->orderBy('ts.nombre', 'ASC')
+            ->get()->getResultArray();
+        $payload['preventiveTestPlans'] = array_map(static fn (array $plan): array => [
+            'id' => (int) $plan['id'],
+            'companyId' => (int) $plan['empresa_id'],
+            'equipmentId' => (int) $plan['equipo_id'],
+            'label' => trim((string) ($plan['codigo'] ?? ''))
+                . (trim((string) ($plan['patente'] ?? '')) !== '' ? ' · ' . trim((string) $plan['patente']) : '')
+                . ' — ' . trim((string) ($plan['servicio_nombre'] ?? 'Servicio preventivo')),
+        ], $preventiveTestPlans);
+
         $payload['whatsapp'] = [
             'enabled' => (bool) ($whatsAppSettings['whatsapp_enabled'] ?? false),
             'available' => $whatsAppGateway->available(),
@@ -80,6 +97,7 @@ final class SuperAdmin extends BaseController
             'weeklyReminderTime' => trim((string) env('alerts.weeklyReadingReminderTime', '08:00')),
             'testAction' => base_url('superadmin/whatsapp/prueba'),
             'testWeeklyReminderAction' => base_url('superadmin/whatsapp/probar-recordatorio-km'),
+            'testPreventiveAction' => base_url('superadmin/whatsapp/probar-mantenimiento-preventivo'),
             'testByPlateAction' => base_url('superadmin/whatsapp/probar-por-patente'),
             'preparePilotAction' => base_url('superadmin/whatsapp/preparar-piloto'),
             'testExpirationDigestAction' => base_url('superadmin/diagnosticos/vencimientos-whatsapp'),
