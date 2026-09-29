@@ -451,6 +451,58 @@ final class SuperAdmin extends BaseController
         }
     }
 
+    public function testPreventiveMaintenanceWhatsApp(): RedirectResponse
+    {
+        try {
+            $settings = service('globalNotificationSettingsStore')->get();
+            $gateway = service('whatsAppGateway');
+            if ($gateway->normalizePhone((string) ($settings['whatsapp_pilot_phone'] ?? '')) === null) {
+                throw new DomainException('Configurá un teléfono piloto válido antes de enviar esta prueba.');
+            }
+            if (! $gateway->available()) {
+                throw new DomainException('WhatsApp no está disponible. Revisá URL, API key, instanceId y que el canal esté habilitado.');
+            }
+
+            $planId = max(0, (int) $this->request->getPost('plan_id'));
+            if ($planId <= 0) {
+                throw new DomainException('Indicá el plan_id preventivo que querés probar.');
+            }
+
+            $queue = service('whatsAppNotificationDeliveryQueue');
+            $testKey = date('YmdHis') . '-preventivo-actor-' . $this->actor()->userId();
+            if ($queue->schedulePreventivePilotTest($planId, $testKey) < 1) {
+                throw new DomainException('No se pudo preparar la prueba. Revisá que el plan esté activo, tenga equipo y chofer asignado.');
+            }
+
+            $sent = 0;
+            foreach ($queue->due(1000) as $delivery) {
+                if (! str_contains((string) ($delivery['external_ref'] ?? ''), ':prueba:' . $testKey)) {
+                    continue;
+                }
+                $result = $gateway->sendText(
+                    (string) ($delivery['telefono'] ?? ''),
+                    (string) ($delivery['mensaje'] ?? ''),
+                    (string) ($delivery['external_ref'] ?? ''),
+                    (string) $this->actor()->userId(),
+                    'Superadmin Mantenimiento',
+                    empty($delivery['instance_id']) ? null : (string) $delivery['instance_id'],
+                );
+                $queue->accepted((int) $delivery['id'], $result['messageId'], $result['status']);
+                $sent++;
+            }
+            if ($sent < 1) {
+                throw new DomainException('La prueba preventiva se preparó pero no se encontró la entrega para despachar.');
+            }
+
+            return redirect()->to('/superadmin')->with(
+                'success',
+                'Prueba de mantenimiento preventivo enviada únicamente al teléfono piloto. Plan #' . $planId . '. No se contactó al chofer real.',
+            );
+        } catch (Throwable $exception) {
+            return $this->operationFailure($exception);
+        }
+    }
+
     public function testWeeklyReadingReminderWhatsApp(): RedirectResponse
     {
         try {
