@@ -283,14 +283,23 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
                 . "*Destinatario previsto:* " . ($driverName === '' ? 'Chofer asignado' : $driverName) . "\n"
                 . "*Teléfono real:* " . ($realPhone === null ? 'no válido o no cargado' : 'configurado') . "\n\n"
             : '';
+        $serviceName = trim((string) ($plan['servicio_nombre'] ?? 'Servicio preventivo'));
+        $detail = trim($event->summary());
+        if ($serviceName !== '' && str_starts_with(mb_strtolower($detail), mb_strtolower($serviceName))) {
+            $detail = trim((string) preg_replace('/^[^·]+·?\\s*/u', '', $detail, 1));
+        }
+        $detail = preg_replace_callback('/(?<![\\d.,])(\\d{4,})(?![\\d.,])/u', static function (array $match): string {
+            return number_format((int) $match[1], 0, ',', '.');
+        }, $detail) ?? $detail;
+
         $message = $pilotHeader
             . "*" . $companyName . " · Mantenimiento*\n\n"
             . ($firstName === '' ? 'Hola 👋' : 'Hola ' . $firstName . ' 👋') . "\n\n"
             . "🔧 *" . $status . "*\n"
             . "🚛 *" . $equipmentLabel . "*\n"
-            . "• " . trim((string) ($plan['servicio_nombre'] ?? 'Servicio preventivo')) . "\n"
-            . "• " . $event->summary() . "\n\n"
-            . "Por favor, coordiná este mantenimiento con el responsable de mantenimiento.\n\n"
+            . "*" . ($serviceName === '' ? 'Servicio preventivo' : $serviceName) . "*\n"
+            . ($detail === '' ? '' : ucfirst($detail) . ".\n")
+            . "\nPor favor, coordiná este mantenimiento con el responsable de mantenimiento.\n\n"
             . "_Sistema de mantenimiento desarrollado por Vogel Consultoría._";
 
         $instanceId = trim((string) ($company['whatsapp_instance_id'] ?? ''));
@@ -322,7 +331,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
         $parts = [];
         if ($row['proximo_km'] !== null && $row['km_actual'] !== null) {
             $remaining = (int) $row['proximo_km'] - (int) $row['km_actual'];
-            $parts[] = $remaining < 0 ? 'excedido por ' . abs($remaining) . ' km' : 'faltan ' . $remaining . ' km';
+            $parts[] = $remaining < 0 ? 'excedido por ' . number_format(abs($remaining), 0, ',', '.') . ' km' : 'faltan ' . number_format($remaining, 0, ',', '.') . ' km';
         }
         if ($row['proximas_horas'] !== null && $row['horas_actuales'] !== null) {
             $remaining = (float) $row['proximas_horas'] - (float) $row['horas_actuales'];
@@ -331,7 +340,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
         if ($row['proxima_fecha'] !== null) {
             $parts[] = 'fecha objetivo ' . (new \DateTimeImmutable((string) $row['proxima_fecha']))->format('d/m/Y');
         }
-        $summary = trim((string) $row['servicio_nombre']) . ($parts === [] ? '' : ' · ' . implode(', ', $parts));
+        $summary = $parts === [] ? 'Mantenimiento preventivo próximo' : implode(', ', $parts);
         $event = new NotifiableEvent(
             (int) $row['empresa_id'], null, 'preventivo.proximo',
             \App\Domain\Notifications\NotificationSeverity::WARNING,
