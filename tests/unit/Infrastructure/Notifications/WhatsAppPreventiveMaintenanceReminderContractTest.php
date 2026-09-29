@@ -27,5 +27,10 @@ final class WhatsAppPreventiveMaintenanceReminderContractTest extends TestCase
         self::assertStringContainsString('schedulePreventivePilotTest', $controller);
         self::assertStringContainsString('whatsapp/probar-mantenimiento-preventivo', $routes);
         self::assertStringContainsString('No se contactó al chofer real.', $controller);
+        $view = file_get_contents(ROOTPATH . 'frontend/src/pages/admin/SuperAdminPage.vue');
+        self::assertIsString($view);
+        self::assertStringContainsString('testPreventiveAction', $view);
+        self::assertStringContainsString('Probar mantenimiento', $view);
+        self::assertStringContainsString('preventiveTestPlans', $view);
     }
 }
