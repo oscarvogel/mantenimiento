@@ -48,6 +48,43 @@ final class SuperAdmin extends BaseController
         $payload['migrations'] = $this->migrationDiagnostics();
         $whatsAppSettings = service('globalNotificationSettingsStore')->get();
         $whatsAppGateway = service('whatsAppGateway');
+        $expirationTestEquipment = db_connect()->table('equipos e')
+            ->select('e.id, e.empresa_id, e.codigo, e.patente')
+            ->join('empresas emp', 'emp.id = e.empresa_id', 'inner')
+            ->where('e.estado', 'ACTIVO')
+            ->where('e.deleted_at', null)
+            ->where('emp.estado', 1)
+            ->where('emp.deleted_at', null)
+            ->orderBy('e.codigo', 'ASC')
+            ->get()->getResultArray();
+
+        $payload['expirationTestCompanies'] = array_map(static fn (array $company): array => [
+            'id' => (int) $company['id'],
+            'displayName' => (string) ($company['displayName'] ?? $company['nombre_fantasia'] ?? $company['razon_social'] ?? ('Empresa #' . $company['id'])),
+        ], $data['companies']);
+        $payload['expirationTestEquipment'] = array_map(static fn (array $equipment): array => [
+            'id' => (int) $equipment['id'],
+            'companyId' => (int) $equipment['empresa_id'],
+            'label' => trim((string) ($equipment['codigo'] ?? '')) . (trim((string) ($equipment['patente'] ?? '')) !== '' ? ' · ' . trim((string) $equipment['patente']) : ''),
+        ], $expirationTestEquipment);
+
+        $preventiveTestPlans = db_connect()->table('planes_mantenimiento p')
+            ->select('p.id, p.empresa_id, p.equipo_id, e.codigo, e.patente, ts.nombre servicio_nombre')
+            ->join('equipos e', 'e.id = p.equipo_id AND e.empresa_id = p.empresa_id', 'inner')
+            ->join('tipos_servicio ts', 'ts.id = p.tipo_servicio_id', 'inner')
+            ->where('p.activo', 1)->where('p.deleted_at', null)
+            ->where('e.estado', 'ACTIVO')->where('e.deleted_at', null)
+            ->orderBy('e.codigo', 'ASC')->orderBy('ts.nombre', 'ASC')
+            ->get()->getResultArray();
+        $payload['preventiveTestPlans'] = array_map(static fn (array $plan): array => [
+            'id' => (int) $plan['id'],
+            'companyId' => (int) $plan['empresa_id'],
+            'equipmentId' => (int) $plan['equipo_id'],
+            'label' => trim((string) ($plan['codigo'] ?? ''))
+                . (trim((string) ($plan['patente'] ?? '')) !== '' ? ' · ' . trim((string) $plan['patente']) : '')
+                . ' — ' . trim((string) ($plan['servicio_nombre'] ?? 'Servicio preventivo')),
+        ], $preventiveTestPlans);
+
         $payload['whatsapp'] = [
             'enabled' => (bool) ($whatsAppSettings['whatsapp_enabled'] ?? false),
             'available' => $whatsAppGateway->available(),
@@ -60,8 +97,10 @@ final class SuperAdmin extends BaseController
             'weeklyReminderTime' => trim((string) env('alerts.weeklyReadingReminderTime', '08:00')),
             'testAction' => base_url('superadmin/whatsapp/prueba'),
             'testWeeklyReminderAction' => base_url('superadmin/whatsapp/probar-recordatorio-km'),
+            'testPreventiveAction' => base_url('superadmin/whatsapp/probar-mantenimiento-preventivo'),
             'testByPlateAction' => base_url('superadmin/whatsapp/probar-por-patente'),
             'preparePilotAction' => base_url('superadmin/whatsapp/preparar-piloto'),
+            'testExpirationDigestAction' => base_url('superadmin/diagnosticos/vencimientos-whatsapp'),
             'auditDriverPhonesAction' => base_url('superadmin/whatsapp/auditar-celulares'),
         ];
         $payload['aiCompanyControls'] = array_map(static fn (array $company): array => [
@@ -424,6 +463,58 @@ final class SuperAdmin extends BaseController
                 . ' · chofer ' . ($driverName === '' ? '(sin nombre)' : $driverName)
                 . ' · etapa ' . $stage
                 . '. El token público fue validado contra este mismo equipo antes del envío.',
+            );
+        } catch (Throwable $exception) {
+            return $this->operationFailure($exception);
+        }
+    }
+
+    public function testPreventiveMaintenanceWhatsApp(): RedirectResponse
+    {
+        try {
+            $settings = service('globalNotificationSettingsStore')->get();
+            $gateway = service('whatsAppGateway');
+            if ($gateway->normalizePhone((string) ($settings['whatsapp_pilot_phone'] ?? '')) === null) {
+                throw new DomainException('Configurá un teléfono piloto válido antes de enviar esta prueba.');
+            }
+            if (! $gateway->available()) {
+                throw new DomainException('WhatsApp no está disponible. Revisá URL, API key, instanceId y que el canal esté habilitado.');
+            }
+
+            $planId = max(0, (int) $this->request->getPost('plan_id'));
+            if ($planId <= 0) {
+                throw new DomainException('Indicá el plan_id preventivo que querés probar.');
+            }
+
+            $queue = service('whatsAppNotificationDeliveryQueue');
+            $testKey = date('YmdHis') . '-preventivo-actor-' . $this->actor()->userId();
+            if ($queue->schedulePreventivePilotTest($planId, $testKey) < 1) {
+                throw new DomainException('No se pudo preparar la prueba. Revisá que el plan esté activo, tenga equipo y chofer asignado.');
+            }
+
+            $sent = 0;
+            foreach ($queue->due(1000) as $delivery) {
+                if (! str_contains((string) ($delivery['external_ref'] ?? ''), ':prueba:' . $testKey)) {
+                    continue;
+                }
+                $result = $gateway->sendText(
+                    (string) ($delivery['telefono'] ?? ''),
+                    (string) ($delivery['mensaje'] ?? ''),
+                    (string) ($delivery['external_ref'] ?? ''),
+                    (string) $this->actor()->userId(),
+                    'Superadmin Mantenimiento',
+                    empty($delivery['instance_id']) ? null : (string) $delivery['instance_id'],
+                );
+                $queue->accepted((int) $delivery['id'], $result['messageId'], $result['status']);
+                $sent++;
+            }
+            if ($sent < 1) {
+                throw new DomainException('La prueba preventiva se preparó pero no se encontró la entrega para despachar.');
+            }
+
+            return redirect()->to('/superadmin')->with(
+                'success',
+                'Prueba de mantenimiento preventivo enviada únicamente al teléfono piloto. Plan #' . $planId . '. No se contactó al chofer real.',
             );
         } catch (Throwable $exception) {
             return $this->operationFailure($exception);

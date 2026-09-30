@@ -309,6 +309,7 @@ final class Expirations extends BaseController
                 ->where('tipo_vencimiento_id', $typeId)
                 ->where($subjectType === ExpirationSubjectType::EQUIPMENT ? 'equipo_id' : 'empleado_id', $subjectId)
                 ->where('fecha_vencimiento', $expiresAt->format('Y-m-d'))
+                ->where('activo', 1)
                 ->where('deleted_at', null)
                 ->countAllResults() > 0;
             if ($duplicate) {
@@ -398,6 +399,7 @@ final class Expirations extends BaseController
                 ->where('tipo_vencimiento_id', (int) $row['tipo_vencimiento_id'])
                 ->where($subjectField, $subjectId)
                 ->where('fecha_vencimiento', $expiresAt->format('Y-m-d'))
+                ->where('activo', 1)
                 ->where('id !=', $expirationId)
                 ->where('deleted_at', null)
                 ->countAllResults() > 0;

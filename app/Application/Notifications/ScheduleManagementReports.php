@@ -195,6 +195,12 @@ final class ScheduleManagementReports
         }
 
         if ($type === 'WEEKLY') {
+            $missingWeeklyKm = $this->weeklyMissingDriverKilometers($companyId, $now, 25);
+            $lines[] = 'Choferes sin carga de km esta semana: ' . count($missingWeeklyKm);
+            foreach ($missingWeeklyKm as $item) {
+                $lines[] = '!KM_SEMANAL|' . $item['driver'] . '|' . $item['equipment'] . '|' . $item['last_reading'];
+            }
+
             $lines[] = 'Preventivos pendientes: ' . $this->preventiveOrdersPending($companyId);
             $lines[] = 'Preventivos finalizados en la semana: ' . $this->preventiveOrdersClosed($companyId, $periodStart, $tomorrow);
             $lines[] = 'Costo registrado en OT cerradas: $ ' . number_format($this->closedOrderCost($companyId, $periodStart, $tomorrow), 2, ',', '.');
@@ -208,6 +214,88 @@ final class ScheduleManagementReports
             'title' => $label . ' de mantenimiento · ' . $companyName . ' · ' . $now->format('d/m/Y'),
             'summary' => 'Empresa: ' . $companyName . "\n" . implode("\n", $lines),
         ];
+    }
+
+    /** @return list<array{driver:string,equipment:string,last_reading:string}> */
+    private function weeklyMissingDriverKilometers(int $companyId, DateTimeImmutable $now, int $limit = 25): array
+    {
+        foreach (['employee_equipment_assignments', 'empleados', 'equipos', 'tipos_equipo', 'lecturas_equipo'] as $table) {
+            if (! $this->db->tableExists($table)) {
+                return [];
+            }
+        }
+
+        $weekStart = $now->modify('monday this week')->setTime(0, 0)->format('Y-m-d H:i:s');
+        $rows = $this->db->query(
+            "SELECT
+                a.equipo_id,
+                TRIM(CONCAT_WS(' ', emp.nombre, emp.apellido)) chofer,
+                e.codigo,
+                e.patente,
+                MAX(l.fecha_lectura) ultima_lectura,
+                MAX(CASE WHEN l.fecha_lectura >= ? AND l.kilometraje IS NOT NULL AND l.anulada = 0 THEN 1 ELSE 0 END) cargo_semana
+             FROM employee_equipment_assignments a
+             INNER JOIN empleados emp
+                ON emp.id = a.empleado_id
+               AND emp.empresa_id = a.empresa_id
+             INNER JOIN equipos e
+                ON e.id = a.equipo_id
+               AND e.empresa_id = a.empresa_id
+             INNER JOIN tipos_equipo te
+                ON te.id = e.tipo_equipo_id
+             LEFT JOIN lecturas_equipo l
+                ON l.empresa_id = e.empresa_id
+               AND l.equipo_id = e.id
+               AND l.kilometraje IS NOT NULL
+               AND l.anulada = 0
+             WHERE a.empresa_id = ?
+               AND a.rol = 'CHOFER'
+               AND a.fecha_hasta IS NULL
+               AND emp.activo = 1
+               AND emp.deleted_at IS NULL
+               AND e.estado = 'ACTIVO'
+               AND e.deleted_at IS NULL
+               AND te.controla_km = 1
+             GROUP BY a.equipo_id, emp.id, emp.nombre, emp.apellido, e.codigo, e.patente
+             HAVING cargo_semana = 0
+             ORDER BY chofer ASC, e.codigo ASC
+             LIMIT " . max(1, min(100, $limit)),
+            [$weekStart, $companyId],
+        )->getResultArray();
+
+        $result = [];
+        foreach ($rows as $row) {
+            $driver = trim((string) ($row['chofer'] ?? ''));
+            if ($driver === '') {
+                $driver = 'Chofer sin nombre';
+            }
+
+            $code = trim((string) ($row['codigo'] ?? ''));
+            $plate = trim((string) ($row['patente'] ?? ''));
+            $equipment = $code !== '' ? $code : ('Equipo #' . (int) ($row['equipo_id'] ?? 0));
+            if ($plate !== '' && mb_strtoupper($plate) !== mb_strtoupper($equipment)) {
+                $equipment .= ' · ' . $plate;
+            }
+
+            $lastReading = trim((string) ($row['ultima_lectura'] ?? ''));
+            if ($lastReading === '') {
+                $lastReadingText = 'Sin lecturas previas';
+            } else {
+                try {
+                    $lastReadingText = (new DateTimeImmutable($lastReading))->format('d/m/Y H:i');
+                } catch (\Throwable) {
+                    $lastReadingText = 'Lectura anterior registrada';
+                }
+            }
+
+            $result[] = [
+                'driver' => $driver,
+                'equipment' => $equipment,
+                'last_reading' => $lastReadingText,
+            ];
+        }
+
+        return $result;
     }
 
     private function expirationCount(int $companyId, string $operator, string $date, ?string $upper = null): int
