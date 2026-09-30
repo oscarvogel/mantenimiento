@@ -116,7 +116,7 @@ final class AssetManagement extends BaseController
                 $actor,
                 'masters-equipment',
                 'equipment-catalogs-master',
-                'Catálogos de equipos',
+                'Maestros',
                 service('operationsPayload')->equipmentCatalogs(
                     $this->catalog()->list($actor, true),
                     $management,
