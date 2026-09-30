@@ -21,15 +21,15 @@ final class ManagementReportExpirationSeparationContractTest extends TestCase
         self::assertStringNotContainsString("'Vencimientos próximos (30 días): '", $source);
     }
 
-    public function testPreventiveCountsUsePlansAndMaintenanceRulesInsteadOfDocumentExpirations(): void
+    public function testPreventiveCountsReuseTheSameDomainEvaluationAsThePlansScreen(): void
     {
         $source = file_get_contents(ROOTPATH . 'app/Application/Notifications/ScheduleManagementReports.php');
 
         self::assertIsString($source);
         self::assertStringContainsString('private function preventiveDueCounts(', $source);
-        self::assertStringContainsString("table('planes_mantenimiento')", $source);
-        self::assertStringContainsString("table('equipo_plan_mantenimiento')", $source);
-        self::assertStringContainsString("'VENCIDO'", $source);
-        self::assertStringContainsString("'PROXIMO'", $source);
+        self::assertStringContainsString('CodeIgniterPreventivePlanReadModel', $source);
+        self::assertStringContainsString('EvaluadorVencimiento', $source);
+        self::assertStringContainsString('EstadoPlan::VENCIDO', $source);
+        self::assertStringContainsString('EstadoPlan::PROXIMO', $source);
     }
 }
