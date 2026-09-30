@@ -17,8 +17,10 @@ final class DashboardPayload
         $canEditPlans = $actor->hasPermission('planes.editar');
         $canLoadReadings = $actor->hasPermission('lecturas.cargar');
         $canOrders = $actor->hasPermission('ordenes.editar');
+        $canViewOrders = $actor->hasPermission('ordenes.ver');
         $equipmentUrl = $canEquipment ? base_url('mantenimiento/equipos') : '#';
         $plansUrl = $canPlans ? base_url('mantenimiento/planes') : '#';
+        $ordersUrl = $canViewOrders ? base_url('mantenimiento/ordenes') : '#';
         $servicesUrl = $canPlans ? base_url('mantenimiento/servicios') : '#';
         $managerial = in_array('Administrador', $actor->roles(), true);
 
@@ -41,14 +43,22 @@ final class DashboardPayload
             'links' => [
                 'equipment' => $equipmentUrl,
                 'equipmentCreate' => $canEditEquipment ? $equipmentUrl . '#nuevo-equipo' : '#',
-                'maintenance' => $canPlans ? base_url('mantenimiento') : '#',
+                // Destinos del dashboard: el permiso que habilita el CTA tiene que
+                // ser el mismo que exige la ruta destino, o el enlace es un 403
+                // garantizado. Antes estos tres apuntaban a la raiz del namespace
+                // de mantenimiento, que hoy responde Chatbot::index (chatbot.usar) y
+                // encima colisiona con el directorio fisico del webroot.
+                'maintenance' => $canPlans ? $plansUrl : '#',
                 'services' => $servicesUrl,
                 'assignPlan' => $canEditPlans ? $plansUrl : '#',
                 'registerMaintenance' => $canEquipment ? $equipmentUrl : '#',
                 'quickReadings' => $canLoadReadings ? base_url('mantenimiento/lecturas/rapidas') : '#',
-                'orders' => $canOrders ? base_url('mantenimiento') : '#',
+                'orders' => $canViewOrders ? $ordersUrl : '#',
                 'financialDetail' => $actor->hasPermission('ordenes.ver') ? base_url('reportes') : '#',
-                'correctiveOrder' => $canOrders ? base_url('mantenimiento?ot_correctiva=1') : '#',
+                // El alta de correctiva vive en la pagina de ordenes, que solo
+                // carga correctiveEquipments con ordenes.editar. El antiguo
+                // ?ot_correctiva=1 ya no lo leia nadie.
+                'correctiveOrder' => $canOrders ? $ordersUrl : '#',
                 // Alias temporal para consumidores viejos. Ya no apunta a Biblioteca.
                 'library' => $servicesUrl,
                 'maintenanceDueSoon' => $canPlans ? $this->plansFilterUrl('PROXIMO') : '#',

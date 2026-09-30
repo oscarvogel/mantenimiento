@@ -40,9 +40,42 @@ final class ActorContextTest extends CIUnitTestCase
         $this->assertFalse($actor->hasPermission('equipos.editar'));
     }
 
-    public function testRestrictedUserOnlyAccessesAssignedBranches(): void
+    /**
+     * #339: el rol Administrador NO es un superusuario.
+     *
+     * Es un rol normal: recibe sus permisos por rol_permisos, igual que todos
+     * los demas. Si le queda un permiso sin asignar, se le tiene que negar.
+     *
+     * Este test es el que impidio que un atajo por nombre de rol entrara en
+     * hasPermission(): un Administrador con la lista vacia debe quedarse sin
+     * acceso a nada, y "Acceso completo" se define en el seed, no en el
+     * dominio.
+     */
+    public function testAdministratorWithNoAssignedPermissionsIsDeniedEverything(): void
     {
-        $actor = new ActorContext(11, 4, false, false, ['Consulta'], ['equipos.ver'], [7, 8]);
+        $actor = new ActorContext(10, 4, false, true, ['Administrador'], [], []);
+
+        foreach ([
+            'equipos.ver',
+            'equipos.editar',
+            'planes.ver',
+            'planes.editar',
+            'ordenes.cerrar',
+            'notificaciones.ver',
+            'notificaciones.editar',
+            'usuarios.editar',
+            'importaciones.ver',
+            'chatbot.usar',
+        ] as $permission) {
+            $this->assertFalse(
+                $actor->hasPermission($permission),
+                "El rol Administrador no debe obtener '{$permission}' por nombre de rol.",
+            );
+        }
+    }
+
+    public function testRestrictedUserOnlyAccessesAssignedBranches(): void
+    {        $actor = new ActorContext(11, 4, false, false, ['Consulta'], ['equipos.ver'], [7, 8]);
 
         $this->assertFalse($actor->hasAllCompanyBranches());
         $this->assertTrue($actor->canAccessBranch(4, 7));
