@@ -106,6 +106,7 @@ final class AssetCatalogServiceTest extends TestCase
             $models,
             new class implements EquipmentTypeCatalog {
                 public function findActiveById(int $typeId): ?EquipmentType { return $typeId === 9 ? new EquipmentType(9, 'Tractor', true, true) : null; }
+                public function updateTracking(int $typeId, bool $tracksKilometers, bool $tracksHours): void {}
             },
             $readModel ?? new Phase2CAssetCatalogReadModelFake(),
             new class implements AssetUnitOfWork { public function transactional(callable $operation): mixed { return $operation(); } },

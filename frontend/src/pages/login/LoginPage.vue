@@ -72,7 +72,7 @@ const brandAsset = (name) => `${baseUrl}assets/brand/${name}.svg`
               :value="data.email"
               :aria-invalid="Boolean(data.errors?.email)"
               :aria-describedby="data.errors?.email ? 'login-email-error' : undefined"
-              class="mt-2 block min-h-12 w-full rounded-xl border border-border bg-brand-50 px-4 py-3 text-sm text-ink shadow-sm outline-none transition placeholder:text-ink-subtle focus:border-border-focus focus:bg-white focus:ring-4 focus:ring-primary/10"
+              class="mt-2 block min-h-12 w-full rounded-xl border border-border bg-brand-50 px-4 py-3 text-sm text-ink shadow-sm outline-none transition placeholder:text-ink-subtle focus:border-border-focus focus:bg-white focus:text-brand-950 focus:ring-4 focus:ring-primary/10"
               placeholder="nombre@empresa.com"
             />
             <p v-if="data.errors?.email" id="login-email-error" role="alert" class="mt-2 text-sm font-medium text-danger-strong">
@@ -92,7 +92,7 @@ const brandAsset = (name) => `${baseUrl}assets/brand/${name}.svg`
                 required
                 :aria-invalid="Boolean(data.errors?.password)"
                 :aria-describedby="data.errors?.password ? 'login-password-error' : undefined"
-                class="block min-h-12 w-full rounded-xl border border-border bg-brand-50 py-3 pl-4 pr-12 text-sm text-ink shadow-sm outline-none transition focus:border-border-focus focus:bg-white focus:ring-4 focus:ring-primary/10"
+                class="block min-h-12 w-full rounded-xl border border-border bg-brand-50 py-3 pl-4 pr-12 text-sm text-ink shadow-sm outline-none transition focus:border-border-focus focus:bg-white focus:text-brand-950 focus:ring-4 focus:ring-primary/10"
                 placeholder="Ingresá tu contraseña"
               />
               <button

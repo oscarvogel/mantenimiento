@@ -58,6 +58,7 @@ const includesId = (ids, id) => ids.includes(Number(id))
         <label class="block">
           <span class="mb-1.5 block text-sm font-medium text-ink">Email <span class="text-danger" aria-hidden="true">*</span></span>
           <input type="email" name="email" maxlength="255" required :value="data.oldInput.email" autocomplete="email" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          <span class="mt-1 block text-xs text-ink-subtle">Este email será el usuario de acceso al sistema.</span>
         </label>
         <label class="block">
           <span class="mb-1.5 block text-sm font-medium text-ink">Contraseña inicial <span class="text-danger" aria-hidden="true">*</span></span>
@@ -149,6 +150,7 @@ const includesId = (ids, id) => ids.includes(Number(id))
                 <label class="block">
                   <span class="mb-1.5 block text-sm font-medium text-ink">Email</span>
                   <input type="email" name="email" maxlength="255" required :value="user.email" autocomplete="email" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                  <span class="mt-1 block text-xs leading-5 text-warning-strong">Es el usuario de acceso. Si lo cambiás, el correo anterior deja de servir para ingresar.</span>
                 </label>
                 <label class="block sm:col-span-1">
                   <span class="mb-1.5 block text-sm font-medium text-ink">Estado</span>

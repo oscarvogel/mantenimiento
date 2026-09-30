@@ -91,6 +91,53 @@ final class GetAppShellContextTest extends TestCase
         self::assertTrue($readingItem[0]['active']);
         self::assertNotContains('quick-readings', array_column($hidden['navigation'], 'key'));
     }
+
+    /**
+     * #353: la entrada del centro de Maestros se llama "Maestros" y no se
+     * duplica con la entrada independiente de Tipos de vencimiento.
+     */
+    public function testMastersCenterHasOneCoherentEntryAlongsideExpirationTypes(): void
+    {
+        $context = new GetAppShellContext(new AppShellReadModelFake());
+        $actor = new ActorContext(7, 5, false, false, ['Responsable'], ['equipos.editar'], [9]);
+
+        $payload = (new AppShellPayload($context))->for($actor, 'masters-equipment');
+        $keys = array_column($payload['navigation'], 'key');
+
+        self::assertCount(1, array_keys($keys, 'masters-equipment', true), 'No puede haber dos entradas al centro de Maestros.');
+        self::assertCount(1, array_keys($keys, 'masters-expirations', true), 'Tipos de vencimiento conserva su entrada propia.');
+
+        $center = array_values(array_filter(
+            $payload['navigation'],
+            static fn (array $item): bool => $item['key'] === 'masters-equipment',
+        ));
+        self::assertSame('Maestros', $center[0]['label']);
+        self::assertStringEndsWith('/mantenimiento/maestros/equipos', $center[0]['href']);
+
+        $expirations = array_values(array_filter(
+            $payload['navigation'],
+            static fn (array $item): bool => $item['key'] === 'masters-expirations',
+        ));
+        self::assertSame('Tipos de vencimiento', $expirations[0]['label']);
+        self::assertStringEndsWith('/mantenimiento/maestros/vencimientos', $expirations[0]['href']);
+    }
+
+    /**
+     * #353: empleados.editar sin equipos.editar debe conservar el acceso a
+     * Tipos de vencimiento. La ruta maestros/equipos exige equipos.editar, asi
+     * que sacar esta entrada del sidebar le dejaria sin ninguna via.
+     */
+    public function testEmployeeEditorWithoutEquipmentEditorKeepsExpirationTypesAccess(): void
+    {
+        $context = new GetAppShellContext(new AppShellReadModelFake());
+        $actor = new ActorContext(9, 5, false, false, ['RRHH'], ['empleados.editar'], [9]);
+
+        $payload = (new AppShellPayload($context))->for($actor, 'masters-expirations');
+        $keys = array_column($payload['navigation'], 'key');
+
+        self::assertContains('masters-expirations', $keys, 'Sin equipos.editar, esta es la unica via a Tipos de vencimiento.');
+        self::assertNotContains('masters-equipment', $keys, 'El centro de Maestros exige equipos.editar.');
+    }
 }
 
 final class AppShellReadModelFake implements AppShellReadModel

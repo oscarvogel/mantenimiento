@@ -81,6 +81,7 @@ final class Phase2CTechnicalTypeCatalogFake implements EquipmentTypeCatalog
     {
         return $typeId === 3 ? new EquipmentType(3, 'Tractor', true, true) : null;
     }
+    public function updateTracking(int $typeId, bool $tracksKilometers, bool $tracksHours): void {}
 }
 
 final class Phase2CTechnicalBranchFake implements BranchScope

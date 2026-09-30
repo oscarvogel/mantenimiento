@@ -15,6 +15,7 @@ final readonly class RunNotificationCycle
         private RunNotificationDispatch $dispatch,
         private NotificationClock $clock,
         private ?ScheduleManagementReports $managementReports = null,
+        private ?NotifyAdminsMissingDriverPhones $missingDriverPhones = null,
     ) {
     }
 
@@ -47,6 +48,12 @@ final readonly class RunNotificationCycle
             'seconds' => number_format(microtime(true) - $collectStartedAt, 3, '.', ''),
         ]);
 
+        $driverPhonesStartedAt = microtime(true);
+        $missingDriverPhones = $this->missingDriverPhones?->execute();
+        log_message('notice', 'Etapa control teléfonos de choferes completada en {seconds}s.', [
+            'seconds' => number_format(microtime(true) - $driverPhonesStartedAt, 3, '.', ''),
+        ]);
+
         $reportsStartedAt = microtime(true);
         $managementReports = $this->managementReports?->execute();
         log_message('notice', 'Etapa informes gerenciales completada en {seconds}s.', [
@@ -68,6 +75,7 @@ final readonly class RunNotificationCycle
             'execution_key' => $key,
             'overdue' => $overdue,
             'collected' => $collected,
+            'missing_driver_phones' => $missingDriverPhones,
             'management_reports' => $managementReports,
             'dispatched' => $dispatched,
         ];

@@ -40,7 +40,7 @@ final readonly class RunNotificationDispatch
             if ($executionId === null) {
                 return ['email_sent' => 0, 'company_email_sent' => 0, 'push_sent' => 0, 'whatsapp_sent' => 0, 'failed' => 0, 'retry' => 0, 'expired' => 0, 'skipped' => 0, 'already_completed' => 1];
             }
-            $summary = ['email_sent' => 0, 'company_email_sent' => 0, 'push_sent' => 0, 'whatsapp_sent' => 0, 'failed' => 0, 'retry' => 0, 'expired' => 0, 'skipped' => 0, 'already_completed' => 0];
+            $summary = ['email_sent' => 0, 'company_email_sent' => 0, 'push_sent' => 0, 'whatsapp_sent' => 0, 'whatsapp_confirmed' => 0, 'whatsapp_gateway_failed' => 0, 'failed' => 0, 'retry' => 0, 'expired' => 0, 'skipped' => 0, 'already_completed' => 0];
             $this->dispatchEmail($summary, $limit);
             $this->dispatchCompanyEmail($summary, $limit);
             $this->dispatchPush($summary, $limit);
@@ -137,9 +137,51 @@ final readonly class RunNotificationDispatch
             return;
         }
 
+        // Primero reconciliamos lo que el gateway aceptó previamente.
+        // HTTP 202 sólo significa "encolado"; no equivale a entrega real.
+        foreach ($this->whatsAppDeliveries->awaitingConfirmation(max(1, min($limit, 100))) as $pending) {
+            try {
+                $status = $this->whatsApp->getMessageStatus(
+                    (string) ($pending['gateway_message_id'] ?? ''),
+                    empty($pending['instance_id']) ? null : (string) $pending['instance_id'],
+                );
+                $this->whatsAppDeliveries->reconcileStatus(
+                    (int) $pending['id'],
+                    $status['status'],
+                    $status['providerMessageId'],
+                    $status['error'],
+                );
+                if (in_array($status['status'], ['accepted', 'delivered', 'read'], true)) {
+                    $summary['whatsapp_confirmed']++;
+                } elseif ($status['status'] === 'failed') {
+                    $summary['whatsapp_gateway_failed']++;
+                    $summary['failed']++;
+                }
+            } catch (Throwable $exception) {
+                // Un error de consulta no debe reenviar el mensaje: queda pendiente de
+                // confirmación para el próximo ciclo y se conserva el messageId original.
+                log_message('warning', 'No se pudo reconciliar mensaje WhatsApp {messageId}: {message}', [
+                    'messageId' => (string) ($pending['gateway_message_id'] ?? ''),
+                    'message' => $exception->getMessage(),
+                ]);
+            }
+        }
+
         $this->whatsAppDeliveries->scheduleWeeklyReadingReminders();
 
-        foreach ($this->whatsAppDeliveries->due($limit) as $delivery) {
+        $whatsAppLimit = max(1, min(
+            $limit,
+            max(1, (int) env('alerts.whatsappBatchLimit', 5)),
+        ));
+        $intervalMs = max(0, min(10000, (int) env('alerts.whatsappSendIntervalMs', 2000)));
+        $attempt = 0;
+
+        foreach ($this->whatsAppDeliveries->due($whatsAppLimit) as $delivery) {
+            if ($attempt > 0 && $intervalMs > 0) {
+                usleep($intervalMs * 1000);
+            }
+            $attempt++;
+
             try {
                 $result = $this->whatsApp->sendText(
                     (string) ($delivery['telefono'] ?? ''),

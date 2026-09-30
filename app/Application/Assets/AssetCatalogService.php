@@ -51,6 +51,16 @@ final class AssetCatalogService
         return $this->readModel->paginateManagement($companyId, $brandPage, $brandsPerPage, $modelPage, $modelsPerPage);
     }
 
+    public function updateTypeTracking(ActorContext $actor, int $typeId, bool $tracksKilometers, bool $tracksHours): void
+    {
+        $this->tenant($actor, 'equipos.editar');
+        if ($typeId <= 0) {
+            throw new DomainException('El tipo de equipo no es válido.');
+        }
+
+        $this->types->updateTracking($typeId, $tracksKilometers, $tracksHours);
+    }
+
     public function createBrand(ActorContext $actor, CreateBrandCommand $command): int
     {
         $companyId = $this->tenant($actor, 'equipos.editar');

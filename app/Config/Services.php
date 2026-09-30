@@ -5,6 +5,7 @@ namespace Config;
 use App\Application\Identity\Port\LoginAttemptLimiter;
 use App\Application\AppShell\GetAppShellContext;
 use App\Application\Dashboard\GetMaintenanceDashboard;
+use App\Application\Dashboard\GetGlobalDashboard;
 use App\Application\Importations\CancelImportHandler;
 use App\Application\Importations\ConfirmImportHandler;
 use App\Application\Importations\CreateImportDraftHandler;
@@ -101,6 +102,7 @@ use App\Infrastructure\Notifications\SystemNotificationClock;
 use App\Infrastructure\Identity\CodeIgniterLoginAttemptLimiter;
 use App\Infrastructure\AppShell\CodeIgniterAppShellReadModel;
 use App\Infrastructure\Dashboard\CodeIgniterDashboardFinancialSummary;
+use App\Infrastructure\Dashboard\CodeIgniterGlobalDashboardReadModel;
 use App\Infrastructure\Dashboard\MaintenanceCircuitDashboardOverview;
 use App\Infrastructure\Dashboard\PreventiveDashboardDuePlans;
 use App\Infrastructure\Dashboard\SystemDashboardClock;
@@ -169,7 +171,12 @@ use App\Presentation\AppShellPayload;
 use App\Presentation\AdministrationPayload;
 use App\Presentation\OperationsPayload;
 use App\Presentation\PreventivePlansPayload;
+use App\Application\ReadingControl\ClaimReadingReminder;
+use App\Application\ReadingControl\ListReadingControl;
+use App\Application\ReadingControl\Port\Clock as ReadingControlClock;
 use App\Presentation\QuickReadingsPayload;
+use App\Presentation\ReadingControl\ReadingControlPayload;
+use App\Infrastructure\ReadingControl\SystemClock as ReadingControlSystemClock;
 use CodeIgniter\Config\BaseService;
 
 /**
@@ -299,6 +306,21 @@ class Services extends BaseService
             static::notificationDispatch(),
             static::notificationClock(),
             static::managementReports(false),
+            static::notifyAdminsMissingDriverPhones(false),
+        );
+    }
+
+    public static function notifyAdminsMissingDriverPhones(bool $getShared = true): \App\Application\Notifications\NotifyAdminsMissingDriverPhones
+    {
+        if ($getShared) {
+            return static::getSharedInstance('notifyAdminsMissingDriverPhones');
+        }
+
+        return new \App\Application\Notifications\NotifyAdminsMissingDriverPhones(
+            static::notificationRepository(false),
+            static::notificationClock(false),
+            static::whatsAppGateway(false),
+            db_connect(),
         );
     }
 
@@ -587,6 +609,17 @@ class Services extends BaseService
             new PreventiveDashboardDuePlans(static::consultMaintenanceDue(false)),
             new CodeIgniterDashboardFinancialSummary(db_connect()),
             new SystemDashboardClock(),
+        );
+    }
+
+    public static function globalDashboard(bool $getShared = true): GetGlobalDashboard
+    {
+        if ($getShared) {
+            return static::getSharedInstance('globalDashboard');
+        }
+
+        return new GetGlobalDashboard(
+            new CodeIgniterGlobalDashboardReadModel(db_connect()),
         );
     }
 
@@ -1057,6 +1090,48 @@ class Services extends BaseService
         }
 
         return new QuickReadingsPayload();
+    }
+
+    public static function readingControlPayload(bool $getShared = true): ReadingControlPayload
+    {
+        if ($getShared) {
+            return static::getSharedInstance('readingControlPayload');
+        }
+
+        return new ReadingControlPayload();
+    }
+
+    public static function listReadingControl(bool $getShared = true): ListReadingControl
+    {
+        if ($getShared) {
+            return static::getSharedInstance('listReadingControl');
+        }
+
+        return new ListReadingControl(db_connect(), static::readingControlClock());
+    }
+
+    public static function readingControlClock(bool $getShared = true): ReadingControlClock
+    {
+        if ($getShared) {
+            return static::getSharedInstance('readingControlClock');
+        }
+
+        return new ReadingControlSystemClock();
+    }
+
+    public static function claimReadingReminder(bool $getShared = true): ClaimReadingReminder
+    {
+        if ($getShared) {
+            return static::getSharedInstance('claimReadingReminder');
+        }
+
+        return new ClaimReadingReminder(
+            db_connect(),
+            static::whatsAppGateway(false),
+            static::whatsAppNotificationDeliveryQueue(false),
+            static::globalNotificationSettingsStore(false),
+            static::notificationClock(),
+        );
     }
 
     public static function createEquipmentWithInitialReading(bool $getShared = true): CreateEquipmentWithInitialReading

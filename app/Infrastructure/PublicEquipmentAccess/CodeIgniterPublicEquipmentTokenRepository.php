@@ -29,6 +29,26 @@ final class CodeIgniterPublicEquipmentTokenRepository implements PublicEquipment
         return service('encrypter')->decrypt(base64_decode((string) $row['token_cifrado'], true));
     }
 
+    public function ensureActivePlainTokenForEquipment(int $companyId, int $equipmentId, string $occurredAt): ?string
+    {
+        $existing = $this->activePlainTokenForEquipment($companyId, $equipmentId);
+        if ($existing !== null && trim($existing) !== '') {
+            return $existing;
+        }
+
+        $token = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
+        $hash = hash('sha256', $token);
+
+        return $this->replaceActiveToken(
+            $companyId,
+            $equipmentId,
+            $hash,
+            $token,
+            null,
+            $occurredAt,
+        ) ? $token : null;
+    }
+
     public function replaceActiveToken(
         int $companyId,
         int $equipmentId,

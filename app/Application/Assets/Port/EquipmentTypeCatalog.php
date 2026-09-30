@@ -9,4 +9,6 @@ use App\Domain\Assets\EquipmentType;
 interface EquipmentTypeCatalog
 {
     public function findActiveById(int $typeId): ?EquipmentType;
+
+    public function updateTracking(int $typeId, bool $tracksKilometers, bool $tracksHours): void;
 }

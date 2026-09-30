@@ -36,6 +36,7 @@ final class TenantAdmin extends BaseController
             'nombre'        => 'required|max_length[255]',
             'direccion'     => 'permit_empty|max_length[255]',
             'email_alertas' => 'permit_empty|valid_email|max_length[255]',
+            'idioma_notificaciones' => 'permit_empty|in_list[ES,PT]',
         ])) {
             return $this->validationFailure('/administracion/sucursales');
         }
@@ -56,6 +57,7 @@ final class TenantAdmin extends BaseController
             'nombre'        => 'required|max_length[255]',
             'direccion'     => 'permit_empty|max_length[255]',
             'email_alertas' => 'permit_empty|valid_email|max_length[255]',
+            'idioma_notificaciones' => 'permit_empty|in_list[ES,PT]',
             'estado'        => 'required|in_list[0,1]',
         ])) {
             return $this->validationFailure('/administracion/sucursales');
@@ -144,7 +146,7 @@ final class TenantAdmin extends BaseController
                 session()->set('usuario_email', mb_strtolower(trim($data['email'])));
             }
 
-            return redirect()->to('/administracion/usuarios')->with('success', 'Usuario actualizado correctamente.');
+            return redirect()->to('/administracion/usuarios')->with('success', 'Usuario actualizado correctamente. Si cambiaste el email, desde ahora debe ingresar con el nuevo correo.');
         } catch (Throwable $exception) {
             return $this->operationFailure('/administracion/usuarios', $exception);
         }
@@ -220,6 +222,7 @@ final class TenantAdmin extends BaseController
             'nombre'        => (string) $this->request->getPost('nombre'),
             'direccion'     => $this->request->getPost('direccion'),
             'email_alertas' => $this->request->getPost('email_alertas'),
+            'idioma_notificaciones' => ($locale = strtoupper(trim((string) $this->request->getPost('idioma_notificaciones')))) === '' ? null : $locale,
         ];
         if ($withState) {
             $data['estado'] = (int) $this->request->getPost('estado');

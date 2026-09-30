@@ -221,10 +221,21 @@ final class OperationsPayload
                 'index' => $base,
                 'createBrand' => base_url('mantenimiento/catalogos/marcas'),
                 'createModel' => base_url('mantenimiento/catalogos/modelos'),
+                'expirationTypes' => base_url('mantenimiento/maestros/vencimientos'),
+                'services' => base_url('mantenimiento/servicios'),
+                'preventiveLibrary' => base_url('mantenimiento/importaciones/biblioteca'),
+                'providers' => base_url('mantenimiento/proveedores'),
+                // Sucursales NO entra al centro de Maestros: sigue en
+                // Administracion -> Sucursales, unica via, sin duplicar acceso.
             ],
             'catalogs' => [
                 'types' => array_map(fn (array $row): array => [
-                    'id' => (int) $row['id'], 'name' => $row['nombre'], 'active' => (int) $row['activo'] === 1,
+                    'id' => (int) $row['id'],
+                    'name' => $row['nombre'],
+                    'active' => (int) $row['activo'] === 1,
+                    'controlsKm' => (int) $row['controla_km'] === 1,
+                    'controlsHours' => (int) $row['controla_horas'] === 1,
+                    'updateUrl' => base_url('mantenimiento/catalogos/tipos/' . $row['id']),
                 ], $catalogs['types'] ?? []),
                 'brands' => array_map(fn (array $row): array => [
                     'id' => (int) $row['id'], 'name' => $row['nombre'], 'active' => (int) $row['activo'] === 1,
