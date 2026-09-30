@@ -65,6 +65,7 @@ $routes->group('superadmin', ['filter' => 'superadmin'], static function ($route
     $routes->get('diagnosticos/vencimientos-regularizaciones', 'ExpirationRegularizationDiagnostics::run');
     $routes->post('whatsapp/prueba', 'SuperAdmin::testWhatsApp');
     $routes->post('whatsapp/probar-recordatorio-km', 'SuperAdmin::testWeeklyReadingReminderWhatsApp');
+    $routes->post('whatsapp/probar-mantenimiento-preventivo', 'SuperAdmin::testPreventiveMaintenanceWhatsApp');
     $routes->post('whatsapp/probar-por-patente', 'SuperAdmin::testWeeklyReadingReminderByPlate');
     $routes->post('whatsapp/preparar-piloto', 'SuperAdmin::prepareWhatsAppPilotScenario');
     $routes->post('whatsapp/auditar-celulares', 'SuperAdmin::auditDriverPhones');

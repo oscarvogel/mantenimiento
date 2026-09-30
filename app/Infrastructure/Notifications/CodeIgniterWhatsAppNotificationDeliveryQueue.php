@@ -27,8 +27,17 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
 
     public function scheduleDriverForEvent(NotifiableEvent $event): void
     {
-        if (! $this->gateway->available()
-            || ! in_array($event->type(), ['equipo.vencimiento_proximo', 'equipo.vencimiento_vencido'], true)
+        if (! $this->gateway->available()) {
+            return;
+        }
+
+        if (in_array($event->type(), ['preventivo.proximo', 'preventivo.vencido'], true)
+            && $event->entityType() === 'plan_mantenimiento') {
+            $this->schedulePreventiveDriverEvent($event);
+            return;
+        }
+
+        if (! in_array($event->type(), ['equipo.vencimiento_proximo', 'equipo.vencimiento_vencido'], true)
             || $event->entityType() !== 'equipo') {
             return;
         }
@@ -197,6 +206,149 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             'created_at' => $now,
             'updated_at' => $now,
         ]);
+    }
+
+    private function schedulePreventiveDriverEvent(NotifiableEvent $event, ?string $testKey = null, bool $forcePilot = false): int
+    {
+        $companyId = $event->companyId();
+        $planId = (int) $event->entityId();
+        if ($planId <= 0) {
+            return 0;
+        }
+
+        $plan = $this->db->table('planes_mantenimiento p')
+            ->select('p.id, p.equipo_id, e.codigo equipo_codigo, e.patente, ts.nombre servicio_nombre')
+            ->join('equipos e', 'e.id = p.equipo_id AND e.empresa_id = p.empresa_id', 'inner')
+            ->join('tipos_servicio ts', 'ts.id = p.tipo_servicio_id', 'inner')
+            ->where('p.id', $planId)->where('p.empresa_id', $companyId)
+            ->where('p.activo', 1)->where('p.deleted_at', null)->where('e.deleted_at', null)
+            ->get()->getRowArray();
+        if ($plan === null) {
+            return 0;
+        }
+
+        $equipmentId = (int) $plan['equipo_id'];
+        $driver = $this->db->table('employee_equipment_assignments a')
+            ->select('a.empleado_id, emp.nombre, emp.apellido, emp.telefono')
+            ->join('empleados emp', 'emp.id = a.empleado_id AND emp.empresa_id = a.empresa_id', 'inner')
+            ->where('a.empresa_id', $companyId)->where('a.equipo_id', $equipmentId)
+            ->where('a.rol', 'CHOFER')->where('a.fecha_hasta', null)
+            ->where('emp.activo', 1)->where('emp.deleted_at', null)
+            ->orderBy('a.id', 'DESC')->get()->getRowArray();
+        if ($driver === null) {
+            return 0;
+        }
+
+        $company = $this->db->table('empresas')
+            ->select('razon_social, nombre_fantasia, notificaciones_whatsapp_habilitadas, whatsapp_instance_id')
+            ->where('id', $companyId)->where('estado', 1)->where('deleted_at', null)->get()->getRowArray();
+        if ($company === null || (int) ($company['notificaciones_whatsapp_habilitadas'] ?? 0) !== 1) {
+            return 0;
+        }
+
+        $settings = $this->settings->get();
+        $pilotEnabled = (bool) ($settings['whatsapp_pilot_enabled'] ?? true);
+        $effectivePilot = $pilotEnabled || $forcePilot;
+        $pilotPhone = $this->gateway->normalizePhone((string) ($settings['whatsapp_pilot_phone'] ?? ''));
+        $realPhone = $this->gateway->normalizePhone((string) ($driver['telefono'] ?? ''));
+        $phone = $effectivePilot ? $pilotPhone : $realPhone;
+        if ($phone === null) {
+            return 0;
+        }
+
+        $employeeId = (int) $driver['empleado_id'];
+        $cycle = preg_replace('/[^A-Za-z0-9_.:-]+/', '-', $event->logicalKey());
+        $key = 'preventivo_chofer:empresa:' . $companyId . ':plan:' . $planId . ':chofer:' . $employeeId . ':ciclo:' . $cycle;
+        if ($testKey !== null && trim($testKey) !== '') {
+            $key .= ':prueba:' . preg_replace('/[^A-Za-z0-9_.-]+/', '-', trim($testKey));
+        }
+        if ($this->db->table('notificacion_whatsapp_entregas')->where('clave_entrega', $key)->countAllResults() > 0) {
+            return 0;
+        }
+
+        $equipmentLabel = trim((string) ($plan['equipo_codigo'] ?? ''));
+        $plate = trim((string) ($plan['patente'] ?? ''));
+        if ($plate !== '' && mb_strtoupper($plate) !== mb_strtoupper($equipmentLabel)) {
+            $equipmentLabel .= ($equipmentLabel === '' ? '' : ' · ') . $plate;
+        }
+        if ($equipmentLabel === '') {
+            $equipmentLabel = 'Equipo #' . $equipmentId;
+        }
+        $companyName = trim((string) ($company['nombre_fantasia'] ?? '')) ?: trim((string) ($company['razon_social'] ?? 'Empresa'));
+        $driverName = trim((string) ($driver['nombre'] ?? '') . ' ' . (string) ($driver['apellido'] ?? ''));
+        $firstName = trim((string) ($driver['nombre'] ?? ''));
+        $status = $event->type() === 'preventivo.vencido' ? 'MANTENIMIENTO VENCIDO' : 'MANTENIMIENTO PRÓXIMO';
+        $pilotHeader = $effectivePilot
+            ? "🧪 *PRUEBA CONTROLADA · NO ENVIADO AL DESTINATARIO REAL*\n"
+                . "*Destinatario previsto:* " . ($driverName === '' ? 'Chofer asignado' : $driverName) . "\n"
+                . "*Teléfono real:* " . ($realPhone === null ? 'no válido o no cargado' : 'configurado') . "\n\n"
+            : '';
+        $serviceName = trim((string) ($plan['servicio_nombre'] ?? 'Servicio preventivo'));
+        $detail = trim($event->summary());
+        if ($serviceName !== '' && str_starts_with(mb_strtolower($detail), mb_strtolower($serviceName))) {
+            $detail = trim((string) preg_replace('/^[^·]+·?\\s*/u', '', $detail, 1));
+        }
+        $detail = preg_replace_callback('/(?<![\\d.,])(\\d{4,})(?![\\d.,])/u', static function (array $match): string {
+            return number_format((int) $match[1], 0, ',', '.');
+        }, $detail) ?? $detail;
+
+        $message = $pilotHeader
+            . "*" . $companyName . " · Mantenimiento*\n\n"
+            . ($firstName === '' ? 'Hola 👋' : 'Hola ' . $firstName . ' 👋') . "\n\n"
+            . "🔧 *" . $status . "*\n"
+            . "🚛 *" . $equipmentLabel . "*\n"
+            . "*" . ($serviceName === '' ? 'Servicio preventivo' : $serviceName) . "*\n"
+            . ($detail === '' ? '' : ucfirst($detail) . ".\n")
+            . "\nPor favor, coordiná este mantenimiento con el responsable de mantenimiento.\n\n"
+            . "_Sistema de mantenimiento desarrollado por Vogel Consultoría._";
+
+        $instanceId = trim((string) ($company['whatsapp_instance_id'] ?? ''));
+        if ($instanceId === '') {
+            $instanceId = trim((string) ($settings['whatsapp_instance_id'] ?? 'default'));
+        }
+        $now = $this->clock->now()->format('Y-m-d H:i:s');
+        $this->db->table('notificacion_whatsapp_entregas')->ignore(true)->insert([
+            'empresa_id' => $companyId, 'equipo_id' => $equipmentId, 'empleado_id' => $employeeId,
+            'tipo_evento' => $event->type(), 'clave_entrega' => $key, 'external_ref' => 'mantenimiento:' . $key,
+            'telefono' => $phone, 'instance_id' => $instanceId, 'mensaje' => $message, 'estado' => 'PENDIENTE',
+            'ultimo_error' => null, 'created_at' => $now, 'updated_at' => $now,
+        ]);
+        return 1;
+    }
+
+    public function schedulePreventivePilotTest(int $planId, string $testKey): int
+    {
+        $row = $this->db->table('planes_mantenimiento p')
+            ->select('p.id, p.empresa_id, p.equipo_id, p.proximo_km, p.proximas_horas, p.proxima_fecha, e.codigo equipo_codigo, e.km_actual, e.horas_actuales, ts.nombre servicio_nombre')
+            ->join('equipos e', 'e.id = p.equipo_id AND e.empresa_id = p.empresa_id', 'inner')
+            ->join('tipos_servicio ts', 'ts.id = p.tipo_servicio_id', 'inner')
+            ->where('p.id', $planId)->where('p.activo', 1)->where('p.deleted_at', null)->where('e.deleted_at', null)
+            ->get()->getRowArray();
+        if ($row === null) {
+            return 0;
+        }
+
+        $parts = [];
+        if ($row['proximo_km'] !== null && $row['km_actual'] !== null) {
+            $remaining = (int) $row['proximo_km'] - (int) $row['km_actual'];
+            $parts[] = $remaining < 0 ? 'excedido por ' . number_format(abs($remaining), 0, ',', '.') . ' km' : 'faltan ' . number_format($remaining, 0, ',', '.') . ' km';
+        }
+        if ($row['proximas_horas'] !== null && $row['horas_actuales'] !== null) {
+            $remaining = (float) $row['proximas_horas'] - (float) $row['horas_actuales'];
+            $parts[] = $remaining < 0 ? 'excedido por ' . abs($remaining) . ' h' : 'faltan ' . $remaining . ' h';
+        }
+        if ($row['proxima_fecha'] !== null) {
+            $parts[] = 'fecha objetivo ' . (new \DateTimeImmutable((string) $row['proxima_fecha']))->format('d/m/Y');
+        }
+        $summary = $parts === [] ? 'Mantenimiento preventivo próximo' : implode(', ', $parts);
+        $event = new NotifiableEvent(
+            (int) $row['empresa_id'], null, 'preventivo.proximo',
+            \App\Domain\Notifications\NotificationSeverity::WARNING,
+            'Mantenimiento próximo: ' . (string) $row['equipo_codigo'], $summary,
+            'plan_mantenimiento', (string) $planId, 'prueba_preventivo:plan:' . $planId,
+            '/mantenimiento/planes?equipo_id=' . (int) $row['equipo_id'], $this->clock->now(),
+        );
+        return $this->schedulePreventiveDriverEvent($event, $testKey, true);
     }
 
     /** @param list<array{equipment_id:int,equipment:string,type:string,expires:\DateTimeImmutable,days:int}> $items */
