@@ -1,69 +1,45 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Acceso restringido · Mantenimiento</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso restringido - Mantenimiento</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
     <style>
-        :root { color-scheme: dark; }
-        * { box-sizing: border-box; }
-        body {
-            margin: 0;
-            min-height: 100vh;
-            display: grid;
-            place-items: center;
-            padding: 24px;
-            background: #071426;
-            color: #eef5ff;
-            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        }
-        .card {
-            width: min(560px, 100%);
-            border: 1px solid #29415f;
-            border-radius: 18px;
-            background: #111f33;
-            padding: 32px;
-            box-shadow: 0 24px 70px rgba(0,0,0,.28);
-        }
-        .badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
+        body { background: #f4f6f8; }
+        .forbidden-card { max-width: 520px; margin: 6vh auto; }
+        .forbidden-badge {
+            display: inline-block;
+            background: #fde8e8;
+            color: #a12a2a;
             border-radius: 999px;
-            background: #2d1c20;
-            color: #ff9a9a;
-            padding: 6px 10px;
+            padding: 4px 12px;
             font-size: 12px;
             font-weight: 700;
             letter-spacing: .04em;
             text-transform: uppercase;
         }
-        h1 { margin: 18px 0 8px; font-size: clamp(28px, 5vw, 38px); line-height: 1.05; }
-        p { margin: 0; color: #aebbd0; line-height: 1.6; }
-        .actions { margin-top: 26px; display: flex; gap: 12px; flex-wrap: wrap; }
-        a {
-            display: inline-flex;
-            min-height: 44px;
-            align-items: center;
-            justify-content: center;
-            border-radius: 10px;
-            padding: 10px 16px;
-            text-decoration: none;
-            font-weight: 700;
-        }
-        .primary { background: #49a5ff; color: #06111f; }
-        .secondary { border: 1px solid #3d5878; color: #d9e8fa; }
     </style>
 </head>
 <body>
-    <main class="card">
-        <span class="badge">Acceso restringido</span>
-        <h1>No podés entrar a esta sección</h1>
-        <p><?= esc($message ?? 'Tu usuario no tiene permiso para acceder a este contenido.') ?></p>
-        <div class="actions">
-            <a class="primary" href="<?= esc(base_url('dashboard')) ?>">Volver al dashboard</a>
-            <a class="secondary" href="javascript:history.back()">Volver atrás</a>
+    <div class="container">
+        <div class="forbidden-card card shadow-sm">
+            <div class="card-body p-4">
+                <span class="forbidden-badge mb-3">Acceso restringido</span>
+                <h1 class="h4 mb-3">No podés entrar a esta secci&oacute;n</h1>
+                <p class="text-muted small mb-4">
+                    <?= esc($message ?? 'Tu usuario no tiene permiso para acceder a este contenido.') ?>
+                </p>
+                <p class="text-muted small mb-4">
+                    Si cre&eacute;s que deber&iacute;as poder verlo, ped&iacute;le a un administrador de tu empresa
+                    que revise los permisos de tu rol.
+                </p>
+                <div class="d-flex gap-2 flex-wrap">
+                    <a class="btn btn-primary" href="<?= esc(base_url('dashboard')) ?>">Volver al dashboard</a>
+                    <a class="btn btn-outline-secondary" href="javascript:history.back()">Volver atr&aacute;s</a>
+                </div>
+            </div>
         </div>
-    </main>
+    </div>
 </body>
 </html>

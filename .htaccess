@@ -9,9 +9,20 @@
 
 RewriteEngine On
 
-# Ferozo puede resolver `mantenimiento` como directorio antes de que
-# CodeIgniter vea la ruta virtual. Forzar este namespace al front controller
-# evita el 403 genérico de Apache, con o sin trailing slash.
+# Colision ruta virtual / directorio fisico.
+# El webroot de Ferozo tiene un directorio real llamado `mantenimiento` (vacio,
+# sobrante de un despliegue antiguo). La regla generica de mas abajo solo reescribe
+# a index.php cuando el destino NO es un archivo NI un directorio, asi que
+# /mantenimiento caia en el manejo de directorios de Apache y devolvia su 403
+# generico sin llegar nunca a CodeIgniter: el permiso del usuario era irrelevante.
+#
+# Esta regla tiene que ir ANTES de la regla generica, y no abre ningun hueco:
+#   - no solapa con el bloqueo de codigo fuente de la regla siguiente, porque
+#     `mantenimiento` no es uno de los directorios bloqueados;
+#   - no afecta a assets ni estaticos, que viven en /assets y no bajo
+#     /mantenimiento;
+#   - la proteccion de .env es un bloque <Files> aparte y sigue aplicando;
+#   - la autenticacion y los permisos los decide la app al llegar a index.php.
 RewriteRule ^mantenimiento(?:/.*)?$ index.php [L,NC]
 
 # El despliegue usa una raiz publica plana. Estos directorios contienen
