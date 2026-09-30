@@ -45,9 +45,9 @@ final class DashboardPayload
                 'equipmentCreate' => $canEditEquipment ? $equipmentUrl . '#nuevo-equipo' : '#',
                 // Destinos del dashboard: el permiso que habilita el CTA tiene que
                 // ser el mismo que exige la ruta destino, o el enlace es un 403
-                // garantizado. Antes estos tres apuntaban a base_url('mantenimiento'),
-                // que hoy responde Chatbot::index (permission:chatbot.usar) y encima
-                // colisiona con el directorio fisico /mantenimiento del webroot.
+                // garantizado. Antes estos tres apuntaban a la raiz del namespace
+                // de mantenimiento, que hoy responde Chatbot::index (chatbot.usar) y
+                // encima colisiona con el directorio fisico del webroot.
                 'maintenance' => $canPlans ? $plansUrl : '#',
                 'services' => $servicesUrl,
                 'assignPlan' => $canEditPlans ? $plansUrl : '#',
