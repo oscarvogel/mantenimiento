@@ -36,9 +36,17 @@ final class EquipmentCatalogsMasterCenterContractTest extends TestCase
         $page = (string) file_get_contents(ROOTPATH . 'frontend/src/pages/operations/EquipmentCatalogsMasterPage.vue');
         $routes = (string) file_get_contents(APPPATH . 'Config/Routes.php');
 
-        self::assertStringNotContainsString("'branches'", $payload, 'Sucursales no se expone desde el centro de Maestros.');
+        // Ojo: 'branches' existe legitimamente en otras partes de OperationsPayload
+        // (seleccion de sucursal de equipos). Lo que no debe quedar es la RUTA
+        // de sucursales dentro del bloque de rutas del centro de Maestros.
+        self::assertStringNotContainsString(
+            "'branches' => base_url(",
+            $payload,
+            'Sucursales no se expone como ruta desde el centro de Maestros.',
+        );
         self::assertStringNotContainsString('routes.branches', $page, 'La pagina de Maestros no debe enlazar a Sucursales.');
-        self::assertStringNotContainsString('Sucursales', $page, 'La pagina de Maestros no debe ofrecer el acceso Sucursales.');
+        self::assertStringNotContainsString("label: 'Sucursales'", $page, 'La pagina de Maestros no debe ofrecer el acceso Sucursales.');
+        self::assertStringNotContainsString('administracion/sucursales', $page, 'La pagina de Maestros no debe enlazar a la ruta de Sucursales.');
 
         // Sigue siendo alcanzable por su via propia, en Administracion.
         self::assertStringContainsString("group('administracion'", $routes);
