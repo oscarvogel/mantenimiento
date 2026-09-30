@@ -34,7 +34,7 @@
     "name": "vendor"
   },
   "src/main.js": {
-    "file": "assets/main-BshvSKBd.js",
+    "file": "assets/main-w82bTHmi.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
@@ -48,7 +48,7 @@
       "_chatbot-CqAYF7Za.js"
     ],
     "css": [
-      "assets/main-Bm3GJUWI.css"
+      "assets/main-BMOK3o4Y.css"
     ]
   }
 }

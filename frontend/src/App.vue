@@ -25,6 +25,19 @@ const props = defineProps({
 })
 
 const firstName = computed(() => props.dashboard.user.name.split(/\s+/)[0] || 'Usuario')
+
+const changeGlobalCompany = (event) => {
+  const value = Number(event?.target?.value || 0)
+  const url = new URL(window.location.href)
+
+  if (value > 0) {
+    url.searchParams.set('company_id', String(value))
+  } else {
+    url.searchParams.delete('company_id')
+  }
+
+  window.location.assign(url.toString())
+}
 const shell = computed(() => ({
   user: props.dashboard.user,
   company: props.dashboard.company,
@@ -155,16 +168,28 @@ const scrollCta = computed(() => {
             {{ dashboard.mode === 'global' ? 'Supervisá la actividad general del sistema.' : 'Esto es lo que necesita atención hoy.' }}
           </p>
         </div>
-        <div
+        <label
           v-if="dashboard.mode === 'global'"
-          class="hidden min-h-11 items-center gap-3 rounded-xl border border-border bg-surface-raised px-4 shadow-sm md:flex"
-          aria-label="Alcance del tablero"
+          class="flex min-h-11 items-center gap-3 rounded-xl border border-border bg-surface-raised px-4 shadow-sm"
         >
-          <BuildingOffice2Icon class="size-5 text-ink-muted" aria-hidden="true" />
-          <span class="text-xs font-medium text-ink-muted">Empresa:</span>
-          <span class="text-sm font-semibold text-ink">Todas las empresas</span>
-          <span class="text-ink-subtle" aria-hidden="true">⌄</span>
-        </div>
+          <BuildingOffice2Icon class="size-5 shrink-0 text-ink-muted" aria-hidden="true" />
+          <span class="hidden text-xs font-medium text-ink-muted sm:inline">Empresa:</span>
+          <select
+            aria-label="Filtrar dashboard por empresa"
+            :value="dashboard.global.filters.selectedCompanyId || ''"
+            class="min-w-0 max-w-[18rem] cursor-pointer bg-transparent pr-7 text-sm font-semibold text-ink outline-none"
+            @change="changeGlobalCompany"
+          >
+            <option value="">Todas las empresas</option>
+            <option
+              v-for="companyOption in dashboard.global.filters.companies"
+              :key="companyOption.id"
+              :value="companyOption.id"
+            >
+              {{ companyOption.name }}
+            </option>
+          </select>
+        </label>
         <div v-else class="flex flex-col gap-2 sm:flex-row">
           <a
             v-if="dashboard.links.equipment !== '#'"
