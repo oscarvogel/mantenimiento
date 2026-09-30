@@ -15,12 +15,12 @@ final readonly class GetGlobalDashboard
     }
 
     /** @return array<string,mixed> */
-    public function execute(ActorContext $actor): array
+    public function execute(ActorContext $actor, ?int $companyId = null): array
     {
         if (! $actor->isSuperAdmin()) {
             throw new DomainException('El tablero global requiere una cuenta de Superadministrador.');
         }
 
-        return $this->readModel->fetch();
+        return $this->readModel->fetch($companyId);
     }
 }

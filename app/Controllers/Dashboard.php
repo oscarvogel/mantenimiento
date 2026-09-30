@@ -29,7 +29,11 @@ class Dashboard extends Controller
 
         $pagePayload = $this->dashboardPayload()->fromOperations($actor, $operations);
         if ($actor->isSuperAdmin()) {
-            $pagePayload += $this->dashboardPayload()->fromGlobal($this->globalDashboard()->execute($actor));
+            $requestedCompanyId = (int) $this->request->getGet('company_id');
+            $selectedCompanyId = $requestedCompanyId > 0 ? $requestedCompanyId : null;
+            $pagePayload += $this->dashboardPayload()->fromGlobal(
+                $this->globalDashboard()->execute($actor, $selectedCompanyId),
+            );
         }
 
         $dashboardPayload = $this->appShell()->for($actor, 'dashboard') + $pagePayload + [
