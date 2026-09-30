@@ -189,6 +189,7 @@ const normalizeGlobalDashboard = (value) => {
   const chatbot = source.chatbot && typeof source.chatbot === 'object' ? source.chatbot : {}
   const communications = source.communications && typeof source.communications === 'object' ? source.communications : {}
   const links = source.links && typeof source.links === 'object' ? source.links : {}
+  const filters = source.filters && typeof source.filters === 'object' ? source.filters : {}
 
   const communication = (item) => {
     const sourceItem = item && typeof item === 'object' ? item : {}
@@ -200,6 +201,19 @@ const normalizeGlobalDashboard = (value) => {
   }
 
   return {
+    filters: {
+      selectedCompanyId: asCount(filters.selectedCompanyId) || null,
+      selectedCompanyName: asText(filters.selectedCompanyName, 'Todas las empresas'),
+      companies: Array.isArray(filters.companies)
+        ? filters.companies
+            .filter((item) => item && typeof item === 'object')
+            .map((item) => ({
+              id: asCount(item.id),
+              name: asText(item.name, 'Empresa'),
+            }))
+            .filter((item) => item.id > 0)
+        : [],
+    },
     metrics: {
       companiesActive: asCount(metrics.companiesActive),
       companiesTotal: asCount(metrics.companiesTotal),

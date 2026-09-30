@@ -1,6 +1,6 @@
 {
-  "_admin-DoRu6wQy.js": {
-    "file": "assets/admin-DoRu6wQy.js",
+  "_admin-BUNVn4QY.js": {
+    "file": "assets/admin-BUNVn4QY.js",
     "name": "admin",
     "imports": [
       "_vendor-DQOjbuQd.js"
@@ -21,11 +21,11 @@
     "file": "assets/chatbot-p1890OXW.css",
     "src": "_chatbot-p1890OXW.css"
   },
-  "_reports-Ds1xyVuq.js": {
-    "file": "assets/reports-Ds1xyVuq.js",
+  "_reports-G_HMV49w.js": {
+    "file": "assets/reports-G_HMV49w.js",
     "name": "reports",
     "imports": [
-      "_admin-DoRu6wQy.js",
+      "_admin-BUNVn4QY.js",
       "_vendor-DQOjbuQd.js"
     ]
   },
@@ -34,21 +34,21 @@
     "name": "vendor"
   },
   "src/main.js": {
-    "file": "assets/main-CpHc-uqD.js",
+    "file": "assets/main-Deq-XFcJ.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
     "imports": [
       "_vendor-DQOjbuQd.js",
       "_chatbot-CqAYF7Za.js",
-      "_admin-DoRu6wQy.js",
-      "_reports-Ds1xyVuq.js"
+      "_admin-BUNVn4QY.js",
+      "_reports-G_HMV49w.js"
     ],
     "dynamicImports": [
       "_chatbot-CqAYF7Za.js"
     ],
     "css": [
-      "assets/main-tWWo8QBu.css"
+      "assets/main-BMOK3o4Y.css"
     ]
   }
 }

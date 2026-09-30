@@ -41,7 +41,7 @@ final class WeeklyReadingComplianceContractTest extends TestCase
         self::assertStringContainsString("\$scenario === 'missing'", $controller);
         self::assertStringContainsString("date('YmdHis')", $controller);
         self::assertStringContainsString("'simulacion_' . \$stage", $queue);
-        self::assertStringContainsString('Simulador semanal de kilometraje', $page);
+        self::assertStringContainsString('Simulación semanal', $page);
         self::assertStringContainsString('value="wednesday"', $page);
         self::assertStringContainsString('value="friday"', $page);
         self::assertStringContainsString('name="escenario"', $page);

@@ -25,8 +25,8 @@ final class SuperAdminDriverPhoneAuditContractTest extends TestCase
         self::assertStringContainsString('public function execute(bool $force = false)', $notifier);
         self::assertStringContainsString("Responsable de mantenimiento", $notifier);
         self::assertStringContainsString('auditDriverPhonesAction', $controller);
-        self::assertStringContainsString('Auditar celulares ahora', $page);
-        self::assertStringContainsString('No envía WhatsApp a choferes', $page);
+        self::assertStringContainsString('Auditar celulares', $page);
+        self::assertStringContainsString('No envía mensajes a choferes', $page);
         self::assertStringContainsString('Choferes que requieren corrección', $controller);
         self::assertStringContainsString('Avisos actualizados', $controller);
         self::assertStringContainsString('número local sin código internacional', $notifier);
