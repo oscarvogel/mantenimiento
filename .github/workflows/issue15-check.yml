@@ -37,6 +37,13 @@ jobs:
       - name: Frontend tests
         working-directory: frontend
         run: npm test
-      - name: Frontend build
-        working-directory: frontend
-        run: npm run build
+      - name: Frontend build is reproducible and assets/dashboard is committed in sync
+        run: |
+          # Los bundles de assets/dashboard estan versionados porque app/Views/app.php
+          # los lee del webroot. verify:build-sync reconstruye y compara: si el build
+          # determinista cambia esos archivos, el PR publico una UI que no corresponde
+          # con el source de main. Fallar aqui es intencional; la correccion es
+          # reconstruir y commitear los bundles junto al source.
+          npm --prefix frontend run verify:build-sync
+      - name: Dashboard asset tooling self-test
+        run: python scripts/dashboard-assets.py self-test
