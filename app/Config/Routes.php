@@ -47,6 +47,12 @@ $routes->get('equipos/(:num)', static function (string $equipmentId) {
     return redirect()->to($query === '' ? $target : $target . '?' . $query);
 }, ['filter' => ['auth', 'permission:equipos.ver']]);
 
+$routes->get('empleados', static function () {
+    $query = service('request')->getUri()->getQuery();
+    $target = base_url('mantenimiento/empleados');
+    return redirect()->to($query === '' ? $target : $target . '?' . $query);
+}, ['filter' => ['auth', 'permission:empleados.ver']]);
+
 // Administración global. El filtro también rechaza cuentas autenticadas no globales.
 $routes->group('superadmin', ['filter' => 'superadmin'], static function ($routes): void {
     $routes->get('', 'SuperAdmin::index');

@@ -25,7 +25,10 @@ final class MissingDriverPhonesAdminNotificationContractTest extends TestCase
         self::assertStringContainsString("chofer.telefono_faltante", $service);
         self::assertStringContainsString("Notification::forRecipient", $service);
         self::assertStringNotContainsString("scheduleCompany(", $service);
-        self::assertStringContainsString("'/empleados'", $service);
+        // La ruta real vive dentro del grupo 'mantenimiento' de Routes.php.
+        // El aviso al centro de notificaciones debe apuntar ahi, no a '/empleados'.
+        self::assertStringContainsString("'/mantenimiento/empleados'", $service);
+        self::assertStringNotContainsString("'/empleados'", $service);
         self::assertStringContainsString('missingDriverPhones?->execute()', $cycle);
         self::assertStringContainsString('notifyAdminsMissingDriverPhones(false)', $services);
 
