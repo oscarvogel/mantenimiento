@@ -161,11 +161,17 @@ final class TenantAdministrationService
 
     private function normalizeBranch(array $data, bool $withState): array
     {
+        $locale = mb_strtoupper(trim((string) ($data['idioma_notificaciones'] ?? '')));
+        if ($locale !== '' && ! in_array($locale, ['ES', 'PT'], true)) {
+            throw new DomainException('El idioma de avisos de la sucursal no es válido.');
+        }
+
         $normalized = [
             'codigo'        => mb_strtoupper(trim((string) ($data['codigo'] ?? ''))),
             'nombre'        => trim((string) ($data['nombre'] ?? '')),
             'direccion'     => $this->nullable($data['direccion'] ?? null),
             'email_alertas' => $this->nullable($data['email_alertas'] ?? null),
+            'idioma_notificaciones' => $locale === '' ? null : $locale,
         ];
 
         if ($normalized['codigo'] === '' || $normalized['nombre'] === '') {

@@ -47,6 +47,12 @@ $routes->get('equipos/(:num)', static function (string $equipmentId) {
     return redirect()->to($query === '' ? $target : $target . '?' . $query);
 }, ['filter' => ['auth', 'permission:equipos.ver']]);
 
+$routes->get('empleados', static function () {
+    $query = service('request')->getUri()->getQuery();
+    $target = base_url('mantenimiento/empleados');
+    return redirect()->to($query === '' ? $target : $target . '?' . $query);
+}, ['filter' => ['auth', 'permission:empleados.ver']]);
+
 // Administración global. El filtro también rechaza cuentas autenticadas no globales.
 $routes->group('superadmin', ['filter' => 'superadmin'], static function ($routes): void {
     $routes->get('', 'SuperAdmin::index');
@@ -56,9 +62,13 @@ $routes->group('superadmin', ['filter' => 'superadmin'], static function ($route
     $routes->post('empresas/(:num)/informes/prueba', 'SuperAdmin::testCompanyManagementReport/$1');
     $routes->post('notificaciones/despachar', 'NotificationCron::manual');
     $routes->post('migraciones/aplicar', 'SuperAdmin::applyPendingMigrations');
+    $routes->get('diagnosticos/vencimientos-regularizaciones', 'ExpirationRegularizationDiagnostics::run');
     $routes->post('whatsapp/prueba', 'SuperAdmin::testWhatsApp');
     $routes->post('whatsapp/probar-recordatorio-km', 'SuperAdmin::testWeeklyReadingReminderWhatsApp');
+    $routes->post('whatsapp/probar-mantenimiento-preventivo', 'SuperAdmin::testPreventiveMaintenanceWhatsApp');
+    $routes->post('whatsapp/probar-por-patente', 'SuperAdmin::testWeeklyReadingReminderByPlate');
     $routes->post('whatsapp/preparar-piloto', 'SuperAdmin::prepareWhatsAppPilotScenario');
+    $routes->post('whatsapp/auditar-celulares', 'SuperAdmin::auditDriverPhones');
     $routes->get('configuracion/notificaciones', 'NotificationSettings::index');
     $routes->post('configuracion/notificaciones', 'NotificationSettings::update');
     $routes->post('configuracion/notificaciones/probar-email', 'NotificationSettings::testEmail');
@@ -110,6 +120,12 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->post('lecturas/rapidas', 'QuickReadings::store', ['filter' => 'permission:lecturas.cargar']);
     $routes->post('lecturas/rapidas/fila', 'QuickReadings::storeRow', ['filter' => 'permission:lecturas.cargar']);
     $routes->post('lecturas/rapidas/avisos/(:num)/orden', 'QuickReadings::generateOrder/$1', ['filter' => 'permission:ordenes.editar']);
+
+    $routes->get('lecturas/control', 'ReadingControl::index', ['filter' => ['auth', 'permission:equipos.ver']]);
+    // Reclamo manual de lectura por WhatsApp. POST solamente. El destinatario
+    // lo resuelve el servidor a partir del equipo; el cliente solo manda
+    // equipmentId. CSRF se aplica globalmente en Config\Filters.
+    $routes->post('lecturas/control/reclamar', 'ReadingControl::claim', ['filter' => ['auth', 'permission:lecturas.cargar']]);
     $routes->get('equipos/(:num)/operar', 'EquipmentOperations::show/$1', ['filter' => 'permission:equipos.ver']);
     $routes->post('equipos/(:num)/incidencias', 'EquipmentOperations::reportIncident/$1', ['filter' => 'permission:solicitudes.crear']);
     $routes->get('equipos/(:num)', 'EquipmentManagement::show/$1', ['filter' => 'permission:equipos.ver']);
@@ -194,6 +210,8 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->post('ordenes/(:num)/cerrar', 'MaintenanceCircuit::closeOrder/$1', ['filter' => 'permission:ordenes.cerrar']);
     $routes->post('ordenes/(:num)/cerrar-correctiva', 'CorrectiveWorkOrders::close/$1', ['filter' => 'permission:ordenes.cerrar']);
 });
+
+$routes->match(['get', 'post'], 'superadmin/diagnosticos/vencimientos-whatsapp', 'ExpirationWhatsAppDiagnostics::run', ['filter' => 'auth']);
 
 $routes->group('mantenimiento/chatbot', ['filter' => ['auth', 'permission:chatbot.usar']], function ($routes) {
     $routes->get('/',               'Chatbot::index');

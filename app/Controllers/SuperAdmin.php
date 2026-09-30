@@ -48,6 +48,43 @@ final class SuperAdmin extends BaseController
         $payload['migrations'] = $this->migrationDiagnostics();
         $whatsAppSettings = service('globalNotificationSettingsStore')->get();
         $whatsAppGateway = service('whatsAppGateway');
+        $expirationTestEquipment = db_connect()->table('equipos e')
+            ->select('e.id, e.empresa_id, e.codigo, e.patente')
+            ->join('empresas emp', 'emp.id = e.empresa_id', 'inner')
+            ->where('e.estado', 'ACTIVO')
+            ->where('e.deleted_at', null)
+            ->where('emp.estado', 1)
+            ->where('emp.deleted_at', null)
+            ->orderBy('e.codigo', 'ASC')
+            ->get()->getResultArray();
+
+        $payload['expirationTestCompanies'] = array_map(static fn (array $company): array => [
+            'id' => (int) $company['id'],
+            'displayName' => (string) ($company['displayName'] ?? $company['nombre_fantasia'] ?? $company['razon_social'] ?? ('Empresa #' . $company['id'])),
+        ], $data['companies']);
+        $payload['expirationTestEquipment'] = array_map(static fn (array $equipment): array => [
+            'id' => (int) $equipment['id'],
+            'companyId' => (int) $equipment['empresa_id'],
+            'label' => trim((string) ($equipment['codigo'] ?? '')) . (trim((string) ($equipment['patente'] ?? '')) !== '' ? ' · ' . trim((string) $equipment['patente']) : ''),
+        ], $expirationTestEquipment);
+
+        $preventiveTestPlans = db_connect()->table('planes_mantenimiento p')
+            ->select('p.id, p.empresa_id, p.equipo_id, e.codigo, e.patente, ts.nombre servicio_nombre')
+            ->join('equipos e', 'e.id = p.equipo_id AND e.empresa_id = p.empresa_id', 'inner')
+            ->join('tipos_servicio ts', 'ts.id = p.tipo_servicio_id', 'inner')
+            ->where('p.activo', 1)->where('p.deleted_at', null)
+            ->where('e.estado', 'ACTIVO')->where('e.deleted_at', null)
+            ->orderBy('e.codigo', 'ASC')->orderBy('ts.nombre', 'ASC')
+            ->get()->getResultArray();
+        $payload['preventiveTestPlans'] = array_map(static fn (array $plan): array => [
+            'id' => (int) $plan['id'],
+            'companyId' => (int) $plan['empresa_id'],
+            'equipmentId' => (int) $plan['equipo_id'],
+            'label' => trim((string) ($plan['codigo'] ?? ''))
+                . (trim((string) ($plan['patente'] ?? '')) !== '' ? ' · ' . trim((string) $plan['patente']) : '')
+                . ' — ' . trim((string) ($plan['servicio_nombre'] ?? 'Servicio preventivo')),
+        ], $preventiveTestPlans);
+
         $payload['whatsapp'] = [
             'enabled' => (bool) ($whatsAppSettings['whatsapp_enabled'] ?? false),
             'available' => $whatsAppGateway->available(),
@@ -60,7 +97,11 @@ final class SuperAdmin extends BaseController
             'weeklyReminderTime' => trim((string) env('alerts.weeklyReadingReminderTime', '08:00')),
             'testAction' => base_url('superadmin/whatsapp/prueba'),
             'testWeeklyReminderAction' => base_url('superadmin/whatsapp/probar-recordatorio-km'),
+            'testPreventiveAction' => base_url('superadmin/whatsapp/probar-mantenimiento-preventivo'),
+            'testByPlateAction' => base_url('superadmin/whatsapp/probar-por-patente'),
             'preparePilotAction' => base_url('superadmin/whatsapp/preparar-piloto'),
+            'testExpirationDigestAction' => base_url('superadmin/diagnosticos/vencimientos-whatsapp'),
+            'auditDriverPhonesAction' => base_url('superadmin/whatsapp/auditar-celulares'),
         ];
         $payload['aiCompanyControls'] = array_map(static fn (array $company): array => [
             'id' => (int) $company['id'],
@@ -76,6 +117,7 @@ final class SuperAdmin extends BaseController
                 'notificaciones_email_habilitadas' => (string) ((int) ($company['notificaciones_email_habilitadas'] ?? 1)),
                 'notificaciones_whatsapp_habilitadas' => (string) ((int) ($company['notificaciones_whatsapp_habilitadas'] ?? 0)),
                 'whatsapp_instance_id' => (string) ($company['whatsapp_instance_id'] ?? ''),
+                'idioma_notificaciones' => (string) ($company['idioma_notificaciones'] ?? 'ES'),
                 'telefono' => (string) ($company['telefono'] ?? ''),
                 'estado' => (string) ((int) $company['estado']),
             ],
@@ -135,6 +177,7 @@ final class SuperAdmin extends BaseController
             'notificaciones_email_habilitadas' => 'required|in_list[0,1]',
             'notificaciones_whatsapp_habilitadas' => 'required|in_list[0,1]',
             'whatsapp_instance_id' => 'permit_empty|max_length[100]',
+            'idioma_notificaciones' => 'required|in_list[ES,PT]',
             'telefono' => 'permit_empty|max_length[50]',
         ])) {
             return $this->validationFailure();
@@ -152,6 +195,7 @@ final class SuperAdmin extends BaseController
                 'notificaciones_email_habilitadas' => (int) $this->request->getPost('notificaciones_email_habilitadas'),
                 'notificaciones_whatsapp_habilitadas' => (int) $this->request->getPost('notificaciones_whatsapp_habilitadas'),
                 'whatsapp_instance_id' => $this->nullablePost('whatsapp_instance_id'),
+                'idioma_notificaciones' => strtoupper((string) $this->request->getPost('idioma_notificaciones')),
                 'ia_habilitada' => 0,
                 'telefono' => $this->nullablePost('telefono'),
             ]);
@@ -172,6 +216,7 @@ final class SuperAdmin extends BaseController
             'notificaciones_email_habilitadas' => 'required|in_list[0,1]',
             'notificaciones_whatsapp_habilitadas' => 'required|in_list[0,1]',
             'whatsapp_instance_id' => 'permit_empty|max_length[100]',
+            'idioma_notificaciones' => 'required|in_list[ES,PT]',
             'ia_habilitada' => 'permit_empty|in_list[0,1]',
             'telefono' => 'permit_empty|max_length[50]',
             'estado' => 'required|in_list[0,1]',
@@ -204,6 +249,7 @@ final class SuperAdmin extends BaseController
                 'notificaciones_email_habilitadas' => (int) $this->request->getPost('notificaciones_email_habilitadas'),
                 'notificaciones_whatsapp_habilitadas' => (int) $this->request->getPost('notificaciones_whatsapp_habilitadas'),
                 'whatsapp_instance_id' => $this->nullablePost('whatsapp_instance_id'),
+                'idioma_notificaciones' => strtoupper((string) $this->request->getPost('idioma_notificaciones')),
                 'ia_habilitada' => (int) $postedAi,
                 'telefono' => $this->nullablePost('telefono'),
                 'estado' => (int) $this->request->getPost('estado'),
@@ -285,6 +331,196 @@ final class SuperAdmin extends BaseController
         }
     }
 
+    public function auditDriverPhones(): RedirectResponse
+    {
+        try {
+            $result = service('notifyAdminsMissingDriverPhones')->execute(true);
+
+            return redirect()->to('/superadmin')->with(
+                'success',
+                'Auditoría de celulares completada. Empresas con observaciones: '
+                . (int) ($result['companies'] ?? 0)
+                . '. Choferes que requieren corrección: ' . (int) ($result['drivers'] ?? 0)
+                . '. Avisos nuevos al Responsable de mantenimiento: ' . (int) ($result['notifications'] ?? 0)
+                . '. Avisos actualizados: ' . (int) ($result['updated'] ?? 0)
+                . '. Duplicados no actualizables: ' . (int) ($result['duplicates'] ?? 0)
+                . '. No se enviaron WhatsApp a choferes.',
+            );
+        } catch (Throwable $exception) {
+            return $this->operationFailure($exception);
+        }
+    }
+
+    public function testWeeklyReadingReminderByPlate(): RedirectResponse
+    {
+        try {
+            $settings = service('globalNotificationSettingsStore')->get();
+            $gateway = service('whatsAppGateway');
+
+            if ($gateway->normalizePhone((string) ($settings['whatsapp_pilot_phone'] ?? '')) === null) {
+                throw new DomainException('Configurá un teléfono piloto internacional válido antes de probar una patente.');
+            }
+
+            $search = strtoupper(trim((string) $this->request->getPost('patente_equipo')));
+            if ($search === '') {
+                throw new DomainException('Ingresá una patente o código de equipo.');
+            }
+
+            $stage = strtolower(trim((string) ($this->request->getPost('etapa') ?: 'initial')));
+            if (! in_array($stage, ['initial', 'wednesday', 'friday'], true)) {
+                throw new DomainException('La etapa de prueba no es válida.');
+            }
+
+            $db = db_connect();
+            $matches = $db->table('equipos')
+                ->select('id, empresa_id, codigo, patente')
+                ->where('estado', 'ACTIVO')
+                ->where('deleted_at', null)
+                ->groupStart()
+                    ->where('codigo', $search)
+                    ->orWhere('patente', $search)
+                ->groupEnd()
+                ->get()
+                ->getResultArray();
+
+            if ($matches === []) {
+                throw new DomainException('No se encontró un equipo activo con patente/código ' . $search . '.');
+            }
+            if (count($matches) > 1) {
+                throw new DomainException('La patente/código ' . $search . ' coincide con más de un equipo. Corregí el dato antes de probar.');
+            }
+
+            $equipment = $matches[0];
+            $equipmentId = (int) $equipment['id'];
+            $companyId = (int) $equipment['empresa_id'];
+
+            $driver = $db->table('employee_equipment_assignments a')
+                ->select('emp.nombre, emp.apellido, emp.telefono')
+                ->join('empleados emp', 'emp.id = a.empleado_id AND emp.empresa_id = a.empresa_id', 'inner')
+                ->where('a.empresa_id', $companyId)
+                ->where('a.equipo_id', $equipmentId)
+                ->where('a.rol', 'CHOFER')
+                ->where('a.fecha_hasta', null)
+                ->where('emp.activo', 1)
+                ->where('emp.deleted_at', null)
+                ->orderBy('a.id', 'DESC')
+                ->get()
+                ->getRowArray();
+
+            if ($driver === null) {
+                throw new DomainException('El equipo ' . $search . ' no tiene un chofer activo asignado.');
+            }
+
+            $queue = service('whatsAppNotificationDeliveryQueue');
+            $testKey = 'patente-' . $equipmentId . '-' . date('YmdHis') . '-actor-' . $this->actor()->userId();
+            $scheduled = $queue->scheduleWeeklyReadingReminders(
+                true,
+                $testKey,
+                1,
+                $stage,
+                true,
+                $equipmentId,
+                true,
+            );
+            if ($scheduled !== 1) {
+                throw new DomainException('No se pudo preparar la prueba dirigida para ' . $search . '. Revisá control de km, teléfono y configuración WhatsApp.');
+            }
+
+            $sent = 0;
+            foreach ($queue->due(1000) as $delivery) {
+                if (! str_contains((string) ($delivery['external_ref'] ?? ''), ':prueba:' . $testKey)) {
+                    continue;
+                }
+                if ((int) ($delivery['equipo_id'] ?? 0) !== $equipmentId) {
+                    throw new DomainException('Se bloqueó la prueba: la entrega preparada no corresponde al equipo solicitado.');
+                }
+
+                $result = $gateway->sendText(
+                    (string) ($delivery['telefono'] ?? ''),
+                    (string) ($delivery['mensaje'] ?? ''),
+                    (string) ($delivery['external_ref'] ?? ''),
+                    (string) $this->actor()->userId(),
+                    'Superadmin Mantenimiento',
+                    empty($delivery['instance_id']) ? null : (string) $delivery['instance_id'],
+                );
+                $queue->accepted((int) $delivery['id'], $result['messageId'], $result['status']);
+                $sent++;
+            }
+
+            if ($sent !== 1) {
+                throw new DomainException('La prueba dirigida se preparó pero no se encontró exactamente una entrega para despachar.');
+            }
+
+            $driverName = trim((string) ($driver['nombre'] ?? '') . ' ' . (string) ($driver['apellido'] ?? ''));
+            $label = trim((string) ($equipment['patente'] ?? '')) !== ''
+                ? (string) $equipment['patente']
+                : (string) $equipment['codigo'];
+
+            return redirect()->to('/superadmin')->with(
+                'success',
+                'Prueba dirigida enviada sólo al teléfono piloto configurado, sin importar el estado del piloto global. Equipo #' . $equipmentId
+                . ' · ' . $label
+                . ' · chofer ' . ($driverName === '' ? '(sin nombre)' : $driverName)
+                . ' · etapa ' . $stage
+                . '. El token público fue validado contra este mismo equipo antes del envío.',
+            );
+        } catch (Throwable $exception) {
+            return $this->operationFailure($exception);
+        }
+    }
+
+    public function testPreventiveMaintenanceWhatsApp(): RedirectResponse
+    {
+        try {
+            $settings = service('globalNotificationSettingsStore')->get();
+            $gateway = service('whatsAppGateway');
+            if ($gateway->normalizePhone((string) ($settings['whatsapp_pilot_phone'] ?? '')) === null) {
+                throw new DomainException('Configurá un teléfono piloto válido antes de enviar esta prueba.');
+            }
+            if (! $gateway->available()) {
+                throw new DomainException('WhatsApp no está disponible. Revisá URL, API key, instanceId y que el canal esté habilitado.');
+            }
+
+            $planId = max(0, (int) $this->request->getPost('plan_id'));
+            if ($planId <= 0) {
+                throw new DomainException('Indicá el plan_id preventivo que querés probar.');
+            }
+
+            $queue = service('whatsAppNotificationDeliveryQueue');
+            $testKey = date('YmdHis') . '-preventivo-actor-' . $this->actor()->userId();
+            if ($queue->schedulePreventivePilotTest($planId, $testKey) < 1) {
+                throw new DomainException('No se pudo preparar la prueba. Revisá que el plan esté activo, tenga equipo y chofer asignado.');
+            }
+
+            $sent = 0;
+            foreach ($queue->due(1000) as $delivery) {
+                if (! str_contains((string) ($delivery['external_ref'] ?? ''), ':prueba:' . $testKey)) {
+                    continue;
+                }
+                $result = $gateway->sendText(
+                    (string) ($delivery['telefono'] ?? ''),
+                    (string) ($delivery['mensaje'] ?? ''),
+                    (string) ($delivery['external_ref'] ?? ''),
+                    (string) $this->actor()->userId(),
+                    'Superadmin Mantenimiento',
+                    empty($delivery['instance_id']) ? null : (string) $delivery['instance_id'],
+                );
+                $queue->accepted((int) $delivery['id'], $result['messageId'], $result['status']);
+                $sent++;
+            }
+            if ($sent < 1) {
+                throw new DomainException('La prueba preventiva se preparó pero no se encontró la entrega para despachar.');
+            }
+
+            return redirect()->to('/superadmin')->with(
+                'success',
+                'Prueba de mantenimiento preventivo enviada únicamente al teléfono piloto. Plan #' . $planId . '. No se contactó al chofer real.',
+            );
+        } catch (Throwable $exception) {
+            return $this->operationFailure($exception);
+        }
+    }
+
     public function testWeeklyReadingReminderWhatsApp(): RedirectResponse
     {
         try {
@@ -301,11 +537,34 @@ final class SuperAdmin extends BaseController
                 throw new DomainException('WhatsApp no está disponible. Revisá URL, API key, instanceId y que el canal esté habilitado.');
             }
 
+            $stage = strtolower(trim((string) ($this->request->getPost('etapa') ?: 'initial')));
+            if (! in_array($stage, ['initial', 'wednesday', 'friday'], true)) {
+                throw new DomainException('La etapa de prueba no es válida.');
+            }
+            $scenario = strtolower(trim((string) ($this->request->getPost('escenario') ?: 'missing')));
+            if (! in_array($scenario, ['missing', 'actual'], true)) {
+                throw new DomainException('El escenario de lectura no es válido.');
+            }
+
             $queue = service('whatsAppNotificationDeliveryQueue');
-            $testKey = date('YmdHis') . '-actor-' . $this->actor()->userId();
-            $scheduled = $queue->scheduleWeeklyReadingReminders(true, $testKey);
+            $testKey = date('YmdHis') . '-' . $stage . '-actor-' . $this->actor()->userId();
+            $batchLimit = max(1, (int) env('alerts.whatsappBatchLimit', 5));
+            $intervalMs = max(0, min(10000, (int) env('alerts.whatsappSendIntervalMs', 2000)));
+            $scheduled = $queue->scheduleWeeklyReadingReminders(
+                true,
+                $testKey,
+                $batchLimit,
+                $stage,
+                $scenario === 'missing',
+            );
             if ($scheduled < 1) {
-                throw new DomainException('No se encontró ningún chofer elegible con equipo activo, control por km, WhatsApp habilitado y QR público activo.');
+                if ($scenario === 'actual' && $stage !== 'initial') {
+                    return redirect()->to('/superadmin')->with(
+                        'success',
+                        'Simulación correcta: no se envió ' . $stage . ' porque los equipos elegibles ya tienen lectura de km esta semana.',
+                    );
+                }
+                throw new DomainException('No hay choferes/equipos elegibles para esta simulación. Revisá el escenario piloto y la configuración de equipos con control de km.');
             }
 
             $sent = 0;
@@ -328,6 +587,9 @@ final class SuperAdmin extends BaseController
                     $result['status'],
                 );
                 $sent++;
+                if ($sent < $scheduled && $intervalMs > 0) {
+                    usleep($intervalMs * 1000);
+                }
             }
 
             if ($sent < 1) {
@@ -336,7 +598,7 @@ final class SuperAdmin extends BaseController
 
             return redirect()->to('/superadmin')->with(
                 'success',
-                'Prueba semanal enviada al teléfono piloto. Entregas: ' . $sent . '. No se contactó a ningún chofer real.',
+                'Prueba semanal (' . $stage . ') enviada al teléfono piloto. Entregas: ' . $sent . '. No se contactó a ningún chofer real.',
             );
         } catch (Throwable $exception) {
             return $this->operationFailure($exception);

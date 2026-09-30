@@ -175,6 +175,7 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
         $metrics = [];
         $readingAlerts = [];
         $moreReadingAlerts = 0;
+        $missingWeeklyKm = [];
 
         foreach ($lines as $line) {
             $line = trim($line);
@@ -199,6 +200,17 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
             if (str_starts_with($line, '!LECTURA_MAS|')) {
                 $parts = explode('|', $line, 2);
                 $moreReadingAlerts = max(0, (int) ($parts[1] ?? 0));
+                continue;
+            }
+            if (str_starts_with($line, '!KM_SEMANAL|')) {
+                $parts = explode('|', $line, 4);
+                if (count($parts) === 4) {
+                    $missingWeeklyKm[] = [
+                        'driver' => trim($parts[1]),
+                        'equipment' => trim($parts[2]),
+                        'lastReading' => trim($parts[3]),
+                    ];
+                }
                 continue;
             }
             if (! str_contains($line, ':')) {
@@ -265,6 +277,30 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
                 . '</table>';
         }
 
+        $missingKmSection = '';
+        if ($missingWeeklyKm !== []) {
+            $rows = '';
+            foreach ($missingWeeklyKm as $item) {
+                $driver = htmlspecialchars($item['driver'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+                $equipment = htmlspecialchars($item['equipment'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+                $lastReading = htmlspecialchars($item['lastReading'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+
+                $rows .= '<tr><td style="padding:12px 14px;border-top:1px solid #e5e7eb;">'
+                    . '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:20px;color:#0f172a;font-weight:800;">' . $driver . '</div>'
+                    . '<div style="margin-top:2px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#475569;">Equipo: <strong>' . $equipment . '</strong></div>'
+                    . '<div style="margin-top:2px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#64748b;">Última lectura: ' . $lastReading . '</div>'
+                    . '</td></tr>';
+            }
+
+            $missingKmSection = '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-top:20px;border:1px solid #fecaca;border-radius:12px;background:#ffffff;overflow:hidden;">'
+                . '<tr><td style="padding:14px;background:#fef2f2;">'
+                . '<div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:22px;color:#991b1b;font-weight:800;">Choferes sin carga de km esta semana</div>'
+                . '<div style="margin-top:3px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#7f1d1d;">No registraron kilometraje desde el lunes.</div>'
+                . '</td></tr>'
+                . $rows
+                . '</table>';
+        }
+
         $button = $safeLink === null
             ? ''
             : '<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:24px 0 0 0;"><tr><td style="border-radius:9px;background:#0f172a;">'
@@ -295,6 +331,7 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
             . $cards
             . '</tr></table>'
             . $readingSection
+            . $missingKmSection
             . $button
             . '</td></tr>'
             . '<tr><td style="padding:22px 30px;border-top:1px solid #e5e7eb;background:#f8fafc;">'

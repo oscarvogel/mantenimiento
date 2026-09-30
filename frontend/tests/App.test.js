@@ -67,6 +67,29 @@ describe('Dashboard', () => {
     expect(wrapper.text()).not.toContain('Completar configuración')
   })
 
+  it('permite seleccionar una empresa en el dashboard global', () => {
+    const wrapper = mountDashboard({
+      ...dashboardPayload,
+      mode: 'global',
+      user: { ...dashboardPayload.user, name: 'Super Admin', isSuperAdmin: true },
+      global: {
+        filters: {
+          selectedCompanyId: 2,
+          selectedCompanyName: 'Forestal Garuhapé',
+          companies: [
+            { id: 1, name: 'Empresa Uno' },
+            { id: 2, name: 'Forestal Garuhapé' },
+          ],
+        },
+      },
+    })
+
+    const select = wrapper.get('select[aria-label="Filtrar dashboard por empresa"]')
+    expect(select.element.value).toBe('2')
+    expect(select.text()).toContain('Todas las empresas')
+    expect(select.text()).toContain('Forestal Garuhapé')
+  })
+
   it('mantiene el cierre de sesión como POST con CSRF', () => {
     const wrapper = mountDashboard()
     const form = wrapper.get('form[action="/logout"]')

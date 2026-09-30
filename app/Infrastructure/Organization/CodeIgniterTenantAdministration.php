@@ -32,7 +32,7 @@ final class CodeIgniterTenantAdministration implements TenantAdministrationPort
             'branchesPage' => $page,
             'branchesPerPage' => $perPage,
             'branches' => $this->database->table('sucursales')
-                ->select('id, empresa_id, codigo, nombre, direccion, email_alertas, estado')
+                ->select('id, empresa_id, codigo, nombre, direccion, email_alertas, idioma_notificaciones, estado')
                 ->where('empresa_id', $companyId)
                 ->where('deleted_at', null)
                 ->orderBy('estado', 'DESC')

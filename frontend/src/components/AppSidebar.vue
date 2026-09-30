@@ -39,7 +39,7 @@ const emit = defineEmits(['close'])
 
 const navigationGroups = computed(() => {
   const definitions = [
-    { key: 'operation', label: 'Operación', items: ['dashboard', 'equipment', 'quick-readings', 'plans', 'maintenance', 'work-requests'] },
+    { key: 'operation', label: 'Operación', items: ['dashboard', 'equipment', 'quick-readings', 'reading-control', 'plans', 'maintenance', 'work-requests'] },
     { key: 'management', label: 'Gestión', items: ['employees', 'expirations', 'providers', 'notifications', 'imports', 'preventive-library', 'reports'] },
     { key: 'masters', label: 'Maestros', items: ['masters-equipment'] },
     { key: 'administration', label: 'Administración', items: ['superadmin', 'chatbot-audit', 'branches', 'users'] },
@@ -69,6 +69,7 @@ const icons = {
   users: UsersIcon,
   chart: ChartBarSquareIcon,
   readings: ArrowPathRoundedSquareIcon,
+  'clipboard-list': ClipboardDocumentListIcon,
   workshop: BuildingOffice2Icon,
   workshops: BuildingOffice2Icon,
   providers: BuildingOffice2Icon,

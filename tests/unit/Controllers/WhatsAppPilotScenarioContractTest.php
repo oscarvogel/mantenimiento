@@ -23,6 +23,6 @@ final class WhatsAppPilotScenarioContractTest extends TestCase
         self::assertStringContainsString("'PRUEBA WHATSAPP PILOTO'", $controller);
         self::assertStringContainsString("'PRUEBA_WHATSAPP'", $controller);
         self::assertStringContainsString('whatsapp/preparar-piloto', $routes);
-        self::assertStringContainsString('Preparar prueba piloto', $page);
+        self::assertStringContainsString('Preparar escenario del cron', $page);
     }
 }

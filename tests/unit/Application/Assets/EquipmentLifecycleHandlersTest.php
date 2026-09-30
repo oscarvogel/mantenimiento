@@ -427,6 +427,7 @@ final readonly class LifecycleEquipmentTypeCatalogFake implements EquipmentTypeC
     {
         return $this->type?->id() === $typeId ? $this->type : null;
     }
+    public function updateTracking(int $typeId, bool $tracksKilometers, bool $tracksHours): void {}
 }
 
 final readonly class FixedAssetClock implements AssetClock

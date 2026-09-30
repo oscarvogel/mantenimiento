@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { ArrowRightIcon, ChevronRightIcon } from '@heroicons/vue/20/solid'
 import {
   ArrowPathIcon,
+  BuildingOffice2Icon,
   CheckCircleIcon,
   ClipboardDocumentCheckIcon,
   ClipboardDocumentListIcon,
@@ -13,6 +14,7 @@ import {
 } from '@heroicons/vue/24/outline'
 import ApplicationShell from './components/ApplicationShell.vue'
 import DashboardLoading from './components/DashboardLoading.vue'
+import GlobalDashboard from './components/GlobalDashboard.vue'
 import MaintenanceStatus from './components/MaintenanceStatus.vue'
 import MetricCard from './components/MetricCard.vue'
 import UpcomingMaintenance from './components/UpcomingMaintenance.vue'
@@ -23,6 +25,19 @@ const props = defineProps({
 })
 
 const firstName = computed(() => props.dashboard.user.name.split(/\s+/)[0] || 'Usuario')
+
+const changeGlobalCompany = (event) => {
+  const value = Number(event?.target?.value || 0)
+  const url = new URL(window.location.href)
+
+  if (value > 0) {
+    url.searchParams.set('company_id', String(value))
+  } else {
+    url.searchParams.delete('company_id')
+  }
+
+  window.location.assign(url.toString())
+}
 const shell = computed(() => ({
   user: props.dashboard.user,
   company: props.dashboard.company,
@@ -153,7 +168,29 @@ const scrollCta = computed(() => {
             {{ dashboard.mode === 'global' ? 'Supervisá la actividad general del sistema.' : 'Esto es lo que necesita atención hoy.' }}
           </p>
         </div>
-        <div v-if="dashboard.mode !== 'global'" class="flex flex-col gap-2 sm:flex-row">
+        <label
+          v-if="dashboard.mode === 'global'"
+          class="flex min-h-11 items-center gap-3 rounded-xl border border-border bg-surface-raised px-4 shadow-sm"
+        >
+          <BuildingOffice2Icon class="size-5 shrink-0 text-ink-muted" aria-hidden="true" />
+          <span class="hidden text-xs font-medium text-ink-muted sm:inline">Empresa:</span>
+          <select
+            aria-label="Filtrar dashboard por empresa"
+            :value="dashboard.global.filters.selectedCompanyId || ''"
+            class="min-w-0 max-w-[18rem] cursor-pointer bg-transparent pr-7 text-sm font-semibold text-ink outline-none"
+            @change="changeGlobalCompany"
+          >
+            <option value="">Todas las empresas</option>
+            <option
+              v-for="companyOption in dashboard.global.filters.companies"
+              :key="companyOption.id"
+              :value="companyOption.id"
+            >
+              {{ companyOption.name }}
+            </option>
+          </select>
+        </label>
+        <div v-else class="flex flex-col gap-2 sm:flex-row">
           <a
             v-if="dashboard.links.equipment !== '#'"
             :href="dashboard.links.equipment"
@@ -181,7 +218,9 @@ const scrollCta = computed(() => {
         </div>
       </header>
 
-      <template v-if="dashboard.mode !== 'global'">
+      <GlobalDashboard v-if="dashboard.mode === 'global'" :data="dashboard.global" />
+
+      <template v-else>
         <!-- Bloque B: KPIs -->
         <section v-reveal="{ delay: 40 }" aria-label="Indicadores principales" class="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <MetricCard label="Equipos" :value="dashboard.metrics.equipmentTotal" tone="primary" :href="dashboard.links.equipment" link-label="Ver flota" />
