@@ -325,8 +325,14 @@ final class ClaimReadingReminderTest extends TestCase
             ['id' => 95, 'empresa_id' => 99, 'empleado_id' => 95, 'equipo_id' => 90, 'rol' => 'CHOFER', 'fecha_desde' => '2026-01-01', 'fecha_hasta' => null],
         ]);
         $this->db->table('lecturas_equipo')->insertBatch([
-            ['id' => 100, 'empresa_id' => 5, 'sucursal_id' => 7, 'equipo_id' => 10, 'fecha_lectura' => '2026-09-20 08:00:00', 'kilometraje' => 180000, 'horometro' => null, 'origen' => 'MANUAL', 'usuario_id' => 55, 'anulada' => 0],
-            ['id' => 101, 'empresa_id' => 5, 'sucursal_id' => 7, 'equipo_id' => 10, 'fecha_lectura' => '2026-09-25 08:00:00', 'kilometraje' => 185000, 'horometro' => null, 'origen' => 'MANUAL', 'usuario_id' => 55, 'anulada' => 0],
+            ['id' => 100, 'empresa_id' => 5, 'sucursal_id' => 7, 'equipo_id' => 10, 'fecha_lectura' => '2026-09-14 08:00:00', 'kilometraje' => 180000, 'horometro' => null, 'origen' => 'MANUAL', 'usuario_id' => 55, 'anulada' => 0],
+            // La lectura vigente debe quedar COMODAMENTE fuera del corte GT_3, no
+            // pegada al borde. El reloj del test es UTC, pero estas fechas se
+            // interpretan con appTimezone (America/Argentina/Buenos_Aires, UTC-3),
+            // asi que un dato a las 08:00 de un viernes queda a las 11:00 UTC:
+            // contra NOW = 2026-09-28 10:00 UTC el corte es 2026-09-25 10:00 UTC
+            // y 2026-09-25 caia UNA HORA del lado rechazado.
+            ['id' => 101, 'empresa_id' => 5, 'sucursal_id' => 7, 'equipo_id' => 10, 'fecha_lectura' => '2026-09-21 08:00:00', 'kilometraje' => 185000, 'horometro' => null, 'origen' => 'MANUAL', 'usuario_id' => 55, 'anulada' => 0],
         ]);
     }
 
@@ -368,6 +374,43 @@ final class ClaimReadingReminderTest extends TestCase
         self::assertSame('5493514449999', $this->gateway->sent[0]['phone'], 'El destinatario sale del chofer vigente.');
         self::assertCount(1, $this->queue->accepted);
         self::assertSame('wamid.test.1', $this->queue->accepted[0]['messageId']);
+    }
+
+    public function testClaimIsRejectedWhenLastReadingIsFromToday(): void
+    {
+        $this->db->table('lecturas_equipo')->insert([
+            'id' => 102, 'empresa_id' => 5, 'sucursal_id' => 7, 'equipo_id' => 10,
+            'fecha_lectura' => '2026-09-28 09:00:00', 'kilometraje' => 186000,
+            'horometro' => null, 'origen' => 'MANUAL', 'usuario_id' => 55, 'anulada' => 0,
+        ]);
+
+        try {
+            $this->useCase()->execute($this->actor(), 10);
+            self::fail('Debía rechazar el reclamo para una lectura de hoy.');
+        } catch (DomainException $exception) {
+            self::assertStringContainsString('cargada hoy', $exception->getMessage());
+        }
+
+        self::assertSame([], $this->gateway->sent, 'No debe enviarse ningún WhatsApp.');
+        self::assertCount(0, $this->deliveries(), 'No debe registrarse ninguna entrega.');
+    }
+
+    public function testClaimIsRejectedWhenEquipmentIsUpToDate(): void
+    {
+        $this->db->table('lecturas_equipo')->insert([
+            'id' => 103, 'empresa_id' => 5, 'sucursal_id' => 7, 'equipo_id' => 10,
+            'fecha_lectura' => '2026-09-27 08:00:00', 'kilometraje' => 185500,
+            'horometro' => null, 'origen' => 'MANUAL', 'usuario_id' => 55, 'anulada' => 0,
+        ]);
+
+        try {
+            $this->useCase()->execute($this->actor(), 10);
+            self::fail('Debía rechazar el reclamo para un equipo al día.');
+        } catch (DomainException $exception) {
+            self::assertStringContainsString('al día', $exception->getMessage());
+        }
+
+        self::assertSame([], $this->gateway->sent, 'No debe enviarse ningún WhatsApp.');
     }
 
     public function testClaimIsRejectedForEquipmentFromAnotherCompany(): void
@@ -493,7 +536,7 @@ final class ClaimReadingReminderTest extends TestCase
         $message = $this->gateway->sent[0]['message'];
 
         self::assertStringContainsString('185.000', $message, 'Debe mostrar el km de la última lectura.');
-        self::assertStringContainsString('25/09/2026', $message);
+        self::assertStringContainsString('21/09/2026', $message);
         self::assertStringNotContainsString('180.000', $message);
     }
 

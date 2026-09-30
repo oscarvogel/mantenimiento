@@ -337,7 +337,7 @@ const readingLabel = (item) => {
                     Reclamar por WhatsApp
                   </button>
                   <span v-else-if="claimAvailable" class="text-xs text-ink-muted">
-                    {{ item.hasDriver ? (item.hasValidPhone ? '—' : 'Sin teléfono') : 'Sin chofer' }}
+                    {{ item.hasDriver ? (item.hasValidPhone ? 'Al día' : 'Sin teléfono') : 'Sin chofer' }}
                   </span>
                   <span v-else class="text-xs text-ink-muted">No disponible</span>
                 </td>
@@ -382,7 +382,7 @@ const readingLabel = (item) => {
               Reclamar por WhatsApp
             </button>
             <p v-else-if="claimAvailable" class="text-center text-xs text-ink-muted">
-              {{ item.hasDriver ? (item.hasValidPhone ? 'Acción no disponible' : 'Sin teléfono cargable') : 'Sin chofer asignado' }}
+              {{ item.hasDriver ? (item.hasValidPhone ? 'Al día' : 'Sin teléfono cargable') : 'Sin chofer asignado' }}
             </p>
           </article>
         </div>
@@ -432,59 +432,65 @@ const readingLabel = (item) => {
       </button>
     </div>
 
-    <div
-      v-if="claimTarget"
-      class="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-4 sm:items-center"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="reading-control-claim-title"
-      @click.self="closeClaim"
-    >
-      <div class="w-full max-w-lg rounded-xl border border-border bg-surface-raised p-5 shadow-xl">
-        <h2 id="reading-control-claim-title" class="text-lg font-semibold text-ink">
-          {{ confirmLabel(claimTarget) }}
-        </h2>
-        <p class="mt-1 text-sm text-ink-muted">
-          Se va a enviar un recordatorio por WhatsApp al chofer asignado con un enlace para cargar la lectura.
-        </p>
+    <!-- El diálogo se teletransporta a <body>: el <main> del shell conserva
+      `transform: translateY(0)` de la animación de entrada y eso lo convierte
+      en containing block de `position: fixed`. Sin Teleport, el overlay se
+      posiciona respecto de la página y no del viewport. -->
+    <Teleport to="body">
+      <div
+        v-if="claimTarget"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="reading-control-claim-title"
+        @click.self="closeClaim"
+      >
+        <div class="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-surface-raised p-5 shadow-xl">
+          <h2 id="reading-control-claim-title" class="text-lg font-semibold text-ink">
+            {{ confirmLabel(claimTarget) }}
+          </h2>
+          <p class="mt-1 text-sm text-ink-muted">
+            Se va a enviar un recordatorio por WhatsApp al chofer asignado con un enlace para cargar la lectura.
+          </p>
 
-        <dl class="mt-4 space-y-2 rounded-lg bg-surface-subtle p-4 text-sm">
-          <div
-            v-for="detail in claimDetails(claimTarget)"
-            :key="detail.label"
-            class="flex items-baseline justify-between gap-4"
+          <dl class="mt-4 space-y-2 rounded-lg bg-surface-subtle p-4 text-sm">
+            <div
+              v-for="detail in claimDetails(claimTarget)"
+              :key="detail.label"
+              class="flex items-baseline justify-between gap-4"
+            >
+              <dt class="text-ink-muted">{{ detail.label }}</dt>
+              <dd class="text-right font-medium text-ink">{{ detail.value }}</dd>
+            </div>
+          </dl>
+
+          <p
+            v-if="claimFeedback && claimFeedback.type === 'error'"
+            class="mt-3 rounded-lg border border-danger/30 bg-danger-subtle p-3 text-sm text-danger-strong"
+            role="alert"
           >
-            <dt class="text-ink-muted">{{ detail.label }}</dt>
-            <dd class="text-right font-medium text-ink">{{ detail.value }}</dd>
+            {{ claimFeedback.message }}
+          </p>
+
+          <div class="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <button type="button" :class="secondaryButton" :disabled="claimBusy" @click="closeClaim">
+              Cancelar
+            </button>
+            <button
+              type="button"
+              :class="primaryButton"
+              :disabled="claimBusy"
+              @click="sendClaim"
+            >
+              <span v-if="claimPending" class="inline-flex items-center gap-2">
+                <span class="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden="true" />
+                Enviando…
+              </span>
+              <span v-else>Enviar WhatsApp</span>
+            </button>
           </div>
-        </dl>
-
-        <p
-          v-if="claimFeedback && claimFeedback.type === 'error'"
-          class="mt-3 rounded-lg border border-danger/30 bg-danger-subtle p-3 text-sm text-danger-strong"
-          role="alert"
-        >
-          {{ claimFeedback.message }}
-        </p>
-
-        <div class="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <button type="button" :class="secondaryButton" :disabled="claimBusy" @click="closeClaim">
-            Cancelar
-          </button>
-          <button
-            type="button"
-            :class="primaryButton"
-            :disabled="claimBusy"
-            @click="sendClaim"
-          >
-            <span v-if="claimPending" class="inline-flex items-center gap-2">
-              <span class="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden="true" />
-              Enviando…
-            </span>
-            <span v-else>Enviar WhatsApp</span>
-          </button>
         </div>
       </div>
-    </div>
+    </Teleport>
   </div>
 </template>

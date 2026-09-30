@@ -87,6 +87,9 @@ final class ReadingControl extends BaseController
                 $branches,
                 $types,
                 $this->claimAvailability($actor),
+                // Mismo reloj del listado: la elegibilidad del botón
+                // (`needsClaim`) debe evaluarse en la misma jornada.
+                service('readingControlClock')->now(),
             ),
         );
     }

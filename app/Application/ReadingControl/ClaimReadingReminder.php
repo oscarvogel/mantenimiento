@@ -190,14 +190,20 @@ final class ClaimReadingReminder
             throw new DomainException('No se definió una instancia de WhatsApp para el envío.');
         }
 
-        // --- Enlace publico de carga, ya existente en el sistema ------------
-        $publicUrl = $this->publicReadingUrl($companyId, $equipmentId);
-
         // --- Ultima lectura vigente, para el mensaje -----------------------
         $lastReading = $this->lastReading($companyId, $equipmentId);
 
         $now = $this->clock->now();
         $timestamp = $now->format('Y-m-d H:i:s');
+
+        // --- Elegibilidad: solo lectura pendiente/atrasada -------------------
+        // Mismo criterio que habilita el botón (`needsClaim` / GT_3 "Más de
+        // 3 días", que ya incluye SIN_LECTURA). Un POST manual para un equipo
+        // con lectura de hoy o al día se rechaza acá: no se confía en Vue.
+        $this->assertClaimNeeded($lastReading['fecha_lectura'], $now);
+
+        // --- Enlace publico de carga, ya existente en el sistema ------------
+        $publicUrl = $this->publicReadingUrl($companyId, $equipmentId);
 
         // --- Guarda contra doble clic / repeticion inmediata ---------------
         $recent = $this->recentClaimDelivery($companyId, $equipmentId, $employeeId, $now);
@@ -290,6 +296,41 @@ final class ClaimReadingReminder
             $pilotEnabled,
             $publicUrl,
         );
+    }
+
+    /**
+     * Rechaza el reclamo cuando la última lectura está vigente.
+     *
+     * `null` significa SIN_LECTURA y siempre habilita el reclamo. Cualquier
+     * otra fecha debe cumplir el mismo criterio GT_3 que habilita el botón;
+     * HOY y AL_DIA se rechazan con un mensaje que distingue ambos casos.
+     */
+    private function assertClaimNeeded(?string $lastReadingAt, \DateTimeImmutable $now): void
+    {
+        if ($lastReadingAt === null) {
+            return;
+        }
+
+        try {
+            $lastReadingDate = new \DateTimeImmutable($lastReadingAt);
+        } catch (\Throwable) {
+            $lastReadingDate = null;
+        }
+
+        if ($lastReadingDate === null) {
+            throw new DomainException('No se pudo verificar la antigüedad de la última lectura.');
+        }
+
+        $staleFilter = ReadingControlFilter::fromKey(ReadingControlFilter::GT_3, $now);
+        if ($staleFilter->matches($lastReadingDate)) {
+            return;
+        }
+
+        $todayFilter = ReadingControlFilter::fromKey(ReadingControlFilter::TODAY, $now);
+
+        throw new DomainException($todayFilter->matches($lastReadingDate)
+            ? 'El equipo ya tiene una lectura cargada hoy; no corresponde reclamar.'
+            : 'El equipo tiene su lectura al día; no corresponde reclamar.');
     }
 
     /**
