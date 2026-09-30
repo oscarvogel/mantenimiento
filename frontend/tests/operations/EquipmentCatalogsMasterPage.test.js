@@ -14,7 +14,7 @@ const data = {
     services: '/mantenimiento/servicios',
     preventiveLibrary: '/mantenimiento/importaciones/biblioteca',
     providers: '/mantenimiento/proveedores',
-    branches: '/administracion/sucursales',
+    // Sucursales no se expone desde el centro: sigue en Administracion.
   },
   catalogs: {
     types: [
@@ -63,8 +63,75 @@ describe('EquipmentCatalogsMasterPage', () => {
     expect(wrapper.find('a[href="/mantenimiento/servicios"]').exists()).toBe(true)
     expect(wrapper.find('a[href="/mantenimiento/importaciones/biblioteca"]').exists()).toBe(true)
     expect(wrapper.find('a[href="/mantenimiento/proveedores"]').exists()).toBe(true)
-    expect(wrapper.find('a[href="/administracion/sucursales"]').exists()).toBe(true)
     expect(wrapper.findAll('form[action^="/mantenimiento/catalogos/marcas/"]')).toHaveLength(0)
+  })
+
+  it('no ofrece Sucursales dentro del centro de Maestros', () => {
+    const wrapper = render()
+
+    expect(wrapper.text()).not.toContain('Sucursales')
+    expect(wrapper.find('a[href="/administracion/sucursales"]').exists()).toBe(false)
+    expect(wrapper.html()).not.toContain('Sucursales')
+  })
+
+  it('expone tabs de Tipos, Marcas y Modelos con semantica de tablist', async () => {
+    const wrapper = render()
+
+    const tabs = wrapper.findAll('[role="tab"]')
+    expect(tabs.map((tab) => tab.text().split('\n')[0].trim().split(' ')[0])).toEqual([
+      'Tipos',
+      'Marcas',
+      'Modelos',
+    ])
+    expect(tabs[0].attributes('aria-selected')).toBe('true')
+    expect(wrapper.find('[role="tablist"]').exists()).toBe(true)
+
+    await tabs[2].trigger('click')
+    expect(wrapper.find('[role="tab"][aria-selected="true"]').text()).toContain('Modelos')
+  })
+
+  it('filtra por texto y por estado', async () => {
+    const wrapper = render()
+
+    const search = wrapper.find('input[placeholder^="Buscar"]')
+    expect(wrapper.findAll('table tbody tr')).toHaveLength(2)
+
+    await search.setValue('máquina')
+    expect(wrapper.findAll('table tbody tr')).toHaveLength(1)
+    expect(wrapper.find('table').text()).toContain('Máquina')
+
+    await search.setValue('')
+    const status = wrapper.find('select')
+    await status.setValue('active')
+    expect(wrapper.findAll('table tbody tr')).toHaveLength(2)
+
+    data.catalogs.types.push({ id: 3, name: 'Utilitario', active: false, controlsKm: false, controlsHours: false, updateUrl: '/mantenimiento/catalogos/tipos/3' })
+    await flushPromises()
+    await status.setValue('inactive')
+    expect(wrapper.findAll('table tbody tr')).toHaveLength(1)
+    expect(wrapper.find('table').text()).toContain('Utilitario')
+    data.catalogs.types.pop()
+  })
+
+  it('filtra modelos por marca y por tipo', async () => {
+    const wrapper = render()
+    await wrapper.findAll('[role="tab"]').find((tab) => tab.text().startsWith('Modelos')).trigger('click')
+
+    const brandFilter = wrapper.get('select[aria-label="Filtrar por marca"]')
+    const typeFilter = wrapper.get('select[aria-label="Filtrar por tipo"]')
+    expect(brandFilter.exists()).toBe(true)
+    expect(typeFilter.exists()).toBe(true)
+
+    expect(wrapper.findAll('table tbody tr')).toHaveLength(2)
+
+    await brandFilter.setValue('11')
+    expect(wrapper.findAll('table tbody tr')).toHaveLength(1)
+    expect(wrapper.find('table').text()).toContain('R450')
+
+    await brandFilter.setValue('')
+    await typeFilter.setValue('2')
+    expect(wrapper.findAll('table tbody tr')).toHaveLength(0)
+    expect(wrapper.text()).toContain('No encontramos modelos')
   })
 
   it('muestra tipos de equipo y permite configurar km/horas desde modal', async () => {
@@ -85,9 +152,8 @@ describe('EquipmentCatalogsMasterPage', () => {
 
   it('usa tablas compactas para marcas y modelos y abre edición en modal', async () => {
     const wrapper = render()
-    const tabs = wrapper.findAll('button')
 
-    await tabs.find((button) => button.text().startsWith('Marcas')).trigger('click')
+    await wrapper.findAll('[role="tab"]').find((tab) => tab.text().startsWith('Marcas')).trigger('click')
     expect(wrapper.find('table').text()).toContain('IVECO')
     await wrapper.findAll('button').find((button) => button.text() === 'Editar').trigger('click')
     await flushPromises()
@@ -96,7 +162,7 @@ describe('EquipmentCatalogsMasterPage', () => {
     document.body.querySelector('button[aria-label="Cerrar"]').click()
     await flushPromises()
 
-    await wrapper.findAll('button').find((button) => button.text().startsWith('Modelos')).trigger('click')
+    await wrapper.findAll('[role="tab"]').find((tab) => tab.text().startsWith('Modelos')).trigger('click')
     expect(wrapper.find('table').text()).toContain('STRALIS')
     expect(wrapper.find('table').text()).toContain('IVECO')
     expect(wrapper.find('table').text()).toContain('Camión')

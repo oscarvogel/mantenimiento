@@ -59,8 +59,14 @@ final readonly class AppShellPayload
             }
             if ($actor->hasPermission('equipos.editar') || $actor->hasPermission('empleados.editar')) {
                 if ($actor->hasPermission('equipos.editar')) {
-                    $navigation[] = $this->item('masters-equipment', 'Catálogos de equipos', 'mantenimiento/maestros/equipos', 'equipment', $active);
+                    // Entrada unica al centro de Maestros. El label vive aca, no en
+                    // el sidebar: renombrarlo desde el front era una Label artificial
+                    // que ademas ocultaba el nombre real de la pantalla.
+                    $navigation[] = $this->item('masters-equipment', 'Maestros', 'mantenimiento/maestros/equipos', 'equipment', $active);
                 }
+                // Entrada independiente e imprescindible: un usuario con
+                // empleados.editar y sin equipos.editar llega aca, y el filtro de
+                // ruta de maestros/equipos lo bloquearia si se lo sacamos.
                 $navigation[] = $this->item('masters-expirations', 'Tipos de vencimiento', 'mantenimiento/maestros/vencimientos', 'calendar', $active);
             }
             if ($actor->hasPermission('importaciones.ver')) {

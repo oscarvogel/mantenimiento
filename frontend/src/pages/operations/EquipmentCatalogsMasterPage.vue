@@ -52,7 +52,8 @@ const masterLinks = computed(() => [
   { key: 'services', label: 'Servicios', description: 'Tipos de servicio', href: props.data.routes.services, icon: WrenchScrewdriverIcon },
   { key: 'library', label: 'Tareas y plantillas', description: 'Biblioteca preventiva', href: props.data.routes.preventiveLibrary, icon: Cog6ToothIcon },
   { key: 'providers', label: 'Proveedores / talleres', description: 'Prestadores externos', href: props.data.routes.providers, icon: BuildingOffice2Icon },
-  { key: 'branches', label: 'Sucursales', description: 'Bases operativas', href: props.data.routes.branches, icon: BuildingOffice2Icon },
+  // Sucursales queda deliberadamente fuera del centro: sigue en
+  // Administracion -> Sucursales y no se duplica el acceso desde Maestros.
 ])
 
 const openCreateBrand = () => { modal.value = { kind: 'brand-create' } }
@@ -108,9 +109,9 @@ const sectionCount = computed(() => ({
     <PanelCard title="Catálogos de equipos" :count="sectionCount" flush>
       <div class="border-b border-border-subtle p-4 sm:p-5">
         <div class="flex flex-wrap gap-2" role="tablist" aria-label="Catálogos de equipos">
-          <button type="button" :class="[secondaryButton, section === 'types' ? '!border-primary !bg-primary-subtle !text-primary' : '']" @click="selectSection('types')">Tipos de equipo <span class="ml-2 text-xs">{{ data.catalogs.types.length }}</span></button>
-          <button type="button" :class="[secondaryButton, section === 'brands' ? '!border-primary !bg-primary-subtle !text-primary' : '']" @click="selectSection('brands')">Marcas <span class="ml-2 text-xs">{{ data.management.brands.total }}</span></button>
-          <button type="button" :class="[secondaryButton, section === 'models' ? '!border-primary !bg-primary-subtle !text-primary' : '']" @click="selectSection('models')">Modelos <span class="ml-2 text-xs">{{ data.management.models.total }}</span></button>
+          <button type="button" role="tab" :aria-selected="section === 'types'" :class="[secondaryButton, section === 'types' ? '!border-primary !bg-primary-subtle !text-primary' : '']" @click="selectSection('types')">Tipos de equipo <span class="ml-2 text-xs">{{ data.catalogs.types.length }}</span></button>
+          <button type="button" role="tab" :aria-selected="section === 'brands'" :class="[secondaryButton, section === 'brands' ? '!border-primary !bg-primary-subtle !text-primary' : '']" @click="selectSection('brands')">Marcas <span class="ml-2 text-xs">{{ data.management.brands.total }}</span></button>
+          <button type="button" role="tab" :aria-selected="section === 'models'" :class="[secondaryButton, section === 'models' ? '!border-primary !bg-primary-subtle !text-primary' : '']" @click="selectSection('models')">Modelos <span class="ml-2 text-xs">{{ data.management.models.total }}</span></button>
         </div>
 
         <div class="mt-4 grid gap-3 lg:grid-cols-[minmax(15rem,1fr)_12rem_auto]">
@@ -156,8 +157,12 @@ const sectionCount = computed(() => ({
             <tbody class="divide-y divide-border-subtle">
               <tr v-for="type in filteredTypes" :key="type.id" class="hover:bg-surface-subtle/60">
                 <td class="px-5 py-3 font-semibold text-ink">{{ type.name }}</td>
-                <td class="px-5 py-3"><StatusBadge :status="type.controlsKm ? 'ACTIVO' : 'BAJA'" /></td>
-                <td class="px-5 py-3"><StatusBadge :status="type.controlsHours ? 'ACTIVO' : 'BAJA'" /></td>
+                <td class="px-5 py-3">
+                  <span :class="type.controlsKm ? 'text-ink' : 'text-ink-muted'">{{ type.controlsKm ? 'Sí' : 'No' }}</span>
+                </td>
+                <td class="px-5 py-3">
+                  <span :class="type.controlsHours ? 'text-ink' : 'text-ink-muted'">{{ type.controlsHours ? 'Sí' : 'No' }}</span>
+                </td>
                 <td class="px-5 py-3"><StatusBadge :status="type.active ? 'ACTIVO' : 'BAJA'" /></td>
                 <td class="px-5 py-3 text-right"><button type="button" :class="secondaryButton" :disabled="!type.active" @click="openEditType(type)"><PencilSquareIcon class="mr-1.5 size-4" aria-hidden="true" />Editar control</button></td>
               </tr>

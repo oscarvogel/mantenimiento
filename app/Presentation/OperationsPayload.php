@@ -225,7 +225,8 @@ final class OperationsPayload
                 'services' => base_url('mantenimiento/servicios'),
                 'preventiveLibrary' => base_url('mantenimiento/importaciones/biblioteca'),
                 'providers' => base_url('mantenimiento/proveedores'),
-                'branches' => base_url('administracion/sucursales'),
+                // Sucursales NO entra al centro de Maestros: sigue en
+                // Administracion -> Sucursales, unica via, sin duplicar acceso.
             ],
             'catalogs' => [
                 'types' => array_map(fn (array $row): array => [
