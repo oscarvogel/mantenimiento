@@ -6,15 +6,12 @@ namespace Tests\Unit\Application\Notifications;
 
 use App\Application\Notifications\Port\CompanyNotificationDeliveryQueue;
 use App\Application\Notifications\Port\EmailNotificationGateway;
-use App\Application\Notifications\Port\GlobalNotificationSettingsStore;
-use App\Application\Notifications\Port\NotificationClock;
 use App\Application\Notifications\Port\NotificationDeliveryQueue;
 use App\Application\Notifications\Port\NotificationProcessControl;
 use App\Application\Notifications\Port\WebPushGateway;
 use App\Application\Notifications\RunNotificationDispatch;
 use App\Domain\Notifications\NotificationPreference;
 use App\Domain\Notifications\NotificationSeverity;
-use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -113,6 +110,30 @@ final class ManagementReportExpirationSeparationTest extends TestCase
     }
 
     /**
+     * Regresion de tono: "Documentación vencida" esta en singular y el chequeo
+     * buscaba solo "vencidos". La tarjeta con el valor mas alto del informe
+     * salia en gris, igual que una metrica sin problemas.
+     */
+    public function testExpiredDocumentCardUsesTheAlertTone(): void
+    {
+        $html = $this->renderManagementReport(
+            "Empresa: Demo\n"
+            . self::DOCUMENT_EXPIRED . ': 3' . "\n"
+            . self::DOCUMENT_UPCOMING . ': 0' . "\n"
+            . self::PREVENTIVE_EXPIRED . ': 0' . "\n"
+            . self::PREVENTIVE_UPCOMING . ': 0' . "\n",
+        );
+
+        $card = $this->cardOf($html, self::DOCUMENT_EXPIRED);
+        self::assertStringContainsString('#dc2626', $card, 'La documentación vencida debe usar el tono de alerta.');
+        self::assertStringNotContainsString('#0f172a', $card, 'La documentación vencida no puede salir en el tono neutro.');
+
+        // Con valor 0 la tarjeta queda neutra: no hay nada urgente.
+        $empty = $this->renderManagementReport("Empresa: Demo\n" . self::PREVENTIVE_EXPIRED . ': 0' . "\n");
+        self::assertStringContainsString('#0f172a', $this->cardOf($empty, self::PREVENTIVE_EXPIRED));
+    }
+
+    /**
      * Este es el test que faltaba en el primer intento. Un resumen viejo queda
      * pendiente en la cola y, al grouped por bucket, el renderer recibe la fila
      * equivocada. El correo final debe mostrar SIEMPRE el informe vigente.
@@ -129,15 +150,20 @@ final class ManagementReportExpirationSeparationTest extends TestCase
         ];
         $email = new ManagementReportRecordingEmail();
 
+        // La cola implementa los dos puertos: el dispatcher recibe una sola
+        // instancia y distingue por instanceof en cada etapa.
         $result = (new RunNotificationDispatch(
-            new ManagementReportUserQueue(),
+            $queue,
             $email,
             new ManagementReportEmptyPush(),
             new ManagementReportProcess(),
-            $queue,
         ))->execute('management-report-test-1-daily-20261001');
 
         self::assertSame(1, $result['company_email_sent']);
+
+        // La fila gerencial vieja queda OMITIDA, no enviada.
+        self::assertSame([1], $queue->skippedIds);
+        self::assertSame([2], $queue->deliveredIds);
 
         // Un solo envio para el bucket gerencial, con la fila vigente.
         self::assertCount(1, $email->batches);
@@ -160,18 +186,22 @@ final class ManagementReportExpirationSeparationTest extends TestCase
         $scheduler = file_get_contents(APPPATH . 'Application/Notifications/ScheduleManagementReports.php');
         self::assertIsString($scheduler);
 
+        // La prueba manual entra por queueCompany() con $force = true.
         self::assertStringContainsString('public function queueTest(', $scheduler);
         self::assertStringContainsString(
             'return $this->queueCompany($companyId, strtoupper($type), true, $company);',
             $scheduler,
         );
+
+        // El envio programado entra por el mismo metodo con $force = false.
         self::assertStringContainsString(
-            '$result = $this->queueCompany($companyId, $type, $isDue, $company);',
+            '$result = $this->queueCompany((int) $company[\'id\'], $type, false, $company);',
             $scheduler,
             'El envio automatico debe entrar por el mismo queueCompany().',
         );
 
         // Unico punto de generacion del resumen: manual y cron no pueden divergir.
+        self::assertSame(2, substr_count($scheduler, 'private function queueCompany('));
         self::assertSame(1, substr_count($scheduler, '$this->buildReport('));
         self::assertStringContainsString('$report = $this->buildReport($companyId, $type, $now, $companyName);', $scheduler);
     }
@@ -289,7 +319,7 @@ final class ManagementReportExpirationSeparationTest extends TestCase
     }
 }
 
-final class ManagementReportQueue implements CompanyNotificationDeliveryQueue
+final class ManagementReportQueue implements NotificationDeliveryQueue, CompanyNotificationDeliveryQueue
 {
     /** @var list<array<string,mixed>> */
     public array $companyRows = [];
@@ -298,6 +328,14 @@ final class ManagementReportQueue implements CompanyNotificationDeliveryQueue
     /** @var list<int> */
     public array $skippedIds = [];
 
+    // NotificationDeliveryQueue (canal usuario): sin datos en este escenario.
+    public function schedule(int $notificationId, int $userId, string $eventKey, NotificationSeverity $severity, NotificationPreference $preference): void {}
+    public function due(string $channel, int $limit): array { return []; }
+    public function delivered(int $deliveryId): void {}
+    public function skipped(int $deliveryId, string $reason): void {}
+    public function failed(int $deliveryId, string $error, bool $retryable): void {}
+
+    // CompanyNotificationDeliveryQueue (informe gerencial).
     public function scheduleCompany(\App\Domain\Notifications\NotifiableEvent $event): void {}
 
     public function dueCompany(int $limit): array
@@ -327,15 +365,6 @@ final class ManagementReportRecordingEmail implements EmailNotificationGateway
     {
         $this->batches[] = $notifications;
     }
-}
-
-final class ManagementReportUserQueue implements NotificationDeliveryQueue
-{
-    public function schedule(int $notificationId, int $userId, string $eventKey, NotificationSeverity $severity, NotificationPreference $preference): void {}
-    public function due(string $channel, int $limit): array { return []; }
-    public function delivered(int $deliveryId): void {}
-    public function skipped(int $deliveryId, string $reason): void {}
-    public function failed(int $deliveryId, string $error, bool $retryable): void {}
 }
 
 final class ManagementReportEmptyPush implements WebPushGateway

@@ -369,7 +369,11 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
         $number = is_numeric($numeric) ? (float) $numeric : 0.0;
         $normalized = mb_strtolower($label);
 
-        if ($number > 0 && (str_contains($normalized, 'vencidos') || str_contains($normalized, 'demoradas') || str_contains($normalized, 'sin lectura'))) {
+        // 'vencida' cubre "Documentación vencida" y 'vencidos' cubre
+        // "Preventivos vencidos" / "Órdenes demoradas". Sin el singular, la
+        // tarjeta de documentación vencida salía en gris y no llamaba la
+        // atención aunque tuviera el valor más alto del informe.
+        if ($number > 0 && (str_contains($normalized, 'vencida') || str_contains($normalized, 'vencidos') || str_contains($normalized, 'demoradas') || str_contains($normalized, 'sin lectura'))) {
             return '#dc2626';
         }
         if ($number > 0 && str_contains($normalized, 'próxim')) {
