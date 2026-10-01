@@ -16,9 +16,18 @@ Los informes nacen deshabilitados para no activar envíos al desplegar la migrac
 
 ## Contenido
 
-El diario incluye equipos activos, vencimientos, OT abiertas/demoradas, OT creadas/cerradas y equipos sin lectura reciente.
+El informe separa dos dominios que antes se confundían bajo una sola tarjeta de "Vencimientos":
+
+- **Documentación**: `Documentación vencida` y `Documentación próxima (30 días)`, calculadas sobre la tabla de vencimientos (`/mantenimiento/vencimientos`).
+- **Mantenimiento preventivo**: `Preventivos vencidos` y `Preventivos próximos`, calculadas con `EvaluadorVencimiento` sobre los planes activos, es decir la misma regla de dominio que usa la pantalla de planes (`/mantenimiento/planes`). Un documento vencido nunca cuenta como preventivo.
+
+El diario incluye además equipos activos, OT abiertas/demoradas, OT creadas/cerradas y equipos sin lectura reciente.
 
 El semanal agrega preventivos pendientes/finalizados, costo registrado de OT cerradas y los equipos con más OT del período.
+
+## Informe vigente en la cola
+
+Un informe gerencial es una foto del estado actual. Si la cola acumula varias entregas del mismo tipo para la misma empresa y destinatario, el despacho envía únicamente la más reciente y deja las anteriores en `OMITIDA`. Así el correo nunca muestra un informe perimido con métricas que ya no aplican, y la sustitución queda auditada.
 
 ## Ejecución
 
@@ -26,15 +35,17 @@ El scheduler se ejecuta dentro del ciclo existente de notificaciones. El cron pu
 
 Los informes gerenciales se agrupan aparte de las alertas empresariales operativas.
 
+La prueba manual y el envío programado usan el mismo generador: ambas entradas delegan en `queueCompany()` y construyen el resumen en un único `buildReport()`, de modo que no pueden divergir.
+
 ## Prueba controlada en Demo
 
-1. Desplegar `feat/management-daily-weekly-reports` en Coolify.
+1. Desplegar la rama del issue en Coolify.
 2. Entrar como Superadmin y aplicar migraciones pendientes.
 3. Editar la empresa Demo.
 4. Indicar un correo de informes.
 5. Habilitar diario y/o semanal y guardar.
 6. Usar **Probar informe diario** o **Probar informe semanal**.
-7. Confirmar recepción y revisar los indicadores.
+7. Confirmar recepción y verificar las cuatro tarjetas: documentación vencida, documentación próxima, preventivos vencidos y preventivos próximos.
 8. Ejecutar nuevamente el ciclo normal y confirmar que un período ya generado no se duplica.
 
 La prueba manual genera una clave específica de prueba para permitir repetir el smoke cuando sea necesario.

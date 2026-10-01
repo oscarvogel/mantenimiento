@@ -15,5 +15,12 @@ interface CompanyNotificationDeliveryQueue
 
     public function deliveredCompany(int $deliveryId): void;
 
+    /**
+     * Descarta una entrega que ya no corresponde enviar porque otra entrega del
+     * mismo bucket gerencial la reemplaza. Un informe gerencial es una foto del
+     * estado actual: enviar una fila vieja solo confunde al destinatario.
+     */
+    public function skippedCompany(int $deliveryId, string $reason): void;
+
     public function failedCompany(int $deliveryId, string $error, bool $retryable): void;
 }
