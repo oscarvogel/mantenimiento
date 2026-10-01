@@ -201,7 +201,7 @@ final class ManagementReportExpirationSeparationTest extends TestCase
         );
 
         // Unico punto de generacion del resumen: manual y cron no pueden divergir.
-        self::assertSame(2, substr_count($scheduler, 'private function queueCompany('));
+        self::assertSame(1, substr_count($scheduler, 'private function queueCompany('));
         self::assertSame(1, substr_count($scheduler, '$this->buildReport('));
         self::assertStringContainsString('$report = $this->buildReport($companyId, $type, $now, $companyName);', $scheduler);
     }
