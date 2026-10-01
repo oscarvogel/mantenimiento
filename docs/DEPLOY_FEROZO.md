@@ -304,6 +304,11 @@ Abrir en el navegador:
   **Debe dar 403 Forbidden** (no debe mostrar el contenido). Si muestra
   el archivo, la regla de bloqueo no esta activa.
 
+- `https://vogelconsultoria.com.ar/mantenimiento/.env.example`
+  Tambien **debe dar 403 Forbidden**. Aunque la plantilla no tenga secretos,
+  publicarla revela la estructura de configuracion y es el sintoma tipico de
+  un `.env` mal bloqueado. Si responde 200, volver a la seccion 8.
+
 Ademas, autenticar una cuenta valida y comprobar dashboard y reportes. Tests
 locales y migraciones exitosas no sustituyen esta verificacion HTTP remota.
 
@@ -322,23 +327,25 @@ directivas comunes de Apache que funcionan en otros hostings:
 | `Options +SymLinksIfOwnerMatch` | NO probada, evitar | Probable 500 |
 | `RedirectMatch` con regex compleja | Inestable | A veces 500 |
 | `ServerSignature Off` | OK pero innecesaria | Quitada por simplicidad |
-| `FilesMatch` con regex | OK pero limitado | Reemplazado por `<Files>` |
+| `FilesMatch` con regex | OK | Requerido para bloquear `.env` y sus variantes |
 | `RewriteEngine On` | OK | - |
 | `RewriteCond` / `RewriteRule` | OK | - |
-| `<Files>` simple | OK | - |
+| `<Files>` simple | OK, pero es un GLOB | Solo protege un nombre exacto de archivo |
 
 **Regla de oro para Ferozo**: si no sabes si una directiva anda, no
 la pongas. Probala primero. Si tira 500, el cliente FTP te deja renombrar
 el `.htaccess` a `.htaccess.bak` y ver si la app carga sin el.
 
-El `.htaccess` que viene en el zip es este:
+El `.htaccess` de la raiz es este (fuente de verdad: `.htaccess` en el repo):
 
 ```apache
 RewriteEngine On
 
-# Forzar HTTPS
-RewriteCond %{HTTPS} !=on
-RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
+# Colision ruta virtual / directorio fisico: va ANTES de la regla generica.
+RewriteRule ^mantenimiento(?:/.*)?$ index.php [L,NC]
+
+# Directorios de codigo fuente, dependencias y pruebas: nunca contenido estatico.
+RewriteRule ^(?:app|docs|frontend|home|scripts|tests|vendor|writable)(?:/|$) - [F,L,NC]
 
 # Redirigir trailing slashes (excepto la raiz)
 RewriteCond %{REQUEST_FILENAME} !-d
@@ -350,12 +357,34 @@ RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^ index.php [L]
 
-# Bloquear acceso directo al .env
-<Files ".env">
-    Order allow,deny
-    Deny from all
-</Files>
+# Bloquear acceso directo a los archivos de entorno.
+# FilesMatch usa REGEX: cubre .env, .env.example, .env.local, .env.production,
+# .env.backup sin bloquear archivos legitimos como mi.env.txt o .environment.
+<FilesMatch "^\.env(?:\..*)?$">
+    <IfModule authz_core_module>
+        Require all denied
+    </IfModule>
+    <IfModule !authz_core_module>
+        Deny from all
+    </IfModule>
+</FilesMatch>
 ```
+
+> **Por que `FilesMatch` y no `<Files>`**: la seccion `<Files "...">` compara
+> el nombre del archivo contra un **GLOB**, no contra una expresion regular.
+> `<Files ".env">` protege unicamente un archivo llamado exactamente `.env`, y
+> deja expuestas todas las variantes. Como un archivo que existe en disco no
+> cumple `RewriteCond %{REQUEST_FILENAME} !-f`, tampoco lo reescribe la regla
+> generica: Apache lo sirve como archivo estatico y responde 200. Ese fue
+> precisamente el motivo por el que `/.env.example` quedo publico en
+> produccion siendo `/.env` correcto.
+>
+> La sintaxis `(?:...)` ya se usa en los `RewriteRule` de este mismo archivo, y
+> el bloque de autorizacion dual es el mismo que usan `app/.htaccess`,
+> `tests/.htaccess` y `writable/.htaccess`.
+>
+> No usar un patron sin ancla al final (`^\.env` a secas): tambien bloquearia
+> `.environment` y `.envrc`.
 
 Los directorios privados (`app/`, `writable/`, `tests/`, `vendor/`) tienen
 su propio `.htaccess` adentro con `Require all denied` o
@@ -408,9 +437,27 @@ existe (`RewriteCond %{REQUEST_FILENAME} !-f`).
 
 ### `.env` es accesible por URL
 
-Causa: la regla `<Files ".env">` no se interpreto. Verificar que
-existe en el `.htaccess`. Si la regla esta y aun asi se ve el archivo,
-probar agregar `<FilesMatch "^\.env">` con regex.
+Causa: la seccion de bloqueo no esta activa o no usa regex. Verificar que
+existe en el `.htaccess`.
+
+El caso clasico es tener `<Files ".env">`: protege solo un archivo llamado
+exactamente `.env`, asi que `/.env` da 403 pero `/.env.example` da 200. La
+seccion correcta es:
+
+```apache
+<FilesMatch "^\.env(?:\..*)?$">
+    <IfModule authz_core_module>
+        Require all denied
+    </IfModule>
+    <IfModule !authz_core_module>
+        Deny from all
+    </IfModule>
+</FilesMatch>
+```
+
+No usar `<FilesMatch "^\.env">` sin ancla al final: bloquearia tambien
+`.environment` y `.envrc`. Esta regla esta cubierta por el test contractual
+`tests/unit/Platform/HtaccessMaintenanceRoutingTest.php`.
 
 ### Permisos `writable/` mal
 
