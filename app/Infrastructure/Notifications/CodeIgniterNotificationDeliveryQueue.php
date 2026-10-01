@@ -136,6 +136,15 @@ final class CodeIgniterNotificationDeliveryQueue implements NotificationDelivery
         ]);
     }
 
+    public function skippedCompany(int $deliveryId, string $reason): void
+    {
+        $this->db->table('notificacion_empresa_entregas')->where('id', $deliveryId)->update([
+            'estado' => 'OMITIDA',
+            'ultimo_error' => mb_substr($reason, 0, 1000),
+            'updated_at' => $this->clock->now()->format('Y-m-d H:i:s'),
+        ]);
+    }
+
     public function failedCompany(int $deliveryId, string $error, bool $retryable): void
     {
         $row = $this->db->table('notificacion_empresa_entregas')->select('intentos')->where('id', $deliveryId)->get()->getRowArray();

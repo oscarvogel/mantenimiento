@@ -107,6 +107,7 @@ final readonly class RunNotificationDispatch
             $key = $companyId . '|' . $recipient . '|' . $bucket;
             $groups[$key] = [
                 'recipient' => $recipient,
+                'managementReport' => str_starts_with($eventType, 'informe.gerencial.'),
                 'items' => [...($groups[$key]['items'] ?? []), $delivery],
             ];
         }
@@ -114,6 +115,19 @@ final readonly class RunNotificationDispatch
             $recipient = $group['recipient'];
             $items = $group['items'];
             try {
+                if ($group['managementReport']) {
+                    // Un informe gerencial describe el estado actual de la empresa.
+                    // Si la cola accumulation varias entregas del mismo bucket,
+                    // solo la mas reciente describe la realidad de hoy: enviar la
+                    // mas vieja mostraria al destinatario un informe perimido con
+                    // metricas que ya no aplican. Las anteriores se descartan de
+                    // forma explicita para que queden auditadas como OMITIDA.
+                    $items = $this->keepCurrentManagementReport($items);
+                    if ($items === []) {
+                        continue;
+                    }
+                }
+
                 $this->email->sendDigest($recipient, $items);
                 foreach ($items as $item) {
                     $this->deliveries->deliveredCompany((int) $item['id']);
@@ -128,6 +142,40 @@ final readonly class RunNotificationDispatch
                 }
             }
         }
+    }
+
+    /**
+     * Conserva unicamente la entrega gerencial vigente del bucket y descarta las
+     * anteriores. La entrega mas reciente es la que se genero con los datos
+     * actuales; las previas quedan OMITIDA para no reenviar informacion vieja.
+     *
+     * @param  list<array<string,mixed>>  $items
+     * @return list<array<string,mixed>>
+     */
+    private function keepCurrentManagementReport(array $items): array
+    {
+        if (count($items) <= 1) {
+            return $items;
+        }
+
+        $current = null;
+        foreach ($items as $item) {
+            $id = (int) ($item['id'] ?? 0);
+            if ($current === null || $id > (int) ($current['id'] ?? 0)) {
+                $current = $item;
+            }
+        }
+
+        foreach ($items as $item) {
+            if ((int) ($item['id'] ?? 0) !== (int) ($current['id'] ?? 0)) {
+                $this->deliveries->skippedCompany(
+                    (int) $item['id'],
+                    'Informe gerencial reemplazado por una entrega mas reciente del mismo tipo.',
+                );
+            }
+        }
+
+        return $current === null ? [] : [$current];
     }
 
     /** @param array<string,int> $summary */
