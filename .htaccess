@@ -21,7 +21,7 @@ RewriteEngine On
 #     `mantenimiento` no es uno de los directorios bloqueados;
 #   - no afecta a assets ni estaticos, que viven en /assets y no bajo
 #     /mantenimiento;
-#   - la proteccion de .env es un bloque <Files> aparte y sigue aplicando;
+#   - la proteccion de .env es un bloque de archivos aparte y sigue aplicando;
 #   - la autenticacion y los permisos los decide la app al llegar a index.php.
 RewriteRule ^mantenimiento(?:/.*)?$ index.php [L,NC]
 
@@ -40,8 +40,29 @@ RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^ index.php [L]
 
-# Bloquear acceso directo al .env
-<Files ".env">
-    Order allow,deny
-    Deny from all
-</Files>
+# Bloquear acceso directo a los archivos de entorno.
+#
+# Antes era `<Files ".env">`. Esa seccion compara el NOMBRE del archivo con un
+# patron glob, no con una expresion regular: el glob ".env" unicamente coincide
+# con un archivo llamado exactamente `.env`. Por eso `/.env` respondia 403 pero
+# `/.env.example` respondia 200: el nombre `.env.example` no matchea el glob, la
+# regla generica de mas arriba tampoco lo reescribe (existe en disco, asi que
+# `!-f` da falso) y Apache lo servia como archivo estatico.
+#
+# `FilesMatch` si usa expresion regular sobre el nombre, y `^\.env(?:\..*)?$`
+# cubre `.env` y todas sus variantes (`.env.example`, `.env.local`,
+# `.env.production`, `.env.backup`) sin tocar archivos legitimos que solo
+# contengan ".env" en otra posicion (`mi.env.txt`) ni nombres que arrancan
+# igual pero no son variantes (`.environment`, `.envrc`).
+#
+# La sintaxis `(?:...)` ya esta probada en este mismo archivo, asi que es
+# compatible con el Apache de Ferozo. El bloque de autorizacion usa el mismo
+# patron dual que los .htaccess de app/, tests/ y writable/.
+<FilesMatch "^\.env(?:\..*)?$">
+    <IfModule authz_core_module>
+        Require all denied
+    </IfModule>
+    <IfModule !authz_core_module>
+        Deny from all
+    </IfModule>
+</FilesMatch>
