@@ -126,7 +126,111 @@ final class ScheduleManagementReports
             $lines[] = 'Costo registrado en OT cerradas: $ ' . number_format($this->closedOrderCost($companyId, $periodStart, $tomorrow), 2, ',', '.');
             $top = $this->topEquipmentByOrders($companyId, $periodStart, $tomorrow); if ($top !== []) $lines[] = 'Equipos con más OT: ' . implode(', ', $top);
         }
+        // #318: cada indicador viaja con su destino ya filtrado y el CTA solo
+        // existe cuando hay algo vencido o proximo. La decision vive aca y no
+        // en el adaptador de correo, que solo renderiza.
+        $lines = array_merge($lines, $this->actionLines([
+            'documentacion_vencida' => $overdueExpirations,
+            'documentacion_proxima' => $upcomingExpirations,
+            'preventivos_vencidos' => $preventiveDue['overdue'],
+            'preventivos_proximos' => $preventiveDue['upcoming'],
+        ]));
         return ['title' => $label . ' de mantenimiento · ' . $companyName . ' · ' . $now->format('d/m/Y'), 'summary' => 'Empresa: ' . $companyName . "\n" . implode("\n", $lines)];
+    }
+
+    /**
+     * Destinos de los cuatro indicadores del informe, ya filtrados.
+     *
+     * El contrato con el adaptador de correo son dos directivas de texto:
+     *   !LINK|<etiqueta del indicador>|<ruta filtrada>
+     *   !CTA|<rótulo del botón>|<ruta filtrada>
+     *
+     * La etiqueta viaja desde Application para que el adaptador no tenga que
+     * saber que indicador es cual: solo la asocia a la tarjeta que ya existe.
+     * La ruta se construye desde la base configurada (nada de dominio
+     * hardcodeado) y se guarda RELATIVA a proposito: el alcance por empresa y
+     * sucursal lo aplica el destino a partir de la sesion, asi que el enlace
+     * no transporta el dato de ningun tenant.
+     *
+     * @return array<string,array{label:string,path:string}>
+     */
+    private function indicatorLinks(): array
+    {
+        return [
+            'documentacion_vencida' => [
+                'label' => 'Documentación vencida',
+                'path' => $this->reportPath('mantenimiento/vencimientos', ['estado' => 'vencidos']),
+            ],
+            'documentacion_proxima' => [
+                'label' => 'Documentación próxima (30 días)',
+                'path' => $this->reportPath('mantenimiento/vencimientos', ['estado' => '30']),
+            ],
+            'preventivos_vencidos' => [
+                'label' => 'Preventivos vencidos',
+                'path' => $this->reportPath('mantenimiento/planes', ['estado' => 'VENCIDO']),
+            ],
+            'preventivos_proximos' => [
+                'label' => 'Preventivos próximos',
+                'path' => $this->reportPath('mantenimiento/planes', ['estado' => 'PROXIMO']),
+            ],
+        ];
+    }
+
+    /**
+     * Lineas de enlace y CTA del informe.
+     *
+     * Los cuatro enlaces por indicador se emiten siempre: son el destino de
+     * cada tarjeta. Los CTA dependen del dato, y esa es la garantia del #318:
+     * con el contador en 0 NO se emite la linea, asi que el adaptador no tiene
+     * nada que pintar y el boton no puede aparecer. Cuando ambos dominios
+     * tienen pendientes, el CTA apunta al que tiene mas; en empate gana la
+     * documentacion. Los enlaces por indicador siguen disponibles, asi que
+     * ningun destino queda inaccesible.
+     *
+     * @param  array<string,int> $counts
+     * @return list<string>
+     */
+    private function actionLines(array $counts): array
+    {
+        $links = $this->indicatorLinks();
+        $lines = [];
+        foreach ($links as $link) {
+            $lines[] = '!LINK|' . $link['label'] . '|' . $link['path'];
+        }
+
+        $overdue = $this->heavierIndicator($counts, ['documentacion_vencida', 'preventivos_vencidos']);
+        if ($overdue !== null) {
+            $lines[] = '!CTA|Ver vencidos|' . $links[$overdue]['path'];
+        }
+
+        $upcoming = $this->heavierIndicator($counts, ['documentacion_proxima', 'preventivos_proximos']);
+        if ($upcoming !== null) {
+            $lines[] = '!CTA|Ver próximos|' . $links[$upcoming]['path'];
+        }
+
+        return $lines;
+    }
+
+    /**
+     * Indicador con mas pendientes entre los candidatos, o null si todos estan
+     * en cero. El empate lo gana el primero de la lista.
+     *
+     * @param array<string,int> $counts
+     * @param list<string>       $keys
+     */
+    private function heavierIndicator(array $counts, array $keys): ?string
+    {
+        $best = null;
+        $bestCount = 0;
+        foreach ($keys as $key) {
+            $count = max(0, (int) ($counts[$key] ?? 0));
+            if ($count > $bestCount) {
+                $bestCount = $count;
+                $best = $key;
+            }
+        }
+
+        return $best;
     }
 
     /** @return array{overdue:int,upcoming:int} */
@@ -212,5 +316,20 @@ final class ScheduleManagementReports
     private function count(string $table, array $where): int { if (! $this->db->tableExists($table)) return 0; $builder = $this->db->table($table); foreach ($where as $field => $value) $builder->where($field, $value); return $builder->countAllResults(); }
     private function available(): bool { return $this->db->tableExists('notificacion_empresa_entregas') && $this->db->fieldExists('informe_diario_habilitado', 'empresas') && $this->db->fieldExists('informe_semanal_habilitado', 'empresas'); }
     private function time(string $value): string { return preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/', $value) === 1 ? $value : '07:00'; }
-    private function reportUrl(): string { return (string) parse_url(base_url('dashboard'), PHP_URL_PATH); }
+    private function reportUrl(): string { return $this->reportPath('dashboard'); }
+
+    /**
+     * Ruta relativa de destino, armada desde la base configurada. Viaja
+     * relativa porque el adaptador de correo la resuelve contra esa misma base
+     * antes de ponerla en el href.
+     *
+     * @param array<string,string> $query
+     */
+    private function reportPath(string $route, array $query = []): string
+    {
+        $path = (string) parse_url(base_url($route), PHP_URL_PATH);
+        if ($path === '') $path = '/';
+
+        return $query === [] ? $path : $path . '?' . http_build_query($query);
+    }
 }

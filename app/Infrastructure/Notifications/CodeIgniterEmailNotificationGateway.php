@@ -166,11 +166,87 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
         return $text;
     }
 
+    /**
+     * Separa del resumen gerencial las lineas de enlace y CTA.
+     *
+     * El resumen congelado en la cola las trae como directivas de texto:
+     *   !LINK|<etiqueta del indicador>|<ruta>
+     *   !CTA|<rótulo del botón>|<ruta>
+     *
+     * Que indicador lleva a que destino, y si el CTA se emite o no, es una
+     * decision de Application (#318). Aca solo se separan y se resuelven
+     * contra la base configurada: una ruta que no sea segura se descarta y el
+     * enlace simplemente no se pinta. Los destinos filtran por empresa y
+     * sucursal desde la sesion, asi que aca no viaja ningun dato de tenant.
+     *
+     * @return array{body:string,metricLinks:array<string,string>,ctas:list<array{label:string,url:string}>}
+     */
+    private function splitManagementReportLinks(string $summary): array
+    {
+        $metricLinks = [];
+        $ctas = [];
+        $body = [];
+
+        foreach (preg_split('/\R+/', trim($summary)) ?: [] as $line) {
+            if (str_starts_with($line, '!LINK|')) {
+                $parts = explode('|', $line, 3);
+                if (count($parts) === 3) {
+                    $url = $this->notificationLink(trim($parts[2]));
+                    if ($url !== null) {
+                        $metricLinks[trim($parts[1])] = $url;
+                    }
+                }
+                continue;
+            }
+            if (str_starts_with($line, '!CTA|')) {
+                $parts = explode('|', $line, 3);
+                if (count($parts) === 3) {
+                    $label = trim($parts[1]);
+                    $url = $this->notificationLink(trim($parts[2]));
+                    if ($label !== '' && $url !== null) {
+                        $ctas[] = ['label' => $label, 'url' => $url];
+                    }
+                }
+                continue;
+            }
+            $body[] = $line;
+        }
+
+        return ['body' => implode("\n", $body), 'metricLinks' => $metricLinks, 'ctas' => $ctas];
+    }
+
+    /**
+     * Botones de accion del informe. Solo llegan los que Application emitio,
+     * de modo que un contador en 0 no deja linea y por lo tanto no hay boton.
+     *
+     * @param list<array{label:string,url:string}> $ctas
+     */
+    private function managementCtaBlock(array $ctas): string
+    {
+        if ($ctas === []) {
+            return '';
+        }
+
+        $buttons = '';
+        foreach ($ctas as $cta) {
+            $buttons .= '<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 10px 0 0;"><tr><td style="border-radius:9px;background:#0f172a;">'
+                . '<a href="' . htmlspecialchars($cta['url'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '" style="display:inline-block;padding:13px 20px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:18px;color:#ffffff;text-decoration:none;font-weight:700;">'
+                . htmlspecialchars($cta['label'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+                . '</a></td></tr></table>';
+        }
+
+        return '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:22px 0 0 0;"><tr>'
+            . '<td style="padding:16px 18px;border:1px solid #e5e7eb;border-radius:14px;background:#ffffff;">'
+            . '<div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#64748b;">Ir directo a lo que hay que resolver</div>'
+            . '<div style="padding-top:12px;">' . $buttons . '</div>'
+            . '</td></tr></table>';
+    }
+
     /** @param array<string,mixed> $notification */
     private function managementReportHtml(array $notification, string $subject): string
     {
-        $summary = trim((string) ($notification['resumen'] ?? ''));
-        $lines = preg_split('/\R+/', $summary) ?: [];
+        $report = $this->splitManagementReportLinks((string) ($notification['resumen'] ?? ''));
+        $lines = preg_split('/\R+/', $report['body']) ?: [];
         $company = '';
         $metrics = [];
         $readingAlerts = [];
@@ -233,10 +309,15 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
             $label = htmlspecialchars($metric['label'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
             $value = htmlspecialchars($metric['value'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
             $tone = $this->managementMetricTone($metric['label'], $metric['value']);
+            $metricLink = $report['metricLinks'][$metric['label']] ?? null;
+            $destination = $metricLink === null
+                ? ''
+                : '<tr><td style="padding:0 16px 16px 16px;"><a href="' . htmlspecialchars($metricLink, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '" style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#2563eb;font-weight:700;text-decoration:none;">Ver la lista filtrada</a></td></tr>';
             $cards .= '<td width="50%" valign="top" style="padding:6px;">'
                 . '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border:1px solid #e5e7eb;border-radius:12px;background:#ffffff;">'
                 . '<tr><td style="padding:16px 16px 6px 16px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.3px;">' . $label . '</td></tr>'
                 . '<tr><td style="padding:0 16px 16px 16px;font-family:Arial,Helvetica,sans-serif;font-size:28px;line-height:34px;color:' . $tone . ';font-weight:800;">' . $value . '</td></tr>'
+                . $destination
                 . '</table></td>';
 
             if ($index % 2 === 1) {
@@ -330,6 +411,7 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
             . '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f8fafc;border-radius:14px;"><tr>'
             . $cards
             . '</tr></table>'
+            . $this->managementCtaBlock($report['ctas'])
             . $readingSection
             . $missingKmSection
             . $button
@@ -346,7 +428,8 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
     /** @param array<string,mixed> $notification */
     private function managementReportText(array $notification, string $subject): string
     {
-        $summary = trim((string) ($notification['resumen'] ?? ''));
+        $report = $this->splitManagementReportLinks((string) ($notification['resumen'] ?? ''));
+        $summary = trim($report['body']);
         $link = $this->notificationLink($notification['url'] ?? null);
 
         $text = $subject . "\n\n";
@@ -354,6 +437,17 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
         if ($summary !== '') {
             $text .= $summary . "\n\n";
         }
+
+        // Los destinos van como lista, no como directivas internas del resumen.
+        $destinations = $report['metricLinks'] + array_column($report['ctas'], 'url', 'label');
+        if ($destinations !== []) {
+            $text .= "Ir directo a la lista filtrada:\n";
+            foreach ($destinations as $destinationLabel => $destination) {
+                $text .= '- ' . $destinationLabel . ': ' . $destination . "\n";
+            }
+            $text .= "\n";
+        }
+
         if ($link !== null) {
             $text .= 'Abrir sistema de mantenimiento: ' . $link . "\n\n";
         }
