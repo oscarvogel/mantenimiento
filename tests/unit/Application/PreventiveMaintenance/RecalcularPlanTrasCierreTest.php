@@ -181,7 +181,7 @@ final class RecalcularPlanTrasCierreTest extends TestCase
         ))->execute(5, 12, null, new DateTimeImmutable('2026-08-18'), 120_000, null, 9);
 
         self::assertSame(130_000, $plans->saved->proximoKm());
-        self::assertCount(0, $notices->pendingForPlan(5, 12));
+        self::assertCount(0, $notices->allPending(12));
     }
 }
 
@@ -259,7 +259,18 @@ final class ClosingNoticeRepository implements MaintenanceNoticeRepository
         return null;
     }
 
-    public function pendingForPlan(int $companyId, int $planId): array
+    public function pendingForCycle(int $companyId, int $planId, string $claveCiclo): array
+    {
+        return array_values(array_filter(
+            $this->notices,
+            static fn (AvisoPlan $notice): bool => $notice->planId() === $planId
+                && $notice->claveCiclo() === $claveCiclo
+                && $notice->estadoGestion() === \App\Domain\PreventiveMaintenance\EstadoGestionAviso::PENDIENTE,
+        ));
+    }
+
+    /** @return list<AvisoPlan> */
+    public function allPending(int $planId): array
     {
         return array_values(array_filter(
             $this->notices,

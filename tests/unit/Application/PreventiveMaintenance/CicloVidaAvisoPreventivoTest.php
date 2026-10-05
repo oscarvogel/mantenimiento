@@ -17,6 +17,7 @@ use App\Domain\PreventiveMaintenance\EvaluadorVencimiento;
 use App\Domain\PreventiveMaintenance\PlanMantenimiento;
 use App\Domain\PreventiveMaintenance\UsoActual;
 use DateTimeImmutable;
+use DomainException;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -75,10 +76,11 @@ final class CicloVidaAvisoPreventivoTest extends TestCase
     }
 
     /**
-     * Pasos 4 a 6: al cerrar la OT se recalcula el plan y el aviso del ciclo
-     * anterior queda RESUELTO con motivo.
+     * Pasos 4 a 6, caso SIN aviso convertido: la OT se genero desde el plan, no
+     * desde el aviso (CodeIgniterPreventiveOrderFromPlan pasa aviso_plan_id NULL).
+     * El aviso PENDIENTE del ciclo superado queda RESUELTO.
      */
-    public function testCerrarLaOrdenResuelveElAvisoDelCicloAnterior(): void
+    public function testCerrarLaOrdenResuelveElAvisoPendienteDelCicloSuperado(): void
     {
         $plan = $this->planWithBase(200_000, nextKm: 215_000);
         $notice = $this->noticeFor($plan, '2026-10-05');
@@ -89,23 +91,109 @@ final class CicloVidaAvisoPreventivoTest extends TestCase
         $result = (new RecalcularPlanTrasCierre($plans, $this->serviceGateway(), $notices))
             ->execute(self::EMPRESA, self::PLAN, null, $completedAt, 215_000, null, 9);
 
-        // Paso 5: el plan arranca el ciclo nuevo con la base de la OT cerrada.
         self::assertSame(230_000, $result['proximo_km']);
-
-        // Paso 6: el aviso viejo ya no requiere atencion.
-        self::assertSame([], $notices->pendingForPlan(self::EMPRESA, self::PLAN));
+        self::assertCount(0, $notices->allPending(self::PLAN));
         self::assertCount(1, $notices->saved);
         self::assertSame(EstadoGestionAviso::RESUELTO, $notice->estadoGestion());
         self::assertSame($completedAt, $notice->fechaResolucion());
-        self::assertStringContainsString('recalculado', (string) $notice->motivoResolucion());
+        self::assertStringContainsString('Ciclo superado', (string) $notice->motivoResolucion());
 
-        // Y el plan recalculado ya no figura como vencido.
         $evaluation = $this->evaluator()->evaluar(
             $plans->saved,
             new UsoActual(215_000, null),
             new DateTimeImmutable('2026-10-08'),
         );
         self::assertNotSame(EstadoPlan::VENCIDO, $evaluation->estado());
+    }
+
+    /**
+     * Lifecycle completo 1 a 6 con OT generada DESDE el aviso.
+     *
+     * CONVERTIDO es terminal: ya se escribio fecha_resolucion al convertir, asi
+     * que al cerrar la OT ese aviso NO pasa a RESUELTO ni se reescribe.
+     */
+    public function testCicloCompletoAvisoConvertidoQuedaConvertidoAlCerrarLaOT(): void
+    {
+        $plan = $this->planWithBase(200_000, nextKm: 215_000);
+        $notice = $this->noticeFor($plan, '2026-10-05');
+
+        // Paso 1 y 2: el plan vencio y se materializo el aviso PENDIENTE.
+        self::assertSame(EstadoPlan::VENCIDO, $this->evaluator()->evaluar(
+            $plan,
+            new UsoActual(215_000, null),
+            new DateTimeImmutable('2026-10-05'),
+        )->estado());
+        self::assertSame(EstadoGestionAviso::PENDIENTE, $notice->estadoGestion());
+
+        // Paso 3: se genera la OT desde el aviso, que queda CONVERTIDO.
+        $convertedAt = new DateTimeImmutable('2026-10-06');
+        $notice->marcarConvertido($convertedAt);
+        self::assertSame(EstadoGestionAviso::CONVERTIDO, $notice->estadoGestion());
+        self::assertSame($convertedAt, $notice->fechaResolucion());
+
+        // Pasos 4 a 6: se cierra esa misma OT y el plan entra en un ciclo nuevo.
+        $notices = new InMemoryNoticeRepository([$notice]);
+        $plans = new InMemoryPlanRepository($plan);
+        (new RecalcularPlanTrasCierre($plans, $this->serviceGateway(), $notices))
+            ->execute(self::EMPRESA, self::PLAN, null, new DateTimeImmutable('2026-10-07'), 215_000, null, 9);
+
+        self::assertSame(230_000, $plans->saved->proximoKm());
+        self::assertCount(0, $notices->saved, 'Un aviso CONVERTIDO no debe reescribirse al cerrar la OT.');
+        self::assertSame(EstadoGestionAviso::CONVERTIDO, $notice->estadoGestion());
+        self::assertSame($convertedAt, $notice->fechaResolucion(), 'La fecha de conversion no debe perderse.');
+
+        // Paso 7: el ciclo nuevo que vuelve a vencer genera un aviso nuevo.
+        $newNotice = $this->noticeFor($this->planWithBase(215_000, nextKm: 230_000), '2027-04-10');
+        self::assertNotSame($notice->claveCiclo(), $newNotice->claveCiclo());
+        self::assertSame(EstadoGestionAviso::PENDIENTE, $newNotice->estadoGestion());
+    }
+
+    /**
+     * Un aviso CONVERTIDO no puede pasar a RESUELTO: la conversion ya es la
+     * resolucion y su fecha no debe sobrescribirse.
+     */
+    public function testUnAvisoConvertidoNoPuedeMarcarseResuelto(): void
+    {
+        $notice = $this->noticeFor($this->planWithBase(200_000, nextKm: 215_000), '2026-10-05');
+        $notice->marcarConvertido(new DateTimeImmutable('2026-10-06'));
+
+        $this->expectException(DomainException::class);
+        $notice->marcarResuelto(new DateTimeImmutable('2026-10-07'), 'Ciclo superado.');
+    }
+
+    /**
+     * Seguridad: el cierre solo resuelve el ciclo que supero. Un aviso PENDIENTE
+     * de OTRO ciclo, o uno recien detectado, debe sobrevivir.
+     */
+    public function testElCierreNoResuelveAvisosDeOtroCicloNiAvisosNuevos(): void
+    {
+        $currentPlan = $this->planWithBase(200_000, nextKm: 215_000);
+        $superseded = $this->noticeFor($currentPlan, '2026-10-05');
+
+        // Aviso de un ciclo distinto (otra base, otro objetivo).
+        $otherCycle = $this->noticeFor($this->planWithBase(100_000, nextKm: 115_000), '2026-08-01');
+        // Aviso concurrente ya detectado para el ciclo nuevo.
+        $freshCycle = $this->noticeFor($this->planWithBase(215_000, nextKm: 230_000), '2026-10-07');
+
+        $notices = new InMemoryNoticeRepository([$superseded, $otherCycle, $freshCycle]);
+        (new RecalcularPlanTrasCierre(
+            new InMemoryPlanRepository($currentPlan),
+            $this->serviceGateway(),
+            $notices,
+        ))->execute(self::EMPRESA, self::PLAN, null, new DateTimeImmutable('2026-10-07'), 215_000, null, 9);
+
+        self::assertSame(EstadoGestionAviso::RESUELTO, $superseded->estadoGestion());
+        self::assertSame(
+            EstadoGestionAviso::PENDIENTE,
+            $otherCycle->estadoGestion(),
+            'Un aviso de otro ciclo no debe resolverse por este cierre.',
+        );
+        self::assertSame(
+            EstadoGestionAviso::PENDIENTE,
+            $freshCycle->estadoGestion(),
+            'Un aviso recien detectado para el ciclo nuevo debe seguir pendiente.',
+        );
+        self::assertCount(1, $notices->saved);
     }
 
     /**
@@ -283,7 +371,18 @@ final class InMemoryNoticeRepository implements MaintenanceNoticeRepository
         return null;
     }
 
-    public function pendingForPlan(int $companyId, int $planId): array
+    public function pendingForCycle(int $companyId, int $planId, string $claveCiclo): array
+    {
+        return array_values(array_filter(
+            $this->notices,
+            static fn (AvisoPlan $notice): bool => $notice->planId() === $planId
+                && $notice->claveCiclo() === $claveCiclo
+                && $notice->estadoGestion() === EstadoGestionAviso::PENDIENTE,
+        ));
+    }
+
+    /** @return list<AvisoPlan> */
+    public function allPending(int $planId): array
     {
         return array_values(array_filter(
             $this->notices,

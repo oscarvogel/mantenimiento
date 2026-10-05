@@ -201,6 +201,6 @@ final class BatchNoticeRepositoryFake4b implements MaintenanceNoticeRepository
     public bool $fail = false;
     public function findByCycleKey(int $companyId, int $planId, string $cycleKey): ?AvisoPlan { return null; }
     public function findScoped(int $companyId, int $noticeId, ?array $branchIds, bool $forUpdate = false): ?AvisoPlan { return null; }
-    public function pendingForPlan(int $companyId, int $planId): array { return []; }
+    public function pendingForCycle(int $companyId, int $planId, string $claveCiclo): array { return []; }
     public function save(AvisoPlan $notice, ?int $actorUserId): int { if ($this->fail) { throw new RuntimeException('notice failed'); } return 1; }
 }

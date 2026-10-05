@@ -13,8 +13,8 @@ interface MaintenanceNoticeRepository
     /** @param list<int>|null $branchIds */
     public function findScoped(int $companyId, int $noticeId, ?array $branchIds, bool $forUpdate = false): ?AvisoPlan;
 
-    /** @return list<AvisoPlan> */
-    public function pendingForPlan(int $companyId, int $planId): array;
+    /** Avisos PENDIENTE de un ciclo concreto del plan. */
+    public function pendingForCycle(int $companyId, int $planId, string $claveCiclo): array;
 
     public function save(AvisoPlan $notice, ?int $actorUserId): int;
 }

@@ -7,6 +7,7 @@ namespace App\Application\PreventiveMaintenance;
 use App\Application\PreventiveMaintenance\Port\MaintenanceNoticeRepository;
 use App\Application\PreventiveMaintenance\Port\PlanMantenimientoRepository;
 use App\Application\PreventiveMaintenance\Port\ServiceTypeGateway;
+use App\Domain\PreventiveMaintenance\AvisoPlan;
 use App\Domain\PreventiveMaintenance\PlanMantenimiento;
 use DateTimeImmutable;
 use DomainException;
@@ -68,10 +69,12 @@ final readonly class RecalcularPlanTrasCierre
             $plan->observaciones(),
         );
 
+        $previousCycleKey = AvisoPlan::claveCicloPara($plan);
+
         $updated->recalcularDesdeCierre($completedAt, $outputKm, $outputHoursTenths);
         $this->plans->save($updated, $actorUserId);
 
-        $this->resolvePendingNotices($companyId, (int) $plan->id(), $completedAt, $actorUserId);
+        $this->resolveSupersededNotices($companyId, (int) $plan->id(), $previousCycleKey, $completedAt, $actorUserId);
 
         return [
             'proximo_km' => $updated->proximoKm(),
@@ -82,15 +85,27 @@ final readonly class RecalcularPlanTrasCierre
 
     /**
      * El cierre abre un ciclo nuevo para el plan, asi que los avisos PENDIENTE
-     * de ciclos anteriores quedaron obsoletos. Sin resolverlos seguirian
-     * apareciendo como vencidos aunque el plan recien recalculado ya este al dia
-     * o proximo. Si el nuevo ciclo vuelve a vencer, la deteccion automatica
-     * materializara un aviso nuevo con su propia clave de ciclo.
+     * del ciclo que acaba de cerrarse quedaron obsoletos: sin resolverlos
+     * seguirian apareciendo como vencidos aunque el plan recien recalculado ya
+     * este al dia o proximo.
+     *
+     * Solo se resuelve el ciclo exacto que el cierre supero (claveCiclo), no
+     * todos los avisos del plan. Un aviso de otro ciclo, o uno recien detectado
+     * para el ciclo nuevo, sigue siendo una accion pendiente legitima y debe
+     * sobrevivir a este cierre.
+     *
+     * Los avisos CONVERTIDO no se tocan:Convertido significa que ya se genero
+     * una OT para ese aviso, y la conversion ya escribio su fecha_resolucion.
      */
-    private function resolvePendingNotices(int $companyId, int $planId, DateTimeImmutable $at, int $actorUserId): void
-    {
-        foreach ($this->notices->pendingForPlan($companyId, $planId) as $notice) {
-            $notice->marcarResuelto($at, 'Plan recalculado por cierre de orden preventiva.');
+    private function resolveSupersededNotices(
+        int $companyId,
+        int $planId,
+        string $previousCycleKey,
+        DateTimeImmutable $at,
+        int $actorUserId,
+    ): void {
+        foreach ($this->notices->pendingForCycle($companyId, $planId, $previousCycleKey) as $notice) {
+            $notice->marcarResuelto($at, 'Ciclo superado: la orden se genero desde el plan y no desde este aviso.');
             $this->notices->save($notice, $actorUserId);
         }
     }
