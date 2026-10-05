@@ -59,14 +59,7 @@ final class CodeIgniterWorkOrderDashboardReadModel implements WorkOrderDashboard
     private function filteredBuilder(ActorContext $actor, array $filters): BaseBuilder
     {
         $builder = $this->baseBuilder($actor);
-        $q = trim((string) ($filters['q'] ?? ''));
-        if ($q !== '') {
-            $builder->groupStart()
-                ->like('o.numero', $q)
-                ->orLike('e.codigo', $q)
-                ->orLike('e.patente', $q)
-                ->groupEnd();
-        }
+        $this->applySearchTerm($builder, trim((string) ($filters['q'] ?? '')));
         $status = strtoupper(trim((string) ($filters['status'] ?? '')));
         if ($status !== '') {
             $builder->where('o.estado', $status);
@@ -85,6 +78,35 @@ final class CodeIgniterWorkOrderDashboardReadModel implements WorkOrderDashboard
         }
 
         return $builder;
+    }
+
+    /**
+     * Búsqueda general del tablero: número, código y patente del equipo más el texto
+     * escrito por el usuario (diagnóstico, observaciones y trabajo realizado de la OT,
+     * y descripción solicitada / trabajo realizado / observaciones de sus tareas).
+     *
+     * Las tareas entran por `EXISTS` y no por `JOIN` a propósito: el filtro decide si la
+     * OT aparece, nunca agrega filas al resultado, así que `countAllResults()` cuenta
+     * órdenes y no órdenes-tareas. Mismo patrón que el historial por equipo.
+     */
+    private function applySearchTerm(BaseBuilder $builder, string $q): void
+    {
+        if ($q === '') {
+            return;
+        }
+
+        $escaped = $this->database->escapeLikeString($q);
+        $needle = $this->database->escape('%' . $escaped . '%');
+
+        $builder->groupStart()
+            ->like('o.numero', $q)
+            ->orLike('e.codigo', $q)
+            ->orLike('e.patente', $q)
+            ->orLike('o.diagnostico', $q)
+            ->orLike('o.trabajo_realizado', $q)
+            ->orLike('o.observaciones', $q)
+            ->orWhere("EXISTS (SELECT 1 FROM orden_tareas dt WHERE dt.empresa_id = o.empresa_id AND dt.orden_id = o.id AND (dt.descripcion_solicitada LIKE {$needle} ESCAPE '!' OR dt.trabajo_realizado LIKE {$needle} ESCAPE '!' OR dt.observaciones LIKE {$needle} ESCAPE '!'))", null, false)
+            ->groupEnd();
     }
 
     private function baseBuilder(ActorContext $actor): BaseBuilder
