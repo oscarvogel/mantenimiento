@@ -141,7 +141,7 @@ final class CodeIgniterCircuitOverview implements CircuitOverviewPort
             'users' => $this->database->table('usuarios')->select('id, nombre')->where('empresa_id', $companyId)->where('activo', 1)->where('es_superadmin', 0)->where('deleted_at', null)->orderBy('nombre')->get()->getResultArray(),
             'equipments' => $equipmentRows,
             'readings' => $readingPage['items'],
-            'plans' => $planPage['items'],
+            'plans' => $planRows,
             'notices' => $noticePage['items'],
             'orders' => $orderRows,
             'pagination' => [
