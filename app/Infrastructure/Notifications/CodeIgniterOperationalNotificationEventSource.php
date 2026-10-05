@@ -16,7 +16,7 @@ use App\Domain\WorkOrders\WorkOrderStatus;
 use CodeIgniter\Database\BaseConnection;
 use Config\Database;
 use DateTimeImmutable;
-use InvalidArgumentException;
+use LogicException;
 
 final class CodeIgniterOperationalNotificationEventSource implements OperationalNotificationEventSource
 {
@@ -136,6 +136,11 @@ final class CodeIgniterOperationalNotificationEventSource implements Operational
             ->where('p.activo', 1)->where('p.deleted_at', null)->where('e.deleted_at', null)->get()->getResultArray();
         $events = [];
         foreach ($rows as $row) {
+            // Un solo plan incoherente no puede silenciar el resto del lote (#167).
+            // La reconstitucion y la evaluacion van dentro del mismo try a proposito:
+            // EvaluadorVencimiento lanza DomainException (y PlanMantenimiento
+            // InvalidArgumentException), ambas LogicException, y sin este wrapping
+            // una fila inválida abortaria la corrida entera de notificaciones.
             try {
                 $plan = PlanMantenimiento::reconstituir(
                     (int) $row['id'], (int) $row['empresa_id'], (int) $row['equipo_id'], (int) $row['tipo_servicio_id'],
@@ -145,27 +150,26 @@ final class CodeIgniterOperationalNotificationEventSource implements Operational
                     $this->integer($row['proximo_km']), $this->tenths($row['proximas_horas']), $this->date($row['proxima_fecha']),
                     (string) $row['prioridad'], true, $row['observaciones'] === null ? null : (string) $row['observaciones'],
                 );
-            } catch (InvalidArgumentException $exception) {
+                $evaluation = (new EvaluadorVencimiento())->evaluar($plan, new UsoActual($this->integer($row['km_actual']), $this->tenths($row['horas_actuales'])), $this->clock->now());
+                if (! in_array($evaluation->estado(), [EstadoPlan::PROXIMO, EstadoPlan::VENCIDO], true)) { continue; }
+                $overdue = $evaluation->estado() === EstadoPlan::VENCIDO;
+                $cycle = implode(':', [$row['proximo_km'] ?? '-', $row['proximas_horas'] ?? '-', $row['proxima_fecha'] ?? '-']);
+                $type = $overdue ? 'preventivo.vencido' : 'preventivo.proximo';
+                $events[] = new NotifiableEvent(
+                    (int) $row['empresa_id'], (int) $row['sucursal_id'], $type,
+                    $overdue ? NotificationSeverity::CRITICAL : NotificationSeverity::WARNING,
+                    ($overdue ? 'Mantenimiento vencido' : 'Mantenimiento próximo') . ': ' . $row['equipo_codigo'],
+                    (string) $row['servicio_nombre'] . ' · criterios: ' . implode(', ', $evaluation->criteriosDisparadores()),
+                    'plan_mantenimiento', (string) $row['id'], "{$type}:plan:{$row['id']}:ciclo:{$cycle}",
+                    $this->path('mantenimiento/planes') . '?equipo_id=' . (int) $row['equipo_id'], $this->clock->now(),
+                );
+            } catch (LogicException $domainError) {
                 log_message('warning', 'Se omitió el plan {plan} de la empresa {company} por datos inválidos: {message}', [
                     'plan' => (int) $row['id'],
                     'company' => (int) $row['empresa_id'],
-                    'message' => $exception->getMessage(),
+                    'message' => $domainError->getMessage(),
                 ]);
-                continue;
             }
-            $evaluation = (new EvaluadorVencimiento())->evaluar($plan, new UsoActual($this->integer($row['km_actual']), $this->tenths($row['horas_actuales'])), $this->clock->now());
-            if (! in_array($evaluation->estado(), [EstadoPlan::PROXIMO, EstadoPlan::VENCIDO], true)) { continue; }
-            $overdue = $evaluation->estado() === EstadoPlan::VENCIDO;
-            $cycle = implode(':', [$row['proximo_km'] ?? '-', $row['proximas_horas'] ?? '-', $row['proxima_fecha'] ?? '-']);
-            $type = $overdue ? 'preventivo.vencido' : 'preventivo.proximo';
-            $events[] = new NotifiableEvent(
-                (int) $row['empresa_id'], (int) $row['sucursal_id'], $type,
-                $overdue ? NotificationSeverity::CRITICAL : NotificationSeverity::WARNING,
-                ($overdue ? 'Mantenimiento vencido' : 'Mantenimiento próximo') . ': ' . $row['equipo_codigo'],
-                (string) $row['servicio_nombre'] . ' · criterios: ' . implode(', ', $evaluation->criteriosDisparadores()),
-                'plan_mantenimiento', (string) $row['id'], "{$type}:plan:{$row['id']}:ciclo:{$cycle}",
-                $this->path('mantenimiento/planes') . '?equipo_id=' . (int) $row['equipo_id'], $this->clock->now(),
-            );
         }
         return $events;
     }
