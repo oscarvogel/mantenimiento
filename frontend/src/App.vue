@@ -48,8 +48,11 @@ const shell = computed(() => ({
 
 const quickActions = computed(() => [
   {
-    label: 'Ver vencidos',
-    description: 'Mantenimientos fuera de fecha',
+    // El enlace va a planes?estado=VENCIDO, o sea mantenimientos preventivos.
+    // Decir "Ver vencidos" a secas mezclaba esta accion con la vencimientos de
+    // documentacion, que es otra pantalla y otro filtro.
+    label: 'Ver preventivos vencidos',
+    description: 'Planes de mantenimiento fuera de fecha',
     href: props.dashboard.links.maintenanceOverdue,
     icon: ExclamationTriangleIcon,
   },
