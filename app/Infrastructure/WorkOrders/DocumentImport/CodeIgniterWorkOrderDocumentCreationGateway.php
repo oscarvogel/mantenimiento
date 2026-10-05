@@ -4,14 +4,21 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\WorkOrders\DocumentImport;
 
+use App\Application\WorkOrders\DocumentImport\Port\ImportedOrderPartWriter;
 use App\Application\WorkOrders\DocumentImport\Port\WorkOrderDocumentCreationGateway;
 use App\Domain\WorkOrders\HistoricalCostSnapshot;
+use App\Domain\WorkOrders\ImportedPartLine;
 use CodeIgniter\Database\BaseConnection;
 use DomainException;
 
 final class CodeIgniterWorkOrderDocumentCreationGateway implements WorkOrderDocumentCreationGateway
 {
-    public function __construct(private readonly BaseConnection $db) {}
+    private readonly ImportedOrderPartWriter $parts;
+
+    public function __construct(private readonly BaseConnection $db, ?ImportedOrderPartWriter $parts = null)
+    {
+        $this->parts = $parts ?? new CodeIgniterImportedOrderPartWriter($db);
+    }
 
     public function transaction(callable $operation): mixed
     {
@@ -106,10 +113,8 @@ final class CodeIgniterWorkOrderDocumentCreationGateway implements WorkOrderDocu
     ): int {
         $performed = implode("\n", array_map(static fn (array $row): string => '- ' . trim((string) ($row['description'] ?? '')), $works));
         if (trim($performed) === '') throw new DomainException('La OT correctiva requiere al menos un trabajo.');
-        $materialText = implode(', ', array_map(static function (array $row): string {
-            $quantity = isset($row['quantity']) && $row['quantity'] !== null ? (string) $row['quantity'] . ' ' : '';
-            return trim($quantity . (string) ($row['unit'] ?? '') . ' ' . (string) ($row['description'] ?? ''));
-        }, $materials));
+        $partLines = ImportedPartLine::listFromDetected($materials);
+        $materialText = implode(', ', array_map(static fn (ImportedPartLine $line): string => $line->summary(), $partLines));
         $notes = array_values(array_filter([
             $observations,
             $supplier ? 'Taller/proveedor: ' . $supplier : null,
@@ -150,6 +155,9 @@ final class CodeIgniterWorkOrderDocumentCreationGateway implements WorkOrderDocu
         ]);
         $id = (int) $this->db->insertID();
         if ($id <= 0) throw new DomainException('No se pudo crear la OT correctiva desde el documento.');
+        // Los repuestos detectados se agregan como ítems estructurados dentro de la
+        // misma transacción que creó la OT: si esto falla, no queda una OT a medias.
+        $this->parts->appendToWorkOrder($companyId, $id, $serviceDate, $materials);
         $this->db->table('orden_estado_historial')->insert([
             'empresa_id' => $companyId, 'orden_id' => $id, 'estado_anterior' => null, 'estado_nuevo' => 'FINALIZADA',
             'fecha' => $now, 'usuario_id' => $actorUserId, 'comentario' => 'OT correctiva importada desde documento de taller', 'created_at' => $now,
