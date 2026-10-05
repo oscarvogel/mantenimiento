@@ -256,6 +256,86 @@ final class ProcessMessageHandlerTest extends TestCase
         $this->assertSame('Lectura registrada.', $result->messages[0]->content);
     }
 
+    /**
+     * #112: la confirmacion del usuario no reemplaza la autorizacion en servidor.
+     *
+     * El executor tiene `expects(never())`, asi que este test muerde por si solo:
+     * sin la revalidacion, execute() correria la tool y el test falla. Cubre el
+     * caso en que el permiso se pierde o se revoca entre que el modelo propone la
+     * tool y que el cliente POSTea la confirmacion.
+     */
+    public function testConfirmedWriteToolCallIsRejectedWhenActorNoLongerHasThePermission(): void
+    {
+        $writeTool = ToolDefinition::write(
+            name: 'registrar_lectura',
+            description: 'Registra una lectura',
+            parameters: ['equipmentId' => ['type' => 'integer']],
+            permission: 'lecturas.cargar',
+        );
+
+        $appended = [];
+        $msgRepo = $this->createMock(MessageRepository::class);
+        $msgRepo->method('append')->willReturnCallback(function (Message $m) use (&$appended): int {
+            $appended[] = $m;
+            return count($appended);
+        });
+        $msgRepo->method('findForConversation')->willReturn([]);
+
+        $convRepo = $this->createMock(ConversationRepository::class);
+        $convRepo->method('find')->willReturn(
+            Conversation::reconstitute(1, 1, 1, null, new \DateTimeImmutable(), new \DateTimeImmutable())
+        );
+
+        $ai = $this->createMock(AIProvider::class);
+        $ai->method('sendMessage')->willReturn(new AIResponse(content: 'No puedo ejecutar esa acción.'));
+
+        $executor = $this->createMock(ToolExecutor::class);
+        $executor->expects($this->never())->method('execute');
+
+        $registry = new class ($writeTool) implements ToolRegistry {
+            public function __construct(private readonly ToolDefinition $tool) {}
+            public function all(): array { return [$this->tool]; }
+            public function find(string $name): ?ToolDefinition { return $name === $this->tool->name ? $this->tool : null; }
+        };
+
+        $handler = new ProcessMessageHandler(
+            messages: $msgRepo,
+            toolRegistry: $registry,
+            aiProvider: $ai,
+            toolExecutor: $executor,
+            clock: new class implements ChatClock {
+                public function now(): \DateTimeImmutable { return new \DateTimeImmutable(); }
+            },
+            conversations: $convRepo,
+        );
+
+        // El actor conserva chatbot.usar y equipos.ver, pero YA NO tiene lecturas.cargar.
+        $actor = ActorContext::fromArray([
+            'user_id' => 1,
+            'company_id' => 1,
+            'super_admin' => false,
+            'all_company_branches' => false,
+            'roles' => ['tecnico'],
+            'permissions' => ['chatbot.usar', 'equipos.ver'],
+            'branch_ids' => [1],
+        ]);
+
+        $handler->execute($actor, new SendMessageCommand(
+            conversationId: 1,
+            content: '',
+            confirmedToolCalls: [
+                ['id' => 'call_9', 'name' => 'registrar_lectura', 'arguments' => ['equipmentId' => 14]],
+            ],
+        ));
+
+        $toolMessages = array_values(array_filter($appended, static fn (Message $m): bool => $m->role === 'tool'));
+
+        self::assertCount(1, $toolMessages, 'El rechazo debe quedar registrado como mensaje de tool para que el asistente lo explique.');
+        self::assertFalse($toolMessages[0]->toolCalls['success']);
+        self::assertSame('No tenés permiso para ejecutar esta acción.', $toolMessages[0]->toolCalls['error']);
+        self::assertStringContainsString('No tenés permiso', $toolMessages[0]->content);
+    }
+
     public function testEmptyUserMessageIsNotPersistedOnConfirmation(): void
     {
         $msgRepo = $this->createMock(MessageRepository::class);
