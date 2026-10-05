@@ -562,6 +562,24 @@ TXT;
                 continue;
             }
 
+            // La confirmacion del usuario NO reemplaza la autorizacion en servidor.
+            // Al proponer la tool solo se le muestran al modelo las que el actor podia
+            // ver, pero la confirmacion es un POST del cliente: entre la propuesta y el
+            // POST el permiso pudo cambiar o revocarse, y el nombre de la tool lo elige
+            // el cliente. Se revalida antes de ejecutar (#112).
+            if (! $actor->hasPermission($toolDef->permission)) {
+                $this->messages->append($this->buildToolMessage(
+                    $command->conversationId,
+                    $tc,
+                    ToolCallResult::failure(
+                        (string) ($tc['id'] ?? ''),
+                        $name,
+                        'No tenés permiso para ejecutar esta acción.',
+                    ),
+                ));
+                continue;
+            }
+
             $result = $this->toolExecutor->execute($name, $tc['arguments'] ?? [], $actor);
             $this->messages->append($this->buildToolMessage($command->conversationId, $tc, $result));
         }
