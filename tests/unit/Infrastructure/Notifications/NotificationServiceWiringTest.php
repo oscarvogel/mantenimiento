@@ -24,15 +24,9 @@ final class NotificationServiceWiringTest extends TestCase
         self::assertMatchesRegularExpression("~'PROXIMO_H'.*'-168 days'.*'\\+12 days'~s", $seeder);
     }
 
-    public function testInvalidHistoricalPlansAreLoggedAndSkippedByTheEventSource(): void
-    {
-        $source = file_get_contents(APPPATH . 'Infrastructure/Notifications/CodeIgniterOperationalNotificationEventSource.php');
-
-        self::assertIsString($source);
-        self::assertStringContainsString('catch (InvalidArgumentException $exception)', $source);
-        self::assertStringContainsString("log_message('warning'", $source);
-        self::assertStringContainsString('continue;', $source);
-    }
+    // La regresion de aislamiento de planes incoherentes (#167) ya no se verifica
+    // grepeando el fuente: vive en PreventiveEventSourceIsolationTest, que arma la
+    // base real y comprueba que el plan sano sigue emitiendo su evento.
 
     public function testWhatsAppGatewayUsesGlobalNotificationSettingsStoreInsteadOfDirectEnvCredentials(): void
     {
