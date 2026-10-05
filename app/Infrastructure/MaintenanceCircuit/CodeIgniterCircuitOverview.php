@@ -6,7 +6,11 @@ namespace App\Infrastructure\MaintenanceCircuit;
 
 use App\Application\MaintenanceCircuit\CircuitOverviewPagination;
 use App\Application\MaintenanceCircuit\Port\CircuitOverviewPort;
+use App\Domain\PreventiveMaintenance\EstadoPlan;
+use App\Domain\PreventiveMaintenance\EvaluadorVencimiento;
+use App\Infrastructure\PreventiveMaintenance\CodeIgniterPreventivePlanReadModel;
 use App\Infrastructure\PreventiveMaintenance\DecimalHours;
+use App\Infrastructure\PreventiveMaintenance\SystemClock as PreventiveClock;
 use CodeIgniter\Database\BaseBuilder;
 use CodeIgniter\Database\BaseConnection;
 use DomainException;
@@ -44,6 +48,8 @@ final class CodeIgniterCircuitOverview implements CircuitOverviewPort
         }, $pagination, 'equipments');
         $equipmentRows = $equipmentPage['items'];
 
+        $planStates = $this->currentPlanStates($companyId, $branchIds);
+
         $planPage = $this->paginate(function () use ($companyId, $branchIds): BaseBuilder {
             $builder = $this->database->table('planes_mantenimiento p')
                 ->select('p.*, e.sucursal_id, e.codigo equipo_codigo, e.km_actual, e.horas_actuales, ts.nombre servicio_nombre')
@@ -54,8 +60,22 @@ final class CodeIgniterCircuitOverview implements CircuitOverviewPort
             $this->scopeBranches($builder, 'e.sucursal_id', $branchIds);
             return $builder;
         }, $pagination, 'plans');
+        $planRows = $planPage['items'];
+        foreach ($planRows as &$planRow) {
+            $planRow['computed_state'] = $planStates[(int) $planRow['id']] ?? 'SIN_DATOS';
+        }
+        unset($planRow);
 
-        $noticePage = $this->paginate(function () use ($companyId, $branchIds): BaseBuilder {
+        // Un aviso pertenece a un ciclo concreto del plan. Solo es accionable
+        // mientras su plan siga realmente vencido segun el evaluador de dominio;
+        // de lo contrario el listado mostraria como vencidos planes que el
+        // dashboard ya cuenta como proximos o al dia.
+        $overduePlanIds = array_keys(array_filter(
+            $planStates,
+            static fn (string $state): bool => $state === EstadoPlan::VENCIDO->value,
+        ));
+
+        $noticePage = $this->paginate(function () use ($companyId, $branchIds, $overduePlanIds): BaseBuilder {
             $builder = $this->database->table('avisos_plan a')
                 ->select('a.id, a.plan_id, a.equipo_id, a.estado_calculado, a.criterios_disparadores, a.fecha_deteccion, a.estado_gestion, e.sucursal_id, e.codigo equipo_codigo, ts.nombre servicio_nombre')
                 ->join('equipos e', 'e.id = a.equipo_id AND e.empresa_id = a.empresa_id', 'inner')
@@ -63,6 +83,11 @@ final class CodeIgniterCircuitOverview implements CircuitOverviewPort
                 ->join('tipos_servicio ts', $this->serviceJoin('p'), 'inner')
                 ->where('a.empresa_id', $companyId)->where('a.estado_gestion', 'PENDIENTE')
                 ->orderBy('a.fecha_deteccion', 'DESC');
+            if ($overduePlanIds === []) {
+                $builder->where('1 = 0', null, false);
+            } else {
+                $builder->whereIn('a.plan_id', $overduePlanIds);
+            }
             $this->scopeBranches($builder, 'e.sucursal_id', $branchIds);
             return $builder;
         }, $pagination, 'notices');
@@ -127,6 +152,34 @@ final class CodeIgniterCircuitOverview implements CircuitOverviewPort
                 'readings' => $this->metadata($readingPage),
             ],
         ];
+    }
+
+    /**
+     * Estado efectivo de cada plan activo de la empresa, calculado con el mismo
+     * EvaluadorVencimiento que alimenta los contadores de proximos y vencidos
+     * del dashboard. Es la unica fuente de verdad para decidir si un plan esta
+     * vencido, en cualquier pantalla.
+     *
+     * @param list<int>|null $branchIds
+     * @return array<int, string> planId => EstadoPlan value
+     */
+    private function currentPlanStates(int $companyId, ?array $branchIds): array
+    {
+        $readModel = new CodeIgniterPreventivePlanReadModel($this->database);
+        $evaluator = new EvaluadorVencimiento();
+        $now       = (new PreventiveClock())->now();
+        $states    = [];
+
+        foreach ($readModel->listActive($companyId, $branchIds) as $item) {
+            $planId = $item->plan->id();
+            if ($planId === null) {
+                continue;
+            }
+
+            $states[$planId] = $evaluator->evaluar($item->plan, $item->currentUsage, $now)->estado()->value;
+        }
+
+        return $states;
     }
 
     /** @return list<array<string,mixed>> */

@@ -105,6 +105,29 @@ final class AvisoPlan
         $this->fechaResolucion = $fecha;
     }
 
+    /**
+     * Un aviso pertenece a un ciclo concreto del plan (ver claveCiclo). Cuando el
+     * plan se recalcula y arranca un ciclo nuevo, los avisos del ciclo anterior
+     * quedan obsoletos: sin esta transicion quedarian PENDIENTE para siempre y
+     * las pantallas los seguirian mostrando como vencidos aunque el plan ya no
+     * lo estuviera.
+     */
+    public function marcarResuelto(DateTimeImmutable $fecha, string $motivo): void
+    {
+        if ($this->estadoGestion !== EstadoGestionAviso::PENDIENTE) {
+            throw new DomainException('Solo un aviso pendiente puede marcarse como resuelto.');
+        }
+
+        $motivo = trim($motivo);
+        if ($motivo === '') {
+            throw new DomainException('Un aviso resuelto requiere el motivo por el que dejo de requerir atencion.');
+        }
+
+        $this->estadoGestion     = EstadoGestionAviso::RESUELTO;
+        $this->fechaResolucion   = $fecha;
+        $this->motivoResolucion  = $motivo;
+    }
+
     public function id(): ?int { return $this->id; }
     public function empresaId(): int { return $this->empresaId; }
     public function planId(): int { return $this->planId; }

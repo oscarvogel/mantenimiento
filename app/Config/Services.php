@@ -1238,7 +1238,11 @@ return new AsignarPlan(
             return static::getSharedInstance('recalculatePlanAfterClosure');
         }
 
-        return new RecalcularPlanTrasCierre(new CodeIgniterPlanMantenimientoRepository(db_connect()));
+        return new RecalcularPlanTrasCierre(
+            new CodeIgniterPlanMantenimientoRepository(db_connect()),
+            new CodeIgniterServiceTypeGateway(db_connect()),
+            new CodeIgniterMaintenanceNoticeRepository(db_connect()),
+        );
     }
 
     public static function detectOverduePlans(bool $getShared = true): DetectOverduePlans

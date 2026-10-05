@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\PreventiveMaintenance;
 
+use App\Application\PreventiveMaintenance\Port\MaintenanceNoticeRepository;
 use App\Application\PreventiveMaintenance\Port\PlanMantenimientoRepository;
 use App\Application\PreventiveMaintenance\Port\ServiceTypeGateway;
 use App\Domain\PreventiveMaintenance\PlanMantenimiento;
@@ -15,6 +16,7 @@ final readonly class RecalcularPlanTrasCierre
     public function __construct(
         private PlanMantenimientoRepository $plans,
         private ServiceTypeGateway $services,
+        private MaintenanceNoticeRepository $notices,
     ) {
     }
 
@@ -69,10 +71,27 @@ final readonly class RecalcularPlanTrasCierre
         $updated->recalcularDesdeCierre($completedAt, $outputKm, $outputHoursTenths);
         $this->plans->save($updated, $actorUserId);
 
+        $this->resolvePendingNotices($companyId, (int) $plan->id(), $completedAt, $actorUserId);
+
         return [
             'proximo_km' => $updated->proximoKm(),
             'proximas_horas_decimas' => $updated->proximasHorasDecimas(),
             'proxima_fecha' => $updated->proximaFecha()?->format('Y-m-d'),
         ];
+    }
+
+    /**
+     * El cierre abre un ciclo nuevo para el plan, asi que los avisos PENDIENTE
+     * de ciclos anteriores quedaron obsoletos. Sin resolverlos seguirian
+     * apareciendo como vencidos aunque el plan recien recalculado ya este al dia
+     * o proximo. Si el nuevo ciclo vuelve a vencer, la deteccion automatica
+     * materializara un aviso nuevo con su propia clave de ciclo.
+     */
+    private function resolvePendingNotices(int $companyId, int $planId, DateTimeImmutable $at, int $actorUserId): void
+    {
+        foreach ($this->notices->pendingForPlan($companyId, $planId) as $notice) {
+            $notice->marcarResuelto($at, 'Plan recalculado por cierre de orden preventiva.');
+            $this->notices->save($notice, $actorUserId);
+        }
     }
 }

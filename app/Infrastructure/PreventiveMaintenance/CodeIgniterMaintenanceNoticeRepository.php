@@ -53,6 +53,19 @@ final class CodeIgniterMaintenanceNoticeRepository implements MaintenanceNoticeR
         return $row === null ? null : $this->hydrate($row);
     }
 
+    public function pendingForPlan(int $companyId, int $planId): array
+    {
+        $rows = $this->db->table('avisos_plan')
+            ->where('empresa_id', $companyId)
+            ->where('plan_id', $planId)
+            ->where('estado_gestion', 'PENDIENTE')
+            ->orderBy('id')
+            ->get()
+            ->getResultArray();
+
+        return array_map(fn (array $row): AvisoPlan => $this->hydrate($row), $rows);
+    }
+
     public function save(AvisoPlan $notice, ?int $actorUserId): int
     {
         $data = [

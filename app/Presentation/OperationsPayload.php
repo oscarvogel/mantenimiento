@@ -89,6 +89,7 @@ final class OperationsPayload
             ], $source['plans'] ?? []),
             'notices' => array_map(fn (array $row): array => [
                 'id' => (int) $row['id'], 'equipmentCode' => $row['equipo_codigo'], 'serviceName' => $row['servicio_nombre'],
+                'computedState' => $row['estado_calculado'],
                 'triggerCriteria' => $row['criterios_disparadores'],
                 'photoUrl' => isset($primaryPhotos[(int) ($row['equipo_id'] ?? 0)]) ? base_url('mantenimiento/equipos/' . $row['equipo_id'] . '/foto-principal?miniatura=1') : null,
                 'generateOrderUrl' => base_url('mantenimiento/avisos/' . $row['id'] . '/orden'),

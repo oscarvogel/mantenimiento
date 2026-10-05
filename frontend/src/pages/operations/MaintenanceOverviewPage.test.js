@@ -131,4 +131,30 @@ describe('MaintenanceOverviewPage', () => {
     expect(printLink.attributes('target')).toBe('_blank')
     expect(printLink.attributes('rel')).toContain('noopener')
   })
+
+  // Regresion: el badge de los avisos estaba hardcodeado como "VENCIDO".
+  // Ahora debe reflejar el estado que calculó el backend, que es el mismo
+  // evaluador de dominio que usa el dashboard para contar vencidos.
+  it('muestra el estado real del aviso en vez de asumir VENCIDO', () => {
+    const data = baseData()
+    data.pagination.notices = { ...pagination(), total: 1 }
+    data.notices = [{ id: 55, equipmentCode: 'AD738EA', serviceName: 'Servicio Motor', computedState: 'PROXIMO', triggerCriteria: 'KILOMETRAJE', photoUrl: null, generateOrderUrl: '/mantenimiento/avisos/55/orden' }]
+
+    const wrapper = mount(MaintenanceOverviewPage, { props: { data } })
+
+    expect(wrapper.text()).toContain('AD738EA')
+    expect(wrapper.text()).toContain('Próximo')
+    expect(wrapper.text()).not.toContain('Vencido')
+  })
+
+  it('sigue mostrando VENCIDO cuando el backend confirma que el plan venció', () => {
+    const data = baseData()
+    data.pagination.notices = { ...pagination(), total: 1 }
+    data.notices = [{ id: 56, equipmentCode: 'RHB2H00', serviceName: 'Servicio Motor', computedState: 'VENCIDO', triggerCriteria: 'KILOMETRAJE', photoUrl: null, generateOrderUrl: '/mantenimiento/avisos/56/orden' }]
+
+    const wrapper = mount(MaintenanceOverviewPage, { props: { data } })
+
+    expect(wrapper.text()).toContain('RHB2H00')
+    expect(wrapper.text()).toContain('Vencido')
+  })
 })
