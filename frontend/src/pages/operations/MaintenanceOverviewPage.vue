@@ -61,15 +61,14 @@ const attentionPlans = computed(() => (props.data.plans ?? []).filter((plan) => 
 const attentionCount = computed(() => (Number(props.data.pagination?.notices?.total) || 0) + attentionPlans.value.length)
 const hasPaginationRows = (pagination) => Number(pagination?.total) > 0
 const planSummary = (plan) => {
+  // El texto llega redactado por el backend a partir de la misma evaluacion de
+  // dominio que produjo `computedState`. Se muestra tal cual a proposito: si el
+  // frontend volviera a calcular la diferencia, la pantalla volveria a poder
+  // contradecir al dashboard. Solo se conserva el caso SIN_DATOS para el
+  // operador sin lectura, que necesita la accion (registrar lectura), no un numero.
   if ((plan.computedState || 'SIN_DATOS') === 'SIN_DATOS') return 'Falta registrar una lectura para calcular el próximo vencimiento.'
 
-  const nextValues = [
-    plan.nextKm === null || plan.nextKm === undefined ? null : `${plan.nextKm} km`,
-    plan.nextHours === null || plan.nextHours === undefined ? null : `${plan.nextHours} h`,
-    plan.nextDate === null || plan.nextDate === undefined ? null : plan.nextDate,
-  ].filter(Boolean)
-
-  return nextValues.length ? `Próximo: ${nextValues.join(' · ')}` : 'Sin próximo vencimiento informado.'
+  return plan.nextSummary || 'Sin próximo vencimiento informado.'
 }
 
 const toggleAction = (action) => {

@@ -9,6 +9,7 @@ use App\Application\Dashboard\Port\DashboardFinancialSummary;
 use App\Application\Dashboard\Port\DashboardOverview;
 use App\Application\Dashboard\Port\DashboardClock;
 use App\Application\Identity\ActorContext;
+use App\Application\PreventiveMaintenance\ResumenProximoPlan;
 use App\Domain\PreventiveMaintenance\CriterioPlan;
 use App\Domain\PreventiveMaintenance\EstadoPlan;
 use DateTimeImmutable;
@@ -236,28 +237,20 @@ final class GetMaintenanceDashboard
         $criterion = $criteria[0] ?? null;
         if (($criterion === CriterioPlan::KILOMETRAJE->value || $criterion === null)
             && $row['proximo_km'] !== null && $row['km_actual'] !== null) {
-            return $this->distance((float) $row['proximo_km'] - (float) $row['km_actual'], 'km');
+            return ResumenProximoPlan::diferencia((float) $row['proximo_km'] - (float) $row['km_actual'], 'km');
         }
         if (($criterion === CriterioPlan::HOROMETRO->value || $criterion === null)
             && $row['proximas_horas'] !== null && $row['horas_actuales'] !== null) {
-            return $this->distance((float) $row['proximas_horas'] - (float) $row['horas_actuales'], 'h');
+            return ResumenProximoPlan::diferencia((float) $row['proximas_horas'] - (float) $row['horas_actuales'], 'h');
         }
         if ($row['proxima_fecha'] !== null) {
             $today = $this->clock->today();
             $target = new DateTimeImmutable((string) $row['proxima_fecha']);
-            $days = (int) $today->diff($target)->format('%r%a');
 
-            return $days < 0 ? 'Vencido por ' . abs($days) . ' días' : ($days === 0 ? 'Vence hoy' : 'Faltan ' . $days . ' días');
+            return ResumenProximoPlan::dias((int) $today->diff($target)->format('%r%a'));
         }
 
         return 'Sin datos suficientes';
-    }
-
-    private function distance(float $distance, string $unit): string
-    {
-        $formatted = number_format(abs($distance), $unit === 'h' ? 1 : 0, ',', '.');
-
-        return $distance < 0 ? "Vencido por {$formatted} {$unit}" : ($distance === 0.0 ? 'Vence ahora' : "Faltan {$formatted} {$unit}");
     }
 
     private function statusLabel(EstadoPlan $status): string

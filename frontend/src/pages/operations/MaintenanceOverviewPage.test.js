@@ -53,6 +53,53 @@ describe('MaintenanceOverviewPage', () => {
     expect(attention.findAll('nav')).toHaveLength(1)
   })
 
+  it('muestra la distancia que falta, redactada por el backend, en vez del objetivo absoluto', () => {
+    const data = baseData()
+    data.pagination.plans = { ...pagination(), total: 1 }
+    data.plans = [{
+      id: 43,
+      equipmentCode: 'AD738EA',
+      serviceName: 'Servicio Motor',
+      computedState: 'PROXIMO',
+      nextKm: 862486,
+      nextHours: null,
+      nextDate: '2027-01-28',
+      nextSummary: 'Kilometraje: Faltan 963 km',
+      triggerCriteria: ['KILOMETRAJE'],
+      photoUrl: null,
+    }]
+
+    const wrapper = mount(MaintenanceOverviewPage, { props: { data } })
+    const text = wrapper.text()
+
+    expect(text).toContain('Kilometraje: Faltan 963 km')
+    // El objetivo absoluto no puede volver a presentarse como "Próximo: ...".
+    expect(text).not.toContain('Próximo: 862486')
+  })
+
+  it('no recalcula la distancia: muestra el texto del backend aunque el objetivo sugiera otra cosa', () => {
+    const data = baseData()
+    data.pagination.plans = { ...pagination(), total: 1 }
+    data.plans = [{
+      id: 44,
+      equipmentCode: 'RHB2H00',
+      serviceName: 'Servicio Motor',
+      computedState: 'VENCIDO',
+      nextKm: 862486,
+      nextHours: null,
+      nextDate: null,
+      nextSummary: 'Kilometraje: Vencido por 245 km · Fecha: Faltan 12 días',
+      photoUrl: null,
+    }]
+
+    const wrapper = mount(MaintenanceOverviewPage, { props: { data } })
+    const text = wrapper.text()
+
+    // Ambos criterios rotulados por separado, tal como los armo el backend.
+    expect(text).toContain('Kilometraje: Vencido por 245 km · Fecha: Faltan 12 días')
+    expect(text).not.toContain('862486')
+  })
+
   it('no presenta planes al día como atención pendiente', () => {
     const data = baseData()
     data.pagination.plans = { ...pagination(), total: 1 }
