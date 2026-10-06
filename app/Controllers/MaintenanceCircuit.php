@@ -18,7 +18,6 @@ use App\Application\Measurement\RegisterReadingCommand;
 use App\Application\Measurement\RegisterReadingHandler;
 use App\Application\PreventiveMaintenance\AsignarPlan;
 use App\Application\PreventiveMaintenance\AsignarPlanCommand;
-use App\Application\PreventiveMaintenance\ConsultarVencimientos;
 use App\Application\WorkOrders\ChangeWorkOrderState;
 use App\Application\WorkOrders\ChangeWorkOrderStateCommand;
 use App\Application\WorkOrders\GetPrintableWorkOrder;
@@ -42,19 +41,10 @@ final class MaintenanceCircuit extends BaseController
         $actor = $this->actor();
         $data = $this->overview()->execute($actor, $this->overviewPagination());
         $data['assetCatalogs'] = $this->assetCatalog()->list($actor);
-        $states = [];
-        if ($actor->hasPermission('planes.ver')) {
-            foreach ($this->due()->execute($actor, (int) $actor->companyId()) as $result) {
-                $states[(int) $result['plan']->id()] = $result['evaluation']->estado()->value;
-            }
-        } else {
+        if (! $actor->hasPermission('planes.ver')) {
             $data['plans'] = [];
             $data['pagination']['plans'] = ['total' => 0, 'page' => 1, 'perPage' => 10, 'totalPages' => 1];
         }
-        foreach ($data['plans'] as &$plan) {
-            $plan['computed_state'] = $states[(int) $plan['id']] ?? 'SIN_DATOS';
-        }
-        unset($plan);
         $data['can'] = [
             'createEquipment' => $actor->hasPermission('equipos.editar'),
             'registerReading' => $actor->hasPermission('lecturas.cargar'),
@@ -250,7 +240,6 @@ final class MaintenanceCircuit extends BaseController
 
     private function overview(): GetCircuitOverview { return service('circuitOverview'); }
     private function equipment(): ListEquipment { return service('equipmentList'); }
-    private function due(): ConsultarVencimientos { return service('consultMaintenanceDue'); }
     private function assetCatalog(): AssetCatalogService { return service('assetCatalog'); }
     private function registerReadingHandler(): RegisterReadingHandler { return service('registerReading'); }
     private function assignPlanHandler(): AsignarPlan { return service('assignMaintenancePlan'); }

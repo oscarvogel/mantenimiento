@@ -47,6 +47,29 @@ final class AvisoPlan
             throw new DomainException('Solo un plan persistido y vencido puede materializar un aviso.');
         }
 
+        return new self(
+            null,
+            $plan->empresaId(),
+            $plan->id(),
+            $plan->equipoId(),
+            self::claveCicloPara($plan),
+            $evaluacion->criteriosDisparadores(),
+            $fechaDeteccion,
+            EstadoGestionAviso::PENDIENTE,
+            null,
+            null,
+        );
+    }
+
+    /**
+     * Identidad del ciclo al que pertenece un aviso: plan + proximo objetivo.
+     *
+     * Permite distinguir "el aviso del ciclo que este cierre acaba de dejar
+     * atras" de "un aviso de otro ciclo" o "uno recien detectado", que no
+     * deben resolverse por el mismo motivo.
+     */
+    public static function claveCicloPara(PlanMantenimiento $plan): string
+    {
         $cyclePayload = implode('|', [
             'plan:' . $plan->id(),
             'fecha:' . ($plan->proximaFecha()?->format('Y-m-d') ?? '-'),
@@ -54,18 +77,7 @@ final class AvisoPlan
             'horas_decimas:' . ($plan->proximasHorasDecimas() ?? '-'),
         ]);
 
-        return new self(
-            null,
-            $plan->empresaId(),
-            $plan->id(),
-            $plan->equipoId(),
-            hash('sha256', $cyclePayload),
-            $evaluacion->criteriosDisparadores(),
-            $fechaDeteccion,
-            EstadoGestionAviso::PENDIENTE,
-            null,
-            null,
-        );
+        return hash('sha256', $cyclePayload);
     }
 
     /** @param list<string> $criteriosDisparadores */
@@ -95,6 +107,15 @@ final class AvisoPlan
         );
     }
 
+    /**
+     * CONVERTIDO es terminal: significa "este aviso ya fue atendido por una
+     * orden de trabajo". El flujo que convierte el aviso escribe fecha_resolucion
+     * y el motivo con el numero de OT, asi que la conversion ES la resolucion.
+     *
+     * RESUELTO queda para los avisos que dejan de requerir atencion SIN llegar a
+     * convertirse en orden: el ciclo se supero porque se cerro una OT generada
+     * desde el plan y no desde este aviso.
+     */
     public function marcarConvertido(DateTimeImmutable $fecha): void
     {
         if ($this->estadoGestion !== EstadoGestionAviso::PENDIENTE) {
@@ -103,6 +124,26 @@ final class AvisoPlan
 
         $this->estadoGestion   = EstadoGestionAviso::CONVERTIDO;
         $this->fechaResolucion = $fecha;
+    }
+
+    /**
+     * Solo un aviso PENDIENTE puede quedar obsoleto por un cambio de ciclo.
+     * Un aviso CONVERTIDO ya fue atendido y no debe reescribirse.
+     */
+    public function marcarResuelto(DateTimeImmutable $fecha, string $motivo): void
+    {
+        if ($this->estadoGestion !== EstadoGestionAviso::PENDIENTE) {
+            throw new DomainException('Solo un aviso pendiente puede marcarse como resuelto.');
+        }
+
+        $motivo = trim($motivo);
+        if ($motivo === '') {
+            throw new DomainException('Un aviso resuelto requiere el motivo por el que dejo de requerir atencion.');
+        }
+
+        $this->estadoGestion     = EstadoGestionAviso::RESUELTO;
+        $this->fechaResolucion   = $fecha;
+        $this->motivoResolucion  = $motivo;
     }
 
     public function id(): ?int { return $this->id; }

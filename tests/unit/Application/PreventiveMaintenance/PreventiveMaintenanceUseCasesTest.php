@@ -223,6 +223,11 @@ final class FakeNoticeRepository implements MaintenanceNoticeRepository
         return $this->existing;
     }
 
+    public function pendingForCycle(int $companyId, int $planId, string $claveCiclo): array
+    {
+        return [];
+    }
+
     public function save(AvisoPlan $notice, ?int $actorUserId): int
     {
         $this->saved = $notice;

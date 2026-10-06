@@ -152,6 +152,7 @@ final class AutomaticFakeNoticeRepository implements MaintenanceNoticeRepository
 
     public function findByCycleKey(int $companyId, int $planId, string $cycleKey): ?AvisoPlan { return $this->byCycle[$cycleKey] ?? null; }
     public function findScoped(int $companyId, int $noticeId, ?array $branchIds, bool $forUpdate = false): ?AvisoPlan { return null; }
+    public function pendingForCycle(int $companyId, int $planId, string $claveCiclo): array { return []; }
     public function save(AvisoPlan $notice, ?int $actorUserId): int
     {
         ++$this->saveCount;
