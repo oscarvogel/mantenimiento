@@ -9,6 +9,8 @@ use App\Application\Importations\ImportHistoryPage;
 use App\Application\Importations\ImportPreview;
 use App\Application\Measurement\ReadingHistoryPage;
 use App\Application\Assets\Attachment\PrimaryEquipmentPhoto;
+use App\Application\PreventiveMaintenance\ResumenProximoPlan;
+use App\Domain\PreventiveMaintenance\EstadoPlan;
 
 final class OperationsPayload
 {
@@ -85,6 +87,14 @@ final class OperationsPayload
                 'id' => (int) $row['id'], 'equipmentCode' => $row['equipo_codigo'], 'serviceName' => $row['servicio_nombre'],
                 'computedState' => $row['computed_state'] ?? 'SIN_DATOS', 'nextKm' => $row['proximo_km'],
                 'nextHours' => $row['proximas_horas'], 'nextDate' => $row['proxima_fecha'],
+                // Texto ya redactado por el backend a partir de la MISMA
+                // evaluacion de dominio que produjo `computedState`. El frontend
+                // solo lo muestra: no recalcula distancias ni decide unidades.
+                'nextSummary' => ResumenProximoPlan::resumen(
+                    EstadoPlan::from($row['computed_state'] ?? 'SIN_DATOS'),
+                    $row['proximidad'] ?? [],
+                ),
+                'triggerCriteria' => $row['criterios_disparadores'] ?? [],
                 'photoUrl' => isset($primaryPhotos[(int) ($row['equipo_id'] ?? 0)]) ? base_url('mantenimiento/equipos/' . $row['equipo_id'] . '/foto-principal?miniatura=1') : null,
             ], $source['plans'] ?? []),
             'notices' => array_map(fn (array $row): array => [

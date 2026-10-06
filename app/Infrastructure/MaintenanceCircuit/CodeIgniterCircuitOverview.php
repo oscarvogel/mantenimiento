@@ -6,6 +6,7 @@ namespace App\Infrastructure\MaintenanceCircuit;
 
 use App\Application\MaintenanceCircuit\CircuitOverviewPagination;
 use App\Application\MaintenanceCircuit\Port\CircuitOverviewPort;
+use App\Domain\PreventiveMaintenance\CriterioPlan;
 use App\Domain\PreventiveMaintenance\EstadoPlan;
 use App\Domain\PreventiveMaintenance\EvaluadorVencimiento;
 use App\Infrastructure\PreventiveMaintenance\CodeIgniterPreventivePlanReadModel;
@@ -48,7 +49,7 @@ final class CodeIgniterCircuitOverview implements CircuitOverviewPort
         }, $pagination, 'equipments');
         $equipmentRows = $equipmentPage['items'];
 
-        $planStates = $this->currentPlanStates($companyId, $branchIds);
+        $planEvaluations = $this->currentPlanStates($companyId, $branchIds);
 
         $planPage = $this->paginate(function () use ($companyId, $branchIds): BaseBuilder {
             $builder = $this->database->table('planes_mantenimiento p')
@@ -62,7 +63,22 @@ final class CodeIgniterCircuitOverview implements CircuitOverviewPort
         }, $pagination, 'plans');
         $planRows = $planPage['items'];
         foreach ($planRows as &$planRow) {
-            $planRow['computed_state'] = $planStates[(int) $planRow['id']] ?? 'SIN_DATOS';
+            $planEvaluation = $planEvaluations[(int) $planRow['id']] ?? null;
+            $planRow['computed_state'] = $planEvaluation['state'] ?? 'SIN_DATOS';
+
+            // El proximo objetivo se deriva SIEMPRE del agregado de dominio
+            // (base vigente + intervalo vigente). Las columnas `proximo_*`
+            // persistidas por el modelo legacy pueden quedar desactualizadas y
+            // hoy se leian tal cual en esta grilla: por eso se reemplazan acá
+            // por los valores que el mismo EvaluadorVencimiento usó para calcular
+            // `computed_state`. Asi estado y numero no pueden contradecirse, y el
+            // dashboard (que consume estas mismas filas) queda alineado sin
+            // cambiar su propia logica.
+            $planRow['proximo_km'] = $planEvaluation['proximo_km'] ?? null;
+            $planRow['proximas_horas'] = $planEvaluation['proximas_horas'] ?? null;
+            $planRow['proxima_fecha'] = $planEvaluation['proxima_fecha'] ?? null;
+            $planRow['criterios_disparadores'] = $planEvaluation['criteria'] ?? [];
+            $planRow['proximidad'] = $planEvaluation['proximidad'] ?? [];
         }
         unset($planRow);
 
@@ -71,8 +87,8 @@ final class CodeIgniterCircuitOverview implements CircuitOverviewPort
         // de lo contrario el listado mostraria como vencidos planes que el
         // dashboard ya cuenta como proximos o al dia.
         $overduePlanIds = array_keys(array_filter(
-            $planStates,
-            static fn (string $state): bool => $state === EstadoPlan::VENCIDO->value,
+            $planEvaluations,
+            static fn (array $evaluation): bool => ($evaluation['state'] ?? null) === EstadoPlan::VENCIDO->value,
         ));
 
         $noticePage = $this->paginate(function () use ($companyId, $branchIds, $overduePlanIds): BaseBuilder {
@@ -155,13 +171,19 @@ final class CodeIgniterCircuitOverview implements CircuitOverviewPort
     }
 
     /**
-     * Estado efectivo de cada plan activo de la empresa, calculado con el mismo
-     * EvaluadorVencimiento que alimenta los contadores de proximos y vencidos
-     * del dashboard. Es la unica fuente de verdad para decidir si un plan esta
-     * vencido, en cualquier pantalla.
+     * Estado y valores de vencimiento de cada plan activo de la empresa.
+     *
+     * El estado se calcula con el mismo EvaluadorVencimiento que alimenta los
+     * contadores de proximos y vencidos del dashboard: es la unica fuente de
+     * verdad para decidir si un plan esta vencido, en cualquier pantalla.
+     *
+     * Todo lo devuelto sale del agregado de dominio, no de las columnas
+     * `proximo_*` persistidas. Cada criterio que el plan usa y tiene lectura
+     * vigente aporta su distancia restante con signo: positiva significa
+     * "faltan", negativa significa "vencido por".
      *
      * @param list<int>|null $branchIds
-     * @return array<int, string> planId => EstadoPlan value
+     * @return array<int, array{state:string,criteria:list<string>,proximo_km:int|null,proximas_horas:string|null,proxima_fecha:string|null,proximidad:array<string,float|int>}>
      */
     private function currentPlanStates(int $companyId, ?array $branchIds): array
     {
@@ -176,7 +198,29 @@ final class CodeIgniterCircuitOverview implements CircuitOverviewPort
                 continue;
             }
 
-            $states[$planId] = $evaluator->evaluar($item->plan, $item->currentUsage, $now)->estado()->value;
+            $plan = $item->plan;
+            $uso = $item->currentUsage;
+            $evaluation = $evaluator->evaluar($plan, $uso, $now);
+
+            $proximity = [];
+            if ($plan->usaKilometraje() && $plan->proximoKm() !== null && $uso->kilometraje() !== null) {
+                $proximity[CriterioPlan::KILOMETRAJE->value] = $plan->proximoKm() - $uso->kilometraje();
+            }
+            if ($plan->usaHorometro() && $plan->proximasHorasDecimas() !== null && $uso->horasDecimas() !== null) {
+                $proximity[CriterioPlan::HOROMETRO->value] = DecimalHours::fromTenths($plan->proximasHorasDecimas() - $uso->horasDecimas());
+            }
+            if ($plan->usaFecha() && $plan->proximaFecha() !== null) {
+                $proximity[CriterioPlan::FECHA->value] = (int) $now->setTime(0, 0, 0)->diff($plan->proximaFecha()->setTime(0, 0, 0))->format('%r%a');
+            }
+
+            $states[$planId] = [
+                'state' => $evaluation->estado()->value,
+                'criteria' => $evaluation->criteriosDisparadores(),
+                'proximo_km' => $plan->proximoKm(),
+                'proximas_horas' => DecimalHours::fromTenths($plan->proximasHorasDecimas()),
+                'proxima_fecha' => $plan->proximaFecha()?->format('Y-m-d'),
+                'proximidad' => $proximity,
+            ];
         }
 
         return $states;
