@@ -61,6 +61,11 @@ const includesId = (ids, id) => ids.includes(Number(id))
           <span class="mt-1 block text-xs text-ink-subtle">Este email será el usuario de acceso al sistema.</span>
         </label>
         <label class="block">
+          <span class="mb-1.5 block text-sm font-medium text-ink">Celular / WhatsApp</span>
+          <input name="telefono" inputmode="tel" maxlength="20" :value="data.oldInput.telefono" autocomplete="tel" placeholder="5493764123456" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          <span class="mt-1 block text-xs text-ink-subtle">Opcional. Formato internacional, solo números. Ej.: 5493764123456.</span>
+        </label>
+        <label class="block">
           <span class="mb-1.5 block text-sm font-medium text-ink">Contraseña inicial <span class="text-danger" aria-hidden="true">*</span></span>
           <input type="password" name="password" minlength="8" maxlength="255" required autocomplete="new-password" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
           <span class="mt-1 block text-xs text-ink-subtle">Mínimo 8 caracteres.</span>
@@ -126,6 +131,8 @@ const includesId = (ids, id) => ids.includes(Number(id))
                   <span v-if="user.isSelf" class="rounded-full bg-info-subtle px-2 py-0.5 text-xs font-semibold text-info-strong">Tu cuenta</span>
                 </div>
                 <p class="truncate text-sm text-ink-muted">{{ user.email }}</p>
+                <p v-if="user.phone" class="truncate text-xs text-ink-subtle">WhatsApp: {{ user.phone }}</p>
+                <p v-else class="mt-1 text-xs font-medium text-warning-strong">Sin celular configurado · no puede recibir avisos por WhatsApp</p>
               </div>
             </div>
             <div class="flex flex-wrap items-center gap-2 sm:justify-end">
@@ -152,6 +159,11 @@ const includesId = (ids, id) => ids.includes(Number(id))
                   <input type="email" name="email" maxlength="255" required :value="user.email" autocomplete="email" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
                   <span class="mt-1 block text-xs leading-5 text-warning-strong">Es el usuario de acceso. Si lo cambiás, el correo anterior deja de servir para ingresar.</span>
                 </label>
+                <label class="block sm:col-span-2">
+                  <span class="mb-1.5 block text-sm font-medium text-ink">Celular / WhatsApp</span>
+                  <input name="telefono" inputmode="tel" maxlength="20" :value="user.phone" autocomplete="tel" placeholder="5493764123456" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                  <span class="mt-1 block text-xs text-ink-subtle">Opcional. Se usa como contacto para WhatsApp. Formato internacional, solo números.</span>
+                </label>
                 <label class="block sm:col-span-1">
                   <span class="mb-1.5 block text-sm font-medium text-ink">Estado</span>
                   <select name="activo" :value="user.active ? '1' : '0'" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20">
@@ -171,6 +183,7 @@ const includesId = (ids, id) => ids.includes(Number(id))
               <dl v-else class="grid gap-4 rounded-xl bg-surface-subtle p-4 text-sm sm:grid-cols-2">
                 <div><dt class="text-ink-subtle">Nombre</dt><dd class="mt-1 font-medium text-ink">{{ user.name }}</dd></div>
                 <div><dt class="text-ink-subtle">Email</dt><dd class="mt-1 break-all font-medium text-ink">{{ user.email }}</dd></div>
+                <div><dt class="text-ink-subtle">Celular / WhatsApp</dt><dd class="mt-1 font-medium text-ink">{{ user.phone || 'Sin configurar' }}</dd></div>
               </dl>
 
               <div v-if="user.lastAccess" class="mt-4 flex items-center gap-2 text-xs text-ink-subtle">
