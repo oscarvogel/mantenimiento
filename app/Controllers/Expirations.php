@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Application\Identity\ActorContext;
+use App\Domain\Expirations\Expiration;
 use App\Domain\Expirations\ExpirationSubjectType;
 use App\Infrastructure\Identity\SessionActorContext;
 use CodeIgniter\HTTP\RedirectResponse;
@@ -77,6 +78,8 @@ final class Expirations extends BaseController
                 ],
                 'canSeeEquipment' => $canSeeEquipment,
                 'canSeeEmployees' => $canSeeEmployees,
+                'canEditEquipment' => $actor->hasPermission('equipos.editar'),
+                'canEditEmployees' => $actor->hasPermission('empleados.editar'),
                 'canManageTypes' => $actor->hasPermission('equipos.editar') || $actor->hasPermission('empleados.editar'),
             ]);
         } catch (Throwable $exception) {
@@ -420,6 +423,143 @@ final class Expirations extends BaseController
                 ]);
 
             return redirect()->to($returnTo)->with('success', 'Vencimiento actualizado.');
+        } catch (Throwable $exception) {
+            return $this->failure($exception, $returnTo);
+        }
+    }
+
+    public function renew(int $expirationId): RedirectResponse
+    {
+        $returnTo = $this->returnTo();
+        try {
+            $actor = $this->actor();
+            $companyId = (int) $actor->companyId();
+            $db = db_connect();
+
+            $row = $db->table('vencimientos v')
+                ->select('v.*, t.dias_aviso_previo, t.requiere_documento')
+                ->join('tipos_vencimiento t', 't.id = v.tipo_vencimiento_id AND t.empresa_id = v.empresa_id', 'inner')
+                ->where('v.empresa_id', $companyId)
+                ->where('v.id', $expirationId)
+                ->where('v.activo', 1)
+                ->where('v.deleted_at', null)
+                ->where('t.deleted_at', null)
+                ->get()->getRowArray();
+            if ($row === null) {
+                throw new DomainException('El vencimiento no existe o ya no es la versión activa.');
+            }
+
+            $subjectType = ExpirationSubjectType::from((string) $row['sujeto_tipo']);
+            $this->assertCanEdit($actor, $subjectType);
+            $subjectField = $subjectType === ExpirationSubjectType::EQUIPMENT ? 'equipo_id' : 'empleado_id';
+            $subjectId = (int) $row[$subjectField];
+            if ($subjectId <= 0) {
+                throw new DomainException('El vencimiento no tiene un sujeto válido asociado.');
+            }
+
+            $expiresAt = $this->requiredDate('fecha_vencimiento');
+            $issuedAt = $this->optionalDate('fecha_emision');
+            $documentNumber = $this->nullable('numero_documento', 100);
+            $notes = $this->nullable('observaciones', 2000);
+            if ((int) $row['requiere_documento'] === 1 && $documentNumber === null) {
+                throw new DomainException('Este tipo de vencimiento requiere número de documento.');
+            }
+
+            $current = new Expiration(
+                $companyId,
+                (int) $row['tipo_vencimiento_id'],
+                $subjectType,
+                $subjectId,
+                new DateTimeImmutable((string) $row['fecha_vencimiento']),
+                (int) $row['dias_aviso_previo'],
+                empty($row['fecha_emision']) ? null : new DateTimeImmutable((string) $row['fecha_emision']),
+                $row['numero_documento'] === null ? null : (string) $row['numero_documento'],
+                $row['observaciones'] === null ? null : (string) $row['observaciones'],
+                $row['sucursal_id'] === null ? null : (int) $row['sucursal_id'],
+                (int) $row['id'],
+            );
+            $renewed = $current->renewedVersion($expiresAt, $issuedAt, $documentNumber, $notes);
+
+            $branchId = $this->assertSubjectAndBranch($db, $companyId, $subjectType, $subjectId);
+            $latestActive = $db->table('vencimientos')
+                ->select('id')
+                ->where('empresa_id', $companyId)
+                ->where('tipo_vencimiento_id', (int) $row['tipo_vencimiento_id'])
+                ->where($subjectField, $subjectId)
+                ->where('activo', 1)
+                ->where('deleted_at', null)
+                ->orderBy('fecha_vencimiento', 'DESC')
+                ->orderBy('id', 'DESC')
+                ->get()->getRowArray();
+            if ($latestActive === null || (int) $latestActive['id'] !== $expirationId) {
+                throw new DomainException('Hay una versión activa más reciente. Recargá el listado antes de renovar.');
+            }
+
+            $duplicate = $db->table('vencimientos')
+                ->where('empresa_id', $companyId)
+                ->where('tipo_vencimiento_id', (int) $row['tipo_vencimiento_id'])
+                ->where($subjectField, $subjectId)
+                ->where('fecha_vencimiento', $renewed->expiresAt->format('Y-m-d'))
+                ->where('activo', 1)
+                ->where('id !=', $expirationId)
+                ->where('deleted_at', null)
+                ->countAllResults() > 0;
+            if ($duplicate) {
+                throw new DomainException('Ya existe una versión activa de este vencimiento para la nueva fecha.');
+            }
+
+            $now = date('Y-m-d H:i:s');
+            $db->transBegin();
+            try {
+                $db->table('vencimientos')->insert([
+                    'empresa_id' => $companyId,
+                    'sucursal_id' => $branchId,
+                    'tipo_vencimiento_id' => $renewed->typeId,
+                    'sujeto_tipo' => $renewed->subjectType->value,
+                    'equipo_id' => $subjectType === ExpirationSubjectType::EQUIPMENT ? $subjectId : null,
+                    'empleado_id' => $subjectType === ExpirationSubjectType::EMPLOYEE ? $subjectId : null,
+                    'fecha_emision' => $renewed->issuedAt?->format('Y-m-d'),
+                    'fecha_vencimiento' => $renewed->expiresAt->format('Y-m-d'),
+                    'numero_documento' => $renewed->documentNumber,
+                    'observaciones' => $renewed->notes,
+                    'origen' => 'MANUAL',
+                    'importacion_id' => null,
+                    'activo' => 1,
+                    'created_by' => $actor->userId(),
+                    'updated_by' => $actor->userId(),
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+                $newExpirationId = (int) $db->insertID();
+
+                (new \App\Infrastructure\Expirations\CodeIgniterExpirationActiveVersionManager($db))->reconcile(
+                    $companyId,
+                    $renewed->typeId,
+                    $subjectType,
+                    $subjectId,
+                    $actor->userId(),
+                );
+
+                $newVersionIsActive = $db->table('vencimientos')
+                    ->where('empresa_id', $companyId)
+                    ->where('id', $newExpirationId)
+                    ->where('activo', 1)
+                    ->where('deleted_at', null)
+                    ->countAllResults() === 1;
+                if (! $newVersionIsActive) {
+                    throw new \RuntimeException('La nueva versión del vencimiento no quedó activa.');
+                }
+
+                if (! $db->transStatus()) {
+                    throw new \RuntimeException('La transacción de renovación falló.');
+                }
+                $db->transCommit();
+            } catch (Throwable $exception) {
+                $db->transRollback();
+                throw $exception;
+            }
+
+            return redirect()->to($returnTo)->with('success', 'Vencimiento renovado. La vigencia anterior quedó conservada en el historial.');
         } catch (Throwable $exception) {
             return $this->failure($exception, $returnTo);
         }
