@@ -8,20 +8,15 @@ use DateTimeImmutable;
 
 final class UserWhatsAppDigestSchedule
 {
-    public function next(DateTimeImmutable $now, string $runTime = '08:00'): DateTimeImmutable
+    public function slot(DateTimeImmutable $now, string $runTime = '08:00'): ?DateTimeImmutable
     {
+        if ((int) $now->format('N') >= 6) {
+            return null;
+        }
+
         [$hour, $minute] = $this->timeParts($runTime);
-        $candidate = $now->setTime($hour, $minute);
 
-        if ($candidate <= $now) {
-            $candidate = $candidate->modify('+1 day')->setTime($hour, $minute);
-        }
-
-        while ((int) $candidate->format('N') >= 6) {
-            $candidate = $candidate->modify('+1 day')->setTime($hour, $minute);
-        }
-
-        return $candidate;
+        return $now->setTime($hour, $minute);
     }
 
     /** @return array{0:int,1:int} */
