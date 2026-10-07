@@ -86,6 +86,7 @@ final class TenantAdministrationServiceTest extends CIUnitTestCase
         $service->updateUser($this->administrator(), 2, [
             'nombre' => ' Carlos ',
             'email' => ' GIMENEZCARLOSGABRIEL@GMAIL.COM ',
+            'telefono' => '5493764123456',
             'activo' => 1,
         ], ' Cambio de correo ');
 
@@ -93,6 +94,7 @@ final class TenantAdministrationServiceTest extends CIUnitTestCase
         self::assertSame([
             'nombre' => 'Carlos',
             'email' => 'gimenezcarlosgabriel@gmail.com',
+            'telefono' => '5493764123456',
             'activo' => 1,
         ], $port->userData);
         self::assertSame('Cambio de correo', $port->reason);
@@ -115,7 +117,7 @@ final class TenantAdministrationServiceTest extends CIUnitTestCase
 
         $service->createUser(
             $this->administrator(),
-            ['nombre' => ' Usuario ', 'email' => ' USER@example.test ', 'password' => 'Segura123'],
+            ['nombre' => ' Usuario ', 'email' => ' USER@example.test ', 'telefono' => ' 5493764123456 ', 'password' => 'Segura123'],
             [5, 5, 0],
             [3, 3, -1],
             ' Alta aprobada ',
@@ -125,7 +127,41 @@ final class TenantAdministrationServiceTest extends CIUnitTestCase
         self::assertSame([5], $port->roleIds);
         self::assertSame([3], $port->branchIds);
         self::assertSame('user@example.test', $port->userData['email']);
+        self::assertSame('5493764123456', $port->userData['telefono']);
         self::assertSame('Alta aprobada', $port->reason);
+    }
+
+
+    public function testCreateUserAllowsEmptyPhone(): void
+    {
+        $port = new RecordingTenantAdministration();
+        $service = new TenantAdministrationService($port);
+
+        $service->createUser(
+            $this->administrator(),
+            ['nombre' => 'Usuario', 'email' => 'user@example.test', 'telefono' => '', 'password' => 'Segura123'],
+            [5],
+            [3],
+            'Alta aprobada',
+        );
+
+        self::assertNull($port->userData['telefono']);
+    }
+
+    public function testCreateUserRejectsInvalidWhatsAppPhone(): void
+    {
+        $service = new TenantAdministrationService(new RecordingTenantAdministration());
+
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('celular');
+
+        $service->createUser(
+            $this->administrator(),
+            ['nombre' => 'Usuario', 'email' => 'user@example.test', 'telefono' => '3764123456', 'password' => 'Segura123'],
+            [5],
+            [3],
+            'Alta aprobada',
+        );
     }
 
     private function administrator(): ActorContext
