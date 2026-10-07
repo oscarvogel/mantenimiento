@@ -36,6 +36,32 @@ final class Expiration
         }
     }
 
+    public function renewedVersion(
+        DateTimeImmutable $expiresAt,
+        ?DateTimeImmutable $issuedAt = null,
+        ?string $documentNumber = null,
+        ?string $notes = null,
+    ): self {
+        $currentDate = new DateTimeImmutable($this->expiresAt->format('Y-m-d'));
+        $newDate = new DateTimeImmutable($expiresAt->format('Y-m-d'));
+        if ($newDate <= $currentDate) {
+            throw new DomainException('La nueva fecha de vencimiento debe ser posterior a la actual.');
+        }
+
+        return new self(
+            $this->companyId,
+            $this->typeId,
+            $this->subjectType,
+            $this->subjectId,
+            $newDate,
+            $this->warningDays,
+            $issuedAt,
+            $documentNumber,
+            $notes,
+            $this->branchId,
+        );
+    }
+
     public function statusAt(DateTimeImmutable $today): ExpirationStatus
     {
         $today = new DateTimeImmutable($today->format('Y-m-d'));
