@@ -4,14 +4,13 @@ declare(strict_types=1);
 
 namespace App\Application\Notifications\Port;
 
-use App\Application\Notifications\NotificationRecipient;
 use App\Domain\Notifications\NotifiableEvent;
 
 interface WhatsAppNotificationDeliveryQueue
 {
     public function scheduleDriverForEvent(NotifiableEvent $event): void;
 
-    public function scheduleUserDigestItem(NotifiableEvent $event, NotificationRecipient $recipient): void;
+    public function scheduleUserDailyDigests(): int;
 
     public function schedulePreventivePilotTest(int $planId, string $testKey): int;
 
