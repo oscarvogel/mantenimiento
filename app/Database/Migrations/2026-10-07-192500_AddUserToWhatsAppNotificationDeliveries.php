@@ -10,6 +10,11 @@ final class AddUserToWhatsAppNotificationDeliveries extends Migration
 {
     public function up(): void
     {
+        if (! $this->db->tableExists('notificacion_whatsapp_entregas')
+            || $this->db->fieldExists('usuario_id', 'notificacion_whatsapp_entregas')) {
+            return;
+        }
+
         $this->forge->addColumn('notificacion_whatsapp_entregas', [
             'usuario_id' => [
                 'type' => 'INT',
@@ -22,6 +27,9 @@ final class AddUserToWhatsAppNotificationDeliveries extends Migration
 
     public function down(): void
     {
-        $this->forge->dropColumn('notificacion_whatsapp_entregas', 'usuario_id');
+        if ($this->db->tableExists('notificacion_whatsapp_entregas')
+            && $this->db->fieldExists('usuario_id', 'notificacion_whatsapp_entregas')) {
+            $this->forge->dropColumn('notificacion_whatsapp_entregas', 'usuario_id');
+        }
     }
 }
