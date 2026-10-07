@@ -12,6 +12,8 @@ interface WhatsAppNotificationDeliveryQueue
 
     public function scheduleUserDailyDigests(): int;
 
+    public function scheduleUserDailyDigestTest(int $userId, int $equipmentId, string $testKey): int;
+
     public function schedulePreventivePilotTest(int $planId, string $testKey): int;
 
     public function scheduleWeeklyReadingReminders(bool $force = false, ?string $testKey = null): int;
