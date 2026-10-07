@@ -27,11 +27,10 @@ describe('AppSidebar / Control de lecturas', () => {
 
   it('deja Registrar km/horas en Más opciones para reducir ruido visual', async () => {
     const wrapper = mount(AppSidebar, { props: { navigation } })
-    const quick = wrapper.find('a[href="/mantenimiento/lecturas/rapidas"]')
-
-    expect(quick.isVisible()).toBe(false)
+    expect(wrapper.find('a[href="/mantenimiento/lecturas/rapidas"]').isVisible()).toBe(false)
     await wrapper.get('button[aria-controls="secondary-navigation"]').trigger('click')
-    expect(quick.isVisible()).toBe(true)
+    expect(wrapper.get('button[aria-controls="secondary-navigation"]').attributes('aria-expanded')).toBe('true')
+    expect(wrapper.find('a[href="/mantenimiento/lecturas/rapidas"]').isVisible()).toBe(true)
   })
 
   it('renderiza un icono para Control de lecturas', () => {
