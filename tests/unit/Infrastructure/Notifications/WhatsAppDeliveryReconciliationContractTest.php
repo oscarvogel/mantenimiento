@@ -16,6 +16,8 @@ final class WhatsAppDeliveryReconciliationContractTest extends TestCase
         $dispatch = file_get_contents(APPPATH . 'Application/Notifications/RunNotificationDispatch.php');
         $notifier = file_get_contents(APPPATH . 'Application/Notifications/NotifyAdminsMissingDriverPhones.php');
         $migration = file_get_contents(APPPATH . 'Database/Migrations/2026-09-23-111500_AddWhatsAppProviderMessageId.php');
+        $userDigestMigration = file_get_contents(APPPATH . 'Database/Migrations/2026-10-07-192500_AddUserToWhatsAppNotificationDeliveries.php');
+        $userDigestSchedule = file_get_contents(APPPATH . 'Application/Notifications/UserWhatsAppDigestSchedule.php');
 
         self::assertIsString($gateway);
         self::assertIsString($gatewayPort);
@@ -25,6 +27,8 @@ final class WhatsAppDeliveryReconciliationContractTest extends TestCase
         self::assertIsString($dispatch);
         self::assertIsString($notifier);
         self::assertIsString($migration);
+        self::assertIsString($userDigestMigration);
+        self::assertIsString($userDigestSchedule);
 
         self::assertStringContainsString('WhatsAppPhone::normalize', $gateway);
         self::assertStringNotContainsString("strlen(\$digits) === 10", $phone);
@@ -46,6 +50,12 @@ final class WhatsAppDeliveryReconciliationContractTest extends TestCase
         self::assertStringContainsString('whatsapp_gateway_failed', $dispatch);
         self::assertStringContainsString('getMessageStatus(', $dispatch);
         self::assertStringContainsString('provider_message_id', $migration);
+        self::assertStringContainsString("'usuario_id'", $userDigestMigration);
+        self::assertStringContainsString('scheduleUserDailyDigests', $queuePort);
+        self::assertStringContainsString('scheduleUserDailyDigests', $dispatch);
+        self::assertStringContainsString("'usuario.resumen_diario'", $queue);
+        self::assertStringContainsString("userWhatsAppDigestTime', '08:00'", $queue);
+        self::assertStringContainsString("format('N') >= 6", $userDigestSchedule);
 
         self::assertStringContainsString('Responsable de mantenimiento', $notifier);
         self::assertStringContainsString('formato internacional', $notifier);
