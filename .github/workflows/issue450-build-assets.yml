@@ -34,3 +34,4 @@ jobs:
           name: issue-450-dashboard-assets
           path: assets/dashboard
           if-no-files-found: error
+          include-hidden-files: true
