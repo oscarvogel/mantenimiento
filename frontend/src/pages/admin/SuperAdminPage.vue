@@ -261,6 +261,23 @@ const sections = [
                 </div>
                 <button type="submit" :disabled="!data.whatsapp.available || !data.whatsapp.pilotPhoneConfigured" class="mt-3 inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50">Probar vencimientos</button>
               </form>
+
+              <form method="post" :action="data.whatsapp.testUserDigestAction" class="rounded-lg border border-border bg-white p-4 lg:col-span-2">
+                <CsrfField :csrf="data.csrf" />
+                <p class="text-sm font-semibold text-ink">Resumen diario de usuario</p>
+                <p class="mt-1 text-xs text-ink-muted">Genera un vencimiento ficticio para un equipo, arma el resumen real del usuario y lo envía de inmediato para validar el circuito completo.</p>
+                <div class="mt-3 grid gap-2 sm:grid-cols-2">
+                  <select name="usuario_id" required class="min-h-11 rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink">
+                    <option value="">Usuario con celular…</option>
+                    <option v-for="user in data.userDigestTestUsers || []" :key="user.id" :value="user.id">{{ user.label }}</option>
+                  </select>
+                  <select name="equipo_id" required class="min-h-11 rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink">
+                    <option value="">Equipo de la misma empresa…</option>
+                    <option v-for="equipment in data.expirationTestEquipment || []" :key="equipment.id" :value="equipment.id">{{ equipment.label }}</option>
+                  </select>
+                </div>
+                <button type="submit" :disabled="!data.whatsapp.available || !(data.userDigestTestUsers || []).length" data-confirm data-confirm-title="¿Enviar resumen diario de prueba?" data-confirm-text="Se creará un vencimiento ficticio temporal para validar el resumen WhatsApp del usuario seleccionado." data-confirm-button="Enviar prueba" class="mt-3 inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50">Probar resumen de usuario</button>
+              </form>
             </div>
           </details>
 
