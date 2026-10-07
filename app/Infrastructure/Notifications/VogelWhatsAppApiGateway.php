@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Notifications;
 
 use App\Application\Notifications\Port\WhatsAppNotificationGateway;
+use App\Domain\Notifications\WhatsAppPhone;
 use RuntimeException;
 use Throwable;
 
@@ -29,35 +30,7 @@ final class VogelWhatsAppApiGateway implements WhatsAppNotificationGateway
 
     public function normalizePhone(string $phone): ?string
     {
-        $raw = trim($phone);
-        if ($raw === '' || preg_match('/^[0-9]+$/', $raw) !== 1) {
-            return null;
-        }
-
-        // El teléfono debe venir ya cargado en formato internacional.
-        // No se infiere país por longitud, empresa ni sucursal.
-        if (preg_match('/^[1-9][0-9]{9,14}$/', $raw) !== 1) {
-            return null;
-        }
-
-        if (str_starts_with($raw, '54')) {
-            // Argentina móvil: 54 + 9 + 10 dígitos nacionales.
-            return preg_match('/^549[0-9]{10}$/', $raw) === 1 ? $raw : null;
-        }
-
-        if (str_starts_with($raw, '55')) {
-            // Brasil: 55 + DDD (2) + abonado (8/9).
-            return preg_match('/^55[0-9]{10,11}$/', $raw) === 1 ? $raw : null;
-        }
-
-        if (str_starts_with($raw, '56')) {
-            // Chile: 56 + 9 dígitos nacionales.
-            return preg_match('/^56[0-9]{9}$/', $raw) === 1 ? $raw : null;
-        }
-
-        // Otros países: validación estructural E.164.
-        // Se exige que el número venga completo; nunca se infiere ni agrega país.
-        return $raw;
+        return WhatsAppPhone::normalize($phone);
     }
 
     public function getMessageStatus(string $messageId, ?string $instanceId = null): array
