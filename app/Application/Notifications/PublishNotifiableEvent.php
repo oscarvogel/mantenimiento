@@ -47,7 +47,6 @@ final readonly class PublishNotifiableEvent implements NotifiableEventPublisher
                 }
                 $preference = $this->preferences->resolve($recipient->userId, $event->type());
                 $this->deliveries->schedule($notificationId, $recipient->userId, $event->logicalKey(), $event->severity(), $preference);
-                $this->whatsAppDeliveries?->scheduleUserDigestItem($event, $recipient);
                 $created++;
             }
 
