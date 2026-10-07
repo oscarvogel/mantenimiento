@@ -145,6 +145,7 @@ export const usersAdminData = {
       id: 2,
       name: 'Ana Administradora',
       email: 'ana@transportes.test',
+      phone: '5493764123456',
       active: true,
       isSelf: true,
       canDeactivate: false,
