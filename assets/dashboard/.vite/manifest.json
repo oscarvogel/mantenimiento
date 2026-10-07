@@ -1,17 +1,17 @@
 {
-  "_admin-yb4m3Fig.js": {
-    "file": "assets/admin-yb4m3Fig.js",
+  "_admin-DyMz88Or.js": {
+    "file": "assets/admin-DyMz88Or.js",
     "name": "admin",
     "imports": [
-      "_vendor-6Yz47w5f.js"
+      "_vendor-CwvpBVES.js"
     ]
   },
-  "_chatbot-8_CDrrU8.js": {
-    "file": "assets/chatbot-8_CDrrU8.js",
+  "_chatbot-BaJpOLDY.js": {
+    "file": "assets/chatbot-BaJpOLDY.js",
     "name": "chatbot",
     "isDynamicEntry": true,
     "imports": [
-      "_vendor-6Yz47w5f.js"
+      "_vendor-CwvpBVES.js"
     ],
     "css": [
       "assets/chatbot-p1890OXW.css"
@@ -21,34 +21,34 @@
     "file": "assets/chatbot-p1890OXW.css",
     "src": "_chatbot-p1890OXW.css"
   },
-  "_reports-mm3nBoxW.js": {
-    "file": "assets/reports-mm3nBoxW.js",
+  "_reports-C_PymE-h.js": {
+    "file": "assets/reports-C_PymE-h.js",
     "name": "reports",
     "imports": [
-      "_admin-yb4m3Fig.js",
-      "_vendor-6Yz47w5f.js"
+      "_admin-DyMz88Or.js",
+      "_vendor-CwvpBVES.js"
     ]
   },
-  "_vendor-6Yz47w5f.js": {
-    "file": "assets/vendor-6Yz47w5f.js",
+  "_vendor-CwvpBVES.js": {
+    "file": "assets/vendor-CwvpBVES.js",
     "name": "vendor"
   },
   "src/main.js": {
-    "file": "assets/main-B3kCmms1.js",
+    "file": "assets/main-DPH4sX3s.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
     "imports": [
-      "_vendor-6Yz47w5f.js",
-      "_chatbot-8_CDrrU8.js",
-      "_admin-yb4m3Fig.js",
-      "_reports-mm3nBoxW.js"
+      "_vendor-CwvpBVES.js",
+      "_chatbot-BaJpOLDY.js",
+      "_admin-DyMz88Or.js",
+      "_reports-C_PymE-h.js"
     ],
     "dynamicImports": [
-      "_chatbot-8_CDrrU8.js"
+      "_chatbot-BaJpOLDY.js"
     ],
     "css": [
-      "assets/main-CqJOmzel.css"
+      "assets/main-DBZl5zGZ.css"
     ]
   }
 }
