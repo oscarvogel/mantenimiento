@@ -83,7 +83,7 @@ final class WhatsAppWeeklyReadingReminderContractTest extends TestCase
         self::assertStringContainsString("->where('fecha_hasta', null)", $queue);
         self::assertStringContainsString('Chofer ya no asignado al equipo al momento del despacho.', $queue);
         self::assertStringContainsString("\$equipmentKey = \$companyId . ':' . \$equipmentId", $queue);
-        self::assertStringContainsString('\$scanLimit = min(1000, max(\$dispatchLimit, \$dispatchLimit * 10));', $queue);
-        self::assertStringContainsString('if (count(\$dispatchable) >= \$dispatchLimit)', $queue);
+        self::assertStringContainsString('$scanLimit = min(1000, max($dispatchLimit, $dispatchLimit * 10));', $queue);
+        self::assertStringContainsString('if (count($dispatchable) >= $dispatchLimit)', $queue);
     }
 }
