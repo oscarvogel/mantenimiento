@@ -220,13 +220,11 @@ final class ReadingControlReadOnlyContractTest extends TestCase
         self::assertSame([], $changed, 'Este hotfix no debe agregar ni modificar migraciones.');
     }
 
-    public function testSidebarPlacesReadingControlInsideTheOperationGroup(): void
+    public function testSidebarKeepsReadingControlAsPrimaryNavigation(): void
     {
         $sidebar = (string) file_get_contents(ROOTPATH . 'frontend/src/components/AppSidebar.vue');
 
-        self::assertMatchesRegularExpression(
-            "/key: 'operation'.*'reading-control'/",
-            $sidebar,
-        );
+        self::assertStringContainsString("'reading-control'", $sidebar);
+        self::assertStringContainsString("const primaryKeys = ['dashboard', 'equipment', 'reading-control'", $sidebar);
     }
 }
