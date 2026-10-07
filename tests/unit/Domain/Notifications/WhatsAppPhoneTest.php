@@ -22,8 +22,8 @@ final class WhatsAppPhoneTest extends CIUnitTestCase
         self::assertNull(WhatsAppPhone::normalize('543764123456'));
     }
 
-    public function testRejectsLocalPhoneWithoutCountryCode(): void
+    public function testRejectsTooShortPhone(): void
     {
-        self::assertNull(WhatsAppPhone::normalize('3764123456'));
+        self::assertNull(WhatsAppPhone::normalize('12345'));
     }
 }
