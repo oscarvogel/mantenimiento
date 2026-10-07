@@ -167,6 +167,7 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->post('vencimientos/tipos/(:num)/estado', 'Expirations::toggleType/$1');
     $routes->post('vencimientos', 'Expirations::create');
     $routes->post('vencimientos/(:num)', 'Expirations::update/$1');
+    $routes->post('vencimientos/(:num)/renovar', 'Expirations::renew/$1');
     $routes->post('vencimientos/(:num)/retirar', 'Expirations::deactivate/$1');
 
     $routes->get('importaciones', 'ImportManagement::index', ['filter' => 'permission:importaciones.ver']);
