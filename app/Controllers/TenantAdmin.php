@@ -92,6 +92,7 @@ final class TenantAdmin extends BaseController
         if (! $this->validate([
             'nombre'               => 'required|max_length[255]',
             'email'                => 'required|valid_email|max_length[255]',
+            'telefono'             => 'permit_empty|max_length[20]',
             'password'             => 'required|min_length[8]|max_length[255]',
             'password_confirmation'=> 'required|matches[password]',
             'motivo'               => 'required|min_length[5]|max_length[255]',
@@ -105,6 +106,7 @@ final class TenantAdmin extends BaseController
                 [
                     'nombre'   => (string) $this->request->getPost('nombre'),
                     'email'    => (string) $this->request->getPost('email'),
+                    'telefono' => (string) $this->request->getPost('telefono'),
                     'password' => (string) $this->request->getPost('password'),
                 ],
                 $this->postedIds('roles'),
@@ -123,6 +125,7 @@ final class TenantAdmin extends BaseController
         if (! $this->validate([
             'nombre' => 'required|max_length[255]',
             'email'  => 'required|valid_email|max_length[255]',
+            'telefono' => 'permit_empty|max_length[20]',
             'activo' => 'required|in_list[0,1]',
             'motivo' => 'required|min_length[5]|max_length[255]',
         ])) {
@@ -133,6 +136,7 @@ final class TenantAdmin extends BaseController
             $data = [
                 'nombre' => (string) $this->request->getPost('nombre'),
                 'email'  => (string) $this->request->getPost('email'),
+                'telefono' => (string) $this->request->getPost('telefono'),
                 'activo' => (int) $this->request->getPost('activo'),
             ];
             $this->service()->updateUser(
