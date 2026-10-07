@@ -22,7 +22,7 @@ final class CodeIgniterNotificationRecipientResolver implements NotificationReci
     {
         $permission = $this->permissionFor($event->type());
         $builder = $this->db->table('usuarios u')
-            ->select('DISTINCT u.id, u.empresa_id, u.email', false)
+            ->select('DISTINCT u.id, u.empresa_id, u.email, u.telefono', false)
             ->join('usuario_roles ur', 'ur.usuario_id = u.id', 'inner')
             ->join('rol_permisos rp', 'rp.rol_id = ur.rol_id', 'inner')
             ->join('permisos p', 'p.id = rp.permiso_id', 'inner')
@@ -42,7 +42,7 @@ final class CodeIgniterNotificationRecipientResolver implements NotificationReci
             $allBranches = $this->db->table('usuario_roles ur')->join('roles r', 'r.id = ur.rol_id', 'inner')->where('ur.usuario_id', $userId)->where('r.nombre', 'Administrador')->countAllResults() > 0;
             $branchIds = array_map('intval', array_column($this->db->table('usuario_sucursales')->select('sucursal_id')->where('usuario_id', $userId)->get()->getResultArray(), 'sucursal_id'));
             if ($this->scope->allows($event->companyId(), $event->branchId(), (int) $row['empresa_id'], $allBranches, $branchIds)) {
-                $recipients[] = new NotificationRecipient($userId, (int) $row['empresa_id'], (string) $row['email']);
+                $recipients[] = new NotificationRecipient($userId, (int) $row['empresa_id'], (string) $row['email'], $row['telefono'] === null ? null : (string) $row['telefono']);
             }
         }
         return $recipients;

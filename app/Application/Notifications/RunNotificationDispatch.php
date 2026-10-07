@@ -40,7 +40,7 @@ final readonly class RunNotificationDispatch
             if ($executionId === null) {
                 return ['email_sent' => 0, 'company_email_sent' => 0, 'push_sent' => 0, 'whatsapp_sent' => 0, 'failed' => 0, 'retry' => 0, 'expired' => 0, 'skipped' => 0, 'already_completed' => 1];
             }
-            $summary = ['email_sent' => 0, 'company_email_sent' => 0, 'push_sent' => 0, 'whatsapp_sent' => 0, 'whatsapp_confirmed' => 0, 'whatsapp_gateway_failed' => 0, 'failed' => 0, 'retry' => 0, 'expired' => 0, 'skipped' => 0, 'already_completed' => 0];
+            $summary = ['email_sent' => 0, 'company_email_sent' => 0, 'push_sent' => 0, 'whatsapp_sent' => 0, 'whatsapp_user_digests_scheduled' => 0, 'whatsapp_confirmed' => 0, 'whatsapp_gateway_failed' => 0, 'failed' => 0, 'retry' => 0, 'expired' => 0, 'skipped' => 0, 'already_completed' => 0];
             $this->dispatchEmail($summary, $limit);
             $this->dispatchCompanyEmail($summary, $limit);
             $this->dispatchPush($summary, $limit);
@@ -216,6 +216,7 @@ final readonly class RunNotificationDispatch
         }
 
         $this->whatsAppDeliveries->scheduleWeeklyReadingReminders();
+        $summary['whatsapp_user_digests_scheduled'] += $this->whatsAppDeliveries->scheduleUserDailyDigests();
 
         $whatsAppLimit = max(1, min(
             $limit,

@@ -68,6 +68,25 @@ final class SuperAdmin extends BaseController
             'label' => trim((string) ($equipment['codigo'] ?? '')) . (trim((string) ($equipment['patente'] ?? '')) !== '' ? ' · ' . trim((string) $equipment['patente']) : ''),
         ], $expirationTestEquipment);
 
+        $userDigestTestUsers = db_connect()->table('usuarios u')
+            ->select('u.id, u.empresa_id, u.nombre, u.email, u.telefono')
+            ->join('empresas emp', 'emp.id = u.empresa_id', 'inner')
+            ->where('u.activo', 1)
+            ->where('u.deleted_at', null)
+            ->where('u.telefono IS NOT NULL', null, false)
+            ->where("TRIM(u.telefono) <> ''", null, false)
+            ->where('emp.estado', 1)
+            ->where('emp.deleted_at', null)
+            ->orderBy('u.nombre', 'ASC')
+            ->get()->getResultArray();
+        $payload['userDigestTestUsers'] = array_map(static fn (array $user): array => [
+            'id' => (int) $user['id'],
+            'companyId' => (int) $user['empresa_id'],
+            'label' => trim((string) ($user['nombre'] ?? 'Usuario'))
+                . ' · ' . trim((string) ($user['email'] ?? ''))
+                . ' · ' . trim((string) ($user['telefono'] ?? '')),
+        ], $userDigestTestUsers);
+
         $preventiveTestPlans = db_connect()->table('planes_mantenimiento p')
             ->select('p.id, p.empresa_id, p.equipo_id, e.codigo, e.patente, ts.nombre servicio_nombre')
             ->join('equipos e', 'e.id = p.equipo_id AND e.empresa_id = p.empresa_id', 'inner')
@@ -98,6 +117,7 @@ final class SuperAdmin extends BaseController
             'testAction' => base_url('superadmin/whatsapp/prueba'),
             'testWeeklyReminderAction' => base_url('superadmin/whatsapp/probar-recordatorio-km'),
             'testPreventiveAction' => base_url('superadmin/whatsapp/probar-mantenimiento-preventivo'),
+            'testUserDigestAction' => base_url('superadmin/whatsapp/probar-resumen-usuario'),
             'testByPlateAction' => base_url('superadmin/whatsapp/probar-por-patente'),
             'preparePilotAction' => base_url('superadmin/whatsapp/preparar-piloto'),
             'testExpirationDigestAction' => base_url('superadmin/diagnosticos/vencimientos-whatsapp'),
@@ -466,6 +486,132 @@ final class SuperAdmin extends BaseController
             );
         } catch (Throwable $exception) {
             return $this->operationFailure($exception);
+        }
+    }
+
+    public function testUserDailyDigestWhatsApp(): RedirectResponse
+    {
+        $db = db_connect();
+        $notificationId = null;
+
+        try {
+            $userId = max(0, (int) $this->request->getPost('usuario_id'));
+            $equipmentId = max(0, (int) $this->request->getPost('equipo_id'));
+            if ($userId <= 0 || $equipmentId <= 0) {
+                throw new DomainException('Seleccioná un usuario y un equipo para la prueba.');
+            }
+
+            $gateway = service('whatsAppGateway');
+            if (! $gateway->available()) {
+                throw new DomainException('WhatsApp no está disponible.');
+            }
+            if (! $db->fieldExists('telefono', 'usuarios')) {
+                throw new DomainException('Falta aplicar la migración que agrega el celular a usuarios.');
+            }
+            if (! $db->fieldExists('usuario_id', 'notificacion_whatsapp_entregas')) {
+                throw new DomainException('Falta aplicar la migración 2026-10-07-192500_AddUserToWhatsAppNotificationDeliveries.');
+            }
+
+            $user = $db->table('usuarios')
+                ->select('id, empresa_id, nombre, telefono')
+                ->where('id', $userId)
+                ->where('activo', 1)
+                ->where('deleted_at', null)
+                ->get()
+                ->getRowArray();
+            if ($user === null || $gateway->normalizePhone((string) ($user['telefono'] ?? '')) === null) {
+                throw new DomainException('El usuario seleccionado no tiene un celular WhatsApp válido.');
+            }
+
+            $equipment = $db->table('equipos')
+                ->select('id, empresa_id, sucursal_id, codigo, patente')
+                ->where('id', $equipmentId)
+                ->where('empresa_id', (int) $user['empresa_id'])
+                ->where('estado', 'ACTIVO')
+                ->where('deleted_at', null)
+                ->get()
+                ->getRowArray();
+            if ($equipment === null) {
+                throw new DomainException('El equipo seleccionado no pertenece a la empresa del usuario o no está activo.');
+            }
+
+            $label = trim((string) ($equipment['codigo'] ?? 'Equipo #' . $equipmentId));
+            $plate = trim((string) ($equipment['patente'] ?? ''));
+            if ($plate !== '' && mb_strtoupper($plate) !== mb_strtoupper($label)) {
+                $label .= ' · ' . $plate;
+            }
+
+            $testKey = date('YmdHis') . '-usuario-' . $userId . '-actor-' . $this->actor()->userId();
+            $eventKey = 'prueba.resumen_usuario:empresa:' . (int) $user['empresa_id']
+                . ':usuario:' . $userId . ':equipo:' . $equipmentId . ':' . $testKey;
+            $now = date('Y-m-d H:i:s');
+
+            $db->table('notificaciones')->insert([
+                'empresa_id' => (int) $user['empresa_id'],
+                'sucursal_id' => (int) ($equipment['sucursal_id'] ?? 0) ?: null,
+                'usuario_id' => $userId,
+                'tipo_evento' => 'equipo.vencimiento_vencido',
+                'severidad' => 'WARNING',
+                'titulo' => $label . ' · Vencimiento de prueba',
+                'resumen' => 'El vencimiento documental de prueba del equipo ' . $label . ' requiere revisión. Este aviso fue generado desde Superadmin para validar el resumen diario por WhatsApp.',
+                'entidad_tipo' => 'equipo',
+                'entidad_id' => (string) $equipmentId,
+                'url' => '/mantenimiento/equipos/' . $equipmentId,
+                'clave_evento' => $eventKey,
+                'estado' => 'PENDIENTE',
+                'created_at' => $now,
+            ]);
+            $notificationId = (int) $db->insertID();
+
+            $queue = service('whatsAppNotificationDeliveryQueue');
+            if ($queue->scheduleUserDailyDigestTest($userId, $equipmentId, $testKey) < 1) {
+                throw new DomainException('No se pudo preparar el resumen WhatsApp de prueba.');
+            }
+
+            $sent = 0;
+            foreach ($queue->due(1000) as $delivery) {
+                if (! str_contains((string) ($delivery['external_ref'] ?? ''), ':prueba:' . $testKey)) {
+                    continue;
+                }
+
+                $result = $gateway->sendText(
+                    (string) ($delivery['telefono'] ?? ''),
+                    (string) ($delivery['mensaje'] ?? ''),
+                    (string) ($delivery['external_ref'] ?? ''),
+                    (string) $this->actor()->userId(),
+                    'Superadmin Mantenimiento',
+                    empty($delivery['instance_id']) ? null : (string) $delivery['instance_id'],
+                );
+                $queue->accepted((int) $delivery['id'], $result['messageId'], $result['status']);
+                $sent++;
+            }
+
+            if ($sent < 1) {
+                throw new DomainException('El resumen se preparó pero no se encontró la entrega de prueba para despachar.');
+            }
+
+            return redirect()->to('/superadmin')->with(
+                'success',
+                'Resumen diario de prueba enviado para ' . trim((string) ($user['nombre'] ?? ('Usuario #' . $userId)))
+                . ' usando el equipo ' . $label . '.',
+            );
+        } catch (Throwable $exception) {
+            log_message('error', 'Falló prueba de resumen WhatsApp de usuario: {message}', [
+                'message' => $exception->getMessage(),
+            ]);
+
+            if (ENVIRONMENT !== 'production' && ! $exception instanceof DomainException) {
+                return redirect()->to('/superadmin')->withInput()->with(
+                    'error',
+                    'Prueba resumen usuario: ' . $exception->getMessage(),
+                );
+            }
+
+            return $this->operationFailure($exception);
+        } finally {
+            if ($notificationId !== null && $notificationId > 0) {
+                $db->table('notificaciones')->where('id', $notificationId)->delete();
+            }
         }
     }
 

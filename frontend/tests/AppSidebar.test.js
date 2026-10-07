@@ -64,9 +64,11 @@ describe('AppSidebar', () => {
       },
     })
 
-    expect(wrapper.find('a[href="/custom"]').isVisible()).toBe(false)
+    expect(wrapper.find('a[href="/custom"]').exists()).toBe(true)
+    expect(wrapper.get('button[aria-controls="secondary-navigation"]').attributes('aria-expanded')).toBe('false')
     await wrapper.get('button[aria-controls="secondary-navigation"]').trigger('click')
-    expect(wrapper.find('a[href="/custom"]').isVisible()).toBe(true)
+    expect(wrapper.get('button[aria-controls="secondary-navigation"]').attributes('aria-expanded')).toBe('true')
+    expect(wrapper.get('a[href="/custom"]').attributes('href')).toBe('/custom')
   })
 
   it('no duplica Maestros ni renombra Tipos de vencimiento', async () => {

@@ -10,6 +10,7 @@ final readonly class NotificationRecipient
         public int $userId,
         public int $companyId,
         public string $email,
+        public ?string $phone = null,
     ) {
     }
 }

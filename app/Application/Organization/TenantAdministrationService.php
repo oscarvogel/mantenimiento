@@ -6,6 +6,7 @@ namespace App\Application\Organization;
 
 use App\Application\Identity\ActorContext;
 use App\Application\Organization\Port\TenantAdministrationPort;
+use App\Domain\Notifications\WhatsAppPhone;
 use DomainException;
 
 final class TenantAdministrationService
@@ -78,6 +79,7 @@ final class TenantAdministrationService
         $companyId = $this->companyFor($actor, 'usuarios.editar');
         $name = trim((string) ($data['nombre'] ?? ''));
         $email = mb_strtolower(trim((string) ($data['email'] ?? '')));
+        $phone = $this->normalizePhone($data['telefono'] ?? null);
         $active = (int) ($data['activo'] ?? -1);
 
         if ($name === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL) || ! in_array($active, [0, 1], true)) {
@@ -90,7 +92,7 @@ final class TenantAdministrationService
         $this->administration->updateUser(
             $companyId,
             $userId,
-            ['nombre' => $name, 'email' => $email, 'activo' => $active],
+            ['nombre' => $name, 'email' => $email, 'telefono' => $phone, 'activo' => $active],
             $this->reason($reason),
             $actor->userId(),
         );
@@ -196,6 +198,7 @@ final class TenantAdministrationService
     {
         $name = trim((string) ($data['nombre'] ?? ''));
         $email = mb_strtolower(trim((string) ($data['email'] ?? '')));
+        $phone = $this->normalizePhone($data['telefono'] ?? null);
         $password = (string) ($data['password'] ?? '');
 
         if ($name === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -205,7 +208,22 @@ final class TenantAdministrationService
             throw new DomainException('La contraseña debe tener al menos 8 caracteres.');
         }
 
-        return ['nombre' => $name, 'email' => $email, 'password' => $password];
+        return ['nombre' => $name, 'email' => $email, 'telefono' => $phone, 'password' => $password];
+    }
+
+    private function normalizePhone(mixed $phone): ?string
+    {
+        $raw = trim((string) $phone);
+        if ($raw === '') {
+            return null;
+        }
+
+        $normalized = WhatsAppPhone::normalize($raw);
+        if ($normalized === null) {
+            throw new DomainException('El celular debe cargarse en formato internacional, solo números (ej.: 5493764123456).');
+        }
+
+        return $normalized;
     }
 
     private function reason(string $reason): string

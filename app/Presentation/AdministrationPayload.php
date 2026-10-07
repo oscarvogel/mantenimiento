@@ -152,7 +152,7 @@ final class AdministrationPayload
             ],
             'actions' => ['create' => base_url('administracion/usuarios')],
             'oldInput' => [
-                'nombre' => old('nombre') ?? '', 'email' => old('email') ?? '', 'motivo' => old('motivo') ?? '',
+                'nombre' => old('nombre') ?? '', 'email' => old('email') ?? '', 'telefono' => old('telefono') ?? '', 'motivo' => old('motivo') ?? '',
                 'roleIds' => array_map('intval', (array) old('roles', [])),
                 'branchIds' => array_map('intval', (array) old('sucursales', [])),
             ],
@@ -164,7 +164,7 @@ final class AdministrationPayload
                 $isSelf = (int) $row['id'] === $actor->userId();
 
                 return [
-                    'id' => (int) $row['id'], 'name' => $row['nombre'], 'email' => $row['email'],
+                    'id' => (int) $row['id'], 'name' => $row['nombre'], 'email' => $row['email'], 'phone' => $row['telefono'] ?? '',
                     'active' => (int) $row['activo'] === 1, 'isSelf' => $isSelf,
                     'canDeactivate' => ! $isSelf, 'allCompanyBranches' => (bool) $row['all_company_branches'],
                     'lastAccess' => $row['ultimo_acceso'] ?? '', 'roles' => $this->roles($row['roles'] ?? []),
