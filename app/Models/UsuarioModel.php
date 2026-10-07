@@ -12,7 +12,7 @@ class UsuarioModel extends Model
     protected $useSoftDeletes = true;
     protected $useTimestamps = true;
     protected $allowedFields = [
-        'empresa_id', 'nombre', 'email', 'password_hash', 'es_superadmin', 'activo', 'ultimo_acceso',
+        'empresa_id', 'nombre', 'email', 'telefono', 'password_hash', 'es_superadmin', 'activo', 'ultimo_acceso',
     ];
 
     public function findByEmail(string $email): ?array
