@@ -1097,7 +1097,7 @@ final class SuperAdmin extends BaseController
         return [
             'pendingCount' => count($pending),
             'pending' => $pending,
-            'appliedCount' => count($appliedVersions),
+            'appliedCount' => count($history),
             'target319Registered' => isset($appliedVersions['2026-09-18-083000'])
                 || isset($appliedVersions['2026-09-18-140500']),
             'duplicateActiveGroups' => $duplicateActiveGroups,
