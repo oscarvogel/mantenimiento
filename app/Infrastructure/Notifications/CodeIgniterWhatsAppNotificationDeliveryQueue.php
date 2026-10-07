@@ -8,6 +8,7 @@ use App\Application\Notifications\Port\GlobalNotificationSettingsStore;
 use App\Application\Notifications\Port\NotificationClock;
 use App\Application\Notifications\Port\WhatsAppNotificationDeliveryQueue;
 use App\Application\Notifications\Port\WhatsAppNotificationGateway;
+use App\Application\Notifications\UserWhatsAppDigestSchedule;
 use App\Domain\Notifications\NotifiableEvent;
 use CodeIgniter\Database\BaseConnection;
 use Config\Database;
@@ -23,6 +24,91 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
         private ?BaseConnection $db = null,
     ) {
         $this->db ??= Database::connect();
+    }
+
+    public function scheduleUserDailyDigests(): int
+    {
+        if (! $this->gateway->available()) {
+            return 0;
+        }
+
+        $now = \DateTimeImmutable::createFromInterface($this->clock->now());
+        $slot = (new UserWhatsAppDigestSchedule())->slot(
+            $now,
+            (string) env('alerts.userWhatsAppDigestTime', '08:00'),
+        );
+        if ($slot === null) {
+            return 0;
+        }
+
+        $settings = $this->settings->get();
+        $pilotEnabled = (bool) ($settings['whatsapp_pilot_enabled'] ?? true);
+        $pilotPhone = $this->gateway->normalizePhone((string) ($settings['whatsapp_pilot_phone'] ?? ''));
+        $globalInstanceId = trim((string) ($settings['whatsapp_instance_id'] ?? 'default'));
+        $dateKey = $slot->format('Ymd');
+        $scheduled = 0;
+
+        $users = $this->db->table('usuarios u')
+            ->select('u.id, u.empresa_id, u.nombre, u.telefono')
+            ->select('co.whatsapp_instance_id')
+            ->join('empresas co', 'co.id = u.empresa_id', 'inner')
+            ->where('u.activo', 1)
+            ->where('u.deleted_at', null)
+            ->where('co.estado', 1)
+            ->where('co.deleted_at', null)
+            ->where('co.notificaciones_whatsapp_habilitadas', 1)
+            ->where("EXISTS (SELECT 1 FROM usuario_roles ur INNER JOIN rol_permisos rp ON rp.rol_id = ur.rol_id INNER JOIN permisos p ON p.id = rp.permiso_id WHERE ur.usuario_id = u.id AND p.clave = 'notificaciones.ver')", null, false)
+            ->get()
+            ->getResultArray();
+
+        foreach ($users as $user) {
+            $userId = (int) ($user['id'] ?? 0);
+            $companyId = (int) ($user['empresa_id'] ?? 0);
+            if ($userId <= 0 || $companyId <= 0) {
+                continue;
+            }
+
+            $realPhone = $this->gateway->normalizePhone((string) ($user['telefono'] ?? ''));
+            $phone = $realPhone === null ? null : ($pilotEnabled ? $pilotPhone : $realPhone);
+            if ($phone === null) {
+                continue;
+            }
+
+            $key = 'resumen_usuario_diario:empresa:' . $companyId
+                . ':usuario:' . $userId
+                . ':fecha:' . $dateKey;
+            if ($this->db->table('notificacion_whatsapp_entregas')
+                ->where('clave_entrega', $key)
+                ->countAllResults() > 0) {
+                continue;
+            }
+
+            $instanceId = trim((string) ($user['whatsapp_instance_id'] ?? ''));
+            if ($instanceId === '') {
+                $instanceId = $globalInstanceId;
+            }
+
+            $timestamp = $now->format('Y-m-d H:i:s');
+            $this->db->table('notificacion_whatsapp_entregas')->ignore(true)->insert([
+                'empresa_id' => $companyId,
+                'equipo_id' => null,
+                'empleado_id' => null,
+                'usuario_id' => $userId,
+                'tipo_evento' => 'usuario.resumen_diario',
+                'clave_entrega' => $key,
+                'external_ref' => 'mantenimiento:' . $key,
+                'telefono' => $phone,
+                'instance_id' => $instanceId,
+                'mensaje' => '',
+                'estado' => 'PENDIENTE',
+                'proximo_intento' => $slot->format('Y-m-d H:i:s'),
+                'created_at' => $timestamp,
+                'updated_at' => $timestamp,
+            ]);
+            $scheduled++;
+        }
+
+        return $scheduled;
     }
 
     public function scheduleDriverForEvent(NotifiableEvent $event): void
@@ -831,6 +917,19 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
                 break;
             }
 
+            if ((string) ($row['tipo_evento'] ?? '') === 'usuario.resumen_diario') {
+                $digest = $this->hydrateUserDailyDigest($row);
+                if ($digest === null) {
+                    $this->skipped(
+                        (int) ($row['id'] ?? 0),
+                        'Sin notificaciones pendientes para incluir en el resumen diario.',
+                    );
+                    continue;
+                }
+                $dispatchable[] = $digest;
+                continue;
+            }
+
             if ((string) ($row['tipo_evento'] ?? '') !== 'equipo.recordatorio_lectura_semanal') {
                 $dispatchable[] = $row;
                 continue;
@@ -1114,6 +1213,108 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             . "🌐 *Vogel Consultoría · Mantenimiento*\n"
             . "https://vogelconsultoria.com.ar/mantenimiento\n\n"
             . "_Aviso automático del Sistema de Mantenimiento._";
+    }
+
+    /** @param array<string,mixed> $row */
+    private function hydrateUserDailyDigest(array $row): ?array
+    {
+        $userId = (int) ($row['usuario_id'] ?? 0);
+        $companyId = (int) ($row['empresa_id'] ?? 0);
+        if ($userId <= 0 || $companyId <= 0) {
+            return null;
+        }
+
+        $user = $this->db->table('usuarios u')
+            ->select('u.nombre, u.telefono, co.razon_social, co.nombre_fantasia')
+            ->join('empresas co', 'co.id = u.empresa_id', 'inner')
+            ->where('u.id', $userId)
+            ->where('u.empresa_id', $companyId)
+            ->where('u.activo', 1)
+            ->where('u.deleted_at', null)
+            ->get()
+            ->getRowArray();
+        if ($user === null) {
+            return null;
+        }
+
+        $count = $this->db->table('notificaciones')
+            ->where('empresa_id', $companyId)
+            ->where('usuario_id', $userId)
+            ->where('estado', 'PENDIENTE')
+            ->countAllResults();
+        if ($count <= 0) {
+            return null;
+        }
+
+        $items = $this->db->table('notificaciones')
+            ->select('titulo, resumen, severidad')
+            ->where('empresa_id', $companyId)
+            ->where('usuario_id', $userId)
+            ->where('estado', 'PENDIENTE')
+            ->orderBy("FIELD(severidad, 'CRITICAL', 'WARNING', 'INFO')", '', false)
+            ->orderBy('id', 'ASC')
+            ->limit(12)
+            ->get()
+            ->getResultArray();
+        if ($items === []) {
+            return null;
+        }
+
+        $settings = $this->settings->get();
+        $pilotEnabled = (bool) ($settings['whatsapp_pilot_enabled'] ?? true);
+        $realPhone = $this->gateway->normalizePhone((string) ($user['telefono'] ?? ''));
+        $name = trim((string) ($user['nombre'] ?? ''));
+        $firstName = trim((string) preg_replace('/\s+.*/u', '', $name));
+        $companyName = trim((string) ($user['nombre_fantasia'] ?? ''));
+        if ($companyName === '') {
+            $companyName = trim((string) ($user['razon_social'] ?? 'Empresa'));
+        }
+
+        $body = '';
+        foreach ($items as $item) {
+            $severity = strtoupper(trim((string) ($item['severidad'] ?? 'INFO')));
+            $icon = $severity === 'CRITICAL' ? '🔴' : ($severity === 'WARNING' ? '🟠' : '🔵');
+            $title = trim((string) ($item['titulo'] ?? 'Aviso'));
+            $summary = trim((string) ($item['resumen'] ?? ''));
+            if (mb_strlen($summary) > 180) {
+                $summary = rtrim(mb_substr($summary, 0, 177)) . '...';
+            }
+            $body .= $icon . ' *' . $title . "*\n";
+            if ($summary !== '') {
+                $body .= $summary . "\n";
+            }
+            $body .= "\n";
+        }
+
+        if ($count > count($items)) {
+            $body .= '➕ ' . ($count - count($items)) . " tema(s) adicional(es) en el sistema.\n\n";
+        }
+
+        $pilotHeader = $pilotEnabled
+            ? "🧪 *PRUEBA CONTROLADA · NO ENVIADO AL DESTINATARIO REAL*\n"
+                . '*Destinatario previsto:* ' . ($name === '' ? 'Usuario del sistema' : $name) . "\n"
+                . '*Teléfono real:* ' . ($realPhone === null ? 'no válido o no cargado' : 'configurado') . "\n\n"
+            : '';
+
+        $message = $pilotHeader
+            . '*' . ($companyName === '' ? 'Empresa' : $companyName) . " · Mantenimiento*\n\n"
+            . ($firstName === '' ? 'Hola 👋' : 'Hola ' . $firstName . ' 👋') . "\n"
+            . '*Resumen diario · ' . $this->clock->now()->format('d/m/Y') . "*\n\n"
+            . "Estos son los temas que requieren atención:\n\n"
+            . $body
+            . "Revisalos en el sistema de mantenimiento:\n"
+            . base_url('notificaciones') . "\n\n"
+            . '_Este resumen se envía una sola vez por día, de lunes a viernes._';
+
+        $this->db->table('notificacion_whatsapp_entregas')
+            ->where('id', (int) ($row['id'] ?? 0))
+            ->update([
+                'mensaje' => $message,
+                'updated_at' => $this->clock->now()->format('Y-m-d H:i:s'),
+            ]);
+        $row['mensaje'] = $message;
+
+        return $row;
     }
 
     private function normalizeLocale(string $locale): string
