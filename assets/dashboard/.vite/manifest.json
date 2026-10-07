@@ -1,6 +1,6 @@
 {
-  "_admin-DyMz88Or.js": {
-    "file": "assets/admin-DyMz88Or.js",
+  "_admin-DpjlrDfL.js": {
+    "file": "assets/admin-DpjlrDfL.js",
     "name": "admin",
     "imports": [
       "_vendor-CwvpBVES.js"
@@ -21,11 +21,11 @@
     "file": "assets/chatbot-p1890OXW.css",
     "src": "_chatbot-p1890OXW.css"
   },
-  "_reports-C_PymE-h.js": {
-    "file": "assets/reports-C_PymE-h.js",
+  "_reports-Dq2f_I2i.js": {
+    "file": "assets/reports-Dq2f_I2i.js",
     "name": "reports",
     "imports": [
-      "_admin-DyMz88Or.js",
+      "_admin-DpjlrDfL.js",
       "_vendor-CwvpBVES.js"
     ]
   },
@@ -34,15 +34,15 @@
     "name": "vendor"
   },
   "src/main.js": {
-    "file": "assets/main-DPH4sX3s.js",
+    "file": "assets/main-DUFjrJBP.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
     "imports": [
       "_vendor-CwvpBVES.js",
       "_chatbot-BaJpOLDY.js",
-      "_admin-DyMz88Or.js",
-      "_reports-C_PymE-h.js"
+      "_admin-DpjlrDfL.js",
+      "_reports-Dq2f_I2i.js"
     ],
     "dynamicImports": [
       "_chatbot-BaJpOLDY.js"
