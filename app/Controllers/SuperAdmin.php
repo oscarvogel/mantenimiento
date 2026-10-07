@@ -505,6 +505,12 @@ final class SuperAdmin extends BaseController
             if (! $gateway->available()) {
                 throw new DomainException('WhatsApp no está disponible.');
             }
+            if (! $db->fieldExists('telefono', 'usuarios')) {
+                throw new DomainException('Falta aplicar la migración que agrega el celular a usuarios.');
+            }
+            if (! $db->fieldExists('usuario_id', 'notificacion_whatsapp_entregas')) {
+                throw new DomainException('Falta aplicar la migración 2026-10-07-192500_AddUserToWhatsAppNotificationDeliveries.');
+            }
 
             $user = $db->table('usuarios')
                 ->select('id, empresa_id, nombre, telefono')
@@ -590,6 +596,17 @@ final class SuperAdmin extends BaseController
                 . ' usando el equipo ' . $label . '.',
             );
         } catch (Throwable $exception) {
+            log_message('error', 'Falló prueba de resumen WhatsApp de usuario: {message}', [
+                'message' => $exception->getMessage(),
+            ]);
+
+            if (ENVIRONMENT !== 'production' && ! $exception instanceof DomainException) {
+                return redirect()->to('/superadmin')->withInput()->with(
+                    'error',
+                    'Prueba resumen usuario: ' . $exception->getMessage(),
+                );
+            }
+
             return $this->operationFailure($exception);
         } finally {
             if ($notificationId !== null && $notificationId > 0) {
