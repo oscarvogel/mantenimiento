@@ -448,16 +448,17 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
         $limitedCandidates = 0;
         foreach ($rows as $row) {
             $equipmentId = (int) $row['equipo_id'];
+            $companyId = (int) $row['empresa_id'];
             if ($onlyEquipmentId !== null && $equipmentId !== $onlyEquipmentId) {
                 continue;
             }
-            if ($equipmentId <= 0 || isset($seenEquipment[$equipmentId])) {
+            $equipmentKey = $companyId . ':' . $equipmentId;
+            if ($companyId <= 0 || $equipmentId <= 0 || isset($seenEquipment[$equipmentKey])) {
                 continue;
             }
-            $seenEquipment[$equipmentId] = true;
+            $seenEquipment[$equipmentKey] = true;
 
             $employeeId = (int) $row['empleado_id'];
-            $companyId = (int) $row['empresa_id'];
             $branchId = (int) ($row['sucursal_id'] ?? 0);
 
             if ($stage !== 'initial' && ! $simulateMissingReading
@@ -629,6 +630,21 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
         return null;
     }
 
+    private function isCurrentDriverAssignment(int $companyId, int $equipmentId, int $employeeId): bool
+    {
+        if ($companyId <= 0 || $equipmentId <= 0 || $employeeId <= 0) {
+            return false;
+        }
+
+        return $this->db->table('employee_equipment_assignments')
+            ->where('empresa_id', $companyId)
+            ->where('equipo_id', $equipmentId)
+            ->where('empleado_id', $employeeId)
+            ->where('rol', 'CHOFER')
+            ->where('fecha_hasta', null)
+            ->countAllResults() > 0;
+    }
+
     private function hasKilometerReadingSince(int $companyId, int $equipmentId, \DateTimeInterface $since): bool
     {
         return $this->db->table('lecturas_equipo')
@@ -779,6 +795,12 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
 
     public function due(int $limit): array
     {
+        $dispatchLimit = max(1, min(1000, $limit));
+        // Leemos por delante del batch real porque una entrega semanal puede quedar
+        // obsoleta por un cambio de chofer. Si sólo leyéramos exactamente el batch,
+        // esas filas viejas podrían demorar el recordatorio de la unidad actual.
+        $scanLimit = min(1000, max($dispatchLimit, $dispatchLimit * 10));
+
         $rows = $this->db->table('notificacion_whatsapp_entregas')
             ->whereIn('estado', ['PENDIENTE', 'REINTENTO'])
             ->where('telefono IS NOT NULL', null, false)
@@ -790,7 +812,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             // demorar una alerta más urgente cuando la cola supera el batch del cron.
             ->orderBy("tipo_evento = 'equipo.recordatorio_lectura_semanal'", 'ASC', false)
             ->orderBy('id', 'ASC')
-            ->limit(max(1, min(1000, $limit)))
+            ->limit($scanLimit)
             ->get()
             ->getResultArray();
 
@@ -805,6 +827,10 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
         $seenWeekly = [];
         $dispatchable = [];
         foreach ($rows as $row) {
+            if (count($dispatchable) >= $dispatchLimit) {
+                break;
+            }
+
             if ((string) ($row['tipo_evento'] ?? '') !== 'equipo.recordatorio_lectura_semanal') {
                 $dispatchable[] = $row;
                 continue;
@@ -812,6 +838,20 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
 
             $deliveryId = (int) ($row['id'] ?? 0);
             $deliveryKey = (string) ($row['clave_entrega'] ?? '');
+            $companyId = (int) ($row['empresa_id'] ?? 0);
+            $equipmentId = (int) ($row['equipo_id'] ?? 0);
+            $employeeId = (int) ($row['empleado_id'] ?? 0);
+
+            // La cola conserva la foto del destinatario al momento de programar.
+            // Antes de enviar hay que validar la realidad actual: si el chofer cambió
+            // de unidad, el mensaje viejo no puede salir aunque siga PENDIENTE/REINTENTO.
+            if (! $this->isCurrentDriverAssignment($companyId, $equipmentId, $employeeId)) {
+                $this->skipped(
+                    $deliveryId,
+                    'Chofer ya no asignado al equipo al momento del despacho.',
+                );
+                continue;
+            }
 
             if ((str_starts_with($deliveryKey, 'seguimiento_lectura_miercoles:')
                     || str_starts_with($deliveryKey, 'seguimiento_lectura_viernes:'))

@@ -77,5 +77,13 @@ final class WhatsAppWeeklyReadingReminderContractTest extends TestCase
         self::assertStringContainsString('$seenWeekly', $queue);
         self::assertStringContainsString('$dedupeKey', $queue);
         self::assertStringContainsString("if (isset(\$seenWeekly[\$dedupeKey]) || \$accepted->countAllResults() > 0)", $queue);
+        self::assertStringContainsString('isCurrentDriverAssignment', $queue);
+        self::assertStringContainsString("->where('empleado_id', \$employeeId)", $queue);
+        self::assertStringContainsString("->where('rol', 'CHOFER')", $queue);
+        self::assertStringContainsString("->where('fecha_hasta', null)", $queue);
+        self::assertStringContainsString('Chofer ya no asignado al equipo al momento del despacho.', $queue);
+        self::assertStringContainsString("\$equipmentKey = \$companyId . ':' . \$equipmentId", $queue);
+        self::assertStringContainsString('$scanLimit = min(1000, max($dispatchLimit, $dispatchLimit * 10));', $queue);
+        self::assertStringContainsString('if (count($dispatchable) >= $dispatchLimit)', $queue);
     }
 }
