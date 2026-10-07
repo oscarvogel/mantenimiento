@@ -18,14 +18,10 @@ final class AddUserToWhatsAppNotificationDeliveries extends Migration
                 'after' => 'empleado_id',
             ],
         ]);
-        $this->forge->addKey(['empresa_id', 'usuario_id']);
-        $this->forge->addForeignKey('usuario_id', 'usuarios', 'id', 'SET NULL', 'RESTRICT');
-        $this->forge->processIndexes('notificacion_whatsapp_entregas');
     }
 
     public function down(): void
     {
-        $this->forge->dropForeignKey('notificacion_whatsapp_entregas', 'notificacion_whatsapp_entregas_usuario_id_foreign');
         $this->forge->dropColumn('notificacion_whatsapp_entregas', 'usuario_id');
     }
 }
