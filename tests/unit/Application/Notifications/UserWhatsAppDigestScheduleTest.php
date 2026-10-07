@@ -7,31 +7,32 @@ use PHPUnit\Framework\TestCase;
 
 final class UserWhatsAppDigestScheduleTest extends TestCase
 {
-    public function testBeforeEightSchedulesSameBusinessDay(): void
+    public function testWeekdayUsesEightAmSlotEvenIfCycleRunsLater(): void
     {
-        $next = (new UserWhatsAppDigestSchedule())->next(new DateTimeImmutable('2026-10-07 07:15:00'), '08:00');
+        $schedule = new UserWhatsAppDigestSchedule();
 
-        self::assertSame('2026-10-07 08:00:00', $next->format('Y-m-d H:i:s'));
+        self::assertSame(
+            '2026-10-07 08:00:00',
+            $schedule->slot(new DateTimeImmutable('2026-10-07 07:15:00'), '08:00')?->format('Y-m-d H:i:s'),
+        );
+        self::assertSame(
+            '2026-10-07 08:00:00',
+            $schedule->slot(new DateTimeImmutable('2026-10-07 10:30:00'), '08:00')?->format('Y-m-d H:i:s'),
+        );
     }
 
-    public function testAfterEightSchedulesNextBusinessDay(): void
+    public function testSaturdayAndSundayHaveNoDigestSlot(): void
     {
-        $next = (new UserWhatsAppDigestSchedule())->next(new DateTimeImmutable('2026-10-07 08:05:00'), '08:00');
+        $schedule = new UserWhatsAppDigestSchedule();
 
-        self::assertSame('2026-10-08 08:00:00', $next->format('Y-m-d H:i:s'));
+        self::assertNull($schedule->slot(new DateTimeImmutable('2026-10-10 08:00:00'), '08:00'));
+        self::assertNull($schedule->slot(new DateTimeImmutable('2026-10-11 08:00:00'), '08:00'));
     }
 
-    public function testFridayAfterEightSkipsWeekend(): void
+    public function testInvalidTimeFallsBackToEightAm(): void
     {
-        $next = (new UserWhatsAppDigestSchedule())->next(new DateTimeImmutable('2026-10-09 09:00:00'), '08:00');
+        $next = (new UserWhatsAppDigestSchedule())->slot(new DateTimeImmutable('2026-10-07 12:00:00'), 'invalid');
 
-        self::assertSame('2026-10-12 08:00:00', $next->format('Y-m-d H:i:s'));
-    }
-
-    public function testWeekendSchedulesMonday(): void
-    {
-        $next = (new UserWhatsAppDigestSchedule())->next(new DateTimeImmutable('2026-10-10 10:00:00'), '08:00');
-
-        self::assertSame('2026-10-12 08:00:00', $next->format('Y-m-d H:i:s'));
+        self::assertSame('2026-10-07 08:00:00', $next?->format('Y-m-d H:i:s'));
     }
 }
