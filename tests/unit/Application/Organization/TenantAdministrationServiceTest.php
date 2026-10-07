@@ -157,7 +157,7 @@ final class TenantAdministrationServiceTest extends CIUnitTestCase
 
         $service->createUser(
             $this->administrator(),
-            ['nombre' => 'Usuario', 'email' => 'user@example.test', 'telefono' => '3764123456', 'password' => 'Segura123'],
+            ['nombre' => 'Usuario', 'email' => 'user@example.test', 'telefono' => '54937641234', 'password' => 'Segura123'],
             [5],
             [3],
             'Alta aprobada',
