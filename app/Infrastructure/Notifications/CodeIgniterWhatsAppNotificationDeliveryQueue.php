@@ -111,6 +111,87 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
         return $scheduled;
     }
 
+    public function scheduleUserDailyDigestTest(int $userId, int $equipmentId, string $testKey): int
+    {
+        if (! $this->gateway->available()) {
+            return 0;
+        }
+
+        $user = $this->db->table('usuarios u')
+            ->select('u.id, u.empresa_id, u.telefono, co.whatsapp_instance_id')
+            ->join('empresas co', 'co.id = u.empresa_id', 'inner')
+            ->where('u.id', $userId)
+            ->where('u.activo', 1)
+            ->where('u.deleted_at', null)
+            ->where('co.estado', 1)
+            ->where('co.deleted_at', null)
+            ->where('co.notificaciones_whatsapp_habilitadas', 1)
+            ->get()
+            ->getRowArray();
+        if ($user === null) {
+            return 0;
+        }
+
+        $equipment = $this->db->table('equipos')
+            ->select('id')
+            ->where('id', $equipmentId)
+            ->where('empresa_id', (int) $user['empresa_id'])
+            ->where('estado', 'ACTIVO')
+            ->where('deleted_at', null)
+            ->get()
+            ->getRowArray();
+        if ($equipment === null) {
+            return 0;
+        }
+
+        $settings = $this->settings->get();
+        $pilotEnabled = (bool) ($settings['whatsapp_pilot_enabled'] ?? true);
+        $pilotPhone = $this->gateway->normalizePhone((string) ($settings['whatsapp_pilot_phone'] ?? ''));
+        $realPhone = $this->gateway->normalizePhone((string) ($user['telefono'] ?? ''));
+        $phone = $pilotEnabled ? $pilotPhone : $realPhone;
+        if ($phone === null) {
+            return 0;
+        }
+
+        $instanceId = trim((string) ($user['whatsapp_instance_id'] ?? ''));
+        if ($instanceId === '') {
+            $instanceId = trim((string) ($settings['whatsapp_instance_id'] ?? 'default'));
+        }
+
+        $safeTestKey = preg_replace('/[^A-Za-z0-9_.-]+/', '-', trim($testKey));
+        if ($safeTestKey === '') {
+            return 0;
+        }
+
+        $companyId = (int) $user['empresa_id'];
+        $key = 'resumen_usuario_diario:empresa:' . $companyId
+            . ':usuario:' . $userId
+            . ':prueba:' . $safeTestKey;
+        if ($this->db->table('notificacion_whatsapp_entregas')->where('clave_entrega', $key)->countAllResults() > 0) {
+            return 0;
+        }
+
+        $now = $this->clock->now()->format('Y-m-d H:i:s');
+        $this->db->table('notificacion_whatsapp_entregas')->insert([
+            'empresa_id' => $companyId,
+            'equipo_id' => $equipmentId,
+            'empleado_id' => null,
+            'usuario_id' => $userId,
+            'tipo_evento' => 'usuario.resumen_diario',
+            'clave_entrega' => $key,
+            'external_ref' => 'mantenimiento:' . $key,
+            'telefono' => $phone,
+            'instance_id' => $instanceId,
+            'mensaje' => '',
+            'estado' => 'PENDIENTE',
+            'proximo_intento' => $now,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        return 1;
+    }
+
     public function scheduleDriverForEvent(NotifiableEvent $event): void
     {
         if (! $this->gateway->available()) {
