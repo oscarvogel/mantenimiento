@@ -108,7 +108,7 @@ final class PublicEquipmentReadings extends BaseController
                 ]);
             } catch (Throwable $exception) {
                 $storageError = $exception->getMessage();
-                log_message('warning', 'No se pudo dejar staged la evidencia de lectura: {message}', [
+                log_message('error', 'No se pudo dejar staged la evidencia de lectura: {message}', [
                     'message' => $storageError,
                 ]);
             }
@@ -590,16 +590,22 @@ final class PublicEquipmentReadings extends BaseController
 
     private function evidenceStorage(): ReadingEvidenceStorage
     {
-        // Reutilizar primero el almacenamiento privado que ya usa el sistema
-        // para adjuntos de equipos. Está probado tanto en Coolify como en Ferozo
-        // y evita depender de una segunda raíz con permisos distintos.
-        $privateRoot = trim((string) env('uploads.privatePath', ''));
-        if ($privateRoot !== '') {
-            return new ReadingEvidenceStorage($privateRoot);
+        // Preferir una raíz específica para evidencias. Si no existe, derivarla
+        // como hermana del storage privado ya probado de adjuntos, sin sondear
+        // rutas externas que puedan disparar open_basedir en Ferozo.
+        $configured = trim((string) env('uploads.readingEvidencePath', ''));
+        if ($configured !== '') {
+            return new ReadingEvidenceStorage($configured);
         }
 
-        $configured = trim((string) env('uploads.readingEvidencePath', ''));
-        return new ReadingEvidenceStorage($configured === '' ? null : $configured);
+        $privateRoot = rtrim(trim((string) env('uploads.privatePath', '')), '\\/');
+        if ($privateRoot !== '') {
+            return new ReadingEvidenceStorage(
+                dirname($privateRoot) . DIRECTORY_SEPARATOR . 'lecturas',
+            );
+        }
+
+        return new ReadingEvidenceStorage();
     }
 
     private function nullableInt(mixed $value, string $locale): ?int

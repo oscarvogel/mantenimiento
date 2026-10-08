@@ -28,6 +28,25 @@ final class ReadingPhotoEvidenceContractTest extends TestCase
         self::assertStringContainsString('public_reading_evidence_', $source);
     }
 
+    public function testEvidenceStorageDoesNotProbeDockerOnlyPath(): void
+    {
+        $source = file_get_contents(ROOTPATH . 'app/Infrastructure/Measurement/ReadingEvidenceStorage.php');
+        self::assertIsString($source);
+
+        self::assertStringNotContainsString("is_dir('/data/priv')", $source);
+        self::assertStringNotContainsString("'/data/priv/lecturas'", $source);
+    }
+
+    public function testControllerPrefersConfiguredEvidencePathAndLogsStagingFailureAsError(): void
+    {
+        $source = file_get_contents(ROOTPATH . 'app/Controllers/PublicEquipmentReadings.php');
+        self::assertIsString($source);
+
+        self::assertStringContainsString("env('uploads.readingEvidencePath'", $source);
+        self::assertStringContainsString("env('uploads.privatePath'", $source);
+        self::assertStringContainsString("log_message('error', 'No se pudo dejar staged la evidencia de lectura", $source);
+    }
+
     public function testEvidenceDownloadIsTenantScoped(): void
     {
         $source = file_get_contents(ROOTPATH . 'app/Controllers/PublicEquipmentReadings.php');
