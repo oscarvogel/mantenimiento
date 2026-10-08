@@ -6,7 +6,10 @@ namespace App\Controllers;
 
 use App\Application\PublicEquipmentAccess\ResolvePublicEquipmentToken;
 use App\Infrastructure\PublicEquipmentAccess\CodeIgniterPublicEquipmentTokenRepository;
+use App\Infrastructure\Measurement\MiniMaxOdometerImageAnalyzer;
+use App\Infrastructure\Measurement\ReadingEvidenceStorage;
 use CodeIgniter\HTTP\RedirectResponse;
+use CodeIgniter\HTTP\ResponseInterface;
 use DomainException;
 use Throwable;
 
@@ -16,6 +19,7 @@ final class PublicEquipmentReadings extends BaseController
     private const RATE_WINDOW_MINUTES = 10;
     private const MAX_KM_JUMP = 5000;
     private const MAX_HOURS_JUMP = 500.0;
+    private const MAX_EVIDENCE_BYTES = 8 * 1024 * 1024;
 
     public function show(string $token): string
     {
@@ -49,6 +53,69 @@ final class PublicEquipmentReadings extends BaseController
                     ? $exception->getMessage()
                     : $this->tr($locale, 'open_failed'),
             ]);
+        }
+    }
+
+    public function analyze(string $token): ResponseInterface
+    {
+        try {
+            $access = $this->resolve($token);
+            $equipment = $this->equipment((int) $access['empresa_id'], (int) $access['equipo_id']);
+            if ($equipment === null) {
+                throw new DomainException('El acceso público no es válido.');
+            }
+
+            [$tempPath, $mime] = $this->validatedEvidenceUpload();
+            try {
+                $analysis = MiniMaxOdometerImageAnalyzer::fromEnv()->analyze($tempPath, $mime);
+            } finally {
+                // El archivo temporal pertenece al request y CodeIgniter/PHP lo limpia.
+            }
+
+            return $this->response->setJSON([
+                'ok' => true,
+                'kilometers' => $analysis->kilometers,
+                'confidence' => $analysis->confidence,
+                'legible' => $analysis->legible,
+                'observation' => $analysis->observation,
+            ]);
+        } catch (Throwable $exception) {
+            log_message('notice', 'No se pudo analizar evidencia de lectura: {message}', ['message' => $exception->getMessage()]);
+            return $this->response->setStatusCode(422)->setJSON([
+                'ok' => false,
+                'error' => 'No pudimos leer automáticamente el odómetro. Podés ingresar el kilometraje manualmente, pero la foto sigue siendo obligatoria.',
+            ]);
+        }
+    }
+
+    public function evidence(int $readingId): ResponseInterface
+    {
+        $actor = (new \App\Infrastructure\Identity\SessionActorContext())->current();
+        if ($actor === null) {
+            return $this->response->setStatusCode(401);
+        }
+
+        $row = db_connect()->table('lecturas_equipo_evidencias ev')
+            ->select('ev.archivo_path, ev.mime_type, ev.empresa_id')
+            ->join('lecturas_equipo le', 'le.id = ev.lectura_id AND le.empresa_id = ev.empresa_id', 'inner')
+            ->where('ev.lectura_id', $readingId)
+            ->where('ev.empresa_id', $actor->companyId())
+            ->get()
+            ->getRowArray();
+
+        if ($row === null) {
+            return $this->response->setStatusCode(404);
+        }
+
+        try {
+            $content = $this->evidenceStorage()->read((string) $row['archivo_path'], (int) $row['empresa_id']);
+            return $this->response
+                ->setHeader('Content-Type', (string) $row['mime_type'])
+                ->setHeader('Cache-Control', 'private, max-age=300')
+                ->setBody($content);
+        } catch (Throwable $exception) {
+            log_message('warning', 'No se pudo leer evidencia de lectura: {message}', ['message' => $exception->getMessage()]);
+            return $this->response->setStatusCode(404);
         }
     }
 
@@ -89,6 +156,16 @@ final class PublicEquipmentReadings extends BaseController
                 ->countAllResults();
             if ($recent >= self::RATE_LIMIT) {
                 throw new DomainException($this->tr($locale, 'rate_limit'));
+            }
+
+            [$evidenceTempPath, $evidenceMime] = $this->validatedEvidenceUpload();
+            $aiAnalysis = null;
+            try {
+                $aiAnalysis = MiniMaxOdometerImageAnalyzer::fromEnv()->analyze($evidenceTempPath, $evidenceMime);
+            } catch (Throwable $exception) {
+                log_message('notice', 'IA de odómetro no disponible; se continúa con carga manual: {message}', [
+                    'message' => $exception->getMessage(),
+                ]);
             }
 
             $kilometers = $this->nullableInt($this->request->getPost('kilometers'), $locale);
@@ -143,6 +220,11 @@ final class PublicEquipmentReadings extends BaseController
             }
 
             $now = date('Y-m-d H:i:s');
+            $storedEvidence = $this->evidenceStorage()->store(
+                $evidenceTempPath,
+                (int) $equipment['empresa_id'],
+                $evidenceMime,
+            );
             $database->transBegin();
             try {
                 $database->table('lecturas_equipo')->insert([
@@ -161,6 +243,30 @@ final class PublicEquipmentReadings extends BaseController
                     'updated_at' => $now,
                 ]);
                 $readingId = (int) $database->insertID();
+
+                $detectedKm = $aiAnalysis?->kilometers;
+                $confidence = $aiAnalysis?->confidence;
+                $aiStatus = $aiAnalysis === null
+                    ? 'NO_DISPONIBLE'
+                    : ($aiAnalysis->legible ? 'DETECTADO' : 'NO_LEGIBLE');
+                $method = $detectedKm === null
+                    ? 'FOTO_MANUAL'
+                    : ($kilometers === $detectedKm ? 'FOTO_IA_CONFIRMADA' : 'FOTO_IA_CORREGIDA');
+
+                $database->table('lecturas_equipo_evidencias')->insert([
+                    'empresa_id' => (int) $equipment['empresa_id'],
+                    'lectura_id' => $readingId,
+                    'archivo_path' => $storedEvidence['path'],
+                    'mime_type' => $storedEvidence['mime'],
+                    'archivo_bytes' => $storedEvidence['bytes'],
+                    'km_detectado_ia' => $detectedKm,
+                    'confianza_ia' => $confidence,
+                    'estado_ia' => $aiStatus,
+                    'km_confirmado' => $kilometers,
+                    'metodo_carga' => $method,
+                    'observacion_ia' => $aiAnalysis?->observation,
+                    'created_at' => $now,
+                ]);
 
                 $update = ['updated_at' => $now];
                 if ($kilometers !== null) {
@@ -191,6 +297,9 @@ final class PublicEquipmentReadings extends BaseController
                 $database->transCommit();
             } catch (Throwable $exception) {
                 $database->transRollback();
+                if (isset($storedEvidence['path'])) {
+                    $this->evidenceStorage()->delete((string) $storedEvidence['path'], (int) $equipment['empresa_id']);
+                }
                 throw $exception;
             }
 
@@ -265,6 +374,36 @@ final class PublicEquipmentReadings extends BaseController
             ->getRowArray();
     }
 
+    /** @return array{0:string,1:string} */
+    private function validatedEvidenceUpload(): array
+    {
+        $file = $this->request->getFile('evidence_photo');
+        if ($file === null || ! $file->isValid() || $file->hasMoved()) {
+            throw new DomainException('La foto del tablero es obligatoria.');
+        }
+        if ($file->getSize() <= 0 || $file->getSize() > self::MAX_EVIDENCE_BYTES) {
+            throw new DomainException('La foto del tablero supera el tamaño permitido de 8 MB.');
+        }
+
+        $mime = strtolower((string) $file->getMimeType());
+        if (! in_array($mime, ['image/jpeg', 'image/png'], true)) {
+            throw new DomainException('La evidencia debe ser una foto JPG o PNG.');
+        }
+
+        $tempPath = $file->getTempName();
+        if ($tempPath === '' || ! is_file($tempPath)) {
+            throw new DomainException('No se pudo procesar la foto del tablero.');
+        }
+
+        return [$tempPath, $mime];
+    }
+
+    private function evidenceStorage(): ReadingEvidenceStorage
+    {
+        $configured = trim((string) env('uploads.readingEvidencePath', ''));
+        return new ReadingEvidenceStorage($configured === '' ? null : $configured);
+    }
+
     private function nullableInt(mixed $value, string $locale): ?int
     {
         $value = trim((string) $value);
@@ -317,6 +456,10 @@ final class PublicEquipmentReadings extends BaseController
                 'last_hours' => 'Último horímetro',
                 'current_km' => 'Quantos quilômetros o painel mostra agora?',
                 'current_km_help' => 'Exemplo: se o painel mostra 494497, digite 494497.',
+                'photo' => 'Foto obrigatória do painel',
+                'photo_help' => 'Tire uma foto nítida mostrando o hodômetro. A foto ficará salva como evidência.',
+                'analyze' => 'Ler quilometragem com IA',
+                'analyzing' => 'Analisando foto...',
                 'current_hours' => 'Horas atuais',
                 'notes' => 'Observação (opcional)',
                 'confirm_jump' => 'Confirmo que revisei o valor e ele está correto.',
@@ -333,6 +476,10 @@ final class PublicEquipmentReadings extends BaseController
             'last_hours' => 'Último horómetro',
             'current_km' => '¿Cuántos kilómetros marca ahora el tablero?',
             'current_km_help' => 'Ejemplo: si el tablero muestra 494497, escribí 494497.',
+            'photo' => 'Foto obligatoria del tablero',
+            'photo_help' => 'Sacá una foto nítida donde se vea el odómetro. La foto quedará guardada como evidencia.',
+            'analyze' => 'Leer kilometraje con IA',
+            'analyzing' => 'Analizando foto...',
             'current_hours' => 'Horas actuales',
             'notes' => 'Observación (opcional)',
             'confirm_jump' => 'Confirmo que revisé el valor y es correcto.',
