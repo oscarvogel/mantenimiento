@@ -44,5 +44,8 @@ final class ReadingPhotoEvidenceContractTest extends TestCase
         self::assertStringContainsString("photo.addEventListener('change', analyzePhoto)", $source);
         self::assertStringContainsString('name="evidence_ref"', $source);
         self::assertStringContainsString('payload.evidenceRef', $source);
+        self::assertStringContainsString('setSubmitAvailable(false)', $source);
+        self::assertStringContainsString('evidenceReady = true', $source);
+        self::assertStringContainsString('photo.required = false', $source);
     }
 }
