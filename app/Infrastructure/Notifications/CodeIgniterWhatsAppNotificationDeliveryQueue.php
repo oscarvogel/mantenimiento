@@ -1318,6 +1318,11 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             return null;
         }
 
+        // Las notificaciones semanales persisten hasta que alguien las lee.
+        // Una lectura posterior puede regularizar la deuda antes de enviar el digest.
+        (new WeeklyReadingNotificationRevalidator($this->db))
+            ->revalidate($companyId, $userId, $this->clock->now());
+
         $count = $this->db->table('notificaciones')
             ->where('empresa_id', $companyId)
             ->where('usuario_id', $userId)
