@@ -40,6 +40,7 @@ final class Expirations extends BaseController
                 $status = 'todos';
             }
             $branchId = (int) $this->request->getGet('sucursal_id');
+            $expirationTypeId = (int) $this->request->getGet('tipo_vencimiento_id');
             $search = trim((string) $this->request->getGet('q'));
 
             $allowedBranches = $actor->hasAllCompanyBranches() ? null : $actor->branchIds();
@@ -47,11 +48,25 @@ final class Expirations extends BaseController
                 throw new DomainException('No tenés acceso a la sucursal seleccionada.');
             }
 
+            $companyId = (int) $actor->companyId();
             $readModel = new \App\Infrastructure\Expirations\CodeIgniterExpirationReadModel(db_connect());
-            $items = $readModel->upcoming((int) $actor->companyId(), [
+            $expirationTypes = array_values(array_filter(
+                $readModel->catalog($companyId),
+                static fn (array $type): bool => (bool) ($type['active'] ?? false),
+            ));
+            $validExpirationTypeIds = array_map(
+                static fn (array $type): int => (int) $type['id'],
+                $expirationTypes,
+            );
+            if ($expirationTypeId > 0 && ! in_array($expirationTypeId, $validExpirationTypeIds, true)) {
+                $expirationTypeId = 0;
+            }
+
+            $items = $readModel->upcoming($companyId, [
                 'subject' => $subject,
                 'status' => $status,
                 'branchId' => $branchId > 0 ? $branchId : null,
+                'expirationTypeId' => $expirationTypeId > 0 ? $expirationTypeId : null,
                 'q' => $search,
             ], $allowedBranches);
 
@@ -65,11 +80,13 @@ final class Expirations extends BaseController
             return $this->renderApp($actor, 'expirations', 'expirations-index', 'Próximos vencimientos', [
                 'items' => $items,
                 'summary' => $summary,
-                'branches' => $readModel->branches((int) $actor->companyId(), $allowedBranches),
+                'branches' => $readModel->branches($companyId, $allowedBranches),
+                'expirationTypes' => $expirationTypes,
                 'filters' => [
                     'subject' => $subject,
                     'status' => $status,
                     'branchId' => $branchId > 0 ? $branchId : '',
+                    'expirationTypeId' => $expirationTypeId > 0 ? $expirationTypeId : '',
                     'q' => $search,
                 ],
                 'routes' => [
