@@ -45,5 +45,12 @@ jobs:
           # con el source de main. Fallar aqui es intencional; la correccion es
           # reconstruir y commitear los bundles junto al source.
           npm --prefix frontend run verify:build-sync
+      - name: Export rebuilt dashboard assets for PR repair
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-assets-pr-460
+          path: assets/dashboard
+          retention-days: 1
       - name: Dashboard asset tooling self-test
         run: python scripts/dashboard-assets.py self-test
