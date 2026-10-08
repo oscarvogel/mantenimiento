@@ -37,6 +37,13 @@ const claimTarget = ref(null)
 const claimPending = ref(false)
 const claimBusy = ref(false)
 const claimFeedback = ref(null)
+const evidenceTarget = ref(null)
+
+const openEvidence = (item) => {
+  if (!item?.evidenceUrl) return
+  evidenceTarget.value = item
+}
+const closeEvidence = () => { evidenceTarget.value = null }
 
 const claimAvailable = computed(() => Boolean(data.value.claim?.enabled))
 const claimReason = computed(() => data.value.claim?.reason ?? null)
@@ -334,15 +341,14 @@ const methodLabel = (item) => {
                   </span>
                 </td>
                 <td class="px-5 py-4">
-                  <a
+                  <button
                     v-if="item.evidenceUrl"
-                    :href="item.evidenceUrl"
-                    target="_blank"
-                    rel="noopener"
+                    type="button"
                     class="font-semibold text-primary hover:underline"
+                    @click="openEvidence(item)"
                   >
                     {{ methodLabel(item) }}
-                  </a>
+                  </button>
                   <span v-else class="text-xs text-ink-muted">{{ methodLabel(item) }}</span>
                 </td>
                 <td class="px-5 py-4 text-right">
@@ -390,15 +396,14 @@ const methodLabel = (item) => {
             </div>
             <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-surface-subtle px-3 py-2 text-sm">
               <span class="text-ink-muted">Evidencia</span>
-              <a
+              <button
                 v-if="item.evidenceUrl"
-                :href="item.evidenceUrl"
-                target="_blank"
-                rel="noopener"
+                type="button"
                 class="font-semibold text-primary hover:underline"
+                @click="openEvidence(item)"
               >
                 {{ methodLabel(item) }}
-              </a>
+              </button>
               <span v-else class="text-xs text-ink-muted">{{ methodLabel(item) }}</span>
             </div>
             <a v-if="item.equipmentUrl" :href="item.equipmentUrl" :class="secondaryButton" class="w-full justify-center">
@@ -465,6 +470,38 @@ const methodLabel = (item) => {
         Cerrar
       </button>
     </div>
+
+    <Teleport to="body">
+      <div
+        v-if="evidenceTarget"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="reading-evidence-title"
+        @click.self="closeEvidence"
+      >
+        <div class="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-xl border border-border bg-surface-raised p-5 shadow-xl">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <h2 id="reading-evidence-title" class="text-lg font-semibold text-ink">Evidencia de lectura</h2>
+              <p class="mt-1 text-sm text-ink-muted">{{ evidenceTarget.equipmentCode }} · {{ readingLabel(evidenceTarget) }}</p>
+            </div>
+            <button type="button" :class="secondaryButton" @click="closeEvidence">Cerrar</button>
+          </div>
+          <img
+            :src="evidenceTarget.evidenceUrl"
+            :alt="`Evidencia de lectura de ${evidenceTarget.equipmentCode}`"
+            class="mt-5 max-h-[60vh] w-full rounded-xl bg-surface-subtle object-contain"
+          />
+          <dl class="mt-4 grid gap-3 rounded-lg bg-surface-subtle p-4 text-sm sm:grid-cols-2">
+            <div><dt class="text-ink-muted">Método</dt><dd class="font-semibold text-ink">{{ methodLabel(evidenceTarget) }}</dd></div>
+            <div><dt class="text-ink-muted">Kilometraje confirmado</dt><dd class="font-semibold text-ink">{{ kmLabel(evidenceTarget) }} km</dd></div>
+            <div v-if="evidenceTarget.aiDetectedKm !== null && evidenceTarget.aiDetectedKm !== undefined"><dt class="text-ink-muted">IA detectó</dt><dd class="font-semibold text-ink">{{ formatNumberEs(evidenceTarget.aiDetectedKm, 0) }} km</dd></div>
+            <div v-if="evidenceTarget.aiConfidence !== null && evidenceTarget.aiConfidence !== undefined"><dt class="text-ink-muted">Confianza IA</dt><dd class="font-semibold text-ink">{{ Math.round(Number(evidenceTarget.aiConfidence) * 100) }}%</dd></div>
+          </dl>
+        </div>
+      </div>
+    </Teleport>
 
     <!-- El diálogo se teletransporta a <body>: el <main> del shell conserva
       `transform: translateY(0)` de la animación de entrada y eso lo convierte
