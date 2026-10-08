@@ -48,7 +48,7 @@ final class ListReadingControl
      */
     private const LAST_READING_SQL = <<<'SQL'
         (
-            SELECT le.empresa_id, le.equipo_id, le.fecha_lectura, le.kilometraje
+            SELECT le.id lectura_id, le.empresa_id, le.equipo_id, le.fecha_lectura, le.kilometraje
             FROM lecturas_equipo le
             WHERE le.anulada = 0
               AND le.id = (
@@ -165,14 +165,19 @@ final class ListReadingControl
                 'emp.apellido emp_apellido',
                 'emp.telefono emp_telefono',
                 'drv.empleado_id',
+                'lr.lectura_id ultima_lectura_id',
                 'lr.fecha_lectura ultima_lectura',
                 'lr.kilometraje ultima_kilometraje',
+                'ev.metodo_carga evidencia_metodo',
+                'ev.km_detectado_ia evidencia_km_ia',
+                'ev.confianza_ia evidencia_confianza_ia',
             ], false)
             ->join('tipos_equipo te', 'te.id = e.tipo_equipo_id AND te.activo = 1', 'inner')
             ->join('sucursales s', 's.id = e.sucursal_id AND s.empresa_id = e.empresa_id', 'inner')
             ->join(self::ACTIVE_DRIVER_SQL, 'drv.equipo_id = e.id AND drv.empresa_id = e.empresa_id', 'left', false)
             ->join('empleados emp', 'emp.id = drv.empleado_id AND emp.empresa_id = drv.empresa_id AND emp.activo = 1 AND emp.deleted_at IS NULL', 'left')
             ->join(self::LAST_READING_SQL, 'lr.equipo_id = e.id AND lr.empresa_id = e.empresa_id', 'left', false)
+            ->join('lecturas_equipo_evidencias ev', 'ev.lectura_id = lr.lectura_id AND ev.empresa_id = e.empresa_id', 'left')
             ->where('e.empresa_id', $companyId)
             ->where('e.estado', 'ACTIVO')
             ->where('e.deleted_at', null)
@@ -306,6 +311,13 @@ final class ListReadingControl
             lastReadingAt: $lastReadingAt,
             daysSinceLastReading: $filter->daysSince($this->toDate($lastReadingAt)),
             equipmentUrl: base_url('mantenimiento/equipos/' . $equipmentId),
+            lastReadingId: ($row['ultima_lectura_id'] ?? null) === null ? null : (int) $row['ultima_lectura_id'],
+            readingMethod: ($row['evidencia_metodo'] ?? null) === null ? null : (string) $row['evidencia_metodo'],
+            aiDetectedKm: ($row['evidencia_km_ia'] ?? null) === null ? null : (int) $row['evidencia_km_ia'],
+            aiConfidence: ($row['evidencia_confianza_ia'] ?? null) === null ? null : (float) $row['evidencia_confianza_ia'],
+            evidenceUrl: ($row['ultima_lectura_id'] ?? null) === null || ($row['evidencia_metodo'] ?? null) === null
+                ? null
+                : base_url('mantenimiento/lecturas/' . (int) $row['ultima_lectura_id'] . '/evidencia'),
         );
     }
 
