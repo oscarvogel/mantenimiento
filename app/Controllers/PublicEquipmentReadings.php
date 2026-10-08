@@ -8,8 +8,11 @@ use App\Application\PublicEquipmentAccess\ResolvePublicEquipmentToken;
 use App\Infrastructure\PublicEquipmentAccess\CodeIgniterPublicEquipmentTokenRepository;
 use App\Infrastructure\Measurement\MiniMaxOdometerImageAnalyzer;
 use App\Infrastructure\Measurement\ReadingEvidenceStorage;
+use App\Domain\Notifications\NotifiableEvent;
+use App\Domain\Notifications\NotificationSeverity;
 use CodeIgniter\HTTP\RedirectResponse;
 use CodeIgniter\HTTP\ResponseInterface;
+use DateTimeImmutable;
 use DomainException;
 use Throwable;
 
@@ -20,6 +23,9 @@ final class PublicEquipmentReadings extends BaseController
     private const MAX_KM_JUMP = 5000;
     private const MAX_HOURS_JUMP = 500.0;
     private const MAX_EVIDENCE_BYTES = 8 * 1024 * 1024;
+    private const AI_DISCREPANCY_MIN_CONFIDENCE = 0.80;
+    private const AI_DISCREPANCY_MIN_KM = 1000;
+    private const AI_DISCREPANCY_MIN_RATIO = 0.05;
 
     public function show(string $token): string
     {
@@ -463,6 +469,25 @@ final class PublicEquipmentReadings extends BaseController
                 throw $exception;
             }
 
+            if ($this->shouldAlertAiDiscrepancy($aiAnalysis?->kilometers, $kilometers, $aiAnalysis?->confidence)) {
+                try {
+                    $this->publishAiDiscrepancyAlert(
+                        $database,
+                        $equipment,
+                        $readingId,
+                        (int) $aiAnalysis->kilometers,
+                        (int) $kilometers,
+                        (float) $aiAnalysis->confidence,
+                    );
+                } catch (Throwable $notificationError) {
+                    // Una falla al notificar nunca debe invalidar una lectura ya persistida.
+                    log_message('error', 'No se pudo alertar discrepancia IA de lectura {reading}: {message}', [
+                        'reading' => $readingId,
+                        'message' => $notificationError->getMessage(),
+                    ]);
+                }
+            }
+
             return redirect()->to($target . '?registrada=1')->with('success', $this->tr($locale, 'success'));
         } catch (Throwable $exception) {
             if (! $exception instanceof DomainException) {
@@ -482,6 +507,75 @@ final class PublicEquipmentReadings extends BaseController
             }
             return $redirect;
         }
+    }
+
+    private function shouldAlertAiDiscrepancy(?int $detectedKm, ?int $confirmedKm, ?float $confidence): bool
+    {
+        if ($detectedKm === null || $confirmedKm === null || $confidence === null) {
+            return false;
+        }
+        if ($confidence < self::AI_DISCREPANCY_MIN_CONFIDENCE) {
+            return false;
+        }
+
+        $difference = abs($detectedKm - $confirmedKm);
+        $ratio = $detectedKm > 0 ? $difference / $detectedKm : 0.0;
+
+        return $difference >= self::AI_DISCREPANCY_MIN_KM
+            && $ratio >= self::AI_DISCREPANCY_MIN_RATIO;
+    }
+
+    /** @param array<string,mixed> $equipment */
+    private function publishAiDiscrepancyAlert(
+        \CodeIgniter\Database\BaseConnection $database,
+        array $equipment,
+        int $readingId,
+        int $detectedKm,
+        int $confirmedKm,
+        float $confidence,
+    ): void {
+        $responsibles = $database->table('usuarios u')
+            ->select('DISTINCT u.id', false)
+            ->join('usuario_roles ur', 'ur.usuario_id = u.id', 'inner')
+            ->join('roles r', 'r.id = ur.rol_id', 'inner')
+            ->where('u.empresa_id', (int) $equipment['empresa_id'])
+            ->where('u.activo', 1)
+            ->where('u.deleted_at', null)
+            ->where('r.nombre', 'Responsable de mantenimiento')
+            ->get()
+            ->getResultArray();
+
+        $recipientIds = array_values(array_filter(
+            array_map(static fn (array $row): int => (int) ($row['id'] ?? 0), $responsibles),
+            static fn (int $id): bool => $id > 0,
+        ));
+        if ($recipientIds === []) {
+            log_message('warning', 'Lectura {reading} con discrepancia IA sin Responsable de mantenimiento configurado.', [
+                'reading' => $readingId,
+            ]);
+            return;
+        }
+
+        $difference = abs($detectedKm - $confirmedKm);
+        $equipmentCode = trim((string) ($equipment['codigo'] ?? 'Equipo'));
+        $confidencePercent = (int) round($confidence * 100);
+
+        \Config\Services::publishNotifiableEvent(false)->publish(new NotifiableEvent(
+            (int) $equipment['empresa_id'],
+            (int) $equipment['sucursal_id'],
+            'lectura.discrepancia_ia',
+            NotificationSeverity::CRITICAL,
+            'Revisar lectura: ' . $equipmentCode,
+            'La IA detectó ' . number_format($detectedKm, 0, ',', '.') . ' km (' . $confidencePercent
+                . '% de confianza), pero se confirmaron ' . number_format($confirmedKm, 0, ',', '.')
+                . ' km. Diferencia: ' . number_format($difference, 0, ',', '.') . ' km.',
+            'lectura_equipo',
+            (string) $readingId,
+            'lectura_discrepancia_ia:lectura:' . $readingId,
+            '/mantenimiento/lecturas/' . $readingId . '/evidencia',
+            new DateTimeImmutable(),
+            $recipientIds,
+        ));
     }
 
     private function auditRejected(string $token, string $requestKey, string $reason): void
