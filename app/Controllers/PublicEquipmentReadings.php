@@ -105,6 +105,8 @@ final class PublicEquipmentReadings extends BaseController
                     'confianza_ia' => $analysis?->confidence,
                     'legible_ia' => $analysis?->legible ?? false,
                     'observacion_ia' => $analysis?->observation,
+                    'evidencia_valida_ia' => $analysis?->evidenceValid ?? false,
+                    'motivo_invalido_ia' => $analysis?->invalidReason,
                 ]);
             } catch (Throwable $exception) {
                 $storageError = $exception->getMessage();
@@ -119,6 +121,8 @@ final class PublicEquipmentReadings extends BaseController
                 'confidence' => $analysis?->confidence,
                 'legible' => $analysis?->legible ?? false,
                 'observation' => $analysis?->observation,
+                'evidenceValid' => $analysis?->evidenceValid ?? false,
+                'invalidReason' => $analysis?->invalidReason,
                 'analysisError' => $analysis === null
                     ? 'No pudimos leer automáticamente el odómetro. Podés ingresar el kilometraje manualmente.'
                     : null,
@@ -241,6 +245,10 @@ final class PublicEquipmentReadings extends BaseController
                     isset($stagedEvidence['observacion_ia']) && $stagedEvidence['observacion_ia'] !== null
                         ? (string) $stagedEvidence['observacion_ia']
                         : null,
+                    (bool) ($stagedEvidence['evidencia_valida_ia'] ?? false),
+                    isset($stagedEvidence['motivo_invalido_ia']) && $stagedEvidence['motivo_invalido_ia'] !== null
+                        ? (string) $stagedEvidence['motivo_invalido_ia']
+                        : null,
                 );
             } else {
                 [$evidenceTempPath, $evidenceMime] = $this->validatedEvidenceUpload();
@@ -251,6 +259,10 @@ final class PublicEquipmentReadings extends BaseController
                         'message' => $exception->getMessage(),
                     ]);
                 }
+            }
+
+            if ($aiAnalysis !== null && ! $aiAnalysis->evidenceValid) {
+                throw new DomainException($this->invalidEvidenceMessage($aiAnalysis->invalidReason, $locale));
             }
 
             $kilometers = $this->nullableInt($this->request->getPost('kilometers'), $locale);
@@ -606,6 +618,27 @@ final class PublicEquipmentReadings extends BaseController
         }
 
         return new ReadingEvidenceStorage();
+    }
+
+    private function invalidEvidenceMessage(?string $reason, string $locale): string
+    {
+        $pt = [
+            'NOT_DASHBOARD' => 'A foto não parece mostrar o painel ou hodômetro do veículo. Tire outra foto do hodômetro.',
+            'ODOMETER_NOT_VISIBLE' => 'O painel aparece, mas o hodômetro total não está visível. Tire outra foto mostrando a quilometragem.',
+            'TRIP_ONLY' => 'A foto mostra apenas a viagem parcial (Trip). Precisamos do hodômetro total.',
+            'TOO_BLURRY' => 'A foto está muito desfocada, escura ou com reflexos para servir como evidência. Tire outra foto.',
+            'OTHER' => 'A foto não serve como evidência válida do hodômetro. Tire outra foto mostrando claramente a quilometragem.',
+        ];
+        $es = [
+            'NOT_DASHBOARD' => 'La foto no parece mostrar el tablero u odómetro del vehículo. Sacá otra foto del odómetro.',
+            'ODOMETER_NOT_VISIBLE' => 'Se ve el tablero, pero no el odómetro total. Sacá otra foto donde se vea el kilometraje.',
+            'TRIP_ONLY' => 'La foto muestra solamente el viaje parcial (Trip). Necesitamos el odómetro total.',
+            'TOO_BLURRY' => 'La foto está demasiado borrosa, oscura o con reflejos para servir como evidencia. Sacá otra foto.',
+            'OTHER' => 'La foto no sirve como evidencia válida del odómetro. Sacá otra foto donde se vea claramente el kilometraje.',
+        ];
+        $catalog = $this->normalizeLocale($locale) === 'PT' ? $pt : $es;
+        $key = strtoupper(trim((string) $reason));
+        return $catalog[$key] ?? $catalog['OTHER'];
     }
 
     private function nullableInt(mixed $value, string $locale): ?int
