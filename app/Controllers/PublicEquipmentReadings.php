@@ -572,7 +572,7 @@ final class PublicEquipmentReadings extends BaseController
             'lectura_equipo',
             (string) $readingId,
             'lectura_discrepancia_ia:lectura:' . $readingId,
-            '/mantenimiento/lecturas/' . $readingId . '/evidencia',
+            (string) parse_url(base_url('mantenimiento/lecturas/' . $readingId . '/evidencia'), PHP_URL_PATH),
             new DateTimeImmutable(),
             $recipientIds,
         ));
