@@ -19,7 +19,7 @@ final class CodeIgniterExpirationReadModel
     public function forEquipment(int $companyId, int $equipmentId): array
     {
         $rows = $this->database->table('vencimientos v')
-            ->select('v.*, t.nombre tipo_nombre, t.dias_aviso_previo')
+            ->select('v.*, t.nombre tipo_nombre, t.dias_aviso_previo, t.requiere_documento')
             ->join('tipos_vencimiento t', 't.id = v.tipo_vencimiento_id AND t.empresa_id = v.empresa_id', 'inner')
             ->where('v.empresa_id', $companyId)
             ->where('v.equipo_id', $equipmentId)
@@ -42,7 +42,7 @@ final class CodeIgniterExpirationReadModel
         }
 
         $rows = $this->database->table('vencimientos v')
-            ->select('v.*, t.nombre tipo_nombre, t.dias_aviso_previo')
+            ->select('v.*, t.nombre tipo_nombre, t.dias_aviso_previo, t.requiere_documento')
             ->join('tipos_vencimiento t', 't.id = v.tipo_vencimiento_id AND t.empresa_id = v.empresa_id', 'inner')
             ->where('v.empresa_id', $companyId)
             ->where('v.sujeto_tipo', 'EMPLEADO')
@@ -71,7 +71,7 @@ final class CodeIgniterExpirationReadModel
     public function upcoming(int $companyId, array $filters = [], ?array $allowedBranchIds = null): array
     {
         $builder = $this->database->table('vencimientos v')
-            ->select('v.*, t.nombre tipo_nombre, t.dias_aviso_previo, e.codigo equipo_codigo, e.patente equipo_patente, emp.nombre empleado_nombre, emp.apellido empleado_apellido, s.nombre sucursal_nombre')
+            ->select('v.*, t.nombre tipo_nombre, t.dias_aviso_previo, t.requiere_documento, e.codigo equipo_codigo, e.patente equipo_patente, emp.nombre empleado_nombre, emp.apellido empleado_apellido, s.nombre sucursal_nombre')
             ->join('tipos_vencimiento t', 't.id = v.tipo_vencimiento_id AND t.empresa_id = v.empresa_id', 'inner')
             ->join('equipos e', 'e.id = v.equipo_id AND e.empresa_id = v.empresa_id', 'left')
             ->join('empleados emp', 'emp.id = v.empleado_id AND emp.empresa_id = v.empresa_id', 'left')
@@ -259,6 +259,8 @@ final class CodeIgniterExpirationReadModel
             'status' => $expiration->statusAt($today)->value,
             'daysUntil' => $expiration->daysUntil($today),
             'origin' => (string) $row['origen'],
+            'requiresDocument' => (int) ($row['requiere_documento'] ?? 0) === 1,
+            'renewUrl' => base_url('mantenimiento/vencimientos/' . (int) $row['id'] . '/renovar'),
             'updateUrl' => base_url('mantenimiento/vencimientos/' . (int) $row['id']),
             'deactivateUrl' => base_url('mantenimiento/vencimientos/' . (int) $row['id'] . '/retirar'),
         ];

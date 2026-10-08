@@ -16,6 +16,14 @@ Desde la ficha del equipo se pueden registrar, editar y retirar vencimientos del
 
 Desde **Mantenimiento > Empleados y choferes** se pueden registrar, editar y retirar vencimientos de empleados. En la misma pantalla se administra el catálogo de tipos, incluido el plazo de aviso, si exige documento y su estado activo/inactivo.
 
+### Renovación rápida desde el listado
+
+Desde **Mantenimiento > Vencimientos**, la acción **Renovar** permite registrar la nueva vigencia sin abrir la ficha completa del equipo o empleado. El modal conserva el sujeto, tipo, sucursal y vencimiento actual como contexto, y solicita únicamente los datos de la nueva vigencia.
+
+Una renovación no corrige ni sobrescribe el registro vigente: crea una nueva versión activa y retira la versión anterior del circuito activo. La versión anterior queda conservada como historial. Si provenía de una importación, mantiene su `origen` e `importacion_id`; la nueva versión creada por el operador queda con origen `MANUAL`.
+
+La acción **Ver ficha** permanece disponible para administración completa. **Editar vencimiento** debe reservarse para corregir datos del mismo registro; **Renovar** se usa cuando existe una nueva vigencia real.
+
 ## Importación TSA
 
 La pantalla de importaciones acepta:

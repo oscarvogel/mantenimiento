@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import {
   ArrowTopRightOnSquareIcon,
   CalendarDaysIcon,
@@ -11,6 +11,7 @@ import FormField from './components/FormField.vue'
 import PageHeading from './components/PageHeading.vue'
 import PanelCard from './components/PanelCard.vue'
 import StatusBadge from './components/StatusBadge.vue'
+import RenewExpirationModal from './components/RenewExpirationModal.vue'
 import { fieldClass, primaryButton, secondaryButton } from './helpers.js'
 
 const props = defineProps({ data: { type: Object, required: true } })
@@ -30,6 +31,20 @@ const daysLabel = (days) => {
 }
 
 const statusFor = (item) => item.status || (Number(item.daysUntil) < 0 ? 'VENCIDO' : 'AL_DIA')
+
+const renewingExpiration = ref(null)
+const returnTo = `${window.location.pathname}${window.location.search}`
+const canRenew = (item) => item.subjectType === 'EQUIPO'
+  ? Boolean(data.value.canEditEquipment)
+  : Boolean(data.value.canEditEmployees)
+
+const openRenew = (item) => {
+  renewingExpiration.value = item
+}
+
+const closeRenew = () => {
+  renewingExpiration.value = null
+}
 </script>
 
 <template>
@@ -164,10 +179,21 @@ const statusFor = (item) => item.status || (Number(item.daysUntil) < 0 ? 'VENCID
                 <td class="px-5 py-4 text-ink-muted">{{ item.branchName || '—' }}</td>
                 <td class="px-5 py-4 text-ink-muted">{{ item.documentNumber || '—' }}</td>
                 <td class="px-5 py-4 text-right">
-                  <a :href="item.subjectUrl" :class="secondaryButton" class="whitespace-nowrap">
-                    Gestionar
-                    <ArrowTopRightOnSquareIcon class="ml-2 size-4" aria-hidden="true" />
-                  </a>
+                  <div class="flex justify-end gap-2">
+                    <button
+                      v-if="canRenew(item)"
+                      type="button"
+                      :class="primaryButton"
+                      class="whitespace-nowrap"
+                      @click="openRenew(item)"
+                    >
+                      Renovar
+                    </button>
+                    <a :href="item.subjectUrl" :class="secondaryButton" class="whitespace-nowrap">
+                      Ver ficha
+                      <ArrowTopRightOnSquareIcon class="ml-2 size-4" aria-hidden="true" />
+                    </a>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -191,13 +217,32 @@ const statusFor = (item) => item.status || (Number(item.daysUntil) < 0 ? 'VENCID
               </span>
             </div>
             <p v-if="item.branchName" class="text-xs text-ink-muted">Sucursal: {{ item.branchName }}</p>
-            <a :href="item.subjectUrl" :class="secondaryButton" class="w-full justify-center">
-              Gestionar
-              <ArrowTopRightOnSquareIcon class="ml-2 size-4" aria-hidden="true" />
-            </a>
+            <div class="grid gap-2 sm:grid-cols-2">
+              <button
+                v-if="canRenew(item)"
+                type="button"
+                :class="primaryButton"
+                class="w-full justify-center"
+                @click="openRenew(item)"
+              >
+                Renovar
+              </button>
+              <a :href="item.subjectUrl" :class="secondaryButton" class="w-full justify-center">
+                Ver ficha
+                <ArrowTopRightOnSquareIcon class="ml-2 size-4" aria-hidden="true" />
+              </a>
+            </div>
           </article>
         </div>
       </template>
     </PanelCard>
+
+    <RenewExpirationModal
+      v-if="renewingExpiration"
+      :expiration="renewingExpiration"
+      :csrf="data.csrf"
+      :return-to="returnTo"
+      @close="closeRenew"
+    />
   </div>
 </template>
