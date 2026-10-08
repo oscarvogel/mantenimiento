@@ -46,6 +46,7 @@
         <form method="post" id="reading-form" enctype="multipart/form-data">
             <?= csrf_field() ?>
             <input type="hidden" name="request_key" value="<?= esc($requestKey) ?>">
+            <input type="hidden" id="evidence_ref" name="evidence_ref" value="<?= esc(old('evidence_ref')) ?>">
             <label for="evidence_photo"><?= esc($labels['photo'] ?? 'Foto obligatoria del tablero') ?></label>
             <input id="evidence_photo" name="evidence_photo" type="file" accept="image/jpeg,image/png" capture="environment" required>
             <p class="help"><?= esc($labels['photo_help'] ?? 'Sacá una foto nítida donde se vea el odómetro. La foto quedará guardada como evidencia.') ?></p>
@@ -84,6 +85,7 @@
             const photo = document.getElementById('evidence_photo');
             const km = document.getElementById('kilometers');
             const status = document.getElementById('ai-status');
+            const evidenceRef = document.getElementById('evidence_ref');
             if (!form || !submit || !photo) return;
 
             const analysisUrl = <?= json_encode(base_url('mantenimiento/publico/equipo/' . rawurlencode($token) . '/lectura/analizar'), JSON_UNESCAPED_SLASHES) ?>;
@@ -115,8 +117,18 @@
                         if (current) current.value = payload.csrfHash;
                     }
 
-                    if (!response.ok || !payload.ok || !payload.legible || payload.kilometers == null) {
-                        throw new Error(payload.error || 'No pudimos leer el odómetro automáticamente.');
+                    if (payload.evidenceRef && evidenceRef) {
+                        evidenceRef.value = payload.evidenceRef;
+                    }
+
+                    if (!response.ok || !payload.ok) {
+                        throw new Error(payload.error || 'No pudimos procesar la foto.');
+                    }
+
+                    if (!payload.legible || payload.kilometers == null) {
+                        status.classList.add('error');
+                        status.textContent = payload.analysisError || 'No pudimos leer automáticamente el odómetro. Podés escribir el valor manualmente; la foto ya quedó guardada como evidencia.';
+                        return;
                     }
 
                     if (km) {
@@ -128,7 +140,7 @@
                     status.textContent = 'IA detectó ' + Number(payload.kilometers).toLocaleString('es-AR') + ' km' + confidence + '. Revisá el valor y corregilo si hace falta.';
                 } catch (error) {
                     status.classList.add('error');
-                    status.textContent = (error && error.message ? error.message : 'No pudimos leer el odómetro automáticamente.') + ' Podés escribir el valor manualmente; la foto seguirá guardándose como evidencia.';
+                    status.textContent = (error && error.message ? error.message : 'No pudimos procesar la foto.') + ' Si el problema continúa, volvé a tomarla.';
                 }
             }
 
