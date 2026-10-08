@@ -36,6 +36,16 @@ final class GetMaintenanceDashboardTest extends TestCase
         self::assertSame('Vencido por 200 km', $result['upcomingMaintenance'][0]['remaining']);
         self::assertSame(125000.0, $result['financial']['currentMonthArs']);
         self::assertSame(25.0, $result['financial']['variationPercentage']);
+        self::assertSame([
+            ['status' => 'AL_DIA', 'label' => 'Al día', 'count' => 2],
+            ['status' => 'PROXIMO', 'label' => 'Próximos', 'count' => 1],
+            ['status' => 'VENCIDO', 'label' => 'Vencidos', 'count' => 1],
+            ['status' => 'SIN_DATOS', 'label' => 'Sin datos', 'count' => 0],
+        ], $result['charts']['preventiveByState']);
+        self::assertSame([
+            ['status' => 'EN_PROCESO', 'label' => 'En proceso', 'count' => 2],
+            ['status' => 'ESPERA_REPUESTOS', 'label' => 'En espera de repuestos', 'count' => 1],
+        ], $result['charts']['openOrdersByState']);
     }
 
     public function testDoesNotExposeMaintenanceOrOrdersWithoutTheirPermissions(): void
@@ -49,6 +59,8 @@ final class GetMaintenanceDashboardTest extends TestCase
         self::assertSame(0, $result['metrics']['maintenanceOverdue']);
         self::assertSame(0, $result['metrics']['openOrders']);
         self::assertSame([], $result['upcomingMaintenance']);
+        self::assertSame([], $result['charts']['preventiveByState']);
+        self::assertSame([], $result['charts']['openOrdersByState']);
     }
 
     public function testReportsMissingPreventiveComplianceDataWhenThereAreNoEvaluablePlans(): void
@@ -107,6 +119,10 @@ final class DashboardOverviewFake implements DashboardOverview
             'orders' => [
                 ['id' => 1, 'estado' => 'EN_PROCESO'],
                 ['id' => 2, 'estado' => 'FINALIZADA'],
+            ],
+            'openOrderStates' => [
+                'EN_PROCESO' => 2,
+                'ESPERA_REPUESTOS' => 1,
             ],
             'plans' => [
                 ['id' => 10, 'equipo_codigo' => 'SCANIA-R450', 'servicio_nombre' => 'Cambio de aceite', 'sucursal_nombre' => 'Central', 'proximo_km' => 2000, 'km_actual' => 1500, 'proximas_horas' => null, 'horas_actuales' => null, 'proxima_fecha' => null],

@@ -149,6 +149,42 @@ final class ProximoAtencionRequeridaTest extends CIUnitTestCase
         self::assertSame('PROXIMO', $plan['computed_state']);
     }
 
+    public function testDashboardOrderStatusCountsRespectCompanyBranchAndOpenStateScope(): void
+    {
+        $this->database->table('sucursales')->insert([
+            'id' => 11, 'empresa_id' => self::EMPRESA_A, 'codigo' => 'NORTE',
+            'nombre' => 'Norte', 'estado' => 1,
+        ]);
+        $this->database->table('equipos')->insert([
+            'id' => 25, 'empresa_id' => self::EMPRESA_A, 'sucursal_id' => 11,
+            'tipo_equipo_id' => 1, 'codigo' => 'SUC-NORTE', 'patente' => null,
+            'km_actual' => 10, 'horas_actuales' => null, 'estado' => 'ACTIVO',
+            'fecha_alta' => '2026-01-01',
+        ]);
+        foreach ([
+            [1, self::EMPRESA_A, self::SUCURSAL_A, 20, 'EN_PROCESO'],
+            [2, self::EMPRESA_A, self::SUCURSAL_A, 20, 'EN_ESPERA_REPUESTOS'],
+            [3, self::EMPRESA_A, self::SUCURSAL_A, 20, 'FINALIZADA'],
+            [4, self::EMPRESA_A, 11, 25, 'EN_PROCESO'],
+            [5, 2, self::SUCURSAL_A, 20, 'EN_PROCESO'],
+        ] as [$id, $companyId, $branchId, $equipmentId, $status]) {
+            $this->database->table('ordenes_trabajo')->insert([
+                'id' => $id, 'empresa_id' => $companyId, 'numero' => 'OT-' . $id,
+                'sucursal_id' => $branchId, 'equipo_id' => $equipmentId,
+                'origen' => 'CORRECTIVO', 'prioridad' => 'MEDIA',
+                'fecha_apertura' => '2026-10-01', 'estado' => $status,
+            ]);
+        }
+
+        $result = (new CodeIgniterCircuitOverview($this->database))
+            ->fetch(self::EMPRESA_A, [self::SUCURSAL_A], new CircuitOverviewPagination());
+
+        self::assertSame([
+            'EN_PROCESO' => 1,
+            'EN_ESPERA_REPUESTOS' => 1,
+        ], $result['openOrderStates']);
+    }
+
     // ------------------------------------------------------------------
     // Helpers
     // ------------------------------------------------------------------

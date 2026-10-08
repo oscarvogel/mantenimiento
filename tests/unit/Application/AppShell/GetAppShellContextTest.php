@@ -193,6 +193,36 @@ final class GetAppShellContextTest extends TestCase
 
         self::assertNull($payload['homeUrl']);
     }
+
+    public function testMaintenanceShellGetsServerAuthorizedPlatformQuickNavigation(): void
+    {
+        $context = new GetAppShellContext(new AppShellReadModelFake());
+        $actor = new ActorContext(7, 5, false, false, ['Responsable de mantenimiento'], ['equipos.ver', 'planes.ver'], [9]);
+
+        $payload = (new AppShellPayload($context, new GetPlatformModuleCatalog()))->for($actor, 'dashboard');
+
+        self::assertSame(
+            ['platform-home', 'module-maintenance', 'module-trips', 'module-fuel', 'module-tires', 'module-billing', 'module-management', 'module-reports', 'module-automations', 'module-ai'],
+            array_column($payload['moduleNavigation'], 'key'),
+        );
+        self::assertFalse($payload['moduleNavigation'][0]['active']);
+        self::assertTrue($payload['moduleNavigation'][1]['active']);
+        self::assertStringEndsWith('/dashboard', $payload['moduleNavigation'][1]['href']);
+        self::assertTrue($payload['moduleNavigation'][2]['disabled']);
+        self::assertNull($payload['moduleNavigation'][2]['href']);
+        self::assertSame('Sin implementación aún', $payload['moduleNavigation'][2]['status']);
+    }
+
+    public function testQuickNavigationDoesNotGrantMaintenanceToAnActorWithoutAnEntryPermission(): void
+    {
+        $context = new GetAppShellContext(new AppShellReadModelFake());
+        $actor = new ActorContext(10, 5, false, false, ['Administrador'], ['sucursales.ver'], [9]);
+
+        $payload = (new AppShellPayload($context, new GetPlatformModuleCatalog()))->for($actor, 'dashboard');
+
+        self::assertTrue($payload['moduleNavigation'][1]['disabled']);
+        self::assertNull($payload['moduleNavigation'][1]['href']);
+    }
 }
 
 final class AppShellReadModelFake implements AppShellReadModel
