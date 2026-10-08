@@ -7,6 +7,7 @@ use App\Application\Dashboard\Port\DashboardDuePlans;
 use App\Application\Dashboard\Port\DashboardFinancialSummary;
 use App\Application\Dashboard\Port\DashboardOverview;
 use App\Application\Dashboard\Port\DashboardClock;
+use App\Application\Dashboard\Port\DashboardOpenOrderStates;
 use App\Application\Identity\ActorContext;
 use App\Domain\PreventiveMaintenance\CriterioPlan;
 use App\Domain\PreventiveMaintenance\EstadoPlan;
@@ -23,7 +24,11 @@ final class GetMaintenanceDashboardTest extends TestCase
             $this->dueResult(10, 100, EstadoPlan::PROXIMO, [CriterioPlan::KILOMETRAJE]),
             $this->dueResult(11, 101, EstadoPlan::VENCIDO, [CriterioPlan::KILOMETRAJE]),
         ]);
-        $result = (new GetMaintenanceDashboard($overview, $due, new DashboardFinancialSummaryFake(), new DashboardClockFake()))->execute($this->actor([
+        $orderStates = new DashboardOpenOrderStatesFake([
+            'EN_PROCESO' => 2,
+            'ESPERA_REPUESTOS' => 1,
+        ]);
+        $result = (new GetMaintenanceDashboard($overview, $due, new DashboardFinancialSummaryFake(), new DashboardClockFake(), $orderStates))->execute($this->actor([
             'equipos.ver', 'planes.ver', 'ordenes.ver',
         ]));
 
@@ -37,7 +42,7 @@ final class GetMaintenanceDashboardTest extends TestCase
         self::assertSame(125000.0, $result['financial']['currentMonthArs']);
         self::assertSame(25.0, $result['financial']['variationPercentage']);
         self::assertSame([
-            ['status' => 'AL_DIA', 'label' => 'Al día', 'count' => 2],
+            ['status' => 'AL_DIA', 'label' => 'Al día', 'count' => 0],
             ['status' => 'PROXIMO', 'label' => 'Próximos', 'count' => 1],
             ['status' => 'VENCIDO', 'label' => 'Vencidos', 'count' => 1],
             ['status' => 'SIN_DATOS', 'label' => 'Sin datos', 'count' => 0],
@@ -51,7 +56,8 @@ final class GetMaintenanceDashboardTest extends TestCase
     public function testDoesNotExposeMaintenanceOrOrdersWithoutTheirPermissions(): void
     {
         $due = new DashboardDuePlansFake([$this->dueResult(10, 100, EstadoPlan::VENCIDO, [CriterioPlan::KILOMETRAJE])]);
-        $result = (new GetMaintenanceDashboard(new DashboardOverviewFake(), $due, new DashboardFinancialSummaryFake(), new DashboardClockFake()))->execute(
+        $orderStates = new DashboardOpenOrderStatesFake(['EN_PROCESO' => 1]);
+        $result = (new GetMaintenanceDashboard(new DashboardOverviewFake(), $due, new DashboardFinancialSummaryFake(), new DashboardClockFake(), $orderStates))->execute(
             $this->actor(['equipos.ver']),
         );
 
@@ -61,6 +67,7 @@ final class GetMaintenanceDashboardTest extends TestCase
         self::assertSame([], $result['upcomingMaintenance']);
         self::assertSame([], $result['charts']['preventiveByState']);
         self::assertSame([], $result['charts']['openOrdersByState']);
+        self::assertFalse($orderStates->called);
     }
 
     public function testReportsMissingPreventiveComplianceDataWhenThereAreNoEvaluablePlans(): void
@@ -70,6 +77,7 @@ final class GetMaintenanceDashboardTest extends TestCase
             new DashboardDuePlansFake([]),
             new DashboardFinancialSummaryFake(),
             new DashboardClockFake(),
+            new DashboardOpenOrderStatesFake(),
         ))->execute($this->actor(['equipos.ver', 'planes.ver']));
 
         self::assertNull($result['metrics']['preventiveCompliance']);
@@ -119,10 +127,6 @@ final class DashboardOverviewFake implements DashboardOverview
             'orders' => [
                 ['id' => 1, 'estado' => 'EN_PROCESO'],
                 ['id' => 2, 'estado' => 'FINALIZADA'],
-            ],
-            'openOrderStates' => [
-                'EN_PROCESO' => 2,
-                'ESPERA_REPUESTOS' => 1,
             ],
             'plans' => [
                 ['id' => 10, 'equipo_codigo' => 'SCANIA-R450', 'servicio_nombre' => 'Cambio de aceite', 'sucursal_nombre' => 'Central', 'proximo_km' => 2000, 'km_actual' => 1500, 'proximas_horas' => null, 'horas_actuales' => null, 'proxima_fecha' => null],
@@ -175,5 +179,22 @@ final class DashboardFinancialSummaryFake implements DashboardFinancialSummary
             'history' => [],
             'topEquipment' => [],
         ];
+    }
+}
+
+final class DashboardOpenOrderStatesFake implements DashboardOpenOrderStates
+{
+    public bool $called = false;
+
+    /** @param array<string,int> $states */
+    public function __construct(private readonly array $states = [])
+    {
+    }
+
+    public function fetch(ActorContext $actor): array
+    {
+        $this->called = true;
+
+        return $this->states;
     }
 }

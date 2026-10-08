@@ -103,6 +103,7 @@ use App\Infrastructure\Notifications\SystemNotificationClock;
 use App\Infrastructure\Identity\CodeIgniterLoginAttemptLimiter;
 use App\Infrastructure\AppShell\CodeIgniterAppShellReadModel;
 use App\Infrastructure\Dashboard\CodeIgniterDashboardFinancialSummary;
+use App\Infrastructure\Dashboard\CodeIgniterDashboardOpenOrderStates;
 use App\Infrastructure\Dashboard\CodeIgniterGlobalDashboardReadModel;
 use App\Infrastructure\Dashboard\MaintenanceCircuitDashboardOverview;
 use App\Infrastructure\Dashboard\PreventiveDashboardDuePlans;
@@ -620,6 +621,7 @@ class Services extends BaseService
             new PreventiveDashboardDuePlans(static::consultMaintenanceDue(false)),
             new CodeIgniterDashboardFinancialSummary(db_connect()),
             new SystemDashboardClock(),
+            new CodeIgniterDashboardOpenOrderStates(db_connect()),
         );
     }
 

@@ -28,6 +28,9 @@ final readonly class AppShellPayload
         $navigation = $active === 'command-center'
             ? $this->platformNavigation($actor, $availableModules)
             : [$this->item('dashboard', 'Dashboard', 'dashboard', 'dashboard', $active)];
+        $payload['moduleNavigation'] = $active === 'command-center'
+            ? []
+            : $this->platformNavigation($actor, $availableModules, 'maintenance');
 
         if ($active !== 'command-center' && $actor->isSuperAdmin()) {
             $navigation[] = $this->item('superadmin', 'Administración global', 'superadmin', 'building', $active);
@@ -138,9 +141,12 @@ final readonly class AppShellPayload
     /** @param list<array{key:string,label:string,description:string,icon:string,landingPath:?string,status:string,state:string}> $modules
      *  @return list<array<string,mixed>>
      */
-    private function platformNavigation(ActorContext $actor, array $modules): array
+    private function platformNavigation(ActorContext $actor, array $modules, string $activeModule = 'home'): array
     {
-        $navigation = [$this->item('platform-home', 'Inicio', 'inicio', 'platform-home', 'platform-home')];
+        $navigation = [[
+            ...$this->item('platform-home', 'Inicio', 'inicio', 'platform-home', ''),
+            'active' => $activeModule === 'home',
+        ]];
 
         foreach ($modules as $module) {
             $canEnter = $module['landingPath'] !== null;
@@ -149,7 +155,7 @@ final readonly class AppShellPayload
                 'label' => $module['label'],
                 'href' => $canEnter ? base_url($module['landingPath']) : null,
                 'icon' => 'module-' . $module['icon'],
-                'active' => false,
+                'active' => $activeModule === $module['key'] && $canEnter,
                 'disabled' => ! $canEnter,
                 'status' => $module['status'],
                 'badge' => null,

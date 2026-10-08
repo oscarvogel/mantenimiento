@@ -154,6 +154,7 @@ onBeforeUnmount(() => {
         :company="props.shell.company"
         :notifications="props.shell.notifications"
         :menu-open="sidebarOpen"
+        :module-navigation="props.shell.moduleNavigation"
         @open-menu="openSidebar"
       />
 
