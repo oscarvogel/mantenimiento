@@ -29,7 +29,15 @@ final class CodeIgniterReadingHistory implements ReadingHistoryPort
         }
 
         $total = $this->scopedBuilder($companyId, $equipmentId, $authorizedBranchIds)->countAllResults();
-        $rows = $this->scopedBuilder($companyId, $equipmentId, $authorizedBranchIds)
+        $builder = $this->scopedBuilder($companyId, $equipmentId, $authorizedBranchIds);
+        $hasEvidence = $this->database->tableExists('lecturas_equipo_evidencias');
+        if ($hasEvidence) {
+            $builder
+                ->select('ev.metodo_carga evidencia_metodo, ev.km_detectado_ia evidencia_km_ia, ev.confianza_ia evidencia_confianza, ev.observacion_ia evidencia_observacion', false)
+                ->join('lecturas_equipo_evidencias ev', 'ev.lectura_id = l.id AND ev.empresa_id = l.empresa_id', 'left');
+        }
+
+        $rows = $builder
             ->select([
                 'l.id', 'l.equipo_id', 'l.sucursal_id', 'l.fecha_lectura', 'l.kilometraje',
                 'l.horometro', 'l.origen', 'l.referencia_origen', 'l.usuario_id', 'u.nombre usuario_nombre',
@@ -107,6 +115,10 @@ final class CodeIgniterReadingHistory implements ReadingHistoryPort
                 $originReference,
                 $workOrderId,
                 $workOrderId === null ? null : ($workOrderNumbers[$workOrderId] ?? null),
+                ($row['evidencia_metodo'] ?? null) === null ? null : (string) $row['evidencia_metodo'],
+                ($row['evidencia_km_ia'] ?? null) === null ? null : (int) $row['evidencia_km_ia'],
+                ($row['evidencia_confianza'] ?? null) === null ? null : (float) $row['evidencia_confianza'],
+                ($row['evidencia_observacion'] ?? null) === null ? null : (string) $row['evidencia_observacion'],
             );
         }, $rows);
 
