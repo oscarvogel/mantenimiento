@@ -16,6 +16,7 @@ $routes->post('login/authenticate', 'Login::authenticate');
 // Acceso público por QR: sólo lectura de uso, sin sesión ni navegación interna.
 $routes->get('mantenimiento/publico/equipo/(:segment)/lectura', 'PublicEquipmentReadings::show/$1');
 $routes->post('mantenimiento/publico/equipo/(:segment)/lectura', 'PublicEquipmentReadings::store/$1');
+$routes->post('mantenimiento/publico/equipo/(:segment)/lectura/analizar', 'PublicEquipmentReadings::analyze/$1');
 
 // Logout mutante y protegido por CSRF.
 $routes->post('logout', 'Login::logout', ['filter' => 'auth']);
@@ -127,6 +128,7 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     // lo resuelve el servidor a partir del equipo; el cliente solo manda
     // equipmentId. CSRF se aplica globalmente en Config\Filters.
     $routes->post('lecturas/control/reclamar', 'ReadingControl::claim', ['filter' => ['auth', 'permission:lecturas.cargar']]);
+    $routes->get('lecturas/(:num)/evidencia', 'PublicEquipmentReadings::evidence/$1', ['filter' => ['auth', 'permission:equipos.ver']]);
     $routes->get('equipos/(:num)/operar', 'EquipmentOperations::show/$1', ['filter' => 'permission:equipos.ver']);
     $routes->post('equipos/(:num)/incidencias', 'EquipmentOperations::reportIncident/$1', ['filter' => 'permission:solicitudes.crear']);
     $routes->get('equipos/(:num)', 'EquipmentManagement::show/$1', ['filter' => 'permission:equipos.ver']);
