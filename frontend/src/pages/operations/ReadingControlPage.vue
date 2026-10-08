@@ -175,6 +175,14 @@ const readingLabel = (item) => {
   if (!item.lastReadingAt) return 'Nunca registrado'
   return String(item.lastReadingAt).replace('T', ' ').slice(0, 16)
 }
+
+const methodLabel = (item) => {
+  if (!item.readingMethod) return 'Sin foto histórica'
+  if (item.readingMethod === 'FOTO_IA_CONFIRMADA') return 'Foto · IA confirmada'
+  if (item.readingMethod === 'FOTO_IA_CORREGIDA') return 'Foto · IA corregida'
+  if (item.readingMethod === 'FOTO_MANUAL') return 'Foto · carga manual'
+  return 'Foto'
+}
 </script>
 
 <template>
@@ -302,6 +310,7 @@ const readingLabel = (item) => {
                 <th class="px-5 py-3 text-right">Último KM</th>
                 <th class="px-5 py-3">Última lectura</th>
                 <th class="px-5 py-3">Antigüedad</th>
+                <th class="px-5 py-3">Evidencia</th>
                 <th class="px-5 py-3 text-right">Acción</th>
               </tr>
             </thead>
@@ -323,6 +332,18 @@ const readingLabel = (item) => {
                   <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold" :class="antiquityClass(item)">
                     {{ antiquityLabel(item) }}
                   </span>
+                </td>
+                <td class="px-5 py-4">
+                  <a
+                    v-if="item.evidenceUrl"
+                    :href="item.evidenceUrl"
+                    target="_blank"
+                    rel="noopener"
+                    class="font-semibold text-primary hover:underline"
+                  >
+                    {{ methodLabel(item) }}
+                  </a>
+                  <span v-else class="text-xs text-ink-muted">{{ methodLabel(item) }}</span>
                 </td>
                 <td class="px-5 py-4 text-right">
                   <button
@@ -366,6 +387,19 @@ const readingLabel = (item) => {
               <ClockIcon v-else class="size-4 text-ink-muted" aria-hidden="true" />
               <span class="font-medium text-ink">{{ kmLabel(item) }} km</span>
               <span class="text-ink-muted">· {{ readingLabel(item) }}</span>
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-surface-subtle px-3 py-2 text-sm">
+              <span class="text-ink-muted">Evidencia</span>
+              <a
+                v-if="item.evidenceUrl"
+                :href="item.evidenceUrl"
+                target="_blank"
+                rel="noopener"
+                class="font-semibold text-primary hover:underline"
+              >
+                {{ methodLabel(item) }}
+              </a>
+              <span v-else class="text-xs text-ink-muted">{{ methodLabel(item) }}</span>
             </div>
             <a v-if="item.equipmentUrl" :href="item.equipmentUrl" :class="secondaryButton" class="w-full justify-center">
               Ver equipo
