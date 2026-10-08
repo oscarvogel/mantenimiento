@@ -16,7 +16,7 @@
         .reading{font-size:.95rem;background:#f8fafc;padding:12px;border-radius:10px}
         .help{font-size:.9rem;color:#64748b;margin:6px 0 0;line-height:1.4}
         .done{text-align:center;padding:18px 8px 6px}.done h2{margin:0 0 8px;font-size:1.35rem;color:#166534}.done p{margin:0;color:#475569;line-height:1.5}
-        button[disabled]{opacity:.65;cursor:wait}.ai-status{margin-top:10px;padding:10px 12px;border-radius:10px;background:#eef2ff;color:#3730a3;font-size:.9rem;line-height:1.4}.ai-status.error{background:#fff7ed;color:#9a3412}
+        button[disabled]{opacity:.65;cursor:wait}.ai-status{margin-top:10px;padding:10px 12px;border-radius:10px;background:#eef2ff;color:#3730a3;font-size:.9rem;line-height:1.4}.ai-status.error{background:#fff7ed;color:#9a3412}.evidence-ready{margin-top:10px;padding:10px 12px;border-radius:10px;background:#ecfdf5;color:#166534;font-weight:600}.evidence-preview{display:block;max-width:100%;max-height:220px;margin-top:10px;border-radius:10px;object-fit:contain;background:#f8fafc}
     </style>
 </head>
 <body>
@@ -50,6 +50,8 @@
             <label for="evidence_photo"><?= esc($labels['photo'] ?? 'Foto obligatoria del tablero') ?></label>
             <input id="evidence_photo" name="evidence_photo" type="file" accept="image/jpeg,image/png" capture="environment" required>
             <p class="help"><?= esc($labels['photo_help'] ?? 'Sacá una foto nítida donde se vea el odómetro. La foto quedará guardada como evidencia.') ?></p>
+            <div id="evidence-ready" class="evidence-ready" hidden>Foto guardada como evidencia ✓</div>
+            <img id="evidence-preview" class="evidence-preview" hidden alt="Vista previa de la evidencia">
             <div id="ai-status" class="ai-status" hidden role="status" aria-live="polite"></div>
 
             <?php if ((int) $equipment['controla_km'] === 1): ?>
@@ -86,6 +88,8 @@
             const km = document.getElementById('kilometers');
             const status = document.getElementById('ai-status');
             const evidenceRef = document.getElementById('evidence_ref');
+            const evidenceReadyBox = document.getElementById('evidence-ready');
+            const evidencePreview = document.getElementById('evidence-preview');
             if (!form || !submit || !photo) return;
 
             const analysisUrl = <?= json_encode(base_url('mantenimiento/publico/equipo/' . rawurlencode($token) . '/lectura/analizar'), JSON_UNESCAPED_SLASHES) ?>;
@@ -103,6 +107,10 @@
             }
             if (evidenceReady) {
                 photo.required = false;
+                evidenceReadyBox.hidden = false;
+                status.hidden = false;
+                status.classList.remove('error');
+                status.textContent = 'La foto ya quedó guardada. Podés registrar la lectura sin volver a seleccionarla.';
             }
 
             async function optimizePhoto(file) {
@@ -135,6 +143,11 @@
                 const file = photo.files && photo.files[0];
                 if (!file) return;
 
+                if (evidencePreview) {
+                    evidencePreview.src = URL.createObjectURL(file);
+                    evidencePreview.hidden = false;
+                }
+                evidenceReadyBox.hidden = true;
                 evidenceReady = false;
                 if (evidenceRef) evidenceRef.value = '';
                 photo.required = true;
@@ -176,6 +189,7 @@
                     evidenceReady = true;
                     photo.required = false;
                     photo.value = '';
+                    evidenceReadyBox.hidden = false;
                     setSubmitAvailable(true);
 
                     if (!response.ok || !payload.ok) {
