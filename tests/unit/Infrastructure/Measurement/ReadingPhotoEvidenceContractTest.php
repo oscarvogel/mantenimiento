@@ -16,6 +16,8 @@ final class ReadingPhotoEvidenceContractTest extends TestCase
         self::assertStringContainsString("getFile('evidence_photo')", $source);
         self::assertStringContainsString('La foto del tablero es obligatoria.', $source);
         self::assertStringContainsString('MiniMaxOdometerImageAnalyzer::fromEnv()->analyze', $source);
+        self::assertStringContainsString("env('uploads.privatePath'", $source);
+        self::assertStringContainsString("'storageReady' => " . '$evidenceRef' . " !== null", $source);
         self::assertStringContainsString("'FOTO_MANUAL'", $source);
         self::assertStringContainsString("'FOTO_IA_CONFIRMADA'", $source);
         self::assertStringContainsString("'FOTO_IA_CORREGIDA'", $source);
@@ -47,6 +49,8 @@ final class ReadingPhotoEvidenceContractTest extends TestCase
         self::assertStringContainsString('setSubmitAvailable(false)', $source);
         self::assertStringContainsString('evidenceReady = true', $source);
         self::assertStringContainsString('photo.required = false', $source);
+        self::assertStringContainsString('const hasDirectPhoto = Boolean(photo.files && photo.files[0])', $source);
+        self::assertStringContainsString('La foto se enviará al registrar la lectura.', $source);
         self::assertStringContainsString('optimizePhoto(file)', $source);
         self::assertStringContainsString("photo.value = ''", $source);
         self::assertStringContainsString("'Preparando foto...'", $source);

@@ -59,6 +59,7 @@ final class PublicEquipmentReadings extends BaseController
     public function analyze(string $token): ResponseInterface
     {
         $stored = null;
+        $equipment = null;
 
         try {
             $access = $this->resolve($token);
@@ -68,12 +69,10 @@ final class PublicEquipmentReadings extends BaseController
             }
 
             [$tempPath, $mime] = $this->validatedEvidenceUpload();
-            $stored = $this->evidenceStorage()->store(
-                $tempPath,
-                (int) $equipment['empresa_id'],
-                $mime,
-            );
 
+            // La IA no depende del almacenamiento persistente: primero analizamos
+            // el archivo temporal recibido. Si luego falla el staging, el chofer
+            // igual puede ver la lectura propuesta y enviar la misma foto en el POST final.
             $analysis = null;
             $analysisError = null;
             try {
@@ -85,19 +84,34 @@ final class PublicEquipmentReadings extends BaseController
                 ]);
             }
 
-            $evidenceRef = bin2hex(random_bytes(16));
-            session()->set($this->stagedEvidenceSessionKey($evidenceRef), [
-                'path' => $stored['path'],
-                'mime' => $stored['mime'],
-                'bytes' => $stored['bytes'],
-                'company_id' => (int) $equipment['empresa_id'],
-                'equipment_id' => (int) $equipment['id'],
-                'expires_at' => time() + 1800,
-                'km_detectado_ia' => $analysis?->kilometers,
-                'confianza_ia' => $analysis?->confidence,
-                'legible_ia' => $analysis?->legible ?? false,
-                'observacion_ia' => $analysis?->observation,
-            ]);
+            $evidenceRef = null;
+            $storageError = null;
+            try {
+                $stored = $this->evidenceStorage()->store(
+                    $tempPath,
+                    (int) $equipment['empresa_id'],
+                    $mime,
+                );
+
+                $evidenceRef = bin2hex(random_bytes(16));
+                session()->set($this->stagedEvidenceSessionKey($evidenceRef), [
+                    'path' => $stored['path'],
+                    'mime' => $stored['mime'],
+                    'bytes' => $stored['bytes'],
+                    'company_id' => (int) $equipment['empresa_id'],
+                    'equipment_id' => (int) $equipment['id'],
+                    'expires_at' => time() + 1800,
+                    'km_detectado_ia' => $analysis?->kilometers,
+                    'confianza_ia' => $analysis?->confidence,
+                    'legible_ia' => $analysis?->legible ?? false,
+                    'observacion_ia' => $analysis?->observation,
+                ]);
+            } catch (Throwable $exception) {
+                $storageError = $exception->getMessage();
+                log_message('warning', 'No se pudo dejar staged la evidencia de lectura: {message}', [
+                    'message' => $storageError,
+                ]);
+            }
 
             return $this->response->setJSON([
                 'ok' => true,
@@ -106,16 +120,18 @@ final class PublicEquipmentReadings extends BaseController
                 'legible' => $analysis?->legible ?? false,
                 'observation' => $analysis?->observation,
                 'analysisError' => $analysis === null
-                    ? 'No pudimos leer automáticamente el odómetro. Podés ingresar el kilometraje manualmente; la foto ya quedó guardada como evidencia.'
+                    ? 'No pudimos leer automáticamente el odómetro. Podés ingresar el kilometraje manualmente.'
                     : null,
                 'evidenceRef' => $evidenceRef,
+                'storageReady' => $evidenceRef !== null,
+                'storageError' => $storageError,
                 'csrfToken' => csrf_token(),
                 'csrfHash' => csrf_hash(),
             ]);
         } catch (Throwable $exception) {
-            if ($stored !== null) {
+            if ($stored !== null && $equipment !== null) {
                 try {
-                    $this->evidenceStorage()->delete((string) $stored['path'], (int) ($equipment['empresa_id'] ?? 0));
+                    $this->evidenceStorage()->delete((string) $stored['path'], (int) $equipment['empresa_id']);
                 } catch (Throwable) {
                 }
             }
@@ -533,6 +549,14 @@ final class PublicEquipmentReadings extends BaseController
 
     private function evidenceStorage(): ReadingEvidenceStorage
     {
+        // Reutilizar primero el almacenamiento privado que ya usa el sistema
+        // para adjuntos de equipos. Está probado tanto en Coolify como en Ferozo
+        // y evita depender de una segunda raíz con permisos distintos.
+        $privateRoot = trim((string) env('uploads.privatePath', ''));
+        if ($privateRoot !== '') {
+            return new ReadingEvidenceStorage($privateRoot);
+        }
+
         $configured = trim((string) env('uploads.readingEvidencePath', ''));
         return new ReadingEvidenceStorage($configured === '' ? null : $configured);
     }
