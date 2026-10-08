@@ -20,6 +20,8 @@ final class ReadingPhotoEvidenceContractTest extends TestCase
         self::assertStringContainsString("'FOTO_IA_CONFIRMADA'", $source);
         self::assertStringContainsString("'FOTO_IA_CORREGIDA'", $source);
         self::assertStringContainsString('se continúa con carga manual', $source);
+        self::assertStringContainsString('stagedEvidence(', $source);
+        self::assertStringContainsString('public_reading_evidence_', $source);
     }
 
     public function testEvidenceDownloadIsTenantScoped(): void
@@ -40,5 +42,7 @@ final class ReadingPhotoEvidenceContractTest extends TestCase
         self::assertStringContainsString('name="evidence_photo"', $source);
         self::assertStringContainsString('capture="environment"', $source);
         self::assertStringContainsString("photo.addEventListener('change', analyzePhoto)", $source);
+        self::assertStringContainsString('name="evidence_ref"', $source);
+        self::assertStringContainsString('payload.evidenceRef', $source);
     }
 }
