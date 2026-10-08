@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import {
   ArrowRightIcon,
   BeakerIcon,
@@ -21,6 +21,7 @@ import managementBackground from '../../assets/platform/management-card.jpg'
 import reportsBackground from '../../assets/platform/reports-card.jpg'
 import automationsBackground from '../../assets/platform/automations-card.jpg'
 import aiBackground from '../../assets/platform/ai-card.jpg'
+import BrandLogo from '../../components/BrandLogo.vue'
 
 const props = defineProps({
   data: {
@@ -28,6 +29,9 @@ const props = defineProps({
     required: true,
   },
 })
+
+const pageRoot = ref(null)
+let cardMotionPreference
 
 const modules = computed(() => Array.isArray(props.data.modules) ? props.data.modules : [])
 const availableCount = computed(() => modules.value.filter((module) => module.state === 'available').length)
@@ -74,10 +78,33 @@ const cardStyle = (module) => {
 const heroStyle = {
   backgroundImage: `linear-gradient(90deg, rgb(2 18 44 / .97) 0%, rgb(2 18 44 / .86) 43%, rgb(2 18 44 / .12) 100%), url("${heroTruck}")`,
 }
+
+onMounted(async () => {
+  const root = pageRoot.value
+  const cards = [...(root?.querySelectorAll('[data-module-card]') ?? [])]
+  if (cards.length === 0) return
+
+  const { gsap } = await import('gsap')
+  if (pageRoot.value !== root) return
+
+  cardMotionPreference = gsap.matchMedia()
+  cardMotionPreference.add('(prefers-reduced-motion: no-preference)', () => {
+    gsap.from(cards, {
+      y: 22,
+      autoAlpha: 0,
+      duration: 0.55,
+      stagger: 0.075,
+      ease: 'power2.out',
+      clearProps: 'transform,opacity,visibility',
+    })
+  })
+})
+
+onBeforeUnmount(() => cardMotionPreference?.revert())
 </script>
 
 <template>
-  <div class="mx-auto max-w-[86rem] space-y-7 pb-10 sm:space-y-9">
+  <div ref="pageRoot" class="mx-auto max-w-[86rem] space-y-7 pb-10 sm:space-y-9">
     <section
       class="relative isolate flex min-h-[19rem] items-center overflow-hidden rounded-3xl bg-brand-950 bg-cover bg-center px-6 py-9 text-white shadow-card sm:min-h-[21rem] sm:px-10 lg:px-12"
       :style="heroStyle"
@@ -88,7 +115,7 @@ const heroStyle = {
         <h1 id="command-center-heading" class="mt-3 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
           Bienvenido, {{ firstName }}
         </h1>
-        <p class="mt-2 text-xl font-medium text-blue-100 sm:text-2xl lg:text-3xl">Vogel Consultoría</p>
+        <BrandLogo size="hero" class="mt-2" />
         <p class="mt-3 max-w-2xl text-sm leading-6 text-blue-100 sm:text-base sm:leading-7">
           Información, control y decisiones para una operación más eficiente.
         </p>
@@ -180,7 +207,7 @@ const heroStyle = {
             <ChartBarSquareIcon class="size-5" />
           </span>
           <div>
-            <p class="text-xs font-semibold uppercase tracking-wide text-primary">Vogel Consultoría</p>
+            <BrandLogo size="small" class="mb-1" />
             <h2 id="platform-status-heading" class="font-bold text-ink">Estado de la plataforma</h2>
           </div>
         </div>

@@ -9,7 +9,7 @@
 <body class="bg-light">
     <nav class="navbar navbar-dark bg-dark">
         <div class="container d-flex gap-2">
-            <a class="navbar-brand" href="<?= base_url('dashboard') ?>">Mantenimiento</a>
+            <?= view('partials/brand_link', ['href' => base_url('dashboard'), 'label' => 'Mantenimiento']) ?>
             <span class="navbar-text text-light d-none d-sm-inline"><?= esc($company['nombre_fantasia'] ?: $company['razon_social']) ?></span>
             <form method="post" action="<?= base_url('logout') ?>" class="ms-auto mb-0">
                 <?= csrf_field() ?>

@@ -25,6 +25,7 @@ import {
   XMarkIcon,
 } from '@heroicons/vue/24/outline'
 import BrandMark from './BrandMark.vue'
+import BrandLogo from './BrandLogo.vue'
 
 const props = defineProps({
   navigation: {
@@ -164,10 +165,7 @@ const openDemoCompany = () => {
       class="flex items-center justify-between border-b border-border px-5"
       :class="isPlatformNavigation ? 'platform-brand-row h-28' : 'h-[4.5rem]'"
     >
-      <div v-if="isPlatformNavigation" class="platform-brand" aria-label="Vogel Consultoría">
-        <span class="platform-brand__mark" aria-hidden="true">V</span>
-        <span class="platform-brand__name">VOGEL <small>CONSULTORÍA</small></span>
-      </div>
+      <BrandLogo v-if="isPlatformNavigation" size="platform" />
       <BrandMark v-else />
       <button
         v-if="mobile"

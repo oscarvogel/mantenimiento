@@ -9,7 +9,7 @@
 <body class="bg-light">
 <nav class="navbar navbar-dark bg-dark">
     <div class="container d-flex gap-2">
-        <a class="navbar-brand" href="<?= base_url('dashboard') ?>">Mantenimiento</a>
+        <?= view('partials/brand_link', ['href' => base_url('dashboard'), 'label' => 'Mantenimiento']) ?>
         <a class="btn btn-outline-light btn-sm ms-auto" href="<?= base_url('mantenimiento') ?>">Circuito preventivo</a>
         <form method="post" action="<?= base_url('logout') ?>" class="mb-0"><?= csrf_field() ?><button class="btn btn-outline-light btn-sm" type="submit">Cerrar sesión</button></form>
     </div>

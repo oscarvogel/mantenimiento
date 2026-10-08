@@ -33,6 +33,12 @@
     "file": "assets/vendor-BKff3l7F.js",
     "name": "vendor"
   },
+  "node_modules/gsap/index.js": {
+    "file": "assets/gsap-C-UGJFrr.js",
+    "name": "gsap",
+    "src": "node_modules/gsap/index.js",
+    "isDynamicEntry": true
+  },
   "src/assets/platform/ai-card.jpg": {
     "file": "assets/ai-card-Bif2XNNK.jpg",
     "src": "src/assets/platform/ai-card.jpg"
@@ -74,7 +80,7 @@
     "src": "src/assets/platform/trips-card.jpg"
   },
   "src/main.js": {
-    "file": "assets/main-DCkKcCZA.js",
+    "file": "assets/main-BmOqZ0Lz.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
@@ -85,10 +91,11 @@
       "_reports-DkTsly4s.js"
     ],
     "dynamicImports": [
-      "_chatbot-BFfJUgq1.js"
+      "_chatbot-BFfJUgq1.js",
+      "node_modules/gsap/index.js"
     ],
     "css": [
-      "assets/main-DfSz-q_2.css"
+      "assets/main-BWLNMyHL.css"
     ],
     "assets": [
       "assets/portal-hero-Dd-Ff3YR.jpg",

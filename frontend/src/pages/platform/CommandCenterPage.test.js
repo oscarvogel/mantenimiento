@@ -1,8 +1,68 @@
-import { describe, expect, it } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
+
+const { gsapFrom, matchMediaAdd, matchMediaRevert } = vi.hoisted(() => ({
+  gsapFrom: vi.fn(),
+  matchMediaAdd: vi.fn(),
+  matchMediaRevert: vi.fn(),
+}))
+
+vi.mock('gsap', () => ({
+  gsap: {
+    from: gsapFrom,
+    matchMedia: () => ({ add: matchMediaAdd, revert: matchMediaRevert }),
+  },
+}))
+
 import CommandCenterPage from './CommandCenterPage.vue'
 
 describe('CommandCenterPage', () => {
+  beforeEach(() => {
+    gsapFrom.mockClear()
+    matchMediaAdd.mockReset()
+    matchMediaRevert.mockClear()
+  })
+
+  it('animates module cards with GSAP and cleans up the media context', async () => {
+    matchMediaAdd.mockImplementation((_query, callback) => callback())
+    const wrapper = mount(CommandCenterPage, {
+      props: {
+        data: {
+          modules: [
+            { key: 'maintenance', label: 'Mantenimiento', href: '/dashboard', status: 'Operativo', state: 'available' },
+            { key: 'trips', label: 'Viajes', href: null, status: 'Sin implementación aún', state: 'not_implemented' },
+          ],
+        },
+      },
+    })
+    await flushPromises()
+
+    expect(matchMediaAdd).toHaveBeenCalledWith('(prefers-reduced-motion: no-preference)', expect.any(Function))
+    expect(gsapFrom).toHaveBeenCalledWith(expect.arrayContaining(wrapper.findAll('[data-module-card]').map((card) => card.element)), expect.objectContaining({
+      stagger: expect.any(Number),
+      autoAlpha: 0,
+    }))
+
+    wrapper.unmount()
+    expect(matchMediaRevert).toHaveBeenCalledOnce()
+  })
+
+  it('skips card motion when the reduced-motion media query is active', async () => {
+    matchMediaAdd.mockImplementation(() => {})
+    const wrapper = mount(CommandCenterPage, {
+      props: {
+        data: {
+          modules: [{ key: 'maintenance', label: 'Mantenimiento', href: '/dashboard', status: 'Operativo', state: 'available' }],
+        },
+      },
+    })
+    await flushPromises()
+
+    expect(matchMediaAdd).toHaveBeenCalledWith('(prefers-reduced-motion: no-preference)', expect.any(Function))
+    expect(gsapFrom).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
   it('shows every platform module while leaving unimplemented modules unavailable', () => {
     const wrapper = mount(CommandCenterPage, {
       props: {

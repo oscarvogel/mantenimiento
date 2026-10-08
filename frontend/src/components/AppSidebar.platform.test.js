@@ -20,7 +20,7 @@ describe('AppSidebar platform navigation', () => {
     expect(nav.text()).not.toContain('Dashboard')
     expect(nav.text()).not.toContain('Equipos')
     expect(nav.text()).not.toContain('Control de lecturas')
-    expect(wrapper.text()).toContain('VOGEL CONSULTORÍA')
+    expect(wrapper.find('[role="img"][aria-label="Vogel Consultoría"]').exists()).toBe(true)
     expect(wrapper.text()).not.toContain('Gestión de flota')
   })
 })
