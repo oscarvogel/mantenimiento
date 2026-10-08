@@ -355,6 +355,11 @@ final class OperationsPayload
                     'annulmentReason' => $row->annulmentReason, 'replacementReadingId' => $row->replacementReadingId,
                     'correctedReadingId' => $row->correctedReadingId, 'correctionReason' => $row->correctionReason,
                     'correctUrl' => $base . '/lecturas/' . $row->id . '/corregir',
+                    'evidenceMethod' => $row->evidenceMethod,
+                    'aiDetectedKm' => $row->aiDetectedKm,
+                    'aiConfidence' => $row->aiConfidence,
+                    'aiObservation' => $row->aiObservation,
+                    'evidenceUrl' => $row->evidenceMethod === null ? null : base_url('mantenimiento/lecturas/' . $row->id . '/evidencia'),
                 ], $readings->items),
             ],
             'transfers' => [
