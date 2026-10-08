@@ -39,6 +39,7 @@ describe('CommandCenterPage', () => {
     expect(wrapper.findAll('button[disabled]')).toHaveLength(8)
     expect(wrapper.findAll('a[href^="/"]')).toHaveLength(1)
     expect(wrapper.findAll('.module-status--pending')).toHaveLength(8)
+    expect(wrapper.findAll('button[data-module-card]').every((card) => card.attributes('style')?.includes('url('))).toBe(true)
   })
 
   it('does not invent metrics or activity when the module catalog is empty', () => {

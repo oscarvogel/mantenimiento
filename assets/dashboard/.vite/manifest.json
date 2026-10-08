@@ -33,16 +33,48 @@
     "file": "assets/vendor-BKff3l7F.js",
     "name": "vendor"
   },
+  "src/assets/platform/ai-card.jpg": {
+    "file": "assets/ai-card-Bif2XNNK.jpg",
+    "src": "src/assets/platform/ai-card.jpg"
+  },
+  "src/assets/platform/automations-card.jpg": {
+    "file": "assets/automations-card-RiUiw6K5.jpg",
+    "src": "src/assets/platform/automations-card.jpg"
+  },
+  "src/assets/platform/billing-card.jpg": {
+    "file": "assets/billing-card-CjMAOhC3.jpg",
+    "src": "src/assets/platform/billing-card.jpg"
+  },
+  "src/assets/platform/fuel-card.jpg": {
+    "file": "assets/fuel-card-D9Zc01Ku.jpg",
+    "src": "src/assets/platform/fuel-card.jpg"
+  },
   "src/assets/platform/maintenance-card.jpg": {
     "file": "assets/maintenance-card-uYK8y_5B.jpg",
     "src": "src/assets/platform/maintenance-card.jpg"
+  },
+  "src/assets/platform/management-card.jpg": {
+    "file": "assets/management-card-0ljX2I3p.jpg",
+    "src": "src/assets/platform/management-card.jpg"
   },
   "src/assets/platform/portal-hero.jpg": {
     "file": "assets/portal-hero-Dd-Ff3YR.jpg",
     "src": "src/assets/platform/portal-hero.jpg"
   },
+  "src/assets/platform/reports-card.jpg": {
+    "file": "assets/reports-card-C18Twu5b.jpg",
+    "src": "src/assets/platform/reports-card.jpg"
+  },
+  "src/assets/platform/tires-card.jpg": {
+    "file": "assets/tires-card-CsQWVLPl.jpg",
+    "src": "src/assets/platform/tires-card.jpg"
+  },
+  "src/assets/platform/trips-card.jpg": {
+    "file": "assets/trips-card-qkUzH-aR.jpg",
+    "src": "src/assets/platform/trips-card.jpg"
+  },
   "src/main.js": {
-    "file": "assets/main-DxMEtCzn.js",
+    "file": "assets/main-DCkKcCZA.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
@@ -56,11 +88,19 @@
       "_chatbot-BFfJUgq1.js"
     ],
     "css": [
-      "assets/main-CBUOh1le.css"
+      "assets/main-DfSz-q_2.css"
     ],
     "assets": [
       "assets/portal-hero-Dd-Ff3YR.jpg",
-      "assets/maintenance-card-uYK8y_5B.jpg"
+      "assets/maintenance-card-uYK8y_5B.jpg",
+      "assets/trips-card-qkUzH-aR.jpg",
+      "assets/fuel-card-D9Zc01Ku.jpg",
+      "assets/tires-card-CsQWVLPl.jpg",
+      "assets/billing-card-CjMAOhC3.jpg",
+      "assets/management-card-0ljX2I3p.jpg",
+      "assets/reports-card-C18Twu5b.jpg",
+      "assets/automations-card-RiUiw6K5.jpg",
+      "assets/ai-card-Bif2XNNK.jpg"
     ]
   }
 }

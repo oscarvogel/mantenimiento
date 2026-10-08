@@ -13,6 +13,14 @@ import {
 } from '@heroicons/vue/24/outline'
 import heroTruck from '../../assets/platform/portal-hero.jpg'
 import maintenanceWorkshop from '../../assets/platform/maintenance-card.jpg'
+import tripsBackground from '../../assets/platform/trips-card.jpg'
+import fuelBackground from '../../assets/platform/fuel-card.jpg'
+import tiresBackground from '../../assets/platform/tires-card.jpg'
+import billingBackground from '../../assets/platform/billing-card.jpg'
+import managementBackground from '../../assets/platform/management-card.jpg'
+import reportsBackground from '../../assets/platform/reports-card.jpg'
+import automationsBackground from '../../assets/platform/automations-card.jpg'
+import aiBackground from '../../assets/platform/ai-card.jpg'
 
 const props = defineProps({
   data: {
@@ -43,10 +51,25 @@ const moduleIcons = {
   ai: SparklesIcon,
 }
 
+const moduleBackgrounds = {
+  maintenance: maintenanceWorkshop,
+  trips: tripsBackground,
+  fuel: fuelBackground,
+  tires: tiresBackground,
+  billing: billingBackground,
+  management: managementBackground,
+  reports: reportsBackground,
+  automations: automationsBackground,
+  ai: aiBackground,
+}
+
 const iconFor = (name) => moduleIcons[name] ?? WrenchScrewdriverIcon
-const cardStyle = (module) => module.key === 'maintenance'
-  ? { backgroundImage: `linear-gradient(90deg, rgb(3 18 42 / .96) 0%, rgb(3 18 42 / .83) 48%, rgb(3 18 42 / .25) 100%), url("${maintenanceWorkshop}")` }
-  : undefined
+const cardStyle = (module) => {
+  const background = moduleBackgrounds[module.key]
+  return background
+    ? { backgroundImage: `linear-gradient(90deg, rgb(3 18 42 / .96) 0%, rgb(3 18 42 / .82) 55%, rgb(3 18 42 / .34) 100%), url("${background}")` }
+    : undefined
+}
 
 const heroStyle = {
   backgroundImage: `linear-gradient(90deg, rgb(2 18 44 / .97) 0%, rgb(2 18 44 / .86) 43%, rgb(2 18 44 / .12) 100%), url("${heroTruck}")`,
@@ -120,23 +143,23 @@ const heroStyle = {
               :aria-label="`${module.label}: ${module.status}`"
               :style="cardStyle(module)"
               data-module-card
-              class="relative isolate flex min-h-[13.5rem] cursor-not-allowed flex-col overflow-hidden rounded-2xl border border-border bg-surface-raised p-4 text-left text-ink shadow-card opacity-85 sm:p-5"
-              :class="module.key === 'maintenance' ? 'border-brand-700 bg-brand-950 text-white' : ''"
+              class="relative isolate flex min-h-[13.5rem] cursor-not-allowed flex-col overflow-hidden rounded-2xl border border-brand-700 bg-brand-950 bg-cover bg-center p-4 text-left text-white shadow-card opacity-85 sm:p-5"
+              :class="module.key === 'maintenance' ? 'opacity-85' : ''"
             >
               <div class="flex items-start justify-between gap-3">
-                <span class="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary-subtle text-primary" aria-hidden="true">
+                <span class="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary-subtle text-primary" :class="module.state === 'not_implemented' ? 'bg-primary/20 text-sky-300' : ''" aria-hidden="true">
                   <component :is="iconFor(module.icon)" class="size-6" />
                 </span>
                 <span
                   class="module-status--pending max-w-[9.5rem] rounded-full bg-surface-muted px-2.5 py-1 text-center text-[0.65rem] font-semibold leading-4 text-ink-muted"
-                  :class="module.state === 'restricted' ? 'bg-warning-subtle text-warning-strong' : ''"
+                  :class="module.state === 'not_implemented' ? 'bg-white/10 text-blue-100' : (module.state === 'restricted' ? 'bg-warning-subtle text-warning-strong' : '')"
                 >
                   {{ module.status }}
                 </span>
               </div>
               <div class="mt-auto pt-6">
                 <h3 class="text-lg font-bold">{{ module.label }}</h3>
-                <p class="mt-1.5 min-h-10 text-sm leading-5" :class="module.key === 'maintenance' ? 'text-blue-100' : 'text-ink-muted'">{{ module.description }}</p>
+                <p class="mt-1.5 min-h-10 text-sm leading-5 text-blue-100">{{ module.description }}</p>
                 <span class="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-ink-muted">
                   {{ module.state === 'restricted' ? 'Consultá a tu administrador' : 'Próximamente' }}
                 </span>
