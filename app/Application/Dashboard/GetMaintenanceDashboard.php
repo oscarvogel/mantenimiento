@@ -145,11 +145,17 @@ final class GetMaintenanceDashboard
     /** @param array<string,int> $statusCounts @return list<array{status:string,label:string,count:int}> */
     private function preventiveChart(array $statusCounts): array
     {
+        $labels = [
+            EstadoPlan::AL_DIA->value => 'Al día',
+            EstadoPlan::PROXIMO->value => 'Próximos',
+            EstadoPlan::VENCIDO->value => 'Vencidos',
+            EstadoPlan::SIN_DATOS->value => 'Sin datos',
+        ];
         $chart = [];
         foreach ([EstadoPlan::AL_DIA, EstadoPlan::PROXIMO, EstadoPlan::VENCIDO, EstadoPlan::SIN_DATOS] as $state) {
             $chart[] = [
                 'status' => $state->value,
-                'label' => $this->statusLabel($state),
+                'label' => $labels[$state->value],
                 'count' => $statusCounts[$state->value] ?? 0,
             ];
         }
