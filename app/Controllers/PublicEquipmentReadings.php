@@ -490,8 +490,21 @@ final class PublicEquipmentReadings extends BaseController
     private function validatedEvidenceUpload(): array
     {
         $file = $this->request->getFile('evidence_photo');
-        if ($file === null || ! $file->isValid() || $file->hasMoved()) {
+        if ($file === null) {
             throw new DomainException('La foto del tablero es obligatoria.');
+        }
+        if (! $file->isValid()) {
+            $error = $file->getError();
+            $message = match ($error) {
+                UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'La foto es demasiado grande para subirla. Volvé a tomarla o elegí una imagen más liviana.',
+                UPLOAD_ERR_PARTIAL => 'La foto se subió de forma incompleta. Volvé a intentarlo.',
+                UPLOAD_ERR_NO_FILE => 'La foto del tablero es obligatoria.',
+                default => 'No se pudo recibir la foto del tablero. Volvé a intentarlo.',
+            };
+            throw new DomainException($message);
+        }
+        if ($file->hasMoved()) {
+            throw new DomainException('La foto del tablero ya no está disponible. Volvé a seleccionarla.');
         }
         if ($file->getSize() <= 0 || $file->getSize() > self::MAX_EVIDENCE_BYTES) {
             throw new DomainException('La foto del tablero supera el tamaño permitido de 8 MB.');
