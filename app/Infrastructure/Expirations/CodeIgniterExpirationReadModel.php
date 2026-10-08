@@ -64,7 +64,7 @@ final class CodeIgniterExpirationReadModel
     }
 
     /**
-     * @param array{subject?:string,status?:string,branchId?:int|null,q?:string} $filters
+     * @param array{subject?:string,status?:string,branchId?:int|null,expirationTypeId?:int|null,q?:string} $filters
      * @param list<int>|null $allowedBranchIds
      * @return list<array<string,mixed>>
      */
@@ -85,6 +85,11 @@ final class CodeIgniterExpirationReadModel
         $subject = mb_strtoupper(trim((string) ($filters['subject'] ?? 'TODOS')));
         if (in_array($subject, ['EQUIPO', 'EMPLEADO'], true)) {
             $builder->where('v.sujeto_tipo', $subject);
+        }
+
+        $expirationTypeId = (int) ($filters['expirationTypeId'] ?? 0);
+        if ($expirationTypeId > 0) {
+            $builder->where('v.tipo_vencimiento_id', $expirationTypeId);
         }
 
         $branchId = (int) ($filters['branchId'] ?? 0);
