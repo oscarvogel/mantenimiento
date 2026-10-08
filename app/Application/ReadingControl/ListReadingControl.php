@@ -152,33 +152,43 @@ final class ListReadingControl
         ReadingControlQuery $query,
         ReadingControlFilter $filter,
     ): BaseBuilder {
+        $select = [
+            'e.id',
+            'e.codigo',
+            'e.patente',
+            'te.nombre tipo_nombre',
+            'te.controla_km',
+            's.id sucursal_id',
+            's.nombre sucursal_nombre',
+            'emp.nombre emp_nombre',
+            'emp.apellido emp_apellido',
+            'emp.telefono emp_telefono',
+            'drv.empleado_id',
+            'lr.lectura_id ultima_lectura_id',
+            'lr.fecha_lectura ultima_lectura',
+            'lr.kilometraje ultima_kilometraje',
+        ];
+
+        $hasEvidenceTable = $this->database->tableExists('lecturas_equipo_evidencias');
+        if ($hasEvidenceTable) {
+            $select[] = 'ev.metodo_carga evidencia_metodo';
+            $select[] = 'ev.km_detectado_ia evidencia_km_ia';
+            $select[] = 'ev.confianza_ia evidencia_confianza_ia';
+        }
+
         $builder = $this->database->table('equipos e')
-            ->select([
-                'e.id',
-                'e.codigo',
-                'e.patente',
-                'te.nombre tipo_nombre',
-                'te.controla_km',
-                's.id sucursal_id',
-                's.nombre sucursal_nombre',
-                'emp.nombre emp_nombre',
-                'emp.apellido emp_apellido',
-                'emp.telefono emp_telefono',
-                'drv.empleado_id',
-                'lr.lectura_id ultima_lectura_id',
-                'lr.fecha_lectura ultima_lectura',
-                'lr.kilometraje ultima_kilometraje',
-                'ev.metodo_carga evidencia_metodo',
-                'ev.km_detectado_ia evidencia_km_ia',
-                'ev.confianza_ia evidencia_confianza_ia',
-            ], false)
+            ->select($select, false)
             ->join('tipos_equipo te', 'te.id = e.tipo_equipo_id AND te.activo = 1', 'inner')
             ->join('sucursales s', 's.id = e.sucursal_id AND s.empresa_id = e.empresa_id', 'inner')
             ->join(self::ACTIVE_DRIVER_SQL, 'drv.equipo_id = e.id AND drv.empresa_id = e.empresa_id', 'left', false)
             ->join('empleados emp', 'emp.id = drv.empleado_id AND emp.empresa_id = drv.empresa_id AND emp.activo = 1 AND emp.deleted_at IS NULL', 'left')
-            ->join(self::LAST_READING_SQL, 'lr.equipo_id = e.id AND lr.empresa_id = e.empresa_id', 'left', false)
-            ->join('lecturas_equipo_evidencias ev', 'ev.lectura_id = lr.lectura_id AND ev.empresa_id = e.empresa_id', 'left')
-            ->where('e.empresa_id', $companyId)
+            ->join(self::LAST_READING_SQL, 'lr.equipo_id = e.id AND lr.empresa_id = e.empresa_id', 'left', false);
+
+        if ($hasEvidenceTable) {
+            $builder->join('lecturas_equipo_evidencias ev', 'ev.lectura_id = lr.lectura_id AND ev.empresa_id = e.empresa_id', 'left');
+        }
+
+        $builder->where('e.empresa_id', $companyId)
             ->where('e.estado', 'ACTIVO')
             ->where('e.deleted_at', null)
             ->where('te.controla_km', 1)
