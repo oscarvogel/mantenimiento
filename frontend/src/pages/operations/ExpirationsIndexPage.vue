@@ -19,8 +19,9 @@ const data = computed(() => ({
   ...props.data,
   items: props.data.items ?? [],
   branches: props.data.branches ?? [],
+  expirationTypes: props.data.expirationTypes ?? [],
   summary: props.data.summary ?? { total: 0, overdue: 0, next7: 0, next30: 0 },
-  filters: props.data.filters ?? { subject: 'TODOS', status: 'todos', branchId: '', q: '' },
+  filters: props.data.filters ?? { subject: 'TODOS', status: 'todos', branchId: '', expirationTypeId: '', q: '' },
 }))
 
 const daysLabel = (days) => {
@@ -82,7 +83,7 @@ const closeRenew = () => {
     </section>
 
     <PanelCard title="Filtrar vencimientos" class="mb-6">
-      <form method="get" :action="data.routes.index" class="grid gap-3 lg:grid-cols-[minmax(15rem,1fr)_11rem_11rem_13rem_auto] lg:items-end">
+      <form method="get" :action="data.routes.index" class="grid gap-3 lg:grid-cols-[minmax(15rem,1fr)_10rem_13rem_11rem_13rem_auto] lg:items-end">
         <FormField label="Equipo, patente, empleado o tipo" for-id="expiration-search">
           <div class="relative">
             <MagnifyingGlassIcon class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-muted" aria-hidden="true" />
@@ -96,11 +97,25 @@ const closeRenew = () => {
           </div>
         </FormField>
 
-        <FormField label="Tipo" for-id="expiration-subject">
+        <FormField label="Sujeto" for-id="expiration-subject">
           <select id="expiration-subject" name="tipo" :class="fieldClass">
             <option v-if="data.canSeeEquipment && data.canSeeEmployees" value="TODOS" :selected="data.filters.subject === 'TODOS'">Todos</option>
             <option v-if="data.canSeeEquipment" value="EQUIPO" :selected="data.filters.subject === 'EQUIPO'">Equipos</option>
             <option v-if="data.canSeeEmployees" value="EMPLEADO" :selected="data.filters.subject === 'EMPLEADO'">Empleados</option>
+          </select>
+        </FormField>
+
+        <FormField label="Documentación" for-id="expiration-document-type">
+          <select id="expiration-document-type" name="tipo_vencimiento_id" :class="fieldClass">
+            <option value="">Todos los documentos</option>
+            <option
+              v-for="type in data.expirationTypes"
+              :key="type.id"
+              :value="type.id"
+              :selected="String(data.filters.expirationTypeId) === String(type.id)"
+            >
+              {{ type.name }}
+            </option>
           </select>
         </FormField>
 
@@ -137,7 +152,7 @@ const closeRenew = () => {
       <EmptyState
         v-if="data.items.length === 0"
         title="No hay vencimientos para estos filtros"
-        description="Probá cambiando el período, el tipo de sujeto o la sucursal."
+        description="Probá cambiando el período, el sujeto, la documentación o la sucursal."
       />
 
       <template v-else>
