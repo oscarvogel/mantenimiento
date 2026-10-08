@@ -23,6 +23,7 @@ $routes->post('logout', 'Login::logout', ['filter' => 'auth']);
 
 // Dashboard (protegido)
 $routes->get('dashboard', 'Dashboard::index', ['filter' => 'auth']);
+$routes->get('inicio', 'CommandCenter::index', ['filter' => 'auth']);
 
 // Cron web seguro para hosting sin PHP CLI. Usa POST + X-Cron-Token y no CSRF.
 $routes->post('internal/cron/notifications/dispatch', 'NotificationCron::dispatch');

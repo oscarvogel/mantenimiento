@@ -1,5 +1,5 @@
 <script setup>
-import { Bars3Icon } from '@heroicons/vue/24/outline'
+import { Bars3Icon, Squares2X2Icon } from '@heroicons/vue/24/outline'
 import { ref } from 'vue'
 import AppNotificationBell from './AppNotificationBell.vue'
 import ThemeToggle from './ThemeToggle.vue'
@@ -16,6 +16,10 @@ defineProps({
   notifications: {
     type: Object,
     default: () => ({ enabled: false, summaryUrl: '#', centerUrl: '#' }),
+  },
+  homeUrl: {
+    type: String,
+    default: null,
   },
   menuOpen: {
     type: Boolean,
@@ -51,6 +55,15 @@ defineExpose({
     </div>
 
     <div class="flex items-center gap-1 sm:gap-3">
+      <a
+        v-if="homeUrl"
+        :href="homeUrl"
+        class="ui-interactive flex size-10 shrink-0 items-center justify-center rounded-lg text-ink-muted hover:bg-surface-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+        aria-label="Ir al Centro de mandos"
+        title="Centro de mandos"
+      >
+        <Squares2X2Icon class="size-5" aria-hidden="true" />
+      </a>
       <ThemeToggle />
       <AppNotificationBell v-if="notifications.enabled" v-bind="notifications" />
       <div class="flex min-w-0 items-center gap-3">

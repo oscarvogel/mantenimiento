@@ -6,17 +6,24 @@ namespace App\Presentation;
 
 use App\Application\AppShell\GetAppShellContext;
 use App\Application\Identity\ActorContext;
+use App\Application\Platform\GetPlatformModuleCatalog;
 
 final readonly class AppShellPayload
 {
-    public function __construct(private GetAppShellContext $context)
-    {
+    public function __construct(
+        private GetAppShellContext $context,
+        private GetPlatformModuleCatalog $platformModules,
+    ) {
     }
 
     /** @return array<string,mixed> */
     public function for(ActorContext $actor, string $active): array
     {
         $payload = $this->context->execute($actor);
+        $availableModules = $this->platformModules->execute($actor);
+        $payload['homeUrl'] = $active !== 'command-center' && $availableModules !== []
+            ? base_url('inicio')
+            : null;
         $navigation = [
             $this->item('dashboard', 'Dashboard', 'dashboard', 'dashboard', $active),
         ];

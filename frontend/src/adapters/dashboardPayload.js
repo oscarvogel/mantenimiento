@@ -163,6 +163,7 @@ export function normalizeAppShellPayload(payload) {
               : `${branches.length} sucursales`,
     },
     navigation,
+    homeUrl: source.homeUrl ? asUrl(source.homeUrl, '#') : null,
     notifications: notifications
       ? {
           enabled: Boolean(notifications.enabled),

@@ -4,6 +4,7 @@ namespace Config;
 
 use App\Application\Identity\Port\LoginAttemptLimiter;
 use App\Application\AppShell\GetAppShellContext;
+use App\Application\Platform\GetPlatformModuleCatalog;
 use App\Application\Dashboard\GetMaintenanceDashboard;
 use App\Application\Dashboard\GetGlobalDashboard;
 use App\Application\Importations\CancelImportHandler;
@@ -595,7 +596,17 @@ class Services extends BaseService
 
         return new AppShellPayload(
             new GetAppShellContext(new CodeIgniterAppShellReadModel(db_connect())),
+            static::platformModuleCatalog(),
         );
+    }
+
+    public static function platformModuleCatalog(bool $getShared = true): GetPlatformModuleCatalog
+    {
+        if ($getShared) {
+            return static::getSharedInstance('platformModuleCatalog');
+        }
+
+        return new GetPlatformModuleCatalog();
     }
 
     public static function maintenanceDashboard(bool $getShared = true): GetMaintenanceDashboard

@@ -1,8 +1,20 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeDashboardPayload } from '../src/adapters/dashboardPayload.js'
+import { normalizeAppShellPayload, normalizeDashboardPayload } from '../src/adapters/dashboardPayload.js'
 import { dashboardPayload } from './fixtures.js'
 
 describe('normalizeDashboardPayload', () => {
+  it('keeps the backend-provided portal return URL in the shared shell', () => {
+    const shell = normalizeAppShellPayload({ homeUrl: '/inicio' })
+
+    expect(shell.homeUrl).toBe('/inicio')
+  })
+
+  it('rejects an unsafe portal return URL', () => {
+    const shell = normalizeAppShellPayload({ homeUrl: 'javascript:alert(1)' })
+
+    expect(shell.homeUrl).toBe('#')
+  })
+
   it('adapta el modelo de lectura autorizado a la vista', () => {
     const dashboard = normalizeDashboardPayload(dashboardPayload)
 

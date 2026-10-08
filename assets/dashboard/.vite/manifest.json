@@ -1,17 +1,17 @@
 {
-  "_admin-DpjlrDfL.js": {
-    "file": "assets/admin-DpjlrDfL.js",
+  "_admin-Cr_5VRGD.js": {
+    "file": "assets/admin-Cr_5VRGD.js",
     "name": "admin",
     "imports": [
-      "_vendor-CwvpBVES.js"
+      "_vendor-fE_7IgYW.js"
     ]
   },
-  "_chatbot-BaJpOLDY.js": {
-    "file": "assets/chatbot-BaJpOLDY.js",
+  "_chatbot-BBCSJxwV.js": {
+    "file": "assets/chatbot-BBCSJxwV.js",
     "name": "chatbot",
     "isDynamicEntry": true,
     "imports": [
-      "_vendor-CwvpBVES.js"
+      "_vendor-fE_7IgYW.js"
     ],
     "css": [
       "assets/chatbot-p1890OXW.css"
@@ -21,34 +21,34 @@
     "file": "assets/chatbot-p1890OXW.css",
     "src": "_chatbot-p1890OXW.css"
   },
-  "_reports-Dq2f_I2i.js": {
-    "file": "assets/reports-Dq2f_I2i.js",
+  "_reports-uZGMC_4n.js": {
+    "file": "assets/reports-uZGMC_4n.js",
     "name": "reports",
     "imports": [
-      "_admin-DpjlrDfL.js",
-      "_vendor-CwvpBVES.js"
+      "_admin-Cr_5VRGD.js",
+      "_vendor-fE_7IgYW.js"
     ]
   },
-  "_vendor-CwvpBVES.js": {
-    "file": "assets/vendor-CwvpBVES.js",
+  "_vendor-fE_7IgYW.js": {
+    "file": "assets/vendor-fE_7IgYW.js",
     "name": "vendor"
   },
   "src/main.js": {
-    "file": "assets/main-D88vwlCA.js",
+    "file": "assets/main-BmY8dXQX.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
     "imports": [
-      "_vendor-CwvpBVES.js",
-      "_chatbot-BaJpOLDY.js",
-      "_admin-DpjlrDfL.js",
-      "_reports-Dq2f_I2i.js"
+      "_vendor-fE_7IgYW.js",
+      "_chatbot-BBCSJxwV.js",
+      "_admin-Cr_5VRGD.js",
+      "_reports-uZGMC_4n.js"
     ],
     "dynamicImports": [
-      "_chatbot-BaJpOLDY.js"
+      "_chatbot-BBCSJxwV.js"
     ],
     "css": [
-      "assets/main-ca2p6jOH.css"
+      "assets/main--jBkDWVR.css"
     ]
   }
 }
