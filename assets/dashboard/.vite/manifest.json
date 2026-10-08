@@ -1,17 +1,17 @@
 {
-  "_admin-DpjlrDfL.js": {
-    "file": "assets/admin-DpjlrDfL.js",
+  "_admin-CkpPtPnA.js": {
+    "file": "assets/admin-CkpPtPnA.js",
     "name": "admin",
     "imports": [
-      "_vendor-CwvpBVES.js"
+      "_vendor-D2L52kpJ.js"
     ]
   },
-  "_chatbot-BaJpOLDY.js": {
-    "file": "assets/chatbot-BaJpOLDY.js",
+  "_chatbot-BQuC3s8_.js": {
+    "file": "assets/chatbot-BQuC3s8_.js",
     "name": "chatbot",
     "isDynamicEntry": true,
     "imports": [
-      "_vendor-CwvpBVES.js"
+      "_vendor-D2L52kpJ.js"
     ],
     "css": [
       "assets/chatbot-p1890OXW.css"
@@ -21,34 +21,93 @@
     "file": "assets/chatbot-p1890OXW.css",
     "src": "_chatbot-p1890OXW.css"
   },
-  "_reports-Dq2f_I2i.js": {
-    "file": "assets/reports-Dq2f_I2i.js",
+  "_reports-DZVYuH8_.js": {
+    "file": "assets/reports-DZVYuH8_.js",
     "name": "reports",
     "imports": [
-      "_admin-DpjlrDfL.js",
-      "_vendor-CwvpBVES.js"
+      "_admin-CkpPtPnA.js",
+      "_vendor-D2L52kpJ.js"
     ]
   },
-  "_vendor-CwvpBVES.js": {
-    "file": "assets/vendor-CwvpBVES.js",
+  "_vendor-D2L52kpJ.js": {
+    "file": "assets/vendor-D2L52kpJ.js",
     "name": "vendor"
   },
+  "node_modules/gsap/index.js": {
+    "file": "assets/gsap-C-UGJFrr.js",
+    "name": "gsap",
+    "src": "node_modules/gsap/index.js",
+    "isDynamicEntry": true
+  },
+  "src/assets/platform/ai-card.jpg": {
+    "file": "assets/ai-card-Bif2XNNK.jpg",
+    "src": "src/assets/platform/ai-card.jpg"
+  },
+  "src/assets/platform/automations-card.jpg": {
+    "file": "assets/automations-card-RiUiw6K5.jpg",
+    "src": "src/assets/platform/automations-card.jpg"
+  },
+  "src/assets/platform/billing-card.jpg": {
+    "file": "assets/billing-card-CjMAOhC3.jpg",
+    "src": "src/assets/platform/billing-card.jpg"
+  },
+  "src/assets/platform/fuel-card.jpg": {
+    "file": "assets/fuel-card-D9Zc01Ku.jpg",
+    "src": "src/assets/platform/fuel-card.jpg"
+  },
+  "src/assets/platform/maintenance-card.jpg": {
+    "file": "assets/maintenance-card-uYK8y_5B.jpg",
+    "src": "src/assets/platform/maintenance-card.jpg"
+  },
+  "src/assets/platform/management-card.jpg": {
+    "file": "assets/management-card-0ljX2I3p.jpg",
+    "src": "src/assets/platform/management-card.jpg"
+  },
+  "src/assets/platform/portal-hero.jpg": {
+    "file": "assets/portal-hero-Dd-Ff3YR.jpg",
+    "src": "src/assets/platform/portal-hero.jpg"
+  },
+  "src/assets/platform/reports-card.jpg": {
+    "file": "assets/reports-card-C18Twu5b.jpg",
+    "src": "src/assets/platform/reports-card.jpg"
+  },
+  "src/assets/platform/tires-card.jpg": {
+    "file": "assets/tires-card-CsQWVLPl.jpg",
+    "src": "src/assets/platform/tires-card.jpg"
+  },
+  "src/assets/platform/trips-card.jpg": {
+    "file": "assets/trips-card-qkUzH-aR.jpg",
+    "src": "src/assets/platform/trips-card.jpg"
+  },
   "src/main.js": {
-    "file": "assets/main-D88vwlCA.js",
+    "file": "assets/main-DLRchJmB.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
     "imports": [
-      "_vendor-CwvpBVES.js",
-      "_chatbot-BaJpOLDY.js",
-      "_admin-DpjlrDfL.js",
-      "_reports-Dq2f_I2i.js"
+      "_vendor-D2L52kpJ.js",
+      "_chatbot-BQuC3s8_.js",
+      "_admin-CkpPtPnA.js",
+      "_reports-DZVYuH8_.js"
     ],
     "dynamicImports": [
-      "_chatbot-BaJpOLDY.js"
+      "_chatbot-BQuC3s8_.js",
+      "node_modules/gsap/index.js"
     ],
     "css": [
-      "assets/main-ca2p6jOH.css"
+      "assets/main-CBFGzTC4.css"
+    ],
+    "assets": [
+      "assets/portal-hero-Dd-Ff3YR.jpg",
+      "assets/maintenance-card-uYK8y_5B.jpg",
+      "assets/trips-card-qkUzH-aR.jpg",
+      "assets/fuel-card-D9Zc01Ku.jpg",
+      "assets/tires-card-CsQWVLPl.jpg",
+      "assets/billing-card-CjMAOhC3.jpg",
+      "assets/management-card-0ljX2I3p.jpg",
+      "assets/reports-card-C18Twu5b.jpg",
+      "assets/automations-card-RiUiw6K5.jpg",
+      "assets/ai-card-Bif2XNNK.jpg"
     ]
   }
 }

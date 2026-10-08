@@ -26,7 +26,7 @@ header('Cache-Control: no-store, must-revalidate');
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta id="theme-color" name="theme-color" content="#f7f9fc">
     <meta name="color-scheme" content="light dark">
-    <link rel="icon" type="image/svg+xml" href="<?= esc(base_url('assets/brand/logo-mark.svg'), 'attr') ?>">
+    <link rel="icon" type="image/png" href="<?= esc(base_url('assets/brand/vogel-consultoria.png'), 'attr') ?>">
     <link rel="manifest" href="<?= esc(base_url('manifest.webmanifest'), 'attr') ?>">
     <meta name="csrf-token" content="<?= esc(csrf_hash(), 'attr') ?>">
     <title><?= esc($pageTitle ?? 'Mantenimiento') ?></title>

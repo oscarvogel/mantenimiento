@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Application\AppShell\GetAppShellContext;
 use App\Application\AppShell\Port\AppShellReadModel;
 use App\Application\Identity\ActorContext;
+use App\Application\Platform\GetPlatformModuleCatalog;
 use App\Presentation\AppShellPayload;
 use PHPUnit\Framework\TestCase;
 
@@ -39,8 +40,8 @@ final class GetAppShellContextTest extends TestCase
         $withPlans = new ActorContext(7, 5, false, false, ['Responsable'], ['planes.ver'], [9]);
         $withoutPlans = new ActorContext(8, 5, false, false, ['Consulta'], ['equipos.ver'], [9]);
 
-        $visible = (new AppShellPayload($context))->for($withPlans, 'plans');
-        $hidden = (new AppShellPayload($context))->for($withoutPlans, 'equipment');
+        $visible = (new AppShellPayload($context, new GetPlatformModuleCatalog()))->for($withPlans, 'plans');
+        $hidden = (new AppShellPayload($context, new GetPlatformModuleCatalog()))->for($withoutPlans, 'equipment');
 
         $plansItem = array_values(array_filter(
             $visible['navigation'],
@@ -59,7 +60,7 @@ final class GetAppShellContextTest extends TestCase
         $context = new GetAppShellContext(new AppShellReadModelFake());
         $actor = new ActorContext(7, 5, false, false, ['Responsable'], ['planes.ver'], [9]);
 
-        $payload = (new AppShellPayload($context))->for($actor, 'services');
+        $payload = (new AppShellPayload($context, new GetPlatformModuleCatalog()))->for($actor, 'services');
         $servicesItem = array_values(array_filter(
             $payload['navigation'],
             static fn (array $item): bool => $item['key'] === 'services',
@@ -77,8 +78,8 @@ final class GetAppShellContextTest extends TestCase
         $reader = new ActorContext(7, 5, false, false, ['Operador'], ['lecturas.cargar'], [9]);
         $equipmentOnly = new ActorContext(8, 5, false, false, ['Consulta'], ['equipos.ver'], [9]);
 
-        $visible = (new AppShellPayload($context))->for($reader, 'quick-readings');
-        $hidden = (new AppShellPayload($context))->for($equipmentOnly, 'equipment');
+        $visible = (new AppShellPayload($context, new GetPlatformModuleCatalog()))->for($reader, 'quick-readings');
+        $hidden = (new AppShellPayload($context, new GetPlatformModuleCatalog()))->for($equipmentOnly, 'equipment');
 
         $readingItem = array_values(array_filter(
             $visible['navigation'],
@@ -101,7 +102,7 @@ final class GetAppShellContextTest extends TestCase
         $context = new GetAppShellContext(new AppShellReadModelFake());
         $actor = new ActorContext(7, 5, false, false, ['Responsable'], ['equipos.editar'], [9]);
 
-        $payload = (new AppShellPayload($context))->for($actor, 'masters-equipment');
+        $payload = (new AppShellPayload($context, new GetPlatformModuleCatalog()))->for($actor, 'masters-equipment');
         $keys = array_column($payload['navigation'], 'key');
 
         self::assertCount(1, array_keys($keys, 'masters-equipment', true), 'No puede haber dos entradas al centro de Maestros.');
@@ -132,11 +133,95 @@ final class GetAppShellContextTest extends TestCase
         $context = new GetAppShellContext(new AppShellReadModelFake());
         $actor = new ActorContext(9, 5, false, false, ['RRHH'], ['empleados.editar'], [9]);
 
-        $payload = (new AppShellPayload($context))->for($actor, 'masters-expirations');
+        $payload = (new AppShellPayload($context, new GetPlatformModuleCatalog()))->for($actor, 'masters-expirations');
         $keys = array_column($payload['navigation'], 'key');
 
         self::assertContains('masters-expirations', $keys, 'Sin equipos.editar, esta es la unica via a Tipos de vencimiento.');
         self::assertNotContains('masters-equipment', $keys, 'El centro de Maestros exige equipos.editar.');
+    }
+
+    public function testMaintenanceUsersReceiveTheOptionalPortalReturnLink(): void
+    {
+        $context = new GetAppShellContext(new AppShellReadModelFake());
+        $actor = new ActorContext(7, 5, false, false, ['Consulta'], ['planes.ver'], [9]);
+
+        $payload = (new AppShellPayload($context, new GetPlatformModuleCatalog()))->for($actor, 'plans');
+
+        self::assertStringEndsWith('/inicio', $payload['homeUrl']);
+    }
+
+    public function testCommandCenterGetsPlatformNavigationInsteadOfMaintenanceNavigation(): void
+    {
+        $context = new GetAppShellContext(new AppShellReadModelFake());
+        $actor = new ActorContext(7, 5, false, false, ['Consulta'], ['equipos.ver'], [9]);
+
+        $payload = (new AppShellPayload($context, new GetPlatformModuleCatalog()))->for($actor, 'command-center');
+
+        self::assertSame(
+            ['platform-home', 'module-maintenance', 'module-trips', 'module-fuel', 'module-tires', 'module-billing', 'module-management', 'module-reports', 'module-automations', 'module-ai'],
+            array_column($payload['navigation'], 'key'),
+        );
+        self::assertTrue($payload['navigation'][0]['active']);
+        self::assertFalse($payload['navigation'][1]['disabled']);
+        self::assertStringEndsWith('/dashboard', $payload['navigation'][1]['href']);
+        self::assertTrue($payload['navigation'][2]['disabled']);
+        self::assertNull($payload['navigation'][2]['href']);
+        self::assertSame('Sin implementación aún', $payload['navigation'][2]['status']);
+        self::assertNull($payload['navigation'][2]['badge']);
+        self::assertNull($payload['homeUrl']);
+    }
+
+    public function testUserWithoutMaintenanceEntryPermissionDoesNotGetModuleOrReturnAccess(): void
+    {
+        $context = new GetAppShellContext(new AppShellReadModelFake());
+        $actor = new ActorContext(10, 5, false, false, ['Administrador'], ['sucursales.ver'], [9]);
+
+        $portal = (new AppShellPayload($context, new GetPlatformModuleCatalog()))->for($actor, 'command-center');
+        $maintenancePage = (new AppShellPayload($context, new GetPlatformModuleCatalog()))->for($actor, 'plans');
+
+        self::assertTrue($portal['navigation'][1]['disabled']);
+        self::assertNull($portal['navigation'][1]['href']);
+        self::assertNull($maintenancePage['homeUrl']);
+    }
+
+    public function testPortalReturnLinkIsNotGrantedToSuperadministratorAsTenantAccess(): void
+    {
+        $context = new GetAppShellContext(new AppShellReadModelFake());
+        $actor = new ActorContext(1, null, true, true, ['Superadministrador'], [], []);
+
+        $payload = (new AppShellPayload($context, new GetPlatformModuleCatalog()))->for($actor, 'superadmin');
+
+        self::assertNull($payload['homeUrl']);
+    }
+
+    public function testMaintenanceShellGetsServerAuthorizedPlatformQuickNavigation(): void
+    {
+        $context = new GetAppShellContext(new AppShellReadModelFake());
+        $actor = new ActorContext(7, 5, false, false, ['Responsable de mantenimiento'], ['equipos.ver', 'planes.ver'], [9]);
+
+        $payload = (new AppShellPayload($context, new GetPlatformModuleCatalog()))->for($actor, 'dashboard');
+
+        self::assertSame(
+            ['platform-home', 'module-maintenance', 'module-trips', 'module-fuel', 'module-tires', 'module-billing', 'module-management', 'module-reports', 'module-automations', 'module-ai'],
+            array_column($payload['moduleNavigation'], 'key'),
+        );
+        self::assertFalse($payload['moduleNavigation'][0]['active']);
+        self::assertTrue($payload['moduleNavigation'][1]['active']);
+        self::assertStringEndsWith('/dashboard', $payload['moduleNavigation'][1]['href']);
+        self::assertTrue($payload['moduleNavigation'][2]['disabled']);
+        self::assertNull($payload['moduleNavigation'][2]['href']);
+        self::assertSame('Sin implementación aún', $payload['moduleNavigation'][2]['status']);
+    }
+
+    public function testQuickNavigationDoesNotGrantMaintenanceToAnActorWithoutAnEntryPermission(): void
+    {
+        $context = new GetAppShellContext(new AppShellReadModelFake());
+        $actor = new ActorContext(10, 5, false, false, ['Administrador'], ['sucursales.ver'], [9]);
+
+        $payload = (new AppShellPayload($context, new GetPlatformModuleCatalog()))->for($actor, 'dashboard');
+
+        self::assertTrue($payload['moduleNavigation'][1]['disabled']);
+        self::assertNull($payload['moduleNavigation'][1]['href']);
     }
 }
 

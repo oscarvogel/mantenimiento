@@ -57,6 +57,52 @@
   box-shadow: 6px 0 20px rgb(var(--shadow-rgb) / 0.08);
 }
 
+.ui-sidebar-surface.platform-sidebar {
+  --sidebar-surface-rgb: var(--brand-950);
+  color: rgb(var(--brand-100));
+  background-color: rgb(var(--brand-950));
+}
+
+html[data-theme='dark'] .ui-sidebar-surface.platform-sidebar {
+  color: rgb(var(--brand-100));
+  background-color: rgb(var(--brand-950));
+}
+
+.platform-brand-row {
+  align-items: center;
+}
+
+.platform-sidebar .platform-nav-item {
+  border: 1px solid transparent;
+  border-radius: 0.7rem;
+}
+
+.platform-sidebar .platform-nav-active {
+  border-color: rgb(var(--brand-400) / 0.5);
+  background: linear-gradient(110deg, rgb(var(--primary)), rgb(var(--brand-700)));
+  color: white;
+  box-shadow: 0 8px 20px rgb(0 0 0 / 0.18);
+}
+
+.platform-sidebar .platform-nav-disabled {
+  color: rgb(var(--brand-200) / 0.78);
+}
+
+.platform-sidebar .platform-nav-status {
+  color: rgb(var(--brand-300) / 0.78);
+}
+
+.platform-sidebar .platform-nav-badge {
+  flex: none;
+  white-space: nowrap;
+  background: rgb(255 255 255 / 0.1);
+  color: rgb(var(--brand-100));
+}
+
+.platform-sidebar-note {
+  background: linear-gradient(130deg, rgb(var(--brand-800) / 0.92), rgb(var(--brand-900) / 0.82));
+}
+
 html[data-theme='dark'] .ui-sidebar-surface {
   color: rgb(var(--ink-inverse));
   background-color: rgb(var(--surface-inverse));

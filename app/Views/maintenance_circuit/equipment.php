@@ -9,7 +9,7 @@
 <body class="bg-light">
     <nav class="navbar navbar-dark bg-dark">
         <div class="container d-flex gap-2">
-            <a class="navbar-brand" href="<?= base_url('dashboard') ?>">Mantenimiento</a>
+            <?= view('partials/brand_link', ['href' => base_url('dashboard'), 'label' => 'Mantenimiento']) ?>
             <a class="btn btn-outline-light btn-sm ms-auto" href="<?= base_url('mantenimiento/equipos') ?>">Listado</a>
             <a class="btn btn-outline-light btn-sm" href="<?= base_url('mantenimiento/equipos/' . $equipment['id'] . '/qr.svg') ?>" target="_blank" rel="noopener">Ver QR</a>
             <a class="btn btn-outline-light btn-sm" href="<?= base_url('mantenimiento') ?>">Circuito</a>

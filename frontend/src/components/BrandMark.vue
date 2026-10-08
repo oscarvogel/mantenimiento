@@ -1,4 +1,6 @@
 <script setup>
+import BrandLogo from './BrandLogo.vue'
+
 defineProps({
   compact: {
     type: Boolean,
@@ -6,20 +8,11 @@ defineProps({
   },
 })
 
-const baseUrl = document.body?.dataset?.baseUrl ?? '/'
-const logoUrl = `${baseUrl}assets/brand/logo-mark.svg`
 </script>
 
 <template>
   <div class="flex min-w-0 items-center gap-3">
-    <img
-      :src="logoUrl"
-      alt=""
-      class="size-10 shrink-0 rounded-lg"
-      width="40"
-      height="40"
-      aria-hidden="true"
-    />
+    <BrandLogo size="sidebar" />
     <div v-if="!compact" class="min-w-0">
       <p class="truncate text-base font-bold tracking-tight text-ink">Mantenimiento</p>
       <p class="truncate text-xs font-medium text-ink-muted">Gestión de flota</p>

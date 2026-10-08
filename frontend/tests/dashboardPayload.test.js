@@ -1,8 +1,71 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeDashboardPayload } from '../src/adapters/dashboardPayload.js'
+import { normalizeAppShellPayload, normalizeDashboardPayload } from '../src/adapters/dashboardPayload.js'
 import { dashboardPayload } from './fixtures.js'
 
 describe('normalizeDashboardPayload', () => {
+  it('keeps the backend-provided portal return URL in the shared shell', () => {
+    const shell = normalizeAppShellPayload({ homeUrl: '/inicio' })
+
+    expect(shell.homeUrl).toBe('/inicio')
+  })
+
+  it('rejects an unsafe portal return URL', () => {
+    const shell = normalizeAppShellPayload({ homeUrl: 'javascript:alert(1)' })
+
+    expect(shell.homeUrl).toBe('#')
+  })
+
+  it('preserves the status of disabled platform modules for assistive labels', () => {
+    const shell = normalizeAppShellPayload({
+      navigation: [{
+        key: 'module-trips',
+        label: 'Viajes',
+        icon: 'module-truck',
+        href: null,
+        disabled: true,
+        status: 'Sin implementación aún',
+      }],
+    })
+
+    expect(shell.navigation[0].disabled).toBe(true)
+    expect(shell.navigation[0].status).toBe('Sin implementación aún')
+  })
+
+  it('normalizes the module quick nav without assigning a route to future modules', () => {
+    const shell = normalizeAppShellPayload({
+      moduleNavigation: [
+        { key: 'platform-home', label: 'Inicio', href: '/inicio' },
+        { key: 'module-maintenance', label: 'Mantenimiento', href: '/dashboard', active: true },
+        { key: 'module-trips', label: 'Viajes', href: '/viajes', disabled: true, status: 'Sin implementación aún' },
+      ],
+    })
+
+    expect(shell.moduleNavigation[0].href).toBe('/inicio')
+    expect(shell.moduleNavigation[1].href).toBe('/dashboard')
+    expect(shell.moduleNavigation[1].active).toBe(true)
+    expect(shell.moduleNavigation[2].href).toBe(null)
+    expect(shell.moduleNavigation[2].status).toBe('Sin implementación aún')
+  })
+
+  it('normalizes only known operational chart states and never accepts negative counts', () => {
+    const dashboard = normalizeDashboardPayload({
+      charts: {
+        preventiveByState: [
+          { status: 'VENCIDO', label: 'Vencidos', count: 3 },
+          { status: 'FICTICIO', label: 'No válido', count: 999 },
+        ],
+        openOrdersByState: [{ status: 'EN_PROCESO', label: 'En proceso', count: -2 }],
+      },
+    })
+
+    expect(dashboard.charts.preventiveByState).toEqual([
+      { status: 'VENCIDO', label: 'Vencidos', count: 3 },
+    ])
+    expect(dashboard.charts.openOrdersByState).toEqual([
+      { status: 'EN_PROCESO', label: 'En proceso', count: 0 },
+    ])
+  })
+
   it('adapta el modelo de lectura autorizado a la vista', () => {
     const dashboard = normalizeDashboardPayload(dashboardPayload)
 

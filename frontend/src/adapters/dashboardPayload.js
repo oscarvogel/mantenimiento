@@ -64,6 +64,7 @@ const normalizeNavigation = (navigation) => {
       icon: asText(item.icon, 'dashboard'),
       active: Boolean(item.active),
       disabled: Boolean(item.disabled),
+      status: asText(item.status),
       badge: item.badge === null || item.badge === undefined ? '' : asText(String(item.badge)),
     }))
 }
@@ -108,6 +109,23 @@ const normalizeReadingAttention = (items) => {
         : asCount(item.daysSinceReading),
       detail: asText(item.detail, 'Revisar información del equipo'),
       detailUrl: item.detailUrl ? asUrl(item.detailUrl, '#') : null,
+    }))
+}
+
+const chartStatuses = new Set([
+  'AL_DIA', 'PROXIMO', 'VENCIDO', 'SIN_DATOS', 'BORRADOR', 'EMITIDA',
+  'EN_PROCESO', 'EN_ESPERA_REPUESTOS', 'ESPERA_REPUESTOS',
+])
+
+const normalizeChartRows = (items) => {
+  if (!Array.isArray(items)) return []
+
+  return items
+    .filter((item) => item && typeof item === 'object' && chartStatuses.has(item.status))
+    .map((item) => ({
+      status: item.status,
+      label: asText(item.label, item.status),
+      count: asCount(item.count),
     }))
 }
 
@@ -163,6 +181,11 @@ export function normalizeAppShellPayload(payload) {
               : `${branches.length} sucursales`,
     },
     navigation,
+    moduleNavigation: normalizeNavigation(source.moduleNavigation).map((item) => ({
+      ...item,
+      href: item.disabled ? null : item.href,
+    })),
+    homeUrl: source.homeUrl ? asUrl(source.homeUrl, '#') : null,
     notifications: notifications
       ? {
           enabled: Boolean(notifications.enabled),
@@ -288,6 +311,7 @@ export function normalizeDashboardPayload(payload) {
   const maintenanceUrl = findNavigationUrl(shell.navigation, ['plan', 'preventiv', 'mantenimiento', 'servicio', 'maintenance'])
   const sourceLinks = source.links && typeof source.links === 'object' ? source.links : {}
   const financial = source.financial && typeof source.financial === 'object' ? source.financial : {}
+  const charts = source.charts && typeof source.charts === 'object' ? source.charts : {}
 
   return {
     ...shell,
@@ -333,6 +357,10 @@ export function normalizeDashboardPayload(payload) {
             totalArs: asMoney(item?.totalArs),
           }))
         : [],
+    },
+    charts: {
+      preventiveByState: normalizeChartRows(charts.preventiveByState),
+      openOrdersByState: normalizeChartRows(charts.openOrdersByState),
     },
     global: normalizeGlobalDashboard(source.global),
     readingAttention: normalizeReadingAttention(source.readingAttention),

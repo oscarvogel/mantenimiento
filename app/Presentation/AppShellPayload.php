@@ -6,26 +6,37 @@ namespace App\Presentation;
 
 use App\Application\AppShell\GetAppShellContext;
 use App\Application\Identity\ActorContext;
+use App\Application\Platform\GetPlatformModuleCatalog;
 
 final readonly class AppShellPayload
 {
-    public function __construct(private GetAppShellContext $context)
-    {
+    public function __construct(
+        private GetAppShellContext $context,
+        private GetPlatformModuleCatalog $platformModules,
+    ) {
     }
 
     /** @return array<string,mixed> */
     public function for(ActorContext $actor, string $active): array
     {
         $payload = $this->context->execute($actor);
-        $navigation = [
-            $this->item('dashboard', 'Dashboard', 'dashboard', 'dashboard', $active),
-        ];
+        $availableModules = $this->platformModules->execute($actor);
+        $canEnterMaintenance = ($availableModules[0]['landingPath'] ?? null) !== null;
+        $payload['homeUrl'] = $active !== 'command-center' && $availableModules !== []
+            && $canEnterMaintenance ? base_url('inicio')
+            : null;
+        $navigation = $active === 'command-center'
+            ? $this->platformNavigation($actor, $availableModules)
+            : [$this->item('dashboard', 'Dashboard', 'dashboard', 'dashboard', $active)];
+        $payload['moduleNavigation'] = $active === 'command-center'
+            ? []
+            : $this->platformNavigation($actor, $availableModules, 'maintenance');
 
-        if ($actor->isSuperAdmin()) {
+        if ($active !== 'command-center' && $actor->isSuperAdmin()) {
             $navigation[] = $this->item('superadmin', 'Administración global', 'superadmin', 'building', $active);
             $navigation[] = $this->item('notification-settings', 'Configuración de notificaciones', 'superadmin/configuracion/notificaciones', 'notifications', $active);
             $navigation[] = $this->item('chatbot-audit', 'Auditoría del chatbot', 'superadmin?section=chat-audit', 'audit', $active);
-        } else {
+        } elseif ($active !== 'command-center') {
             if ($actor->hasPermission('equipos.ver')) {
                 $navigation[] = $this->item('equipment', 'Equipos', 'mantenimiento/equipos', 'truck', $active);
             }
@@ -125,5 +136,36 @@ final readonly class AppShellPayload
         }
 
         return false;
+    }
+
+    /** @param list<array{key:string,label:string,description:string,icon:string,landingPath:?string,status:string,state:string}> $modules
+     *  @return list<array<string,mixed>>
+     */
+    private function platformNavigation(ActorContext $actor, array $modules, string $activeModule = 'home'): array
+    {
+        $navigation = [[
+            ...$this->item('platform-home', 'Inicio', 'inicio', 'platform-home', ''),
+            'active' => $activeModule === 'home',
+        ]];
+
+        foreach ($modules as $module) {
+            $canEnter = $module['landingPath'] !== null;
+            $navigation[] = [
+                'key' => 'module-' . $module['key'],
+                'label' => $module['label'],
+                'href' => $canEnter ? base_url($module['landingPath']) : null,
+                'icon' => 'module-' . $module['icon'],
+                'active' => $activeModule === $module['key'] && $canEnter,
+                'disabled' => ! $canEnter,
+                'status' => $module['status'],
+                'badge' => null,
+            ];
+        }
+
+        if ($actor->isSuperAdmin()) {
+            $navigation[] = $this->item('platform-admin', 'Administración global', 'superadmin', 'building', '');
+        }
+
+        return $navigation;
     }
 }

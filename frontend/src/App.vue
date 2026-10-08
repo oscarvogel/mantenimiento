@@ -18,6 +18,7 @@ import GlobalDashboard from './components/GlobalDashboard.vue'
 import MaintenanceStatus from './components/MaintenanceStatus.vue'
 import MetricCard from './components/MetricCard.vue'
 import UpcomingMaintenance from './components/UpcomingMaintenance.vue'
+import OperationalDashboardCharts from './components/OperationalDashboardCharts.vue'
 
 const props = defineProps({
   dashboard: { type: Object, required: true },
@@ -43,6 +44,8 @@ const shell = computed(() => ({
   company: props.dashboard.company,
   navigation: props.dashboard.navigation,
   notifications: props.dashboard.notifications,
+  homeUrl: props.dashboard.homeUrl,
+  moduleNavigation: props.dashboard.moduleNavigation,
   logout: props.dashboard.logout,
 }))
 
@@ -231,6 +234,11 @@ const scrollCta = computed(() => {
           <MetricCard label="Vencidos" :value="dashboard.metrics.maintenanceOverdue" tone="overdue" :href="dashboard.links.maintenanceOverdue" link-label="Atender vencidos" />
           <MetricCard label="OT abiertas" :value="dashboard.metrics.openOrders" tone="orders" :href="dashboard.links.orders" link-label="Ver órdenes" />
         </section>
+
+        <OperationalDashboardCharts
+          :preventive-by-state="dashboard.charts.preventiveByState"
+          :open-orders-by-state="dashboard.charts.openOrdersByState"
+        />
 
         <!-- Bloque C: contenido operativo 70/30 -->
         <div class="mt-6 grid items-start gap-6 xl:grid-cols-[minmax(0,2.1fr)_minmax(18rem,0.9fr)]">

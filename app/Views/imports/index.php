@@ -2,7 +2,7 @@
 <html lang="es">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Importaciones - Mantenimiento</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"></head>
 <body class="bg-light">
-<nav class="navbar navbar-dark bg-dark"><div class="container d-flex gap-2"><a class="navbar-brand" href="<?= base_url('dashboard') ?>">Mantenimiento</a><a class="btn btn-outline-light btn-sm ms-auto" href="<?= base_url('mantenimiento/equipos') ?>">Equipos</a><form method="post" action="<?= base_url('logout') ?>" class="mb-0"><?= csrf_field() ?><button class="btn btn-outline-light btn-sm">Cerrar sesión</button></form></div></nav>
+<nav class="navbar navbar-dark bg-dark"><div class="container d-flex gap-2"><?= view('partials/brand_link', ['href' => base_url('dashboard'), 'label' => 'Mantenimiento']) ?><a class="btn btn-outline-light btn-sm ms-auto" href="<?= base_url('mantenimiento/equipos') ?>">Equipos</a><form method="post" action="<?= base_url('logout') ?>" class="mb-0"><?= csrf_field() ?><button class="btn btn-outline-light btn-sm">Cerrar sesión</button></form></div></nav>
 <main class="container py-4">
     <header class="mb-4"><p class="text-primary fw-semibold mb-1">Anti-Corruption Layer</p><h1 class="h3">Importaciones</h1><p class="text-muted">Cargá un CSV/XLSX, revisá los errores por fila y confirmá explícitamente.</p></header>
     <?php if (session()->getFlashdata('success')): ?><div class="alert alert-success" role="status"><?= esc(session()->getFlashdata('success')) ?></div><?php endif; ?>

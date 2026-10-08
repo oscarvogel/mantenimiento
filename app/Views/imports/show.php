@@ -2,7 +2,7 @@
 <html lang="es">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Vista previa de importación - Mantenimiento</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"></head>
 <body class="bg-light">
-<nav class="navbar navbar-dark bg-dark"><div class="container"><a class="navbar-brand" href="<?= base_url('dashboard') ?>">Mantenimiento</a><a class="btn btn-outline-light btn-sm ms-auto" href="<?= base_url('mantenimiento/importaciones') ?>">Volver</a></div></nav>
+<nav class="navbar navbar-dark bg-dark"><div class="container"><?= view('partials/brand_link', ['href' => base_url('dashboard'), 'label' => 'Mantenimiento']) ?><a class="btn btn-outline-light btn-sm ms-auto" href="<?= base_url('mantenimiento/importaciones') ?>">Volver</a></div></nav>
 <main class="container py-4">
     <?php $header = $preview->header; ?>
     <header class="mb-4"><p class="text-primary fw-semibold mb-1">Vista previa #<?= esc($header['id']) ?></p><h1 class="h3 mb-1"><?= esc($header['archivo_original']) ?></h1><p class="text-muted"><?= esc($header['tipo']) ?> · <?= esc($header['estado']) ?> · <?= esc($header['resumen'] ?? '') ?></p></header>

@@ -77,7 +77,7 @@ describe('assets/dashboard versionado', () => {
   it('mantiene los nombres de archivo con hash de contenido de Vite', () => {
     for (const file of committedBundleFiles()) {
       expect(file, `no parece un bundle de Vite: ${file}`).toMatch(
-        /^assets\/[A-Za-z0-9_.-]+-[A-Za-z0-9_-]{8}\.(js|css)$/,
+        /^assets\/[A-Za-z0-9_.-]+-[A-Za-z0-9_-]{8}\.(js|css|jpe?g|png|webp|svg)$/i,
       )
     }
   })

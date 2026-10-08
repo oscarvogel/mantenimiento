@@ -8,6 +8,7 @@ use App\Application\Dashboard\Port\DashboardDuePlans;
 use App\Application\Dashboard\Port\DashboardFinancialSummary;
 use App\Application\Dashboard\Port\DashboardOverview;
 use App\Application\Dashboard\Port\DashboardClock;
+use App\Application\Dashboard\Port\DashboardOpenOrderStates;
 use App\Application\Identity\ActorContext;
 use App\Application\PreventiveMaintenance\ResumenProximoPlan;
 use App\Domain\PreventiveMaintenance\CriterioPlan;
@@ -24,6 +25,7 @@ final class GetMaintenanceDashboard
         private readonly DashboardDuePlans $duePlans,
         private readonly DashboardFinancialSummary $financialSummary,
         private readonly DashboardClock $clock,
+        private readonly DashboardOpenOrderStates $openOrderStates,
     ) {
     }
 
@@ -105,6 +107,14 @@ final class GetMaintenanceDashboard
         $preventiveCompliance = $preventiveTotal > 0
             ? (int) round(($statusCounts[EstadoPlan::AL_DIA->value] / $preventiveTotal) * 100)
             : null;
+        $charts = [
+            'preventiveByState' => $actor->hasPermission('planes.ver')
+                ? $this->preventiveChart($statusCounts)
+                : [],
+            'openOrdersByState' => $actor->hasPermission('ordenes.ver')
+                ? $this->openOrdersChart($this->openOrderStates->fetch($actor))
+                : [],
+        ];
 
         return [
             'company' => $overview['company'],
@@ -127,8 +137,57 @@ final class GetMaintenanceDashboard
             ],
             'readingAttention' => $readingControl['attention'],
             'upcomingMaintenance' => array_slice($maintenance, 0, 8),
+            'charts' => $charts,
             'financial' => $financial,
         ];
+    }
+
+    /** @param array<string,int> $statusCounts @return list<array{status:string,label:string,count:int}> */
+    private function preventiveChart(array $statusCounts): array
+    {
+        $labels = [
+            EstadoPlan::AL_DIA->value => 'Al día',
+            EstadoPlan::PROXIMO->value => 'Próximos',
+            EstadoPlan::VENCIDO->value => 'Vencidos',
+            EstadoPlan::SIN_DATOS->value => 'Sin datos',
+        ];
+        $chart = [];
+        foreach ([EstadoPlan::AL_DIA, EstadoPlan::PROXIMO, EstadoPlan::VENCIDO, EstadoPlan::SIN_DATOS] as $state) {
+            $chart[] = [
+                'status' => $state->value,
+                'label' => $labels[$state->value],
+                'count' => $statusCounts[$state->value] ?? 0,
+            ];
+        }
+
+        return $chart;
+    }
+
+    /** @param array<string,int> $states @return list<array{status:string,label:string,count:int}> */
+    private function openOrdersChart(array $states): array
+    {
+        $labels = [
+            'BORRADOR' => 'Borrador',
+            'EMITIDA' => 'Emitida',
+            'EN_PROCESO' => 'En proceso',
+            'EN_ESPERA_REPUESTOS' => 'En espera de repuestos',
+            'ESPERA_REPUESTOS' => 'En espera de repuestos',
+        ];
+
+        $chart = [];
+        foreach ($states as $status => $count) {
+            $status = (string) $status;
+            if ($status === '' || (int) $count <= 0) {
+                continue;
+            }
+            $chart[] = [
+                'status' => $status,
+                'label' => $labels[$status] ?? ucfirst(strtolower(str_replace('_', ' ', $status))),
+                'count' => (int) $count,
+            ];
+        }
+
+        return $chart;
     }
 
     /** @return array<string,mixed> */

@@ -4,6 +4,7 @@ namespace Config;
 
 use App\Application\Identity\Port\LoginAttemptLimiter;
 use App\Application\AppShell\GetAppShellContext;
+use App\Application\Platform\GetPlatformModuleCatalog;
 use App\Application\Dashboard\GetMaintenanceDashboard;
 use App\Application\Dashboard\GetGlobalDashboard;
 use App\Application\Importations\CancelImportHandler;
@@ -102,6 +103,7 @@ use App\Infrastructure\Notifications\SystemNotificationClock;
 use App\Infrastructure\Identity\CodeIgniterLoginAttemptLimiter;
 use App\Infrastructure\AppShell\CodeIgniterAppShellReadModel;
 use App\Infrastructure\Dashboard\CodeIgniterDashboardFinancialSummary;
+use App\Infrastructure\Dashboard\CodeIgniterDashboardOpenOrderStates;
 use App\Infrastructure\Dashboard\CodeIgniterGlobalDashboardReadModel;
 use App\Infrastructure\Dashboard\MaintenanceCircuitDashboardOverview;
 use App\Infrastructure\Dashboard\PreventiveDashboardDuePlans;
@@ -595,7 +597,17 @@ class Services extends BaseService
 
         return new AppShellPayload(
             new GetAppShellContext(new CodeIgniterAppShellReadModel(db_connect())),
+            static::platformModuleCatalog(),
         );
+    }
+
+    public static function platformModuleCatalog(bool $getShared = true): GetPlatformModuleCatalog
+    {
+        if ($getShared) {
+            return static::getSharedInstance('platformModuleCatalog');
+        }
+
+        return new GetPlatformModuleCatalog();
     }
 
     public static function maintenanceDashboard(bool $getShared = true): GetMaintenanceDashboard
@@ -609,6 +621,7 @@ class Services extends BaseService
             new PreventiveDashboardDuePlans(static::consultMaintenanceDue(false)),
             new CodeIgniterDashboardFinancialSummary(db_connect()),
             new SystemDashboardClock(),
+            new CodeIgniterDashboardOpenOrderStates(db_connect()),
         );
     }
 
