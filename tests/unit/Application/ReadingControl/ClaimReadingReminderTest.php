@@ -540,6 +540,16 @@ final class ClaimReadingReminderTest extends TestCase
         self::assertSame(10, (int) $resolved['equipo_id']);
     }
 
+    public function testManualClaimUsesSharedReminderMessageBuilder(): void
+    {
+        $source = file_get_contents(APPPATH . 'Application/ReadingControl/ClaimReadingReminder.php');
+
+        self::assertIsString($source);
+        self::assertStringContainsString('new ReadingReminderMessageBuilder()', $source);
+        self::assertStringNotContainsString('private function claimMessage', $source);
+        self::assertStringNotContainsString('Mirá el tablero del vehículo y escribí el número que marca.', $source);
+    }
+
     public function testMessageRequiresPhotoAndExplainsAiFlow(): void
     {
         $this->useCase()->execute($this->actor(), 10);
