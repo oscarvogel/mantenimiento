@@ -78,12 +78,16 @@ final class PublicEquipmentReadings extends BaseController
                 'confidence' => $analysis->confidence,
                 'legible' => $analysis->legible,
                 'observation' => $analysis->observation,
+                'csrfToken' => csrf_token(),
+                'csrfHash' => csrf_hash(),
             ]);
         } catch (Throwable $exception) {
             log_message('notice', 'No se pudo analizar evidencia de lectura: {message}', ['message' => $exception->getMessage()]);
             return $this->response->setStatusCode(422)->setJSON([
                 'ok' => false,
                 'error' => 'No pudimos leer automáticamente el odómetro. Podés ingresar el kilometraje manualmente, pero la foto sigue siendo obligatoria.',
+                'csrfToken' => csrf_token(),
+                'csrfHash' => csrf_hash(),
             ]);
         }
     }
