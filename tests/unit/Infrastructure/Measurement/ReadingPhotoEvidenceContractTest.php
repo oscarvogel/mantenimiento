@@ -18,6 +18,8 @@ final class ReadingPhotoEvidenceContractTest extends TestCase
         self::assertStringContainsString('MiniMaxOdometerImageAnalyzer::fromEnv()->analyze', $source);
         self::assertStringContainsString("env('uploads.privatePath'", $source);
         self::assertStringContainsString("'storageReady' => " . '$evidenceRef' . " !== null", $source);
+        self::assertStringContainsString('mb_substr($aiObservation, 0, 255)', $source);
+        self::assertStringContainsString('No se pudo guardar la evidencia de la lectura.', $source);
         self::assertStringContainsString("'FOTO_MANUAL'", $source);
         self::assertStringContainsString("'FOTO_IA_CONFIRMADA'", $source);
         self::assertStringContainsString("'FOTO_IA_CORREGIDA'", $source);
