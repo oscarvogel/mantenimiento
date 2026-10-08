@@ -80,6 +80,7 @@
         (() => {
             const form = document.getElementById('reading-form');
             const submit = document.getElementById('reading-submit');
+            const button = submit;
             const photo = document.getElementById('evidence_photo');
             const km = document.getElementById('kilometers');
             const status = document.getElementById('ai-status');
@@ -134,8 +135,8 @@
             photo.addEventListener('change', analyzePhoto);
 
             form.addEventListener('submit', () => {
-                submit.disabled = true;
-                submit.textContent = submit.dataset.savingLabel || 'Guardando...';
+                button.disabled = true;
+                button.textContent = button.dataset.savingLabel || 'Guardando...';
             }, { once: true });
         })();
         </script>
