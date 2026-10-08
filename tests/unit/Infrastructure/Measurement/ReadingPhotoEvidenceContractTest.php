@@ -27,7 +27,7 @@ final class ReadingPhotoEvidenceContractTest extends TestCase
         $source = file_get_contents(ROOTPATH . 'app/Controllers/PublicEquipmentReadings.php');
         self::assertIsString($source);
 
-        self::assertStringContainsString("->where('ev.empresa_id', $actor->companyId())", $source);
+        self::assertStringContainsString("->where('ev.empresa_id', " . '$actor' . "->companyId())", $source);
         self::assertStringContainsString("->join('lecturas_equipo le', 'le.id = ev.lectura_id AND le.empresa_id = ev.empresa_id'", $source);
     }
 
