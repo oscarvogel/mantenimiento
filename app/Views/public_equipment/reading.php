@@ -183,6 +183,17 @@
                         throw new Error(payload.error || 'No pudimos procesar la foto.');
                     }
 
+                    if (payload.evidenceValid === false && payload.evidenceError) {
+                        evidenceReady = false;
+                        if (evidenceRef) evidenceRef.value = '';
+                        photo.required = true;
+                        evidenceReadyBox.hidden = true;
+                        setSubmitAvailable(false);
+                        status.classList.add('error');
+                        status.textContent = payload.evidenceError;
+                        return;
+                    }
+
                     if (payload.evidenceRef) {
                         if (evidenceRef) {
                             evidenceRef.value = payload.evidenceRef;
