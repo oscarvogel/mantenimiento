@@ -105,6 +105,32 @@
                 photo.required = false;
             }
 
+            async function optimizePhoto(file) {
+                if (!file || !file.type.startsWith('image/')) return file;
+                if (file.size <= 1500000) return file;
+
+                try {
+                    const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+                    const maxSide = 1920;
+                    const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+                    const width = Math.max(1, Math.round(bitmap.width * scale));
+                    const height = Math.max(1, Math.round(bitmap.height * scale));
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d', { alpha: false });
+                    if (!ctx) return file;
+                    ctx.drawImage(bitmap, 0, 0, width, height);
+                    bitmap.close?.();
+
+                    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.84));
+                    if (!blob) return file;
+                    return new File([blob], 'odometro.jpg', { type: 'image/jpeg', lastModified: Date.now() });
+                } catch (_) {
+                    return file;
+                }
+            }
+
             async function analyzePhoto() {
                 const file = photo.files && photo.files[0];
                 if (!file) return;
@@ -116,10 +142,13 @@
 
                 status.hidden = false;
                 status.classList.remove('error');
+                status.textContent = 'Preparando foto...';
+
+                const uploadFile = await optimizePhoto(file);
                 status.textContent = <?= json_encode($labels['analyzing'] ?? 'Analizando foto...') ?>;
 
                 const data = new FormData();
-                data.append('evidence_photo', file);
+                data.append('evidence_photo', uploadFile, uploadFile.name || 'odometro.jpg');
                 const csrfInput = form.querySelector('input[type="hidden"][name]:not([name="request_key"])');
                 if (csrfInput) data.append(csrfInput.name, csrfInput.value);
 
@@ -146,6 +175,7 @@
                     }
                     evidenceReady = true;
                     photo.required = false;
+                    photo.value = '';
                     setSubmitAvailable(true);
 
                     if (!response.ok || !payload.ok) {
@@ -178,8 +208,7 @@
             photo.addEventListener('change', analyzePhoto);
 
             form.addEventListener('submit', (event) => {
-                const hasDirectPhoto = Boolean(photo.files && photo.files[0]);
-                if (!evidenceReady && !hasDirectPhoto) {
+                if (!evidenceReady) {
                     event.preventDefault();
                     status.hidden = false;
                     status.classList.add('error');
