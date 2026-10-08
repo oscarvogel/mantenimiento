@@ -90,4 +90,30 @@ final class ReadingPhotoEvidenceContractTest extends TestCase
         self::assertStringContainsString('TOO_BLURRY', $source);
     }
 
+    public function testLargeAiCorrectionAlertsMaintenanceResponsible(): void
+    {
+        $source = file_get_contents(ROOTPATH . 'app/Controllers/PublicEquipmentReadings.php');
+        self::assertIsString($source);
+
+        self::assertStringContainsString('AI_DISCREPANCY_MIN_CONFIDENCE = 0.80', $source);
+        self::assertStringContainsString('AI_DISCREPANCY_MIN_KM = 1000', $source);
+        self::assertStringContainsString('AI_DISCREPANCY_MIN_RATIO = 0.05', $source);
+        self::assertStringContainsString("'Responsable de mantenimiento'", $source);
+        self::assertStringContainsString("'lectura.discrepancia_ia'", $source);
+        self::assertStringContainsString('NotificationSeverity::CRITICAL', $source);
+        self::assertStringContainsString("'/mantenimiento/lecturas/' . " + "$readingId" + " . '/evidencia'", $source);
+        self::assertStringContainsString('Una falla al notificar nunca debe invalidar una lectura ya persistida.', $source);
+    }
+
+    public function testAiDiscrepancyThresholdCatchesRealCaseAndIgnoresMinorCorrection(): void
+    {
+        $controller = new \App\Controllers\PublicEquipmentReadings();
+        $method = new \ReflectionMethod($controller, 'shouldAlertAiDiscrepancy');
+
+        self::assertTrue($method->invoke($controller, 1038226, 86600, 0.92));
+        self::assertFalse($method->invoke($controller, 491138, 491100, 0.92));
+        self::assertFalse($method->invoke($controller, 1038226, 86600, 0.70));
+        self::assertFalse($method->invoke($controller, null, 86600, 0.92));
+    }
+
 }
