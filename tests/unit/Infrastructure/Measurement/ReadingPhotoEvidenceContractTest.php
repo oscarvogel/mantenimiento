@@ -101,8 +101,8 @@ final class ReadingPhotoEvidenceContractTest extends TestCase
         self::assertStringContainsString("'Responsable de mantenimiento'", $source);
         self::assertStringContainsString("'lectura.discrepancia_ia'", $source);
         self::assertStringContainsString('NotificationSeverity::CRITICAL', $source);
-        self::assertStringContainsString("'/mantenimiento/lecturas/'", $source);
-        self::assertStringContainsString("'/evidencia'", $source);
+        self::assertStringContainsString("base_url('mantenimiento/lecturas/'", $source);
+        self::assertStringContainsString("'/evidencia')", $source);
         self::assertStringContainsString('Una falla al notificar nunca debe invalidar una lectura ya persistida.', $source);
     }
 
