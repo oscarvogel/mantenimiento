@@ -11,6 +11,8 @@ final readonly class OdometerImageAnalysis
         public ?float $confidence,
         public bool $legible,
         public ?string $observation = null,
+        public bool $evidenceValid = true,
+        public ?string $invalidReason = null,
     ) {
     }
 }

@@ -25,6 +25,12 @@ final class MiniMaxOdometerImageAnalyzerContractTest extends TestCase
         self::assertStringContainsString('491138 km', $prompt);
         self::assertStringContainsString('1194076.9 km', $prompt);
         self::assertStringContainsString('No inventes dígitos', $prompt);
+        self::assertStringContainsString('"evidencia_valida":boolean', $prompt);
+        self::assertStringContainsString('NOT_DASHBOARD', $prompt);
+        self::assertStringContainsString('ODOMETER_NOT_VISIBLE', $prompt);
+        self::assertStringContainsString('TRIP_ONLY', $prompt);
+        self::assertStringContainsString('TOO_BLURRY', $prompt);
+        self::assertStringContainsString('foto sin tablero/odómetro no se acepta', $prompt);
     }
     public function testOdometerNormalizationCoversRealTruckFormats(): void
     {

@@ -75,5 +75,19 @@ final class ReadingPhotoEvidenceContractTest extends TestCase
         self::assertStringContainsString('optimizePhoto(file)', $source);
         self::assertStringContainsString("photo.value = ''", $source);
         self::assertStringContainsString("'Preparando foto...'", $source);
+        self::assertStringContainsString('payload.evidenceValid === false', $source);
+        self::assertStringContainsString('payload.evidenceError', $source);
     }
+    public function testInvalidOdometerEvidenceIsBlockedServerSide(): void
+    {
+        $source = file_get_contents(ROOTPATH . 'app/Controllers/PublicEquipmentReadings.php');
+        self::assertIsString($source);
+
+        self::assertStringContainsString('! $aiAnalysis->evidenceValid', $source);
+        self::assertStringContainsString('invalidEvidenceMessage(', $source);
+        self::assertStringContainsString('NOT_DASHBOARD', $source);
+        self::assertStringContainsString('TRIP_ONLY', $source);
+        self::assertStringContainsString('TOO_BLURRY', $source);
+    }
+
 }

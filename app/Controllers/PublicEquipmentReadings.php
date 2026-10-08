@@ -86,31 +86,35 @@ final class PublicEquipmentReadings extends BaseController
 
             $evidenceRef = null;
             $storageError = null;
-            try {
-                $stored = $this->evidenceStorage()->store(
-                    $tempPath,
-                    (int) $equipment['empresa_id'],
-                    $mime,
-                );
+            if ($analysis === null || $analysis->evidenceValid) {
+                try {
+                    $stored = $this->evidenceStorage()->store(
+                        $tempPath,
+                        (int) $equipment['empresa_id'],
+                        $mime,
+                    );
 
-                $evidenceRef = bin2hex(random_bytes(16));
-                session()->set($this->stagedEvidenceSessionKey($evidenceRef), [
-                    'path' => $stored['path'],
-                    'mime' => $stored['mime'],
-                    'bytes' => $stored['bytes'],
-                    'company_id' => (int) $equipment['empresa_id'],
-                    'equipment_id' => (int) $equipment['id'],
-                    'expires_at' => time() + 1800,
-                    'km_detectado_ia' => $analysis?->kilometers,
-                    'confianza_ia' => $analysis?->confidence,
-                    'legible_ia' => $analysis?->legible ?? false,
-                    'observacion_ia' => $analysis?->observation,
-                ]);
-            } catch (Throwable $exception) {
-                $storageError = $exception->getMessage();
-                log_message('error', 'No se pudo dejar staged la evidencia de lectura: {message}', [
-                    'message' => $storageError,
-                ]);
+                    $evidenceRef = bin2hex(random_bytes(16));
+                    session()->set($this->stagedEvidenceSessionKey($evidenceRef), [
+                        'path' => $stored['path'],
+                        'mime' => $stored['mime'],
+                        'bytes' => $stored['bytes'],
+                        'company_id' => (int) $equipment['empresa_id'],
+                        'equipment_id' => (int) $equipment['id'],
+                        'expires_at' => time() + 1800,
+                        'km_detectado_ia' => $analysis?->kilometers,
+                        'confianza_ia' => $analysis?->confidence,
+                        'legible_ia' => $analysis?->legible ?? false,
+                        'observacion_ia' => $analysis?->observation,
+                        'evidencia_valida_ia' => $analysis?->evidenceValid ?? true,
+                        'motivo_invalido_ia' => $analysis?->invalidReason,
+                    ]);
+                } catch (Throwable $exception) {
+                    $storageError = $exception->getMessage();
+                    log_message('error', 'No se pudo dejar staged la evidencia de lectura: {message}', [
+                        'message' => $storageError,
+                    ]);
+                }
             }
 
             return $this->response->setJSON([
@@ -119,6 +123,11 @@ final class PublicEquipmentReadings extends BaseController
                 'confidence' => $analysis?->confidence,
                 'legible' => $analysis?->legible ?? false,
                 'observation' => $analysis?->observation,
+                'evidenceValid' => $analysis?->evidenceValid ?? false,
+                'invalidReason' => $analysis?->invalidReason,
+                'evidenceError' => $analysis !== null && ! $analysis->evidenceValid
+                    ? $this->invalidEvidenceMessage($analysis->invalidReason, $this->equipmentLocale($equipment))
+                    : null,
                 'analysisError' => $analysis === null
                     ? 'No pudimos leer automáticamente el odómetro. Podés ingresar el kilometraje manualmente.'
                     : null,
@@ -241,6 +250,10 @@ final class PublicEquipmentReadings extends BaseController
                     isset($stagedEvidence['observacion_ia']) && $stagedEvidence['observacion_ia'] !== null
                         ? (string) $stagedEvidence['observacion_ia']
                         : null,
+                    (bool) ($stagedEvidence['evidencia_valida_ia'] ?? false),
+                    isset($stagedEvidence['motivo_invalido_ia']) && $stagedEvidence['motivo_invalido_ia'] !== null
+                        ? (string) $stagedEvidence['motivo_invalido_ia']
+                        : null,
                 );
             } else {
                 [$evidenceTempPath, $evidenceMime] = $this->validatedEvidenceUpload();
@@ -251,6 +264,10 @@ final class PublicEquipmentReadings extends BaseController
                         'message' => $exception->getMessage(),
                     ]);
                 }
+            }
+
+            if ($aiAnalysis !== null && ! $aiAnalysis->evidenceValid) {
+                throw new DomainException($this->invalidEvidenceMessage($aiAnalysis->invalidReason, $locale));
             }
 
             $kilometers = $this->nullableInt($this->request->getPost('kilometers'), $locale);
@@ -606,6 +623,27 @@ final class PublicEquipmentReadings extends BaseController
         }
 
         return new ReadingEvidenceStorage();
+    }
+
+    private function invalidEvidenceMessage(?string $reason, string $locale): string
+    {
+        $pt = [
+            'NOT_DASHBOARD' => 'A foto não parece mostrar o painel ou hodômetro do veículo. Tire outra foto do hodômetro.',
+            'ODOMETER_NOT_VISIBLE' => 'O painel aparece, mas o hodômetro total não está visível. Tire outra foto mostrando a quilometragem.',
+            'TRIP_ONLY' => 'A foto mostra apenas a viagem parcial (Trip). Precisamos do hodômetro total.',
+            'TOO_BLURRY' => 'A foto está muito desfocada, escura ou com reflexos para servir como evidência. Tire outra foto.',
+            'OTHER' => 'A foto não serve como evidência válida do hodômetro. Tire outra foto mostrando claramente a quilometragem.',
+        ];
+        $es = [
+            'NOT_DASHBOARD' => 'La foto no parece mostrar el tablero u odómetro del vehículo. Sacá otra foto del odómetro.',
+            'ODOMETER_NOT_VISIBLE' => 'Se ve el tablero, pero no el odómetro total. Sacá otra foto donde se vea el kilometraje.',
+            'TRIP_ONLY' => 'La foto muestra solamente el viaje parcial (Trip). Necesitamos el odómetro total.',
+            'TOO_BLURRY' => 'La foto está demasiado borrosa, oscura o con reflejos para servir como evidencia. Sacá otra foto.',
+            'OTHER' => 'La foto no sirve como evidencia válida del odómetro. Sacá otra foto donde se vea claramente el kilometraje.',
+        ];
+        $catalog = $this->normalizeLocale($locale) === 'PT' ? $pt : $es;
+        $key = strtoupper(trim((string) $reason));
+        return $catalog[$key] ?? $catalog['OTHER'];
     }
 
     private function nullableInt(mixed $value, string $locale): ?int
