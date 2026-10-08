@@ -32,6 +32,11 @@ final readonly class EquipmentReadingControlRow
         public ?string $lastReadingAt,
         public ?int $daysSinceLastReading,
         public ?string $equipmentUrl,
+        public ?int $lastReadingId = null,
+        public ?string $readingMethod = null,
+        public ?int $aiDetectedKm = null,
+        public ?float $aiConfidence = null,
+        public ?string $evidenceUrl = null,
     ) {
     }
 
