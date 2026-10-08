@@ -17,7 +17,7 @@ final class ReadingPhotoEvidenceContractTest extends TestCase
         self::assertStringContainsString('La foto del tablero es obligatoria.', $source);
         self::assertStringContainsString('MiniMaxOdometerImageAnalyzer::fromEnv()->analyze', $source);
         self::assertStringContainsString("env('uploads.privatePath'", $source);
-        self::assertStringContainsString("'storageReady' => $evidenceRef !== null", $source);
+        self::assertStringContainsString("'storageReady' => " . '$evidenceRef' . " !== null", $source);
         self::assertStringContainsString("'FOTO_MANUAL'", $source);
         self::assertStringContainsString("'FOTO_IA_CONFIRMADA'", $source);
         self::assertStringContainsString("'FOTO_IA_CORREGIDA'", $source);
