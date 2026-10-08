@@ -37,11 +37,11 @@ final class WeeklyReadingNotificationRevalidatorTest extends TestCase
         self::assertIsString($service);
         $method = substr($queue, (int) strpos($queue, 'private function hydrateUserDailyDigest('));
         self::assertLessThan(
-            strpos($method, "$count = $this->db->table('notificaciones')"),
+            strpos($method, '$count = $this->db->table(\'notificaciones\')'),
             strpos($method, '->revalidate($companyId, $userId, $this->clock->now())')
         );
-        self::assertStringContainsString("->where('empresa_id', $companyId)", $service);
-        self::assertStringContainsString("->where('equipo_id', $equipmentId)", $service);
+        self::assertStringContainsString("->where('empresa_id', " . '$companyId' . ")", $service);
+        self::assertStringContainsString("->where('equipo_id', " . '$equipmentId' . ")", $service);
         self::assertStringContainsString("->where('anulada', 0)", $service);
         self::assertStringContainsString("->where('kilometraje IS NOT NULL', null, false)", $service);
         self::assertStringContainsString("->where('fecha_lectura >=',", $service);
