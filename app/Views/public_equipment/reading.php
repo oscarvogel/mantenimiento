@@ -179,26 +179,35 @@
                         if (current) current.value = payload.csrfHash;
                     }
 
-                    if (!response.ok || !payload.ok || !payload.evidenceRef) {
-                        throw new Error(payload.error || 'No pudimos procesar la foto.');
-                    }
-
-                    if (evidenceRef) {
-                        evidenceRef.value = payload.evidenceRef;
-                    }
-                    evidenceReady = true;
-                    photo.required = false;
-                    photo.value = '';
-                    evidenceReadyBox.hidden = false;
-                    setSubmitAvailable(true);
-
                     if (!response.ok || !payload.ok) {
                         throw new Error(payload.error || 'No pudimos procesar la foto.');
                     }
 
+                    if (payload.evidenceRef) {
+                        if (evidenceRef) {
+                            evidenceRef.value = payload.evidenceRef;
+                        }
+                        evidenceReady = true;
+                        photo.required = false;
+                        photo.value = '';
+                        evidenceReadyBox.hidden = false;
+                        setSubmitAvailable(true);
+                    } else {
+                        // El análisis pudo funcionar aunque el staging del servidor
+                        // no haya quedado listo. Conservamos la foto seleccionada
+                        // y permitimos que el POST final la envíe directamente.
+                        evidenceReady = false;
+                        photo.required = true;
+                        evidenceReadyBox.hidden = true;
+                        setSubmitAvailable(true);
+                    }
+
                     if (!payload.legible || payload.kilometers == null) {
                         status.classList.add('error');
-                        status.textContent = payload.analysisError || 'No pudimos leer automáticamente el odómetro. Podés escribir el valor manualmente. La foto YA quedó guardada como evidencia.';
+                        status.textContent = payload.analysisError || 'No pudimos leer automáticamente el odómetro. Podés escribir el valor manualmente.';
+                        if (!payload.evidenceRef) {
+                            status.textContent += ' La foto se enviará al registrar la lectura.';
+                        }
                         return;
                     }
 
@@ -209,6 +218,9 @@
                     }
                     const confidence = payload.confidence == null ? '' : ' · confianza ' + Math.round(payload.confidence * 100) + '%';
                     status.textContent = 'IA detectó ' + Number(payload.kilometers).toLocaleString('es-AR') + ' km' + confidence + '. Revisá el valor y corregilo si hace falta.';
+                    if (!payload.evidenceRef) {
+                        status.textContent += ' La foto se guardará junto con la lectura al registrar.';
+                    }
                 } catch (error) {
                     evidenceReady = false;
                     if (evidenceRef) evidenceRef.value = '';
@@ -222,11 +234,12 @@
             photo.addEventListener('change', analyzePhoto);
 
             form.addEventListener('submit', (event) => {
-                if (!evidenceReady) {
+                const hasDirectPhoto = Boolean(photo.files && photo.files[0]);
+                if (!evidenceReady && !hasDirectPhoto) {
                     event.preventDefault();
                     status.hidden = false;
                     status.classList.add('error');
-                    status.textContent = 'Esperá a que la foto quede guardada como evidencia antes de registrar.';
+                    status.textContent = 'Seleccioná o sacá una foto antes de registrar.';
                     return;
                 }
 
