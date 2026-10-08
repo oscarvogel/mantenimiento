@@ -1,0 +1,44 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Unit\Infrastructure\Measurement;
+
+use PHPUnit\Framework\TestCase;
+
+final class ReadingPhotoEvidenceContractTest extends TestCase
+{
+    public function testPublicReadingRequiresPhotoAndKeepsManualFallback(): void
+    {
+        $source = file_get_contents(ROOTPATH . 'app/Controllers/PublicEquipmentReadings.php');
+        self::assertIsString($source);
+
+        self::assertStringContainsString("getFile('evidence_photo')", $source);
+        self::assertStringContainsString('La foto del tablero es obligatoria.', $source);
+        self::assertStringContainsString('MiniMaxOdometerImageAnalyzer::fromEnv()->analyze', $source);
+        self::assertStringContainsString("'FOTO_MANUAL'", $source);
+        self::assertStringContainsString("'FOTO_IA_CONFIRMADA'", $source);
+        self::assertStringContainsString("'FOTO_IA_CORREGIDA'", $source);
+        self::assertStringContainsString('se continúa con carga manual', $source);
+    }
+
+    public function testEvidenceDownloadIsTenantScoped(): void
+    {
+        $source = file_get_contents(ROOTPATH . 'app/Controllers/PublicEquipmentReadings.php');
+        self::assertIsString($source);
+
+        self::assertStringContainsString("->where('ev.empresa_id', $actor->companyId())", $source);
+        self::assertStringContainsString("->join('lecturas_equipo le', 'le.id = ev.lectura_id AND le.empresa_id = ev.empresa_id'", $source);
+    }
+
+    public function testMobileViewUsesCameraUploadAndMultipartForm(): void
+    {
+        $source = file_get_contents(ROOTPATH . 'app/Views/public_equipment/reading.php');
+        self::assertIsString($source);
+
+        self::assertStringContainsString('enctype="multipart/form-data"', $source);
+        self::assertStringContainsString('name="evidence_photo"', $source);
+        self::assertStringContainsString('capture="environment"', $source);
+        self::assertStringContainsString("photo.addEventListener('change', analyzePhoto)", $source);
+    }
+}
