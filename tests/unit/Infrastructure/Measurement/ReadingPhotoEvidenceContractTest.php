@@ -47,5 +47,8 @@ final class ReadingPhotoEvidenceContractTest extends TestCase
         self::assertStringContainsString('setSubmitAvailable(false)', $source);
         self::assertStringContainsString('evidenceReady = true', $source);
         self::assertStringContainsString('photo.required = false', $source);
+        self::assertStringContainsString('optimizePhoto(file)', $source);
+        self::assertStringContainsString("photo.value = ''", $source);
+        self::assertStringContainsString("'Preparando foto...'", $source);
     }
 }
