@@ -64,6 +64,7 @@ const normalizeNavigation = (navigation) => {
       icon: asText(item.icon, 'dashboard'),
       active: Boolean(item.active),
       disabled: Boolean(item.disabled),
+      status: asText(item.status),
       badge: item.badge === null || item.badge === undefined ? '' : asText(String(item.badge)),
     }))
 }

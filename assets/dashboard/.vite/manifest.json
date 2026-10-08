@@ -1,17 +1,17 @@
 {
-  "_admin-Cr_5VRGD.js": {
-    "file": "assets/admin-Cr_5VRGD.js",
+  "_admin-BqpjMIc3.js": {
+    "file": "assets/admin-BqpjMIc3.js",
     "name": "admin",
     "imports": [
-      "_vendor-fE_7IgYW.js"
+      "_vendor-BKff3l7F.js"
     ]
   },
-  "_chatbot-BBCSJxwV.js": {
-    "file": "assets/chatbot-BBCSJxwV.js",
+  "_chatbot-BFfJUgq1.js": {
+    "file": "assets/chatbot-BFfJUgq1.js",
     "name": "chatbot",
     "isDynamicEntry": true,
     "imports": [
-      "_vendor-fE_7IgYW.js"
+      "_vendor-BKff3l7F.js"
     ],
     "css": [
       "assets/chatbot-p1890OXW.css"
@@ -21,34 +21,46 @@
     "file": "assets/chatbot-p1890OXW.css",
     "src": "_chatbot-p1890OXW.css"
   },
-  "_reports-uZGMC_4n.js": {
-    "file": "assets/reports-uZGMC_4n.js",
+  "_reports-DkTsly4s.js": {
+    "file": "assets/reports-DkTsly4s.js",
     "name": "reports",
     "imports": [
-      "_admin-Cr_5VRGD.js",
-      "_vendor-fE_7IgYW.js"
+      "_admin-BqpjMIc3.js",
+      "_vendor-BKff3l7F.js"
     ]
   },
-  "_vendor-fE_7IgYW.js": {
-    "file": "assets/vendor-fE_7IgYW.js",
+  "_vendor-BKff3l7F.js": {
+    "file": "assets/vendor-BKff3l7F.js",
     "name": "vendor"
   },
+  "src/assets/platform/maintenance-card.jpg": {
+    "file": "assets/maintenance-card-uYK8y_5B.jpg",
+    "src": "src/assets/platform/maintenance-card.jpg"
+  },
+  "src/assets/platform/portal-hero.jpg": {
+    "file": "assets/portal-hero-Dd-Ff3YR.jpg",
+    "src": "src/assets/platform/portal-hero.jpg"
+  },
   "src/main.js": {
-    "file": "assets/main-BmY8dXQX.js",
+    "file": "assets/main-DxMEtCzn.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
     "imports": [
-      "_vendor-fE_7IgYW.js",
-      "_chatbot-BBCSJxwV.js",
-      "_admin-Cr_5VRGD.js",
-      "_reports-uZGMC_4n.js"
+      "_vendor-BKff3l7F.js",
+      "_chatbot-BFfJUgq1.js",
+      "_admin-BqpjMIc3.js",
+      "_reports-DkTsly4s.js"
     ],
     "dynamicImports": [
-      "_chatbot-BBCSJxwV.js"
+      "_chatbot-BFfJUgq1.js"
     ],
     "css": [
-      "assets/main--jBkDWVR.css"
+      "assets/main-CBUOh1le.css"
+    ],
+    "assets": [
+      "assets/portal-hero-Dd-Ff3YR.jpg",
+      "assets/maintenance-card-uYK8y_5B.jpg"
     ]
   }
 }

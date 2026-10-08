@@ -1,5 +1,5 @@
 <script setup>
-import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import AppHeader from './AppHeader.vue'
 import AppSidebar from './AppSidebar.vue'
 import LazyChatWidget from '../pages/operations/components/LazyChatWidget.vue'
@@ -19,6 +19,7 @@ const props = defineProps({
 const sidebarOpen = ref(false)
 const header = ref(null)
 const mobileDrawer = ref(null)
+const isPlatformShell = computed(() => props.shell.navigation.some((item) => item.key === 'platform-home'))
 const focusableSelector = [
   'a[href]',
   'button:not([disabled])',
@@ -172,5 +173,5 @@ onBeforeUnmount(() => {
     :label="props.scrollCta.label"
     :description="props.scrollCta.description"
   />
-  <LazyChatWidget />
+  <LazyChatWidget v-if="!isPlatformShell" />
 </template>

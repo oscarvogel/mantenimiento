@@ -23,8 +23,10 @@ final class CommandCenter extends BaseController
                 'key' => $module['key'],
                 'label' => $module['label'],
                 'description' => $module['description'],
-                'href' => base_url($module['landingPath']),
-                'status' => 'Operativo',
+                'href' => $module['landingPath'] === null ? null : base_url($module['landingPath']),
+                'status' => $module['status'],
+                'state' => $module['state'],
+                'icon' => $module['icon'],
             ],
             $this->moduleCatalog()->execute($actor),
         );
@@ -36,6 +38,7 @@ final class CommandCenter extends BaseController
             'Centro de mandos — Vogel Consultoría',
             [
                 'modules' => $modules,
+                'userName' => (string) session()->get('usuario_nombre'),
                 'globalAdminUrl' => $actor->isSuperAdmin() ? base_url('superadmin') : null,
             ],
         );

@@ -15,8 +15,15 @@ final class GetPlatformModuleCatalogTest extends TestCase
 
         $modules = (new GetPlatformModuleCatalog())->execute($actor);
 
-        self::assertSame(['maintenance'], array_column($modules, 'key'));
+        self::assertSame(
+            ['maintenance', 'trips', 'fuel', 'tires', 'billing', 'management', 'reports', 'automations', 'ai'],
+            array_column($modules, 'key'),
+        );
         self::assertSame($landingPath, $modules[0]['landingPath']);
+        self::assertSame('available', $modules[0]['state']);
+        self::assertSame('Operativo', $modules[0]['status']);
+        self::assertSame('Sin implementación aún', $modules[1]['status']);
+        self::assertSame('not_implemented', $modules[1]['state']);
     }
 
     public static function maintenanceEntryPermissions(): iterable
@@ -30,24 +37,35 @@ final class GetPlatformModuleCatalogTest extends TestCase
         yield 'reports read' => ['reportes.ver', 'reportes'];
     }
 
-    public function testDoesNotListMaintenanceWithoutAnEffectiveEntryPermission(): void
+    public function testKeepsMaintenanceVisibleButRestrictedWithoutAnEffectiveEntryPermission(): void
     {
         $actor = new ActorContext(12, 4, false, false, ['Administrador'], ['sucursales.ver'], [8]);
 
-        self::assertSame([], (new GetPlatformModuleCatalog())->execute($actor));
+        $modules = (new GetPlatformModuleCatalog())->execute($actor);
+
+        self::assertSame('restricted', $modules[0]['state']);
+        self::assertNull($modules[0]['landingPath']);
+        self::assertSame('No habilitado para tu cuenta', $modules[0]['status']);
+        self::assertSame(9, count($modules));
     }
 
-    public function testDoesNotTreatWriteOnlyPermissionsAsModuleEntry(): void
+    public function testKeepsMaintenanceRestrictedForWriteOnlyPermissions(): void
     {
         $actor = new ActorContext(12, 4, false, false, ['Responsable'], ['equipos.editar'], [8]);
 
-        self::assertSame([], (new GetPlatformModuleCatalog())->execute($actor));
+        $modules = (new GetPlatformModuleCatalog())->execute($actor);
+
+        self::assertSame('restricted', $modules[0]['state']);
+        self::assertNull($modules[0]['landingPath']);
     }
 
-    public function testSuperadministratorDoesNotInheritTenantModuleAccess(): void
+    public function testSuperadministratorSeesMaintenanceRestrictedWithoutTenantAccess(): void
     {
         $actor = new ActorContext(1, null, true, true, ['Superadministrador'], ['equipos.ver'], []);
 
-        self::assertSame([], (new GetPlatformModuleCatalog())->execute($actor));
+        $modules = (new GetPlatformModuleCatalog())->execute($actor);
+
+        self::assertSame('restricted', $modules[0]['state']);
+        self::assertNull($modules[0]['landingPath']);
     }
 }

@@ -15,6 +15,22 @@ describe('normalizeDashboardPayload', () => {
     expect(shell.homeUrl).toBe('#')
   })
 
+  it('preserves the status of disabled platform modules for assistive labels', () => {
+    const shell = normalizeAppShellPayload({
+      navigation: [{
+        key: 'module-trips',
+        label: 'Viajes',
+        icon: 'module-truck',
+        href: null,
+        disabled: true,
+        status: 'Sin implementación aún',
+      }],
+    })
+
+    expect(shell.navigation[0].disabled).toBe(true)
+    expect(shell.navigation[0].status).toBe('Sin implementación aún')
+  })
+
   it('adapta el modelo de lectura autorizado a la vista', () => {
     const dashboard = normalizeDashboardPayload(dashboardPayload)
 

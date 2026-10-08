@@ -13,7 +13,12 @@ import {
   ChartBarSquareIcon,
   ClipboardDocumentCheckIcon,
   ClipboardDocumentListIcon,
+  CircleStackIcon,
+  Cog6ToothIcon,
+  DocumentTextIcon,
   HomeIcon,
+  MapIcon,
+  SparklesIcon,
   TruckIcon,
   UsersIcon,
   WrenchScrewdriverIcon,
@@ -39,15 +44,18 @@ const props = defineProps({
 const emit = defineEmits(['close'])
 
 const primaryKeys = ['dashboard', 'equipment', 'reading-control', 'maintenance', 'plans', 'reports']
+const isPlatformNavigation = computed(() => props.navigation.some((item) => item.key === 'platform-home'))
 
 const primaryNavigation = computed(() => (
-  primaryKeys
-    .map((key) => props.navigation.find((item) => item.key === key))
-    .filter(Boolean)
+  isPlatformNavigation.value
+    ? props.navigation
+    : primaryKeys
+      .map((key) => props.navigation.find((item) => item.key === key))
+      .filter(Boolean)
 ))
 
 const secondaryNavigation = computed(() => (
-  props.navigation.filter((item) => !primaryKeys.includes(item.key))
+  isPlatformNavigation.value ? [] : props.navigation.filter((item) => !primaryKeys.includes(item.key))
 ))
 
 const secondaryOpen = ref(secondaryNavigation.value.some((item) => item.active))
@@ -77,6 +85,16 @@ const icons = {
   reports: ChartBarSquareIcon,
   audit: ClipboardDocumentListIcon,
   notifications: BellIcon,
+  'platform-home': HomeIcon,
+  'module-wrench': WrenchScrewdriverIcon,
+  'module-truck': TruckIcon,
+  'module-fuel': BeakerIcon,
+  'module-tires': CircleStackIcon,
+  'module-billing': DocumentTextIcon,
+  'module-management': ChartBarSquareIcon,
+  'module-reports': ChartBarSquareIcon,
+  'module-automations': Cog6ToothIcon,
+  'module-ai': SparklesIcon,
 }
 
 const iconFor = (name) => icons[name] ?? ClipboardDocumentCheckIcon
@@ -138,9 +156,19 @@ const openDemoCompany = () => {
 </script>
 
 <template>
-  <aside class="ui-sidebar-surface flex h-full w-full flex-col bg-surface-raised text-ink">
-    <div class="flex h-[4.5rem] items-center justify-between border-b border-border px-5">
-      <BrandMark />
+  <aside
+    class="ui-sidebar-surface flex h-full w-full flex-col bg-surface-raised text-ink"
+    :class="{ 'platform-sidebar': isPlatformNavigation }"
+  >
+    <div
+      class="flex items-center justify-between border-b border-border px-5"
+      :class="isPlatformNavigation ? 'platform-brand-row h-28' : 'h-[4.5rem]'"
+    >
+      <div v-if="isPlatformNavigation" class="platform-brand" aria-label="Vogel Consultoría">
+        <span class="platform-brand__mark" aria-hidden="true">V</span>
+        <span class="platform-brand__name">VOGEL <small>CONSULTORÍA</small></span>
+      </div>
+      <BrandMark v-else />
       <button
         v-if="mobile"
         type="button"
@@ -158,7 +186,9 @@ const openDemoCompany = () => {
             <span
               v-if="item.disabled"
               class="flex min-h-11 cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-ink-subtle"
+              :class="{ 'platform-nav-disabled': isPlatformNavigation }"
               aria-disabled="true"
+              :aria-label="`${item.label}: ${item.status ?? item.badge ?? 'No disponible'}`"
             >
               <img
                 v-if="customIconUrl(item)"
@@ -171,8 +201,11 @@ const openDemoCompany = () => {
                 @error="markCustomIconFailed(item)"
               />
               <component v-else :is="iconFor(item.icon)" class="size-5 shrink-0" aria-hidden="true" />
-              <span class="min-w-0 flex-1 leading-5" :title="item.label">{{ visibleLabel(item) }}</span>
-              <span v-if="item.badge" class="rounded-full bg-surface-muted px-2 py-0.5 text-[0.6875rem] font-bold text-ink-muted">
+              <span class="min-w-0 flex-1 leading-5" :title="item.status ? `${item.label}: ${item.status}` : item.label">
+                <span class="block">{{ visibleLabel(item) }}</span>
+                <span v-if="isPlatformNavigation && item.status" class="platform-nav-status block text-[0.625rem] leading-4">{{ item.status }}</span>
+              </span>
+              <span v-if="item.badge" class="rounded-full bg-surface-muted px-2 py-0.5 text-[0.5rem] font-bold leading-3 text-ink-muted" :class="{ 'platform-nav-badge': isPlatformNavigation }">
                 {{ item.badge }}
               </span>
             </span>
@@ -180,7 +213,12 @@ const openDemoCompany = () => {
               v-else
               :href="item.href"
               class="ui-nav-item group flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium"
-              :class="item.active ? 'bg-primary-subtle text-primary shadow-inner' : 'text-ink-muted hover:bg-surface-muted hover:text-ink'"
+              :class="[
+                isPlatformNavigation ? 'platform-nav-item' : '',
+                item.active
+                  ? (isPlatformNavigation ? 'platform-nav-active' : 'bg-primary-subtle text-primary shadow-inner')
+                  : (isPlatformNavigation ? 'text-blue-100 hover:bg-white/10 hover:text-white' : 'text-ink-muted hover:bg-surface-muted hover:text-ink'),
+              ]"
               :aria-current="item.active ? 'page' : undefined"
               @click="emit('close')"
             >
@@ -201,8 +239,11 @@ const openDemoCompany = () => {
                 :class="item.active ? 'text-primary' : 'text-ink-subtle group-hover:text-ink'"
                 aria-hidden="true"
               />
-              <span class="min-w-0 flex-1 leading-5" :title="item.label">{{ visibleLabel(item) }}</span>
-              <span v-if="item.badge" class="rounded-full bg-primary px-2 py-0.5 text-[0.6875rem] font-bold text-primary-foreground">
+              <span class="min-w-0 flex-1 leading-5" :title="item.status ? `${item.label}: ${item.status}` : item.label">
+                <span class="block">{{ visibleLabel(item) }}</span>
+                <span v-if="isPlatformNavigation && item.status" class="platform-nav-status block text-[0.625rem] leading-4">{{ item.status }}</span>
+              </span>
+              <span v-if="item.badge" class="rounded-full bg-primary px-2 py-0.5 text-[0.5rem] font-bold leading-3 text-primary-foreground" :class="{ 'platform-nav-badge': isPlatformNavigation }">
                 {{ item.badge }}
               </span>
             </a>
@@ -293,6 +334,11 @@ const openDemoCompany = () => {
         </ul>
       </section>
     </nav>
+
+    <div v-if="isPlatformNavigation" class="platform-sidebar-note mx-4 mb-4 rounded-xl border border-white/10 px-3 py-3">
+      <p class="text-sm font-semibold text-white">Una plataforma para crecer</p>
+      <p class="mt-1 text-xs leading-5 text-blue-200">Los módulos se habilitan a medida que están implementados.</p>
+    </div>
 
     <div v-if="logout" class="border-t border-border p-4">
       <form v-if="logout.method === 'post'" :action="logout.href" method="post">

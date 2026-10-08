@@ -1,6 +1,18 @@
 <script setup>
 import { computed } from 'vue'
-import { ArrowRightIcon, Squares2X2Icon, WrenchScrewdriverIcon } from '@heroicons/vue/24/outline'
+import {
+  ArrowRightIcon,
+  BeakerIcon,
+  ChartBarSquareIcon,
+  CircleStackIcon,
+  Cog6ToothIcon,
+  DocumentTextIcon,
+  SparklesIcon,
+  TruckIcon,
+  WrenchScrewdriverIcon,
+} from '@heroicons/vue/24/outline'
+import heroTruck from '../../assets/platform/portal-hero.jpg'
+import maintenanceWorkshop from '../../assets/platform/maintenance-card.jpg'
 
 const props = defineProps({
   data: {
@@ -10,83 +22,174 @@ const props = defineProps({
 })
 
 const modules = computed(() => Array.isArray(props.data.modules) ? props.data.modules : [])
+const availableCount = computed(() => modules.value.filter((module) => module.state === 'available').length)
+const pendingCount = computed(() => modules.value.filter((module) => module.state === 'not_implemented').length)
+const restrictedCount = computed(() => modules.value.filter((module) => module.state === 'restricted').length)
 const isSuperAdmin = computed(() => Boolean(props.data.globalAdminUrl))
+const firstName = computed(() => {
+  const name = typeof props.data.userName === 'string' ? props.data.userName.trim() : ''
+  return name.split(/\s+/)[0] || 'Usuario'
+})
+
+const moduleIcons = {
+  wrench: WrenchScrewdriverIcon,
+  truck: TruckIcon,
+  fuel: BeakerIcon,
+  tires: CircleStackIcon,
+  billing: DocumentTextIcon,
+  management: ChartBarSquareIcon,
+  reports: ChartBarSquareIcon,
+  automations: Cog6ToothIcon,
+  ai: SparklesIcon,
+}
+
+const iconFor = (name) => moduleIcons[name] ?? WrenchScrewdriverIcon
+const cardStyle = (module) => module.key === 'maintenance'
+  ? { backgroundImage: `linear-gradient(90deg, rgb(3 18 42 / .96) 0%, rgb(3 18 42 / .83) 48%, rgb(3 18 42 / .25) 100%), url("${maintenanceWorkshop}")` }
+  : undefined
+
+const heroStyle = {
+  backgroundImage: `linear-gradient(90deg, rgb(2 18 44 / .97) 0%, rgb(2 18 44 / .86) 43%, rgb(2 18 44 / .12) 100%), url("${heroTruck}")`,
+}
 </script>
 
 <template>
-  <div class="mx-auto max-w-6xl space-y-8 pb-10">
-    <section class="relative isolate overflow-hidden rounded-3xl bg-gradient-to-br from-brand-950 via-brand-900 to-brand-800 px-6 py-8 text-white shadow-card sm:px-9 sm:py-10 lg:px-12 lg:py-12">
-      <div class="pointer-events-none absolute -right-10 -top-20 -z-10 size-72 rounded-full border border-white/10 sm:size-96" aria-hidden="true"></div>
-      <div class="pointer-events-none absolute -bottom-36 right-28 -z-10 size-72 rounded-full bg-primary/20 blur-3xl" aria-hidden="true"></div>
-
-      <p class="text-xs font-bold uppercase tracking-[0.2em] text-blue-200 sm:text-sm">Vogel Consultoría</p>
-      <h1 class="mt-3 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">Centro de mandos</h1>
-      <p class="mt-3 max-w-2xl text-base leading-7 text-blue-100 sm:text-lg">
-        Un acceso claro a los módulos habilitados para tu trabajo.
-      </p>
-    </section>
-
-    <section aria-labelledby="available-modules-heading" class="space-y-4">
-      <div class="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p class="text-sm font-semibold text-primary">Plataforma de gestión operativa</p>
-          <h2 id="available-modules-heading" class="mt-1 text-xl font-bold text-ink sm:text-2xl">Módulos disponibles</h2>
-        </div>
-        <p v-if="modules.length" class="text-sm text-ink-muted">
-          {{ modules.length }} {{ modules.length === 1 ? 'módulo habilitado' : 'módulos habilitados' }} para tu cuenta
+  <div class="mx-auto max-w-[86rem] space-y-7 pb-10 sm:space-y-9">
+    <section
+      class="relative isolate flex min-h-[19rem] items-center overflow-hidden rounded-3xl bg-brand-950 bg-cover bg-center px-6 py-9 text-white shadow-card sm:min-h-[21rem] sm:px-10 lg:px-12"
+      :style="heroStyle"
+      aria-labelledby="command-center-heading"
+    >
+      <div class="max-w-3xl">
+        <p class="text-xs font-bold uppercase tracking-[0.19em] text-blue-200 sm:text-sm">Plataforma de Gestión Operativa</p>
+        <h1 id="command-center-heading" class="mt-3 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
+          Bienvenido, {{ firstName }}
+        </h1>
+        <p class="mt-2 text-xl font-medium text-blue-100 sm:text-2xl lg:text-3xl">Vogel Consultoría</p>
+        <p class="mt-3 max-w-2xl text-sm leading-6 text-blue-100 sm:text-base sm:leading-7">
+          Información, control y decisiones para una operación más eficiente.
         </p>
       </div>
+    </section>
 
-      <div v-if="modules.length" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <a
-          v-for="module in modules"
-          :key="module.key"
-          :href="module.href"
-          class="group rounded-2xl border border-border bg-surface-raised p-5 shadow-card transition duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-subtle sm:p-6"
-        >
-          <div class="flex items-start justify-between gap-4">
-            <span class="flex size-12 items-center justify-center rounded-xl bg-primary-subtle text-primary" aria-hidden="true">
-              <WrenchScrewdriverIcon class="size-6" />
-            </span>
-            <span class="inline-flex items-center gap-2 rounded-full bg-success-subtle px-3 py-1 text-xs font-semibold text-success-strong">
-              <span class="size-1.5 rounded-full bg-success" aria-hidden="true"></span>
-              {{ module.status }}
-            </span>
+    <div class="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_19rem]">
+      <section aria-labelledby="available-modules-heading" class="min-w-0">
+        <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p class="text-sm font-semibold text-primary">Gestioná tu operación desde un solo lugar</p>
+            <h2 id="available-modules-heading" class="mt-1 text-2xl font-bold text-ink sm:text-3xl">Módulos de la plataforma</h2>
           </div>
+          <p class="text-sm text-ink-muted">
+            {{ modules.length }} módulos<span v-if="availableCount"> · {{ availableCount }} operativo</span>
+          </p>
+        </div>
 
-          <h3 class="mt-5 text-lg font-bold text-ink">{{ module.label }}</h3>
-          <p class="mt-2 min-h-12 text-sm leading-6 text-ink-muted">{{ module.description }}</p>
+        <div v-if="modules.length" class="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
+          <template v-for="module in modules" :key="module.key">
+            <a
+              v-if="module.state === 'available' && module.href"
+              :href="module.href"
+              :style="cardStyle(module)"
+              data-module-card
+              class="group relative isolate flex min-h-[13.5rem] flex-col overflow-hidden rounded-2xl border border-brand-700 bg-brand-950 bg-cover bg-center p-4 text-white shadow-card transition duration-200 hover:-translate-y-0.5 hover:border-primary hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-subtle sm:p-5"
+            >
+              <div class="flex items-start justify-between gap-3">
+                <span class="flex size-12 items-center justify-center rounded-xl bg-primary text-white shadow-lg" aria-hidden="true">
+                  <component :is="iconFor(module.icon)" class="size-6" />
+                </span>
+                <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-2.5 py-1 text-xs font-semibold text-emerald-200">
+                  <span class="size-1.5 rounded-full bg-emerald-400" aria-hidden="true"></span>
+                  {{ module.status }}
+                </span>
+              </div>
+              <div class="mt-auto pt-6">
+                <h3 class="text-lg font-bold">{{ module.label }}</h3>
+                <p class="mt-1.5 min-h-10 max-w-[24rem] text-sm leading-5 text-blue-100">{{ module.description }}</p>
+                <span class="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-sky-300 group-hover:text-white">
+                  Ingresar al módulo
+                  <ArrowRightIcon class="size-4 transition-transform group-hover:translate-x-1" aria-hidden="true" />
+                </span>
+              </div>
+            </a>
 
-          <span class="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-primary group-hover:text-primary-hover">
-            Abrir módulo
-            <ArrowRightIcon class="size-4 transition-transform group-hover:translate-x-1" aria-hidden="true" />
-          </span>
-        </a>
-      </div>
+            <button
+              v-else
+              type="button"
+              disabled
+              aria-disabled="true"
+              :aria-label="`${module.label}: ${module.status}`"
+              :style="cardStyle(module)"
+              data-module-card
+              class="relative isolate flex min-h-[13.5rem] cursor-not-allowed flex-col overflow-hidden rounded-2xl border border-border bg-surface-raised p-4 text-left text-ink shadow-card opacity-85 sm:p-5"
+              :class="module.key === 'maintenance' ? 'border-brand-700 bg-brand-950 text-white' : ''"
+            >
+              <div class="flex items-start justify-between gap-3">
+                <span class="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary-subtle text-primary" aria-hidden="true">
+                  <component :is="iconFor(module.icon)" class="size-6" />
+                </span>
+                <span
+                  class="module-status--pending max-w-[9.5rem] rounded-full bg-surface-muted px-2.5 py-1 text-center text-[0.65rem] font-semibold leading-4 text-ink-muted"
+                  :class="module.state === 'restricted' ? 'bg-warning-subtle text-warning-strong' : ''"
+                >
+                  {{ module.status }}
+                </span>
+              </div>
+              <div class="mt-auto pt-6">
+                <h3 class="text-lg font-bold">{{ module.label }}</h3>
+                <p class="mt-1.5 min-h-10 text-sm leading-5" :class="module.key === 'maintenance' ? 'text-blue-100' : 'text-ink-muted'">{{ module.description }}</p>
+                <span class="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-ink-muted">
+                  {{ module.state === 'restricted' ? 'Consultá a tu administrador' : 'Próximamente' }}
+                </span>
+              </div>
+            </button>
+          </template>
+        </div>
 
-      <div v-else class="rounded-2xl border border-border bg-surface-raised px-5 py-7 shadow-card sm:px-7">
-        <div class="flex max-w-2xl items-start gap-4">
-          <span class="flex size-11 shrink-0 items-center justify-center rounded-xl bg-surface-muted text-ink-muted" aria-hidden="true">
-            <Squares2X2Icon class="size-5" />
+        <div v-else class="rounded-2xl border border-border bg-surface-raised p-6 text-ink-muted">
+          <h3 class="font-semibold text-ink">Sin módulos habilitados para tu cuenta</h3>
+          <p class="mt-1 text-sm">Consultá al administrador de tu empresa para conocer tus accesos.</p>
+        </div>
+      </section>
+
+      <aside class="rounded-2xl border border-border bg-surface-raised p-5 shadow-card sm:p-6" aria-labelledby="platform-status-heading">
+        <div class="flex items-center gap-3">
+          <span class="flex size-10 items-center justify-center rounded-xl bg-primary-subtle text-primary" aria-hidden="true">
+            <ChartBarSquareIcon class="size-5" />
           </span>
           <div>
-            <h3 class="font-semibold text-ink">No hay módulos operativos disponibles</h3>
-            <p class="mt-1 text-sm leading-6 text-ink-muted">
-              {{ isSuperAdmin
-                ? 'La administración global está disponible en su espacio correspondiente.'
-                : 'Si necesitás acceso a Mantenimiento, consultá al administrador de tu empresa.' }}
-            </p>
-            <a
-              v-if="isSuperAdmin"
-              :href="data.globalAdminUrl"
-              class="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-primary hover:text-primary-hover"
-            >
-              Ir a Administración global
-              <ArrowRightIcon class="size-4" aria-hidden="true" />
-            </a>
+            <p class="text-xs font-semibold uppercase tracking-wide text-primary">Vogel Consultoría</p>
+            <h2 id="platform-status-heading" class="font-bold text-ink">Estado de la plataforma</h2>
           </div>
         </div>
-      </div>
-    </section>
+
+        <p class="mt-4 text-sm leading-6 text-ink-muted">
+          Los módulos están visibles para que conozcas la propuesta. Cada acceso se habilita cuando su implementación esté disponible para tu cuenta.
+        </p>
+
+        <dl class="mt-5 space-y-3 border-t border-border-subtle pt-4 text-sm">
+          <div class="flex items-center justify-between gap-3">
+            <dt class="text-ink-muted">Operativos</dt>
+            <dd class="font-bold text-success-strong">{{ availableCount }}</dd>
+          </div>
+          <div class="flex items-center justify-between gap-3">
+            <dt class="text-ink-muted">Sin implementación aún</dt>
+            <dd class="font-bold text-ink">{{ pendingCount }}</dd>
+          </div>
+          <div v-if="restrictedCount" class="flex items-center justify-between gap-3">
+            <dt class="text-ink-muted">No habilitados para tu cuenta</dt>
+            <dd class="font-bold text-warning-strong">{{ restrictedCount }}</dd>
+          </div>
+        </dl>
+
+        <a
+          v-if="isSuperAdmin"
+          :href="data.globalAdminUrl"
+          class="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-primary hover:text-primary-hover"
+        >
+          Administración global
+          <ArrowRightIcon class="size-4" aria-hidden="true" />
+        </a>
+      </aside>
+    </div>
   </div>
 </template>

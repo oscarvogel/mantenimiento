@@ -21,18 +21,19 @@ final readonly class AppShellPayload
     {
         $payload = $this->context->execute($actor);
         $availableModules = $this->platformModules->execute($actor);
+        $canEnterMaintenance = ($availableModules[0]['landingPath'] ?? null) !== null;
         $payload['homeUrl'] = $active !== 'command-center' && $availableModules !== []
-            ? base_url('inicio')
+            && $canEnterMaintenance ? base_url('inicio')
             : null;
-        $navigation = [
-            $this->item('dashboard', 'Dashboard', 'dashboard', 'dashboard', $active),
-        ];
+        $navigation = $active === 'command-center'
+            ? $this->platformNavigation($actor, $availableModules)
+            : [$this->item('dashboard', 'Dashboard', 'dashboard', 'dashboard', $active)];
 
-        if ($actor->isSuperAdmin()) {
+        if ($active !== 'command-center' && $actor->isSuperAdmin()) {
             $navigation[] = $this->item('superadmin', 'Administración global', 'superadmin', 'building', $active);
             $navigation[] = $this->item('notification-settings', 'Configuración de notificaciones', 'superadmin/configuracion/notificaciones', 'notifications', $active);
             $navigation[] = $this->item('chatbot-audit', 'Auditoría del chatbot', 'superadmin?section=chat-audit', 'audit', $active);
-        } else {
+        } elseif ($active !== 'command-center') {
             if ($actor->hasPermission('equipos.ver')) {
                 $navigation[] = $this->item('equipment', 'Equipos', 'mantenimiento/equipos', 'truck', $active);
             }
@@ -132,5 +133,33 @@ final readonly class AppShellPayload
         }
 
         return false;
+    }
+
+    /** @param list<array{key:string,label:string,description:string,icon:string,landingPath:?string,status:string,state:string}> $modules
+     *  @return list<array<string,mixed>>
+     */
+    private function platformNavigation(ActorContext $actor, array $modules): array
+    {
+        $navigation = [$this->item('platform-home', 'Inicio', 'inicio', 'platform-home', 'platform-home')];
+
+        foreach ($modules as $module) {
+            $canEnter = $module['landingPath'] !== null;
+            $navigation[] = [
+                'key' => 'module-' . $module['key'],
+                'label' => $module['label'],
+                'href' => $canEnter ? base_url($module['landingPath']) : null,
+                'icon' => 'module-' . $module['icon'],
+                'active' => false,
+                'disabled' => ! $canEnter,
+                'status' => $module['status'],
+                'badge' => null,
+            ];
+        }
+
+        if ($actor->isSuperAdmin()) {
+            $navigation[] = $this->item('platform-admin', 'Administración global', 'superadmin', 'building', '');
+        }
+
+        return $navigation;
     }
 }

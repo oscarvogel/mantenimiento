@@ -150,6 +150,40 @@ final class GetAppShellContextTest extends TestCase
         self::assertStringEndsWith('/inicio', $payload['homeUrl']);
     }
 
+    public function testCommandCenterGetsPlatformNavigationInsteadOfMaintenanceNavigation(): void
+    {
+        $context = new GetAppShellContext(new AppShellReadModelFake());
+        $actor = new ActorContext(7, 5, false, false, ['Consulta'], ['equipos.ver'], [9]);
+
+        $payload = (new AppShellPayload($context, new GetPlatformModuleCatalog()))->for($actor, 'command-center');
+
+        self::assertSame(
+            ['platform-home', 'module-maintenance', 'module-trips', 'module-fuel', 'module-tires', 'module-billing', 'module-management', 'module-reports', 'module-automations', 'module-ai'],
+            array_column($payload['navigation'], 'key'),
+        );
+        self::assertTrue($payload['navigation'][0]['active']);
+        self::assertFalse($payload['navigation'][1]['disabled']);
+        self::assertStringEndsWith('/dashboard', $payload['navigation'][1]['href']);
+        self::assertTrue($payload['navigation'][2]['disabled']);
+        self::assertNull($payload['navigation'][2]['href']);
+        self::assertSame('Sin implementación aún', $payload['navigation'][2]['status']);
+        self::assertNull($payload['navigation'][2]['badge']);
+        self::assertNull($payload['homeUrl']);
+    }
+
+    public function testUserWithoutMaintenanceEntryPermissionDoesNotGetModuleOrReturnAccess(): void
+    {
+        $context = new GetAppShellContext(new AppShellReadModelFake());
+        $actor = new ActorContext(10, 5, false, false, ['Administrador'], ['sucursales.ver'], [9]);
+
+        $portal = (new AppShellPayload($context, new GetPlatformModuleCatalog()))->for($actor, 'command-center');
+        $maintenancePage = (new AppShellPayload($context, new GetPlatformModuleCatalog()))->for($actor, 'plans');
+
+        self::assertTrue($portal['navigation'][1]['disabled']);
+        self::assertNull($portal['navigation'][1]['href']);
+        self::assertNull($maintenancePage['homeUrl']);
+    }
+
     public function testPortalReturnLinkIsNotGrantedToSuperadministratorAsTenantAccess(): void
     {
         $context = new GetAppShellContext(new AppShellReadModelFake());
