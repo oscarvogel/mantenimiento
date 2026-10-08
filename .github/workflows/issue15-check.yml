@@ -1,5 +1,8 @@
 name: Issue 15 check
 
+permissions:
+  contents: write
+
 on:
   workflow_dispatch:
   push:
@@ -52,5 +55,22 @@ jobs:
           name: dashboard-assets-pr-460
           path: assets/dashboard
           retention-days: 1
+      - name: Commit rebuilt dashboard assets to PR branch
+        if: failure() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          rm -rf /tmp/dashboard-built
+          cp -a assets/dashboard /tmp/dashboard-built
+          git fetch origin "$GITHUB_HEAD_REF"
+          git checkout "$GITHUB_HEAD_REF"
+          rm -rf assets/dashboard
+          cp -a /tmp/dashboard-built assets/dashboard
+          git add assets/dashboard
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "build: sync dashboard assets for #453"
+          git push origin "HEAD:$GITHUB_HEAD_REF"
       - name: Dashboard asset tooling self-test
         run: python scripts/dashboard-assets.py self-test
