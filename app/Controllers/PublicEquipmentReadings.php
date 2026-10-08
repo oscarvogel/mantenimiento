@@ -8,8 +8,11 @@ use App\Application\PublicEquipmentAccess\ResolvePublicEquipmentToken;
 use App\Infrastructure\PublicEquipmentAccess\CodeIgniterPublicEquipmentTokenRepository;
 use App\Infrastructure\Measurement\MiniMaxOdometerImageAnalyzer;
 use App\Infrastructure\Measurement\ReadingEvidenceStorage;
+use App\Domain\Notifications\NotifiableEvent;
+use App\Domain\Notifications\NotificationSeverity;
 use CodeIgniter\HTTP\RedirectResponse;
 use CodeIgniter\HTTP\ResponseInterface;
+use DateTimeImmutable;
 use DomainException;
 use Throwable;
 
@@ -20,6 +23,9 @@ final class PublicEquipmentReadings extends BaseController
     private const MAX_KM_JUMP = 5000;
     private const MAX_HOURS_JUMP = 500.0;
     private const MAX_EVIDENCE_BYTES = 8 * 1024 * 1024;
+    private const AI_DISCREPANCY_MIN_CONFIDENCE = 0.80;
+    private const AI_DISCREPANCY_MIN_KM = 1000;
+    private const AI_DISCREPANCY_MIN_RATIO = 0.05;
 
     public function show(string $token): string
     {
@@ -86,31 +92,35 @@ final class PublicEquipmentReadings extends BaseController
 
             $evidenceRef = null;
             $storageError = null;
-            try {
-                $stored = $this->evidenceStorage()->store(
-                    $tempPath,
-                    (int) $equipment['empresa_id'],
-                    $mime,
-                );
+            if ($analysis === null || $analysis->evidenceValid) {
+                try {
+                    $stored = $this->evidenceStorage()->store(
+                        $tempPath,
+                        (int) $equipment['empresa_id'],
+                        $mime,
+                    );
 
-                $evidenceRef = bin2hex(random_bytes(16));
-                session()->set($this->stagedEvidenceSessionKey($evidenceRef), [
-                    'path' => $stored['path'],
-                    'mime' => $stored['mime'],
-                    'bytes' => $stored['bytes'],
-                    'company_id' => (int) $equipment['empresa_id'],
-                    'equipment_id' => (int) $equipment['id'],
-                    'expires_at' => time() + 1800,
-                    'km_detectado_ia' => $analysis?->kilometers,
-                    'confianza_ia' => $analysis?->confidence,
-                    'legible_ia' => $analysis?->legible ?? false,
-                    'observacion_ia' => $analysis?->observation,
-                ]);
-            } catch (Throwable $exception) {
-                $storageError = $exception->getMessage();
-                log_message('warning', 'No se pudo dejar staged la evidencia de lectura: {message}', [
-                    'message' => $storageError,
-                ]);
+                    $evidenceRef = bin2hex(random_bytes(16));
+                    session()->set($this->stagedEvidenceSessionKey($evidenceRef), [
+                        'path' => $stored['path'],
+                        'mime' => $stored['mime'],
+                        'bytes' => $stored['bytes'],
+                        'company_id' => (int) $equipment['empresa_id'],
+                        'equipment_id' => (int) $equipment['id'],
+                        'expires_at' => time() + 1800,
+                        'km_detectado_ia' => $analysis?->kilometers,
+                        'confianza_ia' => $analysis?->confidence,
+                        'legible_ia' => $analysis?->legible ?? false,
+                        'observacion_ia' => $analysis?->observation,
+                        'evidencia_valida_ia' => $analysis?->evidenceValid ?? true,
+                        'motivo_invalido_ia' => $analysis?->invalidReason,
+                    ]);
+                } catch (Throwable $exception) {
+                    $storageError = $exception->getMessage();
+                    log_message('error', 'No se pudo dejar staged la evidencia de lectura: {message}', [
+                        'message' => $storageError,
+                    ]);
+                }
             }
 
             return $this->response->setJSON([
@@ -119,6 +129,11 @@ final class PublicEquipmentReadings extends BaseController
                 'confidence' => $analysis?->confidence,
                 'legible' => $analysis?->legible ?? false,
                 'observation' => $analysis?->observation,
+                'evidenceValid' => $analysis?->evidenceValid ?? false,
+                'invalidReason' => $analysis?->invalidReason,
+                'evidenceError' => $analysis !== null && ! $analysis->evidenceValid
+                    ? $this->invalidEvidenceMessage($analysis->invalidReason, $this->equipmentLocale($equipment))
+                    : null,
                 'analysisError' => $analysis === null
                     ? 'No pudimos leer automáticamente el odómetro. Podés ingresar el kilometraje manualmente.'
                     : null,
@@ -241,6 +256,10 @@ final class PublicEquipmentReadings extends BaseController
                     isset($stagedEvidence['observacion_ia']) && $stagedEvidence['observacion_ia'] !== null
                         ? (string) $stagedEvidence['observacion_ia']
                         : null,
+                    (bool) ($stagedEvidence['evidencia_valida_ia'] ?? false),
+                    isset($stagedEvidence['motivo_invalido_ia']) && $stagedEvidence['motivo_invalido_ia'] !== null
+                        ? (string) $stagedEvidence['motivo_invalido_ia']
+                        : null,
                 );
             } else {
                 [$evidenceTempPath, $evidenceMime] = $this->validatedEvidenceUpload();
@@ -251,6 +270,10 @@ final class PublicEquipmentReadings extends BaseController
                         'message' => $exception->getMessage(),
                     ]);
                 }
+            }
+
+            if ($aiAnalysis !== null && ! $aiAnalysis->evidenceValid) {
+                throw new DomainException($this->invalidEvidenceMessage($aiAnalysis->invalidReason, $locale));
             }
 
             $kilometers = $this->nullableInt($this->request->getPost('kilometers'), $locale);
@@ -326,7 +349,7 @@ final class PublicEquipmentReadings extends BaseController
                 );
             $database->transBegin();
             try {
-                $database->table('lecturas_equipo')->insert([
+                $readingInserted = $database->table('lecturas_equipo')->insert([
                     'empresa_id' => (int) $equipment['empresa_id'],
                     'sucursal_id' => (int) $equipment['sucursal_id'],
                     'equipo_id' => (int) $equipment['id'],
@@ -341,6 +364,14 @@ final class PublicEquipmentReadings extends BaseController
                     'created_at' => $now,
                     'updated_at' => $now,
                 ]);
+                if ($readingInserted !== true) {
+                    $dbError = $database->error();
+                    log_message('error', 'Falló insert de lectura QR: {code} {message}', [
+                        'code' => (string) ($dbError['code'] ?? ''),
+                        'message' => (string) ($dbError['message'] ?? ''),
+                    ]);
+                    throw new DomainException($this->tr($locale, 'save_failed'));
+                }
                 $readingId = (int) $database->insertID();
 
                 $detectedKm = $aiAnalysis?->kilometers;
@@ -352,7 +383,12 @@ final class PublicEquipmentReadings extends BaseController
                     ? 'FOTO_MANUAL'
                     : ($kilometers === $detectedKm ? 'FOTO_IA_CONFIRMADA' : 'FOTO_IA_CORREGIDA');
 
-                $database->table('lecturas_equipo_evidencias')->insert([
+                $aiObservation = $aiAnalysis?->observation;
+                if ($aiObservation !== null) {
+                    $aiObservation = mb_substr($aiObservation, 0, 255);
+                }
+
+                $evidenceInserted = $database->table('lecturas_equipo_evidencias')->insert([
                     'empresa_id' => (int) $equipment['empresa_id'],
                     'lectura_id' => $readingId,
                     'archivo_path' => $storedEvidence['path'],
@@ -363,9 +399,21 @@ final class PublicEquipmentReadings extends BaseController
                     'estado_ia' => $aiStatus,
                     'km_confirmado' => $kilometers,
                     'metodo_carga' => $method,
-                    'observacion_ia' => $aiAnalysis?->observation,
+                    'observacion_ia' => $aiObservation,
                     'created_at' => $now,
                 ]);
+                if ($evidenceInserted !== true) {
+                    $dbError = $database->error();
+                    log_message('error', 'Falló insert de evidencia de lectura: {code} {message}', [
+                        'code' => (string) ($dbError['code'] ?? ''),
+                        'message' => (string) ($dbError['message'] ?? ''),
+                    ]);
+                    throw new DomainException(
+                        $this->normalizeLocale($locale) === 'PT'
+                            ? 'Não foi possível salvar a evidência da leitura.'
+                            : 'No se pudo guardar la evidencia de la lectura.'
+                    );
+                }
 
                 $update = ['updated_at' => $now];
                 if ($kilometers !== null) {
@@ -374,12 +422,20 @@ final class PublicEquipmentReadings extends BaseController
                 if ($hours !== null) {
                     $update['horas_actuales'] = $hours;
                 }
-                $database->table('equipos')
+                $equipmentUpdated = $database->table('equipos')
                     ->where('id', (int) $equipment['id'])
                     ->where('empresa_id', (int) $equipment['empresa_id'])
                     ->update($update);
+                if ($equipmentUpdated !== true) {
+                    $dbError = $database->error();
+                    log_message('error', 'Falló actualización del equipo tras lectura QR: {code} {message}', [
+                        'code' => (string) ($dbError['code'] ?? ''),
+                        'message' => (string) ($dbError['message'] ?? ''),
+                    ]);
+                    throw new DomainException($this->tr($locale, 'save_failed'));
+                }
 
-                $database->table('qr_lecturas_auditoria')->insert([
+                $auditInserted = $database->table('qr_lecturas_auditoria')->insert([
                     'token_id' => $tokenId,
                     'request_key' => $requestKey,
                     'ip_hash' => $ipHash,
@@ -389,6 +445,14 @@ final class PublicEquipmentReadings extends BaseController
                     'lectura_id' => $readingId,
                     'created_at' => $now,
                 ]);
+                if ($auditInserted !== true) {
+                    $dbError = $database->error();
+                    log_message('error', 'Falló auditoría aceptada de lectura QR: {code} {message}', [
+                        'code' => (string) ($dbError['code'] ?? ''),
+                        'message' => (string) ($dbError['message'] ?? ''),
+                    ]);
+                    throw new DomainException($this->tr($locale, 'save_failed'));
+                }
 
                 if (! $database->transStatus()) {
                     throw new DomainException($this->tr($locale, 'save_failed'));
@@ -403,6 +467,25 @@ final class PublicEquipmentReadings extends BaseController
                     $this->evidenceStorage()->delete((string) $storedEvidence['path'], (int) $equipment['empresa_id']);
                 }
                 throw $exception;
+            }
+
+            if ($this->shouldAlertAiDiscrepancy($aiAnalysis?->kilometers, $kilometers, $aiAnalysis?->confidence)) {
+                try {
+                    $this->publishAiDiscrepancyAlert(
+                        $database,
+                        $equipment,
+                        $readingId,
+                        (int) $aiAnalysis->kilometers,
+                        (int) $kilometers,
+                        (float) $aiAnalysis->confidence,
+                    );
+                } catch (Throwable $notificationError) {
+                    // Una falla al notificar nunca debe invalidar una lectura ya persistida.
+                    log_message('error', 'No se pudo alertar discrepancia IA de lectura {reading}: {message}', [
+                        'reading' => $readingId,
+                        'message' => $notificationError->getMessage(),
+                    ]);
+                }
             }
 
             return redirect()->to($target . '?registrada=1')->with('success', $this->tr($locale, 'success'));
@@ -424,6 +507,75 @@ final class PublicEquipmentReadings extends BaseController
             }
             return $redirect;
         }
+    }
+
+    private function shouldAlertAiDiscrepancy(?int $detectedKm, ?int $confirmedKm, ?float $confidence): bool
+    {
+        if ($detectedKm === null || $confirmedKm === null || $confidence === null) {
+            return false;
+        }
+        if ($confidence < self::AI_DISCREPANCY_MIN_CONFIDENCE) {
+            return false;
+        }
+
+        $difference = abs($detectedKm - $confirmedKm);
+        $ratio = $detectedKm > 0 ? $difference / $detectedKm : 0.0;
+
+        return $difference >= self::AI_DISCREPANCY_MIN_KM
+            && $ratio >= self::AI_DISCREPANCY_MIN_RATIO;
+    }
+
+    /** @param array<string,mixed> $equipment */
+    private function publishAiDiscrepancyAlert(
+        \CodeIgniter\Database\BaseConnection $database,
+        array $equipment,
+        int $readingId,
+        int $detectedKm,
+        int $confirmedKm,
+        float $confidence,
+    ): void {
+        $responsibles = $database->table('usuarios u')
+            ->select('DISTINCT u.id', false)
+            ->join('usuario_roles ur', 'ur.usuario_id = u.id', 'inner')
+            ->join('roles r', 'r.id = ur.rol_id', 'inner')
+            ->where('u.empresa_id', (int) $equipment['empresa_id'])
+            ->where('u.activo', 1)
+            ->where('u.deleted_at', null)
+            ->where('r.nombre', 'Responsable de mantenimiento')
+            ->get()
+            ->getResultArray();
+
+        $recipientIds = array_values(array_filter(
+            array_map(static fn (array $row): int => (int) ($row['id'] ?? 0), $responsibles),
+            static fn (int $id): bool => $id > 0,
+        ));
+        if ($recipientIds === []) {
+            log_message('warning', 'Lectura {reading} con discrepancia IA sin Responsable de mantenimiento configurado.', [
+                'reading' => $readingId,
+            ]);
+            return;
+        }
+
+        $difference = abs($detectedKm - $confirmedKm);
+        $equipmentCode = trim((string) ($equipment['codigo'] ?? 'Equipo'));
+        $confidencePercent = (int) round($confidence * 100);
+
+        \Config\Services::publishNotifiableEvent(false)->publish(new NotifiableEvent(
+            (int) $equipment['empresa_id'],
+            (int) $equipment['sucursal_id'],
+            'lectura.discrepancia_ia',
+            NotificationSeverity::CRITICAL,
+            'Revisar lectura: ' . $equipmentCode,
+            'La IA detectó ' . number_format($detectedKm, 0, ',', '.') . ' km (' . $confidencePercent
+                . '% de confianza), pero se confirmaron ' . number_format($confirmedKm, 0, ',', '.')
+                . ' km. Diferencia: ' . number_format($difference, 0, ',', '.') . ' km.',
+            'lectura_equipo',
+            (string) $readingId,
+            'lectura_discrepancia_ia:lectura:' . $readingId,
+            (string) parse_url(base_url('mantenimiento/lecturas/' . $readingId . '/evidencia'), PHP_URL_PATH),
+            new DateTimeImmutable(),
+            $recipientIds,
+        ));
     }
 
     private function auditRejected(string $token, string $requestKey, string $reason): void
@@ -549,16 +701,43 @@ final class PublicEquipmentReadings extends BaseController
 
     private function evidenceStorage(): ReadingEvidenceStorage
     {
-        // Reutilizar primero el almacenamiento privado que ya usa el sistema
-        // para adjuntos de equipos. Está probado tanto en Coolify como en Ferozo
-        // y evita depender de una segunda raíz con permisos distintos.
-        $privateRoot = trim((string) env('uploads.privatePath', ''));
-        if ($privateRoot !== '') {
-            return new ReadingEvidenceStorage($privateRoot);
+        // Preferir una raíz específica para evidencias. Si no existe, derivarla
+        // como hermana del storage privado ya probado de adjuntos, sin sondear
+        // rutas externas que puedan disparar open_basedir en Ferozo.
+        $configured = trim((string) env('uploads.readingEvidencePath', ''));
+        if ($configured !== '') {
+            return new ReadingEvidenceStorage($configured);
         }
 
-        $configured = trim((string) env('uploads.readingEvidencePath', ''));
-        return new ReadingEvidenceStorage($configured === '' ? null : $configured);
+        $privateRoot = rtrim(trim((string) env('uploads.privatePath', '')), '\\/');
+        if ($privateRoot !== '') {
+            return new ReadingEvidenceStorage(
+                dirname($privateRoot) . DIRECTORY_SEPARATOR . 'lecturas',
+            );
+        }
+
+        return new ReadingEvidenceStorage();
+    }
+
+    private function invalidEvidenceMessage(?string $reason, string $locale): string
+    {
+        $pt = [
+            'NOT_DASHBOARD' => 'A foto não parece mostrar o painel ou hodômetro do veículo. Tire outra foto do hodômetro.',
+            'ODOMETER_NOT_VISIBLE' => 'O painel aparece, mas o hodômetro total não está visível. Tire outra foto mostrando a quilometragem.',
+            'TRIP_ONLY' => 'A foto mostra apenas a viagem parcial (Trip). Precisamos do hodômetro total.',
+            'TOO_BLURRY' => 'A foto está muito desfocada, escura ou com reflexos para servir como evidência. Tire outra foto.',
+            'OTHER' => 'A foto não serve como evidência válida do hodômetro. Tire outra foto mostrando claramente a quilometragem.',
+        ];
+        $es = [
+            'NOT_DASHBOARD' => 'La foto no parece mostrar el tablero u odómetro del vehículo. Sacá otra foto del odómetro.',
+            'ODOMETER_NOT_VISIBLE' => 'Se ve el tablero, pero no el odómetro total. Sacá otra foto donde se vea el kilometraje.',
+            'TRIP_ONLY' => 'La foto muestra solamente el viaje parcial (Trip). Necesitamos el odómetro total.',
+            'TOO_BLURRY' => 'La foto está demasiado borrosa, oscura o con reflejos para servir como evidencia. Sacá otra foto.',
+            'OTHER' => 'La foto no sirve como evidencia válida del odómetro. Sacá otra foto donde se vea claramente el kilometraje.',
+        ];
+        $catalog = $this->normalizeLocale($locale) === 'PT' ? $pt : $es;
+        $key = strtoupper(trim((string) $reason));
+        return $catalog[$key] ?? $catalog['OTHER'];
     }
 
     private function nullableInt(mixed $value, string $locale): ?int

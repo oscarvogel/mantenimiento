@@ -97,20 +97,58 @@ final class MiniMaxOdometerImageAnalyzer implements OdometerImageAnalyzer
             throw new RuntimeException('La IA devolvió una respuesta inválida.');
         }
 
-        $km = isset($data['odometro']) && is_numeric($data['odometro'])
-            ? max(0, (int) round((float) $data['odometro']))
-            : null;
+        $km = $this->normalizeOdometerValue($data['odometro'] ?? null);
         $confidence = isset($data['confianza']) && is_numeric($data['confianza'])
             ? max(0.0, min(1.0, (float) $data['confianza']))
             : null;
         $legible = (bool) ($data['legible'] ?? false);
+        $evidenceValid = (bool) ($data['evidencia_valida'] ?? false);
+        $invalidReason = trim((string) ($data['motivo_invalido'] ?? ''));
 
         return new OdometerImageAnalysis(
             $km,
             $confidence,
             $legible && $km !== null,
             trim((string) ($data['observacion'] ?? '')) ?: null,
+            $evidenceValid,
+            $invalidReason !== '' ? $invalidReason : null,
         );
+    }
+
+    private function normalizeOdometerValue(mixed $value): ?int
+    {
+        if (is_int($value) || is_float($value)) {
+            return max(0, (int) round((float) $value));
+        }
+
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $raw = trim($value);
+        if ($raw === '') {
+            return null;
+        }
+
+        // Tolerancia defensiva: aunque el prompt exige JSON numérico, algunos
+        // modelos pueden devolver formatos visuales del tablero (1.194.076,9).
+        $raw = preg_replace('/\s+/u', '', $raw) ?? $raw;
+        if (preg_match('/^\d{1,3}(?:\.\d{3})+,\d+$/', $raw) === 1) {
+            $raw = str_replace('.', '', $raw);
+            $raw = str_replace(',', '.', $raw);
+        } elseif (preg_match('/^\d{1,3}(?:,\d{3})+\.\d+$/', $raw) === 1) {
+            $raw = str_replace(',', '', $raw);
+        } elseif (preg_match('/^\d+,\d+$/', $raw) === 1) {
+            $raw = str_replace(',', '.', $raw);
+        } elseif (preg_match('/^\d{1,3}(?:\.\d{3})+$/', $raw) === 1) {
+            $raw = str_replace('.', '', $raw);
+        } elseif (preg_match('/^\d{1,3}(?:,\d{3})+$/', $raw) === 1) {
+            $raw = str_replace(',', '', $raw);
+        }
+
+        return is_numeric($raw)
+            ? max(0, (int) round((float) $raw))
+            : null;
     }
 
     private function prompt(): string
@@ -119,14 +157,28 @@ final class MiniMaxOdometerImageAnalyzer implements OdometerImageAnalyzer
 Analizá esta fotografía del tablero de un vehículo o máquina. Tu única tarea es leer el ODÓMETRO/KILOMETRAJE total acumulado. No confundas velocidad, autonomía, viaje parcial (trip), consumo, temperatura, reloj ni otras cifras con el odómetro.
 
 Respondé EXCLUSIVAMENTE JSON válido, sin markdown ni explicaciones:
-{"odometro":integer|null,"confianza":number,"legible":boolean,"observacion":string|null}
+{"odometro":number|null,"confianza":number,"legible":boolean,"evidencia_valida":boolean,"motivo_invalido":string|null,"observacion":string|null}
 
 Reglas:
-- odometro debe ser el kilometraje total visible, como entero sin separadores de miles.
+- odometro debe ser el kilometraje TOTAL acumulado visible. Puede incluir decimal si el tablero lo muestra.
+- Devolvé odometro como número JSON, sin separadores de miles. Ej.: 497997.6, 491138, 1194076.9.
+- Nunca uses como odometro la velocidad instantánea (km/h), Trip/viaje parcial, autonomía, consumo, reloj ni otra cifra auxiliar.
+- Si el tablero muestra ODO/odómetro y también Trip, elegí SIEMPRE ODO/odómetro total.
+- Los kilometrajes mayores a 999999 son válidos; no truncar ni descartar lecturas de 1.000.000 km o más.
 - confianza debe estar entre 0 y 1.
-- legible=false y odometro=null si no hay un odómetro identificable con seguridad.
+- evidencia_valida=true únicamente si la foto muestra realmente un tablero/odómetro de vehículo o máquina y sirve como evidencia de kilometraje.
+- evidencia_valida=false si es una foto cualquiera, documento, persona, paisaje, piso, interior sin tablero, odómetro fuera de cuadro, solo Trip/parcial, imagen demasiado borrosa/oscura/reflejada para servir como evidencia, o cualquier caso donde no se pueda verificar que corresponde al odómetro.
+- motivo_invalido debe ser uno de: NOT_DASHBOARD, ODOMETER_NOT_VISIBLE, TRIP_ONLY, TOO_BLURRY, OTHER; usar null cuando evidencia_valida=true.
+- Si evidencia_valida=false, devolver odometro=null y legible=false aunque aparezca algún número en la imagen.
+- legible=false y odometro=null si la foto es evidencia válida pero no hay un odómetro identificable con seguridad.
 - No inventes dígitos tapados, borrosos o fuera de cuadro.
 - Si hay varias cifras candidatas, elegí únicamente la que claramente corresponda a ODO/odómetro total; si no es inequívoco, devolvé null.
+- Casos de referencia reales:
+  * Pantalla "497997.6 km" => odometro 497997.6.
+  * Pantalla con "491138 km" y debajo "Trip 39.7 km" => odometro 491138.
+  * Pantalla "1194076.9 km" => odometro 1194076.9; es válido superar un millón.
+- Estas tres referencias reales son evidencia_valida=true aunque tengan diseños de tablero muy distintos.
+- Una foto sin tablero/odómetro no se acepta como evidencia aunque contenga números o texto.
 PROMPT;
     }
 }
