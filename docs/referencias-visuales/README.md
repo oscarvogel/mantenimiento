@@ -7,10 +7,18 @@
 ## Las tres propuestas visuales (archivos originales externos a esta rama)
 
 1. **Portal de módulos, escritorio** (`portal-desktop.png`): fondo azul noche, logo Vogel Consultoría, cabecera con imagen temática de transporte, tarjetas de seis módulos, KPIs y centro de alertas. Es la **referencia principal del futuro inicio / centro de mandos**.
-2. **Mantenimiento, escritorio** (`mantenimiento-desktop.png`): navegación superior por módulo, sidebar propio de Mantenimiento, área principal clara, métricas, órdenes, gráficos, alertas y acciones rápidas. Es la **referencia para entrar a Mantenimiento desde el portal**, manteniendo todas las funciones existentes.
+2. **Mantenimiento, escritorio** (`mantenimiento-desktop.png`): **REFERENCIA DESCARTADA PARA IMPLEMENTACIÓN**. Fue una exploración visual generada que NO coincide con el sistema vigente: cambia tema, layout, gráficos, menú e indicadores. No debe usarse como objetivo de UI ni para sustituir el dashboard actual. Se conserva exclusivamente como antecedente histórico del proceso de diseño.
 3. **Portal móvil** (`portal-mobile.png`): inicio responsive con tarjetas de módulos, indicadores y alertas, navegación inferior compacta. Es la **referencia para celulares**.
 
 > **Estado de los binarios:** los PNG originales se generaron en la conversación de diseño y se entregan aparte para incorporación al repositorio. Este documento no pretende que las imágenes ya estén versionadas en GitHub. No se deben inventar enlaces relativos que aún no existen.
+
+## Corrección prioritaria — 2026-10-08
+
+**Fuente de verdad para Mantenimiento: la pantalla real de la aplicación vigente, no la propuesta generada.** El usuario comparó la imagen conceptual clara con una captura real del dashboard oscuro que ya incluye tarjetas de Equipos activos, Cumplimiento, Preventivos vencidos, OT abiertas y Lecturas pendientes; Resumen financiero del mes, evolución de costos, Top 5 equipos por costo y Salud del mantenimiento preventivo, además de menú lateral simplificado y chatbot flotante.
+
+**No rediseñar ni reemplazar el dashboard, navegación interna, indicadores, resumen financiero, gráfico de gastos, alertas, estilo oscuro o funciones de Mantenimiento para implementar el portal.** La primera fase agrega únicamente un nivel superior `/inicio` y un acceso para volver al portal/cambiar de módulo, insertado de modo discreto y sin degradar el diseño existente. El portal de módulos puede tomar inspiración de `portal-desktop.png` y `portal-mobile.png`, pero debe adaptar sus colores/componentes al lenguaje visual real, no imponer otra UI.
+
+**Validación obligatoria:** comparar contra la pantalla actual obtenida de la aplicación desplegada y contrastar flujo y enlaces con el repositorio, antes de aceptar diseño. Las cifras del mockup NO son datos reales.
 
 ## Requisitos visuales que se deben respetar
 
@@ -28,7 +36,7 @@
 
 ## Criterios de aceptación visual futura
 
-1. Comparar lado a lado la pantalla implementada con el concepto visual aprobado (escritorio y móvil).
+1. Comparar el **nuevo portal** lado a lado con el concepto aprobado (escritorio y móvil); comprobar **Mantenimiento** contra la captura/implementación real, jamás contra el mockup descartado.
 2. Mantener jerarquía, distribución, espaciado, colores de marca, accesibilidad y navegación general.
 3. Corregir incongruencias de textos/monedas/fotografías que las imágenes conceptuales puedan contener.
 4. Confirmar que las tareas actuales del usuario siguen siendo rápidas y el nuevo portal no agrega pasos obligatorios innecesarios.
