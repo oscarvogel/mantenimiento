@@ -288,6 +288,14 @@ final class PublicEquipmentReadings extends BaseController
                 return redirect()->to($target . '?registrada=1')->with('success', $this->tr($locale, 'already_registered'));
             }
 
+            if (! $database->tableExists('lecturas_equipo_evidencias')) {
+                throw new DomainException(
+                    $this->normalizeLocale($locale) === 'PT'
+                        ? 'A atualização de evidências ainda não foi aplicada neste ambiente. Execute as migrações antes de registrar.'
+                        : 'La actualización de evidencias todavía no fue aplicada en este entorno. Ejecutá las migraciones antes de registrar.'
+                );
+            }
+
             $now = date('Y-m-d H:i:s');
             $storedEvidence = $stagedEvidence !== null
                 ? [
