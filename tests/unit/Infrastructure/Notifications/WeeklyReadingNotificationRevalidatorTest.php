@@ -24,7 +24,7 @@ final class WeeklyReadingNotificationRevalidatorTest extends TestCase
 
     public function testRejectsMalformedAndNonexistentWeeks(): void
     {
-        foreach (['x', 'semana:2026-W00', 'semana:2026-W54', 'semana:2026-W53', 'semana:2026-W40-extra'] as $key) {
+        foreach (['x', 'semana:2026-W00', 'semana:2026-W54', 'semana:2027-W53', 'semana:2026-W40-extra'] as $key) {
             self::assertNull(WeeklyReadingNotificationRevalidator::weekStartFromEventKey($key), $key);
         }
     }
