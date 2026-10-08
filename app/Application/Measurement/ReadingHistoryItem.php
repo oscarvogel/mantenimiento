@@ -30,6 +30,10 @@ final readonly class ReadingHistoryItem
         public ?string $originReference = null,
         public ?int $workOrderId = null,
         public ?string $workOrderNumber = null,
+        public ?string $evidenceMethod = null,
+        public ?int $aiDetectedKm = null,
+        public ?float $aiConfidence = null,
+        public ?string $aiObservation = null,
     ) {
     }
 }

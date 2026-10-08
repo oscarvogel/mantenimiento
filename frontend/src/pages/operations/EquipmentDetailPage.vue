@@ -14,6 +14,15 @@ import { dangerButton, fieldClass, formatHours, formatKilometers, formatReadingO
 
 const editingExpiration = ref(null)
 const closeExpirationModal = () => { editingExpiration.value = null }
+const readingEvidence = ref(null)
+const closeReadingEvidence = () => { readingEvidence.value = null }
+const readingEvidenceLabel = (reading) => {
+  if (!reading?.evidenceMethod) return 'Sin foto'
+  if (reading.evidenceMethod === 'FOTO_IA_CONFIRMADA') return 'Foto · IA confirmada'
+  if (reading.evidenceMethod === 'FOTO_IA_CORREGIDA') return 'Foto · IA corregida'
+  if (reading.evidenceMethod === 'FOTO_MANUAL') return 'Foto · carga manual'
+  return 'Foto'
+}
 
 const props = defineProps({ data: { type: Object, required: true } })
 const data = computed(() => {
@@ -304,10 +313,39 @@ const equipmentSummary = computed(() => {
     <PanelCard title="Historial de lecturas" :count="data.readings?.total ?? null">
       <p v-if="data.readings === null" class="text-sm text-ink-muted">No tenés permiso para consultar lecturas.</p>
       <EmptyState v-else-if="data.readings.items.length === 0" title="No hay lecturas registradas" />
-      <div v-else class="overflow-x-auto"><table class="w-full min-w-[56rem] text-left text-sm"><thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-4 py-3">Fecha</th><th class="px-4 py-3">Valores</th><th class="px-4 py-3">Origen y autor</th><th class="px-4 py-3">Estado</th><th class="px-4 py-3">Acción</th></tr></thead><tbody class="divide-y divide-border-subtle"><tr v-for="reading in data.readings.items" :key="reading.id" :class="reading.annulled ? 'bg-surface-subtle text-ink-muted' : ''"><td class="px-4 py-4">{{ reading.recordedAt }}</td><td class="px-4 py-4">{{ reading.kilometersLabel }}<br>{{ reading.hoursLabel }}</td><td class="px-4 py-4">{{ reading.origin }}<br><span class="text-xs text-ink-muted">{{ reading.userName }} · {{ reading.branchId }}</span></td><td class="px-4 py-4"><StatusBadge :status="reading.annulled ? 'ANULADA' : reading.correctedReadingId ? 'CORRECCION' : 'VALIDA'" /><p v-if="reading.annulmentReason || reading.correctionReason" class="mt-1 text-xs">{{ reading.annulmentReason || reading.correctionReason }}</p><p v-if="reading.replacementReadingId" class="text-xs">Reemplazada por #{{ reading.replacementReadingId }}</p></td><td class="px-4 py-4"><details v-if="data.can.correctReadings && !reading.annulled" class="ui-details-animated"><summary :class="secondaryButton">Corregir</summary><form method="post" :action="reading.correctUrl" data-confirm data-confirm-title="¿Guardar la corrección de esta lectura?" data-confirm-text="Se registrará como corrección auditada del historial del equipo." data-confirm-button="Guardar corrección" class="mt-3 w-80 rounded-xl border border-border bg-white p-4 shadow-card"><CsrfInput :csrf="data.csrf" /><FormField label="Kilómetros" :for-id="`correct-km-${reading.id}`"><input :id="`correct-km-${reading.id}`" type="number" min="0" name="kilometraje" :value="reading.kilometers" :disabled="!data.equipment.controlsKm" :class="fieldClass" /></FormField><FormField label="Horómetro total actual" :for-id="`correct-hours-${reading.id}`" class="mt-3"><input :id="`correct-hours-${reading.id}`" type="text" inputmode="decimal" autocomplete="off" name="horometro" :value="reading.hours" :disabled="!data.equipment.controlsHours" :class="fieldClass" /></FormField><FormField label="Motivo obligatorio" :for-id="`correct-reason-${reading.id}`" class="mt-3"><textarea :id="`correct-reason-${reading.id}`" name="motivo" minlength="5" maxlength="255" rows="2" required :class="fieldClass"></textarea></FormField><FormField label="Observaciones" :for-id="`correct-notes-${reading.id}`" class="mt-3"><textarea :id="`correct-notes-${reading.id}`" name="observaciones" rows="2" :class="fieldClass"></textarea></FormField><button type="submit" :class="`${primaryButton} mt-3`">Guardar corrección auditada</button></form></details></td></tr></tbody></table></div>
+      <div v-else class="overflow-x-auto"><table class="w-full min-w-[66rem] text-left text-sm"><thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-4 py-3">Fecha</th><th class="px-4 py-3">Valores</th><th class="px-4 py-3">Origen y autor</th><th class="px-4 py-3">Estado</th><th class="px-4 py-3">Evidencia</th><th class="px-4 py-3">Acción</th></tr></thead><tbody class="divide-y divide-border-subtle"><tr v-for="reading in data.readings.items" :key="reading.id" :class="reading.annulled ? 'bg-surface-subtle text-ink-muted' : ''"><td class="px-4 py-4">{{ reading.recordedAt }}</td><td class="px-4 py-4">{{ reading.kilometersLabel }}<br>{{ reading.hoursLabel }}</td><td class="px-4 py-4">{{ reading.origin }}<br><span class="text-xs text-ink-muted">{{ reading.userName }} · {{ reading.branchId }}</span></td><td class="px-4 py-4"><StatusBadge :status="reading.annulled ? 'ANULADA' : reading.correctedReadingId ? 'CORRECCION' : 'VALIDA'" /><p v-if="reading.annulmentReason || reading.correctionReason" class="mt-1 text-xs">{{ reading.annulmentReason || reading.correctionReason }}</p><p v-if="reading.replacementReadingId" class="text-xs">Reemplazada por #{{ reading.replacementReadingId }}</p></td><td class="px-4 py-4"><button v-if="reading.evidenceUrl" type="button" class="font-semibold text-primary hover:underline" @click="readingEvidence = reading">{{ readingEvidenceLabel(reading) }}</button><span v-else class="text-xs text-ink-muted">Sin foto histórica</span></td><td class="px-4 py-4"><details v-if="data.can.correctReadings && !reading.annulled" class="ui-details-animated"><summary :class="secondaryButton">Corregir</summary><form method="post" :action="reading.correctUrl" data-confirm data-confirm-title="¿Guardar la corrección de esta lectura?" data-confirm-text="Se registrará como corrección auditada del historial del equipo." data-confirm-button="Guardar corrección" class="mt-3 w-80 rounded-xl border border-border bg-white p-4 shadow-card"><CsrfInput :csrf="data.csrf" /><FormField label="Kilómetros" :for-id="`correct-km-${reading.id}`"><input :id="`correct-km-${reading.id}`" type="number" min="0" name="kilometraje" :value="reading.kilometers" :disabled="!data.equipment.controlsKm" :class="fieldClass" /></FormField><FormField label="Horómetro total actual" :for-id="`correct-hours-${reading.id}`" class="mt-3"><input :id="`correct-hours-${reading.id}`" type="text" inputmode="decimal" autocomplete="off" name="horometro" :value="reading.hours" :disabled="!data.equipment.controlsHours" :class="fieldClass" /></FormField><FormField label="Motivo obligatorio" :for-id="`correct-reason-${reading.id}`" class="mt-3"><textarea :id="`correct-reason-${reading.id}`" name="motivo" minlength="5" maxlength="255" rows="2" required :class="fieldClass"></textarea></FormField><FormField label="Observaciones" :for-id="`correct-notes-${reading.id}`" class="mt-3"><textarea :id="`correct-notes-${reading.id}`" name="observaciones" rows="2" :class="fieldClass"></textarea></FormField><button type="submit" :class="`${primaryButton} mt-3`">Guardar corrección auditada</button></form></details></td></tr></tbody></table></div>
       <template v-if="data.readings" #footer><PaginationBar :pagination="data.readings.pagination" /></template>
     </PanelCard>
     </div>
+
+    <Teleport to="body">
+      <div
+        v-if="readingEvidence"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="equipment-reading-evidence-title"
+        @click.self="closeReadingEvidence"
+      >
+        <div class="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-xl border border-border bg-surface-raised p-5 shadow-xl">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <h2 id="equipment-reading-evidence-title" class="text-lg font-semibold text-ink">Evidencia de lectura</h2>
+              <p class="mt-1 text-sm text-ink-muted">{{ data.equipment.code }} · {{ readingEvidence.recordedAt }}</p>
+            </div>
+            <button type="button" :class="secondaryButton" @click="closeReadingEvidence">Cerrar</button>
+          </div>
+          <img :src="readingEvidence.evidenceUrl" :alt="`Evidencia de lectura de ${data.equipment.code}`" class="mt-5 max-h-[60vh] w-full rounded-xl bg-surface-subtle object-contain" />
+          <dl class="mt-4 grid gap-3 rounded-lg bg-surface-subtle p-4 text-sm sm:grid-cols-2">
+            <div><dt class="text-ink-muted">Método</dt><dd class="font-semibold text-ink">{{ readingEvidenceLabel(readingEvidence) }}</dd></div>
+            <div><dt class="text-ink-muted">Kilometraje confirmado</dt><dd class="font-semibold text-ink">{{ readingEvidence.kilometersLabel }}</dd></div>
+            <div v-if="readingEvidence.aiDetectedKm !== null && readingEvidence.aiDetectedKm !== undefined"><dt class="text-ink-muted">IA detectó</dt><dd class="font-semibold text-ink">{{ formatKilometers(readingEvidence.aiDetectedKm) }}</dd></div>
+            <div v-if="readingEvidence.aiConfidence !== null && readingEvidence.aiConfidence !== undefined"><dt class="text-ink-muted">Confianza IA</dt><dd class="font-semibold text-ink">{{ Math.round(Number(readingEvidence.aiConfidence) * 100) }}%</dd></div>
+            <div v-if="readingEvidence.aiObservation" class="sm:col-span-2"><dt class="text-ink-muted">Observación IA</dt><dd class="font-medium text-ink">{{ readingEvidence.aiObservation }}</dd></div>
+          </dl>
+        </div>
+      </div>
+    </Teleport>
 
     <div id="equipment-panel-historial" v-show="activeTab === 'historial'" role="tabpanel" aria-labelledby="equipment-tab-historial">
       <PanelCard title="Historial de mantenimiento / Órdenes de trabajo" :count="data.workOrderHistory?.total ?? null">

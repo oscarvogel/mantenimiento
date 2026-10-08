@@ -19,6 +19,11 @@ RUN a2enmod rewrite headers \
     && sed -i 's/AllowOverride None/AllowOverride All/g' /etc/apache2/apache2.conf \
     && sed -i 's|DocumentRoot.*|DocumentRoot /var/www/html|' /etc/apache2/sites-available/000-default.conf
 
+# Fotos de tablero: permitir uploads de cámara por encima del default de PHP.
+# La aplicación limita evidencia a 8 MB y el frontend la optimiza antes de subir.
+RUN printf "upload_max_filesize=12M\npost_max_size=14M\nmax_file_uploads=10\n" \
+    > /usr/local/etc/php/conf.d/mantenimiento-uploads.ini
+
 # Deps sistema para extensiones CI4 y multimedia
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libicu-dev libzip-dev libpng-dev libjpeg-dev libfreetype6-dev \

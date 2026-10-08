@@ -21,6 +21,10 @@ const row = (overrides = {}) => ({
   hasValidPhone: true,
   hasReading: true,
   canClaim: true,
+  readingMethod: null,
+  evidenceUrl: null,
+  aiDetectedKm: null,
+  aiConfidence: null,
   ...overrides,
 })
 
@@ -83,6 +87,35 @@ describe('ReadingControlPage · consulta de lecturas', () => {
     expect(wrapper.text()).toContain('Antigüedad')
     expect(wrapper.find('#reading-control-filter').exists()).toBe(true)
     expect(wrapper.find('#reading-control-sort').exists()).toBe(true)
+  })
+})
+
+describe('ReadingControlPage · evidencia', () => {
+  it('abre la foto dentro de un modal sin navegar a otra pestaña', async () => {
+    const wrapper = mountPage({
+      results: [row({
+        readingMethod: 'FOTO_IA_CORREGIDA',
+        evidenceUrl: '/mantenimiento/lecturas/99/evidencia',
+        aiDetectedKm: 184950,
+        aiConfidence: 0.92,
+      })],
+    })
+
+    const evidenceButton = wrapper.findAll('button').find((button) => button.text().includes('Foto · IA corregida'))
+    expect(evidenceButton).toBeDefined()
+    await evidenceButton.trigger('click')
+
+    const dialog = dialogEl()
+    expect(dialog).not.toBeNull()
+    expect(dialogText()).toContain('Evidencia de lectura')
+    expect(dialogText()).toContain('184.950')
+    expect(dialogText()).toContain('92%')
+    expect(dialog.querySelector('img')?.getAttribute('src')).toBe('/mantenimiento/lecturas/99/evidencia')
+    expect(wrapper.find('a[target="_blank"][href="/mantenimiento/lecturas/99/evidencia"]').exists()).toBe(false)
+
+    await dialogButton('Cerrar').trigger('click')
+    await flushPromises()
+    expect(dialogEl()).toBeNull()
   })
 })
 

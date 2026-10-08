@@ -10,13 +10,13 @@
         .card{background:#fff;border-radius:18px;padding:22px;box-shadow:0 8px 28px rgba(0,0,0,.08)}
         h1{font-size:1.5rem;margin:0 0 6px}.muted{color:#6b7280;margin:0 0 18px}
         label{display:block;font-weight:600;margin:16px 0 6px}
-        input,textarea{box-sizing:border-box;width:100%;font-size:1.15rem;padding:13px;border:1px solid #cbd5e1;border-radius:10px}
+        input,textarea{box-sizing:border-box;width:100%;font-size:1.15rem;padding:13px;border:1px solid #cbd5e1;border-radius:10px}\n        input[type=file]{font-size:1rem;background:#f8fafc}
         button{width:100%;margin-top:20px;padding:15px;border:0;border-radius:11px;font-size:1.1rem;font-weight:700;cursor:pointer}
         .msg{padding:12px;border-radius:10px;margin:12px 0}.ok{background:#dcfce7}.err{background:#fee2e2}
         .reading{font-size:.95rem;background:#f8fafc;padding:12px;border-radius:10px}
         .help{font-size:.9rem;color:#64748b;margin:6px 0 0;line-height:1.4}
         .done{text-align:center;padding:18px 8px 6px}.done h2{margin:0 0 8px;font-size:1.35rem;color:#166534}.done p{margin:0;color:#475569;line-height:1.5}
-        button[disabled]{opacity:.65;cursor:wait}
+        button[disabled]{opacity:.65;cursor:wait}.ai-status{margin-top:10px;padding:10px 12px;border-radius:10px;background:#eef2ff;color:#3730a3;font-size:.9rem;line-height:1.4}.ai-status.error{background:#fff7ed;color:#9a3412}.evidence-ready{margin-top:10px;padding:10px 12px;border-radius:10px;background:#ecfdf5;color:#166534;font-weight:600}.evidence-preview{display:block;max-width:100%;max-height:220px;margin-top:10px;border-radius:10px;object-fit:contain;background:#f8fafc}
     </style>
 </head>
 <body>
@@ -43,9 +43,17 @@
                 <p><?= esc($labels['registered_help'] ?? 'La lectura quedó guardada correctamente. Ya podés cerrar esta ventana.') ?></p>
             </div>
         <?php else: ?>
-        <form method="post" id="reading-form">
+        <form method="post" id="reading-form" enctype="multipart/form-data">
             <?= csrf_field() ?>
             <input type="hidden" name="request_key" value="<?= esc($requestKey) ?>">
+            <input type="hidden" id="evidence_ref" name="evidence_ref" value="<?= esc(old('evidence_ref')) ?>">
+            <label for="evidence_photo"><?= esc($labels['photo'] ?? 'Foto obligatoria del tablero') ?></label>
+            <input id="evidence_photo" name="evidence_photo" type="file" accept="image/jpeg,image/png" capture="environment" required>
+            <p class="help"><?= esc($labels['photo_help'] ?? 'Sacá una foto nítida donde se vea el odómetro. La foto quedará guardada como evidencia.') ?></p>
+            <div id="evidence-ready" class="evidence-ready" hidden>Foto guardada como evidencia ✓</div>
+            <img id="evidence-preview" class="evidence-preview" hidden alt="Vista previa de la evidencia">
+            <div id="ai-status" class="ai-status" hidden role="status" aria-live="polite"></div>
+
             <?php if ((int) $equipment['controla_km'] === 1): ?>
                 <label for="kilometers"><?= esc($labels['current_km'] ?? 'Kilómetros actuales') ?></label>
                 <input id="kilometers" name="kilometers" type="number" inputmode="numeric" min="0"
@@ -74,12 +82,157 @@
         <script>
         (() => {
             const form = document.getElementById('reading-form');
-            const button = document.getElementById('reading-submit');
-            if (!form || !button) return;
-            form.addEventListener('submit', () => {
+            const submit = document.getElementById('reading-submit');
+            const button = submit;
+            const photo = document.getElementById('evidence_photo');
+            const km = document.getElementById('kilometers');
+            const status = document.getElementById('ai-status');
+            const evidenceRef = document.getElementById('evidence_ref');
+            const evidenceReadyBox = document.getElementById('evidence-ready');
+            const evidencePreview = document.getElementById('evidence-preview');
+            if (!form || !submit || !photo) return;
+
+            const analysisUrl = <?= json_encode(base_url('mantenimiento/publico/equipo/' . rawurlencode($token) . '/lectura/analizar'), JSON_UNESCAPED_SLASHES) ?>;
+            let evidenceReady = Boolean(evidenceRef && evidenceRef.value);
+
+            function setSubmitAvailable(available) {
+                submit.disabled = !available;
+                if (available) {
+                    submit.textContent = submit.dataset.defaultLabel || submit.textContent;
+                }
+            }
+
+            if (submit && !submit.dataset.defaultLabel) {
+                submit.dataset.defaultLabel = submit.textContent;
+            }
+            if (evidenceReady) {
+                photo.required = false;
+                evidenceReadyBox.hidden = false;
+                status.hidden = false;
+                status.classList.remove('error');
+                status.textContent = 'La foto ya quedó guardada. Podés registrar la lectura sin volver a seleccionarla.';
+            }
+
+            async function optimizePhoto(file) {
+                if (!file || !file.type.startsWith('image/')) return file;
+                if (file.size <= 1500000) return file;
+
+                try {
+                    const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+                    const maxSide = 1920;
+                    const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+                    const width = Math.max(1, Math.round(bitmap.width * scale));
+                    const height = Math.max(1, Math.round(bitmap.height * scale));
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d', { alpha: false });
+                    if (!ctx) return file;
+                    ctx.drawImage(bitmap, 0, 0, width, height);
+                    bitmap.close?.();
+
+                    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.84));
+                    if (!blob) return file;
+                    return new File([blob], 'odometro.jpg', { type: 'image/jpeg', lastModified: Date.now() });
+                } catch (_) {
+                    return file;
+                }
+            }
+
+            async function analyzePhoto() {
+                const file = photo.files && photo.files[0];
+                if (!file) return;
+
+                if (evidencePreview) {
+                    evidencePreview.src = URL.createObjectURL(file);
+                    evidencePreview.hidden = false;
+                }
+                evidenceReadyBox.hidden = true;
+                evidenceReady = false;
+                if (evidenceRef) evidenceRef.value = '';
+                photo.required = true;
+                setSubmitAvailable(false);
+
+                status.hidden = false;
+                status.classList.remove('error');
+                status.textContent = 'Preparando foto...';
+
+                const uploadFile = await optimizePhoto(file);
+                status.textContent = <?= json_encode($labels['analyzing'] ?? 'Analizando foto...') ?>;
+
+                const data = new FormData();
+                data.append('evidence_photo', uploadFile, uploadFile.name || 'odometro.jpg');
+                const csrfInput = form.querySelector('input[type="hidden"][name]:not([name="request_key"])');
+                if (csrfInput) data.append(csrfInput.name, csrfInput.value);
+
+                try {
+                    const response = await fetch(analysisUrl, {
+                        method: 'POST',
+                        body: data,
+                        headers: {'Accept': 'application/json'},
+                        credentials: 'same-origin',
+                    });
+                    const payload = await response.json();
+
+                    if (payload.csrfToken && payload.csrfHash) {
+                        const current = form.querySelector('input[name="' + payload.csrfToken + '"]');
+                        if (current) current.value = payload.csrfHash;
+                    }
+
+                    if (!response.ok || !payload.ok || !payload.evidenceRef) {
+                        throw new Error(payload.error || 'No pudimos procesar la foto.');
+                    }
+
+                    if (evidenceRef) {
+                        evidenceRef.value = payload.evidenceRef;
+                    }
+                    evidenceReady = true;
+                    photo.required = false;
+                    photo.value = '';
+                    evidenceReadyBox.hidden = false;
+                    setSubmitAvailable(true);
+
+                    if (!response.ok || !payload.ok) {
+                        throw new Error(payload.error || 'No pudimos procesar la foto.');
+                    }
+
+                    if (!payload.legible || payload.kilometers == null) {
+                        status.classList.add('error');
+                        status.textContent = payload.analysisError || 'No pudimos leer automáticamente el odómetro. Podés escribir el valor manualmente. La foto YA quedó guardada como evidencia.';
+                        return;
+                    }
+
+                    if (km) {
+                        km.value = String(payload.kilometers);
+                        km.focus();
+                        km.select();
+                    }
+                    const confidence = payload.confidence == null ? '' : ' · confianza ' + Math.round(payload.confidence * 100) + '%';
+                    status.textContent = 'IA detectó ' + Number(payload.kilometers).toLocaleString('es-AR') + ' km' + confidence + '. Revisá el valor y corregilo si hace falta.';
+                } catch (error) {
+                    evidenceReady = false;
+                    if (evidenceRef) evidenceRef.value = '';
+                    photo.required = true;
+                    setSubmitAvailable(false);
+                    status.classList.add('error');
+                    status.textContent = (error && error.message ? error.message : 'No pudimos procesar la foto.') + ' Volvé a seleccionar o tomar una foto antes de registrar.';
+                }
+            }
+
+            photo.addEventListener('change', analyzePhoto);
+
+            form.addEventListener('submit', (event) => {
+                if (!evidenceReady) {
+                    event.preventDefault();
+                    status.hidden = false;
+                    status.classList.add('error');
+                    status.textContent = 'Esperá a que la foto quede guardada como evidencia antes de registrar.';
+                    return;
+                }
+
                 button.disabled = true;
                 button.textContent = button.dataset.savingLabel || 'Guardando...';
-            }, { once: true });
+            });
         })();
         </script>
         <?php endif ?>

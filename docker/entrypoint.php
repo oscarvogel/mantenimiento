@@ -21,6 +21,7 @@ foreach ([
     $projectRoot . '/writable/debugbar',
     '/data/priv/adjuntos',
     '/data/priv/importaciones',
+    '/data/priv/lecturas',
 ] as $directory) {
     if (! is_dir($directory)) {
         @mkdir($directory, 0775, true);

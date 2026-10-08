@@ -37,6 +37,13 @@ const claimTarget = ref(null)
 const claimPending = ref(false)
 const claimBusy = ref(false)
 const claimFeedback = ref(null)
+const evidenceTarget = ref(null)
+
+const openEvidence = (item) => {
+  if (!item?.evidenceUrl) return
+  evidenceTarget.value = item
+}
+const closeEvidence = () => { evidenceTarget.value = null }
 
 const claimAvailable = computed(() => Boolean(data.value.claim?.enabled))
 const claimReason = computed(() => data.value.claim?.reason ?? null)
@@ -175,6 +182,14 @@ const readingLabel = (item) => {
   if (!item.lastReadingAt) return 'Nunca registrado'
   return String(item.lastReadingAt).replace('T', ' ').slice(0, 16)
 }
+
+const methodLabel = (item) => {
+  if (!item.readingMethod) return 'Sin foto histórica'
+  if (item.readingMethod === 'FOTO_IA_CONFIRMADA') return 'Foto · IA confirmada'
+  if (item.readingMethod === 'FOTO_IA_CORREGIDA') return 'Foto · IA corregida'
+  if (item.readingMethod === 'FOTO_MANUAL') return 'Foto · carga manual'
+  return 'Foto'
+}
 </script>
 
 <template>
@@ -302,6 +317,7 @@ const readingLabel = (item) => {
                 <th class="px-5 py-3 text-right">Último KM</th>
                 <th class="px-5 py-3">Última lectura</th>
                 <th class="px-5 py-3">Antigüedad</th>
+                <th class="px-5 py-3">Evidencia</th>
                 <th class="px-5 py-3 text-right">Acción</th>
               </tr>
             </thead>
@@ -323,6 +339,17 @@ const readingLabel = (item) => {
                   <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold" :class="antiquityClass(item)">
                     {{ antiquityLabel(item) }}
                   </span>
+                </td>
+                <td class="px-5 py-4">
+                  <button
+                    v-if="item.evidenceUrl"
+                    type="button"
+                    class="font-semibold text-primary hover:underline"
+                    @click="openEvidence(item)"
+                  >
+                    {{ methodLabel(item) }}
+                  </button>
+                  <span v-else class="text-xs text-ink-muted">{{ methodLabel(item) }}</span>
                 </td>
                 <td class="px-5 py-4 text-right">
                   <button
@@ -366,6 +393,18 @@ const readingLabel = (item) => {
               <ClockIcon v-else class="size-4 text-ink-muted" aria-hidden="true" />
               <span class="font-medium text-ink">{{ kmLabel(item) }} km</span>
               <span class="text-ink-muted">· {{ readingLabel(item) }}</span>
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-surface-subtle px-3 py-2 text-sm">
+              <span class="text-ink-muted">Evidencia</span>
+              <button
+                v-if="item.evidenceUrl"
+                type="button"
+                class="font-semibold text-primary hover:underline"
+                @click="openEvidence(item)"
+              >
+                {{ methodLabel(item) }}
+              </button>
+              <span v-else class="text-xs text-ink-muted">{{ methodLabel(item) }}</span>
             </div>
             <a v-if="item.equipmentUrl" :href="item.equipmentUrl" :class="secondaryButton" class="w-full justify-center">
               Ver equipo
@@ -431,6 +470,38 @@ const readingLabel = (item) => {
         Cerrar
       </button>
     </div>
+
+    <Teleport to="body">
+      <div
+        v-if="evidenceTarget"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="reading-evidence-title"
+        @click.self="closeEvidence"
+      >
+        <div class="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-xl border border-border bg-surface-raised p-5 shadow-xl">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <h2 id="reading-evidence-title" class="text-lg font-semibold text-ink">Evidencia de lectura</h2>
+              <p class="mt-1 text-sm text-ink-muted">{{ evidenceTarget.equipmentCode }} · {{ readingLabel(evidenceTarget) }}</p>
+            </div>
+            <button type="button" :class="secondaryButton" @click="closeEvidence">Cerrar</button>
+          </div>
+          <img
+            :src="evidenceTarget.evidenceUrl"
+            :alt="`Evidencia de lectura de ${evidenceTarget.equipmentCode}`"
+            class="mt-5 max-h-[60vh] w-full rounded-xl bg-surface-subtle object-contain"
+          />
+          <dl class="mt-4 grid gap-3 rounded-lg bg-surface-subtle p-4 text-sm sm:grid-cols-2">
+            <div><dt class="text-ink-muted">Método</dt><dd class="font-semibold text-ink">{{ methodLabel(evidenceTarget) }}</dd></div>
+            <div><dt class="text-ink-muted">Kilometraje confirmado</dt><dd class="font-semibold text-ink">{{ kmLabel(evidenceTarget) }} km</dd></div>
+            <div v-if="evidenceTarget.aiDetectedKm !== null && evidenceTarget.aiDetectedKm !== undefined"><dt class="text-ink-muted">IA detectó</dt><dd class="font-semibold text-ink">{{ formatNumberEs(evidenceTarget.aiDetectedKm, 0) }} km</dd></div>
+            <div v-if="evidenceTarget.aiConfidence !== null && evidenceTarget.aiConfidence !== undefined"><dt class="text-ink-muted">Confianza IA</dt><dd class="font-semibold text-ink">{{ Math.round(Number(evidenceTarget.aiConfidence) * 100) }}%</dd></div>
+          </dl>
+        </div>
+      </div>
+    </Teleport>
 
     <!-- El diálogo se teletransporta a <body>: el <main> del shell conserva
       `transform: translateY(0)` de la animación de entrada y eso lo convierte
