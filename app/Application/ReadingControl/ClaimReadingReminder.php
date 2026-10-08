@@ -9,6 +9,7 @@ use App\Application\Notifications\Port\GlobalNotificationSettingsStore;
 use App\Application\Notifications\Port\NotificationClock;
 use App\Application\Notifications\Port\WhatsAppNotificationDeliveryQueue;
 use App\Application\Notifications\Port\WhatsAppNotificationGateway;
+use App\Application\Notifications\ReadingReminderMessageBuilder;
 use App\Infrastructure\PublicEquipmentAccess\CodeIgniterPublicEquipmentTokenRepository;
 use CodeIgniter\Database\BaseConnection;
 use DomainException;
@@ -223,15 +224,28 @@ final class ClaimReadingReminder
         $driverName = trim((string) ($driver['nombre'] ?? ''));
         $fullName = trim($driverName . ' ' . (string) ($driver['apellido'] ?? ''));
 
-        $message = $this->claimMessage(
+        $equipmentLabel = trim((string) ($equipment['codigo'] ?? ''));
+        $equipmentPlate = trim((string) ($equipment['patente'] ?? ''));
+        if ($equipmentPlate !== '' && mb_strtoupper($equipmentPlate) !== mb_strtoupper($equipmentLabel)) {
+            $equipmentLabel .= ($equipmentLabel === '' ? '' : ' · ') . $equipmentPlate;
+        }
+        if ($equipmentLabel === '') {
+            $equipmentLabel = 'el equipo';
+        }
+
+        $branchLocale = trim((string) ($driver['idioma_notificaciones'] ?? ''));
+        $locale = $branchLocale !== '' ? $branchLocale : (string) ($company['idioma_notificaciones'] ?? 'ES');
+
+        $message = (new ReadingReminderMessageBuilder())->build(
+            $locale,
+            'manual',
             $fullName,
-            (string) ($equipment['codigo'] ?? ''),
-            trim((string) ($equipment['patente'] ?? '')),
-            $lastReading,
+            $equipmentLabel,
             $publicUrl,
             $companyName,
             $pilotEnabled,
             $realPhone !== null,
+            $lastReading,
         );
 
         $deliveryKey = self::EVENT_TYPE
@@ -412,70 +426,5 @@ final class ClaimReadingReminder
         ]);
     }
 
-    /**
-     * @param array{fecha_lectura: string|null, kilometraje: int|null} $lastReading
-     */
-    private function claimMessage(
-        string $driverFullName,
-        string $equipmentCode,
-        string $equipmentPlate,
-        array $lastReading,
-        string $publicUrl,
-        string $companyName,
-        bool $pilotEnabled,
-        bool $realPhoneValid,
-    ): string {
-        $pilotHeader = $pilotEnabled
-            ? "🧪 *PRUEBA CONTROLADA · NO ENVIADO AL DESTINATARIO REAL*\n"
-                . "*Destinatario previsto:* " . ($driverFullName === '' ? 'Chofer asignado' : $driverFullName) . "\n"
-                . "*Teléfono real:* " . ($realPhoneValid ? 'configurado' : 'no válido o no cargado') . "\n\n"
-            : '';
 
-        $label = trim($equipmentCode);
-        if ($equipmentPlate !== '' && mb_strtoupper($equipmentPlate) !== mb_strtoupper($label)) {
-            $label .= ($label === '' ? '' : ' · ') . $equipmentPlate;
-        }
-        if ($label === '') {
-            $label = 'el equipo';
-        }
-
-        $firstName = trim(explode(' ', $driverFullName)[0] ?? '');
-        $greeting = $firstName === '' ? 'Hola 👋' : 'Hola ' . $firstName . ' 👋';
-
-        if ($lastReading['fecha_lectura'] === null) {
-            $readingBlock = "Todavía no tenemos una lectura registrada para este equipo.";
-        } else {
-            $km = $lastReading['kilometraje'] === null
-                ? null
-                : number_format((float) $lastReading['kilometraje'], 0, ',', '.');
-            $date = $this->formatReadingDate($lastReading['fecha_lectura']);
-            $readingBlock = ($km === null ? '' : $km . ' km') . ($km === null ? '' : ' — ') . $date;
-        }
-
-        return $pilotHeader
-            . '*' . ($companyName !== '' ? $companyName : 'Empresa') . '* · Mantenimiento' . "\n\n"
-            . $greeting . "\n\n"
-            . 'Te recordamos registrar el kilometraje actualizado del equipo *' . $label . '*.' . "\n\n"
-            . '*Última lectura registrada:*' . "\n"
-            . $readingBlock . "\n\n"
-            . "*Hacé esto:*\n"
-            . "1️⃣ Tocá el enlace de abajo.\n"
-            . "2️⃣ Mirá el tablero del vehículo y escribí el número que marca.\n"
-            . "3️⃣ Tocá *Registrar lectura*.\n\n"
-            . '👉 *ABRIR PARA CARGAR LOS KM:*' . "\n"
-            . $publicUrl . "\n\n"
-            . 'Cuando aparezca *“Lectura registrada”*, ya terminaste y podés cerrar la pantalla. ✅' . "\n\n"
-            . '*No hace falta responder este WhatsApp.*';
-    }
-
-    private function formatReadingDate(string $value): string
-    {
-        try {
-            $date = new \DateTimeImmutable($value);
-        } catch (Throwable) {
-            return 'sin fecha disponible';
-        }
-
-        return $date->format('d/m/Y H:i');
-    }
 }

@@ -9,10 +9,12 @@ final class WeeklyReadingComplianceContractTest extends TestCase
     public function testWeeklyComplianceFlowIsImplementedAndIdempotent(): void
     {
         $queue = file_get_contents(APPPATH . 'Infrastructure/Notifications/CodeIgniterWhatsAppNotificationDeliveryQueue.php');
+        $messageBuilder = file_get_contents(APPPATH . 'Application/Notifications/ReadingReminderMessageBuilder.php');
         $controller = file_get_contents(APPPATH . 'Controllers/SuperAdmin.php');
         $page = file_get_contents(ROOTPATH . 'frontend/src/pages/admin/SuperAdminPage.vue');
 
         self::assertIsString($queue);
+        self::assertIsString($messageBuilder);
         self::assertIsString($controller);
         self::assertIsString($page);
         self::assertStringContainsString("return 'wednesday';", $queue);
@@ -21,11 +23,11 @@ final class WeeklyReadingComplianceContractTest extends TestCase
         self::assertStringContainsString("'seguimiento_lectura_viernes'", $queue);
         self::assertStringContainsString('hasKilometerReadingSince', $queue);
         self::assertStringContainsString("where('fecha_lectura >=',", $queue);
-        self::assertStringContainsString("'Todavía falta que informes los kilómetros de esta semana'", $queue);
-        self::assertStringContainsString("'Ainda falta informar a quilometragem desta semana'", $queue);
-        self::assertStringContainsString('Tocá el enlace de abajo.', $queue);
-        self::assertStringContainsString('Tocá *Registrar lectura*.', $queue);
-        self::assertStringContainsString('Não precisa responder esta mensagem.', $queue);
+        self::assertStringContainsString("'Todavía falta que informes los kilómetros de esta semana'", $messageBuilder);
+        self::assertStringContainsString("'Ainda falta informar a quilometragem desta semana'", $messageBuilder);
+        self::assertStringContainsString('Tocá el enlace de abajo.', $messageBuilder);
+        self::assertStringContainsString('Tocá *Registrar lectura*.', $messageBuilder);
+        self::assertStringContainsString('Não precisa responder esta mensagem.', $messageBuilder);
         self::assertStringContainsString("'Responsable de mantenimiento'", $queue);
         self::assertStringContainsString("'Kilometraje semanal pendiente'", $queue);
         self::assertStringContainsString("'equipo.lectura_semanal_incumplida'", $queue);

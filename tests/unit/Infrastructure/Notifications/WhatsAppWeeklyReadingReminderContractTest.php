@@ -9,6 +9,7 @@ final class WhatsAppWeeklyReadingReminderContractTest extends TestCase
     public function testWeeklyReminderUsesCurrentDriverQrAndIsoWeekIdempotency(): void
     {
         $queue = file_get_contents(APPPATH . 'Infrastructure/Notifications/CodeIgniterWhatsAppNotificationDeliveryQueue.php');
+        $messageBuilder = file_get_contents(APPPATH . 'Application/Notifications/ReadingReminderMessageBuilder.php');
         $dispatch = file_get_contents(APPPATH . 'Application/Notifications/RunNotificationDispatch.php');
         $port = file_get_contents(APPPATH . 'Application/Notifications/Port/WhatsAppNotificationDeliveryQueue.php');
         $controller = file_get_contents(APPPATH . 'Controllers/SuperAdmin.php');
@@ -16,6 +17,7 @@ final class WhatsAppWeeklyReadingReminderContractTest extends TestCase
         $env = file_get_contents(ROOTPATH . '.env.example');
 
         self::assertIsString($queue);
+        self::assertIsString($messageBuilder);
         self::assertIsString($dispatch);
         self::assertIsString($port);
         self::assertIsString($controller);
@@ -32,23 +34,20 @@ final class WhatsAppWeeklyReadingReminderContractTest extends TestCase
         self::assertStringContainsString('ensureActivePlainTokenForEquipment', $queue);
         self::assertStringContainsString('format(\'o-\\\\WW\')', $queue);
         self::assertStringContainsString('recordatorio_lectura_semanal', $queue);
-        self::assertStringContainsString('ABRIR PARA CARGAR LOS KM', $queue);
-        self::assertStringContainsString('para registrar la lectura es obligatorio sacar o subir una foto del odómetro', $queue);
-        self::assertStringContainsString('1️⃣ Tocá el enlace de abajo.', $queue);
-        self::assertStringContainsString('2️⃣ Sacá o seleccioná una foto del odómetro.', $queue);
-        self::assertStringContainsString('3️⃣ El sistema intentará leer automáticamente los kilómetros.', $queue);
-        self::assertStringContainsString('4️⃣ Revisá que el valor detectado sea correcto y corregilo si hace falta.', $queue);
-        self::assertStringContainsString('5️⃣ Tocá *Registrar lectura*.', $queue);
-        self::assertStringContainsString('No hace falta responder este WhatsApp.', $queue);
+        self::assertStringContainsString('ABRIR PARA CARGAR LOS KM', $messageBuilder);
+        self::assertStringContainsString('para registrar la lectura es obligatorio sacar o subir una foto del odómetro', $messageBuilder);
+        self::assertStringContainsString('1️⃣ Tocá el enlace de abajo.', $messageBuilder);
+        self::assertStringContainsString('2️⃣ Sacá o seleccioná una foto del odómetro.', $messageBuilder);
+        self::assertStringContainsString('3️⃣ El sistema intentará leer automáticamente los kilómetros.', $messageBuilder);
+        self::assertStringContainsString('4️⃣ Revisá que el valor detectado sea correcto y corregilo si hace falta.', $messageBuilder);
+        self::assertStringContainsString('5️⃣ Tocá *Registrar lectura*.', $messageBuilder);
+        self::assertStringContainsString('No hace falta responder este WhatsApp.', $messageBuilder);
+        self::assertStringContainsString('new ReadingReminderMessageBuilder()', $queue);
+        self::assertStringNotContainsString('private function weeklyReadingMessage', $queue);
         self::assertStringContainsString("base_url('mantenimiento/publico/equipo/'", $queue);
         self::assertStringContainsString('NO ENVIADO AL DESTINATARIO REAL', $queue);
         self::assertStringContainsString('Vogel Consultoría · Mantenimiento', $queue);
-        $weeklyStart = strpos($queue, 'private function weeklyReadingMessage');
-        $weeklyEnd = strpos($queue, 'private function notifyMaintenanceResponsible', $weeklyStart ?: 0);
-        self::assertNotFalse($weeklyStart);
-        self::assertNotFalse($weeklyEnd);
-        $weeklyMessageMethod = substr($queue, (int) $weeklyStart, (int) $weeklyEnd - (int) $weeklyStart);
-        self::assertStringNotContainsString('https://vogelconsultoria.com.ar/mantenimiento', $weeklyMessageMethod);
+        self::assertStringNotContainsString('https://vogelconsultoria.com.ar/mantenimiento', $messageBuilder);
         self::assertStringContainsString('weeklyReadingReminderIsDue', $queue);
         self::assertStringContainsString("env('alerts.weeklyReadingReminderDay', 1)", $queue);
         self::assertStringContainsString("env('alerts.weeklyReadingReminderTime', '08:00')", $queue);
@@ -62,11 +61,11 @@ final class WhatsAppWeeklyReadingReminderContractTest extends TestCase
         self::assertStringContainsString('$phone = $realPhone === null ? null', $queue);
         self::assertStringContainsString('mb_strtoupper($plate) !== mb_strtoupper($equipmentLabel)', $queue);
         self::assertStringContainsString('co.idioma_notificaciones', $queue);
-        self::assertStringContainsString('ABRIR PARA INFORMAR A QUILOMETRAGEM', $queue);
-        self::assertStringContainsString('para registrar a leitura é obrigatório tirar ou enviar uma foto do hodômetro', $queue);
-        self::assertStringContainsString('2️⃣ Tire ou selecione uma foto do hodômetro.', $queue);
-        self::assertStringContainsString('5️⃣ Toque em *Registrar leitura*.', $queue);
-        self::assertStringContainsString('Não precisa responder esta mensagem.', $queue);
+        self::assertStringContainsString('ABRIR PARA INFORMAR A QUILOMETRAGEM', $messageBuilder);
+        self::assertStringContainsString('para registrar a leitura é obrigatório tirar ou enviar uma foto do hodômetro', $messageBuilder);
+        self::assertStringContainsString('2️⃣ Tire ou selecione uma foto do hodômetro.', $messageBuilder);
+        self::assertStringContainsString('5️⃣ Toque em *Registrar leitura*.', $messageBuilder);
+        self::assertStringContainsString('Não precisa responder esta mensagem.', $messageBuilder);
         self::assertStringContainsString('scheduleWeeklyReadingReminders(', $controller);
         self::assertStringContainsString('$scenario === \'missing\'', $controller);
         self::assertStringContainsString("env('alerts.whatsappBatchLimit', 5)", $controller);

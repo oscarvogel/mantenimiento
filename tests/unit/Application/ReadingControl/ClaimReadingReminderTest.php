@@ -540,6 +540,29 @@ final class ClaimReadingReminderTest extends TestCase
         self::assertSame(10, (int) $resolved['equipo_id']);
     }
 
+    public function testManualClaimUsesSharedReminderMessageBuilder(): void
+    {
+        $source = file_get_contents(APPPATH . 'Application/ReadingControl/ClaimReadingReminder.php');
+
+        self::assertIsString($source);
+        self::assertStringContainsString('new ReadingReminderMessageBuilder()', $source);
+        self::assertStringNotContainsString('private function claimMessage', $source);
+        self::assertStringNotContainsString('Mirá el tablero del vehículo y escribí el número que marca.', $source);
+    }
+
+    public function testMessageRequiresPhotoAndExplainsAiFlow(): void
+    {
+        $this->useCase()->execute($this->actor(), 10);
+        $message = $this->gateway->sent[0]['message'];
+
+        self::assertStringContainsString('para registrar la lectura es obligatorio sacar o subir una foto del odómetro', $message);
+        self::assertStringContainsString('2️⃣ Sacá o seleccioná una foto del odómetro.', $message);
+        self::assertStringContainsString('3️⃣ El sistema intentará leer automáticamente los kilómetros.', $message);
+        self::assertStringContainsString('4️⃣ Revisá que el valor detectado sea correcto y corregilo si hace falta.', $message);
+        self::assertStringContainsString('5️⃣ Tocá *Registrar lectura*.', $message);
+        self::assertStringNotContainsString('Mirá el tablero del vehículo y escribí el número que marca.', $message);
+    }
+
     public function testMessageShowsTheLastReadingWithItsOwnKilometers(): void
     {
         $this->useCase()->execute($this->actor(), 10);
