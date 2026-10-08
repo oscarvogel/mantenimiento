@@ -113,7 +113,7 @@ defineExpose({
     aria-label="Módulos de la plataforma"
     class="border-b border-border bg-surface-raised px-4 sm:px-6 lg:px-7 xl:px-9"
   >
-    <ul class="mx-auto flex max-w-[96rem] items-center gap-2 overflow-x-auto py-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <ul class="mx-auto flex max-w-[96rem] flex-wrap items-center gap-x-2 gap-y-1.5 py-2.5">
       <li v-for="item in moduleNavigation" :key="item.key" class="shrink-0">
         <a
           v-if="!item.disabled && item.href"

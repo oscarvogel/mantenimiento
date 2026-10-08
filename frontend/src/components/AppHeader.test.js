@@ -46,4 +46,35 @@ describe('AppHeader', () => {
     expect(nav.find('[aria-label="Viajes: Sin implementación aún"]').exists()).toBe(true)
     expect(nav.find('a[aria-label="Viajes: Sin implementación aún"]').exists()).toBe(false)
   })
+
+  it('wraps the complete module menu instead of clipping modules off-screen', () => {
+    const modules = [
+      ['platform-home', 'Inicio', '/inicio'],
+      ['module-maintenance', 'Mantenimiento', '/dashboard'],
+      ['module-trips', 'Viajes'],
+      ['module-fuel', 'Combustible'],
+      ['module-tires', 'Neumáticos'],
+      ['module-billing', 'Facturación'],
+      ['module-management', 'Gerencial'],
+      ['module-reports', 'Reportes'],
+      ['module-automation', 'Automatizaciones'],
+      ['module-ai', 'Inteligencia Artificial'],
+    ].map(([key, label, href], index) => ({
+      key,
+      label,
+      href: href ?? null,
+      active: index === 1,
+      disabled: !href,
+      status: href ? 'Operativo' : 'Sin implementación aún',
+    }))
+    const wrapper = mountHeader(null, modules)
+
+    const nav = wrapper.get('nav[aria-label="Módulos de la plataforma"]')
+    const list = nav.get('ul')
+    expect(list.classes()).toContain('flex-wrap')
+    expect(list.classes().some((className) => className.includes('overflow-x-auto'))).toBe(false)
+    expect(nav.findAll('li')).toHaveLength(modules.length)
+    expect(nav.text()).toContain('Inteligencia Artificial')
+    expect(nav.text()).toContain('Sin implementación aún')
+  })
 })
