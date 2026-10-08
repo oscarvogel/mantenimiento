@@ -13,12 +13,10 @@ final class ReadingEvidenceStorage
     public function __construct(?string $root = null)
     {
         $projectRoot = defined('ROOTPATH') ? rtrim((string) ROOTPATH, '\\/') : dirname(__DIR__, 3);
-        $defaultRoot = is_dir('/data/priv') || str_starts_with($projectRoot, '/var/www/')
-            ? '/data/priv/lecturas'
-            : dirname($projectRoot)
-                . DIRECTORY_SEPARATOR . basename($projectRoot) . '-private'
-                . DIRECTORY_SEPARATOR . 'uploads'
-                . DIRECTORY_SEPARATOR . 'lecturas';
+        $defaultRoot = dirname($projectRoot)
+            . DIRECTORY_SEPARATOR . basename($projectRoot) . '-private'
+            . DIRECTORY_SEPARATOR . 'uploads'
+            . DIRECTORY_SEPARATOR . 'lecturas';
         $resolved = rtrim(trim($root ?? $defaultRoot), '\\/');
         if ($resolved === '' || ! preg_match('~^(?:[A-Za-z]:[\\\\/]|/|\\\\\\\\)~', $resolved)) {
             throw new RuntimeException('La ruta privada de evidencias debe ser absoluta.');
