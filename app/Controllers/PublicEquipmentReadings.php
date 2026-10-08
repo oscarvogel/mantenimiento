@@ -326,7 +326,7 @@ final class PublicEquipmentReadings extends BaseController
                 );
             $database->transBegin();
             try {
-                $database->table('lecturas_equipo')->insert([
+                $readingInserted = $database->table('lecturas_equipo')->insert([
                     'empresa_id' => (int) $equipment['empresa_id'],
                     'sucursal_id' => (int) $equipment['sucursal_id'],
                     'equipo_id' => (int) $equipment['id'],
@@ -341,6 +341,14 @@ final class PublicEquipmentReadings extends BaseController
                     'created_at' => $now,
                     'updated_at' => $now,
                 ]);
+                if ($readingInserted !== true) {
+                    $dbError = $database->error();
+                    log_message('error', 'Falló insert de lectura QR: {code} {message}', [
+                        'code' => (string) ($dbError['code'] ?? ''),
+                        'message' => (string) ($dbError['message'] ?? ''),
+                    ]);
+                    throw new DomainException($this->tr($locale, 'save_failed'));
+                }
                 $readingId = (int) $database->insertID();
 
                 $detectedKm = $aiAnalysis?->kilometers;
@@ -352,7 +360,12 @@ final class PublicEquipmentReadings extends BaseController
                     ? 'FOTO_MANUAL'
                     : ($kilometers === $detectedKm ? 'FOTO_IA_CONFIRMADA' : 'FOTO_IA_CORREGIDA');
 
-                $database->table('lecturas_equipo_evidencias')->insert([
+                $aiObservation = $aiAnalysis?->observation;
+                if ($aiObservation !== null) {
+                    $aiObservation = mb_substr($aiObservation, 0, 255);
+                }
+
+                $evidenceInserted = $database->table('lecturas_equipo_evidencias')->insert([
                     'empresa_id' => (int) $equipment['empresa_id'],
                     'lectura_id' => $readingId,
                     'archivo_path' => $storedEvidence['path'],
@@ -363,9 +376,21 @@ final class PublicEquipmentReadings extends BaseController
                     'estado_ia' => $aiStatus,
                     'km_confirmado' => $kilometers,
                     'metodo_carga' => $method,
-                    'observacion_ia' => $aiAnalysis?->observation,
+                    'observacion_ia' => $aiObservation,
                     'created_at' => $now,
                 ]);
+                if ($evidenceInserted !== true) {
+                    $dbError = $database->error();
+                    log_message('error', 'Falló insert de evidencia de lectura: {code} {message}', [
+                        'code' => (string) ($dbError['code'] ?? ''),
+                        'message' => (string) ($dbError['message'] ?? ''),
+                    ]);
+                    throw new DomainException(
+                        $this->normalizeLocale($locale) === 'PT'
+                            ? 'Não foi possível salvar a evidência da leitura.'
+                            : 'No se pudo guardar la evidencia de la lectura.'
+                    );
+                }
 
                 $update = ['updated_at' => $now];
                 if ($kilometers !== null) {
@@ -374,12 +399,20 @@ final class PublicEquipmentReadings extends BaseController
                 if ($hours !== null) {
                     $update['horas_actuales'] = $hours;
                 }
-                $database->table('equipos')
+                $equipmentUpdated = $database->table('equipos')
                     ->where('id', (int) $equipment['id'])
                     ->where('empresa_id', (int) $equipment['empresa_id'])
                     ->update($update);
+                if ($equipmentUpdated !== true) {
+                    $dbError = $database->error();
+                    log_message('error', 'Falló actualización del equipo tras lectura QR: {code} {message}', [
+                        'code' => (string) ($dbError['code'] ?? ''),
+                        'message' => (string) ($dbError['message'] ?? ''),
+                    ]);
+                    throw new DomainException($this->tr($locale, 'save_failed'));
+                }
 
-                $database->table('qr_lecturas_auditoria')->insert([
+                $auditInserted = $database->table('qr_lecturas_auditoria')->insert([
                     'token_id' => $tokenId,
                     'request_key' => $requestKey,
                     'ip_hash' => $ipHash,
@@ -389,6 +422,14 @@ final class PublicEquipmentReadings extends BaseController
                     'lectura_id' => $readingId,
                     'created_at' => $now,
                 ]);
+                if ($auditInserted !== true) {
+                    $dbError = $database->error();
+                    log_message('error', 'Falló auditoría aceptada de lectura QR: {code} {message}', [
+                        'code' => (string) ($dbError['code'] ?? ''),
+                        'message' => (string) ($dbError['message'] ?? ''),
+                    ]);
+                    throw new DomainException($this->tr($locale, 'save_failed'));
+                }
 
                 if (! $database->transStatus()) {
                     throw new DomainException($this->tr($locale, 'save_failed'));
