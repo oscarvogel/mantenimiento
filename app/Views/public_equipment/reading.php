@@ -89,10 +89,30 @@
             if (!form || !submit || !photo) return;
 
             const analysisUrl = <?= json_encode(base_url('mantenimiento/publico/equipo/' . rawurlencode($token) . '/lectura/analizar'), JSON_UNESCAPED_SLASHES) ?>;
+            let evidenceReady = Boolean(evidenceRef && evidenceRef.value);
+
+            function setSubmitAvailable(available) {
+                submit.disabled = !available;
+                if (available) {
+                    submit.textContent = submit.dataset.defaultLabel || submit.textContent;
+                }
+            }
+
+            if (submit && !submit.dataset.defaultLabel) {
+                submit.dataset.defaultLabel = submit.textContent;
+            }
+            if (evidenceReady) {
+                photo.required = false;
+            }
 
             async function analyzePhoto() {
                 const file = photo.files && photo.files[0];
                 if (!file) return;
+
+                evidenceReady = false;
+                if (evidenceRef) evidenceRef.value = '';
+                photo.required = true;
+                setSubmitAvailable(false);
 
                 status.hidden = false;
                 status.classList.remove('error');
@@ -117,9 +137,16 @@
                         if (current) current.value = payload.csrfHash;
                     }
 
-                    if (payload.evidenceRef && evidenceRef) {
+                    if (!response.ok || !payload.ok || !payload.evidenceRef) {
+                        throw new Error(payload.error || 'No pudimos procesar la foto.');
+                    }
+
+                    if (evidenceRef) {
                         evidenceRef.value = payload.evidenceRef;
                     }
+                    evidenceReady = true;
+                    photo.required = false;
+                    setSubmitAvailable(true);
 
                     if (!response.ok || !payload.ok) {
                         throw new Error(payload.error || 'No pudimos procesar la foto.');
@@ -127,7 +154,7 @@
 
                     if (!payload.legible || payload.kilometers == null) {
                         status.classList.add('error');
-                        status.textContent = payload.analysisError || 'No pudimos leer automáticamente el odómetro. Podés escribir el valor manualmente; la foto ya quedó guardada como evidencia.';
+                        status.textContent = payload.analysisError || 'No pudimos leer automáticamente el odómetro. Podés escribir el valor manualmente. La foto YA quedó guardada como evidencia.';
                         return;
                     }
 
@@ -139,17 +166,30 @@
                     const confidence = payload.confidence == null ? '' : ' · confianza ' + Math.round(payload.confidence * 100) + '%';
                     status.textContent = 'IA detectó ' + Number(payload.kilometers).toLocaleString('es-AR') + ' km' + confidence + '. Revisá el valor y corregilo si hace falta.';
                 } catch (error) {
+                    evidenceReady = false;
+                    if (evidenceRef) evidenceRef.value = '';
+                    photo.required = true;
+                    setSubmitAvailable(false);
                     status.classList.add('error');
-                    status.textContent = (error && error.message ? error.message : 'No pudimos procesar la foto.') + ' Si el problema continúa, volvé a tomarla.';
+                    status.textContent = (error && error.message ? error.message : 'No pudimos procesar la foto.') + ' Volvé a seleccionar o tomar una foto antes de registrar.';
                 }
             }
 
             photo.addEventListener('change', analyzePhoto);
 
-            form.addEventListener('submit', () => {
+            form.addEventListener('submit', (event) => {
+                const hasDirectPhoto = Boolean(photo.files && photo.files[0]);
+                if (!evidenceReady && !hasDirectPhoto) {
+                    event.preventDefault();
+                    status.hidden = false;
+                    status.classList.add('error');
+                    status.textContent = 'Esperá a que la foto quede guardada como evidencia antes de registrar.';
+                    return;
+                }
+
                 button.disabled = true;
                 button.textContent = button.dataset.savingLabel || 'Guardando...';
-            }, { once: true });
+            });
         })();
         </script>
         <?php endif ?>
