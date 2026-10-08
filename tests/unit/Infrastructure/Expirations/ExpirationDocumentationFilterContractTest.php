@@ -28,8 +28,8 @@ final class ExpirationDocumentationFilterContractTest extends TestCase
     {
         $readModel = (string) file_get_contents(APPPATH . 'Infrastructure/Expirations/CodeIgniterExpirationReadModel.php');
 
-        self::assertStringContainsString("->where('v.empresa_id', $companyId)", $readModel);
-        self::assertStringContainsString("->where('v.tipo_vencimiento_id', $expirationTypeId)", $readModel);
+        self::assertStringContainsString("->where('v.empresa_id', \$companyId)", $readModel);
+        self::assertStringContainsString("->where('v.tipo_vencimiento_id', \$expirationTypeId)", $readModel);
         self::assertStringContainsString("->where('t.activo', 1)", $readModel);
         self::assertStringContainsString("->where('t.deleted_at', null)", $readModel);
     }
