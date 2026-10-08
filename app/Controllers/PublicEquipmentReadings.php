@@ -86,33 +86,35 @@ final class PublicEquipmentReadings extends BaseController
 
             $evidenceRef = null;
             $storageError = null;
-            try {
-                $stored = $this->evidenceStorage()->store(
-                    $tempPath,
-                    (int) $equipment['empresa_id'],
-                    $mime,
-                );
+            if ($analysis === null || $analysis->evidenceValid) {
+                try {
+                    $stored = $this->evidenceStorage()->store(
+                        $tempPath,
+                        (int) $equipment['empresa_id'],
+                        $mime,
+                    );
 
-                $evidenceRef = bin2hex(random_bytes(16));
-                session()->set($this->stagedEvidenceSessionKey($evidenceRef), [
-                    'path' => $stored['path'],
-                    'mime' => $stored['mime'],
-                    'bytes' => $stored['bytes'],
-                    'company_id' => (int) $equipment['empresa_id'],
-                    'equipment_id' => (int) $equipment['id'],
-                    'expires_at' => time() + 1800,
-                    'km_detectado_ia' => $analysis?->kilometers,
-                    'confianza_ia' => $analysis?->confidence,
-                    'legible_ia' => $analysis?->legible ?? false,
-                    'observacion_ia' => $analysis?->observation,
-                    'evidencia_valida_ia' => $analysis?->evidenceValid ?? false,
-                    'motivo_invalido_ia' => $analysis?->invalidReason,
-                ]);
-            } catch (Throwable $exception) {
-                $storageError = $exception->getMessage();
-                log_message('error', 'No se pudo dejar staged la evidencia de lectura: {message}', [
-                    'message' => $storageError,
-                ]);
+                    $evidenceRef = bin2hex(random_bytes(16));
+                    session()->set($this->stagedEvidenceSessionKey($evidenceRef), [
+                        'path' => $stored['path'],
+                        'mime' => $stored['mime'],
+                        'bytes' => $stored['bytes'],
+                        'company_id' => (int) $equipment['empresa_id'],
+                        'equipment_id' => (int) $equipment['id'],
+                        'expires_at' => time() + 1800,
+                        'km_detectado_ia' => $analysis?->kilometers,
+                        'confianza_ia' => $analysis?->confidence,
+                        'legible_ia' => $analysis?->legible ?? false,
+                        'observacion_ia' => $analysis?->observation,
+                        'evidencia_valida_ia' => $analysis?->evidenceValid ?? true,
+                        'motivo_invalido_ia' => $analysis?->invalidReason,
+                    ]);
+                } catch (Throwable $exception) {
+                    $storageError = $exception->getMessage();
+                    log_message('error', 'No se pudo dejar staged la evidencia de lectura: {message}', [
+                        'message' => $storageError,
+                    ]);
+                }
             }
 
             return $this->response->setJSON([
@@ -123,6 +125,9 @@ final class PublicEquipmentReadings extends BaseController
                 'observation' => $analysis?->observation,
                 'evidenceValid' => $analysis?->evidenceValid ?? false,
                 'invalidReason' => $analysis?->invalidReason,
+                'evidenceError' => $analysis !== null && ! $analysis->evidenceValid
+                    ? $this->invalidEvidenceMessage($analysis->invalidReason, $this->equipmentLocale($equipment))
+                    : null,
                 'analysisError' => $analysis === null
                     ? 'No pudimos leer automáticamente el odómetro. Podés ingresar el kilometraje manualmente.'
                     : null,
