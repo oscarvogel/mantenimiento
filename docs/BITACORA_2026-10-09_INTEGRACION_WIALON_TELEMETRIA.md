@@ -468,6 +468,98 @@ El esquema lo devuelve el propio servidor en el error
 firma buscada para el histórico**: por sensor, con ventana temporal. Con esto
 el rendimiento km/l y los excesos de velocidad dejan de estar bloqueados.
 
+## 8. Qué pasó en staging
+
+### 8.1 Dónde está
+
+| | |
+|---|---|
+| Host | `fasa-PowerEdge-T40` (192.168.0.189) |
+| Base | `mantenimiento_staging` en `mantenimiento-mariadb-staging` |
+| App | `mantenimiento-staging` (nginx + PHP 8.4.26), código en `/var/www/html` |
+| Entorno | `CI_ENVIRONMENT=development` |
+
+El proyecto **no tiene contenedor de producción** en ese host: producción vive
+en Ferozo, por FTPS, sin CLI. Todos los stacks de Coolify del servidor se
+identificaron por etiqueta antes de tocar nada.
+
+### 8.2 Importación de la flota real
+
+Staging tenía 6 equipos y 62 tablas. Se importó el dump con 34 equipos.
+
+**Respaldo previo, verificado y conservado:**
+- servidor: `/tmp/mantenimiento_staging-ANTES-DE-IMPORTAR-20261009-170915.sql` (942 K)
+- máquina: `C:\Users\Usuario\Downloads\staging-ANTES-DE-IMPORTAR.sql`
+
+Dos obstáculos reales:
+
+1. El primer intento falló con `errno: 150, Foreign key constraint is
+   incorrectly formed`. La tabla `empresas` no tiene FK propia: phpMyAdmin
+   genera las claves foráneas como `ALTER TABLE` posteriores, que referencian
+   tablas que todavía no existen, y el dump no trae `SET FOREIGN_KEY_CHECKS=0`.
+2. El dump **no incluye `DROP TABLE IF EXISTS`**, así que importarlo tal cual
+   falla porque las tablas ya existen.
+
+Solución: dropear únicamente las 60 tablas que trae el dump, e importar con la
+verificación de claves foráneas desactivada. Las 2 tablas propias de staging
+(`vencimiento_evidencias`, `vencimiento_renovaciones`) se conservaron.
+
+Resultado: 0 errores, 62 tablas, 3 empresas, 27 equipos de TSA, 134 lecturas.
+
+### 8.3 Excepción al pipeline: alta por `docker exec`
+
+**Registrado como excepción, no como procedimiento.**
+
+Los comandos `telematria:integracion` y `telematria:vincular` se commitearon
+después del deploy que había en curso, así que la imagen en staging no los
+tenía. El alta se hizo con scripts de un solo uso dentro del contenedor:
+
+- el token subió como archivo con permisos `600`, se copió al contenedor y se
+  borró del servidor inmediatamente
+- el script leyó el token, lo cifró con el `encrypter` de esa instalación y
+  **verificó que descifrara correctamente** antes de dar el alta por buena
+- los 14 vínculos se resolvieron por coincidencia **exacta de la patente como
+  token final** del nombre de Wialon ("IVECO 440 AF081MJ" ↔ `AF081MJ`), negándose
+  a vincular cuando la coincidencia no era única
+- los 13 camiones sin equivalente en Wialon quedaron afuera, tal como anticipaba
+  el contraste previo
+- scripts y token se borraron del contenedor, del servidor y de la máquina
+
+### 8.4 Tres defectos que sólo aparecieron con la flota real
+
+Ningún fixture sintético los hubiera mostrado. Éste es el argumento para
+probar contra datos reales y no contra pruebas:
+
+**1. La posición se perdía entera.** `unit/calc_last` devuelve latitud,
+longitud y velocidad, pero **no devuelve la marca de tiempo**: el campo `t`
+sólo existe en `core/search_items`. El adaptador exigía `t` en el bloque de
+valores, así que descartaba las 14 posiciones y la `observada_en` caía en la
+hora de la corrida. Ahora une ambas respuestas.
+
+**2. Valores imposibles llegaban a la base.** Tres unidades devolvieron
+**−348.201 l de combustible**: no es un tanque vacío, es una entrada analítica
+desconectada. Una devolvió **0,00 V de batería**, que es el sensor apagado. El
+dominio ahora normaliza ambos a ausencia de dato, y la posición y el odómetro
+de esa unidad siguen siendo válidos.
+
+**3. `markAbsent()` declaraba `int` y devolvía el `bool` de `update()`**, lo que
+rompía la ingesta con un `TypeError` al cerrar el ciclo.
+
+Además faltaba el `use` de `CodeIgniterTelemetryIntegrationCatalog` en
+`Services.php`: el autoloader lo buscaba en `Config` y la ingesta no arrancaba.
+
+### 8.5 Estado actual en staging
+
+```
+integraciones_telemetria   1 fila   (Wialon TSA, token cifrado y verificado)
+equipo_telemetria          14 filas (los 14 camiones con cobertura)
+telematia_ultima_lectura   14 filas (sin posiciones, por el defecto 8.4.1)
+```
+
+**Pendiente para que el ciclo funcione:** `WIALON_ENABLED` no está definido en
+el entorno de Coolify, así que el cron no invierte nada todavía. Hay que
+agregarlo ahí, junto con `WIALON_SILENCE_HOURS`.
+
 ---
 
 ## Apéndice
