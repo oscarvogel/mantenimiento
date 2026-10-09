@@ -13,27 +13,33 @@ use App\Domain\Notifications\NotificationSeverity;
 use App\Domain\Telematic\CoberturaEquipo;
 use App\Domain\Telematic\EstadoSenal;
 use App\Domain\Telematic\FuenteSenal;
+use App\Domain\Telematic\LecturaImposible;
 use DateTimeImmutable;
 
 /**
  * Evalúa la cobertura de telemetría de la flota y publica lo que corresponde.
  *
- * Distingue dos hechos que un único evento mezclaría:
+ * Distingue tres hechos que un único evento mezclaría:
  *
  * - `equipo.sin_telemetria`: el equipo tiene fuentes y NINGUNA trae señal
  *   fresca. Hay un hueco real de monitoreo y hay que actuar.
  * - `fuente.telemetria_caida`: una fuente dejó de responder pero otra sigue
  *   viva. El equipo está cubierto, así que es informativo: sirve para saber
  *   qué integración hay que arreglar, no para alarmar sobre la flota.
+ * - `equipo.telemetria_anomala`: un sensor reportó un valor imposible, como
+ *   combustible negativo o batería en cero. LaFleet sigue reportando, así que
+ *   no es un hueco de monitoreo, pero alguien tiene que ir a mirar ese sensor.
+ *   Sin esta alerta el valor se normalizaría a vacío y la falla quedaría
+ *   invisible.
  *
- * Sin esa separación, un camión con dos sistemas reporta una sola caída y
- * además seuduplica: se generan dos eventos para el mismo equipo porque cada
- * fuente tiene su propio ciclo.
+ * Sin esa separación, un camión con Wialon mudo y Gestya reportando genera
+ * dos notificaciones al operador diciendo lo mismo.
  */
 final readonly class DiagnoseSilentUnits
 {
     public const TYPE_SIN_TELEMETRIA = 'equipo.sin_telemetria';
     public const TYPE_FUENTE_CAIDA = 'fuente.telemetria_caida';
+    public const TYPE_ANOMALA = 'equipo.telemetria_anomala';
 
     public function __construct(
         private EquipmentTelemetryCatalog $equipment,
@@ -72,9 +78,55 @@ final readonly class DiagnoseSilentUnits
             foreach ($this->fuentesCaidasDe($resolved, $now) as $fuente) {
                 $events[] = $this->fuenteCaida($resolved, $fuente, $now);
             }
+
+            // Las anomalías de sensor son independientes de la frescura: un
+            // equipo que reporta bien puede tener un sensor colgado.
+            foreach ($this->anomaliasDe($resolved) as $anomalia) {
+                $events[] = $this->anomalia($resolved, $anomalia['fuente'], $anomalia['lectura'], $now);
+            }
         }
 
         return $events;
+    }
+
+    /** @return list<array{fuente:FuenteSenal, lectura:LecturaImposible}> */
+    private function anomaliasDe(CoberturaEquipo $coverage): array
+    {
+        $anomalias = [];
+
+        foreach ($coverage->fuentes() as $fuente) {
+            foreach ($fuente->instantanea()?->anomalias() ?? [] as $lectura) {
+                $anomalias[] = ['fuente' => $fuente, 'lectura' => $lectura];
+            }
+        }
+
+        return $anomalias;
+    }
+
+    private function anomalia(CoberturaEquipo $coverage, FuenteSenal $fuente, LecturaImposible $lectura, DateTimeImmutable $now): NotifiableEvent
+    {
+        $antiguedad = $fuente->instantanea()?->antiguedadMinutos($now);
+
+        $summary = $lectura->resumen()
+            . ' Fuente: ' . $fuente->integrationName() . ' (' . $fuente->provider() . ')'
+            . ' · lectura de las ' . ($antiguedad === null ? '?' : $antiguedad) . ' min.';
+
+        return new NotifiableEvent(
+            $coverage->companyId(),
+            $coverage->branchId(),
+            self::TYPE_ANOMALA,
+            NotificationSeverity::WARNING,
+            'Sensor con lectura inválida: ' . $coverage->code(),
+            $summary,
+            'equipo',
+            (string) $coverage->equipmentId(),
+            self::TYPE_ANOMALA . ':empresa:' . $coverage->companyId()
+                . ':equipo:' . $coverage->equipmentId()
+                . ':integracion:' . $fuente->integrationId()
+                . ':sensor:' . $lectura->firma(),
+            $this->equipmentUrl($coverage->equipmentId()),
+            $now,
+        );
     }
 
     /**

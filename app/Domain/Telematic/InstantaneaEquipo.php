@@ -15,6 +15,9 @@ use DateTimeImmutable;
  * no se inventa ni se esconde: entra en `sensoresAdicionales` con su etiqueta
  * original, para que la ficha pueda mostrarlo sin que el resto del sistema
  * tenga que saber qué significa.
+ *
+ * Y lo que el proveedor reporta pero es imposible se aparta en `anomalias`,
+ * en vez de propagarse como dato.
  */
 final readonly class InstantaneaEquipo
 {
@@ -30,6 +33,9 @@ final readonly class InstantaneaEquipo
     /** @var list<MedidaAdicional> */
     private array $sensoresAdicionales;
 
+    /** @var list<LecturaImposible> */
+    private array $anomalias;
+
     /**
      * @param list<MedidaAdicional> $sensoresAdicionales
      */
@@ -44,18 +50,42 @@ final readonly class InstantaneaEquipo
         ?float $combustibleLitros,
         array $sensoresAdicionales = [],
     ) {
-        // Valores imposibles se normalizan a ausencia de dato, no se propagan.
-        // Se vio en la flota real y conviene que el dominio lo selle: un
-        // proveedor que devuelve litros negativos no está describiendo un
-        // tanque vacío, está describiendo una entrada analógica desconectada.
+        // Un valor imposible no es un dato: es un síntoma. Se aparta para que
+        // no contamine la base y queda registrado para que alguien vaya a
+        // mirar ese sensor. Se vio en la flota real: tres unidades con
+        // -348.201 l de combustible (entrada analítica desconectada) y una con
+        // 0,00 V (sensor apagado).
+        $anomalias = [];
+
+        if ($kilometraje !== null && $kilometraje < 0) {
+            $anomalias[] = new LecturaImposible('KILOMETRAJE', (float) $kilometraje, 'un odómetro no puede estar por debajo de cero.');
+            $kilometraje = null;
+        }
+
+        if ($horasDecimales !== null && $horasDecimales < 0) {
+            $anomalias[] = new LecturaImposible('HORAS', (float) $horasDecimales, 'un horómetro no puede ser negativo.');
+            $horasDecimales = null;
+        }
+
+        if ($voltaje !== null && $voltaje <= 0.0) {
+            $anomalias[] = new LecturaImposible('VOLTAJE', $voltaje, 'cero voltios significa sensor apagado, no una batería descargada.');
+            $voltaje = null;
+        }
+
+        if ($combustibleLitros !== null && $combustibleLitros < 0.0) {
+            $anomalias[] = new LecturaImposible('COMBUSTIBLE', $combustibleLitros, 'un tanque no puede tener litros negativos: la entrada analítica está desconectada.');
+            $combustibleLitros = null;
+        }
+
+        $this->anomalias = $anomalias;
         $this->observadaEn = $observadaEn;
         $this->posicion = $posicion;
-        $this->kilometraje = $kilometraje !== null && $kilometraje >= 0 ? $kilometraje : null;
-        $this->horasDecimales = $horasDecimales !== null && $horasDecimales >= 0 ? $horasDecimales : null;
+        $this->kilometraje = $kilometraje;
+        $this->horasDecimales = $horasDecimales;
         $this->motorEncendido = $motorEncendido;
         $this->ralentiActivo = $ralentiActivo;
-        $this->voltaje = $voltaje !== null && $voltaje > 0.0 ? $voltaje : null;
-        $this->combustibleLitros = $combustibleLitros !== null && $combustibleLitros >= 0.0 ? $combustibleLitros : null;
+        $this->voltaje = $voltaje;
+        $this->combustibleLitros = $combustibleLitros;
         $this->sensoresAdicionales = $sensoresAdicionales;
     }
 
@@ -104,6 +134,22 @@ final readonly class InstantaneaEquipo
     public function sensoresAdicionales(): array
     {
         return $this->sensoresAdicionales;
+    }
+
+    /**
+     * Lecturas que el proveedor reportó y el dominio no puede aceptar.
+     * Es la entrada de la alerta de telemetría anómala.
+     *
+     * @return list<LecturaImposible>
+     */
+    public function anomalias(): array
+    {
+        return $this->anomalias;
+    }
+
+    public function tieneAnomalias(): bool
+    {
+        return $this->anomalias !== [];
     }
 
     public function antiguedadMinutos(DateTimeImmutable $ahora): int
