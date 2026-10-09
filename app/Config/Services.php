@@ -503,20 +503,20 @@ class Services extends BaseService
     }
 
     /**
-     * Diagnóstico de cobertura de telemetría. Devuelve null cuando la
-     * integración está deshabilitada por configuración: el ciclo de
-     * notificaciones sigue funcionando sin ella.
+     * Diagnóstico de cobertura de telemetría.
+     *
+     * Sin candado de entorno: el interruptor por cliente es
+     * `integraciones_telemetria.activo`, que se cambia en la base. Un flag en
+     * `.env` obligaría a desplegar para prenderlo, y en producción el `.env`
+     * viaja con un deploy por FTPS. Si no hay integraciones, el diagnóstico
+     * simplemente no encuentra nada que evaluar.
      *
      * El token ya no vive en el entorno: se resuelve y descifra por
      * integración desde `integraciones_telemetria`. Eso permite que cada
      * empresa tenga su propia cuenta y su propio ciclo de renovación.
      */
-    public static function telematicAlertDiagnostics(bool $getShared = true): ?DiagnoseSilentUnits
+    public static function telematicAlertDiagnostics(bool $getShared = true): DiagnoseSilentUnits
     {
-        if (! (bool) env('WIALON_ENABLED', false)) {
-            return null;
-        }
-
         if ($getShared) {
             return static::getSharedInstance('telematicAlertDiagnostics');
         }
@@ -537,12 +537,8 @@ class Services extends BaseService
      * alertas para que la ficha y el mapa tengan contra qué leer, sin llamar
      * al proveedor en cada visita de pantalla.
      */
-    public static function telematicSnapshotRecorder(bool $getShared = true): ?RecordTelemetrySnapshots
+    public static function telematicSnapshotRecorder(bool $getShared = true): RecordTelemetrySnapshots
     {
-        if (! (bool) env('WIALON_ENABLED', false)) {
-            return null;
-        }
-
         if ($getShared) {
             return static::getSharedInstance('telematicSnapshotRecorder');
         }
@@ -574,16 +570,14 @@ class Services extends BaseService
     /**
      * Refresco manual de la telemetría, el mismo que dispara el botón.
      *
-     * Devuelve null sólo si el apagado global está en false. El interruptor
-     * por cliente es `integraciones_telemetria.activo`, que se cambia en la
-     * base y no obliga a desplegar.
+     * Sin candado de entorno, a propósito: el botón tiene que funcionar
+     * igual en staging y en Ferozo, y en producción un flag en `.env`
+     * obligaría a un deploy por FTPS para prenderlo. El interruptor real es
+     * `integraciones_telemetria.activo`. Sin integraciones, el caso de uso
+     * responde con un mensaje claro en vez de romperse.
      */
-    public static function telemetryRefresh(bool $getShared = true): ?\App\Application\Telematic\RefreshTelemetryNow
+    public static function telemetryRefresh(bool $getShared = true): \App\Application\Telematic\RefreshTelemetryNow
     {
-        if (! (bool) env('WIALON_ENABLED', false)) {
-            return null;
-        }
-
         if ($getShared) {
             return static::getSharedInstance('telemetryRefresh');
         }
@@ -632,9 +626,7 @@ class Services extends BaseService
         ];
 
         $telematic = static::telematicAlertDiagnostics(false);
-        if ($telematic !== null) {
-            $sources[] = new TelematicOperationalNotificationEventSource($telematic);
-        }
+        $sources[] = new TelematicOperationalNotificationEventSource($telematic);
 
         return new CollectOperationalNotifications(
             new CompositeOperationalNotificationEventSource($sources),
