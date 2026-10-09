@@ -126,7 +126,7 @@ onBeforeUnmount(() => {
           <span class="min-w-0 flex-1">
             <span class="flex items-start justify-between gap-3">
               <span class="text-sm font-semibold text-ink">{{ item.title }}</span>
-              <span v-if="!item.readAt" class="mt-1 size-2 shrink-0 rounded-full bg-primary" title="Sin leer" />
+              <span v-if="(item.state ?? 'PENDIENTE') === 'PENDIENTE' && !item.readAt" class="mt-1 size-2 shrink-0 rounded-full bg-primary" title="Sin leer" />
             </span>
             <span class="mt-0.5 block text-xs leading-5 text-ink-muted">{{ item.summary }}</span>
             <span class="mt-1 block text-[11px] text-ink-subtle">{{ formatDate(item.createdAt) }}</span>

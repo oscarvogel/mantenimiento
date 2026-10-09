@@ -32,6 +32,11 @@ const tabs = [
 const selectedEvent = computed(() => eventTypes.find(([value]) => value === selectedEventType.value) ?? eventTypes[0])
 const selectedPreferences = computed(() => props.data.preferences?.[selectedEventType.value] ?? {})
 
+// REGULARIZADA significa que el sistema verificó que la condición ya no se
+// cumple. Conserva el texto original como auditoría, pero no reclama atención.
+const isPending = (item) => (item.state ?? 'PENDIENTE') === 'PENDIENTE'
+const stateLabel = (item) => (isPending(item) ? '' : 'Regularizada')
+
 function csrfFields() { return { [csrf.value.name]: csrf.value.hash } }
 function applyCsrf(response) { if (response?.csrf?.name && response?.csrf?.hash) csrfState.value = response.csrf }
 function base64UrlToUint8Array(value) {
@@ -148,15 +153,15 @@ async function sendTestPush() {
     >
       <div class="border-b border-border-subtle px-4 py-4 sm:px-5">
         <h2 class="font-bold text-ink">Bandeja reciente</h2>
-        <p class="mt-1 text-sm text-ink-muted">{{ notificationPage.unread }} sin leer de {{ notificationPage.total }} recientes.</p>
+        <p class="mt-1 text-sm text-ink-muted">{{ notificationPage.unread }} sin leer de {{ notificationPage.total }} recientes. Las regularizadas ya no requieren atención.</p>
       </div>
       <div v-if="notificationPage.items.length" class="divide-y divide-border-subtle">
-        <article v-for="(item, index) in notificationPage.items" :key="item.id" :style="{ '--ui-stagger-index': index }" class="ui-stagger-item flex gap-3 p-4 sm:p-5" :class="!item.readAt && 'bg-primary-subtle/40'">
+        <article v-for="(item, index) in notificationPage.items" :key="item.id" :style="{ '--ui-stagger-index': index }" class="ui-stagger-item flex gap-3 p-4 sm:p-5" :class="isPending(item) && !item.readAt && 'bg-primary-subtle/40'">
           <BellIcon class="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
           <div class="min-w-0 flex-1">
-            <div class="flex flex-wrap items-center gap-2"><h3 class="font-semibold text-ink">{{ item.title }}</h3><span class="rounded-full bg-surface-muted px-2 py-0.5 text-xs text-ink-muted">{{ item.severity }}</span></div>
+            <div class="flex flex-wrap items-center gap-2"><h3 class="font-semibold text-ink">{{ item.title }}</h3><span class="rounded-full bg-surface-muted px-2 py-0.5 text-xs text-ink-muted">{{ item.severity }}</span><span v-if="stateLabel(item)" class="rounded-full bg-success-subtle px-2 py-0.5 text-xs text-success-strong">{{ stateLabel(item) }}</span></div>
             <p class="mt-1 text-sm text-ink-muted">{{ item.summary }}</p>
-            <div class="mt-3 flex flex-wrap gap-3 text-sm"><a v-if="item.url" :href="item.url" class="font-semibold text-primary hover:underline">Abrir detalle</a><form v-if="!item.readAt" :action="`${data.urls.read}/${item.id}`" method="post"><input v-for="(value, name) in csrfFields()" :key="name" type="hidden" :name="name" :value="value"><button class="font-semibold text-ink-muted hover:text-primary">Marcar leída</button></form></div>
+            <div class="mt-3 flex flex-wrap gap-3 text-sm"><a v-if="item.url" :href="item.url" class="font-semibold text-primary hover:underline">Abrir detalle</a><form v-if="isPending(item) && !item.readAt" :action="`${data.urls.read}/${item.id}`" method="post"><input v-for="(value, name) in csrfFields()" :key="name" type="hidden" :name="name" :value="value"><button class="font-semibold text-ink-muted hover:text-primary">Marcar leída</button></form></div>
           </div>
         </article>
       </div>

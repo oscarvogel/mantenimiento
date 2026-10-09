@@ -34,6 +34,11 @@ final class SuperAdminDriverPhoneAuditContractTest extends TestCase
         self::assertStringContainsString('Brasil con formato incompleto', $notifier);
         self::assertStringContainsString('Chile con formato incompleto', $notifier);
         self::assertStringContainsString('Chile 56...', $notifier);
-        self::assertStringContainsString("'leida_en' => null", $notifier);
+
+        // #473: la regularización automática tiene su propio estado, separado
+        // de LEIDA (que significa lectura humana), y se informa en el resultado.
+        self::assertStringContainsString('Avisos regularizados por corrección', $controller);
+        self::assertStringContainsString('regularizePending(', $notifier);
+        self::assertStringContainsString('companiesWithPending(', $notifier);
     }
 }
