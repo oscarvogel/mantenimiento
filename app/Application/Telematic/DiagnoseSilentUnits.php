@@ -7,6 +7,7 @@ namespace App\Application\Telematic;
 use App\Application\Notifications\Port\NotificationClock;
 use App\Application\Telematic\Port\EquipmentTelemetryCatalog;
 use App\Application\Telematic\Port\FleetTelemetryGatewayRegistry;
+use App\Application\Telematic\Port\TelemetryEvaluator;
 use App\Application\Telematic\Port\TelemetryIntegrationCatalog;
 use App\Domain\Notifications\NotifiableEvent;
 use App\Domain\Notifications\NotificationSeverity;
@@ -35,7 +36,7 @@ use DateTimeImmutable;
  * Sin esa separación, un camión con Wialon mudo y Gestya reportando genera
  * dos notificaciones al operador diciendo lo mismo.
  */
-final readonly class DiagnoseSilentUnits
+final readonly class DiagnoseSilentUnits implements TelemetryEvaluator
 {
     public const TYPE_SIN_TELEMETRIA = 'equipo.sin_telemetria';
     public const TYPE_FUENTE_CAIDA = 'fuente.telemetria_caida';

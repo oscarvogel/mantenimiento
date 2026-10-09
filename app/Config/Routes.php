@@ -24,6 +24,11 @@ $routes->post('logout', 'Login::logout', ['filter' => 'auth']);
 // Dashboard (protegido)
 $routes->get('dashboard', 'Dashboard::index', ['filter' => 'auth']);
 
+// Refresco manual de la telemetría. POST + CSRF + permiso: escribir datos
+// aunque sean de telemetría no es una operación de sólo ver. El mismo camino
+// sirve en staging y en producción, donde no hay cron de sistema ni CLI.
+$routes->post('mantenimiento/telemetria/actualizar', 'Telemetria::actualizar', ['filter' => 'auth']);
+
 // Cron web seguro para hosting sin PHP CLI. Usa POST + X-Cron-Token y no CSRF.
 $routes->post('internal/cron/notifications/dispatch', 'NotificationCron::dispatch');
 $routes->post('internal/deploy/migrate', 'NotificationCron::migrate');

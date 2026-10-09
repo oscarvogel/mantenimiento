@@ -571,6 +571,50 @@ class Services extends BaseService
         ]);
     }
 
+    /**
+     * Refresco manual de la telemetría, el mismo que dispara el botón.
+     *
+     * Devuelve null sólo si el apagado global está en false. El interruptor
+     * por cliente es `integraciones_telemetria.activo`, que se cambia en la
+     * base y no obliga a desplegar.
+     */
+    public static function telemetryRefresh(bool $getShared = true): ?\App\Application\Telematic\RefreshTelemetryNow
+    {
+        if (! (bool) env('WIALON_ENABLED', false)) {
+            return null;
+        }
+
+        if ($getShared) {
+            return static::getSharedInstance('telemetryRefresh');
+        }
+
+        $db = db_connect();
+        $integrations = new CodeIgniterTelemetryIntegrationCatalog($db);
+        $registry = self::telematicGatewayRegistry();
+        $clock = static::notificationClock(false);
+
+        return new \App\Application\Telematic\RefreshTelemetryNow(
+            $integrations,
+            new RecordTelemetrySnapshots(
+                new CodeIgniterEquipmentTelemetryCatalog($integrations, $db),
+                $integrations,
+                $registry,
+                new CodeIgniterTelemetrySnapshotStore($db),
+                $clock,
+            ),
+            new DiagnoseSilentUnits(
+                new CodeIgniterEquipmentTelemetryCatalog($integrations, $db),
+                $integrations,
+                $registry,
+                $clock,
+                (int) env('WIALON_SILENCE_HOURS', 24),
+            ),
+            static::publishNotifiableEvent(false),
+            new \App\Infrastructure\Telematic\CodeIgniterTelemetryRefreshGuard($db),
+            $clock,
+        );
+    }
+
     public static function operationalNotificationCollector(bool $getShared = true): CollectOperationalNotifications
     {
         if ($getShared) {

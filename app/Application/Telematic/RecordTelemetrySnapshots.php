@@ -8,6 +8,7 @@ use App\Application\Notifications\Port\NotificationClock;
 use App\Application\Telematic\Port\EquipmentTelemetryCatalog;
 use App\Application\Telematic\Port\FleetTelemetryGatewayRegistry;
 use App\Application\Telematic\Port\TelemetryIntegrationCatalog;
+use App\Application\Telematic\Port\TelemetryRefresher;
 use App\Application\Telematic\Port\TelemetrySnapshotStore;
 
 /**
@@ -22,7 +23,7 @@ use App\Application\Telematic\Port\TelemetrySnapshotStore;
  * simplemente no aporta instantáneas y las que ya había quedan con su
  * última observación, marcadas como ausentes.
  */
-final readonly class RecordTelemetrySnapshots
+final readonly class RecordTelemetrySnapshots implements TelemetryRefresher
 {
     public function __construct(
         private EquipmentTelemetryCatalog $equipment,

@@ -313,4 +313,12 @@ final class CorrectionNotificationPublisherFake implements NotifiableEventPublis
     {
         $this->published = $event;
     }
+
+    /** @return array{created:int, duplicates:int} */
+    public function execute(NotifiableEvent $event): array
+    {
+        $this->publish($event);
+
+        return ['created' => 1, 'duplicates' => 0];
+    }
 }
