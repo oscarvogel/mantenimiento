@@ -630,13 +630,44 @@ class Services extends BaseService
             ),
         ];
 
-        $telematic = static::telematicAlertDiagnostics(false);
-        $sources[] = new TelematicOperationalNotificationEventSource($telematic);
+        foreach (static::telematicDiagnosticsForAllCompanies() as $diagnostico) {
+            $sources[] = new TelematicOperationalNotificationEventSource($diagnostico);
+        }
 
         return new CollectOperationalNotifications(
             new CompositeOperationalNotificationEventSource($sources),
             static::publishNotifiableEvent(false),
         );
+    }
+
+    /**
+     * El ciclo de notificaciones es global, así que la telemetría también lo
+     * es: una fuente por empresa con integración activa. Cada diagnóstico
+     * sigue acotado a su empresa; lo que se compone es la lista.
+     *
+     * @return list<DiagnoseSilentUnits>
+     */
+    private static function telematicDiagnosticsForAllCompanies(): array
+    {
+        $db = db_connect();
+
+        if (! $db->tableExists('integraciones_telemetria')) {
+            return [];
+        }
+
+        $empresas = $db->table('integraciones_telemetria')
+            ->select('empresa_id')
+            ->where('activo', 1)
+            ->groupBy('empresa_id')
+            ->get()
+            ->getResultArray();
+
+        $diagnosticos = [];
+        foreach ($empresas as $fila) {
+            $diagnosticos[] = static::telematicAlertDiagnostics((int) $fila['empresa_id'], false);
+        }
+
+        return $diagnosticos;
     }
 
     public static function proactiveAssistantBriefing(bool $getShared = true): \App\Application\Chatbot\GetProactiveAssistantBriefing
