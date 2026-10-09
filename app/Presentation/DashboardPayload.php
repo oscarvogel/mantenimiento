@@ -53,6 +53,7 @@ final class DashboardPayload
                 'assignPlan' => $canEditPlans ? $plansUrl : '#',
                 'registerMaintenance' => $canEquipment ? $equipmentUrl : '#',
                 'quickReadings' => $canLoadReadings ? base_url('mantenimiento/lecturas/rapidas') : '#',
+                'telemetryRefresh' => $canLoadReadings ? base_url('mantenimiento/telemetria/actualizar') : '#',
                 'orders' => $canViewOrders ? $ordersUrl : '#',
                 'financialDetail' => $actor->hasPermission('ordenes.ver') ? base_url('reportes') : '#',
                 // El alta de correctiva vive en la pagina de ordenes, que solo

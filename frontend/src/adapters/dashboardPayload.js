@@ -345,6 +345,7 @@ export function normalizeDashboardPayload(payload) {
       assignPlan: asUrl(sourceLinks.assignPlan),
       registerMaintenance: asUrl(sourceLinks.registerMaintenance),
       quickReadings: asUrl(sourceLinks.quickReadings),
+        telemetryRefresh: asUrl(sourceLinks.telemetryRefresh),
       library: asUrl(sourceLinks.library),
       maintenanceDueSoon: asUrl(sourceLinks.maintenanceDueSoon, maintenanceUrl),
       maintenanceOverdue: asUrl(sourceLinks.maintenanceOverdue, maintenanceUrl),
