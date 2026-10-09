@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Application\Notifications\NotifyAdminsMissingDriverPhones;
+use App\Infrastructure\Notifications\CodeIgniterDriverPhoneAuditReadModel;
 use App\Domain\Notifications\NotificationState;
 use App\Domain\Notifications\WhatsAppPhone;
 use CodeIgniter\Database\BaseConnection;
@@ -438,7 +439,7 @@ final class DriverPhoneAlertRegularizationTest extends TestCase
             $this->repository,
             $this->clock,
             $this->gateway,
-            $this->db,
+            new CodeIgniterDriverPhoneAuditReadModel($this->db),
         );
     }
 

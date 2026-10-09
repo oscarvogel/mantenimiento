@@ -15,6 +15,7 @@ final class WhatsAppDeliveryReconciliationContractTest extends TestCase
         $queuePort = file_get_contents(APPPATH . 'Application/Notifications/Port/WhatsAppNotificationDeliveryQueue.php');
         $dispatch = file_get_contents(APPPATH . 'Application/Notifications/RunNotificationDispatch.php');
         $notifier = file_get_contents(APPPATH . 'Application/Notifications/NotifyAdminsMissingDriverPhones.php');
+        $auditReadModel = file_get_contents(APPPATH . 'Infrastructure/Notifications/CodeIgniterDriverPhoneAuditReadModel.php');
         $migration = file_get_contents(APPPATH . 'Database/Migrations/2026-09-23-111500_AddWhatsAppProviderMessageId.php');
         $userDigestMigration = file_get_contents(APPPATH . 'Database/Migrations/2026-10-07-192500_AddUserToWhatsAppNotificationDeliveries.php');
         $userDigestSchedule = file_get_contents(APPPATH . 'Application/Notifications/UserWhatsAppDigestSchedule.php');
@@ -26,6 +27,7 @@ final class WhatsAppDeliveryReconciliationContractTest extends TestCase
         self::assertIsString($queuePort);
         self::assertIsString($dispatch);
         self::assertIsString($notifier);
+        self::assertIsString($auditReadModel);
         self::assertIsString($migration);
         self::assertIsString($userDigestMigration);
         self::assertIsString($userDigestSchedule);
@@ -57,7 +59,7 @@ final class WhatsAppDeliveryReconciliationContractTest extends TestCase
         self::assertStringContainsString("userWhatsAppDigestTime', '08:00'", $queue);
         self::assertStringContainsString("format('N') >= 6", $userDigestSchedule);
 
-        self::assertStringContainsString('Responsable de mantenimiento', $notifier);
+        self::assertStringContainsString("where('r.nombre', 'Responsable de mantenimiento')", $auditReadModel);
         self::assertStringContainsString('formato internacional', $notifier);
         self::assertStringContainsString('whatsapp.entrega_fallida', $queue);
         self::assertStringContainsString('Falló una notificación WhatsApp', $queue);

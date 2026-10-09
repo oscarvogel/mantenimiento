@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Application\Notifications;
 
+use App\Application\Notifications\Port\DriverPhoneAuditReadModel;
 use App\Application\Notifications\Port\NotificationClock;
 use App\Application\Notifications\Port\NotificationRepository;
 use App\Application\Notifications\Port\WhatsAppNotificationGateway;
 use App\Domain\Notifications\NotifiableEvent;
 use App\Domain\Notifications\Notification;
 use App\Domain\Notifications\NotificationSeverity;
-use CodeIgniter\Database\BaseConnection;
 use DateTimeImmutable;
 use DateTimeInterface;
 
@@ -51,7 +51,7 @@ final readonly class NotifyAdminsMissingDriverPhones
         private NotificationRepository $notifications,
         private NotificationClock $clock,
         private WhatsAppNotificationGateway $whatsApp,
-        private BaseConnection $db,
+        private DriverPhoneAuditReadModel $auditReadModel,
     ) {
     }
 
@@ -83,8 +83,8 @@ final readonly class NotifyAdminsMissingDriverPhones
                 continue;
             }
 
-            $admins = $this->responsibleAdmins($companyId);
-            if ($admins === []) {
+            $adminUserIds = $this->auditReadModel->responsibleAdminUserIds($companyId);
+            if ($adminUserIds === []) {
                 $summary['regularized'] += $this->notifications->regularizePending($companyId, self::EVENT_TYPE, $now);
                 continue;
             }
@@ -111,9 +111,7 @@ final readonly class NotifyAdminsMissingDriverPhones
                 DateTimeImmutable::createFromInterface($now),
             );
 
-            foreach ($admins as $admin) {
-                $userId = (int) $admin['id'];
-
+            foreach ($adminUserIds as $userId) {
                 if ($this->notifications->createIfAbsent(Notification::forRecipient($event, $userId)) !== null) {
                     $summary['notifications']++;
                     continue;
@@ -156,32 +154,13 @@ final readonly class NotifyAdminsMissingDriverPhones
      */
     private function audit(): array
     {
-        $rows = $this->db->table('employee_equipment_assignments a')
-            ->select('a.empresa_id, a.empleado_id, emp.nombre, emp.apellido, emp.telefono')
-            ->select('e.id equipo_id, e.codigo equipo_codigo, e.patente')
-            ->join('empleados emp', 'emp.id = a.empleado_id AND emp.empresa_id = a.empresa_id', 'inner')
-            ->join('equipos e', 'e.id = a.equipo_id AND e.empresa_id = a.empresa_id', 'inner')
-            ->join('empresas co', 'co.id = a.empresa_id', 'inner')
-            ->where('a.rol', 'CHOFER')
-            ->where('a.fecha_hasta', null)
-            ->where('emp.activo', 1)
-            ->where('emp.deleted_at', null)
-            ->where('e.estado', 'ACTIVO')
-            ->where('e.deleted_at', null)
-            ->where('co.estado', 1)
-            ->where('co.deleted_at', null)
-            ->where('co.notificaciones_whatsapp_habilitadas', 1)
-            ->orderBy('a.id', 'DESC')
-            ->get()
-            ->getResultArray();
-
         /** @var array<int, list<array{name:string,equipment:string,phone:string,category:string,reason:string}>> $result */
         $result = [];
         $seenAssignments = [];
-        foreach ($rows as $row) {
-            $companyId = (int) ($row['empresa_id'] ?? 0);
-            $employeeId = (int) ($row['empleado_id'] ?? 0);
-            $equipmentId = (int) ($row['equipo_id'] ?? 0);
+        foreach ($this->auditReadModel->currentAssignments() as $row) {
+            $companyId = $row->companyId;
+            $employeeId = $row->employeeId;
+            $equipmentId = $row->equipmentId;
             $key = $companyId . ':' . $employeeId . ':' . $equipmentId;
             if ($companyId <= 0 || $employeeId <= 0 || $equipmentId <= 0 || isset($seenAssignments[$key])) {
                 continue;
@@ -191,19 +170,19 @@ final readonly class NotifyAdminsMissingDriverPhones
             // La empresa queda auditada aunque este chofer esté en regla.
             $result[$companyId] ??= [];
 
-            $rawPhone = trim((string) ($row['telefono'] ?? ''));
+            $rawPhone = trim((string) ($row->phone ?? ''));
             $category = $this->phoneObservationCategory($rawPhone);
             if ($category === null) {
                 continue;
             }
 
-            $name = trim((string) ($row['nombre'] ?? '') . ' ' . (string) ($row['apellido'] ?? ''));
+            $name = trim($row->firstName . ' ' . $row->lastName);
             if ($name === '') {
                 $name = 'Empleado #' . $employeeId;
             }
 
-            $equipment = trim((string) ($row['equipo_codigo'] ?? ''));
-            $plate = trim((string) ($row['patente'] ?? ''));
+            $equipment = trim($row->equipmentCode);
+            $plate = trim((string) ($row->plate ?? ''));
             if ($plate !== '' && mb_strtoupper($plate) !== mb_strtoupper($equipment)) {
                 $equipment .= ($equipment === '' ? '' : ' · ') . $plate;
             }
@@ -225,21 +204,6 @@ final readonly class NotifyAdminsMissingDriverPhones
         }
 
         return $result;
-    }
-
-    /** @return list<array{id:int}> */
-    private function responsibleAdmins(int $companyId): array
-    {
-        return $this->db->table('usuarios u')
-            ->select('DISTINCT u.id', false)
-            ->join('usuario_roles ur', 'ur.usuario_id = u.id', 'inner')
-            ->join('roles r', 'r.id = ur.rol_id', 'inner')
-            ->where('u.empresa_id', $companyId)
-            ->where('u.activo', 1)
-            ->where('u.deleted_at', null)
-            ->where('r.nombre', 'Responsable de mantenimiento')
-            ->get()
-            ->getResultArray();
     }
 
     /** @return array{code:string,label:string}|null */
