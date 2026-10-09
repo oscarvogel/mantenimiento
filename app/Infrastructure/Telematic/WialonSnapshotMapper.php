@@ -39,11 +39,14 @@ final class WialonSnapshotMapper
     /**
      * @param array<string,mixed> $values     Respuesta de `unit/calc_last` para la unidad.
      * @param array<string,mixed> $definitions Bloque `sens` de `core/search_items` para la unidad.
+     * @param array<string,mixed>|null $posicion Posición con marca de tiempo.
      */
-    public function map(array $values, array $definitions): InstantaneaEquipo
+    public function map(array $values, array $definitions, ?array $posicion = null): InstantaneaEquipo
     {
-        $posicion = $this->posicion($values['pos'] ?? null);
-        $observadaEn = $posicion?->observadaEn() ?? new DateTimeImmutable('now', new DateTimeZone(date_default_timezone_get()));
+        $posicionActual = $this->posicion($posicion ?? ($values['pos'] ?? null));
+        $observadaEn = $posicionActual?->observadaEn()
+            ?? $this->antiguaDe($values)
+            ?? new DateTimeImmutable('now', new DateTimeZone(date_default_timezone_get()));
 
         $sensores = is_array($values['sensors'] ?? null) ? $values['sensors'] : [];
 
@@ -89,7 +92,7 @@ final class WialonSnapshotMapper
 
         return new InstantaneaEquipo(
             $observadaEn,
-            $posicion,
+            $posicionActual,
             $this->entero($values['mileage']['value'] ?? null),
             $this->decimasHoras($values['engine_hours']['value'] ?? null),
             $motorEncendido,
@@ -98,6 +101,14 @@ final class WialonSnapshotMapper
             $combustible,
             $adicionales,
         );
+    }
+
+    /** Marca de tiempo del propio mensaje, cuando la posicion la trae. */
+    private function antiguaDe(array $values): ?DateTimeImmutable
+    {
+        $tiempo = $values['pos']['t'] ?? null;
+
+        return is_numeric($tiempo) ? $this->fecha((int) $tiempo) : null;
     }
 
     private function posicion(mixed $raw): ?Posicion

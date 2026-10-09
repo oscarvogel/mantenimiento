@@ -94,7 +94,10 @@ final class CodeIgniterTelemetrySnapshotStore implements TelemetrySnapshotStore
             $builder->whereNotIn('unidad_externa', $observedExternalIds);
         }
 
-        return $builder->update(['ausente' => 1, 'updated_at' => $now]);
+        $ok = $builder->update(['ausente' => 1, 'updated_at' => $now]);
+
+        // update() devuelve bool, no la cantidad de filas afectadas.
+        return $ok ? (int) $this->db->affectedRows() : 0;
     }
 
     private function booleano(?bool $value): ?int

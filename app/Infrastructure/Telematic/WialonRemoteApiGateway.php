@@ -67,16 +67,22 @@ final class WialonRemoteApiGateway implements FleetTelemetryGateway
         $session = $this->openSession($endpoint, $credentials['token']);
 
         try {
-            $definitions = $this->definitions($endpoint, $session);
-            $values = $this->values($endpoint, $session, array_keys($definitions));
+            $definiciones = $this->definiciones($endpoint, $session);
+            $values = $this->values($endpoint, $session, array_keys($definiciones));
 
             $mapper = $this->mapper ?? new WialonSnapshotMapper();
             $states = [];
 
             foreach ($values as $itemId => $item) {
+                // La posicion con marca de tiempo viene de core/search_items;
+                // unit/calc_last trae las coordenadas pero sin `t`. Sin esta
+                // union no hay posicion que mostrar en el mapa ni freshness que
+                // informar, porque la fecha quedaria siendo la de la corrida.
+                $posicion = $definiciones[$itemId]['__pos'] ?? null;
+
                 $states[(string) $itemId] = new EstadoSenal(
                     (string) $itemId,
-                    $mapper->map($item, $definitions[$itemId] ?? []),
+                    $mapper->map($item, $definiciones[$itemId]['__sens'] ?? [], $posicion),
                 );
             }
 
@@ -87,9 +93,9 @@ final class WialonRemoteApiGateway implements FleetTelemetryGateway
     }
 
     /**
-     * Definiciones de sensores por unidad, desde `core/search_items`.
+     * Definiciones de sensores y posición por unidad, desde `core/search_items`.
      *
-     * @return array<int|string, array<string,mixed>>
+     * @return array<int|string, array<string,mixed>> con claves `__sens` y `__pos`
      */
     private function definitions(string $endpoint, string $session): array
     {
@@ -105,7 +111,10 @@ final class WialonRemoteApiGateway implements FleetTelemetryGateway
         foreach ($items as $item) {
             $id = $item['id'] ?? null;
             if ($id !== null) {
-                $definitions[(string) $id] = is_array($item['sens'] ?? null) ? $item['sens'] : [];
+                $definitions[(string) $id] = [
+                    '__sens' => is_array($item['sens'] ?? null) ? $item['sens'] : [],
+                    '__pos' => is_array($item['pos'] ?? null) ? $item['pos'] : null,
+                ];
             }
         }
 

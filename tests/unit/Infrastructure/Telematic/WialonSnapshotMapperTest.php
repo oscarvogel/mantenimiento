@@ -76,6 +76,40 @@ final class WialonSnapshotMapperTest extends TestCase
         self::assertSame(0.0, $posicion->speedKmh());
     }
 
+    public function testLaPosicionSinMarcaDeTiempoVieneDeSearchItems(): void
+    {
+        // unit/calc_last trae las coordenadas pero SIN `t`. La marca de tiempo
+        // sólo aparece en core/search_items. Si el adaptador no une ambas, se
+        // pierde la posicion entera y la fecha queda siendo la de la corrida.
+        $valores = $this->valores();
+        unset($valores['pos']['t']);
+
+        $posicionDesdeItems = [
+            'y' => -33.0944383, 'x' => -68.880015, 'c' => 216,
+            'z' => ['value' => 955.4], 's' => ['value' => 29], 'sc' => 25,
+            't' => 1791563963,
+        ];
+
+        $instantanea = (new WialonSnapshotMapper())->map($valores, $this->definiciones(), $posicionDesdeItems);
+
+        self::assertNotNull($instantanea->posicion(), 'Sin la union de las dos respuestas no hay posicion.');
+        self::assertSame(29.0, $instantanea->posicion()->speedKmh());
+        // Se compara el instante, no su formato: la zona horaria depende del
+        // entorno y no es lo que se quiere fijar aqui.
+        self::assertSame(1791563963, $instantanea->observadaEn()->getTimestamp());
+    }
+
+    public function testSinPosicionNiMarcaDeTiempoCaeAlAhora(): void
+    {
+        $valores = $this->valores();
+        unset($valores['pos']);
+
+        $instantanea = (new WialonSnapshotMapper())->map($valores, []);
+
+        self::assertNull($instantanea->posicion());
+        self::assertSame(487500, $instantanea->kilometraje());
+    }
+
     public function testLosTanquesSueltosQuedanComoMedidasAdicionalesConSuNombreOriginal(): void
     {
         $instantanea = (new WialonSnapshotMapper())->map($this->valores(), $this->definiciones());

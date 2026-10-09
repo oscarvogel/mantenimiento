@@ -106,6 +106,7 @@ use App\Application\Telematic\RecordTelemetrySnapshots;
 use App\Application\Telematic\Port\FleetTelemetryGateway;
 use App\Application\Telematic\Port\FleetTelemetryGatewayRegistry;
 use App\Infrastructure\Telematic\CodeIgniterTelemetryIntegrationStore;
+use App\Infrastructure\Telematic\CodeIgniterTelemetryIntegrationCatalog;
 use App\Infrastructure\Telematic\CodeIgniterEquipmentTelemetryCatalog;
 use App\Infrastructure\Telematic\CodeIgniterTelemetrySnapshotStore;
 use App\Infrastructure\Telematic\CodeIgniterFleetTelemetryGatewayRegistry;
