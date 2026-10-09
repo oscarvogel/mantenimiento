@@ -9,19 +9,22 @@ final class MissingDriverPhonesAdminNotificationContractTest extends TestCase
     public function testMissingPhonesAreReportedOnlyToCompanyAdministratorsInNotificationCenter(): void
     {
         $service = file_get_contents(APPPATH . 'Application/Notifications/NotifyAdminsMissingDriverPhones.php');
+        $auditReadModel = file_get_contents(APPPATH . 'Infrastructure/Notifications/CodeIgniterDriverPhoneAuditReadModel.php');
         $cycle = file_get_contents(APPPATH . 'Application/Notifications/RunNotificationCycle.php');
         $services = file_get_contents(APPPATH . 'Config/Services.php');
         $dispatch = file_get_contents(APPPATH . 'Application/Notifications/RunNotificationDispatch.php');
         $queue = file_get_contents(APPPATH . 'Infrastructure/Notifications/CodeIgniterWhatsAppNotificationDeliveryQueue.php');
 
         self::assertIsString($service);
+        self::assertIsString($auditReadModel);
         self::assertIsString($cycle);
         self::assertIsString($services);
         self::assertIsString($dispatch);
         self::assertIsString($queue);
 
-        self::assertStringContainsString("where('r.nombre', 'Responsable de mantenimiento')", $service);
-        self::assertStringNotContainsString("where('r.nombre', 'Administrador')", $service);
+        self::assertStringContainsString('responsibleAdminUserIds', $service);
+        self::assertStringContainsString("where('r.nombre', 'Responsable de mantenimiento')", $auditReadModel);
+        self::assertStringNotContainsString("where('r.nombre', 'Administrador')", $auditReadModel);
         self::assertStringContainsString("chofer.telefono_faltante", $service);
         self::assertStringContainsString("Notification::forRecipient", $service);
         self::assertStringNotContainsString("scheduleCompany(", $service);

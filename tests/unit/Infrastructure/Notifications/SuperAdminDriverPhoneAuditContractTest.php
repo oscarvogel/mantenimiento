@@ -11,11 +11,13 @@ final class SuperAdminDriverPhoneAuditContractTest extends TestCase
         $controller = file_get_contents(APPPATH . 'Controllers/SuperAdmin.php');
         $routes = file_get_contents(APPPATH . 'Config/Routes.php');
         $notifier = file_get_contents(APPPATH . 'Application/Notifications/NotifyAdminsMissingDriverPhones.php');
+        $readModel = file_get_contents(APPPATH . 'Infrastructure/Notifications/CodeIgniterDriverPhoneAuditReadModel.php');
         $page = file_get_contents(ROOTPATH . 'frontend/src/pages/admin/SuperAdminPage.vue');
 
         self::assertIsString($controller);
         self::assertIsString($routes);
         self::assertIsString($notifier);
+        self::assertIsString($readModel);
         self::assertIsString($page);
 
         self::assertStringContainsString('auditDriverPhones', $controller);
@@ -23,7 +25,8 @@ final class SuperAdminDriverPhoneAuditContractTest extends TestCase
         self::assertStringContainsString('No se enviaron WhatsApp a choferes.', $controller);
         self::assertStringContainsString("whatsapp/auditar-celulares", $routes);
         self::assertStringContainsString('public function execute(bool $force = false)', $notifier);
-        self::assertStringContainsString("Responsable de mantenimiento", $notifier);
+        self::assertStringContainsString('responsibleAdminUserIds', $notifier);
+        self::assertStringContainsString("where('r.nombre', 'Responsable de mantenimiento')", $readModel);
         self::assertStringContainsString('auditDriverPhonesAction', $controller);
         self::assertStringContainsString('Auditar celulares', $page);
         self::assertStringContainsString('No envía mensajes a choferes', $page);
@@ -34,6 +37,11 @@ final class SuperAdminDriverPhoneAuditContractTest extends TestCase
         self::assertStringContainsString('Brasil con formato incompleto', $notifier);
         self::assertStringContainsString('Chile con formato incompleto', $notifier);
         self::assertStringContainsString('Chile 56...', $notifier);
-        self::assertStringContainsString("'leida_en' => null", $notifier);
+
+        // #473: la regularización automática tiene su propio estado, separado
+        // de LEIDA (que significa lectura humana), y se informa en el resultado.
+        self::assertStringContainsString('Avisos regularizados por corrección', $controller);
+        self::assertStringContainsString('regularizePending(', $notifier);
+        self::assertStringContainsString('companiesWithPending(', $notifier);
     }
 }

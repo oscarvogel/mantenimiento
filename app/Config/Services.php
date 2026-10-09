@@ -73,6 +73,7 @@ use App\Application\Notifications\ManageWebPushSubscriptions;
 use App\Application\Notifications\MarkNotificationRead;
 use App\Application\Notifications\NotificationChannelPolicy;
 use App\Application\Notifications\Port\GlobalNotificationSettingsStore;
+use App\Application\Notifications\Port\DriverPhoneAuditReadModel;
 use App\Application\Notifications\Port\NotificationCronRateLimiter;
 use App\Application\Notifications\NotificationDeliverySchedule;
 use App\Application\Notifications\NotificationPreferenceResolution;
@@ -94,6 +95,7 @@ use App\Infrastructure\Notifications\VogelWhatsAppApiGateway;
 use App\Infrastructure\Notifications\CodeIgniterNotificationProcessControl;
 use App\Infrastructure\Notifications\CodeIgniterNotificationRecipientResolver;
 use App\Infrastructure\Notifications\CodeIgniterNotificationRepository;
+use App\Infrastructure\Notifications\CodeIgniterDriverPhoneAuditReadModel;
 use App\Infrastructure\Notifications\CodeIgniterNotificationUnitOfWork;
 use App\Infrastructure\Notifications\CodeIgniterOperationalNotificationEventSource;
 use App\Infrastructure\Notifications\CodeIgniterWebPushSubscriptionStore;
@@ -320,8 +322,17 @@ class Services extends BaseService
             static::notificationRepository(false),
             static::notificationClock(false),
             static::whatsAppGateway(false),
-            db_connect(),
+            static::driverPhoneAuditReadModel(false),
         );
+    }
+
+    public static function driverPhoneAuditReadModel(bool $getShared = true): DriverPhoneAuditReadModel
+    {
+        if ($getShared) {
+            return static::getSharedInstance('driverPhoneAuditReadModel');
+        }
+
+        return new CodeIgniterDriverPhoneAuditReadModel(db_connect());
     }
 
     public static function managementReports(bool $getShared = true): \App\Application\Notifications\ScheduleManagementReports
