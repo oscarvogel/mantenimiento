@@ -66,6 +66,7 @@ use App\Application\Organization\Port\TenantAdministrationPort;
 use App\Application\Organization\TenantAdministrationService;
 use App\Application\Organization\UpdateCompanyHandler;
 use App\Application\Notifications\CollectOperationalNotifications;
+use App\Application\Notifications\CompositeOperationalNotificationEventSource;
 use App\Application\Notifications\GetNotificationCenter;
 use App\Application\Notifications\GetGlobalNotificationSettings;
 use App\Application\Notifications\ManageNotificationPreferences;
@@ -98,6 +99,16 @@ use App\Infrastructure\Notifications\CodeIgniterNotificationRepository;
 use App\Infrastructure\Notifications\CodeIgniterDriverPhoneAuditReadModel;
 use App\Infrastructure\Notifications\CodeIgniterNotificationUnitOfWork;
 use App\Infrastructure\Notifications\CodeIgniterOperationalNotificationEventSource;
+use App\Infrastructure\Notifications\TelematicOperationalNotificationEventSource;
+use App\Infrastructure\Telematic\WialonRemoteApiGateway;
+use App\Application\Telematic\DiagnoseSilentUnits;
+use App\Application\Telematic\RecordTelemetrySnapshots;
+use App\Application\Telematic\Port\FleetTelemetryGateway;
+use App\Application\Telematic\Port\FleetTelemetryGatewayRegistry;
+use App\Infrastructure\Telematic\CodeIgniterTelemetryIntegrationStore;
+use App\Infrastructure\Telematic\CodeIgniterEquipmentTelemetryCatalog;
+use App\Infrastructure\Telematic\CodeIgniterTelemetrySnapshotStore;
+use App\Infrastructure\Telematic\CodeIgniterFleetTelemetryGatewayRegistry;
 use App\Infrastructure\Notifications\CodeIgniterWebPushSubscriptionStore;
 use App\Infrastructure\Notifications\MinishlinkWebPushGateway;
 use App\Infrastructure\Notifications\SystemNotificationClock;
@@ -490,13 +501,82 @@ class Services extends BaseService
         );
     }
 
+    /**
+     * Diagnóstico de cobertura de telemetría. Devuelve null cuando la
+     * integración está deshabilitada por configuración: el ciclo de
+     * notificaciones sigue funcionando sin ella.
+     *
+     * El token ya no vive en el entorno: se resuelve y descifra por
+     * integración desde `integraciones_telemetria`. Eso permite que cada
+     * empresa tenga su propia cuenta y su propio ciclo de renovación.
+     */
+    public static function telematicAlertDiagnostics(bool $getShared = true): ?DiagnoseSilentUnits
+    {
+        if (! (bool) env('WIALON_ENABLED', false)) {
+            return null;
+        }
+
+        if ($getShared) {
+            return static::getSharedInstance('telematicAlertDiagnostics');
+        }
+
+        $integrations = new CodeIgniterTelemetryIntegrationCatalog(db_connect());
+
+        return new DiagnoseSilentUnits(
+            new CodeIgniterEquipmentTelemetryCatalog($integrations, db_connect()),
+            $integrations,
+            self::telematicGatewayRegistry(),
+            static::notificationClock(false),
+            (int) env('WIALON_SILENCE_HOURS', 24),
+        );
+    }
+
+    /**
+     * Ingesta de instantáneas de telemetría. Corre antes de evaluar las
+     * alertas para que la ficha y el mapa tengan contra qué leer, sin llamar
+     * al proveedor en cada visita de pantalla.
+     */
+    public static function telematicSnapshotRecorder(bool $getShared = true): ?RecordTelemetrySnapshots
+    {
+        if (! (bool) env('WIALON_ENABLED', false)) {
+            return null;
+        }
+
+        if ($getShared) {
+            return static::getSharedInstance('telematicSnapshotRecorder');
+        }
+
+        $integrations = new CodeIgniterTelemetryIntegrationCatalog(db_connect());
+        $registry = self::telematicGatewayRegistry();
+
+        return new RecordTelemetrySnapshots(
+            new CodeIgniterEquipmentTelemetryCatalog($integrations, db_connect()),
+            $integrations,
+            $registry,
+            new CodeIgniterTelemetrySnapshotStore(db_connect()),
+            static::notificationClock(false),
+        );
+    }
+
+    private static function telematicGatewayRegistry(): CodeIgniterFleetTelemetryGatewayRegistry
+    {
+        $store = new CodeIgniterTelemetryIntegrationStore(db_connect());
+
+        return new CodeIgniterFleetTelemetryGatewayRegistry([
+            FleetTelemetryGatewayRegistry::PROVIDER_WIALON => static fn (): FleetTelemetryGateway => new WialonRemoteApiGateway(
+                $store,
+                (int) env('WIALON_TIMEOUT_SECONDS', 30),
+            ),
+        ]);
+    }
+
     public static function operationalNotificationCollector(bool $getShared = true): CollectOperationalNotifications
     {
         if ($getShared) {
             return static::getSharedInstance('operationalNotificationCollector');
         }
 
-        return new CollectOperationalNotifications(
+        $sources = [
             new CodeIgniterOperationalNotificationEventSource(
                 static::notificationClock(false),
                 (int) env('alerts.lecturasVencidasDias', 30),
@@ -504,6 +584,15 @@ class Services extends BaseService
                 2,
                 db_connect(),
             ),
+        ];
+
+        $telematic = static::telematicAlertDiagnostics(false);
+        if ($telematic !== null) {
+            $sources[] = new TelematicOperationalNotificationEventSource($telematic);
+        }
+
+        return new CollectOperationalNotifications(
+            new CompositeOperationalNotificationEventSource($sources),
             static::publishNotifiableEvent(false),
         );
     }
