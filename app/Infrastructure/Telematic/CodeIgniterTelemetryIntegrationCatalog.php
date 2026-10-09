@@ -25,14 +25,15 @@ final class CodeIgniterTelemetryIntegrationCatalog implements TelemetryIntegrati
     }
 
     /** @return list<IntegracionTelematrica> */
-    public function active(): array
+    public function activeFor(int $companyId): array
     {
-        if (! $this->db->tableExists('integraciones_telemetria')) {
+        if ($companyId <= 0 || ! $this->db->tableExists('integraciones_telemetria')) {
             return [];
         }
 
         $rows = $this->db->table('integraciones_telemetria')
             ->select('id, empresa_id, proveedor, nombre')
+            ->where('empresa_id', $companyId)
             ->where('activo', 1)
             ->orderBy('id', 'ASC')
             ->get()

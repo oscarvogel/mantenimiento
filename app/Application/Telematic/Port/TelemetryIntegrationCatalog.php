@@ -15,6 +15,6 @@ use App\Application\Telematic\IntegracionTelematrica;
  */
 interface TelemetryIntegrationCatalog
 {
-    /** @return list<IntegracionTelematrica> */
-    public function active(): array;
+    /** @return list<IntegracionTelematrica> Integraciones activas de UNA empresa. */
+    public function activeFor(int $companyId): array;
 }

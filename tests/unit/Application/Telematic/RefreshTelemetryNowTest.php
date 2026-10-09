@@ -67,7 +67,7 @@ final class RefreshTelemetryNowTest extends TestCase
             {
             }
 
-            public function active(): array
+            public function activeFor(int $companyId): array
             {
                 $integraciones = [];
                 for ($i = 1; $i <= $this->cuantas; $i++) {
@@ -127,7 +127,7 @@ final class RefreshTelemetryNowTest extends TestCase
             }
         };
 
-        return new RefreshTelemetryNow($catalogo, $refresher, $evaluator, $publisher, $guard, $this->reloj());
+        return new RefreshTelemetryNow($catalogo, $refresher, $evaluator, $publisher, $guard, $this->reloj(), 4);
     }
 
     public function testSinIntegracionesAvisaQueNoHayNadaQueActualizar(): void

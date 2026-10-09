@@ -39,7 +39,7 @@ final class Telemetria extends Controller
         }
 
         try {
-            $resultado = service('telemetryRefresh')->execute();
+            $resultado = service('telemetryRefresh', $actor->companyId(), false)->execute();
         } catch (DomainException $exception) {
             // Un enfriamiento o una integración ausente no es un error técnico:
             // es una respuesta que el operador necesita leer.

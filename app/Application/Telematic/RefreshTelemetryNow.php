@@ -38,6 +38,7 @@ final readonly class RefreshTelemetryNow
         private NotifiableEventPublisher $publisher,
         private TelemetryRefreshGuard $guard,
         private NotificationClock $clock,
+        private int $companyId,
         private int $cooldownSeconds = self::COOLDOWN_SEGUNDOS,
     ) {
     }
@@ -45,7 +46,7 @@ final readonly class RefreshTelemetryNow
     /** @return TelemetryRefreshResult */
     public function execute(): TelemetryRefreshResult
     {
-        $integrations = $this->integrations->active();
+        $integrations = $this->integrations->activeFor($this->companyId);
 
         if ($integrations === []) {
             throw new TelemetriaNoDisponible('No hay ninguna integración de telemetría activa en esta empresa.');

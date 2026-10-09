@@ -29,9 +29,9 @@ final class CodeIgniterEquipmentTelemetryCatalog implements \App\Application\Tel
     }
 
     /** @return list<CoberturaEquipo> */
-    public function coveredEquipment(): array
+    public function coveredEquipmentFor(int $companyId): array
     {
-        if (! $this->db->tableExists('equipo_telemetria')) {
+        if ($companyId <= 0 || ! $this->db->tableExists('equipo_telemetria')) {
             return [];
         }
 
@@ -39,6 +39,7 @@ final class CodeIgniterEquipmentTelemetryCatalog implements \App\Application\Tel
             ->select('et.empresa_id, et.equipo_id, et.integracion_id, et.unidad_externa, et.rol, e.sucursal_id, e.codigo, i.proveedor, i.nombre integracion_nombre')
             ->join('equipos e', 'e.id = et.equipo_id AND e.empresa_id = et.empresa_id', 'inner')
             ->join('integraciones_telemetria i', 'i.id = et.integracion_id AND i.empresa_id = et.empresa_id', 'inner')
+            ->where('et.empresa_id', $companyId)
             ->where('et.activo', 1)
             ->where('e.estado', 'ACTIVO')
             ->where('e.deleted_at', null)

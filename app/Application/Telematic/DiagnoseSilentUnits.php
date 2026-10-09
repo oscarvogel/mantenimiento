@@ -47,6 +47,7 @@ final readonly class DiagnoseSilentUnits implements TelemetryEvaluator
         private TelemetryIntegrationCatalog $integrations,
         private FleetTelemetryGatewayRegistry $gateways,
         private NotificationClock $clock,
+        private int $companyId,
         private int $thresholdHours = 24,
     ) {
     }
@@ -58,7 +59,7 @@ final readonly class DiagnoseSilentUnits implements TelemetryEvaluator
             return [];
         }
 
-        $coverages = $this->equipment->coveredEquipment();
+        $coverages = $this->equipment->coveredEquipmentFor($this->companyId);
         if ($coverages === []) {
             return [];
         }
@@ -141,7 +142,7 @@ final readonly class DiagnoseSilentUnits implements TelemetryEvaluator
     {
         $signals = [];
 
-        foreach ($this->integrations->active() as $integration) {
+        foreach ($this->integrations->activeFor($this->companyId) as $integration) {
             try {
                 $gateway = $this->gateways->forProvider($integration->provider());
                 $signals[$integration->id()] = $gateway->fetchFor($integration->id());
@@ -250,7 +251,7 @@ final readonly class DiagnoseSilentUnits implements TelemetryEvaluator
 
     private function providerOf(int $integrationId): string
     {
-        foreach ($this->equipment->coveredEquipment() as $coverage) {
+        foreach ($this->equipment->coveredEquipmentFor($this->companyId) as $coverage) {
             foreach ($coverage->fuentes() as $fuente) {
                 if ($fuente->integrationId() === (string) $integrationId) {
                     return $fuente->provider();

@@ -31,6 +31,7 @@ final readonly class RecordTelemetrySnapshots implements TelemetryRefresher
         private FleetTelemetryGatewayRegistry $gateways,
         private TelemetrySnapshotStore $store,
         private NotificationClock $clock,
+        private int $companyId,
     ) {
     }
 
@@ -44,7 +45,7 @@ final readonly class RecordTelemetrySnapshots implements TelemetryRefresher
         // Índice de vínculos por integración, para resolver a qué equipo
         // pertenece cada unidad externa que volvió del proveedor.
         $vinculos = [];
-        foreach ($this->equipment->coveredEquipment() as $coverage) {
+        foreach ($this->equipment->coveredEquipmentFor($this->companyId) as $coverage) {
             foreach ($coverage->fuentes() as $fuente) {
                 $vinculos[$fuente->integrationId()][$fuente->unidadExterna()][] = $coverage;
             }
@@ -54,7 +55,7 @@ final readonly class RecordTelemetrySnapshots implements TelemetryRefresher
             return $summary;
         }
 
-        foreach ($this->integrations->active() as $integration) {
+        foreach ($this->integrations->activeFor($this->companyId) as $integration) {
             $integrationId = (string) $integration->id();
 
             try {

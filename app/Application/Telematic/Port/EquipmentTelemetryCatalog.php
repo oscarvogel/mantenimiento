@@ -15,6 +15,13 @@ use App\Domain\Telematic\CoberturaEquipo;
  */
 interface EquipmentTelemetryCatalog
 {
-    /** @return list<CoberturaEquipo> Sólo equipos con al menos una fuente vinculada. */
-    public function coveredEquipment(): array;
+    /**
+     * Equipos con al menos una fuente vinculada, **de una sola empresa**.
+     *
+     * El recorte por empresa no es opcional: sin él, un operador de un
+     * cliente dispararía y publicaría alertas sobre la flota de otro.
+     *
+     * @return list<CoberturaEquipo>
+     */
+    public function coveredEquipmentFor(int $companyId): array;
 }

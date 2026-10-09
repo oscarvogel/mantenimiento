@@ -85,7 +85,7 @@ final class DiagnoseSilentUnitsTest extends TestCase
             {
             }
 
-            public function coveredEquipment(): array
+            public function coveredEquipmentFor(int $companyId): array
             {
                 return $this->coverages;
             }
@@ -101,7 +101,7 @@ final class DiagnoseSilentUnitsTest extends TestCase
             {
             }
 
-            public function active(): array
+            public function activeFor(int $companyId): array
             {
                 return $this->integrations;
             }
@@ -153,7 +153,8 @@ final class DiagnoseSilentUnitsTest extends TestCase
             $this->integraciones([new IntegracionTelematrica(1, 4, 'wialon', 'Wialon TSA')]),
             new FakeGatewayRegistry($this->seSenales('wialon', 1, ['28396292' => '2026-10-01 00:00:00'])),
             $this->reloj(),
-            24,
+            4,
+            
         );
 
         $events = $diagnose->execute();
@@ -183,7 +184,8 @@ final class DiagnoseSilentUnitsTest extends TestCase
                 + $this->seSenales('gestya', 2, ['G-777' => '2026-10-01 00:00:00']),
             ),
             $this->reloj(),
-            24,
+            4,
+            
         );
 
         $events = $diagnose->execute();
@@ -210,7 +212,8 @@ final class DiagnoseSilentUnitsTest extends TestCase
                 + $this->seSenales('gestya', 2, ['G-777' => '2026-10-09 11:30:00']),
             ),
             $this->reloj(),
-            24,
+            4,
+            
         );
 
         $events = $diagnose->execute();
@@ -228,7 +231,8 @@ final class DiagnoseSilentUnitsTest extends TestCase
             $this->integraciones([new IntegracionTelematrica(1, 4, 'wialon', 'Wialon TSA')]),
             new FakeGatewayRegistry([], ['wialon']),
             $this->reloj(),
-            24,
+            4,
+            
         );
 
         self::assertSame(
@@ -257,7 +261,8 @@ final class DiagnoseSilentUnitsTest extends TestCase
             $this->integraciones([]),
             $registro,
             $this->reloj(),
-            24,
+            4,
+            
         );
 
         self::assertSame([], $diagnose->execute());
@@ -269,8 +274,8 @@ final class DiagnoseSilentUnitsTest extends TestCase
         $integraciones = $this->integraciones([new IntegracionTelematrica(1, 4, 'wialon', 'Wialon TSA')]);
         $registro = new FakeGatewayRegistry($this->seSenales('wialon', 1, ['28396292' => '2026-10-01 00:00:00']));
 
-        $primera = (new DiagnoseSilentUnits($catalogo, $integraciones, $registro, $this->reloj(), 24))->execute();
-        $segunda = (new DiagnoseSilentUnits($catalogo, $integraciones, $registro, $this->reloj(), 24))->execute();
+        $primera = (new DiagnoseSilentUnits($catalogo, $integraciones, $registro, $this->reloj(), 4, 24))->execute();
+        $segunda = (new DiagnoseSilentUnits($catalogo, $integraciones, $registro, $this->reloj(), 4, 24))->execute();
 
         self::assertSame($primera[0]->logicalKey(), $segunda[0]->logicalKey());
     }
@@ -285,7 +290,8 @@ final class DiagnoseSilentUnitsTest extends TestCase
             $integraciones,
             new FakeGatewayRegistry($this->seSenales('wialon', 1, ['28396292' => '2026-10-01 00:00:00'])),
             $this->reloj(),
-            24,
+            4,
+            
         ))->execute();
 
         $despues = (new DiagnoseSilentUnits(
@@ -293,7 +299,8 @@ final class DiagnoseSilentUnitsTest extends TestCase
             $integraciones,
             new FakeGatewayRegistry($this->seSenales('wialon', 1, ['28396292' => '2026-10-05 00:00:00'])),
             $this->reloj(),
-            24,
+            4,
+            
         ))->execute();
 
         self::assertNotSame($antes[0]->logicalKey(), $despues[0]->logicalKey());
@@ -331,7 +338,8 @@ final class DiagnoseSilentUnitsTest extends TestCase
             $this->integraciones([new IntegracionTelematrica(1, 4, 'wialon', 'Wialon TSA')]),
             new FakeGatewayRegistry($this->seSenales('wialon', 1, ['28396292' => '2026-10-01 00:00:00'])),
             $this->reloj(),
-            24,
+            4,
+            
         );
 
         self::assertSame([], $diagnose->execute());
@@ -352,7 +360,8 @@ final class DiagnoseSilentUnitsTest extends TestCase
                 '28405962' => '2026-10-09 11:00:00',
             ])),
             $this->reloj(),
-            24,
+            4,
+            
         );
 
         $events = $diagnose->execute();

@@ -61,14 +61,14 @@ final class DiagnoseSilentUnitsAnomaliaTest extends TestCase
             {
             }
 
-            public function coveredEquipment(): array
+            public function coveredEquipmentFor(int $companyId): array
             {
                 return $this->coberturas;
             }
         };
 
         $integraciones = new class implements \App\Application\Telematic\Port\TelemetryIntegrationCatalog {
-            public function active(): array
+            public function activeFor(int $companyId): array
             {
                 return [new \App\Application\Telematic\IntegracionTelematrica(1, 4, 'wialon', 'Wialon TSA')];
             }
@@ -110,7 +110,7 @@ final class DiagnoseSilentUnitsAnomaliaTest extends TestCase
             }
         };
 
-        return new DiagnoseSilentUnits($catalogo, $integraciones, $registro, $reloj, 24);
+        return new DiagnoseSilentUnits($catalogo, $integraciones, $registro, $reloj, 4, 24);
     }
 
     public function testUnSensorImposibleGeneraLaAlertaDeAnomalia(): void

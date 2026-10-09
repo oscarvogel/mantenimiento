@@ -83,7 +83,7 @@ final class RecordTelemetrySnapshotsTest extends TestCase
             {
             }
 
-            public function coveredEquipment(): array
+            public function coveredEquipmentFor(int $companyId): array
             {
                 return $this->coverages;
             }
@@ -97,7 +97,7 @@ final class RecordTelemetrySnapshotsTest extends TestCase
             {
             }
 
-            public function active(): array
+            public function activeFor(int $companyId): array
             {
                 return $this->integrations;
             }
@@ -145,6 +145,7 @@ final class RecordTelemetrySnapshotsTest extends TestCase
             $this->registro(['28396292' => new EstadoSenal('28396292', $this->instantanea())]),
             $store,
             $this->reloj(),
+            4,
         );
 
         $summary = $recorder->execute();
@@ -168,6 +169,7 @@ final class RecordTelemetrySnapshotsTest extends TestCase
             $this->registro(['28396292' => new EstadoSenal('28396292', $this->instantanea())]),
             $store,
             $this->reloj(),
+            4,
         );
 
         self::assertSame(2, $recorder->execute()['instantaneas']);
@@ -185,6 +187,7 @@ final class RecordTelemetrySnapshotsTest extends TestCase
             ]),
             $store,
             $this->reloj(),
+            4,
         );
 
         self::assertSame(1, $recorder->execute()['instantaneas']);
@@ -204,6 +207,7 @@ final class RecordTelemetrySnapshotsTest extends TestCase
             $this->registro([], true),
             $store,
             $this->reloj(),
+            4,
         );
 
         $summary = $recorder->execute();
@@ -233,6 +237,7 @@ final class RecordTelemetrySnapshotsTest extends TestCase
             $registro,
             new MemoriaSnapshots(),
             $this->reloj(),
+            4,
         );
 
         self::assertSame(0, $recorder->execute()['integraciones']);
@@ -247,6 +252,7 @@ final class RecordTelemetrySnapshotsTest extends TestCase
             $this->registro(['28396292' => new EstadoSenal('28396292', null)]),
             $store,
             $this->reloj(),
+            4,
         );
 
         self::assertSame(0, $recorder->execute()['instantaneas']);

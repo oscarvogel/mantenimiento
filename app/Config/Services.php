@@ -515,10 +515,10 @@ class Services extends BaseService
      * integración desde `integraciones_telemetria`. Eso permite que cada
      * empresa tenga su propia cuenta y su propio ciclo de renovación.
      */
-    public static function telematicAlertDiagnostics(bool $getShared = true): DiagnoseSilentUnits
+    public static function telematicAlertDiagnostics(int $companyId, bool $getShared = true): DiagnoseSilentUnits
     {
         if ($getShared) {
-            return static::getSharedInstance('telematicAlertDiagnostics');
+            return static::getSharedInstance('telematicAlertDiagnostics.' . $companyId);
         }
 
         $integrations = new CodeIgniterTelemetryIntegrationCatalog(db_connect());
@@ -528,6 +528,7 @@ class Services extends BaseService
             $integrations,
             self::telematicGatewayRegistry(),
             static::notificationClock(false),
+            $companyId,
             (int) env('WIALON_SILENCE_HOURS', 24),
         );
     }
@@ -537,10 +538,10 @@ class Services extends BaseService
      * alertas para que la ficha y el mapa tengan contra qué leer, sin llamar
      * al proveedor en cada visita de pantalla.
      */
-    public static function telematicSnapshotRecorder(bool $getShared = true): RecordTelemetrySnapshots
+    public static function telematicSnapshotRecorder(int $companyId, bool $getShared = true): RecordTelemetrySnapshots
     {
         if ($getShared) {
-            return static::getSharedInstance('telematicSnapshotRecorder');
+            return static::getSharedInstance('telematicSnapshotRecorder.' . $companyId);
         }
 
         $integrations = new CodeIgniterTelemetryIntegrationCatalog(db_connect());
@@ -552,6 +553,7 @@ class Services extends BaseService
             $registry,
             new CodeIgniterTelemetrySnapshotStore(db_connect()),
             static::notificationClock(false),
+            $companyId,
         );
     }
 
@@ -576,10 +578,10 @@ class Services extends BaseService
      * `integraciones_telemetria.activo`. Sin integraciones, el caso de uso
      * responde con un mensaje claro en vez de romperse.
      */
-    public static function telemetryRefresh(bool $getShared = true): \App\Application\Telematic\RefreshTelemetryNow
+    public static function telemetryRefresh(int $companyId, bool $getShared = true): \App\Application\Telematic\RefreshTelemetryNow
     {
         if ($getShared) {
-            return static::getSharedInstance('telemetryRefresh');
+            return static::getSharedInstance('telemetryRefresh.' . $companyId);
         }
 
         $db = db_connect();
@@ -595,17 +597,20 @@ class Services extends BaseService
                 $registry,
                 new CodeIgniterTelemetrySnapshotStore($db),
                 $clock,
+                $companyId,
             ),
             new DiagnoseSilentUnits(
                 new CodeIgniterEquipmentTelemetryCatalog($integrations, $db),
                 $integrations,
                 $registry,
                 $clock,
+                $companyId,
                 (int) env('WIALON_SILENCE_HOURS', 24),
             ),
             static::publishNotifiableEvent(false),
             new \App\Infrastructure\Telematic\CodeIgniterTelemetryRefreshGuard($db),
             $clock,
+            $companyId,
         );
     }
 
