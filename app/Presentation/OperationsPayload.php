@@ -275,7 +275,7 @@ final class OperationsPayload
      *
      * @return array<string,mixed>
      */
-    private function telemetry(?array $telemetry, array $equipment): array
+    private function telemetry(?array $telemetry, array $equipment, array $can = []): array
     {
         $kmPropio = $equipment['km_actual'] === null ? null : (int) $equipment['km_actual'];
         $fuentes = [];
@@ -316,6 +316,15 @@ final class OperationsPayload
             'equipmentKm' => $kmPropio,
             'equipmentHours' => $equipment['horas_actuales'] ?? null,
             'sources' => $fuentes,
+            // Mismo camino que el botón del dashboard: refresca la flota de la
+            // empresa. Escribir datos, aunque sean de telemetría, no es una
+            // operación de sólo ver, así que viaja con su permiso y su token.
+            'canRefresh' => (bool) ($can['refreshTelemetry'] ?? false),
+            'refreshUrl' => base_url('mantenimiento/telemetria/actualizar'),
+            'csrf' => [
+                'name' => csrf_token(),
+                'hash' => csrf_hash(),
+            ],
         ];
     }
 
@@ -367,7 +376,7 @@ final class OperationsPayload
                 'thumbnailUrl' => $base . '/foto-principal?miniatura=1',
                 'hasThumbnail' => $primaryPhoto->thumbnailPath !== null,
             ],
-            'telemetry' => $this->telemetry($telemetry, $equipment),
+            'telemetry' => $this->telemetry($telemetry, $equipment, $can),
             'catalogs' => [
                 'types' => array_map(fn (array $row): array => [
                     'id' => (int) $row['id'], 'name' => $row['nombre'],

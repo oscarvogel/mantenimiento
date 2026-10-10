@@ -20,6 +20,16 @@ const props = defineProps({
 
 const mapaAbierto = ref(false)
 
+// El botón sólo existe con permiso y con token completo. Un control visible
+// que va a rebotar con 403 es peor que un control que no está.
+const puedeActualizar = computed(
+  () =>
+    props.telemetry.canRefresh === true &&
+    Boolean(props.telemetry.csrf?.name) &&
+    Boolean(props.telemetry.csrf?.hash) &&
+    props.telemetry.refreshUrl !== '#',
+)
+
 const LIMITE_FRESCAZA_MIN = 60
 const LIMITE_VIEJA_MIN = 1440
 
@@ -140,6 +150,26 @@ const mapaEnlace = computed(() => {
 
 <template>
   <div class="space-y-5">
+    <!--
+      Refresco manual. Form POST y no fetch a propósito: no depende de
+      JavaScript adicional, el navegador manda el token y el servidor
+      responde con el resultado. Sin token completo el botón no aparece.
+    -->
+    <form
+      v-if="puedeActualizar"
+      method="post"
+      :action="telemetry.refreshUrl"
+      class="flex justify-end"
+    >
+      <input type="hidden" :name="telemetry.csrf.name" :value="telemetry.csrf.hash" />
+      <button
+        type="submit"
+        class="ui-interactive inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-primary bg-surface px-4 py-2.5 text-sm font-semibold text-primary transition hover:bg-primary-subtle"
+      >
+        Actualizar telemetría
+      </button>
+    </form>
+
     <div
       v-for="(fuente, indice) in telemetry.sources"
       :key="fuente.integrationId"
