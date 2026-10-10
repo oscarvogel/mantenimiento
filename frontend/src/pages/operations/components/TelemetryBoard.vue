@@ -12,9 +12,19 @@
  * su hora manda a un chofer a donde el camión no está.
  */
 import { computed, ref } from 'vue'
+import EmptyState from './EmptyState.vue'
 
 const props = defineProps({
-  telemetry: { type: Object, required: true },
+  telemetry: {
+    type: Object,
+    default: () => ({
+      sources: [],
+      canRefresh: false,
+      csrf: {},
+      refreshUrl: '#',
+      equipmentKm: null,
+    }),
+  },
   equipment: { type: Object, required: true },
 })
 
@@ -197,6 +207,12 @@ const mapaEnlaceDe = (fuente) => {
         Actualizar telemetría
       </button>
     </form>
+
+    <EmptyState
+      v-if="telemetry.sources.length === 0"
+      title="Todavía no hay una fuente vinculada"
+      description="Cuando se vincule el proveedor de telemetría, acá vas a ver la ubicación y las lecturas del equipo."
+    />
 
     <section class="rounded-xl border border-border bg-surface-subtle/50 p-4" aria-labelledby="telemetry-kilometers-title">
       <div class="flex flex-wrap items-baseline justify-between gap-2">

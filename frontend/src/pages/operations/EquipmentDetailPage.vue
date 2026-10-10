@@ -11,6 +11,7 @@ import PanelCard from './components/PanelCard.vue'
 import StatusBadge from './components/StatusBadge.vue'
 import TelemetryBoard from './components/TelemetryBoard.vue'
 import EquipmentThumbnail from './components/EquipmentThumbnail.vue'
+import { equipmentDetailTabs } from './equipmentDetailTabs.js'
 import { dangerButton, fieldClass, formatHours, formatKilometers, formatReadingOrigin, nowLocal, primaryButton, secondaryButton, today } from './helpers.js'
 
 const editingExpiration = ref(null)
@@ -57,22 +58,7 @@ const data = computed(() => {
   }
 })
 
-const tabs = computed(() => {
-  const base = [
-    { id: 'resumen', label: 'Resumen' },
-    { id: 'mantenimiento', label: 'Mantenimiento' },
-  ]
-  // La pestaña de telemetría sólo existe si el equipo tiene alguna fuente
-  // vinculada. Un espacio vacío es peor que una pestaña que no está.
-  if (data.value.telemetry?.available) {
-    base.push({ id: 'telemetria', label: 'Telemetría' })
-  }
-  return base.concat([
-    { id: 'lecturas', label: 'Lecturas' },
-    { id: 'archivos', label: 'Archivos' },
-    { id: 'historial', label: 'Historial' },
-  ])
-})
+const tabs = computed(() => equipmentDetailTabs())
 const initialQuery = new URLSearchParams(window.location.search)
 const requestedTab = initialQuery.get('tab')
 const activeTab = ref(
@@ -325,7 +311,6 @@ const equipmentSummary = computed(() => {
     </div>
 
     <div
-      v-if="data.telemetry?.available"
       id="equipment-panel-telemetria"
       v-show="activeTab === 'telemetria'"
       role="tabpanel"
