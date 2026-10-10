@@ -109,6 +109,7 @@ use App\Application\Telematic\RecordTelemetrySnapshots;
 use App\Application\Telematic\RegistrarMuestras;
 use App\Application\Telematic\SincronizarBucketsTelemetria;
 use App\Application\Telematic\Port\LectorHistoricoTelemetria;
+use App\Application\Telematic\Port\SerieMuestrasReader;
 use App\Application\Telematic\Port\FleetTelemetryGateway;
 use App\Application\Telematic\Port\FleetTelemetryGatewayRegistry;
 use App\Domain\Telematic\AgregadorBucketsTelemetria;
@@ -119,6 +120,10 @@ use App\Infrastructure\Telematic\CodeIgniterEquipmentTelemetryCatalog;
 use App\Infrastructure\Telematic\CodeIgniterTelemetrySnapshotStore;
 use App\Infrastructure\Telematic\CodeIgniterMuestraStore;
 use App\Infrastructure\Telematic\CodeIgniterHistoricoMuestras;
+use App\Infrastructure\Telematic\CodeIgniterHistoricoBuckets;
+use App\Infrastructure\Telematic\ArchivoRespaldoBuckets;
+use App\Infrastructure\Telematic\CodeIgniterBucketSerieMuestrasReader;
+use App\Infrastructure\Telematic\CodeIgniterTelematicSerieMuestrasReader;
 use App\Infrastructure\Telematic\ArchivoRespaldoMuestras;
 use App\Infrastructure\Telematic\CodeIgniterFleetTelemetryGatewayRegistry;
 use App\Infrastructure\Notifications\CodeIgniterWebPushSubscriptionStore;
@@ -582,6 +587,30 @@ class Services extends BaseService
     public static function muestrasRespaldo(): ArchivoRespaldoMuestras
     {
         return new ArchivoRespaldoMuestras();
+    }
+
+    public static function muestrasBucketsHistorico(): CodeIgniterHistoricoBuckets
+    {
+        return new CodeIgniterHistoricoBuckets(db_connect());
+    }
+
+    public static function muestrasBucketsRespaldo(): ArchivoRespaldoBuckets
+    {
+        return new ArchivoRespaldoBuckets();
+    }
+
+    public static function serieMuestras(bool $getShared = true): SerieMuestrasReader
+    {
+        if ($getShared) {
+            return static::getSharedInstance('serieMuestras');
+        }
+
+        $db = db_connect();
+
+        return new CodeIgniterTelematicSerieMuestrasReader(
+            new CodeIgniterHistoricoMuestras($db),
+            new CodeIgniterBucketSerieMuestrasReader($db),
+        );
     }
 
     private static function telematicGatewayRegistry(): CodeIgniterFleetTelemetryGatewayRegistry

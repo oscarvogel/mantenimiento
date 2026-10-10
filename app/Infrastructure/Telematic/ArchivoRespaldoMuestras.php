@@ -33,6 +33,8 @@ final class ArchivoRespaldoMuestras implements RespaldoMuestras
             throw new RuntimeException('No se pudo crear el directorio del respaldo: ' . $directorio);
         }
 
+        $this->exigirDestinoFisicoPermitido($archivo);
+
         $manejador = @fopen($archivo, 'wb');
 
         if ($manejador === false) {
@@ -45,7 +47,8 @@ final class ArchivoRespaldoMuestras implements RespaldoMuestras
             foreach ($muestras as $muestra) {
                 $linea = json_encode($this->fila($muestra), JSON_UNESCAPED_UNICODE);
 
-                if ($linea === false || fwrite($manejador, $linea . "\n") === false) {
+                $contenido = $linea . "\n";
+                if ($linea === false || fwrite($manejador, $contenido) !== strlen($contenido)) {
                     throw new RuntimeException('No se pudo escribir el respaldo completo: ' . $archivo);
                 }
 
@@ -61,6 +64,7 @@ final class ArchivoRespaldoMuestras implements RespaldoMuestras
     public function verificar(string $archivo, int $esperadas): bool
     {
         $this->exigirRutaPermitida($archivo);
+        $this->exigirDestinoFisicoPermitido($archivo);
 
         if (! is_file($archivo) || ! is_readable($archivo)) {
             return false;
@@ -77,9 +81,21 @@ final class ArchivoRespaldoMuestras implements RespaldoMuestras
 
         try {
             while (($linea = fgets($manejador)) !== false) {
-                if (trim($linea) !== '') {
-                    $lineas++;
+                if (trim($linea) === '') {
+                    continue;
                 }
+
+                try {
+                    $fila = json_decode($linea, true, 512, JSON_THROW_ON_ERROR);
+                } catch (\JsonException) {
+                    return false;
+                }
+
+                if (! is_array($fila) || ! isset($fila['empresa_id'], $fila['equipo_id'], $fila['observada_en'])) {
+                    return false;
+                }
+
+                $lineas++;
             }
         } finally {
             fclose($manejador);
@@ -116,11 +132,29 @@ final class ArchivoRespaldoMuestras implements RespaldoMuestras
     private function exigirRutaPermitida(string $archivo): void
     {
         $normalizada = str_replace('\\', '/', $archivo);
+        $partes = explode('/', $normalizada);
 
-        if (! str_starts_with($normalizada, self::PREFIJO_PERMITIDO)) {
+        if (! str_starts_with($normalizada, self::PREFIJO_PERMITIDO) || in_array('..', $partes, true)) {
             throw new RuntimeException(
                 'El respaldo de telemetría sólo puede escribirse dentro de writable/.',
             );
+        }
+    }
+
+    private function exigirDestinoFisicoPermitido(string $archivo): void
+    {
+        $raiz = realpath('writable');
+        $directorio = realpath(dirname($archivo));
+        $destino = $directorio === false ? false : $directorio . DIRECTORY_SEPARATOR . basename($archivo);
+
+        if (
+            $raiz === false
+            || $directorio === false
+            || ($directorio !== $raiz && ! str_starts_with($directorio, $raiz . DIRECTORY_SEPARATOR))
+            || is_link($archivo)
+            || ($destino !== false && file_exists($destino) && realpath($destino) === false)
+        ) {
+            throw new RuntimeException('El respaldo de telemetría debe quedar físicamente dentro de writable/.');
         }
     }
 }

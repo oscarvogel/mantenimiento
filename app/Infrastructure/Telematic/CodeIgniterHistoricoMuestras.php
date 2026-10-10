@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Telematic;
 
 use App\Application\Telematic\Port\HistoricoMuestras;
+use App\Application\Telematic\Port\SerieMuestrasReader;
 use App\Domain\Telematic\InstantaneaEquipo;
 use App\Domain\Telematic\MuestraEquipo;
 use App\Domain\Telematic\Posicion;
@@ -19,7 +20,7 @@ use DateTimeImmutable;
  * serie. Usar `registrada_en` mezclaría el tiempo del dispositivo con el
  * nuestro y dejaría huecos falsos en la ventana de retención.
  */
-final class CodeIgniterHistoricoMuestras implements HistoricoMuestras
+final class CodeIgniterHistoricoMuestras implements HistoricoMuestras, SerieMuestrasReader
 {
     private const TABLA = 'telematia_muestras';
 
@@ -38,7 +39,7 @@ final class CodeIgniterHistoricoMuestras implements HistoricoMuestras
 
         $filas = $this->mysql->table(self::TABLA)
             ->where('empresa_id', $empresaId)
-            ->where('observada_en <', $corte->format('Y-m-d H:i:s'))
+            ->where('observada_en <', $corte->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s'))
             ->orderBy('observada_en', 'ASC')
             ->get()
             ->getResultArray();
@@ -54,17 +55,38 @@ final class CodeIgniterHistoricoMuestras implements HistoricoMuestras
 
         $ok = $this->mysql->table(self::TABLA)
             ->where('empresa_id', $empresaId)
-            ->where('observada_en <', $corte->format('Y-m-d H:i:s'))
+            ->where('observada_en <', $corte->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s'))
             ->delete();
 
         return $ok ? (int) $this->mysql->affectedRows() : 0;
     }
 
+    public function serie(int $empresaId, int $equipoId, DateTimeImmutable $desde, DateTimeImmutable $hasta): array
+    {
+        if ($empresaId <= 0 || $equipoId <= 0 || $hasta < $desde || ! $this->hasTable()) {
+            return [];
+        }
+
+        $filas = $this->mysql->table(self::TABLA)
+            ->where('empresa_id', $empresaId)
+            ->where('equipo_id', $equipoId)
+            ->where("LOWER(proveedor) != 'wialon'", null, false)
+            ->where('observada_en >=', $desde->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s'))
+            ->where('observada_en <=', $hasta->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s'))
+            ->orderBy('observada_en', 'ASC')
+            ->orderBy('integracion_id', 'ASC')
+            ->get()
+            ->getResultArray();
+
+        return array_map(fn (array $fila): MuestraEquipo => $this->muestra($fila), $filas);
+    }
+
     /** @param array<string,mixed> $fila */
     private function muestra(array $fila): MuestraEquipo
     {
-        $observada = new DateTimeImmutable((string) $fila['observada_en']);
-        $registrada = new DateTimeImmutable((string) ($fila['registrada_en'] ?? $fila['observada_en']));
+        $utc = new \DateTimeZone('UTC');
+        $observada = new DateTimeImmutable((string) $fila['observada_en'], $utc);
+        $registrada = new DateTimeImmutable((string) ($fila['registrada_en'] ?? $fila['observada_en']), $utc);
 
         $posicion = $fila['latitud'] === null || $fila['longitud'] === null
             ? null
