@@ -86,4 +86,30 @@ final class GetFleetTelemetryBoardTest extends TestCase
         $this->expectException(DomainException::class);
         $useCase->execute(new ActorContext(7, 8, false, true, [], [], []));
     }
+
+    public function testUnaFuenteDesactualizadaSeMuestraComoCaidaYNoComoProblemaDeSensor(): void
+    {
+        $reader = new class implements FleetTelemetryBoardReader {
+            public function read(int $companyId, ?array $branchIds): array
+            {
+                return ['units' => [[
+                    'equipmentId' => 14,
+                    'code' => 'AD738EA',
+                    'sources' => [[
+                        'observedAt' => '2026-10-09 08:00:00',
+                        'sensorIssues' => [['sensor' => 'Voltaje', 'valor' => 0, 'motivo' => 'fuera de rango']],
+                    ]],
+                ]], 'branches' => []];
+            }
+        };
+        $clock = new class implements NotificationClock {
+            public function now(): DateTimeImmutable { return new DateTimeImmutable('2026-10-10 10:00:00'); }
+        };
+        $actor = new ActorContext(7, 8, false, false, [], ['equipos.ver'], [41]);
+
+        $result = (new GetFleetTelemetryBoard($reader, $clock))->execute($actor);
+
+        self::assertSame('DESACTUALIZADO', $result['units'][0]['sources'][0]['freshness']);
+        self::assertSame([], $result['units'][0]['sources'][0]['sensorIssues']);
+    }
 }

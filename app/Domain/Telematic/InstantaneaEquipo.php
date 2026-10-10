@@ -33,11 +33,15 @@ final readonly class InstantaneaEquipo
     /** @var list<MedidaAdicional> */
     private array $sensoresAdicionales;
 
+    /** @var list<SensorTelemetrico> */
+    private array $sensoresConfigurados;
+
     /** @var list<LecturaImposible> */
     private array $anomalias;
 
     /**
      * @param list<MedidaAdicional> $sensoresAdicionales
+     * @param list<SensorTelemetrico> $sensoresConfigurados
      */
     public function __construct(
         DateTimeImmutable $observadaEn,
@@ -49,6 +53,7 @@ final readonly class InstantaneaEquipo
         ?float $voltaje,
         ?float $combustibleLitros,
         array $sensoresAdicionales = [],
+        array $sensoresConfigurados = [],
     ) {
         // Un valor imposible no es un dato: es un síntoma. Se aparta para que
         // no contamine la base y queda registrado para que alguien vaya a
@@ -87,6 +92,7 @@ final readonly class InstantaneaEquipo
         $this->voltaje = $voltaje;
         $this->combustibleLitros = $combustibleLitros;
         $this->sensoresAdicionales = $sensoresAdicionales;
+        $this->sensoresConfigurados = $sensoresConfigurados;
     }
 
     public function observadaEn(): DateTimeImmutable
@@ -134,6 +140,12 @@ final readonly class InstantaneaEquipo
     public function sensoresAdicionales(): array
     {
         return $this->sensoresAdicionales;
+    }
+
+    /** @return list<SensorTelemetrico> */
+    public function sensoresConfigurados(): array
+    {
+        return $this->sensoresConfigurados;
     }
 
     /**

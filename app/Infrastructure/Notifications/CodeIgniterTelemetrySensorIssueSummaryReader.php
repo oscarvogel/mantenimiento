@@ -22,13 +22,15 @@ final class CodeIgniterTelemetrySensorIssueSummaryReader implements TelemetrySen
         $empty = ['count' => 0, 'issues' => []];
         if ($companyId <= 0 || ! $this->db->tableExists('telematia_ultima_lectura')
             || ! $this->db->fieldExists('anomalias_sensor', 'telematia_ultima_lectura')
+            || ! $this->db->fieldExists('observada_en', 'telematia_ultima_lectura')
+            || ! $this->db->fieldExists('ausente', 'telematia_ultima_lectura')
             || ! $this->db->tableExists('equipos')
         ) {
             return $empty;
         }
 
         $rows = $this->db->table('telematia_ultima_lectura t')
-            ->select('e.id equipo_id, COALESCE(NULLIF(e.patente, \'\'), e.codigo) equipo_codigo, t.anomalias_sensor')
+            ->select('e.id equipo_id, COALESCE(NULLIF(e.patente, \'\'), e.codigo) equipo_codigo, t.anomalias_sensor, t.observada_en, t.ausente')
             ->join('equipos e', 'e.id = t.equipo_id AND e.empresa_id = t.empresa_id')
             ->where('t.empresa_id', $companyId)
             ->where('e.empresa_id', $companyId)
@@ -40,7 +42,13 @@ final class CodeIgniterTelemetrySensorIssueSummaryReader implements TelemetrySen
             ->getResultArray();
 
         $byEquipment = [];
+        $now = new \DateTimeImmutable();
+        $freshnessSeconds = max(1, (int) env('WIALON_SILENCE_HOURS', 24)) * 3600;
         foreach ($rows as $row) {
+            if ((int) ($row['ausente'] ?? 0) === 1 || ! $this->isFresh((string) ($row['observada_en'] ?? ''), $now, $freshnessSeconds)) {
+                continue;
+            }
+
             $decoded = json_decode((string) ($row['anomalias_sensor'] ?? ''), true);
             if (! is_array($decoded)) {
                 continue;
@@ -84,5 +92,20 @@ final class CodeIgniterTelemetrySensorIssueSummaryReader implements TelemetrySen
         $reading = is_numeric($value) ? ' (' . number_format((float) $value, 2, ',', '.') . ')' : '';
 
         return $sensor . $reading . ': ' . $reason;
+    }
+
+    private function isFresh(string $observedAt, \DateTimeImmutable $now, int $thresholdSeconds): bool
+    {
+        if ($observedAt === '') {
+            return false;
+        }
+
+        try {
+            $age = $now->getTimestamp() - (new \DateTimeImmutable($observedAt))->getTimestamp();
+        } catch (\Throwable) {
+            return false;
+        }
+
+        return $age >= -300 && $age <= $thresholdSeconds;
     }
 }

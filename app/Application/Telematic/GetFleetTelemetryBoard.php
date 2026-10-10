@@ -47,6 +47,7 @@ final readonly class GetFleetTelemetryBoard
             if ($observedAt === '') {
                 $source['ageMinutes'] = null;
                 $source['freshness'] = 'SIN_DATO';
+                $source['sensorIssues'] = [];
 
                 return $source;
             }
@@ -56,6 +57,7 @@ final readonly class GetFleetTelemetryBoard
             } catch (\Throwable) {
                 $source['ageMinutes'] = null;
                 $source['freshness'] = 'SIN_DATO';
+                $source['sensorIssues'] = [];
 
                 return $source;
             }
@@ -64,6 +66,12 @@ final readonly class GetFleetTelemetryBoard
             $source['freshness'] = ! empty($source['stale'])
                 ? 'SIN_RESPUESTA'
                 : ($age <= 60 ? 'AL_DIA' : ($age <= 1440 ? 'RECIENTE' : 'DESACTUALIZADO'));
+
+            // Una fuente completa sin señal reciente se atiende como caída de
+            // telemetría. No se atribuyen sus últimos valores a un sensor roto.
+            if (in_array($source['freshness'], ['SIN_RESPUESTA', 'DESACTUALIZADO', 'SIN_DATO'], true)) {
+                $source['sensorIssues'] = [];
+            }
 
             return $source;
         }, $unit['sources'] ?? []);

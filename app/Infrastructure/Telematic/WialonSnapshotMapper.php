@@ -7,6 +7,7 @@ namespace App\Infrastructure\Telematic;
 use App\Domain\Telematic\InstantaneaEquipo;
 use App\Domain\Telematic\MedidaAdicional;
 use App\Domain\Telematic\Posicion;
+use App\Domain\Telematic\SensorTelemetrico;
 use DateTimeImmutable;
 use DateTimeZone;
 
@@ -55,14 +56,26 @@ final class WialonSnapshotMapper
         $combustible = null;
         $ralenti = null;
         $adicionales = [];
+        $sensoresConfigurados = [];
 
-        foreach ($sensores as $sensorId => $sensor) {
-            $definicion = is_array($definitions[(string) $sensorId] ?? null) ? $definitions[(string) $sensorId] : [];
+        // Las definiciones son el universo de sensores configurados. Wialon
+        // puede omitir de calc_last un sensor sin lectura, y ese hueco también
+        // debe persistirse para poder detectarlo entre capturas.
+        foreach ($definitions as $sensorId => $definicionRaw) {
+            if (! is_array($definicionRaw)) {
+                continue;
+            }
+            $sensor = is_array($sensores[(string) $sensorId] ?? null) ? $sensores[(string) $sensorId] : [];
+            $definicion = $definicionRaw;
 
             $valor = is_numeric($sensor['value'] ?? null) ? (float) $sensor['value'] : null;
             $etiqueta = trim((string) ($definicion['n'] ?? ''));
             $tipo = strtolower(trim((string) ($definicion['t'] ?? '')));
             $unidad = trim((string) ($definicion['m'] ?? ''));
+
+            if ($etiqueta !== '') {
+                $sensoresConfigurados[] = new SensorTelemetrico((string) $sensorId, $etiqueta, $tipo, $unidad, $valor);
+            }
 
             if ($tipo === self::TIPO_VOLTAJE) {
                 $voltaje = $valor;
@@ -100,6 +113,7 @@ final class WialonSnapshotMapper
             $voltaje,
             $combustible,
             $adicionales,
+            $sensoresConfigurados,
         );
     }
 

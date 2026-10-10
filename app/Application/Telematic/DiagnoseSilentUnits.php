@@ -81,9 +81,9 @@ final readonly class DiagnoseSilentUnits implements TelemetryEvaluator
                 $events[] = $this->fuenteCaida($resolved, $fuente, $now);
             }
 
-            // Las anomalías de sensor son independientes de la frescura: un
-            // equipo que reporta bien puede tener un sensor colgado.
-            foreach ($this->anomaliasDe($resolved) as $anomalia) {
+            // Un sensor se revisa sólo si la fuente completa sigue fresca; si
+            // dejó de reportar, el hecho accionable es la caída de telemetría.
+            foreach ($this->anomaliasDe($resolved, $now) as $anomalia) {
                 $events[] = $this->anomalia($resolved, $anomalia['fuente'], $anomalia['lectura'], $now);
             }
         }
@@ -92,11 +92,14 @@ final readonly class DiagnoseSilentUnits implements TelemetryEvaluator
     }
 
     /** @return list<array{fuente:FuenteSenal, lectura:LecturaImposible}> */
-    private function anomaliasDe(CoberturaEquipo $coverage): array
+    private function anomaliasDe(CoberturaEquipo $coverage, DateTimeImmutable $now): array
     {
         $anomalias = [];
 
         foreach ($coverage->fuentes() as $fuente) {
+            if ($fuente->estado()?->estaEstancada($now, $this->thresholdHours)) {
+                continue;
+            }
             foreach ($fuente->instantanea()?->anomalias() ?? [] as $lectura) {
                 $anomalias[] = ['fuente' => $fuente, 'lectura' => $lectura];
             }

@@ -56,24 +56,31 @@ final class CodeIgniterTelemetrySnapshotStore implements TelemetrySnapshotStore
             'voltaje' => $instantanea->voltaje(),
             'combustible_litros' => $instantanea->combustibleLitros(),
             'sensores_adicionales' => $this->adicionales($instantanea->sensoresAdicionales()),
-            'anomalias_sensor' => $this->anomalias($instantanea->anomalias()),
+            'sensores_configurados' => $this->configurados($instantanea->sensoresConfigurados()),
+            'anomalias_sensor' => null,
             'ausente' => 0,
             'updated_at' => $snapshot->registeredAt(),
         ];
 
         $existente = $this->db->table('telematia_ultima_lectura')
-            ->select('id, created_at')
+            ->select('id, created_at, observada_en, registrada_en, sensores_configurados')
             ->where('integracion_id', $snapshot->integrationId())
             ->where('unidad_externa', $snapshot->externalUnitId())
             ->get()
             ->getRowArray();
 
         if ($existente === null) {
+            $row['anomalias_sensor'] = $this->anomalias($instantanea->anomalias());
             $row['created_at'] = $snapshot->registeredAt();
             $this->db->table('telematia_ultima_lectura')->insert($row);
 
             return;
         }
+
+        $row['anomalias_sensor'] = $this->anomalias(
+            $instantanea->anomalias(),
+            $this->sensoresSinLecturaEnDosCapturas($snapshot, $existente),
+        );
 
         $this->db->table('telematia_ultima_lectura')
             ->where('id', (int) $existente['id'])
@@ -127,9 +134,9 @@ final class CodeIgniterTelemetrySnapshotStore implements TelemetrySnapshotStore
     }
 
     /** @param list<\App\Domain\Telematic\LecturaImposible> $anomalias */
-    private function anomalias(array $anomalias): ?string
+    private function anomalias(array $anomalias, array $sinLectura = []): ?string
     {
-        if ($anomalias === []) {
+        if ($anomalias === [] && $sinLectura === []) {
             return null;
         }
 
@@ -143,7 +150,94 @@ final class CodeIgniterTelemetrySnapshotStore implements TelemetrySnapshotStore
             ];
         }
 
+        foreach ($sinLectura as $sensor) {
+            $payload[] = $sensor;
+        }
+
         return json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+    }
+
+    /** @param list<\App\Domain\Telematic\SensorTelemetrico> $sensores */
+    private function configurados(array $sensores): ?string
+    {
+        if ($sensores === []) {
+            return null;
+        }
+
+        $payload = [];
+        foreach ($sensores as $sensor) {
+            $payload[] = [
+                'id' => $sensor->id(),
+                'etiqueta' => $sensor->etiqueta(),
+                'tipo' => $sensor->tipo(),
+                'unidad' => $sensor->unidad(),
+                'valor' => $sensor->valor(),
+            ];
+        }
+
+        return json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+    }
+
+    /** @param array<string,mixed> $previous @return list<array{sensor:string,valor:null,motivo:string,firma:string}> */
+    private function sensoresSinLecturaEnDosCapturas(InstantaneaRegistrada $snapshot, array $previous): array
+    {
+        $current = $snapshot->snapshot();
+        try {
+            $gapSeconds = (new \DateTimeImmutable($snapshot->registeredAt()))->getTimestamp()
+                - (new \DateTimeImmutable((string) ($previous['registrada_en'] ?? '')))->getTimestamp();
+        } catch (\Throwable) {
+            return [];
+        }
+
+        if (! $this->captureIsFresh($current->observadaEn()->format('Y-m-d H:i:s'), $snapshot->registeredAt())
+            || ! $this->captureIsFresh((string) ($previous['observada_en'] ?? ''), (string) ($previous['registrada_en'] ?? ''))
+            || $gapSeconds < 0 || $gapSeconds > 30 * 60) {
+            return [];
+        }
+
+        $previousSensors = json_decode((string) ($previous['sensores_configurados'] ?? ''), true);
+        if (! is_array($previousSensors)) {
+            return [];
+        }
+
+        $missing = [];
+        foreach ($current->sensoresConfigurados() as $sensor) {
+            if ($sensor->valor() !== null) {
+                continue;
+            }
+
+            foreach ($previousSensors as $previousSensor) {
+                if (is_array($previousSensor)
+                    && (string) ($previousSensor['id'] ?? '') === $sensor->id()
+                    && ($previousSensor['valor'] ?? null) === null) {
+                    $missing[] = [
+                        'sensor' => $sensor->etiqueta(),
+                        'valor' => null,
+                        'motivo' => 'sin lectura en dos capturas consecutivas',
+                        'firma' => 'sin_lectura:' . $sensor->id(),
+                    ];
+                    break;
+                }
+            }
+        }
+
+        return $missing;
+    }
+
+    private function captureIsFresh(string $observedAt, string $recordedAt): bool
+    {
+        if ($observedAt === '' || $recordedAt === '') {
+            return false;
+        }
+
+        try {
+            $ageSeconds = (new \DateTimeImmutable($recordedAt))->getTimestamp()
+                - (new \DateTimeImmutable($observedAt))->getTimestamp();
+        } catch (\Throwable) {
+            return false;
+        }
+
+        return $ageSeconds >= -300 && $ageSeconds <= max(1, (int) env('WIALON_SILENCE_HOURS', 24)) * 3600;
     }
 
     private function hasTable(): bool

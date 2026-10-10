@@ -26,7 +26,7 @@ Por lo tanto, los porcentajes históricos no pueden calcularse con los registros
 - Para Wialon, unir las definiciones de `core/search_items` con los valores de `unit/calc_last`. Guardar el registro normalizado, no la respuesta cruda completa ni datos de sesión/autenticación del proveedor.
 - Si Wialon define un sensor pero la captura no trae un valor, conservar su definición con `valor = null`; si el proveedor no define el sensor, no crear una falla de sensor.
 - Los campos ausentes permanecen nulos; nunca copiar el valor anterior como si fuese una lectura nueva.
-- Retener las muestras por 90 días y purgar las anteriores durante una ejecución programada.
+- Retener las muestras por 90 días. Antes de purgar las anteriores, realizar un backup en una ubicación segura y verificar que se haya completado correctamente.
 - Mantener intacta la tabla de última lectura, que seguirá alimentando mapa y vistas actuales.
 
 ### Estado de sensores

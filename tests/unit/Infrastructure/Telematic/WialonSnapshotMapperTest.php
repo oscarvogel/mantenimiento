@@ -159,6 +159,20 @@ final class WialonSnapshotMapperTest extends TestCase
         self::assertNotNull($instantanea->posicion());
     }
 
+    public function testConservaSensoresDefinidosAunqueWialonNoDevuelvaValor(): void
+    {
+        $valores = $this->valores();
+        unset($valores['sensors']['1']);
+
+        $instantanea = (new WialonSnapshotMapper())->map($valores, $this->definiciones());
+        $sensores = $instantanea->sensoresConfigurados();
+        $bateria = array_values(array_filter($sensores, static fn ($sensor): bool => $sensor->id() === '1'))[0] ?? null;
+
+        self::assertNotNull($bateria);
+        self::assertSame('BATERIA', $bateria->etiqueta());
+        self::assertNull($bateria->valor());
+    }
+
     public function testLasHorasSeGuardanEnDecimasYNoComoFloat(): void
     {
         $valores = $this->valores();

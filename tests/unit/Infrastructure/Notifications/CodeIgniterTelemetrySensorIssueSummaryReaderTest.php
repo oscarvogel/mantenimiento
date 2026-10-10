@@ -37,6 +37,8 @@ final class CodeIgniterTelemetrySensorIssueSummaryReaderTest extends TestCase
             id INTEGER PRIMARY KEY,
             empresa_id INTEGER NOT NULL,
             equipo_id INTEGER NOT NULL,
+            observada_en DATETIME NULL,
+            ausente INTEGER NOT NULL DEFAULT 0,
             anomalias_sensor TEXT NULL
         )');
     }
@@ -85,6 +87,14 @@ final class CodeIgniterTelemetrySensorIssueSummaryReaderTest extends TestCase
         );
     }
 
+    public function testOmitsSensorProblemsWhenTheWholeTelemetrySignalIsStale(): void
+    {
+        $this->insertEquipment(1, 8, 'EQ-1', 'AB4990K');
+        $this->insertSnapshot(1, 8, 1, [['sensor' => 'Batería', 'valor' => 0, 'motivo' => 'requiere revisión', 'firma' => 'voltaje:0']], '2026-10-08 10:00:00');
+
+        self::assertSame(['count' => 0, 'issues' => []], (new CodeIgniterTelemetrySensorIssueSummaryReader($this->db))->forCompany(8));
+    }
+
     private function insertEquipment(int $id, int $companyId, string $code, ?string $plate, string $state = 'ACTIVO'): void
     {
         $this->db->table('equipos')->insert([
@@ -98,12 +108,14 @@ final class CodeIgniterTelemetrySensorIssueSummaryReaderTest extends TestCase
     }
 
     /** @param list<array{sensor:string,valor:?float,motivo:string,firma:string}> $anomalies */
-    private function insertSnapshot(int $id, int $companyId, int $equipmentId, array $anomalies): void
+    private function insertSnapshot(int $id, int $companyId, int $equipmentId, array $anomalies, ?string $observedAt = null): void
     {
         $this->db->table('telematia_ultima_lectura')->insert([
             'id' => $id,
             'empresa_id' => $companyId,
             'equipo_id' => $equipmentId,
+            'observada_en' => $observedAt ?? (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
+            'ausente' => 0,
             'anomalias_sensor' => json_encode($anomalies, JSON_THROW_ON_ERROR),
         ]);
     }

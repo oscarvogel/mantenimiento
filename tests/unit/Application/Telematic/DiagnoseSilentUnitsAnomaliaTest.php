@@ -175,4 +175,13 @@ final class DiagnoseSilentUnitsAnomaliaTest extends TestCase
         self::assertCount(2, array_unique($claves), 'Cada sensor tiene su propia clave.');
         self::assertContains($soloCombustible[0]->logicalKey(), $claves);
     }
+
+    public function testUnaFuenteAtrasadaSeNotificaComoTelemetriaYNoComoFallaDeSensor(): void
+    {
+        $snapshot = $this->instantanea(-348201.39, 25.0, '2026-10-08 10:00:00');
+        $events = $this->diagnostico($snapshot)->execute();
+
+        self::assertCount(1, $events);
+        self::assertSame(DiagnoseSilentUnits::TYPE_SIN_TELEMETRIA, $events[0]->type());
+    }
 }
