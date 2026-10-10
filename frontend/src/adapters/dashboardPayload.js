@@ -13,6 +13,20 @@ const asUrl = (value, fallback = '#') => {
   return url
 }
 
+/**
+ * Par nombre + hash del token CSRF. Si no viene completo se devuelve vacío,
+ * y el botón que lo consume se oculta: es preferible que el operador no vea
+ * un control que va a fallar con 403.
+ */
+const telemetryRefreshCsrf = (value) => {
+  const source = value && typeof value === 'object' ? value : {}
+
+  return {
+    name: asText(source.name),
+    hash: asText(source.hash),
+  }
+}
+
 const asCount = (value) => {
   const count = Number(value)
   return Number.isFinite(count) && count >= 0 ? Math.trunc(count) : 0
@@ -346,6 +360,7 @@ export function normalizeDashboardPayload(payload) {
       registerMaintenance: asUrl(sourceLinks.registerMaintenance),
       quickReadings: asUrl(sourceLinks.quickReadings),
         telemetryRefresh: asUrl(sourceLinks.telemetryRefresh),
+        telemetryRefreshCsrf: telemetryRefreshCsrf(sourceLinks.telemetryRefreshCsrf),
       library: asUrl(sourceLinks.library),
       maintenanceDueSoon: asUrl(sourceLinks.maintenanceDueSoon, maintenanceUrl),
       maintenanceOverdue: asUrl(sourceLinks.maintenanceOverdue, maintenanceUrl),

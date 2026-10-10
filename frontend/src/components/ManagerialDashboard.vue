@@ -24,13 +24,18 @@ const metrics = computed(() => props.dashboard.metrics || {})
 // Refresco manual de la telemetría. Es un form POST a propósito y no un fetch:
 // así funciona sin JavaScript adicional, el navegador manda el token CSRF de
 // la página y el servidor responde con el mensaje de resultado.
-const telemetryRefreshUrl = computed(
-  () => props.dashboard.links?.telemetryRefresh || '#',
+const telemetryCsrf = computed(
+  () => props.dashboard.links?.telemetryRefreshCsrf || { name: '', hash: '' },
 )
-const telemetryCsrf = computed(() => ({
-  name: props.dashboard.notifications?.csrfName || '',
-  hash: props.dashboard.notifications?.csrfHash || '',
-}))
+
+// Sin token completo el botón no se muestra: es preferible que el operador
+// no vea un control que va a rebotar con 403 en vez de descubrir el problema
+// después de apretarlo.
+const telemetryRefreshUrl = computed(() =>
+  telemetryCsrf.value.name && telemetryCsrf.value.hash
+    ? props.dashboard.links?.telemetryRefresh || '#'
+    : '#',
+)
 const financial = computed(() => props.dashboard.financial || {})
 const formatCurrency = (value) => new Intl.NumberFormat('es-AR', {
   style: 'currency',

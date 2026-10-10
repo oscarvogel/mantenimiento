@@ -54,6 +54,13 @@ final class DashboardPayload
                 'registerMaintenance' => $canEquipment ? $equipmentUrl : '#',
                 'quickReadings' => $canLoadReadings ? base_url('mantenimiento/lecturas/rapidas') : '#',
                 'telemetryRefresh' => $canLoadReadings ? base_url('mantenimiento/telemetria/actualizar') : '#',
+                // El token viaja junto al link. El layout emite su propio
+                // meta csrf, pero el componente del botón necesita el par
+                // nombre + hash y no debe depender de la forma del shell.
+                'telemetryRefreshCsrf' => [
+                    'name' => csrf_token(),
+                    'hash' => csrf_hash(),
+                ],
                 'orders' => $canViewOrders ? $ordersUrl : '#',
                 'financialDetail' => $actor->hasPermission('ordenes.ver') ? base_url('reportes') : '#',
                 // El alta de correctiva vive en la pagina de ordenes, que solo
