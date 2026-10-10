@@ -106,12 +106,16 @@ use App\Application\Telematic\ManageTelemetryEquipmentLinks;
 use App\Infrastructure\Telematic\CodeIgniterTelemetryIntegrationConfigurator;
 use App\Infrastructure\Telematic\CodeIgniterTelemetryEquipmentUnitLinkManager;
 use App\Application\Telematic\RecordTelemetrySnapshots;
+use App\Application\Telematic\RegistrarMuestras;
 use App\Application\Telematic\Port\FleetTelemetryGateway;
 use App\Application\Telematic\Port\FleetTelemetryGatewayRegistry;
 use App\Infrastructure\Telematic\CodeIgniterTelemetryIntegrationStore;
 use App\Infrastructure\Telematic\CodeIgniterTelemetryIntegrationCatalog;
 use App\Infrastructure\Telematic\CodeIgniterEquipmentTelemetryCatalog;
 use App\Infrastructure\Telematic\CodeIgniterTelemetrySnapshotStore;
+use App\Infrastructure\Telematic\CodeIgniterMuestraStore;
+use App\Infrastructure\Telematic\CodeIgniterHistoricoMuestras;
+use App\Infrastructure\Telematic\ArchivoRespaldoMuestras;
 use App\Infrastructure\Telematic\CodeIgniterFleetTelemetryGatewayRegistry;
 use App\Infrastructure\Notifications\CodeIgniterWebPushSubscriptionStore;
 use App\Infrastructure\Notifications\MinishlinkWebPushGateway;
@@ -559,9 +563,20 @@ class Services extends BaseService
             $integrations,
             $registry,
             new CodeIgniterTelemetrySnapshotStore(db_connect()),
+            new RegistrarMuestras(new CodeIgniterMuestraStore(db_connect())),
             static::notificationClock(false),
             $companyId,
         );
+    }
+
+    public static function muestrasHistorico(): CodeIgniterHistoricoMuestras
+    {
+        return new CodeIgniterHistoricoMuestras(db_connect());
+    }
+
+    public static function muestrasRespaldo(): ArchivoRespaldoMuestras
+    {
+        return new ArchivoRespaldoMuestras();
     }
 
     private static function telematicGatewayRegistry(): CodeIgniterFleetTelemetryGatewayRegistry
@@ -607,6 +622,7 @@ class Services extends BaseService
                 $integrations,
                 $registry,
                 new CodeIgniterTelemetrySnapshotStore($db),
+                new RegistrarMuestras(new CodeIgniterMuestraStore($db)),
                 $clock,
                 $companyId,
             ),
