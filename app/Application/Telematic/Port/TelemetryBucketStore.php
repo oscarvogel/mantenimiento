@@ -16,7 +16,8 @@ interface TelemetryBucketStore
      * Guarda buckets idempotentes y avanza el cursor en una única transacción.
      *
      * @param list<BucketTelemetria> $buckets
-     * @return int Cantidad de buckets insertados por primera vez.
+     * @return array{insertados:int, yaExistentes:int} Buckets nuevos y escrituras
+     * repetidas ignoradas. El segundo contador también incluye el solape de lectura.
      */
     public function guardarCerradosYAvanzarCursor(
         int $empresaId,
@@ -27,5 +28,5 @@ interface TelemetryBucketStore
         array $buckets,
         DateTimeImmutable $cursorHasta,
         DateTimeImmutable $registradaEn,
-    ): int;
+    ): array;
 }

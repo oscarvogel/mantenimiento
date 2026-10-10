@@ -1,6 +1,6 @@
 # Histórico Wialon por buckets de cinco minutos — Diseño
 
-**Estado:** Propuesta para revisión
+**Estado:** Aprobado por el usuario el 10 de octubre de 2026
 **Contexto:** Adaptador de telemetría Wialon del monolito CI4
 **Fecha:** 10 de octubre de 2026
 
@@ -63,7 +63,7 @@ Los campos de límites se toman del primer y último mensaje válido, no del val
 - Solo se finalizan buckets para los que ya se recibió al menos un mensaje válido con timestamp igual o posterior al fin del bucket. Ese mensaje siguiente permite cerrar el intervalo que cruza el límite y repartir su ralentí sin inventar duración. Si no llega, el bucket pendiente permanece sin persistir hasta que Wialon entregue ese mensaje; el cálculo no extiende el último estado indefinidamente.
 - La persistencia es append-only. La clave única será `(integracion_id, unidad_externa, bucket_inicio_utc)` y el insert idempotente usará `INSERT IGNORE`.
 - Una transacción guarda todos los buckets completos de una ventana y avanza el cursor de la unidad. Si falla la lectura, la división por límite, o la escritura, el cursor no avanza y la ventana se puede reintentar.
-- Un mensaje posterior cuyo timestamp pertenezca a un bucket ya cerrado no modifica ese bucket. Se ignora con conteo/log de ingestión para poder observar mensajes tardíos; nunca se sobrescribe silenciosamente un resultado publicado.
+- Un mensaje posterior cuyo timestamp pertenezca a un bucket ya cerrado no modifica ese bucket. La escritura idempotente devuelve los buckets nuevos y los ya existentes que ignoró. Este segundo conteo incluye tanto relecturas esperadas del solape como buckets que puedan contener mensajes tardíos; con extremos agregados no se pueden distinguir de forma confiable sin guardar identidad o huella de cada mensaje. Nunca se sobrescribe silenciosamente un resultado publicado.
 - La ventana consultada puede solaparse con el último bucket para tolerar reintentos. La clave única elimina las repeticiones sin consulta previa.
 
 ### Persistencia y compatibilidad
@@ -95,7 +95,7 @@ El lector de serie adapta cada bucket a sus extremos ordenados para `SerieMuestr
 2. El mapa y la ficha siguen usando la última instantánea de `unit/calc_last`.
 3. Una falla o respuesta truncada de Wialon no avanza el cursor ni deja una serie presentada como completa.
 4. Repetir una ventana no crea buckets duplicados.
-5. Un mensaje tardío para un bucket cerrado no modifica sus valores y queda contabilizado.
+5. Una repetición o mensaje tardío para un bucket cerrado no modifica sus valores y queda contado como escritura de bucket ya existente; el contador incluye el solape normal y no pretende identificar mensajes tardíos individualmente.
 6. Cada fila contiene ambos extremos válidos y la duración de ralentí calculable; faltantes permanecen nulos.
 7. La serie entregada al dominio está ordenada y produce el mismo cálculo con los mismos extremos, sin conocer el adaptador ni la base.
 8. Las migraciones conservan historia previa, tienen `down()` seguro cuando sea viable y la retención mantiene respaldo antes de purgar tanto muestras como buckets vencidos.

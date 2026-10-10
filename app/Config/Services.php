@@ -107,10 +107,14 @@ use App\Infrastructure\Telematic\CodeIgniterTelemetryIntegrationConfigurator;
 use App\Infrastructure\Telematic\CodeIgniterTelemetryEquipmentUnitLinkManager;
 use App\Application\Telematic\RecordTelemetrySnapshots;
 use App\Application\Telematic\RegistrarMuestras;
+use App\Application\Telematic\SincronizarBucketsTelemetria;
+use App\Application\Telematic\Port\LectorHistoricoTelemetria;
 use App\Application\Telematic\Port\FleetTelemetryGateway;
 use App\Application\Telematic\Port\FleetTelemetryGatewayRegistry;
+use App\Domain\Telematic\AgregadorBucketsTelemetria;
 use App\Infrastructure\Telematic\CodeIgniterTelemetryIntegrationStore;
 use App\Infrastructure\Telematic\CodeIgniterTelemetryIntegrationCatalog;
+use App\Infrastructure\Telematic\CodeIgniterTelemetryBucketStore;
 use App\Infrastructure\Telematic\CodeIgniterEquipmentTelemetryCatalog;
 use App\Infrastructure\Telematic\CodeIgniterTelemetrySnapshotStore;
 use App\Infrastructure\Telematic\CodeIgniterMuestraStore;
@@ -566,6 +570,7 @@ class Services extends BaseService
             new RegistrarMuestras(new CodeIgniterMuestraStore(db_connect())),
             static::notificationClock(false),
             $companyId,
+            self::telemetryBucketSynchronizer(db_connect(), $registry),
         );
     }
 
@@ -589,6 +594,26 @@ class Services extends BaseService
                 (int) env('WIALON_TIMEOUT_SECONDS', 30),
             ),
         ]);
+    }
+
+    private static function telemetryBucketSynchronizer(
+        \CodeIgniter\Database\BaseConnection $db,
+        FleetTelemetryGatewayRegistry $registry,
+    ): ?SincronizarBucketsTelemetria {
+        if (! $registry->supports(FleetTelemetryGatewayRegistry::PROVIDER_WIALON)) {
+            return null;
+        }
+
+        $gateway = $registry->forProvider(FleetTelemetryGatewayRegistry::PROVIDER_WIALON);
+        if (! $gateway instanceof LectorHistoricoTelemetria) {
+            return null;
+        }
+
+        return new SincronizarBucketsTelemetria(
+            $gateway,
+            new CodeIgniterTelemetryBucketStore($db),
+            new AgregadorBucketsTelemetria(),
+        );
     }
 
     /**
@@ -625,6 +650,7 @@ class Services extends BaseService
                 new RegistrarMuestras(new CodeIgniterMuestraStore($db)),
                 $clock,
                 $companyId,
+                self::telemetryBucketSynchronizer($db, $registry),
             ),
             new DiagnoseSilentUnits(
                 new CodeIgniterEquipmentTelemetryCatalog($integrations, $db),

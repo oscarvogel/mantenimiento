@@ -56,7 +56,7 @@ final class CodeIgniterTelemetryBucketStore implements TelemetryBucketStore
         array $buckets,
         DateTimeImmutable $cursorHasta,
         DateTimeImmutable $registradaEn,
-    ): int {
+    ): array {
         if ($empresaId <= 0 || $integracionId <= 0 || $equipoId <= 0
             || trim($unidadExterna) === '' || trim($proveedor) === '') {
             throw new InvalidArgumentException('La persistencia de buckets necesita empresa, integración, equipo y unidad válidos.');
@@ -138,7 +138,10 @@ final class CodeIgniterTelemetryBucketStore implements TelemetryBucketStore
                 throw new RuntimeException('MySQL no pudo confirmar el lote de buckets y el cursor.');
             }
 
-            return $insertados;
+            return [
+                'insertados' => $insertados,
+                'yaExistentes' => count($buckets) - $insertados,
+            ];
         } catch (Throwable $exception) {
             $this->mysql->transRollback();
 

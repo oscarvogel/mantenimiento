@@ -71,10 +71,10 @@ final class CodeIgniterTelemetryBucketStoreTest extends CIUnitTestCase
         $cursor = new DateTimeImmutable('2026-10-10 12:15:00', new DateTimeZone('UTC'));
         $bucket = $this->bucket();
 
-        self::assertSame(1, $this->store->guardarCerradosYAvanzarCursor(
+        self::assertSame(['insertados' => 1, 'yaExistentes' => 0], $this->store->guardarCerradosYAvanzarCursor(
             7, 10, 42, '123', 'WIALON', [$bucket], $cursor, $registrada,
         ));
-        self::assertSame(0, $this->store->guardarCerradosYAvanzarCursor(
+        self::assertSame(['insertados' => 0, 'yaExistentes' => 1], $this->store->guardarCerradosYAvanzarCursor(
             7, 10, 42, '123', 'WIALON', [$bucket], new DateTimeImmutable('2026-10-10 12:10:00', new DateTimeZone('UTC')), $registrada,
         ));
 
