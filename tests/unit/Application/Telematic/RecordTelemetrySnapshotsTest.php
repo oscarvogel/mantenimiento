@@ -10,13 +10,16 @@ use App\Application\Telematic\IntegracionTelematrica;
 use App\Application\Telematic\Port\EquipmentTelemetryCatalog;
 use App\Application\Telematic\Port\FleetTelemetryGateway;
 use App\Application\Telematic\Port\FleetTelemetryGatewayRegistry;
+use App\Application\Telematic\Port\MuestraStore;
 use App\Application\Telematic\Port\TelemetryIntegrationCatalog;
 use App\Application\Telematic\Port\TelemetrySnapshotStore;
 use App\Application\Telematic\RecordTelemetrySnapshots;
+use App\Application\Telematic\RegistrarMuestras;
 use App\Domain\Telematic\CoberturaEquipo;
 use App\Domain\Telematic\EstadoSenal;
 use App\Domain\Telematic\FuenteSenal;
 use App\Domain\Telematic\InstantaneaEquipo;
+use App\Domain\Telematic\MuestraEquipo;
 use App\Domain\Telematic\Posicion;
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
@@ -43,8 +46,42 @@ final class MemoriaSnapshots implements TelemetrySnapshotStore
     }
 }
 
+/**
+ * Almacén de muestras en memoria, con la deduplicación por captura.
+ *
+ * El nombre no es `MemoriaMuestras` a propósito: ese lo usa el doble de
+ * `PuertosMuestrasTest` en este mismo namespace, y dos clases iguales en dos
+ * archivos distintos revientan la suite completa aunque cada archivo pase
+ * sozinho.
+ */
+final class MuestrasDelCiclo implements MuestraStore
+{
+    /** @var list<MuestraEquipo> */
+    public array $guardadas = [];
+
+    public function guardar(MuestraEquipo $muestra): int
+    {
+        foreach ($this->guardadas as $existente) {
+            if ($existente->integracionId() === $muestra->integracionId()
+                && $existente->unidadExterna() === $muestra->unidadExterna()
+                && $existente->observadaEn() == $muestra->observadaEn()) {
+                return 0;
+            }
+        }
+
+        $this->guardadas[] = $muestra;
+
+        return 1;
+    }
+}
+
 final class RecordTelemetrySnapshotsTest extends TestCase
 {
+    private function muestras(?MuestraStore $store = null): RegistrarMuestras
+    {
+        return new RegistrarMuestras($store ?? new MuestrasDelCiclo());
+    }
+
     private function reloj(): NotificationClock
     {
         return new class implements NotificationClock {
@@ -144,6 +181,7 @@ final class RecordTelemetrySnapshotsTest extends TestCase
             $this->integraciones([new IntegracionTelematrica(1, 4, 'wialon', 'Wialon TSA')]),
             $this->registro(['28396292' => new EstadoSenal('28396292', $this->instantanea())]),
             $store,
+            $this->muestras(),
             $this->reloj(),
             4,
         );
@@ -168,6 +206,7 @@ final class RecordTelemetrySnapshotsTest extends TestCase
             $this->integraciones([new IntegracionTelematrica(1, 4, 'wialon', 'Wialon TSA')]),
             $this->registro(['28396292' => new EstadoSenal('28396292', $this->instantanea())]),
             $store,
+            $this->muestras(),
             $this->reloj(),
             4,
         );
@@ -186,6 +225,7 @@ final class RecordTelemetrySnapshotsTest extends TestCase
                 '999999' => new EstadoSenal('999999', $this->instantanea()),
             ]),
             $store,
+            $this->muestras(),
             $this->reloj(),
             4,
         );
@@ -206,6 +246,7 @@ final class RecordTelemetrySnapshotsTest extends TestCase
             $this->integraciones([new IntegracionTelematrica(1, 4, 'wialon', 'Wialon TSA')]),
             $this->registro([], true),
             $store,
+            $this->muestras(),
             $this->reloj(),
             4,
         );
@@ -236,6 +277,7 @@ final class RecordTelemetrySnapshotsTest extends TestCase
             $this->integraciones([new IntegracionTelematrica(1, 4, 'wialon', 'Wialon TSA')]),
             $registro,
             new MemoriaSnapshots(),
+            $this->muestras(),
             $this->reloj(),
             4,
         );
@@ -251,10 +293,117 @@ final class RecordTelemetrySnapshotsTest extends TestCase
             $this->integraciones([new IntegracionTelematrica(1, 4, 'wialon', 'Wialon TSA')]),
             $this->registro(['28396292' => new EstadoSenal('28396292', null)]),
             $store,
+            $this->muestras(),
             $this->reloj(),
             4,
         );
 
         self::assertSame(0, $recorder->execute()['instantaneas']);
+    }
+
+    public function testElCicloGuardaLaMuestraAdemasDelSnapshot(): void
+    {
+        $muestras = new MuestrasDelCiclo();
+        $recorder = new RecordTelemetrySnapshots(
+            $this->catalogo([$this->cobertura(34, 'AF081MJ', '1', '28396292')]),
+            $this->integraciones([new IntegracionTelematrica(1, 4, 'wialon', 'Wialon TSA')]),
+            $this->registro(['28396292' => new EstadoSenal('28396292', $this->instantanea())]),
+            new MemoriaSnapshots(),
+            $this->muestras($muestras),
+            $this->reloj(),
+            4,
+        );
+
+        $summary = $recorder->execute();
+
+        // El snapshot sigue siendo lo que alimenta mapa y ficha; la muestra es
+        self::assertSame(1, $summary['instantaneas']);
+        self::assertSame(1, $summary['muestras']);
+        self::assertCount(1, $muestras->guardadas);
+
+        $muestra = $muestras->guardadas[0];
+        self::assertSame(4, $muestra->empresaId());
+        self::assertSame(34, $muestra->equipoId());
+        self::assertSame(1, $muestra->integracionId());
+        self::assertSame('28396292', $muestra->unidadExterna());
+        self::assertSame('wialon', $muestra->proveedor());
+        self::assertEqualsWithDelta(660.48, (float) $muestra->combustibleLitros(), 0.0005);
+        self::assertSame('2026-10-09 11:30:00', $muestra->observadaEn()->format('Y-m-d H:i:s'));
+        self::assertSame('2026-10-09 12:00:00', $muestra->registradaEn()->format('Y-m-d H:i:s'));
+    }
+
+    public function testReejecutarElCronNoAgregaLaMismaCaptura(): void
+    {
+        // El proveedor devuelve la misma captura si nadie se movió. El cron se
+        // reintenta, o corre dos veces por un solapamiento: la clave es la
+        // hora del proveedor, así que la segunda pasada no agrega nada.
+        $muestras = new MuestrasDelCiclo();
+        $construir = fn (): RecordTelemetrySnapshots => new RecordTelemetrySnapshots(
+            $this->catalogo([$this->cobertura(34, 'AF081MJ', '1', '28396292')]),
+            $this->integraciones([new IntegracionTelematrica(1, 4, 'wialon', 'Wialon TSA')]),
+            $this->registro(['28396292' => new EstadoSenal('28396292', $this->instantanea())]),
+            new MemoriaSnapshots(),
+            $this->muestras($muestras),
+            $this->reloj(),
+            4,
+        );
+
+        self::assertSame(1, $construir()->execute()['muestras']);
+        self::assertSame(0, $construir()->execute()['muestras'], 'La captura repetida no se vuelve a guardar.');
+        self::assertCount(1, $muestras->guardadas);
+    }
+
+    public function testUnaCapturaNuevaSiSeAgregaAlHistorico(): void
+    {
+        $muestras = new MuestrasDelCiclo();
+
+        $primera = new RecordTelemetrySnapshots(
+            $this->catalogo([$this->cobertura(34, 'AF081MJ', '1', '28396292')]),
+            $this->integraciones([new IntegracionTelematrica(1, 4, 'wialon', 'Wialon TSA')]),
+            $this->registro(['28396292' => new EstadoSenal('28396292', $this->instantanea())]),
+            new MemoriaSnapshots(),
+            $this->muestras($muestras),
+            $this->reloj(),
+            4,
+        );
+        $primera->execute();
+
+        $segunda = new RecordTelemetrySnapshots(
+            $this->catalogo([$this->cobertura(34, 'AF081MJ', '1', '28396292')]),
+            $this->integraciones([new IntegracionTelematrica(1, 4, 'wialon', 'Wialon TSA')]),
+            $this->registro(['28396292' => new EstadoSenal(
+                '28396292',
+                $this->instantanea(observada: '2026-10-09 11:45:00'),
+            )]),
+            new MemoriaSnapshots(),
+            $this->muestras($muestras),
+            $this->reloj(),
+            4,
+        );
+
+        self::assertSame(1, $segunda->execute()['muestras'], 'Quince minutos después es una captura nueva.');
+        self::assertCount(2, $muestras->guardadas);
+    }
+
+    public function testUnaIntegracionCaidaNoGuardaMuestraNiLaConvierteEnCero(): void
+    {
+        $muestras = new MuestrasDelCiclo();
+        $recorder = new RecordTelemetrySnapshots(
+            $this->catalogo([$this->cobertura(34, 'AF081MJ', '1', '28396292')]),
+            $this->integraciones([new IntegracionTelematrica(1, 4, 'wialon', 'Wialon TSA')]),
+            $this->registro([], true),
+            new MemoriaSnapshots(),
+            $this->muestras($muestras),
+            $this->reloj(),
+            4,
+        );
+
+        $summary = $recorder->execute();
+
+        // Un proveedor caído no es una captura sin datos: es un hueco. La fila
+        // se infiere de la serie, no se inventa.
+        self::assertSame(1, $summary['fallas']);
+        self::assertSame(0, $summary['muestras']);
+        self::assertSame([], $muestras->guardadas);
     }
 }

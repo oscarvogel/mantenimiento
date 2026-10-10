@@ -30,15 +30,16 @@ final readonly class RecordTelemetrySnapshots implements TelemetryRefresher
         private TelemetryIntegrationCatalog $integrations,
         private FleetTelemetryGatewayRegistry $gateways,
         private TelemetrySnapshotStore $store,
+        private RegistrarMuestras $muestras,
         private NotificationClock $clock,
         private int $companyId,
     ) {
     }
 
-    /** @return array{integraciones:int, instantaneas:int, ausentes:int, falhas:int} */
+    /** @return array{integraciones:int, instantaneas:int, muestras:int, ausentes:int, falhas:int} */
     public function execute(): array
     {
-        $summary = ['integraciones' => 0, 'instantaneas' => 0, 'ausentes' => 0, 'fallas' => 0];
+        $summary = ['integraciones' => 0, 'instantaneas' => 0, 'muestras' => 0, 'ausentes' => 0, 'fallas' => 0];
         $now = $this->clock->now();
         $registradaEn = $now->format('Y-m-d H:i:s');
 
@@ -80,7 +81,7 @@ final readonly class RecordTelemetrySnapshots implements TelemetryRefresher
                 $observadas[] = (string) $unidadExterna;
 
                 foreach ($vinculos[$integrationId][(string) $unidadExterna] ?? [] as $coverage) {
-                    $this->store->save(new InstantaneaRegistrada(
+                    $registrada = new InstantaneaRegistrada(
                         $coverage->companyId(),
                         $coverage->branchId(),
                         $coverage->equipmentId(),
@@ -89,7 +90,16 @@ final readonly class RecordTelemetrySnapshots implements TelemetryRefresher
                         (string) $unidadExterna,
                         $instantanea,
                         $registradaEn,
-                    ));
+                    );
+
+                    // El snapshot se sigue sobrescribiendo: es estado actual y
+                    // alimenta mapa y ficha. La muestra se agrega sin tocarlo.
+                    $this->store->save($registrada);
+
+                    // Sólo cuenta como muestra nueva si se agregó de verdad. Un
+                    // reintento del cron con el mismo estado del proveedor no
+                    // escribe nada y no debe verse como que ingirió algo.
+                    $summary['muestras'] += $this->muestras->registrar($registrada);
                     $summary['instantaneas']++;
                 }
             }

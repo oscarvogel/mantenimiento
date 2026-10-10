@@ -43,6 +43,7 @@ Por lo tanto, los porcentajes históricos no pueden calcularse con los registros
 - Porcentaje estimado = minutos de ralentí / minutos con motor encendido × 100. Se incluyen intervalos cuando hay muestras válidas de motor y ralentí, y las muestras consecutivas están separadas como máximo por 30 minutos. Cada estado se extiende hasta la siguiente muestra válida.
 - Un período con menos de 70% de cobertura válida se considera insuficiente y no produce alerta. La ficha muestra la cobertura para que el operador entienda el resultado.
 - Mostrar porcentaje, horas estimadas en ralentí, horas de motor consideradas, período y límite configurado.
+- El mismo intervalo alimenta el cálculo de consumo: el bloque de la ficha puede decir cuántos litros del período se explican por el camión parado. Ver la ampliación de abajo.
 
 ### Velocidad
 
@@ -74,10 +75,50 @@ Por lo tanto, los porcentajes históricos no pueden calcularse con los registros
 
 ## Fuera de alcance
 
-- Cálculo de consumo de combustible.
 - Reconstrucción exacta segundo a segundo o consulta de informes históricos específicos del proveedor.
 - Reglas diferentes por camión o sucursal; esta primera versión configura límites por empresa.
 - Alertas por el primer único punto de velocidad, para evitar que una muestra aislada o un salto GPS dispare un aviso.
+- **Valores de combustible con significado fiscal.** El odómetro de Wialon es calculado por distancia GPS y no es el odómetro físico del vehículo; el consumo derivado de él es diagnóstico operativo, no respaldo contable. Los litros que se facturan son los de la tarjeta o el ERP.
+
+## Ampliación del 10/10/2026: consumo de combustible
+
+La primera versión de este documento declaraba el cálculo de consumo fuera de alcance.
+**Se incorpora.** La tabla de muestras que este diseño crea ya guarda `combustible`
+entre las métricas normalizadas, y el plan de implementación ejecuta los cuatro módulos
+en un solo ciclo: no tiene sentido construir el histórico dos veces.
+
+Decisión de producto: **el viaje no se persiste.** El intervalo es la unidad con
+identidad propia; el trayecto se deriva de la serie en el momento de leer. Persistir el
+viaje congelaría una interpretación que hay que corregir cada vez que mejora la
+cobertura, y esa corrección no tendría dónde esconderse.
+
+El combustible se expresa en **dos indicadores que se leen juntos**, porque cada uno
+tapa el punto ciego del otro:
+
+| l/100 km | l/h de motor | Lectura |
+|---|---|---|
+| Alto | Normal | Quemando rodando: carga, ruta, presión, inyección |
+| Normal | Alto | Quemando parado: ralentí, o algo arrastrando |
+| Alto | Alto | Problema global, o deriva del sensor de tanque |
+
+El denominador de l/h son las **horas de motor**, no las horas de reloj. Una unidad con
+horómetro implausible queda excluida del cálculo en lugar de producir un ratio absurdo.
+
+La atribución de litros tiene cuatro reglas, y cada una existe porque sin ella el
+número miente: un descenso es consumo y un ascenso es carga; un intervalo con carga no
+computa consumo; un delta por debajo del mínimo se informa como «sin variación» y no
+como 0; y una subida en un tanque con una bajada en el otro es una transferencia, no
+una carga.
+
+Ralentí y combustible comparten el mismo intervalo y la misma política de cobertura. Ése
+es el motivo de que el bloque de la ficha diga cuántos litros se quemaron con el
+camión parado, y no sólo el porcentaje de tiempo. La **tasa de consumo en ralentí no
+está medida en ninguna parte**: el parámetro nace vacío y desactivado, igual que el
+límite de velocidad. Sin configurar, se muestra la proporción de tiempo, que sí es
+medible; no se inventa una tasa para llenar un espacio en la pantalla.
+
+Detalle completo en `2026-10-10-consumo-por-viaje-design.md`. Secuencia de ejecución en
+`docs/superpowers/plans/2026-10-10-historico-consumo-ralenti-velocidad.md`.
 
 ## Criterios de aceptación
 

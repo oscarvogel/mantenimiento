@@ -16,7 +16,7 @@
 - Mantener dependencias hacia dentro: Presentation → Application → Domain.
 - No leer al proveedor al renderizar una pantalla; mostrar snapshot vigente y su antigüedad.
 - No inferir capacidad ni cantidad de tanques sin configuración confiable.
-- Persistir solo el estado más reciente de telemetría; el histórico temporal queda fuera de este alcance.
+- Persistir solo el estado más reciente de telemetría; el histórico temporal queda fuera de este alcance. **Cubierto por** `docs/superpowers/plans/2026-10-10-historico-consumo-ralenti-velocidad.md`, que sí crea la tabla de muestras.
 - No almacenar ni mostrar credenciales del proveedor.
 
 ## Review Focus
@@ -96,7 +96,7 @@ El entorno remoto de prueba solo se utilizará si se solicita ejecutar o despleg
 
 ## Plan Self-Review
 
-- El alcance se limita al estado actual y al informe diario; no promete evolución temporal ni cálculo de consumo.
+- El alcance se limita al estado actual y al informe diario; no promete evolución temporal ni cálculo de consumo. Ambos quedan explícitamente en el plan posterior de histórico y consumo.
 - Los accesos nuevos comparten `equipos.ver` y aplican alcance de empresa/sucursales en servidor.
 - La migración mantiene la última tabla como estado actual, no convierte el snapshot en historial.
 - La UI no inventa capacidad/porcentaje ni desglose de tanques.
