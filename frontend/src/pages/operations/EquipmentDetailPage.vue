@@ -9,6 +9,7 @@ import PageHeading from './components/PageHeading.vue'
 import PaginationBar from './components/PaginationBar.vue'
 import PanelCard from './components/PanelCard.vue'
 import StatusBadge from './components/StatusBadge.vue'
+import TelemetryBoard from './components/TelemetryBoard.vue'
 import EquipmentThumbnail from './components/EquipmentThumbnail.vue'
 import { dangerButton, fieldClass, formatHours, formatKilometers, formatReadingOrigin, nowLocal, primaryButton, secondaryButton, today } from './helpers.js'
 
@@ -56,13 +57,22 @@ const data = computed(() => {
   }
 })
 
-const tabs = [
-  { id: 'resumen', label: 'Resumen' },
-  { id: 'mantenimiento', label: 'Mantenimiento' },
-  { id: 'lecturas', label: 'Lecturas' },
-  { id: 'archivos', label: 'Archivos' },
-  { id: 'historial', label: 'Historial' },
-]
+const tabs = computed(() => {
+  const base = [
+    { id: 'resumen', label: 'Resumen' },
+    { id: 'mantenimiento', label: 'Mantenimiento' },
+  ]
+  // La pestaña de telemetría sólo existe si el equipo tiene alguna fuente
+  // vinculada. Un espacio vacío es peor que una pestaña que no está.
+  if (data.value.telemetry?.available) {
+    base.push({ id: 'telemetria', label: 'Telemetría' })
+  }
+  return base.concat([
+    { id: 'lecturas', label: 'Lecturas' },
+    { id: 'archivos', label: 'Archivos' },
+    { id: 'historial', label: 'Historial' },
+  ])
+})
 const initialQuery = new URLSearchParams(window.location.search)
 const activeTab = ref(initialQuery.get('history_active') === '1' ? 'historial' : 'resumen')
 const correctiveOrderUrl = computed(() => `${props.data.routes.maintenance}?ot_correctiva=1&equipo_id=${props.data.equipment.id}`)
@@ -307,6 +317,16 @@ const equipmentSummary = computed(() => {
       <div v-else class="overflow-x-auto"><table class="w-full min-w-[52rem] text-left text-sm"><thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-4 py-3">Archivo</th><th class="px-4 py-3">Tipo</th><th class="px-4 py-3">Registro</th><th class="px-4 py-3">Estado</th><th class="px-4 py-3">Acción</th></tr></thead><tbody class="divide-y divide-border-subtle"><tr v-for="attachment in data.attachments.items" :key="attachment.id" :class="attachment.retiredAt ? 'bg-surface-subtle text-ink-muted' : ''"><td class="px-4 py-4"><span class="font-semibold">{{ attachment.originalName }}</span><br><span class="text-xs text-ink-muted">{{ attachment.mimeType }} · {{ attachment.sizeKb }} KB</span></td><td class="px-4 py-4">{{ attachment.type }}<br><span v-if="attachment.description" class="text-xs text-ink-muted">{{ attachment.description }}</span></td><td class="px-4 py-4">{{ attachment.createdAt }}<br><span class="text-xs text-ink-muted">{{ attachment.createdByName }}</span></td><td class="px-4 py-4"><StatusBadge :status="attachment.retiredAt ? 'RETIRADO' : 'ACTIVO'" /><p v-if="attachment.retirementReason" class="mt-1 text-xs">{{ attachment.retirementReason }}</p></td><td class="px-4 py-4"><div v-if="!attachment.retiredAt" class="flex gap-2"><a :href="attachment.downloadUrl" :class="secondaryButton"><ArrowDownTrayIcon class="mr-1.5 size-4" aria-hidden="true" />Descargar</a><details v-if="data.can.edit" class="ui-details-animated"><summary :class="dangerButton">Retirar</summary><form method="post" :action="attachment.retireUrl" data-confirm data-confirm-title="¿Retirar este adjunto?" data-confirm-text="El archivo dejará de estar disponible para descarga." data-confirm-button="Retirar" data-confirm-danger="true" class="mt-3 w-72 rounded-xl border border-border bg-white p-4 shadow-card"><CsrfInput :csrf="data.csrf" /><FormField label="Motivo" :for-id="`attachment-reason-${attachment.id}`"><textarea :id="`attachment-reason-${attachment.id}`" name="motivo" minlength="5" maxlength="255" required :class="fieldClass"></textarea></FormField><button type="submit" :class="`${dangerButton} mt-3`">Confirmar retiro</button></form></details></div></td></tr></tbody></table></div>
       <template #footer><PaginationBar :pagination="data.attachments.pagination" /></template>
     </PanelCard>
+    </div>
+
+    <div
+      v-if="data.telemetry?.available"
+      id="equipment-panel-telemetria"
+      v-show="activeTab === 'telemetria'"
+      role="tabpanel"
+      aria-labelledby="equipment-tab-telemetria"
+    >
+      <TelemetryBoard :telemetry="data.telemetry" :equipment="data.equipment" />
     </div>
 
     <div id="equipment-panel-lecturas" v-show="activeTab === 'lecturas'" role="tabpanel" aria-labelledby="equipment-tab-lecturas">
