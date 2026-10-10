@@ -32,6 +32,7 @@ const puedeActualizar = computed(
 
 const LIMITE_FRESCAZA_MIN = 60
 const LIMITE_VIEJA_MIN = 1440
+const CAPACIDAD_TOTAL_REFERENCIA = 780
 
 // Capacidad orientativa de los dos tanques delIUECO. Sirve para dibujar el
 // perfil; el porcentaje real se calcula contra lo que cargó el proveedor.
@@ -120,7 +121,9 @@ const nivelCombustible = (fuente) => {
   if (total === null || total === undefined) {
     return { proporcion: null, tono: 'gris', texto: 'sin dato' }
   }
-  const capacidad = hayTanques ? CAPACIDAD_TANQUES.T1 + CAPACIDAD_TANQUES.T2 : 780
+  const capacidad = hayTanques
+    ? CAPACIDAD_TANQUES.T1 + CAPACIDAD_TANQUES.T2
+    : CAPACIDAD_TOTAL_REFERENCIA
   const proporcion = Math.max(0, Math.min(100, (total / capacidad) * 100))
   if (proporcion <= 10) return { proporcion, tono: 'rojo', texto: 'crítico' }
   if (proporcion <= 25) return { proporcion, tono: 'ambar', texto: 'bajo' }
@@ -130,6 +133,14 @@ const nivelCombustible = (fuente) => {
 const nivelTanqueTotal = (fuente) => {
   const nivel = nivelCombustible(fuente)
   return nivel.proporcion === null ? null : Math.round(nivel.proporcion)
+}
+
+const capacidadTanqueTotal = (fuente) => {
+  const extras = fuente.extraSensors || []
+  const hayTanques = extras.some((m) => /t1|t2/i.test(m.etiqueta || ''))
+  return hayTanques
+    ? CAPACIDAD_TANQUES.T1 + CAPACIDAD_TANQUES.T2
+    : CAPACIDAD_TOTAL_REFERENCIA
 }
 
 const porcentajeTanque = (tanque) => tanque.proporcion === null ? null : Math.round(tanque.proporcion)
@@ -150,20 +161,18 @@ const voltajeEstado = (fuente) => {
 
 const posicion = (fuente) => fuente.position
 
-const mapaSrc = computed(() => {
-  const fuente = props.telemetry.sources[0]
-  if (!fuente || !fuente.position) return ''
+const mapaSrcDe = (fuente) => {
+  if (!fuente?.position) return ''
   const { latitude, longitude } = fuente.position
   const d = 0.01
   const bbox = [longitude - d, latitude - d, longitude + d, latitude + d].join('%2C')
   return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${latitude}%2C${longitude}`
-})
+}
 
-const mapaEnlace = computed(() => {
-  const fuente = props.telemetry.sources[0]
-  if (!fuente || !fuente.position) return '#'
+const mapaEnlaceDe = (fuente) => {
+  if (!fuente?.position) return '#'
   return `https://www.openstreetmap.org/?mlat=${fuente.position.latitude}&mlon=${fuente.position.longitude}#map=14/${fuente.position.latitude}/${fuente.position.longitude}`
-})
+}
 </script>
 
 <template>
@@ -262,7 +271,7 @@ const mapaEnlace = computed(() => {
           >
             <img
               v-if="posicion(fuente)"
-              :src="mapaSrc"
+              :src="mapaSrcDe(fuente)"
               :alt="`Última ubicación conocida de ${equipment.code}`"
               class="h-40 w-full object-cover"
               loading="lazy"
@@ -290,7 +299,7 @@ const mapaEnlace = computed(() => {
             </span>
             <a
               v-if="posicion(fuente)"
-              :href="mapaEnlace"
+              :href="mapaEnlaceDe(fuente)"
               target="_blank"
               rel="noopener"
               class="font-semibold text-primary underline"
@@ -326,14 +335,19 @@ const mapaEnlace = computed(() => {
             </span>
           </div>
 
-          <div v-if="tanquesDe(fuente).length" class="mt-4 grid gap-3 sm:grid-cols-2">
+          <div
+            v-if="tanquesDe(fuente).length"
+            class="mt-4 grid gap-3"
+            :class="tanquesDe(fuente).length === 1 ? 'sm:grid-cols-1' : 'sm:grid-cols-2'"
+          >
             <article
               v-for="tanque in tanquesDe(fuente)"
               :key="tanque.numero"
-              class="flex min-h-32 items-center gap-3 rounded-lg border border-border bg-surface p-3"
+              class="flex items-center gap-4 rounded-lg border border-border bg-surface p-4"
             >
               <div
-                class="relative flex h-24 w-14 shrink-0 items-end overflow-hidden rounded-t-2xl rounded-b-md border-2 border-primary/45 bg-surface-muted"
+                class="relative flex shrink-0 items-end overflow-hidden rounded-t-2xl rounded-b-md border-2 border-primary/45 bg-surface-muted"
+                :class="tanquesDe(fuente).length === 1 ? 'h-36 w-20' : 'h-28 w-16'"
                 role="meter"
                 :aria-label="`${tanque.etiqueta}: ${formatLitros(tanque.valor)} litros, ${porcentajeTanque(tanque) === null ? 'sin porcentaje' : `${porcentajeTanque(tanque)}% de capacidad de referencia`}`"
                 aria-valuemin="0"
@@ -349,33 +363,42 @@ const mapaEnlace = computed(() => {
                   {{ porcentajeTanque(tanque) === null ? '—' : `${porcentajeTanque(tanque)}%` }}
                 </span>
               </div>
-              <div class="min-w-0">
+              <div class="min-w-0 flex-1">
                 <p class="text-xs font-bold uppercase tracking-wide text-ink-muted">{{ tanque.etiqueta }}</p>
-                <p class="mt-1 text-xl font-bold tabular-nums text-ink">
+                <p class="mt-1 text-2xl font-bold tabular-nums text-ink">
                   {{ formatLitros(tanque.valor) }}
                   <span class="text-xs font-medium text-ink-muted">l</span>
                 </p>
-                <p class="text-xs text-ink-muted">Capacidad ref.: {{ tanque.capacidad }} l</p>
+                <p class="mt-1 text-sm text-ink-muted">Capacidad de referencia: {{ tanque.capacidad }} l</p>
               </div>
             </article>
           </div>
 
-          <div v-else-if="nivelTanqueTotal(fuente) !== null" class="mt-4 flex items-center gap-4 rounded-lg border border-border bg-surface p-3">
+          <div v-else-if="nivelTanqueTotal(fuente) !== null" class="mt-4 rounded-lg border border-border bg-surface p-4 sm:p-5">
+            <div class="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p class="text-xs font-bold uppercase tracking-wide text-ink-muted">Nivel total</p>
+                <p class="mt-1 text-2xl font-bold tabular-nums text-ink sm:text-3xl">
+                  {{ formatLitros(fuente.fuelLiters) }}
+                  <span class="text-base font-semibold text-ink-muted">/ {{ capacidadTanqueTotal(fuente) }} l</span>
+                </p>
+                <p class="mt-1 text-sm text-ink-muted">Capacidad de referencia</p>
+              </div>
+              <p class="text-2xl font-bold tabular-nums text-ink sm:text-3xl">{{ nivelTanqueTotal(fuente) }}%</p>
+            </div>
             <div
-              class="relative flex h-24 w-14 shrink-0 items-end overflow-hidden rounded-t-2xl rounded-b-md border-2 border-primary/45 bg-surface-muted"
+              class="mt-4 h-9 overflow-hidden rounded-full border border-border bg-surface-muted"
               role="meter"
-              :aria-label="`Combustible total: ${formatLitros(fuente.fuelLiters)} litros, ${nivelTanqueTotal(fuente)}% de una capacidad de referencia de 780 litros`"
+              :aria-label="`Combustible total: ${formatLitros(fuente.fuelLiters)} de ${capacidadTanqueTotal(fuente)} litros de referencia, ${nivelTanqueTotal(fuente)}%`"
               aria-valuemin="0"
-              aria-valuemax="780"
-              :aria-valuenow="Math.max(0, Math.min(780, Number(fuente.fuelLiters)))"
+              :aria-valuemax="capacidadTanqueTotal(fuente)"
+              :aria-valuenow="Math.max(0, Math.min(capacidadTanqueTotal(fuente), Number(fuente.fuelLiters)))"
             >
               <div
-                class="absolute inset-x-0 bottom-0 bg-primary/75 transition-[height] duration-500"
-                :style="{ height: `${nivelTanqueTotal(fuente)}%` }"
+                class="h-full rounded-full bg-primary/75 transition-[width] duration-500"
+                :style="{ width: `${nivelTanqueTotal(fuente)}%` }"
               />
-              <span class="relative z-10 mb-1 w-full text-center text-[11px] font-bold text-ink">{{ nivelTanqueTotal(fuente) }}%</span>
             </div>
-            <p class="text-xs text-ink-muted">Capacidad de referencia: 780 l</p>
           </div>
 
           <p v-else class="mt-4 rounded-lg border border-dashed border-border px-3 py-4 text-sm text-ink-muted">

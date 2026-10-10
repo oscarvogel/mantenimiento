@@ -67,7 +67,7 @@ final class WialonRemoteApiGateway implements FleetTelemetryGateway
         $session = $this->openSession($endpoint, $credentials['token']);
 
         try {
-            $definiciones = $this->definiciones($endpoint, $session);
+            $definiciones = $this->definitions($endpoint, $session);
             $values = $this->values($endpoint, $session, array_keys($definiciones));
 
             $mapper = $this->mapper ?? new WialonSnapshotMapper();

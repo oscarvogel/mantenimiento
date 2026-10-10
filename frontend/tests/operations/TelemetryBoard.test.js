@@ -62,7 +62,7 @@ describe('TelemetryBoard', () => {
 
     expect(wrapper.text()).toContain('555 l')
     expect(wrapper.text()).toContain('Capacidad de referencia: 780 l')
-    expect(wrapper.find('[aria-label="Combustible total: 555 litros, 71% de una capacidad de referencia de 780 litros"]').exists()).toBe(true)
+    expect(wrapper.find('[aria-label="Combustible total: 555 de 780 litros de referencia, 71%"]').exists()).toBe(true)
   })
 
   it('conserva un tanque en cero y no lo confunde con una lectura faltante', () => {
