@@ -10,11 +10,11 @@ Conservar la resolución de cinco minutos que necesita consumo y uso operativo s
 
 ## Estado verificado
 
-- `WialonRemoteApiGateway` obtiene la última posición y valores actuales con `core/search_items` y `unit/calc_last`; no llama `messages/load_interval`.
-- `RecordTelemetrySnapshots` mantiene la última lectura para mapa/ficha y, por separado, persiste una muestra histórica por unidad en cada ejecución correcta.
-- El cron operativo confirmado por el usuario corre cada cinco minutos. La guía de diseño anterior todavía decía quince minutos y debe corregirse al documentar o implementar este cambio.
-- `telematia_muestras` guarda un punto por captura. Tiene una restricción única por integración, unidad externa y `observada_en`; no guarda ambos extremos ni duración de ralentí de un intervalo.
-- El histórico conserva 90 días y su purga requiere respaldo verificado.
+- `WialonRemoteApiGateway` obtiene la última posición y valores actuales con `core/search_items` y `unit/calc_last`, y el histórico por unidad con `messages/load_interval`.
+- `RecordTelemetrySnapshots` mantiene la última lectura para mapa/ficha y sincroniza el histórico Wialon por buckets cuando la ruta está conectada. Otros proveedores conservan la ingesta puntual.
+- El ciclo HTTP/cron operativo confirmado por el usuario corre cada cinco minutos; su guía de Ferozo documenta las doce ejecuciones horarias.
+- Los buckets cerrados se guardan en `telematia_buckets` y el avance confirmado por unidad en `telematia_cursor`. Wialon deja de añadir puntos nuevos a `telematia_muestras` solo cuando el sincronizador histórico está habilitado; filas previas se conservan.
+- El histórico conserva 90 días. La purga requiere JSONL completo y verificado antes de borrar; el comando está disponible en entornos con CLI, no en Ferozo de producción.
 - La rama de dominio de consumo es `feat/consumo-atribucion` (PR #476). Este trabajo parte de ella para poder adaptar el lector sin mezclar commits en ese PR.
 
 ## Volumen con la frecuencia confirmada
@@ -102,6 +102,6 @@ El lector de serie adapta cada bucket a sus extremos ordenados para `SerieMuestr
 
 ## Fuentes
 
-- Implementación revisada: `app/Infrastructure/Telematic/WialonRemoteApiGateway.php`, `app/Application/Telematic/RecordTelemetrySnapshots.php`, `app/Infrastructure/Telematic/CodeIgniterMuestraStore.php` y `app/Database/Migrations/2026-10-10-160000_CreateTelemetrySamples.php`.
-- Frecuencia del cron actual: confirmación del usuario en esta conversación; contradice la frecuencia nominal de quince minutos de documentos previos.
+- Implementación verificada: `app/Infrastructure/Telematic/WialonRemoteApiGateway.php`, `app/Application/Telematic/RecordTelemetrySnapshots.php`, `app/Application/Telematic/SincronizarBucketsTelemetria.php`, `app/Infrastructure/Telematic/CodeIgniterTelemetryBucketStore.php` y migración `2026-10-10-170000_CreateTelemetryBuckets.php`.
+- Frecuencia del ciclo: confirmación del usuario; esta guía actualiza las referencias operativas previas de quince minutos.
 - Wialon API: [messages/load_interval](https://help.wialon.com/en/api/user-guide/api-reference/messages/load_interval) y [formato de mensajes](https://help.wialon.com/en/api/user-guide/data-format/messages).

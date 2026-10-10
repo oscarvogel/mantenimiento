@@ -12,20 +12,19 @@ use InvalidArgumentException;
  * Los tres umbrales existen por lo que se ve, no por lo que se supone:
  *
  * - **Kilómetros mínimos.** Sin esto, cada maniobra de estacionamiento es una
- *   fila del reporte. Con capturas cada 15 minutos, un truck parado en un
- *   semáforo puede generar un intervalo con dos metros de diferencia.
+ *   fila del reporte. El ruido del odómetro puede generar pequeños intervalos
+ *   aunque el equipo no haya hecho un viaje.
  *
- * - **Minutos mínimos.** Un trayecto más corto que el intervalo de muestreo
- *   ocupa cero o una muestra. No se puede reconstruir y no se estima.
+ * - **Minutos mínimos.** Un trayecto más corto que los intervalos observados
+ *   puede quedar con cero o una muestra. No se puede reconstruir y no se estima.
  *
  * - **Intervalos parados para cerrar.** Con un solo intervalo sin movimiento
  *   se cerraría el viaje en cada cruce, en cada semáforo y en cada station de
  *   servicio. Con dos consecutivos, el cierre significa que el equipo se detuvo.
  *
  * **El movimiento se decide por el odómetro, no por la velocidad.** La
- * velocidad es un instante; el odómetro es una distancia acumulada. Con
- * muestras cada 15 minutos, un equipo detenido puede tener un pico de velocidad
- * tomado justo cuando arrancó. Y un proveedor que manda posición sin
+ * velocidad es un instante; el odómetro es una distancia acumulada. Un equipo
+ * detenido puede tener un pico de velocidad tomado justo cuando arrancó. Y un proveedor que manda posición sin
  * odómetro no genera viajes: no se puede afirmar que se movió.
  */
 final readonly class PoliticaSegmentacion

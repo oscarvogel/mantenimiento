@@ -101,6 +101,9 @@ final readonly class RecordTelemetrySnapshots implements TelemetryRefresher
                 continue;
             }
 
+            $usaHistoricoPorBuckets = $this->sincronizadorHistorico !== null
+                && $gateway instanceof LectorHistoricoTelemetria;
+
             try {
                 $states = $gateway->fetchFor($integration->id());
             } catch (\Throwable) {
@@ -147,10 +150,15 @@ final readonly class RecordTelemetrySnapshots implements TelemetryRefresher
                     // alimenta mapa y ficha. La muestra se agrega sin tocarlo.
                     $this->store->save($registrada);
 
-                    // Sólo cuenta como muestra nueva si se agregó de verdad. Un
-                    // reintento del cron con el mismo estado del proveedor no
-                    // escribe nada y no debe verse como que ingirió algo.
-                    $summary['muestras'] += $this->muestras->registrar($registrada);
+                    // Cuando la serie histórica por buckets está habilitada,
+                    // Wialon ya aporta esos extremos y no duplicamos el punto
+                    // actual en telematia_muestras. Sin esa ruta, y para los
+                    // demás proveedores, se conserva la ingesta puntual.
+                    if (! $usaHistoricoPorBuckets) {
+                        // Sólo cuenta como muestra nueva si se agregó de verdad.
+                        // Un reintento del cron no debe aparentar otra captura.
+                        $summary['muestras'] += $this->muestras->registrar($registrada);
+                    }
                     $summary['instantaneas']++;
                 }
             }

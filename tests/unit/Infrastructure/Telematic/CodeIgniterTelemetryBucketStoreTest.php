@@ -79,7 +79,8 @@ final class CodeIgniterTelemetryBucketStoreTest extends CIUnitTestCase
         ));
 
         self::assertSame(1, (int) $this->mysql->table('telematia_buckets')->countAllResults());
-        self::assertSame('2026-10-10 12:15:00', $this->store->cursor(10, '123')->format('Y-m-d H:i:s'));
+        self::assertSame('2026-10-10 12:15:00', $this->store->cursor(7, 10, '123')->format('Y-m-d H:i:s'));
+        self::assertNull($this->store->cursor(8, 10, '123'), 'El cursor nunca se expone a otra empresa.');
     }
 
     public function testUnFalloDeInsercionRevierteBucketYCusor(): void
@@ -105,7 +106,45 @@ final class CodeIgniterTelemetryBucketStoreTest extends CIUnitTestCase
 
         self::assertTrue($fallo, 'El trigger de prueba debe detener el guardado del bucket.');
         self::assertSame(0, (int) $this->mysql->table('telematia_buckets')->countAllResults());
-        self::assertNull($this->store->cursor(10, '123'));
+        self::assertNull($this->store->cursor(7, 10, '123'));
+
+        self::assertSame(['insertados' => 1, 'yaExistentes' => 0], $this->store->guardarCerradosYAvanzarCursor(
+            7,
+            10,
+            42,
+            '123',
+            'WIALON',
+            [$this->bucket()],
+            new DateTimeImmutable('2026-10-10 12:15:00', new DateTimeZone('UTC')),
+            new DateTimeImmutable('2026-10-10 12:20:00', new DateTimeZone('UTC')),
+        ), 'Una transacción revertida no debe contaminar el siguiente reintento.');
+    }
+
+    public function testOtraEmpresaNoPuedeLeerNiAvanzarElCursorDeLaUnidad(): void
+    {
+        $registrada = new DateTimeImmutable('2026-10-10 12:20:00', new DateTimeZone('UTC'));
+        $cursor = new DateTimeImmutable('2026-10-10 12:15:00', new DateTimeZone('UTC'));
+        $this->store->guardarCerradosYAvanzarCursor(7, 10, 42, '123', 'WIALON', [], $cursor, $registrada);
+
+        try {
+            $this->store->guardarCerradosYAvanzarCursor(
+                8,
+                10,
+                99,
+                '123',
+                'WIALON',
+                [$this->bucket()],
+                new DateTimeImmutable('2026-10-10 12:20:00', new DateTimeZone('UTC')),
+                $registrada,
+            );
+            self::fail('El cursor pertenece a empresa 7 y no debe ser visible ni modificable por empresa 8.');
+        } catch (\RuntimeException $exception) {
+            self::assertStringContainsString('No se pudo bloquear el cursor', $exception->getMessage());
+        }
+
+        self::assertNull($this->store->cursor(8, 10, '123'));
+        self::assertSame('2026-10-10 12:15:00', $this->store->cursor(7, 10, '123')->format('Y-m-d H:i:s'));
+        self::assertSame(0, (int) $this->mysql->table('telematia_buckets')->countAllResults());
     }
 
     private function bucket(): BucketTelemetria

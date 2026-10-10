@@ -43,14 +43,14 @@ final class BucketsEnMemoria implements TelemetryBucketStore
     /** @var array<string,list<BucketTelemetria>> */
     public array $guardados = [];
 
-    public function cursor(int $integracionId, string $unidadExterna): ?DateTimeImmutable
+    public function cursor(int $empresaId, int $integracionId, string $unidadExterna): ?DateTimeImmutable
     {
-        return $this->cursores[$integracionId . ':' . $unidadExterna] ?? null;
+        return $this->cursores[$empresaId . ':' . $integracionId . ':' . $unidadExterna] ?? null;
     }
 
     public function guardarCerradosYAvanzarCursor(int $empresaId, int $integracionId, int $equipoId, string $unidadExterna, string $proveedor, array $buckets, DateTimeImmutable $cursorHasta, DateTimeImmutable $registradaEn): array
     {
-        $clave = $integracionId . ':' . $unidadExterna;
+        $clave = $empresaId . ':' . $integracionId . ':' . $unidadExterna;
         $existentes = $this->guardados[$clave] ?? [];
         $porInicio = [];
         foreach ($existentes as $bucket) {
@@ -94,7 +94,7 @@ final class SincronizarBucketsTelemetriaTest extends TestCase
         self::assertLessThanOrEqual($ahora->getTimestamp(), $ventana['hasta']->getTimestamp());
         self::assertSame(0, $ventana['desde']->getTimestamp() % 300);
         self::assertSame(0, $ventana['hasta']->getTimestamp() % 300);
-        self::assertEquals(new DateTimeImmutable('2026-10-10 10:10:00', new \DateTimeZone('UTC')), $store->cursor(8, '28396292'));
+        self::assertEquals(new DateTimeImmutable('2026-10-10 10:10:00', new \DateTimeZone('UTC')), $store->cursor(4, 8, '28396292'));
         self::assertGreaterThanOrEqual(89, (int) $ventana['desde']->diff($ventana['hasta'])->days);
         self::assertLessThanOrEqual(90, (int) $ventana['desde']->diff($ventana['hasta'])->days);
     }
@@ -108,14 +108,14 @@ final class SincronizarBucketsTelemetriaTest extends TestCase
         $sync->sincronizar(4, 8, 'wialon', ['28396292' => 34], new DateTimeImmutable('2026-10-10 10:12:00', new \DateTimeZone('UTC')));
 
         self::assertSame(['28396292'], array_column($lector->ventanas, 'unidad'));
-        self::assertNotNull($store->cursor(8, '28396292'));
-        self::assertNull($store->cursor(8, '999999'));
+        self::assertNotNull($store->cursor(4, 8, '28396292'));
+        self::assertNull($store->cursor(4, 8, '999999'));
     }
 
     public function testVentanaIncrementalTieneSolapeDeTreintaMinutosParaCerrarTramosDeRalenti(): void
     {
         $store = new BucketsEnMemoria();
-        $store->cursores['8:28396292'] = new DateTimeImmutable('2026-10-10 10:00:00', new \DateTimeZone('UTC'));
+        $store->cursores['4:8:28396292'] = new DateTimeImmutable('2026-10-10 10:00:00', new \DateTimeZone('UTC'));
         $lector = new LectorHistoricoEnMemoria();
         $sync = new SincronizarBucketsTelemetria($lector, $store, new AgregadorBucketsTelemetria());
 
@@ -138,7 +138,7 @@ final class SincronizarBucketsTelemetriaTest extends TestCase
             self::assertSame('Wialon no respondió', $exception->getMessage());
         }
 
-        self::assertNull($store->cursor(8, '28396292'));
+        self::assertNull($store->cursor(4, 8, '28396292'));
     }
 
     public function testReintentoEsIdempotenteYNoReescribeUnBucketCerrado(): void
@@ -160,7 +160,7 @@ final class SincronizarBucketsTelemetriaTest extends TestCase
         $lector = new LectorHistoricoEnMemoria($mensajes);
         $retry = new SincronizarBucketsTelemetria($lector, $store, new AgregadorBucketsTelemetria());
         self::assertSame(['insertados' => 0, 'yaExistentes' => 1], $retry->sincronizar(4, 8, 'wialon', ['28396292' => 34], $ahora));
-        self::assertSame(90.0, $store->guardados['8:28396292'][0]->primero()->combustibleLitros());
-        self::assertSame(80.0, $store->guardados['8:28396292'][0]->ultimo()->combustibleLitros());
+        self::assertSame(90.0, $store->guardados['4:8:28396292'][0]->primero()->combustibleLitros());
+        self::assertSame(80.0, $store->guardados['4:8:28396292'][0]->ultimo()->combustibleLitros());
     }
 }

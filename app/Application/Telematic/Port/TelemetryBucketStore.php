@@ -10,7 +10,7 @@ use DateTimeImmutable;
 /** Persistencia append-only de buckets y avance atómico del cursor por unidad. */
 interface TelemetryBucketStore
 {
-    public function cursor(int $integracionId, string $unidadExterna): ?DateTimeImmutable;
+    public function cursor(int $empresaId, int $integracionId, string $unidadExterna): ?DateTimeImmutable;
 
     /**
      * Guarda buckets idempotentes y avanza el cursor en una única transacción.

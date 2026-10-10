@@ -27,14 +27,16 @@ final class CodeIgniterTelemetryBucketStore implements TelemetryBucketStore
         $this->mysql = $mysql ?? Database::connect();
     }
 
-    public function cursor(int $integracionId, string $unidadExterna): ?DateTimeImmutable
+    public function cursor(int $empresaId, int $integracionId, string $unidadExterna): ?DateTimeImmutable
     {
-        if (! $this->mysql->tableExists(self::CURSOR)) {
+        if ($empresaId <= 0 || $integracionId <= 0 || trim($unidadExterna) === ''
+            || ! $this->mysql->tableExists(self::CURSOR)) {
             return null;
         }
 
         $row = $this->mysql->table(self::CURSOR)
             ->select('cursor_hasta_utc')
+            ->where('empresa_id', $empresaId)
             ->where('integracion_id', $integracionId)
             ->where('unidad_externa', $unidadExterna)
             ->get()
@@ -88,8 +90,8 @@ final class CodeIgniterTelemetryBucketStore implements TelemetryBucketStore
 
             $cursorRow = $this->mysql->query(
                 'SELECT id, cursor_hasta_utc FROM ' . self::CURSOR
-                . ' WHERE integracion_id = ? AND unidad_externa = ? FOR UPDATE',
-                [$integracionId, $unidadExterna],
+                . ' WHERE empresa_id = ? AND integracion_id = ? AND unidad_externa = ? FOR UPDATE',
+                [$empresaId, $integracionId, $unidadExterna],
             )->getRowArray();
 
             if ($cursorRow === null) {
@@ -122,6 +124,7 @@ final class CodeIgniterTelemetryBucketStore implements TelemetryBucketStore
 
             $this->mysql->table(self::CURSOR)
                 ->where('id', (int) $cursorRow['id'])
+                ->where('empresa_id', $empresaId)
                 ->update([
                     'empresa_id' => $empresaId,
                     'equipo_id' => $equipoId,
@@ -144,6 +147,7 @@ final class CodeIgniterTelemetryBucketStore implements TelemetryBucketStore
             ];
         } catch (Throwable $exception) {
             $this->mysql->transRollback();
+            $this->mysql->resetTransStatus();
 
             throw $exception;
         }

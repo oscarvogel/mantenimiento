@@ -53,7 +53,7 @@ final readonly class SincronizarBucketsTelemetria
                 throw new InvalidArgumentException('Cada unidad histórica debe pertenecer a un equipo válido.');
             }
 
-            $cursor = $this->buckets->cursor($integrationId, $unidadExterna);
+            $cursor = $this->buckets->cursor($empresaId, $integrationId, $unidadExterna);
             if ($cursor === null) {
                 $desde = $this->limiteAlineado($ahoraUtc->modify('-' . self::RETENCION_DIAS . ' days'));
             } else {

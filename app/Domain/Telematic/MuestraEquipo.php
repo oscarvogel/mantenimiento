@@ -162,8 +162,8 @@ final readonly class MuestraEquipo
      * Qué antigüedad tenía la lectura cuando la consultamos.
      *
      * Es la magnitud que explica un desfase de reloj: si vale +4, el
-     * proveedor llevaba cuatro minutos sin reportar, lo cual es normal en
-     * una consulta cada quince. Si vale **negativo**, el reloj del proveedor
+     * proveedor llevaba cuatro minutos sin reportar, lo cual puede ocurrir
+     * entre consultas cada cinco minutos. Si vale **negativo**, el reloj del proveedor
      * está adelantado y eso no es normal: significa que la serie va a mostrar
      * huecos donde no los hay, y que un cálculo de consumo sobre esos datos
      * pierde sentido.
