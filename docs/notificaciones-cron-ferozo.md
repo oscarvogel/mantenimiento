@@ -48,16 +48,17 @@ técnicos; nunca emails, tokens, secretos ni trazas.
 Los estados previstos son: `404` si está deshabilitado, `401` si falta el
 token, `403` si es incorrecto, `405` para métodos no permitidos, `409` si ya
 hay un despacho activo, `429` si se excede el límite por IP y `500` ante una
-falla técnica. Un éxito devuelve `200` con `overdue`, `collected`, `sent`,
-`retry`, `skipped` y `errors`.
+falla técnica. Un éxito devuelve `200` con `overdue`, `telemetry` (empresas
+procesadas y fallos de integración), `collected`, `sent`, `retry`, `skipped` y
+`errors`.
 
 El panel real de Ferozo permite ejecutar comandos de shell, por lo que puede
 invocarse el endpoint seguro con `curl`, usando POST y el header
 `X-Cron-Token`.
 
-Para el esquema operativo actual se recomienda ejecutar el cron cada 30 minutos
-y limitar cada corrida a un lote acotado. La cola conserva los pendientes para
-la siguiente ejecución y la idempotencia evita duplicados.
+Para actualizar también la telemetría se recomienda ejecutar el cron cada 15
+minutos y limitar cada corrida a un lote acotado. La cola conserva los
+pendientes para la siguiente ejecución y la idempotencia evita duplicados.
 
 ## URL legacy conservada
 
@@ -79,9 +80,11 @@ PR separado.
 El endpoint no implementa una segunda lógica de notificaciones. Llama a `RunNotificationCycle`, el mismo ciclo usado por el comando CLI:
 
 1. detectar vencimientos;
-2. recolectar eventos notificables;
-3. despachar email/Web Push;
-4. aplicar lock, idempotencia, reintentos y trazabilidad existentes.
+2. actualizar telemetría por cada empresa con una integración activa y publicar
+   sus alertas;
+3. recolectar los demás eventos notificables;
+4. despachar email/Web Push;
+5. aplicar lock, idempotencia, reintentos y trazabilidad existentes.
 
 Dos ejecuciones con la misma clave horaria no deben duplicar entregas. Una ejecución concurrente debe ser rechazada por el control de proceso existente.
 
@@ -111,10 +114,10 @@ Nunca probar el primer disparo directamente contra producción.
 
 ## Configuración recomendada en Ferozo
 
-Frecuencia:
+Frecuencia (campo «Minutos» en Ferozo):
 
 ```text
-cada 30 minutos
+0,15,30,45
 ```
 
 Comando:
@@ -126,5 +129,6 @@ curl -fsS --connect-timeout 10 --max-time 120 -X POST -H "X-Cron-Token: <TOKEN>"
 Con `alerts.webCronBatchLimit = 25`, cada pasada despacha como máximo un lote
 acotado por canal. Si existe backlog, queda pendiente para la siguiente corrida.
 
-La clave de ejecución del ciclo tiene precisión de minuto para permitir dos
-corridas válidas dentro de la misma hora (por ejemplo 07:00 y 07:30).
+La clave de ejecución del ciclo tiene precisión de minuto para permitir cuatro
+corridas válidas dentro de la misma hora (por ejemplo 07:00, 07:15, 07:30 y
+07:45).

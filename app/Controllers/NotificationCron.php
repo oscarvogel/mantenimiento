@@ -186,6 +186,7 @@ final class NotificationCron extends BaseController
     private function technicalSummary(array $result): array
     {
         $overdue = is_array($result['overdue'] ?? null) ? $result['overdue'] : [];
+        $telemetry = is_array($result['telemetry'] ?? null) ? $result['telemetry'] : [];
         $collected = is_array($result['collected'] ?? null) ? $result['collected'] : [];
         $dispatched = is_array($result['dispatched'] ?? null) ? $result['dispatched'] : [];
 
@@ -196,6 +197,10 @@ final class NotificationCron extends BaseController
                 'companies' => (int) ($overdue['companies'] ?? 0),
                 'evaluated' => (int) ($overdue['evaluated'] ?? 0),
                 'overdue' => (int) ($overdue['overdue'] ?? 0),
+            ],
+            'telemetry' => [
+                'companies' => (int) ($telemetry['companies'] ?? 0),
+                'integration_failures' => (int) ($telemetry['integration_failures'] ?? 0),
             ],
             'collected' => [
                 'events' => (int) ($collected['events'] ?? 0),

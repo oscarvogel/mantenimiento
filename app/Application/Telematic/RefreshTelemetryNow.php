@@ -20,8 +20,8 @@ use DomainException;
  * Existe porque el proveedor no se puede consultar solo: los límites de
  * Wialon son por IP, no por token, y 10 intentos fallidos por minuto
  * bloquean la IP completa. Un botón con enfriamiento hace que la consulta sea
- * siempre deliberada, y sirve igual en staging y en producción, donde no hay
- * cron ni CLI.
+ * siempre deliberada y también puede correr como tarea programada dentro del
+ * ciclo protegido del cron en producción.
  *
  * Es de sólo lectura contra el proveedor y no toca lecturas, equipos ni
  * planes: sólo refresca la última instantánea conocida y publica alertas.

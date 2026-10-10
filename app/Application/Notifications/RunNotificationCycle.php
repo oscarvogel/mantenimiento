@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Notifications;
 
 use App\Application\Notifications\Port\NotificationClock;
+use App\Application\Telematic\RefreshTelemetryNow;
 use App\Application\PreventiveMaintenance\DetectOverduePlansAutomatically;
 
 final readonly class RunNotificationCycle
@@ -16,16 +17,18 @@ final readonly class RunNotificationCycle
         private NotificationClock $clock,
         private ?ScheduleManagementReports $managementReports = null,
         private ?NotifyAdminsMissingDriverPhones $missingDriverPhones = null,
+        /** @var list<RefreshTelemetryNow> */
+        private array $telemetryRefreshes = [],
     ) {
     }
 
-    /** @return array{execution_key:string,overdue:mixed,collected:array{events:int,created:int,duplicates:int},dispatched:array<string,int>} */
+    /** @return array{execution_key:string,overdue:mixed,telemetry:array{companies:int,integration_failures:int},collected:array{events:int,created:int,duplicates:int},dispatched:array<string,int>} */
     public function execute(?string $executionKey = null, int $lockTtl = 900, int $dispatchLimit = 250): array
     {
         $key = trim((string) $executionKey);
         if ($key === '') {
-            // El cron productivo puede correr más de una vez por hora (por ejemplo,
-            // cada 30 minutos). La clave por minuto evita que una segunda ejecución
+            // El cron productivo puede correr varias veces por hora (por ejemplo,
+            // cada 15 minutos). La clave por minuto evita que una segunda ejecución
             // válida dentro de la misma hora quede marcada como ya completada.
             $key = $this->clock->now()->format('Y-m-d-H-i');
         }
@@ -40,6 +43,26 @@ final readonly class RunNotificationCycle
         $overdue = $this->detectOverdue->execute();
         log_message('notice', 'Etapa vencimientos completada en {seconds}s.', [
             'seconds' => number_format(microtime(true) - $overdueStartedAt, 3, '.', ''),
+        ]);
+
+        $telemetryStartedAt = microtime(true);
+        $telemetrySummary = ['companies' => 0, 'integration_failures' => 0];
+        foreach ($this->telemetryRefreshes as $refresh) {
+            $telemetrySummary['companies']++;
+            try {
+                $result = $refresh->execute();
+                $telemetrySummary['integration_failures'] += $result->fallos();
+            } catch (\Throwable $exception) {
+                $telemetrySummary['integration_failures']++;
+                log_message('error', 'Falló la actualización programada de telemetría ({type}).', [
+                    'type' => $exception::class,
+                ]);
+            }
+        }
+        log_message('notice', 'Etapa telemetría completada en {seconds}s. empresas={companies} fallos_integracion={failures}', [
+            'seconds' => number_format(microtime(true) - $telemetryStartedAt, 3, '.', ''),
+            'companies' => $telemetrySummary['companies'],
+            'failures' => $telemetrySummary['integration_failures'],
         ]);
 
         $collectStartedAt = microtime(true);
@@ -74,6 +97,7 @@ final readonly class RunNotificationCycle
         return [
             'execution_key' => $key,
             'overdue' => $overdue,
+            'telemetry' => $telemetrySummary,
             'collected' => $collected,
             'missing_driver_phones' => $missingDriverPhones,
             'management_reports' => $managementReports,

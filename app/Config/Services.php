@@ -99,7 +99,6 @@ use App\Infrastructure\Notifications\CodeIgniterNotificationRepository;
 use App\Infrastructure\Notifications\CodeIgniterDriverPhoneAuditReadModel;
 use App\Infrastructure\Notifications\CodeIgniterNotificationUnitOfWork;
 use App\Infrastructure\Notifications\CodeIgniterOperationalNotificationEventSource;
-use App\Infrastructure\Notifications\TelematicOperationalNotificationEventSource;
 use App\Infrastructure\Telematic\WialonRemoteApiGateway;
 use App\Application\Telematic\DiagnoseSilentUnits;
 use App\Application\Telematic\RecordTelemetrySnapshots;
@@ -321,6 +320,7 @@ class Services extends BaseService
             static::notificationClock(),
             static::managementReports(false),
             static::notifyAdminsMissingDriverPhones(false),
+            static::telematicRefreshesForAllCompanies(),
         );
     }
 
@@ -648,24 +648,14 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
             ),
         ];
 
-        foreach (static::telematicDiagnosticsForAllCompanies() as $diagnostico) {
-            $sources[] = new TelematicOperationalNotificationEventSource($diagnostico);
-        }
-
         return new CollectOperationalNotifications(
             new CompositeOperationalNotificationEventSource($sources),
             static::publishNotifiableEvent(false),
         );
     }
 
-    /**
-     * El ciclo de notificaciones es global, así que la telemetría también lo
-     * es: una fuente por empresa con integración activa. Cada diagnóstico
-     * sigue acotado a su empresa; lo que se compone es la lista.
-     *
-     * @return list<DiagnoseSilentUnits>
-     */
-    private static function telematicDiagnosticsForAllCompanies(): array
+    /** @return list<\App\Application\Telematic\RefreshTelemetryNow> */
+    private static function telematicRefreshesForAllCompanies(): array
     {
         $db = db_connect();
 
@@ -680,12 +670,12 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
             ->get()
             ->getResultArray();
 
-        $diagnosticos = [];
+        $refreshes = [];
         foreach ($empresas as $fila) {
-            $diagnosticos[] = static::telematicAlertDiagnostics((int) $fila['empresa_id'], false);
+            $refreshes[] = static::telemetryRefresh((int) $fila['empresa_id'], false);
         }
 
-        return $diagnosticos;
+        return $refreshes;
     }
 
     public static function proactiveAssistantBriefing(bool $getShared = true): \App\Application\Chatbot\GetProactiveAssistantBriefing
