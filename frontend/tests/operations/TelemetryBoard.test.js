@@ -58,7 +58,7 @@ describe('TelemetryBoard', () => {
     expect(wrapper.find('[aria-label="Tanque 2: 115 litros, 50% de capacidad de referencia"]').exists()).toBe(true)
   })
 
-  it('ofrece configurar el proveedor a quien puede editar equipos aunque aún no haya señales', () => {
+  it('no expone la configuración de empresa desde la ficha del equipo', () => {
     const wrapper = mount(TelemetryBoard, {
       props: {
         telemetry: {
@@ -72,7 +72,7 @@ describe('TelemetryBoard', () => {
     })
     wrappers.push(wrapper)
 
-    expect(wrapper.get('a[href="/mantenimiento/telemetria/integraciones"]').text()).toContain('Configurar proveedor')
+    expect(wrapper.find('a[href="/mantenimiento/telemetria/integraciones"]').exists()).toBe(false)
     expect(wrapper.text()).toContain('Todavía no hay una fuente vinculada')
   })
 

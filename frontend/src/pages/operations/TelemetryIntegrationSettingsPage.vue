@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import PageHeading from './components/PageHeading.vue'
-import { fieldClass, primaryButton, secondaryButton } from './helpers.js'
+import { fieldClass, primaryButton } from './helpers.js'
 
 const props = defineProps({ data: { type: Object, required: true } })
 const integrations = computed(() => props.data.integrations ?? [])
@@ -10,10 +10,9 @@ const integrations = computed(() => props.data.integrations ?? [])
 <template>
   <div class="space-y-6">
     <PageHeading
-      eyebrow="Telemetría"
-      title="Conectar un proveedor"
-      description="Elegí el proveedor y pegá su token. La conexión queda guardada para tu empresa y el sistema asocia los equipos que coinciden por patente."
-      :back="{ label: 'Volver a equipos', href: data.actions.equipmentIndex }"
+      eyebrow="Administración · Integraciones"
+      title="Telemetría de la empresa"
+      description="Conectá el proveedor de telemetría de tu empresa. La conexión se guarda aquí y el sistema asocia los equipos que coinciden por patente."
     />
 
     <section class="rounded-2xl border border-border bg-surface-raised p-5 shadow-card sm:p-6">
@@ -45,7 +44,6 @@ const integrations = computed(() => props.data.integrations ?? [])
 
         <div class="flex flex-wrap gap-3">
           <button type="submit" :class="primaryButton">Guardar y conectar</button>
-          <a :href="data.actions.equipmentIndex" :class="secondaryButton">Cancelar</a>
         </div>
       </form>
     </section>

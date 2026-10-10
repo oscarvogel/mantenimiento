@@ -98,7 +98,6 @@ final class EquipmentManagement extends BaseController
                     'edit' => $actor->hasPermission('equipos.editar'),
                     'correctReadings' => $actor->hasPermission('lecturas.corregir'),
                     'refreshTelemetry' => $actor->hasPermission('lecturas.cargar'),
-                    'manageTelemetry' => $actor->hasPermission('equipos.editar'),
                 ],
                 [
                     'readings' => $readingPerPage,

@@ -9,7 +9,7 @@ const render = () => {
     props: {
       data: {
         csrf: { name: 'csrf', hash: 'hash' },
-        actions: { save: '/mantenimiento/telemetria/integraciones', equipmentIndex: '/mantenimiento/equipos' },
+        actions: { save: '/administracion/integraciones/telemetria' },
         integrations: [
           { provider: 'wialon', name: 'Wialon TSA', active: true, linkedEquipmentCount: 6, lastSuccess: null },
           { provider: 'wialon', name: 'Wialon otra cuenta', active: true, linkedEquipmentCount: 2, lastSuccess: null },

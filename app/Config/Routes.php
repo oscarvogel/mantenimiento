@@ -87,6 +87,8 @@ $routes->group('superadmin', ['filter' => 'superadmin'], static function ($route
 });
 
 $routes->group('administracion', ['filter' => ['auth']], static function ($routes): void {
+    $routes->get('integraciones/telemetria', 'Telemetria::integraciones', ['filter' => 'permission:equipos.editar']);
+    $routes->post('integraciones/telemetria', 'Telemetria::guardarIntegracion', ['filter' => 'permission:equipos.editar']);
     $routes->get('sucursales', 'TenantAdmin::branches', ['filter' => 'permission:sucursales.ver']);
     $routes->post('sucursales', 'TenantAdmin::createBranch', ['filter' => 'permission:sucursales.editar']);
     $routes->post('sucursales/(:num)', 'TenantAdmin::updateBranch/$1', ['filter' => 'permission:sucursales.editar']);
@@ -98,7 +100,9 @@ $routes->group('administracion', ['filter' => ['auth']], static function ($route
 });
 
 $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes): void {
-    $routes->get('telemetria/integraciones', 'Telemetria::integraciones', ['filter' => 'permission:equipos.editar']);
+    $routes->get('telemetria/integraciones', static function () {
+        return redirect()->to(base_url('administracion/integraciones/telemetria'));
+    }, ['filter' => 'permission:equipos.editar']);
     $routes->post('telemetria/integraciones', 'Telemetria::guardarIntegracion', ['filter' => 'permission:equipos.editar']);
     $routes->get('', 'MaintenanceCircuit::index', ['filter' => 'permission:equipos.ver']);
     $routes->get('equipos', 'AssetManagement::index', ['filter' => 'permission:equipos.ver']);

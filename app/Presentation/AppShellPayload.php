@@ -78,6 +78,9 @@ final readonly class AppShellPayload
             if ($actor->hasPermission('sucursales.ver')) {
                 $navigation[] = $this->item('branches', 'Sucursales', 'administracion/sucursales', 'branches', $active);
             }
+            if ($actor->hasPermission('equipos.editar')) {
+                $navigation[] = $this->item('integrations', 'Integraciones', 'administracion/integraciones/telemetria', 'integrations', $active);
+            }
             if ($actor->hasPermission('usuarios.ver')) {
                 $navigation[] = $this->item('users', 'Usuarios', 'administracion/usuarios', 'users', $active);
             }

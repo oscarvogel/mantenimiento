@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Application\Identity\ActorContext;
 use App\Application\Telematic\RefreshTelemetryNow;
 use App\Infrastructure\Identity\SessionActorContext;
 use CodeIgniter\HTTP\RedirectResponse;
@@ -44,7 +45,7 @@ final class Telemetria extends BaseController
                 ->get()
                 ->getResultArray();
 
-            return $this->renderApp($actor, 'equipment', 'telemetry-integrations', 'Conectar telemetría', [
+            return $this->renderApp($actor, 'integrations', 'telemetry-integrations', 'Integraciones de telemetría', [
                 'integrations' => array_map(static fn (array $row): array => [
                     'provider' => (string) $row['proveedor'],
                     'name' => (string) $row['nombre'],
@@ -53,8 +54,7 @@ final class Telemetria extends BaseController
                     'linkedEquipmentCount' => (int) $row['equipos_vinculados'],
                 ], $integrations),
                 'actions' => [
-                    'save' => base_url('mantenimiento/telemetria/integraciones'),
-                    'equipmentIndex' => base_url('mantenimiento/equipos'),
+                    'save' => base_url('administracion/integraciones/telemetria'),
                 ],
             ]);
         } catch (Throwable $exception) {
@@ -70,7 +70,7 @@ final class Telemetria extends BaseController
 
     public function guardarIntegracion(): RedirectResponse
     {
-        $destination = base_url('mantenimiento/telemetria/integraciones');
+        $destination = base_url('administracion/integraciones/telemetria');
         try {
             $actor = $this->actor();
             $companyId = $actor->companyId();
@@ -156,5 +156,15 @@ final class Telemetria extends BaseController
         }
 
         return redirect()->to(base_url('mantenimiento/equipos/' . $equipmentId . '?tab=telemetria'));
+    }
+
+    private function actor(): ActorContext
+    {
+        $actor = (new SessionActorContext())->current();
+        if ($actor === null) {
+            throw new DomainException('No existe un contexto autenticado válido.');
+        }
+
+        return $actor;
     }
 }
