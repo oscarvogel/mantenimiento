@@ -41,7 +41,7 @@ final class CodeIgniterActorContextProvider
         $roles       = $users->roles((int) $user['id']);
         $roleNames   = array_values(array_map(static fn (array $role): string => $role['nombre'], $roles));
         $permissions = $users->permisos((int) $user['id']);
-        $branches    = $users->sucursales((int) $user['id'], in_array('Administrador', $roleNames, true));
+        $branches    = $users->sucursales((int) $user['id'], \App\Domain\Identity\NombreRol::esAdministrador($roleNames));
         $branchIds   = array_values(array_map(static fn (array $branch): int => (int) $branch['id'], $branches));
 
         try {
@@ -49,7 +49,7 @@ final class CodeIgniterActorContextProvider
                 (int) $user['id'],
                 $companyId,
                 false,
-                in_array('Administrador', $roleNames, true),
+                \App\Domain\Identity\NombreRol::esAdministrador($roleNames),
                 $roleNames,
                 $permissions,
                 $branchIds,
