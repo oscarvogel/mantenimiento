@@ -614,6 +614,18 @@ class Services extends BaseService
         );
     }
 
+    /**
+ * Lectura de la última instantánea de un equipo, para la ficha.
+ */
+public static function telemetrySnapshotReader(bool $getShared = true): \App\Application\Telematic\Port\TelemetrySnapshotReader
+    {
+        if ($getShared) {
+            return static::getSharedInstance('telemetrySnapshotReader');
+        }
+
+        return new \App\Infrastructure\Telematic\CodeIgniterTelemetrySnapshotReader(db_connect());
+    }
+
     public static function operationalNotificationCollector(bool $getShared = true): CollectOperationalNotifications
     {
         if ($getShared) {

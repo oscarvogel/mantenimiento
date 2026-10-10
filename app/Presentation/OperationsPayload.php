@@ -261,8 +261,66 @@ final class OperationsPayload
         ];
     }
 
+    /**
+     * Bloque de telemetría de la ficha.
+     *
+     * La antigüedad se calcula acá y no en el cliente: el navegador puede
+     * tener la hora mal y un "última señal" con la hora de reloj del usuario
+     * miente. Además se separa el kilometraje propio del proveedor, porque
+     * son dos fuentes distintas y el odómetro legal sigue siendo el que carga
+     * el chofer.
+     *
+     * @param list<array<string,mixed>>|null $telemetry
+     * @param array<string,mixed> $equipment
+     *
+     * @return array<string,mixed>
+     */
+    private function telemetry(?array $telemetry, array $equipment): array
+    {
+        $kmPropio = $equipment['km_actual'] === null ? null : (int) $equipment['km_actual'];
+        $fuentes = [];
+
+        foreach ($telemetry ?? [] as $fila) {
+            $observada = $fila['observedAt'] ?? null;
+            $minutos = null;
+            if (is_string($observada) && $observada !== '') {
+                $minutos = (int) floor((time() - strtotime($observada)) / 60);
+            }
+
+            $kmProveedor = $fila['kilometers'] ?? null;
+            $diferencia = ($kmPropio !== null && $kmProveedor !== null) ? $kmProveedor - $kmPropio : null;
+
+            $fuentes[] = [
+                'integrationId' => (int) $fila['integrationId'],
+                'integrationName' => (string) $fila['integrationName'],
+                'provider' => (string) $fila['provider'],
+                'role' => (string) $fila['role'],
+                'stale' => (bool) $fila['stale'],
+                'observedAt' => $observada,
+                'ageMinutes' => $minutos,
+                'position' => $fila['position'],
+                'kilometers' => $kmProveedor,
+                'kilometersDifference' => $diferencia,
+                'hoursTenths' => $fila['hoursTenths'],
+                'hours' => $fila['hoursTenths'] === null ? null : round($fila['hoursTenths'] / 10, 1),
+                'engineOn' => $fila['engineOn'],
+                'idling' => $fila['idling'],
+                'voltage' => $fila['voltage'],
+                'fuelLiters' => $fila['fuelLiters'],
+                'extraSensors' => $fila['extraSensors'],
+            ];
+        }
+
+        return [
+            'available' => $fuentes !== [],
+            'equipmentKm' => $kmPropio,
+            'equipmentHours' => $equipment['horas_actuales'] ?? null,
+            'sources' => $fuentes,
+        ];
+    }
+
     /** @param array<string,mixed> $details @param array<string,mixed> $catalogs @param list<array<string,mixed>> $candidates */
-    public function equipmentDetails(array $details, ?ReadingHistoryPage $readings, EquipmentAttachmentPage $attachments, array $catalogs, array $candidates, array $can, array $pageSizes = [], ?PrimaryEquipmentPhoto $primaryPhoto = null): array
+    public function equipmentDetails(array $details, ?ReadingHistoryPage $readings, EquipmentAttachmentPage $attachments, array $catalogs, array $candidates, array $can, array $pageSizes = [], ?PrimaryEquipmentPhoto $primaryPhoto = null, ?array $telemetry = null): array
     {
         $equipment = $details['equipment'];
         $equipmentId = (int) $equipment['id'];
@@ -309,6 +367,7 @@ final class OperationsPayload
                 'thumbnailUrl' => $base . '/foto-principal?miniatura=1',
                 'hasThumbnail' => $primaryPhoto->thumbnailPath !== null,
             ],
+            'telemetry' => $this->telemetry($telemetry, $equipment),
             'catalogs' => [
                 'types' => array_map(fn (array $row): array => [
                     'id' => (int) $row['id'], 'name' => $row['nombre'],
