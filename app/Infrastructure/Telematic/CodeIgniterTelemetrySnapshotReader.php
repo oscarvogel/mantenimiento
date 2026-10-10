@@ -32,12 +32,19 @@ final class CodeIgniterTelemetrySnapshotReader implements TelemetrySnapshotReade
             return [];
         }
 
+        // `rol` vive en equipo_telemetria, no en la instantánea: se trae con
+        // el join en vez de inventar una columna que no existe.
         $rows = $this->db->table('telematia_ultima_lectura t')
-            ->select('t.*, i.proveedor proveedor_real, i.nombre integracion_nombre')
+            ->select('t.*, i.proveedor proveedor_real, i.nombre integracion_nombre, et.rol rol_vinculo')
             ->join('integraciones_telemetria i', 'i.id = t.integracion_id AND i.empresa_id = t.empresa_id', 'inner')
+            ->join(
+                'equipo_telemetria et',
+                'et.integracion_id = t.integracion_id AND et.equipo_id = t.equipo_id AND et.unidad_externa = t.unidad_externa',
+                'inner',
+            )
             ->where('t.empresa_id', $companyId)
             ->where('t.equipo_id', $equipmentId)
-            ->orderBy('t.rol', 'ASC')
+            ->orderBy('et.rol', 'ASC')
             ->orderBy('t.id', 'ASC')
             ->get()
             ->getResultArray();
@@ -61,7 +68,7 @@ final class CodeIgniterTelemetrySnapshotReader implements TelemetrySnapshotReade
             'integrationName' => (string) ($row['integracion_nombre'] ?? ''),
             'provider' => (string) $row['proveedor'],
             'externalUnitId' => (string) $row['unidad_externa'],
-            'role' => (string) ($row['rol'] ?? 'SECUNDARIA'),
+            'role' => (string) ($row['rol_vinculo'] ?? 'SECUNDARIA'),
             'stale' => (int) ($row['ausente'] ?? 0) === 1,
             'observedAt' => $row['observada_en'],
             'recordedAt' => $row['registrada_en'],
