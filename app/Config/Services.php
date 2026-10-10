@@ -102,7 +102,9 @@ use App\Infrastructure\Notifications\CodeIgniterOperationalNotificationEventSour
 use App\Infrastructure\Telematic\WialonRemoteApiGateway;
 use App\Application\Telematic\DiagnoseSilentUnits;
 use App\Application\Telematic\ConfigureTelemetryIntegration;
+use App\Application\Telematic\ManageTelemetryEquipmentLinks;
 use App\Infrastructure\Telematic\CodeIgniterTelemetryIntegrationConfigurator;
+use App\Infrastructure\Telematic\CodeIgniterTelemetryEquipmentUnitLinkManager;
 use App\Application\Telematic\RecordTelemetrySnapshots;
 use App\Application\Telematic\Port\FleetTelemetryGateway;
 use App\Application\Telematic\Port\FleetTelemetryGatewayRegistry;
@@ -627,6 +629,15 @@ class Services extends BaseService
         }
 
         return new ConfigureTelemetryIntegration(new CodeIgniterTelemetryIntegrationConfigurator(db_connect()));
+    }
+
+    public static function manageTelemetryEquipmentLinks(bool $getShared = true): ManageTelemetryEquipmentLinks
+    {
+        if ($getShared) {
+            return static::getSharedInstance('manageTelemetryEquipmentLinks');
+        }
+
+        return new ManageTelemetryEquipmentLinks(new CodeIgniterTelemetryEquipmentUnitLinkManager(db_connect()));
     }
 
     /**

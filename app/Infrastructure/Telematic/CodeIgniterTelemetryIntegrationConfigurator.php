@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Telematic;
 
 use App\Application\Telematic\ConfigureTelemetryIntegrationResult;
+use App\Application\Telematic\TelemetryUnitLinkRetention;
 use App\Application\Telematic\Port\TelemetryIntegrationConfigurator;
 use CodeIgniter\Database\BaseConnection;
 use Config\Database;
@@ -16,15 +17,17 @@ final class CodeIgniterTelemetryIntegrationConfigurator implements TelemetryInte
     private const WIALON_ENDPOINT = 'https://hst-api.wialon.com/wialon/ajax.html';
 
     private readonly BaseConnection $db;
+    private readonly WialonUnitCatalogClient $wialon;
 
-    public function __construct(?BaseConnection $db = null)
+    public function __construct(?BaseConnection $db = null, ?WialonUnitCatalogClient $wialon = null)
     {
         $this->db = $db ?? Database::connect();
+        $this->wialon = $wialon ?? new WialonUnitCatalogClient();
     }
 
     public function configure(int $companyId, int $userId, string $provider, string $name, string $token): ConfigureTelemetryIntegrationResult
     {
-        $units = $this->validateAndListUnits($token);
+        $units = $this->wialon->listUnits(self::WIALON_ENDPOINT, $token);
         $equipment = $this->db->table('equipos')
             ->select('id, codigo, patente')
             ->where('empresa_id', $companyId)
@@ -60,16 +63,46 @@ final class CodeIgniterTelemetryIntegrationConfigurator implements TelemetryInte
                 'updated_by' => $userId,
             ];
 
+            $currentLinks = $existing === null ? [] : $this->db->table('equipo_telemetria')
+                ->select('id, equipo_id, unidad_externa, activo')
+                ->where('empresa_id', $companyId)
+                ->where('integracion_id', (int) $existing['id'])
+                ->get()
+                ->getResultArray();
+            $availableUnitIds = array_fill_keys(array_column($units, 'id'), true);
+            $obsoleteUnitIds = TelemetryUnitLinkRetention::obsoleteUnitIds($units, $currentLinks);
+            $equipmentCodes = [];
+            foreach ($equipment as $row) {
+                $equipmentCodes[(int) $row['id']] = (string) $row['codigo'];
+            }
+            $alreadyLinkedEquipmentCodes = [];
+            foreach ($currentLinks as $currentLink) {
+                $equipmentId = (int) $currentLink['equipo_id'];
+                if ((int) $currentLink['activo'] === 1
+                    && isset($availableUnitIds[(string) $currentLink['unidad_externa']])
+                    && isset($equipmentCodes[$equipmentId])) {
+                    $alreadyLinkedEquipmentCodes[] = $equipmentCodes[$equipmentId];
+                }
+            }
+            $unmatched = array_values(array_filter(
+                $unmatched,
+                static fn (string $code): bool => ! in_array($code, $alreadyLinkedEquipmentCodes, true),
+            ));
+
             if ($existing !== null) {
                 $integrationId = (int) $existing['id'];
                 $this->db->table('integraciones_telemetria')
                     ->where('id', $integrationId)
                     ->where('empresa_id', $companyId)
                     ->update($credentials);
-                $this->db->table('equipo_telemetria')
-                    ->where('empresa_id', $companyId)
-                    ->where('integracion_id', $integrationId)
-                    ->update(['activo' => 0]);
+                if ($obsoleteUnitIds !== []) {
+                    $this->db->table('equipo_telemetria')
+                        ->where('empresa_id', $companyId)
+                        ->where('integracion_id', $integrationId)
+                        ->whereIn('unidad_externa', $obsoleteUnitIds)
+                        ->where('activo', 1)
+                        ->update(['activo' => 0]);
+                }
             } else {
                 $this->db->table('integraciones_telemetria')->insert($credentials + [
                     'empresa_id' => $companyId,
@@ -83,13 +116,19 @@ final class CodeIgniterTelemetryIntegrationConfigurator implements TelemetryInte
 
             $linked = 0;
             foreach ($matches as $match) {
-                $link = $this->db->table('equipo_telemetria')
-                    ->select('id')
-                    ->where('empresa_id', $companyId)
-                    ->where('integracion_id', $integrationId)
-                    ->where('equipo_id', $match['equipmentId'])
-                    ->get()
-                    ->getRowArray();
+                $link = null;
+                foreach ($currentLinks as $currentLink) {
+                    if ((int) $currentLink['equipo_id'] === $match['equipmentId']) {
+                        $link = $currentLink;
+                        break;
+                    }
+                }
+
+                if ($link !== null && (int) $link['activo'] === 1 && isset($availableUnitIds[(string) $link['unidad_externa']])) {
+                    // La asociación elegida por una persona tiene prioridad sobre una coincidencia automática.
+                    $linked++;
+                    continue;
+                }
 
                 if ($link !== null) {
                     $this->db->table('equipo_telemetria')->where('id', (int) $link['id'])->update([
@@ -139,93 +178,6 @@ final class CodeIgniterTelemetryIntegrationConfigurator implements TelemetryInte
             }
             throw new DomainException('No se pudo guardar la integración de telemetría.');
         }
-    }
-
-    /** @return list<array{id:string,name:string}> */
-    private function validateAndListUnits(string $token): array
-    {
-        $session = null;
-        try {
-            $login = $this->call('token/login', ['token' => $token, 'fl' => 1]);
-            $session = $login['eid'] ?? null;
-            if (! is_string($session) || $session === '') {
-                throw new DomainException('Wialon no aceptó el token. Revisá que esté vigente y tenga acceso a las unidades.');
-            }
-
-            $result = $this->call('core/search_items', [
-                'spec' => [
-                    'itemsType' => 'avl_unit',
-                    'propName' => 'sys_name',
-                    'propValueMask' => '*',
-                    'sortType' => 'sys_name',
-                ],
-                'force' => 1,
-                'flags' => 65535,
-                'from' => 0,
-                'to' => 0,
-            ], $session);
-
-            $units = [];
-            foreach (is_array($result['items'] ?? null) ? $result['items'] : [] as $item) {
-                $id = $item['id'] ?? null;
-                $name = trim((string) ($item['nm'] ?? ''));
-                if ($id !== null && $name !== '') {
-                    $units[] = ['id' => (string) $id, 'name' => $name];
-                }
-            }
-
-            if ($units === []) {
-                throw new DomainException('El token conectó, pero Wialon no devolvió unidades para asociar.');
-            }
-
-            return $units;
-        } catch (DomainException $exception) {
-            throw $exception;
-        } catch (Throwable) {
-            throw new DomainException('No se pudo conectar con Wialon. Revisá el token e intentá de nuevo.');
-        } finally {
-            if (is_string($session) && $session !== '') {
-                try {
-                    $this->call('core/logout', new \stdClass(), $session);
-                } catch (Throwable) {
-                }
-            }
-        }
-    }
-
-    /** @param array<string,mixed>|object $params
-     *  @return array<string,mixed>
-     */
-    private function call(string $service, array|object $params, ?string $session = null): array
-    {
-        $payload = ['svc' => $service, 'params' => json_encode($params, JSON_THROW_ON_ERROR)];
-        if ($session !== null) {
-            $payload['sid'] = $session;
-        }
-
-        $curl = curl_init(self::WIALON_ENDPOINT);
-        if ($curl === false) {
-            throw new DomainException('No se pudo iniciar la conexión con Wialon.');
-        }
-        curl_setopt_array($curl, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => http_build_query($payload),
-            CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded'],
-            CURLOPT_TIMEOUT => 20,
-            CURLOPT_CONNECTTIMEOUT => 10,
-            CURLOPT_FOLLOWLOCATION => false,
-        ]);
-        $body = curl_exec($curl);
-        $status = (int) curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
-        curl_close($curl);
-
-        $decoded = is_string($body) ? json_decode($body, true) : null;
-        if ($status < 200 || $status >= 300 || ! is_array($decoded) || (isset($decoded['error']) && (int) $decoded['error'] !== 0)) {
-            throw new DomainException('Wialon rechazó la conexión. Revisá el token y sus permisos.');
-        }
-
-        return $decoded;
     }
 
     /** @param list<array<string,mixed>> $equipment

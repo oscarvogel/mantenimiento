@@ -8,6 +8,7 @@ use App\Application\Identity\ActorContext;
 use App\Application\Telematic\RefreshTelemetryNow;
 use App\Infrastructure\Identity\SessionActorContext;
 use CodeIgniter\HTTP\RedirectResponse;
+use CodeIgniter\HTTP\ResponseInterface;
 use DomainException;
 use Throwable;
 
@@ -47,11 +48,14 @@ final class Telemetria extends BaseController
 
             return $this->renderApp($actor, 'integrations', 'telemetry-integrations', 'Integraciones de telemetría', [
                 'integrations' => array_map(static fn (array $row): array => [
+                    'id' => (int) $row['id'],
                     'provider' => (string) $row['proveedor'],
                     'name' => (string) $row['nombre'],
                     'active' => (bool) $row['activo'],
                     'lastSuccess' => $row['ultimo_ok_en'],
                     'linkedEquipmentCount' => (int) $row['equipos_vinculados'],
+                    'unitsUrl' => base_url('administracion/integraciones/telemetria/' . (int) $row['id'] . '/unidades'),
+                    'saveLinksUrl' => base_url('administracion/integraciones/telemetria/' . (int) $row['id'] . '/vinculos'),
                 ], $integrations),
                 'actions' => [
                     'save' => base_url('administracion/integraciones/telemetria'),
@@ -86,12 +90,9 @@ final class Telemetria extends BaseController
                 (string) $this->request->getPost('token'),
             );
 
-            $message = sprintf('Wialon conectado. Se vincularon %d equipos.', $result->linkedEquipmentCount);
+            $message = sprintf('Wialon conectado. Se vincularon automáticamente %d equipos.', $result->linkedEquipmentCount);
             if ($result->unmatchedEquipment !== []) {
-                $message .= ' Sin coincidencia: ' . implode(', ', array_slice($result->unmatchedEquipment, 0, 12));
-                if (count($result->unmatchedEquipment) > 12) {
-                    $message .= ' y ' . (count($result->unmatchedEquipment) - 12) . ' más';
-                }
+                $message .= sprintf(' Quedan %d equipos por vincular desde la cuenta conectada.', count($result->unmatchedEquipment));
                 return redirect()->to($destination)->with('warning', $message);
             }
 
@@ -105,6 +106,67 @@ final class Telemetria extends BaseController
             return redirect()->to($destination)->with(
                 'error',
                 $exception instanceof DomainException ? $exception->getMessage() : 'No se pudo guardar la integración. Revisá los datos e intentá de nuevo.',
+            );
+        }
+    }
+
+    public function unidades(int $integrationId): ResponseInterface
+    {
+        try {
+            $actor = $this->actor();
+            $companyId = $actor->companyId();
+            if ($companyId === null) {
+                throw new DomainException('No se pudo identificar la empresa de tu sesión.');
+            }
+
+            $snapshot = service('manageTelemetryEquipmentLinks')->snapshot($companyId, $integrationId);
+
+            return $this->response->setJSON($snapshot);
+        } catch (DomainException $exception) {
+            return $this->response->setStatusCode(422)->setJSON(['message' => $exception->getMessage()]);
+        } catch (Throwable $exception) {
+            log_message('error', 'No se pudo cargar el catálogo de unidades de telemetría.');
+
+            return $this->response->setStatusCode(502)->setJSON([
+                'message' => 'No se pudieron consultar las unidades. Revisá la conexión con Wialon e intentá de nuevo.',
+            ]);
+        }
+    }
+
+    public function guardarVinculos(int $integrationId): RedirectResponse
+    {
+        $destination = base_url('administracion/integraciones/telemetria');
+        try {
+            $actor = $this->actor();
+            $companyId = $actor->companyId();
+            if ($companyId === null) {
+                throw new DomainException('No se pudo identificar la empresa de tu sesión.');
+            }
+            $assignments = $this->request->getPost('mappings');
+            if (! is_array($assignments)) {
+                throw new DomainException('Elegí las unidades que querés vincular y volvé a guardar.');
+            }
+
+            $savedCount = service('manageTelemetryEquipmentLinks')->save(
+                $companyId,
+                $actor->userId(),
+                $integrationId,
+                $assignments,
+            );
+
+            $message = $savedCount > 0
+                ? sprintf('Se guardaron %d vínculos de telemetría.', $savedCount)
+                : 'No había vínculos nuevos para guardar.';
+
+            return redirect()->to($destination)->with('success', $message);
+        } catch (Throwable $exception) {
+            if (! $exception instanceof DomainException) {
+                log_message('error', 'No se pudieron guardar los vínculos de telemetría.');
+            }
+
+            return redirect()->to($destination)->with(
+                'error',
+                $exception instanceof DomainException ? $exception->getMessage() : 'No se pudieron guardar los vínculos. Revisá las selecciones e intentá de nuevo.',
             );
         }
     }
