@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { nextTick } from 'vue'
 import TelemetryBoard from '../../src/pages/operations/components/TelemetryBoard.vue'
 
 const wrappers = []
@@ -100,6 +101,52 @@ describe('TelemetryBoard', () => {
 
     expect(wrapper.find('iframe').attributes('src')).toContain('openstreetmap.org/export/embed.html')
     expect(wrapper.find('img').exists()).toBe(false)
+  })
+
+  it('abre el mapa como modal sobre el contenido sin expandir el mapa dentro de la ficha', async () => {
+    const wrapper = render({
+      position: { latitude: -32.5969, longitude: -69.3731, speedKmh: 0, satellites: 28 },
+    })
+
+    await wrapper.get('button[aria-label="Ampliar el mapa"]').trigger('click')
+
+    const dialog = document.body.querySelector('[role="dialog"][aria-modal="true"]')
+    expect(dialog).not.toBeNull()
+    expect(dialog.querySelector('iframe').className).toContain('flex-1')
+    expect(wrapper.find('iframe').classes()).toContain('h-40')
+
+    dialog.querySelector('button[aria-label="Cerrar el mapa"]').click()
+    await nextTick()
+
+    expect(document.body.querySelector('[role="dialog"][aria-modal="true"]')).toBeNull()
+  })
+
+  it('abre un solo modal cuando hay más de una fuente con ubicación', async () => {
+    const wrapper = mount(TelemetryBoard, {
+      props: {
+        telemetry: {
+          canRefresh: false,
+          csrf: null,
+          refreshUrl: '#',
+          equipmentKm: null,
+          sources: [
+            source({ position: { latitude: -32.5, longitude: -69.3, speedKmh: null, satellites: null } }),
+            source({
+              integrationId: 2,
+              provider: 'GPS alternativo',
+              position: { latitude: -31.5, longitude: -68.3, speedKmh: null, satellites: null },
+            }),
+          ],
+        },
+        equipment: { id: 123, code: 'AC532DD' },
+      },
+    })
+    wrappers.push(wrapper)
+
+    await wrapper.findAll('button[aria-label="Ampliar el mapa"]')[0].trigger('click')
+
+    expect(document.body.querySelectorAll('[role="dialog"][aria-modal="true"]')).toHaveLength(1)
+    expect(document.body.querySelector('[role="dialog"] iframe').getAttribute('src')).toContain('-32.5')
   })
 
   it('envía el identificador del equipo con el refresco para volver a su ficha', () => {

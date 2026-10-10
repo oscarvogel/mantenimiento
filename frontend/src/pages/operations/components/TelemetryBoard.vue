@@ -18,7 +18,7 @@ const props = defineProps({
   equipment: { type: Object, required: true },
 })
 
-const mapaAbierto = ref(false)
+const mapaAbierto = ref(null)
 
 // El botón sólo existe con permiso y con token completo. Un control visible
 // que va a rebotar con 403 es peor que un control que no está.
@@ -263,17 +263,12 @@ const mapaEnlaceDe = (fuente) => {
       <div class="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         <!-- MAPA: chico, click para agrandar -->
         <div class="space-y-2">
-          <div v-if="mapaAbierto" class="fixed inset-0 z-40 bg-black/70" @click="mapaAbierto = false" />
-          <div
-            class="relative overflow-hidden rounded-xl border border-border bg-surface"
-            :class="mapaAbierto ? 'fixed inset-4 z-50 shadow-2xl' : ''"
-          >
+          <div class="relative overflow-hidden rounded-xl border border-border bg-surface">
             <iframe
               v-if="posicion(fuente)"
               :src="mapaSrcDe(fuente)"
               :title="`Última ubicación conocida de ${equipment.code}`"
-              class="w-full border-0"
-              :class="mapaAbierto ? 'h-full min-h-[calc(100vh-2rem)]' : 'h-40'"
+              class="h-40 w-full border-0"
               loading="lazy"
               referrerpolicy="no-referrer-when-downgrade"
               allowfullscreen
@@ -291,12 +286,48 @@ const mapaEnlaceDe = (fuente) => {
               v-if="posicion(fuente)"
               type="button"
               class="ui-interactive absolute right-2 top-2 rounded-lg border border-border bg-surface/95 px-3 py-2 text-xs font-semibold text-ink shadow"
-              :aria-label="mapaAbierto ? 'Cerrar el mapa' : 'Ampliar el mapa'"
-              @click="mapaAbierto = !mapaAbierto"
+              aria-label="Ampliar el mapa"
+              @click="mapaAbierto = fuente.integrationId"
             >
-              {{ mapaAbierto ? 'Cerrar mapa' : 'Ampliar mapa' }}
+              Ampliar mapa
             </button>
           </div>
+
+          <Teleport to="body">
+            <div
+              v-if="mapaAbierto === fuente.integrationId && posicion(fuente)"
+              class="fixed inset-0 z-[120] flex items-center justify-center bg-black/75 p-3 sm:p-6"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="telemetry-map-title"
+              @click.self="mapaAbierto = null"
+              @keydown.esc="mapaAbierto = null"
+            >
+              <section class="flex h-full max-h-[min(90vh,900px)] w-full max-w-7xl flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-2xl">
+                <header class="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-5">
+                  <h2 id="telemetry-map-title" class="font-semibold text-ink">
+                    Última ubicación conocida de {{ equipment.code }}
+                  </h2>
+                  <button
+                    type="button"
+                    class="ui-interactive shrink-0 rounded-lg border border-border bg-surface px-3 py-2 text-sm font-semibold text-ink shadow-sm"
+                    aria-label="Cerrar el mapa"
+                    autofocus
+                    @click="mapaAbierto = null"
+                  >
+                    Cerrar mapa
+                  </button>
+                </header>
+                <iframe
+                  :src="mapaSrcDe(fuente)"
+                  :title="`Última ubicación conocida de ${equipment.code}`"
+                  class="min-h-0 w-full flex-1 border-0"
+                  referrerpolicy="no-referrer-when-downgrade"
+                  allowfullscreen
+                />
+              </section>
+            </div>
+          </Teleport>
 
           <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-ink-muted">
             <span v-if="posicion(fuente)">
