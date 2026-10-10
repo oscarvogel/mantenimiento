@@ -14,7 +14,7 @@ const data = {
       equipmentId: 12, code: 'AB499OK', plate: 'AB499OK', branchId: 4, branchName: 'TSA Argentina',
       detailUrl: '/mantenimiento/equipos/12?tab=telemetria',
       sources: [{ provider: 'wialon', integrationName: 'Obersat', role: 'PRINCIPAL', freshness: 'AL_DIA', ageMinutes: 5,
-        observedAt: '2026-10-10 07:58:00', kilometers: 1001268, fuelLiters: 331,
+        observedAt: '2026-10-10 07:58:00', kilometers: 1001268, hours: 4824.4, engineOn: true, idling: false, voltage: 24.5, fuelLiters: 331,
         position: { latitude: -32.5969, longitude: -69.3731, speedKmh: 0, satellites: 28 }, sensorIssues: [] }],
     },
     {
@@ -61,5 +61,39 @@ describe('FleetTelemetryPage', () => {
 
     expect(wrapper.text()).toContain('Todavía no hay equipos con ubicación disponible para mostrar.')
     expect(wrapper.text()).toContain('AC532DD')
+  })
+
+  it('separates delayed provider signals from active sensor anomalies', () => {
+    const issueFreeData = {
+      ...data,
+      units: data.units.map((unit, index) => ({
+        ...unit,
+        sources: [{ ...unit.sources[0], sensorIssues: [], freshness: index === 0 ? 'RECIENTE' : 'SIN_RESPUESTA' }],
+      })),
+    }
+    const wrapper = mount(FleetTelemetryPage, { props: { data: issueFreeData }, global: { stubs: { FleetTelemetryMap: MapStub } } })
+
+    expect(wrapper.text()).toContain('Estado de la señal')
+    expect(wrapper.text()).toContain('1 reciente')
+    expect(wrapper.text()).toContain('1 sin respuesta')
+    expect(wrapper.text()).not.toContain('requieren atención')
+    expect(wrapper.text()).toContain('0 equipos con sensores a revisar')
+    expect(wrapper.text()).toContain('No se detectaron valores de sensores fuera de rango.')
+  })
+
+  it('shows practical indicators in a desktop table and mobile equipment cards', () => {
+    const wrapper = mount(FleetTelemetryPage, { props: { data }, global: { stubs: { FleetTelemetryMap: MapStub } } })
+
+    expect(wrapper.find('[data-test="fleet-desktop-table"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="fleet-desktop-table"]').classes()).toContain('hidden')
+    expect(wrapper.find('[data-test="fleet-mobile-cards"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="fleet-mobile-cards"]').classes()).toContain('lg:hidden')
+    expect(wrapper.text()).toContain('Equipos vinculados')
+    expect(wrapper.text()).toContain('Señal atrasada o ausente')
+    expect(wrapper.text()).toContain('4.824,4 h')
+    expect(wrapper.text()).toContain('24,5 V')
+    expect(wrapper.text()).toContain('Encendido')
+    expect(wrapper.text()).toContain('Sin ralentí')
+    expect(wrapper.text()).toContain('0 km/h')
   })
 })

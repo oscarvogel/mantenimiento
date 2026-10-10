@@ -26,6 +26,15 @@ const freshnessTone = {
 }
 const sourceFor = (unit) => unit.sources?.find((source) => source.role === 'PRINCIPAL') ?? unit.sources?.[0] ?? null
 const sourceStatus = (unit) => sourceFor(unit)?.freshness ?? 'SIN_DATO'
+const hasValidPosition = (source) => {
+  const latitude = Number(source?.position?.latitude)
+  const longitude = Number(source?.position?.longitude)
+  return source?.position?.latitude !== null && source?.position?.latitude !== undefined
+    && source?.position?.longitude !== null && source?.position?.longitude !== undefined
+    && Number.isFinite(latitude) && latitude >= -90 && latitude <= 90
+    && Number.isFinite(longitude) && longitude >= -180 && longitude <= 180
+}
+const unitHasPosition = (unit) => (unit.sources ?? []).some(hasValidPosition)
 const hasIssues = (unit) => (unit.sources ?? []).some((source) => source.sensorIssues?.length)
 const issues = computed(() => (props.data.units ?? []).flatMap((unit) => (unit.sources ?? []).flatMap((source) =>
   (source.sensorIssues ?? []).map((issue) => ({
@@ -39,6 +48,8 @@ const issues = computed(() => (props.data.units ?? []).flatMap((unit) => (unit.s
   })),
 )))
 const issueEquipmentCount = computed(() => new Set(issues.value.map((issue) => issue.equipmentId)).size)
+const units = computed(() => props.data.units ?? [])
+const signalNeedsAttentionCount = computed(() => units.value.filter((unit) => ['DESACTUALIZADO', 'SIN_RESPUESTA', 'SIN_DATO'].includes(sourceStatus(unit))).length)
 const filteredUnits = computed(() => {
   const query = search.value.trim().toLocaleLowerCase('es-AR')
   return (props.data.units ?? []).filter((unit) => {
@@ -49,13 +60,24 @@ const filteredUnits = computed(() => {
     return textMatch && branchMatch && statusMatch && issueMatch
   })
 })
-const locatedUnits = computed(() => filteredUnits.value.filter((unit) =>
-  (unit.sources ?? []).some((source) => source.position?.latitude !== null && source.position?.latitude !== undefined
-    && source.position?.longitude !== null && source.position?.longitude !== undefined
-    && Number.isFinite(Number(source.position.latitude)) && Number.isFinite(Number(source.position.longitude))),
-))
+const locatedUnits = computed(() => filteredUnits.value.filter(unitHasPosition))
 const fleetStatusCount = (value) => (props.data.units ?? []).filter((unit) => sourceStatus(unit) === value).length
+const signalSummary = computed(() => Object.entries(freshnessNames)
+  .map(([state, label]) => ({ state, count: fleetStatusCount(state), label }))
+  .filter((item) => item.count > 0)
+  .map(({ state, count }) => ({
+    state,
+    text: state === 'AL_DIA' ? `${count} al día`
+      : state === 'RECIENTE' ? `${count} ${count === 1 ? 'reciente' : 'recientes'}`
+        : state === 'DESACTUALIZADO' ? `${count} ${count === 1 ? 'atrasado' : 'atrasados'}`
+          : state === 'SIN_RESPUESTA' ? `${count} sin respuesta`
+            : `${count} sin señal`,
+  })))
 const formatNumber = (value) => value === null || value === undefined ? '—' : new Intl.NumberFormat('es-AR', { maximumFractionDigits: 1 }).format(value)
+const valueLabel = (value, unit) => value === null || value === undefined ? 'Sin dato' : `${formatNumber(value)} ${unit}`
+const engineLabel = (source) => source?.engineOn === true ? 'Encendido' : source?.engineOn === false ? 'Apagado' : 'Sin dato'
+const idlingLabel = (source) => source?.idling === true ? 'Activo' : source?.idling === false ? 'Sin ralentí' : 'Sin dato'
+const speedLabel = (source) => valueLabel(source?.position?.speedKmh, 'km/h')
 const observedLabel = (source) => {
   if (!source?.observedAt) return 'Sin señal registrada'
   if (source.ageMinutes === 0) return 'Ahora'
@@ -71,11 +93,20 @@ const observedLabel = (source) => {
         <h1 class="mt-1 text-2xl font-bold tracking-tight text-ink sm:text-3xl">Telemetría de flota</h1>
         <p class="mt-2 text-sm text-ink-muted">Ubicación, señal y lecturas recientes de los equipos vinculados.</p>
       </div>
-      <div class="flex flex-wrap gap-2 text-xs font-semibold">
-        <span class="rounded-full bg-success-subtle px-3 py-1.5 text-success-strong">{{ fleetStatusCount('AL_DIA') }} al día</span>
-        <span class="rounded-full bg-warning-subtle px-3 py-1.5 text-warning-strong">{{ fleetStatusCount('SIN_RESPUESTA') + fleetStatusCount('DESACTUALIZADO') }} requieren atención</span>
+      <div v-if="signalSummary.length" class="grid gap-1.5 text-xs" aria-label="Estado de la señal">
+        <span class="font-semibold text-ink-muted">Estado de la señal</span>
+        <div class="flex flex-wrap gap-2 font-semibold">
+          <span v-for="item in signalSummary" :key="item.state" class="rounded-full px-3 py-1.5" :class="freshnessTone[item.state]">{{ item.text }}</span>
+        </div>
       </div>
     </header>
+
+    <section class="grid grid-cols-2 gap-3 xl:grid-cols-4" aria-label="Indicadores de telemetría">
+      <article class="rounded-xl border border-border bg-surface-raised px-4 py-3 shadow-card"><p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Equipos vinculados</p><p class="mt-1 text-2xl font-bold tabular-nums text-ink">{{ data.units?.length ?? 0 }}</p></article>
+      <article class="rounded-xl border border-border bg-surface-raised px-4 py-3 shadow-card"><p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Con ubicación</p><p class="mt-1 text-2xl font-bold tabular-nums text-ink">{{ (data.units ?? []).filter(unitHasPosition).length }}</p></article>
+      <article class="rounded-xl border border-border bg-surface-raised px-4 py-3 shadow-card"><p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Señal atrasada o ausente</p><p class="mt-1 text-2xl font-bold tabular-nums text-ink">{{ signalNeedsAttentionCount }}</p></article>
+      <article class="rounded-xl border border-border bg-surface-raised px-4 py-3 shadow-card"><p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Equipos con sensor a revisar</p><p class="mt-1 text-2xl font-bold tabular-nums text-ink">{{ issueEquipmentCount }}</p></article>
+    </section>
 
     <section class="grid gap-3 rounded-2xl border border-border bg-surface-raised p-4 shadow-card sm:grid-cols-2 xl:grid-cols-[minmax(14rem,1.6fr)_minmax(12rem,1fr)_minmax(12rem,1fr)_auto] xl:items-end" aria-label="Filtros de flota">
       <label class="grid gap-1.5 text-sm font-semibold text-ink">
@@ -115,20 +146,42 @@ const observedLabel = (source) => {
             <p class="mt-1 text-xs text-ink-muted">{{ issue.integration }}</p>
           </li>
         </ul>
-        <div v-else class="mt-5 rounded-xl border border-dashed border-border-strong px-4 py-6 text-center"><p class="text-sm font-semibold text-ink">No hay alertas activas</p><p class="mt-1 text-xs text-ink-muted">No se detectaron lecturas de sensores fuera de rango.</p></div>
+        <div v-else class="mt-5 rounded-xl border border-dashed border-border-strong px-4 py-6 text-center"><p class="text-sm font-semibold text-ink">Sin anomalías de sensores</p><p class="mt-1 text-xs text-ink-muted">No se detectaron valores de sensores fuera de rango.</p></div>
         <p v-if="issues.length > 8" class="mt-3 text-xs text-ink-muted">Y {{ issues.length - 8 }} alertas más.</p>
       </aside>
     </div>
 
     <section class="overflow-hidden rounded-2xl border border-border bg-surface-raised shadow-card">
       <div class="flex items-end justify-between gap-3 border-b border-border-subtle px-5 py-4"><div><h2 class="text-base font-bold text-ink">Equipos</h2><p class="mt-1 text-sm text-ink-muted">Lectura más reciente por equipo y proveedor principal</p></div><span class="rounded-full bg-surface-muted px-3 py-1 text-xs font-semibold text-ink-muted">{{ filteredUnits.length }}</span></div>
-      <div v-if="filteredUnits.length" class="divide-y divide-border-subtle">
-        <article v-for="unit in filteredUnits" :key="unit.equipmentId" class="grid gap-3 px-5 py-4 sm:grid-cols-[minmax(10rem,1.2fr)_minmax(8rem,1fr)_minmax(8rem,0.8fr)_minmax(7rem,0.7fr)_auto] sm:items-center">
-          <div class="min-w-0"><a :href="unit.detailUrl" class="font-bold text-ink hover:text-primary">{{ unit.plate || unit.code }}</a><p v-if="unit.plate && unit.plate !== unit.code" class="mt-0.5 text-xs text-ink-muted">{{ unit.code }}</p><p class="mt-1 text-xs text-ink-muted">{{ unit.branchName }}</p></div>
-          <div><p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Combustible</p><p class="mt-1 text-sm font-semibold text-ink">{{ sourceFor(unit)?.fuelLiters == null ? 'Sin dato' : `${formatNumber(sourceFor(unit).fuelLiters)} l` }}</p></div>
-          <div><p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Kilometraje</p><p class="mt-1 text-sm font-semibold text-ink">{{ sourceFor(unit)?.kilometers == null ? 'Sin dato' : `${formatNumber(sourceFor(unit).kilometers)} km` }}</p></div>
-          <div><p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Señal</p><p class="mt-1 text-xs text-ink-muted">{{ observedLabel(sourceFor(unit)) }}</p></div>
-          <span class="w-fit rounded-full px-3 py-1 text-xs font-semibold" :class="freshnessTone[sourceStatus(unit)]">{{ freshnessNames[sourceStatus(unit)] }}</span>
+      <div v-if="filteredUnits.length" class="hidden overflow-x-auto lg:block" data-test="fleet-desktop-table">
+        <table class="w-full min-w-[1050px] border-collapse text-left">
+          <thead class="bg-surface-muted text-xs font-semibold uppercase tracking-wide text-ink-muted"><tr><th scope="col" class="px-4 py-3">Equipo</th><th scope="col" class="px-4 py-3">Combustible</th><th scope="col" class="px-4 py-3">Kilometraje</th><th scope="col" class="px-4 py-3">Horómetro</th><th scope="col" class="px-4 py-3">Motor / ralentí</th><th scope="col" class="px-4 py-3">Batería</th><th scope="col" class="px-4 py-3">Velocidad</th><th scope="col" class="px-4 py-3">Señal</th></tr></thead>
+          <tbody class="divide-y divide-border-subtle">
+            <tr v-for="unit in filteredUnits" :key="unit.equipmentId" class="align-middle">
+              <th scope="row" class="min-w-44 px-4 py-3"><a :href="unit.detailUrl" class="font-bold text-ink hover:text-primary">{{ unit.plate || unit.code }}</a><p v-if="unit.plate && unit.plate !== unit.code" class="mt-0.5 text-xs font-normal text-ink-muted">{{ unit.code }}</p><p class="mt-1 text-xs font-normal text-ink-muted">{{ unit.branchName }}</p></th>
+              <td class="whitespace-nowrap px-4 py-3 text-sm font-semibold text-ink">{{ valueLabel(sourceFor(unit)?.fuelLiters, 'l') }}</td>
+              <td class="whitespace-nowrap px-4 py-3 text-sm font-semibold text-ink">{{ valueLabel(sourceFor(unit)?.kilometers, 'km') }}</td>
+              <td class="whitespace-nowrap px-4 py-3 text-sm font-semibold text-ink">{{ valueLabel(sourceFor(unit)?.hours, 'h') }}</td>
+              <td class="whitespace-nowrap px-4 py-3"><p class="text-sm font-semibold text-ink">{{ engineLabel(sourceFor(unit)) }}</p><p class="mt-0.5 text-xs text-ink-muted">Ralentí: {{ idlingLabel(sourceFor(unit)) }}</p></td>
+              <td class="whitespace-nowrap px-4 py-3 text-sm font-semibold text-ink">{{ valueLabel(sourceFor(unit)?.voltage, 'V') }}</td>
+              <td class="whitespace-nowrap px-4 py-3 text-sm font-semibold text-ink">{{ speedLabel(sourceFor(unit)) }}</td>
+              <td class="min-w-36 px-4 py-3"><span class="rounded-full px-2.5 py-1 text-xs font-semibold" :class="freshnessTone[sourceStatus(unit)]">{{ freshnessNames[sourceStatus(unit)] }}</span><p class="mt-1.5 text-xs text-ink-muted">{{ observedLabel(sourceFor(unit)) }}</p></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div v-if="filteredUnits.length" class="divide-y divide-border-subtle lg:hidden" data-test="fleet-mobile-cards">
+        <article v-for="unit in filteredUnits" :key="unit.equipmentId" class="px-4 py-4">
+          <div class="flex items-start justify-between gap-3"><div class="min-w-0"><a :href="unit.detailUrl" class="font-bold text-ink hover:text-primary">{{ unit.plate || unit.code }}</a><p v-if="unit.plate && unit.plate !== unit.code" class="mt-0.5 text-xs text-ink-muted">{{ unit.code }}</p><p class="mt-1 text-xs text-ink-muted">{{ unit.branchName }}</p></div><span class="shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold" :class="freshnessTone[sourceStatus(unit)]">{{ freshnessNames[sourceStatus(unit)] }}</span></div>
+          <div class="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 rounded-lg bg-surface-muted/60 p-3">
+            <div><p class="text-xs text-ink-muted">Combustible</p><p class="mt-0.5 text-sm font-semibold text-ink">{{ valueLabel(sourceFor(unit)?.fuelLiters, 'l') }}</p></div>
+            <div><p class="text-xs text-ink-muted">Kilometraje</p><p class="mt-0.5 text-sm font-semibold text-ink">{{ valueLabel(sourceFor(unit)?.kilometers, 'km') }}</p></div>
+            <div><p class="text-xs text-ink-muted">Motor</p><p class="mt-0.5 text-sm font-semibold text-ink">{{ engineLabel(sourceFor(unit)) }}</p></div>
+            <div><p class="text-xs text-ink-muted">Batería</p><p class="mt-0.5 text-sm font-semibold text-ink">{{ valueLabel(sourceFor(unit)?.voltage, 'V') }}</p></div>
+            <div><p class="text-xs text-ink-muted">Horómetro</p><p class="mt-0.5 text-sm font-semibold text-ink">{{ valueLabel(sourceFor(unit)?.hours, 'h') }}</p></div>
+            <div><p class="text-xs text-ink-muted">Velocidad</p><p class="mt-0.5 text-sm font-semibold text-ink">{{ speedLabel(sourceFor(unit)) }}</p></div>
+          </div>
+          <div class="mt-3 flex flex-wrap justify-between gap-2 text-xs text-ink-muted"><span>Ralentí: {{ idlingLabel(sourceFor(unit)) }}</span><span>{{ observedLabel(sourceFor(unit)) }}</span></div>
         </article>
       </div>
       <p v-else class="px-5 py-8 text-center text-sm text-ink-muted">No hay equipos que coincidan con estos filtros.</p>
