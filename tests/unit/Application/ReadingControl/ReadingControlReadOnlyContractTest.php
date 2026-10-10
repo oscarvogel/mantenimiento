@@ -225,6 +225,6 @@ final class ReadingControlReadOnlyContractTest extends TestCase
         $sidebar = (string) file_get_contents(ROOTPATH . 'frontend/src/components/AppSidebar.vue');
 
         self::assertStringContainsString("'reading-control'", $sidebar);
-        self::assertStringContainsString("const primaryKeys = ['dashboard', 'equipment', 'reading-control'", $sidebar);
+        self::assertStringContainsString("const primaryKeys = ['dashboard', 'equipment', 'fleet-telemetry', 'reading-control'", $sidebar);
     }
 }

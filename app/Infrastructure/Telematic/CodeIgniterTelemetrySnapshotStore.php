@@ -56,6 +56,7 @@ final class CodeIgniterTelemetrySnapshotStore implements TelemetrySnapshotStore
             'voltaje' => $instantanea->voltaje(),
             'combustible_litros' => $instantanea->combustibleLitros(),
             'sensores_adicionales' => $this->adicionales($instantanea->sensoresAdicionales()),
+            'anomalias_sensor' => $this->anomalias($instantanea->anomalias()),
             'ausente' => 0,
             'updated_at' => $snapshot->registeredAt(),
         ];
@@ -119,6 +120,26 @@ final class CodeIgniterTelemetrySnapshotStore implements TelemetrySnapshotStore
                 'valor' => $medida->valor(),
                 'unidad' => $medida->unidad(),
                 'tipo' => $medida->tipoProveedor(),
+            ];
+        }
+
+        return json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+    }
+
+    /** @param list<\App\Domain\Telematic\LecturaImposible> $anomalias */
+    private function anomalias(array $anomalias): ?string
+    {
+        if ($anomalias === []) {
+            return null;
+        }
+
+        $payload = [];
+        foreach ($anomalias as $anomalia) {
+            $payload[] = [
+                'sensor' => $anomalia->concepto(),
+                'valor' => $anomalia->valorLeido(),
+                'motivo' => $anomalia->motivo(),
+                'firma' => $anomalia->firma(),
             ];
         }
 

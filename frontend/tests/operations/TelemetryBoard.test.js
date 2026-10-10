@@ -47,15 +47,14 @@ const render = (sourceOverrides = {}) => {
 afterEach(() => wrappers.splice(0).forEach((wrapper) => wrapper.unmount()))
 
 describe('TelemetryBoard', () => {
-  it('muestra por separado el nivel de cada tanque contra su capacidad de referencia', () => {
+  it('muestra una sola lectura total de combustible y no inventa capacidad ni tanques', () => {
     const wrapper = render()
 
-    expect(wrapper.text()).toContain('440 l')
-    expect(wrapper.text()).toContain('80%')
-    expect(wrapper.text()).toContain('115 l')
-    expect(wrapper.text()).toContain('50%')
-    expect(wrapper.find('[aria-label="Tanque 1: 440 litros, 80% de capacidad de referencia"]').exists()).toBe(true)
-    expect(wrapper.find('[aria-label="Tanque 2: 115 litros, 50% de capacidad de referencia"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('555 l en total')
+    expect(wrapper.text()).not.toContain('780')
+    expect(wrapper.text()).not.toContain('Tanque 1')
+    expect(wrapper.text()).not.toContain('Tanque 2')
+    expect(wrapper.text()).not.toContain('%')
   })
 
   it('no expone la configuración de empresa desde la ficha del equipo', () => {
@@ -76,40 +75,11 @@ describe('TelemetryBoard', () => {
     expect(wrapper.text()).toContain('Todavía no hay una fuente vinculada')
   })
 
-  it('muestra un indicador total cuando el proveedor solo informa litros y explica la referencia', () => {
-    const wrapper = render({ extraSensors: [] })
+  it('conserva una lectura de cero y no la confunde con falta de dato', () => {
+    const wrapper = render({ fuelLiters: 0, extraSensors: [] })
 
-    expect(wrapper.text()).toContain('555 / 780 l')
-    expect(wrapper.text()).not.toContain('555 l en total')
-    expect(wrapper.text()).toContain('Capacidad de referencia')
-    expect(wrapper.find('[aria-label="Combustible total: 555 de 780 litros de referencia, 71%"]').exists()).toBe(true)
-  })
-
-  it('conserva un tanque en cero y no lo confunde con una lectura faltante', () => {
-    const wrapper = render({ fuelLiters: 0, extraSensors: [{ etiqueta: 'COMBUSTIBLE T1', valor: 0, unidad: 'l' }] })
-
-    expect(wrapper.find('[aria-label="Tanque 1: 0 litros, 0% de capacidad de referencia"]').exists()).toBe(true)
-    expect(wrapper.text()).toContain('0 l')
-    expect(wrapper.text()).not.toContain('0 l en total')
-  })
-
-  it('muestra solo el tanque que informa el proveedor', () => {
-    const wrapper = render({ extraSensors: [{ etiqueta: 'COMBUSTIBLE T2', valor: 115, unidad: 'l' }] })
-
-    expect(wrapper.find('[aria-label="Tanque 2: 115 litros, 50% de capacidad de referencia"]').exists()).toBe(true)
-    expect(wrapper.find('[aria-label^="Tanque 1:"]').exists()).toBe(false)
-    expect(wrapper.text()).not.toContain('555')
-  })
-
-  it('mantiene el nivel individual si el total del proveedor falta', () => {
-    const wrapper = render({
-      fuelLiters: null,
-      extraSensors: [{ etiqueta: 'COMBUSTIBLE T1', valor: 440, unidad: 'l' }],
-    })
-
-    expect(wrapper.text()).not.toContain('Total sin dato')
-    expect(wrapper.find('[aria-label="Tanque 1: 440 litros, 80% de capacidad de referencia"]').exists()).toBe(true)
-    expect(wrapper.text()).not.toContain('Sin lectura de combustible en la última señal.')
+    expect(wrapper.text()).toContain('0 l en total')
+    expect(wrapper.text()).not.toContain('%')
   })
 
   it('carga el mapa como iframe cuando la fuente tiene coordenadas', () => {

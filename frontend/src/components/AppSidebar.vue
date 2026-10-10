@@ -15,6 +15,7 @@ import {
   ClipboardDocumentListIcon,
   HomeIcon,
   LinkIcon,
+  MapIcon,
   TruckIcon,
   UsersIcon,
   WrenchScrewdriverIcon,
@@ -39,7 +40,7 @@ const props = defineProps({
 
 const emit = defineEmits(['close'])
 
-const primaryKeys = ['dashboard', 'equipment', 'reading-control', 'maintenance', 'plans', 'reports']
+const primaryKeys = ['dashboard', 'equipment', 'fleet-telemetry', 'reading-control', 'maintenance', 'plans', 'reports']
 
 const primaryNavigation = computed(() => (
   primaryKeys
@@ -61,6 +62,7 @@ const icons = {
   dashboard: HomeIcon,
   truck: TruckIcon,
   equipment: TruckIcon,
+  'fleet-telemetry': MapIcon,
   wrench: WrenchScrewdriverIcon,
   maintenance: WrenchScrewdriverIcon,
   calendar: CalendarDaysIcon,

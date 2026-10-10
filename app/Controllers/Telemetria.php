@@ -28,6 +28,30 @@ use Throwable;
  */
 final class Telemetria extends BaseController
 {
+    public function flota(): string|RedirectResponse
+    {
+        try {
+            $actor = $this->actor();
+
+            return $this->renderApp(
+                $actor,
+                'fleet-telemetry',
+                'fleet-telemetry',
+                'Telemetría de flota',
+                service('fleetTelemetryBoard')->execute($actor),
+            );
+        } catch (Throwable $exception) {
+            if (! $exception instanceof DomainException) {
+                log_message('error', 'No se pudo mostrar la telemetría de flota.');
+            }
+
+            return redirect()->to(base_url('mantenimiento/equipos'))->with(
+                'error',
+                $exception instanceof DomainException ? $exception->getMessage() : 'No se pudo cargar la telemetría de flota. Intentá de nuevo.',
+            );
+        }
+    }
+
     public function integraciones(): string|RedirectResponse
     {
         try {

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Notifications;
 
 use App\Application\Notifications\Port\NotificationClock;
+use App\Application\Notifications\Port\TelemetrySensorIssueSummaryReader;
 use App\Domain\PreventiveMaintenance\EstadoPlan;
 use App\Domain\PreventiveMaintenance\EvaluadorVencimiento;
 use App\Infrastructure\PreventiveMaintenance\CodeIgniterPreventivePlanReadModel;
@@ -18,6 +19,7 @@ final class ScheduleManagementReports
         private readonly NotificationClock $clock,
         private readonly BaseConnection $db,
         private readonly int $staleReadingDays = 30,
+        private readonly ?TelemetrySensorIssueSummaryReader $telemetrySensorIssues = null,
     ) {
     }
 
@@ -117,6 +119,7 @@ final class ScheduleManagementReports
         ];
         foreach ($staleReadingDetails as $detail) $lines[] = '!LECTURA|' . $detail['code'] . '|' . $detail['detail'] . '|' . $detail['status'];
         if ($staleReadings > count($staleReadingDetails)) $lines[] = '!LECTURA_MAS|' . ($staleReadings - count($staleReadingDetails));
+        $lines = array_merge($lines, $this->telemetrySensorIssueLines($companyId, $type));
         if ($type === 'WEEKLY') {
             $missingWeeklyKm = $this->weeklyMissingDriverKilometers($companyId, $now, 25);
             $lines[] = 'Choferes sin carga de km esta semana: ' . count($missingWeeklyKm);
@@ -136,6 +139,35 @@ final class ScheduleManagementReports
             'preventivos_proximos' => $preventiveDue['upcoming'],
         ]));
         return ['title' => $label . ' de mantenimiento · ' . $companyName . ' · ' . $now->format('d/m/Y'), 'summary' => 'Empresa: ' . $companyName . "\n" . implode("\n", $lines)];
+    }
+
+    /** @return list<string> */
+    private function telemetrySensorIssueLines(int $companyId, string $type): array
+    {
+        if ($type !== 'DAILY' || $this->telemetrySensorIssues === null) {
+            return [];
+        }
+
+        $result = $this->telemetrySensorIssues->forCompany($companyId, 10);
+        $count = max(0, (int) ($result['count'] ?? 0));
+        $lines = ['Sensores con problemas: ' . $count];
+        foreach (array_slice($result['issues'] ?? [], 0, 10) as $issue) {
+            $code = $this->singleLine((string) ($issue['equipmentCode'] ?? 'Equipo'));
+            $summary = $this->singleLine((string) ($issue['summary'] ?? 'Sensor requiere revisión'));
+            if ($code !== '' && $summary !== '') {
+                $lines[] = '!SENSOR|' . $code . '|' . $summary;
+            }
+        }
+        if ($count > 0) {
+            $lines[] = '!CTA|Revisar telemetría|' . $this->reportPath('mantenimiento/telemetria');
+        }
+
+        return $lines;
+    }
+
+    private function singleLine(string $value): string
+    {
+        return trim((string) preg_replace('/[|\r\n]+/', ' ', $value));
     }
 
     /**

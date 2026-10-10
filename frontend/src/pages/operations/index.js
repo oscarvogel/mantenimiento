@@ -2,6 +2,7 @@ import AssetsIndexPage from './AssetsIndexPage.vue'
 import EquipmentDetailPage from './EquipmentDetailPage.vue'
 import EquipmentDetailHistoryEvidencePage from './EquipmentDetailHistoryEvidencePage.vue'
 import TelemetryIntegrationSettingsPage from './TelemetryIntegrationSettingsPage.vue'
+import FleetTelemetryPage from './FleetTelemetryPage.vue'
 import EquipmentOperatePage from './EquipmentOperatePage.vue'
 import EquipmentCatalogsMasterPage from './EquipmentCatalogsMasterPage.vue'
 import DriverAssignmentsPreviewPage from './DriverAssignmentsPreviewPage.vue'
@@ -27,6 +28,7 @@ export {
   EquipmentDetailPage,
   EquipmentDetailHistoryEvidencePage,
   TelemetryIntegrationSettingsPage,
+  FleetTelemetryPage,
   EquipmentOperatePage,
   EquipmentCatalogsMasterPage,
   DriverAssignmentsPreviewPage,
@@ -54,6 +56,7 @@ export const operationPageComponents = Object.freeze({
   'preventive-plans': PreventivePlansPage,
   'equipment-detail': EquipmentDetailPage,
   'telemetry-integrations': TelemetryIntegrationSettingsPage,
+  'fleet-telemetry': FleetTelemetryPage,
   'equipment-operate': EquipmentOperatePage,
   'equipment-catalogs-master': EquipmentCatalogsMasterPage,
   'driver-assignments-preview': DriverAssignmentsPreviewPage,

@@ -94,6 +94,32 @@ final class ManagementReportActionLinksTest extends TestCase
         }
     }
 
+    public function testDailyManagementReportShowsCurrentTelemetrySensorIssuesAndActionLink(): void
+    {
+        $summary = "Empresa: Demo\n"
+            . "Sensores con problemas: 2\n"
+            . "!SENSOR|AB4990K|Voltaje: lectura imposible\n"
+            . "!SENSOR|AC532DD|Combustible: lectura imposible\n"
+            . '!CTA|Revisar telemetría|' . $this->basePath() . 'mantenimiento/telemetria';
+
+        $html = $this->renderSummary($summary);
+
+        self::assertStringContainsString('Sensores para revisar', $html);
+        self::assertStringContainsString('AB4990K', $html);
+        self::assertStringContainsString('AC532DD', $html);
+        self::assertStringContainsString('Voltaje: lectura imposible', $html);
+        self::assertStringContainsString('Combustible: lectura imposible', $html);
+        self::assertStringContainsString('Sensores con problemas', $html);
+        self::assertStringContainsString('Revisar telemetría', $html);
+        self::assertStringContainsString($this->base() . $this->basePath() . 'mantenimiento/telemetria', $html);
+
+        $text = $this->renderText($summary);
+        self::assertStringContainsString('Sensores para revisar:', $text);
+        self::assertStringContainsString('- AB4990K: Voltaje: lectura imposible', $text);
+        self::assertStringContainsString('Revisar telemetría: ' . $this->base() . $this->basePath() . 'mantenimiento/telemetria', $text);
+        self::assertStringNotContainsString('!SENSOR|', $text);
+    }
+
     /**
      * Criterio 2: con algo vencido hay boton "Ver vencidos" y apunta a la lista
      * filtrada. Es el atajo que evita entrar a navegar y filtrar a mano.

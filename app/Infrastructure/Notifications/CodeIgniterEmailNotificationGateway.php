@@ -172,6 +172,7 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
      * El resumen congelado en la cola las trae como directivas de texto:
      *   !LINK|<etiqueta del indicador>|<ruta>
      *   !CTA|<rótulo del botón>|<ruta>
+     *   !SENSOR|<equipo>|<problema>
      *
      * Que indicador lleva a que destino, y si el CTA se emite o no, es una
      * decision de Application (#318). Aca solo se separan y se resuelven
@@ -179,12 +180,13 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
      * enlace simplemente no se pinta. Los destinos filtran por empresa y
      * sucursal desde la sesion, asi que aca no viaja ningun dato de tenant.
      *
-     * @return array{body:string,metricLinks:array<string,string>,ctas:list<array{label:string,url:string}>}
+     * @return array{body:string,metricLinks:array<string,string>,ctas:list<array{label:string,url:string}>,sensorIssues:list<array{code:string,summary:string}>}
      */
     private function splitManagementReportLinks(string $summary): array
     {
         $metricLinks = [];
         $ctas = [];
+        $sensorIssues = [];
         $body = [];
 
         foreach (preg_split('/\R+/', trim($summary)) ?: [] as $line) {
@@ -209,10 +211,17 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
                 }
                 continue;
             }
+            if (str_starts_with($line, '!SENSOR|')) {
+                $parts = explode('|', $line, 3);
+                if (count($parts) === 3) {
+                    $sensorIssues[] = ['code' => trim($parts[1]), 'summary' => trim($parts[2])];
+                }
+                continue;
+            }
             $body[] = $line;
         }
 
-        return ['body' => implode("\n", $body), 'metricLinks' => $metricLinks, 'ctas' => $ctas];
+        return ['body' => implode("\n", $body), 'metricLinks' => $metricLinks, 'ctas' => $ctas, 'sensorIssues' => array_slice($sensorIssues, 0, 10)];
     }
 
     /**
@@ -252,6 +261,7 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
         $readingAlerts = [];
         $moreReadingAlerts = 0;
         $missingWeeklyKm = [];
+        $sensorIssues = $report['sensorIssues'];
 
         foreach ($lines as $line) {
             $line = trim($line);
@@ -382,6 +392,25 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
                 . '</table>';
         }
 
+        $sensorIssueSection = '';
+        if ($sensorIssues !== []) {
+            $rows = '';
+            foreach (array_slice($sensorIssues, 0, 10) as $issue) {
+                $code = htmlspecialchars($issue['code'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+                $summary = htmlspecialchars($issue['summary'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+                $rows .= '<tr><td style="padding:12px 14px;border-top:1px solid #e5e7eb;">'
+                    . '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:20px;color:#0f172a;font-weight:800;">' . $code . '</div>'
+                    . '<div style="margin-top:2px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#64748b;">' . $summary . '</div>'
+                    . '</td></tr>';
+            }
+
+            $sensorIssueSection = '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-top:20px;border:1px solid #fecaca;border-radius:12px;background:#ffffff;overflow:hidden;">'
+                . '<tr><td style="padding:14px;background:#fef2f2;">'
+                . '<div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:22px;color:#991b1b;font-weight:800;">Sensores para revisar</div>'
+                . '<div style="margin-top:3px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#7f1d1d;">Lecturas telemáticas actuales que requieren atención.</div>'
+                . '</td></tr>' . $rows . '</table>';
+        }
+
         $button = $safeLink === null
             ? ''
             : '<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:24px 0 0 0;"><tr><td style="border-radius:9px;background:#0f172a;">'
@@ -413,6 +442,7 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
             . '</tr></table>'
             . $this->managementCtaBlock($report['ctas'])
             . $readingSection
+            . $sensorIssueSection
             . $missingKmSection
             . $button
             . '</td></tr>'
@@ -436,6 +466,14 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
         $text .= "Este es un informe automático del Sistema de Mantenimiento.\n\n";
         if ($summary !== '') {
             $text .= $summary . "\n\n";
+        }
+
+        if ($report['sensorIssues'] !== []) {
+            $text .= "Sensores para revisar:\n";
+            foreach ($report['sensorIssues'] as $issue) {
+                $text .= '- ' . $issue['code'] . ': ' . $issue['summary'] . "\n";
+            }
+            $text .= "\n";
         }
 
         // Los destinos van como lista, no como directivas internas del resumen.
@@ -467,7 +505,7 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
         // "Preventivos vencidos" / "Órdenes demoradas". Sin el singular, la
         // tarjeta de documentación vencida salía en gris y no llamaba la
         // atención aunque tuviera el valor más alto del informe.
-        if ($number > 0 && (str_contains($normalized, 'vencida') || str_contains($normalized, 'vencidos') || str_contains($normalized, 'demoradas') || str_contains($normalized, 'sin lectura'))) {
+        if ($number > 0 && (str_contains($normalized, 'vencida') || str_contains($normalized, 'vencidos') || str_contains($normalized, 'demoradas') || str_contains($normalized, 'sin lectura') || str_contains($normalized, 'sensores con problemas'))) {
             return '#dc2626';
         }
         if ($number > 0 && str_contains($normalized, 'próxim')) {

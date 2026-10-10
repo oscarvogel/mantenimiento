@@ -42,12 +42,6 @@ const puedeActualizar = computed(
 
 const LIMITE_FRESCAZA_MIN = 60
 const LIMITE_VIEJA_MIN = 1440
-const CAPACIDAD_TOTAL_REFERENCIA = 780
-
-// Capacidad orientativa de los dos tanques delIUECO. Sirve para dibujar el
-// perfil; el porcentaje real se calcula contra lo que cargó el proveedor.
-const CAPACIDAD_TANQUES = { T1: 550, T2: 230 }
-
 const formatKm = (value) =>
   value === null || value === undefined
     ? '—'
@@ -98,62 +92,6 @@ const edadEnTexto = (minutos) => {
   const dias = Math.floor(horas / 24)
   return `${dias} ${dias === 1 ? 'día' : 'días'}`
 }
-
-/**
- * Separa el combustible por tanque usando las medidas adicionales que el
- * proveedor conserva con su nombre original. El total ya viene del sensor
- * calculado; los tanques son el desglose.
- */
-const tanquesDe = (fuente) => {
-  const extras = fuente.extraSensors || []
-  const definiciones = [
-    { numero: 1, capacidad: CAPACIDAD_TANQUES.T1, patron: /\b(?:t1|dep[oó]s?ito\s*1|tanque\s*1)\b/i },
-    { numero: 2, capacidad: CAPACIDAD_TANQUES.T2, patron: /\b(?:t2|dep[oó]s?ito\s*2|tanque\s*2)\b/i },
-  ]
-
-  return definiciones.flatMap(({ numero, capacidad, patron }) => {
-    const medida = extras.find((sensor) => patron.test(sensor.etiqueta || ''))
-    if (!medida) return []
-
-    const valor = medida.valor === null || medida.valor === undefined ? null : Number(medida.valor)
-    const proporcion = valor === null || !Number.isFinite(valor)
-      ? null
-      : Math.max(0, Math.min(100, (valor / capacidad) * 100))
-
-    return [{ numero, etiqueta: `Tanque ${numero}`, valor, proporcion, capacidad }]
-  })
-}
-
-const nivelCombustible = (fuente) => {
-  const total = fuente.fuelLiters
-  const extras = fuente.extraSensors || []
-  const hayTanques = extras.some((m) => /t1|t2/i.test(m.etiqueta || ''))
-  if (total === null || total === undefined) {
-    return { proporcion: null, tono: 'gris', texto: 'sin dato' }
-  }
-  const capacidad = hayTanques
-    ? CAPACIDAD_TANQUES.T1 + CAPACIDAD_TANQUES.T2
-    : CAPACIDAD_TOTAL_REFERENCIA
-  const proporcion = Math.max(0, Math.min(100, (total / capacidad) * 100))
-  if (proporcion <= 10) return { proporcion, tono: 'rojo', texto: 'crítico' }
-  if (proporcion <= 25) return { proporcion, tono: 'ambar', texto: 'bajo' }
-  return { proporcion, tono: 'verde', texto: 'normal' }
-}
-
-const nivelTanqueTotal = (fuente) => {
-  const nivel = nivelCombustible(fuente)
-  return nivel.proporcion === null ? null : Math.round(nivel.proporcion)
-}
-
-const capacidadTanqueTotal = (fuente) => {
-  const extras = fuente.extraSensors || []
-  const hayTanques = extras.some((m) => /t1|t2/i.test(m.etiqueta || ''))
-  return hayTanques
-    ? CAPACIDAD_TANQUES.T1 + CAPACIDAD_TANQUES.T2
-    : CAPACIDAD_TOTAL_REFERENCIA
-}
-
-const porcentajeTanque = (tanque) => tanque.proporcion === null ? null : Math.round(tanque.proporcion)
 
 const voltajeEstado = (fuente) => {
   if (fuente.voltage === null || fuente.voltage === undefined) {
@@ -361,105 +299,14 @@ const mapaEnlaceDe = (fuente) => {
           </div>
         </div>
 
-        <!-- Combustible: nivel total o lectura individual por tanque. -->
+        <!-- Combustible: una lectura total, sin inferir cantidad ni capacidad de tanques. -->
         <div class="rounded-xl border border-border bg-surface-subtle/60 p-4">
-          <div class="flex flex-wrap items-end justify-between gap-2">
-            <div>
-              <p class="text-xs font-bold uppercase tracking-wide text-ink-muted">Combustible</p>
-              <p v-if="tanquesDe(fuente).length > 1" class="mt-1 text-3xl font-bold tabular-nums text-ink">
-                <template v-if="fuente.fuelLiters !== null && fuente.fuelLiters !== undefined">
-                  {{ formatLitros(fuente.fuelLiters) }}
-                  <span class="text-sm font-semibold text-ink-muted">l en total</span>
-                </template>
-                <span v-else class="text-lg font-semibold text-ink-muted">Total sin dato</span>
-              </p>
-              <p
-                v-else-if="tanquesDe(fuente).length === 0 && (fuente.fuelLiters === null || fuente.fuelLiters === undefined)"
-                class="mt-1 text-lg font-semibold text-ink-muted"
-              >
-                Total sin dato
-              </p>
-            </div>
-            <span
-              class="rounded-full px-2.5 py-1 text-xs font-bold"
-              :class="{
-                'bg-success-subtle text-success': nivelCombustible(fuente).tono === 'verde',
-                'bg-warning-subtle text-warning-foreground': nivelCombustible(fuente).tono === 'ambar',
-                'bg-danger-subtle text-danger': nivelCombustible(fuente).tono === 'rojo',
-                'bg-surface-muted text-ink-muted': nivelCombustible(fuente).tono === 'gris',
-              }"
-            >
-              {{ nivelCombustible(fuente).texto }}
-            </span>
-          </div>
-
-          <div
-            v-if="tanquesDe(fuente).length"
-            class="mt-4 grid gap-3"
-            :class="tanquesDe(fuente).length === 1 ? 'sm:grid-cols-1' : 'sm:grid-cols-2'"
-          >
-            <article
-              v-for="tanque in tanquesDe(fuente)"
-              :key="tanque.numero"
-              class="flex items-center gap-4 rounded-lg border border-border bg-surface p-4"
-            >
-              <div
-                class="relative flex shrink-0 items-end overflow-hidden rounded-t-2xl rounded-b-md border-2 border-primary/45 bg-surface-muted"
-                :class="tanquesDe(fuente).length === 1 ? 'h-36 w-20' : 'h-28 w-16'"
-                role="meter"
-                :aria-label="`${tanque.etiqueta}: ${formatLitros(tanque.valor)} litros, ${porcentajeTanque(tanque) === null ? 'sin porcentaje' : `${porcentajeTanque(tanque)}% de capacidad de referencia`}`"
-                aria-valuemin="0"
-                :aria-valuemax="tanque.capacidad"
-                :aria-valuenow="tanque.valor === null || !Number.isFinite(tanque.valor) ? undefined : Math.max(0, Math.min(tanque.capacidad, tanque.valor))"
-              >
-                <div
-                  v-if="porcentajeTanque(tanque) !== null"
-                  class="absolute inset-x-0 bottom-0 bg-primary/75 transition-[height] duration-500"
-                  :style="{ height: `${porcentajeTanque(tanque)}%` }"
-                />
-                <span class="relative z-10 mb-1 w-full text-center text-[11px] font-bold text-ink">
-                  {{ porcentajeTanque(tanque) === null ? '—' : `${porcentajeTanque(tanque)}%` }}
-                </span>
-              </div>
-              <div class="min-w-0 flex-1">
-                <p class="text-xs font-bold uppercase tracking-wide text-ink-muted">{{ tanque.etiqueta }}</p>
-                <p class="mt-1 text-2xl font-bold tabular-nums text-ink">
-                  {{ formatLitros(tanque.valor) }}
-                  <span class="text-xs font-medium text-ink-muted">l</span>
-                </p>
-                <p class="mt-1 text-sm text-ink-muted">Capacidad de referencia: {{ tanque.capacidad }} l</p>
-              </div>
-            </article>
-          </div>
-
-          <div v-else-if="nivelTanqueTotal(fuente) !== null" class="mt-4 rounded-lg border border-border bg-surface p-4 sm:p-5">
-            <div class="flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <p class="text-xs font-bold uppercase tracking-wide text-ink-muted">Nivel total</p>
-                <p class="mt-1 text-2xl font-bold tabular-nums text-ink sm:text-3xl">
-                  {{ formatLitros(fuente.fuelLiters) }}
-                  <span class="text-base font-semibold text-ink-muted">/ {{ capacidadTanqueTotal(fuente) }} l</span>
-                </p>
-                <p class="mt-1 text-sm text-ink-muted">Capacidad de referencia</p>
-              </div>
-              <p class="text-2xl font-bold tabular-nums text-ink sm:text-3xl">{{ nivelTanqueTotal(fuente) }}%</p>
-            </div>
-            <div
-              class="mt-4 h-9 overflow-hidden rounded-full border border-border bg-surface-muted"
-              role="meter"
-              :aria-label="`Combustible total: ${formatLitros(fuente.fuelLiters)} de ${capacidadTanqueTotal(fuente)} litros de referencia, ${nivelTanqueTotal(fuente)}%`"
-              aria-valuemin="0"
-              :aria-valuemax="capacidadTanqueTotal(fuente)"
-              :aria-valuenow="Math.max(0, Math.min(capacidadTanqueTotal(fuente), Number(fuente.fuelLiters)))"
-            >
-              <div
-                class="h-full rounded-full bg-primary/75 transition-[width] duration-500"
-                :style="{ width: `${nivelTanqueTotal(fuente)}%` }"
-              />
-            </div>
-          </div>
-
-          <p v-else class="mt-4 rounded-lg border border-dashed border-border px-3 py-4 text-sm text-ink-muted">
+          <p class="text-xs font-bold uppercase tracking-wide text-ink-muted">Combustible</p>
+          <p v-if="fuente.fuelLiters !== null && fuente.fuelLiters !== undefined" class="mt-2 text-3xl font-bold tabular-nums text-ink">
+            {{ formatLitros(fuente.fuelLiters) }}
+            <span class="text-sm font-semibold text-ink-muted">l en total</span>
+          </p>
+          <p v-else class="mt-2 rounded-lg border border-dashed border-border px-3 py-4 text-sm text-ink-muted">
             Sin lectura de combustible en la última señal.
           </p>
         </div>

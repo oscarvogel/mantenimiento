@@ -357,10 +357,13 @@ class Services extends BaseService
             return static::getSharedInstance('managementReports');
         }
 
+        $db = db_connect();
+
         return new \App\Application\Notifications\ScheduleManagementReports(
             static::notificationClock(false),
-            db_connect(),
+            $db,
             (int) env('alerts.lecturasVencidasDias', 30),
+            new \App\Infrastructure\Notifications\CodeIgniterTelemetrySensorIssueSummaryReader($db),
         );
     }
 
@@ -651,6 +654,20 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
 
         return new \App\Application\Telematic\GetEquipmentTelemetry(
             new \App\Infrastructure\Telematic\CodeIgniterTelemetrySnapshotReader(db_connect()),
+        );
+    }
+
+    public static function fleetTelemetryBoard(bool $getShared = true): \App\Application\Telematic\GetFleetTelemetryBoard
+    {
+        if ($getShared) {
+            return static::getSharedInstance('fleetTelemetryBoard');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\Telematic\GetFleetTelemetryBoard(
+            new \App\Infrastructure\Telematic\CodeIgniterFleetTelemetryBoardReader($db),
+            static::notificationClock(false),
         );
     }
 
