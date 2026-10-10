@@ -74,7 +74,12 @@ const tabs = computed(() => {
   ])
 })
 const initialQuery = new URLSearchParams(window.location.search)
-const activeTab = ref(initialQuery.get('history_active') === '1' ? 'historial' : 'resumen')
+const requestedTab = initialQuery.get('tab')
+const activeTab = ref(
+  tabs.value.some((tab) => tab.id === requestedTab)
+    ? requestedTab
+    : initialQuery.get('history_active') === '1' ? 'historial' : 'resumen',
+)
 const correctiveOrderUrl = computed(() => `${props.data.routes.maintenance}?ot_correctiva=1&equipo_id=${props.data.equipment.id}`)
 const historyResetUrl = computed(() => `${window.location.pathname}?history_active=1#equipment-panel-historial`)
 const formatKmValue = (value) => Number(value).toLocaleString('es-AR', { maximumFractionDigits: 0 })

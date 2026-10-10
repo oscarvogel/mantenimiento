@@ -36,7 +36,7 @@ const render = (sourceOverrides = {}) => {
         equipmentKm: 1030000,
         sources: [source(sourceOverrides)],
       },
-      equipment: { code: 'AC532DD' },
+      equipment: { id: 123, code: 'AC532DD' },
     },
   })
   wrappers.push(wrapper)
@@ -60,8 +60,9 @@ describe('TelemetryBoard', () => {
   it('muestra un indicador total cuando el proveedor solo informa litros y explica la referencia', () => {
     const wrapper = render({ extraSensors: [] })
 
-    expect(wrapper.text()).toContain('555 l')
-    expect(wrapper.text()).toContain('Capacidad de referencia: 780 l')
+    expect(wrapper.text()).toContain('555 / 780 l')
+    expect(wrapper.text()).not.toContain('555 l en total')
+    expect(wrapper.text()).toContain('Capacidad de referencia')
     expect(wrapper.find('[aria-label="Combustible total: 555 de 780 litros de referencia, 71%"]').exists()).toBe(true)
   })
 
@@ -69,7 +70,8 @@ describe('TelemetryBoard', () => {
     const wrapper = render({ fuelLiters: 0, extraSensors: [{ etiqueta: 'COMBUSTIBLE T1', valor: 0, unidad: 'l' }] })
 
     expect(wrapper.find('[aria-label="Tanque 1: 0 litros, 0% de capacidad de referencia"]').exists()).toBe(true)
-    expect(wrapper.text()).toContain('0 l en total')
+    expect(wrapper.text()).toContain('0 l')
+    expect(wrapper.text()).not.toContain('0 l en total')
   })
 
   it('muestra solo el tanque que informa el proveedor', () => {
@@ -77,14 +79,45 @@ describe('TelemetryBoard', () => {
 
     expect(wrapper.find('[aria-label="Tanque 2: 115 litros, 50% de capacidad de referencia"]').exists()).toBe(true)
     expect(wrapper.find('[aria-label^="Tanque 1:"]').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('555')
   })
 
   it('mantiene el nivel individual si el total del proveedor falta', () => {
-    const wrapper = render({ fuelLiters: null })
+    const wrapper = render({
+      fuelLiters: null,
+      extraSensors: [{ etiqueta: 'COMBUSTIBLE T1', valor: 440, unidad: 'l' }],
+    })
 
-    expect(wrapper.text()).toContain('Total sin dato')
+    expect(wrapper.text()).not.toContain('Total sin dato')
     expect(wrapper.find('[aria-label="Tanque 1: 440 litros, 80% de capacidad de referencia"]').exists()).toBe(true)
     expect(wrapper.text()).not.toContain('Sin lectura de combustible en la última señal.')
+  })
+
+  it('carga el mapa como iframe cuando la fuente tiene coordenadas', () => {
+    const wrapper = render({
+      position: { latitude: -32.5969, longitude: -69.3731, speedKmh: 0, satellites: 28 },
+    })
+
+    expect(wrapper.find('iframe').attributes('src')).toContain('openstreetmap.org/export/embed.html')
+    expect(wrapper.find('img').exists()).toBe(false)
+  })
+
+  it('envía el identificador del equipo con el refresco para volver a su ficha', () => {
+    const wrapper = mount(TelemetryBoard, {
+      props: {
+        telemetry: {
+          canRefresh: true,
+          csrf: { name: 'csrf_token', hash: 'csrf_hash' },
+          refreshUrl: '/mantenimiento/telemetria/actualizar',
+          equipmentKm: null,
+          sources: [source()],
+        },
+        equipment: { id: 123, code: 'AC532DD' },
+      },
+    })
+    wrappers.push(wrapper)
+
+    expect(wrapper.find('input[name="equipment_id"]').element.value).toBe('123')
   })
 
   it('no dibuja un nivel inventado cuando el proveedor no informa combustible', () => {

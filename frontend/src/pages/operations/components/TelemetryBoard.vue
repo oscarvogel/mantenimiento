@@ -189,6 +189,7 @@ const mapaEnlaceDe = (fuente) => {
       class="flex justify-end"
     >
       <input type="hidden" :name="telemetry.csrf.name" :value="telemetry.csrf.hash" />
+      <input type="hidden" name="equipment_id" :value="equipment.id" />
       <button
         type="submit"
         class="ui-interactive inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-primary bg-surface px-4 py-2.5 text-sm font-semibold text-primary transition hover:bg-primary-subtle"
@@ -262,19 +263,20 @@ const mapaEnlaceDe = (fuente) => {
       <div class="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         <!-- MAPA: chico, click para agrandar -->
         <div class="space-y-2">
-          <button
-            type="button"
-            class="ui-interactive block w-full overflow-hidden rounded-xl border border-border"
+          <div v-if="mapaAbierto" class="fixed inset-0 z-40 bg-black/70" @click="mapaAbierto = false" />
+          <div
+            class="relative overflow-hidden rounded-xl border border-border bg-surface"
             :class="mapaAbierto ? 'fixed inset-4 z-50 shadow-2xl' : ''"
-            :aria-label="mapaAbierto ? 'Cerrar el mapa' : 'Ampliar el mapa'"
-            @click="mapaAbierto = !mapaAbierto"
           >
-            <img
+            <iframe
               v-if="posicion(fuente)"
               :src="mapaSrcDe(fuente)"
-              :alt="`Última ubicación conocida de ${equipment.code}`"
-              class="h-40 w-full object-cover"
+              :title="`Última ubicación conocida de ${equipment.code}`"
+              class="w-full border-0"
+              :class="mapaAbierto ? 'h-full min-h-[calc(100vh-2rem)]' : 'h-40'"
               loading="lazy"
+              referrerpolicy="no-referrer-when-downgrade"
+              allowfullscreen
             />
             <div
               v-else
@@ -285,7 +287,16 @@ const mapaEnlaceDe = (fuente) => {
                 Esta fuente no reportó coordenadas en la última señal.
               </span>
             </div>
-          </button>
+            <button
+              v-if="posicion(fuente)"
+              type="button"
+              class="ui-interactive absolute right-2 top-2 rounded-lg border border-border bg-surface/95 px-3 py-2 text-xs font-semibold text-ink shadow"
+              :aria-label="mapaAbierto ? 'Cerrar el mapa' : 'Ampliar el mapa'"
+              @click="mapaAbierto = !mapaAbierto"
+            >
+              {{ mapaAbierto ? 'Cerrar mapa' : 'Ampliar mapa' }}
+            </button>
+          </div>
 
           <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-ink-muted">
             <span v-if="posicion(fuente)">
@@ -309,17 +320,23 @@ const mapaEnlaceDe = (fuente) => {
           </div>
         </div>
 
-        <!-- COMBUSTIBLE: perfil de los dos tanques -->
+        <!-- Combustible: nivel total o lectura individual por tanque. -->
         <div class="rounded-xl border border-border bg-surface-subtle/60 p-4">
           <div class="flex flex-wrap items-end justify-between gap-2">
             <div>
               <p class="text-xs font-bold uppercase tracking-wide text-ink-muted">Combustible</p>
-              <p class="mt-1 text-3xl font-bold tabular-nums text-ink">
+              <p v-if="tanquesDe(fuente).length > 1" class="mt-1 text-3xl font-bold tabular-nums text-ink">
                 <template v-if="fuente.fuelLiters !== null && fuente.fuelLiters !== undefined">
                   {{ formatLitros(fuente.fuelLiters) }}
                   <span class="text-sm font-semibold text-ink-muted">l en total</span>
                 </template>
                 <span v-else class="text-lg font-semibold text-ink-muted">Total sin dato</span>
+              </p>
+              <p
+                v-else-if="tanquesDe(fuente).length === 0 && (fuente.fuelLiters === null || fuente.fuelLiters === undefined)"
+                class="mt-1 text-lg font-semibold text-ink-muted"
+              >
+                Total sin dato
               </p>
             </div>
             <span

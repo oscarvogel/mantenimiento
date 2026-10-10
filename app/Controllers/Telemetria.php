@@ -41,8 +41,7 @@ final class Telemetria extends Controller
         $companyId = $actor->companyId();
 
         if ($companyId === null) {
-            return redirect()
-                ->back()
+            return $this->volverAFichaDeEquipo()
                 ->with('error', 'Elegí una empresa para actualizar su telemetría.');
         }
 
@@ -51,21 +50,28 @@ final class Telemetria extends Controller
         } catch (DomainException $exception) {
             // Un enfriamiento o una integración ausente no es un error técnico:
             // es una respuesta que el operador necesita leer.
-            return redirect()
-                ->back()
+            return $this->volverAFichaDeEquipo()
                 ->with('error', $exception->getMessage());
         } catch (Throwable $exception) {
             log_message('error', 'Falló el refresco de telemetría: {message}', [
                 'message' => $exception->getMessage(),
             ]);
 
-            return redirect()
-                ->back()
+            return $this->volverAFichaDeEquipo()
                 ->with('error', 'No se pudo actualizar la telemetría. Probá en unos minutos.');
         }
 
-        return redirect()
-            ->back()
+        return $this->volverAFichaDeEquipo()
             ->with('success', $resultado->mensaje());
+    }
+
+    private function volverAFichaDeEquipo()
+    {
+        $equipmentId = filter_var($this->request->getPost('equipment_id'), FILTER_VALIDATE_INT);
+        if ($equipmentId === false || $equipmentId <= 0) {
+            return redirect()->back();
+        }
+
+        return redirect()->to(base_url('mantenimiento/equipos/' . $equipmentId . '?tab=telemetria'));
     }
 }
