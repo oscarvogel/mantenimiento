@@ -53,6 +53,14 @@ final class Equipment
         $this->setTechnicalProfile($brandId, $modelId, $year, $chassis, $engine);
     }
 
+    /**
+     * Salto de kilometraje que se descartó por implausible en la última
+     * lectura. Es estado propio y no parámetro del constructor: el
+     * constructor tiene muchos parámetros posicionales y agregar uno al
+     * medio rompe a todos los que lo llaman.
+     */
+    private ?SaltoKilometrico $saltoDescartado = null;
+
     public static function create(
         int $companyId,
         int $branchId,
@@ -167,14 +175,33 @@ final class Equipment
             }
         }
 
-        if ($measurement->kilometers() !== null) {
+        $salto = new SaltoKilometrico($this->currentKilometers, $measurement->kilometers());
+
+        if ($measurement->kilometers() !== null && ! $salto->esImplausible()) {
             $this->currentKilometers = $measurement->kilometers();
         }
+
+        // Un salto implausible NO propaga al odómetro, pero tampoco frena el
+        // registro: el mantenimiento ocurrió y la lectura queda guardada para
+        // que alguien la revise. Sin esto, un dígito de más deja al equipo con
+        // el preventivo que nunca vence y sin ninguna señal visible.
+        $this->saltoDescartado = $salto->esImplausible() ? $salto : null;
+
         if ($measurement->hoursTenths() !== null) {
             $this->currentHoursTenths = $measurement->hoursTenths();
         }
 
         return $isCorrection;
+    }
+
+    /**
+     * Último salto de kilometraje que se descartó por implausible, o null si
+     * la lectura se aplicó con normalidad. El caso de uso lo usa para marcar
+     * la lectura y avisar, no para bloquear la orden de trabajo.
+     */
+    public function saltoDescartado(): ?SaltoKilometrico
+    {
+        return $this->saltoDescartado;
     }
 
     public function decommission(DateTimeImmutable $date): void
