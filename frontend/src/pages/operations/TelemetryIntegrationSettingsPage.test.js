@@ -85,4 +85,33 @@ describe('TelemetryIntegrationSettingsPage', () => {
     await wrapper.get('[role="option"]').trigger('click')
     expect(wrapper.get('input[type="hidden"][name="mappings[12]"]').element.value).toBe('unit-4')
   })
+
+  it('asigna identificadores accesibles distintos a cada buscador de unidades', async () => {
+    const fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        equipment: [
+          { id: 12, code: 'CAM-01', plate: 'AB499OK' },
+          { id: 13, code: 'CAM-02', plate: 'AC532DD' },
+        ],
+        units: [
+          { id: 'unit-4', name: 'SCANIA 360 AB499OK' },
+          { id: 'unit-5', name: 'VOLVO 460 AC532DD' },
+        ],
+        links: {},
+        suggestedLinks: {},
+      }),
+    })
+    vi.stubGlobal('fetch', fetch)
+    const wrapper = render()
+
+    await wrapper.get('button[data-load-units="9"]').trigger('click')
+    await flushPromises()
+
+    const controls = wrapper.findAll('input[role="combobox"]').map((input) => input.attributes('aria-controls'))
+    expect(controls).toHaveLength(2)
+    expect(new Set(controls).size).toBe(2)
+    await Promise.all(wrapper.findAll('input[role="combobox"]').map((input) => input.trigger('focus')))
+    expect(wrapper.findAll('[role="listbox"]').map((list) => list.attributes('id'))).toEqual(controls)
+  })
 })

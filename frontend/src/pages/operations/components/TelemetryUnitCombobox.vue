@@ -1,8 +1,6 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref, useId } from 'vue'
 import { fieldClass } from '../helpers.js'
-
-let nextListId = 0
 
 const props = defineProps({
   units: { type: Array, required: true },
@@ -14,10 +12,11 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:modelValue'])
-const inputId = `telemetry-unit-combobox-${++nextListId}`
+const inputId = `telemetry-unit-combobox-${useId()}`
 const query = ref('')
 const isOpen = ref(false)
 const activeIndex = ref(0)
+const listbox = ref(null)
 const selectedUnit = computed(() => props.units.find((unit) => unit.id === props.modelValue) ?? null)
 const filteredUnits = computed(() => {
   const needle = query.value.trim().toLocaleLowerCase('es-AR')
@@ -52,6 +51,11 @@ const clear = () => {
   query.value = ''
 }
 
+const scrollActiveOptionIntoView = async () => {
+  await nextTick()
+  listbox.value?.children[activeIndex.value]?.scrollIntoView?.({ block: 'nearest' })
+}
+
 const onKeydown = (event) => {
   if (event.key === 'Escape') {
     isOpen.value = false
@@ -61,11 +65,13 @@ const onKeydown = (event) => {
   if (event.key === 'ArrowDown' && isOpen.value) {
     event.preventDefault()
     activeIndex.value = Math.min(activeIndex.value + 1, filteredUnits.value.length - 1)
+    scrollActiveOptionIntoView()
     return
   }
   if (event.key === 'ArrowUp' && isOpen.value) {
     event.preventDefault()
     activeIndex.value = Math.max(activeIndex.value - 1, 0)
+    scrollActiveOptionIntoView()
     return
   }
   if (event.key === 'Enter' && isOpen.value && filteredUnits.value[activeIndex.value]) {
@@ -114,6 +120,7 @@ const onKeydown = (event) => {
     <div
       v-if="isOpen"
       :id="`${inputId}-listbox`"
+      ref="listbox"
       role="listbox"
       :aria-label="`Unidades de Wialon para ${label}`"
       class="absolute z-30 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-border bg-surface-raised p-1 shadow-xl"

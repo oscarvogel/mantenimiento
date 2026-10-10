@@ -17,40 +17,82 @@ final class WialonEquipmentMatcher
      */
     public static function match(array $equipment, array $units): array
     {
-        $equipmentByIdentity = [];
+        $equipmentByPlate = [];
+        $equipmentByCode = [];
         $equipmentIdentities = [];
         foreach ($equipment as $row) {
-            $identity = self::identity((string) (($row['patente'] ?? '') ?: ($row['codigo'] ?? $row['code'] ?? '')));
-            $equipmentIdentities[(int) $row['id']] = $identity;
-            if ($identity !== '') {
-                $equipmentByIdentity[$identity][] = $row;
+            $equipmentId = (int) $row['id'];
+            $plate = self::identity((string) (($row['patente'] ?? '') ?: ($row['plate'] ?? '')));
+            $code = self::identity((string) ($row['codigo'] ?? $row['code'] ?? ''));
+            $equipmentIdentities[$equipmentId] = [
+                'displayCode' => (string) ($row['codigo'] ?? $row['code'] ?? ''),
+                'plate' => $plate,
+                'code' => $code,
+            ];
+            if ($plate !== '') {
+                $equipmentByPlate[$plate][] = $equipmentId;
+            }
+            if ($code !== '') {
+                $equipmentByCode[$code][] = $equipmentId;
             }
         }
 
-        $unitsByIdentity = [];
+        $equipmentUnits = [];
+        $unitEquipment = [];
         foreach ($units as $unit) {
-            foreach (array_unique(array_filter($equipmentIdentities)) as $identity) {
-                if (self::nameContainsIdentity((string) $unit['name'], $identity)) {
-                    $unitsByIdentity[$identity][] = (string) $unit['id'];
+            $unitId = (string) $unit['id'];
+            $matchesByPlate = [];
+            foreach ($equipmentByPlate as $plate => $equipmentIds) {
+                if (self::nameContainsIdentity((string) $unit['name'], $plate)) {
+                    foreach ($equipmentIds as $equipmentId) {
+                        $matchesByPlate[$equipmentId] = true;
+                    }
                 }
             }
+
+            // Descriptive matching is only safe for actual plates. Internal codes
+            // may be model numbers (for example, "360" in "SCANIA 360 AB499OK").
+            $candidateIds = array_keys($matchesByPlate);
+            if ($candidateIds === []) {
+                $exactCode = self::identity((string) $unit['name']);
+                $candidateIds = count($equipmentByCode[$exactCode] ?? []) === 1
+                    ? $equipmentByCode[$exactCode]
+                    : [];
+            }
+
+            // A Wialon name containing more than one fleet plate is ambiguous;
+            // do not let the equipment iteration order choose an arbitrary link.
+            if (count($candidateIds) !== 1) {
+                continue;
+            }
+            $equipmentId = (int) $candidateIds[0];
+            $equipmentUnits[$equipmentId][] = $unitId;
+            $unitEquipment[$unitId][] = $equipmentId;
         }
 
         $matches = [];
         $unmatched = [];
         foreach ($equipment as $row) {
-            $identity = $equipmentIdentities[(int) $row['id']];
-            $code = (string) ($row['codigo'] ?? $row['code'] ?? '');
-            if ($identity === ''
-                || count($equipmentByIdentity[$identity] ?? []) !== 1
-                || count(array_unique($unitsByIdentity[$identity] ?? [])) !== 1) {
+            $equipmentId = (int) $row['id'];
+            $identity = $equipmentIdentities[$equipmentId];
+            $code = $identity['displayCode'];
+            $plateIsUnique = $identity['plate'] === '' || count($equipmentByPlate[$identity['plate']] ?? []) === 1;
+            if ((! $plateIsUnique)
+                || ($identity['plate'] === '' && $identity['code'] === '')
+                || count(array_unique($equipmentUnits[$equipmentId] ?? [])) !== 1) {
+                $unmatched[] = $code;
+                continue;
+            }
+
+            $unitId = $equipmentUnits[$equipmentId][0];
+            if (count(array_unique($unitEquipment[$unitId] ?? [])) !== 1) {
                 $unmatched[] = $code;
                 continue;
             }
 
             $matches[] = [
-                'equipmentId' => (int) $row['id'],
-                'externalId' => (string) $unitsByIdentity[$identity][0],
+                'equipmentId' => $equipmentId,
+                'externalId' => (string) $unitId,
                 'equipmentCode' => $code,
             ];
         }

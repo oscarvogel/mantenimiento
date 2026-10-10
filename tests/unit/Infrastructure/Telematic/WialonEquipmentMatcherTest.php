@@ -34,6 +34,41 @@ final class WialonEquipmentMatcherTest extends TestCase
         self::assertSame('unit-4', $result['matches'][0]['externalId']);
     }
 
+    public function testUsaElCampoPlateDelCatalogoAunqueElCodigoInternoSeaDistinto(): void
+    {
+        $result = WialonEquipmentMatcher::match(
+            [['id' => 12, 'codigo' => 'CAM-01', 'plate' => 'AB499OK']],
+            [['id' => 'unit-4', 'name' => 'SCANIA 360 AB499OK']],
+        );
+
+        self::assertSame('unit-4', $result['matches'][0]['externalId']);
+    }
+
+    public function testNoUsaUnCodigoInternoComoFragmentoDeUnNombreDescriptivo(): void
+    {
+        $result = WialonEquipmentMatcher::match(
+            [['id' => 12, 'codigo' => '360', 'plate' => null]],
+            [['id' => 'unit-4', 'name' => 'SCANIA 360 AB499OK']],
+        );
+
+        self::assertSame([], $result['matches']);
+        self::assertSame(['360'], $result['unmatched']);
+    }
+
+    public function testDescartaLaUnidadCuandoContieneLasPatentesDeDosEquipos(): void
+    {
+        $result = WialonEquipmentMatcher::match(
+            [
+                ['id' => 12, 'codigo' => 'CAM-01', 'plate' => 'AB499OK'],
+                ['id' => 13, 'codigo' => 'CAM-02', 'plate' => 'AC532DD'],
+            ],
+            [['id' => 'unit-4', 'name' => 'SCANIA AB499OK AC532DD']],
+        );
+
+        self::assertSame([], $result['matches']);
+        self::assertSame(['CAM-01', 'CAM-02'], $result['unmatched']);
+    }
+
     public function testNoAsociaCoincidenciasAmbiguasNiPatentesIncluidasDentroDeOtraPalabra(): void
     {
         $result = WialonEquipmentMatcher::match(
