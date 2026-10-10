@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Infrastructure\Telematic;
 
 use App\Application\Telematic\Port\FleetTelemetryGateway;
+use App\Application\Telematic\Port\LectorHistoricoTelemetria;
 use App\Application\Telematic\Port\TelemetryCredentialStore;
+use App\Domain\Telematic\MensajeHistorico;
 use App\Domain\Telematic\EstadoSenal;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -30,7 +32,7 @@ use RuntimeException;
  *    identificador de sensor.
  * 5. Los límites de uso son por IP, no por token.
  */
-final class WialonRemoteApiGateway implements FleetTelemetryGateway
+final class WialonRemoteApiGateway implements FleetTelemetryGateway, LectorHistoricoTelemetria
 {
     private const SEARCH_SPEC = '{"spec":{"itemsType":"avl_unit","propName":"sys_name","propValueMask":"*","sortType":"sys_name"},"force":1,"flags":65535,"from":0,"to":0}';
 
@@ -39,6 +41,7 @@ final class WialonRemoteApiGateway implements FleetTelemetryGateway
         private readonly int $timeoutSeconds = 30,
         private readonly ?DateTimeImmutable $now = null,
         private readonly ?WialonSnapshotMapper $mapper = null,
+        private readonly ?WialonApiTransport $transport = null,
     ) {
     }
 
@@ -56,6 +59,65 @@ final class WialonRemoteApiGateway implements FleetTelemetryGateway
             $this->integrations->registerFailure($integrationId, $exception->getMessage(), $now);
 
             throw $exception;
+        }
+    }
+
+    /** @return list<MensajeHistorico> */
+    public function mensajesEntre(
+        int $integracionId,
+        string $unidadExterna,
+        DateTimeImmutable $desde,
+        DateTimeImmutable $hasta,
+    ): array {
+        if (! ctype_digit($unidadExterna) || (int) $unidadExterna <= 0) {
+            throw new RuntimeException('La unidad externa no contiene un identificador Wialon válido.');
+        }
+
+        $desdeTs = $desde->getTimestamp();
+        $hastaTs = $hasta->getTimestamp();
+        if ($desdeTs < 0 || $hastaTs < $desdeTs) {
+            throw new RuntimeException('La ventana histórica Wialon no es válida.');
+        }
+
+        $now = ($this->now ?? new DateTimeImmutable())->format('Y-m-d H:i:s');
+        $session = null;
+
+        try {
+            $credentials = $this->integrations->credentials($integracionId);
+            $endpoint = $credentials['endpoint'];
+            $session = $this->openSession($endpoint, $credentials['token']);
+            $definitions = $this->definitions($endpoint, $session);
+            $rawMessages = $this->loadMessageWindow(
+                $endpoint,
+                $session,
+                (int) $unidadExterna,
+                $desdeTs,
+                $hastaTs,
+            );
+
+            $mapper = new WialonHistoricalMessageMapper();
+            $messages = [];
+            foreach ($rawMessages as $rawMessage) {
+                $message = $mapper->map($rawMessage, $definitions[(string) $unidadExterna]['__sens'] ?? []);
+                if ($message !== null) {
+                    $messages[] = $message;
+                }
+            }
+
+            usort($messages, static fn (MensajeHistorico $a, MensajeHistorico $b): int =>
+                $a->observadaEn()->getTimestamp() <=> $b->observadaEn()->getTimestamp());
+
+            $this->integrations->registerSuccess($integracionId, $now);
+
+            return $messages;
+        } catch (\Throwable $exception) {
+            $this->integrations->registerFailure($integracionId, $exception->getMessage(), $now);
+
+            throw $exception;
+        } finally {
+            if ($session !== null) {
+                $this->closeSession($credentials['endpoint'], $session);
+            }
         }
     }
 
@@ -160,6 +222,86 @@ final class WialonRemoteApiGateway implements FleetTelemetryGateway
         return $values;
     }
 
+    /**
+     * @return list<array<string,mixed>>
+     */
+    private function loadMessageWindow(
+        string $endpoint,
+        string $session,
+        int $unitId,
+        int $desde,
+        int $hasta,
+        int $profundidad = 0,
+    ): array {
+        $params = json_encode([
+            'itemId' => $unitId,
+            'timeFrom' => $desde,
+            'timeTo' => $hasta,
+            'flags' => 0,
+            'flagsMask' => 65280,
+            'loadCount' => 4294967295,
+            'calcSensors' => 1,
+            'measure' => 0,
+        ], JSON_THROW_ON_ERROR);
+
+        try {
+            $body = $this->call($endpoint, 'messages/load_interval', $params, $session);
+            $decoded = $this->decode($body, 'messages/load_interval');
+        } catch (RuntimeException $exception) {
+            if (! str_contains($exception->getMessage(), 'código 1004')) {
+                throw $exception;
+            }
+
+            return $this->dividirVentana($endpoint, $session, $unitId, $desde, $hasta, $profundidad);
+        }
+
+        $cantidad = $decoded['count'] ?? null;
+        $messages = $decoded['messages'] ?? null;
+        if (! is_numeric($cantidad) || (int) $cantidad < 0 || ! is_array($messages) || ! array_is_list($messages)) {
+            throw new RuntimeException('Wialon devolvió una respuesta incompleta en messages/load_interval.');
+        }
+
+        if ((int) $cantidad > count($messages)) {
+            return $this->dividirVentana($endpoint, $session, $unitId, $desde, $hasta, $profundidad);
+        }
+
+        if ((int) $cantidad < count($messages)) {
+            throw new RuntimeException('Wialon devolvió más mensajes que los declarados en messages/load_interval.');
+        }
+
+        foreach ($messages as $message) {
+            if (! is_array($message)) {
+                throw new RuntimeException('Wialon devolvió un mensaje ilegible en messages/load_interval.');
+            }
+        }
+
+        return $messages;
+    }
+
+    /** @return list<array<string,mixed>> */
+    private function dividirVentana(
+        string $endpoint,
+        string $session,
+        int $unitId,
+        int $desde,
+        int $hasta,
+        int $profundidad,
+    ): array {
+        if ($profundidad >= 32 || $hasta - $desde <= 1) {
+            throw new RuntimeException('Wialon devolvió una ventana histórica incompleta que no se puede dividir con seguridad.');
+        }
+
+        $medio = $desde + intdiv($hasta - $desde, 2);
+        if ($medio <= $desde || $medio >= $hasta) {
+            throw new RuntimeException('Wialon devolvió una ventana histórica incompleta que no se puede dividir con seguridad.');
+        }
+
+        return array_merge(
+            $this->loadMessageWindow($endpoint, $session, $unitId, $desde, $medio, $profundidad + 1),
+            $this->loadMessageWindow($endpoint, $session, $unitId, $medio, $hasta, $profundidad + 1),
+        );
+    }
+
     private function openSession(string $endpoint, string $token): string
     {
         $body = $this->call($endpoint, 'token/login', json_encode(['token' => $token, 'fl' => 1], JSON_THROW_ON_ERROR));
@@ -215,35 +357,6 @@ final class WialonRemoteApiGateway implements FleetTelemetryGateway
             $payload['sid'] = $session;
         }
 
-        $curl = curl_init($endpoint);
-        if ($curl === false) {
-            throw new RuntimeException('No se pudo iniciar la conexión con Wialon.');
-        }
-
-        curl_setopt_array($curl, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => http_build_query($payload),
-            CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded'],
-            CURLOPT_TIMEOUT => $this->timeoutSeconds,
-            CURLOPT_CONNECTTIMEOUT => $this->timeoutSeconds,
-            CURLOPT_FOLLOWLOCATION => false,
-        ]);
-
-        $body = curl_exec($curl);
-        $status = curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
-        $failure = curl_error($curl);
-        curl_close($curl);
-
-        if ($body === false || $status < 200 || $status >= 300) {
-            throw new RuntimeException(sprintf(
-                'Falló la llamada a Wialon (%s): HTTP %d%s',
-                $service,
-                (int) $status,
-                $failure !== '' ? ' - ' . $failure : '',
-            ));
-        }
-
-        return (string) $body;
+        return ($this->transport ?? new CurlWialonApiTransport())->post($endpoint, $payload, $this->timeoutSeconds);
     }
 }
