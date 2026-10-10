@@ -64,15 +64,28 @@ const frescura = (fuente) => {
   if (minutos === null || minutos === undefined) {
     return { etiqueta: 'sin dato', tono: 'gris', detalle: 'El proveedor nunca informó' }
   }
+  if (fuente.stale) {
+    return {
+      etiqueta: 'sin respuesta',
+      tono: minutos >= LIMITE_VIEJA_MIN ? 'rojo' : 'ambar',
+      detalle: `Hace ${edadEnTexto(minutos)}`,
+    }
+  }
   if (minutos < LIMITE_FRESCAZA_MIN) {
     return { etiqueta: 'al día', tono: 'verde', detalle: `Reportó hace ${minutos} min` }
   }
   if (minutos < LIMITE_VIEJA_MIN) {
-    const horas = Math.floor(minutos / 60)
-    return { etiqueta: 'reciente', tono: 'ambar', detalle: `Hace ${horas} h` }
+    return { etiqueta: 'reciente', tono: 'ambar', detalle: `Hace ${edadEnTexto(minutos)}` }
   }
-  const dias = Math.floor(minutos / LIMITE_VIEJA_MIN)
-  return { etiqueta: 'desactualizado', tono: 'rojo', detalle: `Hace ${dias} días` }
+  return { etiqueta: 'desactualizado', tono: 'rojo', detalle: `Hace ${edadEnTexto(minutos)}` }
+}
+
+const edadEnTexto = (minutos) => {
+  if (minutos < 60) return `${minutos} min`
+  const horas = Math.floor(minutos / 60)
+  if (horas < 24) return `${horas} h`
+  const dias = Math.floor(horas / 24)
+  return `${dias} ${dias === 1 ? 'día' : 'días'}`
 }
 
 /**
@@ -82,24 +95,22 @@ const frescura = (fuente) => {
  */
 const tanquesDe = (fuente) => {
   const extras = fuente.extraSensors || []
-  const t1 = extras.find((m) => /t1|dep[oó]\s*1|tanque\s*1/i.test(m.etiqueta || ''))
-  const t2 = extras.find((m) => /t2|dep[oó]\s*2|tanque\s*2/i.test(m.etiqueta || ''))
-  const total = fuente.fuelLiters
+  const definiciones = [
+    { numero: 1, capacidad: CAPACIDAD_TANQUES.T1, patron: /\b(?:t1|dep[oó]s?ito\s*1|tanque\s*1)\b/i },
+    { numero: 2, capacidad: CAPACIDAD_TANQUES.T2, patron: /\b(?:t2|dep[oó]s?ito\s*2|tanque\s*2)\b/i },
+  ]
 
-  const unTanque = (medida, capacidad) => {
-    const valor =
-      medida && medida.valor !== null && medida.valor !== undefined ? Number(medida.valor) : null
-    const porcentaje =
-      valor !== null && total && total > 0
-        ? Math.max(0, Math.min(100, (valor / total) * 100))
-        : null
-    return { etiqueta: medida ? medida.etiqueta : null, valor, porcentaje, capacidad }
-  }
+  return definiciones.flatMap(({ numero, capacidad, patron }) => {
+    const medida = extras.find((sensor) => patron.test(sensor.etiqueta || ''))
+    if (!medida) return []
 
-  return [
-    unTanque(t1, CAPACIDAD_TANQUES.T1),
-    unTanque(t2, CAPACIDAD_TANQUES.T2),
-  ].filter((t) => t.valor !== null)
+    const valor = medida.valor === null || medida.valor === undefined ? null : Number(medida.valor)
+    const proporcion = valor === null || !Number.isFinite(valor)
+      ? null
+      : Math.max(0, Math.min(100, (valor / capacidad) * 100))
+
+    return [{ numero, etiqueta: `Tanque ${numero}`, valor, proporcion, capacidad }]
+  })
 }
 
 const nivelCombustible = (fuente) => {
@@ -115,6 +126,13 @@ const nivelCombustible = (fuente) => {
   if (proporcion <= 25) return { proporcion, tono: 'ambar', texto: 'bajo' }
   return { proporcion, tono: 'verde', texto: 'normal' }
 }
+
+const nivelTanqueTotal = (fuente) => {
+  const nivel = nivelCombustible(fuente)
+  return nivel.proporcion === null ? null : Math.round(nivel.proporcion)
+}
+
+const porcentajeTanque = (tanque) => tanque.proporcion === null ? null : Math.round(tanque.proporcion)
 
 const voltajeEstado = (fuente) => {
   if (fuente.voltage === null || fuente.voltage === undefined) {
@@ -170,6 +188,35 @@ const mapaEnlace = computed(() => {
       </button>
     </form>
 
+    <section class="rounded-xl border border-border bg-surface-subtle/50 p-4" aria-labelledby="telemetry-kilometers-title">
+      <div class="flex flex-wrap items-baseline justify-between gap-2">
+        <h3 id="telemetry-kilometers-title" class="text-xs font-bold uppercase tracking-wide text-ink-muted">
+          Comparación de kilometraje
+        </h3>
+        <p class="text-xs text-ink-muted">La lectura de telemetría es informativa; no modifica la del sistema.</p>
+      </div>
+      <div class="mt-3 grid gap-3 sm:grid-cols-2">
+        <div class="rounded-lg border border-border bg-surface p-3">
+          <p class="text-xs text-ink-muted">Del sistema · chofer</p>
+          <p class="mt-1 text-xl font-bold tabular-nums text-ink">{{ formatKm(telemetry.equipmentKm) }} km</p>
+        </div>
+        <div
+          v-for="fuente in telemetry.sources"
+          :key="`km-${fuente.integrationId}`"
+          class="rounded-lg border border-border bg-surface p-3"
+        >
+          <p class="text-xs text-ink-muted">{{ fuente.integrationName || fuente.provider }}</p>
+          <p class="mt-1 text-xl font-bold tabular-nums text-ink">{{ formatKm(fuente.kilometers) }} km</p>
+          <p class="mt-1 text-xs text-ink-muted">
+            <template v-if="fuente.kilometersDifference !== null && fuente.kilometersDifference !== undefined">
+              Diferencia: {{ formatKm(fuente.kilometersDifference) }} km
+            </template>
+            <template v-else>Sin referencia para comparar</template>
+          </p>
+        </div>
+      </div>
+    </section>
+
     <div
       v-for="(fuente, indice) in telemetry.sources"
       :key="fuente.integrationId"
@@ -186,7 +233,7 @@ const mapaEnlace = computed(() => {
           </p>
           <p class="text-xs text-ink-muted">
             {{ frescura(fuente).detalle }}
-            <span v-if="fuente.stale"> · el proveedor no respondió la última corrida</span>
+            <span v-if="fuente.stale"> · el proveedor no respondió la última consulta</span>
           </p>
         </div>
         <span
@@ -217,12 +264,12 @@ const mapaEnlace = computed(() => {
               v-if="posicion(fuente)"
               :src="mapaSrc"
               :alt="`Última ubicación conocida de ${equipment.code}`"
-              class="h-56 w-full object-cover"
+              class="h-40 w-full object-cover"
               loading="lazy"
             />
             <div
               v-else
-              class="flex h-56 w-full flex-col items-center justify-center gap-2 bg-surface-muted px-4 text-center"
+              class="flex h-40 w-full flex-col items-center justify-center gap-2 bg-surface-muted px-4 text-center"
             >
               <span class="text-sm font-semibold text-ink">Sin posición</span>
               <span class="text-xs text-ink-muted">
@@ -254,46 +301,86 @@ const mapaEnlace = computed(() => {
         </div>
 
         <!-- COMBUSTIBLE: perfil de los dos tanques -->
-        <div class="rounded-xl border border-border p-4">
-          <p class="text-xs font-bold uppercase tracking-wide text-ink-muted">Combustible</p>
-
-          <div class="mt-3 flex items-baseline gap-2">
-            <span class="text-3xl font-bold text-ink">{{ formatLitros(fuente.fuelLiters) }}</span>
-            <span class="text-sm text-ink-muted">litros · {{ nivelCombustible(fuente).texto }}</span>
+        <div class="rounded-xl border border-border bg-surface-subtle/60 p-4">
+          <div class="flex flex-wrap items-end justify-between gap-2">
+            <div>
+              <p class="text-xs font-bold uppercase tracking-wide text-ink-muted">Combustible</p>
+              <p class="mt-1 text-3xl font-bold tabular-nums text-ink">
+                <template v-if="fuente.fuelLiters !== null && fuente.fuelLiters !== undefined">
+                  {{ formatLitros(fuente.fuelLiters) }}
+                  <span class="text-sm font-semibold text-ink-muted">l en total</span>
+                </template>
+                <span v-else class="text-lg font-semibold text-ink-muted">Total sin dato</span>
+              </p>
+            </div>
+            <span
+              class="rounded-full px-2.5 py-1 text-xs font-bold"
+              :class="{
+                'bg-success-subtle text-success': nivelCombustible(fuente).tono === 'verde',
+                'bg-warning-subtle text-warning-foreground': nivelCombustible(fuente).tono === 'ambar',
+                'bg-danger-subtle text-danger': nivelCombustible(fuente).tono === 'rojo',
+                'bg-surface-muted text-ink-muted': nivelCombustible(fuente).tono === 'gris',
+              }"
+            >
+              {{ nivelCombustible(fuente).texto }}
+            </span>
           </div>
 
-          <!-- perfil del tanque, partido en T1 y T2 -->
-          <div class="mt-4">
-            <div
-              class="flex h-9 overflow-hidden rounded-lg border-2 border-ink/20"
-              role="img"
-              :aria-label="`Nivel de combustible: ${formatLitros(fuente.fuelLiters)} litros, ${nivelCombustible(fuente).texto}`"
+          <div v-if="tanquesDe(fuente).length" class="mt-4 grid gap-3 sm:grid-cols-2">
+            <article
+              v-for="tanque in tanquesDe(fuente)"
+              :key="tanque.numero"
+              class="flex min-h-32 items-center gap-3 rounded-lg border border-border bg-surface p-3"
             >
               <div
-                v-for="(tanque, indiceTanque) in tanquesDe(fuente)"
-                :key="tanque.etiqueta || indiceTanque"
-                class="flex items-center justify-center text-[10px] font-bold uppercase text-white"
-                :style="{ width: `${tanque.porcentaje}%` }"
-                :class="{
-                  'bg-danger': nivelCombustible(fuente).tono === 'rojo',
-                  'bg-warning': nivelCombustible(fuente).tono === 'ambar',
-                  'bg-success': nivelCombustible(fuente).tono === 'verde',
-                }"
+                class="relative flex h-24 w-14 shrink-0 items-end overflow-hidden rounded-t-2xl rounded-b-md border-2 border-primary/45 bg-surface-muted"
+                role="meter"
+                :aria-label="`${tanque.etiqueta}: ${formatLitros(tanque.valor)} litros, ${porcentajeTanque(tanque) === null ? 'sin porcentaje' : `${porcentajeTanque(tanque)}% de capacidad de referencia`}`"
+                aria-valuemin="0"
+                :aria-valuemax="tanque.capacidad"
+                :aria-valuenow="tanque.valor === null || !Number.isFinite(tanque.valor) ? undefined : Math.max(0, Math.min(tanque.capacidad, tanque.valor))"
               >
-                {{ tanque.porcentaje.toFixed(0) }}%
+                <div
+                  v-if="porcentajeTanque(tanque) !== null"
+                  class="absolute inset-x-0 bottom-0 bg-primary/75 transition-[height] duration-500"
+                  :style="{ height: `${porcentajeTanque(tanque)}%` }"
+                />
+                <span class="relative z-10 mb-1 w-full text-center text-[11px] font-bold text-ink">
+                  {{ porcentajeTanque(tanque) === null ? '—' : `${porcentajeTanque(tanque)}%` }}
+                </span>
               </div>
-              <div
-                v-if="nivelCombustible(fuente).proporcion !== null && tanquesDe(fuente).length > 0"
-                class="flex-1 bg-surface-muted"
-              />
-            </div>
-
-            <ul class="mt-2 space-y-1 text-xs text-ink-muted">
-              <li v-for="(tanque, indiceTanque) in tanquesDe(fuente)" :key="`l-${tanque.etiqueta || indiceTanque}`">
-                {{ tanque.etiqueta }}: {{ formatLitros(tanque.valor) }} l
-              </li>
-            </ul>
+              <div class="min-w-0">
+                <p class="text-xs font-bold uppercase tracking-wide text-ink-muted">{{ tanque.etiqueta }}</p>
+                <p class="mt-1 text-xl font-bold tabular-nums text-ink">
+                  {{ formatLitros(tanque.valor) }}
+                  <span class="text-xs font-medium text-ink-muted">l</span>
+                </p>
+                <p class="text-xs text-ink-muted">Capacidad ref.: {{ tanque.capacidad }} l</p>
+              </div>
+            </article>
           </div>
+
+          <div v-else-if="nivelTanqueTotal(fuente) !== null" class="mt-4 flex items-center gap-4 rounded-lg border border-border bg-surface p-3">
+            <div
+              class="relative flex h-24 w-14 shrink-0 items-end overflow-hidden rounded-t-2xl rounded-b-md border-2 border-primary/45 bg-surface-muted"
+              role="meter"
+              :aria-label="`Combustible total: ${formatLitros(fuente.fuelLiters)} litros, ${nivelTanqueTotal(fuente)}% de una capacidad de referencia de 780 litros`"
+              aria-valuemin="0"
+              aria-valuemax="780"
+              :aria-valuenow="Math.max(0, Math.min(780, Number(fuente.fuelLiters)))"
+            >
+              <div
+                class="absolute inset-x-0 bottom-0 bg-primary/75 transition-[height] duration-500"
+                :style="{ height: `${nivelTanqueTotal(fuente)}%` }"
+              />
+              <span class="relative z-10 mb-1 w-full text-center text-[11px] font-bold text-ink">{{ nivelTanqueTotal(fuente) }}%</span>
+            </div>
+            <p class="text-xs text-ink-muted">Capacidad de referencia: 780 l</p>
+          </div>
+
+          <p v-else class="mt-4 rounded-lg border border-dashed border-border px-3 py-4 text-sm text-ink-muted">
+            Sin lectura de combustible en la última señal.
+          </p>
         </div>
       </div>
 
@@ -406,29 +493,5 @@ const mapaEnlace = computed(() => {
       </div>
     </div>
 
-    <!-- el choque de kilometraje, resuelto -->
-    <div class="rounded-2xl border border-border bg-surface p-5">
-      <p class="text-xs font-bold uppercase tracking-wide text-ink-muted">Kilometraje</p>
-      <div class="mt-3 grid gap-3 sm:grid-cols-3">
-        <div>
-          <p class="text-xs text-ink-muted">Del sistema</p>
-          <p class="text-lg font-bold text-ink">{{ formatKm(telemetry.equipmentKm) }} km</p>
-          <p class="text-xs text-ink-muted">Es el que carga el chofer</p>
-        </div>
-        <div
-          v-for="fuente in telemetry.sources"
-          :key="`km-${fuente.integrationId}`"
-        >
-          <p class="text-xs text-ink-muted">{{ fuente.integrationName || fuente.provider }}</p>
-          <p class="text-lg font-bold text-ink">{{ formatKm(fuente.kilometers) }} km</p>
-          <p class="text-xs text-ink-muted">
-            <template v-if="fuente.kilometersDifference !== null && fuente.kilometersDifference !== undefined">
-              diferencia {{ formatKm(fuente.kilometersDifference) }} km
-            </template>
-            <template v-else>sin referencia propia para comparar</template>
-          </p>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
