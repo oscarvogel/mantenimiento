@@ -192,21 +192,22 @@ const mapaEnlaceDe = (fuente) => {
       JavaScript adicional, el navegador manda el token y el servidor
       responde con el resultado. Sin token completo el botón no aparece.
     -->
-    <form
-      v-if="puedeActualizar"
-      method="post"
-      :action="telemetry.refreshUrl"
-      class="flex justify-end"
-    >
-      <input type="hidden" :name="telemetry.csrf.name" :value="telemetry.csrf.hash" />
-      <input type="hidden" name="equipment_id" :value="equipment.id" />
-      <button
-        type="submit"
-        class="ui-interactive inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-primary bg-surface px-4 py-2.5 text-sm font-semibold text-primary transition hover:bg-primary-subtle"
+    <div v-if="puedeActualizar || telemetry.canManage" class="flex flex-wrap justify-end gap-2">
+      <a
+        v-if="telemetry.canManage"
+        :href="telemetry.manageUrl"
+        class="ui-interactive inline-flex min-h-11 items-center justify-center rounded-lg border border-border-strong bg-surface px-4 py-2.5 text-sm font-semibold text-ink transition hover:bg-surface-muted"
       >
-        Actualizar telemetría
-      </button>
-    </form>
+        Configurar proveedor
+      </a>
+      <form v-if="puedeActualizar" method="post" :action="telemetry.refreshUrl">
+        <input type="hidden" :name="telemetry.csrf.name" :value="telemetry.csrf.hash" />
+        <input type="hidden" name="equipment_id" :value="equipment.id" />
+        <button type="submit" class="ui-interactive inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-primary bg-surface px-4 py-2.5 text-sm font-semibold text-primary transition hover:bg-primary-subtle">
+          Actualizar telemetría
+        </button>
+      </form>
+    </div>
 
     <EmptyState
       v-if="telemetry.sources.length === 0"

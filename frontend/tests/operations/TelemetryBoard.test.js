@@ -58,6 +58,24 @@ describe('TelemetryBoard', () => {
     expect(wrapper.find('[aria-label="Tanque 2: 115 litros, 50% de capacidad de referencia"]').exists()).toBe(true)
   })
 
+  it('ofrece configurar el proveedor a quien puede editar equipos aunque aún no haya señales', () => {
+    const wrapper = mount(TelemetryBoard, {
+      props: {
+        telemetry: {
+          canManage: true,
+          manageUrl: '/mantenimiento/telemetria/integraciones',
+          canRefresh: false,
+          sources: [],
+        },
+        equipment: { id: 123, code: 'AC532DD' },
+      },
+    })
+    wrappers.push(wrapper)
+
+    expect(wrapper.get('a[href="/mantenimiento/telemetria/integraciones"]').text()).toContain('Configurar proveedor')
+    expect(wrapper.text()).toContain('Todavía no hay una fuente vinculada')
+  })
+
   it('muestra un indicador total cuando el proveedor solo informa litros y explica la referencia', () => {
     const wrapper = render({ extraSensors: [] })
 

@@ -162,7 +162,7 @@ final class WialonRemoteApiGateway implements FleetTelemetryGateway
 
     private function openSession(string $endpoint, string $token): string
     {
-        $body = $this->call($endpoint, 'token/login', json_encode(['token' => $token], JSON_THROW_ON_ERROR));
+        $body = $this->call($endpoint, 'token/login', json_encode(['token' => $token, 'fl' => 1], JSON_THROW_ON_ERROR));
         $decoded = $this->decode($body, 'token/login');
         $session = $decoded['eid'] ?? null;
 
@@ -207,24 +207,24 @@ final class WialonRemoteApiGateway implements FleetTelemetryGateway
     private function call(string $endpoint, string $service, string $params, ?string $session = null): string
     {
         if (! str_starts_with(strtolower($endpoint), 'https://')) {
-            throw new RuntimeException('El endpoint de Wialon debe usar HTTPS: el token viaja en la consulta.');
+            throw new RuntimeException('El endpoint de Wialon debe usar HTTPS.');
         }
 
-        $url = $endpoint
-            . '?svc=' . rawurlencode($service)
-            . '&params=' . rawurlencode($params);
-
+        $payload = ['svc' => $service, 'params' => $params];
         if ($session !== null) {
-            $url .= '&sid=' . rawurlencode($session);
+            $payload['sid'] = $session;
         }
 
-        $curl = curl_init($url);
+        $curl = curl_init($endpoint);
         if ($curl === false) {
             throw new RuntimeException('No se pudo iniciar la conexión con Wialon.');
         }
 
         curl_setopt_array($curl, [
             CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => http_build_query($payload),
+            CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded'],
             CURLOPT_TIMEOUT => $this->timeoutSeconds,
             CURLOPT_CONNECTTIMEOUT => $this->timeoutSeconds,
             CURLOPT_FOLLOWLOCATION => false,

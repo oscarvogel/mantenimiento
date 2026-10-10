@@ -101,6 +101,8 @@ use App\Infrastructure\Notifications\CodeIgniterNotificationUnitOfWork;
 use App\Infrastructure\Notifications\CodeIgniterOperationalNotificationEventSource;
 use App\Infrastructure\Telematic\WialonRemoteApiGateway;
 use App\Application\Telematic\DiagnoseSilentUnits;
+use App\Application\Telematic\ConfigureTelemetryIntegration;
+use App\Infrastructure\Telematic\CodeIgniterTelemetryIntegrationConfigurator;
 use App\Application\Telematic\RecordTelemetrySnapshots;
 use App\Application\Telematic\Port\FleetTelemetryGateway;
 use App\Application\Telematic\Port\FleetTelemetryGatewayRegistry;
@@ -616,6 +618,15 @@ class Services extends BaseService
             $clock,
             $companyId,
         );
+    }
+
+    public static function configureTelemetryIntegration(bool $getShared = true): ConfigureTelemetryIntegration
+    {
+        if ($getShared) {
+            return static::getSharedInstance('configureTelemetryIntegration');
+        }
+
+        return new ConfigureTelemetryIntegration(new CodeIgniterTelemetryIntegrationConfigurator(db_connect()));
     }
 
     /**

@@ -320,6 +320,8 @@ final class OperationsPayload
             // empresa. Escribir datos, aunque sean de telemetría, no es una
             // operación de sólo ver, así que viaja con su permiso y su token.
             'canRefresh' => (bool) ($can['refreshTelemetry'] ?? false),
+            'canManage' => (bool) ($can['manageTelemetry'] ?? false),
+            'manageUrl' => base_url('mantenimiento/telemetria/integraciones'),
             'refreshUrl' => base_url('mantenimiento/telemetria/actualizar'),
             'csrf' => [
                 'name' => csrf_token(),

@@ -98,6 +98,8 @@ $routes->group('administracion', ['filter' => ['auth']], static function ($route
 });
 
 $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes): void {
+    $routes->get('telemetria/integraciones', 'Telemetria::integraciones', ['filter' => 'permission:equipos.editar']);
+    $routes->post('telemetria/integraciones', 'Telemetria::guardarIntegracion', ['filter' => 'permission:equipos.editar']);
     $routes->get('', 'MaintenanceCircuit::index', ['filter' => 'permission:equipos.ver']);
     $routes->get('equipos', 'AssetManagement::index', ['filter' => 'permission:equipos.ver']);
     $routes->post('equipos', 'AssetManagement::createEquipment', ['filter' => 'permission:equipos.editar']);

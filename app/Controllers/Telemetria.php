@@ -6,7 +6,7 @@ namespace App\Controllers;
 
 use App\Application\Telematic\RefreshTelemetryNow;
 use App\Infrastructure\Identity\SessionActorContext;
-use CodeIgniter\Controller;
+use CodeIgniter\HTTP\RedirectResponse;
 use DomainException;
 use Throwable;
 
@@ -24,8 +24,91 @@ use Throwable;
  * Es POST con CSRF y exige permiso para cargar lecturas, porque escribir datos
  * aunque sea de telemetría no es una operación de sólo ver.
  */
-final class Telemetria extends Controller
+final class Telemetria extends BaseController
 {
+    public function integraciones(): string|RedirectResponse
+    {
+        try {
+            $actor = $this->actor();
+            $companyId = $actor->companyId();
+            if ($companyId === null) {
+                throw new DomainException('No se pudo identificar la empresa de tu sesión.');
+            }
+
+            $integrations = db_connect()->table('integraciones_telemetria i')
+                ->select('i.id, i.proveedor, i.nombre, i.activo, i.ultimo_ok_en, COUNT(et.id) AS equipos_vinculados')
+                ->join('equipo_telemetria et', 'et.integracion_id = i.id AND et.empresa_id = i.empresa_id AND et.activo = 1', 'left')
+                ->where('i.empresa_id', $companyId)
+                ->groupBy('i.id, i.proveedor, i.nombre, i.activo, i.ultimo_ok_en')
+                ->orderBy('i.id', 'ASC')
+                ->get()
+                ->getResultArray();
+
+            return $this->renderApp($actor, 'equipment', 'telemetry-integrations', 'Conectar telemetría', [
+                'integrations' => array_map(static fn (array $row): array => [
+                    'provider' => (string) $row['proveedor'],
+                    'name' => (string) $row['nombre'],
+                    'active' => (bool) $row['activo'],
+                    'lastSuccess' => $row['ultimo_ok_en'],
+                    'linkedEquipmentCount' => (int) $row['equipos_vinculados'],
+                ], $integrations),
+                'actions' => [
+                    'save' => base_url('mantenimiento/telemetria/integraciones'),
+                    'equipmentIndex' => base_url('mantenimiento/equipos'),
+                ],
+            ]);
+        } catch (Throwable $exception) {
+            if (! $exception instanceof DomainException) {
+                log_message('error', 'No se pudo mostrar la configuración de telemetría.');
+            }
+            return redirect()->to(base_url('mantenimiento/equipos'))->with(
+                'error',
+                $exception instanceof DomainException ? $exception->getMessage() : 'No se pudo abrir la configuración de telemetría.',
+            );
+        }
+    }
+
+    public function guardarIntegracion(): RedirectResponse
+    {
+        $destination = base_url('mantenimiento/telemetria/integraciones');
+        try {
+            $actor = $this->actor();
+            $companyId = $actor->companyId();
+            if ($companyId === null) {
+                throw new DomainException('No se pudo identificar la empresa de tu sesión.');
+            }
+
+            $result = service('configureTelemetryIntegration')->execute(
+                $companyId,
+                $actor->userId(),
+                (string) $this->request->getPost('provider'),
+                $this->request->getPost('name') === null ? null : (string) $this->request->getPost('name'),
+                (string) $this->request->getPost('token'),
+            );
+
+            $message = sprintf('Wialon conectado. Se vincularon %d equipos.', $result->linkedEquipmentCount);
+            if ($result->unmatchedEquipment !== []) {
+                $message .= ' Sin coincidencia: ' . implode(', ', array_slice($result->unmatchedEquipment, 0, 12));
+                if (count($result->unmatchedEquipment) > 12) {
+                    $message .= ' y ' . (count($result->unmatchedEquipment) - 12) . ' más';
+                }
+                return redirect()->to($destination)->with('warning', $message);
+            }
+
+            return redirect()->to($destination)->with('success', $message);
+        } catch (Throwable $exception) {
+            if (! $exception instanceof DomainException) {
+                // Never log request payloads: the form contains a provider token.
+                log_message('error', 'Falló la configuración de una integración de telemetría.');
+            }
+
+            return redirect()->to($destination)->with(
+                'error',
+                $exception instanceof DomainException ? $exception->getMessage() : 'No se pudo guardar la integración. Revisá los datos e intentá de nuevo.',
+            );
+        }
+    }
+
     public function actualizar()
     {
         $actor = (new SessionActorContext())->current();
