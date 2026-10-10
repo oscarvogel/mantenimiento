@@ -38,8 +38,16 @@ final class Telemetria extends Controller
             return $this->response->setStatusCode(403)->setOutput('No tenés permiso para actualizar la telemetría.');
         }
 
+        $companyId = $actor->companyId();
+
+        if ($companyId === null) {
+            return redirect()
+                ->back()
+                ->with('error', 'Elegí una empresa para actualizar su telemetría.');
+        }
+
         try {
-            $resultado = service('telemetryRefresh', $actor->companyId(), false)->execute();
+            $resultado = service('telemetryRefresh', $companyId, false)->execute();
         } catch (DomainException $exception) {
             // Un enfriamiento o una integración ausente no es un error técnico:
             // es una respuesta que el operador necesita leer.

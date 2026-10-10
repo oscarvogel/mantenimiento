@@ -578,8 +578,12 @@ class Services extends BaseService
      * `integraciones_telemetria.activo`. Sin integraciones, el caso de uso
      * responde con un mensaje claro en vez de romperse.
      */
-    public static function telemetryRefresh(int $companyId, bool $getShared = true): \App\Application\Telematic\RefreshTelemetryNow
+    public static function telemetryRefresh(?int $companyId, bool $getShared = true): \App\Application\Telematic\RefreshTelemetryNow
     {
+        if ($companyId === null) {
+            $companyId = 0;
+        }
+
         if ($getShared) {
             return static::getSharedInstance('telemetryRefresh.' . $companyId);
         }
@@ -617,13 +621,15 @@ class Services extends BaseService
     /**
  * Lectura de la última instantánea de un equipo, para la ficha.
  */
-public static function telemetrySnapshotReader(bool $getShared = true): \App\Application\Telematic\Port\TelemetrySnapshotReader
+public static function getEquipmentTelemetry(bool $getShared = true): \App\Application\Telematic\GetEquipmentTelemetry
     {
         if ($getShared) {
-            return static::getSharedInstance('telemetrySnapshotReader');
+            return static::getSharedInstance('getEquipmentTelemetry');
         }
 
-        return new \App\Infrastructure\Telematic\CodeIgniterTelemetrySnapshotReader(db_connect());
+        return new \App\Application\Telematic\GetEquipmentTelemetry(
+            new \App\Infrastructure\Telematic\CodeIgniterTelemetrySnapshotReader(db_connect()),
+        );
     }
 
     public static function operationalNotificationCollector(bool $getShared = true): CollectOperationalNotifications

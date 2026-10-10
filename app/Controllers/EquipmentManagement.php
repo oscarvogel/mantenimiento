@@ -106,7 +106,7 @@ final class EquipmentManagement extends BaseController
                     'relations' => $relationPerPage,
                 ],
                 $primaryPhoto,
-                service('telemetrySnapshotReader')->forEquipment($actor->companyId(), $equipmentId),
+                service('getEquipmentTelemetry')->execute($actor->companyId(), $equipmentId),
             );
             $payload['workOrderHistory'] = $this->workOrderHistory(
                 $actor,

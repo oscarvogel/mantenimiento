@@ -26,9 +26,9 @@ final class CodeIgniterTelemetrySnapshotReader implements TelemetrySnapshotReade
     }
 
     /** @return list<array<string,mixed>> */
-    public function forEquipment(int $companyId, int $equipmentId): array
+    public function forEquipment(?int $companyId, int $equipmentId): array
     {
-        if ($companyId <= 0 || $equipmentId <= 0 || ! $this->db->tableExists('telematia_ultima_lectura')) {
+        if ($companyId === null || $companyId <= 0 || $equipmentId <= 0 || ! $this->db->tableExists('telematia_ultima_lectura')) {
             return [];
         }
 

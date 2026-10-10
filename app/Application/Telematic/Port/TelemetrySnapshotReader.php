@@ -20,7 +20,13 @@ interface TelemetrySnapshotReader
      * telemetría es del mismo alcance que el resto de la ficha y no debe
      * existir una forma de leerlo de otra empresa.
      *
+     * La empresa es `?int` porque un superadmin no tiene una: se resuelve
+     * con `0` para que la ficha no falle, y `0` no devuelve nada. Prefiere
+     * una pestaña de telemetría ausente a una ficha que no abre.
+     *
+     * @param int|null $companyId
+     *
      * @return list<array<string,mixed>>
      */
-    public function forEquipment(int $companyId, int $equipmentId): array;
+    public function forEquipment(?int $companyId, int $equipmentId): array;
 }
