@@ -46,6 +46,22 @@ final class CodeIgniterTelemetryEquipmentUnitLinkManager implements TelemetryEqu
             $currentLinks[(int) $link['equipo_id']] = (string) $link['unidad_externa'];
         }
 
+        $suggestedLinks = [];
+        foreach (WialonEquipmentMatcher::match($equipment, $units)['matches'] as $match) {
+            $equipmentId = $match['equipmentId'];
+            $externalId = $match['externalId'];
+            $occupiedByOtherEquipment = false;
+            foreach ($currentLinks as $linkedEquipmentId => $linkedExternalId) {
+                if ($linkedExternalId === $externalId && $linkedEquipmentId !== $equipmentId) {
+                    $occupiedByOtherEquipment = true;
+                    break;
+                }
+            }
+            if (! $occupiedByOtherEquipment) {
+                $suggestedLinks[$equipmentId] = $externalId;
+            }
+        }
+
         return [
             'integration' => [
                 'id' => $integrationId,
@@ -55,6 +71,7 @@ final class CodeIgniterTelemetryEquipmentUnitLinkManager implements TelemetryEqu
             'equipment' => $equipment,
             'units' => $units,
             'links' => $currentLinks,
+            'suggestedLinks' => $suggestedLinks,
         ];
     }
 

@@ -58,6 +58,31 @@ final class CodeIgniterTelemetryEquipmentUnitLinkManagerTest extends TestCase
         self::assertSame([['id' => 'unit-4', 'name' => 'Unidad motor 1']], $snapshot['units']);
     }
 
+    public function testSnapshotSugiereLaUnidadCuandoElNombreWialonIncluyeLaPatente(): void
+    {
+        $this->wialon->units = [['id' => 'unit-4', 'name' => 'SCANIA 360 AB499OK']];
+
+        $snapshot = $this->manager->snapshotFor(8, 31);
+
+        self::assertSame([12 => 'unit-4'], $snapshot['suggestedLinks']);
+    }
+
+    public function testSnapshotNoSugiereUnaUnidadQueYaEstaVinculadaAOtroEquipo(): void
+    {
+        $this->wialon->units = [['id' => 'unit-4', 'name' => 'SCANIA 360 AB499OK']];
+        $this->db->table('equipos')->insert([
+            'id' => 14, 'empresa_id' => 8, 'codigo' => 'OTRO', 'patente' => 'OTR123', 'estado' => 'ACTIVO', 'deleted_at' => null,
+        ]);
+        $this->db->table('equipo_telemetria')->insert([
+            'empresa_id' => 8, 'integracion_id' => 31, 'equipo_id' => 14,
+            'unidad_externa' => 'unit-4', 'rol' => 'PRINCIPAL', 'activo' => 1,
+        ]);
+
+        $snapshot = $this->manager->snapshotFor(8, 31);
+
+        self::assertSame([], $snapshot['suggestedLinks']);
+    }
+
     public function testNoPermiteVincularUnEquipoDeOtraEmpresa(): void
     {
         try {
@@ -100,8 +125,11 @@ final class FakeTelemetryCredentialStore implements TelemetryCredentialStore
 
 final class FakeWialonUnitCatalogClient extends WialonUnitCatalogClient
 {
+    /** @var list<array{id:string,name:string}> */
+    public array $units = [['id' => 'unit-4', 'name' => 'Unidad motor 1']];
+
     public function listUnits(string $endpoint, string $token): array
     {
-        return [['id' => 'unit-4', 'name' => 'Unidad motor 1']];
+        return $this->units;
     }
 }

@@ -1,6 +1,7 @@
 <script setup>
 import { computed, reactive, ref } from 'vue'
 import PageHeading from './components/PageHeading.vue'
+import TelemetryUnitCombobox from './components/TelemetryUnitCombobox.vue'
 import { fieldClass, primaryButton } from './helpers.js'
 
 const props = defineProps({ data: { type: Object, required: true } })
@@ -26,8 +27,9 @@ const loadUnits = async (integration) => {
     if (!response.ok) throw new Error(payload.message || 'No se pudieron consultar las unidades.')
 
     snapshots[integration.id] = payload
+    const suggestedLinks = payload.suggestedLinks ?? {}
     mappings[integration.id] = Object.fromEntries(
-      payload.equipment.map((equipment) => [equipment.id, payload.links?.[equipment.id] ?? '']),
+      payload.equipment.map((equipment) => [equipment.id, payload.links?.[equipment.id] ?? suggestedLinks[equipment.id] ?? '']),
     )
   } catch (error) {
     snapshots[integration.id] = null
@@ -53,8 +55,17 @@ const equipmentLabel = (equipment) => equipment.plate && equipment.plate !== equ
   ? `${equipment.plate} · ${equipment.code}`
   : equipment.code
 
-const unitIsSelectedElsewhere = (integrationId, unitId, equipmentId) => Object.entries(mappings[integrationId] ?? {})
-  .some(([otherEquipmentId, selectedUnitId]) => otherEquipmentId !== String(equipmentId) && selectedUnitId === unitId)
+const suggestedCount = (integrationId) => {
+  const snapshot = snapshots[integrationId]
+  if (!snapshot) return 0
+  return Object.entries(snapshot.suggestedLinks ?? {}).filter(([equipmentId, unitId]) =>
+    !snapshot.links?.[equipmentId] && mappings[integrationId]?.[equipmentId] === unitId,
+  ).length
+}
+
+const usedUnitIds = (integrationId, equipmentId) => Object.entries(mappings[integrationId] ?? {})
+  .filter(([otherEquipmentId, selectedUnitId]) => otherEquipmentId !== String(equipmentId) && selectedUnitId && selectedUnitId !== '__unlink__')
+  .map(([, selectedUnitId]) => selectedUnitId)
 </script>
 
 <template>
@@ -144,7 +155,10 @@ const unitIsSelectedElsewhere = (integrationId, unitId, equipmentId) => Object.e
             <p v-if="snapshots[integration.id].units.length === 0" class="mt-4 rounded-lg border border-warning/30 bg-warning-subtle p-3 text-sm text-ink">
               La cuenta conectó, pero no devolvió unidades. Revisá los permisos del token en Wialon.
             </p>
-            <form v-else method="post" :action="integration.saveLinksUrl" class="mt-4">
+            <p v-if="suggestedCount(integration.id)" class="mt-4 rounded-lg border border-success/25 bg-success-subtle p-3 text-sm leading-5 text-ink">
+              {{ suggestedCount(integration.id) }} {{ suggestedCount(integration.id) === 1 ? 'coincidencia' : 'coincidencias' }} por patente ya están seleccionadas. Guardá una vez para vincularlas; podés ajustar cualquier unidad antes.
+            </p>
+            <form v-if="snapshots[integration.id].units.length > 0" method="post" :action="integration.saveLinksUrl" class="mt-4">
               <input type="hidden" :name="data.csrf.name" :value="data.csrf.hash" />
               <div v-if="snapshots[integration.id].equipment.length" class="overflow-x-auto rounded-lg border border-border">
                 <table class="w-full min-w-[38rem] text-left text-sm">
@@ -158,18 +172,14 @@ const unitIsSelectedElsewhere = (integrationId, unitId, equipmentId) => Object.e
                     <tr v-for="equipment in visibleEquipment(integration.id)" :key="equipment.id">
                       <th scope="row" class="px-3 py-2.5 font-semibold text-ink">{{ equipmentLabel(equipment) }}</th>
                       <td class="px-3 py-2.5">
-                        <select v-model="mappings[integration.id][equipment.id]" :name="`mappings[${equipment.id}]`" :aria-label="`Unidad de Wialon para ${equipmentLabel(equipment)}`" :class="fieldClass">
-                          <option value="">Sin cambios</option>
-                          <option v-if="mappings[integration.id][equipment.id]" value="__unlink__">Desvincular este equipo</option>
-                          <option
-                            v-for="unit in snapshots[integration.id].units"
-                            :key="unit.id"
-                            :value="unit.id"
-                            :disabled="unitIsSelectedElsewhere(integration.id, unit.id, equipment.id)"
-                          >
-                            {{ unit.name }}
-                          </option>
-                        </select>
+                        <TelemetryUnitCombobox
+                          v-model="mappings[integration.id][equipment.id]"
+                          :units="snapshots[integration.id].units"
+                          :persisted-value="snapshots[integration.id].links?.[equipment.id] ?? ''"
+                          :used-unit-ids="usedUnitIds(integration.id, equipment.id)"
+                          :field-name="`mappings[${equipment.id}]`"
+                          :label="`Unidad de Wialon para ${equipmentLabel(equipment)}`"
+                        />
                       </td>
                     </tr>
                     <tr v-if="visibleEquipment(integration.id).length === 0">

@@ -36,7 +36,9 @@ final class CodeIgniterTelemetryIntegrationConfigurator implements TelemetryInte
             ->get()
             ->getResultArray();
 
-        [$matches, $unmatched] = $this->matchEquipment($equipment, $units);
+        $matching = WialonEquipmentMatcher::match($equipment, $units);
+        $matches = $matching['matches'];
+        $unmatched = $matching['unmatched'];
         $now = date('Y-m-d H:i:s');
 
         try {
@@ -178,44 +180,5 @@ final class CodeIgniterTelemetryIntegrationConfigurator implements TelemetryInte
             }
             throw new DomainException('No se pudo guardar la integración de telemetría.');
         }
-    }
-
-    /** @param list<array<string,mixed>> $equipment
-     *  @param list<array{id:string,name:string}> $units
-     *  @return array{list<array{equipmentId:int,externalId:string,equipmentCode:string}>,list<string>}
-     */
-    private function matchEquipment(array $equipment, array $units): array
-    {
-        $byName = [];
-        foreach ($units as $unit) {
-            $key = strtoupper(trim($unit['name']));
-            $byName[$key][] = $unit['id'];
-        }
-
-        $equipmentByName = [];
-        foreach ($equipment as $row) {
-            $key = strtoupper(trim((string) (($row['patente'] ?? '') ?: ($row['codigo'] ?? ''))));
-            if ($key !== '') {
-                $equipmentByName[$key][] = $row;
-            }
-        }
-
-        $matches = [];
-        $unmatched = [];
-        foreach ($equipment as $row) {
-            $label = (string) $row['codigo'];
-            $key = strtoupper(trim((string) (($row['patente'] ?? '') ?: ($row['codigo'] ?? ''))));
-            if ($key === '' || count($equipmentByName[$key] ?? []) !== 1 || count($byName[$key] ?? []) !== 1) {
-                $unmatched[] = $label;
-                continue;
-            }
-            $matches[] = [
-                'equipmentId' => (int) $row['id'],
-                'externalId' => (string) $byName[$key][0],
-                'equipmentCode' => $label,
-            ];
-        }
-
-        return [$matches, $unmatched];
     }
 }
