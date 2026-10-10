@@ -24,8 +24,27 @@ final class CodeIgniterFleetTelemetryBoardReader implements FleetTelemetryBoardR
         }
 
         $branches = $this->branches($companyId, $branchIds);
+        $hasDriverAssignments = $this->db->tableExists('employee_equipment_assignments')
+            && $this->db->tableExists('empleados');
+        $select = 'e.id equipo_id, e.codigo, e.patente, e.sucursal_id, suc.nombre sucursal_nombre, et.rol, et.integracion_id, et.unidad_externa, i.proveedor, i.nombre integracion_nombre, t.observada_en, t.registrada_en, t.latitud, t.longitud, t.velocidad_kmh, t.rumbo, t.altitud_m, t.satelites, t.kilometraje, t.horas_decimales, t.motor_encendido, t.ralenti_activo, t.voltaje, t.combustible_litros, t.sensores_adicionales, t.anomalias_sensor, t.ausente';
+        if ($hasDriverAssignments) {
+            // Keep the current assignment inside this company scoped read model.
+            // The use case removes the name unless the actor can view employees.
+            $select .= ", (SELECT NULLIF(TRIM(CONCAT(COALESCE(driver.nombre, ''), ' ', COALESCE(driver.apellido, ''))), '')
+                FROM employee_equipment_assignments driver_assignment
+                INNER JOIN empleados driver
+                    ON driver.id = driver_assignment.empleado_id
+                    AND driver.empresa_id = driver_assignment.empresa_id
+                WHERE driver_assignment.empresa_id = e.empresa_id
+                    AND driver_assignment.equipo_id = e.id
+                    AND driver_assignment.rol = 'CHOFER'
+                    AND driver_assignment.fecha_hasta IS NULL
+                ORDER BY driver_assignment.fecha_desde DESC, driver_assignment.id DESC
+                LIMIT 1) AS chofer_nombre";
+        }
+
         $query = $this->db->table('equipo_telemetria et')
-            ->select('e.id equipo_id, e.codigo, e.patente, e.sucursal_id, suc.nombre sucursal_nombre, et.rol, et.integracion_id, et.unidad_externa, i.proveedor, i.nombre integracion_nombre, t.observada_en, t.registrada_en, t.latitud, t.longitud, t.velocidad_kmh, t.rumbo, t.altitud_m, t.satelites, t.kilometraje, t.horas_decimales, t.motor_encendido, t.ralenti_activo, t.voltaje, t.combustible_litros, t.sensores_adicionales, t.anomalias_sensor, t.ausente')
+            ->select($select, false)
             ->join('equipos e', 'e.id = et.equipo_id AND e.empresa_id = et.empresa_id', 'inner')
             ->join('sucursales suc', 'suc.id = e.sucursal_id AND suc.empresa_id = e.empresa_id', 'inner')
             ->join('integraciones_telemetria i', 'i.id = et.integracion_id AND i.empresa_id = et.empresa_id', 'inner')
@@ -54,6 +73,7 @@ final class CodeIgniterFleetTelemetryBoardReader implements FleetTelemetryBoardR
                 'plate' => trim((string) ($row['patente'] ?? '')) ?: null,
                 'branchId' => (int) $row['sucursal_id'],
                 'branchName' => (string) $row['sucursal_nombre'],
+                'driverName' => trim((string) ($row['chofer_nombre'] ?? '')) ?: null,
                 'detailUrl' => '/mantenimiento/equipos/' . $equipmentId . '?tab=telemetria',
                 'sources' => [],
             ];

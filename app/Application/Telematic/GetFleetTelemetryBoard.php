@@ -29,6 +29,14 @@ final readonly class GetFleetTelemetryBoard
         $board = $branchIds === []
             ? ['units' => [], 'branches' => []]
             : $this->reader->read($actor->companyId(), $branchIds);
+        $canViewDrivers = $actor->hasPermission('empleados.ver');
+        if (! $canViewDrivers) {
+            foreach ($board['units'] as &$unit) {
+                unset($unit['driverName']);
+            }
+            unset($unit);
+        }
+        $board['canViewDrivers'] = $canViewDrivers;
 
         $now = $this->clock->now();
         $board['units'] = array_map(
