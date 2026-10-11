@@ -1,8 +1,10 @@
 # Consumo por viaje — Diseño
 
-**Estado:** Propuesta para revisión de producto
-**Contexto:** Telemetría de flota, sobre la tabla de muestras que introduce
-`2026-10-10-alertas-ralenti-velocidad-design.md`
+**Estado:** Propuesta para la pantalla y sus casos de uso; el dominio puro de
+segmentación, cobertura e indicadores ya está implementado.
+**Contexto:** Telemetría de flota, sobre la serie histórica de telemetría. Wialon
+usa `telematia_buckets`; otros proveedores y el histórico anterior usan
+`telematia_muestras`.
 **Antecedente externo:** reporte «Consumo por viaje» de Observat (captura del 10/10/2026)
 
 ---
@@ -54,21 +56,25 @@ es justamente lo que el reporte no señala.
 |---|---|---|
 | `telematia_ultima_lectura` | Snapshot, se sobrescribe. **Sin serie temporal** | migración `2026-10-09-145500` |
 | Plan de telemetría de flota | «Persistir solo el estado más reciente; el histórico temporal queda fuera de este alcance» | `plans/2026-10-10-telemetria-de-flota.md` L19, L99 |
-| Diseño de ralentí y velocidad | Crea la tabla de muestras cada 15 min y **ya guarda `combustible`** entre las métricas normalizadas. Excluía el cálculo de consumo; **el 10/10/2026 se incorporó** | `specs/2026-10-10-alertas-ralenti-velocidad-design.md`, secciones «Captura e histórico» y «Ampliación del 10/10/2026» |
+| Diseño de ralentí y velocidad | Especificó muestras por ejecución y **ya guarda `combustible`** entre las métricas normalizadas. La cadencia nominal de 15 min quedó reemplazada por el ciclo operativo cada 5 min y la serie Wialon por buckets | `specs/2026-10-10-alertas-ralenti-velocidad-design.md`, secciones «Captura e histórico» y «Ampliación del 10/10/2026» |
 | Plan de implementación | Secuencia en cuatro PR para histórico, consumo, ralentí y velocidad | `plans/2026-10-10-historico-consumo-ralenti-velocidad.md` |
 
-**Estado de implementación al 10/10/2026:** el mapa de flota y las alertas de sensores
-están desplegados. El cálculo de ralentí y velocidad, y el de consumo de este documento,
-**siguen especificados y no implementados**: no existe todavía la tabla de muestras.
+**Estado actualizado al 10/10/2026:** el mapa y las alertas de sensores están
+implementados. El dominio puro de consumo por viaje también está implementado:
+segmentación, cobertura e indicadores probados sin base ni framework. Wialon ya
+aporta buckets de cinco minutos y el histórico puntual se conserva para otros
+proveedores y como legado. La pantalla y el caso de uso de consulta todavía
+quedan pendientes.
 
-**Conclusión:** la base no hay que discutirla. La muestra cada 15 minutos con
-kilometraje, horómetro, motor, ralentí, voltaje y combustible ya está especificada,
-junto con las reglas de hueco de 30 minutos y cobertura mínima del 70 %. Lo que
-falta es la capa de agregado: convertir intervalos en viajes y litros en un número
-explicable.
+**Conclusión:** la serie de telemetría ya existe. En Wialon, cada bucket UTC de
+cinco minutos conserva los extremos observados, con kilómetros, horas de motor,
+motor, ralentí, posición, velocidad y combustible cuando están disponibles. Las
+reglas de hueco de 30 minutos y cobertura mínima del 70 % viven en el dominio.
+Lo pendiente es ofrecer el cálculo a través de una consulta y una pantalla que
+expliquen viajes, calidad y litros.
 
 Por eso esto **no es un módulo nuevo con su propio almacenamiento**. Es una lectura
-sobre la tabla que el diseño de ralentí ya crea. Sin esa tabla, no hay nada.
+sobre los read models que adaptan puntos o buckets a la serie común del dominio.
 
 ## 4. La unidad real es el intervalo, no el viaje
 
@@ -105,9 +111,10 @@ Regla pura, sin dependencias, evaluable sobre la serie de intervalos:
 - **Cierre:** motor apagado, o desplazamiento nulo durante N intervalos consecutivos.
 - **Un viaje es un grupo contiguo de intervalos.** No hay viajes solapados.
 - **Un desplazamiento menor al mínimo no es un viaje:** es una maniobra.
-- **Un viaje más corto que el hueco de muestreo no se reconstruye.** No existe: con
-  muestras cada 15 minutos, un trayecto de 8 minutos ocupa cero o una muestra. Se
-  informa como no detectable en lugar de estimarlo.
+- **Un viaje contenido en un único intervalo no se reconstruye.** Sus límites no
+  están observados; se informa como no reconstruible en lugar de estimarlo. Los
+  extremos de buckets de cinco minutos mejoran la resolución disponible, pero no
+  justifican inventar observaciones dentro del intervalo.
 
 El umbral de movimiento y el mínimo de duración se configuran por empresa, igual que
 el límite de ralentí.
@@ -259,7 +266,7 @@ la consulta, no trayendo la serie entera al proceso.
 
 | Riesgo | Mitigación |
 |---|---|
-| Muestreo cada 15 min no ve viajes cortos | Regla explícita de «no detectable»; no se estima |
+| Un viaje queda contenido en un único intervalo observado | Regla explícita de «no reconstruible»; no se estiman sus límites |
 | Ruido de sensor en intervalos cortos | Umbral mínimo configurable; delta chico = `sin variación` |
 | Transferencia entre tanques como carga falsa | Regla 6.4, sólo con tanques identificables |
 | Dos unidades sin sensor de combustible | `Sin dato`, nunca 0 |

@@ -91,7 +91,7 @@ final class ManagementReportsContractTest extends TestCase
         self::assertStringContainsString("'estado' => 'OMITIDA'", $queue);
     }
 
-    public function testFifteenMinuteCronUsesMinuteKeyAndBoundedBatch(): void
+    public function testFiveMinuteCronUsesMinuteKeyAndBoundedBatch(): void
     {
         $cycle = file_get_contents(APPPATH . 'Application/Notifications/RunNotificationCycle.php');
         $controller = file_get_contents(APPPATH . 'Controllers/NotificationCron.php');
@@ -104,7 +104,7 @@ final class ManagementReportsContractTest extends TestCase
         self::assertStringContainsString('dispatchLimit', $cycle);
         self::assertStringContainsString("alerts.webCronBatchLimit", $controller);
         self::assertStringContainsString('alerts.webCronBatchLimit = 25', $docs);
-        self::assertStringContainsString('0,15,30,45', $docs);
+        self::assertStringContainsString('0,5,10,15,20,25,30,35,40,45,50,55', $docs);
     }
 
     public function testCompanyOverviewRemainsUsableBeforeMigration(): void

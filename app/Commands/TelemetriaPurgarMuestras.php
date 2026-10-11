@@ -6,6 +6,8 @@ namespace App\Commands;
 
 use App\Application\Telematic\PurgarMuestrasVencidas;
 use CodeIgniter\CLI\BaseCommand;
+use DateTimeImmutable;
+use DateTimeZone;
 use Throwable;
 
 /**
@@ -31,7 +33,7 @@ final class TelemetriaPurgarMuestras extends BaseCommand
     protected $options     = [
         '--empresa'   => 'Id de la empresa. Obligatorio.',
         '--dias'      => 'Dias de retencion. Por defecto 90.',
-        '--respaldo'  => 'Ruta del archivo de respaldo. Por defecto writable/telemetria/muestras.jsonl',
+        '--respaldo'  => 'Ruta del archivo. Por defecto se crea uno nuevo en writable/telemetria/.',
     ];
 
     public function run(array $params): int
@@ -52,7 +54,11 @@ final class TelemetriaPurgarMuestras extends BaseCommand
             return EXIT_ERROR;
         }
 
-        $respaldo = (string) $this->opcion($params, 'respaldo', 'writable/telemetria/muestras.jsonl');
+        $ahora = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+        $respaldo = (string) $this->opcion($params, 'respaldo', sprintf(
+            'writable/telemetria/muestras-%s.jsonl',
+            $ahora->format('Ymd-His-u'),
+        ));
 
         try {
             $purga = new PurgarMuestrasVencidas(
@@ -60,9 +66,11 @@ final class TelemetriaPurgarMuestras extends BaseCommand
                 \Config\Services::muestrasRespaldo(),
                 $empresaId,
                 $dias,
+                \Config\Services::muestrasBucketsHistorico(),
+                \Config\Services::muestrasBucketsRespaldo(),
             );
 
-            $resultado = $purga->execute(new \DateTimeImmutable('now'), $respaldo);
+            $resultado = $purga->execute($ahora, $respaldo);
         } catch (Throwable $exception) {
             // El mensaje importa: es la diferencia entre "no se borró nada" y un
             // error genérico. Si el respaldo falló, el histórico sigue entero.
@@ -72,11 +80,14 @@ final class TelemetriaPurgarMuestras extends BaseCommand
         }
 
         CLI::write(sprintf(
-            'Corte %s | vencidas %d | borradas %d | respaldo %s',
-            $purga->corte(new \DateTimeImmutable('now'))->format('Y-m-d H:i:s'),
+            'Corte %s | muestras vencidas %d | borradas %d | buckets vencidos %d | borrados %d | respaldo muestras %s | respaldo buckets %s',
+            $purga->corte($ahora)->format('Y-m-d H:i:s'),
             $resultado['vencidas'],
             $resultado['borradas'],
+            $resultado['bucketsVencidos'],
+            $resultado['bucketsBorrados'],
             $resultado['respaldo'] ?? 'sin archivo',
+            $resultado['respaldoBuckets'] ?? 'sin archivo',
         ));
 
         return EXIT_SUCCESS;

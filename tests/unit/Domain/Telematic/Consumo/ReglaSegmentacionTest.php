@@ -25,10 +25,9 @@ use PHPUnit\Framework\TestCase;
  * que se lee y no se persiste, justamente para que una mejora de cobertura
  * pueda corregir meses de resultados sin dejar números viejos dando vueltas.
  *
- * Lo que más cuesta honestidad acá es el caso de los trayectos cortos: con
- * muestras cada 15 minutos, un viaje de ocho minutos ocupa cero o una muestra.
- * No se estima. El viaje sale marcado como no reconstruible y el sistema dice
- * por qué.
+ * Lo que más cuesta honestidad acá es el caso de los trayectos con un solo
+ * intervalo observado: no se pueden reconstruir sus extremos. No se estima.
+ * El viaje sale marcado como no reconstruible y el sistema dice por qué.
  *
  * @internal
  */

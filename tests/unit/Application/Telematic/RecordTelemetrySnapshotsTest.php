@@ -10,11 +10,15 @@ use App\Application\Telematic\IntegracionTelematrica;
 use App\Application\Telematic\Port\EquipmentTelemetryCatalog;
 use App\Application\Telematic\Port\FleetTelemetryGateway;
 use App\Application\Telematic\Port\FleetTelemetryGatewayRegistry;
+use App\Application\Telematic\Port\LectorHistoricoTelemetria;
 use App\Application\Telematic\Port\MuestraStore;
+use App\Application\Telematic\Port\TelemetryBucketStore;
 use App\Application\Telematic\Port\TelemetryIntegrationCatalog;
 use App\Application\Telematic\Port\TelemetrySnapshotStore;
 use App\Application\Telematic\RecordTelemetrySnapshots;
 use App\Application\Telematic\RegistrarMuestras;
+use App\Application\Telematic\SincronizarBucketsTelemetria;
+use App\Domain\Telematic\AgregadorBucketsTelemetria;
 use App\Domain\Telematic\CoberturaEquipo;
 use App\Domain\Telematic\EstadoSenal;
 use App\Domain\Telematic\FuenteSenal;
@@ -72,6 +76,55 @@ final class MuestrasDelCiclo implements MuestraStore
         $this->guardadas[] = $muestra;
 
         return 1;
+    }
+}
+
+final class GatewayHistoricoDelRecorder implements FleetTelemetryGateway, LectorHistoricoTelemetria
+{
+    public int $lecturasHistoricas = 0;
+
+    public function __construct(
+        private readonly bool $fallarSnapshot = false,
+        private readonly array $estados = [],
+    ) {
+    }
+
+    public function fetchFor(int $integrationId): array
+    {
+        if ($this->fallarSnapshot) {
+            throw new \RuntimeException('calc_last falló');
+        }
+
+        return $this->estados;
+    }
+
+    public function mensajesEntre(int $integracionId, string $unidadExterna, DateTimeImmutable $desde, DateTimeImmutable $hasta): array
+    {
+        $this->lecturasHistoricas++;
+
+        return [];
+    }
+}
+
+final class BucketsDelRecorder implements TelemetryBucketStore
+{
+    /** @var array<string,DateTimeImmutable> */
+    public array $cursores = [];
+
+    /** @var array<string,int> */
+    public array $equipos = [];
+
+    public function cursor(int $empresaId, int $integracionId, string $unidadExterna): ?DateTimeImmutable
+    {
+        return $this->cursores[$empresaId . ':' . $integracionId . ':' . $unidadExterna] ?? null;
+    }
+
+    public function guardarCerradosYAvanzarCursor(int $empresaId, int $integracionId, int $equipoId, string $unidadExterna, string $proveedor, array $buckets, DateTimeImmutable $cursorHasta, DateTimeImmutable $registradaEn): array
+    {
+        $this->cursores[$empresaId . ':' . $integracionId . ':' . $unidadExterna] = $cursorHasta;
+        $this->equipos[$empresaId . ':' . $integracionId . ':' . $unidadExterna] = $equipoId;
+
+        return ['insertados' => 0, 'yaExistentes' => 0];
     }
 }
 
@@ -381,8 +434,156 @@ final class RecordTelemetrySnapshotsTest extends TestCase
             4,
         );
 
-        self::assertSame(1, $segunda->execute()['muestras'], 'Quince minutos después es una captura nueva.');
+        self::assertSame(1, $segunda->execute()['muestras'], 'Un instante observado diferente es una captura nueva.');
         self::assertCount(2, $muestras->guardadas);
+    }
+
+    public function testSincronizaHistoricoSoloCuandoElGatewayOfreceEsePuerto(): void
+    {
+        $gateway = new GatewayHistoricoDelRecorder();
+        $registry = new class($gateway) implements FleetTelemetryGatewayRegistry {
+            public function __construct(private readonly FleetTelemetryGateway $gateway)
+            {
+            }
+
+            public function supports(string $provider): bool
+            {
+                return true;
+            }
+
+            public function forProvider(string $provider): FleetTelemetryGateway
+            {
+                return $this->gateway;
+            }
+        };
+        $bucketStore = new BucketsDelRecorder();
+        $sync = new SincronizarBucketsTelemetria($gateway, $bucketStore, new AgregadorBucketsTelemetria());
+        $recorder = new RecordTelemetrySnapshots(
+            $this->catalogo([
+                $this->cobertura(34, 'AF081MJ', '1', '28396292'),
+                new CoberturaEquipo(4, 4, 35, 'AF081MK', [
+                    new FuenteSenal('1', 'wialon', 'Wialon TSA', '28396292', 'PRINCIPAL', null),
+                ]),
+            ]),
+            $this->integraciones([new IntegracionTelematrica(1, 4, 'wialon', 'Wialon TSA')]),
+            $registry,
+            new MemoriaSnapshots(),
+            $this->muestras(),
+            $this->reloj(),
+            4,
+            $sync,
+        );
+
+        $summary = $recorder->execute();
+
+        self::assertSame(1, $gateway->lecturasHistoricas);
+        self::assertNotNull($bucketStore->cursor(4, 1, '28396292'));
+        self::assertSame(35, $bucketStore->equipos['4:1:28396292']);
+        self::assertSame(0, $summary['bucketsYaExistentes']);
+    }
+
+    public function testConBucketsHabilitadosConservaSnapshotActualPeroNoDuplicaPuntosWialon(): void
+    {
+        $gateway = new GatewayHistoricoDelRecorder(estados: [
+            '28396292' => new EstadoSenal('28396292', $this->instantanea()),
+        ]);
+        $registry = new class($gateway) implements FleetTelemetryGatewayRegistry {
+            public function __construct(private readonly FleetTelemetryGateway $gateway)
+            {
+            }
+
+            public function supports(string $provider): bool
+            {
+                return true;
+            }
+
+            public function forProvider(string $provider): FleetTelemetryGateway
+            {
+                return $this->gateway;
+            }
+        };
+        $snapshots = new MemoriaSnapshots();
+        $muestras = new MuestrasDelCiclo();
+        $bucketStore = new BucketsDelRecorder();
+        $sync = new SincronizarBucketsTelemetria($gateway, $bucketStore, new AgregadorBucketsTelemetria());
+        $recorder = new RecordTelemetrySnapshots(
+            $this->catalogo([$this->cobertura(34, 'AF081MJ', '1', '28396292')]),
+            $this->integraciones([new IntegracionTelematrica(1, 4, 'wialon', 'Wialon TSA')]),
+            $registry,
+            $snapshots,
+            $this->muestras($muestras),
+            $this->reloj(),
+            4,
+            $sync,
+        );
+
+        $summary = $recorder->execute();
+
+        self::assertSame(1, $summary['instantaneas']);
+        self::assertSame(0, $summary['muestras']);
+        self::assertCount(1, $snapshots->guardadas, 'La instantánea actual sigue alimentando mapa y ficha.');
+        self::assertSame([], $muestras->guardadas, 'La serie de buckets reemplaza nuevos puntos Wialon.');
+        self::assertNotNull($bucketStore->cursor(4, 1, '28396292'));
+    }
+
+    public function testFalloDeSnapshotNoImpideSincronizarHistorico(): void
+    {
+        $gateway = new GatewayHistoricoDelRecorder(fallarSnapshot: true);
+        $registry = new class($gateway) implements FleetTelemetryGatewayRegistry {
+            public function __construct(private readonly FleetTelemetryGateway $gateway)
+            {
+            }
+
+            public function supports(string $provider): bool
+            {
+                return true;
+            }
+
+            public function forProvider(string $provider): FleetTelemetryGateway
+            {
+                return $this->gateway;
+            }
+        };
+        $bucketStore = new BucketsDelRecorder();
+        $sync = new SincronizarBucketsTelemetria($gateway, $bucketStore, new AgregadorBucketsTelemetria());
+        $recorder = new RecordTelemetrySnapshots(
+            $this->catalogo([$this->cobertura(34, 'AF081MJ', '1', '28396292')]),
+            $this->integraciones([new IntegracionTelematrica(1, 4, 'wialon', 'Wialon TSA')]),
+            $registry,
+            new MemoriaSnapshots(),
+            $this->muestras(),
+            $this->reloj(),
+            4,
+            $sync,
+        );
+
+        $summary = $recorder->execute();
+
+        self::assertSame(1, $summary['fallas']);
+        self::assertSame(1, $gateway->lecturasHistoricas);
+        self::assertNotNull($bucketStore->cursor(4, 1, '28396292'));
+    }
+
+    public function testUnProveedorSinLectorHistoricoConservaElFlujoDeMuestrasPuntuales(): void
+    {
+        $lector = new GatewayHistoricoDelRecorder();
+        $bucketStore = new BucketsDelRecorder();
+        $sync = new SincronizarBucketsTelemetria($lector, $bucketStore, new AgregadorBucketsTelemetria());
+        $muestras = new MuestrasDelCiclo();
+        $recorder = new RecordTelemetrySnapshots(
+            $this->catalogo([$this->cobertura(34, 'AF081MJ', '1', '28396292')]),
+            $this->integraciones([new IntegracionTelematrica(1, 4, 'gestya', 'Gestya')]),
+            $this->registro(['28396292' => new EstadoSenal('28396292', $this->instantanea())]),
+            new MemoriaSnapshots(),
+            $this->muestras($muestras),
+            $this->reloj(),
+            4,
+            $sync,
+        );
+
+        self::assertSame(1, $recorder->execute()['muestras']);
+        self::assertSame(0, $lector->lecturasHistoricas);
+        self::assertSame([], $bucketStore->cursores);
     }
 
     public function testUnaIntegracionCaidaNoGuardaMuestraNiLaConvierteEnCero(): void

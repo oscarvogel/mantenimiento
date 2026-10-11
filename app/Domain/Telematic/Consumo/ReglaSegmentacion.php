@@ -13,9 +13,8 @@ namespace App\Domain\Telematic\Consumo;
  * de que un día una calcule distinto de la otra.
  *
  * El movimiento se decide por el odómetro y no por la velocidad. La velocidad
- * es un instante y el odómetro es una distancia acumulada: con capturas cada
- * quince minutos, un equipo detenido puede tener un pico de velocidad tomado
- * justo cuando arrancó, y un proveedor que manda posición sin odómetro no
+ * es un instante y el odómetro es una distancia acumulada: un equipo detenido
+ * puede tener un pico de velocidad tomado justo cuando arrancó, y un proveedor que manda posición sin odómetro no
  * genera ningún viaje en lugar de inventar que el camión se movió.
  *
  * El cierre necesita dos intervalos consecutivos sin movimiento. Con uno solo,

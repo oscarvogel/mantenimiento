@@ -15,9 +15,8 @@ use DateTimeImmutable;
  *
  * Sabe cuándo no sabe: `reconstruible()` es falso cuando el viaje quedó
  * contenido en un solo intervalo en movimiento, porque en ese caso no se sabe
- * ni cuándo empezó ni cuándo terminó. Un viaje de ocho minutos con muestreo
- * cada quince no aparece, y eso es preferible a mostrar una fila con horas
- * inventadas.
+ * ni cuándo empezó ni cuándo terminó. Eso es preferible a mostrar una fila con
+ * horas inventadas.
  */
 final readonly class ViajeSegmentado
 {
