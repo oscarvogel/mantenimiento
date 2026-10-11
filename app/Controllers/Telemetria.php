@@ -28,6 +28,38 @@ use Throwable;
  */
 final class Telemetria extends BaseController
 {
+    /**
+     * Consumo de combustible por viaje, de un equipo de la flota.
+     *
+     * Sólo lee. No refresca telemetría ni escribe nada: apretar el botón de
+     * ingesta y mirar esta pantalla son dos cosas separadas, y mezclarlas haría
+     * que el informe cambiara solo mientras uno lo mira.
+     */
+    public function consumo(): string|RedirectResponse
+    {
+        try {
+            $actor = $this->actor();
+
+            $equipoId = $this->request->getGet('equipo');
+            $dias = $this->request->getGet('dias');
+
+            return $this->renderApp(
+                $actor,
+                'fleet-consumption',
+                'fleet-consumption',
+                'Consumo por viaje',
+                service('reporteConsumoFlota')->execute(
+                    $actor,
+                    $equipoId === null || $equipoId === '' ? null : (int) $equipoId,
+                    $dias === null || $dias === '' ? 7 : (int) $dias,
+                ),
+            );
+        } catch (Throwable $exception) {
+            return redirect()->route('mantenimiento.telemetria.flota')
+                ->with('error', $exception->getMessage());
+        }
+    }
+
     public function flota(): string|RedirectResponse
     {
         try {

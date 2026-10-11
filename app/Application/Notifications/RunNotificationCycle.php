@@ -27,9 +27,9 @@ final readonly class RunNotificationCycle
     {
         $key = trim((string) $executionKey);
         if ($key === '') {
-            // El cron productivo puede correr varias veces por hora (por ejemplo,
-            // cada 15 minutos). La clave por minuto evita que una segunda ejecución
-            // válida dentro de la misma hora quede marcada como ya completada.
+            // El cron productivo puede correr cada cinco minutos para mantener
+            // la telemetría. La clave por minuto permite cada ejecución válida
+            // dentro de la misma hora.
             $key = $this->clock->now()->format('Y-m-d-H-i');
         }
 

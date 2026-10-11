@@ -20,6 +20,7 @@ final readonly class CreateEquipmentCommand
         public ?int $year = null,
         public ?string $chassis = null,
         public ?string $engine = null,
+        public ?int $tankCapacityLiters = null,
     ) {
     }
 }

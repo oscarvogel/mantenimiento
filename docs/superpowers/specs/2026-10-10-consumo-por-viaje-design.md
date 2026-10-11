@@ -1,8 +1,10 @@
 # Consumo por viaje — Diseño
 
-**Estado:** Propuesta para revisión de producto
-**Contexto:** Telemetría de flota, sobre la tabla de muestras que introduce
-`2026-10-10-alertas-ralenti-velocidad-design.md`
+**Estado:** Propuesta para la pantalla y sus casos de uso; el dominio puro de
+segmentación, cobertura e indicadores ya está implementado.
+**Contexto:** Telemetría de flota, sobre la serie histórica de telemetría. Wialon
+usa `telematia_buckets`; otros proveedores y el histórico anterior usan
+`telematia_muestras`.
 **Antecedente externo:** reporte «Consumo por viaje» de Observat (captura del 10/10/2026)
 
 ---
@@ -54,21 +56,25 @@ es justamente lo que el reporte no señala.
 |---|---|---|
 | `telematia_ultima_lectura` | Snapshot, se sobrescribe. **Sin serie temporal** | migración `2026-10-09-145500` |
 | Plan de telemetría de flota | «Persistir solo el estado más reciente; el histórico temporal queda fuera de este alcance» | `plans/2026-10-10-telemetria-de-flota.md` L19, L99 |
-| Diseño de ralentí y velocidad | Crea la tabla de muestras cada 15 min y **ya guarda `combustible`** entre las métricas normalizadas. Excluía el cálculo de consumo; **el 10/10/2026 se incorporó** | `specs/2026-10-10-alertas-ralenti-velocidad-design.md`, secciones «Captura e histórico» y «Ampliación del 10/10/2026» |
+| Diseño de ralentí y velocidad | Especificó muestras por ejecución y **ya guarda `combustible`** entre las métricas normalizadas. La cadencia nominal de 15 min quedó reemplazada por el ciclo operativo cada 5 min y la serie Wialon por buckets | `specs/2026-10-10-alertas-ralenti-velocidad-design.md`, secciones «Captura e histórico» y «Ampliación del 10/10/2026» |
 | Plan de implementación | Secuencia en cuatro PR para histórico, consumo, ralentí y velocidad | `plans/2026-10-10-historico-consumo-ralenti-velocidad.md` |
 
-**Estado de implementación al 10/10/2026:** el mapa de flota y las alertas de sensores
-están desplegados. El cálculo de ralentí y velocidad, y el de consumo de este documento,
-**siguen especificados y no implementados**: no existe todavía la tabla de muestras.
+**Estado actualizado al 10/10/2026:** el mapa y las alertas de sensores están
+implementados. El dominio puro de consumo por viaje también está implementado:
+segmentación, cobertura e indicadores probados sin base ni framework. Wialon ya
+aporta buckets de cinco minutos y el histórico puntual se conserva para otros
+proveedores y como legado. La pantalla y el caso de uso de consulta todavía
+quedan pendientes.
 
-**Conclusión:** la base no hay que discutirla. La muestra cada 15 minutos con
-kilometraje, horómetro, motor, ralentí, voltaje y combustible ya está especificada,
-junto con las reglas de hueco de 30 minutos y cobertura mínima del 70 %. Lo que
-falta es la capa de agregado: convertir intervalos en viajes y litros en un número
-explicable.
+**Conclusión:** la serie de telemetría ya existe. En Wialon, cada bucket UTC de
+cinco minutos conserva los extremos observados, con kilómetros, horas de motor,
+motor, ralentí, posición, velocidad y combustible cuando están disponibles. Las
+reglas de hueco de 30 minutos y cobertura mínima del 70 % viven en el dominio.
+Lo pendiente es ofrecer el cálculo a través de una consulta y una pantalla que
+expliquen viajes, calidad y litros.
 
 Por eso esto **no es un módulo nuevo con su propio almacenamiento**. Es una lectura
-sobre la tabla que el diseño de ralentí ya crea. Sin esa tabla, no hay nada.
+sobre los read models que adaptan puntos o buckets a la serie común del dominio.
 
 ## 4. La unidad real es el intervalo, no el viaje
 
@@ -105,9 +111,10 @@ Regla pura, sin dependencias, evaluable sobre la serie de intervalos:
 - **Cierre:** motor apagado, o desplazamiento nulo durante N intervalos consecutivos.
 - **Un viaje es un grupo contiguo de intervalos.** No hay viajes solapados.
 - **Un desplazamiento menor al mínimo no es un viaje:** es una maniobra.
-- **Un viaje más corto que el hueco de muestreo no se reconstruye.** No existe: con
-  muestras cada 15 minutos, un trayecto de 8 minutos ocupa cero o una muestra. Se
-  informa como no detectable en lugar de estimarlo.
+- **Un viaje contenido en un único intervalo no se reconstruye.** Sus límites no
+  están observados; se informa como no reconstruible en lugar de estimarlo. Los
+  extremos de buckets de cinco minutos mejoran la resolución disponible, pero no
+  justifican inventar observaciones dentro del intervalo.
 
 El umbral de movimiento y el mínimo de duración se configuran por empresa, igual que
 el límite de ralentí.
@@ -169,6 +176,33 @@ Cada viaje muestra su cobertura y sus huecos:
   **«Sin dato»**. Nunca 0, que es indistinguible de «no consumió».
 - La hora de captura y la del proveedor se muestran siempre: una muestra de hace
   tres días no puede parecer actual.
+
+### 8.1 Los números son provisorios hasta que se calibren
+
+**Este es el requisito más importante de la pantalla**, y no es un detalle
+estético: mientras los umbrales sean los de fábrica, **todo número que salga de
+esta pantalla es una estimación**, y la pantalla tiene que decirlo.
+
+Los valores por defecto —2 l de ruido, 20 l de umbral de carga, banda de 3 a
+120 km/h— son razonables pero **no están medidos**. No se pueden medir hasta que
+esto esté en producción y el cron haya acumulado días de telemetría real, y
+mientras tanto el error posible no es pequeño: si el sensor de combustible de un
+camión fluctúa 15 litros entre lecturas y el umbral es de 2, cada ruido se cuenta
+como consumo y todos los viajes de ese camión quedan inventados.
+
+En consecuencia:
+
+- El encabezado del período lleva una leyenda visible —no un tooltip— que dice que
+  los umbrales no están calibrados.
+- La leyenda desaparece sola cuando la empresa configure umbrales propios.
+- El reporte expone `sinCalibrar()` y el comando `telematria:muestras` imprime
+  el mismo aviso junto con los valores aplicados, porque un diagnóstico que
+  oculta su propia incertidumbre sirve para confirmar que el código corre, no
+  para decidir.
+
+El criterio no es mostrar menos: es **que nunca se pueda confundir una medición
+con una estimación**. Un «sin dato» con el motivo escrito vale más que un número
+limpio sin respaldo.
 
 ## 9. Una sola verdad
 
@@ -232,12 +266,15 @@ la consulta, no trayendo la serie entera al proceso.
 
 | Riesgo | Mitigación |
 |---|---|
-| Muestreo cada 15 min no ve viajes cortos | Regla explícita de «no detectable»; no se estima |
+| Un viaje queda contenido en un único intervalo observado | Regla explícita de «no reconstruible»; no se estiman sus límites |
 | Ruido de sensor en intervalos cortos | Umbral mínimo configurable; delta chico = `sin variación` |
 | Transferencia entre tanques como carga falsa | Regla 6.4, sólo con tanques identificables |
 | Dos unidades sin sensor de combustible | `Sin dato`, nunca 0 |
 | `GZD587` con horómetro imposible (8.763 h) | Se excluye del cómputo hasta revisarlo, como ya está anotado |
 | Congelar el viaje persistido | El viaje no se persiste; se deriva |
+| Umbrales de fábrica sin medir | Leyenda visible en pantalla y aviso en el diagnóstico; ver §8.1 |
+| Meses de km y horas de motor reportadas mal por el proveedor | Banda de plausibilidad por intervalo; se descarta l/h, nunca l/100 km |
+| Sin ingesta continua en staging | La calibración real se hace sobre producción, con `telematria:muestras` |
 
 ## 14. Criterios de aceptación
 
@@ -253,3 +290,9 @@ la consulta, no trayendo la serie entera al proceso.
 10. El ciclo repetido el mismo día no duplica la notificación por equipo y regla.
 11. Pruebas cubren cálculo puro, segmentación, cobertura, atribución, puertos, scoping
     tenant, migraciones/adaptadores, eventos idempotentes y vistas móvil/escritorio.
+12. Con umbrales de fábrica la pantalla muestra una leyenda visible de que los
+    números no están calibrados, y el `sinCalibrar()` del reporte coincide con lo
+    que se ve. Hay prueba que falla si el aviso desaparece sin que la empresa haya
+    configurado umbrales propios.
+13. Un indicador que no se puede calcular muestra su motivo escrito, nunca un cero
+    ni un vacío.

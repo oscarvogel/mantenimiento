@@ -84,6 +84,7 @@ final readonly class RefreshTelemetryNow
             $creadas,
             $duplicadas,
             $ingesta['fallas'],
+            $ingesta['fallasHistoricas'] ?? 0,
         );
     }
 }

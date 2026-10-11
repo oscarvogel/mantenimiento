@@ -165,7 +165,7 @@ final class OperationsPayload
 
         return [
             'canEdit' => $canEdit,
-            'old' => $this->old(['sucursal_id', 'tipo_equipo_id', 'codigo', 'patente', 'marca_id', 'modelo_id', 'fecha_alta', 'anio', 'chasis', 'motor', 'observaciones', 'km_actual_inicial', 'horas_actuales_inicial', 'fecha_lectura_inicial']),
+            'old' => $this->old(['sucursal_id', 'tipo_equipo_id', 'codigo', 'patente', 'marca_id', 'modelo_id', 'fecha_alta', 'anio', 'chasis', 'motor', 'capacidad_tanque_litros', 'observaciones', 'km_actual_inicial', 'horas_actuales_inicial', 'fecha_lectura_inicial']),
             'routes' => [
                 'index' => $base, 'maintenance' => base_url('mantenimiento'),
                 'createEquipment' => $base,
@@ -366,7 +366,9 @@ final class OperationsPayload
                 'currentHours' => $equipment['horas_actuales'], 'plate' => $equipment['patente'],
                 'startDate' => $equipment['fecha_alta'], 'endDate' => $equipment['fecha_baja'],
                 'brandId' => $equipment['marca_id'], 'modelId' => $equipment['modelo_id'], 'year' => $equipment['anio'],
-                'chassis' => $equipment['chasis'], 'engine' => $equipment['motor'], 'notes' => $equipment['observaciones'],
+                'chassis' => $equipment['chasis'], 'engine' => $equipment['motor'],
+                'tankCapacityLiters' => ! isset($equipment['capacidad_tanque_litros']) ? null : (int) $equipment['capacidad_tanque_litros'],
+                'notes' => $equipment['observaciones'],
                 'controlsKm' => (int) $equipment['controla_km'] === 1, 'controlsHours' => (int) $equipment['controla_horas'] === 1,
             ],
             'primaryPhoto' => $primaryPhoto === null ? null : [

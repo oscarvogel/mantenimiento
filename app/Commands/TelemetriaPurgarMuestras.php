@@ -6,6 +6,8 @@ namespace App\Commands;
 
 use App\Application\Telematic\PurgarMuestrasVencidas;
 use CodeIgniter\CLI\BaseCommand;
+use DateTimeImmutable;
+use DateTimeZone;
 use Throwable;
 
 /**
@@ -21,6 +23,8 @@ use Throwable;
  */
 final class TelemetriaPurgarMuestras extends BaseCommand
 {
+    use OpcionLegible;
+
     protected $group       = 'Mantenimiento';
     protected $name        = 'telematria:purgar-muestras';
     protected $description = 'Purga las muestras de telemetria fuera de la ventana de retencion.';
@@ -29,28 +33,32 @@ final class TelemetriaPurgarMuestras extends BaseCommand
     protected $options     = [
         '--empresa'   => 'Id de la empresa. Obligatorio.',
         '--dias'      => 'Dias de retencion. Por defecto 90.',
-        '--respaldo'  => 'Ruta del archivo de respaldo. Por defecto writable/telemetria/muestras.jsonl',
+        '--respaldo'  => 'Ruta del archivo. Por defecto se crea uno nuevo en writable/telemetria/.',
     ];
 
     public function run(array $params): int
     {
-        $empresaId = (int) ($params['empresa'] ?? 0);
+        $empresaId = $this->opcionEntera($params, 'empresa', 0);
 
         if ($empresaId <= 0) {
             CLI::error('Falta --empresa con un id valido.');
 
-            return self::EXIT_USAGE;
+            return EXIT_ERROR;
         }
 
-        $dias = (int) ($params['dias'] ?? 90);
+        $dias = $this->opcionEntera($params, 'dias', 90);
 
         if ($dias <= 0) {
             CLI::error('--dias tiene que ser un numero positivo.');
 
-            return self::EXIT_USAGE;
+            return EXIT_ERROR;
         }
 
-        $respaldo = (string) ($params['respaldo'] ?? 'writable/telemetria/muestras.jsonl');
+        $ahora = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+        $respaldo = (string) $this->opcion($params, 'respaldo', sprintf(
+            'writable/telemetria/muestras-%s.jsonl',
+            $ahora->format('Ymd-His-u'),
+        ));
 
         try {
             $purga = new PurgarMuestrasVencidas(
@@ -58,25 +66,30 @@ final class TelemetriaPurgarMuestras extends BaseCommand
                 \Config\Services::muestrasRespaldo(),
                 $empresaId,
                 $dias,
+                \Config\Services::muestrasBucketsHistorico(),
+                \Config\Services::muestrasBucketsRespaldo(),
             );
 
-            $resultado = $purga->execute(new \DateTimeImmutable('now'), $respaldo);
+            $resultado = $purga->execute($ahora, $respaldo);
         } catch (Throwable $exception) {
             // El mensaje importa: es la diferencia entre "no se borró nada" y un
             // error genérico. Si el respaldo falló, el histórico sigue entero.
             CLI::error($exception->getMessage());
 
-            return self::FAILURE;
+            return EXIT_ERROR;
         }
 
         CLI::write(sprintf(
-            'Corte %s | vencidas %d | borradas %d | respaldo %s',
-            $purga->corte(new \DateTimeImmutable('now'))->format('Y-m-d H:i:s'),
+            'Corte %s | muestras vencidas %d | borradas %d | buckets vencidos %d | borrados %d | respaldo muestras %s | respaldo buckets %s',
+            $purga->corte($ahora)->format('Y-m-d H:i:s'),
             $resultado['vencidas'],
             $resultado['borradas'],
+            $resultado['bucketsVencidos'],
+            $resultado['bucketsBorrados'],
             $resultado['respaldo'] ?? 'sin archivo',
+            $resultado['respaldoBuckets'] ?? 'sin archivo',
         ));
 
-        return self::SUCCESS;
+        return EXIT_SUCCESS;
     }
 }

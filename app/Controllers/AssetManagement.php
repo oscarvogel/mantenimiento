@@ -142,6 +142,7 @@ final class AssetManagement extends BaseController
                 $this->nullableInt($this->request->getPost('anio')),
                 $this->nullableString($this->request->getPost('chasis')),
                 $this->nullableString($this->request->getPost('motor')),
+                $this->nullableInt($this->request->getPost('capacidad_tanque_litros')),
             ),
                 $this->nullableDateTime($this->request->getPost('fecha_lectura_inicial')),
                 $this->nullableInt($this->request->getPost('km_actual_inicial')),

@@ -56,9 +56,20 @@ El panel real de Ferozo permite ejecutar comandos de shell, por lo que puede
 invocarse el endpoint seguro con `curl`, usando POST y el header
 `X-Cron-Token`.
 
-Para actualizar también la telemetría se recomienda ejecutar el cron cada 15
-minutos y limitar cada corrida a un lote acotado. La cola conserva los
-pendientes para la siguiente ejecución y la idempotencia evita duplicados.
+Este mismo ciclo actualiza telemetría e ingiere el histórico Wialon por buckets
+UTC de cinco minutos. La frecuencia operativa es cada cinco minutos; la clave de
+ejecución tiene precisión de minuto y permite las doce corridas de cada hora.
+Si una lectura histórica falla o Wialon devuelve una ventana incompleta, el
+cursor de esa unidad no avanza y el siguiente ciclo vuelve a intentar el tramo.
+El refresco actual y la lectura histórica fallan por separado: una falla de
+`unit/calc_last` no cancela `messages/load_interval`.
+
+El histórico de Wialon se guarda en `telematia_buckets`, con un cursor por
+unidad en `telematia_cursor`. Solo se almacenan extremos observados y segundos
+de ralentí calculables; no se guardan mensajes crudos. Los puntos históricos
+Wialon que ya existían se conservan hasta su purga verificada; una vez habilitada
+la ruta por buckets no se agregan puntos Wialon nuevos. Otros proveedores
+mantienen su almacenamiento puntual.
 
 ## URL legacy conservada
 
@@ -114,10 +125,10 @@ Nunca probar el primer disparo directamente contra producción.
 
 ## Configuración recomendada en Ferozo
 
-Frecuencia (campo «Minutos» en Ferozo):
+Frecuencia (campo «Minutos» en Ferozo; cada cinco minutos):
 
 ```text
-0,15,30,45
+0,5,10,15,20,25,30,35,40,45,50,55
 ```
 
 Comando:
@@ -129,6 +140,33 @@ curl -fsS --connect-timeout 10 --max-time 120 -X POST -H "X-Cron-Token: <TOKEN>"
 Con `alerts.webCronBatchLimit = 25`, cada pasada despacha como máximo un lote
 acotado por canal. Si existe backlog, queda pendiente para la siguiente corrida.
 
-La clave de ejecución del ciclo tiene precisión de minuto para permitir cuatro
-corridas válidas dentro de la misma hora (por ejemplo 07:00, 07:15, 07:30 y
-07:45).
+La clave de ejecución del ciclo tiene precisión de minuto para permitir doce
+corridas válidas dentro de la misma hora (por ejemplo 07:00, 07:05, 07:10 y
+07:15).
+
+## Histórico y retención de telemetría
+
+El cursor de cada unidad marca hasta qué límite UTC se consultó y confirmó una
+ventana. La primera sincronización consulta únicamente el último intervalo
+cerrado de cinco minutos; cada corrida posterior continúa desde el cursor con
+cinco minutos de solape para recuperar mensajes tardíos. No se hace backfill de
+los siete días ni un backfill histórico ilimitado: el historial se acumula desde
+que empieza la ingesta. La retención sigue siendo de 90 días. Ante el límite
+1004, el adaptador divide la ventana en períodos menores; si no puede completar
+una respuesta, registra el fallo, no avanza el cursor y reintenta en el ciclo
+siguiente. No adelantar ni editar `telematia_cursor` manualmente para “saltar”
+un error.
+
+La retención configurada es de 90 días. `php spark telematria:purgar-muestras
+--empresa=<ID> [--dias=90]` respalda muestras y buckets vencidos en archivos
+JSONL separados dentro de `writable/telemetria/`, verifica contenido y cantidad
+antes de borrar, y usa nombres nuevos por ejecución. Si falta un respaldo o la
+verificación falla, no borra ninguna de las dos tablas. Conservar y copiar los
+archivos de respaldo fuera del servidor antes de eliminarlos.
+
+El hosting de producción Ferozo no ofrece PHP CLI. Por eso este comando no es
+ejecutable allí ni está conectado al cron HTTP de notificaciones; no configurar
+una purga remota improvisada. La purga productiva requiere un canal operativo
+compatible y autorizado antes de que venza la retención. El comando puede
+operarse en los entornos con CLI disponible, verificando empresa y archivos de
+respaldo.

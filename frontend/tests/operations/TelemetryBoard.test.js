@@ -47,10 +47,11 @@ const render = (sourceOverrides = {}) => {
 afterEach(() => wrappers.splice(0).forEach((wrapper) => wrapper.unmount()))
 
 describe('TelemetryBoard', () => {
-  it('muestra una sola lectura total de combustible y no inventa capacidad ni tanques', () => {
+  it('muestra los litros informados y pide capacidad antes de calcular el porcentaje', () => {
     const wrapper = render()
 
-    expect(wrapper.text()).toContain('555 l en total')
+    expect(wrapper.text()).toContain('555 l')
+    expect(wrapper.text()).toContain('Cargá la capacidad total en la ficha del equipo')
     expect(wrapper.text()).not.toContain('780')
     expect(wrapper.text()).not.toContain('Tanque 1')
     expect(wrapper.text()).not.toContain('Tanque 2')
@@ -78,7 +79,8 @@ describe('TelemetryBoard', () => {
   it('conserva una lectura de cero y no la confunde con falta de dato', () => {
     const wrapper = render({ fuelLiters: 0, extraSensors: [] })
 
-    expect(wrapper.text()).toContain('0 l en total')
+    expect(wrapper.text()).toContain('0 l')
+    expect(wrapper.text()).toContain('Cargá la capacidad total en la ficha del equipo')
     expect(wrapper.text()).not.toContain('%')
   })
 

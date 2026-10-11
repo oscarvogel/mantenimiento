@@ -29,6 +29,7 @@ final readonly class AppShellPayload
             if ($actor->hasPermission('equipos.ver')) {
                 $navigation[] = $this->item('equipment', 'Equipos', 'mantenimiento/equipos', 'truck', $active);
                 $navigation[] = $this->item('fleet-telemetry', 'Telemetría de flota', 'mantenimiento/telemetria', 'map', $active);
+                $navigation[] = $this->item('fleet-consumption', 'Consumo por viaje', 'mantenimiento/telemetria/consumo', 'chart', $active);
             }
             if ($actor->hasPermission('lecturas.cargar')) {
                 $navigation[] = $this->item('quick-readings', 'Registrar km/horas', 'mantenimiento/lecturas/rapidas', 'readings', $active);

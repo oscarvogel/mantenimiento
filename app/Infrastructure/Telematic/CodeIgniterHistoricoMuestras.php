@@ -5,21 +5,23 @@ declare(strict_types=1);
 namespace App\Infrastructure\Telematic;
 
 use App\Application\Telematic\Port\HistoricoMuestras;
-use App\Domain\Telematic\InstantaneaEquipo;
-use App\Domain\Telematic\MuestraEquipo;
-use App\Domain\Telematic\Posicion;
+use App\Application\Telematic\Port\SerieMuestrasReader;
 use CodeIgniter\Database\BaseConnection;
 use Config\Database;
 use DateTimeImmutable;
 
 /**
- * Lectura y purga del histórico de muestras.
+ * Lectura y purga del histórico de muestras de una empresa.
  *
  * El corte usa `observada_en`, la hora del proveedor, que es la que ordena la
- * serie. Usar `registrada_en` mezclaría el tiempo del dispositivo con el
- * nuestro y dejaría huecos falsos en la ventana de retención.
+ * serie. Usar `registrada_en` mezclaría el tiempo del dispositivo con el nuestro
+ * y dejaría huecos falsos en la ventana de retención.
+ *
+ * El mapeo de fila vive en `FilaAMuestra` y no acá: lo comparte con el lector
+ * que arma la serie para el cálculo de consumo, y si divergieran el respaldo
+ * contendría filas que el cálculo no puede reconstruir.
  */
-final class CodeIgniterHistoricoMuestras implements HistoricoMuestras
+final class CodeIgniterHistoricoMuestras implements HistoricoMuestras, SerieMuestrasReader
 {
     private const TABLA = 'telematia_muestras';
 
@@ -32,77 +34,57 @@ final class CodeIgniterHistoricoMuestras implements HistoricoMuestras
 
     public function anterioresA(int $empresaId, DateTimeImmutable $corte): array
     {
-        if (! $this->hasTable()) {
+        if ($empresaId <= 0 || ! $this->hasTable()) {
             return [];
         }
 
         $filas = $this->mysql->table(self::TABLA)
             ->where('empresa_id', $empresaId)
-            ->where('observada_en <', $corte->format('Y-m-d H:i:s'))
+            ->where('observada_en <', $corte->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s'))
             ->orderBy('observada_en', 'ASC')
             ->get()
             ->getResultArray();
 
-        return array_map(fn (array $fila): MuestraEquipo => $this->muestra($fila), $filas);
+        $mapeo = new FilaAMuestra();
+
+        return array_map($mapeo, $filas);
     }
 
     public function borrarAnterioresA(int $empresaId, DateTimeImmutable $corte): int
     {
-        if (! $this->hasTable()) {
+        if ($empresaId <= 0 || ! $this->hasTable()) {
             return 0;
         }
 
         $ok = $this->mysql->table(self::TABLA)
             ->where('empresa_id', $empresaId)
-            ->where('observada_en <', $corte->format('Y-m-d H:i:s'))
+            ->where('observada_en <', $corte->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s'))
             ->delete();
 
         return $ok ? (int) $this->mysql->affectedRows() : 0;
     }
 
-    /** @param array<string,mixed> $fila */
-    private function muestra(array $fila): MuestraEquipo
+    public function serie(int $empresaId, int $equipoId, DateTimeImmutable $desde, DateTimeImmutable $hasta): array
     {
-        $observada = new DateTimeImmutable((string) $fila['observada_en']);
-        $registrada = new DateTimeImmutable((string) ($fila['registrada_en'] ?? $fila['observada_en']));
+        if ($empresaId <= 0 || $equipoId <= 0 || $hasta < $desde || ! $this->hasTable()) {
+            return [];
+        }
 
-        $posicion = $fila['latitud'] === null || $fila['longitud'] === null
-            ? null
-            : new Posicion(
-                (float) $fila['latitud'],
-                (float) $fila['longitud'],
-                isset($fila['velocidad_kmh']) ? (float) $fila['velocidad_kmh'] : null,
-                isset($fila['rumbo']) ? (int) $fila['rumbo'] : null,
-                isset($fila['altitud_m']) ? (float) $fila['altitud_m'] : null,
-                isset($fila['satelites']) ? (int) $fila['satelites'] : null,
-                $observada,
-            );
+        $utc = new \DateTimeZone('UTC');
+        $filas = $this->mysql->table(self::TABLA)
+            ->where('empresa_id', $empresaId)
+            ->where('equipo_id', $equipoId)
+            ->where("LOWER(proveedor) != 'wialon'", null, false)
+            ->where('observada_en >=', $desde->setTimezone($utc)->format('Y-m-d H:i:s'))
+            ->where('observada_en <=', $hasta->setTimezone($utc)->format('Y-m-d H:i:s'))
+            ->orderBy('observada_en', 'ASC')
+            ->orderBy('integracion_id', 'ASC')
+            ->get()
+            ->getResultArray();
 
-        $instantanea = new InstantaneaEquipo(
-            $observada,
-            $posicion,
-            isset($fila['kilometraje']) ? (int) $fila['kilometraje'] : null,
-            isset($fila['horas_decimales']) ? (int) $fila['horas_decimales'] : null,
-            $this->booleano($fila['motor_encendido'] ?? null),
-            $this->booleano($fila['ralenti_activo'] ?? null),
-            isset($fila['voltaje']) ? (float) $fila['voltaje'] : null,
-            isset($fila['combustible_litros']) ? (float) $fila['combustible_litros'] : null,
-        );
+        $mapeo = new FilaAMuestra();
 
-        return new MuestraEquipo(
-            (int) $fila['empresa_id'],
-            (int) $fila['integracion_id'],
-            (int) $fila['equipo_id'],
-            (string) $fila['unidad_externa'],
-            (string) $fila['proveedor'],
-            $instantanea,
-            $registrada,
-        );
-    }
-
-    private function booleano(mixed $valor): ?bool
-    {
-        return $valor === null ? null : ((int) $valor === 1);
+        return array_map($mapeo, $filas);
     }
 
     private function hasTable(): bool

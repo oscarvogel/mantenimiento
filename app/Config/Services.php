@@ -107,14 +107,23 @@ use App\Infrastructure\Telematic\CodeIgniterTelemetryIntegrationConfigurator;
 use App\Infrastructure\Telematic\CodeIgniterTelemetryEquipmentUnitLinkManager;
 use App\Application\Telematic\RecordTelemetrySnapshots;
 use App\Application\Telematic\RegistrarMuestras;
+use App\Application\Telematic\SincronizarBucketsTelemetria;
+use App\Application\Telematic\Port\LectorHistoricoTelemetria;
+use App\Application\Telematic\Port\SerieMuestrasReader;
 use App\Application\Telematic\Port\FleetTelemetryGateway;
 use App\Application\Telematic\Port\FleetTelemetryGatewayRegistry;
+use App\Domain\Telematic\AgregadorBucketsTelemetria;
 use App\Infrastructure\Telematic\CodeIgniterTelemetryIntegrationStore;
 use App\Infrastructure\Telematic\CodeIgniterTelemetryIntegrationCatalog;
+use App\Infrastructure\Telematic\CodeIgniterTelemetryBucketStore;
 use App\Infrastructure\Telematic\CodeIgniterEquipmentTelemetryCatalog;
 use App\Infrastructure\Telematic\CodeIgniterTelemetrySnapshotStore;
 use App\Infrastructure\Telematic\CodeIgniterMuestraStore;
 use App\Infrastructure\Telematic\CodeIgniterHistoricoMuestras;
+use App\Infrastructure\Telematic\CodeIgniterHistoricoBuckets;
+use App\Infrastructure\Telematic\ArchivoRespaldoBuckets;
+use App\Infrastructure\Telematic\CodeIgniterBucketSerieMuestrasReader;
+use App\Infrastructure\Telematic\CodeIgniterTelematicSerieMuestrasReader;
 use App\Infrastructure\Telematic\ArchivoRespaldoMuestras;
 use App\Infrastructure\Telematic\CodeIgniterFleetTelemetryGatewayRegistry;
 use App\Infrastructure\Notifications\CodeIgniterWebPushSubscriptionStore;
@@ -566,6 +575,7 @@ class Services extends BaseService
             new RegistrarMuestras(new CodeIgniterMuestraStore(db_connect())),
             static::notificationClock(false),
             $companyId,
+            self::telemetryBucketSynchronizer(db_connect(), $registry),
         );
     }
 
@@ -579,6 +589,30 @@ class Services extends BaseService
         return new ArchivoRespaldoMuestras();
     }
 
+    public static function muestrasBucketsHistorico(): CodeIgniterHistoricoBuckets
+    {
+        return new CodeIgniterHistoricoBuckets(db_connect());
+    }
+
+    public static function muestrasBucketsRespaldo(): ArchivoRespaldoBuckets
+    {
+        return new ArchivoRespaldoBuckets();
+    }
+
+    public static function serieMuestras(bool $getShared = true): SerieMuestrasReader
+    {
+        if ($getShared) {
+            return static::getSharedInstance('serieMuestras');
+        }
+
+        $db = db_connect();
+
+        return new CodeIgniterTelematicSerieMuestrasReader(
+            new CodeIgniterHistoricoMuestras($db),
+            new CodeIgniterBucketSerieMuestrasReader($db),
+        );
+    }
+
     private static function telematicGatewayRegistry(): CodeIgniterFleetTelemetryGatewayRegistry
     {
         $store = new CodeIgniterTelemetryIntegrationStore(db_connect());
@@ -589,6 +623,26 @@ class Services extends BaseService
                 (int) env('WIALON_TIMEOUT_SECONDS', 30),
             ),
         ]);
+    }
+
+    private static function telemetryBucketSynchronizer(
+        \CodeIgniter\Database\BaseConnection $db,
+        FleetTelemetryGatewayRegistry $registry,
+    ): ?SincronizarBucketsTelemetria {
+        if (! $registry->supports(FleetTelemetryGatewayRegistry::PROVIDER_WIALON)) {
+            return null;
+        }
+
+        $gateway = $registry->forProvider(FleetTelemetryGatewayRegistry::PROVIDER_WIALON);
+        if (! $gateway instanceof LectorHistoricoTelemetria) {
+            return null;
+        }
+
+        return new SincronizarBucketsTelemetria(
+            $gateway,
+            new CodeIgniterTelemetryBucketStore($db),
+            new AgregadorBucketsTelemetria(),
+        );
     }
 
     /**
@@ -625,6 +679,7 @@ class Services extends BaseService
                 new RegistrarMuestras(new CodeIgniterMuestraStore($db)),
                 $clock,
                 $companyId,
+                self::telemetryBucketSynchronizer($db, $registry),
             ),
             new DiagnoseSilentUnits(
                 new CodeIgniterEquipmentTelemetryCatalog($integrations, $db),
@@ -671,6 +726,31 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
         return new \App\Application\Telematic\GetEquipmentTelemetry(
             new \App\Infrastructure\Telematic\CodeIgniterTelemetrySnapshotReader(db_connect()),
         );
+    }
+
+    public static function reporteConsumoFlota(bool $getShared = true): \App\Application\Telematic\GetReporteConsumoFlota
+    {
+        if ($getShared) {
+            return static::getSharedInstance('reporteConsumoFlota');
+        }
+
+        $db = db_connect();
+
+        // La política **no** se resuelve acá: depende de la empresa, y quien
+        // conoce la empresa es el caso de uso, con su actor. Si se inyectara
+        // un default fijo, los umbrales configurados de una empresa nunca se
+        // aplicarían.
+        return new \App\Application\Telematic\GetReporteConsumoFlota(
+            new \App\Infrastructure\Telematic\CodeIgniterFleetTelemetryBoardReader($db),
+            new \App\Application\Telematic\CalcularConsumoPorEquipo(static::serieMuestras(false)),
+            new \App\Infrastructure\Telematic\CodeIgniterConsumoConfigStore($db),
+            static::notificationClock(false),
+        );
+    }
+
+    public static function consumoConfig(): \App\Application\Telematic\Port\ConsumoConfigStore
+    {
+        return new \App\Infrastructure\Telematic\CodeIgniterConsumoConfigStore(db_connect());
     }
 
     public static function fleetTelemetryBoard(bool $getShared = true): \App\Application\Telematic\GetFleetTelemetryBoard
