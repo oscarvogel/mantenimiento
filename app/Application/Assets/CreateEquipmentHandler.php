@@ -50,6 +50,7 @@ final class CreateEquipmentHandler
             $command->year,
             $command->chassis,
             $command->engine,
+            $command->tankCapacityLiters,
         );
         $this->assertTechnicalCompatibility($companyId, $equipment);
         if ($this->equipment->codeExists($companyId, $equipment->code())) {

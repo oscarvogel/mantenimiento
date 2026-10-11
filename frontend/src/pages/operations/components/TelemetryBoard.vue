@@ -52,6 +52,16 @@ const formatLitros = (value) =>
     ? '—'
     : Number(value).toLocaleString('es-AR', { maximumFractionDigits: 0 })
 
+const porcentajeCombustible = (fuente) => {
+  const capacidad = Number(props.equipment.tankCapacityLiters)
+  const litros = Number(fuente.fuelLiters)
+  if (!Number.isFinite(capacidad) || capacidad <= 0 || !Number.isFinite(litros)) return null
+  return Number(((litros / capacidad) * 100).toFixed(1))
+}
+
+const etiquetaPorcentajeCombustible = (fuente) =>
+  `${porcentajeCombustible(fuente).toLocaleString('es-AR', { maximumFractionDigits: 1 })}%`
+
 const formatHora = (value) => {
   if (!value) return '—'
   const fecha = new Date(String(value).replace(' ', 'T'))
@@ -299,7 +309,7 @@ const mapaEnlaceDe = (fuente) => {
           </div>
         </div>
 
-        <!-- Una lectura total. La ilustración identifica el dato, sin inventar capacidad ni porcentaje. -->
+        <!-- La capacidad se carga en la ficha; sin ella sólo mostramos los litros que informa Wialon. -->
         <div class="flex h-full min-h-40 items-center gap-5 rounded-xl border border-border bg-surface-subtle/60 p-5 sm:gap-7">
           <div class="flex size-24 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 sm:size-28" aria-hidden="true">
             <svg class="size-16 text-primary sm:size-[4.5rem]" viewBox="0 0 96 96" fill="none">
@@ -309,17 +319,39 @@ const mapaEnlaceDe = (fuente) => {
               <path d="M44 56a4 4 0 0 0 4 4" stroke="currentColor" stroke-linecap="round" stroke-width="2.5" />
             </svg>
           </div>
-          <div class="min-w-0">
+          <div class="min-w-0 flex-1">
             <p class="text-xs font-bold uppercase tracking-wide text-ink-muted">Combustible</p>
             <p v-if="fuente.fuelLiters !== null && fuente.fuelLiters !== undefined" class="mt-2 flex flex-wrap items-baseline gap-x-2">
               <span class="text-3xl font-bold tabular-nums text-ink sm:text-4xl">{{ formatLitros(fuente.fuelLiters) }} l</span>
-              <span class="text-sm font-semibold text-ink-muted">{{ ' ' }}en total</span>
+              <template v-if="equipment.tankCapacityLiters">
+                <span class="text-sm font-semibold text-ink-muted">/ {{ formatLitros(equipment.tankCapacityLiters) }} l</span>
+                <span class="text-lg font-bold tabular-nums text-primary">{{ etiquetaPorcentajeCombustible(fuente) }}</span>
+              </template>
             </p>
             <p v-else class="mt-2 text-sm leading-6 text-ink-muted">
               Sin lectura de combustible en la última señal.
             </p>
-            <p v-if="fuente.fuelLiters !== null && fuente.fuelLiters !== undefined" class="mt-1 text-xs text-ink-muted">
-              Lectura total informada por el proveedor
+            <div
+              v-if="fuente.fuelLiters !== null && fuente.fuelLiters !== undefined && equipment.tankCapacityLiters"
+              class="mt-3 h-4 overflow-hidden rounded-full border border-border bg-surface-muted"
+              role="meter"
+              :aria-valuemin="0"
+              :aria-valuemax="equipment.tankCapacityLiters"
+              :aria-valuenow="Math.min(Number(fuente.fuelLiters), equipment.tankCapacityLiters)"
+              :aria-valuetext="`${formatLitros(fuente.fuelLiters)} litros de ${formatLitros(equipment.tankCapacityLiters)} litros; ${etiquetaPorcentajeCombustible(fuente)}`"
+              :aria-label="`Nivel de combustible de ${equipment.code}`"
+            >
+              <div
+                class="h-full rounded-full transition-[width] duration-500"
+                :class="porcentajeCombustible(fuente) > 100 ? 'bg-warning' : 'bg-primary/75'"
+                :style="{ width: `${Math.min(100, Math.max(0, porcentajeCombustible(fuente)))}%` }"
+              />
+            </div>
+            <p v-if="fuente.fuelLiters !== null && fuente.fuelLiters !== undefined && !equipment.tankCapacityLiters" class="mt-1 text-xs text-ink-muted">
+              Cargá la capacidad total en la ficha del equipo para ver el porcentaje.
+            </p>
+            <p v-else-if="fuente.fuelLiters !== null && fuente.fuelLiters !== undefined && porcentajeCombustible(fuente) > 100" class="mt-1 text-xs font-medium text-warning-foreground" role="status">
+              Wialon informa más litros que la capacidad registrada. Revisá la capacidad o la calibración del sensor.
             </p>
           </div>
         </div>

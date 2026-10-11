@@ -31,6 +31,7 @@ final class Equipment
         private ?int $year = null,
         private ?string $chassis = null,
         private ?string $engine = null,
+        private ?int $tankCapacityLiters = null,
     ) {
         if ($companyId <= 0 || $branchId <= 0) {
             throw new DomainException('La empresa y la sucursal del equipo deben ser válidas.');
@@ -50,6 +51,7 @@ final class Equipment
         if ($status === self::INACTIVE && $decommissionedAt === null) {
             throw new DomainException('Un equipo dado de baja debe conservar su fecha de baja.');
         }
+        $this->assertTankCapacity($tankCapacityLiters);
         $this->setTechnicalProfile($brandId, $modelId, $year, $chassis, $engine);
     }
 
@@ -74,6 +76,7 @@ final class Equipment
         ?int $year = null,
         ?string $chassis = null,
         ?string $engine = null,
+        ?int $tankCapacityLiters = null,
     ): self {
         return new self(
             null,
@@ -93,6 +96,7 @@ final class Equipment
             $year,
             $chassis,
             $engine,
+            $tankCapacityLiters,
         );
     }
 
@@ -114,6 +118,7 @@ final class Equipment
         ?int $year = null,
         ?string $chassis = null,
         ?string $engine = null,
+        ?int $tankCapacityLiters = null,
     ): self {
         if ($id <= 0) {
             throw new DomainException('La identidad del equipo no es válida.');
@@ -137,6 +142,7 @@ final class Equipment
             $year,
             $chassis,
             $engine,
+            $tankCapacityLiters,
         );
     }
 
@@ -228,6 +234,7 @@ final class Equipment
         ?EquipmentType $type = null,
         ?DateTimeImmutable $registeredAt = null,
         ?DateTimeImmutable $today = null,
+        ?int $tankCapacityLiters = null,
     ): void
     {
         if ($this->status !== self::ACTIVE) {
@@ -263,6 +270,8 @@ final class Equipment
             $this->registeredAt = $registeredAt;
         }
         $this->setTechnicalProfile($brandId, $modelId, $year, $chassis, $engine);
+        $this->assertTankCapacity($tankCapacityLiters);
+        $this->tankCapacityLiters = $tankCapacityLiters;
     }
 
     public function transferTo(int $destinationBranchId, DateTimeImmutable $occurredAt): int
@@ -303,6 +312,7 @@ final class Equipment
     public function year(): ?int { return $this->year; }
     public function chassis(): ?string { return $this->chassis; }
     public function engine(): ?string { return $this->engine; }
+    public function tankCapacityLiters(): ?int { return $this->tankCapacityLiters; }
 
     public function currentHours(): ?string
     {
@@ -366,5 +376,12 @@ final class Equipment
         $this->year = $year;
         $this->chassis = $chassis;
         $this->engine = $engine;
+    }
+
+    private function assertTankCapacity(?int $capacityLiters): void
+    {
+        if ($capacityLiters !== null && ($capacityLiters <= 0 || $capacityLiters > 99999999)) {
+            throw new DomainException('La capacidad total de los tanques debe ser mayor que cero y no superar 99.999.999 litros.');
+        }
     }
 }

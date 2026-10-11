@@ -20,6 +20,7 @@ final readonly class UpdateEquipmentCommand
         public ?string $engine = null,
         public ?int $typeId = null,
         public ?DateTimeImmutable $registeredAt = null,
+        public ?int $tankCapacityLiters = null,
     ) {
     }
 }

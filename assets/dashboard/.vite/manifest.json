@@ -41,7 +41,7 @@
     ]
   },
   "src/main.js": {
-    "file": "assets/main-Ck2CTR0K.js",
+    "file": "assets/main-C03k6AvS.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
@@ -56,7 +56,7 @@
       "src/pages/operations/components/FleetTelemetryMap.vue"
     ],
     "css": [
-      "assets/main-qoFrrDMV.css"
+      "assets/main-877gcQ9F.css"
     ]
   },
   "src/pages/operations/components/FleetTelemetryMap.vue": {
