@@ -299,16 +299,29 @@ const mapaEnlaceDe = (fuente) => {
           </div>
         </div>
 
-        <!-- Combustible: una lectura total, sin inferir cantidad ni capacidad de tanques. -->
-        <div class="rounded-xl border border-border bg-surface-subtle/60 p-4">
-          <p class="text-xs font-bold uppercase tracking-wide text-ink-muted">Combustible</p>
-          <p v-if="fuente.fuelLiters !== null && fuente.fuelLiters !== undefined" class="mt-2 text-3xl font-bold tabular-nums text-ink">
-            {{ formatLitros(fuente.fuelLiters) }}
-            <span class="text-sm font-semibold text-ink-muted">l en total</span>
-          </p>
-          <p v-else class="mt-2 rounded-lg border border-dashed border-border px-3 py-4 text-sm text-ink-muted">
-            Sin lectura de combustible en la última señal.
-          </p>
+        <!-- Una lectura total. La ilustración identifica el dato, sin inventar capacidad ni porcentaje. -->
+        <div class="flex h-full min-h-40 items-center gap-5 rounded-xl border border-border bg-surface-subtle/60 p-5 sm:gap-7">
+          <div class="flex size-24 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 sm:size-28" aria-hidden="true">
+            <svg class="size-16 text-primary sm:size-[4.5rem]" viewBox="0 0 96 96" fill="none">
+              <path d="M26 25.5A7.5 7.5 0 0 1 33.5 18h29a7.5 7.5 0 0 1 7.5 7.5v47a7.5 7.5 0 0 1-7.5 7.5h-29a7.5 7.5 0 0 1-7.5-7.5v-47Z" stroke="currentColor" stroke-width="3" />
+              <path d="M36 18v-6h24v6M70 34h6a6 6 0 0 1 6 6v24a6 6 0 0 1-6 6h-6M35 80v5m26-5v5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="3" />
+              <path d="M48 37c-5.2 7-9 11-9 16a9 9 0 0 0 18 0c0-5-3.8-9-9-16Z" fill="currentColor" fill-opacity=".16" stroke="currentColor" stroke-linejoin="round" stroke-width="2.5" />
+              <path d="M44 56a4 4 0 0 0 4 4" stroke="currentColor" stroke-linecap="round" stroke-width="2.5" />
+            </svg>
+          </div>
+          <div class="min-w-0">
+            <p class="text-xs font-bold uppercase tracking-wide text-ink-muted">Combustible</p>
+            <p v-if="fuente.fuelLiters !== null && fuente.fuelLiters !== undefined" class="mt-2 flex flex-wrap items-baseline gap-x-2">
+              <span class="text-3xl font-bold tabular-nums text-ink sm:text-4xl">{{ formatLitros(fuente.fuelLiters) }}</span>
+              <span class="text-sm font-semibold text-ink-muted">l en total</span>
+            </p>
+            <p v-else class="mt-2 text-sm leading-6 text-ink-muted">
+              Sin lectura de combustible en la última señal.
+            </p>
+            <p v-if="fuente.fuelLiters !== null && fuente.fuelLiters !== undefined" class="mt-1 text-xs text-ink-muted">
+              Lectura total informada por el proveedor
+            </p>
+          </div>
         </div>
       </div>
 
