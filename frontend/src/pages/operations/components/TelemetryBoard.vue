@@ -312,8 +312,8 @@ const mapaEnlaceDe = (fuente) => {
           <div class="min-w-0">
             <p class="text-xs font-bold uppercase tracking-wide text-ink-muted">Combustible</p>
             <p v-if="fuente.fuelLiters !== null && fuente.fuelLiters !== undefined" class="mt-2 flex flex-wrap items-baseline gap-x-2">
-              <span class="text-3xl font-bold tabular-nums text-ink sm:text-4xl">{{ formatLitros(fuente.fuelLiters) }}</span>
-              <span class="text-sm font-semibold text-ink-muted">l en total</span>
+              <span class="text-3xl font-bold tabular-nums text-ink sm:text-4xl">{{ formatLitros(fuente.fuelLiters) }} l</span>
+              <span class="text-sm font-semibold text-ink-muted">en total</span>
             </p>
             <p v-else class="mt-2 text-sm leading-6 text-ink-muted">
               Sin lectura de combustible en la última señal.
