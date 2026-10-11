@@ -10,6 +10,8 @@ use App\Domain\Telematic\Consumo\IntervaloConsumo;
 use App\Domain\Telematic\Consumo\PoliticaAtribucion;
 use App\Domain\Telematic\Consumo\PoliticaSegmentacion;
 use App\Domain\Telematic\Consumo\ReglaSegmentacion;
+use App\Domain\Telematic\Consumo\SerieConsumo;
+use App\Domain\Telematic\Consumo\ViajeSegmentado;
 use App\Domain\Telematic\InstantaneaEquipo;
 use App\Domain\Telematic\MuestraEquipo;
 use App\Domain\Telematic\Posicion;
@@ -263,11 +265,20 @@ final class ReglaSegmentacionTest extends TestCase
         $this->assertSame(CalidadIntervalo::Completo, $intervalos[1]->calidad());
     }
 
-    /** @param list<MuestraEquipo> $muestras @return list<\App\Domain\Telematic\Consumo\ViajeSegmentado> */
+    /** @param list<MuestraEquipo> $muestras @return list<ViajeSegmentado> */
     private function segmentar(array $muestras): array
     {
         return (new ReglaSegmentacion(new PoliticaSegmentacion(...self::SEGMENTACION)))
-            ->segmentar($muestras, new PoliticaAtribucion(...self::ATRIBUCION));
+            ->segmentar($this->serie($muestras));
+    }
+
+    /**
+     * @param  list<MuestraEquipo> $muestras
+     * @return SerieConsumo
+     */
+    private function serie(array $muestras): SerieConsumo
+    {
+        return new SerieConsumo($muestras, new PoliticaAtribucion(...self::ATRIBUCION));
     }
 
     private function muestra(

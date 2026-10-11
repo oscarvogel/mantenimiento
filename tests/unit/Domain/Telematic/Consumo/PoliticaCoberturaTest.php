@@ -223,10 +223,7 @@ final class PoliticaCoberturaTest extends TestCase
         $repartidas = array_reverse($this->serieCada15Minutos('2026-10-10 06:00:00', 6));
 
         $viajes = (new ReglaSegmentacion(new \App\Domain\Telematic\Consumo\PoliticaSegmentacion()))
-            ->segmentar(
-                $repartidas,
-                new PoliticaAtribucion(deltaMinimoLitros: 2.0, umbralCargaLitros: 20.0),
-            );
+            ->segmentar(new SerieConsumo($repartidas, new PoliticaAtribucion(deltaMinimoLitros: 2.0, umbralCargaLitros: 20.0)));
 
         self::assertNotSame([], $viajes, 'Con las capturas desordenadas el odómetro retrocede y no habría viajes.');
     }

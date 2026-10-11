@@ -10,6 +10,7 @@ use App\Domain\Telematic\Consumo\PoliticaAtribucion;
 use App\Domain\Telematic\Consumo\PoliticaIndicadores;
 use App\Domain\Telematic\Consumo\PoliticaSegmentacion;
 use App\Domain\Telematic\Consumo\ReglaSegmentacion;
+use App\Domain\Telematic\Consumo\SerieConsumo;
 use App\Domain\Telematic\Consumo\ViajeSegmentado;
 use App\Domain\Telematic\InstantaneaEquipo;
 use App\Domain\Telematic\MuestraEquipo;
@@ -93,7 +94,7 @@ final class IndicadoresConsumoTest extends TestCase
         ];
 
         $viajes = (new ReglaSegmentacion(new PoliticaSegmentacion(kmMinimosViaje: 0, intervalosParadoParaCerrar: 2)))
-            ->segmentar($muestras, new PoliticaAtribucion(deltaMinimoLitros: 2.0, umbralCargaLitros: 20.0));
+            ->segmentar($this->serie($muestras));
 
         self::assertSame([], $viajes);
     }
@@ -276,10 +277,13 @@ final class IndicadoresConsumoTest extends TestCase
     private function primerViaje(array $muestras): ViajeSegmentado
     {
         return (new ReglaSegmentacion(new PoliticaSegmentacion(kmMinimosViaje: 0, intervalosParadoParaCerrar: 2)))
-            ->segmentar(
-                $muestras,
-                new PoliticaAtribucion(deltaMinimoLitros: 2.0, umbralCargaLitros: 20.0),
-            )[0];
+            ->segmentar(new SerieConsumo($muestras, new PoliticaAtribucion(deltaMinimoLitros: 2.0, umbralCargaLitros: 20.0)))[0];
+    }
+
+    /** @param list<MuestraEquipo> $muestras */
+    private function serie(array $muestras): SerieConsumo
+    {
+        return new SerieConsumo($muestras, new PoliticaAtribucion(deltaMinimoLitros: 2.0, umbralCargaLitros: 20.0));
     }
 
     private function indicadores(ViajeSegmentado $viaje): IndicadoresConsumo
