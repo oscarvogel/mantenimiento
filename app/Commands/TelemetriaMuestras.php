@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Commands;
 
 use App\Application\Telematic\CalcularConsumoPorEquipo;
+use App\Application\Telematic\ConfigurarConsumoPorEmpresa;
+use App\Infrastructure\Telematic\CodeIgniterConsumoConfigStore;
 use App\Infrastructure\Telematic\CodeIgniterSerieMuestrasReader;
 use CodeIgniter\CLI\BaseCommand;
 use CodeIgniter\CLI\CLI;
@@ -84,13 +86,15 @@ final class TelemetriaMuestras extends BaseCommand
         }
 
         $avisos = [];
+        $config = new ConfigurarConsumoPorEmpresa(new CodeIgniterConsumoConfigStore($db));
+        $politica = $config->politica($empresaId);
 
         foreach ($equipos as $id) {
-            $reporte = (new CalcularConsumoPorEquipo(new CodeIgniterSerieMuestrasReader($db)))
+            $reporte = (new CalcularConsumoPorEquipo(new CodeIgniterSerieMuestrasReader($db), $politica))
                 ->execute($empresaId, $id, $desde, $hasta);
 
             $this->equipo($reporte);
-            $avisos = array_merge($avisos, $this->avisos($reporte->umbrales(), $reporte->sinCalibrar()));
+            $avisos = array_merge($avisos, $this->avisos($politica, $empresaId));
         }
 
         CLI::newline();
@@ -151,20 +155,43 @@ final class TelemetriaMuestras extends BaseCommand
         ));
     }
 
-    /** @param array<string,float|int> $umbrales */
-    private function avisos(array $umbrales, bool $sinCalibrar): array
+    /**
+     * Imprime los umbrales aplicados marcando de dónde sale cada uno.
+     *
+     * Mostrar sólo el número no alcanza: cuando la empresa todavía usa los
+     * valores de fábrica hay que poder distinguir "esto lo eligió alguien" de
+     * "esto se decidió en el código y nadie lo verificó".
+     */
+private function avisos(\App\Domain\Telematic\Consumo\PoliticaConsumo $politica, int $empresaId): array
     {
+        $config = (new CodeIgniterConsumoConfigStore())->obtener($empresaId);
+        $origen = $politica->valoresConOrigen(
+            $config ?? new \App\Domain\Telematic\Consumo\ConsumoConfigEmpresa($empresaId),
+        );
+
         $avisos = [];
 
-        foreach ($umbrales as $clave => $valor) {
-            $avisos[] = $clave . ' = ' . $valor;
+        foreach ($origen as $clave => $dato) {
+            $avisos[] = sprintf('%-32s %-8s %s', $clave, $this->numero((float) $dato['valor']), $dato['origen']);
         }
 
-        if ($sinCalibrar) {
-            array_unshift($avisos, 'SIN CALIBRAR: son valores de fabrica.');
+        if (! $politica->calibrada) {
+            array_unshift(
+                $avisos,
+                'SIN CALIBRAR: la empresa no configuro umbrales propios.',
+                '  Los valores marcados "fabrica" son un punto de partida razonable,',
+                '  no una medicion. Verifique con datos reales antes de confiar en el informe.',
+            );
         }
 
         return $avisos;
+    }
+
+    private function numero(float $valor): string
+    {
+        $texto = rtrim(rtrim(number_format($valor, 2, ',', ''), '0'), ',');
+
+        return $texto === '' ? '0' : $texto;
     }
 
     private function litros(?float $valor): string

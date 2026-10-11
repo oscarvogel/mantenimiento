@@ -44,7 +44,11 @@ final readonly class PoliticaConsumo
         );
     }
 
-    /** Los valores aplicados, para que un diagnóstico pueda imprimirlos. */
+    /**
+     * Los valores aplicados, para que un diagnóstico pueda imprimirlos.
+     *
+     * @return array<string, float|int>
+     */
     public function valores(): array
     {
         return [
@@ -59,5 +63,60 @@ final readonly class PoliticaConsumo
             'velocidadMinimaPlausibleKmh' => $this->indicadores->velocidadMinimaPlausibleKmh,
             'velocidadMaximaPlausibleKmh' => $this->indicadores->velocidadMaximaPlausibleKmh,
         ];
+    }
+
+    /** Los mismos valores, marcando cuáles los puso la empresa y cuáles son de fábrica. */
+    public function valoresConOrigen(ConsumoConfigEmpresa $config): array
+    {
+        $propios = $config->valoresPropios();
+        $salida = [];
+
+        foreach ($this->valores() as $clave => $valor) {
+            $salida[$clave] = [
+                'valor' => $valor,
+                'origen' => array_key_exists($clave, $propios) ? 'empresa' : 'fabrica',
+            ];
+        }
+
+        return $salida;
+    }
+
+    /**
+     * Arma la política con lo que la empresa configuró y defaults para el resto.
+     *
+     * `calibrada` queda en true sólo si la empresa fijó **algún** valor. Con una
+     * fila vacía o inexistente seguimos con los defaults de fábrica, que nadie
+     * verificó, y el reporte tiene que seguir saliendo marcado como no
+     * calibrado.
+     */
+    public static function desdeConfig(?ConsumoConfigEmpresa $config): self
+    {
+        if ($config === null) {
+            return self::porDefecto();
+        }
+
+        $valores = $config->valores();
+
+        return new self(
+            new PoliticaAtribucion(
+                $valores['deltaMinimoLitros'] ?? 2.0,
+                $valores['umbralCargaLitros'] ?? 20.0,
+                $valores['huecoMaximoAtribucion'] ?? 30,
+            ),
+            new PoliticaSegmentacion(
+                $valores['kmMinimosViaje'] ?? 1,
+                $valores['minutosMinimosViaje'] ?? 5,
+                $valores['intervalosParadoParaCerrar'] ?? 2,
+            ),
+            new PoliticaCobertura(
+                $valores['coberturaMinima'] ?? 0.70,
+                $valores['huecoMaximoCobertura'] ?? 30,
+            ),
+            new PoliticaIndicadores(
+                $valores['velocidadMaximaPlausibleKmh'] ?? 120.0,
+                $valores['velocidadMinimaPlausibleKmh'] ?? 3.0,
+            ),
+            $config->configurado(),
+        );
     }
 }
