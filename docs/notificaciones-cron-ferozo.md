@@ -147,7 +147,8 @@ corridas válidas dentro de la misma hora (por ejemplo 07:00, 07:05, 07:10 y
 ## Histórico y retención de telemetría
 
 El cursor de cada unidad marca hasta qué límite UTC se consultó y confirmó una
-ventana. La carga inicial cubre como máximo los últimos 90 días; no se hace un
+ventana. La carga inicial del botón cubre los últimos 7 días para mantener
+acotada la petición web; la retención sigue siendo de 90 días y no se hace un
 backfill histórico ilimitado. Ante el límite 1004, el adaptador divide la ventana
 en períodos menores; si no puede completar una respuesta, registra el fallo,
 no avanza el cursor y reintenta en el ciclo siguiente. No adelantar ni editar

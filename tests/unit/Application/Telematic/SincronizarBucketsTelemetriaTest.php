@@ -80,7 +80,7 @@ final class SincronizarBucketsTelemetriaTest extends TestCase
         return new MensajeHistorico(new DateTimeImmutable($fecha, new \DateTimeZone('UTC')), $litros, 1000, 10, true, false);
     }
 
-    public function testInicializaCursorEnRetencionDeNoventaDiasYNoConsultaVentanasFuturas(): void
+    public function testPrimeraConsultaSeLimitaALaSemanaRecienteYNoConsultaVentanasFuturas(): void
     {
         $ahora = new DateTimeImmutable('2026-10-10 10:12:34', new \DateTimeZone('UTC'));
         $lector = new LectorHistoricoEnMemoria();
@@ -95,8 +95,8 @@ final class SincronizarBucketsTelemetriaTest extends TestCase
         self::assertSame(0, $ventana['desde']->getTimestamp() % 300);
         self::assertSame(0, $ventana['hasta']->getTimestamp() % 300);
         self::assertEquals(new DateTimeImmutable('2026-10-10 10:10:00', new \DateTimeZone('UTC')), $store->cursor(4, 8, '28396292'));
-        self::assertGreaterThanOrEqual(89, (int) $ventana['desde']->diff($ventana['hasta'])->days);
-        self::assertLessThanOrEqual(90, (int) $ventana['desde']->diff($ventana['hasta'])->days);
+        self::assertGreaterThanOrEqual(6, (int) $ventana['desde']->diff($ventana['hasta'])->days);
+        self::assertLessThanOrEqual(7, (int) $ventana['desde']->diff($ventana['hasta'])->days);
     }
 
     public function testProcesaUnicamenteUnidadesVinculadasYAvanzaCursorAnteRespuestaVacia(): void
