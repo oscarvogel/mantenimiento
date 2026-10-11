@@ -147,12 +147,15 @@ corridas válidas dentro de la misma hora (por ejemplo 07:00, 07:05, 07:10 y
 ## Histórico y retención de telemetría
 
 El cursor de cada unidad marca hasta qué límite UTC se consultó y confirmó una
-ventana. La carga inicial del botón cubre los últimos 7 días para mantener
-acotada la petición web; la retención sigue siendo de 90 días y no se hace un
-backfill histórico ilimitado. Ante el límite 1004, el adaptador divide la ventana
-en períodos menores; si no puede completar una respuesta, registra el fallo,
-no avanza el cursor y reintenta en el ciclo siguiente. No adelantar ni editar
-`telematia_cursor` manualmente para “saltar” un error.
+ventana. La primera sincronización consulta únicamente el último intervalo
+cerrado de cinco minutos; cada corrida posterior continúa desde el cursor con
+cinco minutos de solape para recuperar mensajes tardíos. No se hace backfill de
+los siete días ni un backfill histórico ilimitado: el historial se acumula desde
+que empieza la ingesta. La retención sigue siendo de 90 días. Ante el límite
+1004, el adaptador divide la ventana en períodos menores; si no puede completar
+una respuesta, registra el fallo, no avanza el cursor y reintenta en el ciclo
+siguiente. No adelantar ni editar `telematia_cursor` manualmente para “saltar”
+un error.
 
 La retención configurada es de 90 días. `php spark telematria:purgar-muestras
 --empresa=<ID> [--dias=90]` respalda muestras y buckets vencidos en archivos
