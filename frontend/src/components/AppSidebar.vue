@@ -40,7 +40,8 @@ const props = defineProps({
 
 const emit = defineEmits(['close'])
 
-const primaryKeys = ['dashboard', 'equipment', 'fleet-telemetry', 'fleet-consumption', 'reading-control', 'maintenance', 'plans', 'reports']
+const primaryKeys = ['dashboard', 'equipment', 'fleet-telemetry', 'reading-control', 'maintenance', 'plans', 'reports']
+const fleetConsumption = computed(() => props.navigation.find((item) => item.key === 'fleet-consumption'))
 
 const primaryNavigation = computed(() => (
   primaryKeys
@@ -49,7 +50,7 @@ const primaryNavigation = computed(() => (
 ))
 
 const secondaryNavigation = computed(() => (
-  props.navigation.filter((item) => !primaryKeys.includes(item.key))
+  props.navigation.filter((item) => !primaryKeys.includes(item.key) && item.key !== 'fleet-consumption')
 ))
 
 const secondaryOpen = ref(secondaryNavigation.value.some((item) => item.active))
@@ -184,7 +185,7 @@ const openDemoCompany = () => {
               v-else
               :href="item.href"
               class="ui-nav-item group flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium"
-              :class="item.active ? 'bg-primary-subtle text-primary shadow-inner' : 'text-ink-muted hover:bg-surface-muted hover:text-ink'"
+              :class="(item.active || (item.key === 'fleet-telemetry' && fleetConsumption?.active)) ? 'bg-primary-subtle text-primary shadow-inner' : 'text-ink-muted hover:bg-surface-muted hover:text-ink'"
               :aria-current="item.active ? 'page' : undefined"
               @click="emit('close')"
             >
@@ -210,6 +211,24 @@ const openDemoCompany = () => {
                 {{ item.badge }}
               </span>
             </a>
+            <ul v-if="item.key === 'fleet-telemetry' && fleetConsumption" class="ml-5 mt-1 space-y-1 border-l border-border-subtle pl-3">
+              <li>
+                <a
+                  :href="fleetConsumption.href"
+                  class="ui-nav-item group flex min-h-10 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium"
+                  :class="fleetConsumption.active ? 'bg-primary-subtle text-primary shadow-inner' : 'text-ink-muted hover:bg-surface-muted hover:text-ink'"
+                  :aria-current="fleetConsumption.active ? 'page' : undefined"
+                  @click="emit('close')"
+                >
+                  <ChartBarSquareIcon
+                    class="size-4 shrink-0"
+                    :class="fleetConsumption.active ? 'text-primary' : 'text-ink-subtle group-hover:text-ink'"
+                    aria-hidden="true"
+                  />
+                  <span class="min-w-0 flex-1 leading-5">{{ fleetConsumption.label }}</span>
+                </a>
+              </li>
+            </ul>
           </li>
       </ul>
 
