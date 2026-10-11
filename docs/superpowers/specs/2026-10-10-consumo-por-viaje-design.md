@@ -170,6 +170,33 @@ Cada viaje muestra su cobertura y sus huecos:
 - La hora de captura y la del proveedor se muestran siempre: una muestra de hace
   tres días no puede parecer actual.
 
+### 8.1 Los números son provisorios hasta que se calibren
+
+**Este es el requisito más importante de la pantalla**, y no es un detalle
+estético: mientras los umbrales sean los de fábrica, **todo número que salga de
+esta pantalla es una estimación**, y la pantalla tiene que decirlo.
+
+Los valores por defecto —2 l de ruido, 20 l de umbral de carga, banda de 3 a
+120 km/h— son razonables pero **no están medidos**. No se pueden medir hasta que
+esto esté en producción y el cron haya acumulado días de telemetría real, y
+mientras tanto el error posible no es pequeño: si el sensor de combustible de un
+camión fluctúa 15 litros entre lecturas y el umbral es de 2, cada ruido se cuenta
+como consumo y todos los viajes de ese camión quedan inventados.
+
+En consecuencia:
+
+- El encabezado del período lleva una leyenda visible —no un tooltip— que dice que
+  los umbrales no están calibrados.
+- La leyenda desaparece sola cuando la empresa configure umbrales propios.
+- El reporte expone `sinCalibrar()` y el comando `telematria:muestras` imprime
+  el mismo aviso junto con los valores aplicados, porque un diagnóstico que
+  oculta su propia incertidumbre sirve para confirmar que el código corre, no
+  para decidir.
+
+El criterio no es mostrar menos: es **que nunca se pueda confundir una medición
+con una estimación**. Un «sin dato» con el motivo escrito vale más que un número
+limpio sin respaldo.
+
 ## 9. Una sola verdad
 
 Criterio de aceptación, y el que Observat no cumple: **la grilla, la fila de total y
@@ -238,6 +265,9 @@ la consulta, no trayendo la serie entera al proceso.
 | Dos unidades sin sensor de combustible | `Sin dato`, nunca 0 |
 | `GZD587` con horómetro imposible (8.763 h) | Se excluye del cómputo hasta revisarlo, como ya está anotado |
 | Congelar el viaje persistido | El viaje no se persiste; se deriva |
+| Umbrales de fábrica sin medir | Leyenda visible en pantalla y aviso en el diagnóstico; ver §8.1 |
+| Meses de km y horas de motor reportadas mal por el proveedor | Banda de plausibilidad por intervalo; se descarta l/h, nunca l/100 km |
+| Sin ingesta continua en staging | La calibración real se hace sobre producción, con `telematria:muestras` |
 
 ## 14. Criterios de aceptación
 
@@ -253,3 +283,9 @@ la consulta, no trayendo la serie entera al proceso.
 10. El ciclo repetido el mismo día no duplica la notificación por equipo y regla.
 11. Pruebas cubren cálculo puro, segmentación, cobertura, atribución, puertos, scoping
     tenant, migraciones/adaptadores, eventos idempotentes y vistas móvil/escritorio.
+12. Con umbrales de fábrica la pantalla muestra una leyenda visible de que los
+    números no están calibrados, y el `sinCalibrar()` del reporte coincide con lo
+    que se ve. Hay prueba que falla si el aviso desaparece sin que la empresa haya
+    configurado umbrales propios.
+13. Un indicador que no se puede calcular muestra su motivo escrito, nunca un cero
+    ni un vacío.
