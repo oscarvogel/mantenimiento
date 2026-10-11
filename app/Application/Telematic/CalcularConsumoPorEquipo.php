@@ -48,24 +48,32 @@ final readonly class CalcularConsumoPorEquipo
         $this->politica = $politica ?? PoliticaConsumo::porDefecto();
     }
 
+    /**
+     * @param PoliticaConsumo|null $politica La de la empresa si ya se resolvió.
+     *                                        Sin esto se usan los defaults y el
+     *                                        reporte sale sin calibrar.
+     */
     public function execute(
         int $empresaId,
         int $equipoId,
         DateTimeImmutable $desde,
         DateTimeImmutable $hasta,
+        ?PoliticaConsumo $politica = null,
     ): ReporteConsumo {
+        $politica = $politica ?? $this->politica;
+
         $muestras = $this->reader->serie($empresaId, $equipoId, $desde, $hasta);
 
-        $serie = new SerieConsumo($muestras, $this->politica->atribucion);
-        $viajes = (new ReglaSegmentacion($this->politica->segmentacion))->segmentar($serie);
+        $serie = new SerieConsumo($muestras, $politica->atribucion);
+        $viajes = (new ReglaSegmentacion($politica->segmentacion))->segmentar($serie);
 
         return new ReporteConsumo(
             $equipoId,
-            $this->conIndicadores($viajes),
-            $this->cobertura($serie->intervalos(), $desde, $hasta),
+            $this->conIndicadores($viajes, $politica),
+            $this->cobertura($serie->intervalos(), $desde, $hasta, $politica),
             count($muestras),
-            $this->politica->valores(),
-            ! $this->politica->calibrada,
+            $politica->valores(),
+            ! $politica->calibrada,
             DistribucionCombustible::desde($serie->intervalos()),
         );
     }
@@ -74,9 +82,9 @@ final readonly class CalcularConsumoPorEquipo
      * @param  list<ViajeSegmentado> $viajes
      * @return list<ViajeConsumido>
      */
-    private function conIndicadores(array $viajes): array
+    private function conIndicadores(array $viajes, PoliticaConsumo $politica): array
     {
-        $indicadores = $this->politica->indicadores;
+        $indicadores = $politica->indicadores;
 
         return array_map(
             static fn (ViajeSegmentado $viaje): ViajeConsumido => new ViajeConsumido(
@@ -88,8 +96,12 @@ final readonly class CalcularConsumoPorEquipo
     }
 
     /** @param list<IntervaloConsumo> $intervalos */
-    private function cobertura(array $intervalos, DateTimeImmutable $desde, DateTimeImmutable $hasta): CoberturaPeriodo
-    {
-        return $this->politica->cobertura->evaluar($intervalos, $desde, $hasta);
+    private function cobertura(
+        array $intervalos,
+        DateTimeImmutable $desde,
+        DateTimeImmutable $hasta,
+        PoliticaConsumo $politica,
+    ): CoberturaPeriodo {
+        return $politica->cobertura->evaluar($intervalos, $desde, $hasta);
     }
 }

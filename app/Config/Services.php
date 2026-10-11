@@ -673,6 +673,33 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
         );
     }
 
+    public static function reporteConsumoFlota(bool $getShared = true): \App\Application\Telematic\GetReporteConsumoFlota
+    {
+        if ($getShared) {
+            return static::getSharedInstance('reporteConsumoFlota');
+        }
+
+        $db = db_connect();
+
+        // La política **no** se resuelve acá: depende de la empresa, y quien
+        // conoce la empresa es el caso de uso, con su actor. Si se inyectara
+        // un default fijo, los umbrales configurados de una empresa nunca se
+        // aplicarían.
+        return new \App\Application\Telematic\GetReporteConsumoFlota(
+            new \App\Infrastructure\Telematic\CodeIgniterFleetTelemetryBoardReader($db),
+            new \App\Application\Telematic\CalcularConsumoPorEquipo(
+                new \App\Infrastructure\Telematic\CodeIgniterSerieMuestrasReader($db),
+            ),
+            new \App\Infrastructure\Telematic\CodeIgniterConsumoConfigStore($db),
+            static::notificationClock(false),
+        );
+    }
+
+    public static function consumoConfig(): \App\Application\Telematic\Port\ConsumoConfigStore
+    {
+        return new \App\Infrastructure\Telematic\CodeIgniterConsumoConfigStore(db_connect());
+    }
+
     public static function fleetTelemetryBoard(bool $getShared = true): \App\Application\Telematic\GetFleetTelemetryBoard
     {
         if ($getShared) {

@@ -105,7 +105,8 @@ $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes
     $routes->get('telemetria/integraciones', static function () {
         return redirect()->to(base_url('administracion/integraciones/telemetria'));
     }, ['filter' => 'permission:equipos.editar']);
-    $routes->get('telemetria', 'Telemetria::flota', ['filter' => 'permission:equipos.ver']);
+    $routes->get('telemetria/consumo', 'Telemetria::consumo', ['filter' => 'permission:equipos.ver']);
+$routes->get('telemetria', 'Telemetria::flota', ['filter' => 'permission:equipos.ver']);
     $routes->post('telemetria/integraciones', 'Telemetria::guardarIntegracion', ['filter' => 'permission:equipos.editar']);
     $routes->get('', 'MaintenanceCircuit::index', ['filter' => 'permission:equipos.ver']);
     $routes->get('equipos', 'AssetManagement::index', ['filter' => 'permission:equipos.ver']);

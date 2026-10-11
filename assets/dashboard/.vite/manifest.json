@@ -1,17 +1,17 @@
 {
-  "_admin-BccvsJep.js": {
-    "file": "assets/admin-BccvsJep.js",
+  "_admin-DJW14bN7.js": {
+    "file": "assets/admin-DJW14bN7.js",
     "name": "admin",
     "imports": [
-      "_vendor-BkB1L-Ft.js"
+      "_vendor-vm61cXxy.js"
     ]
   },
-  "_chatbot-CJkBDnMG.js": {
-    "file": "assets/chatbot-CJkBDnMG.js",
+  "_chatbot-klBHyObh.js": {
+    "file": "assets/chatbot-klBHyObh.js",
     "name": "chatbot",
     "isDynamicEntry": true,
     "imports": [
-      "_vendor-BkB1L-Ft.js"
+      "_vendor-vm61cXxy.js"
     ],
     "css": [
       "assets/chatbot-p1890OXW.css"
@@ -21,52 +21,52 @@
     "file": "assets/chatbot-p1890OXW.css",
     "src": "_chatbot-p1890OXW.css"
   },
-  "_reports-1yZYI8lp.js": {
-    "file": "assets/reports-1yZYI8lp.js",
+  "_reports-CwLz26pz.js": {
+    "file": "assets/reports-CwLz26pz.js",
     "name": "reports",
     "imports": [
-      "_admin-BccvsJep.js",
-      "_vendor-BkB1L-Ft.js"
+      "_admin-DJW14bN7.js",
+      "_vendor-vm61cXxy.js"
     ]
   },
   "_vendor-BTrKGrB8.css": {
     "file": "assets/vendor-BTrKGrB8.css",
     "src": "_vendor-BTrKGrB8.css"
   },
-  "_vendor-BkB1L-Ft.js": {
-    "file": "assets/vendor-BkB1L-Ft.js",
+  "_vendor-vm61cXxy.js": {
+    "file": "assets/vendor-vm61cXxy.js",
     "name": "vendor",
     "css": [
       "assets/vendor-BTrKGrB8.css"
     ]
   },
   "src/main.js": {
-    "file": "assets/main-DQgLbqQ4.js",
+    "file": "assets/main-aUSCG9o6.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
     "imports": [
-      "_vendor-BkB1L-Ft.js",
-      "_chatbot-CJkBDnMG.js",
-      "_admin-BccvsJep.js",
-      "_reports-1yZYI8lp.js"
+      "_vendor-vm61cXxy.js",
+      "_chatbot-klBHyObh.js",
+      "_admin-DJW14bN7.js",
+      "_reports-CwLz26pz.js"
     ],
     "dynamicImports": [
-      "_chatbot-CJkBDnMG.js",
+      "_chatbot-klBHyObh.js",
       "src/pages/operations/components/FleetTelemetryMap.vue"
     ],
     "css": [
-      "assets/main-DCZt4rCO.css"
+      "assets/main-CL2zvxBv.css"
     ]
   },
   "src/pages/operations/components/FleetTelemetryMap.vue": {
-    "file": "assets/FleetTelemetryMap-pXf9xt-9.js",
+    "file": "assets/FleetTelemetryMap-5qPKRiJn.js",
     "name": "FleetTelemetryMap",
     "src": "src/pages/operations/components/FleetTelemetryMap.vue",
     "isDynamicEntry": true,
     "imports": [
-      "_vendor-BkB1L-Ft.js",
-      "_chatbot-CJkBDnMG.js"
+      "_vendor-vm61cXxy.js",
+      "_chatbot-klBHyObh.js"
     ],
     "css": [
       "assets/FleetTelemetryMap-eJHHeTQZ.css"
