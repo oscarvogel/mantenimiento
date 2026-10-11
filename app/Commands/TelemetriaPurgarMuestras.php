@@ -21,6 +21,8 @@ use Throwable;
  */
 final class TelemetriaPurgarMuestras extends BaseCommand
 {
+    use OpcionLegible;
+
     protected $group       = 'Mantenimiento';
     protected $name        = 'telematria:purgar-muestras';
     protected $description = 'Purga las muestras de telemetria fuera de la ventana de retencion.';
@@ -34,23 +36,23 @@ final class TelemetriaPurgarMuestras extends BaseCommand
 
     public function run(array $params): int
     {
-        $empresaId = (int) ($params['empresa'] ?? 0);
+        $empresaId = $this->opcionEntera($params, 'empresa', 0);
 
         if ($empresaId <= 0) {
             CLI::error('Falta --empresa con un id valido.');
 
-            return self::EXIT_USAGE;
+            return EXIT_ERROR;
         }
 
-        $dias = (int) ($params['dias'] ?? 90);
+        $dias = $this->opcionEntera($params, 'dias', 90);
 
         if ($dias <= 0) {
             CLI::error('--dias tiene que ser un numero positivo.');
 
-            return self::EXIT_USAGE;
+            return EXIT_ERROR;
         }
 
-        $respaldo = (string) ($params['respaldo'] ?? 'writable/telemetria/muestras.jsonl');
+        $respaldo = (string) $this->opcion($params, 'respaldo', 'writable/telemetria/muestras.jsonl');
 
         try {
             $purga = new PurgarMuestrasVencidas(
@@ -66,7 +68,7 @@ final class TelemetriaPurgarMuestras extends BaseCommand
             // error genérico. Si el respaldo falló, el histórico sigue entero.
             CLI::error($exception->getMessage());
 
-            return self::FAILURE;
+            return EXIT_ERROR;
         }
 
         CLI::write(sprintf(
@@ -77,6 +79,6 @@ final class TelemetriaPurgarMuestras extends BaseCommand
             $resultado['respaldo'] ?? 'sin archivo',
         ));
 
-        return self::SUCCESS;
+        return EXIT_SUCCESS;
     }
 }
