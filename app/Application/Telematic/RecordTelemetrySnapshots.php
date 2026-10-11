@@ -39,7 +39,7 @@ final readonly class RecordTelemetrySnapshots implements TelemetryRefresher
     ) {
     }
 
-    /** @return array{integraciones:int, instantaneas:int, muestras:int, ausentes:int, fallas:int, bucketsNuevos:int, bucketsYaExistentes:int} */
+    /** @return array{integraciones:int, instantaneas:int, muestras:int, ausentes:int, fallas:int, fallasHistoricas:int, bucketsNuevos:int, bucketsYaExistentes:int} */
     public function execute(): array
     {
         $summary = [
@@ -48,6 +48,7 @@ final readonly class RecordTelemetrySnapshots implements TelemetryRefresher
             'muestras' => 0,
             'ausentes' => 0,
             'fallas' => 0,
+            'fallasHistoricas' => 0,
             'bucketsNuevos' => 0,
             'bucketsYaExistentes' => 0,
         ];
@@ -117,6 +118,7 @@ final readonly class RecordTelemetrySnapshots implements TelemetryRefresher
                     $now,
                 );
                 $summary['fallas'] += $resultadoHistorico['fallo'] ? 1 : 0;
+                $summary['fallasHistoricas'] += $resultadoHistorico['fallo'] ? 1 : 0;
                 $summary['bucketsNuevos'] += $resultadoHistorico['insertados'];
                 $summary['bucketsYaExistentes'] += $resultadoHistorico['yaExistentes'];
 
@@ -173,6 +175,7 @@ final readonly class RecordTelemetrySnapshots implements TelemetryRefresher
                 $now,
             );
             $summary['fallas'] += $resultadoHistorico['fallo'] ? 1 : 0;
+            $summary['fallasHistoricas'] += $resultadoHistorico['fallo'] ? 1 : 0;
             $summary['bucketsNuevos'] += $resultadoHistorico['insertados'];
             $summary['bucketsYaExistentes'] += $resultadoHistorico['yaExistentes'];
         }

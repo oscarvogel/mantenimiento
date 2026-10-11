@@ -13,6 +13,6 @@ namespace App\Application\Telematic\Port;
  */
 interface TelemetryRefresher
 {
-    /** @return array{integraciones:int, instantaneas:int, ausentes:int, falhas:int} */
+    /** @return array{integraciones:int, instantaneas:int, ausentes:int, fallas:int, fallasHistoricas?:int} */
     public function execute(): array;
 }

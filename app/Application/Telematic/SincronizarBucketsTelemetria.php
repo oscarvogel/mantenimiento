@@ -15,9 +15,9 @@ use InvalidArgumentException;
 final readonly class SincronizarBucketsTelemetria
 {
     private const DURACION_BUCKET_SEGUNDOS = 300;
-    private const SOLAPE_SEGUNDOS = 1800;
-    /** Evita que el primer refresco web descargue meses de historia de una vez. */
-    private const VENTANA_INICIAL_DIAS = 7;
+    private const SOLAPE_SEGUNDOS = 300;
+    /** El primer clic sólo consulta el último intervalo de captura. */
+    private const VENTANA_INICIAL_SEGUNDOS = 300;
 
     public function __construct(
         private LectorHistoricoTelemetria $lector,
@@ -56,11 +56,10 @@ final readonly class SincronizarBucketsTelemetria
 
             $cursor = $this->buckets->cursor($empresaId, $integrationId, $unidadExterna);
             if ($cursor === null) {
-                // El informe conserva hasta 90 días, pero la primera consulta
-                // al proveedor se limita a la semana reciente. La consulta es
-                // síncrona y recorre todas las unidades vinculadas; cargar 90
-                // días acá podía exceder el tiempo de respuesta web.
-                $desde = $this->limiteAlineado($ahoraUtc->modify('-' . self::VENTANA_INICIAL_DIAS . ' days'));
+                // No cargar historia extensa dentro del pedido web. La primera
+                // consulta cubre el intervalo reciente; las siguientes avanzan
+                // desde el cursor con solape para recuperar mensajes tardíos.
+                $desde = $this->limiteAlineado($ahoraUtc->modify('-' . self::VENTANA_INICIAL_SEGUNDOS . ' seconds'));
             } else {
                 $desde = $cursor->setTimezone($utc)->modify('-' . self::SOLAPE_SEGUNDOS . ' seconds');
             }

@@ -112,6 +112,14 @@ final class WialonRemoteApiGateway implements FleetTelemetryGateway, LectorHisto
             return $messages;
         } catch (\Throwable $exception) {
             $this->integrations->registerFailure($integracionId, $exception->getMessage(), $now);
+            log_message('error', sprintf(
+                'Falló la lectura histórica de Wialon. integración=%d unidad=%s desde=%s hasta=%s error=%s',
+                $integracionId,
+                $unidadExterna,
+                $desde->format(DATE_ATOM),
+                $hasta->format(DATE_ATOM),
+                $exception->getMessage(),
+            ));
 
             throw $exception;
         } finally {
