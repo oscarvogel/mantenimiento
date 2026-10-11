@@ -99,8 +99,8 @@ final class GetAppShellContextTest extends TestCase
         $reader = new ActorContext(7, 5, false, false, ['Consulta'], ['equipos.ver'], [9]);
         $withoutEquipmentRead = new ActorContext(8, 5, false, false, ['Solicitante'], ['solicitudes.crear'], [9]);
 
-        $visible = (new AppShellPayload($context))->for($reader, 'fleet-telemetry');
-        $hidden = (new AppShellPayload($context))->for($withoutEquipmentRead, 'equipment');
+        $visible = (new AppShellPayload($context, new GetPlatformModuleCatalog()))->for($reader, 'fleet-telemetry');
+        $hidden = (new AppShellPayload($context, new GetPlatformModuleCatalog()))->for($withoutEquipmentRead, 'equipment');
         $item = array_values(array_filter($visible['navigation'], static fn (array $entry): bool => $entry['key'] === 'fleet-telemetry'));
 
         self::assertCount(1, $item);
@@ -120,7 +120,7 @@ final class GetAppShellContextTest extends TestCase
     {
         $context = new GetAppShellContext(new AppShellReadModelFake());
         $reader = new ActorContext(7, 5, false, false, ['Consulta'], ['equipos.ver'], [9]);
-        $payload = (new AppShellPayload($context))->for($reader, 'fleet-consumption');
+        $payload = (new AppShellPayload($context, new GetPlatformModuleCatalog()))->for($reader, 'fleet-consumption');
         $item = array_values(array_filter($payload['navigation'], static fn (array $entry): bool => $entry['key'] === 'fleet-consumption'));
 
         self::assertCount(1, $item);
