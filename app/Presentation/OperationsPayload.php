@@ -367,7 +367,7 @@ final class OperationsPayload
                 'startDate' => $equipment['fecha_alta'], 'endDate' => $equipment['fecha_baja'],
                 'brandId' => $equipment['marca_id'], 'modelId' => $equipment['modelo_id'], 'year' => $equipment['anio'],
                 'chassis' => $equipment['chasis'], 'engine' => $equipment['motor'],
-                'tankCapacityLiters' => $equipment['capacidad_tanque_litros'] === null ? null : (int) $equipment['capacidad_tanque_litros'],
+                'tankCapacityLiters' => ! isset($equipment['capacidad_tanque_litros']) ? null : (int) $equipment['capacidad_tanque_litros'],
                 'notes' => $equipment['observaciones'],
                 'controlsKm' => (int) $equipment['controla_km'] === 1, 'controlsHours' => (int) $equipment['controla_horas'] === 1,
             ],

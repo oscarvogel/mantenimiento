@@ -80,7 +80,7 @@ final class SincronizarBucketsTelemetriaTest extends TestCase
         return new MensajeHistorico(new DateTimeImmutable($fecha, new \DateTimeZone('UTC')), $litros, 1000, 10, true, false);
     }
 
-    public function testPrimeraConsultaSeLimitaALaSemanaRecienteYNoConsultaVentanasFuturas(): void
+    public function testPrimeraConsultaSeLimitaAlUltimoIntervaloCerradoDeCincoMinutos(): void
     {
         $ahora = new DateTimeImmutable('2026-10-10 10:12:34', new \DateTimeZone('UTC'));
         $lector = new LectorHistoricoEnMemoria();
@@ -95,8 +95,7 @@ final class SincronizarBucketsTelemetriaTest extends TestCase
         self::assertSame(0, $ventana['desde']->getTimestamp() % 300);
         self::assertSame(0, $ventana['hasta']->getTimestamp() % 300);
         self::assertEquals(new DateTimeImmutable('2026-10-10 10:10:00', new \DateTimeZone('UTC')), $store->cursor(4, 8, '28396292'));
-        self::assertGreaterThanOrEqual(6, (int) $ventana['desde']->diff($ventana['hasta'])->days);
-        self::assertLessThanOrEqual(7, (int) $ventana['desde']->diff($ventana['hasta'])->days);
+        self::assertSame(300, $ventana['hasta']->getTimestamp() - $ventana['desde']->getTimestamp());
     }
 
     public function testProcesaUnicamenteUnidadesVinculadasYAvanzaCursorAnteRespuestaVacia(): void
@@ -112,7 +111,7 @@ final class SincronizarBucketsTelemetriaTest extends TestCase
         self::assertNull($store->cursor(4, 8, '999999'));
     }
 
-    public function testVentanaIncrementalTieneSolapeDeTreintaMinutosParaCerrarTramosDeRalenti(): void
+    public function testVentanaIncrementalTieneSolapeDeCincoMinutosParaRecuperarMensajesTardios(): void
     {
         $store = new BucketsEnMemoria();
         $store->cursores['4:8:28396292'] = new DateTimeImmutable('2026-10-10 10:00:00', new \DateTimeZone('UTC'));
@@ -121,7 +120,7 @@ final class SincronizarBucketsTelemetriaTest extends TestCase
 
         $sync->sincronizar(4, 8, 'wialon', ['28396292' => 34], new DateTimeImmutable('2026-10-10 10:12:00', new \DateTimeZone('UTC')));
 
-        self::assertSame('2026-10-10 09:30:00', $lector->ventanas[0]['desde']->format('Y-m-d H:i:s'));
+        self::assertSame('2026-10-10 09:55:00', $lector->ventanas[0]['desde']->format('Y-m-d H:i:s'));
         self::assertSame('2026-10-10 10:10:00', $lector->ventanas[0]['hasta']->format('Y-m-d H:i:s'));
     }
 
