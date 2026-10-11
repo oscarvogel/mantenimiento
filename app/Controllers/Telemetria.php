@@ -45,7 +45,7 @@ final class Telemetria extends BaseController
 
             return $this->renderApp(
                 $actor,
-                'fleet-telemetry',
+                'fleet-consumption',
                 'fleet-consumption',
                 'Consumo por viaje',
                 service('reporteConsumoFlota')->execute(

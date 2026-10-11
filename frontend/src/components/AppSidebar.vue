@@ -40,7 +40,7 @@ const props = defineProps({
 
 const emit = defineEmits(['close'])
 
-const primaryKeys = ['dashboard', 'equipment', 'fleet-telemetry', 'reading-control', 'maintenance', 'plans', 'reports']
+const primaryKeys = ['dashboard', 'equipment', 'fleet-telemetry', 'fleet-consumption', 'reading-control', 'maintenance', 'plans', 'reports']
 
 const primaryNavigation = computed(() => (
   primaryKeys
