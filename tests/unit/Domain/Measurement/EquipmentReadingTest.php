@@ -8,6 +8,52 @@ use PHPUnit\Framework\TestCase;
 
 final class EquipmentReadingTest extends TestCase
 {
+    public function testAnonymousQrReadingCanBeCorrectedByAuthenticatedAdministrator(): void
+    {
+        $original = EquipmentReading::reconstitute(
+            81, 5, 7, 10,
+            new DateTimeImmutable('2026-10-08 10:37:43'),
+            UsageMeasurement::from(10017497, null),
+            EquipmentReading::QR_ANONYMOUS,
+            null,
+            null,
+            null,
+            null,
+            null,
+            false,
+            null,
+            null,
+            null,
+        );
+
+        self::assertNull($original->userId());
+        $replacement = $original->correct(
+            UsageMeasurement::from(101749, null),
+            9,
+            'Error en lectura',
+            null,
+            new DateTimeImmutable('2026-10-08 18:00:00'),
+        );
+
+        self::assertTrue($original->isAnnulled());
+        self::assertSame(9, $original->annulledBy());
+        self::assertSame(9, $replacement->userId());
+        self::assertSame(81, $replacement->correctedReadingId());
+        self::assertSame(101749, $replacement->measurement()->kilometers());
+    }
+
+    public function testNullAuthorIsStillRejectedForAuthenticatedOrigins(): void
+    {
+        $this->expectException(DomainException::class);
+        EquipmentReading::reconstitute(
+            81, 5, 7, 10,
+            new DateTimeImmutable(),
+            UsageMeasurement::from(1000, null),
+            EquipmentReading::MANUAL,
+            null, null, null, null, null, false, null, null, null,
+        );
+    }
+
     public function testCorrectionMustPreserveItsReason(): void
     {
         $this->expectException(DomainException::class);

@@ -25,6 +25,11 @@ $routes->post('logout', 'Login::logout', ['filter' => 'auth']);
 $routes->get('dashboard', 'Dashboard::index', ['filter' => 'auth']);
 $routes->get('inicio', 'CommandCenter::index', ['filter' => 'auth']);
 
+// Refresco manual de la telemetría. POST + CSRF + permiso: escribir datos
+// aunque sean de telemetría no es una operación de sólo ver. El mismo camino
+// sirve en staging y en producción, donde no hay cron de sistema ni CLI.
+$routes->post('mantenimiento/telemetria/actualizar', 'Telemetria::actualizar', ['filter' => 'auth']);
+
 // Cron web seguro para hosting sin PHP CLI. Usa POST + X-Cron-Token y no CSRF.
 $routes->post('internal/cron/notifications/dispatch', 'NotificationCron::dispatch');
 $routes->post('internal/deploy/migrate', 'NotificationCron::migrate');
@@ -83,6 +88,10 @@ $routes->group('superadmin', ['filter' => 'superadmin'], static function ($route
 });
 
 $routes->group('administracion', ['filter' => ['auth']], static function ($routes): void {
+    $routes->get('integraciones/telemetria', 'Telemetria::integraciones', ['filter' => 'permission:equipos.editar']);
+    $routes->post('integraciones/telemetria', 'Telemetria::guardarIntegracion', ['filter' => 'permission:equipos.editar']);
+    $routes->get('integraciones/telemetria/(:num)/unidades', 'Telemetria::unidades/$1', ['filter' => 'permission:equipos.editar']);
+    $routes->post('integraciones/telemetria/(:num)/vinculos', 'Telemetria::guardarVinculos/$1', ['filter' => 'permission:equipos.editar']);
     $routes->get('sucursales', 'TenantAdmin::branches', ['filter' => 'permission:sucursales.ver']);
     $routes->post('sucursales', 'TenantAdmin::createBranch', ['filter' => 'permission:sucursales.editar']);
     $routes->post('sucursales/(:num)', 'TenantAdmin::updateBranch/$1', ['filter' => 'permission:sucursales.editar']);
@@ -94,6 +103,12 @@ $routes->group('administracion', ['filter' => ['auth']], static function ($route
 });
 
 $routes->group('mantenimiento', ['filter' => ['auth']], static function ($routes): void {
+    $routes->get('telemetria/integraciones', static function () {
+        return redirect()->to(base_url('administracion/integraciones/telemetria'));
+    }, ['filter' => 'permission:equipos.editar']);
+    $routes->get('telemetria/consumo', 'Telemetria::consumo', ['filter' => 'permission:equipos.ver']);
+$routes->get('telemetria', 'Telemetria::flota', ['filter' => 'permission:equipos.ver']);
+    $routes->post('telemetria/integraciones', 'Telemetria::guardarIntegracion', ['filter' => 'permission:equipos.editar']);
     $routes->get('', 'MaintenanceCircuit::index', ['filter' => 'permission:equipos.ver']);
     $routes->get('equipos', 'AssetManagement::index', ['filter' => 'permission:equipos.ver']);
     $routes->post('equipos', 'AssetManagement::createEquipment', ['filter' => 'permission:equipos.editar']);

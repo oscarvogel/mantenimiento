@@ -346,15 +346,14 @@ final class CodeIgniterOrganizationAdministration implements OrganizationAdminis
                 ]);
             }
 
-            // Administrador obtiene todas las sucursales automáticamente.
-            $administratorRole = $this->database->table('roles')
-                ->select('id')
-                ->where('nombre', 'Administrador')
-                ->get()->getRowArray();
-            if ($administratorRole !== null && in_array((int) $administratorRole['id'], $roleIds, true)) {
-                $this->database->table('usuario_sucursales')->where('usuario_id', $userId)->delete();
-            }
-
+            // NO se borran las sucursales al dar Administrador.
+            //
+            // El alcance de "todas las sucursales" lo resuelve el lector de
+            // actor cuando el rol se llama Administrador, asi que borrar las
+            // filas no aportaba nada y destruia el alcance real del usuario.
+            // El efecto era irreversible: al devolverle un rol acotado, las
+            // asignaciones ya no existian y el usuario se quedaba sin ver
+            // ningun equipo.
             $this->appendHistory(
                 $userId,
                 (int) $user['empresa_id'],

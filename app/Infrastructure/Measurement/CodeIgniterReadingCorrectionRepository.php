@@ -45,7 +45,7 @@ final class CodeIgniterReadingCorrectionRepository implements ReadingCorrectionR
             ),
             (string) $row['origen'],
             $row['referencia_origen'] === null ? null : (string) $row['referencia_origen'],
-            (int) $row['usuario_id'],
+            $row['usuario_id'] === null ? null : (int) $row['usuario_id'],
             $row['motivo_correccion'] === null ? null : (string) $row['motivo_correccion'],
             $row['observaciones'] === null ? null : (string) $row['observaciones'],
             $row['lectura_corregida_id'] === null ? null : (int) $row['lectura_corregida_id'],

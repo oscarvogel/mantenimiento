@@ -97,6 +97,7 @@ final class EquipmentManagement extends BaseController
                 [
                     'edit' => $actor->hasPermission('equipos.editar'),
                     'correctReadings' => $actor->hasPermission('lecturas.corregir'),
+                    'refreshTelemetry' => $actor->hasPermission('lecturas.cargar'),
                 ],
                 [
                     'readings' => $readingPerPage,
@@ -105,6 +106,7 @@ final class EquipmentManagement extends BaseController
                     'relations' => $relationPerPage,
                 ],
                 $primaryPhoto,
+                service('getEquipmentTelemetry')->execute($actor->companyId(), $equipmentId),
             );
             $payload['workOrderHistory'] = $this->workOrderHistory(
                 $actor,
@@ -372,6 +374,7 @@ final class EquipmentManagement extends BaseController
                 $this->nullableString($this->request->getPost('motor')),
                 (int) $this->request->getPost('tipo_equipo_id'),
                 $this->dateTime((string) $this->request->getPost('fecha_alta'), 'La fecha de alta no es válida.'),
+                $this->nullableInt($this->request->getPost('capacidad_tanque_litros')),
             ));
 
             return $this->success($equipmentId, "Equipo {$result->code} actualizado correctamente.");

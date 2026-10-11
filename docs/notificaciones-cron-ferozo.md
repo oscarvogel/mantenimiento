@@ -48,16 +48,28 @@ técnicos; nunca emails, tokens, secretos ni trazas.
 Los estados previstos son: `404` si está deshabilitado, `401` si falta el
 token, `403` si es incorrecto, `405` para métodos no permitidos, `409` si ya
 hay un despacho activo, `429` si se excede el límite por IP y `500` ante una
-falla técnica. Un éxito devuelve `200` con `overdue`, `collected`, `sent`,
-`retry`, `skipped` y `errors`.
+falla técnica. Un éxito devuelve `200` con `overdue`, `telemetry` (empresas
+procesadas y fallos de integración), `collected`, `sent`, `retry`, `skipped` y
+`errors`.
 
 El panel real de Ferozo permite ejecutar comandos de shell, por lo que puede
 invocarse el endpoint seguro con `curl`, usando POST y el header
 `X-Cron-Token`.
 
-Para el esquema operativo actual se recomienda ejecutar el cron cada 30 minutos
-y limitar cada corrida a un lote acotado. La cola conserva los pendientes para
-la siguiente ejecución y la idempotencia evita duplicados.
+Este mismo ciclo actualiza telemetría e ingiere el histórico Wialon por buckets
+UTC de cinco minutos. La frecuencia operativa es cada cinco minutos; la clave de
+ejecución tiene precisión de minuto y permite las doce corridas de cada hora.
+Si una lectura histórica falla o Wialon devuelve una ventana incompleta, el
+cursor de esa unidad no avanza y el siguiente ciclo vuelve a intentar el tramo.
+El refresco actual y la lectura histórica fallan por separado: una falla de
+`unit/calc_last` no cancela `messages/load_interval`.
+
+El histórico de Wialon se guarda en `telematia_buckets`, con un cursor por
+unidad en `telematia_cursor`. Solo se almacenan extremos observados y segundos
+de ralentí calculables; no se guardan mensajes crudos. Los puntos históricos
+Wialon que ya existían se conservan hasta su purga verificada; una vez habilitada
+la ruta por buckets no se agregan puntos Wialon nuevos. Otros proveedores
+mantienen su almacenamiento puntual.
 
 ## URL legacy conservada
 
@@ -79,9 +91,11 @@ PR separado.
 El endpoint no implementa una segunda lógica de notificaciones. Llama a `RunNotificationCycle`, el mismo ciclo usado por el comando CLI:
 
 1. detectar vencimientos;
-2. recolectar eventos notificables;
-3. despachar email/Web Push;
-4. aplicar lock, idempotencia, reintentos y trazabilidad existentes.
+2. actualizar telemetría por cada empresa con una integración activa y publicar
+   sus alertas;
+3. recolectar los demás eventos notificables;
+4. despachar email/Web Push;
+5. aplicar lock, idempotencia, reintentos y trazabilidad existentes.
 
 Dos ejecuciones con la misma clave horaria no deben duplicar entregas. Una ejecución concurrente debe ser rechazada por el control de proceso existente.
 
@@ -111,10 +125,10 @@ Nunca probar el primer disparo directamente contra producción.
 
 ## Configuración recomendada en Ferozo
 
-Frecuencia:
+Frecuencia (campo «Minutos» en Ferozo; cada cinco minutos):
 
 ```text
-cada 30 minutos
+0,5,10,15,20,25,30,35,40,45,50,55
 ```
 
 Comando:
@@ -126,5 +140,33 @@ curl -fsS --connect-timeout 10 --max-time 120 -X POST -H "X-Cron-Token: <TOKEN>"
 Con `alerts.webCronBatchLimit = 25`, cada pasada despacha como máximo un lote
 acotado por canal. Si existe backlog, queda pendiente para la siguiente corrida.
 
-La clave de ejecución del ciclo tiene precisión de minuto para permitir dos
-corridas válidas dentro de la misma hora (por ejemplo 07:00 y 07:30).
+La clave de ejecución del ciclo tiene precisión de minuto para permitir doce
+corridas válidas dentro de la misma hora (por ejemplo 07:00, 07:05, 07:10 y
+07:15).
+
+## Histórico y retención de telemetría
+
+El cursor de cada unidad marca hasta qué límite UTC se consultó y confirmó una
+ventana. La primera sincronización consulta únicamente el último intervalo
+cerrado de cinco minutos; cada corrida posterior continúa desde el cursor con
+cinco minutos de solape para recuperar mensajes tardíos. No se hace backfill de
+los siete días ni un backfill histórico ilimitado: el historial se acumula desde
+que empieza la ingesta. La retención sigue siendo de 90 días. Ante el límite
+1004, el adaptador divide la ventana en períodos menores; si no puede completar
+una respuesta, registra el fallo, no avanza el cursor y reintenta en el ciclo
+siguiente. No adelantar ni editar `telematia_cursor` manualmente para “saltar”
+un error.
+
+La retención configurada es de 90 días. `php spark telematria:purgar-muestras
+--empresa=<ID> [--dias=90]` respalda muestras y buckets vencidos en archivos
+JSONL separados dentro de `writable/telemetria/`, verifica contenido y cantidad
+antes de borrar, y usa nombres nuevos por ejecución. Si falta un respaldo o la
+verificación falla, no borra ninguna de las dos tablas. Conservar y copiar los
+archivos de respaldo fuera del servidor antes de eliminarlos.
+
+El hosting de producción Ferozo no ofrece PHP CLI. Por eso este comando no es
+ejecutable allí ni está conectado al cron HTTP de notificaciones; no configurar
+una purga remota improvisada. La purga productiva requiere un canal operativo
+compatible y autorizado antes de que venza la retención. El comando puede
+operarse en los entornos con CLI disponible, verificando empresa y archivos de
+respaldo.

@@ -59,6 +59,7 @@ final class UpdateEquipmentHandler
                 $type,
                 $command->registeredAt,
                 $command->registeredAt === null ? null : $this->today(),
+                $command->tankCapacityLiters,
             );
             $this->assertTechnicalCompatibility($companyId, $equipment, $previousBrandId, $previousModelId, $previousTypeId);
             if ($this->equipment->codeExistsExcluding($companyId, $equipment->code(), $command->equipmentId)) {

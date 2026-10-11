@@ -47,12 +47,25 @@ COPY . .
 COPY --from=frontend /app/assets ./assets
 
 # Instalar deps PHP (sin dev para imagen final; CI corre con dev)
-RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist \
-    && mkdir -p writable/cache writable/logs writable/session writable/uploads writable/debugbar \
+RUN set -eu; \
+    for intento in 1 2 3; do \
+        if composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-progress; then \
+            break; \
+        fi; \
+        if [ "$intento" -eq 3 ]; then \
+            echo "No se pudieron instalar las dependencias PHP tras 3 intentos." >&2; \
+            exit 1; \
+        fi; \
+        rm -rf vendor; \
+        sleep $((intento * 5)); \
+    done; \
+    test -f vendor/autoload.php; \
+    test -f vendor/codeigniter4/framework/system/Boot.php; \
+    mkdir -p writable/cache writable/logs writable/session writable/uploads writable/debugbar \
     && mkdir -p /data/priv/adjuntos /data/priv/importaciones \
     && chown -R www-data:www-data writable /data \
     && chmod -R 755 writable \
-    && chmod +x spark 2>/dev/null || true
+    && chmod +x spark
 
 # Apache config especifica para Coolify (respeta .htaccess + bloquea directorios privados)
 COPY docker/apache/coolify.conf /etc/apache2/conf-available/coolify.conf
@@ -66,7 +79,7 @@ EXPOSE 80
 # Persistencia: Coolify debe montar volumes en estos paths
 VOLUME ["/var/www/html/writable", "/data/priv"]
 
-HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD curl -fsS http://localhost/login >/dev/null || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD test -f /var/www/html/vendor/codeigniter4/framework/system/Boot.php && curl -fsS http://localhost/login >/dev/null || exit 1
 
 ENTRYPOINT ["php", "/usr/local/bin/entrypoint.php"]
 CMD ["apache2-foreground"]

@@ -27,7 +27,7 @@ final class CodeIgniterEquipmentReadModel implements EquipmentReadModel
         }
 
         $builder = $this->database->table('equipos e')
-            ->select('e.id, e.empresa_id, e.sucursal_id, e.tipo_equipo_id, e.codigo, e.patente, e.marca_id, ma.nombre marca_nombre, e.modelo_id, mo.nombre modelo_nombre, e.anio, e.chasis, e.motor, e.km_actual, e.horas_actuales, e.estado, e.fecha_alta, e.fecha_baja, e.observaciones, e.created_at, e.updated_at, s.codigo sucursal_codigo, s.nombre sucursal_nombre, te.nombre tipo_nombre, te.controla_km, te.controla_horas')
+            ->select('e.id, e.empresa_id, e.sucursal_id, e.tipo_equipo_id, e.codigo, e.patente, e.marca_id, ma.nombre marca_nombre, e.modelo_id, mo.nombre modelo_nombre, e.anio, e.chasis, e.motor, e.capacidad_tanque_litros, e.km_actual, e.horas_actuales, e.estado, e.fecha_alta, e.fecha_baja, e.observaciones, e.created_at, e.updated_at, s.codigo sucursal_codigo, s.nombre sucursal_nombre, te.nombre tipo_nombre, te.controla_km, te.controla_horas')
             ->join('sucursales s', 's.id = e.sucursal_id AND s.empresa_id = e.empresa_id', 'inner')
             ->join('tipos_equipo te', 'te.id = e.tipo_equipo_id', 'inner')
             ->join('marcas ma', 'ma.id = e.marca_id AND ma.empresa_id = e.empresa_id', 'left')

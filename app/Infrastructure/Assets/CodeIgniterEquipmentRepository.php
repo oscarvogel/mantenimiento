@@ -40,6 +40,7 @@ final class CodeIgniterEquipmentRepository implements EquipmentRepository
             'anio'             => $equipment->year(),
             'chasis'           => $equipment->chassis(),
             'motor'            => $equipment->engine(),
+            'capacidad_tanque_litros' => $equipment->tankCapacityLiters(),
             'km_actual'        => $equipment->currentKilometers(),
             'horas_actuales'   => $equipment->currentHours(),
             'estado'           => $equipment->status(),
@@ -64,7 +65,7 @@ final class CodeIgniterEquipmentRepository implements EquipmentRepository
     {
         $row = $this->database->query(
             'SELECT e.id, e.empresa_id, e.sucursal_id, e.tipo_equipo_id, e.codigo, e.patente, '
-            . 'e.marca_id, e.modelo_id, e.anio, e.chasis, e.motor, '
+            . 'e.marca_id, e.modelo_id, e.anio, e.chasis, e.motor, e.capacidad_tanque_litros, '
             . 'e.km_actual, e.horas_actuales, e.estado, e.fecha_alta, e.fecha_baja, e.observaciones, '
             . 't.nombre tipo_nombre, t.controla_km, t.controla_horas '
             . 'FROM equipos e INNER JOIN tipos_equipo t ON t.id = e.tipo_equipo_id '
@@ -98,6 +99,7 @@ final class CodeIgniterEquipmentRepository implements EquipmentRepository
             $row['anio'] === null ? null : (int) $row['anio'],
             $row['chasis'] === null ? null : (string) $row['chasis'],
             $row['motor'] === null ? null : (string) $row['motor'],
+            $row['capacidad_tanque_litros'] === null ? null : (int) $row['capacidad_tanque_litros'],
         );
     }
 

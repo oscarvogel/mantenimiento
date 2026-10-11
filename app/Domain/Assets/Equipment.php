@@ -31,6 +31,7 @@ final class Equipment
         private ?int $year = null,
         private ?string $chassis = null,
         private ?string $engine = null,
+        private ?int $tankCapacityLiters = null,
     ) {
         if ($companyId <= 0 || $branchId <= 0) {
             throw new DomainException('La empresa y la sucursal del equipo deben ser válidas.');
@@ -50,8 +51,17 @@ final class Equipment
         if ($status === self::INACTIVE && $decommissionedAt === null) {
             throw new DomainException('Un equipo dado de baja debe conservar su fecha de baja.');
         }
+        $this->assertTankCapacity($tankCapacityLiters);
         $this->setTechnicalProfile($brandId, $modelId, $year, $chassis, $engine);
     }
+
+    /**
+     * Salto de kilometraje que se descartó por implausible en la última
+     * lectura. Es estado propio y no parámetro del constructor: el
+     * constructor tiene muchos parámetros posicionales y agregar uno al
+     * medio rompe a todos los que lo llaman.
+     */
+    private ?SaltoKilometrico $saltoDescartado = null;
 
     public static function create(
         int $companyId,
@@ -66,6 +76,7 @@ final class Equipment
         ?int $year = null,
         ?string $chassis = null,
         ?string $engine = null,
+        ?int $tankCapacityLiters = null,
     ): self {
         return new self(
             null,
@@ -85,6 +96,7 @@ final class Equipment
             $year,
             $chassis,
             $engine,
+            $tankCapacityLiters,
         );
     }
 
@@ -106,6 +118,7 @@ final class Equipment
         ?int $year = null,
         ?string $chassis = null,
         ?string $engine = null,
+        ?int $tankCapacityLiters = null,
     ): self {
         if ($id <= 0) {
             throw new DomainException('La identidad del equipo no es válida.');
@@ -129,6 +142,7 @@ final class Equipment
             $year,
             $chassis,
             $engine,
+            $tankCapacityLiters,
         );
     }
 
@@ -167,14 +181,33 @@ final class Equipment
             }
         }
 
-        if ($measurement->kilometers() !== null) {
+        $salto = new SaltoKilometrico($this->currentKilometers, $measurement->kilometers());
+
+        if ($measurement->kilometers() !== null && ! $salto->esImplausible()) {
             $this->currentKilometers = $measurement->kilometers();
         }
+
+        // Un salto implausible NO propaga al odómetro, pero tampoco frena el
+        // registro: el mantenimiento ocurrió y la lectura queda guardada para
+        // que alguien la revise. Sin esto, un dígito de más deja al equipo con
+        // el preventivo que nunca vence y sin ninguna señal visible.
+        $this->saltoDescartado = $salto->esImplausible() ? $salto : null;
+
         if ($measurement->hoursTenths() !== null) {
             $this->currentHoursTenths = $measurement->hoursTenths();
         }
 
         return $isCorrection;
+    }
+
+    /**
+     * Último salto de kilometraje que se descartó por implausible, o null si
+     * la lectura se aplicó con normalidad. El caso de uso lo usa para marcar
+     * la lectura y avisar, no para bloquear la orden de trabajo.
+     */
+    public function saltoDescartado(): ?SaltoKilometrico
+    {
+        return $this->saltoDescartado;
     }
 
     public function decommission(DateTimeImmutable $date): void
@@ -201,6 +234,7 @@ final class Equipment
         ?EquipmentType $type = null,
         ?DateTimeImmutable $registeredAt = null,
         ?DateTimeImmutable $today = null,
+        ?int $tankCapacityLiters = null,
     ): void
     {
         if ($this->status !== self::ACTIVE) {
@@ -236,6 +270,8 @@ final class Equipment
             $this->registeredAt = $registeredAt;
         }
         $this->setTechnicalProfile($brandId, $modelId, $year, $chassis, $engine);
+        $this->assertTankCapacity($tankCapacityLiters);
+        $this->tankCapacityLiters = $tankCapacityLiters;
     }
 
     public function transferTo(int $destinationBranchId, DateTimeImmutable $occurredAt): int
@@ -276,6 +312,7 @@ final class Equipment
     public function year(): ?int { return $this->year; }
     public function chassis(): ?string { return $this->chassis; }
     public function engine(): ?string { return $this->engine; }
+    public function tankCapacityLiters(): ?int { return $this->tankCapacityLiters; }
 
     public function currentHours(): ?string
     {
@@ -339,5 +376,12 @@ final class Equipment
         $this->year = $year;
         $this->chassis = $chassis;
         $this->engine = $engine;
+    }
+
+    private function assertTankCapacity(?int $capacityLiters): void
+    {
+        if ($capacityLiters !== null && ($capacityLiters <= 0 || $capacityLiters > 99999999)) {
+            throw new DomainException('La capacidad total de los tanques debe ser mayor que cero y no superar 99.999.999 litros.');
+        }
     }
 }

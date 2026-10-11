@@ -24,6 +24,7 @@ use App\Application\Notifications\NotificationDeliverySchedule;
 use App\Application\Notifications\NotificationChannelPolicy;
 use App\Application\Notifications\NotificationPreferenceResolution;
 use App\Application\Notifications\NotificationRecipientScopePolicy;
+use App\Application\Notifications\NotificationRefreshOutcome;
 use App\Domain\Notifications\DeliveryMode;
 use App\Domain\Notifications\NotifiableEvent;
 use App\Domain\Notifications\Notification;
@@ -206,6 +207,9 @@ final class FakeNotificationRepository implements NotificationRepository
     /** @var array<string,int> */ public array $keys = [];
     /** @var array{int,int,list<int>|null,int,int}|null */ public ?array $lastScope = null;
     public function createIfAbsent(Notification $notification): ?int { $key = $notification->recipientUserId() . ':' . $notification->idempotencyKey(); if (isset($this->keys[$key])) return null; return $this->keys[$key] = count($this->keys) + 1; }
+    public function refresh(int $companyId, int $userId, string $eventKey, string $title, string $summary, ?string $url, DateTimeImmutable $at): NotificationRefreshOutcome { return NotificationRefreshOutcome::MISSING; }
+    public function regularizePending(int $companyId, string $eventType, DateTimeImmutable $at, ?string $exceptEventKey = null): int { return 0; }
+    public function companiesWithPending(string $eventType): array { return []; }
     public function listForUser(int $companyId, int $userId, ?array $branchIds, int $page, int $perPage): NotificationCenterPage { $this->lastScope = [$companyId, $userId, $branchIds, $page, $perPage]; return new NotificationCenterPage([], 0, $page, $perPage, 0); }
     public function markRead(int $companyId, int $userId, ?array $branchIds, int $notificationId, DateTimeImmutable $at): bool { return true; }
     public function markAllRead(int $companyId, int $userId, ?array $branchIds, DateTimeImmutable $at): int { return 0; }

@@ -93,6 +93,40 @@ final class GetAppShellContextTest extends TestCase
         self::assertNotContains('quick-readings', array_column($hidden['navigation'], 'key'));
     }
 
+    public function testShowsFleetTelemetryForEquipmentReaders(): void
+    {
+        $context = new GetAppShellContext(new AppShellReadModelFake());
+        $reader = new ActorContext(7, 5, false, false, ['Consulta'], ['equipos.ver'], [9]);
+        $withoutEquipmentRead = new ActorContext(8, 5, false, false, ['Solicitante'], ['solicitudes.crear'], [9]);
+
+        $visible = (new AppShellPayload($context))->for($reader, 'fleet-telemetry');
+        $hidden = (new AppShellPayload($context))->for($withoutEquipmentRead, 'equipment');
+        $item = array_values(array_filter($visible['navigation'], static fn (array $entry): bool => $entry['key'] === 'fleet-telemetry'));
+
+        self::assertCount(1, $item);
+        self::assertSame('Telemetría de flota', $item[0]['label']);
+        self::assertStringEndsWith('/mantenimiento/telemetria', $item[0]['href']);
+        self::assertTrue($item[0]['active']);
+        $consumption = array_values(array_filter($visible['navigation'], static fn (array $entry): bool => $entry['key'] === 'fleet-consumption'));
+        self::assertCount(1, $consumption);
+        self::assertSame('Consumo por viaje', $consumption[0]['label']);
+        self::assertStringEndsWith('/mantenimiento/telemetria/consumo', $consumption[0]['href']);
+        self::assertFalse($consumption[0]['active']);
+        self::assertNotContains('fleet-telemetry', array_column($hidden['navigation'], 'key'));
+        self::assertNotContains('fleet-consumption', array_column($hidden['navigation'], 'key'));
+    }
+
+    public function testMarksFleetConsumptionAsTheActiveTelemetryNavigationEntry(): void
+    {
+        $context = new GetAppShellContext(new AppShellReadModelFake());
+        $reader = new ActorContext(7, 5, false, false, ['Consulta'], ['equipos.ver'], [9]);
+        $payload = (new AppShellPayload($context))->for($reader, 'fleet-consumption');
+        $item = array_values(array_filter($payload['navigation'], static fn (array $entry): bool => $entry['key'] === 'fleet-consumption'));
+
+        self::assertCount(1, $item);
+        self::assertTrue($item[0]['active']);
+    }
+
     /**
      * #353: la entrada del centro de Maestros se llama "Maestros" y no se
      * duplica con la entrada independiente de Tipos de vencimiento.

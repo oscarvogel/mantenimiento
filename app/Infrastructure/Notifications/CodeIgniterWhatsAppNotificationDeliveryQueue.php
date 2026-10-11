@@ -8,6 +8,7 @@ use App\Application\Notifications\Port\GlobalNotificationSettingsStore;
 use App\Application\Notifications\Port\NotificationClock;
 use App\Application\Notifications\Port\WhatsAppNotificationDeliveryQueue;
 use App\Application\Notifications\Port\WhatsAppNotificationGateway;
+use App\Application\Notifications\ReadingReminderMessageBuilder;
 use App\Application\Notifications\UserWhatsAppDigestSchedule;
 use App\Domain\Notifications\NotifiableEvent;
 use CodeIgniter\Database\BaseConnection;
@@ -711,21 +712,21 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
 
             $branchLocale = trim((string) ($row['sucursal_idioma_notificaciones'] ?? ''));
             $locale = $this->normalizeLocale($branchLocale !== '' ? $branchLocale : (string) ($row['idioma_notificaciones'] ?? 'ES'));
-            $pilotHeader = $effectivePilot
-                ? ($locale === 'PT'
-                    ? "🧪 *TESTE CONTROLADO · NÃO ENVIADO AO DESTINATÁRIO REAL*\n"
-                        . "*Destinatário previsto:* " . ($name === '' ? 'Motorista atribuído' : $name) . "\n"
-                        . "*Telefone real:* " . ($realPhone === null ? 'inválido ou não informado' : 'configurado') . "\n\n"
-                    : "🧪 *PRUEBA CONTROLADA · NO ENVIADO AL DESTINATARIO REAL*\n"
-                        . "*Destinatario previsto:* " . ($name === '' ? 'Chofer asignado' : $name) . "\n"
-                        . "*Teléfono real:* " . ($realPhone === null ? 'no válido o no cargado' : 'configurado') . "\n\n")
-                : '';
 
             $companyName = trim((string) ($row['nombre_fantasia'] ?? ''));
             if ($companyName === '') {
                 $companyName = trim((string) ($row['razon_social'] ?? ''));
             }
-            $message = $this->weeklyReadingMessage($locale, $stage, $pilotHeader, $name, $equipmentLabel, $url, $companyName);
+            $message = (new ReadingReminderMessageBuilder())->build(
+                $locale,
+                $stage,
+                $name,
+                $equipmentLabel,
+                $url,
+                $companyName,
+                $effectivePilot,
+                $realPhone !== null,
+            );
 
             $this->db->table('notificacion_whatsapp_entregas')->ignore(true)->insert([
                 'empresa_id' => $companyId,
@@ -821,43 +822,6 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             ->where('kilometraje IS NOT NULL', null, false)
             ->where('fecha_lectura >=', $since->format('Y-m-d H:i:s'))
             ->countAllResults() > 0;
-    }
-
-    private function weeklyReadingMessage(string $locale, string $stage, string $pilotHeader, string $name, string $equipmentLabel, string $url, string $companyName): string
-    {
-        if ($locale === 'PT') {
-            $opening = $stage === 'initial'
-                ? 'Precisamos que você informe a quilometragem atual'
-                : 'Ainda falta informar a quilometragem desta semana';
-
-            return $pilotHeader
-                . "*" . ($companyName !== '' ? $companyName : 'Empresa') . "* · Manutenção\n\n"
-                . ($name === '' ? 'Olá 👋' : 'Olá ' . $name . ' 👋') . "\n\n"
-                . $opening . " do veículo *" . $equipmentLabel . "*.\n\n"
-                . "*Faça assim:*\n"
-                . "1️⃣ Toque no link abaixo.\n"
-                . "2️⃣ Veja o painel do veículo e digite o número que aparece.\n"
-                . "3️⃣ Toque em *Registrar leitura*.\n\n"
-                . "👉 *ABRIR PARA INFORMAR A QUILOMETRAGEM:*\n" . $url . "\n\n"
-                . "Quando aparecer *“Leitura registrada”*, terminou e você já pode fechar a tela. ✅\n\n"
-                . "*Não precisa responder esta mensagem.*";
-        }
-
-        $opening = $stage === 'initial'
-            ? 'Necesitamos que informes los kilómetros actuales'
-            : 'Todavía falta que informes los kilómetros de esta semana';
-
-        return $pilotHeader
-            . "*" . ($companyName !== '' ? $companyName : 'Empresa') . "* · Mantenimiento\n\n"
-            . ($name === '' ? 'Hola 👋' : 'Hola ' . $name . ' 👋') . "\n\n"
-            . $opening . " del vehículo *" . $equipmentLabel . "*.\n\n"
-            . "*Hacé esto:*\n"
-            . "1️⃣ Tocá el enlace de abajo.\n"
-            . "2️⃣ Mirá el tablero del vehículo y escribí el número que marca.\n"
-            . "3️⃣ Tocá *Registrar lectura*.\n\n"
-            . "👉 *ABRIR PARA CARGAR LOS KM:*\n" . $url . "\n\n"
-            . "Cuando aparezca *“Lectura registrada”*, ya terminaste y podés cerrar la pantalla. ✅\n\n"
-            . "*No hace falta responder este WhatsApp.*";
     }
 
     private function notifyMaintenanceResponsible(

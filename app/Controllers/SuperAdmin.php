@@ -363,7 +363,8 @@ final class SuperAdmin extends BaseController
                 . '. Choferes que requieren corrección: ' . (int) ($result['drivers'] ?? 0)
                 . '. Avisos nuevos al Responsable de mantenimiento: ' . (int) ($result['notifications'] ?? 0)
                 . '. Avisos actualizados: ' . (int) ($result['updated'] ?? 0)
-                . '. Duplicados no actualizables: ' . (int) ($result['duplicates'] ?? 0)
+                . '. Avisos regularizados por corrección: ' . (int) ($result['regularized'] ?? 0)
+                . '. Avisos sin cambios: ' . (int) ($result['duplicates'] ?? 0)
                 . '. No se enviaron WhatsApp a choferes.',
             );
         } catch (Throwable $exception) {

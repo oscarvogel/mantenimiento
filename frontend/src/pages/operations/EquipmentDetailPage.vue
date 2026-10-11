@@ -9,7 +9,9 @@ import PageHeading from './components/PageHeading.vue'
 import PaginationBar from './components/PaginationBar.vue'
 import PanelCard from './components/PanelCard.vue'
 import StatusBadge from './components/StatusBadge.vue'
+import TelemetryBoard from './components/TelemetryBoard.vue'
 import EquipmentThumbnail from './components/EquipmentThumbnail.vue'
+import { equipmentDetailTabs } from './equipmentDetailTabs.js'
 import { dangerButton, fieldClass, formatHours, formatKilometers, formatReadingOrigin, nowLocal, primaryButton, secondaryButton, today } from './helpers.js'
 
 const editingExpiration = ref(null)
@@ -56,15 +58,14 @@ const data = computed(() => {
   }
 })
 
-const tabs = [
-  { id: 'resumen', label: 'Resumen' },
-  { id: 'mantenimiento', label: 'Mantenimiento' },
-  { id: 'lecturas', label: 'Lecturas' },
-  { id: 'archivos', label: 'Archivos' },
-  { id: 'historial', label: 'Historial' },
-]
+const tabs = computed(() => equipmentDetailTabs())
 const initialQuery = new URLSearchParams(window.location.search)
-const activeTab = ref(initialQuery.get('history_active') === '1' ? 'historial' : 'resumen')
+const requestedTab = initialQuery.get('tab')
+const activeTab = ref(
+  tabs.value.some((tab) => tab.id === requestedTab)
+    ? requestedTab
+    : initialQuery.get('history_active') === '1' ? 'historial' : 'resumen',
+)
 const correctiveOrderUrl = computed(() => `${props.data.routes.maintenance}?ot_correctiva=1&equipo_id=${props.data.equipment.id}`)
 const historyResetUrl = computed(() => `${window.location.pathname}?history_active=1#equipment-panel-historial`)
 const formatKmValue = (value) => Number(value).toLocaleString('es-AR', { maximumFractionDigits: 0 })
@@ -264,7 +265,7 @@ const equipmentSummary = computed(() => {
           <CsrfInput :csrf="data.csrf" /><FormField label="Código" for-id="detail-equipment-code"><input id="detail-equipment-code" name="codigo" maxlength="50" required :value="data.equipment.code" class="uppercase" :class="fieldClass" /></FormField><FormField label="Patente" for-id="detail-equipment-plate"><input id="detail-equipment-plate" name="patente" maxlength="20" :value="data.equipment.plate" class="uppercase" :class="fieldClass" /></FormField>
           <FormField label="Tipo de equipo" for-id="detail-equipment-type"><select id="detail-equipment-type" name="tipo_equipo_id" required :class="fieldClass"><option v-for="type in data.catalogs.types" :key="type.id" :value="type.id" :selected="String(data.equipment.typeId) === String(type.id)">{{ type.name }}</option></select></FormField><FormField label="Fecha de alta" for-id="detail-equipment-start-date"><input id="detail-equipment-start-date" type="date" name="fecha_alta" required :value="data.equipment.startDate" :max="today()" :class="fieldClass" /></FormField>
           <FormField label="Marca" for-id="detail-equipment-brand"><select id="detail-equipment-brand" name="marca_id" :class="fieldClass"><option value="">Sin informar</option><option v-for="brand in data.catalogs.brands" :key="brand.id" :value="brand.id" :selected="String(data.equipment.brandId) === String(brand.id)">{{ brand.name }}</option></select></FormField><FormField label="Modelo" for-id="detail-equipment-model"><select id="detail-equipment-model" name="modelo_id" :class="fieldClass"><option value="">Sin informar</option><option v-for="model in data.catalogs.models" :key="model.id" :value="model.id" :selected="String(data.equipment.modelId) === String(model.id)">{{ model.brandName }} · {{ model.name }} · {{ model.typeName }}</option></select></FormField>
-          <FormField label="Año" for-id="detail-equipment-year"><input id="detail-equipment-year" type="number" min="1900" max="2100" name="anio" :value="data.equipment.year" :class="fieldClass" /></FormField><FormField label="Chasis" for-id="detail-equipment-chassis"><input id="detail-equipment-chassis" name="chasis" maxlength="100" :value="data.equipment.chassis" :class="fieldClass" /></FormField><FormField label="Motor" for-id="detail-equipment-engine"><input id="detail-equipment-engine" name="motor" maxlength="100" :value="data.equipment.engine" :class="fieldClass" /></FormField><FormField label="Observaciones" for-id="detail-equipment-notes" class="sm:col-span-2"><textarea id="detail-equipment-notes" name="observaciones" rows="3" :class="fieldClass" :value="data.equipment.notes"></textarea></FormField><button type="submit" :class="`${primaryButton} sm:justify-self-start`">Guardar cambios</button>
+          <FormField label="Año" for-id="detail-equipment-year"><input id="detail-equipment-year" type="number" min="1900" max="2100" name="anio" :value="data.equipment.year" :class="fieldClass" /></FormField><FormField label="Chasis" for-id="detail-equipment-chassis"><input id="detail-equipment-chassis" name="chasis" maxlength="100" :value="data.equipment.chassis" :class="fieldClass" /></FormField><FormField label="Motor" for-id="detail-equipment-engine"><input id="detail-equipment-engine" name="motor" maxlength="100" :value="data.equipment.engine" :class="fieldClass" /></FormField><FormField label="Capacidad total de tanques (L)" for-id="detail-equipment-tank-capacity" hint="Sumá todos los tanques; Wialon informa el combustible total."><input id="detail-equipment-tank-capacity" type="number" min="1" max="99999999" step="1" name="capacidad_tanque_litros" :value="data.equipment.tankCapacityLiters" :class="fieldClass" /></FormField><FormField label="Observaciones" for-id="detail-equipment-notes" class="sm:col-span-2"><textarea id="detail-equipment-notes" name="observaciones" rows="3" :class="fieldClass" :value="data.equipment.notes"></textarea></FormField><button type="submit" :class="`${primaryButton} sm:justify-self-start`">Guardar cambios</button>
         </form>
         </details>
         <p v-else class="text-sm text-ink-muted">La ficha queda en modo de consulta porque el equipo está dado de baja.</p>
@@ -307,6 +308,15 @@ const equipmentSummary = computed(() => {
       <div v-else class="overflow-x-auto"><table class="w-full min-w-[52rem] text-left text-sm"><thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-4 py-3">Archivo</th><th class="px-4 py-3">Tipo</th><th class="px-4 py-3">Registro</th><th class="px-4 py-3">Estado</th><th class="px-4 py-3">Acción</th></tr></thead><tbody class="divide-y divide-border-subtle"><tr v-for="attachment in data.attachments.items" :key="attachment.id" :class="attachment.retiredAt ? 'bg-surface-subtle text-ink-muted' : ''"><td class="px-4 py-4"><span class="font-semibold">{{ attachment.originalName }}</span><br><span class="text-xs text-ink-muted">{{ attachment.mimeType }} · {{ attachment.sizeKb }} KB</span></td><td class="px-4 py-4">{{ attachment.type }}<br><span v-if="attachment.description" class="text-xs text-ink-muted">{{ attachment.description }}</span></td><td class="px-4 py-4">{{ attachment.createdAt }}<br><span class="text-xs text-ink-muted">{{ attachment.createdByName }}</span></td><td class="px-4 py-4"><StatusBadge :status="attachment.retiredAt ? 'RETIRADO' : 'ACTIVO'" /><p v-if="attachment.retirementReason" class="mt-1 text-xs">{{ attachment.retirementReason }}</p></td><td class="px-4 py-4"><div v-if="!attachment.retiredAt" class="flex gap-2"><a :href="attachment.downloadUrl" :class="secondaryButton"><ArrowDownTrayIcon class="mr-1.5 size-4" aria-hidden="true" />Descargar</a><details v-if="data.can.edit" class="ui-details-animated"><summary :class="dangerButton">Retirar</summary><form method="post" :action="attachment.retireUrl" data-confirm data-confirm-title="¿Retirar este adjunto?" data-confirm-text="El archivo dejará de estar disponible para descarga." data-confirm-button="Retirar" data-confirm-danger="true" class="mt-3 w-72 rounded-xl border border-border bg-white p-4 shadow-card"><CsrfInput :csrf="data.csrf" /><FormField label="Motivo" :for-id="`attachment-reason-${attachment.id}`"><textarea :id="`attachment-reason-${attachment.id}`" name="motivo" minlength="5" maxlength="255" required :class="fieldClass"></textarea></FormField><button type="submit" :class="`${dangerButton} mt-3`">Confirmar retiro</button></form></details></div></td></tr></tbody></table></div>
       <template #footer><PaginationBar :pagination="data.attachments.pagination" /></template>
     </PanelCard>
+    </div>
+
+    <div
+      id="equipment-panel-telemetria"
+      v-show="activeTab === 'telemetria'"
+      role="tabpanel"
+      aria-labelledby="equipment-tab-telemetria"
+    >
+      <TelemetryBoard :telemetry="data.telemetry" :equipment="data.equipment" />
     </div>
 
     <div id="equipment-panel-lecturas" v-show="activeTab === 'lecturas'" role="tabpanel" aria-labelledby="equipment-tab-lecturas">

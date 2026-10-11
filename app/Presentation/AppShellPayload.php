@@ -39,6 +39,8 @@ final readonly class AppShellPayload
         } elseif ($active !== 'command-center') {
             if ($actor->hasPermission('equipos.ver')) {
                 $navigation[] = $this->item('equipment', 'Equipos', 'mantenimiento/equipos', 'truck', $active);
+                $navigation[] = $this->item('fleet-telemetry', 'Telemetría de flota', 'mantenimiento/telemetria', 'map', $active);
+                $navigation[] = $this->item('fleet-consumption', 'Consumo por viaje', 'mantenimiento/telemetria/consumo', 'chart', $active);
             }
             if ($actor->hasPermission('lecturas.cargar')) {
                 $navigation[] = $this->item('quick-readings', 'Registrar km/horas', 'mantenimiento/lecturas/rapidas', 'readings', $active);
@@ -88,6 +90,9 @@ final readonly class AppShellPayload
             }
             if ($actor->hasPermission('sucursales.ver')) {
                 $navigation[] = $this->item('branches', 'Sucursales', 'administracion/sucursales', 'branches', $active);
+            }
+            if ($actor->hasPermission('equipos.editar')) {
+                $navigation[] = $this->item('integrations', 'Integraciones', 'administracion/integraciones/telemetria', 'integrations', $active);
             }
             if ($actor->hasPermission('usuarios.ver')) {
                 $navigation[] = $this->item('users', 'Usuarios', 'administracion/usuarios', 'users', $active);

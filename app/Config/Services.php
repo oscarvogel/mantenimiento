@@ -67,6 +67,7 @@ use App\Application\Organization\Port\TenantAdministrationPort;
 use App\Application\Organization\TenantAdministrationService;
 use App\Application\Organization\UpdateCompanyHandler;
 use App\Application\Notifications\CollectOperationalNotifications;
+use App\Application\Notifications\CompositeOperationalNotificationEventSource;
 use App\Application\Notifications\GetNotificationCenter;
 use App\Application\Notifications\GetGlobalNotificationSettings;
 use App\Application\Notifications\ManageNotificationPreferences;
@@ -74,6 +75,7 @@ use App\Application\Notifications\ManageWebPushSubscriptions;
 use App\Application\Notifications\MarkNotificationRead;
 use App\Application\Notifications\NotificationChannelPolicy;
 use App\Application\Notifications\Port\GlobalNotificationSettingsStore;
+use App\Application\Notifications\Port\DriverPhoneAuditReadModel;
 use App\Application\Notifications\Port\NotificationCronRateLimiter;
 use App\Application\Notifications\NotificationDeliverySchedule;
 use App\Application\Notifications\NotificationPreferenceResolution;
@@ -95,8 +97,36 @@ use App\Infrastructure\Notifications\VogelWhatsAppApiGateway;
 use App\Infrastructure\Notifications\CodeIgniterNotificationProcessControl;
 use App\Infrastructure\Notifications\CodeIgniterNotificationRecipientResolver;
 use App\Infrastructure\Notifications\CodeIgniterNotificationRepository;
+use App\Infrastructure\Notifications\CodeIgniterDriverPhoneAuditReadModel;
 use App\Infrastructure\Notifications\CodeIgniterNotificationUnitOfWork;
 use App\Infrastructure\Notifications\CodeIgniterOperationalNotificationEventSource;
+use App\Infrastructure\Telematic\WialonRemoteApiGateway;
+use App\Application\Telematic\DiagnoseSilentUnits;
+use App\Application\Telematic\ConfigureTelemetryIntegration;
+use App\Application\Telematic\ManageTelemetryEquipmentLinks;
+use App\Infrastructure\Telematic\CodeIgniterTelemetryIntegrationConfigurator;
+use App\Infrastructure\Telematic\CodeIgniterTelemetryEquipmentUnitLinkManager;
+use App\Application\Telematic\RecordTelemetrySnapshots;
+use App\Application\Telematic\RegistrarMuestras;
+use App\Application\Telematic\SincronizarBucketsTelemetria;
+use App\Application\Telematic\Port\LectorHistoricoTelemetria;
+use App\Application\Telematic\Port\SerieMuestrasReader;
+use App\Application\Telematic\Port\FleetTelemetryGateway;
+use App\Application\Telematic\Port\FleetTelemetryGatewayRegistry;
+use App\Domain\Telematic\AgregadorBucketsTelemetria;
+use App\Infrastructure\Telematic\CodeIgniterTelemetryIntegrationStore;
+use App\Infrastructure\Telematic\CodeIgniterTelemetryIntegrationCatalog;
+use App\Infrastructure\Telematic\CodeIgniterTelemetryBucketStore;
+use App\Infrastructure\Telematic\CodeIgniterEquipmentTelemetryCatalog;
+use App\Infrastructure\Telematic\CodeIgniterTelemetrySnapshotStore;
+use App\Infrastructure\Telematic\CodeIgniterMuestraStore;
+use App\Infrastructure\Telematic\CodeIgniterHistoricoMuestras;
+use App\Infrastructure\Telematic\CodeIgniterHistoricoBuckets;
+use App\Infrastructure\Telematic\ArchivoRespaldoBuckets;
+use App\Infrastructure\Telematic\CodeIgniterBucketSerieMuestrasReader;
+use App\Infrastructure\Telematic\CodeIgniterTelematicSerieMuestrasReader;
+use App\Infrastructure\Telematic\ArchivoRespaldoMuestras;
+use App\Infrastructure\Telematic\CodeIgniterFleetTelemetryGatewayRegistry;
 use App\Infrastructure\Notifications\CodeIgniterWebPushSubscriptionStore;
 use App\Infrastructure\Notifications\MinishlinkWebPushGateway;
 use App\Infrastructure\Notifications\SystemNotificationClock;
@@ -309,6 +339,7 @@ class Services extends BaseService
             static::notificationClock(),
             static::managementReports(false),
             static::notifyAdminsMissingDriverPhones(false),
+            static::telematicRefreshesForAllCompanies(),
         );
     }
 
@@ -322,8 +353,17 @@ class Services extends BaseService
             static::notificationRepository(false),
             static::notificationClock(false),
             static::whatsAppGateway(false),
-            db_connect(),
+            static::driverPhoneAuditReadModel(false),
         );
+    }
+
+    public static function driverPhoneAuditReadModel(bool $getShared = true): DriverPhoneAuditReadModel
+    {
+        if ($getShared) {
+            return static::getSharedInstance('driverPhoneAuditReadModel');
+        }
+
+        return new CodeIgniterDriverPhoneAuditReadModel(db_connect());
     }
 
     public static function managementReports(bool $getShared = true): \App\Application\Notifications\ScheduleManagementReports
@@ -332,10 +372,13 @@ class Services extends BaseService
             return static::getSharedInstance('managementReports');
         }
 
+        $db = db_connect();
+
         return new \App\Application\Notifications\ScheduleManagementReports(
             static::notificationClock(false),
-            db_connect(),
+            $db,
             (int) env('alerts.lecturasVencidasDias', 30),
+            new \App\Infrastructure\Notifications\CodeIgniterTelemetrySensorIssueSummaryReader($db),
         );
     }
 
@@ -481,13 +524,258 @@ class Services extends BaseService
         );
     }
 
+    /**
+     * Diagnóstico de cobertura de telemetría.
+     *
+     * Sin candado de entorno: el interruptor por cliente es
+     * `integraciones_telemetria.activo`, que se cambia en la base. Un flag en
+     * `.env` obligaría a desplegar para prenderlo, y en producción el `.env`
+     * viaja con un deploy por FTPS. Si no hay integraciones, el diagnóstico
+     * simplemente no encuentra nada que evaluar.
+     *
+     * El token ya no vive en el entorno: se resuelve y descifra por
+     * integración desde `integraciones_telemetria`. Eso permite que cada
+     * empresa tenga su propia cuenta y su propio ciclo de renovación.
+     */
+    public static function telematicAlertDiagnostics(int $companyId, bool $getShared = true): DiagnoseSilentUnits
+    {
+        if ($getShared) {
+            return static::getSharedInstance('telematicAlertDiagnostics.' . $companyId);
+        }
+
+        $integrations = new CodeIgniterTelemetryIntegrationCatalog(db_connect());
+
+        return new DiagnoseSilentUnits(
+            new CodeIgniterEquipmentTelemetryCatalog($integrations, db_connect()),
+            $integrations,
+            self::telematicGatewayRegistry(),
+            static::notificationClock(false),
+            $companyId,
+            (int) env('WIALON_SILENCE_HOURS', 24),
+        );
+    }
+
+    /**
+     * Ingesta de instantáneas de telemetría. Corre antes de evaluar las
+     * alertas para que la ficha y el mapa tengan contra qué leer, sin llamar
+     * al proveedor en cada visita de pantalla.
+     */
+    public static function telematicSnapshotRecorder(int $companyId, bool $getShared = true): RecordTelemetrySnapshots
+    {
+        if ($getShared) {
+            return static::getSharedInstance('telematicSnapshotRecorder.' . $companyId);
+        }
+
+        $integrations = new CodeIgniterTelemetryIntegrationCatalog(db_connect());
+        $registry = self::telematicGatewayRegistry();
+
+        return new RecordTelemetrySnapshots(
+            new CodeIgniterEquipmentTelemetryCatalog($integrations, db_connect()),
+            $integrations,
+            $registry,
+            new CodeIgniterTelemetrySnapshotStore(db_connect()),
+            new RegistrarMuestras(new CodeIgniterMuestraStore(db_connect())),
+            static::notificationClock(false),
+            $companyId,
+            self::telemetryBucketSynchronizer(db_connect(), $registry),
+        );
+    }
+
+    public static function muestrasHistorico(): CodeIgniterHistoricoMuestras
+    {
+        return new CodeIgniterHistoricoMuestras(db_connect());
+    }
+
+    public static function muestrasRespaldo(): ArchivoRespaldoMuestras
+    {
+        return new ArchivoRespaldoMuestras();
+    }
+
+    public static function muestrasBucketsHistorico(): CodeIgniterHistoricoBuckets
+    {
+        return new CodeIgniterHistoricoBuckets(db_connect());
+    }
+
+    public static function muestrasBucketsRespaldo(): ArchivoRespaldoBuckets
+    {
+        return new ArchivoRespaldoBuckets();
+    }
+
+    public static function serieMuestras(bool $getShared = true): SerieMuestrasReader
+    {
+        if ($getShared) {
+            return static::getSharedInstance('serieMuestras');
+        }
+
+        $db = db_connect();
+
+        return new CodeIgniterTelematicSerieMuestrasReader(
+            new CodeIgniterHistoricoMuestras($db),
+            new CodeIgniterBucketSerieMuestrasReader($db),
+        );
+    }
+
+    private static function telematicGatewayRegistry(): CodeIgniterFleetTelemetryGatewayRegistry
+    {
+        $store = new CodeIgniterTelemetryIntegrationStore(db_connect());
+
+        return new CodeIgniterFleetTelemetryGatewayRegistry([
+            FleetTelemetryGatewayRegistry::PROVIDER_WIALON => static fn (): FleetTelemetryGateway => new WialonRemoteApiGateway(
+                $store,
+                (int) env('WIALON_TIMEOUT_SECONDS', 30),
+            ),
+        ]);
+    }
+
+    private static function telemetryBucketSynchronizer(
+        \CodeIgniter\Database\BaseConnection $db,
+        FleetTelemetryGatewayRegistry $registry,
+    ): ?SincronizarBucketsTelemetria {
+        if (! $registry->supports(FleetTelemetryGatewayRegistry::PROVIDER_WIALON)) {
+            return null;
+        }
+
+        $gateway = $registry->forProvider(FleetTelemetryGatewayRegistry::PROVIDER_WIALON);
+        if (! $gateway instanceof LectorHistoricoTelemetria) {
+            return null;
+        }
+
+        return new SincronizarBucketsTelemetria(
+            $gateway,
+            new CodeIgniterTelemetryBucketStore($db),
+            new AgregadorBucketsTelemetria(),
+        );
+    }
+
+    /**
+     * Refresco manual de la telemetría, el mismo que dispara el botón.
+     *
+     * Sin candado de entorno, a propósito: el botón tiene que funcionar
+     * igual en staging y en Ferozo, y en producción un flag en `.env`
+     * obligaría a un deploy por FTPS para prenderlo. El interruptor real es
+     * `integraciones_telemetria.activo`. Sin integraciones, el caso de uso
+     * responde con un mensaje claro en vez de romperse.
+     */
+    public static function telemetryRefresh(?int $companyId, bool $getShared = true): \App\Application\Telematic\RefreshTelemetryNow
+    {
+        if ($companyId === null) {
+            $companyId = 0;
+        }
+
+        if ($getShared) {
+            return static::getSharedInstance('telemetryRefresh.' . $companyId);
+        }
+
+        $db = db_connect();
+        $integrations = new CodeIgniterTelemetryIntegrationCatalog($db);
+        $registry = self::telematicGatewayRegistry();
+        $clock = static::notificationClock(false);
+
+        return new \App\Application\Telematic\RefreshTelemetryNow(
+            $integrations,
+            new RecordTelemetrySnapshots(
+                new CodeIgniterEquipmentTelemetryCatalog($integrations, $db),
+                $integrations,
+                $registry,
+                new CodeIgniterTelemetrySnapshotStore($db),
+                new RegistrarMuestras(new CodeIgniterMuestraStore($db)),
+                $clock,
+                $companyId,
+                self::telemetryBucketSynchronizer($db, $registry),
+            ),
+            new DiagnoseSilentUnits(
+                new CodeIgniterEquipmentTelemetryCatalog($integrations, $db),
+                $integrations,
+                $registry,
+                $clock,
+                $companyId,
+                (int) env('WIALON_SILENCE_HOURS', 24),
+            ),
+            static::publishNotifiableEvent(false),
+            new \App\Infrastructure\Telematic\CodeIgniterTelemetryRefreshGuard($db),
+            $clock,
+            $companyId,
+        );
+    }
+
+    public static function configureTelemetryIntegration(bool $getShared = true): ConfigureTelemetryIntegration
+    {
+        if ($getShared) {
+            return static::getSharedInstance('configureTelemetryIntegration');
+        }
+
+        return new ConfigureTelemetryIntegration(new CodeIgniterTelemetryIntegrationConfigurator(db_connect()));
+    }
+
+    public static function manageTelemetryEquipmentLinks(bool $getShared = true): ManageTelemetryEquipmentLinks
+    {
+        if ($getShared) {
+            return static::getSharedInstance('manageTelemetryEquipmentLinks');
+        }
+
+        return new ManageTelemetryEquipmentLinks(new CodeIgniterTelemetryEquipmentUnitLinkManager(db_connect()));
+    }
+
+    /**
+ * Lectura de la última instantánea de un equipo, para la ficha.
+ */
+public static function getEquipmentTelemetry(bool $getShared = true): \App\Application\Telematic\GetEquipmentTelemetry
+    {
+        if ($getShared) {
+            return static::getSharedInstance('getEquipmentTelemetry');
+        }
+
+        return new \App\Application\Telematic\GetEquipmentTelemetry(
+            new \App\Infrastructure\Telematic\CodeIgniterTelemetrySnapshotReader(db_connect()),
+        );
+    }
+
+    public static function reporteConsumoFlota(bool $getShared = true): \App\Application\Telematic\GetReporteConsumoFlota
+    {
+        if ($getShared) {
+            return static::getSharedInstance('reporteConsumoFlota');
+        }
+
+        $db = db_connect();
+
+        // La política **no** se resuelve acá: depende de la empresa, y quien
+        // conoce la empresa es el caso de uso, con su actor. Si se inyectara
+        // un default fijo, los umbrales configurados de una empresa nunca se
+        // aplicarían.
+        return new \App\Application\Telematic\GetReporteConsumoFlota(
+            new \App\Infrastructure\Telematic\CodeIgniterFleetTelemetryBoardReader($db),
+            new \App\Application\Telematic\CalcularConsumoPorEquipo(static::serieMuestras(false)),
+            new \App\Infrastructure\Telematic\CodeIgniterConsumoConfigStore($db),
+            static::notificationClock(false),
+        );
+    }
+
+    public static function consumoConfig(): \App\Application\Telematic\Port\ConsumoConfigStore
+    {
+        return new \App\Infrastructure\Telematic\CodeIgniterConsumoConfigStore(db_connect());
+    }
+
+    public static function fleetTelemetryBoard(bool $getShared = true): \App\Application\Telematic\GetFleetTelemetryBoard
+    {
+        if ($getShared) {
+            return static::getSharedInstance('fleetTelemetryBoard');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\Telematic\GetFleetTelemetryBoard(
+            new \App\Infrastructure\Telematic\CodeIgniterFleetTelemetryBoardReader($db),
+            static::notificationClock(false),
+        );
+    }
+
     public static function operationalNotificationCollector(bool $getShared = true): CollectOperationalNotifications
     {
         if ($getShared) {
             return static::getSharedInstance('operationalNotificationCollector');
         }
 
-        return new CollectOperationalNotifications(
+        $sources = [
             new CodeIgniterOperationalNotificationEventSource(
                 static::notificationClock(false),
                 (int) env('alerts.lecturasVencidasDias', 30),
@@ -495,8 +783,36 @@ class Services extends BaseService
                 2,
                 db_connect(),
             ),
+        ];
+
+        return new CollectOperationalNotifications(
+            new CompositeOperationalNotificationEventSource($sources),
             static::publishNotifiableEvent(false),
         );
+    }
+
+    /** @return list<\App\Application\Telematic\RefreshTelemetryNow> */
+    private static function telematicRefreshesForAllCompanies(): array
+    {
+        $db = db_connect();
+
+        if (! $db->tableExists('integraciones_telemetria')) {
+            return [];
+        }
+
+        $empresas = $db->table('integraciones_telemetria')
+            ->select('empresa_id')
+            ->where('activo', 1)
+            ->groupBy('empresa_id')
+            ->get()
+            ->getResultArray();
+
+        $refreshes = [];
+        foreach ($empresas as $fila) {
+            $refreshes[] = static::telemetryRefresh((int) $fila['empresa_id'], false);
+        }
+
+        return $refreshes;
     }
 
     public static function proactiveAssistantBriefing(bool $getShared = true): \App\Application\Chatbot\GetProactiveAssistantBriefing

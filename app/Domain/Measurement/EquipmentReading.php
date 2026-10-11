@@ -14,6 +14,7 @@ final class EquipmentReading
     public const IMPORT = 'IMPORTACION';
     public const QUICK_ENTRY = 'CARGA_RAPIDA';
     public const INITIAL_ENTRY = 'ALTA_INICIAL';
+    public const QR_ANONYMOUS = 'QR_ANONIMO';
 
     private function __construct(
         private readonly ?int $id,
@@ -24,7 +25,7 @@ final class EquipmentReading
         private readonly UsageMeasurement $measurement,
         private readonly string $origin,
         private readonly ?string $originReference,
-        private readonly int $userId,
+        private readonly ?int $userId,
         private readonly ?string $correctionReason,
         private readonly ?string $notes,
         private readonly ?int $correctedReadingId,
@@ -33,10 +34,11 @@ final class EquipmentReading
         private ?int $annulledBy,
         private ?string $annulmentReason,
     ) {
-        if ($companyId <= 0 || $branchId <= 0 || $equipmentId <= 0 || $userId <= 0) {
+        if ($companyId <= 0 || $branchId <= 0 || $equipmentId <= 0 || ($userId !== null && $userId <= 0)
+            || ($userId === null && $origin !== self::QR_ANONYMOUS)) {
             throw new DomainException('El alcance y autor de la lectura deben ser válidos.');
         }
-        if (! in_array($origin, [self::MANUAL, self::WORK_ORDER, self::IMPORT, self::QUICK_ENTRY, self::INITIAL_ENTRY], true)) {
+        if (! in_array($origin, [self::MANUAL, self::WORK_ORDER, self::IMPORT, self::QUICK_ENTRY, self::INITIAL_ENTRY, self::QR_ANONYMOUS], true)) {
             throw new DomainException('El origen de la lectura no es válido.');
         }
         if ($originReference !== null && mb_strlen($originReference) > 100) {
@@ -97,7 +99,7 @@ final class EquipmentReading
         UsageMeasurement $measurement,
         string $origin,
         ?string $originReference,
-        int $userId,
+        ?int $userId,
         ?string $correctionReason,
         ?string $notes,
         ?int $correctedReadingId,
@@ -191,7 +193,7 @@ final class EquipmentReading
     public function measurement(): UsageMeasurement { return $this->measurement; }
     public function origin(): string { return $this->origin; }
     public function originReference(): ?string { return $this->originReference; }
-    public function userId(): int { return $this->userId; }
+    public function userId(): ?int { return $this->userId; }
     public function correctionReason(): ?string { return $this->correctionReason; }
     public function notes(): ?string { return $this->notes; }
     public function correctedReadingId(): ?int { return $this->correctedReadingId; }

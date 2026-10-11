@@ -25,6 +25,7 @@ const hasEquipmentOldInput = Boolean(
   || props.data.old.patente
   || props.data.old.chasis
   || props.data.old.motor
+  || props.data.old.capacidad_tanque_litros
   || props.data.old.km_actual_inicial
   || props.data.old.horas_actuales_inicial
   || props.data.old.fecha_lectura_inicial
@@ -116,6 +117,7 @@ watch([selectedTypeId, selectedBrandId], () => { selectedModelId.value = '' })
               <FormField label="Año" for-id="new-equipment-year"><input id="new-equipment-year" type="number" min="1900" max="9999" name="anio" :value="data.old.anio" :class="fieldClass" /></FormField>
               <FormField label="Chasis" for-id="new-equipment-chassis"><input id="new-equipment-chassis" name="chasis" maxlength="100" :value="data.old.chasis" class="uppercase" :class="fieldClass" /></FormField>
               <FormField label="Motor" for-id="new-equipment-engine"><input id="new-equipment-engine" name="motor" maxlength="100" :value="data.old.motor" class="uppercase" :class="fieldClass" /></FormField>
+              <FormField label="Capacidad total de tanques (L)" for-id="new-equipment-tank-capacity" hint="Sumá todos los tanques del equipo; Wialon informa el combustible total."><input id="new-equipment-tank-capacity" type="number" min="1" max="99999999" step="1" name="capacidad_tanque_litros" :value="data.old.capacidad_tanque_litros" :class="fieldClass" /></FormField>
               <FormField v-if="selectedType?.controlsKm" label="Kilometraje actual (opcional)" for-id="new-equipment-current-km" hint="Es una lectura actual; no se usa como base histórica del plan."><input id="new-equipment-current-km" type="number" min="0" name="km_actual_inicial" :value="data.old.km_actual_inicial" :class="fieldClass" /></FormField>
               <FormField v-if="selectedType?.controlsHours" label="Horómetro actual (opcional)" for-id="new-equipment-current-hours" hint="Podés usar coma o punto; es una lectura actual y no se usa como base histórica del plan."><input id="new-equipment-current-hours" type="text" inputmode="decimal" autocomplete="off" name="horas_actuales_inicial" :value="data.old.horas_actuales_inicial" :class="fieldClass" /></FormField>
               <FormField v-if="selectedType?.controlsKm || selectedType?.controlsHours" label="Fecha de lectura actual" for-id="new-equipment-reading-date"><input id="new-equipment-reading-date" type="datetime-local" name="fecha_lectura_inicial" :value="data.old.fecha_lectura_inicial || nowLocal()" :class="fieldClass" /></FormField>

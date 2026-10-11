@@ -127,6 +127,7 @@ final class CodeIgniterEquipmentRelationRepository implements EquipmentRelationR
             $row['marca_id'] === null ? null : (int) $row['marca_id'], $row['modelo_id'] === null ? null : (int) $row['modelo_id'],
             $row['anio'] === null ? null : (int) $row['anio'], $row['chasis'] === null ? null : (string) $row['chasis'],
             $row['motor'] === null ? null : (string) $row['motor'],
+            $row['capacidad_tanque_litros'] === null ? null : (int) $row['capacidad_tanque_litros'],
         );
     }
 }

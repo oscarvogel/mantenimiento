@@ -165,7 +165,7 @@ final class OperationsPayload
 
         return [
             'canEdit' => $canEdit,
-            'old' => $this->old(['sucursal_id', 'tipo_equipo_id', 'codigo', 'patente', 'marca_id', 'modelo_id', 'fecha_alta', 'anio', 'chasis', 'motor', 'observaciones', 'km_actual_inicial', 'horas_actuales_inicial', 'fecha_lectura_inicial']),
+            'old' => $this->old(['sucursal_id', 'tipo_equipo_id', 'codigo', 'patente', 'marca_id', 'modelo_id', 'fecha_alta', 'anio', 'chasis', 'motor', 'capacidad_tanque_litros', 'observaciones', 'km_actual_inicial', 'horas_actuales_inicial', 'fecha_lectura_inicial']),
             'routes' => [
                 'index' => $base, 'maintenance' => base_url('mantenimiento'),
                 'createEquipment' => $base,
@@ -261,8 +261,75 @@ final class OperationsPayload
         ];
     }
 
+    /**
+     * Bloque de telemetría de la ficha.
+     *
+     * La antigüedad se calcula acá y no en el cliente: el navegador puede
+     * tener la hora mal y un "última señal" con la hora de reloj del usuario
+     * miente. Además se separa el kilometraje propio del proveedor, porque
+     * son dos fuentes distintas y el odómetro legal sigue siendo el que carga
+     * el chofer.
+     *
+     * @param list<array<string,mixed>>|null $telemetry
+     * @param array<string,mixed> $equipment
+     *
+     * @return array<string,mixed>
+     */
+    private function telemetry(?array $telemetry, array $equipment, array $can = []): array
+    {
+        $kmPropio = $equipment['km_actual'] === null ? null : (int) $equipment['km_actual'];
+        $fuentes = [];
+
+        foreach ($telemetry ?? [] as $fila) {
+            $observada = $fila['observedAt'] ?? null;
+            $minutos = null;
+            if (is_string($observada) && $observada !== '') {
+                $minutos = (int) floor((time() - strtotime($observada)) / 60);
+            }
+
+            $kmProveedor = $fila['kilometers'] ?? null;
+            $diferencia = ($kmPropio !== null && $kmProveedor !== null) ? $kmProveedor - $kmPropio : null;
+
+            $fuentes[] = [
+                'integrationId' => (int) $fila['integrationId'],
+                'integrationName' => (string) $fila['integrationName'],
+                'provider' => (string) $fila['provider'],
+                'role' => (string) $fila['role'],
+                'stale' => (bool) $fila['stale'],
+                'observedAt' => $observada,
+                'ageMinutes' => $minutos,
+                'position' => $fila['position'],
+                'kilometers' => $kmProveedor,
+                'kilometersDifference' => $diferencia,
+                'hoursTenths' => $fila['hoursTenths'],
+                'hours' => $fila['hoursTenths'] === null ? null : round($fila['hoursTenths'] / 10, 1),
+                'engineOn' => $fila['engineOn'],
+                'idling' => $fila['idling'],
+                'voltage' => $fila['voltage'],
+                'fuelLiters' => $fila['fuelLiters'],
+                'extraSensors' => $fila['extraSensors'],
+            ];
+        }
+
+        return [
+            'available' => $fuentes !== [],
+            'equipmentKm' => $kmPropio,
+            'equipmentHours' => $equipment['horas_actuales'] ?? null,
+            'sources' => $fuentes,
+            // Mismo camino que el botón del dashboard: refresca la flota de la
+            // empresa. Escribir datos, aunque sean de telemetría, no es una
+            // operación de sólo ver, así que viaja con su permiso y su token.
+            'canRefresh' => (bool) ($can['refreshTelemetry'] ?? false),
+            'refreshUrl' => base_url('mantenimiento/telemetria/actualizar'),
+            'csrf' => [
+                'name' => csrf_token(),
+                'hash' => csrf_hash(),
+            ],
+        ];
+    }
+
     /** @param array<string,mixed> $details @param array<string,mixed> $catalogs @param list<array<string,mixed>> $candidates */
-    public function equipmentDetails(array $details, ?ReadingHistoryPage $readings, EquipmentAttachmentPage $attachments, array $catalogs, array $candidates, array $can, array $pageSizes = [], ?PrimaryEquipmentPhoto $primaryPhoto = null): array
+    public function equipmentDetails(array $details, ?ReadingHistoryPage $readings, EquipmentAttachmentPage $attachments, array $catalogs, array $candidates, array $can, array $pageSizes = [], ?PrimaryEquipmentPhoto $primaryPhoto = null, ?array $telemetry = null): array
     {
         $equipment = $details['equipment'];
         $equipmentId = (int) $equipment['id'];
@@ -299,7 +366,9 @@ final class OperationsPayload
                 'currentHours' => $equipment['horas_actuales'], 'plate' => $equipment['patente'],
                 'startDate' => $equipment['fecha_alta'], 'endDate' => $equipment['fecha_baja'],
                 'brandId' => $equipment['marca_id'], 'modelId' => $equipment['modelo_id'], 'year' => $equipment['anio'],
-                'chassis' => $equipment['chasis'], 'engine' => $equipment['motor'], 'notes' => $equipment['observaciones'],
+                'chassis' => $equipment['chasis'], 'engine' => $equipment['motor'],
+                'tankCapacityLiters' => ! isset($equipment['capacidad_tanque_litros']) ? null : (int) $equipment['capacidad_tanque_litros'],
+                'notes' => $equipment['observaciones'],
                 'controlsKm' => (int) $equipment['controla_km'] === 1, 'controlsHours' => (int) $equipment['controla_horas'] === 1,
             ],
             'primaryPhoto' => $primaryPhoto === null ? null : [
@@ -309,6 +378,7 @@ final class OperationsPayload
                 'thumbnailUrl' => $base . '/foto-principal?miniatura=1',
                 'hasThumbnail' => $primaryPhoto->thumbnailPath !== null,
             ],
+            'telemetry' => $this->telemetry($telemetry, $equipment, $can),
             'catalogs' => [
                 'types' => array_map(fn (array $row): array => [
                     'id' => (int) $row['id'], 'name' => $row['nombre'],

@@ -89,6 +89,33 @@ describe('NotificationCenterPage', () => {
     vi.unstubAllGlobals()
   })
 
+  it('trata una notificación regularizada como cerrada y la mantiene como historial', () => {
+    const wrapper = mount(NotificationCenterPage, {
+      props: {
+        data: {
+          ...data,
+          notifications: {
+            unread: 1,
+            total: 2,
+            items: [
+              { id: 4, title: 'Plan vencido', summary: 'Camión 10 requiere atención', severity: 'CRITICA', url: '/planes/4', readAt: null, state: 'PENDIENTE' },
+              { id: 9, title: 'Revisión de celulares', summary: 'Ya se corrigió el teléfono', severity: 'ADVERTENCIA', url: '/empleados', readAt: '2026-10-09 10:00:00', state: 'REGULARIZADA' },
+            ],
+          },
+        },
+      },
+    })
+
+    const regularizada = wrapper.findAll('article').find((article) => article.text().includes('Revisión de celulares'))
+    expect(regularizada.text()).toContain('Regularizada')
+    // Un aviso regularizado no ofrece "Marcar leída": ya no reclama atención.
+    expect(regularizada.find('form').exists()).toBe(false)
+
+    const pendiente = wrapper.findAll('article').find((article) => article.text().includes('Plan vencido'))
+    expect(pendiente.text()).not.toContain('Regularizada')
+    expect(pendiente.find('form').exists()).toBe(true)
+  })
+
   it('separa bandeja, preferencias y dispositivos y edita un evento por vez', async () => {
     const wrapper = mount(NotificationCenterPage, { props: { data } })
 

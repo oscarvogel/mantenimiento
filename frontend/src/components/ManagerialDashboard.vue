@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { ArrowRightIcon, ChevronRightIcon } from '@heroicons/vue/20/solid'
 import {
+  ArrowPathIcon,
   ChartBarIcon,
   CheckCircleIcon,
   ClockIcon,
@@ -19,6 +20,22 @@ const props = defineProps({
 })
 
 const metrics = computed(() => props.dashboard.metrics || {})
+
+// Refresco manual de la telemetría. Es un form POST a propósito y no un fetch:
+// así funciona sin JavaScript adicional, el navegador manda el token CSRF de
+// la página y el servidor responde con el mensaje de resultado.
+const telemetryCsrf = computed(
+  () => props.dashboard.links?.telemetryRefreshCsrf || { name: '', hash: '' },
+)
+
+// Sin token completo el botón no se muestra: es preferible que el operador
+// no vea un control que va a rebotar con 403 en vez de descubrir el problema
+// después de apretarlo.
+const telemetryRefreshUrl = computed(() =>
+  telemetryCsrf.value.name && telemetryCsrf.value.hash
+    ? props.dashboard.links?.telemetryRefresh || '#'
+    : '#',
+)
 const financial = computed(() => props.dashboard.financial || {})
 const formatCurrency = (value) => new Intl.NumberFormat('es-AR', {
   style: 'currency',
@@ -155,6 +172,26 @@ const actionableExecutiveAlerts = computed(() => executiveAlerts.value.filter((a
         </p>
       </div>
       <div class="flex flex-col gap-2 sm:flex-row">
+        <form
+          v-if="telemetryRefreshUrl !== '#'"
+          method="post"
+          :action="telemetryRefreshUrl"
+          class="inline"
+        >
+          <input
+            v-if="telemetryCsrf.name"
+            type="hidden"
+            :name="telemetryCsrf.name"
+            :value="telemetryCsrf.hash"
+          />
+          <button
+            type="submit"
+            class="ui-interactive inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-primary bg-surface px-4 py-2.5 text-sm font-semibold text-primary transition hover:bg-primary-subtle sm:w-auto"
+          >
+            <ArrowPathIcon class="size-5" aria-hidden="true" />
+            Actualizar telemetría
+          </button>
+        </form>
         <a
           v-if="dashboard.links.equipment !== '#'"
           :href="dashboard.links.equipment"
