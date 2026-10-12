@@ -1,4 +1,10 @@
 {
+  "../../mantenimiento-integracion-costo-km/frontend/node_modules/gsap/index.js": {
+    "file": "assets/gsap-C-UGJFrr.js",
+    "name": "gsap",
+    "src": "../../mantenimiento-integracion-costo-km/frontend/node_modules/gsap/index.js",
+    "isDynamicEntry": true
+  },
   "_admin-D2Raj-K1.js": {
     "file": "assets/admin-D2Raj-K1.js",
     "name": "admin",
@@ -6,20 +12,20 @@
       "_vendor-qPh2si1d.js"
     ]
   },
-  "_chatbot-CCS3jc7m.js": {
-    "file": "assets/chatbot-CCS3jc7m.js",
+  "_chatbot-BjmM0ZcA.js": {
+    "file": "assets/chatbot-BjmM0ZcA.js",
     "name": "chatbot",
     "isDynamicEntry": true,
     "imports": [
       "_vendor-qPh2si1d.js"
     ],
     "css": [
-      "assets/chatbot-p1890OXW.css"
+      "assets/chatbot-DO6L-G3P.css"
     ]
   },
-  "_chatbot-p1890OXW.css": {
-    "file": "assets/chatbot-p1890OXW.css",
-    "src": "_chatbot-p1890OXW.css"
+  "_chatbot-DO6L-G3P.css": {
+    "file": "assets/chatbot-DO6L-G3P.css",
+    "src": "_chatbot-DO6L-G3P.css"
   },
   "_reports-iTS2mAnk.js": {
     "file": "assets/reports-iTS2mAnk.js",
@@ -39,12 +45,6 @@
     "css": [
       "assets/vendor-BTrKGrB8.css"
     ]
-  },
-  "node_modules/gsap/index.js": {
-    "file": "assets/gsap-C-UGJFrr.js",
-    "name": "gsap",
-    "src": "node_modules/gsap/index.js",
-    "isDynamicEntry": true
   },
   "src/assets/platform/ai-card.jpg": {
     "file": "assets/ai-card-Bif2XNNK.jpg",
@@ -87,20 +87,20 @@
     "src": "src/assets/platform/trips-card.jpg"
   },
   "src/main.js": {
-    "file": "assets/main-98eHNCwx.js",
+    "file": "assets/main-WfSHoSzf.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
     "imports": [
       "_vendor-qPh2si1d.js",
-      "_chatbot-CCS3jc7m.js",
+      "_chatbot-BjmM0ZcA.js",
       "_admin-D2Raj-K1.js",
       "_reports-iTS2mAnk.js"
     ],
     "dynamicImports": [
-      "_chatbot-CCS3jc7m.js",
+      "_chatbot-BjmM0ZcA.js",
       "src/pages/operations/components/FleetTelemetryMap.vue",
-      "node_modules/gsap/index.js"
+      "../../mantenimiento-integracion-costo-km/frontend/node_modules/gsap/index.js"
     ],
     "css": [
       "assets/main-C-Z2dJUz.css"
@@ -119,16 +119,16 @@
     ]
   },
   "src/pages/operations/components/FleetTelemetryMap.vue": {
-    "file": "assets/FleetTelemetryMap-Y37j26fs.js",
+    "file": "assets/FleetTelemetryMap-6yz3WZ4Z.js",
     "name": "FleetTelemetryMap",
     "src": "src/pages/operations/components/FleetTelemetryMap.vue",
     "isDynamicEntry": true,
     "imports": [
       "_vendor-qPh2si1d.js",
-      "_chatbot-CCS3jc7m.js"
+      "_chatbot-BjmM0ZcA.js"
     ],
     "css": [
-      "assets/FleetTelemetryMap-eJHHeTQZ.css"
+      "assets/FleetTelemetryMap-DFnGY69W.css"
     ]
   }
 }
