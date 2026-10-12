@@ -208,6 +208,14 @@ const actionableExecutiveAlerts = computed(() => executiveAlerts.value.filter((a
           <WrenchScrewdriverIcon class="size-5" aria-hidden="true" />
           Ver mantenimiento
         </a>
+        <a
+          v-if="dashboard.links.theoreticalCostKm && dashboard.links.theoreticalCostKm !== '#'"
+          :href="dashboard.links.theoreticalCostKm"
+          class="ui-interactive inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border-strong bg-surface-raised px-4 py-2.5 text-sm font-semibold text-ink transition hover:border-primary hover:bg-primary-subtle hover:text-primary"
+        >
+          <ChartBarIcon class="size-5" aria-hidden="true" />
+          Costo teórico por km
+        </a>
       </div>
     </header>
 

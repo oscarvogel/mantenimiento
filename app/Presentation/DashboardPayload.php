@@ -24,6 +24,9 @@ final class DashboardPayload
         $servicesUrl = $canPlans ? base_url('mantenimiento/servicios') : '#';
         $managerial = in_array('Administrador', $actor->roles(), true);
         $charts = $managerial ? [] : ($operations['charts'] ?? []);
+        $theoreticalCostUrl = $actor->hasPermission('gerencial.costo_km.ver')
+            ? base_url('gerencial/costo-teorico-km')
+            : '#';
 
         return [
             'view' => $managerial ? 'managerial' : 'operational',
@@ -68,6 +71,7 @@ final class DashboardPayload
                 ],
                 'orders' => $canViewOrders ? $ordersUrl : '#',
                 'financialDetail' => $actor->hasPermission('ordenes.ver') ? base_url('reportes') : '#',
+                'theoreticalCostKm' => $theoreticalCostUrl,
                 // El alta de correctiva vive en la pagina de ordenes, que solo
                 // carga correctiveEquipments con ordenes.editar. El antiguo
                 // ?ot_correctiva=1 ya no lo leia nadie.

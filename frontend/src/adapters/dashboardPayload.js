@@ -395,6 +395,7 @@ export function normalizeDashboardPayload(payload) {
       maintenanceMissingData: asUrl(sourceLinks.maintenanceMissingData, maintenanceUrl),
       orders: asUrl(sourceLinks.orders),
       financialDetail: asUrl(sourceLinks.financialDetail),
+      theoreticalCostKm: asUrl(sourceLinks.theoreticalCostKm),
       correctiveOrder: asUrl(sourceLinks.correctiveOrder),
     },
   }
