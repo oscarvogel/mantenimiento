@@ -18,6 +18,31 @@ afterEach(() => {
 })
 
 describe('TheoreticalCostPage standard assumptions', () => {
+  it('fills residual value to 30 percent when replacement value changes, while preserving manual overrides', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url) => ({
+      ok: true,
+      json: async () => String(url).includes('activos') ? { data: { tractores: [], semis: [] } } : { data: { items: [] } },
+    })))
+
+    const wrapper = mount(TheoreticalCostPage, { props: { data: data() } })
+    await flushPromises()
+    const replacementInputs = wrapper.findAll('label').filter((label) => label.text().includes('Reposición (US$)'))
+    const residualInputs = wrapper.findAll('label').filter((label) => label.text().includes('Residual (US$)'))
+
+    await replacementInputs[0].find('input').setValue('350000')
+    expect(residualInputs[0].find('input').element.value).toBe('105000')
+
+    await replacementInputs[0].find('input').setValue('400000')
+    expect(residualInputs[0].find('input').element.value).toBe('120000')
+
+    await residualInputs[0].find('input').setValue('125000')
+    await replacementInputs[0].find('input').setValue('500000')
+    expect(residualInputs[0].find('input').element.value).toBe('125000')
+
+    await replacementInputs[1].find('input').setValue('150000')
+    expect(residualInputs[1].find('input').element.value).toBe('45000')
+  })
+
   it('shows a prominent, actionable list of missing assumptions before calculation', async () => {
     vi.stubGlobal('fetch', vi.fn(async (url) => ({
       ok: true,

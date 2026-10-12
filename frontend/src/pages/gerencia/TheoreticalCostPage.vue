@@ -58,6 +58,7 @@ const parameters = reactive({
   otros_rubros: standardOtherItems(),
   recargo_pct: '',
 })
+const autoResidualValues = reactive({ tractor: null, semi: null })
 
 const selection = reactive({ tractor_id: '', semi_id: '' })
 const trip = reactive({ km_facturables: '', km_no_facturados: '', peajes: '', moneda: 'ARS' })
@@ -76,6 +77,28 @@ const requestUrl = (key, fallback) => {
   return configured || `${apiRoot}${fallback}`
 }
 const numberOrNull = (value) => value === '' || value === null || value === undefined ? null : Number(value)
+const setEstimatedResidual = (key) => {
+  const replacementValue = Number(parameters[key].valor_usd)
+  if (!Number.isFinite(replacementValue) || replacementValue < 0) return
+  const residual = Math.round(replacementValue * 0.3 * 100) / 100
+  autoResidualValues[key] = residual
+  parameters[key].valor_residual_usd = String(residual)
+}
+const markResidualManual = (key) => { autoResidualValues[key] = null }
+for (const key of ['tractor', 'semi']) {
+  watch(() => parameters[key].valor_usd, (replacementValue) => {
+    const currentResidual = parameters[key].valor_residual_usd
+    const previousAutoValue = autoResidualValues[key]
+    const followsAutoEstimate = previousAutoValue !== null && Number(currentResidual) === previousAutoValue
+    if (currentResidual !== '' && !followsAutoEstimate) return
+    if (replacementValue === '' || replacementValue === null || replacementValue === undefined || !Number.isFinite(Number(replacementValue)) || Number(replacementValue) < 0) {
+      if (followsAutoEstimate) parameters[key].valor_residual_usd = ''
+      autoResidualValues[key] = null
+      return
+    }
+    setEstimatedResidual(key)
+  })
+}
 const effectiveResidual = (residual, replacementValue) => {
   const entered = numberOrNull(residual)
   if (entered !== null) return entered
@@ -314,6 +337,8 @@ const selectScenario = async (scenario, version = null) => {
     scenarioName.value = `${baseName.slice(0, 112).trimEnd()} (copia)`
     selection.tractor_id = String(record.tractor?.id ?? scenario.tractor_id ?? '')
     selection.semi_id = String(record.semi?.id ?? scenario.semi_id ?? '')
+    autoResidualValues.tractor = null
+    autoResidualValues.semi = null
     applyParameters(record.parametros ?? {})
     applyTrip(record.viaje ?? {})
     activeResult.value = record.resultado ?? null
@@ -365,10 +390,7 @@ const loadDocumentedAssumptions = () => {
   parameters.neumaticos.vida_util_km = '250000'
 
   for (const key of ['tractor', 'semi']) {
-    const replacementValue = Number(parameters[key].valor_usd)
-    if (parameters[key].valor_residual_usd === '' && Number.isFinite(replacementValue) && replacementValue > 0) {
-      parameters[key].valor_residual_usd = String(Math.round(replacementValue * 0.3 * 100) / 100)
-    }
+    if (parameters[key].valor_residual_usd === '' && parameters[key].valor_usd !== '') setEstimatedResidual(key)
   }
 
   const tireSetCost = Number(parameters.neumaticos.costo_juego)
@@ -630,8 +652,8 @@ onMounted(initialize)
           <section class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="assets-title">
             <div class="mb-4"><h2 id="assets-title" class="font-bold text-ink">Valor y vida útil de los activos</h2><p class="mt-1 text-sm text-ink-muted">En USD, por separado. Se estima depreciación lineal entre valor de reposición y residual. Si dejás residual vacío, se estima en 30% del valor de reposición.</p></div>
             <div class="grid gap-4 lg:grid-cols-2">
-              <fieldset class="min-w-0 rounded-lg border border-border-subtle p-4"><legend class="px-1 text-sm font-bold text-ink">Tractor</legend><div class="grid gap-3 sm:grid-cols-3"><label class="grid gap-1 text-xs font-semibold text-ink-muted">Reposición (US$)<input id="tractor-value" v-model="parameters.tractor.valor_usd" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /></label><label class="grid gap-1 text-xs font-semibold text-ink-muted">Residual (US$)<input v-model="parameters.tractor.valor_residual_usd" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /><span v-if="numberOrNull(parameters.tractor.valor_residual_usd) === null && effectiveResidual('', parameters.tractor.valor_usd) !== null" class="text-[10px] font-normal">Estimado al 30%: {{ currencyLabel(effectiveResidual('', parameters.tractor.valor_usd), 'USD') }}</span></label><label class="grid gap-1 text-xs font-semibold text-ink-muted">Vida útil (años)<input v-model="parameters.tractor.vida_util_anios" type="number" min="0.1" step="0.1" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /></label></div></fieldset>
-              <fieldset class="min-w-0 rounded-lg border border-border-subtle p-4"><legend class="px-1 text-sm font-bold text-ink">Semi</legend><div class="grid gap-3 sm:grid-cols-3"><label class="grid gap-1 text-xs font-semibold text-ink-muted">Reposición (US$)<input id="semi-value" v-model="parameters.semi.valor_usd" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /></label><label class="grid gap-1 text-xs font-semibold text-ink-muted">Residual (US$)<input v-model="parameters.semi.valor_residual_usd" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /><span v-if="numberOrNull(parameters.semi.valor_residual_usd) === null && effectiveResidual('', parameters.semi.valor_usd) !== null" class="text-[10px] font-normal">Estimado al 30%: {{ currencyLabel(effectiveResidual('', parameters.semi.valor_usd), 'USD') }}</span></label><label class="grid gap-1 text-xs font-semibold text-ink-muted">Vida útil (años)<input v-model="parameters.semi.vida_util_anios" type="number" min="0.1" step="0.1" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /></label></div></fieldset>
+              <fieldset class="min-w-0 rounded-lg border border-border-subtle p-4"><legend class="px-1 text-sm font-bold text-ink">Tractor</legend><div class="grid gap-3 sm:grid-cols-3"><label class="grid gap-1 text-xs font-semibold text-ink-muted">Reposición (US$)<input id="tractor-value" v-model="parameters.tractor.valor_usd" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /></label><label class="grid gap-1 text-xs font-semibold text-ink-muted">Residual (US$)<input v-model="parameters.tractor.valor_residual_usd" @input="markResidualManual('tractor')" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /><span v-if="numberOrNull(parameters.tractor.valor_residual_usd) === null && effectiveResidual('', parameters.tractor.valor_usd) !== null" class="text-[10px] font-normal">Estimado al 30%: {{ currencyLabel(effectiveResidual('', parameters.tractor.valor_usd), 'USD') }}</span></label><label class="grid gap-1 text-xs font-semibold text-ink-muted">Vida útil (años)<input v-model="parameters.tractor.vida_util_anios" type="number" min="0.1" step="0.1" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /></label></div></fieldset>
+              <fieldset class="min-w-0 rounded-lg border border-border-subtle p-4"><legend class="px-1 text-sm font-bold text-ink">Semi</legend><div class="grid gap-3 sm:grid-cols-3"><label class="grid gap-1 text-xs font-semibold text-ink-muted">Reposición (US$)<input id="semi-value" v-model="parameters.semi.valor_usd" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /></label><label class="grid gap-1 text-xs font-semibold text-ink-muted">Residual (US$)<input v-model="parameters.semi.valor_residual_usd" @input="markResidualManual('semi')" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /><span v-if="numberOrNull(parameters.semi.valor_residual_usd) === null && effectiveResidual('', parameters.semi.valor_usd) !== null" class="text-[10px] font-normal">Estimado al 30%: {{ currencyLabel(effectiveResidual('', parameters.semi.valor_usd), 'USD') }}</span></label><label class="grid gap-1 text-xs font-semibold text-ink-muted">Vida útil (años)<input v-model="parameters.semi.vida_util_anios" type="number" min="0.1" step="0.1" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /></label></div></fieldset>
             </div>
           </section>
 
