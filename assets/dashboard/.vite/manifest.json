@@ -1,6 +1,6 @@
 {
-  "_admin-rgIPuoX4.js": {
-    "file": "assets/admin-rgIPuoX4.js",
+  "_admin-D2Raj-K1.js": {
+    "file": "assets/admin-D2Raj-K1.js",
     "name": "admin",
     "imports": [
       "_vendor-qPh2si1d.js"
@@ -21,11 +21,11 @@
     "file": "assets/chatbot-p1890OXW.css",
     "src": "_chatbot-p1890OXW.css"
   },
-  "_reports-Chw4XGhS.js": {
-    "file": "assets/reports-Chw4XGhS.js",
+  "_reports-iTS2mAnk.js": {
+    "file": "assets/reports-iTS2mAnk.js",
     "name": "reports",
     "imports": [
-      "_admin-rgIPuoX4.js",
+      "_admin-D2Raj-K1.js",
       "_vendor-qPh2si1d.js"
     ]
   },
@@ -87,15 +87,15 @@
     "src": "src/assets/platform/trips-card.jpg"
   },
   "src/main.js": {
-    "file": "assets/main-Cw0PNJp1.js",
+    "file": "assets/main-CqpNFBSK.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
     "imports": [
       "_vendor-qPh2si1d.js",
       "_chatbot-CCS3jc7m.js",
-      "_admin-rgIPuoX4.js",
-      "_reports-Chw4XGhS.js"
+      "_admin-D2Raj-K1.js",
+      "_reports-iTS2mAnk.js"
     ],
     "dynamicImports": [
       "_chatbot-CCS3jc7m.js",
@@ -103,7 +103,7 @@
       "node_modules/gsap/index.js"
     ],
     "css": [
-      "assets/main-CCbWOjrC.css"
+      "assets/main-Icnp3lJV.css"
     ],
     "assets": [
       "assets/portal-hero-Dd-Ff3YR.jpg",
