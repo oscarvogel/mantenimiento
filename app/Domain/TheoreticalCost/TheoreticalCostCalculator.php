@@ -235,7 +235,16 @@ final class TheoreticalCostCalculator
     private function appendMonthly(array &$items, string $code, string $name, float $amount, string $currency, ?float $fx, ?float $km): void
     {
         if ($km === null) {
-            $items[] = $this->line($code, $name, null, 'por_mes', null, $km);
+            $items[] = [
+                'codigo' => $code,
+                'nombre' => $name,
+                'estado' => 'pendiente_km_mensuales',
+                'unidad' => 'por_mes',
+                'importe_origen' => $amount,
+                'moneda_origen' => $currency,
+                'ars_km' => null,
+                'usd_km' => null,
+            ];
             return;
         }
         $perKm = $amount / $km;

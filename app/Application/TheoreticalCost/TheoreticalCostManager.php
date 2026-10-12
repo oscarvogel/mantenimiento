@@ -33,7 +33,7 @@ final class TheoreticalCostManager
     {
         $this->assertAllowed($actor, true);
         [$tractorId, $semiId] = $this->equipmentIds($actor, $payload);
-        $parameters = is_array($payload['parametros'] ?? null) ? $payload['parametros'] : [];
+        $parameters = $this->effectiveParameters(is_array($payload['parametros'] ?? null) ? $payload['parametros'] : []);
         $trip = $this->trip($payload['viaje'] ?? null);
         return $this->calculator->calculate($parameters, $trip);
     }
@@ -60,7 +60,7 @@ final class TheoreticalCostManager
     {
         $this->assertAllowed($actor, true);
         [$tractorId, $semiId] = $this->equipmentIds($actor, $payload);
-        $parameters = is_array($payload['parametros'] ?? null) ? $payload['parametros'] : [];
+        $parameters = $this->effectiveParameters(is_array($payload['parametros'] ?? null) ? $payload['parametros'] : []);
         if ($parameters === []) {
             throw new DomainException('Completá los supuestos antes de guardar el escenario.');
         }
@@ -149,6 +149,22 @@ final class TheoreticalCostManager
     private function optionalPositiveId(mixed $value, string $field): ?int
     {
         return $value === null || $value === '' ? null : $this->positiveId($value, $field);
+    }
+
+    /** @param array<string,mixed> $parameters @return array<string,mixed> */
+    private function effectiveParameters(array $parameters): array
+    {
+        foreach (['tractor', 'semi'] as $assetKey) {
+            $asset = is_array($parameters[$assetKey] ?? null) ? $parameters[$assetKey] : [];
+            $value = $asset['valor_usd'] ?? null;
+            $residual = $asset['residual_usd'] ?? null;
+            if (($residual === null || $residual === '') && is_numeric($value) && (float) $value >= 0) {
+                $asset['residual_usd'] = round((float) $value * 0.30, 2);
+            }
+            $parameters[$assetKey] = $asset;
+        }
+
+        return $parameters;
     }
 
     private function trip(mixed $value): ?array

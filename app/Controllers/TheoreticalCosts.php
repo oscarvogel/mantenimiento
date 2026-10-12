@@ -7,6 +7,7 @@ namespace App\Controllers;
 use App\Application\Identity\ActorContext;
 use App\Application\TheoreticalCost\TheoreticalCostManager;
 use App\Infrastructure\Identity\SessionActorContext;
+use App\Infrastructure\TheoreticalCost\BcraReferenceExchangeRate;
 use CodeIgniter\HTTP\ResponseInterface;
 use DomainException;
 use Throwable;
@@ -27,6 +28,7 @@ final class TheoreticalCosts extends BaseController
                     'page' => $base,
                     'gerencial' => base_url('dashboard'),
                     'assets' => $base . '/activos',
+                    'exchangeRate' => $base . '/cotizacion-bcra',
                     'calculate' => $base . '/calcular',
                     'scenarios' => $base . '/escenarios',
                     'save' => $base . '/escenarios',
@@ -45,6 +47,16 @@ final class TheoreticalCosts extends BaseController
     {
         try {
             return $this->json(['data' => $this->manager()->assets($this->actor())]);
+        } catch (Throwable $exception) {
+            return $this->failure($exception);
+        }
+    }
+
+    public function exchangeRate(): ResponseInterface
+    {
+        try {
+            $this->actor();
+            return $this->json(['data' => (new BcraReferenceExchangeRate())->latest()]);
         } catch (Throwable $exception) {
             return $this->failure($exception);
         }

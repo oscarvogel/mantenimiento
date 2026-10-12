@@ -23,6 +23,8 @@ const calculating = ref(false)
 const saving = ref(false)
 const errorMessage = ref('')
 const notice = ref('')
+const exchangeLoading = ref(false)
+const exchangeError = ref('')
 const activeTab = ref('calculator')
 const activeResult = ref(null)
 const assets = ref({ tractores: [], semis: [] })
@@ -60,6 +62,7 @@ const trip = reactive({ km_facturables: '', km_no_facturados: '', peajes: '', mo
 
 const urlAliases = {
   assets: ['assets', 'activos'],
+  exchangeRate: ['exchangeRate'],
   calculate: ['calculate', 'calcular'],
   scenarios: ['scenarios', 'escenarios'],
   saveScenario: ['saveScenario', 'save', 'guardarEscenario', 'escenarios'],
@@ -71,6 +74,12 @@ const requestUrl = (key, fallback) => {
   return configured || `${apiRoot}${fallback}`
 }
 const numberOrNull = (value) => value === '' || value === null || value === undefined ? null : Number(value)
+const effectiveResidual = (residual, replacementValue) => {
+  const entered = numberOrNull(residual)
+  if (entered !== null) return entered
+  const value = numberOrNull(replacementValue)
+  return value !== null && value >= 0 ? Math.round(value * 0.3 * 100) / 100 : null
+}
 const codeFromName = (name) => String(name || '')
   .normalize('NFD')
   .replace(/[\u0300-\u036f]/g, '')
@@ -86,12 +95,12 @@ const normalizedParameters = () => ({
   },
   tractor: {
     valor_usd: numberOrNull(parameters.tractor.valor_usd),
-    residual_usd: numberOrNull(parameters.tractor.valor_residual_usd),
+    residual_usd: effectiveResidual(parameters.tractor.valor_residual_usd, parameters.tractor.valor_usd),
     vida_util_anios: numberOrNull(parameters.tractor.vida_util_anios),
   },
   semi: {
     valor_usd: numberOrNull(parameters.semi.valor_usd),
-    residual_usd: numberOrNull(parameters.semi.valor_residual_usd),
+    residual_usd: effectiveResidual(parameters.semi.valor_residual_usd, parameters.semi.valor_usd),
     vida_util_anios: numberOrNull(parameters.semi.vida_util_anios),
   },
   combustible: {
@@ -161,6 +170,37 @@ const loadAssets = async () => {
   assets.value = body.data ?? { tractores: [], semis: [] }
 }
 
+const loadBcraExchangeRate = async (force = false) => {
+  if (exchangeLoading.value || (!force && parameters.fx.ars_por_usd)) return
+  exchangeLoading.value = true
+  exchangeError.value = ''
+  try {
+    const response = await fetch(requestUrl('exchangeRate', '/cotizacion-bcra'), {
+      credentials: 'same-origin',
+      headers: { Accept: 'application/json' },
+    })
+    const body = await readJson(response)
+    if (!body.data?.ars_por_usd || !body.data?.fecha || !body.data?.fuente) {
+      throw new Error('El BCRA no devolvió una cotización completa.')
+    }
+    Object.assign(parameters.fx, {
+      ars_por_usd: String(body.data.ars_por_usd),
+      fecha: body.data.fecha,
+      fuente: body.data.fuente,
+    })
+  } catch (error) {
+    exchangeError.value = error.message
+  } finally {
+    exchangeLoading.value = false
+  }
+}
+
+const markExchangeRateManual = () => {
+  if (parameters.fx.fuente.startsWith('BCRA ·')) {
+    parameters.fx.fuente = 'Modificada manualmente (referencia BCRA)'
+  }
+}
+
 const loadScenarios = async () => {
   const params = new URLSearchParams()
   if (selection.tractor_id) params.set('tractor_id', selection.tractor_id)
@@ -177,7 +217,7 @@ const initialize = async () => {
   loading.value = true
   errorMessage.value = ''
   try {
-    await Promise.all([loadAssets(), loadScenarios()])
+    await Promise.all([loadAssets(), loadScenarios(), loadBcraExchangeRate()])
   } catch (error) {
     errorMessage.value = error.message
   } finally {
@@ -348,6 +388,27 @@ const rateArs = computed(() => resultAmount(activeResult.value?.tarifa_km, 'ARS'
 const rateUsd = computed(() => resultAmount(activeResult.value?.tarifa_km, 'USD'))
 const routeResult = computed(() => activeResult.value?.viaje ?? null)
 const breakdown = computed(() => activeResult.value?.rubros ?? [])
+const breakdownStatus = (item) => {
+  if (item.estado === 'pendiente_km_mensuales') return 'Datos cargados; faltan los km operativos mensuales para distribuir este costo por km.'
+  return item.estado_label || item.motivo || (item.estado === 'sin_cotizacion' ? 'Falta una cotización de referencia válida' : 'Sin configurar')
+}
+const breakdownExplanation = (item) => {
+  if (item.codigo === 'combustible') {
+    const liters = numberOrNull(parameters.combustible.litros_100km)
+    const price = numberOrNull(parameters.combustible.precio)
+    if (liters !== null && price !== null) {
+      return `${formatted(liters)} l/100 km × ${currencyLabel(price, parameters.combustible.moneda)}/l ÷ 100`
+    }
+  }
+  if (item.codigo === 'tractor' || item.codigo === 'semi') {
+    return 'Depreciación mensual ÷ km operativos mensuales.'
+  }
+  if (item.codigo === 'neumaticos') {
+    return 'Costo del juego y recapados ÷ vida útil total.'
+  }
+  if (item.unidad === 'por_mes') return 'Importe mensual ÷ km operativos mensuales.'
+  return ''
+}
 const missingLabel = (item) => {
   if (typeof item !== 'string') return item?.mensaje || item?.descripcion || item?.campo || 'Revisá este supuesto'
   return ({
@@ -457,17 +518,22 @@ onMounted(initialize)
           <section class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="quote-title">
             <div class="mb-4"><h2 id="quote-title" class="font-bold text-ink">Cotización de referencia</h2><p class="mt-1 text-sm text-ink-muted">Se aplica a los importes en USD de este escenario y queda guardada con él.</p></div>
             <div class="grid gap-4 sm:grid-cols-3">
-              <label class="grid gap-1.5 text-sm font-semibold text-ink">ARS por 1 USD<input v-model="parameters.fx.ars_por_usd" type="number" min="0.01" step="0.01" inputmode="decimal" :disabled="!canEdit" placeholder="Ej.: 1.250" class="min-h-11 rounded-lg border border-border-strong bg-surface px-3 font-normal disabled:opacity-70" /></label>
-              <label class="grid gap-1.5 text-sm font-semibold text-ink">Fecha de referencia<input v-model="parameters.fx.fecha" type="date" :disabled="!canEdit" class="min-h-11 rounded-lg border border-border-strong bg-surface px-3 font-normal disabled:opacity-70" /></label>
-              <label class="grid gap-1.5 text-sm font-semibold text-ink">Fuente o tipo<input v-model="parameters.fx.fuente" type="text" maxlength="120" :disabled="!canEdit" placeholder="Ej.: referencia propia" class="min-h-11 rounded-lg border border-border-strong bg-surface px-3 font-normal disabled:opacity-70" /></label>
+              <label class="grid gap-1.5 text-sm font-semibold text-ink">ARS por 1 USD<input v-model="parameters.fx.ars_por_usd" type="number" min="0.01" step="0.01" inputmode="decimal" :disabled="!canEdit" placeholder="Ej.: 1.250" class="min-h-11 rounded-lg border border-border-strong bg-surface px-3 font-normal disabled:opacity-70" @input="markExchangeRateManual" /></label>
+              <label class="grid gap-1.5 text-sm font-semibold text-ink">Fecha de referencia<input v-model="parameters.fx.fecha" type="date" :disabled="!canEdit" class="min-h-11 rounded-lg border border-border-strong bg-surface px-3 font-normal disabled:opacity-70" @change="markExchangeRateManual" /></label>
+              <label class="grid gap-1.5 text-sm font-semibold text-ink">Fuente o tipo<input v-model="parameters.fx.fuente" type="text" maxlength="120" :disabled="!canEdit" placeholder="Ej.: referencia propia" class="min-h-11 rounded-lg border border-border-strong bg-surface px-3 font-normal disabled:opacity-70" @input="markExchangeRateManual" /></label>
             </div>
+            <div class="mt-3 flex flex-wrap items-center gap-3">
+              <button v-if="canEdit" type="button" :disabled="exchangeLoading" class="inline-flex min-h-9 items-center gap-2 rounded-lg border border-info/40 px-3 py-1.5 text-xs font-semibold text-info-strong hover:bg-info-subtle disabled:opacity-50" @click="loadBcraExchangeRate(true)"><ArrowPathIcon class="size-4" :class="exchangeLoading ? 'animate-spin' : ''" aria-hidden="true" />{{ exchangeLoading ? 'Consultando BCRA…' : 'Actualizar desde BCRA' }}</button>
+              <p class="text-xs text-ink-muted">Se usa el tipo de cambio de referencia Com. A 3500, con la última fecha publicada por el BCRA.</p>
+            </div>
+            <p v-if="exchangeError" role="status" class="mt-2 rounded-lg bg-warning-subtle p-3 text-xs text-warning-strong">{{ exchangeError }} La cotización queda editable para que puedas cargarla manualmente.</p>
           </section>
 
           <section class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="assets-title">
-            <div class="mb-4"><h2 id="assets-title" class="font-bold text-ink">Valor y vida útil de los activos</h2><p class="mt-1 text-sm text-ink-muted">En USD, por separado. Se estima depreciación lineal entre valor de reposición y valor residual.</p></div>
+            <div class="mb-4"><h2 id="assets-title" class="font-bold text-ink">Valor y vida útil de los activos</h2><p class="mt-1 text-sm text-ink-muted">En USD, por separado. Se estima depreciación lineal entre valor de reposición y residual. Si dejás residual vacío, se estima en 30% del valor de reposición.</p></div>
             <div class="grid gap-4 lg:grid-cols-2">
-              <fieldset class="min-w-0 rounded-lg border border-border-subtle p-4"><legend class="px-1 text-sm font-bold text-ink">Tractor</legend><div class="grid gap-3 sm:grid-cols-3"><label class="grid gap-1 text-xs font-semibold text-ink-muted">Reposición (US$)<input v-model="parameters.tractor.valor_usd" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /></label><label class="grid gap-1 text-xs font-semibold text-ink-muted">Residual (US$)<input v-model="parameters.tractor.valor_residual_usd" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /></label><label class="grid gap-1 text-xs font-semibold text-ink-muted">Vida útil (años)<input v-model="parameters.tractor.vida_util_anios" type="number" min="0.1" step="0.1" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /></label></div></fieldset>
-              <fieldset class="min-w-0 rounded-lg border border-border-subtle p-4"><legend class="px-1 text-sm font-bold text-ink">Semi</legend><div class="grid gap-3 sm:grid-cols-3"><label class="grid gap-1 text-xs font-semibold text-ink-muted">Reposición (US$)<input v-model="parameters.semi.valor_usd" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /></label><label class="grid gap-1 text-xs font-semibold text-ink-muted">Residual (US$)<input v-model="parameters.semi.valor_residual_usd" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /></label><label class="grid gap-1 text-xs font-semibold text-ink-muted">Vida útil (años)<input v-model="parameters.semi.vida_util_anios" type="number" min="0.1" step="0.1" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /></label></div></fieldset>
+              <fieldset class="min-w-0 rounded-lg border border-border-subtle p-4"><legend class="px-1 text-sm font-bold text-ink">Tractor</legend><div class="grid gap-3 sm:grid-cols-3"><label class="grid gap-1 text-xs font-semibold text-ink-muted">Reposición (US$)<input v-model="parameters.tractor.valor_usd" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /></label><label class="grid gap-1 text-xs font-semibold text-ink-muted">Residual (US$)<input v-model="parameters.tractor.valor_residual_usd" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /><span v-if="numberOrNull(parameters.tractor.valor_residual_usd) === null && effectiveResidual('', parameters.tractor.valor_usd) !== null" class="text-[10px] font-normal">Estimado al 30%: {{ currencyLabel(effectiveResidual('', parameters.tractor.valor_usd), 'USD') }}</span></label><label class="grid gap-1 text-xs font-semibold text-ink-muted">Vida útil (años)<input v-model="parameters.tractor.vida_util_anios" type="number" min="0.1" step="0.1" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /></label></div></fieldset>
+              <fieldset class="min-w-0 rounded-lg border border-border-subtle p-4"><legend class="px-1 text-sm font-bold text-ink">Semi</legend><div class="grid gap-3 sm:grid-cols-3"><label class="grid gap-1 text-xs font-semibold text-ink-muted">Reposición (US$)<input v-model="parameters.semi.valor_usd" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /></label><label class="grid gap-1 text-xs font-semibold text-ink-muted">Residual (US$)<input v-model="parameters.semi.valor_residual_usd" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /><span v-if="numberOrNull(parameters.semi.valor_residual_usd) === null && effectiveResidual('', parameters.semi.valor_usd) !== null" class="text-[10px] font-normal">Estimado al 30%: {{ currencyLabel(effectiveResidual('', parameters.semi.valor_usd), 'USD') }}</span></label><label class="grid gap-1 text-xs font-semibold text-ink-muted">Vida útil (años)<input v-model="parameters.semi.vida_util_anios" type="number" min="0.1" step="0.1" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /></label></div></fieldset>
             </div>
           </section>
 
@@ -547,7 +613,7 @@ onMounted(initialize)
               <div class="mt-5">
                 <h3 class="text-sm font-bold text-ink">Desglose por rubro</h3>
                 <div v-if="breakdown.length" class="mt-2 divide-y divide-border-subtle">
-                  <div v-for="(item, index) in breakdown" :key="item.codigo || item.nombre || index" class="flex items-start justify-between gap-3 py-2.5 text-sm"><div class="min-w-0"><p class="font-medium text-ink">{{ item.nombre || item.concepto || item.codigo }}</p><p v-if="item.estado && item.estado !== 'configurado'" class="mt-0.5 text-xs text-warning-strong">{{ item.estado_label || item.motivo || (item.estado === 'sin_cotizacion' ? 'Falta una cotización de referencia válida' : 'Sin configurar') }}</p></div><div class="shrink-0 text-right tabular-nums"><p class="font-semibold text-ink">{{ item.ars_km == null ? 'Sin dato' : currencyLabel(item.ars_km, 'ARS') }}</p><p v-if="item.usd_km != null" class="text-xs text-ink-muted">{{ currencyLabel(item.usd_km, 'USD') }}</p></div></div>
+                  <div v-for="(item, index) in breakdown" :key="item.codigo || item.nombre || index" class="flex items-start justify-between gap-3 py-2.5 text-sm"><div class="min-w-0"><p class="font-medium text-ink">{{ item.nombre || item.concepto || item.codigo }}</p><p v-if="item.estado && item.estado !== 'configurado'" class="mt-0.5 text-xs text-warning-strong">{{ breakdownStatus(item) }}</p><p v-if="breakdownExplanation(item)" class="mt-0.5 text-xs text-ink-muted">{{ breakdownExplanation(item) }}</p></div><div class="shrink-0 text-right tabular-nums"><p class="font-semibold text-ink">{{ item.ars_km == null ? 'Sin dato' : `${currencyLabel(item.ars_km, 'ARS')} / km` }}</p><p v-if="item.usd_km != null" class="text-xs text-ink-muted">{{ currencyLabel(item.usd_km, 'USD') }} / km</p></div></div>
                 </div>
                 <p v-else class="mt-2 text-sm text-ink-muted">El servidor no devolvió el detalle por rubro.</p>
               </div>

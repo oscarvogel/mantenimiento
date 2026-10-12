@@ -29,13 +29,34 @@ final class TheoreticalCostManagerTest extends TestCase
         $store = new FakeTheoreticalCostScenarioStore();
         $manager = new TheoreticalCostManager($store, new TheoreticalCostCalculator());
 
-        $manager->save($this->authorizedActor(), ['nombre' => 'General', 'parametros' => ['km_mensuales' => 10000]]);
+        $manager->save($this->authorizedActor(), ['nombre' => 'General', 'parametros' => [
+            'km_mensuales' => 10000,
+            'tractor' => ['valor_usd' => 100000],
+            'semi' => ['valor_usd' => 50000],
+        ]]);
 
         self::assertNotNull($store->appended);
         self::assertNull($store->appended[5]);
         self::assertNull($store->appended[6]);
         self::assertNull($store->appended[7]['tractor_id']);
         self::assertNull($store->appended[7]['semi_id']);
+        self::assertSame(30000.0, $store->appended[7]['parametros']['tractor']['residual_usd']);
+        self::assertSame(15000.0, $store->appended[7]['parametros']['semi']['residual_usd']);
+    }
+
+    public function testUsesThirtyPercentResidualWhenAnAssetResidualWasNotEntered(): void
+    {
+        $manager = new TheoreticalCostManager(new FakeTheoreticalCostScenarioStore(), new TheoreticalCostCalculator());
+
+        $result = $manager->calculate($this->authorizedActor(), ['parametros' => [
+            'km_mensuales' => 10000,
+            'fx' => ['ars_por_usd' => 1500, 'fecha' => '2026-10-09', 'fuente' => 'BCRA A3500'],
+            'tractor' => ['valor_usd' => 350000, 'vida_util_anios' => 5],
+            'semi' => ['valor_usd' => 150000, 'vida_util_anios' => 5],
+        ]]);
+
+        self::assertEqualsWithDelta(612.5, $this->rubricAmount($result, 'tractor'), 0.001);
+        self::assertEqualsWithDelta(262.5, $this->rubricAmount($result, 'semi'), 0.001);
     }
 
     public function testEquipmentAssociationMustBeSelectedAsPair(): void
@@ -52,6 +73,15 @@ final class TheoreticalCostManagerTest extends TestCase
     private function authorizedActor(): ActorContext
     {
         return new ActorContext(11, 3, false, false, [], ['gerencial.costo_km.ver', 'gerencial.costo_km.editar'], [2]);
+    }
+
+    /** @param array<string,mixed> $result */
+    private function rubricAmount(array $result, string $code): float
+    {
+        foreach ($result['rubros'] as $line) {
+            if ($line['codigo'] === $code) return (float) $line['ars_km'];
+        }
+        self::fail('No se encontró el rubro ' . $code);
     }
 }
 

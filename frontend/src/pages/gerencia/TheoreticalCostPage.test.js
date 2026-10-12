@@ -5,7 +5,7 @@ import TheoreticalCostPage from './TheoreticalCostPage.vue'
 const data = () => ({
   canEdit: true,
   csrf: { hash: 'csrf-test' },
-  urls: { assets: '/activos', scenarios: '/escenarios' },
+  urls: { assets: '/activos', scenarios: '/escenarios', exchangeRate: '/cotizacion-bcra' },
 })
 
 const inputWithLabel = (wrapper, labelText) => wrapper.findAll('label')
@@ -18,6 +18,23 @@ afterEach(() => {
 })
 
 describe('TheoreticalCostPage standard assumptions', () => {
+  it('loads the latest BCRA reference rate and uses it as the scenario quote', async () => {
+    const fetchMock = vi.fn(async (url) => ({
+      ok: true,
+      json: async () => String(url).includes('cotizacion-bcra')
+        ? { data: { ars_por_usd: 1515.8766, fecha: '2026-10-09', fuente: 'BCRA · Tipo de Cambio de Referencia Com. A 3500' } }
+        : String(url).includes('activos') ? { data: { tractores: [], semis: [] } } : { data: { items: [] } },
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const wrapper = mount(TheoreticalCostPage, { props: { data: data() } })
+    await flushPromises()
+
+    expect(inputWithLabel(wrapper, 'ARS por 1 USD').element.value).toBe('1515.8766')
+    expect(inputWithLabel(wrapper, 'Fecha de referencia').element.value).toBe('2026-10-09')
+    expect(inputWithLabel(wrapper, 'Fuente o tipo').element.value).toContain('BCRA')
+  })
+
   it('loads documented assumptions while preserving prices and company-specific inputs', async () => {
     vi.stubGlobal('fetch', vi.fn(async (url) => ({
       ok: true,
