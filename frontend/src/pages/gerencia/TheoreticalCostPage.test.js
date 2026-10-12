@@ -164,7 +164,9 @@ describe('TheoreticalCostPage standard assumptions', () => {
     await flushPromises()
 
     expect(wrapper.findAll('select').slice(0, 2).some((select) => select.element.value !== '')).toBe(false)
-    const calculate = wrapper.findAll('button').find((button) => button.text().includes('Calcular referencia'))
+    await wrapper.findAll('button').find((button) => button.text().includes('Continuar')).trigger('click')
+    await wrapper.findAll('button').find((button) => button.text().includes('Continuar')).trigger('click')
+    const calculate = wrapper.findAll('button').find((button) => button.text().includes('Ver costo por km'))
     expect(calculate.attributes('disabled')).toBeUndefined()
     await calculate.trigger('click')
     await flushPromises()
@@ -185,9 +187,11 @@ describe('TheoreticalCostPage standard assumptions', () => {
 
     const wrapper = mount(TheoreticalCostPage, { props: { data: data() } })
     await flushPromises()
+    await wrapper.findAll('button').find((button) => button.text().includes('Continuar')).trigger('click')
     await wrapper.get('#lubricant-pct').setValue('5')
     await wrapper.get('#financial-pct').setValue('8')
-    await wrapper.findAll('button').find((button) => button.text().includes('Calcular referencia')).trigger('click')
+    await wrapper.findAll('button').find((button) => button.text().includes('Continuar')).trigger('click')
+    await wrapper.findAll('button').find((button) => button.text().includes('Ver costo por km')).trigger('click')
     await flushPromises()
 
     const request = fetchMock.mock.calls.find(([, options]) => options?.method === 'POST')
@@ -212,7 +216,9 @@ describe('TheoreticalCostPage standard assumptions', () => {
     await flushPromises()
 
     await wrapper.get('select').setValue('4')
-    const calculate = wrapper.findAll('button').find((button) => button.text().includes('Calcular referencia'))
+    await wrapper.findAll('button').find((button) => button.text().includes('Continuar')).trigger('click')
+    await wrapper.findAll('button').find((button) => button.text().includes('Continuar')).trigger('click')
+    const calculate = wrapper.findAll('button').find((button) => button.text().includes('Ver costo por km'))
     expect(calculate.attributes('disabled')).toBeUndefined()
     await calculate.trigger('click')
     await flushPromises()
