@@ -48,9 +48,10 @@ const emit = defineEmits(['close'])
 const primaryKeys = ['dashboard', 'equipment', 'fleet-telemetry', 'reading-control', 'maintenance', 'plans', 'reports']
 const fleetConsumption = computed(() => props.navigation.find((item) => item.key === 'fleet-consumption'))
 const isPlatformNavigation = computed(() => props.navigation.some((item) => item.key === 'platform-home'))
+const isManagerialNavigation = computed(() => props.navigation.some((item) => item.key === 'managerial-cost-km'))
 
 const primaryNavigation = computed(() => (
-  isPlatformNavigation.value
+  isPlatformNavigation.value || isManagerialNavigation.value
     ? props.navigation
     : primaryKeys
       .map((key) => props.navigation.find((item) => item.key === key))
@@ -58,7 +59,7 @@ const primaryNavigation = computed(() => (
 ))
 
 const secondaryNavigation = computed(() => (
-  isPlatformNavigation.value
+  isPlatformNavigation.value || isManagerialNavigation.value
     ? []
     : props.navigation.filter((item) => !primaryKeys.includes(item.key) && item.key !== 'fleet-consumption')
 ))
@@ -172,7 +173,11 @@ const openDemoCompany = () => {
       :class="isPlatformNavigation ? 'platform-brand-row h-28' : 'h-[4.5rem]'"
     >
       <BrandLogo v-if="isPlatformNavigation" size="platform" />
-      <BrandMark v-else />
+      <BrandMark
+        v-else
+        :title="isManagerialNavigation ? 'Gerencial' : 'Mantenimiento'"
+        :subtitle="isManagerialNavigation ? 'Análisis estratégico' : 'Gestión de flota'"
+      />
       <button
         v-if="mobile"
         type="button"

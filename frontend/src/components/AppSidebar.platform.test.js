@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import AppSidebar from './AppSidebar.vue'
 
-describe('AppSidebar platform navigation', () => {
+describe('AppSidebar module navigation', () => {
   it('shows Inicio and the module catalog instead of Mantenimiento navigation', () => {
     const navigation = [
       { key: 'platform-home', label: 'Inicio', href: '/inicio', icon: 'platform-home', active: true },
@@ -21,6 +21,22 @@ describe('AppSidebar platform navigation', () => {
     expect(nav.text()).not.toContain('Equipos')
     expect(nav.text()).not.toContain('Control de lecturas')
     expect(wrapper.find('[role="img"][aria-label="Vogel Consultoría"]').exists()).toBe(true)
+    expect(wrapper.text()).not.toContain('Gestión de flota')
+  })
+
+  it('shows a dedicated Gerencial menu without operational maintenance entries', () => {
+    const navigation = [
+      { key: 'managerial-cost-km', label: 'Costo teórico por km', href: '/gerencial/costo-teorico-km', icon: 'chart', active: true },
+    ]
+    const wrapper = mount(AppSidebar, { props: { navigation, logout: null } })
+
+    const nav = wrapper.get('nav[aria-label="Navegación principal"]')
+    expect(nav.find('a[href="/gerencial/costo-teorico-km"]').attributes('aria-current')).toBe('page')
+    expect(nav.text()).toContain('Costo teórico por km')
+    expect(nav.text()).not.toContain('Más opciones')
+    expect(nav.text()).not.toContain('Equipos')
+    expect(nav.text()).not.toContain('Mantenimiento')
+    expect(wrapper.text()).toContain('Gerencial')
     expect(wrapper.text()).not.toContain('Gestión de flota')
   })
 })

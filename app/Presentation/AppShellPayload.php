@@ -25,19 +25,23 @@ final readonly class AppShellPayload
         $payload['homeUrl'] = $active !== 'command-center' && $availableModules !== []
             && $canEnterMaintenance ? base_url('inicio')
             : null;
-        $navigation = $active === 'command-center'
-            ? $this->platformNavigation($actor, $availableModules)
-            : [$this->item('dashboard', 'Dashboard', 'dashboard', 'dashboard', $active)];
+        $navigation = match ($active) {
+            'command-center' => $this->platformNavigation($actor, $availableModules),
+            'theoretical-cost-km' => $actor->hasPermission('gerencial.costo_km.ver')
+                ? [$this->item('managerial-cost-km', 'Costo teórico por km', 'gerencial/costo-teorico-km', 'chart', 'managerial-cost-km')]
+                : [],
+            default => [$this->item('dashboard', 'Dashboard', 'dashboard', 'dashboard', $active)],
+        };
         $payload['moduleNavigation'] = $active === 'command-center'
             ? []
-            : $this->platformNavigation($actor, $availableModules, 'maintenance');
+            : $this->platformNavigation($actor, $availableModules, $active === 'theoretical-cost-km' ? 'management' : 'maintenance');
 
-        if ($active !== 'command-center' && $actor->isSuperAdmin()) {
+        if ($active !== 'command-center' && $active !== 'theoretical-cost-km' && $actor->isSuperAdmin()) {
             $navigation[] = $this->item('superadmin', 'Administración global', 'superadmin', 'building', $active);
             $navigation[] = $this->item('telemetry-samples', 'Datos de telemetría', 'superadmin/telemetria/muestras', 'audit', $active);
             $navigation[] = $this->item('notification-settings', 'Configuración de notificaciones', 'superadmin/configuracion/notificaciones', 'notifications', $active);
             $navigation[] = $this->item('chatbot-audit', 'Auditoría del chatbot', 'superadmin?section=chat-audit', 'audit', $active);
-        } elseif ($active !== 'command-center') {
+        } elseif ($active !== 'command-center' && $active !== 'theoretical-cost-km') {
             if ($actor->hasPermission('gerencial.costo_km.ver')) {
                 $navigation[] = $this->item('theoretical-cost-km', 'Costo teórico por km', 'gerencial/costo-teorico-km', 'chart', $active);
             }

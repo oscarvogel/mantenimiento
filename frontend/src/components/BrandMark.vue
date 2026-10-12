@@ -2,6 +2,14 @@
 import BrandLogo from './BrandLogo.vue'
 
 defineProps({
+  title: {
+    type: String,
+    default: 'Mantenimiento',
+  },
+  subtitle: {
+    type: String,
+    default: 'Gestión de flota',
+  },
   compact: {
     type: Boolean,
     default: false,
@@ -14,8 +22,8 @@ defineProps({
   <div class="flex min-w-0 items-center gap-3">
     <BrandLogo size="sidebar" />
     <div v-if="!compact" class="min-w-0">
-      <p class="truncate text-base font-bold tracking-tight text-ink">Mantenimiento</p>
-      <p class="truncate text-xs font-medium text-ink-muted">Gestión de flota</p>
+      <p class="truncate text-base font-bold tracking-tight text-ink">{{ title }}</p>
+      <p class="truncate text-xs font-medium text-ink-muted">{{ subtitle }}</p>
     </div>
   </div>
 </template>

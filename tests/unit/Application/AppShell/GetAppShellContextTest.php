@@ -247,6 +247,30 @@ final class GetAppShellContextTest extends TestCase
         self::assertSame('Sin implementación aún', $payload['moduleNavigation'][2]['status']);
     }
 
+    public function testManagerialShellGetsItsOwnNavigationInsteadOfMaintenanceLinks(): void
+    {
+        $context = new GetAppShellContext(new AppShellReadModelFake());
+        $actor = new ActorContext(7, 5, false, false, ['Administrador', 'Gerencial'], [
+            'gerencial.costo_km.ver',
+            'equipos.ver',
+            'planes.ver',
+            'ordenes.ver',
+        ], [9]);
+
+        $payload = (new AppShellPayload($context, new GetPlatformModuleCatalog()))->for($actor, 'theoretical-cost-km');
+
+        self::assertSame(['managerial-cost-km'], array_column($payload['navigation'], 'key'));
+        self::assertSame('Costo teórico por km', $payload['navigation'][0]['label']);
+        self::assertTrue($payload['navigation'][0]['active']);
+        self::assertStringEndsWith('/gerencial/costo-teorico-km', $payload['navigation'][0]['href']);
+        $managementModule = array_values(array_filter(
+            $payload['moduleNavigation'],
+            static fn (array $item): bool => $item['key'] === 'module-management',
+        ));
+        self::assertCount(1, $managementModule);
+        self::assertTrue($managementModule[0]['active']);
+    }
+
     public function testQuickNavigationDoesNotGrantMaintenanceToAnActorWithoutAnEntryPermission(): void
     {
         $context = new GetAppShellContext(new AppShellReadModelFake());
