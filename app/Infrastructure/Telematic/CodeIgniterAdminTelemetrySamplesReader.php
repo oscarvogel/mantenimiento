@@ -162,6 +162,43 @@ final class CodeIgniterAdminTelemetrySamplesReader implements AdminTelemetrySamp
         return $base;
     }
 
+    public function readForExport(array $filters): array
+    {
+        // Resolve company, integration and the effective view with the same
+        // defaults and availability checks as the paginated inspector.
+        $resolved = $this->read($filters);
+        $companyId = (int) ($resolved['selectedCompanyId'] ?? 0);
+        $integrationId = (int) ($resolved['selectedIntegrationId'] ?? 0);
+        $view = (string) ($resolved['view'] ?? 'samples');
+        if ($companyId <= 0 || $integrationId <= 0) {
+            return ['view' => $view, 'rows' => []];
+        }
+
+        if ($view === 'buckets' && $this->db->tableExists('telematia_buckets')) {
+            $query = $this->db->table('telematia_buckets t')
+                ->select('t.id, t.empresa_id, t.integracion_id, t.proveedor, t.unidad_externa, t.equipo_id, e.codigo AS equipo_codigo, e.patente AS equipo_patente, t.bucket_inicio_utc, t.bucket_fin_utc, t.primera_observada_en, t.ultima_observada_en, t.combustible_inicio_litros, t.combustible_fin_litros, t.kilometraje_inicio, t.kilometraje_fin, t.horas_decimales_inicio, t.horas_decimales_fin, t.motor_inicio, t.motor_fin, t.ralenti_inicio, t.ralenti_fin, t.segundos_ralenti, t.latitud_inicio, t.longitud_inicio, t.velocidad_inicio_kmh, t.latitud_fin, t.longitud_fin, t.velocidad_fin_kmh, t.created_at')
+                ->join('equipos e', 'e.id = t.equipo_id AND e.empresa_id = t.empresa_id', 'left')
+                ->where('t.empresa_id', $companyId)
+                ->where('t.integracion_id', $integrationId);
+            $this->applyBucketFilters($query, $filters);
+
+            return ['view' => $view, 'rows' => $query->orderBy('t.bucket_inicio_utc', 'DESC')->orderBy('t.id', 'DESC')->get()->getResultArray()];
+        }
+
+        if (! $this->db->tableExists('telematia_muestras')) {
+            return ['view' => 'samples', 'rows' => []];
+        }
+
+        $query = $this->db->table('telematia_muestras t')
+            ->select('t.id, t.empresa_id, t.integracion_id, t.proveedor, t.unidad_externa, t.equipo_id, e.codigo AS equipo_codigo, e.patente AS equipo_patente, t.observada_en, t.registrada_en, t.latitud, t.longitud, t.velocidad_kmh, t.rumbo, t.altitud_m, t.satelites, t.kilometraje, t.horas_decimales, t.motor_encendido, t.ralenti_activo, t.voltaje, t.combustible_litros, t.sensores_json, t.anomalias')
+            ->join('equipos e', 'e.id = t.equipo_id AND e.empresa_id = t.empresa_id', 'left')
+            ->where('t.empresa_id', $companyId)
+            ->where('t.integracion_id', $integrationId);
+        $this->applyFilters($query, $filters);
+
+        return ['view' => 'samples', 'rows' => $query->orderBy('t.observada_en', 'DESC')->orderBy('t.id', 'DESC')->get()->getResultArray()];
+    }
+
     private function readBuckets(array $base, array $filters, int $companyId, int $integrationId): array
     {
         $totalQuery = $this->db->table('telematia_buckets t')
