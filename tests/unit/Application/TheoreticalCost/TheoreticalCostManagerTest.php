@@ -59,15 +59,28 @@ final class TheoreticalCostManagerTest extends TestCase
         self::assertEqualsWithDelta(262.5, $this->rubricAmount($result, 'semi'), 0.001);
     }
 
-    public function testEquipmentAssociationMustBeSelectedAsPair(): void
+    public function testAllowsAnAuthorizedTractorWithoutASelectedSemi(): void
     {
         $store = new FakeTheoreticalCostScenarioStore();
         $manager = new TheoreticalCostManager($store, new TheoreticalCostCalculator());
 
-        $this->expectException(DomainException::class);
-        $this->expectExceptionMessage('Seleccioná tractor y semi juntos o dejá ambos sin asociar.');
+        $result = $manager->calculate($this->authorizedActor(), ['tractor_id' => 4]);
 
-        $manager->calculate($this->authorizedActor(), ['tractor_id' => 4]);
+        self::assertSame('parcial', $result['cobertura']);
+        self::assertSame([[3, [2], 4, null]], $store->equipmentLookups);
+    }
+
+    public function testSavesAScenarioAssociatedWithOnlyATractor(): void
+    {
+        $store = new FakeTheoreticalCostScenarioStore();
+        $manager = new TheoreticalCostManager($store, new TheoreticalCostCalculator());
+
+        $manager->save($this->authorizedActor(), ['nombre' => 'Tractor individual', 'tractor_id' => 4, 'parametros' => ['km_mensuales' => 10000]]);
+
+        self::assertNotNull($store->appended);
+        self::assertSame(4, $store->appended[5]);
+        self::assertNull($store->appended[6]);
+        self::assertSame([[3, [2], 4, null]], $store->equipmentLookups);
     }
 
     private function authorizedActor(): ActorContext
@@ -87,7 +100,7 @@ final class TheoreticalCostManagerTest extends TestCase
 
 final class FakeTheoreticalCostScenarioStore implements TheoreticalCostScenarioStore
 {
-    /** @var list<array{int,?array,int,int}> */
+    /** @var list<array{int,?array,?int,?int}> */
     public array $equipmentLookups = [];
 
     /** @var array<int,mixed>|null */
@@ -95,10 +108,13 @@ final class FakeTheoreticalCostScenarioStore implements TheoreticalCostScenarioS
 
     public function listAssets(int $companyId, ?array $branchIds): array { return ['tractores' => [], 'semis' => []]; }
 
-    public function equipmentPair(int $companyId, ?array $branchIds, int $tractorId, int $semiId): ?array
+    public function equipmentSelection(int $companyId, ?array $branchIds, ?int $tractorId, ?int $semiId): ?array
     {
         $this->equipmentLookups[] = [$companyId, $branchIds, $tractorId, $semiId];
-        return ['tractor' => ['id' => $tractorId, 'sucursal_id' => 2], 'semi' => ['id' => $semiId, 'sucursal_id' => 2]];
+        return [
+            'tractor' => $tractorId === null ? null : ['id' => $tractorId, 'sucursal_id' => 2],
+            'semi' => $semiId === null ? null : ['id' => $semiId, 'sucursal_id' => 2],
+        ];
     }
 
     public function listScenarios(int $companyId, ?array $branchIds, array $filters = []): array { return []; }

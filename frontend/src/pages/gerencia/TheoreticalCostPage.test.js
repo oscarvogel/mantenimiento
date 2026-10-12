@@ -91,20 +91,28 @@ describe('TheoreticalCostPage standard assumptions', () => {
     expect(wrapper.text()).toContain('Resultado teórico')
   })
 
-  it('requires selecting tractor and semi together when associating a scenario to equipment', async () => {
-    vi.stubGlobal('fetch', vi.fn(async (url) => ({
+  it('allows calculating with only a selected tractor', async () => {
+    const fetchMock = vi.fn(async (url, options = {}) => ({
       ok: true,
       json: async () => String(url).includes('activos')
         ? { data: { tractores: [{ id: 4, codigo: 'T-4' }], semis: [{ id: 8, codigo: 'S-8' }] } }
-        : { data: { items: [] } },
-    })))
+        : options.method === 'POST'
+          ? { data: { resultado: { cobertura: 'parcial', costo_km: { ars: 50, usd: 0.05 }, rubros: [] } } }
+          : { data: { items: [] } },
+    }))
+    vi.stubGlobal('fetch', fetchMock)
 
     const wrapper = mount(TheoreticalCostPage, { props: { data: data() } })
     await flushPromises()
 
     await wrapper.get('select').setValue('4')
     const calculate = wrapper.findAll('button').find((button) => button.text().includes('Calcular referencia'))
-    expect(calculate.attributes('disabled')).toBeDefined()
+    expect(calculate.attributes('disabled')).toBeUndefined()
+    await calculate.trigger('click')
+    await flushPromises()
+
+    const request = fetchMock.mock.calls.find(([, options]) => options?.method === 'POST')
+    expect(JSON.parse(request[1].body)).toMatchObject({ tractor_id: 4, semi_id: null })
   })
 
   it('labels company-wide saved scenarios without equipment in the history', async () => {

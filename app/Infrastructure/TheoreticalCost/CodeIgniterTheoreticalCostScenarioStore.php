@@ -38,27 +38,37 @@ final class CodeIgniterTheoreticalCostScenarioStore implements TheoreticalCostSc
         return ['tractores' => $tractors, 'semis' => $semis];
     }
 
-    public function equipmentPair(int $companyId, ?array $branchIds, int $tractorId, int $semiId): ?array
+    public function equipmentSelection(int $companyId, ?array $branchIds, ?int $tractorId, ?int $semiId): ?array
     {
+        if ($tractorId === null && $semiId === null) {
+            return [];
+        }
         if ($branchIds === []) {
             return null;
         }
+        $ids = array_values(array_filter([$tractorId, $semiId], static fn (?int $id): bool => $id !== null));
         $rows = $this->assetsQuery($companyId, $branchIds)
-            ->whereIn('e.id', [$tractorId, $semiId])->get()->getResultArray();
+            ->whereIn('e.id', $ids)->get()->getResultArray();
         $byId = [];
         foreach ($rows as $row) {
             $byId[(int) $row['id']] = $row;
         }
-        $tractor = $byId[$tractorId] ?? null;
-        $semi = $byId[$semiId] ?? null;
-        if ($tractor === null || $semi === null || ! $this->isTractorType((string) $tractor['tipo_nombre']) || ! $this->isSemiType((string) $semi['tipo_nombre'])) {
-            return null;
+        $selection = ['tractor' => null, 'semi' => null];
+        if ($tractorId !== null) {
+            $tractor = $byId[$tractorId] ?? null;
+            if ($tractor === null || ! $this->isTractorType((string) $tractor['tipo_nombre'])) {
+                return null;
+            }
+            $selection['tractor'] = ['id' => $tractorId, 'sucursal_id' => (int) $tractor['sucursal_id']];
         }
-
-        return [
-            'tractor' => ['id' => $tractorId, 'sucursal_id' => (int) $tractor['sucursal_id']],
-            'semi' => ['id' => $semiId, 'sucursal_id' => (int) $semi['sucursal_id']],
-        ];
+        if ($semiId !== null) {
+            $semi = $byId[$semiId] ?? null;
+            if ($semi === null || ! $this->isSemiType((string) $semi['tipo_nombre'])) {
+                return null;
+            }
+            $selection['semi'] = ['id' => $semiId, 'sucursal_id' => (int) $semi['sucursal_id']];
+        }
+        return $selection;
     }
 
     public function listScenarios(int $companyId, ?array $branchIds, array $filters = []): array
@@ -213,22 +223,20 @@ final class CodeIgniterTheoreticalCostScenarioStore implements TheoreticalCostSc
 
     public function appendVersion(int $companyId, int $userId, ?array $branchIds, ?int $scenarioId, string $name, ?int $tractorId, ?int $semiId, array $payload, array $result): array
     {
-        $pair = null;
-        if ($tractorId !== null && $semiId !== null) {
-            $pair = $this->equipmentPair($companyId, $branchIds, $tractorId, $semiId);
-            if ($pair === null) {
+        $selection = null;
+        if ($tractorId !== null || $semiId !== null) {
+            $selection = $this->equipmentSelection($companyId, $branchIds, $tractorId, $semiId);
+            if ($selection === null) {
                 throw new DomainException('El tractor o el semi quedó fuera de tu alcance antes de guardar.');
             }
-        } elseif ($tractorId !== null || $semiId !== null) {
-            throw new DomainException('Seleccioná tractor y semi juntos o dejá ambos sin asociar.');
         }
         $this->database->transBegin();
         try {
             if ($scenarioId === null) {
                 $this->database->table('costos_teoricos_escenarios')->insert([
                     'empresa_id' => $companyId,
-                    'sucursal_tractor_id' => $pair['tractor']['sucursal_id'] ?? null,
-                    'sucursal_semi_id' => $pair['semi']['sucursal_id'] ?? null,
+                    'sucursal_tractor_id' => $selection['tractor']['sucursal_id'] ?? null,
+                    'sucursal_semi_id' => $selection['semi']['sucursal_id'] ?? null,
                     'tractor_id' => $tractorId, 'semi_id' => $semiId, 'nombre' => $name,
                     'created_by' => $userId, 'created_at' => date('Y-m-d H:i:s'), 'updated_at' => date('Y-m-d H:i:s'),
                 ]);
@@ -240,7 +248,8 @@ final class CodeIgniterTheoreticalCostScenarioStore implements TheoreticalCostSc
                     throw new DomainException('No tenés sucursales habilitadas para este escenario.');
                 }
                 if ($branchIds !== null && $branchIds !== [] && ($tractorId !== null || $semiId !== null)) {
-                    $query->whereIn('sucursal_tractor_id', $branchIds)->whereIn('sucursal_semi_id', $branchIds);
+                    $query->groupStart()->whereIn('sucursal_tractor_id', $branchIds)->orWhere('sucursal_tractor_id', null)->groupEnd();
+                    $query->groupStart()->whereIn('sucursal_semi_id', $branchIds)->orWhere('sucursal_semi_id', null)->groupEnd();
                 } elseif ($branchIds === []) {
                     $query->where('sucursal_tractor_id', null)->where('sucursal_semi_id', null);
                 }
@@ -303,8 +312,8 @@ final class CodeIgniterTheoreticalCostScenarioStore implements TheoreticalCostSc
                 $builder->groupStart()->where('s.sucursal_tractor_id', null)->where('s.sucursal_semi_id', null)->groupEnd();
             } else {
                 $builder->groupStart()
-                    ->groupStart()->where('s.sucursal_tractor_id', null)->where('s.sucursal_semi_id', null)->groupEnd()
-                    ->orGroupStart()->whereIn('s.sucursal_tractor_id', $branchIds)->whereIn('s.sucursal_semi_id', $branchIds)->groupEnd()
+                    ->groupStart()->where('s.sucursal_tractor_id', null)->orWhereIn('s.sucursal_tractor_id', $branchIds)->groupEnd()
+                    ->groupStart()->where('s.sucursal_semi_id', null)->orWhereIn('s.sucursal_semi_id', $branchIds)->groupEnd()
                     ->groupEnd();
             }
         }

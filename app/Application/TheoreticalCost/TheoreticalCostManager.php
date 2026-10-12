@@ -98,16 +98,15 @@ final class TheoreticalCostManager
     {
         $tractorId = $this->optionalPositiveId($payload['tractor_id'] ?? null, 'tractor_id');
         $semiId = $this->optionalPositiveId($payload['semi_id'] ?? null, 'semi_id');
-        if (($tractorId === null) !== ($semiId === null)) {
-            throw new DomainException('Seleccioná tractor y semi juntos o dejá ambos sin asociar.');
-        }
         if ($tractorId === null || $semiId === null) {
-            return [null, null];
+            if ($tractorId === null && $semiId === null) {
+                return [null, null];
+            }
         }
-        if ($tractorId === $semiId) {
+        if ($tractorId !== null && $semiId !== null && $tractorId === $semiId) {
             throw new DomainException('Seleccioná un tractor y un semi diferentes.');
         }
-        $this->store->equipmentPair($this->companyId($actor), $this->branchScope($actor), $tractorId, $semiId)
+        $this->store->equipmentSelection($this->companyId($actor), $this->branchScope($actor), $tractorId, $semiId)
             ?? throw new DomainException('El tractor o el semi no existe, está inactivo o queda fuera de tus sucursales autorizadas.');
         return [$tractorId, $semiId];
     }

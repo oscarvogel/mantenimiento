@@ -10,7 +10,7 @@ interface TheoreticalCostScenarioStore
     public function listAssets(int $companyId, ?array $branchIds): array;
 
     /** @param list<int>|null $branchIds null means all company branches */
-    public function equipmentPair(int $companyId, ?array $branchIds, int $tractorId, int $semiId): ?array;
+    public function equipmentSelection(int $companyId, ?array $branchIds, ?int $tractorId, ?int $semiId): ?array;
 
     /** @param array<string,mixed> $filters @param list<int>|null $branchIds */
     public function listScenarios(int $companyId, ?array $branchIds, array $filters = []): array;
