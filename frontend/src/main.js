@@ -9,6 +9,7 @@ import { adminPagesByType } from './pages/admin/index.js'
 import { ReportsPage } from './pages/reports/index.js'
 import { NotificationCenterPage } from './pages/notifications/index.js'
 import LoginPage from './pages/login/LoginPage.vue'
+import CommandCenterPage from './pages/platform/CommandCenterPage.vue'
 import { installContextualReadingActions } from './ui/contextualReadingActions.js'
 import { installEquipmentComboboxes } from './ui/equipmentCombobox.js'
 import { installEquipmentAssignedPlans } from './ui/equipmentAssignedPlans.js'
@@ -56,6 +57,7 @@ export function mountMaintenanceDashboard(element, payload) {
       ?? adminPagesByType[page]
       ?? (page === 'reports' ? ReportsPage : null)
       ?? (page === 'notifications' ? NotificationCenterPage : null)
+      ?? (page === 'command-center' ? CommandCenterPage : null)
 
     if (pageComponent) {
       const pageData = payload?.data && typeof payload.data === 'object'

@@ -45,7 +45,7 @@
 3. **Ownership explícito:** cada contexto es dueño de sus invariantes, escrituras y persistencia; otros contextos lo consumen por puerto/caso de uso/read model autorizado.
 4. **Aislamiento tenant:** `empresa_id` y, cuando corresponda, sucursal aplicados al construir consultas y comandos; nunca inferir seguridad solo de la interfaz o de una sesión.
 5. **Permisos de dos niveles:** módulo habilitado y permiso de acción; ambos se validan en servidor.
-6. **Operador primero:** pocas pantallas, tareas concretas, continuidad y mensajes útiles; no obligar a pasar por portal a quien tiene un único módulo.
+6. **Operador primero:** pocas pantallas, tareas concretas, continuidad y mensajes útiles. Decisión explícita de #463: el ingreso autenticado siempre abre `/inicio`, incluso si Mantenimiento es el único módulo habilitado.
 7. **Trazabilidad:** estados, rectificaciones, anulaciones, comprobantes, cambios de tarifa y costos requieren autor, fecha, origen, motivo y permisos adecuados.
 8. **Valores financieros históricos:** moneda, escala, importe DECIMAL, vigencia tarifaria y reglas de imputación quedan congelados para operaciones ya aprobadas.
 9. **Privacidad de evidencias:** documentos/fotografías en almacenamiento privado o servidos con controlador autorizado; nunca URL pública por accidente.
@@ -125,9 +125,8 @@ Estos estados son **hipótesis funcionales**. Validarlos con casos reales antes 
 
 ```text
 /login (único)
-    ├─ usuario común con un único módulo → módulo autorizado (opción de acceso directo)
-    ├─ usuario con varios módulos → /inicio (portal)
-    └─ superadmin → administración global (sin suplantar permisos tenant)
+    └─ todo actor autenticado → /inicio (portal; Mantenimiento se activa solo con permiso)
+                              └─ superadmin → administración global disponible por acceso separado, sin heredar permisos tenant
                               |
                               +--> /mantenimiento (dashboard y menú propios)
                               +--> /viajes
@@ -142,7 +141,7 @@ Estos estados son **hipótesis funcionales**. Validarlos con casos reales antes 
 ### 6.2 Rutas y compatibilidad
 
 - Nueva ruta propuesta `/inicio`: portal, autorizada.
-- Mantener `/dashboard` y `/mantenimiento/**` como URLs preexistentes; definir su comportamiento preciso con pruebas de regresión antes de cambiar el destino post-login.
+- Mantener `/dashboard` y `/mantenimiento/**` como URLs preexistentes. Decisión de #463: el login y el inicio autenticado abren `/inicio`; los módulos se abren desde el portal.
 - Mantener vínculos QR, rutas de lectura pública, notificaciones de WhatsApp/email, cron, importaciones y deep links.
 - Las nuevas `/viajes/**`, `/combustible/**`, `/neumaticos/**`, `/facturacion/**`, `/gerencial/**` son **espacios reservados**, no rutas implementadas.
 - No renombrar el prefijo de instalación en Ferozo ni inventar un subdominio nuevo.
@@ -242,7 +241,7 @@ El chatbot actual puede transformarse en asistente transversal **sin acceso SQL 
 
 ### Fase 1 — Shell/plataforma, sin tocar Mantenimiento
 
-- Portal `/inicio` después del login para usuarios con varios módulos; entrada directa opcional para único módulo.
+- Portal `/inicio` después de cada login; Mantenimiento es el único módulo operativo inicialmente y aparece habilitado solo cuando el actor tiene permiso efectivo. Los demás módulos siguen visibles como catálogo comercial con el estado “Sin implementación aún”.
 - Selector contextual de módulos y menú del contexto actual.
 - Mantenimiento sigue operativo y todas las rutas antiguas funcionan.
 - Contratos de módulos con permiso y alcance; pruebas de usuario común/superadmin y móvil.
@@ -325,7 +324,6 @@ Separar funcionalidades de diseño, implementación, migración, tests y desplie
 ## 14. Decisiones pendientes (requieren validación operativa)
 
 1. **Nombre comercial del producto:** nombre actual vs nueva marca.
-2. **Portal por defecto:** usuarios con único módulo → acceso directo; confirmar excepciones.
 3. **Matriz multiempresa:** si una empresa contrata/habilita módulos selectivamente, y cómo se administran.
 4. **Viajes:** definición operativa real (remitos, múltiples tramos, clientes, asignación de cargas, unidades).
 5. **Kilometraje:** fuente y política de precedencia entre QR, chofer, viaje, combustible y OCR/IA.

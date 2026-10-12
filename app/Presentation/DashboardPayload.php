@@ -23,11 +23,16 @@ final class DashboardPayload
         $ordersUrl = $canViewOrders ? base_url('mantenimiento/ordenes') : '#';
         $servicesUrl = $canPlans ? base_url('mantenimiento/servicios') : '#';
         $managerial = in_array('Administrador', $actor->roles(), true);
+        $charts = $managerial ? [] : ($operations['charts'] ?? []);
 
         return [
             'view' => $managerial ? 'managerial' : 'operational',
             'metrics' => $operations['metrics'] ?? [],
             'financial' => $operations['financial'] ?? [],
+            'charts' => $charts + [
+                'preventiveByState' => [],
+                'openOrdersByState' => [],
+            ],
             'readingAttention' => array_map(
                 static fn (array $item): array => $item + [
                     'detailUrl' => $canEquipment && (int) ($item['equipmentId'] ?? 0) > 0

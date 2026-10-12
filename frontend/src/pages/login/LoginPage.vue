@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 import { EyeIcon, EyeSlashIcon, ShieldCheckIcon } from '@heroicons/vue/24/outline'
+import BrandLogo from '../../components/BrandLogo.vue'
 
 defineProps({ data: { type: Object, required: true } })
 
@@ -22,14 +23,7 @@ const brandAsset = (name) => `${baseUrl}assets/brand/${name}.svg`
     >
       <div class="flex flex-col justify-center px-6 py-8 sm:px-10 sm:py-10 lg:px-14 lg:py-12">
         <div class="mb-8 flex items-center gap-3">
-          <img
-            :src="brandAsset('logo-mark')"
-            alt=""
-            class="size-11 shrink-0 rounded-xl shadow-sm"
-            width="44"
-            height="44"
-            aria-hidden="true"
-          />
+          <BrandLogo size="login" />
           <div>
             <p class="text-base font-bold leading-tight text-ink">Mantenimiento</p>
             <p class="mt-0.5 text-xs font-medium text-ink-muted">Gestión de flota</p>

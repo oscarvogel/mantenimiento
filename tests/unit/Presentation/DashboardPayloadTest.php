@@ -54,4 +54,19 @@ final class DashboardPayloadTest extends TestCase
         self::assertNull($payload['upcomingMaintenance'][0]['actionUrl']);
         self::assertNull($payload['upcomingMaintenance'][0]['actionLabel']);
     }
+
+    public function testDoesNotSendOperationalChartsToTheManagerialDashboard(): void
+    {
+        $actor = new ActorContext(7, 5, false, true, ['Administrador'], ['equipos.ver', 'planes.ver', 'ordenes.ver'], []);
+
+        $payload = (new DashboardPayload())->fromOperations($actor, [
+            'charts' => [
+                'preventiveByState' => [['status' => 'VENCIDO', 'label' => 'Vencidos', 'count' => 2]],
+                'openOrdersByState' => [['status' => 'EN_PROCESO', 'label' => 'En proceso', 'count' => 3]],
+            ],
+        ]);
+
+        self::assertSame('managerial', $payload['view']);
+        self::assertSame(['preventiveByState' => [], 'openOrdersByState' => []], $payload['charts']);
+    }
 }

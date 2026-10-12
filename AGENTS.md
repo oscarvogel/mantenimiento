@@ -34,6 +34,8 @@ Si `fasa_189` no es accesible o el stack Coolify no puede identificarse con segu
 
 El sistema debe diseñarse y validarse como una herramienta para una persona que lo usa todos los días, no como una interfaz que simplemente responde al backend. Cada flujo debe priorizar lenguaje humano, valores aplicables, prevención de errores, continuidad de contexto y feedback accionable.
 
+El portal autenticado `/inicio` es el punto de entrada y origen de navegación de los módulos. Después del login, el usuario llega al portal y desde allí entra al módulo autorizado; cada módulo nuevo se incorpora al catálogo y ofrece un retorno visible al portal. La navegación interna de un módulo sigue perteneciendo a ese módulo.
+
 ## Protocolo obligatorio de inicio
 
 1. Antes de analizar, planificar o modificar código, localizar y leer completa la skill `clean-ddd-hexagonal` y las referencias que correspondan a la tarea.

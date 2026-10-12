@@ -12,9 +12,9 @@ class Login extends Controller
 {
     public function index()
     {
-        // Si ya esta logueado, redirigir al dashboard
+        // Si ya esta logueado, abrir el Centro de mandos.
         if (session()->get('usuario_id')) {
-            return redirect()->to('/dashboard');
+            return redirect()->to(base_url('inicio'));
         }
         return $this->loginView();
     }
@@ -81,9 +81,8 @@ class Login extends Controller
 
         $model->touchLastAccess($usuario['id']);
 
-        $redirect = $session->get('redirect_after_login') ?? '/dashboard';
         $session->remove('redirect_after_login');
-        return redirect()->to($redirect);
+        return redirect()->to(base_url('inicio'));
     }
 
     public function logout()

@@ -12,6 +12,14 @@ const data = {
 }
 
 describe('LoginPage', () => {
+  it('usa el logo oficial de Vogel Consultoría junto a la identidad del módulo', () => {
+    const wrapper = mount(LoginPage, { props: { data } })
+    const brandLogo = wrapper.get('[role="img"][aria-label="Vogel Consultoría"]')
+
+    expect(brandLogo.attributes('style')).toContain('assets/brand/vogel-consultoria.png')
+    expect(wrapper.text()).toContain('Mantenimiento')
+  })
+
   it('conserva el formulario nativo, CSRF y credenciales autocompletables', () => {
     const wrapper = mount(LoginPage, { props: { data } })
 

@@ -9,7 +9,7 @@
 <body class="bg-light">
     <nav class="navbar navbar-dark bg-dark">
         <div class="container d-flex gap-2">
-            <a class="navbar-brand" href="<?= base_url('dashboard') ?>">Mantenimiento</a>
+            <?= view('partials/brand_link', ['href' => base_url('dashboard'), 'label' => 'Mantenimiento']) ?>
             <div class="ms-auto d-flex gap-2">
                 <a class="btn btn-outline-light btn-sm" href="<?= base_url('administracion/sucursales') ?>">Sucursales</a>
                 <form method="post" action="<?= base_url('logout') ?>" class="mb-0">

@@ -4,6 +4,7 @@ namespace Config;
 
 use App\Application\Identity\Port\LoginAttemptLimiter;
 use App\Application\AppShell\GetAppShellContext;
+use App\Application\Platform\GetPlatformModuleCatalog;
 use App\Application\Dashboard\GetMaintenanceDashboard;
 use App\Application\Dashboard\GetGlobalDashboard;
 use App\Application\Importations\CancelImportHandler;
@@ -101,6 +102,8 @@ use App\Infrastructure\Notifications\CodeIgniterNotificationUnitOfWork;
 use App\Infrastructure\Notifications\CodeIgniterOperationalNotificationEventSource;
 use App\Infrastructure\Telematic\WialonRemoteApiGateway;
 use App\Application\Telematic\DiagnoseSilentUnits;
+use App\Application\Telematic\GetAdminTelemetrySamples;
+use App\Infrastructure\Telematic\CodeIgniterAdminTelemetrySamplesReader;
 use App\Application\Telematic\ConfigureTelemetryIntegration;
 use App\Application\Telematic\ManageTelemetryEquipmentLinks;
 use App\Infrastructure\Telematic\CodeIgniterTelemetryIntegrationConfigurator;
@@ -132,6 +135,7 @@ use App\Infrastructure\Notifications\SystemNotificationClock;
 use App\Infrastructure\Identity\CodeIgniterLoginAttemptLimiter;
 use App\Infrastructure\AppShell\CodeIgniterAppShellReadModel;
 use App\Infrastructure\Dashboard\CodeIgniterDashboardFinancialSummary;
+use App\Infrastructure\Dashboard\CodeIgniterDashboardOpenOrderStates;
 use App\Infrastructure\Dashboard\CodeIgniterGlobalDashboardReadModel;
 use App\Infrastructure\Dashboard\MaintenanceCircuitDashboardOverview;
 use App\Infrastructure\Dashboard\PreventiveDashboardDuePlans;
@@ -613,6 +617,11 @@ class Services extends BaseService
         );
     }
 
+    public static function adminTelemetrySamples(): GetAdminTelemetrySamples
+    {
+        return new GetAdminTelemetrySamples(new CodeIgniterAdminTelemetrySamplesReader(db_connect()));
+    }
+
     private static function telematicGatewayRegistry(): CodeIgniterFleetTelemetryGatewayRegistry
     {
         $store = new CodeIgniterTelemetryIntegrationStore(db_connect());
@@ -911,7 +920,17 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
 
         return new AppShellPayload(
             new GetAppShellContext(new CodeIgniterAppShellReadModel(db_connect())),
+            static::platformModuleCatalog(),
         );
+    }
+
+    public static function platformModuleCatalog(bool $getShared = true): GetPlatformModuleCatalog
+    {
+        if ($getShared) {
+            return static::getSharedInstance('platformModuleCatalog');
+        }
+
+        return new GetPlatformModuleCatalog();
     }
 
     public static function maintenanceDashboard(bool $getShared = true): GetMaintenanceDashboard
@@ -925,6 +944,7 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
             new PreventiveDashboardDuePlans(static::consultMaintenanceDue(false)),
             new CodeIgniterDashboardFinancialSummary(db_connect()),
             new SystemDashboardClock(),
+            new CodeIgniterDashboardOpenOrderStates(db_connect()),
         );
     }
 

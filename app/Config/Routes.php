@@ -23,6 +23,7 @@ $routes->post('logout', 'Login::logout', ['filter' => 'auth']);
 
 // Dashboard (protegido)
 $routes->get('dashboard', 'Dashboard::index', ['filter' => 'auth']);
+$routes->get('inicio', 'CommandCenter::index', ['filter' => 'auth']);
 
 // Refresco manual de la telemetría. POST + CSRF + permiso: escribir datos
 // aunque sean de telemetría no es una operación de sólo ver. El mismo camino
@@ -62,6 +63,7 @@ $routes->get('empleados', static function () {
 // Administración global. El filtro también rechaza cuentas autenticadas no globales.
 $routes->group('superadmin', ['filter' => 'superadmin'], static function ($routes): void {
     $routes->get('', 'SuperAdmin::index');
+    $routes->get('telemetria/muestras', 'AdminTelemetrySamples::index');
     $routes->post('empresas', 'SuperAdmin::createCompany');
     $routes->post('empresas/(:num)', 'SuperAdmin::updateCompany/$1');
     $routes->post('empresas/(:num)/notificaciones/prueba', 'SuperAdmin::testCompanyNotificationEmail/$1');
