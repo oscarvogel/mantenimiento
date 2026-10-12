@@ -74,7 +74,6 @@ final class CodeIgniterHistoricoMuestras implements HistoricoMuestras, SerieMues
         $filas = $this->mysql->table(self::TABLA)
             ->where('empresa_id', $empresaId)
             ->where('equipo_id', $equipoId)
-            ->where("LOWER(proveedor) != 'wialon'", null, false)
             ->where('observada_en >=', $desde->setTimezone($utc)->format('Y-m-d H:i:s'))
             ->where('observada_en <=', $hasta->setTimezone($utc)->format('Y-m-d H:i:s'))
             ->orderBy('observada_en', 'ASC')

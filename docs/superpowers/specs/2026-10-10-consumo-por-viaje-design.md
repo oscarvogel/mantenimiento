@@ -59,17 +59,20 @@ es justamente lo que el reporte no señala.
 | Diseño de ralentí y velocidad | Especificó muestras por ejecución y **ya guarda `combustible`** entre las métricas normalizadas. La cadencia nominal de 15 min quedó reemplazada por el ciclo operativo cada 5 min y la serie Wialon por buckets | `specs/2026-10-10-alertas-ralenti-velocidad-design.md`, secciones «Captura e histórico» y «Ampliación del 10/10/2026» |
 | Plan de implementación | Secuencia en cuatro PR para histórico, consumo, ralentí y velocidad | `plans/2026-10-10-historico-consumo-ralenti-velocidad.md` |
 
-**Estado actualizado al 10/10/2026:** el mapa y las alertas de sensores están
+**Estado actualizado al 12/10/2026:** el mapa y las alertas de sensores están
 implementados. El dominio puro de consumo por viaje también está implementado:
-segmentación, cobertura e indicadores probados sin base ni framework. Wialon ya
-aporta buckets de cinco minutos y el histórico puntual se conserva para otros
-proveedores y como legado. La pantalla y el caso de uso de consulta todavía
-quedan pendientes.
+segmentación, cobertura e indicadores probados sin base ni framework. Wialon
+aporta buckets de cinco minutos y capturas puntuales de `calc_last` con
+kilometraje, horómetro y sensores calibrados. Si una ventana tiene puntos
+Wialon, el lector usa esos puntos para toda la ventana y evita mezclarlos con
+buckets; si no, recurre al histórico por buckets. La pantalla y el caso de uso
+de consulta todavía quedan pendientes.
 
 **Conclusión:** la serie de telemetría ya existe. En Wialon, cada bucket UTC de
-cinco minutos conserva los extremos observados, con kilómetros, horas de motor,
-motor, ralentí, posición, velocidad y combustible cuando están disponibles. Las
-reglas de hueco de 30 minutos y cobertura mínima del 70 % viven en el dominio.
+cinco minutos conserva los extremos observados para métricas presentes en los
+mensajes históricos; las capturas puntuales agregan kilometraje, horómetro y
+combustible actuales aunque falten en esos mensajes. Las reglas de hueco de 30
+minutos y cobertura mínima del 70 % viven en el dominio.
 Lo pendiente es ofrecer el cálculo a través de una consulta y una pantalla que
 expliquen viajes, calidad y litros.
 

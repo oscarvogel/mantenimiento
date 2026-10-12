@@ -126,10 +126,11 @@ final class CodeIgniterBucketSerieMuestrasReaderTest extends CIUnitTestCase
         self::assertSame(3, (int) $this->mysql->table('telematia_buckets')->countAllResults());
     }
 
-    public function testElLectorCompuestoConservaPuntosDeOtrosProveedoresYExcluyePuntosWialonAntiguos(): void
+    public function testElLectorCompuestoPrefierePuntosWialonYNoDuplicaBucketsEnLaVentana(): void
     {
         $this->insertarMuestra('gestya', 20, '2026-10-10 12:06:00');
         $this->insertarMuestra('wialon', 21, '2026-10-10 12:07:00');
+        $this->insertar(7, 42, '123', '2026-10-10 12:00:00', '2026-10-10 12:04:00', 100, 99, -34.0, -69.0);
         $this->insertar(7, 42, '123', '2026-10-10 12:10:00', '2026-10-10 12:14:00', 98, 97, -35.0, -70.0);
         $reader = new CodeIgniterTelematicSerieMuestrasReader(
             new CodeIgniterHistoricoMuestras($this->mysql),
@@ -144,11 +145,11 @@ final class CodeIgniterBucketSerieMuestrasReaderTest extends CIUnitTestCase
         );
 
         self::assertSame(
-            ['2026-10-10 12:06:00', '2026-10-10 12:10:00', '2026-10-10 12:14:00'],
+            ['2026-10-10 12:06:00', '2026-10-10 12:07:00'],
             array_map(static fn ($muestra): string => $muestra->observadaEn()->format('Y-m-d H:i:s'), $serie),
         );
         self::assertSame(
-            ['gestya', 'WIALON', 'WIALON'],
+            ['gestya', 'WIALON'],
             array_map(static fn ($muestra): string => $muestra->proveedor(), $serie),
         );
     }
