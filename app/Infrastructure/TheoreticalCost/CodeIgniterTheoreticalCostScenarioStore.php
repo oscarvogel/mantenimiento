@@ -78,12 +78,12 @@ final class CodeIgniterTheoreticalCostScenarioStore implements TheoreticalCostSc
         }
         $rows = $builder->select('s.id escenario_id, s.nombre, s.tractor_id, s.semi_id, s.sucursal_tractor_id, s.sucursal_semi_id, t.codigo tractor_codigo, st.nombre tractor_tipo, sp.nombre tractor_sucursal, sm.codigo semi_codigo, spt.nombre semi_tipo, sps.nombre semi_sucursal, v.numero_version, v.guardado_en, v.cobertura, v.costo_ars_km, v.costo_usd_km, v.tarifa_ars_km, v.tarifa_usd_km')
             ->join('costos_teoricos_versiones v', 'v.escenario_id = s.id', 'left')
-            ->join('equipos t', 't.empresa_id = s.empresa_id AND t.id = s.tractor_id', 'inner')
-            ->join('tipos_equipo st', 'st.id = t.tipo_equipo_id', 'inner')
-            ->join('sucursales sp', 'sp.empresa_id = t.empresa_id AND sp.id = t.sucursal_id', 'inner')
-            ->join('equipos sm', 'sm.empresa_id = s.empresa_id AND sm.id = s.semi_id', 'inner')
-            ->join('tipos_equipo spt', 'spt.id = sm.tipo_equipo_id', 'inner')
-            ->join('sucursales sps', 'sps.empresa_id = sm.empresa_id AND sps.id = sm.sucursal_id', 'inner')
+            ->join('equipos t', 't.empresa_id = s.empresa_id AND t.id = s.tractor_id', 'left')
+            ->join('tipos_equipo st', 'st.id = t.tipo_equipo_id', 'left')
+            ->join('sucursales sp', 'sp.empresa_id = t.empresa_id AND sp.id = t.sucursal_id', 'left')
+            ->join('equipos sm', 'sm.empresa_id = s.empresa_id AND sm.id = s.semi_id', 'left')
+            ->join('tipos_equipo spt', 'spt.id = sm.tipo_equipo_id', 'left')
+            ->join('sucursales sps', 'sps.empresa_id = sm.empresa_id AND sps.id = sm.sucursal_id', 'left')
             ->orderBy('s.id', 'DESC')->orderBy('v.numero_version', 'DESC')->get()->getResultArray();
 
         $grouped = [];
@@ -93,8 +93,8 @@ final class CodeIgniterTheoreticalCostScenarioStore implements TheoreticalCostSc
                 $grouped[$id] = [
                     'id' => $id,
                     'nombre' => (string) $row['nombre'],
-                    'tractor' => ['id' => (int) $row['tractor_id'], 'codigo' => (string) $row['tractor_codigo'], 'tipo' => (string) $row['tractor_tipo'], 'sucursal' => (string) $row['tractor_sucursal']],
-                    'semi' => ['id' => (int) $row['semi_id'], 'codigo' => (string) $row['semi_codigo'], 'tipo' => (string) $row['semi_tipo'], 'sucursal' => (string) $row['semi_sucursal']],
+                    'tractor' => $row['tractor_id'] === null ? null : ['id' => (int) $row['tractor_id'], 'codigo' => (string) $row['tractor_codigo'], 'tipo' => (string) $row['tractor_tipo'], 'sucursal' => (string) $row['tractor_sucursal']],
+                    'semi' => $row['semi_id'] === null ? null : ['id' => (int) $row['semi_id'], 'codigo' => (string) $row['semi_codigo'], 'tipo' => (string) $row['semi_tipo'], 'sucursal' => (string) $row['semi_sucursal']],
                     'version' => null,
                     'guardado_en' => null,
                     'cobertura' => null,
@@ -135,12 +135,12 @@ final class CodeIgniterTheoreticalCostScenarioStore implements TheoreticalCostSc
         $row = $this->scopedScenarioQuery($companyId, $branchIds)
             ->select('s.id escenario_id, s.nombre, s.tractor_id, s.semi_id, s.sucursal_tractor_id, s.sucursal_semi_id, t.codigo tractor_codigo, st.nombre tractor_tipo, sp.nombre tractor_sucursal, sm.codigo semi_codigo, spt.nombre semi_tipo, sps.nombre semi_sucursal, v.*')
             ->join('costos_teoricos_versiones v', 'v.escenario_id = s.id', 'inner')
-            ->join('equipos t', 't.empresa_id = s.empresa_id AND t.id = s.tractor_id', 'inner')
-            ->join('tipos_equipo st', 'st.id = t.tipo_equipo_id', 'inner')
-            ->join('sucursales sp', 'sp.empresa_id = t.empresa_id AND sp.id = t.sucursal_id', 'inner')
-            ->join('equipos sm', 'sm.empresa_id = s.empresa_id AND sm.id = s.semi_id', 'inner')
-            ->join('tipos_equipo spt', 'spt.id = sm.tipo_equipo_id', 'inner')
-            ->join('sucursales sps', 'sps.empresa_id = sm.empresa_id AND sps.id = sm.sucursal_id', 'inner')
+            ->join('equipos t', 't.empresa_id = s.empresa_id AND t.id = s.tractor_id', 'left')
+            ->join('tipos_equipo st', 'st.id = t.tipo_equipo_id', 'left')
+            ->join('sucursales sp', 'sp.empresa_id = t.empresa_id AND sp.id = t.sucursal_id', 'left')
+            ->join('equipos sm', 'sm.empresa_id = s.empresa_id AND sm.id = s.semi_id', 'left')
+            ->join('tipos_equipo spt', 'spt.id = sm.tipo_equipo_id', 'left')
+            ->join('sucursales sps', 'sps.empresa_id = sm.empresa_id AND sps.id = sm.sucursal_id', 'left')
             ->where('s.id', $scenarioId)->where('v.numero_version', $versionNumber)->get()->getRowArray();
         if ($row === null) {
             return null;
@@ -205,25 +205,30 @@ final class CodeIgniterTheoreticalCostScenarioStore implements TheoreticalCostSc
         return [
             'id' => (int) $row['escenario_id'], 'nombre' => (string) $row['nombre'], 'version' => (int) $row['numero_version'],
             'guardado_en' => (string) $row['guardado_en'],
-            'tractor' => ['id' => (int) $row['tractor_id'], 'codigo' => (string) $row['tractor_codigo'], 'tipo' => (string) $row['tractor_tipo'], 'sucursal' => (string) $row['tractor_sucursal']],
-            'semi' => ['id' => (int) $row['semi_id'], 'codigo' => (string) $row['semi_codigo'], 'tipo' => (string) $row['semi_tipo'], 'sucursal' => (string) $row['semi_sucursal']],
+            'tractor' => $row['tractor_id'] === null ? null : ['id' => (int) $row['tractor_id'], 'codigo' => (string) $row['tractor_codigo'], 'tipo' => (string) $row['tractor_tipo'], 'sucursal' => (string) $row['tractor_sucursal']],
+            'semi' => $row['semi_id'] === null ? null : ['id' => (int) $row['semi_id'], 'codigo' => (string) $row['semi_codigo'], 'tipo' => (string) $row['semi_tipo'], 'sucursal' => (string) $row['semi_sucursal']],
             'parametros' => $parameters, 'viaje' => $trip, 'resultado' => $result,
         ];
     }
 
-    public function appendVersion(int $companyId, int $userId, ?array $branchIds, ?int $scenarioId, string $name, int $tractorId, int $semiId, array $payload, array $result): array
+    public function appendVersion(int $companyId, int $userId, ?array $branchIds, ?int $scenarioId, string $name, ?int $tractorId, ?int $semiId, array $payload, array $result): array
     {
-        $pair = $this->equipmentPair($companyId, $branchIds, $tractorId, $semiId);
-        if ($pair === null) {
-            throw new DomainException('El tractor o el semi quedó fuera de tu alcance antes de guardar.');
+        $pair = null;
+        if ($tractorId !== null && $semiId !== null) {
+            $pair = $this->equipmentPair($companyId, $branchIds, $tractorId, $semiId);
+            if ($pair === null) {
+                throw new DomainException('El tractor o el semi quedó fuera de tu alcance antes de guardar.');
+            }
+        } elseif ($tractorId !== null || $semiId !== null) {
+            throw new DomainException('Seleccioná tractor y semi juntos o dejá ambos sin asociar.');
         }
         $this->database->transBegin();
         try {
             if ($scenarioId === null) {
                 $this->database->table('costos_teoricos_escenarios')->insert([
                     'empresa_id' => $companyId,
-                    'sucursal_tractor_id' => $pair['tractor']['sucursal_id'],
-                    'sucursal_semi_id' => $pair['semi']['sucursal_id'],
+                    'sucursal_tractor_id' => $pair['tractor']['sucursal_id'] ?? null,
+                    'sucursal_semi_id' => $pair['semi']['sucursal_id'] ?? null,
                     'tractor_id' => $tractorId, 'semi_id' => $semiId, 'nombre' => $name,
                     'created_by' => $userId, 'created_at' => date('Y-m-d H:i:s'), 'updated_at' => date('Y-m-d H:i:s'),
                 ]);
@@ -231,17 +236,21 @@ final class CodeIgniterTheoreticalCostScenarioStore implements TheoreticalCostSc
                 $versionNumber = 1;
             } else {
                 $query = $this->database->table('costos_teoricos_escenarios')->where('id', $scenarioId)->where('empresa_id', $companyId);
-                if ($branchIds === []) {
+                if ($branchIds === [] && ($tractorId !== null || $semiId !== null)) {
                     throw new DomainException('No tenés sucursales habilitadas para este escenario.');
                 }
-                if ($branchIds !== null) {
+                if ($branchIds !== null && $branchIds !== [] && ($tractorId !== null || $semiId !== null)) {
                     $query->whereIn('sucursal_tractor_id', $branchIds)->whereIn('sucursal_semi_id', $branchIds);
+                } elseif ($branchIds === []) {
+                    $query->where('sucursal_tractor_id', null)->where('sucursal_semi_id', null);
                 }
                 $existing = $this->database->query($query->getCompiledSelect() . ' FOR UPDATE')->getRowArray();
                 if ($existing === null) {
                     throw new DomainException('No se encontró el escenario solicitado dentro de tu alcance.');
                 }
-                if ((int) $existing['tractor_id'] !== $tractorId || (int) $existing['semi_id'] !== $semiId) {
+                $existingTractorId = $existing['tractor_id'] === null ? null : (int) $existing['tractor_id'];
+                $existingSemiId = $existing['semi_id'] === null ? null : (int) $existing['semi_id'];
+                if ($existingTractorId !== $tractorId || $existingSemiId !== $semiId) {
                     throw new DomainException('Una versión nueva debe conservar el tractor y el semi del escenario original.');
                 }
                 $scenarioId = (int) $existing['id'];
@@ -291,9 +300,12 @@ final class CodeIgniterTheoreticalCostScenarioStore implements TheoreticalCostSc
         $builder = $this->database->table('costos_teoricos_escenarios s')->where('s.empresa_id', $companyId);
         if ($branchIds !== null) {
             if ($branchIds === []) {
-                $builder->where('s.id', 0);
+                $builder->groupStart()->where('s.sucursal_tractor_id', null)->where('s.sucursal_semi_id', null)->groupEnd();
             } else {
-                $builder->whereIn('s.sucursal_tractor_id', $branchIds)->whereIn('s.sucursal_semi_id', $branchIds);
+                $builder->groupStart()
+                    ->groupStart()->where('s.sucursal_tractor_id', null)->where('s.sucursal_semi_id', null)->groupEnd()
+                    ->orGroupStart()->whereIn('s.sucursal_tractor_id', $branchIds)->whereIn('s.sucursal_semi_id', $branchIds)->groupEnd()
+                    ->groupEnd();
             }
         }
         return $builder;

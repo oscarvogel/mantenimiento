@@ -55,6 +55,7 @@ const parameters = reactive({
 })
 
 const selection = reactive({ tractor_id: '', semi_id: '' })
+const equipmentSelectionIncomplete = computed(() => Boolean(selection.tractor_id) !== Boolean(selection.semi_id))
 const trip = reactive({ km_facturables: '', km_no_facturados: '', peajes: '', moneda: 'ARS' })
 
 const urlAliases = {
@@ -158,8 +159,6 @@ const loadAssets = async () => {
   const response = await fetch(requestUrl('assets', '/activos'), { credentials: 'same-origin', headers: { Accept: 'application/json' } })
   const body = await readJson(response)
   assets.value = body.data ?? { tractores: [], semis: [] }
-  if (!selection.tractor_id && assets.value.tractores?.length) selection.tractor_id = String(assets.value.tractores[0].id)
-  if (!selection.semi_id && assets.value.semis?.length) selection.semi_id = String(assets.value.semis[0].id)
 }
 
 const loadScenarios = async () => {
@@ -435,7 +434,7 @@ onMounted(initialize)
       <div class="grid items-start gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)]">
         <div class="space-y-6">
           <section class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="equipment-title">
-            <div class="mb-4 flex items-start gap-3"><span class="rounded-lg bg-primary-subtle p-2 text-primary"><TruckIcon class="size-5" aria-hidden="true" /></span><div><h2 id="equipment-title" class="font-bold text-ink">Conjunto y utilización</h2><p class="mt-1 text-sm text-ink-muted">Los kilómetros mensuales incluyen recorridos cargados y vacíos.</p></div></div>
+            <div class="mb-4 flex items-start gap-3"><span class="rounded-lg bg-primary-subtle p-2 text-primary"><TruckIcon class="size-5" aria-hidden="true" /></span><div><h2 id="equipment-title" class="font-bold text-ink">Conjunto y utilización</h2><p class="mt-1 text-sm text-ink-muted">El escenario general no requiere asociar equipos. Si querés identificar el conjunto, seleccioná tractor y semi. Los kilómetros mensuales incluyen recorridos cargados y vacíos.</p></div></div>
             <div class="mb-4 rounded-lg border border-info/30 bg-info-subtle p-3 text-sm text-info-strong">
               <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div class="min-w-0">
@@ -448,11 +447,11 @@ onMounted(initialize)
               </div>
             </div>
             <div class="grid gap-4 sm:grid-cols-2">
-              <label class="grid gap-1.5 text-sm font-semibold text-ink">Tractor<select v-model="selection.tractor_id" :disabled="!canEdit" class="min-h-11 rounded-lg border border-border-strong bg-surface px-3 font-normal disabled:opacity-70"><option value="">Seleccionar tractor</option><option v-for="item in assets.tractores" :key="item.id" :value="String(item.id)">{{ item.codigo }} · {{ item.descripcion }}<template v-if="item.sucursal"> ({{ item.sucursal }})</template></option></select></label>
-              <label class="grid gap-1.5 text-sm font-semibold text-ink">Semi<select v-model="selection.semi_id" :disabled="!canEdit" class="min-h-11 rounded-lg border border-border-strong bg-surface px-3 font-normal disabled:opacity-70"><option value="">Seleccionar semi</option><option v-for="item in assets.semis" :key="item.id" :value="String(item.id)">{{ item.codigo }} · {{ item.descripcion }}<template v-if="item.sucursal"> ({{ item.sucursal }})</template></option></select></label>
+              <label class="grid gap-1.5 text-sm font-semibold text-ink">Tractor (opcional)<select v-model="selection.tractor_id" :disabled="!canEdit" class="min-h-11 rounded-lg border border-border-strong bg-surface px-3 font-normal disabled:opacity-70"><option value="">Sin asociar</option><option v-for="item in assets.tractores" :key="item.id" :value="String(item.id)">{{ item.codigo }} · {{ item.descripcion }}<template v-if="item.sucursal"> ({{ item.sucursal }})</template></option></select></label>
+              <label class="grid gap-1.5 text-sm font-semibold text-ink">Semi (opcional)<select v-model="selection.semi_id" :disabled="!canEdit" class="min-h-11 rounded-lg border border-border-strong bg-surface px-3 font-normal disabled:opacity-70"><option value="">Sin asociar</option><option v-for="item in assets.semis" :key="item.id" :value="String(item.id)">{{ item.codigo }} · {{ item.descripcion }}<template v-if="item.sucursal"> ({{ item.sucursal }})</template></option></select></label>
               <label class="grid gap-1.5 text-sm font-semibold text-ink sm:col-span-2">Kilómetros operativos previstos por mes<input v-model="parameters.km_mensuales" type="number" min="1" step="1" inputmode="decimal" :disabled="!canEdit" placeholder="Ej.: 10.000" class="min-h-11 rounded-lg border border-border-strong bg-surface px-3 font-normal disabled:opacity-70" /><span class="text-xs font-normal text-ink-muted">Se usan para distribuir depreciación y costos mensuales entre los km recorridos.</span></label>
             </div>
-            <div v-if="!assets.tractores.length || !assets.semis.length" role="status" class="mt-4 rounded-lg bg-warning-subtle p-3 text-sm text-warning-strong">No hay tractor o semi disponible para este alcance. Verificá los equipos habilitados y las sucursales que tenés autorizadas.</div>
+            <div v-if="equipmentSelectionIncomplete" role="status" class="mt-4 rounded-lg bg-info-subtle p-3 text-sm text-info-strong">Para asociar este escenario a un equipo, seleccioná tractor y semi juntos. También podés dejar ambos sin asociar.</div>
           </section>
 
           <section class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="quote-title">
@@ -522,7 +521,7 @@ onMounted(initialize)
           <div v-if="!canEdit" class="flex items-start gap-3 rounded-xl border border-info/30 bg-info-subtle p-4 text-sm text-info-strong"><InformationCircleIcon class="size-5 shrink-0" aria-hidden="true" /><p>Tenés acceso de consulta. Podés revisar resultados e historial, pero no modificar supuestos ni guardar escenarios.</p></div>
           <div v-else class="flex flex-col gap-3 rounded-xl border border-border bg-surface-raised p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
             <div><p class="font-semibold text-ink">¿Querés ver cómo quedan estos supuestos?</p><p class="mt-1 text-sm text-ink-muted">Al calcular, los cambios todavía no se guardan en el historial.</p></div>
-            <button type="button" :disabled="calculating || !selection.tractor_id || !selection.semi_id" class="ui-interactive inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50" @click="calculate"><ArrowPathIcon class="size-5" :class="calculating ? 'animate-spin' : ''" aria-hidden="true" />{{ calculating ? 'Calculando…' : 'Calcular referencia' }}</button>
+            <button type="button" :disabled="calculating || equipmentSelectionIncomplete" class="ui-interactive inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50" @click="calculate"><ArrowPathIcon class="size-5" :class="calculating ? 'animate-spin' : ''" aria-hidden="true" />{{ calculating ? 'Calculando…' : 'Calcular referencia' }}</button>
           </div>
         </div>
 
@@ -585,7 +584,7 @@ onMounted(initialize)
       <div v-if="scenarios.length" class="grid gap-3 lg:grid-cols-2">
         <article v-for="item in scenarios" :key="scenarioKey(item)" class="rounded-xl border border-border bg-surface-raised p-4 sm:p-5">
           <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div class="min-w-0"><h3 class="truncate font-bold text-ink">{{ item.nombre || 'Escenario sin nombre' }}</h3><p class="mt-1 text-sm text-ink-muted">{{ item.tractor?.codigo || item.tractor_codigo || 'Tractor' }} + {{ item.semi?.codigo || item.semi_codigo || 'Semi' }}</p><p class="mt-1 text-xs text-ink-subtle">Versión {{ item.version ?? 1 }} · {{ scenarioDate(item) }}</p></div>
+            <div class="min-w-0"><h3 class="truncate font-bold text-ink">{{ item.nombre || 'Escenario sin nombre' }}</h3><p class="mt-1 text-sm text-ink-muted">{{ item.tractor?.codigo || item.tractor_codigo ? `${item.tractor?.codigo || item.tractor_codigo} + ${item.semi?.codigo || item.semi_codigo || 'Semi'}` : 'Escenario general · sin equipo asociado' }}</p><p class="mt-1 text-xs text-ink-subtle">Versión {{ item.version ?? 1 }} · {{ scenarioDate(item) }}</p></div>
             <span class="shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold" :class="item.versiones?.find((version) => version.numero === latestVersion(item))?.cobertura === 'completa' ? 'bg-success-subtle text-success-strong' : 'bg-warning-subtle text-warning-strong'">{{ item.versiones?.find((version) => version.numero === latestVersion(item))?.cobertura === 'completa' ? 'Cobertura completa' : 'Cobertura parcial' }}</span>
           </div>
           <div class="mt-4 flex flex-col gap-3 border-t border-border-subtle pt-4 sm:flex-row sm:items-center sm:justify-between"><p class="text-sm text-ink-muted">Costo/km: <strong class="text-ink">{{ currencyLabel(item.versiones?.find((version) => version.numero === latestVersion(item))?.costo_ars_km, 'ARS') }}</strong></p><button type="button" class="min-h-10 rounded-lg border border-primary px-3 py-2 text-sm font-semibold text-primary hover:bg-primary-subtle" @click="selectScenario(item, latestVersion(item))">Consultar versión</button></div>

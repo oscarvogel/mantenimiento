@@ -32,9 +32,7 @@ final class TheoreticalCostManager
     public function calculate(ActorContext $actor, array $payload): array
     {
         $this->assertAllowed($actor, true);
-        $tractorId = $this->positiveId($payload['tractor_id'] ?? null, 'tractor_id');
-        $semiId = $this->positiveId($payload['semi_id'] ?? null, 'semi_id');
-        $this->assertPair($actor, $tractorId, $semiId);
+        [$tractorId, $semiId] = $this->equipmentIds($actor, $payload);
         $parameters = is_array($payload['parametros'] ?? null) ? $payload['parametros'] : [];
         $trip = $this->trip($payload['viaje'] ?? null);
         return $this->calculator->calculate($parameters, $trip);
@@ -61,9 +59,7 @@ final class TheoreticalCostManager
     public function save(ActorContext $actor, array $payload): array
     {
         $this->assertAllowed($actor, true);
-        $tractorId = $this->positiveId($payload['tractor_id'] ?? null, 'tractor_id');
-        $semiId = $this->positiveId($payload['semi_id'] ?? null, 'semi_id');
-        $this->assertPair($actor, $tractorId, $semiId);
+        [$tractorId, $semiId] = $this->equipmentIds($actor, $payload);
         $parameters = is_array($payload['parametros'] ?? null) ? $payload['parametros'] : [];
         if ($parameters === []) {
             throw new DomainException('Completá los supuestos antes de guardar el escenario.');
@@ -97,13 +93,23 @@ final class TheoreticalCostManager
         );
     }
 
-    private function assertPair(ActorContext $actor, int $tractorId, int $semiId): array
+    /** @param array<string,mixed> $payload @return array{?int,?int} */
+    private function equipmentIds(ActorContext $actor, array $payload): array
     {
+        $tractorId = $this->optionalPositiveId($payload['tractor_id'] ?? null, 'tractor_id');
+        $semiId = $this->optionalPositiveId($payload['semi_id'] ?? null, 'semi_id');
+        if (($tractorId === null) !== ($semiId === null)) {
+            throw new DomainException('Seleccioná tractor y semi juntos o dejá ambos sin asociar.');
+        }
+        if ($tractorId === null || $semiId === null) {
+            return [null, null];
+        }
         if ($tractorId === $semiId) {
             throw new DomainException('Seleccioná un tractor y un semi diferentes.');
         }
-        return $this->store->equipmentPair($this->companyId($actor), $this->branchScope($actor), $tractorId, $semiId)
+        $this->store->equipmentPair($this->companyId($actor), $this->branchScope($actor), $tractorId, $semiId)
             ?? throw new DomainException('El tractor o el semi no existe, está inactivo o queda fuera de tus sucursales autorizadas.');
+        return [$tractorId, $semiId];
     }
 
     private function assertAllowed(ActorContext $actor, bool $edit): void
@@ -138,6 +144,11 @@ final class TheoreticalCostManager
             throw new DomainException('El campo ' . $field . ' debe contener un identificador válido.');
         }
         return (int) $value;
+    }
+
+    private function optionalPositiveId(mixed $value, string $field): ?int
+    {
+        return $value === null || $value === '' ? null : $this->positiveId($value, $field);
     }
 
     private function trip(mixed $value): ?array

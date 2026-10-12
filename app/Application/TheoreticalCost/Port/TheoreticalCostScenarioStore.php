@@ -25,8 +25,8 @@ interface TheoreticalCostScenarioStore
         ?array $branchIds,
         ?int $scenarioId,
         string $name,
-        int $tractorId,
-        int $semiId,
+        ?int $tractorId,
+        ?int $semiId,
         array $payload,
         array $result,
     ): array;
