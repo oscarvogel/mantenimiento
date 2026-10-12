@@ -107,6 +107,7 @@ final class AdminTelemetrySamples extends BaseController
             'latitud_fin' => 'latitud_fin',
             'longitud_fin' => 'longitud_fin',
             'velocidad_fin_kmh' => 'velocidad_fin_kmh',
+            'mensajes_fuente_json' => 'mensajes_fuente_json',
             'guardado_en' => 'created_at',
         ] : [
             'id' => 'id',
@@ -143,7 +144,7 @@ final class AdminTelemetrySamples extends BaseController
         // Excel on Spanish locales recognizes UTF-8 correctly with the BOM.
         fwrite($stream, "\xEF\xBB\xBF");
         fputcsv($stream, array_keys($columns), ';', '"', '');
-        $textFields = ['proveedor', 'unidad_externa', 'equipo_codigo', 'equipo_patente', 'sensores_json', 'anomalias'];
+        $textFields = ['proveedor', 'unidad_externa', 'equipo_codigo', 'equipo_patente', 'sensores_json', 'anomalias', 'mensajes_fuente_json'];
         foreach ($rows as $row) {
             $values = [];
             foreach ($columns as $label => $field) {

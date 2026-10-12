@@ -12,7 +12,22 @@ const pageUrl = (page) => {
 }
 const firstRow = computed(() => props.data.total === 0 ? 0 : ((props.data.page - 1) * props.data.perPage) + 1)
 const lastRow = computed(() => Math.min(props.data.page * props.data.perPage, props.data.total))
-const prettyJson = (value) => value ? JSON.stringify(value, null, 2) : ''
+const prettyJson = (value) => {
+  if (!value) return ''
+  try {
+    return JSON.stringify(typeof value === 'string' ? JSON.parse(value) : value, null, 2)
+  } catch {
+    return String(value)
+  }
+}
+const sourceMessageCount = (value) => {
+  try {
+    const parsed = typeof value === 'string' ? JSON.parse(value) : value
+    return Array.isArray(parsed) ? parsed.length : 0
+  } catch {
+    return 0
+  }
+}
 const exportUrl = computed(() => {
   const params = new URLSearchParams()
   if (props.data.selectedCompanyId) params.set('empresa', String(props.data.selectedCompanyId))
@@ -34,7 +49,7 @@ const formatNumber = (value, digits = 1) => value === null || value === undefine
     <AdminPageHeading
       eyebrow="Administración global · Solo lectura"
       title="Datos ingestados de telemetría"
-      description="Elegí una empresa y su integración para revisar el histórico guardado. En Wialon, verificá los intervalos de cinco minutos que alimentan el consumo; también podés consultar capturas puntuales y sus sensores."
+      description="Elegí una empresa y su integración para revisar el histórico guardado. En los intervalos Wialon nuevos también podés comparar cada mensaje original con los valores normalizados."
     />
 
     <form method="get" :action="basePath" class="rounded-xl border border-border bg-surface-raised p-5 shadow-card sm:p-6">
@@ -118,7 +133,7 @@ const formatNumber = (value, digits = 1) => value === null || value === undefine
       <div v-if="data.view === 'buckets' ? data.buckets.length : data.samples.length" class="overflow-x-auto">
         <table class="min-w-[1250px] w-full text-left text-sm">
           <thead v-if="data.view === 'buckets'" class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr>
-            <th class="px-4 py-3">Intervalo UTC</th><th class="px-4 py-3">Unidad / equipo</th><th class="px-4 py-3">Combustible</th><th class="px-4 py-3">Kilometraje / motor</th><th class="px-4 py-3">Ralentí / motor</th><th class="px-4 py-3">Velocidad / posición</th>
+            <th class="px-4 py-3">Intervalo UTC</th><th class="px-4 py-3">Unidad / equipo</th><th class="px-4 py-3">Combustible</th><th class="px-4 py-3">Kilometraje / motor</th><th class="px-4 py-3">Ralentí / motor</th><th class="px-4 py-3">Velocidad / posición</th><th class="px-4 py-3">Mensaje original</th>
           </tr></thead>
           <thead v-else class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr>
             <th class="px-4 py-3">Observada / ingresada</th><th class="px-4 py-3">Unidad / equipo</th><th class="px-4 py-3">Posición</th><th class="px-4 py-3">Uso y combustible</th><th class="px-4 py-3">Estado</th><th class="px-4 py-3">Sensores / anomalías</th>
@@ -132,6 +147,13 @@ const formatNumber = (value, digits = 1) => value === null || value === undefine
                 <td class="whitespace-nowrap px-4 py-3 text-xs text-ink-muted"><div>Odómetro {{ formatNumber(bucket.kilometraje_inicio, 0) }} → {{ formatNumber(bucket.kilometraje_fin, 0) }} km</div><div class="mt-1">Motor {{ formatNumber(bucket.horas_decimales_inicio, 2) }} → {{ formatNumber(bucket.horas_decimales_fin, 2) }} h</div></td>
                 <td class="whitespace-nowrap px-4 py-3 text-xs text-ink-muted"><div>Ralentí {{ formatNumber(bucket.segundos_ralenti, 0) }} s</div><div class="mt-1">Motor {{ formatBoolean(bucket.motor_inicio) }} → {{ formatBoolean(bucket.motor_fin) }}</div><div class="mt-1">Ralentí activo {{ formatBoolean(bucket.ralenti_inicio) }} → {{ formatBoolean(bucket.ralenti_fin) }}</div></td>
                 <td class="whitespace-nowrap px-4 py-3 text-xs text-ink-muted"><div>Velocidad {{ formatNumber(bucket.velocidad_inicio_kmh) }} → {{ formatNumber(bucket.velocidad_fin_kmh) }} km/h</div><div class="mt-1">Inicio {{ bucket.latitud_inicio ?? '—' }}, {{ bucket.longitud_inicio ?? '—' }}</div><div class="mt-1">Fin {{ bucket.latitud_fin ?? '—' }}, {{ bucket.longitud_fin ?? '—' }}</div></td>
+                <td class="max-w-md px-4 py-3 text-xs text-ink-muted">
+                  <details v-if="bucket.mensajes_fuente_json" class="space-y-2">
+                    <summary class="cursor-pointer font-semibold text-primary">Ver {{ sourceMessageCount(bucket.mensajes_fuente_json) }} mensajes recibidos</summary>
+                    <pre class="mt-2 max-h-96 min-w-96 overflow-auto whitespace-pre-wrap break-words rounded-md bg-surface-subtle p-3 text-[11px]">{{ prettyJson(bucket.mensajes_fuente_json) }}</pre>
+                  </details>
+                  <span v-else>Este intervalo se guardó antes de habilitar el detalle crudo.</span>
+                </td>
               </tr>
             </template>
             <template v-else>

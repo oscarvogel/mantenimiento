@@ -175,8 +175,11 @@ final class CodeIgniterAdminTelemetrySamplesReader implements AdminTelemetrySamp
         }
 
         if ($view === 'buckets' && $this->db->tableExists('telematia_buckets')) {
+            $rawMessagesColumn = $this->db->fieldExists('mensajes_fuente_json', 'telematia_buckets')
+                ? ', t.mensajes_fuente_json'
+                : '';
             $query = $this->db->table('telematia_buckets t')
-                ->select('t.id, t.empresa_id, t.integracion_id, t.proveedor, t.unidad_externa, t.equipo_id, e.codigo AS equipo_codigo, e.patente AS equipo_patente, t.bucket_inicio_utc, t.bucket_fin_utc, t.primera_observada_en, t.ultima_observada_en, t.combustible_inicio_litros, t.combustible_fin_litros, t.kilometraje_inicio, t.kilometraje_fin, t.horas_decimales_inicio, t.horas_decimales_fin, t.motor_inicio, t.motor_fin, t.ralenti_inicio, t.ralenti_fin, t.segundos_ralenti, t.latitud_inicio, t.longitud_inicio, t.velocidad_inicio_kmh, t.latitud_fin, t.longitud_fin, t.velocidad_fin_kmh, t.created_at')
+                ->select('t.id, t.empresa_id, t.integracion_id, t.proveedor, t.unidad_externa, t.equipo_id, e.codigo AS equipo_codigo, e.patente AS equipo_patente, t.bucket_inicio_utc, t.bucket_fin_utc, t.primera_observada_en, t.ultima_observada_en, t.combustible_inicio_litros, t.combustible_fin_litros, t.kilometraje_inicio, t.kilometraje_fin, t.horas_decimales_inicio, t.horas_decimales_fin, t.motor_inicio, t.motor_fin, t.ralenti_inicio, t.ralenti_fin, t.segundos_ralenti, t.latitud_inicio, t.longitud_inicio, t.velocidad_inicio_kmh, t.latitud_fin, t.longitud_fin, t.velocidad_fin_kmh, t.created_at' . $rawMessagesColumn)
                 ->join('equipos e', 'e.id = t.equipo_id AND e.empresa_id = t.empresa_id', 'left')
                 ->where('t.empresa_id', $companyId)
                 ->where('t.integracion_id', $integrationId);
@@ -216,8 +219,11 @@ final class CodeIgniterAdminTelemetrySamplesReader implements AdminTelemetrySamp
 
         $totalPages = (int) ceil($total / max(1, (int) $filters['perPage']));
         $page = min((int) $filters['page'], max(1, $totalPages));
+        $rawMessagesColumn = $this->db->fieldExists('mensajes_fuente_json', 'telematia_buckets')
+            ? ', t.mensajes_fuente_json'
+            : '';
         $query = $this->db->table('telematia_buckets t')
-            ->select('t.id, t.proveedor, t.unidad_externa, t.equipo_id, e.codigo AS equipo_codigo, e.patente AS equipo_patente, t.bucket_inicio_utc, t.bucket_fin_utc, t.primera_observada_en, t.ultima_observada_en, t.combustible_inicio_litros, t.combustible_fin_litros, t.kilometraje_inicio, t.kilometraje_fin, t.horas_decimales_inicio, t.horas_decimales_fin, t.motor_inicio, t.motor_fin, t.ralenti_inicio, t.ralenti_fin, t.segundos_ralenti, t.latitud_inicio, t.longitud_inicio, t.velocidad_inicio_kmh, t.latitud_fin, t.longitud_fin, t.velocidad_fin_kmh, t.created_at')
+            ->select('t.id, t.proveedor, t.unidad_externa, t.equipo_id, e.codigo AS equipo_codigo, e.patente AS equipo_patente, t.bucket_inicio_utc, t.bucket_fin_utc, t.primera_observada_en, t.ultima_observada_en, t.combustible_inicio_litros, t.combustible_fin_litros, t.kilometraje_inicio, t.kilometraje_fin, t.horas_decimales_inicio, t.horas_decimales_fin, t.motor_inicio, t.motor_fin, t.ralenti_inicio, t.ralenti_fin, t.segundos_ralenti, t.latitud_inicio, t.longitud_inicio, t.velocidad_inicio_kmh, t.latitud_fin, t.longitud_fin, t.velocidad_fin_kmh, t.created_at' . $rawMessagesColumn)
             ->join('equipos e', 'e.id = t.equipo_id AND e.empresa_id = t.empresa_id', 'left')
             ->where('t.empresa_id', $companyId)
             ->where('t.integracion_id', $integrationId);

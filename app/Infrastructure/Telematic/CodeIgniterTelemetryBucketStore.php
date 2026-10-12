@@ -201,6 +201,10 @@ final class CodeIgniterTelemetryBucketStore implements TelemetryBucketStore
             'rumbo_fin' => $posicionFin?->course(),
             'altitud_fin_m' => $posicionFin?->altitudeMeters(),
             'satelites_fin' => $posicionFin?->satellites(),
+            'mensajes_fuente_json' => json_encode(
+                $bucket->mensajesFuente(),
+                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR,
+            ),
             'created_at' => $registrada,
         ];
     }

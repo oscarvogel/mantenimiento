@@ -64,6 +64,16 @@ final class WialonHistoricalMessageMapper
             $motor,
             $ralenti,
             $this->posicion($mensaje['pos'] ?? null, $observada),
+            [
+                't' => $mensaje['t'],
+                'f' => $mensaje['f'] ?? null,
+                'tp' => $mensaje['tp'],
+                'pos' => $mensaje['pos'] ?? null,
+                'p' => $parametros,
+                'sensors' => $sensores,
+                'sensor_definitions' => $definiciones,
+                'rt' => $mensaje['rt'] ?? null,
+            ],
         );
     }
 

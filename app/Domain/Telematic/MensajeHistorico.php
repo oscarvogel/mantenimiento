@@ -18,6 +18,8 @@ final readonly class MensajeHistorico
         private ?bool $motorEncendido,
         private ?bool $ralentiActivo,
         private ?Posicion $posicion = null,
+        /** @var array<string,mixed> */
+        private array $datosFuente = [],
     ) {
         if ($combustibleLitros !== null && (! is_finite($combustibleLitros) || $combustibleLitros < 0.0)) {
             throw new InvalidArgumentException('El combustible de un mensaje histórico debe ser finito y no negativo.');
@@ -65,5 +67,11 @@ final readonly class MensajeHistorico
     public function posicion(): ?Posicion
     {
         return $this->posicion;
+    }
+
+    /** @return array<string,mixed> */
+    public function datosFuente(): array
+    {
+        return $this->datosFuente;
     }
 }

@@ -89,6 +89,10 @@ final class AgregadorBucketsTelemetria
                     : (isset($bucketConCobertura[$inicioTimestamp])
                         ? ($segundosRalenti[$inicioTimestamp] ?? 0)
                         : null),
+                array_map(
+                    static fn (MensajeHistorico $mensaje): array => $mensaje->datosFuente(),
+                    $mensajesDelBucket,
+                ),
             );
         }
 

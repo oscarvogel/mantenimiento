@@ -54,7 +54,10 @@ Cada bucket no vacío registra una sola fila con:
 - kilometraje y horómetro al inicio y al fin;
 - estado de motor y ralentí en los extremos;
 - duración de ralentí computable dentro del bucket, o `null` si faltan datos válidos;
-- los datos de posición/velocidad extremos que el lector actual necesite, sin conservar el cuerpo crudo de cada mensaje.
+- los datos de posición/velocidad extremos que el lector actual necesite;
+- los mensajes de datos Wialon originales del intervalo, con parámetros, sensores calculados, posición y definiciones de sensores para diagnóstico.
+
+Los datos originales se conservan dentro del mismo bucket para que Superadministración pueda comparar cada mensaje con los valores normalizados. No incluyen credenciales ni respuestas de autenticación. Su retención y respaldo siguen el ciclo de vida de `telematia_buckets`.
 
 Los campos de límites se toman del primer y último mensaje válido, no del valor máximo ni del último valor consultado en el presente. Si una métrica falta en uno de los extremos, ese extremo queda `null`; no se interpola. El tiempo de ralentí se calcula solo entre mensajes consecutivos válidos, se limita al fin del bucket y no cruza huecos mayores a 30 minutos.
 
@@ -68,7 +71,7 @@ Los campos de límites se toman del primer y último mensaje válido, no del val
 
 ### Persistencia y compatibilidad
 
-La tabla vigente representa puntos y no puede guardar el contenido anterior de cada bucket. Se agregan dos tablas mediante migración aditiva y reversible: `telematia_buckets` (una fila por unidad/bucket) y `telematia_cursor` (un cursor por integración/unidad). Esta separación mantiene el contrato de las muestras existentes y da identidad explícita al bucket.
+La tabla vigente representa puntos y no puede guardar el contenido anterior de cada bucket. Se agregan dos tablas mediante migración aditiva y reversible: `telematia_buckets` (una fila por unidad/bucket) y `telematia_cursor` (un cursor por integración/unidad). Una columna JSON de diagnóstico en `telematia_buckets` conserva los mensajes originales asociados a cada resumen. Esta separación mantiene el contrato de las muestras existentes y da identidad explícita al bucket.
 
 La ingesta de buckets sustituye el guardado puntual Wialon en el histórico después del corte; `telematia_ultima_lectura` sigue actualizándose. Si aparece otro proveedor sin lectura histórica agregada, puede seguir usando `telematia_muestras`. El despliegue preserva las filas históricas previas, permite que la retención las purgue con respaldo verificado y evita guardar permanentemente tanto el punto del cron Wialon como el bucket del mismo período.
 
@@ -78,13 +81,13 @@ El lector de serie adapta cada bucket a sus extremos ordenados para `SerieMuestr
 
 - El intervalo de cinco minutos es una política de ingesta configurable, no parte de la clave lógica fuera de `bucket_inicio_utc`.
 - El procesamiento puede ejecutarse en lotes de varias unidades; cambiar el tamaño del lote no modifica la tabla ni las fórmulas.
-- No se persisten mensajes crudos. La agregación ocurre en memoria y conserva únicamente el resumen por bucket.
+- Se persisten los mensajes crudos de datos de cada bucket junto con el resumen para permitir diagnóstico desde Superadministración; no se guardan credenciales ni respuestas de autenticación.
 - El refresco actual y la lectura histórica deben compartir la sesión de Wialon de forma secuencial; no se ejecutan peticiones incompatibles en paralelo dentro de la misma sesión.
 
 ## Fuera de alcance
 
 - Cambiar la frecuencia real del cron, que ya está confirmada en cinco minutos.
-- Persistir cada mensaje o almacenar respuestas crudas de Wialon.
+- Persistir mensajes fuera del bucket o almacenar respuestas crudas completas de Wialon.
 - Cambiar las reglas de consumo, cobertura o segmentación del dominio.
 - Corregir automáticamente mensajes tardíos de buckets publicados.
 - Consultar o modificar staging o producción durante este diseño.

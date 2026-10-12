@@ -16,6 +16,8 @@ final readonly class BucketTelemetria
         private MensajeHistorico $primero,
         private MensajeHistorico $ultimo,
         private ?int $segundosRalenti,
+        /** @var list<array<string,mixed>> */
+        private array $mensajesFuente = [],
     ) {
         if ($fin <= $inicio) {
             throw new InvalidArgumentException('El fin del bucket debe ser posterior a su inicio.');
@@ -57,5 +59,11 @@ final readonly class BucketTelemetria
     public function segundosRalenti(): ?int
     {
         return $this->segundosRalenti;
+    }
+
+    /** @return list<array<string,mixed>> */
+    public function mensajesFuente(): array
+    {
+        return $this->mensajesFuente;
     }
 }
