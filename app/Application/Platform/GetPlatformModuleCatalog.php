@@ -95,11 +95,13 @@ final class GetPlatformModuleCatalog
         ]];
 
         foreach (self::FUTURE_MODULES as $module) {
+            $managementEnabled = $module['key'] === 'management'
+                && $actor->hasPermission('gerencial.costo_km.ver');
             $modules[] = [
                 ...$module,
-                'landingPath' => null,
-                'status' => 'Sin implementación aún',
-                'state' => 'not_implemented',
+                'landingPath' => $managementEnabled ? 'gerencial/costo-teorico-km' : null,
+                'status' => $managementEnabled ? 'Operativo' : 'Sin implementación aún',
+                'state' => $managementEnabled ? 'available' : 'not_implemented',
             ];
         }
 
