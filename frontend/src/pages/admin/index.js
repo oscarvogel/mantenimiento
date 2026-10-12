@@ -5,8 +5,9 @@ import SuperAdminPage from './SuperAdminPage.vue'
 import SuperAdminDemoPage from './SuperAdminDemoPage.vue'
 import UsersAdminPage from './UsersAdminPage.vue'
 import UsersAdminWithAuditPage from './UsersAdminWithAuditPage.vue'
+import TelemetrySamplesAdminPage from './TelemetrySamplesAdminPage.vue'
 
-export { BranchesAdminPage, ChatAuditPage, NotificationSettingsPage, SuperAdminPage, SuperAdminDemoPage, UsersAdminPage, UsersAdminWithAuditPage }
+export { BranchesAdminPage, ChatAuditPage, NotificationSettingsPage, SuperAdminPage, SuperAdminDemoPage, TelemetrySamplesAdminPage, UsersAdminPage, UsersAdminWithAuditPage }
 
 export const adminPagesByType = Object.freeze({
   superadmin: SuperAdminDemoPage,
@@ -14,4 +15,5 @@ export const adminPagesByType = Object.freeze({
   'users-admin': UsersAdminWithAuditPage,
   'chatbot-audit': ChatAuditPage,
   'superadmin-notification-settings': NotificationSettingsPage,
+  'telemetry-samples-admin': TelemetrySamplesAdminPage,
 })

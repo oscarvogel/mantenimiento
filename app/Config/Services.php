@@ -102,6 +102,8 @@ use App\Infrastructure\Notifications\CodeIgniterNotificationUnitOfWork;
 use App\Infrastructure\Notifications\CodeIgniterOperationalNotificationEventSource;
 use App\Infrastructure\Telematic\WialonRemoteApiGateway;
 use App\Application\Telematic\DiagnoseSilentUnits;
+use App\Application\Telematic\GetAdminTelemetrySamples;
+use App\Infrastructure\Telematic\CodeIgniterAdminTelemetrySamplesReader;
 use App\Application\Telematic\ConfigureTelemetryIntegration;
 use App\Application\Telematic\ManageTelemetryEquipmentLinks;
 use App\Infrastructure\Telematic\CodeIgniterTelemetryIntegrationConfigurator;
@@ -613,6 +615,11 @@ class Services extends BaseService
             new CodeIgniterHistoricoMuestras($db),
             new CodeIgniterBucketSerieMuestrasReader($db),
         );
+    }
+
+    public static function adminTelemetrySamples(): GetAdminTelemetrySamples
+    {
+        return new GetAdminTelemetrySamples(new CodeIgniterAdminTelemetrySamplesReader(db_connect()));
     }
 
     private static function telematicGatewayRegistry(): CodeIgniterFleetTelemetryGatewayRegistry
