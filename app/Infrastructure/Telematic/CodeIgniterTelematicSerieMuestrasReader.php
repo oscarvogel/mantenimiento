@@ -8,9 +8,11 @@ use App\Application\Telematic\Port\SerieMuestrasReader;
 use App\Domain\Telematic\MuestraEquipo;
 use DateTimeImmutable;
 
-/** Prefiere la serie puntual Wialon a sus buckets cuando ambos existen en la ventana. */
+/** Prefiere puntos Wialon frente a extremos del mismo bucket de cinco minutos. */
 final readonly class CodeIgniterTelematicSerieMuestrasReader implements SerieMuestrasReader
 {
+    private const SEGUNDOS_BUCKET = 300;
+
     public function __construct(
         private SerieMuestrasReader $puntos,
         private SerieMuestrasReader $buckets,
@@ -20,19 +22,19 @@ final readonly class CodeIgniterTelematicSerieMuestrasReader implements SerieMue
     public function serie(int $empresaId, int $equipoId, DateTimeImmutable $desde, DateTimeImmutable $hasta): array
     {
         $puntos = $this->puntos->serie($empresaId, $equipoId, $desde, $hasta);
-        $hayPuntosWialon = false;
+        $bucketsConPuntosWialon = [];
         foreach ($puntos as $punto) {
             if (strtolower(trim($punto->proveedor())) === 'wialon') {
-                $hayPuntosWialon = true;
-                break;
+                $bucketsConPuntosWialon[intdiv($punto->observadaEn()->getTimestamp(), self::SEGUNDOS_BUCKET)] = true;
             }
         }
 
         $buckets = $this->buckets->serie($empresaId, $equipoId, $desde, $hasta);
-        if ($hayPuntosWialon) {
+        if ($bucketsConPuntosWialon !== []) {
             $buckets = array_values(array_filter(
                 $buckets,
-                static fn (MuestraEquipo $bucket): bool => strtolower(trim($bucket->proveedor())) !== 'wialon',
+                static fn (MuestraEquipo $bucket): bool => strtolower(trim($bucket->proveedor())) !== 'wialon'
+                    || ! isset($bucketsConPuntosWialon[intdiv($bucket->observadaEn()->getTimestamp(), self::SEGUNDOS_BUCKET)]),
             ));
         }
 

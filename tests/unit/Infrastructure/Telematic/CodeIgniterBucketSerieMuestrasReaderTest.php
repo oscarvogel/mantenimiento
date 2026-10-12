@@ -126,11 +126,12 @@ final class CodeIgniterBucketSerieMuestrasReaderTest extends CIUnitTestCase
         self::assertSame(3, (int) $this->mysql->table('telematia_buckets')->countAllResults());
     }
 
-    public function testElLectorCompuestoPrefierePuntosWialonYNoDuplicaBucketsEnLaVentana(): void
+    public function testElLectorCompuestoConservaBucketsFueraDelSolapamientoDePuntos(): void
     {
         $this->insertarMuestra('gestya', 20, '2026-10-10 12:06:00');
         $this->insertarMuestra('wialon', 21, '2026-10-10 12:07:00');
         $this->insertar(7, 42, '123', '2026-10-10 12:00:00', '2026-10-10 12:04:00', 100, 99, -34.0, -69.0);
+        $this->insertar(7, 42, '123', '2026-10-10 12:05:00', '2026-10-10 12:09:00', 99, 98, -34.0, -69.0);
         $this->insertar(7, 42, '123', '2026-10-10 12:10:00', '2026-10-10 12:14:00', 98, 97, -35.0, -70.0);
         $reader = new CodeIgniterTelematicSerieMuestrasReader(
             new CodeIgniterHistoricoMuestras($this->mysql),
@@ -145,11 +146,18 @@ final class CodeIgniterBucketSerieMuestrasReaderTest extends CIUnitTestCase
         );
 
         self::assertSame(
-            ['2026-10-10 12:06:00', '2026-10-10 12:07:00'],
+            [
+                '2026-10-10 12:00:00',
+                '2026-10-10 12:04:00',
+                '2026-10-10 12:06:00',
+                '2026-10-10 12:07:00',
+                '2026-10-10 12:10:00',
+                '2026-10-10 12:14:00',
+            ],
             array_map(static fn ($muestra): string => $muestra->observadaEn()->format('Y-m-d H:i:s'), $serie),
         );
         self::assertSame(
-            ['gestya', 'WIALON'],
+            ['WIALON', 'WIALON', 'gestya', 'wialon', 'WIALON', 'WIALON'],
             array_map(static fn ($muestra): string => $muestra->proveedor(), $serie),
         );
     }
@@ -189,14 +197,18 @@ final class CodeIgniterBucketSerieMuestrasReaderTest extends CIUnitTestCase
 
     private function insertarMuestra(string $proveedor, int $integracionId, string $observada): void
     {
+        $zonaAplicacion = new DateTimeZone('America/Argentina/Buenos_Aires');
+        $observadaPersistida = (new DateTimeImmutable($observada, new DateTimeZone('UTC')))
+            ->setTimezone($zonaAplicacion)
+            ->format('Y-m-d H:i:s');
         $this->mysql->table('telematia_muestras')->insert([
             'empresa_id' => 7,
             'integracion_id' => $integracionId,
             'equipo_id' => 42,
             'unidad_externa' => 'muestra-' . $integracionId,
             'proveedor' => $proveedor,
-            'observada_en' => $observada,
-            'registrada_en' => '2026-10-10 13:00:00',
+            'observada_en' => $observadaPersistida,
+            'registrada_en' => '2026-10-10 10:00:00',
             'latitud' => -33.0,
             'longitud' => -68.0,
             'velocidad_kmh' => 10,
