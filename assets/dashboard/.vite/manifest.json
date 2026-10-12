@@ -1,72 +1,72 @@
 {
-  "_admin-DJW14bN7.js": {
-    "file": "assets/admin-DJW14bN7.js",
+  "_admin-CUHZJ3op.js": {
+    "file": "assets/admin-CUHZJ3op.js",
     "name": "admin",
     "imports": [
-      "_vendor-vm61cXxy.js"
-    ]
-  },
-  "_chatbot-klBHyObh.js": {
-    "file": "assets/chatbot-klBHyObh.js",
-    "name": "chatbot",
-    "isDynamicEntry": true,
-    "imports": [
-      "_vendor-vm61cXxy.js"
-    ],
-    "css": [
-      "assets/chatbot-p1890OXW.css"
+      "_vendor-CsP7tb51.js"
     ]
   },
   "_chatbot-p1890OXW.css": {
     "file": "assets/chatbot-p1890OXW.css",
     "src": "_chatbot-p1890OXW.css"
   },
-  "_reports-CwLz26pz.js": {
-    "file": "assets/reports-CwLz26pz.js",
+  "_chatbot-t-kXBB2p.js": {
+    "file": "assets/chatbot-t-kXBB2p.js",
+    "name": "chatbot",
+    "isDynamicEntry": true,
+    "imports": [
+      "_vendor-CsP7tb51.js"
+    ],
+    "css": [
+      "assets/chatbot-p1890OXW.css"
+    ]
+  },
+  "_reports-D30yptwg.js": {
+    "file": "assets/reports-D30yptwg.js",
     "name": "reports",
     "imports": [
-      "_admin-DJW14bN7.js",
-      "_vendor-vm61cXxy.js"
+      "_admin-CUHZJ3op.js",
+      "_vendor-CsP7tb51.js"
     ]
   },
   "_vendor-BTrKGrB8.css": {
     "file": "assets/vendor-BTrKGrB8.css",
     "src": "_vendor-BTrKGrB8.css"
   },
-  "_vendor-vm61cXxy.js": {
-    "file": "assets/vendor-vm61cXxy.js",
+  "_vendor-CsP7tb51.js": {
+    "file": "assets/vendor-CsP7tb51.js",
     "name": "vendor",
     "css": [
       "assets/vendor-BTrKGrB8.css"
     ]
   },
   "src/main.js": {
-    "file": "assets/main--orNfZ1l.js",
+    "file": "assets/main-ReDMoHDe.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
     "imports": [
-      "_vendor-vm61cXxy.js",
-      "_chatbot-klBHyObh.js",
-      "_admin-DJW14bN7.js",
-      "_reports-CwLz26pz.js"
+      "_vendor-CsP7tb51.js",
+      "_chatbot-t-kXBB2p.js",
+      "_admin-CUHZJ3op.js",
+      "_reports-D30yptwg.js"
     ],
     "dynamicImports": [
-      "_chatbot-klBHyObh.js",
+      "_chatbot-t-kXBB2p.js",
       "src/pages/operations/components/FleetTelemetryMap.vue"
     ],
     "css": [
-      "assets/main-Ci1jvZhp.css"
+      "assets/main-CeYlZnyL.css"
     ]
   },
   "src/pages/operations/components/FleetTelemetryMap.vue": {
-    "file": "assets/FleetTelemetryMap-5qPKRiJn.js",
+    "file": "assets/FleetTelemetryMap-CA70FHiO.js",
     "name": "FleetTelemetryMap",
     "src": "src/pages/operations/components/FleetTelemetryMap.vue",
     "isDynamicEntry": true,
     "imports": [
-      "_vendor-vm61cXxy.js",
-      "_chatbot-klBHyObh.js"
+      "_vendor-CsP7tb51.js",
+      "_chatbot-t-kXBB2p.js"
     ],
     "css": [
       "assets/FleetTelemetryMap-eJHHeTQZ.css"
