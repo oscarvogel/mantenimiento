@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { ArrowPathIcon, CircleStackIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
+import { ArrowDownTrayIcon, ArrowPathIcon, CircleStackIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
 import AdminPageHeading from './components/AdminPageHeading.vue'
 
 const props = defineProps({ data: { type: Object, required: true } })
@@ -13,6 +13,16 @@ const pageUrl = (page) => {
 const firstRow = computed(() => props.data.total === 0 ? 0 : ((props.data.page - 1) * props.data.perPage) + 1)
 const lastRow = computed(() => Math.min(props.data.page * props.data.perPage, props.data.total))
 const prettyJson = (value) => value ? JSON.stringify(value, null, 2) : ''
+const exportUrl = computed(() => {
+  const params = new URLSearchParams()
+  if (props.data.selectedCompanyId) params.set('empresa', String(props.data.selectedCompanyId))
+  if (props.data.selectedIntegrationId) params.set('integracion', String(props.data.selectedIntegrationId))
+  if (props.data.view) params.set('vista', props.data.view)
+  if (props.data.filters.unit) params.set('unidad', props.data.filters.unit)
+  if (props.data.filters.from) params.set('desde', props.data.filters.from)
+  if (props.data.filters.to) params.set('hasta', props.data.filters.to)
+  return `${basePath.replace(/\/$/, '')}/exportar?${params.toString()}`
+})
 const formatBoolean = (value) => value === null || value === undefined ? '—' : (Number(value) === 1 ? 'Sí' : 'No')
 const formatNumber = (value, digits = 1) => value === null || value === undefined
   ? '—'
@@ -96,9 +106,14 @@ const formatNumber = (value, digits = 1) => value === null || value === undefine
       <div><h2 class="font-semibold text-ink">Esta empresa no tiene un proveedor configurado</h2><p class="mt-1 text-sm">Elegí otra empresa o revisá la configuración de telemetría de esta cuenta.</p></div>
     </section>
     <section v-else class="overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card">
-      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-border-subtle px-5 py-4">
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle px-5 py-4">
         <div><h2 class="font-semibold text-ink">Capturas crudas</h2><p class="mt-1 text-sm text-ink-muted">{{ data.total ? `Mostrando ${firstRow}–${lastRow} de ${data.total.toLocaleString('es-AR')}` : 'No hay muestras para estos filtros.' }}</p></div>
-        <span class="rounded-full bg-surface-muted px-3 py-1 text-xs font-semibold text-ink-muted">Más recientes primero · {{ data.perPage }} por página</span>
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="rounded-full bg-surface-muted px-3 py-1 text-xs font-semibold text-ink-muted">Más recientes primero · {{ data.perPage }} por página</span>
+          <a :href="exportUrl" title="Descarga todos los registros que coinciden con los filtros" class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-primary px-3 py-2 text-sm font-semibold text-primary hover:bg-primary-subtle">
+            <ArrowDownTrayIcon class="size-4" aria-hidden="true" /> Exportar CSV
+          </a>
+        </div>
       </div>
       <div v-if="data.view === 'buckets' ? data.buckets.length : data.samples.length" class="overflow-x-auto">
         <table class="min-w-[1250px] w-full text-left text-sm">

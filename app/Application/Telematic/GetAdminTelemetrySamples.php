@@ -20,20 +20,36 @@ final readonly class GetAdminTelemetrySamples
      */
     public function execute(array $query): array
     {
-        $companyId = $this->positiveInteger($query['empresa'] ?? null);
-        $integrationId = $this->positiveInteger($query['integracion'] ?? null);
-        $page = max(1, min(100000, (int) ($query['pagina'] ?? 1)));
+        $filters = $this->filters($query);
+        $filters['page'] = max(1, min(100000, (int) ($query['pagina'] ?? 1)));
+        $filters['perPage'] = self::PER_PAGE;
 
-        return $this->reader->read([
-            'companyId' => $companyId,
-            'integrationId' => $integrationId,
+        return $this->reader->read($filters);
+    }
+
+    /** @param array<string,mixed> $query
+     *  @return array{view:string,rows:list<array<string,mixed>>}
+     */
+    public function export(array $query): array
+    {
+        return $this->reader->readForExport($this->filters($query));
+    }
+
+    /** @param array<string,mixed> $query
+     *  @return array{companyId:?int,integrationId:?int,from:?string,to:?string,unit:string,view:string,page:int,perPage:int}
+     */
+    private function filters(array $query): array
+    {
+        return [
+            'companyId' => $this->positiveInteger($query['empresa'] ?? null),
+            'integrationId' => $this->positiveInteger($query['integracion'] ?? null),
             'from' => $this->date($query['desde'] ?? null),
             'to' => $this->date($query['hasta'] ?? null),
             'unit' => mb_substr(trim((string) ($query['unidad'] ?? '')), 0, 100),
             'view' => in_array(($query['vista'] ?? ''), ['buckets', 'samples'], true) ? (string) $query['vista'] : '',
-            'page' => $page,
+            'page' => 1,
             'perPage' => self::PER_PAGE,
-        ]);
+        ];
     }
 
     private function positiveInteger(mixed $value): ?int
