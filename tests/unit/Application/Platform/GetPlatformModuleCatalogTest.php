@@ -68,4 +68,28 @@ final class GetPlatformModuleCatalogTest extends TestCase
         self::assertSame('restricted', $modules[0]['state']);
         self::assertNull($modules[0]['landingPath']);
     }
+
+    public function testEnablesManagementModuleForTheoreticalCostPermission(): void
+    {
+        $actor = new ActorContext(12, 4, false, false, ['Gerencial'], ['gerencial.costo_km.ver'], [8]);
+
+        $modules = (new GetPlatformModuleCatalog())->execute($actor);
+        $management = array_values(array_filter($modules, static fn (array $module): bool => $module['key'] === 'management'))[0];
+
+        self::assertSame('gerencial/costo-teorico-km', $management['landingPath']);
+        self::assertSame('available', $management['state']);
+        self::assertSame('Operativo', $management['status']);
+    }
+
+    public function testKeepsManagementModuleDisabledWithoutItsPermission(): void
+    {
+        $actor = new ActorContext(12, 4, false, false, ['Consulta'], ['equipos.ver'], [8]);
+
+        $modules = (new GetPlatformModuleCatalog())->execute($actor);
+        $management = array_values(array_filter($modules, static fn (array $module): bool => $module['key'] === 'management'))[0];
+
+        self::assertNull($management['landingPath']);
+        self::assertSame('not_implemented', $management['state']);
+        self::assertSame('Sin implementación aún', $management['status']);
+    }
 }

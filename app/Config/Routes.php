@@ -258,6 +258,17 @@ $routes->group('reportes', ['filter' => ['auth', 'permission:reportes.ver']], st
     $routes->get('exportar', 'Reports::export');
 });
 
+$routes->group('gerencial/costo-teorico-km', ['filter' => ['auth', 'permission:gerencial.costo_km.ver']], static function ($routes): void {
+    $routes->get('', 'TheoreticalCosts::index');
+    $routes->get('activos', 'TheoreticalCosts::assets');
+    $routes->get('cotizacion-bcra', 'TheoreticalCosts::exchangeRate');
+    $routes->post('calcular', 'TheoreticalCosts::calculate', ['filter' => 'permission:gerencial.costo_km.editar']);
+    $routes->get('escenarios', 'TheoreticalCosts::scenarios');
+    $routes->post('escenarios', 'TheoreticalCosts::save', ['filter' => 'permission:gerencial.costo_km.editar']);
+    $routes->get('escenarios/(:num)/versiones/(:num)', 'TheoreticalCosts::version/$1/$2');
+    $routes->get('escenarios/(:num)/versiones/(:num)/excel', 'TheoreticalCosts::export/$1/$2');
+});
+
 $routes->group('', ['filter' => ['auth', 'permission:notificaciones.ver']], static function ($routes): void {
     $routes->get('notificaciones', 'Notifications::index');
     $routes->get('notificaciones/resumen', 'Notifications::summary');

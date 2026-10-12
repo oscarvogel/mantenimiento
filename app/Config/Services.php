@@ -948,6 +948,33 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
         );
     }
 
+    public static function theoreticalCostScenarioStore(bool $getShared = true): \App\Infrastructure\TheoreticalCost\CodeIgniterTheoreticalCostScenarioStore
+    {
+        if ($getShared) {
+            return static::getSharedInstance('theoreticalCostScenarioStore');
+        }
+        return new \App\Infrastructure\TheoreticalCost\CodeIgniterTheoreticalCostScenarioStore(db_connect());
+    }
+
+    public static function theoreticalCostManager(bool $getShared = true): \App\Application\TheoreticalCost\TheoreticalCostManager
+    {
+        if ($getShared) {
+            return static::getSharedInstance('theoreticalCostManager');
+        }
+        return new \App\Application\TheoreticalCost\TheoreticalCostManager(
+            static::theoreticalCostScenarioStore(false),
+            new \App\Domain\TheoreticalCost\TheoreticalCostCalculator(),
+        );
+    }
+
+    public static function theoreticalCostXlsxExporter(bool $getShared = true): \App\Infrastructure\TheoreticalCost\XlsxTheoreticalCostExporter
+    {
+        if ($getShared) {
+            return static::getSharedInstance('theoreticalCostXlsxExporter');
+        }
+        return new \App\Infrastructure\TheoreticalCost\XlsxTheoreticalCostExporter();
+    }
+
     public static function globalDashboard(bool $getShared = true): GetGlobalDashboard
     {
         if ($getShared) {

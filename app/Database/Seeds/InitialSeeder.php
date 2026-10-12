@@ -49,6 +49,7 @@ final class InitialSeeder extends Seeder
             'Tecnico u operador' => 'Consultar trabajo asignado, cargar lecturas, iniciar, actualizar y cerrar tareas u órdenes según autorización.',
             'Solicitante' => 'Informar fallas o necesidades, adjuntar evidencia y consultar el estado de sus solicitudes.',
             'Consulta' => 'Visualizar paneles, equipos, órdenes e historial sin modificar información.',
+            'Gerencial' => 'Consultar y configurar costos teóricos por kilómetro y análisis gerencial.',
         ];
         $roleIds = [];
         foreach ($roles as $name => $description) {
@@ -91,6 +92,8 @@ final class InitialSeeder extends Seeder
             'proveedores.ver' => 'Consultar proveedores y talleres',
             'proveedores.editar' => 'Crear, editar e inactivar proveedores y talleres',
             'chatbot.usar' => 'Usar el chatbot asistente del sistema de mantenimiento',
+            'gerencial.costo_km.ver' => 'Consultar costo teórico por kilómetro dentro de Gerencial',
+            'gerencial.costo_km.editar' => 'Configurar y guardar escenarios de costo teórico por kilómetro',
         ];
         $permissionIds = [];
         foreach ($permissions as $key => $description) {
@@ -121,6 +124,7 @@ final class InitialSeeder extends Seeder
             ],
             'Solicitante' => ['solicitudes.crear', 'notificaciones.ver', 'chatbot.usar'],
             'Consulta' => ['equipos.ver', 'lecturas.ver', 'ordenes.ver', 'reportes.ver', 'importaciones.ver', 'notificaciones.ver'],
+            'Gerencial' => ['gerencial.costo_km.ver', 'gerencial.costo_km.editar'],
         ];
         foreach ($rolePermissions as $roleName => $keys) {
             foreach ($keys as $key) {

@@ -8,6 +8,7 @@ import { operationPageComponents } from './pages/operations/index.js'
 import { adminPagesByType } from './pages/admin/index.js'
 import { ReportsPage } from './pages/reports/index.js'
 import { NotificationCenterPage } from './pages/notifications/index.js'
+import { managerialPagesByType } from './pages/gerencia/index.js'
 import LoginPage from './pages/login/LoginPage.vue'
 import CommandCenterPage from './pages/platform/CommandCenterPage.vue'
 import { installContextualReadingActions } from './ui/contextualReadingActions.js'
@@ -55,6 +56,7 @@ export function mountMaintenanceDashboard(element, payload) {
   if (page !== 'dashboard') {
     const pageComponent = operationPageComponents[page]
       ?? adminPagesByType[page]
+      ?? managerialPagesByType[page]
       ?? (page === 'reports' ? ReportsPage : null)
       ?? (page === 'notifications' ? NotificationCenterPage : null)
       ?? (page === 'command-center' ? CommandCenterPage : null)

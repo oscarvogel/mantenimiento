@@ -38,6 +38,9 @@ final readonly class AppShellPayload
             $navigation[] = $this->item('notification-settings', 'Configuración de notificaciones', 'superadmin/configuracion/notificaciones', 'notifications', $active);
             $navigation[] = $this->item('chatbot-audit', 'Auditoría del chatbot', 'superadmin?section=chat-audit', 'audit', $active);
         } elseif ($active !== 'command-center') {
+            if ($actor->hasPermission('gerencial.costo_km.ver')) {
+                $navigation[] = $this->item('theoretical-cost-km', 'Costo teórico por km', 'gerencial/costo-teorico-km', 'chart', $active);
+            }
             if ($actor->hasPermission('equipos.ver')) {
                 $navigation[] = $this->item('equipment', 'Equipos', 'mantenimiento/equipos', 'truck', $active);
                 $navigation[] = $this->item('fleet-telemetry', 'Telemetría de flota', 'mantenimiento/telemetria', 'map', $active);

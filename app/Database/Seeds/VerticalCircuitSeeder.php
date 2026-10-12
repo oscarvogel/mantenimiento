@@ -16,6 +16,7 @@ final class VerticalCircuitSeeder extends Seeder
             'nombre' => 'Camión', 'controla_km' => 1, 'controla_horas' => 0,
             'activo' => 1, 'created_at' => $now, 'updated_at' => $now,
         ]);
+        $this->ensureSemiType($now);
         $this->ensureRow('tipos_equipo', 'nombre', 'Máquina', [
             'nombre' => 'Máquina', 'controla_km' => 0, 'controla_horas' => 1,
             'activo' => 1, 'created_at' => $now, 'updated_at' => $now,
@@ -84,5 +85,31 @@ final class VerticalCircuitSeeder extends Seeder
 
         $this->db->table('tipos_servicio')->insert($data);
         return (int) $this->db->insertID();
+    }
+
+    private function ensureSemiType(string $now): void
+    {
+        $existing = $this->db->table('tipos_equipo')->select('id, controla_km')
+            ->groupStart()
+                ->like('nombre', 'semirremolque')
+                ->orLike('nombre', 'acoplado')
+                ->orLike('nombre', 'semi')
+            ->groupEnd()
+            ->orderBy('id', 'ASC')->get()->getRowArray();
+
+        if ($existing === null) {
+            $this->ensureRow('tipos_equipo', 'nombre', 'Semirremolque', [
+                'nombre' => 'Semirremolque', 'controla_km' => 1, 'controla_horas' => 0,
+                'activo' => 1, 'created_at' => $now, 'updated_at' => $now,
+            ]);
+            return;
+        }
+
+        if ((int) $existing['controla_km'] !== 1) {
+            $this->db->table('tipos_equipo')->where('id', (int) $existing['id'])->update([
+                'controla_km' => 1,
+                'updated_at' => $now,
+            ]);
+        }
     }
 }
