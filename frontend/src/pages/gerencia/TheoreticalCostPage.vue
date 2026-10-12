@@ -308,6 +308,18 @@ const applyTrip = (source) => Object.assign(trip, {
 
 const addMonthlyCost = () => parameters.costos_mensuales.push({ codigo: '', nombre: '', importe: '', moneda: 'ARS' })
 const addOtherItem = () => parameters.otros_rubros.push({ codigo: '', nombre: '', importe: '', unidad: 'por_km', moneda: 'ARS' })
+const loadDocumentedAssumptions = () => {
+  parameters.combustible.litros_100km = '37.04'
+  parameters.neumaticos.vida_util_km = '250000'
+
+  const tireSetCost = Number(parameters.neumaticos.costo_juego)
+  if (parameters.neumaticos.costo_juego !== '' && Number.isFinite(tireSetCost) && tireSetCost >= 0) {
+    parameters.neumaticos.recapados = (tireSetCost * 0.3).toFixed(2)
+  }
+
+  notice.value = 'Se cargaron supuestos de referencia; revisalos y adaptalos a tu operación antes de calcular.'
+  errorMessage.value = ''
+}
 
 const ratio = (result) => result?.cobertura?.porcentaje ?? result?.cobertura?.porcentaje_completo ?? null
 const coverageComplete = computed(() => activeResult.value?.cobertura === 'completa'
@@ -424,6 +436,17 @@ onMounted(initialize)
         <div class="space-y-6">
           <section class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="equipment-title">
             <div class="mb-4 flex items-start gap-3"><span class="rounded-lg bg-primary-subtle p-2 text-primary"><TruckIcon class="size-5" aria-hidden="true" /></span><div><h2 id="equipment-title" class="font-bold text-ink">Conjunto y utilización</h2><p class="mt-1 text-sm text-ink-muted">Los kilómetros mensuales incluyen recorridos cargados y vacíos.</p></div></div>
+            <div class="mb-4 rounded-lg border border-info/30 bg-info-subtle p-3 text-sm text-info-strong">
+              <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div class="min-w-0">
+                  <p class="font-semibold">Supuestos técnicos documentados</p>
+                  <p class="mt-1 text-xs leading-5">37,04 l/100 km de consumo; neumáticos con 250.000 km de vida total, incluyendo un recapado. Si ingresaste el costo del juego, el costo del recapado se estima al 30 %.</p>
+                  <p class="mt-1 text-xs leading-5">Referencia histórica para transporte de cereales; ajustá estos supuestos a tu flota.</p>
+                  <a class="mt-1 inline-flex text-xs font-semibold underline underline-offset-2 hover:text-primary" href="https://www.argentina.gob.ar/normativa/nacional/disposici%C3%B3n-273-2011-182568/texto" target="_blank" rel="noopener noreferrer">Fuente: Disposición 273/2011 · modelo elaborado con FADEEAC</a>
+                </div>
+                <button v-if="canEdit" type="button" aria-label="Cargar supuestos documentados" class="ui-interactive inline-flex min-h-10 shrink-0 items-center justify-center rounded-lg border border-info/40 bg-surface px-3 py-2 text-xs font-semibold text-info-strong hover:bg-info-subtle" @click="loadDocumentedAssumptions">Cargar supuestos</button>
+              </div>
+            </div>
             <div class="grid gap-4 sm:grid-cols-2">
               <label class="grid gap-1.5 text-sm font-semibold text-ink">Tractor<select v-model="selection.tractor_id" :disabled="!canEdit" class="min-h-11 rounded-lg border border-border-strong bg-surface px-3 font-normal disabled:opacity-70"><option value="">Seleccionar tractor</option><option v-for="item in assets.tractores" :key="item.id" :value="String(item.id)">{{ item.codigo }} · {{ item.descripcion }}<template v-if="item.sucursal"> ({{ item.sucursal }})</template></option></select></label>
               <label class="grid gap-1.5 text-sm font-semibold text-ink">Semi<select v-model="selection.semi_id" :disabled="!canEdit" class="min-h-11 rounded-lg border border-border-strong bg-surface px-3 font-normal disabled:opacity-70"><option value="">Seleccionar semi</option><option v-for="item in assets.semis" :key="item.id" :value="String(item.id)">{{ item.codigo }} · {{ item.descripcion }}<template v-if="item.sucursal"> ({{ item.sucursal }})</template></option></select></label>
