@@ -11,4 +11,9 @@ interface AdminTelemetrySamplesReader
      *  @return array<string,mixed>
      */
     public function read(array $filters): array;
+
+    /** @param array{companyId:int,integrationId:int,from:?string,to:?string,unit:string} $filters
+     *  @return list<array<string,mixed>>
+     */
+    public function exportSamples(array $filters): array;
 }

@@ -10,6 +10,16 @@ const pageUrl = (page) => {
   params.set('pagina', String(page))
   return `${basePath}?${params.toString()}`
 }
+const exportUrl = computed(() => {
+  const params = new URLSearchParams()
+  if (props.data.selectedCompanyId) params.set('empresa', String(props.data.selectedCompanyId))
+  if (props.data.selectedIntegrationId) params.set('integracion', String(props.data.selectedIntegrationId))
+  params.set('vista', 'samples')
+  if (props.data.filters.from) params.set('desde', props.data.filters.from)
+  if (props.data.filters.to) params.set('hasta', props.data.filters.to)
+  if (props.data.filters.unit) params.set('unidad', props.data.filters.unit)
+  return `${basePath.replace(/\/$/, '')}/exportar?${params.toString()}`
+})
 const firstRow = computed(() => props.data.total === 0 ? 0 : ((props.data.page - 1) * props.data.perPage) + 1)
 const lastRow = computed(() => Math.min(props.data.page * props.data.perPage, props.data.total))
 const prettyJson = (value) => value ? JSON.stringify(value, null, 2) : ''
@@ -64,6 +74,7 @@ const formatNumber = (value, digits = 1) => value === null || value === undefine
         <button type="submit" class="inline-flex min-h-10 items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-strong">
           <ArrowPathIcon class="size-4" aria-hidden="true" /> Aplicar filtros
         </button>
+        <a v-if="data.view === 'samples' && data.selectedCompanyId && data.selectedIntegrationId" :href="exportUrl" class="inline-flex min-h-10 items-center rounded-lg border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">Exportar todas las muestras (CSV)</a>
         <a :href="basePath + (data.selectedCompanyId ? '?empresa=' + data.selectedCompanyId + '&integracion=' + (data.selectedIntegrationId || '') : '')" class="inline-flex min-h-10 items-center rounded-lg border border-border px-4 py-2 text-sm font-semibold text-ink-muted hover:bg-surface-muted">Limpiar fechas y unidad</a>
       </div>
     </form>

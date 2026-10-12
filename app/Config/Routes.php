@@ -64,6 +64,7 @@ $routes->get('empleados', static function () {
 $routes->group('superadmin', ['filter' => 'superadmin'], static function ($routes): void {
     $routes->get('', 'SuperAdmin::index');
     $routes->get('telemetria/muestras', 'AdminTelemetrySamples::index');
+    $routes->get('telemetria/muestras/exportar', 'AdminTelemetrySamples::export');
     $routes->post('empresas', 'SuperAdmin::createCompany');
     $routes->post('empresas/(:num)', 'SuperAdmin::updateCompany/$1');
     $routes->post('empresas/(:num)/notificaciones/prueba', 'SuperAdmin::testCompanyNotificationEmail/$1');

@@ -36,6 +36,26 @@ final readonly class GetAdminTelemetrySamples
         ]);
     }
 
+    /** @param array<string,mixed> $query
+     *  @return list<array<string,mixed>>
+     */
+    public function exportSamples(array $query): array
+    {
+        $companyId = $this->positiveInteger($query['empresa'] ?? null);
+        $integrationId = $this->positiveInteger($query['integracion'] ?? null);
+        if ($companyId === null || $integrationId === null) {
+            return [];
+        }
+
+        return $this->reader->exportSamples([
+            'companyId' => $companyId,
+            'integrationId' => $integrationId,
+            'from' => $this->date($query['desde'] ?? null),
+            'to' => $this->date($query['hasta'] ?? null),
+            'unit' => mb_substr(trim((string) ($query['unidad'] ?? '')), 0, 100),
+        ]);
+    }
+
     private function positiveInteger(mixed $value): ?int
     {
         $parsed = filter_var($value, FILTER_VALIDATE_INT);

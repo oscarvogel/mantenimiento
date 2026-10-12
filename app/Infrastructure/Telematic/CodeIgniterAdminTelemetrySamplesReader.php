@@ -130,7 +130,7 @@ final class CodeIgniterAdminTelemetrySamplesReader implements AdminTelemetrySamp
         $totalPages = (int) ceil($total / max(1, (int) $filters['perPage']));
         $page = min((int) $filters['page'], max(1, $totalPages));
         $query = $this->db->table('telematia_muestras t')
-            ->select('t.id, t.proveedor, t.unidad_externa, t.equipo_id, e.codigo AS equipo_codigo, e.patente AS equipo_patente, t.observada_en, t.registrada_en, t.latitud, t.longitud, t.velocidad_kmh, t.rumbo, t.altitud_m, t.satelites, t.kilometraje, t.horas_decimales, t.motor_encendido, t.ralenti_activo, t.voltaje, t.combustible_litros, t.sensores_json, t.anomalias')
+            ->select('t.id, t.empresa_id, t.integracion_id, t.proveedor, t.unidad_externa, t.equipo_id, e.codigo AS equipo_codigo, e.patente AS equipo_patente, t.observada_en, t.registrada_en, t.latitud, t.longitud, t.velocidad_kmh, t.rumbo, t.altitud_m, t.satelites, t.kilometraje, t.horas_decimales, t.motor_encendido, t.ralenti_activo, t.voltaje, t.combustible_litros, t.sensores_json, t.anomalias')
             ->join('equipos e', 'e.id = t.equipo_id AND e.empresa_id = t.empresa_id', 'left')
             ->where('t.empresa_id', $selectedCompanyId)
             ->where('t.integracion_id', $selectedIntegrationId);
@@ -160,6 +160,24 @@ final class CodeIgniterAdminTelemetrySamplesReader implements AdminTelemetrySamp
         ];
 
         return $base;
+    }
+
+    public function exportSamples(array $filters): array
+    {
+        if (! $this->db->tableExists('telematia_muestras')) {
+            return [];
+        }
+
+        $query = $this->db->table('telematia_muestras t')
+            ->select('t.id, t.proveedor, t.unidad_externa, t.equipo_id, e.codigo AS equipo_codigo, e.patente AS equipo_patente, t.observada_en, t.registrada_en, t.latitud, t.longitud, t.velocidad_kmh, t.rumbo, t.altitud_m, t.satelites, t.kilometraje, t.horas_decimales, t.motor_encendido, t.ralenti_activo, t.voltaje, t.combustible_litros, t.sensores_json, t.anomalias')
+            ->join('equipos e', 'e.id = t.equipo_id AND e.empresa_id = t.empresa_id', 'left')
+            ->where('t.empresa_id', $filters['companyId'])
+            ->where('t.integracion_id', $filters['integrationId']);
+        $this->applyFilters($query, $filters);
+
+        return $query->orderBy('t.observada_en', 'DESC')
+            ->orderBy('t.id', 'DESC')
+            ->get()->getResultArray();
     }
 
     private function readBuckets(array $base, array $filters, int $companyId, int $integrationId): array
