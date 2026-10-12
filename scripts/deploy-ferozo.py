@@ -13,6 +13,7 @@ import hashlib
 import json
 import os
 import pathlib
+import re
 import shutil
 import subprocess
 import sys
@@ -171,11 +172,28 @@ def classify(changes: list[Change]) -> dict[str, list[Change]]:
     return result
 
 
+def is_retained_dashboard_asset_deletion(change: Change) -> bool:
+    """Recognize old Vite JS/CSS bundles that can safely remain on Ferozo.
+
+    The incremental FTPS uploader never deletes remote files. When a frontend
+    build changes its content hash, the old bundle becomes unreferenced by the
+    new manifest; keeping it on the server is safe and avoids a destructive
+    cleanup during a feature deploy.
+    """
+    path = change.path.replace("\\", "/")
+    return change.status == "D" and re.fullmatch(
+        r"assets/dashboard/assets/[A-Za-z0-9_-]+-[A-Za-z0-9_-]{8}\.(?:js|css)",
+        path,
+    ) is not None
+
+
 def short(sha: str) -> str:
     return sha[:8]
 
 
 def print_plan(base_sha: str, head_sha: str, groups: dict[str, list[Change]], *, full: bool) -> None:
+    retained_assets = [item for item in groups["deleted"] if is_retained_dashboard_asset_deletion(item)]
+    blocked_deletions = [item for item in groups["deleted"] if not is_retained_dashboard_asset_deletion(item)]
     print("=" * 58)
     print("DEPLOY FEROZO - MANTENIMIENTO")
     print("=" * 58)
@@ -185,7 +203,8 @@ def print_plan(base_sha: str, head_sha: str, groups: dict[str, list[Change]], *,
     print(f"RUNTIME_CHANGES   : {len(groups['runtime'])}")
     print(f"MIGRATIONS        : {len(groups['migrations'])}")
     print(f"FRONTEND_CHANGES  : {len(groups['frontend'])}")
-    print(f"DELETIONS         : {len(groups['deleted'])}")
+    print(f"DELETIONS         : {len(blocked_deletions)}")
+    print(f"RETAINED_ASSETS   : {len(retained_assets)}")
     print(f"IGNORED           : {len(groups['ignored'])}")
     print(f"FRONTEND_BUILD    : {'REQUIRED' if groups['frontend'] else 'NO'}")
     print(f"ASSETS_DASHBOARD  : {'FULL_PUBLISH_AFTER_BUILD' if groups['frontend'] else 'DIFF_ONLY'}")
@@ -201,10 +220,17 @@ def print_plan(base_sha: str, head_sha: str, groups: dict[str, list[Change]], *,
                 print(f"  {prefix}{item.path}")
         print()
 
-    if groups["deleted"]:
-        print("ELIMINACIONES REMOTAS (NO AUTOMATICAS):")
-        for item in groups["deleted"]:
+    if blocked_deletions:
+        print("ELIMINACIONES REMOTAS (BLOQUEAN EL DEPLOY):")
+        for item in blocked_deletions:
             print(f"  D {item.path}")
+        print()
+
+    if retained_assets:
+        print("BUNDLES ANTERIORES (SE CONSERVAN EN FEROZO):")
+        for item in retained_assets:
+            print(f"  D {item.path}")
+        print("  El manifest nuevo deja de referenciarlos; la limpieza se hace por separado con remote-prune.")
         print()
 
     if groups["migrations"]:
@@ -507,11 +533,16 @@ def main() -> int:
             "Use el procedimiento completo documentado hasta implementarlo y probarlo."
         )
 
-    if groups["deleted"]:
+    blocked_deletions = [item for item in groups["deleted"] if not is_retained_dashboard_asset_deletion(item)]
+    if blocked_deletions:
         raise RuntimeError(
             "Hay archivos runtime eliminados. Por seguridad el deploy incremental no los borra automáticamente. "
-            "Revise la lista y resuelva la eliminación explícitamente."
+            "Revise la lista y resuelva la eliminación explícitamente: "
+            + ", ".join(item.path for item in blocked_deletions)
         )
+    retained_assets = [item for item in groups["deleted"] if is_retained_dashboard_asset_deletion(item)]
+    if retained_assets:
+        print(f"REMOTE_DELETIONS=SKIPPED_RETAINED_HASHED_ASSETS ({len(retained_assets)})")
 
     if not changes:
         print("NO_CHANGES=YES")

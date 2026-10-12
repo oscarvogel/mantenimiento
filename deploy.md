@@ -175,7 +175,7 @@ La primera ejecución real deberá usar `--from-sha <SHA_PRODUCTIVO>` si todaví
 ### Limitaciones iniciales deliberadas
 
 - `--full` está documentado pero todavía queda bloqueado en el orquestador hasta validarlo por separado.
-- Las eliminaciones remotas detectadas hacen abortar el deploy real; no se borran automáticamente.
+- Las eliminaciones de archivos runtime hacen abortar el deploy real. Los bundles JS/CSS con hash de Vite que dejaron de estar en el manifest se conservan en Ferozo; su limpieza requiere la auditoría y `remote-prune` documentados más abajo.
 - La verificación remota SHA-256 todavía queda como paso a completar; esta primera versión imprime hashes locales críticos y mantiene los smoke tests HTTP.
 
 ## Preparación local
