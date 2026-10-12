@@ -67,6 +67,26 @@ describe('TheoreticalCostPage standard assumptions', () => {
     expect(warning.text()).not.toContain('Kilómetros operativos previstos por mes')
   })
 
+  it('explains the pending percentage and the cost-financing field with contextual help', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url) => ({
+      ok: true,
+      json: async () => String(url).includes('activos') ? { data: { tractores: [], semis: [] } } : { data: { items: [] } },
+    })))
+
+    const wrapper = mount(TheoreticalCostPage, { props: { data: data() } })
+    await flushPromises()
+    const pendingHelp = wrapper.get('[data-testid="assumptions-warning"] button[aria-label^="Ayuda: Confirmá"]')
+    await pendingHelp.trigger('click')
+    expect(pendingHelp.attributes('aria-expanded')).toBe('true')
+    expect(wrapper.text()).toContain('Un 0 % excluye ese rubro del costo.')
+    expect(wrapper.text()).toContain('como porcentaje del costo operativo total')
+
+    const fieldHelp = wrapper.get('button[aria-label="Ayuda: costo financiero"]')
+    await fieldHelp.trigger('click')
+    expect(fieldHelp.attributes('aria-expanded')).toBe('true')
+    expect(wrapper.text()).toContain('5 pesos de costo financiero por cada 100 pesos de costo total')
+  })
+
   it('loads the latest BCRA reference rate and uses it as the scenario quote', async () => {
     const fetchMock = vi.fn(async (url) => ({
       ok: true,
