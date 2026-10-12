@@ -36,8 +36,8 @@ const fromDate = ref('')
 const toDate = ref('')
 
 const standardOtherItems = () => [
-  { codigo: 'lubricantes', nombre: 'Lubricantes', importe: '0', unidad: 'por_km', moneda: 'ARS' },
-  { codigo: 'costo_financiero', nombre: 'Costo financiero', importe: '0', unidad: 'por_mes', moneda: 'ARS' },
+  { codigo: 'lubricantes', nombre: 'Lubricantes', importe: '0', unidad: 'porcentaje', moneda: 'ARS' },
+  { codigo: 'costo_financiero', nombre: 'Costo financiero', importe: '0', unidad: 'porcentaje', moneda: 'ARS' },
 ]
 const standardOtherCodes = new Set(standardOtherItems().map((item) => item.codigo))
 
@@ -366,12 +366,17 @@ const applyParameters = (source) => {
   if (Array.isArray(source.otros_rubros)) {
     const savedItems = source.otros_rubros
     const standards = standardOtherItems().map((defaults) => {
-      const saved = savedItems.find((item) => item.codigo === defaults.codigo)
+      const saved = savedItems.find((item) => item.codigo === defaults.codigo && item.unidad === 'porcentaje')
       return { ...defaults, ...saved, importe: saved?.importe ?? defaults.importe }
     })
     const custom = savedItems
-      .filter((item) => !standardOtherCodes.has(item.codigo))
-      .map((item) => ({ ...item, importe: item.importe ?? '' }))
+      .filter((item) => !standardOtherCodes.has(item.codigo) || item.unidad !== 'porcentaje')
+      .map((item) => ({
+        ...item,
+        codigo: standardOtherCodes.has(item.codigo) ? `legado_${item.codigo}` : item.codigo,
+        nombre: standardOtherCodes.has(item.codigo) ? `${item.nombre} (valor guardado anterior)` : item.nombre,
+        importe: item.importe ?? '',
+      }))
     parameters.otros_rubros = [...standards, ...custom]
   }
 }
@@ -453,11 +458,11 @@ const pendingAssumptions = computed(() => {
 
   const unpricedOtherCosts = parameters.otros_rubros.filter((item) => !hasValue(item.importe))
   if (unpricedOtherCosts.length) {
-    add('other', `Importes pendientes: ${unpricedOtherCosts.map((item) => item.nombre || 'Otro rubro').join(', ')}`, '#special-costs')
+    add('other', `Importes pendientes: ${unpricedOtherCosts.map((item) => item.nombre || 'Otro rubro').join(', ')}`, '#monthly-costs')
   }
   const zeroStandardCosts = standardOtherRubros.value.filter((item) => item.importe !== '' && item.importe !== null && item.importe !== undefined && Number(item.importe) === 0)
   if (zeroStandardCosts.length) {
-    add('zero-standard', `Confirmá ${zeroStandardCosts.map((item) => item.nombre).join(' y ')}: empiezan en $0 y no se incluyen hasta cargar un importe`, '#special-costs')
+    add('zero-standard', `Confirmá ${zeroStandardCosts.map((item) => item.nombre).join(' y ')}: 0 % significa que no agrega costo`, '#monthly-costs')
   }
   if (!hasValue(parameters.mantenimiento_pct)) add('maintenance', 'Porcentaje de mantenimiento y reparaciones', '#maintenance-pct')
   if (!hasValue(parameters.recargo_pct)) add('surcharge', 'Recargo para sugerir una tarifa', '#surcharge-pct')
@@ -484,12 +489,16 @@ const rateUsd = computed(() => resultAmount(activeResult.value?.tarifa_km, 'USD'
 const routeResult = computed(() => activeResult.value?.viaje ?? null)
 const breakdown = computed(() => activeResult.value?.rubros ?? [])
 const standardOtherRubros = computed(() => parameters.otros_rubros.filter((item) => standardOtherCodes.has(item.codigo)))
+const lubricantAssumption = computed(() => standardOtherRubros.value.find((item) => item.codigo === 'lubricantes'))
+const financialAssumption = computed(() => standardOtherRubros.value.find((item) => item.codigo === 'costo_financiero'))
 const customOtherRubros = computed(() => parameters.otros_rubros.filter((item) => !standardOtherCodes.has(item.codigo)))
 const breakdownStatus = (item) => {
   if (item.estado === 'pendiente_km_mensuales') return 'Datos cargados; faltan los km operativos mensuales para distribuir este costo por km.'
   return item.estado_label || item.motivo || (item.estado === 'sin_cotizacion' ? 'Falta una cotización de referencia válida' : 'Sin configurar')
 }
 const breakdownExplanation = (item) => {
+  if (item.codigo === 'lubricantes') return `${formatted(item.importe_origen)} % del costo del gasoil.`
+  if (item.codigo === 'costo_financiero') return `${formatted(item.importe_origen)} % del costo operativo total.`
   if (item.codigo === 'combustible') {
     const liters = numberOrNull(parameters.combustible.litros_100km)
     const price = numberOrNull(parameters.combustible.precio)
@@ -514,6 +523,8 @@ const missingLabel = (item) => {
     semi: 'Completá valor, residual y vida útil del semi.',
     combustible: 'Completá consumo, precio, moneda y fecha del gasoil.',
     neumaticos: 'Completá costo del juego, recapados y vida útil de neumáticos.',
+    lubricantes: 'Indicá el porcentaje estimado de lubricantes sobre el costo del gasoil.',
+    costo_financiero: 'Indicá el porcentaje estimado de costo financiero sobre el costo total.',
     mantenimiento_pct: 'Indicá un porcentaje de mantenimiento menor al 100 %.',
     recargo_pct: 'Indicá el recargo sobre el costo.',
     cotizacion_usd: 'Completá una cotización ARS/USD válida para convertir los importes en dólares.',
@@ -660,7 +671,7 @@ onMounted(initialize)
           <section class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="variable-costs-title">
             <div class="mb-4"><h2 id="variable-costs-title" class="font-bold text-ink">Costos por uso</h2><p class="mt-1 text-sm text-ink-muted">Ingresá supuestos representativos de tu operación. Los importes en USD usan la cotización indicada arriba.</p></div>
             <div class="grid gap-5 lg:grid-cols-2">
-              <fieldset class="grid content-start gap-3"><legend class="mb-2 text-sm font-bold text-ink">Gasoil</legend><label class="grid gap-1 text-xs font-semibold text-ink-muted">Consumo (litros cada 100 km)<input v-model="parameters.combustible.litros_100km" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 rounded-lg border border-border-strong bg-surface px-3 text-sm font-normal text-ink disabled:opacity-70" /></label><div class="grid grid-cols-[minmax(0,1fr)_6rem] gap-2"><label class="grid gap-1 text-xs font-semibold text-ink-muted">Precio por litro<input id="fuel-price" v-model="parameters.combustible.precio" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 rounded-lg border border-border-strong bg-surface px-3 text-sm font-normal text-ink disabled:opacity-70" /></label><label class="grid gap-1 text-xs font-semibold text-ink-muted">Moneda<select v-model="parameters.combustible.moneda" :disabled="!canEdit" class="min-h-10 rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70"><option>ARS</option><option>USD</option></select></label></div><label class="grid gap-1 text-xs font-semibold text-ink-muted">Fecha del precio<input v-model="parameters.combustible.fecha" type="date" :disabled="!canEdit" class="min-h-10 rounded-lg border border-border-strong bg-surface px-3 text-sm font-normal text-ink disabled:opacity-70" /></label></fieldset>
+              <fieldset class="grid content-start gap-3"><legend class="mb-2 text-sm font-bold text-ink">Gasoil</legend><label class="grid gap-1 text-xs font-semibold text-ink-muted">Consumo (litros cada 100 km)<input v-model="parameters.combustible.litros_100km" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 rounded-lg border border-border-strong bg-surface px-3 text-sm font-normal text-ink disabled:opacity-70" /></label><div class="grid grid-cols-[minmax(0,1fr)_6rem] gap-2"><label class="grid gap-1 text-xs font-semibold text-ink-muted">Precio por litro<input id="fuel-price" v-model="parameters.combustible.precio" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 rounded-lg border border-border-strong bg-surface px-3 text-sm font-normal text-ink disabled:opacity-70" /></label><label class="grid gap-1 text-xs font-semibold text-ink-muted">Moneda<select v-model="parameters.combustible.moneda" :disabled="!canEdit" class="min-h-10 rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70"><option>ARS</option><option>USD</option></select></label></div><label class="grid gap-1 text-xs font-semibold text-ink-muted">Fecha del precio<input v-model="parameters.combustible.fecha" type="date" :disabled="!canEdit" class="min-h-10 rounded-lg border border-border-strong bg-surface px-3 text-sm font-normal text-ink disabled:opacity-70" /></label><label class="grid gap-1 text-xs font-semibold text-ink-muted">Lubricantes (% del costo del gasoil)<input id="lubricant-pct" v-model="lubricantAssumption.importe" type="number" min="0" step="0.01" :disabled="!canEdit" placeholder="Ej.: 5" class="min-h-10 rounded-lg border border-border-strong bg-surface px-3 text-sm font-normal text-ink disabled:opacity-70" /><span class="font-normal">Se estima como porcentaje del costo de combustible.</span></label></fieldset>
               <fieldset class="grid content-start gap-3"><legend class="mb-2 text-sm font-bold text-ink">Neumáticos y recapados</legend><div class="grid grid-cols-2 gap-2"><label class="grid gap-1 text-xs font-semibold text-ink-muted">Juego de neumáticos<input id="tire-cost" v-model="parameters.neumaticos.costo_juego" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 rounded-lg border border-border-strong bg-surface px-3 text-sm font-normal text-ink disabled:opacity-70" /></label><label class="grid gap-1 text-xs font-semibold text-ink-muted">Recapados del ciclo<input v-model="parameters.neumaticos.recapados" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 rounded-lg border border-border-strong bg-surface px-3 text-sm font-normal text-ink disabled:opacity-70" /></label></div><div class="grid grid-cols-2 gap-2"><label class="grid gap-1 text-xs font-semibold text-ink-muted">Vida útil total (km)<input v-model="parameters.neumaticos.vida_util_km" type="number" min="1" step="1" :disabled="!canEdit" class="min-h-10 rounded-lg border border-border-strong bg-surface px-3 text-sm font-normal text-ink disabled:opacity-70" /></label><label class="grid gap-1 text-xs font-semibold text-ink-muted">Moneda<select v-model="parameters.neumaticos.moneda" :disabled="!canEdit" class="min-h-10 rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70"><option>ARS</option><option>USD</option></select></label></div></fieldset>
             </div>
           </section>
@@ -675,16 +686,10 @@ onMounted(initialize)
               </div>
               <button v-if="canEdit" type="button" class="inline-flex min-h-10 items-center gap-1 text-sm font-semibold text-primary hover:text-primary-hover" @click="addMonthlyCost"><PlusIcon class="size-4" aria-hidden="true" />Agregar costo mensual</button>
             </div>
-            <div class="mt-5 grid gap-4 sm:grid-cols-2">
-              <label class="grid gap-1.5 text-sm font-semibold text-ink">Mantenimiento y reparaciones (% del costo total)<input id="maintenance-pct" v-model="parameters.mantenimiento_pct" type="number" min="0" max="99.99" step="0.01" :disabled="!canEdit" placeholder="Ej.: 10" class="min-h-11 rounded-lg border border-border-strong bg-surface px-3 font-normal disabled:opacity-70" /><span class="text-xs font-normal text-ink-muted">Debe ser menor a 100 %. No cargues reparaciones de nuevo en otro rubro si usás este porcentaje.</span></label>
+            <div class="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <label class="grid gap-1.5 text-sm font-semibold text-ink">Mantenimiento y reparaciones (% del costo total)<input id="maintenance-pct" v-model="parameters.mantenimiento_pct" type="number" min="0" max="99.99" step="0.01" :disabled="!canEdit" placeholder="Ej.: 10" class="min-h-11 rounded-lg border border-border-strong bg-surface px-3 font-normal disabled:opacity-70" /><span class="text-xs font-normal text-ink-muted">La suma de mantenimiento y costo financiero debe ser menor a 100 %. No cargues reparaciones de nuevo en otro rubro si usás este porcentaje.</span></label>
+              <label class="grid gap-1.5 text-sm font-semibold text-ink">Costo financiero (% del costo total)<input id="financial-pct" v-model="financialAssumption.importe" type="number" min="0" max="99.99" step="0.01" :disabled="!canEdit" placeholder="Ej.: 5" class="min-h-11 rounded-lg border border-border-strong bg-surface px-3 font-normal disabled:opacity-70" /><span class="text-xs font-normal text-ink-muted">Se calcula sobre el costo operativo total, junto con mantenimiento.</span></label>
               <label class="grid gap-1.5 text-sm font-semibold text-ink">Recargo sobre el costo (%)<input id="surcharge-pct" v-model="parameters.recargo_pct" type="number" min="0" step="0.01" :disabled="!canEdit" placeholder="Ej.: 20" class="min-h-11 rounded-lg border border-border-strong bg-surface px-3 font-normal disabled:opacity-70" /><span class="text-xs font-normal text-ink-muted">Es un recargo para orientar la tarifa; no representa margen neto ni rentabilidad garantizada.</span></label>
-            </div>
-            <div id="special-costs" class="mt-5 rounded-lg border border-border-subtle p-4">
-              <h3 class="text-sm font-bold text-ink">Lubricantes y costo financiero</h3>
-              <p class="mt-1 text-xs leading-5 text-ink-muted">Estimación inicial editable: $0 excluye el rubro hasta que cargues un importe propio. El costo financiero se expresa por mes y se distribuye entre los kilómetros previstos.</p>
-              <div class="mt-3 grid gap-3 sm:grid-cols-2">
-                <label v-for="item in standardOtherRubros" :key="item.codigo" class="grid gap-1 text-xs font-semibold text-ink-muted">{{ item.nombre }} (ARS por {{ item.unidad === 'por_km' ? 'km' : 'mes' }}):<input v-model="item.importe" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 rounded-lg border border-border-strong bg-surface px-3 text-sm font-normal text-ink disabled:opacity-70" /></label>
-              </div>
             </div>
             <details class="mt-5 rounded-lg border border-border-subtle">
               <summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-ink">Otros rubros de costo</summary>

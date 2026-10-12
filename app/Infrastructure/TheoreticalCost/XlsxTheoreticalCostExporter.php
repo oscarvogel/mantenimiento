@@ -64,7 +64,10 @@ final class XlsxTheoreticalCostExporter
                 if (! is_array($line)) {
                     continue;
                 }
-                $parameterRows[] = [$label, $line['nombre'] ?? $line['codigo'] ?? '', $line['importe'] ?? null, ($line['moneda'] ?? '') . '/' . ($line['unidad'] ?? ''), $line['fecha'] ?? '', $line['fuente'] ?? ''];
+                $unit = ($line['unidad'] ?? null) === 'porcentaje'
+                    ? '%'
+                    : trim((string) ($line['moneda'] ?? '') . '/' . (string) ($line['unidad'] ?? ''), '/');
+                $parameterRows[] = [$label, $line['nombre'] ?? $line['codigo'] ?? '', $line['importe'] ?? null, $unit, $line['fecha'] ?? '', $line['fuente'] ?? ''];
             }
         }
         $this->rows($parameters, $parameterRows);

@@ -89,6 +89,8 @@ final class TheoreticalCostCalculator
         }
 
         $otherCosts = is_array($parameters['otros_rubros'] ?? null) ? $parameters['otros_rubros'] : [];
+        $financialPercent = null;
+        $lubricantPercent = null;
         foreach ($otherCosts as $index => $cost) {
             if (! is_array($cost)) {
                 $missing[] = 'otros_rubros.' . $index;
@@ -99,6 +101,30 @@ final class TheoreticalCostCalculator
             $amount = $this->nonNegative($cost['importe'] ?? null);
             $currency = $this->currency($cost['moneda'] ?? null);
             $unit = strtolower(trim((string) ($cost['unidad'] ?? '')));
+            if (in_array($code, ['lubricantes', 'costo_financiero'], true) && $unit === 'porcentaje') {
+                if ($amount === null) {
+                    $missing[] = $code;
+                    if ($code === 'lubricantes') {
+                        $items[] = $this->line($code, $name, null, 'porcentaje_combustible', null, $monthlyKm);
+                    }
+                    continue;
+                }
+                if ($code === 'lubricantes') {
+                    $lubricantPercent = $amount;
+                    $fuelLine = $this->findItem($items, 'combustible');
+                    $fuelArsKm = $fuelLine['ars_km'] ?? null;
+                    if ($fuelArsKm === null && $amount > 0) {
+                        $missing[] = 'lubricantes';
+                        $items[] = $this->line($code, $name, null, 'porcentaje_combustible', null, $monthlyKm);
+                    } else {
+                        $lubricantArsKm = ($fuelArsKm ?? 0) * $amount / 100;
+                        $items[] = $this->percentageLine($code, $name, $amount, $lubricantArsKm, $conversionRate, 'porcentaje_combustible');
+                    }
+                } else {
+                    $financialPercent = $amount;
+                }
+                continue;
+            }
             if ($amount === null || $currency === null || ! in_array($unit, ['por_mes', 'por_km'], true)) {
                 $missing[] = $code;
                 $items[] = $this->line($code, $name, null, $unit ?: 'sin_unidad', null, $monthlyKm);
@@ -108,6 +134,12 @@ final class TheoreticalCostCalculator
                 $this->appendMonthly($items, $code, $name, $amount, $currency, $conversionRate, $monthlyKm);
             } else {
                 $this->appendPerKm($items, $code, $name, $amount, $currency, $conversionRate, $monthlyKm);
+            }
+        }
+        if ($lubricantPercent === null) {
+            $missing[] = 'lubricantes';
+            if ($this->findItem($items, 'lubricantes') === null) {
+                $items[] = $this->line('lubricantes', 'Lubricantes', null, 'porcentaje_combustible', null, $monthlyKm);
             }
         }
 
@@ -136,6 +168,15 @@ final class TheoreticalCostCalculator
             throw new DomainException('El porcentaje de mantenimiento debe ser menor al 100 %.');
         }
 
+        if ($financialPercent === null) {
+            $missing[] = 'costo_financiero';
+        } elseif ($financialPercent >= 100) {
+            throw new DomainException('El porcentaje de costo financiero debe ser menor al 100 %.');
+        }
+        if ($maintenancePercent !== null && $financialPercent !== null && $maintenancePercent + $financialPercent >= 100) {
+            throw new DomainException('La suma de mantenimiento y costo financiero debe ser menor al 100 %.');
+        }
+
         $surchargePercent = $this->nonNegative($parameters['recargo_pct'] ?? null);
         if ($surchargePercent === null) {
             $missing[] = 'recargo_pct';
@@ -143,9 +184,12 @@ final class TheoreticalCostCalculator
 
         $complete = $missing === [] && ! $hasUnconvertedUsd && $monthlyKm !== null;
         $totalArs = $knownBaseArs;
+        $combinedPercent = ($maintenancePercent ?? 0) + ($financialPercent ?? 0);
+        if ($combinedPercent < 100) {
+            $totalArs = $knownBaseArs / (1 - ($combinedPercent / 100));
+        }
         if ($maintenancePercent !== null) {
-            $totalArs = $knownBaseArs / (1 - ($maintenancePercent / 100));
-            $maintArs = $totalArs - $knownBaseArs;
+            $maintArs = $totalArs * $maintenancePercent / 100;
             $items[] = [
                 'codigo' => 'mantenimiento',
                 'nombre' => 'Mantenimiento y reparaciones',
@@ -158,6 +202,11 @@ final class TheoreticalCostCalculator
             ];
         } else {
             $items[] = $this->line('mantenimiento', 'Mantenimiento y reparaciones', null, 'por_km', null, $monthlyKm);
+        }
+        if ($financialPercent !== null) {
+            $items[] = $this->percentageLine('costo_financiero', 'Costo financiero', $financialPercent, $totalArs * $financialPercent / 100, $conversionRate, 'porcentaje_costo_total');
+        } else {
+            $items[] = $this->line('costo_financiero', 'Costo financiero', null, 'porcentaje_costo_total', null, $monthlyKm);
         }
         $totalUsd = $hasFx ? $totalArs / $exchangeRate : null;
         $chargeArs = $surchargePercent === null ? null : $totalArs * (1 + ($surchargePercent / 100));
@@ -176,6 +225,7 @@ final class TheoreticalCostCalculator
             'km_mensuales' => $monthlyKm,
             'recargo_pct' => $surchargePercent,
             'mantenimiento_pct' => $maintenancePercent,
+            'costo_financiero_pct' => $financialPercent,
             'costo_km' => ['ars' => $totalArs, 'usd' => $totalUsd],
             'tarifa_km' => ['ars' => $chargeArs, 'usd' => $chargeUsd],
             'rubros' => $items,
@@ -230,6 +280,32 @@ final class TheoreticalCostCalculator
             }
         }
         return false;
+    }
+
+    /** @param array<int,array<string,mixed>> $items @return array<string,mixed>|null */
+    private function findItem(array $items, string $code): ?array
+    {
+        foreach ($items as $item) {
+            if (($item['codigo'] ?? null) === $code) {
+                return $item;
+            }
+        }
+        return null;
+    }
+
+    /** @return array<string,mixed> */
+    private function percentageLine(string $code, string $name, float $percent, float $arsKm, ?float $fx, string $unit): array
+    {
+        return [
+            'codigo' => $code,
+            'nombre' => $name,
+            'estado' => 'configurado',
+            'unidad' => $unit,
+            'importe_origen' => $percent,
+            'moneda_origen' => '%',
+            'ars_km' => $arsKm,
+            'usd_km' => $fx !== null ? $arsKm / $fx : null,
+        ];
     }
 
     private function appendMonthly(array &$items, string $code, string $name, float $amount, string $currency, ?float $fx, ?float $km): void

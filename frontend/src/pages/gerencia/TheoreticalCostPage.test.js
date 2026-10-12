@@ -122,7 +122,8 @@ describe('TheoreticalCostPage standard assumptions', () => {
     expect(wrapper.findAll('label').filter((label) => label.text().includes('Residual (US$)'))[1].find('input').element.value).toBe('45000')
     expect(inputWithLabel(wrapper, 'Lubricantes').element.value).toBe('0')
     expect(inputWithLabel(wrapper, 'Costo financiero').element.value).toBe('0')
-    expect(wrapper.text()).toContain('Estimación inicial editable: $0')
+    expect(wrapper.text()).toContain('Lubricantes (% del costo del gasoil)')
+    expect(wrapper.text()).toContain('Costo financiero (% del costo total)')
     expect(wrapper.text()).toContain('Disposición 273/2011')
     expect(wrapper.get('a[href*="disposici%C3%B3n-273-2011"]').exists()).toBe(true)
   })
@@ -151,6 +152,29 @@ describe('TheoreticalCostPage standard assumptions', () => {
     const request = fetchMock.mock.calls.find(([, options]) => options?.method === 'POST')
     expect(JSON.parse(request[1].body)).toMatchObject({ tractor_id: null, semi_id: null })
     expect(wrapper.text()).toContain('Resultado teórico')
+  })
+
+  it('sends lubricant and financial assumptions as percentages with their scenario', async () => {
+    const fetchMock = vi.fn(async (url, options = {}) => ({
+      ok: true,
+      json: async () => options.method === 'POST'
+        ? { data: { resultado: { cobertura: 'parcial', costo_km: { ars: 50, usd: 0.05 } } } }
+        : String(url).includes('activos') ? { data: { tractores: [], semis: [] } } : { data: { items: [] } },
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const wrapper = mount(TheoreticalCostPage, { props: { data: data() } })
+    await flushPromises()
+    await wrapper.get('#lubricant-pct').setValue('5')
+    await wrapper.get('#financial-pct').setValue('8')
+    await wrapper.findAll('button').find((button) => button.text().includes('Calcular referencia')).trigger('click')
+    await flushPromises()
+
+    const request = fetchMock.mock.calls.find(([, options]) => options?.method === 'POST')
+    expect(JSON.parse(request[1].body).parametros.otros_rubros).toEqual(expect.arrayContaining([
+      expect.objectContaining({ codigo: 'lubricantes', importe: 5, unidad: 'porcentaje' }),
+      expect.objectContaining({ codigo: 'costo_financiero', importe: 8, unidad: 'porcentaje' }),
+    ]))
   })
 
   it('allows calculating with only a selected tractor', async () => {
@@ -224,8 +248,10 @@ describe('TheoreticalCostPage standard assumptions', () => {
     await wrapper.findAll('button').find((button) => button.text().includes('Usar como base')).trigger('click')
     await flushPromises()
 
-    expect(inputWithLabel(wrapper, 'Lubricantes').element.value).toBe('3')
-    expect(inputWithLabel(wrapper, 'Costo financiero').element.value).toBe('25000')
+    expect(inputWithLabel(wrapper, 'Lubricantes (% del costo del gasoil)').element.value).toBe('0')
+    expect(inputWithLabel(wrapper, 'Costo financiero (% del costo total)').element.value).toBe('0')
+    expect(wrapper.findAll('input').some((input) => input.element.value === 'Lubricantes (valor guardado anterior)')).toBe(true)
+    expect(wrapper.findAll('input').some((input) => input.element.value === 'Costo financiero (valor guardado anterior)')).toBe(true)
     expect(wrapper.get('#scenario-name').element.value).toBe('Base flota (copia)')
     await wrapper.findAll('button').find((button) => button.text() === 'Guardar').trigger('click')
     await flushPromises()
