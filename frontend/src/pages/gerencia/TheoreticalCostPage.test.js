@@ -51,6 +51,11 @@ describe('TheoreticalCostPage standard assumptions', () => {
     await inputWithLabel(wrapper, 'ARS por 1 USD').setValue('1234')
     await inputWithLabel(wrapper, 'Mantenimiento y reparaciones').setValue('12')
     await inputWithLabel(wrapper, 'Reposición (US$)').setValue('100000')
+    const assetValues = wrapper.findAll('label').filter((label) => label.text().includes('Reposición (US$)'))
+    await assetValues[1].find('input').setValue('150000')
+    const assetLifeValues = wrapper.findAll('label').filter((label) => label.text().includes('Vida útil (años)'))
+    await assetLifeValues[0].find('input').setValue('5')
+    await assetLifeValues[1].find('input').setValue('8')
     await wrapper.get('button[aria-label="Cargar supuestos documentados"]')
       .trigger('click')
 
@@ -60,7 +65,15 @@ describe('TheoreticalCostPage standard assumptions', () => {
     expect(inputWithLabel(wrapper, 'Precio por litro').element.value).toBe('1250')
     expect(inputWithLabel(wrapper, 'ARS por 1 USD').element.value).toBe('1234')
     expect(inputWithLabel(wrapper, 'Mantenimiento y reparaciones').element.value).toBe('12')
-    expect(inputWithLabel(wrapper, 'Reposición (US$)').element.value).toBe('100000')
+    expect(assetValues[0].find('input').element.value).toBe('100000')
+    expect(assetValues[1].find('input').element.value).toBe('150000')
+    expect(assetLifeValues[0].find('input').element.value).toBe('5')
+    expect(assetLifeValues[1].find('input').element.value).toBe('8')
+    expect(wrapper.findAll('label').find((label) => label.text().includes('Residual (US$)')).find('input').element.value).toBe('30000')
+    expect(wrapper.findAll('label').filter((label) => label.text().includes('Residual (US$)'))[1].find('input').element.value).toBe('45000')
+    expect(inputWithLabel(wrapper, 'Lubricantes').element.value).toBe('0')
+    expect(inputWithLabel(wrapper, 'Costo financiero').element.value).toBe('0')
+    expect(wrapper.text()).toContain('Estimación inicial editable: $0')
     expect(wrapper.text()).toContain('Disposición 273/2011')
     expect(wrapper.get('a[href*="disposici%C3%B3n-273-2011"]').exists()).toBe(true)
   })
@@ -129,5 +142,46 @@ describe('TheoreticalCostPage standard assumptions', () => {
 
     expect(wrapper.text()).toContain('Escenario general · sin equipo asociado')
     expect(wrapper.text()).toContain('Flota general')
+  })
+
+  it('loads a saved scenario as a copy so edits create a new scenario', async () => {
+    const record = {
+      id: 12, nombre: 'Base flota', version: 2, guardado_en: '2026-10-10 12:00:00',
+      tractor: null, semi: null,
+      parametros: {
+        km_mensuales: 10000,
+        otros_rubros: [
+          { codigo: 'lubricantes', nombre: 'Lubricantes', importe: 3, unidad: 'por_km', moneda: 'ARS' },
+          { codigo: 'costo_financiero', nombre: 'Costo financiero', importe: 25000, unidad: 'por_mes', moneda: 'ARS' },
+        ],
+      },
+      viaje: null,
+      resultado: { cobertura: 'parcial', costo_km: { ars: 50, usd: 0.05 }, tarifa_km: { ars: 55, usd: 0.055 }, rubros: [] },
+    }
+    const fetchMock = vi.fn(async (url, options = {}) => ({
+      ok: true,
+      json: async () => String(url).includes('/versiones/2')
+        ? { data: record }
+        : String(url).includes('activos') ? { data: { tractores: [], semis: [] } }
+          : options.method === 'POST'
+            ? { data: { id: 13, version: 1, resultado: record.resultado } }
+            : { data: { items: [{ id: 12, nombre: 'Base flota', tractor: null, semi: null, version: 2, versiones: [{ numero: 2, cobertura: 'parcial', costo_ars_km: 50 }] }] } },
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const wrapper = mount(TheoreticalCostPage, { props: { data: data() } })
+    await flushPromises()
+    await wrapper.get('[role="tab"][aria-selected="false"]').trigger('click')
+    await wrapper.findAll('button').find((button) => button.text().includes('Usar como base')).trigger('click')
+    await flushPromises()
+
+    expect(inputWithLabel(wrapper, 'Lubricantes').element.value).toBe('3')
+    expect(inputWithLabel(wrapper, 'Costo financiero').element.value).toBe('25000')
+    expect(wrapper.get('#scenario-name').element.value).toBe('Base flota (copia)')
+    await wrapper.findAll('button').find((button) => button.text() === 'Guardar').trigger('click')
+    await flushPromises()
+
+    const save = fetchMock.mock.calls.find(([, options]) => options?.method === 'POST')
+    expect(JSON.parse(save[1].body)).toMatchObject({ escenario_id: null, nombre: 'Base flota (copia)' })
   })
 })

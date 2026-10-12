@@ -35,6 +35,12 @@ const scenarioName = ref('')
 const fromDate = ref('')
 const toDate = ref('')
 
+const standardOtherItems = () => [
+  { codigo: 'lubricantes', nombre: 'Lubricantes', importe: '0', unidad: 'por_km', moneda: 'ARS' },
+  { codigo: 'costo_financiero', nombre: 'Costo financiero', importe: '0', unidad: 'por_mes', moneda: 'ARS' },
+]
+const standardOtherCodes = new Set(standardOtherItems().map((item) => item.codigo))
+
 const parameters = reactive({
   km_mensuales: '',
   fx: { ars_por_usd: '', fecha: '', fuente: '' },
@@ -49,10 +55,7 @@ const parameters = reactive({
     { codigo: 'personal', nombre: 'Personal', importe: '', moneda: 'ARS' },
     { codigo: 'gastos_generales', nombre: 'Gastos generales', importe: '', moneda: 'ARS' },
   ],
-  otros_rubros: [
-    { codigo: 'lubricantes', nombre: 'Lubricantes', importe: '', unidad: 'por_km', moneda: 'ARS' },
-    { codigo: 'costo_financiero', nombre: 'Costo financiero', importe: '', unidad: 'por_mes', moneda: 'ARS' },
-  ],
+  otros_rubros: standardOtherItems(),
   recargo_pct: '',
 })
 
@@ -306,8 +309,9 @@ const selectScenario = async (scenario, version = null) => {
     const record = body.data
     if (!record) throw new Error('No se encontró la versión seleccionada.')
     selectedScenario.value = record
-    editingScenarioId.value = record.id
-    scenarioName.value = record.nombre || scenario.nombre || ''
+    editingScenarioId.value = null
+    const baseName = String(record.nombre || scenario.nombre || 'Escenario').trim()
+    scenarioName.value = `${baseName.slice(0, 112).trimEnd()} (copia)`
     selection.tractor_id = String(record.tractor?.id ?? scenario.tractor_id ?? '')
     selection.semi_id = String(record.semi?.id ?? scenario.semi_id ?? '')
     applyParameters(record.parametros ?? {})
@@ -334,7 +338,17 @@ const applyParameters = (source) => {
     }
   }
   if (Array.isArray(source.costos_mensuales)) parameters.costos_mensuales = source.costos_mensuales.map((item) => ({ ...item, importe: item.importe ?? '' }))
-  if (Array.isArray(source.otros_rubros)) parameters.otros_rubros = source.otros_rubros.map((item) => ({ ...item, importe: item.importe ?? '' }))
+  if (Array.isArray(source.otros_rubros)) {
+    const savedItems = source.otros_rubros
+    const standards = standardOtherItems().map((defaults) => {
+      const saved = savedItems.find((item) => item.codigo === defaults.codigo)
+      return { ...defaults, ...saved, importe: saved?.importe ?? defaults.importe }
+    })
+    const custom = savedItems
+      .filter((item) => !standardOtherCodes.has(item.codigo))
+      .map((item) => ({ ...item, importe: item.importe ?? '' }))
+    parameters.otros_rubros = [...standards, ...custom]
+  }
 }
 
 const applyTrip = (source) => Object.assign(trip, {
@@ -350,12 +364,23 @@ const loadDocumentedAssumptions = () => {
   parameters.combustible.litros_100km = '37.04'
   parameters.neumaticos.vida_util_km = '250000'
 
+  for (const key of ['tractor', 'semi']) {
+    const replacementValue = Number(parameters[key].valor_usd)
+    if (parameters[key].valor_residual_usd === '' && Number.isFinite(replacementValue) && replacementValue > 0) {
+      parameters[key].valor_residual_usd = String(Math.round(replacementValue * 0.3 * 100) / 100)
+    }
+  }
+
   const tireSetCost = Number(parameters.neumaticos.costo_juego)
   if (parameters.neumaticos.costo_juego !== '' && Number.isFinite(tireSetCost) && tireSetCost >= 0) {
     parameters.neumaticos.recapados = (tireSetCost * 0.3).toFixed(2)
   }
+  if (parameters.neumaticos.recapados === '') parameters.neumaticos.recapados = '0'
+  for (const item of parameters.otros_rubros) {
+    if (item.importe === '') item.importe = '0'
+  }
 
-  notice.value = 'Se cargaron supuestos de referencia; revisalos y adaptalos a tu operación antes de calcular.'
+  notice.value = 'Se cargaron los supuestos documentados y los residuales estimados al 30%. Los rubros sin un importe estándar actual comienzan en $0 editable; cargá tus valores para incluirlos.'
   errorMessage.value = ''
 }
 
@@ -387,6 +412,8 @@ const rateArs = computed(() => resultAmount(activeResult.value?.tarifa_km, 'ARS'
 const rateUsd = computed(() => resultAmount(activeResult.value?.tarifa_km, 'USD'))
 const routeResult = computed(() => activeResult.value?.viaje ?? null)
 const breakdown = computed(() => activeResult.value?.rubros ?? [])
+const standardOtherRubros = computed(() => parameters.otros_rubros.filter((item) => standardOtherCodes.has(item.codigo)))
+const customOtherRubros = computed(() => parameters.otros_rubros.filter((item) => !standardOtherCodes.has(item.codigo)))
 const breakdownStatus = (item) => {
   if (item.estado === 'pendiente_km_mensuales') return 'Datos cargados; faltan los km operativos mensuales para distribuir este costo por km.'
   return item.estado_label || item.motivo || (item.estado === 'sin_cotizacion' ? 'Falta una cotización de referencia válida' : 'Sin configurar')
@@ -564,11 +591,18 @@ onMounted(initialize)
               <label class="grid gap-1.5 text-sm font-semibold text-ink">Mantenimiento y reparaciones (% del costo total)<input v-model="parameters.mantenimiento_pct" type="number" min="0" max="99.99" step="0.01" :disabled="!canEdit" placeholder="Ej.: 10" class="min-h-11 rounded-lg border border-border-strong bg-surface px-3 font-normal disabled:opacity-70" /><span class="text-xs font-normal text-ink-muted">Debe ser menor a 100 %. No cargues reparaciones de nuevo en otro rubro si usás este porcentaje.</span></label>
               <label class="grid gap-1.5 text-sm font-semibold text-ink">Recargo sobre el costo (%)<input v-model="parameters.recargo_pct" type="number" min="0" step="0.01" :disabled="!canEdit" placeholder="Ej.: 20" class="min-h-11 rounded-lg border border-border-strong bg-surface px-3 font-normal disabled:opacity-70" /><span class="text-xs font-normal text-ink-muted">Es un recargo para orientar la tarifa; no representa margen neto ni rentabilidad garantizada.</span></label>
             </div>
+            <div class="mt-5 rounded-lg border border-border-subtle p-4">
+              <h3 class="text-sm font-bold text-ink">Lubricantes y costo financiero</h3>
+              <p class="mt-1 text-xs leading-5 text-ink-muted">Estimación inicial editable: $0 excluye el rubro hasta que cargues un importe propio. El costo financiero se expresa por mes y se distribuye entre los kilómetros previstos.</p>
+              <div class="mt-3 grid gap-3 sm:grid-cols-2">
+                <label v-for="item in standardOtherRubros" :key="item.codigo" class="grid gap-1 text-xs font-semibold text-ink-muted">{{ item.nombre }} (ARS por {{ item.unidad === 'por_km' ? 'km' : 'mes' }}):<input v-model="item.importe" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 rounded-lg border border-border-strong bg-surface px-3 text-sm font-normal text-ink disabled:opacity-70" /></label>
+              </div>
+            </div>
             <details class="mt-5 rounded-lg border border-border-subtle">
               <summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-ink">Otros rubros de costo</summary>
               <div class="space-y-2 border-t border-border-subtle p-4">
                 <p class="text-xs leading-5 text-ink-muted">Indicá la unidad para no mezclar importes mensuales con costos por km.</p>
-                <div v-for="(item, index) in parameters.otros_rubros" :key="`other-${index}`" class="grid grid-cols-[minmax(6rem,1fr)_minmax(5rem,0.7fr)_6rem_5rem] gap-2">
+                <div v-for="(item, index) in customOtherRubros" :key="`other-${index}`" class="grid grid-cols-[minmax(6rem,1fr)_minmax(5rem,0.7fr)_6rem_5rem] gap-2">
                   <label class="sr-only" :for="`other-name-${index}`">Concepto</label><input :id="`other-name-${index}`" v-model="item.nombre" :disabled="!canEdit" placeholder="Concepto" class="min-h-10 min-w-0 rounded-lg border border-border-strong bg-surface px-2 text-sm disabled:opacity-70" />
                   <label class="sr-only" :for="`other-value-${index}`">Importe</label><input :id="`other-value-${index}`" v-model="item.importe" type="number" min="0" step="0.01" :disabled="!canEdit" placeholder="Importe" class="min-h-10 min-w-0 rounded-lg border border-border-strong bg-surface px-2 text-sm disabled:opacity-70" />
                   <label class="sr-only" :for="`other-unit-${index}`">Unidad del rubro</label><select :id="`other-unit-${index}`" v-model="item.unidad" :disabled="!canEdit" class="min-h-10 rounded-lg border border-border-strong bg-surface px-1 text-xs disabled:opacity-70"><option value="por_km">por km</option><option value="por_mes">por mes</option></select>
@@ -658,7 +692,7 @@ onMounted(initialize)
             <div class="min-w-0"><h3 class="truncate font-bold text-ink">{{ item.nombre || 'Escenario sin nombre' }}</h3><p class="mt-1 text-sm text-ink-muted">{{ equipmentScenarioLabel(item) }}</p><p class="mt-1 text-xs text-ink-subtle">Versión {{ item.version ?? 1 }} · {{ scenarioDate(item) }}</p></div>
             <span class="shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold" :class="item.versiones?.find((version) => version.numero === latestVersion(item))?.cobertura === 'completa' ? 'bg-success-subtle text-success-strong' : 'bg-warning-subtle text-warning-strong'">{{ item.versiones?.find((version) => version.numero === latestVersion(item))?.cobertura === 'completa' ? 'Cobertura completa' : 'Cobertura parcial' }}</span>
           </div>
-          <div class="mt-4 flex flex-col gap-3 border-t border-border-subtle pt-4 sm:flex-row sm:items-center sm:justify-between"><p class="text-sm text-ink-muted">Costo/km: <strong class="text-ink">{{ currencyLabel(item.versiones?.find((version) => version.numero === latestVersion(item))?.costo_ars_km, 'ARS') }}</strong></p><button type="button" class="min-h-10 rounded-lg border border-primary px-3 py-2 text-sm font-semibold text-primary hover:bg-primary-subtle" @click="selectScenario(item, latestVersion(item))">Consultar versión</button></div>
+          <div class="mt-4 flex flex-col gap-3 border-t border-border-subtle pt-4 sm:flex-row sm:items-center sm:justify-between"><p class="text-sm text-ink-muted">Costo/km: <strong class="text-ink">{{ currencyLabel(item.versiones?.find((version) => version.numero === latestVersion(item))?.costo_ars_km, 'ARS') }}</strong></p><button type="button" class="min-h-10 rounded-lg border border-primary px-3 py-2 text-sm font-semibold text-primary hover:bg-primary-subtle" @click="selectScenario(item, latestVersion(item))">Usar como base</button></div>
           <div v-if="item.versiones?.length > 1" class="mt-3"><label :for="`version-${item.id}`" class="sr-only">Versión guardada</label><select :id="`version-${item.id}`" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-3 text-sm text-ink sm:w-auto" :value="latestVersion(item)" @change="selectScenario(item, Number($event.target.value))"><option v-for="version in item.versiones" :key="version.numero" :value="version.numero">Versión {{ version.numero }} · {{ scenarioDate({ guardado_en: version.guardado_en }) }}</option></select></div>
         </article>
       </div>
