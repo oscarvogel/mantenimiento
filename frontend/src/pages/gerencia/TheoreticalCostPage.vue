@@ -393,6 +393,55 @@ const missingItems = computed(() => {
   const value = activeResult.value?.faltantes ?? activeResult.value?.cobertura?.faltantes ?? []
   return Array.isArray(value) ? value : []
 })
+const pendingAssumptions = computed(() => {
+  const pending = []
+  const add = (key, label, target) => pending.push({ key, label, target })
+  const hasValue = (value) => value !== '' && value !== null && value !== undefined && Number.isFinite(Number(value)) && Number(value) >= 0
+  const isPositive = (value) => hasValue(value) && Number(value) > 0
+
+  if (!isPositive(parameters.km_mensuales)) add('km', 'Kilómetros operativos previstos por mes', '#km-mensuales')
+  if (!isPositive(parameters.fx.ars_por_usd) || !parameters.fx.fecha || !parameters.fx.fuente.trim()) {
+    add('fx', 'Cotización del dólar, fecha y fuente de referencia', '#quote-title')
+  }
+  for (const key of ['tractor', 'semi']) {
+    if (!hasValue(parameters[key].valor_usd) || !isPositive(parameters[key].vida_util_anios)) {
+      const name = key === 'tractor' ? 'tractor' : 'semi'
+      add(key, `Valor de reposición y vida útil del ${name}`, `#${key}-value`)
+    }
+  }
+
+  const missingFuel = []
+  if (!isPositive(parameters.combustible.litros_100km)) missingFuel.push('consumo')
+  if (!hasValue(parameters.combustible.precio)) missingFuel.push('precio')
+  if (!parameters.combustible.fecha) missingFuel.push('fecha')
+  if (missingFuel.length) add('fuel', `${missingFuel.map((item, index) => index === 0 ? item[0].toUpperCase() + item.slice(1) : item).join(', ')} del gasoil`, '#fuel-price')
+
+  const missingTires = []
+  if (!hasValue(parameters.neumaticos.costo_juego)) missingTires.push('costo del juego')
+  if (!hasValue(parameters.neumaticos.recapados)) missingTires.push('costo de recapados')
+  if (!isPositive(parameters.neumaticos.vida_util_km)) missingTires.push('vida útil')
+  if (missingTires.length) add('tires', `Neumáticos: ${missingTires.join(', ')}`, '#tire-cost')
+
+  const monthlyMissing = parameters.costos_mensuales
+    .filter((item) => !hasValue(item.importe))
+    .map((item) => item.nombre || 'Otro costo mensual')
+  if (monthlyMissing.length) {
+    add('monthly', `Importes mensuales: ${monthlyMissing.join(', ')} (cargá el valor o 0 si no aplica)`, '#monthly-costs')
+  }
+
+  const unpricedOtherCosts = parameters.otros_rubros.filter((item) => !hasValue(item.importe))
+  if (unpricedOtherCosts.length) {
+    add('other', `Importes pendientes: ${unpricedOtherCosts.map((item) => item.nombre || 'Otro rubro').join(', ')}`, '#special-costs')
+  }
+  const zeroStandardCosts = standardOtherRubros.value.filter((item) => item.importe !== '' && item.importe !== null && item.importe !== undefined && Number(item.importe) === 0)
+  if (zeroStandardCosts.length) {
+    add('zero-standard', `Confirmá ${zeroStandardCosts.map((item) => item.nombre).join(' y ')}: empiezan en $0 y no se incluyen hasta cargar un importe`, '#special-costs')
+  }
+  if (!hasValue(parameters.mantenimiento_pct)) add('maintenance', 'Porcentaje de mantenimiento y reparaciones', '#maintenance-pct')
+  if (!hasValue(parameters.recargo_pct)) add('surcharge', 'Recargo para sugerir una tarifa', '#surcharge-pct')
+
+  return pending
+})
 const resultAmount = (amount, currency) => {
   if (amount && typeof amount === 'object') return amount[currency.toLowerCase()] ?? amount[currency] ?? null
   if (amount === null || amount === undefined) return null
@@ -524,6 +573,23 @@ onMounted(initialize)
     <div v-if="loading" role="status" class="rounded-xl border border-border bg-surface-raised px-5 py-8 text-center text-sm text-ink-muted">Cargando equipos e historial…</div>
 
     <template v-else-if="activeTab === 'calculator'">
+      <section v-if="pendingAssumptions.length" data-testid="assumptions-warning" role="status" aria-live="polite" aria-labelledby="assumptions-warning-title" class="rounded-xl border-2 border-warning/60 bg-warning-subtle p-5 shadow-sm sm:p-6">
+        <div class="flex items-start gap-3">
+          <ExclamationTriangleIcon class="mt-0.5 size-7 shrink-0 text-warning-strong sm:size-8" aria-hidden="true" />
+          <div>
+            <h2 id="assumptions-warning-title" class="text-lg font-extrabold text-warning-strong sm:text-xl">Faltan supuestos para completar la referencia</h2>
+            <p class="mt-1 text-sm font-semibold text-warning-strong">Hay {{ pendingAssumptions.length }} datos pendientes. Completalos antes de usar el costo/km como orientación para cotizar.</p>
+          </div>
+        </div>
+        <ul class="mt-4 grid gap-2 sm:grid-cols-2">
+          <li v-for="item in pendingAssumptions" :key="item.key" class="rounded-lg border border-warning/30 bg-surface px-3 py-2.5">
+            <a :href="item.target" class="flex min-h-7 items-center justify-between gap-2 text-sm font-bold text-warning-strong underline decoration-2 underline-offset-2 hover:text-ink">
+              <span>{{ item.label }}</span><span class="shrink-0 text-xs">Completar ↓</span>
+            </a>
+          </li>
+        </ul>
+        <p class="mt-4 border-t border-warning/30 pt-3 text-sm text-warning-strong">El botón «Cargar supuestos» completa los valores documentados. Los importes propios de la empresa y los precios actuales se deben cargar o confirmar en $0 si no aplican.</p>
+      </section>
       <div class="grid items-start gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)]">
         <div class="space-y-6">
           <section class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="equipment-title">
@@ -542,7 +608,7 @@ onMounted(initialize)
             <div class="grid gap-4 sm:grid-cols-2">
               <label class="grid gap-1.5 text-sm font-semibold text-ink">Tractor (opcional)<select v-model="selection.tractor_id" :disabled="!canEdit" class="min-h-11 rounded-lg border border-border-strong bg-surface px-3 font-normal disabled:opacity-70"><option value="">Sin asociar</option><option v-for="item in assets.tractores" :key="item.id" :value="String(item.id)">{{ item.codigo }} · {{ item.descripcion }}<template v-if="item.sucursal"> ({{ item.sucursal }})</template></option></select></label>
               <label class="grid gap-1.5 text-sm font-semibold text-ink">Semi (opcional)<select v-model="selection.semi_id" :disabled="!canEdit" class="min-h-11 rounded-lg border border-border-strong bg-surface px-3 font-normal disabled:opacity-70"><option value="">Sin asociar</option><option v-for="item in assets.semis" :key="item.id" :value="String(item.id)">{{ item.codigo }} · {{ item.descripcion }}<template v-if="item.sucursal"> ({{ item.sucursal }})</template></option></select></label>
-              <label class="grid gap-1.5 text-sm font-semibold text-ink sm:col-span-2">Kilómetros operativos previstos por mes<input v-model="parameters.km_mensuales" type="number" min="1" step="1" inputmode="decimal" :disabled="!canEdit" placeholder="Ej.: 10.000" class="min-h-11 rounded-lg border border-border-strong bg-surface px-3 font-normal disabled:opacity-70" /><span class="text-xs font-normal text-ink-muted">Se usan para distribuir depreciación y costos mensuales entre los km recorridos.</span></label>
+              <label class="grid gap-1.5 text-sm font-semibold text-ink sm:col-span-2">Kilómetros operativos previstos por mes<input id="km-mensuales" v-model="parameters.km_mensuales" type="number" min="1" step="1" inputmode="decimal" :disabled="!canEdit" placeholder="Ej.: 10.000" class="min-h-11 rounded-lg border border-border-strong bg-surface px-3 font-normal disabled:opacity-70" /><span class="text-xs font-normal text-ink-muted">Se usan para distribuir depreciación y costos mensuales entre los km recorridos.</span></label>
             </div>
             <div class="mt-4 rounded-lg bg-info-subtle p-3 text-sm text-info-strong">Asociar un tractor o un semi es opcional; podés seleccionar uno solo, ambos o ninguno.</div>
           </section>
@@ -550,7 +616,7 @@ onMounted(initialize)
           <section class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="quote-title">
             <div class="mb-4"><h2 id="quote-title" class="font-bold text-ink">Cotización de referencia</h2><p class="mt-1 text-sm text-ink-muted">Se aplica a los importes en USD de este escenario y queda guardada con él.</p></div>
             <div class="grid gap-4 sm:grid-cols-3">
-              <label class="grid gap-1.5 text-sm font-semibold text-ink">ARS por 1 USD<input v-model="parameters.fx.ars_por_usd" type="number" min="0.01" step="0.01" inputmode="decimal" :disabled="!canEdit" placeholder="Ej.: 1.250" class="min-h-11 rounded-lg border border-border-strong bg-surface px-3 font-normal disabled:opacity-70" @input="markExchangeRateManual" /></label>
+              <label class="grid gap-1.5 text-sm font-semibold text-ink">ARS por 1 USD<input id="fx-rate" v-model="parameters.fx.ars_por_usd" type="number" min="0.01" step="0.01" inputmode="decimal" :disabled="!canEdit" placeholder="Ej.: 1.250" class="min-h-11 rounded-lg border border-border-strong bg-surface px-3 font-normal disabled:opacity-70" @input="markExchangeRateManual" /></label>
               <label class="grid gap-1.5 text-sm font-semibold text-ink">Fecha de referencia<input v-model="parameters.fx.fecha" type="date" :disabled="!canEdit" class="min-h-11 rounded-lg border border-border-strong bg-surface px-3 font-normal disabled:opacity-70" @change="markExchangeRateManual" /></label>
               <label class="grid gap-1.5 text-sm font-semibold text-ink">Fuente o tipo<input v-model="parameters.fx.fuente" type="text" maxlength="120" :disabled="!canEdit" placeholder="Ej.: referencia propia" class="min-h-11 rounded-lg border border-border-strong bg-surface px-3 font-normal disabled:opacity-70" @input="markExchangeRateManual" /></label>
             </div>
@@ -564,20 +630,20 @@ onMounted(initialize)
           <section class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="assets-title">
             <div class="mb-4"><h2 id="assets-title" class="font-bold text-ink">Valor y vida útil de los activos</h2><p class="mt-1 text-sm text-ink-muted">En USD, por separado. Se estima depreciación lineal entre valor de reposición y residual. Si dejás residual vacío, se estima en 30% del valor de reposición.</p></div>
             <div class="grid gap-4 lg:grid-cols-2">
-              <fieldset class="min-w-0 rounded-lg border border-border-subtle p-4"><legend class="px-1 text-sm font-bold text-ink">Tractor</legend><div class="grid gap-3 sm:grid-cols-3"><label class="grid gap-1 text-xs font-semibold text-ink-muted">Reposición (US$)<input v-model="parameters.tractor.valor_usd" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /></label><label class="grid gap-1 text-xs font-semibold text-ink-muted">Residual (US$)<input v-model="parameters.tractor.valor_residual_usd" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /><span v-if="numberOrNull(parameters.tractor.valor_residual_usd) === null && effectiveResidual('', parameters.tractor.valor_usd) !== null" class="text-[10px] font-normal">Estimado al 30%: {{ currencyLabel(effectiveResidual('', parameters.tractor.valor_usd), 'USD') }}</span></label><label class="grid gap-1 text-xs font-semibold text-ink-muted">Vida útil (años)<input v-model="parameters.tractor.vida_util_anios" type="number" min="0.1" step="0.1" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /></label></div></fieldset>
-              <fieldset class="min-w-0 rounded-lg border border-border-subtle p-4"><legend class="px-1 text-sm font-bold text-ink">Semi</legend><div class="grid gap-3 sm:grid-cols-3"><label class="grid gap-1 text-xs font-semibold text-ink-muted">Reposición (US$)<input v-model="parameters.semi.valor_usd" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /></label><label class="grid gap-1 text-xs font-semibold text-ink-muted">Residual (US$)<input v-model="parameters.semi.valor_residual_usd" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /><span v-if="numberOrNull(parameters.semi.valor_residual_usd) === null && effectiveResidual('', parameters.semi.valor_usd) !== null" class="text-[10px] font-normal">Estimado al 30%: {{ currencyLabel(effectiveResidual('', parameters.semi.valor_usd), 'USD') }}</span></label><label class="grid gap-1 text-xs font-semibold text-ink-muted">Vida útil (años)<input v-model="parameters.semi.vida_util_anios" type="number" min="0.1" step="0.1" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /></label></div></fieldset>
+              <fieldset class="min-w-0 rounded-lg border border-border-subtle p-4"><legend class="px-1 text-sm font-bold text-ink">Tractor</legend><div class="grid gap-3 sm:grid-cols-3"><label class="grid gap-1 text-xs font-semibold text-ink-muted">Reposición (US$)<input id="tractor-value" v-model="parameters.tractor.valor_usd" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /></label><label class="grid gap-1 text-xs font-semibold text-ink-muted">Residual (US$)<input v-model="parameters.tractor.valor_residual_usd" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /><span v-if="numberOrNull(parameters.tractor.valor_residual_usd) === null && effectiveResidual('', parameters.tractor.valor_usd) !== null" class="text-[10px] font-normal">Estimado al 30%: {{ currencyLabel(effectiveResidual('', parameters.tractor.valor_usd), 'USD') }}</span></label><label class="grid gap-1 text-xs font-semibold text-ink-muted">Vida útil (años)<input v-model="parameters.tractor.vida_util_anios" type="number" min="0.1" step="0.1" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /></label></div></fieldset>
+              <fieldset class="min-w-0 rounded-lg border border-border-subtle p-4"><legend class="px-1 text-sm font-bold text-ink">Semi</legend><div class="grid gap-3 sm:grid-cols-3"><label class="grid gap-1 text-xs font-semibold text-ink-muted">Reposición (US$)<input id="semi-value" v-model="parameters.semi.valor_usd" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /></label><label class="grid gap-1 text-xs font-semibold text-ink-muted">Residual (US$)<input v-model="parameters.semi.valor_residual_usd" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /><span v-if="numberOrNull(parameters.semi.valor_residual_usd) === null && effectiveResidual('', parameters.semi.valor_usd) !== null" class="text-[10px] font-normal">Estimado al 30%: {{ currencyLabel(effectiveResidual('', parameters.semi.valor_usd), 'USD') }}</span></label><label class="grid gap-1 text-xs font-semibold text-ink-muted">Vida útil (años)<input v-model="parameters.semi.vida_util_anios" type="number" min="0.1" step="0.1" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /></label></div></fieldset>
             </div>
           </section>
 
           <section class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="variable-costs-title">
             <div class="mb-4"><h2 id="variable-costs-title" class="font-bold text-ink">Costos por uso</h2><p class="mt-1 text-sm text-ink-muted">Ingresá supuestos representativos de tu operación. Los importes en USD usan la cotización indicada arriba.</p></div>
             <div class="grid gap-5 lg:grid-cols-2">
-              <fieldset class="grid content-start gap-3"><legend class="mb-2 text-sm font-bold text-ink">Gasoil</legend><label class="grid gap-1 text-xs font-semibold text-ink-muted">Consumo (litros cada 100 km)<input v-model="parameters.combustible.litros_100km" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 rounded-lg border border-border-strong bg-surface px-3 text-sm font-normal text-ink disabled:opacity-70" /></label><div class="grid grid-cols-[minmax(0,1fr)_6rem] gap-2"><label class="grid gap-1 text-xs font-semibold text-ink-muted">Precio por litro<input v-model="parameters.combustible.precio" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 rounded-lg border border-border-strong bg-surface px-3 text-sm font-normal text-ink disabled:opacity-70" /></label><label class="grid gap-1 text-xs font-semibold text-ink-muted">Moneda<select v-model="parameters.combustible.moneda" :disabled="!canEdit" class="min-h-10 rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70"><option>ARS</option><option>USD</option></select></label></div><label class="grid gap-1 text-xs font-semibold text-ink-muted">Fecha del precio<input v-model="parameters.combustible.fecha" type="date" :disabled="!canEdit" class="min-h-10 rounded-lg border border-border-strong bg-surface px-3 text-sm font-normal text-ink disabled:opacity-70" /></label></fieldset>
-              <fieldset class="grid content-start gap-3"><legend class="mb-2 text-sm font-bold text-ink">Neumáticos y recapados</legend><div class="grid grid-cols-2 gap-2"><label class="grid gap-1 text-xs font-semibold text-ink-muted">Juego de neumáticos<input v-model="parameters.neumaticos.costo_juego" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 rounded-lg border border-border-strong bg-surface px-3 text-sm font-normal text-ink disabled:opacity-70" /></label><label class="grid gap-1 text-xs font-semibold text-ink-muted">Recapados del ciclo<input v-model="parameters.neumaticos.recapados" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 rounded-lg border border-border-strong bg-surface px-3 text-sm font-normal text-ink disabled:opacity-70" /></label></div><div class="grid grid-cols-2 gap-2"><label class="grid gap-1 text-xs font-semibold text-ink-muted">Vida útil total (km)<input v-model="parameters.neumaticos.vida_util_km" type="number" min="1" step="1" :disabled="!canEdit" class="min-h-10 rounded-lg border border-border-strong bg-surface px-3 text-sm font-normal text-ink disabled:opacity-70" /></label><label class="grid gap-1 text-xs font-semibold text-ink-muted">Moneda<select v-model="parameters.neumaticos.moneda" :disabled="!canEdit" class="min-h-10 rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70"><option>ARS</option><option>USD</option></select></label></div></fieldset>
+              <fieldset class="grid content-start gap-3"><legend class="mb-2 text-sm font-bold text-ink">Gasoil</legend><label class="grid gap-1 text-xs font-semibold text-ink-muted">Consumo (litros cada 100 km)<input v-model="parameters.combustible.litros_100km" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 rounded-lg border border-border-strong bg-surface px-3 text-sm font-normal text-ink disabled:opacity-70" /></label><div class="grid grid-cols-[minmax(0,1fr)_6rem] gap-2"><label class="grid gap-1 text-xs font-semibold text-ink-muted">Precio por litro<input id="fuel-price" v-model="parameters.combustible.precio" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 rounded-lg border border-border-strong bg-surface px-3 text-sm font-normal text-ink disabled:opacity-70" /></label><label class="grid gap-1 text-xs font-semibold text-ink-muted">Moneda<select v-model="parameters.combustible.moneda" :disabled="!canEdit" class="min-h-10 rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70"><option>ARS</option><option>USD</option></select></label></div><label class="grid gap-1 text-xs font-semibold text-ink-muted">Fecha del precio<input v-model="parameters.combustible.fecha" type="date" :disabled="!canEdit" class="min-h-10 rounded-lg border border-border-strong bg-surface px-3 text-sm font-normal text-ink disabled:opacity-70" /></label></fieldset>
+              <fieldset class="grid content-start gap-3"><legend class="mb-2 text-sm font-bold text-ink">Neumáticos y recapados</legend><div class="grid grid-cols-2 gap-2"><label class="grid gap-1 text-xs font-semibold text-ink-muted">Juego de neumáticos<input id="tire-cost" v-model="parameters.neumaticos.costo_juego" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 rounded-lg border border-border-strong bg-surface px-3 text-sm font-normal text-ink disabled:opacity-70" /></label><label class="grid gap-1 text-xs font-semibold text-ink-muted">Recapados del ciclo<input v-model="parameters.neumaticos.recapados" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 rounded-lg border border-border-strong bg-surface px-3 text-sm font-normal text-ink disabled:opacity-70" /></label></div><div class="grid grid-cols-2 gap-2"><label class="grid gap-1 text-xs font-semibold text-ink-muted">Vida útil total (km)<input v-model="parameters.neumaticos.vida_util_km" type="number" min="1" step="1" :disabled="!canEdit" class="min-h-10 rounded-lg border border-border-strong bg-surface px-3 text-sm font-normal text-ink disabled:opacity-70" /></label><label class="grid gap-1 text-xs font-semibold text-ink-muted">Moneda<select v-model="parameters.neumaticos.moneda" :disabled="!canEdit" class="min-h-10 rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70"><option>ARS</option><option>USD</option></select></label></div></fieldset>
             </div>
           </section>
 
-          <section class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="monthly-title">
+          <section id="monthly-costs" class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="monthly-title">
             <div class="mb-4"><h2 id="monthly-title" class="font-bold text-ink">Costos mensuales y mantenimiento</h2><p class="mt-1 text-sm text-ink-muted">Cada costo mensual se distribuye sobre los km previstos. Mantenimiento y reparaciones se estiman juntos como porcentaje del costo total.</p></div>
             <div class="space-y-2">
               <div v-for="(item, index) in parameters.costos_mensuales" :key="`monthly-${index}`" class="grid grid-cols-[minmax(6rem,1fr)_minmax(6rem,1fr)_5rem] gap-2 sm:grid-cols-[minmax(8rem,1fr)_minmax(8rem,1fr)_6rem]">
@@ -588,10 +654,10 @@ onMounted(initialize)
               <button v-if="canEdit" type="button" class="inline-flex min-h-10 items-center gap-1 text-sm font-semibold text-primary hover:text-primary-hover" @click="addMonthlyCost"><PlusIcon class="size-4" aria-hidden="true" />Agregar costo mensual</button>
             </div>
             <div class="mt-5 grid gap-4 sm:grid-cols-2">
-              <label class="grid gap-1.5 text-sm font-semibold text-ink">Mantenimiento y reparaciones (% del costo total)<input v-model="parameters.mantenimiento_pct" type="number" min="0" max="99.99" step="0.01" :disabled="!canEdit" placeholder="Ej.: 10" class="min-h-11 rounded-lg border border-border-strong bg-surface px-3 font-normal disabled:opacity-70" /><span class="text-xs font-normal text-ink-muted">Debe ser menor a 100 %. No cargues reparaciones de nuevo en otro rubro si usás este porcentaje.</span></label>
-              <label class="grid gap-1.5 text-sm font-semibold text-ink">Recargo sobre el costo (%)<input v-model="parameters.recargo_pct" type="number" min="0" step="0.01" :disabled="!canEdit" placeholder="Ej.: 20" class="min-h-11 rounded-lg border border-border-strong bg-surface px-3 font-normal disabled:opacity-70" /><span class="text-xs font-normal text-ink-muted">Es un recargo para orientar la tarifa; no representa margen neto ni rentabilidad garantizada.</span></label>
+              <label class="grid gap-1.5 text-sm font-semibold text-ink">Mantenimiento y reparaciones (% del costo total)<input id="maintenance-pct" v-model="parameters.mantenimiento_pct" type="number" min="0" max="99.99" step="0.01" :disabled="!canEdit" placeholder="Ej.: 10" class="min-h-11 rounded-lg border border-border-strong bg-surface px-3 font-normal disabled:opacity-70" /><span class="text-xs font-normal text-ink-muted">Debe ser menor a 100 %. No cargues reparaciones de nuevo en otro rubro si usás este porcentaje.</span></label>
+              <label class="grid gap-1.5 text-sm font-semibold text-ink">Recargo sobre el costo (%)<input id="surcharge-pct" v-model="parameters.recargo_pct" type="number" min="0" step="0.01" :disabled="!canEdit" placeholder="Ej.: 20" class="min-h-11 rounded-lg border border-border-strong bg-surface px-3 font-normal disabled:opacity-70" /><span class="text-xs font-normal text-ink-muted">Es un recargo para orientar la tarifa; no representa margen neto ni rentabilidad garantizada.</span></label>
             </div>
-            <div class="mt-5 rounded-lg border border-border-subtle p-4">
+            <div id="special-costs" class="mt-5 rounded-lg border border-border-subtle p-4">
               <h3 class="text-sm font-bold text-ink">Lubricantes y costo financiero</h3>
               <p class="mt-1 text-xs leading-5 text-ink-muted">Estimación inicial editable: $0 excluye el rubro hasta que cargues un importe propio. El costo financiero se expresa por mes y se distribuye entre los kilómetros previstos.</p>
               <div class="mt-3 grid gap-3 sm:grid-cols-2">

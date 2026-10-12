@@ -18,6 +18,30 @@ afterEach(() => {
 })
 
 describe('TheoreticalCostPage standard assumptions', () => {
+  it('shows a prominent, actionable list of missing assumptions before calculation', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url) => ({
+      ok: true,
+      json: async () => String(url).includes('cotizacion-bcra')
+        ? { data: { ars_por_usd: 1515.8766, fecha: '2026-10-09', fuente: 'BCRA · Tipo de Cambio de Referencia Com. A 3500' } }
+        : String(url).includes('activos') ? { data: { tractores: [], semis: [] } } : { data: { items: [] } },
+    })))
+
+    const wrapper = mount(TheoreticalCostPage, { props: { data: data() } })
+    await flushPromises()
+
+    const warning = wrapper.get('[data-testid="assumptions-warning"]')
+    expect(warning.attributes('role')).toBe('status')
+    expect(warning.text()).toContain('Faltan supuestos para completar la referencia')
+    expect(warning.text()).toContain('Valor de reposición y vida útil del tractor')
+    expect(warning.text()).toContain('Valor de reposición y vida útil del semi')
+    expect(warning.text()).toContain('Consumo, precio, fecha del gasoil')
+    expect(warning.text()).toContain('Importes mensuales')
+    expect(warning.find('a[href="#tractor-value"]').exists()).toBe(true)
+
+    await inputWithLabel(wrapper, 'Kilómetros operativos previstos por mes').setValue('10000')
+    expect(warning.text()).not.toContain('Kilómetros operativos previstos por mes')
+  })
+
   it('loads the latest BCRA reference rate and uses it as the scenario quote', async () => {
     const fetchMock = vi.fn(async (url) => ({
       ok: true,

@@ -87,7 +87,7 @@
     "src": "src/assets/platform/trips-card.jpg"
   },
   "src/main.js": {
-    "file": "assets/main-DKSeHqHa.js",
+    "file": "assets/main-DZ7wpOek.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
@@ -103,7 +103,7 @@
       "node_modules/gsap/index.js"
     ],
     "css": [
-      "assets/main-aD20ufRr.css"
+      "assets/main-DUuqT1Ko.css"
     ],
     "assets": [
       "assets/portal-hero-Dd-Ff3YR.jpg",
