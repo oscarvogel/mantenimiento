@@ -385,7 +385,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
         }
 
         $plan = $this->db->table('planes_mantenimiento p')
-            ->select('p.id, p.equipo_id, e.codigo equipo_codigo, e.patente, ts.nombre servicio_nombre')
+            ->select('p.id, p.equipo_id, p.proximo_km, e.codigo equipo_codigo, e.patente, e.km_actual, ts.nombre servicio_nombre')
             ->join('equipos e', 'e.id = p.equipo_id AND e.empresa_id = p.empresa_id', 'inner')
             ->join('tipos_servicio ts', 'ts.id = p.tipo_servicio_id', 'inner')
             ->where('p.id', $planId)->where('p.empresa_id', $companyId)
@@ -460,6 +460,24 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             return number_format((int) $match[1], 0, ',', '.');
         }, $detail) ?? $detail;
 
+        $kilometrajeDetail = '';
+        if (
+            str_contains(mb_strtoupper($detail), 'KILOMETRAJE')
+            && $plan['proximo_km'] !== null
+            && $plan['km_actual'] !== null
+        ) {
+            $currentKm = (int) $plan['km_actual'];
+            $targetKm = (int) $plan['proximo_km'];
+            $differenceKm = $targetKm - $currentKm;
+            $kilometrajeDetail = $differenceKm < 0
+                ? 'Kilometraje actual: ' . number_format($currentKm, 0, ',', '.') . ' km · servicio previsto a los '
+                    . number_format($targetKm, 0, ',', '.') . ' km · excedido por '
+                    . number_format(abs($differenceKm), 0, ',', '.') . " km.\n"
+                : 'Kilometraje actual: ' . number_format($currentKm, 0, ',', '.') . ' km · servicio previsto a los '
+                    . number_format($targetKm, 0, ',', '.') . ' km · faltan '
+                    . number_format($differenceKm, 0, ',', '.') . " km.\n";
+        }
+
         $message = $pilotHeader
             . "*" . $companyName . " · Mantenimiento*\n\n"
             . ($firstName === '' ? 'Hola 👋' : 'Hola ' . $firstName . ' 👋') . "\n\n"
@@ -467,6 +485,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             . "🚛 *" . $equipmentLabel . "*\n"
             . "*" . ($serviceName === '' ? 'Servicio preventivo' : $serviceName) . "*\n"
             . ($detail === '' ? '' : ucfirst($detail) . ".\n")
+            . $kilometrajeDetail
             . "\nPor favor, coordiná este mantenimiento con el responsable de mantenimiento.\n\n"
             . "_Sistema de mantenimiento desarrollado por Vogel Consultoría._";
 
