@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import {
   ArrowDownTrayIcon,
   ArrowLeftIcon,
@@ -27,7 +27,9 @@ const notice = ref('')
 const exchangeLoading = ref(false)
 const exchangeError = ref('')
 const activeTab = ref('calculator')
+const wizardStep = ref(0)
 const activeResult = ref(null)
+const resultIsStale = ref(false)
 const assets = ref({ tractores: [], semis: [] })
 const scenarios = ref([])
 const selectedScenario = ref(null)
@@ -63,6 +65,12 @@ const autoResidualValues = reactive({ tractor: null, semi: null })
 
 const selection = reactive({ tractor_id: '', semi_id: '' })
 const trip = reactive({ km_facturables: '', km_no_facturados: '', peajes: '', moneda: 'ARS' })
+const wizardSteps = [
+  { title: 'Uso y conjunto', shortTitle: 'Uso y conjunto' },
+  { title: 'Costos por recorrido', shortTitle: 'Gasoil y neumáticos' },
+  { title: 'Gastos mensuales', shortTitle: 'Gastos mensuales' },
+  { title: 'Revisar costo/km', shortTitle: 'Costo por km' },
+]
 
 const urlAliases = {
   assets: ['assets', 'activos'],
@@ -271,6 +279,7 @@ const calculate = async () => {
       viaje: normalizedTrip(),
     })
     activeResult.value = body.data?.resultado ?? null
+    resultIsStale.value = false
     selectedScenario.value = null
     if (!activeResult.value) notice.value = 'El servidor no devolvió un resultado para estos supuestos.'
   } catch (error) {
@@ -280,7 +289,26 @@ const calculate = async () => {
   }
 }
 
+const continueWizard = async () => {
+  errorMessage.value = ''
+  if (wizardStep.value < 2) {
+    wizardStep.value += 1
+    return
+  }
+  await calculate()
+  if (activeResult.value) wizardStep.value = 3
+}
+
+const goToWizardStep = (step) => {
+  wizardStep.value = Math.max(0, Math.min(wizardSteps.length - 1, step))
+}
+
 const saveScenario = async () => {
+  if (resultIsStale.value) {
+    errorMessage.value = 'Actualizá el costo por km antes de guardar esta versión.'
+    wizardStep.value = 3
+    return
+  }
   if (!scenarioName.value.trim()) {
     errorMessage.value = 'Escribí un nombre para reconocer este escenario en el historial.'
     return
@@ -343,6 +371,8 @@ const selectScenario = async (scenario, version = null) => {
     applyParameters(record.parametros ?? {})
     applyTrip(record.viaje ?? {})
     activeResult.value = record.resultado ?? null
+    resultIsStale.value = false
+    wizardStep.value = 3
     activeTab.value = 'calculator'
   } catch (error) {
     errorMessage.value = error.message
@@ -470,6 +500,27 @@ const pendingAssumptions = computed(() => {
 
   return pending
 })
+const pendingStep = (item) => {
+  if (item.target === '#fuel-price' || item.target === '#tire-cost') return 1
+  if (['monthly', 'other', 'zero-standard', 'maintenance', 'surcharge'].includes(item.key)) return 2
+  return 0
+}
+const pendingForStep = (step) => pendingAssumptions.value.filter((item) => pendingStep(item) === step).length
+watch([parameters, trip, selection], () => {
+  if (activeResult.value) resultIsStale.value = true
+}, { deep: true, flush: 'sync' })
+
+const jumpToPending = async (item) => {
+  activeTab.value = 'calculator'
+  wizardStep.value = pendingStep(item)
+  await nextTick()
+  const target = document.querySelector(item.target)
+  const field = target?.matches?.('input, select, textarea, button')
+    ? target
+    : target?.closest?.('section')?.querySelector('input:not(:disabled), select:not(:disabled), textarea:not(:disabled), button:not(:disabled)')
+  target?.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
+  field?.focus?.({ preventScroll: true })
+}
 const resultAmount = (amount, currency) => {
   if (amount && typeof amount === 'object') return amount[currency.toLowerCase()] ?? amount[currency] ?? null
   if (amount === null || amount === undefined) return null
@@ -620,41 +671,49 @@ onMounted(initialize)
     <div v-if="loading" role="status" class="rounded-xl border border-border bg-surface-raised px-5 py-8 text-center text-sm text-ink-muted">Cargando equipos e historial…</div>
 
     <template v-else-if="activeTab === 'calculator'">
-      <section v-if="pendingAssumptions.length" data-testid="assumptions-warning" role="status" aria-live="polite" aria-labelledby="assumptions-warning-title" class="rounded-xl border-2 border-warning/60 bg-warning-subtle p-5 shadow-sm sm:p-6">
-        <div class="flex items-start gap-3">
-          <ExclamationTriangleIcon class="mt-0.5 size-7 shrink-0 text-warning-strong sm:size-8" aria-hidden="true" />
-          <div>
-            <h2 id="assumptions-warning-title" class="text-lg font-extrabold text-warning-strong sm:text-xl">Faltan supuestos para completar la referencia</h2>
-            <p class="mt-1 text-sm font-semibold text-warning-strong">Hay {{ pendingAssumptions.length }} datos pendientes. Completalos antes de usar el costo/km como orientación para cotizar.</p>
+      <section v-if="pendingAssumptions.length" data-testid="assumptions-warning" role="status" aria-live="polite" aria-labelledby="assumptions-warning-title" class="rounded-lg border border-warning/30 bg-warning-subtle px-3 py-2.5 text-sm">
+        <div class="flex items-start gap-2.5">
+          <ExclamationTriangleIcon class="mt-0.5 size-4 shrink-0 text-warning-strong" aria-hidden="true" />
+          <div class="min-w-0 flex-1">
+            <h2 id="assumptions-warning-title" class="font-semibold text-warning-strong">Faltan supuestos para completar la referencia</h2>
+            <p class="mt-0.5 text-xs font-medium text-warning-strong">Hay {{ pendingAssumptions.length }} datos por confirmar.</p>
+            <p class="mt-0.5 text-xs text-warning-strong">{{ wizardStep === 3 ? 'La referencia queda parcial hasta confirmar estos datos.' : `${pendingForStep(wizardStep)} en este paso · Podés revisar el resto antes de calcular.` }}</p>
+            <details class="mt-1.5">
+              <summary class="w-fit cursor-pointer text-xs font-semibold text-warning-strong underline underline-offset-2">Ver pendientes y completar</summary>
+              <ul class="mt-2 grid gap-x-4 gap-y-1 sm:grid-cols-2">
+                <li v-for="item in pendingAssumptions" :key="item.key">
+                  <div class="flex items-center gap-1">
+                    <a :href="item.target" class="min-w-0 flex-1 text-xs font-medium text-warning-strong underline underline-offset-2 hover:text-ink" @click.prevent="jumpToPending(item)">{{ item.label }} <span class="whitespace-nowrap">· completar</span></a>
+                    <ContextHelp :label="`Ayuda: ${item.label}`" :text="pendingHelp(item.key)" />
+                  </div>
+                </li>
+              </ul>
+              <p class="mt-2 border-t border-warning/30 pt-2 text-xs text-warning-strong">Los importes propios y precios actuales se cargan o se confirman en $0 si no aplican.</p>
+            </details>
           </div>
         </div>
-        <ul class="mt-4 grid gap-2 sm:grid-cols-2">
-          <li v-for="item in pendingAssumptions" :key="item.key" class="rounded-lg border border-warning/30 bg-surface px-3 py-2.5">
-            <div class="flex items-center gap-2">
-              <a :href="item.target" class="flex min-h-7 min-w-0 flex-1 items-center justify-between gap-2 text-sm font-bold text-warning-strong underline decoration-2 underline-offset-2 hover:text-ink">
-                <span>{{ item.label }}</span><span class="shrink-0 text-xs">Completar ↓</span>
-              </a>
-              <ContextHelp :label="`Ayuda: ${item.label}`" :text="pendingHelp(item.key)" />
-            </div>
-          </li>
-        </ul>
-        <p class="mt-4 border-t border-warning/30 pt-3 text-sm text-warning-strong">El botón «Cargar supuestos» completa los valores documentados. Los importes propios de la empresa y los precios actuales se deben cargar o confirmar en $0 si no aplican.</p>
+      </section>
+      <nav class="flex gap-2 overflow-x-auto" aria-label="Pasos para calcular el costo por km">
+        <button v-for="(step, index) in wizardSteps" :key="step.title" type="button" :disabled="index > wizardStep" :aria-current="wizardStep === index ? 'step' : undefined" class="flex min-h-12 min-w-0 flex-1 items-center gap-2 rounded-lg border px-3 py-2 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-55" :class="wizardStep === index ? 'border-primary bg-primary-subtle text-primary' : 'border-border bg-surface-raised text-ink-muted hover:border-primary/50 hover:text-ink'" @click="goToWizardStep(index)">
+          <span class="grid size-6 shrink-0 place-items-center rounded-full text-xs font-bold" :class="wizardStep === index ? 'bg-primary text-primary-foreground' : 'bg-surface-muted text-ink-muted'">{{ index + 1 }}</span>
+          <span class="min-w-0"><span class="block truncate text-xs font-semibold sm:text-sm">{{ step.shortTitle }}</span><span v-if="index < 3" class="block text-[10px] sm:text-xs">{{ pendingForStep(index) ? `${pendingForStep(index)} pendientes` : 'Listo' }}</span></span>
+        </button>
+      </nav>
+      <section v-if="activeResult" class="rounded-xl border border-border bg-surface-raised p-4 xl:hidden" aria-labelledby="mobile-result-title" aria-live="polite">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0"><p class="text-[11px] font-bold uppercase tracking-wide text-primary">Costo teórico</p><h2 id="mobile-result-title" class="mt-0.5 text-sm font-semibold text-ink">Costo por km recorrido</h2><p class="mt-1 text-2xl font-bold tracking-tight text-ink tabular-nums">{{ currencyLabel(costArs, 'ARS') }} <span class="text-sm font-semibold text-ink-muted">/ km</span></p><p class="text-xs text-ink-muted">{{ currencyLabel(costUsd, 'USD') }} / km</p></div>
+          <span class="shrink-0 rounded-full px-2 py-1 text-[10px] font-bold" :class="resultIsStale ? 'bg-warning-subtle text-warning-strong' : coverageComplete ? 'bg-success-subtle text-success-strong' : 'bg-warning-subtle text-warning-strong'">{{ resultIsStale ? 'Actualizar' : coverageComplete ? 'Completo' : 'Parcial' }}</span>
+        </div>
+        <p v-if="resultIsStale" class="mt-2 text-xs text-warning-strong">Cambiaste supuestos; recalculá para actualizar este valor.</p>
+        <p v-else class="mt-2 text-xs text-ink-muted">Tarifa con recargo: {{ currencyLabel(rateArs, 'ARS') }} / km</p>
+      </section>
+      <section v-else class="rounded-xl border border-dashed border-border-strong bg-surface-raised px-4 py-3 xl:hidden" aria-labelledby="mobile-result-title">
+        <p class="text-[11px] font-bold uppercase tracking-wide text-primary">Costo teórico</p><h2 id="mobile-result-title" class="mt-0.5 text-sm font-semibold text-ink">Costo por km recorrido</h2><p class="mt-1 text-xl font-bold tracking-tight text-ink-subtle">— / km</p><p class="mt-1 text-xs text-ink-muted">El resultado aparecerá al terminar la carga y calcular.</p>
       </section>
       <div class="grid items-start gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)]">
         <div class="space-y-6">
-          <section class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="equipment-title">
+          <section v-show="wizardStep === 0" class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="equipment-title">
             <div class="mb-4 flex items-start gap-3"><span class="rounded-lg bg-primary-subtle p-2 text-primary"><TruckIcon class="size-5" aria-hidden="true" /></span><div><h2 id="equipment-title" class="font-bold text-ink">Conjunto y utilización</h2><p class="mt-1 text-sm text-ink-muted">El escenario general no requiere asociar equipos. Si querés identificar el conjunto, seleccioná tractor y semi. Los kilómetros mensuales incluyen recorridos cargados y vacíos.</p></div></div>
-            <div class="mb-4 rounded-lg border border-info/30 bg-info-subtle p-3 text-sm text-info-strong">
-              <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div class="min-w-0">
-                  <p class="font-semibold">Supuestos técnicos documentados</p>
-                  <p class="mt-1 text-xs leading-5">37,04 l/100 km de consumo; neumáticos con 250.000 km de vida total, incluyendo un recapado. Si ingresaste el costo del juego, el costo del recapado se estima al 30 %.</p>
-                  <p class="mt-1 text-xs leading-5">Referencia histórica para transporte de cereales; ajustá estos supuestos a tu flota.</p>
-                  <a class="mt-1 inline-flex text-xs font-semibold underline underline-offset-2 hover:text-primary" href="https://www.argentina.gob.ar/normativa/nacional/disposici%C3%B3n-273-2011-182568/texto" target="_blank" rel="noopener noreferrer">Fuente: Disposición 273/2011 · modelo elaborado con FADEEAC</a>
-                </div>
-                <button v-if="canEdit" type="button" aria-label="Cargar supuestos documentados" class="ui-interactive inline-flex min-h-10 shrink-0 items-center justify-center rounded-lg border border-info/40 bg-surface px-3 py-2 text-xs font-semibold text-info-strong hover:bg-info-subtle" @click="loadDocumentedAssumptions">Cargar supuestos</button>
-              </div>
-            </div>
             <div class="grid gap-4 sm:grid-cols-2">
               <label class="grid gap-1.5 text-sm font-semibold text-ink"><span class="inline-flex items-center gap-1">Tractor (opcional)<ContextHelp label="Ayuda: tractor opcional" text="Asociar un tractor solo identifica qué equipo representa el escenario. No toma automáticamente un precio de compra ni es obligatorio para calcular." /></span><select v-model="selection.tractor_id" :disabled="!canEdit" class="min-h-11 rounded-lg border border-border-strong bg-surface px-3 font-normal disabled:opacity-70"><option value="">Sin asociar</option><option v-for="item in assets.tractores" :key="item.id" :value="String(item.id)">{{ item.codigo }} · {{ item.descripcion }}<template v-if="item.sucursal"> ({{ item.sucursal }})</template></option></select></label>
               <label class="grid gap-1.5 text-sm font-semibold text-ink"><span class="inline-flex items-center gap-1">Semi (opcional)<ContextHelp label="Ayuda: semi opcional" text="Asociar un semi solo identifica qué equipo representa el escenario. No toma automáticamente un precio de compra ni es obligatorio para calcular." /></span><select v-model="selection.semi_id" :disabled="!canEdit" class="min-h-11 rounded-lg border border-border-strong bg-surface px-3 font-normal disabled:opacity-70"><option value="">Sin asociar</option><option v-for="item in assets.semis" :key="item.id" :value="String(item.id)">{{ item.codigo }} · {{ item.descripcion }}<template v-if="item.sucursal"> ({{ item.sucursal }})</template></option></select></label>
@@ -663,7 +722,7 @@ onMounted(initialize)
             <div class="mt-4 rounded-lg bg-info-subtle p-3 text-sm text-info-strong">Asociar un tractor o un semi es opcional; podés seleccionar uno solo, ambos o ninguno.</div>
           </section>
 
-          <section class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="quote-title">
+          <section v-show="wizardStep === 0" class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="quote-title">
             <div class="mb-4"><h2 id="quote-title" class="font-bold text-ink">Cotización de referencia</h2><p class="mt-1 text-sm text-ink-muted">Se aplica a los importes en USD de este escenario y queda guardada con él.</p></div>
             <div class="grid gap-4 sm:grid-cols-3">
               <label class="grid gap-1.5 text-sm font-semibold text-ink"><span class="inline-flex items-center gap-1">ARS por 1 USD<ContextHelp label="Ayuda: cotización del dólar" text="Pesos equivalentes a un dólar. El cálculo usa esta cotización para convertir a pesos los valores cargados en USD, como reposición de tractor y semi." /></span><input id="fx-rate" v-model="parameters.fx.ars_por_usd" type="number" min="0.01" step="0.01" inputmode="decimal" :disabled="!canEdit" placeholder="Ej.: 1.250" class="min-h-11 rounded-lg border border-border-strong bg-surface px-3 font-normal disabled:opacity-70" @input="markExchangeRateManual" /></label>
@@ -677,7 +736,7 @@ onMounted(initialize)
             <p v-if="exchangeError" role="status" class="mt-2 rounded-lg bg-warning-subtle p-3 text-xs text-warning-strong">{{ exchangeError }} La cotización queda editable para que puedas cargarla manualmente.</p>
           </section>
 
-          <section class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="assets-title">
+          <section v-show="wizardStep === 0" class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="assets-title">
             <div class="mb-4"><h2 id="assets-title" class="font-bold text-ink">Valor y vida útil de los activos</h2><p class="mt-1 text-sm text-ink-muted">En USD, por separado. Se estima depreciación lineal entre valor de reposición y residual. Si dejás residual vacío, se estima en 30% del valor de reposición.</p></div>
             <div class="grid gap-4 lg:grid-cols-2">
               <fieldset class="min-w-0 rounded-lg border border-border-subtle p-4"><legend class="px-1 text-sm font-bold text-ink">Tractor</legend><div class="grid gap-3 sm:grid-cols-3"><label class="grid gap-1 text-xs font-semibold text-ink-muted"><span class="inline-flex items-center gap-1">Reposición (US$)<ContextHelp label="Ayuda: valor de reposición del tractor" text="Precio estimado para reemplazar el tractor por uno equivalente, expresado en dólares. El sistema le resta el residual y distribuye la depreciación durante la vida útil." /></span><input id="tractor-value" v-model="parameters.tractor.valor_usd" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /></label><label class="grid gap-1 text-xs font-semibold text-ink-muted"><span class="inline-flex items-center gap-1">Residual (US$)<ContextHelp label="Ayuda: valor residual del tractor" text="Valor que se estima recuperar al terminar la vida útil. Si lo dejás vacío, el cálculo usa el 30 % del valor de reposición; podés ingresar otro valor." /></span><input v-model="parameters.tractor.valor_residual_usd" @input="markResidualManual('tractor')" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /><span v-if="numberOrNull(parameters.tractor.valor_residual_usd) === null && effectiveResidual('', parameters.tractor.valor_usd) !== null" class="text-[10px] font-normal">Estimado al 30%: {{ currencyLabel(effectiveResidual('', parameters.tractor.valor_usd), 'USD') }}</span></label><label class="grid gap-1 text-xs font-semibold text-ink-muted"><span class="inline-flex items-center gap-1">Vida útil (años)<ContextHelp label="Ayuda: vida útil del tractor" text="Años durante los que se estima que el tractor estará en servicio antes de reemplazarlo. Divide la depreciación entre esos años." /></span><input v-model="parameters.tractor.vida_util_anios" type="number" min="0.1" step="0.1" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /></label></div></fieldset>
@@ -685,8 +744,19 @@ onMounted(initialize)
             </div>
           </section>
 
-          <section class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="variable-costs-title">
+          <section v-show="wizardStep === 1" class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="variable-costs-title">
             <div class="mb-4"><h2 id="variable-costs-title" class="font-bold text-ink">Costos por uso</h2><p class="mt-1 text-sm text-ink-muted">Ingresá supuestos representativos de tu operación. Los importes en USD usan la cotización indicada arriba.</p></div>
+            <details class="mb-4 rounded-lg border border-info/30 bg-info-subtle p-3 text-sm text-info-strong">
+              <summary class="flex cursor-pointer list-none items-center justify-between gap-3 font-semibold">Supuestos técnicos documentados <span class="text-xs font-medium">Opcional · ver</span></summary>
+              <div class="mt-2 border-t border-info/20 pt-2">
+                <p class="text-xs leading-5">37,04 l/100 km de consumo; neumáticos con 250.000 km de vida total, incluyendo un recapado. Si ingresaste el costo del juego, el costo del recapado se estima al 30 %.</p>
+                <p class="mt-1 text-xs leading-5">Referencia histórica para transporte de cereales; ajustá estos supuestos a tu flota. Los valores no reemplazan tus costos reales.</p>
+                <div class="mt-2 flex flex-wrap items-center gap-3">
+                  <a class="text-xs font-semibold underline underline-offset-2 hover:text-primary" href="https://www.argentina.gob.ar/normativa/nacional/disposici%C3%B3n-273-2011-182568/texto" target="_blank" rel="noopener noreferrer">Fuente: Disposición 273/2011 · modelo elaborado con FADEEAC</a>
+                  <button v-if="canEdit" type="button" aria-label="Cargar supuestos documentados" class="ui-interactive inline-flex min-h-9 items-center justify-center rounded-lg border border-info/40 bg-surface px-3 py-1.5 text-xs font-semibold text-info-strong hover:bg-info-subtle" @click="loadDocumentedAssumptions">Cargar en estos campos</button>
+                </div>
+              </div>
+            </details>
             <div class="grid gap-5 lg:grid-cols-2">
               <fieldset class="grid content-start gap-3">
                 <legend class="mb-2 text-sm font-bold text-ink">Gasoil</legend>
@@ -712,7 +782,7 @@ onMounted(initialize)
             </div>
           </section>
 
-          <section id="monthly-costs" class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="monthly-title">
+          <section v-show="wizardStep === 2" id="monthly-costs" class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="monthly-title">
             <div class="mb-4"><h2 id="monthly-title" class="font-bold text-ink">Costos mensuales y mantenimiento</h2><p class="mt-1 text-sm text-ink-muted">Cada costo mensual se distribuye sobre los km previstos. Mantenimiento y reparaciones se estiman juntos como porcentaje del costo total.</p></div>
             <div class="space-y-2">
               <div v-for="(item, index) in parameters.costos_mensuales" :key="`monthly-${index}`" class="grid grid-cols-[minmax(5rem,1fr)_minmax(5rem,1fr)_4.5rem_1.5rem] gap-2 sm:grid-cols-[minmax(7rem,1fr)_minmax(7rem,1fr)_5rem_1.5rem]">
@@ -744,7 +814,7 @@ onMounted(initialize)
             </details>
           </section>
 
-          <section class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="trip-title">
+          <section v-show="wizardStep === 3" class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="trip-title">
             <div class="mb-4"><h2 id="trip-title" class="font-bold text-ink">Simulación de un viaje</h2><p class="mt-1 text-sm text-ink-muted">El costo del tramo no facturado y los peajes se distribuyen entre los kilómetros que sí se cobran.</p></div>
             <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <label class="grid gap-1 text-xs font-semibold text-ink-muted"><span class="inline-flex items-center gap-1">Km facturables<ContextHelp label="Ayuda: kilómetros facturables" text="Kilómetros del viaje por los que se cobrará al cliente. El costo de todos los tramos y peajes se divide por esta cantidad para sugerir una tarifa por km facturable." /></span><input v-model="trip.km_facturables" type="number" min="0" step="1" :disabled="!canEdit" class="min-h-10 rounded-lg border border-border-strong bg-surface px-3 text-sm font-normal text-ink disabled:opacity-70" /></label>
@@ -754,19 +824,24 @@ onMounted(initialize)
             </div>
           </section>
 
-          <div v-if="!canEdit" class="flex items-start gap-3 rounded-xl border border-info/30 bg-info-subtle p-4 text-sm text-info-strong"><InformationCircleIcon class="size-5 shrink-0" aria-hidden="true" /><p>Tenés acceso de consulta. Podés revisar resultados e historial, pero no modificar supuestos ni guardar escenarios.</p></div>
-          <div v-else class="flex flex-col gap-3 rounded-xl border border-border bg-surface-raised p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-            <div><p class="font-semibold text-ink">¿Querés ver cómo quedan estos supuestos?</p><p class="mt-1 text-sm text-ink-muted">Al calcular, los cambios todavía no se guardan en el historial.</p></div>
-            <button type="button" :disabled="calculating" class="ui-interactive inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50" @click="calculate"><ArrowPathIcon class="size-5" :class="calculating ? 'animate-spin' : ''" aria-hidden="true" />{{ calculating ? 'Calculando…' : 'Calcular referencia' }}</button>
+          <div class="flex flex-col gap-3 rounded-xl border border-border bg-surface-raised p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+            <button v-if="wizardStep > 0" type="button" class="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border-strong px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted" @click="goToWizardStep(wizardStep - 1)"><ArrowLeftIcon class="size-4" aria-hidden="true" />Anterior</button>
+            <span v-else class="hidden sm:block text-xs text-ink-muted">Podés cambiar los supuestos después.</span>
+            <p class="text-center text-xs text-ink-muted">Paso {{ wizardStep + 1 }} de {{ wizardSteps.length }}</p>
+            <button v-if="wizardStep < 2" type="button" class="ui-interactive inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary-hover" @click="continueWizard">Continuar<span aria-hidden="true">→</span></button>
+            <button v-else-if="wizardStep === 2" type="button" :disabled="calculating || !canEdit" class="ui-interactive inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50" @click="continueWizard"><ArrowPathIcon class="size-4" :class="calculating ? 'animate-spin' : ''" aria-hidden="true" />{{ calculating ? 'Calculando…' : 'Ver costo por km' }}</button>
+            <button v-else type="button" :disabled="calculating || !canEdit" class="ui-interactive inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50" @click="calculate"><ArrowPathIcon class="size-4" :class="calculating ? 'animate-spin' : ''" aria-hidden="true" />{{ calculating ? 'Calculando…' : resultIsStale ? 'Actualizar referencia · costo/km' : activeResult ? 'Recalcular referencia · costo/km' : 'Calcular referencia · costo/km' }}</button>
           </div>
+          <div v-if="!canEdit" class="flex items-start gap-3 rounded-xl border border-info/30 bg-info-subtle p-4 text-sm text-info-strong"><InformationCircleIcon class="size-5 shrink-0" aria-hidden="true" /><p>Tenés acceso de consulta. Podés revisar resultados e historial, pero no modificar supuestos ni guardar escenarios.</p></div>
         </div>
 
-        <aside class="space-y-5 xl:sticky xl:top-5">
+        <aside class="hidden space-y-4 xl:sticky xl:top-5 xl:block">
           <section v-if="activeResult" class="overflow-hidden rounded-xl border border-border bg-surface-raised" aria-labelledby="result-title" aria-live="polite">
             <div class="border-b border-border-subtle p-5 sm:p-6">
-              <div class="flex items-start justify-between gap-3"><div><p class="text-xs font-bold uppercase tracking-wide text-primary">Resultado teórico</p><h2 id="result-title" class="mt-1 text-lg font-bold text-ink">Costo por km recorrido</h2></div><span class="rounded-full px-2.5 py-1 text-xs font-bold" :class="coverageComplete ? 'bg-success-subtle text-success-strong' : 'bg-warning-subtle text-warning-strong'">{{ coverageComplete ? 'Cobertura completa' : 'Cobertura parcial' }}</span></div>
+              <div class="flex items-start justify-between gap-3"><div><p class="text-xs font-bold uppercase tracking-wide text-primary">Resultado teórico</p><h2 id="result-title" class="mt-1 text-lg font-bold text-ink">Costo por km recorrido</h2></div><span class="rounded-full px-2.5 py-1 text-xs font-bold" :class="resultIsStale ? 'bg-warning-subtle text-warning-strong' : coverageComplete ? 'bg-success-subtle text-success-strong' : 'bg-warning-subtle text-warning-strong'">{{ resultIsStale ? 'Pendiente de actualizar' : coverageComplete ? 'Cobertura completa' : 'Cobertura parcial' }}</span></div>
               <p class="mt-3 text-3xl font-bold tracking-tight text-ink tabular-nums">{{ currencyLabel(costArs, 'ARS') }}<span class="text-base font-semibold text-ink-muted"> / km</span></p>
               <p class="mt-1 text-sm text-ink-muted">{{ currencyLabel(costUsd, 'USD') }} / km</p>
+              <p v-if="resultIsStale" class="mt-2 text-xs font-medium text-warning-strong">Cambiaste supuestos. Actualizá el cálculo para ver el costo vigente.</p>
               <p class="mt-3 rounded-lg bg-surface-subtle px-3 py-2 text-xs text-ink-muted">Cotización usada: {{ exchangeLabel }}</p>
             </div>
             <div class="p-5 sm:p-6">
@@ -797,15 +872,16 @@ onMounted(initialize)
               </div>
               <div v-if="canEdit" class="mt-5 border-t border-border-subtle pt-4">
                 <label for="scenario-name" class="block text-sm font-semibold text-ink">{{ editingScenarioId ? 'Guardar nueva versión' : 'Guardar escenario para consultarlo después' }}</label>
-                <div class="mt-2 flex flex-col gap-2 sm:flex-row"><input id="scenario-name" v-model="scenarioName" type="text" maxlength="120" placeholder="Ej.: Tractor 12 · ruta al norte" class="min-h-11 min-w-0 flex-1 rounded-lg border border-border-strong bg-surface px-3 text-sm" /><button type="button" :disabled="saving" class="ui-interactive inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary-subtle disabled:opacity-50" @click="saveScenario">{{ saving ? 'Guardando…' : (editingScenarioId ? 'Guardar versión' : 'Guardar') }}</button></div>
-                <p class="mt-2 text-xs text-ink-muted">Guardar crea una versión nueva y conserva las anteriores.</p>
+                <div class="mt-2 flex flex-col gap-2 sm:flex-row"><input id="scenario-name" v-model="scenarioName" type="text" maxlength="120" placeholder="Ej.: Tractor 12 · ruta al norte" class="min-h-11 min-w-0 flex-1 rounded-lg border border-border-strong bg-surface px-3 text-sm" /><button type="button" :disabled="saving || resultIsStale" class="ui-interactive inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary-subtle disabled:cursor-not-allowed disabled:opacity-50" @click="saveScenario">{{ saving ? 'Guardando…' : (editingScenarioId ? 'Guardar versión' : 'Guardar') }}</button></div>
+                <p class="mt-2 text-xs text-ink-muted">{{ resultIsStale ? 'Recalculá para guardar el resultado junto con estos supuestos.' : 'Guardar crea una versión nueva y conserva las anteriores.' }}</p>
                 <button v-if="editingScenarioId" type="button" class="mt-2 text-xs font-semibold text-primary underline-offset-2 hover:underline" @click="editingScenarioId = null; selectedScenario = null; scenarioName = ''">Guardar como escenario nuevo</button>
               </div>
               <div v-if="selectedScenario" class="mt-5 flex flex-col gap-2 border-t border-border-subtle pt-4 sm:flex-row sm:items-center sm:justify-between"><p class="text-sm text-ink-muted">Viendo la versión {{ selectedScenario.version }} guardada el {{ scenarioDate(selectedScenario) }}.</p><a :href="excelUrl(selectedScenario)" class="ui-interactive inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-border-strong px-3 py-2 text-sm font-semibold text-ink hover:bg-surface-muted"><ArrowDownTrayIcon class="size-4" aria-hidden="true" />Descargar Excel</a></div>
             </div>
           </section>
-          <section v-else class="rounded-xl border border-dashed border-border-strong bg-surface-raised p-6 text-center">
-            <ChartBarIcon class="mx-auto size-9 text-ink-subtle" aria-hidden="true" /><h2 class="mt-3 font-bold text-ink">Tu resultado va a aparecer acá</h2><p class="mt-1 text-sm leading-6 text-ink-muted">Completá los supuestos y calculá para ver costo/km, tarifa sugerida y faltantes de cobertura.</p>
+          <section v-else class="rounded-xl border border-dashed border-border-strong bg-surface-raised p-5" aria-labelledby="result-title">
+            <p class="text-xs font-bold uppercase tracking-wide text-primary">Tu indicador principal</p><h2 id="result-title" class="mt-1 text-lg font-bold text-ink">Costo por km recorrido</h2><p class="mt-3 text-3xl font-bold tracking-tight text-ink-subtle tabular-nums">— <span class="text-base font-semibold">/ km</span></p><p class="mt-2 text-sm leading-5 text-ink-muted">Completá los pasos y calculalo. Los datos pendientes se muestran sin inventar un costo.</p>
+            <p class="mt-3 rounded-lg bg-surface-subtle px-3 py-2 text-xs text-ink-muted">{{ pendingAssumptions.length ? `${pendingAssumptions.length} datos por confirmar` : 'Supuestos listos para calcular' }}</p>
           </section>
           <section class="rounded-xl border border-info/30 bg-info-subtle p-4 text-sm text-info-strong"><div class="flex gap-2"><InformationCircleIcon class="mt-0.5 size-5 shrink-0" aria-hidden="true" /><p>El costo por km aplica a kilómetros recorridos, incluso los vacíos. La tarifa del viaje reparte el costo de todos los tramos y peajes entre los km facturables.</p></div></section>
         </aside>
