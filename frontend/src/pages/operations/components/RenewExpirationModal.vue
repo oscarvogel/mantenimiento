@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import { XMarkIcon } from '@heroicons/vue/24/outline'
 import CsrfInput from './CsrfInput.vue'
 import FormField from './FormField.vue'
-import { fieldClass, primaryButton, secondaryButton } from '../helpers.js'
+import { fieldClass, formatDateDmy, primaryButton, secondaryButton } from '../helpers.js'
 
 const props = defineProps({
   expiration: { type: Object, required: true },
@@ -12,15 +12,6 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close'])
-
-const minimumExpirationDate = computed(() => {
-  const current = String(props.expiration.expiresAt || '')
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(current)) return ''
-  const date = new Date(`${current}T12:00:00`)
-  if (Number.isNaN(date.getTime())) return ''
-  date.setDate(date.getDate() + 1)
-  return date.toISOString().slice(0, 10)
-})
 
 const originLabel = computed(() => {
   const origin = String(props.expiration.origin || '').trim().toUpperCase()
@@ -64,7 +55,7 @@ const originLabel = computed(() => {
           <div class="grid gap-3 text-sm sm:grid-cols-2">
             <div>
               <span class="block text-xs font-semibold uppercase tracking-wide text-ink-muted">Vencimiento actual</span>
-              <strong class="mt-1 block text-ink">{{ expiration.expiresAt }}</strong>
+              <strong class="mt-1 block text-ink">{{ formatDateDmy(expiration.expiresAt) }}</strong>
             </div>
             <div>
               <span class="block text-xs font-semibold uppercase tracking-wide text-ink-muted">Sucursal</span>
@@ -82,25 +73,32 @@ const originLabel = computed(() => {
           <input type="hidden" name="return_to" :value="returnTo" />
 
           <div class="grid gap-4 sm:grid-cols-2">
-            <FormField label="Fecha de emisión" for-id="renew-expiration-issued">
+            <FormField label="Fecha de emisión (DD/MM/AAAA)" for-id="renew-expiration-issued">
               <input
                 id="renew-expiration-issued"
-                type="date"
+                type="text"
+                inputmode="numeric"
+                autocomplete="off"
                 name="fecha_emision"
+                placeholder="DD/MM/AAAA"
+                pattern="[0-9]{2}/[0-9]{2}/[0-9]{4}"
                 :class="fieldClass"
               />
             </FormField>
             <FormField
-              label="Nueva fecha de vencimiento"
+              label="Nueva fecha de vencimiento (DD/MM/AAAA)"
               for-id="renew-expiration-date"
-              hint="Debe ser posterior al vencimiento actual."
+              hint="Día/mes/año. Debe ser posterior al vencimiento actual."
             >
               <input
                 id="renew-expiration-date"
-                type="date"
+                type="text"
+                inputmode="numeric"
+                autocomplete="off"
                 name="fecha_vencimiento"
                 required
-                :min="minimumExpirationDate || undefined"
+                placeholder="DD/MM/AAAA"
+                pattern="[0-9]{2}/[0-9]{2}/[0-9]{4}"
                 :class="fieldClass"
               />
             </FormField>

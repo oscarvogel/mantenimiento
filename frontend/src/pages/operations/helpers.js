@@ -16,6 +16,12 @@ export const localDateValue = (date) => {
 
 export const today = () => localDateValue(new Date())
 
+export const formatDateDmy = (value) => {
+  const raw = String(value ?? '').trim()
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw)
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : raw
+}
+
 export const nowLocal = () => {
   const date = new Date(Date.now() - new Date().getTimezoneOffset() * 60_000)
   return date.toISOString().slice(0, 16)

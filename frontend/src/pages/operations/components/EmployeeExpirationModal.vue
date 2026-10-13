@@ -42,11 +42,11 @@ const emit = defineEmits(['close'])
           </FormField>
 
           <div class="grid gap-4 sm:grid-cols-2">
-            <FormField label="Fecha de emisión" for-id="employee-expiration-modal-issued">
-              <input id="employee-expiration-modal-issued" type="date" name="fecha_emision" :class="fieldClass" />
+            <FormField label="Fecha de emisión (DD/MM/AAAA)" for-id="employee-expiration-modal-issued">
+              <input id="employee-expiration-modal-issued" type="text" inputmode="numeric" autocomplete="off" name="fecha_emision" placeholder="DD/MM/AAAA" pattern="[0-9]{2}/[0-9]{2}/[0-9]{4}" :class="fieldClass" />
             </FormField>
-            <FormField label="Fecha de vencimiento" for-id="employee-expiration-modal-date">
-              <input id="employee-expiration-modal-date" type="date" name="fecha_vencimiento" required :class="fieldClass" />
+            <FormField label="Fecha de vencimiento (DD/MM/AAAA)" for-id="employee-expiration-modal-date">
+              <input id="employee-expiration-modal-date" type="text" inputmode="numeric" autocomplete="off" name="fecha_vencimiento" required placeholder="DD/MM/AAAA" pattern="[0-9]{2}/[0-9]{2}/[0-9]{4}" :class="fieldClass" />
             </FormField>
           </div>
 

@@ -12,7 +12,7 @@ import StatusBadge from './components/StatusBadge.vue'
 import TelemetryBoard from './components/TelemetryBoard.vue'
 import EquipmentThumbnail from './components/EquipmentThumbnail.vue'
 import { equipmentDetailTabs } from './equipmentDetailTabs.js'
-import { dangerButton, fieldClass, formatHours, formatKilometers, formatReadingOrigin, nowLocal, primaryButton, secondaryButton, today } from './helpers.js'
+import { dangerButton, fieldClass, formatDateDmy, formatHours, formatKilometers, formatReadingOrigin, nowLocal, primaryButton, secondaryButton, today } from './helpers.js'
 
 const editingExpiration = ref(null)
 const closeExpirationModal = () => { editingExpiration.value = null }
@@ -194,8 +194,8 @@ const equipmentSummary = computed(() => {
             <option v-for="type in data.expirationTypes" :key="type.id" :value="type.id">{{ type.name }}</option>
           </select>
         </FormField>
-        <FormField label="Fecha de emisión" for-id="equipment-expiration-issued"><input id="equipment-expiration-issued" type="date" name="fecha_emision" :class="fieldClass" /></FormField>
-        <FormField label="Fecha de vencimiento" for-id="equipment-expiration-date"><input id="equipment-expiration-date" type="date" name="fecha_vencimiento" required :class="fieldClass" /></FormField>
+        <FormField label="Fecha de emisión (DD/MM/AAAA)" for-id="equipment-expiration-issued"><input id="equipment-expiration-issued" type="text" inputmode="numeric" autocomplete="off" name="fecha_emision" placeholder="DD/MM/AAAA" pattern="[0-9]{2}/[0-9]{2}/[0-9]{4}" :class="fieldClass" /></FormField>
+        <FormField label="Fecha de vencimiento (DD/MM/AAAA)" for-id="equipment-expiration-date"><input id="equipment-expiration-date" type="text" inputmode="numeric" autocomplete="off" name="fecha_vencimiento" required placeholder="DD/MM/AAAA" pattern="[0-9]{2}/[0-9]{2}/[0-9]{4}" :class="fieldClass" /></FormField>
         <FormField label="Documento" for-id="equipment-expiration-document"><input id="equipment-expiration-document" name="numero_documento" maxlength="100" :class="fieldClass" /></FormField>
         <div class="flex items-end"><button type="submit" :class="primaryButton">Registrar vencimiento</button></div>
         <FormField label="Observaciones" for-id="equipment-expiration-notes" class="md:col-span-2 xl:col-span-5"><textarea id="equipment-expiration-notes" name="observaciones" maxlength="2000" rows="2" :class="fieldClass"></textarea></FormField>
@@ -209,7 +209,7 @@ const equipmentSummary = computed(() => {
           <tbody class="divide-y divide-border-subtle">
             <tr v-for="expiration in data.expirations" :key="expiration.id">
               <td class="px-4 py-4 font-semibold text-ink">{{ expiration.typeName }}</td>
-              <td class="px-4 py-4">{{ expiration.expiresAt }}<div class="text-xs text-ink-muted">{{ expiration.daysUntil >= 0 ? `faltan ${expiration.daysUntil} días` : `${Math.abs(expiration.daysUntil)} días vencido` }}</div></td>
+              <td class="px-4 py-4">{{ formatDateDmy(expiration.expiresAt) }}<div class="text-xs text-ink-muted">{{ expiration.daysUntil >= 0 ? `faltan ${expiration.daysUntil} días` : `${Math.abs(expiration.daysUntil)} días vencido` }}</div></td>
               <td class="px-4 py-4"><StatusBadge :status="expiration.status" /></td>
               <td class="px-4 py-4 text-ink-muted">{{ expiration.documentNumber || '—' }}</td>
               <td class="px-4 py-4 text-ink-muted">
@@ -237,8 +237,8 @@ const equipmentSummary = computed(() => {
           <form method="post" :action="editingExpiration.updateUrl" class="grid gap-4">
             <CsrfInput :csrf="data.csrf" />
             <input type="hidden" name="return_to" :value="`/mantenimiento/equipos/${data.equipment.id}`" />
-            <FormField label="Fecha de emisión"><input type="date" name="fecha_emision" :value="editingExpiration.issuedAt" :class="fieldClass" /></FormField>
-            <FormField label="Fecha de vencimiento"><input type="date" name="fecha_vencimiento" required :value="editingExpiration.expiresAt" :class="fieldClass" /></FormField>
+            <FormField label="Fecha de emisión (DD/MM/AAAA)" for-id="edit-equipment-expiration-issued"><input id="edit-equipment-expiration-issued" type="text" inputmode="numeric" autocomplete="off" name="fecha_emision" :value="formatDateDmy(editingExpiration.issuedAt)" placeholder="DD/MM/AAAA" pattern="[0-9]{2}/[0-9]{2}/[0-9]{4}" :class="fieldClass" /></FormField>
+            <FormField label="Fecha de vencimiento (DD/MM/AAAA)" for-id="edit-equipment-expiration-date"><input id="edit-equipment-expiration-date" type="text" inputmode="numeric" autocomplete="off" name="fecha_vencimiento" required :value="formatDateDmy(editingExpiration.expiresAt)" placeholder="DD/MM/AAAA" pattern="[0-9]{2}/[0-9]{2}/[0-9]{4}" :class="fieldClass" /></FormField>
             <FormField label="Documento"><input name="numero_documento" maxlength="100" :value="editingExpiration.documentNumber" placeholder="Documento" :class="fieldClass" /></FormField>
             <FormField label="Observaciones"><textarea name="observaciones" maxlength="2000" rows="3" :value="editingExpiration.notes" :class="fieldClass"></textarea></FormField>
             <div class="mt-2 flex flex-wrap justify-between gap-3 border-t border-border-subtle pt-4">
