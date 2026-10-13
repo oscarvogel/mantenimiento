@@ -73,7 +73,7 @@ describe('AppHeader', () => {
     const list = nav.get('ul')
     expect(list.classes()).toContain('flex-wrap')
     expect(list.classes().some((className) => className.includes('overflow-x-auto'))).toBe(false)
-    expect(nav.findAll('li')).toHaveLength(modules.length)
+    expect(nav.findAll('li')).toHaveLength(modules.length + 1)
     expect(nav.text()).toContain('Inteligencia Artificial')
     expect(nav.text()).toContain('Sin implementación aún')
   })

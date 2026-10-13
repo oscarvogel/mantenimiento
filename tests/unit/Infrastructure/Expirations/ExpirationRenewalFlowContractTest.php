@@ -55,7 +55,8 @@ final class ExpirationRenewalFlowContractTest extends TestCase
         self::assertStringContainsString('Se creará una nueva vigencia', $modal);
         self::assertStringContainsString('name="return_to"', $modal);
         self::assertStringContainsString('name="fecha_vencimiento"', $modal);
-        self::assertStringContainsString(':min="minimumExpirationDate || undefined"', $modal);
+        self::assertStringContainsString('placeholder="DD/MM/AAAA"', $modal);
+        self::assertStringContainsString('pattern="[0-9]{2}/[0-9]{2}/[0-9]{4}"', $modal);
         self::assertStringContainsString(':required="expiration.requiresDocument"', $modal);
         self::assertStringContainsString('Guardar renovación', $modal);
     }
