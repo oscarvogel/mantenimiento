@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { ExclamationTriangleIcon, InformationCircleIcon } from '@heroicons/vue/24/outline'
 import EmptyState from './components/EmptyState.vue'
 import PanelCard from './components/PanelCard.vue'
@@ -18,6 +18,81 @@ const fecha = (value) => (value ? String(value).slice(0, 10) : '')
 
 const reporte = computed(() => props.data.reporte ?? null)
 const viajes = computed(() => reporte.value?.viajes ?? [])
+const equiposDisponibles = computed(() => props.data.equipos ?? [])
+
+const equipoSeleccionado = computed(() => props.data.equipo?.id == null
+  ? null
+  : equiposDisponibles.value.find((equipo) => String(equipo.id) === String(props.data.equipo.id)) ?? null)
+const etiquetaEquipoSeleccionado = computed(() => equipoSeleccionado.value
+  ? [equipoSeleccionado.value.plate, equipoSeleccionado.value.branchName].filter(Boolean).join(' — ')
+  : '')
+const consultaEquipo = ref('')
+const listaEquiposAbierta = ref(false)
+const indiceEquipoActivo = ref(0)
+const listaEquipos = ref(null)
+const normalizarBusqueda = (texto) => String(texto ?? '')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLocaleLowerCase('es-AR')
+  .trim()
+const equiposFiltrados = computed(() => {
+  const consulta = normalizarBusqueda(consultaEquipo.value)
+  return equiposDisponibles.value
+    .filter((equipo) => normalizarBusqueda(`${equipo.plate} ${equipo.branchName}`).includes(consulta))
+    .slice(0, 30)
+})
+const opcionEquipoActivaId = computed(() => equiposFiltrados.value[indiceEquipoActivo.value]
+  && listaEquiposAbierta.value
+  ? `consumo-equipo-opcion-${indiceEquipoActivo.value}`
+  : undefined)
+
+const abrirListaEquipos = () => {
+  consultaEquipo.value = ''
+  const indiceSeleccionado = equiposDisponibles.value.findIndex((equipo) =>
+    String(equipo.id) === String(props.data.equipo?.id ?? ''),
+  )
+  indiceEquipoActivo.value = indiceSeleccionado >= 0 && indiceSeleccionado < 30 ? indiceSeleccionado : 0
+  listaEquiposAbierta.value = true
+}
+
+const buscarEquipos = (event) => {
+  consultaEquipo.value = event.target.value
+  indiceEquipoActivo.value = 0
+  listaEquiposAbierta.value = true
+}
+
+const elegirEquipo = (equipo) => {
+  listaEquiposAbierta.value = false
+  consultaEquipo.value = ''
+  irA(String(equipo.id), props.data.window.dias)
+}
+
+const moverEquipoActivo = (direccion) => {
+  if (!equiposFiltrados.value.length) return
+  indiceEquipoActivo.value = (indiceEquipoActivo.value + direccion + equiposFiltrados.value.length)
+    % equiposFiltrados.value.length
+  nextTick(() => listaEquipos.value?.children[indiceEquipoActivo.value]?.scrollIntoView?.({ block: 'nearest' }))
+}
+
+const manejarTecladoEquipos = (event) => {
+  if (event.key === 'Escape') {
+    listaEquiposAbierta.value = false
+    consultaEquipo.value = ''
+    return
+  }
+
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault()
+    if (!listaEquiposAbierta.value) abrirListaEquipos()
+    else moverEquipoActivo(event.key === 'ArrowDown' ? 1 : -1)
+    return
+  }
+
+  if (event.key === 'Enter' && listaEquiposAbierta.value && equiposFiltrados.value[indiceEquipoActivo.value]) {
+    event.preventDefault()
+    elegirEquipo(equiposFiltrados.value[indiceEquipoActivo.value])
+  }
+}
 
 // `window` no está en el scope del template de Vue, así que la ruta se resuelve
 // una vez acá y se usa como dato.
@@ -91,21 +166,59 @@ const problemas = computed(() => {
       </div>
     </div>
 
-    <PanelCard title="Período y equipo" flush>
+    <PanelCard title="Período y equipo" flush allow-overflow>
       <div class="grid gap-4 p-5 sm:grid-cols-2 sm:p-6">
         <div>
           <label for="consumo-equipo" class="block text-xs font-bold uppercase tracking-wide text-ink-muted">Equipo</label>
-          <select
-            id="consumo-equipo"
-            class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm"
-            :value="props.data.equipo?.id ?? ''"
-            data-test="selector-equipo"
-            @change="irA($event.target.value, props.data.window.dias)"
-          >
-            <option v-for="equipo in props.data.equipos" :key="equipo.id" :value="equipo.id">
-              {{ equipo.plate }}<template v-if="equipo.branchName"> — {{ equipo.branchName }}</template>
-            </option>
-          </select>
+          <div class="relative mt-1">
+            <input
+              id="consumo-equipo"
+              type="search"
+              role="combobox"
+              aria-autocomplete="list"
+              aria-haspopup="listbox"
+              :aria-expanded="listaEquiposAbierta"
+              aria-controls="consumo-equipo-listbox"
+              :aria-activedescendant="opcionEquipoActivaId"
+              autocomplete="off"
+              spellcheck="false"
+              :placeholder="etiquetaEquipoSeleccionado || 'Buscar por patente o sucursal…'"
+              :value="listaEquiposAbierta ? consultaEquipo : etiquetaEquipoSeleccionado"
+              class="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm"
+              data-test="selector-equipo"
+              @focus="abrirListaEquipos"
+              @input="buscarEquipos"
+              @keydown="manejarTecladoEquipos"
+              @blur="listaEquiposAbierta = false"
+            />
+            <div
+              v-if="listaEquiposAbierta"
+              id="consumo-equipo-listbox"
+              ref="listaEquipos"
+              role="listbox"
+              aria-label="Equipos disponibles"
+              class="absolute z-40 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border border-border bg-surface-raised p-1 shadow-xl"
+              @mousedown.prevent
+            >
+              <button
+                v-for="(equipo, indice) in equiposFiltrados"
+                :id="`consumo-equipo-opcion-${indice}`"
+                :key="equipo.id"
+                type="button"
+                role="option"
+                :aria-selected="indice === indiceEquipoActivo"
+                class="block min-h-10 w-full rounded-md px-3 py-2 text-left text-sm text-ink hover:bg-surface-muted focus:bg-surface-muted focus:outline-none"
+                :class="indice === indiceEquipoActivo ? 'bg-surface-muted' : ''"
+                @click="elegirEquipo(equipo)"
+              >
+                <span class="font-semibold">{{ equipo.plate }}</span>
+                <span v-if="equipo.branchName" class="text-ink-muted"> — {{ equipo.branchName }}</span>
+              </button>
+              <p v-if="equiposFiltrados.length === 0" class="px-3 py-3 text-sm text-ink-muted">
+                No hay equipos que coincidan con la búsqueda.
+              </p>
+            </div>
+          </div>
         </div>
         <div>
           <span class="block text-xs font-bold uppercase tracking-wide text-ink-muted">Días</span>
