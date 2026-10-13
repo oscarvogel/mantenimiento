@@ -776,6 +776,24 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
         );
     }
 
+    public static function fleetTelemetryDiagnostic(bool $getShared = true): \App\Application\Telematic\GetFleetTelemetryDiagnostic
+    {
+        if ($getShared) {
+            return static::getSharedInstance('fleetTelemetryDiagnostic');
+        }
+
+        $db = db_connect();
+        $series = static::serieMuestras(false);
+
+        return new \App\Application\Telematic\GetFleetTelemetryDiagnostic(
+            new \App\Infrastructure\Telematic\CodeIgniterFleetTelemetryBoardReader($db),
+            $series,
+            new \App\Application\Telematic\CalcularConsumoPorEquipo($series),
+            new \App\Infrastructure\Telematic\CodeIgniterConsumoConfigStore($db),
+            static::notificationClock(false),
+        );
+    }
+
     public static function operationalNotificationCollector(bool $getShared = true): CollectOperationalNotifications
     {
         if ($getShared) {

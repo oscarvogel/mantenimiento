@@ -18,7 +18,7 @@ final readonly class GetFleetTelemetryBoard
     ) {
     }
 
-    /** @return array{units:list<array<string,mixed>>,branches:list<array{id:int,name:string}>} */
+    /** @return array{units:list<array<string,mixed>>,branches:list<array{id:int,name:string}>,canViewDrivers:bool,today:string} */
     public function execute(ActorContext $actor): array
     {
         if ($actor->isSuperAdmin() || $actor->companyId() === null || ! $actor->hasPermission('equipos.ver')) {
@@ -43,6 +43,7 @@ final readonly class GetFleetTelemetryBoard
             fn (array $unit): array => $this->withFreshness($unit, $now),
             $board['units'],
         );
+        $board['today'] = $now->setTimezone(new \DateTimeZone((new \Config\App())->appTimezone))->format('Y-m-d');
 
         return $board;
     }

@@ -61,8 +61,21 @@ final readonly class CalcularConsumoPorEquipo
         ?PoliticaConsumo $politica = null,
     ): ReporteConsumo {
         $politica = $politica ?? $this->politica;
-
         $muestras = $this->reader->serie($empresaId, $equipoId, $desde, $hasta);
+
+        return $this->executeWithSamples($empresaId, $equipoId, $desde, $hasta, $muestras, $politica);
+    }
+
+    /** @param list<\App\Domain\Telematic\MuestraEquipo> $muestras */
+    public function executeWithSamples(
+        int $empresaId,
+        int $equipoId,
+        DateTimeImmutable $desde,
+        DateTimeImmutable $hasta,
+        array $muestras,
+        ?PoliticaConsumo $politica = null,
+    ): ReporteConsumo {
+        $politica = $politica ?? $this->politica;
 
         $serie = new SerieConsumo($muestras, $politica->atribucion);
         $viajes = (new ReglaSegmentacion($politica->segmentacion))->segmentar($serie);

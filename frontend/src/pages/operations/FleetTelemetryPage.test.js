@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import FleetTelemetryPage from './FleetTelemetryPage.vue'
 
 const MapStub = {
@@ -8,6 +8,8 @@ const MapStub = {
 }
 
 const data = {
+  diagnosticUrl: '/mantenimiento/telemetria/diagnostico',
+  today: '2026-10-13',
   branches: [{ id: 4, name: 'TSA Argentina' }],
   units: [
     {
@@ -28,6 +30,8 @@ const data = {
 }
 
 describe('FleetTelemetryPage', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
   it('shows fleet map, sensor problems, and one clear row per vehicle', () => {
     const wrapper = mount(FleetTelemetryPage, { props: { data }, global: { stubs: { FleetTelemetryMap: MapStub } } })
 
@@ -95,5 +99,58 @@ describe('FleetTelemetryPage', () => {
     expect(wrapper.text()).toContain('Encendido')
     expect(wrapper.text()).toContain('Sin ralentí')
     expect(wrapper.text()).toContain('0 km/h')
+  })
+
+  it('loads a day diagnostic with provider and saved timestamps plus reconstructed trips', async () => {
+    const fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        samples: [{
+          provider: 'wialon',
+          observedAt: '2026-10-13 10:00:00', recordedAt: '2026-10-13 10:05:00',
+          fuelLiters: 220.5, kilometers: 1710049, hours: 4571.2, speedKmh: 42, anomalies: [],
+        }],
+        trips: [{ start: '2026-10-13 09:00:00', end: '2026-10-13 10:00:00', kilometers: 28, liters: 2.7 }],
+        summary: { coveragePercent: 94 },
+      }),
+    })
+    vi.stubGlobal('fetch', fetch)
+    const wrapper = mount(FleetTelemetryPage, { props: { data }, global: { stubs: { FleetTelemetryMap: MapStub } } })
+
+    await wrapper.get('[data-test="diagnostic-open-12"]').trigger('click')
+    await wrapper.get('[data-test="diagnostic-date"]').setValue('2026-10-13')
+    await wrapper.get('[data-test="diagnostic-load"]').trigger('click')
+
+    expect(fetch).toHaveBeenCalledWith('/mantenimiento/telemetria/diagnostico?equipo=12&fecha=2026-10-13', expect.objectContaining({ credentials: 'same-origin' }))
+    await vi.waitFor(() => expect(wrapper.text()).toContain('Observado por Wialon'))
+    expect(wrapper.text()).toContain('Observado por Wialon')
+    expect(wrapper.text()).toContain('2026-10-13 10:00:00')
+    expect(wrapper.text()).toContain('Guardado en el sistema')
+    expect(wrapper.text()).toContain('2026-10-13 10:05:00')
+    expect(wrapper.text()).toContain('Viajes reconstruidos')
+    expect(wrapper.text()).toContain('28 km')
+  })
+
+  it('explains sensor values that were set aside instead of showing them as missing', async () => {
+    const fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        samples: [{ provider: 'wialon', observedAt: '2026-10-13 10:00:00', recordedAt: '2026-10-13 10:05:00',
+          fuelLiters: null, kilometers: 1710049, hours: 4571.2, speedKmh: 0,
+          anomalies: [{ sensor: 'COMBUSTIBLE', value: -5, reason: 'un tanque no puede tener litros negativos' }] }],
+        trips: [], summary: { sampleCount: 1, tripCount: 0, coveragePercent: 0, coverageSufficient: false,
+          coverageReason: 'No hay cobertura suficiente.', uncalibrated: true },
+      }),
+    })
+    vi.stubGlobal('fetch', fetch)
+    const wrapper = mount(FleetTelemetryPage, { props: { data }, global: { stubs: { FleetTelemetryMap: MapStub } } })
+
+    await wrapper.get('[data-test="diagnostic-open-12"]').trigger('click')
+    await wrapper.get('[data-test="diagnostic-load"]').trigger('click')
+
+    await vi.waitFor(() => expect(wrapper.text()).toContain('COMBUSTIBLE (-5)'))
+    expect(wrapper.text()).toContain('COMBUSTIBLE (-5)')
+    expect(wrapper.text()).toContain('un tanque no puede tener litros negativos')
+    expect(wrapper.get('[data-test="diagnostic-fuel"]').text()).toBe('—')
   })
 })

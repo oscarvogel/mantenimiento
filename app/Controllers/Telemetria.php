@@ -65,12 +65,15 @@ final class Telemetria extends BaseController
         try {
             $actor = $this->actor();
 
+            $data = service('fleetTelemetryBoard')->execute($actor);
+            $data['diagnosticUrl'] = base_url('mantenimiento/telemetria/diagnostico');
+
             return $this->renderApp(
                 $actor,
                 'fleet-telemetry',
                 'fleet-telemetry',
                 'Telemetría de flota',
-                service('fleetTelemetryBoard')->execute($actor),
+                $data,
             );
         } catch (Throwable $exception) {
             if (! $exception instanceof DomainException) {
@@ -81,6 +84,34 @@ final class Telemetria extends BaseController
                 'error',
                 $exception instanceof DomainException ? $exception->getMessage() : 'No se pudo cargar la telemetría de flota. Intentá de nuevo.',
             );
+        }
+    }
+
+    /** Returns one day's persisted captures and the trips reconstructed from that same series. */
+    public function diagnostico(): ResponseInterface
+    {
+        try {
+            $rawEquipmentId = $this->request->getGet('equipo');
+            $equipmentId = is_string($rawEquipmentId) || is_int($rawEquipmentId)
+                ? filter_var($rawEquipmentId, FILTER_VALIDATE_INT)
+                : false;
+            $rawDate = $this->request->getGet('fecha');
+            $date = is_string($rawDate) ? trim($rawDate) : '';
+            $result = service('fleetTelemetryDiagnostic')->execute(
+                $this->actor(),
+                $equipmentId === false ? 0 : (int) $equipmentId,
+                $date,
+            );
+
+            return $this->response->setJSON($result);
+        } catch (DomainException $exception) {
+            return $this->response->setStatusCode(422)->setJSON(['message' => $exception->getMessage()]);
+        } catch (Throwable $exception) {
+            log_message('error', 'No se pudo consultar el diagnóstico de telemetría: {message}', ['message' => $exception->getMessage()]);
+
+            return $this->response->setStatusCode(500)->setJSON([
+                'message' => 'No se pudo cargar el diagnóstico. Intentá de nuevo.',
+            ]);
         }
     }
 
