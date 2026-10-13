@@ -76,6 +76,7 @@ const moverEquipoActivo = (direccion) => {
 
 const manejarTecladoEquipos = (event) => {
   if (event.key === 'Escape') {
+    event.preventDefault()
     listaEquiposAbierta.value = false
     consultaEquipo.value = ''
     return
