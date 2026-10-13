@@ -10,7 +10,7 @@ import FormField from './components/FormField.vue'
 import PageHeading from './components/PageHeading.vue'
 import PanelCard from './components/PanelCard.vue'
 import StatusBadge from './components/StatusBadge.vue'
-import { fieldClass, primaryButton, secondaryButton } from './helpers.js'
+import { fieldClass, formatDateDmy, primaryButton, secondaryButton } from './helpers.js'
 
 const props = defineProps({ data: { type: Object, required: true } })
 
@@ -159,13 +159,13 @@ const openExpiration = (employee) => {
                     <details v-for="expiration in employee.expirations" :key="expiration.id" class="ui-details-animated">
                       <summary class="flex cursor-pointer items-center gap-2">
                         <StatusBadge :status="expiration.status" />
-                        <span class="text-xs text-ink">{{ expiration.typeName }} · {{ expiration.expiresAt }}</span>
+                        <span class="text-xs text-ink">{{ expiration.typeName }} · {{ formatDateDmy(expiration.expiresAt) }}</span>
                       </summary>
                       <form v-if="data.canEdit && employee.active" method="post" :action="expiration.updateUrl" class="mt-2 grid min-w-[18rem] gap-2 rounded-lg border border-border bg-white p-3 shadow-card">
                         <CsrfInput :csrf="data.csrf" />
                         <input type="hidden" name="return_to" value="/mantenimiento/empleados" />
-                        <input type="date" name="fecha_emision" :value="expiration.issuedAt" :class="fieldClass" />
-                        <input type="date" name="fecha_vencimiento" required :value="expiration.expiresAt" :class="fieldClass" />
+                        <input type="text" inputmode="numeric" autocomplete="off" name="fecha_emision" :value="formatDateDmy(expiration.issuedAt)" placeholder="Emisión · DD/MM/AAAA" pattern="[0-9]{2}/[0-9]{2}/[0-9]{4}" :class="fieldClass" />
+                        <input type="text" inputmode="numeric" autocomplete="off" name="fecha_vencimiento" required :value="formatDateDmy(expiration.expiresAt)" placeholder="Vencimiento · DD/MM/AAAA" pattern="[0-9]{2}/[0-9]{2}/[0-9]{4}" :class="fieldClass" />
                         <input name="numero_documento" maxlength="100" :value="expiration.documentNumber" placeholder="Documento" :class="fieldClass" />
                         <textarea name="observaciones" maxlength="2000" rows="2" :value="expiration.notes" placeholder="Observaciones" :class="fieldClass"></textarea>
                         <div class="flex gap-2">
@@ -229,7 +229,7 @@ const openExpiration = (employee) => {
             <div v-if="employee.expirations.length" class="mt-3 space-y-1">
               <div v-for="expiration in employee.expirations.slice(0, 2)" :key="expiration.id" class="flex items-center gap-2 text-xs">
                 <StatusBadge :status="expiration.status" />
-                <span>{{ expiration.typeName }} · {{ expiration.expiresAt }}</span>
+                <span>{{ expiration.typeName }} · {{ formatDateDmy(expiration.expiresAt) }}</span>
               </div>
             </div>
             <button
