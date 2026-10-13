@@ -951,6 +951,17 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
         return new GetPlatformModuleCatalog();
     }
 
+    public static function tripMasterCatalog(bool $getShared = true): \App\Application\TripMasters\TripMasterCatalog
+    {
+        if ($getShared) {
+            return static::getSharedInstance('tripMasterCatalog');
+        }
+
+        return new \App\Application\TripMasters\TripMasterCatalog(
+            new \App\Infrastructure\TripMasters\CodeIgniterTripMasterRepository(db_connect()),
+        );
+    }
+
     public static function maintenanceDashboard(bool $getShared = true): GetMaintenanceDashboard
     {
         if ($getShared) {

@@ -45,10 +45,11 @@ const props = defineProps({
 
 const emit = defineEmits(['close'])
 
-const primaryKeys = ['dashboard', 'equipment', 'fleet-telemetry', 'reading-control', 'maintenance', 'plans', 'reports']
+const primaryKeys = ['dashboard', 'equipment', 'fleet-telemetry', 'reading-control', 'maintenance', 'plans', 'reports', 'trip-masters']
 const fleetConsumption = computed(() => props.navigation.find((item) => item.key === 'fleet-consumption'))
 const isPlatformNavigation = computed(() => props.navigation.some((item) => item.key === 'platform-home'))
 const isManagerialNavigation = computed(() => props.navigation.some((item) => item.key === 'managerial-cost-km'))
+const isTripNavigation = computed(() => props.navigation.some((item) => item.key === 'trip-masters'))
 
 const primaryNavigation = computed(() => (
   isPlatformNavigation.value || isManagerialNavigation.value
@@ -175,8 +176,8 @@ const openDemoCompany = () => {
       <BrandLogo v-if="isPlatformNavigation" size="platform" />
       <BrandMark
         v-else
-        :title="isManagerialNavigation ? 'Gerencial' : 'Mantenimiento'"
-        :subtitle="isManagerialNavigation ? 'Análisis estratégico' : 'Gestión de flota'"
+        :title="isManagerialNavigation ? 'Gerencial' : (isTripNavigation ? 'Viajes' : 'Mantenimiento')"
+        :subtitle="isManagerialNavigation ? 'Análisis estratégico' : (isTripNavigation ? 'Maestros de viajes' : 'Gestión de flota')"
       />
       <button
         v-if="mobile"
