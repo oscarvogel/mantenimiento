@@ -146,6 +146,54 @@ final class SuperAdmin extends BaseController
         return $this->renderApp($actor, 'superadmin', 'superadmin', 'Administración global', $payload);
     }
 
+    public function previewUserDailyWhatsAppDigest(): string
+    {
+        $actor = $this->actor();
+        $database = db_connect();
+        $companies = $database->table('empresas')
+            ->select('id, razon_social, nombre_fantasia, notificaciones_whatsapp_habilitadas')
+            ->where('estado', 1)
+            ->where('deleted_at', null)
+            ->orderBy('nombre_fantasia', 'ASC')
+            ->orderBy('razon_social', 'ASC')
+            ->get()->getResultArray();
+
+        $companyId = max(0, (int) $this->request->getGet('empresa_id'));
+        $selected = null;
+        foreach ($companies as $company) {
+            if ((int) $company['id'] === $companyId) {
+                $selected = $company;
+                break;
+            }
+        }
+
+        $settings = service('globalNotificationSettingsStore')->get();
+        $gateway = service('whatsAppGateway');
+        $previews = $selected === null
+            ? []
+            : service('whatsAppNotificationDeliveryQueue')->previewUserDailyDigests($companyId);
+
+        return $this->renderApp($actor, 'whatsapp-digest-preview', 'whatsapp-digest-preview', 'Previsualizar resumen diario de WhatsApp', [
+            'companies' => array_map(static fn (array $company): array => [
+                'id' => (int) $company['id'],
+                'name' => trim((string) ($company['nombre_fantasia'] ?? '')) !== ''
+                    ? (string) $company['nombre_fantasia']
+                    : (string) $company['razon_social'],
+                'whatsappEnabled' => (int) ($company['notificaciones_whatsapp_habilitadas'] ?? 0) === 1,
+            ], $companies),
+            'selectedCompanyId' => $selected === null ? null : $companyId,
+            'selectedCompanyName' => $selected === null
+                ? null
+                : (trim((string) ($selected['nombre_fantasia'] ?? '')) !== '' ? $selected['nombre_fantasia'] : $selected['razon_social']),
+            'companyWhatsAppEnabled' => $selected !== null && (int) ($selected['notificaciones_whatsapp_habilitadas'] ?? 0) === 1,
+            'globalWhatsAppEnabled' => (bool) ($settings['whatsapp_enabled'] ?? false),
+            'whatsAppAvailable' => $gateway->available(),
+            'pilotEnabled' => (bool) ($settings['whatsapp_pilot_enabled'] ?? false),
+            'previews' => $previews,
+            'actions' => ['preview' => base_url('superadmin/whatsapp/resumen-diario')],
+        ]);
+    }
+
     public function applyPendingMigrations(): RedirectResponse
     {
         try {

@@ -129,6 +129,11 @@ final class RecordingDeliveryQueue implements WhatsAppNotificationDeliveryQueue
         return 0;
     }
 
+    public function previewUserDailyDigests(int $companyId): array
+    {
+        return [];
+    }
+
     public function scheduleUserDailyDigestTest(int $userId, int $equipmentId, string $testKey): int
     {
         return 0;

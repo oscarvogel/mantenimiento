@@ -20,6 +20,35 @@ final class WeeklyReadingNotificationRevalidator
 
     public function revalidate(int $companyId, int $userId, DateTimeInterface $now): int
     {
+        $ids = $this->notificationIdsToRegularize($companyId, $userId, $now);
+        if ($ids === []) {
+            return 0;
+        }
+
+        $timestamp = $now->format('Y-m-d H:i:s');
+        $this->db->table('notificaciones')
+            ->whereIn('id', $ids)
+            ->where('empresa_id', $companyId)
+            ->where('usuario_id', $userId)
+            ->where('tipo_evento', 'equipo.lectura_semanal_incumplida')
+            ->where('estado', 'PENDIENTE')
+            ->update(['estado' => 'LEIDA', 'leida_en' => $timestamp, 'updated_at' => $timestamp]);
+
+        $resolved = max(0, $this->db->affectedRows());
+        if ($resolved > 0) {
+            log_message('info', 'Resumen WhatsApp: {count} avisos semanales regularizados (empresa {company}, usuario {user}).', [
+                'count' => $resolved,
+                'company' => $companyId,
+                'user' => $userId,
+            ]);
+        }
+
+        return $resolved;
+    }
+
+    /** @return list<int> Pending weekly reading notice IDs already satisfied by a reading. */
+    public function notificationIdsToRegularize(int $companyId, int $userId, DateTimeInterface $now): array
+    {
         $pending = $this->db->table('notificaciones')
             ->select('id, entidad_id, clave_evento')
             ->where('empresa_id', $companyId)
@@ -29,8 +58,8 @@ final class WeeklyReadingNotificationRevalidator
             ->where('entidad_tipo', 'equipo')
             ->get()->getResultArray();
 
-        $resolved = 0;
         $timestamp = $now->format('Y-m-d H:i:s');
+        $ids = [];
         foreach ($pending as $notification) {
             $equipmentId = filter_var($notification['entidad_id'] ?? null, FILTER_VALIDATE_INT);
             $weekStart = self::weekStartFromEventKey((string) ($notification['clave_evento'] ?? ''));
@@ -50,29 +79,10 @@ final class WeeklyReadingNotificationRevalidator
             if (! $hasReading) {
                 continue;
             }
-
-            // LEIDA es un estado existente en el esquema: preserva la notificación
-            // y evita volver a incluirla en próximos resúmenes.
-            $this->db->table('notificaciones')
-                ->where('id', (int) $notification['id'])
-                ->where('empresa_id', $companyId)
-                ->where('usuario_id', $userId)
-                ->where('tipo_evento', 'equipo.lectura_semanal_incumplida')
-                ->where('estado', 'PENDIENTE')
-                ->update(['estado' => 'LEIDA', 'leida_en' => $timestamp, 'updated_at' => $timestamp]);
-
-            $resolved += max(0, $this->db->affectedRows());
+            $ids[] = (int) $notification['id'];
         }
 
-        if ($resolved > 0) {
-            log_message('info', 'Resumen WhatsApp: {count} avisos semanales regularizados (empresa {company}, usuario {user}).', [
-                'count' => $resolved,
-                'company' => $companyId,
-                'user' => $userId,
-            ]);
-        }
-
-        return $resolved;
+        return $ids;
     }
 
     public static function weekStartFromEventKey(string $key): ?DateTimeImmutable

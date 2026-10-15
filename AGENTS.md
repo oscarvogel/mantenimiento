@@ -218,6 +218,7 @@ Una tarea no está terminada si solo compila o si solo se ve bien. Debe cumplir 
 - El repositorio incluye un `spark` raíz adaptado al layout plano. Usar `php spark`; no reemplazarlo sin más por el archivo del framework, que presupone el layout estándar `public/`.
 - Ejecutar la FASE 0A con `scripts/run-phase0a.ps1` y ensayar instalación, actualización y rollback con `scripts/rehearse-local-deploy.ps1`. Consultar `docs/PRUEBA_TECNICA_LOCAL.md`.
 - En Windows/XAMPP, la suite de ejemplo necesita `sqlite3`; puede habilitarse solo para el proceso con `php -d extension=sqlite3 vendor\bin\phpunit`.
+- PHP también está instalado en WSL Ubuntu (verificado: PHP 8.5.4). Si `php` no está en el PATH de Windows, ejecutar CLI y pruebas desde WSL en `/mnt/c/Programacion/mantenimiento`; por ejemplo: `wsl.exe bash -lc "cd /mnt/c/Programacion/mantenimiento && php vendor/bin/phpunit --no-coverage"`. No concluir que PHP falta sin comprobar WSL.
 
 ## Estado base conocido al 2026-08-07
 

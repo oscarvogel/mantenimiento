@@ -12,6 +12,9 @@ interface WhatsAppNotificationDeliveryQueue
 
     public function scheduleUserDailyDigests(): int;
 
+    /** @return list<array{userId:int,userName:string,target:string,itemCount:int,message:string}> */
+    public function previewUserDailyDigests(int $companyId): array;
+
     public function scheduleUserDailyDigestTest(int $userId, int $equipmentId, string $testKey): int;
 
     public function schedulePreventivePilotTest(int $planId, string $testKey): int;

@@ -1,6 +1,6 @@
 {
-  "_admin-6cIWHAjk.js": {
-    "file": "assets/admin-6cIWHAjk.js",
+  "_admin-DrVa-VNs.js": {
+    "file": "assets/admin-DrVa-VNs.js",
     "name": "admin",
     "imports": [
       "_vendor-BjKfXio1.js"
@@ -21,11 +21,11 @@
     "file": "assets/chatbot-p1890OXW.css",
     "src": "_chatbot-p1890OXW.css"
   },
-  "_reports-D1VDqYeE.js": {
-    "file": "assets/reports-D1VDqYeE.js",
+  "_reports-De5VK0Km.js": {
+    "file": "assets/reports-De5VK0Km.js",
     "name": "reports",
     "imports": [
-      "_admin-6cIWHAjk.js",
+      "_admin-DrVa-VNs.js",
       "_vendor-BjKfXio1.js"
     ]
   },
@@ -87,15 +87,15 @@
     "src": "src/assets/platform/trips-card.jpg"
   },
   "src/main.js": {
-    "file": "assets/main-CJHUTB0R.js",
+    "file": "assets/main-XJ_SP-by.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
     "imports": [
       "_vendor-BjKfXio1.js",
       "_chatbot-C-1uwuxg.js",
-      "_admin-6cIWHAjk.js",
-      "_reports-D1VDqYeE.js"
+      "_admin-DrVa-VNs.js",
+      "_reports-De5VK0Km.js"
     ],
     "dynamicImports": [
       "_chatbot-C-1uwuxg.js",
@@ -103,7 +103,7 @@
       "node_modules/gsap/index.js"
     ],
     "css": [
-      "assets/main-DVLo64VR.css"
+      "assets/main-CMuhzjwx.css"
     ],
     "assets": [
       "assets/portal-hero-Dd-Ff3YR.jpg",

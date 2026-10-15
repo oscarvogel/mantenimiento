@@ -112,6 +112,105 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
         return $scheduled;
     }
 
+    public function previewUserDailyDigests(int $companyId): array
+    {
+        if ($companyId <= 0) {
+            return [];
+        }
+
+        $company = $this->db->table('empresas')
+            ->select('id, razon_social, nombre_fantasia, estado, deleted_at, notificaciones_whatsapp_habilitadas')
+            ->where('id', $companyId)
+            ->where('estado', 1)
+            ->where('deleted_at', null)
+            ->get()->getRowArray();
+        if ($company === null) {
+            return [];
+        }
+
+        $settings = $this->settings->get();
+        $pilotEnabled = (bool) ($settings['whatsapp_pilot_enabled'] ?? true);
+        $pilotPhone = $this->gateway->normalizePhone((string) ($settings['whatsapp_pilot_phone'] ?? ''));
+        $users = $this->db->table('usuarios u')
+            ->select('u.id, u.nombre, u.telefono')
+            ->where('u.empresa_id', $companyId)
+            ->where('u.activo', 1)
+            ->where('u.deleted_at', null)
+            ->where('u.telefono IS NOT NULL', null, false)
+            ->where("TRIM(u.telefono) <> ''", null, false)
+            ->where("EXISTS (SELECT 1 FROM usuario_roles ur INNER JOIN rol_permisos rp ON rp.rol_id = ur.rol_id INNER JOIN permisos p ON p.id = rp.permiso_id WHERE ur.usuario_id = u.id AND p.clave = 'notificaciones.ver')", null, false)
+            ->orderBy('u.nombre', 'ASC')
+            ->get()->getResultArray();
+
+        $companyName = trim((string) ($company['nombre_fantasia'] ?? ''));
+        if ($companyName === '') {
+            $companyName = trim((string) ($company['razon_social'] ?? 'Empresa'));
+        }
+
+        $previews = [];
+        $now = $this->clock->now();
+        foreach ($users as $user) {
+            $realPhone = $this->gateway->normalizePhone((string) ($user['telefono'] ?? ''));
+            $targetPhone = $pilotEnabled ? $pilotPhone : $realPhone;
+            if ($realPhone === null || $targetPhone === null) {
+                continue;
+            }
+
+            $userId = (int) $user['id'];
+            $regularizedIds = [
+                ...(new WeeklyReadingNotificationRevalidator($this->db))->notificationIdsToRegularize($companyId, $userId, $now),
+                ...(new PreventiveNotificationRevalidator($this->db))->notificationIdsToRegularize($companyId, $userId, $now),
+            ];
+            $notifications = $this->db->table('notificaciones')
+                ->select('id, titulo, resumen, severidad')
+                ->where('empresa_id', $companyId)
+                ->where('usuario_id', $userId)
+                ->where('estado', 'PENDIENTE')
+                ->orderBy('id', 'ASC')
+                ->get()->getResultArray();
+            usort($notifications, static function (array $left, array $right): int {
+                $rank = static fn (array $notification): int => match (strtoupper((string) ($notification['severidad'] ?? 'INFO'))) {
+                    'CRITICAL' => 0,
+                    'WARNING' => 1,
+                    default => 2,
+                };
+                return $rank($left) <=> $rank($right) ?: ((int) $left['id'] <=> (int) $right['id']);
+            });
+            if ($regularizedIds !== []) {
+                $regularized = array_fill_keys($regularizedIds, true);
+                $notifications = array_values(array_filter(
+                    $notifications,
+                    static fn (array $notification): bool => ! isset($regularized[(int) $notification['id']]),
+                ));
+            }
+
+            $count = count($notifications);
+            if ($count === 0) {
+                continue;
+            }
+
+            $name = trim((string) ($user['nombre'] ?? ''));
+            $previews[] = [
+                'userId' => $userId,
+                'userName' => $name === '' ? 'Usuario #' . $userId : $name,
+                'target' => $pilotEnabled ? 'Teléfono piloto' : 'Celular del usuario',
+                'itemCount' => $count,
+                'message' => (new UserDailyDigestMessageBuilder())->build(
+                    $companyName,
+                    $name,
+                    array_slice($notifications, 0, 12),
+                    $count,
+                    $pilotEnabled,
+                    $realPhone !== null,
+                    base_url('notificaciones'),
+                    $now,
+                ),
+            ];
+        }
+
+        return $previews;
+    }
+
     public function scheduleUserDailyDigestTest(int $userId, int $equipmentId, string $testKey): int
     {
         if (! $this->gateway->available()) {
@@ -1305,6 +1404,8 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
         // Una lectura posterior puede regularizar la deuda antes de enviar el digest.
         (new WeeklyReadingNotificationRevalidator($this->db))
             ->revalidate($companyId, $userId, $this->clock->now());
+        (new PreventiveNotificationRevalidator($this->db))
+            ->revalidate($companyId, $userId, $this->clock->now());
 
         $count = $this->db->table('notificaciones')
             ->where('empresa_id', $companyId)
@@ -1333,47 +1434,20 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
         $pilotEnabled = (bool) ($settings['whatsapp_pilot_enabled'] ?? true);
         $realPhone = $this->gateway->normalizePhone((string) ($user['telefono'] ?? ''));
         $name = trim((string) ($user['nombre'] ?? ''));
-        $firstName = trim((string) preg_replace('/\s+.*/u', '', $name));
         $companyName = trim((string) ($user['nombre_fantasia'] ?? ''));
         if ($companyName === '') {
             $companyName = trim((string) ($user['razon_social'] ?? 'Empresa'));
         }
-
-        $body = '';
-        foreach ($items as $item) {
-            $severity = strtoupper(trim((string) ($item['severidad'] ?? 'INFO')));
-            $icon = $severity === 'CRITICAL' ? '🔴' : ($severity === 'WARNING' ? '🟠' : '🔵');
-            $title = trim((string) ($item['titulo'] ?? 'Aviso'));
-            $summary = trim((string) ($item['resumen'] ?? ''));
-            if (mb_strlen($summary) > 180) {
-                $summary = rtrim(mb_substr($summary, 0, 177)) . '...';
-            }
-            $body .= $icon . ' *' . $title . "*\n";
-            if ($summary !== '') {
-                $body .= $summary . "\n";
-            }
-            $body .= "\n";
-        }
-
-        if ($count > count($items)) {
-            $body .= '➕ ' . ($count - count($items)) . " tema(s) adicional(es) en el sistema.\n\n";
-        }
-
-        $pilotHeader = $pilotEnabled
-            ? "🧪 *PRUEBA CONTROLADA · NO ENVIADO AL DESTINATARIO REAL*\n"
-                . '*Destinatario previsto:* ' . ($name === '' ? 'Usuario del sistema' : $name) . "\n"
-                . '*Teléfono real:* ' . ($realPhone === null ? 'no válido o no cargado' : 'configurado') . "\n\n"
-            : '';
-
-        $message = $pilotHeader
-            . '*' . ($companyName === '' ? 'Empresa' : $companyName) . " · Mantenimiento*\n\n"
-            . ($firstName === '' ? 'Hola 👋' : 'Hola ' . $firstName . ' 👋') . "\n"
-            . '*Resumen diario · ' . $this->clock->now()->format('d/m/Y') . "*\n\n"
-            . "Estos son los temas que requieren atención:\n\n"
-            . $body
-            . "Revisalos en el sistema de mantenimiento:\n"
-            . base_url('notificaciones') . "\n\n"
-            . '_Este resumen se envía una sola vez por día, de lunes a viernes._';
+        $message = (new UserDailyDigestMessageBuilder())->build(
+            $companyName,
+            $name,
+            $items,
+            $count,
+            $pilotEnabled,
+            $realPhone !== null,
+            base_url('notificaciones'),
+            $this->clock->now(),
+        );
 
         $this->db->table('notificacion_whatsapp_entregas')
             ->where('id', (int) ($row['id'] ?? 0))
