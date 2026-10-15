@@ -122,6 +122,22 @@ php spark db:seed InitialSeeder           # catálogo base y permisos
 php spark db:seed DemoCompanySeeder       # datos ficticios + usuario demo para E2E
 ```
 
+### Maestros demo del módulo Viajes para TSA
+
+Cuando el staging canónico esté identificado y saludable, cargar los catálogos
+de demostración de TSA desde el contenedor App:
+
+```bash
+TRIP_MASTERS_DEMO_TARGET=TSA php spark db:seed TripMastersDemoSeeder
+```
+
+El seeder exige `CI_ENVIRONMENT=development` y confirma una única empresa activa
+con nombre o razón social `TSA`. Inserta opciones faltantes sin reemplazar ni
+modificar registros existentes. Los porcentajes son ficticios: se crean
+inactivos, con vigencia en 2099, para que queden identificados como demo y no
+se apliquen a liquidaciones actuales. Solo se crean para empleados activos de
+TSA. La operación completa corre en una transacción.
+
 Para todas las verificaciones manuales y E2E de staging usar exclusivamente el
 usuario demo `demo@mantenimiento.local` con contraseña `Demo12345`. No usar el
 usuario administrativo base como evidencia de aceptación.
