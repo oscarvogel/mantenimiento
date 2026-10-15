@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import SuperAdminPage from './SuperAdminPage.vue'
 import DemoCompanyPanel from './components/DemoCompanyPanel.vue'
+import TripMasterCatalogsPanel from './components/TripMasterCatalogsPanel.vue'
 import ChatAuditPage from './ChatAuditPage.vue'
 
 defineProps({
@@ -32,6 +33,7 @@ const section = ref(new URLSearchParams(window.location.search).get('section') =
     </nav>
 
     <template v-if="section === 'administration'">
+      <TripMasterCatalogsPanel :data="data" />
       <DemoCompanyPanel :data="data" />
       <SuperAdminPage :data="data" />
     </template>

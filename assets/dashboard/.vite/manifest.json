@@ -1,6 +1,6 @@
 {
-  "_admin-gsnGbuLt.js": {
-    "file": "assets/admin-gsnGbuLt.js",
+  "_admin-CbjiZmiQ.js": {
+    "file": "assets/admin-CbjiZmiQ.js",
     "name": "admin",
     "imports": [
       "_vendor-CL5MGVAF.js"
@@ -21,11 +21,11 @@
     "file": "assets/chatbot-p1890OXW.css",
     "src": "_chatbot-p1890OXW.css"
   },
-  "_reports-BvtSlB1g.js": {
-    "file": "assets/reports-BvtSlB1g.js",
+  "_reports-DSxd_PHd.js": {
+    "file": "assets/reports-DSxd_PHd.js",
     "name": "reports",
     "imports": [
-      "_admin-gsnGbuLt.js",
+      "_admin-CbjiZmiQ.js",
       "_vendor-CL5MGVAF.js"
     ]
   },
@@ -87,15 +87,15 @@
     "src": "src/assets/platform/trips-card.jpg"
   },
   "src/main.js": {
-    "file": "assets/main-C01mNaB7.js",
+    "file": "assets/main-DvDvpmGF.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
     "imports": [
       "_vendor-CL5MGVAF.js",
       "_chatbot-CGu-GQJI.js",
-      "_admin-gsnGbuLt.js",
-      "_reports-BvtSlB1g.js"
+      "_admin-CbjiZmiQ.js",
+      "_reports-DSxd_PHd.js"
     ],
     "dynamicImports": [
       "_chatbot-CGu-GQJI.js",

@@ -45,6 +45,7 @@ final class SuperAdmin extends BaseController
         }
 
         $payload = service('administrationPayload')->superadmin($data);
+        $payload['tripMasterCatalogsAction'] = base_url('superadmin/viajes/maestros/cargar-tsa');
         $payload['migrations'] = $this->migrationDiagnostics();
         $whatsAppSettings = service('globalNotificationSettingsStore')->get();
         $whatsAppGateway = service('whatsAppGateway');
@@ -144,6 +145,37 @@ final class SuperAdmin extends BaseController
         ], $data['companies'] ?? []);
 
         return $this->renderApp($actor, 'superadmin', 'superadmin', 'Administración global', $payload);
+    }
+
+    public function seedTsaTripMasterCatalogs(): RedirectResponse
+    {
+        try {
+            $counts = service('seedTsaTripMasterCatalogs')->execute($this->actor());
+            $total = array_sum($counts);
+            $breakdown = implode(', ', array_map(
+                static fn (string $label, int $count): string => $label . ': ' . $count,
+                array_keys($counts),
+                array_values($counts),
+            ));
+            $message = $total === 0
+                ? 'Los catálogos de TSA ya estaban completos; no se modificaron datos.'
+                : 'Se agregaron ' . $total . ' opciones a los catálogos de TSA (' . $breakdown . ').';
+
+            log_message('notice', 'Superadministrador {actor} completó maestros de Viajes para TSA: {counts}', [
+                'actor' => $this->actor()->userId(),
+                'counts' => $breakdown,
+            ]);
+
+            return redirect()->to('/superadmin')->with('success', $message);
+        } catch (DomainException $exception) {
+            return redirect()->to('/superadmin')->with('error', $exception->getMessage());
+        } catch (Throwable $exception) {
+            log_message('error', 'Falló la carga de maestros de Viajes para TSA desde Superadmin: {message}', [
+                'message' => $exception->getMessage(),
+            ]);
+
+            return redirect()->to('/superadmin')->with('error', 'No se pudieron completar los catálogos de TSA. Revisá el registro de errores.');
+        }
     }
 
     public function applyPendingMigrations(): RedirectResponse

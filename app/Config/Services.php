@@ -962,6 +962,17 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
         );
     }
 
+    public static function seedTsaTripMasterCatalogs(bool $getShared = true): \App\Application\TripMasters\SeedTsaTripMasterCatalogs
+    {
+        if ($getShared) {
+            return static::getSharedInstance('seedTsaTripMasterCatalogs');
+        }
+
+        return new \App\Application\TripMasters\SeedTsaTripMasterCatalogs(
+            new \App\Infrastructure\TripMasters\CodeIgniterTsaTripMasterCatalogSeeder(db_connect()),
+        );
+    }
+
     public static function maintenanceDashboard(bool $getShared = true): GetMaintenanceDashboard
     {
         if ($getShared) {

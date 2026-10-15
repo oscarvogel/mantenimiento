@@ -79,6 +79,7 @@ $routes->group('superadmin', ['filter' => 'superadmin'], static function ($route
     $routes->post('empresas/(:num)/informes/prueba', 'SuperAdmin::testCompanyManagementReport/$1');
     $routes->post('notificaciones/despachar', 'NotificationCron::manual');
     $routes->post('migraciones/aplicar', 'SuperAdmin::applyPendingMigrations');
+    $routes->post('viajes/maestros/cargar-tsa', 'SuperAdmin::seedTsaTripMasterCatalogs');
     $routes->get('diagnosticos/vencimientos-regularizaciones', 'ExpirationRegularizationDiagnostics::run');
     $routes->post('whatsapp/prueba', 'SuperAdmin::testWhatsApp');
     $routes->post('whatsapp/probar-recordatorio-km', 'SuperAdmin::testWeeklyReadingReminderWhatsApp');
