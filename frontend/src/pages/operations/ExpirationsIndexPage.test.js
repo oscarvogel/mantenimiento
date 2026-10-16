@@ -51,4 +51,59 @@ describe('ExpirationsIndexPage', () => {
       'VTV / ITV',
     ])
   })
+
+  it('muestra fechas día/mes/año y permite corregirlas desde el listado', async () => {
+    const data = baseData()
+    data.items = [{
+      id: 42,
+      subjectType: 'EQUIPO',
+      subjectName: 'AF117ZK',
+      subjectSubtitle: 'Equipo / móvil',
+      typeName: 'VTV / ITV',
+      expiresAt: '2027-10-12',
+      issuedAt: '2026-10-12',
+      daysUntil: 364,
+      status: 'VIGENTE',
+      branchName: 'TSA Argentina',
+      documentNumber: '',
+      notes: '',
+      updateUrl: '/mantenimiento/vencimientos/42',
+      renewUrl: '/mantenimiento/vencimientos/42/renovar',
+      detailUrl: '/mantenimiento/equipos/7',
+    }]
+
+    const wrapper = mount(ExpirationsIndexPage, { props: { data } })
+
+    expect(wrapper.text()).toContain('12/10/2027')
+    const editButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Editar')
+    expect(editButton).toBeTruthy()
+    await editButton.trigger('click')
+
+    expect(document.body.querySelector('#edit-expiration-date')?.value).toBe('12/10/2027')
+  })
+
+  it('oculta la edición cuando el usuario no tiene permiso sobre el equipo', () => {
+    const data = baseData()
+    data.canEditEquipment = false
+    data.items = [{
+      id: 42,
+      subjectType: 'EQUIPO',
+      subjectName: 'AF117ZK',
+      subjectSubtitle: 'Equipo / móvil',
+      typeName: 'VTV / ITV',
+      expiresAt: '2027-10-12',
+      daysUntil: 364,
+      status: 'VIGENTE',
+      branchName: 'TSA Argentina',
+      documentNumber: '',
+      notes: '',
+      updateUrl: '/mantenimiento/vencimientos/42',
+      renewUrl: '/mantenimiento/vencimientos/42/renovar',
+      detailUrl: '/mantenimiento/equipos/7',
+    }]
+
+    const wrapper = mount(ExpirationsIndexPage, { props: { data } })
+
+    expect(wrapper.findAll('button').some((button) => button.text().trim() === 'Editar')).toBe(false)
+  })
 })

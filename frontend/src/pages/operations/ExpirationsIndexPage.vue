@@ -11,8 +11,9 @@ import FormField from './components/FormField.vue'
 import PageHeading from './components/PageHeading.vue'
 import PanelCard from './components/PanelCard.vue'
 import StatusBadge from './components/StatusBadge.vue'
+import EditExpirationModal from './components/EditExpirationModal.vue'
 import RenewExpirationModal from './components/RenewExpirationModal.vue'
-import { fieldClass, primaryButton, secondaryButton } from './helpers.js'
+import { fieldClass, formatDateDmy, primaryButton, secondaryButton } from './helpers.js'
 
 const props = defineProps({ data: { type: Object, required: true } })
 const data = computed(() => ({
@@ -34,10 +35,13 @@ const daysLabel = (days) => {
 const statusFor = (item) => item.status || (Number(item.daysUntil) < 0 ? 'VENCIDO' : 'AL_DIA')
 
 const renewingExpiration = ref(null)
+const editingExpiration = ref(null)
 const returnTo = `${window.location.pathname}${window.location.search}`
 const canRenew = (item) => item.subjectType === 'EQUIPO'
   ? Boolean(data.value.canEditEquipment)
   : Boolean(data.value.canEditEmployees)
+
+const canEdit = canRenew
 
 const openRenew = (item) => {
   renewingExpiration.value = item
@@ -45,6 +49,14 @@ const openRenew = (item) => {
 
 const closeRenew = () => {
   renewingExpiration.value = null
+}
+
+const openEdit = (item) => {
+  editingExpiration.value = item
+}
+
+const closeEdit = () => {
+  editingExpiration.value = null
 }
 </script>
 
@@ -179,7 +191,7 @@ const closeRenew = () => {
                   <div class="font-medium text-ink">{{ item.typeName }}</div>
                   <div v-if="item.notes" class="mt-1 max-w-xs truncate text-xs text-ink-muted">{{ item.notes }}</div>
                 </td>
-                <td class="px-5 py-4 font-medium text-ink">{{ item.expiresAt }}</td>
+                <td class="px-5 py-4 font-medium text-ink">{{ formatDateDmy(item.expiresAt) }}</td>
                 <td class="px-5 py-4">
                   <div class="flex flex-col items-start gap-1.5">
                     <StatusBadge :status="statusFor(item)" />
@@ -194,7 +206,16 @@ const closeRenew = () => {
                 <td class="px-5 py-4 text-ink-muted">{{ item.branchName || '—' }}</td>
                 <td class="px-5 py-4 text-ink-muted">{{ item.documentNumber || '—' }}</td>
                 <td class="px-5 py-4 text-right">
-                  <div class="flex justify-end gap-2">
+                  <div class="flex flex-wrap justify-end gap-2">
+                    <button
+                      v-if="canEdit(item)"
+                      type="button"
+                      :class="secondaryButton"
+                      class="whitespace-nowrap"
+                      @click="openEdit(item)"
+                    >
+                      Editar
+                    </button>
                     <button
                       v-if="canRenew(item)"
                       type="button"
@@ -228,11 +249,20 @@ const closeRenew = () => {
               <ExclamationTriangleIcon v-if="Number(item.daysUntil) < 0" class="size-4 text-danger" aria-hidden="true" />
               <CalendarDaysIcon v-else class="size-4 text-ink-muted" aria-hidden="true" />
               <span :class="Number(item.daysUntil) < 0 ? 'font-semibold text-danger-strong' : 'text-ink-muted'">
-                {{ item.expiresAt }} · {{ daysLabel(item.daysUntil) }}
+                {{ formatDateDmy(item.expiresAt) }} · {{ daysLabel(item.daysUntil) }}
               </span>
             </div>
             <p v-if="item.branchName" class="text-xs text-ink-muted">Sucursal: {{ item.branchName }}</p>
-            <div class="grid gap-2 sm:grid-cols-2">
+            <div class="grid gap-2 sm:grid-cols-3">
+              <button
+                v-if="canEdit(item)"
+                type="button"
+                :class="secondaryButton"
+                class="w-full justify-center"
+                @click="openEdit(item)"
+              >
+                Editar
+              </button>
               <button
                 v-if="canRenew(item)"
                 type="button"
@@ -258,6 +288,14 @@ const closeRenew = () => {
       :csrf="data.csrf"
       :return-to="returnTo"
       @close="closeRenew"
+    />
+
+    <EditExpirationModal
+      v-if="editingExpiration"
+      :expiration="editingExpiration"
+      :csrf="data.csrf"
+      :return-to="returnTo"
+      @close="closeEdit"
     />
   </div>
 </template>

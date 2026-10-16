@@ -702,11 +702,8 @@ final class Expirations extends BaseController
         if ($value === '') {
             throw new DomainException('La fecha de vencimiento es obligatoria.');
         }
-        try {
-            return new DateTimeImmutable($value);
-        } catch (Throwable) {
-            throw new DomainException('La fecha indicada no es válida.');
-        }
+        return $this->parseDate($value)
+            ?? throw new DomainException('Usá día/mes/año (DD/MM/AAAA), por ejemplo 12/10/2027.');
     }
 
     private function optionalDate(string $field): ?DateTimeImmutable
@@ -715,11 +712,24 @@ final class Expirations extends BaseController
         if ($value === '') {
             return null;
         }
-        try {
-            return new DateTimeImmutable($value);
-        } catch (Throwable) {
-            throw new DomainException('La fecha indicada no es válida.');
+        return $this->parseDate($value)
+            ?? throw new DomainException('Usá día/mes/año (DD/MM/AAAA), por ejemplo 12/10/2027.');
+    }
+
+    private function parseDate(string $value): ?DateTimeImmutable
+    {
+        foreach (['!d/m/Y', '!Y-m-d'] as $format) {
+            $date = DateTimeImmutable::createFromFormat($format, $value);
+            $errors = DateTimeImmutable::getLastErrors();
+            if ($date !== false && ($errors === false || ($errors['warning_count'] === 0 && $errors['error_count'] === 0))) {
+                $expected = ltrim($format, '!');
+                if ($date->format($expected) === $value) {
+                    return $date;
+                }
+            }
         }
+
+        return null;
     }
 
     private function nullable(string $field, int $max): ?string
