@@ -27,6 +27,7 @@ Componente: `SuperAdminPage`.
 
 ```ts
 type SuperAdminData = {
+  tripMasterCatalogsAction: string // POST /superadmin/viajes/maestros/cargar-tsa
   csrf: Csrf
   flash: Flash
   permissions: {

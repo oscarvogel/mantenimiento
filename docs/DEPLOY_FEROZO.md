@@ -287,6 +287,16 @@ script imprime el recordatorio al final, pero la limpieza la hace el operador.
 - Al borrarse despues, la superficie de ataque publica no aumenta entre
   deploys.
 
+### Completar los maestros de Viajes de TSA
+
+Después de desplegar una versión que incluya el panel de Superadministrador y
+aplicar la migración de maestros de Viajes, iniciar sesión como
+Superadministrador y usar **Completar maestros de Viajes para TSA** en
+Administración global. La acción web agrega únicamente las opciones faltantes
+de tipos de carga, unidades de carga, categorías de gastos, medios de pago y
+tipos de documento. Conserva los registros existentes, omite los porcentajes
+de liquidación y muestra el resultado al volver al panel.
+
 ## 7. Probar
 
 Abrir en el navegador:

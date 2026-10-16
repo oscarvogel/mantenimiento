@@ -31,7 +31,7 @@ final class GetPlatformModuleCatalog
         [
             'key' => 'trips',
             'label' => 'Viajes',
-            'description' => 'Planificación, seguimiento y control de viajes.',
+            'description' => 'Clientes, cargas, gastos y otros maestros de viajes de facturación.',
             'icon' => 'truck',
         ],
         [
@@ -95,13 +95,16 @@ final class GetPlatformModuleCatalog
         ]];
 
         foreach (self::FUTURE_MODULES as $module) {
+            $tripsEnabled = $module['key'] === 'trips'
+                && ! $actor->isSuperAdmin()
+                && $actor->hasPermission('viajes.maestros.ver');
             $managementEnabled = $module['key'] === 'management'
                 && $actor->hasPermission('gerencial.costo_km.ver');
             $modules[] = [
                 ...$module,
-                'landingPath' => $managementEnabled ? 'gerencial/costo-teorico-km' : null,
-                'status' => $managementEnabled ? 'Operativo' : 'Sin implementación aún',
-                'state' => $managementEnabled ? 'available' : 'not_implemented',
+                'landingPath' => $tripsEnabled ? 'viajes/maestros' : ($managementEnabled ? 'gerencial/costo-teorico-km' : null),
+                'status' => ($tripsEnabled || $managementEnabled) ? 'Operativo' : 'Sin implementación aún',
+                'state' => ($tripsEnabled || $managementEnabled) ? 'available' : 'not_implemented',
             ];
         }
 

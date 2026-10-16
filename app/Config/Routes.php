@@ -25,6 +25,14 @@ $routes->post('logout', 'Login::logout', ['filter' => 'auth']);
 $routes->get('dashboard', 'Dashboard::index', ['filter' => 'auth']);
 $routes->get('inicio', 'CommandCenter::index', ['filter' => 'auth']);
 
+// Maestros independientes del módulo operativo de viajes y de la telemetría.
+$routes->group('viajes/maestros', ['filter' => ['auth']], static function ($routes): void {
+    $routes->get('', 'TripMasters::index', ['filter' => 'permission:viajes.maestros.ver']);
+    $routes->post('', 'TripMasters::create', ['filter' => 'permission:viajes.maestros.editar']);
+    $routes->post('(:segment)/(:num)', 'TripMasters::update/$1/$2', ['filter' => 'permission:viajes.maestros.editar']);
+    $routes->post('(:segment)/(:num)/estado', 'TripMasters::status/$1/$2', ['filter' => 'permission:viajes.maestros.editar']);
+});
+
 // Refresco manual de la telemetría. POST + CSRF + permiso: escribir datos
 // aunque sean de telemetría no es una operación de sólo ver. El mismo camino
 // sirve en staging y en producción, donde no hay cron de sistema ni CLI.
@@ -71,6 +79,7 @@ $routes->group('superadmin', ['filter' => 'superadmin'], static function ($route
     $routes->post('empresas/(:num)/informes/prueba', 'SuperAdmin::testCompanyManagementReport/$1');
     $routes->post('notificaciones/despachar', 'NotificationCron::manual');
     $routes->post('migraciones/aplicar', 'SuperAdmin::applyPendingMigrations');
+    $routes->post('viajes/maestros/cargar-tsa', 'SuperAdmin::seedTsaTripMasterCatalogs');
     $routes->get('diagnosticos/vencimientos-regularizaciones', 'ExpirationRegularizationDiagnostics::run');
     $routes->post('whatsapp/prueba', 'SuperAdmin::testWhatsApp');
     $routes->post('whatsapp/probar-recordatorio-km', 'SuperAdmin::testWeeklyReadingReminderWhatsApp');

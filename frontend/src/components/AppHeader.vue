@@ -60,7 +60,7 @@ const moduleIcons = {
 }
 
 const moduleIconFor = (name) => moduleIcons[name] ?? Squares2X2Icon
-const primaryModuleKeys = new Set(['platform-home', 'module-wrench', 'module-management'])
+const primaryModuleKeys = new Set(['platform-home', 'module-wrench', 'module-truck', 'module-management'])
 const primaryModules = computed(() => props.moduleNavigation.filter((item) => primaryModuleKeys.has(item.key)))
 const additionalModules = computed(() => props.moduleNavigation.filter((item) => !primaryModuleKeys.has(item.key)))
 
