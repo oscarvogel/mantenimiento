@@ -507,6 +507,31 @@ const sections = [
             <StatusBadge :active="company.active" active-label="Activa" inactive-label="Inactiva" />
           </div>
 
+          <form
+            method="post"
+            :action="company.actions.assignPresentationProfile"
+            data-testid="presentation-profile-form"
+            data-confirm
+            data-confirm-title="¿Cambiar el perfil visual?"
+            data-confirm-text="El cambio solo afecta la presentación de esta empresa."
+            data-confirm-button="Guardar perfil"
+            class="grid gap-3 border-b border-border-subtle bg-surface-subtle px-5 py-4 sm:grid-cols-[1fr_auto] sm:items-end"
+          >
+            <CsrfField :csrf="data.csrf" />
+            <input type="hidden" name="companies_page" :value="data.companiesPagination.page" />
+            <input type="hidden" name="companies_per_page" :value="data.companiesPagination.perPage" />
+            <input type="hidden" name="users_page" :value="data.usersPagination.page" />
+            <input type="hidden" name="users_per_page" :value="data.usersPagination.perPage" />
+            <label class="block">
+              <span class="mb-1.5 block text-sm font-medium text-ink">Perfil visual de esta empresa</span>
+              <select name="frontend_profile" required :value="company.presentationProfile" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20">
+                <option v-for="profile in data.presentationProfiles" :key="profile.key" :value="profile.key">{{ profile.label }}</option>
+              </select>
+              <span class="mt-1 block text-xs leading-5 text-ink-muted">Solo se muestran perfiles incluidos en esta versión del sistema.</span>
+            </label>
+            <button type="submit" class="inline-flex min-h-11 items-center justify-center rounded-lg border border-primary px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary-subtle">Guardar perfil</button>
+          </form>
+
           <form v-if="data.permissions.companiesEdit" method="post" :action="company.actions.update" data-confirm data-confirm-title="¿Guardar los cambios de la empresa?" data-confirm-text="Los datos de la empresa se actualizarán en el sistema." data-confirm-button="Guardar empresa" class="grid gap-4 p-5 sm:grid-cols-2">
             <CsrfField :csrf="data.csrf" />
             <label class="block">

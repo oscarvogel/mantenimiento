@@ -75,6 +75,7 @@ $routes->group('superadmin', ['filter' => 'superadmin'], static function ($route
     $routes->get('telemetria/muestras', 'AdminTelemetrySamples::index');
     $routes->post('empresas', 'SuperAdmin::createCompany');
     $routes->post('empresas/(:num)', 'SuperAdmin::updateCompany/$1');
+    $routes->post('empresas/(:num)/presentacion', 'SuperAdmin::assignCompanyPresentationProfile/$1');
     $routes->post('empresas/(:num)/notificaciones/prueba', 'SuperAdmin::testCompanyNotificationEmail/$1');
     $routes->post('empresas/(:num)/informes/prueba', 'SuperAdmin::testCompanyManagementReport/$1');
     $routes->post('notificaciones/despachar', 'NotificationCron::manual');

@@ -1832,6 +1832,17 @@ return new AsignarPlan(
         );
     }
 
+    public static function listCompanyPresentationProfiles(bool $getShared = true): \App\Application\Platform\PresentationProfiles\ListCompanyPresentationProfiles
+    {
+        if ($getShared) {
+            return static::getSharedInstance('listCompanyPresentationProfiles');
+        }
+
+        return new \App\Application\Platform\PresentationProfiles\ListCompanyPresentationProfiles(
+            static::companyPresentationProfileStore(false),
+        );
+    }
+
     public static function assignUserRoles(bool $getShared = true): AssignUserRolesHandler
     {
         if ($getShared) {

@@ -170,6 +170,7 @@ git commit -m "feat(shell): resolver perfil visual desde empresa autenticada"
 - Modify: `app/Config/Routes.php`
 - Modify: `app/Controllers/SuperAdmin.php`
 - Modify: `app/Presentation/AdministrationPayload.php`
+- Create: `app/Application/Platform/PresentationProfiles/ListCompanyPresentationProfiles.php`
 - Modify: `frontend/src/pages/admin/SuperAdminPage.vue`
 - Test: `tests/unit/Controllers/SuperAdminCompanyPresentationProfileTest.php`
 - Test: `tests/unit/Presentation/CompanyPresentationProfileAdministrationPayloadTest.php`
@@ -179,32 +180,32 @@ git commit -m "feat(shell): resolver perfil visual desde empresa autenticada"
 - Consumes: `AssignCompanyPresentationProfile::execute()` y Task 3 payload/configuración.
 - Produce: acción POST `superadmin/empresas/{id}/presentacion`, opciones del catálogo y valor actual por empresa. No crea una ruta para administradores de empresa.
 
-- [ ] **Step 1: Escribir prueba de ruta/actor y contrato del panel**
+- [x] **Step 1: Escribir prueba de ruta/actor y contrato del panel**
 
 Cubrir acceso con filtro Superadmin, POST con CSRF, rechazo de actor tenant, rechazo de perfil desconocido, presentación del perfil actual y envío del perfil elegido. El payload solo enumera perfiles compilados desde catálogo y empresas retornadas por la consulta administrativa vigente.
 
-- [ ] **Step 2: Ejecutar pruebas nuevas y confirmar que fallan**
+- [x] **Step 2: Ejecutar pruebas nuevas y confirmar que fallan**
 
 Run: `wsl.exe bash -lc "cd /mnt/c/Programacion/mantenimiento && php vendor/bin/phpunit tests/unit/Controllers/SuperAdminCompanyPresentationProfileTest.php --no-coverage"`
 Run: `wsl.exe bash -lc "cd /mnt/c/Programacion/mantenimiento && php vendor/bin/phpunit tests/unit/Presentation/CompanyPresentationProfileAdministrationPayloadTest.php --no-coverage"`
 Expected: FAIL porque la acción, ruta y payload no existen.
 
-- [ ] **Step 3: Implementar acción POST y contrato de administración**
+- [x] **Step 3: Implementar acción POST y contrato de administración**
 
 Agregar una ruta solo dentro del grupo `superadmin`, validar el entero de empresa y la clave de perfil, invocar el caso de uso y volver al panel con mensaje accionable. No extender `UpdateCompanyHandler`: la presentación tiene su propio caso de uso y tabla.
 
-- [ ] **Step 4: Agregar selector por empresa en el panel**
+- [x] **Step 4: Agregar selector por empresa en el panel**
 
 En la sección existente de Empresas de `SuperAdminPage.vue`, mostrar perfil actual y formulario POST con `CsrfField`. El selector usa las opciones allowlisted, confirma el cambio y conserva filtros/paginación del panel. No permitir URL, JavaScript, CSS o claves libres.
 
-- [ ] **Step 5: Ejecutar pruebas PHP y frontend**
+- [x] **Step 5: Ejecutar pruebas PHP y frontend**
 
 Run: `wsl.exe bash -lc "cd /mnt/c/Programacion/mantenimiento && php vendor/bin/phpunit tests/unit/Controllers/SuperAdminCompanyPresentationProfileTest.php --no-coverage"`
 Run: `wsl.exe bash -lc "cd /mnt/c/Programacion/mantenimiento && php vendor/bin/phpunit tests/unit/Presentation/CompanyPresentationProfileAdministrationPayloadTest.php --no-coverage"`
 Run: `cd frontend && npm test -- tests/SuperAdminCompanyPresentationProfile.test.js`
 Expected: PASS; un actor tenant no puede asignar perfil y el formulario tiene token CSRF.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add app/Config/Routes.php app/Controllers/SuperAdmin.php app/Presentation/AdministrationPayload.php frontend/src/pages/admin/SuperAdminPage.vue tests/unit/Controllers/SuperAdminCompanyPresentationProfileTest.php tests/unit/Presentation/CompanyPresentationProfileAdministrationPayloadTest.php frontend/tests/SuperAdminCompanyPresentationProfile.test.js

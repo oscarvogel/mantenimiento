@@ -35,4 +35,10 @@ final class FrontendProfileCatalog
     {
         return 'base';
     }
+
+    /** @return list<array{key: string, label: string, shareable: bool}> */
+    public function all(): array
+    {
+        return array_values(self::PROFILES);
+    }
 }

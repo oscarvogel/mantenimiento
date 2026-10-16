@@ -12,6 +12,9 @@ final class AdministrationPayload
     public function superadmin(array $source): array
     {
         $companies = $source['companies'] ?? [];
+        $companyProfiles = $source['companyPresentationProfiles'] ?? [];
+        $frontendProfiles = $source['frontendProfiles'] ?? [];
+        $frontendProfileKeys = array_column($frontendProfiles, 'key');
         $companiesTotal = (int) ($source['companiesTotal'] ?? count($companies));
         $usersTotal = (int) ($source['usersTotal'] ?? count($source['users'] ?? []));
         $base = base_url('superadmin');
@@ -40,6 +43,10 @@ final class AdministrationPayload
                 'dispatchNotifications' => base_url('superadmin/notificaciones/despachar'),
                 'applyMigrations' => base_url('superadmin/migraciones/aplicar'),
             ],
+            'presentationProfiles' => array_map(static fn (array $profile): array => [
+                'key' => (string) $profile['key'],
+                'label' => (string) $profile['label'],
+            ], $frontendProfiles),
             'chatAudit' => [
                 'apiUrl' => base_url('mantenimiento/chatbot/auditoria'),
             ],
@@ -65,9 +72,13 @@ final class AdministrationPayload
                 'notificationLocale' => strtoupper((string) ($row['idioma_notificaciones'] ?? 'ES')) === 'PT' ? 'PT' : 'ES',
                 'telefono' => $row['telefono'] ?? '',
                 'active' => (int) $row['estado'] === 1,
+                'presentationProfile' => in_array((string) ($companyProfiles[(int) $row['id']] ?? 'base'), $frontendProfileKeys, true)
+                    ? (string) ($companyProfiles[(int) $row['id']] ?? 'base')
+                    : 'base',
                 'actions' => [
                     'update' => base_url('superadmin/empresas/' . $row['id']),
                     'testManagementReport' => base_url('superadmin/empresas/' . $row['id'] . '/informes/prueba'),
+                    'assignPresentationProfile' => base_url('superadmin/empresas/' . $row['id'] . '/presentacion'),
                 ],
             ], $companies),
             'companiesPagination' => $this->pagination(

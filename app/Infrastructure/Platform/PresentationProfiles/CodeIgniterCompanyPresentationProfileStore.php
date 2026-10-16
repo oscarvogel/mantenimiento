@@ -115,6 +115,26 @@ final class CodeIgniterCompanyPresentationProfileStore implements CompanyPresent
         }
     }
 
+    public function assignmentsForCompanies(array $companyIds): array
+    {
+        $companyIds = array_values(array_unique(array_filter(array_map('intval', $companyIds), static fn (int $id): bool => $id > 0)));
+        if ($companyIds === [] || ! $this->database->tableExists('empresa_configuracion_presentacion')) {
+            return [];
+        }
+
+        $rows = $this->database->table('empresa_configuracion_presentacion')
+            ->select('empresa_id, frontend_profile')
+            ->whereIn('empresa_id', $companyIds)
+            ->get()
+            ->getResultArray();
+        $assignments = [];
+        foreach ($rows as $row) {
+            $assignments[(int) $row['empresa_id']] = (string) $row['frontend_profile'];
+        }
+
+        return $assignments;
+    }
+
     private function isExclusiveProfileConflict(Throwable $error): bool
     {
         $databaseError = $this->database->error();

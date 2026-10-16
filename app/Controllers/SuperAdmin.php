@@ -31,6 +31,12 @@ final class SuperAdmin extends BaseController
         $usersPerPage = PageSize::normalize($this->request->getGet('users_per_page'));
         $data = $overview->execute($actor, $companiesPage, $companiesPerPage, $usersPage, $usersPerPage);
 
+        /** @var \App\Application\Platform\PresentationProfiles\ListCompanyPresentationProfiles $presentationProfiles */
+        $presentationProfiles = service('listCompanyPresentationProfiles');
+        $companyIds = array_map('intval', array_column($data['companies'] ?? [], 'id'));
+        $data['companyPresentationProfiles'] = $presentationProfiles->execute($actor, $companyIds);
+        $data['frontendProfiles'] = service('frontendProfileCatalog')->all();
+
         if (isset($data['companies']) && is_array($data['companies']) && $data['companies'] !== []) {
             $ids = array_map('intval', array_column($data['companies'], 'id'));
             $rows = db_connect()->table('empresas')->select('id, ia_habilitada')->whereIn('id', $ids)->get()->getResultArray();
@@ -331,6 +337,46 @@ final class SuperAdmin extends BaseController
         } catch (Throwable $exception) {
             return $this->operationFailure($exception);
         }
+    }
+
+    public function assignCompanyPresentationProfile(int $companyId): RedirectResponse
+    {
+        if (! $this->validate([
+            'frontend_profile' => 'required|max_length[64]',
+            'companies_page' => 'permit_empty|is_natural_no_zero',
+            'companies_per_page' => 'permit_empty|is_natural_no_zero',
+            'users_page' => 'permit_empty|is_natural_no_zero',
+            'users_per_page' => 'permit_empty|is_natural_no_zero',
+        ])) {
+            return $this->validationFailure();
+        }
+
+        try {
+            /** @var \App\Application\Platform\PresentationProfiles\AssignCompanyPresentationProfile $handler */
+            $handler = service('assignCompanyPresentationProfile');
+            $handler->execute($this->actor(), $companyId, trim((string) $this->request->getPost('frontend_profile')));
+
+            return redirect()->to($this->superadminReturnUrl())->with('success', 'El perfil visual de la empresa se actualizó correctamente.');
+        } catch (Throwable $exception) {
+            if (! $exception instanceof DomainException) {
+                log_message('error', 'Falló la asignación de perfil visual: {message}', ['message' => $exception->getMessage()]);
+            }
+            $message = $exception instanceof DomainException ? $exception->getMessage() : 'No se pudo actualizar el perfil visual.';
+
+            return redirect()->to($this->superadminReturnUrl())->with('error', $message);
+        }
+    }
+
+    private function superadminReturnUrl(): string
+    {
+        $query = [
+            'companies_page' => max(1, (int) $this->request->getPost('companies_page')),
+            'companies_per_page' => PageSize::normalize($this->request->getPost('companies_per_page')),
+            'users_page' => max(1, (int) $this->request->getPost('users_page')),
+            'users_per_page' => PageSize::normalize($this->request->getPost('users_per_page')),
+        ];
+
+        return base_url('superadmin?' . http_build_query($query));
     }
 
     public function testCompanyNotificationEmail(int $companyId): RedirectResponse

@@ -7,6 +7,7 @@ namespace Tests\Unit\Application\Platform\PresentationProfiles;
 use App\Application\Identity\ActorContext;
 use App\Application\Platform\PresentationProfiles\AssignCompanyPresentationProfile;
 use App\Application\Platform\PresentationProfiles\FrontendProfileCatalog;
+use App\Application\Platform\PresentationProfiles\ListCompanyPresentationProfiles;
 use App\Application\Platform\PresentationProfiles\Port\CompanyPresentationProfileStore;
 use DomainException;
 use PHPUnit\Framework\TestCase;
@@ -70,6 +71,19 @@ final class AssignCompanyPresentationProfileTest extends TestCase
         self::assertSame([], $store->assignments);
     }
 
+    public function testOnlySuperadminCanListAssignmentsAndCompanyIdsAreNormalized(): void
+    {
+        $store = new InMemoryCompanyPresentationProfileStore();
+        $store->listedProfiles = [21 => 'vogel'];
+        $useCase = new ListCompanyPresentationProfiles($store);
+
+        self::assertSame([21 => 'vogel'], $useCase->execute($this->superAdmin(), [21, 21, 0, -4]));
+        self::assertSame([21], $store->listedCompanyIds);
+
+        $this->expectException(DomainException::class);
+        $useCase->execute(new ActorContext(10, 21, false, false, ['Administrador'], [], []), [21]);
+    }
+
     private function superAdmin(): ActorContext
     {
         return new ActorContext(9, null, true, false, [], [], []);
@@ -80,9 +94,20 @@ final class InMemoryCompanyPresentationProfileStore implements CompanyPresentati
 {
     /** @var list<array{int, string, int, bool}> */
     public array $assignments = [];
+    /** @var array<int,string> */
+    public array $listedProfiles = [];
+    /** @var list<int> */
+    public array $listedCompanyIds = [];
 
     public function assign(int $companyId, string $profileKey, int $actorUserId, bool $exclusive): void
     {
         $this->assignments[] = [$companyId, $profileKey, $actorUserId, $exclusive];
+    }
+
+    public function assignmentsForCompanies(array $companyIds): array
+    {
+        $this->listedCompanyIds = $companyIds;
+
+        return $this->listedProfiles;
     }
 }
