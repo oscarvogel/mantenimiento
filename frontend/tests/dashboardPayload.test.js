@@ -9,6 +9,16 @@ describe('normalizeDashboardPayload', () => {
     expect(normalizeAppShellPayload({}).presentation.profile).toBe('base')
   })
 
+  it('tracks which maintenance indicators the server actually supplied', () => {
+    const dashboard = normalizeDashboardPayload({
+      metrics: { maintenanceOverdue: 2, preventiveCompliance: null },
+    })
+
+    expect(dashboard.metricAvailability.maintenanceOverdue).toBe(true)
+    expect(dashboard.metricAvailability.preventiveCompliance).toBe(false)
+    expect(dashboard.metricAvailability.openOrders).toBe(false)
+  })
+
   it('keeps the backend-provided portal return URL in the shared shell', () => {
     const shell = normalizeAppShellPayload({ homeUrl: '/inicio' })
 

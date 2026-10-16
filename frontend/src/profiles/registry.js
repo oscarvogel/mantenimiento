@@ -4,6 +4,7 @@ const compiledProfileLoaders = Object.freeze({
   base: async () => ({ default: baseProfile }),
   platform: () => import('./platform/profile.js'),
   vogel: () => import('./vogel/profile.js'),
+  cliente_piloto: () => import('./cliente_piloto/profile.js'),
 })
 
 export function createProfileLoader(loaders, fallbackProfile = baseProfile) {

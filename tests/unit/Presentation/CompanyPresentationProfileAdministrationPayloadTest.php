@@ -21,8 +21,9 @@ final class CompanyPresentationProfileAdministrationPayloadTest extends TestCase
 
         self::assertSame('vogel', $payload['companies'][0]['presentationProfile']);
         self::assertSame('base', $payload['companies'][1]['presentationProfile']);
-        self::assertSame(['base', 'vogel'], array_column($payload['presentationProfiles'], 'key'));
+        self::assertSame(['base', 'vogel', 'cliente_piloto'], array_column($payload['presentationProfiles'], 'key'));
         self::assertNotContains('platform', array_column($payload['presentationProfiles'], 'key'));
+        self::assertFalse((new FrontendProfileCatalog())->find('cliente_piloto')['shareable']);
         self::assertSame(base_url('superadmin/empresas/7/presentacion'), $payload['companies'][0]['actions']['assignPresentationProfile']);
     }
 }

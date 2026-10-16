@@ -3,12 +3,14 @@ import { createProfileLoader, loadFrontendProfile } from '../src/profiles/regist
 import base from '../src/profiles/base/profile.js'
 import platform from '../src/profiles/platform/profile.js'
 import vogel from '../src/profiles/vogel/profile.js'
+import clientPilot from '../src/profiles/cliente_piloto/profile.js'
 
 describe('frontend profile registry', () => {
   it('loads only compiled base, platform, and vogel profiles', async () => {
     await expect(loadFrontendProfile('base')).resolves.toBe(base)
     await expect(loadFrontendProfile('platform')).resolves.toBe(platform)
     await expect(loadFrontendProfile('vogel')).resolves.toBe(vogel)
+    await expect(loadFrontendProfile('cliente_piloto')).resolves.toBe(clientPilot)
     await expect(loadFrontendProfile('../../x')).resolves.toBe(base)
   })
 
@@ -34,5 +36,6 @@ describe('frontend profile registry', () => {
     expect(vogel.dashboardComponents).not.toBe(base.dashboardComponents)
     expect(vogel.key).toBe('vogel')
     expect(platform.key).toBe('platform')
+    expect(clientPilot.dashboardComponents.operational).not.toBe(base.dashboardComponents.operational)
   })
 })

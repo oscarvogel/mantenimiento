@@ -1,5 +1,5 @@
 const allowedStatuses = new Set(['AL_DIA', 'PROXIMO', 'VENCIDO', 'SIN_DATOS'])
-const allowedPresentationProfiles = new Set(['base', 'platform', 'vogel'])
+const allowedPresentationProfiles = new Set(['base', 'platform', 'vogel', 'cliente_piloto'])
 
 const asText = (value, fallback = '') =>
   typeof value === 'string' && value.trim() ? value.trim() : fallback
@@ -49,6 +49,12 @@ const asPercentage = (value) => {
 
   const percentage = Number(value)
   return Number.isFinite(percentage) && percentage >= 0 ? Math.min(100, Math.trunc(percentage)) : null
+}
+
+const isAvailableMetric = (value, { percentage = false } = {}) => {
+  if (value === null || value === undefined || value === '') return false
+  const metric = Number(value)
+  return Number.isFinite(metric) && metric >= 0 && (!percentage || metric <= 100)
 }
 
 const initialsFor = (name) =>
@@ -332,9 +338,19 @@ export function normalizeDashboardPayload(payload) {
   const sourceLinks = source.links && typeof source.links === 'object' ? source.links : {}
   const financial = source.financial && typeof source.financial === 'object' ? source.financial : {}
   const charts = source.charts && typeof source.charts === 'object' ? source.charts : {}
+  const metricAvailability = {
+    preventiveCompliance: isAvailableMetric(metrics.preventiveCompliance, { percentage: true }),
+    maintenanceOverdue: isAvailableMetric(metrics.maintenanceOverdue),
+    maintenanceDueSoon: isAvailableMetric(metrics.maintenanceDueSoon),
+    openOrders: isAvailableMetric(metrics.openOrders),
+    maintenanceMissingData: isAvailableMetric(metrics.maintenanceMissingData),
+    equipmentWithoutReading: isAvailableMetric(metrics.equipmentWithoutReading),
+    equipmentWithStaleReading: isAvailableMetric(metrics.equipmentWithStaleReading),
+  }
 
   return {
     ...shell,
+    metricAvailability,
     view: source.view === 'managerial' ? 'managerial' : 'operational',
     metrics: {
       equipmentTotal: asCount(metrics.equipmentTotal),

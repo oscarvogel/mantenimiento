@@ -21,6 +21,11 @@ final class FrontendProfileCatalog
             'label' => 'Vogel',
             'shareable' => false,
         ],
+        'cliente_piloto' => [
+            'key' => 'cliente_piloto',
+            'label' => 'Cliente piloto (prototipo)',
+            'shareable' => false,
+        ],
     ];
 
     /**

@@ -276,38 +276,40 @@ git commit -m "feat(frontend): seleccionar presentación desde perfil de empresa
 - Test: `frontend/tests/profiles/cliente_piloto/ClientShell.test.js`
 - Conditional: dashboard application/read adapter and tests, only if an approved KPI is absent from the current payload.
 
-**Precondition:** `cliente_piloto` es la clave técnica reservada para esta primera adaptación. Antes de dibujar el dashboard, registrar en el issue/brief y obtener aprobación del orden de indicadores, acciones principales y referencias de escritorio/móvil; recibir logo y colores cuando formen parte del encargo. Guardar el logo entregado dentro de `frontend/src/profiles/cliente_piloto/assets/brand/` solo si el brief incluye uno. La spec no autoriza inventar ese diseño.
+**Precondition:** `cliente_piloto` es la clave técnica reservada para esta primera adaptación. El usuario autorizó un prototipo provisional para la Empresa demo con prioridad en mantenimiento: preventivos vencidos, próximos a vencer, cumplimiento preventivo y órdenes abiertas; luego datos base faltantes, equipos sin lecturas y lecturas desactualizadas. Los CTA usan enlaces del backend y la propuesta muestra “Sin datos suficientes” ante valores ausentes. Este prototipo no representa la marca ni el diseño final de un cliente; el brief y las referencias definitivas se acordarán después de aprobar presupuesto.
 
 **Interfaces:**
 - Consume el contrato de dashboard existente `metrics`, `financial`, `charts`, `readingAttention`, `upcomingMaintenance`, `links` y shell autorizado.
 - Solo se agrega dato al caso de uso/read model si un indicador aprobado falta; el perfil no consulta DB ni calcula reglas de negocio.
 - La clave personalizada debe quedar marcada exclusiva en PHP y en el registro Vue.
 
-- [ ] **Step 1: Escribir pruebas del perfil nuevo y aislamiento de componentes**
+- [x] **Step 1: Escribir pruebas del perfil nuevo y aislamiento de componentes**
 
 Verificar KPI/acciones del brief, enlaces servidos por backend, diseño con datos vacíos, fallback de métricas ausentes sin valores inventados, layout responsive en tests existentes/visual QA y que montar el perfil nuevo no cambia props ni componentes de `base`/`vogel`.
 
-- [ ] **Step 2: Confirmar que las pruebas fallan antes de implementar**
+- [x] **Step 2: Confirmar que las pruebas fallan antes de implementar**
 
 Run: `cd frontend && npm test -- tests/profiles/cliente_piloto/ClientDashboard.test.js tests/profiles/cliente_piloto/ClientShell.test.js`
 Expected: FAIL porque el perfil todavía no está registrado.
 
-- [ ] **Step 3: Implementar shell, marca y dashboard del perfil**
+- [x] **Step 3: Implementar shell, marca y dashboard del perfil**
 
 Crear componentes aislados bajo `cliente_piloto`. Los estilos se importan solo por el perfil y la marca se lee de assets versionados; no compartir selectores globales que cambien otros perfiles. Los CTA usan `links` autorizados recibidos del servidor.
 
-- [ ] **Step 4: Extender lectura de dashboard solo para datos aprobados que falten**
+- [x] **Step 4: Extender lectura de dashboard solo para datos aprobados que falten**
+
+El contrato actual ya contiene los siete indicadores aprobados. Se agregó disponibilidad explícita al adaptador frontend para distinguir cero de una métrica ausente; no se agregaron consultas ni fórmulas de negocio.
 
 Para cada KPI aprobado ausente del DTO actual, definir fórmula/fuente en el brief, agregar la consulta mediante puerto y adaptador de lectura y probar empresa, sucursal y permiso. Si el indicador no tiene datos mínimos, presentar “sin datos suficientes”. Omitir cualquier métrica sin definición aprobada.
 
-- [ ] **Step 5: Ejecutar pruebas del perfil y build Vite**
+- [x] **Step 5: Ejecutar pruebas del perfil y build Vite**
 
 Run: `cd frontend && npm test -- tests/profiles/cliente_piloto/ClientDashboard.test.js tests/profiles/cliente_piloto/ClientShell.test.js tests/profileRegistry.test.js`
 Run: `cd frontend && npm run build`
 Run: `cd frontend && npm run verify:build-sync`
 Expected: PASS; el manifest contiene el chunk del perfil y los bundles sincronizados corresponden al build.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add frontend/src/profiles frontend/tests/profiles frontend/src/profiles/registry.js app/Application/Dashboard app/Infrastructure/Dashboard tests/unit/Application/Dashboard
@@ -357,4 +359,4 @@ Confirmar que los volúmenes de staging siguen presentes, no hay migraciones ine
 
 ## Handoff de diseño del dashboard
 
-La infraestructura de perfiles puede construirse sin la marca final del cliente. La Task 6 no se considera lista para iniciar hasta contar con el brief visual aprobado. Para no detener las Tasks 1–5, el perfil asignado al cliente permanece en `base` hasta que la Task 6 esté aceptada y desplegada.
+La Task 6 contiene un prototipo de revisión autorizado para la Empresa demo, sin marca final. Su asignación y aceptación visual todavía requieren verificar la aplicación en el stack staging correcto de `fasa_189`; el preflight no encontró un stack de Mantenimiento identificable, por lo que no se desplegó ni se cambió ningún entorno. El diseño final por cliente se definirá después de aprobar presupuesto y acordar su brief. La Task 7 sigue abierta hasta identificar el stack y obtener evidencia de escritorio/móvil y aislamiento entre empresas.
