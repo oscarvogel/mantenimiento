@@ -70,6 +70,13 @@ $routes->get('empleados', static function () {
 
 // Administración global. El filtro también rechaza cuentas autenticadas no globales.
 $routes->group('superadmin', ['filter' => 'superadmin'], static function ($routes): void {
+    $routes->get('clientes/importar', 'CustomerImports::index');
+    $routes->get('clientes/importar/plantilla', 'CustomerImports::template');
+    $routes->post('clientes/importar', 'CustomerImports::preview');
+    $routes->get('clientes/importaciones/(:num)', 'CustomerImports::show/$1');
+    $routes->get('clientes/importaciones/(:num)/revision.csv', 'CustomerImports::issues/$1');
+    $routes->post('clientes/importaciones/(:num)/confirmar', 'CustomerImports::confirm/$1');
+    $routes->post('clientes/importaciones/(:num)/cancelar', 'CustomerImports::cancel/$1');
     $routes->get('', 'SuperAdmin::index');
     $routes->get('telemetria/muestras/exportar', 'AdminTelemetrySamples::export');
     $routes->get('telemetria/muestras', 'AdminTelemetrySamples::index');

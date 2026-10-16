@@ -228,6 +228,19 @@ use CodeIgniter\Config\BaseService;
  */
 class Services extends BaseService
 {
+    public static function customerImports(bool $getShared = true): \App\Application\Customers\CustomerImports
+    {
+        if ($getShared) {
+            return static::getSharedInstance('customerImports');
+        }
+        $db = db_connect();
+        return new \App\Application\Customers\CustomerImports(
+            new \App\Infrastructure\Customers\CodeIgniterCustomerImportStore($db),
+            new \App\Infrastructure\Customers\CustomerCsvReader(),
+            new \App\Infrastructure\Importations\CodeIgniterImportUnitOfWork($db),
+        );
+    }
+
     public static function preventivePlansPayload(bool $getShared = true): PreventivePlansPayload
     {
         if ($getShared) {
