@@ -45,5 +45,6 @@ describe('frontend profile registry', () => {
     expect(vogel.key).toBe('vogel')
     expect(platform.key).toBe('platform')
     expect(clientPilot.dashboardComponents.operational).not.toBe(base.dashboardComponents.operational)
+    expect(clientPilot.dashboardComponents.managerial).not.toBe(base.dashboardComponents.managerial)
   })
 })
