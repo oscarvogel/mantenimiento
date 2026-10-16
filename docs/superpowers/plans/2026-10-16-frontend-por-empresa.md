@@ -154,7 +154,7 @@ El adaptador carga el perfil asociado solo con el `companyId` del ActorContext y
 - [ ] **Step 4: Ejecutar regresión del shell**
 
 Run: `wsl.exe bash -lc "cd /mnt/c/Programacion/mantenimiento && php vendor/bin/phpunit tests/unit/Application/AppShell/GetAppShellContextTest.php --no-coverage"`
-Run: `wsl.exe bash -lc "cd /mnt/c/Programacion/mantenimiento && php vendor/bin/phpunit tests/unit/Platform/GetPlatformModuleCatalogTest.php --no-coverage"`
+Run: `wsl.exe bash -lc "cd /mnt/c/Programacion/mantenimiento && php vendor/bin/phpunit tests/unit/Application/Platform/GetPlatformModuleCatalogTest.php --no-coverage"`
 Expected: PASS; navegación, permisos y filtrado de sucursales existentes permanecen iguales.
 
 - [ ] **Step 5: Commit**
@@ -216,6 +216,7 @@ git commit -m "feat(superadmin): administrar perfiles visuales por empresa"
 **Files:**
 - Create: `frontend/src/profiles/registry.js`
 - Create: `frontend/src/profiles/base/profile.js`
+- Create: `frontend/src/profiles/platform/profile.js` (perfil global reservado; no asignable a empresas)
 - Create: `frontend/src/profiles/vogel/profile.js`
 - Modify: `frontend/src/main.js`
 - Modify: `frontend/src/PageHost.vue`
@@ -231,7 +232,7 @@ git commit -m "feat(superadmin): administrar perfiles visuales por empresa"
 - Consumes: `payload.presentation.profile` de Task 3.
 - `frontend/src/profiles/registry.js` exporta `loadFrontendProfile(profileKey): Promise<FrontendProfile>`.
 - `FrontendProfile` contiene `key`, `shellComponent`, `resolvePage(pageKey, defaults)`, `dashboardComponents` y asset/style references estáticos.
-- Una clave ausente/desconocida resuelve `base`; la URL de un chunk nunca se construye concatenando la clave recibida.
+- `base`, `platform` y `vogel` son entradas compiladas; `platform` se reserva para Superadministrador y nunca se asigna desde administración de empresas. Una clave ausente/desconocida resuelve `base`; la URL de un chunk nunca se construye concatenando la clave recibida.
 
 - [ ] **Step 1: Escribir pruebas del registry y mount**
 

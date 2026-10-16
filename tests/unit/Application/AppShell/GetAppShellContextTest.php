@@ -6,6 +6,7 @@ use App\Application\AppShell\GetAppShellContext;
 use App\Application\AppShell\Port\AppShellReadModel;
 use App\Application\Identity\ActorContext;
 use App\Application\Platform\GetPlatformModuleCatalog;
+use App\Application\Platform\PresentationProfiles\FrontendProfileCatalog;
 use App\Presentation\AppShellPayload;
 use PHPUnit\Framework\TestCase;
 
@@ -21,6 +22,7 @@ final class GetAppShellContextTest extends TestCase
         self::assertSame([['id' => 9, 'name' => 'Central']], $result['company']['branches']);
         self::assertSame(['Consulta'], $result['user']['roles']);
         self::assertFalse($result['user']['isSuperAdmin']);
+        self::assertSame('base', $result['presentation']['profile']);
     }
 
     public function testBuildsGlobalContextWithoutTenantData(): void
@@ -32,6 +34,34 @@ final class GetAppShellContextTest extends TestCase
         self::assertSame('Administración global', $result['company']['name']);
         self::assertSame([], $result['company']['branches']);
         self::assertTrue($result['user']['isSuperAdmin']);
+        self::assertSame('platform', $result['presentation']['profile']);
+    }
+
+    public function testUsesTheRegisteredProfileForTheActorsCompany(): void
+    {
+        $readModel = new AppShellReadModelFake();
+        $readModel->presentationProfile = 'vogel';
+
+        $actor = new ActorContext(7, 5, false, false, ['Consulta'], ['equipos.ver'], [9]);
+        $context = new GetAppShellContext($readModel, new FrontendProfileCatalog());
+        $result = $context->execute($actor);
+        $payload = (new AppShellPayload($context, new GetPlatformModuleCatalog()))->for($actor, 'dashboard');
+
+        self::assertSame('vogel', $result['presentation']['profile']);
+        self::assertSame('vogel', $payload['presentation']['profile']);
+    }
+
+    public function testMissingOrUnknownProfileFallsBackToBase(): void
+    {
+        foreach ([null, 'unknown-profile'] as $profile) {
+            $readModel = new AppShellReadModelFake();
+            $readModel->presentationProfile = $profile;
+
+            $result = (new GetAppShellContext($readModel, new FrontendProfileCatalog()))
+                ->execute(new ActorContext(7, 5, false, false, ['Consulta'], ['equipos.ver'], [9]));
+
+            self::assertSame('base', $result['presentation']['profile']);
+        }
     }
 
     public function testShowsPreventivePlansNavigationOnlyWithReadPermission(): void
@@ -285,6 +315,8 @@ final class GetAppShellContextTest extends TestCase
 
 final class AppShellReadModelFake implements AppShellReadModel
 {
+    public ?string $presentationProfile = null;
+
     public function fetch(ActorContext $actor): array
     {
         if ($actor->isSuperAdmin()) {
@@ -292,6 +324,7 @@ final class AppShellReadModelFake implements AppShellReadModel
                 'user' => ['nombre' => 'Super Admin', 'email' => 'super@example.test'],
                 'company' => null,
                 'branches' => [],
+                'presentationProfile' => $this->presentationProfile,
             ];
         }
 
@@ -299,6 +332,7 @@ final class AppShellReadModelFake implements AppShellReadModel
             'user' => ['nombre' => 'Usuario Demo', 'email' => 'user@example.test'],
             'company' => ['razon_social' => 'Transportes Demo SA', 'nombre_fantasia' => 'Transportes Demo'],
             'branches' => [['id' => 9, 'nombre' => 'Central']],
+            'presentationProfile' => $this->presentationProfile,
         ];
     }
 }

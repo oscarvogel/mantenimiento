@@ -6,12 +6,18 @@ namespace App\Application\AppShell;
 
 use App\Application\AppShell\Port\AppShellReadModel;
 use App\Application\Identity\ActorContext;
+use App\Application\Platform\PresentationProfiles\FrontendProfileCatalog;
 use DomainException;
 
 final readonly class GetAppShellContext
 {
-    public function __construct(private AppShellReadModel $readModel)
-    {
+    private FrontendProfileCatalog $profileCatalog;
+
+    public function __construct(
+        private AppShellReadModel $readModel,
+        ?FrontendProfileCatalog $profileCatalog = null,
+    ) {
+        $this->profileCatalog = $profileCatalog ?? new FrontendProfileCatalog();
     }
 
     /** @return array<string,mixed> */
@@ -23,8 +29,15 @@ final readonly class GetAppShellContext
             throw new DomainException('La empresa del usuario no está disponible.');
         }
 
+        $profileKey = 'platform';
+        if (! $actor->isSuperAdmin()) {
+            $profile = $this->profileCatalog->find((string) ($context['presentationProfile'] ?? ''));
+            $profileKey = $profile['key'] ?? $this->profileCatalog->defaultKey();
+        }
+
         return [
             'mode' => $actor->isSuperAdmin() ? 'global' : 'tenant',
+            'presentation' => ['profile' => $profileKey],
             'user' => [
                 'name' => (string) $context['user']['nombre'],
                 'email' => (string) $context['user']['email'],

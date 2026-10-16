@@ -29,7 +29,12 @@ final readonly class CodeIgniterAppShellReadModel implements AppShellReadModel
         }
 
         if ($actor->isSuperAdmin()) {
-            return ['user' => $user, 'company' => null, 'branches' => []];
+            return [
+                'user' => $user,
+                'company' => null,
+                'branches' => [],
+                'presentationProfile' => null,
+            ];
         }
 
         $companyId = (int) $actor->companyId();
@@ -56,10 +61,16 @@ final readonly class CodeIgniterAppShellReadModel implements AppShellReadModel
             }
         }
 
+        $presentation = $this->database->table('empresa_configuracion_presentacion')
+            ->select('frontend_profile')
+            ->where('empresa_id', $companyId)
+            ->get()->getRowArray();
+
         return [
             'user' => $user,
             'company' => $company,
             'branches' => $branches->get()->getResultArray(),
+            'presentationProfile' => $presentation['frontend_profile'] ?? null,
         ];
     }
 }

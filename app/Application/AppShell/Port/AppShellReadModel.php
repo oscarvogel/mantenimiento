@@ -8,6 +8,6 @@ use App\Application\Identity\ActorContext;
 
 interface AppShellReadModel
 {
-    /** @return array{user:array<string,mixed>,company:array<string,mixed>|null,branches:list<array<string,mixed>>} */
+    /** @return array{user:array<string,mixed>,company:array<string,mixed>|null,branches:list<array<string,mixed>>,presentationProfile:string|null} */
     public function fetch(ActorContext $actor): array;
 }

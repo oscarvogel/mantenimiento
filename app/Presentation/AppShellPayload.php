@@ -16,7 +16,7 @@ final readonly class AppShellPayload
     ) {
     }
 
-    /** @return array<string,mixed> */
+    /** @return array<string,mixed> Payload includes the server-resolved presentation profile. */
     public function for(ActorContext $actor, string $active): array
     {
         $payload = $this->context->execute($actor);

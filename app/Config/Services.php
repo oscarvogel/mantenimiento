@@ -937,7 +937,7 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
         }
 
         return new AppShellPayload(
-            new GetAppShellContext(new CodeIgniterAppShellReadModel(db_connect())),
+            new GetAppShellContext(new CodeIgniterAppShellReadModel(db_connect()), static::frontendProfileCatalog(false)),
             static::platformModuleCatalog(),
         );
     }
