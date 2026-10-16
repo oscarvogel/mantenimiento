@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { markRaw } from 'vue'
 import { mount } from '@vue/test-utils'
 import PageHost from '../src/PageHost.vue'
+import ApplicationShell from '../src/components/ApplicationShell.vue'
 import { loadFrontendProfile } from '../src/profiles/registry.js'
 import { normalizeAppShellPayload } from '../src/adapters/dashboardPayload.js'
 
@@ -28,5 +29,19 @@ describe('profile based page composition', () => {
   it('keeps login payloads and unknown profiles on the base profile', async () => {
     expect(normalizeAppShellPayload({ presentation: { profile: '../../x' } }).presentation.profile).toBe('base')
     await expect(loadFrontendProfile('unknown')).resolves.toMatchObject({ key: 'base' })
+  })
+
+  it('renders the shared base shell through its static composition path', () => {
+    const page = { template: '<p>Centro de mandos</p>' }
+    const wrapper = mount(PageHost, {
+      props: {
+        shell: normalizeAppShellPayload({ presentation: { profile: 'platform' } }),
+        shellComponent: markRaw(ApplicationShell),
+        pageComponent: markRaw(page),
+      },
+    })
+
+    expect(wrapper.findComponent(ApplicationShell).exists()).toBe(true)
+    expect(wrapper.get('#main-content').text()).toContain('Centro de mandos')
   })
 })
