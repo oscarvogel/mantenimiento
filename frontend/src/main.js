@@ -35,13 +35,36 @@ function payloadFromDocument() {
   }
 }
 
+function installRenderDiagnostics(app) {
+  if (new URLSearchParams(window.location.search).get('debug-vue') !== '1') return app
+
+  app.config.errorHandler = (error, instance, info) => {
+    console.error('[dashboard-render-diagnostic]', {
+      info,
+      component: instance?.$options?.name ?? instance?.type?.name ?? instance?.type?.__name ?? 'unknown',
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    })
+  }
+
+  app.config.warnHandler = (message, instance, trace) => {
+    console.warn('[dashboard-render-diagnostic]', {
+      component: instance?.$options?.name ?? instance?.type?.name ?? instance?.type?.__name ?? 'unknown',
+      message,
+      trace,
+    })
+  }
+
+  return app
+}
+
 export async function mountMaintenanceDashboard(element, payload) {
   if (!element) return null
 
   const page = typeof payload?.page === 'string' ? payload.page : 'dashboard'
   if (page === 'login') {
     const pageData = payload?.data && typeof payload.data === 'object' ? payload.data : {}
-    const app = createApp(LoginPage, { data: pageData })
+    const app = installRenderDiagnostics(createApp(LoginPage, { data: pageData }))
     installScrollReveal(app)
     return app.mount(element)
   }
@@ -62,11 +85,11 @@ export async function mountMaintenanceDashboard(element, payload) {
         ? { data: pageData.report ?? pageData.data ?? {}, urls: pageData.urls ?? {} }
         : { data: pageData }
 
-      const app = createApp(PageHost, {
+      const app = installRenderDiagnostics(createApp(PageHost, {
         shell,
         pageComponent: markRaw(pageComponent),
         pageProps,
-      })
+      }))
       installScrollReveal(app)
       return app.mount(element)
     }
@@ -75,7 +98,7 @@ export async function mountMaintenanceDashboard(element, payload) {
   const dashboard = normalizeDashboardPayload(payload)
   const dashboardComponent = profile.dashboardComponents[dashboard.view] ?? profile.dashboardComponents.operational
 
-  const app = createApp(dashboardComponent, { dashboard })
+  const app = installRenderDiagnostics(createApp(dashboardComponent, { dashboard }))
   installScrollReveal(app)
   return app.mount(element)
 }
