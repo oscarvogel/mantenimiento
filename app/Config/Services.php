@@ -1802,6 +1802,36 @@ return new AsignarPlan(
         return new AssignUserCompanyHandler(static::organizationAdministration());
     }
 
+    public static function frontendProfileCatalog(bool $getShared = true): \App\Application\Platform\PresentationProfiles\FrontendProfileCatalog
+    {
+        if ($getShared) {
+            return static::getSharedInstance('frontendProfileCatalog');
+        }
+
+        return new \App\Application\Platform\PresentationProfiles\FrontendProfileCatalog();
+    }
+
+    public static function companyPresentationProfileStore(bool $getShared = true): \App\Application\Platform\PresentationProfiles\Port\CompanyPresentationProfileStore
+    {
+        if ($getShared) {
+            return static::getSharedInstance('companyPresentationProfileStore');
+        }
+
+        return new \App\Infrastructure\Platform\PresentationProfiles\CodeIgniterCompanyPresentationProfileStore(db_connect());
+    }
+
+    public static function assignCompanyPresentationProfile(bool $getShared = true): \App\Application\Platform\PresentationProfiles\AssignCompanyPresentationProfile
+    {
+        if ($getShared) {
+            return static::getSharedInstance('assignCompanyPresentationProfile');
+        }
+
+        return new \App\Application\Platform\PresentationProfiles\AssignCompanyPresentationProfile(
+            static::frontendProfileCatalog(false),
+            static::companyPresentationProfileStore(false),
+        );
+    }
+
     public static function assignUserRoles(bool $getShared = true): AssignUserRolesHandler
     {
         if ($getShared) {
