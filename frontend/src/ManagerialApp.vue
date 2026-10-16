@@ -7,7 +7,6 @@ import ManagerialDashboard from './components/ManagerialDashboard.vue'
 const props = defineProps({
   dashboard: { type: Object, required: true },
   loading: { type: Boolean, default: false },
-  shellComponent: { type: Object, default: ApplicationShell },
 })
 
 const firstName = computed(() => props.dashboard.user.name.split(/\s+/)[0] || 'Usuario')
@@ -36,7 +35,7 @@ const scrollCta = computed(() => {
 </script>
 
 <template>
-  <component :is="shellComponent" :shell="shell" :scroll-cta="scrollCta">
+  <ApplicationShell :shell="shell" :scroll-cta="scrollCta">
     <DashboardLoading v-if="loading" />
     <template v-else>
       <div
@@ -48,5 +47,5 @@ const scrollCta = computed(() => {
       </div>
       <ManagerialDashboard :dashboard="dashboard" :first-name="firstName" />
     </template>
-  </component>
+  </ApplicationShell>
 </template>

@@ -7,22 +7,20 @@ import { loadFrontendProfile } from '../src/profiles/registry.js'
 import { normalizeAppShellPayload } from '../src/adapters/dashboardPayload.js'
 
 describe('profile based page composition', () => {
-  it('normalizes the server profile and wraps the resolved page in that profile shell', async () => {
-    const shell = { template: '<div data-testid="profile-shell"><slot /></div>' }
+  it('uses the stable shared shell for pages while preserving the selected dashboard profile', async () => {
     const page = { template: '<p>Perfil Vogel</p>' }
     const profile = {
       key: 'vogel',
-      shellComponent: shell,
       resolvePage: (pageKey, defaults) => defaults[pageKey],
     }
     const normalized = normalizeAppShellPayload({ presentation: { profile: 'vogel' } })
     const pageComponent = profile.resolvePage('report', { report: page })
     const wrapper = mount(PageHost, {
-      props: { shell: normalized, shellComponent: markRaw(profile.shellComponent), pageComponent: markRaw(pageComponent), pageProps: {} },
+      props: { shell: normalized, pageComponent: markRaw(pageComponent), pageProps: {} },
     })
 
     expect(normalized.presentation.profile).toBe('vogel')
-    expect(wrapper.get('[data-testid="profile-shell"]').exists()).toBe(true)
+    expect(wrapper.findComponent(ApplicationShell).exists()).toBe(true)
     expect(wrapper.text()).toContain('Perfil Vogel')
   })
 
@@ -36,7 +34,6 @@ describe('profile based page composition', () => {
     const wrapper = mount(PageHost, {
       props: {
         shell: normalizeAppShellPayload({ presentation: { profile: 'platform' } }),
-        shellComponent: markRaw(ApplicationShell),
         pageComponent: markRaw(page),
       },
     })

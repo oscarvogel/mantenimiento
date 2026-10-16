@@ -7,6 +7,8 @@ const compiledProfileLoaders = Object.freeze({
   cliente_piloto: () => import('./cliente_piloto/profile.js'),
 })
 
+export const baseFrontendProfile = baseProfile
+
 export function createProfileLoader(loaders, fallbackProfile = baseProfile) {
   return async (profileKey) => {
     const loader = typeof profileKey === 'string' ? loaders[profileKey] : null
@@ -20,6 +22,10 @@ export function createProfileLoader(loaders, fallbackProfile = baseProfile) {
       return fallbackProfile
     }
   }
+}
+
+export function shouldLoadFrontendProfile(profileKey, page) {
+  return page === 'dashboard' && profileKey === 'cliente_piloto'
 }
 
 export const loadFrontendProfile = createProfileLoader(compiledProfileLoaders, baseProfile)

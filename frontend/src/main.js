@@ -3,7 +3,7 @@ import PageHost from './PageHost.vue'
 import { normalizeAppShellPayload, normalizeDashboardPayload } from './adapters/dashboardPayload.js'
 import { developmentDashboard } from './data/developmentDashboard.js'
 import LoginPage from './pages/login/LoginPage.vue'
-import { loadFrontendProfile } from './profiles/registry.js'
+import { baseFrontendProfile, loadFrontendProfile, shouldLoadFrontendProfile } from './profiles/registry.js'
 import { installContextualReadingActions } from './ui/contextualReadingActions.js'
 import { installEquipmentComboboxes } from './ui/equipmentCombobox.js'
 import { installEquipmentAssignedPlans } from './ui/equipmentAssignedPlans.js'
@@ -47,7 +47,9 @@ export async function mountMaintenanceDashboard(element, payload) {
   }
 
   const shell = normalizeAppShellPayload(payload)
-  const profile = await loadFrontendProfile(shell.presentation.profile)
+  const profile = shouldLoadFrontendProfile(shell.presentation.profile, page)
+    ? await loadFrontendProfile(shell.presentation.profile)
+    : baseFrontendProfile
 
   if (page !== 'dashboard') {
     const pageComponent = profile.resolvePage(page)
@@ -62,7 +64,6 @@ export async function mountMaintenanceDashboard(element, payload) {
 
       const app = createApp(PageHost, {
         shell,
-        shellComponent: markRaw(profile.shellComponent),
         pageComponent: markRaw(pageComponent),
         pageProps,
       })
@@ -74,7 +75,7 @@ export async function mountMaintenanceDashboard(element, payload) {
   const dashboard = normalizeDashboardPayload(payload)
   const dashboardComponent = profile.dashboardComponents[dashboard.view] ?? profile.dashboardComponents.operational
 
-  const app = createApp(dashboardComponent, { dashboard, shellComponent: markRaw(profile.shellComponent) })
+  const app = createApp(dashboardComponent, { dashboard })
   installScrollReveal(app)
   return app.mount(element)
 }

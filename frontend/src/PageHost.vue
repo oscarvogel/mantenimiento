@@ -1,6 +1,6 @@
 <script setup>
 import ApplicationShell from './components/ApplicationShell.vue'
-import PageContent from './PageContent.vue'
+import CompanyAiControls from './pages/admin/components/CompanyAiControls.vue'
 
 defineProps({
   shell: {
@@ -15,18 +15,16 @@ defineProps({
     type: Object,
     default: () => ({}),
   },
-  shellComponent: {
-    type: Object,
-    default: ApplicationShell,
-  },
 })
 </script>
 
 <template>
-  <ApplicationShell v-if="shellComponent === ApplicationShell" :shell="shell">
-    <PageContent :page-component="pageComponent" :page-props="pageProps" />
+  <ApplicationShell :shell="shell">
+    <component :is="pageComponent" v-bind="pageProps" />
+    <CompanyAiControls
+      v-if="Array.isArray(pageProps?.data?.aiCompanyControls)"
+      :companies="pageProps.data.aiCompanyControls"
+      :csrf="pageProps.data.csrf"
+    />
   </ApplicationShell>
-  <component v-else :is="shellComponent" :shell="shell">
-    <PageContent :page-component="pageComponent" :page-props="pageProps" />
-  </component>
 </template>

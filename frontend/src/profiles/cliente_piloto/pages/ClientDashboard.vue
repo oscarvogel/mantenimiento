@@ -6,7 +6,6 @@ import ClientShell from '../shell/ClientShell.vue'
 const props = defineProps({
   dashboard: { type: Object, required: true },
   loading: { type: Boolean, default: false },
-  shellComponent: { type: Object, default: ClientShell },
 })
 
 const shell = computed(() => ({
@@ -68,7 +67,7 @@ const metricText = (key, value) => {
 </script>
 
 <template>
-  <component :is="shellComponent" :shell="shell">
+  <ClientShell :shell="shell">
     <div v-if="loading" class="client-pilot-profile__loading" role="status">Cargando indicadores de mantenimiento…</div>
     <template v-else>
       <header class="client-pilot-profile__heading">
@@ -126,5 +125,5 @@ const metricText = (key, value) => {
         </div>
       </section>
     </template>
-  </component>
+  </ClientShell>
 </template>

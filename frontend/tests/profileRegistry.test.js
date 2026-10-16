@@ -1,12 +1,20 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createProfileLoader, loadFrontendProfile } from '../src/profiles/registry.js'
+import { createProfileLoader, loadFrontendProfile, shouldLoadFrontendProfile } from '../src/profiles/registry.js'
 import base from '../src/profiles/base/profile.js'
 import platform from '../src/profiles/platform/profile.js'
 import vogel from '../src/profiles/vogel/profile.js'
 import clientPilot from '../src/profiles/cliente_piloto/profile.js'
 
 describe('frontend profile registry', () => {
-  it('loads only compiled base, platform, and vogel profiles', async () => {
+  it('loads custom dashboard code only for a company dashboard with an explicit override', () => {
+    expect(shouldLoadFrontendProfile('platform', 'command-center')).toBe(false)
+    expect(shouldLoadFrontendProfile('platform', 'dashboard')).toBe(false)
+    expect(shouldLoadFrontendProfile('vogel', 'dashboard')).toBe(false)
+    expect(shouldLoadFrontendProfile('cliente_piloto', 'reports')).toBe(false)
+    expect(shouldLoadFrontendProfile('cliente_piloto', 'dashboard')).toBe(true)
+  })
+
+  it('loads only allowlisted profiles compiled into the frontend', async () => {
     await expect(loadFrontendProfile('base')).resolves.toBe(base)
     await expect(loadFrontendProfile('platform')).resolves.toBe(platform)
     await expect(loadFrontendProfile('vogel')).resolves.toBe(vogel)
