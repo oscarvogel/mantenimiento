@@ -46,8 +46,8 @@ Events::on('pre_system', static function (): void {
      */
     if (CI_DEBUG && ! is_cli()) {
         Events::on('DBQuery', 'CodeIgniter\Debug\Toolbar\Collectors\Database::collect');
-        $requestPath = trim(service('request')->getUri()->getPath(), '/');
-        if ($requestPath !== 'dashboard') {
+        $requestPath = parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH) ?: '/';
+        if (rtrim($requestPath, '/') !== '/dashboard') {
             service('toolbar')->respond();
         }
         // Hot Reload route - for framework use on the hot reloader.
