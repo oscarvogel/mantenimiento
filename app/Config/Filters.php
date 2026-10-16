@@ -34,9 +34,7 @@ class Filters extends BaseFilters
         'before' => [
             'csrf' => ['except' => ['internal/cron/notifications/dispatch', 'internal/deploy/migrate']],
         ],
-        'after'  => [
-            'toolbar' => ['except' => ['login', 'dashboard']],
-        ],
+        'after'  => [],
     ];
 
     public array $methods = [];
