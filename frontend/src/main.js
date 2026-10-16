@@ -38,12 +38,24 @@ function payloadFromDocument() {
 export async function mountMaintenanceDashboard(element, payload) {
   if (!element) return null
 
+  const mount = (app) => {
+    app.config.errorHandler = (error, instance, info) => {
+      console.error('[Vue mount diagnostic]', {
+        component: instance?.type?.name ?? instance?.type?.__name ?? 'unknown',
+        file: instance?.type?.__file ?? 'unknown',
+        info,
+        error,
+      })
+    }
+    return app.mount(element)
+  }
+
   const page = typeof payload?.page === 'string' ? payload.page : 'dashboard'
   if (page === 'login') {
     const pageData = payload?.data && typeof payload.data === 'object' ? payload.data : {}
     const app = createApp(LoginPage, { data: pageData })
     installScrollReveal(app)
-    return app.mount(element)
+    return mount(app)
   }
 
   const shell = normalizeAppShellPayload(payload)
@@ -68,7 +80,7 @@ export async function mountMaintenanceDashboard(element, payload) {
         pageProps,
       })
       installScrollReveal(app)
-      return app.mount(element)
+      return mount(app)
     }
   }
 
@@ -77,7 +89,7 @@ export async function mountMaintenanceDashboard(element, payload) {
 
   const app = createApp(dashboardComponent, { dashboard })
   installScrollReveal(app)
-  return app.mount(element)
+  return mount(app)
 }
 
 const root = document.getElementById('maintenance-app')
