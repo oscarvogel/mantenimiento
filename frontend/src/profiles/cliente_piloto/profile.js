@@ -6,7 +6,6 @@ import './styles.css'
 const dashboardComponents = Object.freeze({
   ...base.dashboardComponents,
   operational: ClientDashboard,
-  managerial: ClientDashboard,
 })
 
 export default Object.freeze({
