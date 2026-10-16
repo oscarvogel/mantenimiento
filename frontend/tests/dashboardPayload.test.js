@@ -3,6 +3,12 @@ import { normalizeAppShellPayload, normalizeDashboardPayload } from '../src/adap
 import { dashboardPayload } from './fixtures.js'
 
 describe('normalizeDashboardPayload', () => {
+  it('normalizes the allowlisted presentation profile with base fallback', () => {
+    expect(normalizeAppShellPayload({ presentation: { profile: 'vogel' } }).presentation.profile).toBe('vogel')
+    expect(normalizeAppShellPayload({ presentation: { profile: '../../x' } }).presentation.profile).toBe('base')
+    expect(normalizeAppShellPayload({}).presentation.profile).toBe('base')
+  })
+
   it('keeps the backend-provided portal return URL in the shared shell', () => {
     const shell = normalizeAppShellPayload({ homeUrl: '/inicio' })
 

@@ -235,29 +235,29 @@ git commit -m "feat(superadmin): administrar perfiles visuales por empresa"
 - `FrontendProfile` contiene `key`, `shellComponent`, `resolvePage(pageKey, defaults)`, `dashboardComponents` y asset/style references estáticos.
 - `base`, `platform` y `vogel` son entradas compiladas; `platform` se reserva para Superadministrador y nunca se asigna desde administración de empresas. Una clave ausente/desconocida resuelve `base`; la URL de un chunk nunca se construye concatenando la clave recibida.
 
-- [ ] **Step 1: Escribir pruebas del registry y mount**
+- [x] **Step 1: Escribir pruebas del registry y mount**
 
 Agregar pruebas que verifiquen `base`, `vogel`, fallback de clave `../../x`, ausencia de import dinámico arbitrario, override de dashboard/page de un perfil sin mutar el map del otro, y shell de fallback si falla la carga del chunk personalizado.
 
-- [ ] **Step 2: Ejecutar pruebas nuevas y confirmar que fallan**
+- [x] **Step 2: Ejecutar pruebas nuevas y confirmar que fallan**
 
 Run: `cd frontend && npm test -- tests/profileRegistry.test.js tests/profileMounting.test.js`
 Expected: FAIL porque el registro y el selector por perfil no existen.
 
-- [ ] **Step 3: Crear perfiles base y Vogel con mapa de página estático**
+- [x] **Step 3: Crear perfiles base y Vogel con mapa de página estático**
 
 Mover la selección actual de `App`, `ManagerialApp`, `PageHost` y mapas de páginas a resolutores explícitos. `base` conserva el comportamiento por defecto y `vogel` se registra como perfil independiente; un override se declara en su propio módulo. Las pantallas sin override usan explícitamente el resolutor base.
 
-- [ ] **Step 4: Cargar perfil desde bootstrap de Vue**
+- [x] **Step 4: Cargar perfil desde bootstrap de Vue**
 
 Normalizar `presentation.profile` con default `base`; hacer `mountMaintenanceDashboard` async para cargar solo el módulo estático registrado y entregar el shell/dashboard resueltos a `PageHost`, `App` y `ManagerialApp`. Mantener `page` y `data` como contratos de cada controlador.
 
-- [ ] **Step 5: Ejecutar pruebas de normalización y composición**
+- [x] **Step 5: Ejecutar pruebas de normalización y composición**
 
 Run: `cd frontend && npm test -- tests/profileRegistry.test.js tests/profileMounting.test.js tests/dashboardPayload.test.js tests/App.test.js`
 Expected: PASS; login, Centro de mandos `/inicio`, páginas de módulo y dashboards actuales siguen montando con `base`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add frontend/src/profiles/registry.js frontend/src/profiles/base/profile.js frontend/src/profiles/vogel/profile.js frontend/src/main.js frontend/src/PageHost.vue frontend/src/App.vue frontend/src/ManagerialApp.vue frontend/src/components/ApplicationShell.vue frontend/src/adapters/dashboardPayload.js frontend/tests/dashboardPayload.test.js frontend/tests/profileRegistry.test.js frontend/tests/profileMounting.test.js

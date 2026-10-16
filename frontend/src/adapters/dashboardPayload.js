@@ -1,4 +1,5 @@
 const allowedStatuses = new Set(['AL_DIA', 'PROXIMO', 'VENCIDO', 'SIN_DATOS'])
+const allowedPresentationProfiles = new Set(['base', 'platform', 'vogel'])
 
 const asText = (value, fallback = '') =>
   typeof value === 'string' && value.trim() ? value.trim() : fallback
@@ -168,12 +169,17 @@ export function normalizeAppShellPayload(payload) {
         .map((branch) => ({ id: asCount(branch.id), name: asText(branch.name, 'Sucursal') }))
     : []
   const mode = source.mode === 'global' ? 'global' : 'tenant'
+  const presentation = source.presentation && typeof source.presentation === 'object' ? source.presentation : {}
+  const requestedProfile = asText(presentation.profile, 'base')
   const userName = asText(user.name, asText(user.email, 'Usuario'))
   const roles = Array.isArray(user.roles) ? user.roles.map((role) => asText(role)).filter(Boolean) : []
 
   return {
     available: Object.keys(source).length > 0,
     mode,
+    presentation: {
+      profile: allowedPresentationProfiles.has(requestedProfile) ? requestedProfile : 'base',
+    },
     user: {
       name: userName,
       email: asText(user.email),

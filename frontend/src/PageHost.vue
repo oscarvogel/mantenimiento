@@ -15,16 +15,20 @@ defineProps({
     type: Object,
     default: () => ({}),
   },
+  shellComponent: {
+    type: Object,
+    default: ApplicationShell,
+  },
 })
 </script>
 
 <template>
-  <ApplicationShell :shell="shell">
+  <component :is="shellComponent" :shell="shell">
     <component :is="pageComponent" v-bind="pageProps" />
     <CompanyAiControls
       v-if="Array.isArray(pageProps?.data?.aiCompanyControls)"
       :companies="pageProps.data.aiCompanyControls"
       :csrf="pageProps.data.csrf"
     />
-  </ApplicationShell>
+  </component>
 </template>

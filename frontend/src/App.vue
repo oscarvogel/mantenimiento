@@ -23,6 +23,7 @@ import OperationalDashboardCharts from './components/OperationalDashboardCharts.
 const props = defineProps({
   dashboard: { type: Object, required: true },
   loading: { type: Boolean, default: false },
+  shellComponent: { type: Object, default: ApplicationShell },
 })
 
 const firstName = computed(() => props.dashboard.user.name.split(/\s+/)[0] || 'Usuario')
@@ -152,7 +153,7 @@ const scrollCta = computed(() => {
 </script>
 
 <template>
-  <ApplicationShell :shell="shell" :scroll-cta="scrollCta">
+  <component :is="shellComponent" :shell="shell" :scroll-cta="scrollCta">
     <DashboardLoading v-if="loading" />
     <template v-else>
       <div
@@ -357,5 +358,5 @@ const scrollCta = computed(() => {
         </div>
       </template>
     </template>
-  </ApplicationShell>
+  </component>
 </template>

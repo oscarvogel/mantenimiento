@@ -1,16 +1,9 @@
-import { createApp } from 'vue'
-import App from './App.vue'
-import ManagerialApp from './ManagerialApp.vue'
+import { createApp, markRaw } from 'vue'
 import PageHost from './PageHost.vue'
 import { normalizeAppShellPayload, normalizeDashboardPayload } from './adapters/dashboardPayload.js'
 import { developmentDashboard } from './data/developmentDashboard.js'
-import { operationPageComponents } from './pages/operations/index.js'
-import { adminPagesByType } from './pages/admin/index.js'
-import { ReportsPage } from './pages/reports/index.js'
-import { NotificationCenterPage } from './pages/notifications/index.js'
-import { managerialPagesByType } from './pages/gerencia/index.js'
 import LoginPage from './pages/login/LoginPage.vue'
-import CommandCenterPage from './pages/platform/CommandCenterPage.vue'
+import { loadFrontendProfile } from './profiles/registry.js'
 import { installContextualReadingActions } from './ui/contextualReadingActions.js'
 import { installEquipmentComboboxes } from './ui/equipmentCombobox.js'
 import { installEquipmentAssignedPlans } from './ui/equipmentAssignedPlans.js'
@@ -42,7 +35,7 @@ function payloadFromDocument() {
   }
 }
 
-export function mountMaintenanceDashboard(element, payload) {
+export async function mountMaintenanceDashboard(element, payload) {
   if (!element) return null
 
   const page = typeof payload?.page === 'string' ? payload.page : 'dashboard'
@@ -53,13 +46,11 @@ export function mountMaintenanceDashboard(element, payload) {
     return app.mount(element)
   }
 
+  const shell = normalizeAppShellPayload(payload)
+  const profile = await loadFrontendProfile(shell.presentation.profile)
+
   if (page !== 'dashboard') {
-    const pageComponent = operationPageComponents[page]
-      ?? adminPagesByType[page]
-      ?? managerialPagesByType[page]
-      ?? (page === 'reports' ? ReportsPage : null)
-      ?? (page === 'notifications' ? NotificationCenterPage : null)
-      ?? (page === 'command-center' ? CommandCenterPage : null)
+    const pageComponent = profile.resolvePage(page)
 
     if (pageComponent) {
       const pageData = payload?.data && typeof payload.data === 'object'
@@ -70,8 +61,9 @@ export function mountMaintenanceDashboard(element, payload) {
         : { data: pageData }
 
       const app = createApp(PageHost, {
-        shell: normalizeAppShellPayload(payload),
-        pageComponent,
+        shell,
+        shellComponent: markRaw(profile.shellComponent),
+        pageComponent: markRaw(pageComponent),
         pageProps,
       })
       installScrollReveal(app)
@@ -80,9 +72,9 @@ export function mountMaintenanceDashboard(element, payload) {
   }
 
   const dashboard = normalizeDashboardPayload(payload)
-  const dashboardComponent = dashboard.view === 'managerial' ? ManagerialApp : App
+  const dashboardComponent = profile.dashboardComponents[dashboard.view] ?? profile.dashboardComponents.operational
 
-  const app = createApp(dashboardComponent, { dashboard })
+  const app = createApp(dashboardComponent, { dashboard, shellComponent: markRaw(profile.shellComponent) })
   installScrollReveal(app)
   return app.mount(element)
 }
@@ -92,23 +84,24 @@ const root = document.getElementById('maintenance-app')
 if (root) {
   const serverPayload = payloadFromDocument()
   const payload = serverPayload ?? (import.meta.env.DEV ? developmentDashboard : null)
-  mountMaintenanceDashboard(root, payload)
-  if (payload?.page === 'preventive-plans') {
-    installEquipmentComboboxes(root, payload?.data?.catalogs?.equipment ?? [])
-    installTemplateServicePicker(root, payload?.data?.catalogs ?? {})
-    installPreventiveOrderFlow(root, payload)
-  }
-  if (['equipment-detail', 'assets-index'].includes(payload?.page)) {
-    installQuickPlanAssignment(root, payload)
-    installContextualReadingActions(root, payload)
-  }
-  if (payload?.page === 'equipment-detail') {
-    installEquipmentAssignedPlans(root, payload)
-  }
-  if (payload?.page === 'preventive-library') {
-    installLibraryTaskStatus(root, payload)
-  }
-  if (serverPayload) consumeFlash(serverPayload.data?.flash)
+  void mountMaintenanceDashboard(root, payload).then(() => {
+    if (payload?.page === 'preventive-plans') {
+      installEquipmentComboboxes(root, payload?.data?.catalogs?.equipment ?? [])
+      installTemplateServicePicker(root, payload?.data?.catalogs ?? {})
+      installPreventiveOrderFlow(root, payload)
+    }
+    if (['equipment-detail', 'assets-index'].includes(payload?.page)) {
+      installQuickPlanAssignment(root, payload)
+      installContextualReadingActions(root, payload)
+    }
+    if (payload?.page === 'equipment-detail') {
+      installEquipmentAssignedPlans(root, payload)
+    }
+    if (payload?.page === 'preventive-library') {
+      installLibraryTaskStatus(root, payload)
+    }
+    if (serverPayload) consumeFlash(serverPayload.data?.flash)
+  })
 }
 
 if ('serviceWorker' in navigator) {
