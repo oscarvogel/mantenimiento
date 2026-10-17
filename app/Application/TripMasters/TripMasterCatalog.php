@@ -12,7 +12,7 @@ use DomainException;
 final readonly class TripMasterCatalog
 {
     public const CATALOGS = [
-        'clientes' => ['label' => 'Clientes', 'table' => 'viajes_clientes'],
+        'clientes' => ['label' => 'Clientes', 'table' => 'clientes'],
         'domicilios' => ['label' => 'Domicilios de clientes', 'table' => 'viajes_domicilios_clientes'],
         'tipos-carga' => ['label' => 'Tipos de carga', 'table' => 'viajes_tipos_carga'],
         'unidades-carga' => ['label' => 'Unidades de carga', 'table' => 'viajes_unidades_carga'],

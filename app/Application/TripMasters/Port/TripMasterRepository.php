@@ -6,10 +6,16 @@ namespace App\Application\TripMasters\Port;
 
 interface TripMasterRepository
 {
-    /** @return list<array<string,mixed>> */
+    /**
+     * "clientes" refiere al padrón canónico de la empresa; los domicilios pertenecen a Viajes.
+     * @return list<array<string,mixed>>
+     */
     public function list(string $catalog, int $companyId, bool $includeInactive = true): array;
 
-    /** @param array<string,mixed> $data */
+    /**
+     * Los clientes manuales reciben una referencia de origen única.
+     * @param array<string,mixed> $data
+     */
     public function add(string $catalog, int $companyId, array $data, int $userId): int;
 
     /** @param array<string,mixed> $data */
