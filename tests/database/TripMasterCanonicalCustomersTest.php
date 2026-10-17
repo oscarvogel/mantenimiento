@@ -59,7 +59,7 @@ final class TripMasterCanonicalCustomersTest extends CIUnitTestCase
 
     public function testManualCreationUsesCanonicalRegisterWithUniqueSource(): void
     {
-        $before = $this->db->table('viajes_clientes')->countAllResults();
+        self::assertFalse($this->db->tableExists('viajes_clientes'));
         $ids = [
             $this->catalog->save($this->actor, 'clientes', ['nombre' => 'Manual uno']),
             $this->catalog->save($this->actor, 'clientes', ['nombre' => 'Manual dos']),
@@ -72,7 +72,7 @@ final class TripMasterCanonicalCustomersTest extends CIUnitTestCase
             self::assertNotEmpty($row['codigo_origen']);
         }
         self::assertNotSame($rows[0]['codigo_origen'], $rows[1]['codigo_origen']);
-        self::assertSame($before, $this->db->table('viajes_clientes')->countAllResults());
+        self::assertFalse($this->db->tableExists('viajes_clientes'));
     }
 
     public function testEditAndInactivateImportedCustomerPreserveSourceAndOtherCompany(): void

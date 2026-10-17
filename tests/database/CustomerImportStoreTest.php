@@ -73,7 +73,9 @@ final class CustomerImportStoreTest extends CIUnitTestCase
             ['number' => 2, 'errors' => [], 'warnings' => [], 'data' => $this->client('0007')],
             ['number' => 3, 'errors' => [], 'warnings' => [], 'data' => $this->client('0008')],
         ];
-        $tripCustomersBefore = $this->db->table('viajes_clientes')->countAllResults();
+        $tripCustomersBefore = $this->db->tableExists('viajes_clientes')
+            ? $this->db->table('viajes_clientes')->countAllResults()
+            : null;
         $batch = $store->createBatch($this->company, $this->user, str_repeat('d', 64), $rows);
 
         self::assertSame(['inserted' => 2, 'skipped' => 0], $service->confirm($actor, $batch));
@@ -90,7 +92,11 @@ final class CustomerImportStoreTest extends CIUnitTestCase
         $retry = $store->createBatch($this->company, $this->user, str_repeat('e', 64), $rows);
         self::assertSame(['inserted' => 0, 'skipped' => 2], $service->confirm($actor, $retry));
         self::assertSame(2, $this->db->table('clientes')->where('empresa_id', $this->company)->countAllResults());
-        self::assertSame($tripCustomersBefore, $this->db->table('viajes_clientes')->countAllResults());
+        if ($tripCustomersBefore === null) {
+            self::assertFalse($this->db->tableExists('viajes_clientes'));
+        } else {
+            self::assertSame($tripCustomersBefore, $this->db->table('viajes_clientes')->countAllResults());
+        }
     }
 
     public function testDuplicateIdentityCannotBeReusedEvenAfterSoftDelete(): void
