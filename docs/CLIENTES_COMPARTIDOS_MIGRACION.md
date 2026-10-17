@@ -40,6 +40,15 @@ Usa los valores comunes actuales para conservar ediciones hechas después de la
 migración. Los anchos reconstruidos son los del padrón común; no reduce teléfono
 de 60 a 50 caracteres, porque ello podría truncar información.
 
+En un nuevo `up()` después de un rollback, el catálogo legacy todavía existente
+es la fuente para nombre, identificación fiscal, teléfono, email, estado,
+fechas y autoría. Esos valores se reconcilian y verifican antes de retirar la
+tabla para conservar ediciones hechas durante el rollback. No se modifican
+datos propios del padrón canónico, como dirección o referencias geográficas, ni
+clientes de otros orígenes. Los códigos legacy reservados deben ser IDs enteros
+válidos y únicos entre empresas; una referencia incompatible aborta el proceso
+antes de modificar datos o esquema.
+
 Si un domicilio nuevo apunta a un cliente canónico que no tiene origen
 `viajes_legacy`, el rollback se bloquea antes de cambiar datos o esquema: no
 existe un ID anterior inequívoco para ese cliente. También se bloquea ante IDs

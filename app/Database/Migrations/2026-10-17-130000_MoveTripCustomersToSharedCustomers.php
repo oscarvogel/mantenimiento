@@ -19,6 +19,7 @@ final class MoveTripCustomersToSharedCustomers extends Migration
     public function up(): void
     {
         $this->requireSchema();
+        $this->assertLegacySourceCodes();
         $fk = $this->customerForeignKey();
         $legacyExists = $this->exists('viajes_clientes');
         $hasLegacyId = $this->hasColumn('cliente_id_legacy');
@@ -38,6 +39,10 @@ final class MoveTripCustomersToSharedCustomers extends Migration
         }
         $this->requireDirection($fk, 'viajes_clientes', 'clientes', $hasLegacyId);
         $this->assertNoOtherLegacyReferences();
+        $this->assertNoRows('SELECT c.id FROM ' . $this->table('clientes') . ' c JOIN ' . $this->table('viajes_clientes') . ' l ON c.codigo_origen=CAST(l.id AS CHAR) WHERE c.origen=\'viajes_legacy\' AND c.empresa_id<>l.empresa_id', 'Hay referencias legacy incompatibles entre empresas.');
+        if ($this->exists(self::AUTHORS)) {
+            $this->assertNoRows('SELECT l.id FROM ' . $this->table('viajes_clientes') . ' l JOIN ' . $this->table(self::AUTHORS) . ' a ON a.legacy_id=l.id LEFT JOIN ' . $this->table('clientes') . ' c ON ' . $this->mappingJoin() . ' WHERE c.id IS NULL OR a.empresa_id<>l.empresa_id OR a.cliente_id<>c.id', 'La autoría legacy tiene un mapeo incompatible.');
+        }
         $oldId = $hasLegacyId ? 'd.cliente_id_legacy' : 'd.cliente_id';
         if ($hasLegacyId && ($fk['table'] ?? null) === $this->db->prefixTable('viajes_clientes')) {
             $this->assertNoRows('SELECT id FROM ' . $this->table(self::DOMICILES) . ' WHERE cliente_id_legacy IS NOT NULL AND cliente_id_legacy<>cliente_id', 'La copia de IDs legacy es incompatible con la FK original.');
@@ -56,11 +61,15 @@ final class MoveTripCustomersToSharedCustomers extends Migration
         $this->execute('INSERT INTO ' . $this->table('clientes') . ' (empresa_id,nombre,identificacion_fiscal,telefono,email,activo,created_at,updated_at,origen,codigo_origen)
             SELECT l.empresa_id,l.nombre,l.identificacion_fiscal,l.telefono,l.email,l.activo,l.created_at,l.updated_at,\'viajes_legacy\',CAST(l.id AS CHAR)
             FROM ' . $this->table('viajes_clientes') . ' l LEFT JOIN ' . $this->table('clientes') . ' c ON ' . $this->mappingJoin() . ' WHERE c.id IS NULL');
+        // With writes paused, the existing legacy catalog owns these fields until
+        // it is retired. This also carries edits made after a completed down().
+        $this->execute('UPDATE ' . $this->table('clientes') . ' c JOIN ' . $this->table('viajes_clientes') . ' l ON ' . $this->mappingJoin() . ' SET c.nombre=l.nombre,c.identificacion_fiscal=l.identificacion_fiscal,c.telefono=l.telefono,c.email=l.email,c.activo=l.activo,c.created_at=l.created_at,c.updated_at=l.updated_at');
         $this->assertNoRows('SELECT l.id FROM ' . $this->table('viajes_clientes') . ' l LEFT JOIN ' . $this->table('clientes') . ' c ON ' . $this->mappingJoin() . ' WHERE c.id IS NULL', 'No se pudo copiar todo el padrón legacy.');
+        $this->assertNoRows('SELECT l.id FROM ' . $this->table('viajes_clientes') . ' l JOIN ' . $this->table('clientes') . ' c ON ' . $this->mappingJoin() . ' WHERE NOT(c.nombre <=> l.nombre) OR NOT(c.identificacion_fiscal <=> l.identificacion_fiscal) OR NOT(c.telefono <=> l.telefono) OR NOT(c.email <=> l.email) OR NOT(c.activo <=> l.activo) OR NOT(c.created_at <=> l.created_at) OR NOT(c.updated_at <=> l.updated_at)', 'Los valores canónicos no coinciden con el padrón legacy; se conserva la tabla original.');
         $this->createAuthorMetadata();
-        $this->assertNoRows('SELECT l.id FROM ' . $this->table('viajes_clientes') . ' l JOIN ' . $this->table('clientes') . ' c ON ' . $this->mappingJoin() . ' JOIN ' . $this->table(self::AUTHORS) . ' a ON a.legacy_id=l.id WHERE a.empresa_id<>l.empresa_id OR a.cliente_id<>c.id', 'La autoría legacy tiene un mapeo incompatible.');
         $this->execute('INSERT INTO ' . $this->table(self::AUTHORS) . ' (legacy_id,empresa_id,cliente_id,created_by,updated_by)
             SELECT l.id,l.empresa_id,c.id,l.created_by,l.updated_by FROM ' . $this->table('viajes_clientes') . ' l JOIN ' . $this->table('clientes') . ' c ON ' . $this->mappingJoin() . ' LEFT JOIN ' . $this->table(self::AUTHORS) . ' a ON a.legacy_id=l.id WHERE a.legacy_id IS NULL');
+        $this->execute('UPDATE ' . $this->table(self::AUTHORS) . ' a JOIN ' . $this->table('viajes_clientes') . ' l ON l.empresa_id=a.empresa_id AND l.id=a.legacy_id SET a.created_by=l.created_by,a.updated_by=l.updated_by');
 
         if (! $hasLegacyId) {
             $this->execute('ALTER TABLE ' . $this->table(self::DOMICILES) . ' ADD cliente_id_legacy INT UNSIGNED NULL');
@@ -100,9 +109,7 @@ final class MoveTripCustomersToSharedCustomers extends Migration
             return;
         }
         $this->requireDirection($fk, 'clientes', 'viajes_clientes', $hasCanonicalId);
-        // IDs must be canonical decimal unsigned integers and globally unique, as in the old PK.
-        $this->assertNoRows('SELECT id FROM ' . $this->table('clientes') . ' WHERE origen=\'viajes_legacy\' AND (codigo_origen NOT REGEXP \'^[1-9][0-9]{0,9}$\' OR CAST(codigo_origen AS UNSIGNED)>4294967295)', 'Referencia legacy inválida para reconstruir IDs.');
-        $this->assertNoRows('SELECT codigo_origen FROM ' . $this->table('clientes') . ' WHERE origen=\'viajes_legacy\' GROUP BY codigo_origen HAVING COUNT(*)>1', 'Hay IDs legacy ambiguos entre empresas.');
+        $this->assertLegacySourceCodes();
         $canonicalId = $hasCanonicalId ? 'd.cliente_id_canonico' : 'd.cliente_id';
         if ($hasCanonicalId && ($fk['table'] ?? null) === $this->db->prefixTable('clientes')) {
             $this->assertNoRows('SELECT id FROM ' . $this->table(self::DOMICILES) . ' WHERE cliente_id_canonico IS NOT NULL AND cliente_id_canonico<>cliente_id', 'La copia de IDs canónicos es incompatible con la FK original.');
@@ -239,7 +246,16 @@ final class MoveTripCustomersToSharedCustomers extends Migration
 
     private function exists(string $table): bool
     {
-        return $this->db->tableExists($table, false);
+        // tableExists(..., false) does not apply DBPrefix and uses LIKE in CI4.
+        // Exact physical names avoid both missing prefixes and '_' wildcards.
+        return $this->db->query('SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?', [$this->db->prefixTable($table)])->getRowArray() !== null;
+    }
+
+    private function assertLegacySourceCodes(): void
+    {
+        // The previous catalog used a globally unique unsigned integer PK.
+        $this->assertNoRows('SELECT id FROM ' . $this->table('clientes') . ' WHERE origen=\'viajes_legacy\' AND (codigo_origen NOT REGEXP \'^[1-9][0-9]{0,9}$\' OR CAST(codigo_origen AS UNSIGNED)>4294967295)', 'Referencia legacy inválida para reconstruir IDs.');
+        $this->assertNoRows('SELECT codigo_origen FROM ' . $this->table('clientes') . ' WHERE origen=\'viajes_legacy\' GROUP BY codigo_origen HAVING COUNT(*)>1', 'Hay IDs legacy ambiguos entre empresas.');
     }
 
     private function hasColumn(string $column): bool

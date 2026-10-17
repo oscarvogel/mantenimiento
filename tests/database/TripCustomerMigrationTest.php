@@ -145,6 +145,71 @@ final class TripCustomerMigrationTest extends CIUnitTestCase
         self::assertSame(7, (int) $this->db->table('viajes_domicilios_clientes')->where('id', 1)->get()->getRowArray()['cliente_id']);
     }
 
+    public function testSecondUpPreservesChangesMadeInRestoredLegacyCatalog(): void
+    {
+        $this->seed();
+        $this->migration->up();
+        $canonical = $this->canonical(1, '7');
+        $this->db->table('clientes')->where('id', $canonical['id'])->update(['direccion' => 'Dirección canónica conservada']);
+        $this->migration->down();
+        $edited = [
+            'nombre' => 'Editado durante rollback', 'identificacion_fiscal' => '456',
+            'telefono' => null, 'email' => 'legacy-editado@example.test', 'activo' => 0,
+            'created_at' => '2025-01-01 00:00:00', 'updated_at' => '2026-10-17 12:00:00',
+            'created_by' => 11, 'updated_by' => 10,
+        ];
+        $this->db->table('viajes_clientes')->where('id', 7)->update($edited);
+        $this->migration->up();
+        $after = $this->canonical(1, '7');
+        self::assertSame($canonical['id'], $after['id']);
+        foreach (['nombre', 'identificacion_fiscal', 'telefono', 'email', 'created_at', 'updated_at'] as $field) {
+            self::assertSame($edited[$field], $after[$field]);
+        }
+        self::assertSame(0, (int) $after['activo']);
+        self::assertSame('Dirección canónica conservada', $after['direccion']);
+        $imported = $this->db->table('clientes')->where('id', 7)->get()->getRowArray();
+        self::assertSame('Cliente repetido', $imported['nombre']);
+        self::assertSame('CSV', $imported['origen']);
+        $author = $this->db->table('viajes_clientes_legacy_autoria')->where('legacy_id', 7)->get()->getRowArray();
+        self::assertSame(11, (int) $author['created_by']);
+        self::assertSame(10, (int) $author['updated_by']);
+        self::assertSame(3, $this->db->table('clientes')->countAllResults());
+    }
+
+    public function testUpRefusesReservedLegacyCodeOwnedByAnotherCompanyBeforeMutating(): void
+    {
+        $this->seed();
+        $this->db->table('clientes')->insert(['empresa_id' => 2, 'nombre' => 'Referencia de otra empresa', 'origen' => 'viajes_legacy', 'codigo_origen' => '7']);
+        try {
+            $this->migration->up();
+            self::fail('Debe rechazar un ID legacy reservado por otra empresa.');
+        } catch (RuntimeException $exception) {
+            self::assertStringContainsString('empresas', $exception->getMessage());
+        }
+        self::assertTrue($this->db->tableExists('viajes_clientes'));
+        self::assertSame(2, $this->db->table('clientes')->countAllResults());
+        self::assertFalse($this->db->tableExists('viajes_clientes_legacy_autoria'));
+        self::assertSame(7, (int) $this->db->table('viajes_domicilios_clientes')->where('id', 1)->get()->getRowArray()['cliente_id']);
+    }
+
+    public function testUpRefusesDuplicateReservedIdsAcrossCompaniesBeforeMutating(): void
+    {
+        $this->seed();
+        $this->db->table('clientes')->insertBatch([
+            ['empresa_id' => 1, 'nombre' => 'Referencia uno', 'origen' => 'viajes_legacy', 'codigo_origen' => '99'],
+            ['empresa_id' => 2, 'nombre' => 'Referencia dos', 'origen' => 'viajes_legacy', 'codigo_origen' => '99'],
+        ]);
+        try {
+            $this->migration->up();
+            self::fail('Debe rechazar referencias legacy ambiguas entre empresas.');
+        } catch (RuntimeException $exception) {
+            self::assertStringContainsString('ambiguos entre empresas', $exception->getMessage());
+        }
+        self::assertTrue($this->db->tableExists('viajes_clientes'));
+        self::assertSame(3, $this->db->table('clientes')->countAllResults());
+        self::assertFalse($this->db->tableExists('viajes_clientes_legacy_autoria'));
+    }
+
     public function testUpResumesAfterDdlAndPartialDomicileRemapping(): void
     {
         $this->seed();
