@@ -28,7 +28,7 @@ declare(strict_types=1);
  * bloque COPY original, de modo que la transformacion es reversible.
  */
 
-use App\LegacyTransporte\LegacyBackupReader;
+use App\Legacy\Transporte\LegacyBackupReader;
 
 require __DIR__ . '/../app/Legacy/Transporte/LegacyBackupReader.php';
 

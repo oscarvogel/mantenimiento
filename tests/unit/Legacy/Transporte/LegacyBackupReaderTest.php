@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Legacy\Transporte;
 
-use App\LegacyTransporte\LegacyBackupReader;
+use App\Legacy\Transporte\LegacyBackupReader;
 use CodeIgniter\Test\CIUnitTestCase;
 use PHPUnit\Framework\Attributes\Test;
 
