@@ -109,6 +109,26 @@ final class TripCustomerMigrationTest extends CIUnitTestCase
         $this->db->table('viajes_domicilios_clientes')->where('id', 1)->update(['cliente_id' => $foreign['id']]);
     }
 
+    public function testUpPreservesUtf8AndNullValuesWithDifferentLegacyAndCanonicalCollations(): void
+    {
+        $this->seed();
+        $this->db->query('ALTER TABLE ' . $this->table('viajes_clientes') . ' CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
+        $this->db->query('ALTER TABLE ' . $this->table('clientes') . ' MODIFY nombre VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL');
+        $this->db->table('viajes_clientes')->where('id', 7)->update(['nombre' => 'Ñandú – Depósito', 'email' => null]);
+        $this->migration->up();
+        $canonical = $this->canonical(1, '7');
+        self::assertSame('Ñandú – Depósito', $canonical['nombre']);
+        self::assertNull($canonical['email']);
+        self::assertSame(str_repeat('9', 60), $canonical['telefono']);
+        self::assertFalse($this->db->tableExists('viajes_clientes'));
+        $this->migration->down();
+        $legacy = $this->db->table('viajes_clientes')->where('id', 7)->get()->getRowArray();
+        self::assertSame('Ñandú – Depósito', $legacy['nombre']);
+        self::assertNull($legacy['email']);
+        $this->migration->up();
+        self::assertSame('Ñandú – Depósito', $this->canonical(1, '7')['nombre']);
+    }
+
     public function testDownRestoresLegacyIdsAuthorsAndEditedValuesWithoutDeletingCanonicalRows(): void
     {
         $this->seed();
