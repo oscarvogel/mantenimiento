@@ -63,6 +63,23 @@ final class CustomerImportHandlersTest extends TestCase
         self::assertCount(2, $store->clients);
     }
 
+    public function testConfirmationPreservesSourceReferenceAndRetryCountsCanonicalCustomers(): void
+    {
+        [$service, $store] = $this->setupService();
+        $batch = $service->preview($this->actor(), 7, '/ignored', str_repeat('d', 64));
+        $accepted = $store->batches[$batch]['rows'][0]['data'];
+
+        self::assertSame(['inserted' => 1, 'skipped' => 0], $service->confirm($this->actor(), $batch));
+        self::assertSame($accepted + ['localidad_id' => null, 'empresa_id' => 7], $store->clients[0]);
+        self::assertSame([['legacy', '001']], $store->existingKeys(7));
+
+        $retry = $service->preview($this->actor(), 7, '/ignored', str_repeat('e', 64));
+        $store->batches[$retry]['rows'][0]['data']['nombre'] = 'Nombre recibido nuevamente';
+        self::assertSame(['inserted' => 0, 'skipped' => 1], $service->confirm($this->actor(), $retry));
+        self::assertCount(1, $store->clients);
+        self::assertSame($accepted['nombre'], $store->clients[0]['nombre']);
+    }
+
     public function testInactiveCompanyAndOtherActorCannotConfirm(): void
     {
         [$service, $store] = $this->setupService();

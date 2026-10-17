@@ -64,6 +64,35 @@ final class CustomerImportStoreTest extends CIUnitTestCase
         self::assertCount(1, $store->existingKeys($this->other));
     }
 
+    public function testConfirmedImportStoresCanonicalReferencesWithoutCopyingCustomersToTrips(): void
+    {
+        $store = new CodeIgniterCustomerImportStore($this->db);
+        $service = new CustomerImports($store, new CustomerCsvReader(), new CodeIgniterImportUnitOfWork($this->db));
+        $actor = new ActorContext($this->user, null, true, true, [], [], []);
+        $rows = [
+            ['number' => 2, 'errors' => [], 'warnings' => [], 'data' => $this->client('0007')],
+            ['number' => 3, 'errors' => [], 'warnings' => [], 'data' => $this->client('0008')],
+        ];
+        $tripCustomersBefore = $this->db->table('viajes_clientes')->countAllResults();
+        $batch = $store->createBatch($this->company, $this->user, str_repeat('d', 64), $rows);
+
+        self::assertSame(['inserted' => 2, 'skipped' => 0], $service->confirm($actor, $batch));
+        $clients = $this->db->table('clientes')->select('empresa_id, origen, codigo_origen, nombre')
+            ->where('empresa_id', $this->company)->orderBy('codigo_origen')->get()->getResultArray();
+        self::assertCount(2, $clients);
+        foreach ($clients as $index => $client) {
+            self::assertSame($this->company, (int) $client['empresa_id']);
+            self::assertSame($rows[$index]['data']['origen'], $client['origen']);
+            self::assertSame($rows[$index]['data']['codigo_origen'], $client['codigo_origen']);
+            self::assertSame($rows[$index]['data']['nombre'], $client['nombre']);
+        }
+
+        $retry = $store->createBatch($this->company, $this->user, str_repeat('e', 64), $rows);
+        self::assertSame(['inserted' => 0, 'skipped' => 2], $service->confirm($actor, $retry));
+        self::assertSame(2, $this->db->table('clientes')->where('empresa_id', $this->company)->countAllResults());
+        self::assertSame($tripCustomersBefore, $this->db->table('viajes_clientes')->countAllResults());
+    }
+
     public function testDuplicateIdentityCannotBeReusedEvenAfterSoftDelete(): void
     {
         $store = new CodeIgniterCustomerImportStore($this->db);
