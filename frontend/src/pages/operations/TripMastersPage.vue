@@ -398,39 +398,41 @@ function statusMessage(item) {
       </div>
     </details>
 
-    <div v-if="editorOpen" class="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-6" @click.self="closeEditor" @keydown.esc.window="closeEditor">
-      <section class="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-t-2xl border border-border bg-surface-raised p-5 shadow-2xl sm:rounded-2xl sm:p-6" role="dialog" aria-modal="true" :aria-labelledby="'trip-master-editor-title'">
-        <header class="flex items-start justify-between gap-4">
-          <div>
-            <p class="text-xs font-bold uppercase tracking-wide text-primary">{{ editing ? 'Editar registro' : 'Nuevo registro' }}</p>
-            <h2 id="trip-master-editor-title" class="mt-1 text-xl font-semibold text-ink">{{ formCatalogLabel }}</h2>
-            <p v-if="formCatalog === 'domicilios' && selectedCustomer" class="mt-1 text-sm text-ink-muted">Para {{ selectedCustomer.nombre }}</p>
-          </div>
-          <button type="button" :class="secondaryButton" aria-label="Cerrar formulario" @click="closeEditor">Cerrar</button>
-        </header>
+    <Teleport to="body">
+      <div v-if="editorOpen" class="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-6" @click.self="closeEditor" @keydown.esc.window="closeEditor">
+        <section class="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-t-2xl border border-border bg-surface-raised p-5 shadow-2xl sm:rounded-2xl sm:p-6" role="dialog" aria-modal="true" :aria-labelledby="'trip-master-editor-title'">
+          <header class="flex items-start justify-between gap-4">
+            <div>
+              <p class="text-xs font-bold uppercase tracking-wide text-primary">{{ editing ? 'Editar registro' : 'Nuevo registro' }}</p>
+              <h2 id="trip-master-editor-title" class="mt-1 text-xl font-semibold text-ink">{{ formCatalogLabel }}</h2>
+              <p v-if="formCatalog === 'domicilios' && selectedCustomer" class="mt-1 text-sm text-ink-muted">Para {{ selectedCustomer.nombre }}</p>
+            </div>
+            <button type="button" :class="secondaryButton" aria-label="Cerrar formulario" @click="closeEditor">Cerrar</button>
+          </header>
 
-        <p v-if="formCatalog === 'liquidaciones' && props.data.employees.length === 0" class="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Para configurar porcentajes necesitás permiso para consultar empleados activos de tu empresa.</p>
-        <form class="mt-5 space-y-4" method="post" :action="actionForForm">
-          <input type="hidden" :name="props.data.csrf.name" :value="props.data.csrf.hash">
-          <input v-if="!editing" type="hidden" name="catalogo" :value="formCatalog">
-          <input v-if="formCatalog === 'domicilios'" type="hidden" name="cliente_id" :value="form.cliente_id">
-          <label v-for="field in catalogFields" :key="field.key" class="block text-sm font-medium text-ink">
-            {{ field.label }} <span v-if="field.required" class="text-red-700">*</span>
-            <select v-if="field.type === 'country'" v-model="form[field.key]" :name="field.key" :required="field.required" :class="inputClass">
-              <option value="">Elegí un país</option><option v-for="country in props.data.countries.filter((row) => Number(row.activo))" :key="country.id" :value="country.id">{{ country.nombre }}</option>
-            </select>
-            <select v-else-if="field.type === 'employee'" v-model="form[field.key]" :name="field.key" :required="field.required" :disabled="props.data.employees.length === 0" :class="inputClass">
-              <option value="">Elegí un empleado</option><option v-for="employee in props.data.employees" :key="employee.id" :value="employee.id">{{ employee.name }}</option>
-            </select>
-            <textarea v-else-if="field.key === 'descripcion'" v-model="form[field.key]" :name="field.key" rows="3" :class="inputClass" />
-            <input v-else v-model="form[field.key]" :name="field.key" :type="field.type ?? 'text'" :min="field.min" :max="field.max" :step="field.step" :required="field.required" :class="inputClass">
-          </label>
-          <div class="flex flex-col-reverse gap-2 border-t border-border-subtle pt-4 sm:flex-row sm:justify-end">
-            <button type="button" :class="secondaryButton" @click="closeEditor">Cancelar</button>
-            <button type="submit" :disabled="formCatalog === 'liquidaciones' && props.data.employees.length === 0" :class="primaryButton">{{ editing ? 'Guardar cambios' : 'Guardar' }}</button>
-          </div>
-        </form>
-      </section>
-    </div>
+          <p v-if="formCatalog === 'liquidaciones' && props.data.employees.length === 0" class="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Para configurar porcentajes necesitás permiso para consultar empleados activos de tu empresa.</p>
+          <form class="mt-5 space-y-4" method="post" :action="actionForForm">
+            <input type="hidden" :name="props.data.csrf.name" :value="props.data.csrf.hash">
+            <input v-if="!editing" type="hidden" name="catalogo" :value="formCatalog">
+            <input v-if="formCatalog === 'domicilios'" type="hidden" name="cliente_id" :value="form.cliente_id">
+            <label v-for="field in catalogFields" :key="field.key" class="block text-sm font-medium text-ink">
+              {{ field.label }} <span v-if="field.required" class="text-red-700">*</span>
+              <select v-if="field.type === 'country'" v-model="form[field.key]" :name="field.key" :required="field.required" :class="inputClass">
+                <option value="">Elegí un país</option><option v-for="country in props.data.countries.filter((row) => Number(row.activo))" :key="country.id" :value="country.id">{{ country.nombre }}</option>
+              </select>
+              <select v-else-if="field.type === 'employee'" v-model="form[field.key]" :name="field.key" :required="field.required" :disabled="props.data.employees.length === 0" :class="inputClass">
+                <option value="">Elegí un empleado</option><option v-for="employee in props.data.employees" :key="employee.id" :value="employee.id">{{ employee.name }}</option>
+              </select>
+              <textarea v-else-if="field.key === 'descripcion'" v-model="form[field.key]" :name="field.key" rows="3" :class="inputClass" />
+              <input v-else v-model="form[field.key]" :name="field.key" :type="field.type ?? 'text'" :min="field.min" :max="field.max" :step="field.step" :required="field.required" :class="inputClass">
+            </label>
+            <div class="flex flex-col-reverse gap-2 border-t border-border-subtle pt-4 sm:flex-row sm:justify-end">
+              <button type="button" :class="secondaryButton" @click="closeEditor">Cancelar</button>
+              <button type="submit" :disabled="formCatalog === 'liquidaciones' && props.data.employees.length === 0" :class="primaryButton">{{ editing ? 'Guardar cambios' : 'Guardar' }}</button>
+            </div>
+          </form>
+        </section>
+      </div>
+    </Teleport>
   </div>
 </template>
