@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\LegacyTransporte;
+namespace App\Legacy\Transporte;
 
 /**
  * Lector de backups del sistema de transporte legacy (`pg_dump -Ft`).
@@ -16,7 +16,7 @@ namespace App\LegacyTransporte;
  *   COPY <tabla> (<cols>) FROM '$$PATH$$/<n>.dat';
  * de `restore.sql` son la fuente autoritativa. Ordenar los `.dat` por numero y
  * emparejarlos con el orden del DDL funciona en algunos backups y falla en otros,
- * asi que queda prohibitions para este lector.
+ * asi que queda prohibido para este lector.
  *
  * Esta clase NO ejecuta ninguna sentencia del contenido: solo interpreta el
  * formato de archivo y devuelve filas como arrays associativos.

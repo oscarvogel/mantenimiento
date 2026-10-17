@@ -7,7 +7,7 @@
 
 declare(strict_types=1);
 
-use App\LegacyTransporte\LegacyBackupReader;
+use App\Legacy\Transporte\LegacyBackupReader;
 
 require __DIR__ . '/../app/Legacy/Transporte/LegacyBackupReader.php';
 
