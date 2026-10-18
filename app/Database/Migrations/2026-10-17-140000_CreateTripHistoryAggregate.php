@@ -109,7 +109,6 @@ final class CreateTripHistoryAggregate extends Migration
             'fecha_salida' => ['type' => 'DATE', 'null' => true],
             'fecha_llegada' => ['type' => 'DATE', 'null' => true],
         ], ['item'], 'codigo_cliente_origen');
-        $this->forge->addKey(['empresa_id', 'fecha_salida'], 'idx_viaje_tramos_empresa_salida', false, true);
 
         $this->tablaHija('viaje_combustible', [
             'item' => ['type' => 'INT', 'unsigned' => true],
@@ -205,7 +204,9 @@ final class CreateTripHistoryAggregate extends Migration
         // Solo las tablas que tienen `fecha` en el legacy. `t06` no la tiene: sus
         // fechas son `fecha_salida` y `fecha_llegada`.
         if (array_key_exists('fecha', $campos)) {
-            $this->forge->addKey(['empresa_id', 'fecha'], 'idx_' . $tabla . '_empresa_fecha', false, true);
+            $this->forge->addKey(['empresa_id', 'fecha'], false, false, 'idx_' . $tabla . '_empresa_fecha');
+        } elseif (array_key_exists('fecha_salida', $campos)) {
+            $this->forge->addKey(['empresa_id', 'fecha_salida'], false, false, 'idx_' . $tabla . '_empresa_salida');
         }
         $this->forge->addKey('importacion_id');
         if ($columnaResolucion !== null) {
