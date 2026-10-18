@@ -77,6 +77,16 @@ describe('importación de viajes', () => {
     wrapper.unmount()
   })
 
+  it('explica la decisión y agrupa las advertencias por tipo', () => {
+    const wrapper = mount(TripImportsPage, { props: { data: { ...base, mode: 'preview', batch } } })
+
+    expect(wrapper.text()).toContain('Listo para confirmar')
+    expect(wrapper.text()).toContain('No se vinculan equipos ni choferes')
+    expect(wrapper.text()).toContain('No se generan lecturas')
+    expect(wrapper.text()).toContain('Fechas de regreso incoherentes')
+    wrapper.unmount()
+  })
+
   it('bloquea la confirmación mientras haya errores bloqueantes', () => {
     const blocked = { ...batch, summary: { ...summary, can_confirm: false, counts: { ...summary.counts, blocking_errors: 1 } } }
     const wrapper = mount(TripImportsPage, { props: { data: { ...base, mode: 'preview', batch: blocked } } })
