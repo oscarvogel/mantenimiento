@@ -11,11 +11,15 @@ use RuntimeException;
 
 final class LocalPrivateImportFileStorage implements PrivateImportFileStorage
 {
+    private const ALLOWED_EXTENSIONS = ['csv', 'xlsx', 'zip'];
+    private const MAXIMUM_ZIP_ENTRIES = 2_000;
+
     private readonly string $storageRoot;
 
     public function __construct(
         string $storageRoot,
         private readonly int $maximumBytes = 10_485_760,
+        private readonly int $maximumZipUncompressedBytes = 134_217_728,
     ) {
         $root = rtrim(str_replace('\\', '/', $storageRoot), '/');
         $projectRoot = defined('ROOTPATH') ? rtrim(str_replace('\\', '/', (string) ROOTPATH), '/') : null;
@@ -40,11 +44,17 @@ final class LocalPrivateImportFileStorage implements PrivateImportFileStorage
             throw new DomainException('El nombre original del archivo es invalido o supera 255 caracteres.');
         }
         $extension = strtolower(pathinfo($safeOriginal, PATHINFO_EXTENSION));
-        if (! in_array($extension, ['csv', 'xlsx'], true)) {
-            throw new DomainException('Solo se admiten archivos CSV o XLSX.');
+        if (! in_array($extension, self::ALLOWED_EXTENSIONS, true)) {
+            throw new DomainException('Solo se admiten archivos CSV, XLSX o paquetes ZIP.');
         }
         $signature = (string) file_get_contents($uploadedPath, false, null, 0, 4);
-        if (($extension === 'xlsx') !== str_starts_with($signature, "PK\x03\x04")) {
+        $isZipContainer = in_array($extension, ['xlsx', 'zip'], true);
+        $hasZipSignature = str_starts_with($signature, "PK\x03\x04")
+            || ($extension === 'zip' && (
+                str_starts_with($signature, "PK\x05\x06")
+                || str_starts_with($signature, "PK\x07\x08")
+            ));
+        if ($isZipContainer !== $hasZipSignature) {
             throw new DomainException('La extension del archivo no coincide con su contenido.');
         }
         $finfo = new \finfo(FILEINFO_MIME_TYPE);
@@ -54,6 +64,14 @@ final class LocalPrivateImportFileStorage implements PrivateImportFileStorage
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ], true)) {
             throw new DomainException('El contenido XLSX no es valido.');
+        }
+        if ($extension === 'zip') {
+            if (! in_array($mediaType, [
+                'application/zip', 'application/x-zip', 'application/x-zip-compressed', 'application/octet-stream',
+            ], true)) {
+                throw new DomainException('El contenido ZIP no es valido.');
+            }
+            $this->assertValidZipPackage($uploadedPath);
         }
         $this->ensurePrivateRoot();
         $destination = rtrim($this->storageRoot, '\\/') . DIRECTORY_SEPARATOR . 'import_' . bin2hex(random_bytes(16)) . '.' . $extension;
@@ -105,6 +123,64 @@ final class LocalPrivateImportFileStorage implements PrivateImportFileStorage
             }
         }
         return $deleted;
+    }
+
+    private function assertValidZipPackage(string $path): void
+    {
+        if (! class_exists(\ZipArchive::class)) {
+            throw new DomainException('No se puede validar el paquete ZIP: falta habilitar la extension PHP zip.');
+        }
+
+        $archive = new \ZipArchive();
+        $opened = $archive->open($path, \ZipArchive::CHECKCONS);
+        if ($opened !== true) {
+            throw new DomainException('El paquete ZIP esta dañado o no es un archivo comprimido valido.');
+        }
+
+        try {
+            $entries = $archive->numFiles;
+            if ($entries < 1) {
+                throw new DomainException('El paquete ZIP no contiene archivos.');
+            }
+            if ($entries > self::MAXIMUM_ZIP_ENTRIES) {
+                throw new DomainException('El paquete ZIP contiene demasiados archivos.');
+            }
+
+            $uncompressedBytes = 0;
+            for ($index = 0; $index < $entries; $index++) {
+                $name = $archive->getNameIndex($index);
+                if (! is_string($name) || ! $this->isSafeZipEntry($name)) {
+                    throw new DomainException('El paquete ZIP contiene una ruta de archivo no permitida.');
+                }
+                $stat = $archive->statIndex($index);
+                if ($stat === false) {
+                    throw new DomainException('El paquete ZIP contiene una entrada ilegible.');
+                }
+                $uncompressedBytes += max(0, (int) ($stat['size'] ?? 0));
+                if ($uncompressedBytes > $this->maximumZipUncompressedBytes) {
+                    throw new DomainException('El contenido del paquete ZIP supera el limite permitido.');
+                }
+            }
+        } finally {
+            $archive->close();
+        }
+    }
+
+    private function isSafeZipEntry(string $name): bool
+    {
+        if ($name === '' || str_contains($name, "\0")) {
+            return false;
+        }
+        $normalized = str_replace('\\', '/', $name);
+        if (str_starts_with($normalized, '/') || preg_match('~^[A-Za-z]:~', $normalized) === 1) {
+            return false;
+        }
+        foreach (explode('/', $normalized) as $segment) {
+            if ($segment === '..') {
+                return false;
+            }
+        }
+        return true;
     }
 
     private function isManagedPath(string $path): bool

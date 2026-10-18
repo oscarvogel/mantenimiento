@@ -13,6 +13,7 @@ enum ImportType: string
     case LECTURAS = 'LECTURAS';
     case VENCIMIENTOS = 'VENCIMIENTOS';
     case BIBLIOTECA_PREVENTIVA = 'BIBLIOTECA_PREVENTIVA';
+    case VIAJES = 'VIAJES';
 
     /** @return list<string> */
     public function requiredHeaders(): array
@@ -21,7 +22,7 @@ enum ImportType: string
             self::EQUIPOS, self::UNIDADES_TRANSPORTE => ['sucursal_codigo', 'tipo_equipo', 'codigo', 'fecha_alta'],
             self::LECTURAS => ['equipo_codigo', 'fecha_lectura', 'kilometraje', 'horometro', 'origen'],
             self::VENCIMIENTOS => ['sujeto_tipo', 'tipo_vencimiento', 'fecha_vencimiento'],
-            self::BIBLIOTECA_PREVENTIVA => [],
+            self::BIBLIOTECA_PREVENTIVA, self::VIAJES => [],
         };
     }
 
@@ -41,13 +42,13 @@ enum ImportType: string
                 'sujeto_tipo', 'equipo_codigo', 'empleado_nombre', 'tipo_vencimiento',
                 'fecha_vencimiento', 'fecha_emision', 'numero_documento', 'observaciones',
             ],
-            self::BIBLIOTECA_PREVENTIVA => [],
+            self::BIBLIOTECA_PREVENTIVA, self::VIAJES => [],
         };
     }
 
     public static function parse(string $value): self
     {
         return self::tryFrom(strtoupper(trim($value)))
-            ?? throw new DomainException('El tipo de importacion debe ser EQUIPOS, UNIDADES_TRANSPORTE, LECTURAS, VENCIMIENTOS o BIBLIOTECA_PREVENTIVA.');
+            ?? throw new DomainException('El tipo de importacion debe ser EQUIPOS, UNIDADES_TRANSPORTE, LECTURAS, VENCIMIENTOS, BIBLIOTECA_PREVENTIVA o VIAJES.');
     }
 }

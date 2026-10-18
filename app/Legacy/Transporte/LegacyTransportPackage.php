@@ -172,6 +172,11 @@ final class LegacyTransportPackage
         return (string) ($this->manifiesto['origen_sha256'] ?? '');
     }
 
+    public function generadoEn(): string
+    {
+        return (string) ($this->manifiesto['generado_en'] ?? '');
+    }
+
     /** @return array<int,string> */
     public function tablas(): array
     {

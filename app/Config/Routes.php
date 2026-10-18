@@ -77,6 +77,12 @@ $routes->group('superadmin', ['filter' => 'superadmin'], static function ($route
     $routes->get('clientes/importaciones/(:num)/revision.csv', 'CustomerImports::issues/$1');
     $routes->post('clientes/importaciones/(:num)/confirmar', 'CustomerImports::confirm/$1');
     $routes->post('clientes/importaciones/(:num)/cancelar', 'CustomerImports::cancel/$1');
+    $routes->get('viajes/importar', 'TripImports::index');
+    $routes->post('viajes/importar', 'TripImports::preview');
+    $routes->get('viajes/importaciones/(:num)', 'TripImports::show/$1');
+    $routes->post('viajes/importaciones/(:num)/sucursales', 'TripImports::assignBranches/$1');
+    $routes->post('viajes/importaciones/(:num)/confirmar', 'TripImports::confirm/$1');
+    $routes->post('viajes/importaciones/(:num)/cancelar', 'TripImports::cancel/$1');
     $routes->get('', 'SuperAdmin::index');
     $routes->get('telemetria/muestras/exportar', 'AdminTelemetrySamples::export');
     $routes->get('telemetria/muestras', 'AdminTelemetrySamples::index');
