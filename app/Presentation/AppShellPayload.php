@@ -27,9 +27,14 @@ final readonly class AppShellPayload
             : null;
         $navigation = match ($active) {
             'command-center' => $this->platformNavigation($actor, $availableModules),
-            'trip-masters' => $actor->hasPermission('viajes.maestros.ver')
-                ? [$this->item('trip-masters', 'Maestros', 'viajes/maestros', 'truck', $active)]
-                : [],
+            'trip-masters', 'trips-dashboard' => array_values(array_filter([
+                $actor->hasPermission('viajes.ver')
+                    ? $this->item('trips-dashboard', 'Dashboard', 'viajes', 'truck', $active)
+                    : null,
+                $actor->hasPermission('viajes.maestros.ver')
+                    ? $this->item('trip-masters', 'Maestros', 'viajes/maestros', 'clipboard-list', $active)
+                    : null,
+            ])),
             'theoretical-cost-km' => $actor->hasPermission('gerencial.costo_km.ver')
                 ? [$this->item('managerial-cost-km', 'Costo teórico por km', 'gerencial/costo-teorico-km', 'chart', 'managerial-cost-km')]
                 : [],
@@ -39,16 +44,16 @@ final readonly class AppShellPayload
             ? []
             : $this->platformNavigation($actor, $availableModules, match ($active) {
                 'theoretical-cost-km' => 'management',
-                'trip-masters' => 'trips',
+                'trip-masters', 'trips-dashboard' => 'trips',
                 default => 'maintenance',
             });
 
-        if ($active !== 'command-center' && $active !== 'theoretical-cost-km' && $active !== 'trip-masters' && $actor->isSuperAdmin()) {
+        if ($active !== 'command-center' && $active !== 'theoretical-cost-km' && $active !== 'trip-masters' && $active !== 'trips-dashboard' && $actor->isSuperAdmin()) {
             $navigation[] = $this->item('superadmin', 'Administración global', 'superadmin', 'building', $active);
             $navigation[] = $this->item('telemetry-samples', 'Datos de telemetría', 'superadmin/telemetria/muestras', 'audit', $active);
             $navigation[] = $this->item('notification-settings', 'Configuración de notificaciones', 'superadmin/configuracion/notificaciones', 'notifications', $active);
             $navigation[] = $this->item('chatbot-audit', 'Auditoría del chatbot', 'superadmin?section=chat-audit', 'audit', $active);
-        } elseif ($active !== 'command-center' && $active !== 'theoretical-cost-km' && $active !== 'trip-masters') {
+        } elseif ($active !== 'command-center' && $active !== 'theoretical-cost-km' && $active !== 'trip-masters' && $active !== 'trips-dashboard') {
             if ($actor->hasPermission('gerencial.costo_km.ver')) {
                 $navigation[] = $this->item('theoretical-cost-km', 'Costo teórico por km', 'gerencial/costo-teorico-km', 'chart', $active);
             }
