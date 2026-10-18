@@ -501,6 +501,7 @@ final class TripImports
             );
         }
         $packageCuits = array_values(array_filter(array_keys($cuits), static fn (string $cuit): bool => $cuit !== ''));
+        $packageCuit = $packageCuits[0] ?? '';
         $companyDigits = preg_replace('/\D/', '', (string) ($company['cuit'] ?? '')) ?? '';
         if (count($packageCuits) > 1) {
             $this->addIssue(
@@ -522,12 +523,14 @@ final class TripImports
                     self::TRIP_TABLE,
                     '',
                     'cuit_origen',
-                    'El CUIT del paquete no coincide con el CUIT de la empresa seleccionada.',
+                    'El paquete pertenece al CUIT ' . $packageCuit
+                        . ' y la empresa seleccionada tiene CUIT '
+                        . ((string) ($company['cuit'] ?? '') !== '' ? (string) $company['cuit'] : 'sin informar') . '.',
                 );
             }
         }
 
-        $sourceCompany = $this->sourceCompany($package, $packageCuits[0] ?? '');
+        $sourceCompany = $this->sourceCompany($package, $packageCuit);
         $branchRequirements = [
             TripBranchClassifier::AR => $newByCountry[TripBranchClassifier::AR] > 0,
             TripBranchClassifier::BR => $newByCountry[TripBranchClassifier::BR] > 0,
@@ -547,6 +550,7 @@ final class TripImports
                 'sha256' => $package->origenSha256(),
                 'generated_at' => $package->generadoEn(),
                 'source_company' => $sourceCompany,
+                'source_cuit' => $packageCuit,
             ],
             'manifest' => $manifest,
             'children' => $childDetails,

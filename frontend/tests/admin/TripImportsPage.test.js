@@ -70,7 +70,8 @@ describe('importación de viajes', () => {
     expect(wrapper.text()).toContain('1.237')
     expect(wrapper.get('select[name="sucursal_ar"]').element.value).toBe('10')
     expect(wrapper.get('select[name="sucursal_br"]').element.value).toBe('20')
-    expect(wrapper.get('form[action="/superadmin/viajes/importaciones/1/sucursales"]').exists()).toBe(true)
+    expect(wrapper.get('form[action="/superadmin/viajes/importaciones/1/sucursales"] select[name="sucursal_ar"]').exists()).toBe(true)
+    expect(wrapper.get('form[action="/superadmin/viajes/importaciones/1/sucursales"] button[type="submit"]').exists()).toBe(true)
     expect(wrapper.get('form[action="/superadmin/viajes/importaciones/1/confirmar"] button').element.disabled).toBe(false)
     expect(wrapper.find('script').exists()).toBe(false)
     expect(wrapper.text()).toContain('<script>alert(1)</script>')
@@ -87,12 +88,21 @@ describe('importación de viajes', () => {
     wrapper.unmount()
   })
 
-  it('bloquea la confirmación mientras haya errores bloqueantes', () => {
-    const blocked = { ...batch, summary: { ...summary, can_confirm: false, counts: { ...summary.counts, blocking_errors: 1 } } }
+  it('bloquea la confirmación y muestra el error bloqueante concreto', () => {
+    const blocked = {
+      ...batch,
+      summary: {
+        ...summary,
+        can_confirm: false,
+        counts: { ...summary.counts, blocking_errors: 1 },
+        issues_page: [{ severity: 'ERROR', table: 't05_viajes', key: '', field: 'cuit_origen', message: 'El paquete pertenece al CUIT 23-28059786-4 y la empresa seleccionada tiene CUIT 30-99999999-9.' }],
+      },
+    }
     const wrapper = mount(TripImportsPage, { props: { data: { ...base, mode: 'preview', batch: blocked } } })
 
     expect(wrapper.get('form[action="/superadmin/viajes/importaciones/1/confirmar"] button').element.disabled).toBe(true)
     expect(wrapper.text()).toContain('errores bloqueantes')
+    expect(wrapper.text()).toContain('CUIT 23-28059786-4')
     wrapper.unmount()
   })
 
