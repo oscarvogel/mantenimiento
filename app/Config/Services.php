@@ -992,6 +992,17 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
         );
     }
 
+    public static function getTripsDashboard(bool $getShared = true): \App\Application\Trips\GetTripsDashboard
+    {
+        if ($getShared) {
+            return static::getSharedInstance('getTripsDashboard');
+        }
+
+        return new \App\Application\Trips\GetTripsDashboard(
+            new \App\Infrastructure\Trips\CodeIgniterTripDashboardReadModel(db_connect()),
+        );
+    }
+
     public static function seedTsaTripMasterCatalogs(bool $getShared = true): \App\Application\TripMasters\SeedTsaTripMasterCatalogs
     {
         if ($getShared) {

@@ -25,6 +25,9 @@ $routes->post('logout', 'Login::logout', ['filter' => 'auth']);
 $routes->get('dashboard', 'Dashboard::index', ['filter' => 'auth']);
 $routes->get('inicio', 'CommandCenter::index', ['filter' => 'auth']);
 
+// Dashboard de viajes: lectura del historico importado, con scope de empresa y sucursal.
+$routes->get('viajes', 'TripsDashboard::index', ['filter' => ['auth', 'permission:viajes.ver']]);
+
 // Maestros independientes del módulo operativo de viajes y de la telemetría.
 $routes->group('viajes/maestros', ['filter' => ['auth']], static function ($routes): void {
     $routes->get('', 'TripMasters::index', ['filter' => 'permission:viajes.maestros.ver']);
