@@ -38,6 +38,7 @@ const countries = [
   { key: 'UNCLASSIFIED', label: 'Sin clasificar', selectName: 'sucursal_sin_clasificar' },
 ]
 const requiredCountries = computed(() => countries.filter((country) => requirements.value[country.key]))
+const blockingIssues = computed(() => (summary.value.issues_page ?? []).filter((issue) => issue.severity === 'ERROR'))
 const fmt = (value) => Number(value ?? 0).toLocaleString('es-AR')
 
 const metrics = computed(() => [
@@ -178,6 +179,22 @@ const decisionIcon = { success: 'bg-success/15 text-success', warning: 'bg-warni
           <StatusBadge v-if="batch.estado" :status="batch.estado" />
         </div>
 
+        <div class="mt-4 grid gap-1 text-sm sm:grid-cols-2">
+          <p><span class="text-ink-muted">Empresa destino:</span> <strong class="text-ink">{{ batch.company?.name || 'sin informar' }}</strong><span class="text-ink-muted"> · {{ batch.company?.cuit || 'sin CUIT' }}</span></p>
+          <p><span class="text-ink-muted">Paquete:</span> <strong class="text-ink">{{ summary.source?.source_company || 'sin empresa' }}</strong><span class="text-ink-muted"> · {{ summary.source?.source_cuit || 'sin CUIT' }}</span></p>
+        </div>
+
+        <div v-if="Number(counts.blocking_errors) > 0" class="mt-4 rounded-xl border border-danger/40 bg-surface-raised p-4">
+          <p class="text-sm font-bold text-danger-strong">Errores que impiden importar</p>
+          <ul class="mt-2 space-y-1 text-sm text-ink">
+            <li v-for="(issue, index) in blockingIssues.slice(0, 5)" :key="`${issue.field}-${index}`" class="flex flex-wrap gap-x-2">
+              <span class="font-mono text-xs text-ink-subtle">{{ issue.field }}</span>
+              <span>{{ issue.message }}</span>
+            </li>
+          </ul>
+          <p v-if="Number(counts.blocking_errors) > blockingIssues.length" class="mt-1 text-xs text-ink-muted">y {{ Number(counts.blocking_errors) - blockingIssues.length }} más…</p>
+        </div>
+
         <dl class="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-5">
           <div v-for="metric in metrics" :key="metric.label" class="rounded-xl border border-border/60 bg-surface-raised px-4 py-3">
             <dt class="text-xs font-semibold text-ink-muted">{{ metric.label }}</dt>
@@ -205,7 +222,9 @@ const decisionIcon = { success: 'bg-success/15 text-success', warning: 'bg-warni
 
       <PanelCard title="Sucursales por país" :count="requiredCountries.length || null">
         <p class="text-sm text-ink-muted">La patente Mercosur define Argentina o Brasil. Las patentes anteriores a Mercosur se resuelven por mayoría de menciones de origen y destino. Los viajes sin evidencia suficiente quedan como “sin clasificar”.</p>
-        <div class="mt-4 grid gap-4 md:grid-cols-3">
+        <component :is="pending ? 'form' : 'div'" v-bind="pending ? { method: 'post', action: data.actions.branches } : {}" class="mt-4">
+          <CsrfField v-if="pending" :csrf="data.csrf" />
+          <div class="grid gap-4 md:grid-cols-3">
           <article v-for="country in countries" :key="country.key" class="rounded-xl border border-border bg-surface p-4">
             <div class="flex flex-wrap items-center justify-between gap-2">
               <h3 class="font-bold text-ink">{{ country.label }}</h3>
@@ -217,22 +236,25 @@ const decisionIcon = { success: 'bg-success/15 text-success', warning: 'bg-warni
               <span v-if="!(classification[country.key]?.domains ?? []).length" class="text-xs text-ink-subtle">Sin dominios</span>
             </div>
             <div class="mt-4">
-              <template v-if="requirements[country.key]">
+              <template v-if="pending && requirements[country.key]">
                 <label :for="`branch-${country.key}`" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-ink-muted">Sucursal asignada</label>
                 <select :id="`branch-${country.key}`" v-model="branchSelection[country.key]" :name="country.selectName" :class="fieldClass">
                   <option value="">Seleccioná una sucursal</option>
                   <option v-for="branch in batch.branches" :key="branch.id" :value="branch.id">{{ branch.code }} · {{ branch.name }}</option>
                 </select>
               </template>
+              <p v-else-if="requirements[country.key]" class="rounded-lg bg-surface-muted px-3 py-2 text-sm text-ink-muted">
+                {{ summary.branch_names?.[country.key] || 'Sin asignar' }}
+              </p>
               <p v-else class="rounded-lg bg-surface-muted px-3 py-2 text-sm text-ink-muted">No hace falta: todos los viajes de este grupo ya existen.</p>
             </div>
           </article>
-        </div>
-        <form v-if="pending && requiredCountries.length" method="post" :action="data.actions.branches" class="mt-4 flex flex-wrap items-center gap-3">
-          <CsrfField :csrf="data.csrf" />
-          <button type="submit" :class="primaryButton"><MapPinIcon class="mr-2 size-5" aria-hidden="true" />Guardar sucursales y recalcular</button>
-          <p class="text-xs text-ink-muted">Se recalcula el resumen y se habilita la confirmación.</p>
-        </form>
+          </div>
+          <div v-if="pending && requiredCountries.length" class="mt-4 flex flex-wrap items-center gap-3">
+            <button type="submit" :class="primaryButton"><MapPinIcon class="mr-2 size-5" aria-hidden="true" />Guardar sucursales y recalcular</button>
+            <p class="text-xs text-ink-muted">Se recalcula el resumen y se habilita la confirmación.</p>
+          </div>
+        </component>
         <p v-if="!batch.branches.length" role="alert" class="mt-4 rounded-xl border border-warning/40 bg-warning-subtle p-3 text-sm font-semibold text-warning-strong">La empresa no tiene sucursales activas. Creá una antes de importar.</p>
       </PanelCard>
 
