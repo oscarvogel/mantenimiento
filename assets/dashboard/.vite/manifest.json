@@ -1,12 +1,6 @@
 {
-  "../../clientes-importacion/frontend/node_modules/gsap/index.js": {
-    "file": "assets/gsap-C-UGJFrr.js",
-    "name": "gsap",
-    "src": "../../clientes-importacion/frontend/node_modules/gsap/index.js",
-    "isDynamicEntry": true
-  },
-  "_admin-C0tBMy-y.js": {
-    "file": "assets/admin-C0tBMy-y.js",
+  "_admin-CWfyfpYa.js": {
+    "file": "assets/admin-CWfyfpYa.js",
     "name": "admin",
     "imports": [
       "_vendor-CXJV_g-c.js"
@@ -27,11 +21,11 @@
       "assets/chatbot-p1890OXW.css"
     ]
   },
-  "_reports-BCM9UhEg.js": {
-    "file": "assets/reports-BCM9UhEg.js",
+  "_reports-DSJRZ37_.js": {
+    "file": "assets/reports-DSJRZ37_.js",
     "name": "reports",
     "imports": [
-      "_admin-C0tBMy-y.js",
+      "_admin-CWfyfpYa.js",
       "_vendor-CXJV_g-c.js"
     ]
   },
@@ -45,6 +39,12 @@
     "css": [
       "assets/vendor-BTrKGrB8.css"
     ]
+  },
+  "node_modules/gsap/index.js": {
+    "file": "assets/gsap-C-UGJFrr.js",
+    "name": "gsap",
+    "src": "node_modules/gsap/index.js",
+    "isDynamicEntry": true
   },
   "src/assets/platform/ai-card.jpg": {
     "file": "assets/ai-card-Bif2XNNK.jpg",
@@ -87,26 +87,26 @@
     "src": "src/assets/platform/trips-card.jpg"
   },
   "src/main.js": {
-    "file": "assets/main-j3NKv1C2.js",
+    "file": "assets/main-GiG58d9g.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
     "imports": [
       "_vendor-CXJV_g-c.js",
       "_chatbot-qQqmYE3A.js",
-      "_admin-C0tBMy-y.js",
-      "_reports-BCM9UhEg.js"
+      "_admin-CWfyfpYa.js",
+      "_reports-DSJRZ37_.js"
     ],
     "dynamicImports": [
       "_chatbot-qQqmYE3A.js",
       "src/pages/operations/components/FleetTelemetryMap.vue",
-      "../../clientes-importacion/frontend/node_modules/gsap/index.js",
+      "node_modules/gsap/index.js",
       "src/profiles/platform/profile.js",
       "src/profiles/vogel/profile.js",
       "src/profiles/cliente_piloto/profile.js"
     ],
     "css": [
-      "assets/main-SFRbe_C1.css"
+      "assets/main-8Q-FqkBV.css"
     ],
     "assets": [
       "assets/portal-hero-Dd-Ff3YR.jpg",
@@ -135,7 +135,7 @@
     ]
   },
   "src/profiles/cliente_piloto/profile.js": {
-    "file": "assets/profile-Ck3mmfbU.js",
+    "file": "assets/profile-Dfdc6899.js",
     "name": "profile",
     "src": "src/profiles/cliente_piloto/profile.js",
     "isDynamicEntry": true,
@@ -143,15 +143,15 @@
       "src/main.js",
       "_vendor-CXJV_g-c.js",
       "_chatbot-qQqmYE3A.js",
-      "_admin-C0tBMy-y.js",
-      "_reports-BCM9UhEg.js"
+      "_admin-CWfyfpYa.js",
+      "_reports-DSJRZ37_.js"
     ],
     "css": [
       "assets/profile-DV70kWFs.css"
     ]
   },
   "src/profiles/platform/profile.js": {
-    "file": "assets/profile-B4dYLDib.js",
+    "file": "assets/profile-D_qWI94_.js",
     "name": "profile",
     "src": "src/profiles/platform/profile.js",
     "isDynamicEntry": true,
@@ -159,12 +159,12 @@
       "src/main.js",
       "_vendor-CXJV_g-c.js",
       "_chatbot-qQqmYE3A.js",
-      "_admin-C0tBMy-y.js",
-      "_reports-BCM9UhEg.js"
+      "_admin-CWfyfpYa.js",
+      "_reports-DSJRZ37_.js"
     ]
   },
   "src/profiles/vogel/profile.js": {
-    "file": "assets/profile-CRrt6Lja.js",
+    "file": "assets/profile-BWKWiXiF.js",
     "name": "profile",
     "src": "src/profiles/vogel/profile.js",
     "isDynamicEntry": true,
@@ -172,8 +172,8 @@
       "src/main.js",
       "_vendor-CXJV_g-c.js",
       "_chatbot-qQqmYE3A.js",
-      "_admin-C0tBMy-y.js",
-      "_reports-BCM9UhEg.js"
+      "_admin-CWfyfpYa.js",
+      "_reports-DSJRZ37_.js"
     ]
   }
 }

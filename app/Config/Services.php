@@ -241,6 +241,23 @@ class Services extends BaseService
         );
     }
 
+    public static function tripImports(bool $getShared = true): \App\Application\TripImports\TripImports
+    {
+        if ($getShared) {
+            return static::getSharedInstance('tripImports');
+        }
+        $db = db_connect();
+
+        return new \App\Application\TripImports\TripImports(
+            new \App\Infrastructure\TripImports\LegacyTripPackageReader(),
+            new \App\Infrastructure\TripImports\LegacyTripRowMapper(),
+            new \App\Infrastructure\TripImports\CodeIgniterTripImportStore($db),
+            static::privateImportStorage(),
+            new \App\Infrastructure\Importations\CodeIgniterImportUnitOfWork($db),
+            new \App\Domain\TripImports\TripBranchClassifier(),
+        );
+    }
+
     public static function preventivePlansPayload(bool $getShared = true): PreventivePlansPayload
     {
         if ($getShared) {

@@ -53,6 +53,7 @@ final class SuperAdmin extends BaseController
         $payload = service('administrationPayload')->superadmin($data);
         $payload['tripMasterCatalogsAction'] = base_url('superadmin/viajes/maestros/cargar-tsa');
         $payload['customerImportsUrl'] = base_url('superadmin/clientes/importar');
+        $payload['tripImportsUrl'] = base_url('superadmin/viajes/importar');
         $payload['migrations'] = $this->migrationDiagnostics();
         $whatsAppSettings = service('globalNotificationSettingsStore')->get();
         $whatsAppGateway = service('whatsAppGateway');
