@@ -39,9 +39,9 @@ final class CreateTripHistoryAggregate extends Migration
     public function up(): void
     {
         $this->forge->addField([
-            'id' => ['type' => 'INT', 'unsigned' => true, 'auto_increment' => true],
-            'empresa_id' => ['type' => 'INT', 'unsigned' => true],
-            'sucursal_id' => ['type' => 'INT', 'unsigned' => true],
+            'id' => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'auto_increment' => true],
+            'empresa_id' => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true],
+            'sucursal_id' => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true],
             'origen' => ['type' => 'VARCHAR', 'constraint' => 80],
             'cuit_origen' => ['type' => 'CHAR', 'constraint' => 13],
             'dominio_origen' => ['type' => 'CHAR', 'constraint' => 10],
@@ -60,12 +60,12 @@ final class CreateTripHistoryAggregate extends Migration
             'fecha_contabilizacion' => ['type' => 'DATE', 'null' => true],
             'porcentaje_chofer' => ['type' => 'DECIMAL', 'constraint' => '10,2', 'null' => true],
             'marcar' => ['type' => 'TINYINT', 'constraint' => 1, 'null' => true],
-            'importacion_id' => ['type' => 'INT', 'unsigned' => true, 'null' => true],
+            'importacion_id' => ['type' => 'BIGINT', 'unsigned' => true, 'null' => true],
             'activo' => ['type' => 'TINYINT', 'constraint' => 1, 'default' => 1],
             'created_at' => ['type' => 'DATETIME', 'null' => true],
             'updated_at' => ['type' => 'DATETIME', 'null' => true],
-            'created_by' => ['type' => 'INT', 'unsigned' => true, 'null' => true],
-            'updated_by' => ['type' => 'INT', 'unsigned' => true, 'null' => true],
+            'created_by' => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'null' => true],
+            'updated_by' => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'null' => true],
         ]);
         $this->forge->addKey('id', true);
         $this->forge->addUniqueKey(['empresa_id', 'id'], 'uq_viajes_empresa_id');
@@ -190,12 +190,12 @@ final class CreateTripHistoryAggregate extends Migration
     private function tablaHija(string $tabla, array $campos, array $claveOrigen, ?string $columnaResolucion = null): void
     {
         $this->forge->addField([
-            'id' => ['type' => 'INT', 'unsigned' => true, 'auto_increment' => true],
-            'viaje_id' => ['type' => 'INT', 'unsigned' => true],
-            'empresa_id' => ['type' => 'INT', 'unsigned' => true],
-            'sucursal_id' => ['type' => 'INT', 'unsigned' => true],
+            'id' => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'auto_increment' => true],
+            'viaje_id' => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true],
+            'empresa_id' => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true],
+            'sucursal_id' => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true],
             ...$campos,
-            'importacion_id' => ['type' => 'INT', 'unsigned' => true, 'null' => true],
+            'importacion_id' => ['type' => 'BIGINT', 'unsigned' => true, 'null' => true],
             'created_at' => ['type' => 'DATETIME', 'null' => true],
         ]);
         $this->forge->addKey('id', true);
