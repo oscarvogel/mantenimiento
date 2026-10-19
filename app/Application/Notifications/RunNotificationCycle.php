@@ -45,25 +45,7 @@ final readonly class RunNotificationCycle
             'seconds' => number_format(microtime(true) - $overdueStartedAt, 3, '.', ''),
         ]);
 
-        $telemetryStartedAt = microtime(true);
         $telemetrySummary = ['companies' => 0, 'integration_failures' => 0];
-        foreach ($this->telemetryRefreshes as $refresh) {
-            $telemetrySummary['companies']++;
-            try {
-                $result = $refresh->execute();
-                $telemetrySummary['integration_failures'] += $result->fallos();
-            } catch (\Throwable $exception) {
-                $telemetrySummary['integration_failures']++;
-                log_message('error', 'Falló la actualización programada de telemetría ({type}).', [
-                    'type' => $exception::class,
-                ]);
-            }
-        }
-        log_message('notice', 'Etapa telemetría completada en {seconds}s. empresas={companies} fallos_integracion={failures}', [
-            'seconds' => number_format(microtime(true) - $telemetryStartedAt, 3, '.', ''),
-            'companies' => $telemetrySummary['companies'],
-            'failures' => $telemetrySummary['integration_failures'],
-        ]);
 
         $collectStartedAt = microtime(true);
         $collected = $this->collector->execute();
@@ -88,6 +70,38 @@ final readonly class RunNotificationCycle
         log_message('notice', 'Etapa despacho completada en {seconds}s.', [
             'seconds' => number_format(microtime(true) - $dispatchStartedAt, 3, '.', ''),
         ]);
+
+        // La telemetría corre al final a propósito. Es la etapa más pesada y en
+        // Ferozo puede agotar el límite de ejecución del hosting; si corriera
+        // antes, un backlog de telemetría deja sin despachar los recordatorios
+        // de km. Los eventos de telemetría se publican y salen en el próximo
+        // ciclo de cinco minutos.
+        $telemetryInterval = max(5, (int) env('alerts.telemetryRefreshMinutes', 15));
+        $runTelemetry = ((int) $this->clock->now()->format('i')) % $telemetryInterval === 0;
+        if (! $runTelemetry) {
+            log_message('notice', 'Etapa telemetría omitida: corre cada {minutes} minutos.', [
+                'minutes' => $telemetryInterval,
+            ]);
+        } else {
+            $telemetryStartedAt = microtime(true);
+            foreach ($this->telemetryRefreshes as $refresh) {
+                $telemetrySummary['companies']++;
+                try {
+                    $result = $refresh->execute();
+                    $telemetrySummary['integration_failures'] += $result->fallos();
+                } catch (\Throwable $exception) {
+                    $telemetrySummary['integration_failures']++;
+                    log_message('error', 'Falló la actualización programada de telemetría ({type}).', [
+                        'type' => $exception::class,
+                    ]);
+                }
+            }
+            log_message('notice', 'Etapa telemetría completada en {seconds}s. empresas={companies} fallos_integracion={failures}', [
+                'seconds' => number_format(microtime(true) - $telemetryStartedAt, 3, '.', ''),
+                'companies' => $telemetrySummary['companies'],
+                'failures' => $telemetrySummary['integration_failures'],
+            ]);
+        }
 
         log_message('notice', 'Fin ciclo global de notificaciones en {seconds}s. key={key}', [
             'seconds' => number_format(microtime(true) - $startedAt, 3, '.', ''),

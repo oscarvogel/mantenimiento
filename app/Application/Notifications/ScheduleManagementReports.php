@@ -12,6 +12,7 @@ use App\Infrastructure\PreventiveMaintenance\CodeIgniterPreventivePlanReadModel;
 use CodeIgniter\Database\BaseConnection;
 use DateTimeImmutable;
 use DomainException;
+use Throwable;
 
 final class ScheduleManagementReports
 {
@@ -23,15 +24,28 @@ final class ScheduleManagementReports
     ) {
     }
 
-    /** @return array{companies:int,queued:int,duplicates:int,skipped:int} */
+    /** @return array{companies:int,queued:int,duplicates:int,skipped:int,failed:int} */
     public function execute(): array
     {
-        if (! $this->available()) return ['companies' => 0, 'queued' => 0, 'duplicates' => 0, 'skipped' => 0];
+        if (! $this->available()) return ['companies' => 0, 'queued' => 0, 'duplicates' => 0, 'skipped' => 0, 'failed' => 0];
         $rows = $this->db->table('empresas')->where('estado', 1)->where('deleted_at', null)->get()->getResultArray();
-        $summary = ['companies' => count($rows), 'queued' => 0, 'duplicates' => 0, 'skipped' => 0];
+        $summary = ['companies' => count($rows), 'queued' => 0, 'duplicates' => 0, 'skipped' => 0, 'failed' => 0];
         foreach ($rows as $company) {
             foreach (['DAILY', 'WEEKLY'] as $type) {
-                $result = $this->queueCompany((int) $company['id'], $type, false, $company);
+                // Un informe que no se puede construir (por ejemplo, un plan
+                // preventivo incoherente) no puede abortar el ciclo entero y
+                // dejar sin despachar los recordatorios de km (#167).
+                try {
+                    $result = $this->queueCompany((int) $company['id'], $type, false, $company);
+                } catch (Throwable $error) {
+                    $summary['failed']++;
+                    log_message('error', 'No se pudo programar el informe {type} de la empresa {company}: {message}', [
+                        'type' => $type,
+                        'company' => (int) $company['id'],
+                        'message' => $error->getMessage(),
+                    ]);
+                    continue;
+                }
                 $summary[$result] = ($summary[$result] ?? 0) + 1;
             }
         }
@@ -271,8 +285,31 @@ final class ScheduleManagementReports
         foreach (['planes_mantenimiento', 'equipos', 'sucursales', 'tipos_equipo', 'tipos_servicio'] as $table) if (! $this->db->tableExists($table)) return ['overdue' => 0, 'upcoming' => 0];
         $readModel = new CodeIgniterPreventivePlanReadModel($this->db); $evaluator = new EvaluadorVencimiento();
         $counts = ['overdue' => 0, 'upcoming' => 0];
-        foreach ($readModel->listActive($companyId, null) as $item) {
-            $state = $evaluator->evaluar($item->plan, $item->currentUsage, $now)->estado();
+        // `listActive` reconstituye todos los planes; un plan con datos
+        // incoherentes lanza y hoy arrastraría el ciclo completo. Se aísla para
+        // que el informe siga construyéndose con el resto.
+        try {
+            $items = $readModel->listActive($companyId, null);
+        } catch (Throwable $error) {
+            log_message('error', 'Se omitió el conteo preventivo de la empresa {company}: {message}', [
+                'company' => $companyId,
+                'message' => $error->getMessage(),
+            ]);
+
+            return $counts;
+        }
+
+        foreach ($items as $item) {
+            try {
+                $state = $evaluator->evaluar($item->plan, $item->currentUsage, $now)->estado();
+            } catch (Throwable $error) {
+                log_message('warning', 'Se omitió el plan {plan} del conteo preventivo de la empresa {company}: {message}', [
+                    'plan' => $item->plan->id(),
+                    'company' => $companyId,
+                    'message' => $error->getMessage(),
+                ]);
+                continue;
+            }
             if ($state === EstadoPlan::VENCIDO) $counts['overdue']++;
             elseif ($state === EstadoPlan::PROXIMO) $counts['upcoming']++;
         }

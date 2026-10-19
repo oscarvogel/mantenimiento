@@ -124,6 +124,20 @@ final class SincronizarBucketsTelemetriaTest extends TestCase
         self::assertSame('2026-10-10 10:10:00', $lector->ventanas[0]['hasta']->format('Y-m-d H:i:s'));
     }
 
+    public function testUnCursorAtrasadoSeProcesaEnVentanasAcotadasParaNoAgotarMemoria(): void
+    {
+        $store = new BucketsEnMemoria();
+        $store->cursores['4:8:28396292'] = new DateTimeImmutable('2026-10-06 00:00:00', new \DateTimeZone('UTC'));
+        $lector = new LectorHistoricoEnMemoria();
+        $sync = new SincronizarBucketsTelemetria($lector, $store, new AgregadorBucketsTelemetria());
+
+        $sync->sincronizar(4, 8, 'wialon', ['28396292' => 34], new DateTimeImmutable('2026-10-10 10:12:00', new \DateTimeZone('UTC')));
+
+        $ventana = $lector->ventanas[0];
+        self::assertSame(3600, $ventana['hasta']->getTimestamp() - $ventana['desde']->getTimestamp());
+        self::assertSame('2026-10-06 00:55:00', $store->cursor(4, 8, '28396292')?->format('Y-m-d H:i:s'));
+    }
+
     public function testUnFalloDelLectorNoAvanzaElCursorNiSeInterpretaComoVentanaVacia(): void
     {
         $lector = new LectorHistoricoEnMemoria(fallar: true);

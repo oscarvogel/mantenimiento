@@ -57,8 +57,10 @@ invocarse el endpoint seguro con `curl`, usando POST y el header
 `X-Cron-Token`.
 
 Este mismo ciclo actualiza telemetría e ingiere el histórico Wialon por buckets
-UTC de cinco minutos. La frecuencia operativa es cada cinco minutos; la clave de
-ejecución tiene precisión de minuto y permite las doce corridas de cada hora.
+UTC de cinco minutos. El ciclo de notificaciones corre cada cinco minutos, pero
+la telemetría se ejecuta cada `alerts.telemetryRefreshMinutes` (15 por defecto)
+y al final del ciclo, después del despacho. La clave de ejecución tiene precisión
+de minuto y permite las doce corridas de cada hora.
 Si una lectura histórica falla o Wialon devuelve una ventana incompleta, el
 cursor de esa unidad no avanza y el siguiente ciclo vuelve a intentar el tramo.
 El refresco actual y la lectura histórica fallan por separado: una falla de
@@ -91,11 +93,15 @@ PR separado.
 El endpoint no implementa una segunda lógica de notificaciones. Llama a `RunNotificationCycle`, el mismo ciclo usado por el comando CLI:
 
 1. detectar vencimientos;
-2. actualizar telemetría por cada empresa con una integración activa y publicar
-   sus alertas;
-3. recolectar los demás eventos notificables;
-4. despachar email/Web Push;
+2. recolectar los eventos notificables;
+3. despachar email/Web Push/WhatsApp;
+4. actualizar telemetría por cada empresa con una integración activa y publicar
+   sus alertas al final del ciclo;
 5. aplicar lock, idempotencia, reintentos y trazabilidad existentes.
+
+La telemetría va al final a propósito: es la etapa más pesada y, si agota el
+límite de ejecución del hosting, no puede dejar sin despachar los recordatorios
+de km. Sus alertas salen en el ciclo siguiente.
 
 Dos ejecuciones con la misma clave horaria no deben duplicar entregas. Una ejecución concurrente debe ser rechazada por el control de proceso existente.
 
@@ -134,11 +140,17 @@ Frecuencia (campo «Minutos» en Ferozo; cada cinco minutos):
 Comando:
 
 ```bash
-curl -fsS --connect-timeout 10 --max-time 120 -X POST -H "X-Cron-Token: <TOKEN>" "https://vogelconsultoria.com.ar/mantenimiento/internal/cron/notifications/dispatch"
+curl -fsS --connect-timeout 15 --max-time 300 -X POST -H "X-Cron-Token: <TOKEN>" "https://vogelconsultoria.com.ar/mantenimiento/internal/cron/notifications/dispatch"
 ```
 
 Con `alerts.webCronBatchLimit = 25`, cada pasada despacha como máximo un lote
 acotado por canal. Si existe backlog, queda pendiente para la siguiente corrida.
+
+El controlador del cron ejecuta `set_time_limit(0)` e `ignore_user_abort(true)`
+antes del ciclo. Ferozo limita las peticiones web a 60 segundos; cuando la cola
+acumulada hace que una corrida tarde más, sin esas llamadas PHP mata el proceso
+a mitad de camino, no se registra la ejecución y el backlog no se drena nunca.
+La tarea del panel debe usar `--max-time 300` para acompañar ese límite.
 
 La clave de ejecución del ciclo tiene precisión de minuto para permitir doce
 corridas válidas dentro de la misma hora (por ejemplo 07:00, 07:05, 07:10 y
@@ -149,9 +161,11 @@ corridas válidas dentro de la misma hora (por ejemplo 07:00, 07:05, 07:10 y
 El cursor de cada unidad marca hasta qué límite UTC se consultó y confirmó una
 ventana. La primera sincronización consulta únicamente el último intervalo
 cerrado de cinco minutos; cada corrida posterior continúa desde el cursor con
-cinco minutos de solape para recuperar mensajes tardíos. No se hace backfill de
-los siete días ni un backfill histórico ilimitado: el historial se acumula desde
-que empieza la ingesta. La retención sigue siendo de 90 días. Ante el límite
+cinco minutos de solape para recuperar mensajes tardíos. Después de una caída,
+la ventana por corrida se acota a una hora para que un cursor viejo no pida
+días de mensajes en una sola consulta y agote la memoria del hosting. No se hace
+backfill de los siete días ni un backfill histórico ilimitado: el historial se
+acumula desde que empieza la ingesta. La retención sigue siendo de 90 días. Ante el límite
 1004, el adaptador divide la ventana en períodos menores; si no puede completar
 una respuesta, registra el fallo, no avanza el cursor y reintenta en el ciclo
 siguiente. No adelantar ni editar `telematia_cursor` manualmente para “saltar”
