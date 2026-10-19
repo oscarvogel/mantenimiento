@@ -161,9 +161,11 @@ corridas válidas dentro de la misma hora (por ejemplo 07:00, 07:05, 07:10 y
 El cursor de cada unidad marca hasta qué límite UTC se consultó y confirmó una
 ventana. La primera sincronización consulta únicamente el último intervalo
 cerrado de cinco minutos; cada corrida posterior continúa desde el cursor con
-cinco minutos de solape para recuperar mensajes tardíos. No se hace backfill de
-los siete días ni un backfill histórico ilimitado: el historial se acumula desde
-que empieza la ingesta. La retención sigue siendo de 90 días. Ante el límite
+cinco minutos de solape para recuperar mensajes tardíos. Después de una caída,
+la ventana por corrida se acota a una hora para que un cursor viejo no pida
+días de mensajes en una sola consulta y agote la memoria del hosting. No se hace
+backfill de los siete días ni un backfill histórico ilimitado: el historial se
+acumula desde que empieza la ingesta. La retención sigue siendo de 90 días. Ante el límite
 1004, el adaptador divide la ventana en períodos menores; si no puede completar
 una respuesta, registra el fallo, no avanza el cursor y reintenta en el ciclo
 siguiente. No adelantar ni editar `telematia_cursor` manualmente para “saltar”
