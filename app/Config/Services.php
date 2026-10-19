@@ -1014,6 +1014,84 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
         );
     }
 
+    public static function createTrip(bool $getShared = true): \App\Application\Trips\CreateTrip
+    {
+        if ($getShared) {
+            return static::getSharedInstance('createTrip');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\Trips\CreateTrip(
+            new \App\Infrastructure\Trips\CodeIgniterOperationalTripRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripFleetLookup($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripDirectoryLookup($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripsUnitOfWork($db),
+        );
+    }
+
+    public static function startTrip(bool $getShared = true): \App\Application\Trips\StartTrip
+    {
+        if ($getShared) {
+            return static::getSharedInstance('startTrip');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\Trips\StartTrip(
+            new \App\Infrastructure\Trips\CodeIgniterOperationalTripRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripsUnitOfWork($db),
+            new \App\Infrastructure\Trips\SystemTripClock(),
+        );
+    }
+
+    public static function cancelTrip(bool $getShared = true): \App\Application\Trips\CancelTrip
+    {
+        if ($getShared) {
+            return static::getSharedInstance('cancelTrip');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\Trips\CancelTrip(
+            new \App\Infrastructure\Trips\CodeIgniterOperationalTripRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripsUnitOfWork($db),
+        );
+    }
+
+    public static function listOperationalTrips(bool $getShared = true): \App\Application\Trips\ListOperationalTrips
+    {
+        if ($getShared) {
+            return static::getSharedInstance('listOperationalTrips');
+        }
+
+        return new \App\Application\Trips\ListOperationalTrips(
+            new \App\Infrastructure\Trips\CodeIgniterOperationalTripReadModel(db_connect()),
+        );
+    }
+
+    public static function getOperationalTrip(bool $getShared = true): \App\Application\Trips\GetOperationalTrip
+    {
+        if ($getShared) {
+            return static::getSharedInstance('getOperationalTrip');
+        }
+
+        return new \App\Application\Trips\GetOperationalTrip(
+            new \App\Infrastructure\Trips\CodeIgniterOperationalTripReadModel(db_connect()),
+        );
+    }
+
+    public static function tripFormOptions(bool $getShared = true): \App\Application\Trips\GetTripFormOptions
+    {
+        if ($getShared) {
+            return static::getSharedInstance('tripFormOptions');
+        }
+
+        return new \App\Application\Trips\GetTripFormOptions(
+            new \App\Infrastructure\Trips\CodeIgniterTripFormReadModel(db_connect()),
+        );
+    }
+
     public static function seedTsaTripMasterCatalogs(bool $getShared = true): \App\Application\TripMasters\SeedTsaTripMasterCatalogs
     {
         if ($getShared) {

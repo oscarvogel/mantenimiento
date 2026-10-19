@@ -29,6 +29,14 @@ $routes->get('inicio', 'CommandCenter::index', ['filter' => 'auth']);
 $routes->get('viajes', 'TripsDashboard::index', ['filter' => ['auth', 'permission:viajes.ver']]);
 $routes->get('viajes/(:num)', 'TripsDashboard::detail/$1', ['filter' => ['auth', 'permission:viajes.ver']]);
 
+// Viajes operativos: planificación, inicio y cancelación con scope de empresa y sucursal.
+$routes->get('viajes/operativos', 'OperationalTrips::index', ['filter' => ['auth', 'permission:viajes.ver']]);
+$routes->get('viajes/operativos/nuevo', 'OperationalTrips::create', ['filter' => ['auth', 'permission:viajes.operar']]);
+$routes->post('viajes/operativos', 'OperationalTrips::store', ['filter' => ['auth', 'permission:viajes.operar']]);
+$routes->get('viajes/operativos/(:num)', 'OperationalTrips::show/$1', ['filter' => ['auth', 'permission:viajes.ver']]);
+$routes->post('viajes/operativos/(:num)/iniciar', 'OperationalTrips::start/$1', ['filter' => ['auth', 'permission:viajes.operar']]);
+$routes->post('viajes/operativos/(:num)/cancelar', 'OperationalTrips::cancel/$1', ['filter' => ['auth', 'permission:viajes.operar']]);
+
 // Maestros independientes del módulo operativo de viajes y de la telemetría.
 $routes->group('viajes/maestros', ['filter' => ['auth']], static function ($routes): void {
     $routes->get('', 'TripMasters::index', ['filter' => 'permission:viajes.maestros.ver']);

@@ -43,7 +43,11 @@ const tripUrl = (id) => `${dashboardUrl.value}/${id}${window.location.search}`
 
 <template>
   <div>
-    <PageHeading eyebrow="Viajes" title="Dashboard de viajes" description="Actividad, kilometraje y combustible del historico importado. Los costos quedan fuera hasta definir la moneda de origen." />
+    <PageHeading eyebrow="Viajes" title="Dashboard de viajes" description="Actividad, kilometraje y combustible del historico importado. Los costos quedan fuera hasta definir la moneda de origen.">
+      <template #actions>
+        <a :href="props.data.links?.operational ?? '/viajes/operativos'" :class="primaryButton"><TruckIcon class="mr-2 size-4" aria-hidden="true" />Viajes operativos</a>
+      </template>
+    </PageHeading>
 
     <PanelCard title="Filtros" class="mb-5">
       <form method="get" class="grid gap-4 md:grid-cols-4 xl:grid-cols-5 xl:items-end">

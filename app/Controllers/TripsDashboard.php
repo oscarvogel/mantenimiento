@@ -21,7 +21,10 @@ final class TripsDashboard extends BaseController
             $requestedPage = filter_var($this->request->getGet('pagina'), FILTER_VALIDATE_INT);
             $page = $requestedPage === false || $requestedPage === null ? 1 : $requestedPage;
             $dashboard = service('getTripsDashboard')->execute($actor, $filters, $page);
-            $dashboard['links'] = ['index' => base_url('viajes')];
+            $dashboard['links'] = [
+                'index' => base_url('viajes'),
+                'operational' => base_url('viajes/operativos'),
+            ];
 
             return $this->renderApp(
                 $actor,

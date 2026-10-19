@@ -25,11 +25,17 @@ final readonly class AppShellPayload
         $payload['homeUrl'] = $active !== 'command-center' && $availableModules !== []
             && $canEnterModule ? base_url('inicio')
             : null;
+        $tripOperationsActive = in_array($active, ['trips-operations', 'trip-operations-create', 'trip-operations-detail'], true)
+            ? 'trips-operations'
+            : $active;
         $navigation = match ($active) {
             'command-center' => $this->platformNavigation($actor, $availableModules),
-            'trip-masters', 'trips-dashboard' => array_values(array_filter([
+            'trip-masters', 'trips-dashboard', 'trips-operations', 'trip-operations-create', 'trip-operations-detail' => array_values(array_filter([
                 $actor->hasPermission('viajes.ver')
                     ? $this->item('trips-dashboard', 'Dashboard', 'viajes', 'truck', $active)
+                    : null,
+                $actor->hasPermission('viajes.ver')
+                    ? $this->item('trips-operations', 'Viajes operativos', 'viajes/operativos', 'clipboard-list', $tripOperationsActive)
                     : null,
                 $actor->hasPermission('viajes.maestros.ver')
                     ? $this->item('trip-masters', 'Maestros', 'viajes/maestros', 'clipboard-list', $active)
@@ -44,16 +50,17 @@ final readonly class AppShellPayload
             ? []
             : $this->platformNavigation($actor, $availableModules, match ($active) {
                 'theoretical-cost-km' => 'management',
-                'trip-masters', 'trips-dashboard' => 'trips',
+                'trip-masters', 'trips-dashboard', 'trips-operations', 'trip-operations-create', 'trip-operations-detail' => 'trips',
                 default => 'maintenance',
             });
 
-        if ($active !== 'command-center' && $active !== 'theoretical-cost-km' && $active !== 'trip-masters' && $active !== 'trips-dashboard' && $actor->isSuperAdmin()) {
+        $isTripPage = in_array($active, ['trip-masters', 'trips-dashboard', 'trips-operations', 'trip-operations-create', 'trip-operations-detail'], true);
+        if ($active !== 'command-center' && $active !== 'theoretical-cost-km' && ! $isTripPage && $actor->isSuperAdmin()) {
             $navigation[] = $this->item('superadmin', 'Administración global', 'superadmin', 'building', $active);
             $navigation[] = $this->item('telemetry-samples', 'Datos de telemetría', 'superadmin/telemetria/muestras', 'audit', $active);
             $navigation[] = $this->item('notification-settings', 'Configuración de notificaciones', 'superadmin/configuracion/notificaciones', 'notifications', $active);
             $navigation[] = $this->item('chatbot-audit', 'Auditoría del chatbot', 'superadmin?section=chat-audit', 'audit', $active);
-        } elseif ($active !== 'command-center' && $active !== 'theoretical-cost-km' && $active !== 'trip-masters' && $active !== 'trips-dashboard') {
+        } elseif ($active !== 'command-center' && $active !== 'theoretical-cost-km' && ! $isTripPage) {
             if ($actor->hasPermission('gerencial.costo_km.ver')) {
                 $navigation[] = $this->item('theoretical-cost-km', 'Costo teórico por km', 'gerencial/costo-teorico-km', 'chart', $active);
             }

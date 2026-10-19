@@ -31,7 +31,7 @@ final class GetPlatformModuleCatalog
         [
             'key' => 'trips',
             'label' => 'Viajes',
-            'description' => 'Actividad, kilometraje y combustible de los viajes, y sus maestros.',
+            'description' => 'Planificación y seguimiento de viajes, actividad, kilometraje, combustible y maestros.',
             'icon' => 'truck',
         ],
         [
