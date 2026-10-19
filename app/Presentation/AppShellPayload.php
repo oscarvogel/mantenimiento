@@ -32,7 +32,7 @@ final readonly class AppShellPayload
             'command-center' => $this->platformNavigation($actor, $availableModules),
             'trip-masters', 'trips-dashboard', 'trips-operations', 'trip-operations-create', 'trip-operations-detail' => array_values(array_filter([
                 $actor->hasPermission('viajes.ver')
-                    ? $this->item('trips-dashboard', 'Dashboard', 'viajes', 'truck', $active)
+                    ? $this->item('trips-dashboard', 'Historial', 'viajes', 'truck', $active)
                     : null,
                 $actor->hasPermission('viajes.ver')
                     ? $this->item('trips-operations', 'Viajes operativos', 'viajes/operativos', 'clipboard-list', $tripOperationsActive)

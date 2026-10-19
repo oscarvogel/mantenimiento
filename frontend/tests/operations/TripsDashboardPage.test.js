@@ -43,6 +43,33 @@ describe('dashboard de viajes', () => {
     wrapper.unmount()
   })
 
+  it('prioriza la lista de viajes y acota los resúmenes a 12 meses y 10 unidades', () => {
+    const monthly = Array.from({ length: 15 }, (_, index) => ({
+      month: `2025-${String(index + 1).padStart(2, '0')}`,
+      trips: index + 1,
+      km: (index + 1) * 1_000,
+      liters: (index + 1) * 100,
+    }))
+    const domains = Array.from({ length: 15 }, (_, index) => ({
+      domain: `UNIDAD-${index + 1}`,
+      trips: 1,
+      km: 15_000 - index * 500,
+      km_trips: 1,
+      liters: 1_000,
+      fuel_trips: 1,
+      liters_per_100: 20,
+      coverage: 100,
+    }))
+    const wrapper = mount(TripsDashboardPage, { props: { data: { ...data, monthly, domains } } })
+
+    const text = wrapper.text()
+    expect(text.indexOf('Viajes del período')).toBeLessThan(text.indexOf('Últimos 12 meses con actividad'))
+    expect(wrapper.findAll('[data-month-row]')).toHaveLength(12)
+    expect(wrapper.findAll('[data-domain-row]')).toHaveLength(10)
+    expect(text).toContain('Se muestran 10 de 15 unidades')
+    wrapper.unmount()
+  })
+
   it('informa sin datos suficientes cuando no hay consumo', () => {
     const wrapper = mount(TripsDashboardPage, {
       props: { data: { ...data, summary: { ...data.summary, liters_per_100: null } } },

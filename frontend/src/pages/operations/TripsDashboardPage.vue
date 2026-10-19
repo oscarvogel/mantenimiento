@@ -19,8 +19,11 @@ const pagination = computed(() => props.data.pagination ?? { page: 1, perPage: 2
 const dashboardUrl = computed(() => props.data.links?.index ?? '/viajes')
 const branchLabel = (id) => options.value.branches.find((branch) => Number(branch.id) === Number(id))?.name ?? `Sucursal #${id}`
 const hasTrips = computed(() => Number(summary.value.trips) > 0)
-const maxKm = computed(() => Math.max(...monthly.value.map((month) => Number(month.km) || 0), 1))
-const maxLiters = computed(() => Math.max(...monthly.value.map((month) => Number(month.liters) || 0), 1))
+const recentMonthly = computed(() => monthly.value.slice(-12))
+const topDomains = computed(() => domains.value.slice(0, 10))
+const hasMoreDomains = computed(() => domains.value.length > topDomains.value.length)
+const maxKm = computed(() => Math.max(...recentMonthly.value.map((month) => Number(month.km) || 0), 1))
+const maxLiters = computed(() => Math.max(...recentMonthly.value.map((month) => Number(month.liters) || 0), 1))
 const consumptionAvailable = computed(() => summary.value.liters_per_100 !== null && summary.value.liters_per_100 !== undefined)
 
 const fmt = (value) => Number(value ?? 0).toLocaleString('es-AR', { maximumFractionDigits: 0 })
@@ -39,11 +42,19 @@ const pageUrl = (page) => {
   return `${dashboardUrl.value}${suffix ? `?${suffix}` : ''}`
 }
 const tripUrl = (id) => `${dashboardUrl.value}/${id}${window.location.search}`
+const domainUrl = (domain) => {
+  const query = new URLSearchParams(window.location.search)
+  query.delete('pagina')
+  if (domain) query.set('dominio', domain)
+  else query.delete('dominio')
+  const suffix = query.toString()
+  return `${dashboardUrl.value}${suffix ? `?${suffix}` : ''}`
+}
 </script>
 
 <template>
   <div>
-    <PageHeading eyebrow="Viajes" title="Dashboard de viajes" description="Actividad, kilometraje y combustible del historico importado. Los costos quedan fuera hasta definir la moneda de origen.">
+    <PageHeading eyebrow="Viajes" title="Historial de viajes" description="Listado del historial importado, con actividad, kilometraje y combustible. Los costos quedan fuera hasta definir la moneda de origen.">
       <template #actions>
         <a :href="props.data.links?.operational ?? '/viajes/operativos'" :class="primaryButton"><TruckIcon class="mr-2 size-4" aria-hidden="true" />Viajes operativos</a>
       </template>
@@ -110,75 +121,7 @@ const tripUrl = (id) => `${dashboardUrl.value}/${id}${window.location.search}`
         </article>
       </section>
 
-      <div class="mb-5 grid gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-        <PanelCard title="Actividad por mes">
-          <p v-if="monthly.length === 0" class="text-sm text-ink-muted">Sin viajes en el período.</p>
-          <div v-else class="space-y-3">
-            <div class="flex items-center gap-4 text-xs text-ink-muted">
-              <span class="inline-flex items-center gap-1"><span class="inline-block size-2.5 rounded-sm bg-primary"></span>Km</span>
-              <span class="inline-flex items-center gap-1"><span class="inline-block size-2.5 rounded-sm bg-accent"></span>Litros</span>
-            </div>
-            <div v-for="month in monthly" :key="month.month" class="grid grid-cols-[5rem_1fr_9rem] items-center gap-3">
-              <span class="font-mono text-xs text-ink-muted">{{ month.month }}</span>
-              <div class="space-y-1">
-                <div class="h-2 rounded-full bg-surface-muted"><div class="h-2 rounded-full bg-primary" :style="{ width: bar(month.km, maxKm) }"></div></div>
-                <div class="h-2 rounded-full bg-surface-muted"><div class="h-2 rounded-full bg-accent" :style="{ width: bar(month.liters, maxLiters) }"></div></div>
-              </div>
-              <span class="text-right text-xs text-ink-muted">{{ fmt(month.trips) }} viajes · {{ fmt(month.km) }} km</span>
-            </div>
-          </div>
-        </PanelCard>
-
-        <PanelCard title="Calidad de datos">
-          <ul class="space-y-4">
-            <li v-for="item in quality" :key="item.key">
-              <div class="flex items-center justify-between gap-3 text-sm">
-                <span class="font-semibold text-ink">{{ item.label }}</span>
-                <span class="text-ink-muted">{{ fmt(item.value) }} / {{ fmt(item.total) }}</span>
-              </div>
-              <div class="mt-1.5 h-2 rounded-full bg-surface-muted">
-                <div class="h-2 rounded-full" :class="qualityTone[item.tone] ?? 'bg-primary'" :style="{ width: item.total > 0 ? `${Math.round(item.value / item.total * 100)}%` : '0%' }"></div>
-              </div>
-            </li>
-          </ul>
-          <p class="mt-4 flex items-start gap-2 rounded-lg bg-surface p-3 text-xs text-ink-muted">
-            <ExclamationTriangleIcon class="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />
-            El odómetro del sistema anterior no es homogéneo. Se descartan los viajes con regreso anterior a la salida y los saltos mayores a 15.000 km; por eso la cobertura no es del 100%.
-          </p>
-        </PanelCard>
-      </div>
-
-      <PanelCard title="Por unidad (dominio)" :count="domains.length">
-        <div class="overflow-x-auto">
-          <table class="w-full min-w-[44rem] text-left text-sm">
-            <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
-              <tr>
-                <th class="px-4 py-3">Dominio</th>
-                <th class="px-4 py-3 text-right">Viajes</th>
-                <th class="px-4 py-3 text-right">Km confiables</th>
-                <th class="px-4 py-3 text-right">Cobertura</th>
-                <th class="px-4 py-3 text-right">Litros</th>
-                <th class="px-4 py-3 text-right">L/100 km</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-border-subtle">
-              <tr v-for="item in domains" :key="item.domain">
-                <td class="whitespace-nowrap px-4 py-3 font-mono text-xs font-semibold text-ink">{{ item.domain }}</td>
-                <td class="px-4 py-3 text-right text-ink-muted">{{ fmt(item.trips) }}</td>
-                <td class="px-4 py-3 text-right font-semibold text-ink">{{ fmt(item.km) }}</td>
-                <td class="px-4 py-3 text-right" :class="Number(item.coverage) < 50 ? 'font-semibold text-warning-strong' : 'text-ink-muted'">{{ fmt1(item.coverage) }}%</td>
-                <td class="px-4 py-3 text-right text-ink-muted">{{ fmt(item.liters) }}</td>
-                <td class="px-4 py-3 text-right font-semibold text-ink">
-                  <span v-if="item.liters_per_100 !== null && item.liters_per_100 !== undefined">{{ fmt1(item.liters_per_100) }}</span>
-                  <span v-else class="text-ink-muted">Sin datos</span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </PanelCard>
-
-      <PanelCard title="Viajes del período" :count="pagination.total" class="mt-5">
+      <PanelCard title="Viajes del período" :count="pagination.total" class="mb-5">
         <p class="mb-3 text-sm text-ink-muted">Seleccioná un viaje para consultar su recorrido, combustible, gastos y demás datos importados.</p>
         <div class="overflow-x-auto">
           <table class="w-full min-w-[56rem] text-left text-sm">
@@ -204,6 +147,77 @@ const tripUrl = (id) => `${dashboardUrl.value}/${id}${window.location.search}`
             <a :href="pageUrl(pagination.page + 1)" :aria-disabled="pagination.page >= pagination.pages" :class="['rounded-lg border border-border px-3 py-2 text-sm font-semibold', pagination.page >= pagination.pages ? 'pointer-events-none opacity-50' : 'text-ink hover:bg-surface-subtle']">Siguiente</a>
           </div>
         </nav>
+      </PanelCard>
+
+      <div class="mb-5 grid gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        <PanelCard title="Últimos 12 meses con actividad">
+          <p v-if="recentMonthly.length === 0" class="text-sm text-ink-muted">Sin viajes en el período.</p>
+          <div v-else class="space-y-3">
+            <div class="flex items-center gap-4 text-xs text-ink-muted">
+              <span class="inline-flex items-center gap-1"><span class="inline-block size-2.5 rounded-sm bg-primary"></span>Km</span>
+              <span class="inline-flex items-center gap-1"><span class="inline-block size-2.5 rounded-sm bg-accent"></span>Litros</span>
+            </div>
+            <div v-for="month in recentMonthly" :key="month.month" data-month-row class="grid grid-cols-[5rem_1fr_9rem] items-center gap-3">
+              <span class="font-mono text-xs text-ink-muted">{{ month.month }}</span>
+              <div class="space-y-1">
+                <div class="h-2 rounded-full bg-surface-muted"><div class="h-2 rounded-full bg-primary" :style="{ width: bar(month.km, maxKm) }"></div></div>
+                <div class="h-2 rounded-full bg-surface-muted"><div class="h-2 rounded-full bg-accent" :style="{ width: bar(month.liters, maxLiters) }"></div></div>
+              </div>
+              <span class="text-right text-xs text-ink-muted">{{ fmt(month.trips) }} viajes · {{ fmt(month.km) }} km</span>
+            </div>
+            <p class="text-xs text-ink-muted">Se muestran los últimos 12 meses del período filtrado.</p>
+          </div>
+        </PanelCard>
+
+        <PanelCard title="Calidad de datos">
+          <ul class="space-y-4">
+            <li v-for="item in quality" :key="item.key">
+              <div class="flex items-center justify-between gap-3 text-sm">
+                <span class="font-semibold text-ink">{{ item.label }}</span>
+                <span class="text-ink-muted">{{ fmt(item.value) }} / {{ fmt(item.total) }}</span>
+              </div>
+              <div class="mt-1.5 h-2 rounded-full bg-surface-muted">
+                <div class="h-2 rounded-full" :class="qualityTone[item.tone] ?? 'bg-primary'" :style="{ width: item.total > 0 ? `${Math.round(item.value / item.total * 100)}%` : '0%' }"></div>
+              </div>
+            </li>
+          </ul>
+          <p class="mt-4 flex items-start gap-2 rounded-lg bg-surface p-3 text-xs text-ink-muted">
+            <ExclamationTriangleIcon class="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />
+            El odómetro del sistema anterior no es homogéneo. Se descartan los viajes con regreso anterior a la salida y los saltos mayores a 15.000 km; por eso la cobertura no es del 100%.
+          </p>
+        </PanelCard>
+      </div>
+
+      <PanelCard title="Top unidades por km confiable" :count="topDomains.length">
+        <p class="mb-3 text-sm text-ink-muted">Ordenadas por kilómetros con lectura confiable. Seleccioná una unidad para filtrar el historial.</p>
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[44rem] text-left text-sm">
+            <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
+              <tr>
+                <th class="px-4 py-3">Dominio</th>
+                <th class="px-4 py-3 text-right">Viajes</th>
+                <th class="px-4 py-3 text-right">Km confiables</th>
+                <th class="px-4 py-3 text-right">Cobertura</th>
+                <th class="px-4 py-3 text-right">Litros</th>
+                <th class="px-4 py-3 text-right">L/100 km</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-border-subtle">
+              <tr v-for="item in topDomains" :key="item.domain" data-domain-row>
+                <td class="whitespace-nowrap px-4 py-3 font-mono text-xs font-semibold"><a :href="domainUrl(item.domain)" class="text-primary hover:text-primary-hover">{{ item.domain }}</a></td>
+                <td class="px-4 py-3 text-right text-ink-muted">{{ fmt(item.trips) }}</td>
+                <td class="px-4 py-3 text-right font-semibold text-ink">{{ fmt(item.km) }}</td>
+                <td class="px-4 py-3 text-right" :class="Number(item.coverage) < 50 ? 'font-semibold text-warning-strong' : 'text-ink-muted'">{{ fmt1(item.coverage) }}%</td>
+                <td class="px-4 py-3 text-right text-ink-muted">{{ fmt(item.liters) }}</td>
+                <td class="px-4 py-3 text-right font-semibold text-ink">
+                  <span v-if="item.liters_per_100 !== null && item.liters_per_100 !== undefined">{{ fmt1(item.liters_per_100) }}</span>
+                  <span v-else class="text-ink-muted">Sin datos</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p v-if="hasMoreDomains" class="mt-3 text-xs text-ink-muted">Se muestran 10 de {{ domains.length }} unidades. Usá el filtro de unidad para ver el resto.</p>
       </PanelCard>
     </template>
   </div>
