@@ -91,11 +91,15 @@ PR separado.
 El endpoint no implementa una segunda lógica de notificaciones. Llama a `RunNotificationCycle`, el mismo ciclo usado por el comando CLI:
 
 1. detectar vencimientos;
-2. actualizar telemetría por cada empresa con una integración activa y publicar
-   sus alertas;
-3. recolectar los demás eventos notificables;
-4. despachar email/Web Push;
+2. recolectar los eventos notificables;
+3. despachar email/Web Push/WhatsApp;
+4. actualizar telemetría por cada empresa con una integración activa y publicar
+   sus alertas al final del ciclo;
 5. aplicar lock, idempotencia, reintentos y trazabilidad existentes.
+
+La telemetría va al final a propósito: es la etapa más pesada y, si agota el
+límite de ejecución del hosting, no puede dejar sin despachar los recordatorios
+de km. Sus alertas salen en el ciclo siguiente.
 
 Dos ejecuciones con la misma clave horaria no deben duplicar entregas. Una ejecución concurrente debe ser rechazada por el control de proceso existente.
 
