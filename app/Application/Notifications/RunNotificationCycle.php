@@ -76,24 +76,32 @@ final readonly class RunNotificationCycle
         // antes, un backlog de telemetría deja sin despachar los recordatorios
         // de km. Los eventos de telemetría se publican y salen en el próximo
         // ciclo de cinco minutos.
-        $telemetryStartedAt = microtime(true);
-        foreach ($this->telemetryRefreshes as $refresh) {
-            $telemetrySummary['companies']++;
-            try {
-                $result = $refresh->execute();
-                $telemetrySummary['integration_failures'] += $result->fallos();
-            } catch (\Throwable $exception) {
-                $telemetrySummary['integration_failures']++;
-                log_message('error', 'Falló la actualización programada de telemetría ({type}).', [
-                    'type' => $exception::class,
-                ]);
+        $telemetryInterval = max(5, (int) env('alerts.telemetryRefreshMinutes', 15));
+        $runTelemetry = ((int) $this->clock->now()->format('i')) % $telemetryInterval === 0;
+        if (! $runTelemetry) {
+            log_message('notice', 'Etapa telemetría omitida: corre cada {minutes} minutos.', [
+                'minutes' => $telemetryInterval,
+            ]);
+        } else {
+            $telemetryStartedAt = microtime(true);
+            foreach ($this->telemetryRefreshes as $refresh) {
+                $telemetrySummary['companies']++;
+                try {
+                    $result = $refresh->execute();
+                    $telemetrySummary['integration_failures'] += $result->fallos();
+                } catch (\Throwable $exception) {
+                    $telemetrySummary['integration_failures']++;
+                    log_message('error', 'Falló la actualización programada de telemetría ({type}).', [
+                        'type' => $exception::class,
+                    ]);
+                }
             }
+            log_message('notice', 'Etapa telemetría completada en {seconds}s. empresas={companies} fallos_integracion={failures}', [
+                'seconds' => number_format(microtime(true) - $telemetryStartedAt, 3, '.', ''),
+                'companies' => $telemetrySummary['companies'],
+                'failures' => $telemetrySummary['integration_failures'],
+            ]);
         }
-        log_message('notice', 'Etapa telemetría completada en {seconds}s. empresas={companies} fallos_integracion={failures}', [
-            'seconds' => number_format(microtime(true) - $telemetryStartedAt, 3, '.', ''),
-            'companies' => $telemetrySummary['companies'],
-            'failures' => $telemetrySummary['integration_failures'],
-        ]);
 
         log_message('notice', 'Fin ciclo global de notificaciones en {seconds}s. key={key}', [
             'seconds' => number_format(microtime(true) - $startedAt, 3, '.', ''),
