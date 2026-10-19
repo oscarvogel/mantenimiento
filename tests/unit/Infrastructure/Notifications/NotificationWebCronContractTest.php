@@ -54,6 +54,19 @@ final class NotificationWebCronContractTest extends TestCase
         self::assertStringContainsString('alerts.webCronRateWindowSeconds', $env);
     }
 
+    public function testDispatchRunsBeforeTelemetrySoHeavyTelemetryCannotBlockNotifications(): void
+    {
+        $cycle = file_get_contents(APPPATH . 'Application/Notifications/RunNotificationCycle.php');
+
+        self::assertIsString($cycle);
+        $dispatch = strpos($cycle, '$this->dispatch->execute');
+        $telemetry = strpos($cycle, '$telemetryStartedAt = microtime(true)');
+
+        self::assertNotFalse($dispatch);
+        self::assertNotFalse($telemetry);
+        self::assertLessThan($telemetry, $dispatch);
+    }
+
     public function testCronRouteIsPublicOnlyAtTransportLayerAndManualRouteKeepsSuperadminFilter(): void
     {
         $routes = file_get_contents(APPPATH . 'Config/Routes.php');
