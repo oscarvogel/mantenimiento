@@ -107,6 +107,25 @@ final class ManagementReportsContractTest extends TestCase
         self::assertStringContainsString('0,5,10,15,20,25,30,35,40,45,50,55', $docs);
     }
 
+    public function testNotificationCronRemovesTheWebExecutionTimeLimit(): void
+    {
+        $controller = file_get_contents(APPPATH . 'Controllers/NotificationCron.php');
+
+        self::assertIsString($controller);
+        self::assertStringContainsString('@set_time_limit(0)', $controller);
+        self::assertStringContainsString('ignore_user_abort(true)', $controller);
+    }
+
+    public function testManagementReportSchedulerIsolatesBrokenCompanies(): void
+    {
+        $scheduler = file_get_contents(APPPATH . 'Application/Notifications/ScheduleManagementReports.php');
+
+        self::assertIsString($scheduler);
+        self::assertStringContainsString('catch (Throwable $error)', $scheduler);
+        self::assertStringContainsString("'failed' => 0", $scheduler);
+        self::assertStringContainsString('Se omitió el conteo preventivo', $scheduler);
+    }
+
     public function testCompanyOverviewRemainsUsableBeforeMigration(): void
     {
         $administration = file_get_contents(APPPATH . 'Infrastructure/Organization/CodeIgniterOrganizationAdministration.php');

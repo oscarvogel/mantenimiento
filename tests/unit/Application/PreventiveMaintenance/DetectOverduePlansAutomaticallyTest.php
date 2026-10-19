@@ -38,6 +38,54 @@ final class DetectOverduePlansAutomaticallyTest extends TestCase
         self::assertSame(1, $notices->saveCount);
     }
 
+    public function testOneBrokenCompanyDoesNotAbortTheOthers(): void
+    {
+        $plans = new AutomaticPartiallyBrokenPlanRepository([
+            5 => new RuntimeException('plan roto'),
+            6 => [$this->annualPlanWithId(12, 6, 21)],
+        ]);
+        $notices = new AutomaticFakeNoticeRepository();
+        $query = new ConsultarVencimientos(
+            $plans,
+            new AutomaticFakeAssetGateway(new EquipmentForPlan(21, 6, 7, true, false, false, new UsoActual(null, null))),
+            new AutomaticFixedClock(),
+            new EvaluadorVencimiento(),
+        );
+        $useCase = new DetectOverduePlansAutomatically(
+            new AutomaticFakeCompanyCatalog([5, 6]),
+            $query,
+            new MaterializarAvisoVencido($notices),
+            new AutomaticFixedClock(),
+        );
+
+        $result = $useCase->execute();
+
+        self::assertSame(2, $result['companies']);
+        self::assertSame(1, $result['failed']);
+        self::assertSame(1, $result['evaluated']);
+        self::assertSame(1, $result['overdue']);
+        self::assertCount(1, $result['notices']);
+        self::assertSame(1, $notices->saveCount);
+    }
+
+    public function testOneUnsaveableNoticeDoesNotAbortTheRestOfTheBatch(): void
+    {
+        $plans = new AutomaticFakePlanRepository([
+            $this->annualPlanWithId(12, 5, 20),
+            $this->annualPlanWithId(13, 5, 21),
+        ]);
+        $notices = new AutomaticPartiallyFailingNoticeRepository();
+        $useCase = $this->useCase($plans, $notices, [5]);
+
+        $result = $useCase->execute();
+
+        self::assertSame(2, $result['evaluated']);
+        self::assertSame(2, $result['overdue']);
+        self::assertSame(1, $result['failed']);
+        self::assertCount(1, $result['notices']);
+        self::assertSame(1, $notices->saveCount);
+    }
+
     public function testProcessesOnlyActiveCompaniesAndActivePlans(): void
     {
         $plans = new AutomaticFakePlanRepository([$this->inactiveAnnualPlan(5, 20)]);
@@ -62,7 +110,7 @@ final class DetectOverduePlansAutomaticallyTest extends TestCase
         self::assertSame([5, [8]], $plans->lastScope);
     }
 
-    private function useCase(AutomaticFakePlanRepository $plans, AutomaticFakeNoticeRepository $notices, array $companies): DetectOverduePlansAutomatically
+    private function useCase(AutomaticFakePlanRepository $plans, MaintenanceNoticeRepository $notices, array $companies): DetectOverduePlansAutomatically
     {
         $query = new ConsultarVencimientos(
             $plans,
@@ -81,8 +129,13 @@ final class DetectOverduePlansAutomaticallyTest extends TestCase
 
     private function annualPlan(int $companyId, int $equipmentId): PlanMantenimiento
     {
+        return $this->annualPlanWithId(12, $companyId, $equipmentId);
+    }
+
+    private function annualPlanWithId(int $planId, int $companyId, int $equipmentId): PlanMantenimiento
+    {
         return PlanMantenimiento::reconstituir(
-            12, $companyId, $equipmentId, 3,
+            $planId, $companyId, $equipmentId, 3,
             null, null, 365,
             null, null, 30,
             null, null, new DateTimeImmutable('2024-01-01'),
@@ -125,6 +178,47 @@ final class AutomaticFakePlanRepository implements PlanMantenimientoRepository
         return array_values(array_filter($this->plans, static fn (PlanMantenimiento $plan): bool => $plan->empresaId() === $companyId && $plan->activo()));
     }
     public function save(PlanMantenimiento $plan, int $actorUserId): int { return (int) $plan->id(); }
+}
+
+final class AutomaticPartiallyBrokenPlanRepository implements PlanMantenimientoRepository
+{
+    /** @param array<int, RuntimeException|list<PlanMantenimiento>> $byCompany */
+    public function __construct(private array $byCompany) {}
+
+    public function findScoped(int $companyId, int $planId, ?array $branchIds, bool $forUpdate = false): ?PlanMantenimiento { return null; }
+    public function existsActive(int $companyId, int $equipmentId, int $serviceTypeId, ?array $branchIds): bool { return false; }
+
+    public function listActiveScoped(int $companyId, ?array $branchIds): array
+    {
+        $value = $this->byCompany[$companyId] ?? [];
+        if ($value instanceof RuntimeException) {
+            throw $value;
+        }
+
+        return $value;
+    }
+
+    public function save(PlanMantenimiento $plan, int $actorUserId): int { return (int) $plan->id(); }
+}
+
+final class AutomaticPartiallyFailingNoticeRepository implements MaintenanceNoticeRepository
+{
+    public int $saveCount = 0;
+
+    public function findByCycleKey(int $companyId, int $planId, string $cycleKey): ?AvisoPlan { return null; }
+    public function findScoped(int $companyId, int $noticeId, ?array $branchIds, bool $forUpdate = false): ?AvisoPlan { return null; }
+    public function pendingForCycle(int $companyId, int $planId, string $claveCiclo): array { return []; }
+
+    public function save(AvisoPlan $notice, ?int $actorUserId): int
+    {
+        if ($notice->planId() === 12) {
+            throw new RuntimeException('No se pudo guardar el aviso de prueba.');
+        }
+
+        ++$this->saveCount;
+
+        return 90 + $this->saveCount;
+    }
 }
 
 final readonly class AutomaticFakeAssetGateway implements PreventiveAssetGateway
