@@ -134,11 +134,17 @@ Frecuencia (campo «Minutos» en Ferozo; cada cinco minutos):
 Comando:
 
 ```bash
-curl -fsS --connect-timeout 10 --max-time 120 -X POST -H "X-Cron-Token: <TOKEN>" "https://vogelconsultoria.com.ar/mantenimiento/internal/cron/notifications/dispatch"
+curl -fsS --connect-timeout 15 --max-time 300 -X POST -H "X-Cron-Token: <TOKEN>" "https://vogelconsultoria.com.ar/mantenimiento/internal/cron/notifications/dispatch"
 ```
 
 Con `alerts.webCronBatchLimit = 25`, cada pasada despacha como máximo un lote
 acotado por canal. Si existe backlog, queda pendiente para la siguiente corrida.
+
+El controlador del cron ejecuta `set_time_limit(0)` e `ignore_user_abort(true)`
+antes del ciclo. Ferozo limita las peticiones web a 60 segundos; cuando la cola
+acumulada hace que una corrida tarde más, sin esas llamadas PHP mata el proceso
+a mitad de camino, no se registra la ejecución y el backlog no se drena nunca.
+La tarea del panel debe usar `--max-time 300` para acompañar ese límite.
 
 La clave de ejecución del ciclo tiene precisión de minuto para permitir doce
 corridas válidas dentro de la misma hora (por ejemplo 07:00, 07:05, 07:10 y

@@ -16,7 +16,7 @@ use App\Domain\WorkOrders\WorkOrderStatus;
 use CodeIgniter\Database\BaseConnection;
 use Config\Database;
 use DateTimeImmutable;
-use LogicException;
+use Throwable;
 
 final class CodeIgniterOperationalNotificationEventSource implements OperationalNotificationEventSource
 {
@@ -138,9 +138,10 @@ final class CodeIgniterOperationalNotificationEventSource implements Operational
         foreach ($rows as $row) {
             // Un solo plan incoherente no puede silenciar el resto del lote (#167).
             // La reconstitucion y la evaluacion van dentro del mismo try a proposito:
-            // EvaluadorVencimiento lanza DomainException (y PlanMantenimiento
-            // InvalidArgumentException), ambas LogicException, y sin este wrapping
-            // una fila inválida abortaria la corrida entera de notificaciones.
+            // EvaluadorVencimiento lanza DomainException, PlanMantenimiento
+            // InvalidArgumentException y una fecha mal formada lanza una excepcion
+            // nativa; sin este wrapping una fila inválida abortaria la corrida
+            // entera de notificaciones.
             try {
                 $plan = PlanMantenimiento::reconstituir(
                     (int) $row['id'], (int) $row['empresa_id'], (int) $row['equipo_id'], (int) $row['tipo_servicio_id'],
@@ -163,7 +164,7 @@ final class CodeIgniterOperationalNotificationEventSource implements Operational
                     'plan_mantenimiento', (string) $row['id'], "{$type}:plan:{$row['id']}:ciclo:{$cycle}",
                     $this->path('mantenimiento/planes') . '?equipo_id=' . (int) $row['equipo_id'], $this->clock->now(),
                 );
-            } catch (LogicException $domainError) {
+            } catch (Throwable $domainError) {
                 log_message('warning', 'Se omitió el plan {plan} de la empresa {company} por datos inválidos: {message}', [
                     'plan' => (int) $row['id'],
                     'company' => (int) $row['empresa_id'],

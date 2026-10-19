@@ -85,6 +85,14 @@ final class NotificationCron extends BaseController
 
     private function dispatchWithToken(?string $provided): ResponseInterface
     {
+        // El ciclo completo (telemetría, recolección y despacho) puede superar el
+        // límite de 60 s del hosting cuando hay backlog. Sin esto, PHP lo mata a
+        // mitad de camino, no se registra la ejecución y la cola nunca se drena.
+        // `ignore_user_abort` evita que un corte del cliente (curl --max-time)
+        // abandone un ciclo que ya está avanzando.
+        @set_time_limit(0);
+        ignore_user_abort(true);
+
         if (! filter_var(env('alerts.webCronEnabled', false), FILTER_VALIDATE_BOOL)) {
             return $this->response->setStatusCode(404)->setJSON(['status' => 'error', 'error' => 'not_found']);
         }
@@ -141,6 +149,9 @@ final class NotificationCron extends BaseController
 
     public function manual(): RedirectResponse
     {
+        @set_time_limit(0);
+        ignore_user_abort(true);
+
         try {
             $result = service('notificationCycle')->execute(null, (int) env('alerts.lockTimeoutSeconds', 900));
             $dispatched = $result['dispatched'];
