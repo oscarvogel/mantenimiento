@@ -65,6 +65,8 @@ final class NotificationWebCronContractTest extends TestCase
         self::assertNotFalse($dispatch);
         self::assertNotFalse($telemetry);
         self::assertLessThan($telemetry, $dispatch);
+        self::assertStringContainsString("alerts.telemetryRefreshMinutes", $cycle);
+        self::assertStringContainsString('Etapa telemetría omitida', $cycle);
     }
 
     public function testCronRouteIsPublicOnlyAtTransportLayerAndManualRouteKeepsSuperadminFilter(): void

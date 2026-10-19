@@ -57,8 +57,10 @@ invocarse el endpoint seguro con `curl`, usando POST y el header
 `X-Cron-Token`.
 
 Este mismo ciclo actualiza telemetría e ingiere el histórico Wialon por buckets
-UTC de cinco minutos. La frecuencia operativa es cada cinco minutos; la clave de
-ejecución tiene precisión de minuto y permite las doce corridas de cada hora.
+UTC de cinco minutos. El ciclo de notificaciones corre cada cinco minutos, pero
+la telemetría se ejecuta cada `alerts.telemetryRefreshMinutes` (15 por defecto)
+y al final del ciclo, después del despacho. La clave de ejecución tiene precisión
+de minuto y permite las doce corridas de cada hora.
 Si una lectura histórica falla o Wialon devuelve una ventana incompleta, el
 cursor de esa unidad no avanza y el siguiente ciclo vuelve a intentar el tramo.
 El refresco actual y la lectura histórica fallan por separado: una falla de
