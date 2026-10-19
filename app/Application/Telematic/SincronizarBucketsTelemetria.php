@@ -18,6 +18,13 @@ final readonly class SincronizarBucketsTelemetria
     private const SOLAPE_SEGUNDOS = 300;
     /** El primer clic sólo consulta el último intervalo de captura. */
     private const VENTANA_INICIAL_SEGUNDOS = 300;
+    /**
+     * Techo por corrida para un cursor atrasado. Sin este límite, después de
+     * una caída el cursor viejo pedía días de mensajes en una sola consulta y
+     * agotaba la memoria del hosting; el cursor no avanzaba y el problema se
+     * repetía. La sincronización avanza de a una hora por ciclo.
+     */
+    private const VENTANA_MAXIMA_SEGUNDOS = 3600;
 
     public function __construct(
         private LectorHistoricoTelemetria $lector,
@@ -62,6 +69,10 @@ final readonly class SincronizarBucketsTelemetria
                 $desde = $this->limiteAlineado($ahoraUtc->modify('-' . self::VENTANA_INICIAL_SEGUNDOS . ' seconds'));
             } else {
                 $desde = $cursor->setTimezone($utc)->modify('-' . self::SOLAPE_SEGUNDOS . ' seconds');
+                $limite = $desde->modify('+' . self::VENTANA_MAXIMA_SEGUNDOS . ' seconds');
+                if ($hasta > $limite) {
+                    $hasta = $limite;
+                }
             }
 
             // Un reloj atrasado o una unidad sin ventana cerrada no puede
