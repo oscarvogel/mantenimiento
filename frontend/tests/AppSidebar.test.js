@@ -34,6 +34,18 @@ describe('AppSidebar', () => {
     expect(wrapper.get('a[aria-current="page"]').text()).toContain('Equipos')
   })
 
+  it('muestra Dashboard de Viajes antes de Maestros en el primer nivel', () => {
+    const tripsNavigation = [
+      { key: 'trips-dashboard', label: 'Dashboard', href: '/viajes', icon: 'truck' },
+      { key: 'trip-masters', label: 'Maestros', href: '/viajes/maestros', icon: 'clipboard-list' },
+    ]
+    const wrapper = mount(AppSidebar, { props: { navigation: tripsNavigation } })
+
+    const primaryLinks = wrapper.findAll('nav > ul > li > a')
+    expect(primaryLinks.map((node) => node.attributes('href'))).toEqual(['/viajes', '/viajes/maestros'])
+    expect(wrapper.find('button[aria-controls="secondary-navigation"]').exists()).toBe(false)
+  })
+
   it('mantiene todas las entradas secundarias accesibles sin perder href', async () => {
     const wrapper = mount(AppSidebar, { props: { navigation } })
 

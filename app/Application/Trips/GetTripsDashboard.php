@@ -17,6 +17,8 @@ use DomainException;
  */
 final class GetTripsDashboard
 {
+    private const TRIPS_PER_PAGE = 20;
+
     public function __construct(
         private readonly TripDashboardReadModel $readModel,
         private readonly TripDistance $distance = new TripDistance(),
@@ -24,15 +26,18 @@ final class GetTripsDashboard
     }
 
     /** @return array<string,mixed> */
-    public function execute(ActorContext $actor, TripDashboardFilters $filters): array
+    public function execute(ActorContext $actor, TripDashboardFilters $filters, int $page = 1): array
     {
         if ($actor->isSuperAdmin() || $actor->companyId() === null || ! $actor->hasPermission('viajes.ver')) {
             throw new DomainException('No tenes permiso para consultar el dashboard de viajes.');
         }
+        if ($page < 1) {
+            throw new DomainException('La pagina de viajes solicitada no es valida.');
+        }
         $companyId = $actor->companyId();
         $branchIds = $actor->hasAllCompanyBranches() ? null : $actor->branchIds();
         if ($branchIds === []) {
-            return $this->payload($filters, [], [], []);
+            return $this->payload($filters, [], [], [], $page);
         }
 
         return $this->payload(
@@ -40,6 +45,7 @@ final class GetTripsDashboard
             $this->readModel->branches($companyId, $branchIds),
             $this->readModel->domains($companyId, $branchIds),
             $this->readModel->trips($companyId, $branchIds, $filters),
+            $page,
         );
     }
 
@@ -50,7 +56,7 @@ final class GetTripsDashboard
      *
      * @return array<string,mixed>
      */
-    private function payload(TripDashboardFilters $filters, array $branches, array $domains, array $rows): array
+    private function payload(TripDashboardFilters $filters, array $branches, array $domains, array $rows, int $page): array
     {
         $summary = [
             'trips' => 0,
@@ -130,12 +136,24 @@ final class GetTripsDashboard
         }, $byDomain));
         usort($domainValues, static fn (array $a, array $b): int => $b['km'] <=> $a['km'] ?: $b['trips'] <=> $a['trips']);
 
+        $totalTrips = count($rows);
+        $pages = max(1, (int) ceil($totalTrips / self::TRIPS_PER_PAGE));
+        $page = min($page, $pages);
+        $recentTrips = $rows;
+        usort($recentTrips, static fn (array $a, array $b): int => strcmp(
+            (string) ($b['fecha_salida'] ?? ''),
+            (string) ($a['fecha_salida'] ?? ''),
+        ) ?: ((int) ($b['id'] ?? 0) <=> (int) ($a['id'] ?? 0)));
+        $recentTrips = array_slice($recentTrips, ($page - 1) * self::TRIPS_PER_PAGE, self::TRIPS_PER_PAGE);
+
         return [
             'filters' => $filters->toArray() + ['branchName' => $this->branchName($branches, $filters->branchId)],
             'options' => ['branches' => $branches, 'domains' => $domains],
             'summary' => $summary,
             'monthly' => $monthlyValues,
             'domains' => $domainValues,
+            'trips' => $recentTrips,
+            'pagination' => ['page' => $page, 'perPage' => self::TRIPS_PER_PAGE, 'total' => $totalTrips, 'pages' => $pages],
             'quality' => [
                 ['key' => 'km', 'label' => 'Viajes con km confiable', 'value' => $summary['km_trips'], 'total' => $summary['trips'], 'tone' => 'success'],
                 ['key' => 'fuel', 'label' => 'Viajes con combustible', 'value' => $summary['fuel_trips'], 'total' => $summary['trips'], 'tone' => 'success'],

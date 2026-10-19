@@ -14,6 +14,10 @@ const options = computed(() => props.data.options ?? { branches: [], domains: []
 const monthly = computed(() => props.data.monthly ?? [])
 const domains = computed(() => props.data.domains ?? [])
 const quality = computed(() => props.data.quality ?? [])
+const trips = computed(() => props.data.trips ?? [])
+const pagination = computed(() => props.data.pagination ?? { page: 1, perPage: 20, total: trips.value.length, pages: 1 })
+const dashboardUrl = computed(() => props.data.links?.index ?? '/viajes')
+const branchLabel = (id) => options.value.branches.find((branch) => Number(branch.id) === Number(id))?.name ?? `Sucursal #${id}`
 const hasTrips = computed(() => Number(summary.value.trips) > 0)
 const maxKm = computed(() => Math.max(...monthly.value.map((month) => Number(month.km) || 0), 1))
 const maxLiters = computed(() => Math.max(...monthly.value.map((month) => Number(month.liters) || 0), 1))
@@ -21,8 +25,20 @@ const consumptionAvailable = computed(() => summary.value.liters_per_100 !== nul
 
 const fmt = (value) => Number(value ?? 0).toLocaleString('es-AR', { maximumFractionDigits: 0 })
 const fmt1 = (value) => Number(value ?? 0).toLocaleString('es-AR', { maximumFractionDigits: 1 })
+const fmtDate = (value) => {
+  const match = String(value ?? '').match(/^(\d{4})-(\d{2})-(\d{2})/)
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : 'Sin fecha'
+}
 const bar = (value, max) => `${Math.max(2, Math.round((Number(value) || 0) / max * 100))}%`
 const qualityTone = { success: 'bg-success', warning: 'bg-warning', danger: 'bg-danger' }
+const pageUrl = (page) => {
+  const query = new URLSearchParams(window.location.search)
+  if (page <= 1) query.delete('pagina')
+  else query.set('pagina', String(page))
+  const suffix = query.toString()
+  return `${dashboardUrl.value}${suffix ? `?${suffix}` : ''}`
+}
+const tripUrl = (id) => `${dashboardUrl.value}/${id}${window.location.search}`
 </script>
 
 <template>
@@ -55,7 +71,7 @@ const qualityTone = { success: 'bg-success', warning: 'bg-warning', danger: 'bg-
         </label>
         <div class="flex flex-wrap gap-2">
           <button type="submit" :class="primaryButton"><ArrowPathIcon class="mr-2 size-4" aria-hidden="true" />Aplicar</button>
-          <a href="/viajes" :class="secondaryButton">Limpiar</a>
+          <a :href="dashboardUrl" :class="secondaryButton">Limpiar</a>
         </div>
       </form>
     </PanelCard>
@@ -156,6 +172,34 @@ const qualityTone = { success: 'bg-success', warning: 'bg-warning', danger: 'bg-
             </tbody>
           </table>
         </div>
+      </PanelCard>
+
+      <PanelCard title="Viajes del período" :count="pagination.total" class="mt-5">
+        <p class="mb-3 text-sm text-ink-muted">Seleccioná un viaje para consultar su recorrido, combustible, gastos y demás datos importados.</p>
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[56rem] text-left text-sm">
+            <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-4 py-3">Salida</th><th class="px-4 py-3">Viaje</th><th class="px-4 py-3">Dominio</th><th class="px-4 py-3">Sucursal</th><th class="px-4 py-3 text-right">Odómetro salida</th><th class="px-4 py-3 text-right">Odómetro regreso</th><th class="px-4 py-3 text-right">Litros</th><th class="px-4 py-3 text-right">Detalle</th></tr></thead>
+            <tbody class="divide-y divide-border-subtle">
+              <tr v-for="trip in trips" :key="trip.id">
+                <td class="whitespace-nowrap px-4 py-3 text-ink-muted">{{ fmtDate(trip.fecha_salida) }}</td>
+                <td class="px-4 py-3 font-semibold text-ink">#{{ fmt(trip.numero_viaje) }}</td>
+                <td class="whitespace-nowrap px-4 py-3 font-mono text-xs text-ink">{{ trip.dominio }}</td>
+                <td class="px-4 py-3 text-ink-muted">{{ branchLabel(trip.sucursal_id) }}</td>
+                <td class="px-4 py-3 text-right text-ink-muted">{{ trip.km_salida === null ? '—' : fmt(trip.km_salida) }}</td>
+                <td class="px-4 py-3 text-right text-ink-muted">{{ trip.km_regreso === null ? '—' : fmt(trip.km_regreso) }}</td>
+                <td class="px-4 py-3 text-right text-ink-muted">{{ fmt1(trip.litros) }}</td>
+                <td class="px-4 py-3 text-right"><a :href="tripUrl(trip.id)" class="font-semibold text-primary hover:text-primary-hover">Ver detalle</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <nav v-if="pagination.pages > 1" aria-label="Paginación de viajes" class="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border-subtle pt-4">
+          <p class="text-xs text-ink-muted">Página {{ pagination.page }} de {{ pagination.pages }} · {{ fmt(pagination.total) }} viajes</p>
+          <div class="flex gap-2">
+            <a :href="pageUrl(pagination.page - 1)" :aria-disabled="pagination.page <= 1" :class="['rounded-lg border border-border px-3 py-2 text-sm font-semibold', pagination.page <= 1 ? 'pointer-events-none opacity-50' : 'text-ink hover:bg-surface-subtle']">Anterior</a>
+            <a :href="pageUrl(pagination.page + 1)" :aria-disabled="pagination.page >= pagination.pages" :class="['rounded-lg border border-border px-3 py-2 text-sm font-semibold', pagination.page >= pagination.pages ? 'pointer-events-none opacity-50' : 'text-ink hover:bg-surface-subtle']">Siguiente</a>
+          </div>
+        </nav>
       </PanelCard>
     </template>
   </div>

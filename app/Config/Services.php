@@ -1003,6 +1003,17 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
         );
     }
 
+    public static function getTripDetail(bool $getShared = true): \App\Application\Trips\GetTripDetail
+    {
+        if ($getShared) {
+            return static::getSharedInstance('getTripDetail');
+        }
+
+        return new \App\Application\Trips\GetTripDetail(
+            new \App\Infrastructure\Trips\CodeIgniterTripDetailReadModel(db_connect()),
+        );
+    }
+
     public static function seedTsaTripMasterCatalogs(bool $getShared = true): \App\Application\TripMasters\SeedTsaTripMasterCatalogs
     {
         if ($getShared) {

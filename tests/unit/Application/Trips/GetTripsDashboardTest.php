@@ -71,6 +71,28 @@ final class GetTripsDashboardTest extends TestCase
         self::assertSame(0, $readModel->tripsCalls);
     }
 
+    public function testPaginatesTripRowsWithoutChangingAggregates(): void
+    {
+        $rows = [];
+        for ($id = 1; $id <= 25; $id++) {
+            $rows[] = ['id' => $id, 'sucursal_id' => 10, 'dominio' => 'AC 532 DD', 'numero_viaje' => $id, 'fecha_salida' => '2022-01-13', 'fecha_regreso' => '2022-01-14', 'km_salida' => 100, 'km_regreso' => 200, 'litros' => 50.0, 'cargas' => 1];
+        }
+        $payload = (new GetTripsDashboard(new FakeTripDashboardReadModel($rows)))
+            ->execute($this->actor(), new TripDashboardFilters(), 2);
+
+        self::assertSame(25, $payload['summary']['trips']);
+        self::assertSame([5, 4, 3, 2, 1], array_column($payload['trips'], 'id'));
+        self::assertSame(['page' => 2, 'perPage' => 20, 'total' => 25, 'pages' => 2], $payload['pagination']);
+    }
+
+    public function testRejectsInvalidTripPage(): void
+    {
+        $useCase = new GetTripsDashboard(new FakeTripDashboardReadModel($this->rows()));
+
+        $this->expectException(DomainException::class);
+        $useCase->execute($this->actor(), new TripDashboardFilters(), 0);
+    }
+
     private function actor(): ActorContext
     {
         return new ActorContext(1, 5, false, true, [], ['viajes.ver'], []);

@@ -25,6 +25,7 @@ import WorkOrdersIndexPage from './WorkOrdersIndexPage.vue'
 import WorkRequestsIndexPage from './WorkRequestsIndexPage.vue'
 import TripMastersPage from './TripMastersPage.vue'
 import TripsDashboardPage from './TripsDashboardPage.vue'
+import TripDetailPage from './TripDetailPage.vue'
 
 export {
   AssetsIndexPage,
@@ -54,6 +55,7 @@ export {
   WorkRequestsIndexPage,
   TripMastersPage,
   TripsDashboardPage,
+  TripDetailPage,
 }
 
 export const operationPageComponents = Object.freeze({
@@ -82,6 +84,7 @@ export const operationPageComponents = Object.freeze({
   'providers-index': ProvidersIndexPage,
   'trip-masters': TripMastersPage,
   'trips-dashboard': TripsDashboardPage,
+  'trip-detail': TripDetailPage,
 })
 
 export function resolveOperationPage(pageType) {

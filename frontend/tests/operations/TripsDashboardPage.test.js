@@ -3,6 +3,7 @@ import { mount } from '@vue/test-utils'
 import TripsDashboardPage from '../../src/pages/operations/TripsDashboardPage.vue'
 
 const data = {
+  links: { index: '/mantenimiento/viajes' },
   filters: { from: '', to: '', branchId: null, domain: null, branchName: null },
   options: { branches: [{ id: 10, code: 'AR', name: 'Argentina' }], domains: ['AC 532 DD'] },
   summary: {
@@ -21,6 +22,8 @@ const data = {
     { key: 'km', label: 'Viajes con km confiable', value: 1620, total: 1740, tone: 'success' },
     { key: 'missing', label: 'Sin lecturas de odometro', value: 90, total: 1740, tone: 'warning' },
   ],
+  trips: [{ id: 10, sucursal_id: 10, dominio: 'AC 532 DD', numero_viaje: 42, fecha_salida: '2026-09-01', km_salida: 1000, km_regreso: 1500, litros: 50 }],
+  pagination: { page: 1, perPage: 20, total: 1, pages: 1 },
 }
 
 describe('dashboard de viajes', () => {
@@ -34,6 +37,9 @@ describe('dashboard de viajes', () => {
     expect(wrapper.text()).toContain('34,6')
     expect(wrapper.get('form').attributes('method')).toBe('get')
     expect(wrapper.text()).toContain('Viajes con km confiable')
+    expect(wrapper.text()).toContain('Viajes del período')
+    expect(wrapper.text()).toContain('01/09/2026')
+    expect(wrapper.get('a[href="/mantenimiento/viajes/10"]').text()).toContain('Ver detalle')
     wrapper.unmount()
   })
 
