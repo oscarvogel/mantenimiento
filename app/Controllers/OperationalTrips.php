@@ -132,9 +132,12 @@ final class OperationalTrips extends BaseController
             log_message('error', 'Falló una operación de viajes: {message}', ['message' => $exception->getMessage()]);
         }
 
-        return redirect()->to($location)->withInput()->with(
-            'error',
-            $exception instanceof DomainException ? $exception->getMessage() : $fallback,
-        );
+        $message = $exception instanceof DomainException
+            ? $exception->getMessage()
+            : (ENVIRONMENT === 'development'
+                ? $fallback . ' ' . $exception->getMessage()
+                : $fallback);
+
+        return redirect()->to($location)->withInput()->with('error', $message);
     }
 }

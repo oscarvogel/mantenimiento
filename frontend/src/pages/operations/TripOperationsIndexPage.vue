@@ -41,6 +41,11 @@ const pageUrl = (page) => {
       </template>
     </PageHeading>
 
+    <p class="mb-5 rounded-xl border border-border bg-surface-raised px-4 py-3 text-sm text-ink-muted">
+      Este listado muestra solo viajes operativos planificados en el sistema. Los viajes importados del ERP anterior se consultan en
+      <a :href="links.history ?? '/viajes'" class="font-semibold text-primary hover:text-primary-hover">Historial</a>.
+    </p>
+
     <PanelCard title="Filtros" class="mb-5">
       <form method="get" class="grid gap-4 md:grid-cols-2 xl:grid-cols-5 xl:items-end">
         <label class="block">
@@ -77,7 +82,7 @@ const pageUrl = (page) => {
     </PanelCard>
 
     <PanelCard v-if="trips.length === 0" title="Viajes">
-      <EmptyState title="Todavía no hay viajes para mostrar" description="Cuando planifiques un viaje vas a ver acá su recorrido, equipo, choferes y estado." />
+      <EmptyState title="Todavía no hay viajes operativos para mostrar" description="Cuando planifiques un viaje vas a ver acá su recorrido, equipo, choferes y estado. Los viajes importados se consultan en Historial." />
       <div v-if="data.canOperate" class="mt-2 text-center">
         <a :href="links.create" :class="primaryButton"><PlusIcon class="mr-2 size-4" aria-hidden="true" />Planificar el primer viaje</a>
       </div>

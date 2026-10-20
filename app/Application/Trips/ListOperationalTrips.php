@@ -70,7 +70,11 @@ final class ListOperationalTrips
             'statusLabels' => self::STATUS_LABELS,
             'trips' => $rows,
             'pagination' => ['page' => $page, 'perPage' => self::PER_PAGE, 'total' => $total, 'pages' => $pages],
-            'links' => ['index' => base_url('viajes/operativos'), 'create' => base_url('viajes/operativos/nuevo')],
+            'links' => [
+                'index' => base_url('viajes/operativos'),
+                'create' => base_url('viajes/operativos/nuevo'),
+                'history' => base_url('viajes'),
+            ],
             'canOperate' => $canOperate,
         ];
     }

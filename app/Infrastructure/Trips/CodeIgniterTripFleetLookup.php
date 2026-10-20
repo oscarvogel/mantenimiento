@@ -26,9 +26,11 @@ final class CodeIgniterTripFleetLookup implements TripFleetLookup
             return null;
         }
 
-        $type = mb_strtolower((string) $row['tipo_nombre']);
+        $type = strtr(mb_strtolower((string) $row['tipo_nombre']), [
+            'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ü' => 'u',
+        ]);
         $trailer = preg_match('/acoplado|semirremolque|remolque|batea/', $type) === 1;
-        $tractor = preg_match('/cami[oó]n|tractor|chasis|cabina|utilitario|pickup/', $type) === 1;
+        $tractor = preg_match('/camion|tractor|chasis|cabina|utilitario|pickup/', $type) === 1;
 
         return [
             'id' => (int) $row['id'],

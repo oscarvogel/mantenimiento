@@ -87,7 +87,7 @@
     "src": "src/assets/platform/trips-card.jpg"
   },
   "src/main.js": {
-    "file": "assets/main-BVXGjo4Q.js",
+    "file": "assets/main-CdL7EbBb.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
@@ -135,7 +135,7 @@
     ]
   },
   "src/profiles/cliente_piloto/profile.js": {
-    "file": "assets/profile-iDhF2EOB.js",
+    "file": "assets/profile-B_F3M8Od.js",
     "name": "profile",
     "src": "src/profiles/cliente_piloto/profile.js",
     "isDynamicEntry": true,
@@ -151,7 +151,7 @@
     ]
   },
   "src/profiles/platform/profile.js": {
-    "file": "assets/profile-BO5eNMO3.js",
+    "file": "assets/profile-DW_WVRNX.js",
     "name": "profile",
     "src": "src/profiles/platform/profile.js",
     "isDynamicEntry": true,
@@ -164,7 +164,7 @@
     ]
   },
   "src/profiles/vogel/profile.js": {
-    "file": "assets/profile-BP5MQWEq.js",
+    "file": "assets/profile-BA_KbO0i.js",
     "name": "profile",
     "src": "src/profiles/vogel/profile.js",
     "isDynamicEntry": true,

@@ -52,7 +52,9 @@ final class CodeIgniterTripFormReadModel implements TripFormReadModel
         $tractors = [];
         $trailers = [];
         foreach ($equipment->get()->getResultArray() as $row) {
-            $type = mb_strtolower((string) $row['tipo_nombre']);
+            $type = strtr(mb_strtolower((string) $row['tipo_nombre']), [
+                'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ü' => 'u',
+            ]);
             $item = [
                 'id' => (int) $row['id'],
                 'label' => $this->equipmentLabel($row),
@@ -62,7 +64,7 @@ final class CodeIgniterTripFormReadModel implements TripFormReadModel
             if (preg_match('/acoplado|semirremolque|remolque|batea/', $type) === 1) {
                 $trailers[] = $item;
             }
-            if (preg_match('/cami[oó]n|tractor|chasis|cabina|utilitario|pickup/', $type) === 1) {
+            if (preg_match('/camion|tractor|chasis|cabina|utilitario|pickup/', $type) === 1) {
                 $tractors[] = $item;
             }
         }

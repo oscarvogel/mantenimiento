@@ -46,7 +46,7 @@ describe('viajes operativos', () => {
   it('muestra estado vacío cuando no hay viajes', () => {
     const wrapper = mount(TripOperationsIndexPage, { props: { data: { ...data, trips: [], pagination: { page: 1, perPage: 20, total: 0, pages: 1 } } } })
 
-    expect(wrapper.text()).toContain('Todavía no hay viajes para mostrar')
+    expect(wrapper.text()).toContain('Todavía no hay viajes operativos para mostrar')
     wrapper.unmount()
   })
 })
