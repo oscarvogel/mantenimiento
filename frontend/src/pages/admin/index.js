@@ -8,12 +8,14 @@ import UsersAdminPage from './UsersAdminPage.vue'
 import UsersAdminWithAuditPage from './UsersAdminWithAuditPage.vue'
 import TelemetrySamplesAdminPage from './TelemetrySamplesAdminPage.vue'
 import TripImportsPage from './TripImportsPage.vue'
+import TripInvoiceReviewPage from './TripInvoiceReviewPage.vue'
 
-export { CustomerImportsPage, BranchesAdminPage, ChatAuditPage, NotificationSettingsPage, SuperAdminPage, SuperAdminDemoPage, TelemetrySamplesAdminPage, TripImportsPage, UsersAdminPage, UsersAdminWithAuditPage }
+export { CustomerImportsPage, BranchesAdminPage, ChatAuditPage, NotificationSettingsPage, SuperAdminPage, SuperAdminDemoPage, TelemetrySamplesAdminPage, TripImportsPage, TripInvoiceReviewPage, UsersAdminPage, UsersAdminWithAuditPage }
 
 export const adminPagesByType = Object.freeze({
   'customer-imports': CustomerImportsPage,
   'trip-imports': TripImportsPage,
+  'trip-invoice-review': TripInvoiceReviewPage,
   superadmin: SuperAdminDemoPage,
   'branches-admin': BranchesAdminPage,
   'users-admin': UsersAdminWithAuditPage,

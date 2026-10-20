@@ -45,11 +45,11 @@ const props = defineProps({
 
 const emit = defineEmits(['close'])
 
-const primaryKeys = ['dashboard', 'trips-dashboard', 'trips-operations', 'trip-masters', 'equipment', 'fleet-telemetry', 'reading-control', 'maintenance', 'plans', 'reports']
+const primaryKeys = ['dashboard', 'trips-dashboard', 'trips-operations', 'trips-profitability', 'trip-masters', 'equipment', 'fleet-telemetry', 'reading-control', 'maintenance', 'plans', 'reports']
 const fleetConsumption = computed(() => props.navigation.find((item) => item.key === 'fleet-consumption'))
 const isPlatformNavigation = computed(() => props.navigation.some((item) => item.key === 'platform-home'))
 const isManagerialNavigation = computed(() => props.navigation.some((item) => item.key === 'managerial-cost-km'))
-const isTripNavigation = computed(() => props.navigation.some((item) => ['trip-masters', 'trips-dashboard', 'trips-operations'].includes(item.key)))
+const isTripNavigation = computed(() => props.navigation.some((item) => ['trip-masters', 'trips-dashboard', 'trips-operations', 'trips-profitability'].includes(item.key)))
 
 const primaryNavigation = computed(() => (
   isPlatformNavigation.value || isManagerialNavigation.value

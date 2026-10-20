@@ -36,6 +36,8 @@ final class LegacyTransportPackage
         't11_cuenta_corriente_x_viaje',
         't12_cuenta_corriente_origenes_destinos_por_viaje',
         't13_otros_haberes_por_viaje',
+        'a18_comprobantes_de_venta',
+        'a19_detalle_comprobantes_de_venta',
     ];
 
     /** Columnas que el importador necesita de cada tabla. Si falta alguna, se rechaza. */
@@ -47,6 +49,22 @@ final class LegacyTransportPackage
         't11_cuenta_corriente_x_viaje' => ['cuit_empresa', 'dominio', 'numero_viaje', 'item'],
         't12_cuenta_corriente_origenes_destinos_por_viaje' => ['cuit_empresa', 'dominio', 'numero_viaje', 'item', 'sub_item'],
         't13_otros_haberes_por_viaje' => ['cuit_empresa', 'dominio', 'numero_viaje', 'item'],
+    ];
+
+    /**
+     * Facturacion historica. Es opcional para no romper paquetes viejos, pero si
+     * la tabla viene en el ZIP debe cumplir el contrato completo.
+     */
+    public const CONTRATO_FACTURACION = [
+        'a18_comprobantes_de_venta' => [
+            'clave', 'tipo_de_comprobante', 'desc_tipo', 'punto_venta', 'nro_comprobante',
+            'fecha', 'total', 'moneda', 'cotizacion', 'cuit_empresa', 'codigo_cliente',
+            'subtotal', 'iva', 'impuestos', 'dgr', 'cae',
+        ],
+        'a19_detalle_comprobantes_de_venta' => [
+            'clave', 'item', 'nombre', 'cantidad', 'precio_de_venta', 'iva',
+            'codigo_articulo', 'codigo_alternativo',
+        ],
     ];
 
     private \ZipArchive $zip;
@@ -156,6 +174,23 @@ final class LegacyTransportPackage
                 if (!in_array($columna, $columnas, true)) {
                     throw new \RuntimeException(
                         'La tabla ' . $tabla . ' no trae la columna requerida ' . $columna
+                    );
+                }
+            }
+        }
+
+        foreach (self::CONTRATO_FACTURACION as $tabla => $requeridas) {
+            if (!isset($this->tablas[$tabla])) {
+                continue;
+            }
+            $columnas = array_map(
+                static fn ($c) => (string) $c,
+                (array) ($this->tablas[$tabla]['columnas'] ?? [])
+            );
+            foreach ($requeridas as $columna) {
+                if (!in_array($columna, $columnas, true)) {
+                    throw new \RuntimeException(
+                        'La tabla de facturacion ' . $tabla . ' no trae la columna requerida ' . $columna
                     );
                 }
             }

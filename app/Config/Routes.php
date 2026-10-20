@@ -28,6 +28,7 @@ $routes->get('inicio', 'CommandCenter::index', ['filter' => 'auth']);
 // Dashboard de viajes: lectura del historico importado, con scope de empresa y sucursal.
 $routes->get('viajes', 'TripsDashboard::index', ['filter' => ['auth', 'permission:viajes.ver']]);
 $routes->get('viajes/(:num)', 'TripsDashboard::detail/$1', ['filter' => ['auth', 'permission:viajes.ver']]);
+$routes->get('viajes/rentabilidad', 'TripProfitability::index', ['filter' => ['auth', 'permission:viajes.ver']]);
 
 // Viajes operativos: planificación, inicio y cancelación con scope de empresa y sucursal.
 $routes->get('viajes/operativos', 'OperationalTrips::index', ['filter' => ['auth', 'permission:viajes.ver']]);
@@ -95,6 +96,10 @@ $routes->group('superadmin', ['filter' => 'superadmin'], static function ($route
     $routes->post('viajes/importaciones/(:num)/sucursales', 'TripImports::assignBranches/$1');
     $routes->post('viajes/importaciones/(:num)/confirmar', 'TripImports::confirm/$1');
     $routes->post('viajes/importaciones/(:num)/cancelar', 'TripImports::cancel/$1');
+    $routes->get('viajes/importaciones/(:num)/facturas', 'TripInvoiceReview::index/$1');
+    $routes->get('viajes/importaciones/(:num)/facturas/buscar', 'TripInvoiceReview::searchTrips/$1');
+    $routes->post('viajes/importaciones/(:num)/facturas/(:num)/viaje', 'TripInvoiceReview::assign/$1/$2');
+    $routes->post('viajes/importaciones/(:num)/facturas/(:num)/desvincular', 'TripInvoiceReview::unassign/$1/$2');
     $routes->get('', 'SuperAdmin::index');
     $routes->get('telemetria/muestras/exportar', 'AdminTelemetrySamples::export');
     $routes->get('telemetria/muestras', 'AdminTelemetrySamples::index');

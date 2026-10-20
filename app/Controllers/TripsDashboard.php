@@ -24,6 +24,7 @@ final class TripsDashboard extends BaseController
             $dashboard['links'] = [
                 'index' => base_url('viajes'),
                 'operational' => base_url('viajes/operativos'),
+                'profitability' => base_url('viajes/rentabilidad'),
             ];
 
             return $this->renderApp(

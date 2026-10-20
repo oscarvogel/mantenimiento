@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { ArrowPathIcon, ExclamationTriangleIcon, TruckIcon } from '@heroicons/vue/24/outline'
+import { ArrowPathIcon, ChartBarSquareIcon, ExclamationTriangleIcon, TruckIcon } from '@heroicons/vue/24/outline'
 import EmptyState from './components/EmptyState.vue'
 import PageHeading from './components/PageHeading.vue'
 import PanelCard from './components/PanelCard.vue'
@@ -56,6 +56,7 @@ const domainUrl = (domain) => {
   <div>
     <PageHeading eyebrow="Viajes" title="Historial de viajes" description="Listado del historial importado, con actividad, kilometraje y combustible. Los costos quedan fuera hasta definir la moneda de origen.">
       <template #actions>
+        <a :href="props.data.links?.profitability ?? '/viajes/rentabilidad'" :class="secondaryButton"><ChartBarSquareIcon class="mr-2 size-4" aria-hidden="true" />Rentabilidad</a>
         <a :href="props.data.links?.operational ?? '/viajes/operativos'" :class="primaryButton"><TruckIcon class="mr-2 size-4" aria-hidden="true" />Viajes operativos</a>
       </template>
     </PageHeading>

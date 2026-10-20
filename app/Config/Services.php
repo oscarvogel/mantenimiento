@@ -251,10 +251,38 @@ class Services extends BaseService
         return new \App\Application\TripImports\TripImports(
             new \App\Infrastructure\TripImports\LegacyTripPackageReader(),
             new \App\Infrastructure\TripImports\LegacyTripRowMapper(),
+            new \App\Infrastructure\TripImports\LegacyTripInvoiceMapper(),
+            new \App\Application\TripImports\InvoiceTripMatcher(),
             new \App\Infrastructure\TripImports\CodeIgniterTripImportStore($db),
             static::privateImportStorage(),
             new \App\Infrastructure\Importations\CodeIgniterImportUnitOfWork($db),
             new \App\Domain\TripImports\TripBranchClassifier(),
+        );
+    }
+
+    public static function invoiceReviewReadModel(bool $getShared = true): \App\Infrastructure\TripImports\CodeIgniterInvoiceReviewReadModel
+    {
+        if ($getShared) {
+            return static::getSharedInstance('invoiceReviewReadModel');
+        }
+
+        return new \App\Infrastructure\TripImports\CodeIgniterInvoiceReviewReadModel(
+            db_connect(),
+            new \App\Application\TripImports\InvoiceTripMatcher(),
+        );
+    }
+
+    public static function reviewTripInvoices(bool $getShared = true): \App\Application\TripImports\ReviewTripInvoices
+    {
+        if ($getShared) {
+            return static::getSharedInstance('reviewTripInvoices');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\TripImports\ReviewTripInvoices(
+            static::invoiceReviewReadModel(false),
+            new \App\Infrastructure\TripImports\CodeIgniterTripImportStore($db),
         );
     }
 
@@ -1000,6 +1028,17 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
 
         return new \App\Application\Trips\GetTripsDashboard(
             new \App\Infrastructure\Trips\CodeIgniterTripDashboardReadModel(db_connect()),
+        );
+    }
+
+    public static function getTripProfitability(bool $getShared = true): \App\Application\Trips\GetTripProfitability
+    {
+        if ($getShared) {
+            return static::getSharedInstance('getTripProfitability');
+        }
+
+        return new \App\Application\Trips\GetTripProfitability(
+            new \App\Infrastructure\Trips\CodeIgniterTripProfitabilityReadModel(db_connect()),
         );
     }
 

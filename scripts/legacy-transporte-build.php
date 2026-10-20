@@ -50,6 +50,9 @@ const ALCANCE_VIAJES = [
     't11_cuenta_corriente_x_viaje' => 'viaje',
     't12_cuenta_corriente_origenes_destinos_por_viaje' => 'viaje',
     't13_otros_haberes_por_viaje' => 'viaje',
+    // facturacion historica de solo lectura, para analisis de rentabilidad
+    'a18_comprobantes_de_venta' => 'facturacion',
+    'a19_detalle_comprobantes_de_venta' => 'facturacion',
     // maestras referenciadas por el agregado
     't02_dominios' => 'maestra',
     't10_dominios_por_empresa' => 'maestra',
@@ -97,7 +100,7 @@ if (!class_exists(ZipArchive::class)) {
     exit(2);
 }
 
-$version = '1.0.0';
+$version = '1.1.0';
 $totalTablas = 0;
 $totalFilas = 0;
 $salidas = [];

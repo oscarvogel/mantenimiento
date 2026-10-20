@@ -29,6 +29,7 @@ import TripDetailPage from './TripDetailPage.vue'
 import TripOperationsIndexPage from './TripOperationsIndexPage.vue'
 import TripOperationsCreatePage from './TripOperationsCreatePage.vue'
 import TripOperationsDetailPage from './TripOperationsDetailPage.vue'
+import TripProfitabilityPage from './TripProfitabilityPage.vue'
 
 export {
   AssetsIndexPage,
@@ -62,6 +63,7 @@ export {
   TripOperationsIndexPage,
   TripOperationsCreatePage,
   TripOperationsDetailPage,
+  TripProfitabilityPage,
 }
 
 export const operationPageComponents = Object.freeze({
@@ -94,6 +96,7 @@ export const operationPageComponents = Object.freeze({
   'trips-operations': TripOperationsIndexPage,
   'trip-operations-create': TripOperationsCreatePage,
   'trip-operations-detail': TripOperationsDetailPage,
+  'trips-profitability': TripProfitabilityPage,
 })
 
 export function resolveOperationPage(pageType) {

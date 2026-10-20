@@ -9,6 +9,7 @@ use App\Application\Importations\Port\ImportUnitOfWork;
 use App\Application\Importations\Port\PrivateImportFileStorage;
 use App\Application\Importations\StoredImportFile;
 use App\Application\TripImports\Port\TripImportStore;
+use App\Application\TripImports\Port\TripInvoiceMapper;
 use App\Application\TripImports\Port\TripPackage;
 use App\Application\TripImports\Port\TripPackageReader;
 use App\Application\TripImports\Port\TripRowMapper;
@@ -32,9 +33,16 @@ final class TripImports
         't13_otros_haberes_por_viaje' => 'viaje_otros_haberes',
     ];
 
+    public const INVOICE_TABLES = [
+        'a18_comprobantes_de_venta',
+        'a19_detalle_comprobantes_de_venta',
+    ];
+
     public function __construct(
         private readonly TripPackageReader $packages,
         private readonly TripRowMapper $mapper,
+        private readonly TripInvoiceMapper $invoiceMapper,
+        private readonly InvoiceTripMatcher $matcher,
         private readonly TripImportStore $store,
         private readonly PrivateImportFileStorage $files,
         private readonly ImportUnitOfWork $transaction,
@@ -243,6 +251,85 @@ final class TripImports
                 }
                 $childrenSkipped = max(0, $childrenSeen - $childrenInserted - $orphans - $childErrors);
 
+                $invoiceResult = [
+                    'available' => false,
+                    'invoices_inserted' => 0,
+                    'invoice_lines_inserted' => 0,
+                    'auto_matches' => 0,
+                    'review_matches' => 0,
+                ];
+                if (($analysis['summary']['invoices']['available'] ?? false) === true) {
+                    $existingInvoices = $this->store->existingInvoiceMap($companyId);
+                    $invoiceIds = [];
+                    $invoicesInserted = 0;
+                    foreach ($analysis['invoices'] as $invoice) {
+                        if (isset($existingInvoices[$invoice->key])) {
+                            $invoiceIds[$invoice->key] = $existingInvoices[$invoice->key];
+                            continue;
+                        }
+                        $invoiceIds[$invoice->key] = $this->store->insertInvoice($invoice->data + [
+                            'empresa_id' => $companyId,
+                            'importacion_id' => $importId,
+                            'created_at' => $now,
+                        ]);
+                        $invoicesInserted++;
+                    }
+
+                    $lineRows = [];
+                    foreach ($analysis['invoice_lines'] as $line) {
+                        $facturaId = $invoiceIds[$line->invoiceKey] ?? null;
+                        if ($facturaId === null) {
+                            continue;
+                        }
+                        $lineRows[] = $line->data + [
+                            'factura_id' => $facturaId,
+                            'empresa_id' => $companyId,
+                            'created_at' => $now,
+                        ];
+                    }
+                    $linesInserted = $this->store->insertInvoiceLines($lineRows);
+
+                    $autoMatches = 0;
+                    $reviewMatches = 0;
+                    foreach ($analysis['invoice_matches'] as $invoiceKey => $match) {
+                        $facturaId = $invoiceIds[(int) $invoiceKey] ?? null;
+                        $tripKey = (string) ($match['trip_key'] ?? '');
+                        $viajeId = $tripIds[$tripKey] ?? null;
+                        if ($facturaId === null || $viajeId === null) {
+                            continue;
+                        }
+                        $confidence = (string) ($match['confidence'] ?? 'BAJA');
+                        $state = $confidence === 'ALTA' ? 'AUTO' : 'SUGERIDA';
+                        $this->store->linkInvoice([
+                            'factura_id' => $facturaId,
+                            'viaje_id' => $viajeId,
+                            'empresa_id' => $companyId,
+                            'sucursal_id' => $tripBranch[$tripKey] ?? null,
+                            'estado' => $state,
+                            'confianza' => $confidence,
+                            'puntaje' => (int) ($match['score'] ?? 0),
+                            'metodo' => (string) ($match['method'] ?? 'UNIDAD_FECHA_RUTA_IMPORTE'),
+                            'created_at' => $now,
+                            'updated_at' => $now,
+                            'created_by' => $actor->userId(),
+                            'updated_by' => $actor->userId(),
+                        ]);
+                        if ($state === 'AUTO') {
+                            $autoMatches++;
+                        } else {
+                            $reviewMatches++;
+                        }
+                    }
+
+                    $invoiceResult = [
+                        'available' => true,
+                        'invoices_inserted' => $invoicesInserted,
+                        'invoice_lines_inserted' => $linesInserted,
+                        'auto_matches' => $autoMatches,
+                        'review_matches' => $reviewMatches,
+                    ];
+                }
+
                 $result = [
                     'inserted' => $inserted,
                     'skipped' => $skipped,
@@ -250,6 +337,7 @@ final class TripImports
                     'children_skipped' => $childrenSkipped,
                     'orphans' => $orphans,
                     'child_errors' => $childErrors,
+                    'invoices' => $invoiceResult,
                 ];
                 $summary['result'] = $result;
                 $summary['confirmed_at'] = $now;
@@ -334,6 +422,7 @@ final class TripImports
         $childrenOrphan = 0;
         $childrenError = 0;
         $childDetails = [];
+        $segmentsByTrip = [];
 
         foreach (self::CHILD_TABLES as $legacyTable => $destination) {
             $declared = $package->declaredRows($legacyTable);
@@ -352,6 +441,14 @@ final class TripImports
                     }
                 }
                 $child = $this->mapper->child($legacyTable, $row);
+                if ($legacyTable === 't06_origenes_destinos_por_viaje' && $child->tripKey !== '' && $child->errors === []) {
+                    $segmentsByTrip[$child->tripKey][] = [
+                        'origin' => (string) ($child->data['descripcion_origen'] ?? ''),
+                        'destination' => (string) ($child->data['descripcion_destino'] ?? ''),
+                        'amount' => (float) ($child->data['importe'] ?? 0),
+                        'date' => (string) ($child->data['fecha_salida'] ?? ''),
+                    ];
+                }
                 if ($child->tripKey === '') {
                     $tableOrphan++;
                     $this->addIssue(
@@ -430,6 +527,8 @@ final class TripImports
                 'error' => $tableError,
             ];
         }
+
+        $invoiceAnalysis = $this->analyzeInvoices($package, $trips, $segmentsByTrip, $issues, $issueCounts);
 
         $domainCountry = [];
         foreach ($domainText as $domain => $text) {
@@ -589,6 +688,7 @@ final class TripImports
             'branch_names' => [],
             'issues' => $issues,
             'issue_counts' => $issueCounts,
+            'invoices' => $invoiceAnalysis['summary'],
             'can_confirm' => $issueCounts[TripIssue::ERROR] === 0 && $newTotal === 0,
         ];
 
@@ -603,6 +703,169 @@ final class TripImports
             ],
             'trips' => $trips,
             'domain_country' => $domainCountry,
+            'invoices' => $invoiceAnalysis['invoices'],
+            'invoice_lines' => $invoiceAnalysis['lines'],
+            'invoice_matches' => $invoiceAnalysis['matches'],
+        ];
+    }
+
+    /**
+     * @param list<TripRow> $trips
+     * @param array<string,list<array{origin:string,destination:string,amount:float,date:string}>> $segmentsByTrip
+     * @param list<array<string,string>> $issues
+     * @param array<string,int> $issueCounts
+     * @return array{summary:array<string,mixed>,invoices:list<TripInvoiceRow>,lines:list<TripInvoiceLineRow>,matches:array<int,array<string,mixed>>}
+     */
+    private function analyzeInvoices(TripPackage $package, array $trips, array $segmentsByTrip, array &$issues, array &$issueCounts): array
+    {
+        $empty = [
+            'available' => false,
+            'total' => 0,
+            'valid' => 0,
+            'lines' => 0,
+            'with_unit' => 0,
+            'auto_matches' => 0,
+            'review_matches' => 0,
+            'unmatched' => 0,
+            'errors' => 0,
+        ];
+
+        foreach (self::INVOICE_TABLES as $table) {
+            if (! $package->hasTable($table)) {
+                $this->addIssue(
+                    $issues,
+                    $issueCounts,
+                    TripIssue::WARNING,
+                    'a18_comprobantes_de_venta',
+                    '',
+                    'facturacion',
+                    'El paquete no trae facturacion historica; los viajes se pueden importar, pero no se podra analizar rentabilidad.',
+                );
+
+                return ['summary' => $empty, 'invoices' => [], 'lines' => [], 'matches' => []];
+            }
+        }
+
+        $invoices = [];
+        $candidates = [];
+        $invoiceErrors = 0;
+        foreach ($package->rows('a18_comprobantes_de_venta') as $row) {
+            $invoice = $this->invoiceMapper->invoice($row);
+            if ($invoice->key <= 0 || $invoice->errors !== []) {
+                $invoiceErrors++;
+                foreach ($invoice->errors as $error) {
+                    $this->addIssue(
+                        $issues,
+                        $issueCounts,
+                        TripIssue::WARNING,
+                        'a18_comprobantes_de_venta',
+                        (string) $invoice->key,
+                        $error['field'],
+                        'Se omite la factura: ' . $error['message'],
+                    );
+                }
+                continue;
+            }
+            $invoices[] = $invoice;
+            $candidates[$invoice->key] = [
+                'key' => $invoice->key,
+                'unit' => null,
+                'origin' => null,
+                'destination' => null,
+                'total' => (float) ($invoice->data['total_ars'] ?? $invoice->data['total'] ?? 0),
+                'date' => (string) ($invoice->data['fecha'] ?? ''),
+            ];
+        }
+
+        $lines = [];
+        $lineErrors = 0;
+        foreach ($package->rows('a19_detalle_comprobantes_de_venta') as $row) {
+            $line = $this->invoiceMapper->line($row);
+            if ($line->errors !== []) {
+                $lineErrors++;
+                foreach ($line->errors as $error) {
+                    $this->addIssue(
+                        $issues,
+                        $issueCounts,
+                        TripIssue::WARNING,
+                        'a19_detalle_comprobantes_de_venta',
+                        (string) $line->invoiceKey,
+                        $error['field'],
+                        'Se omite la linea de factura: ' . $error['message'],
+                    );
+                }
+                continue;
+            }
+            $lines[] = $line;
+            if (! isset($candidates[$line->invoiceKey])) {
+                continue;
+            }
+            $unit = trim((string) ($line->data['unidad_origen'] ?? ''));
+            $origin = trim((string) ($line->data['origen_texto'] ?? ''));
+            $destination = trim((string) ($line->data['destino_texto'] ?? ''));
+            if ($unit !== '') {
+                $candidates[$line->invoiceKey]['unit'] = $unit;
+            }
+            if ($origin !== '') {
+                $candidates[$line->invoiceKey]['origin'] = $origin;
+            }
+            if ($destination !== '') {
+                $candidates[$line->invoiceKey]['destination'] = $destination;
+            }
+        }
+
+        $tripCandidates = [];
+        foreach ($trips as $trip) {
+            if ($trip->key === '' || $trip->errors !== []) {
+                continue;
+            }
+            $tripCandidates[$trip->key] = [
+                'key' => $trip->key,
+                'domain' => $trip->domain,
+                'date' => (string) ($trip->data['fecha_salida'] ?? ''),
+                'segments' => $segmentsByTrip[$trip->key] ?? [],
+            ];
+        }
+
+        $matching = $this->matcher->match($tripCandidates, array_values($candidates));
+        $auto = 0;
+        $review = 0;
+        foreach ($matching['matches'] as $match) {
+            if (($match['confidence'] ?? '') === 'ALTA') {
+                $auto++;
+            } else {
+                $review++;
+            }
+        }
+        foreach ($matching['unmatched'] as $key => $reason) {
+            $this->addIssue(
+                $issues,
+                $issueCounts,
+                TripIssue::WARNING,
+                'a18_comprobantes_de_venta',
+                (string) $key,
+                'vinculo',
+                'Factura sin vinculo automatico: ' . $reason . '. Se puede revisar despues de importar.',
+            );
+        }
+
+        $withUnit = count(array_filter($candidates, static fn (array $candidate): bool => $candidate['unit'] !== null));
+
+        return [
+            'summary' => [
+                'available' => true,
+                'total' => count($invoices),
+                'valid' => count($invoices),
+                'lines' => count($lines),
+                'with_unit' => $withUnit,
+                'auto_matches' => $auto,
+                'review_matches' => $review,
+                'unmatched' => count($matching['unmatched']),
+                'errors' => $invoiceErrors + $lineErrors,
+            ],
+            'invoices' => $invoices,
+            'lines' => $lines,
+            'matches' => $matching['matches'],
         ];
     }
 

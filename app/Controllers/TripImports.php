@@ -144,6 +144,7 @@ final class TripImports extends BaseController
             'branches' => $show === null ? null : $show . '/sucursales',
             'confirm' => $show === null ? null : $show . '/confirmar',
             'cancel' => $show === null ? null : $show . '/cancelar',
+            'reviewInvoices' => $show === null ? null : $show . '/facturas',
             'superadmin' => base_url('superadmin'),
             'portal' => base_url('inicio'),
         ];
