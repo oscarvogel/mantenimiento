@@ -39,6 +39,37 @@ describe('alta de viaje operativo', () => {
     wrapper.unmount()
   })
 
+  it('repuebla el formulario con el input anterior', () => {
+    const wrapper = mount(TripOperationsCreatePage, {
+      props: {
+        data: {
+          ...data,
+          old: {
+            sucursal_id: '10',
+            fecha_salida_planificada: '2026-10-20T08:00',
+            fecha_regreso_planificada: '2026-10-21T18:00',
+            tractor_id: '7',
+            acoplado_id: '9',
+            choferes: ['11'],
+            observaciones: 'Carga programada',
+            paradas: [
+              { tipo: 'CARGA', ubicacion: 'Rosario', cliente_id: '3', domicilio_id: '4', cantidad: '30', unidad_carga_id: '2', descripcion_carga: 'Soja' },
+              { tipo: 'DESCARGA', ubicacion: 'Córdoba' },
+            ],
+          },
+        },
+      },
+    })
+
+    expect(wrapper.get('select[name="sucursal_id"]').element.value).toBe('10')
+    expect(wrapper.get('input[name="fecha_salida_planificada"]').element.value).toBe('2026-10-20T08:00')
+    expect(wrapper.get('select[name="tractor_id"]').element.value).toBe('7')
+    expect(wrapper.get('select[name="paradas[0][domicilio_id]"]').element.value).toBe('4')
+    expect(wrapper.get('textarea[name="observaciones"]').element.value).toBe('Carga programada')
+    expect(wrapper.findAll('article')).toHaveLength(2)
+    wrapper.unmount()
+  })
+
   it('filtra los domicilios por cliente seleccionado', async () => {
     const wrapper = mount(TripOperationsCreatePage, { props: { data } })
     const addressSelect = wrapper.get('select[name="paradas[0][domicilio_id]"]')

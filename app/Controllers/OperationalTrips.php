@@ -34,7 +34,10 @@ final class OperationalTrips extends BaseController
     {
         try {
             $payload = service('tripFormOptions')->execute($this->actor());
-            $payload['old'] = old();
+            $oldInput = session('_ci_old_input');
+            $payload['old'] = is_array($oldInput) && is_array($oldInput['post'] ?? null)
+                ? $oldInput['post']
+                : [];
 
             return $this->renderApp($this->actor(), 'trips-operations', 'trip-operations-create', 'Nuevo viaje', $payload);
         } catch (Throwable $exception) {
