@@ -68,6 +68,7 @@ final class LegacyTripInvoiceMapper implements TripInvoiceMapper
         $data['origen_texto'] = $this->match($name, '/^ORIGEN:\s*(.+)$/i', 200);
         $data['destino_texto'] = $this->match($name, '/^DESTINO:\s*(.+)$/i', 200);
         $data['remitos_texto'] = $this->match($name, '/REMITOS?:\s*(.+)$/i', 200);
+        unset($data['clave_legacy']);
 
         return new TripInvoiceLineRow(is_int($key) ? $key : 0, $data, $errors, $warnings);
     }

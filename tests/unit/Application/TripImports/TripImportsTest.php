@@ -170,6 +170,8 @@ final class TripImportsTest extends TestCase
 
         self::assertSame(1, $result['invoices']['invoices_inserted']);
         self::assertSame(4, $result['invoices']['invoice_lines_inserted']);
+        self::assertArrayNotHasKey('clave_legacy', $this->store->invoiceLines[0]);
+        self::assertArrayHasKey('factura_id', $this->store->invoiceLines[0]);
         self::assertSame(1, $result['invoices']['auto_matches']);
         self::assertCount(1, $this->store->invoiceLinks);
         self::assertSame('AUTO', $this->store->invoiceLinks[0]['estado']);
