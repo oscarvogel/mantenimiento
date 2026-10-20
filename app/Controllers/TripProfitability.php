@@ -22,7 +22,7 @@ final class TripProfitability extends BaseController
             $page = $requestedPage === false || $requestedPage === null ? 1 : $requestedPage;
             $payload = service('getTripProfitability')->execute($actor, $filters, $page);
 
-            return $this->renderApp($actor, 'trips-profitability', 'trip-profitability', 'Rentabilidad de viajes', $payload);
+            return $this->renderApp($actor, 'trips-profitability', 'trips-profitability', 'Rentabilidad de viajes', $payload);
         } catch (Throwable $exception) {
             if (! $exception instanceof DomainException) {
                 log_message('error', 'Falló el análisis de rentabilidad de viajes ({exceptionClass}).', [
