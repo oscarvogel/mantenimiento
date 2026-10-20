@@ -1,17 +1,17 @@
 {
-  "_admin-BGXTx11A.js": {
-    "file": "assets/admin-BGXTx11A.js",
+  "_admin-JfnhqNcd.js": {
+    "file": "assets/admin-JfnhqNcd.js",
     "name": "admin",
     "imports": [
-      "_vendor-BxIk-6hK.js"
+      "_vendor-CnupCAIA.js"
     ]
   },
-  "_chatbot-CV8yDx4q.js": {
-    "file": "assets/chatbot-CV8yDx4q.js",
+  "_chatbot-CKnanQ50.js": {
+    "file": "assets/chatbot-CKnanQ50.js",
     "name": "chatbot",
     "isDynamicEntry": true,
     "imports": [
-      "_vendor-BxIk-6hK.js"
+      "_vendor-CnupCAIA.js"
     ],
     "css": [
       "assets/chatbot-p1890OXW.css"
@@ -21,20 +21,20 @@
     "file": "assets/chatbot-p1890OXW.css",
     "src": "_chatbot-p1890OXW.css"
   },
-  "_reports-BUpUEjTe.js": {
-    "file": "assets/reports-BUpUEjTe.js",
+  "_reports-c6wdlDAn.js": {
+    "file": "assets/reports-c6wdlDAn.js",
     "name": "reports",
     "imports": [
-      "_admin-BGXTx11A.js",
-      "_vendor-BxIk-6hK.js"
+      "_admin-JfnhqNcd.js",
+      "_vendor-CnupCAIA.js"
     ]
   },
   "_vendor-BTrKGrB8.css": {
     "file": "assets/vendor-BTrKGrB8.css",
     "src": "_vendor-BTrKGrB8.css"
   },
-  "_vendor-BxIk-6hK.js": {
-    "file": "assets/vendor-BxIk-6hK.js",
+  "_vendor-CnupCAIA.js": {
+    "file": "assets/vendor-CnupCAIA.js",
     "name": "vendor",
     "css": [
       "assets/vendor-BTrKGrB8.css"
@@ -87,18 +87,18 @@
     "src": "src/assets/platform/trips-card.jpg"
   },
   "src/main.js": {
-    "file": "assets/main-CdL7EbBb.js",
+    "file": "assets/main-omPGSg0E.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
     "imports": [
-      "_vendor-BxIk-6hK.js",
-      "_chatbot-CV8yDx4q.js",
-      "_admin-BGXTx11A.js",
-      "_reports-BUpUEjTe.js"
+      "_vendor-CnupCAIA.js",
+      "_chatbot-CKnanQ50.js",
+      "_admin-JfnhqNcd.js",
+      "_reports-c6wdlDAn.js"
     ],
     "dynamicImports": [
-      "_chatbot-CV8yDx4q.js",
+      "_chatbot-CKnanQ50.js",
       "src/pages/operations/components/FleetTelemetryMap.vue",
       "node_modules/gsap/index.js",
       "src/profiles/platform/profile.js",
@@ -106,7 +106,7 @@
       "src/profiles/cliente_piloto/profile.js"
     ],
     "css": [
-      "assets/main-D2Vl9kju.css"
+      "assets/main-wdda230f.css"
     ],
     "assets": [
       "assets/portal-hero-Dd-Ff3YR.jpg",
@@ -122,58 +122,58 @@
     ]
   },
   "src/pages/operations/components/FleetTelemetryMap.vue": {
-    "file": "assets/FleetTelemetryMap-Cx9rvKyl.js",
+    "file": "assets/FleetTelemetryMap-CT_3jIY1.js",
     "name": "FleetTelemetryMap",
     "src": "src/pages/operations/components/FleetTelemetryMap.vue",
     "isDynamicEntry": true,
     "imports": [
-      "_vendor-BxIk-6hK.js",
-      "_chatbot-CV8yDx4q.js"
+      "_vendor-CnupCAIA.js",
+      "_chatbot-CKnanQ50.js"
     ],
     "css": [
       "assets/FleetTelemetryMap-eJHHeTQZ.css"
     ]
   },
   "src/profiles/cliente_piloto/profile.js": {
-    "file": "assets/profile-B_F3M8Od.js",
+    "file": "assets/profile-DiFLJLjn.js",
     "name": "profile",
     "src": "src/profiles/cliente_piloto/profile.js",
     "isDynamicEntry": true,
     "imports": [
       "src/main.js",
-      "_vendor-BxIk-6hK.js",
-      "_chatbot-CV8yDx4q.js",
-      "_admin-BGXTx11A.js",
-      "_reports-BUpUEjTe.js"
+      "_vendor-CnupCAIA.js",
+      "_chatbot-CKnanQ50.js",
+      "_admin-JfnhqNcd.js",
+      "_reports-c6wdlDAn.js"
     ],
     "css": [
       "assets/profile-DV70kWFs.css"
     ]
   },
   "src/profiles/platform/profile.js": {
-    "file": "assets/profile-DW_WVRNX.js",
+    "file": "assets/profile-BQkWv8NG.js",
     "name": "profile",
     "src": "src/profiles/platform/profile.js",
     "isDynamicEntry": true,
     "imports": [
       "src/main.js",
-      "_vendor-BxIk-6hK.js",
-      "_chatbot-CV8yDx4q.js",
-      "_admin-BGXTx11A.js",
-      "_reports-BUpUEjTe.js"
+      "_vendor-CnupCAIA.js",
+      "_chatbot-CKnanQ50.js",
+      "_admin-JfnhqNcd.js",
+      "_reports-c6wdlDAn.js"
     ]
   },
   "src/profiles/vogel/profile.js": {
-    "file": "assets/profile-BA_KbO0i.js",
+    "file": "assets/profile-DR38UDSw.js",
     "name": "profile",
     "src": "src/profiles/vogel/profile.js",
     "isDynamicEntry": true,
     "imports": [
       "src/main.js",
-      "_vendor-BxIk-6hK.js",
-      "_chatbot-CV8yDx4q.js",
-      "_admin-BGXTx11A.js",
-      "_reports-BUpUEjTe.js"
+      "_vendor-CnupCAIA.js",
+      "_chatbot-CKnanQ50.js",
+      "_admin-JfnhqNcd.js",
+      "_reports-c6wdlDAn.js"
     ]
   }
 }

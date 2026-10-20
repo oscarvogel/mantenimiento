@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import { PlusIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import PageHeading from './components/PageHeading.vue'
+import AutocompleteSelect from './components/AutocompleteSelect.vue'
 import PanelCard from './components/PanelCard.vue'
 import { fieldClass, primaryButton, secondaryButton } from './helpers.js'
 
@@ -44,12 +45,34 @@ const initialStops = () => {
   return rows.map((row) => ({ ...newStop(row.tipo ?? 'CARGA'), ...row }))
 }
 const stops = ref(initialStops())
-const selectedDrivers = computed(() => (Array.isArray(old.value.choferes) ? old.value.choferes : []).map(String))
+const tractorId = ref(old.value.tractor_id ?? '')
+const trailerId = ref(old.value.acoplado_id ?? '')
+const selectedDrivers = ref(Array.isArray(old.value.choferes) ? old.value.choferes.map(String) : [])
 const addStop = () => stops.value.push(newStop('HITO'))
 const removeStop = (index) => {
   if (stops.value.length > 2) stops.value.splice(index, 1)
 }
 const addressesFor = (customerId) => addresses.value.filter((address) => !customerId || Number(address.customerId) === Number(customerId))
+const tractorOptions = computed(() => tractors.value.map((equipment) => ({ value: equipment.id, label: equipment.label, hint: equipment.type })))
+const trailerOptions = computed(() => trailers.value.map((equipment) => ({ value: equipment.id, label: equipment.label, hint: equipment.type })))
+const driverOptions = computed(() => drivers.value.map((driver) => ({
+  value: driver.id,
+  label: driver.label,
+  hint: driver.employeeNumber ? `Legajo ${driver.employeeNumber}` : '',
+})))
+const customerOptions = computed(() => customers.value.map((customer) => ({
+  value: customer.id,
+  label: customer.label,
+  hint: customer.taxId ?? '',
+})))
+const loadUnitOptions = computed(() => loadUnits.value.map((unit) => ({ value: unit.id, label: unit.label })))
+const addressOptionsFor = (customerId) => addressesFor(customerId).map((address) => ({ value: address.id, label: address.label }))
+const updateCustomer = (stop, value) => {
+  stop.cliente_id = value ?? ''
+  if (stop.domicilio_id && !addressesFor(stop.cliente_id).some((address) => String(address.id) === String(stop.domicilio_id))) {
+    stop.domicilio_id = ''
+  }
+}
 </script>
 
 <template>
@@ -83,33 +106,25 @@ const addressesFor = (customerId) => addresses.value.filter((address) => !custom
         </label>
       </PanelCard>
 
-      <PanelCard title="Equipo y choferes">
+      <PanelCard title="Equipo y choferes" allow-overflow>
         <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <label class="block">
             <span class="mb-1.5 block text-sm font-semibold text-ink">Tractor o camión</span>
-            <select name="tractor_id" required :class="fieldClass">
-              <option value="">Elegí el tractor o camión</option>
-              <option v-for="equipment in tractors" :key="equipment.id" :value="equipment.id" :selected="String(equipment.id) === String(old.tractor_id ?? '')">{{ equipment.label }} · {{ equipment.type }}</option>
-            </select>
+            <AutocompleteSelect v-model="tractorId" name="tractor_id" :options="tractorOptions" placeholder="Elegí el tractor o camión" required />
           </label>
           <label class="block">
             <span class="mb-1.5 block text-sm font-semibold text-ink">Acoplado o semirremolque</span>
-            <select name="acoplado_id" :class="fieldClass">
-              <option value="">Sin acoplado</option>
-              <option v-for="equipment in trailers" :key="equipment.id" :value="equipment.id" :selected="String(equipment.id) === String(old.acoplado_id ?? '')">{{ equipment.label }} · {{ equipment.type }}</option>
-            </select>
+            <AutocompleteSelect v-model="trailerId" name="acoplado_id" :options="trailerOptions" placeholder="Sin acoplado" clearable />
           </label>
           <label class="block">
             <span class="mb-1.5 block text-sm font-semibold text-ink">Choferes</span>
-            <select name="choferes[]" multiple required size="6" :class="fieldClass">
-              <option v-for="driver in drivers" :key="driver.id" :value="driver.id" :selected="selectedDrivers.includes(String(driver.id))">{{ driver.label }}<template v-if="driver.employeeNumber"> · Legajo {{ driver.employeeNumber }}</template></option>
-            </select>
-            <span class="mt-1 block text-xs text-ink-muted">Podés asignar más de un chofer. Usá Ctrl o Cmd para seleccionar varios.</span>
+            <AutocompleteSelect v-model="selectedDrivers" name="choferes[]" :options="driverOptions" placeholder="Elegí uno o más choferes" multiple required />
+            <span class="mt-1 block text-xs text-ink-muted">Buscá por nombre o legajo. Los seleccionados quedan como etiquetas.</span>
           </label>
         </div>
       </PanelCard>
 
-      <PanelCard title="Recorrido y paradas" :count="stops.length">
+      <PanelCard title="Recorrido y paradas" :count="stops.length" allow-overflow>
         <div class="space-y-4">
           <article v-for="(stop, index) in stops" :key="index" class="rounded-xl border border-border-subtle bg-surface p-4">
             <div class="mb-3 flex items-center justify-between gap-3">
@@ -131,17 +146,24 @@ const addressesFor = (customerId) => addresses.value.filter((address) => !custom
               </label>
               <label class="block">
                 <span class="mb-1.5 block text-sm font-semibold text-ink">Cliente</span>
-                <select :name="`paradas[${index}][cliente_id]`" v-model="stop.cliente_id" :class="fieldClass">
-                  <option value="">Sin cliente</option>
-                  <option v-for="customer in customers" :key="customer.id" :value="customer.id">{{ customer.label }}</option>
-                </select>
+                <AutocompleteSelect
+                  :model-value="stop.cliente_id"
+                  :name="`paradas[${index}][cliente_id]`"
+                  :options="customerOptions"
+                  placeholder="Sin cliente"
+                  clearable
+                  @update:model-value="(value) => updateCustomer(stop, value)"
+                />
               </label>
               <label class="block">
                 <span class="mb-1.5 block text-sm font-semibold text-ink">Domicilio guardado</span>
-                <select :name="`paradas[${index}][domicilio_id]`" v-model="stop.domicilio_id" :class="fieldClass">
-                  <option value="">Sin domicilio</option>
-                  <option v-for="address in addressesFor(stop.cliente_id)" :key="address.id" :value="address.id">{{ address.label }}</option>
-                </select>
+                <AutocompleteSelect
+                  v-model="stop.domicilio_id"
+                  :name="`paradas[${index}][domicilio_id]`"
+                  :options="addressOptionsFor(stop.cliente_id)"
+                  placeholder="Sin domicilio"
+                  clearable
+                />
               </label>
               <label class="block">
                 <span class="mb-1.5 block text-sm font-semibold text-ink">Fecha estimada</span>
@@ -157,10 +179,13 @@ const addressesFor = (customerId) => addresses.value.filter((address) => !custom
               </label>
               <label class="block">
                 <span class="mb-1.5 block text-sm font-semibold text-ink">Unidad</span>
-                <select :name="`paradas[${index}][unidad_carga_id]`" v-model="stop.unidad_carga_id" :class="fieldClass">
-                  <option value="">Sin unidad</option>
-                  <option v-for="unit in loadUnits" :key="unit.id" :value="unit.id">{{ unit.label }}</option>
-                </select>
+                <AutocompleteSelect
+                  v-model="stop.unidad_carga_id"
+                  :name="`paradas[${index}][unidad_carga_id]`"
+                  :options="loadUnitOptions"
+                  placeholder="Sin unidad"
+                  clearable
+                />
               </label>
               <label class="block md:col-span-2 xl:col-span-3">
                 <span class="mb-1.5 block text-sm font-semibold text-ink">Observaciones de la parada</span>

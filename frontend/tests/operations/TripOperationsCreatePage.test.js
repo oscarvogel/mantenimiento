@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import TripOperationsCreatePage from '../../src/pages/operations/TripOperationsCreatePage.vue'
+import AutocompleteSelect from '../../src/pages/operations/components/AutocompleteSelect.vue'
 
 const data = {
   links: { index: '/mantenimiento/viajes/operativos', store: '/mantenimiento/viajes/operativos' },
@@ -30,11 +31,12 @@ describe('alta de viaje operativo', () => {
     expect(form.attributes('method')).toBe('post')
     expect(form.attributes('action')).toBe('/mantenimiento/viajes/operativos')
     expect(wrapper.get('input[name="csrf_test_name"]').attributes('value')).toBe('abc123')
-    expect(wrapper.find('select[name="tractor_id"]').exists()).toBe(true)
-    expect(wrapper.find('select[name="choferes[]"]').exists()).toBe(true)
+    expect(wrapper.find('input[name="tractor_id"]').exists()).toBe(true)
+    expect(wrapper.find('input[placeholder="Elegí uno o más choferes"]').exists()).toBe(true)
     expect(wrapper.findAll('article')).toHaveLength(2)
 
-    await wrapper.get('button[type="button"]').trigger('click')
+    const addButton = wrapper.findAll('button').find((button) => button.text().includes('Agregar otra parada'))
+    await addButton.trigger('click')
     expect(wrapper.findAll('article')).toHaveLength(3)
     wrapper.unmount()
   })
@@ -63,22 +65,29 @@ describe('alta de viaje operativo', () => {
 
     expect(wrapper.get('select[name="sucursal_id"]').element.value).toBe('10')
     expect(wrapper.get('input[name="fecha_salida_planificada"]').element.value).toBe('2026-10-20T08:00')
-    expect(wrapper.get('select[name="tractor_id"]').element.value).toBe('7')
-    expect(wrapper.get('select[name="paradas[0][domicilio_id]"]').element.value).toBe('4')
+    expect(wrapper.get('input[name="tractor_id"]').attributes('value')).toBe('7')
+    expect(wrapper.get('input[name="paradas[0][domicilio_id]"]').attributes('value')).toBe('4')
     expect(wrapper.get('textarea[name="observaciones"]').element.value).toBe('Carga programada')
+    const comboboxes = wrapper.findAll('input[role="combobox"]')
+    expect(comboboxes[0].element.value).toBe('AA111AA · T01')
+    expect(comboboxes[1].element.value).toBe('AC222AC · A01')
+    expect(wrapper.text()).toContain('Pérez, Juan')
     expect(wrapper.findAll('article')).toHaveLength(2)
     wrapper.unmount()
   })
 
   it('filtra los domicilios por cliente seleccionado', async () => {
     const wrapper = mount(TripOperationsCreatePage, { props: { data } })
-    const addressSelect = wrapper.get('select[name="paradas[0][domicilio_id]"]')
-    expect(addressSelect.text()).toContain('Depósito de otro cliente')
+    const autocompletes = wrapper.findAllComponents(AutocompleteSelect)
+    const customer = autocompletes.find((component) => component.props('name') === 'paradas[0][cliente_id]')
+    const address = autocompletes.find((component) => component.props('name') === 'paradas[0][domicilio_id]')
+    expect(address.props('options').map((option) => option.label)).toContain('Depósito de otro cliente')
 
-    await wrapper.get('select[name="paradas[0][cliente_id]"]').setValue('3')
+    customer.vm.$emit('update:modelValue', 3)
+    await wrapper.vm.$nextTick()
 
-    expect(wrapper.get('select[name="paradas[0][domicilio_id]"]').text()).toContain('Planta · Ruta 9 · Rosario')
-    expect(wrapper.get('select[name="paradas[0][domicilio_id]"]').text()).not.toContain('Depósito de otro cliente')
+    expect(address.props('options').map((option) => option.label)).toContain('Planta · Ruta 9 · Rosario')
+    expect(address.props('options').map((option) => option.label)).not.toContain('Depósito de otro cliente')
     wrapper.unmount()
   })
 })
