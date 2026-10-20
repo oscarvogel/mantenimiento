@@ -1069,6 +1069,54 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
         );
     }
 
+    public static function registerTripFuel(bool $getShared = true): \App\Application\Trips\RegisterTripFuel
+    {
+        if ($getShared) {
+            return static::getSharedInstance('registerTripFuel');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\Trips\RegisterTripFuel(
+            new \App\Infrastructure\Trips\CodeIgniterOperationalTripRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripCostRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripDirectoryLookup($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripsUnitOfWork($db),
+        );
+    }
+
+    public static function registerTripExpense(bool $getShared = true): \App\Application\Trips\RegisterTripExpense
+    {
+        if ($getShared) {
+            return static::getSharedInstance('registerTripExpense');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\Trips\RegisterTripExpense(
+            new \App\Infrastructure\Trips\CodeIgniterOperationalTripRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripCostRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripDirectoryLookup($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripsUnitOfWork($db),
+        );
+    }
+
+    public static function registerTripCashMovement(bool $getShared = true): \App\Application\Trips\RegisterTripCashMovement
+    {
+        if ($getShared) {
+            return static::getSharedInstance('registerTripCashMovement');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\Trips\RegisterTripCashMovement(
+            new \App\Infrastructure\Trips\CodeIgniterOperationalTripRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripCostRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripDirectoryLookup($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripsUnitOfWork($db),
+        );
+    }
+
     public static function startTrip(bool $getShared = true): \App\Application\Trips\StartTrip
     {
         if ($getShared) {

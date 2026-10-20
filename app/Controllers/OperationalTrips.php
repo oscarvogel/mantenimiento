@@ -7,6 +7,9 @@ namespace App\Controllers;
 use App\Application\Identity\ActorContext;
 use App\Application\Trips\CreateTripCommand;
 use App\Application\Trips\OperationalTripFilters;
+use App\Application\Trips\RegisterTripCashMovementCommand;
+use App\Application\Trips\RegisterTripExpenseCommand;
+use App\Application\Trips\RegisterTripFuelCommand;
 use App\Infrastructure\Identity\SessionActorContext;
 use CodeIgniter\HTTP\RedirectResponse;
 use DateTimeImmutable;
@@ -100,6 +103,133 @@ final class OperationalTrips extends BaseController
         } catch (Throwable $exception) {
             return $this->failure($exception, 'No se pudo cancelar el viaje.', '/viajes/operativos/' . $tripId);
         }
+    }
+
+    public function addFuel(int $tripId): RedirectResponse
+    {
+        try {
+            $command = new RegisterTripFuelCommand(
+                $tripId,
+                $this->requiredDateTime('fecha'),
+                $this->requiredFloat('litros'),
+                $this->requiredFloat('importe'),
+                $this->currency(),
+                $this->rate(),
+                $this->optionalInt('kilometraje'),
+                $this->text('estacion', 120),
+                $this->text('comprobante', 80),
+                $this->text('observaciones', 500),
+            );
+            service('registerTripFuel')->execute($this->actor(), $command);
+
+            return redirect()->to('/viajes/operativos/' . $tripId)->with('success', 'La carga de combustible quedó registrada.');
+        } catch (Throwable $exception) {
+            return $this->failure($exception, 'No se pudo registrar el combustible.', '/viajes/operativos/' . $tripId);
+        }
+    }
+
+    public function addExpense(int $tripId): RedirectResponse
+    {
+        try {
+            $command = new RegisterTripExpenseCommand(
+                $tripId,
+                $this->requiredDateTime('fecha'),
+                $this->requiredFloat('importe'),
+                $this->optionalInt('categoria_id'),
+                $this->currency(),
+                $this->rate(),
+                $this->optionalInt('medio_pago_id'),
+                (string) $this->request->getPost('pagado_de_caja') === '1',
+                $this->text('comprobante', 80),
+                $this->text('observaciones', 500),
+            );
+            service('registerTripExpense')->execute($this->actor(), $command);
+
+            return redirect()->to('/viajes/operativos/' . $tripId)->with('success', 'El gasto quedó registrado.');
+        } catch (Throwable $exception) {
+            return $this->failure($exception, 'No se pudo registrar el gasto.', '/viajes/operativos/' . $tripId);
+        }
+    }
+
+    public function addCashMovement(int $tripId): RedirectResponse
+    {
+        try {
+            $command = new RegisterTripCashMovementCommand(
+                $tripId,
+                strtoupper(trim((string) $this->request->getPost('tipo'))),
+                $this->requiredDateTime('fecha'),
+                $this->requiredFloat('importe'),
+                $this->currency(),
+                $this->rate(),
+                $this->text('observaciones', 500),
+            );
+            service('registerTripCashMovement')->execute($this->actor(), $command);
+
+            return redirect()->to('/viajes/operativos/' . $tripId)->with('success', 'El movimiento de caja quedó registrado.');
+        } catch (Throwable $exception) {
+            return $this->failure($exception, 'No se pudo registrar el movimiento de caja.', '/viajes/operativos/' . $tripId);
+        }
+    }
+
+    private function requiredDateTime(string $key): DateTimeImmutable
+    {
+        $value = $this->optionalDateTime($this->request->getPost($key));
+        if ($value === null) {
+            throw new DomainException('Indicá la fecha del movimiento.');
+        }
+
+        return $value;
+    }
+
+    private function requiredFloat(string $key): float
+    {
+        $raw = str_replace(',', '.', trim((string) $this->request->getPost($key)));
+        if ($raw === '' || ! is_numeric($raw) || (float) $raw <= 0) {
+            throw new DomainException('Ingresá un importe o cantidad mayor que cero.');
+        }
+
+        return (float) $raw;
+    }
+
+    private function optionalInt(string $key): ?int
+    {
+        $raw = trim((string) $this->request->getPost($key));
+        if ($raw === '') {
+            return null;
+        }
+        $value = filter_var($raw, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+
+        return $value === false ? null : (int) $value;
+    }
+
+    private function currency(): string
+    {
+        $currency = strtoupper(trim((string) $this->request->getPost('moneda')));
+        if (preg_match('/^[A-Z]{3}$/', $currency) !== 1) {
+            throw new DomainException('La moneda no es válida.');
+        }
+
+        return $currency;
+    }
+
+    private function rate(): float
+    {
+        $raw = str_replace(',', '.', trim((string) $this->request->getPost('cotizacion')));
+        if ($raw === '') {
+            return 1.0;
+        }
+        if (! is_numeric($raw) || (float) $raw <= 0) {
+            throw new DomainException('La cotización debe ser mayor que cero.');
+        }
+
+        return (float) $raw;
+    }
+
+    private function text(string $key, int $max): ?string
+    {
+        $value = trim((string) $this->request->getPost($key));
+
+        return $value === '' ? null : mb_substr($value, 0, $max);
     }
 
     private function optionalDateTime(mixed $value): ?DateTimeImmutable

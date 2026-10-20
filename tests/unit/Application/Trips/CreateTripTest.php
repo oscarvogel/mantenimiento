@@ -189,6 +189,21 @@ final class CreateTripTest extends TestCase
             {
                 return $customerId === 3 && $addressId === 4;
             }
+
+            public function expenseCategoryExists(int $companyId, int $categoryId): bool
+            {
+                return true;
+            }
+
+            public function paymentMethodExists(int $companyId, int $paymentMethodId): bool
+            {
+                return true;
+            }
+
+            public function currencyExists(string $code): bool
+            {
+                return true;
+            }
         };
     }
 

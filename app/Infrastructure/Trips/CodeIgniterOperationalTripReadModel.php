@@ -158,6 +158,10 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
             ],
             'assignments' => $this->assignmentDetails($companyId, $tripId),
             'stops' => $this->stopDetails($companyId, $tripId),
+            'fuel' => $this->fuelDetails($companyId, $tripId),
+            'expenses' => $this->expenseDetails($companyId, $tripId),
+            'cashMovements' => $this->cashMovementDetails($companyId, $tripId),
+            'options' => $this->costOptions($companyId),
         ];
     }
 
@@ -277,6 +281,122 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
                 'observaciones' => $row['observaciones'],
             ];
         }, $rows);
+    }
+
+    /** @return list<array<string,mixed>> */
+    private function fuelDetails(int $companyId, int $tripId): array
+    {
+        $rows = $this->db->table('viaje_operativo_combustible')
+            ->select('id, fecha, litros, importe, moneda, cotizacion, importe_ars, kilometraje, estacion, comprobante, observaciones')
+            ->where('empresa_id', $companyId)
+            ->where('viaje_id', $tripId)
+            ->orderBy('fecha', 'ASC')
+            ->orderBy('id', 'ASC')
+            ->get()->getResultArray();
+
+        return array_map(static fn (array $row): array => [
+            'id' => (int) $row['id'],
+            'fecha' => $row['fecha'],
+            'litros' => (float) $row['litros'],
+            'importe' => (float) $row['importe'],
+            'moneda' => (string) $row['moneda'],
+            'cotizacion' => (float) $row['cotizacion'],
+            'importe_ars' => (float) $row['importe_ars'],
+            'kilometraje' => $row['kilometraje'] === null ? null : (int) $row['kilometraje'],
+            'estacion' => $row['estacion'],
+            'comprobante' => $row['comprobante'],
+            'observaciones' => $row['observaciones'],
+        ], $rows);
+    }
+
+    /** @return list<array<string,mixed>> */
+    private function expenseDetails(int $companyId, int $tripId): array
+    {
+        $rows = $this->db->table('viaje_operativo_gastos g')
+            ->select('g.id, g.fecha, g.importe, g.moneda, g.cotizacion, g.importe_ars, g.categoria_id, g.medio_pago_id, g.pagado_de_caja, g.comprobante, g.observaciones, c.nombre AS categoria, m.nombre AS medio_pago')
+            ->join('viajes_categorias_gasto c', 'c.id = g.categoria_id AND c.empresa_id = g.empresa_id', 'left')
+            ->join('viajes_medios_pago m', 'm.id = g.medio_pago_id AND m.empresa_id = g.empresa_id', 'left')
+            ->where('g.empresa_id', $companyId)
+            ->where('g.viaje_id', $tripId)
+            ->orderBy('g.fecha', 'ASC')
+            ->orderBy('g.id', 'ASC')
+            ->get()->getResultArray();
+
+        return array_map(static fn (array $row): array => [
+            'id' => (int) $row['id'],
+            'fecha' => $row['fecha'],
+            'importe' => (float) $row['importe'],
+            'moneda' => (string) $row['moneda'],
+            'cotizacion' => (float) $row['cotizacion'],
+            'importe_ars' => (float) $row['importe_ars'],
+            'categoria_id' => $row['categoria_id'] === null ? null : (int) $row['categoria_id'],
+            'categoria' => $row['categoria'],
+            'medio_pago_id' => $row['medio_pago_id'] === null ? null : (int) $row['medio_pago_id'],
+            'medio_pago' => $row['medio_pago'],
+            'pagado_de_caja' => (bool) $row['pagado_de_caja'],
+            'comprobante' => $row['comprobante'],
+            'observaciones' => $row['observaciones'],
+        ], $rows);
+    }
+
+    /** @return list<array<string,mixed>> */
+    private function cashMovementDetails(int $companyId, int $tripId): array
+    {
+        $rows = $this->db->table('viaje_operativo_caja_movimientos')
+            ->select('id, tipo, fecha, importe, moneda, cotizacion, importe_ars, observaciones')
+            ->where('empresa_id', $companyId)
+            ->where('viaje_id', $tripId)
+            ->orderBy('fecha', 'ASC')
+            ->orderBy('id', 'ASC')
+            ->get()->getResultArray();
+
+        return array_map(static fn (array $row): array => [
+            'id' => (int) $row['id'],
+            'tipo' => (string) $row['tipo'],
+            'fecha' => $row['fecha'],
+            'importe' => (float) $row['importe'],
+            'moneda' => (string) $row['moneda'],
+            'cotizacion' => (float) $row['cotizacion'],
+            'importe_ars' => (float) $row['importe_ars'],
+            'observaciones' => $row['observaciones'],
+        ], $rows);
+    }
+
+    /** @return array<string,mixed> */
+    private function costOptions(int $companyId): array
+    {
+        $categories = $this->db->table('viajes_categorias_gasto')
+            ->select('id, nombre')
+            ->where('empresa_id', $companyId)
+            ->where('activo', 1)
+            ->orderBy('nombre', 'ASC')
+            ->get()->getResultArray();
+        $methods = $this->db->table('viajes_medios_pago')
+            ->select('id, nombre')
+            ->where('empresa_id', $companyId)
+            ->where('activo', 1)
+            ->orderBy('nombre', 'ASC')
+            ->get()->getResultArray();
+        $currencies = $this->db->table('viajes_monedas')
+            ->select('codigo, nombre')
+            ->where('activo', 1)
+            ->orderBy('codigo', 'ASC')
+            ->get()->getResultArray();
+
+        return [
+            'expenseCategories' => array_map(static fn (array $row): array => [
+                'id' => (int) $row['id'],
+                'label' => (string) $row['nombre'],
+            ], $categories),
+            'paymentMethods' => array_map(static fn (array $row): array => [
+                'id' => (int) $row['id'],
+                'label' => (string) $row['nombre'],
+            ], $methods),
+            'currencies' => array_map(static fn (array $row): array => [
+                'code' => (string) $row['codigo'],
+                'label' => (string) $row['nombre'],
+            ], $currencies),
+        ];
     }
 
     /** @param list<array<string,mixed>> $assignments */

@@ -11,4 +11,10 @@ interface TripDirectoryLookup
     public function loadUnitExists(int $companyId, int $loadUnitId): bool;
 
     public function addressBelongsToCustomer(int $companyId, int $customerId, int $addressId): bool;
+
+    public function expenseCategoryExists(int $companyId, int $categoryId): bool;
+
+    public function paymentMethodExists(int $companyId, int $paymentMethodId): bool;
+
+    public function currencyExists(string $code): bool;
 }

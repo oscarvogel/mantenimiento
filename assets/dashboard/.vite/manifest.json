@@ -1,17 +1,17 @@
 {
-  "_admin-JfnhqNcd.js": {
-    "file": "assets/admin-JfnhqNcd.js",
+  "_admin-Dkb4ku6Q.js": {
+    "file": "assets/admin-Dkb4ku6Q.js",
     "name": "admin",
     "imports": [
-      "_vendor-CnupCAIA.js"
+      "_vendor-C0PKg-zE.js"
     ]
   },
-  "_chatbot-CKnanQ50.js": {
-    "file": "assets/chatbot-CKnanQ50.js",
+  "_chatbot-U9GB5-zI.js": {
+    "file": "assets/chatbot-U9GB5-zI.js",
     "name": "chatbot",
     "isDynamicEntry": true,
     "imports": [
-      "_vendor-CnupCAIA.js"
+      "_vendor-C0PKg-zE.js"
     ],
     "css": [
       "assets/chatbot-p1890OXW.css"
@@ -21,20 +21,20 @@
     "file": "assets/chatbot-p1890OXW.css",
     "src": "_chatbot-p1890OXW.css"
   },
-  "_reports-c6wdlDAn.js": {
-    "file": "assets/reports-c6wdlDAn.js",
+  "_reports-CDmof_F8.js": {
+    "file": "assets/reports-CDmof_F8.js",
     "name": "reports",
     "imports": [
-      "_admin-JfnhqNcd.js",
-      "_vendor-CnupCAIA.js"
+      "_admin-Dkb4ku6Q.js",
+      "_vendor-C0PKg-zE.js"
     ]
   },
   "_vendor-BTrKGrB8.css": {
     "file": "assets/vendor-BTrKGrB8.css",
     "src": "_vendor-BTrKGrB8.css"
   },
-  "_vendor-CnupCAIA.js": {
-    "file": "assets/vendor-CnupCAIA.js",
+  "_vendor-C0PKg-zE.js": {
+    "file": "assets/vendor-C0PKg-zE.js",
     "name": "vendor",
     "css": [
       "assets/vendor-BTrKGrB8.css"
@@ -87,18 +87,18 @@
     "src": "src/assets/platform/trips-card.jpg"
   },
   "src/main.js": {
-    "file": "assets/main-C10d-fWF.js",
+    "file": "assets/main-BvK8xvBw.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
     "imports": [
-      "_vendor-CnupCAIA.js",
-      "_chatbot-CKnanQ50.js",
-      "_admin-JfnhqNcd.js",
-      "_reports-c6wdlDAn.js"
+      "_vendor-C0PKg-zE.js",
+      "_chatbot-U9GB5-zI.js",
+      "_admin-Dkb4ku6Q.js",
+      "_reports-CDmof_F8.js"
     ],
     "dynamicImports": [
-      "_chatbot-CKnanQ50.js",
+      "_chatbot-U9GB5-zI.js",
       "src/pages/operations/components/FleetTelemetryMap.vue",
       "node_modules/gsap/index.js",
       "src/profiles/platform/profile.js",
@@ -122,58 +122,58 @@
     ]
   },
   "src/pages/operations/components/FleetTelemetryMap.vue": {
-    "file": "assets/FleetTelemetryMap-CT_3jIY1.js",
+    "file": "assets/FleetTelemetryMap-N2WNwX6K.js",
     "name": "FleetTelemetryMap",
     "src": "src/pages/operations/components/FleetTelemetryMap.vue",
     "isDynamicEntry": true,
     "imports": [
-      "_vendor-CnupCAIA.js",
-      "_chatbot-CKnanQ50.js"
+      "_vendor-C0PKg-zE.js",
+      "_chatbot-U9GB5-zI.js"
     ],
     "css": [
       "assets/FleetTelemetryMap-eJHHeTQZ.css"
     ]
   },
   "src/profiles/cliente_piloto/profile.js": {
-    "file": "assets/profile-CMU3B1cX.js",
+    "file": "assets/profile-DeTPmHmM.js",
     "name": "profile",
     "src": "src/profiles/cliente_piloto/profile.js",
     "isDynamicEntry": true,
     "imports": [
       "src/main.js",
-      "_vendor-CnupCAIA.js",
-      "_chatbot-CKnanQ50.js",
-      "_admin-JfnhqNcd.js",
-      "_reports-c6wdlDAn.js"
+      "_vendor-C0PKg-zE.js",
+      "_chatbot-U9GB5-zI.js",
+      "_admin-Dkb4ku6Q.js",
+      "_reports-CDmof_F8.js"
     ],
     "css": [
       "assets/profile-DV70kWFs.css"
     ]
   },
   "src/profiles/platform/profile.js": {
-    "file": "assets/profile-DBE_KwUj.js",
+    "file": "assets/profile-B-I5e4Lr.js",
     "name": "profile",
     "src": "src/profiles/platform/profile.js",
     "isDynamicEntry": true,
     "imports": [
       "src/main.js",
-      "_vendor-CnupCAIA.js",
-      "_chatbot-CKnanQ50.js",
-      "_admin-JfnhqNcd.js",
-      "_reports-c6wdlDAn.js"
+      "_vendor-C0PKg-zE.js",
+      "_chatbot-U9GB5-zI.js",
+      "_admin-Dkb4ku6Q.js",
+      "_reports-CDmof_F8.js"
     ]
   },
   "src/profiles/vogel/profile.js": {
-    "file": "assets/profile-C8iwe1x4.js",
+    "file": "assets/profile-BrmG0jgI.js",
     "name": "profile",
     "src": "src/profiles/vogel/profile.js",
     "isDynamicEntry": true,
     "imports": [
       "src/main.js",
-      "_vendor-CnupCAIA.js",
-      "_chatbot-CKnanQ50.js",
-      "_admin-JfnhqNcd.js",
-      "_reports-c6wdlDAn.js"
+      "_vendor-C0PKg-zE.js",
+      "_chatbot-U9GB5-zI.js",
+      "_admin-Dkb4ku6Q.js",
+      "_reports-CDmof_F8.js"
     ]
   }
 }

@@ -41,4 +41,35 @@ final class CodeIgniterTripDirectoryLookup implements TripDirectoryLookup
             ->where('activo', 1)
             ->countAllResults() > 0;
     }
+
+    public function expenseCategoryExists(int $companyId, int $categoryId): bool
+    {
+        return $this->database->table('viajes_categorias_gasto')
+            ->where('empresa_id', $companyId)
+            ->where('id', $categoryId)
+            ->where('activo', 1)
+            ->countAllResults() > 0;
+    }
+
+    public function paymentMethodExists(int $companyId, int $paymentMethodId): bool
+    {
+        return $this->database->table('viajes_medios_pago')
+            ->where('empresa_id', $companyId)
+            ->where('id', $paymentMethodId)
+            ->where('activo', 1)
+            ->countAllResults() > 0;
+    }
+
+    public function currencyExists(string $code): bool
+    {
+        $code = strtoupper(trim($code));
+        if ($code === 'ARS') {
+            return true;
+        }
+
+        return $this->database->table('viajes_monedas')
+            ->where('codigo', $code)
+            ->where('activo', 1)
+            ->countAllResults() > 0;
+    }
 }
