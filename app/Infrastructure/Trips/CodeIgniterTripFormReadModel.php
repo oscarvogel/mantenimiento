@@ -78,6 +78,23 @@ final class CodeIgniterTripFormReadModel implements TripFormReadModel
             ->orderBy('nombre', 'ASC')
             ->get()->getResultArray();
 
+        $assignments = $this->db->table('employee_equipment_assignments a')
+            ->select('a.empleado_id, a.equipo_id, e.codigo, e.patente')
+            ->join('equipos e', 'e.id = a.equipo_id AND e.empresa_id = a.empresa_id')
+            ->where('a.empresa_id', $companyId)
+            ->where('a.rol', 'CHOFER')
+            ->where('a.fecha_hasta', null)
+            ->get()->getResultArray();
+        $assignedByDriver = [];
+        foreach ($assignments as $assignment) {
+            $plate = trim((string) ($assignment['patente'] ?? ''));
+            $code = trim((string) ($assignment['codigo'] ?? ''));
+            $assignedByDriver[(int) $assignment['empleado_id']] = [
+                'equipmentId' => (int) $assignment['equipo_id'],
+                'equipmentLabel' => $plate !== '' ? $plate : $code,
+            ];
+        }
+
         $customers = $this->db->table('clientes')
             ->select('id, nombre, identificacion_fiscal')
             ->where('empresa_id', $companyId)
@@ -108,11 +125,17 @@ final class CodeIgniterTripFormReadModel implements TripFormReadModel
             ], $branches->get()->getResultArray()),
             'tractors' => $tractors,
             'trailers' => $trailers,
-            'drivers' => array_map(static fn (array $row): array => [
-                'id' => (int) $row['id'],
-                'label' => trim((string) $row['apellido'] . ', ' . (string) $row['nombre']),
-                'employeeNumber' => $row['legajo'] === null ? null : (string) $row['legajo'],
-            ], $drivers),
+            'drivers' => array_map(static function (array $row) use ($assignedByDriver): array {
+                $assignment = $assignedByDriver[(int) $row['id']] ?? null;
+
+                return [
+                    'id' => (int) $row['id'],
+                    'label' => trim((string) $row['apellido'] . ', ' . (string) $row['nombre']),
+                    'employeeNumber' => $row['legajo'] === null ? null : (string) $row['legajo'],
+                    'equipmentId' => $assignment['equipmentId'] ?? null,
+                    'assignedEquipmentLabel' => $assignment['equipmentLabel'] ?? null,
+                ];
+            }, $drivers),
             'customers' => array_map(static fn (array $row): array => [
                 'id' => (int) $row['id'],
                 'label' => (string) $row['nombre'],

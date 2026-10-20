@@ -14,7 +14,10 @@ const data = {
   branches: [{ id: 10, code: 'AR', name: 'Argentina' }],
   tractors: [{ id: 7, label: 'AA111AA · T01', type: 'Camión' }],
   trailers: [{ id: 9, label: 'AC222AC · A01', type: 'Acoplado' }],
-  drivers: [{ id: 11, label: 'Pérez, Juan', employeeNumber: '100' }],
+  drivers: [
+    { id: 11, label: 'Pérez, Juan', employeeNumber: '100', equipmentId: 7, assignedEquipmentLabel: 'AA111AA · T01' },
+    { id: 12, label: 'Otro, Chofer', employeeNumber: null, equipmentId: null, assignedEquipmentLabel: null },
+  ],
   customers: [{ id: 3, label: 'Cliente Sur', taxId: null }],
   addresses: [
     { id: 4, customerId: 3, label: 'Planta · Ruta 9 · Rosario' },
@@ -73,6 +76,18 @@ describe('alta de viaje operativo', () => {
     expect(comboboxes[1].element.value).toBe('AC222AC · A01')
     expect(wrapper.text()).toContain('Pérez, Juan')
     expect(wrapper.findAll('article')).toHaveLength(2)
+    wrapper.unmount()
+  })
+
+  it('preselecciona el chofer asociado al tractor', async () => {
+    const wrapper = mount(TripOperationsCreatePage, { props: { data } })
+    const tractor = wrapper.findAllComponents(AutocompleteSelect).find((component) => component.props('name') === 'tractor_id')
+
+    tractor.vm.$emit('update:modelValue', 7)
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.get('input[name="choferes[]"]').attributes('value')).toBe('11')
+    expect(wrapper.text()).toContain('Chofer asignado al equipo: Pérez, Juan.')
     wrapper.unmount()
   })
 

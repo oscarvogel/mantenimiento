@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { PlusIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import PageHeading from './components/PageHeading.vue'
 import AutocompleteSelect from './components/AutocompleteSelect.vue'
@@ -48,6 +48,33 @@ const stops = ref(initialStops())
 const tractorId = ref(old.value.tractor_id ?? '')
 const trailerId = ref(old.value.acoplado_id ?? '')
 const selectedDrivers = ref(Array.isArray(old.value.choferes) ? old.value.choferes.map(String) : [])
+const autoDrivers = ref([])
+const assignedDriversFor = (equipmentId) => {
+  if (!equipmentId) return []
+  const id = String(equipmentId)
+  return drivers.value
+    .filter((driver) => String(driver.equipmentId ?? '') === id)
+    .map((driver) => String(driver.id))
+}
+const assignedDriverNames = computed(() => {
+  if (!tractorId.value) return []
+  const id = String(tractorId.value)
+  return drivers.value
+    .filter((driver) => String(driver.equipmentId ?? '') === id)
+    .map((driver) => driver.label)
+})
+const initialAssignedDrivers = assignedDriversFor(tractorId.value)
+if (selectedDrivers.value.length === 0 && initialAssignedDrivers.length > 0) {
+  selectedDrivers.value = initialAssignedDrivers
+  autoDrivers.value = [...initialAssignedDrivers]
+}
+watch(tractorId, (value) => {
+  const assigned = assignedDriversFor(value)
+  const previousAuto = autoDrivers.value
+  const manual = selectedDrivers.value.map(String).filter((id) => !previousAuto.includes(id))
+  selectedDrivers.value = Array.from(new Set([...manual, ...assigned]))
+  autoDrivers.value = assigned
+})
 const addStop = () => stops.value.push(newStop('HITO'))
 const removeStop = (index) => {
   if (stops.value.length > 2) stops.value.splice(index, 1)
@@ -55,11 +82,17 @@ const removeStop = (index) => {
 const addressesFor = (customerId) => addresses.value.filter((address) => !customerId || Number(address.customerId) === Number(customerId))
 const tractorOptions = computed(() => tractors.value.map((equipment) => ({ value: equipment.id, label: equipment.label, hint: equipment.type })))
 const trailerOptions = computed(() => trailers.value.map((equipment) => ({ value: equipment.id, label: equipment.label, hint: equipment.type })))
-const driverOptions = computed(() => drivers.value.map((driver) => ({
-  value: driver.id,
-  label: driver.label,
-  hint: driver.employeeNumber ? `Legajo ${driver.employeeNumber}` : '',
-})))
+const driverOptions = computed(() => drivers.value.map((driver) => {
+  const hints = []
+  if (driver.employeeNumber) hints.push(`Legajo ${driver.employeeNumber}`)
+  if (driver.assignedEquipmentLabel) hints.push(`Asignado a ${driver.assignedEquipmentLabel}`)
+
+  return {
+    value: driver.id,
+    label: driver.label,
+    hint: hints.join(' · '),
+  }
+}))
 const customerOptions = computed(() => customers.value.map((customer) => ({
   value: customer.id,
   label: customer.label,
@@ -119,7 +152,8 @@ const updateCustomer = (stop, value) => {
           <label class="block">
             <span class="mb-1.5 block text-sm font-semibold text-ink">Choferes</span>
             <AutocompleteSelect v-model="selectedDrivers" name="choferes[]" :options="driverOptions" placeholder="Elegí uno o más choferes" multiple required />
-            <span class="mt-1 block text-xs text-ink-muted">Buscá por nombre o legajo. Los seleccionados quedan como etiquetas.</span>
+            <span v-if="assignedDriverNames.length" class="mt-1 block text-xs font-semibold text-primary">Chofer asignado al equipo: {{ assignedDriverNames.join(', ') }}.</span>
+            <span v-else class="mt-1 block text-xs text-ink-muted">Buscá por nombre o legajo. Los seleccionados quedan como etiquetas.</span>
           </label>
         </div>
       </PanelCard>
