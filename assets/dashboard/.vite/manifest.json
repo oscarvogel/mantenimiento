@@ -1,10 +1,4 @@
 {
-  "../../../../../../../../../Programacion/mantenimiento/frontend/node_modules/gsap/index.js": {
-    "file": "assets/gsap-C-UGJFrr.js",
-    "name": "gsap",
-    "src": "../../../../../../../../../Programacion/mantenimiento/frontend/node_modules/gsap/index.js",
-    "isDynamicEntry": true
-  },
   "_admin-DCgGOcjY.js": {
     "file": "assets/admin-DCgGOcjY.js",
     "name": "admin",
@@ -45,6 +39,12 @@
   "_vendor-BTrKGrB8.css": {
     "file": "assets/vendor-BTrKGrB8.css",
     "src": "_vendor-BTrKGrB8.css"
+  },
+  "node_modules/gsap/index.js": {
+    "file": "assets/gsap-C-UGJFrr.js",
+    "name": "gsap",
+    "src": "node_modules/gsap/index.js",
+    "isDynamicEntry": true
   },
   "src/assets/platform/ai-card.jpg": {
     "file": "assets/ai-card-Bif2XNNK.jpg",
@@ -100,7 +100,7 @@
     "dynamicImports": [
       "_chatbot-CDLMdspx.js",
       "src/pages/operations/components/FleetTelemetryMap.vue",
-      "../../../../../../../../../Programacion/mantenimiento/frontend/node_modules/gsap/index.js",
+      "node_modules/gsap/index.js",
       "src/profiles/platform/profile.js",
       "src/profiles/vogel/profile.js",
       "src/profiles/cliente_piloto/profile.js"
