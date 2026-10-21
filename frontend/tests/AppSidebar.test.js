@@ -80,4 +80,35 @@ describe('AppSidebar', () => {
     expect(labels).toContain('Tipos de vencimiento')
     expect(wrapper.find('a[href="/mantenimiento/maestros/vencimientos"]').exists()).toBe(true)
   })
+
+  it('mantiene Consumo por viaje colapsado bajo Telemetría hasta desplegarlo', async () => {
+    const withTelemetry = [
+      ...navigation,
+      { key: 'fleet-telemetry', label: 'Telemetría de flota', href: '/mantenimiento/telemetria', icon: 'map' },
+      { key: 'fleet-consumption', label: 'Consumo por viaje', href: '/mantenimiento/telemetria/consumo', icon: 'chart' },
+    ]
+    const wrapper = mount(AppSidebar, { props: { navigation: withTelemetry } })
+    const toggle = wrapper.get('button[aria-controls="fleet-consumption-navigation"]')
+
+    expect(toggle.attributes('aria-expanded')).toBe('false')
+    expect(wrapper.get('#fleet-consumption-navigation').element.style.display).toBe('none')
+
+    await toggle.trigger('click')
+
+    expect(toggle.attributes('aria-expanded')).toBe('true')
+    expect(wrapper.get('#fleet-consumption-navigation').element.style.display).toBe('')
+    expect(wrapper.find('a[href="/mantenimiento/telemetria/consumo"]').isVisible()).toBe(true)
+  })
+
+  it('despliega Telemetría cuando Consumo por viaje es la ruta activa', () => {
+    const withTelemetry = [
+      ...navigation.map((item) => ({ ...item, active: false })),
+      { key: 'fleet-telemetry', label: 'Telemetría de flota', href: '/mantenimiento/telemetria', icon: 'map' },
+      { key: 'fleet-consumption', label: 'Consumo por viaje', href: '/mantenimiento/telemetria/consumo', icon: 'chart', active: true },
+    ]
+    const wrapper = mount(AppSidebar, { props: { navigation: withTelemetry } })
+
+    expect(wrapper.get('button[aria-controls="fleet-consumption-navigation"]').attributes('aria-expanded')).toBe('true')
+    expect(wrapper.find('a[href="/mantenimiento/telemetria/consumo"]').attributes('aria-current')).toBe('page')
+  })
 })
