@@ -1,17 +1,23 @@
 {
-  "_admin-BDTNusVd.js": {
-    "file": "assets/admin-BDTNusVd.js",
+  "../../../../../../../../../Programacion/mantenimiento/frontend/node_modules/gsap/index.js": {
+    "file": "assets/gsap-C-UGJFrr.js",
+    "name": "gsap",
+    "src": "../../../../../../../../../Programacion/mantenimiento/frontend/node_modules/gsap/index.js",
+    "isDynamicEntry": true
+  },
+  "_admin-DCgGOcjY.js": {
+    "file": "assets/admin-DCgGOcjY.js",
     "name": "admin",
     "imports": [
-      "_vendor-x4uxRj4w.js"
+      "_vendor-B8-Kfnh1.js"
     ]
   },
-  "_chatbot-CeUYxmNx.js": {
-    "file": "assets/chatbot-CeUYxmNx.js",
+  "_chatbot-CDLMdspx.js": {
+    "file": "assets/chatbot-CDLMdspx.js",
     "name": "chatbot",
     "isDynamicEntry": true,
     "imports": [
-      "_vendor-x4uxRj4w.js"
+      "_vendor-B8-Kfnh1.js"
     ],
     "css": [
       "assets/chatbot-p1890OXW.css"
@@ -21,30 +27,24 @@
     "file": "assets/chatbot-p1890OXW.css",
     "src": "_chatbot-p1890OXW.css"
   },
-  "_reports-B4vTmYSA.js": {
-    "file": "assets/reports-B4vTmYSA.js",
+  "_reports-DYzYcIJp.js": {
+    "file": "assets/reports-DYzYcIJp.js",
     "name": "reports",
     "imports": [
-      "_admin-BDTNusVd.js",
-      "_vendor-x4uxRj4w.js"
+      "_admin-DCgGOcjY.js",
+      "_vendor-B8-Kfnh1.js"
     ]
   },
-  "_vendor-BTrKGrB8.css": {
-    "file": "assets/vendor-BTrKGrB8.css",
-    "src": "_vendor-BTrKGrB8.css"
-  },
-  "_vendor-x4uxRj4w.js": {
-    "file": "assets/vendor-x4uxRj4w.js",
+  "_vendor-B8-Kfnh1.js": {
+    "file": "assets/vendor-B8-Kfnh1.js",
     "name": "vendor",
     "css": [
       "assets/vendor-BTrKGrB8.css"
     ]
   },
-  "node_modules/gsap/index.js": {
-    "file": "assets/gsap-C-UGJFrr.js",
-    "name": "gsap",
-    "src": "node_modules/gsap/index.js",
-    "isDynamicEntry": true
+  "_vendor-BTrKGrB8.css": {
+    "file": "assets/vendor-BTrKGrB8.css",
+    "src": "_vendor-BTrKGrB8.css"
   },
   "src/assets/platform/ai-card.jpg": {
     "file": "assets/ai-card-Bif2XNNK.jpg",
@@ -87,26 +87,26 @@
     "src": "src/assets/platform/trips-card.jpg"
   },
   "src/main.js": {
-    "file": "assets/main-DCDraC7C.js",
+    "file": "assets/main-BhVHLKlK.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
     "imports": [
-      "_vendor-x4uxRj4w.js",
-      "_chatbot-CeUYxmNx.js",
-      "_admin-BDTNusVd.js",
-      "_reports-B4vTmYSA.js"
+      "_vendor-B8-Kfnh1.js",
+      "_chatbot-CDLMdspx.js",
+      "_admin-DCgGOcjY.js",
+      "_reports-DYzYcIJp.js"
     ],
     "dynamicImports": [
-      "_chatbot-CeUYxmNx.js",
+      "_chatbot-CDLMdspx.js",
       "src/pages/operations/components/FleetTelemetryMap.vue",
-      "node_modules/gsap/index.js",
+      "../../../../../../../../../Programacion/mantenimiento/frontend/node_modules/gsap/index.js",
       "src/profiles/platform/profile.js",
       "src/profiles/vogel/profile.js",
       "src/profiles/cliente_piloto/profile.js"
     ],
     "css": [
-      "assets/main-YYP-L5Dy.css"
+      "assets/main-C2qVj_Yk.css"
     ],
     "assets": [
       "assets/portal-hero-Dd-Ff3YR.jpg",
@@ -122,58 +122,58 @@
     ]
   },
   "src/pages/operations/components/FleetTelemetryMap.vue": {
-    "file": "assets/FleetTelemetryMap-C4Z-Qiel.js",
+    "file": "assets/FleetTelemetryMap-CuhFvWwk.js",
     "name": "FleetTelemetryMap",
     "src": "src/pages/operations/components/FleetTelemetryMap.vue",
     "isDynamicEntry": true,
     "imports": [
-      "_vendor-x4uxRj4w.js",
-      "_chatbot-CeUYxmNx.js"
+      "_vendor-B8-Kfnh1.js",
+      "_chatbot-CDLMdspx.js"
     ],
     "css": [
       "assets/FleetTelemetryMap-eJHHeTQZ.css"
     ]
   },
   "src/profiles/cliente_piloto/profile.js": {
-    "file": "assets/profile-D4ytR1sM.js",
+    "file": "assets/profile-CshkwFVl.js",
     "name": "profile",
     "src": "src/profiles/cliente_piloto/profile.js",
     "isDynamicEntry": true,
     "imports": [
       "src/main.js",
-      "_vendor-x4uxRj4w.js",
-      "_chatbot-CeUYxmNx.js",
-      "_admin-BDTNusVd.js",
-      "_reports-B4vTmYSA.js"
+      "_vendor-B8-Kfnh1.js",
+      "_chatbot-CDLMdspx.js",
+      "_admin-DCgGOcjY.js",
+      "_reports-DYzYcIJp.js"
     ],
     "css": [
       "assets/profile-DV70kWFs.css"
     ]
   },
   "src/profiles/platform/profile.js": {
-    "file": "assets/profile-CHao1nQK.js",
+    "file": "assets/profile-DIO4dHav.js",
     "name": "profile",
     "src": "src/profiles/platform/profile.js",
     "isDynamicEntry": true,
     "imports": [
       "src/main.js",
-      "_vendor-x4uxRj4w.js",
-      "_chatbot-CeUYxmNx.js",
-      "_admin-BDTNusVd.js",
-      "_reports-B4vTmYSA.js"
+      "_vendor-B8-Kfnh1.js",
+      "_chatbot-CDLMdspx.js",
+      "_admin-DCgGOcjY.js",
+      "_reports-DYzYcIJp.js"
     ]
   },
   "src/profiles/vogel/profile.js": {
-    "file": "assets/profile-tai-YgCn.js",
+    "file": "assets/profile-BA4eP_Pr.js",
     "name": "profile",
     "src": "src/profiles/vogel/profile.js",
     "isDynamicEntry": true,
     "imports": [
       "src/main.js",
-      "_vendor-x4uxRj4w.js",
-      "_chatbot-CeUYxmNx.js",
-      "_admin-BDTNusVd.js",
-      "_reports-B4vTmYSA.js"
+      "_vendor-B8-Kfnh1.js",
+      "_chatbot-CDLMdspx.js",
+      "_admin-DCgGOcjY.js",
+      "_reports-DYzYcIJp.js"
     ]
   }
 }
