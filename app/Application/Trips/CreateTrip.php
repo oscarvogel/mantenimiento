@@ -79,7 +79,14 @@ final class CreateTrip
                 $assignments[] = new TripAssignment(TripAssignment::ACOPLADO, $command->trailerId, $command->plannedDeparture, $command->plannedReturn);
             }
             foreach ($command->driverIds as $driverId) {
-                $assignments[] = new TripAssignment(TripAssignment::CHOFER, $driverId, $command->plannedDeparture, $command->plannedReturn);
+                $assignments[] = new TripAssignment(
+                    TripAssignment::CHOFER,
+                    $driverId,
+                    $command->plannedDeparture,
+                    $command->plannedReturn,
+                    null,
+                    $command->driverPercentages[$driverId] ?? null,
+                );
             }
 
             $stops = [];
@@ -97,6 +104,7 @@ final class CreateTrip
                 $assignments,
                 $stops,
                 $command->notes,
+                $command->departureKm,
             );
             $id = $this->trips->add($trip, $actor->userId());
 

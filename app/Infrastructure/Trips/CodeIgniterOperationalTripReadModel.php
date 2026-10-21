@@ -214,7 +214,7 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
     private function assignmentDetails(int $companyId, int $tripId): array
     {
         $rows = $this->db->table('viaje_operativo_asignaciones a')
-            ->select('a.rol, a.desde, a.hasta, a.equipo_id, a.empleado_id, e.patente, e.codigo, emp.nombre, emp.apellido')
+            ->select('a.rol, a.desde, a.hasta, a.equipo_id, a.empleado_id, a.porcentaje_liquidacion, e.patente, e.codigo, emp.nombre, emp.apellido')
             ->join('equipos e', 'e.id = a.equipo_id AND e.empresa_id = a.empresa_id', 'left')
             ->join('empleados emp', 'emp.id = a.empleado_id AND emp.empresa_id = a.empresa_id', 'left')
             ->where('a.empresa_id', $companyId)
@@ -238,6 +238,7 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
                 'label' => $label,
                 'desde' => $row['desde'],
                 'hasta' => $row['hasta'],
+                'porcentaje_liquidacion' => $row['porcentaje_liquidacion'] === null ? null : (float) $row['porcentaje_liquidacion'],
             ];
         }, $rows);
     }

@@ -21,6 +21,7 @@ final readonly class TripAssignment
         private DateTimeImmutable $from,
         private ?DateTimeImmutable $to = null,
         private ?string $reason = null,
+        private ?float $liquidationPercentage = null,
     ) {
         if (! in_array($role, self::ROLES, true)) {
             throw new DomainException('El rol de la asignación no es válido.');
@@ -30,6 +31,9 @@ final readonly class TripAssignment
         }
         if ($to !== null && $to < $from) {
             throw new DomainException('El fin de la asignación no puede ser anterior a su inicio.');
+        }
+        if ($liquidationPercentage !== null && ($liquidationPercentage < 0 || $liquidationPercentage > 100)) {
+            throw new DomainException('El porcentaje de liquidación debe estar entre 0 y 100.');
         }
     }
 
@@ -56,6 +60,11 @@ final readonly class TripAssignment
     public function reason(): ?string
     {
         return $this->reason;
+    }
+
+    public function liquidationPercentage(): ?float
+    {
+        return $this->liquidationPercentage;
     }
 
     public function isEquipment(): bool

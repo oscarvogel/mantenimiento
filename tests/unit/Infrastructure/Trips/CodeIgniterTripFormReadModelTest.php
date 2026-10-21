@@ -20,6 +20,10 @@ final class CodeIgniterTripFormReadModelTest extends TestCase
         $this->database = Database::connect([
             'database' => ':memory:', 'DBDriver' => 'SQLite3', 'DBPrefix' => '', 'DBDebug' => true,
         ], false);
+        $this->database->query('CREATE TABLE empresas (id INTEGER PRIMARY KEY, razon_social TEXT, nombre_fantasia TEXT NULL, cuit TEXT NULL)');
+        $this->database->query('CREATE TABLE viajes_operativos_numeracion (empresa_id INTEGER PRIMARY KEY, ultimo_numero INTEGER, updated_at TEXT NULL)');
+        $this->database->query('CREATE TABLE lecturas_equipo (id INTEGER PRIMARY KEY, empresa_id INTEGER, equipo_id INTEGER, fecha_lectura TEXT, kilometraje INTEGER NULL, anulada INTEGER)');
+        $this->database->query('CREATE TABLE viajes_porcentajes_liquidacion_chofer (id INTEGER PRIMARY KEY, empresa_id INTEGER, empleado_id INTEGER, porcentaje REAL, vigente_desde TEXT, vigente_hasta TEXT NULL, activo INTEGER)');
         $this->database->query('CREATE TABLE sucursales (id INTEGER PRIMARY KEY, empresa_id INTEGER, codigo TEXT, nombre TEXT, estado INTEGER, deleted_at TEXT NULL)');
         $this->database->query('CREATE TABLE tipos_equipo (id INTEGER PRIMARY KEY, nombre TEXT)');
         $this->database->query('CREATE TABLE equipos (id INTEGER PRIMARY KEY, empresa_id INTEGER, sucursal_id INTEGER, tipo_equipo_id INTEGER, codigo TEXT, patente TEXT, estado TEXT, deleted_at TEXT NULL)');
@@ -29,6 +33,8 @@ final class CodeIgniterTripFormReadModelTest extends TestCase
         $this->database->query('CREATE TABLE viajes_domicilios_clientes (id INTEGER PRIMARY KEY, empresa_id INTEGER, cliente_id INTEGER, alias TEXT, calle TEXT, localidad TEXT, activo INTEGER)');
         $this->database->query('CREATE TABLE viajes_unidades_carga (id INTEGER PRIMARY KEY, empresa_id INTEGER, nombre TEXT, simbolo TEXT, activo INTEGER)');
 
+        $this->database->table('empresas')->insert(['id' => 5, 'razon_social' => 'Transporte Mariela SRL', 'nombre_fantasia' => 'Transporte Mariela', 'cuit' => '23-28059786-4']);
+        $this->database->table('viajes_operativos_numeracion')->insert(['empresa_id' => 5, 'ultimo_numero' => 114]);
         $this->database->table('sucursales')->insert(['id' => 10, 'empresa_id' => 5, 'codigo' => 'AR', 'nombre' => 'Argentina', 'estado' => 1, 'deleted_at' => null]);
         $this->database->table('tipos_equipo')->insertBatch([
             ['id' => 1, 'nombre' => 'Camión'],
@@ -42,6 +48,14 @@ final class CodeIgniterTripFormReadModelTest extends TestCase
         $this->database->table('employee_equipment_assignments')->insert([
             'id' => 1, 'empresa_id' => 5, 'empleado_id' => 11, 'equipo_id' => 7, 'rol' => 'CHOFER',
             'fecha_desde' => '2026-01-01', 'fecha_hasta' => null,
+        ]);
+        $this->database->table('viajes_porcentajes_liquidacion_chofer')->insert([
+            'id' => 1, 'empresa_id' => 5, 'empleado_id' => 11, 'porcentaje' => 14,
+            'vigente_desde' => '2026-01-01', 'vigente_hasta' => null, 'activo' => 1,
+        ]);
+        $this->database->table('lecturas_equipo')->insertBatch([
+            ['id' => 1, 'empresa_id' => 5, 'equipo_id' => 7, 'fecha_lectura' => '2026-10-18 08:00:00', 'kilometraje' => 145200, 'anulada' => 0],
+            ['id' => 2, 'empresa_id' => 5, 'equipo_id' => 7, 'fecha_lectura' => '2026-10-19 08:00:00', 'kilometraje' => 145300, 'anulada' => 0],
         ]);
         $this->database->table('clientes')->insert(['id' => 3, 'empresa_id' => 5, 'nombre' => 'Cliente Sur', 'identificacion_fiscal' => '30-1-2', 'activo' => 1, 'deleted_at' => null]);
         $this->database->table('viajes_domicilios_clientes')->insert(['id' => 4, 'empresa_id' => 5, 'cliente_id' => 3, 'alias' => 'Planta', 'calle' => 'Ruta 9', 'localidad' => 'Rosario', 'activo' => 1]);
@@ -59,12 +73,18 @@ final class CodeIgniterTripFormReadModelTest extends TestCase
     {
         $options = (new CodeIgniterTripFormReadModel($this->database))->options(5, [10]);
 
+        self::assertSame('Transporte Mariela', $options['company']['name']);
+        self::assertSame('23-28059786-4', $options['company']['taxId']);
+        self::assertSame(115, $options['nextNumber']);
         self::assertCount(1, $options['branches']);
         self::assertSame('AA111AA · T01', $options['tractors'][0]['label']);
+        self::assertSame('AA111AA', $options['tractors'][0]['plate']);
+        self::assertSame(145_300, $options['tractors'][0]['lastKm']);
         self::assertSame('AC222AC · A01', $options['trailers'][0]['label']);
         self::assertSame('Pérez, Juan', $options['drivers'][0]['label']);
         self::assertSame(7, $options['drivers'][0]['equipmentId']);
         self::assertSame('AA111AA', $options['drivers'][0]['assignedEquipmentLabel']);
+        self::assertSame(14.0, $options['drivers'][0]['liquidationPercentage']);
         self::assertSame('Cliente Sur', $options['customers'][0]['label']);
         self::assertSame('Planta · Ruta 9 · Rosario', $options['addresses'][0]['label']);
         self::assertSame('Tonelada (tn)', $options['loadUnits'][0]['label']);

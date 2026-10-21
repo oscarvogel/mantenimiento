@@ -32,6 +32,9 @@ final class CreateTripTest extends TestCase
         self::assertSame(7, $repository->added->truckId());
         self::assertSame(9, $repository->added->trailerId());
         self::assertSame([11, 12], $repository->added->driverIds());
+        self::assertSame(145_300, $repository->added->departureKm());
+        self::assertSame(14.0, $repository->added->assignments()[2]->liquidationPercentage());
+        self::assertNull($repository->added->assignments()[3]->liquidationPercentage());
         self::assertCount(2, $repository->added->stops());
         self::assertSame([7, 9], $repository->queriedEquipmentIds);
         self::assertSame([11, 12], $repository->queriedEmployeeIds);
@@ -135,6 +138,8 @@ final class CreateTripTest extends TestCase
             'tractor_id' => '7',
             'acoplado_id' => '9',
             'choferes' => ['11', '12'],
+            'choferes_porcentajes' => ['11' => '14,5', '12' => ''],
+            'km_salida' => '145300',
             'paradas' => [
                 ['tipo' => 'CARGA', 'ubicacion' => 'Rosario', 'cliente_id' => '3', 'cantidad' => '30,5', 'unidad_carga_id' => '2'],
                 ['tipo' => 'DESCARGA', 'ubicacion' => 'Córdoba'],
@@ -144,6 +149,9 @@ final class CreateTripTest extends TestCase
 
         self::assertSame(10, $command->branchId);
         self::assertSame([11, 12], $command->driverIds);
+        self::assertSame(145_300, $command->departureKm);
+        self::assertSame(14.5, $command->driverPercentages[11]);
+        self::assertNull($command->driverPercentages[12]);
         self::assertCount(2, $command->stops);
         self::assertSame('30,5', $command->stops[0]->quantity);
         self::assertSame('Salida temprano.', $command->notes);
@@ -169,6 +177,8 @@ final class CreateTripTest extends TestCase
                 new TripStopInput('DESCARGA', 'Córdoba', 4),
             ],
             'Carga programada.',
+            145_300,
+            [11 => 14.0, 12 => null],
         );
     }
 

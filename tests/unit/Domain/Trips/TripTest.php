@@ -89,6 +89,52 @@ final class TripTest extends TestCase
         ]);
     }
 
+    public function testPlannedTripCanKeepReferenceDepartureKmAndDriverPercentage(): void
+    {
+        $trip = Trip::plan(
+            5,
+            10,
+            42,
+            new DateTimeImmutable('2026-10-20 08:00:00'),
+            new DateTimeImmutable('2026-10-21 18:00:00'),
+            [
+                $this->assignment(TripAssignment::TRACTOR, 7),
+                new TripAssignment(
+                    TripAssignment::CHOFER,
+                    11,
+                    new DateTimeImmutable('2026-10-20 08:00:00'),
+                    new DateTimeImmutable('2026-10-21 18:00:00'),
+                    null,
+                    14.0,
+                ),
+            ],
+            [
+                new TripStop(1, TripStop::CARGA, 'Rosario'),
+                new TripStop(2, TripStop::DESCARGA, 'Córdoba'),
+            ],
+            '',
+            145_300,
+        );
+
+        self::assertSame(145_300, $trip->departureKm());
+        self::assertSame(14.0, $trip->assignments()[1]->liquidationPercentage());
+    }
+
+    public function testDriverPercentageMustBeBetweenZeroAndHundred(): void
+    {
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('porcentaje');
+
+        new TripAssignment(
+            TripAssignment::CHOFER,
+            11,
+            new DateTimeImmutable('2026-10-20 08:00:00'),
+            null,
+            null,
+            101.0,
+        );
+    }
+
     public function testStartingTheTripRecordsRealDepartureAndOdometer(): void
     {
         $trip = $this->trip();

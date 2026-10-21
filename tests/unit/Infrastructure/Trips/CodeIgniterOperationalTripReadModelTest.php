@@ -36,7 +36,8 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
         )');
         $this->database->query('CREATE TABLE viaje_operativo_asignaciones (
             id INTEGER PRIMARY KEY, viaje_id INTEGER, empresa_id INTEGER, sucursal_id INTEGER, rol TEXT,
-            equipo_id INTEGER NULL, empleado_id INTEGER NULL, desde TEXT, hasta TEXT NULL, motivo TEXT NULL
+            equipo_id INTEGER NULL, empleado_id INTEGER NULL, desde TEXT, hasta TEXT NULL, motivo TEXT NULL,
+            porcentaje_liquidacion REAL NULL
         )');
         $this->database->query('CREATE TABLE viaje_operativo_paradas (
             id INTEGER PRIMARY KEY, viaje_id INTEGER, empresa_id INTEGER, sucursal_id INTEGER, orden INTEGER,
@@ -85,9 +86,9 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
             'observaciones' => 'Carga programada', 'motivo_cancelacion' => null, 'created_at' => '2026-10-19 10:00:00',
         ]);
         $this->database->table('viaje_operativo_asignaciones')->insertBatch([
-            ['id' => 1, 'viaje_id' => 1, 'empresa_id' => 5, 'sucursal_id' => 10, 'rol' => 'TRACTOR', 'equipo_id' => 7, 'empleado_id' => null, 'desde' => '2026-10-20 08:00:00', 'hasta' => '2026-10-21 18:00:00', 'motivo' => null],
-            ['id' => 2, 'viaje_id' => 1, 'empresa_id' => 5, 'sucursal_id' => 10, 'rol' => 'ACOPLADO', 'equipo_id' => 9, 'empleado_id' => null, 'desde' => '2026-10-20 08:00:00', 'hasta' => '2026-10-21 18:00:00', 'motivo' => null],
-            ['id' => 3, 'viaje_id' => 1, 'empresa_id' => 5, 'sucursal_id' => 10, 'rol' => 'CHOFER', 'equipo_id' => null, 'empleado_id' => 11, 'desde' => '2026-10-20 08:00:00', 'hasta' => '2026-10-21 18:00:00', 'motivo' => null],
+            ['id' => 1, 'viaje_id' => 1, 'empresa_id' => 5, 'sucursal_id' => 10, 'rol' => 'TRACTOR', 'equipo_id' => 7, 'empleado_id' => null, 'desde' => '2026-10-20 08:00:00', 'hasta' => '2026-10-21 18:00:00', 'motivo' => null, 'porcentaje_liquidacion' => null],
+            ['id' => 2, 'viaje_id' => 1, 'empresa_id' => 5, 'sucursal_id' => 10, 'rol' => 'ACOPLADO', 'equipo_id' => 9, 'empleado_id' => null, 'desde' => '2026-10-20 08:00:00', 'hasta' => '2026-10-21 18:00:00', 'motivo' => null, 'porcentaje_liquidacion' => null],
+            ['id' => 3, 'viaje_id' => 1, 'empresa_id' => 5, 'sucursal_id' => 10, 'rol' => 'CHOFER', 'equipo_id' => null, 'empleado_id' => 11, 'desde' => '2026-10-20 08:00:00', 'hasta' => '2026-10-21 18:00:00', 'motivo' => null, 'porcentaje_liquidacion' => 14.0],
         ]);
         $this->database->table('viaje_operativo_paradas')->insertBatch([
             ['id' => 1, 'viaje_id' => 1, 'empresa_id' => 5, 'sucursal_id' => 10, 'orden' => 1, 'tipo' => 'CARGA', 'cliente_id' => 3, 'domicilio_id' => 4, 'ubicacion' => 'Rosario', 'fecha_estimada' => '2026-10-20 08:30:00', 'fecha_real' => null, 'descripcion_carga' => 'Soja', 'cantidad' => 30, 'unidad_carga_id' => 2, 'observaciones' => null],
@@ -138,6 +139,7 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
         self::assertCount(3, $detail['assignments']);
         self::assertSame('Tractor / camión', $detail['assignments'][0]['rol_label']);
         self::assertSame('Juan Pérez', $detail['assignments'][2]['label']);
+        self::assertSame(14.0, $detail['assignments'][2]['porcentaje_liquidacion']);
         self::assertCount(2, $detail['stops']);
         self::assertSame('Cliente Sur', $detail['stops'][0]['cliente']);
         self::assertSame('Planta · Ruta 9 · Rosario', $detail['stops'][0]['domicilio']);

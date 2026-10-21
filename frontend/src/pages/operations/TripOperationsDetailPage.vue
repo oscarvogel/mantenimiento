@@ -118,6 +118,7 @@ const facts = computed(() => [
             <div>
               <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ assignment.rol_label }}</p>
               <p class="mt-0.5 text-sm font-semibold text-ink">{{ assignment.label || 'Sin dato' }}</p>
+              <p v-if="assignment.porcentaje_liquidacion !== null && assignment.porcentaje_liquidacion !== undefined" class="mt-0.5 text-xs font-semibold text-primary">Liquidación: {{ Number(assignment.porcentaje_liquidacion).toLocaleString('es-AR', { maximumFractionDigits: 2 }) }}%</p>
             </div>
             <p class="text-xs text-ink-muted">{{ fmtDateTime(assignment.desde) }} — {{ assignment.hasta ? fmtDateTime(assignment.hasta) : 'sin fin' }}</p>
           </li>
@@ -136,7 +137,7 @@ const facts = computed(() => [
             </label>
             <label class="block">
               <span class="mb-1.5 block text-sm font-semibold text-ink">Odómetro de salida</span>
-              <input type="number" name="km_salida" min="0" step="1" required :class="fieldClass" />
+              <input type="number" name="km_salida" min="0" step="1" required :value="trip.km_salida ?? ''" :class="fieldClass" />
             </label>
           </div>
           <button type="submit" :class="[primaryButton, 'mt-3']">Iniciar viaje</button>

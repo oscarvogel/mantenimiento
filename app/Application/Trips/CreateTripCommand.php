@@ -12,6 +12,7 @@ final readonly class CreateTripCommand
     /**
      * @param list<int> $driverIds
      * @param list<TripStopInput> $stops
+     * @param array<int,float|null> $driverPercentages
      */
     public function __construct(
         public int $branchId,
@@ -22,6 +23,8 @@ final readonly class CreateTripCommand
         public array $driverIds,
         public array $stops,
         public string $notes = '',
+        public ?int $departureKm = null,
+        public array $driverPercentages = [],
     ) {
     }
 
@@ -56,6 +59,8 @@ final readonly class CreateTripCommand
             $driverIds,
             $stops,
             trim((string) ($input['observaciones'] ?? '')),
+            self::optionalNonNegativeInt($input['km_salida'] ?? null, 'El odómetro de salida no es válido.'),
+            self::driverPercentages($input['choferes_porcentajes'] ?? null, $driverIds),
         );
     }
 
@@ -76,6 +81,51 @@ final readonly class CreateTripCommand
         }
 
         return self::positiveInt($value, $message);
+    }
+
+    private static function optionalNonNegativeInt(mixed $value, string $message): ?int
+    {
+        $raw = trim((string) ($value ?? ''));
+        if ($raw === '') {
+            return null;
+        }
+        $parsed = filter_var($raw, FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
+        if ($parsed === false) {
+            throw new DomainException($message);
+        }
+
+        return (int) $parsed;
+    }
+
+    /**
+     * @param list<int> $driverIds
+     * @return array<int,float|null>
+     */
+    private static function driverPercentages(mixed $value, array $driverIds): array
+    {
+        if (! is_array($value)) {
+            return [];
+        }
+
+        $selected = array_fill_keys($driverIds, true);
+        $percentages = [];
+        foreach ($value as $driverId => $percentage) {
+            $id = (int) $driverId;
+            if (! isset($selected[$id])) {
+                continue;
+            }
+            $raw = str_replace(',', '.', trim((string) $percentage));
+            if ($raw === '') {
+                $percentages[$id] = null;
+                continue;
+            }
+            if (! is_numeric($raw) || (float) $raw < 0 || (float) $raw > 100) {
+                throw new DomainException('El porcentaje de liquidación debe estar entre 0 y 100.');
+            }
+            $percentages[$id] = (float) $raw;
+        }
+
+        return $percentages;
     }
 
     private static function dateTime(mixed $value, string $label): DateTimeImmutable

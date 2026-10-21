@@ -32,7 +32,8 @@ final class CodeIgniterOperationalTripRepositoryTest extends TestCase
         $this->database->query('CREATE TABLE viajes_operativos_numeracion (empresa_id INTEGER PRIMARY KEY, ultimo_numero INTEGER, updated_at TEXT NULL)');
         $this->database->query('CREATE TABLE viaje_operativo_asignaciones (
             id INTEGER PRIMARY KEY AUTOINCREMENT, viaje_id INTEGER, empresa_id INTEGER, sucursal_id INTEGER,
-            rol TEXT, equipo_id INTEGER NULL, empleado_id INTEGER NULL, desde TEXT, hasta TEXT NULL, motivo TEXT NULL, created_at TEXT NULL
+            rol TEXT, equipo_id INTEGER NULL, empleado_id INTEGER NULL, desde TEXT, hasta TEXT NULL, motivo TEXT NULL,
+            porcentaje_liquidacion REAL NULL, created_at TEXT NULL
         )');
         $this->database->query('CREATE TABLE viaje_operativo_paradas (
             id INTEGER PRIMARY KEY AUTOINCREMENT, viaje_id INTEGER, empresa_id INTEGER, sucursal_id INTEGER, orden INTEGER,
@@ -70,6 +71,8 @@ final class CodeIgniterOperationalTripRepositoryTest extends TestCase
         self::assertSame(7, $loaded->truckId());
         self::assertSame(9, $loaded->trailerId());
         self::assertSame([11], $loaded->driverIds());
+        self::assertSame(145_300, $loaded->departureKm());
+        self::assertSame(14.0, $loaded->assignments()[2]->liquidationPercentage());
         self::assertCount(2, $loaded->stops());
         self::assertSame('Rosario', $loaded->stops()[0]->location());
 
@@ -145,13 +148,14 @@ final class CodeIgniterOperationalTripRepositoryTest extends TestCase
             [
                 new TripAssignment(TripAssignment::TRACTOR, 7, new DateTimeImmutable('2026-10-20 08:00:00'), new DateTimeImmutable('2026-10-21 18:00:00')),
                 new TripAssignment(TripAssignment::ACOPLADO, 9, new DateTimeImmutable('2026-10-20 08:00:00'), new DateTimeImmutable('2026-10-21 18:00:00')),
-                new TripAssignment(TripAssignment::CHOFER, 11, new DateTimeImmutable('2026-10-20 08:00:00'), new DateTimeImmutable('2026-10-21 18:00:00')),
+                new TripAssignment(TripAssignment::CHOFER, 11, new DateTimeImmutable('2026-10-20 08:00:00'), new DateTimeImmutable('2026-10-21 18:00:00'), null, 14.0),
             ],
             [
                 new TripStop(1, TripStop::CARGA, 'Rosario', 3, null, null, 'Soja', '30', 2),
                 new TripStop(2, TripStop::DESCARGA, 'Córdoba'),
             ],
             'Carga programada.',
+            145_300,
         );
     }
 }

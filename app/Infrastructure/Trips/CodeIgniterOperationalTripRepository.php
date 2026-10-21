@@ -213,6 +213,7 @@ final class CodeIgniterOperationalTripRepository implements OperationalTripRepos
                 'desde' => $assignment->from()->format('Y-m-d H:i:s'),
                 'hasta' => $assignment->to()?->format('Y-m-d H:i:s'),
                 'motivo' => $assignment->reason(),
+                'porcentaje_liquidacion' => $assignment->liquidationPercentage(),
                 'created_at' => $now,
             ];
         }
@@ -264,6 +265,9 @@ final class CodeIgniterOperationalTripRepository implements OperationalTripRepos
                 new DateTimeImmutable((string) $assignment['desde']),
                 empty($assignment['hasta']) ? null : new DateTimeImmutable((string) $assignment['hasta']),
                 $assignment['motivo'] === null ? null : (string) $assignment['motivo'],
+                isset($assignment['porcentaje_liquidacion']) && $assignment['porcentaje_liquidacion'] !== null
+                    ? (float) $assignment['porcentaje_liquidacion']
+                    : null,
             );
         }
 

@@ -46,6 +46,9 @@ final class Trip
         if ($plannedReturn <= $plannedDeparture) {
             throw new DomainException('El regreso planificado debe ser posterior a la salida planificada.');
         }
+        if ($departureKm !== null && $departureKm < 0) {
+            throw new DomainException('El odómetro de salida no puede ser negativo.');
+        }
         $this->assertState($status);
         $this->assertAssignments($assignments);
         $this->assertStops($stops);
@@ -64,6 +67,7 @@ final class Trip
         array $assignments,
         array $stops,
         string $notes = '',
+        ?int $departureKm = null,
     ): self {
         return new self(
             null,
@@ -75,7 +79,7 @@ final class Trip
             $plannedReturn,
             null,
             null,
-            null,
+            $departureKm,
             null,
             array_values($assignments),
             array_values($stops),

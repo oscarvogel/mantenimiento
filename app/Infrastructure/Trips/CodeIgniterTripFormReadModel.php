@@ -15,8 +15,20 @@ final class CodeIgniterTripFormReadModel implements TripFormReadModel
 
     public function options(int $companyId, ?array $branchIds): array
     {
+        $company = $this->db->table('empresas')
+            ->select('razon_social, nombre_fantasia, cuit')
+            ->where('id', $companyId)
+            ->get()->getRowArray();
+        $counter = $this->db->table('viajes_operativos_numeracion')
+            ->select('ultimo_numero')
+            ->where('empresa_id', $companyId)
+            ->get()->getRowArray();
+        $nextNumber = (int) ($counter['ultimo_numero'] ?? 0) + 1;
+
         if ($branchIds === []) {
             return [
+                'company' => $this->companyData($company),
+                'nextNumber' => $nextNumber,
                 'branches' => [],
                 'tractors' => [],
                 'trailers' => [],
@@ -49,17 +61,23 @@ final class CodeIgniterTripFormReadModel implements TripFormReadModel
             $equipment->whereIn('e.sucursal_id', $branchIds);
         }
 
+        $equipmentRows = $equipment->get()->getResultArray();
+        $equipmentIds = array_map(static fn (array $row): int => (int) $row['id'], $equipmentRows);
+        $lastKmByEquipment = $this->lastKmByEquipment($companyId, $equipmentIds);
+
         $tractors = [];
         $trailers = [];
-        foreach ($equipment->get()->getResultArray() as $row) {
+        foreach ($equipmentRows as $row) {
             $type = strtr(mb_strtolower((string) $row['tipo_nombre']), [
                 'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ü' => 'u',
             ]);
             $item = [
                 'id' => (int) $row['id'],
                 'label' => $this->equipmentLabel($row),
+                'plate' => trim((string) ($row['patente'] ?? '')),
                 'type' => (string) $row['tipo_nombre'],
                 'branchId' => (int) $row['sucursal_id'],
+                'lastKm' => $lastKmByEquipment[(int) $row['id']] ?? null,
             ];
             if (preg_match('/acoplado|semirremolque|remolque|batea/', $type) === 1) {
                 $trailers[] = $item;
@@ -77,6 +95,31 @@ final class CodeIgniterTripFormReadModel implements TripFormReadModel
             ->orderBy('apellido', 'ASC')
             ->orderBy('nombre', 'ASC')
             ->get()->getResultArray();
+
+        $percentageByDriver = [];
+        $driverIds = array_map(static fn (array $row): int => (int) $row['id'], $drivers);
+        if ($driverIds !== []) {
+            $today = date('Y-m-d');
+            $percentages = $this->db->table('viajes_porcentajes_liquidacion_chofer')
+                ->select('empleado_id, porcentaje')
+                ->where('empresa_id', $companyId)
+                ->where('activo', 1)
+                ->where('vigente_desde <=', $today)
+                ->groupStart()
+                    ->where('vigente_hasta', null)
+                    ->orWhere('vigente_hasta >=', $today)
+                ->groupEnd()
+                ->whereIn('empleado_id', $driverIds)
+                ->orderBy('vigente_desde', 'DESC')
+                ->orderBy('id', 'DESC')
+                ->get()->getResultArray();
+            foreach ($percentages as $percentage) {
+                $driverId = (int) $percentage['empleado_id'];
+                if (! array_key_exists($driverId, $percentageByDriver)) {
+                    $percentageByDriver[$driverId] = (float) $percentage['porcentaje'];
+                }
+            }
+        }
 
         $assignments = $this->db->table('employee_equipment_assignments a')
             ->select('a.empleado_id, a.equipo_id, e.codigo, e.patente')
@@ -118,6 +161,8 @@ final class CodeIgniterTripFormReadModel implements TripFormReadModel
             ->get()->getResultArray();
 
         return [
+            'company' => $this->companyData($company),
+            'nextNumber' => $nextNumber,
             'branches' => array_map(static fn (array $row): array => [
                 'id' => (int) $row['id'],
                 'code' => (string) $row['codigo'],
@@ -125,7 +170,7 @@ final class CodeIgniterTripFormReadModel implements TripFormReadModel
             ], $branches->get()->getResultArray()),
             'tractors' => $tractors,
             'trailers' => $trailers,
-            'drivers' => array_map(static function (array $row) use ($assignedByDriver): array {
+            'drivers' => array_map(static function (array $row) use ($assignedByDriver, $percentageByDriver): array {
                 $assignment = $assignedByDriver[(int) $row['id']] ?? null;
 
                 return [
@@ -134,6 +179,7 @@ final class CodeIgniterTripFormReadModel implements TripFormReadModel
                     'employeeNumber' => $row['legajo'] === null ? null : (string) $row['legajo'],
                     'equipmentId' => $assignment['equipmentId'] ?? null,
                     'assignedEquipmentLabel' => $assignment['equipmentLabel'] ?? null,
+                    'liquidationPercentage' => $percentageByDriver[(int) $row['id']] ?? null,
                 ];
             }, $drivers),
             'customers' => array_map(static fn (array $row): array => [
@@ -160,6 +206,53 @@ final class CodeIgniterTripFormReadModel implements TripFormReadModel
                 'symbol' => (string) $row['simbolo'],
             ], $loadUnits),
         ];
+    }
+
+    /**
+     * @param array<string,mixed>|null $row
+     * @return array{name:string,legalName:string,taxId:?string}
+     */
+    private function companyData(?array $row): array
+    {
+        $legalName = trim((string) ($row['razon_social'] ?? ''));
+        $displayName = trim((string) ($row['nombre_fantasia'] ?? ''));
+
+        return [
+            'name' => $displayName !== '' ? $displayName : $legalName,
+            'legalName' => $legalName,
+            'taxId' => isset($row['cuit']) && $row['cuit'] !== null ? (string) $row['cuit'] : null,
+        ];
+    }
+
+    /**
+     * @param list<int> $equipmentIds
+     * @return array<int,int>
+     */
+    private function lastKmByEquipment(int $companyId, array $equipmentIds): array
+    {
+        if ($equipmentIds === []) {
+            return [];
+        }
+
+        $rows = $this->db->table('lecturas_equipo')
+            ->select('equipo_id, kilometraje')
+            ->where('empresa_id', $companyId)
+            ->where('anulada', 0)
+            ->where('kilometraje IS NOT NULL', null, false)
+            ->whereIn('equipo_id', $equipmentIds)
+            ->orderBy('fecha_lectura', 'DESC')
+            ->orderBy('id', 'DESC')
+            ->get()->getResultArray();
+
+        $lastKm = [];
+        foreach ($rows as $row) {
+            $equipmentId = (int) $row['equipo_id'];
+            if (! array_key_exists($equipmentId, $lastKm)) {
+                $lastKm[$equipmentId] = (int) $row['kilometraje'];
+            }
+        }
+
+        return $lastKm;
     }
 
     /** @param array<string,mixed> $row */
