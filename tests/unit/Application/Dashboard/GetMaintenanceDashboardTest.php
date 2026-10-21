@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Application\Dashboard\GetMaintenanceDashboard;
 use App\Application\Dashboard\Port\DashboardDuePlans;
 use App\Application\Dashboard\Port\DashboardFinancialSummary;
+use App\Application\Dashboard\Port\DashboardLatestReadings;
 use App\Application\Dashboard\Port\DashboardOverview;
 use App\Application\Dashboard\Port\DashboardClock;
 use App\Application\Dashboard\Port\DashboardOpenOrderStates;
@@ -28,7 +29,7 @@ final class GetMaintenanceDashboardTest extends TestCase
             'EN_PROCESO' => 2,
             'ESPERA_REPUESTOS' => 1,
         ]);
-        $result = (new GetMaintenanceDashboard($overview, $due, new DashboardFinancialSummaryFake(), new DashboardClockFake(), $orderStates))->execute($this->actor([
+        $result = (new GetMaintenanceDashboard($overview, $due, new DashboardFinancialSummaryFake(), new DashboardClockFake(), $orderStates, new DashboardLatestReadingsFake()))->execute($this->actor([
             'equipos.ver', 'planes.ver', 'ordenes.ver',
         ]));
 
@@ -57,7 +58,7 @@ final class GetMaintenanceDashboardTest extends TestCase
     {
         $due = new DashboardDuePlansFake([$this->dueResult(10, 100, EstadoPlan::VENCIDO, [CriterioPlan::KILOMETRAJE])]);
         $orderStates = new DashboardOpenOrderStatesFake(['EN_PROCESO' => 1]);
-        $result = (new GetMaintenanceDashboard(new DashboardOverviewFake(), $due, new DashboardFinancialSummaryFake(), new DashboardClockFake(), $orderStates))->execute(
+        $result = (new GetMaintenanceDashboard(new DashboardOverviewFake(), $due, new DashboardFinancialSummaryFake(), new DashboardClockFake(), $orderStates, new DashboardLatestReadingsFake()))->execute(
             $this->actor(['equipos.ver']),
         );
 
@@ -70,6 +71,24 @@ final class GetMaintenanceDashboardTest extends TestCase
         self::assertFalse($orderStates->called);
     }
 
+    public function testClassifiesAnOldReadingAsStaleInsteadOfMissing(): void
+    {
+        $result = (new GetMaintenanceDashboard(
+            new DashboardOverviewFake(),
+            new DashboardDuePlansFake([]),
+            new DashboardFinancialSummaryFake(),
+            new DashboardClockFake(),
+            new DashboardOpenOrderStatesFake(),
+            new DashboardLatestReadingsFake([100 => '2026-07-31 00:00:00']),
+        ))->execute($this->actor(['equipos.ver', 'lecturas.ver']));
+
+        self::assertSame(0, $result['metrics']['equipmentWithoutReading']);
+        self::assertSame(1, $result['metrics']['equipmentWithStaleReading']);
+        self::assertSame(1, count($result['readingAttention']));
+        self::assertSame('DESACTUALIZADA', $result['readingAttention'][0]['status']);
+        self::assertSame(8, $result['readingAttention'][0]['daysSinceReading']);
+    }
+
     public function testReportsMissingPreventiveComplianceDataWhenThereAreNoEvaluablePlans(): void
     {
         $result = (new GetMaintenanceDashboard(
@@ -78,6 +97,7 @@ final class GetMaintenanceDashboardTest extends TestCase
             new DashboardFinancialSummaryFake(),
             new DashboardClockFake(),
             new DashboardOpenOrderStatesFake(),
+            new DashboardLatestReadingsFake(),
         ))->execute($this->actor(['equipos.ver', 'planes.ver']));
 
         self::assertNull($result['metrics']['preventiveCompliance']);
@@ -196,5 +216,22 @@ final class DashboardOpenOrderStatesFake implements DashboardOpenOrderStates
         $this->called = true;
 
         return $this->states;
+    }
+}
+
+final class DashboardLatestReadingsFake implements DashboardLatestReadings
+{
+    public bool $called = false;
+
+    /** @param array<int,string> $latest */
+    public function __construct(private readonly array $latest = [])
+    {
+    }
+
+    public function byEquipment(ActorContext $actor): array
+    {
+        $this->called = true;
+
+        return $this->latest;
     }
 }

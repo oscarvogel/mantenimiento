@@ -135,6 +135,7 @@ use App\Infrastructure\Notifications\SystemNotificationClock;
 use App\Infrastructure\Identity\CodeIgniterLoginAttemptLimiter;
 use App\Infrastructure\AppShell\CodeIgniterAppShellReadModel;
 use App\Infrastructure\Dashboard\CodeIgniterDashboardFinancialSummary;
+use App\Infrastructure\Dashboard\CodeIgniterDashboardLatestReadings;
 use App\Infrastructure\Dashboard\CodeIgniterDashboardOpenOrderStates;
 use App\Infrastructure\Dashboard\CodeIgniterGlobalDashboardReadModel;
 use App\Infrastructure\Dashboard\MaintenanceCircuitDashboardOverview;
@@ -1026,6 +1027,7 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
             new CodeIgniterDashboardFinancialSummary(db_connect()),
             new SystemDashboardClock(),
             new CodeIgniterDashboardOpenOrderStates(db_connect()),
+            new CodeIgniterDashboardLatestReadings(db_connect()),
         );
     }
 

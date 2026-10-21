@@ -6,6 +6,7 @@ namespace App\Application\Dashboard;
 
 use App\Application\Dashboard\Port\DashboardDuePlans;
 use App\Application\Dashboard\Port\DashboardFinancialSummary;
+use App\Application\Dashboard\Port\DashboardLatestReadings;
 use App\Application\Dashboard\Port\DashboardOverview;
 use App\Application\Dashboard\Port\DashboardClock;
 use App\Application\Dashboard\Port\DashboardOpenOrderStates;
@@ -26,6 +27,7 @@ final class GetMaintenanceDashboard
         private readonly DashboardFinancialSummary $financialSummary,
         private readonly DashboardClock $clock,
         private readonly DashboardOpenOrderStates $openOrderStates,
+        private readonly DashboardLatestReadings $latestReadings,
     ) {
     }
 
@@ -42,8 +44,8 @@ final class GetMaintenanceDashboard
             : $this->emptyFinancialSummary();
         $equipment = $actor->hasPermission('equipos.ver') ? $overview['equipments'] : [];
         $orders = $actor->hasPermission('ordenes.ver') ? $overview['orders'] : [];
-        $readings = $actor->hasPermission('lecturas.ver') || $actor->hasPermission('lecturas.cargar')
-            ? ($overview['readings'] ?? [])
+        $latestReadings = $actor->hasPermission('lecturas.ver') || $actor->hasPermission('lecturas.cargar')
+            ? $this->latestReadings->byEquipment($actor)
             : [];
         $evaluations = $actor->hasPermission('planes.ver')
             ? $this->duePlans->fetch($actor, $actor->companyId())
@@ -100,7 +102,7 @@ final class GetMaintenanceDashboard
         $openCorrectiveOrders = count(array_filter($orders, static fn (array $item): bool => ($item['origen'] ?? '') === 'CORRECTIVO'
             && ! in_array($item['estado'], ['FINALIZADA', 'CANCELADA'], true)));
 
-        $readingControl = $this->readingControl($equipment, $readings, $branchNames);
+        $readingControl = $this->readingControl($equipment, $latestReadings, $branchNames);
         $preventiveTotal = $statusCounts[EstadoPlan::AL_DIA->value]
             + $statusCounts[EstadoPlan::PROXIMO->value]
             + $statusCounts[EstadoPlan::VENCIDO->value];
@@ -211,20 +213,12 @@ final class GetMaintenanceDashboard
 
     /**
      * @param list<array<string,mixed>> $equipment
-     * @param list<array<string,mixed>> $readings
+     * @param array<int,string> $latestReadings
      * @param array<int,string> $branchNames
      * @return array{withoutReading:int,staleReading:int,attention:list<array<string,mixed>>}
      */
-    private function readingControl(array $equipment, array $readings, array $branchNames): array
+    private function readingControl(array $equipment, array $latestReadings, array $branchNames): array
     {
-        $latestByEquipment = [];
-        foreach ($readings as $reading) {
-            $equipmentId = (int) ($reading['equipo_id'] ?? 0);
-            if ($equipmentId > 0 && ! isset($latestByEquipment[$equipmentId])) {
-                $latestByEquipment[$equipmentId] = $reading;
-            }
-        }
-
         $today = $this->clock->today();
         $withoutReading = 0;
         $staleReading = 0;
@@ -241,8 +235,8 @@ final class GetMaintenanceDashboard
             $equipmentLabel = (string) ($item['codigo'] ?? $item['patente'] ?? ('Equipo #' . $equipmentId));
             $branchId = (int) ($item['sucursal_id'] ?? 0);
             $branchName = (string) ($item['sucursal_nombre'] ?? ($branchId > 0 ? ($branchNames[$branchId] ?? '') : ''));
-            $latest = $latestByEquipment[$equipmentId] ?? null;
-            if ($latest === null || empty($latest['fecha_lectura'])) {
+            $latest = $latestReadings[$equipmentId] ?? null;
+            if ($latest === null || $latest === '') {
                 $withoutReading++;
                 $attention[] = [
                     'equipmentId' => $equipmentId,
@@ -257,7 +251,7 @@ final class GetMaintenanceDashboard
                 continue;
             }
 
-            $lastDate = new DateTimeImmutable((string) $latest['fecha_lectura']);
+            $lastDate = new DateTimeImmutable($latest);
             $days = max(0, (int) $lastDate->diff($today)->format('%r%a'));
             if ($days <= self::STALE_READING_DAYS) {
                 continue;
