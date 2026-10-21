@@ -8,6 +8,7 @@ use App\Application\Identity\ActorContext;
 use App\Application\Trips\Port\OperationalTripRepository;
 use App\Application\Trips\Port\TripCostRepository;
 use App\Application\Trips\Port\TripDirectoryLookup;
+use App\Application\Trips\Port\TripLegRepository;
 use App\Application\Trips\Port\TripsUnitOfWork;
 use App\Domain\Trips\Trip;
 use App\Domain\Trips\TripFuelLoad;
@@ -20,6 +21,7 @@ final class RegisterTripFuel
         private readonly OperationalTripRepository $trips,
         private readonly TripCostRepository $costs,
         private readonly TripDirectoryLookup $directory,
+        private readonly TripLegRepository $legs,
         private readonly TripsUnitOfWork $unitOfWork,
     ) {
     }
@@ -46,6 +48,9 @@ final class RegisterTripFuel
             if (! in_array($trip->status(), [Trip::PLANIFICADO, Trip::EN_CURSO], true)) {
                 throw new DomainException('No se puede cargar combustible en un viaje cancelado o finalizado.');
             }
+            if ($command->legId !== null && ! $this->legs->belongsToTrip($companyId, $trip->id() ?? 0, $command->legId)) {
+                throw new DomainException('El tramo elegido no pertenece al viaje.');
+            }
 
             $load = new TripFuelLoad(
                 $command->date,
@@ -57,7 +62,7 @@ final class RegisterTripFuel
                 $command->notes,
             );
 
-            return $this->costs->addFuel($trip->id() ?? 0, $companyId, $trip->branchId(), $load, $actor->userId());
+            return $this->costs->addFuel($trip->id() ?? 0, $companyId, $trip->branchId(), $load, $actor->userId(), $command->legId);
         });
     }
 

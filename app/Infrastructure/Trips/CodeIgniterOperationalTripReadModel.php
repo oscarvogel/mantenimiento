@@ -157,6 +157,7 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
                 'created_at' => $row['created_at'],
             ],
             'assignments' => $this->assignmentDetails($companyId, $tripId),
+            'legs' => $this->legDetails($companyId, $tripId),
             'stops' => $this->stopDetails($companyId, $tripId),
             'fuel' => $this->fuelDetails($companyId, $tripId),
             'expenses' => $this->expenseDetails($companyId, $tripId),
@@ -244,6 +245,35 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
     }
 
     /** @return list<array<string,mixed>> */
+    private function legDetails(int $companyId, int $tripId): array
+    {
+        $rows = $this->db->table('viaje_operativo_tramos t')
+            ->select('t.id, t.orden, t.cliente_id, t.origen, t.destino, t.km, t.moneda, t.cotizacion, t.flete_facturacion, t.flete_facturacion_ars, t.flete_liquidacion, t.flete_liquidacion_ars, t.observaciones, c.nombre AS cliente')
+            ->join('clientes c', 'c.id = t.cliente_id AND c.empresa_id = t.empresa_id', 'left')
+            ->where('t.empresa_id', $companyId)
+            ->where('t.viaje_id', $tripId)
+            ->orderBy('t.orden', 'ASC')
+            ->get()->getResultArray();
+
+        return array_map(static fn (array $row): array => [
+            'id' => (int) $row['id'],
+            'orden' => (int) $row['orden'],
+            'cliente_id' => $row['cliente_id'] === null ? null : (int) $row['cliente_id'],
+            'cliente' => $row['cliente'],
+            'origen' => (string) $row['origen'],
+            'destino' => (string) $row['destino'],
+            'km' => $row['km'] === null ? null : (float) $row['km'],
+            'moneda' => (string) $row['moneda'],
+            'cotizacion' => (float) $row['cotizacion'],
+            'flete_facturacion' => (float) $row['flete_facturacion'],
+            'flete_facturacion_ars' => (float) $row['flete_facturacion_ars'],
+            'flete_liquidacion' => (float) $row['flete_liquidacion'],
+            'flete_liquidacion_ars' => (float) $row['flete_liquidacion_ars'],
+            'observaciones' => $row['observaciones'],
+        ], $rows);
+    }
+
+    /** @return list<array<string,mixed>> */
     private function stopDetails(int $companyId, int $tripId): array
     {
         $rows = $this->db->table('viaje_operativo_paradas p')
@@ -288,7 +318,7 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
     private function fuelDetails(int $companyId, int $tripId): array
     {
         $rows = $this->db->table('viaje_operativo_combustible')
-            ->select('id, fecha, litros, importe, moneda, cotizacion, importe_ars, kilometraje, estacion, comprobante, observaciones')
+            ->select('id, tramo_id, fecha, litros, importe, moneda, cotizacion, importe_ars, kilometraje, estacion, comprobante, observaciones')
             ->where('empresa_id', $companyId)
             ->where('viaje_id', $tripId)
             ->orderBy('fecha', 'ASC')
@@ -297,6 +327,7 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
 
         return array_map(static fn (array $row): array => [
             'id' => (int) $row['id'],
+            'tramo_id' => $row['tramo_id'] === null ? null : (int) $row['tramo_id'],
             'fecha' => $row['fecha'],
             'litros' => (float) $row['litros'],
             'importe' => (float) $row['importe'],
@@ -314,7 +345,7 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
     private function expenseDetails(int $companyId, int $tripId): array
     {
         $rows = $this->db->table('viaje_operativo_gastos g')
-            ->select('g.id, g.fecha, g.importe, g.moneda, g.cotizacion, g.importe_ars, g.categoria_id, g.medio_pago_id, g.pagado_de_caja, g.comprobante, g.observaciones, c.nombre AS categoria, m.nombre AS medio_pago')
+            ->select('g.id, g.tramo_id, g.fecha, g.importe, g.moneda, g.cotizacion, g.importe_ars, g.categoria_id, g.medio_pago_id, g.pagado_de_caja, g.comprobante, g.observaciones, c.nombre AS categoria, m.nombre AS medio_pago')
             ->join('viajes_categorias_gasto c', 'c.id = g.categoria_id AND c.empresa_id = g.empresa_id', 'left')
             ->join('viajes_medios_pago m', 'm.id = g.medio_pago_id AND m.empresa_id = g.empresa_id', 'left')
             ->where('g.empresa_id', $companyId)
@@ -325,6 +356,7 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
 
         return array_map(static fn (array $row): array => [
             'id' => (int) $row['id'],
+            'tramo_id' => $row['tramo_id'] === null ? null : (int) $row['tramo_id'],
             'fecha' => $row['fecha'],
             'importe' => (float) $row['importe'],
             'moneda' => (string) $row['moneda'],

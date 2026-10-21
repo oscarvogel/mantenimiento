@@ -1069,6 +1069,38 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
         );
     }
 
+    public static function addTripLeg(bool $getShared = true): \App\Application\Trips\AddTripLeg
+    {
+        if ($getShared) {
+            return static::getSharedInstance('addTripLeg');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\Trips\AddTripLeg(
+            new \App\Infrastructure\Trips\CodeIgniterOperationalTripRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripLegRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripDirectoryLookup($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripsUnitOfWork($db),
+        );
+    }
+
+    public static function finishTrip(bool $getShared = true): \App\Application\Trips\FinishTrip
+    {
+        if ($getShared) {
+            return static::getSharedInstance('finishTrip');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\Trips\FinishTrip(
+            new \App\Infrastructure\Trips\CodeIgniterOperationalTripRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripReadingRecorder(static::registerReading(false)),
+            new \App\Infrastructure\Trips\CodeIgniterTripsUnitOfWork($db),
+            new \App\Infrastructure\Trips\SystemTripClock(),
+        );
+    }
+
     public static function registerTripFuel(bool $getShared = true): \App\Application\Trips\RegisterTripFuel
     {
         if ($getShared) {
@@ -1081,6 +1113,7 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
             new \App\Infrastructure\Trips\CodeIgniterOperationalTripRepository($db),
             new \App\Infrastructure\Trips\CodeIgniterTripCostRepository($db),
             new \App\Infrastructure\Trips\CodeIgniterTripDirectoryLookup($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripLegRepository($db),
             new \App\Infrastructure\Trips\CodeIgniterTripsUnitOfWork($db),
         );
     }
@@ -1097,6 +1130,7 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
             new \App\Infrastructure\Trips\CodeIgniterOperationalTripRepository($db),
             new \App\Infrastructure\Trips\CodeIgniterTripCostRepository($db),
             new \App\Infrastructure\Trips\CodeIgniterTripDirectoryLookup($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripLegRepository($db),
             new \App\Infrastructure\Trips\CodeIgniterTripsUnitOfWork($db),
         );
     }

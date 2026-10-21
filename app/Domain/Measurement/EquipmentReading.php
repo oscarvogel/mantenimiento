@@ -15,6 +15,7 @@ final class EquipmentReading
     public const QUICK_ENTRY = 'CARGA_RAPIDA';
     public const INITIAL_ENTRY = 'ALTA_INICIAL';
     public const QR_ANONYMOUS = 'QR_ANONIMO';
+    public const TRIP = 'VIAJE';
 
     private function __construct(
         private readonly ?int $id,
@@ -38,7 +39,7 @@ final class EquipmentReading
             || ($userId === null && $origin !== self::QR_ANONYMOUS)) {
             throw new DomainException('El alcance y autor de la lectura deben ser válidos.');
         }
-        if (! in_array($origin, [self::MANUAL, self::WORK_ORDER, self::IMPORT, self::QUICK_ENTRY, self::INITIAL_ENTRY, self::QR_ANONYMOUS], true)) {
+        if (! in_array($origin, [self::MANUAL, self::WORK_ORDER, self::IMPORT, self::QUICK_ENTRY, self::INITIAL_ENTRY, self::QR_ANONYMOUS, self::TRIP], true)) {
             throw new DomainException('El origen de la lectura no es válido.');
         }
         if ($originReference !== null && mb_strlen($originReference) > 100) {

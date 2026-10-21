@@ -10,9 +10,9 @@ use App\Domain\Trips\TripFuelLoad;
 
 interface TripCostRepository
 {
-    public function addFuel(int $tripId, int $companyId, int $branchId, TripFuelLoad $load, int $actorUserId): int;
+    public function addFuel(int $tripId, int $companyId, int $branchId, TripFuelLoad $load, int $actorUserId, ?int $legId = null): int;
 
-    public function addExpense(int $tripId, int $companyId, int $branchId, TripExpense $expense, int $actorUserId): int;
+    public function addExpense(int $tripId, int $companyId, int $branchId, TripExpense $expense, int $actorUserId, ?int $legId = null): int;
 
     public function addCashMovement(int $tripId, int $companyId, int $branchId, TripCashMovement $movement, int $actorUserId): int;
 }

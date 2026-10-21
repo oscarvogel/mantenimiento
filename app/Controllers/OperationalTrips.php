@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Application\Identity\ActorContext;
+use App\Application\Trips\AddTripLegCommand;
 use App\Application\Trips\CreateTripCommand;
 use App\Application\Trips\OperationalTripFilters;
 use App\Application\Trips\RegisterTripCashMovementCommand;
@@ -63,6 +64,18 @@ final class OperationalTrips extends BaseController
         }
     }
 
+    public function addLeg(int $tripId): RedirectResponse
+    {
+        try {
+            $command = AddTripLegCommand::fromInput((array) $this->request->getPost() + ['viaje_id' => $tripId]);
+            service('addTripLeg')->execute($this->actor(), $command);
+
+            return redirect()->to('/viajes/operativos/' . $tripId)->with('success', 'El tramo quedó agregado.');
+        } catch (Throwable $exception) {
+            return $this->failure($exception, 'No se pudo agregar el tramo.', '/viajes/operativos/' . $tripId);
+        }
+    }
+
     public function show(int $tripId): string|RedirectResponse
     {
         try {
@@ -79,7 +92,7 @@ final class OperationalTrips extends BaseController
     public function start(int $tripId): RedirectResponse
     {
         try {
-            $departureAt = $this->optionalDateTime($this->request->getPost('fecha_salida_real'));
+            $departureAt = $this->optionalDateTime($this->request->getPost('fecha_salida_real'), 'La fecha real de salida');
             $km = filter_var($this->request->getPost('km_salida'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
             if ($km === false) {
                 throw new DomainException('Ingresá el odómetro de salida del viaje.');
@@ -90,6 +103,23 @@ final class OperationalTrips extends BaseController
             return redirect()->to('/viajes/operativos/' . $tripId)->with('success', 'El viaje quedó en curso.');
         } catch (Throwable $exception) {
             return $this->failure($exception, 'No se pudo iniciar el viaje.', '/viajes/operativos/' . $tripId);
+        }
+    }
+
+    public function finish(int $tripId): RedirectResponse
+    {
+        try {
+            $returnAt = $this->optionalDateTime($this->request->getPost('fecha_regreso_real'), 'La fecha real de regreso');
+            $km = filter_var($this->request->getPost('km_regreso'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
+            if ($km === false) {
+                throw new DomainException('Ingresá el odómetro de regreso del viaje.');
+            }
+
+            service('finishTrip')->execute($this->actor(), $tripId, $returnAt, (int) $km);
+
+            return redirect()->to('/viajes/operativos/' . $tripId)->with('success', 'El viaje quedó cerrado y se generó la lectura del equipo.');
+        } catch (Throwable $exception) {
+            return $this->failure($exception, 'No se pudo cerrar el viaje.', '/viajes/operativos/' . $tripId);
         }
     }
 
@@ -119,6 +149,7 @@ final class OperationalTrips extends BaseController
                 $this->text('estacion', 120),
                 $this->text('comprobante', 80),
                 $this->text('observaciones', 500),
+                $this->optionalInt('tramo_id'),
             );
             service('registerTripFuel')->execute($this->actor(), $command);
 
@@ -142,6 +173,7 @@ final class OperationalTrips extends BaseController
                 (string) $this->request->getPost('pagado_de_caja') === '1',
                 $this->text('comprobante', 80),
                 $this->text('observaciones', 500),
+                $this->optionalInt('tramo_id'),
             );
             service('registerTripExpense')->execute($this->actor(), $command);
 
@@ -173,7 +205,7 @@ final class OperationalTrips extends BaseController
 
     private function requiredDateTime(string $key): DateTimeImmutable
     {
-        $value = $this->optionalDateTime($this->request->getPost($key));
+        $value = $this->optionalDateTime($this->request->getPost($key), 'La fecha del movimiento');
         if ($value === null) {
             throw new DomainException('Indicá la fecha del movimiento.');
         }
@@ -232,7 +264,7 @@ final class OperationalTrips extends BaseController
         return $value === '' ? null : mb_substr($value, 0, $max);
     }
 
-    private function optionalDateTime(mixed $value): ?DateTimeImmutable
+    private function optionalDateTime(mixed $value, string $label = 'La fecha real de salida'): ?DateTimeImmutable
     {
         $raw = trim((string) ($value ?? ''));
         if ($raw === '') {
@@ -246,7 +278,7 @@ final class OperationalTrips extends BaseController
             }
         }
 
-        throw new DomainException('La fecha real de salida no es válida.');
+        throw new DomainException($label . ' no es válida.');
     }
 
     private function actor(): ActorContext

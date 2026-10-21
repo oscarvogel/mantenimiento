@@ -35,6 +35,68 @@ final class GetOperationalTripTest extends TestCase
 
         self::assertFalse($detail['canStart']);
         self::assertFalse($detail['canCancel']);
+        self::assertTrue($detail['canClose']);
+    }
+
+    public function testComputesCommissionAndMarginWithAssignedAndUnassignedCosts(): void
+    {
+        $detail = $this->detail([
+            'assignments' => [['rol' => 'CHOFER', 'porcentaje_liquidacion' => 14.0]],
+            'legs' => [[
+                'id' => 1,
+                'orden' => 1,
+                'origen' => 'Rosario',
+                'destino' => 'Córdoba',
+                'flete_facturacion_ars' => 1_000_000.0,
+                'flete_liquidacion_ars' => 800_000.0,
+            ]],
+            'fuel' => [['importe_ars' => 200_000.0, 'tramo_id' => 1, 'litros' => 300.0, 'kilometraje' => null]],
+            'expenses' => [
+                ['importe_ars' => 50_000.0, 'tramo_id' => 1, 'pagado_de_caja' => false],
+                ['importe_ars' => 10_000.0, 'tramo_id' => null, 'pagado_de_caja' => false],
+            ],
+        ]);
+
+        self::assertSame(1_000_000.0, $detail['totals']['invoice_ars']);
+        self::assertSame(112_000.0, $detail['totals']['commission_ars']);
+        self::assertSame(250_000.0, $detail['totals']['assigned_costs_ars']);
+        self::assertSame(10_000.0, $detail['totals']['unassigned_costs_ars']);
+        self::assertSame(628_000.0, $detail['totals']['margin_ars']);
+        self::assertSame(62.8, $detail['totals']['margin_pct']);
+        self::assertSame(112_000.0, $detail['legs'][0]['commission_ars']);
+        self::assertSame(638_000.0, $detail['legs'][0]['margin_ars']);
+    }
+
+    public function testDoesNotInventCommissionWhenThereAreSeveralDrivers(): void
+    {
+        $detail = $this->detail([
+            'assignments' => [
+                ['rol' => 'CHOFER', 'porcentaje_liquidacion' => 14.0],
+                ['rol' => 'CHOFER', 'porcentaje_liquidacion' => 10.0],
+            ],
+            'legs' => [[
+                'id' => 1,
+                'orden' => 1,
+                'origen' => 'Rosario',
+                'destino' => 'Córdoba',
+                'flete_facturacion_ars' => 1_000_000.0,
+                'flete_liquidacion_ars' => 800_000.0,
+            ]],
+        ]);
+
+        self::assertTrue($detail['totals']['multiple_drivers']);
+        self::assertNull($detail['totals']['commission_ars']);
+        self::assertNull($detail['totals']['margin_ars']);
+        self::assertNull($detail['legs'][0]['commission_ars']);
+    }
+
+    public function testShowsNoMarginWithoutLegs(): void
+    {
+        $detail = $this->detail([]);
+
+        self::assertFalse($detail['totals']['has_legs']);
+        self::assertNull($detail['totals']['margin_ars']);
+        self::assertSame(0.0, $detail['totals']['invoice_ars']);
     }
 
     public function testRejectsActorWithoutReadPermission(): void
@@ -58,13 +120,23 @@ final class GetOperationalTripTest extends TestCase
             55,
         );
     }
+
+    /** @param array<string,mixed> $data */
+    private function detail(array $data): array
+    {
+        return (new GetOperationalTrip(new GetOperationalTripReadModelFake('EN_CURSO', $data)))->execute(
+            new ActorContext(1, 5, false, false, [], ['viajes.ver', 'viajes.operar'], [10]),
+            55,
+        );
+    }
 }
 
 final class GetOperationalTripReadModelFake implements OperationalTripReadModel
 {
     public array $query = [];
 
-    public function __construct(private ?string $status)
+    /** @param array<string,mixed> $data */
+    public function __construct(private ?string $status, private array $data = [])
     {
     }
 
@@ -85,10 +157,14 @@ final class GetOperationalTripReadModelFake implements OperationalTripReadModel
             return null;
         }
 
-        return [
+        return array_replace([
             'trip' => ['id' => $tripId, 'numero' => 42, 'estado' => $this->status],
             'assignments' => [],
             'stops' => [],
-        ];
+            'legs' => [],
+            'fuel' => [],
+            'expenses' => [],
+            'cashMovements' => [],
+        ], $this->data);
     }
 }

@@ -161,7 +161,7 @@ const updateCustomer = (stop, value) => {
 
 <template>
   <div>
-    <PageHeading eyebrow="Viajes" title="Nuevo viaje" description="Elegí el camión y completamos el dominio, el chofer y el último km. Revisá la fecha de salida y el recorrido. El viaje queda Planificado hasta que registres la salida real." :back="{ href: links.index, label: 'Volver a viajes operativos' }" />
+    <PageHeading eyebrow="Viajes" title="Nuevo viaje" description="Elegí el camión y completamos el dominio, el chofer y el último km. Después de guardar, cargá los tramos con el flete de facturación y el de liquidación. El viaje queda Planificado hasta que registres la salida real." :back="{ href: links.index, label: 'Volver a viajes operativos' }" />
 
     <form method="post" :action="links.store" class="space-y-5">
       <input type="hidden" :name="csrf.name" :value="csrf.hash" />

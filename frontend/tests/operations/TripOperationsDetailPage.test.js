@@ -78,6 +78,51 @@ describe('detalle de viaje operativo', () => {
     wrapper.unmount()
   })
 
+  it('muestra tramos, comisión, margen y cierre del viaje', () => {
+    const wrapper = mount(TripOperationsDetailPage, {
+      props: {
+        data: {
+          ...data,
+          canStart: false,
+          canCancel: false,
+          canAddLegs: true,
+          canClose: true,
+          canRegisterCosts: true,
+          links: {
+            ...data.links,
+            legs: '/mantenimiento/viajes/operativos/42/tramos',
+            finish: '/mantenimiento/viajes/operativos/42/cerrar',
+            fuel: '/mantenimiento/viajes/operativos/42/combustible',
+            expense: '/mantenimiento/viajes/operativos/42/gastos',
+            cash: '/mantenimiento/viajes/operativos/42/caja',
+          },
+          trip: { ...data.trip, estado: 'EN_CURSO', estado_label: 'En curso', km_salida: 145300 },
+          legs: [{
+            id: 1, orden: 1, cliente: null, origen: 'Rosario', destino: 'Córdoba', km: 320,
+            flete_facturacion_ars: 1000000, flete_liquidacion_ars: 800000,
+            commission_ars: 112000, assigned_costs_ars: 250000, margin_ars: 638000,
+          }],
+          totals: {
+            has_legs: true, invoice_ars: 1000000, commission_ars: 112000,
+            fuel_amount_ars: 200000, fuel_liters: 300, expense_amount_ars: 50000,
+            assigned_costs_ars: 250000, unassigned_costs_ars: 0,
+            margin_ars: 638000, margin_pct: 63.8, driver_percentage: 14,
+            drivers_count: 1, multiple_drivers: false,
+          },
+          options: { expenseCategories: [], paymentMethods: [], currencies: [{ code: 'ARS', label: 'Peso argentino' }] },
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain('Rosario → Córdoba')
+    expect(wrapper.text()).toContain('ARS 1.000.000,00')
+    expect(wrapper.text()).toContain('ARS 638.000,00')
+    expect(wrapper.get('form[action="/mantenimiento/viajes/operativos/42/tramos"]').exists()).toBe(true)
+    expect(wrapper.get('form[action="/mantenimiento/viajes/operativos/42/cerrar"]').exists()).toBe(true)
+    expect(wrapper.find('select[name="tramo_id"]').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
   it('oculta las acciones cuando el viaje ya avanzó', () => {
     const wrapper = mount(TripOperationsDetailPage, {
       props: { data: { ...data, canStart: false, canCancel: false, trip: { ...data.trip, estado: 'EN_CURSO', estado_label: 'En curso' } } },

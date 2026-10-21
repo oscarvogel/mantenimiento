@@ -1,6 +1,6 @@
 {
-  "_admin-Dkb4ku6Q.js": {
-    "file": "assets/admin-Dkb4ku6Q.js",
+  "_admin-DL4FFPxA.js": {
+    "file": "assets/admin-DL4FFPxA.js",
     "name": "admin",
     "imports": [
       "_vendor-C0PKg-zE.js"
@@ -21,11 +21,11 @@
     "file": "assets/chatbot-p1890OXW.css",
     "src": "_chatbot-p1890OXW.css"
   },
-  "_reports-CDmof_F8.js": {
-    "file": "assets/reports-CDmof_F8.js",
+  "_reports-DEZNYGOe.js": {
+    "file": "assets/reports-DEZNYGOe.js",
     "name": "reports",
     "imports": [
-      "_admin-Dkb4ku6Q.js",
+      "_admin-DL4FFPxA.js",
       "_vendor-C0PKg-zE.js"
     ]
   },
@@ -87,15 +87,15 @@
     "src": "src/assets/platform/trips-card.jpg"
   },
   "src/main.js": {
-    "file": "assets/main-DcwPkqTJ.js",
+    "file": "assets/main-DMvxC4-8.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
     "imports": [
       "_vendor-C0PKg-zE.js",
       "_chatbot-U9GB5-zI.js",
-      "_admin-Dkb4ku6Q.js",
-      "_reports-CDmof_F8.js"
+      "_admin-DL4FFPxA.js",
+      "_reports-DEZNYGOe.js"
     ],
     "dynamicImports": [
       "_chatbot-U9GB5-zI.js",
@@ -135,7 +135,7 @@
     ]
   },
   "src/profiles/cliente_piloto/profile.js": {
-    "file": "assets/profile-DzTvrIVo.js",
+    "file": "assets/profile-2mk6rlNt.js",
     "name": "profile",
     "src": "src/profiles/cliente_piloto/profile.js",
     "isDynamicEntry": true,
@@ -143,15 +143,15 @@
       "src/main.js",
       "_vendor-C0PKg-zE.js",
       "_chatbot-U9GB5-zI.js",
-      "_admin-Dkb4ku6Q.js",
-      "_reports-CDmof_F8.js"
+      "_admin-DL4FFPxA.js",
+      "_reports-DEZNYGOe.js"
     ],
     "css": [
       "assets/profile-DV70kWFs.css"
     ]
   },
   "src/profiles/platform/profile.js": {
-    "file": "assets/profile-DxtjS106.js",
+    "file": "assets/profile-C1wQd0VM.js",
     "name": "profile",
     "src": "src/profiles/platform/profile.js",
     "isDynamicEntry": true,
@@ -159,12 +159,12 @@
       "src/main.js",
       "_vendor-C0PKg-zE.js",
       "_chatbot-U9GB5-zI.js",
-      "_admin-Dkb4ku6Q.js",
-      "_reports-CDmof_F8.js"
+      "_admin-DL4FFPxA.js",
+      "_reports-DEZNYGOe.js"
     ]
   },
   "src/profiles/vogel/profile.js": {
-    "file": "assets/profile-Dw-3L3XV.js",
+    "file": "assets/profile-UchsuA2z.js",
     "name": "profile",
     "src": "src/profiles/vogel/profile.js",
     "isDynamicEntry": true,
@@ -172,8 +172,8 @@
       "src/main.js",
       "_vendor-C0PKg-zE.js",
       "_chatbot-U9GB5-zI.js",
-      "_admin-Dkb4ku6Q.js",
-      "_reports-CDmof_F8.js"
+      "_admin-DL4FFPxA.js",
+      "_reports-DEZNYGOe.js"
     ]
   }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Domain\Trips\Trip;
 use App\Domain\Trips\TripAssignment;
+use App\Domain\Trips\TripLeg;
 use App\Domain\Trips\TripStop;
 use PHPUnit\Framework\TestCase;
 
@@ -133,6 +134,52 @@ final class TripTest extends TestCase
             null,
             101.0,
         );
+    }
+
+    public function testLegCommissionUsesLiquidationAmountAndCurrency(): void
+    {
+        $leg = new TripLeg('Rosario', 'Córdoba', 1_000_000, 800_000, 320, null, 'ARS', 1.0);
+
+        self::assertSame(1_000_000.0, $leg->invoiceAmountArs());
+        self::assertSame(800_000.0, $leg->liquidationAmountArs());
+        self::assertSame(112_000.0, $leg->commission(14.0));
+    }
+
+    public function testLegRejectsNegativeAmountsAndEmptyRoute(): void
+    {
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('negativos');
+
+        new TripLeg('Rosario', 'Córdoba', -1, 0);
+    }
+
+    public function testTripCanOnlyFinishWhenItIsInProgress(): void
+    {
+        $trip = $this->trip();
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('en curso');
+
+        $trip->finish(new DateTimeImmutable('2026-10-21 18:00:00'), 145_500);
+    }
+
+    public function testFinishRecordsReturnAndRejectsLowerOdometer(): void
+    {
+        $trip = $this->trip();
+        $trip->start(new DateTimeImmutable('2026-10-20 08:00:00'), 145_300);
+
+        $trip->finish(new DateTimeImmutable('2026-10-21 18:00:00'), 145_700);
+
+        self::assertSame(Trip::FINALIZADO, $trip->status());
+        self::assertSame('2026-10-21 18:00:00', $trip->actualReturn()?->format('Y-m-d H:i:s'));
+        self::assertSame(145_700, $trip->returnKm());
+
+        $other = $this->trip();
+        $other->start(new DateTimeImmutable('2026-10-20 08:00:00'), 145_300);
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('menor');
+        $other->finish(new DateTimeImmutable('2026-10-21 18:00:00'), 145_200);
     }
 
     public function testStartingTheTripRecordsRealDepartureAndOdometer(): void

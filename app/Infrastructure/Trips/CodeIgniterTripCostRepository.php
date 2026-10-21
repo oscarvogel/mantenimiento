@@ -18,9 +18,10 @@ final class CodeIgniterTripCostRepository implements TripCostRepository
     {
     }
 
-    public function addFuel(int $tripId, int $companyId, int $branchId, TripFuelLoad $load, int $actorUserId): int
+    public function addFuel(int $tripId, int $companyId, int $branchId, TripFuelLoad $load, int $actorUserId, ?int $legId = null): int
     {
         return $this->insert('viaje_operativo_combustible', $tripId, $companyId, $branchId, $actorUserId, [
+            'tramo_id' => $legId,
             'fecha' => $load->date()->format('Y-m-d H:i:s'),
             'litros' => $this->decimal($load->liters(), 2),
             ...$this->moneyColumns($load->money()),
@@ -31,9 +32,10 @@ final class CodeIgniterTripCostRepository implements TripCostRepository
         ]);
     }
 
-    public function addExpense(int $tripId, int $companyId, int $branchId, TripExpense $expense, int $actorUserId): int
+    public function addExpense(int $tripId, int $companyId, int $branchId, TripExpense $expense, int $actorUserId, ?int $legId = null): int
     {
         return $this->insert('viaje_operativo_gastos', $tripId, $companyId, $branchId, $actorUserId, [
+            'tramo_id' => $legId,
             'categoria_id' => $expense->categoryId(),
             'fecha' => $expense->date()->format('Y-m-d H:i:s'),
             ...$this->moneyColumns($expense->money()),

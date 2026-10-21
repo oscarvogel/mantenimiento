@@ -46,14 +46,20 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
             unidad_carga_id INTEGER NULL, observaciones TEXT NULL
         )');
         $this->database->query('CREATE TABLE viaje_operativo_combustible (
-            id INTEGER PRIMARY KEY, viaje_id INTEGER, empresa_id INTEGER, sucursal_id INTEGER, fecha TEXT,
+            id INTEGER PRIMARY KEY, viaje_id INTEGER, tramo_id INTEGER NULL, empresa_id INTEGER, sucursal_id INTEGER, fecha TEXT,
             litros REAL, importe REAL, moneda TEXT, cotizacion REAL, importe_ars REAL, kilometraje INTEGER NULL,
             estacion TEXT NULL, comprobante TEXT NULL, observaciones TEXT NULL
         )');
         $this->database->query('CREATE TABLE viaje_operativo_gastos (
-            id INTEGER PRIMARY KEY, viaje_id INTEGER, empresa_id INTEGER, sucursal_id INTEGER, categoria_id INTEGER NULL,
+            id INTEGER PRIMARY KEY, viaje_id INTEGER, tramo_id INTEGER NULL, empresa_id INTEGER, sucursal_id INTEGER, categoria_id INTEGER NULL,
             fecha TEXT, importe REAL, moneda TEXT, cotizacion REAL, importe_ars REAL, medio_pago_id INTEGER NULL,
             pagado_de_caja INTEGER, comprobante TEXT NULL, observaciones TEXT NULL
+        )');
+        $this->database->query('CREATE TABLE viaje_operativo_tramos (
+            id INTEGER PRIMARY KEY, viaje_id INTEGER, empresa_id INTEGER, sucursal_id INTEGER, orden INTEGER,
+            cliente_id INTEGER NULL, origen TEXT, destino TEXT, km REAL NULL, moneda TEXT, cotizacion REAL,
+            flete_facturacion REAL, flete_facturacion_ars REAL, flete_liquidacion REAL, flete_liquidacion_ars REAL,
+            observaciones TEXT NULL
         )');
         $this->database->query('CREATE TABLE viaje_operativo_caja_movimientos (
             id INTEGER PRIMARY KEY, viaje_id INTEGER, empresa_id INTEGER, sucursal_id INTEGER, tipo TEXT,
@@ -89,6 +95,13 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
             ['id' => 1, 'viaje_id' => 1, 'empresa_id' => 5, 'sucursal_id' => 10, 'rol' => 'TRACTOR', 'equipo_id' => 7, 'empleado_id' => null, 'desde' => '2026-10-20 08:00:00', 'hasta' => '2026-10-21 18:00:00', 'motivo' => null, 'porcentaje_liquidacion' => null],
             ['id' => 2, 'viaje_id' => 1, 'empresa_id' => 5, 'sucursal_id' => 10, 'rol' => 'ACOPLADO', 'equipo_id' => 9, 'empleado_id' => null, 'desde' => '2026-10-20 08:00:00', 'hasta' => '2026-10-21 18:00:00', 'motivo' => null, 'porcentaje_liquidacion' => null],
             ['id' => 3, 'viaje_id' => 1, 'empresa_id' => 5, 'sucursal_id' => 10, 'rol' => 'CHOFER', 'equipo_id' => null, 'empleado_id' => 11, 'desde' => '2026-10-20 08:00:00', 'hasta' => '2026-10-21 18:00:00', 'motivo' => null, 'porcentaje_liquidacion' => 14.0],
+        ]);
+        $this->database->table('viaje_operativo_tramos')->insert([
+            'id' => 1, 'viaje_id' => 1, 'empresa_id' => 5, 'sucursal_id' => 10, 'orden' => 1,
+            'cliente_id' => 3, 'origen' => 'Rosario', 'destino' => 'Córdoba', 'km' => 320,
+            'moneda' => 'ARS', 'cotizacion' => 1, 'flete_facturacion' => 1_000_000,
+            'flete_facturacion_ars' => 1_000_000, 'flete_liquidacion' => 800_000,
+            'flete_liquidacion_ars' => 800_000, 'observaciones' => null,
         ]);
         $this->database->table('viaje_operativo_paradas')->insertBatch([
             ['id' => 1, 'viaje_id' => 1, 'empresa_id' => 5, 'sucursal_id' => 10, 'orden' => 1, 'tipo' => 'CARGA', 'cliente_id' => 3, 'domicilio_id' => 4, 'ubicacion' => 'Rosario', 'fecha_estimada' => '2026-10-20 08:30:00', 'fecha_real' => null, 'descripcion_carga' => 'Soja', 'cantidad' => 30, 'unidad_carga_id' => 2, 'observaciones' => null],
@@ -140,6 +153,9 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
         self::assertSame('Tractor / camión', $detail['assignments'][0]['rol_label']);
         self::assertSame('Juan Pérez', $detail['assignments'][2]['label']);
         self::assertSame(14.0, $detail['assignments'][2]['porcentaje_liquidacion']);
+        self::assertCount(1, $detail['legs']);
+        self::assertSame('Rosario', $detail['legs'][0]['origen']);
+        self::assertSame(1_000_000.0, $detail['legs'][0]['flete_facturacion_ars']);
         self::assertCount(2, $detail['stops']);
         self::assertSame('Cliente Sur', $detail['stops'][0]['cliente']);
         self::assertSame('Planta · Ruta 9 · Rosario', $detail['stops'][0]['domicilio']);

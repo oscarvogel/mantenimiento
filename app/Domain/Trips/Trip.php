@@ -141,6 +141,26 @@ final class Trip
         $this->departureKm = $departureKm;
     }
 
+    public function finish(DateTimeImmutable $at, int $returnKm): void
+    {
+        if ($this->status !== self::EN_CURSO) {
+            throw new DomainException('Solo se puede cerrar un viaje en curso.');
+        }
+        if ($returnKm < 0) {
+            throw new DomainException('El odómetro de regreso no puede ser negativo.');
+        }
+        if ($this->departureKm !== null && $returnKm < $this->departureKm) {
+            throw new DomainException('El odómetro de regreso no puede ser menor al de salida.');
+        }
+        if ($this->actualDeparture !== null && $at < $this->actualDeparture) {
+            throw new DomainException('La fecha de regreso no puede ser anterior a la salida.');
+        }
+
+        $this->status = self::FINALIZADO;
+        $this->actualReturn = $at;
+        $this->returnKm = $returnKm;
+    }
+
     public function cancel(string $reason): void
     {
         if ($this->status !== self::PLANIFICADO) {

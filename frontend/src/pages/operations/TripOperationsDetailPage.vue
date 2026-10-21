@@ -14,10 +14,13 @@ const fuel = computed(() => props.data.fuel ?? [])
 const expenses = computed(() => props.data.expenses ?? [])
 const cashMovements = computed(() => props.data.cashMovements ?? [])
 const totals = computed(() => props.data.totals ?? {})
+const legs = computed(() => props.data.legs ?? [])
 const consumption = computed(() => props.data.consumption ?? {})
 const options = computed(() => props.data.options ?? { expenseCategories: [], paymentMethods: [], currencies: [] })
 const csrf = computed(() => props.data.csrf ?? { name: 'csrf_test_name', hash: '' })
 const canRegisterCosts = computed(() => Boolean(props.data.canRegisterCosts))
+const canAddLegs = computed(() => Boolean(props.data.canAddLegs))
+const canClose = computed(() => Boolean(props.data.canClose))
 const currencies = computed(() => options.value.currencies?.length ? options.value.currencies : [{ code: 'ARS', label: 'Peso argentino' }])
 const statusTone = {
   PLANIFICADO: 'bg-info-subtle text-info-strong',
@@ -33,6 +36,19 @@ const fmtDateTime = (value) => {
 }
 const number = (value) => value === null || value === undefined || value === '' ? '—' : Number(value).toLocaleString('es-AR')
 const money = (value, currency = 'ARS') => `${currency} ${Number(value ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+const moneyOrNoData = (value) => value === null || value === undefined ? 'Sin datos' : money(value)
+const legLabel = (legId) => {
+  const leg = legs.value.find((row) => String(row.id) === String(legId))
+  return leg ? `Tramo ${leg.orden}: ${leg.origen} → ${leg.destino}` : 'Todo el viaje'
+}
+const financialNote = computed(() => {
+  if (!totals.value.has_legs) return 'Cargá al menos un tramo para calcular facturación, comisión y margen.'
+  if (totals.value.multiple_drivers) return 'Hay más de un chofer. Definí un chofer responsable para calcular la comisión.'
+  if (totals.value.driver_percentage === null || totals.value.driver_percentage === undefined) {
+    return 'El chofer no tiene un porcentaje de liquidación definido.'
+  }
+  return null
+})
 const liters = (value) => `${Number(value ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} L`
 const consumptionValue = computed(() => {
   if (consumption.value.liters_per_100 === null || consumption.value.liters_per_100 === undefined) return 'Sin datos suficientes'
@@ -78,6 +94,93 @@ const facts = computed(() => [
       </dl>
     </PanelCard>
 
+    <section aria-label="Resumen económico" class="mb-5">
+      <div class="grid grid-cols-2 gap-3 lg:grid-cols-6">
+        <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
+          <p class="text-xs font-semibold text-ink-muted">Facturado</p>
+          <p class="mt-2 text-xl font-bold text-ink">{{ moneyOrNoData(totals.invoice_ars) }}</p>
+          <p class="mt-1 text-xs text-ink-muted">{{ legs.length }} tramo{{ legs.length === 1 ? '' : 's' }}</p>
+        </article>
+        <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
+          <p class="text-xs font-semibold text-ink-muted">Comisión chofer</p>
+          <p class="mt-2 text-xl font-bold text-ink">{{ moneyOrNoData(totals.commission_ars) }}</p>
+          <p class="mt-1 text-xs text-ink-muted">{{ totals.driver_percentage === null || totals.driver_percentage === undefined ? 'Sin %' : `${totals.driver_percentage}%` }}</p>
+        </article>
+        <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
+          <p class="text-xs font-semibold text-ink-muted">Combustible</p>
+          <p class="mt-2 text-xl font-bold text-ink">{{ money(totals.fuel_amount_ars) }}</p>
+          <p class="mt-1 text-xs text-ink-muted">{{ liters(totals.fuel_liters) }}</p>
+        </article>
+        <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
+          <p class="text-xs font-semibold text-ink-muted">Gastos</p>
+          <p class="mt-2 text-xl font-bold text-ink">{{ money(totals.expense_amount_ars) }}</p>
+          <p class="mt-1 text-xs text-ink-muted">del viaje</p>
+        </article>
+        <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
+          <p class="text-xs font-semibold text-ink-muted">Costos sin asignar</p>
+          <p class="mt-2 text-xl font-bold text-ink">{{ money(totals.unassigned_costs_ars) }}</p>
+          <p class="mt-1 text-xs text-ink-muted">no imputados a un tramo</p>
+        </article>
+        <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
+          <p class="text-xs font-semibold text-ink-muted">Margen del viaje</p>
+          <p class="mt-2 text-xl font-bold" :class="totals.margin_ars === null || totals.margin_ars === undefined ? 'text-ink-muted' : (totals.margin_ars < 0 ? 'text-danger-strong' : 'text-success-strong')">{{ moneyOrNoData(totals.margin_ars) }}</p>
+          <p class="mt-1 text-xs text-ink-muted">{{ totals.margin_pct === null || totals.margin_pct === undefined ? 'Sin datos suficientes' : `${totals.margin_pct}%` }}</p>
+        </article>
+      </div>
+      <p v-if="financialNote" class="mt-3 rounded-lg border border-info/30 bg-info-subtle px-3 py-2 text-sm text-info-strong">{{ financialNote }}</p>
+    </section>
+
+    <PanelCard title="Tramos" :count="legs.length" class="mb-5" allow-overflow>
+      <p v-if="legs.length === 0" class="mb-4 text-sm text-ink-muted">Cargá el primer tramo con origen, destino y los dos fletes: facturación y liquidación.</p>
+      <div v-else class="mb-4 overflow-x-auto">
+        <table class="w-full min-w-[64rem] text-left text-sm">
+          <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
+            <tr>
+              <th class="px-3 py-2">#</th>
+              <th class="px-3 py-2">Recorrido</th>
+              <th class="px-3 py-2 text-right">Km</th>
+              <th class="px-3 py-2 text-right">Flete facturación</th>
+              <th class="px-3 py-2 text-right">Flete liquidación</th>
+              <th class="px-3 py-2 text-right">Comisión</th>
+              <th class="px-3 py-2 text-right">Costos asignados</th>
+              <th class="px-3 py-2 text-right">Margen</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-border-subtle">
+            <tr v-for="leg in legs" :key="leg.id">
+              <td class="px-3 py-2 text-ink-muted">{{ leg.orden }}</td>
+              <td class="px-3 py-2">
+                <p class="font-semibold text-ink">{{ leg.origen }} → {{ leg.destino }}</p>
+                <p v-if="leg.cliente" class="mt-0.5 text-xs text-ink-muted">{{ leg.cliente }}</p>
+              </td>
+              <td class="px-3 py-2 text-right text-ink-muted">{{ leg.km === null ? '—' : number(leg.km) }}</td>
+              <td class="px-3 py-2 text-right text-ink">{{ money(leg.flete_facturacion_ars) }}</td>
+              <td class="px-3 py-2 text-right text-ink">{{ money(leg.flete_liquidacion_ars) }}</td>
+              <td class="px-3 py-2 text-right text-ink-muted">{{ moneyOrNoData(leg.commission_ars) }}</td>
+              <td class="px-3 py-2 text-right text-ink-muted">{{ money(leg.assigned_costs_ars) }}</td>
+              <td class="px-3 py-2 text-right font-semibold" :class="leg.margin_ars === null ? 'text-ink-muted' : (leg.margin_ars < 0 ? 'text-danger-strong' : 'text-success-strong')">{{ moneyOrNoData(leg.margin_ars) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <form v-if="canAddLegs" method="post" :action="data.links?.legs" class="rounded-xl border border-border-subtle bg-surface p-4">
+        <input type="hidden" :name="csrf.name" :value="csrf.hash" />
+        <h3 class="text-sm font-bold text-ink">Agregar tramo</h3>
+        <p class="mt-1 text-xs text-ink-muted">El flete de liquidación es la base para el porcentaje del chofer. El de facturación es el ingreso del viaje.</p>
+        <div class="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Origen</span><input type="text" name="origen" required maxlength="200" :class="fieldClass" /></label>
+          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Destino</span><input type="text" name="destino" required maxlength="200" :class="fieldClass" /></label>
+          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Km</span><input type="number" name="km" min="0" step="0.01" :class="fieldClass" /></label>
+          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select name="moneda" :class="fieldClass"><option v-for="currency in currencies" :key="currency.code" :value="currency.code" :selected="currency.code === 'ARS'">{{ currency.code }} · {{ currency.label }}</option></select></label>
+          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Flete facturación</span><input type="number" name="flete_facturacion" min="0" step="0.01" required :class="fieldClass" /></label>
+          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Flete liquidación</span><input type="number" name="flete_liquidacion" min="0" step="0.01" required :class="fieldClass" /></label>
+          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cotización a ARS</span><input type="number" name="cotizacion" min="0.000001" step="0.000001" value="1" :class="fieldClass" /></label>
+          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Observaciones</span><input type="text" name="observaciones" maxlength="500" :class="fieldClass" /></label>
+        </div>
+        <button type="submit" :class="[primaryButton, 'mt-3']">Agregar tramo</button>
+      </form>
+    </PanelCard>
+
     <section aria-label="Resumen de costos" class="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-6">
       <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
         <p class="text-xs font-semibold text-ink-muted">Combustible</p>
@@ -89,9 +192,9 @@ const facts = computed(() => [
         <p class="mt-2 text-xl font-bold text-ink">{{ money(totals.expense_amount_ars) }}</p>
       </article>
       <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
-        <p class="text-xs font-semibold text-ink-muted">Costo directo</p>
+        <p class="text-xs font-semibold text-ink-muted">Combustible + gastos</p>
         <p class="mt-2 text-xl font-bold text-ink">{{ money(totals.direct_cost_ars) }}</p>
-        <p class="mt-1 text-xs text-ink-muted">combustible + gastos</p>
+        <p class="mt-1 text-xs text-ink-muted">sin comisión</p>
       </article>
       <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
         <p class="text-xs font-semibold text-ink-muted">Consumo</p>
@@ -125,7 +228,7 @@ const facts = computed(() => [
         </ul>
       </PanelCard>
 
-      <PanelCard title="Acciones" v-if="data.canStart || data.canCancel">
+      <PanelCard title="Acciones" v-if="data.canStart || data.canCancel || canClose">
         <form v-if="data.canStart" method="post" :action="`${data.links?.detail ?? ''}/iniciar`" class="mb-5 rounded-xl border border-border-subtle bg-surface p-4">
           <input type="hidden" :name="csrf.name" :value="csrf.hash" />
           <h3 class="flex items-center gap-2 text-sm font-bold text-ink"><CheckCircleIcon class="size-4 text-success" aria-hidden="true" />Registrar salida real</h3>
@@ -141,6 +244,29 @@ const facts = computed(() => [
             </label>
           </div>
           <button type="submit" :class="[primaryButton, 'mt-3']">Iniciar viaje</button>
+        </form>
+
+        <form v-if="canClose" method="post" :action="data.links?.finish" class="mb-5 rounded-xl border border-border-subtle bg-surface p-4">
+          <input type="hidden" :name="csrf.name" :value="csrf.hash" />
+          <h3 class="flex items-center gap-2 text-sm font-bold text-ink"><CheckCircleIcon class="size-4 text-success" aria-hidden="true" />Cerrar viaje</h3>
+          <p class="mt-1 text-xs text-ink-muted">Al cerrar, el viaje pasa a Finalizado y se genera la lectura del equipo con el km de regreso.</p>
+          <div class="mt-3 grid gap-3 sm:grid-cols-2">
+            <label class="block">
+              <span class="mb-1.5 block text-sm font-semibold text-ink">Fecha y hora de regreso</span>
+              <input type="datetime-local" name="fecha_regreso_real" :value="nowLocal()" :class="fieldClass" />
+            </label>
+            <label class="block">
+              <span class="mb-1.5 block text-sm font-semibold text-ink">Odómetro de regreso</span>
+              <input type="number" name="km_regreso" min="0" step="1" required :min="trip.km_salida ?? 0" :class="fieldClass" />
+            </label>
+          </div>
+          <div v-if="!totals.has_legs || !totals.fuel_amount_ars || !totals.expense_amount_ars" class="mt-3 rounded-lg border border-warning/30 bg-warning-subtle px-3 py-2 text-xs text-warning-strong">
+            <p v-if="!totals.has_legs">No hay tramos cargados.</p>
+            <p v-if="!totals.fuel_amount_ars">No hay combustible cargado.</p>
+            <p v-if="!totals.expense_amount_ars">No hay gastos cargados.</p>
+            <p class="mt-1">Podés cerrar igual, pero revisá que corresponda.</p>
+          </div>
+          <button type="submit" :class="[primaryButton, 'mt-3']">Cerrar y generar lectura</button>
         </form>
 
         <form v-if="data.canCancel" method="post" :action="`${data.links?.detail ?? ''}/cancelar`" class="rounded-xl border border-danger/30 bg-danger-subtle/40 p-4">
@@ -170,6 +296,7 @@ const facts = computed(() => [
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cotización a ARS</span><input type="number" name="cotizacion" min="0.000001" step="0.000001" value="1" :class="fieldClass" /></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Odómetro</span><input type="number" name="kilometraje" min="1" step="1" :class="fieldClass" /></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Estación</span><input type="text" name="estacion" maxlength="120" :class="fieldClass" /></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Tramo (opcional)</span><select name="tramo_id" :class="fieldClass"><option value="">Todo el viaje</option><option v-for="leg in legs" :key="leg.id" :value="leg.id">{{ leg.orden }} · {{ leg.origen }} → {{ leg.destino }}</option></select></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Comprobante</span><input type="text" name="comprobante" maxlength="80" :class="fieldClass" /></label>
             <label class="block md:col-span-2"><span class="mb-1 block text-xs font-semibold text-ink-muted">Observaciones</span><input type="text" name="observaciones" maxlength="500" :class="fieldClass" /></label>
           </div>
@@ -179,9 +306,9 @@ const facts = computed(() => [
         <p v-if="fuel.length === 0" class="text-sm text-ink-muted">Todavía no hay cargas de combustible.</p>
         <div v-else class="overflow-x-auto">
           <table class="w-full min-w-[52rem] text-left text-sm">
-            <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-3 py-2">Fecha</th><th class="px-3 py-2 text-right">Litros</th><th class="px-3 py-2 text-right">Importe</th><th class="px-3 py-2 text-right">ARS</th><th class="px-3 py-2 text-right">Odómetro</th><th class="px-3 py-2">Estación</th><th class="px-3 py-2">Comprobante</th><th class="px-3 py-2">Observaciones</th></tr></thead>
+            <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-3 py-2">Fecha</th><th class="px-3 py-2 text-right">Litros</th><th class="px-3 py-2 text-right">Importe</th><th class="px-3 py-2 text-right">ARS</th><th class="px-3 py-2 text-right">Odómetro</th><th class="px-3 py-2">Tramo</th><th class="px-3 py-2">Estación</th><th class="px-3 py-2">Comprobante</th><th class="px-3 py-2">Observaciones</th></tr></thead>
             <tbody class="divide-y divide-border-subtle">
-              <tr v-for="load in fuel" :key="load.id"><td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ fmtDateTime(load.fecha) }}</td><td class="px-3 py-2 text-right text-ink">{{ number(load.litros) }}</td><td class="px-3 py-2 text-right text-ink-muted">{{ money(load.importe, load.moneda) }}</td><td class="px-3 py-2 text-right font-semibold text-ink">{{ money(load.importe_ars) }}</td><td class="px-3 py-2 text-right text-ink-muted">{{ load.kilometraje === null ? '—' : number(load.kilometraje) }}</td><td class="px-3 py-2 text-ink-muted">{{ load.estacion || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ load.comprobante || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ load.observaciones || '—' }}</td></tr>
+              <tr v-for="load in fuel" :key="load.id"><td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ fmtDateTime(load.fecha) }}</td><td class="px-3 py-2 text-right text-ink">{{ number(load.litros) }}</td><td class="px-3 py-2 text-right text-ink-muted">{{ money(load.importe, load.moneda) }}</td><td class="px-3 py-2 text-right font-semibold text-ink">{{ money(load.importe_ars) }}</td><td class="px-3 py-2 text-right text-ink-muted">{{ load.kilometraje === null ? '—' : number(load.kilometraje) }}</td><td class="px-3 py-2 text-ink-muted">{{ legLabel(load.tramo_id) }}</td><td class="px-3 py-2 text-ink-muted">{{ load.estacion || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ load.comprobante || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ load.observaciones || '—' }}</td></tr>
             </tbody>
           </table>
         </div>
@@ -199,6 +326,7 @@ const facts = computed(() => [
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select name="moneda" :class="fieldClass"><option v-for="currency in currencies" :key="currency.code" :value="currency.code" :selected="currency.code === 'ARS'">{{ currency.code }} · {{ currency.label }}</option></select></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cotización a ARS</span><input type="number" name="cotizacion" min="0.000001" step="0.000001" value="1" :class="fieldClass" /></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Medio de pago</span><select name="medio_pago_id" :class="fieldClass"><option value="">Sin medio</option><option v-for="method in options.paymentMethods" :key="method.id" :value="method.id">{{ method.label }}</option></select></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Tramo (opcional)</span><select name="tramo_id" :class="fieldClass"><option value="">Todo el viaje</option><option v-for="leg in legs" :key="leg.id" :value="leg.id">{{ leg.orden }} · {{ leg.origen }} → {{ leg.destino }}</option></select></label>
             <label class="flex items-center gap-2 rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm font-semibold text-ink"><input type="checkbox" name="pagado_de_caja" value="1" class="size-4 rounded border-border" />Pagado con caja del chofer</label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Comprobante</span><input type="text" name="comprobante" maxlength="80" :class="fieldClass" /></label>
             <label class="block md:col-span-2"><span class="mb-1 block text-xs font-semibold text-ink-muted">Observaciones</span><input type="text" name="observaciones" maxlength="500" :class="fieldClass" /></label>
@@ -209,9 +337,9 @@ const facts = computed(() => [
         <p v-if="expenses.length === 0" class="text-sm text-ink-muted">Todavía no hay gastos cargados.</p>
         <div v-else class="overflow-x-auto">
           <table class="w-full min-w-[52rem] text-left text-sm">
-            <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-3 py-2">Fecha</th><th class="px-3 py-2">Categoría</th><th class="px-3 py-2 text-right">Importe</th><th class="px-3 py-2 text-right">ARS</th><th class="px-3 py-2">Medio</th><th class="px-3 py-2">Caja</th><th class="px-3 py-2">Comprobante</th><th class="px-3 py-2">Observaciones</th></tr></thead>
+            <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-3 py-2">Fecha</th><th class="px-3 py-2">Categoría</th><th class="px-3 py-2 text-right">Importe</th><th class="px-3 py-2 text-right">ARS</th><th class="px-3 py-2">Medio</th><th class="px-3 py-2">Tramo</th><th class="px-3 py-2">Caja</th><th class="px-3 py-2">Comprobante</th><th class="px-3 py-2">Observaciones</th></tr></thead>
             <tbody class="divide-y divide-border-subtle">
-              <tr v-for="expense in expenses" :key="expense.id"><td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ fmtDateTime(expense.fecha) }}</td><td class="px-3 py-2 text-ink">{{ expense.categoria || 'Sin categoría' }}</td><td class="px-3 py-2 text-right text-ink-muted">{{ money(expense.importe, expense.moneda) }}</td><td class="px-3 py-2 text-right font-semibold text-ink">{{ money(expense.importe_ars) }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.medio_pago || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.pagado_de_caja ? 'Sí' : 'No' }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.comprobante || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.observaciones || '—' }}</td></tr>
+              <tr v-for="expense in expenses" :key="expense.id"><td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ fmtDateTime(expense.fecha) }}</td><td class="px-3 py-2 text-ink">{{ expense.categoria || 'Sin categoría' }}</td><td class="px-3 py-2 text-right text-ink-muted">{{ money(expense.importe, expense.moneda) }}</td><td class="px-3 py-2 text-right font-semibold text-ink">{{ money(expense.importe_ars) }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.medio_pago || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ legLabel(expense.tramo_id) }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.pagado_de_caja ? 'Sí' : 'No' }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.comprobante || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.observaciones || '—' }}</td></tr>
             </tbody>
           </table>
         </div>

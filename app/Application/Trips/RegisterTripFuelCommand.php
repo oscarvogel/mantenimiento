@@ -19,6 +19,7 @@ final readonly class RegisterTripFuelCommand
         public ?string $station = null,
         public ?string $receipt = null,
         public ?string $notes = null,
+        public ?int $legId = null,
     ) {
     }
 }

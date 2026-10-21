@@ -6,6 +6,7 @@ use App\Application\Identity\ActorContext;
 use App\Application\Trips\Port\OperationalTripRepository;
 use App\Application\Trips\Port\TripCostRepository;
 use App\Application\Trips\Port\TripDirectoryLookup;
+use App\Application\Trips\Port\TripLegRepository;
 use App\Application\Trips\Port\TripsUnitOfWork;
 use App\Application\Trips\RegisterTripCashMovement;
 use App\Application\Trips\RegisterTripCashMovementCommand;
@@ -26,7 +27,7 @@ final class RegisterTripCostsTest extends TestCase
     public function testRegistersFuelInsideTripScope(): void
     {
         $costs = new CostRepositoryFake();
-        $handler = new RegisterTripFuel(new CostTripRepositoryFake($this->trip()), $costs, new CostDirectoryFake(), new CostUnitOfWorkFake());
+        $handler = new RegisterTripFuel(new CostTripRepositoryFake($this->trip()), $costs, new CostDirectoryFake(), new CostLegRepositoryFake(), new CostUnitOfWorkFake());
 
         $id = $handler->execute($this->actor(['viajes.operar']), new RegisterTripFuelCommand(
             55,
@@ -52,7 +53,7 @@ final class RegisterTripCostsTest extends TestCase
     public function testRegistersExpenseAndRejectsUnknownCategory(): void
     {
         $costs = new CostRepositoryFake();
-        $handler = new RegisterTripExpense(new CostTripRepositoryFake($this->trip()), $costs, new CostDirectoryFake(), new CostUnitOfWorkFake());
+        $handler = new RegisterTripExpense(new CostTripRepositoryFake($this->trip()), $costs, new CostDirectoryFake(), new CostLegRepositoryFake(), new CostUnitOfWorkFake());
 
         $handler->execute($this->actor(['viajes.operar']), new RegisterTripExpenseCommand(
             55,
@@ -71,7 +72,7 @@ final class RegisterTripCostsTest extends TestCase
 
         $directory = new CostDirectoryFake();
         $directory->categoryExists = false;
-        $handler = new RegisterTripExpense(new CostTripRepositoryFake($this->trip()), $costs, $directory, new CostUnitOfWorkFake());
+        $handler = new RegisterTripExpense(new CostTripRepositoryFake($this->trip()), $costs, $directory, new CostLegRepositoryFake(), new CostUnitOfWorkFake());
 
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('categoría');
@@ -107,7 +108,7 @@ final class RegisterTripCostsTest extends TestCase
 
     public function testRejectsActorWithoutOperatePermission(): void
     {
-        $handler = new RegisterTripFuel(new CostTripRepositoryFake($this->trip()), new CostRepositoryFake(), new CostDirectoryFake(), new CostUnitOfWorkFake());
+        $handler = new RegisterTripFuel(new CostTripRepositoryFake($this->trip()), new CostRepositoryFake(), new CostDirectoryFake(), new CostLegRepositoryFake(), new CostUnitOfWorkFake());
 
         $this->expectException(DomainException::class);
         $handler->execute($this->actor(['viajes.ver']), new RegisterTripFuelCommand(
@@ -197,7 +198,7 @@ final class CostRepositoryFake implements TripCostRepository
     public int $companyId = 0;
     public int $branchId = 0;
 
-    public function addFuel(int $tripId, int $companyId, int $branchId, TripFuelLoad $load, int $actorUserId): int
+    public function addFuel(int $tripId, int $companyId, int $branchId, TripFuelLoad $load, int $actorUserId, ?int $legId = null): int
     {
         $this->tripId = $tripId;
         $this->companyId = $companyId;
@@ -207,7 +208,7 @@ final class CostRepositoryFake implements TripCostRepository
         return 1;
     }
 
-    public function addExpense(int $tripId, int $companyId, int $branchId, TripExpense $expense, int $actorUserId): int
+    public function addExpense(int $tripId, int $companyId, int $branchId, TripExpense $expense, int $actorUserId, ?int $legId = null): int
     {
         $this->tripId = $tripId;
         $this->companyId = $companyId;
@@ -238,6 +239,19 @@ final class CostDirectoryFake implements TripDirectoryLookup
     public function expenseCategoryExists(int $companyId, int $categoryId): bool { return $this->categoryExists; }
     public function paymentMethodExists(int $companyId, int $paymentMethodId): bool { return true; }
     public function currencyExists(string $code): bool { return true; }
+}
+
+final class CostLegRepositoryFake implements TripLegRepository
+{
+    public function add(\App\Domain\Trips\Trip $trip, \App\Domain\Trips\TripLeg $leg, int $actorUserId): int
+    {
+        return 1;
+    }
+
+    public function belongsToTrip(int $companyId, int $tripId, int $legId): bool
+    {
+        return true;
+    }
 }
 
 final class CostUnitOfWorkFake implements TripsUnitOfWork

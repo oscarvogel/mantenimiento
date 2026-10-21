@@ -38,17 +38,120 @@ final class GetOperationalTrip
         }
 
         $detail = $this->costs($detail);
+        $detail = $this->financials($detail);
         $detail['links'] = [
             'detail' => base_url('viajes/operativos/' . $tripId),
             'fuel' => base_url('viajes/operativos/' . $tripId . '/combustible'),
             'expense' => base_url('viajes/operativos/' . $tripId . '/gastos'),
             'cash' => base_url('viajes/operativos/' . $tripId . '/caja'),
+            'legs' => base_url('viajes/operativos/' . $tripId . '/tramos'),
+            'finish' => base_url('viajes/operativos/' . $tripId . '/cerrar'),
         ];
         $detail['canOperate'] = $actor->hasPermission('viajes.operar');
         $detail['canRegisterCosts'] = $detail['canOperate']
             && in_array($detail['trip']['estado'] ?? null, [Trip::PLANIFICADO, Trip::EN_CURSO], true);
         $detail['canStart'] = $detail['canOperate'] && ($detail['trip']['estado'] ?? null) === Trip::PLANIFICADO;
         $detail['canCancel'] = $detail['canOperate'] && ($detail['trip']['estado'] ?? null) === Trip::PLANIFICADO;
+        $detail['canClose'] = $detail['canOperate'] && ($detail['trip']['estado'] ?? null) === Trip::EN_CURSO;
+        $detail['canAddLegs'] = $detail['canOperate']
+            && in_array($detail['trip']['estado'] ?? null, [Trip::PLANIFICADO, Trip::EN_CURSO], true);
+
+        return $detail;
+    }
+
+    /** @param array<string,mixed> $detail @return array<string,mixed> */
+    private function financials(array $detail): array
+    {
+        $legs = $detail['legs'] ?? [];
+        $assignments = $detail['assignments'] ?? [];
+        $fuel = $detail['fuel'] ?? [];
+        $expenses = $detail['expenses'] ?? [];
+
+        $drivers = array_values(array_filter(
+            $assignments,
+            static fn (array $assignment): bool => ($assignment['rol'] ?? '') === 'CHOFER',
+        ));
+        $driversCount = count($drivers);
+        $percentage = $driversCount === 1 && ($drivers[0]['porcentaje_liquidacion'] ?? null) !== null
+            ? (float) $drivers[0]['porcentaje_liquidacion']
+            : null;
+
+        $legIds = array_fill_keys(array_map(static fn (array $leg): int => (int) $leg['id'], $legs), true);
+        $fuelByLeg = [];
+        $expenseByLeg = [];
+        $totalFuel = 0.0;
+        $totalExpenses = 0.0;
+        foreach ($fuel as $row) {
+            $amount = (float) ($row['importe_ars'] ?? 0);
+            $totalFuel += $amount;
+            $legId = $row['tramo_id'] ?? null;
+            if ($legId !== null && isset($legIds[(int) $legId])) {
+                $fuelByLeg[(int) $legId] = ($fuelByLeg[(int) $legId] ?? 0.0) + $amount;
+            }
+        }
+        foreach ($expenses as $row) {
+            $amount = (float) ($row['importe_ars'] ?? 0);
+            $totalExpenses += $amount;
+            $legId = $row['tramo_id'] ?? null;
+            if ($legId !== null && isset($legIds[(int) $legId])) {
+                $expenseByLeg[(int) $legId] = ($expenseByLeg[(int) $legId] ?? 0.0) + $amount;
+            }
+        }
+
+        $enrichedLegs = [];
+        $totalInvoice = 0.0;
+        $totalLiquidation = 0.0;
+        $totalAssigned = 0.0;
+        $commissions = [];
+        foreach ($legs as $leg) {
+            $legId = (int) $leg['id'];
+            $invoice = (float) ($leg['flete_facturacion_ars'] ?? 0);
+            $liquidation = (float) ($leg['flete_liquidacion_ars'] ?? 0);
+            $assignedFuel = round($fuelByLeg[$legId] ?? 0.0, 2);
+            $assignedExpenses = round($expenseByLeg[$legId] ?? 0.0, 2);
+            $assignedCosts = round($assignedFuel + $assignedExpenses, 2);
+            $commission = $percentage === null ? null : round($liquidation * $percentage / 100, 2);
+            $margin = $commission === null ? null : round($invoice - $assignedCosts - $commission, 2);
+            $marginPct = $margin === null || $invoice <= 0 ? null : round($margin / $invoice * 100, 1);
+
+            $totalInvoice += $invoice;
+            $totalLiquidation += $liquidation;
+            $totalAssigned += $assignedCosts;
+            if ($commission !== null) {
+                $commissions[] = $commission;
+            }
+
+            $enrichedLegs[] = $leg + [
+                'commission_ars' => $commission,
+                'assigned_fuel_ars' => $assignedFuel,
+                'assigned_expenses_ars' => $assignedExpenses,
+                'assigned_costs_ars' => $assignedCosts,
+                'margin_ars' => $margin,
+                'margin_pct' => $marginPct,
+            ];
+        }
+
+        $totalCommission = $percentage === null ? null : round(array_sum($commissions), 2);
+        $unassigned = round($totalFuel + $totalExpenses - $totalAssigned, 2);
+        $operatingCost = $totalCommission === null ? null : round($totalFuel + $totalExpenses + $totalCommission, 2);
+        $margin = $operatingCost === null || $legs === [] ? null : round($totalInvoice - $operatingCost, 2);
+        $marginPct = $margin === null || $totalInvoice <= 0 ? null : round($margin / $totalInvoice * 100, 1);
+
+        $detail['legs'] = $enrichedLegs;
+        $detail['totals'] = ($detail['totals'] ?? []) + [
+            'has_legs' => $legs !== [],
+            'invoice_ars' => round($totalInvoice, 2),
+            'liquidation_ars' => round($totalLiquidation, 2),
+            'commission_ars' => $totalCommission,
+            'assigned_costs_ars' => round($totalAssigned, 2),
+            'unassigned_costs_ars' => $unassigned,
+            'operating_cost_ars' => $operatingCost,
+            'margin_ars' => $margin,
+            'margin_pct' => $marginPct,
+            'driver_percentage' => $percentage,
+            'drivers_count' => $driversCount,
+            'multiple_drivers' => $driversCount > 1,
+        ];
 
         return $detail;
     }
