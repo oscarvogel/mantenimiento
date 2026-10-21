@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
   ArrowRightStartOnRectangleIcon,
   ArrowUpTrayIcon,
@@ -50,6 +50,18 @@ const fleetConsumption = computed(() => props.navigation.find((item) => item.key
 const isPlatformNavigation = computed(() => props.navigation.some((item) => item.key === 'platform-home'))
 const isManagerialNavigation = computed(() => props.navigation.some((item) => item.key === 'managerial-cost-km'))
 const isTripNavigation = computed(() => props.navigation.some((item) => item.key === 'trip-masters'))
+const fleetOpen = ref(fleetConsumption.value?.active === true)
+
+watch(
+  () => fleetConsumption.value?.active,
+  (active) => {
+    if (active) fleetOpen.value = true
+  },
+)
+
+const toggleFleet = () => {
+  fleetOpen.value = !fleetOpen.value
+}
 
 const primaryNavigation = computed(() => (
   isPlatformNavigation.value || isManagerialNavigation.value
@@ -193,6 +205,7 @@ const openDemoCompany = () => {
     <nav aria-label="Navegación principal" class="ui-sidebar-scroll flex-1 overflow-y-auto px-3 py-5">
       <ul class="space-y-1">
           <li v-for="item in primaryNavigation" :key="item.key">
+            <div class="relative">
             <span
               v-if="item.disabled"
               class="flex min-h-11 cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-ink-subtle"
@@ -225,6 +238,7 @@ const openDemoCompany = () => {
               class="ui-nav-item group flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium"
               :class="[
                 isPlatformNavigation ? 'platform-nav-item' : '',
+                item.key === 'fleet-telemetry' && fleetConsumption ? 'pr-11' : '',
                 (item.active || (item.key === 'fleet-telemetry' && fleetConsumption?.active))
                   ? (isPlatformNavigation ? 'platform-nav-active' : 'bg-primary-subtle text-primary shadow-inner')
                   : (isPlatformNavigation ? 'text-blue-100 hover:bg-white/10 hover:text-white' : 'text-ink-muted hover:bg-surface-muted hover:text-ink'),
@@ -257,7 +271,28 @@ const openDemoCompany = () => {
                 {{ item.badge }}
               </span>
             </a>
-            <ul v-if="item.key === 'fleet-telemetry' && fleetConsumption" class="ml-5 mt-1 space-y-1 border-l border-border-subtle pl-3">
+            <button
+              v-if="item.key === 'fleet-telemetry' && fleetConsumption"
+              type="button"
+              class="ui-interactive absolute right-1 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-ink-subtle hover:bg-surface-muted hover:text-ink"
+              :aria-expanded="fleetOpen ? 'true' : 'false'"
+              aria-controls="fleet-consumption-navigation"
+              :aria-label="fleetOpen ? 'Ocultar opciones de Telemetría de flota' : 'Mostrar opciones de Telemetría de flota'"
+              @click="toggleFleet"
+            >
+              <ChevronDownIcon
+                class="size-4 shrink-0 transition-transform"
+                :class="fleetOpen ? 'rotate-180' : ''"
+                aria-hidden="true"
+              />
+            </button>
+            </div>
+            <ul
+              v-if="item.key === 'fleet-telemetry' && fleetConsumption"
+              v-show="fleetOpen"
+              id="fleet-consumption-navigation"
+              class="ml-5 mt-1 space-y-1 border-l border-border-subtle pl-3"
+            >
               <li>
                 <a
                   :href="fleetConsumption.href"
