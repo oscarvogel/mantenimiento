@@ -56,12 +56,14 @@ final class CreateOperationalTripLegs extends Migration
                     'after' => 'viaje_id',
                 ],
             ]);
-            $this->db->query('CREATE INDEX idx_' . $table . '_tramo ON ' . $this->db->prefixTable($table) . ' (empresa_id, viaje_id, tramo_id)');
-            if ($this->db->DBDriver !== 'SQLite3') {
+            if (! $this->indexExists($table, 'idx_' . $table . '_tramo')) {
+                $this->db->query('CREATE INDEX idx_' . $table . '_tramo ON ' . $this->db->prefixTable($table) . ' (empresa_id, viaje_id, tramo_id)');
+            }
+            if ($this->db->DBDriver !== 'SQLite3' && ! $this->constraintExists($table, 'fk_' . $table . '_tramo')) {
                 $this->db->query(
                     'ALTER TABLE ' . $this->db->prefixTable($table)
-                    . ' ADD CONSTRAINT fk_' . $table . '_tramo FOREIGN KEY (empresa_id, viaje_id, tramo_id) '
-                    . 'REFERENCES ' . $this->db->prefixTable('viaje_operativo_tramos') . ' (empresa_id, viaje_id, id) '
+                    . ' ADD CONSTRAINT fk_' . $table . '_tramo FOREIGN KEY (tramo_id) '
+                    . 'REFERENCES ' . $this->db->prefixTable('viaje_operativo_tramos') . ' (id) '
                     . 'ON UPDATE CASCADE ON DELETE SET NULL',
                 );
             }
@@ -71,15 +73,52 @@ final class CreateOperationalTripLegs extends Migration
     public function down(): void
     {
         foreach (['viaje_operativo_combustible', 'viaje_operativo_gastos'] as $table) {
-            if ($this->db->DBDriver === 'SQLite3') {
-                $this->db->query('DROP INDEX idx_' . $table . '_tramo');
-            } else {
+            if ($this->constraintExists($table, 'fk_' . $table . '_tramo')) {
                 $this->db->query('ALTER TABLE ' . $this->db->prefixTable($table) . ' DROP FOREIGN KEY fk_' . $table . '_tramo');
-                $this->db->query('DROP INDEX idx_' . $table . '_tramo ON ' . $this->db->prefixTable($table));
             }
-            $this->forge->dropColumn($table, 'tramo_id');
+            if ($this->indexExists($table, 'idx_' . $table . '_tramo')) {
+                $this->db->query(
+                    $this->db->DBDriver === 'SQLite3'
+                        ? 'DROP INDEX idx_' . $table . '_tramo'
+                        : 'DROP INDEX idx_' . $table . '_tramo ON ' . $this->db->prefixTable($table),
+                );
+            }
+            if (in_array('tramo_id', $this->db->getFieldNames($table), true)) {
+                $this->forge->dropColumn($table, 'tramo_id');
+            }
         }
 
         $this->forge->dropTable('viaje_operativo_tramos', true);
+    }
+
+    private function indexExists(string $table, string $index): bool
+    {
+        if ($this->db->DBDriver === 'SQLite3') {
+            foreach ($this->db->query('PRAGMA index_list(' . $this->db->prefixTable($table) . ')')->getResultArray() as $row) {
+                if (($row['name'] ?? '') === $index) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        return $this->db->query(
+            'SHOW INDEX FROM ' . $this->db->prefixTable($table) . ' WHERE Key_name = ?',
+            [$index],
+        )->getResultArray() !== [];
+    }
+
+    private function constraintExists(string $table, string $constraint): bool
+    {
+        if ($this->db->DBDriver === 'SQLite3') {
+            return false;
+        }
+
+        return $this->db->query(
+            'SELECT 1 FROM information_schema.REFERENTIAL_CONSTRAINTS '
+            . 'WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = ? AND CONSTRAINT_NAME = ? LIMIT 1',
+            [$this->db->prefixTable($table), $constraint],
+        )->getRowArray() !== null;
     }
 }
