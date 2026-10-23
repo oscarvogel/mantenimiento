@@ -41,7 +41,7 @@ describe('AppSidebar', () => {
     ]
     const wrapper = mount(AppSidebar, { props: { navigation: tripsNavigation } })
 
-    const primaryLinks = wrapper.findAll('nav > ul > li > a')
+    const primaryLinks = wrapper.findAll('nav > ul > li a')
     expect(primaryLinks.map((node) => node.attributes('href'))).toEqual(['/viajes', '/viajes/maestros'])
     expect(wrapper.find('button[aria-controls="secondary-navigation"]').exists()).toBe(false)
   })
