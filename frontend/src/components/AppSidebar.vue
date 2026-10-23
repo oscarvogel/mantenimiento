@@ -45,11 +45,11 @@ const props = defineProps({
 
 const emit = defineEmits(['close'])
 
-const primaryKeys = ['dashboard', 'equipment', 'fleet-telemetry', 'reading-control', 'maintenance', 'plans', 'reports', 'trip-masters']
+const primaryKeys = ['dashboard', 'trips-dashboard', 'trips-operations', 'trips-profitability', 'trip-masters', 'equipment', 'fleet-telemetry', 'reading-control', 'maintenance', 'plans', 'reports']
 const fleetConsumption = computed(() => props.navigation.find((item) => item.key === 'fleet-consumption'))
 const isPlatformNavigation = computed(() => props.navigation.some((item) => item.key === 'platform-home'))
 const isManagerialNavigation = computed(() => props.navigation.some((item) => item.key === 'managerial-cost-km'))
-const isTripNavigation = computed(() => props.navigation.some((item) => item.key === 'trip-masters'))
+const isTripNavigation = computed(() => props.navigation.some((item) => ['trip-masters', 'trips-dashboard', 'trips-operations', 'trips-profitability'].includes(item.key)))
 const fleetOpen = ref(fleetConsumption.value?.active === true)
 
 watch(
@@ -189,7 +189,7 @@ const openDemoCompany = () => {
       <BrandMark
         v-else
         :title="isManagerialNavigation ? 'Gerencial' : (isTripNavigation ? 'Viajes' : 'Mantenimiento')"
-        :subtitle="isManagerialNavigation ? 'Análisis estratégico' : (isTripNavigation ? 'Maestros de viajes' : 'Gestión de flota')"
+        :subtitle="isManagerialNavigation ? 'Análisis estratégico' : (isTripNavigation ? 'Operación y maestros' : 'Gestión de flota')"
       />
       <button
         v-if="mobile"

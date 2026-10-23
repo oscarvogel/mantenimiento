@@ -1,17 +1,23 @@
 {
-  "_admin-DCgGOcjY.js": {
-    "file": "assets/admin-DCgGOcjY.js",
+  "../../../Users/Usuario/.codex/worktrees/trip-dashboard-detail/mantenimiento/frontend/node_modules/gsap/index.js": {
+    "file": "assets/gsap-C-UGJFrr.js",
+    "name": "gsap",
+    "src": "../../../Users/Usuario/.codex/worktrees/trip-dashboard-detail/mantenimiento/frontend/node_modules/gsap/index.js",
+    "isDynamicEntry": true
+  },
+  "_admin-CU2DQ1Mp.js": {
+    "file": "assets/admin-CU2DQ1Mp.js",
     "name": "admin",
     "imports": [
-      "_vendor-B8-Kfnh1.js"
+      "_vendor-CHJfqGAg.js"
     ]
   },
-  "_chatbot-CDLMdspx.js": {
-    "file": "assets/chatbot-CDLMdspx.js",
+  "_chatbot-MAKWnyyI.js": {
+    "file": "assets/chatbot-MAKWnyyI.js",
     "name": "chatbot",
     "isDynamicEntry": true,
     "imports": [
-      "_vendor-B8-Kfnh1.js"
+      "_vendor-CHJfqGAg.js"
     ],
     "css": [
       "assets/chatbot-p1890OXW.css"
@@ -21,30 +27,24 @@
     "file": "assets/chatbot-p1890OXW.css",
     "src": "_chatbot-p1890OXW.css"
   },
-  "_reports-DYzYcIJp.js": {
-    "file": "assets/reports-DYzYcIJp.js",
+  "_reports-BXe2RElM.js": {
+    "file": "assets/reports-BXe2RElM.js",
     "name": "reports",
     "imports": [
-      "_admin-DCgGOcjY.js",
-      "_vendor-B8-Kfnh1.js"
-    ]
-  },
-  "_vendor-B8-Kfnh1.js": {
-    "file": "assets/vendor-B8-Kfnh1.js",
-    "name": "vendor",
-    "css": [
-      "assets/vendor-BTrKGrB8.css"
+      "_admin-CU2DQ1Mp.js",
+      "_vendor-CHJfqGAg.js"
     ]
   },
   "_vendor-BTrKGrB8.css": {
     "file": "assets/vendor-BTrKGrB8.css",
     "src": "_vendor-BTrKGrB8.css"
   },
-  "node_modules/gsap/index.js": {
-    "file": "assets/gsap-C-UGJFrr.js",
-    "name": "gsap",
-    "src": "node_modules/gsap/index.js",
-    "isDynamicEntry": true
+  "_vendor-CHJfqGAg.js": {
+    "file": "assets/vendor-CHJfqGAg.js",
+    "name": "vendor",
+    "css": [
+      "assets/vendor-BTrKGrB8.css"
+    ]
   },
   "src/assets/platform/ai-card.jpg": {
     "file": "assets/ai-card-Bif2XNNK.jpg",
@@ -87,26 +87,26 @@
     "src": "src/assets/platform/trips-card.jpg"
   },
   "src/main.js": {
-    "file": "assets/main-BhVHLKlK.js",
+    "file": "assets/main-DpqSueYJ.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
     "imports": [
-      "_vendor-B8-Kfnh1.js",
-      "_chatbot-CDLMdspx.js",
-      "_admin-DCgGOcjY.js",
-      "_reports-DYzYcIJp.js"
+      "_vendor-CHJfqGAg.js",
+      "_chatbot-MAKWnyyI.js",
+      "_admin-CU2DQ1Mp.js",
+      "_reports-BXe2RElM.js"
     ],
     "dynamicImports": [
-      "_chatbot-CDLMdspx.js",
+      "_chatbot-MAKWnyyI.js",
       "src/pages/operations/components/FleetTelemetryMap.vue",
-      "node_modules/gsap/index.js",
+      "../../../Users/Usuario/.codex/worktrees/trip-dashboard-detail/mantenimiento/frontend/node_modules/gsap/index.js",
       "src/profiles/platform/profile.js",
       "src/profiles/vogel/profile.js",
       "src/profiles/cliente_piloto/profile.js"
     ],
     "css": [
-      "assets/main-C2qVj_Yk.css"
+      "assets/main-Cf6vvpeB.css"
     ],
     "assets": [
       "assets/portal-hero-Dd-Ff3YR.jpg",
@@ -122,58 +122,58 @@
     ]
   },
   "src/pages/operations/components/FleetTelemetryMap.vue": {
-    "file": "assets/FleetTelemetryMap-CuhFvWwk.js",
+    "file": "assets/FleetTelemetryMap-C6tIc_tQ.js",
     "name": "FleetTelemetryMap",
     "src": "src/pages/operations/components/FleetTelemetryMap.vue",
     "isDynamicEntry": true,
     "imports": [
-      "_vendor-B8-Kfnh1.js",
-      "_chatbot-CDLMdspx.js"
+      "_vendor-CHJfqGAg.js",
+      "_chatbot-MAKWnyyI.js"
     ],
     "css": [
       "assets/FleetTelemetryMap-eJHHeTQZ.css"
     ]
   },
   "src/profiles/cliente_piloto/profile.js": {
-    "file": "assets/profile-CshkwFVl.js",
+    "file": "assets/profile-C6Wm1qkw.js",
     "name": "profile",
     "src": "src/profiles/cliente_piloto/profile.js",
     "isDynamicEntry": true,
     "imports": [
       "src/main.js",
-      "_vendor-B8-Kfnh1.js",
-      "_chatbot-CDLMdspx.js",
-      "_admin-DCgGOcjY.js",
-      "_reports-DYzYcIJp.js"
+      "_vendor-CHJfqGAg.js",
+      "_chatbot-MAKWnyyI.js",
+      "_admin-CU2DQ1Mp.js",
+      "_reports-BXe2RElM.js"
     ],
     "css": [
       "assets/profile-DV70kWFs.css"
     ]
   },
   "src/profiles/platform/profile.js": {
-    "file": "assets/profile-DIO4dHav.js",
+    "file": "assets/profile-pjcg2II2.js",
     "name": "profile",
     "src": "src/profiles/platform/profile.js",
     "isDynamicEntry": true,
     "imports": [
       "src/main.js",
-      "_vendor-B8-Kfnh1.js",
-      "_chatbot-CDLMdspx.js",
-      "_admin-DCgGOcjY.js",
-      "_reports-DYzYcIJp.js"
+      "_vendor-CHJfqGAg.js",
+      "_chatbot-MAKWnyyI.js",
+      "_admin-CU2DQ1Mp.js",
+      "_reports-BXe2RElM.js"
     ]
   },
   "src/profiles/vogel/profile.js": {
-    "file": "assets/profile-BA4eP_Pr.js",
+    "file": "assets/profile-BAFLtpcM.js",
     "name": "profile",
     "src": "src/profiles/vogel/profile.js",
     "isDynamicEntry": true,
     "imports": [
       "src/main.js",
-      "_vendor-B8-Kfnh1.js",
-      "_chatbot-CDLMdspx.js",
-      "_admin-DCgGOcjY.js",
-      "_reports-DYzYcIJp.js"
+      "_vendor-CHJfqGAg.js",
+      "_chatbot-MAKWnyyI.js",
+      "_admin-CU2DQ1Mp.js",
+      "_reports-BXe2RElM.js"
     ]
   }
 }

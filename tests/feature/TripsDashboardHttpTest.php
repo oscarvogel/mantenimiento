@@ -13,4 +13,9 @@ final class TripsDashboardHttpTest extends CIUnitTestCase
     {
         $this->get('viajes')->assertRedirect();
     }
+
+    public function testAnonymousCannotOpenTripDetail(): void
+    {
+        $this->get('viajes/42')->assertRedirect();
+    }
 }

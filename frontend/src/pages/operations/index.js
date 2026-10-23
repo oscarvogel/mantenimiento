@@ -25,6 +25,11 @@ import WorkOrdersIndexPage from './WorkOrdersIndexPage.vue'
 import WorkRequestsIndexPage from './WorkRequestsIndexPage.vue'
 import TripMastersPage from './TripMastersPage.vue'
 import TripsDashboardPage from './TripsDashboardPage.vue'
+import TripDetailPage from './TripDetailPage.vue'
+import TripOperationsIndexPage from './TripOperationsIndexPage.vue'
+import TripOperationsCreatePage from './TripOperationsCreatePage.vue'
+import TripOperationsDetailPage from './TripOperationsDetailPage.vue'
+import TripProfitabilityPage from './TripProfitabilityPage.vue'
 
 export {
   AssetsIndexPage,
@@ -54,6 +59,11 @@ export {
   WorkRequestsIndexPage,
   TripMastersPage,
   TripsDashboardPage,
+  TripDetailPage,
+  TripOperationsIndexPage,
+  TripOperationsCreatePage,
+  TripOperationsDetailPage,
+  TripProfitabilityPage,
 }
 
 export const operationPageComponents = Object.freeze({
@@ -82,6 +92,11 @@ export const operationPageComponents = Object.freeze({
   'providers-index': ProvidersIndexPage,
   'trip-masters': TripMastersPage,
   'trips-dashboard': TripsDashboardPage,
+  'trip-detail': TripDetailPage,
+  'trips-operations': TripOperationsIndexPage,
+  'trip-operations-create': TripOperationsCreatePage,
+  'trip-operations-detail': TripOperationsDetailPage,
+  'trips-profitability': TripProfitabilityPage,
 })
 
 export function resolveOperationPage(pageType) {

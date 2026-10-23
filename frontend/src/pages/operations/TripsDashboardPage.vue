@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { ArrowPathIcon, ExclamationTriangleIcon, TruckIcon } from '@heroicons/vue/24/outline'
+import { ArrowPathIcon, ChartBarSquareIcon, ExclamationTriangleIcon, TruckIcon } from '@heroicons/vue/24/outline'
 import EmptyState from './components/EmptyState.vue'
 import PageHeading from './components/PageHeading.vue'
 import PanelCard from './components/PanelCard.vue'
@@ -14,20 +14,52 @@ const options = computed(() => props.data.options ?? { branches: [], domains: []
 const monthly = computed(() => props.data.monthly ?? [])
 const domains = computed(() => props.data.domains ?? [])
 const quality = computed(() => props.data.quality ?? [])
+const trips = computed(() => props.data.trips ?? [])
+const pagination = computed(() => props.data.pagination ?? { page: 1, perPage: 20, total: trips.value.length, pages: 1 })
+const dashboardUrl = computed(() => props.data.links?.index ?? '/viajes')
+const branchLabel = (id) => options.value.branches.find((branch) => Number(branch.id) === Number(id))?.name ?? `Sucursal #${id}`
 const hasTrips = computed(() => Number(summary.value.trips) > 0)
-const maxKm = computed(() => Math.max(...monthly.value.map((month) => Number(month.km) || 0), 1))
-const maxLiters = computed(() => Math.max(...monthly.value.map((month) => Number(month.liters) || 0), 1))
+const recentMonthly = computed(() => monthly.value.slice(-12))
+const topDomains = computed(() => domains.value.slice(0, 10))
+const hasMoreDomains = computed(() => domains.value.length > topDomains.value.length)
+const maxKm = computed(() => Math.max(...recentMonthly.value.map((month) => Number(month.km) || 0), 1))
+const maxLiters = computed(() => Math.max(...recentMonthly.value.map((month) => Number(month.liters) || 0), 1))
 const consumptionAvailable = computed(() => summary.value.liters_per_100 !== null && summary.value.liters_per_100 !== undefined)
 
 const fmt = (value) => Number(value ?? 0).toLocaleString('es-AR', { maximumFractionDigits: 0 })
 const fmt1 = (value) => Number(value ?? 0).toLocaleString('es-AR', { maximumFractionDigits: 1 })
+const fmtDate = (value) => {
+  const match = String(value ?? '').match(/^(\d{4})-(\d{2})-(\d{2})/)
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : 'Sin fecha'
+}
 const bar = (value, max) => `${Math.max(2, Math.round((Number(value) || 0) / max * 100))}%`
 const qualityTone = { success: 'bg-success', warning: 'bg-warning', danger: 'bg-danger' }
+const pageUrl = (page) => {
+  const query = new URLSearchParams(window.location.search)
+  if (page <= 1) query.delete('pagina')
+  else query.set('pagina', String(page))
+  const suffix = query.toString()
+  return `${dashboardUrl.value}${suffix ? `?${suffix}` : ''}`
+}
+const tripUrl = (id) => `${dashboardUrl.value}/${id}${window.location.search}`
+const domainUrl = (domain) => {
+  const query = new URLSearchParams(window.location.search)
+  query.delete('pagina')
+  if (domain) query.set('dominio', domain)
+  else query.delete('dominio')
+  const suffix = query.toString()
+  return `${dashboardUrl.value}${suffix ? `?${suffix}` : ''}`
+}
 </script>
 
 <template>
   <div>
-    <PageHeading eyebrow="Viajes" title="Dashboard de viajes" description="Actividad, kilometraje y combustible del historico importado. Los costos quedan fuera hasta definir la moneda de origen." />
+    <PageHeading eyebrow="Viajes" title="Historial de viajes" description="Listado del historial importado, con actividad, kilometraje y combustible. Los costos quedan fuera hasta definir la moneda de origen.">
+      <template #actions>
+        <a :href="props.data.links?.profitability ?? '/viajes/rentabilidad'" :class="secondaryButton"><ChartBarSquareIcon class="mr-2 size-4" aria-hidden="true" />Rentabilidad</a>
+        <a :href="props.data.links?.operational ?? '/viajes/operativos'" :class="primaryButton"><TruckIcon class="mr-2 size-4" aria-hidden="true" />Viajes operativos</a>
+      </template>
+    </PageHeading>
 
     <PanelCard title="Filtros" class="mb-5">
       <form method="get" class="grid gap-4 md:grid-cols-4 xl:grid-cols-5 xl:items-end">
@@ -55,7 +87,7 @@ const qualityTone = { success: 'bg-success', warning: 'bg-warning', danger: 'bg-
         </label>
         <div class="flex flex-wrap gap-2">
           <button type="submit" :class="primaryButton"><ArrowPathIcon class="mr-2 size-4" aria-hidden="true" />Aplicar</button>
-          <a href="/viajes" :class="secondaryButton">Limpiar</a>
+          <a :href="dashboardUrl" :class="secondaryButton">Limpiar</a>
         </div>
       </form>
     </PanelCard>
@@ -90,15 +122,43 @@ const qualityTone = { success: 'bg-success', warning: 'bg-warning', danger: 'bg-
         </article>
       </section>
 
+      <PanelCard title="Viajes del período" :count="pagination.total" class="mb-5">
+        <p class="mb-3 text-sm text-ink-muted">Seleccioná un viaje para consultar su recorrido, combustible, gastos y demás datos importados.</p>
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[56rem] text-left text-sm">
+            <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-4 py-3">Salida</th><th class="px-4 py-3">Viaje</th><th class="px-4 py-3">Dominio</th><th class="px-4 py-3">Sucursal</th><th class="px-4 py-3 text-right">Odómetro salida</th><th class="px-4 py-3 text-right">Odómetro regreso</th><th class="px-4 py-3 text-right">Litros</th><th class="px-4 py-3 text-right">Detalle</th></tr></thead>
+            <tbody class="divide-y divide-border-subtle">
+              <tr v-for="trip in trips" :key="trip.id">
+                <td class="whitespace-nowrap px-4 py-3 text-ink-muted">{{ fmtDate(trip.fecha_salida) }}</td>
+                <td class="px-4 py-3 font-semibold text-ink">#{{ fmt(trip.numero_viaje) }}</td>
+                <td class="whitespace-nowrap px-4 py-3 font-mono text-xs text-ink">{{ trip.dominio }}</td>
+                <td class="px-4 py-3 text-ink-muted">{{ branchLabel(trip.sucursal_id) }}</td>
+                <td class="px-4 py-3 text-right text-ink-muted">{{ trip.km_salida === null ? '—' : fmt(trip.km_salida) }}</td>
+                <td class="px-4 py-3 text-right text-ink-muted">{{ trip.km_regreso === null ? '—' : fmt(trip.km_regreso) }}</td>
+                <td class="px-4 py-3 text-right text-ink-muted">{{ fmt1(trip.litros) }}</td>
+                <td class="px-4 py-3 text-right"><a :href="tripUrl(trip.id)" class="font-semibold text-primary hover:text-primary-hover">Ver detalle</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <nav v-if="pagination.pages > 1" aria-label="Paginación de viajes" class="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border-subtle pt-4">
+          <p class="text-xs text-ink-muted">Página {{ pagination.page }} de {{ pagination.pages }} · {{ fmt(pagination.total) }} viajes</p>
+          <div class="flex gap-2">
+            <a :href="pageUrl(pagination.page - 1)" :aria-disabled="pagination.page <= 1" :class="['rounded-lg border border-border px-3 py-2 text-sm font-semibold', pagination.page <= 1 ? 'pointer-events-none opacity-50' : 'text-ink hover:bg-surface-subtle']">Anterior</a>
+            <a :href="pageUrl(pagination.page + 1)" :aria-disabled="pagination.page >= pagination.pages" :class="['rounded-lg border border-border px-3 py-2 text-sm font-semibold', pagination.page >= pagination.pages ? 'pointer-events-none opacity-50' : 'text-ink hover:bg-surface-subtle']">Siguiente</a>
+          </div>
+        </nav>
+      </PanelCard>
+
       <div class="mb-5 grid gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-        <PanelCard title="Actividad por mes">
-          <p v-if="monthly.length === 0" class="text-sm text-ink-muted">Sin viajes en el período.</p>
+        <PanelCard title="Últimos 12 meses con actividad">
+          <p v-if="recentMonthly.length === 0" class="text-sm text-ink-muted">Sin viajes en el período.</p>
           <div v-else class="space-y-3">
             <div class="flex items-center gap-4 text-xs text-ink-muted">
               <span class="inline-flex items-center gap-1"><span class="inline-block size-2.5 rounded-sm bg-primary"></span>Km</span>
               <span class="inline-flex items-center gap-1"><span class="inline-block size-2.5 rounded-sm bg-accent"></span>Litros</span>
             </div>
-            <div v-for="month in monthly" :key="month.month" class="grid grid-cols-[5rem_1fr_9rem] items-center gap-3">
+            <div v-for="month in recentMonthly" :key="month.month" data-month-row class="grid grid-cols-[5rem_1fr_9rem] items-center gap-3">
               <span class="font-mono text-xs text-ink-muted">{{ month.month }}</span>
               <div class="space-y-1">
                 <div class="h-2 rounded-full bg-surface-muted"><div class="h-2 rounded-full bg-primary" :style="{ width: bar(month.km, maxKm) }"></div></div>
@@ -106,6 +166,7 @@ const qualityTone = { success: 'bg-success', warning: 'bg-warning', danger: 'bg-
               </div>
               <span class="text-right text-xs text-ink-muted">{{ fmt(month.trips) }} viajes · {{ fmt(month.km) }} km</span>
             </div>
+            <p class="text-xs text-ink-muted">Se muestran los últimos 12 meses del período filtrado.</p>
           </div>
         </PanelCard>
 
@@ -128,7 +189,8 @@ const qualityTone = { success: 'bg-success', warning: 'bg-warning', danger: 'bg-
         </PanelCard>
       </div>
 
-      <PanelCard title="Por unidad (dominio)" :count="domains.length">
+      <PanelCard title="Top unidades por km confiable" :count="topDomains.length">
+        <p class="mb-3 text-sm text-ink-muted">Ordenadas por kilómetros con lectura confiable. Seleccioná una unidad para filtrar el historial.</p>
         <div class="overflow-x-auto">
           <table class="w-full min-w-[44rem] text-left text-sm">
             <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
@@ -142,8 +204,8 @@ const qualityTone = { success: 'bg-success', warning: 'bg-warning', danger: 'bg-
               </tr>
             </thead>
             <tbody class="divide-y divide-border-subtle">
-              <tr v-for="item in domains" :key="item.domain">
-                <td class="whitespace-nowrap px-4 py-3 font-mono text-xs font-semibold text-ink">{{ item.domain }}</td>
+              <tr v-for="item in topDomains" :key="item.domain" data-domain-row>
+                <td class="whitespace-nowrap px-4 py-3 font-mono text-xs font-semibold"><a :href="domainUrl(item.domain)" class="text-primary hover:text-primary-hover">{{ item.domain }}</a></td>
                 <td class="px-4 py-3 text-right text-ink-muted">{{ fmt(item.trips) }}</td>
                 <td class="px-4 py-3 text-right font-semibold text-ink">{{ fmt(item.km) }}</td>
                 <td class="px-4 py-3 text-right" :class="Number(item.coverage) < 50 ? 'font-semibold text-warning-strong' : 'text-ink-muted'">{{ fmt1(item.coverage) }}%</td>
@@ -156,6 +218,7 @@ const qualityTone = { success: 'bg-success', warning: 'bg-warning', danger: 'bg-
             </tbody>
           </table>
         </div>
+        <p v-if="hasMoreDomains" class="mt-3 text-xs text-ink-muted">Se muestran 10 de {{ domains.length }} unidades. Usá el filtro de unidad para ver el resto.</p>
       </PanelCard>
     </template>
   </div>

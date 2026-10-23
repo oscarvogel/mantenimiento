@@ -144,6 +144,7 @@ final class TripImports extends BaseController
             'branches' => $show === null ? null : $show . '/sucursales',
             'confirm' => $show === null ? null : $show . '/confirmar',
             'cancel' => $show === null ? null : $show . '/cancelar',
+            'reviewInvoices' => $show === null ? null : $show . '/facturas',
             'superadmin' => base_url('superadmin'),
             'portal' => base_url('inicio'),
         ];
@@ -182,17 +183,18 @@ final class TripImports extends BaseController
     private function failure(Throwable $exception, ?int $importId = null): RedirectResponse
     {
         if (! $exception instanceof DomainException) {
-            log_message('error', 'Fallo la importacion de viajes ({exceptionClass}).', [
+            log_message('error', 'Fallo la importacion de viajes ({exceptionClass}): {message}', [
                 'exceptionClass' => $exception::class,
+                'message' => $exception->getMessage(),
             ]);
         }
         $target = $importId === null ? base_url('superadmin/viajes/importar') : $this->showUrl($importId);
+        $message = $exception instanceof DomainException
+            ? $exception->getMessage()
+            : (ENVIRONMENT === 'development'
+                ? 'No se pudo completar la importacion de viajes: ' . $exception->getMessage() . ' No se guardaron datos.'
+                : 'No se pudo completar la importacion de viajes. No se guardaron datos; volve a intentarlo.');
 
-        return redirect()->to($target)->with(
-            'error',
-            $exception instanceof DomainException
-                ? $exception->getMessage()
-                : 'No se pudo completar la importacion de viajes. No se guardaron datos; volve a intentarlo.',
-        );
+        return redirect()->to($target)->with('error', $message);
     }
 }

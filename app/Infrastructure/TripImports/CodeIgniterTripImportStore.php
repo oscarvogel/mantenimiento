@@ -240,6 +240,70 @@ final class CodeIgniterTripImportStore implements TripImportStore
         return (int) $this->db->affectedRows();
     }
 
+    public function existingInvoiceMap(int $companyId): array
+    {
+        $rows = $this->db->table('viajes_facturas')
+            ->select('id, clave_legacy')
+            ->where('empresa_id', $companyId)
+            ->get()->getResultArray();
+
+        $map = [];
+        foreach ($rows as $row) {
+            $map[(int) $row['clave_legacy']] = (int) $row['id'];
+        }
+
+        return $map;
+    }
+
+    public function insertInvoice(array $data): int
+    {
+        $this->db->table('viajes_facturas')->ignore(true)->insert($data);
+        $id = (int) $this->db->insertID();
+        if ($id > 0) {
+            return $id;
+        }
+
+        $row = $this->db->table('viajes_facturas')
+            ->select('id')
+            ->where('empresa_id', (int) $data['empresa_id'])
+            ->where('clave_legacy', (int) $data['clave_legacy'])
+            ->get()->getRowArray();
+        if ($row === null) {
+            throw new RuntimeException('No se pudo guardar la factura legacy.');
+        }
+
+        return (int) $row['id'];
+    }
+
+    public function insertInvoiceLines(array $rows): int
+    {
+        if ($rows === []) {
+            return 0;
+        }
+        if ($this->db->table('viaje_factura_lineas')->ignore(true)->insertBatch($rows, null, 500) === false) {
+            throw new RuntimeException('No se pudieron guardar las lineas de factura.');
+        }
+
+        return (int) $this->db->affectedRows();
+    }
+
+    public function linkInvoice(array $data): void
+    {
+        $builder = $this->db->table('viaje_factura_viaje')->where('factura_id', (int) $data['factura_id']);
+        if ($builder->countAllResults() > 0) {
+            $this->db->table('viaje_factura_viaje')
+                ->where('factura_id', (int) $data['factura_id'])
+                ->update($data);
+            return;
+        }
+        $this->db->table('viaje_factura_viaje')->insert($data);
+    }
+
+    public function unlinkInvoice(int $invoiceId): void
+    {
+        $this->db->table('viaje_factura_viaje')->where('factura_id', $invoiceId)->delete();
+    }
+
     /** @param array<string,mixed> $value */
     private function encode(array $value): string
     {

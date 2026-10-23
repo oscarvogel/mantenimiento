@@ -21,6 +21,7 @@ const hasFile = ref(false)
 const batch = computed(() => props.data.batch)
 const summary = computed(() => batch.value?.summary ?? {})
 const counts = computed(() => summary.value.counts ?? {})
+const invoices = computed(() => summary.value.invoices ?? {})
 const classification = computed(() => summary.value.classification ?? {})
 const requirements = computed(() => summary.value.branch_requirements ?? {})
 const confirmed = computed(() => batch.value?.estado === 'CONFIRMADO')
@@ -219,6 +220,25 @@ const decisionIcon = { success: 'bg-success/15 text-success', warning: 'bg-warni
           <p class="text-xs text-ink-muted">Una sola transacción: viajes e hijos, o nada.</p>
         </div>
       </section>
+
+      <PanelCard title="Facturación histórica" :count="invoices.available ? invoices.total : null">
+        <template v-if="invoices.available">
+          <p class="text-sm text-ink-muted">El paquete incluye comprobantes de venta. Se guardan como historia de solo lectura y se vinculan a los viajes para calcular rentabilidad.</p>
+          <dl class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
+            <div class="rounded-xl border border-border bg-surface px-3 py-2"><dt class="text-xs font-semibold text-ink-muted">Facturas</dt><dd class="mt-1 text-xl font-bold text-ink">{{ fmt(invoices.total) }}</dd></div>
+            <div class="rounded-xl border border-border bg-surface px-3 py-2"><dt class="text-xs font-semibold text-ink-muted">Con unidad</dt><dd class="mt-1 text-xl font-bold text-ink">{{ fmt(invoices.with_unit) }}</dd></div>
+            <div class="rounded-xl border border-border bg-surface px-3 py-2"><dt class="text-xs font-semibold text-ink-muted">Vínculo automático</dt><dd class="mt-1 text-xl font-bold text-success-strong">{{ fmt(invoices.auto_matches) }}</dd></div>
+            <div class="rounded-xl border border-border bg-surface px-3 py-2"><dt class="text-xs font-semibold text-ink-muted">A revisar</dt><dd class="mt-1 text-xl font-bold text-warning-strong">{{ fmt(invoices.review_matches) }}</dd></div>
+            <div class="rounded-xl border border-border bg-surface px-3 py-2"><dt class="text-xs font-semibold text-ink-muted">Sin vínculo</dt><dd class="mt-1 text-xl font-bold text-ink-muted">{{ fmt(invoices.unmatched) }}</dd></div>
+          </dl>
+          <div v-if="confirmed" class="mt-4 flex flex-wrap items-center gap-3">
+            <a :href="data.actions.reviewInvoices" :class="primaryButton"><CheckCircleIcon class="mr-2 size-5" aria-hidden="true" />Revisar vínculos factura-viaje</a>
+            <p class="text-xs text-ink-muted">Solo las facturas confirmadas o automáticas se usan en el análisis de rentabilidad.</p>
+          </div>
+          <p v-else class="mt-4 text-xs text-ink-muted">Los comprobantes y sus vínculos se guardan al confirmar la importación. Después vas a poder revisarlos.</p>
+        </template>
+        <p v-else class="rounded-xl border border-warning/40 bg-warning-subtle p-3 text-sm font-semibold text-warning-strong">El paquete no trae facturación histórica. Los viajes se pueden importar, pero no habrá análisis de rentabilidad hasta importar un paquete con comprobantes.</p>
+      </PanelCard>
 
       <PanelCard title="Sucursales por país" :count="requiredCountries.length || null">
         <p class="text-sm text-ink-muted">La patente Mercosur define Argentina o Brasil. Las patentes anteriores a Mercosur se resuelven por mayoría de menciones de origen y destino. Los viajes sin evidencia suficiente quedan como “sin clasificar”.</p>

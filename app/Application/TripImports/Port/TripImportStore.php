@@ -43,4 +43,18 @@ interface TripImportStore
 
     /** @param list<array<string,mixed>> $rows */
     public function insertChildren(string $table, array $rows): int;
+
+    /** @return array<int,int> clave_legacy => id */
+    public function existingInvoiceMap(int $companyId): array;
+
+    /** @param array<string,mixed> $data */
+    public function insertInvoice(array $data): int;
+
+    /** @param list<array<string,mixed>> $rows */
+    public function insertInvoiceLines(array $rows): int;
+
+    /** @param array<string,mixed> $data */
+    public function linkInvoice(array $data): void;
+
+    public function unlinkInvoice(int $invoiceId): void;
 }

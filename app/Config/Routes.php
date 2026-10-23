@@ -27,6 +27,21 @@ $routes->get('inicio', 'CommandCenter::index', ['filter' => 'auth']);
 
 // Dashboard de viajes: lectura del historico importado, con scope de empresa y sucursal.
 $routes->get('viajes', 'TripsDashboard::index', ['filter' => ['auth', 'permission:viajes.ver']]);
+$routes->get('viajes/(:num)', 'TripsDashboard::detail/$1', ['filter' => ['auth', 'permission:viajes.ver']]);
+$routes->get('viajes/rentabilidad', 'TripProfitability::index', ['filter' => ['auth', 'permission:viajes.ver']]);
+
+// Viajes operativos: planificación, inicio y cancelación con scope de empresa y sucursal.
+$routes->get('viajes/operativos', 'OperationalTrips::index', ['filter' => ['auth', 'permission:viajes.ver']]);
+$routes->get('viajes/operativos/nuevo', 'OperationalTrips::create', ['filter' => ['auth', 'permission:viajes.operar']]);
+$routes->post('viajes/operativos', 'OperationalTrips::store', ['filter' => ['auth', 'permission:viajes.operar']]);
+$routes->get('viajes/operativos/(:num)', 'OperationalTrips::show/$1', ['filter' => ['auth', 'permission:viajes.ver']]);
+$routes->post('viajes/operativos/(:num)/iniciar', 'OperationalTrips::start/$1', ['filter' => ['auth', 'permission:viajes.operar']]);
+$routes->post('viajes/operativos/(:num)/cerrar', 'OperationalTrips::finish/$1', ['filter' => ['auth', 'permission:viajes.operar']]);
+$routes->post('viajes/operativos/(:num)/tramos', 'OperationalTrips::addLeg/$1', ['filter' => ['auth', 'permission:viajes.operar']]);
+$routes->post('viajes/operativos/(:num)/cancelar', 'OperationalTrips::cancel/$1', ['filter' => ['auth', 'permission:viajes.operar']]);
+$routes->post('viajes/operativos/(:num)/combustible', 'OperationalTrips::addFuel/$1', ['filter' => ['auth', 'permission:viajes.operar']]);
+$routes->post('viajes/operativos/(:num)/gastos', 'OperationalTrips::addExpense/$1', ['filter' => ['auth', 'permission:viajes.operar']]);
+$routes->post('viajes/operativos/(:num)/caja', 'OperationalTrips::addCashMovement/$1', ['filter' => ['auth', 'permission:viajes.operar']]);
 
 // Maestros independientes del módulo operativo de viajes y de la telemetría.
 $routes->group('viajes/maestros', ['filter' => ['auth']], static function ($routes): void {
@@ -86,6 +101,10 @@ $routes->group('superadmin', ['filter' => 'superadmin'], static function ($route
     $routes->post('viajes/importaciones/(:num)/sucursales', 'TripImports::assignBranches/$1');
     $routes->post('viajes/importaciones/(:num)/confirmar', 'TripImports::confirm/$1');
     $routes->post('viajes/importaciones/(:num)/cancelar', 'TripImports::cancel/$1');
+    $routes->get('viajes/importaciones/(:num)/facturas', 'TripInvoiceReview::index/$1');
+    $routes->get('viajes/importaciones/(:num)/facturas/buscar', 'TripInvoiceReview::searchTrips/$1');
+    $routes->post('viajes/importaciones/(:num)/facturas/(:num)/viaje', 'TripInvoiceReview::assign/$1/$2');
+    $routes->post('viajes/importaciones/(:num)/facturas/(:num)/desvincular', 'TripInvoiceReview::unassign/$1/$2');
     $routes->get('', 'SuperAdmin::index');
     $routes->get('telemetria/muestras/exportar', 'AdminTelemetrySamples::export');
     $routes->get('telemetria/muestras', 'AdminTelemetrySamples::index');

@@ -252,10 +252,38 @@ class Services extends BaseService
         return new \App\Application\TripImports\TripImports(
             new \App\Infrastructure\TripImports\LegacyTripPackageReader(),
             new \App\Infrastructure\TripImports\LegacyTripRowMapper(),
+            new \App\Infrastructure\TripImports\LegacyTripInvoiceMapper(),
+            new \App\Application\TripImports\InvoiceTripMatcher(),
             new \App\Infrastructure\TripImports\CodeIgniterTripImportStore($db),
             static::privateImportStorage(),
             new \App\Infrastructure\Importations\CodeIgniterImportUnitOfWork($db),
             new \App\Domain\TripImports\TripBranchClassifier(),
+        );
+    }
+
+    public static function invoiceReviewReadModel(bool $getShared = true): \App\Infrastructure\TripImports\CodeIgniterInvoiceReviewReadModel
+    {
+        if ($getShared) {
+            return static::getSharedInstance('invoiceReviewReadModel');
+        }
+
+        return new \App\Infrastructure\TripImports\CodeIgniterInvoiceReviewReadModel(
+            db_connect(),
+            new \App\Application\TripImports\InvoiceTripMatcher(),
+        );
+    }
+
+    public static function reviewTripInvoices(bool $getShared = true): \App\Application\TripImports\ReviewTripInvoices
+    {
+        if ($getShared) {
+            return static::getSharedInstance('reviewTripInvoices');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\TripImports\ReviewTripInvoices(
+            static::invoiceReviewReadModel(false),
+            new \App\Infrastructure\TripImports\CodeIgniterTripImportStore($db),
         );
     }
 
@@ -1001,6 +1029,188 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
 
         return new \App\Application\Trips\GetTripsDashboard(
             new \App\Infrastructure\Trips\CodeIgniterTripDashboardReadModel(db_connect()),
+        );
+    }
+
+    public static function getTripProfitability(bool $getShared = true): \App\Application\Trips\GetTripProfitability
+    {
+        if ($getShared) {
+            return static::getSharedInstance('getTripProfitability');
+        }
+
+        return new \App\Application\Trips\GetTripProfitability(
+            new \App\Infrastructure\Trips\CodeIgniterTripProfitabilityReadModel(db_connect()),
+        );
+    }
+
+    public static function getTripDetail(bool $getShared = true): \App\Application\Trips\GetTripDetail
+    {
+        if ($getShared) {
+            return static::getSharedInstance('getTripDetail');
+        }
+
+        return new \App\Application\Trips\GetTripDetail(
+            new \App\Infrastructure\Trips\CodeIgniterTripDetailReadModel(db_connect()),
+        );
+    }
+
+    public static function createTrip(bool $getShared = true): \App\Application\Trips\CreateTrip
+    {
+        if ($getShared) {
+            return static::getSharedInstance('createTrip');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\Trips\CreateTrip(
+            new \App\Infrastructure\Trips\CodeIgniterOperationalTripRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripFleetLookup($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripDirectoryLookup($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripsUnitOfWork($db),
+        );
+    }
+
+    public static function addTripLeg(bool $getShared = true): \App\Application\Trips\AddTripLeg
+    {
+        if ($getShared) {
+            return static::getSharedInstance('addTripLeg');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\Trips\AddTripLeg(
+            new \App\Infrastructure\Trips\CodeIgniterOperationalTripRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripLegRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripDirectoryLookup($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripsUnitOfWork($db),
+        );
+    }
+
+    public static function finishTrip(bool $getShared = true): \App\Application\Trips\FinishTrip
+    {
+        if ($getShared) {
+            return static::getSharedInstance('finishTrip');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\Trips\FinishTrip(
+            new \App\Infrastructure\Trips\CodeIgniterOperationalTripRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripReadingRecorder(static::registerReading(false)),
+            new \App\Infrastructure\Trips\CodeIgniterTripsUnitOfWork($db),
+            new \App\Infrastructure\Trips\SystemTripClock(),
+        );
+    }
+
+    public static function registerTripFuel(bool $getShared = true): \App\Application\Trips\RegisterTripFuel
+    {
+        if ($getShared) {
+            return static::getSharedInstance('registerTripFuel');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\Trips\RegisterTripFuel(
+            new \App\Infrastructure\Trips\CodeIgniterOperationalTripRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripCostRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripDirectoryLookup($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripLegRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripsUnitOfWork($db),
+        );
+    }
+
+    public static function registerTripExpense(bool $getShared = true): \App\Application\Trips\RegisterTripExpense
+    {
+        if ($getShared) {
+            return static::getSharedInstance('registerTripExpense');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\Trips\RegisterTripExpense(
+            new \App\Infrastructure\Trips\CodeIgniterOperationalTripRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripCostRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripDirectoryLookup($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripLegRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripsUnitOfWork($db),
+        );
+    }
+
+    public static function registerTripCashMovement(bool $getShared = true): \App\Application\Trips\RegisterTripCashMovement
+    {
+        if ($getShared) {
+            return static::getSharedInstance('registerTripCashMovement');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\Trips\RegisterTripCashMovement(
+            new \App\Infrastructure\Trips\CodeIgniterOperationalTripRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripCostRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripDirectoryLookup($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripsUnitOfWork($db),
+        );
+    }
+
+    public static function startTrip(bool $getShared = true): \App\Application\Trips\StartTrip
+    {
+        if ($getShared) {
+            return static::getSharedInstance('startTrip');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\Trips\StartTrip(
+            new \App\Infrastructure\Trips\CodeIgniterOperationalTripRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripsUnitOfWork($db),
+            new \App\Infrastructure\Trips\SystemTripClock(),
+        );
+    }
+
+    public static function cancelTrip(bool $getShared = true): \App\Application\Trips\CancelTrip
+    {
+        if ($getShared) {
+            return static::getSharedInstance('cancelTrip');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\Trips\CancelTrip(
+            new \App\Infrastructure\Trips\CodeIgniterOperationalTripRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripsUnitOfWork($db),
+        );
+    }
+
+    public static function listOperationalTrips(bool $getShared = true): \App\Application\Trips\ListOperationalTrips
+    {
+        if ($getShared) {
+            return static::getSharedInstance('listOperationalTrips');
+        }
+
+        return new \App\Application\Trips\ListOperationalTrips(
+            new \App\Infrastructure\Trips\CodeIgniterOperationalTripReadModel(db_connect()),
+        );
+    }
+
+    public static function getOperationalTrip(bool $getShared = true): \App\Application\Trips\GetOperationalTrip
+    {
+        if ($getShared) {
+            return static::getSharedInstance('getOperationalTrip');
+        }
+
+        return new \App\Application\Trips\GetOperationalTrip(
+            new \App\Infrastructure\Trips\CodeIgniterOperationalTripReadModel(db_connect()),
+        );
+    }
+
+    public static function tripFormOptions(bool $getShared = true): \App\Application\Trips\GetTripFormOptions
+    {
+        if ($getShared) {
+            return static::getSharedInstance('tripFormOptions');
+        }
+
+        return new \App\Application\Trips\GetTripFormOptions(
+            new \App\Infrastructure\Trips\CodeIgniterTripFormReadModel(db_connect()),
         );
     }
 

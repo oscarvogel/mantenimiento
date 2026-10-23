@@ -6,11 +6,13 @@ use App\Application\Identity\ActorContext;
 use App\Application\Importations\Port\ImportUnitOfWork;
 use App\Application\Importations\Port\PrivateImportFileStorage;
 use App\Application\Importations\StoredImportFile;
+use App\Application\TripImports\InvoiceTripMatcher;
 use App\Application\TripImports\Port\TripImportStore;
 use App\Application\TripImports\Port\TripPackage;
 use App\Application\TripImports\Port\TripPackageReader;
 use App\Application\TripImports\TripImports;
 use App\Domain\TripImports\TripBranchClassifier;
+use App\Infrastructure\TripImports\LegacyTripInvoiceMapper;
 use App\Infrastructure\TripImports\LegacyTripRowMapper;
 use PHPUnit\Framework\TestCase;
 
@@ -30,6 +32,8 @@ final class TripImportsTest extends TestCase
         $this->useCase = new TripImports(
             $this->reader,
             new LegacyTripRowMapper(),
+            new LegacyTripInvoiceMapper(),
+            new InvoiceTripMatcher(),
             $this->store,
             $this->files,
             new FakeUnitOfWork(),
@@ -121,6 +125,8 @@ final class TripImportsTest extends TestCase
         $useCase = new TripImports(
             $this->reader,
             new LegacyTripRowMapper(),
+            new LegacyTripInvoiceMapper(),
+            new InvoiceTripMatcher(),
             $store,
             $this->files,
             new FakeUnitOfWork(),
@@ -154,14 +160,32 @@ final class TripImportsTest extends TestCase
         self::assertNotEmpty($this->files->deleted);
     }
 
+    public function testConfirmsInvoicesAndLinksHighConfidenceMatch(): void
+    {
+        $this->reader->package = $this->package(true);
+        $importId = $this->useCase->preview($this->actor(), 1, '/tmp/upload.zip', 'transporte.zip');
+        $this->useCase->assignBranches($this->actor(), $importId, ['AR' => 10, 'BR' => 20, 'UNCLASSIFIED' => 30]);
+
+        $result = $this->useCase->confirm($this->actor(), $importId);
+
+        self::assertSame(1, $result['invoices']['invoices_inserted']);
+        self::assertSame(4, $result['invoices']['invoice_lines_inserted']);
+        self::assertArrayNotHasKey('clave_legacy', $this->store->invoiceLines[0]);
+        self::assertArrayHasKey('factura_id', $this->store->invoiceLines[0]);
+        self::assertSame(1, $result['invoices']['auto_matches']);
+        self::assertCount(1, $this->store->invoiceLinks);
+        self::assertSame('AUTO', $this->store->invoiceLinks[0]['estado']);
+        self::assertSame('ALTA', $this->store->invoiceLinks[0]['confianza']);
+    }
+
     private function actor(): ActorContext
     {
         return new ActorContext(1, null, true, false, ['Superadministrador'], [], []);
     }
 
-    private function package(): FakeTripPackage
+    private function package(bool $withInvoices = false): FakeTripPackage
     {
-        return new FakeTripPackage([
+        $tables = [
             't05_viajes' => [
                 [
                     'cuit_empresa' => '23-28059786-4', 'dominio' => 'AC 532 DD ', 'numero_viaje' => '1',
@@ -184,7 +208,7 @@ final class TripImportsTest extends TestCase
             't06_origenes_destinos_por_viaje' => [
                 [
                     'cuit_empresa' => '23-28059786-4', 'dominio' => 'AC 532 DD ', 'numero_viaje' => '1', 'item' => '1',
-                    'descripcion_origen' => 'ROSARIO', 'descripcion_destino' => 'CORDOBA', 'importe' => '100.0000',
+                    'descripcion_origen' => 'ROSARIO', 'descripcion_destino' => 'CORDOBA', 'importe' => '100000.0000',
                 ],
             ],
             't07_cargas_combustible_por_viaje' => [],
@@ -192,7 +216,26 @@ final class TripImportsTest extends TestCase
             't11_cuenta_corriente_x_viaje' => [],
             't12_cuenta_corriente_origenes_destinos_por_viaje' => [],
             't13_otros_haberes_por_viaje' => [],
-        ]);
+        ];
+
+        if ($withInvoices) {
+            $tables['a18_comprobantes_de_venta'] = [[
+                'clave' => '900', 'tipo_de_comprobante' => '1', 'desc_tipo' => 'FAC-A',
+                'punto_venta' => '1', 'nro_comprobante' => '1', 'fecha' => '2022-01-14 10:00:00',
+                'total' => '100000.00', 'moneda' => 'PES', 'cotizacion' => '1.000000',
+                'cuit_empresa' => '23-28059786-4', 'codigo_cliente' => '10',
+                'subtotal' => '100000.00', 'iva' => '0.00', 'impuestos' => '0.00', 'dgr' => '0.00',
+                'cae' => '12345678901234',
+            ]];
+            $tables['a19_detalle_comprobantes_de_venta'] = [
+                ['clave' => '900', 'item' => '1', 'nombre' => 'UN FLETE DE PRUEBA', 'cantidad' => '1.0000', 'precio_de_venta' => '100000.00', 'iva' => '0.0000', 'codigo_articulo' => '1', 'codigo_alternativo' => 'FLETE'],
+                ['clave' => '900', 'item' => '2', 'nombre' => 'ORIGEN: ROSARIO', 'cantidad' => '1.0000', 'precio_de_venta' => '0.0000', 'iva' => '0.0000', 'codigo_articulo' => '0', 'codigo_alternativo' => '/'],
+                ['clave' => '900', 'item' => '3', 'nombre' => 'DESTINO: CORDOBA', 'cantidad' => '1.0000', 'precio_de_venta' => '0.0000', 'iva' => '0.0000', 'codigo_articulo' => '0', 'codigo_alternativo' => '/'],
+                ['clave' => '900', 'item' => '4', 'nombre' => 'UNIDAD: AC532DD', 'cantidad' => '1.0000', 'precio_de_venta' => '0.0000', 'iva' => '0.0000', 'codigo_articulo' => '0', 'codigo_alternativo' => '/'],
+            ];
+        }
+
+        return new FakeTripPackage($tables);
     }
 }
 
@@ -369,6 +412,46 @@ final class FakeTripImportStore implements TripImportStore
         $this->insertedChildren[$table] = array_merge($this->insertedChildren[$table] ?? [], $rows);
 
         return count($rows);
+    }
+
+    /** @var array<int,int> */
+    public array $invoices = [];
+    /** @var list<array<string,mixed>> */
+    public array $invoiceLines = [];
+    /** @var list<array<string,mixed>> */
+    public array $invoiceLinks = [];
+
+    public function existingInvoiceMap(int $companyId): array
+    {
+        return $this->invoices;
+    }
+
+    public function insertInvoice(array $data): int
+    {
+        $id = count($this->invoices) + 1;
+        $this->invoices[(int) $data['clave_legacy']] = $id;
+
+        return $id;
+    }
+
+    public function insertInvoiceLines(array $rows): int
+    {
+        $this->invoiceLines = array_merge($this->invoiceLines, $rows);
+
+        return count($rows);
+    }
+
+    public function linkInvoice(array $data): void
+    {
+        $this->invoiceLinks[] = $data;
+    }
+
+    public function unlinkInvoice(int $invoiceId): void
+    {
+        $this->invoiceLinks = array_values(array_filter(
+            $this->invoiceLinks,
+            static fn (array $link): bool => (int) ($link['factura_id'] ?? 0) !== $invoiceId,
+        ));
     }
 }
 

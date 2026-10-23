@@ -3,6 +3,7 @@ import { mount } from '@vue/test-utils'
 import TripsDashboardPage from '../../src/pages/operations/TripsDashboardPage.vue'
 
 const data = {
+  links: { index: '/mantenimiento/viajes' },
   filters: { from: '', to: '', branchId: null, domain: null, branchName: null },
   options: { branches: [{ id: 10, code: 'AR', name: 'Argentina' }], domains: ['AC 532 DD'] },
   summary: {
@@ -21,6 +22,8 @@ const data = {
     { key: 'km', label: 'Viajes con km confiable', value: 1620, total: 1740, tone: 'success' },
     { key: 'missing', label: 'Sin lecturas de odometro', value: 90, total: 1740, tone: 'warning' },
   ],
+  trips: [{ id: 10, sucursal_id: 10, dominio: 'AC 532 DD', numero_viaje: 42, fecha_salida: '2026-09-01', km_salida: 1000, km_regreso: 1500, litros: 50 }],
+  pagination: { page: 1, perPage: 20, total: 1, pages: 1 },
 }
 
 describe('dashboard de viajes', () => {
@@ -34,6 +37,36 @@ describe('dashboard de viajes', () => {
     expect(wrapper.text()).toContain('34,6')
     expect(wrapper.get('form').attributes('method')).toBe('get')
     expect(wrapper.text()).toContain('Viajes con km confiable')
+    expect(wrapper.text()).toContain('Viajes del período')
+    expect(wrapper.text()).toContain('01/09/2026')
+    expect(wrapper.get('a[href="/mantenimiento/viajes/10"]').text()).toContain('Ver detalle')
+    wrapper.unmount()
+  })
+
+  it('prioriza la lista de viajes y acota los resúmenes a 12 meses y 10 unidades', () => {
+    const monthly = Array.from({ length: 15 }, (_, index) => ({
+      month: `2025-${String(index + 1).padStart(2, '0')}`,
+      trips: index + 1,
+      km: (index + 1) * 1_000,
+      liters: (index + 1) * 100,
+    }))
+    const domains = Array.from({ length: 15 }, (_, index) => ({
+      domain: `UNIDAD-${index + 1}`,
+      trips: 1,
+      km: 15_000 - index * 500,
+      km_trips: 1,
+      liters: 1_000,
+      fuel_trips: 1,
+      liters_per_100: 20,
+      coverage: 100,
+    }))
+    const wrapper = mount(TripsDashboardPage, { props: { data: { ...data, monthly, domains } } })
+
+    const text = wrapper.text()
+    expect(text.indexOf('Viajes del período')).toBeLessThan(text.indexOf('Últimos 12 meses con actividad'))
+    expect(wrapper.findAll('[data-month-row]')).toHaveLength(12)
+    expect(wrapper.findAll('[data-domain-row]')).toHaveLength(10)
+    expect(text).toContain('Se muestran 10 de 15 unidades')
     wrapper.unmount()
   })
 
