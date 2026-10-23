@@ -11,6 +11,7 @@ use App\Application\Trips\OperationalTripFilters;
 use App\Application\Trips\RegisterTripCashMovementCommand;
 use App\Application\Trips\RegisterTripExpenseCommand;
 use App\Application\Trips\RegisterTripFuelCommand;
+use App\Application\Trips\RegisterTripOtherEarningCommand;
 use App\Infrastructure\Identity\SessionActorContext;
 use CodeIgniter\HTTP\RedirectResponse;
 use DateTimeImmutable;
@@ -162,6 +163,10 @@ final class OperationalTrips extends BaseController
     public function addExpense(int $tripId): RedirectResponse
     {
         try {
+            $paidBy = strtoupper(trim((string) $this->request->getPost('pagado_por')));
+            if ($paidBy === '') {
+                $paidBy = (string) $this->request->getPost('pagado_de_caja') === '1' ? 'CAJA' : 'EMPRESA';
+            }
             $command = new RegisterTripExpenseCommand(
                 $tripId,
                 $this->requiredDateTime('fecha'),
@@ -170,16 +175,38 @@ final class OperationalTrips extends BaseController
                 $this->currency(),
                 $this->rate(),
                 $this->optionalInt('medio_pago_id'),
-                (string) $this->request->getPost('pagado_de_caja') === '1',
+                $paidBy === 'CAJA',
                 $this->text('comprobante', 80),
                 $this->text('observaciones', 500),
                 $this->optionalInt('tramo_id'),
+                $paidBy,
             );
             service('registerTripExpense')->execute($this->actor(), $command);
 
             return redirect()->to('/viajes/operativos/' . $tripId)->with('success', 'El gasto quedó registrado.');
         } catch (Throwable $exception) {
             return $this->failure($exception, 'No se pudo registrar el gasto.', '/viajes/operativos/' . $tripId);
+        }
+    }
+
+    public function addOtherEarning(int $tripId): RedirectResponse
+    {
+        try {
+            $command = RegisterTripOtherEarningCommand::fromInput([
+                'viaje_id' => $tripId,
+                'empleado_id' => $this->request->getPost('empleado_id'),
+                'fecha' => $this->request->getPost('fecha'),
+                'importe' => $this->request->getPost('importe'),
+                'moneda' => $this->request->getPost('moneda'),
+                'cotizacion' => $this->request->getPost('cotizacion'),
+                'concepto' => $this->request->getPost('concepto'),
+                'observaciones' => $this->request->getPost('observaciones'),
+            ]);
+            service('registerTripOtherEarning')->execute($this->actor(), $command);
+
+            return redirect()->to('/viajes/operativos/' . $tripId)->with('success', 'El haber del chofer quedó registrado.');
+        } catch (Throwable $exception) {
+            return $this->failure($exception, 'No se pudo registrar el haber del chofer.', '/viajes/operativos/' . $tripId);
         }
     }
 

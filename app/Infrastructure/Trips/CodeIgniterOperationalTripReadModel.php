@@ -162,6 +162,7 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
             'fuel' => $this->fuelDetails($companyId, $tripId),
             'expenses' => $this->expenseDetails($companyId, $tripId),
             'cashMovements' => $this->cashMovementDetails($companyId, $tripId),
+            'otherEarnings' => $this->otherEarningDetails($companyId, $tripId),
             'options' => $this->costOptions($companyId),
         ];
     }
@@ -237,6 +238,7 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
                     default => 'Chofer',
                 },
                 'label' => $label,
+                'empleado_id' => $row['empleado_id'] === null ? null : (int) $row['empleado_id'],
                 'desde' => $row['desde'],
                 'hasta' => $row['hasta'],
                 'porcentaje_liquidacion' => $row['porcentaje_liquidacion'] === null ? null : (float) $row['porcentaje_liquidacion'],
@@ -345,7 +347,7 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
     private function expenseDetails(int $companyId, int $tripId): array
     {
         $rows = $this->db->table('viaje_operativo_gastos g')
-            ->select('g.id, g.tramo_id, g.fecha, g.importe, g.moneda, g.cotizacion, g.importe_ars, g.categoria_id, g.medio_pago_id, g.pagado_de_caja, g.comprobante, g.observaciones, c.nombre AS categoria, m.nombre AS medio_pago')
+            ->select('g.id, g.tramo_id, g.fecha, g.importe, g.moneda, g.cotizacion, g.importe_ars, g.categoria_id, g.medio_pago_id, g.pagado_de_caja, g.pagado_por, g.comprobante, g.observaciones, c.nombre AS categoria, m.nombre AS medio_pago')
             ->join('viajes_categorias_gasto c', 'c.id = g.categoria_id AND c.empresa_id = g.empresa_id', 'left')
             ->join('viajes_medios_pago m', 'm.id = g.medio_pago_id AND m.empresa_id = g.empresa_id', 'left')
             ->where('g.empresa_id', $companyId)
@@ -367,6 +369,7 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
             'medio_pago_id' => $row['medio_pago_id'] === null ? null : (int) $row['medio_pago_id'],
             'medio_pago' => $row['medio_pago'],
             'pagado_de_caja' => (bool) $row['pagado_de_caja'],
+            'pagado_por' => (string) ($row['pagado_por'] ?? ((bool) $row['pagado_de_caja'] ? 'CAJA' : 'EMPRESA')),
             'comprobante' => $row['comprobante'],
             'observaciones' => $row['observaciones'],
         ], $rows);
@@ -387,6 +390,32 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
             'id' => (int) $row['id'],
             'tipo' => (string) $row['tipo'],
             'fecha' => $row['fecha'],
+            'importe' => (float) $row['importe'],
+            'moneda' => (string) $row['moneda'],
+            'cotizacion' => (float) $row['cotizacion'],
+            'importe_ars' => (float) $row['importe_ars'],
+            'observaciones' => $row['observaciones'],
+        ], $rows);
+    }
+
+    /** @return list<array<string,mixed>> */
+    private function otherEarningDetails(int $companyId, int $tripId): array
+    {
+        $rows = $this->db->table('viaje_operativo_otros_haberes h')
+            ->select('h.id, h.empleado_id, h.fecha, h.concepto, h.importe, h.moneda, h.cotizacion, h.importe_ars, h.observaciones, emp.nombre, emp.apellido')
+            ->join('empleados emp', 'emp.id = h.empleado_id AND emp.empresa_id = h.empresa_id', 'left')
+            ->where('h.empresa_id', $companyId)
+            ->where('h.viaje_id', $tripId)
+            ->orderBy('h.fecha', 'ASC')
+            ->orderBy('h.id', 'ASC')
+            ->get()->getResultArray();
+
+        return array_map(static fn (array $row): array => [
+            'id' => (int) $row['id'],
+            'empleado_id' => (int) $row['empleado_id'],
+            'empleado' => trim((string) ($row['nombre'] ?? '') . ' ' . (string) ($row['apellido'] ?? '')),
+            'fecha' => $row['fecha'],
+            'concepto' => (string) $row['concepto'],
             'importe' => (float) $row['importe'],
             'moneda' => (string) $row['moneda'],
             'cotizacion' => (float) $row['cotizacion'],

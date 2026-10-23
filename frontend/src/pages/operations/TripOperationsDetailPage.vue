@@ -13,6 +13,8 @@ const stops = computed(() => props.data.stops ?? [])
 const fuel = computed(() => props.data.fuel ?? [])
 const expenses = computed(() => props.data.expenses ?? [])
 const cashMovements = computed(() => props.data.cashMovements ?? [])
+const otherEarnings = computed(() => props.data.otherEarnings ?? [])
+const settlement = computed(() => props.data.settlement ?? null)
 const totals = computed(() => props.data.totals ?? {})
 const legs = computed(() => props.data.legs ?? [])
 const consumption = computed(() => props.data.consumption ?? {})
@@ -30,6 +32,15 @@ const statusTone = {
 }
 const cashTypeLabel = { ANTICIPO: 'Anticipo', RETIRO: 'Retiro', DEVOLUCION: 'Devolución' }
 
+const paidByLabel = { EMPRESA: 'Empresa', CHOFER: 'Chofer', CAJA: 'Caja del chofer' }
+const drivers = computed(() => assignments.value.filter((row) => row.rol === 'CHOFER'))
+const today = computed(() => new Date().toISOString().slice(0, 10))
+const settlementNote = computed(() => {
+  if (settlement.value) return null
+  if (totals.value.multiple_drivers) return 'Hay más de un chofer. La liquidación se calcula cuando hay un chofer responsable.'
+  if (totals.value.driver_percentage === null || totals.value.driver_percentage === undefined) return 'El chofer no tiene un porcentaje de liquidación definido.'
+  return 'Cargá al menos un tramo para calcular la liquidación.'
+})
 const fmtDateTime = (value) => {
   const match = String(value ?? '').match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/)
   return match ? `${match[3]}/${match[2]}/${match[1]} ${match[4]}:${match[5]}` : 'Sin fecha'
@@ -213,6 +224,57 @@ const facts = computed(() => [
       </article>
     </section>
 
+    <PanelCard title="Liquidación del chofer" class="mb-5" allow-overflow>
+      <p v-if="settlementNote" class="rounded-lg border border-info/30 bg-info-subtle px-3 py-2 text-sm text-info-strong">{{ settlementNote }}</p>
+      <div v-else class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+        <div class="rounded-xl border border-border-subtle bg-surface p-4">
+          <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Chofer responsable</p>
+          <p class="mt-1 text-lg font-bold text-ink">{{ settlement.driver || 'Sin dato' }}</p>
+          <dl class="mt-4 space-y-2 text-sm">
+            <div class="flex items-center justify-between gap-3"><dt class="text-ink-muted">Comisión</dt><dd class="font-semibold text-ink">{{ money(settlement.commission_ars) }}</dd></div>
+            <div class="flex items-center justify-between gap-3"><dt class="text-ink-muted">Otros haberes</dt><dd class="font-semibold text-ink">{{ money(settlement.other_earnings_ars) }}</dd></div>
+            <div class="flex items-center justify-between gap-3"><dt class="text-ink-muted">Gastos pagados por el chofer</dt><dd class="font-semibold text-ink">{{ money(settlement.driver_expenses_ars) }}</dd></div>
+            <div class="flex items-center justify-between gap-3"><dt class="text-ink-muted">Gastos pagados con caja</dt><dd class="font-semibold text-ink">{{ money(settlement.cash_expenses_ars) }}</dd></div>
+            <div class="flex items-center justify-between gap-3"><dt class="text-ink-muted">Anticipos y retiros</dt><dd class="font-semibold text-danger-strong">- {{ money(settlement.advances_ars) }}</dd></div>
+            <div class="flex items-center justify-between gap-3"><dt class="text-ink-muted">Devoluciones</dt><dd class="font-semibold text-ink">{{ money(settlement.returns_ars) }}</dd></div>
+            <div class="flex items-center justify-between gap-3 border-t border-border-subtle pt-2"><dt class="font-semibold text-ink">Saldo de cuenta corriente</dt><dd class="font-bold" :class="settlement.account_balance_ars < 0 ? 'text-danger-strong' : 'text-success-strong'">{{ money(settlement.account_balance_ars) }}</dd></div>
+          </dl>
+          <div class="mt-4 flex items-center justify-between gap-3 rounded-lg bg-primary/10 px-3 py-3">
+            <p class="text-sm font-bold text-ink">Total a liquidar</p>
+            <p class="text-xl font-extrabold" :class="settlement.total_ars < 0 ? 'text-danger-strong' : 'text-primary'">{{ money(settlement.total_ars) }}</p>
+          </div>
+          <p class="mt-2 text-xs text-ink-muted">Los anticipos no son costo del viaje. El saldo negativo queda a favor de la empresa.</p>
+        </div>
+
+        <div>
+          <form v-if="canRegisterCosts && drivers.length === 1" method="post" :action="data.links?.earnings" class="rounded-xl border border-border-subtle bg-surface p-4">
+            <input type="hidden" :name="csrf.name" :value="csrf.hash" />
+            <input type="hidden" name="empleado_id" :value="drivers[0].empleado_id" />
+            <h3 class="text-sm font-bold text-ink">Agregar otro haber</h3>
+            <p class="mt-1 text-xs text-ink-muted">Viaje, espera, descarga u otro adicional acordado con el chofer.</p>
+            <div class="mt-3 grid gap-3 sm:grid-cols-2">
+              <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Fecha</span><input type="date" name="fecha" :value="today" required :class="fieldClass" /></label>
+              <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Importe</span><input type="number" name="importe" min="0.01" step="0.01" required :class="fieldClass" /></label>
+              <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select name="moneda" :class="fieldClass"><option v-for="currency in currencies" :key="currency.code" :value="currency.code" :selected="currency.code === 'ARS'">{{ currency.code }} · {{ currency.label }}</option></select></label>
+              <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cotización a ARS</span><input type="number" name="cotizacion" min="0.000001" step="0.000001" value="1" :class="fieldClass" /></label>
+              <label class="block sm:col-span-2"><span class="mb-1 block text-xs font-semibold text-ink-muted">Concepto</span><input type="text" name="concepto" maxlength="120" required :class="fieldClass" /></label>
+              <label class="block sm:col-span-2"><span class="mb-1 block text-xs font-semibold text-ink-muted">Observaciones</span><input type="text" name="observaciones" maxlength="500" :class="fieldClass" /></label>
+            </div>
+            <button type="submit" :class="[primaryButton, 'mt-3']">Guardar haber</button>
+          </form>
+          <p v-if="otherEarnings.length === 0" class="mt-4 text-sm text-ink-muted">Todavía no hay otros haberes cargados.</p>
+          <div v-else class="mt-4 overflow-x-auto">
+            <table class="w-full min-w-[32rem] text-left text-sm">
+              <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-3 py-2">Fecha</th><th class="px-3 py-2">Concepto</th><th class="px-3 py-2">Chofer</th><th class="px-3 py-2 text-right">ARS</th></tr></thead>
+              <tbody class="divide-y divide-border-subtle">
+                <tr v-for="earning in otherEarnings" :key="earning.id"><td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ fmtDateTime(earning.fecha) }}</td><td class="px-3 py-2 text-ink">{{ earning.concepto }}</td><td class="px-3 py-2 text-ink-muted">{{ earning.empleado || '—' }}</td><td class="px-3 py-2 text-right font-semibold text-ink">{{ money(earning.importe_ars) }}</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </PanelCard>
+
     <div class="mb-5 grid gap-5 xl:grid-cols-2">
       <PanelCard title="Equipo y choferes" :count="assignments.length">
         <p v-if="assignments.length === 0" class="text-sm text-ink-muted">El viaje no tiene asignaciones registradas.</p>
@@ -327,7 +389,7 @@ const facts = computed(() => [
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cotización a ARS</span><input type="number" name="cotizacion" min="0.000001" step="0.000001" value="1" :class="fieldClass" /></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Medio de pago</span><select name="medio_pago_id" :class="fieldClass"><option value="">Sin medio</option><option v-for="method in options.paymentMethods" :key="method.id" :value="method.id">{{ method.label }}</option></select></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Tramo (opcional)</span><select name="tramo_id" :class="fieldClass"><option value="">Todo el viaje</option><option v-for="leg in legs" :key="leg.id" :value="leg.id">{{ leg.orden }} · {{ leg.origen }} → {{ leg.destino }}</option></select></label>
-            <label class="flex items-center gap-2 rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm font-semibold text-ink"><input type="checkbox" name="pagado_de_caja" value="1" class="size-4 rounded border-border" />Pagado con caja del chofer</label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Pagado por</span><select name="pagado_por" :class="fieldClass"><option value="EMPRESA">Empresa</option><option value="CHOFER">Chofer (a reintegrar)</option><option value="CAJA">Caja del chofer</option></select></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Comprobante</span><input type="text" name="comprobante" maxlength="80" :class="fieldClass" /></label>
             <label class="block md:col-span-2"><span class="mb-1 block text-xs font-semibold text-ink-muted">Observaciones</span><input type="text" name="observaciones" maxlength="500" :class="fieldClass" /></label>
           </div>
@@ -337,9 +399,9 @@ const facts = computed(() => [
         <p v-if="expenses.length === 0" class="text-sm text-ink-muted">Todavía no hay gastos cargados.</p>
         <div v-else class="overflow-x-auto">
           <table class="w-full min-w-[52rem] text-left text-sm">
-            <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-3 py-2">Fecha</th><th class="px-3 py-2">Categoría</th><th class="px-3 py-2 text-right">Importe</th><th class="px-3 py-2 text-right">ARS</th><th class="px-3 py-2">Medio</th><th class="px-3 py-2">Tramo</th><th class="px-3 py-2">Caja</th><th class="px-3 py-2">Comprobante</th><th class="px-3 py-2">Observaciones</th></tr></thead>
+            <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-3 py-2">Fecha</th><th class="px-3 py-2">Categoría</th><th class="px-3 py-2 text-right">Importe</th><th class="px-3 py-2 text-right">ARS</th><th class="px-3 py-2">Medio</th><th class="px-3 py-2">Tramo</th><th class="px-3 py-2">Pagado por</th><th class="px-3 py-2">Comprobante</th><th class="px-3 py-2">Observaciones</th></tr></thead>
             <tbody class="divide-y divide-border-subtle">
-              <tr v-for="expense in expenses" :key="expense.id"><td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ fmtDateTime(expense.fecha) }}</td><td class="px-3 py-2 text-ink">{{ expense.categoria || 'Sin categoría' }}</td><td class="px-3 py-2 text-right text-ink-muted">{{ money(expense.importe, expense.moneda) }}</td><td class="px-3 py-2 text-right font-semibold text-ink">{{ money(expense.importe_ars) }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.medio_pago || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ legLabel(expense.tramo_id) }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.pagado_de_caja ? 'Sí' : 'No' }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.comprobante || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.observaciones || '—' }}</td></tr>
+              <tr v-for="expense in expenses" :key="expense.id"><td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ fmtDateTime(expense.fecha) }}</td><td class="px-3 py-2 text-ink">{{ expense.categoria || 'Sin categoría' }}</td><td class="px-3 py-2 text-right text-ink-muted">{{ money(expense.importe, expense.moneda) }}</td><td class="px-3 py-2 text-right font-semibold text-ink">{{ money(expense.importe_ars) }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.medio_pago || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ legLabel(expense.tramo_id) }}</td><td class="px-3 py-2 text-ink-muted">{{ paidByLabel[expense.pagado_por] ?? 'Empresa' }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.comprobante || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.observaciones || '—' }}</td></tr>
             </tbody>
           </table>
         </div>

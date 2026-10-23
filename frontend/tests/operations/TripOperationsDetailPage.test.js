@@ -123,6 +123,45 @@ describe('detalle de viaje operativo', () => {
     wrapper.unmount()
   })
 
+  it('muestra la liquidación del chofer y permite cargar otros haberes', () => {
+    const wrapper = mount(TripOperationsDetailPage, {
+      props: {
+        data: {
+          ...data,
+          canStart: false,
+          canCancel: false,
+          canRegisterCosts: true,
+          assignments: [
+            { rol: 'TRACTOR', rol_label: 'Tractor / camión', label: 'AA111AA · T01', desde: '2026-10-20 08:00:00', hasta: null },
+            { rol: 'CHOFER', rol_label: 'Chofer', label: 'Pérez, Juan', empleado_id: 11, desde: '2026-10-20 08:00:00', hasta: null },
+          ],
+          links: {
+            ...data.links,
+            earnings: '/mantenimiento/viajes/operativos/42/haberes',
+          },
+          totals: { has_legs: true, driver_percentage: 14, drivers_count: 1, multiple_drivers: false },
+          settlement: {
+            driver: 'Pérez, Juan', commission_ars: 112000, other_earnings_ars: 25000,
+            driver_expenses_ars: 50000, cash_expenses_ars: 20000, advances_ars: 130000,
+            returns_ars: 5000, account_balance_ars: -55000, total_ars: 82000,
+          },
+          otherEarnings: [{
+            id: 1, empleado_id: 11, empleado: 'Pérez, Juan', fecha: '2026-10-20',
+            concepto: 'Espera en descarga', importe_ars: 25000,
+          }],
+          options: { expenseCategories: [], paymentMethods: [], currencies: [{ code: 'ARS', label: 'Peso argentino' }] },
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain('Liquidación del chofer')
+    expect(wrapper.text()).toContain('Total a liquidar')
+    expect(wrapper.text()).toContain('ARS 82.000,00')
+    expect(wrapper.text()).toContain('Espera en descarga')
+    expect(wrapper.get('form[action="/mantenimiento/viajes/operativos/42/haberes"]').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
   it('oculta las acciones cuando el viaje ya avanzó', () => {
     const wrapper = mount(TripOperationsDetailPage, {
       props: { data: { ...data, canStart: false, canCancel: false, trip: { ...data.trip, estado: 'EN_CURSO', estado_label: 'En curso' } } },

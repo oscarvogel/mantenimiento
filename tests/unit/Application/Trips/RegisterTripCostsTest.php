@@ -6,6 +6,7 @@ use App\Application\Identity\ActorContext;
 use App\Application\Trips\Port\OperationalTripRepository;
 use App\Application\Trips\Port\TripCostRepository;
 use App\Application\Trips\Port\TripDirectoryLookup;
+use App\Application\Trips\Port\TripFleetLookup;
 use App\Application\Trips\Port\TripLegRepository;
 use App\Application\Trips\Port\TripsUnitOfWork;
 use App\Application\Trips\RegisterTripCashMovement;
@@ -14,11 +15,14 @@ use App\Application\Trips\RegisterTripExpense;
 use App\Application\Trips\RegisterTripExpenseCommand;
 use App\Application\Trips\RegisterTripFuel;
 use App\Application\Trips\RegisterTripFuelCommand;
+use App\Application\Trips\RegisterTripOtherEarning;
+use App\Application\Trips\RegisterTripOtherEarningCommand;
 use App\Domain\Trips\Trip;
 use App\Domain\Trips\TripAssignment;
 use App\Domain\Trips\TripCashMovement;
 use App\Domain\Trips\TripExpense;
 use App\Domain\Trips\TripFuelLoad;
+use App\Domain\Trips\TripOtherEarning;
 use App\Domain\Trips\TripStop;
 use PHPUnit\Framework\TestCase;
 
@@ -63,12 +67,15 @@ final class RegisterTripCostsTest extends TestCase
             'ARS',
             1.0,
             2,
-            true,
+            false,
             'T-1',
             'Peaje',
+            null,
+            'CHOFER',
         ));
         self::assertInstanceOf(TripExpense::class, $costs->expense);
-        self::assertTrue($costs->expense->paidFromCash());
+        self::assertSame('CHOFER', $costs->expense->paidBy());
+        self::assertFalse($costs->expense->paidFromCash());
 
         $directory = new CostDirectoryFake();
         $directory->categoryExists = false;
@@ -103,6 +110,53 @@ final class RegisterTripCostsTest extends TestCase
             'OTRO',
             new DateTimeImmutable('2026-10-20 07:00:00'),
             100_000.0,
+        ));
+    }
+
+    public function testRegistersOtherEarningForAssignedDriver(): void
+    {
+        $costs = new CostRepositoryFake();
+        $handler = new RegisterTripOtherEarning(
+            new CostTripRepositoryFake($this->trip()),
+            $costs,
+            new CostFleetFake(),
+            new CostDirectoryFake(),
+            new CostUnitOfWorkFake(),
+        );
+
+        $id = $handler->execute($this->actor(['viajes.operar']), new RegisterTripOtherEarningCommand(
+            55,
+            11,
+            new DateTimeImmutable('2026-10-20'),
+            25_000.0,
+            'ARS',
+            1.0,
+            'Espera en descarga',
+        ));
+
+        self::assertSame(1, $id);
+        self::assertInstanceOf(TripOtherEarning::class, $costs->otherEarning);
+        self::assertSame(11, $costs->otherEarning->employeeId());
+        self::assertSame(25_000.0, $costs->otherEarning->money()->amount());
+    }
+
+    public function testRejectsOtherEarningForDriverNotAssignedToTrip(): void
+    {
+        $handler = new RegisterTripOtherEarning(
+            new CostTripRepositoryFake($this->trip()),
+            new CostRepositoryFake(),
+            new CostFleetFake(),
+            new CostDirectoryFake(),
+            new CostUnitOfWorkFake(),
+        );
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('no está asignado');
+        $handler->execute($this->actor(['viajes.operar']), new RegisterTripOtherEarningCommand(
+            55,
+            99,
+            new DateTimeImmutable('2026-10-20'),
+            25_000.0,
         ));
     }
 
@@ -194,6 +248,7 @@ final class CostRepositoryFake implements TripCostRepository
     public ?TripFuelLoad $fuel = null;
     public ?TripExpense $expense = null;
     public ?TripCashMovement $cashMovement = null;
+    public ?TripOtherEarning $otherEarning = null;
     public int $tripId = 0;
     public int $companyId = 0;
     public int $branchId = 0;
@@ -226,6 +281,29 @@ final class CostRepositoryFake implements TripCostRepository
         $this->cashMovement = $movement;
 
         return 1;
+    }
+
+    public function addOtherEarning(int $tripId, int $companyId, int $branchId, TripOtherEarning $earning, int $actorUserId): int
+    {
+        $this->tripId = $tripId;
+        $this->companyId = $companyId;
+        $this->branchId = $branchId;
+        $this->otherEarning = $earning;
+
+        return 1;
+    }
+}
+
+final class CostFleetFake implements TripFleetLookup
+{
+    public function equipment(int $companyId, int $equipmentId): ?array
+    {
+        return null;
+    }
+
+    public function driver(int $companyId, int $employeeId): ?array
+    {
+        return ['id' => $employeeId, 'label' => 'Chofer', 'active' => true];
     }
 }
 

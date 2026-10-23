@@ -67,6 +67,67 @@ final class GetOperationalTripTest extends TestCase
         self::assertSame(638_000.0, $detail['legs'][0]['margin_ars']);
     }
 
+    public function testComputesDriverSettlementWithEarningsExpensesAndCash(): void
+    {
+        $detail = $this->detail([
+            'assignments' => [['rol' => 'CHOFER', 'empleado_id' => 7, 'porcentaje_liquidacion' => 14.0, 'label' => 'Ana Chofer']],
+            'legs' => [[
+                'id' => 1,
+                'orden' => 1,
+                'origen' => 'Rosario',
+                'destino' => 'Córdoba',
+                'flete_facturacion_ars' => 1_000_000.0,
+                'flete_liquidacion_ars' => 800_000.0,
+            ]],
+            'fuel' => [['importe_ars' => 200_000.0, 'tramo_id' => 1, 'litros' => 300.0, 'kilometraje' => null]],
+            'expenses' => [
+                ['importe_ars' => 50_000.0, 'tramo_id' => 1, 'pagado_por' => 'CHOFER'],
+                ['importe_ars' => 20_000.0, 'tramo_id' => 1, 'pagado_por' => 'CAJA'],
+                ['importe_ars' => 10_000.0, 'tramo_id' => null, 'pagado_por' => 'EMPRESA'],
+            ],
+            'cashMovements' => [
+                ['tipo' => 'ANTICIPO', 'importe_ars' => 100_000.0],
+                ['tipo' => 'RETIRO', 'importe_ars' => 30_000.0],
+                ['tipo' => 'DEVOLUCION', 'importe_ars' => 5_000.0],
+            ],
+            'otherEarnings' => [
+                ['empleado_id' => 7, 'importe_ars' => 25_000.0],
+                ['empleado_id' => 8, 'importe_ars' => 99_000.0],
+            ],
+        ]);
+
+        self::assertSame(82_000.0, $detail['settlement']['total_ars']);
+        self::assertSame(-55_000.0, $detail['settlement']['account_balance_ars']);
+        self::assertSame(25_000.0, $detail['settlement']['other_earnings_ars']);
+        self::assertSame(50_000.0, $detail['settlement']['driver_expenses_ars']);
+        self::assertSame(20_000.0, $detail['settlement']['cash_expenses_ars']);
+        self::assertSame(130_000.0, $detail['settlement']['advances_ars']);
+        self::assertSame(5_000.0, $detail['settlement']['returns_ars']);
+        self::assertSame(25_000.0, $detail['totals']['other_earnings_ars']);
+        self::assertSame(583_000.0, $detail['totals']['margin_ars']);
+    }
+
+    public function testDoesNotInventSettlementWhenThereAreSeveralDrivers(): void
+    {
+        $detail = $this->detail([
+            'assignments' => [
+                ['rol' => 'CHOFER', 'empleado_id' => 7, 'porcentaje_liquidacion' => 14.0],
+                ['rol' => 'CHOFER', 'empleado_id' => 8, 'porcentaje_liquidacion' => 10.0],
+            ],
+            'legs' => [[
+                'id' => 1,
+                'orden' => 1,
+                'origen' => 'Rosario',
+                'destino' => 'Córdoba',
+                'flete_facturacion_ars' => 1_000_000.0,
+                'flete_liquidacion_ars' => 800_000.0,
+            ]],
+        ]);
+
+        self::assertNull($detail['settlement']);
+        self::assertFalse($detail['totals']['settlement_available']);
+    }
+
     public function testDoesNotInventCommissionWhenThereAreSeveralDrivers(): void
     {
         $detail = $this->detail([
@@ -165,6 +226,7 @@ final class GetOperationalTripReadModelFake implements OperationalTripReadModel
             'fuel' => [],
             'expenses' => [],
             'cashMovements' => [],
+            'otherEarnings' => [],
         ], $this->data);
     }
 }
