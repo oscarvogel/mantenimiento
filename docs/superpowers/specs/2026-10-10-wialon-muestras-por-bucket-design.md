@@ -11,9 +11,9 @@ Conservar la resolución de cinco minutos que necesita consumo y uso operativo s
 ## Estado verificado
 
 - `WialonRemoteApiGateway` obtiene la última posición y valores actuales con `core/search_items` y `unit/calc_last`, y el histórico por unidad con `messages/load_interval`.
-- `RecordTelemetrySnapshots` mantiene la última lectura para mapa/ficha y sincroniza el histórico Wialon por buckets cuando la ruta está conectada. Otros proveedores conservan la ingesta puntual.
+- `RecordTelemetrySnapshots` mantiene la última lectura para mapa/ficha, guarda también la captura puntual de `calc_last` y sincroniza los buckets históricos Wialon.
 - El ciclo HTTP/cron operativo confirmado por el usuario corre cada cinco minutos; su guía de Ferozo documenta las doce ejecuciones horarias.
-- Los buckets cerrados se guardan en `telematia_buckets` y el avance confirmado por unidad en `telematia_cursor`. Wialon deja de añadir puntos nuevos a `telematia_muestras` solo cuando el sincronizador histórico está habilitado; filas previas se conservan.
+- Los buckets cerrados se guardan en `telematia_buckets` y el avance confirmado por unidad en `telematia_cursor`. Las capturas puntuales de Wialon también se guardan en `telematia_muestras`; filas previas se conservan.
 - El histórico conserva 90 días. La purga requiere JSONL completo y verificado antes de borrar; el comando está disponible en entornos con CLI, no en Ferozo de producción.
 - La rama de dominio de consumo es `feat/consumo-atribucion` (PR #476). Este trabajo parte de ella para poder adaptar el lector sin mezclar commits en ese PR.
 
@@ -73,7 +73,9 @@ Los campos de límites se toman del primer y último mensaje válido, no del val
 
 La tabla vigente representa puntos y no puede guardar el contenido anterior de cada bucket. Se agregan dos tablas mediante migración aditiva y reversible: `telematia_buckets` (una fila por unidad/bucket) y `telematia_cursor` (un cursor por integración/unidad). Una columna JSON de diagnóstico en `telematia_buckets` conserva los mensajes originales asociados a cada resumen. Esta separación mantiene el contrato de las muestras existentes y da identidad explícita al bucket.
 
-La ingesta de buckets sustituye el guardado puntual Wialon en el histórico después del corte; `telematia_ultima_lectura` sigue actualizándose. Si aparece otro proveedor sin lectura histórica agregada, puede seguir usando `telematia_muestras`. El despliegue preserva las filas históricas previas, permite que la retención las purgue con respaldo verificado y evita guardar permanentemente tanto el punto del cron Wialon como el bucket del mismo período.
+La decisión inicial de sustituir por completo los puntos Wialon impidió que el histórico del cálculo recibiera el kilometraje y el combustible de `unit/calc_last`. Decisión posterior confirmada por el usuario el 2026-10-12: además de sincronizar los buckets, guardar cada captura actual de Wialon en `telematia_muestras`. Esta fila contiene juntas las métricas actuales de kilometraje/horómetro y los sensores calibrados. Para no mezclar capturas antiguas con buckets, el lector usa la serie puntual Wialon para toda la ventana cuando encuentra al menos una muestra puntual; si no hay ninguna, recurre a los buckets. Los mensajes históricos siguen sin completarse con valores de `calc_last`; los valores ausentes en dichos mensajes permanecen ausentes.
+
+`telematia_ultima_lectura` sigue actualizándose como estado actual. La retención y el respaldo deben conservar el comportamiento existente para ambas tablas históricas.
 
 El lector de serie adapta cada bucket a sus extremos ordenados para `SerieMuestrasReader`; `IntervaloConsumo`, segmentación, cobertura e indicadores no conocen Wialon ni la forma de la tabla. Los datos agregados de ralentí se exponen por un read model apropiado, sin alterar la fórmula pura de consumo.
 

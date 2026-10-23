@@ -9,6 +9,7 @@ use App\Application\Telematic\Port\SerieMuestrasReader;
 use CodeIgniter\Database\BaseConnection;
 use Config\Database;
 use DateTimeImmutable;
+use DateTimeZone;
 
 /**
  * Lectura y purga del histórico de muestras de una empresa.
@@ -25,11 +26,18 @@ final class CodeIgniterHistoricoMuestras implements HistoricoMuestras, SerieMues
 {
     private const TABLA = 'telematia_muestras';
 
+    /**
+     * Los DATETIME de `telematia_muestras` se guardan en la zona de la app;
+     * a diferencia de los buckets, esa tabla no usa UTC.
+     */
+    private readonly DateTimeZone $zonaPersistida;
+
     private readonly BaseConnection $mysql;
 
     public function __construct(?BaseConnection $mysql = null)
     {
         $this->mysql = $mysql ?? Database::connect();
+        $this->zonaPersistida = new DateTimeZone((new \Config\App())->appTimezone);
     }
 
     public function anterioresA(int $empresaId, DateTimeImmutable $corte): array
@@ -40,7 +48,7 @@ final class CodeIgniterHistoricoMuestras implements HistoricoMuestras, SerieMues
 
         $filas = $this->mysql->table(self::TABLA)
             ->where('empresa_id', $empresaId)
-            ->where('observada_en <', $corte->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s'))
+            ->where('observada_en <', $corte->setTimezone($this->zonaPersistida)->format('Y-m-d H:i:s'))
             ->orderBy('observada_en', 'ASC')
             ->get()
             ->getResultArray();
@@ -58,7 +66,7 @@ final class CodeIgniterHistoricoMuestras implements HistoricoMuestras, SerieMues
 
         $ok = $this->mysql->table(self::TABLA)
             ->where('empresa_id', $empresaId)
-            ->where('observada_en <', $corte->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s'))
+            ->where('observada_en <', $corte->setTimezone($this->zonaPersistida)->format('Y-m-d H:i:s'))
             ->delete();
 
         return $ok ? (int) $this->mysql->affectedRows() : 0;
@@ -70,13 +78,11 @@ final class CodeIgniterHistoricoMuestras implements HistoricoMuestras, SerieMues
             return [];
         }
 
-        $utc = new \DateTimeZone('UTC');
         $filas = $this->mysql->table(self::TABLA)
             ->where('empresa_id', $empresaId)
             ->where('equipo_id', $equipoId)
-            ->where("LOWER(proveedor) != 'wialon'", null, false)
-            ->where('observada_en >=', $desde->setTimezone($utc)->format('Y-m-d H:i:s'))
-            ->where('observada_en <=', $hasta->setTimezone($utc)->format('Y-m-d H:i:s'))
+            ->where('observada_en >=', $desde->setTimezone($this->zonaPersistida)->format('Y-m-d H:i:s'))
+            ->where('observada_en <=', $hasta->setTimezone($this->zonaPersistida)->format('Y-m-d H:i:s'))
             ->orderBy('observada_en', 'ASC')
             ->orderBy('integracion_id', 'ASC')
             ->get()

@@ -482,7 +482,7 @@ final class RecordTelemetrySnapshotsTest extends TestCase
         self::assertSame(0, $summary['bucketsYaExistentes']);
     }
 
-    public function testConBucketsHabilitadosConservaSnapshotActualPeroNoDuplicaPuntosWialon(): void
+    public function testConBucketsHabilitadosConservaSnapshotActualYAgregaPuntosWialon(): void
     {
         $gateway = new GatewayHistoricoDelRecorder(estados: [
             '28396292' => new EstadoSenal('28396292', $this->instantanea()),
@@ -520,9 +520,11 @@ final class RecordTelemetrySnapshotsTest extends TestCase
         $summary = $recorder->execute();
 
         self::assertSame(1, $summary['instantaneas']);
-        self::assertSame(0, $summary['muestras']);
+        self::assertSame(1, $summary['muestras']);
         self::assertCount(1, $snapshots->guardadas, 'La instantánea actual sigue alimentando mapa y ficha.');
-        self::assertSame([], $muestras->guardadas, 'La serie de buckets reemplaza nuevos puntos Wialon.');
+        self::assertCount(1, $muestras->guardadas, 'La lectura actual de Wialon también debe quedar en la serie histórica.');
+        self::assertSame(487500, $muestras->guardadas[0]->kilometraje());
+        self::assertEqualsWithDelta(660.48, (float) $muestras->guardadas[0]->combustibleLitros(), 0.0005);
         self::assertNotNull($bucketStore->cursor(4, 1, '28396292'));
     }
 

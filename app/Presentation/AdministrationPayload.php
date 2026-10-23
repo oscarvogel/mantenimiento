@@ -67,6 +67,10 @@ final class AdministrationPayload
                 'weeklyReportEnabled' => (int) ($row['informe_semanal_habilitado'] ?? 0) === 1,
                 'weeklyReportDay' => (int) ($row['informe_semanal_dia'] ?? 1),
                 'weeklyReportTime' => $row['informe_semanal_hora'] ?? '07:00',
+                'managementPhone' => $row['telefono_gerencia'] ?? '',
+                'readingReportEnabled' => (int) ($row['informe_lecturas_whatsapp_habilitado'] ?? 0) === 1,
+                'readingReportTime' => $row['informe_lecturas_hora'] ?? '08:00',
+                'readingReportDays' => (int) ($row['informe_lecturas_dias'] ?? 7),
                 'whatsappEnabled' => (int) ($row['notificaciones_whatsapp_habilitadas'] ?? 0) === 1,
                 'whatsappInstanceId' => $row['whatsapp_instance_id'] ?? '',
                 'notificationLocale' => strtoupper((string) ($row['idioma_notificaciones'] ?? 'ES')) === 'PT' ? 'PT' : 'ES',
@@ -79,6 +83,7 @@ final class AdministrationPayload
                     'update' => base_url('superadmin/empresas/' . $row['id']),
                     'testManagementReport' => base_url('superadmin/empresas/' . $row['id'] . '/informes/prueba'),
                     'assignPresentationProfile' => base_url('superadmin/empresas/' . $row['id'] . '/presentacion'),
+                    'testReadingReport' => base_url('superadmin/empresas/' . $row['id'] . '/informes/lecturas/prueba'),
                 ],
             ], $companies),
             'companiesPagination' => $this->pagination(

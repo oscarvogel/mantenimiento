@@ -329,6 +329,9 @@ const sections = [
             <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold" :class="company.dailyReportEnabled || company.weeklyReportEnabled ? 'bg-primary-subtle text-primary' : 'bg-surface-muted text-ink-muted'">
               {{ company.dailyReportEnabled || company.weeklyReportEnabled ? 'Informes gerenciales activos' : 'Informes gerenciales desactivados' }}
             </span>
+            <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold" :class="company.readingReportEnabled ? 'bg-accent-subtle text-accent-active' : 'bg-surface-muted text-ink-muted'">
+              {{ company.readingReportEnabled ? 'Aviso de lecturas activo' : 'Aviso de lecturas desactivado' }}
+            </span>
           </div>
         </div>
       </div>
@@ -631,6 +634,32 @@ const sections = [
                   </div>
                 </div>
               </div>
+              <div class="mt-4 rounded-lg border border-border bg-white p-3">
+                <label class="flex items-start gap-3">
+                  <input type="hidden" name="informe_lecturas_whatsapp_habilitado" value="0" />
+                  <input type="checkbox" name="informe_lecturas_whatsapp_habilitado" value="1" :checked="company.readingReportEnabled" class="mt-0.5 size-4 rounded border-border-strong text-primary focus:ring-primary" />
+                  <span>
+                    <span class="block text-sm font-medium text-ink">Aviso de equipos sin lectura por WhatsApp</span>
+                    <span class="mt-1 block text-xs leading-5 text-ink-muted">Le llega a la persona de gerencia la lista de equipos que no reportan kilómetros. Sale una vez por día mientras haya equipos atrasados y deja de enviarse solo cuando todos suben su lectura.</span>
+                  </span>
+                </label>
+                <div class="mt-3 grid gap-3 sm:grid-cols-3">
+                  <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-ink-muted">Teléfono de gerencia</span>
+                    <input name="telefono_gerencia" maxlength="20" :value="company.managementPhone" placeholder="54911333333333" class="min-h-10 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink" />
+                    <span class="mt-1 block text-xs text-ink-muted">Formato internacional, solo dígitos.</span>
+                  </label>
+                  <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-ink-muted">Hora</span>
+                    <input type="time" name="informe_lecturas_hora" :value="company.readingReportTime || '08:00'" class="min-h-10 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink" />
+                  </label>
+                  <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-ink-muted">Avisar a partir de</span>
+                    <input type="number" name="informe_lecturas_dias" min="1" max="90" :value="company.readingReportDays || 7" class="min-h-10 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink" />
+                    <span class="mt-1 block text-xs text-ink-muted">Días sin lectura.</span>
+                  </label>
+                </div>
+              </div>
             </div>
             <div class="flex flex-wrap gap-2 sm:col-span-2">
               <button type="submit" class="inline-flex min-h-11 items-center justify-center rounded-lg border border-primary px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary-subtle">Guardar empresa</button>
@@ -677,6 +706,19 @@ const sections = [
               >
                 Probar informe semanal
               </button>
+              <button
+                type="submit"
+                :formaction="company.actions.testReadingReport"
+                formnovalidate
+                data-confirm
+                data-confirm-title="¿Enviar el aviso de lecturas de prueba?"
+                data-confirm-text="Se enviará al teléfono de gerencia guardado, con los equipos sin lectura de este momento."
+                data-confirm-button="Enviar aviso"
+                :disabled="!company.active || !company.managementPhone"
+                class="inline-flex min-h-11 items-center justify-center rounded-lg border border-primary px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Probar aviso de lecturas
+              </button>
             </div>
             <p class="sm:col-span-2 text-xs leading-5 text-ink-muted">La prueba usa la configuración guardada. Si cambiaste el correo, guardá primero la empresa y después enviá la prueba.</p>
           </form>
@@ -688,6 +730,7 @@ const sections = [
             <div><dt class="text-ink-subtle">Teléfono</dt><dd class="mt-1 font-medium text-ink">{{ company.telefono || '—' }}</dd></div>
             <div class="sm:col-span-2"><dt class="text-ink-subtle">Notificaciones de mantenimiento</dt><dd class="mt-1 break-all font-medium text-ink">{{ company.notificationEmail || company.email || 'Sin destinatario' }}</dd><dd class="mt-1 text-xs text-ink-muted">{{ company.notificationEmail ? 'Correo específico' : (company.email ? 'Fallback al email general' : 'No se enviarán emails') }} · {{ company.notificationEmailEnabled ? 'Habilitadas' : 'Deshabilitadas' }}</dd></div>
             <div class="sm:col-span-2"><dt class="text-ink-subtle">Informes gerenciales</dt><dd class="mt-1 break-all font-medium text-ink">{{ company.managementReportEmails || company.notificationEmail || company.email || 'Sin destinatario' }}</dd><dd class="mt-1 text-xs text-ink-muted">Diario: {{ company.dailyReportEnabled ? company.dailyReportTime : 'deshabilitado' }} · Semanal: {{ company.weeklyReportEnabled ? 'día ' + company.weeklyReportDay + ' · ' + company.weeklyReportTime : 'deshabilitado' }}</dd></div>
+            <div class="sm:col-span-2"><dt class="text-ink-subtle">Aviso de lecturas por WhatsApp</dt><dd class="mt-1 break-all font-medium text-ink">{{ company.managementPhone || 'Sin teléfono de gerencia' }}</dd><dd class="mt-1 text-xs text-ink-muted">{{ company.readingReportEnabled ? 'Habilitado · ' + company.readingReportTime + ' · a partir de ' + company.readingReportDays + ' días sin lectura' : 'Deshabilitado' }}</dd></div>
           </dl>
         </article>
       </div>

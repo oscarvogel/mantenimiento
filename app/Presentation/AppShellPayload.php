@@ -60,6 +60,7 @@ final readonly class AppShellPayload
         $isTripPage = in_array($active, ['trip-masters', 'trips-dashboard', 'trips-operations', 'trip-operations-create', 'trip-operations-detail', 'trips-profitability'], true);
         if ($active !== 'command-center' && $active !== 'theoretical-cost-km' && ! $isTripPage && $actor->isSuperAdmin()) {
             $navigation[] = $this->item('superadmin', 'Administración global', 'superadmin', 'building', $active);
+            $navigation[] = $this->item('whatsapp-digest-preview', 'Previsualizar resumen WhatsApp', 'superadmin/whatsapp/resumen-diario', 'notifications', $active);
             $navigation[] = $this->item('telemetry-samples', 'Datos de telemetría', 'superadmin/telemetria/muestras', 'audit', $active);
             $navigation[] = $this->item('notification-settings', 'Configuración de notificaciones', 'superadmin/configuracion/notificaciones', 'notifications', $active);
             $navigation[] = $this->item('chatbot-audit', 'Auditoría del chatbot', 'superadmin?section=chat-audit', 'audit', $active);

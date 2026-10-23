@@ -11,6 +11,7 @@ use App\Application\Organization\CreateCompanyAdministratorCommand;
 use App\Application\Organization\CreateCompanyAdministratorHandler;
 use App\Application\Organization\GetOrganizationOverview;
 use App\Application\Organization\UpdateCompanyHandler;
+use App\Domain\Notifications\WhatsAppPhone;
 use App\Infrastructure\Identity\SessionActorContext;
 use App\Infrastructure\Notifications\CodeIgniterCompanyNotificationRecipientResolver;
 use App\Presentation\PageSize;
@@ -31,12 +32,6 @@ final class SuperAdmin extends BaseController
         $usersPerPage = PageSize::normalize($this->request->getGet('users_per_page'));
         $data = $overview->execute($actor, $companiesPage, $companiesPerPage, $usersPage, $usersPerPage);
 
-        /** @var \App\Application\Platform\PresentationProfiles\ListCompanyPresentationProfiles $presentationProfiles */
-        $presentationProfiles = service('listCompanyPresentationProfiles');
-        $companyIds = array_map('intval', array_column($data['companies'] ?? [], 'id'));
-        $data['companyPresentationProfiles'] = $presentationProfiles->execute($actor, $companyIds);
-        $data['frontendProfiles'] = service('frontendProfileCatalog')->all();
-
         if (isset($data['companies']) && is_array($data['companies']) && $data['companies'] !== []) {
             $ids = array_map('intval', array_column($data['companies'], 'id'));
             $rows = db_connect()->table('empresas')->select('id, ia_habilitada')->whereIn('id', $ids)->get()->getResultArray();
@@ -51,9 +46,6 @@ final class SuperAdmin extends BaseController
         }
 
         $payload = service('administrationPayload')->superadmin($data);
-        $payload['tripMasterCatalogsAction'] = base_url('superadmin/viajes/maestros/cargar-tsa');
-        $payload['customerImportsUrl'] = base_url('superadmin/clientes/importar');
-        $payload['tripImportsUrl'] = base_url('superadmin/viajes/importar');
         $payload['migrations'] = $this->migrationDiagnostics();
         $whatsAppSettings = service('globalNotificationSettingsStore')->get();
         $whatsAppGateway = service('whatsAppGateway');
@@ -155,35 +147,52 @@ final class SuperAdmin extends BaseController
         return $this->renderApp($actor, 'superadmin', 'superadmin', 'Administración global', $payload);
     }
 
-    public function seedTsaTripMasterCatalogs(): RedirectResponse
+    public function previewUserDailyWhatsAppDigest(): string
     {
-        try {
-            $counts = service('seedTsaTripMasterCatalogs')->execute($this->actor());
-            $total = array_sum($counts);
-            $breakdown = implode(', ', array_map(
-                static fn (string $label, int $count): string => $label . ': ' . $count,
-                array_keys($counts),
-                array_values($counts),
-            ));
-            $message = $total === 0
-                ? 'Los catálogos de TSA ya estaban completos; no se modificaron datos.'
-                : 'Se agregaron ' . $total . ' opciones a los catálogos de TSA (' . $breakdown . ').';
+        $actor = $this->actor();
+        $database = db_connect();
+        $companies = $database->table('empresas')
+            ->select('id, razon_social, nombre_fantasia, notificaciones_whatsapp_habilitadas')
+            ->where('estado', 1)
+            ->where('deleted_at', null)
+            ->orderBy('nombre_fantasia', 'ASC')
+            ->orderBy('razon_social', 'ASC')
+            ->get()->getResultArray();
 
-            log_message('notice', 'Superadministrador {actor} completó maestros de Viajes para TSA: {counts}', [
-                'actor' => $this->actor()->userId(),
-                'counts' => $breakdown,
-            ]);
-
-            return redirect()->to('/superadmin')->with('success', $message);
-        } catch (DomainException $exception) {
-            return redirect()->to('/superadmin')->with('error', $exception->getMessage());
-        } catch (Throwable $exception) {
-            log_message('error', 'Falló la carga de maestros de Viajes para TSA desde Superadmin: {message}', [
-                'message' => $exception->getMessage(),
-            ]);
-
-            return redirect()->to('/superadmin')->with('error', 'No se pudieron completar los catálogos de TSA. Revisá el registro de errores.');
+        $companyId = max(0, (int) $this->request->getGet('empresa_id'));
+        $selected = null;
+        foreach ($companies as $company) {
+            if ((int) $company['id'] === $companyId) {
+                $selected = $company;
+                break;
+            }
         }
+
+        $settings = service('globalNotificationSettingsStore')->get();
+        $gateway = service('whatsAppGateway');
+        $previews = $selected === null
+            ? []
+            : service('whatsAppNotificationDeliveryQueue')->previewUserDailyDigests($companyId);
+
+        return $this->renderApp($actor, 'whatsapp-digest-preview', 'whatsapp-digest-preview', 'Previsualizar resumen diario de WhatsApp', [
+            'companies' => array_map(static fn (array $company): array => [
+                'id' => (int) $company['id'],
+                'name' => trim((string) ($company['nombre_fantasia'] ?? '')) !== ''
+                    ? (string) $company['nombre_fantasia']
+                    : (string) $company['razon_social'],
+                'whatsappEnabled' => (int) ($company['notificaciones_whatsapp_habilitadas'] ?? 0) === 1,
+            ], $companies),
+            'selectedCompanyId' => $selected === null ? null : $companyId,
+            'selectedCompanyName' => $selected === null
+                ? null
+                : (trim((string) ($selected['nombre_fantasia'] ?? '')) !== '' ? $selected['nombre_fantasia'] : $selected['razon_social']),
+            'companyWhatsAppEnabled' => $selected !== null && (int) ($selected['notificaciones_whatsapp_habilitadas'] ?? 0) === 1,
+            'globalWhatsAppEnabled' => (bool) ($settings['whatsapp_enabled'] ?? false),
+            'whatsAppAvailable' => $gateway->available(),
+            'pilotEnabled' => (bool) ($settings['whatsapp_pilot_enabled'] ?? false),
+            'previews' => $previews,
+            'actions' => ['preview' => base_url('superadmin/whatsapp/resumen-diario')],
+        ]);
     }
 
     public function applyPendingMigrations(): RedirectResponse
@@ -286,6 +295,10 @@ final class SuperAdmin extends BaseController
             'informe_semanal_habilitado' => 'permit_empty|in_list[0,1]',
             'informe_semanal_dia' => 'permit_empty|in_list[1,2,3,4,5,6,7]',
             'informe_semanal_hora' => 'permit_empty|regex_match[/^(?:[01]\\d|2[0-3]):[0-5]\\d$/]',
+            'telefono_gerencia' => 'permit_empty|max_length[20]',
+            'informe_lecturas_whatsapp_habilitado' => 'permit_empty|in_list[0,1]',
+            'informe_lecturas_hora' => 'permit_empty|regex_match[/^(?:[01]\\d|2[0-3]):[0-5]\\d$/]',
+            'informe_lecturas_dias' => 'permit_empty|greater_than_equal_to[1]|less_than_equal_to[90]',
         ])) {
             return $this->validationFailure();
         }
@@ -332,6 +345,24 @@ final class SuperAdmin extends BaseController
                 ];
             }
 
+            // El informe de lecturas a gerencia se configura por separado del
+            // informe por email: son canales distintos y pueden activarse por
+            // separado. Si el formulario no manda estos campos, no se tocan.
+            $hasReadingReportInput = $this->request->getPost('telefono_gerencia') !== null
+                || $this->request->getPost('informe_lecturas_whatsapp_habilitado') !== null
+                || $this->request->getPost('informe_lecturas_hora') !== null
+                || $this->request->getPost('informe_lecturas_dias') !== null;
+            if ($hasReadingReportInput && $database->fieldExists('informe_lecturas_whatsapp_habilitado', 'empresas')) {
+                $managementPhone = trim((string) $this->request->getPost('telefono_gerencia'));
+                $this->assertValidManagementPhone($managementPhone);
+                $companyData += [
+                    'telefono_gerencia' => $managementPhone === '' ? null : $managementPhone,
+                    'informe_lecturas_whatsapp_habilitado' => (int) ($this->request->getPost('informe_lecturas_whatsapp_habilitado') ?? 0),
+                    'informe_lecturas_hora' => trim((string) ($this->request->getPost('informe_lecturas_hora') ?: '08:00')),
+                    'informe_lecturas_dias' => max(1, (int) ($this->request->getPost('informe_lecturas_dias') ?: 7)),
+                ];
+            }
+
             /** @var UpdateCompanyHandler $handler */
             $handler = service('updateCompany');
             $handler->execute($this->actor(), $companyId, $companyData);
@@ -339,46 +370,6 @@ final class SuperAdmin extends BaseController
         } catch (Throwable $exception) {
             return $this->operationFailure($exception);
         }
-    }
-
-    public function assignCompanyPresentationProfile(int $companyId): RedirectResponse
-    {
-        if (! $this->validate([
-            'frontend_profile' => 'required|max_length[64]',
-            'companies_page' => 'permit_empty|is_natural_no_zero',
-            'companies_per_page' => 'permit_empty|is_natural_no_zero',
-            'users_page' => 'permit_empty|is_natural_no_zero',
-            'users_per_page' => 'permit_empty|is_natural_no_zero',
-        ])) {
-            return $this->validationFailure();
-        }
-
-        try {
-            /** @var \App\Application\Platform\PresentationProfiles\AssignCompanyPresentationProfile $handler */
-            $handler = service('assignCompanyPresentationProfile');
-            $handler->execute($this->actor(), $companyId, trim((string) $this->request->getPost('frontend_profile')));
-
-            return redirect()->to($this->superadminReturnUrl())->with('success', 'El perfil visual de la empresa se actualizó correctamente.');
-        } catch (Throwable $exception) {
-            if (! $exception instanceof DomainException) {
-                log_message('error', 'Falló la asignación de perfil visual: {message}', ['message' => $exception->getMessage()]);
-            }
-            $message = $exception instanceof DomainException ? $exception->getMessage() : 'No se pudo actualizar el perfil visual.';
-
-            return redirect()->to($this->superadminReturnUrl())->with('error', $message);
-        }
-    }
-
-    private function superadminReturnUrl(): string
-    {
-        $query = [
-            'companies_page' => max(1, (int) $this->request->getPost('companies_page')),
-            'companies_per_page' => PageSize::normalize($this->request->getPost('companies_per_page')),
-            'users_page' => max(1, (int) $this->request->getPost('users_page')),
-            'users_per_page' => PageSize::normalize($this->request->getPost('users_per_page')),
-        ];
-
-        return base_url('superadmin?' . http_build_query($query));
     }
 
     public function testCompanyNotificationEmail(int $companyId): RedirectResponse
@@ -429,6 +420,108 @@ final class SuperAdmin extends BaseController
         } catch (Throwable $exception) {
             return $this->operationFailure($exception);
         }
+    }
+
+    public function testCompanyReadingReport(int $companyId): RedirectResponse
+    {
+        try {
+            $queued = service('managementReadingReport')->queueTest($companyId);
+            if ($queued !== 'queued') {
+                throw new DomainException('No se pudo preparar el informe de lecturas. Revisá que la empresa tenga un teléfono de gerencia válido.');
+            }
+
+            $result = service('notificationDispatch')->execute(
+                'management-reading-report-test-' . $companyId . '-' . date('YmdHis'),
+            );
+
+            if ((int) ($result['whatsapp_sent'] ?? 0) < 1) {
+                // El lote de WhatsApp sale acotado (alerts.whatsappBatchLimit). Si
+                // hay mensajes en cola por delante, el aviso queda encolado y sale
+                // en el proximo ciclo: no es un error.
+                return redirect()->to('/superadmin')->with(
+                    'success',
+                    'El informe de lecturas quedó encolado. Se envía en el próximo ciclo de notificaciones.',
+                );
+            }
+
+            return redirect()->to('/superadmin')->with(
+                'success',
+                'Informe de lecturas de prueba enviado correctamente.',
+            );
+        } catch (Throwable $exception) {
+            return $this->operationFailure($exception);
+        }
+    }
+
+    public function seedTsaTripMasterCatalogs(): RedirectResponse
+    {
+        try {
+            $counts = service('seedTsaTripMasterCatalogs')->execute($this->actor());
+            $total = array_sum($counts);
+            $breakdown = implode(', ', array_map(
+                static fn (string $label, int $count): string => $label . ': ' . $count,
+                array_keys($counts),
+                array_values($counts),
+            ));
+            $message = $total === 0
+                ? 'Los catálogos de TSA ya estaban completos; no se modificaron datos.'
+                : 'Se agregaron ' . $total . ' opciones a los catálogos de TSA (' . $breakdown . ').';
+
+            log_message('notice', 'Superadministrador {actor} completó maestros de Viajes para TSA: {counts}', [
+                'actor' => $this->actor()->userId(),
+                'counts' => $breakdown,
+            ]);
+
+            return redirect()->to('/superadmin')->with('success', $message);
+        } catch (DomainException $exception) {
+            return redirect()->to('/superadmin')->with('error', $exception->getMessage());
+        } catch (Throwable $exception) {
+            log_message('error', 'Falló la carga de maestros de Viajes para TSA desde Superadmin: {message}', [
+                'message' => $exception->getMessage(),
+            ]);
+
+            return redirect()->to('/superadmin')->with('error', 'No se pudieron completar los catálogos de TSA. Revisá el registro de errores.');
+        }
+    }
+
+    public function assignCompanyPresentationProfile(int $companyId): RedirectResponse
+    {
+        if (! $this->validate([
+            'frontend_profile' => 'required|max_length[64]',
+            'companies_page' => 'permit_empty|is_natural_no_zero',
+            'companies_per_page' => 'permit_empty|is_natural_no_zero',
+            'users_page' => 'permit_empty|is_natural_no_zero',
+            'users_per_page' => 'permit_empty|is_natural_no_zero',
+        ])) {
+            return $this->validationFailure();
+        }
+
+        try {
+            /** @var \App\Application\Platform\PresentationProfiles\AssignCompanyPresentationProfile $handler */
+            $handler = service('assignCompanyPresentationProfile');
+            $handler->execute($this->actor(), $companyId, trim((string) $this->request->getPost('frontend_profile')));
+
+            return redirect()->to($this->superadminReturnUrl())->with('success', 'El perfil visual de la empresa se actualizó correctamente.');
+        } catch (Throwable $exception) {
+            if (! $exception instanceof DomainException) {
+                log_message('error', 'Falló la asignación de perfil visual: {message}', ['message' => $exception->getMessage()]);
+            }
+            $message = $exception instanceof DomainException ? $exception->getMessage() : 'No se pudo actualizar el perfil visual.';
+
+            return redirect()->to($this->superadminReturnUrl())->with('error', $message);
+        }
+    }
+
+    private function superadminReturnUrl(): string
+    {
+        $query = [
+            'companies_page' => max(1, (int) $this->request->getPost('companies_page')),
+            'companies_per_page' => PageSize::normalize($this->request->getPost('companies_per_page')),
+            'users_page' => max(1, (int) $this->request->getPost('users_page')),
+            'users_per_page' => PageSize::normalize($this->request->getPost('users_per_page')),
+        ];
+
+        return base_url('superadmin?' . http_build_query($query));
     }
 
     public function auditDriverPhones(): RedirectResponse
@@ -1213,6 +1306,17 @@ final class SuperAdmin extends BaseController
             if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
                 throw new DomainException('Uno de los correos de informes gerenciales no es válido: ' . $email);
             }
+        }
+    }
+
+    private function assertValidManagementPhone(string $raw): void
+    {
+        if ($raw === '') {
+            return;
+        }
+
+        if (WhatsAppPhone::normalize($raw) === null) {
+            throw new DomainException('El teléfono de gerencia no es un número válido para WhatsApp. Cargalo en formato internacional, solo dígitos (ejemplo: 54911333333333).');
         }
     }
 

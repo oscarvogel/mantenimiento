@@ -399,6 +399,7 @@ class Services extends BaseService
             static::notificationDispatch(),
             static::notificationClock(),
             static::managementReports(false),
+            static::managementReadingReport(false),
             static::notifyAdminsMissingDriverPhones(false),
             static::telematicRefreshesForAllCompanies(),
         );
@@ -440,6 +441,30 @@ class Services extends BaseService
             $db,
             (int) env('alerts.lecturasVencidasDias', 30),
             new \App\Infrastructure\Notifications\CodeIgniterTelemetrySensorIssueSummaryReader($db),
+        );
+    }
+
+    public static function managementReadingReport(bool $getShared = true): \App\Application\Notifications\ScheduleManagementReadingReport
+    {
+        if ($getShared) {
+            return static::getSharedInstance('managementReadingReport');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\Notifications\ScheduleManagementReadingReport(
+            static::notificationClock(false),
+            new \App\Infrastructure\Notifications\CodeIgniterManagementReadingReportSettingsReadModel($db),
+            new \App\Infrastructure\Notifications\CodeIgniterReadingComplianceReadModel($db),
+            new \App\Application\Notifications\ReadingComplianceReportMessageBuilder(),
+            static::whatsAppNotificationDeliveryQueue(false),
+            static::whatsAppGateway(false),
+            static::globalNotificationSettingsStore(false),
+            // El umbral por defecto es el mismo que usa el tablero (7 dias). El
+            // valor global queda como respaldo para empresas que todavia no
+            // configuren su propio campo.
+            (int) env('alerts.lecturasVencidasDias', 7),
+            base_url('mantenimiento/lecturas/control'),
         );
     }
 

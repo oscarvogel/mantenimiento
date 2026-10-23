@@ -60,7 +60,7 @@ const moduleIcons = {
 }
 
 const moduleIconFor = (name) => moduleIcons[name] ?? Squares2X2Icon
-const primaryModuleKeys = new Set(['platform-home', 'module-wrench', 'module-truck', 'module-management'])
+const primaryModuleKeys = new Set(['platform-home', 'module-wrench', 'module-management'])
 const primaryModules = computed(() => props.moduleNavigation.filter((item) => primaryModuleKeys.has(item.key)))
 const additionalModules = computed(() => props.moduleNavigation.filter((item) => !primaryModuleKeys.has(item.key)))
 
@@ -117,7 +117,7 @@ defineExpose({
     aria-label="Módulos de la plataforma"
     class="border-b border-border bg-surface-raised px-4 sm:px-6 lg:px-7 xl:px-9"
   >
-    <ul class="mx-auto flex max-w-[96rem] flex-wrap items-center gap-x-1 py-2.5 sm:gap-x-2">
+    <ul class="mx-auto flex max-w-[96rem] flex-nowrap items-center gap-x-1 py-2.5 sm:gap-x-2">
       <li v-for="item in primaryModules" :key="item.key" class="shrink-0">
         <a
           v-if="!item.disabled && item.href"

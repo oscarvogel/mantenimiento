@@ -710,7 +710,7 @@ onMounted(initialize)
       <section v-else class="rounded-xl border border-dashed border-border-strong bg-surface-raised px-4 py-3 xl:hidden" aria-labelledby="mobile-result-title">
         <p class="text-[11px] font-bold uppercase tracking-wide text-primary">Costo teórico</p><h2 id="mobile-result-title" class="mt-0.5 text-sm font-semibold text-ink">Costo por km recorrido</h2><p class="mt-1 text-xl font-bold tracking-tight text-ink-subtle">— / km</p><p class="mt-1 text-xs text-ink-muted">El resultado aparecerá al terminar la carga y calcular.</p>
       </section>
-      <div class="grid items-start gap-6" :class="wizardStep === 3 ? 'xl:grid-cols-1' : 'xl:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)]'">
+      <div class="grid items-start gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)]">
         <div class="space-y-6">
           <section v-show="wizardStep === 0" class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="equipment-title">
             <div class="mb-4 flex items-start gap-3"><span class="rounded-lg bg-primary-subtle p-2 text-primary"><TruckIcon class="size-5" aria-hidden="true" /></span><div><h2 id="equipment-title" class="font-bold text-ink">Conjunto y utilización</h2><p class="mt-1 text-sm text-ink-muted">El escenario general no requiere asociar equipos. Si querés identificar el conjunto, seleccioná tractor y semi. Los kilómetros mensuales incluyen recorridos cargados y vacíos.</p></div></div>
@@ -835,7 +835,7 @@ onMounted(initialize)
           <div v-if="!canEdit" class="flex items-start gap-3 rounded-xl border border-info/30 bg-info-subtle p-4 text-sm text-info-strong"><InformationCircleIcon class="size-5 shrink-0" aria-hidden="true" /><p>Tenés acceso de consulta. Podés revisar resultados e historial, pero no modificar supuestos ni guardar escenarios.</p></div>
         </div>
 
-        <aside class="space-y-4" :class="wizardStep === 3 ? 'hidden xl:block' : 'hidden xl:sticky xl:top-5 xl:block'">
+        <aside class="hidden space-y-4 xl:sticky xl:top-5 xl:block">
           <section v-if="activeResult" class="overflow-hidden rounded-xl border border-border bg-surface-raised" aria-labelledby="result-title" aria-live="polite">
             <div class="border-b border-border-subtle p-5 sm:p-6">
               <div class="flex items-start justify-between gap-3"><div><p class="text-xs font-bold uppercase tracking-wide text-primary">Resultado teórico</p><h2 id="result-title" class="mt-1 text-lg font-bold text-ink">Costo por km recorrido</h2></div><span class="rounded-full px-2.5 py-1 text-xs font-bold" :class="resultIsStale ? 'bg-warning-subtle text-warning-strong' : coverageComplete ? 'bg-success-subtle text-success-strong' : 'bg-warning-subtle text-warning-strong'">{{ resultIsStale ? 'Pendiente de actualizar' : coverageComplete ? 'Cobertura completa' : 'Cobertura parcial' }}</span></div>
@@ -857,8 +857,8 @@ onMounted(initialize)
               <p v-else-if="!coverageComplete" class="mt-4 rounded-lg bg-warning-subtle p-3 text-sm text-warning-strong">El cálculo no tiene cobertura completa. Revisá la configuración antes de usar esta cifra para cotizar.</p>
               <div class="mt-5">
                 <h3 class="text-sm font-bold text-ink">Desglose por rubro</h3>
-                <div v-if="breakdown.length" class="mt-2 divide-y divide-border-subtle" :class="wizardStep === 3 ? 'xl:grid xl:grid-cols-2 xl:gap-x-8 xl:divide-y-0' : ''">
-                  <div v-for="(item, index) in breakdown" :key="item.codigo || item.nombre || index" class="flex items-start justify-between gap-3 py-2.5 text-sm" :class="wizardStep === 3 ? 'xl:border-b xl:border-border-subtle' : ''"><div class="min-w-0"><p class="font-medium text-ink">{{ item.nombre || item.concepto || item.codigo }}</p><p v-if="item.estado && item.estado !== 'configurado'" class="mt-0.5 text-xs text-warning-strong">{{ breakdownStatus(item) }}</p><p v-if="breakdownExplanation(item)" class="mt-0.5 text-xs text-ink-muted">{{ breakdownExplanation(item) }}</p></div><div class="shrink-0 text-right tabular-nums"><p class="font-semibold text-ink">{{ item.ars_km == null ? 'Sin dato' : `${currencyLabel(item.ars_km, 'ARS')} / km` }}</p><p v-if="item.usd_km != null" class="text-xs text-ink-muted">{{ currencyLabel(item.usd_km, 'USD') }} / km</p></div></div>
+                <div v-if="breakdown.length" class="mt-2 divide-y divide-border-subtle">
+                  <div v-for="(item, index) in breakdown" :key="item.codigo || item.nombre || index" class="flex items-start justify-between gap-3 py-2.5 text-sm"><div class="min-w-0"><p class="font-medium text-ink">{{ item.nombre || item.concepto || item.codigo }}</p><p v-if="item.estado && item.estado !== 'configurado'" class="mt-0.5 text-xs text-warning-strong">{{ breakdownStatus(item) }}</p><p v-if="breakdownExplanation(item)" class="mt-0.5 text-xs text-ink-muted">{{ breakdownExplanation(item) }}</p></div><div class="shrink-0 text-right tabular-nums"><p class="font-semibold text-ink">{{ item.ars_km == null ? 'Sin dato' : `${currencyLabel(item.ars_km, 'ARS')} / km` }}</p><p v-if="item.usd_km != null" class="text-xs text-ink-muted">{{ currencyLabel(item.usd_km, 'USD') }} / km</p></div></div>
                 </div>
                 <p v-else class="mt-2 text-sm text-ink-muted">El servidor no devolvió el detalle por rubro.</p>
               </div>

@@ -8,6 +8,7 @@ use App\Domain\Telematic\InstantaneaEquipo;
 use App\Domain\Telematic\MuestraEquipo;
 use App\Domain\Telematic\Posicion;
 use DateTimeImmutable;
+use DateTimeZone;
 
 /**
  * Traduce una fila de `telematia_muestras` a una `MuestraEquipo`.
@@ -25,8 +26,9 @@ final class FilaAMuestra
     /** @param array<string,mixed> $fila */
     public function __invoke(array $fila): MuestraEquipo
     {
-        $observada = new DateTimeImmutable((string) $fila['observada_en']);
-        $registrada = new DateTimeImmutable((string) ($fila['registrada_en'] ?? $fila['observada_en']));
+        $zonaPersistida = new DateTimeZone((new \Config\App())->appTimezone);
+        $observada = new DateTimeImmutable((string) $fila['observada_en'], $zonaPersistida);
+        $registrada = new DateTimeImmutable((string) ($fila['registrada_en'] ?? $fila['observada_en']), $zonaPersistida);
 
         $instantanea = new InstantaneaEquipo(
             $observada,

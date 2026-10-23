@@ -16,6 +16,7 @@ final readonly class RunNotificationCycle
         private RunNotificationDispatch $dispatch,
         private NotificationClock $clock,
         private ?ScheduleManagementReports $managementReports = null,
+        private ?ScheduleManagementReadingReport $managementReadingReport = null,
         private ?NotifyAdminsMissingDriverPhones $missingDriverPhones = null,
         /** @var list<RefreshTelemetryNow> */
         private array $telemetryRefreshes = [],
@@ -63,6 +64,12 @@ final readonly class RunNotificationCycle
         $managementReports = $this->managementReports?->execute();
         log_message('notice', 'Etapa informes gerenciales completada en {seconds}s.', [
             'seconds' => number_format(microtime(true) - $reportsStartedAt, 3, '.', ''),
+        ]);
+
+        $readingReportStartedAt = microtime(true);
+        $managementReadingReport = $this->managementReadingReport?->execute();
+        log_message('notice', 'Etapa informe de lecturas a gerencia completada en {seconds}s.', [
+            'seconds' => number_format(microtime(true) - $readingReportStartedAt, 3, '.', ''),
         ]);
 
         $dispatchStartedAt = microtime(true);
@@ -115,6 +122,7 @@ final readonly class RunNotificationCycle
             'collected' => $collected,
             'missing_driver_phones' => $missingDriverPhones,
             'management_reports' => $managementReports,
+            'management_reading_report' => $managementReadingReport,
             'dispatched' => $dispatched,
         ];
     }

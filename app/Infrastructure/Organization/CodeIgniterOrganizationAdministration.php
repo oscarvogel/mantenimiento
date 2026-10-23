@@ -33,6 +33,9 @@ final class CodeIgniterOrganizationAdministration implements OrganizationAdminis
         if ($this->database->fieldExists('informe_diario_habilitado', 'empresas')) {
             $companyFields .= ', emails_informes, informe_diario_habilitado, informe_diario_hora, informe_semanal_habilitado, informe_semanal_dia, informe_semanal_hora';
         }
+        if ($this->database->fieldExists('informe_lecturas_whatsapp_habilitado', 'empresas')) {
+            $companyFields .= ', telefono_gerencia, informe_lecturas_whatsapp_habilitado, informe_lecturas_hora, informe_lecturas_dias';
+        }
 
         $companies = $this->database->table('empresas')
             ->select($companyFields)
