@@ -381,6 +381,21 @@ verificó con un GET** a `/api/v1/instances/oscar_claro_2/messages/{id}`: la
 respuesta fue `404 Mensaje inexistente` (o sea, la clave es válida y el mensaje
 no existe) en lugar de `401 API Key inválida`.
 
+**No es un problema general de la clave de staging.** El token de la integración
+de Wialon, que sí se registró en staging, se descifra perfecto con la misma
+clave:
+
+```
+integracion 1 (wialon, empresa 4, activo=1, ultimo_ok=2026-10-23 17:46:27)
+  token_cifrado: DESCIFRADO OK con la clave vigente (len 72)
+```
+
+O sea: la `encryption.key` de staging es la correcta para **todo lo que se
+registró en staging**. Los dos secretos caídos son los que **vinieron copiados
+de producción** (los escribió el 23/09 un usuario de la instalación de
+producción, con la clave de producción). **Producción no está rota por esto:**
+allá su clave descifra sus propios secretos.
+
 > El comando `telematria:integracion` ya documenta esta misma trampa: *"un token
 > cifrado con la clave de otra máquina no descifra acá, y el síntoma es una
 > 'integración caída' que nadie entiende"*. El mismo razonamiento aplica a los
