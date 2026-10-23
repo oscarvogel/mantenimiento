@@ -11,6 +11,7 @@ use App\Application\Organization\CreateCompanyAdministratorCommand;
 use App\Application\Organization\CreateCompanyAdministratorHandler;
 use App\Application\Organization\GetOrganizationOverview;
 use App\Application\Organization\UpdateCompanyHandler;
+use App\Domain\Notifications\WhatsAppPhone;
 use App\Infrastructure\Identity\SessionActorContext;
 use App\Infrastructure\Notifications\CodeIgniterCompanyNotificationRecipientResolver;
 use App\Presentation\PageSize;
@@ -294,6 +295,10 @@ final class SuperAdmin extends BaseController
             'informe_semanal_habilitado' => 'permit_empty|in_list[0,1]',
             'informe_semanal_dia' => 'permit_empty|in_list[1,2,3,4,5,6,7]',
             'informe_semanal_hora' => 'permit_empty|regex_match[/^(?:[01]\\d|2[0-3]):[0-5]\\d$/]',
+            'telefono_gerencia' => 'permit_empty|max_length[20]',
+            'informe_lecturas_whatsapp_habilitado' => 'permit_empty|in_list[0,1]',
+            'informe_lecturas_hora' => 'permit_empty|regex_match[/^(?:[01]\\d|2[0-3]):[0-5]\\d$/]',
+            'informe_lecturas_dias' => 'permit_empty|greater_than_equal_to[1]|less_than_equal_to[90]',
         ])) {
             return $this->validationFailure();
         }
@@ -337,6 +342,24 @@ final class SuperAdmin extends BaseController
                     'informe_semanal_habilitado' => (int) ($this->request->getPost('informe_semanal_habilitado') ?? 0),
                     'informe_semanal_dia' => (int) ($this->request->getPost('informe_semanal_dia') ?: 1),
                     'informe_semanal_hora' => trim((string) ($this->request->getPost('informe_semanal_hora') ?: '07:00')),
+                ];
+            }
+
+            // El informe de lecturas a gerencia se configura por separado del
+            // informe por email: son canales distintos y pueden activarse por
+            // separado. Si el formulario no manda estos campos, no se tocan.
+            $hasReadingReportInput = $this->request->getPost('telefono_gerencia') !== null
+                || $this->request->getPost('informe_lecturas_whatsapp_habilitado') !== null
+                || $this->request->getPost('informe_lecturas_hora') !== null
+                || $this->request->getPost('informe_lecturas_dias') !== null;
+            if ($hasReadingReportInput && $database->fieldExists('informe_lecturas_whatsapp_habilitado', 'empresas')) {
+                $managementPhone = trim((string) $this->request->getPost('telefono_gerencia'));
+                $this->assertValidManagementPhone($managementPhone);
+                $companyData += [
+                    'telefono_gerencia' => $managementPhone === '' ? null : $managementPhone,
+                    'informe_lecturas_whatsapp_habilitado' => (int) ($this->request->getPost('informe_lecturas_whatsapp_habilitado') ?? 0),
+                    'informe_lecturas_hora' => trim((string) ($this->request->getPost('informe_lecturas_hora') ?: '08:00')),
+                    'informe_lecturas_dias' => max(1, (int) ($this->request->getPost('informe_lecturas_dias') ?: 7)),
                 ];
             }
 
@@ -393,6 +416,37 @@ final class SuperAdmin extends BaseController
             return redirect()->to('/superadmin')->with(
                 'success',
                 'Informe ' . ($type === 'DAILY' ? 'diario' : 'semanal') . ' de prueba enviado correctamente.',
+            );
+        } catch (Throwable $exception) {
+            return $this->operationFailure($exception);
+        }
+    }
+
+    public function testCompanyReadingReport(int $companyId): RedirectResponse
+    {
+        try {
+            $queued = service('managementReadingReport')->queueTest($companyId);
+            if ($queued !== 'queued') {
+                throw new DomainException('No se pudo preparar el informe de lecturas. Revisá que la empresa tenga un teléfono de gerencia válido.');
+            }
+
+            $result = service('notificationDispatch')->execute(
+                'management-reading-report-test-' . $companyId . '-' . date('YmdHis'),
+            );
+
+            if ((int) ($result['whatsapp_sent'] ?? 0) < 1) {
+                // El lote de WhatsApp sale acotado (alerts.whatsappBatchLimit). Si
+                // hay mensajes en cola por delante, el aviso queda encolado y sale
+                // en el proximo ciclo: no es un error.
+                return redirect()->to('/superadmin')->with(
+                    'success',
+                    'El informe de lecturas quedó encolado. Se envía en el próximo ciclo de notificaciones.',
+                );
+            }
+
+            return redirect()->to('/superadmin')->with(
+                'success',
+                'Informe de lecturas de prueba enviado correctamente.',
             );
         } catch (Throwable $exception) {
             return $this->operationFailure($exception);
@@ -1181,6 +1235,17 @@ final class SuperAdmin extends BaseController
             if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
                 throw new DomainException('Uno de los correos de informes gerenciales no es válido: ' . $email);
             }
+        }
+    }
+
+    private function assertValidManagementPhone(string $raw): void
+    {
+        if ($raw === '') {
+            return;
+        }
+
+        if (WhatsAppPhone::normalize($raw) === null) {
+            throw new DomainException('El teléfono de gerencia no es un número válido para WhatsApp. Cargalo en formato internacional, solo dígitos (ejemplo: 54911333333333).');
         }
     }
 

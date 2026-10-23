@@ -21,6 +21,23 @@ interface WhatsAppNotificationDeliveryQueue
 
     public function scheduleWeeklyReadingReminders(bool $force = false, ?string $testKey = null): int;
 
+    /**
+     * Encola el informe de lecturas atrasadas para la gerencia de la empresa.
+     *
+     * La clave de entrega es la garantia de idempotencia: si ya existe una
+     * entrega con esa clave, no se encola otra.
+     *
+     * @return int identificador de la entrega; 0 si la clave ya existia
+     */
+    public function enqueueManagementReadingReport(
+        int $companyId,
+        string $deliveryKey,
+        string $phone,
+        string $instanceId,
+        string $message,
+        string $scheduledAt,
+    ): int;
+
     /** @return list<array<string,mixed>> */
     public function due(int $limit): array;
 

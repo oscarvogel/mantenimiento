@@ -72,7 +72,7 @@ final class ScheduleManagementReports
         if ($recipients === []) return 'skipped';
         $period = $type === 'DAILY' ? $now->format('Y-m-d') : $now->format('o-\WW');
         $companyName = trim((string) ($company['nombre_fantasia'] ?? '')) ?: trim((string) ($company['razon_social'] ?? '')) ?: 'Empresa #' . $companyId;
-        $report = $this->buildReport($companyId, $type, $now, $companyName);
+        $report = $this->buildReport($companyId, $type, $now, $companyName, $this->staleReadingThreshold($company));
         $queued = 0; $duplicates = 0;
         foreach ($recipients as $recipient) {
             $suffix = $force ? ':test:' . $now->format('YmdHis') : '';
@@ -109,7 +109,7 @@ final class ScheduleManagementReports
     }
 
     /** @return array{title:string,summary:string} */
-    private function buildReport(int $companyId, string $type, DateTimeImmutable $now, string $companyName): array
+    private function buildReport(int $companyId, string $type, DateTimeImmutable $now, string $companyName, int $staleReadingDays): array
     {
         $today = $now->format('Y-m-d'); $weekStart = $now->modify('-6 days')->format('Y-m-d 00:00:00'); $tomorrow = $now->modify('+1 day')->format('Y-m-d 00:00:00');
         $activeEquipment = $this->count('equipos', ['empresa_id' => $companyId, 'estado' => 'ACTIVO', 'deleted_at' => null]);
@@ -119,7 +119,7 @@ final class ScheduleManagementReports
         $openOrders = $this->openOrders($companyId); $delayedOrders = $this->delayedOrders($companyId, $now);
         $periodStart = $type === 'DAILY' ? $now->modify('-1 day')->format('Y-m-d H:i:s') : $weekStart;
         $closedPeriod = $this->closedOrders($companyId, $periodStart, $tomorrow); $createdPeriod = $this->createdOrders($companyId, $periodStart, $tomorrow);
-        $staleReadings = $this->staleReadings($companyId, $now); $staleReadingDetails = $this->staleReadingDetails($companyId, $now, 10);
+        $staleReadings = $this->staleReadings($companyId, $now, $staleReadingDays); $staleReadingDetails = $this->staleReadingDetails($companyId, $now, $staleReadingDays, 10);
         $label = $type === 'DAILY' ? 'Informe diario' : 'Informe semanal';
         $lines = [
             'Equipos activos: ' . $activeEquipment,
@@ -357,28 +357,51 @@ final class ScheduleManagementReports
         return array_map(static fn (array $row): string => (string) $row['codigo'] . ' (' . (int) $row['cantidad'] . ')', $rows);
     }
 
-    private function staleReadings(int $companyId, DateTimeImmutable $now): int
+    private function staleReadings(int $companyId, DateTimeImmutable $now, int $thresholdDays): int
     {
         if (! $this->db->tableExists('equipos') || ! $this->db->tableExists('lecturas_equipo')) return 0;
-        $cutoff = $now->modify('-' . max(1, $this->staleReadingDays) . ' days')->format('Y-m-d H:i:s');
-        $row = $this->db->query("SELECT COUNT(*) total FROM equipos e LEFT JOIN (SELECT equipo_id, MAX(fecha_lectura) ultima FROM lecturas_equipo WHERE empresa_id = ? AND anulada = 0 GROUP BY equipo_id) l ON l.equipo_id = e.id WHERE e.empresa_id = ? AND e.estado = 'ACTIVO' AND e.deleted_at IS NULL AND (l.ultima IS NULL OR l.ultima < ?)", [$companyId, $companyId, $cutoff])->getRowArray();
+        $cutoff = $now->modify('-' . max(1, $thresholdDays) . ' days')->format('Y-m-d H:i:s');
+        // Solo se cuentan los equipos que controlan kilometraje. Un semirremolque
+        // sin control de km no tiene lectura que informar y contarlo daria un
+        // numero de "equipos sin lectura" que no se corresponde con la realidad.
+        $row = $this->db->query("SELECT COUNT(*) total FROM equipos e INNER JOIN tipos_equipo te ON te.id = e.tipo_equipo_id AND te.activo = 1 AND te.controla_km = 1 LEFT JOIN (SELECT equipo_id, MAX(fecha_lectura) ultima FROM lecturas_equipo WHERE empresa_id = ? AND anulada = 0 GROUP BY equipo_id) l ON l.equipo_id = e.id WHERE e.empresa_id = ? AND e.estado = 'ACTIVO' AND e.deleted_at IS NULL AND (l.ultima IS NULL OR l.ultima < ?)", [$companyId, $companyId, $cutoff])->getRowArray();
         return (int) ($row['total'] ?? 0);
     }
 
     /** @return list<array{code:string,detail:string,status:string}> */
-    private function staleReadingDetails(int $companyId, DateTimeImmutable $now, int $limit = 10): array
+    private function staleReadingDetails(int $companyId, DateTimeImmutable $now, int $thresholdDays, int $limit = 10): array
     {
         if (! $this->db->tableExists('equipos') || ! $this->db->tableExists('lecturas_equipo')) return [];
-        $cutoff = $now->modify('-' . max(1, $this->staleReadingDays) . ' days')->format('Y-m-d H:i:s');
-        $rows = $this->db->query("SELECT e.codigo, l.ultima FROM equipos e LEFT JOIN (SELECT equipo_id, MAX(fecha_lectura) ultima FROM lecturas_equipo WHERE empresa_id = ? AND anulada = 0 GROUP BY equipo_id) l ON l.equipo_id = e.id WHERE e.empresa_id = ? AND e.estado = 'ACTIVO' AND e.deleted_at IS NULL AND (l.ultima IS NULL OR l.ultima < ?) ORDER BY CASE WHEN l.ultima IS NULL THEN 0 ELSE 1 END ASC, l.ultima ASC, e.codigo ASC LIMIT " . max(1, min(50, $limit)), [$companyId, $companyId, $cutoff])->getResultArray();
+        $cutoff = $now->modify('-' . max(1, $thresholdDays) . ' days')->format('Y-m-d H:i:s');
+        $rows = $this->db->query("SELECT e.codigo, l.ultima FROM equipos e INNER JOIN tipos_equipo te ON te.id = e.tipo_equipo_id AND te.activo = 1 AND te.controla_km = 1 LEFT JOIN (SELECT equipo_id, MAX(fecha_lectura) ultima FROM lecturas_equipo WHERE empresa_id = ? AND anulada = 0 GROUP BY equipo_id) l ON l.equipo_id = e.id WHERE e.empresa_id = ? AND e.estado = 'ACTIVO' AND e.deleted_at IS NULL AND (l.ultima IS NULL OR l.ultima < ?) ORDER BY CASE WHEN l.ultima IS NULL THEN 0 ELSE 1 END ASC, l.ultima ASC, e.codigo ASC LIMIT " . max(1, min(50, $limit)), [$companyId, $companyId, $cutoff])->getResultArray();
         $result = [];
         foreach ($rows as $row) {
             $code = trim((string) ($row['codigo'] ?? '')) ?: 'Equipo sin código'; $lastReading = trim((string) ($row['ultima'] ?? ''));
-            if ($lastReading === '') { $result[] = ['code' => $code, 'detail' => 'Nunca registró km/horas', 'status' => 'Sin lectura']; continue; }
-            try { $last = new DateTimeImmutable($lastReading); $days = max(0, (int) $last->diff($now)->format('%a')); $result[] = ['code' => $code, 'detail' => 'Hace ' . $days . ' días que no registra km/horas', 'status' => 'Lectura antigua']; }
+            if ($lastReading === '') { $result[] = ['code' => $code, 'detail' => 'Nunca registró lectura de km', 'status' => 'Sin lectura']; continue; }
+            try { $last = new DateTimeImmutable($lastReading, $now->getTimezone()); $days = max(0, (int) $last->diff($now)->format('%a')); $result[] = ['code' => $code, 'detail' => 'Hace ' . $days . ' días que no registra km', 'status' => 'Lectura antigua']; }
             catch (\Throwable) { $result[] = ['code' => $code, 'detail' => 'La última lectura registrada es demasiado antigua', 'status' => 'Lectura antigua']; }
         }
         return $result;
+    }
+
+    /**
+     * Umbral de dias sin lectura que se informa para la empresa.
+     *
+     * Si la empresa tiene configurado `informe_lecturas_dias` manda ese valor;
+     * si la migracion todavia no corrio, se usa el valor global. El mismo numero
+     * usa el aviso por WhatsApp, para que los dos canales hablen del mismo
+     * universo de equipos.
+     *
+     * @param array<string,mixed> $company
+     */
+    private function staleReadingThreshold(array $company): int
+    {
+        $configured = (int) ($company['informe_lecturas_dias'] ?? 0);
+        if ($configured > 0) {
+            return min(90, $configured);
+        }
+
+        return max(1, $this->staleReadingDays);
     }
 
     /** @param array<string,mixed> $where */

@@ -124,6 +124,17 @@ final class RecordingDeliveryQueue implements WhatsAppNotificationDeliveryQueue
         return 0;
     }
 
+    public function enqueueManagementReadingReport(
+        int $companyId,
+        string $deliveryKey,
+        string $phone,
+        string $instanceId,
+        string $message,
+        string $scheduledAt,
+    ): int {
+        return 0;
+    }
+
     public function scheduleUserDailyDigests(): int
     {
         return 0;

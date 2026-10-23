@@ -9,6 +9,7 @@ use App\Application\Notifications\Port\NotificationClock;
 use App\Application\Notifications\Port\WhatsAppNotificationDeliveryQueue;
 use App\Application\Notifications\Port\WhatsAppNotificationGateway;
 use App\Application\Notifications\ReadingReminderMessageBuilder;
+use App\Application\Notifications\ScheduleManagementReadingReport;
 use App\Application\Notifications\UserWhatsAppDigestSchedule;
 use App\Domain\Notifications\NotifiableEvent;
 use CodeIgniter\Database\BaseConnection;
@@ -1040,6 +1041,53 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             ->setTime($hour, $minute);
 
         return $now >= $dueAt;
+    }
+
+    public function enqueueManagementReadingReport(
+        int $companyId,
+        string $deliveryKey,
+        string $phone,
+        string $instanceId,
+        string $message,
+        string $scheduledAt,
+    ): int {
+        $deliveryKey = trim($deliveryKey);
+        $phone = trim($phone);
+        $message = trim($message);
+        if ($companyId <= 0 || $deliveryKey === '' || $phone === '' || $message === '') {
+            return 0;
+        }
+
+        if ($this->db->table('notificacion_whatsapp_entregas')
+            ->where('clave_entrega', $deliveryKey)
+            ->countAllResults() > 0) {
+            return 0;
+        }
+
+        $timestamp = $this->clock->now()->format('Y-m-d H:i:s');
+        $this->db->table('notificacion_whatsapp_entregas')->ignore(true)->insert([
+            'empresa_id' => $companyId,
+            'equipo_id' => null,
+            'empleado_id' => null,
+            'usuario_id' => null,
+            'tipo_evento' => ScheduleManagementReadingReport::EVENT_TYPE,
+            'clave_entrega' => $deliveryKey,
+            'external_ref' => 'mantenimiento:' . $deliveryKey,
+            'telefono' => $phone,
+            'instance_id' => trim($instanceId) !== '' ? trim($instanceId) : 'default',
+            'mensaje' => $message,
+            'estado' => 'PENDIENTE',
+            'ultimo_error' => null,
+            'proximo_intento' => trim($scheduledAt) !== '' ? trim($scheduledAt) : $timestamp,
+            'created_at' => $timestamp,
+            'updated_at' => $timestamp,
+        ]);
+
+        if ($this->db->affectedRows() <= 0) {
+            return 0;
+        }
+
+        return (int) $this->db->insertID();
     }
 
     public function due(int $limit): array
