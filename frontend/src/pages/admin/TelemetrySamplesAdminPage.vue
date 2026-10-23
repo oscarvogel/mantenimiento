@@ -10,7 +10,7 @@ const pageUrl = (page) => {
   params.set('pagina', String(page))
   return `${basePath}?${params.toString()}`
 }
-const exportUrl = computed(() => {
+const samplesExportUrl = computed(() => {
   const params = new URLSearchParams()
   if (props.data.selectedCompanyId) params.set('empresa', String(props.data.selectedCompanyId))
   if (props.data.selectedIntegrationId) params.set('integracion', String(props.data.selectedIntegrationId))
@@ -99,7 +99,7 @@ const formatNumber = (value, digits = 1) => value === null || value === undefine
         <button type="submit" class="inline-flex min-h-10 items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-strong">
           <ArrowPathIcon class="size-4" aria-hidden="true" /> Aplicar filtros
         </button>
-        <a v-if="data.view === 'samples' && data.selectedCompanyId && data.selectedIntegrationId" :href="exportUrl" class="inline-flex min-h-10 items-center rounded-lg border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">Exportar todas las muestras (CSV)</a>
+        <a v-if="data.view === 'samples' && data.selectedCompanyId && data.selectedIntegrationId" :href="samplesExportUrl" class="inline-flex min-h-10 items-center rounded-lg border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">Exportar todas las muestras (CSV)</a>
         <a :href="basePath + (data.selectedCompanyId ? '?empresa=' + data.selectedCompanyId + '&integracion=' + (data.selectedIntegrationId || '') : '')" class="inline-flex min-h-10 items-center rounded-lg border border-border px-4 py-2 text-sm font-semibold text-ink-muted hover:bg-surface-muted">Limpiar fechas y unidad</a>
       </div>
     </form>
