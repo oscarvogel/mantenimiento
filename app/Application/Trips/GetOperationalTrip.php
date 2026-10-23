@@ -9,6 +9,7 @@ use App\Application\Trips\Port\OperationalTripReadModel;
 use App\Domain\Trips\Trip;
 use App\Domain\Trips\TripCashMovement;
 use App\Domain\Trips\TripConsumption;
+use App\Domain\Trips\TripSettlement;
 use DomainException;
 
 final class GetOperationalTrip
@@ -44,6 +45,7 @@ final class GetOperationalTrip
             'fuel' => base_url('viajes/operativos/' . $tripId . '/combustible'),
             'expense' => base_url('viajes/operativos/' . $tripId . '/gastos'),
             'cash' => base_url('viajes/operativos/' . $tripId . '/caja'),
+            'earnings' => base_url('viajes/operativos/' . $tripId . '/haberes'),
             'legs' => base_url('viajes/operativos/' . $tripId . '/tramos'),
             'finish' => base_url('viajes/operativos/' . $tripId . '/cerrar'),
         ];
@@ -75,6 +77,15 @@ final class GetOperationalTrip
         $percentage = $driversCount === 1 && ($drivers[0]['porcentaje_liquidacion'] ?? null) !== null
             ? (float) $drivers[0]['porcentaje_liquidacion']
             : null;
+        $driverId = $driversCount === 1 ? ($drivers[0]['empleado_id'] ?? null) : null;
+        $otherEarnings = $detail['otherEarnings'] ?? [];
+        $otherEarningsAmount = 0.0;
+        foreach ($otherEarnings as $row) {
+            if ($driverId !== null && (int) ($row['empleado_id'] ?? 0) !== (int) $driverId) {
+                continue;
+            }
+            $otherEarningsAmount += (float) ($row['importe_ars'] ?? 0);
+        }
 
         $legIds = array_fill_keys(array_map(static fn (array $leg): int => (int) $leg['id'], $legs), true);
         $fuelByLeg = [];
@@ -133,9 +144,34 @@ final class GetOperationalTrip
 
         $totalCommission = $percentage === null ? null : round(array_sum($commissions), 2);
         $unassigned = round($totalFuel + $totalExpenses - $totalAssigned, 2);
-        $operatingCost = $totalCommission === null ? null : round($totalFuel + $totalExpenses + $totalCommission, 2);
+        $operatingCost = $totalCommission === null ? null : round($totalFuel + $totalExpenses + $totalCommission + $otherEarningsAmount, 2);
         $margin = $operatingCost === null || $legs === [] ? null : round($totalInvoice - $operatingCost, 2);
         $marginPct = $margin === null || $totalInvoice <= 0 ? null : round($margin / $totalInvoice * 100, 1);
+
+        $settlement = null;
+        if ($totalCommission !== null) {
+            $settlement = new TripSettlement(
+                $totalCommission,
+                $otherEarningsAmount,
+                (float) ($detail['totals']['driver_expenses_ars'] ?? 0),
+                (float) ($detail['totals']['cash_expenses_ars'] ?? 0),
+                (float) ($detail['totals']['cash_delivered_ars'] ?? 0),
+                (float) ($detail['totals']['cash_returned_ars'] ?? 0),
+            );
+        }
+
+        $detail['settlement'] = $settlement === null ? null : [
+            'driver_id' => $driverId === null ? null : (int) $driverId,
+            'driver' => $drivers[0]['label'] ?? null,
+            'commission_ars' => $settlement->commission(),
+            'other_earnings_ars' => $settlement->otherEarnings(),
+            'driver_expenses_ars' => $settlement->driverExpenses(),
+            'cash_expenses_ars' => $settlement->cashExpenses(),
+            'advances_ars' => $settlement->advances(),
+            'returns_ars' => $settlement->returns(),
+            'account_balance_ars' => $settlement->accountBalance(),
+            'total_ars' => $settlement->total(),
+        ];
 
         $detail['legs'] = $enrichedLegs;
         $detail['totals'] = ($detail['totals'] ?? []) + [
@@ -151,6 +187,9 @@ final class GetOperationalTrip
             'driver_percentage' => $percentage,
             'drivers_count' => $driversCount,
             'multiple_drivers' => $driversCount > 1,
+            'other_earnings_ars' => round($otherEarningsAmount, 2),
+            'settlement_available' => $settlement !== null,
+            'settlement_total_ars' => $settlement?->total(),
         ];
 
         return $detail;
@@ -175,10 +214,14 @@ final class GetOperationalTrip
         }
         $expenseAmount = 0.0;
         $cashExpenses = 0.0;
+        $driverExpenses = 0.0;
         foreach ($expenses as $row) {
             $expenseAmount += (float) $row['importe_ars'];
-            if (($row['pagado_de_caja'] ?? false) === true) {
+            $paidBy = (string) ($row['pagado_por'] ?? (($row['pagado_de_caja'] ?? false) ? 'CAJA' : 'EMPRESA'));
+            if ($paidBy === 'CAJA') {
                 $cashExpenses += (float) $row['importe_ars'];
+            } elseif ($paidBy === 'CHOFER') {
+                $driverExpenses += (float) $row['importe_ars'];
             }
         }
         $cashDelivered = 0.0;
@@ -211,6 +254,7 @@ final class GetOperationalTrip
             'cash_delivered_ars' => round($cashDelivered, 2),
             'cash_returned_ars' => round($cashReturned, 2),
             'cash_expenses_ars' => round($cashExpenses, 2),
+            'driver_expenses_ars' => round($driverExpenses, 2),
             'cash_balance_ars' => round($cashDelivered - $cashReturned - $cashExpenses, 2),
         ];
         $detail['consumption'] = [

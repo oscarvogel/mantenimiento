@@ -7,6 +7,7 @@ namespace App\Application\Trips\Port;
 use App\Domain\Trips\TripCashMovement;
 use App\Domain\Trips\TripExpense;
 use App\Domain\Trips\TripFuelLoad;
+use App\Domain\Trips\TripOtherEarning;
 
 interface TripCostRepository
 {
@@ -15,4 +16,6 @@ interface TripCostRepository
     public function addExpense(int $tripId, int $companyId, int $branchId, TripExpense $expense, int $actorUserId, ?int $legId = null): int;
 
     public function addCashMovement(int $tripId, int $companyId, int $branchId, TripCashMovement $movement, int $actorUserId): int;
+
+    public function addOtherEarning(int $tripId, int $companyId, int $branchId, TripOtherEarning $earning, int $actorUserId): int;
 }

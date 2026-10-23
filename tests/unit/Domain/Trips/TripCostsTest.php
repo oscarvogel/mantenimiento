@@ -32,6 +32,21 @@ final class TripCostsTest extends TestCase
         new TripExpense(new DateTimeImmutable(), new TripMoney(0));
     }
 
+    public function testExpenseInfersCashPayerFromLegacyFlag(): void
+    {
+        $expense = new TripExpense(new DateTimeImmutable(), new TripMoney(100), paidFromCash: true);
+
+        self::assertSame('CAJA', $expense->paidBy());
+        self::assertTrue($expense->paidFromCash());
+    }
+
+    public function testExpenseRejectsUnknownPayer(): void
+    {
+        $this->expectException(DomainException::class);
+
+        new TripExpense(new DateTimeImmutable(), new TripMoney(100), paidBy: 'TALLER');
+    }
+
     public function testCashMovementOnlyAcceptsKnownTypes(): void
     {
         $this->expectException(DomainException::class);

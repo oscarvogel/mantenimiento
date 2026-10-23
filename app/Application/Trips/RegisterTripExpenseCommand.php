@@ -20,6 +20,7 @@ final readonly class RegisterTripExpenseCommand
         public ?string $receipt = null,
         public ?string $notes = null,
         public ?int $legId = null,
+        public string $paidBy = 'EMPRESA',
     ) {
     }
 }

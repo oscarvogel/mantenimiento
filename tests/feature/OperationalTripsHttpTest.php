@@ -6,6 +6,7 @@ use App\Application\Trips\AddTripLeg;
 use App\Application\Trips\FinishTrip;
 use App\Application\Trips\RegisterTripExpense;
 use App\Application\Trips\RegisterTripFuel;
+use App\Application\Trips\RegisterTripOtherEarning;
 use CodeIgniter\Test\CIUnitTestCase;
 use CodeIgniter\Test\FeatureTestTrait;
 
@@ -19,6 +20,7 @@ final class OperationalTripsHttpTest extends CIUnitTestCase
         self::assertInstanceOf(FinishTrip::class, service('finishTrip'));
         self::assertInstanceOf(RegisterTripFuel::class, service('registerTripFuel'));
         self::assertInstanceOf(RegisterTripExpense::class, service('registerTripExpense'));
+        self::assertInstanceOf(RegisterTripOtherEarning::class, service('registerTripOtherEarning'));
     }
 
     public function testAnonymousCannotOpenOperationalTripsList(): void
@@ -35,4 +37,5 @@ final class OperationalTripsHttpTest extends CIUnitTestCase
     {
         $this->get('viajes/operativos/nuevo')->assertRedirect();
     }
+
 }

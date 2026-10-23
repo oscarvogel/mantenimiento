@@ -63,6 +63,7 @@ final class RegisterTripExpense
                 $command->paidFromCash,
                 $command->receipt,
                 $command->notes,
+                $command->paidBy,
             );
 
             return $this->costs->addExpense($trip->id() ?? 0, $companyId, $trip->branchId(), $expense, $actor->userId(), $command->legId);

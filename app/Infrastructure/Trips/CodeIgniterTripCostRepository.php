@@ -9,6 +9,7 @@ use App\Domain\Trips\TripCashMovement;
 use App\Domain\Trips\TripExpense;
 use App\Domain\Trips\TripFuelLoad;
 use App\Domain\Trips\TripMoney;
+use App\Domain\Trips\TripOtherEarning;
 use CodeIgniter\Database\BaseConnection;
 use RuntimeException;
 
@@ -41,6 +42,7 @@ final class CodeIgniterTripCostRepository implements TripCostRepository
             ...$this->moneyColumns($expense->money()),
             'medio_pago_id' => $expense->paymentMethodId(),
             'pagado_de_caja' => $expense->paidFromCash() ? 1 : 0,
+            'pagado_por' => $expense->paidBy(),
             'comprobante' => $expense->receipt(),
             'observaciones' => $expense->notes(),
         ]);
@@ -53,6 +55,17 @@ final class CodeIgniterTripCostRepository implements TripCostRepository
             'fecha' => $movement->date()->format('Y-m-d H:i:s'),
             ...$this->moneyColumns($movement->money()),
             'observaciones' => $movement->notes(),
+        ]);
+    }
+
+    public function addOtherEarning(int $tripId, int $companyId, int $branchId, TripOtherEarning $earning, int $actorUserId): int
+    {
+        return $this->insert('viaje_operativo_otros_haberes', $tripId, $companyId, $branchId, $actorUserId, [
+            'empleado_id' => $earning->employeeId(),
+            'fecha' => $earning->date()->format('Y-m-d'),
+            'concepto' => $earning->concept(),
+            ...$this->moneyColumns($earning->money()),
+            'observaciones' => $earning->notes(),
         ]);
     }
 
