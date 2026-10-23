@@ -255,9 +255,8 @@ es el motivo de los documentos de semirremolques y Who's Who del repo.
    si el caso real pide otro.
 5. **Avisarle a la dueña antes del primer correo largo**: con el umbral nuevo el
    correo lista los 27 equipos de TSA (con detalle de los 10 más antiguos).
-6. **Memoria del cron**: ver la sección 9. La telemetría ya no corre antes del
-   despacho, pero hay que confirmar que la etapa de telemetría no vuelve a
-   agotar los 128 MB del PHP CLI.
+6. **Memoria del cron**: ver la sección 9. **Resuelto y verificado**: la etapa de
+   telemetría corrió con el código nuevo sin agotar la memoria.
 
 
 ## 8. Staging: deploy y cadena de causas (qué estaba realmente roto)
@@ -433,25 +432,29 @@ Dato de calendario que importa: la tarea programada de Coolify corre a las
 salga en el mismo ciclo que el informe diario por correo.
 
 
-## 9. Pendiente técnico: la telemetría y el límite de memoria del CLI
+## 9. La telemetría y el límite de memoria del CLI: verificado
 
-El ciclo ya no muere **antes** de los informes, pero la etapa de telemetría sigue
-siendo la más pesada: el `json_decode` de la respuesta de Wialon necesita más de
-128 MB (`memory_limit` del PHP CLI). Los commits `8b001757` y `8c882897` acotan la
-ventana de consulta, pero **falta confirmar con una corrida real** que la etapa
-ya no agota la memoria: el 23/10 la telemetría no llegó a correr porque su
-disparador es `minuto % 15 === 0` y las corridas de prueba caen en otros
-minutos.
+El riesgo era que la telemetría siguiera agotando los 128 MB del PHP CLI y
+matara el ciclo. **Se verificó en contra con el código desplegado**: la etapa de
+telemetría se dispara cuando `minuto % 15 === 0`, así que se corrió el ciclo a
+las **17:45 hora Argentina** (múltiplo de 15) contra el contenedor nuevo:
 
-Dos salidas posibles, en orden de preferencia:
+```json
+{"telemetry":{"companies":1,"integration_failures":0}, ...}
+EXIT=0
+```
 
-1. Subir el `memory_limit` del CLI en el `Dockerfile` (por ejemplo a 512M) para
-   que el margen no dependa del tamaño de la respuesta del proveedor.
-2. Si se quiere evitar subir el límite: procesar la respuesta de Wialon por
-   streaming en vez de `json_decode` completo.
+Contador de errores de memoria en el log del día: **1**, y es el de las 07:00
+con la imagen vieja. La corrida de las 17:45 **no generó ninguno**.
 
-Mientras tanto, el aviso a gerencia **no depende** de esa etapa: los informes y
-el despacho corren antes, y la clave de entrega idempotente impide duplicados.
+Conclusión: los commits `62efa792`, `9da74fc2`, `8b001757` y `8c882897` (todos
+en `main`) resuelven el problema, y el cron de las 07:00 va a completar el ciclo
+entero. El aviso a gerencia tampoco dependía de esa etapa: los informes y el
+despacho corren antes, y la clave de entrega idempotente impide duplicados.
+
+Si algún día la respuesta de Wialon vuelve a crecer, la salida es subir el
+`memory_limit` del CLI en el `Dockerfile` o procesar la respuesta por streaming
+en vez de `json_decode` completo.
 
 
 ## 10. Notas de entorno
