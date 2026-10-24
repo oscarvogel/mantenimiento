@@ -20,10 +20,14 @@ final class ClosePreventiveOrder
 
     /**
      * @param array<string, mixed> $input
+     * @param bool                 $registerReading When false the output reading stays
+     *                                              on the order without updating the
+     *                                              equipment snapshot. Used for historical
+     *                                              readings imported from documents.
      *
      * @return array<string, mixed>
      */
-    public function execute(ActorContext $actor, int $orderId, array $input): array
+    public function execute(ActorContext $actor, int $orderId, array $input, bool $registerReading = true): array
     {
         if ($actor->isSuperAdmin() || $actor->companyId() === null) {
             throw new DomainException('El cierre requiere una cuenta perteneciente a una empresa.');
@@ -67,6 +71,7 @@ final class ClosePreventiveOrder
             $orderId,
             $closure,
             $actor->userId(),
+            $registerReading,
         );
     }
 
