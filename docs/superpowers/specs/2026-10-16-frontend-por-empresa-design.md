@@ -1,6 +1,6 @@
 # Borrador de especificación: fronts independientes por empresa
 
-- **Estado:** borrador para revisión del usuario. No autoriza implementación.
+- **Estado:** aprobada para planificación; la implementación espera revisión y aprobación de su plan.
 - **Fecha:** 2026-10-16
 - **Alcance:** asignar a cada empresa una experiencia de frontend propia dentro del monolito existente, conservando el backend, los casos de uso y las reglas de seguridad compartidos.
 
@@ -234,13 +234,11 @@ Evidencia de UI incluye escritorio y móvil para cada perfil soportado. Capturas
 - El dashboard puede presentar indicadores diferentes si el backend ofrece un contrato de lectura autorizado; un perfil no inventa ni infiere datos ausentes.
 - La publicación mantiene un único release coordinado de aplicación y assets, con fallback para errores de carga.
 
-## 15. Decisiones a confirmar durante revisión
+## 15. Decisiones confirmadas
 
-1. Nombre y alcance inicial del perfil que conservará la experiencia actual: `base`, `vogel` o ambos (con `base` neutral y `vogel` asignado a la empresa actual).
-2. Si el primer perfil del cliente altera solo shell/dashboard o también páginas específicas de módulos en la primera entrega.
-3. Si el cliente necesita logo, paleta, nombre comercial o solo una composición distinta del dashboard en la primera entrega.
-4. Si el Superadministrador asignará perfiles desde una pantalla administrativa o mediante una operación interna auditada en la primera versión.
+1. **Confirmado:** el front actual queda registrado bajo `vogel`; `base` es el fallback de compatibilidad y no cambia la experiencia existente hasta que se asigne un perfil personalizado.
+2. **Confirmado:** la primera entrega del cliente personaliza shell y dashboard; las páginas restantes usan `base` hasta que se aprueben overrides concretos.
+3. **Confirmado:** el perfil puede incluir logo y paleta del cliente cuando entregue esos recursos. Se versionan como assets y estilos del perfil; no se habilita carga de código o CSS arbitrario.
+4. **Confirmado:** el Superadministrador asigna perfiles desde una pantalla administrativa y la operación queda auditada.
 
-Las respuestas no bloquean la arquitectura descrita; sí determinan el alcance de implementación inicial y la configuración que habrá que construir.
-
-Antes de programar, revisar este borrador, cerrar las decisiones de §15 y generar un plan de implementación por etapas.
+Antes de implementar el diseño visual del dashboard del cliente se debe recibir y aprobar su brief concreto: nombre/clave del perfil, logo y colores disponibles, orden de prioridad de indicadores, acciones principales y referencias de escritorio/móvil. La arquitectura de perfiles puede implementarse sin inventar esos elementos; si todavía faltan, el primer perfil queda preparado y conserva el fallback hasta recibirlos.
