@@ -14,7 +14,7 @@ final class ClosePreventiveOrderTest extends CIUnitTestCase
         $port = new class implements PreventiveOrderClosurePort {
             public array $arguments = [];
 
-            public function close(int $companyId, ?array $branchIds, int $orderId, array $closure, int $actorUserId): array
+            public function close(int $companyId, ?array $branchIds, int $orderId, array $closure, int $actorUserId, bool $registerReading = true): array
             {
                 $this->arguments = [$companyId, $branchIds, $orderId, $closure, $actorUserId];
 
@@ -54,12 +54,34 @@ final class ClosePreventiveOrderTest extends CIUnitTestCase
         $this->assertSame(9, $port->arguments[4]);
     }
 
+    public function testForwardsRegisterReadingFlagToAtomicPort(): void
+    {
+        $port = new class implements PreventiveOrderClosurePort {
+            public bool $registerReading = true;
+
+            public function close(int $companyId, ?array $branchIds, int $orderId, array $closure, int $actorUserId, bool $registerReading = true): array
+            {
+                $this->registerReading = $registerReading;
+
+                return ['numero' => 'OT-2026-000001'];
+            }
+        };
+        $actor = new ActorContext(9, 3, false, true, ['Administrador'], ['ordenes.cerrar'], []);
+
+        (new ClosePreventiveOrder($port))->execute($actor, 12, [
+            'trabajo_realizado' => 'Cambio de filtros',
+            'fecha_servicio' => '2026-08-08',
+        ], false);
+
+        self::assertFalse($port->registerReading);
+    }
+
     public function testDefaultsEmptyCostsToZero(): void
     {
         $port = new class implements PreventiveOrderClosurePort {
             public array $closure = [];
 
-            public function close(int $companyId, ?array $branchIds, int $orderId, array $closure, int $actorUserId): array
+            public function close(int $companyId, ?array $branchIds, int $orderId, array $closure, int $actorUserId, bool $registerReading = true): array
             {
                 $this->closure = $closure;
                 return ['numero' => 'OT-2026-000001'];
@@ -83,7 +105,7 @@ final class ClosePreventiveOrderTest extends CIUnitTestCase
     public function testRejectsNegativeCostBeforeCallingPort(): void
     {
         $port = new class implements PreventiveOrderClosurePort {
-            public function close(int $companyId, ?array $branchIds, int $orderId, array $closure, int $actorUserId): array
+            public function close(int $companyId, ?array $branchIds, int $orderId, array $closure, int $actorUserId, bool $registerReading = true): array
             {
                 self::fail('The port must not be called.');
             }
@@ -102,7 +124,7 @@ final class ClosePreventiveOrderTest extends CIUnitTestCase
     public function testRejectsCostWithMoreThanTwoDecimals(): void
     {
         $port = new class implements PreventiveOrderClosurePort {
-            public function close(int $companyId, ?array $branchIds, int $orderId, array $closure, int $actorUserId): array
+            public function close(int $companyId, ?array $branchIds, int $orderId, array $closure, int $actorUserId, bool $registerReading = true): array
             {
                 self::fail('The port must not be called.');
             }
@@ -122,7 +144,7 @@ final class ClosePreventiveOrderTest extends CIUnitTestCase
         $port = new class implements PreventiveOrderClosurePort {
             public array $closure = [];
 
-            public function close(int $companyId, ?array $branchIds, int $orderId, array $closure, int $actorUserId): array
+            public function close(int $companyId, ?array $branchIds, int $orderId, array $closure, int $actorUserId, bool $registerReading = true): array
             {
                 $this->closure = $closure;
                 return ['numero' => 'OT-2026-000001'];
@@ -144,7 +166,7 @@ final class ClosePreventiveOrderTest extends CIUnitTestCase
         $port = new class implements PreventiveOrderClosurePort {
             public array $closure = [];
 
-            public function close(int $companyId, ?array $branchIds, int $orderId, array $closure, int $actorUserId): array
+            public function close(int $companyId, ?array $branchIds, int $orderId, array $closure, int $actorUserId, bool $registerReading = true): array
             {
                 $this->closure = $closure;
                 return ['numero' => 'OT-2026-000001'];
@@ -165,7 +187,7 @@ final class ClosePreventiveOrderTest extends CIUnitTestCase
     public function testRejectsTaskClosureWithoutAnyPerformedTask(): void
     {
         $port = new class implements PreventiveOrderClosurePort {
-            public function close(int $companyId, ?array $branchIds, int $orderId, array $closure, int $actorUserId): array
+            public function close(int $companyId, ?array $branchIds, int $orderId, array $closure, int $actorUserId, bool $registerReading = true): array
             {
                 self::fail('The port must not be called.');
             }
@@ -184,7 +206,7 @@ final class ClosePreventiveOrderTest extends CIUnitTestCase
     public function testRejectsEmptyDetailForPendingTask(): void
     {
         $port = new class implements PreventiveOrderClosurePort {
-            public function close(int $companyId, ?array $branchIds, int $orderId, array $closure, int $actorUserId): array
+            public function close(int $companyId, ?array $branchIds, int $orderId, array $closure, int $actorUserId, bool $registerReading = true): array
             {
                 self::fail('The port must not be called.');
             }
@@ -204,7 +226,7 @@ final class ClosePreventiveOrderTest extends CIUnitTestCase
     public function testRejectsIncompleteClosureBeforeCallingPort(): void
     {
         $port = new class implements PreventiveOrderClosurePort {
-            public function close(int $companyId, ?array $branchIds, int $orderId, array $closure, int $actorUserId): array
+            public function close(int $companyId, ?array $branchIds, int $orderId, array $closure, int $actorUserId, bool $registerReading = true): array
             {
                 self::fail('The port must not be called.');
             }
@@ -220,7 +242,7 @@ final class ClosePreventiveOrderTest extends CIUnitTestCase
         $port = new class implements PreventiveOrderClosurePort {
             public array $closure = [];
 
-            public function close(int $companyId, ?array $branchIds, int $orderId, array $closure, int $actorUserId): array
+            public function close(int $companyId, ?array $branchIds, int $orderId, array $closure, int $actorUserId, bool $registerReading = true): array
             {
                 $this->closure = $closure;
                 return ['numero' => 'OT-2026-000001'];

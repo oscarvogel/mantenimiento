@@ -31,13 +31,13 @@ final class CodeIgniterPreventiveOrderClosure implements PreventiveOrderClosureP
     {
     }
 
-    public function close(int $companyId, ?array $branchIds, int $orderId, array $closure, int $actorUserId): array
+    public function close(int $companyId, ?array $branchIds, int $orderId, array $closure, int $actorUserId, bool $registerReading = true): array
     {
         $repository = new CodeIgniterWorkOrderRepository($this->database);
         $transaction = new CodeIgniterWorkOrderTransaction($this->database);
         $prepare = new PreparePreventiveWorkOrderClosure($repository, new SystemClock());
         $equipmentRepository = new CodeIgniterEquipmentRepository($this->database);
-        $registerReading = new RegisterReadingHandler(
+        $readingRecorder = new RegisterReadingHandler(
             $equipmentRepository,
             new CodeIgniterReadingRepository($this->database),
             new CodeIgniterUnitOfWork($this->database),
@@ -57,7 +57,7 @@ final class CodeIgniterPreventiveOrderClosure implements PreventiveOrderClosureP
             $branchIds ?? [],
         );
 
-        return $transaction->run(function () use ($companyId, $branchIds, $orderId, $closure, $actorUserId, $repository, $prepare, $registerReading, $recalculate, $actor): array {
+        return $transaction->run(function () use ($companyId, $branchIds, $orderId, $closure, $actorUserId, $repository, $prepare, $readingRecorder, $recalculate, $actor, $registerReading): array {
             $taskBuilder = $this->database->table('orden_tareas t')
                 ->select('t.id')->join('ordenes_trabajo o', 'o.id=t.orden_id AND o.empresa_id=t.empresa_id', 'inner')
                 ->where('t.empresa_id', $companyId)->where('t.orden_id', $orderId);
@@ -110,8 +110,8 @@ final class CodeIgniterPreventiveOrderClosure implements PreventiveOrderClosureP
             ));
             $serviceDate = new DateTimeImmutable((string) $closure['fecha_servicio'] . ' 12:00:00');
 
-            if ($prepared->outputKilometres !== null || $prepared->outputHours !== null) {
-                $registerReading->execute($actor, new RegisterReadingCommand(
+            if ($registerReading && ($prepared->outputKilometres !== null || $prepared->outputHours !== null)) {
+                $readingRecorder->execute($actor, new RegisterReadingCommand(
                     $prepared->workOrder->equipmentId(),
                     $serviceDate,
                     $prepared->outputKilometres,

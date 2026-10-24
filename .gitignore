@@ -102,3 +102,35 @@ $RECYCLE.BIN/
 /remote-manifest-before-*.json
 /tmp/
 /test_temp.log
+
+# =============================================================================
+# Datos reales y artefactos de analisis (NO COMMITEAR)
+# =============================================================================
+# Dump de PostgreSQL del ERP de transporte (pg_dump -Ft, 10 MB): contiene datos
+# reales de viajes, clientes y flota de la empresa. Se usa para analizar y
+# migrar, nunca se versiona.
+docs/*.backup
+# Dumps e inventarios de base: en este repo solo interesa el analisis escrito
+# en docs/, no el dump.
+docs/ddl_backup_*.sql
+docs/inventario_backup_*.sql
+docs/inventario_backup_*.csv
+# Archivos temporales de bloqueo de Office (~$archivo.docx).
+docs/~$*
+# Logs locales de la aplicacion.
+/logs/
+# Prototipos de previsualizacion de telemetria, fuera de frontend/src.
+frontend/TelemetryPreview.vue
+frontend/telemetry-preview.html
+frontend/telemetry-preview.js
+
+# =============================================================================
+# Documentos de trabajo en formato binario (NO COMMITEAR)
+# =============================================================================
+# El repositorio es publico. Los PDF, el DOCX del cliente y su extraccion de
+# texto pueden traer datos reales de la flota: patente, chasis y poliza de
+# seguro. Los PDF de trabajo se regeneran desde los .md versionados con
+# scripts/md2pdf.py; el material del cliente se guarda fuera del repo.
+docs/*.pdf
+docs/*.docx
+docs/_semi_texto_extraido.txt

@@ -89,8 +89,8 @@ configurados en staging; este checkout no despliega automáticamente.
 
 ## Convención de URLs: prefijo `mantenimiento` duplicado
 
-**Estado:** abierto, requiere decisión. No es un bug de una línea: es una
-contradicción de convención que afecta a todo el sistema.
+**Estado:** cerrado como diagnóstico el 24/10/2026. **No es un bug de producción.**
+Lo que queda abierto es una decisión de alcance, con el mecanismo medido abajo.
 
 ### Evidencia
 
@@ -102,61 +102,129 @@ y después llamando a `base_url()`:
 $base = base_url('mantenimiento/planes');
 ```
 
-Eso es correcto **únicamente si `app.baseURL` no incluye ya `/mantenimiento`**.
-Pero la URL canónica del sistema es
-`https://vogelconsultoria.com.ar/mantenimiento/` y el `.env` de esta máquina la
-fija así:
+Eso duplica el segmento **únicamente si `app.baseURL` ya incluye `/mantenimiento`**.
+Y lo incluye: en Ferozo es obligatorio, porque la autodeteccion desde
+`SCRIPT_NAME` devuelve la raiz del dominio en vez del subdirectorio
+(`docs/DEPLOY_FEROZO.md` §15).
 
-```dotenv
-app.baseURL = 'https://vogelconsultoria.com.ar/mantenimiento/'
-```
-
-Con esa configuración, `base_url('mantenimiento/planes')` produce
+Con esa configuracion, `base_url('mantenimiento/planes')` produce
 `https://vogelconsultoria.com.ar/mantenimiento/mantenimiento/planes`.
 
 Magnitud medida sobre el checkout actual:
 
-- **173** llamadas a `base_url('mantenimiento/...')` en `app/`, concentradas en
-  los payload de presentación (`OperationsPayload.php` con 42,
+- **211** llamadas a `base_url('mantenimiento/...')` en `app/`, en 47 archivos,
+  concentradas en los payload de presentacion (`OperationsPayload.php` con 42,
   `WorkOrderDocumentImports.php` con 15, `Employees.php` con 10).
-- **25** aserciones de path con `/mantenimiento/` en 8 archivos de test.
+- **32** redirects literales a `/mantenimiento/...` en 10 controladores.
 
-### Cómo se detectó
+### Por que la URL duplicada es la que funciona
 
-Al correr la suite PHPUnit en local fallan dos tests:
+La app se publica en `public_html/mantenimiento/` (estructura plana). Apache le
+entrega a CodeIgniter el path **relativo** a ese directorio, asi que la ruta que
+el router ve vuelve a llevar el prefijo:
 
 ```text
-QrTechnicalFailureReporterTest  esperado '/mantenimiento/equipos'
-                                real     '/mantenimiento/mantenimiento/equipos'
-PreventivePlansPayloadTest       esperado '/mantenimiento/planes/12/editar'
-                                real     '/mantenimiento/mantenimiento/planes/12/editar'
+URL pedida   https://vogelconsultoria.com.ar/mantenimiento/mantenimiento/equipos
+PATH_INFO    /mantenimiento/equipos
+ruta         grupo 'mantenimiento' -> equipos    ✓
 ```
 
-La causa **no es un defecto del código**: el `.env` local sobreescribe el
-`app.baseURL` que `phpunit.xml` define como `http://example.com/`. Se comprobó
-moviendo el `.env` a un lado y ejecutando los dos tests: ambos pasan. Es un
-artefacto del entorno local, y por eso la línea base honesta de la suite en esta
-máquina es verde, no "2 fallos preexistentes".
+La prueba independiente esta en la regresion del chatbot: la URL que responde es
+`/mantenimiento/mantenimiento/chatbot/conversaciones` y la simple da 404, porque
+la ruta vive en el grupo `mantenimiento/chatbot`.
 
-### Por qué importa igual
+Verificado ademas en el checkout, con `app.baseURL` con subdirectorio:
 
-`docs/ERRORES_CONOCIDOS.md` ya registra el 404 del chatbot como **regresión
-recurrente de deploy/base URL**, y la corrección aplicada fue hardcodear el
-prefijo doble en `ChatWidget.vue`. Eso tapó el síntoma en ese archivo y dejó sin
-resolver la causa: hoy la app tiene dos convenciones conviviendo, y cuál es la
-correcta depende de un `.env` que difiere entre local, CI y producción.
+| Peticion | routePath | Resultado |
+|---|---|---|
+| `/mantenimiento/equipos` | `mantenimiento/equipos` | resuelve |
+| `/equipos` | `equipos` | 404 |
+| `/mantenimiento/mantenimiento/equipos` | `mantenimiento/mantenimiento/equipos` | 404 |
 
-### Decisión pendiente
+La tercera fila no se rompe en produccion: el cliente de pruebas no reproduce
+el reescrito de Apache, que si recorta el directorio fisico.
 
-Definir una sola convención y aplicarla. Las dos candidatas:
+### Los redirects literales no son una segunda poblacion rota
 
-1. **`base_url()` sin prefijo** (`base_url('planes')`), asumiendo que `app.baseURL`
-   ya incluye el segmento. Es la opción que hace que los 25 paths de los tests
-   sean correctos y elimina el prefijo doble. Impacto: 173 call sites.
-2. **Mantener el prefijo en el código** y fijar `app.baseURL` sin `/mantenimiento`
-   en todos los entornos, incluidos producción y CI. Impacto: corregir el `.env`
-   de producción y los tests que asertan paths, y unificar el widget del chatbot.
+Los 32 `redirect()->to('/mantenimiento/...')` producen **la misma URL** que los
+`base_url('mantenimiento/...')`: CodeIgniter resuelve tambien contra el
+`baseURL` una ruta con barra inicial.
 
-Mientras no se decida, cualquier test que aserte un path y cualquier verificación
-HTTP contra `fasa_189` puede dar resultados contradictorios según el entorno.
+```text
+redirect()->to('/mantenimiento/equipos')  -> https://vogelconsultoria.com.ar/mantenimiento/mantenimiento/equipos
+redirect()->to('mantenimiento/equipos')    -> https://vogelconsultoria.com.ar/mantenimiento/mantenimiento/equipos
+base_url('mantenimiento/equipos')          -> https://vogelconsultoria.com.ar/mantenimiento/mantenimiento/equipos
+```
+
+No hay dos poblaciones que arreglar: hay una sola, y funciona.
+
+### Como se detecto
+
+Al correr la suite PHPUnit en local fallan cuatro tests:
+
+```text
+HomeRedirectTest              esperado '/inicio'
+                              real     '/mantenimiento/inicio'
+LoginRedirectTest             esperado '/inicio'
+                              real     '/mantenimiento/inicio'
+QrTechnicalFailureReporterTest  esperado '/mantenimiento/equipos'
+                              real     '/mantenimiento/mantenimiento/equipos'
+PreventivePlansPayloadTest     esperado '/mantenimiento/planes/12/editar'
+                              real     '/mantenimiento/mantenimiento/planes/12/editar'
+```
+
+La causa **no es un defecto del codigo**: el `.env` local sobreescribe el
+`app.baseURL` que `phpunit.xml` define como `http://example.com/`. Los cuatro
+tests escribian el path absoluto que corresponde a la condicion de CI, asi que
+el resultado de la suite dependia de la maquina.
+
+**Resuelto el 24/10/2026.** Los cuatro asserts ahora comparan contra
+`Tests\Support\Http\ApplicationUrl::path($ruta)`, que compone el path con el
+`baseURL` vigente. Verificado en las dos condiciones: con el `.env` local
+(baseURL con subdirectorio) y sin el (baseURL de CI). Los cuatro pasan en las
+dos, y la suite queda verde en cualquier maquina.
+
+### Por que importa igual
+
+`docs/ERRORES_CONOCIDOS.md` ya registra el 404 del chatbot como **regresion
+recurrente de deploy/base URL**, y la correccion aplicada fue hardcodear el
+prefijo doble en `ChatWidget.vue`. Eso tapo el sintoma en ese archivo y dejo sin
+resolver la causa: hoy la app tiene dos convenciones conviviendo, y cual es la
+correcta depende de un `.env` que difiere entre local, CI y produccion.
+
+Ademas, **las rutas agrupadas no tienen cobertura HTTP**: los tests de feature
+del repo solo piden rutas de primer nivel (`viajes`, `superadmin/...`). Nada
+verificaba que `/mantenimiento/equipos` resolviera, y el cliente de pruebas no
+reproduce el reescrito de Apache. Por eso la regresion pudo volver varias veces.
+
+**Resuelto el 24/10/2026.** Se agrego `tests/feature/RouteResolutionTest.php`,
+con siete tests que barren las rutas agrupadas, las URLs que la app construye,
+el catalogo de modulos, los enlaces, los formularios y los paths que el
+frontend arma por su cuenta. La cobertura HTTP de las rutas agrupadas ya
+existe; el detalle esta en
+`docs/BITACORA_2026-10-24_COBERTURA_HTTP_RUTAS.md`.
+
+### Decision pendiente
+
+Definir una sola convencion y aplicarla. Las dos candidatas, con lo que se sabe
+hoy:
+
+1. **`base_url()` sin prefijo** (`base_url('planes')`) y quitar el grupo
+   `mantenimiento` de las rutas, de forma que el prefijo lo ponga solo el
+   `baseURL`. Es la unica que deja **un** prefijo en la URL publica sin tocar el
+   despliegue. Impacto: 211 call sites, 32 redirects literales, el grupo de
+   rutas, las URLs del frontend y una regresion completa en staging. No es un
+   cambio trivial y ya rompio el circuito mas de una vez.
+2. **Mantener el prefijo en el codigo** y fijar `app.baseURL` sin
+   `/mantenimiento` en todos los entornos. **Con la topologia de despliegue
+   actual esto rompe las rutas agrupadas**: Apache recortaria el directorio
+   fisico y el router veria `equipos` en vez de `mantenimiento/equipos`. Solo
+   seria viable si la app pasa a servirse desde la raiz del webroot, lo que
+   ademas choca con el directorio fisico `mantenimiento` que ya causo el 403
+   documentado en el `.htaccess`.
+
+La opcion 1 es la recommendada, pero necesita una regresion completa en
+`fasa_189` antes de tocar produccion. Mientras no se decida, la opcion minima
+—que ya se aplico— es que ningun test dependa del entorno para pasar.
+
 

@@ -16,15 +16,18 @@ final class CodeIgniterTelemetryEquipmentUnitLinkManager implements TelemetryEqu
     private readonly BaseConnection $db;
     private readonly TelemetryCredentialStore $credentials;
     private readonly WialonUnitCatalogClient $wialon;
+    private readonly AutotracApiClient $autotrac;
 
     public function __construct(
         ?BaseConnection $db = null,
         ?TelemetryCredentialStore $credentials = null,
         ?WialonUnitCatalogClient $wialon = null,
+        ?AutotracApiClient $autotrac = null,
     ) {
         $this->db = $db ?? Database::connect();
         $this->credentials = $credentials ?? new CodeIgniterTelemetryIntegrationStore($this->db);
         $this->wialon = $wialon ?? new WialonUnitCatalogClient();
+        $this->autotrac = $autotrac ?? new AutotracApiClient();
     }
 
     public function snapshotFor(int $companyId, int $integrationId): array
@@ -94,7 +97,7 @@ final class CodeIgniterTelemetryEquipmentUnitLinkManager implements TelemetryEqu
         }
         foreach ($assignments as $externalUnitId) {
             if ($externalUnitId !== '__unlink__' && ! isset($availableUnits[$externalUnitId])) {
-                throw new DomainException('Una de las unidades ya no está disponible en Wialon. Actualizá el listado e intentá de nuevo.');
+                throw new DomainException('Una de las unidades ya no está disponible en el proveedor. Actualizá el listado e intentá de nuevo.');
             }
         }
 
@@ -183,8 +186,8 @@ final class CodeIgniterTelemetryEquipmentUnitLinkManager implements TelemetryEqu
         if ($integration === null) {
             throw new DomainException('No encontramos esa cuenta de telemetría en tu empresa.');
         }
-        if (strtolower((string) $integration['proveedor']) !== 'wialon') {
-            throw new DomainException('La vinculación de unidades todavía está disponible solo para Wialon.');
+        if (! in_array(strtolower((string) $integration['proveedor']), ['wialon', 'autotrac'], true)) {
+            throw new DomainException('La vinculación de unidades todavía no está disponible para este proveedor.');
         }
 
         return $integration;
@@ -194,6 +197,32 @@ final class CodeIgniterTelemetryEquipmentUnitLinkManager implements TelemetryEqu
     private function units(int $integrationId): array
     {
         $credentials = $this->credentials->credentials($integrationId);
+
+        $provider = strtolower((string) ($this->db->table('integraciones_telemetria')
+            ->select('proveedor')
+            ->where('id', $integrationId)
+            ->get()
+            ->getRowArray()['proveedor'] ?? ''));
+        if ($provider === 'autotrac') {
+            $config = json_decode($credentials['token'], true);
+            if (is_array($config) && isset($config['accountCode'])) {
+                $config['endpoint'] = $credentials['endpoint'];
+                $units = [];
+                foreach ($this->autotrac->vehicles($config) as $vehicle) {
+                    $id = $vehicle['Code'] ?? null;
+                    if (! is_numeric($id)) {
+                        continue;
+                    }
+                    $name = trim((string) ($vehicle['LicensePlate'] ?? $vehicle['Plate'] ?? $vehicle['Name'] ?? $id));
+                    $units[] = ['id' => (string) (int) $id, 'name' => $name];
+                }
+                if ($units === []) {
+                    throw new DomainException('La cuenta Autotrac conectó, pero no devolvió vehículos. Revisá sus permisos.');
+                }
+
+                return $units;
+            }
+        }
 
         return $this->wialon->listUnits($credentials['endpoint'], $credentials['token']);
     }

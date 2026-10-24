@@ -10,8 +10,11 @@ interface PreventiveOrderClosurePort
      * The adapter must close the order and its task, register the output reading,
      * update the equipment snapshot and recalculate the plan in one transaction.
      *
-     * @param list<int>|null       $branchIds Null means every branch in the company.
+     * @param list<int>|null       $branchIds       Null means every branch in the company.
      * @param array<string, mixed> $closure
+     * @param bool                 $registerReading When false the output reading is
+     *                                              kept on the order but the equipment
+     *                                              snapshot is not updated.
      *
      * @return array<string, mixed>
      */
@@ -21,5 +24,6 @@ interface PreventiveOrderClosurePort
         int $orderId,
         array $closure,
         int $actorUserId,
+        bool $registerReading = true,
     ): array;
 }

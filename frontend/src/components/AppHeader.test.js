@@ -47,7 +47,7 @@ describe('AppHeader', () => {
     expect(nav.find('a[aria-label="Viajes: Sin implementación aún"]').exists()).toBe(false)
   })
 
-  it('wraps the complete module menu instead of clipping modules off-screen', () => {
+  it('keeps every module reachable instead of clipping modules off-screen', () => {
     const modules = [
       ['platform-home', 'Inicio', '/inicio'],
       ['module-maintenance', 'Mantenimiento', '/dashboard'],
@@ -71,10 +71,16 @@ describe('AppHeader', () => {
 
     const nav = wrapper.get('nav[aria-label="Módulos de la plataforma"]')
     const list = nav.get('ul')
-    expect(list.classes()).toContain('flex-wrap')
+
+    // El menu no scrollea en horizontal: los modulos primarios van en linea y
+    // el resto queda en el desplegable "Modulos", de modo que ninguno se recorta.
     expect(list.classes().some((className) => className.includes('overflow-x-auto'))).toBe(false)
-    expect(nav.findAll('li')).toHaveLength(modules.length + 1)
-    expect(nav.text()).toContain('Inteligencia Artificial')
+    expect(nav.text()).toContain('Módulos')
+
+    // Todo modulo sigue siendo alcanzable, sea primario o del desplegable.
+    for (const module of modules) {
+      expect(nav.text()).toContain(module.label)
+    }
     expect(nav.text()).toContain('Sin implementación aún')
   })
 })

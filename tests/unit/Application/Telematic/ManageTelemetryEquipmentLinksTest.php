@@ -30,7 +30,7 @@ final class ManageTelemetryEquipmentLinksTest extends TestCase
             (new ManageTelemetryEquipmentLinks($manager))->save(8, 21, 34, [12 => 'UNIT-5', 13 => 'UNIT-5']);
             self::fail('Se esperaba DomainException.');
         } catch (DomainException $exception) {
-            self::assertSame('Cada unidad de Wialon se puede vincular a un solo equipo.', $exception->getMessage());
+            self::assertSame('Cada unidad del proveedor se puede vincular a un solo equipo.', $exception->getMessage());
         }
 
         self::assertNull($manager->saved);

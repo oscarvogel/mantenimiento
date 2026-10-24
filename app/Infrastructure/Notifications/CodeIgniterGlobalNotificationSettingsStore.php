@@ -51,7 +51,8 @@ final readonly class CodeIgniterGlobalNotificationSettingsStore implements Globa
             'whatsapp_api_key' => $this->decrypt((string) ($row['whatsapp_api_key_encrypted'] ?? '')),
             'whatsapp_api_key_present' => trim((string) ($row['whatsapp_api_key_encrypted'] ?? '')) !== '',
             'whatsapp_instance_id' => (string) ($row['whatsapp_instance_id'] ?? 'default'),
-            'whatsapp_pilot_enabled' => (int) ($row['whatsapp_pilot_enabled'] ?? 1) === 1,
+            'whatsapp_pilot_enabled' => self::forcesPilotMode()
+                || (int) ($row['whatsapp_pilot_enabled'] ?? 1) === 1,
             'whatsapp_pilot_phone' => (string) ($row['whatsapp_pilot_phone'] ?? ''),
             'updated_at' => (string) ($row['updated_at'] ?? ''),
             'source' => 'database',
@@ -168,10 +169,29 @@ final readonly class CodeIgniterGlobalNotificationSettingsStore implements Globa
             'whatsapp_api_key' => trim((string) env('whatsapp.apiKey', '')),
             'whatsapp_api_key_present' => trim((string) env('whatsapp.apiKey', '')) !== '',
             'whatsapp_instance_id' => trim((string) env('whatsapp.instanceId', 'default')),
-            'whatsapp_pilot_enabled' => filter_var(env('whatsapp.pilotEnabled', true), FILTER_VALIDATE_BOOL),
+            'whatsapp_pilot_enabled' => self::forcesPilotMode()
+                || filter_var(env('whatsapp.pilotEnabled', true), FILTER_VALIDATE_BOOL),
             'whatsapp_pilot_phone' => trim((string) env('whatsapp.pilotPhone', '')),
             'updated_at' => '',
             'source' => 'env',
         ];
+    }
+
+    /**
+     * Fuera de produccion el modo piloto no se puede apagar.
+     *
+     * Motivo (23/10/2026): staging estaba con la instancia real de WhatsApp y el piloto apagado,
+     * asi que le mando a los telefonos de los clientes un resumen con datos viejos y enlaces a un
+     * entorno de prueba. En un ambiente que no es produccion, el unico destino permitido es el
+     * telefono piloto, salvo que alguien lo cambie a mano desde el panel (decision visible).
+     *
+     * Solo aplica a los ambientes declarados de prueba: si `CI_ENVIRONMENT` no esta definido, no
+     * se toca nada, para que un despliegue de produccion mal configurado no quede mudo.
+     */
+    private static function forcesPilotMode(): bool
+    {
+        $environment = strtolower(trim((string) env('CI_ENVIRONMENT', '')));
+
+        return in_array($environment, ['development', 'testing'], true);
     }
 }
