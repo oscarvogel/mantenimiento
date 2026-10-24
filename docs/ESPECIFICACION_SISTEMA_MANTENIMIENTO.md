@@ -2,10 +2,12 @@
 
 ## Sistema de gestión de mantenimiento de equipos
 
-**Versión:** 1.1  
-**Fecha:** 5 de agosto de 2026  
+**Versión:** 1.2  
+**Fecha:** 6 de octubre de 2026  
 **Estado:** Documento base para desarrollo  
 **Objetivo:** definir la primera versión operativa del sistema y evitar interpretaciones ambiguas de alcance.
+
+> **Cambio de alcance 1.2 (6 de octubre de 2026).** Se incorporan tres dominios que la versión 1.1 excluía: neumáticos y gomería (secciones 5.12, 6.11, 11), viajes, combustible y gastos operativos (5.13, 6.12, 11) y facturación electrónica (5.14, 6.13, 11). El detalle del cambio, el mapa de contextos y los contratos entre ellos están en `PLAN_AMPLIACION_NEUMATICOS_VIAJES_FACTURACION.md`. La ampliación fue solicitada por el cliente.
 
 **Criterio de diseño:** la versión 1.1 incorpora el contraste realizado con sistemas CMMS y de mantenimiento de flotas consolidados, además de problemas de adopción informados por usuarios de mantenimiento. Se prioriza un circuito simple, móvil y trazable antes que una acumulación de funciones administrativas.
 
@@ -56,16 +58,17 @@ La solución debe admitir varias sucursales y aproximadamente cinco o seis usuar
 23. Comentarios y novedades cronológicas dentro de solicitudes y órdenes.
 24. Acceso rápido desde teléfono para informar una falla con fotografía.
 25. Identificación del equipo mediante código QR como facilidad de acceso, sin requerir una aplicación nativa.
+26. Neumáticos como activo con ciclo de vida propio, ubicación por posición, gomería y depósito.
+27. Viajes por unidad con odómetro, tramos, combustible y gastos, que actualizan la lectura del equipo de forma automática.
+28. Facturación electrónica de ventas con numeración transaccional, autorización ante ARCA e ingresos por unidad.
+29. Costo operativo por equipo y costo de mantenimiento por equipo, en la misma consulta.
 
 ### 2.2 Fuera de alcance
 
 No forman parte de esta primera versión:
 
 - Integración directa con Gestya u otros sistemas mediante API.
-- Inventario completo, depósitos y movimientos de stock.
-- Compras, cuentas corrientes o pagos a proveedores.
 - Gestión integral de choferes y documentación del personal.
-- Gestión de neumáticos por posición.
 - GPS, telemetría o captura automática de lecturas.
 - Alertas por WhatsApp.
 - Aplicación móvil nativa.
@@ -73,7 +76,12 @@ No forman parte de esta primera versión:
 - Portal para proveedores externos.
 - Presupuestos y autorizaciones de reparación avanzadas.
 - Costos presupuestados versus reales avanzados.
-- Funciones contables o de facturación.
+- Gestión de clientes como módulo propio, cuentas corrientes de proveedores, cobranzas, cheques, bancos y caja.
+- Nómina y liquidaciones a choferes.
+- Cuenta corriente por viaje y liquidación de haberes pendientes del chofer.
+- Integración con el sistema contable o de facturación que la empresa utilize fuera de este sistema.
+
+El inventario que sí se incluye es exclusivamente el de depósitos de neumáticos (5.12). El resto de inventario, compras y cuentas corrientes de proveedores siguen fuera de alcance.
 
 Estas funciones podrán desarrollarse posteriormente mediante presupuestos separados.
 
@@ -167,6 +175,9 @@ App
 ├── Proveedores y talleres
 ├── Importaciones
 ├── Alertas
+├── Neumáticos y gomería
+├── Viajes y costos operativos
+├── Facturación
 ├── Reportes
 └── Auditoría
 ```
@@ -557,6 +568,85 @@ flowchart TD
 
 ---
 
+### 5.12 Neumáticos y gomería
+
+| Tabla | Finalidad | Campos esenciales |
+|---|---|---|
+| `neumatico_marcas` | Catálogo de marcas de neumático. | id, nombre, activo |
+| `neumatico_modelos` | Modelos de neumático. | id, marca_id, nombre, activo |
+| `neumatico_tipos_cubierta` | Tipo de cubierta: lisa, taco y otros. | id, descripcion, activo |
+| `neumaticos_estados` | Ciclo de vida del neumático: nueva, 1/2 uso, en reparación, reparado, recapada, vulcanizada, descarte, baja definitiva, transferida, p/venta, vendida. | id, codigo, nombre, estado_origen, estado_destino, activo |
+| `neumaticos` | Neumático como activo, con identidad propia. | id, empresa_id, sucursal_id, numero, marca_id, modelo_id, tipo_cubierta_id, medida, anio_fabricacion, origen, estado_id, precio, observaciones, created_at, updated_at, deleted_at |
+| `neumatico_ubicaciones` | Posición actual del neumático montado en un equipo. | id, neumatico_id, equipo_id, lugar, lado, posicion, boton, fecha_colocacion, km_colocacion, activa |
+| `neumatico_colocaciones` | Historial de colocaciones y extracciones. | id, neumatico_id, equipo_id, fecha, km, tipo_movimiento, numero_planilla, origen, lectura_id, observaciones |
+| `depositos` | Depósito de neumáticos. | id, empresa_id, sucursal_id, nombre, ubicacion, activo |
+| `deposito_stock` | Existencias por posición de depósito. | id, deposito_id, neumatico_id, cantidad, actualizado_at |
+| `deposito_movimientos` | Entradas y salidas por planilla. | id, deposito_id, tipo, fecha, numero_planilla, neumatico_id, cantidad, usuario_id, observaciones |
+
+**Motivo del diseño:** el neumático es un activo con historial propio, independiente del equipo que lo monta, y su
+ciclo de vida no es el del vehículo. Por eso no se modela como parte de `equipos` sino como agregado aparte que se
+relaciona con `equipos` por ubicación.
+
+**La gomería no tiene tablas propias.** El envío a reparar, la recepción, la reparación y el recapado se registran
+como órdenes de trabajo con origen `GOMERIA`, tipo de servicio de gomería y proveedor. Esto mantiene un único
+historial por equipo y un único cálculo de costo, en lugar de dos universos separados.
+
+**El rendimiento** —kilómetros entre colocación y extracción— se calcula a partir de `neumatico_colocaciones` y se
+informa en la ficha del neumático y del equipo. Si las fechas o los kilometrajes no son válidos, se informa
+`sin datos suficientes` en lugar de un número.
+
+### 5.13 Viajes y costos operativos
+
+| Tabla | Finalidad | Campos esenciales |
+|---|---|---|
+| `viajes` | Viaje de una unidad, con odómetro de salida y de regreso. | id, empresa_id, sucursal_id, equipo_id, numero_viaje, fecha_salida, fecha_regreso, km_salida, km_regreso, empleado_id, porcentaje_chofer, estado, contabilizado, observaciones, created_at, updated_at |
+| `viaje_tramos` | Origen, destino, kilómetros e importe de cada tramo. | id, viaje_id, secuencia, origen, destino, kilometros, importe |
+| `viaje_combustible` | Cargas de combustible con odómetro al momento. | id, viaje_id, fecha, litros, importe, estacion, km_actual, observaciones |
+| `viaje_gastos` | Peajes, tasas y otros gastos del viaje. | id, viaje_id, fecha, concepto, importe, observaciones |
+| `viaje_lecturas` | Traza de la lectura generada por el viaje. | id, viaje_id, lectura_id, estado, motivo_rechazo |
+
+**Motivo del diseño:** el viaje es un evento operativo, no una intervención de mantenimiento. No tiene diagnóstico,
+tareas ni repuestos, por lo que no se modela como orden de trabajo. Su valor para este sistema es triple: aporta el
+odómetro, aporta el costo por kilómetro y explica la actividad real de cada unidad.
+
+**El cierre de un viaje genera una lectura.** Al registrar o cerrar un viaje con kilometraje de regreso informado y
+fecha de regreso válida, el sistema crea una `lecturas_equipo` con origen `VIAJE`. Esa lectura es lo que evita
+depender de la carga manual del odómetro.
+
+**Cálculos derivados:** consumo en litros por cien kilómetros, costo por kilómetro, y costo total por equipo en un
+período. Son consultas de lectura, no datos almacenados.
+
+### 5.14 Facturación electrónica
+
+| Tabla | Finalidad | Campos esenciales |
+|---|---|---|
+| `facturacion_referencias_contables` | Alícuotas de IVA. | id, nombre, porcentaje_iva, porcentaje_iva_no_inscripto, activo |
+| `facturacion_formas_pago` | Formas de pago. | id, descripcion, porcentaje, estado |
+| `facturacion_bonificaciones` | Bonificaciones por cliente. | id, descripcion, porcentaje, sobre_precio_base, activo |
+| `facturacion_retenciones` | Retenciones aplicadas, incluida DGR. | id, descripcion, porcentaje, aplica, activo |
+| `facturacion_numeraciones` | Numeración vigente por empresa, tipo y punto de venta. | id, empresa_id, tipo_comprobante, punto_venta, ultimo_numero, version, actualizado_at |
+| `facturacion_clientes` | Clientes del circuito de facturación. | id, empresa_id, codigo, nombre, cuit, email, condicion, limite_credito, saldo, activo |
+| `comprobantes_venta` | Encabezado del comprobante y su estado. | id, empresa_id, cliente_id, tipo_comprobante, punto_venta, numero, fecha, forma_pago_id, bonificacion_id, subtotal, bonificacion, iva, impuestos, dgr, total, estado, cae, cae_vencimiento, fecha_vencimiento_pago, observaciones, anulado, anulacion_motivo, created_at, updated_at |
+| `comprobantes_venta_detalle` | Renglones del comprobante. | id, comprobante_id, secuencia, descripcion, cantidad, precio_unitario, descuento, importe, equipo_id, origen_descripcion |
+| `comprobantes_venta_estados` | Historial de estados y consultas a ARCA. | id, comprobante_id, estado, fecha, detalle |
+
+**Motivo del diseño:** la numeración se separa del comprobante porque son cosas distintas. El comprobante es un
+hecho contable; la numeración es un recurso que se consume y puede bloquearse. Sin la tabla de numeración no se
+puede garantizar que dos emisiones simultáneas no obtengan el mismo número.
+
+**La autorización ante ARCA va por puerto.** El dominio y los casos de uso no conocen el protocolo ni el certificado:
+definen un puerto `ArcaGateway` con las operaciones de autorizar, consultar estado y anular, y el adaptador
+correspondiente vive en infraestructura. Esto permite probar el circuito completo de facturación sin llamar a la
+autoridad de aplicación.
+
+**Importes en `DECIMAL`, nunca en punto flotante.** En el módulo de facturación el redondeo es parte de la regla: los
+importes se guardan con dos decimales y los cálculos intermedios con cuatro, redondeando una sola vez al resultado.
+
+**Relación con el resto del sistema:** el renglón de detalle admite `equipo_id`, de modo que las líneas de concepto
+`UNIDAD: <patente>` se asocian al equipo y habilitan el informe de ingresos por unidad comparado con el costo de
+mantenimiento de esa misma unidad.
+
+
 ## 6. Pantallas requeridas
 
 ### 6.1 Acceso y navegación
@@ -675,6 +765,40 @@ Filtros:
 
 ---
 
+### 6.11 Neumáticos y gomería
+
+- Padrón de neumáticos con estado, ubicación, equipo y rendimiento.
+- Alta y edición de neumático.
+- Ficha del neumático con historial completo de colocaciones, extracciones y cambios de estado.
+- Mapa de posiciones del equipo: qué neumático ocupa cada lugar, lado y botón.
+- Depósito con existencias, ingresos y salidas por planilla.
+- Bandeja de inconsistencias: neumáticos con ciclo de vida incoherente o ubicación duplicada.
+- Rendimiento promedio por marca y modelo.
+- Apertura de orden de gomería desde la ficha del neumático.
+
+### 6.12 Viajes y costos operativos
+
+- Listado de viajes con filtros por empresa, sucursal, equipo, chofer y período.
+- Alta y cierre de viaje con odómetro de salida y de regreso.
+- Carga de tramos, combustible y gastos sobre un viaje.
+- Ficha de viaje con resumen de kilómetros, consumo y costo.
+- Indicador de consumo y costo por kilómetro por equipo.
+- Indicador de costo total por equipo en el período.
+- Bandeja de lecturas derivadas pendientes de revisión por incoherencia.
+- Exportación de viajes, consumos y costos a Excel o CSV.
+
+### 6.13 Facturación
+
+- Emisión de comprobante con cálculo de netos en vivo.
+- Listado de comprobantes con filtros por tipo, cliente, período y estado.
+- Ficha de comprobante con detalle, CAE, estado ante ARCA y reimpresión.
+- Numeración por empresa, tipo y punto de venta.
+- Catálogos de alícuotas, formas de pago, bonificaciones y retenciones.
+- Clientes del circuito de facturación con saldo y límite de crédito.
+- Informe de ingresos por unidad.
+- Consulta del estado de autorización de un comprobante.
+
+
 ## 7. Orden de trabajo impresa
 
 El PDF debe ser A4, legible en blanco y negro y contener:
@@ -760,6 +884,16 @@ flowchart TD
 15. Todo estado de espera debe incluir un motivo visible.
 16. La interfaz de campo debe minimizar campos y clics; la información administrativa se completa durante la revisión o cierre.
 17. Los indicadores no deben calcularse si faltan los datos mínimos; deben mostrar `sin datos suficientes` en lugar de inventar un valor.
+18. Un viaje solo genera lectura si tiene kilometraje de regreso informado y fecha de regreso válida.
+19. La lectura derivada de un viaje nunca puede hacer retroceder el odómetro vigente del equipo; si lo haría, se rechaza con motivo visible.
+20. Un viaje se conserva aunque su odómetro o sus fechas sean incoherentes: se registra la inconsistencia para revisión, no se descarta en silencio.
+21. Un neumático conserva su historial completo y no se borra físicamente: se da de baja.
+22. Un neumático tiene una sola ubicación activa.
+23. La fecha de extracción no puede ser anterior a la de colocación, y el rendimiento solo se informa si ambos kilometrajes son válidos.
+24. La gomería se registra siempre como orden de trabajo, nunca como un registro suelto.
+25. El número de comprobante es único por empresa, tipo y punto de venta, y se asigna dentro de una transacción.
+26. Un comprobante autorizado con CAE no se modifica ni se anula: se emite una nota de crédito.
+27. Un comprobante con CAE vencido no se reimprime sin autorización vigente.
 
 ---
 
@@ -794,6 +928,14 @@ flowchart TD
 10. Tiempo desde solicitud hasta revisión y desde aprobación hasta cierre.
 11. Motivos de espera y órdenes bloqueadas.
 12. Calidad de datos: órdenes cerradas sin causa codificada, sin tiempos válidos o con observaciones insuficientes.
+13. Consumo y costo por kilómetro por equipo en el período.
+14. Costo total por equipo: combustible, gastos de viaje, mantenimiento y repuestos.
+15. Ingresos por unidad, facturados y cobrados.
+16. Margen por unidad: ingresos facturados menos costo operativo y de mantenimiento.
+17. Rendimiento de neumáticos por marca, modelo y período de uso.
+18. Neumáticos con ciclo de vida incoherente, ubicación duplicada o sin rendimiento calculable.
+19. Viajes con odómetro o fechas inconsistentes.
+20. Comprobantes pendientes de autorización, anulados y con CAE por vencer.
 
 Indicadores como MTBF, MTTR o cumplimiento preventivo solo se mostrarán cuando su definición y datos mínimos estén validados. En la primera versión:
 
@@ -853,6 +995,22 @@ El programador deberá cubrir, al menos, los siguientes casos:
 24. Registro obligatorio de motivo al poner una orden en espera.
 25. Cálculo de detención solamente con fechas válidas.
 26. Prevención de una tormenta de notificaciones ante ejecuciones o cambios repetidos.
+27. Un viaje con km de regreso y fecha válida genera una lectura del equipo con origen `VIAJE`.
+28. Un viaje sin km de regreso no genera lectura.
+29. Un viaje con fecha de regreso anterior a la de salida se conserva y queda marcado para revisión.
+30. Un viaje cuyo odómetro haría retroceder el equipo se rechaza con motivo.
+31. El consumo en litros por cien kilómetros se calcula solo con km y litros válidos.
+32. El costo por kilómetro no se informa sin datos suficientes.
+33. Un neumático que cambia de estado por una transición no permitida es rechazado.
+34. Un neumático no puede tener dos ubicaciones activas.
+35. El rendimiento no se informa si la extracción es anterior a la colocación.
+36. La entrada al depósito no puede dejar existencias negativas.
+37. Una gomería crea una orden de trabajo con origen `GOMERIA` y queda en el historial del equipo.
+38. Dos emisiones concurrentes de comprobante no obtienen el mismo número.
+39. Un comprobante con CAE no puede modificarse ni anularse; requiere nota de crédito.
+40. Un comprobante con CAE vencido no se reimprime.
+41. El cálculo de netos con bonificación, IVA y retención redondea una sola vez al resultado.
+42. Los listados de viajes, consumos, cheques y comprobantes respetan empresa y sucursal.
 
 ---
 
@@ -915,6 +1073,29 @@ La primera versión se considerará entregada cuando:
 - Reportes y exportaciones.
 - Auditoría, pruebas, documentación y despliegue.
 
+### Etapa 6 - Viajes y costos operativos
+
+- Migración de flota, choferes y odómetro.
+- Viajes con tramos, combustible y gastos.
+- Cierre de viaje que genera lectura del equipo.
+- Consumo y costo por kilómetro.
+
+### Etapa 7 - Neumáticos y gomería
+
+- Padrón, ciclo de vida y ubicación.
+- Depósito con ingresos y salidas.
+- Gomería como orden de trabajo.
+- Rendimiento por neumático.
+
+### Etapa 8 - Facturación electrónica
+
+- Comprobantes, detalle y cálculo de netos.
+- Numeración transaccional.
+- Puerto de autorización ante ARCA e integración con el certificado.
+- Ingresos por unidad y margen por unidad.
+
+Las etapas 6 a 8 dependen de datos que no se pueden deducir del sistema existente. Antes de arrancarlas deben confirmarse: la situación del certificado de ARCA, el alcance de cobranzas, el padrón de flota con su ficha técnica, las sucursales reales y la fuente actual del historial de mantenimiento. El detalle está en `PLAN_AMPLIACION_NEUMATICOS_VIAJES_FACTURACION.md`.
+
 Plazo comercial estimado para la primera versión: **8 a 10 semanas**, sujeto a disponibilidad de datos, validaciones y devoluciones del cliente.
 
 ```mermaid
@@ -923,6 +1104,9 @@ flowchart LR
     E2 --> E3["3. Planes"]
     E3 --> E4["4. Órdenes"]
     E4 --> E5["5. Alertas y cierre"]
+    E5 --> E6["6. Viajes"]
+    E6 --> E7["7. Neumáticos"]
+    E7 --> E8["8. Facturación"]
 ```
 
 ---
