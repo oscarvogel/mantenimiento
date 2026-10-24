@@ -28,4 +28,29 @@ final class ApplicationUrl
 
         return rtrim($base, '/') . '/' . ltrim($ruta, '/');
     }
+
+    /**
+     * Ruta que ve el router a partir de una URL generada por la app.
+     *
+     * En el despliegue real, Apache recorta el directorio fisico donde vive la
+     * app (`public_html/mantenimiento/`) y le entrega a CodeIgniter el path
+     * relativo. Eso es lo que emula este metodo: si no se emulara, una URL
+     * valida en produccion pareceria rota en el cliente de pruebas, y al
+     * reves.
+     */
+    public static function routePath(string $url): string
+    {
+        $path = parse_url($url, PHP_URL_PATH);
+        $path = is_string($path) ? $path : '/';
+
+        $base = parse_url(base_url(''), PHP_URL_PATH);
+        $base = is_string($base) ? $base : '/';
+
+        $base = rtrim($base, '/');
+        if ($base !== '' && str_starts_with($path, $base)) {
+            $path = substr($path, strlen($base));
+        }
+
+        return '/' . ltrim($path, '/');
+    }
 }
