@@ -1,10 +1,4 @@
 {
-  "../../../frontend/node_modules/gsap/index.js": {
-    "file": "assets/gsap-C-UGJFrr.js",
-    "name": "gsap",
-    "src": "../../../frontend/node_modules/gsap/index.js",
-    "isDynamicEntry": true
-  },
   "_admin-6j_8bc_N.js": {
     "file": "assets/admin-6j_8bc_N.js",
     "name": "admin",
@@ -45,6 +39,12 @@
     "css": [
       "assets/vendor-BTrKGrB8.css"
     ]
+  },
+  "node_modules/gsap/index.js": {
+    "file": "assets/gsap-C-UGJFrr.js",
+    "name": "gsap",
+    "src": "node_modules/gsap/index.js",
+    "isDynamicEntry": true
   },
   "src/assets/platform/ai-card.jpg": {
     "file": "assets/ai-card-Bif2XNNK.jpg",
@@ -87,7 +87,7 @@
     "src": "src/assets/platform/trips-card.jpg"
   },
   "src/main.js": {
-    "file": "assets/main-D0HRDKAi.js",
+    "file": "assets/main-nEZar5hv.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
@@ -100,7 +100,7 @@
     "dynamicImports": [
       "_chatbot-Cu_HRMqS.js",
       "src/pages/operations/components/FleetTelemetryMap.vue",
-      "../../../frontend/node_modules/gsap/index.js",
+      "node_modules/gsap/index.js",
       "src/profiles/platform/profile.js",
       "src/profiles/vogel/profile.js",
       "src/profiles/cliente_piloto/profile.js"
@@ -135,7 +135,7 @@
     ]
   },
   "src/profiles/cliente_piloto/profile.js": {
-    "file": "assets/profile-Csv6YlIt.js",
+    "file": "assets/profile-BD2btwiw.js",
     "name": "profile",
     "src": "src/profiles/cliente_piloto/profile.js",
     "isDynamicEntry": true,
@@ -151,7 +151,7 @@
     ]
   },
   "src/profiles/platform/profile.js": {
-    "file": "assets/profile-CMP4204P.js",
+    "file": "assets/profile-Cm_yHz4R.js",
     "name": "profile",
     "src": "src/profiles/platform/profile.js",
     "isDynamicEntry": true,
@@ -164,7 +164,7 @@
     ]
   },
   "src/profiles/vogel/profile.js": {
-    "file": "assets/profile-vIvUVUNA.js",
+    "file": "assets/profile-CZ53zLxT.js",
     "name": "profile",
     "src": "src/profiles/vogel/profile.js",
     "isDynamicEntry": true,
