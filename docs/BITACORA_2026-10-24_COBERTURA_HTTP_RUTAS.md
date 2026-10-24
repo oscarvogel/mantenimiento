@@ -127,6 +127,30 @@ Verificado en las dos condiciones de `app.baseURL`:
 | Con `.env` local (baseURL con subdirectorio) | 7/7, 391 aserciones |
 | Sin `.env` (condición de CI) | 7/7, 391 aserciones |
 
+## Publicación
+
+- **PR:** [#492](https://github.com/oscarvogel/mantenimiento/pull/492) — mergeado a
+  `main` el 24/10/2026 con el commit de merge `f8d91add`.
+- **CI:** `test` en verde en el PR y en `main` (lint de `app/` y `tests/`,
+  PHPUnit, tests de frontend y `verify:build-sync`).
+- **Staging:** **no se desplegó**, por dos razones concretas:
+  1. El cambio es de pruebas y documentación: no toca el runtime. La imagen de
+     staging se construye con `composer install --no-dev`, así que PHPUnit no
+     corre dentro del contenedor y un rebuild no agregaría verificación
+     funcional — la validación real es la CI.
+  2. El acceso por SSH a `fasa_189` no estaba disponible desde la PC donde se
+     hizo el merge (la red local había cambiado y no había ruta a
+     `192.168.0.189`). El deploy de staging exige SSH porque el PAT de la API
+     de Coolify se crea dentro del contenedor `coolify` y la API escucha en
+     `127.0.0.1:8080` del host.
+
+  Staging sigue sirviendo el deploy anterior (`93f1e38e`), que ya contiene
+  prácticamente toda la rama: de los 19 commits de este PR, los dos últimos
+  son precisamente los de esta cobertura.
+
+- **Producción:** no se tocó. Este merge no la despliega: en este repositorio
+  no hay workflow de deploy y la publicación a Ferozo es manual, por FTPS.
+
 ## Pendientes
 
 - La **unificación de la convención de URLs** sigue abierta y es una decisión
