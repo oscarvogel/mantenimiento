@@ -450,19 +450,25 @@ Ninguna se puede deducir de los datos. Las tres primeras cambian el tamaño del 
 
 ## 9. Fases
 
-### Fase 0 — Alcance y contratos (esta)
+### Fase 0 — Alcance y contratos
 
 Sin código de implementación.
 
 - [x] Análisis de los dos backups
 - [x] Registro del cambio de alcance
 - [x] Mapa de contextos y contratos
-- [ ] **Resolver D1 a D8 con el cliente**
-- [ ] Actualizar `ESPECIFICACION_SISTEMA_MANTENIMIENTO.md` (§2.2, §3.3, §5, §6, §11, §13, §15)
-- [ ] Actualizar `AGENTS.md`: agregar los tres contextos con su agente propietario
-- [ ] Escribir los contratos (`Puerto` interfaces) antes de las implementaciones
+- [x] Actualizar `ESPECIFICACION_SISTEMA_MANTENIMIENTO.md` (§2.2, §3.3, §5, §6, §11, §13, §15) — cerrado en la versión 1.3
+- [x] Actualizar `AGENTS.md`: los tres contextos quedan con su agente propietario
+- [x] Escribir los contratos (`Puerto` interfaces) antes de las implementaciones — registro en `CONTRATOS_ENTRE_CONTEXTOS.md`
+- [ ] **Resolver D1 a D8 con el cliente** — D3 cerrada; las demás están en `DECISIONES_PENDIENTES_FASE_0.md`
 
 **Cierra cuando** la especificación está actualizada y D1 a D8 tienen respuesta.
+
+> **Estado al 24/10/2026.** Todo lo que no dependía de una respuesta del cliente está cerrado: la especificación
+> quedó en versión 1.3, `AGENTS.md` ya tiene los tres contextos con su agente propietario, y se escribieron 5
+> interfaces de contrato nuevas más el registro de 3 que ya existían, con su firma y su estado. Queda pendiente
+> únicamente la respuesta del cliente: D1, D2, D4, D5, D6, D7 y D8. Las preguntas listas para mandar están en
+> `DECISIONES_PENDIENTES_FASE_0.md` §4.
 
 ### Fase 1 — Datos base
 

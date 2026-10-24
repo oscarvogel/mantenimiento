@@ -2,10 +2,16 @@
 
 ## Sistema de gestión de mantenimiento de equipos
 
-**Versión:** 1.2  
-**Fecha:** 6 de octubre de 2026  
+**Versión:** 1.3  
+**Fecha:** 24 de octubre de 2026  
 **Estado:** Documento base para desarrollo  
 **Objetivo:** definir la primera versión operativa del sistema y evitar interpretaciones ambiguas de alcance.
+
+> **Cambio de alcance 1.3 (24 de octubre de 2026).** Se reconcilia la especificación con el módulo de Viajes ya
+> implementado. 5.13 pasa a describir los dos modelos que conviven —el modelo operativo y el historial importado—
+> con sus tablas reales; 2.2 saca de "fuera de alcance" la cuenta corriente por viaje y la liquidación del chofer, que
+> ya existen, y deja solo la aprobación y el pago; 15 marca el estado real de las etapas. El detalle está en
+> `CONTRATOS_ENTRE_CONTEXTOS.md` y `DECISIONES_PENDIENTES_FASE_0.md`.
 
 > **Cambio de alcance 1.2 (6 de octubre de 2026).** Se incorporan tres dominios que la versión 1.1 excluía: neumáticos y gomería (secciones 5.12, 6.11, 11), viajes, combustible y gastos operativos (5.13, 6.12, 11) y facturación electrónica (5.14, 6.13, 11). El detalle del cambio, el mapa de contextos y los contratos entre ellos están en `PLAN_AMPLIACION_NEUMATICOS_VIAJES_FACTURACION.md`. La ampliación fue solicitada por el cliente.
 
@@ -76,10 +82,11 @@ No forman parte de esta primera versión:
 - Portal para proveedores externos.
 - Presupuestos y autorizaciones de reparación avanzadas.
 - Costos presupuestados versus reales avanzados.
-- Gestión de clientes como módulo propio, cuentas corrientes de proveedores, cobranzas, cheques, bancos y caja.
-- Nómina y liquidaciones a choferes.
-- Cuenta corriente por viaje y liquidación de haberes pendientes del chofer.
-- Integración con el sistema contable o de facturación que la empresa utilize fuera de este sistema.
+- Gestión comercial de clientes: existe el padrón canónico que comparten los viajes y las importaciones, pero no hay módulo de clientes con saldo, límite de crédito ni cobranzas.
+- Cuentas corrientes de proveedores, cobranzas, cheques, bancos y caja.
+- Nómina de choferes y pagos bancarios.
+- Aprobación y pago de liquidaciones de chofer: el importe a liquidar se calcula, se muestra y queda guardado al cerrar el viaje, pero no se aprueba ni se paga desde el sistema.
+- Integración con un sistema contable o de facturación externo al sistema. La facturación electrónica de 5.14 es la del sistema propio.
 
 El inventario que sí se incluye es exclusivamente el de depósitos de neumáticos (5.12). El resto de inventario, compras y cuentas corrientes de proveedores siguen fuera de alcance.
 
@@ -597,24 +604,85 @@ informa en la ficha del neumático y del equipo. Si las fechas o los kilometraje
 
 ### 5.13 Viajes y costos operativos
 
-| Tabla | Finalidad | Campos esenciales |
-|---|---|---|
-| `viajes` | Viaje de una unidad, con odómetro de salida y de regreso. | id, empresa_id, sucursal_id, equipo_id, numero_viaje, fecha_salida, fecha_regreso, km_salida, km_regreso, empleado_id, porcentaje_chofer, estado, contabilizado, observaciones, created_at, updated_at |
-| `viaje_tramos` | Origen, destino, kilómetros e importe de cada tramo. | id, viaje_id, secuencia, origen, destino, kilometros, importe |
-| `viaje_combustible` | Cargas de combustible con odómetro al momento. | id, viaje_id, fecha, litros, importe, estacion, km_actual, observaciones |
-| `viaje_gastos` | Peajes, tasas y otros gastos del viaje. | id, viaje_id, fecha, concepto, importe, observaciones |
-| `viaje_lecturas` | Traza de la lectura generada por el viaje. | id, viaje_id, lectura_id, estado, motivo_rechazo |
-
 **Motivo del diseño:** el viaje es un evento operativo, no una intervención de mantenimiento. No tiene diagnóstico,
 tareas ni repuestos, por lo que no se modela como orden de trabajo. Su valor para este sistema es triple: aporta el
 odómetro, aporta el costo por kilómetro y explica la actividad real de cada unidad.
 
-**El cierre de un viaje genera una lectura.** Al registrar o cerrar un viaje con kilometraje de regreso informado y
-fecha de regreso válida, el sistema crea una `lecturas_equipo` con origen `VIAJE`. Esa lectura es lo que evita
-depender de la carga manual del odómetro.
+**Conviven dos modelos y no se mezclan.** Hay dos conjuntos de tablas de viaje:
 
-**Cálculos derivados:** consumo en litros por cien kilómetros, costo por kilómetro, y costo total por equipo en un
-período. Son consultas de lectura, no datos almacenados.
+- El **modelo operativo**, que es el circuito vivo: se usa todos los días, se escribe y se calcula.
+- El **historial importado**, que es la foto de lo que había en el ERP de transporte: se consulta y no se recalcula.
+
+Nunca se recalcula un viaje importado ni se le agrega un tramo operativo.
+
+#### 5.13.1 Modelo operativo
+
+| Tabla | Finalidad | Campos esenciales |
+|---|---|---|
+| `viajes_operativos` | Viaje del circuito vivo, con número correlativo por empresa y estado. | id, empresa_id, sucursal_id, numero, estado, fecha_salida_planificada, fecha_regreso_planificada, fecha_salida_real, fecha_regreso_real, km_salida, km_regreso, observaciones, motivo_cancelacion, created_at, updated_at |
+| `viajes_operativos_numeracion` | Último número entregado por empresa. Se bloquea con `FOR UPDATE` al reservar. | empresa_id, ultimo_numero, updated_at |
+| `viaje_operativo_asignaciones` | Tractor, acoplado y choferes asignados, con su vigencia. | id, viaje_id, empresa_id, sucursal_id, rol, equipo_id, empleado_id, desde, hasta, motivo, created_at, porcentaje_liquidacion |
+| `viaje_operativo_paradas` | Recorrido ordenado: carga, descarga e hitos. | id, viaje_id, empresa_id, sucursal_id, orden, tipo, cliente_id, domicilio_id, ubicacion, fecha_estimada, fecha_real, descripcion_carga, cantidad, unidad_carga_id, observaciones |
+| `viaje_operativo_tramos` | Tramo comercial, con los dos fletes. | id, viaje_id, empresa_id, sucursal_id, orden, cliente_id, origen, destino, km, moneda, cotizacion, flete_facturacion, flete_facturacion_ars, flete_liquidacion, flete_liquidacion_ars, observaciones |
+| `viaje_operativo_combustible` | Carga de combustible del viaje, imputable a un tramo. | id, viaje_id, tramo_id, empresa_id, sucursal_id, fecha, litros, importe, moneda, cotizacion, importe_ars, kilometraje, estacion, comprobante, observaciones |
+| `viaje_operativo_gastos` | Gasto del viaje, imputable a un tramo, con su pagador. | id, viaje_id, tramo_id, empresa_id, sucursal_id, categoria_id, fecha, importe, moneda, cotizacion, importe_ars, medio_pago_id, pagado_de_caja, pagado_por, comprobante, observaciones |
+| `viaje_operativo_caja_movimientos` | Caja del chofer: anticipo, retiro y devolución. | id, viaje_id, empresa_id, sucursal_id, tipo, fecha, importe, moneda, cotizacion, importe_ars, observaciones |
+| `viaje_operativo_otros_haberes` | Otros haberes del viaje, con su empleado. | id, viaje_id, empresa_id, sucursal_id, empleado_id, fecha, concepto, importe, moneda, cotizacion, importe_ars, observaciones |
+
+**Los estados del viaje** son `PLANIFICADO`, `EN_CURSO`, `FINALIZADO` y `CANCELADO`. La cancelación sale de
+`PLANIFICADO` y exige motivo.
+
+**Dos fletes por tramo.** El `flete_facturacion` es lo que se le cobra al cliente y es el ingreso del viaje. El
+`flete_liquidacion` es la base sobre la que se calcula el porcentaje del chofer. No tienen por qué coincidir.
+
+**El combustible y el gasto pueden imputarse a un tramo.** Si se imputan, suman al margen de ese tramo. Si no,
+suman al margen del viaje y se muestran aparte como **costos sin asignar**: no se prorratean solos.
+
+**La caja no es costo del viaje.** Los adelantos, retiros y devoluciones son movimientos entre la empresa y el
+chofer: afectan la liquidación, no el margen operativo.
+
+#### 5.13.2 Historial importado, solo lectura
+
+| Tabla legacy | Tabla del sistema | Contenido |
+|---|---|---|
+| `t05_viajes` | `viajes` | Encabezado del viaje, con su clave de origen `(empresa, cuit, dominio, numero_viaje)`. |
+| `t06_origenes_destinos_por_viaje` | `viaje_tramos` | Tramos con origen, destino, kilómetros e importe. |
+| `t07_cargas_combustible_por_viaje` | `viaje_combustible` | Combustible con su odómetro. |
+| `t08_gastos_por_viaje` | `viaje_gastos` | Gastos del viaje. |
+| `t11_cuenta_corriente_x_viaje` | `viaje_cuenta_corriente` | Cuenta corriente legacy, **preservada tal cual**: columnas, monedas y cotización originales, sin saldos derivados. |
+| `t12_cuenta_corriente_origenes_destinos_por_viaje` | `viaje_cuenta_corriente_tramos` | Ídem, por tramo. |
+| `t13_otros_haberes_por_viaje` | `viaje_otros_haberes` | Otros haberes legacy. |
+
+**La cuenta corriente legacy no es el libro operativo.** Se importa para poder consultar la historia, no para
+liquidar. El libro del circuito vivo es `viaje_operativo_caja_movimientos`.
+
+#### 5.13.3 Facturación histórica
+
+| Tabla | Finalidad |
+|---|---|
+| `viajes_facturas` | Comprobante importado del ERP, con su cabecera. |
+| `viaje_factura_lineas` | Renglones del comprobante. |
+| `viaje_factura_viaje` | Vínculo entre factura y viaje, con su confianza: `ALTA`, `MEDIA` o `BAJA`. |
+
+El ERP legacy no trae una clave directa entre factura y viaje: el vínculo se resuelve por unidad, fecha, ruta e
+importe, y queda registrado con su confianza para que una persona lo revise. Solo los vínculos `AUTO` y
+`CONFIRMADO` entran en el análisis de rentabilidad.
+
+#### 5.13.4 El cierre de un viaje genera una lectura
+
+Al registrar o cerrar un viaje con kilometraje de regreso informado y fecha de regreso válida, el sistema crea una
+`lecturas_equipo` con origen `VIAJE`. Esa lectura es lo que evita depender de la carga manual del odómetro.
+
+El cierre calcula y guarda los snapshots de facturación, costo, comisión, liquidación y margen.
+
+#### 5.13.5 Cálculos derivados
+
+Consumo en litros por cien kilómetros, costo por kilómetro, costo total por equipo en un período, comisión del
+chofer por tramo y margen por viaje y por tramo. Son consultas, no datos almacenados, salvo los snapshots del
+cierre.
+
+Cuando falta un dato mínimo para calcular un indicador, se informa `sin datos suficientes`: no se inventa un
+número.
 
 ### 5.14 Facturación electrónica
 
@@ -1042,6 +1110,8 @@ La primera versión se considerará entregada cuando:
 
 ## 15. Etapas sugeridas de desarrollo
 
+Las casillas reflejan el estado al 24 de octubre de 2026.
+
 ### Etapa 1 — Base del sistema
 
 - Proyecto, configuración y autenticación.
@@ -1075,10 +1145,16 @@ La primera versión se considerará entregada cuando:
 
 ### Etapa 6 - Viajes y costos operativos
 
-- Migración de flota, choferes y odómetro.
-- Viajes con tramos, combustible y gastos.
-- Cierre de viaje que genera lectura del equipo.
-- Consumo y costo por kilómetro.
+- [ ] Migración de flota, choferes y odómetro. Bloqueada por D5, D6 y D7.
+- [x] Viajes con tramos, combustible y gastos.
+- [x] Cierre de viaje que genera lectura del equipo.
+- [x] Consumo y costo por kilómetro.
+- [x] Importación del historial y de la facturación histórica, con análisis de rentabilidad.
+- [ ] Aprobación y pago de liquidaciones del chofer.
+
+El detalle del circuito económico —tramos con dos fletes, imputación de costos por tramo, cuenta corriente y otros
+haberes, liquidación del chofer y margen por viaje y por tramo— está en
+`ESPECIFICACION_VIAJES_CIRCUITO_LIQUIDACION.md`.
 
 ### Etapa 7 - Neumáticos y gomería
 

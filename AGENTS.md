@@ -67,7 +67,7 @@ No agregar CQRS, Event Sourcing, brokers ni eventos de dominio por defecto. Empe
 
 ## Fuentes de verdad y prioridades
 
-1. `docs/ESPECIFICACION_SISTEMA_MANTENIMIENTO.md`: alcance, lenguaje ubicuo, reglas y 26 pruebas críticas.
+1. `docs/ESPECIFICACION_SISTEMA_MANTENIMIENTO.md`: alcance, lenguaje ubicuo, reglas y 42 pruebas obligatorias.
 2. Decisiones explícitas vigentes del usuario/cliente.
 3. Migraciones y código ejecutable: estado realmente implementado.
 4. `docs/PENDING_REFACTOR_MULTITENANCY.md`: propuesta pendiente, no autorización para implementarla.
@@ -151,14 +151,39 @@ Cada tarea debe tener un agente propietario. Si cruza contextos, dividir el trab
 - Si faltan datos mínimos, informar `sin datos suficientes`; no inventar métricas.
 - Auditoría es append-only para operaciones sensibles y conserva antes/después cuando corresponda.
 
-### 12. Plataforma y entrega
+### 12. Viajes y costos operativos
+
+- Lenguaje: Viaje, Tramo, Flete de facturación, Flete de liquidación, Combustible, Gasto, Cuenta corriente, Otros haberes, Liquidación y Margen.
+- Código actual: `app/Domain/Trips`, `app/Application/Trips`, `app/Application/TripImports`, `app/Application/TripMasters`, `app/Infrastructure/Trips` y las migraciones `2026-10-13` a `2026-10-23`.
+- Conviven dos modelos que no se mezclan: el **operativo**, que se escribe y se calcula, y el **historial importado** del ERP de transporte, que es solo lectura. El circuito completo está en `docs/ESPECIFICACION_VIAJES_CIRCUITO_LIQUIDACION.md`.
+- El cierre del viaje genera una lectura del equipo con origen `VIAJE`. Es el contrato que le da valor al módulo.
+- Los adelantos del chofer son movimientos de cuenta corriente: afectan la liquidación, no el margen del viaje.
+- Falta el ciclo de aprobación y pago de liquidaciones, con su permiso `viajes.liquidar`.
+
+### 13. Neumáticos y gomería
+
+- Lenguaje: Neumático, Marca, Modelo, Estado, Ubicación, Colocación, Depósito y Gomería.
+- Es dueño del padrón y del ciclo de vida del neumático, que es un activo con historial propio, independiente del equipo que lo monta.
+- **La gomería no es un módulo paralelo:** se apoya en `WorkOrders` con origen `GOMERIA`. Duplicar el ciclo de vida de una orden sería el error más caro del proyecto.
+- Contratos ya escritos en `app/Application/Neumaticos/Port`: `GomeriaOrderLauncher`, `NeumaticReadingRecorder` y `PreventiveNeumaticEventPublisher`. Falta sus adaptadores.
+- Bloqueado por D7 (padrón definitivo de flota).
+
+### 14. Facturación electrónica
+
+- Lenguaje: Comprobante, Detalle, Numeración, Cliente, Forma de pago, Bonificación, Retención, CAE y Netos.
+- Es dueño de la numeración por empresa, tipo y punto de venta, y de la autorización ante ARCA.
+- **La autorización va por puerto:** `app/Application/Facturacion/Port/ArcaGateway`. El dominio y los casos de uso no conocen el protocolo ni el certificado.
+- Un rechazo de ARCA es un resultado, no una excepción: se muestra al operador y queda en la traza.
+- Bloqueado por D1 (certificado de ARCA) y D4 (clientes reales).
+
+### 15. Plataforma y entrega
 
 - Es dueño de CI4, configuración, MariaDB/MySQL, filesystem privado, PDF, Bootstrap, Composer, Ferozo y observabilidad.
 - Respeta el layout plano de producción, donde la raíz es pública. `app/`, `tests/`, `writable/`, `.env` y `vendor/` deben permanecer protegidos por servidor.
 - La URL canónica es `https://vogelconsultoria.com.ar/mantenimiento/`; el subdominio fue descartado.
 - No expone credenciales, adjuntos ni trazas.
 
-### 13. Calidad y pruebas
+### 16. Calidad y pruebas
 
 - Verifica comportamiento, no implementación interna.
 - Mantiene pirámide: muchas pruebas puras de dominio, casos de uso con puertos falsos, integración con DB real y pocos flujos HTTP/E2E.
@@ -173,6 +198,7 @@ Cada tarea debe tener un agente propietario. Si cruza contextos, dividir el trab
 - Los DTO de entrada/salida no son entidades de dominio.
 - Mantener el Shared Kernel mínimo: identificadores, dinero/moneda, reloj y errores base solo si hay reutilización real.
 - Usar eventos únicamente cuando la consistencia eventual sea aceptable. Lectura + equipo + plan + cierre de OT requieren transacción, no eventos asíncronos.
+- El registro de los contratos que ya existen, con su firma y su estado, está en `docs/CONTRATOS_ENTRE_CONTEXTOS.md`. Antes de cruzar dos contextos, buscar ahí: el contrato puede existir con otro nombre.
 
 ## Persistencia y migraciones
 
@@ -220,14 +246,27 @@ Una tarea no está terminada si solo compila o si solo se ve bien. Debe cumplir 
 - En Windows/XAMPP, la suite de ejemplo necesita `sqlite3`; puede habilitarse solo para el proceso con `php -d extension=sqlite3 vendor\bin\phpunit`.
 - PHP también está instalado en WSL Ubuntu (verificado: PHP 8.5.4). Si `php` no está en el PATH de Windows, ejecutar CLI y pruebas desde WSL en `/mnt/c/Programacion/mantenimiento`; por ejemplo: `wsl.exe bash -lc "cd /mnt/c/Programacion/mantenimiento && php vendor/bin/phpunit --no-coverage"`. No concluir que PHP falta sin comprobar WSL.
 
-## Estado base conocido al 2026-08-07
+## Estado base conocido al 2026-10-24
 
 - Implementado: bootstrap CI4 4.7.4, login limitado, sesión, autorización,
   Superadministrador global, gestión de empresas y asignación auditada de
   empresa/roles, CRUD tenant de sucursales y usuarios, restablecimiento de
   contraseña y asignación atómica de roles/sucursales.
-- No implementado todavía: la mayoría de Etapas 2-5 y los 26 casos críticos de negocio.
-- Las pruebas existentes son mayormente ejemplos del appstarter, no aceptación del dominio.
+- Implementado además: el módulo **Viajes** completo en sus dos modelos —operativo
+  e historial importado—, con maestros, dashboard, rentabilidad e importación del
+  backup del ERP de transporte y de su facturación histórica.
+- Implementado además: telemetría de flota con proveedores externos, control de
+  calidad de datos, informes gerenciales y notificaciones multicanal (correo,
+  webpush, WhatsApp).
+- La especificación de sistema está en versión 1.3 e incorpora Viajes, Neumáticos y
+  Facturación. Los contratos entre contextos están en
+  `docs/CONTRATOS_ENTRE_CONTEXTOS.md`; las decisiones abiertas del cliente, en
+  `docs/DECISIONES_PENDIENTES_FASE_0.md`.
+- La suite PHPUnit corre 1478 pruebas. Persisten 4 fallos preexistentes por doble
+  prefijo de URL cuando `app.baseURL` trae subruta; son ajenos a Viajes y afectan a
+  Home, Login, QR y Planes.
+- No implementado todavía: la aprobación y el pago de liquidaciones de chofer, y los
+  contextos completos de Neumáticos y Facturación.
 - La FASE 0A local (CLI, DB, logs, sesiones, SMTP, tarea programada y ensayo de despliegue) está automatizada y documentada en `docs/PRUEBA_TECNICA_LOCAL.md`.
 - Antes de desarrollar nuevas funciones, resolver o registrar explícitamente los gaps funcionales, de pruebas de dominio y de multi-tenancy relacionados con la tarea.
 
