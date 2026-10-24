@@ -262,9 +262,15 @@ Una tarea no está terminada si solo compila o si solo se ve bien. Debe cumplir 
   Facturación. Los contratos entre contextos están en
   `docs/CONTRATOS_ENTRE_CONTEXTOS.md`; las decisiones abiertas del cliente, en
   `docs/DECISIONES_PENDIENTES_FASE_0.md`.
-- La suite PHPUnit corre 1478 pruebas. Persisten 4 fallos preexistentes por doble
-  prefijo de URL cuando `app.baseURL` trae subruta; son ajenos a Viajes y afectan a
-  Home, Login, QR y Planes.
+- La suite PHPUnit corre 1497 pruebas, sin fallos. Los 4 fallos preexistentes por doble
+  prefijo de URL quedaron cerrados el 24/10/2026: la causa era que los tests ataban el
+  path absoluto al `baseURL` de la máquina. El prefijo duplicado no es un bug de
+  producción, sino el comportamiento correcto del despliegue plano; ver
+  `docs/ERRORES_CONOCIDOS.md`.
+- Las rutas agrupadas bajo `mantenimiento/` tienen cobertura HTTP desde el 24/10/2026:
+  `tests/feature/RouteResolutionTest.php` barre las rutas declaradas, las URLs que la
+  app construye, el catálogo de módulos, los enlaces, los formularios y los paths que
+  arma el frontend. Ver `docs/BITACORA_2026-10-24_COBERTURA_HTTP_RUTAS.md`.
 - No implementado todavía: la aprobación y el pago de liquidaciones de chofer, y los
   contextos completos de Neumáticos y Facturación.
 - La FASE 0A local (CLI, DB, logs, sesiones, SMTP, tarea programada y ensayo de despliegue) está automatizada y documentada en `docs/PRUEBA_TECNICA_LOCAL.md`.

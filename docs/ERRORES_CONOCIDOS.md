@@ -197,6 +197,13 @@ del repo solo piden rutas de primer nivel (`viajes`, `superadmin/...`). Nada
 verificaba que `/mantenimiento/equipos` resolviera, y el cliente de pruebas no
 reproduce el reescrito de Apache. Por eso la regresion pudo volver varias veces.
 
+**Resuelto el 24/10/2026.** Se agrego `tests/feature/RouteResolutionTest.php`,
+con siete tests que barren las rutas agrupadas, las URLs que la app construye,
+el catalogo de modulos, los enlaces, los formularios y los paths que el
+frontend arma por su cuenta. La cobertura HTTP de las rutas agrupadas ya
+existe; el detalle esta en
+`docs/BITACORA_2026-10-24_COBERTURA_HTTP_RUTAS.md`.
+
 ### Decision pendiente
 
 Definir una sola convencion y aplicarla. Las dos candidatas, con lo que se sabe
