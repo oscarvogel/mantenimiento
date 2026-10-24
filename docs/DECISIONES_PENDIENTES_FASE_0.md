@@ -74,8 +74,13 @@ y `viaje_operativo_otros_haberes`) es independiente de la historia legacy. La le
 como solo lectura. Es exactamente lo que dice la decisión 10 del §5 de la especificación de
 viajes.
 
-**Pendiente derivado:** la importación de la cuenta corriente legacy **no está implementada**.
-El importador de viajes cubre `t05` a `t08`; `t11`, `t12` y `t13` quedan pendientes de código.
+**Estado:** cerrada y **implementada**. El importador cubre las seis tablas hijas del
+agregado: `t05` viajes, `t06` tramos, `t07` combustible, `t08` gastos, `t11` cuenta
+corriente, `t12` cuenta corriente por tramo y `t13` otros haberes. Las tres últimas se
+importan preservando las columnas, las monedas y las cotizaciones del origen, sin
+calcular saldos ni totales derivados, tal como pide la decisión. La lectura del detalle
+del viaje y el análisis de rentabilidad ya incluyen la cuenta corriente y los otros
+haberes.
 
 ### D4 — Clientes reales · abierta
 

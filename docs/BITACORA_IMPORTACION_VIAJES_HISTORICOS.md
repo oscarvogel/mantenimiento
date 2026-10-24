@@ -1,10 +1,35 @@
 # Bitácora — importación del historial de Viajes del ERP de transporte
 
-**Fecha:** 2026-10-17
+**Fecha:** 2026-10-17 (revisión de estado el 24/10/2026)
 **Rama:** `feat/viajes-import-historial`
 **Base:** `codex/importacion-clientes` (commit `b157ebaa`)
 **Estado:** análisis verificado + herramienta de lectura y conversión. **El importador
 operativo de Viajes todavía NO está implementado y ningún dato fue importado.**
+
+> **Revisión del 24/10/2026.** El estado de arriba era cierto el 17/10 y quedó vencido: el
+> importador operativo se implementó los días 18 y 19 de octubre, junto con el modelo de
+> dominio, las migraciones y el flujo de Superadministrador con vista previa y confirmación
+> transaccional. La herramienta de lectura que se describe más abajo es la que se usa.
+>
+> La bitácora se conserva tal cual porque es el registro del análisis y de las decisiones que
+> lo sustained. Lo que cambió después:
+>
+> - **Ya existe el importador.** Vive en `app/Application/TripImports`, con su puerto
+>   `TripImportStore`, y se ejecuta desde Superadmin en `/superadmin/viajes/importar`.
+> - **Ya se importó el historial.** El paquete se lee como ZIP con CSVs, sin `pg_restore` ni
+>   PostgreSQL, tal como anticipaba esta bitácora. Cubre `t05` a `t08`.
+> - **La facturación histórica también se importa**, con su vínculo a los viajes por unidad,
+>   fecha, ruta e importe, y confianza `ALTA`, `MEDIA` o `BAJA`
+>   (`app/Application/TripImports/InvoiceTripMatcher.php`).
+> - **Las dos definiciones humanas del §7 están resueltas:** el padrón canónico de clientes
+>   (`app/Application/Customers`) y la tabla de países (`viajes_paises`) se implementaron.
+> - **Lo que sigue pendiente** no es la importación: el importador ya cubre las seis tablas hijas del
+>   agregado, `t05` a `t08` y también `t11`, `t12` y `t13`. La cuenta corriente legacy se importa
+>   **preservando** columnas, monedas y cotizaciones, sin calcular saldos, que es lo que decidió
+>   D3 el 17/10. Lo que falta es la **aprobación y el pago** de las liquidaciones (Fase 2).
+>
+> El detalle vigente está en `docs/ESPECIFICACION_VIAJES_CIRCUITO_LIQUIDACION.md` §4.1 y
+> `docs/CONTRATOS_ENTRE_CONTEXTOS.md`.
 
 ---
 

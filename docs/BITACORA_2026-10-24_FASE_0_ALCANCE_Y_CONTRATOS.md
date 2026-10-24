@@ -190,8 +190,7 @@ tocó `fasa_189` y no se desplegó nada.
 | Respuesta de TSA a D1, D2, D4, D5, D6, D7 y D8 | Cliente. Las preguntas están en `DECISIONES_PENDIENTES_FASE_0.md` §4. |
 | Respuesta a las 8 preguntas del circuito de viajes | Cliente. Están en `PROPUESTA_VIAJES_CIRCUITO_LIQUIDACION.md` §8. |
 | Aprobación y pago de liquidaciones del chofer (`viajes.liquidar`) | Falta de código. Es el único hueco del circuito de viajes. |
-| Importación de la cuenta corriente legacy (`t11`, `t12`, `t13`) | Falta de código. La decisión D3 ya está tomada. |
-| Actualizar `ESPECIFICACION_VIAJES_CIRCUITO_LIQUIDACION.md` (estado y §4.2) | Tarea de documentación. |
+| Actualizar `ESPECIFICACION_VIAJES_CIRCUITO_LIQUIDACION.md` (estado y §4.2) | Hecho el 24/10. |
 | Actualizar `BITACORA_IMPORTACION_VIAJES_HISTORICOS.md` | Tarea de documentación. |
 | Corregir el doble prefijo de URL con subruta | Tarea de código. Afecta 4 tests y producción. |
 | Adaptador de `EquipmentByPlateLookup` | Fase 1, bloqueado por D7. |

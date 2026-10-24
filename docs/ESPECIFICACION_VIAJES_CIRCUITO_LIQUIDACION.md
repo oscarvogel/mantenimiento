@@ -1,9 +1,14 @@
 # Especificación: circuito de viajes, tramos, cuenta corriente y liquidación
 
-**Estado:** borrador para evaluación. No autoriza implementación.
-**Fecha:** 21/10/2026.
+**Estado:** Fase 1 implementada y verificada. Especificación vigente del circuito.
+**Fecha:** 24/10/2026 (revisión de estado sobre la versión del 21/10/2026).
 **Base:** descripción de Carlos Secre TSA del 21/10/2026, pantallas del sistema legacy y estado actual del módulo Viajes en la rama `codex/dashboard-detalle-viajes` (commit `1802960f`).
 **Objetivo:** documentar el circuito operativo y económico completo, compararlo con lo ya implementado y dejar explícito qué hay que cambiar antes de programar.
+
+> **Revisión del 24/10/2026.** La sección 4 estaba desactualizada: el 21/10 la Fase 1 todavía no estaba
+> programada, y desde entonces se implementaron los diez puntos que figuraban como faltantes. La sección 4
+> refleja el estado real y la 18 registra la revisión. Sigue pendiente la Fase 2 (aprobación y pago de
+> liquidaciones) y las respuestas del cliente de la sección 16.
 
 ---
 
@@ -147,34 +152,46 @@ Los adelantos no cambian el margen del viaje; solo la liquidación final.
 
 | Pieza | Estado | Dónde |
 |---|---|---|
-| Viajes operativos con estados Planificado / En curso / Cancelado | Implementado | `viajes_operativos`, `OperationalTrips` |
+| Viajes operativos con estados Planificado / En curso / Finalizado / Cancelado | Implementado | `viajes_operativos`, `OperationalTrips` |
 | Numeración correlativa por empresa | Implementado | `viajes_operativos_numeracion` |
 | Asignación de tractor, acoplado y choferes | Implementado | `viaje_operativo_asignaciones` |
 | Porcentaje de liquidación con vigencia | Implementado | `viajes_porcentajes_liquidacion_chofer` |
 | Copia del porcentaje en el viaje | Implementado | `viaje_operativo_asignaciones.porcentaje_liquidacion` |
 | Paradas / recorrido | Implementado | `viaje_operativo_paradas` |
+| Tramos con dos fletes (facturación y liquidación) | Implementado | `viaje_operativo_tramos`, `TripLeg` |
 | Combustible por viaje, multi-moneda | Implementado | `viaje_operativo_combustible` |
 | Gastos por viaje, multi-moneda | Implementado | `viaje_operativo_gastos` |
+| Imputación opcional de combustible y gastos a un tramo | Implementado | `viaje_operativo_combustible.tramo_id`, `viaje_operativo_gastos.tramo_id` |
 | Caja del chofer: anticipo, retiro, devolución | Implementado | `viaje_operativo_caja_movimientos` |
+| Otros haberes del viaje | Implementado | `viaje_operativo_otros_haberes`, `TripOtherEarning` |
 | Inicio del viaje con km de salida | Implementado | `StartTrip` |
+| Cierre del viaje con km de regreso | Implementado | `FinishTrip` |
+| Lectura del equipo al cerrar, con origen `VIAJE` | Implementado | `CodeIgniterTripReadingRecorder` → `RegisterReadingHandler` |
+| Liquidación final del chofer | Implementado | `TripSettlement` |
+| Margen operativo por viaje y por tramo | Implementado | `GetOperationalTrip` |
 | Cálculo de consumo | Implementado | `GetOperationalTrip` |
+| Costos sin asignar, mostrados aparte | Implementado | `GetOperationalTrip` |
+| Edición del porcentaje después de crear el viaje | Implementado | `UpdateTripAssignment` |
+| Vista por dominio y por chofer | Implementado | `OperationalTripFilters`, `ListOperationalTrips` |
 | Historial legacy importado, solo lectura | Implementado | `viajes`, `viaje_tramos`, etc. |
+| Cuenta corriente legacy importada, preservando columnas, monedas y cotizaciones | Implementado | `viaje_cuenta_corriente`, `viaje_cuenta_corriente_tramos` (`t11`, `t12`) |
+| Otros haberes legacy importados | Implementado | `viaje_otros_haberes` (`t13`) |
+| Facturación histórica importada y vínculo con el viaje | Implementado | `viajes_facturas`, `viaje_factura_viaje`, `ReviewTripInvoices` |
 | Rentabilidad histórica legacy | Implementado, solo legacy | `GetTripProfitability` |
+| Dashboard de viajes | Implementado | `TripsDashboard` |
 
 ### 4.2 Qué falta para el circuito descrito
 
-| Falta | Impacto |
-|---|---|
-| Tramos con dos fletes (facturación y liquidación) | Sin esto no hay comisión ni margen por tramo. |
-| Imputación opcional de combustible/gastos a un tramo | Sin esto no se puede saber si un tramo es rentable. |
-| Cierre del viaje con km de regreso | El viaje queda En curso para siempre y no genera lectura. |
-| Cuenta corriente única del chofer | Hoy hay caja y gastos separados, sin saldo único ni imputación a liquidación. |
-| Otros haberes | Solo existen en el histórico legacy. |
-| Liquidación final del chofer | No existe para viajes operativos. |
-| Margen operativo por viaje y por tramo | La pantalla de rentabilidad actual analiza solo viajes legacy y con otra fórmula. |
-| Edición del porcentaje después de crear el viaje | Hoy solo se define al crear. |
-| Vista por dominio y chofer | El listado operativo es plano; no tiene selector de dominio. |
-| Lectura del equipo al cerrar | No se genera la lectura con origen `VIAJE`. |
+Los diez puntos que esta sección listaba el 21/10 están implementados y cubiertos por pruebas. Lo que
+queda es lo que la Fase 2 define y lo que depende de una respuesta del cliente:
+
+| Falta | Impacto | Depende de |
+|---|---|---|
+| Aprobación de la liquidación del chofer | El importe a liquidar se calcula y se muestra, pero nadie lo aprueba: no hay estado ni responsable. | Fase 2 de la sección 12.2 |
+| Pago de la liquidación | No hay registro de pagos, ni comprobante de pago, ni impresión de la liquidación. | Fase 2 de la sección 12.2 |
+| Permiso `viajes.liquidar` | Sin el permiso no se puede separar la aprobación del resto de los permisos de viajes. | Fase 2 de la sección 12.2 |
+| Definición de la liquidación por viaje o por período | Cambia la pantalla y el modelo de la Fase 2. | Sección 16, pregunta al cliente |
+| Impresión de la liquidación | No hay documento imprimible de la liquidación. | Sección 16, pregunta al cliente |
 
 ### 4.3 Diferencia con la pantalla de rentabilidad actual
 
@@ -746,16 +763,24 @@ La Fase 2 (aprobación y pagos de liquidación) queda para después de validar e
 
 | Fecha | Revisor | Decisión | Observaciones |
 |---|---|---|---|
-| | | | |
-| | | | |
+| 21/10/2026 | Mavis | Se documenta el circuito y se listan los diez puntos faltantes para la Fase 1. | Estado: borrador para evaluación. |
+| 24/10/2026 | Mavis | Los diez puntos de la Fase 1 quedan implementados y cubiertos por pruebas. La cuenta corriente legacy se migra preservando, sin calcular saldos (D3). | 1478 pruebas, 0 fallos. 88 de dominio y aplicación de Viajes, 57 de base y feature, 28 de frontend. |
 
 Checklist para aprobar la Fase 1:
 
-- [ ] Los importes van por tramo y existen los dos fletes.
-- [ ] El % se aplica al flete de liquidación.
-- [ ] Los costos se pueden imputar opcionalmente a un tramo.
-- [ ] El margen del viaje incluye costos asignados y no asignados.
-- [ ] Los adelantos afectan la liquidación, no el margen del viaje.
-- [ ] El cierre requiere km de regreso y genera lectura.
-- [ ] La cuenta corriente legacy no se migra como libro operativo.
-- [ ] Las preguntas de la sección 16 están respondidas.
+- [x] Los importes van por tramo y existen los dos fletes.
+- [x] El % se aplica al flete de liquidación.
+- [x] Los costos se pueden imputar opcionalmente a un tramo.
+- [x] El margen del viaje incluye costos asignados y no asignados.
+- [x] Los adelantos afectan la liquidación, no el margen del viaje.
+- [x] El cierre requiere km de regreso y genera lectura.
+- [x] La cuenta corriente legacy no se migra como libro operativo.
+- [ ] Las preguntas de la sección 16 están respondidas. **Pendiente del cliente.**
+
+Checklist de la Fase 2 (aprobación y pago de liquidaciones), pendiente:
+
+- [ ] Estado de aprobación de la liquidación, con responsable y fecha.
+- [ ] Registro de pagos y comprobante de pago.
+- [ ] Permiso `viajes.liquidar`.
+- [ ] Impresión de la liquidación.
+- [ ] Definición de si la liquidación se paga por viaje o se acumula por chofer y período (pregunta de la sección 16).
