@@ -101,6 +101,12 @@ use App\Infrastructure\Notifications\CodeIgniterDriverPhoneAuditReadModel;
 use App\Infrastructure\Notifications\CodeIgniterNotificationUnitOfWork;
 use App\Infrastructure\Notifications\CodeIgniterOperationalNotificationEventSource;
 use App\Infrastructure\Telematic\WialonRemoteApiGateway;
+use App\Application\Telematic\TestAutotracConnection;
+use App\Application\Telematic\ConfigureAutotracIntegration;
+use App\Infrastructure\Telematic\AutotracApiClient;
+use App\Infrastructure\Telematic\AutotracFleetTelemetryGateway;
+use App\Infrastructure\Telematic\AutotracSnapshotMapper;
+use App\Infrastructure\Telematic\CodeIgniterAutotracIntegrationConfigurator;
 use App\Application\Telematic\DiagnoseSilentUnits;
 use App\Application\Telematic\GetAdminTelemetrySamples;
 use App\Infrastructure\Telematic\CodeIgniterAdminTelemetrySamplesReader;
@@ -715,6 +721,11 @@ class Services extends BaseService
                 $store,
                 (int) env('WIALON_TIMEOUT_SECONDS', 30),
             ),
+            FleetTelemetryGatewayRegistry::PROVIDER_AUTOTRAC => static fn (): FleetTelemetryGateway => new AutotracFleetTelemetryGateway(
+                $store,
+                new AutotracApiClient((int) env('AUTOTRAC_TIMEOUT_SECONDS', 30)),
+                new AutotracSnapshotMapper(),
+            ),
         ]);
     }
 
@@ -796,6 +807,26 @@ class Services extends BaseService
         }
 
         return new ConfigureTelemetryIntegration(new CodeIgniterTelemetryIntegrationConfigurator(db_connect()));
+    }
+
+    public static function testAutotracConnection(bool $getShared = true): TestAutotracConnection
+    {
+        if ($getShared) {
+            return static::getSharedInstance('testAutotracConnection');
+        }
+
+        return new TestAutotracConnection(new AutotracApiClient((int) env('AUTOTRAC_TIMEOUT_SECONDS', 30)));
+    }
+
+    public static function configureAutotracIntegration(bool $getShared = true): ConfigureAutotracIntegration
+    {
+        if ($getShared) {
+            return static::getSharedInstance('configureAutotracIntegration');
+        }
+
+        $api = new AutotracApiClient((int) env('AUTOTRAC_TIMEOUT_SECONDS', 30));
+
+        return new ConfigureAutotracIntegration(new CodeIgniterAutotracIntegrationConfigurator($api, db_connect()));
     }
 
     public static function manageTelemetryEquipmentLinks(bool $getShared = true): ManageTelemetryEquipmentLinks

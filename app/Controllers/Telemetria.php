@@ -146,6 +146,7 @@ final class Telemetria extends BaseController
                 ], $integrations),
                 'actions' => [
                     'save' => base_url('administracion/integraciones/telemetria'),
+                    'testAutotrac' => base_url('administracion/integraciones/telemetria/autotrac/probar'),
                 ],
             ]);
         } catch (Throwable $exception) {
@@ -169,21 +170,34 @@ final class Telemetria extends BaseController
                 throw new DomainException('No se pudo identificar la empresa de tu sesión.');
             }
 
-            $result = service('configureTelemetryIntegration')->execute(
-                $companyId,
-                $actor->userId(),
-                (string) $this->request->getPost('provider'),
-                $this->request->getPost('name') === null ? null : (string) $this->request->getPost('name'),
-                (string) $this->request->getPost('token'),
-            );
-
-            $message = sprintf('Wialon conectado. Se vincularon automáticamente %d equipos.', $result->linkedEquipmentCount);
-            if ($result->unmatchedEquipment !== []) {
-                $message .= sprintf(' Quedan %d equipos por vincular desde la cuenta conectada.', count($result->unmatchedEquipment));
-                return redirect()->to($destination)->with('warning', $message);
+            $provider = strtolower((string) $this->request->getPost('provider'));
+            if ($provider === 'autotrac') {
+                service('configureAutotracIntegration')->execute(
+                    $companyId,
+                    $actor->userId(),
+                    $this->request->getPost('name') === null ? null : (string) $this->request->getPost('name'),
+                    (string) $this->request->getPost('subscription_key'),
+                    (string) $this->request->getPost('username'),
+                    (string) $this->request->getPost('password'),
+                    (string) $this->request->getPost('account_code'),
+                );
+            } else {
+                $result = service('configureTelemetryIntegration')->execute(
+                    $companyId,
+                    $actor->userId(),
+                    $provider,
+                    $this->request->getPost('name') === null ? null : (string) $this->request->getPost('name'),
+                    (string) $this->request->getPost('token'),
+                );
+                if ($result->unmatchedEquipment !== []) {
+                    return redirect()->to($destination)->with('warning', sprintf(
+                        'Wialon conectado. Quedan %d equipos por vincular desde la cuenta conectada.',
+                        count($result->unmatchedEquipment),
+                    ));
+                }
             }
 
-            return redirect()->to($destination)->with('success', $message);
+            return redirect()->to($destination)->with('success', ucfirst($provider) . ' conectado. Ahora elegí qué equipos vincular a esa cuenta.');
         } catch (Throwable $exception) {
             if (! $exception instanceof DomainException) {
                 // Never log request payloads: the form contains a provider token.
@@ -194,6 +208,28 @@ final class Telemetria extends BaseController
                 'error',
                 $exception instanceof DomainException ? $exception->getMessage() : 'No se pudo guardar la integración. Revisá los datos e intentá de nuevo.',
             );
+        }
+    }
+
+    public function probarAutotrac(): ResponseInterface
+    {
+        try {
+            $actor = $this->actor();
+            if ($actor->companyId() === null) {
+                throw new DomainException('No se pudo identificar la empresa de tu sesión.');
+            }
+            $accounts = service('testAutotracConnection')->execute(
+                (string) $this->request->getPost('subscription_key'),
+                (string) $this->request->getPost('username'),
+                (string) $this->request->getPost('password'),
+            );
+
+            return $this->response->setJSON(['accounts' => $accounts, 'message' => 'Conexión ATIC validada. Elegí la cuenta.']);
+        } catch (DomainException $exception) {
+            return $this->response->setStatusCode(422)->setJSON(['message' => $exception->getMessage()]);
+        } catch (Throwable) {
+            log_message('error', 'No se pudo validar la conexión Autotrac.');
+            return $this->response->setStatusCode(502)->setJSON(['message' => 'No se pudo validar la conexión ATIC. Revisá los datos e intentá de nuevo.']);
         }
     }
 
@@ -215,7 +251,7 @@ final class Telemetria extends BaseController
             log_message('error', 'No se pudo cargar el catálogo de unidades de telemetría.');
 
             return $this->response->setStatusCode(502)->setJSON([
-                'message' => 'No se pudieron consultar las unidades. Revisá la conexión con Wialon e intentá de nuevo.',
+                'message' => 'No se pudieron consultar las unidades. Revisá la conexión con el proveedor e intentá de nuevo.',
             ]);
         }
     }

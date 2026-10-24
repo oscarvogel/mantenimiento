@@ -18,6 +18,7 @@ interface FleetTelemetryGatewayRegistry
     /** Identificadores de proveedor. Es el vocabulario con el que se rotula una integración. */
     public const PROVIDER_WIALON = 'wialon';
     public const PROVIDER_GESTYA = 'gestya';
+    public const PROVIDER_AUTOTRAC = 'autotrac';
 
     public function supports(string $provider): bool;
 

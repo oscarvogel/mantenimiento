@@ -48,7 +48,7 @@ final class ManageTelemetryEquipmentLinks
                 throw new DomainException('La unidad seleccionada no es válida.');
             }
             if ($externalUnitId !== '__unlink__' && isset($selectedUnits[$externalUnitId])) {
-                throw new DomainException('Cada unidad de Wialon se puede vincular a un solo equipo.');
+                throw new DomainException('Cada unidad del proveedor se puede vincular a un solo equipo.');
             }
 
             if ($externalUnitId !== '__unlink__') {

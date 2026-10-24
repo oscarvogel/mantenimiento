@@ -141,6 +141,7 @@ $routes->group('superadmin', ['filter' => 'superadmin'], static function ($route
 $routes->group('administracion', ['filter' => ['auth']], static function ($routes): void {
     $routes->get('integraciones/telemetria', 'Telemetria::integraciones', ['filter' => 'permission:equipos.editar']);
     $routes->post('integraciones/telemetria', 'Telemetria::guardarIntegracion', ['filter' => 'permission:equipos.editar']);
+    $routes->post('integraciones/telemetria/autotrac/probar', 'Telemetria::probarAutotrac', ['filter' => 'permission:equipos.editar']);
     $routes->get('integraciones/telemetria/(:num)/unidades', 'Telemetria::unidades/$1', ['filter' => 'permission:equipos.editar']);
     $routes->post('integraciones/telemetria/(:num)/vinculos', 'Telemetria::guardarVinculos/$1', ['filter' => 'permission:equipos.editar']);
     $routes->get('sucursales', 'TenantAdmin::branches', ['filter' => 'permission:sucursales.ver']);
