@@ -1120,7 +1120,10 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
 
         return new \App\Application\Trips\CreateTrip(
             new \App\Infrastructure\Trips\CodeIgniterOperationalTripRepository($db),
-            new \App\Infrastructure\Trips\CodeIgniterTripFleetLookup($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripFleetLookup(
+                new \App\Infrastructure\Assets\CodeIgniterEquipmentFleetLookup($db),
+                new \App\Infrastructure\Employees\CodeIgniterEmployeeDirectoryLookup($db),
+            ),
             new \App\Infrastructure\Trips\CodeIgniterTripDirectoryLookup($db),
             new \App\Infrastructure\Trips\CodeIgniterTripsUnitOfWork($db),
         );
@@ -1219,7 +1222,10 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
         return new \App\Application\Trips\RegisterTripOtherEarning(
             new \App\Infrastructure\Trips\CodeIgniterOperationalTripRepository($db),
             new \App\Infrastructure\Trips\CodeIgniterTripCostRepository($db),
-            new \App\Infrastructure\Trips\CodeIgniterTripFleetLookup($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripFleetLookup(
+                new \App\Infrastructure\Assets\CodeIgniterEquipmentFleetLookup($db),
+                new \App\Infrastructure\Employees\CodeIgniterEmployeeDirectoryLookup($db),
+            ),
             new \App\Infrastructure\Trips\CodeIgniterTripDirectoryLookup($db),
             new \App\Infrastructure\Trips\CodeIgniterTripsUnitOfWork($db),
         );

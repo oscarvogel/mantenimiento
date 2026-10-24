@@ -39,7 +39,8 @@ seguir.
 
 | Plan (nombre en español) | Interfaz real | Archivo | Responde | Estado |
 |---|---|---|---|---|
-| `EquipoPorPatenteQuery` | `EquipmentByPlateLookup` | `app/Application/Assets/Port/EquipmentByPlateLookup.php` | Assets | **Contrato escrito. Falta adaptador.** |
+| `EquipoPorPatenteQuery` | `EquipmentFleetLookup` | `app/Application/Assets/Port/EquipmentFleetLookup.php` | Assets | **Implementado.** Resuelve por id y por patente. |
+| — (nuevo) | `EmployeeDirectoryLookup` | `app/Application/Employees/Port/EmployeeDirectoryLookup.php` | Employees | **Implementado.** Resuelve el chofer. |
 | `RegistrarLecturaCommand` (Viajes) | `TripReadingRecorder` | `app/Application/Trips/Port/TripReadingRecorder.php` | Measurement | **Implementado y en uso.** |
 | `RegistrarLecturaCommand` (Neumáticos) | `NeumaticReadingRecorder` | `app/Application/Neumaticos/Port/NeumaticReadingRecorder.php` | Measurement | **Contrato escrito. Falta adaptador.** |
 | `CostoOperativoPorEquipoQuery` | `OperationalCostByEquipmentQuery` | `app/Application/Trips/Port/OperationalCostByEquipmentQuery.php` | Viajes | **Contrato escrito. Falta adaptador.** |
@@ -53,16 +54,33 @@ seguir.
 
 ## 4. Firmas
 
-### 4.1 `EquipmentByPlateLookup` — responde Assets
+### 4.1 `EquipmentFleetLookup` — responde Assets
 
 ```php
-public function equipment(int $companyId, string $plate): ?array;
-// devuelve id, branchId, label, plate, code. Null si la unidad no existe o esta dada de baja.
+public function equipment(int $companyId, int $equipmentId): ?array;
+public function equipmentByPlate(int $companyId, string $plate): ?array;
+// devuelven id, branchId, label, plate, code, tractor y trailer.
+// Null si la unidad no existe en la empresa o esta dada de baja.
 ```
 
 El consumidor nunca ve el modelo de `equipos`. El `scope` de empresa se aplica dentro del
 adaptador: una patente que pertenece a otra empresa se responde como `null`, no como un
 error.
+
+**El rol físico de la unidad** (tractor o acoplado) se deduce hoy del nombre del tipo de
+equipo. Es una regla de negocio sobre texto libre: renombrar un tipo la cambia en silencio.
+Vive en el contexto que es dueño del catálogo, pero la forma definitiva es un atributo
+explícito en `tipos_equipo`, con su carga de datos y su pantalla. Queda anotado como deuda
+en §6.
+
+### 4.1.1 `EmployeeDirectoryLookup` — responde Employees
+
+```php
+public function driver(int $companyId, int $employeeId): ?array;
+// devuelve id, label y active. Null si la persona no existe o fue dada de baja.
+```
+
+Lo consume Viajes al asignar el chofer y al imputar otros haberes.
 
 ### 4.2 `TripReadingRecorder` — responde Measurement (ya implementado)
 
@@ -136,12 +154,8 @@ Los importes viajan ya calculados: el cálculo de netos es del contexto y ARCA n
 
 ## 5. Lo que falta implementar
 
-Ningún adaptador de estos contratos existe todavía. Son la primera tarea de las fases 1 a 4
-del plan de ampliación.
-
 | Adaptador | Contexto que lo aporta | Bloqueado por |
 |---|---|---|
-| `EquipmentByPlateLookup` → `equipos` | Assets | D7 (padrón definitivo de flota) |
 | `NeumaticReadingRecorder` → `RegisterReadingHandler` | Measurement | D7, y agregar origen `NEUMATICO` al dominio |
 | `OperationalCostByEquipmentQuery` → read model de viajes | Viajes | D5 (una o cuatro empresas) |
 | `GomeriaOrderLauncher` → caso de uso de órdenes | WorkOrders | Fase 3 |
@@ -152,12 +166,41 @@ del plan de ampliación.
 
 ## 6. Deuda que este registro deja registrada
 
-`CodeIgniterTripFleetLookup` (infraestructura de Viajes) consulta hoy las tablas `equipos` y
-`empleados` directamente. Funciona y está probado, pero ata el contexto de Viajes al esquema
-de otros dos contextos: un cambio de columna en `equipos` rompería el adaptador sin que
-ningún test lo señale.
+### 6.1 Resuelta: el acoplamiento de tablas de Viajes
 
-El contrato `EquipmentByPlateLookup` es la forma de corregirlo. **No se rehizo en esta
-Fase 0** porque el plan la define sin código de implementación y el cambio de adaptador
-arrastra reescritura de consultas y de pruebas. Queda registrado como deuda a resolver en
-la Fase 1, cuando el padrón de flota esté confirmado.
+`CodeIgniterTripFleetLookup` (infraestructura de Viajes) consultaba las tablas `equipos` y
+`empleados` directamente. Funcionaba y estaba probado, pero ataba el contexto de Viajes al
+esquema de otros dos contextos: un cambio de columna en `equipos` habría roto el adaptador
+sin que ningún test lo señalara.
+
+**Resuelto el 24/10/2026.** Ahora:
+
+- `app/Application/Assets/Port/EquipmentFleetLookup.php` es el puerto que responde por el
+  equipo, con su implementación `CodeIgniterEquipmentFleetLookup`.
+- `app/Application/Employees/Port/EmployeeDirectoryLookup.php` responde por el chofer, con su
+  implementación `CodeIgniterEmployeeDirectoryLookup`.
+- `CodeIgniterTripFleetLookup` traduce el resultado al formato que espera el caso de uso de
+  Viajes y no toca ninguna tabla que no sea de Viajes.
+
+El cableado está en `app/Config/Services.php`, en `createTrip` y `addTripOtherEarning`.
+
+### 6.2 Abierta: el rol físico de la unidad se deduce de texto libre
+
+El rol tractor o acoplado se deduce del **nombre del tipo de equipo**, con una expresión
+regular sobre el texto del catálogo:
+
+```php
+preg_match('/acoplado|semirremolque|remolque|batea/', $tipo)
+preg_match('/camion|tractor|chasis|cabina|utilitario|pickup/', $tipo)
+```
+
+Es una regla de negocio sobre un dato que puede cambiar de nombre. Renombrar "Semirremolque" a
+"Remolque sider" cambia la clasificación en silencio: el equipo deja de poder asignarse como
+acoplado y el viaje no se puede cerrar con esa asignación.
+
+Ahora vive en el contexto que es dueño del catálogo, que es donde corresponde, pero la forma
+definitiva es un **atributo explícito en `tipos_equipo`** (`es_tractor`, `es_acoplado`), con su
+carga de datos para el padrón existente y su pantalla de catálogo.
+
+**Pendiente.** No se hizo en este corte porque implica una migración con carga de datos sobre
+las unidades reales, y el padrón definitivo de flota todavía no está confirmado (D7).
