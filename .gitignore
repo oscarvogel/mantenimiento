@@ -123,3 +123,14 @@ docs/~$*
 frontend/TelemetryPreview.vue
 frontend/telemetry-preview.html
 frontend/telemetry-preview.js
+
+# =============================================================================
+# Documentos de trabajo en formato binario (NO COMMITEAR)
+# =============================================================================
+# El repositorio es publico. Los PDF, el DOCX del cliente y su extraccion de
+# texto pueden traer datos reales de la flota: patente, chasis y poliza de
+# seguro. Los PDF de trabajo se regeneran desde los .md versionados con
+# scripts/md2pdf.py; el material del cliente se guarda fuera del repo.
+docs/*.pdf
+docs/*.docx
+docs/_semi_texto_extraido.txt
