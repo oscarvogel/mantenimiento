@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Application\PreventiveMaintenance\PreventivePlanPage;
 use App\Presentation\PreventivePlansPayload;
 use CodeIgniter\Test\CIUnitTestCase;
+use Tests\Support\Http\ApplicationUrl;
 
 final class PreventivePlansPayloadTest extends CIUnitTestCase
 {
@@ -48,7 +49,10 @@ final class PreventivePlansPayloadTest extends CIUnitTestCase
         self::assertSame(10000, $payload['plans']['items'][0]['criteria']['kilometers']['interval']);
         self::assertSame(9500, $payload['plans']['items'][0]['criteria']['kilometers']['current']);
         self::assertNull($payload['plans']['items'][0]['criteria']['hours']);
-        self::assertSame('/mantenimiento/planes/12/editar', parse_url($payload['plans']['items'][0]['editUrl'], PHP_URL_PATH));
+        self::assertSame(
+            ApplicationUrl::path('mantenimiento/planes/12/editar'),
+            parse_url($payload['plans']['items'][0]['editUrl'], PHP_URL_PATH),
+        );
     }
 
     public function testEditUrlIsNullWithoutPermissionToEditPlans(): void

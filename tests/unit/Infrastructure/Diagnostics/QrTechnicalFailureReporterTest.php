@@ -10,6 +10,7 @@ use App\Controllers\AssetManagement;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 use RuntimeException;
+use Tests\Support\Http\ApplicationUrl;
 
 final class QrTechnicalFailureReporterTest extends TestCase
 {
@@ -61,7 +62,7 @@ final class QrTechnicalFailureReporterTest extends TestCase
         );
 
         self::assertSame(
-            '/mantenimiento/equipos',
+            ApplicationUrl::path('mantenimiento/equipos'),
             parse_url($response->getHeaderLine('Location'), PHP_URL_PATH),
         );
         self::assertCount(1, $logs);

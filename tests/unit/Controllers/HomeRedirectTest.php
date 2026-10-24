@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Controllers\Home;
 use CodeIgniter\HTTP\RedirectResponse;
 use CodeIgniter\Test\CIUnitTestCase;
+use Tests\Support\Http\ApplicationUrl;
 
 final class HomeRedirectTest extends CIUnitTestCase
 {
@@ -17,7 +18,10 @@ final class HomeRedirectTest extends CIUnitTestCase
             $response = (new Home())->index();
 
             self::assertInstanceOf(RedirectResponse::class, $response);
-            self::assertSame('/inicio', parse_url($response->getHeaderLine('Location'), PHP_URL_PATH));
+            self::assertSame(
+                ApplicationUrl::path('inicio'),
+                parse_url($response->getHeaderLine('Location'), PHP_URL_PATH),
+            );
         } finally {
             $session->remove('usuario_id');
         }
