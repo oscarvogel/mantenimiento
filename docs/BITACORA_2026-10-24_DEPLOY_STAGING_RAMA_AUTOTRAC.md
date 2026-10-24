@@ -154,8 +154,28 @@ vuelve a poner en git, pero **`main` todavía no lo tiene**.
    Staging". El valor del env sí dice "Mantenimiento Staging", pero la base lo
    pisa. Si alguna vez se habilita el SMTP en staging, saldría con el nombre
    indistinguible y desde el buzón de producción.
-4. **`main` no tiene el fix de lecturas que ya corre en producción.** Merge de
-   la rama o cherry-pick de `fe939082` para que git refleje lo que la app
-   realmente ejecuta.
-5. **La migración `2026-10-23-140000 AddManagementReadingReportSettings` sigue
+4. ~~**`main` no tiene el fix de lecturas que ya corre en producción.**~~
+   **Cerrado el 24/10/2026:** el PR #492 se mergeó a `main` (commit de merge
+   `f8d91add`), así que `main` ya incluye `fe939082` y el fix de lecturas
+   históricas que producción ya ejecutaba pasa a estar en git.
+5. La migración `2026-10-23-140000 AddManagementReadingReportSettings` sigue
    sin aplicarse en producción** (en staging está aplicada).
+6. **El deploy de staging sigue en el SHA `93f1e38e`.** No se reconstruyó
+   después del merge del PR #492: lo publicado es de pruebas y documentación,
+   la imagen se construye con `composer install --no-dev` (PHPUnit no corre
+   dentro del contenedor) y además no había acceso por SSH a `fasa_189` desde la
+   PC donde se hizo el merge. Cuando se restablezca la ruta, el procedimiento
+   es el de la sección 2, con el SHA vigente y `RAMA=feat/telemetria-autotrac-atc`.
+
+   > **No borrar `feat/telemetria-autotrac-atc`.** La aplicación de Coolify en
+   > staging tiene esa rama configurada en `git_branch`: aunque `main` ya tenga
+   > todo el contenido, si la rama se borra del remoto el próximo rebuild de
+   > staging falla al hacer el checkout. Para volver staging a `main` hay que
+   > reapuntar antes la aplicación con `git_branch=main`.
+7. **`main` estaba en rojo desde el 23/10 y el merge del PR #492 lo dejó en
+   verde.** Los dos pushes anteriores a `main` fallaban por un test de
+   frontend: `src/components/AppHeader.test.js` exigía la clase `flex-wrap` en
+   la lista del menú, que ya no aplica desde que los módulos secundarios van
+   agrupados. El commit `5d56306e` actualiza ese test a la verificación nueva
+   (que el menú no scrollea en horizontal y que todo módulo sigue siendo
+   alcanzable). O sea: el rojo no lo dejó este merge, lo resolvió.
