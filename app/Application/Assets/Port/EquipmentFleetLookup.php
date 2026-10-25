@@ -28,4 +28,23 @@ interface EquipmentFleetLookup
      * @return array{id:int,branchId:int,label:string,plate:string,code:string,tractor:bool,trailer:bool}|null
      */
     public function equipmentByPlate(int $companyId, string $plate): ?array;
+
+    /**
+     * Semirremolques vigentes enganchados a los equipos indicados.
+     *
+     * La relacion entre tractor y semirremolque es temporal: solo se devuelven
+     * las que siguen abiertas. Un semirremolque no puede estar enganchado a
+     * dos tractores a la vez, pero un tractor puede llevar varios semirremolques
+     * (bitren), y en ese caso se devuelven todos.
+     *
+     * La relacion se acepta en las dos direcciones porque la pantalla de la
+     * ficha deja crearla desde el tractor o desde el semirremolque. De las dos
+     * partes solo se devuelve la que es semirremolque.
+     *
+     * @param list<int> $equipmentIds
+     *
+     * @return array<int, list<array{id:int,label:string,plate:string,code:string}>>
+     *         Semirremolques por equipo. Los equipos sin semirremolque no aparecen.
+     */
+    public function activeTrailers(int $companyId, array $equipmentIds): array;
 }

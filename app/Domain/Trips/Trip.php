@@ -14,6 +14,12 @@ final class Trip
     public const FINALIZADO = 'FINALIZADO';
     public const CANCELADO = 'CANCELADO';
 
+    /**
+     * Máximo de semirremolques que puede llevar un viaje: bitrén (2) o
+     * tridem (3). Es el límite físico de la composición, no una preferencia.
+     */
+    public const MAX_TRAILERS = 3;
+
     private const STATES = [self::PLANIFICADO, self::EN_CURSO, self::FINALIZADO, self::CANCELADO];
 
     /**
@@ -264,13 +270,26 @@ final class Trip
 
     public function trailerId(): ?int
     {
+        $ids = $this->trailerIds();
+
+        return $ids[0] ?? null;
+    }
+
+    /**
+     * Semirremolques de la composición del viaje.
+     *
+     * @return list<int>
+     */
+    public function trailerIds(): array
+    {
+        $ids = [];
         foreach ($this->assignments as $assignment) {
             if ($assignment->role() === TripAssignment::ACOPLADO) {
-                return $assignment->referenceId();
+                $ids[] = $assignment->referenceId();
             }
         }
 
-        return null;
+        return $ids;
     }
 
     /** @return list<int> */
@@ -321,8 +340,8 @@ final class Trip
         if ($tractors !== 1) {
             throw new DomainException('El viaje necesita exactamente un tractor o camión.');
         }
-        if ($trailers > 1) {
-            throw new DomainException('El viaje admite como máximo un acoplado.');
+        if ($trailers > self::MAX_TRAILERS) {
+            throw new DomainException('El viaje admite hasta ' . self::MAX_TRAILERS . ' semirremolques (bitrén o tridem).');
         }
         if ($drivers < 1) {
             throw new DomainException('El viaje necesita al menos un chofer.');

@@ -154,7 +154,7 @@ Los adelantos no cambian el margen del viaje; solo la liquidación final.
 |---|---|---|
 | Viajes operativos con estados Planificado / En curso / Finalizado / Cancelado | Implementado | `viajes_operativos`, `OperationalTrips` |
 | Numeración correlativa por empresa | Implementado | `viajes_operativos_numeracion` |
-| Asignación de tractor, acoplado y choferes | Implementado | `viaje_operativo_asignaciones` |
+| Asignación de tractor, semirremolques (composición) y choferes | Implementado | `viaje_operativo_asignaciones` |
 | Porcentaje de liquidación con vigencia | Implementado | `viajes_porcentajes_liquidacion_chofer` |
 | Copia del porcentaje en el viaje | Implementado | `viaje_operativo_asignaciones.porcentaje_liquidacion` |
 | Paradas / recorrido | Implementado | `viaje_operativo_paradas` |
@@ -230,7 +230,7 @@ El viaje es la raíz de consistencia. Contiene:
 - Estado: `PLANIFICADO`, `EN_CURSO`, `FINALIZADO`, `CANCELADO`.
 - Fechas planificadas y reales de salida y regreso.
 - Km de salida y regreso.
-- Asignaciones: tractor, acoplado y choferes.
+- Asignaciones: tractor, composición de semirremolques (hasta 3: bitrén o tridem) y choferes.
 - Tramos.
 - Observaciones y motivo de cancelación.
 - Snapshots de cierre: facturado, costo, comisión, liquidación y margen.

@@ -61,11 +61,21 @@ public function equipment(int $companyId, int $equipmentId): ?array;
 public function equipmentByPlate(int $companyId, string $plate): ?array;
 // devuelven id, branchId, label, plate, code, tractor y trailer.
 // Null si la unidad no existe en la empresa o esta dada de baja.
+
+public function activeTrailers(int $companyId, array $equipmentIds): array;
+// Semirremolques vigentes enganchados a cada tractor, indexados por tractor.
 ```
 
 El consumidor nunca ve el modelo de `equipos`. El `scope` de empresa se aplica dentro del
 adaptador: una patente que pertenece a otra empresa se responde como `null`, no como un
 error.
+
+**`activeTrailers` es lo que permite que el formulario de viaje preseleccione el
+acoplado.** La relación tractor-acoplado es temporal (`equipo_relaciones.hasta IS NULL`): un
+semirremolque no puede estar enganchado a dos tractores a la vez, pero un tractor puede
+llevar varios (bitrén). La ficha de equipo deja crear la relación desde cualquiera de las
+dos partes, así que el adaptador devuelve el semirremolque tanto si el tractor es el
+equipo principal como si es el relacionado, y descarta la parte que no sea semirremolque.
 
 **El rol físico de la unidad** (tractor o acoplado) se deduce hoy del nombre del tipo de
 equipo. Es una regla de negocio sobre texto libre: renombrar un tipo la cambia en silencio.

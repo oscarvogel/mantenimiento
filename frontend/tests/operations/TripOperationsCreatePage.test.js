@@ -81,7 +81,8 @@ describe('alta de viaje operativo', () => {
     expect(wrapper.get('textarea[name="observaciones"]').element.value).toBe('Carga programada')
     const comboboxes = wrapper.findAll('input[role="combobox"]')
     expect(comboboxes[0].element.value).toBe('AA111AA · T01')
-    expect(comboboxes[1].element.value).toBe('AC222AC · A01')
+    expect(wrapper.text()).toContain('AC222AC · A01')
+    expect(wrapper.find('input[name="acoplado_id[]"]').attributes('value')).toBe('9')
     expect(wrapper.text()).toContain('Pérez, Juan')
     expect(wrapper.findAll('article')).toHaveLength(2)
     wrapper.unmount()
@@ -116,6 +117,70 @@ describe('alta de viaje operativo', () => {
 
     expect(address.props('options').map((option) => option.label)).toContain('Planta · Ruta 9 · Rosario')
     expect(address.props('options').map((option) => option.label)).not.toContain('Depósito de otro cliente')
+    wrapper.unmount()
+  })
+
+  it('preselecciona el semirremolque enganchado al elegir el camión', async () => {
+    const wrapper = mount(TripOperationsCreatePage, {
+      props: { data: { ...data, tractors: [{ ...data.tractors[0], linkedTrailerIds: [9] }] } },
+    })
+    const autocompletes = wrapper.findAllComponents(AutocompleteSelect)
+    const tractor = autocompletes.find((component) => component.props('name') === 'tractor_id')
+    const trailer = autocompletes.find((component) => component.props('name') === 'acoplado_id[]')
+
+    tractor.vm.$emit('update:modelValue', 7)
+    await wrapper.vm.$nextTick()
+    await wrapper.vm.$nextTick()
+
+    expect(trailer.props('modelValue')).toEqual(['9'])
+    expect(wrapper.text()).toContain('Acoplado actual del camión: AC222AC · A01')
+    expect(trailer.props('options').map((option) => option.hint)).toContain('Acoplado · Acoplado actual')
+    wrapper.unmount()
+  })
+
+  it('con dos semirremolques enganchados preselecciona la composición completa del bitrén', async () => {
+    const wrapper = mount(TripOperationsCreatePage, {
+      props: {
+        data: {
+          ...data,
+          tractors: [{ ...data.tractors[0], linkedTrailerIds: [9, 10] }],
+          trailers: [
+            ...data.trailers,
+            { id: 10, label: 'EE333FF · A02', plate: 'EE333FF', type: 'Semirremolque', branchId: 10, lastKm: null },
+          ],
+        },
+      },
+    })
+    const autocompletes = wrapper.findAllComponents(AutocompleteSelect)
+    const tractor = autocompletes.find((component) => component.props('name') === 'tractor_id')
+    const trailer = autocompletes.find((component) => component.props('name') === 'acoplado_id[]')
+
+    tractor.vm.$emit('update:modelValue', 7)
+    await wrapper.vm.$nextTick()
+    await wrapper.vm.$nextTick()
+
+    expect(trailer.props('modelValue')).toEqual(['9', '10'])
+    expect(wrapper.text()).toContain('Bitrén')
+    expect(wrapper.text()).toContain('AC222AC · A01')
+    expect(wrapper.text()).toContain('EE333FF · A02')
+    expect(wrapper.text()).toContain('composición completa')
+    wrapper.unmount()
+  })
+
+  it('sin semirremolque enganchado no preselecciona nada', async () => {
+    const wrapper = mount(TripOperationsCreatePage, {
+      props: { data: { ...data, tractors: [{ ...data.tractors[0], linkedTrailerIds: [] }] } },
+    })
+    const autocompletes = wrapper.findAllComponents(AutocompleteSelect)
+    const tractor = autocompletes.find((component) => component.props('name') === 'tractor_id')
+    const trailer = autocompletes.find((component) => component.props('name') === 'acoplado_id[]')
+
+    tractor.vm.$emit('update:modelValue', 7)
+    await wrapper.vm.$nextTick()
+    await wrapper.vm.$nextTick()
+
+    expect(trailer.props('modelValue')).toEqual([])
+    expect(wrapper.text()).not.toContain('Acoplado actual del camión')
     wrapper.unmount()
   })
 })

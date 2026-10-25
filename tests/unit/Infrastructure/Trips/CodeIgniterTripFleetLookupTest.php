@@ -32,6 +32,11 @@ final class CodeIgniterTripFleetLookupTest extends TestCase
                 {
                     return null;
                 }
+
+                public function activeTrailers(int $companyId, array $equipmentIds): array
+                {
+                    return [];
+                }
             },
             new class implements EmployeeDirectoryLookup {
                 public function driver(int $companyId, int $employeeId): ?array
@@ -64,6 +69,11 @@ final class CodeIgniterTripFleetLookupTest extends TestCase
                 {
                     return null;
                 }
+
+                public function activeTrailers(int $companyId, array $equipmentIds): array
+                {
+                    return [];
+                }
             },
             new class implements EmployeeDirectoryLookup {
                 public function driver(int $companyId, int $employeeId): ?array
@@ -88,6 +98,11 @@ final class CodeIgniterTripFleetLookupTest extends TestCase
                 public function equipmentByPlate(int $companyId, string $plate): ?array
                 {
                     return null;
+                }
+
+                public function activeTrailers(int $companyId, array $equipmentIds): array
+                {
+                    return [];
                 }
             },
             new class implements EmployeeDirectoryLookup {

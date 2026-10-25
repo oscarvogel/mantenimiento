@@ -57,6 +57,34 @@ final class TripTest extends TestCase
         ]);
     }
 
+    public function testUnBitrenPuedeLlevarDosSemirremolques(): void
+    {
+        $trip = $this->trip(assignments: [
+            $this->assignment(TripAssignment::TRACTOR, 7),
+            $this->assignment(TripAssignment::ACOPLADO, 9),
+            $this->assignment(TripAssignment::ACOPLADO, 10),
+            $this->assignment(TripAssignment::CHOFER, 11),
+        ]);
+
+        self::assertSame([9, 10], $trip->trailerIds());
+        self::assertSame(9, $trip->trailerId());
+    }
+
+    public function testElViajeAdmiteComoMaximoTresSemirremolques(): void
+    {
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('bitrén o tridem');
+
+        $this->trip(assignments: [
+            $this->assignment(TripAssignment::TRACTOR, 7),
+            $this->assignment(TripAssignment::ACOPLADO, 9),
+            $this->assignment(TripAssignment::ACOPLADO, 10),
+            $this->assignment(TripAssignment::ACOPLADO, 12),
+            $this->assignment(TripAssignment::ACOPLADO, 13),
+            $this->assignment(TripAssignment::CHOFER, 11),
+        ]);
+    }
+
     public function testSameDriverCannotBeAssignedTwice(): void
     {
         $this->expectException(DomainException::class);

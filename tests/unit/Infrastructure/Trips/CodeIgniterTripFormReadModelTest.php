@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Infrastructure\Assets\CodeIgniterEquipmentFleetLookup;
 use App\Infrastructure\Trips\CodeIgniterTripFormReadModel;
 use CodeIgniter\Database\BaseConnection;
 use Config\Database;
@@ -27,6 +28,7 @@ final class CodeIgniterTripFormReadModelTest extends TestCase
         $this->database->query('CREATE TABLE sucursales (id INTEGER PRIMARY KEY, empresa_id INTEGER, codigo TEXT, nombre TEXT, estado INTEGER, deleted_at TEXT NULL)');
         $this->database->query('CREATE TABLE tipos_equipo (id INTEGER PRIMARY KEY, nombre TEXT)');
         $this->database->query('CREATE TABLE equipos (id INTEGER PRIMARY KEY, empresa_id INTEGER, sucursal_id INTEGER, tipo_equipo_id INTEGER, codigo TEXT, patente TEXT, estado TEXT, deleted_at TEXT NULL)');
+        $this->database->query('CREATE TABLE equipo_relaciones (id INTEGER PRIMARY KEY, empresa_id INTEGER, equipo_principal_id INTEGER, equipo_relacionado_id INTEGER, tipo_relacion TEXT, desde TEXT, hasta TEXT NULL)');
         $this->database->query('CREATE TABLE empleados (id INTEGER PRIMARY KEY, empresa_id INTEGER, nombre TEXT, apellido TEXT, legajo TEXT NULL, activo INTEGER, deleted_at TEXT NULL)');
         $this->database->query('CREATE TABLE employee_equipment_assignments (id INTEGER PRIMARY KEY, empresa_id INTEGER, empleado_id INTEGER, equipo_id INTEGER, rol TEXT, fecha_desde TEXT, fecha_hasta TEXT NULL)');
         $this->database->query('CREATE TABLE clientes (id INTEGER PRIMARY KEY, empresa_id INTEGER, nombre TEXT, identificacion_fiscal TEXT NULL, activo INTEGER, deleted_at TEXT NULL)');
@@ -43,6 +45,10 @@ final class CodeIgniterTripFormReadModelTest extends TestCase
         $this->database->table('equipos')->insertBatch([
             ['id' => 7, 'empresa_id' => 5, 'sucursal_id' => 10, 'tipo_equipo_id' => 1, 'codigo' => 'T01', 'patente' => 'AA111AA', 'estado' => 'ACTIVO', 'deleted_at' => null],
             ['id' => 9, 'empresa_id' => 5, 'sucursal_id' => 10, 'tipo_equipo_id' => 2, 'codigo' => 'A01', 'patente' => 'AC222AC', 'estado' => 'ACTIVO', 'deleted_at' => null],
+        ]);
+        $this->database->table('equipo_relaciones')->insert([
+            'id' => 1, 'empresa_id' => 5, 'equipo_principal_id' => 7, 'equipo_relacionado_id' => 9,
+            'tipo_relacion' => 'TRACTOR_ACOPLADO', 'desde' => '2026-01-01 00:00:00', 'hasta' => null,
         ]);
         $this->database->table('empleados')->insert(['id' => 11, 'empresa_id' => 5, 'nombre' => 'Juan', 'apellido' => 'Pérez', 'legajo' => '100', 'activo' => 1, 'deleted_at' => null]);
         $this->database->table('employee_equipment_assignments')->insert([
@@ -71,7 +77,7 @@ final class CodeIgniterTripFormReadModelTest extends TestCase
 
     public function testOptionsExposeTheDataNeededByTheCreateForm(): void
     {
-        $options = (new CodeIgniterTripFormReadModel($this->database))->options(5, [10]);
+        $options = $this->readModel()->options(5, [10]);
 
         self::assertSame('Transporte Mariela', $options['company']['name']);
         self::assertSame('23-28059786-4', $options['company']['taxId']);
@@ -88,5 +94,30 @@ final class CodeIgniterTripFormReadModelTest extends TestCase
         self::assertSame('Cliente Sur', $options['customers'][0]['label']);
         self::assertSame('Planta · Ruta 9 · Rosario', $options['addresses'][0]['label']);
         self::assertSame('Tonelada (tn)', $options['loadUnits'][0]['label']);
+    }
+
+    public function testExponeElSemirremolqueEnganchadoAlTractor(): void
+    {
+        $options = $this->readModel()->options(5, [10]);
+
+        self::assertSame([9], $options['tractors'][0]['linkedTrailerIds']);
+        self::assertSame([], $options['trailers'][0]['linkedTrailerIds'] ?? []);
+    }
+
+    public function testSinSemirremolqueEnganchadoLaListaQuedaVacia(): void
+    {
+        $this->database->table('equipo_relaciones')->where('empresa_id', 5)->delete();
+
+        $options = $this->readModel()->options(5, [10]);
+
+        self::assertSame([], $options['tractors'][0]['linkedTrailerIds']);
+    }
+
+    private function readModel(): CodeIgniterTripFormReadModel
+    {
+        return new CodeIgniterTripFormReadModel(
+            $this->database,
+            new CodeIgniterEquipmentFleetLookup($this->database),
+        );
     }
 }

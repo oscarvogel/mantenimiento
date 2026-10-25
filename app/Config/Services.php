@@ -1289,7 +1289,10 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
         }
 
         return new \App\Application\Trips\GetTripFormOptions(
-            new \App\Infrastructure\Trips\CodeIgniterTripFormReadModel(db_connect()),
+            new \App\Infrastructure\Trips\CodeIgniterTripFormReadModel(
+                db_connect(),
+                new \App\Infrastructure\Assets\CodeIgniterEquipmentFleetLookup(db_connect()),
+            ),
         );
     }
 

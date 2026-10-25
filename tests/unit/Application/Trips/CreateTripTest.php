@@ -115,7 +115,7 @@ final class CreateTripTest extends TestCase
             new DateTimeImmutable('2026-10-20 08:00:00'),
             new DateTimeImmutable('2026-10-21 18:00:00'),
             7,
-            9,
+            [9],
             [11],
             [
                 new TripStopInput('CARGA', 'Rosario', 3, 99),
@@ -157,6 +157,87 @@ final class CreateTripTest extends TestCase
         self::assertSame('Salida temprano.', $command->notes);
     }
 
+    public function testRegistraLaComposicionCompletaDeUnBitren(): void
+    {
+        $repository = new CreateTripRepositoryFake();
+        $handler = new CreateTrip($repository, $this->fleet(), $this->directory(), new CreateTripUnitOfWorkFake());
+        $command = new CreateTripCommand(
+            10,
+            new DateTimeImmutable('2026-10-20 08:00:00'),
+            new DateTimeImmutable('2026-10-21 18:00:00'),
+            7,
+            [9, 10],
+            [11],
+            [
+                new TripStopInput('CARGA', 'Rosario', 3, null, null, 'Soja', '30', 2),
+                new TripStopInput('DESCARGA', 'Córdoba', 4),
+            ],
+        );
+
+        $handler->execute($this->actor(['viajes.operar'], [10]), $command);
+
+        $trip = $repository->added;
+        self::assertNotNull($trip);
+        self::assertSame([9, 10], $trip->trailerIds());
+        self::assertSame(9, $trip->trailerId());
+        self::assertSame([7, 9, 10], $repository->queriedEquipmentIds);
+    }
+
+    public function testElComandoLeeLaListaDeSemirremolques(): void
+    {
+        $command = CreateTripCommand::fromInput([
+            'sucursal_id' => '10',
+            'fecha_salida_planificada' => '2026-10-20T08:00',
+            'fecha_regreso_planificada' => '2026-10-21T18:30',
+            'tractor_id' => '7',
+            'acoplado_id' => ['9', '10'],
+            'choferes' => ['11'],
+            'paradas' => [
+                ['tipo' => 'CARGA', 'ubicacion' => 'Rosario', 'cliente_id' => '3'],
+                ['tipo' => 'DESCARGA', 'ubicacion' => 'Córdoba'],
+            ],
+        ]);
+
+        self::assertSame([9, 10], $command->trailerIds);
+    }
+
+    public function testElComandoAceptaUnSemirremolqueSuelto(): void
+    {
+        $command = CreateTripCommand::fromInput([
+            'sucursal_id' => '10',
+            'fecha_salida_planificada' => '2026-10-20T08:00',
+            'fecha_regreso_planificada' => '2026-10-21T18:30',
+            'tractor_id' => '7',
+            'acoplado_id' => '9',
+            'choferes' => ['11'],
+            'paradas' => [
+                ['tipo' => 'CARGA', 'ubicacion' => 'Rosario', 'cliente_id' => '3'],
+                ['tipo' => 'DESCARGA', 'ubicacion' => 'Córdoba'],
+            ],
+        ]);
+
+        self::assertSame([9], $command->trailerIds);
+    }
+
+    public function testRejectsMoreThanThreeTrailers(): void
+    {
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('bitrén o tridem');
+
+        CreateTripCommand::fromInput([
+            'sucursal_id' => '10',
+            'fecha_salida_planificada' => '2026-10-20T08:00',
+            'fecha_regreso_planificada' => '2026-10-21T18:30',
+            'tractor_id' => '7',
+            'acoplado_id' => ['9', '10', '11', '12'],
+            'choferes' => ['11'],
+            'paradas' => [
+                ['tipo' => 'CARGA', 'ubicacion' => 'Rosario', 'cliente_id' => '3'],
+                ['tipo' => 'DESCARGA', 'ubicacion' => 'Córdoba'],
+            ],
+        ]);
+    }
+
     /** @param list<string> $permissions @param list<int> $branches */
     private function actor(array $permissions, array $branches): ActorContext
     {
@@ -170,7 +251,7 @@ final class CreateTripTest extends TestCase
             new DateTimeImmutable('2026-10-20 08:00:00'),
             new DateTimeImmutable('2026-10-21 18:00:00'),
             7,
-            9,
+            [9],
             [11, 12],
             [
                 new TripStopInput('CARGA', 'Rosario', 3, null, null, 'Soja', '30', 2),
@@ -225,6 +306,7 @@ final class CreateTripTest extends TestCase
                 return match ($equipmentId) {
                     7 => ['id' => 7, 'branchId' => 10, 'label' => 'AA 111 AA', 'trailer' => false, 'tractor' => true],
                     9 => ['id' => 9, 'branchId' => 10, 'label' => 'AC 222 AC', 'trailer' => true, 'tractor' => false],
+                    10 => ['id' => 10, 'branchId' => 10, 'label' => 'AD 333 AD', 'trailer' => true, 'tractor' => false],
                     default => null,
                 };
             }
