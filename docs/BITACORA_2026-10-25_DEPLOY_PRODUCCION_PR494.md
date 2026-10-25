@@ -101,7 +101,21 @@ Ninguna de las tres activa un canal de envío por sí sola.
 - Quedó residuo de builds anteriores en `assets/dashboard/` (98 archivos de deploys viejos).
   No se tocaron: no pertenecen a este cambio.
 
-## 7. Pendientes
+## 7. Seguimiento: el panel de relaciones no se encontraba
+
+Al usar la pantalla, el usuario avisó que **no existía la ficha de "Relaciones entre
+equipos"**. Existía, pero estaba en la pestaña **Mantenimiento** y no en *Resumen*: era
+un error de mi explicación anterior y, además, una mala ubicación. Enganchar un
+semirremolque a un camión es parte de la ficha del equipo, no del mantenimiento preventivo.
+
+| Paso | Qué |
+|---|---|
+| PR #496 | Mueve el panel a la pestaña *Resumen*, junto a los datos del equipo. Sin tocar contratos de datos. |
+| Test | `OperationsPages.test.js`: "deja las relaciones entre equipos en la pestaña Resumen". |
+| Release | Sólo assets: el bundle nuevo y el manifest, más 4 huérfanos borrados. El PHP no cambió. |
+| Verificación | 25 de 25 bundles del manifest responden 200 · `/login` 200 · `/.env` 403 · `/migrate.php` 404 · 431 tests del frontend en verde |
+
+## 8. Pendientes
 
 - [ ] Confirmar con el cliente la marca de los 13 argentinos (inferida del WMI del chasis) y el
       chasis de AE611RN (`docs/CARGA_SEMIS_2026-10-25.md` §8).
