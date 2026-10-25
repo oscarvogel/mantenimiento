@@ -37,9 +37,14 @@ un segundo semirremolque es una fila más.
 La asociación ya existía en el modelo: `equipo_relaciones`, una relación **temporal** entre
 dos equipos, de tipo `TRACTOR_ACOPLADO`, con `desde` y `hasta` (nulo = vigente).
 
-**Dónde se hace:** ficha del equipo (*Equipos → una unidad*), panel **"Relaciones entre
-equipos"**: se elige el "Equipo relacionado", el tipo *Tractor-acoplado* y la fecha desde.
-Permiso `equipos.editar`.
+**Dónde se hace:** ficha del equipo (*Equipos → una unidad*), pestaña **Resumen**, panel
+**"Relaciones entre equipos"**: se elige el "Equipo relacionado", el tipo *Tractor-acoplado* y
+la fecha desde. Permiso `equipos.editar`.
+
+> El panel estaba en la pestaña *Mantenimiento* y nadie lo encontraba: la relación
+> tractor-acoplado no es un tema de mantenimiento preventivo. Se movió al *Resumen*, que es
+> donde están los datos del equipo, y hay un test que lo fija
+> (`OperationsPages.test.js`, "deja las relaciones entre equipos en la pestaña Resumen").
 
 **Reglas del dominio** (`app/Domain/Assets/EquipmentRelation.php` y
 `CreateEquipmentRelationHandler`):

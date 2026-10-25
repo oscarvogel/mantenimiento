@@ -368,6 +368,16 @@ describe('equipment-detail', () => {
     expect(wrapper.get('input[name="fecha_alta"]').element.value).toBe('2025-01-02')
   })
 
+  it('deja las relaciones entre equipos en la pestaña Resumen', () => {
+    // Una relación tractor-acoplado no es un tema de mantenimiento preventivo:
+    // si vive en esa pestaña, el operador no la encuentra y el semirremolque
+    // nunca queda enganchado al camión.
+    const wrapper = render(EquipmentDetailPage, equipmentData)
+
+    expect(wrapper.get('#equipment-panel-resumen').text()).toContain('Relaciones entre equipos')
+    expect(wrapper.get('#equipment-panel-mantenimiento').text()).not.toContain('Relaciones entre equipos')
+  })
+
   it('mantiene modo consulta para baja y sin permiso de lecturas', () => {
     const data = { ...equipmentData, equipment: { ...equipmentData.equipment, status: 'BAJA' }, can: { edit: false, correctReadings: false }, readings: null }
     const wrapper = render(EquipmentDetailPage, data)
