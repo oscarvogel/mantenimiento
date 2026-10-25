@@ -282,13 +282,7 @@ const equipmentSummary = computed(() => {
         <p v-else class="text-sm text-ink-muted">El equipo permanece disponible para consulta y auditoría.</p>
       </PanelCard>
     </section>
-    </div>
 
-    <div id="equipment-panel-mantenimiento" v-show="activeTab === 'mantenimiento'" role="tabpanel" aria-labelledby="equipment-tab-mantenimiento">
-    <div class="mb-6 flex flex-col gap-4 rounded-xl border border-brand-200 bg-brand-50 p-5 sm:flex-row sm:items-center sm:justify-between">
-      <div><h2 class="font-bold text-ink">Gestión preventiva</h2><p class="mt-1 text-sm text-ink-muted">Consultá el circuito del equipo o asignale planes desde una plantilla.</p></div>
-      <div class="flex flex-wrap gap-2"><a v-if="data.can.edit" :href="data.routes.addPlansFromTemplate" :class="primaryButton">Agregar planes</a><a :href="data.routes.maintenance" :class="secondaryButton">Ver mantenimiento</a></div>
-    </div>
     <PanelCard title="Relaciones entre equipos" :count="data.relations.total">
       <form v-if="data.can.edit && data.equipment.status === 'ACTIVO' && data.relatedCandidates.length" method="post" :action="data.routes.createRelation" class="mb-6 grid gap-4 border-b border-border-subtle pb-6 md:grid-cols-4">
         <CsrfInput :csrf="data.csrf" /><FormField label="Equipo relacionado" for-id="detail-related-equipment"><select id="detail-related-equipment" name="equipo_relacionado_id" required :class="fieldClass"><option v-for="candidate in data.relatedCandidates" :key="candidate.id" :value="candidate.id">{{ candidate.code }} · {{ candidate.typeName }}</option></select></FormField><FormField label="Tipo" for-id="detail-relation-type"><select id="detail-relation-type" name="tipo_relacion" :class="fieldClass"><option value="TRACTOR_ACOPLADO">Tractor-acoplado</option><option value="OTRO">Otro</option></select></FormField><FormField label="Desde" for-id="detail-relation-start"><input id="detail-relation-start" type="datetime-local" name="desde" required :value="nowLocal()" :class="fieldClass" /></FormField><button type="submit" :class="`${primaryButton} self-end`">Relacionar</button><FormField label="Observaciones" for-id="detail-relation-notes" class="md:col-span-4"><input id="detail-relation-notes" name="observaciones" maxlength="500" :class="fieldClass" /></FormField>
@@ -297,6 +291,13 @@ const equipmentSummary = computed(() => {
       <div v-else class="overflow-x-auto"><table class="ui-table-hover w-full min-w-[52rem] text-left text-sm"><thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-4 py-3">Equipos</th><th class="px-4 py-3">Tipo</th><th class="px-4 py-3">Vigencia</th><th class="px-4 py-3">Registro</th><th class="px-4 py-3">Acción</th></tr></thead><tbody class="divide-y divide-border-subtle"><tr v-for="relation in data.relations.items" :key="relation.id"><td class="px-4 py-4 font-semibold text-ink">{{ relation.principalCode }} ↔ {{ relation.relatedCode }}</td><td class="px-4 py-4 text-ink-muted">{{ relation.type }}</td><td class="px-4 py-4">{{ relation.from }}<br><span class="text-xs text-ink-muted">{{ relation.to ? `Hasta ${relation.to}` : 'Activa' }}</span></td><td class="px-4 py-4">{{ relation.userName }}<br><span v-if="relation.notes" class="text-xs text-ink-muted">{{ relation.notes }}</span></td><td class="px-4 py-4"><details v-if="data.can.edit && !relation.to" class="ui-details-animated"><summary :class="secondaryButton">Finalizar</summary><form method="post" :action="relation.finishUrl" data-confirm data-confirm-title="¿Finalizar esta relación?" data-confirm-text="La relación dejará de estar activa. El historial se conservará." data-confirm-button="Finalizar relación" class="mt-3 w-72 rounded-xl border border-border bg-white p-4 shadow-card"><CsrfInput :csrf="data.csrf" /><FormField label="Hasta" :for-id="`relation-end-${relation.id}`"><input :id="`relation-end-${relation.id}`" type="datetime-local" name="hasta" required :value="nowLocal()" :class="fieldClass" /></FormField><FormField label="Observaciones de cierre" :for-id="`relation-end-notes-${relation.id}`" class="mt-3"><textarea :id="`relation-end-notes-${relation.id}`" name="observaciones_fin" maxlength="500" :class="fieldClass"></textarea></FormField><button type="submit" :class="`${primaryButton} mt-3`">Finalizar relación</button></form></details></td></tr></tbody></table></div>
       <template #footer><PaginationBar :pagination="data.relations.pagination" /></template>
     </PanelCard>
+    </div>
+
+    <div id="equipment-panel-mantenimiento" v-show="activeTab === 'mantenimiento'" role="tabpanel" aria-labelledby="equipment-tab-mantenimiento">
+    <div class="mb-6 flex flex-col gap-4 rounded-xl border border-brand-200 bg-brand-50 p-5 sm:flex-row sm:items-center sm:justify-between">
+      <div><h2 class="font-bold text-ink">Gestión preventiva</h2><p class="mt-1 text-sm text-ink-muted">Consultá el circuito del equipo o asignale planes desde una plantilla.</p></div>
+      <div class="flex flex-wrap gap-2"><a v-if="data.can.edit" :href="data.routes.addPlansFromTemplate" :class="primaryButton">Agregar planes</a><a :href="data.routes.maintenance" :class="secondaryButton">Ver mantenimiento</a></div>
+    </div>
     </div>
 
     <div id="equipment-panel-archivos" v-show="activeTab === 'archivos'" role="tabpanel" aria-labelledby="equipment-tab-archivos">
