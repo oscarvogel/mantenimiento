@@ -40,16 +40,16 @@ final class CreateTrip
             $this->assertEquipmentBranch($actor, $companyId, $truck);
 
             $equipmentIds = [$command->truckId];
-            if ($command->trailerId !== null) {
-                $trailer = $this->fleet->equipment($companyId, $command->trailerId);
+            foreach ($command->trailerIds as $trailerId) {
+                $trailer = $this->fleet->equipment($companyId, $trailerId);
                 if ($trailer === null) {
-                    throw new DomainException('El acoplado elegido no existe en tu empresa.');
+                    throw new DomainException('El semirremolque elegido no existe en tu empresa.');
                 }
                 if ($trailer['tractor'] && ! $trailer['trailer']) {
-                    throw new DomainException('El equipo elegido no es un acoplado; revisá la asignación.');
+                    throw new DomainException('El equipo elegido no es un semirremolque; revisá la asignación.');
                 }
                 $this->assertEquipmentBranch($actor, $companyId, $trailer);
-                $equipmentIds[] = $command->trailerId;
+                $equipmentIds[] = $trailerId;
             }
 
             foreach ($command->driverIds as $driverId) {
@@ -75,8 +75,8 @@ final class CreateTrip
             $assignments = [
                 new TripAssignment(TripAssignment::TRACTOR, $command->truckId, $command->plannedDeparture, $command->plannedReturn),
             ];
-            if ($command->trailerId !== null) {
-                $assignments[] = new TripAssignment(TripAssignment::ACOPLADO, $command->trailerId, $command->plannedDeparture, $command->plannedReturn);
+            foreach ($command->trailerIds as $trailerId) {
+                $assignments[] = new TripAssignment(TripAssignment::ACOPLADO, $trailerId, $command->plannedDeparture, $command->plannedReturn);
             }
             foreach ($command->driverIds as $driverId) {
                 $assignments[] = new TripAssignment(

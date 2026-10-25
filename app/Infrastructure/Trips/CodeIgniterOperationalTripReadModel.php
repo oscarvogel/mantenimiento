@@ -104,6 +104,7 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
                 'km_salida' => $row['km_salida'] === null ? null : (int) $row['km_salida'],
                 'tractor' => $this->roleLabel($tripAssignments, 'TRACTOR'),
                 'acoplado' => $this->roleLabel($tripAssignments, 'ACOPLADO'),
+                'acoplados' => $this->roleLabels($tripAssignments, 'ACOPLADO'),
                 'choferes' => $this->roleLabels($tripAssignments, 'CHOFER'),
                 'origen' => $tripStops[0]['ubicacion'] ?? null,
                 'destino' => $tripStops === [] ? null : $tripStops[count($tripStops) - 1]['ubicacion'],

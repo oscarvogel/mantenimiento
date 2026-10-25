@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Trips;
 
+use App\Domain\Trips\Trip;
 use DateTimeImmutable;
 use DomainException;
 
@@ -11,6 +12,7 @@ final readonly class CreateTripCommand
 {
     /**
      * @param list<int> $driverIds
+     * @param list<int> $trailerIds
      * @param list<TripStopInput> $stops
      * @param array<int,float|null> $driverPercentages
      */
@@ -19,7 +21,7 @@ final readonly class CreateTripCommand
         public DateTimeImmutable $plannedDeparture,
         public DateTimeImmutable $plannedReturn,
         public int $truckId,
-        public ?int $trailerId,
+        public array $trailerIds,
         public array $driverIds,
         public array $stops,
         public string $notes = '',
@@ -33,7 +35,7 @@ final readonly class CreateTripCommand
     {
         $branchId = self::positiveInt($input['sucursal_id'] ?? null, 'Elegí la sucursal de origen.');
         $truckId = self::positiveInt($input['tractor_id'] ?? null, 'Elegí el tractor o camión del viaje.');
-        $trailerId = self::optionalPositiveInt($input['acoplado_id'] ?? null, 'El acoplado elegido no es válido.');
+        $trailerIds = self::trailerIds($input['acoplado_id'] ?? null);
         $plannedDeparture = self::dateTime($input['fecha_salida_planificada'] ?? null, 'La salida planificada');
         $plannedReturn = self::dateTime($input['fecha_regreso_planificada'] ?? null, 'El regreso planificado');
         if ($plannedReturn <= $plannedDeparture) {
@@ -55,13 +57,40 @@ final readonly class CreateTripCommand
             $plannedDeparture,
             $plannedReturn,
             $truckId,
-            $trailerId,
+            $trailerIds,
             $driverIds,
             $stops,
             trim((string) ($input['observaciones'] ?? '')),
             self::optionalNonNegativeInt($input['km_salida'] ?? null, 'El odómetro de salida no es válido.'),
             self::driverPercentages($input['choferes_porcentajes'] ?? null, $driverIds),
         );
+    }
+
+    /**
+     * Semirremolques de la composición.
+     *
+     * Acepta el valor suelto (un acoplado) y la lista (bitrén o tridem), que es
+     * lo que manda el formulario.
+     *
+     * @return list<int>
+     */
+    private static function trailerIds(mixed $value): array
+    {
+        $candidates = is_array($value) ? $value : ($value === null || $value === '' ? [] : [$value]);
+        $ids = [];
+        foreach ($candidates as $candidate) {
+            $parsed = filter_var($candidate, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+            if ($parsed === false) {
+                throw new DomainException('El semirremolque elegido no es válido.');
+            }
+            $ids[(int) $parsed] = (int) $parsed;
+        }
+        $ids = array_values($ids);
+        if (count($ids) > Trip::MAX_TRAILERS) {
+            throw new DomainException('El viaje admite hasta ' . Trip::MAX_TRAILERS . ' semirremolques (bitrén o tridem).');
+        }
+
+        return $ids;
     }
 
     private static function positiveInt(mixed $value, string $message): int

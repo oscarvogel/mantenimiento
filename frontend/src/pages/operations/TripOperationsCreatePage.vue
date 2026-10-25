@@ -48,7 +48,9 @@ const initialStops = () => {
 }
 const stops = ref(initialStops())
 const tractorId = ref(old.value.tractor_id ?? '')
-const trailerId = ref(old.value.acoplado_id ?? '')
+const trailerIds = ref(old.value.acoplado_id
+  ? (Array.isArray(old.value.acoplado_id) ? old.value.acoplado_id.map(String) : [String(old.value.acoplado_id)])
+  : [])
 const branchId = ref(old.value.sucursal_id === undefined || old.value.sucursal_id === null ? '' : String(old.value.sucursal_id))
 const departure = ref(old.value.fecha_salida_planificada ?? nowLocal())
 const returnAt = ref(old.value.fecha_regreso_planificada ?? '')
@@ -59,6 +61,25 @@ const percentages = ref({})
 
 const selectedTractor = computed(() => tractors.value.find((equipment) => String(equipment.id) === String(tractorId.value)) ?? null)
 const domain = computed(() => selectedTractor.value?.plate ?? '')
+const linkedTrailerIdsFor = (equipmentId) => {
+  if (!equipmentId) return []
+  const tractor = tractors.value.find((equipment) => String(equipment.id) === String(equipmentId))
+  if (!tractor) return []
+
+  return (tractor.linkedTrailerIds ?? []).map(String)
+}
+const linkedTrailersFor = (equipmentId) => {
+  const ids = linkedTrailerIdsFor(equipmentId)
+
+  return trailers.value.filter((trailer) => ids.includes(String(trailer.id)))
+}
+const trailerHint = computed(() => {
+  const linked = linkedTrailersFor(tractorId.value)
+  if (linked.length === 0) return ''
+  if (linked.length === 1) return `Acoplado actual del camión: ${linked[0].label}.`
+
+  return `Bitrén: este camión tiene ${linked.length} semirremolques enganchados (${linked.map((trailer) => trailer.label).join(', ')}). Se preseleccionaron todos: el viaje registra la composición completa.`
+})
 const companyLabel = computed(() => company.value.name || company.value.legalName || 'Empresa actual')
 const kmSalidaHint = computed(() => {
   const lastKm = selectedTractor.value?.lastKm
@@ -106,6 +127,9 @@ if (branchId.value === '' && selectedTractor.value) branchId.value = String(sele
 if (kmSalida.value === '' && selectedTractor.value?.lastKm !== null && selectedTractor.value?.lastKm !== undefined) {
   kmSalida.value = String(selectedTractor.value.lastKm)
 }
+if (!trailerIds.value.length) {
+  trailerIds.value = linkedTrailerIdsFor(tractorId.value)
+}
 
 watch(tractorId, (value) => {
   const tractor = selectedTractor.value
@@ -113,6 +137,10 @@ watch(tractorId, (value) => {
     branchId.value = String(tractor.branchId)
     if (tractor.lastKm !== null && tractor.lastKm !== undefined) kmSalida.value = String(tractor.lastKm)
   }
+  // La composición arranca con los semirremolques que el camión tiene
+  // enganchados. Con uno se preselecciona; con varios (bitrén) se
+  // preselecciona la composición completa. El operador puede cambiarla.
+  trailerIds.value = linkedTrailerIdsFor(value)
   const assigned = assignedDriversFor(value)
   const previousAuto = autoDrivers.value
   const manual = selectedDrivers.value.map(String).filter((id) => !previousAuto.includes(id))
@@ -132,7 +160,16 @@ const tractorOptions = computed(() => tractors.value.map((equipment) => {
   if (equipment.lastKm !== null && equipment.lastKm !== undefined) hints.push(`Último km ${Number(equipment.lastKm).toLocaleString('es-AR')}`)
   return { value: equipment.id, label: equipment.label, hint: hints.filter(Boolean).join(' · ') }
 }))
-const trailerOptions = computed(() => trailers.value.map((equipment) => ({ value: equipment.id, label: equipment.label, hint: equipment.type })))
+const trailerOptions = computed(() => {
+  const linked = linkedTrailerIdsFor(tractorId.value)
+
+  return trailers.value.map((equipment) => {
+    const hints = [equipment.type]
+    if (linked.includes(String(equipment.id))) hints.push('Acoplado actual')
+
+    return { value: equipment.id, label: equipment.label, hint: hints.filter(Boolean).join(' · ') }
+  })
+})
 const driverOptions = computed(() => drivers.value.map((driver) => {
   const hints = []
   if (driver.employeeNumber) hints.push(`Legajo ${driver.employeeNumber}`)
@@ -171,11 +208,13 @@ const updateCustomer = (stop, value) => {
           <label class="block xl:col-span-2">
             <span class="mb-1.5 block text-sm font-semibold text-ink">Tractor o camión</span>
             <AutocompleteSelect v-model="tractorId" name="tractor_id" :options="tractorOptions" placeholder="Elegí el tractor o camión" required />
-            <span class="mt-1 block text-xs text-ink-muted">Al elegirlo se completan empresa, dominio, chofer, porcentaje y último km.</span>
+            <span class="mt-1 block text-xs text-ink-muted">Al elegirlo se completan empresa, dominio, chofer, porcentaje, último km y el semirremolque que tiene enganchado.</span>
           </label>
           <label class="block">
-            <span class="mb-1.5 block text-sm font-semibold text-ink">Acoplado o semirremolque</span>
-            <AutocompleteSelect v-model="trailerId" name="acoplado_id" :options="trailerOptions" placeholder="Sin acoplado" clearable />
+            <span class="mb-1.5 block text-sm font-semibold text-ink">Semirremolques del viaje</span>
+            <AutocompleteSelect v-model="trailerIds" name="acoplado_id[]" :options="trailerOptions" placeholder="Sin semirremolque" multiple />
+            <span v-if="trailerHint" class="mt-1 block text-xs text-ink-muted">{{ trailerHint }}</span>
+            <span v-else class="mt-1 block text-xs text-ink-muted">Podés cargar más de uno si el camión va en bitrén.</span>
           </label>
           <label class="block">
             <span class="mb-1.5 block text-sm font-semibold text-ink">Sucursal de origen</span>

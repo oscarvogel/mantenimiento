@@ -4,13 +4,16 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Trips;
 
+use App\Application\Assets\Port\EquipmentFleetLookup;
 use App\Application\Trips\Port\TripFormReadModel;
 use CodeIgniter\Database\BaseConnection;
 
 final class CodeIgniterTripFormReadModel implements TripFormReadModel
 {
-    public function __construct(private readonly BaseConnection $db)
-    {
+    public function __construct(
+        private readonly BaseConnection $db,
+        private readonly EquipmentFleetLookup $fleet,
+    ) {
     }
 
     public function options(int $companyId, ?array $branchIds): array
@@ -85,6 +88,14 @@ final class CodeIgniterTripFormReadModel implements TripFormReadModel
             if (preg_match('/camion|tractor|chasis|cabina|utilitario|pickup/', $type) === 1) {
                 $tractors[] = $item;
             }
+        }
+
+        // Los semirremolques que hoy estan enganchados a cada tractor. El
+        // formulario los usa para preseleccionar el acoplado y para avisar
+        // cuando el camion es un bitren con mas de una caja.
+        $linkedTrailerIds = $this->linkedTrailerIdsByTractor($companyId, $tractors, $trailers);
+        foreach ($tractors as $index => $tractor) {
+            $tractors[$index]['linkedTrailerIds'] = $linkedTrailerIds[(int) $tractor['id']] ?? [];
         }
 
         $drivers = $this->db->table('empleados')
@@ -222,6 +233,44 @@ final class CodeIgniterTripFormReadModel implements TripFormReadModel
             'legalName' => $legalName,
             'taxId' => isset($row['cuit']) && $row['cuit'] !== null ? (string) $row['cuit'] : null,
         ];
+    }
+
+    /**
+     * Semirremolques enganchados hoy a cada tractor, limitado a los que el
+     * operador puede ver: si una caja no esta en la lista, no se preselecciona.
+     *
+     * @param list<array<string,mixed>> $tractors
+     * @param list<array<string,mixed>> $trailers
+     *
+     * @return array<int, list<int>>
+     */
+    private function linkedTrailerIdsByTractor(int $companyId, array $tractors, array $trailers): array
+    {
+        if ($tractors === []) {
+            return [];
+        }
+
+        $visibleTrailerIds = array_fill_keys(
+            array_map(static fn (array $trailer): int => (int) $trailer['id'], $trailers),
+            true
+        );
+        $tractorIds = array_map(static fn (array $tractor): int => (int) $tractor['id'], $tractors);
+
+        $linked = [];
+        foreach ($this->fleet->activeTrailers($companyId, $tractorIds) as $tractorId => $items) {
+            $ids = [];
+            foreach ($items as $item) {
+                $id = (int) $item['id'];
+                if (isset($visibleTrailerIds[$id])) {
+                    $ids[] = $id;
+                }
+            }
+            if ($ids !== []) {
+                $linked[(int) $tractorId] = $ids;
+            }
+        }
+
+        return $linked;
     }
 
     /**

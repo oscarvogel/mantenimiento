@@ -117,7 +117,7 @@ const pageUrl = (page) => {
               </td>
               <td class="px-4 py-3 text-ink-muted">
                 <p>{{ trip.tractor ?? 'Sin tractor' }}</p>
-                <p v-if="trip.acoplado" class="text-xs">{{ trip.acoplado }}</p>
+                <p v-if="trip.acoplado" class="text-xs">{{ (trip.acoplados ?? [trip.acoplado]).join(' · ') }}</p>
               </td>
               <td class="px-4 py-3 text-ink-muted">{{ (trip.choferes ?? []).join(' · ') || 'Sin chofer' }}</td>
               <td class="px-4 py-3 text-right text-ink-muted">{{ trip.paradas }}</td>
