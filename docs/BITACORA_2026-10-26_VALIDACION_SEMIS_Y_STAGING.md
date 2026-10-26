@@ -173,11 +173,13 @@ del formulario. Lo que falta para la preselección automática es la relación: 
 - El PAT de Coolify se borró al terminar el deploy (`personal_access_tokens` con
   `mavis-deploy-temporal-%` → 0).
 
-> **Pendiente operativo en Coolify:** el `PATCH` + `POST /start` dejó **dos despliegues
-> extra** del mismo commit en la cola (uno `in_progress` sin actividad de build desde
-> las 18:50 y uno `queued` detrás). No son un bucle — la cola no creció — y son
-> inocuos: reconstruyen la misma imagen `3d6dec05`. Se dejaron así y no se tocó el
-> estado interno de Coolify; si se quieren cancelar, es desde la UI de Coolify.
+> **Pendiente operativo en Coolify:** el `PATCH` + `POST /start` dejó despliegues
+> extra en la cola, y cada push a `main` dispara otro (la aplicación tiene
+> auto-deploy por push). Como el `git_commit_sha` quedó fijado en `3d6dec05`, esas
+> reconstrucciones son **no-op**: reconstruyen la misma imagen y el contenedor no
+> cambia. No es un bucle que crezca sin control, pero la cola queda con entradas
+> `in_progress`/`queued` que se renuevan solas. Si se quieren limpiar, es desde la UI
+> de Coolify; no se tocó el estado interno de la plataforma.
 
 ## 7. Pendientes
 
