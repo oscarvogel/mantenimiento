@@ -24,14 +24,16 @@ La comprobación no reimplementa las reglas: reutiliza el código que corre en l
 | Consultas de catálogo | `app/Infrastructure/Importations/CodeIgniterImportReferenceGateway.php` |
 | Alcance del usuario | `app/Infrastructure/Identity/CodeIgniterActorContextProvider.php` |
 
-La sonda (`tmp/sonda-importacion.php`, helper de deploy, no versionado) lee el CSV con
+La sonda (`scripts/sonda-importacion.php`) lee el CSV con
 el lector real, valida cada fila con `ImportRowValidator` y después **compara fila a
 fila** el CSV contra lo que está en la base (`patente`, `tipo`, `marca`, `sucursal`,
 `anio`, `chasis`, `motor`, `fecha_alta`, `observaciones`).
 
 - En **producción** corre por el portón HTTP (`CI_ENVIRONMENT=production` +
   header `X-Migrate-Token`), como el `migrate.php` ya conocido.
-- En **staging** corre por `docker exec` en modo CLI.
+  `scripts/sonda-produccion.py` hace el ciclo completo: sube la sonda y los CSV
+  (a `writable/sonda/`, que es privado), corre y borra todo.
+- En **staging** corre por `docker exec` en modo CLI (`--sonda [--csv-dir=...]`).
 - Sólo hace `SELECT`. No escribe nada.
 
 ## 2. Resultado en producción
