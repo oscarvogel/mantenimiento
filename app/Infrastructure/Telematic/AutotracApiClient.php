@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Telematic;
 
 use App\Application\Telematic\Port\AutotracApi;
+use Closure;
 use DomainException;
 
 /** HTTP adapter and anti-corruption boundary for the ATIC API. */
@@ -12,8 +13,11 @@ final class AutotracApiClient implements AutotracApi
 {
     private const DEFAULT_ENDPOINT = 'https://aapi3.autotrac-online.com.br/aticapi';
 
-    public function __construct(private readonly int $timeoutSeconds = 30)
-    {
+    /** @param null|Closure(string,list<string>,int,int):array{status:int,body:string|false} $request */
+    public function __construct(
+        private readonly int $timeoutSeconds = 30,
+        private readonly ?Closure $request = null,
+    ) {
     }
 
     public function accounts(array $credentials): array
@@ -70,31 +74,46 @@ final class AutotracApiClient implements AutotracApi
             throw new DomainException('La dirección de la ATIC API no es segura.');
         }
 
-        $curl = curl_init($endpoint . $path);
-        if ($curl === false) {
-            throw new DomainException('No se pudo iniciar la conexión con la ATIC API.');
+        $url = $endpoint . $path;
+        $headers = [
+            'Authorization: Basic ' . $username . ':' . $password,
+            'Ocp-Apim-Subscription-Key: ' . $subscriptionKey,
+            'Accept: application/json',
+        ];
+        if ($this->request !== null) {
+            $response = ($this->request)($url, $headers, max(5, $this->timeoutSeconds), 10);
+            $body = $response['body'] ?? false;
+            $status = (int) ($response['status'] ?? 0);
+        } else {
+            $curl = curl_init($url);
+            if ($curl === false) {
+                throw new DomainException('No se pudo iniciar la conexión con la ATIC API.');
+            }
+            curl_setopt_array($curl, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPGET => true,
+                CURLOPT_HTTPHEADER => $headers,
+                CURLOPT_TIMEOUT => max(5, $this->timeoutSeconds),
+                CURLOPT_CONNECTTIMEOUT => 10,
+                CURLOPT_FOLLOWLOCATION => false,
+            ]);
+            $body = curl_exec($curl);
+            $status = (int) curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+            curl_close($curl);
         }
-        curl_setopt_array($curl, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPGET => true,
-            CURLOPT_HTTPHEADER => [
-                'Authorization: Basic ' . $username . ':' . $password,
-                'Ocp-Apim-Subscription-Key: ' . $subscriptionKey,
-                'Accept: application/json',
-            ],
-            CURLOPT_TIMEOUT => max(5, $this->timeoutSeconds),
-            CURLOPT_CONNECTTIMEOUT => 10,
-            CURLOPT_FOLLOWLOCATION => false,
-        ]);
-        $body = curl_exec($curl);
-        $status = (int) curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
-        curl_close($curl);
 
         $decoded = is_string($body) ? json_decode($body, true) : null;
         if ($status < 200 || $status >= 300 || ! is_array($decoded)) {
-            throw new DomainException($status === 401 || $status === 403
-                ? 'Autotrac rechazó las credenciales o el permiso de la ATIC API. Revisá la clave, el usuario y la contraseña.'
-                : 'No se pudo consultar la ATIC API. Revisá el acceso e intentá de nuevo.');
+            $detail = $this->providerErrorDetail($decoded, [$subscriptionKey, $username, $password]);
+            if ($status === 401 || $status === 403) {
+                $message = 'Autotrac rechazó la solicitud (HTTP ' . $status . ').';
+            } else {
+                $message = 'No se pudo consultar la ATIC API (HTTP ' . $status . ').';
+            }
+            if ($detail !== null) {
+                $message .= ' Detalle informado por ATIC: ' . $detail;
+            }
+            throw new DomainException($message . ' No se registraron las credenciales.');
         }
 
         $data = $decoded['Data'] ?? $decoded['data'] ?? $decoded;
@@ -110,6 +129,49 @@ final class AutotracApiClient implements AutotracApi
         }
 
         throw new DomainException('La ATIC API respondió con un formato que no reconocemos.');
+    }
+
+    /** @param null|array<string,mixed> $decoded @param list<string> $secrets */
+    private function providerErrorDetail(?array $decoded, array $secrets): ?string
+    {
+        if ($decoded === null) {
+            return null;
+        }
+
+        $candidates = [];
+        $collect = static function (array $values, int $depth = 0) use (&$collect, &$candidates): void {
+            if ($depth > 2) {
+                return;
+            }
+            foreach ($values as $key => $value) {
+                $normalizedKey = strtolower((string) $key);
+                if (is_string($value) && in_array($normalizedKey, [
+                    'code', 'error', 'error_description', 'message', 'detail', 'description', 'title',
+                ], true)) {
+                    $candidates[] = $value;
+                } elseif (is_array($value)) {
+                    $collect($value, $depth + 1);
+                }
+            }
+        };
+        $collect($decoded);
+
+        $safe = [];
+        foreach ($candidates as $candidate) {
+            $candidate = trim(strip_tags($candidate));
+            foreach ($secrets as $secret) {
+                if ($secret !== '') {
+                    $candidate = str_ireplace($secret, '[oculto]', $candidate);
+                }
+            }
+            $candidate = preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $candidate) ?? '';
+            $candidate = trim(preg_replace('/\s+/u', ' ', $candidate) ?? '');
+            if ($candidate !== '' && ! in_array($candidate, $safe, true)) {
+                $safe[] = mb_substr($candidate, 0, 180);
+            }
+        }
+
+        return $safe === [] ? null : implode(' — ', array_slice($safe, 0, 3));
     }
 
     private function accountCode(array $credentials): int
