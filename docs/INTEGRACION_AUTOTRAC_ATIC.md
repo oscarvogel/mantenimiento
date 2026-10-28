@@ -6,6 +6,8 @@ O acesso é configurado em **Administração → Integrações → Telemetria da
 
 As credenciais pertencem à empresa e são cifradas na coluna `token_cifrado` de `integraciones_telemetria`, usando a chave de criptografia da aplicação. Não guardar credenciais ATIC no `.env`, no código ou em logs. Cada empresa configura a própria conta. O timeout HTTP pode ser ajustado com `AUTOTRAC_TIMEOUT_SECONDS` (padrão: 30 segundos).
 
+Quando a ATIC rejeita uma chamada, a tela informa o status HTTP e, se a resposta trouxer campos JSON de erro reconhecidos, mostra um detalhe limitado. A chave, o usuário e a senha são redigidos antes de exibir esse detalhe; o corpo bruto da resposta não é registrado.
+
 ## Vínculo dos veículos
 
 Depois de salvar, abra **Vincular equipos**. O sistema consulta os veículos acessíveis pela conta Autotrac e permite associá-los aos equipamentos cadastrados na empresa. A associação é explícita e limitada à empresa autenticada. Se as credenciais forem trocadas por outra conta, os vínculos cujos códigos de veículo deixaram de estar disponíveis são inativados.
