@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Infrastructure\Telematic;
 
+use App\Application\Telematic\Port\AutotracApi;
 use App\Application\Telematic\Port\TelemetryCredentialStore;
 use App\Infrastructure\Telematic\CodeIgniterTelemetryEquipmentUnitLinkManager;
 use App\Infrastructure\Telematic\WialonUnitCatalogClient;
@@ -33,6 +34,7 @@ final class CodeIgniterTelemetryEquipmentUnitLinkManagerTest extends TestCase
         $this->db->table('integraciones_telemetria')->insertBatch([
             ['id' => 31, 'empresa_id' => 8, 'proveedor' => 'wialon', 'nombre' => 'Obersat', 'activo' => 1],
             ['id' => 32, 'empresa_id' => 9, 'proveedor' => 'wialon', 'nombre' => 'Otra empresa', 'activo' => 1],
+            ['id' => 33, 'empresa_id' => 8, 'proveedor' => 'autotrac', 'nombre' => 'ATIC', 'activo' => 1],
         ]);
         $this->db->table('equipos')->insertBatch([
             ['id' => 12, 'empresa_id' => 8, 'codigo' => 'AB499OK', 'patente' => 'AB499OK', 'estado' => 'ACTIVO', 'deleted_at' => null],
@@ -83,6 +85,35 @@ final class CodeIgniterTelemetryEquipmentUnitLinkManagerTest extends TestCase
         self::assertSame([], $snapshot['suggestedLinks']);
     }
 
+    public function testAutotracUsaElNombreCuandoLaPatenteVieneVaciaYPuedeSugerirAmbosRhb(): void
+    {
+        $this->db->table('equipos')->insertBatch([
+            ['id' => 14, 'empresa_id' => 8, 'codigo' => 'RHB1B55', 'patente' => 'RHB1B55', 'estado' => 'ACTIVO', 'deleted_at' => null],
+            ['id' => 15, 'empresa_id' => 8, 'codigo' => 'RHB1C77', 'patente' => 'RHB1C77', 'estado' => 'ACTIVO', 'deleted_at' => null],
+        ]);
+
+        $manager = new CodeIgniterTelemetryEquipmentUnitLinkManager(
+            $this->db,
+            new FakeTelemetryCredentialStore([
+                'endpoint' => 'https://autotrac.example.test/aticapi',
+                'token' => json_encode(['accountCode' => 17109], JSON_THROW_ON_ERROR),
+            ]),
+            $this->wialon,
+            new FakeAutotracApi([
+                ['Code' => 447205, 'LicensePlate' => '', 'Name' => 'RHB1B55'],
+                ['Code' => 447218, 'LicensePlate' => '', 'Name' => 'RHB1C77'],
+            ]),
+        );
+
+        $snapshot = $manager->snapshotFor(8, 33);
+
+        self::assertSame([
+            ['id' => '447205', 'name' => 'RHB1B55'],
+            ['id' => '447218', 'name' => 'RHB1C77'],
+        ], $snapshot['units']);
+        self::assertSame([14 => '447205', 15 => '447218'], $snapshot['suggestedLinks']);
+    }
+
     public function testNoPermiteVincularUnEquipoDeOtraEmpresa(): void
     {
         try {
@@ -109,9 +140,14 @@ final class CodeIgniterTelemetryEquipmentUnitLinkManagerTest extends TestCase
 
 final class FakeTelemetryCredentialStore implements TelemetryCredentialStore
 {
+    /** @param array{endpoint:string,token:string}|null $stored */
+    public function __construct(private readonly ?array $stored = null)
+    {
+    }
+
     public function credentials(int $integrationId): array
     {
-        return ['endpoint' => 'https://wialon.example.test/ajax.html', 'token' => 'opaque-test-token'];
+        return $this->stored ?? ['endpoint' => 'https://wialon.example.test/ajax.html', 'token' => 'opaque-test-token'];
     }
 
     public function registerSuccess(int $integrationId, ?string $now): void
@@ -120,6 +156,34 @@ final class FakeTelemetryCredentialStore implements TelemetryCredentialStore
 
     public function registerFailure(int $integrationId, string $message, ?string $now): void
     {
+    }
+}
+
+final class FakeAutotracApi implements AutotracApi
+{
+    /** @param list<array<string,mixed>> $units */
+    public function __construct(private readonly array $units)
+    {
+    }
+
+    public function accounts(array $credentials): array
+    {
+        return [];
+    }
+
+    public function vehicles(array $credentials): array
+    {
+        return $this->units;
+    }
+
+    public function positions(array $credentials, int $vehicleCode): array
+    {
+        return [];
+    }
+
+    public function expandedAlerts(array $credentials, int $vehicleCode): array
+    {
+        return [];
     }
 }
 

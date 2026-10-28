@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Telematic;
 
+use App\Application\Telematic\Port\AutotracApi;
 use App\Application\Telematic\Port\TelemetryCredentialStore;
 use App\Application\Telematic\Port\TelemetryEquipmentUnitLinkManager;
 use CodeIgniter\Database\BaseConnection;
@@ -16,13 +17,13 @@ final class CodeIgniterTelemetryEquipmentUnitLinkManager implements TelemetryEqu
     private readonly BaseConnection $db;
     private readonly TelemetryCredentialStore $credentials;
     private readonly WialonUnitCatalogClient $wialon;
-    private readonly AutotracApiClient $autotrac;
+    private readonly AutotracApi $autotrac;
 
     public function __construct(
         ?BaseConnection $db = null,
         ?TelemetryCredentialStore $credentials = null,
         ?WialonUnitCatalogClient $wialon = null,
-        ?AutotracApiClient $autotrac = null,
+        ?AutotracApi $autotrac = null,
     ) {
         $this->db = $db ?? Database::connect();
         $this->credentials = $credentials ?? new CodeIgniterTelemetryIntegrationStore($this->db);
@@ -213,7 +214,15 @@ final class CodeIgniterTelemetryEquipmentUnitLinkManager implements TelemetryEqu
                     if (! is_numeric($id)) {
                         continue;
                     }
-                    $name = trim((string) ($vehicle['LicensePlate'] ?? $vehicle['Plate'] ?? $vehicle['Name'] ?? $id));
+                    $name = '';
+                    foreach (['LicensePlate', 'Plate', 'Name'] as $field) {
+                        $candidate = trim((string) ($vehicle[$field] ?? ''));
+                        if ($candidate !== '') {
+                            $name = $candidate;
+                            break;
+                        }
+                    }
+                    $name = $name !== '' ? $name : (string) $id;
                     $units[] = ['id' => (string) (int) $id, 'name' => $name];
                 }
                 if ($units === []) {
