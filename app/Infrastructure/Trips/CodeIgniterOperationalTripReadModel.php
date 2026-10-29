@@ -138,8 +138,17 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
             ->where('id', (int) $row['sucursal_id'])
             ->where('empresa_id', $companyId)
             ->get()->getRowArray();
+        $company = $this->db->table('empresas')
+            ->select('razon_social, nombre_fantasia')
+            ->where('id', $companyId)
+            ->get()->getRowArray();
 
         return [
+            'company' => [
+                'name' => trim((string) ($company['razon_social'] ?? '')) !== ''
+                    ? (string) $company['razon_social']
+                    : (string) ($company['nombre_fantasia'] ?? ''),
+            ],
             'trip' => [
                 'id' => (int) $row['id'],
                 'numero' => (int) $row['numero'],

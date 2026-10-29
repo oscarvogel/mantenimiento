@@ -14,6 +14,7 @@ use App\Application\Trips\RegisterTripFuelCommand;
 use App\Application\Trips\RegisterTripOtherEarningCommand;
 use App\Infrastructure\Identity\SessionActorContext;
 use CodeIgniter\HTTP\RedirectResponse;
+use CodeIgniter\HTTP\ResponseInterface;
 use DateTimeImmutable;
 use DomainException;
 use Throwable;
@@ -87,6 +88,21 @@ final class OperationalTrips extends BaseController
             return $this->renderApp($actor, 'trips-operations', 'trip-operations-detail', 'Detalle del viaje', $payload);
         } catch (Throwable $exception) {
             return $this->failure($exception, 'No se pudo cargar el viaje.');
+        }
+    }
+
+    public function summaryPdf(int $tripId): ResponseInterface
+    {
+        try {
+            $pdf = service('generateOperationalTripSummaryPdf')->execute($this->actor(), $tripId);
+
+            return $this->response
+                ->setHeader('Content-Type', 'application/pdf')
+                ->setHeader('Content-Disposition', 'attachment; filename="resumen-viaje-' . $tripId . '.pdf"')
+                ->setHeader('Content-Length', (string) strlen($pdf))
+                ->setBody($pdf);
+        } catch (Throwable $exception) {
+            return $this->failure($exception, 'No se pudo generar el resumen del viaje.', '/viajes/operativos/' . $tripId);
         }
     }
 

@@ -1282,6 +1282,18 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
         );
     }
 
+    public static function generateOperationalTripSummaryPdf(bool $getShared = true): \App\Application\Trips\GenerateOperationalTripSummaryPdf
+    {
+        if ($getShared) {
+            return static::getSharedInstance('generateOperationalTripSummaryPdf');
+        }
+
+        return new \App\Application\Trips\GenerateOperationalTripSummaryPdf(
+            static::getOperationalTrip(),
+            new \App\Infrastructure\Trips\OperationalTripSummaryPdfGenerator(),
+        );
+    }
+
     public static function tripFormOptions(bool $getShared = true): \App\Application\Trips\GetTripFormOptions
     {
         if ($getShared) {

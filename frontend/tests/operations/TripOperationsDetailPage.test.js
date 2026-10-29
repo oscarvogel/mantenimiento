@@ -39,6 +39,35 @@ describe('detalle de viaje operativo', () => {
     wrapper.unmount()
   })
 
+  it('ofrece descargar el resumen PDF cuando el viaje terminó', () => {
+    const wrapper = mount(TripOperationsDetailPage, {
+      props: {
+        data: {
+          ...data,
+          links: { ...data.links, summaryPdf: '/mantenimiento/viajes/operativos/42/resumen.pdf' },
+          trip: { ...data.trip, estado: 'FINALIZADO', estado_label: 'Finalizado' },
+        },
+      },
+    })
+
+    expect(wrapper.get('a[href="/mantenimiento/viajes/operativos/42/resumen.pdf"]').text()).toContain('Descargar resumen PDF')
+    wrapper.unmount()
+  })
+
+  it('no ofrece descargar el resumen PDF antes del cierre', () => {
+    const wrapper = mount(TripOperationsDetailPage, {
+      props: {
+        data: {
+          ...data,
+          links: { ...data.links, summaryPdf: '/mantenimiento/viajes/operativos/42/resumen.pdf' },
+        },
+      },
+    })
+
+    expect(wrapper.find('a[href="/mantenimiento/viajes/operativos/42/resumen.pdf"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
   it('ofrece iniciar y cancelar mientras el viaje está planificado', () => {
     const wrapper = mount(TripOperationsDetailPage, { props: { data } })
 
@@ -158,6 +187,7 @@ describe('detalle de viaje operativo', () => {
     expect(wrapper.text()).toContain('Total a liquidar')
     expect(wrapper.text()).toContain('ARS 82.000,00')
     expect(wrapper.text()).toContain('Espera en descarga')
+    expect(wrapper.text()).toContain('20/10/2026')
     expect(wrapper.get('form[action="/mantenimiento/viajes/operativos/42/haberes"]').exists()).toBe(true)
     wrapper.unmount()
   })

@@ -42,6 +42,7 @@ final class GetOperationalTrip
         $detail = $this->financials($detail);
         $detail['links'] = [
             'detail' => base_url('viajes/operativos/' . $tripId),
+            'summaryPdf' => base_url('viajes/operativos/' . $tripId . '/resumen.pdf'),
             'fuel' => base_url('viajes/operativos/' . $tripId . '/combustible'),
             'expense' => base_url('viajes/operativos/' . $tripId . '/gastos'),
             'cash' => base_url('viajes/operativos/' . $tripId . '/caja'),
