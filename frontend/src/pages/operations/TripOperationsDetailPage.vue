@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { BanknotesIcon, BeakerIcon, CheckCircleIcon, ReceiptPercentIcon, XCircleIcon } from '@heroicons/vue/24/outline'
+import { ArrowDownTrayIcon, BanknotesIcon, BeakerIcon, CheckCircleIcon, ReceiptPercentIcon, XCircleIcon } from '@heroicons/vue/24/outline'
 import PageHeading from './components/PageHeading.vue'
 import PanelCard from './components/PanelCard.vue'
 import { fieldClass, primaryButton, dangerButton, nowLocal } from './helpers.js'
@@ -92,6 +92,9 @@ const facts = computed(() => [
   <div>
     <PageHeading eyebrow="Viajes · Operativo" :title="`Viaje #${trip.numero}`" description="Seguimiento del recorrido, equipo, choferes, combustible, gastos y caja. Los retiros de caja no son costo del viaje." :back="{ href: data.backUrl ?? '/viajes/operativos', label: 'Volver a viajes operativos' }">
       <template #actions>
+        <a v-if="trip.estado === 'FINALIZADO' && data.links?.summaryPdf" :href="data.links.summaryPdf" class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-primary px-3 py-2 text-sm font-semibold text-primary hover:bg-primary-subtle">
+          <ArrowDownTrayIcon class="size-4" aria-hidden="true" />Descargar resumen PDF
+        </a>
         <span class="inline-flex rounded-full px-3 py-1.5 text-sm font-semibold" :class="statusTone[trip.estado] ?? 'bg-surface-muted text-ink-muted'">{{ trip.estado_label }}</span>
       </template>
     </PageHeading>

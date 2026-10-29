@@ -21,6 +21,7 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
         $this->database = Database::connect([
             'database' => ':memory:', 'DBDriver' => 'SQLite3', 'DBPrefix' => '', 'DBDebug' => true,
         ], false);
+        $this->database->query('CREATE TABLE empresas (id INTEGER PRIMARY KEY, razon_social TEXT, nombre_fantasia TEXT)');
         $this->database->query('CREATE TABLE sucursales (id INTEGER PRIMARY KEY, empresa_id INTEGER, codigo TEXT, nombre TEXT, estado INTEGER, deleted_at TEXT NULL)');
         $this->database->query('CREATE TABLE tipos_equipo (id INTEGER PRIMARY KEY, nombre TEXT)');
         $this->database->query('CREATE TABLE equipos (id INTEGER PRIMARY KEY, empresa_id INTEGER, sucursal_id INTEGER, tipo_equipo_id INTEGER, codigo TEXT, patente TEXT, deleted_at TEXT NULL)');
@@ -73,6 +74,7 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
         $this->database->query('CREATE TABLE viajes_medios_pago (id INTEGER PRIMARY KEY, empresa_id INTEGER, nombre TEXT, activo INTEGER)');
         $this->database->query('CREATE TABLE viajes_monedas (codigo TEXT PRIMARY KEY, nombre TEXT, activo INTEGER)');
 
+        $this->database->table('empresas')->insert(['id' => 5, 'razon_social' => 'Empresa de prueba S.A.', 'nombre_fantasia' => 'Empresa de prueba']);
         $this->database->table('sucursales')->insertBatch([
             ['id' => 10, 'empresa_id' => 5, 'codigo' => 'AR', 'nombre' => 'Argentina', 'estado' => 1, 'deleted_at' => null],
             ['id' => 20, 'empresa_id' => 5, 'codigo' => 'BR', 'nombre' => 'Brasil', 'estado' => 1, 'deleted_at' => null],
@@ -162,6 +164,7 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
         $detail = (new CodeIgniterOperationalTripReadModel($this->database))->find(5, [10], 1);
 
         self::assertNotNull($detail);
+        self::assertSame('Empresa de prueba S.A.', $detail['company']['name']);
         self::assertSame(42, $detail['trip']['numero']);
         self::assertSame('Argentina', $detail['trip']['sucursal']);
         self::assertCount(3, $detail['assignments']);
