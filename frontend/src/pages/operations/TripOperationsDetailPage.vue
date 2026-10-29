@@ -42,8 +42,10 @@ const settlementNote = computed(() => {
   return 'Cargá al menos un tramo para calcular la liquidación.'
 })
 const fmtDateTime = (value) => {
-  const match = String(value ?? '').match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/)
-  return match ? `${match[3]}/${match[2]}/${match[1]} ${match[4]}:${match[5]}` : 'Sin fecha'
+  const match = String(value ?? '').match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?/)
+  if (!match) return 'Sin fecha'
+  const date = `${match[3]}/${match[2]}/${match[1]}`
+  return match[4] ? `${date} ${match[4]}:${match[5]}` : date
 }
 const number = (value) => value === null || value === undefined || value === '' ? '—' : Number(value).toLocaleString('es-AR')
 const money = (value, currency = 'ARS') => `${currency} ${Number(value ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`

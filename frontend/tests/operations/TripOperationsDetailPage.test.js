@@ -187,6 +187,7 @@ describe('detalle de viaje operativo', () => {
     expect(wrapper.text()).toContain('Total a liquidar')
     expect(wrapper.text()).toContain('ARS 82.000,00')
     expect(wrapper.text()).toContain('Espera en descarga')
+    expect(wrapper.text()).toContain('20/10/2026')
     expect(wrapper.get('form[action="/mantenimiento/viajes/operativos/42/haberes"]').exists()).toBe(true)
     wrapper.unmount()
   })

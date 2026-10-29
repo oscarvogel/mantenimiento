@@ -144,18 +144,24 @@ final class OperationalTripSummaryPdfGenerator implements OperationalTripSummary
     private function cash(FPDF $pdf, array $rows): void
     {
         $this->section($pdf, 'Cuenta corriente del chofer');
-        $widths = [28, 30, 66, 34, 32];
-        $this->tableHeader($pdf, $widths, ['Fecha', 'Movimiento', 'Observaciones', 'Moneda', 'Importe ARS']);
+        $widths = [24, 24, 48, 48, 46];
+        $this->tableHeader($pdf, $widths, ['Fecha', 'Movimiento', 'Importe / cotización', 'Observaciones', 'Equivalente ARS']);
         if ($rows === []) {
             $this->emptyRow($pdf, 'No hay movimientos de caja.');
             return;
         }
         foreach ($rows as $row) {
+            $currency = strtoupper((string) ($row['moneda'] ?? 'ARS'));
+            $amount = $currency . ' ' . $this->number($row['importe'] ?? 0);
+            $rate = (float) ($row['cotizacion'] ?? 1);
+            if ($currency !== 'ARS' || $rate !== 1.0) {
+                $amount .= ' x ' . $this->number($rate);
+            }
             $this->tableRow($pdf, $widths, [
                 $this->date($row['fecha'] ?? null), $this->cashType((string) ($row['tipo'] ?? '')),
-                (string) ($row['observaciones'] ?? ''), (string) ($row['moneda'] ?? 'ARS'),
+                $amount, (string) ($row['observaciones'] ?? ''),
                 $this->money($row['importe_ars'] ?? 0),
-            ], ['L', 'L', 'L', 'C', 'R']);
+            ], ['L', 'L', 'L', 'L', 'R']);
         }
         $pdf->Ln(3);
     }
