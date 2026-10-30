@@ -12,6 +12,7 @@ import { execFileSync, spawnSync } from 'node:child_process'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { build } from 'vite'
+import { normalizeManifestFile } from './normalize-vite-manifest.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const FRONTEND = resolve(ROOT, 'frontend')
@@ -39,6 +40,7 @@ encodingQa('source')
 console.log('BUILD_SYNC=2/3 build reproducible')
 try {
   await build({ root: FRONTEND, logLevel: 'warn' })
+  normalizeManifestFile(resolve(ROOT, ASSETS, '.vite', 'manifest.json'))
 } catch (error) {
   console.error(`BUILD_SYNC=FAIL el build frontend fallo: ${error?.message ?? error}`)
   process.exit(1)

@@ -1,8 +1,8 @@
 {
-  "../../../../../../../Programacion/mantenimiento/frontend/node_modules/gsap/index.js": {
+  "node_modules/gsap/index.js": {
     "file": "assets/gsap-C-UGJFrr.js",
     "name": "gsap",
-    "src": "../../../../../../../Programacion/mantenimiento/frontend/node_modules/gsap/index.js",
+    "src": "node_modules/gsap/index.js",
     "isDynamicEntry": true
   },
   "_admin-Biigz9pI.js": {
@@ -100,7 +100,7 @@
     "dynamicImports": [
       "_chatbot-Cu_HRMqS.js",
       "src/pages/operations/components/FleetTelemetryMap.vue",
-      "../../../../../../../Programacion/mantenimiento/frontend/node_modules/gsap/index.js",
+      "node_modules/gsap/index.js",
       "src/profiles/platform/profile.js",
       "src/profiles/vogel/profile.js",
       "src/profiles/cliente_piloto/profile.js"
