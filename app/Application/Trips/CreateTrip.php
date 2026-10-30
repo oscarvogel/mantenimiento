@@ -6,19 +6,24 @@ namespace App\Application\Trips;
 
 use App\Application\Identity\ActorContext;
 use App\Application\Trips\Port\OperationalTripRepository;
+use App\Application\Trips\Port\TripLegRepository;
+use App\Application\Trips\Port\TripLocalityLookup;
 use App\Application\Trips\Port\TripDirectoryLookup;
 use App\Application\Trips\Port\TripFleetLookup;
 use App\Application\Trips\Port\TripsUnitOfWork;
 use App\Domain\Trips\Trip;
 use App\Domain\Trips\TripAssignment;
+use App\Domain\Trips\TripLeg;
 use DomainException;
 
 final class CreateTrip
 {
     public function __construct(
         private readonly OperationalTripRepository $trips,
+        private readonly TripLegRepository $legs,
         private readonly TripFleetLookup $fleet,
         private readonly TripDirectoryLookup $directory,
+        private readonly TripLocalityLookup $localities,
         private readonly TripsUnitOfWork $unitOfWork,
     ) {
     }
@@ -59,54 +64,66 @@ final class CreateTrip
                 }
             }
 
-            $this->assertStops($companyId, $command);
+            $this->assertLegs($companyId, $command);
 
             $conflicts = $this->trips->conflicts(
                 $companyId,
                 array_values(array_unique($equipmentIds)),
                 $command->driverIds,
-                $command->plannedDeparture,
-                $command->plannedReturn,
+                $command->departureAt,
+                $command->estimatedReturnAt,
             );
             if ($conflicts !== []) {
                 throw new DomainException($conflicts[0]->describe() . ' Elegí otra unidad, otro chofer u otro horario.');
             }
 
             $assignments = [
-                new TripAssignment(TripAssignment::TRACTOR, $command->truckId, $command->plannedDeparture, $command->plannedReturn),
+                new TripAssignment(TripAssignment::TRACTOR, $command->truckId, $command->departureAt, $command->estimatedReturnAt),
             ];
             foreach ($command->trailerIds as $trailerId) {
-                $assignments[] = new TripAssignment(TripAssignment::ACOPLADO, $trailerId, $command->plannedDeparture, $command->plannedReturn);
+                $assignments[] = new TripAssignment(TripAssignment::ACOPLADO, $trailerId, $command->departureAt, $command->estimatedReturnAt);
             }
             foreach ($command->driverIds as $driverId) {
                 $assignments[] = new TripAssignment(
                     TripAssignment::CHOFER,
                     $driverId,
-                    $command->plannedDeparture,
-                    $command->plannedReturn,
+                    $command->departureAt,
+                    $command->estimatedReturnAt,
                     null,
                     $command->driverPercentages[$driverId] ?? null,
                 );
             }
 
-            $stops = [];
-            foreach ($command->stops as $index => $stop) {
-                $stops[] = $stop->toDomain($index + 1);
-            }
-
             $number = $this->trips->nextNumber($companyId);
-            $trip = Trip::plan(
+            $trip = Trip::startImmediately(
                 $companyId,
                 $command->branchId,
                 $number,
-                $command->plannedDeparture,
-                $command->plannedReturn,
+                $command->departureAt,
+                $command->estimatedReturnAt,
                 $assignments,
-                $stops,
-                $command->notes,
+                [],
                 $command->departureKm,
+                $command->notes,
             );
             $id = $this->trips->add($trip, $actor->userId());
+            foreach ($command->legs as $input) {
+                $this->legs->add($companyId, $command->branchId, $id, new TripLeg(
+                    $this->locality($input->originLocalityId)['name'],
+                    $this->locality($input->destinationLocalityId)['name'],
+                    $input->invoiceAmount,
+                    $input->liquidationAmount,
+                    $input->kilometers,
+                    $input->customerId,
+                    $input->currency,
+                    $input->exchangeRate,
+                    $input->notes,
+                    $input->originDestinationCode,
+                    $input->tonnes,
+                    $input->originLocalityId,
+                    $input->destinationLocalityId,
+                ), $actor->userId());
+            }
 
             return new CreateTripResult($id, $number);
         });
@@ -116,7 +133,7 @@ final class CreateTrip
     {
         $companyId = $actor->companyId();
         if ($actor->isSuperAdmin() || $companyId === null || ! $actor->hasPermission('viajes.operar')) {
-            throw new DomainException('No tenés permiso para planificar viajes.');
+            throw new DomainException('No tenés permiso para iniciar viajes.');
         }
 
         return $companyId;
@@ -137,24 +154,27 @@ final class CreateTrip
         }
     }
 
-    private function assertStops(int $companyId, CreateTripCommand $command): void
+    private function assertLegs(int $companyId, CreateTripCommand $command): void
     {
-        foreach ($command->stops as $stop) {
-            if ($stop->customerId !== null && ! $this->directory->customerExists($companyId, $stop->customerId)) {
-                throw new DomainException('Uno de los clientes elegidos no existe o está inactivo.');
+        foreach ($command->legs as $leg) {
+            if (! $this->directory->customerExists($companyId, $leg->customerId)) {
+                throw new DomainException('Uno de los clientes de los tramos no existe o está inactivo.');
             }
-            if ($stop->loadUnitId !== null && ! $this->directory->loadUnitExists($companyId, $stop->loadUnitId)) {
-                throw new DomainException('Una de las unidades de carga elegidas no existe o está inactiva.');
+            if (! $this->directory->currencyExists($leg->currency)) {
+                throw new DomainException('Una de las monedas de los tramos no está disponible.');
             }
-            if ($stop->addressId === null) {
-                continue;
-            }
-            if ($stop->customerId === null) {
-                throw new DomainException('Para usar un domicilio guardado, elegí también el cliente de la parada.');
-            }
-            if (! $this->directory->addressBelongsToCustomer($companyId, $stop->customerId, $stop->addressId)) {
-                throw new DomainException('El domicilio elegido no pertenece al cliente de la parada.');
-            }
+            $this->locality($leg->originLocalityId);
+            $this->locality($leg->destinationLocalityId);
         }
+    }
+
+    /** @return array{id:int,name:string,label:string} */
+    private function locality(?int $localityId): array
+    {
+        $locality = $localityId === null ? null : $this->localities->find($localityId);
+        if ($locality === null) {
+            throw new DomainException('Una localidad de origen o destino ya no está disponible. Volvé a elegirla.');
+        }
+        return $locality;
     }
 }

@@ -27,8 +27,9 @@ final class OperationalTripSummaryPdfGeneratorTest extends TestCase
             ],
             'legs' => [[
                 'orden' => 1, 'origen' => 'AMepre BR', 'destino' => 'Buenos Aires ARG',
-                'cliente' => 'Cliente SA', 'km' => 947,
-                'flete_facturacion_ars' => 3_850_000, 'flete_liquidacion_ars' => 3_850_000,
+                'codigo_origen_destino' => 947, 'cliente_codigo' => '324',
+                'cliente' => 'RUBENJUVE S.R.L.', 'km' => null, 'toneladas' => null,
+                'flete_facturacion_ars' => 3_850_000, 'flete_liquidacion_ars' => 2_500_000,
             ]],
             'fuel' => [[
                 'fecha' => '2026-08-31 00:00:00', 'litros' => 92, 'importe_ars' => 202_164,

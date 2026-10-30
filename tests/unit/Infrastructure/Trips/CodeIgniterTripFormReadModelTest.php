@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Infrastructure\Assets\CodeIgniterEquipmentFleetLookup;
 use App\Infrastructure\Trips\CodeIgniterTripFormReadModel;
+use App\Infrastructure\Trips\CodeIgniterTripLocalityLookup;
 use CodeIgniter\Database\BaseConnection;
 use Config\Database;
 use PHPUnit\Framework\TestCase;
@@ -31,9 +32,13 @@ final class CodeIgniterTripFormReadModelTest extends TestCase
         $this->database->query('CREATE TABLE equipo_relaciones (id INTEGER PRIMARY KEY, empresa_id INTEGER, equipo_principal_id INTEGER, equipo_relacionado_id INTEGER, tipo_relacion TEXT, desde TEXT, hasta TEXT NULL)');
         $this->database->query('CREATE TABLE empleados (id INTEGER PRIMARY KEY, empresa_id INTEGER, nombre TEXT, apellido TEXT, legajo TEXT NULL, activo INTEGER, deleted_at TEXT NULL)');
         $this->database->query('CREATE TABLE employee_equipment_assignments (id INTEGER PRIMARY KEY, empresa_id INTEGER, empleado_id INTEGER, equipo_id INTEGER, rol TEXT, fecha_desde TEXT, fecha_hasta TEXT NULL)');
-        $this->database->query('CREATE TABLE clientes (id INTEGER PRIMARY KEY, empresa_id INTEGER, nombre TEXT, identificacion_fiscal TEXT NULL, activo INTEGER, deleted_at TEXT NULL)');
+        $this->database->query('CREATE TABLE clientes (id INTEGER PRIMARY KEY, empresa_id INTEGER, codigo_origen TEXT, nombre TEXT, identificacion_fiscal TEXT NULL, activo INTEGER, deleted_at TEXT NULL)');
         $this->database->query('CREATE TABLE viajes_domicilios_clientes (id INTEGER PRIMARY KEY, empresa_id INTEGER, cliente_id INTEGER, alias TEXT, calle TEXT, localidad TEXT, activo INTEGER)');
         $this->database->query('CREATE TABLE viajes_unidades_carga (id INTEGER PRIMARY KEY, empresa_id INTEGER, nombre TEXT, simbolo TEXT, activo INTEGER)');
+        $this->database->query('CREATE TABLE viajes_monedas (codigo TEXT PRIMARY KEY, nombre TEXT, activo INTEGER)');
+        $this->database->query('CREATE TABLE paises (id INTEGER PRIMARY KEY, nombre TEXT, activo INTEGER)');
+        $this->database->query('CREATE TABLE provincias (id INTEGER PRIMARY KEY, pais_id INTEGER, nombre TEXT, activo INTEGER)');
+        $this->database->query('CREATE TABLE localidades (id INTEGER PRIMARY KEY, provincia_id INTEGER, nombre TEXT, activo INTEGER)');
 
         $this->database->table('empresas')->insert(['id' => 5, 'razon_social' => 'Transporte Mariela SRL', 'nombre_fantasia' => 'Transporte Mariela', 'cuit' => '23-28059786-4']);
         $this->database->table('viajes_operativos_numeracion')->insert(['empresa_id' => 5, 'ultimo_numero' => 114]);
@@ -63,9 +68,13 @@ final class CodeIgniterTripFormReadModelTest extends TestCase
             ['id' => 1, 'empresa_id' => 5, 'equipo_id' => 7, 'fecha_lectura' => '2026-10-18 08:00:00', 'kilometraje' => 145200, 'anulada' => 0],
             ['id' => 2, 'empresa_id' => 5, 'equipo_id' => 7, 'fecha_lectura' => '2026-10-19 08:00:00', 'kilometraje' => 145300, 'anulada' => 0],
         ]);
-        $this->database->table('clientes')->insert(['id' => 3, 'empresa_id' => 5, 'nombre' => 'Cliente Sur', 'identificacion_fiscal' => '30-1-2', 'activo' => 1, 'deleted_at' => null]);
+        $this->database->table('clientes')->insert(['id' => 3, 'empresa_id' => 5, 'codigo_origen' => '324', 'nombre' => 'Cliente Sur', 'identificacion_fiscal' => '30-1-2', 'activo' => 1, 'deleted_at' => null]);
         $this->database->table('viajes_domicilios_clientes')->insert(['id' => 4, 'empresa_id' => 5, 'cliente_id' => 3, 'alias' => 'Planta', 'calle' => 'Ruta 9', 'localidad' => 'Rosario', 'activo' => 1]);
         $this->database->table('viajes_unidades_carga')->insert(['id' => 2, 'empresa_id' => 5, 'nombre' => 'Tonelada', 'simbolo' => 'tn', 'activo' => 1]);
+        $this->database->table('viajes_monedas')->insert(['codigo' => 'ARS', 'nombre' => 'Peso argentino', 'activo' => 1]);
+        $this->database->table('paises')->insert(['id' => 1, 'nombre' => 'Argentina', 'activo' => 1]);
+        $this->database->table('provincias')->insert(['id' => 1, 'pais_id' => 1, 'nombre' => 'Santa Fe', 'activo' => 1]);
+        $this->database->table('localidades')->insert(['id' => 1, 'provincia_id' => 1, 'nombre' => 'Rosario', 'activo' => 1]);
     }
 
     protected function tearDown(): void
@@ -92,6 +101,7 @@ final class CodeIgniterTripFormReadModelTest extends TestCase
         self::assertSame('AA111AA', $options['drivers'][0]['assignedEquipmentLabel']);
         self::assertSame(14.0, $options['drivers'][0]['liquidationPercentage']);
         self::assertSame('Cliente Sur', $options['customers'][0]['label']);
+        self::assertSame('324', $options['customers'][0]['code']);
         self::assertSame('Planta · Ruta 9 · Rosario', $options['addresses'][0]['label']);
         self::assertSame('Tonelada (tn)', $options['loadUnits'][0]['label']);
     }
@@ -102,6 +112,14 @@ final class CodeIgniterTripFormReadModelTest extends TestCase
 
         self::assertSame([9], $options['tractors'][0]['linkedTrailerIds']);
         self::assertSame([], $options['trailers'][0]['linkedTrailerIds'] ?? []);
+    }
+
+    public function testBuscaLocalidadesConProvinciaYPais(): void
+    {
+        $localities = (new CodeIgniterTripLocalityLookup($this->database))->search('Ros');
+        self::assertSame(1, $localities[0]['id']);
+        self::assertSame('Rosario', $localities[0]['name']);
+        self::assertSame('Rosario · Santa Fe · Argentina', $localities[0]['label']);
     }
 
     public function testSinSemirremolqueEnganchadoLaListaQuedaVacia(): void

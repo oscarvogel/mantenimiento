@@ -71,23 +71,28 @@ final class OperationalTripSummaryPdfGenerator implements OperationalTripSummary
     private function legs(FPDF $pdf, array $rows): void
     {
         $this->section($pdf, 'Fletes por viaje');
-        $widths = [8, 92, 20, 35, 35];
-        $this->tableHeader($pdf, $widths, ['#', 'Origen / destino · cliente', 'Km', 'Facturación', 'Liquidación']);
+        $widths = [8, 80, 18, 14, 35, 35];
+        $this->tableHeader($pdf, $widths, ['#', 'Código · origen / destino · cliente', 'Km', 'Tns', 'Facturación', 'Liquidación']);
         if ($rows === []) {
             $this->emptyRow($pdf, 'No hay tramos cargados.');
             return;
         }
         foreach ($rows as $index => $row) {
             $route = trim((string) ($row['origen'] ?? '') . ' -> ' . (string) ($row['destino'] ?? ''));
+            if (! empty($row['codigo_origen_destino'])) {
+                $route = (string) $row['codigo_origen_destino'] . ' · ' . $route;
+            }
             if (trim((string) ($row['cliente'] ?? '')) !== '') {
-                $route .= ' · ' . $row['cliente'];
+                $customerCode = trim((string) ($row['cliente_codigo'] ?? ''));
+                $route .= ' · ' . ($customerCode !== '' ? $customerCode . ' ' : '') . $row['cliente'];
             }
             $this->tableRow($pdf, $widths, [
                 (string) ($row['orden'] ?? ($index + 1)), $route,
                 $this->numberOrNoData($row['km'] ?? null),
+                $this->numberOrNoData($row['toneladas'] ?? null),
                 $this->money($row['flete_facturacion_ars'] ?? 0),
                 $this->money($row['flete_liquidacion_ars'] ?? 0),
-            ], ['', 'L', 'R', 'R', 'R']);
+            ], ['', 'L', 'R', 'R', 'R', 'R']);
         }
         $pdf->Ln(3);
     }

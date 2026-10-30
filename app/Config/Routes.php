@@ -33,6 +33,7 @@ $routes->get('viajes/rentabilidad', 'TripProfitability::index', ['filter' => ['a
 // Viajes operativos: planificación, inicio y cancelación con scope de empresa y sucursal.
 $routes->get('viajes/operativos', 'OperationalTrips::index', ['filter' => ['auth', 'permission:viajes.ver']]);
 $routes->get('viajes/operativos/nuevo', 'OperationalTrips::create', ['filter' => ['auth', 'permission:viajes.operar']]);
+$routes->get('viajes/operativos/localidades', 'OperationalTrips::localities', ['filter' => ['auth', 'permission:viajes.operar']]);
 $routes->post('viajes/operativos', 'OperationalTrips::store', ['filter' => ['auth', 'permission:viajes.operar']]);
 $routes->get('viajes/operativos/(:num)/resumen.pdf', 'OperationalTrips::summaryPdf/$1', ['filter' => ['auth', 'permission:viajes.ver']]);
 $routes->get('viajes/operativos/(:num)', 'OperationalTrips::show/$1', ['filter' => ['auth', 'permission:viajes.ver']]);

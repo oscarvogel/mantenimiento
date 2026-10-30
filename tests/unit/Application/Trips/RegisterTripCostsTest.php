@@ -321,7 +321,7 @@ final class CostDirectoryFake implements TripDirectoryLookup
 
 final class CostLegRepositoryFake implements TripLegRepository
 {
-    public function add(\App\Domain\Trips\Trip $trip, \App\Domain\Trips\TripLeg $leg, int $actorUserId): int
+    public function add(int $companyId, int $branchId, int $tripId, \App\Domain\Trips\TripLeg $leg, int $actorUserId): int
     {
         return 1;
     }

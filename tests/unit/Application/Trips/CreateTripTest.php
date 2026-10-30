@@ -8,19 +8,22 @@ use App\Application\Trips\CreateTripCommand;
 use App\Application\Trips\Port\OperationalTripRepository;
 use App\Application\Trips\Port\TripDirectoryLookup;
 use App\Application\Trips\Port\TripFleetLookup;
+use App\Application\Trips\Port\TripLegRepository;
+use App\Application\Trips\Port\TripLocalityLookup;
 use App\Application\Trips\Port\TripsUnitOfWork;
 use App\Application\Trips\TripConflict;
-use App\Application\Trips\TripStopInput;
+use App\Application\Trips\TripLegInput;
 use App\Domain\Trips\Trip;
 use App\Domain\Trips\TripAssignment;
 use PHPUnit\Framework\TestCase;
 
 final class CreateTripTest extends TestCase
 {
-    public function testPlansTripInsideActorCompanyAndReturnsNumber(): void
+    public function testCreatesTripAlreadyInProgressInsideActorCompanyAndReturnsNumber(): void
     {
         $repository = new CreateTripRepositoryFake();
-        $handler = new CreateTrip($repository, $this->fleet(), $this->directory(), new CreateTripUnitOfWorkFake());
+        $legs = new CreateTripLegsFake();
+        $handler = new CreateTrip($repository, $legs, $this->fleet(), $this->directory(), new CreateTripLocalityFake(), new CreateTripUnitOfWorkFake());
 
         $result = $handler->execute($this->actor(['viajes.operar'], [10]), $this->command());
 
@@ -35,7 +38,13 @@ final class CreateTripTest extends TestCase
         self::assertSame(145_300, $repository->added->departureKm());
         self::assertSame(14.0, $repository->added->assignments()[2]->liquidationPercentage());
         self::assertNull($repository->added->assignments()[3]->liquidationPercentage());
-        self::assertCount(2, $repository->added->stops());
+        self::assertCount(0, $repository->added->stops());
+        self::assertCount(2, $legs->added);
+        self::assertSame(947, $legs->added[0]['leg']->originDestinationCode());
+        self::assertSame(324, $legs->added[0]['leg']->customerId());
+        self::assertNull($legs->added[0]['leg']->kilometers());
+        self::assertSame(Trip::EN_CURSO, $repository->added->status());
+        self::assertEquals(new DateTimeImmutable('2026-10-20 08:00:00'), $repository->added->actualDeparture());
         self::assertSame([7, 9], $repository->queriedEquipmentIds);
         self::assertSame([11, 12], $repository->queriedEmployeeIds);
     }
@@ -43,7 +52,7 @@ final class CreateTripTest extends TestCase
     public function testRejectsActorWithoutOperatePermission(): void
     {
         $repository = new CreateTripRepositoryFake();
-        $handler = new CreateTrip($repository, $this->fleet(), $this->directory(), new CreateTripUnitOfWorkFake());
+        $handler = new CreateTrip($repository, new CreateTripLegsFake(), $this->fleet(), $this->directory(), new CreateTripLocalityFake(), new CreateTripUnitOfWorkFake());
 
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('permiso');
@@ -54,7 +63,7 @@ final class CreateTripTest extends TestCase
     public function testRejectsBranchOutsideActorScope(): void
     {
         $repository = new CreateTripRepositoryFake();
-        $handler = new CreateTrip($repository, $this->fleet(), $this->directory(), new CreateTripUnitOfWorkFake());
+        $handler = new CreateTrip($repository, new CreateTripLegsFake(), $this->fleet(), $this->directory(), new CreateTripLocalityFake(), new CreateTripUnitOfWorkFake());
 
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('sucursal');
@@ -76,7 +85,7 @@ final class CreateTripTest extends TestCase
                 new DateTimeImmutable('2026-10-20 20:00:00'),
             ),
         ];
-        $handler = new CreateTrip($repository, $this->fleet(), $this->directory(), new CreateTripUnitOfWorkFake());
+        $handler = new CreateTrip($repository, new CreateTripLegsFake(), $this->fleet(), $this->directory(), new CreateTripLocalityFake(), new CreateTripUnitOfWorkFake());
 
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('viaje #12');
@@ -98,7 +107,7 @@ final class CreateTripTest extends TestCase
                 return ['id' => $employeeId, 'label' => 'Chofer', 'active' => true];
             }
         };
-        $handler = new CreateTrip($repository, $fleet, $this->directory(), new CreateTripUnitOfWorkFake());
+        $handler = new CreateTrip($repository, new CreateTripLegsFake(), $fleet, $this->directory(), new CreateTripLocalityFake(), new CreateTripUnitOfWorkFake());
 
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('acoplado');
@@ -106,10 +115,10 @@ final class CreateTripTest extends TestCase
         $handler->execute($this->actor(['viajes.operar'], [10]), $this->command());
     }
 
-    public function testRejectsAddressThatDoesNotBelongToTheSelectedCustomer(): void
+    public function testRejectsCustomerThatDoesNotBelongToTheCompany(): void
     {
         $repository = new CreateTripRepositoryFake();
-        $handler = new CreateTrip($repository, $this->fleet(), $this->directory(), new CreateTripUnitOfWorkFake());
+        $handler = new CreateTrip($repository, new CreateTripLegsFake(), $this->fleet(), $this->directory(false), new CreateTripLocalityFake(), new CreateTripUnitOfWorkFake());
         $command = new CreateTripCommand(
             10,
             new DateTimeImmutable('2026-10-20 08:00:00'),
@@ -118,13 +127,13 @@ final class CreateTripTest extends TestCase
             [9],
             [11],
             [
-                new TripStopInput('CARGA', 'Rosario', 3, 99),
-                new TripStopInput('DESCARGA', 'Córdoba'),
+                new TripLegInput(947, 'Rosario', 'Córdoba', 999, 1000, 800),
             ],
+            145_300,
         );
 
         $this->expectException(DomainException::class);
-        $this->expectExceptionMessage('domicilio');
+        $this->expectExceptionMessage('clientes');
 
         $handler->execute($this->actor(['viajes.operar'], [10]), $command);
     }
@@ -133,16 +142,16 @@ final class CreateTripTest extends TestCase
     {
         $command = CreateTripCommand::fromInput([
             'sucursal_id' => '10',
-            'fecha_salida_planificada' => '2026-10-20T08:00',
-            'fecha_regreso_planificada' => '2026-10-21T18:30',
+            'fecha_salida_real' => '2026-10-20T08:00',
+            'fecha_regreso_estimado' => '2026-10-21T18:30',
             'tractor_id' => '7',
             'acoplado_id' => '9',
             'choferes' => ['11', '12'],
             'choferes_porcentajes' => ['11' => '14,5', '12' => ''],
             'km_salida' => '145300',
-            'paradas' => [
-                ['tipo' => 'CARGA', 'ubicacion' => 'Rosario', 'cliente_id' => '3', 'cantidad' => '30,5', 'unidad_carga_id' => '2'],
-                ['tipo' => 'DESCARGA', 'ubicacion' => 'Córdoba'],
+            'tramos' => [
+                ['codigo_origen_destino' => '947', 'origen' => 'Rosario', 'destino' => 'Córdoba', 'localidad_origen_id' => '1', 'localidad_destino_id' => '2', 'cliente_id' => '324', 'flete_facturacion' => '3850000', 'flete_liquidacion' => '2500000', 'km' => '', 'toneladas' => '30,5'],
+                ['codigo_origen_destino' => '154', 'origen' => 'Zárate', 'destino' => 'Córdoba', 'localidad_origen_id' => '3', 'localidad_destino_id' => '2', 'cliente_id' => '4', 'flete_facturacion' => '1291784,41', 'flete_liquidacion' => '900000'],
             ],
             'observaciones' => ' Salida temprano. ',
         ]);
@@ -152,15 +161,37 @@ final class CreateTripTest extends TestCase
         self::assertSame(145_300, $command->departureKm);
         self::assertSame(14.5, $command->driverPercentages[11]);
         self::assertNull($command->driverPercentages[12]);
-        self::assertCount(2, $command->stops);
-        self::assertSame('30,5', $command->stops[0]->quantity);
+        self::assertCount(2, $command->legs);
+        self::assertSame(947, $command->legs[0]->originDestinationCode);
+        self::assertSame(324, $command->legs[0]->customerId);
+        self::assertNull($command->legs[0]->kilometers);
+        self::assertSame(30.5, $command->legs[0]->tonnes);
+        self::assertSame(3_850_000.0, $command->legs[0]->invoiceAmount);
+        self::assertSame(2_500_000.0, $command->legs[0]->liquidationAmount);
         self::assertSame('Salida temprano.', $command->notes);
+    }
+
+    public function testCommandRequiresTheActualDepartureOdometer(): void
+    {
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('odómetro real de salida');
+
+        CreateTripCommand::fromInput([
+            'sucursal_id' => '10',
+            'fecha_salida_real' => '2026-10-20T08:00',
+            'fecha_regreso_estimado' => '2026-10-21T18:30',
+            'tractor_id' => '7',
+            'choferes' => ['11'],
+            'tramos' => [
+                ['codigo_origen_destino' => '947', 'origen' => 'Rosario', 'destino' => 'Córdoba', 'localidad_origen_id' => '1', 'localidad_destino_id' => '2', 'cliente_id' => '324', 'flete_facturacion' => '3850000', 'flete_liquidacion' => '2500000'],
+            ],
+        ]);
     }
 
     public function testRegistraLaComposicionCompletaDeUnBitren(): void
     {
         $repository = new CreateTripRepositoryFake();
-        $handler = new CreateTrip($repository, $this->fleet(), $this->directory(), new CreateTripUnitOfWorkFake());
+        $handler = new CreateTrip($repository, new CreateTripLegsFake(), $this->fleet(), $this->directory(), new CreateTripLocalityFake(), new CreateTripUnitOfWorkFake());
         $command = new CreateTripCommand(
             10,
             new DateTimeImmutable('2026-10-20 08:00:00'),
@@ -169,9 +200,10 @@ final class CreateTripTest extends TestCase
             [9, 10],
             [11],
             [
-                new TripStopInput('CARGA', 'Rosario', 3, null, null, 'Soja', '30', 2),
-                new TripStopInput('DESCARGA', 'Córdoba', 4),
+                new TripLegInput(947, 'Rosario', 'Córdoba', 324, 3_850_000, 2_500_000, null, 30, 'ARS', 1, null, 1, 2),
+                new TripLegInput(154, 'Zárate', 'Córdoba', 4, 1_291_784.41, 900_000, null, null, 'ARS', 1, null, 3, 2),
             ],
+            145_300,
         );
 
         $handler->execute($this->actor(['viajes.operar'], [10]), $command);
@@ -187,14 +219,14 @@ final class CreateTripTest extends TestCase
     {
         $command = CreateTripCommand::fromInput([
             'sucursal_id' => '10',
-            'fecha_salida_planificada' => '2026-10-20T08:00',
-            'fecha_regreso_planificada' => '2026-10-21T18:30',
+            'fecha_salida_real' => '2026-10-20T08:00',
+            'fecha_regreso_estimado' => '2026-10-21T18:30',
+            'km_salida' => '145300',
             'tractor_id' => '7',
             'acoplado_id' => ['9', '10'],
             'choferes' => ['11'],
-            'paradas' => [
-                ['tipo' => 'CARGA', 'ubicacion' => 'Rosario', 'cliente_id' => '3'],
-                ['tipo' => 'DESCARGA', 'ubicacion' => 'Córdoba'],
+            'tramos' => [
+                ['codigo_origen_destino' => '947', 'origen' => 'Rosario', 'destino' => 'Córdoba', 'localidad_origen_id' => '1', 'localidad_destino_id' => '2', 'cliente_id' => '324', 'flete_facturacion' => '3850000', 'flete_liquidacion' => '2500000'],
             ],
         ]);
 
@@ -205,14 +237,14 @@ final class CreateTripTest extends TestCase
     {
         $command = CreateTripCommand::fromInput([
             'sucursal_id' => '10',
-            'fecha_salida_planificada' => '2026-10-20T08:00',
-            'fecha_regreso_planificada' => '2026-10-21T18:30',
+            'fecha_salida_real' => '2026-10-20T08:00',
+            'fecha_regreso_estimado' => '2026-10-21T18:30',
+            'km_salida' => '145300',
             'tractor_id' => '7',
             'acoplado_id' => '9',
             'choferes' => ['11'],
-            'paradas' => [
-                ['tipo' => 'CARGA', 'ubicacion' => 'Rosario', 'cliente_id' => '3'],
-                ['tipo' => 'DESCARGA', 'ubicacion' => 'Córdoba'],
+            'tramos' => [
+                ['codigo_origen_destino' => '947', 'origen' => 'Rosario', 'destino' => 'Córdoba', 'localidad_origen_id' => '1', 'localidad_destino_id' => '2', 'cliente_id' => '324', 'flete_facturacion' => '3850000', 'flete_liquidacion' => '2500000'],
             ],
         ]);
 
@@ -226,14 +258,14 @@ final class CreateTripTest extends TestCase
 
         CreateTripCommand::fromInput([
             'sucursal_id' => '10',
-            'fecha_salida_planificada' => '2026-10-20T08:00',
-            'fecha_regreso_planificada' => '2026-10-21T18:30',
+            'fecha_salida_real' => '2026-10-20T08:00',
+            'fecha_regreso_estimado' => '2026-10-21T18:30',
+            'km_salida' => '145300',
             'tractor_id' => '7',
             'acoplado_id' => ['9', '10', '11', '12'],
             'choferes' => ['11'],
-            'paradas' => [
-                ['tipo' => 'CARGA', 'ubicacion' => 'Rosario', 'cliente_id' => '3'],
-                ['tipo' => 'DESCARGA', 'ubicacion' => 'Córdoba'],
+            'tramos' => [
+                ['codigo_origen_destino' => '947', 'origen' => 'Rosario', 'destino' => 'Córdoba', 'localidad_origen_id' => '1', 'localidad_destino_id' => '2', 'cliente_id' => '324', 'flete_facturacion' => '3850000', 'flete_liquidacion' => '2500000'],
             ],
         ]);
     }
@@ -254,21 +286,22 @@ final class CreateTripTest extends TestCase
             [9],
             [11, 12],
             [
-                new TripStopInput('CARGA', 'Rosario', 3, null, null, 'Soja', '30', 2),
-                new TripStopInput('DESCARGA', 'Córdoba', 4),
+                new TripLegInput(947, 'Rosario', 'Córdoba', 324, 3_850_000, 2_500_000, null, 30, 'ARS', 1, null, 1, 2),
+                new TripLegInput(154, 'Zárate', 'Córdoba', 4, 1_291_784.41, 900_000, null, null, 'ARS', 1, null, 3, 2),
             ],
-            'Carga programada.',
             145_300,
+            'Carga programada.',
             [11 => 14.0, 12 => null],
         );
     }
 
-    private function directory(): TripDirectoryLookup
+    private function directory(bool $customersExist = true): TripDirectoryLookup
     {
-        return new class implements TripDirectoryLookup {
+        return new class($customersExist) implements TripDirectoryLookup {
+            public function __construct(private bool $customersExist) {}
             public function customerExists(int $companyId, int $customerId): bool
             {
-                return true;
+                return $this->customersExist;
             }
 
             public function loadUnitExists(int $companyId, int $loadUnitId): bool
@@ -362,6 +395,30 @@ final class CreateTripRepositoryFake implements OperationalTripRepository
         $this->queriedEmployeeIds = $employeeIds;
 
         return $this->conflicts;
+    }
+}
+
+final class CreateTripLegsFake implements TripLegRepository
+{
+    /** @var list<array{companyId:int,branchId:int,tripId:int,leg:\App\Domain\Trips\TripLeg,actorUserId:int}> */
+    public array $added = [];
+
+    public function add(int $companyId, int $branchId, int $tripId, \App\Domain\Trips\TripLeg $leg, int $actorUserId): int
+    {
+        $this->added[] = compact('companyId', 'branchId', 'tripId', 'leg', 'actorUserId');
+        return count($this->added);
+    }
+
+    public function belongsToTrip(int $companyId, int $tripId, int $legId): bool { return true; }
+}
+
+final class CreateTripLocalityFake implements TripLocalityLookup
+{
+    public function search(string $query, int $limit = 30): array { return []; }
+
+    public function find(int $localityId): ?array
+    {
+        return ['id' => $localityId, 'name' => match ($localityId) { 1 => 'Rosario', 2 => 'Córdoba', 3 => 'Zárate', default => 'Localidad ' . $localityId }, 'label' => 'Localidad QA'];
     }
 }
 

@@ -260,7 +260,7 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
     private function legDetails(int $companyId, int $tripId): array
     {
         $rows = $this->db->table('viaje_operativo_tramos t')
-            ->select('t.id, t.orden, t.cliente_id, t.origen, t.destino, t.km, t.moneda, t.cotizacion, t.flete_facturacion, t.flete_facturacion_ars, t.flete_liquidacion, t.flete_liquidacion_ars, t.observaciones, c.nombre AS cliente')
+            ->select('t.id, t.orden, t.codigo_origen_destino, t.cliente_id, t.origen, t.destino, t.km, t.toneladas, t.moneda, t.cotizacion, t.flete_facturacion, t.flete_facturacion_ars, t.flete_liquidacion, t.flete_liquidacion_ars, t.observaciones, c.codigo_origen AS cliente_codigo, c.nombre AS cliente')
             ->join('clientes c', 'c.id = t.cliente_id AND c.empresa_id = t.empresa_id', 'left')
             ->where('t.empresa_id', $companyId)
             ->where('t.viaje_id', $tripId)
@@ -270,11 +270,14 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
         return array_map(static fn (array $row): array => [
             'id' => (int) $row['id'],
             'orden' => (int) $row['orden'],
+            'codigo_origen_destino' => $row['codigo_origen_destino'] === null ? null : (int) $row['codigo_origen_destino'],
             'cliente_id' => $row['cliente_id'] === null ? null : (int) $row['cliente_id'],
+            'cliente_codigo' => $row['cliente_codigo'] === null ? null : (string) $row['cliente_codigo'],
             'cliente' => $row['cliente'],
             'origen' => (string) $row['origen'],
             'destino' => (string) $row['destino'],
             'km' => $row['km'] === null ? null : (float) $row['km'],
+            'toneladas' => $row['toneladas'] === null ? null : (float) $row['toneladas'],
             'moneda' => (string) $row['moneda'],
             'cotizacion' => (float) $row['cotizacion'],
             'flete_facturacion' => (float) $row['flete_facturacion'],
@@ -454,6 +457,13 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
             ->where('activo', 1)
             ->orderBy('codigo', 'ASC')
             ->get()->getResultArray();
+        $customers = $this->db->table('clientes')
+            ->select('id, codigo_origen, nombre')
+            ->where('empresa_id', $companyId)
+            ->where('activo', 1)
+            ->where('deleted_at', null)
+            ->orderBy('nombre', 'ASC')
+            ->get()->getResultArray();
 
         return [
             'expenseCategories' => array_map(static fn (array $row): array => [
@@ -468,6 +478,11 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
                 'code' => (string) $row['codigo'],
                 'label' => (string) $row['nombre'],
             ], $currencies),
+            'customers' => array_map(static fn (array $row): array => [
+                'id' => (int) $row['id'],
+                'label' => (string) $row['nombre'],
+                'code' => (string) $row['codigo_origen'],
+            ], $customers),
         ];
     }
 

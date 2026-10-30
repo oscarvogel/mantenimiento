@@ -1,8 +1,9 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { ArrowDownTrayIcon, BanknotesIcon, BeakerIcon, CheckCircleIcon, ReceiptPercentIcon, XCircleIcon } from '@heroicons/vue/24/outline'
 import PageHeading from './components/PageHeading.vue'
 import PanelCard from './components/PanelCard.vue'
+import AutocompleteSelect from './components/AutocompleteSelect.vue'
 import { fieldClass, primaryButton, dangerButton, nowLocal } from './helpers.js'
 
 const props = defineProps({ data: { type: Object, required: true } })
@@ -24,6 +25,12 @@ const canRegisterCosts = computed(() => Boolean(props.data.canRegisterCosts))
 const canAddLegs = computed(() => Boolean(props.data.canAddLegs))
 const canClose = computed(() => Boolean(props.data.canClose))
 const currencies = computed(() => options.value.currencies?.length ? options.value.currencies : [{ code: 'ARS', label: 'Peso argentino' }])
+const customerOptions = computed(() => (options.value.customers ?? []).map((customer) => ({ value: customer.id, label: customer.label, hint: customer.code ? `Código ${customer.code}` : '' })))
+const localities = computed(() => options.value.localities ?? [])
+const localityOptions = computed(() => localities.value.map((locality) => ({ value: locality.id, label: locality.label })))
+const localityName = (localityId) => localities.value.find((locality) => String(locality.id) === String(localityId))?.name ?? ''
+const newLegOriginId = ref('')
+const newLegDestinationId = ref('')
 const statusTone = {
   PLANIFICADO: 'bg-info-subtle text-info-strong',
   EN_CURSO: 'bg-success-subtle text-success-strong',
@@ -76,18 +83,22 @@ const cashBalanceLabel = computed(() => {
   if (balance < 0) return 'A favor del chofer'
   return 'Sin saldo'
 })
-const facts = computed(() => [
+const facts = computed(() => {
+  const started = ['EN_CURSO', 'FINALIZADO'].includes(trip.value.estado)
+  const finished = trip.value.estado === 'FINALIZADO'
+
+  return [
   ['Viaje', `#${trip.value.numero}`],
   ['Estado', trip.value.estado_label],
   ['Sucursal de origen', trip.value.sucursal],
-  ['Salida planificada', fmtDateTime(trip.value.fecha_salida_planificada)],
-  ['Regreso planificado', fmtDateTime(trip.value.fecha_regreso_planificada)],
-  ['Salida real', trip.value.fecha_salida_real ? fmtDateTime(trip.value.fecha_salida_real) : null],
+  [started ? 'Salida real' : 'Salida', fmtDateTime(trip.value.fecha_salida_real ?? trip.value.fecha_salida_planificada)],
+  [finished ? 'Regreso real' : (started ? 'Regreso estimado' : 'Regreso'), fmtDateTime(trip.value.fecha_regreso_real ?? trip.value.fecha_regreso_planificada)],
   ['Odómetro de salida', trip.value.km_salida === null ? null : `${number(trip.value.km_salida)} km`],
   ['Odómetro de regreso', trip.value.km_regreso === null ? null : `${number(trip.value.km_regreso)} km`],
   ['Observaciones', trip.value.observaciones],
   ['Motivo de cancelación', trip.value.motivo_cancelacion],
-])
+  ]
+})
 </script>
 
 <template>
@@ -154,6 +165,7 @@ const facts = computed(() => [
             <tr>
               <th class="px-3 py-2">#</th>
               <th class="px-3 py-2">Recorrido</th>
+              <th class="px-3 py-2 text-right">Toneladas</th>
               <th class="px-3 py-2 text-right">Km</th>
               <th class="px-3 py-2 text-right">Flete facturación</th>
               <th class="px-3 py-2 text-right">Flete liquidación</th>
@@ -166,9 +178,10 @@ const facts = computed(() => [
             <tr v-for="leg in legs" :key="leg.id">
               <td class="px-3 py-2 text-ink-muted">{{ leg.orden }}</td>
               <td class="px-3 py-2">
-                <p class="font-semibold text-ink">{{ leg.origen }} → {{ leg.destino }}</p>
-                <p v-if="leg.cliente" class="mt-0.5 text-xs text-ink-muted">{{ leg.cliente }}</p>
+                <p class="font-semibold text-ink"><span v-if="leg.codigo_origen_destino" class="mr-1 text-ink-muted">{{ leg.codigo_origen_destino }} ·</span>{{ leg.origen }} → {{ leg.destino }}</p>
+                <p v-if="leg.cliente" class="mt-0.5 text-xs text-ink-muted"><span v-if="leg.cliente_codigo">{{ leg.cliente_codigo }} · </span>{{ leg.cliente }}</p>
               </td>
+              <td class="px-3 py-2 text-right text-ink-muted">{{ leg.toneladas === null ? '—' : number(leg.toneladas) }}</td>
               <td class="px-3 py-2 text-right text-ink-muted">{{ leg.km === null ? '—' : number(leg.km) }}</td>
               <td class="px-3 py-2 text-right text-ink">{{ money(leg.flete_facturacion_ars) }}</td>
               <td class="px-3 py-2 text-right text-ink">{{ money(leg.flete_liquidacion_ars) }}</td>
@@ -184,8 +197,11 @@ const facts = computed(() => [
         <h3 class="text-sm font-bold text-ink">Agregar tramo</h3>
         <p class="mt-1 text-xs text-ink-muted">El flete de liquidación es la base para el porcentaje del chofer. El de facturación es el ingreso del viaje.</p>
         <div class="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Origen</span><input type="text" name="origen" required maxlength="200" :class="fieldClass" /></label>
-          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Destino</span><input type="text" name="destino" required maxlength="200" :class="fieldClass" /></label>
+          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Código ruta anterior (opcional)</span><input type="number" name="codigo_origen_destino" min="1" step="1" :class="fieldClass" /></label>
+          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Localidad de origen</span><AutocompleteSelect v-model="newLegOriginId" name="localidad_origen_id" :options="localityOptions" :search-url="data.links?.localities" placeholder="Buscá la localidad" required /></label>
+          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Localidad de destino</span><AutocompleteSelect v-model="newLegDestinationId" name="localidad_destino_id" :options="localityOptions" :search-url="data.links?.localities" placeholder="Buscá la localidad" required /></label>
+          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cliente</span><AutocompleteSelect name="cliente_id" :options="customerOptions" placeholder="Elegí el cliente" required /></label>
+          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Toneladas</span><input type="number" name="toneladas" min="0" step="0.01" :class="fieldClass" /></label>
           <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Km</span><input type="number" name="km" min="0" step="0.01" :class="fieldClass" /></label>
           <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select name="moneda" :class="fieldClass"><option v-for="currency in currencies" :key="currency.code" :value="currency.code" :selected="currency.code === 'ARS'">{{ currency.code }} · {{ currency.label }}</option></select></label>
           <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Flete facturación</span><input type="number" name="flete_facturacion" min="0" step="0.01" required :class="fieldClass" /></label>
@@ -440,8 +456,8 @@ const facts = computed(() => [
       </PanelCard>
     </div>
 
-    <PanelCard title="Recorrido" :count="stops.length" class="mt-5">
-      <p v-if="stops.length === 0" class="text-sm text-ink-muted">El viaje no tiene paradas registradas.</p>
+    <PanelCard title="Paradas operativas" :count="stops.length" class="mt-5">
+      <p v-if="stops.length === 0" class="text-sm text-ink-muted">No hay paradas operativas cargadas. Los tramos con cliente y fletes se administran en la sección Tramos.</p>
       <ol v-else class="space-y-4">
         <li v-for="stop in stops" :key="stop.orden" class="rounded-xl border border-border-subtle bg-surface p-4">
           <div class="flex flex-wrap items-start justify-between gap-3">

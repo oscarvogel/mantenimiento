@@ -75,6 +75,10 @@ final class Trip
         string $notes = '',
         ?int $departureKm = null,
     ): self {
+        if (count($stops) < 2) {
+            throw new DomainException('El recorrido necesita al menos una salida y una llegada.');
+        }
+
         return new self(
             null,
             $companyId,
@@ -84,6 +88,42 @@ final class Trip
             $plannedDeparture,
             $plannedReturn,
             null,
+            null,
+            $departureKm,
+            null,
+            array_values($assignments),
+            array_values($stops),
+            trim($notes),
+        );
+    }
+
+    /**
+     * Crea un viaje ya iniciado porque el circuito operativo recibe viajes aprobados.
+     * La salida real y el odómetro quedan persistidos junto con la ficha inicial.
+     *
+     * @param list<TripAssignment> $assignments
+     * @param list<TripStop> $stops
+     */
+    public static function startImmediately(
+        int $companyId,
+        int $branchId,
+        int $number,
+        DateTimeImmutable $departureAt,
+        DateTimeImmutable $estimatedReturnAt,
+        array $assignments,
+        array $stops,
+        int $departureKm,
+        string $notes = '',
+    ): self {
+        return new self(
+            null,
+            $companyId,
+            $branchId,
+            $number,
+            self::EN_CURSO,
+            $departureAt,
+            $estimatedReturnAt,
+            $departureAt,
             null,
             $departureKm,
             null,
@@ -351,9 +391,6 @@ final class Trip
     /** @param list<TripStop> $stops */
     private function assertStops(array $stops): void
     {
-        if (count($stops) < 2) {
-            throw new DomainException('El recorrido necesita al menos una salida y una llegada.');
-        }
         foreach ($stops as $index => $stop) {
             if (! $stop instanceof TripStop) {
                 throw new DomainException('La parada del viaje no es válida.');

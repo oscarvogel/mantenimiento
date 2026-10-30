@@ -26,7 +26,7 @@ final class CodeIgniterTripLegRepositoryTest extends TestCase
         ], false);
         $this->database->query('CREATE TABLE viaje_operativo_tramos (
             id INTEGER PRIMARY KEY AUTOINCREMENT, viaje_id INTEGER, empresa_id INTEGER, sucursal_id INTEGER,
-            orden INTEGER, cliente_id INTEGER NULL, origen TEXT, destino TEXT, km REAL NULL,
+            orden INTEGER, codigo_origen_destino INTEGER NULL, localidad_origen_id INTEGER NULL, localidad_destino_id INTEGER NULL, cliente_id INTEGER NULL, origen TEXT, destino TEXT, km REAL NULL, toneladas REAL NULL,
             moneda TEXT, cotizacion REAL, flete_facturacion REAL, flete_facturacion_ars REAL,
             flete_liquidacion REAL, flete_liquidacion_ars REAL, observaciones TEXT NULL,
             created_at TEXT NULL, updated_at TEXT NULL, created_by INTEGER NULL, updated_by INTEGER NULL
@@ -43,16 +43,18 @@ final class CodeIgniterTripLegRepositoryTest extends TestCase
     public function testAddsLegsInOrderAndValidatesTripScope(): void
     {
         $repository = new CodeIgniterTripLegRepository($this->database);
-        $trip = $this->trip();
-
-        $first = $repository->add($trip, new TripLeg('Rosario', 'Córdoba', 1_000_000, 800_000, 320, 3, 'ARS', 1.0), 1);
-        $second = $repository->add($trip, new TripLeg('Córdoba', 'Rosario', 600_000, 500_000, 320), 1);
+        $first = $repository->add(5, 10, 55, new TripLeg('Rosario', 'Córdoba', 1_000_000, 800_000, 320, 3, 'ARS', 1.0, null, 947, 24.5, 101, 202), 1);
+        $second = $repository->add(5, 10, 55, new TripLeg('Córdoba', 'Rosario', 600_000, 500_000, 320), 1);
 
         $rows = $this->database->table('viaje_operativo_tramos')->orderBy('orden')->get()->getResultArray();
         self::assertCount(2, $rows);
         self::assertSame(1, (int) $rows[0]['orden']);
         self::assertSame(2, (int) $rows[1]['orden']);
         self::assertSame('Rosario', $rows[0]['origen']);
+        self::assertSame(947, (int) $rows[0]['codigo_origen_destino']);
+        self::assertSame(101, (int) $rows[0]['localidad_origen_id']);
+        self::assertSame(202, (int) $rows[0]['localidad_destino_id']);
+        self::assertEquals(24.5, (float) $rows[0]['toneladas']);
         self::assertEquals(800_000.0, (float) $rows[0]['flete_liquidacion']);
         self::assertTrue($repository->belongsToTrip(5, 55, $first));
         self::assertTrue($repository->belongsToTrip(5, 55, $second));
