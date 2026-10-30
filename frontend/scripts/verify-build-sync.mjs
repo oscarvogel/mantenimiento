@@ -61,6 +61,8 @@ if (drift) {
   console.error(`BUILD_SYNC=FAIL ${ASSETS} no coincide con el build del source.`)
   console.error('Archivos con drift:')
   for (const line of drift.split('\n')) console.error(`  ${line}`)
+  console.error('Diff de los archivos versionados con drift:')
+  console.error(git(['diff', '--', ASSETS]).trim())
   console.error('')
   console.error(`Para corregir: reconstruir y commitear ${ASSETS} junto al cambio de source.`)
   process.exit(1)
