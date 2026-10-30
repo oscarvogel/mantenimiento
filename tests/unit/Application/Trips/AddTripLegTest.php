@@ -8,6 +8,7 @@ use App\Application\Trips\AddTripLegCommand;
 use App\Application\Trips\Port\OperationalTripRepository;
 use App\Application\Trips\Port\TripDirectoryLookup;
 use App\Application\Trips\Port\TripLegRepository;
+use App\Application\Trips\Port\TripLocalityLookup;
 use App\Application\Trips\Port\TripsUnitOfWork;
 use App\Domain\Trips\Trip;
 use App\Domain\Trips\TripAssignment;
@@ -21,7 +22,7 @@ final class AddTripLegTest extends TestCase
     {
         $trips = new AddLegTripRepositoryFake(Trip::PLANIFICADO);
         $legs = new AddLegRepositoryFake();
-        $handler = new AddTripLeg($trips, $legs, new AddLegDirectoryFake(), new AddLegUnitOfWorkFake());
+        $handler = new AddTripLeg($trips, $legs, new AddLegDirectoryFake(), new AddLegLocalityFake(), new AddLegUnitOfWorkFake());
 
         $id = $handler->execute($this->actor(['viajes.operar']), new AddTripLegCommand(
             55,
@@ -34,6 +35,10 @@ final class AddTripLegTest extends TestCase
             'ARS',
             1.0,
             'Carga de soja',
+            947,
+            30,
+            1,
+            2,
         ));
 
         self::assertSame(1, $id);
@@ -50,13 +55,14 @@ final class AddTripLegTest extends TestCase
             new AddLegTripRepositoryFake(Trip::FINALIZADO),
             new AddLegRepositoryFake(),
             new AddLegDirectoryFake(),
+            new AddLegLocalityFake(),
             new AddLegUnitOfWorkFake(),
         );
 
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('cerrado');
 
-        $handler->execute($this->actor(['viajes.operar']), new AddTripLegCommand(55, 'Rosario', 'Córdoba', 1, 1));
+        $handler->execute($this->actor(['viajes.operar']), new AddTripLegCommand(55, 'Rosario', 'Córdoba', 1, 1, 0, 3, 'ARS', 1, null, 947, null, 1, 2));
     }
 
     public function testCommandParsesAmountsAndCurrency(): void
@@ -71,6 +77,10 @@ final class AddTripLegTest extends TestCase
             'moneda' => 'ars',
             'cotizacion' => '1',
             'cliente_id' => '3',
+            'codigo_origen_destino' => '947',
+            'toneladas' => '24,5',
+            'localidad_origen_id' => '1',
+            'localidad_destino_id' => '2',
         ]);
 
         self::assertSame(55, $command->tripId);
@@ -78,6 +88,10 @@ final class AddTripLegTest extends TestCase
         self::assertSame(1_000_000.0, $command->invoiceAmount);
         self::assertSame(320.5, $command->kilometers);
         self::assertSame('ARS', $command->currency);
+        self::assertSame(947, $command->originDestinationCode);
+        self::assertSame(24.5, $command->tonnes);
+        self::assertSame(1, $command->originLocalityId);
+        self::assertSame(2, $command->destinationLocalityId);
     }
 
     /** @param list<string> $permissions */
@@ -128,7 +142,7 @@ final class AddLegRepositoryFake implements TripLegRepository
 {
     public ?TripLeg $leg = null;
 
-    public function add(Trip $trip, TripLeg $leg, int $actorUserId): int
+    public function add(int $companyId, int $branchId, int $tripId, TripLeg $leg, int $actorUserId): int
     {
         $this->leg = $leg;
 
@@ -149,6 +163,12 @@ final class AddLegDirectoryFake implements TripDirectoryLookup
     public function expenseCategoryExists(int $companyId, int $categoryId): bool { return true; }
     public function paymentMethodExists(int $companyId, int $paymentMethodId): bool { return true; }
     public function currencyExists(string $code): bool { return true; }
+}
+
+final class AddLegLocalityFake implements TripLocalityLookup
+{
+    public function search(string $query, int $limit = 30): array { return []; }
+    public function find(int $localityId): ?array { return ['id' => $localityId, 'name' => match ($localityId) { 1 => 'Rosario', 2 => 'Córdoba', default => 'Localidad ' . $localityId }, 'label' => 'Localidad QA']; }
 }
 
 final class AddLegUnitOfWorkFake implements TripsUnitOfWork

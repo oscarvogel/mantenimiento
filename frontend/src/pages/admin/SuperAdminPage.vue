@@ -95,6 +95,12 @@ const sections = [
         <p class="mt-1 text-sm leading-6 text-ink-muted">Procesá alertas y revisá el canal de correo por empresa.</p>
         <span class="mt-4 inline-flex text-sm font-semibold text-primary">Gestionar notificaciones →</span>
       </button>
+      <a :href="data.actions.importLocalities" class="group rounded-xl border border-border bg-surface-raised p-5 text-left shadow-sm transition hover:border-primary/30 hover:bg-primary-subtle/30">
+        <span class="inline-flex size-7 items-center justify-center rounded-lg bg-primary-subtle text-lg font-bold text-primary" aria-hidden="true">⌖</span>
+        <h2 class="mt-4 font-semibold text-ink">Localidades</h2>
+        <p class="mt-1 text-sm leading-6 text-ink-muted">Cargá catálogos oficiales compartidos por todas las empresas.</p>
+        <span class="mt-4 inline-flex text-sm font-semibold text-primary">Importar localidades →</span>
+      </a>
       <div class="rounded-xl border border-border bg-surface-raised p-5 shadow-sm">
         <ShieldCheckIcon class="size-7 text-success" aria-hidden="true" />
         <h2 class="mt-4 font-semibold text-ink">Alcance global</h2>

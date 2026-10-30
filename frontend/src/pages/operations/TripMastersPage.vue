@@ -322,7 +322,7 @@ function statusMessage(item) {
           </div>
           <div v-else class="mt-4 rounded-xl border border-dashed border-border px-5 py-8 text-center">
             <h4 class="font-semibold text-ink">Este cliente todavía no tiene domicilios</h4>
-            <p class="mt-1 text-sm text-ink-muted">Podés guardar sus direcciones para reutilizarlas al planificar viajes.</p>
+            <p class="mt-1 text-sm text-ink-muted">Podés guardar sus direcciones para reutilizarlas al cargar viajes aprobados.</p>
           </div>
         </section>
       </section>

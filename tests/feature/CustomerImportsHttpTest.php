@@ -14,4 +14,9 @@ final class CustomerImportsHttpTest extends CIUnitTestCase
         $this->get('superadmin/clientes/importar')->assertRedirect();
         $this->get('superadmin/clientes/importar/plantilla')->assertRedirect();
     }
+
+    public function testAnonymousCannotAccessGlobalLocalityCatalogImport(): void
+    {
+        $this->get('superadmin/geografia/localidades/importar')->assertRedirect();
+    }
 }

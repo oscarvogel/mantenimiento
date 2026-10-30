@@ -17,10 +17,10 @@
 El viaje debe funcionar como un ciclo económico completo, no solo como una planificación de recorrido:
 
 ```text
-Abrir viaje
-  -> cargar km de salida, equipo y chofer
+Iniciar viaje aprobado
+  -> cargar fecha y km reales de salida, equipo y chofer
+  -> el viaje queda En curso al guardar la ficha
   -> cargar uno o más tramos con dos importes: facturación y liquidación
-  -> iniciar el recorrido
   -> cargar combustible y gastos (opcionalmente imputados a un tramo)
   -> cargar cuenta corriente del chofer y otros haberes
   -> cerrar el viaje con km de regreso
@@ -64,18 +64,13 @@ Los adelantos **no** son un costo del viaje: son movimientos de cuenta corriente
 ### 3.1 Flujo operativo
 
 ```text
+┌────────────────────┐
+│ Viaje aprobado     │  Alta con fecha y km reales, equipo, chofer y recorrido
+└──────────┬─────────┘
+           │ Iniciar viaje
+           ▼
 ┌──────────────┐
-│ Nuevo viaje  │  Empresa, dominio, chofer, % y km de salida
-└──────┬───────┘
-       │
-       ▼
-┌──────────────┐
-│ Planificado  │  Se cargan los tramos y sus dos fletes
-└──────┬───────┘
-       │  Abrir / Iniciar
-       ▼
-┌──────────────┐
-│ En curso     │  Combustible, gastos, cuenta corriente y otros haberes
+│ En curso     │  Tramos, combustible, gastos, cuenta corriente y otros haberes
 └──────┬───────┘
        │  Cerrar con fecha y km de regreso
        ▼
@@ -85,6 +80,8 @@ Los adelantos **no** son un costo del viaje: son movimientos de cuenta corriente
 
 Cancelado: salida controlada desde Planificado, con motivo.
 ```
+
+El operador carga viajes que ya fueron aprobados: el alta operativa los crea directamente en `EN_CURSO`, con la fecha y el odómetro real de salida. No hay una etapa de planificación para las altas nuevas. Se conserva el estado `PLANIFICADO` y la acción de inicio separada para los registros preexistentes que ya estén en ese estado; no se migran ni alteran.
 
 ### 3.2 Flujo económico
 
@@ -152,7 +149,7 @@ Los adelantos no cambian el margen del viaje; solo la liquidación final.
 
 | Pieza | Estado | Dónde |
 |---|---|---|
-| Viajes operativos con estados Planificado / En curso / Finalizado / Cancelado | Implementado | `viajes_operativos`, `OperationalTrips` |
+| Viajes operativos con estados Planificado / En curso / Finalizado / Cancelado; las altas nuevas empiezan En curso | Implementado | `viajes_operativos`, `OperationalTrips`, `CreateTrip` |
 | Numeración correlativa por empresa | Implementado | `viajes_operativos_numeracion` |
 | Asignación de tractor, semirremolques (composición) y choferes | Implementado | `viaje_operativo_asignaciones` |
 | Porcentaje de liquidación con vigencia | Implementado | `viajes_porcentajes_liquidacion_chofer` |
@@ -164,7 +161,8 @@ Los adelantos no cambian el margen del viaje; solo la liquidación final.
 | Imputación opcional de combustible y gastos a un tramo | Implementado | `viaje_operativo_combustible.tramo_id`, `viaje_operativo_gastos.tramo_id` |
 | Caja del chofer: anticipo, retiro, devolución | Implementado | `viaje_operativo_caja_movimientos` |
 | Otros haberes del viaje | Implementado | `viaje_operativo_otros_haberes`, `TripOtherEarning` |
-| Inicio del viaje con km de salida | Implementado | `StartTrip` |
+| Alta de viaje aprobado directamente En curso con salida y km reales | Implementado | `CreateTrip`, `Trip::startImmediately` |
+| Inicio separado de viajes preexistentes `PLANIFICADO` | Conservado para registros anteriores | `StartTrip` |
 | Cierre del viaje con km de regreso | Implementado | `FinishTrip` |
 | Lectura del equipo al cerrar, con origen `VIAJE` | Implementado | `CodeIgniterTripReadingRecorder` → `RegisterReadingHandler` |
 | Liquidación final del chofer | Implementado | `TripSettlement` |
@@ -284,10 +282,12 @@ El viaje es la raíz de consistencia. Contiene:
 | `empresa_id` | INT UNSIGNED | Scope |
 | `sucursal_id` | INT UNSIGNED | Scope |
 | `orden` | INT UNSIGNED | Consecutivo desde 1 |
-| `cliente_id` | INT UNSIGNED NULL | Cliente del tramo |
-| `origen` | VARCHAR(200) | Obligatorio |
-| `destino` | VARCHAR(200) | Obligatorio |
+| `codigo_origen_destino` | INT UNSIGNED NULL | Código de ruta del sistema anterior, si se conoce |
+| `localidad_origen_id` / `localidad_destino_id` | INT UNSIGNED NULL | Referencias al maestro geográfico `localidades` |
+| `cliente_id` | INT UNSIGNED | Un cliente asociado al tramo |
+| `origen` / `destino` | VARCHAR(200) | Nombre conservado para mostrar e imprimir |
 | `km` | DECIMAL(14,2) NULL | Kilómetros informados |
+| `toneladas` | DECIMAL(14,2) NULL | Toneladas informadas |
 | `moneda` | CHAR(3) | Default `ARS` |
 | `cotizacion` | DECIMAL(18,6) | Default 1 |
 | `flete_facturacion` | DECIMAL(18,4) | Importe en moneda |
@@ -521,12 +521,12 @@ Reglas:
 │ Chofer: [Montiel, Rodrigo ▾]       % liquidación: [14,00]           │
 │ Sucursal: [Argentina ▾]            Acoplado: [AC 222 AC ▾]          │
 ├ Tramos ─────────────────────────────────────────────────────────────┤
-│ #  Origen        Destino       Km   Flete fact.  Flete liq.  Moneda │
-│ 1  Rosario       Córdoba       320  1.000.000    800.000     ARS    │
-│ 2  Córdoba       Rosario       320    600.000    500.000     ARS    │
+│ # Ruta ant. Localidad origen → destino  Cliente  Km/Tns Fact.     │
+│ 1 947       AMEPRE BR → BUENOS AIRES ARG 324      —      3.850.000 │
+│ 2 154       Zárate → Córdoba             4        —      1.291.784 │
 │ [+ Agregar tramo]                                                   │
 ├─────────────────────────────────────────────────────────────────────┤
-│ [Guardar planificado]   [Abrir viaje ahora]                         │
+│ [Iniciar viaje]                                                    │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -534,8 +534,12 @@ Reglas:
 
 - Al elegir el dominio se completa empresa, sucursal, chofer, % y último km.
 - El % se puede editar antes de guardar.
-- Los tramos se pueden agregar, quitar y reordenar.
-- Si se elige "Abrir viaje ahora", se pide fecha real y km de salida y el viaje pasa directo a En curso.
+- Cada tramo selecciona una localidad de origen y otra de destino desde `localidades`, un solo cliente y sus fletes separados. Se persisten los IDs para que los reportes puedan agrupar salidas por localidad; se conservan nombres para mostrar e imprimir.
+- La búsqueda de localidades es remota y devuelve coincidencias mientras se escribe; no carga el catálogo completo en el navegador. Los resultados muestran localidad, contexto administrativo, provincia/departamento y país para distinguir nombres repetidos. El catálogo se importa globalmente para Argentina, Brasil, Chile y Uruguay desde Administración global.
+- El código del sistema anterior es opcional. Kilómetros y toneladas son datos opcionales y no se infieren desde ese código.
+- Las paradas operativas son hitos separados y no reemplazan los tramos de flete.
+- Una futura distancia estimada de ruta basada en OSM debe quedar separada de los kilómetros reales medidos por odómetro.
+- El viaje se registra aprobado y ya iniciado: se pide fecha real y km de salida, y queda En curso al guardar.
 
 ### 10.3 Viaje en curso
 

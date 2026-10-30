@@ -13,6 +13,7 @@ const props = defineProps({
   disabled: { type: Boolean, default: false },
   clearable: { type: Boolean, default: true },
   emptyLabel: { type: String, default: 'Sin resultados' },
+  searchUrl: { type: String, default: '' },
 })
 const emit = defineEmits(['update:modelValue'])
 
@@ -21,6 +22,10 @@ const input = ref(null)
 const open = ref(false)
 const query = ref('')
 const highlighted = ref(-1)
+const remoteOptions = ref([])
+const knownRemoteOptions = ref([])
+const searching = ref(false)
+let searchSequence = 0
 
 const same = (a, b) => String(a ?? '') === String(b ?? '')
 const selectedValues = computed(() => {
@@ -28,13 +33,14 @@ const selectedValues = computed(() => {
   return props.modelValue === null || props.modelValue === undefined || props.modelValue === '' ? [] : [props.modelValue]
 })
 const selectedOptions = computed(() => selectedValues.value
-  .map((value) => props.options.find((option) => same(option.value, value)))
+  .map((value) => [...props.options, ...knownRemoteOptions.value, ...remoteOptions.value].find((option) => same(option.value, value)))
   .filter(Boolean))
 const labelFor = (value) => selectedOptions.value.find((option) => same(option.value, value))?.label ?? String(value ?? '')
 const displayText = computed(() => props.multiple ? '' : (selectedOptions.value[0]?.label ?? ''))
 const hasSelection = computed(() => selectedValues.value.length > 0)
 const filtered = computed(() => {
   const term = query.value.trim().toLowerCase()
+  if (props.searchUrl) return term.length >= 2 ? remoteOptions.value : []
   if (term === '') return props.options.slice(0, 50)
 
   return props.options
@@ -49,6 +55,36 @@ const openList = () => {
   query.value = ''
   highlighted.value = filtered.value.length > 0 ? 0 : -1
 }
+const searchRemote = async (term) => {
+  if (!props.searchUrl) return
+  const queryText = term.trim()
+  const current = ++searchSequence
+  if (queryText.length < 2) {
+    remoteOptions.value = []
+    searching.value = false
+    return
+  }
+  searching.value = true
+  try {
+    const separator = props.searchUrl.includes('?') ? '&' : '?'
+    const response = await fetch(`${props.searchUrl}${separator}q=${encodeURIComponent(queryText)}`, {
+      credentials: 'same-origin',
+      headers: { Accept: 'application/json' },
+    })
+    if (!response.ok) throw new Error('No se pudo buscar la localidad')
+    const result = await response.json()
+    if (current === searchSequence) {
+      remoteOptions.value = (result.localities ?? []).map((locality) => ({ value: locality.id, label: locality.label }))
+      const known = new Map(knownRemoteOptions.value.map((option) => [String(option.value), option]))
+      remoteOptions.value.forEach((option) => known.set(String(option.value), option))
+      knownRemoteOptions.value = [...known.values()]
+    }
+  } catch {
+    if (current === searchSequence) remoteOptions.value = []
+  } finally {
+    if (current === searchSequence) searching.value = false
+  }
+}
 const closeList = () => {
   open.value = false
   query.value = ''
@@ -61,6 +97,7 @@ const onInput = (event) => {
   open.value = true
   query.value = event.target.value
   highlighted.value = filtered.value.length > 0 ? 0 : -1
+  if (props.searchUrl) searchRemote(query.value)
 }
 const select = (option) => {
   if (props.multiple) {
@@ -186,7 +223,9 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onClickOutside))
     </template>
 
     <ul v-if="open" class="absolute z-50 mt-1 max-h-64 w-full overflow-auto rounded-lg border border-border bg-surface-raised py-1 shadow-xl" role="listbox">
-      <li v-if="filtered.length === 0" class="px-3 py-2 text-sm text-ink-muted">{{ emptyLabel }}</li>
+      <li v-if="searching" class="px-3 py-2 text-sm text-ink-muted">Buscando localidades…</li>
+      <li v-else-if="props.searchUrl && query.trim().length < 2" class="px-3 py-2 text-sm text-ink-muted">Escribí al menos dos letras para buscar.</li>
+      <li v-else-if="filtered.length === 0" class="px-3 py-2 text-sm text-ink-muted">{{ emptyLabel }}</li>
       <li v-for="(option, index) in filtered" :key="option.value">
         <button
           type="button"

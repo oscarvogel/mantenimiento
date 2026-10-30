@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm run qa:encoding:source && vite build && npm run qa:encoding:build",
+    "build": "npm run qa:encoding:source && vite build && node scripts/normalize-vite-manifest.mjs && npm run qa:encoding:build",
     "test": "vitest run",
     "test:watch": "vitest",
     "qa:visual": "node scripts/visual-qa.mjs",

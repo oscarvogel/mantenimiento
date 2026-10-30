@@ -248,6 +248,35 @@ class Services extends BaseService
         );
     }
 
+    public static function previewLocalities(bool $getShared = true): \App\Application\Geography\PreviewLocalities
+    {
+        if ($getShared) {
+            return static::getSharedInstance('previewLocalities');
+        }
+
+        return new \App\Application\Geography\PreviewLocalities();
+    }
+
+    public static function normalizedLocalityCsvReader(bool $getShared = true): \App\Infrastructure\Geography\NormalizedLocalityCsvReader
+    {
+        if ($getShared) {
+            return static::getSharedInstance('normalizedLocalityCsvReader');
+        }
+
+        return new \App\Infrastructure\Geography\NormalizedLocalityCsvReader();
+    }
+
+    public static function importLocalities(bool $getShared = true): \App\Application\Geography\ImportLocalities
+    {
+        if ($getShared) {
+            return static::getSharedInstance('importLocalities');
+        }
+
+        return new \App\Application\Geography\ImportLocalities(
+            new \App\Infrastructure\Geography\CodeIgniterLocalityCatalogImportStore(db_connect()),
+        );
+    }
+
     public static function tripImports(bool $getShared = true): \App\Application\TripImports\TripImports
     {
         if ($getShared) {
@@ -1120,11 +1149,13 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
 
         return new \App\Application\Trips\CreateTrip(
             new \App\Infrastructure\Trips\CodeIgniterOperationalTripRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripLegRepository($db),
             new \App\Infrastructure\Trips\CodeIgniterTripFleetLookup(
                 new \App\Infrastructure\Assets\CodeIgniterEquipmentFleetLookup($db),
                 new \App\Infrastructure\Employees\CodeIgniterEmployeeDirectoryLookup($db),
             ),
             new \App\Infrastructure\Trips\CodeIgniterTripDirectoryLookup($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripLocalityLookup($db),
             new \App\Infrastructure\Trips\CodeIgniterTripsUnitOfWork($db),
         );
     }
@@ -1141,7 +1172,19 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
             new \App\Infrastructure\Trips\CodeIgniterOperationalTripRepository($db),
             new \App\Infrastructure\Trips\CodeIgniterTripLegRepository($db),
             new \App\Infrastructure\Trips\CodeIgniterTripDirectoryLookup($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripLocalityLookup($db),
             new \App\Infrastructure\Trips\CodeIgniterTripsUnitOfWork($db),
+        );
+    }
+
+    public static function searchTripLocalities(bool $getShared = true): \App\Application\Trips\SearchTripLocalities
+    {
+        if ($getShared) {
+            return static::getSharedInstance('searchTripLocalities');
+        }
+
+        return new \App\Application\Trips\SearchTripLocalities(
+            new \App\Infrastructure\Trips\CodeIgniterTripLocalityLookup(db_connect()),
         );
     }
 

@@ -8,6 +8,7 @@ use App\Application\Identity\ActorContext;
 use App\Application\Trips\Port\OperationalTripRepository;
 use App\Application\Trips\Port\TripDirectoryLookup;
 use App\Application\Trips\Port\TripLegRepository;
+use App\Application\Trips\Port\TripLocalityLookup;
 use App\Application\Trips\Port\TripsUnitOfWork;
 use App\Domain\Trips\Trip;
 use App\Domain\Trips\TripLeg;
@@ -19,6 +20,7 @@ final class AddTripLeg
         private readonly OperationalTripRepository $trips,
         private readonly TripLegRepository $legs,
         private readonly TripDirectoryLookup $directory,
+        private readonly TripLocalityLookup $localities,
         private readonly TripsUnitOfWork $unitOfWork,
     ) {
     }
@@ -33,11 +35,16 @@ final class AddTripLeg
         if (! $this->directory->currencyExists($command->currency)) {
             throw new DomainException('La moneda elegida no está disponible.');
         }
-        if ($command->customerId !== null && ! $this->directory->customerExists($companyId, $command->customerId)) {
+        if ($command->customerId === null) {
+            throw new DomainException('Elegí un cliente para el tramo.');
+        }
+        if (! $this->directory->customerExists($companyId, $command->customerId)) {
             throw new DomainException('El cliente elegido no existe o está inactivo.');
         }
+        $origin = $this->locality($command->originLocalityId);
+        $destination = $this->locality($command->destinationLocalityId);
 
-        return $this->unitOfWork->transactional(function () use ($actor, $command, $companyId, $branchIds): int {
+        return $this->unitOfWork->transactional(function () use ($actor, $command, $companyId, $branchIds, $origin, $destination): int {
             $trip = $this->trips->findForUpdate($companyId, $branchIds, $command->tripId);
             if ($trip === null) {
                 throw new DomainException('El viaje solicitado no existe o no está autorizado.');
@@ -47,8 +54,8 @@ final class AddTripLeg
             }
 
             $leg = new TripLeg(
-                $command->origin,
-                $command->destination,
+                $origin['name'],
+                $destination['name'],
                 $command->invoiceAmount,
                 $command->liquidationAmount,
                 $command->kilometers,
@@ -56,9 +63,13 @@ final class AddTripLeg
                 $command->currency,
                 $command->exchangeRate,
                 $command->notes,
+                $command->originDestinationCode,
+                $command->tonnes,
+                $command->originLocalityId,
+                $command->destinationLocalityId,
             );
 
-            return $this->legs->add($trip, $leg, $actor->userId());
+            return $this->legs->add($trip->companyId(), $trip->branchId(), $command->tripId, $leg, $actor->userId());
         });
     }
 
@@ -70,5 +81,15 @@ final class AddTripLeg
         }
 
         return $companyId;
+    }
+
+    /** @return array{id:int,name:string,label:string} */
+    private function locality(?int $localityId): array
+    {
+        $locality = $localityId === null ? null : $this->localities->find($localityId);
+        if ($locality === null) {
+            throw new DomainException('Elegí una localidad de origen y otra de destino para el tramo.');
+        }
+        return $locality;
     }
 }

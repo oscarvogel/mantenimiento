@@ -1,6 +1,6 @@
 {
-  "_admin-6j_8bc_N.js": {
-    "file": "assets/admin-6j_8bc_N.js",
+  "_admin-Biigz9pI.js": {
+    "file": "assets/admin-Biigz9pI.js",
     "name": "admin",
     "imports": [
       "_vendor-DJDc5rjk.js"
@@ -21,11 +21,11 @@
     "file": "assets/chatbot-p1890OXW.css",
     "src": "_chatbot-p1890OXW.css"
   },
-  "_reports-BTb6LJEN.js": {
-    "file": "assets/reports-BTb6LJEN.js",
+  "_reports-Ds-6u1fk.js": {
+    "file": "assets/reports-Ds-6u1fk.js",
     "name": "reports",
     "imports": [
-      "_admin-6j_8bc_N.js",
+      "_admin-Biigz9pI.js",
       "_vendor-DJDc5rjk.js"
     ]
   },
@@ -87,15 +87,15 @@
     "src": "src/assets/platform/trips-card.jpg"
   },
   "src/main.js": {
-    "file": "assets/main-BwGTTC_l.js",
+    "file": "assets/main-DD0MNxT_.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
     "imports": [
       "_vendor-DJDc5rjk.js",
       "_chatbot-Cu_HRMqS.js",
-      "_admin-6j_8bc_N.js",
-      "_reports-BTb6LJEN.js"
+      "_admin-Biigz9pI.js",
+      "_reports-Ds-6u1fk.js"
     ],
     "dynamicImports": [
       "_chatbot-Cu_HRMqS.js",
@@ -106,7 +106,7 @@
       "src/profiles/cliente_piloto/profile.js"
     ],
     "css": [
-      "assets/main-BSfJDlvy.css"
+      "assets/main-CWl1KovH.css"
     ],
     "assets": [
       "assets/portal-hero-Dd-Ff3YR.jpg",
@@ -135,7 +135,7 @@
     ]
   },
   "src/profiles/cliente_piloto/profile.js": {
-    "file": "assets/profile-CUnhmFGh.js",
+    "file": "assets/profile-DSzmRv7O.js",
     "name": "profile",
     "src": "src/profiles/cliente_piloto/profile.js",
     "isDynamicEntry": true,
@@ -143,15 +143,15 @@
       "src/main.js",
       "_vendor-DJDc5rjk.js",
       "_chatbot-Cu_HRMqS.js",
-      "_admin-6j_8bc_N.js",
-      "_reports-BTb6LJEN.js"
+      "_admin-Biigz9pI.js",
+      "_reports-Ds-6u1fk.js"
     ],
     "css": [
       "assets/profile-DV70kWFs.css"
     ]
   },
   "src/profiles/platform/profile.js": {
-    "file": "assets/profile--IlFdE9N.js",
+    "file": "assets/profile-Cq2jLvXz.js",
     "name": "profile",
     "src": "src/profiles/platform/profile.js",
     "isDynamicEntry": true,
@@ -159,12 +159,12 @@
       "src/main.js",
       "_vendor-DJDc5rjk.js",
       "_chatbot-Cu_HRMqS.js",
-      "_admin-6j_8bc_N.js",
-      "_reports-BTb6LJEN.js"
+      "_admin-Biigz9pI.js",
+      "_reports-Ds-6u1fk.js"
     ]
   },
   "src/profiles/vogel/profile.js": {
-    "file": "assets/profile-Emi20dVh.js",
+    "file": "assets/profile-By1a98j0.js",
     "name": "profile",
     "src": "src/profiles/vogel/profile.js",
     "isDynamicEntry": true,
@@ -172,8 +172,8 @@
       "src/main.js",
       "_vendor-DJDc5rjk.js",
       "_chatbot-Cu_HRMqS.js",
-      "_admin-6j_8bc_N.js",
-      "_reports-BTb6LJEN.js"
+      "_admin-Biigz9pI.js",
+      "_reports-Ds-6u1fk.js"
     ]
   }
 }

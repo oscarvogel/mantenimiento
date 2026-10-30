@@ -26,7 +26,7 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
         $this->database->query('CREATE TABLE tipos_equipo (id INTEGER PRIMARY KEY, nombre TEXT)');
         $this->database->query('CREATE TABLE equipos (id INTEGER PRIMARY KEY, empresa_id INTEGER, sucursal_id INTEGER, tipo_equipo_id INTEGER, codigo TEXT, patente TEXT, deleted_at TEXT NULL)');
         $this->database->query('CREATE TABLE empleados (id INTEGER PRIMARY KEY, empresa_id INTEGER, nombre TEXT, apellido TEXT, deleted_at TEXT NULL)');
-        $this->database->query('CREATE TABLE clientes (id INTEGER PRIMARY KEY, empresa_id INTEGER, nombre TEXT, deleted_at TEXT NULL)');
+        $this->database->query('CREATE TABLE clientes (id INTEGER PRIMARY KEY, empresa_id INTEGER, codigo_origen TEXT, nombre TEXT, activo INTEGER, deleted_at TEXT NULL)');
         $this->database->query('CREATE TABLE viajes_domicilios_clientes (id INTEGER PRIMARY KEY, empresa_id INTEGER, cliente_id INTEGER, alias TEXT, calle TEXT, localidad TEXT)');
         $this->database->query('CREATE TABLE viajes_unidades_carga (id INTEGER PRIMARY KEY, nombre TEXT, simbolo TEXT)');
         $this->database->query('CREATE TABLE viajes_operativos (
@@ -62,7 +62,8 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
         )');
         $this->database->query('CREATE TABLE viaje_operativo_tramos (
             id INTEGER PRIMARY KEY, viaje_id INTEGER, empresa_id INTEGER, sucursal_id INTEGER, orden INTEGER,
-            cliente_id INTEGER NULL, origen TEXT, destino TEXT, km REAL NULL, moneda TEXT, cotizacion REAL,
+            codigo_origen_destino INTEGER NULL, localidad_origen_id INTEGER NULL, localidad_destino_id INTEGER NULL,
+            cliente_id INTEGER NULL, origen TEXT, destino TEXT, km REAL NULL, toneladas REAL NULL, moneda TEXT, cotizacion REAL,
             flete_facturacion REAL, flete_facturacion_ars REAL, flete_liquidacion REAL, flete_liquidacion_ars REAL,
             observaciones TEXT NULL
         )');
@@ -88,7 +89,7 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
             ['id' => 9, 'empresa_id' => 5, 'sucursal_id' => 10, 'tipo_equipo_id' => 2, 'codigo' => 'A01', 'patente' => 'AC222AC', 'deleted_at' => null],
         ]);
         $this->database->table('empleados')->insert(['id' => 11, 'empresa_id' => 5, 'nombre' => 'Juan', 'apellido' => 'Pérez', 'deleted_at' => null]);
-        $this->database->table('clientes')->insert(['id' => 3, 'empresa_id' => 5, 'nombre' => 'Cliente Sur', 'deleted_at' => null]);
+        $this->database->table('clientes')->insert(['id' => 3, 'empresa_id' => 5, 'codigo_origen' => '324', 'nombre' => 'Cliente Sur', 'activo' => 1, 'deleted_at' => null]);
         $this->database->table('viajes_domicilios_clientes')->insert(['id' => 4, 'empresa_id' => 5, 'cliente_id' => 3, 'alias' => 'Planta', 'calle' => 'Ruta 9', 'localidad' => 'Rosario']);
         $this->database->table('viajes_unidades_carga')->insert(['id' => 2, 'nombre' => 'Tonelada', 'simbolo' => 'tn']);
         $this->database->table('viajes_operativos')->insert([

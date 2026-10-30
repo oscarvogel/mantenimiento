@@ -14,11 +14,15 @@ final readonly class AddTripLegCommand
         public string $destination,
         public float $invoiceAmount,
         public float $liquidationAmount,
-        public float $kilometers = 0.0,
+        public ?float $kilometers = null,
         public ?int $customerId = null,
         public string $currency = 'ARS',
         public float $exchangeRate = 1.0,
         public ?string $notes = null,
+        public ?int $originDestinationCode = null,
+        public ?float $tonnes = null,
+        public ?int $originLocalityId = null,
+        public ?int $destinationLocalityId = null,
     ) {
     }
 
@@ -37,10 +41,14 @@ final readonly class AddTripLegCommand
             self::amount($input['flete_facturacion'] ?? null, 'El flete de facturación'),
             self::amount($input['flete_liquidacion'] ?? null, 'El flete de liquidación'),
             self::optionalAmount($input['km'] ?? null, 'Los kilómetros'),
-            self::optionalPositiveInt($input['cliente_id'] ?? null, 'El cliente del tramo no es válido.'),
+            self::requiredPositiveInt($input['cliente_id'] ?? null, 'Elegí un cliente para el tramo.'),
             strtoupper(trim((string) ($input['moneda'] ?? 'ARS'))),
             self::rate($input['cotizacion'] ?? null),
             self::nullableText($input['observaciones'] ?? null),
+            self::optionalPositiveInt($input['codigo_origen_destino'] ?? null, 'El código de ruta anterior no es válido.'),
+            self::optionalAmount($input['toneladas'] ?? null, 'Las toneladas'),
+            self::requiredPositiveInt($input['localidad_origen_id'] ?? null, 'Elegí una localidad de origen para el tramo.'),
+            self::requiredPositiveInt($input['localidad_destino_id'] ?? null, 'Elegí una localidad de destino para el tramo.'),
         );
     }
 
@@ -54,11 +62,11 @@ final readonly class AddTripLegCommand
         return (float) $raw;
     }
 
-    private static function optionalAmount(mixed $value, string $label): float
+    private static function optionalAmount(mixed $value, string $label): ?float
     {
         $raw = str_replace(',', '.', trim((string) ($value ?? '')));
         if ($raw === '') {
-            return 0.0;
+            return null;
         }
         if (! is_numeric($raw) || (float) $raw < 0) {
             throw new DomainException($label . ' no pueden ser negativos.');
@@ -80,17 +88,21 @@ final readonly class AddTripLegCommand
         return (float) $raw;
     }
 
-    private static function optionalPositiveInt(mixed $value, string $message): ?int
+    private static function requiredPositiveInt(mixed $value, string $message): int
     {
-        if ($value === null || $value === '' || $value === '0') {
-            return null;
-        }
         $parsed = filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
         if ($parsed === false) {
             throw new DomainException($message);
         }
-
         return (int) $parsed;
+    }
+
+    private static function optionalPositiveInt(mixed $value, string $message): ?int
+    {
+        if ($value === null || trim((string) $value) === '') {
+            return null;
+        }
+        return self::requiredPositiveInt($value, $message);
     }
 
     private static function nullableText(mixed $value): ?string

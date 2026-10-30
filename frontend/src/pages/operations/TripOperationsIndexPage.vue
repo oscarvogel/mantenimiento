@@ -95,7 +95,7 @@ const pageUrl = (page) => {
             <tr>
               <th class="px-4 py-3">Viaje</th>
               <th class="px-4 py-3">Estado</th>
-              <th class="px-4 py-3">Salida planificada</th>
+              <th class="px-4 py-3">Salida</th>
               <th class="px-4 py-3">Recorrido</th>
               <th class="px-4 py-3">Tractor / acoplado</th>
               <th class="px-4 py-3">Choferes</th>
@@ -110,7 +110,7 @@ const pageUrl = (page) => {
                 <span class="mt-0.5 block text-xs text-ink-muted">{{ trip.estado_label }}</span>
               </td>
               <td class="px-4 py-3"><span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold" :class="statusTone[trip.estado] ?? 'bg-surface-muted text-ink-muted'">{{ trip.estado_label }}</span></td>
-              <td class="whitespace-nowrap px-4 py-3 text-ink-muted">{{ fmtDate(trip.fecha_salida_planificada) }}</td>
+              <td class="whitespace-nowrap px-4 py-3 text-ink-muted">{{ fmtDate(trip.fecha_salida_real || trip.fecha_salida_planificada) }}</td>
               <td class="px-4 py-3">
                 <p class="font-semibold text-ink">{{ trip.origen ?? 'Sin origen' }} → {{ trip.destino ?? 'Sin destino' }}</p>
                 <p class="mt-0.5 text-xs text-ink-muted">{{ trip.paradas }} paradas</p>

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Infrastructure\Trips;
 
 use App\Application\Trips\Port\TripLegRepository;
-use App\Domain\Trips\Trip;
 use App\Domain\Trips\TripLeg;
 use CodeIgniter\Database\BaseConnection;
 use RuntimeException;
@@ -16,30 +15,33 @@ final class CodeIgniterTripLegRepository implements TripLegRepository
     {
     }
 
-    public function add(Trip $trip, TripLeg $leg, int $actorUserId): int
+    public function add(int $companyId, int $branchId, int $tripId, TripLeg $leg, int $actorUserId): int
     {
-        $tripId = $trip->id();
-        if ($tripId === null) {
-            throw new RuntimeException('No se puede agregar un tramo a un viaje sin identidad.');
+        if ($companyId <= 0 || $branchId <= 0 || $tripId <= 0) {
+            throw new RuntimeException('No se puede agregar un tramo sin identificar empresa, sucursal y viaje.');
         }
 
         $next = $this->database->query(
             'SELECT COALESCE(MAX(orden), 0) + 1 AS next_order FROM ' . $this->database->prefixTable('viaje_operativo_tramos')
             . ' WHERE empresa_id = ? AND viaje_id = ?',
-            [$trip->companyId(), $tripId],
+            [$companyId, $tripId],
         )->getRowArray();
         $order = (int) ($next['next_order'] ?? 1);
         $now = date('Y-m-d H:i:s');
 
         $inserted = $this->database->table('viaje_operativo_tramos')->insert([
             'viaje_id' => $tripId,
-            'empresa_id' => $trip->companyId(),
-            'sucursal_id' => $trip->branchId(),
+            'empresa_id' => $companyId,
+            'sucursal_id' => $branchId,
             'orden' => $order,
             'cliente_id' => $leg->customerId(),
+            'codigo_origen_destino' => $leg->originDestinationCode(),
+            'localidad_origen_id' => $leg->originLocalityId(),
+            'localidad_destino_id' => $leg->destinationLocalityId(),
             'origen' => $leg->origin(),
             'destino' => $leg->destination(),
-            'km' => $this->decimal($leg->kilometers(), 2),
+            'km' => $leg->kilometers() === null ? null : $this->decimal($leg->kilometers(), 2),
+            'toneladas' => $leg->tonnes() === null ? null : $this->decimal($leg->tonnes(), 2),
             'moneda' => $leg->currency(),
             'cotizacion' => $this->decimal($leg->exchangeRate(), 6),
             'flete_facturacion' => $this->decimal($leg->invoiceAmount(), 4),

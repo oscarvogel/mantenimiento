@@ -39,6 +39,29 @@ describe('detalle de viaje operativo', () => {
     wrapper.unmount()
   })
 
+  it('muestra salida real y regreso estimado cuando se inicia al cargar', () => {
+    const wrapper = mount(TripOperationsDetailPage, {
+      props: {
+        data: {
+          ...data,
+          trip: {
+            ...data.trip,
+            estado: 'EN_CURSO',
+            estado_label: 'En curso',
+            fecha_salida_real: '2026-10-20 08:15:00',
+            km_salida: 145300,
+          },
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain('Salida real')
+    expect(wrapper.text()).toContain('20/10/2026 08:15')
+    expect(wrapper.text()).toContain('Regreso estimado')
+    expect(wrapper.text()).not.toContain('Salida planificada')
+    wrapper.unmount()
+  })
+
   it('ofrece descargar el resumen PDF cuando el viaje terminó', () => {
     const wrapper = mount(TripOperationsDetailPage, {
       props: {

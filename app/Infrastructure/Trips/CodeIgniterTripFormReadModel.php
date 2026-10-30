@@ -39,6 +39,7 @@ final class CodeIgniterTripFormReadModel implements TripFormReadModel
                 'customers' => [],
                 'addresses' => [],
                 'loadUnits' => [],
+                'currencies' => [],
             ];
         }
 
@@ -150,11 +151,17 @@ final class CodeIgniterTripFormReadModel implements TripFormReadModel
         }
 
         $customers = $this->db->table('clientes')
-            ->select('id, nombre, identificacion_fiscal')
+            ->select('id, codigo_origen, nombre, identificacion_fiscal')
             ->where('empresa_id', $companyId)
             ->where('activo', 1)
             ->where('deleted_at', null)
             ->orderBy('nombre', 'ASC')
+            ->get()->getResultArray();
+
+        $currencies = $this->db->table('viajes_monedas')
+            ->select('codigo, nombre')
+            ->where('activo', 1)
+            ->orderBy('codigo', 'ASC')
             ->get()->getResultArray();
 
         $addresses = $this->db->table('viajes_domicilios_clientes d')
@@ -196,8 +203,13 @@ final class CodeIgniterTripFormReadModel implements TripFormReadModel
             'customers' => array_map(static fn (array $row): array => [
                 'id' => (int) $row['id'],
                 'label' => (string) $row['nombre'],
+                'code' => $row['codigo_origen'] === null ? null : (string) $row['codigo_origen'],
                 'taxId' => $row['identificacion_fiscal'] === null ? null : (string) $row['identificacion_fiscal'],
             ], $customers),
+            'currencies' => array_map(static fn (array $row): array => [
+                'code' => (string) $row['codigo'],
+                'label' => (string) $row['nombre'],
+            ], $currencies),
             'addresses' => array_map(static function (array $row): array {
                 $label = trim(implode(' · ', array_filter([
                     (string) $row['alias'],

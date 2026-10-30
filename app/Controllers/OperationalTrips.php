@@ -51,6 +51,24 @@ final class OperationalTrips extends BaseController
         }
     }
 
+    public function localities(): ResponseInterface
+    {
+        try {
+            $localities = service('searchTripLocalities')->execute(
+                $this->actor(),
+                (string) $this->request->getGet('q'),
+            );
+
+            return $this->response->setJSON(['localities' => $localities]);
+        } catch (Throwable $exception) {
+            $status = $exception instanceof DomainException ? 403 : 500;
+            if ($status === 500) {
+                log_message('error', 'No se pudieron buscar localidades para viajes: {message}', ['message' => $exception->getMessage()]);
+            }
+            return $this->response->setStatusCode($status)->setJSON(['message' => $exception instanceof DomainException ? $exception->getMessage() : 'No se pudieron buscar localidades.']);
+        }
+    }
+
     public function store(): RedirectResponse
     {
         try {
@@ -59,10 +77,10 @@ final class OperationalTrips extends BaseController
 
             return redirect()->to('/viajes/operativos/' . $result->id)->with(
                 'success',
-                'El viaje #' . $result->number . ' quedó planificado.',
+                'El viaje #' . $result->number . ' quedó iniciado y en curso.',
             );
         } catch (Throwable $exception) {
-            return $this->failure($exception, 'No se pudo planificar el viaje.', '/viajes/operativos/nuevo');
+            return $this->failure($exception, 'No se pudo iniciar el viaje.', '/viajes/operativos/nuevo');
         }
     }
 

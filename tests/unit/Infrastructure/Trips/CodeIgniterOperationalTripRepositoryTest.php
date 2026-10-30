@@ -85,6 +85,31 @@ final class CodeIgniterOperationalTripRepositoryTest extends TestCase
         self::assertSame(145_300, $reloaded->departureKm());
     }
 
+    public function testAddPersistsANewTripAlreadyInProgress(): void
+    {
+        $repository = new CodeIgniterOperationalTripRepository($this->database);
+        $planned = $this->trip(1);
+        $started = Trip::startImmediately(
+            $planned->companyId(),
+            $planned->branchId(),
+            $planned->number(),
+            new DateTimeImmutable('2026-10-20 08:10:00'),
+            $planned->plannedReturn(),
+            $planned->assignments(),
+            $planned->stops(),
+            145_350,
+            $planned->notes(),
+        );
+
+        $id = $repository->add($started, 1);
+        $reloaded = $repository->findForUpdate(5, [10], $id);
+
+        self::assertNotNull($reloaded);
+        self::assertSame(Trip::EN_CURSO, $reloaded->status());
+        self::assertEquals(new DateTimeImmutable('2026-10-20 08:10:00'), $reloaded->actualDeparture());
+        self::assertSame(145_350, $reloaded->departureKm());
+    }
+
     public function testFindForUpdateRespectsBranchScope(): void
     {
         $repository = new CodeIgniterOperationalTripRepository($this->database);

@@ -11,49 +11,29 @@ const props = defineProps({ data: { type: Object, required: true } })
 const options = computed(() => props.data.options ?? props.data)
 const links = computed(() => props.data.links ?? { index: '/viajes/operativos', store: '/viajes/operativos' })
 const csrf = computed(() => props.data.csrf ?? { name: 'csrf_test_name', hash: '' })
-const stopTypes = computed(() => props.data.stopTypes ?? [
-  { value: 'CARGA', label: 'Carga' },
-  { value: 'DESCARGA', label: 'Descarga' },
-  { value: 'HITO', label: 'Hito operativo' },
-])
 const branches = computed(() => options.value.branches ?? [])
 const tractors = computed(() => options.value.tractors ?? [])
 const trailers = computed(() => options.value.trailers ?? [])
 const drivers = computed(() => options.value.drivers ?? [])
 const customers = computed(() => options.value.customers ?? [])
-const addresses = computed(() => options.value.addresses ?? [])
-const loadUnits = computed(() => options.value.loadUnits ?? [])
+const currencies = computed(() => options.value.currencies?.length ? options.value.currencies : [{ code: 'ARS', label: 'Peso argentino' }])
+const localities = computed(() => options.value.localities ?? [])
 const company = computed(() => options.value.company ?? {})
 const nextNumber = computed(() => options.value.nextNumber ?? null)
 
 const old = computed(() => props.data.old ?? {})
-const newStop = (type = 'CARGA') => ({
-  tipo: type,
-  ubicacion: '',
-  cliente_id: '',
-  domicilio_id: '',
-  fecha_estimada: '',
-  descripcion_carga: '',
-  cantidad: '',
-  unidad_carga_id: '',
-  observaciones: '',
-})
-const initialStops = () => {
-  const rows = Array.isArray(old.value.paradas)
-    ? old.value.paradas.filter((row) => row && Object.values(row).some((value) => String(value ?? '').trim() !== ''))
-    : []
-  if (rows.length < 2) return [newStop('CARGA'), newStop('DESCARGA')]
-
-  return rows.map((row) => ({ ...newStop(row.tipo ?? 'CARGA'), ...row }))
-}
-const stops = ref(initialStops())
+const newLeg = () => ({ codigo_origen_destino: '', localidad_origen_id: '', localidad_destino_id: '', cliente_id: '', km: '', toneladas: '', flete_facturacion: '', flete_liquidacion: '', moneda: 'ARS', cotizacion: '1', observaciones: '' })
+const initialLegs = () => Array.isArray(old.value.tramos) && old.value.tramos.length
+  ? old.value.tramos.map((row) => ({ ...newLeg(), ...row }))
+  : [newLeg()]
+const legs = ref(initialLegs())
 const tractorId = ref(old.value.tractor_id ?? '')
 const trailerIds = ref(old.value.acoplado_id
   ? (Array.isArray(old.value.acoplado_id) ? old.value.acoplado_id.map(String) : [String(old.value.acoplado_id)])
   : [])
 const branchId = ref(old.value.sucursal_id === undefined || old.value.sucursal_id === null ? '' : String(old.value.sucursal_id))
-const departure = ref(old.value.fecha_salida_planificada ?? nowLocal())
-const returnAt = ref(old.value.fecha_regreso_planificada ?? '')
+const departure = ref(old.value.fecha_salida_real ?? nowLocal())
+const returnAt = ref(old.value.fecha_regreso_estimado ?? '')
 const kmSalida = ref(old.value.km_salida ?? '')
 const selectedDrivers = ref(Array.isArray(old.value.choferes) ? old.value.choferes.map(String) : [])
 const autoDrivers = ref([])
@@ -84,8 +64,8 @@ const companyLabel = computed(() => company.value.name || company.value.legalNam
 const kmSalidaHint = computed(() => {
   const lastKm = selectedTractor.value?.lastKm
   return lastKm === null || lastKm === undefined
-    ? 'Sin lectura previa. Podés completarlo ahora o al iniciar el viaje.'
-    : `Última lectura del camión: ${Number(lastKm).toLocaleString('es-AR')} km.`
+    ? 'Sin lectura previa. Completá el odómetro actual del tablero para iniciar.'
+    : `Última lectura registrada: ${Number(lastKm).toLocaleString('es-AR')} km. Confirmá la lectura actual en el tablero.`
 })
 const assignedDriversFor = (equipmentId) => {
   if (!equipmentId) return []
@@ -150,11 +130,10 @@ watch(tractorId, (value) => {
 })
 watch(selectedDrivers, syncPercentages, { deep: true })
 
-const addStop = () => stops.value.push(newStop('HITO'))
-const removeStop = (index) => {
-  if (stops.value.length > 2) stops.value.splice(index, 1)
+const addLeg = () => legs.value.push(newLeg())
+const removeLeg = (index) => {
+  if (legs.value.length > 1) legs.value.splice(index, 1)
 }
-const addressesFor = (customerId) => addresses.value.filter((address) => !customerId || Number(address.customerId) === Number(customerId))
 const tractorOptions = computed(() => tractors.value.map((equipment) => {
   const hints = [equipment.type]
   if (equipment.lastKm !== null && equipment.lastKm !== undefined) hints.push(`Último km ${Number(equipment.lastKm).toLocaleString('es-AR')}`)
@@ -184,21 +163,15 @@ const driverOptions = computed(() => drivers.value.map((driver) => {
 const customerOptions = computed(() => customers.value.map((customer) => ({
   value: customer.id,
   label: customer.label,
-  hint: customer.taxId ?? '',
+  hint: [customer.code ? `Código ${customer.code}` : '', customer.taxId ?? ''].filter(Boolean).join(' · '),
 })))
-const loadUnitOptions = computed(() => loadUnits.value.map((unit) => ({ value: unit.id, label: unit.label })))
-const addressOptionsFor = (customerId) => addressesFor(customerId).map((address) => ({ value: address.id, label: address.label }))
-const updateCustomer = (stop, value) => {
-  stop.cliente_id = value ?? ''
-  if (stop.domicilio_id && !addressesFor(stop.cliente_id).some((address) => String(address.id) === String(stop.domicilio_id))) {
-    stop.domicilio_id = ''
-  }
-}
+const localityOptions = computed(() => localities.value.map((locality) => ({ value: locality.id, label: locality.label })))
+const localityName = (localityId) => localities.value.find((locality) => String(locality.id) === String(localityId))?.name ?? ''
 </script>
 
 <template>
   <div>
-    <PageHeading eyebrow="Viajes" title="Nuevo viaje" description="Elegí el camión y completamos el dominio, el chofer y el último km. Después de guardar, cargá los tramos con el flete de facturación y el de liquidación. El viaje queda Planificado hasta que registres la salida real." :back="{ href: links.index, label: 'Volver a viajes operativos' }" />
+    <PageHeading eyebrow="Viajes aprobados" title="Iniciar viaje" description="El viaje ya está aprobado. Completá equipo, salida real, odómetro, chofer y recorrido; al guardar queda En curso para cargar sus tramos, gastos y combustible." :back="{ href: links.index, label: 'Volver a viajes operativos' }" />
 
     <form method="post" :action="links.store" class="space-y-5">
       <input type="hidden" :name="csrf.name" :value="csrf.hash" />
@@ -245,16 +218,16 @@ const updateCustomer = (stop, value) => {
 
         <div class="mt-4 grid gap-4 md:grid-cols-3">
           <label class="block">
-            <span class="mb-1.5 block text-sm font-semibold text-ink">Fecha de salida</span>
-            <input v-model="departure" type="datetime-local" name="fecha_salida_planificada" required :class="fieldClass" />
+            <span class="mb-1.5 block text-sm font-semibold text-ink">Fecha y hora real de salida</span>
+            <input v-model="departure" type="datetime-local" name="fecha_salida_real" required :class="fieldClass" />
           </label>
           <label class="block">
-            <span class="mb-1.5 block text-sm font-semibold text-ink">Fecha de regreso</span>
-            <input v-model="returnAt" type="datetime-local" name="fecha_regreso_planificada" required :class="fieldClass" />
+            <span class="mb-1.5 block text-sm font-semibold text-ink">Fecha estimada de regreso</span>
+            <input v-model="returnAt" type="datetime-local" name="fecha_regreso_estimado" required :class="fieldClass" />
           </label>
           <label class="block">
-            <span class="mb-1.5 block text-sm font-semibold text-ink">Km de salida</span>
-            <input v-model="kmSalida" type="number" min="0" step="1" name="km_salida" placeholder="0" :class="fieldClass" />
+            <span class="mb-1.5 block text-sm font-semibold text-ink">Odómetro real de salida (km)</span>
+            <input v-model="kmSalida" type="number" min="0" step="1" name="km_salida" placeholder="Lectura actual del tablero" required :class="fieldClass" />
             <span class="mt-1 block text-xs text-ink-muted">{{ kmSalidaHint }}</span>
           </label>
         </div>
@@ -268,7 +241,7 @@ const updateCustomer = (stop, value) => {
           </label>
           <div class="rounded-xl border border-border-subtle bg-surface p-3">
             <p class="text-sm font-semibold text-ink">% de liquidación del chofer</p>
-            <p class="mt-1 text-xs text-ink-muted">Se guarda el porcentaje vigente al planificar y después podés ajustarlo.</p>
+            <p class="mt-1 text-xs text-ink-muted">Se guarda el porcentaje vigente al iniciar y después podés ajustarlo.</p>
             <p v-if="selectedDriverRows.length === 0" class="mt-3 text-sm text-ink-muted">Elegí un chofer para ver su porcentaje.</p>
             <div v-for="driver in selectedDriverRows" :key="driver.id" class="mt-3 flex flex-wrap items-center justify-between gap-2">
               <span class="text-sm font-semibold text-ink">{{ driver.label }}</span>
@@ -286,82 +259,37 @@ const updateCustomer = (stop, value) => {
         </label>
       </PanelCard>
 
-      <PanelCard title="Recorrido y paradas" :count="stops.length" allow-overflow>
+      <PanelCard title="Tramos de flete" :count="legs.length" allow-overflow>
+        <p class="mb-4 text-sm text-ink-muted">Completá origen, destino y un solo cliente por tramo. Si tenés el código de ruta del sistema anterior, podés guardarlo también. El flete de facturación y el de liquidación se cargan por separado.</p>
         <div class="space-y-4">
-          <article v-for="(stop, index) in stops" :key="index" class="rounded-xl border border-border-subtle bg-surface p-4">
+          <article v-for="(leg, index) in legs" :key="index" class="rounded-xl border border-border-subtle bg-surface p-4">
             <div class="mb-3 flex items-center justify-between gap-3">
-              <h3 class="text-sm font-bold text-ink">Parada {{ index + 1 }}</h3>
-              <button v-if="stops.length > 2" type="button" :class="secondaryButton" @click="removeStop(index)">
+              <h3 class="text-sm font-bold text-ink">Tramo {{ index + 1 }}</h3>
+              <button v-if="legs.length > 1" type="button" :class="secondaryButton" @click="removeLeg(index)">
                 <TrashIcon class="mr-1.5 size-4" aria-hidden="true" />Quitar
               </button>
             </div>
-            <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              <label class="block">
-                <span class="mb-1.5 block text-sm font-semibold text-ink">Tipo</span>
-                <select :name="`paradas[${index}][tipo]`" v-model="stop.tipo" :class="fieldClass">
-                  <option v-for="type in stopTypes" :key="type.value" :value="type.value">{{ type.label }}</option>
-                </select>
-              </label>
-              <label class="block md:col-span-2">
-                <span class="mb-1.5 block text-sm font-semibold text-ink">Ubicación</span>
-                <input type="text" :name="`paradas[${index}][ubicacion]`" v-model="stop.ubicacion" required maxlength="200" placeholder="Ciudad, planta, depósito o punto de encuentro" :class="fieldClass" />
-              </label>
-              <label class="block">
-                <span class="mb-1.5 block text-sm font-semibold text-ink">Cliente</span>
-                <AutocompleteSelect
-                  :model-value="stop.cliente_id"
-                  :name="`paradas[${index}][cliente_id]`"
-                  :options="customerOptions"
-                  placeholder="Sin cliente"
-                  clearable
-                  @update:model-value="(value) => updateCustomer(stop, value)"
-                />
-              </label>
-              <label class="block">
-                <span class="mb-1.5 block text-sm font-semibold text-ink">Domicilio guardado</span>
-                <AutocompleteSelect
-                  v-model="stop.domicilio_id"
-                  :name="`paradas[${index}][domicilio_id]`"
-                  :options="addressOptionsFor(stop.cliente_id)"
-                  placeholder="Sin domicilio"
-                  clearable
-                />
-              </label>
-              <label class="block">
-                <span class="mb-1.5 block text-sm font-semibold text-ink">Fecha estimada</span>
-                <input type="datetime-local" :name="`paradas[${index}][fecha_estimada]`" v-model="stop.fecha_estimada" :class="fieldClass" />
-              </label>
-              <label class="block md:col-span-2">
-                <span class="mb-1.5 block text-sm font-semibold text-ink">Carga</span>
-                <input type="text" :name="`paradas[${index}][descripcion_carga]`" v-model="stop.descripcion_carga" maxlength="300" placeholder="Descripción de la carga o del hito" :class="fieldClass" />
-              </label>
-              <label class="block">
-                <span class="mb-1.5 block text-sm font-semibold text-ink">Cantidad</span>
-                <input type="number" step="0.01" min="0" :name="`paradas[${index}][cantidad]`" v-model="stop.cantidad" :class="fieldClass" />
-              </label>
-              <label class="block">
-                <span class="mb-1.5 block text-sm font-semibold text-ink">Unidad</span>
-                <AutocompleteSelect
-                  v-model="stop.unidad_carga_id"
-                  :name="`paradas[${index}][unidad_carga_id]`"
-                  :options="loadUnitOptions"
-                  placeholder="Sin unidad"
-                  clearable
-                />
-              </label>
-              <label class="block md:col-span-2 xl:col-span-3">
-                <span class="mb-1.5 block text-sm font-semibold text-ink">Observaciones de la parada</span>
-                <input type="text" :name="`paradas[${index}][observaciones]`" v-model="stop.observaciones" maxlength="500" :class="fieldClass" />
-              </label>
+            <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Código de ruta anterior (opcional)</span><input v-model="leg.codigo_origen_destino" type="number" min="1" step="1" :name="`tramos[${index}][codigo_origen_destino]`" placeholder="Ej.: 947" :class="fieldClass" /></label>
+              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Localidad de origen</span><AutocompleteSelect v-model="leg.localidad_origen_id" :name="`tramos[${index}][localidad_origen_id]`" :options="localityOptions" :search-url="links.localities" placeholder="Buscá la localidad" required /></label>
+              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Localidad de destino</span><AutocompleteSelect v-model="leg.localidad_destino_id" :name="`tramos[${index}][localidad_destino_id]`" :options="localityOptions" :search-url="links.localities" placeholder="Buscá la localidad" required /></label>
+              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Cliente del tramo</span><AutocompleteSelect v-model="leg.cliente_id" :name="`tramos[${index}][cliente_id]`" :options="customerOptions" placeholder="Elegí el cliente" required /></label>
+              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Km del tramo (opcional)</span><input v-model="leg.km" type="number" min="0" step="0.01" :name="`tramos[${index}][km]`" :class="fieldClass" /></label>
+              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Toneladas (opcional)</span><input v-model="leg.toneladas" type="number" min="0" step="0.01" :name="`tramos[${index}][toneladas]`" :class="fieldClass" /></label>
+              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Flete de facturación</span><input v-model="leg.flete_facturacion" type="number" min="0" step="0.01" :name="`tramos[${index}][flete_facturacion]`" required :class="fieldClass" /></label>
+              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Flete de liquidación</span><input v-model="leg.flete_liquidacion" type="number" min="0" step="0.01" :name="`tramos[${index}][flete_liquidacion]`" required :class="fieldClass" /></label>
+              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Moneda</span><select v-model="leg.moneda" :name="`tramos[${index}][moneda]`" :class="fieldClass"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }} · {{ currency.label }}</option></select></label>
+              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Cotización a ARS</span><input v-model="leg.cotizacion" type="number" min="0.000001" step="0.000001" :name="`tramos[${index}][cotizacion]`" required :class="fieldClass" /></label>
+              <label class="block md:col-span-2 xl:col-span-2"><span class="mb-1.5 block text-sm font-semibold text-ink">Observaciones del tramo</span><input v-model="leg.observaciones" type="text" maxlength="500" :name="`tramos[${index}][observaciones]`" :class="fieldClass" /></label>
             </div>
           </article>
         </div>
-        <button type="button" :class="[secondaryButton, 'mt-4']" @click="addStop"><PlusIcon class="mr-1.5 size-4" aria-hidden="true" />Agregar otra parada</button>
+        <button type="button" :class="[secondaryButton, 'mt-4']" @click="addLeg"><PlusIcon class="mr-1.5 size-4" aria-hidden="true" />Agregar tramo</button>
       </PanelCard>
 
       <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
         <a :href="links.index" :class="secondaryButton">Cancelar</a>
-        <button type="submit" :class="primaryButton">Planificar viaje</button>
+        <button type="submit" :class="primaryButton">Iniciar viaje</button>
       </div>
     </form>
   </div>

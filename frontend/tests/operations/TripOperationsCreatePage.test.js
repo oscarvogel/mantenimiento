@@ -6,11 +6,6 @@ import AutocompleteSelect from '../../src/pages/operations/components/Autocomple
 const data = {
   links: { index: '/mantenimiento/viajes/operativos', store: '/mantenimiento/viajes/operativos' },
   csrf: { name: 'csrf_test_name', hash: 'abc123' },
-  stopTypes: [
-    { value: 'CARGA', label: 'Carga' },
-    { value: 'DESCARGA', label: 'Descarga' },
-    { value: 'HITO', label: 'Hito operativo' },
-  ],
   company: { name: 'Transporte Mariela', legalName: 'Transporte Mariela SRL', taxId: '23-28059786-4' },
   nextNumber: 115,
   branches: [{ id: 10, code: 'AR', name: 'Argentina' }],
@@ -20,16 +15,17 @@ const data = {
     { id: 11, label: 'Pérez, Juan', employeeNumber: '100', equipmentId: 7, assignedEquipmentLabel: 'AA111AA · T01', liquidationPercentage: 14 },
     { id: 12, label: 'Otro, Chofer', employeeNumber: null, equipmentId: null, assignedEquipmentLabel: null, liquidationPercentage: null },
   ],
-  customers: [{ id: 3, label: 'Cliente Sur', taxId: null }],
-  addresses: [
-    { id: 4, customerId: 3, label: 'Planta · Ruta 9 · Rosario' },
-    { id: 5, customerId: 99, label: 'Depósito de otro cliente' },
+  customers: [{ id: 324, label: 'RUBENJUVE S.R.L.', code: '324', taxId: null }],
+  localities: [
+    { id: 1, name: 'Rosario', label: 'Rosario · Santa Fe · Argentina' },
+    { id: 2, name: 'Córdoba', label: 'Córdoba · Córdoba · Argentina' },
+    { id: 3, name: 'Zárate', label: 'Zárate · Buenos Aires · Argentina' },
   ],
-  loadUnits: [{ id: 2, label: 'Tonelada (tn)', symbol: 'tn' }],
+  currencies: [{ code: 'ARS', label: 'Peso argentino' }],
 }
 
 describe('alta de viaje operativo', () => {
-  it('arma el formulario con dos paradas y la protección CSRF', async () => {
+  it('arma el formulario con un tramo, cliente, dos fletes y la protección CSRF', async () => {
     const wrapper = mount(TripOperationsCreatePage, { props: { data } })
 
     const form = wrapper.get('form')
@@ -40,11 +36,22 @@ describe('alta de viaje operativo', () => {
     expect(wrapper.find('input[placeholder="Elegí uno o más choferes"]').exists()).toBe(true)
     expect(wrapper.text()).toContain('Transporte Mariela')
     expect(wrapper.text()).toContain('#115')
-    expect(wrapper.findAll('article')).toHaveLength(2)
+    expect(wrapper.text()).toContain('al guardar queda En curso')
+    expect(wrapper.get('button[type="submit"]').text()).toBe('Iniciar viaje')
+    expect(wrapper.get('input[name="km_salida"]').attributes('required')).toBeDefined()
+    expect(wrapper.findAll('article')).toHaveLength(1)
+    expect(wrapper.text()).toContain('Tramos de flete')
+    expect(wrapper.text()).toContain('Código de ruta anterior (opcional)')
+    expect(wrapper.text()).toContain('Localidad de origen')
+    expect(wrapper.text()).toContain('Localidad de destino')
+    expect(wrapper.text()).toContain('Flete de facturación')
+    expect(wrapper.text()).toContain('Flete de liquidación')
+    const customer = wrapper.findAllComponents(AutocompleteSelect).find((component) => component.props('name') === 'tramos[0][cliente_id]')
+    expect(customer.props('options')[0].hint).toContain('Código 324')
 
-    const addButton = wrapper.findAll('button').find((button) => button.text().includes('Agregar otra parada'))
+    const addButton = wrapper.findAll('button').find((button) => button.text().includes('Agregar tramo'))
     await addButton.trigger('click')
-    expect(wrapper.findAll('article')).toHaveLength(3)
+    expect(wrapper.findAll('article')).toHaveLength(2)
     wrapper.unmount()
   })
 
@@ -55,17 +62,17 @@ describe('alta de viaje operativo', () => {
           ...data,
           old: {
             sucursal_id: '10',
-            fecha_salida_planificada: '2026-10-20T08:00',
-            fecha_regreso_planificada: '2026-10-21T18:00',
+            fecha_salida_real: '2026-10-20T08:00',
+            fecha_regreso_estimado: '2026-10-21T18:00',
             tractor_id: '7',
             acoplado_id: '9',
             choferes: ['11'],
             choferes_porcentajes: { '11': '15.50' },
             km_salida: '140000',
             observaciones: 'Carga programada',
-            paradas: [
-              { tipo: 'CARGA', ubicacion: 'Rosario', cliente_id: '3', domicilio_id: '4', cantidad: '30', unidad_carga_id: '2', descripcion_carga: 'Soja' },
-              { tipo: 'DESCARGA', ubicacion: 'Córdoba' },
+            tramos: [
+              { codigo_origen_destino: '947', localidad_origen_id: '1', localidad_destino_id: '2', origen: 'Rosario', destino: 'Córdoba', cliente_id: '324', km: '', toneladas: '24', flete_facturacion: '3850000', flete_liquidacion: '2500000' },
+              { codigo_origen_destino: '154', localidad_origen_id: '3', localidad_destino_id: '2', origen: 'Zárate', destino: 'Córdoba', cliente_id: '4', flete_facturacion: '1291784.41', flete_liquidacion: '900000' },
             ],
           },
         },
@@ -73,11 +80,14 @@ describe('alta de viaje operativo', () => {
     })
 
     expect(wrapper.get('select[name="sucursal_id"]').element.value).toBe('10')
-    expect(wrapper.get('input[name="fecha_salida_planificada"]').element.value).toBe('2026-10-20T08:00')
+    expect(wrapper.get('input[name="fecha_salida_real"]').element.value).toBe('2026-10-20T08:00')
     expect(wrapper.get('input[name="tractor_id"]').attributes('value')).toBe('7')
     expect(wrapper.get('input[name="km_salida"]').element.value).toBe('140000')
     expect(wrapper.get('input[name="choferes_porcentajes[11]"]').element.value).toBe('15.50')
-    expect(wrapper.get('input[name="paradas[0][domicilio_id]"]').attributes('value')).toBe('4')
+    expect(wrapper.get('input[name="tramos[0][codigo_origen_destino]"]').element.value).toBe('947')
+    expect(wrapper.get('input[name="tramos[0][localidad_origen_id]"]').attributes('value')).toBe('1')
+    expect(wrapper.get('input[name="tramos[0][km]"]').element.value).toBe('')
+    expect(wrapper.get('input[name="tramos[0][cliente_id]"]').attributes('value')).toBe('324')
     expect(wrapper.get('textarea[name="observaciones"]').element.value).toBe('Carga programada')
     const comboboxes = wrapper.findAll('input[role="combobox"]')
     expect(comboboxes[0].element.value).toBe('AA111AA · T01')
@@ -102,21 +112,6 @@ describe('alta de viaje operativo', () => {
     expect(wrapper.get('input[name="choferes_porcentajes[11]"]').element.value).toBe('14')
     expect(wrapper.text()).toContain('AA111AA')
     expect(wrapper.text()).toContain('Chofer asignado al equipo: Pérez, Juan.')
-    wrapper.unmount()
-  })
-
-  it('filtra los domicilios por cliente seleccionado', async () => {
-    const wrapper = mount(TripOperationsCreatePage, { props: { data } })
-    const autocompletes = wrapper.findAllComponents(AutocompleteSelect)
-    const customer = autocompletes.find((component) => component.props('name') === 'paradas[0][cliente_id]')
-    const address = autocompletes.find((component) => component.props('name') === 'paradas[0][domicilio_id]')
-    expect(address.props('options').map((option) => option.label)).toContain('Depósito de otro cliente')
-
-    customer.vm.$emit('update:modelValue', 3)
-    await wrapper.vm.$nextTick()
-
-    expect(address.props('options').map((option) => option.label)).toContain('Planta · Ruta 9 · Rosario')
-    expect(address.props('options').map((option) => option.label)).not.toContain('Depósito de otro cliente')
     wrapper.unmount()
   })
 
