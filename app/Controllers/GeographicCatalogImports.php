@@ -6,7 +6,7 @@ namespace App\Controllers;
 
 use App\Application\Geography\LocalityImportPreview;
 use App\Application\Identity\ActorContext;
-use App\Infrastructure\Geography\SessionActorContext;
+use App\Infrastructure\Identity\SessionActorContext;
 use DomainException;
 use Throwable;
 
