@@ -535,7 +535,7 @@ Reglas:
 - Al elegir el dominio se completa empresa, sucursal, chofer, % y último km.
 - El % se puede editar antes de guardar.
 - Cada tramo selecciona una localidad de origen y otra de destino desde `localidades`, un solo cliente y sus fletes separados. Se persisten los IDs para que los reportes puedan agrupar salidas por localidad; se conservan nombres para mostrar e imprimir.
-- La búsqueda de localidades es remota y devuelve coincidencias mientras se escribe; no carga el catálogo completo en el navegador. El catálogo debe importarse para Argentina, Brasil, Chile y Uruguay.
+- La búsqueda de localidades es remota y devuelve coincidencias mientras se escribe; no carga el catálogo completo en el navegador. Los resultados muestran localidad, contexto administrativo, provincia/departamento y país para distinguir nombres repetidos. El catálogo se importa globalmente para Argentina, Brasil, Chile y Uruguay desde Administración global.
 - El código del sistema anterior es opcional. Kilómetros y toneladas son datos opcionales y no se infieren desde ese código.
 - Las paradas operativas son hitos separados y no reemplazan los tramos de flete.
 - Una futura distancia estimada de ruta basada en OSM debe quedar separada de los kilómetros reales medidos por odómetro.

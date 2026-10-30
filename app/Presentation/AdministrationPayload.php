@@ -42,6 +42,7 @@ final class AdministrationPayload
                 'createCompanyAdministrator' => base_url('superadmin/administradores'),
                 'dispatchNotifications' => base_url('superadmin/notificaciones/despachar'),
                 'applyMigrations' => base_url('superadmin/migraciones/aplicar'),
+                'importLocalities' => base_url('superadmin/geografia/localidades/importar'),
             ],
             'presentationProfiles' => array_map(static fn (array $profile): array => [
                 'key' => (string) $profile['key'],

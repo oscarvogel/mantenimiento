@@ -38,7 +38,7 @@ final class CodeIgniterTripFormReadModelTest extends TestCase
         $this->database->query('CREATE TABLE viajes_monedas (codigo TEXT PRIMARY KEY, nombre TEXT, activo INTEGER)');
         $this->database->query('CREATE TABLE paises (id INTEGER PRIMARY KEY, nombre TEXT, activo INTEGER)');
         $this->database->query('CREATE TABLE provincias (id INTEGER PRIMARY KEY, pais_id INTEGER, nombre TEXT, activo INTEGER)');
-        $this->database->query('CREATE TABLE localidades (id INTEGER PRIMARY KEY, provincia_id INTEGER, nombre TEXT, activo INTEGER)');
+        $this->database->query('CREATE TABLE localidades (id INTEGER PRIMARY KEY, provincia_id INTEGER, nombre TEXT, contexto_administrativo TEXT NULL, activo INTEGER)');
 
         $this->database->table('empresas')->insert(['id' => 5, 'razon_social' => 'Transporte Mariela SRL', 'nombre_fantasia' => 'Transporte Mariela', 'cuit' => '23-28059786-4']);
         $this->database->table('viajes_operativos_numeracion')->insert(['empresa_id' => 5, 'ultimo_numero' => 114]);
@@ -74,7 +74,8 @@ final class CodeIgniterTripFormReadModelTest extends TestCase
         $this->database->table('viajes_monedas')->insert(['codigo' => 'ARS', 'nombre' => 'Peso argentino', 'activo' => 1]);
         $this->database->table('paises')->insert(['id' => 1, 'nombre' => 'Argentina', 'activo' => 1]);
         $this->database->table('provincias')->insert(['id' => 1, 'pais_id' => 1, 'nombre' => 'Santa Fe', 'activo' => 1]);
-        $this->database->table('localidades')->insert(['id' => 1, 'provincia_id' => 1, 'nombre' => 'Rosario', 'activo' => 1]);
+        $this->database->table('localidades')->insert(['id' => 1, 'provincia_id' => 1, 'nombre' => 'Rosario', 'contexto_administrativo' => 'Departamento Rosario', 'activo' => 1]);
+        self::assertSame('Departamento Rosario', $this->database->table('localidades')->where('id', 1)->get()->getRowArray()['contexto_administrativo']);
     }
 
     protected function tearDown(): void
@@ -114,12 +115,14 @@ final class CodeIgniterTripFormReadModelTest extends TestCase
         self::assertSame([], $options['trailers'][0]['linkedTrailerIds'] ?? []);
     }
 
-    public function testBuscaLocalidadesConProvinciaYPais(): void
+    public function testBuscaLocalidadesConContextoProvinciaYPais(): void
     {
         $localities = (new CodeIgniterTripLocalityLookup($this->database))->search('Ros');
         self::assertSame(1, $localities[0]['id']);
         self::assertSame('Rosario', $localities[0]['name']);
-        self::assertSame('Rosario · Santa Fe · Argentina', $localities[0]['label']);
+        self::assertSame('Departamento Rosario', $localities[0]['context']);
+        self::assertSame('Rosario · Departamento Rosario · Santa Fe · Argentina', $localities[0]['label']);
+        self::assertCount(1, (new CodeIgniterTripLocalityLookup($this->database))->search('Departamento Rosario'));
     }
 
     public function testSinSemirremolqueEnganchadoLaListaQuedaVacia(): void

@@ -16,7 +16,7 @@ final class CodeIgniterTripLocalityLookup implements TripLocalityLookup
     public function find(int $localityId): ?array
     {
         $row = $this->database->table('localidades l')
-            ->select('l.id, l.nombre, pr.nombre AS provincia, pa.nombre AS pais')
+            ->select('l.id, l.nombre, l.contexto_administrativo AS contexto, pr.nombre AS provincia, pa.nombre AS pais')
             ->join('provincias pr', 'pr.id = l.provincia_id')
             ->join('paises pa', 'pa.id = pr.pais_id')
             ->where('l.id', $localityId)
@@ -31,8 +31,10 @@ final class CodeIgniterTripLocalityLookup implements TripLocalityLookup
         return [
             'id' => (int) $row['id'],
             'name' => (string) $row['nombre'],
+            'context' => (string) ($row['contexto'] ?? ''),
             'label' => implode(' · ', array_filter([
                 (string) $row['nombre'],
+                (string) ($row['contexto'] ?? ''),
                 (string) $row['provincia'],
                 (string) $row['pais'],
             ])),
@@ -46,7 +48,7 @@ final class CodeIgniterTripLocalityLookup implements TripLocalityLookup
             return [];
         }
         $rows = $this->database->table('localidades l')
-            ->select('l.id, l.nombre, pr.nombre AS provincia, pa.nombre AS pais')
+            ->select('l.id, l.nombre, l.contexto_administrativo AS contexto, pr.nombre AS provincia, pa.nombre AS pais')
             ->join('provincias pr', 'pr.id = l.provincia_id')
             ->join('paises pa', 'pa.id = pr.pais_id')
             ->where('l.activo', 1)
@@ -54,6 +56,7 @@ final class CodeIgniterTripLocalityLookup implements TripLocalityLookup
             ->where('pa.activo', 1)
             ->groupStart()
                 ->like('l.nombre', $query)
+                ->orLike('l.contexto_administrativo', $query)
                 ->orLike('pr.nombre', $query)
                 ->orLike('pa.nombre', $query)
             ->groupEnd()
@@ -66,8 +69,10 @@ final class CodeIgniterTripLocalityLookup implements TripLocalityLookup
         return array_map(static fn (array $row): array => [
             'id' => (int) $row['id'],
             'name' => (string) $row['nombre'],
+            'context' => (string) ($row['contexto'] ?? ''),
             'label' => implode(' · ', array_filter([
                 (string) $row['nombre'],
+                (string) ($row['contexto'] ?? ''),
                 (string) $row['provincia'],
                 (string) $row['pais'],
             ])),

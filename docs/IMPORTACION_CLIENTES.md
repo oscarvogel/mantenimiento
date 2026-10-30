@@ -42,7 +42,7 @@ Cada combinación de origen/provincia/localidad del CSV genera una equivalencia 
 
 Una equivalencia `CONFIRMADO` con localidad/provincia/país activos se aplica al importar y retira la advertencia de ubicación pendiente. Las equivalencias pendientes conservan los textos originales y dejan `clientes.localidad_id` vacío. Una nueva carga nunca sobrescribe equivalencias confirmadas.
 
-Esta entrega crea los catálogos y aplica equivalencias preparadas; **no incluye todavía una pantalla para administrar catálogos o aprobar equivalencias**. La normalización inicial queda como tarea de datos. Tampoco reescribe domicilios de clientes ya importados cuando se confirma una equivalencia después.
+La pantalla global **Administración → Localidades** permite importar catálogos oficiales. La aprobación de equivalencias de domicilios de clientes sigue fuera de esa pantalla. Tampoco reescribe domicilios de clientes ya importados cuando se confirma una equivalencia después.
 
 ## Entrega en Ferozo
 

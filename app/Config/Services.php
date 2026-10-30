@@ -248,6 +248,35 @@ class Services extends BaseService
         );
     }
 
+    public static function previewLocalities(bool $getShared = true): \App\Application\Geography\PreviewLocalities
+    {
+        if ($getShared) {
+            return static::getSharedInstance('previewLocalities');
+        }
+
+        return new \App\Application\Geography\PreviewLocalities();
+    }
+
+    public static function normalizedLocalityCsvReader(bool $getShared = true): \App\Infrastructure\Geography\NormalizedLocalityCsvReader
+    {
+        if ($getShared) {
+            return static::getSharedInstance('normalizedLocalityCsvReader');
+        }
+
+        return new \App\Infrastructure\Geography\NormalizedLocalityCsvReader();
+    }
+
+    public static function importLocalities(bool $getShared = true): \App\Application\Geography\ImportLocalities
+    {
+        if ($getShared) {
+            return static::getSharedInstance('importLocalities');
+        }
+
+        return new \App\Application\Geography\ImportLocalities(
+            new \App\Infrastructure\Geography\CodeIgniterLocalityCatalogImportStore(db_connect()),
+        );
+    }
+
     public static function tripImports(bool $getShared = true): \App\Application\TripImports\TripImports
     {
         if ($getShared) {

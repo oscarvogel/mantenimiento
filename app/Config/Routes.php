@@ -91,6 +91,9 @@ $routes->get('empleados', static function () {
 
 // Administración global. El filtro también rechaza cuentas autenticadas no globales.
 $routes->group('superadmin', ['filter' => 'superadmin'], static function ($routes): void {
+    $routes->get('geografia/localidades/importar', 'GeographicCatalogImports::index');
+    $routes->post('geografia/localidades/importar', 'GeographicCatalogImports::preview');
+    $routes->post('geografia/localidades/confirmar', 'GeographicCatalogImports::confirm');
     $routes->get('clientes/importar', 'CustomerImports::index');
     $routes->get('clientes/importar/plantilla', 'CustomerImports::template');
     $routes->post('clientes/importar', 'CustomerImports::preview');
