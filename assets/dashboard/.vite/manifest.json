@@ -1,10 +1,4 @@
 {
-  "node_modules/gsap/index.js": {
-    "file": "assets/gsap-C-UGJFrr.js",
-    "name": "gsap",
-    "src": "node_modules/gsap/index.js",
-    "isDynamicEntry": true
-  },
   "_admin-Biigz9pI.js": {
     "file": "assets/admin-Biigz9pI.js",
     "name": "admin",
@@ -45,6 +39,12 @@
     "css": [
       "assets/vendor-BTrKGrB8.css"
     ]
+  },
+  "node_modules/gsap/index.js": {
+    "file": "assets/gsap-C-UGJFrr.js",
+    "name": "gsap",
+    "src": "node_modules/gsap/index.js",
+    "isDynamicEntry": true
   },
   "src/assets/platform/ai-card.jpg": {
     "file": "assets/ai-card-Bif2XNNK.jpg",

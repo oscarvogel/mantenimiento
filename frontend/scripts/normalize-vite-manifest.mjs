@@ -22,13 +22,16 @@ export function normalizeManifest(manifest) {
     return value
   }
 
-  return Object.fromEntries(Object.entries(manifest).map(([key, entry]) => [
+  const entries = Object.entries(manifest).map(([key, entry]) => [
     normalizePath(key),
     Object.fromEntries(Object.entries(entry).map(([field, value]) => [
       field,
       Array.isArray(value) ? value.map(normalizePath) : normalizePath(value),
     ])),
-  ]))
+  ])
+
+  entries.sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+  return Object.fromEntries(entries)
 }
 
 export function normalizeManifestFile(path) {
