@@ -132,7 +132,12 @@ final class CodeIgniterLocalityCatalogImportStore implements LocalityCatalogImpo
             $record = $entry['record'];
             $provinceId = $entry['province_id'];
             $sourceId = strtoupper($record['pais_codigo']) . ':' . $source . ':' . $record['codigo_localidad'];
-            $locality = $bySource[$sourceId] ?? $byName[json_encode([$provinceId, $record['localidad']])] ?? null;
+            $locality = $bySource[$sourceId] ?? null;
+            $legacyNameKey = json_encode([$provinceId, $record['localidad']]);
+            if ($locality === null && isset($byName[$legacyNameKey])) {
+                $locality = $byName[$legacyNameKey];
+                unset($byName[$legacyNameKey]);
+            }
             $data = [
                 'provincia_id' => $provinceId,
                 'nombre' => $record['localidad'],

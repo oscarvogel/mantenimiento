@@ -49,8 +49,11 @@ const buttonClass = 'min-h-11 rounded-lg bg-slate-900 px-4 py-2 font-semibold te
           </div>
         </dl>
         <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <div class="rounded-lg border border-green-200 bg-green-50 p-4"><p class="text-sm text-green-800">Filas válidas</p><p class="mt-1 text-2xl font-bold text-green-900">{{ data.preview.valid }}</p></div>
-          <div class="rounded-lg border border-red-200 bg-red-50 p-4"><p class="text-sm text-red-800">Filas con errores</p><p class="mt-1 text-2xl font-bold text-red-900">{{ data.preview.errors }}</p></div>
+          <div class="rounded-lg border border-success/40 bg-success-subtle p-4"><p class="text-sm text-success-strong">Filas válidas</p><p class="mt-1 text-2xl font-bold text-success-strong">{{ data.preview.valid }}</p></div>
+          <div class="rounded-lg border p-4" :class="data.preview.errors > 0 ? 'border-danger/40 bg-danger-subtle' : 'border-border-subtle bg-surface-muted'">
+            <p class="text-sm" :class="data.preview.errors > 0 ? 'text-danger-strong' : 'text-ink-muted'">Filas con errores</p>
+            <p class="mt-1 text-2xl font-bold" :class="data.preview.errors > 0 ? 'text-danger-strong' : 'text-ink-strong'">{{ data.preview.errors }}</p>
+          </div>
         </div>
         <p v-if="data.preview.total === 0" role="alert" class="text-sm font-semibold text-red-800">El archivo no contiene localidades para importar.</p>
         <p v-if="data.preview.errors" role="alert" class="text-sm font-semibold text-red-800">Corregí el archivo y volvé a subirlo. No se va a guardar ninguna fila mientras haya errores. Se muestran hasta 100 errores de ejemplo.</p>
