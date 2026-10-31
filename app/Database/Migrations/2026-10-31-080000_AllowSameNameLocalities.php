@@ -11,9 +11,11 @@ final class AllowSameNameLocalities extends Migration
 {
     public function up(): void
     {
-        $this->forge->dropKey('localidades', 'uq_localidades_provincia_nombre', false);
         $this->forge->addKey(['provincia_id', 'nombre'], false, false, 'idx_localidades_provincia_nombre');
         $this->forge->processIndexes('localidades');
+        // MySQL requires a leading index for the provincia_id foreign key.
+        // Install its replacement before removing the unique index.
+        $this->forge->dropKey('localidades', 'uq_localidades_provincia_nombre', false);
     }
 
     public function down(): void
@@ -27,8 +29,8 @@ final class AllowSameNameLocalities extends Migration
             throw new RuntimeException('down() no puede restaurar nombres únicos mientras existan localidades homónimas en una provincia.');
         }
 
-        $this->forge->dropKey('localidades', 'idx_localidades_provincia_nombre', false);
         $this->forge->addUniqueKey(['provincia_id', 'nombre'], 'uq_localidades_provincia_nombre');
         $this->forge->processIndexes('localidades');
+        $this->forge->dropKey('localidades', 'idx_localidades_provincia_nombre', false);
     }
 }
