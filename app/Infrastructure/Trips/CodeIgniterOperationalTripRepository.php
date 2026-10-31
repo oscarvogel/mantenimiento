@@ -54,7 +54,7 @@ final class CodeIgniterOperationalTripRepository implements OperationalTripRepos
             'numero' => $trip->number(),
             'estado' => $trip->status(),
             'fecha_salida_planificada' => $trip->plannedDeparture()->format('Y-m-d H:i:s'),
-            'fecha_regreso_planificada' => $trip->plannedReturn()->format('Y-m-d H:i:s'),
+            'fecha_regreso_planificada' => $trip->plannedReturn()?->format('Y-m-d H:i:s'),
             'fecha_salida_real' => $trip->actualDeparture()?->format('Y-m-d H:i:s'),
             'fecha_regreso_real' => $trip->actualReturn()?->format('Y-m-d H:i:s'),
             'km_salida' => $trip->departureKm(),
@@ -141,7 +141,7 @@ final class CodeIgniterOperationalTripRepository implements OperationalTripRepos
         array $equipmentIds,
         array $employeeIds,
         DateTimeImmutable $from,
-        DateTimeImmutable $to,
+        ?DateTimeImmutable $to,
         ?int $excludeTripId = null,
     ): array {
         if ($equipmentIds === [] && $employeeIds === []) {
@@ -154,16 +154,19 @@ final class CodeIgniterOperationalTripRepository implements OperationalTripRepos
             . 'FROM ' . $this->database->prefixTable('viajes_operativos') . ' v '
             . 'JOIN ' . $this->database->prefixTable('viaje_operativo_asignaciones') . ' a '
             . 'ON a.viaje_id = v.id AND a.empresa_id = v.empresa_id '
-            . 'WHERE v.empresa_id = ? AND v.estado IN (?, ?) '
-            . 'AND COALESCE(v.fecha_salida_real, v.fecha_salida_planificada) < ? '
-            . 'AND COALESCE(v.fecha_regreso_real, v.fecha_regreso_planificada) > ?';
+            . 'WHERE v.empresa_id = ? AND v.estado IN (?, ?)';
         $binds = [
             $companyId,
             Trip::PLANIFICADO,
             Trip::EN_CURSO,
-            $to->format('Y-m-d H:i:s'),
-            $from->format('Y-m-d H:i:s'),
         ];
+        if ($to !== null) {
+            $sql .= ' AND COALESCE(v.fecha_salida_real, v.fecha_salida_planificada) < ?';
+            $binds[] = $to->format('Y-m-d H:i:s');
+        }
+        $sql .= ' AND (COALESCE(v.fecha_regreso_real, v.fecha_regreso_planificada) IS NULL '
+            . 'OR COALESCE(v.fecha_regreso_real, v.fecha_regreso_planificada) > ?)';
+        $binds[] = $from->format('Y-m-d H:i:s');
         if ($excludeTripId !== null) {
             $sql .= ' AND v.id <> ?';
             $binds[] = $excludeTripId;
@@ -192,7 +195,7 @@ final class CodeIgniterOperationalTripRepository implements OperationalTripRepos
                 $role,
                 $referenceId,
                 new DateTimeImmutable((string) $row['inicio']),
-                new DateTimeImmutable((string) $row['fin']),
+                empty($row['fin']) ? null : new DateTimeImmutable((string) $row['fin']),
             );
         }
 
@@ -294,7 +297,7 @@ final class CodeIgniterOperationalTripRepository implements OperationalTripRepos
             (int) $row['numero'],
             (string) $row['estado'],
             new DateTimeImmutable((string) $row['fecha_salida_planificada']),
-            new DateTimeImmutable((string) $row['fecha_regreso_planificada']),
+            empty($row['fecha_regreso_planificada']) ? null : new DateTimeImmutable((string) $row['fecha_regreso_planificada']),
             empty($row['fecha_salida_real']) ? null : new DateTimeImmutable((string) $row['fecha_salida_real']),
             empty($row['fecha_regreso_real']) ? null : new DateTimeImmutable((string) $row['fecha_regreso_real']),
             $row['km_salida'] === null ? null : (int) $row['km_salida'],

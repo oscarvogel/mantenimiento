@@ -15,7 +15,7 @@ final readonly class TripConflict
         public string $role,
         public int $referenceId,
         public DateTimeImmutable $from,
-        public DateTimeImmutable $to,
+        public ?DateTimeImmutable $to,
     ) {
     }
 
@@ -29,12 +29,12 @@ final readonly class TripConflict
         };
 
         return sprintf(
-            '%s ya está asignado al viaje #%d (%s) entre %s y %s.',
+            '%s ya está asignado al viaje #%d (%s) desde %s hasta %s.',
             $role,
             $this->tripNumber,
             $this->status,
             $this->from->format('d/m/Y H:i'),
-            $this->to->format('d/m/Y H:i'),
+            $this->to?->format('d/m/Y H:i') ?? 'el regreso real',
         );
     }
 }

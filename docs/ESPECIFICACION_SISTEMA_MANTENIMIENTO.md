@@ -619,7 +619,7 @@ Nunca se recalcula un viaje importado ni se le agrega un tramo operativo.
 
 | Tabla | Finalidad | Campos esenciales |
 |---|---|---|
-| `viajes_operativos` | Viaje del circuito vivo, con número correlativo por empresa y estado. | id, empresa_id, sucursal_id, numero, estado, fecha_salida_planificada, fecha_regreso_planificada, fecha_salida_real, fecha_regreso_real, km_salida, km_regreso, observaciones, motivo_cancelacion, created_at, updated_at |
+| `viajes_operativos` | Viaje del circuito vivo, con número correlativo por empresa y estado. | id, empresa_id, sucursal_id, numero, estado, fecha_salida_planificada, fecha_regreso_planificada (nullable), fecha_salida_real, fecha_regreso_real, km_salida, km_regreso, observaciones, motivo_cancelacion, created_at, updated_at |
 | `viajes_operativos_numeracion` | Último número entregado por empresa. Se bloquea con `FOR UPDATE` al reservar. | empresa_id, ultimo_numero, updated_at |
 | `viaje_operativo_asignaciones` | Tractor, acoplado y choferes asignados, con su vigencia. | id, viaje_id, empresa_id, sucursal_id, rol, equipo_id, empleado_id, desde, hasta, motivo, created_at, porcentaje_liquidacion |
 | `viaje_operativo_paradas` | Recorrido ordenado: carga, descarga e hitos. | id, viaje_id, empresa_id, sucursal_id, orden, tipo, cliente_id, domicilio_id, ubicacion, fecha_estimada, fecha_real, descripcion_carga, cantidad, unidad_carga_id, observaciones |
@@ -640,6 +640,9 @@ suman al margen del viaje y se muestran aparte como **costos sin asignar**: no s
 
 **La caja no es costo del viaje.** Los adelantos, retiros y devoluciones son movimientos entre la empresa y el
 chofer: afectan la liquidación, no el margen operativo.
+
+**La fecha estimada de regreso es opcional al iniciar un viaje.** Si todavía no se conoce, el viaje puede guardarse
+sin ella. El equipo y los choferes siguen ocupados para la detección de conflictos hasta registrar el regreso real.
 
 #### 5.13.2 Historial importado, solo lectura
 

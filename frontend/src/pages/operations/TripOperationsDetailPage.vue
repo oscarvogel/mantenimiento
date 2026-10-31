@@ -92,7 +92,7 @@ const facts = computed(() => {
   ['Estado', trip.value.estado_label],
   ['Sucursal de origen', trip.value.sucursal],
   [started ? 'Salida real' : 'Salida', fmtDateTime(trip.value.fecha_salida_real ?? trip.value.fecha_salida_planificada)],
-  [finished ? 'Regreso real' : (started ? 'Regreso estimado' : 'Regreso'), fmtDateTime(trip.value.fecha_regreso_real ?? trip.value.fecha_regreso_planificada)],
+  [finished ? 'Regreso real' : (started ? 'Regreso estimado' : 'Regreso'), trip.value.fecha_regreso_real || trip.value.fecha_regreso_planificada ? fmtDateTime(trip.value.fecha_regreso_real ?? trip.value.fecha_regreso_planificada) : 'Sin estimar'],
   ['Odómetro de salida', trip.value.km_salida === null ? null : `${number(trip.value.km_salida)} km`],
   ['Odómetro de regreso', trip.value.km_regreso === null ? null : `${number(trip.value.km_regreso)} km`],
   ['Observaciones', trip.value.observaciones],

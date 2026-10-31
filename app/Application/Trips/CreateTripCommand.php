@@ -19,7 +19,7 @@ final readonly class CreateTripCommand
     public function __construct(
         public int $branchId,
         public DateTimeImmutable $departureAt,
-        public DateTimeImmutable $estimatedReturnAt,
+        public ?DateTimeImmutable $estimatedReturnAt,
         public int $truckId,
         public array $trailerIds,
         public array $driverIds,
@@ -37,8 +37,8 @@ final readonly class CreateTripCommand
         $truckId = self::positiveInt($input['tractor_id'] ?? null, 'Elegí el tractor o camión del viaje.');
         $trailerIds = self::trailerIds($input['acoplado_id'] ?? null);
         $departureAt = self::dateTime($input['fecha_salida_real'] ?? null, 'La fecha y hora real de salida');
-        $estimatedReturnAt = self::dateTime($input['fecha_regreso_estimado'] ?? null, 'La fecha estimada de regreso');
-        if ($estimatedReturnAt <= $departureAt) {
+        $estimatedReturnAt = self::optionalDateTime($input['fecha_regreso_estimado'] ?? null, 'La fecha estimada de regreso');
+        if ($estimatedReturnAt !== null && $estimatedReturnAt <= $departureAt) {
             throw new DomainException('El regreso estimado debe ser posterior a la salida real.');
         }
         $departureKm = self::nonNegativeInt($input['km_salida'] ?? null, 'Ingresá el odómetro real de salida.');
@@ -173,6 +173,15 @@ final readonly class CreateTripCommand
         }
 
         throw new DomainException($label . ' no tiene una fecha y hora válidas.');
+    }
+
+    private static function optionalDateTime(mixed $value, string $label): ?DateTimeImmutable
+    {
+        if ($value === null || trim((string) $value) === '') {
+            return null;
+        }
+
+        return self::dateTime($value, $label);
     }
 
     /** @return list<int> */
