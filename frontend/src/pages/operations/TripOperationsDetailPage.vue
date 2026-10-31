@@ -31,6 +31,7 @@ const localityOptions = computed(() => localities.value.map((locality) => ({ val
 const localityName = (localityId) => localities.value.find((locality) => String(locality.id) === String(localityId))?.name ?? ''
 const newLegOriginId = ref('')
 const newLegDestinationId = ref('')
+const newLegCustomerId = ref('')
 const statusTone = {
   PLANIFICADO: 'bg-info-subtle text-info-strong',
   EN_CURSO: 'bg-success-subtle text-success-strong',
@@ -200,7 +201,7 @@ const facts = computed(() => {
           <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Código ruta anterior (opcional)</span><input type="number" name="codigo_origen_destino" min="1" step="1" :class="fieldClass" /></label>
           <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Localidad de origen</span><AutocompleteSelect v-model="newLegOriginId" name="localidad_origen_id" :options="localityOptions" :search-url="data.links?.localities" placeholder="Buscá la localidad" required /></label>
           <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Localidad de destino</span><AutocompleteSelect v-model="newLegDestinationId" name="localidad_destino_id" :options="localityOptions" :search-url="data.links?.localities" placeholder="Buscá la localidad" required /></label>
-          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cliente</span><AutocompleteSelect name="cliente_id" :options="customerOptions" placeholder="Elegí el cliente" required /></label>
+          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cliente</span><AutocompleteSelect v-model="newLegCustomerId" name="cliente_id" :options="customerOptions" placeholder="Elegí el cliente" required /></label>
           <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Toneladas</span><input type="number" name="toneladas" min="0" step="0.01" :class="fieldClass" /></label>
           <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Km</span><input type="number" name="km" min="0" step="0.01" :class="fieldClass" /></label>
           <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select name="moneda" :class="fieldClass"><option v-for="currency in currencies" :key="currency.code" :value="currency.code" :selected="currency.code === 'ARS'">{{ currency.code }} · {{ currency.label }}</option></select></label>
