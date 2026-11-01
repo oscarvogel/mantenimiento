@@ -93,7 +93,7 @@ final class EnableOperationalTripCostMaintenance extends Migration
             return;
         }
 
-        $this->forge->addForeignKey($column, $table, 'usuarios', 'id', 'RESTRICT', 'SET NULL', $name);
+        $this->forge->addForeignKey($column, 'usuarios', 'id', 'RESTRICT', 'SET NULL', $name);
         $this->forge->processIndexes($table);
     }
 
