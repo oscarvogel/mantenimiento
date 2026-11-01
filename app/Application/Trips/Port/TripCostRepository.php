@@ -17,5 +17,17 @@ interface TripCostRepository
 
     public function addCashMovement(int $tripId, int $companyId, int $branchId, TripCashMovement $movement, int $actorUserId): int;
 
+    public function updateFuel(int $tripId, int $companyId, int $movementId, TripFuelLoad $load, int $actorUserId, ?int $legId = null): bool;
+
+    public function updateExpense(int $tripId, int $companyId, int $movementId, TripExpense $expense, int $actorUserId, ?int $legId = null): bool;
+
+    public function updateCashMovement(int $tripId, int $companyId, int $movementId, TripCashMovement $movement, int $actorUserId): bool;
+
+    public function softDeleteFuel(int $tripId, int $companyId, int $movementId, int $actorUserId): bool;
+
+    public function softDeleteExpense(int $tripId, int $companyId, int $movementId, int $actorUserId): bool;
+
+    public function softDeleteCashMovement(int $tripId, int $companyId, int $movementId, int $actorUserId): bool;
+
     public function addOtherEarning(int $tripId, int $companyId, int $branchId, TripOtherEarning $earning, int $actorUserId): int;
 }

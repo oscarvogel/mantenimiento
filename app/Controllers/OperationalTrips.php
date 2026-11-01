@@ -7,11 +7,16 @@ namespace App\Controllers;
 use App\Application\Identity\ActorContext;
 use App\Application\Trips\AddTripLegCommand;
 use App\Application\Trips\CreateTripCommand;
+use App\Application\Trips\DeleteOperationalTripCost;
+use App\Application\Trips\DeleteOperationalTripCostCommand;
 use App\Application\Trips\OperationalTripFilters;
 use App\Application\Trips\RegisterTripCashMovementCommand;
 use App\Application\Trips\RegisterTripExpenseCommand;
 use App\Application\Trips\RegisterTripFuelCommand;
 use App\Application\Trips\RegisterTripOtherEarningCommand;
+use App\Application\Trips\UpdateTripCashMovementCommand;
+use App\Application\Trips\UpdateTripExpenseCommand;
+use App\Application\Trips\UpdateTripFuelLoadCommand;
 use App\Infrastructure\Identity\SessionActorContext;
 use CodeIgniter\HTTP\RedirectResponse;
 use CodeIgniter\HTTP\ResponseInterface;
@@ -261,6 +266,110 @@ final class OperationalTrips extends BaseController
             return redirect()->to('/viajes/operativos/' . $tripId)->with('success', 'El movimiento de caja quedó registrado.');
         } catch (Throwable $exception) {
             return $this->failure($exception, 'No se pudo registrar el movimiento de caja.', '/viajes/operativos/' . $tripId);
+        }
+    }
+
+    public function updateFuel(int $tripId, int $movementId): RedirectResponse
+    {
+        try {
+            $command = new UpdateTripFuelLoadCommand(
+                $tripId,
+                $movementId,
+                $this->requiredDateTime('fecha'),
+                $this->requiredFloat('litros'),
+                $this->requiredFloat('importe'),
+                $this->currency(),
+                $this->rate(),
+                $this->optionalInt('kilometraje'),
+                $this->text('estacion', 120),
+                $this->text('comprobante', 80),
+                $this->text('observaciones', 500),
+                $this->optionalInt('tramo_id'),
+            );
+            service('updateTripFuelLoad')->execute($this->actor(), $command);
+
+            return redirect()->to('/viajes/operativos/' . $tripId)->with('success', 'Se actualizaron los datos de combustible.');
+        } catch (Throwable $exception) {
+            return $this->failure($exception, 'No se pudo editar la carga de combustible.', '/viajes/operativos/' . $tripId);
+        }
+    }
+
+    public function updateExpense(int $tripId, int $movementId): RedirectResponse
+    {
+        try {
+            $paidBy = strtoupper(trim((string) $this->request->getPost('pagado_por')));
+            if ($paidBy === '') {
+                $paidBy = (string) $this->request->getPost('pagado_de_caja') === '1' ? 'CAJA' : 'EMPRESA';
+            }
+            $command = new UpdateTripExpenseCommand(
+                $tripId,
+                $movementId,
+                $this->requiredDateTime('fecha'),
+                $this->requiredFloat('importe'),
+                $this->optionalInt('categoria_id'),
+                $this->currency(),
+                $this->rate(),
+                $this->optionalInt('medio_pago_id'),
+                $this->optionalInt('tramo_id'),
+                $paidBy,
+                $this->text('comprobante', 80),
+                $this->text('observaciones', 500),
+            );
+            service('updateTripExpense')->execute($this->actor(), $command);
+
+            return redirect()->to('/viajes/operativos/' . $tripId)->with('success', 'Se actualizaron los datos del gasto.');
+        } catch (Throwable $exception) {
+            return $this->failure($exception, 'No se pudo editar el gasto.', '/viajes/operativos/' . $tripId);
+        }
+    }
+
+    public function updateCashMovement(int $tripId, int $movementId): RedirectResponse
+    {
+        try {
+            $command = new UpdateTripCashMovementCommand(
+                $tripId,
+                $movementId,
+                strtoupper(trim((string) $this->request->getPost('tipo'))),
+                $this->requiredDateTime('fecha'),
+                $this->requiredFloat('importe'),
+                $this->currency(),
+                $this->rate(),
+                $this->text('observaciones', 500),
+            );
+            service('updateTripCashMovement')->execute($this->actor(), $command);
+
+            return redirect()->to('/viajes/operativos/' . $tripId)->with('success', 'Se actualizaron los datos del movimiento de caja.');
+        } catch (Throwable $exception) {
+            return $this->failure($exception, 'No se pudo editar el movimiento de caja.', '/viajes/operativos/' . $tripId);
+        }
+    }
+
+    public function deleteFuel(int $tripId, int $movementId): RedirectResponse
+    {
+        return $this->deleteCostMovement($tripId, $movementId, DeleteOperationalTripCost::FUEL, 'La carga de combustible se quitó de los totales del viaje.');
+    }
+
+    public function deleteExpense(int $tripId, int $movementId): RedirectResponse
+    {
+        return $this->deleteCostMovement($tripId, $movementId, DeleteOperationalTripCost::EXPENSE, 'El gasto se quitó de los totales del viaje.');
+    }
+
+    public function deleteCashMovement(int $tripId, int $movementId): RedirectResponse
+    {
+        return $this->deleteCostMovement($tripId, $movementId, DeleteOperationalTripCost::CASH, 'El movimiento se quitó del saldo de caja del viaje.');
+    }
+
+    private function deleteCostMovement(int $tripId, int $movementId, string $type, string $successMessage): RedirectResponse
+    {
+        try {
+            service('deleteOperationalTripCost')->execute(
+                $this->actor(),
+                new DeleteOperationalTripCostCommand($tripId, $movementId, $type),
+            );
+
+            return redirect()->to('/viajes/operativos/' . $tripId)->with('success', $successMessage);
+        } catch (Throwable $exception) {
+            return $this->failure($exception, 'No se pudo quitar el movimiento del viaje.', '/viajes/operativos/' . $tripId);
         }
     }
 

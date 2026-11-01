@@ -283,6 +283,28 @@ final class CostRepositoryFake implements TripCostRepository
         return 1;
     }
 
+    public function updateFuel(int $tripId, int $companyId, int $movementId, TripFuelLoad $load, int $actorUserId, ?int $legId = null): bool
+    {
+        $this->fuel = $load;
+        return true;
+    }
+
+    public function updateExpense(int $tripId, int $companyId, int $movementId, TripExpense $expense, int $actorUserId, ?int $legId = null): bool
+    {
+        $this->expense = $expense;
+        return true;
+    }
+
+    public function updateCashMovement(int $tripId, int $companyId, int $movementId, TripCashMovement $movement, int $actorUserId): bool
+    {
+        $this->cashMovement = $movement;
+        return true;
+    }
+
+    public function softDeleteFuel(int $tripId, int $companyId, int $movementId, int $actorUserId): bool { return true; }
+    public function softDeleteExpense(int $tripId, int $companyId, int $movementId, int $actorUserId): bool { return true; }
+    public function softDeleteCashMovement(int $tripId, int $companyId, int $movementId, int $actorUserId): bool { return true; }
+
     public function addOtherEarning(int $tripId, int $companyId, int $branchId, TripOtherEarning $earning, int $actorUserId): int
     {
         $this->tripId = $tripId;
