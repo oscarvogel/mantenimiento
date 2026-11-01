@@ -215,6 +215,7 @@ Es un análisis de margen de empresa. No es la liquidación del chofer y no incl
 8. **El cierre del viaje requiere km de regreso y fecha de regreso.** Genera una lectura del equipo con origen `VIAJE`.
 9. **El viaje finalizado conserva su historial y no se edita.** Las correcciones se hacen con ajustes o reversiones auditadas.
 10. **No se migra la cuenta corriente legacy como libro operativo.** El análisis del backup concluyó que no reconcilia. La cuenta nueva se implementa limpia; la historia legacy queda de solo lectura.
+11. **La fecha estimada de regreso al iniciar un viaje es opcional.** Si no se informa, el equipo y los choferes asignados siguen ocupados para la detección de conflictos hasta registrar el regreso real.
 
 ---
 
@@ -226,7 +227,7 @@ El viaje es la raíz de consistencia. Contiene:
 
 - Identidad: empresa, sucursal, número correlativo.
 - Estado: `PLANIFICADO`, `EN_CURSO`, `FINALIZADO`, `CANCELADO`.
-- Fechas planificadas y reales de salida y regreso.
+- Fechas planificadas y reales de salida y regreso; la fecha estimada de regreso puede quedar vacía.
 - Km de salida y regreso.
 - Asignaciones: tractor, composición de semirremolques (hasta 3: bitrén o tridem) y choferes.
 - Tramos.
@@ -253,6 +254,7 @@ El viaje es la raíz de consistencia. Contiene:
 - La suma de los tramos no puede quedar vacía al cerrar.
 - El km de regreso no puede ser menor al km de salida.
 - La fecha de regreso no puede ser anterior a la de salida.
+- Si se informa una fecha estimada de regreso, debe ser posterior a la salida. Un viaje activo sin estimación sigue ocupando sus asignaciones hasta registrar el regreso real.
 - Un tramo pertenece al mismo viaje, empresa y sucursal.
 - Un costo imputado a un tramo debe pertenecer al mismo viaje, empresa y sucursal.
 - Los importes monetarios usan `DECIMAL`, nunca `FLOAT`.

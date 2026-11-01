@@ -222,8 +222,9 @@ const localityName = (localityId) => localities.value.find((locality) => String(
             <input v-model="departure" type="datetime-local" name="fecha_salida_real" required :class="fieldClass" />
           </label>
           <label class="block">
-            <span class="mb-1.5 block text-sm font-semibold text-ink">Fecha estimada de regreso</span>
-            <input v-model="returnAt" type="datetime-local" name="fecha_regreso_estimado" required :class="fieldClass" />
+            <span class="mb-1.5 block text-sm font-semibold text-ink">Fecha estimada de regreso (opcional)</span>
+            <input v-model="returnAt" type="datetime-local" name="fecha_regreso_estimado" :class="fieldClass" />
+            <span class="mt-1 block text-xs text-ink-muted">Si todavía no la sabés, dejala vacía. El equipo y el chofer quedan ocupados hasta cargar el regreso real.</span>
           </label>
           <label class="block">
             <span class="mb-1.5 block text-sm font-semibold text-ink">Odómetro real de salida (km)</span>

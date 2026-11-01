@@ -336,6 +336,7 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
             ->select('id, tramo_id, fecha, litros, importe, moneda, cotizacion, importe_ars, kilometraje, estacion, comprobante, observaciones')
             ->where('empresa_id', $companyId)
             ->where('viaje_id', $tripId)
+            ->where('deleted_at', null)
             ->orderBy('fecha', 'ASC')
             ->orderBy('id', 'ASC')
             ->get()->getResultArray();
@@ -365,6 +366,7 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
             ->join('viajes_medios_pago m', 'm.id = g.medio_pago_id AND m.empresa_id = g.empresa_id', 'left')
             ->where('g.empresa_id', $companyId)
             ->where('g.viaje_id', $tripId)
+            ->where('g.deleted_at', null)
             ->orderBy('g.fecha', 'ASC')
             ->orderBy('g.id', 'ASC')
             ->get()->getResultArray();
@@ -395,6 +397,7 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
             ->select('id, tipo, fecha, importe, moneda, cotizacion, importe_ars, observaciones')
             ->where('empresa_id', $companyId)
             ->where('viaje_id', $tripId)
+            ->where('deleted_at', null)
             ->orderBy('fecha', 'ASC')
             ->orderBy('id', 'ASC')
             ->get()->getResultArray();

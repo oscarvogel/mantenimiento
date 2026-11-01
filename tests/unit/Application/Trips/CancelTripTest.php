@@ -116,7 +116,7 @@ final class CancelTripRepositoryFake implements OperationalTripRepository
         array $equipmentIds,
         array $employeeIds,
         DateTimeImmutable $from,
-        DateTimeImmutable $to,
+        ?DateTimeImmutable $to,
         ?int $excludeTripId = null,
     ): array {
         return [];

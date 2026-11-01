@@ -33,7 +33,7 @@ final class Trip
         private readonly int $number,
         private string $status,
         private readonly DateTimeImmutable $plannedDeparture,
-        private readonly DateTimeImmutable $plannedReturn,
+        private readonly ?DateTimeImmutable $plannedReturn,
         private ?DateTimeImmutable $actualDeparture,
         private ?DateTimeImmutable $actualReturn,
         private ?int $departureKm,
@@ -49,7 +49,7 @@ final class Trip
         if ($number <= 0) {
             throw new DomainException('El número de viaje no es válido.');
         }
-        if ($plannedReturn <= $plannedDeparture) {
+        if ($plannedReturn !== null && $plannedReturn <= $plannedDeparture) {
             throw new DomainException('El regreso planificado debe ser posterior a la salida planificada.');
         }
         if ($departureKm !== null && $departureKm < 0) {
@@ -69,7 +69,7 @@ final class Trip
         int $branchId,
         int $number,
         DateTimeImmutable $plannedDeparture,
-        DateTimeImmutable $plannedReturn,
+        ?DateTimeImmutable $plannedReturn,
         array $assignments,
         array $stops,
         string $notes = '',
@@ -109,7 +109,7 @@ final class Trip
         int $branchId,
         int $number,
         DateTimeImmutable $departureAt,
-        DateTimeImmutable $estimatedReturnAt,
+        ?DateTimeImmutable $estimatedReturnAt,
         array $assignments,
         array $stops,
         int $departureKm,
@@ -144,7 +144,7 @@ final class Trip
         int $number,
         string $status,
         DateTimeImmutable $plannedDeparture,
-        DateTimeImmutable $plannedReturn,
+        ?DateTimeImmutable $plannedReturn,
         ?DateTimeImmutable $actualDeparture,
         ?DateTimeImmutable $actualReturn,
         ?int $departureKm,
@@ -256,7 +256,7 @@ final class Trip
         return $this->plannedDeparture;
     }
 
-    public function plannedReturn(): DateTimeImmutable
+    public function plannedReturn(): ?DateTimeImmutable
     {
         return $this->plannedReturn;
     }

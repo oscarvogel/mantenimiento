@@ -38,7 +38,7 @@ final class CodeIgniterTripFormReadModelTest extends TestCase
         $this->database->query('CREATE TABLE viajes_monedas (codigo TEXT PRIMARY KEY, nombre TEXT, activo INTEGER)');
         $this->database->query('CREATE TABLE paises (id INTEGER PRIMARY KEY, nombre TEXT, activo INTEGER)');
         $this->database->query('CREATE TABLE provincias (id INTEGER PRIMARY KEY, pais_id INTEGER, nombre TEXT, activo INTEGER)');
-        $this->database->query('CREATE TABLE localidades (id INTEGER PRIMARY KEY, provincia_id INTEGER, nombre TEXT, contexto_administrativo TEXT NULL, activo INTEGER)');
+        $this->database->query('CREATE TABLE localidades (id INTEGER PRIMARY KEY, provincia_id INTEGER, nombre TEXT, contexto_administrativo TEXT NULL, categoria_fuente TEXT NULL, activo INTEGER)');
 
         $this->database->table('empresas')->insert(['id' => 5, 'razon_social' => 'Transporte Mariela SRL', 'nombre_fantasia' => 'Transporte Mariela', 'cuit' => '23-28059786-4']);
         $this->database->table('viajes_operativos_numeracion')->insert(['empresa_id' => 5, 'ultimo_numero' => 114]);

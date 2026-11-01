@@ -42,8 +42,14 @@ $routes->post('viajes/operativos/(:num)/cerrar', 'OperationalTrips::finish/$1', 
 $routes->post('viajes/operativos/(:num)/tramos', 'OperationalTrips::addLeg/$1', ['filter' => ['auth', 'permission:viajes.operar']]);
 $routes->post('viajes/operativos/(:num)/cancelar', 'OperationalTrips::cancel/$1', ['filter' => ['auth', 'permission:viajes.operar']]);
 $routes->post('viajes/operativos/(:num)/combustible', 'OperationalTrips::addFuel/$1', ['filter' => ['auth', 'permission:viajes.operar']]);
+$routes->post('viajes/operativos/(:num)/combustible/(:num)', 'OperationalTrips::updateFuel/$1/$2', ['filter' => ['auth', 'permission:viajes.operar']]);
+$routes->post('viajes/operativos/(:num)/combustible/(:num)/eliminar', 'OperationalTrips::deleteFuel/$1/$2', ['filter' => ['auth', 'permission:viajes.operar']]);
 $routes->post('viajes/operativos/(:num)/gastos', 'OperationalTrips::addExpense/$1', ['filter' => ['auth', 'permission:viajes.operar']]);
+$routes->post('viajes/operativos/(:num)/gastos/(:num)', 'OperationalTrips::updateExpense/$1/$2', ['filter' => ['auth', 'permission:viajes.operar']]);
+$routes->post('viajes/operativos/(:num)/gastos/(:num)/eliminar', 'OperationalTrips::deleteExpense/$1/$2', ['filter' => ['auth', 'permission:viajes.operar']]);
 $routes->post('viajes/operativos/(:num)/caja', 'OperationalTrips::addCashMovement/$1', ['filter' => ['auth', 'permission:viajes.operar']]);
+$routes->post('viajes/operativos/(:num)/caja/(:num)', 'OperationalTrips::updateCashMovement/$1/$2', ['filter' => ['auth', 'permission:viajes.operar']]);
+$routes->post('viajes/operativos/(:num)/caja/(:num)/eliminar', 'OperationalTrips::deleteCashMovement/$1/$2', ['filter' => ['auth', 'permission:viajes.operar']]);
 $routes->post('viajes/operativos/(:num)/haberes', 'OperationalTrips::addOtherEarning/$1', ['filter' => ['auth', 'permission:viajes.operar']]);
 
 // Maestros independientes del módulo operativo de viajes y de la telemetría.

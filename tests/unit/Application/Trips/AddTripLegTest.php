@@ -135,7 +135,7 @@ final class AddLegTripRepositoryFake implements OperationalTripRepository
     public function add(Trip $trip, int $actorUserId): int { return 1; }
     public function findForUpdate(int $companyId, ?array $branchIds, int $tripId): ?Trip { return $this->trip; }
     public function save(Trip $trip, int $actorUserId): void {}
-    public function conflicts(int $companyId, array $equipmentIds, array $employeeIds, DateTimeImmutable $from, DateTimeImmutable $to, ?int $excludeTripId = null): array { return []; }
+    public function conflicts(int $companyId, array $equipmentIds, array $employeeIds, DateTimeImmutable $from, ?DateTimeImmutable $to, ?int $excludeTripId = null): array { return []; }
 }
 
 final class AddLegRepositoryFake implements TripLegRepository
