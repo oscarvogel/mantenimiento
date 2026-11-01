@@ -49,12 +49,12 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
         $this->database->query('CREATE TABLE viaje_operativo_combustible (
             id INTEGER PRIMARY KEY, viaje_id INTEGER, tramo_id INTEGER NULL, empresa_id INTEGER, sucursal_id INTEGER, fecha TEXT,
             litros REAL, importe REAL, moneda TEXT, cotizacion REAL, importe_ars REAL, kilometraje INTEGER NULL,
-            estacion TEXT NULL, comprobante TEXT NULL, observaciones TEXT NULL
+            estacion TEXT NULL, comprobante TEXT NULL, observaciones TEXT NULL, deleted_at TEXT NULL
         )');
         $this->database->query('CREATE TABLE viaje_operativo_gastos (
             id INTEGER PRIMARY KEY, viaje_id INTEGER, tramo_id INTEGER NULL, empresa_id INTEGER, sucursal_id INTEGER, categoria_id INTEGER NULL,
             fecha TEXT, importe REAL, moneda TEXT, cotizacion REAL, importe_ars REAL, medio_pago_id INTEGER NULL,
-            pagado_de_caja INTEGER, pagado_por TEXT NULL, comprobante TEXT NULL, observaciones TEXT NULL
+            pagado_de_caja INTEGER, pagado_por TEXT NULL, comprobante TEXT NULL, observaciones TEXT NULL, deleted_at TEXT NULL
         )');
         $this->database->query('CREATE TABLE viaje_operativo_otros_haberes (
             id INTEGER PRIMARY KEY, viaje_id INTEGER, empresa_id INTEGER, sucursal_id INTEGER, empleado_id INTEGER,
@@ -69,7 +69,7 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
         )');
         $this->database->query('CREATE TABLE viaje_operativo_caja_movimientos (
             id INTEGER PRIMARY KEY, viaje_id INTEGER, empresa_id INTEGER, sucursal_id INTEGER, tipo TEXT,
-            fecha TEXT, importe REAL, moneda TEXT, cotizacion REAL, importe_ars REAL, observaciones TEXT NULL
+            fecha TEXT, importe REAL, moneda TEXT, cotizacion REAL, importe_ars REAL, observaciones TEXT NULL, deleted_at TEXT NULL
         )');
         $this->database->query('CREATE TABLE viajes_categorias_gasto (id INTEGER PRIMARY KEY, empresa_id INTEGER, nombre TEXT, activo INTEGER)');
         $this->database->query('CREATE TABLE viajes_medios_pago (id INTEGER PRIMARY KEY, empresa_id INTEGER, nombre TEXT, activo INTEGER)');
