@@ -47,7 +47,7 @@ const openEditModal = (type, entry) => {
 }
 const movementUrl = (type, id, remove = false) => {
   const segment = { fuel: 'combustible', expense: 'gastos', cash: 'caja' }[type]
-  return `${data.links?.detail ?? ''}/${segment}/${id}${remove ? '/eliminar' : ''}`
+  return `${props.data.links?.detail ?? ''}/${segment}/${id}${remove ? '/eliminar' : ''}`
 }
 const inputDateTime = (value) => String(value ?? '').replace(' ', 'T').slice(0, 16)
 const confirmDelete = (event, label) => {

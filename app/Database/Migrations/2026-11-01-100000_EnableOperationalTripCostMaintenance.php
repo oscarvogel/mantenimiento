@@ -14,18 +14,29 @@ final class EnableOperationalTripCostMaintenance extends Migration
         'viaje_operativo_caja_movimientos',
     ];
 
+    private const COLUMNS = [
+        'updated_at' => ['type' => 'DATETIME', 'null' => true],
+        'updated_by' => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'null' => true],
+        'deleted_at' => ['type' => 'DATETIME', 'null' => true],
+        'deleted_by' => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'null' => true],
+    ];
+
     public function up(): void
     {
         foreach (self::TABLES as $table) {
-            $this->forge->addColumn($table, [
-                'updated_at' => ['type' => 'DATETIME', 'null' => true],
-                'updated_by' => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'null' => true],
-                'deleted_at' => ['type' => 'DATETIME', 'null' => true],
-                'deleted_by' => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'null' => true],
-            ]);
-            $this->forge->addForeignKey('updated_by', $table, 'usuarios', 'id', 'RESTRICT', 'SET NULL', 'fk_' . $table . '_updated_by');
-            $this->forge->addForeignKey('deleted_by', $table, 'usuarios', 'id', 'RESTRICT', 'SET NULL', 'fk_' . $table . '_deleted_by');
-            $this->forge->processIndexes($table);
+            $missingColumns = array_filter(
+                self::COLUMNS,
+                fn (array $definition, string $column): bool => ! $this->columnExists($table, $column),
+                ARRAY_FILTER_USE_BOTH,
+            );
+            if ($missingColumns !== []) {
+                $this->forge->addColumn($table, $missingColumns);
+            }
+
+            if ($this->db->DBDriver !== 'SQLite3') {
+                $this->addForeignKeyIfMissing($table, 'updated_by');
+                $this->addForeignKeyIfMissing($table, 'deleted_by');
+            }
         }
 
         $this->forge->addField([
@@ -44,10 +55,10 @@ final class EnableOperationalTripCostMaintenance extends Migration
         $this->forge->addKey('id', true);
         $this->forge->addKey(['empresa_id', 'viaje_id', 'created_at'], false, false, 'idx_viaje_operativo_mov_audit');
         $this->forge->addKey(['empresa_id', 'movimiento_tipo', 'movimiento_id'], false, false, 'idx_viaje_operativo_mov_audit_mov');
-        $this->forge->addForeignKey('empresa_id', 'empresas', 'id', 'RESTRICT', 'RESTRICT', 'fk_viaje_operativo_mov_audit_empresa');
-        $this->forge->addForeignKey('sucursal_id', 'sucursales', 'id', 'RESTRICT', 'RESTRICT', 'fk_viaje_operativo_mov_audit_sucursal');
-        $this->forge->addForeignKey('viaje_id', 'viajes_operativos', 'id', 'RESTRICT', 'RESTRICT', 'fk_viaje_operativo_mov_audit_viaje');
-        $this->forge->addForeignKey('usuario_id', 'usuarios', 'id', 'SET NULL', 'RESTRICT', 'fk_viaje_operativo_mov_audit_usuario');
+        $this->addAuditForeignKey('empresa_id', 'empresas', 'RESTRICT', 'RESTRICT', 'fk_viaje_operativo_mov_audit_empresa');
+        $this->addAuditForeignKey('sucursal_id', 'sucursales', 'RESTRICT', 'RESTRICT', 'fk_viaje_operativo_mov_audit_sucursal');
+        $this->addAuditForeignKey('viaje_id', 'viajes_operativos', 'RESTRICT', 'RESTRICT', 'fk_viaje_operativo_mov_audit_viaje');
+        $this->addAuditForeignKey('usuario_id', 'usuarios', 'SET NULL', 'RESTRICT', 'fk_viaje_operativo_mov_audit_usuario');
         $this->forge->createTable('viaje_operativo_movimientos_auditoria', true);
     }
 
@@ -56,9 +67,81 @@ final class EnableOperationalTripCostMaintenance extends Migration
         $this->forge->dropTable('viaje_operativo_movimientos_auditoria', true);
 
         foreach (self::TABLES as $table) {
-            $this->forge->dropForeignKey($table, 'fk_' . $table . '_updated_by');
-            $this->forge->dropForeignKey($table, 'fk_' . $table . '_deleted_by');
-            $this->forge->dropColumn($table, ['updated_at', 'updated_by', 'deleted_at', 'deleted_by']);
+            if (! $this->db->tableExists($table)) {
+                continue;
+            }
+
+            if ($this->db->DBDriver !== 'SQLite3') {
+                $this->dropForeignKeyIfExists($table, 'fk_' . $table . '_updated_by');
+                $this->dropForeignKeyIfExists($table, 'fk_' . $table . '_deleted_by');
+            }
+
+            $existingColumns = array_values(array_filter(
+                array_keys(self::COLUMNS),
+                fn (string $column): bool => $this->columnExists($table, $column),
+            ));
+            if ($existingColumns !== []) {
+                $this->forge->dropColumn($table, $existingColumns);
+            }
         }
+    }
+
+    private function addForeignKeyIfMissing(string $table, string $column): void
+    {
+        $name = 'fk_' . $table . '_' . $column;
+        if ($this->foreignKeyExists($table, $name)) {
+            return;
+        }
+
+        $this->forge->addForeignKey($column, $table, 'usuarios', 'id', 'RESTRICT', 'SET NULL', $name);
+        $this->forge->processIndexes($table);
+    }
+
+    private function addAuditForeignKey(string $column, string $referencedTable, string $onUpdate, string $onDelete, string $name): void
+    {
+        if ($this->db->DBDriver === 'SQLite3') {
+            $this->forge->addForeignKey($column, $referencedTable, 'id', $onUpdate, $onDelete);
+            return;
+        }
+
+        $this->forge->addForeignKey($column, $referencedTable, 'id', $onUpdate, $onDelete, $name);
+    }
+
+    private function dropForeignKeyIfExists(string $table, string $name): void
+    {
+        if ($this->foreignKeyExists($table, $name)) {
+            $this->forge->dropForeignKey($table, $name);
+        }
+    }
+
+    private function foreignKeyExists(string $table, string $name): bool
+    {
+        foreach ($this->db->getForeignKeyData($table) as $foreignKey) {
+            if (($foreignKey->constraint_name ?? $foreignKey->name ?? '') === $name) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function columnExists(string $table, string $column): bool
+    {
+        $table = $this->db->prefixTable($table);
+        if ($this->db->DBDriver === 'SQLite3') {
+            foreach ($this->db->query('PRAGMA table_info(' . $this->db->escape($table) . ')')->getResultArray() as $field) {
+                if (($field['name'] ?? null) === $column) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        return $this->db->query(
+            'SELECT 1 FROM information_schema.COLUMNS '
+            . 'WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1',
+            [$table, $column],
+        )->getRowArray() !== null;
     }
 }

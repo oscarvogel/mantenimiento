@@ -1,6 +1,11 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { nextTick } from 'vue'
 import TripOperationsDetailPage from '../../src/pages/operations/TripOperationsDetailPage.vue'
+
+if (typeof HTMLDialogElement !== 'undefined' && !HTMLDialogElement.prototype.showModal) {
+  HTMLDialogElement.prototype.showModal = vi.fn(function () { this.open = true })
+}
 
 const data = {
   backUrl: '/mantenimiento/viajes/operativos',
@@ -102,7 +107,7 @@ describe('detalle de viaje operativo', () => {
     wrapper.unmount()
   })
 
-  it('muestra el resumen y los formularios de combustible, gastos y caja', () => {
+  it('muestra el resumen y abre el formulario de carga desde el acceso superior', async () => {
     const wrapper = mount(TripOperationsDetailPage, {
       props: {
         data: {
@@ -124,13 +129,17 @@ describe('detalle de viaje operativo', () => {
     expect(wrapper.text()).toContain('YPF')
     expect(wrapper.text()).toContain('Peaje')
     expect(wrapper.text()).toContain('Anticipo')
+    expect(wrapper.text()).toContain('Cargar combustible')
+    expect(wrapper.text()).toContain('Cargar gasto')
+    expect(wrapper.text()).toContain('Caja del chofer')
+    const fuelButton = wrapper.findAll('button').find((button) => button.text().includes('Cargar combustible'))
+    await fuelButton.trigger('click')
+    await nextTick()
     expect(wrapper.get('form[action="/mantenimiento/viajes/operativos/42/combustible"]').exists()).toBe(true)
-    expect(wrapper.get('form[action="/mantenimiento/viajes/operativos/42/gastos"]').exists()).toBe(true)
-    expect(wrapper.get('form[action="/mantenimiento/viajes/operativos/42/caja"]').exists()).toBe(true)
     wrapper.unmount()
   })
 
-  it('muestra tramos, comisión, margen y cierre del viaje', () => {
+  it('muestra tramos, comisión, margen y cierre del viaje', async () => {
     const wrapper = mount(TripOperationsDetailPage, {
       props: {
         data: {
@@ -171,6 +180,9 @@ describe('detalle de viaje operativo', () => {
     expect(wrapper.text()).toContain('ARS 638.000,00')
     expect(wrapper.get('form[action="/mantenimiento/viajes/operativos/42/tramos"]').exists()).toBe(true)
     expect(wrapper.get('form[action="/mantenimiento/viajes/operativos/42/cerrar"]').exists()).toBe(true)
+    const fuelButton = wrapper.findAll('button').find((button) => button.text().includes('Cargar combustible'))
+    await fuelButton.trigger('click')
+    await nextTick()
     expect(wrapper.find('select[name="tramo_id"]').exists()).toBe(true)
     wrapper.unmount()
   })
