@@ -219,7 +219,7 @@ const facts = computed(() => {
             <tr v-for="leg in legs" :key="leg.id">
               <td class="px-3 py-2 text-ink-muted">{{ leg.orden }}</td>
               <td class="px-3 py-2">
-                <p class="font-semibold text-ink"><span v-if="leg.codigo_origen_destino" class="mr-1 text-ink-muted">{{ leg.codigo_origen_destino }} ·</span>{{ leg.origen }} → {{ leg.destino }}</p>
+                <p class="font-semibold text-ink">{{ leg.origen }} → {{ leg.destino }}</p>
                 <p v-if="leg.cliente" class="mt-0.5 text-xs text-ink-muted"><span v-if="leg.cliente_codigo">{{ leg.cliente_codigo }} · </span>{{ leg.cliente }}</p>
               </td>
               <td class="px-3 py-2 text-right text-ink-muted">{{ leg.toneladas === null ? '—' : number(leg.toneladas) }}</td>
@@ -238,7 +238,6 @@ const facts = computed(() => {
         <h3 class="text-sm font-bold text-ink">Agregar tramo</h3>
         <p class="mt-1 text-xs text-ink-muted">El flete de liquidación es la base para el porcentaje del chofer. El de facturación es el ingreso del viaje.</p>
         <div class="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Código ruta anterior (opcional)</span><input type="number" name="codigo_origen_destino" min="1" step="1" :class="fieldClass" /></label>
           <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Localidad de origen</span><AutocompleteSelect v-model="newLegOriginId" name="localidad_origen_id" :options="localityOptions" :search-url="data.links?.localities" placeholder="Buscá la localidad" required /></label>
           <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Localidad de destino</span><AutocompleteSelect v-model="newLegDestinationId" name="localidad_destino_id" :options="localityOptions" :search-url="data.links?.localities" placeholder="Buscá la localidad" required /></label>
           <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cliente</span><AutocompleteSelect v-model="newLegCustomerId" name="cliente_id" :options="customerOptions" placeholder="Elegí el cliente" required /></label>
