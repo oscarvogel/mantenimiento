@@ -32,6 +32,9 @@ const localityName = (localityId) => localities.value.find((locality) => String(
 const newLegOriginId = ref('')
 const newLegDestinationId = ref('')
 const newLegCustomerId = ref('')
+const newLegCurrency = ref('ARS')
+const newLegExchangeRate = ref('1')
+const setNewLegCurrency = () => { newLegExchangeRate.value = newLegCurrency.value === 'ARS' ? '1' : '' }
 const entryDialog = ref(null)
 const activeEntryModal = ref('')
 const editingEntry = ref(null)
@@ -63,7 +66,7 @@ const statusTone = {
   FINALIZADO: 'bg-surface-muted text-ink-muted',
   CANCELADO: 'bg-danger-subtle text-danger-strong',
 }
-const cashTypeLabel = { ANTICIPO: 'Anticipo', RETIRO: 'Retiro', DEVOLUCION: 'Devolución' }
+const cashTypeLabel = { CAJA_INICIAL: 'Caja inicial', ANTICIPO: 'Anticipo', RETIRO: 'Retiro', DEVOLUCION: 'Devolución' }
 
 const paidByLabel = { EMPRESA: 'Empresa', CHOFER: 'Chofer', CAJA: 'Caja del chofer' }
 const drivers = computed(() => assignments.value.filter((row) => row.rol === 'CHOFER'))
@@ -133,6 +136,9 @@ const facts = computed(() => {
       <template #actions>
         <a v-if="trip.estado === 'FINALIZADO' && data.links?.summaryPdf" :href="data.links.summaryPdf" class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-primary px-3 py-2 text-sm font-semibold text-primary hover:bg-primary-subtle">
           <ArrowDownTrayIcon class="size-4" aria-hidden="true" />Descargar resumen PDF
+        </a>
+        <a v-if="trip.estado === 'FINALIZADO' && settlement && data.links?.driverSettlementPdf" :href="data.links.driverSettlementPdf" class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-success/40 bg-success-subtle px-3 py-2 text-sm font-semibold text-success-strong hover:bg-success/15">
+          <ArrowDownTrayIcon class="size-4" aria-hidden="true" />Descargar liquidación para el chofer
         </a>
         <span class="inline-flex rounded-full px-3 py-1.5 text-sm font-semibold" :class="statusTone[trip.estado] ?? 'bg-surface-muted text-ink-muted'">{{ trip.estado_label }}</span>
       </template>
@@ -208,8 +214,8 @@ const facts = computed(() => {
               <th class="px-3 py-2">Recorrido</th>
               <th class="px-3 py-2 text-right">Toneladas</th>
               <th class="px-3 py-2 text-right">Km</th>
-              <th class="px-3 py-2 text-right">Flete facturación</th>
-              <th class="px-3 py-2 text-right">Flete liquidación</th>
+              <th class="px-3 py-2 text-right">Flete facturación (ARS)</th>
+              <th class="px-3 py-2 text-right">Flete liquidación (ARS)</th>
               <th class="px-3 py-2 text-right">Comisión</th>
               <th class="px-3 py-2 text-right">Costos asignados</th>
               <th class="px-3 py-2 text-right">Margen</th>
@@ -219,7 +225,7 @@ const facts = computed(() => {
             <tr v-for="leg in legs" :key="leg.id">
               <td class="px-3 py-2 text-ink-muted">{{ leg.orden }}</td>
               <td class="px-3 py-2">
-                <p class="font-semibold text-ink"><span v-if="leg.codigo_origen_destino" class="mr-1 text-ink-muted">{{ leg.codigo_origen_destino }} ·</span>{{ leg.origen }} → {{ leg.destino }}</p>
+                <p class="font-semibold text-ink">{{ leg.origen }} → {{ leg.destino }}</p>
                 <p v-if="leg.cliente" class="mt-0.5 text-xs text-ink-muted"><span v-if="leg.cliente_codigo">{{ leg.cliente_codigo }} · </span>{{ leg.cliente }}</p>
               </td>
               <td class="px-3 py-2 text-right text-ink-muted">{{ leg.toneladas === null ? '—' : number(leg.toneladas) }}</td>
@@ -238,18 +244,21 @@ const facts = computed(() => {
         <h3 class="text-sm font-bold text-ink">Agregar tramo</h3>
         <p class="mt-1 text-xs text-ink-muted">El flete de liquidación es la base para el porcentaje del chofer. El de facturación es el ingreso del viaje.</p>
         <div class="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Código ruta anterior (opcional)</span><input type="number" name="codigo_origen_destino" min="1" step="1" :class="fieldClass" /></label>
           <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Localidad de origen</span><AutocompleteSelect v-model="newLegOriginId" name="localidad_origen_id" :options="localityOptions" :search-url="data.links?.localities" placeholder="Buscá la localidad" required /></label>
           <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Localidad de destino</span><AutocompleteSelect v-model="newLegDestinationId" name="localidad_destino_id" :options="localityOptions" :search-url="data.links?.localities" placeholder="Buscá la localidad" required /></label>
           <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cliente</span><AutocompleteSelect v-model="newLegCustomerId" name="cliente_id" :options="customerOptions" placeholder="Elegí el cliente" required /></label>
           <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Toneladas</span><input type="number" name="toneladas" min="0" step="0.01" :class="fieldClass" /></label>
-          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Km</span><input type="number" name="km" min="0" step="0.01" :class="fieldClass" /></label>
-          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select name="moneda" :class="fieldClass"><option v-for="currency in currencies" :key="currency.code" :value="currency.code" :selected="currency.code === 'ARS'">{{ currency.code }} · {{ currency.label }}</option></select></label>
-          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Flete facturación</span><input type="number" name="flete_facturacion" min="0" step="0.01" required :class="fieldClass" /></label>
-          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Flete liquidación</span><input type="number" name="flete_liquidacion" min="0" step="0.01" required :class="fieldClass" /></label>
-          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cotización a ARS</span><input type="number" name="cotizacion" min="0.000001" step="0.000001" value="1" :class="fieldClass" /></label>
-          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Observaciones</span><input type="text" name="observaciones" maxlength="500" :class="fieldClass" /></label>
         </div>
+        <div class="mt-3 grid gap-3 md:grid-cols-3">
+          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Km</span><input type="number" name="km" min="0" step="0.01" :class="fieldClass" /></label>
+          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select v-model="newLegCurrency" name="moneda" :class="fieldClass" required @change="setNewLegCurrency"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }} · {{ currency.label }}</option></select></label>
+          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cotización a ARS</span><input v-model="newLegExchangeRate" type="number" name="cotizacion" min="0.000001" step="0.000001" :required="newLegCurrency !== 'ARS'" :disabled="newLegCurrency === 'ARS'" :class="fieldClass" /><span class="mt-1 block text-xs text-ink-muted">{{ newLegCurrency === 'ARS' ? 'Para ARS se usa cotización 1.' : `Ingresá cuántos ARS vale 1 ${newLegCurrency}.` }}</span></label>
+        </div>
+        <div class="mt-3 grid gap-3 md:grid-cols-2">
+          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Flete de facturación ({{ newLegCurrency }})</span><input type="number" name="flete_facturacion" min="0" step="0.01" required :class="fieldClass" /></label>
+          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Flete de liquidación ({{ newLegCurrency }})</span><input type="number" name="flete_liquidacion" min="0" step="0.01" required :class="fieldClass" /></label>
+        </div>
+        <label class="mt-3 block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Observaciones</span><input type="text" name="observaciones" maxlength="500" :class="fieldClass" /></label>
         <button type="submit" :class="[primaryButton, 'mt-3']">Agregar tramo</button>
       </form>
     </PanelCard>
@@ -297,7 +306,7 @@ const facts = computed(() => {
             <div class="flex items-center justify-between gap-3"><dt class="text-ink-muted">Otros haberes</dt><dd class="font-semibold text-ink">{{ money(settlement.other_earnings_ars) }}</dd></div>
             <div class="flex items-center justify-between gap-3"><dt class="text-ink-muted">Gastos pagados por el chofer</dt><dd class="font-semibold text-ink">{{ money(settlement.driver_expenses_ars) }}</dd></div>
             <div class="flex items-center justify-between gap-3"><dt class="text-ink-muted">Gastos pagados con caja</dt><dd class="font-semibold text-ink">{{ money(settlement.cash_expenses_ars) }}</dd></div>
-            <div class="flex items-center justify-between gap-3"><dt class="text-ink-muted">Anticipos y retiros</dt><dd class="font-semibold text-danger-strong">- {{ money(settlement.advances_ars) }}</dd></div>
+            <div class="flex items-center justify-between gap-3"><dt class="text-ink-muted">Caja inicial, anticipos y retiros</dt><dd class="font-semibold text-danger-strong">- {{ money(settlement.advances_ars) }}</dd></div>
             <div class="flex items-center justify-between gap-3"><dt class="text-ink-muted">Devoluciones</dt><dd class="font-semibold text-ink">{{ money(settlement.returns_ars) }}</dd></div>
             <div class="flex items-center justify-between gap-3 border-t border-border-subtle pt-2"><dt class="font-semibold text-ink">Saldo de cuenta corriente</dt><dd class="font-bold" :class="settlement.account_balance_ars < 0 ? 'text-danger-strong' : 'text-success-strong'">{{ money(settlement.account_balance_ars) }}</dd></div>
           </dl>
@@ -414,7 +423,7 @@ const facts = computed(() => {
           <table class="w-full min-w-[52rem] text-left text-sm">
             <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-3 py-2">Fecha</th><th class="px-3 py-2 text-right">Litros</th><th class="px-3 py-2 text-right">Importe</th><th class="px-3 py-2 text-right">ARS</th><th class="px-3 py-2 text-right">Odómetro</th><th class="px-3 py-2">Tramo</th><th class="px-3 py-2">Estación</th><th class="px-3 py-2">Comprobante</th><th class="px-3 py-2">Observaciones</th><th v-if="canRegisterCosts" class="px-3 py-2">Acciones</th></tr></thead>
             <tbody class="divide-y divide-border-subtle">
-              <tr v-for="load in fuel" :key="load.id"><td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ fmtDateTime(load.fecha) }}</td><td class="px-3 py-2 text-right text-ink">{{ number(load.litros) }}</td><td class="px-3 py-2 text-right text-ink-muted">{{ money(load.importe, load.moneda) }}</td><td class="px-3 py-2 text-right font-semibold text-ink">{{ money(load.importe_ars) }}</td><td class="px-3 py-2 text-right text-ink-muted">{{ load.kilometraje === null ? '—' : number(load.kilometraje) }}</td><td class="px-3 py-2 text-ink-muted">{{ legLabel(load.tramo_id) }}</td><td class="px-3 py-2 text-ink-muted">{{ load.estacion || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ load.comprobante || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ load.observaciones || '—' }}</td><td v-if="canRegisterCosts" class="whitespace-nowrap px-3 py-2"><div class="flex gap-2"><button type="button" @click="openEditModal('fuel', load)" class="text-primary hover:underline">Editar</button><form method="post" :action="movementUrl('fuel', load.id, true)" @submit="confirmDelete($event, 'esta carga de combustible')"><input type="hidden" :name="csrf.name" :value="csrf.hash" /><button type="submit" class="text-danger-strong hover:underline">Quitar</button></form></div></td></tr>
+              <tr v-for="load in fuel" :key="load.id"><td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ fmtDateTime(load.fecha) }}</td><td class="px-3 py-2 text-right text-ink">{{ number(load.litros) }}</td><td class="px-3 py-2 text-right text-ink-muted">{{ money(load.importe, load.moneda) }}</td><td class="px-3 py-2 text-right font-semibold text-ink">{{ money(load.importe_ars) }}</td><td class="px-3 py-2 text-right text-ink-muted">{{ load.kilometraje === null ? '—' : number(load.kilometraje) }}</td><td class="px-3 py-2 text-ink-muted">{{ legLabel(load.tramo_id) }}</td><td class="px-3 py-2 text-ink-muted">{{ load.estacion || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ load.comprobante || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ load.observaciones || '—' }}</td><td v-if="canRegisterCosts" class="whitespace-nowrap px-3 py-2"><div class="flex gap-2"><button type="button" :class="secondaryButton" @click="openEditModal('fuel', load)">Editar</button><form method="post" :action="movementUrl('fuel', load.id, true)" @submit="confirmDelete($event, 'esta carga de combustible')"><input type="hidden" :name="csrf.name" :value="csrf.hash" /><button type="submit" :class="dangerButton">Quitar</button></form></div></td></tr>
             </tbody>
           </table>
         </div>
@@ -427,7 +436,7 @@ const facts = computed(() => {
           <table class="w-full min-w-[52rem] text-left text-sm">
             <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-3 py-2">Fecha</th><th class="px-3 py-2">Categoría</th><th class="px-3 py-2 text-right">Importe</th><th class="px-3 py-2 text-right">ARS</th><th class="px-3 py-2">Medio</th><th class="px-3 py-2">Tramo</th><th class="px-3 py-2">Pagado por</th><th class="px-3 py-2">Comprobante</th><th class="px-3 py-2">Observaciones</th><th v-if="canRegisterCosts" class="px-3 py-2">Acciones</th></tr></thead>
             <tbody class="divide-y divide-border-subtle">
-              <tr v-for="expense in expenses" :key="expense.id"><td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ fmtDateTime(expense.fecha) }}</td><td class="px-3 py-2 text-ink">{{ expense.categoria || 'Sin categoría' }}</td><td class="px-3 py-2 text-right text-ink-muted">{{ money(expense.importe, expense.moneda) }}</td><td class="px-3 py-2 text-right font-semibold text-ink">{{ money(expense.importe_ars) }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.medio_pago || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ legLabel(expense.tramo_id) }}</td><td class="px-3 py-2 text-ink-muted">{{ paidByLabel[expense.pagado_por] ?? 'Empresa' }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.comprobante || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.observaciones || '—' }}</td><td v-if="canRegisterCosts" class="whitespace-nowrap px-3 py-2"><div class="flex gap-2"><button type="button" @click="openEditModal('expense', expense)" class="text-primary hover:underline">Editar</button><form method="post" :action="movementUrl('expense', expense.id, true)" @submit="confirmDelete($event, 'este gasto')"><input type="hidden" :name="csrf.name" :value="csrf.hash" /><button type="submit" class="text-danger-strong hover:underline">Quitar</button></form></div></td></tr>
+              <tr v-for="expense in expenses" :key="expense.id"><td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ fmtDateTime(expense.fecha) }}</td><td class="px-3 py-2 text-ink">{{ expense.categoria || 'Sin categoría' }}</td><td class="px-3 py-2 text-right text-ink-muted">{{ money(expense.importe, expense.moneda) }}</td><td class="px-3 py-2 text-right font-semibold text-ink">{{ money(expense.importe_ars) }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.medio_pago || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ legLabel(expense.tramo_id) }}</td><td class="px-3 py-2 text-ink-muted">{{ paidByLabel[expense.pagado_por] ?? 'Empresa' }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.comprobante || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.observaciones || '—' }}</td><td v-if="canRegisterCosts" class="whitespace-nowrap px-3 py-2"><div class="flex gap-2"><button type="button" :class="secondaryButton" @click="openEditModal('expense', expense)">Editar</button><form method="post" :action="movementUrl('expense', expense.id, true)" @submit="confirmDelete($event, 'este gasto')"><input type="hidden" :name="csrf.name" :value="csrf.hash" /><button type="submit" :class="dangerButton">Quitar</button></form></div></td></tr>
             </tbody>
           </table>
         </div>
@@ -440,7 +449,7 @@ const facts = computed(() => {
           <table class="w-full min-w-[42rem] text-left text-sm">
             <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-3 py-2">Fecha</th><th class="px-3 py-2">Tipo</th><th class="px-3 py-2 text-right">Importe</th><th class="px-3 py-2 text-right">ARS</th><th class="px-3 py-2">Observaciones</th><th v-if="canRegisterCosts" class="px-3 py-2">Acciones</th></tr></thead>
             <tbody class="divide-y divide-border-subtle">
-              <tr v-for="movement in cashMovements" :key="movement.id"><td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ fmtDateTime(movement.fecha) }}</td><td class="px-3 py-2 text-ink">{{ cashTypeLabel[movement.tipo] ?? movement.tipo }}</td><td class="px-3 py-2 text-right text-ink-muted">{{ money(movement.importe, movement.moneda) }}</td><td class="px-3 py-2 text-right font-semibold text-ink">{{ money(movement.importe_ars) }}</td><td class="px-3 py-2 text-ink-muted">{{ movement.observaciones || '—' }}</td><td v-if="canRegisterCosts" class="whitespace-nowrap px-3 py-2"><div class="flex gap-2"><button type="button" @click="openEditModal('cash', movement)" class="text-primary hover:underline">Editar</button><form method="post" :action="movementUrl('cash', movement.id, true)" @submit="confirmDelete($event, 'este movimiento de caja')"><input type="hidden" :name="csrf.name" :value="csrf.hash" /><button type="submit" class="text-danger-strong hover:underline">Quitar</button></form></div></td></tr>
+              <tr v-for="movement in cashMovements" :key="movement.id"><td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ fmtDateTime(movement.fecha) }}</td><td class="px-3 py-2 text-ink">{{ cashTypeLabel[movement.tipo] ?? movement.tipo }}</td><td class="px-3 py-2 text-right text-ink-muted">{{ money(movement.importe, movement.moneda) }}</td><td class="px-3 py-2 text-right font-semibold text-ink">{{ money(movement.importe_ars) }}</td><td class="px-3 py-2 text-ink-muted">{{ movement.observaciones || '—' }}</td><td v-if="canRegisterCosts" class="whitespace-nowrap px-3 py-2"><div class="flex gap-2"><button type="button" :class="secondaryButton" @click="openEditModal('cash', movement)">Editar</button><form method="post" :action="movementUrl('cash', movement.id, true)" @submit="confirmDelete($event, 'este movimiento de caja')"><input type="hidden" :name="csrf.name" :value="csrf.hash" /><button type="submit" :class="dangerButton">Quitar</button></form></div></td></tr>
             </tbody>
           </table>
         </div>
@@ -517,9 +526,9 @@ const facts = computed(() => {
 
         <form v-else-if="activeEntryModal === 'cash'" method="post" :action="editingEntry ? movementUrl('cash', editingEntry.id) : data.links?.cash">
           <input type="hidden" :name="csrf.name" :value="csrf.hash" />
-          <p class="text-sm text-ink-muted">Anticipos y retiros no son costo del viaje. Las devoluciones reducen el saldo pendiente.</p>
+          <p class="text-sm text-ink-muted">La caja inicial, los anticipos y los retiros aumentan el importe a rendir, pero no son costo del viaje. Las devoluciones reducen el saldo pendiente.</p>
           <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Tipo</span><select name="tipo" :value="editingEntry?.tipo ?? 'ANTICIPO'" :class="fieldClass"><option value="ANTICIPO">Anticipo</option><option value="RETIRO">Retiro</option><option value="DEVOLUCION">Devolución</option></select></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Tipo</span><select name="tipo" :value="editingEntry?.tipo ?? 'ANTICIPO'" :class="fieldClass"><option value="CAJA_INICIAL">Caja inicial</option><option value="ANTICIPO">Anticipo</option><option value="RETIRO">Retiro</option><option value="DEVOLUCION">Devolución</option></select></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Fecha y hora</span><input type="datetime-local" name="fecha" :value="editingEntry ? inputDateTime(editingEntry.fecha) : nowLocal()" required :class="fieldClass" /></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Importe</span><input type="number" name="importe" min="0.01" step="0.01" :value="editingEntry?.importe ?? ''" required :class="fieldClass" /></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select name="moneda" :value="editingEntry?.moneda ?? 'ARS'" :class="fieldClass"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }} · {{ currency.label }}</option></select></label>

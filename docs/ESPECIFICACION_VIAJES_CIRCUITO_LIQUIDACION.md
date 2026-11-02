@@ -186,10 +186,9 @@ queda es lo que la Fase 2 define y lo que depende de una respuesta del cliente:
 | Falta | Impacto | Depende de |
 |---|---|---|
 | Aprobación de la liquidación del chofer | El importe a liquidar se calcula y se muestra, pero nadie lo aprueba: no hay estado ni responsable. | Fase 2 de la sección 12.2 |
-| Pago de la liquidación | No hay registro de pagos, ni comprobante de pago, ni impresión de la liquidación. | Fase 2 de la sección 12.2 |
+| Pago de la liquidación | No hay registro de pagos ni comprobante de pago. | Fase 2 de la sección 12.2 |
 | Permiso `viajes.liquidar` | Sin el permiso no se puede separar la aprobación del resto de los permisos de viajes. | Fase 2 de la sección 12.2 |
 | Definición de la liquidación por viaje o por período | Cambia la pantalla y el modelo de la Fase 2. | Sección 16, pregunta al cliente |
-| Impresión de la liquidación | No hay documento imprimible de la liquidación. | Sección 16, pregunta al cliente |
 
 ### 4.3 Diferencia con la pantalla de rentabilidad actual
 
@@ -211,11 +210,12 @@ Es un análisis de margen de empresa. No es la liquidación del chofer y no incl
 4. **El combustible y los gastos pueden imputarse opcionalmente a un tramo.**
 5. **Si un costo no se imputa a un tramo, suma al viaje pero no al margen del tramo.** No se prorratea automáticamente.
 6. **El margen del viaje incluye todos los costos del viaje**, estén o no asignados a un tramo.
-7. **Los adelantos y devoluciones no son costo del viaje.** Afectan la liquidación del chofer.
+7. **La caja inicial, los anticipos, los retiros y las devoluciones no son costo del viaje.** La caja inicial, los anticipos y los retiros son dinero entregado al chofer y afectan el saldo por rendir y la liquidación; las devoluciones reducen ese saldo.
 8. **El cierre del viaje requiere km de regreso y fecha de regreso.** Genera una lectura del equipo con origen `VIAJE`.
 9. **El viaje finalizado conserva su historial y no se edita.** Las correcciones se hacen con ajustes o reversiones auditadas.
 10. **No se migra la cuenta corriente legacy como libro operativo.** El análisis del backup concluyó que no reconcilia. La cuenta nueva se implementa limpia; la historia legacy queda de solo lectura.
 11. **La fecha estimada de regreso al iniciar un viaje es opcional.** Si no se informa, el equipo y los choferes asignados siguen ocupados para la detección de conflictos hasta registrar el regreso real.
+12. **La liquidación para el chofer se imprime en un PDF separado del resumen interno.** Incluye comisión, haberes, reintegros y rendición de caja; no muestra margen ni rentabilidad de la empresa.
 
 ---
 
@@ -745,7 +745,7 @@ Se conserva como está: solo lectura, con viajes, tramos, combustible, gastos, c
 4. ¿Los otros haberes son por viaje o por tramo?
 5. ¿El cierre debe bloquearse si no hay combustible o gastos, o alcanza con una advertencia?
 6. ¿La liquidación se paga por viaje o se acumula por chofer/período?
-7. ¿Se necesita imprimir la liquidación y el resumen del viaje?
+7. ¿Se necesita imprimir la liquidación y el resumen del viaje? **Sí: se generan documentos separados para el chofer y para uso interno.**
 8. ¿Qué dato de “contabilizado” usan hoy y quién lo completa?
 
 ---
@@ -788,5 +788,5 @@ Checklist de la Fase 2 (aprobación y pago de liquidaciones), pendiente:
 - [ ] Estado de aprobación de la liquidación, con responsable y fecha.
 - [ ] Registro de pagos y comprobante de pago.
 - [ ] Permiso `viajes.liquidar`.
-- [ ] Impresión de la liquidación.
+- [x] PDF separado de liquidación para el chofer, sin margen ni rentabilidad interna.
 - [ ] Definición de si la liquidación se paga por viaje o se acumula por chofer y período (pregunta de la sección 16).

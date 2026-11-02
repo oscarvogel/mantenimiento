@@ -9,11 +9,12 @@ use DomainException;
 
 final readonly class TripCashMovement
 {
+    public const CAJA_INICIAL = 'CAJA_INICIAL';
     public const ANTICIPO = 'ANTICIPO';
     public const RETIRO = 'RETIRO';
     public const DEVOLUCION = 'DEVOLUCION';
 
-    private const TYPES = [self::ANTICIPO, self::RETIRO, self::DEVOLUCION];
+    private const TYPES = [self::CAJA_INICIAL, self::ANTICIPO, self::RETIRO, self::DEVOLUCION];
 
     public function __construct(
         private string $type,

@@ -43,7 +43,7 @@ final readonly class AddTripLegCommand
             self::optionalAmount($input['km'] ?? null, 'Los kilómetros'),
             self::requiredPositiveInt($input['cliente_id'] ?? null, 'Elegí un cliente para el tramo.'),
             strtoupper(trim((string) ($input['moneda'] ?? 'ARS'))),
-            self::rate($input['cotizacion'] ?? null),
+            self::rate($input['cotizacion'] ?? null, strtoupper(trim((string) ($input['moneda'] ?? 'ARS')))),
             self::nullableText($input['observaciones'] ?? null),
             self::optionalPositiveInt($input['codigo_origen_destino'] ?? null, 'El código de ruta anterior no es válido.'),
             self::optionalAmount($input['toneladas'] ?? null, 'Las toneladas'),
@@ -75,11 +75,15 @@ final readonly class AddTripLegCommand
         return (float) $raw;
     }
 
-    private static function rate(mixed $value): float
+    private static function rate(mixed $value, string $currency): float
     {
         $raw = str_replace(',', '.', trim((string) ($value ?? '')));
         if ($raw === '') {
-            return 1.0;
+            if ($currency === 'ARS') {
+                return 1.0;
+            }
+
+            throw new DomainException('Ingresá la cotización a ARS para el tramo en ' . $currency . '.');
         }
         if (! is_numeric($raw) || (float) $raw <= 0) {
             throw new DomainException('La cotización del tramo debe ser mayor que cero.');

@@ -22,7 +22,8 @@ const company = computed(() => options.value.company ?? {})
 const nextNumber = computed(() => options.value.nextNumber ?? null)
 
 const old = computed(() => props.data.old ?? {})
-const newLeg = () => ({ codigo_origen_destino: '', localidad_origen_id: '', localidad_destino_id: '', cliente_id: '', km: '', toneladas: '', flete_facturacion: '', flete_liquidacion: '', moneda: 'ARS', cotizacion: '1', observaciones: '' })
+const newLeg = () => ({ localidad_origen_id: '', localidad_destino_id: '', cliente_id: '', km: '', toneladas: '', flete_facturacion: '', flete_liquidacion: '', moneda: 'ARS', cotizacion: '1', observaciones: '' })
+const setLegCurrency = (leg) => { leg.cotizacion = leg.moneda === 'ARS' ? '1' : '' }
 const initialLegs = () => Array.isArray(old.value.tramos) && old.value.tramos.length
   ? old.value.tramos.map((row) => ({ ...newLeg(), ...row }))
   : [newLeg()]
@@ -261,7 +262,7 @@ const localityName = (localityId) => localities.value.find((locality) => String(
       </PanelCard>
 
       <PanelCard title="Tramos de flete" :count="legs.length" allow-overflow>
-        <p class="mb-4 text-sm text-ink-muted">Completá origen, destino y un solo cliente por tramo. Si tenés el código de ruta del sistema anterior, podés guardarlo también. El flete de facturación y el de liquidación se cargan por separado.</p>
+        <p class="mb-4 text-sm text-ink-muted">Completá origen, destino y un solo cliente por tramo. El flete de facturación y el de liquidación se cargan por separado.</p>
         <div class="space-y-4">
           <article v-for="(leg, index) in legs" :key="index" class="rounded-xl border border-border-subtle bg-surface p-4">
             <div class="mb-3 flex items-center justify-between gap-3">
@@ -271,18 +272,21 @@ const localityName = (localityId) => localities.value.find((locality) => String(
               </button>
             </div>
             <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Código de ruta anterior (opcional)</span><input v-model="leg.codigo_origen_destino" type="number" min="1" step="1" :name="`tramos[${index}][codigo_origen_destino]`" placeholder="Ej.: 947" :class="fieldClass" /></label>
               <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Localidad de origen</span><AutocompleteSelect v-model="leg.localidad_origen_id" :name="`tramos[${index}][localidad_origen_id]`" :options="localityOptions" :search-url="links.localities" placeholder="Buscá la localidad" required /></label>
               <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Localidad de destino</span><AutocompleteSelect v-model="leg.localidad_destino_id" :name="`tramos[${index}][localidad_destino_id]`" :options="localityOptions" :search-url="links.localities" placeholder="Buscá la localidad" required /></label>
               <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Cliente del tramo</span><AutocompleteSelect v-model="leg.cliente_id" :name="`tramos[${index}][cliente_id]`" :options="customerOptions" placeholder="Elegí el cliente" required /></label>
-              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Km del tramo (opcional)</span><input v-model="leg.km" type="number" min="0" step="0.01" :name="`tramos[${index}][km]`" :class="fieldClass" /></label>
               <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Toneladas (opcional)</span><input v-model="leg.toneladas" type="number" min="0" step="0.01" :name="`tramos[${index}][toneladas]`" :class="fieldClass" /></label>
-              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Flete de facturación</span><input v-model="leg.flete_facturacion" type="number" min="0" step="0.01" :name="`tramos[${index}][flete_facturacion]`" required :class="fieldClass" /></label>
-              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Flete de liquidación</span><input v-model="leg.flete_liquidacion" type="number" min="0" step="0.01" :name="`tramos[${index}][flete_liquidacion]`" required :class="fieldClass" /></label>
-              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Moneda</span><select v-model="leg.moneda" :name="`tramos[${index}][moneda]`" :class="fieldClass"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }} · {{ currency.label }}</option></select></label>
-              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Cotización a ARS</span><input v-model="leg.cotizacion" type="number" min="0.000001" step="0.000001" :name="`tramos[${index}][cotizacion]`" required :class="fieldClass" /></label>
-              <label class="block md:col-span-2 xl:col-span-2"><span class="mb-1.5 block text-sm font-semibold text-ink">Observaciones del tramo</span><input v-model="leg.observaciones" type="text" maxlength="500" :name="`tramos[${index}][observaciones]`" :class="fieldClass" /></label>
             </div>
+            <div class="mt-4 grid gap-4 md:grid-cols-3">
+              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Km del tramo (opcional)</span><input v-model="leg.km" type="number" min="0" step="0.01" :name="`tramos[${index}][km]`" :class="fieldClass" /></label>
+              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Moneda</span><select v-model="leg.moneda" :name="`tramos[${index}][moneda]`" :class="fieldClass" required @change="setLegCurrency(leg)"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }} · {{ currency.label }}</option></select></label>
+              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Cotización a ARS</span><input v-model="leg.cotizacion" type="number" min="0.000001" step="0.000001" :name="`tramos[${index}][cotizacion]`" :required="leg.moneda !== 'ARS'" :disabled="leg.moneda === 'ARS'" :class="fieldClass" /><span class="mt-1 block text-xs text-ink-muted">{{ leg.moneda === 'ARS' ? 'Para ARS se usa cotización 1.' : `Ingresá cuántos ARS vale 1 ${leg.moneda}.` }}</span></label>
+            </div>
+            <div class="mt-4 grid gap-4 md:grid-cols-2">
+              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Flete de facturación ({{ leg.moneda }})</span><input v-model="leg.flete_facturacion" type="number" min="0" step="0.01" :name="`tramos[${index}][flete_facturacion]`" required :class="fieldClass" /></label>
+              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Flete de liquidación ({{ leg.moneda }})</span><input v-model="leg.flete_liquidacion" type="number" min="0" step="0.01" :name="`tramos[${index}][flete_liquidacion]`" required :class="fieldClass" /></label>
+            </div>
+            <label class="mt-4 block"><span class="mb-1.5 block text-sm font-semibold text-ink">Observaciones del tramo</span><input v-model="leg.observaciones" type="text" maxlength="500" :name="`tramos[${index}][observaciones]`" :class="fieldClass" /></label>
           </article>
         </div>
         <button type="button" :class="[secondaryButton, 'mt-4']" @click="addLeg"><PlusIcon class="mr-1.5 size-4" aria-hidden="true" />Agregar tramo</button>

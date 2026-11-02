@@ -36,6 +36,7 @@ $routes->get('viajes/operativos/nuevo', 'OperationalTrips::create', ['filter' =>
 $routes->get('viajes/operativos/localidades', 'OperationalTrips::localities', ['filter' => ['auth', 'permission:viajes.operar']]);
 $routes->post('viajes/operativos', 'OperationalTrips::store', ['filter' => ['auth', 'permission:viajes.operar']]);
 $routes->get('viajes/operativos/(:num)/resumen.pdf', 'OperationalTrips::summaryPdf/$1', ['filter' => ['auth', 'permission:viajes.ver']]);
+$routes->get('viajes/operativos/(:num)/liquidacion-chofer.pdf', 'OperationalTrips::driverSettlementPdf/$1', ['filter' => ['auth', 'permission:viajes.ver']]);
 $routes->get('viajes/operativos/(:num)', 'OperationalTrips::show/$1', ['filter' => ['auth', 'permission:viajes.ver']]);
 $routes->post('viajes/operativos/(:num)/iniciar', 'OperationalTrips::start/$1', ['filter' => ['auth', 'permission:viajes.operar']]);
 $routes->post('viajes/operativos/(:num)/cerrar', 'OperationalTrips::finish/$1', ['filter' => ['auth', 'permission:viajes.operar']]);
