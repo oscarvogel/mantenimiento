@@ -44,6 +44,7 @@ final class GetOperationalTrip
             'detail' => base_url('viajes/operativos/' . $tripId),
             'localities' => base_url('viajes/operativos/localidades'),
             'summaryPdf' => base_url('viajes/operativos/' . $tripId . '/resumen.pdf'),
+            'driverSettlementPdf' => base_url('viajes/operativos/' . $tripId . '/liquidacion-chofer.pdf'),
             'fuel' => base_url('viajes/operativos/' . $tripId . '/combustible'),
             'expense' => base_url('viajes/operativos/' . $tripId . '/gastos'),
             'cash' => base_url('viajes/operativos/' . $tripId . '/caja'),

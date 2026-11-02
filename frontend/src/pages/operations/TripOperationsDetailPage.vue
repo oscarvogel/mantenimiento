@@ -137,6 +137,9 @@ const facts = computed(() => {
         <a v-if="trip.estado === 'FINALIZADO' && data.links?.summaryPdf" :href="data.links.summaryPdf" class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-primary px-3 py-2 text-sm font-semibold text-primary hover:bg-primary-subtle">
           <ArrowDownTrayIcon class="size-4" aria-hidden="true" />Descargar resumen PDF
         </a>
+        <a v-if="trip.estado === 'FINALIZADO' && settlement && data.links?.driverSettlementPdf" :href="data.links.driverSettlementPdf" class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-success/40 bg-success-subtle px-3 py-2 text-sm font-semibold text-success-strong hover:bg-success/15">
+          <ArrowDownTrayIcon class="size-4" aria-hidden="true" />Descargar liquidación para el chofer
+        </a>
         <span class="inline-flex rounded-full px-3 py-1.5 text-sm font-semibold" :class="statusTone[trip.estado] ?? 'bg-surface-muted text-ink-muted'">{{ trip.estado_label }}</span>
       </template>
     </PageHeading>

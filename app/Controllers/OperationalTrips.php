@@ -129,6 +129,21 @@ final class OperationalTrips extends BaseController
         }
     }
 
+    public function driverSettlementPdf(int $tripId): ResponseInterface
+    {
+        try {
+            $pdf = service('generateDriverSettlementPdf')->execute($this->actor(), $tripId);
+
+            return $this->response
+                ->setHeader('Content-Type', 'application/pdf')
+                ->setHeader('Content-Disposition', 'attachment; filename="liquidacion-chofer-viaje-' . $tripId . '.pdf"')
+                ->setHeader('Content-Length', (string) strlen($pdf))
+                ->setBody($pdf);
+        } catch (Throwable $exception) {
+            return $this->failure($exception, 'No se pudo generar la liquidación del chofer.', '/viajes/operativos/' . $tripId);
+        }
+    }
+
     public function start(int $tripId): RedirectResponse
     {
         try {
