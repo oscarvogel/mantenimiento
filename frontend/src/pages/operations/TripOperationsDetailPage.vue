@@ -66,7 +66,7 @@ const statusTone = {
   FINALIZADO: 'bg-surface-muted text-ink-muted',
   CANCELADO: 'bg-danger-subtle text-danger-strong',
 }
-const cashTypeLabel = { ANTICIPO: 'Anticipo', RETIRO: 'Retiro', DEVOLUCION: 'Devolución' }
+const cashTypeLabel = { CAJA_INICIAL: 'Caja inicial', ANTICIPO: 'Anticipo', RETIRO: 'Retiro', DEVOLUCION: 'Devolución' }
 
 const paidByLabel = { EMPRESA: 'Empresa', CHOFER: 'Chofer', CAJA: 'Caja del chofer' }
 const drivers = computed(() => assignments.value.filter((row) => row.rol === 'CHOFER'))
@@ -303,7 +303,7 @@ const facts = computed(() => {
             <div class="flex items-center justify-between gap-3"><dt class="text-ink-muted">Otros haberes</dt><dd class="font-semibold text-ink">{{ money(settlement.other_earnings_ars) }}</dd></div>
             <div class="flex items-center justify-between gap-3"><dt class="text-ink-muted">Gastos pagados por el chofer</dt><dd class="font-semibold text-ink">{{ money(settlement.driver_expenses_ars) }}</dd></div>
             <div class="flex items-center justify-between gap-3"><dt class="text-ink-muted">Gastos pagados con caja</dt><dd class="font-semibold text-ink">{{ money(settlement.cash_expenses_ars) }}</dd></div>
-            <div class="flex items-center justify-between gap-3"><dt class="text-ink-muted">Anticipos y retiros</dt><dd class="font-semibold text-danger-strong">- {{ money(settlement.advances_ars) }}</dd></div>
+            <div class="flex items-center justify-between gap-3"><dt class="text-ink-muted">Caja inicial, anticipos y retiros</dt><dd class="font-semibold text-danger-strong">- {{ money(settlement.advances_ars) }}</dd></div>
             <div class="flex items-center justify-between gap-3"><dt class="text-ink-muted">Devoluciones</dt><dd class="font-semibold text-ink">{{ money(settlement.returns_ars) }}</dd></div>
             <div class="flex items-center justify-between gap-3 border-t border-border-subtle pt-2"><dt class="font-semibold text-ink">Saldo de cuenta corriente</dt><dd class="font-bold" :class="settlement.account_balance_ars < 0 ? 'text-danger-strong' : 'text-success-strong'">{{ money(settlement.account_balance_ars) }}</dd></div>
           </dl>
@@ -523,9 +523,9 @@ const facts = computed(() => {
 
         <form v-else-if="activeEntryModal === 'cash'" method="post" :action="editingEntry ? movementUrl('cash', editingEntry.id) : data.links?.cash">
           <input type="hidden" :name="csrf.name" :value="csrf.hash" />
-          <p class="text-sm text-ink-muted">Anticipos y retiros no son costo del viaje. Las devoluciones reducen el saldo pendiente.</p>
+          <p class="text-sm text-ink-muted">La caja inicial, los anticipos y los retiros aumentan el importe a rendir, pero no son costo del viaje. Las devoluciones reducen el saldo pendiente.</p>
           <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Tipo</span><select name="tipo" :value="editingEntry?.tipo ?? 'ANTICIPO'" :class="fieldClass"><option value="ANTICIPO">Anticipo</option><option value="RETIRO">Retiro</option><option value="DEVOLUCION">Devolución</option></select></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Tipo</span><select name="tipo" :value="editingEntry?.tipo ?? 'ANTICIPO'" :class="fieldClass"><option value="CAJA_INICIAL">Caja inicial</option><option value="ANTICIPO">Anticipo</option><option value="RETIRO">Retiro</option><option value="DEVOLUCION">Devolución</option></select></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Fecha y hora</span><input type="datetime-local" name="fecha" :value="editingEntry ? inputDateTime(editingEntry.fecha) : nowLocal()" required :class="fieldClass" /></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Importe</span><input type="number" name="importe" min="0.01" step="0.01" :value="editingEntry?.importe ?? ''" required :class="fieldClass" /></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select name="moneda" :value="editingEntry?.moneda ?? 'ARS'" :class="fieldClass"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }} · {{ currency.label }}</option></select></label>

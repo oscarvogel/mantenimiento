@@ -211,7 +211,7 @@ Es un análisis de margen de empresa. No es la liquidación del chofer y no incl
 4. **El combustible y los gastos pueden imputarse opcionalmente a un tramo.**
 5. **Si un costo no se imputa a un tramo, suma al viaje pero no al margen del tramo.** No se prorratea automáticamente.
 6. **El margen del viaje incluye todos los costos del viaje**, estén o no asignados a un tramo.
-7. **Los adelantos y devoluciones no son costo del viaje.** Afectan la liquidación del chofer.
+7. **La caja inicial, los anticipos, los retiros y las devoluciones no son costo del viaje.** La caja inicial, los anticipos y los retiros son dinero entregado al chofer y afectan el saldo por rendir y la liquidación; las devoluciones reducen ese saldo.
 8. **El cierre del viaje requiere km de regreso y fecha de regreso.** Genera una lectura del equipo con origen `VIAJE`.
 9. **El viaje finalizado conserva su historial y no se edita.** Las correcciones se hacen con ajustes o reversiones auditadas.
 10. **No se migra la cuenta corriente legacy como libro operativo.** El análisis del backup concluyó que no reconcilia. La cuenta nueva se implementa limpia; la historia legacy queda de solo lectura.
