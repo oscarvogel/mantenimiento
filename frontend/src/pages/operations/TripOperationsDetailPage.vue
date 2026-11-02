@@ -32,6 +32,9 @@ const localityName = (localityId) => localities.value.find((locality) => String(
 const newLegOriginId = ref('')
 const newLegDestinationId = ref('')
 const newLegCustomerId = ref('')
+const newLegCurrency = ref('ARS')
+const newLegExchangeRate = ref('1')
+const setNewLegCurrency = () => { newLegExchangeRate.value = newLegCurrency.value === 'ARS' ? '1' : '' }
 const entryDialog = ref(null)
 const activeEntryModal = ref('')
 const editingEntry = ref(null)
@@ -208,8 +211,8 @@ const facts = computed(() => {
               <th class="px-3 py-2">Recorrido</th>
               <th class="px-3 py-2 text-right">Toneladas</th>
               <th class="px-3 py-2 text-right">Km</th>
-              <th class="px-3 py-2 text-right">Flete facturación</th>
-              <th class="px-3 py-2 text-right">Flete liquidación</th>
+              <th class="px-3 py-2 text-right">Flete facturación (ARS)</th>
+              <th class="px-3 py-2 text-right">Flete liquidación (ARS)</th>
               <th class="px-3 py-2 text-right">Comisión</th>
               <th class="px-3 py-2 text-right">Costos asignados</th>
               <th class="px-3 py-2 text-right">Margen</th>
@@ -243,12 +246,16 @@ const facts = computed(() => {
           <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cliente</span><AutocompleteSelect v-model="newLegCustomerId" name="cliente_id" :options="customerOptions" placeholder="Elegí el cliente" required /></label>
           <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Toneladas</span><input type="number" name="toneladas" min="0" step="0.01" :class="fieldClass" /></label>
           <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Km</span><input type="number" name="km" min="0" step="0.01" :class="fieldClass" /></label>
-          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select name="moneda" :class="fieldClass"><option v-for="currency in currencies" :key="currency.code" :value="currency.code" :selected="currency.code === 'ARS'">{{ currency.code }} · {{ currency.label }}</option></select></label>
-          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Flete facturación</span><input type="number" name="flete_facturacion" min="0" step="0.01" required :class="fieldClass" /></label>
-          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Flete liquidación</span><input type="number" name="flete_liquidacion" min="0" step="0.01" required :class="fieldClass" /></label>
-          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cotización a ARS</span><input type="number" name="cotizacion" min="0.000001" step="0.000001" value="1" :class="fieldClass" /></label>
-          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Observaciones</span><input type="text" name="observaciones" maxlength="500" :class="fieldClass" /></label>
         </div>
+        <div class="mt-3 grid gap-3 md:grid-cols-2">
+          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select v-model="newLegCurrency" name="moneda" :class="fieldClass" required @change="setNewLegCurrency"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }} · {{ currency.label }}</option></select></label>
+          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cotización a ARS</span><input v-model="newLegExchangeRate" type="number" name="cotizacion" min="0.000001" step="0.000001" :required="newLegCurrency !== 'ARS'" :disabled="newLegCurrency === 'ARS'" :class="fieldClass" /><span class="mt-1 block text-xs text-ink-muted">{{ newLegCurrency === 'ARS' ? 'Para ARS se usa cotización 1.' : `Ingresá cuántos ARS vale 1 ${newLegCurrency}.` }}</span></label>
+        </div>
+        <div class="mt-3 grid gap-3 md:grid-cols-2">
+          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Flete de facturación ({{ newLegCurrency }})</span><input type="number" name="flete_facturacion" min="0" step="0.01" required :class="fieldClass" /></label>
+          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Flete de liquidación ({{ newLegCurrency }})</span><input type="number" name="flete_liquidacion" min="0" step="0.01" required :class="fieldClass" /></label>
+        </div>
+        <label class="mt-3 block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Observaciones</span><input type="text" name="observaciones" maxlength="500" :class="fieldClass" /></label>
         <button type="submit" :class="[primaryButton, 'mt-3']">Agregar tramo</button>
       </form>
     </PanelCard>

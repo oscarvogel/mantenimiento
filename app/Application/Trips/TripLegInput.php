@@ -55,7 +55,7 @@ final readonly class TripLegInput
             self::optionalAmount($row['km'] ?? null, 'Los kilómetros'),
             self::optionalAmount($row['toneladas'] ?? null, 'Las toneladas'),
             strtoupper(trim((string) ($row['moneda'] ?? 'ARS'))),
-            self::rate($row['cotizacion'] ?? null),
+            self::rate($row['cotizacion'] ?? null, strtoupper(trim((string) ($row['moneda'] ?? 'ARS')))),
             self::nullableText($row['observaciones'] ?? null),
             (int) $originLocalityId,
             (int) $destinationLocalityId,
@@ -85,11 +85,15 @@ final readonly class TripLegInput
         return (float) $raw;
     }
 
-    private static function rate(mixed $value): float
+    private static function rate(mixed $value, string $currency): float
     {
         $raw = str_replace(',', '.', trim((string) ($value ?? '')));
         if ($raw === '') {
-            return 1.0;
+            if ($currency === 'ARS') {
+                return 1.0;
+            }
+
+            throw new DomainException('Ingresá la cotización a ARS para el tramo en ' . $currency . '.');
         }
         if (! is_numeric($raw) || (float) $raw <= 0) {
             throw new DomainException('La cotización del tramo debe ser mayor que cero.');

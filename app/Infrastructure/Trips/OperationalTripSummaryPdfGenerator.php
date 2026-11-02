@@ -72,7 +72,7 @@ final class OperationalTripSummaryPdfGenerator implements OperationalTripSummary
     {
         $this->section($pdf, 'Fletes por viaje');
         $widths = [8, 80, 18, 14, 35, 35];
-        $this->tableHeader($pdf, $widths, ['#', 'Origen / destino · cliente', 'Km', 'Tns', 'Facturación', 'Liquidación']);
+        $this->tableHeader($pdf, $widths, ['#', 'Origen / destino · cliente', 'Km', 'Tns', 'Facturación ARS', 'Liquidación ARS']);
         if ($rows === []) {
             $this->emptyRow($pdf, 'No hay tramos cargados.');
             return;
