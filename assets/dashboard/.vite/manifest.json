@@ -87,7 +87,7 @@
     "src": "src/assets/platform/trips-card.jpg"
   },
   "src/main.js": {
-    "file": "assets/main-BsDs-mSI.js",
+    "file": "assets/main-tZjJB9kV.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
@@ -106,7 +106,7 @@
       "src/profiles/cliente_piloto/profile.js"
     ],
     "css": [
-      "assets/main-BvvQAAav.css"
+      "assets/main-CKWMdmrD.css"
     ],
     "assets": [
       "assets/portal-hero-Dd-Ff3YR.jpg",
@@ -135,7 +135,7 @@
     ]
   },
   "src/profiles/cliente_piloto/profile.js": {
-    "file": "assets/profile-jfsvQabC.js",
+    "file": "assets/profile-CWC_L7e8.js",
     "name": "profile",
     "src": "src/profiles/cliente_piloto/profile.js",
     "isDynamicEntry": true,
@@ -151,7 +151,7 @@
     ]
   },
   "src/profiles/platform/profile.js": {
-    "file": "assets/profile-D-DZVCPz.js",
+    "file": "assets/profile-lBgkBSgO.js",
     "name": "profile",
     "src": "src/profiles/platform/profile.js",
     "isDynamicEntry": true,
@@ -164,7 +164,7 @@
     ]
   },
   "src/profiles/vogel/profile.js": {
-    "file": "assets/profile-B3Ujtr1R.js",
+    "file": "assets/profile-CDgVUTEW.js",
     "name": "profile",
     "src": "src/profiles/vogel/profile.js",
     "isDynamicEntry": true,

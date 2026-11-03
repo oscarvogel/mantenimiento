@@ -167,6 +167,28 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onClickOutside))
       :class="[fieldClass, 'flex min-h-11 flex-wrap items-center gap-1.5 py-1.5 pr-16', disabled ? 'cursor-not-allowed opacity-60' : 'cursor-text']"
       @click="input?.focus()"
     >
+      <!--
+        El input va primero en el DOM y las etiquetas se ordenan visualmente
+        antes con `order`. Un selector múltiple suele ir dentro de un <label>;
+        si el primer control del label fuera el botón de quitar de una etiqueta,
+        cualquier clic no interactivo (por ejemplo, al soltar el mouse sobre la
+        lista) lo activaría y borraría la selección recién hecha.
+      -->
+      <input
+        ref="input"
+        type="text"
+        :value="inputValue"
+        :placeholder="multiple && hasSelection ? '' : placeholder"
+        :required="required && !hasSelection"
+        :disabled="disabled"
+        :aria-expanded="open"
+        role="combobox"
+        autocomplete="off"
+        class="order-last min-w-24 flex-1 border-0 bg-transparent p-0 text-sm text-ink placeholder:text-ink-subtle focus:outline-none focus:ring-0 disabled:cursor-not-allowed"
+        @focus="onFocus"
+        @input="onInput"
+        @keydown="onKeydown"
+      />
       <template v-if="multiple">
         <span
           v-for="value in selectedValues"
@@ -179,21 +201,6 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onClickOutside))
           </button>
         </span>
       </template>
-      <input
-        ref="input"
-        type="text"
-        :value="inputValue"
-        :placeholder="multiple && hasSelection ? '' : placeholder"
-        :required="required && !hasSelection"
-        :disabled="disabled"
-        :aria-expanded="open"
-        role="combobox"
-        autocomplete="off"
-        class="min-w-24 flex-1 border-0 bg-transparent p-0 text-sm text-ink placeholder:text-ink-subtle focus:outline-none focus:ring-0 disabled:cursor-not-allowed"
-        @focus="onFocus"
-        @input="onInput"
-        @keydown="onKeydown"
-      />
     </div>
 
     <button

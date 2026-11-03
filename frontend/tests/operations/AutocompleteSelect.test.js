@@ -31,6 +31,23 @@ describe('AutocompleteSelect', () => {
     wrapper.unmount()
   })
 
+  it('deja el input como primer control del label aunque haya etiquetas seleccionadas', async () => {
+    const wrapper = mount({
+      components: { AutocompleteSelect },
+      data: () => ({ value: [1], options }),
+      template: '<label><AutocompleteSelect v-model="value" name="choferes[]" :options="options" multiple /></label>',
+    })
+
+    const label = wrapper.get('label')
+    const firstControl = label.element.querySelector('input, button, select, textarea')
+    expect(firstControl.getAttribute('role')).toBe('combobox')
+    expect(wrapper.get('button[aria-label="Quitar Uno"]').exists()).toBe(true)
+
+    await label.trigger('click')
+    expect(wrapper.vm.value).toEqual([1])
+    wrapper.unmount()
+  })
+
   it('permite seleccionar varios choferes y quitarlos', async () => {
     const wrapper = mount(AutocompleteSelect, {
       props: { modelValue: [], options, name: 'choferes[]', multiple: true },
