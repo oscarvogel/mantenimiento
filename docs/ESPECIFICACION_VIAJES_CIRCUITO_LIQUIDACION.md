@@ -254,7 +254,7 @@ El viaje es la raíz de consistencia. Contiene:
 - La suma de los tramos no puede quedar vacía al cerrar.
 - El km de regreso no puede ser menor al km de salida.
 - La fecha de regreso no puede ser anterior a la de salida.
-- Si se informa una fecha estimada de regreso, debe ser posterior a la salida. Un viaje activo sin estimación sigue ocupando sus asignaciones hasta registrar el regreso real.
+- Si se informa una fecha estimada de regreso, no puede ser anterior a la salida. Un viaje activo sin estimación sigue ocupando sus asignaciones hasta registrar el regreso real.
 - Un tramo pertenece al mismo viaje, empresa y sucursal.
 - Un costo imputado a un tramo debe pertenecer al mismo viaje, empresa y sucursal.
 - Los importes monetarios usan `DECIMAL`, nunca `FLOAT`.
@@ -519,7 +519,7 @@ Reglas:
 ┌ Datos del viaje ────────────────────────────────────────────────────┐
 │ Empresa: PAWLUK DUBLIN MARIELA ELISA                                │
 │ Dominio: [AC 532 DD ▾]     Nro: #110 (se confirma al guardar)       │
-│ Fecha salida: [21/10/2026 08:00]   Km salida: [102.896]             │
+│ Fecha salida: [21/10/2026]   Km salida: [102.896]             │
 │ Chofer: [Montiel, Rodrigo ▾]       % liquidación: [14,00]           │
 │ Sucursal: [Argentina ▾]            Acoplado: [AC 222 AC ▾]          │
 ├ Tramos ─────────────────────────────────────────────────────────────┤
@@ -547,7 +547,7 @@ Reglas:
 
 ```text
 ┌ Viaje #110 · AC 532 DD · EN CURSO ──────────────────────────────────┐
-│ Salida 15/10 08:00 · Km 102.896 · Chofer Montiel · 14%               │
+│ Salida 15/10 · Km 102.896 · Chofer Montiel · 14%               │
 │ [Tramos] [Combustible] [Gastos] [Cuenta corriente] [Resumen]        │
 ├ Resumen económico ──────────────────────────────────────────────────┤
 │ Facturado              $1.600.000                                   │
@@ -575,7 +575,7 @@ Tabs:
 
 ```text
 ┌ Cerrar viaje #110 ──────────────────────────────────────────────────┐
-│ Fecha de regreso: [18/10/2026 18:30]   Km regreso: [107.217]        │
+│ Fecha de regreso: [18/10/2026]   Km regreso: [107.217]        │
 │ Km recorridos: 4.321                                                │
 │                                                                     │
 │ ⚠ No hay cargas de combustible. Confirmá si corresponde.            │

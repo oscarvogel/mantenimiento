@@ -36,7 +36,8 @@ final class StartTrip
             if ($trip === null) {
                 throw new DomainException('El viaje solicitado no existe o no está autorizado.');
             }
-            $trip->start($at ?? $this->clock->now(), $departureKm);
+            $departureAt = ($at ?? $this->clock->now())->setTime(0, 0);
+            $trip->start($departureAt, $departureKm);
             $this->trips->save($trip, $actor->userId());
         });
     }

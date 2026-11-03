@@ -41,7 +41,7 @@ final class DriverSettlementPdfGenerator implements DriverSettlementPdfRenderer
         $pdf->Cell(0, 6, $this->pdfText('Viaje #' . ($record['numero'] ?? '') . ' - ' . (string) ($record['sucursal'] ?? '')), 0, 1, 'L');
         $pdf->Cell(0, 6, $this->pdfText('Chofer: ' . ($driver['label'] ?? 'Sin dato')), 0, 1, 'L');
         $pdf->Cell(0, 6, $this->pdfText('Unidad: ' . $this->assignmentLabel($assignments, 'TRACTOR')), 0, 1, 'L');
-        $pdf->Cell(0, 6, $this->pdfText('Salida: ' . $this->dateTime($record['fecha_salida_real'] ?? null) . '    Regreso: ' . $this->dateTime($record['fecha_regreso_real'] ?? null)), 0, 1, 'L');
+        $pdf->Cell(0, 6, $this->pdfText('Salida: ' . $this->date($record['fecha_salida_real'] ?? null) . '    Regreso: ' . $this->date($record['fecha_regreso_real'] ?? null)), 0, 1, 'L');
         $pdf->Ln(5);
 
         $this->section($pdf, 'Comisión por tramo');
@@ -242,16 +242,6 @@ final class DriverSettlementPdfGenerator implements DriverSettlementPdfRenderer
         $timestamp = strtotime($value);
 
         return $timestamp === false ? $value : date('d/m/Y', $timestamp);
-    }
-
-    private function dateTime(mixed $value): string
-    {
-        if (! is_string($value) || trim($value) === '') {
-            return 'Sin dato';
-        }
-        $timestamp = strtotime($value);
-
-        return $timestamp === false ? $value : date('d/m/Y H:i', $timestamp);
     }
 
     private function number(mixed $value): string

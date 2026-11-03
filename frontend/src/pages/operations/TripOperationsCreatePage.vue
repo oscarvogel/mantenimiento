@@ -4,7 +4,7 @@ import { PlusIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import PageHeading from './components/PageHeading.vue'
 import AutocompleteSelect from './components/AutocompleteSelect.vue'
 import PanelCard from './components/PanelCard.vue'
-import { fieldClass, primaryButton, secondaryButton, nowLocal } from './helpers.js'
+import { fieldClass, primaryButton, secondaryButton, today } from './helpers.js'
 
 const props = defineProps({ data: { type: Object, required: true } })
 
@@ -33,8 +33,9 @@ const trailerIds = ref(old.value.acoplado_id
   ? (Array.isArray(old.value.acoplado_id) ? old.value.acoplado_id.map(String) : [String(old.value.acoplado_id)])
   : [])
 const branchId = ref(old.value.sucursal_id === undefined || old.value.sucursal_id === null ? '' : String(old.value.sucursal_id))
-const departure = ref(old.value.fecha_salida_real ?? nowLocal())
-const returnAt = ref(old.value.fecha_regreso_estimado ?? '')
+const dateValue = (value) => String(value ?? '').slice(0, 10)
+const departure = ref(dateValue(old.value.fecha_salida_real) || today())
+const returnAt = ref(dateValue(old.value.fecha_regreso_estimado))
 const kmSalida = ref(old.value.km_salida ?? '')
 const selectedDrivers = ref(Array.isArray(old.value.choferes) ? old.value.choferes.map(String) : [])
 const autoDrivers = ref([])
@@ -219,12 +220,12 @@ const localityName = (localityId) => localities.value.find((locality) => String(
 
         <div class="mt-4 grid gap-4 md:grid-cols-3">
           <label class="block">
-            <span class="mb-1.5 block text-sm font-semibold text-ink">Fecha y hora real de salida</span>
-            <input v-model="departure" type="datetime-local" name="fecha_salida_real" required :class="fieldClass" />
+            <span class="mb-1.5 block text-sm font-semibold text-ink">Fecha real de salida</span>
+            <input v-model="departure" type="date" name="fecha_salida_real" required :class="fieldClass" />
           </label>
           <label class="block">
             <span class="mb-1.5 block text-sm font-semibold text-ink">Fecha estimada de regreso (opcional)</span>
-            <input v-model="returnAt" type="datetime-local" name="fecha_regreso_estimado" :class="fieldClass" />
+            <input v-model="returnAt" type="date" name="fecha_regreso_estimado" :class="fieldClass" />
             <span class="mt-1 block text-xs text-ink-muted">Si todavía no la sabés, dejala vacía. El equipo y el chofer quedan ocupados hasta cargar el regreso real.</span>
           </label>
           <label class="block">

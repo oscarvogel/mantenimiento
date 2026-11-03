@@ -61,7 +61,8 @@ describe('detalle de viaje operativo', () => {
     })
 
     expect(wrapper.text()).toContain('Salida real')
-    expect(wrapper.text()).toContain('20/10/2026 08:15')
+    expect(wrapper.text()).toContain('20/10/2026')
+    expect(wrapper.text()).not.toContain('20/10/2026 08:15')
     expect(wrapper.text()).toContain('Regreso estimado')
     expect(wrapper.text()).not.toContain('Salida planificada')
     wrapper.unmount()
@@ -104,6 +105,9 @@ describe('detalle de viaje operativo', () => {
       '/mantenimiento/viajes/operativos/42/iniciar',
       '/mantenimiento/viajes/operativos/42/cancelar',
     ])
+    expect(wrapper.get('input[name="fecha_salida_real"]').attributes('type')).toBe('date')
+    expect(wrapper.text()).toContain('Fecha de salida')
+    expect(wrapper.text()).not.toContain('Fecha y hora de salida')
     wrapper.unmount()
   })
 
@@ -180,6 +184,9 @@ describe('detalle de viaje operativo', () => {
     expect(wrapper.text()).toContain('ARS 638.000,00')
     expect(wrapper.get('form[action="/mantenimiento/viajes/operativos/42/tramos"]').exists()).toBe(true)
     expect(wrapper.get('form[action="/mantenimiento/viajes/operativos/42/cerrar"]').exists()).toBe(true)
+    expect(wrapper.get('input[name="fecha_regreso_real"]').attributes('type')).toBe('date')
+    expect(wrapper.text()).toContain('Fecha de regreso')
+    expect(wrapper.text()).not.toContain('Fecha y hora de regreso')
     const fuelButton = wrapper.findAll('button').find((button) => button.text().includes('Cargar combustible'))
     await fuelButton.trigger('click')
     await nextTick()

@@ -24,15 +24,25 @@ final class TripTest extends TestCase
         self::assertNull($trip->departureKm());
     }
 
-    public function testPlannedReturnMustBeAfterDeparture(): void
+    public function testPlannedReturnCannotBeBeforeDeparture(): void
     {
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('regreso planificado');
 
         $this->trip(
             departure: new DateTimeImmutable('2026-10-20 08:00:00'),
-            returnAt: new DateTimeImmutable('2026-10-20 08:00:00'),
+            returnAt: new DateTimeImmutable('2026-10-19 08:00:00'),
         );
+    }
+
+    public function testPlannedReturnCanBeTheSameDay(): void
+    {
+        $trip = $this->trip(
+            departure: new DateTimeImmutable('2026-10-20 08:00:00'),
+            returnAt: new DateTimeImmutable('2026-10-20 18:00:00'),
+        );
+
+        self::assertSame('2026-10-20', $trip->plannedReturn()?->format('Y-m-d'));
     }
 
     public function testExactlyOneTractorIsRequired(): void
@@ -208,6 +218,15 @@ final class TripTest extends TestCase
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('menor');
         $other->finish(new DateTimeImmutable('2026-10-21 18:00:00'), 145_200);
+    }
+
+    public function testFinishAllowsReturnOnTheSameDayEvenIfDepartureHadTime(): void
+    {
+        $trip = $this->trip();
+        $trip->start(new DateTimeImmutable('2026-10-21 18:00:00'), 145_300);
+        $trip->finish(new DateTimeImmutable('2026-10-21 00:00:00'), 145_500);
+
+        self::assertSame('2026-10-21', $trip->actualReturn()?->format('Y-m-d'));
     }
 
     public function testStartingTheTripRecordsRealDepartureAndOdometer(): void

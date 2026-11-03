@@ -44,7 +44,7 @@ final class CreateTripTest extends TestCase
         self::assertSame(324, $legs->added[0]['leg']->customerId());
         self::assertNull($legs->added[0]['leg']->kilometers());
         self::assertSame(Trip::EN_CURSO, $repository->added->status());
-        self::assertEquals(new DateTimeImmutable('2026-10-20 08:00:00'), $repository->added->actualDeparture());
+        self::assertEquals(new DateTimeImmutable('2026-10-20 00:00:00'), $repository->added->actualDeparture());
         self::assertSame([7, 9], $repository->queriedEquipmentIds);
         self::assertSame([11, 12], $repository->queriedEmployeeIds);
     }
@@ -157,6 +157,8 @@ final class CreateTripTest extends TestCase
         ]);
 
         self::assertSame(10, $command->branchId);
+        self::assertSame('2026-10-20 00:00:00', $command->departureAt->format('Y-m-d H:i:s'));
+        self::assertSame('2026-10-21 00:00:00', $command->estimatedReturnAt?->format('Y-m-d H:i:s'));
         self::assertSame([11, 12], $command->driverIds);
         self::assertSame(145_300, $command->departureKm);
         self::assertSame(14.5, $command->driverPercentages[11]);
@@ -169,6 +171,38 @@ final class CreateTripTest extends TestCase
         self::assertSame(3_850_000.0, $command->legs[0]->invoiceAmount);
         self::assertSame(2_500_000.0, $command->legs[0]->liquidationAmount);
         self::assertSame('Salida temprano.', $command->notes);
+    }
+
+    public function testElComandoAceptaSoloLaFechaYNormalizaAlInicioDelDia(): void
+    {
+        $command = CreateTripCommand::fromInput($this->input([
+            'fecha_salida_real' => '2026-10-20',
+            'fecha_regreso_estimado' => '2026-10-21',
+        ]));
+
+        self::assertSame('2026-10-20 00:00:00', $command->departureAt->format('Y-m-d H:i:s'));
+        self::assertSame('2026-10-21 00:00:00', $command->estimatedReturnAt?->format('Y-m-d H:i:s'));
+    }
+
+    public function testElRegresoEstimadoPuedeSerElMismoDia(): void
+    {
+        $command = CreateTripCommand::fromInput($this->input([
+            'fecha_salida_real' => '2026-10-20',
+            'fecha_regreso_estimado' => '2026-10-20',
+        ]));
+
+        self::assertSame('2026-10-20 00:00:00', $command->estimatedReturnAt?->format('Y-m-d H:i:s'));
+    }
+
+    public function testElRegresoEstimadoNoPuedeSerAnteriorALaSalida(): void
+    {
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('no puede ser anterior');
+
+        CreateTripCommand::fromInput($this->input([
+            'fecha_salida_real' => '2026-10-20',
+            'fecha_regreso_estimado' => '2026-10-19',
+        ]));
     }
 
     public function testCommandRequiresTheActualDepartureOdometer(): void
@@ -276,12 +310,29 @@ final class CreateTripTest extends TestCase
         return new ActorContext(1, 5, false, false, [], $permissions, $branches);
     }
 
+    /** @param array<string,mixed> $overrides */
+    private function input(array $overrides = []): array
+    {
+        return array_replace([
+            'sucursal_id' => '10',
+            'fecha_salida_real' => '2026-10-20',
+            'fecha_regreso_estimado' => '2026-10-21',
+            'km_salida' => '145300',
+            'tractor_id' => '7',
+            'acoplado_id' => '9',
+            'choferes' => ['11'],
+            'tramos' => [
+                ['codigo_origen_destino' => '947', 'origen' => 'Rosario', 'destino' => 'Córdoba', 'localidad_origen_id' => '1', 'localidad_destino_id' => '2', 'cliente_id' => '324', 'flete_facturacion' => '3850000', 'flete_liquidacion' => '2500000'],
+            ],
+        ], $overrides);
+    }
+
     private function command(): CreateTripCommand
     {
         return new CreateTripCommand(
             10,
-            new DateTimeImmutable('2026-10-20 08:00:00'),
-            new DateTimeImmutable('2026-10-21 18:00:00'),
+            new DateTimeImmutable('2026-10-20 00:00:00'),
+            new DateTimeImmutable('2026-10-21 00:00:00'),
             7,
             [9],
             [11, 12],

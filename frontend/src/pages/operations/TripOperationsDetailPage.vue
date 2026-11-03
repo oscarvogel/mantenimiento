@@ -70,7 +70,11 @@ const cashTypeLabel = { CAJA_INICIAL: 'Caja inicial', ANTICIPO: 'Anticipo', RETI
 
 const paidByLabel = { EMPRESA: 'Empresa', CHOFER: 'Chofer', CAJA: 'Caja del chofer' }
 const drivers = computed(() => assignments.value.filter((row) => row.rol === 'CHOFER'))
-const today = computed(() => new Date().toISOString().slice(0, 10))
+const today = computed(() => {
+  const now = new Date()
+  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000)
+  return local.toISOString().slice(0, 10)
+})
 const settlementNote = computed(() => {
   if (settlement.value) return null
   if (totals.value.multiple_drivers) return 'Hay más de un chofer. La liquidación se calcula cuando hay un chofer responsable.'
@@ -82,6 +86,10 @@ const fmtDateTime = (value) => {
   if (!match) return 'Sin fecha'
   const date = `${match[3]}/${match[2]}/${match[1]}`
   return match[4] ? `${date} ${match[4]}:${match[5]}` : date
+}
+const fmtDate = (value) => {
+  const match = String(value ?? '').match(/^(\d{4})-(\d{2})-(\d{2})/)
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : 'Sin fecha'
 }
 const number = (value) => value === null || value === undefined || value === '' ? '—' : Number(value).toLocaleString('es-AR')
 const money = (value, currency = 'ARS') => `${currency} ${Number(value ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -120,8 +128,8 @@ const facts = computed(() => {
   ['Viaje', `#${trip.value.numero}`],
   ['Estado', trip.value.estado_label],
   ['Sucursal de origen', trip.value.sucursal],
-  [started ? 'Salida real' : 'Salida', fmtDateTime(trip.value.fecha_salida_real ?? trip.value.fecha_salida_planificada)],
-  [finished ? 'Regreso real' : (started ? 'Regreso estimado' : 'Regreso'), trip.value.fecha_regreso_real || trip.value.fecha_regreso_planificada ? fmtDateTime(trip.value.fecha_regreso_real ?? trip.value.fecha_regreso_planificada) : 'Sin estimar'],
+  [started ? 'Salida real' : 'Salida', fmtDate(trip.value.fecha_salida_real ?? trip.value.fecha_salida_planificada)],
+  [finished ? 'Regreso real' : (started ? 'Regreso estimado' : 'Regreso'), trip.value.fecha_regreso_real || trip.value.fecha_regreso_planificada ? fmtDate(trip.value.fecha_regreso_real ?? trip.value.fecha_regreso_planificada) : 'Sin estimar'],
   ['Odómetro de salida', trip.value.km_salida === null ? null : `${number(trip.value.km_salida)} km`],
   ['Odómetro de regreso', trip.value.km_regreso === null ? null : `${number(trip.value.km_regreso)} km`],
   ['Observaciones', trip.value.observaciones],
@@ -356,7 +364,7 @@ const facts = computed(() => {
               <p class="mt-0.5 text-sm font-semibold text-ink">{{ assignment.label || 'Sin dato' }}</p>
               <p v-if="assignment.porcentaje_liquidacion !== null && assignment.porcentaje_liquidacion !== undefined" class="mt-0.5 text-xs font-semibold text-primary">Liquidación: {{ Number(assignment.porcentaje_liquidacion).toLocaleString('es-AR', { maximumFractionDigits: 2 }) }}%</p>
             </div>
-            <p class="text-xs text-ink-muted">{{ fmtDateTime(assignment.desde) }} — {{ assignment.hasta ? fmtDateTime(assignment.hasta) : 'sin fin' }}</p>
+            <p class="text-xs text-ink-muted">{{ fmtDate(assignment.desde) }} — {{ assignment.hasta ? fmtDate(assignment.hasta) : 'sin fin' }}</p>
           </li>
         </ul>
       </PanelCard>
@@ -365,11 +373,11 @@ const facts = computed(() => {
         <form v-if="data.canStart" method="post" :action="`${data.links?.detail ?? ''}/iniciar`" class="mb-5 rounded-xl border border-border-subtle bg-surface p-4">
           <input type="hidden" :name="csrf.name" :value="csrf.hash" />
           <h3 class="flex items-center gap-2 text-sm font-bold text-ink"><CheckCircleIcon class="size-4 text-success" aria-hidden="true" />Registrar salida real</h3>
-          <p class="mt-1 text-xs text-ink-muted">Al iniciar, el viaje pasa a En curso. Si no indicás la fecha y hora, se usa el momento actual.</p>
+          <p class="mt-1 text-xs text-ink-muted">Al iniciar, el viaje pasa a En curso. Si no indicás la fecha, se usa la fecha actual.</p>
           <div class="mt-3 grid gap-3 sm:grid-cols-2">
             <label class="block">
-              <span class="mb-1.5 block text-sm font-semibold text-ink">Fecha y hora de salida</span>
-              <input type="datetime-local" name="fecha_salida_real" :class="fieldClass" />
+              <span class="mb-1.5 block text-sm font-semibold text-ink">Fecha de salida</span>
+              <input type="date" name="fecha_salida_real" :value="today" :class="fieldClass" />
             </label>
             <label class="block">
               <span class="mb-1.5 block text-sm font-semibold text-ink">Odómetro de salida</span>
@@ -385,8 +393,8 @@ const facts = computed(() => {
           <p class="mt-1 text-xs text-ink-muted">Al cerrar, el viaje pasa a Finalizado y se genera la lectura del equipo con el km de regreso.</p>
           <div class="mt-3 grid gap-3 sm:grid-cols-2">
             <label class="block">
-              <span class="mb-1.5 block text-sm font-semibold text-ink">Fecha y hora de regreso</span>
-              <input type="datetime-local" name="fecha_regreso_real" :value="nowLocal()" :class="fieldClass" />
+              <span class="mb-1.5 block text-sm font-semibold text-ink">Fecha de regreso</span>
+              <input type="date" name="fecha_regreso_real" :value="today" :class="fieldClass" />
             </label>
             <label class="block">
               <span class="mb-1.5 block text-sm font-semibold text-ink">Odómetro de regreso</span>

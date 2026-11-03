@@ -39,9 +39,12 @@ describe('alta de viaje operativo', () => {
     expect(wrapper.text()).toContain('al guardar queda En curso')
     expect(wrapper.get('button[type="submit"]').text()).toBe('Iniciar viaje')
     expect(wrapper.get('input[name="km_salida"]').attributes('required')).toBeDefined()
+    expect(wrapper.get('input[name="fecha_salida_real"]').attributes('type')).toBe('date')
+    expect(wrapper.get('input[name="fecha_regreso_estimado"]').attributes('type')).toBe('date')
+    expect(wrapper.text()).toContain('Fecha real de salida')
+    expect(wrapper.text()).not.toContain('Fecha y hora real de salida')
     expect(wrapper.findAll('article')).toHaveLength(1)
     expect(wrapper.text()).toContain('Tramos de flete')
-    expect(wrapper.text()).toContain('Código de ruta anterior (opcional)')
     expect(wrapper.text()).toContain('Localidad de origen')
     expect(wrapper.text()).toContain('Localidad de destino')
     expect(wrapper.text()).toContain('Flete de facturación')
@@ -71,8 +74,8 @@ describe('alta de viaje operativo', () => {
             km_salida: '140000',
             observaciones: 'Carga programada',
             tramos: [
-              { codigo_origen_destino: '947', localidad_origen_id: '1', localidad_destino_id: '2', origen: 'Rosario', destino: 'Córdoba', cliente_id: '324', km: '', toneladas: '24', flete_facturacion: '3850000', flete_liquidacion: '2500000' },
-              { codigo_origen_destino: '154', localidad_origen_id: '3', localidad_destino_id: '2', origen: 'Zárate', destino: 'Córdoba', cliente_id: '4', flete_facturacion: '1291784.41', flete_liquidacion: '900000' },
+              { localidad_origen_id: '1', localidad_destino_id: '2', origen: 'Rosario', destino: 'Córdoba', cliente_id: '324', km: '', toneladas: '24', flete_facturacion: '3850000', flete_liquidacion: '2500000' },
+              { localidad_origen_id: '3', localidad_destino_id: '2', origen: 'Zárate', destino: 'Córdoba', cliente_id: '4', flete_facturacion: '1291784.41', flete_liquidacion: '900000' },
             ],
           },
         },
@@ -80,11 +83,13 @@ describe('alta de viaje operativo', () => {
     })
 
     expect(wrapper.get('select[name="sucursal_id"]').element.value).toBe('10')
-    expect(wrapper.get('input[name="fecha_salida_real"]').element.value).toBe('2026-10-20T08:00')
+    expect(wrapper.get('input[name="fecha_salida_real"]').attributes('type')).toBe('date')
+    expect(wrapper.get('input[name="fecha_salida_real"]').element.value).toBe('2026-10-20')
+    expect(wrapper.get('input[name="fecha_regreso_estimado"]').attributes('type')).toBe('date')
+    expect(wrapper.get('input[name="fecha_regreso_estimado"]').element.value).toBe('2026-10-21')
     expect(wrapper.get('input[name="tractor_id"]').attributes('value')).toBe('7')
     expect(wrapper.get('input[name="km_salida"]').element.value).toBe('140000')
     expect(wrapper.get('input[name="choferes_porcentajes[11]"]').element.value).toBe('15.50')
-    expect(wrapper.get('input[name="tramos[0][codigo_origen_destino]"]').element.value).toBe('947')
     expect(wrapper.get('input[name="tramos[0][localidad_origen_id]"]').attributes('value')).toBe('1')
     expect(wrapper.get('input[name="tramos[0][km]"]').element.value).toBe('')
     expect(wrapper.get('input[name="tramos[0][cliente_id]"]').attributes('value')).toBe('324')

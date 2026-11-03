@@ -148,6 +148,8 @@ final class CodeIgniterOperationalTripRepository implements OperationalTripRepos
             return [];
         }
 
+        $inicio = 'DATE(COALESCE(v.fecha_salida_real, v.fecha_salida_planificada))';
+        $fin = 'DATE(COALESCE(v.fecha_regreso_real, v.fecha_regreso_planificada))';
         $sql = 'SELECT DISTINCT v.id, v.numero, v.estado, a.rol, a.equipo_id, a.empleado_id, '
             . 'COALESCE(v.fecha_salida_real, v.fecha_salida_planificada) AS inicio, '
             . 'COALESCE(v.fecha_regreso_real, v.fecha_regreso_planificada) AS fin '
@@ -161,12 +163,13 @@ final class CodeIgniterOperationalTripRepository implements OperationalTripRepos
             Trip::EN_CURSO,
         ];
         if ($to !== null) {
-            $sql .= ' AND COALESCE(v.fecha_salida_real, v.fecha_salida_planificada) < ?';
-            $binds[] = $to->format('Y-m-d H:i:s');
+            // Las fechas de viaje son días completos: el regreso estimado
+            // incluye su propio día para detectar conflictos.
+            $sql .= ' AND ' . $inicio . ' <= ?';
+            $binds[] = $to->format('Y-m-d');
         }
-        $sql .= ' AND (COALESCE(v.fecha_regreso_real, v.fecha_regreso_planificada) IS NULL '
-            . 'OR COALESCE(v.fecha_regreso_real, v.fecha_regreso_planificada) > ?)';
-        $binds[] = $from->format('Y-m-d H:i:s');
+        $sql .= ' AND (' . $fin . ' IS NULL OR ' . $fin . ' >= ?)';
+        $binds[] = $from->format('Y-m-d');
         if ($excludeTripId !== null) {
             $sql .= ' AND v.id <> ?';
             $binds[] = $excludeTripId;

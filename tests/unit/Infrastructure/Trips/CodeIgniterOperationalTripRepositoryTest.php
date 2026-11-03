@@ -162,6 +162,30 @@ final class CodeIgniterOperationalTripRepositoryTest extends TestCase
         ));
     }
 
+    public function testElDiaDeRegresoCuentaParaDetectarConflictos(): void
+    {
+        $repository = new CodeIgniterOperationalTripRepository($this->database);
+        $repository->add($this->trip(1), 1);
+
+        $mismoDia = $repository->conflicts(
+            5,
+            [7],
+            [11],
+            new DateTimeImmutable('2026-10-21'),
+            new DateTimeImmutable('2026-10-22'),
+        );
+        self::assertNotEmpty($mismoDia);
+
+        $diaSiguiente = $repository->conflicts(
+            5,
+            [7],
+            [11],
+            new DateTimeImmutable('2026-10-22'),
+            new DateTimeImmutable('2026-10-23'),
+        );
+        self::assertSame([], $diaSiguiente);
+    }
+
     private function trip(int $number): Trip
     {
         return Trip::plan(
