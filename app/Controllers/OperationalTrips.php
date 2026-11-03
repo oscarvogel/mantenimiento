@@ -18,6 +18,7 @@ use App\Application\Trips\UpdateTripCashMovementCommand;
 use App\Application\Trips\UpdateTripExpenseCommand;
 use App\Application\Trips\UpdateTripFuelLoadCommand;
 use App\Infrastructure\Identity\SessionActorContext;
+use App\Presentation\Trips\TripCostEntryForm;
 use CodeIgniter\HTTP\RedirectResponse;
 use CodeIgniter\HTTP\ResponseInterface;
 use DateTimeImmutable;
@@ -107,6 +108,18 @@ final class OperationalTrips extends BaseController
             $actor = $this->actor();
             $payload = service('getOperationalTrip')->execute($actor, $tripId);
             $payload['backUrl'] = base_url('viajes/operativos');
+            $entryType = TripCostEntryForm::normalizeType($this->request->getGet('cargar'));
+            if ($entryType !== null) {
+                $oldInput = $this->request->getGet('error') === '1' ? session('_ci_old_input') : null;
+                $oldPost = is_array($oldInput) && is_array($oldInput['post'] ?? null) ? $oldInput['post'] : [];
+                $editingId = filter_var($this->request->getGet('movimiento'), FILTER_VALIDATE_INT);
+                $payload['entryForm'] = TripCostEntryForm::state(
+                    $entryType,
+                    $oldPost,
+                    (array) $this->request->getGet(),
+                    $editingId === false ? null : (int) $editingId,
+                );
+            }
 
             return $this->renderApp($actor, 'trips-operations', 'trip-operations-detail', 'Detalle del viaje', $payload);
         } catch (Throwable $exception) {
@@ -208,9 +221,14 @@ final class OperationalTrips extends BaseController
             );
             service('registerTripFuel')->execute($this->actor(), $command);
 
-            return redirect()->to('/viajes/operativos/' . $tripId)->with('success', 'La carga de combustible quedó registrada.');
+            return $this->afterCostSave(
+                $tripId,
+                TripCostEntryForm::FUEL,
+                'La carga de combustible quedó registrada.',
+                (array) $this->request->getPost(),
+            );
         } catch (Throwable $exception) {
-            return $this->failure($exception, 'No se pudo registrar el combustible.', '/viajes/operativos/' . $tripId);
+            return $this->costFailure($exception, 'No se pudo registrar el combustible.', $tripId, TripCostEntryForm::FUEL);
         }
     }
 
@@ -237,9 +255,14 @@ final class OperationalTrips extends BaseController
             );
             service('registerTripExpense')->execute($this->actor(), $command);
 
-            return redirect()->to('/viajes/operativos/' . $tripId)->with('success', 'El gasto quedó registrado.');
+            return $this->afterCostSave(
+                $tripId,
+                TripCostEntryForm::EXPENSE,
+                'El gasto quedó registrado.',
+                (array) $this->request->getPost(),
+            );
         } catch (Throwable $exception) {
-            return $this->failure($exception, 'No se pudo registrar el gasto.', '/viajes/operativos/' . $tripId);
+            return $this->costFailure($exception, 'No se pudo registrar el gasto.', $tripId, TripCostEntryForm::EXPENSE);
         }
     }
 
@@ -278,9 +301,14 @@ final class OperationalTrips extends BaseController
             );
             service('registerTripCashMovement')->execute($this->actor(), $command);
 
-            return redirect()->to('/viajes/operativos/' . $tripId)->with('success', 'El movimiento de caja quedó registrado.');
+            return $this->afterCostSave(
+                $tripId,
+                TripCostEntryForm::CASH,
+                'El movimiento de caja quedó registrado.',
+                (array) $this->request->getPost(),
+            );
         } catch (Throwable $exception) {
-            return $this->failure($exception, 'No se pudo registrar el movimiento de caja.', '/viajes/operativos/' . $tripId);
+            return $this->costFailure($exception, 'No se pudo registrar el movimiento de caja.', $tripId, TripCostEntryForm::CASH);
         }
     }
 
@@ -305,7 +333,7 @@ final class OperationalTrips extends BaseController
 
             return redirect()->to('/viajes/operativos/' . $tripId)->with('success', 'Se actualizaron los datos de combustible.');
         } catch (Throwable $exception) {
-            return $this->failure($exception, 'No se pudo editar la carga de combustible.', '/viajes/operativos/' . $tripId);
+            return $this->costFailure($exception, 'No se pudo editar la carga de combustible.', $tripId, TripCostEntryForm::FUEL, $movementId);
         }
     }
 
@@ -334,7 +362,7 @@ final class OperationalTrips extends BaseController
 
             return redirect()->to('/viajes/operativos/' . $tripId)->with('success', 'Se actualizaron los datos del gasto.');
         } catch (Throwable $exception) {
-            return $this->failure($exception, 'No se pudo editar el gasto.', '/viajes/operativos/' . $tripId);
+            return $this->costFailure($exception, 'No se pudo editar el gasto.', $tripId, TripCostEntryForm::EXPENSE, $movementId);
         }
     }
 
@@ -355,7 +383,7 @@ final class OperationalTrips extends BaseController
 
             return redirect()->to('/viajes/operativos/' . $tripId)->with('success', 'Se actualizaron los datos del movimiento de caja.');
         } catch (Throwable $exception) {
-            return $this->failure($exception, 'No se pudo editar el movimiento de caja.', '/viajes/operativos/' . $tripId);
+            return $this->costFailure($exception, 'No se pudo editar el movimiento de caja.', $tripId, TripCostEntryForm::CASH, $movementId);
         }
     }
 
@@ -386,6 +414,28 @@ final class OperationalTrips extends BaseController
         } catch (Throwable $exception) {
             return $this->failure($exception, 'No se pudo quitar el movimiento del viaje.', '/viajes/operativos/' . $tripId);
         }
+    }
+
+    /** @param array<string,mixed> $post */
+    private function afterCostSave(int $tripId, string $type, string $message, array $post): RedirectResponse
+    {
+        $url = '/viajes/operativos/' . $tripId;
+        if (($post['accion'] ?? '') === 'otro') {
+            $query = ['cargar' => $type] + TripCostEntryForm::repeatQuery($type, $post);
+            $url .= '?' . http_build_query($query);
+        }
+
+        return redirect()->to($url)->with('success', $message);
+    }
+
+    private function costFailure(Throwable $exception, string $fallback, int $tripId, string $type, ?int $movementId = null): RedirectResponse
+    {
+        $location = '/viajes/operativos/' . $tripId . '?cargar=' . rawurlencode($type) . '&error=1';
+        if ($movementId !== null) {
+            $location .= '&movimiento=' . $movementId;
+        }
+
+        return $this->failure($exception, $fallback, $location);
     }
 
     private function requiredDateTime(string $key): DateTimeImmutable

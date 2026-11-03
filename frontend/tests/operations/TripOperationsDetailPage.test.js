@@ -129,10 +129,10 @@ describe('detalle de viaje operativo', () => {
     expect(wrapper.text()).toContain('YPF')
     expect(wrapper.text()).toContain('Peaje')
     expect(wrapper.text()).toContain('Anticipo')
-    expect(wrapper.text()).toContain('Cargar combustible')
-    expect(wrapper.text()).toContain('Cargar gasto')
-    expect(wrapper.text()).toContain('Caja del chofer')
-    const fuelButton = wrapper.findAll('button').find((button) => button.text().includes('Cargar combustible'))
+    expect(wrapper.text()).toContain('+ Combustible')
+    expect(wrapper.text()).toContain('+ Gasto')
+    expect(wrapper.text()).toContain('+ Movimiento de caja')
+    const fuelButton = wrapper.findAll('button').find((button) => button.text().includes('+ Combustible'))
     await fuelButton.trigger('click')
     await nextTick()
     expect(wrapper.get('form[action="/mantenimiento/viajes/operativos/42/combustible"]').exists()).toBe(true)
@@ -180,7 +180,7 @@ describe('detalle de viaje operativo', () => {
     expect(wrapper.text()).toContain('ARS 638.000,00')
     expect(wrapper.get('form[action="/mantenimiento/viajes/operativos/42/tramos"]').exists()).toBe(true)
     expect(wrapper.get('form[action="/mantenimiento/viajes/operativos/42/cerrar"]').exists()).toBe(true)
-    const fuelButton = wrapper.findAll('button').find((button) => button.text().includes('Cargar combustible'))
+    const fuelButton = wrapper.findAll('button').find((button) => button.text().includes('+ Combustible'))
     await fuelButton.trigger('click')
     await nextTick()
     expect(wrapper.find('select[name="tramo_id"]').exists()).toBe(true)
@@ -234,6 +234,154 @@ describe('detalle de viaje operativo', () => {
 
     expect(wrapper.findAll('form')).toHaveLength(0)
     expect(wrapper.text()).toContain('En curso')
+    wrapper.unmount()
+  })
+
+  it('abre el formulario breve de gasto y explica el efecto de quién pagó', async () => {
+    const wrapper = mount(TripOperationsDetailPage, {
+      props: {
+        data: {
+          ...data,
+          canRegisterCosts: true,
+          links: { ...data.links, expense: '/mantenimiento/viajes/operativos/42/gastos' },
+          options: { expenseCategories: [{ id: 1, label: 'Peaje' }], paymentMethods: [], currencies: [{ code: 'ARS', label: 'Peso argentino' }] },
+        },
+      },
+    })
+
+    const expenseButton = wrapper.findAll('button').find((button) => button.text().includes('+ Gasto'))
+    await expenseButton.trigger('click')
+    await nextTick()
+
+    expect(wrapper.get('form[action="/mantenimiento/viajes/operativos/42/gastos"]').exists()).toBe(true)
+    expect(wrapper.get('input[name="importe"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('Agregar moneda, medio de pago, comprobante o tramo')
+    expect(wrapper.text()).toContain('Es costo del viaje.')
+
+    await wrapper.get('select[name="pagado_por"]').setValue('CHOFER')
+    await nextTick()
+    expect(wrapper.text()).toContain('Es costo del viaje y queda como gasto a reintegrar al chofer.')
+
+    await wrapper.get('select[name="pagado_por"]').setValue('CAJA')
+    await nextTick()
+    expect(wrapper.text()).toContain('Es costo del viaje pagado con la caja entregada.')
+    wrapper.unmount()
+  })
+
+  it('ofrece guardar y cargar otro con campos repetibles y limpia los importes', async () => {
+    const wrapper = mount(TripOperationsDetailPage, {
+      props: {
+        data: {
+          ...data,
+          canRegisterCosts: true,
+          links: { ...data.links, fuel: '/mantenimiento/viajes/operativos/42/combustible' },
+          options: { expenseCategories: [], paymentMethods: [], currencies: [{ code: 'ARS', label: 'Peso argentino' }] },
+        },
+      },
+    })
+
+    const fuelButton = wrapper.findAll('button').find((button) => button.text().includes('+ Combustible'))
+    await fuelButton.trigger('click')
+    await nextTick()
+
+    const saveAndNext = wrapper.findAll('button').find((button) => button.text() === 'Guardar y cargar otro')
+    expect(saveAndNext.attributes('name')).toBe('accion')
+    expect(saveAndNext.attributes('value')).toBe('otro')
+    expect(wrapper.get('input[name="repetir[]"][value="fecha"]').element.checked).toBe(true)
+    expect(wrapper.get('input[name="repetir[]"][value="moneda"]').element.checked).toBe(true)
+    expect(wrapper.get('input[name="repetir[]"][value="estacion"]').element.checked).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('reabre el formulario con los valores repetidos y los importes vacíos', async () => {
+    const wrapper = mount(TripOperationsDetailPage, {
+      props: {
+        data: {
+          ...data,
+          canRegisterCosts: true,
+          links: { ...data.links, fuel: '/mantenimiento/viajes/operativos/42/combustible' },
+          entryForm: { type: 'fuel', values: {}, repeat: { fecha: '2026-11-03T10:30', moneda: 'ARS', cotizacion: '1', tramo_id: '1' } },
+          options: { expenseCategories: [], paymentMethods: [], currencies: [{ code: 'ARS', label: 'Peso argentino' }] },
+        },
+      },
+    })
+
+    await nextTick()
+    expect(wrapper.get('input[name="fecha"]').element.value).toBe('2026-11-03T10:30')
+    expect(wrapper.get('input[name="litros"]').element.value).toBe('')
+    expect(wrapper.get('input[name="importe"]').element.value).toBe('')
+    expect(wrapper.get('input[name="repetir[]"][value="fecha"]').element.checked).toBe(true)
+    expect(wrapper.get('input[name="repetir[]"][value="moneda"]').element.checked).toBe(true)
+    expect(wrapper.get('input[name="repetir[]"][value="tramo_id"]').element.checked).toBe(true)
+    expect(wrapper.get('input[name="repetir[]"][value="estacion"]').element.checked).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('reabre el formulario con lo escrito cuando hubo un error de validación', async () => {
+    const wrapper = mount(TripOperationsDetailPage, {
+      props: {
+        data: {
+          ...data,
+          canRegisterCosts: true,
+          links: { ...data.links, expense: '/mantenimiento/viajes/operativos/42/gastos' },
+          entryForm: { type: 'expense', values: { fecha: '2026-11-03T10:30', importe: '1234', pagado_por: 'CHOFER' } },
+          options: { expenseCategories: [{ id: 1, label: 'Peaje' }], paymentMethods: [], currencies: [{ code: 'ARS', label: 'Peso argentino' }] },
+        },
+      },
+    })
+
+    await nextTick()
+    expect(wrapper.get('input[name="importe"]').element.value).toBe('1234')
+    expect(wrapper.get('select[name="pagado_por"]').element.value).toBe('CHOFER')
+    expect(wrapper.text()).toContain('Es costo del viaje y queda como gasto a reintegrar al chofer.')
+    wrapper.unmount()
+  })
+
+  it('reabre la edición con lo escrito cuando hubo un error de validación', async () => {
+    const wrapper = mount(TripOperationsDetailPage, {
+      props: {
+        data: {
+          ...data,
+          canRegisterCosts: true,
+          links: { ...data.links, fuel: '/mantenimiento/viajes/operativos/42/combustible' },
+          fuel: [{ id: 5, fecha: '2026-11-03 09:00:00', litros: 80, importe: 40000, moneda: 'ARS', importe_ars: 40000, estacion: 'YPF' }],
+          entryForm: { type: 'fuel', editing_id: 5, values: { fecha: '2026-11-03T10:30', litros: '120', importe: '90000' } },
+          options: { expenseCategories: [], paymentMethods: [], currencies: [{ code: 'ARS', label: 'Peso argentino' }] },
+        },
+      },
+    })
+
+    await nextTick()
+    expect(wrapper.get('input[name="litros"]').element.value).toBe('120')
+    expect(wrapper.get('input[name="importe"]').element.value).toBe('90000')
+    expect(wrapper.text()).toContain('Editar carga de combustible')
+    wrapper.unmount()
+  })
+
+  it('filtra los movimientos y muestra tarjetas móviles con detalle', async () => {
+    const wrapper = mount(TripOperationsDetailPage, {
+      props: {
+        data: {
+          ...data,
+          canRegisterCosts: true,
+          links: { ...data.links, fuel: '/mantenimiento/viajes/operativos/42/combustible', expense: '/mantenimiento/viajes/operativos/42/gastos', cash: '/mantenimiento/viajes/operativos/42/caja' },
+          fuel: [{ id: 1, fecha: '2026-10-20 10:00:00', litros: 100, importe: 50000, moneda: 'ARS', importe_ars: 50000, estacion: 'YPF' }],
+          expenses: [{ id: 1, fecha: '2026-10-20 11:00:00', importe: 20000, moneda: 'ARS', importe_ars: 20000, categoria: 'Peaje', pagado_por: 'EMPRESA' }],
+          cashMovements: [{ id: 1, tipo: 'ANTICIPO', fecha: '2026-10-20 07:00:00', importe: 100000, moneda: 'ARS', importe_ars: 100000 }],
+          options: { expenseCategories: [], paymentMethods: [], currencies: [{ code: 'ARS', label: 'Peso argentino' }] },
+        },
+      },
+    })
+
+    expect(wrapper.find('ul.md\\:hidden').exists()).toBe(true)
+    expect(wrapper.findAll('summary').filter((summary) => summary.text() === 'Ver detalle').length).toBeGreaterThan(0)
+
+    const expenseFilter = wrapper.findAll('button').find((button) => button.text().startsWith('Gastos'))
+    await expenseFilter.trigger('click')
+    await nextTick()
+
+    expect(wrapper.text()).toContain('Peaje')
+    expect(wrapper.text()).not.toContain('YPF')
     wrapper.unmount()
   })
 })

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { ArrowDownTrayIcon, BanknotesIcon, BeakerIcon, CheckCircleIcon, ReceiptPercentIcon, XCircleIcon } from '@heroicons/vue/24/outline'
 import PageHeading from './components/PageHeading.vue'
 import PanelCard from './components/PanelCard.vue'
@@ -35,24 +35,96 @@ const newLegCustomerId = ref('')
 const newLegCurrency = ref('ARS')
 const newLegExchangeRate = ref('1')
 const setNewLegCurrency = () => { newLegExchangeRate.value = newLegCurrency.value === 'ARS' ? '1' : '' }
+const entryFormState = computed(() => props.data.entryForm ?? null)
 const entryDialog = ref(null)
 const activeEntryModal = ref('')
 const editingEntry = ref(null)
-const openEntryModal = (type) => {
+const showMore = ref(false)
+const movementFilter = ref('all')
+const repeatChoices = ref({
+  fecha: true,
+  moneda: true,
+  tramo_id: true,
+  estacion: false,
+  categoria_id: true,
+  pagado_por: true,
+  medio_pago_id: false,
+  tipo: true,
+})
+
+const entryFields = {
+  fuel: ['fecha', 'litros', 'importe', 'moneda', 'cotizacion', 'kilometraje', 'estacion', 'comprobante', 'observaciones', 'tramo_id'],
+  expense: ['fecha', 'importe', 'categoria_id', 'moneda', 'cotizacion', 'medio_pago_id', 'tramo_id', 'pagado_por', 'comprobante', 'observaciones'],
+  cash: ['tipo', 'fecha', 'importe', 'moneda', 'cotizacion', 'observaciones'],
+}
+
+function emptyEntry() {
+  return {
+    fecha: nowLocal(),
+    litros: '',
+    importe: '',
+    moneda: 'ARS',
+    cotizacion: '1',
+    kilometraje: '',
+    estacion: '',
+    comprobante: '',
+    observaciones: '',
+    tramo_id: '',
+    categoria_id: '',
+    medio_pago_id: '',
+    pagado_por: 'EMPRESA',
+    tipo: 'ANTICIPO',
+  }
+}
+
+const entryValues = ref(emptyEntry())
+
+function toInputDateTime(value) {
+  return String(value ?? '').replace(' ', 'T').slice(0, 16)
+}
+
+function entryFromValues(values) {
+  const entry = emptyEntry()
+  for (const [key, value] of Object.entries(values ?? {})) {
+    if (Object.prototype.hasOwnProperty.call(entry, key) && value !== null && value !== undefined) {
+      entry[key] = String(value)
+    }
+  }
+  entry.fecha = toInputDateTime(entry.fecha) || nowLocal()
+
+  return entry
+}
+
+function entryFromRecord(type, record) {
+  const entry = emptyEntry()
+  for (const field of entryFields[type] ?? []) {
+    if (record?.[field] !== null && record?.[field] !== undefined) {
+      entry[field] = String(record[field])
+    }
+  }
+  entry.fecha = toInputDateTime(record?.fecha) || nowLocal()
+
+  return entry
+}
+
+const openEntryModal = (type, preset = null, keepMoreOpen = false) => {
   editingEntry.value = null
   activeEntryModal.value = type
+  entryValues.value = preset ? { ...emptyEntry(), ...preset } : emptyEntry()
+  showMore.value = keepMoreOpen
   nextTick(() => entryDialog.value?.showModal())
 }
 const openEditModal = (type, entry) => {
   editingEntry.value = entry
   activeEntryModal.value = type
+  entryValues.value = entryFromRecord(type, entry)
+  showMore.value = true
   nextTick(() => entryDialog.value?.showModal())
 }
 const movementUrl = (type, id, remove = false) => {
   const segment = { fuel: 'combustible', expense: 'gastos', cash: 'caja' }[type]
   return `${props.data.links?.detail ?? ''}/${segment}/${id}${remove ? '/eliminar' : ''}`
 }
-const inputDateTime = (value) => String(value ?? '').replace(' ', 'T').slice(0, 16)
 const confirmDelete = (event, label) => {
   if (!window.confirm(`¿Quitar ${label}? Se conservará en el historial de auditoría y dejará de incluirse en los totales.`)) event.preventDefault()
 }
@@ -60,6 +132,65 @@ const handleEntryDialogClose = () => {
   activeEntryModal.value = ''
   editingEntry.value = null
 }
+const payerExplanation = computed(() => ({
+  EMPRESA: 'Es costo del viaje.',
+  CHOFER: 'Es costo del viaje y queda como gasto a reintegrar al chofer.',
+  CAJA: 'Es costo del viaje pagado con la caja entregada.',
+}[entryValues.value.pagado_por] ?? ''))
+const repeatOptions = (type) => ({
+  fuel: [
+    { field: 'fecha', label: 'Fecha' },
+    { field: 'moneda', label: 'Moneda y cotización' },
+    { field: 'tramo_id', label: 'Tramo' },
+    { field: 'estacion', label: 'Estación' },
+  ],
+  expense: [
+    { field: 'fecha', label: 'Fecha' },
+    { field: 'moneda', label: 'Moneda y cotización' },
+    { field: 'tramo_id', label: 'Tramo' },
+    { field: 'categoria_id', label: 'Categoría' },
+    { field: 'pagado_por', label: 'Pagador' },
+    { field: 'medio_pago_id', label: 'Medio de pago' },
+  ],
+  cash: [
+    { field: 'fecha', label: 'Fecha' },
+    { field: 'moneda', label: 'Moneda y cotización' },
+    { field: 'tipo', label: 'Tipo' },
+  ],
+}[type] ?? [])
+onMounted(() => {
+  const state = entryFormState.value
+  if (!state) return
+
+  const type = state.type
+  if (state.mode !== 'error') {
+    const selected = Object.keys(state.repeat ?? {})
+    repeatChoices.value = {
+      fecha: selected.includes('fecha'),
+      moneda: selected.includes('moneda'),
+      tramo_id: selected.includes('tramo_id'),
+      estacion: selected.includes('estacion'),
+      categoria_id: selected.includes('categoria_id'),
+      pagado_por: selected.includes('pagado_por'),
+      medio_pago_id: selected.includes('medio_pago_id'),
+      tipo: selected.includes('tipo'),
+    }
+  }
+  const preset = entryFromValues(Object.keys(state.values ?? {}).length ? state.values : (state.repeat ?? {}))
+  if (state.editing_id) {
+    const records = type === 'fuel' ? fuel.value : type === 'expense' ? expenses.value : cashMovements.value
+    const record = records.find((row) => String(row.id) === String(state.editing_id))
+    if (record) {
+      openEditModal(type, record)
+      if (Object.keys(state.values ?? {}).length) {
+        entryValues.value = entryFromValues({ ...entryFromRecord(type, record), ...state.values })
+        showMore.value = true
+      }
+      return
+    }
+  }
+  openEntryModal(type, preset, true)
+})
 const statusTone = {
   PLANIFICADO: 'bg-info-subtle text-info-strong',
   EN_CURSO: 'bg-success-subtle text-success-strong',
@@ -69,6 +200,100 @@ const statusTone = {
 const cashTypeLabel = { CAJA_INICIAL: 'Caja inicial', ANTICIPO: 'Anticipo', RETIRO: 'Retiro', DEVOLUCION: 'Devolución' }
 
 const paidByLabel = { EMPRESA: 'Empresa', CHOFER: 'Chofer', CAJA: 'Caja del chofer' }
+const movementTypeLabel = { fuel: 'Combustible', expense: 'Gasto', cash: 'Caja' }
+const movementFilters = [
+  { value: 'all', label: 'Todos' },
+  { value: 'fuel', label: 'Combustible' },
+  { value: 'expense', label: 'Gastos' },
+  { value: 'cash', label: 'Caja' },
+]
+const moneyDetail = (row) => (row.moneda && row.moneda !== 'ARS'
+  ? `${money(row.importe, row.moneda)} · cotización ${number(row.cotizacion)}`
+  : null)
+const movements = computed(() => {
+  const rows = []
+  for (const row of fuel.value) {
+    rows.push({
+      key: `fuel-${row.id}`,
+      type: 'fuel',
+      id: row.id,
+      record: row,
+      fecha: row.fecha,
+      concepto: row.estacion ? `Combustible · ${row.estacion}` : 'Combustible',
+      importe: row.importe,
+      moneda: row.moneda,
+      importe_ars: row.importe_ars,
+      pagadorLabel: 'Empresa',
+      detalle: [
+        ['Litros', row.litros === null || row.litros === undefined ? null : `${number(row.litros)} L`],
+        ['Odómetro', row.kilometraje === null || row.kilometraje === undefined ? null : `${number(row.kilometraje)} km`],
+        ['Estación', row.estacion],
+        ['Comprobante', row.comprobante],
+        ['Tramo', legLabel(row.tramo_id)],
+        ['Observaciones', row.observaciones],
+        ['Moneda', moneyDetail(row)],
+      ],
+    })
+  }
+  for (const row of expenses.value) {
+    rows.push({
+      key: `expense-${row.id}`,
+      type: 'expense',
+      id: row.id,
+      record: row,
+      fecha: row.fecha,
+      concepto: row.categoria || 'Gasto',
+      importe: row.importe,
+      moneda: row.moneda,
+      importe_ars: row.importe_ars,
+      pagadorLabel: paidByLabel[row.pagado_por] ?? 'Empresa',
+      detalle: [
+        ['Categoría', row.categoria || 'Sin categoría'],
+        ['Medio de pago', row.medio_pago],
+        ['Tramo', legLabel(row.tramo_id)],
+        ['Pagador', paidByLabel[row.pagado_por] ?? 'Empresa'],
+        ['Comprobante', row.comprobante],
+        ['Observaciones', row.observaciones],
+        ['Moneda', moneyDetail(row)],
+      ],
+    })
+  }
+  for (const row of cashMovements.value) {
+    rows.push({
+      key: `cash-${row.id}`,
+      type: 'cash',
+      id: row.id,
+      record: row,
+      fecha: row.fecha,
+      concepto: cashTypeLabel[row.tipo] ?? row.tipo,
+      importe: row.importe,
+      moneda: row.moneda,
+      importe_ars: row.importe_ars,
+      pagadorLabel: '—',
+      detalle: [
+        ['Tipo', cashTypeLabel[row.tipo] ?? row.tipo],
+        ['Observaciones', row.observaciones],
+        ['Moneda', moneyDetail(row)],
+      ],
+    })
+  }
+
+  return rows.sort((left, right) => String(right.fecha ?? '').localeCompare(String(left.fecha ?? '')))
+})
+const movementCounts = computed(() => ({
+  all: movements.value.length,
+  fuel: fuel.value.length,
+  expense: expenses.value.length,
+  cash: cashMovements.value.length,
+}))
+const filteredMovements = computed(() => movementFilter.value === 'all'
+  ? movements.value
+  : movements.value.filter((movement) => movement.type === movementFilter.value))
+const movementDetail = (movement) => (movement.detalle ?? []).filter(([, value]) => value !== null && value !== undefined && value !== '')
+const movementDeleteLabel = (type) => ({ fuel: 'esta carga de combustible', expense: 'este gasto', cash: 'este movimiento de caja' }[type] ?? 'este movimiento')
+const filterClass = (value) => movementFilter.value === value
+  ? 'inline-flex items-center gap-1 rounded-full border border-primary bg-primary-subtle px-3 py-1.5 text-sm font-semibold text-primary'
+  : 'inline-flex items-center gap-1 rounded-full border border-border bg-surface px-3 py-1.5 text-sm font-semibold text-ink-muted hover:border-primary hover:text-primary'
 const drivers = computed(() => assignments.value.filter((row) => row.rol === 'CHOFER'))
 const today = computed(() => new Date().toISOString().slice(0, 10))
 const settlementNote = computed(() => {
@@ -147,15 +372,15 @@ const facts = computed(() => {
     <section v-if="canRegisterCosts" aria-label="Cargar movimientos del viaje" class="mb-5 grid gap-3 sm:grid-cols-3">
       <button type="button" aria-haspopup="dialog" @click="openEntryModal('fuel')" class="group flex min-h-16 items-center gap-3 rounded-xl border border-border bg-surface-raised px-4 py-3 text-left shadow-card transition hover:border-primary hover:bg-primary-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
         <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary-subtle text-primary"><BeakerIcon class="size-5" aria-hidden="true" /></span>
-        <span><span class="block text-sm font-bold text-ink">Cargar combustible</span><span class="mt-0.5 block text-xs text-ink-muted">Registrar una carga</span></span>
+        <span><span class="block text-sm font-bold text-ink">+ Combustible</span><span class="mt-0.5 block text-xs text-ink-muted">Registrar una carga</span></span>
       </button>
       <button type="button" aria-haspopup="dialog" @click="openEntryModal('expense')" class="group flex min-h-16 items-center gap-3 rounded-xl border border-border bg-surface-raised px-4 py-3 text-left shadow-card transition hover:border-primary hover:bg-primary-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
         <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary-subtle text-primary"><ReceiptPercentIcon class="size-5" aria-hidden="true" /></span>
-        <span><span class="block text-sm font-bold text-ink">Cargar gasto</span><span class="mt-0.5 block text-xs text-ink-muted">Peajes, viáticos y otros</span></span>
+        <span><span class="block text-sm font-bold text-ink">+ Gasto</span><span class="mt-0.5 block text-xs text-ink-muted">Peajes, viáticos y otros</span></span>
       </button>
       <button type="button" aria-haspopup="dialog" @click="openEntryModal('cash')" class="group flex min-h-16 items-center gap-3 rounded-xl border border-border bg-surface-raised px-4 py-3 text-left shadow-card transition hover:border-primary hover:bg-primary-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
         <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary-subtle text-primary"><BanknotesIcon class="size-5" aria-hidden="true" /></span>
-        <span><span class="block text-sm font-bold text-ink">Caja del chofer</span><span class="mt-0.5 block text-xs text-ink-muted">Anticipo, retiro o devolución</span></span>
+        <span><span class="block text-sm font-bold text-ink">+ Movimiento de caja</span><span class="mt-0.5 block text-xs text-ink-muted">Caja inicial, anticipo o devolución</span></span>
       </button>
     </section>
 
@@ -415,46 +640,90 @@ const facts = computed(() => {
       </PanelCard>
     </div>
 
-    <div class="space-y-5">
-      <PanelCard title="Combustible" :count="fuel.length">
-        <p v-if="!canRegisterCosts" class="mb-4 rounded-lg bg-surface p-3 text-sm text-ink-muted">El viaje está cancelado o finalizado; sus costos quedan de solo lectura.</p>
-        <p v-if="fuel.length === 0" class="text-sm text-ink-muted">Todavía no hay cargas de combustible.</p>
-        <div v-else class="overflow-x-auto">
+    <PanelCard title="Movimientos del viaje" :count="movements.length" class="mt-5">
+      <p v-if="!canRegisterCosts" class="mb-4 rounded-lg bg-surface p-3 text-sm text-ink-muted">El viaje está cancelado o finalizado; sus movimientos quedan de solo lectura.</p>
+      <div class="mb-4 flex flex-wrap gap-2" role="group" aria-label="Filtrar movimientos">
+        <button v-for="filter in movementFilters" :key="filter.value" type="button" :aria-pressed="movementFilter === filter.value" :class="filterClass(filter.value)" @click="movementFilter = filter.value">
+          {{ filter.label }} <span class="rounded-full bg-surface px-1.5 py-0.5 text-xs">{{ movementCounts[filter.value] }}</span>
+        </button>
+      </div>
+      <p v-if="movements.length === 0" class="text-sm text-ink-muted">Todavía no hay movimientos cargados en este viaje.</p>
+      <p v-else-if="filteredMovements.length === 0" class="text-sm text-ink-muted">No hay movimientos de este tipo en el viaje.</p>
+      <template v-else>
+        <div class="hidden overflow-x-auto md:block">
           <table class="w-full min-w-[52rem] text-left text-sm">
-            <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-3 py-2">Fecha</th><th class="px-3 py-2 text-right">Litros</th><th class="px-3 py-2 text-right">Importe</th><th class="px-3 py-2 text-right">ARS</th><th class="px-3 py-2 text-right">Odómetro</th><th class="px-3 py-2">Tramo</th><th class="px-3 py-2">Estación</th><th class="px-3 py-2">Comprobante</th><th class="px-3 py-2">Observaciones</th><th v-if="canRegisterCosts" class="px-3 py-2">Acciones</th></tr></thead>
+            <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
+              <tr>
+                <th class="px-3 py-2">Fecha</th>
+                <th class="px-3 py-2">Tipo</th>
+                <th class="px-3 py-2">Concepto</th>
+                <th class="px-3 py-2 text-right">Importe</th>
+                <th class="px-3 py-2">Pagador</th>
+                <th v-if="canRegisterCosts" class="px-3 py-2">Acciones</th>
+              </tr>
+            </thead>
             <tbody class="divide-y divide-border-subtle">
-              <tr v-for="load in fuel" :key="load.id"><td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ fmtDateTime(load.fecha) }}</td><td class="px-3 py-2 text-right text-ink">{{ number(load.litros) }}</td><td class="px-3 py-2 text-right text-ink-muted">{{ money(load.importe, load.moneda) }}</td><td class="px-3 py-2 text-right font-semibold text-ink">{{ money(load.importe_ars) }}</td><td class="px-3 py-2 text-right text-ink-muted">{{ load.kilometraje === null ? '—' : number(load.kilometraje) }}</td><td class="px-3 py-2 text-ink-muted">{{ legLabel(load.tramo_id) }}</td><td class="px-3 py-2 text-ink-muted">{{ load.estacion || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ load.comprobante || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ load.observaciones || '—' }}</td><td v-if="canRegisterCosts" class="whitespace-nowrap px-3 py-2"><div class="flex gap-2"><button type="button" :class="secondaryButton" @click="openEditModal('fuel', load)">Editar</button><form method="post" :action="movementUrl('fuel', load.id, true)" @submit="confirmDelete($event, 'esta carga de combustible')"><input type="hidden" :name="csrf.name" :value="csrf.hash" /><button type="submit" :class="dangerButton">Quitar</button></form></div></td></tr>
+              <tr v-for="movement in filteredMovements" :key="movement.key">
+                <td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ fmtDateTime(movement.fecha) }}</td>
+                <td class="px-3 py-2"><span class="inline-flex rounded-full bg-surface-subtle px-2 py-0.5 text-xs font-semibold text-ink-muted">{{ movementTypeLabel[movement.type] }}</span></td>
+                <td class="px-3 py-2">
+                  <p class="font-semibold text-ink">{{ movement.concepto }}</p>
+                  <details class="mt-1">
+                    <summary class="cursor-pointer text-xs font-semibold text-primary">Ver detalle</summary>
+                    <dl class="mt-2 grid gap-1 text-xs text-ink-muted sm:grid-cols-2">
+                      <div v-for="([label, value]) in movementDetail(movement)" :key="label"><dt class="font-semibold">{{ label }}</dt><dd>{{ value }}</dd></div>
+                    </dl>
+                  </details>
+                </td>
+                <td class="px-3 py-2 text-right">
+                  <p class="font-semibold text-ink">{{ money(movement.importe, movement.moneda) }}</p>
+                  <p v-if="movement.moneda !== 'ARS'" class="text-xs text-ink-muted">{{ money(movement.importe_ars) }}</p>
+                </td>
+                <td class="px-3 py-2 text-ink-muted">{{ movement.pagadorLabel }}</td>
+                <td v-if="canRegisterCosts" class="whitespace-nowrap px-3 py-2">
+                  <div class="flex gap-2">
+                    <button type="button" :class="secondaryButton" @click="openEditModal(movement.type, movement.record)">Editar</button>
+                    <form method="post" :action="movementUrl(movement.type, movement.id, true)" @submit="confirmDelete($event, movementDeleteLabel(movement.type))">
+                      <input type="hidden" :name="csrf.name" :value="csrf.hash" />
+                      <button type="submit" :class="dangerButton">Quitar</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
-      </PanelCard>
 
-      <PanelCard title="Gastos" :count="expenses.length">
-        <p v-if="!canRegisterCosts" class="mb-4 rounded-lg bg-surface p-3 text-sm text-ink-muted">El viaje está cancelado o finalizado; sus costos quedan de solo lectura.</p>
-        <p v-if="expenses.length === 0" class="text-sm text-ink-muted">Todavía no hay gastos cargados.</p>
-        <div v-else class="overflow-x-auto">
-          <table class="w-full min-w-[52rem] text-left text-sm">
-            <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-3 py-2">Fecha</th><th class="px-3 py-2">Categoría</th><th class="px-3 py-2 text-right">Importe</th><th class="px-3 py-2 text-right">ARS</th><th class="px-3 py-2">Medio</th><th class="px-3 py-2">Tramo</th><th class="px-3 py-2">Pagado por</th><th class="px-3 py-2">Comprobante</th><th class="px-3 py-2">Observaciones</th><th v-if="canRegisterCosts" class="px-3 py-2">Acciones</th></tr></thead>
-            <tbody class="divide-y divide-border-subtle">
-              <tr v-for="expense in expenses" :key="expense.id"><td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ fmtDateTime(expense.fecha) }}</td><td class="px-3 py-2 text-ink">{{ expense.categoria || 'Sin categoría' }}</td><td class="px-3 py-2 text-right text-ink-muted">{{ money(expense.importe, expense.moneda) }}</td><td class="px-3 py-2 text-right font-semibold text-ink">{{ money(expense.importe_ars) }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.medio_pago || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ legLabel(expense.tramo_id) }}</td><td class="px-3 py-2 text-ink-muted">{{ paidByLabel[expense.pagado_por] ?? 'Empresa' }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.comprobante || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.observaciones || '—' }}</td><td v-if="canRegisterCosts" class="whitespace-nowrap px-3 py-2"><div class="flex gap-2"><button type="button" :class="secondaryButton" @click="openEditModal('expense', expense)">Editar</button><form method="post" :action="movementUrl('expense', expense.id, true)" @submit="confirmDelete($event, 'este gasto')"><input type="hidden" :name="csrf.name" :value="csrf.hash" /><button type="submit" :class="dangerButton">Quitar</button></form></div></td></tr>
-            </tbody>
-          </table>
-        </div>
-      </PanelCard>
-
-      <PanelCard title="Caja del chofer" :count="cashMovements.length">
-        <p v-if="!canRegisterCosts" class="mb-4 rounded-lg bg-surface p-3 text-sm text-ink-muted">El viaje está cancelado o finalizado; la caja queda de solo lectura.</p>
-        <p v-if="cashMovements.length === 0" class="text-sm text-ink-muted">Todavía no hay movimientos de caja.</p>
-        <div v-else class="overflow-x-auto">
-          <table class="w-full min-w-[42rem] text-left text-sm">
-            <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-3 py-2">Fecha</th><th class="px-3 py-2">Tipo</th><th class="px-3 py-2 text-right">Importe</th><th class="px-3 py-2 text-right">ARS</th><th class="px-3 py-2">Observaciones</th><th v-if="canRegisterCosts" class="px-3 py-2">Acciones</th></tr></thead>
-            <tbody class="divide-y divide-border-subtle">
-              <tr v-for="movement in cashMovements" :key="movement.id"><td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ fmtDateTime(movement.fecha) }}</td><td class="px-3 py-2 text-ink">{{ cashTypeLabel[movement.tipo] ?? movement.tipo }}</td><td class="px-3 py-2 text-right text-ink-muted">{{ money(movement.importe, movement.moneda) }}</td><td class="px-3 py-2 text-right font-semibold text-ink">{{ money(movement.importe_ars) }}</td><td class="px-3 py-2 text-ink-muted">{{ movement.observaciones || '—' }}</td><td v-if="canRegisterCosts" class="whitespace-nowrap px-3 py-2"><div class="flex gap-2"><button type="button" :class="secondaryButton" @click="openEditModal('cash', movement)">Editar</button><form method="post" :action="movementUrl('cash', movement.id, true)" @submit="confirmDelete($event, 'este movimiento de caja')"><input type="hidden" :name="csrf.name" :value="csrf.hash" /><button type="submit" :class="dangerButton">Quitar</button></form></div></td></tr>
-            </tbody>
-          </table>
-        </div>
-      </PanelCard>
-    </div>
+        <ul class="space-y-3 md:hidden">
+          <li v-for="movement in filteredMovements" :key="movement.key" class="rounded-xl border border-border-subtle bg-surface p-4">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <p class="text-xs font-semibold text-ink-muted">{{ fmtDateTime(movement.fecha) }} · {{ movementTypeLabel[movement.type] }}</p>
+                <p class="mt-1 break-words text-sm font-bold text-ink">{{ movement.concepto }}</p>
+                <p class="mt-0.5 text-xs text-ink-muted">Pagador: {{ movement.pagadorLabel }}</p>
+              </div>
+              <div class="shrink-0 text-right">
+                <p class="text-sm font-bold text-ink">{{ money(movement.importe, movement.moneda) }}</p>
+                <p v-if="movement.moneda !== 'ARS'" class="text-xs text-ink-muted">{{ money(movement.importe_ars) }}</p>
+              </div>
+            </div>
+            <details class="mt-3 border-t border-border-subtle pt-3">
+              <summary class="cursor-pointer text-xs font-semibold text-primary">Ver detalle</summary>
+              <dl class="mt-2 grid gap-1 text-xs text-ink-muted">
+                <div v-for="([label, value]) in movementDetail(movement)" :key="label"><dt class="font-semibold">{{ label }}</dt><dd>{{ value }}</dd></div>
+              </dl>
+            </details>
+            <div v-if="canRegisterCosts" class="mt-3 flex gap-2 border-t border-border-subtle pt-3">
+              <button type="button" :class="secondaryButton" @click="openEditModal(movement.type, movement.record)">Editar</button>
+              <form method="post" :action="movementUrl(movement.type, movement.id, true)" @submit="confirmDelete($event, movementDeleteLabel(movement.type))">
+                <input type="hidden" :name="csrf.name" :value="csrf.hash" />
+                <button type="submit" :class="dangerButton">Quitar</button>
+              </form>
+            </div>
+          </li>
+        </ul>
+      </template>
+    </PanelCard>
 
     <PanelCard title="Paradas operativas" :count="stops.length" class="mt-5">
       <p v-if="stops.length === 0" class="text-sm text-ink-muted">No hay paradas operativas cargadas. Los tramos con cliente y fletes se administran en la sección Tramos.</p>
@@ -478,64 +747,122 @@ const facts = computed(() => {
       </ol>
     </PanelCard>
 
-    <dialog v-if="canRegisterCosts" ref="entryDialog" aria-labelledby="entry-dialog-title" @close="handleEntryDialogClose" @click.self="entryDialog?.close()" class="m-auto w-[min(48rem,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-xl border border-border bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
+    <dialog v-if="canRegisterCosts" ref="entryDialog" aria-labelledby="entry-dialog-title" @close="handleEntryDialogClose" @click.self="entryDialog?.close()" class="fixed inset-0 m-0 ml-auto h-full max-h-none w-full max-w-none overflow-y-auto rounded-none border border-border bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60 sm:w-[min(36rem,100vw)] sm:rounded-l-xl sm:border-l">
       <div v-if="activeEntryModal" class="p-5 sm:p-6">
         <div class="mb-5 flex items-start justify-between gap-4 border-b border-border-subtle pb-4">
           <div>
-            <h2 id="entry-dialog-title" class="text-lg font-bold text-ink">{{ editingEntry ? (activeEntryModal === 'fuel' ? 'Editar carga de combustible' : activeEntryModal === 'expense' ? 'Editar gasto' : 'Editar movimiento de caja') : (activeEntryModal === 'fuel' ? 'Cargar combustible' : activeEntryModal === 'expense' ? 'Cargar gasto' : 'Movimiento de caja del chofer') }}</h2>
-            <p class="mt-1 text-sm text-ink-muted">Viaje #{{ trip.numero }}</p>
+            <h2 id="entry-dialog-title" class="text-lg font-bold text-ink">{{ editingEntry ? (activeEntryModal === 'fuel' ? 'Editar carga de combustible' : activeEntryModal === 'expense' ? 'Editar gasto' : 'Editar movimiento de caja') : (activeEntryModal === 'fuel' ? 'Combustible' : activeEntryModal === 'expense' ? 'Gasto' : 'Movimiento de caja') }}</h2>
+            <p class="mt-1 text-sm text-ink-muted">Viaje #{{ trip.numero }} · Los campos con * son obligatorios.</p>
           </div>
           <button type="button" aria-label="Cerrar" @click="entryDialog?.close()" class="grid size-9 shrink-0 place-items-center rounded-lg text-ink-muted hover:bg-surface-subtle hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">×</button>
         </div>
 
         <form v-if="activeEntryModal === 'fuel'" method="post" :action="editingEntry ? movementUrl('fuel', editingEntry.id) : data.links?.fuel">
           <input type="hidden" :name="csrf.name" :value="csrf.hash" />
-          <p class="text-sm text-ink-muted">Los litros y el odómetro permiten calcular el consumo del viaje.</p>
+          <p class="text-sm text-ink-muted">Cargá lo habitual. El resto queda en Más datos.</p>
           <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Fecha y hora</span><input type="datetime-local" name="fecha" :value="editingEntry ? inputDateTime(editingEntry.fecha) : nowLocal()" required :class="fieldClass" /></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Litros</span><input type="number" name="litros" min="0.01" step="0.01" :value="editingEntry?.litros ?? ''" required :class="fieldClass" /></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Importe</span><input type="number" name="importe" min="0.01" step="0.01" :value="editingEntry?.importe ?? ''" required :class="fieldClass" /></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select name="moneda" :value="editingEntry?.moneda ?? 'ARS'" :class="fieldClass"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }} · {{ currency.label }}</option></select></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cotización a ARS</span><input type="number" name="cotizacion" min="0.000001" step="0.000001" :value="editingEntry?.cotizacion ?? 1" :class="fieldClass" /></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Odómetro</span><input type="number" name="kilometraje" min="1" step="1" :value="editingEntry?.kilometraje ?? ''" :class="fieldClass" /></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Estación</span><input type="text" name="estacion" maxlength="120" :value="editingEntry?.estacion ?? ''" :class="fieldClass" /></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Tramo (opcional)</span><select name="tramo_id" :value="editingEntry?.tramo_id ?? ''" :class="fieldClass"><option value="">Todo el viaje</option><option v-for="leg in legs" :key="leg.id" :value="leg.id">{{ leg.orden }} · {{ leg.origen }} → {{ leg.destino }}</option></select></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Comprobante</span><input type="text" name="comprobante" maxlength="80" :value="editingEntry?.comprobante ?? ''" :class="fieldClass" /></label>
-            <label class="block sm:col-span-2 lg:col-span-3"><span class="mb-1 block text-xs font-semibold text-ink-muted">Observaciones</span><input type="text" name="observaciones" maxlength="500" :value="editingEntry?.observaciones ?? ''" :class="fieldClass" /></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Fecha y hora <span class="text-danger-strong" aria-hidden="true">*</span></span><input v-model="entryValues.fecha" type="datetime-local" name="fecha" required :class="fieldClass" /></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Litros <span class="text-danger-strong" aria-hidden="true">*</span></span><input v-model="entryValues.litros" type="number" name="litros" min="0.01" step="0.01" required :class="fieldClass" /></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Importe <span class="text-danger-strong" aria-hidden="true">*</span></span><input v-model="entryValues.importe" type="number" name="importe" min="0.01" step="0.01" required :class="fieldClass" /></label>
           </div>
-          <div class="mt-5 flex justify-end gap-2 border-t border-border-subtle pt-4"><button type="button" @click="entryDialog?.close()" :class="secondaryButton">Volver</button><button type="submit" :class="primaryButton">{{ editingEntry ? 'Guardar cambios' : 'Guardar combustible' }}</button></div>
+          <details class="mt-4 rounded-lg border border-border-subtle bg-surface p-3" :open="showMore" @toggle="showMore = $event.target.open">
+            <summary class="cursor-pointer text-sm font-semibold text-ink">Agregar odómetro, estación, comprobante o tramo</summary>
+            <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select v-model="entryValues.moneda" name="moneda" :class="fieldClass"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }} · {{ currency.label }}</option></select></label>
+              <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cotización a ARS</span><input v-model="entryValues.cotizacion" type="number" name="cotizacion" min="0.000001" step="0.000001" :class="fieldClass" /></label>
+              <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Odómetro</span><input v-model="entryValues.kilometraje" type="number" name="kilometraje" min="1" step="1" :class="fieldClass" /></label>
+              <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Estación</span><input v-model="entryValues.estacion" type="text" name="estacion" maxlength="120" :class="fieldClass" /></label>
+              <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Tramo</span><select v-model="entryValues.tramo_id" name="tramo_id" :class="fieldClass"><option value="">Todo el viaje</option><option v-for="leg in legs" :key="leg.id" :value="String(leg.id)">{{ leg.orden }} · {{ leg.origen }} → {{ leg.destino }}</option></select><span class="mt-1 block text-xs text-ink-muted">El combustible siempre afecta al resultado del viaje; solo se imputa a un tramo si lo asignás.</span></label>
+              <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Comprobante</span><input v-model="entryValues.comprobante" type="text" name="comprobante" maxlength="80" :class="fieldClass" /></label>
+              <label class="block sm:col-span-2 lg:col-span-3"><span class="mb-1 block text-xs font-semibold text-ink-muted">Observaciones</span><input v-model="entryValues.observaciones" type="text" name="observaciones" maxlength="500" :class="fieldClass" /></label>
+            </div>
+          </details>
+          <div v-if="!editingEntry" class="mt-4 rounded-lg bg-surface p-3">
+            <p class="text-xs font-semibold text-ink-muted">Al guardar y cargar otro, repetir</p>
+            <div class="mt-2 flex flex-wrap gap-x-4 gap-y-2">
+              <label v-for="choice in repeatOptions('fuel')" :key="choice.field" class="inline-flex items-center gap-1.5 text-sm text-ink">
+                <input v-model="repeatChoices[choice.field]" type="checkbox" name="repetir[]" :value="choice.field" class="size-4 rounded border-border text-primary" />
+                {{ choice.label }}
+              </label>
+            </div>
+            <p class="mt-2 text-xs text-ink-muted">El importe, los litros y el comprobante siempre se limpian.</p>
+          </div>
+          <div class="mt-5 flex flex-wrap justify-end gap-2 border-t border-border-subtle pt-4">
+            <button type="button" @click="entryDialog?.close()" :class="secondaryButton">Volver</button>
+            <button type="submit" :class="primaryButton">{{ editingEntry ? 'Guardar cambios' : 'Guardar' }}</button>
+            <button v-if="!editingEntry" type="submit" name="accion" value="otro" :class="secondaryButton">Guardar y cargar otro</button>
+          </div>
         </form>
 
         <form v-else-if="activeEntryModal === 'expense'" method="post" :action="editingEntry ? movementUrl('expense', editingEntry.id) : data.links?.expense">
           <input type="hidden" :name="csrf.name" :value="csrf.hash" />
-          <p class="text-sm text-ink-muted">Peajes, viáticos, carga/descarga y otros gastos del viaje.</p>
+          <p class="text-sm text-ink-muted">Cargá lo habitual. El resto queda en Más datos.</p>
           <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Categoría</span><select name="categoria_id" :value="editingEntry?.categoria_id ?? ''" :class="fieldClass"><option value="">Sin categoría</option><option v-for="category in options.expenseCategories" :key="category.id" :value="category.id">{{ category.label }}</option></select></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Fecha y hora</span><input type="datetime-local" name="fecha" :value="editingEntry ? inputDateTime(editingEntry.fecha) : nowLocal()" required :class="fieldClass" /></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Importe</span><input type="number" name="importe" min="0.01" step="0.01" :value="editingEntry?.importe ?? ''" required :class="fieldClass" /></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select name="moneda" :value="editingEntry?.moneda ?? 'ARS'" :class="fieldClass"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }} · {{ currency.label }}</option></select></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cotización a ARS</span><input type="number" name="cotizacion" min="0.000001" step="0.000001" :value="editingEntry?.cotizacion ?? 1" :class="fieldClass" /></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Medio de pago</span><select name="medio_pago_id" :value="editingEntry?.medio_pago_id ?? ''" :class="fieldClass"><option value="">Sin medio</option><option v-for="method in options.paymentMethods" :key="method.id" :value="method.id">{{ method.label }}</option></select></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Tramo (opcional)</span><select name="tramo_id" :value="editingEntry?.tramo_id ?? ''" :class="fieldClass"><option value="">Todo el viaje</option><option v-for="leg in legs" :key="leg.id" :value="leg.id">{{ leg.orden }} · {{ leg.origen }} → {{ leg.destino }}</option></select></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Pagado por</span><select name="pagado_por" :value="editingEntry?.pagado_por ?? 'EMPRESA'" :class="fieldClass"><option value="EMPRESA">Empresa</option><option value="CHOFER">Chofer (a reintegrar)</option><option value="CAJA">Caja del chofer</option></select></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Comprobante</span><input type="text" name="comprobante" maxlength="80" :value="editingEntry?.comprobante ?? ''" :class="fieldClass" /></label>
-            <label class="block sm:col-span-2 lg:col-span-3"><span class="mb-1 block text-xs font-semibold text-ink-muted">Observaciones</span><input type="text" name="observaciones" maxlength="500" :value="editingEntry?.observaciones ?? ''" :class="fieldClass" /></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Tipo</span><select v-model="entryValues.categoria_id" name="categoria_id" :class="fieldClass"><option value="">Sin categoría</option><option v-for="category in options.expenseCategories" :key="category.id" :value="String(category.id)">{{ category.label }}</option></select></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Fecha y hora <span class="text-danger-strong" aria-hidden="true">*</span></span><input v-model="entryValues.fecha" type="datetime-local" name="fecha" required :class="fieldClass" /></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Importe <span class="text-danger-strong" aria-hidden="true">*</span></span><input v-model="entryValues.importe" type="number" name="importe" min="0.01" step="0.01" required :class="fieldClass" /></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">¿Quién pagó? <span class="text-danger-strong" aria-hidden="true">*</span></span><select v-model="entryValues.pagado_por" name="pagado_por" :class="fieldClass"><option value="EMPRESA">Empresa</option><option value="CHOFER">Chofer</option><option value="CAJA">Caja del chofer</option></select></label>
           </div>
-          <div class="mt-5 flex justify-end gap-2 border-t border-border-subtle pt-4"><button type="button" @click="entryDialog?.close()" :class="secondaryButton">Volver</button><button type="submit" :class="primaryButton">{{ editingEntry ? 'Guardar cambios' : 'Guardar gasto' }}</button></div>
+          <p v-if="payerExplanation" class="mt-2 rounded-lg border border-info/30 bg-info-subtle px-3 py-2 text-xs text-info-strong">{{ payerExplanation }}</p>
+          <details class="mt-4 rounded-lg border border-border-subtle bg-surface p-3" :open="showMore" @toggle="showMore = $event.target.open">
+            <summary class="cursor-pointer text-sm font-semibold text-ink">Agregar moneda, medio de pago, comprobante o tramo</summary>
+            <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select v-model="entryValues.moneda" name="moneda" :class="fieldClass"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }} · {{ currency.label }}</option></select></label>
+              <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cotización a ARS</span><input v-model="entryValues.cotizacion" type="number" name="cotizacion" min="0.000001" step="0.000001" :class="fieldClass" /></label>
+              <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Medio de pago</span><select v-model="entryValues.medio_pago_id" name="medio_pago_id" :class="fieldClass"><option value="">Sin medio</option><option v-for="method in options.paymentMethods" :key="method.id" :value="String(method.id)">{{ method.label }}</option></select></label>
+              <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Tramo</span><select v-model="entryValues.tramo_id" name="tramo_id" :class="fieldClass"><option value="">Todo el viaje</option><option v-for="leg in legs" :key="leg.id" :value="String(leg.id)">{{ leg.orden }} · {{ leg.origen }} → {{ leg.destino }}</option></select><span class="mt-1 block text-xs text-ink-muted">El gasto siempre afecta al resultado del viaje; solo afecta al margen de un tramo cuando lo asignás a uno.</span></label>
+              <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Comprobante</span><input v-model="entryValues.comprobante" type="text" name="comprobante" maxlength="80" :class="fieldClass" /></label>
+              <label class="block sm:col-span-2 lg:col-span-3"><span class="mb-1 block text-xs font-semibold text-ink-muted">Observaciones</span><input v-model="entryValues.observaciones" type="text" name="observaciones" maxlength="500" :class="fieldClass" /></label>
+            </div>
+          </details>
+          <div v-if="!editingEntry" class="mt-4 rounded-lg bg-surface p-3">
+            <p class="text-xs font-semibold text-ink-muted">Al guardar y cargar otro, repetir</p>
+            <div class="mt-2 flex flex-wrap gap-x-4 gap-y-2">
+              <label v-for="choice in repeatOptions('expense')" :key="choice.field" class="inline-flex items-center gap-1.5 text-sm text-ink">
+                <input v-model="repeatChoices[choice.field]" type="checkbox" name="repetir[]" :value="choice.field" class="size-4 rounded border-border text-primary" />
+                {{ choice.label }}
+              </label>
+            </div>
+            <p class="mt-2 text-xs text-ink-muted">El importe y el comprobante siempre se limpian.</p>
+          </div>
+          <div class="mt-5 flex flex-wrap justify-end gap-2 border-t border-border-subtle pt-4">
+            <button type="button" @click="entryDialog?.close()" :class="secondaryButton">Volver</button>
+            <button type="submit" :class="primaryButton">{{ editingEntry ? 'Guardar cambios' : 'Guardar' }}</button>
+            <button v-if="!editingEntry" type="submit" name="accion" value="otro" :class="secondaryButton">Guardar y cargar otro</button>
+          </div>
         </form>
 
         <form v-else-if="activeEntryModal === 'cash'" method="post" :action="editingEntry ? movementUrl('cash', editingEntry.id) : data.links?.cash">
           <input type="hidden" :name="csrf.name" :value="csrf.hash" />
           <p class="text-sm text-ink-muted">La caja inicial, los anticipos y los retiros aumentan el importe a rendir, pero no son costo del viaje. Las devoluciones reducen el saldo pendiente.</p>
           <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Tipo</span><select name="tipo" :value="editingEntry?.tipo ?? 'ANTICIPO'" :class="fieldClass"><option value="CAJA_INICIAL">Caja inicial</option><option value="ANTICIPO">Anticipo</option><option value="RETIRO">Retiro</option><option value="DEVOLUCION">Devolución</option></select></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Fecha y hora</span><input type="datetime-local" name="fecha" :value="editingEntry ? inputDateTime(editingEntry.fecha) : nowLocal()" required :class="fieldClass" /></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Importe</span><input type="number" name="importe" min="0.01" step="0.01" :value="editingEntry?.importe ?? ''" required :class="fieldClass" /></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select name="moneda" :value="editingEntry?.moneda ?? 'ARS'" :class="fieldClass"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }} · {{ currency.label }}</option></select></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cotización a ARS</span><input type="number" name="cotizacion" min="0.000001" step="0.000001" :value="editingEntry?.cotizacion ?? 1" :class="fieldClass" /></label>
-            <label class="block sm:col-span-2 lg:col-span-3"><span class="mb-1 block text-xs font-semibold text-ink-muted">Observaciones</span><input type="text" name="observaciones" maxlength="500" :value="editingEntry?.observaciones ?? ''" :class="fieldClass" /></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Tipo <span class="text-danger-strong" aria-hidden="true">*</span></span><select v-model="entryValues.tipo" name="tipo" :class="fieldClass"><option value="CAJA_INICIAL">Caja inicial</option><option value="ANTICIPO">Anticipo</option><option value="RETIRO">Retiro</option><option value="DEVOLUCION">Devolución</option></select></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Fecha y hora <span class="text-danger-strong" aria-hidden="true">*</span></span><input v-model="entryValues.fecha" type="datetime-local" name="fecha" required :class="fieldClass" /></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Importe <span class="text-danger-strong" aria-hidden="true">*</span></span><input v-model="entryValues.importe" type="number" name="importe" min="0.01" step="0.01" required :class="fieldClass" /></label>
           </div>
-          <div class="mt-5 flex justify-end gap-2 border-t border-border-subtle pt-4"><button type="button" @click="entryDialog?.close()" :class="secondaryButton">Volver</button><button type="submit" :class="primaryButton">{{ editingEntry ? 'Guardar cambios' : 'Guardar movimiento' }}</button></div>
+          <details class="mt-4 rounded-lg border border-border-subtle bg-surface p-3" :open="showMore" @toggle="showMore = $event.target.open">
+            <summary class="cursor-pointer text-sm font-semibold text-ink">Agregar moneda, cotización u observaciones</summary>
+            <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select v-model="entryValues.moneda" name="moneda" :class="fieldClass"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }} · {{ currency.label }}</option></select></label>
+              <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cotización a ARS</span><input v-model="entryValues.cotizacion" type="number" name="cotizacion" min="0.000001" step="0.000001" :class="fieldClass" /></label>
+              <label class="block sm:col-span-2 lg:col-span-3"><span class="mb-1 block text-xs font-semibold text-ink-muted">Observaciones</span><input v-model="entryValues.observaciones" type="text" name="observaciones" maxlength="500" :class="fieldClass" /></label>
+            </div>
+          </details>
+          <div v-if="!editingEntry" class="mt-4 rounded-lg bg-surface p-3">
+            <p class="text-xs font-semibold text-ink-muted">Al guardar y cargar otro, repetir</p>
+            <div class="mt-2 flex flex-wrap gap-x-4 gap-y-2">
+              <label v-for="choice in repeatOptions('cash')" :key="choice.field" class="inline-flex items-center gap-1.5 text-sm text-ink">
+                <input v-model="repeatChoices[choice.field]" type="checkbox" name="repetir[]" :value="choice.field" class="size-4 rounded border-border text-primary" />
+                {{ choice.label }}
+              </label>
+            </div>
+            <p class="mt-2 text-xs text-ink-muted">El importe siempre se limpia.</p>
+          </div>
+          <div class="mt-5 flex flex-wrap justify-end gap-2 border-t border-border-subtle pt-4">
+            <button type="button" @click="entryDialog?.close()" :class="secondaryButton">Volver</button>
+            <button type="submit" :class="primaryButton">{{ editingEntry ? 'Guardar cambios' : 'Guardar' }}</button>
+            <button v-if="!editingEntry" type="submit" name="accion" value="otro" :class="secondaryButton">Guardar y cargar otro</button>
+          </div>
         </form>
       </div>
     </dialog>

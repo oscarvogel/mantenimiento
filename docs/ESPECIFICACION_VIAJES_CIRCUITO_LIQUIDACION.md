@@ -571,6 +571,30 @@ Tabs:
 - **Cuenta corriente:** movimientos, saldo y filtros por tipo.
 - **Resumen:** liquidación, margen y conciliación.
 
+#### 10.3.1 Carga rápida de movimientos
+
+La ficha del viaje está diseñada para que una persona administrativa cargue varios comprobantes
+seguidos sin recorrer toda la página:
+
+- `+ Combustible`, `+ Gasto` y `+ Movimiento de caja` abren un formulario breve en un panel
+  lateral en escritorio y a pantalla completa en celular.
+- El formulario pide solo lo habitual: combustible (fecha, litros e importe) y gasto (tipo,
+  fecha, importe y quién pagó). Moneda, cotización, odómetro, estación, comprobante, tramo y
+  observaciones quedan en `Más datos`.
+- `Guardar y cargar otro` reabre el mismo formulario conservando solo los campos marcados para
+  repetir (fecha, moneda y cotización, tramo, categoría, pagador o medio de pago) y limpia
+  importes, litros y comprobante para evitar duplicaciones.
+- En gastos, el pagador explica su efecto: **Empresa** es costo del viaje; **Chofer** es costo
+  del viaje y gasto a reintegrar; **Caja del chofer** es costo pagado con la caja entregada.
+- El tramo es opcional y explícito: `Todo el viaje` o un tramo concreto. El costo siempre afecta
+  al resultado del viaje; solo afecta al margen del tramo cuando se imputa a él.
+- Los movimientos se revisan en una lista única con filtros por combustible, gastos y caja. En
+  celular se muestran tarjetas legibles con detalle expandible en lugar de tablas anchas.
+- Si falla la validación, el formulario se reabre con lo escrito y el mensaje de error.
+
+Queda para una segunda etapa el aviso no bloqueante de posibles duplicados (mismo importe, fecha
+y comprobante) y el equivalente en pesos visible para moneda extranjera.
+
 ### 10.4 Cerrar viaje
 
 ```text
