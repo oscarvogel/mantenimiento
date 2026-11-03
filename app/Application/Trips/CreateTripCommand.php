@@ -36,10 +36,10 @@ final readonly class CreateTripCommand
         $branchId = self::positiveInt($input['sucursal_id'] ?? null, 'Elegí la sucursal de origen.');
         $truckId = self::positiveInt($input['tractor_id'] ?? null, 'Elegí el tractor o camión del viaje.');
         $trailerIds = self::trailerIds($input['acoplado_id'] ?? null);
-        $departureAt = self::dateTime($input['fecha_salida_real'] ?? null, 'La fecha y hora real de salida');
-        $estimatedReturnAt = self::optionalDateTime($input['fecha_regreso_estimado'] ?? null, 'La fecha estimada de regreso');
-        if ($estimatedReturnAt !== null && $estimatedReturnAt <= $departureAt) {
-            throw new DomainException('El regreso estimado debe ser posterior a la salida real.');
+        $departureAt = self::date($input['fecha_salida_real'] ?? null, 'La fecha real de salida');
+        $estimatedReturnAt = self::optionalDate($input['fecha_regreso_estimado'] ?? null, 'La fecha estimada de regreso');
+        if ($estimatedReturnAt !== null && $estimatedReturnAt->format('Y-m-d') < $departureAt->format('Y-m-d')) {
+            throw new DomainException('El regreso estimado no puede ser anterior a la salida real.');
         }
         $departureKm = self::nonNegativeInt($input['km_salida'] ?? null, 'Ingresá el odómetro real de salida.');
 
@@ -158,30 +158,31 @@ final readonly class CreateTripCommand
         return $percentages;
     }
 
-    private static function dateTime(mixed $value, string $label): DateTimeImmutable
+    private static function date(mixed $value, string $label): DateTimeImmutable
     {
         $raw = trim((string) ($value ?? ''));
         if ($raw === '') {
             throw new DomainException($label . ' es obligatoria.');
         }
-        foreach (['!Y-m-d\TH:i', '!Y-m-d H:i:s', '!Y-m-d\TH:i:s'] as $format) {
+        foreach (['!Y-m-d', '!Y-m-d\TH:i', '!Y-m-d H:i:s', '!Y-m-d\TH:i:s'] as $format) {
             $date = DateTimeImmutable::createFromFormat($format, $raw);
             $errors = DateTimeImmutable::getLastErrors();
             if ($date !== false && ($errors === false || ($errors['warning_count'] === 0 && $errors['error_count'] === 0))) {
-                return $date;
+                // El viaje se maneja por fecha: si llega una hora heredada, se descarta.
+                return $date->setTime(0, 0);
             }
         }
 
-        throw new DomainException($label . ' no tiene una fecha y hora válidas.');
+        throw new DomainException($label . ' no tiene una fecha válida.');
     }
 
-    private static function optionalDateTime(mixed $value, string $label): ?DateTimeImmutable
+    private static function optionalDate(mixed $value, string $label): ?DateTimeImmutable
     {
         if ($value === null || trim((string) $value) === '') {
             return null;
         }
 
-        return self::dateTime($value, $label);
+        return self::date($value, $label);
     }
 
     /** @return list<int> */

@@ -28,8 +28,20 @@ final class FinishTripTest extends TestCase
         self::assertSame(145_700, $trips->trip->returnKm());
         self::assertSame(7, $readings->equipmentId);
         self::assertSame(145_700, $readings->kilometers);
-        self::assertSame('2026-10-21 18:30:00', $readings->at?->format('Y-m-d H:i:s'));
+        self::assertSame('2026-10-21 00:00:00', $readings->at?->format('Y-m-d H:i:s'));
         self::assertSame('Viaje #42', $readings->reference);
+    }
+
+    public function testUsaLaFechaDelRelojCuandoNoSeInformaElRegreso(): void
+    {
+        $trips = new FinishTripRepositoryFake();
+        $readings = new FinishTripReadingFake();
+        $handler = new FinishTrip($trips, $readings, new FinishTripUnitOfWorkFake(), new FinishTripClockFake());
+
+        $handler->execute($this->actor(['viajes.operar']), 55, null, 145_700);
+
+        self::assertSame('2026-10-21 00:00:00', $trips->trip->actualReturn()?->format('Y-m-d H:i:s'));
+        self::assertSame('2026-10-21 00:00:00', $readings->at?->format('Y-m-d H:i:s'));
     }
 
     public function testRejectsPlannedTrip(): void

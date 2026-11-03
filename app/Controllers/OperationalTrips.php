@@ -160,7 +160,7 @@ final class OperationalTrips extends BaseController
     public function start(int $tripId): RedirectResponse
     {
         try {
-            $departureAt = $this->optionalDateTime($this->request->getPost('fecha_salida_real'), 'La fecha real de salida');
+            $departureAt = $this->optionalDate($this->request->getPost('fecha_salida_real'), 'La fecha real de salida');
             $km = filter_var($this->request->getPost('km_salida'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
             if ($km === false) {
                 throw new DomainException('Ingresá el odómetro de salida del viaje.');
@@ -177,7 +177,7 @@ final class OperationalTrips extends BaseController
     public function finish(int $tripId): RedirectResponse
     {
         try {
-            $returnAt = $this->optionalDateTime($this->request->getPost('fecha_regreso_real'), 'La fecha real de regreso');
+            $returnAt = $this->optionalDate($this->request->getPost('fecha_regreso_real'), 'La fecha real de regreso');
             $km = filter_var($this->request->getPost('km_regreso'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
             if ($km === false) {
                 throw new DomainException('Ingresá el odómetro de regreso del viaje.');
@@ -510,6 +510,24 @@ final class OperationalTrips extends BaseController
             $errors = DateTimeImmutable::getLastErrors();
             if ($date !== false && ($errors === false || ($errors['warning_count'] === 0 && $errors['error_count'] === 0))) {
                 return $date;
+            }
+        }
+
+        throw new DomainException($label . ' no es válida.');
+    }
+
+    private function optionalDate(mixed $value, string $label = 'La fecha real de salida'): ?DateTimeImmutable
+    {
+        $raw = trim((string) ($value ?? ''));
+        if ($raw === '') {
+            return null;
+        }
+        foreach (['!Y-m-d', '!Y-m-d\TH:i', '!Y-m-d H:i:s', '!Y-m-d\TH:i:s'] as $format) {
+            $date = DateTimeImmutable::createFromFormat($format, $raw);
+            $errors = DateTimeImmutable::getLastErrors();
+            if ($date !== false && ($errors === false || ($errors['warning_count'] === 0 && $errors['error_count'] === 0))) {
+                // Las fechas del viaje no llevan hora: si llega una, se descarta.
+                return $date->setTime(0, 0);
             }
         }
 

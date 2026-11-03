@@ -74,7 +74,7 @@ final class CreateTrip
                 $command->estimatedReturnAt,
             );
             if ($conflicts !== []) {
-                throw new DomainException($conflicts[0]->describe() . ' Elegí otra unidad, otro chofer u otro horario.');
+                throw new DomainException($conflicts[0]->describe() . ' Elegí otra unidad, otro chofer u otra fecha.');
             }
 
             $assignments = [

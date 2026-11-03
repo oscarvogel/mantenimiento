@@ -49,8 +49,8 @@ final class Trip
         if ($number <= 0) {
             throw new DomainException('El número de viaje no es válido.');
         }
-        if ($plannedReturn !== null && $plannedReturn <= $plannedDeparture) {
-            throw new DomainException('El regreso planificado debe ser posterior a la salida planificada.');
+        if ($plannedReturn !== null && $plannedReturn->format('Y-m-d') < $plannedDeparture->format('Y-m-d')) {
+            throw new DomainException('El regreso planificado no puede ser anterior a la salida planificada.');
         }
         if ($departureKm !== null && $departureKm < 0) {
             throw new DomainException('El odómetro de salida no puede ser negativo.');
@@ -198,7 +198,7 @@ final class Trip
         if ($this->departureKm !== null && $returnKm < $this->departureKm) {
             throw new DomainException('El odómetro de regreso no puede ser menor al de salida.');
         }
-        if ($this->actualDeparture !== null && $at < $this->actualDeparture) {
+        if ($this->actualDeparture !== null && $at->format('Y-m-d') < $this->actualDeparture->format('Y-m-d')) {
             throw new DomainException('La fecha de regreso no puede ser anterior a la salida.');
         }
 

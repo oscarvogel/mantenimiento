@@ -39,7 +39,7 @@ final class FinishTrip
                 throw new DomainException('El viaje solicitado no existe o no está autorizado.');
             }
 
-            $returnAt = $at ?? $this->clock->now();
+            $returnAt = ($at ?? $this->clock->now())->setTime(0, 0);
             $trip->finish($returnAt, $returnKm);
             $this->trips->save($trip, $actor->userId());
             $this->readings->record(

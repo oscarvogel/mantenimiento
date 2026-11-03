@@ -33,8 +33,8 @@ final readonly class TripConflict
             $role,
             $this->tripNumber,
             $this->status,
-            $this->from->format('d/m/Y H:i'),
-            $this->to?->format('d/m/Y H:i') ?? 'el regreso real',
+            $this->from->format('d/m/Y'),
+            $this->to?->format('d/m/Y') ?? 'el regreso real',
         );
     }
 }

@@ -26,7 +26,7 @@ final class StartTripTest extends TestCase
         self::assertNotNull($repository->saved);
         self::assertSame(Trip::EN_CURSO, $repository->saved->status());
         self::assertSame(145_300, $repository->saved->departureKm());
-        self::assertSame('2026-10-20 08:20:00', $repository->saved->actualDeparture()?->format('Y-m-d H:i:s'));
+        self::assertSame('2026-10-20 00:00:00', $repository->saved->actualDeparture()?->format('Y-m-d H:i:s'));
     }
 
     public function testUsesClockWhenDepartureIsNotProvided(): void
@@ -36,7 +36,7 @@ final class StartTripTest extends TestCase
 
         $handler->execute($this->actor(['viajes.operar'], [10]), 55, null, 145_300);
 
-        self::assertSame('2026-10-20 09:00:00', $repository->saved?->actualDeparture()?->format('Y-m-d H:i:s'));
+        self::assertSame('2026-10-20 00:00:00', $repository->saved?->actualDeparture()?->format('Y-m-d H:i:s'));
     }
 
     public function testRejectsActorWithoutOperatePermission(): void

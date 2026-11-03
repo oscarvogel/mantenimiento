@@ -30,6 +30,8 @@ describe('viajes operativos', () => {
     expect(wrapper.text()).toContain('Rosario → Córdoba')
     expect(wrapper.text()).toContain('AA111AA · T01')
     expect(wrapper.text()).toContain('Pérez, Juan')
+    expect(wrapper.text()).toContain('20/10/2026')
+    expect(wrapper.text()).not.toContain('20/10/2026 08:00')
     expect(wrapper.get('form').attributes('method')).toBe('get')
     expect(wrapper.get('a[href="/mantenimiento/viajes/operativos/42"]').text()).toContain('Ver viaje')
     expect(wrapper.get('a[href="/mantenimiento/viajes/operativos/nuevo"]').text()).toContain('Nuevo viaje')
