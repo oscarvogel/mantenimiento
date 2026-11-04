@@ -29,5 +29,10 @@ interface TripMasterRepository
 
     public function countryIsActive(int $countryId): bool;
 
+    public function sharedCurrencyExists(string $code): bool;
+
+    /** @param array<string,float> $rates */
+    public function saveExchangeRates(int $companyId, array $rates, int $userId): void;
+
     public function hasOverlappingLiquidationRate(int $companyId, int $employeeId, string $from, ?string $to, ?int $exceptId = null): bool;
 }

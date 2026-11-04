@@ -460,6 +460,7 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
             ->where('activo', 1)
             ->orderBy('codigo', 'ASC')
             ->get()->getResultArray();
+        $exchangeRates = $this->exchangeRates($companyId);
         $customers = $this->db->table('clientes')
             ->select('id, codigo_origen, nombre')
             ->where('empresa_id', $companyId)
@@ -477,10 +478,15 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
                 'id' => (int) $row['id'],
                 'label' => (string) $row['nombre'],
             ], $methods),
-            'currencies' => array_map(static fn (array $row): array => [
-                'code' => (string) $row['codigo'],
-                'label' => (string) $row['nombre'],
-            ], $currencies),
+            'currencies' => array_map(static function (array $row) use ($exchangeRates): array {
+                $code = strtoupper((string) $row['codigo']);
+
+                return [
+                    'code' => $code,
+                    'label' => (string) $row['nombre'],
+                    'rate' => $code === 'ARS' ? 1.0 : ($exchangeRates[$code] ?? null),
+                ];
+            }, $currencies),
             'customers' => array_map(static fn (array $row): array => [
                 'id' => (int) $row['id'],
                 'label' => (string) $row['nombre'],
@@ -517,6 +523,22 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
         }
 
         return $labels;
+    }
+
+    /** @return array<string,float> */
+    private function exchangeRates(int $companyId): array
+    {
+        $rows = $this->db->table('viajes_cotizaciones')
+            ->select('moneda, cotizacion')
+            ->where('empresa_id', $companyId)
+            ->get()->getResultArray();
+
+        $rates = [];
+        foreach ($rows as $row) {
+            $rates[strtoupper((string) $row['moneda'])] = (float) $row['cotizacion'];
+        }
+
+        return $rates;
     }
 
     /** @param array<string,mixed> $row */

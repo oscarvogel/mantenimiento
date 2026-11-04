@@ -34,7 +34,16 @@ const newLegDestinationId = ref('')
 const newLegCustomerId = ref('')
 const newLegCurrency = ref('ARS')
 const newLegExchangeRate = ref('1')
-const setNewLegCurrency = () => { newLegExchangeRate.value = newLegCurrency.value === 'ARS' ? '1' : '' }
+const setNewLegCurrency = () => {
+  const rate = currencies.value.find((currency) => currency.code === newLegCurrency.value)?.rate
+  newLegExchangeRate.value = newLegCurrency.value === 'ARS' ? '1' : (rate === null || rate === undefined ? '' : String(rate))
+}
+const applyRateFromSelect = (event) => {
+  const rate = currencies.value.find((currency) => currency.code === event.target.value)?.rate
+  if (rate === null || rate === undefined) return
+  const input = event.target.closest('form')?.querySelector('input[name="cotizacion"]')
+  if (input) input.value = String(rate)
+}
 const entryDialog = ref(null)
 const activeEntryModal = ref('')
 const editingEntry = ref(null)
@@ -503,7 +512,7 @@ const facts = computed(() => {
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Fecha y hora</span><input type="datetime-local" name="fecha" :value="editingEntry ? inputDateTime(editingEntry.fecha) : nowLocal()" required :class="fieldClass" /></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Litros</span><input type="number" name="litros" min="0.01" step="0.01" :value="editingEntry?.litros ?? ''" required :class="fieldClass" /></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Importe</span><input type="number" name="importe" min="0.01" step="0.01" :value="editingEntry?.importe ?? ''" required :class="fieldClass" /></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select name="moneda" :value="editingEntry?.moneda ?? 'ARS'" :class="fieldClass"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }} · {{ currency.label }}</option></select></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select name="moneda" :value="editingEntry?.moneda ?? 'ARS'" :class="fieldClass" @change="applyRateFromSelect"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }} · {{ currency.label }}</option></select></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cotización a ARS</span><input type="number" name="cotizacion" min="0.000001" step="0.000001" :value="editingEntry?.cotizacion ?? 1" :class="fieldClass" /></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Odómetro</span><input type="number" name="kilometraje" min="1" step="1" :value="editingEntry?.kilometraje ?? ''" :class="fieldClass" /></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Estación</span><input type="text" name="estacion" maxlength="120" :value="editingEntry?.estacion ?? ''" :class="fieldClass" /></label>
@@ -521,7 +530,7 @@ const facts = computed(() => {
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Categoría</span><select name="categoria_id" :value="editingEntry?.categoria_id ?? ''" :class="fieldClass"><option value="">Sin categoría</option><option v-for="category in options.expenseCategories" :key="category.id" :value="category.id">{{ category.label }}</option></select></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Fecha y hora</span><input type="datetime-local" name="fecha" :value="editingEntry ? inputDateTime(editingEntry.fecha) : nowLocal()" required :class="fieldClass" /></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Importe</span><input type="number" name="importe" min="0.01" step="0.01" :value="editingEntry?.importe ?? ''" required :class="fieldClass" /></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select name="moneda" :value="editingEntry?.moneda ?? 'ARS'" :class="fieldClass"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }} · {{ currency.label }}</option></select></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select name="moneda" :value="editingEntry?.moneda ?? 'ARS'" :class="fieldClass" @change="applyRateFromSelect"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }} · {{ currency.label }}</option></select></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cotización a ARS</span><input type="number" name="cotizacion" min="0.000001" step="0.000001" :value="editingEntry?.cotizacion ?? 1" :class="fieldClass" /></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Medio de pago</span><select name="medio_pago_id" :value="editingEntry?.medio_pago_id ?? ''" :class="fieldClass"><option value="">Sin medio</option><option v-for="method in options.paymentMethods" :key="method.id" :value="method.id">{{ method.label }}</option></select></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Tramo (opcional)</span><select name="tramo_id" :value="editingEntry?.tramo_id ?? ''" :class="fieldClass"><option value="">Todo el viaje</option><option v-for="leg in legs" :key="leg.id" :value="leg.id">{{ leg.orden }} · {{ leg.origen }} → {{ leg.destino }}</option></select></label>
@@ -539,7 +548,7 @@ const facts = computed(() => {
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Tipo</span><select name="tipo" :value="editingEntry?.tipo ?? 'ANTICIPO'" :class="fieldClass"><option value="CAJA_INICIAL">Caja inicial</option><option value="ANTICIPO">Anticipo</option><option value="RETIRO">Retiro</option><option value="DEVOLUCION">Devolución</option></select></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Fecha y hora</span><input type="datetime-local" name="fecha" :value="editingEntry ? inputDateTime(editingEntry.fecha) : nowLocal()" required :class="fieldClass" /></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Importe</span><input type="number" name="importe" min="0.01" step="0.01" :value="editingEntry?.importe ?? ''" required :class="fieldClass" /></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select name="moneda" :value="editingEntry?.moneda ?? 'ARS'" :class="fieldClass"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }} · {{ currency.label }}</option></select></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select name="moneda" :value="editingEntry?.moneda ?? 'ARS'" :class="fieldClass" @change="applyRateFromSelect"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }} · {{ currency.label }}</option></select></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cotización a ARS</span><input type="number" name="cotizacion" min="0.000001" step="0.000001" :value="editingEntry?.cotizacion ?? 1" :class="fieldClass" /></label>
             <label class="block sm:col-span-2 lg:col-span-3"><span class="mb-1 block text-xs font-semibold text-ink-muted">Observaciones</span><input type="text" name="observaciones" maxlength="500" :value="editingEntry?.observaciones ?? ''" :class="fieldClass" /></label>
           </div>

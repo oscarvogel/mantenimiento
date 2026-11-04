@@ -74,6 +74,7 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
         $this->database->query('CREATE TABLE viajes_categorias_gasto (id INTEGER PRIMARY KEY, empresa_id INTEGER, nombre TEXT, activo INTEGER)');
         $this->database->query('CREATE TABLE viajes_medios_pago (id INTEGER PRIMARY KEY, empresa_id INTEGER, nombre TEXT, activo INTEGER)');
         $this->database->query('CREATE TABLE viajes_monedas (codigo TEXT PRIMARY KEY, nombre TEXT, activo INTEGER)');
+        $this->database->query('CREATE TABLE viajes_cotizaciones (id INTEGER PRIMARY KEY AUTOINCREMENT, empresa_id INTEGER, moneda TEXT, cotizacion REAL)');
 
         $this->database->table('empresas')->insert(['id' => 5, 'razon_social' => 'Empresa de prueba S.A.', 'nombre_fantasia' => 'Empresa de prueba']);
         $this->database->table('sucursales')->insertBatch([

@@ -23,7 +23,10 @@ const nextNumber = computed(() => options.value.nextNumber ?? null)
 
 const old = computed(() => props.data.old ?? {})
 const newLeg = () => ({ localidad_origen_id: '', localidad_destino_id: '', cliente_id: '', km: '', toneladas: '', flete_facturacion: '', flete_liquidacion: '', moneda: 'ARS', cotizacion: '1', observaciones: '' })
-const setLegCurrency = (leg) => { leg.cotizacion = leg.moneda === 'ARS' ? '1' : '' }
+const setLegCurrency = (leg) => {
+  const rate = currencies.value.find((currency) => currency.code === leg.moneda)?.rate
+  leg.cotizacion = leg.moneda === 'ARS' ? '1' : (rate === null || rate === undefined ? '' : String(rate))
+}
 const initialLegs = () => Array.isArray(old.value.tramos) && old.value.tramos.length
   ? old.value.tramos.map((row) => ({ ...newLeg(), ...row }))
   : [newLeg()]
