@@ -162,6 +162,7 @@ final class AddLegDirectoryFake implements TripDirectoryLookup
     public function addressBelongsToCustomer(int $companyId, int $customerId, int $addressId): bool { return true; }
     public function expenseCategoryExists(int $companyId, int $categoryId): bool { return true; }
     public function paymentMethodExists(int $companyId, int $paymentMethodId): bool { return true; }
+    public function concept(int $companyId, int $conceptId): ?array { return null; }
     public function currencyExists(string $code): bool { return true; }
 }
 

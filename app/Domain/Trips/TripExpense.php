@@ -18,6 +18,9 @@ final readonly class TripExpense
         private ?string $receipt = null,
         private ?string $notes = null,
         private ?string $paidBy = null,
+        private ?int $conceptId = null,
+        private float $quantity = 1.0,
+        private ?float $unitAmount = null,
     ) {
         if ($money->amount() <= 0) {
             throw new DomainException('El importe del gasto debe ser mayor que cero.');
@@ -30,6 +33,15 @@ final readonly class TripExpense
         }
         if ($paidBy !== null && ! in_array(strtoupper($paidBy), ['EMPRESA', 'CHOFER', 'CAJA'], true)) {
             throw new DomainException('El pagador del gasto no es válido.');
+        }
+        if ($conceptId !== null && $conceptId <= 0) {
+            throw new DomainException('El concepto del gasto no es válido.');
+        }
+        if ($quantity <= 0) {
+            throw new DomainException('La cantidad del gasto debe ser mayor que cero.');
+        }
+        if ($unitAmount !== null && $unitAmount < 0) {
+            throw new DomainException('El importe unitario del gasto no puede ser negativo.');
         }
     }
 
@@ -75,5 +87,20 @@ final readonly class TripExpense
     public function notes(): ?string
     {
         return $this->notes;
+    }
+
+    public function conceptId(): ?int
+    {
+        return $this->conceptId;
+    }
+
+    public function quantity(): float
+    {
+        return $this->quantity;
+    }
+
+    public function unitAmount(): ?float
+    {
+        return $this->unitAmount;
     }
 }

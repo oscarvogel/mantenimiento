@@ -234,6 +234,8 @@ final class OperationalTrips extends BaseController
                 $this->text('observaciones', 500),
                 $this->optionalInt('tramo_id'),
                 $paidBy,
+                $this->optionalInt('concepto_id'),
+                $this->optionalFloat('cantidad'),
             );
             service('registerTripExpense')->execute($this->actor(), $command);
 
@@ -254,6 +256,8 @@ final class OperationalTrips extends BaseController
                 'moneda' => $this->request->getPost('moneda'),
                 'cotizacion' => $this->request->getPost('cotizacion'),
                 'concepto' => $this->request->getPost('concepto'),
+                'concepto_id' => $this->request->getPost('concepto_id'),
+                'cantidad' => $this->request->getPost('cantidad'),
                 'observaciones' => $this->request->getPost('observaciones'),
             ]);
             service('registerTripOtherEarning')->execute($this->actor(), $command);
@@ -417,6 +421,19 @@ final class OperationalTrips extends BaseController
         $value = filter_var($raw, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
 
         return $value === false ? null : (int) $value;
+    }
+
+    private function optionalFloat(string $key): ?float
+    {
+        $raw = str_replace(',', '.', trim((string) $this->request->getPost($key)));
+        if ($raw === '') {
+            return null;
+        }
+        if (! is_numeric($raw) || (float) $raw <= 0) {
+            throw new DomainException('La cantidad debe ser mayor que cero.');
+        }
+
+        return (float) $raw;
     }
 
     private function currency(): string

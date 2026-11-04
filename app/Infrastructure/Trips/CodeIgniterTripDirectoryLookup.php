@@ -60,6 +60,28 @@ final class CodeIgniterTripDirectoryLookup implements TripDirectoryLookup
             ->countAllResults() > 0;
     }
 
+    public function concept(int $companyId, int $conceptId): ?array
+    {
+        $row = $this->database->table('viajes_conceptos')
+            ->where('empresa_id', $companyId)
+            ->where('id', $conceptId)
+            ->where('activo', 1)
+            ->get()->getRowArray();
+        if ($row === null) {
+            return null;
+        }
+
+        return [
+            'id' => (int) $row['id'],
+            'nombre' => (string) $row['nombre'],
+            'categoria' => strtoupper((string) $row['categoria']),
+            'unidad' => strtoupper((string) $row['unidad']),
+            'importe_unitario' => (float) $row['importe_unitario'],
+            'moneda' => strtoupper((string) $row['moneda']),
+            'permite_editar_importe' => (bool) ((int) $row['permite_editar_importe'] === 1),
+        ];
+    }
+
     public function currencyExists(string $code): bool
     {
         $code = strtoupper(trim($code));

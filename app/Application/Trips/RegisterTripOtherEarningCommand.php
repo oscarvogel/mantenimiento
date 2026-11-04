@@ -18,6 +18,8 @@ final readonly class RegisterTripOtherEarningCommand
         public float $exchangeRate = 1.0,
         public string $concept = '',
         public ?string $notes = null,
+        public ?int $conceptId = null,
+        public ?float $quantity = null,
     ) {
     }
 
@@ -30,9 +32,11 @@ final readonly class RegisterTripOtherEarningCommand
         $currency = strtoupper(trim((string) ($input['moneda'] ?? 'ARS')));
         $rate = self::rate($input['cotizacion'] ?? null);
         $concept = trim((string) ($input['concepto'] ?? ''));
-        if ($concept === '') {
+        $conceptId = self::optionalPositiveInt($input['concepto_id'] ?? null);
+        if ($concept === '' && $conceptId === null) {
             throw new DomainException('Indicá el concepto del haber.');
         }
+        $quantity = self::optionalQuantity($input['cantidad'] ?? null);
 
         return new self(
             $tripId,
@@ -43,7 +47,36 @@ final readonly class RegisterTripOtherEarningCommand
             $rate,
             mb_substr($concept, 0, 120),
             self::nullableText($input['observaciones'] ?? null),
+            $conceptId,
+            $quantity,
         );
+    }
+
+    private static function optionalPositiveInt(mixed $value): ?int
+    {
+        $raw = trim((string) ($value ?? ''));
+        if ($raw === '' || $raw === '0') {
+            return null;
+        }
+        $parsed = filter_var($raw, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        if ($parsed === false) {
+            throw new DomainException('El concepto del haber no es válido.');
+        }
+
+        return (int) $parsed;
+    }
+
+    private static function optionalQuantity(mixed $value): ?float
+    {
+        $raw = str_replace(',', '.', trim((string) ($value ?? '')));
+        if ($raw === '') {
+            return null;
+        }
+        if (! is_numeric($raw) || (float) $raw <= 0) {
+            throw new DomainException('La cantidad del haber debe ser mayor que cero.');
+        }
+
+        return (float) $raw;
     }
 
     private static function positiveInt(mixed $value, string $message): int

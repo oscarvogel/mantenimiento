@@ -15,6 +15,9 @@ final readonly class TripOtherEarning
         private TripMoney $money,
         private string $concept,
         private ?string $notes = null,
+        private ?int $conceptId = null,
+        private float $quantity = 1.0,
+        private ?float $unitAmount = null,
     ) {
         if ($employeeId <= 0) {
             throw new DomainException('El chofer del haber no es válido.');
@@ -24,6 +27,15 @@ final readonly class TripOtherEarning
         }
         if (trim($concept) === '') {
             throw new DomainException('Indicá el concepto del haber.');
+        }
+        if ($conceptId !== null && $conceptId <= 0) {
+            throw new DomainException('El concepto del haber no es válido.');
+        }
+        if ($quantity <= 0) {
+            throw new DomainException('La cantidad del haber debe ser mayor que cero.');
+        }
+        if ($unitAmount !== null && $unitAmount < 0) {
+            throw new DomainException('El importe unitario del haber no puede ser negativo.');
         }
     }
 
@@ -50,5 +62,20 @@ final readonly class TripOtherEarning
     public function notes(): ?string
     {
         return $this->notes;
+    }
+
+    public function conceptId(): ?int
+    {
+        return $this->conceptId;
+    }
+
+    public function quantity(): float
+    {
+        return $this->quantity;
+    }
+
+    public function unitAmount(): ?float
+    {
+        return $this->unitAmount;
     }
 }

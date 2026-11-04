@@ -43,7 +43,27 @@ final class RegisterTripExpense
             throw new DomainException('El medio de pago elegido no está disponible.');
         }
 
-        return $this->unitOfWork->transactional(function () use ($actor, $command, $companyId, $branchIds): int {
+        $concept = $command->conceptId === null ? null : $this->directory->concept($companyId, $command->conceptId);
+        if ($command->conceptId !== null && $concept === null) {
+            throw new DomainException('El concepto elegido no está disponible.');
+        }
+        if ($concept !== null && ! in_array($concept['categoria'], ['GASTO', 'AMBOS'], true)) {
+            throw new DomainException('El concepto elegido no aplica a gastos.');
+        }
+        $quantity = $command->quantity ?? 1.0;
+        if ($quantity <= 0) {
+            throw new DomainException('La cantidad del gasto debe ser mayor que cero.');
+        }
+        $amount = $command->amount;
+        $unitAmount = null;
+        if ($concept !== null) {
+            $unitAmount = (float) $concept['importe_unitario'];
+            if (! $concept['permite_editar_importe']) {
+                $amount = round($quantity * $unitAmount, 4);
+            }
+        }
+
+        return $this->unitOfWork->transactional(function () use ($actor, $command, $companyId, $branchIds, $concept, $quantity, $amount, $unitAmount): int {
             $trip = $this->trips->findForUpdate($companyId, $branchIds, $command->tripId);
             if ($trip === null) {
                 throw new DomainException('El viaje solicitado no existe o no está autorizado.');
@@ -57,13 +77,16 @@ final class RegisterTripExpense
 
             $expense = new TripExpense(
                 $command->date,
-                new TripMoney($command->amount, $command->currency, $command->exchangeRate),
+                new TripMoney($amount, $command->currency, $command->exchangeRate),
                 $command->categoryId,
                 $command->paymentMethodId,
                 $command->paidFromCash,
                 $command->receipt,
                 $command->notes,
                 $command->paidBy,
+                $concept['id'] ?? null,
+                $quantity,
+                $unitAmount,
             );
 
             return $this->costs->addExpense($trip->id() ?? 0, $companyId, $trip->branchId(), $expense, $actor->userId(), $command->legId);

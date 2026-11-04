@@ -16,5 +16,12 @@ interface TripDirectoryLookup
 
     public function paymentMethodExists(int $companyId, int $paymentMethodId): bool;
 
+    /**
+     * Concepto activo de la empresa.
+     *
+     * @return array{id:int,nombre:string,categoria:string,unidad:string,importe_unitario:float,moneda:string,permite_editar_importe:bool}|null
+     */
+    public function concept(int $companyId, int $conceptId): ?array;
+
     public function currencyExists(string $code): bool;
 }

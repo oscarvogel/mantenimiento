@@ -38,6 +38,9 @@ final class CodeIgniterTripCostRepository implements TripCostRepository
         return $this->insert('viaje_operativo_gastos', $tripId, $companyId, $branchId, $actorUserId, [
             'tramo_id' => $legId,
             'categoria_id' => $expense->categoryId(),
+            'concepto_id' => $expense->conceptId(),
+            'cantidad' => $this->decimal($expense->quantity(), 2),
+            'importe_unitario' => $expense->unitAmount() === null ? null : $this->decimal($expense->unitAmount(), 4),
             'fecha' => $expense->date()->format('Y-m-d H:i:s'),
             ...$this->moneyColumns($expense->money()),
             'medio_pago_id' => $expense->paymentMethodId(),
@@ -116,6 +119,9 @@ final class CodeIgniterTripCostRepository implements TripCostRepository
     {
         return $this->insert('viaje_operativo_otros_haberes', $tripId, $companyId, $branchId, $actorUserId, [
             'empleado_id' => $earning->employeeId(),
+            'concepto_id' => $earning->conceptId(),
+            'cantidad' => $this->decimal($earning->quantity(), 2),
+            'importe_unitario' => $earning->unitAmount() === null ? null : $this->decimal($earning->unitAmount(), 4),
             'fecha' => $earning->date()->format('Y-m-d'),
             'concepto' => $earning->concept(),
             ...$this->moneyColumns($earning->money()),
