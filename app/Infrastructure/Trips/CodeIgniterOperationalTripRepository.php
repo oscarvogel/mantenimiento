@@ -136,6 +136,16 @@ final class CodeIgniterOperationalTripRepository implements OperationalTripRepos
             ]);
     }
 
+    public function updateDriverPercentage(int $companyId, int $tripId, int $employeeId, float $percentage, int $actorUserId): void
+    {
+        $this->database->table('viaje_operativo_asignaciones')
+            ->where('empresa_id', $companyId)
+            ->where('viaje_id', $tripId)
+            ->where('empleado_id', $employeeId)
+            ->where('rol', \App\Domain\Trips\TripAssignment::CHOFER)
+            ->update(['porcentaje_liquidacion' => $percentage]);
+    }
+
     public function conflicts(
         int $companyId,
         array $equipmentIds,

@@ -49,6 +49,7 @@ final class GetOperationalTrip
             'expense' => base_url('viajes/operativos/' . $tripId . '/gastos'),
             'cash' => base_url('viajes/operativos/' . $tripId . '/caja'),
             'earnings' => base_url('viajes/operativos/' . $tripId . '/haberes'),
+            'percentage' => base_url('viajes/operativos/' . $tripId . '/porcentaje'),
             'legs' => base_url('viajes/operativos/' . $tripId . '/tramos'),
             'finish' => base_url('viajes/operativos/' . $tripId . '/cerrar'),
         ];
@@ -77,9 +78,19 @@ final class GetOperationalTrip
             static fn (array $assignment): bool => ($assignment['rol'] ?? '') === 'CHOFER',
         ));
         $driversCount = count($drivers);
-        $percentage = $driversCount === 1 && ($drivers[0]['porcentaje_liquidacion'] ?? null) !== null
-            ? (float) $drivers[0]['porcentaje_liquidacion']
-            : null;
+        $percentage = null;
+        $percentageSource = null;
+        if ($driversCount === 1) {
+            $assignmentPercentage = $drivers[0]['porcentaje_liquidacion'] ?? null;
+            $masterPercentage = $drivers[0]['master_percentage'] ?? null;
+            if ($assignmentPercentage !== null) {
+                $percentage = (float) $assignmentPercentage;
+                $percentageSource = 'VIAJE';
+            } elseif ($masterPercentage !== null) {
+                $percentage = (float) $masterPercentage;
+                $percentageSource = 'MAESTRO';
+            }
+        }
         $driverId = $driversCount === 1 ? ($drivers[0]['empleado_id'] ?? null) : null;
         $otherEarnings = $detail['otherEarnings'] ?? [];
         $otherEarningsAmount = 0.0;
@@ -188,6 +199,7 @@ final class GetOperationalTrip
             'margin_ars' => $margin,
             'margin_pct' => $marginPct,
             'driver_percentage' => $percentage,
+            'driver_percentage_source' => $percentageSource,
             'drivers_count' => $driversCount,
             'multiple_drivers' => $driversCount > 1,
             'other_earnings_ars' => round($otherEarningsAmount, 2),

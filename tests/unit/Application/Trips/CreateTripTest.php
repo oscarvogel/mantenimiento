@@ -439,6 +439,10 @@ final class CreateTripRepositoryFake implements OperationalTripRepository
     {
     }
 
+    public function updateDriverPercentage(int $companyId, int $tripId, int $employeeId, float $percentage, int $actorUserId): void
+    {
+    }
+
     public function conflicts(
         int $companyId,
         array $equipmentIds,

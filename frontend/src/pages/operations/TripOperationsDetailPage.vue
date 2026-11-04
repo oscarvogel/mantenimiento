@@ -405,6 +405,16 @@ const facts = computed(() => {
               <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ assignment.rol_label }}</p>
               <p class="mt-0.5 text-sm font-semibold text-ink">{{ assignment.label || 'Sin dato' }}</p>
               <p v-if="assignment.porcentaje_liquidacion !== null && assignment.porcentaje_liquidacion !== undefined" class="mt-0.5 text-xs font-semibold text-primary">Liquidación: {{ Number(assignment.porcentaje_liquidacion).toLocaleString('es-AR', { maximumFractionDigits: 2 }) }}%</p>
+              <p v-else-if="assignment.master_percentage !== null && assignment.master_percentage !== undefined" class="mt-0.5 text-xs font-semibold text-warning-strong">Liquidación: {{ Number(assignment.master_percentage).toLocaleString('es-AR', { maximumFractionDigits: 2 }) }}% del maestro · guardá para fijarlo en el viaje</p>
+              <form v-if="canRegisterCosts && assignment.rol === 'CHOFER' && assignment.empleado_id" method="post" :action="data.links?.percentage" class="mt-2 flex flex-wrap items-end gap-2">
+                <input type="hidden" :name="csrf.name" :value="csrf.hash" />
+                <input type="hidden" name="empleado_id" :value="assignment.empleado_id" />
+                <label class="block">
+                  <span class="mb-1 block text-xs font-semibold text-ink-muted">% de liquidación del viaje</span>
+                  <input type="number" name="porcentaje" min="0" max="100" step="0.01" :value="assignment.porcentaje_liquidacion ?? assignment.master_percentage ?? ''" :class="fieldClass" />
+                </label>
+                <button type="submit" :class="secondaryButton">Guardar %</button>
+              </form>
             </div>
             <p class="text-xs text-ink-muted">{{ fmtDate(assignment.desde) }} — {{ assignment.hasta ? fmtDate(assignment.hasta) : 'sin fin' }}</p>
           </li>

@@ -9,7 +9,7 @@ if (typeof HTMLDialogElement !== 'undefined' && !HTMLDialogElement.prototype.sho
 
 const data = {
   backUrl: '/mantenimiento/viajes/operativos',
-  links: { detail: '/mantenimiento/viajes/operativos/42' },
+  links: { detail: '/mantenimiento/viajes/operativos/42', percentage: '/mantenimiento/viajes/operativos/42/porcentaje' },
   csrf: { name: 'csrf_test_name', hash: 'abc123' },
   canOperate: true,
   canStart: true,
@@ -237,8 +237,32 @@ describe('detalle de viaje operativo', () => {
     wrapper.unmount()
   })
 
-  it('permite editar un haber desde la liquidación', async () => {
+  it('muestra el porcentaje vigente del maestro y permite fijarlo en el viaje', () => {
     const wrapper = mount(TripOperationsDetailPage, {
+      props: {
+        data: {
+          ...data,
+          canStart: false,
+          canCancel: false,
+          canRegisterCosts: true,
+          assignments: [
+            { rol: 'TRACTOR', rol_label: 'Tractor / camión', label: 'AA111AA · T01', desde: '2026-10-20 08:00:00', hasta: null },
+            { rol: 'CHOFER', rol_label: 'Chofer', label: 'MATLUK MARCELO', empleado_id: 11, porcentaje_liquidacion: null, master_percentage: 14, desde: '2026-10-20 08:00:00', hasta: null },
+          ],
+          totals: { has_legs: true, driver_percentage: 14, driver_percentage_source: 'MAESTRO', drivers_count: 1, multiple_drivers: false },
+          options: { expenseCategories: [], paymentMethods: [], currencies: [{ code: 'ARS', label: 'Peso argentino' }] },
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain('del maestro')
+    const form = wrapper.get('form[action="/mantenimiento/viajes/operativos/42/porcentaje"]')
+    expect(form.get('input[name="empleado_id"]').element.value).toBe('11')
+    expect(form.get('input[name="porcentaje"]').element.value).toBe('14')
+    wrapper.unmount()
+  })
+
+  it('permite editar un haber desde la liquidación', async () => {    const wrapper = mount(TripOperationsDetailPage, {
       props: {
         data: {
           ...data,

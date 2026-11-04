@@ -111,6 +111,10 @@ final class CancelTripRepositoryFake implements OperationalTripRepository
         $this->saved = $trip;
     }
 
+    public function updateDriverPercentage(int $companyId, int $tripId, int $employeeId, float $percentage, int $actorUserId): void
+    {
+    }
+
     public function conflicts(
         int $companyId,
         array $equipmentIds,
