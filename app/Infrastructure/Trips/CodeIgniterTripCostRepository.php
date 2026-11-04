@@ -129,6 +129,25 @@ final class CodeIgniterTripCostRepository implements TripCostRepository
         ]);
     }
 
+    public function updateOtherEarning(int $tripId, int $companyId, int $movementId, TripOtherEarning $earning, int $actorUserId): bool
+    {
+        return $this->updateMovement('viaje_operativo_otros_haberes', 'HABER', $tripId, $companyId, $movementId, $actorUserId, [
+            'empleado_id' => $earning->employeeId(),
+            'concepto_id' => $earning->conceptId(),
+            'cantidad' => $this->decimal($earning->quantity(), 2),
+            'importe_unitario' => $earning->unitAmount() === null ? null : $this->decimal($earning->unitAmount(), 4),
+            'fecha' => $earning->date()->format('Y-m-d'),
+            'concepto' => $earning->concept(),
+            ...$this->moneyColumns($earning->money()),
+            'observaciones' => $earning->notes(),
+        ]);
+    }
+
+    public function softDeleteOtherEarning(int $tripId, int $companyId, int $movementId, int $actorUserId): bool
+    {
+        return $this->softDeleteMovement('viaje_operativo_otros_haberes', 'HABER', $tripId, $companyId, $movementId, $actorUserId);
+    }
+
     /** @param array<string,mixed> $data */
     private function insert(string $table, int $tripId, int $companyId, int $branchId, int $actorUserId, array $data): int
     {

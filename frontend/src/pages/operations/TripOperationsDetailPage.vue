@@ -51,7 +51,7 @@ const openEditModal = (type, entry) => {
   nextTick(() => entryDialog.value?.showModal())
 }
 const movementUrl = (type, id, remove = false) => {
-  const segment = { fuel: 'combustible', expense: 'gastos', cash: 'caja' }[type]
+  const segment = { fuel: 'combustible', expense: 'gastos', cash: 'caja', earning: 'haberes' }[type]
   return `${props.data.links?.detail ?? ''}/${segment}/${id}${remove ? '/eliminar' : ''}`
 }
 const inputDateTime = (value) => String(value ?? '').replace(' ', 'T').slice(0, 16)
@@ -385,10 +385,10 @@ const facts = computed(() => {
         <div>
           <p v-if="otherEarnings.length === 0" class="text-sm text-ink-muted">Todavía no hay otros haberes cargados. Usá “Cargar haber” para registrar una estadía.</p>
           <div v-else class="overflow-x-auto">
-            <table class="w-full min-w-[32rem] text-left text-sm">
-              <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-3 py-2">Fecha</th><th class="px-3 py-2">Concepto</th><th class="px-3 py-2">Chofer</th><th class="px-3 py-2 text-right">ARS</th></tr></thead>
+            <table class="w-full min-w-[42rem] text-left text-sm">
+              <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-3 py-2">Fecha</th><th class="px-3 py-2">Concepto</th><th class="px-3 py-2">Chofer</th><th class="px-3 py-2 text-right">ARS</th><th v-if="canRegisterCosts" class="px-3 py-2">Acciones</th></tr></thead>
               <tbody class="divide-y divide-border-subtle">
-                <tr v-for="earning in otherEarnings" :key="earning.id"><td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ fmtDateTime(earning.fecha) }}</td><td class="px-3 py-2 text-ink">{{ earningConceptLabel(earning) }}<span v-if="earning.importe_unitario !== null && earning.importe_unitario !== undefined && earning.cantidad" class="block text-xs text-ink-muted">{{ quantityLabel(earning.cantidad) }} × {{ money(earning.importe_unitario, earning.moneda) }}</span></td><td class="px-3 py-2 text-ink-muted">{{ earning.empleado || '—' }}</td><td class="px-3 py-2 text-right font-semibold text-ink">{{ money(earning.importe_ars) }}</td></tr>
+                <tr v-for="earning in otherEarnings" :key="earning.id"><td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ fmtDateTime(earning.fecha) }}</td><td class="px-3 py-2 text-ink">{{ earningConceptLabel(earning) }}<span v-if="earning.importe_unitario !== null && earning.importe_unitario !== undefined && earning.cantidad" class="block text-xs text-ink-muted">{{ quantityLabel(earning.cantidad) }} × {{ money(earning.importe_unitario, earning.moneda) }}</span></td><td class="px-3 py-2 text-ink-muted">{{ earning.empleado || '—' }}</td><td class="px-3 py-2 text-right font-semibold text-ink">{{ money(earning.importe_ars) }}</td><td v-if="canRegisterCosts" class="whitespace-nowrap px-3 py-2"><div class="flex gap-2"><button type="button" :class="secondaryButton" @click="openEditModal('earning', earning)">Editar</button><form method="post" :action="movementUrl('earning', earning.id, true)" @submit="confirmDelete($event, 'este haber')"><input type="hidden" :name="csrf.name" :value="csrf.hash" /><button type="submit" :class="dangerButton">Quitar</button></form></div></td></tr>
               </tbody>
             </table>
           </div>
@@ -577,23 +577,23 @@ const facts = computed(() => {
           <div class="mt-5 flex justify-end gap-2 border-t border-border-subtle pt-4"><button type="button" @click="entryDialog?.close()" :class="secondaryButton">Volver</button><button type="submit" :class="primaryButton">{{ editingEntry ? 'Guardar cambios' : 'Guardar gasto' }}</button></div>
         </form>
 
-        <form v-else-if="activeEntryModal === 'earning'" method="post" :action="data.links?.earnings" data-concept-kind="earning">
+        <form v-else-if="activeEntryModal === 'earning'" method="post" :action="editingEntry ? movementUrl('earning', editingEntry.id) : data.links?.earnings" data-concept-kind="earning">
           <input type="hidden" :name="csrf.name" :value="csrf.hash" />
           <p class="text-sm text-ink-muted">Estadías y otros haberes del chofer. Elegí un concepto para calcular el importe por cantidad.</p>
           <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <label v-if="driverOptions.length > 1" class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Chofer</span><select name="empleado_id" :class="fieldClass"><option v-for="driver in driverOptions" :key="driver.value" :value="driver.value">{{ driver.label }}</option></select></label>
-            <input v-else type="hidden" name="empleado_id" :value="driverOptions[0]?.value ?? ''">
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Fecha</span><input type="date" name="fecha" :value="today" required :class="fieldClass" /></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Concepto del catálogo</span><select name="concepto_id" :class="fieldClass" @change="applyConceptToForm"><option value="">Concepto libre</option><option v-for="concept in earningConcepts" :key="concept.id" :value="concept.id">{{ conceptOptionLabel(concept) }}</option></select></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cantidad (días o unidades)</span><input type="number" name="cantidad" min="0.01" step="0.01" value="1" :class="fieldClass" @input="applyConceptToForm" /></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Importe</span><input type="number" name="importe" min="0.01" step="0.01" required :class="fieldClass" /></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select name="moneda" :class="fieldClass"><option v-for="currency in currencies" :key="currency.code" :value="currency.code" :selected="currency.code === 'ARS'">{{ currency.code }} · {{ currency.label }}</option></select></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cotización a ARS</span><input type="number" name="cotizacion" min="0.000001" step="0.000001" value="1" :class="fieldClass" /></label>
-            <label class="block sm:col-span-2 lg:col-span-3"><span class="mb-1 block text-xs font-semibold text-ink-muted">Concepto libre (si no elegís uno del catálogo)</span><input type="text" name="concepto" maxlength="120" :class="fieldClass" /></label>
-            <label class="block sm:col-span-2 lg:col-span-3"><span class="mb-1 block text-xs font-semibold text-ink-muted">Observaciones</span><input type="text" name="observaciones" maxlength="500" :class="fieldClass" /></label>
+            <label v-if="driverOptions.length > 1" class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Chofer</span><select name="empleado_id" :value="editingEntry?.empleado_id ?? driverOptions[0]?.value" :class="fieldClass"><option v-for="driver in driverOptions" :key="driver.value" :value="driver.value">{{ driver.label }}</option></select></label>
+            <input v-else type="hidden" name="empleado_id" :value="editingEntry?.empleado_id ?? driverOptions[0]?.value ?? ''">
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Fecha</span><input type="date" name="fecha" :value="editingEntry?.fecha ?? today" required :class="fieldClass" /></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Concepto del catálogo</span><select name="concepto_id" :value="editingEntry?.concepto_id ?? ''" :class="fieldClass" @change="applyConceptToForm"><option value="">Concepto libre</option><option v-for="concept in earningConcepts" :key="concept.id" :value="concept.id">{{ conceptOptionLabel(concept) }}</option></select></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cantidad (días o unidades)</span><input type="number" name="cantidad" min="0.01" step="0.01" :value="editingEntry?.cantidad ?? 1" :class="fieldClass" @input="applyConceptToForm" /></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Importe</span><input type="number" name="importe" min="0.01" step="0.01" :value="editingEntry?.importe ?? ''" required :class="fieldClass" /></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select name="moneda" :value="editingEntry?.moneda ?? 'ARS'" :class="fieldClass"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }} · {{ currency.label }}</option></select></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cotización a ARS</span><input type="number" name="cotizacion" min="0.000001" step="0.000001" :value="editingEntry?.cotizacion ?? 1" :class="fieldClass" /></label>
+            <label class="block sm:col-span-2 lg:col-span-3"><span class="mb-1 block text-xs font-semibold text-ink-muted">Concepto libre (si no elegís uno del catálogo)</span><input type="text" name="concepto" maxlength="120" :value="editingEntry?.concepto ?? ''" :class="fieldClass" /></label>
+            <label class="block sm:col-span-2 lg:col-span-3"><span class="mb-1 block text-xs font-semibold text-ink-muted">Observaciones</span><input type="text" name="observaciones" maxlength="500" :value="editingEntry?.observaciones ?? ''" :class="fieldClass" /></label>
           </div>
           <p class="mt-2 text-xs text-ink-muted">Si el concepto no permite editar el importe, se calcula como cantidad × importe unitario.</p>
-          <div class="mt-5 flex justify-end gap-2 border-t border-border-subtle pt-4"><button type="button" @click="entryDialog?.close()" :class="secondaryButton">Volver</button><button type="submit" :class="primaryButton">Guardar haber</button></div>
+          <div class="mt-5 flex justify-end gap-2 border-t border-border-subtle pt-4"><button type="button" @click="entryDialog?.close()" :class="secondaryButton">Volver</button><button type="submit" :class="primaryButton">{{ editingEntry ? 'Guardar cambios' : 'Guardar haber' }}</button></div>
         </form>
 
         <form v-else-if="activeEntryModal === 'cash'" method="post" :action="editingEntry ? movementUrl('cash', editingEntry.id) : data.links?.cash">

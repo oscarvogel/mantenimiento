@@ -218,7 +218,9 @@ describe('detalle de viaje operativo', () => {
           },
           otherEarnings: [{
             id: 1, empleado_id: 11, empleado: 'Pérez, Juan', fecha: '2026-10-20',
-            concepto: 'Espera en descarga', importe_ars: 25000,
+            concepto: 'Espera en descarga', concepto_id: null, cantidad: 1,
+            importe: 25000, importe_unitario: null, moneda: 'ARS', cotizacion: 1,
+            importe_ars: 25000, observaciones: null,
           }],
           options: { expenseCategories: [], paymentMethods: [], currencies: [{ code: 'ARS', label: 'Peso argentino' }] },
         },
@@ -231,6 +233,49 @@ describe('detalle de viaje operativo', () => {
     expect(wrapper.text()).toContain('Espera en descarga')
     expect(wrapper.text()).toContain('20/10/2026')
     expect(wrapper.findAll('button').some((button) => button.text().includes('Cargar haber'))).toBe(true)
+    expect(wrapper.find('form[action="/mantenimiento/viajes/operativos/42/haberes/1/eliminar"]').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('permite editar un haber desde la liquidación', async () => {
+    const wrapper = mount(TripOperationsDetailPage, {
+      props: {
+        data: {
+          ...data,
+          canStart: false,
+          canCancel: false,
+          canRegisterCosts: true,
+          assignments: [
+            { rol: 'TRACTOR', rol_label: 'Tractor / camión', label: 'AA111AA · T01', desde: '2026-10-20 08:00:00', hasta: null },
+            { rol: 'CHOFER', rol_label: 'Chofer', label: 'Pérez, Juan', empleado_id: 11, desde: '2026-10-20 08:00:00', hasta: null },
+          ],
+          links: { ...data.links, earnings: '/mantenimiento/viajes/operativos/42/haberes' },
+          totals: { has_legs: true, driver_percentage: 14, drivers_count: 1, multiple_drivers: false },
+          settlement: {
+            driver: 'Pérez, Juan', commission_ars: 112000, other_earnings_ars: 25000,
+            driver_expenses_ars: 0, cash_expenses_ars: 0, advances_ars: 0,
+            returns_ars: 0, account_balance_ars: 0, total_ars: 137000,
+          },
+          otherEarnings: [{
+            id: 1, empleado_id: 11, empleado: 'Pérez, Juan', fecha: '2026-10-20',
+            concepto: 'Espera en descarga', concepto_id: null, cantidad: 1,
+            importe: 25000, importe_unitario: null, moneda: 'ARS', cotizacion: 1,
+            importe_ars: 25000, observaciones: null,
+          }],
+          options: { expenseCategories: [], paymentMethods: [], currencies: [{ code: 'ARS', label: 'Peso argentino' }] },
+        },
+      },
+    })
+
+    const editButton = wrapper.findAll('button').find((button) => button.text() === 'Editar')
+    await editButton.trigger('click')
+    await nextTick()
+
+    const form = wrapper.get('form[action="/mantenimiento/viajes/operativos/42/haberes/1"]')
+    expect(form.get('input[name="empleado_id"]').element.value).toBe('11')
+    expect(form.get('input[name="concepto"]').element.value).toBe('Espera en descarga')
+    expect(form.get('input[name="importe"]').element.value).toBe('25000')
+    expect(form.get('button[type="submit"]').text()).toBe('Guardar cambios')
     wrapper.unmount()
   })
 

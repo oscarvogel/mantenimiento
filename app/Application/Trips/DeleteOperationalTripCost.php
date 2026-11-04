@@ -16,6 +16,7 @@ final class DeleteOperationalTripCost
     public const FUEL = 'COMBUSTIBLE';
     public const EXPENSE = 'GASTO';
     public const CASH = 'CAJA';
+    public const EARNING = 'HABER';
 
     public function __construct(
         private readonly OperationalTripRepository $trips,
@@ -30,7 +31,7 @@ final class DeleteOperationalTripCost
         if ($actor->isSuperAdmin() || $companyId === null || ! $actor->hasPermission('viajes.operar')) {
             throw new DomainException('No tenés permiso para quitar movimientos de viajes.');
         }
-        if (! in_array($command->type, [self::FUEL, self::EXPENSE, self::CASH], true)) {
+        if (! in_array($command->type, [self::FUEL, self::EXPENSE, self::CASH, self::EARNING], true)) {
             throw new DomainException('El tipo de movimiento no es válido.');
         }
 
@@ -52,6 +53,7 @@ final class DeleteOperationalTripCost
                 self::FUEL => $this->costs->softDeleteFuel($trip->id() ?? 0, $companyId, $command->movementId, $actor->userId()),
                 self::EXPENSE => $this->costs->softDeleteExpense($trip->id() ?? 0, $companyId, $command->movementId, $actor->userId()),
                 self::CASH => $this->costs->softDeleteCashMovement($trip->id() ?? 0, $companyId, $command->movementId, $actor->userId()),
+                self::EARNING => $this->costs->softDeleteOtherEarning($trip->id() ?? 0, $companyId, $command->movementId, $actor->userId()),
             };
             if (! $deleted) {
                 throw new DomainException('El movimiento no existe en este viaje o ya fue quitado.');

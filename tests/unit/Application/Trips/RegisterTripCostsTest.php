@@ -17,6 +17,10 @@ use App\Application\Trips\RegisterTripFuel;
 use App\Application\Trips\RegisterTripFuelCommand;
 use App\Application\Trips\RegisterTripOtherEarning;
 use App\Application\Trips\RegisterTripOtherEarningCommand;
+use App\Application\Trips\DeleteOperationalTripCost;
+use App\Application\Trips\DeleteOperationalTripCostCommand;
+use App\Application\Trips\UpdateTripOtherEarning;
+use App\Application\Trips\UpdateTripOtherEarningCommand;
 use App\Domain\Trips\Trip;
 use App\Domain\Trips\TripAssignment;
 use App\Domain\Trips\TripCashMovement;
@@ -322,6 +326,65 @@ final class RegisterTripCostsTest extends TestCase
         ));
     }
 
+    public function testUpdatesOtherEarningWithFixedConcept(): void
+    {
+        $costs = new CostRepositoryFake();
+        $directory = new CostDirectoryFake();
+        $directory->concept = [
+            'id' => 9,
+            'nombre' => 'Estadía Cámara de frío',
+            'categoria' => 'HABER',
+            'unidad' => 'DIA',
+            'importe_unitario' => 80_000.0,
+            'moneda' => 'ARS',
+            'permite_editar_importe' => false,
+        ];
+        $handler = new UpdateTripOtherEarning(
+            new CostTripRepositoryFake($this->trip()),
+            $costs,
+            new CostFleetFake(),
+            $directory,
+            new CostUnitOfWorkFake(),
+        );
+
+        $handler->execute($this->actor(['viajes.operar']), new UpdateTripOtherEarningCommand(
+            tripId: 55,
+            movementId: 77,
+            employeeId: 11,
+            date: new DateTimeImmutable('2026-10-20'),
+            amount: 1.0,
+            currency: 'ARS',
+            exchangeRate: 1.0,
+            conceptId: 9,
+            quantity: 1.5,
+            concept: '',
+            notes: null,
+        ));
+
+        self::assertTrue($costs->otherEarningUpdated);
+        self::assertSame(120_000.0, $costs->otherEarning->money()->amount());
+        self::assertSame('Estadía Cámara de frío', $costs->otherEarning->concept());
+        self::assertSame(9, $costs->otherEarning->conceptId());
+    }
+
+    public function testDeletesOtherEarning(): void
+    {
+        $costs = new CostRepositoryFake();
+        $handler = new DeleteOperationalTripCost(
+            new CostTripRepositoryFake($this->trip()),
+            $costs,
+            new CostUnitOfWorkFake(),
+        );
+
+        $handler->execute($this->actor(['viajes.operar']), new DeleteOperationalTripCostCommand(
+            55,
+            77,
+            DeleteOperationalTripCost::EARNING,
+        ));
+
+        self::assertTrue($costs->otherEarningDeleted);
+    }
+
     /** @param list<string> $permissions */
     private function actor(array $permissions): ActorContext
     {
@@ -398,6 +461,8 @@ final class CostRepositoryFake implements TripCostRepository
     public ?TripExpense $expense = null;
     public ?TripCashMovement $cashMovement = null;
     public ?TripOtherEarning $otherEarning = null;
+    public bool $otherEarningUpdated = false;
+    public bool $otherEarningDeleted = false;
     public int $tripId = 0;
     public int $companyId = 0;
     public int $branchId = 0;
@@ -462,6 +527,25 @@ final class CostRepositoryFake implements TripCostRepository
         $this->otherEarning = $earning;
 
         return 1;
+    }
+
+    public function updateOtherEarning(int $tripId, int $companyId, int $movementId, TripOtherEarning $earning, int $actorUserId): bool
+    {
+        $this->tripId = $tripId;
+        $this->companyId = $companyId;
+        $this->otherEarning = $earning;
+        $this->otherEarningUpdated = true;
+
+        return true;
+    }
+
+    public function softDeleteOtherEarning(int $tripId, int $companyId, int $movementId, int $actorUserId): bool
+    {
+        $this->tripId = $tripId;
+        $this->companyId = $companyId;
+        $this->otherEarningDeleted = true;
+
+        return true;
     }
 }
 

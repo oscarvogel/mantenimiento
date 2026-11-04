@@ -1339,6 +1339,26 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
         );
     }
 
+    public static function updateTripOtherEarning(bool $getShared = true): \App\Application\Trips\UpdateTripOtherEarning
+    {
+        if ($getShared) {
+            return static::getSharedInstance('updateTripOtherEarning');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\Trips\UpdateTripOtherEarning(
+            new \App\Infrastructure\Trips\CodeIgniterOperationalTripRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripCostRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripFleetLookup(
+                new \App\Infrastructure\Assets\CodeIgniterEquipmentFleetLookup($db),
+                new \App\Infrastructure\Employees\CodeIgniterEmployeeDirectoryLookup($db),
+            ),
+            new \App\Infrastructure\Trips\CodeIgniterTripDirectoryLookup($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripsUnitOfWork($db),
+        );
+    }
+
     public static function startTrip(bool $getShared = true): \App\Application\Trips\StartTrip
     {
         if ($getShared) {

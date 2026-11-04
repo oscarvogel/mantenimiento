@@ -428,6 +428,7 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
             ->join('viajes_conceptos k', 'k.id = h.concepto_id AND k.empresa_id = h.empresa_id', 'left')
             ->where('h.empresa_id', $companyId)
             ->where('h.viaje_id', $tripId)
+            ->where('h.deleted_at', null)
             ->orderBy('h.fecha', 'ASC')
             ->orderBy('h.id', 'ASC')
             ->get()->getResultArray();
