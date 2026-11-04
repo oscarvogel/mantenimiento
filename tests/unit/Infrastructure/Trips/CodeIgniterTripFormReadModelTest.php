@@ -36,6 +36,7 @@ final class CodeIgniterTripFormReadModelTest extends TestCase
         $this->database->query('CREATE TABLE viajes_domicilios_clientes (id INTEGER PRIMARY KEY, empresa_id INTEGER, cliente_id INTEGER, alias TEXT, calle TEXT, localidad TEXT, activo INTEGER)');
         $this->database->query('CREATE TABLE viajes_unidades_carga (id INTEGER PRIMARY KEY, empresa_id INTEGER, nombre TEXT, simbolo TEXT, activo INTEGER)');
         $this->database->query('CREATE TABLE viajes_monedas (codigo TEXT PRIMARY KEY, nombre TEXT, activo INTEGER)');
+        $this->database->query('CREATE TABLE viajes_cotizaciones (id INTEGER PRIMARY KEY AUTOINCREMENT, empresa_id INTEGER, moneda TEXT, cotizacion REAL)');
         $this->database->query('CREATE TABLE paises (id INTEGER PRIMARY KEY, nombre TEXT, activo INTEGER)');
         $this->database->query('CREATE TABLE provincias (id INTEGER PRIMARY KEY, pais_id INTEGER, nombre TEXT, activo INTEGER)');
         $this->database->query('CREATE TABLE localidades (id INTEGER PRIMARY KEY, provincia_id INTEGER, nombre TEXT, activo INTEGER)');
@@ -71,7 +72,11 @@ final class CodeIgniterTripFormReadModelTest extends TestCase
         $this->database->table('clientes')->insert(['id' => 3, 'empresa_id' => 5, 'codigo_origen' => '324', 'nombre' => 'Cliente Sur', 'identificacion_fiscal' => '30-1-2', 'activo' => 1, 'deleted_at' => null]);
         $this->database->table('viajes_domicilios_clientes')->insert(['id' => 4, 'empresa_id' => 5, 'cliente_id' => 3, 'alias' => 'Planta', 'calle' => 'Ruta 9', 'localidad' => 'Rosario', 'activo' => 1]);
         $this->database->table('viajes_unidades_carga')->insert(['id' => 2, 'empresa_id' => 5, 'nombre' => 'Tonelada', 'simbolo' => 'tn', 'activo' => 1]);
-        $this->database->table('viajes_monedas')->insert(['codigo' => 'ARS', 'nombre' => 'Peso argentino', 'activo' => 1]);
+        $this->database->table('viajes_monedas')->insertBatch([
+            ['codigo' => 'ARS', 'nombre' => 'Peso argentino', 'activo' => 1],
+            ['codigo' => 'USD', 'nombre' => 'Dólar estadounidense', 'activo' => 1],
+        ]);
+        $this->database->table('viajes_cotizaciones')->insert(['empresa_id' => 5, 'moneda' => 'USD', 'cotizacion' => 1234.5]);
         $this->database->table('paises')->insert(['id' => 1, 'nombre' => 'Argentina', 'activo' => 1]);
         $this->database->table('provincias')->insert(['id' => 1, 'pais_id' => 1, 'nombre' => 'Santa Fe', 'activo' => 1]);
         $this->database->table('localidades')->insert(['id' => 1, 'provincia_id' => 1, 'nombre' => 'Rosario', 'activo' => 1]);
@@ -104,6 +109,9 @@ final class CodeIgniterTripFormReadModelTest extends TestCase
         self::assertSame('324', $options['customers'][0]['code']);
         self::assertSame('Planta · Ruta 9 · Rosario', $options['addresses'][0]['label']);
         self::assertSame('Tonelada (tn)', $options['loadUnits'][0]['label']);
+        self::assertSame(['ARS', 'USD'], array_column($options['currencies'], 'code'));
+        self::assertSame(1.0, $options['currencies'][0]['rate']);
+        self::assertSame(1234.5, $options['currencies'][1]['rate']);
     }
 
     public function testExponeElSemirremolqueEnganchadoAlTractor(): void

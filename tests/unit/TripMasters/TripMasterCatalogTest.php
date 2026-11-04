@@ -80,4 +80,40 @@ final class TripMasterCatalogTest extends TestCase
         $this->expectException(DomainException::class);
         (new TripMasterCatalog($repository))->save($this->actor(['viajes.maestros.ver']), 'clientes', ['nombre' => 'Nuevo']);
     }
+
+    public function testExchangeRatesAreScopedToCompanyAndIgnoreArsOrEmptyValues(): void
+    {
+        $repository = $this->createMock(TripMasterRepository::class);
+        $repository->method('sharedCurrencyExists')->with('USD')->willReturn(true);
+        $repository->expects(self::once())->method('saveExchangeRates')->with(7, ['USD' => 1250.5], 12);
+        (new TripMasterCatalog($repository))->saveExchangeRates($this->actor(), [
+            'ARS' => '1', 'USD' => ' 1250.5 ', 'EUR' => '',
+        ]);
+    }
+
+    public function testExchangeRateRequiresASharedCurrency(): void
+    {
+        $repository = $this->createMock(TripMasterRepository::class);
+        $repository->method('sharedCurrencyExists')->with('XXX')->willReturn(false);
+        $repository->expects(self::never())->method('saveExchangeRates');
+        $this->expectException(DomainException::class);
+        (new TripMasterCatalog($repository))->saveExchangeRates($this->actor(), ['XXX' => '100']);
+    }
+
+    public function testExchangeRateMustBePositive(): void
+    {
+        $repository = $this->createMock(TripMasterRepository::class);
+        $repository->method('sharedCurrencyExists')->with('USD')->willReturn(true);
+        $repository->expects(self::never())->method('saveExchangeRates');
+        $this->expectException(DomainException::class);
+        (new TripMasterCatalog($repository))->saveExchangeRates($this->actor(), ['USD' => '0']);
+    }
+
+    public function testReadOnlyActorCannotSaveExchangeRates(): void
+    {
+        $repository = $this->createMock(TripMasterRepository::class);
+        $repository->expects(self::never())->method('saveExchangeRates');
+        $this->expectException(DomainException::class);
+        (new TripMasterCatalog($repository))->saveExchangeRates($this->actor(['viajes.maestros.ver']), ['USD' => '100']);
+    }
 }

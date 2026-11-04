@@ -16,6 +16,7 @@ final readonly class CodeIgniterTripMasterRepository implements TripMasterReposi
         'domicilios' => 'viajes_domicilios_clientes',
         'tipos-carga' => 'viajes_tipos_carga',
         'unidades-carga' => 'viajes_unidades_carga',
+        'cotizaciones' => 'viajes_cotizaciones',
         'categorias-gasto' => 'viajes_categorias_gasto',
         'medios-pago' => 'viajes_medios_pago',
         'tipos-documento' => 'viajes_tipos_documento',
@@ -30,6 +31,10 @@ final readonly class CodeIgniterTripMasterRepository implements TripMasterReposi
 
     public function list(string $catalog, int $companyId, bool $includeInactive = true): array
     {
+        if ($catalog === 'cotizaciones') {
+            return $this->listExchangeRates($companyId);
+        }
+
         $table = $this->table($catalog);
         if (in_array($catalog, ['monedas', 'paises'], true)) {
             $builder = $this->db->table($table)->orderBy('nombre', 'ASC');
@@ -52,6 +57,40 @@ final readonly class CodeIgniterTripMasterRepository implements TripMasterReposi
             $builder->orderBy($table . '.activo', 'DESC')->orderBy($table . '.id', 'DESC');
         }
         return $builder->get()->getResultArray();
+    }
+
+    /**
+     * Lista las monedas compartidas con la cotización vigente de la empresa.
+     * ARS se muestra siempre con cotización 1.
+     *
+     * @return list<array<string,mixed>>
+     */
+    private function listExchangeRates(int $companyId): array
+    {
+        $currencies = $this->db->table('viajes_monedas')
+            ->select('id, codigo, nombre')
+            ->where('activo', 1)
+            ->orderBy('codigo', 'ASC')
+            ->get()->getResultArray();
+        $rates = $this->db->table('viajes_cotizaciones')
+            ->select('moneda, cotizacion')
+            ->where('empresa_id', $companyId)
+            ->get()->getResultArray();
+        $rateByCode = array_column($rates, 'cotizacion', 'moneda');
+
+        $items = [];
+        foreach ($currencies as $currency) {
+            $code = strtoupper((string) $currency['codigo']);
+            $rate = $code === 'ARS' ? 1.0 : ($rateByCode[$code] ?? null);
+            $items[] = [
+                'id' => (int) $currency['id'],
+                'moneda' => $code,
+                'nombre' => (string) $currency['nombre'],
+                'cotizacion' => $rate === null ? null : (float) $rate,
+            ];
+        }
+
+        return $items;
     }
 
     public function add(string $catalog, int $companyId, array $data, int $userId): int
@@ -105,6 +144,43 @@ final readonly class CodeIgniterTripMasterRepository implements TripMasterReposi
     public function countryIsActive(int $countryId): bool
     {
         return $this->db->table('viajes_paises')->where('id', $countryId)->where('activo', 1)->countAllResults() > 0;
+    }
+
+    public function sharedCurrencyExists(string $code): bool
+    {
+        $code = strtoupper(trim($code));
+        if ($code === 'ARS') {
+            return true;
+        }
+
+        return $this->db->table('viajes_monedas')
+            ->where('codigo', $code)
+            ->where('activo', 1)
+            ->countAllResults() > 0;
+    }
+
+    /** @param array<string,float> $rates */
+    public function saveExchangeRates(int $companyId, array $rates, int $userId): void
+    {
+        $now = date('Y-m-d H:i:s');
+        $rows = [];
+        foreach ($rates as $code => $rate) {
+            $rows[] = [
+                'empresa_id' => $companyId,
+                'moneda' => strtoupper(trim((string) $code)),
+                'cotizacion' => $rate,
+                'created_at' => $now,
+                'updated_at' => $now,
+                'created_by' => $userId,
+                'updated_by' => $userId,
+            ];
+        }
+        if ($rows === []) {
+            return;
+        }
+        $this->db->table('viajes_cotizaciones')
+            ->updateFields(['cotizacion', 'updated_at', 'updated_by'])
+            ->upsertBatch($rows);
     }
 
     public function hasOverlappingLiquidationRate(int $companyId, int $employeeId, string $from, ?string $to, ?int $exceptId = null): bool

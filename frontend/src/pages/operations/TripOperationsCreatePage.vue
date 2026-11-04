@@ -130,6 +130,11 @@ watch(tractorId, (value) => {
 })
 watch(selectedDrivers, syncPercentages, { deep: true })
 
+const applyCurrencyRate = (leg) => {
+  const rate = currencies.value.find((currency) => currency.code === leg.moneda)?.rate
+  if (rate !== null && rate !== undefined) leg.cotizacion = String(rate)
+}
+
 const addLeg = () => legs.value.push(newLeg())
 const removeLeg = (index) => {
   if (legs.value.length > 1) legs.value.splice(index, 1)
@@ -278,7 +283,7 @@ const localityName = (localityId) => localities.value.find((locality) => String(
               <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Toneladas (opcional)</span><input v-model="leg.toneladas" type="number" min="0" step="0.01" :name="`tramos[${index}][toneladas]`" :class="fieldClass" /></label>
               <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Flete de facturación</span><input v-model="leg.flete_facturacion" type="number" min="0" step="0.01" :name="`tramos[${index}][flete_facturacion]`" required :class="fieldClass" /></label>
               <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Flete de liquidación</span><input v-model="leg.flete_liquidacion" type="number" min="0" step="0.01" :name="`tramos[${index}][flete_liquidacion]`" required :class="fieldClass" /></label>
-              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Moneda</span><select v-model="leg.moneda" :name="`tramos[${index}][moneda]`" :class="fieldClass"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }} · {{ currency.label }}</option></select></label>
+              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Moneda</span><select v-model="leg.moneda" :name="`tramos[${index}][moneda]`" :class="fieldClass" @change="applyCurrencyRate(leg)"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }} · {{ currency.label }}</option></select></label>
               <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Cotización a ARS</span><input v-model="leg.cotizacion" type="number" min="0.000001" step="0.000001" :name="`tramos[${index}][cotizacion]`" required :class="fieldClass" /></label>
               <label class="block md:col-span-2 xl:col-span-2"><span class="mb-1.5 block text-sm font-semibold text-ink">Observaciones del tramo</span><input v-model="leg.observaciones" type="text" maxlength="500" :name="`tramos[${index}][observaciones]`" :class="fieldClass" /></label>
             </div>

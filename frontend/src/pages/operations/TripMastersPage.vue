@@ -5,7 +5,12 @@ const props = defineProps({ data: { type: Object, required: true } })
 
 const catalogs = computed(() => props.data.catalogs ?? {})
 const catalogKeys = computed(() => Object.keys(catalogs.value).filter((key) => key !== 'domicilios'))
-const selected = ref(catalogKeys.value.includes('clientes') ? 'clientes' : catalogKeys.value[0] ?? 'clientes')
+const initialCatalogKey = () => {
+  const hash = window.location.hash.replace('#', '')
+  if (hash && catalogs.value[hash]) return hash
+  return catalogKeys.value.includes('clientes') ? 'clientes' : catalogKeys.value[0] ?? 'clientes'
+}
+const selected = ref(initialCatalogKey())
 const selectedCustomerId = ref(props.data.catalogs?.clientes?.items?.[0]?.id ?? null)
 const customerQuery = ref('')
 const customerStatus = ref('all')
@@ -76,6 +81,7 @@ const visibleCustomers = computed(() => {
   })
 })
 const selectedCatalog = computed(() => catalogs.value[selected.value] ?? { label: '', items: [] })
+const cotizacionItems = computed(() => catalogs.value.cotizaciones?.items ?? [])
 const catalogFields = computed(() => fieldsByCatalog[formCatalog.value] ?? [])
 const formCatalogLabel = computed(() => catalogs.value[formCatalog.value]?.label ?? '')
 const catalogItems = computed(() => {
@@ -333,6 +339,44 @@ function statusMessage(item) {
           <p class="mt-1 text-sm text-ink-muted">Sus datos y domicilios aparecerán acá.</p>
         </div>
       </section>
+    </section>
+
+    <section v-else-if="selected === 'cotizaciones'" class="overflow-hidden rounded-2xl border border-border bg-surface-raised">
+      <header class="border-b border-border-subtle p-4 sm:p-5">
+        <h2 class="text-lg font-semibold text-ink">Cotizaciones</h2>
+        <p class="mt-1 max-w-3xl text-sm text-ink-muted">Definí cuántos pesos vale cada moneda. Se usan como valor inicial al cargar viajes y gastos; cada movimiento conserva la cotización con la que se guardó.</p>
+      </header>
+
+      <form v-if="props.data.canEdit" method="post" :action="props.data.urls.exchangeRates">
+        <input type="hidden" :name="props.data.csrf.name" :value="props.data.csrf.hash">
+        <div class="divide-y divide-border-subtle">
+          <div v-for="currency in cotizacionItems" :key="currency.moneda" class="grid gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_14rem] sm:items-center sm:p-5">
+            <div>
+              <p class="font-semibold text-ink"><strong>{{ currency.moneda }}</strong> · {{ currency.nombre }}</p>
+              <p class="mt-1 text-sm text-ink-muted">Cotización en pesos argentinos</p>
+            </div>
+            <div>
+              <label class="block">
+                <span class="sr-only">Cotización de {{ currency.moneda }} a ARS</span>
+                <input v-if="currency.moneda === 'ARS'" value="1" type="text" disabled :class="inputClass">
+                <input v-else :name="`cotizaciones[${currency.moneda}]`" :value="currency.cotizacion ?? ''" type="number" min="0.000001" step="0.000001" inputmode="decimal" placeholder="Ej. 1250,50" :class="inputClass">
+              </label>
+              <p v-if="currency.moneda === 'ARS'" class="mt-1 text-xs text-ink-muted">El peso argentino siempre vale 1.</p>
+              <p v-else-if="currency.cotizacion === null" class="mt-1 text-xs text-ink-muted">Sin cotización configurada.</p>
+            </div>
+          </div>
+        </div>
+        <div class="flex justify-end border-t border-border-subtle p-4 sm:p-5">
+          <button type="submit" :class="primaryButton">Guardar cotizaciones</button>
+        </div>
+      </form>
+
+      <div v-else class="divide-y divide-border-subtle">
+        <div v-for="currency in cotizacionItems" :key="currency.moneda" class="flex items-center justify-between gap-4 p-4 sm:p-5">
+          <p class="font-semibold text-ink"><strong>{{ currency.moneda }}</strong> · {{ currency.nombre }}</p>
+          <p class="text-sm text-ink-muted">{{ currency.cotizacion === null ? 'Sin cotización' : `1 ${currency.moneda} = $ ${currency.cotizacion}` }}</p>
+        </div>
+      </div>
     </section>
 
     <section v-else class="overflow-hidden rounded-2xl border border-border bg-surface-raised">
