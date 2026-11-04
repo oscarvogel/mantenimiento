@@ -17,6 +17,7 @@ final readonly class TripMasterCatalog
         'tipos-carga' => ['label' => 'Tipos de carga', 'table' => 'viajes_tipos_carga'],
         'unidades-carga' => ['label' => 'Unidades de carga', 'table' => 'viajes_unidades_carga'],
         'categorias-gasto' => ['label' => 'Categorías de gastos', 'table' => 'viajes_categorias_gasto'],
+        'conceptos' => ['label' => 'Conceptos de gasto y haber', 'table' => 'viajes_conceptos'],
         'medios-pago' => ['label' => 'Medios de pago', 'table' => 'viajes_medios_pago'],
         'tipos-documento' => ['label' => 'Tipos de documento', 'table' => 'viajes_tipos_documento'],
         'liquidaciones' => ['label' => 'Porcentajes de liquidación', 'table' => 'viajes_porcentajes_liquidacion_chofer'],
@@ -29,6 +30,7 @@ final readonly class TripMasterCatalog
         'tipos-carga' => ['nombre'],
         'unidades-carga' => ['nombre', 'simbolo'],
         'categorias-gasto' => ['nombre'],
+        'conceptos' => ['nombre', 'categoria', 'unidad', 'importe_unitario'],
         'medios-pago' => ['nombre'],
         'tipos-documento' => ['nombre'],
         'liquidaciones' => ['empleado_id', 'porcentaje', 'vigente_desde'],
@@ -98,6 +100,9 @@ final readonly class TripMasterCatalog
                 throw new DomainException('Ese empleado ya tiene un porcentaje vigente en parte de ese período.');
             }
         }
+        if ($catalog === 'conceptos' && ! $this->repository->sharedCurrencyExists((string) ($data['moneda'] ?? 'ARS'))) {
+            throw new DomainException('La moneda del concepto no está disponible.');
+        }
 
         if ($id !== null) {
             if (! $this->repository->belongsToCompany($catalog, $companyId, $id)) {
@@ -137,6 +142,7 @@ final readonly class TripMasterCatalog
             'clientes' => ['nombre', 'identificacion_fiscal', 'telefono', 'email'],
             'domicilios' => ['cliente_id', 'alias', 'calle', 'localidad', 'provincia', 'pais_id', 'codigo_postal'],
             'tipos-carga', 'categorias-gasto' => ['nombre', 'descripcion'],
+            'conceptos' => ['nombre', 'categoria', 'unidad', 'importe_unitario', 'moneda', 'permite_editar_importe'],
             'unidades-carga' => ['nombre', 'simbolo'],
             'medios-pago' => ['nombre', 'descripcion'],
             'tipos-documento' => ['nombre', 'codigo', 'descripcion'],
@@ -165,6 +171,37 @@ final readonly class TripMasterCatalog
         }
         if (isset($data['vigente_hasta']) && ! $this->validDate($data['vigente_hasta'])) {
             throw new DomainException('La fecha de fin no es válida.');
+        }
+        if ($catalog === 'conceptos') {
+            $categoria = strtoupper((string) ($data['categoria'] ?? ''));
+            if (! in_array($categoria, ['GASTO', 'HABER', 'AMBOS'], true)) {
+                throw new DomainException('Elegí si el concepto aplica a gastos, haberes o ambos.');
+            }
+            $data['categoria'] = $categoria;
+
+            $unidad = strtoupper((string) ($data['unidad'] ?? ''));
+            if (! in_array($unidad, ['DIA', 'UNIDAD', 'FIJO'], true)) {
+                throw new DomainException('Elegí si el concepto se mide por día, por unidad o es un importe fijo.');
+            }
+            $data['unidad'] = $unidad;
+
+            $importe = str_replace(',', '.', trim((string) ($data['importe_unitario'] ?? '')));
+            if ($importe === '' || ! is_numeric($importe) || (float) $importe < 0) {
+                throw new DomainException('Ingresá un importe unitario válido, mayor o igual a cero.');
+            }
+            $data['importe_unitario'] = $importe;
+
+            $moneda = strtoupper((string) ($data['moneda'] ?? 'ARS'));
+            if (preg_match('/^[A-Z]{3}$/', $moneda) !== 1) {
+                throw new DomainException('La moneda del concepto no es válida.');
+            }
+            $data['moneda'] = $moneda;
+
+            if (array_key_exists('permite_editar_importe', $input)) {
+                $data['permite_editar_importe'] = (string) $input['permite_editar_importe'] === '1' ? '1' : '0';
+            } else {
+                unset($data['permite_editar_importe']);
+            }
         }
         return $data;
     }

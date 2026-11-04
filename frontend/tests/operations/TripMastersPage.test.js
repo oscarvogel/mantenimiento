@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
+import { nextTick } from 'vue'
 import TripMastersPage from '../../src/pages/operations/TripMastersPage.vue'
 
 let wrapper
@@ -59,5 +60,30 @@ describe('TripMastersPage editor', () => {
     Array.from(form.querySelectorAll('button')).find((button) => button.textContent === 'Cancelar').click()
     await flushPromises()
     expect(document.body.querySelector('[role="dialog"]')).toBeNull()
+  })
+
+  it('carga un concepto con categoría, unidad, importe y edición habilitada', async () => {
+    const pageData = {
+      ...data,
+      catalogs: {
+        ...data.catalogs,
+        conceptos: { label: 'Conceptos de gasto y haber', items: [] },
+      },
+      currencies: [{ id: 1, codigo: 'ARS', nombre: 'Peso argentino' }],
+    }
+    wrapper = mount(TripMastersPage, { props: { data: pageData } })
+
+    await wrapper.findAll('button').find((button) => button.text() === 'Conceptos de gasto y haber').trigger('click')
+    await wrapper.findAll('button').find((button) => button.text() === 'Agregar conceptos de gasto y haber').trigger('click')
+    await nextTick()
+
+    const form = document.body.querySelector('[role="dialog"] form')
+    expect(form).not.toBeNull()
+    expect([...form.querySelectorAll('select[name="categoria"] option')].map((option) => option.value)).toEqual(['', 'GASTO', 'HABER', 'AMBOS'])
+    expect([...form.querySelectorAll('select[name="unidad"] option')].map((option) => option.value)).toEqual(['', 'DIA', 'UNIDAD', 'FIJO'])
+    expect(form.querySelector('input[name="importe_unitario"]').type).toBe('number')
+    expect(form.querySelector('select[name="moneda"]').value).toBe('ARS')
+    expect(form.querySelector('input[type="hidden"][name="permite_editar_importe"]').value).toBe('0')
+    expect(form.querySelector('input[type="checkbox"][name="permite_editar_importe"]').checked).toBe(true)
   })
 })

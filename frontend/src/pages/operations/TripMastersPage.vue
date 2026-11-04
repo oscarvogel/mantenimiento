@@ -43,6 +43,34 @@ const fieldsByCatalog = {
     { key: 'nombre', label: 'Categoría de gasto', required: true },
     { key: 'descripcion', label: 'Descripción' },
   ],
+  conceptos: [
+    { key: 'nombre', label: 'Nombre del concepto', required: true },
+    {
+      key: 'categoria',
+      label: 'Aplica a',
+      type: 'select',
+      required: true,
+      options: [
+        { value: 'GASTO', label: 'Gastos' },
+        { value: 'HABER', label: 'Haberes' },
+        { value: 'AMBOS', label: 'Gastos y haberes' },
+      ],
+    },
+    {
+      key: 'unidad',
+      label: 'Se mide por',
+      type: 'select',
+      required: true,
+      options: [
+        { value: 'DIA', label: 'Día' },
+        { value: 'UNIDAD', label: 'Unidad' },
+        { value: 'FIJO', label: 'Importe fijo' },
+      ],
+    },
+    { key: 'importe_unitario', label: 'Importe unitario', type: 'number', min: 0, step: '0.01', required: true },
+    { key: 'moneda', label: 'Moneda', type: 'currency' },
+    { key: 'permite_editar_importe', label: 'Permitir editar el importe al cargarlo', type: 'checkbox' },
+  ],
   'medios-pago': [
     { key: 'nombre', label: 'Medio de pago', required: true },
     { key: 'descripcion', label: 'Descripción' },
@@ -76,6 +104,8 @@ const visibleCustomers = computed(() => {
   })
 })
 const selectedCatalog = computed(() => catalogs.value[selected.value] ?? { label: '', items: [] })
+const conceptCategoryLabels = { GASTO: 'Gastos', HABER: 'Haberes', AMBOS: 'Gastos y haberes' }
+const conceptUnitLabels = { DIA: 'por día', UNIDAD: 'por unidad', FIJO: 'importe fijo' }
 const catalogFields = computed(() => fieldsByCatalog[formCatalog.value] ?? [])
 const formCatalogLabel = computed(() => catalogs.value[formCatalog.value]?.label ?? '')
 const catalogItems = computed(() => {
@@ -107,6 +137,11 @@ function catalogItemDetail(catalogKey, item) {
   if (catalogKey === 'liquidaciones') {
     return `Vigencia: ${item.vigente_desde}${item.vigente_hasta ? ` a ${item.vigente_hasta}` : ' en adelante'}`
   }
+  if (catalogKey === 'conceptos') {
+    const amount = Number(item.importe_unitario ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })
+    const editable = Number(item.permite_editar_importe) === 1 ? 'importe editable' : 'importe fijo'
+    return `${conceptCategoryLabels[item.categoria] ?? item.categoria} · ${conceptUnitLabels[item.unidad] ?? item.unidad} · ${item.moneda ?? 'ARS'} ${amount} · ${editable}`
+  }
   return [item.identificacion_fiscal, item.telefono, item.email, item.codigo, item.descripcion].filter(Boolean).join(' · ')
 }
 
@@ -123,6 +158,10 @@ function openCreate(catalogKey = selected.value, defaults = {}) {
   formCatalog.value = catalogKey
   editing.value = null
   form.value = { ...defaults }
+  if (catalogKey === 'conceptos') {
+    form.value.moneda = defaults.moneda ?? 'ARS'
+    form.value.permite_editar_importe = defaults.permite_editar_importe ?? true
+  }
   editorOpen.value = true
 }
 
@@ -131,6 +170,10 @@ function openEdit(catalogKey, item) {
   editing.value = item
   form.value = Object.fromEntries((fieldsByCatalog[catalogKey] ?? []).map(({ key }) => [key, item[key] ?? '']))
   if (catalogKey === 'domicilios') form.value.cliente_id = item.cliente_id
+  if (catalogKey === 'conceptos') {
+    form.value.moneda = item.moneda || 'ARS'
+    form.value.permite_editar_importe = Number(item.permite_editar_importe) === 1
+  }
   editorOpen.value = true
 }
 
@@ -415,16 +458,30 @@ function statusMessage(item) {
             <input type="hidden" :name="props.data.csrf.name" :value="props.data.csrf.hash">
             <input v-if="!editing" type="hidden" name="catalogo" :value="formCatalog">
             <input v-if="formCatalog === 'domicilios'" type="hidden" name="cliente_id" :value="form.cliente_id">
-            <label v-for="field in catalogFields" :key="field.key" class="block text-sm font-medium text-ink">
-              {{ field.label }} <span v-if="field.required" class="text-red-700">*</span>
-              <select v-if="field.type === 'country'" v-model="form[field.key]" :name="field.key" :required="field.required" :class="inputClass">
-                <option value="">Elegí un país</option><option v-for="country in props.data.countries.filter((row) => Number(row.activo))" :key="country.id" :value="country.id">{{ country.nombre }}</option>
-              </select>
-              <select v-else-if="field.type === 'employee'" v-model="form[field.key]" :name="field.key" :required="field.required" :disabled="props.data.employees.length === 0" :class="inputClass">
-                <option value="">Elegí un empleado</option><option v-for="employee in props.data.employees" :key="employee.id" :value="employee.id">{{ employee.name }}</option>
-              </select>
-              <textarea v-else-if="field.key === 'descripcion'" v-model="form[field.key]" :name="field.key" rows="3" :class="inputClass" />
-              <input v-else v-model="form[field.key]" :name="field.key" :type="field.type ?? 'text'" :min="field.min" :max="field.max" :step="field.step" :required="field.required" :class="inputClass">
+            <label v-for="field in catalogFields" :key="field.key" :class="field.type === 'checkbox' ? 'flex items-center gap-3 rounded-lg border border-border-subtle px-3 py-3 text-sm font-medium text-ink' : 'block text-sm font-medium text-ink'">
+              <template v-if="field.type === 'checkbox'">
+                <input type="hidden" :name="field.key" value="0">
+                <input v-model="form[field.key]" type="checkbox" :name="field.key" value="1" class="size-4 rounded border-border text-primary focus:ring-primary">
+                <span>{{ field.label }}</span>
+              </template>
+              <template v-else>
+                {{ field.label }} <span v-if="field.required" class="text-red-700">*</span>
+                <select v-if="field.type === 'country'" v-model="form[field.key]" :name="field.key" :required="field.required" :class="inputClass">
+                  <option value="">Elegí un país</option><option v-for="country in props.data.countries.filter((row) => Number(row.activo))" :key="country.id" :value="country.id">{{ country.nombre }}</option>
+                </select>
+                <select v-else-if="field.type === 'employee'" v-model="form[field.key]" :name="field.key" :required="field.required" :disabled="props.data.employees.length === 0" :class="inputClass">
+                  <option value="">Elegí un empleado</option><option v-for="employee in props.data.employees" :key="employee.id" :value="employee.id">{{ employee.name }}</option>
+                </select>
+                <select v-else-if="field.type === 'select'" v-model="form[field.key]" :name="field.key" :required="field.required" :class="inputClass">
+                  <option value="">Elegí una opción</option>
+                  <option v-for="option in field.options" :key="option.value" :value="option.value">{{ option.label }}</option>
+                </select>
+                <select v-else-if="field.type === 'currency'" v-model="form[field.key]" :name="field.key" :class="inputClass">
+                  <option v-for="currency in props.data.currencies" :key="currency.id" :value="currency.codigo">{{ currency.codigo }} · {{ currency.nombre }}</option>
+                </select>
+                <textarea v-else-if="field.key === 'descripcion'" v-model="form[field.key]" :name="field.key" rows="3" :class="inputClass" />
+                <input v-else v-model="form[field.key]" :name="field.key" :type="field.type ?? 'text'" :min="field.min" :max="field.max" :step="field.step" :required="field.required" :class="inputClass">
+              </template>
             </label>
             <div class="flex flex-col-reverse gap-2 border-t border-border-subtle pt-4 sm:flex-row sm:justify-end">
               <button type="button" :class="secondaryButton" @click="closeEditor">Cancelar</button>

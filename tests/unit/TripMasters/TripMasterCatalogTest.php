@@ -80,4 +80,78 @@ final class TripMasterCatalogTest extends TestCase
         $this->expectException(DomainException::class);
         (new TripMasterCatalog($repository))->save($this->actor(['viajes.maestros.ver']), 'clientes', ['nombre' => 'Nuevo']);
     }
+
+    public function testConceptAcceptsDecimalRateAndDailyUnit(): void
+    {
+        $repository = $this->createMock(TripMasterRepository::class);
+        $repository->method('sharedCurrencyExists')->with('ARS')->willReturn(true);
+        $repository->expects(self::once())->method('add')->with('conceptos', 7, [
+            'nombre' => 'Estadía Sider',
+            'categoria' => 'HABER',
+            'unidad' => 'DIA',
+            'importe_unitario' => '50000',
+            'moneda' => 'ARS',
+            'permite_editar_importe' => '1',
+        ], 12)->willReturn(5);
+
+        self::assertSame(5, (new TripMasterCatalog($repository))->save($this->actor(), 'conceptos', [
+            'nombre' => ' Estadía Sider ',
+            'categoria' => 'haber',
+            'unidad' => 'dia',
+            'importe_unitario' => '50000',
+            'moneda' => 'ars',
+            'permite_editar_importe' => '1',
+        ]));
+    }
+
+    public function testConceptAcceptsCommaDecimalAndFractionalRate(): void
+    {
+        $repository = $this->createMock(TripMasterRepository::class);
+        $repository->method('sharedCurrencyExists')->with('ARS')->willReturn(true);
+        $repository->expects(self::once())->method('add')->with('conceptos', 7, [
+            'nombre' => 'Estadía Cámara de frío',
+            'categoria' => 'HABER',
+            'unidad' => 'DIA',
+            'importe_unitario' => '80000.50',
+            'moneda' => 'ARS',
+            'permite_editar_importe' => '0',
+        ], 12)->willReturn(6);
+
+        (new TripMasterCatalog($repository))->save($this->actor(), 'conceptos', [
+            'nombre' => 'Estadía Cámara de frío',
+            'categoria' => 'HABER',
+            'unidad' => 'DIA',
+            'importe_unitario' => '80000,50',
+            'moneda' => 'ARS',
+            'permite_editar_importe' => '0',
+        ]);
+    }
+
+    public function testConceptRejectsUnknownCategory(): void
+    {
+        $repository = $this->createMock(TripMasterRepository::class);
+        $repository->expects(self::never())->method('add');
+        $this->expectException(DomainException::class);
+        (new TripMasterCatalog($repository))->save($this->actor(), 'conceptos', [
+            'nombre' => 'Concepto inválido',
+            'categoria' => 'OTRO',
+            'unidad' => 'DIA',
+            'importe_unitario' => '100',
+        ]);
+    }
+
+    public function testConceptRejectsCurrencyOutsideSharedCatalog(): void
+    {
+        $repository = $this->createMock(TripMasterRepository::class);
+        $repository->method('sharedCurrencyExists')->with('XXX')->willReturn(false);
+        $repository->expects(self::never())->method('add');
+        $this->expectException(DomainException::class);
+        (new TripMasterCatalog($repository))->save($this->actor(), 'conceptos', [
+            'nombre' => 'Concepto en moneda rara',
+            'categoria' => 'GASTO',
+            'unidad' => 'UNIDAD',
+            'importe_unitario' => '100',
+            'moneda' => 'XXX',
+        ]);
+    }
 }
