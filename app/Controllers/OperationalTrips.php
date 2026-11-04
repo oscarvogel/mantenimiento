@@ -17,6 +17,7 @@ use App\Application\Trips\RegisterTripOtherEarningCommand;
 use App\Application\Trips\UpdateTripCashMovementCommand;
 use App\Application\Trips\UpdateTripExpenseCommand;
 use App\Application\Trips\UpdateTripFuelLoadCommand;
+use App\Application\Trips\UpdateTripDriverPercentageCommand;
 use App\Application\Trips\UpdateTripOtherEarningCommand;
 use App\Infrastructure\Identity\SessionActorContext;
 use CodeIgniter\HTTP\RedirectResponse;
@@ -379,9 +380,24 @@ final class OperationalTrips extends BaseController
         return $this->deleteCostMovement($tripId, $movementId, DeleteOperationalTripCost::CASH, 'El movimiento se quitó del saldo de caja del viaje.');
     }
 
-    public function updateOtherEarning(int $tripId, int $movementId): RedirectResponse
+    public function updateDriverPercentage(int $tripId): RedirectResponse
     {
         try {
+            $command = new UpdateTripDriverPercentageCommand(
+                $tripId,
+                $this->requiredInt('empleado_id', 'Elegí el chofer del viaje.'),
+                $this->requiredPercentage('porcentaje'),
+            );
+            service('updateTripDriverPercentage')->execute($this->actor(), $command);
+
+            return redirect()->to('/viajes/operativos/' . $tripId)->with('success', 'El porcentaje de liquidación quedó actualizado.');
+        } catch (Throwable $exception) {
+            return $this->failure($exception, 'No se pudo actualizar el porcentaje de liquidación.', '/viajes/operativos/' . $tripId);
+        }
+    }
+
+    public function updateOtherEarning(int $tripId, int $movementId): RedirectResponse
+    {        try {
             $command = new UpdateTripOtherEarningCommand(
                 $tripId,
                 $movementId,
@@ -450,6 +466,16 @@ final class OperationalTrips extends BaseController
         }
 
         return (int) $value;
+    }
+
+    private function requiredPercentage(string $key): float
+    {
+        $raw = str_replace(',', '.', trim((string) $this->request->getPost($key)));
+        if ($raw === '' || ! is_numeric($raw) || (float) $raw < 0 || (float) $raw > 100) {
+            throw new DomainException('El porcentaje de liquidación debe estar entre 0 y 100.');
+        }
+
+        return (float) $raw;
     }
 
     private function requiredDate(string $key): DateTimeImmutable

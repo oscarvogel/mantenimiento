@@ -21,6 +21,8 @@ use App\Application\Trips\DeleteOperationalTripCost;
 use App\Application\Trips\DeleteOperationalTripCostCommand;
 use App\Application\Trips\UpdateTripOtherEarning;
 use App\Application\Trips\UpdateTripOtherEarningCommand;
+use App\Application\Trips\UpdateTripDriverPercentage;
+use App\Application\Trips\UpdateTripDriverPercentageCommand;
 use App\Domain\Trips\Trip;
 use App\Domain\Trips\TripAssignment;
 use App\Domain\Trips\TripCashMovement;
@@ -385,6 +387,32 @@ final class RegisterTripCostsTest extends TestCase
         self::assertTrue($costs->otherEarningDeleted);
     }
 
+    public function testUpdatesDriverPercentageForOpenTrip(): void
+    {
+        $trips = new CostTripRepositoryFake($this->trip());
+        $handler = new UpdateTripDriverPercentage($trips, new CostUnitOfWorkFake());
+
+        $handler->execute($this->actor(['viajes.operar']), new UpdateTripDriverPercentageCommand(
+            tripId: 55,
+            employeeId: 11,
+            percentage: 14.0,
+        ));
+
+        self::assertSame(14.0, $trips->driverPercentage);
+    }
+
+    public function testRejectsDriverPercentageOutsideRange(): void
+    {
+        $handler = new UpdateTripDriverPercentage(new CostTripRepositoryFake($this->trip()), new CostUnitOfWorkFake());
+
+        $this->expectException(DomainException::class);
+        $handler->execute($this->actor(['viajes.operar']), new UpdateTripDriverPercentageCommand(
+            tripId: 55,
+            employeeId: 11,
+            percentage: 101.0,
+        ));
+    }
+
     /** @param list<string> $permissions */
     private function actor(array $permissions): ActorContext
     {
@@ -420,6 +448,8 @@ final class RegisterTripCostsTest extends TestCase
 
 final class CostTripRepositoryFake implements OperationalTripRepository
 {
+    public ?float $driverPercentage = null;
+
     public function __construct(private readonly Trip $trip)
     {
     }
@@ -441,6 +471,13 @@ final class CostTripRepositoryFake implements OperationalTripRepository
 
     public function save(Trip $trip, int $actorUserId): void
     {
+    }
+
+    public function updateDriverPercentage(int $companyId, int $tripId, int $employeeId, float $percentage, int $actorUserId): void
+    {
+        $this->tripId = $tripId;
+        $this->companyId = $companyId;
+        $this->driverPercentage = $percentage;
     }
 
     public function conflicts(

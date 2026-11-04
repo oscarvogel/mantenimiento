@@ -67,9 +67,28 @@ final class GetOperationalTripTest extends TestCase
         self::assertSame(638_000.0, $detail['legs'][0]['margin_ars']);
     }
 
-    public function testComputesDriverSettlementWithEarningsExpensesAndCash(): void
+    public function testUsesMasterPercentageWhenTripAssignmentHasNone(): void
     {
         $detail = $this->detail([
+            'assignments' => [['rol' => 'CHOFER', 'empleado_id' => 7, 'porcentaje_liquidacion' => null, 'master_percentage' => 14.0, 'label' => 'Ana Chofer']],
+            'legs' => [[
+                'id' => 1,
+                'orden' => 1,
+                'origen' => 'Rosario',
+                'destino' => 'Córdoba',
+                'flete_facturacion_ars' => 1_000_000.0,
+                'flete_liquidacion_ars' => 800_000.0,
+            ]],
+        ]);
+
+        self::assertSame(14.0, $detail['totals']['driver_percentage']);
+        self::assertSame('MAESTRO', $detail['totals']['driver_percentage_source']);
+        self::assertSame(112_000.0, $detail['totals']['commission_ars']);
+        self::assertNotNull($detail['settlement']);
+    }
+
+    public function testComputesDriverSettlementWithEarningsExpensesAndCash(): void
+    {        $detail = $this->detail([
             'assignments' => [['rol' => 'CHOFER', 'empleado_id' => 7, 'porcentaje_liquidacion' => 14.0, 'label' => 'Ana Chofer']],
             'legs' => [[
                 'id' => 1,

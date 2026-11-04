@@ -234,7 +234,13 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
             ->orderBy('a.id', 'ASC')
             ->get()->getResultArray();
 
-        return array_map(function (array $row): array {
+        $driverIds = array_values(array_filter(array_map(
+            static fn (array $row): ?int => $row['empleado_id'] === null ? null : (int) $row['empleado_id'],
+            $rows,
+        )));
+        $masterPercentages = $this->masterPercentagesForDrivers($companyId, $tripId, $driverIds);
+
+        return array_map(function (array $row) use ($masterPercentages): array {
             $role = (string) $row['rol'];
             $label = $role === 'CHOFER'
                 ? trim((string) $row['nombre'] . ' ' . (string) ($row['apellido'] ?? ''))
@@ -252,8 +258,55 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
                 'desde' => $row['desde'],
                 'hasta' => $row['hasta'],
                 'porcentaje_liquidacion' => $row['porcentaje_liquidacion'] === null ? null : (float) $row['porcentaje_liquidacion'],
+                'master_percentage' => $row['empleado_id'] === null ? null : ($masterPercentages[(int) $row['empleado_id']] ?? null),
             ];
         }, $rows);
+    }
+
+    /**
+     * Porcentaje vigente del maestro a la fecha de salida del viaje.
+     *
+     * @param list<int> $driverIds
+     * @return array<int,float>
+     */
+    private function masterPercentagesForDrivers(int $companyId, int $tripId, array $driverIds): array
+    {
+        if ($driverIds === []) {
+            return [];
+        }
+
+        $trip = $this->db->table('viajes_operativos')
+            ->select('fecha_salida_real, fecha_salida_planificada')
+            ->where('empresa_id', $companyId)
+            ->where('id', $tripId)
+            ->get()->getRowArray();
+        $date = substr((string) ($trip['fecha_salida_real'] ?? $trip['fecha_salida_planificada'] ?? ''), 0, 10);
+        if ($date === '') {
+            return [];
+        }
+
+        $rows = $this->db->table('viajes_porcentajes_liquidacion_chofer')
+            ->select('empleado_id, porcentaje')
+            ->where('empresa_id', $companyId)
+            ->whereIn('empleado_id', $driverIds)
+            ->where('activo', 1)
+            ->where('vigente_desde <=', $date)
+            ->groupStart()
+            ->where('vigente_hasta', null)
+            ->orWhere('vigente_hasta >=', $date)
+            ->groupEnd()
+            ->orderBy('vigente_desde', 'DESC')
+            ->get()->getResultArray();
+
+        $percentages = [];
+        foreach ($rows as $row) {
+            $id = (int) $row['empleado_id'];
+            if (! array_key_exists($id, $percentages)) {
+                $percentages[$id] = (float) $row['porcentaje'];
+            }
+        }
+
+        return $percentages;
     }
 
     /** @return list<array<string,mixed>> */

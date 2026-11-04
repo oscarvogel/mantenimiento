@@ -76,11 +76,16 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
         )');
         $this->database->query('CREATE TABLE viajes_categorias_gasto (id INTEGER PRIMARY KEY, empresa_id INTEGER, nombre TEXT, activo INTEGER)');
         $this->database->query('CREATE TABLE viajes_conceptos (id INTEGER PRIMARY KEY, empresa_id INTEGER, nombre TEXT, categoria TEXT, unidad TEXT, importe_unitario REAL, moneda TEXT, permite_editar_importe INTEGER, activo INTEGER)');
+        $this->database->query('CREATE TABLE viajes_porcentajes_liquidacion_chofer (id INTEGER PRIMARY KEY, empresa_id INTEGER, empleado_id INTEGER, porcentaje REAL, vigente_desde TEXT, vigente_hasta TEXT NULL, activo INTEGER)');
         $this->database->query('CREATE TABLE viajes_medios_pago (id INTEGER PRIMARY KEY, empresa_id INTEGER, nombre TEXT, activo INTEGER)');
         $this->database->query('CREATE TABLE viajes_monedas (codigo TEXT PRIMARY KEY, nombre TEXT, activo INTEGER)');
         $this->database->table('viajes_conceptos')->insertBatch([
             ['id' => 9, 'empresa_id' => 5, 'nombre' => 'Estadía Sider', 'categoria' => 'HABER', 'unidad' => 'DIA', 'importe_unitario' => 50_000, 'moneda' => 'ARS', 'permite_editar_importe' => 0, 'activo' => 1],
             ['id' => 10, 'empresa_id' => 5, 'nombre' => 'Peaje', 'categoria' => 'GASTO', 'unidad' => 'UNIDAD', 'importe_unitario' => 1_000, 'moneda' => 'ARS', 'permite_editar_importe' => 1, 'activo' => 1],
+        ]);
+        $this->database->table('viajes_porcentajes_liquidacion_chofer')->insert([
+            'id' => 1, 'empresa_id' => 5, 'empleado_id' => 11, 'porcentaje' => 14,
+            'vigente_desde' => '2026-01-01', 'vigente_hasta' => null, 'activo' => 1,
         ]);
 
         $this->database->table('empresas')->insert(['id' => 5, 'razon_social' => 'Empresa de prueba S.A.', 'nombre_fantasia' => 'Empresa de prueba']);
@@ -182,6 +187,7 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
         self::assertSame('Tractor / camión', $detail['assignments'][0]['rol_label']);
         self::assertSame('Juan Pérez', $detail['assignments'][2]['label']);
         self::assertSame(14.0, $detail['assignments'][2]['porcentaje_liquidacion']);
+        self::assertSame(14.0, $detail['assignments'][2]['master_percentage']);
         self::assertCount(1, $detail['legs']);
         self::assertSame('Rosario', $detail['legs'][0]['origen']);
         self::assertSame(1_000_000.0, $detail['legs'][0]['flete_facturacion_ars']);

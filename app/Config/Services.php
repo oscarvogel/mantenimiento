@@ -1359,6 +1359,20 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
         );
     }
 
+    public static function updateTripDriverPercentage(bool $getShared = true): \App\Application\Trips\UpdateTripDriverPercentage
+    {
+        if ($getShared) {
+            return static::getSharedInstance('updateTripDriverPercentage');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\Trips\UpdateTripDriverPercentage(
+            new \App\Infrastructure\Trips\CodeIgniterOperationalTripRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripsUnitOfWork($db),
+        );
+    }
+
     public static function startTrip(bool $getShared = true): \App\Application\Trips\StartTrip
     {
         if ($getShared) {
