@@ -101,4 +101,13 @@ final class CodeIgniterTripMasterRepositoryTest extends CIUnitTestCase
         self::assertSame(7, $this->queries[0]['binds']['empresa_id'][0]);
         self::assertSame(91, $this->queries[0]['binds']['id'][0]);
     }
+
+    public function testConceptCatalogUsesCompanyScopedTable(): void
+    {
+        $this->repository->list('conceptos', 7, false);
+        self::assertStringContainsString('FROM `viajes_conceptos`', $this->queries[0]['sql']);
+        self::assertStringContainsString('`viajes_conceptos`.`empresa_id` =', $this->queries[0]['sql']);
+        self::assertStringContainsString('`viajes_conceptos`.`activo` =', $this->queries[0]['sql']);
+        self::assertSame(7, $this->queries[0]['binds']['viajes_conceptos.empresa_id'][0]);
+    }
 }

@@ -41,7 +41,31 @@ final class RegisterTripOtherEarning
             throw new DomainException('El chofer elegido no existe o está inactivo.');
         }
 
-        return $this->unitOfWork->transactional(function () use ($actor, $command, $companyId, $branchIds): int {
+        $concept = $command->conceptId === null ? null : $this->directory->concept($companyId, $command->conceptId);
+        if ($command->conceptId !== null && $concept === null) {
+            throw new DomainException('El concepto elegido no está disponible.');
+        }
+        if ($concept !== null && ! in_array($concept['categoria'], ['HABER', 'AMBOS'], true)) {
+            throw new DomainException('El concepto elegido no aplica a haberes.');
+        }
+        $quantity = $command->quantity ?? 1.0;
+        if ($quantity <= 0) {
+            throw new DomainException('La cantidad del haber debe ser mayor que cero.');
+        }
+        $amount = $command->amount;
+        $unitAmount = null;
+        $conceptName = $command->concept;
+        if ($concept !== null) {
+            $unitAmount = (float) $concept['importe_unitario'];
+            if (! $concept['permite_editar_importe']) {
+                $amount = round($quantity * $unitAmount, 4);
+            }
+            if (trim($conceptName) === '') {
+                $conceptName = $concept['nombre'];
+            }
+        }
+
+        return $this->unitOfWork->transactional(function () use ($actor, $command, $companyId, $branchIds, $concept, $quantity, $amount, $unitAmount, $conceptName): int {
             $trip = $this->trips->findForUpdate($companyId, $branchIds, $command->tripId);
             if ($trip === null) {
                 throw new DomainException('El viaje solicitado no existe o no está autorizado.');
@@ -56,9 +80,12 @@ final class RegisterTripOtherEarning
             $earning = new TripOtherEarning(
                 $command->employeeId,
                 $command->date,
-                new TripMoney($command->amount, $command->currency, $command->exchangeRate),
-                $command->concept,
+                new TripMoney($amount, $command->currency, $command->exchangeRate),
+                $conceptName,
                 $command->notes,
+                $concept['id'] ?? null,
+                $quantity,
+                $unitAmount,
             );
 
             return $this->costs->addOtherEarning($trip->id() ?? 0, $companyId, $trip->branchId(), $earning, $actor->userId());

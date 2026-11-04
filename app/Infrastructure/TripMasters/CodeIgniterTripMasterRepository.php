@@ -17,6 +17,7 @@ final readonly class CodeIgniterTripMasterRepository implements TripMasterReposi
         'tipos-carga' => 'viajes_tipos_carga',
         'unidades-carga' => 'viajes_unidades_carga',
         'categorias-gasto' => 'viajes_categorias_gasto',
+        'conceptos' => 'viajes_conceptos',
         'medios-pago' => 'viajes_medios_pago',
         'tipos-documento' => 'viajes_tipos_documento',
         'liquidaciones' => 'viajes_porcentajes_liquidacion_chofer',
@@ -105,6 +106,19 @@ final readonly class CodeIgniterTripMasterRepository implements TripMasterReposi
     public function countryIsActive(int $countryId): bool
     {
         return $this->db->table('viajes_paises')->where('id', $countryId)->where('activo', 1)->countAllResults() > 0;
+    }
+
+    public function sharedCurrencyExists(string $code): bool
+    {
+        $code = strtoupper(trim($code));
+        if ($code === 'ARS') {
+            return true;
+        }
+
+        return $this->db->table('viajes_monedas')
+            ->where('codigo', $code)
+            ->where('activo', 1)
+            ->countAllResults() > 0;
     }
 
     public function hasOverlappingLiquidationRate(int $companyId, int $employeeId, string $from, ?string $to, ?int $exceptId = null): bool

@@ -375,6 +375,11 @@ final class CreateTripTest extends TestCase
                 return true;
             }
 
+            public function concept(int $companyId, int $conceptId): ?array
+            {
+                return null;
+            }
+
             public function currencyExists(string $code): bool
             {
                 return true;

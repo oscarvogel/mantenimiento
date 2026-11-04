@@ -234,6 +234,78 @@ describe('detalle de viaje operativo', () => {
     wrapper.unmount()
   })
 
+  it('calcula el importe del gasto desde un concepto con cantidad fraccionaria', async () => {
+    const wrapper = mount(TripOperationsDetailPage, {
+      props: {
+        data: {
+          ...data,
+          canStart: false,
+          canCancel: false,
+          canRegisterCosts: true,
+          links: { ...data.links, expense: '/mantenimiento/viajes/operativos/42/gastos' },
+          options: {
+            expenseCategories: [],
+            paymentMethods: [],
+            currencies: [{ code: 'ARS', label: 'Peso argentino' }],
+            expenseConcepts: [
+              { id: 10, label: 'Estadía Sider', categoria: 'GASTO', unit: 'DIA', amount: 50000, currency: 'ARS', editable: false },
+              { id: 11, label: 'Peaje', categoria: 'GASTO', unit: 'UNIDAD', amount: 1000, currency: 'ARS', editable: true },
+            ],
+          },
+        },
+      },
+    })
+
+    const expenseButton = wrapper.findAll('button').find((button) => button.text().includes('Cargar gasto'))
+    await expenseButton.trigger('click')
+    await nextTick()
+
+    const form = wrapper.get('form[action="/mantenimiento/viajes/operativos/42/gastos"]')
+    await form.get('select[name="concepto_id"]').setValue('10')
+    await form.get('input[name="cantidad"]').setValue('1.5')
+    await form.get('select[name="concepto_id"]').trigger('change')
+
+    expect(form.get('input[name="importe"]').element.value).toBe('75000.00')
+    expect(form.get('input[name="importe"]').element.readOnly).toBe(true)
+    expect(form.get('select[name="concepto_id"] option[value="10"]').text()).toContain('Estadía Sider')
+    expect(form.get('select[name="concepto_id"] option[value="10"]').text()).toContain('ARS 50.000,00 / día')
+
+    await form.get('select[name="concepto_id"]').setValue('11')
+    await form.get('select[name="concepto_id"]').trigger('change')
+    expect(form.get('input[name="importe"]').element.readOnly).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('muestra el concepto, la cantidad y el unitario en la liquidación', () => {
+    const wrapper = mount(TripOperationsDetailPage, {
+      props: {
+        data: {
+          ...data,
+          canStart: false,
+          canCancel: false,
+          canRegisterCosts: false,
+          totals: { has_legs: true, driver_percentage: 14, drivers_count: 1, multiple_drivers: false },
+          settlement: {
+            driver: 'Pérez, Juan', commission_ars: 112000, other_earnings_ars: 75000,
+            driver_expenses_ars: 0, cash_expenses_ars: 0, advances_ars: 0,
+            returns_ars: 0, account_balance_ars: 0, total_ars: 187000,
+          },
+          otherEarnings: [{
+            id: 1, empleado_id: 11, empleado: 'Pérez, Juan', fecha: '2026-10-20',
+            concepto: 'Estadía Sider', concepto_catalogo: 'Estadía Sider',
+            cantidad: 1.5, importe_unitario: 50000, moneda: 'ARS', importe_ars: 75000,
+          }],
+          options: { expenseCategories: [], paymentMethods: [], currencies: [{ code: 'ARS', label: 'Peso argentino' }] },
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain('Estadía Sider')
+    expect(wrapper.text()).toContain('1,5 × ARS 50.000,00')
+    expect(wrapper.text()).toContain('ARS 75.000,00')
+    wrapper.unmount()
+  })
+
   it('oculta las acciones cuando el viaje ya avanzó', () => {
     const wrapper = mount(TripOperationsDetailPage, {
       props: { data: { ...data, canStart: false, canCancel: false, trip: { ...data.trip, estado: 'EN_CURSO', estado_label: 'En curso' } } },

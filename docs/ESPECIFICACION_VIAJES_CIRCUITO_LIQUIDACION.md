@@ -51,6 +51,8 @@ Los adelantos **no** son un costo del viaje: son movimientos de cuenta corriente
 | **Gasto del viaje** | Peajes, gomería, aduana, estacionamiento, viáticos y otros gastos. Puede estar pagado por la empresa, por el chofer o con la caja del viaje. |
 | **Cuenta corriente del chofer** | Libro de movimientos entre la empresa y el chofer: adelantos, devoluciones, gastos a favor, otros haberes y ajustes. |
 | **Otros haberes** | Haberes adicionales del viaje, por ejemplo viáticos o adicionales. |
+| **Concepto de gasto/haber** | Catálogo por empresa con importe unitario, categoría (gasto, haber o ambos) y unidad (día, unidad o fijo). Permite cargar importes por cantidad. |
+| **Estadía** | Haber del chofer por día de espera, cargado como concepto (por ejemplo "Estadía Sider" o "Estadía Cámara de frío") con la cantidad de días. |
 | **Liquidación del chofer** | Total a pagar o cobrar al chofer al cerrar el viaje. |
 | **Margen del tramo** | Flete de facturación del tramo menos costos asignados al tramo menos comisión del tramo. |
 | **Margen del viaje** | Flete de facturación total menos todos los costos del viaje menos comisiones y otros haberes. |
@@ -161,6 +163,8 @@ Los adelantos no cambian el margen del viaje; solo la liquidación final.
 | Imputación opcional de combustible y gastos a un tramo | Implementado | `viaje_operativo_combustible.tramo_id`, `viaje_operativo_gastos.tramo_id` |
 | Caja del chofer: anticipo, retiro, devolución | Implementado | `viaje_operativo_caja_movimientos` |
 | Otros haberes del viaje | Implementado | `viaje_operativo_otros_haberes`, `TripOtherEarning` |
+| Catálogo de conceptos de gasto/haber con importe, categoría y unidad | Implementado | `viajes_conceptos`, `TripMasterCatalog` |
+| Concepto, cantidad e importe unitario en gastos y haberes | Implementado | `viaje_operativo_gastos`, `viaje_operativo_otros_haberes` |
 | Alta de viaje aprobado directamente En curso con salida y km reales | Implementado | `CreateTrip`, `Trip::startImmediately` |
 | Inicio separado de viajes preexistentes `PLANIFICADO` | Conservado para registros anteriores | `StartTrip` |
 | Cierre del viaje con km de regreso | Implementado | `FinishTrip` |
@@ -388,6 +392,24 @@ Para aprobar, pagar y auditar la liquidación:
 | `estado` | `BORRADOR`, `CALCULADA`, `APROBADA`, `PAGADA`, `ANULADA` |
 | `observaciones` | VARCHAR(500) NULL |
 
+### 7.6 Tabla implementada: `viajes_conceptos`
+
+Catálogo por empresa para cargar gastos y haberes con cantidad.
+
+| Columna | Tipo | Regla |
+|---|---|---|
+| `id` | INT UNSIGNED AI | PK |
+| `empresa_id` | INT UNSIGNED | Scope obligatorio |
+| `nombre` | VARCHAR(120) | Único por empresa |
+| `categoria` | VARCHAR(20) | `GASTO`, `HABER` o `AMBOS` |
+| `unidad` | VARCHAR(20) | `DIA`, `UNIDAD` o `FIJO` |
+| `importe_unitario` | DECIMAL(18,4) | Mayor o igual a cero |
+| `moneda` | CHAR(3) | Default `ARS` |
+| `permite_editar_importe` | TINYINT(1) | Default 1 |
+| `activo` | TINYINT(1) | Default 1 |
+
+`viaje_operativo_gastos` y `viaje_operativo_otros_haberes` agregan `concepto_id` nullable, `cantidad` `DECIMAL(10,2)` e `importe_unitario` `DECIMAL(18,4)` como snapshot.
+
 ---
 
 ## 8. Reglas de cálculo
@@ -463,6 +485,18 @@ El modelo actual permite varios choferes por viaje. Para la liquidación se debe
 - **C:** cada chofer liquida su propia cuenta corriente y su propia comisión por tramo.
 
 Hasta que se defina, el sistema debe mostrar la liquidación solo si hay un chofer responsable; si hay varios, muestra `SIN DATOS SUFICIENTES` y explica que falta la regla de reparto.
+
+### 8.7 Concepto, cantidad e importe (implementado)
+
+```text
+importe = cantidad × importe_unitario
+```
+
+- El concepto debe pertenecer a la empresa y estar activo.
+- Los gastos aceptan conceptos `GASTO` o `AMBOS`; los haberes, `HABER` o `AMBOS`.
+- Si `permite_editar_importe = 0`, el servidor ignora el importe enviado y calcula `cantidad × importe_unitario`.
+- Se guarda un snapshot de `concepto_id`, `cantidad` e `importe_unitario` para no recalcular la historia.
+- Las estadías se cargan como otros haberes: concepto "Estadía Sider" o "Estadía Cámara de frío" por la cantidad de días.
 
 ---
 

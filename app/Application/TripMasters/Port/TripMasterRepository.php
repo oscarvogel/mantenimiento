@@ -29,5 +29,7 @@ interface TripMasterRepository
 
     public function countryIsActive(int $countryId): bool;
 
+    public function sharedCurrencyExists(string $code): bool;
+
     public function hasOverlappingLiquidationRate(int $companyId, int $employeeId, string $from, ?string $to, ?int $exceptId = null): bool;
 }

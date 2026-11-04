@@ -21,6 +21,8 @@ final readonly class RegisterTripExpenseCommand
         public ?string $notes = null,
         public ?int $legId = null,
         public string $paidBy = 'EMPRESA',
+        public ?int $conceptId = null,
+        public ?float $quantity = null,
     ) {
     }
 }

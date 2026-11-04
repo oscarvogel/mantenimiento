@@ -173,6 +173,155 @@ final class RegisterTripCostsTest extends TestCase
         ));
     }
 
+    public function testExpenseWithFixedConceptCalculatesAmountFromFractionalQuantity(): void
+    {
+        $costs = new CostRepositoryFake();
+        $directory = new CostDirectoryFake();
+        $directory->concept = [
+            'id' => 9,
+            'nombre' => 'Estadía Sider',
+            'categoria' => 'GASTO',
+            'unidad' => 'DIA',
+            'importe_unitario' => 50_000.0,
+            'moneda' => 'ARS',
+            'permite_editar_importe' => false,
+        ];
+        $handler = new RegisterTripExpense(new CostTripRepositoryFake($this->trip()), $costs, $directory, new CostLegRepositoryFake(), new CostUnitOfWorkFake());
+
+        $handler->execute($this->actor(['viajes.operar']), new RegisterTripExpenseCommand(
+            tripId: 55,
+            date: new DateTimeImmutable('2026-10-20 11:00:00'),
+            amount: 1.0,
+            conceptId: 9,
+            quantity: 1.5,
+        ));
+
+        self::assertInstanceOf(TripExpense::class, $costs->expense);
+        self::assertSame(75_000.0, $costs->expense->money()->amount());
+        self::assertSame(9, $costs->expense->conceptId());
+        self::assertSame(1.5, $costs->expense->quantity());
+        self::assertSame(50_000.0, $costs->expense->unitAmount());
+    }
+
+    public function testExpenseWithEditableConceptKeepsPostedAmountButSnapshotsUnitAmount(): void
+    {
+        $costs = new CostRepositoryFake();
+        $directory = new CostDirectoryFake();
+        $directory->concept = [
+            'id' => 9,
+            'nombre' => 'Peaje',
+            'categoria' => 'AMBOS',
+            'unidad' => 'UNIDAD',
+            'importe_unitario' => 1_000.0,
+            'moneda' => 'ARS',
+            'permite_editar_importe' => true,
+        ];
+        $handler = new RegisterTripExpense(new CostTripRepositoryFake($this->trip()), $costs, $directory, new CostLegRepositoryFake(), new CostUnitOfWorkFake());
+
+        $handler->execute($this->actor(['viajes.operar']), new RegisterTripExpenseCommand(
+            tripId: 55,
+            date: new DateTimeImmutable('2026-10-20 11:00:00'),
+            amount: 1_800.0,
+            conceptId: 9,
+            quantity: 2.0,
+        ));
+
+        self::assertSame(1_800.0, $costs->expense->money()->amount());
+        self::assertSame(1_000.0, $costs->expense->unitAmount());
+    }
+
+    public function testExpenseRejectsEarningConcept(): void
+    {
+        $directory = new CostDirectoryFake();
+        $directory->concept = [
+            'id' => 9,
+            'nombre' => 'Estadía Sider',
+            'categoria' => 'HABER',
+            'unidad' => 'DIA',
+            'importe_unitario' => 50_000.0,
+            'moneda' => 'ARS',
+            'permite_editar_importe' => false,
+        ];
+        $handler = new RegisterTripExpense(new CostTripRepositoryFake($this->trip()), new CostRepositoryFake(), $directory, new CostLegRepositoryFake(), new CostUnitOfWorkFake());
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('no aplica a gastos');
+        $handler->execute($this->actor(['viajes.operar']), new RegisterTripExpenseCommand(
+            tripId: 55,
+            date: new DateTimeImmutable('2026-10-20 11:00:00'),
+            amount: 1_000.0,
+            conceptId: 9,
+        ));
+    }
+
+    public function testOtherEarningWithFixedConceptComputesTotalAndUsesCatalogName(): void
+    {
+        $costs = new CostRepositoryFake();
+        $directory = new CostDirectoryFake();
+        $directory->concept = [
+            'id' => 9,
+            'nombre' => 'Estadía Sider',
+            'categoria' => 'HABER',
+            'unidad' => 'DIA',
+            'importe_unitario' => 50_000.0,
+            'moneda' => 'ARS',
+            'permite_editar_importe' => false,
+        ];
+        $handler = new RegisterTripOtherEarning(
+            new CostTripRepositoryFake($this->trip()),
+            $costs,
+            new CostFleetFake(),
+            $directory,
+            new CostUnitOfWorkFake(),
+        );
+
+        $handler->execute($this->actor(['viajes.operar']), new RegisterTripOtherEarningCommand(
+            tripId: 55,
+            employeeId: 11,
+            date: new DateTimeImmutable('2026-10-20'),
+            amount: 1.0,
+            conceptId: 9,
+            quantity: 1.5,
+        ));
+
+        self::assertSame(75_000.0, $costs->otherEarning->money()->amount());
+        self::assertSame('Estadía Sider', $costs->otherEarning->concept());
+        self::assertSame(9, $costs->otherEarning->conceptId());
+        self::assertSame(1.5, $costs->otherEarning->quantity());
+        self::assertSame(50_000.0, $costs->otherEarning->unitAmount());
+    }
+
+    public function testOtherEarningRejectsExpenseConcept(): void
+    {
+        $directory = new CostDirectoryFake();
+        $directory->concept = [
+            'id' => 9,
+            'nombre' => 'Peaje',
+            'categoria' => 'GASTO',
+            'unidad' => 'UNIDAD',
+            'importe_unitario' => 1_000.0,
+            'moneda' => 'ARS',
+            'permite_editar_importe' => false,
+        ];
+        $handler = new RegisterTripOtherEarning(
+            new CostTripRepositoryFake($this->trip()),
+            new CostRepositoryFake(),
+            new CostFleetFake(),
+            $directory,
+            new CostUnitOfWorkFake(),
+        );
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('no aplica a haberes');
+        $handler->execute($this->actor(['viajes.operar']), new RegisterTripOtherEarningCommand(
+            tripId: 55,
+            employeeId: 11,
+            date: new DateTimeImmutable('2026-10-20'),
+            amount: 1_000.0,
+            conceptId: 9,
+        ));
+    }
+
     /** @param list<string> $permissions */
     private function actor(array $permissions): ActorContext
     {
@@ -332,12 +481,14 @@ final class CostFleetFake implements TripFleetLookup
 final class CostDirectoryFake implements TripDirectoryLookup
 {
     public bool $categoryExists = true;
+    public ?array $concept = null;
 
     public function customerExists(int $companyId, int $customerId): bool { return true; }
     public function loadUnitExists(int $companyId, int $loadUnitId): bool { return true; }
     public function addressBelongsToCustomer(int $companyId, int $customerId, int $addressId): bool { return true; }
     public function expenseCategoryExists(int $companyId, int $categoryId): bool { return $this->categoryExists; }
     public function paymentMethodExists(int $companyId, int $paymentMethodId): bool { return true; }
+    public function concept(int $companyId, int $conceptId): ?array { return $this->concept; }
     public function currencyExists(string $code): bool { return true; }
 }
 

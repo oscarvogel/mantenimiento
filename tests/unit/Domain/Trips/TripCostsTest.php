@@ -47,6 +47,35 @@ final class TripCostsTest extends TestCase
         new TripExpense(new DateTimeImmutable(), new TripMoney(100), paidBy: 'TALLER');
     }
 
+    public function testExpenseKeepsCatalogConceptQuantityAndUnitAmount(): void
+    {
+        $expense = new TripExpense(
+            new DateTimeImmutable(),
+            new TripMoney(75_000),
+            conceptId: 9,
+            quantity: 1.5,
+            unitAmount: 50_000.0,
+        );
+
+        self::assertSame(9, $expense->conceptId());
+        self::assertSame(1.5, $expense->quantity());
+        self::assertSame(50_000.0, $expense->unitAmount());
+    }
+
+    public function testExpenseRejectsNonPositiveQuantity(): void
+    {
+        $this->expectException(DomainException::class);
+
+        new TripExpense(new DateTimeImmutable(), new TripMoney(100), conceptId: 9, quantity: 0.0);
+    }
+
+    public function testExpenseRejectsInvalidConcept(): void
+    {
+        $this->expectException(DomainException::class);
+
+        new TripExpense(new DateTimeImmutable(), new TripMoney(100), conceptId: -1);
+    }
+
     public function testCashMovementOnlyAcceptsKnownTypes(): void
     {
         $this->expectException(DomainException::class);
