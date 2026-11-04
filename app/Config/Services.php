@@ -1379,6 +1379,17 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
         );
     }
 
+    public static function getOperationalTripsDashboard(bool $getShared = true): \App\Application\Trips\GetOperationalTripsDashboard
+    {
+        if ($getShared) {
+            return static::getSharedInstance('getOperationalTripsDashboard');
+        }
+
+        return new \App\Application\Trips\GetOperationalTripsDashboard(
+            new \App\Infrastructure\Trips\CodeIgniterOperationalTripDashboardReadModel(db_connect()),
+        );
+    }
+
     public static function getOperationalTrip(bool $getShared = true): \App\Application\Trips\GetOperationalTrip
     {
         if ($getShared) {

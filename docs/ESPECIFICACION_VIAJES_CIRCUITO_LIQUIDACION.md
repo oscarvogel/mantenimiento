@@ -177,6 +177,7 @@ Los adelantos no cambian el margen del viaje; solo la liquidación final.
 | Facturación histórica importada y vínculo con el viaje | Implementado | `viajes_facturas`, `viaje_factura_viaje`, `ReviewTripInvoices` |
 | Rentabilidad histórica legacy | Implementado, solo legacy | `GetTripProfitability` |
 | Dashboard de viajes | Implementado | `TripsDashboard` |
+| Tablero de viajes operativos con viajes en curso, KPIs y gráficos | Implementado | `OperationalTripsDashboard`, `GetOperationalTripsDashboard` |
 
 ### 4.2 Qué falta para el circuito descrito
 
@@ -771,6 +772,7 @@ La Fase 2 (aprobación y pagos de liquidación) queda para después de validar e
 |---|---|---|---|
 | 21/10/2026 | Mavis | Se documenta el circuito y se listan los diez puntos faltantes para la Fase 1. | Estado: borrador para evaluación. |
 | 24/10/2026 | Mavis | Los diez puntos de la Fase 1 quedan implementados y cubiertos por pruebas. La cuenta corriente legacy se migra preservando, sin calcular saldos (D3). | 1478 pruebas, 0 fallos. 88 de dominio y aplicación de Viajes, 57 de base y feature, 28 de frontend. |
+| 04/11/2026 | OpenCode | Se agrega el tablero de viajes operativos con viajes en curso, KPIs y gráficos; pasa a ser el acceso del módulo Viajes. El historial importado queda como entrada independiente. | 1545 pruebas PHP y 438 de frontend, sin fallos. |
 
 Checklist para aprobar la Fase 1:
 

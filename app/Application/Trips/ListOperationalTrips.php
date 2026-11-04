@@ -72,6 +72,7 @@ final class ListOperationalTrips
             'pagination' => ['page' => $page, 'perPage' => self::PER_PAGE, 'total' => $total, 'pages' => $pages],
             'links' => [
                 'index' => base_url('viajes/operativos'),
+                'dashboard' => base_url('viajes/operativos/dashboard'),
                 'create' => base_url('viajes/operativos/nuevo'),
                 'history' => base_url('viajes'),
             ],

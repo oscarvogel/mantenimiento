@@ -30,7 +30,10 @@ final readonly class AppShellPayload
             : $active;
         $navigation = match ($active) {
             'command-center' => $this->platformNavigation($actor, $availableModules),
-            'trip-masters', 'trips-dashboard', 'trips-operations', 'trip-operations-create', 'trip-operations-detail', 'trips-profitability' => array_values(array_filter([
+            'trip-masters', 'trips-dashboard', 'trips-operations-dashboard', 'trips-operations', 'trip-operations-create', 'trip-operations-detail', 'trips-profitability' => array_values(array_filter([
+                $actor->hasPermission('viajes.ver')
+                    ? $this->item('trips-operations-dashboard', 'Dashboard', 'viajes/operativos/dashboard', 'chart', $active)
+                    : null,
                 $actor->hasPermission('viajes.ver')
                     ? $this->item('trips-dashboard', 'Historial', 'viajes', 'truck', $active)
                     : null,
@@ -53,11 +56,10 @@ final readonly class AppShellPayload
             ? []
             : $this->platformNavigation($actor, $availableModules, match ($active) {
                 'theoretical-cost-km' => 'management',
-                'trip-masters', 'trips-dashboard', 'trips-operations', 'trip-operations-create', 'trip-operations-detail', 'trips-profitability' => 'trips',
+                'trip-masters', 'trips-dashboard', 'trips-operations-dashboard', 'trips-operations', 'trip-operations-create', 'trip-operations-detail', 'trips-profitability' => 'trips',
                 default => 'maintenance',
             });
-
-        $isTripPage = in_array($active, ['trip-masters', 'trips-dashboard', 'trips-operations', 'trip-operations-create', 'trip-operations-detail', 'trips-profitability'], true);
+        $isTripPage = in_array($active, ['trip-masters', 'trips-dashboard', 'trips-operations-dashboard', 'trips-operations', 'trip-operations-create', 'trip-operations-detail', 'trips-profitability'], true);
         if ($active !== 'command-center' && $active !== 'theoretical-cost-km' && ! $isTripPage && $actor->isSuperAdmin()) {
             $navigation[] = $this->item('superadmin', 'Administración global', 'superadmin', 'building', $active);
             $navigation[] = $this->item('whatsapp-digest-preview', 'Previsualizar resumen WhatsApp', 'superadmin/whatsapp/resumen-diario', 'notifications', $active);
