@@ -20,6 +20,8 @@ const totals = computed(() => props.data.totals ?? {})
 const legs = computed(() => props.data.legs ?? [])
 const consumption = computed(() => props.data.consumption ?? {})
 const options = computed(() => props.data.options ?? { expenseCategories: [], paymentMethods: [], currencies: [] })
+const expenseConcepts = computed(() => options.value.expenseConcepts ?? [])
+const earningConcepts = computed(() => options.value.earningConcepts ?? [])
 const csrf = computed(() => props.data.csrf ?? { name: 'csrf_test_name', hash: '' })
 const canRegisterCosts = computed(() => Boolean(props.data.canRegisterCosts))
 const canAddLegs = computed(() => Boolean(props.data.canAddLegs))
@@ -67,6 +69,33 @@ const statusTone = {
   CANCELADO: 'bg-danger-subtle text-danger-strong',
 }
 const cashTypeLabel = { CAJA_INICIAL: 'Caja inicial', ANTICIPO: 'Anticipo', RETIRO: 'Retiro', DEVOLUCION: 'Devolución' }
+
+const conceptOptionLabel = (concept) => `${concept.label} · ${money(concept.amount, concept.currency)}${concept.unit === 'DIA' ? ' / día' : ''}`
+const quantityLabel = (value) => Number(value ?? 0).toLocaleString('es-AR', { maximumFractionDigits: 2 })
+const earningConceptLabel = (earning) => earning.concepto_catalogo || earning.concepto || 'Sin concepto'
+const applyConceptToForm = (event) => {
+  const form = event.target.closest('form')
+  if (!form) return
+  const list = form.dataset.conceptKind === 'expense' ? expenseConcepts.value : earningConcepts.value
+  const conceptId = form.querySelector('select[name="concepto_id"]')?.value
+  const concept = list.find((item) => String(item.id) === String(conceptId))
+  const quantityInput = form.querySelector('input[name="cantidad"]')
+  const amountInput = form.querySelector('input[name="importe"]')
+  if (!amountInput) return
+  if (!concept) {
+    amountInput.readOnly = false
+    return
+  }
+  const quantity = Number(String(quantityInput?.value ?? '1').replace(',', '.')) || 0
+  amountInput.value = (Math.round(quantity * Number(concept.amount) * 100) / 100).toFixed(2)
+  amountInput.readOnly = !concept.editable
+  const freeConcept = form.querySelector('input[name="concepto"]')
+  if (freeConcept) freeConcept.value = ''
+  const currencySelect = form.querySelector('select[name="moneda"]')
+  if (currencySelect && concept.currency) {
+    currencySelect.value = concept.currency
+  }
+}
 
 const paidByLabel = { EMPRESA: 'Empresa', CHOFER: 'Chofer', CAJA: 'Caja del chofer' }
 const drivers = computed(() => assignments.value.filter((row) => row.rol === 'CHOFER'))
@@ -322,23 +351,35 @@ const facts = computed(() => {
             <p class="text-sm font-bold text-ink">Total a liquidar</p>
             <p class="text-xl font-extrabold" :class="settlement.total_ars < 0 ? 'text-danger-strong' : 'text-primary'">{{ money(settlement.total_ars) }}</p>
           </div>
+          <div v-if="otherEarnings.length" class="mt-3 rounded-lg border border-border-subtle bg-surface p-3">
+            <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Detalle de haberes</p>
+            <ul class="mt-2 space-y-1 text-xs">
+              <li v-for="earning in otherEarnings" :key="`settlement-${earning.id}`" class="flex items-start justify-between gap-3">
+                <span class="text-ink-muted">{{ earningConceptLabel(earning) }}<span v-if="earning.cantidad && earning.cantidad !== 1"> · {{ quantityLabel(earning.cantidad) }} × {{ money(earning.importe_unitario, earning.moneda) }}</span></span>
+                <span class="shrink-0 font-semibold text-ink">{{ money(earning.importe_ars) }}</span>
+              </li>
+            </ul>
+          </div>
           <p class="mt-2 text-xs text-ink-muted">Los anticipos no son costo del viaje. El saldo negativo queda a favor de la empresa.</p>
         </div>
 
         <div>
-          <form v-if="canRegisterCosts && drivers.length === 1" method="post" :action="data.links?.earnings" class="rounded-xl border border-border-subtle bg-surface p-4">
+          <form v-if="canRegisterCosts && drivers.length === 1" method="post" :action="data.links?.earnings" data-concept-kind="earning" class="rounded-xl border border-border-subtle bg-surface p-4">
             <input type="hidden" :name="csrf.name" :value="csrf.hash" />
             <input type="hidden" name="empleado_id" :value="drivers[0].empleado_id" />
             <h3 class="text-sm font-bold text-ink">Agregar otro haber</h3>
-            <p class="mt-1 text-xs text-ink-muted">Viaje, espera, descarga u otro adicional acordado con el chofer.</p>
+            <p class="mt-1 text-xs text-ink-muted">Elegí un concepto del catálogo para calcular el importe por cantidad, o cargá un concepto libre.</p>
             <div class="mt-3 grid gap-3 sm:grid-cols-2">
               <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Fecha</span><input type="date" name="fecha" :value="today" required :class="fieldClass" /></label>
+              <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Concepto del catálogo</span><select name="concepto_id" :class="fieldClass" @change="applyConceptToForm"><option value="">Concepto libre</option><option v-for="concept in earningConcepts" :key="concept.id" :value="concept.id">{{ conceptOptionLabel(concept) }}</option></select></label>
+              <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cantidad (días o unidades)</span><input type="number" name="cantidad" min="0.01" step="0.01" value="1" :class="fieldClass" @input="applyConceptToForm" /></label>
               <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Importe</span><input type="number" name="importe" min="0.01" step="0.01" required :class="fieldClass" /></label>
               <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select name="moneda" :class="fieldClass"><option v-for="currency in currencies" :key="currency.code" :value="currency.code" :selected="currency.code === 'ARS'">{{ currency.code }} · {{ currency.label }}</option></select></label>
               <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cotización a ARS</span><input type="number" name="cotizacion" min="0.000001" step="0.000001" value="1" :class="fieldClass" /></label>
-              <label class="block sm:col-span-2"><span class="mb-1 block text-xs font-semibold text-ink-muted">Concepto</span><input type="text" name="concepto" maxlength="120" required :class="fieldClass" /></label>
+              <label class="block sm:col-span-2"><span class="mb-1 block text-xs font-semibold text-ink-muted">Concepto libre (si no elegís uno del catálogo)</span><input type="text" name="concepto" maxlength="120" :class="fieldClass" /></label>
               <label class="block sm:col-span-2"><span class="mb-1 block text-xs font-semibold text-ink-muted">Observaciones</span><input type="text" name="observaciones" maxlength="500" :class="fieldClass" /></label>
             </div>
+            <p class="mt-2 text-xs text-ink-muted">Si el concepto no permite editar el importe, se calcula como cantidad × importe unitario.</p>
             <button type="submit" :class="[primaryButton, 'mt-3']">Guardar haber</button>
           </form>
           <p v-if="otherEarnings.length === 0" class="mt-4 text-sm text-ink-muted">Todavía no hay otros haberes cargados.</p>
@@ -346,7 +387,7 @@ const facts = computed(() => {
             <table class="w-full min-w-[32rem] text-left text-sm">
               <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-3 py-2">Fecha</th><th class="px-3 py-2">Concepto</th><th class="px-3 py-2">Chofer</th><th class="px-3 py-2 text-right">ARS</th></tr></thead>
               <tbody class="divide-y divide-border-subtle">
-                <tr v-for="earning in otherEarnings" :key="earning.id"><td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ fmtDateTime(earning.fecha) }}</td><td class="px-3 py-2 text-ink">{{ earning.concepto }}</td><td class="px-3 py-2 text-ink-muted">{{ earning.empleado || '—' }}</td><td class="px-3 py-2 text-right font-semibold text-ink">{{ money(earning.importe_ars) }}</td></tr>
+                <tr v-for="earning in otherEarnings" :key="earning.id"><td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ fmtDateTime(earning.fecha) }}</td><td class="px-3 py-2 text-ink">{{ earningConceptLabel(earning) }}<span v-if="earning.importe_unitario !== null && earning.importe_unitario !== undefined && earning.cantidad" class="block text-xs text-ink-muted">{{ quantityLabel(earning.cantidad) }} × {{ money(earning.importe_unitario, earning.moneda) }}</span></td><td class="px-3 py-2 text-ink-muted">{{ earning.empleado || '—' }}</td><td class="px-3 py-2 text-right font-semibold text-ink">{{ money(earning.importe_ars) }}</td></tr>
               </tbody>
             </table>
           </div>
@@ -441,10 +482,13 @@ const facts = computed(() => {
         <p v-if="!canRegisterCosts" class="mb-4 rounded-lg bg-surface p-3 text-sm text-ink-muted">El viaje está cancelado o finalizado; sus costos quedan de solo lectura.</p>
         <p v-if="expenses.length === 0" class="text-sm text-ink-muted">Todavía no hay gastos cargados.</p>
         <div v-else class="overflow-x-auto">
-          <table class="w-full min-w-[52rem] text-left text-sm">
-            <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-3 py-2">Fecha</th><th class="px-3 py-2">Categoría</th><th class="px-3 py-2 text-right">Importe</th><th class="px-3 py-2 text-right">ARS</th><th class="px-3 py-2">Medio</th><th class="px-3 py-2">Tramo</th><th class="px-3 py-2">Pagado por</th><th class="px-3 py-2">Comprobante</th><th class="px-3 py-2">Observaciones</th><th v-if="canRegisterCosts" class="px-3 py-2">Acciones</th></tr></thead>
+          <table class="w-full min-w-[64rem] text-left text-sm">
+            <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-3 py-2">Fecha</th><th class="px-3 py-2">Categoría</th><th class="px-3 py-2">Concepto</th><th class="px-3 py-2 text-right">Cant.</th><th class="px-3 py-2 text-right">Importe</th><th class="px-3 py-2 text-right">ARS</th><th class="px-3 py-2">Medio</th><th class="px-3 py-2">Tramo</th><th class="px-3 py-2">Pagado por</th><th class="px-3 py-2">Comprobante</th><th class="px-3 py-2">Observaciones</th><th v-if="canRegisterCosts" class="px-3 py-2">Acciones</th></tr></thead>
             <tbody class="divide-y divide-border-subtle">
-              <tr v-for="expense in expenses" :key="expense.id"><td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ fmtDateTime(expense.fecha) }}</td><td class="px-3 py-2 text-ink">{{ expense.categoria || 'Sin categoría' }}</td><td class="px-3 py-2 text-right text-ink-muted">{{ money(expense.importe, expense.moneda) }}</td><td class="px-3 py-2 text-right font-semibold text-ink">{{ money(expense.importe_ars) }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.medio_pago || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ legLabel(expense.tramo_id) }}</td><td class="px-3 py-2 text-ink-muted">{{ paidByLabel[expense.pagado_por] ?? 'Empresa' }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.comprobante || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.observaciones || '—' }}</td><td v-if="canRegisterCosts" class="whitespace-nowrap px-3 py-2"><div class="flex gap-2"><button type="button" :class="secondaryButton" @click="openEditModal('expense', expense)">Editar</button><form method="post" :action="movementUrl('expense', expense.id, true)" @submit="confirmDelete($event, 'este gasto')"><input type="hidden" :name="csrf.name" :value="csrf.hash" /><button type="submit" :class="dangerButton">Quitar</button></form></div></td></tr>
+              <tr v-for="expense in expenses" :key="expense.id"><td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ fmtDateTime(expense.fecha) }}</td><td class="px-3 py-2 text-ink">{{ expense.categoria || 'Sin categoría' }}</td><td class="px-3 py-2 text-ink">{{ expense.concepto_catalogo || '—' }}</td><td class="px-3 py-2 text-right text-ink-muted">{{ quantityLabel(expense.cantidad) }}</td><td class="px-3 py-2 text-right text-ink-muted">{{ money(expense.importe, expense.moneda) }}</td><td class="px-3 py-2 text-right font-semibold text-ink">{{ money(expense.importe_ars) }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.medio_pago || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ legLabel(expense.tramo_id) }}</td><td class="px-3 py-2 text-ink-muted">{{ paidByLabel[expense.pagado_por] ?? 'Empresa' }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.comprobante || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.observaciones || '—' }}</td><td v-if="canRegisterCosts" class="whitespace-nowrap px-3 py-2"><div class="flex gap-2"><button type="button" :class="secondaryButton" @click="openEditModal('expense', expense)">Editar</button><form method="post" :action="movementUrl('expense', expense.id, true)" @submit="confirmDelete($event, 'este gasto')"><input type="hidden" :name="csrf.name" :value="csrf.hash" /><button type="submit" :class="dangerButton">Quitar</button></form></div></td></tr>
+            </tbody>
+          </table>
+        </div>
             </tbody>
           </table>
         </div>
@@ -514,11 +558,13 @@ const facts = computed(() => {
           <div class="mt-5 flex justify-end gap-2 border-t border-border-subtle pt-4"><button type="button" @click="entryDialog?.close()" :class="secondaryButton">Volver</button><button type="submit" :class="primaryButton">{{ editingEntry ? 'Guardar cambios' : 'Guardar combustible' }}</button></div>
         </form>
 
-        <form v-else-if="activeEntryModal === 'expense'" method="post" :action="editingEntry ? movementUrl('expense', editingEntry.id) : data.links?.expense">
+        <form v-else-if="activeEntryModal === 'expense'" method="post" :action="editingEntry ? movementUrl('expense', editingEntry.id) : data.links?.expense" data-concept-kind="expense">
           <input type="hidden" :name="csrf.name" :value="csrf.hash" />
-          <p class="text-sm text-ink-muted">Peajes, viáticos, carga/descarga y otros gastos del viaje.</p>
+          <p class="text-sm text-ink-muted">Peajes, viáticos, carga/descarga y otros gastos del viaje. Si elegís un concepto, podés calcular el importe por cantidad.</p>
           <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Categoría</span><select name="categoria_id" :value="editingEntry?.categoria_id ?? ''" :class="fieldClass"><option value="">Sin categoría</option><option v-for="category in options.expenseCategories" :key="category.id" :value="category.id">{{ category.label }}</option></select></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Concepto del catálogo</span><select name="concepto_id" :value="editingEntry?.concepto_id ?? ''" :class="fieldClass" @change="applyConceptToForm"><option value="">Sin concepto</option><option v-for="concept in expenseConcepts" :key="concept.id" :value="concept.id">{{ conceptOptionLabel(concept) }}</option></select></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cantidad</span><input type="number" name="cantidad" min="0.01" step="0.01" :value="editingEntry?.cantidad ?? 1" :class="fieldClass" @input="applyConceptToForm" /></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Fecha y hora</span><input type="datetime-local" name="fecha" :value="editingEntry ? inputDateTime(editingEntry.fecha) : nowLocal()" required :class="fieldClass" /></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Importe</span><input type="number" name="importe" min="0.01" step="0.01" :value="editingEntry?.importe ?? ''" required :class="fieldClass" /></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select name="moneda" :value="editingEntry?.moneda ?? 'ARS'" :class="fieldClass"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }} · {{ currency.label }}</option></select></label>
@@ -529,6 +575,7 @@ const facts = computed(() => {
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Comprobante</span><input type="text" name="comprobante" maxlength="80" :value="editingEntry?.comprobante ?? ''" :class="fieldClass" /></label>
             <label class="block sm:col-span-2 lg:col-span-3"><span class="mb-1 block text-xs font-semibold text-ink-muted">Observaciones</span><input type="text" name="observaciones" maxlength="500" :value="editingEntry?.observaciones ?? ''" :class="fieldClass" /></label>
           </div>
+          <p class="mt-2 text-xs text-ink-muted">Si el concepto no permite editar el importe, se calcula como cantidad × importe unitario.</p>
           <div class="mt-5 flex justify-end gap-2 border-t border-border-subtle pt-4"><button type="button" @click="entryDialog?.close()" :class="secondaryButton">Volver</button><button type="submit" :class="primaryButton">{{ editingEntry ? 'Guardar cambios' : 'Guardar gasto' }}</button></div>
         </form>
 
