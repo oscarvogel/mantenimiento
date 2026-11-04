@@ -1,6 +1,6 @@
 <script setup>
 import { computed, nextTick, ref } from 'vue'
-import { ArrowDownTrayIcon, BanknotesIcon, BeakerIcon, CheckCircleIcon, ReceiptPercentIcon, XCircleIcon } from '@heroicons/vue/24/outline'
+import { ArrowDownTrayIcon, BanknotesIcon, BeakerIcon, CheckCircleIcon, CurrencyDollarIcon, ReceiptPercentIcon, XCircleIcon } from '@heroicons/vue/24/outline'
 import PageHeading from './components/PageHeading.vue'
 import PanelCard from './components/PanelCard.vue'
 import AutocompleteSelect from './components/AutocompleteSelect.vue'
@@ -99,6 +99,21 @@ const applyConceptToForm = (event) => {
 
 const paidByLabel = { EMPRESA: 'Empresa', CHOFER: 'Chofer', CAJA: 'Caja del chofer' }
 const drivers = computed(() => assignments.value.filter((row) => row.rol === 'CHOFER'))
+const driverOptions = computed(() => drivers.value
+  .filter((driver) => driver.empleado_id)
+  .map((driver) => ({ value: driver.empleado_id, label: driver.label })))
+const entryDialogTitle = computed(() => {
+  if (editingEntry.value) {
+    if (activeEntryModal.value === 'fuel') return 'Editar carga de combustible'
+    if (activeEntryModal.value === 'expense') return 'Editar gasto'
+    if (activeEntryModal.value === 'earning') return 'Editar haber'
+    return 'Editar movimiento de caja'
+  }
+  if (activeEntryModal.value === 'fuel') return 'Cargar combustible'
+  if (activeEntryModal.value === 'expense') return 'Cargar gasto'
+  if (activeEntryModal.value === 'earning') return 'Cargar haber o estadía'
+  return 'Movimiento de caja del chofer'
+})
 const today = computed(() => {
   const now = new Date()
   const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000)
@@ -181,7 +196,7 @@ const facts = computed(() => {
       </template>
     </PageHeading>
 
-    <section v-if="canRegisterCosts" aria-label="Cargar movimientos del viaje" class="mb-5 grid gap-3 sm:grid-cols-3">
+    <section v-if="canRegisterCosts" aria-label="Cargar movimientos del viaje" class="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <button type="button" aria-haspopup="dialog" @click="openEntryModal('fuel')" class="group flex min-h-16 items-center gap-3 rounded-xl border border-border bg-surface-raised px-4 py-3 text-left shadow-card transition hover:border-primary hover:bg-primary-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
         <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary-subtle text-primary"><BeakerIcon class="size-5" aria-hidden="true" /></span>
         <span><span class="block text-sm font-bold text-ink">Cargar combustible</span><span class="mt-0.5 block text-xs text-ink-muted">Registrar una carga</span></span>
@@ -189,6 +204,10 @@ const facts = computed(() => {
       <button type="button" aria-haspopup="dialog" @click="openEntryModal('expense')" class="group flex min-h-16 items-center gap-3 rounded-xl border border-border bg-surface-raised px-4 py-3 text-left shadow-card transition hover:border-primary hover:bg-primary-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
         <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary-subtle text-primary"><ReceiptPercentIcon class="size-5" aria-hidden="true" /></span>
         <span><span class="block text-sm font-bold text-ink">Cargar gasto</span><span class="mt-0.5 block text-xs text-ink-muted">Peajes, viáticos y otros</span></span>
+      </button>
+      <button v-if="driverOptions.length > 0" type="button" aria-haspopup="dialog" @click="openEntryModal('earning')" class="group flex min-h-16 items-center gap-3 rounded-xl border border-border bg-surface-raised px-4 py-3 text-left shadow-card transition hover:border-primary hover:bg-primary-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+        <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary-subtle text-primary"><CurrencyDollarIcon class="size-5" aria-hidden="true" /></span>
+        <span><span class="block text-sm font-bold text-ink">Cargar haber</span><span class="mt-0.5 block text-xs text-ink-muted">Estadías y adicionales</span></span>
       </button>
       <button type="button" aria-haspopup="dialog" @click="openEntryModal('cash')" class="group flex min-h-16 items-center gap-3 rounded-xl border border-border bg-surface-raised px-4 py-3 text-left shadow-card transition hover:border-primary hover:bg-primary-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
         <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary-subtle text-primary"><BanknotesIcon class="size-5" aria-hidden="true" /></span>
@@ -364,26 +383,8 @@ const facts = computed(() => {
         </div>
 
         <div>
-          <form v-if="canRegisterCosts && drivers.length === 1" method="post" :action="data.links?.earnings" data-concept-kind="earning" class="rounded-xl border border-border-subtle bg-surface p-4">
-            <input type="hidden" :name="csrf.name" :value="csrf.hash" />
-            <input type="hidden" name="empleado_id" :value="drivers[0].empleado_id" />
-            <h3 class="text-sm font-bold text-ink">Agregar otro haber</h3>
-            <p class="mt-1 text-xs text-ink-muted">Elegí un concepto del catálogo para calcular el importe por cantidad, o cargá un concepto libre.</p>
-            <div class="mt-3 grid gap-3 sm:grid-cols-2">
-              <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Fecha</span><input type="date" name="fecha" :value="today" required :class="fieldClass" /></label>
-              <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Concepto del catálogo</span><select name="concepto_id" :class="fieldClass" @change="applyConceptToForm"><option value="">Concepto libre</option><option v-for="concept in earningConcepts" :key="concept.id" :value="concept.id">{{ conceptOptionLabel(concept) }}</option></select></label>
-              <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cantidad (días o unidades)</span><input type="number" name="cantidad" min="0.01" step="0.01" value="1" :class="fieldClass" @input="applyConceptToForm" /></label>
-              <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Importe</span><input type="number" name="importe" min="0.01" step="0.01" required :class="fieldClass" /></label>
-              <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select name="moneda" :class="fieldClass"><option v-for="currency in currencies" :key="currency.code" :value="currency.code" :selected="currency.code === 'ARS'">{{ currency.code }} · {{ currency.label }}</option></select></label>
-              <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cotización a ARS</span><input type="number" name="cotizacion" min="0.000001" step="0.000001" value="1" :class="fieldClass" /></label>
-              <label class="block sm:col-span-2"><span class="mb-1 block text-xs font-semibold text-ink-muted">Concepto libre (si no elegís uno del catálogo)</span><input type="text" name="concepto" maxlength="120" :class="fieldClass" /></label>
-              <label class="block sm:col-span-2"><span class="mb-1 block text-xs font-semibold text-ink-muted">Observaciones</span><input type="text" name="observaciones" maxlength="500" :class="fieldClass" /></label>
-            </div>
-            <p class="mt-2 text-xs text-ink-muted">Si el concepto no permite editar el importe, se calcula como cantidad × importe unitario.</p>
-            <button type="submit" :class="[primaryButton, 'mt-3']">Guardar haber</button>
-          </form>
-          <p v-if="otherEarnings.length === 0" class="mt-4 text-sm text-ink-muted">Todavía no hay otros haberes cargados.</p>
-          <div v-else class="mt-4 overflow-x-auto">
+          <p v-if="otherEarnings.length === 0" class="text-sm text-ink-muted">Todavía no hay otros haberes cargados. Usá “Cargar haber” para registrar una estadía.</p>
+          <div v-else class="overflow-x-auto">
             <table class="w-full min-w-[32rem] text-left text-sm">
               <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-3 py-2">Fecha</th><th class="px-3 py-2">Concepto</th><th class="px-3 py-2">Chofer</th><th class="px-3 py-2 text-right">ARS</th></tr></thead>
               <tbody class="divide-y divide-border-subtle">
@@ -531,7 +532,7 @@ const facts = computed(() => {
       <div v-if="activeEntryModal" class="p-5 sm:p-6">
         <div class="mb-5 flex items-start justify-between gap-4 border-b border-border-subtle pb-4">
           <div>
-            <h2 id="entry-dialog-title" class="text-lg font-bold text-ink">{{ editingEntry ? (activeEntryModal === 'fuel' ? 'Editar carga de combustible' : activeEntryModal === 'expense' ? 'Editar gasto' : 'Editar movimiento de caja') : (activeEntryModal === 'fuel' ? 'Cargar combustible' : activeEntryModal === 'expense' ? 'Cargar gasto' : 'Movimiento de caja del chofer') }}</h2>
+            <h2 id="entry-dialog-title" class="text-lg font-bold text-ink">{{ entryDialogTitle }}</h2>
             <p class="mt-1 text-sm text-ink-muted">Viaje #{{ trip.numero }}</p>
           </div>
           <button type="button" aria-label="Cerrar" @click="entryDialog?.close()" class="grid size-9 shrink-0 place-items-center rounded-lg text-ink-muted hover:bg-surface-subtle hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">×</button>
@@ -574,6 +575,25 @@ const facts = computed(() => {
           </div>
           <p class="mt-2 text-xs text-ink-muted">Si el concepto no permite editar el importe, se calcula como cantidad × importe unitario.</p>
           <div class="mt-5 flex justify-end gap-2 border-t border-border-subtle pt-4"><button type="button" @click="entryDialog?.close()" :class="secondaryButton">Volver</button><button type="submit" :class="primaryButton">{{ editingEntry ? 'Guardar cambios' : 'Guardar gasto' }}</button></div>
+        </form>
+
+        <form v-else-if="activeEntryModal === 'earning'" method="post" :action="data.links?.earnings" data-concept-kind="earning">
+          <input type="hidden" :name="csrf.name" :value="csrf.hash" />
+          <p class="text-sm text-ink-muted">Estadías y otros haberes del chofer. Elegí un concepto para calcular el importe por cantidad.</p>
+          <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <label v-if="driverOptions.length > 1" class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Chofer</span><select name="empleado_id" :class="fieldClass"><option v-for="driver in driverOptions" :key="driver.value" :value="driver.value">{{ driver.label }}</option></select></label>
+            <input v-else type="hidden" name="empleado_id" :value="driverOptions[0]?.value ?? ''">
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Fecha</span><input type="date" name="fecha" :value="today" required :class="fieldClass" /></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Concepto del catálogo</span><select name="concepto_id" :class="fieldClass" @change="applyConceptToForm"><option value="">Concepto libre</option><option v-for="concept in earningConcepts" :key="concept.id" :value="concept.id">{{ conceptOptionLabel(concept) }}</option></select></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cantidad (días o unidades)</span><input type="number" name="cantidad" min="0.01" step="0.01" value="1" :class="fieldClass" @input="applyConceptToForm" /></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Importe</span><input type="number" name="importe" min="0.01" step="0.01" required :class="fieldClass" /></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select name="moneda" :class="fieldClass"><option v-for="currency in currencies" :key="currency.code" :value="currency.code" :selected="currency.code === 'ARS'">{{ currency.code }} · {{ currency.label }}</option></select></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cotización a ARS</span><input type="number" name="cotizacion" min="0.000001" step="0.000001" value="1" :class="fieldClass" /></label>
+            <label class="block sm:col-span-2 lg:col-span-3"><span class="mb-1 block text-xs font-semibold text-ink-muted">Concepto libre (si no elegís uno del catálogo)</span><input type="text" name="concepto" maxlength="120" :class="fieldClass" /></label>
+            <label class="block sm:col-span-2 lg:col-span-3"><span class="mb-1 block text-xs font-semibold text-ink-muted">Observaciones</span><input type="text" name="observaciones" maxlength="500" :class="fieldClass" /></label>
+          </div>
+          <p class="mt-2 text-xs text-ink-muted">Si el concepto no permite editar el importe, se calcula como cantidad × importe unitario.</p>
+          <div class="mt-5 flex justify-end gap-2 border-t border-border-subtle pt-4"><button type="button" @click="entryDialog?.close()" :class="secondaryButton">Volver</button><button type="submit" :class="primaryButton">Guardar haber</button></div>
         </form>
 
         <form v-else-if="activeEntryModal === 'cash'" method="post" :action="editingEntry ? movementUrl('cash', editingEntry.id) : data.links?.cash">

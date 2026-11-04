@@ -230,11 +230,11 @@ describe('detalle de viaje operativo', () => {
     expect(wrapper.text()).toContain('ARS 82.000,00')
     expect(wrapper.text()).toContain('Espera en descarga')
     expect(wrapper.text()).toContain('20/10/2026')
-    expect(wrapper.get('form[action="/mantenimiento/viajes/operativos/42/haberes"]').exists()).toBe(true)
+    expect(wrapper.findAll('button').some((button) => button.text().includes('Cargar haber'))).toBe(true)
     wrapper.unmount()
   })
 
-  it('permite cargar otros haberes aunque la liquidación todavía no se pueda calcular', () => {
+  it('permite cargar otros haberes desde el acceso superior aunque la liquidación no se pueda calcular', async () => {
     const wrapper = mount(TripOperationsDetailPage, {
       props: {
         data: {
@@ -261,6 +261,10 @@ describe('detalle de viaje operativo', () => {
     })
 
     expect(wrapper.text()).toContain('El chofer no tiene un porcentaje de liquidación definido.')
+    const button = wrapper.findAll('button').find((item) => item.text().includes('Cargar haber'))
+    await button.trigger('click')
+    await nextTick()
+
     const form = wrapper.get('form[action="/mantenimiento/viajes/operativos/42/haberes"]')
     expect(form.exists()).toBe(true)
     expect(form.get('select[name="concepto_id"]').text()).toContain('Estadía Sider')
