@@ -489,9 +489,6 @@ const facts = computed(() => {
             </tbody>
           </table>
         </div>
-            </tbody>
-          </table>
-        </div>
       </PanelCard>
 
       <PanelCard title="Caja del chofer" :count="cashMovements.length">
