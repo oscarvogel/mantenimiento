@@ -234,6 +234,39 @@ describe('detalle de viaje operativo', () => {
     wrapper.unmount()
   })
 
+  it('permite cargar otros haberes aunque la liquidación todavía no se pueda calcular', () => {
+    const wrapper = mount(TripOperationsDetailPage, {
+      props: {
+        data: {
+          ...data,
+          canStart: false,
+          canCancel: false,
+          canRegisterCosts: true,
+          assignments: [
+            { rol: 'TRACTOR', rol_label: 'Tractor / camión', label: 'AA111AA · T01', desde: '2026-10-20 08:00:00', hasta: null },
+            { rol: 'CHOFER', rol_label: 'Chofer', label: 'Pérez, Juan', empleado_id: 11, desde: '2026-10-20 08:00:00', hasta: null },
+          ],
+          links: { ...data.links, earnings: '/mantenimiento/viajes/operativos/42/haberes' },
+          totals: { has_legs: true, driver_percentage: null, drivers_count: 1, multiple_drivers: false },
+          options: {
+            expenseCategories: [],
+            paymentMethods: [],
+            currencies: [{ code: 'ARS', label: 'Peso argentino' }],
+            earningConcepts: [
+              { id: 5, label: 'Estadía Sider', categoria: 'HABER', unit: 'DIA', amount: 50000, currency: 'ARS', editable: true },
+            ],
+          },
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain('El chofer no tiene un porcentaje de liquidación definido.')
+    const form = wrapper.get('form[action="/mantenimiento/viajes/operativos/42/haberes"]')
+    expect(form.exists()).toBe(true)
+    expect(form.get('select[name="concepto_id"]').text()).toContain('Estadía Sider')
+    wrapper.unmount()
+  })
+
   it('calcula el importe del gasto desde un concepto con cantidad fraccionaria', async () => {
     const wrapper = mount(TripOperationsDetailPage, {
       props: {

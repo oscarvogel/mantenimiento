@@ -334,8 +334,8 @@ const facts = computed(() => {
 
     <PanelCard title="Liquidación del chofer" class="mb-5" allow-overflow>
       <p v-if="settlementNote" class="rounded-lg border border-info/30 bg-info-subtle px-3 py-2 text-sm text-info-strong">{{ settlementNote }}</p>
-      <div v-else class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-        <div class="rounded-xl border border-border-subtle bg-surface p-4">
+      <div class="grid gap-5" :class="settlementNote ? '' : 'xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]'">
+        <div v-if="!settlementNote" class="rounded-xl border border-border-subtle bg-surface p-4">
           <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Chofer responsable</p>
           <p class="mt-1 text-lg font-bold text-ink">{{ settlement.driver || 'Sin dato' }}</p>
           <dl class="mt-4 space-y-2 text-sm">
