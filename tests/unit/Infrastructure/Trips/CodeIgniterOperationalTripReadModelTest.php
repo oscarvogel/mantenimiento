@@ -60,7 +60,8 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
         $this->database->query('CREATE TABLE viaje_operativo_otros_haberes (
             id INTEGER PRIMARY KEY, viaje_id INTEGER, empresa_id INTEGER, sucursal_id INTEGER, empleado_id INTEGER,
             concepto_id INTEGER NULL, cantidad REAL DEFAULT 1, importe_unitario REAL NULL,
-            fecha TEXT, concepto TEXT, importe REAL, moneda TEXT, cotizacion REAL, importe_ars REAL, observaciones TEXT NULL
+            fecha TEXT, concepto TEXT, importe REAL, moneda TEXT, cotizacion REAL, importe_ars REAL, observaciones TEXT NULL,
+            deleted_at TEXT NULL
         )');
         $this->database->query('CREATE TABLE viaje_operativo_tramos (
             id INTEGER PRIMARY KEY, viaje_id INTEGER, empresa_id INTEGER, sucursal_id INTEGER, orden INTEGER,

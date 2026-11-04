@@ -52,6 +52,8 @@ $routes->post('viajes/operativos/(:num)/caja', 'OperationalTrips::addCashMovemen
 $routes->post('viajes/operativos/(:num)/caja/(:num)', 'OperationalTrips::updateCashMovement/$1/$2', ['filter' => ['auth', 'permission:viajes.operar']]);
 $routes->post('viajes/operativos/(:num)/caja/(:num)/eliminar', 'OperationalTrips::deleteCashMovement/$1/$2', ['filter' => ['auth', 'permission:viajes.operar']]);
 $routes->post('viajes/operativos/(:num)/haberes', 'OperationalTrips::addOtherEarning/$1', ['filter' => ['auth', 'permission:viajes.operar']]);
+$routes->post('viajes/operativos/(:num)/haberes/(:num)', 'OperationalTrips::updateOtherEarning/$1/$2', ['filter' => ['auth', 'permission:viajes.operar']]);
+$routes->post('viajes/operativos/(:num)/haberes/(:num)/eliminar', 'OperationalTrips::deleteOtherEarning/$1/$2', ['filter' => ['auth', 'permission:viajes.operar']]);
 
 // Maestros independientes del módulo operativo de viajes y de la telemetría.
 $routes->group('viajes/maestros', ['filter' => ['auth']], static function ($routes): void {

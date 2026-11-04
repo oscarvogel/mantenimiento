@@ -17,6 +17,7 @@ use App\Application\Trips\RegisterTripOtherEarningCommand;
 use App\Application\Trips\UpdateTripCashMovementCommand;
 use App\Application\Trips\UpdateTripExpenseCommand;
 use App\Application\Trips\UpdateTripFuelLoadCommand;
+use App\Application\Trips\UpdateTripOtherEarningCommand;
 use App\Infrastructure\Identity\SessionActorContext;
 use CodeIgniter\HTTP\RedirectResponse;
 use CodeIgniter\HTTP\ResponseInterface;
@@ -378,6 +379,35 @@ final class OperationalTrips extends BaseController
         return $this->deleteCostMovement($tripId, $movementId, DeleteOperationalTripCost::CASH, 'El movimiento se quitó del saldo de caja del viaje.');
     }
 
+    public function updateOtherEarning(int $tripId, int $movementId): RedirectResponse
+    {
+        try {
+            $command = new UpdateTripOtherEarningCommand(
+                $tripId,
+                $movementId,
+                $this->requiredInt('empleado_id', 'Elegí el chofer del haber.'),
+                $this->requiredDate('fecha'),
+                $this->requiredFloat('importe'),
+                $this->currency(),
+                $this->rate(),
+                $this->optionalInt('concepto_id'),
+                $this->optionalFloat('cantidad') ?? 1.0,
+                trim((string) $this->request->getPost('concepto')),
+                $this->text('observaciones', 500),
+            );
+            service('updateTripOtherEarning')->execute($this->actor(), $command);
+
+            return redirect()->to('/viajes/operativos/' . $tripId)->with('success', 'Se actualizaron los datos del haber.');
+        } catch (Throwable $exception) {
+            return $this->failure($exception, 'No se pudo editar el haber.', '/viajes/operativos/' . $tripId);
+        }
+    }
+
+    public function deleteOtherEarning(int $tripId, int $movementId): RedirectResponse
+    {
+        return $this->deleteCostMovement($tripId, $movementId, DeleteOperationalTripCost::EARNING, 'El haber se quitó de la liquidación del viaje.');
+    }
+
     private function deleteCostMovement(int $tripId, int $movementId, string $type, string $successMessage): RedirectResponse
     {
         try {
@@ -410,6 +440,28 @@ final class OperationalTrips extends BaseController
         }
 
         return (float) $raw;
+    }
+
+    private function requiredInt(string $key, string $message): int
+    {
+        $value = filter_var(trim((string) $this->request->getPost($key)), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        if ($value === false) {
+            throw new DomainException($message);
+        }
+
+        return (int) $value;
+    }
+
+    private function requiredDate(string $key): DateTimeImmutable
+    {
+        $raw = trim((string) $this->request->getPost($key));
+        $date = DateTimeImmutable::createFromFormat('!Y-m-d', $raw);
+        $errors = DateTimeImmutable::getLastErrors();
+        if ($date === false || ($errors !== false && ($errors['warning_count'] > 0 || $errors['error_count'] > 0))) {
+            throw new DomainException('Indicá una fecha válida para el haber.');
+        }
+
+        return $date;
     }
 
     private function optionalInt(string $key): ?int
