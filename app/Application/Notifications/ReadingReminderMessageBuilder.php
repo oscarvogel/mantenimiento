@@ -88,15 +88,7 @@ final class ReadingReminderMessageBuilder
 
     private function pilotHeader(string $locale, string $driverFullName, bool $realPhoneValid): string
     {
-        if ($locale === 'PT') {
-            return "🧪 *TESTE CONTROLADO · NÃO ENVIADO AO DESTINATÁRIO REAL*\n"
-                . '*Destinatário previsto:* ' . ($driverFullName === '' ? 'Motorista atribuído' : $driverFullName) . "\n"
-                . '*Telefone real:* ' . ($realPhoneValid ? 'configurado' : 'inválido ou não informado') . "\n\n";
-        }
-
-        return "🧪 *PRUEBA CONTROLADA · NO ENVIADO AL DESTINATARIO REAL*\n"
-            . '*Destinatario previsto:* ' . ($driverFullName === '' ? 'Chofer asignado' : $driverFullName) . "\n"
-            . '*Teléfono real:* ' . ($realPhoneValid ? 'configurado' : 'no válido o no cargado') . "\n\n";
+        return (new PilotMessageHeader())->build($locale, $driverFullName, $realPhoneValid);
     }
 
     /** @param array{fecha_lectura:string|null,kilometraje:int|null}|null $lastReading */

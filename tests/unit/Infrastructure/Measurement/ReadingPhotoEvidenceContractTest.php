@@ -95,9 +95,12 @@ final class ReadingPhotoEvidenceContractTest extends TestCase
         $source = file_get_contents(ROOTPATH . 'app/Controllers/PublicEquipmentReadings.php');
         self::assertIsString($source);
 
-        self::assertStringContainsString('AI_DISCREPANCY_MIN_CONFIDENCE = 0.80', $source);
-        self::assertStringContainsString('AI_DISCREPANCY_MIN_KM = 1000', $source);
-        self::assertStringContainsString('AI_DISCREPANCY_MIN_RATIO = 0.05', $source);
+        $policy = file_get_contents(ROOTPATH . 'app/Domain/Measurement/AiDiscrepancyPolicy.php');
+        self::assertIsString($policy);
+        self::assertStringContainsString('MIN_CONFIDENCE = 0.80', $policy);
+        self::assertStringContainsString('MIN_KILOMETERS = 1000', $policy);
+        self::assertStringContainsString('MIN_RATIO = 0.05', $policy);
+        self::assertStringContainsString('new AiDiscrepancyPolicy()', $source);
         self::assertStringContainsString("'Responsable de mantenimiento'", $source);
         self::assertStringContainsString("'lectura.discrepancia_ia'", $source);
         self::assertStringContainsString('NotificationSeverity::CRITICAL', $source);
