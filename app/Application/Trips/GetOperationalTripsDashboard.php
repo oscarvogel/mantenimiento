@@ -45,8 +45,9 @@ final class GetOperationalTripsDashboard
         $companyId = $actor->companyId();
         $branchIds = $actor->hasAllCompanyBranches() ? null : $actor->branchIds();
         $canOperate = $actor->hasPermission('viajes.operar');
+        $canSeeEconomics = $actor->hasPermission('viajes.economico.ver');
         if ($branchIds === []) {
-            return $this->payload($filters, [], $this->emptySummary(), [], [], [], [], $canOperate);
+            return $this->payload($filters, [], $this->emptySummary(), [], [], [], [], $canOperate, $canSeeEconomics);
         }
 
         $branches = $this->readModel->branches($companyId, $branchIds);
@@ -97,6 +98,7 @@ final class GetOperationalTripsDashboard
             $this->byBranch($branches, $periodRows, $currentRows),
             $this->currentTrips($currentRows, $currentDetails, $branchNames),
             $canOperate,
+            $canSeeEconomics,
         );
     }
 
@@ -350,7 +352,18 @@ final class GetOperationalTripsDashboard
         array $byBranch,
         array $currentTrips,
         bool $canOperate,
+        bool $canSeeEconomics,
     ): array {
+        if (! $canSeeEconomics) {
+            $summary['billing_ars'] = null;
+            $summary['fuel_cost_ars'] = null;
+            $summary['expenses_ars'] = null;
+            foreach ($monthly as &$month) {
+                $month['billing_ars'] = null;
+            }
+            unset($month);
+        }
+
         return [
             'filters' => $filters->toArray() + ['branchName' => $this->branchName($branches, $filters->branchId)],
             'options' => ['branches' => $branches],
@@ -366,6 +379,7 @@ final class GetOperationalTripsDashboard
                 'history' => base_url('viajes'),
             ],
             'canOperate' => $canOperate,
+            'canSeeEconomics' => $canSeeEconomics,
         ];
     }
 

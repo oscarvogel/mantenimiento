@@ -4,6 +4,7 @@ import TripOperationsDashboardPage from '../../src/pages/operations/TripOperatio
 
 const data = () => ({
   canOperate: true,
+  canSeeEconomics: true,
   links: {
     index: '/mantenimiento/viajes/operativos/dashboard',
     list: '/mantenimiento/viajes/operativos',
@@ -79,6 +80,20 @@ describe('tablero de viajes operativos', () => {
     expect(wrapper.findAll('[data-status-row]')).toHaveLength(4)
     expect(wrapper.findAll('[data-month-row]')).toHaveLength(1)
     expect(wrapper.findAll('[data-branch-row]')).toHaveLength(1)
+    wrapper.unmount()
+  })
+
+  it('oculta el económico para usuarios sin permiso de gerencia', () => {
+    const payload = data()
+    payload.canSeeEconomics = false
+    payload.summary = { ...payload.summary, billing_ars: null, fuel_cost_ars: null, expenses_ars: null }
+    const wrapper = mount(TripOperationsDashboardPage, { props: { data: payload } })
+
+    expect(wrapper.text()).toContain('Combustible')
+    expect(wrapper.text()).toContain('Litros cargados en el período')
+    expect(wrapper.text()).not.toContain('Económico del período')
+    expect(wrapper.text()).not.toContain('1.400.000')
+    expect(wrapper.text()).not.toContain('Resultado directo')
     wrapper.unmount()
   })
 

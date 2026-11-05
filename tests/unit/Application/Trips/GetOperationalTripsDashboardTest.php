@@ -14,7 +14,7 @@ final class GetOperationalTripsDashboardTest extends TestCase
     {
         $readModel = new DashboardReadModelFake();
         $payload = (new GetOperationalTripsDashboard($readModel))->execute(
-            new ActorContext(1, 5, false, false, [], ['viajes.ver', 'viajes.operar'], [10, 20]),
+            new ActorContext(1, 5, false, false, [], ['viajes.ver', 'viajes.operar', 'viajes.economico.ver'], [10, 20]),
             new OperationalTripFilters(from: '2026-10-01', to: '2026-10-31', branchId: 10),
         );
 
@@ -47,6 +47,22 @@ final class GetOperationalTripsDashboardTest extends TestCase
         self::assertSame([1, 1, 1, 1], array_map(static fn (array $item): int => $item['value'], $payload['statusBreakdown']));
         self::assertTrue($payload['canOperate']);
         self::assertSame(base_url('viajes/operativos/dashboard'), $payload['links']['index']);
+    }
+
+    public function testHidesEconomicsForRolesWithoutTheEconomicsPermission(): void
+    {
+        $payload = (new GetOperationalTripsDashboard(new DashboardReadModelFake()))->execute(
+            new ActorContext(1, 5, false, false, [], ['viajes.ver'], [10, 20]),
+            new OperationalTripFilters(from: '2026-10-01', to: '2026-10-31', branchId: 10),
+        );
+
+        self::assertFalse($payload['canSeeEconomics']);
+        self::assertNull($payload['summary']['billing_ars']);
+        self::assertNull($payload['summary']['fuel_cost_ars']);
+        self::assertNull($payload['summary']['expenses_ars']);
+        self::assertNull($payload['monthly'][0]['billing_ars']);
+        self::assertSame(1, $payload['summary']['en_curso']);
+        self::assertSame(600, $payload['summary']['km']);
     }
 
     public function testKeepsCurrentTripsEvenWhenThePeriodExcludesTheirDate(): void

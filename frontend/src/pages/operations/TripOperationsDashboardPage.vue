@@ -9,6 +9,7 @@ import { fieldClass, primaryButton, secondaryButton } from './helpers.js'
 const props = defineProps({ data: { type: Object, required: true } })
 
 const summary = computed(() => props.data.summary ?? {})
+const canSeeEconomics = computed(() => Boolean(props.data.canSeeEconomics))
 const filters = computed(() => props.data.filters ?? {})
 const options = computed(() => props.data.options ?? { branches: [] })
 const statusBreakdown = computed(() => props.data.statusBreakdown ?? [])
@@ -58,7 +59,7 @@ const kpis = computed(() => [
     key: 'fuel',
     label: 'Combustible',
     value: `${fmt1(summary.value.liters)} L`,
-    hint: `${fmtMoney(summary.value.fuel_cost_ars)} cargados`,
+    hint: canSeeEconomics.value ? `${fmtMoney(summary.value.fuel_cost_ars)} cargados` : 'Litros cargados en el período',
   },
   {
     key: 'consumption',
@@ -92,7 +93,7 @@ const bar = (value, max) => {
     <PageHeading
       eyebrow="Viajes"
       title="Tablero de viajes operativos"
-      description="Mirá de un vistazo los viajes en curso, los próximos y los indicadores del período. Los costos y fletes se expresan en pesos; las comisiones del chofer se liquidan en el detalle de cada viaje."
+      description="Mirá de un vistazo los viajes en curso, los próximos y los indicadores del período."
     >
       <template #actions>
         <a :href="links.list" :class="secondaryButton"><TruckIcon class="mr-2 size-4" aria-hidden="true" />Viajes operativos</a>
@@ -257,7 +258,7 @@ const bar = (value, max) => {
           </ul>
         </PanelCard>
 
-        <PanelCard title="Económico del período">
+        <PanelCard v-if="canSeeEconomics" title="Económico del período">
           <dl class="space-y-3">
             <div class="flex items-baseline justify-between gap-3">
               <dt class="text-sm text-ink-muted">Flete facturado</dt>
