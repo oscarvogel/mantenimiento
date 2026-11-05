@@ -74,6 +74,7 @@ describe('tablero de viajes operativos', () => {
     expect(wrapper.text()).toContain('Últimos 6 meses con actividad')
     expect(wrapper.text()).toContain('Viajes por sucursal')
     expect(wrapper.text()).toContain('Económico del período')
+    expect(wrapper.get('[data-testid="dashboard-bottom-grid"]').classes()).toContain('xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]')
     expect(wrapper.get('form').attributes('method')).toBe('get')
     expect(wrapper.get('a[href="/mantenimiento/viajes/operativos/11"]').text()).toContain('Ver viaje')
     expect(wrapper.findAll('[data-current-trip]')).toHaveLength(1)
@@ -94,6 +95,7 @@ describe('tablero de viajes operativos', () => {
     expect(wrapper.text()).not.toContain('Económico del período')
     expect(wrapper.text()).not.toContain('1.400.000')
     expect(wrapper.text()).not.toContain('Resultado directo')
+    expect(wrapper.get('[data-testid="dashboard-bottom-grid"]').classes()).toContain('xl:grid-cols-1')
     wrapper.unmount()
   })
 

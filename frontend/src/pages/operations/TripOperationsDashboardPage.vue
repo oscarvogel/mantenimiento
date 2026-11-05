@@ -235,7 +235,7 @@ const bar = (value, max) => {
         </PanelCard>
       </div>
 
-      <div class="grid gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+      <div data-testid="dashboard-bottom-grid" class="grid gap-5" :class="canSeeEconomics ? 'xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]' : 'xl:grid-cols-1'">
         <PanelCard title="Viajes por sucursal">
           <p v-if="branches.length === 0" class="text-sm text-ink-muted">Sin actividad por sucursal en el período.</p>
           <ul v-else class="space-y-4">
