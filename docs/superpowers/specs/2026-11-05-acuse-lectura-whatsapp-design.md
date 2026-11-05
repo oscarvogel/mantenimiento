@@ -1,7 +1,7 @@
 # Diseño: acuse de lectura por WhatsApp al chofer
 
 **Fecha:** 05/11/2026
-**Estado:** implementado en código; pendiente verificación en `fasa_189`.
+**Estado:** implementado y verificado en staging y producción (05/11/2026). Evidencia en `docs/BITACORA_2026-11-05_ACUSE_LECTURA_WHATSAPP.md`.
 **Contexto:** Medición de uso (lecturas) + Notificaciones.
 
 ## Intención
