@@ -71,6 +71,29 @@ final class CodeIgniterMaintenanceReportReadModelTest extends TestCase
         self::assertSame(['OT-003', 'OT-002', 'OT-001'], array_column($readModel->exportOrders($scope), 'numero'));
     }
 
+    public function testPeriodBoundariesAreInclusiveForTheSelectedDayAndExclusiveAfterIt(): void
+    {
+        $this->database->table('ordenes_trabajo')->insert($this->order(
+            6, 'OT-006', 5, 9, 10, 'CORRECTIVO', 'FINALIZADA', '2026-08-06 00:00:00', '2026-08-06 08:00:00', '2026-08-06 09:00:00', null, null, '10.00',
+        ));
+        $readModel = new CodeIgniterMaintenanceReportReadModel($this->database);
+
+        $untilFifth = new ReportScope(5, [9], 9, new \DateTimeImmutable('2026-08-03'), new \DateTimeImmutable('2026-08-05'), 1, 20);
+        self::assertSame(['OT-003', 'OT-002'], array_column($readModel->exportOrders($untilFifth), 'numero'));
+
+        $untilSixth = new ReportScope(5, [9], 9, new \DateTimeImmutable('2026-08-03'), new \DateTimeImmutable('2026-08-06'), 1, 20);
+        self::assertSame(['OT-006', 'OT-003', 'OT-002'], array_column($readModel->exportOrders($untilSixth), 'numero'));
+    }
+
+    public function testExportRespectsTheAuthorizedBranchScope(): void
+    {
+        $readModel = new CodeIgniterMaintenanceReportReadModel($this->database);
+        $scope = new ReportScope(5, [8], 8, new \DateTimeImmutable('2026-08-01'), new \DateTimeImmutable('2026-08-31'), 1, 20);
+
+        self::assertSame(['OT-004'], array_column($readModel->exportOrders($scope), 'numero'));
+        self::assertSame('VOLVO-02', $readModel->fetch($scope)['costsByEquipment'][0]['equipmentCode']);
+    }
+
     public function testReportsUnavailableDurationsInsteadOfInventingValues(): void
     {
         $report = (new CodeIgniterMaintenanceReportReadModel($this->database))->fetch(new ReportScope(

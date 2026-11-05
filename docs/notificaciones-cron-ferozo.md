@@ -57,10 +57,11 @@ invocarse el endpoint seguro con `curl`, usando POST y el header
 `X-Cron-Token`.
 
 Este mismo ciclo actualiza telemetría e ingiere el histórico Wialon por buckets
-UTC de cinco minutos. El ciclo de notificaciones corre cada cinco minutos, pero
-la telemetría se ejecuta cada `alerts.telemetryRefreshMinutes` (15 por defecto)
-y al final del ciclo, después del despacho. La clave de ejecución tiene precisión
-de minuto y permite las doce corridas de cada hora.
+UTC de cinco minutos. La frecuencia real del ciclo no la define la aplicación:
+la define el programador del hosting. En producción se recomienda cada cinco
+minutos y la telemetría se ejecuta cada `alerts.telemetryRefreshMinutes` (15 por
+defecto) y al final del ciclo, después del despacho. La clave de ejecución tiene
+precisión de minuto y permite las doce corridas de cada hora.
 Si una lectura histórica falla o Wialon devuelve una ventana incompleta, el
 cursor de esa unidad no avanza y el siguiente ciclo vuelve a intentar el tramo.
 El refresco actual y la lectura histórica fallan por separado: una falla de
@@ -105,6 +106,42 @@ de km. Sus alertas salen en el ciclo siguiente.
 
 Dos ejecuciones con la misma clave horaria no deben duplicar entregas. Una ejecución concurrente debe ser rechazada por el control de proceso existente.
 
+## Frecuencia real, etapas y estados parciales
+
+La aplicación no infiere que el programador esté activo por tener el endpoint o
+una variable habilitada. El estado observado en staging el 05/11/2026 fue:
+
+- tarea de Coolify `Notificaciones diarias`, comando `php spark notifications:dispatch`, frecuencia `0 10 * * *` UTC (07:00 en Argentina);
+- ejecuciones diarias a las 07:00 en `ejecuciones_programadas`, con ausencia el 04/11/2026;
+- no había una tarea de cinco minutos configurada en ese entorno.
+
+Eso describe staging, no producción. Antes de operar producción, verificar la
+tarea real del panel de Ferozo.
+
+El ciclo completo tiene un único dueño de exclusión: el lock
+`notificaciones:ciclo`. El despacho directo conserva su lock
+`notificaciones:despachar` y no adquiere el lock del ciclo. El estado global del
+ciclo se registra con proceso `notificaciones:ciclo` en
+`ejecuciones_programadas`; cada etapa se registra en `automatizacion_etapas` con
+`COMPLETADA`, `FALLIDA` u `OMITIDA`. `empresa_id` queda nulo sólo para etapas
+globales.
+
+Un despacho finalizado no convierte al ciclo entero en exitoso. Si una etapa
+posterior, como telemetría, falla, el ciclo queda `parcial`/`FALLIDA` y la
+respuesta HTTP informa `status: parcial` junto con los contadores de etapas. La
+siguiente corrida puede reintentar sin prometer exactamente una entrega: las
+claves idempotentes por evento/destinatario y la reconciliación de entregas se
+mantienen.
+
+Una ejecución que quedó `EN_PROCESO` más allá de
+`alerts.lockTimeoutSeconds` se reinicia de forma controlada en la siguiente
+corrida de la misma clave. Un lock vencido no se interpreta por sí solo como
+éxito ni como fallo del proveedor.
+
+`set_time_limit(0)` no elimina los límites externos del hosting. En Ferozo el
+cron debe seguir usando `curl --max-time 300`, un lote acotado y la frecuencia
+que el panel permita sostener.
+
 ## Ejecución manual
 
 Para desarrollo o staging con CLI disponible:
@@ -117,7 +154,7 @@ Para producción no se requiere consola. El backend expone además `POST /supera
 
 ## Smoke antes de producción
 
-1. Validar primero en `fasa_189:8090` según `AGENTS.md`.
+1. Validar primero en el HTTPS de `mantenimiento-staging` en `fasa_189` según `AGENTS.md`.
 2. Configurar SMTP/VAPID sólo en el entorno de prueba.
 3. Generar un preventivo próximo/vencido controlado.
 4. Probar `POST` con header, ausencia de token, token incorrecto, `GET` y rate limiting.

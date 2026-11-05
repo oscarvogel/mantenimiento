@@ -120,6 +120,74 @@ final class GetPlatformModuleCatalogTest extends TestCase
         self::assertSame('Sin implementación aún', $management['status']);
     }
 
+    public function testEnablesReportsModuleOnlyForTenantReportReaders(): void
+    {
+        $actor = new ActorContext(12, 4, false, false, ['Consulta'], ['reportes.ver'], [8]);
+
+        $modules = (new GetPlatformModuleCatalog())->execute($actor);
+        $reports = $this->module($modules, 'reports');
+
+        self::assertSame('reportes', $reports['landingPath']);
+        self::assertSame('available', $reports['state']);
+        self::assertSame('Operativo', $reports['status']);
+    }
+
+    public function testKeepsReportsModuleRestrictedWithoutItsPermission(): void
+    {
+        $actor = new ActorContext(12, 4, false, false, ['Consulta'], ['equipos.ver'], [8]);
+
+        $modules = (new GetPlatformModuleCatalog())->execute($actor);
+        $reports = $this->module($modules, 'reports');
+
+        self::assertNull($reports['landingPath']);
+        self::assertSame('not_implemented', $reports['state']);
+    }
+
+    public function testSuperadministratorDoesNotGainTenantReportsAccess(): void
+    {
+        $actor = new ActorContext(1, null, true, true, ['Superadministrador'], ['reportes.ver'], []);
+
+        $modules = (new GetPlatformModuleCatalog())->execute($actor);
+        $reports = $this->module($modules, 'reports');
+
+        self::assertNull($reports['landingPath']);
+        self::assertSame('not_implemented', $reports['state']);
+    }
+
+    public function testEnablesAutomationsModuleOnlyForTenantReaders(): void
+    {
+        $actor = new ActorContext(12, 4, false, false, ['Responsable de mantenimiento'], ['automatizaciones.ver'], [8]);
+
+        $modules = (new GetPlatformModuleCatalog())->execute($actor);
+        $automations = $this->module($modules, 'automations');
+
+        self::assertSame('automatizaciones', $automations['landingPath']);
+        self::assertSame('available', $automations['state']);
+        self::assertSame('Operativo', $automations['status']);
+    }
+
+    public function testKeepsAutomationsRestrictedWithoutItsPermission(): void
+    {
+        $actor = new ActorContext(12, 4, false, false, ['Consulta'], ['notificaciones.ver'], [8]);
+
+        $modules = (new GetPlatformModuleCatalog())->execute($actor);
+        $automations = $this->module($modules, 'automations');
+
+        self::assertNull($automations['landingPath']);
+        self::assertSame('not_implemented', $automations['state']);
+    }
+
+    public function testSuperadministratorDoesNotGainTenantAutomationsAccess(): void
+    {
+        $actor = new ActorContext(1, null, true, true, ['Superadministrador'], ['automatizaciones.ver'], []);
+
+        $modules = (new GetPlatformModuleCatalog())->execute($actor);
+        $automations = $this->module($modules, 'automations');
+
+        self::assertNull($automations['landingPath']);
+        self::assertSame('not_implemented', $automations['state']);
+    }
+
     /**
      * @param list<array<string,mixed>> $modules
      * @return array<string,mixed>

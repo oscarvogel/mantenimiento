@@ -56,6 +56,7 @@ final readonly class AppShellPayload
             ? []
             : $this->platformNavigation($actor, $availableModules, match ($active) {
                 'theoretical-cost-km' => 'management',
+                'automations' => 'automations',
                 'trip-masters', 'trips-dashboard', 'trips-operations-dashboard', 'trips-operations', 'trip-operations-create', 'trip-operations-detail', 'trips-profitability' => 'trips',
                 default => 'maintenance',
             });
@@ -135,6 +136,9 @@ final readonly class AppShellPayload
             }
             if ($actor->hasPermission('reportes.ver')) {
                 $navigation[] = $this->item('reports', 'Reportes', 'reportes', 'chart', $active);
+            }
+            if ($actor->hasPermission('automatizaciones.ver')) {
+                $navigation[] = $this->item('automations', 'Automatizaciones', 'automatizaciones', 'notifications', $active);
             }
         }
 

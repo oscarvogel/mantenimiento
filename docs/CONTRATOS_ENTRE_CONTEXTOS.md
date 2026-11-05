@@ -1,7 +1,7 @@
 # Contratos entre contextos
 
-**Fecha:** 24/10/2026
-**Estado:** Fase 0 — alcance y contratos.
+**Fecha:** 05/11/2026
+**Estado:** Fase 0 — alcance y contratos, con seguimiento de Automatizaciones.
 **Origen:** `docs/PLAN_AMPLIACION_NEUMATICOS_VIAJES_FACTURACION.md` §2.4.
 
 ---
@@ -175,6 +175,20 @@ sincrónica: el ciclo de notificaciones despacha y reintenta. El contrato comple
 
 **Implementado el 05/11/2026.** El adaptador es `CodeIgniterReadingReceiptNotifier` y el disparo
 vive en `PublicEquipmentReadings::store()`, después del commit y sin poder revertir la lectura.
+
+### 4.9 `AutomationOverviewReader` — reporte de lectura de Notifications
+
+```php
+public function forCompany(int $companyId, ?array $branchIds): array;
+```
+
+Lo consume el módulo Automatizaciones. Es un contrato de lectura de Notifications: agrega
+notificaciones, entregas por correo/Web Push/WhatsApp y la configuración de informes de la
+empresa. La sincronización de telemetría se informa a nivel empresa desde
+`integraciones_telemetria`; con `branchIds` restringido se oculta por no ser atribuible a una
+sucursal y se declara en `limitations`. No lee las tablas globales de ejecución ni de bloqueo.
+**Implementado el 05/11/2026.** El adaptador es `CodeIgniterAutomationOverviewReader`; la
+recuperación del ciclo usa `AutomationExecutionRecorder` y `automatizacion_etapas`.
 
 ---
 

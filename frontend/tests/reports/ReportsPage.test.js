@@ -24,8 +24,20 @@ const data = {
   },
 }
 
+const catalog = [
+  { key: 'maintenance', label: 'Reportes de mantenimiento', description: 'Órdenes abiertas actualmente y del período, con exportación CSV.', url: '/reportes', state: 'available' },
+  { key: 'trips-profitability', label: 'Rentabilidad de viajes', description: 'Ingresos y márgenes del historial aceptado.', url: '/viajes/rentabilidad', state: 'available' },
+  { key: 'combined-cost', label: 'Costo por equipo y período', description: 'Combina combustible, gastos y mantenimiento.', url: null, state: 'not_implemented' },
+]
 const mountPage = (overrides = {}) => {
-  const wrapper = mount(ReportsPage, { props: { data: { ...data, ...overrides }, urls: { index: '/reportes', export: '/reportes/exportar?desde=2026-08-01' } } })
+  const wrapper = mount(ReportsPage, {
+    props: {
+      data: { ...data, ...overrides },
+      urls: { index: '/reportes', export: '/reportes/exportar?desde=2026-08-01' },
+      catalog,
+      portalUrl: '/inicio',
+    },
+  })
   wrappers.push(wrapper)
   return wrapper
 }
@@ -48,10 +60,41 @@ describe('ReportsPage', () => {
     expect(wrapper.get('select[name="per_page"]').element.value).toBe('10')
     expect(wrapper.findAll('select[name="per_page"] option').map((option) => option.text())).toEqual(['5', '10', '25'])
     expect(wrapper.get('a[href^="/reportes/exportar"]').text()).toContain('Exportar')
+    expect(wrapper.text()).toContain('Abiertas actualmente')
+    expect(wrapper.text()).toContain('Abiertas en el período')
+    expect(wrapper.text()).toContain('Finalizadas en el período')
+    expect(wrapper.text()).toContain('no descuenta esperas')
 
     await openTab(wrapper, 'Costos')
     expect(wrapper.findAll('[role="meter"]')).toHaveLength(2)
     expect(wrapper.text()).toContain('Evolución de costos')
+  })
+
+  it('offers only consultable reports and returns to the portal', () => {
+    const wrapper = mountPage()
+
+    expect(wrapper.get('a[href="/inicio"]').text()).toContain('Volver al inicio')
+    expect(wrapper.get('a[href="/reportes"]').text()).toContain('Reportes de mantenimiento')
+    expect(wrapper.get('a[href="/viajes/rentabilidad"]').text()).toContain('Rentabilidad de viajes')
+    expect(wrapper.text()).toContain('Costo por equipo y período')
+    expect(wrapper.text()).toContain('Pendiente')
+    expect(wrapper.find('a[href="/automatizaciones"]').exists()).toBe(false)
+  })
+
+  it('shows a restricted catalog without inventing report links', () => {
+    const wrapper = mount(ReportsPage, {
+      props: {
+        data,
+        urls: { index: '/reportes', export: '/reportes/exportar?desde=2026-08-01' },
+        catalog: [{ key: 'maintenance', label: 'Reportes de mantenimiento', description: 'Requiere permiso.', url: null, state: 'restricted' }],
+        portalUrl: '/inicio',
+      },
+    })
+    wrappers.push(wrapper)
+
+    expect(wrapper.text()).toContain('Requiere permiso')
+    expect(wrapper.findAll('a[href^="/reportes"]').length).toBeGreaterThan(0)
+    expect(wrapper.find('a[href="/viajes/rentabilidad"]').exists()).toBe(false)
   })
 
   it('shows a truthful empty state when no orders exist', async () => {

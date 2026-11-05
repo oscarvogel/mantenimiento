@@ -1,13 +1,16 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { ArrowDownTrayIcon, ChartBarSquareIcon, FunnelIcon } from '@heroicons/vue/24/outline'
+import { ArrowDownTrayIcon, ChartBarSquareIcon, FunnelIcon, HomeIcon } from '@heroicons/vue/24/outline'
 import CountUp from '../../components/CountUp.vue'
+import ReportCatalog from './ReportCatalog.vue'
 import ReportMetricCard from './ReportMetricCard.vue'
 import SemanticBarList from './SemanticBarList.vue'
 
 const props = defineProps({
   data: { type: Object, required: true },
   urls: { type: Object, required: true },
+  catalog: { type: Array, default: () => [] },
+  portalUrl: { type: String, default: '' },
 })
 
 const activeTab = ref('summary')
@@ -78,10 +81,17 @@ const pagination = computed(() => props.data.orders.pagination)
         <h1 class="mt-1 text-2xl font-bold tracking-tight text-ink sm:text-3xl">Reportes de mantenimiento</h1>
         <p class="mt-2 max-w-3xl text-sm leading-6 text-ink-muted">Una lectura clara del período, con el detalle disponible cuando lo necesitás.</p>
       </div>
-      <a :href="urls.export" class="inline-flex min-h-11 items-center justify-center gap-2 self-start rounded-lg border border-border-strong bg-surface-raised px-4 py-2.5 text-sm font-semibold text-ink hover:bg-surface-muted sm:self-auto">
-        <ArrowDownTrayIcon class="size-5" aria-hidden="true" />Exportar órdenes CSV
-      </a>
+      <div class="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+        <a v-if="portalUrl" :href="portalUrl" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border-strong bg-surface-raised px-4 py-2.5 text-sm font-semibold text-ink hover:bg-surface-muted">
+          <HomeIcon class="size-5" aria-hidden="true" />Volver al inicio
+        </a>
+        <a :href="urls.export" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border-strong bg-surface-raised px-4 py-2.5 text-sm font-semibold text-ink hover:bg-surface-muted">
+          <ArrowDownTrayIcon class="size-5" aria-hidden="true" />Exportar órdenes CSV
+        </a>
+      </div>
     </header>
+
+    <ReportCatalog class="mt-6" :entries="catalog" />
 
     <details class="group mt-6 rounded-xl border border-border bg-surface-raised">
       <summary class="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 marker:hidden sm:px-5">
@@ -105,15 +115,15 @@ const pagination = computed(() => props.data.orders.pagination)
 
     <section v-if="activeTab === 'summary'" id="report-panel-summary" role="tabpanel" aria-labelledby="report-tab-summary" class="mt-6 space-y-6">
       <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <ReportMetricCard label="Costo total" :metric="metrics.totalCost" hint="OT finalizadas en el período" />
-        <ReportMetricCard label="Órdenes abiertas" :metric="metrics.openOrders" hint="Estado actual en el alcance" tone="warning" />
+        <ReportMetricCard label="Costo total" :metric="metrics.totalCost" hint="Finalizadas en el período" />
+        <ReportMetricCard label="Órdenes abiertas" :metric="metrics.openOrders" hint="Abiertas actualmente en el alcance" tone="warning" />
         <ReportMetricCard label="Finalizadas" :metric="metrics.completedOrders" hint="Finalizadas en el período" tone="success" />
         <ReportMetricCard label="Detención" :metric="metrics.downtimeHours" hint="Sólo intervalos válidos" tone="danger" />
-        <ReportMetricCard label="MTTR correctivo" :metric="metrics.mttrHours" hint="Promedio con muestra válida" tone="primary" />
+        <ReportMetricCard label="MTTR correctivo" :metric="metrics.mttrHours" hint="Desde inicio hasta cierre; no descuenta esperas" tone="primary" />
       </div>
       <section aria-labelledby="status-title" class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6">
         <h2 id="status-title" class="text-lg font-bold text-ink">Órdenes por estado</h2>
-        <p class="mb-5 mt-1 text-sm text-ink-muted">Actividad abierta dentro del período seleccionado.</p>
+        <p class="mb-5 mt-1 text-sm text-ink-muted">Abiertas en el período: distribución por estado. No incluye las abiertas actualmente fuera del período.</p>
         <SemanticBarList :items="statusItems" value-key="count" label-key="label" :value-formatter="number.format" />
       </section>
     </section>

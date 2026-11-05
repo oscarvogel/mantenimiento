@@ -93,11 +93,27 @@ final class GetPlatformModuleCatalog
             $tripsPath = $actor->hasPermission('viajes.ver') ? 'viajes/operativos/dashboard' : 'viajes/maestros';
             $managementEnabled = $module['key'] === 'management'
                 && $actor->hasPermission('gerencial.costo_km.ver');
+            $reportsEnabled = $module['key'] === 'reports'
+                && ! $actor->isSuperAdmin()
+                && $actor->companyId() !== null
+                && $actor->hasPermission('reportes.ver');
+            $automationsEnabled = $module['key'] === 'automations'
+                && ! $actor->isSuperAdmin()
+                && $actor->companyId() !== null
+                && $actor->hasPermission('automatizaciones.ver');
+            $enabled = $tripsEnabled || $managementEnabled || $reportsEnabled || $automationsEnabled;
+            $landingPath = match (true) {
+                $tripsEnabled => $tripsPath,
+                $managementEnabled => 'gerencial/costo-teorico-km',
+                $reportsEnabled => 'reportes',
+                $automationsEnabled => 'automatizaciones',
+                default => null,
+            };
             $entry = [
                 ...$module,
-                'landingPath' => $tripsEnabled ? $tripsPath : ($managementEnabled ? 'gerencial/costo-teorico-km' : null),
-                'status' => ($tripsEnabled || $managementEnabled) ? 'Operativo' : 'Sin implementación aún',
-                'state' => ($tripsEnabled || $managementEnabled) ? 'available' : 'not_implemented',
+                'landingPath' => $landingPath,
+                'status' => $enabled ? 'Operativo' : 'Sin implementación aún',
+                'state' => $enabled ? 'available' : 'not_implemented',
             ];
             if ($module['key'] === 'trips') {
                 $tripsModule = $entry;
