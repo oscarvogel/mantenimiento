@@ -84,16 +84,8 @@ final class GetPlatformModuleCatalog
         $maintenancePath = $actor->isSuperAdmin() ? null : $this->maintenanceLandingPath($actor);
         $maintenanceAvailable = $maintenancePath !== null;
 
-        $modules = [[
-            'key' => 'maintenance',
-            'label' => 'Mantenimiento',
-            'description' => 'Control de servicios, repuestos y disponibilidad de flota.',
-            'icon' => 'wrench',
-            'landingPath' => $maintenancePath,
-            'status' => $maintenanceAvailable ? 'Operativo' : 'No habilitado para tu cuenta',
-            'state' => $maintenanceAvailable ? 'available' : 'restricted',
-        ]];
-
+        $futureModules = [];
+        $tripsModule = null;
         foreach (self::FUTURE_MODULES as $module) {
             $tripsEnabled = $module['key'] === 'trips'
                 && ! $actor->isSuperAdmin()
@@ -101,12 +93,36 @@ final class GetPlatformModuleCatalog
             $tripsPath = $actor->hasPermission('viajes.ver') ? 'viajes/operativos/dashboard' : 'viajes/maestros';
             $managementEnabled = $module['key'] === 'management'
                 && $actor->hasPermission('gerencial.costo_km.ver');
-            $modules[] = [
+            $entry = [
                 ...$module,
                 'landingPath' => $tripsEnabled ? $tripsPath : ($managementEnabled ? 'gerencial/costo-teorico-km' : null),
                 'status' => ($tripsEnabled || $managementEnabled) ? 'Operativo' : 'Sin implementación aún',
                 'state' => ($tripsEnabled || $managementEnabled) ? 'available' : 'not_implemented',
             ];
+            if ($module['key'] === 'trips') {
+                $tripsModule = $entry;
+            } else {
+                $futureModules[] = $entry;
+            }
+        }
+
+        $maintenanceModule = [
+            'key' => 'maintenance',
+            'label' => 'Mantenimiento',
+            'description' => 'Control de servicios, repuestos y disponibilidad de flota.',
+            'icon' => 'wrench',
+            'landingPath' => $maintenancePath,
+            'status' => $maintenanceAvailable ? 'Operativo' : 'No habilitado para tu cuenta',
+            'state' => $maintenanceAvailable ? 'available' : 'restricted',
+        ];
+
+        $modules = [];
+        if ($tripsModule !== null) {
+            $modules[] = $tripsModule;
+        }
+        $modules[] = $maintenanceModule;
+        foreach ($futureModules as $module) {
+            $modules[] = $module;
         }
 
         return $modules;

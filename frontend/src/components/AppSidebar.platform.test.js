@@ -24,6 +24,23 @@ describe('AppSidebar module navigation', () => {
     expect(wrapper.text()).not.toContain('Gestión de flota')
   })
 
+  it('muestra el dashboard de viajes como primera opción del módulo', () => {
+    const navigation = [
+      { key: 'trips-operations-dashboard', label: 'Dashboard', href: '/viajes/operativos/dashboard', icon: 'chart', active: true },
+      { key: 'trips-dashboard', label: 'Historial', href: '/viajes', icon: 'truck', active: false },
+      { key: 'trips-operations', label: 'Viajes operativos', href: '/viajes/operativos', icon: 'clipboard-list', active: false },
+      { key: 'trips-profitability', label: 'Rentabilidad', href: '/viajes/rentabilidad', icon: 'chart', active: false },
+      { key: 'trip-masters', label: 'Maestros', href: '/viajes/maestros', icon: 'clipboard-list', active: false },
+      { key: 'employees', label: 'Empleados', href: '/mantenimiento/empleados', icon: 'users', active: false },
+    ]
+    const wrapper = mount(AppSidebar, { props: { navigation, logout: null } })
+
+    const nav = wrapper.get('nav[aria-label="Navegación principal"]')
+    expect(nav.findAll('a')[0].text()).toContain('Dashboard')
+    expect(nav.find('a[href="/viajes/operativos/dashboard"]').attributes('aria-current')).toBe('page')
+    expect(wrapper.text()).toContain('Más opciones')
+  })
+
   it('shows a dedicated Gerencial menu without operational maintenance entries', () => {
     const navigation = [
       { key: 'managerial-cost-km', label: 'Costo teórico por km', href: '/gerencial/costo-teorico-km', icon: 'chart', active: true },
