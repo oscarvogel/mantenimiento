@@ -98,7 +98,7 @@ final class GetPlatformModuleCatalog
             $tripsEnabled = $module['key'] === 'trips'
                 && ! $actor->isSuperAdmin()
                 && ($actor->hasPermission('viajes.ver') || $actor->hasPermission('viajes.maestros.ver'));
-            $tripsPath = $actor->hasPermission('viajes.ver') ? 'viajes' : 'viajes/maestros';
+            $tripsPath = $actor->hasPermission('viajes.ver') ? 'viajes/operativos/dashboard' : 'viajes/maestros';
             $managementEnabled = $module['key'] === 'management'
                 && $actor->hasPermission('gerencial.costo_km.ver');
             $modules[] = [

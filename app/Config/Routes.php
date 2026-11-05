@@ -30,7 +30,8 @@ $routes->get('viajes', 'TripsDashboard::index', ['filter' => ['auth', 'permissio
 $routes->get('viajes/(:num)', 'TripsDashboard::detail/$1', ['filter' => ['auth', 'permission:viajes.ver']]);
 $routes->get('viajes/rentabilidad', 'TripProfitability::index', ['filter' => ['auth', 'permission:viajes.ver']]);
 
-// Viajes operativos: planificación, inicio y cancelación con scope de empresa y sucursal.
+// Viajes operativos: tablero, planificación, inicio y cancelación con scope de empresa y sucursal.
+$routes->get('viajes/operativos/dashboard', 'OperationalTripsDashboard::index', ['filter' => ['auth', 'permission:viajes.ver']]);
 $routes->get('viajes/operativos', 'OperationalTrips::index', ['filter' => ['auth', 'permission:viajes.ver']]);
 $routes->get('viajes/operativos/nuevo', 'OperationalTrips::create', ['filter' => ['auth', 'permission:viajes.operar']]);
 $routes->get('viajes/operativos/localidades', 'OperationalTrips::localities', ['filter' => ['auth', 'permission:viajes.operar']]);

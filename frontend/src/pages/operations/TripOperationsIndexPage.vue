@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { ArrowPathIcon, PlusIcon, TruckIcon } from '@heroicons/vue/24/outline'
+import { ArrowPathIcon, ChartBarSquareIcon, PlusIcon, TruckIcon } from '@heroicons/vue/24/outline'
 import EmptyState from './components/EmptyState.vue'
 import PageHeading from './components/PageHeading.vue'
 import PanelCard from './components/PanelCard.vue'
@@ -12,7 +12,7 @@ const filters = computed(() => props.data.filters ?? {})
 const options = computed(() => props.data.options ?? { branches: [], statuses: [] })
 const trips = computed(() => props.data.trips ?? [])
 const pagination = computed(() => props.data.pagination ?? { page: 1, perPage: 20, total: 0, pages: 1 })
-const links = computed(() => props.data.links ?? { index: '/viajes/operativos', create: '/viajes/operativos/nuevo' })
+const links = computed(() => props.data.links ?? { index: '/viajes/operativos', dashboard: '/viajes/operativos/dashboard', create: '/viajes/operativos/nuevo' })
 const statusTone = {
   PLANIFICADO: 'bg-info-subtle text-info-strong',
   EN_CURSO: 'bg-success-subtle text-success-strong',
@@ -37,6 +37,7 @@ const pageUrl = (page) => {
   <div>
     <PageHeading eyebrow="Viajes" title="Viajes operativos" description="Planificá recorridos, asigná equipo y choferes, y seguí el estado de cada viaje desde que sale hasta que regresa.">
       <template #actions>
+        <a :href="links.dashboard ?? '/viajes/operativos/dashboard'" :class="secondaryButton"><ChartBarSquareIcon class="mr-2 size-4" aria-hidden="true" />Tablero</a>
         <a v-if="data.canOperate" :href="links.create" :class="primaryButton"><PlusIcon class="mr-2 size-4" aria-hidden="true" />Nuevo viaje</a>
       </template>
     </PageHeading>

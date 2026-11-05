@@ -37,6 +37,28 @@ final class GetPlatformModuleCatalogTest extends TestCase
         yield 'reports read' => ['reportes.ver', 'reportes'];
     }
 
+    public function testTripsModuleLandsOnOperationalDashboardForTripReaders(): void
+    {
+        $actor = new ActorContext(12, 4, false, false, ['Consulta'], ['viajes.ver'], [8]);
+
+        $modules = (new GetPlatformModuleCatalog())->execute($actor);
+        $trips = array_values(array_filter($modules, static fn (array $module): bool => $module['key'] === 'trips'))[0];
+
+        self::assertSame('viajes/operativos/dashboard', $trips['landingPath']);
+        self::assertSame('available', $trips['state']);
+        self::assertSame('Operativo', $trips['status']);
+    }
+
+    public function testTripsModuleLandsOnMastersWhenActorOnlyManagesCatalogs(): void
+    {
+        $actor = new ActorContext(12, 4, false, false, ['Consulta'], ['viajes.maestros.ver'], [8]);
+
+        $modules = (new GetPlatformModuleCatalog())->execute($actor);
+        $trips = array_values(array_filter($modules, static fn (array $module): bool => $module['key'] === 'trips'))[0];
+
+        self::assertSame('viajes/maestros', $trips['landingPath']);
+    }
+
     public function testKeepsMaintenanceVisibleButRestrictedWithoutAnEffectiveEntryPermission(): void
     {
         $actor = new ActorContext(12, 4, false, false, ['Administrador'], ['sucursales.ver'], [8]);

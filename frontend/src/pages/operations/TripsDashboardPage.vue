@@ -56,6 +56,7 @@ const domainUrl = (domain) => {
   <div>
     <PageHeading eyebrow="Viajes" title="Historial de viajes" description="Listado del historial importado, con actividad, kilometraje y combustible. Los costos quedan fuera hasta definir la moneda de origen.">
       <template #actions>
+        <a :href="props.data.links?.dashboard ?? '/viajes/operativos/dashboard'" :class="secondaryButton"><ChartBarSquareIcon class="mr-2 size-4" aria-hidden="true" />Tablero</a>
         <a :href="props.data.links?.profitability ?? '/viajes/rentabilidad'" :class="secondaryButton"><ChartBarSquareIcon class="mr-2 size-4" aria-hidden="true" />Rentabilidad</a>
         <a :href="props.data.links?.operational ?? '/viajes/operativos'" :class="primaryButton"><TruckIcon class="mr-2 size-4" aria-hidden="true" />Viajes operativos</a>
       </template>
