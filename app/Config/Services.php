@@ -38,8 +38,10 @@ use App\Application\Assets\TransferEquipmentHandler;
 use App\Application\Assets\UpdateEquipmentHandler;
 use App\Application\Measurement\CorrectReadingHandler;
 use App\Application\Measurement\ListReadingHistoryHandler;
+use App\Application\Measurement\Port\ReadingReceiptNotifier;
 use App\Application\Measurement\RegisterReadingHandler;
 use App\Application\Measurement\RegisterReadingBatchHandler;
+use App\Application\Measurement\SendReadingReceipt;
 use App\Application\MaintenanceCircuit\CreateEquipmentWithInitialReading;
 use App\Application\MaintenanceCircuit\DetectOverduePlans;
 use App\Application\MaintenanceCircuit\GetCircuitOverview;
@@ -93,6 +95,7 @@ use App\Infrastructure\Notifications\CodeIgniterNotificationCronRateLimiter;
 use App\Infrastructure\Notifications\CodeIgniterNotificationDeliveryQueue;
 use App\Infrastructure\Notifications\CodeIgniterWhatsAppNotificationDeliveryQueue;
 use App\Infrastructure\Notifications\CodeIgniterNotificationPreferenceStore;
+use App\Infrastructure\Notifications\CodeIgniterReadingReceiptNotifier;
 use App\Infrastructure\Notifications\VogelWhatsAppApiGateway;
 use App\Infrastructure\Notifications\CodeIgniterNotificationProcessControl;
 use App\Infrastructure\Notifications\CodeIgniterNotificationRecipientResolver;
@@ -2047,6 +2050,29 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
             static::globalNotificationSettingsStore(false),
             static::notificationClock(),
         );
+    }
+
+    public static function readingReceiptNotifier(bool $getShared = true): ReadingReceiptNotifier
+    {
+        if ($getShared) {
+            return static::getSharedInstance('readingReceiptNotifier');
+        }
+
+        return new CodeIgniterReadingReceiptNotifier(
+            db_connect(),
+            static::whatsAppGateway(false),
+            static::globalNotificationSettingsStore(false),
+            static::notificationClock(false),
+        );
+    }
+
+    public static function sendReadingReceipt(bool $getShared = true): SendReadingReceipt
+    {
+        if ($getShared) {
+            return static::getSharedInstance('sendReadingReceipt');
+        }
+
+        return new SendReadingReceipt(static::readingReceiptNotifier(false));
     }
 
     public static function createEquipmentWithInitialReading(bool $getShared = true): CreateEquipmentWithInitialReading

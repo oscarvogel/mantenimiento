@@ -1105,8 +1105,10 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
                 ->where('proximo_intento', null)
                 ->orWhere('proximo_intento <=', $this->clock->now()->format('Y-m-d H:i:s'))
             ->groupEnd()
-            // Primero salen vencimientos/alertas; el recordatorio semanal no debe
-            // demorar una alerta más urgente cuando la cola supera el batch del cron.
+            // El acuse de lectura confirma una acción que el chofer acaba de hacer:
+            // sale antes que alertas y recordatorios. El recordatorio semanal, en
+            // cambio, queda último para no demorar una alerta más urgente.
+            ->orderBy("tipo_evento = 'equipo.lectura_registrada'", 'DESC', false)
             ->orderBy("tipo_evento = 'equipo.recordatorio_lectura_semanal'", 'ASC', false)
             ->orderBy('id', 'ASC')
             ->limit($scanLimit)

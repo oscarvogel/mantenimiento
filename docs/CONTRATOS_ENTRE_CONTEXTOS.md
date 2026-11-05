@@ -48,6 +48,7 @@ seguir.
 | Publicación de eventos de preventivo | `PreventiveNeumaticEventPublisher` | `app/Application/Neumaticos/Port/PreventiveNeumaticEventPublisher.php` | PreventiveMaintenance | **Contrato escrito. Falta adaptador.** |
 | `ArcaGateway` (especificación §5.14) | `ArcaGateway` | `app/Application/Facturacion/Port/ArcaGateway.php` | ARCA | **Contrato escrito. Falta adaptador.** |
 | `NotificarEvento` | `NotifiableEventPublisher` | `app/Application/Notifications/Port/NotifiableEventPublisher.php` | Notifications | **Ya existía. Implementado.** |
+| `AcuseLecturaWhatsApp` (nuevo) | `ReadingReceiptNotifier` | `app/Application/Measurement/Port/ReadingReceiptNotifier.php` | Notifications | **Implementado.** Lo dispara `PublicEquipmentReadings` después del commit. |
 | Tools del chatbot | `ToolRegistry` | `app/Application/Chatbot/Port/ToolRegistry.php` | Chatbot | **Ya existía. Implementado.** |
 
 ---
@@ -159,6 +160,21 @@ mensaje, porque hay que mostrarlo al operador y guardarlo en la traza. Solo una 
 transporte o de certificado es excepción, y en ese caso la petición queda para reintento.
 
 Los importes viajan ya calculados: el cálculo de netos es del contexto y ARCA no recalcula.
+
+### 4.8 `ReadingReceiptNotifier` — responde Notifications
+
+```php
+public function notify(int $companyId, int $equipmentId, int $readingId): void;
+```
+
+Lo consume Medición al registrar una lectura pública exitosa. El adaptador resuelve el chofer
+vigente, el teléfono, el modo piloto y la instancia; arma el mensaje e inserta la entrega en
+`notificacion_whatsapp_entregas` con `tipo_evento = equipo.lectura_registrada`. No envía de forma
+sincrónica: el ciclo de notificaciones despacha y reintenta. El contrato completo está en
+`docs/superpowers/specs/2026-11-05-acuse-lectura-whatsapp-design.md`.
+
+**Implementado el 05/11/2026.** El adaptador es `CodeIgniterReadingReceiptNotifier` y el disparo
+vive en `PublicEquipmentReadings::store()`, después del commit y sin poder revertir la lectura.
 
 ---
 

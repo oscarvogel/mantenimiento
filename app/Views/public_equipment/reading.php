@@ -41,6 +41,24 @@
             <div class="done" role="status">
                 <h2><?= esc($labels['registered_title'] ?? 'Lectura registrada') ?></h2>
                 <p><?= esc($labels['registered_help'] ?? 'La lectura quedó guardada correctamente. Ya podés cerrar esta ventana.') ?></p>
+                <?php if (! empty($readingReceipt)): ?>
+                    <div class="reading" style="margin-top:14px;text-align:left">
+                        <?php if (($readingReceipt['kilometers'] ?? null) !== null): ?>
+                            <div><?= esc($labels['receipt_km'] ?? 'Kilometraje registrado') ?>:
+                                <strong><?= number_format((int) $readingReceipt['kilometers'], 0, ',', '.') ?> km</strong>
+                            </div>
+                        <?php endif ?>
+                        <?php if (($readingReceipt['hours'] ?? null) !== null): ?>
+                            <div><?= esc($labels['receipt_hours'] ?? 'Horómetro registrado') ?>:
+                                <strong><?= number_format((float) $readingReceipt['hours'], 1, ',', '.') ?> h</strong>
+                            </div>
+                        <?php endif ?>
+                        <div><?= esc($labels['receipt_code'] ?? 'Comprobante') ?>:
+                            <strong><?= esc($readingReceipt['code'] ?? '') ?></strong>
+                        </div>
+                        <p class="help"><?= esc($labels['receipt_help'] ?? 'Guardá este comprobante.') ?></p>
+                    </div>
+                <?php endif ?>
             </div>
         <?php else: ?>
         <form method="post" id="reading-form" enctype="multipart/form-data">

@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Application\Notifications\ReadingReceiptMessageBuilder;
 use App\Application\PublicEquipmentAccess\ResolvePublicEquipmentToken;
 use App\Infrastructure\PublicEquipmentAccess\CodeIgniterPublicEquipmentTokenRepository;
 use App\Infrastructure\Measurement\MiniMaxOdometerImageAnalyzer;
 use App\Infrastructure\Measurement\ReadingEvidenceStorage;
+use App\Domain\Measurement\AiDiscrepancyPolicy;
 use App\Domain\Notifications\NotifiableEvent;
 use App\Domain\Notifications\NotificationSeverity;
 use CodeIgniter\HTTP\RedirectResponse;
@@ -23,9 +25,6 @@ final class PublicEquipmentReadings extends BaseController
     private const MAX_KM_JUMP = 5000;
     private const MAX_HOURS_JUMP = 500.0;
     private const MAX_EVIDENCE_BYTES = 8 * 1024 * 1024;
-    private const AI_DISCREPANCY_MIN_CONFIDENCE = 0.80;
-    private const AI_DISCREPANCY_MIN_KM = 1000;
-    private const AI_DISCREPANCY_MIN_RATIO = 0.05;
 
     public function show(string $token): string
     {
@@ -45,6 +44,7 @@ final class PublicEquipmentReadings extends BaseController
                 'equipment' => $equipment,
                 'requestKey' => $registered ? '' : $this->uuid(),
                 'registered' => $registered,
+                'readingReceipt' => session()->getFlashdata('reading_receipt'),
                 'success' => session()->getFlashdata('success'),
                 'error' => session()->getFlashdata('error'),
                 'largeJump' => (bool) session()->getFlashdata('large_jump'),
@@ -488,6 +488,26 @@ final class PublicEquipmentReadings extends BaseController
                 }
             }
 
+            try {
+                session()->setFlashdata('reading_receipt', [
+                    'code' => ReadingReceiptMessageBuilder::receiptCode($readingId),
+                    'kilometers' => $kilometers,
+                    'hours' => $hours,
+                ]);
+
+                service('sendReadingReceipt')->execute(
+                    (int) $equipment['empresa_id'],
+                    (int) $equipment['id'],
+                    $readingId,
+                );
+            } catch (Throwable $receiptError) {
+                // El acuse es best-effort: la lectura ya está confirmada.
+                log_message('error', 'No se pudo disparar el acuse de lectura {reading}: {message}', [
+                    'reading' => $readingId,
+                    'message' => $receiptError->getMessage(),
+                ]);
+            }
+
             return redirect()->to($target . '?registrada=1')->with('success', $this->tr($locale, 'success'));
         } catch (Throwable $exception) {
             if (! $exception instanceof DomainException) {
@@ -511,18 +531,7 @@ final class PublicEquipmentReadings extends BaseController
 
     private function shouldAlertAiDiscrepancy(?int $detectedKm, ?int $confirmedKm, ?float $confidence): bool
     {
-        if ($detectedKm === null || $confirmedKm === null || $confidence === null) {
-            return false;
-        }
-        if ($confidence < self::AI_DISCREPANCY_MIN_CONFIDENCE) {
-            return false;
-        }
-
-        $difference = abs($detectedKm - $confirmedKm);
-        $ratio = $detectedKm > 0 ? $difference / $detectedKm : 0.0;
-
-        return $difference >= self::AI_DISCREPANCY_MIN_KM
-            && $ratio >= self::AI_DISCREPANCY_MIN_RATIO;
+        return (new AiDiscrepancyPolicy())->needsReview($detectedKm, $confirmedKm, $confidence);
     }
 
     /** @param array<string,mixed> $equipment */
@@ -803,6 +812,10 @@ final class PublicEquipmentReadings extends BaseController
             'saving' => 'Salvando...',
             'registered_title' => 'Leitura registrada',
             'registered_help' => 'A leitura foi salva corretamente. Você já pode fechar esta janela.',
+            'receipt_km' => 'Quilometragem registrada',
+            'receipt_hours' => 'Horímetro registrado',
+            'receipt_code' => 'Comprovante',
+            'receipt_help' => 'Guarde este comprovante.',
             ];
         }
 
@@ -823,6 +836,10 @@ final class PublicEquipmentReadings extends BaseController
             'saving' => 'Guardando...',
             'registered_title' => 'Lectura registrada',
             'registered_help' => 'La lectura quedó guardada correctamente. Ya podés cerrar esta ventana.',
+            'receipt_km' => 'Kilometraje registrado',
+            'receipt_hours' => 'Horómetro registrado',
+            'receipt_code' => 'Comprobante',
+            'receipt_help' => 'Guardá este comprobante.',
         ];
     }
 
