@@ -16,14 +16,16 @@ final class GetPlatformModuleCatalogTest extends TestCase
         $modules = (new GetPlatformModuleCatalog())->execute($actor);
 
         self::assertSame(
-            ['maintenance', 'trips', 'fuel', 'tires', 'billing', 'management', 'reports', 'automations', 'ai'],
+            ['trips', 'maintenance', 'fuel', 'tires', 'billing', 'management', 'reports', 'automations', 'ai'],
             array_column($modules, 'key'),
         );
-        self::assertSame($landingPath, $modules[0]['landingPath']);
-        self::assertSame('available', $modules[0]['state']);
-        self::assertSame('Operativo', $modules[0]['status']);
-        self::assertSame('Sin implementación aún', $modules[1]['status']);
-        self::assertSame('not_implemented', $modules[1]['state']);
+        $maintenance = $this->module($modules, 'maintenance');
+        self::assertSame($landingPath, $maintenance['landingPath']);
+        self::assertSame('available', $maintenance['state']);
+        self::assertSame('Operativo', $maintenance['status']);
+        $fuel = $this->module($modules, 'fuel');
+        self::assertSame('Sin implementación aún', $fuel['status']);
+        self::assertSame('not_implemented', $fuel['state']);
     }
 
     public static function maintenanceEntryPermissions(): iterable
@@ -37,15 +39,38 @@ final class GetPlatformModuleCatalogTest extends TestCase
         yield 'reports read' => ['reportes.ver', 'reportes'];
     }
 
+    public function testTripsModuleLandsOnOperationalDashboardForTripReaders(): void
+    {
+        $actor = new ActorContext(12, 4, false, false, ['Consulta'], ['viajes.ver'], [8]);
+
+        $modules = (new GetPlatformModuleCatalog())->execute($actor);
+        $trips = array_values(array_filter($modules, static fn (array $module): bool => $module['key'] === 'trips'))[0];
+
+        self::assertSame('viajes/operativos/dashboard', $trips['landingPath']);
+        self::assertSame('available', $trips['state']);
+        self::assertSame('Operativo', $trips['status']);
+    }
+
+    public function testTripsModuleLandsOnMastersWhenActorOnlyManagesCatalogs(): void
+    {
+        $actor = new ActorContext(12, 4, false, false, ['Consulta'], ['viajes.maestros.ver'], [8]);
+
+        $modules = (new GetPlatformModuleCatalog())->execute($actor);
+        $trips = array_values(array_filter($modules, static fn (array $module): bool => $module['key'] === 'trips'))[0];
+
+        self::assertSame('viajes/maestros', $trips['landingPath']);
+    }
+
     public function testKeepsMaintenanceVisibleButRestrictedWithoutAnEffectiveEntryPermission(): void
     {
         $actor = new ActorContext(12, 4, false, false, ['Administrador'], ['sucursales.ver'], [8]);
 
         $modules = (new GetPlatformModuleCatalog())->execute($actor);
+        $maintenance = $this->module($modules, 'maintenance');
 
-        self::assertSame('restricted', $modules[0]['state']);
-        self::assertNull($modules[0]['landingPath']);
-        self::assertSame('No habilitado para tu cuenta', $modules[0]['status']);
+        self::assertSame('restricted', $maintenance['state']);
+        self::assertNull($maintenance['landingPath']);
+        self::assertSame('No habilitado para tu cuenta', $maintenance['status']);
         self::assertSame(9, count($modules));
     }
 
@@ -54,9 +79,10 @@ final class GetPlatformModuleCatalogTest extends TestCase
         $actor = new ActorContext(12, 4, false, false, ['Responsable'], ['equipos.editar'], [8]);
 
         $modules = (new GetPlatformModuleCatalog())->execute($actor);
+        $maintenance = $this->module($modules, 'maintenance');
 
-        self::assertSame('restricted', $modules[0]['state']);
-        self::assertNull($modules[0]['landingPath']);
+        self::assertSame('restricted', $maintenance['state']);
+        self::assertNull($maintenance['landingPath']);
     }
 
     public function testSuperadministratorSeesMaintenanceRestrictedWithoutTenantAccess(): void
@@ -64,9 +90,10 @@ final class GetPlatformModuleCatalogTest extends TestCase
         $actor = new ActorContext(1, null, true, true, ['Superadministrador'], ['equipos.ver'], []);
 
         $modules = (new GetPlatformModuleCatalog())->execute($actor);
+        $maintenance = $this->module($modules, 'maintenance');
 
-        self::assertSame('restricted', $modules[0]['state']);
-        self::assertNull($modules[0]['landingPath']);
+        self::assertSame('restricted', $maintenance['state']);
+        self::assertNull($maintenance['landingPath']);
     }
 
     public function testEnablesManagementModuleForTheoreticalCostPermission(): void
@@ -91,5 +118,17 @@ final class GetPlatformModuleCatalogTest extends TestCase
         self::assertNull($management['landingPath']);
         self::assertSame('not_implemented', $management['state']);
         self::assertSame('Sin implementación aún', $management['status']);
+    }
+
+    /**
+     * @param list<array<string,mixed>> $modules
+     * @return array<string,mixed>
+     */
+    private function module(array $modules, string $key): array
+    {
+        return array_values(array_filter(
+            $modules,
+            static fn (array $module): bool => $module['key'] === $key,
+        ))[0];
     }
 }

@@ -23,6 +23,7 @@ final class TripsDashboard extends BaseController
             $dashboard = service('getTripsDashboard')->execute($actor, $filters, $page);
             $dashboard['links'] = [
                 'index' => base_url('viajes'),
+                'dashboard' => base_url('viajes/operativos/dashboard'),
                 'operational' => base_url('viajes/operativos'),
                 'profitability' => base_url('viajes/rentabilidad'),
             ];

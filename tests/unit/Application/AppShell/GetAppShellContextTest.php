@@ -222,16 +222,16 @@ final class GetAppShellContextTest extends TestCase
         $payload = (new AppShellPayload($context, new GetPlatformModuleCatalog()))->for($actor, 'command-center');
 
         self::assertSame(
-            ['platform-home', 'module-maintenance', 'module-trips', 'module-fuel', 'module-tires', 'module-billing', 'module-management', 'module-reports', 'module-automations', 'module-ai'],
+            ['platform-home', 'module-trips', 'module-maintenance', 'module-fuel', 'module-tires', 'module-billing', 'module-management', 'module-reports', 'module-automations', 'module-ai'],
             array_column($payload['navigation'], 'key'),
         );
         self::assertTrue($payload['navigation'][0]['active']);
-        self::assertFalse($payload['navigation'][1]['disabled']);
-        self::assertStringEndsWith('/dashboard', $payload['navigation'][1]['href']);
-        self::assertTrue($payload['navigation'][2]['disabled']);
-        self::assertNull($payload['navigation'][2]['href']);
-        self::assertSame('Sin implementación aún', $payload['navigation'][2]['status']);
-        self::assertNull($payload['navigation'][2]['badge']);
+        self::assertTrue($payload['navigation'][1]['disabled']);
+        self::assertNull($payload['navigation'][1]['href']);
+        self::assertSame('Sin implementación aún', $payload['navigation'][1]['status']);
+        self::assertNull($payload['navigation'][1]['badge']);
+        self::assertFalse($payload['navigation'][2]['disabled']);
+        self::assertStringEndsWith('/dashboard', $payload['navigation'][2]['href']);
         self::assertNull($payload['homeUrl']);
     }
 
@@ -243,8 +243,8 @@ final class GetAppShellContextTest extends TestCase
         $portal = (new AppShellPayload($context, new GetPlatformModuleCatalog()))->for($actor, 'command-center');
         $maintenancePage = (new AppShellPayload($context, new GetPlatformModuleCatalog()))->for($actor, 'plans');
 
-        self::assertTrue($portal['navigation'][1]['disabled']);
-        self::assertNull($portal['navigation'][1]['href']);
+        self::assertTrue($portal['navigation'][2]['disabled']);
+        self::assertNull($portal['navigation'][2]['href']);
         self::assertNull($maintenancePage['homeUrl']);
     }
 
@@ -266,15 +266,15 @@ final class GetAppShellContextTest extends TestCase
         $payload = (new AppShellPayload($context, new GetPlatformModuleCatalog()))->for($actor, 'dashboard');
 
         self::assertSame(
-            ['platform-home', 'module-maintenance', 'module-trips', 'module-fuel', 'module-tires', 'module-billing', 'module-management', 'module-reports', 'module-automations', 'module-ai'],
+            ['platform-home', 'module-trips', 'module-maintenance', 'module-fuel', 'module-tires', 'module-billing', 'module-management', 'module-reports', 'module-automations', 'module-ai'],
             array_column($payload['moduleNavigation'], 'key'),
         );
         self::assertFalse($payload['moduleNavigation'][0]['active']);
-        self::assertTrue($payload['moduleNavigation'][1]['active']);
-        self::assertStringEndsWith('/dashboard', $payload['moduleNavigation'][1]['href']);
-        self::assertTrue($payload['moduleNavigation'][2]['disabled']);
-        self::assertNull($payload['moduleNavigation'][2]['href']);
-        self::assertSame('Sin implementación aún', $payload['moduleNavigation'][2]['status']);
+        self::assertTrue($payload['moduleNavigation'][2]['active']);
+        self::assertStringEndsWith('/dashboard', $payload['moduleNavigation'][2]['href']);
+        self::assertTrue($payload['moduleNavigation'][1]['disabled']);
+        self::assertNull($payload['moduleNavigation'][1]['href']);
+        self::assertSame('Sin implementación aún', $payload['moduleNavigation'][1]['status']);
     }
 
     public function testManagerialShellGetsItsOwnNavigationInsteadOfMaintenanceLinks(): void
