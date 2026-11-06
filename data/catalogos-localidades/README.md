@@ -35,6 +35,19 @@ Las cuatro salidas pasaron controles de identidad única, campos obligatorios y 
 
 También está disponible `normalizados/brasil.csv.gz` (2.175.838 bytes) para subir el catálogo de Brasil comprimido; la pantalla acepta `.csv` y `.csv.gz`. El hash guardado en auditoría corresponde al archivo que efectivamente se subió.
 
+## Qué localidades se ofrecen en Viajes
+
+El catálogo completo se conserva para historial, equivalencias y viajes ya cargados, pero el buscador de origen y destino ofrece solo el catálogo principal. La marca `principal` se calcula sola al importar y se puede corregir con la migración `2026-11-06-100000_AddPrincipalFlagToLocalities`:
+
+| País | Criterio del buscador |
+|---|---|
+| Argentina | Una entrada por provincia, con el nombre de la provincia |
+| Brasil | Municipios con población censal 2022 mayor o igual a 150.000 (200 ciudades, incluidas las capitales estaduales) |
+| Chile | Localidades de categoría `CIUDAD` |
+| Uruguay | Todas las localidades censales |
+
+El resto de las localidades sigue en `localidades` y mantiene sus IDs, coordenadas y equivalencias. No se borra ni se modifica ningún viaje histórico. Si se reimporta un catálogo completo, la marca `principal` se recalcula con el mismo criterio.
+
 ## Importar en el sistema
 
 1. Entrá como Superadministrador a **Administración global → Localidades** (`superadmin/geografia/localidades/importar`).

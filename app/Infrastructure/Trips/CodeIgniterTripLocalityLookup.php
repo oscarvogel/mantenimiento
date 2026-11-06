@@ -32,12 +32,7 @@ final class CodeIgniterTripLocalityLookup implements TripLocalityLookup
             'id' => (int) $row['id'],
             'name' => (string) $row['nombre'],
             'context' => (string) ($row['contexto'] ?? ''),
-            'label' => implode(' · ', array_filter([
-                (string) $row['nombre'],
-                (string) ($row['contexto'] ?? ''),
-                (string) $row['provincia'],
-                (string) $row['pais'],
-            ])),
+            'label' => $this->label($row),
         ];
     }
 
@@ -57,6 +52,7 @@ final class CodeIgniterTripLocalityLookup implements TripLocalityLookup
             ->join('provincias pr', 'pr.id = l.provincia_id')
             ->join('paises pa', 'pa.id = pr.pais_id')
             ->where('l.activo', 1)
+            ->where('l.principal', 1)
             ->where('pr.activo', 1)
             ->where('pa.activo', 1);
 
@@ -88,12 +84,7 @@ final class CodeIgniterTripLocalityLookup implements TripLocalityLookup
         $results = [];
         $seenLabels = [];
         foreach ($rows as $row) {
-            $label = implode(' · ', array_filter([
-                (string) $row['nombre'],
-                (string) ($row['contexto'] ?? ''),
-                (string) $row['provincia'],
-                (string) $row['pais'],
-            ]));
+            $label = $this->label($row);
             $labelKey = mb_strtolower($label, 'UTF-8');
             if (isset($seenLabels[$labelKey])) {
                 continue;
@@ -111,5 +102,28 @@ final class CodeIgniterTripLocalityLookup implements TripLocalityLookup
         }
 
         return $results;
+    }
+
+    /** @param array<string,mixed> $row */
+    private function label(array $row): string
+    {
+        $parts = [];
+        $seen = [];
+        foreach ([
+            (string) ($row['nombre'] ?? ''),
+            (string) ($row['contexto'] ?? ''),
+            (string) ($row['provincia'] ?? ''),
+            (string) ($row['pais'] ?? ''),
+        ] as $part) {
+            $part = trim($part);
+            $key = mb_strtolower($part, 'UTF-8');
+            if ($part === '' || isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+            $parts[] = $part;
+        }
+
+        return implode(' · ', $parts);
     }
 }

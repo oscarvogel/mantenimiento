@@ -284,7 +284,12 @@ class Services extends BaseService
         }
 
         return new \App\Application\Geography\ImportLocalities(
-            new \App\Infrastructure\Geography\CodeIgniterLocalityCatalogImportStore(db_connect()),
+            new \App\Infrastructure\Geography\CodeIgniterLocalityCatalogImportStore(
+                db_connect(),
+                new \App\Domain\Geography\PrincipalLocalityPolicy(
+                    config('LocalityCatalog')->brazilPrincipalMunicipalityCodes,
+                ),
+            ),
         );
     }
 

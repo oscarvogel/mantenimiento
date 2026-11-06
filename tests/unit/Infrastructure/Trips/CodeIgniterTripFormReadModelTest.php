@@ -38,7 +38,7 @@ final class CodeIgniterTripFormReadModelTest extends TestCase
         $this->database->query('CREATE TABLE viajes_monedas (codigo TEXT PRIMARY KEY, nombre TEXT, activo INTEGER)');
         $this->database->query('CREATE TABLE paises (id INTEGER PRIMARY KEY, nombre TEXT, activo INTEGER)');
         $this->database->query('CREATE TABLE provincias (id INTEGER PRIMARY KEY, pais_id INTEGER, nombre TEXT, activo INTEGER)');
-        $this->database->query('CREATE TABLE localidades (id INTEGER PRIMARY KEY, provincia_id INTEGER, nombre TEXT, contexto_administrativo TEXT NULL, categoria_fuente TEXT NULL, activo INTEGER)');
+        $this->database->query('CREATE TABLE localidades (id INTEGER PRIMARY KEY, provincia_id INTEGER, nombre TEXT, contexto_administrativo TEXT NULL, categoria_fuente TEXT NULL, principal INTEGER NOT NULL DEFAULT 0, activo INTEGER)');
 
         $this->database->table('empresas')->insert(['id' => 5, 'razon_social' => 'Transporte Mariela SRL', 'nombre_fantasia' => 'Transporte Mariela', 'cuit' => '23-28059786-4']);
         $this->database->table('viajes_operativos_numeracion')->insert(['empresa_id' => 5, 'ultimo_numero' => 114]);
@@ -74,7 +74,7 @@ final class CodeIgniterTripFormReadModelTest extends TestCase
         $this->database->table('viajes_monedas')->insert(['codigo' => 'ARS', 'nombre' => 'Peso argentino', 'activo' => 1]);
         $this->database->table('paises')->insert(['id' => 1, 'nombre' => 'Argentina', 'activo' => 1]);
         $this->database->table('provincias')->insert(['id' => 1, 'pais_id' => 1, 'nombre' => 'Santa Fe', 'activo' => 1]);
-        $this->database->table('localidades')->insert(['id' => 1, 'provincia_id' => 1, 'nombre' => 'Rosario', 'contexto_administrativo' => 'Departamento Rosario', 'activo' => 1]);
+        $this->database->table('localidades')->insert(['id' => 1, 'provincia_id' => 1, 'nombre' => 'Rosario', 'contexto_administrativo' => 'Departamento Rosario', 'principal' => 1, 'activo' => 1]);
         self::assertSame('Departamento Rosario', $this->database->table('localidades')->where('id', 1)->get()->getRowArray()['contexto_administrativo']);
     }
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Geography;
 
 use App\Application\Geography\Port\LocalityCatalogImportStore;
+use App\Domain\Geography\PrincipalLocalityPolicy;
 use CodeIgniter\Database\ConnectionInterface;
 use RuntimeException;
 use Throwable;
@@ -13,7 +14,10 @@ final class CodeIgniterLocalityCatalogImportStore implements LocalityCatalogImpo
 {
     private const BATCH_SIZE = 75;
 
-    public function __construct(private readonly ConnectionInterface $db)
+    public function __construct(
+        private readonly ConnectionInterface $db,
+        private readonly PrincipalLocalityPolicy $principalPolicy,
+    )
     {
     }
 
@@ -42,6 +46,10 @@ final class CodeIgniterLocalityCatalogImportStore implements LocalityCatalogImpo
             }
             if ($batch !== []) {
                 $this->upsertLocalityBatch($batch, $source, $version, $now, $result);
+            }
+
+            if (strtoupper($countryCode) === 'ARGENTINA') {
+                (new ProvinceLocalityRegistry($this->db))->ensureForCountry((int) $country['id'], $countryCode);
             }
 
             $this->db->table('geografia_importaciones')->insert([
@@ -149,6 +157,7 @@ final class CodeIgniterLocalityCatalogImportStore implements LocalityCatalogImpo
                 'categoria_fuente' => $record['categoria'],
                 'latitud' => $record['latitud'] === '' ? null : $record['latitud'],
                 'longitud' => $record['longitud'] === '' ? null : $record['longitud'],
+                'principal' => $this->principalPolicy->isPrincipal($record['pais_codigo'], $record['categoria'], $record['codigo_localidad']) ? 1 : 0,
                 'activo' => 1,
                 'updated_at' => $now,
             ];
