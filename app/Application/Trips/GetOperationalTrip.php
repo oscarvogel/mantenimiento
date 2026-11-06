@@ -49,6 +49,7 @@ final class GetOperationalTrip
             'expense' => base_url('viajes/operativos/' . $tripId . '/gastos'),
             'cash' => base_url('viajes/operativos/' . $tripId . '/caja'),
             'earnings' => base_url('viajes/operativos/' . $tripId . '/haberes'),
+            'logbook' => base_url('viajes/operativos/' . $tripId . '/diario-bordo'),
             'percentage' => base_url('viajes/operativos/' . $tripId . '/porcentaje'),
             'legs' => base_url('viajes/operativos/' . $tripId . '/tramos'),
             'finish' => base_url('viajes/operativos/' . $tripId . '/cerrar'),

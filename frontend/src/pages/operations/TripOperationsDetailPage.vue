@@ -1,6 +1,6 @@
 <script setup>
 import { computed, nextTick, ref } from 'vue'
-import { ArrowDownTrayIcon, BanknotesIcon, BeakerIcon, CheckCircleIcon, CurrencyDollarIcon, ReceiptPercentIcon, XCircleIcon } from '@heroicons/vue/24/outline'
+import { ArrowDownTrayIcon, BanknotesIcon, BeakerIcon, BookOpenIcon, CheckCircleIcon, CurrencyDollarIcon, ReceiptPercentIcon, XCircleIcon } from '@heroicons/vue/24/outline'
 import PageHeading from './components/PageHeading.vue'
 import PanelCard from './components/PanelCard.vue'
 import AutocompleteSelect from './components/AutocompleteSelect.vue'
@@ -15,6 +15,7 @@ const fuel = computed(() => props.data.fuel ?? [])
 const expenses = computed(() => props.data.expenses ?? [])
 const cashMovements = computed(() => props.data.cashMovements ?? [])
 const otherEarnings = computed(() => props.data.otherEarnings ?? [])
+const logbook = computed(() => props.data.logbook ?? [])
 const settlement = computed(() => props.data.settlement ?? null)
 const totals = computed(() => props.data.totals ?? {})
 const legs = computed(() => props.data.legs ?? [])
@@ -51,7 +52,7 @@ const openEditModal = (type, entry) => {
   nextTick(() => entryDialog.value?.showModal())
 }
 const movementUrl = (type, id, remove = false) => {
-  const segment = { fuel: 'combustible', expense: 'gastos', cash: 'caja', earning: 'haberes' }[type]
+  const segment = { fuel: 'combustible', expense: 'gastos', cash: 'caja', earning: 'haberes', logbook: 'diario-bordo' }[type]
   return `${props.data.links?.detail ?? ''}/${segment}/${id}${remove ? '/eliminar' : ''}`
 }
 const inputDateTime = (value) => String(value ?? '').replace(' ', 'T').slice(0, 16)
@@ -107,17 +108,89 @@ const entryDialogTitle = computed(() => {
     if (activeEntryModal.value === 'fuel') return 'Editar carga de combustible'
     if (activeEntryModal.value === 'expense') return 'Editar gasto'
     if (activeEntryModal.value === 'earning') return 'Editar haber'
+    if (activeEntryModal.value === 'logbook') return 'Editar etapa del diario de bordo'
     return 'Editar movimiento de caja'
   }
   if (activeEntryModal.value === 'fuel') return 'Cargar combustible'
   if (activeEntryModal.value === 'expense') return 'Cargar gasto'
   if (activeEntryModal.value === 'earning') return 'Cargar haber o estadía'
+  if (activeEntryModal.value === 'logbook') return 'Cargar etapa del diario de bordo'
   return 'Movimiento de caja del chofer'
 })
 const today = computed(() => {
   const now = new Date()
   const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000)
   return local.toISOString().slice(0, 10)
+})
+const logbookDayOptions = computed(() => earningConcepts.value.filter((concept) => concept.unit === 'DIA'))
+const parseDay = (value) => {
+  const match = String(value ?? '').match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (!match) return null
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+  return Number.isNaN(date.getTime()) ? null : date
+}
+const emptyLogbookDraft = () => ({
+  tipo: 'CARGA',
+  ubicacion: '',
+  llegada: today.value,
+  salida: today.value,
+  horasLibres: 48,
+  conceptoId: '',
+  diasAjustados: '',
+  motivoAjuste: '',
+  observaciones: '',
+  empleadoId: driverOptions.value[0]?.value ?? '',
+})
+const logbookDraft = ref(emptyLogbookDraft())
+const openLogbookModal = (entry = null) => {
+  editingEntry.value = entry
+  activeEntryModal.value = 'logbook'
+  logbookDraft.value = entry ? {
+    tipo: entry.tipo,
+    ubicacion: entry.ubicacion,
+    llegada: String(entry.llegada ?? '').slice(0, 10),
+    salida: entry.salida ? String(entry.salida).slice(0, 10) : '',
+    horasLibres: entry.horas_libres ?? 48,
+    conceptoId: entry.concepto_id ?? '',
+    diasAjustados: entry.dias_ajustados ?? '',
+    motivoAjuste: entry.motivo_ajuste ?? '',
+    observaciones: entry.observaciones ?? '',
+    empleadoId: entry.empleado_id ?? '',
+  } : emptyLogbookDraft()
+  nextTick(() => entryDialog.value?.showModal())
+}
+const logbookPresenceDays = computed(() => {
+  const arrival = parseDay(logbookDraft.value.llegada)
+  const departure = parseDay(logbookDraft.value.salida)
+  if (!arrival || !departure || departure < arrival) return null
+  return Math.round((departure - arrival) / 86_400_000)
+})
+const logbookCalculatedDays = computed(() => {
+  const presence = logbookPresenceDays.value
+  if (presence === null) return null
+  const freeDays = Number(logbookDraft.value.horasLibres ?? 0) / 24
+  return Math.round(Math.max(0, presence - freeDays) * 100) / 100
+})
+const logbookAdjustedDays = computed(() => {
+  const raw = logbookDraft.value.diasAjustados
+  if (raw === '' || raw === null || raw === undefined) return null
+  const value = Number(String(raw).replace(',', '.'))
+  return Number.isFinite(value) && value >= 0 ? value : null
+})
+const logbookLiquidatedDays = computed(() => logbookAdjustedDays.value ?? logbookCalculatedDays.value)
+const logbookSelectedConcept = computed(() => logbookDayOptions.value.find((concept) => String(concept.id) === String(logbookDraft.value.conceptoId)) ?? null)
+const logbookAmount = computed(() => {
+  const concept = logbookSelectedConcept.value
+  const days = logbookLiquidatedDays.value
+  if (!concept || days === null) return null
+  return Math.round(days * Number(concept.amount) * 100) / 100
+})
+const logbookNeedsReason = computed(() => {
+  const adjusted = logbookAdjustedDays.value
+  const calculated = logbookCalculatedDays.value
+  if (adjusted === null) return false
+  if (calculated === null) return true
+  return Math.abs(adjusted - calculated) > 0.0001
 })
 const settlementNote = computed(() => {
   if (settlement.value) return null
@@ -208,6 +281,10 @@ const facts = computed(() => {
       <button v-if="driverOptions.length > 0" type="button" aria-haspopup="dialog" @click="openEntryModal('earning')" class="group flex min-h-16 items-center gap-3 rounded-xl border border-border bg-surface-raised px-4 py-3 text-left shadow-card transition hover:border-primary hover:bg-primary-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
         <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary-subtle text-primary"><CurrencyDollarIcon class="size-5" aria-hidden="true" /></span>
         <span><span class="block text-sm font-bold text-ink">Cargar haber</span><span class="mt-0.5 block text-xs text-ink-muted">Estadías y adicionales</span></span>
+      </button>
+      <button v-if="driverOptions.length > 0 && logbookDayOptions.length > 0" type="button" aria-haspopup="dialog" @click="openLogbookModal()" class="group flex min-h-16 items-center gap-3 rounded-xl border border-border bg-surface-raised px-4 py-3 text-left shadow-card transition hover:border-primary hover:bg-primary-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+        <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary-subtle text-primary"><BookOpenIcon class="size-5" aria-hidden="true" /></span>
+        <span><span class="block text-sm font-bold text-ink">Diario de bordo</span><span class="mt-0.5 block text-xs text-ink-muted">Estadías por etapa</span></span>
       </button>
       <button type="button" aria-haspopup="dialog" @click="openEntryModal('cash')" class="group flex min-h-16 items-center gap-3 rounded-xl border border-border bg-surface-raised px-4 py-3 text-left shadow-card transition hover:border-primary hover:bg-primary-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
         <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary-subtle text-primary"><BanknotesIcon class="size-5" aria-hidden="true" /></span>
@@ -374,7 +451,7 @@ const facts = computed(() => {
             <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Detalle de haberes</p>
             <ul class="mt-2 space-y-1 text-xs">
               <li v-for="earning in otherEarnings" :key="`settlement-${earning.id}`" class="flex items-start justify-between gap-3">
-                <span class="text-ink-muted">{{ earningConceptLabel(earning) }}<span v-if="earning.cantidad && earning.cantidad !== 1"> · {{ quantityLabel(earning.cantidad) }} × {{ money(earning.importe_unitario, earning.moneda) }}</span></span>
+                <span class="text-ink-muted">{{ earningConceptLabel(earning) }}<span v-if="earning.generado_por_diario"> · diario de bordo</span><span v-if="earning.cantidad && earning.cantidad !== 1"> · {{ quantityLabel(earning.cantidad) }} × {{ money(earning.importe_unitario, earning.moneda) }}</span></span>
                 <span class="shrink-0 font-semibold text-ink">{{ money(earning.importe_ars) }}</span>
               </li>
             </ul>
@@ -383,16 +460,65 @@ const facts = computed(() => {
         </div>
 
         <div>
-          <p v-if="otherEarnings.length === 0" class="text-sm text-ink-muted">Todavía no hay otros haberes cargados. Usá “Cargar haber” para registrar una estadía.</p>
+          <p v-if="otherEarnings.length === 0" class="text-sm text-ink-muted">Todavía no hay otros haberes cargados. Usá “Diario de bordo” para calcular una estadía o “Cargar haber” para un adicional.</p>
           <div v-else class="overflow-x-auto">
             <table class="w-full min-w-[42rem] text-left text-sm">
               <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-3 py-2">Fecha</th><th class="px-3 py-2">Concepto</th><th class="px-3 py-2">Chofer</th><th class="px-3 py-2 text-right">ARS</th><th v-if="canRegisterCosts" class="px-3 py-2">Acciones</th></tr></thead>
               <tbody class="divide-y divide-border-subtle">
-                <tr v-for="earning in otherEarnings" :key="earning.id"><td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ fmtDateTime(earning.fecha) }}</td><td class="px-3 py-2 text-ink">{{ earningConceptLabel(earning) }}<span v-if="earning.importe_unitario !== null && earning.importe_unitario !== undefined && earning.cantidad" class="block text-xs text-ink-muted">{{ quantityLabel(earning.cantidad) }} × {{ money(earning.importe_unitario, earning.moneda) }}</span></td><td class="px-3 py-2 text-ink-muted">{{ earning.empleado || '—' }}</td><td class="px-3 py-2 text-right font-semibold text-ink">{{ money(earning.importe_ars) }}</td><td v-if="canRegisterCosts" class="whitespace-nowrap px-3 py-2"><div class="flex gap-2"><button type="button" :class="secondaryButton" @click="openEditModal('earning', earning)">Editar</button><form method="post" :action="movementUrl('earning', earning.id, true)" @submit="confirmDelete($event, 'este haber')"><input type="hidden" :name="csrf.name" :value="csrf.hash" /><button type="submit" :class="dangerButton">Quitar</button></form></div></td></tr>
+                <tr v-for="earning in otherEarnings" :key="earning.id"><td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ fmtDateTime(earning.fecha) }}</td><td class="px-3 py-2 text-ink">{{ earningConceptLabel(earning) }}<span v-if="earning.generado_por_diario" class="ml-2 rounded bg-info-subtle px-1.5 py-0.5 text-[10px] font-bold uppercase text-info-strong">Diario</span><span v-if="earning.importe_unitario !== null && earning.importe_unitario !== undefined && earning.cantidad" class="block text-xs text-ink-muted">{{ quantityLabel(earning.cantidad) }} × {{ money(earning.importe_unitario, earning.moneda) }}</span></td><td class="px-3 py-2 text-ink-muted">{{ earning.empleado || '—' }}</td><td class="px-3 py-2 text-right font-semibold text-ink">{{ money(earning.importe_ars) }}</td><td v-if="canRegisterCosts" class="whitespace-nowrap px-3 py-2"><span v-if="earning.generado_por_diario" class="text-xs text-ink-muted">Se corrige en el diario de bordo</span><div v-else class="flex gap-2"><button type="button" :class="secondaryButton" @click="openEditModal('earning', earning)">Editar</button><form method="post" :action="movementUrl('earning', earning.id, true)" @submit="confirmDelete($event, 'este haber')"><input type="hidden" :name="csrf.name" :value="csrf.hash" /><button type="submit" :class="dangerButton">Quitar</button></form></div></td></tr>
               </tbody>
             </table>
           </div>
         </div>
+      </div>
+    </PanelCard>
+
+    <PanelCard title="Diario de bordo" :count="logbook.length" class="mb-5" allow-overflow>
+      <p class="text-sm text-ink-muted">Cargá llegada y salida de cada etapa. El sistema calcula los días por diferencia de fechas y descuenta la franquicia de esa etapa (48 h por defecto). La estadía se genera automáticamente como haber del chofer.</p>
+      <p v-if="logbookDayOptions.length === 0" class="mt-3 rounded-lg border border-warning/30 bg-warning-subtle px-3 py-2 text-sm text-warning-strong">No hay conceptos de haber liquidados por día. Cargalos en Maestros de viajes para calcular estadías.</p>
+      <p v-else-if="logbook.length === 0" class="mt-3 text-sm text-ink-muted">Todavía no hay etapas cargadas. Usá “Diario de bordo” para registrar carga, fronteras y descarga.</p>
+      <div v-else class="mt-4 overflow-x-auto">
+        <table class="w-full min-w-[64rem] text-left text-sm">
+          <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
+            <tr>
+              <th class="px-3 py-2">#</th>
+              <th class="px-3 py-2">Etapa</th>
+              <th class="px-3 py-2">Llegada</th>
+              <th class="px-3 py-2">Salida</th>
+              <th class="px-3 py-2 text-right">Permanencia</th>
+              <th class="px-3 py-2 text-right">Franquicia</th>
+              <th class="px-3 py-2 text-right">Días calculados</th>
+              <th class="px-3 py-2 text-right">Días a liquidar</th>
+              <th class="px-3 py-2">Concepto</th>
+              <th class="px-3 py-2 text-right">Importe</th>
+              <th v-if="canRegisterCosts" class="px-3 py-2">Acciones</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-border-subtle">
+            <tr v-for="entry in logbook" :key="entry.id">
+              <td class="px-3 py-2 text-ink-muted">{{ entry.orden }}</td>
+              <td class="px-3 py-2">
+                <p class="font-semibold text-ink">{{ entry.tipo_label }}</p>
+                <p class="text-xs text-ink-muted">{{ entry.ubicacion }}</p>
+                <p v-if="entry.empleado" class="text-xs text-ink-muted">{{ entry.empleado }}</p>
+              </td>
+              <td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ fmtDate(entry.llegada) }}</td>
+              <td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ entry.salida ? fmtDate(entry.salida) : 'En espera' }}</td>
+              <td class="px-3 py-2 text-right text-ink-muted">{{ entry.dias_permanencia === null ? '—' : `${entry.dias_permanencia} días` }}</td>
+              <td class="px-3 py-2 text-right text-ink-muted">{{ quantityLabel(entry.horas_libres / 24) }} días</td>
+              <td class="px-3 py-2 text-right text-ink-muted">{{ entry.dias_calculados === null ? '—' : quantityLabel(entry.dias_calculados) }}</td>
+              <td class="px-3 py-2 text-right font-semibold text-ink">{{ entry.dias_liquidados === null ? '—' : quantityLabel(entry.dias_liquidados) }}<span v-if="entry.dias_ajustados !== null" class="block text-xs font-normal text-warning-strong">Corregido: {{ entry.motivo_ajuste || 'sin motivo' }}</span></td>
+              <td class="px-3 py-2 text-ink">{{ entry.concepto || '—' }}<span v-if="entry.importe_unitario !== null" class="block text-xs text-ink-muted">{{ money(entry.importe_unitario, entry.moneda ?? 'ARS') }} / día</span></td>
+              <td class="px-3 py-2 text-right font-semibold text-ink">{{ entry.importe_ars === null ? '—' : money(entry.importe_ars) }}</td>
+              <td v-if="canRegisterCosts" class="whitespace-nowrap px-3 py-2">
+                <div class="flex gap-2">
+                  <button type="button" :class="secondaryButton" @click="openLogbookModal(entry)">Editar</button>
+                  <form method="post" :action="movementUrl('logbook', entry.id, true)" @submit="confirmDelete($event, 'esta etapa del diario')"><input type="hidden" :name="csrf.name" :value="csrf.hash" /><button type="submit" :class="dangerButton">Quitar</button></form>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </PanelCard>
 
@@ -604,6 +730,30 @@ const facts = computed(() => {
           </div>
           <p class="mt-2 text-xs text-ink-muted">Si el concepto no permite editar el importe, se calcula como cantidad × importe unitario.</p>
           <div class="mt-5 flex justify-end gap-2 border-t border-border-subtle pt-4"><button type="button" @click="entryDialog?.close()" :class="secondaryButton">Volver</button><button type="submit" :class="primaryButton">{{ editingEntry ? 'Guardar cambios' : 'Guardar haber' }}</button></div>
+        </form>
+
+        <form v-else-if="activeEntryModal === 'logbook'" method="post" :action="editingEntry ? movementUrl('logbook', editingEntry.id) : data.links?.logbook">
+          <input type="hidden" :name="csrf.name" :value="csrf.hash" />
+          <p class="text-sm text-ink-muted">Cargá la llegada y la salida de la etapa. Los días se calculan por diferencia de fechas y se descuenta la franquicia de esa etapa. El haber se genera automáticamente.</p>
+          <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Etapa</span><select v-model="logbookDraft.tipo" name="tipo" :class="fieldClass"><option value="CARGA">Carga</option><option value="FRONTERA">Frontera</option><option value="CLIENTE">Cliente / descarga</option></select></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Ubicación</span><input v-model="logbookDraft.ubicacion" type="text" name="ubicacion" maxlength="200" placeholder="Ej.: Frontera Brasil" required :class="fieldClass" /></label>
+            <label v-if="driverOptions.length > 1" class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Chofer</span><select v-model="logbookDraft.empleadoId" name="empleado_id" :class="fieldClass"><option v-for="driver in driverOptions" :key="driver.value" :value="driver.value">{{ driver.label }}</option></select></label>
+            <input v-else type="hidden" name="empleado_id" :value="logbookDraft.empleadoId" />
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Llegada</span><input v-model="logbookDraft.llegada" type="date" name="llegada" required :class="fieldClass" /></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Salida</span><input v-model="logbookDraft.salida" type="date" name="salida" :class="fieldClass" /></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Franquicia (horas)</span><input v-model="logbookDraft.horasLibres" type="number" name="horas_libres" min="0" step="1" :class="fieldClass" /><span class="mt-1 block text-xs text-ink-muted">48 h por defecto en cada etapa.</span></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Concepto de estadía</span><select v-model="logbookDraft.conceptoId" name="concepto_id" required :class="fieldClass"><option value="">Elegí el concepto</option><option v-for="concept in logbookDayOptions" :key="concept.id" :value="concept.id">{{ conceptOptionLabel(concept) }}</option></select></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Días a liquidar (opcional)</span><input v-model="logbookDraft.diasAjustados" type="number" name="dias_ajustados" min="0" step="0.01" :placeholder="logbookCalculatedDays === null ? '' : String(logbookCalculatedDays)" :class="fieldClass" /><span class="mt-1 block text-xs text-ink-muted">Si lo dejás vacío se usan los días calculados.</span></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Motivo de la corrección</span><input v-model="logbookDraft.motivoAjuste" type="text" name="motivo_ajuste" maxlength="500" :class="fieldClass" /><span class="mt-1 block text-xs text-ink-muted">Obligatorio si corregís los días.</span></label>
+            <label class="block sm:col-span-2 lg:col-span-3"><span class="mb-1 block text-xs font-semibold text-ink-muted">Observaciones</span><input v-model="logbookDraft.observaciones" type="text" name="observaciones" maxlength="500" :class="fieldClass" /></label>
+          </div>
+          <div class="mt-4 rounded-lg border border-info/30 bg-info-subtle px-3 py-2 text-sm text-info-strong">
+            <p>Permanencia: <strong>{{ logbookPresenceDays === null ? '—' : `${logbookPresenceDays} días` }}</strong> · Franquicia: <strong>{{ quantityLabel(Number(logbookDraft.horasLibres ?? 0) / 24) }} días</strong> · Días calculados: <strong>{{ logbookCalculatedDays === null ? '—' : quantityLabel(logbookCalculatedDays) }}</strong></p>
+            <p class="mt-1">Días a liquidar: <strong>{{ logbookLiquidatedDays === null ? '—' : quantityLabel(logbookLiquidatedDays) }}</strong><span v-if="logbookAmount !== null"> · Importe: <strong>{{ money(logbookAmount, logbookSelectedConcept?.currency ?? 'ARS') }}</strong></span></p>
+            <p v-if="logbookNeedsReason" class="mt-1 text-warning-strong">Indicá el motivo de la corrección de días.</p>
+          </div>
+          <div class="mt-5 flex justify-end gap-2 border-t border-border-subtle pt-4"><button type="button" @click="entryDialog?.close()" :class="secondaryButton">Volver</button><button type="submit" :class="primaryButton">{{ editingEntry ? 'Guardar cambios' : 'Guardar etapa' }}</button></div>
         </form>
 
         <form v-else-if="activeEntryModal === 'cash'" method="post" :action="editingEntry ? movementUrl('cash', editingEntry.id) : data.links?.cash">

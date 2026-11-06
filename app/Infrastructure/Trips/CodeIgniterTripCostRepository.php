@@ -115,11 +115,12 @@ final class CodeIgniterTripCostRepository implements TripCostRepository
         return $this->softDeleteMovement('viaje_operativo_caja_movimientos', 'CAJA', $tripId, $companyId, $movementId, $actorUserId);
     }
 
-    public function addOtherEarning(int $tripId, int $companyId, int $branchId, TripOtherEarning $earning, int $actorUserId): int
+    public function addOtherEarning(int $tripId, int $companyId, int $branchId, TripOtherEarning $earning, int $actorUserId, ?int $logbookEntryId = null): int
     {
         return $this->insert('viaje_operativo_otros_haberes', $tripId, $companyId, $branchId, $actorUserId, [
             'empleado_id' => $earning->employeeId(),
             'concepto_id' => $earning->conceptId(),
+            'diario_bordo_id' => $logbookEntryId,
             'cantidad' => $this->decimal($earning->quantity(), 2),
             'importe_unitario' => $earning->unitAmount() === null ? null : $this->decimal($earning->unitAmount(), 4),
             'fecha' => $earning->date()->format('Y-m-d'),
@@ -129,11 +130,12 @@ final class CodeIgniterTripCostRepository implements TripCostRepository
         ]);
     }
 
-    public function updateOtherEarning(int $tripId, int $companyId, int $movementId, TripOtherEarning $earning, int $actorUserId): bool
+    public function updateOtherEarning(int $tripId, int $companyId, int $movementId, TripOtherEarning $earning, int $actorUserId, ?int $logbookEntryId = null): bool
     {
         return $this->updateMovement('viaje_operativo_otros_haberes', 'HABER', $tripId, $companyId, $movementId, $actorUserId, [
             'empleado_id' => $earning->employeeId(),
             'concepto_id' => $earning->conceptId(),
+            'diario_bordo_id' => $logbookEntryId,
             'cantidad' => $this->decimal($earning->quantity(), 2),
             'importe_unitario' => $earning->unitAmount() === null ? null : $this->decimal($earning->unitAmount(), 4),
             'fecha' => $earning->date()->format('Y-m-d'),
@@ -141,6 +143,21 @@ final class CodeIgniterTripCostRepository implements TripCostRepository
             ...$this->moneyColumns($earning->money()),
             'observaciones' => $earning->notes(),
         ]);
+    }
+
+    public function logbookEntryIdForEarning(int $tripId, int $companyId, int $movementId): ?int
+    {
+        $row = $this->database->table('viaje_operativo_otros_haberes')
+            ->select('diario_bordo_id')
+            ->where('empresa_id', $companyId)
+            ->where('viaje_id', $tripId)
+            ->where('id', $movementId)
+            ->where('deleted_at', null)
+            ->get()->getRowArray();
+
+        $id = $row['diario_bordo_id'] ?? null;
+
+        return $id === null ? null : (int) $id;
     }
 
     public function softDeleteOtherEarning(int $tripId, int $companyId, int $movementId, int $actorUserId): bool

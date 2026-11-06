@@ -80,6 +80,9 @@ final class UpdateTripOtherEarning
             if (! in_array($command->employeeId, $trip->driverIds(), true)) {
                 throw new DomainException('El chofer elegido no está asignado al viaje.');
             }
+            if ($this->costs->logbookEntryIdForEarning($trip->id() ?? 0, $companyId, $command->movementId) !== null) {
+                throw new DomainException('Este haber se genera desde el diario de bordo. Corregilo desde esa etapa.');
+            }
 
             $earning = new TripOtherEarning(
                 $command->employeeId,

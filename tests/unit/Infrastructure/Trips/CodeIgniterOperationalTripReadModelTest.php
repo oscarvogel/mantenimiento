@@ -59,9 +59,16 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
         )');
         $this->database->query('CREATE TABLE viaje_operativo_otros_haberes (
             id INTEGER PRIMARY KEY, viaje_id INTEGER, empresa_id INTEGER, sucursal_id INTEGER, empleado_id INTEGER,
-            concepto_id INTEGER NULL, cantidad REAL DEFAULT 1, importe_unitario REAL NULL,
+            concepto_id INTEGER NULL, diario_bordo_id INTEGER NULL, cantidad REAL DEFAULT 1, importe_unitario REAL NULL,
             fecha TEXT, concepto TEXT, importe REAL, moneda TEXT, cotizacion REAL, importe_ars REAL, observaciones TEXT NULL,
             deleted_at TEXT NULL
+        )');
+        $this->database->query('CREATE TABLE viaje_operativo_diario_bordo (
+            id INTEGER PRIMARY KEY, viaje_id INTEGER, empresa_id INTEGER, sucursal_id INTEGER,
+            empleado_id INTEGER, concepto_id INTEGER, tipo TEXT, orden INTEGER, ubicacion TEXT,
+            llegada TEXT, salida TEXT NULL, horas_libres INTEGER DEFAULT 48,
+            dias_calculados REAL NULL, dias_ajustados REAL NULL, motivo_ajuste TEXT NULL,
+            observaciones TEXT NULL, deleted_at TEXT NULL
         )');
         $this->database->query('CREATE TABLE viaje_operativo_tramos (
             id INTEGER PRIMARY KEY, viaje_id INTEGER, empresa_id INTEGER, sucursal_id INTEGER, orden INTEGER,
@@ -132,9 +139,22 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
         ]);
         $this->database->table('viaje_operativo_otros_haberes')->insert([
             'id' => 1, 'viaje_id' => 1, 'empresa_id' => 5, 'sucursal_id' => 10, 'empleado_id' => 11,
-            'concepto_id' => 9, 'cantidad' => 1.5, 'importe_unitario' => 50_000,
+            'concepto_id' => 9, 'diario_bordo_id' => null, 'cantidad' => 1.5, 'importe_unitario' => 50_000,
             'fecha' => '2026-10-20', 'concepto' => 'Espera', 'importe' => 75_000, 'moneda' => 'ARS',
             'cotizacion' => 1, 'importe_ars' => 75_000, 'observaciones' => null,
+        ]);
+        $this->database->table('viaje_operativo_diario_bordo')->insert([
+            'id' => 1, 'viaje_id' => 1, 'empresa_id' => 5, 'sucursal_id' => 10, 'empleado_id' => 11,
+            'concepto_id' => 9, 'tipo' => 'FRONTERA', 'orden' => 1, 'ubicacion' => 'Frontera Brasil',
+            'llegada' => '2026-10-17 00:00:00', 'salida' => '2026-10-23 00:00:00', 'horas_libres' => 48,
+            'dias_calculados' => 4, 'dias_ajustados' => null, 'motivo_ajuste' => null, 'observaciones' => null,
+            'deleted_at' => null,
+        ]);
+        $this->database->table('viaje_operativo_otros_haberes')->insert([
+            'id' => 2, 'viaje_id' => 1, 'empresa_id' => 5, 'sucursal_id' => 10, 'empleado_id' => 11,
+            'concepto_id' => 9, 'diario_bordo_id' => 1, 'cantidad' => 4, 'importe_unitario' => 50_000,
+            'fecha' => '2026-10-23', 'concepto' => 'Estadía Sider', 'importe' => 200_000, 'moneda' => 'ARS',
+            'cotizacion' => 1, 'importe_ars' => 200_000, 'observaciones' => null,
         ]);
         $this->database->table('viaje_operativo_paradas')->insertBatch([
             ['id' => 1, 'viaje_id' => 1, 'empresa_id' => 5, 'sucursal_id' => 10, 'orden' => 1, 'tipo' => 'CARGA', 'cliente_id' => 3, 'domicilio_id' => 4, 'ubicacion' => 'Rosario', 'fecha_estimada' => '2026-10-20 08:30:00', 'fecha_real' => null, 'descripcion_carga' => 'Soja', 'cantidad' => 30, 'unidad_carga_id' => 2, 'observaciones' => null],
@@ -196,13 +216,24 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
         self::assertSame('Peaje', $detail['expenses'][0]['concepto_catalogo']);
         self::assertSame(2.0, $detail['expenses'][0]['cantidad']);
         self::assertSame(1_000.0, $detail['expenses'][0]['importe_unitario']);
-        self::assertCount(1, $detail['otherEarnings']);
+        self::assertCount(2, $detail['otherEarnings']);
         self::assertSame('Espera', $detail['otherEarnings'][0]['concepto']);
         self::assertSame(9, $detail['otherEarnings'][0]['concepto_id']);
         self::assertSame('Estadía Sider', $detail['otherEarnings'][0]['concepto_catalogo']);
         self::assertSame(1.5, $detail['otherEarnings'][0]['cantidad']);
         self::assertSame(50_000.0, $detail['otherEarnings'][0]['importe_unitario']);
         self::assertSame(75_000.0, $detail['otherEarnings'][0]['importe_ars']);
+        self::assertFalse($detail['otherEarnings'][0]['generado_por_diario']);
+        self::assertTrue($detail['otherEarnings'][1]['generado_por_diario']);
+        self::assertSame(1, $detail['otherEarnings'][1]['diario_bordo_id']);
+        self::assertCount(1, $detail['logbook']);
+        self::assertSame('Frontera', $detail['logbook'][0]['tipo_label']);
+        self::assertSame('Frontera Brasil', $detail['logbook'][0]['ubicacion']);
+        self::assertSame(6, $detail['logbook'][0]['dias_permanencia']);
+        self::assertSame(4.0, $detail['logbook'][0]['dias_calculados']);
+        self::assertSame(4.0, $detail['logbook'][0]['dias_liquidados']);
+        self::assertSame(2, $detail['logbook'][0]['haber_id']);
+        self::assertSame(200_000.0, $detail['logbook'][0]['importe_ars']);
         self::assertCount(1, $detail['options']['expenseConcepts']);
         self::assertSame(10, $detail['options']['expenseConcepts'][0]['id']);
         self::assertTrue($detail['options']['expenseConcepts'][0]['editable']);

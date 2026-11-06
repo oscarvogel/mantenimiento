@@ -556,7 +556,7 @@ final class CostRepositoryFake implements TripCostRepository
     public function softDeleteExpense(int $tripId, int $companyId, int $movementId, int $actorUserId): bool { return true; }
     public function softDeleteCashMovement(int $tripId, int $companyId, int $movementId, int $actorUserId): bool { return true; }
 
-    public function addOtherEarning(int $tripId, int $companyId, int $branchId, TripOtherEarning $earning, int $actorUserId): int
+    public function addOtherEarning(int $tripId, int $companyId, int $branchId, TripOtherEarning $earning, int $actorUserId, ?int $logbookEntryId = null): int
     {
         $this->tripId = $tripId;
         $this->companyId = $companyId;
@@ -566,7 +566,7 @@ final class CostRepositoryFake implements TripCostRepository
         return 1;
     }
 
-    public function updateOtherEarning(int $tripId, int $companyId, int $movementId, TripOtherEarning $earning, int $actorUserId): bool
+    public function updateOtherEarning(int $tripId, int $companyId, int $movementId, TripOtherEarning $earning, int $actorUserId, ?int $logbookEntryId = null): bool
     {
         $this->tripId = $tripId;
         $this->companyId = $companyId;
@@ -583,6 +583,11 @@ final class CostRepositoryFake implements TripCostRepository
         $this->otherEarningDeleted = true;
 
         return true;
+    }
+
+    public function logbookEntryIdForEarning(int $tripId, int $companyId, int $movementId): ?int
+    {
+        return null;
     }
 }
 

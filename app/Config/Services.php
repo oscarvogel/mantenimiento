@@ -1420,6 +1420,43 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
         );
     }
 
+    public static function saveTripLogbookEntry(bool $getShared = true): \App\Application\Trips\SaveTripLogbookEntry
+    {
+        if ($getShared) {
+            return static::getSharedInstance('saveTripLogbookEntry');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\Trips\SaveTripLogbookEntry(
+            new \App\Infrastructure\Trips\CodeIgniterOperationalTripRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripLogbookRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripCostRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripFleetLookup(
+                new \App\Infrastructure\Assets\CodeIgniterEquipmentFleetLookup($db),
+                new \App\Infrastructure\Employees\CodeIgniterEmployeeDirectoryLookup($db),
+            ),
+            new \App\Infrastructure\Trips\CodeIgniterTripDirectoryLookup($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripsUnitOfWork($db),
+        );
+    }
+
+    public static function deleteTripLogbookEntry(bool $getShared = true): \App\Application\Trips\DeleteTripLogbookEntry
+    {
+        if ($getShared) {
+            return static::getSharedInstance('deleteTripLogbookEntry');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\Trips\DeleteTripLogbookEntry(
+            new \App\Infrastructure\Trips\CodeIgniterOperationalTripRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripLogbookRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripCostRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripsUnitOfWork($db),
+        );
+    }
+
     public static function updateTripDriverPercentage(bool $getShared = true): \App\Application\Trips\UpdateTripDriverPercentage
     {
         if ($getShared) {

@@ -53,6 +53,7 @@ Los adelantos **no** son un costo del viaje: son movimientos de cuenta corriente
 | **Otros haberes** | Haberes adicionales del viaje, por ejemplo viáticos o adicionales. |
 | **Concepto de gasto/haber** | Catálogo por empresa con importe unitario, categoría (gasto, haber o ambos) y unidad (día, unidad o fijo). Permite cargar importes por cantidad. |
 | **Estadía** | Haber del chofer por día de espera, cargado como concepto (por ejemplo "Estadía Sider" o "Estadía Cámara de frío") con la cantidad de días. |
+| **Diario de bordo** | Registro de llegada y salida por etapa (carga, cada frontera y cliente). Los días de estadía se calculan por diferencia de fechas y se descuenta la franquicia de esa etapa. |
 | **Liquidación del chofer** | Total a pagar o cobrar al chofer al cerrar el viaje. |
 | **Margen del tramo** | Flete de facturación del tramo menos costos asignados al tramo menos comisión del tramo. |
 | **Margen del viaje** | Flete de facturación total menos todos los costos del viaje menos comisiones y otros haberes. |
@@ -163,6 +164,7 @@ Los adelantos no cambian el margen del viaje; solo la liquidación final.
 | Imputación opcional de combustible y gastos a un tramo | Implementado | `viaje_operativo_combustible.tramo_id`, `viaje_operativo_gastos.tramo_id` |
 | Caja del chofer: anticipo, retiro, devolución | Implementado | `viaje_operativo_caja_movimientos` |
 | Otros haberes del viaje | Implementado | `viaje_operativo_otros_haberes`, `TripOtherEarning` |
+| Diario de bordo con cálculo automático de estadías | Implementado | `viaje_operativo_diario_bordo`, `TripLogbookEntry`, `SaveTripLogbookEntry` |
 | Catálogo de conceptos de gasto/haber con importe, categoría y unidad | Implementado | `viajes_conceptos`, `TripMasterCatalog` |
 | Concepto, cantidad e importe unitario en gastos y haberes | Implementado | `viaje_operativo_gastos`, `viaje_operativo_otros_haberes` |
 | Alta de viaje aprobado directamente En curso con salida y km reales | Implementado | `CreateTrip`, `Trip::startImmediately` |
@@ -249,6 +251,7 @@ El viaje es la raíz de consistencia. Contiene:
 | `TripExpense` | Gasto del viaje, con moneda, cotización, importe ARS, pagador y tramo opcional. |
 | `TripLedgerEntry` (nuevo) | Movimiento de cuenta corriente: adelanto, devolución, gasto a favor, otro haber o ajuste. |
 | `TripOtherEarning` (nuevo) | Otros haberes del viaje, separados de la cuenta corriente para poder mostrarlos como en la pantalla legacy. |
+| `TripLogbookEntry` (nuevo) | Etapa del diario de bordo: llegada, salida, franquicia de horas y corrección manual de días. Calcula los días de estadía y genera el haber vinculado. |
 | `TripSettlement` (nuevo, fase 2) | Liquidación calculada, con estado, aprobación y pagos. |
 
 ### 6.3 Invariantes
@@ -411,6 +414,40 @@ Catálogo por empresa para cargar gastos y haberes con cantidad.
 
 `viaje_operativo_gastos` y `viaje_operativo_otros_haberes` agregan `concepto_id` nullable, `cantidad` `DECIMAL(10,2)` e `importe_unitario` `DECIMAL(18,4)` como snapshot.
 
+### 7.7 Tabla implementada: `viaje_operativo_diario_bordo`
+
+Registra las ventanas de espera del viaje y genera el haber de estadía.
+
+| Columna | Tipo | Regla |
+|---|---|---|
+| `id` | INT UNSIGNED AI | PK |
+| `viaje_id` | INT UNSIGNED | FK al viaje |
+| `empresa_id` / `sucursal_id` | INT UNSIGNED | Scope obligatorio |
+| `empleado_id` | INT UNSIGNED | Chofer asignado al viaje |
+| `concepto_id` | INT UNSIGNED | Concepto de haber con unidad `DIA` |
+| `tipo` | VARCHAR(20) | `CARGA`, `FRONTERA` o `CLIENTE` |
+| `orden` | INT UNSIGNED | Consecutivo por viaje |
+| `ubicacion` | VARCHAR(200) | Frontera, planta o cliente |
+| `llegada` | DATETIME | Fecha de llegada a la etapa |
+| `salida` | DATETIME NULL | Fecha de salida; nula mientras espera |
+| `horas_libres` | INT UNSIGNED | Franquicia de esa etapa, default 48 |
+| `dias_calculados` | DECIMAL(10,2) NULL | Diferencia de fechas menos franquicia |
+| `dias_ajustados` | DECIMAL(10,2) NULL | Corrección manual de días |
+| `motivo_ajuste` | VARCHAR(500) NULL | Obligatorio si corrige los días |
+| `observaciones` | VARCHAR(500) NULL | |
+| Auditoría | — | `created_at/by`, `updated_at/by`, `deleted_at/by` |
+
+`viaje_operativo_otros_haberes` agrega `diario_bordo_id` nullable, con FK a esta tabla. Cada etapa genera como máximo un haber vinculado; si los días quedan en cero, el haber se da de baja lógica.
+
+Reglas:
+
+- Los días se calculan por **diferencia de fechas**: `(salida - llegada)`, no por día calendario inclusivo.
+- La franquicia es **por etapa**: cada frontera descuenta sus propias 48 h (configurables en la etapa).
+- `dias_calculados = max(0, diferencia_días - horas_libres / 24)`.
+- El operador puede corregir los días; si el valor difiere del calculado, el motivo es obligatorio.
+- El importe del haber se calcula como `dias_liquidados × importe_unitario` del concepto.
+- El haber generado no se edita ni se quita desde Otros haberes: se corrige desde el diario de bordo.
+
 ---
 
 ## 8. Reglas de cálculo
@@ -499,6 +536,22 @@ importe = cantidad × importe_unitario
 - Se guarda un snapshot de `concepto_id`, `cantidad` e `importe_unitario` para no recalcular la historia.
 - Las estadías se cargan como otros haberes: concepto "Estadía Sider" o "Estadía Cámara de frío" por la cantidad de días.
 
+### 8.8 Estadía desde el diario de bordo (implementado)
+
+```text
+diferencia_dias = fecha_salida − fecha_llegada        (por diferencia de fechas)
+franquicia_dias = horas_libres / 24                   (48 h = 2 días por etapa)
+dias_calculados = max(0, diferencia_dias − franquicia_dias)
+dias_liquidados = dias_ajustados ?? dias_calculados
+importe = dias_liquidados × importe_unitario
+```
+
+- La franquicia se aplica **por etapa**: carga, cada frontera y cliente tienen su propia franquicia.
+- Si la diferencia no supera la franquicia, los días quedan en cero y no se genera haber.
+- La corrección manual de días exige motivo y queda auditada.
+- Al guardar la etapa, el haber se crea o actualiza automáticamente; al quitarla, se da de baja lógica.
+- El haber generado queda marcado con `diario_bordo_id` y no se edita desde Otros haberes.
+
 ---
 
 ## 9. Casos de uso
@@ -512,6 +565,8 @@ importe = cantidad × importe_unitario
 | `RegistrarGasto` | Administración / operaciones | Carga gasto, pagador y tramo opcional. |
 | `RegistrarMovimientoCuentaCorriente` | Administración / operaciones | Registra adelanto, devolución, gasto a favor o ajuste. |
 | `RegistrarOtroHaber` | Administración / operaciones | Registra un haber adicional del viaje. |
+| `RegistrarEtapaDiarioBordo` | Administración / operaciones | Registra llegada, salida y franquicia de una etapa; calcula los días y genera el haber de estadía. |
+| `CorregirEtapaDiarioBordo` | Administración / operaciones | Ajusta fechas o días con motivo y recalcula el haber vinculado. |
 | `CerrarViaje` | Administración / operaciones | Registra fecha y km de regreso, genera lectura, congela la liquidación. |
 | `ConsultarLiquidacion` | Administración / operaciones | Muestra comisión, haberes, gastos a favor, adelantos y total. |
 | `ConsultarMargen` | Administración / operaciones | Muestra margen por tramo y por viaje, con costos sin asignar. |
@@ -604,6 +659,7 @@ Tabs:
 - **Combustible:** carga y listado; selector de tramo opcional.
 - **Gastos:** carga y listado; selector de tramo opcional y pagador.
 - **Cuenta corriente:** movimientos, saldo y filtros por tipo.
+- **Diario de bordo:** grilla de carga, fronteras y cliente; llegada, salida, franquicia, días calculados, corrección y haber generado.
 - **Resumen:** liquidación, margen y conciliación.
 
 ### 10.4 Cerrar viaje
@@ -708,6 +764,8 @@ Se conserva como está: solo lectura, con viajes, tramos, combustible, gastos, c
 - El saldo de cuenta corriente respeta débitos y créditos.
 - Km de regreso menor al de salida se rechaza.
 - Viaje finalizado no se edita.
+- La estadía se calcula por diferencia de fechas y descuenta la franquicia de cada etapa.
+- Una corrección manual de días sin motivo se rechaza.
 
 ### 13.2 Aplicación
 
@@ -715,6 +773,8 @@ Se conserva como está: solo lectura, con viajes, tramos, combustible, gastos, c
 - Iniciar viaje con km de salida.
 - Cargar combustible y gasto con y sin tramo.
 - Cargar adelanto, devolución, gasto a favor y otro haber.
+- Cargar una etapa del diario de bordo y generar el haber de estadía automáticamente.
+- Corregir los días de una etapa con motivo y recalcular el haber.
 - Cerrar viaje y generar lectura.
 - Consultar margen por tramo y viaje.
 - Consultar liquidación.
@@ -807,6 +867,7 @@ La Fase 2 (aprobación y pagos de liquidación) queda para después de validar e
 | 21/10/2026 | Mavis | Se documenta el circuito y se listan los diez puntos faltantes para la Fase 1. | Estado: borrador para evaluación. |
 | 24/10/2026 | Mavis | Los diez puntos de la Fase 1 quedan implementados y cubiertos por pruebas. La cuenta corriente legacy se migra preservando, sin calcular saldos (D3). | 1478 pruebas, 0 fallos. 88 de dominio y aplicación de Viajes, 57 de base y feature, 28 de frontend. |
 | 04/11/2026 | OpenCode | Se agrega el tablero de viajes operativos con viajes en curso, KPIs y gráficos; pasa a ser el acceso del módulo Viajes. El historial importado queda como entrada independiente. | 1545 pruebas PHP y 438 de frontend, sin fallos. |
+| 06/11/2026 | OpenCode | Se agrega el diario de bordo: cálculo de estadías por diferencia de fechas con franquicia por etapa y generación automática del haber vinculado. | Migración `2026-11-06-120000`, dominio, aplicación, read model y UI. |
 
 Checklist para aprobar la Fase 1:
 

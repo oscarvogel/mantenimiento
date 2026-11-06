@@ -412,6 +412,56 @@ describe('detalle de viaje operativo', () => {
     wrapper.unmount()
   })
 
+  it('muestra el diario de bordo y calcula los días al cargar una etapa', async () => {
+    const wrapper = mount(TripOperationsDetailPage, {
+      props: {
+        data: {
+          ...data,
+          canStart: false,
+          canCancel: false,
+          canRegisterCosts: true,
+          assignments: [
+            { rol: 'TRACTOR', rol_label: 'Tractor / camión', label: 'AA111AA · T01', desde: '2026-10-20 08:00:00', hasta: null },
+            { rol: 'CHOFER', rol_label: 'Chofer', label: 'Pérez, Juan', empleado_id: 11, desde: '2026-10-20 08:00:00', hasta: null },
+          ],
+          links: { ...data.links, logbook: '/mantenimiento/viajes/operativos/42/diario-bordo' },
+          logbook: [{
+            id: 5, tipo: 'FRONTERA', tipo_label: 'Frontera', orden: 1, ubicacion: 'Frontera Brasil',
+            empleado: 'Pérez, Juan', concepto_id: 9, concepto: 'Estadía Sider',
+            llegada: '2026-10-17 00:00:00', salida: '2026-10-23 00:00:00', horas_libres: 48,
+            dias_permanencia: 6, dias_calculados: 4, dias_ajustados: null, dias_liquidados: 4,
+            motivo_ajuste: null, importe_unitario: 50000, moneda: 'ARS', haber_id: 2, importe_ars: 200000,
+          }],
+          options: {
+            expenseCategories: [], paymentMethods: [], currencies: [{ code: 'ARS', label: 'Peso argentino' }],
+            earningConcepts: [{ id: 9, label: 'Estadía Sider', unit: 'DIA', amount: 50000, currency: 'ARS', editable: false }],
+          },
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain('Diario de bordo')
+    expect(wrapper.text()).toContain('Frontera Brasil')
+    expect(wrapper.text()).toContain('6 días')
+    expect(wrapper.text()).toContain('ARS 200.000,00')
+    expect(wrapper.get('form[action="/mantenimiento/viajes/operativos/42/diario-bordo/5/eliminar"]').exists()).toBe(true)
+
+    const logbookButton = wrapper.findAll('button').find((button) => button.text().includes('Diario de bordo'))
+    await logbookButton.trigger('click')
+    await nextTick()
+
+    const form = wrapper.get('form[action="/mantenimiento/viajes/operativos/42/diario-bordo"]')
+    await form.get('input[name="llegada"]').setValue('2026-10-17')
+    await form.get('input[name="salida"]').setValue('2026-10-23')
+    await form.get('input[name="horas_libres"]').setValue(48)
+    await nextTick()
+
+    expect(wrapper.text()).toContain('Permanencia: 6 días')
+    expect(wrapper.text()).toContain('Días calculados: 4')
+    expect(wrapper.text()).toContain('Días a liquidar: 4')
+    wrapper.unmount()
+  })
+
   it('oculta las acciones cuando el viaje ya avanzó', () => {
     const wrapper = mount(TripOperationsDetailPage, {
       props: { data: { ...data, canStart: false, canCancel: false, trip: { ...data.trip, estado: 'EN_CURSO', estado_label: 'En curso' } } },

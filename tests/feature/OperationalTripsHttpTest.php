@@ -8,6 +8,8 @@ use App\Application\Trips\GenerateOperationalTripSummaryPdf;
 use App\Application\Trips\RegisterTripExpense;
 use App\Application\Trips\RegisterTripFuel;
 use App\Application\Trips\RegisterTripOtherEarning;
+use App\Application\Trips\SaveTripLogbookEntry;
+use App\Application\Trips\DeleteTripLogbookEntry;
 use CodeIgniter\Test\CIUnitTestCase;
 use CodeIgniter\Test\FeatureTestTrait;
 
@@ -22,6 +24,8 @@ final class OperationalTripsHttpTest extends CIUnitTestCase
         self::assertInstanceOf(RegisterTripFuel::class, service('registerTripFuel'));
         self::assertInstanceOf(RegisterTripExpense::class, service('registerTripExpense'));
         self::assertInstanceOf(RegisterTripOtherEarning::class, service('registerTripOtherEarning'));
+        self::assertInstanceOf(SaveTripLogbookEntry::class, service('saveTripLogbookEntry'));
+        self::assertInstanceOf(DeleteTripLogbookEntry::class, service('deleteTripLogbookEntry'));
         self::assertInstanceOf(GenerateOperationalTripSummaryPdf::class, service('generateOperationalTripSummaryPdf'));
     }
 

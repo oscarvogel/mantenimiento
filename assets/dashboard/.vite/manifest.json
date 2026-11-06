@@ -1,17 +1,17 @@
 {
-  "_admin-BUsO-CU5.js": {
-    "file": "assets/admin-BUsO-CU5.js",
+  "_admin-CBUhwvKV.js": {
+    "file": "assets/admin-CBUhwvKV.js",
     "name": "admin",
     "imports": [
-      "_vendor-Cs7MTbNT.js"
+      "_vendor-DN_aTMLz.js"
     ]
   },
-  "_chatbot-B8ovyNDm.js": {
-    "file": "assets/chatbot-B8ovyNDm.js",
+  "_chatbot-CHnpJ5hA.js": {
+    "file": "assets/chatbot-CHnpJ5hA.js",
     "name": "chatbot",
     "isDynamicEntry": true,
     "imports": [
-      "_vendor-Cs7MTbNT.js"
+      "_vendor-DN_aTMLz.js"
     ],
     "css": [
       "assets/chatbot-p1890OXW.css"
@@ -21,20 +21,20 @@
     "file": "assets/chatbot-p1890OXW.css",
     "src": "_chatbot-p1890OXW.css"
   },
-  "_reports-BwkugeLG.js": {
-    "file": "assets/reports-BwkugeLG.js",
+  "_reports-DfKapOIQ.js": {
+    "file": "assets/reports-DfKapOIQ.js",
     "name": "reports",
     "imports": [
-      "_admin-BUsO-CU5.js",
-      "_vendor-Cs7MTbNT.js"
+      "_admin-CBUhwvKV.js",
+      "_vendor-DN_aTMLz.js"
     ]
   },
   "_vendor-BTrKGrB8.css": {
     "file": "assets/vendor-BTrKGrB8.css",
     "src": "_vendor-BTrKGrB8.css"
   },
-  "_vendor-Cs7MTbNT.js": {
-    "file": "assets/vendor-Cs7MTbNT.js",
+  "_vendor-DN_aTMLz.js": {
+    "file": "assets/vendor-DN_aTMLz.js",
     "name": "vendor",
     "css": [
       "assets/vendor-BTrKGrB8.css"
@@ -87,18 +87,18 @@
     "src": "src/assets/platform/trips-card.jpg"
   },
   "src/main.js": {
-    "file": "assets/main-BUAu9qj1.js",
+    "file": "assets/main-DYlu8yDI.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
     "imports": [
-      "_vendor-Cs7MTbNT.js",
-      "_chatbot-B8ovyNDm.js",
-      "_admin-BUsO-CU5.js",
-      "_reports-BwkugeLG.js"
+      "_vendor-DN_aTMLz.js",
+      "_chatbot-CHnpJ5hA.js",
+      "_admin-CBUhwvKV.js",
+      "_reports-DfKapOIQ.js"
     ],
     "dynamicImports": [
-      "_chatbot-B8ovyNDm.js",
+      "_chatbot-CHnpJ5hA.js",
       "src/pages/operations/components/FleetTelemetryMap.vue",
       "node_modules/gsap/index.js",
       "src/profiles/platform/profile.js",
@@ -122,58 +122,58 @@
     ]
   },
   "src/pages/operations/components/FleetTelemetryMap.vue": {
-    "file": "assets/FleetTelemetryMap-CxYQolc1.js",
+    "file": "assets/FleetTelemetryMap-CHgi8u8a.js",
     "name": "FleetTelemetryMap",
     "src": "src/pages/operations/components/FleetTelemetryMap.vue",
     "isDynamicEntry": true,
     "imports": [
-      "_vendor-Cs7MTbNT.js",
-      "_chatbot-B8ovyNDm.js"
+      "_vendor-DN_aTMLz.js",
+      "_chatbot-CHnpJ5hA.js"
     ],
     "css": [
       "assets/FleetTelemetryMap-eJHHeTQZ.css"
     ]
   },
   "src/profiles/cliente_piloto/profile.js": {
-    "file": "assets/profile-Yu6ie942.js",
+    "file": "assets/profile-ClZf-g32.js",
     "name": "profile",
     "src": "src/profiles/cliente_piloto/profile.js",
     "isDynamicEntry": true,
     "imports": [
       "src/main.js",
-      "_vendor-Cs7MTbNT.js",
-      "_chatbot-B8ovyNDm.js",
-      "_admin-BUsO-CU5.js",
-      "_reports-BwkugeLG.js"
+      "_vendor-DN_aTMLz.js",
+      "_chatbot-CHnpJ5hA.js",
+      "_admin-CBUhwvKV.js",
+      "_reports-DfKapOIQ.js"
     ],
     "css": [
       "assets/profile-DV70kWFs.css"
     ]
   },
   "src/profiles/platform/profile.js": {
-    "file": "assets/profile-BgOaRQzF.js",
+    "file": "assets/profile-DamUrUBJ.js",
     "name": "profile",
     "src": "src/profiles/platform/profile.js",
     "isDynamicEntry": true,
     "imports": [
       "src/main.js",
-      "_vendor-Cs7MTbNT.js",
-      "_chatbot-B8ovyNDm.js",
-      "_admin-BUsO-CU5.js",
-      "_reports-BwkugeLG.js"
+      "_vendor-DN_aTMLz.js",
+      "_chatbot-CHnpJ5hA.js",
+      "_admin-CBUhwvKV.js",
+      "_reports-DfKapOIQ.js"
     ]
   },
   "src/profiles/vogel/profile.js": {
-    "file": "assets/profile-CNsOBwaU.js",
+    "file": "assets/profile-Dq8q0w39.js",
     "name": "profile",
     "src": "src/profiles/vogel/profile.js",
     "isDynamicEntry": true,
     "imports": [
       "src/main.js",
-      "_vendor-Cs7MTbNT.js",
-      "_chatbot-B8ovyNDm.js",
-      "_admin-BUsO-CU5.js",
-      "_reports-BwkugeLG.js"
+      "_vendor-DN_aTMLz.js",
+      "_chatbot-CHnpJ5hA.js",
+      "_admin-CBUhwvKV.js",
+      "_reports-DfKapOIQ.js"
     ]
   }
 }

@@ -14,6 +14,7 @@ use App\Application\Trips\RegisterTripCashMovementCommand;
 use App\Application\Trips\RegisterTripExpenseCommand;
 use App\Application\Trips\RegisterTripFuelCommand;
 use App\Application\Trips\RegisterTripOtherEarningCommand;
+use App\Application\Trips\SaveTripLogbookEntryCommand;
 use App\Application\Trips\UpdateTripCashMovementCommand;
 use App\Application\Trips\UpdateTripExpenseCommand;
 use App\Application\Trips\UpdateTripFuelLoadCommand;
@@ -267,6 +268,44 @@ final class OperationalTrips extends BaseController
             return redirect()->to('/viajes/operativos/' . $tripId)->with('success', 'El haber del chofer quedó registrado.');
         } catch (Throwable $exception) {
             return $this->failure($exception, 'No se pudo registrar el haber del chofer.', '/viajes/operativos/' . $tripId);
+        }
+    }
+
+    public function addLogbookEntry(int $tripId): RedirectResponse
+    {
+        try {
+            $command = SaveTripLogbookEntryCommand::fromInput((array) $this->request->getPost() + ['viaje_id' => $tripId]);
+            service('saveTripLogbookEntry')->execute($this->actor(), $command);
+
+            return redirect()->to('/viajes/operativos/' . $tripId)->with('success', 'La etapa del diario de bordo quedó registrada y la estadía se calculó automáticamente.');
+        } catch (Throwable $exception) {
+            return $this->failure($exception, 'No se pudo registrar la etapa del diario de bordo.', '/viajes/operativos/' . $tripId);
+        }
+    }
+
+    public function updateLogbookEntry(int $tripId, int $entryId): RedirectResponse
+    {
+        try {
+            $input = (array) $this->request->getPost();
+            $input['id'] = $entryId;
+            $input['viaje_id'] = $tripId;
+            $command = SaveTripLogbookEntryCommand::fromInput($input);
+            service('saveTripLogbookEntry')->execute($this->actor(), $command);
+
+            return redirect()->to('/viajes/operativos/' . $tripId)->with('success', 'La etapa del diario de bordo quedó actualizada.');
+        } catch (Throwable $exception) {
+            return $this->failure($exception, 'No se pudo actualizar la etapa del diario de bordo.', '/viajes/operativos/' . $tripId);
+        }
+    }
+
+    public function deleteLogbookEntry(int $tripId, int $entryId): RedirectResponse
+    {
+        try {
+            service('deleteTripLogbookEntry')->execute($this->actor(), $tripId, $entryId);
+
+            return redirect()->to('/viajes/operativos/' . $tripId)->with('success', 'La etapa del diario de bordo se quitó y la estadía dejó de liquidarse.');
+        } catch (Throwable $exception) {
+            return $this->failure($exception, 'No se pudo quitar la etapa del diario de bordo.', '/viajes/operativos/' . $tripId);
         }
     }
 

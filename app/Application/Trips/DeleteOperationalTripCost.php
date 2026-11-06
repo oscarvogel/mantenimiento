@@ -48,6 +48,10 @@ final class DeleteOperationalTripCost
             if (! in_array($trip->status(), [Trip::PLANIFICADO, Trip::EN_CURSO], true)) {
                 throw new DomainException('No se pueden quitar movimientos de un viaje cancelado o finalizado.');
             }
+            if ($command->type === self::EARNING
+                && $this->costs->logbookEntryIdForEarning($trip->id() ?? 0, $companyId, $command->movementId) !== null) {
+                throw new DomainException('Este haber se genera desde el diario de bordo. Quitá la etapa desde el diario.');
+            }
 
             $deleted = match ($command->type) {
                 self::FUEL => $this->costs->softDeleteFuel($trip->id() ?? 0, $companyId, $command->movementId, $actor->userId()),

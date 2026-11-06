@@ -173,6 +173,7 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
             'expenses' => $this->expenseDetails($companyId, $tripId),
             'cashMovements' => $this->cashMovementDetails($companyId, $tripId),
             'otherEarnings' => $this->otherEarningDetails($companyId, $tripId),
+            'logbook' => $this->logbookDetails($companyId, $tripId),
             'options' => $this->costOptions($companyId),
         ];
     }
@@ -476,7 +477,7 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
     private function otherEarningDetails(int $companyId, int $tripId): array
     {
         $rows = $this->db->table('viaje_operativo_otros_haberes h')
-            ->select('h.id, h.empleado_id, h.fecha, h.concepto, h.concepto_id, h.cantidad, h.importe_unitario, h.importe, h.moneda, h.cotizacion, h.importe_ars, h.observaciones, k.nombre AS concepto_catalogo, emp.nombre, emp.apellido')
+            ->select('h.id, h.empleado_id, h.fecha, h.concepto, h.concepto_id, h.diario_bordo_id, h.cantidad, h.importe_unitario, h.importe, h.moneda, h.cotizacion, h.importe_ars, h.observaciones, k.nombre AS concepto_catalogo, emp.nombre, emp.apellido')
             ->join('empleados emp', 'emp.id = h.empleado_id AND emp.empresa_id = h.empresa_id', 'left')
             ->join('viajes_conceptos k', 'k.id = h.concepto_id AND k.empresa_id = h.empresa_id', 'left')
             ->where('h.empresa_id', $companyId)
@@ -494,6 +495,8 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
             'concepto' => (string) $row['concepto'],
             'concepto_id' => $row['concepto_id'] === null ? null : (int) $row['concepto_id'],
             'concepto_catalogo' => $row['concepto_catalogo'],
+            'diario_bordo_id' => $row['diario_bordo_id'] === null ? null : (int) $row['diario_bordo_id'],
+            'generado_por_diario' => $row['diario_bordo_id'] !== null,
             'cantidad' => (float) $row['cantidad'],
             'importe_unitario' => $row['importe_unitario'] === null ? null : (float) $row['importe_unitario'],
             'importe' => (float) $row['importe'],
@@ -502,6 +505,64 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
             'importe_ars' => (float) $row['importe_ars'],
             'observaciones' => $row['observaciones'],
         ], $rows);
+    }
+
+    /** @return list<array<string,mixed>> */
+    private function logbookDetails(int $companyId, int $tripId): array
+    {
+        $rows = $this->db->table('viaje_operativo_diario_bordo d')
+            ->select('d.id, d.tipo, d.orden, d.ubicacion, d.empleado_id, d.concepto_id, d.llegada, d.salida, d.horas_libres, d.dias_calculados, d.dias_ajustados, d.motivo_ajuste, d.observaciones, emp.nombre, emp.apellido, k.nombre AS concepto_catalogo, COALESCE(h.importe_unitario, k.importe_unitario) AS importe_unitario, COALESCE(h.moneda, k.moneda) AS moneda, h.id AS haber_id, h.importe_ars AS haber_importe_ars')
+            ->join('empleados emp', 'emp.id = d.empleado_id AND emp.empresa_id = d.empresa_id', 'left')
+            ->join('viajes_conceptos k', 'k.id = d.concepto_id AND k.empresa_id = d.empresa_id', 'left')
+            ->join('viaje_operativo_otros_haberes h', 'h.diario_bordo_id = d.id AND h.empresa_id = d.empresa_id AND h.deleted_at IS NULL', 'left')
+            ->where('d.empresa_id', $companyId)
+            ->where('d.viaje_id', $tripId)
+            ->where('d.deleted_at', null)
+            ->orderBy('d.orden', 'ASC')
+            ->orderBy('d.id', 'ASC')
+            ->get()->getResultArray();
+
+        return array_map(static function (array $row): array {
+            $calculated = $row['dias_calculados'] === null ? null : (float) $row['dias_calculados'];
+            $adjusted = $row['dias_ajustados'] === null ? null : (float) $row['dias_ajustados'];
+            $type = (string) $row['tipo'];
+            $presence = null;
+            if ($row['salida'] !== null) {
+                $arrival = new \DateTimeImmutable(substr((string) $row['llegada'], 0, 10));
+                $departure = new \DateTimeImmutable(substr((string) $row['salida'], 0, 10));
+                $presence = (int) $arrival->diff($departure)->format('%a');
+            }
+
+            return [
+                'id' => (int) $row['id'],
+                'tipo' => $type,
+                'tipo_label' => match ($type) {
+                    'CARGA' => 'Carga',
+                    'FRONTERA' => 'Frontera',
+                    'CLIENTE' => 'Cliente / descarga',
+                    default => $type,
+                },
+                'orden' => (int) $row['orden'],
+                'ubicacion' => (string) $row['ubicacion'],
+                'empleado_id' => (int) $row['empleado_id'],
+                'empleado' => trim((string) ($row['nombre'] ?? '') . ' ' . (string) ($row['apellido'] ?? '')),
+                'concepto_id' => (int) $row['concepto_id'],
+                'concepto' => (string) ($row['concepto_catalogo'] ?? ''),
+                'llegada' => $row['llegada'],
+                'salida' => $row['salida'],
+                'horas_libres' => (int) $row['horas_libres'],
+                'dias_permanencia' => $presence,
+                'dias_calculados' => $calculated,
+                'dias_ajustados' => $adjusted,
+                'dias_liquidados' => $adjusted ?? $calculated,
+                'motivo_ajuste' => $row['motivo_ajuste'],
+                'observaciones' => $row['observaciones'],
+                'importe_unitario' => $row['importe_unitario'] === null ? null : (float) $row['importe_unitario'],
+                'moneda' => $row['moneda'] === null ? null : (string) $row['moneda'],
+                'haber_id' => $row['haber_id'] === null ? null : (int) $row['haber_id'],
+                'importe_ars' => $row['haber_importe_ars'] === null ? null : (float) $row['haber_importe_ars'],
+            ];
+        }, $rows);
     }
 
     /** @return array<string,mixed> */
