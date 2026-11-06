@@ -325,6 +325,10 @@ $routes->group('reportes', ['filter' => ['auth', 'permission:reportes.ver']], st
     $routes->get('exportar', 'Reports::export');
 });
 
+// Seguimiento de automatizaciones: sólo lectura. No ejecuta, envía ni reintenta
+// procesos; esas acciones siguen fuera del alcance de esta pantalla.
+$routes->get('automatizaciones', 'Automations::index', ['filter' => ['auth', 'permission:automatizaciones.ver']]);
+
 $routes->group('gerencial/costo-teorico-km', ['filter' => ['auth', 'permission:gerencial.costo_km.ver']], static function ($routes): void {
     $routes->get('', 'TheoreticalCosts::index');
     $routes->get('activos', 'TheoreticalCosts::assets');

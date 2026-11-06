@@ -39,7 +39,7 @@ final class CodeIgniterNotificationProcessControl implements NotificationProcess
 
     public function start(string $process, string $executionKey): ?int
     {
-        $existing = $this->db->table('ejecuciones_programadas')->select('id, estado')->where('proceso', $process)->where('clave_ejecucion', $executionKey)->get()->getRowArray();
+        $existing = $this->db->table('ejecuciones_programadas')->select('id, estado, fecha_inicio')->where('proceso', $process)->where('clave_ejecucion', $executionKey)->get()->getRowArray();
         if ($existing !== null) {
             if ((string) $existing['estado'] === 'FINALIZADA') {
                 return null;
@@ -49,10 +49,33 @@ final class CodeIgniterNotificationProcessControl implements NotificationProcess
                     'fecha_inicio' => $this->clock->now()->format('Y-m-d H:i:s'),
                     'fecha_fin' => null,
                     'estado' => 'EN_PROCESO',
+                    'resumen' => null,
                     'detalle_error' => null,
                 ]);
                 return (int) $existing['id'];
             }
+
+            // Una ejecución EN_PROCESO más vieja que el TTL ya no puede estar
+            // protegida por un lock vigente. Se reinicia de forma controlada en
+            // lugar de dejar la clave bloqueada para siempre.
+            $staleBefore = $this->clock->now()->modify('- ' . $this->staleSeconds() . ' seconds');
+            $startedAt = (string) ($existing['fecha_inicio'] ?? '');
+            if ($startedAt !== '' && new \DateTimeImmutable($startedAt) <= $staleBefore) {
+                $this->db->table('ejecuciones_programadas')->where('id', $existing['id'])->update([
+                    'fecha_inicio' => $this->clock->now()->format('Y-m-d H:i:s'),
+                    'fecha_fin' => null,
+                    'estado' => 'EN_PROCESO',
+                    'resumen' => null,
+                    'detalle_error' => null,
+                ]);
+                log_message('warning', 'Se reinició una ejecución interrumpida: proceso={process} clave={key}', [
+                    'process' => $process,
+                    'key' => $executionKey,
+                ]);
+
+                return (int) $existing['id'];
+            }
+
             throw new RuntimeException('La ejecución lógica continúa en proceso.');
         }
         $this->db->table('ejecuciones_programadas')->insert([
@@ -69,18 +92,34 @@ final class CodeIgniterNotificationProcessControl implements NotificationProcess
         $this->db->table('ejecuciones_programadas')->where('id', $executionId)->update([
             'fecha_fin' => $this->clock->now()->format('Y-m-d H:i:s'), 'estado' => 'FINALIZADA',
             'resumen' => json_encode($summary, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
+            'detalle_error' => null,
         ]);
     }
 
     public function fail(int $executionId, string $error): void
     {
         $this->db->table('ejecuciones_programadas')->where('id', $executionId)->update([
-            'fecha_fin' => $this->clock->now()->format('Y-m-d H:i:s'), 'estado' => 'FALLIDA', 'detalle_error' => mb_substr($error, 0, 65000),
+            'fecha_fin' => $this->clock->now()->format('Y-m-d H:i:s'), 'estado' => 'FALLIDA',
+            'detalle_error' => $this->safeError($error),
         ]);
     }
 
     public function release(string $process, string $token): void
     {
         $this->db->table('bloqueos_proceso')->where('proceso', $process)->where('token', $token)->delete();
+    }
+
+    private function staleSeconds(): int
+    {
+        return max(60, (int) env('alerts.lockTimeoutSeconds', 900));
+    }
+
+    private function safeError(string $message): string
+    {
+        $message = preg_replace('/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/iu', '[correo]', $message) ?? '';
+        $message = preg_replace('/\+?\d[\d\s().-]{7,}\d/u', '[telefono]', $message) ?? '';
+        $message = preg_replace('/(?:token|bearer|secret|password|clave)\s*[:=]\s*\S+/iu', '[secreto]', $message) ?? '';
+
+        return mb_substr(trim(preg_replace('/\s+/u', ' ', $message) ?? ''), 0, 1000);
     }
 }

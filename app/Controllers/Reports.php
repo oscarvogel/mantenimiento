@@ -40,6 +40,8 @@ final class Reports extends BaseController
                 'Reportes de mantenimiento',
                 [
                     'report' => $report,
+                    'catalog' => $this->catalog()->execute($actor),
+                    'portalUrl' => base_url('inicio'),
                     'urls' => [
                         'index' => base_url('reportes'),
                         'export' => base_url('reportes/exportar') . '?' . http_build_query($query),
@@ -107,6 +109,11 @@ final class Reports extends BaseController
     private function handler(): GetMaintenanceReport
     {
         return service('maintenanceReport');
+    }
+
+    private function catalog(): \App\Application\Reports\GetReportCatalog
+    {
+        return service('reportCatalog');
     }
 
     private function textQuery(string $key): ?string

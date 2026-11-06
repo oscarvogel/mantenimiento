@@ -201,9 +201,16 @@ final class NotificationCron extends BaseController
         $collected = is_array($result['collected'] ?? null) ? $result['collected'] : [];
         $dispatched = is_array($result['dispatched'] ?? null) ? $result['dispatched'] : [];
 
-        return [
+        $stages = is_array($result['stages'] ?? null) ? $result['stages'] : [];
+        $summary = [
             'status' => 'ok',
             'execution_key' => (string) ($result['execution_key'] ?? ''),
+            'stages' => [
+                'total' => count($stages),
+                'completed' => count(array_filter($stages, static fn (array $stage): bool => ($stage['state'] ?? '') === 'COMPLETADA')),
+                'failed' => count(array_filter($stages, static fn (array $stage): bool => ($stage['state'] ?? '') === 'FALLIDA')),
+                'skipped' => count(array_filter($stages, static fn (array $stage): bool => ($stage['state'] ?? '') === 'OMITIDA')),
+            ],
             'overdue' => [
                 'companies' => (int) ($overdue['companies'] ?? 0),
                 'evaluated' => (int) ($overdue['evaluated'] ?? 0),
@@ -227,5 +234,11 @@ final class NotificationCron extends BaseController
             'errors' => (int) ($dispatched['failed'] ?? 0),
             'already_completed' => (int) ($dispatched['already_completed'] ?? 0),
         ];
+
+        if ((string) ($result['status'] ?? 'completada') !== 'completada') {
+            $summary['status'] = 'parcial';
+        }
+
+        return $summary;
     }
 }

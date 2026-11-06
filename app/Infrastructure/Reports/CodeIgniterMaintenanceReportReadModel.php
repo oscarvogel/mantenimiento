@@ -120,6 +120,7 @@ final class CodeIgniterMaintenanceReportReadModel implements MaintenanceReportRe
                     'El costo se reconoce por la fecha de finalizacion de la OT.',
                     'La detencion solo incluye pares inicio/fin validos.',
                     'MTTR solo incluye correctivos finalizados con inicio y fin validos.',
+                    'MTTR no descuenta esperas ni pausas: no representa tiempo efectivo de reparacion.',
                 ],
             ],
             'orders' => $page,

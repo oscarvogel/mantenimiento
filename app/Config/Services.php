@@ -59,6 +59,7 @@ use App\Application\PreventiveMaintenance\RecalcularPlanTrasCierre;
 use App\Application\PreventiveMaintenance\ReevaluateEquipmentAfterReading;
 use App\Application\WorkOrders\StartWorkOrder;
 use App\Application\Reports\GetMaintenanceReport;
+use App\Application\Reports\GetReportCatalog;
 use App\Application\Organization\AssignUserCompanyHandler;
 use App\Application\Organization\AssignUserRolesHandler;
 use App\Application\Organization\CreateCompanyHandler;
@@ -70,6 +71,7 @@ use App\Application\Organization\TenantAdministrationService;
 use App\Application\Organization\UpdateCompanyHandler;
 use App\Application\Notifications\CollectOperationalNotifications;
 use App\Application\Notifications\CompositeOperationalNotificationEventSource;
+use App\Application\Notifications\GetAutomationOverview;
 use App\Application\Notifications\GetNotificationCenter;
 use App\Application\Notifications\GetGlobalNotificationSettings;
 use App\Application\Notifications\ManageNotificationPreferences;
@@ -100,6 +102,7 @@ use App\Infrastructure\Notifications\VogelWhatsAppApiGateway;
 use App\Infrastructure\Notifications\CodeIgniterNotificationProcessControl;
 use App\Infrastructure\Notifications\CodeIgniterNotificationRecipientResolver;
 use App\Infrastructure\Notifications\CodeIgniterNotificationRepository;
+use App\Infrastructure\Notifications\CodeIgniterAutomationOverviewReader;
 use App\Infrastructure\Notifications\CodeIgniterDriverPhoneAuditReadModel;
 use App\Infrastructure\Notifications\CodeIgniterNotificationUnitOfWork;
 use App\Infrastructure\Notifications\CodeIgniterOperationalNotificationEventSource;
@@ -377,6 +380,15 @@ class Services extends BaseService
         );
     }
 
+    public static function reportCatalog(bool $getShared = true): GetReportCatalog
+    {
+        if ($getShared) {
+            return static::getSharedInstance('reportCatalog');
+        }
+
+        return new GetReportCatalog();
+    }
+
     public static function globalNotificationSettingsStore(bool $getShared = true): GlobalNotificationSettingsStore
     {
         if ($getShared) {
@@ -440,7 +452,45 @@ class Services extends BaseService
             static::managementReadingReport(false),
             static::notifyAdminsMissingDriverPhones(false),
             static::telematicRefreshesForAllCompanies(),
+            static::notificationProcessControl(false),
+            static::automationExecutionRecorder(false),
         );
+    }
+
+    public static function notificationProcessControl(bool $getShared = true): \App\Infrastructure\Notifications\CodeIgniterNotificationProcessControl
+    {
+        if ($getShared) {
+            return static::getSharedInstance('notificationProcessControl');
+        }
+
+        return new \App\Infrastructure\Notifications\CodeIgniterNotificationProcessControl(static::notificationClock(false), db_connect());
+    }
+
+    public static function automationExecutionRecorder(bool $getShared = true): \App\Infrastructure\Notifications\CodeIgniterAutomationExecutionRecorder
+    {
+        if ($getShared) {
+            return static::getSharedInstance('automationExecutionRecorder');
+        }
+
+        return new \App\Infrastructure\Notifications\CodeIgniterAutomationExecutionRecorder(static::notificationClock(false), db_connect());
+    }
+
+    public static function automationOverview(bool $getShared = true): GetAutomationOverview
+    {
+        if ($getShared) {
+            return static::getSharedInstance('automationOverview');
+        }
+
+        return new GetAutomationOverview(static::automationOverviewReader(false));
+    }
+
+    public static function automationOverviewReader(bool $getShared = true): \App\Infrastructure\Notifications\CodeIgniterAutomationOverviewReader
+    {
+        if ($getShared) {
+            return static::getSharedInstance('automationOverviewReader');
+        }
+
+        return new CodeIgniterAutomationOverviewReader(db_connect());
     }
 
     public static function notifyAdminsMissingDriverPhones(bool $getShared = true): \App\Application\Notifications\NotifyAdminsMissingDriverPhones
@@ -1046,13 +1096,11 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
             return static::getSharedInstance('notificationDispatch');
         }
 
-        $clock = static::notificationClock(false);
-
-        return new RunNotificationDispatch(
+          return new RunNotificationDispatch(
             static::notificationDeliveryQueue(false),
             static::globalNotificationEmailGateway(false),
             static::webPushGateway(false),
-            new CodeIgniterNotificationProcessControl($clock, db_connect()),
+            static::notificationProcessControl(false),
             static::whatsAppNotificationDeliveryQueue(false),
             static::whatsAppGateway(false),
         );

@@ -71,7 +71,12 @@ export async function mountMaintenanceDashboard(element, payload) {
         ? payload.data
         : payload?.pagePayload ?? {}
       const pageProps = page === 'reports'
-        ? { data: pageData.report ?? pageData.data ?? {}, urls: pageData.urls ?? {} }
+        ? {
+            data: pageData.report ?? pageData.data ?? {},
+            urls: pageData.urls ?? {},
+            catalog: pageData.catalog ?? [],
+            portalUrl: pageData.portalUrl ?? '',
+          }
         : { data: pageData }
 
       const app = createApp(PageHost, {
