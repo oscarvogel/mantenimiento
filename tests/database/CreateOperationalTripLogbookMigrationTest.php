@@ -25,7 +25,7 @@ final class CreateOperationalTripLogbookMigrationTest extends TestCase
         }
         $this->database->query('CREATE TABLE viaje_operativo_otros_haberes (id INTEGER PRIMARY KEY, empresa_id INTEGER)');
 
-        require_once APPPATH . 'Database/Migrations/2026-11-06-120000_CreateOperationalTripLogbook.php';
+        require_once APPPATH . 'Database/Migrations/2026-11-06-130000_CreateOperationalTripLogbook.php';
     }
 
     protected function tearDown(): void

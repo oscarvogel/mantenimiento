@@ -867,7 +867,7 @@ La Fase 2 (aprobación y pagos de liquidación) queda para después de validar e
 | 21/10/2026 | Mavis | Se documenta el circuito y se listan los diez puntos faltantes para la Fase 1. | Estado: borrador para evaluación. |
 | 24/10/2026 | Mavis | Los diez puntos de la Fase 1 quedan implementados y cubiertos por pruebas. La cuenta corriente legacy se migra preservando, sin calcular saldos (D3). | 1478 pruebas, 0 fallos. 88 de dominio y aplicación de Viajes, 57 de base y feature, 28 de frontend. |
 | 04/11/2026 | OpenCode | Se agrega el tablero de viajes operativos con viajes en curso, KPIs y gráficos; pasa a ser el acceso del módulo Viajes. El historial importado queda como entrada independiente. | 1545 pruebas PHP y 438 de frontend, sin fallos. |
-| 06/11/2026 | OpenCode | Se agrega el diario de bordo: cálculo de estadías por diferencia de fechas con franquicia por etapa y generación automática del haber vinculado. | Migración `2026-11-06-120000`, dominio, aplicación, read model y UI. |
+| 06/11/2026 | OpenCode | Se agrega el diario de bordo: cálculo de estadías por diferencia de fechas con franquicia por etapa y generación automática del haber vinculado. | Migración `2026-11-06-130000`, dominio, aplicación, read model y UI. |
 
 Checklist para aprobar la Fase 1:
 
