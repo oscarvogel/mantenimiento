@@ -114,8 +114,8 @@ No se hicieron despliegues, migraciones de escritura, ejecuciones de notificacio
   - MTTR se rotula como referencia desde inicio hasta cierre, con limitación explícita de que no descuenta esperas ni pausas.
 - [ ] Ejecutar pruebas específicas, build y verificación de rutas; validar escritorio/móvil en staging.
   - Pruebas específicas, suite completa, build y `verify:build-sync` en el runner remoto: OK. La validación visual autenticada en escritorio/móvil queda pendiente por falta de credenciales.
-- [ ] Entregar cambio acotado con documentación y commit propuesto `feat(reportes): habilitar acceso desde el portal`.
-  - Cambio implementado y documentado. No se creó commit ni se desplegó por instrucción expresa.
+- [x] Entregar cambio acotado con documentación y commit propuesto `feat(reportes): habilitar acceso desde el portal`.
+  - Commit `1749f8bd`, PR #521 mergeado a `main` en `b5529fab`. Producción Ferozo desplegada quirúrgicamente desde la base `eedc249f` (ver `docs/BITACORA_2026-11-06_DEPLOY_PRODUCCION_PR521.md`).
 
 **Aceptación:** usuario autorizado entra desde `/inicio`, consulta, conserva filtros al navegar y exporta solo su alcance. Ninguna tarjeta anuncia un informe que no se puede consultar.
 
@@ -145,8 +145,8 @@ No se hicieron despliegues, migraciones de escritura, ejecuciones de notificacio
   - La respuesta sólo expone contadores, fechas y estados normalizados. Los tests verifican que no se filtran correos/teléfonos y que los errores se registran como texto seguro.
 - [ ] Probar paginación, vacíos, aislamiento, navegación y responsive. Registrar que esta entrega no añade botones de enviar, ejecutar ni reintentar.
   - Vacíos, aislamiento y contrato sin botones cubiertos por tests. Paginación no aplica porque el volumen es agregado; validación visual responsive en staging queda pendiente por falta de credenciales.
-- [ ] Entregar commit propuesto `feat(notificaciones): agregar seguimiento de automatizaciones`.
-  - Cambio implementado y documentado. No se creó commit ni se desplegó por instrucción expresa.
+- [x] Entregar commit propuesto `feat(notificaciones): agregar seguimiento de automatizaciones`.
+  - Commit `1749f8bd`, PR #521 mergeado a `main` en `b5529fab` y desplegado en producción Ferozo con migraciones aplicadas.
 
 **Aceptación:** el usuario puede saber qué está configurado, qué evidencia existe y qué necesita atención sin disparar procesos.
 
@@ -221,7 +221,7 @@ Ejecutar 0 → 1 → 2 → 3. Son incrementos verificables que habilitan ambos m
 
 La planificación está basada en inspección real de infraestructura y código. No se ejecutó la suite, no se aceptó visualmente el sistema y no se comprobó todavía actividad efectiva del scheduler. Estos puntos son tareas explícitas de la entrega 0, no resultados declarados.
 
-## Resultado de la ejecución del 05/11/2026
+## Resultado de la ejecución del 05–06/11/2026
 
 Se implementaron y verificaron en lo posible las entregas 0, 1, 2 y 3; la aceptación autenticada/visual de la entrega 0 sigue pendiente por falta de credenciales. Las entregas 4 y 5 no se implementaron porque el propio plan exige un diseño técnico posterior y dependencias aún no resueltas.
 
@@ -233,11 +233,12 @@ Evidencia principal:
 - Frontend: 84 archivos, 456 pruebas, 0 fallos; build reproducible y `verify:build-sync` OK.
 - Migraciones nuevas aplicadas, revertidas y reaplicadas en MariaDB descartable; el lector de automatizaciones también se probó contra MariaDB real.
 - `RouteResolutionTest` cubre las rutas nuevas y el catálogo del portal.
-- No se modificó producción, no se enviaron correos/WhatsApp/push reales y no se recrearon volúmenes persistentes.
+- Producción Ferozo desplegada quirúrgicamente desde `eedc249f` al commit `1749f8bd`: 18 archivos PHP, 15 bundles, manifest y 2 migraciones. Hashes remotos verificados; `migrate.php` borrado (404); login 200; rutas nuevas 302 al login; 25/25 assets del manifest responden 200. No se tocaron `.env`, `vendor/`, `writable/` ni volúmenes persistentes.
+- No se enviaron correos/WhatsApp/push reales.
 
 Pendientes explícitos:
 
-- Login autenticado y validación visual escritorio/móvil en staging: bloqueado por falta de una cuenta autorizada en este chat.
+- Login autenticado y validación visual escritorio/móvil en staging y producción: bloqueado por falta de una cuenta autorizada en este chat.
 - Smoke de canales aislados y prueba de ausencia de duplicados con proveedor real: no ejecutado para no producir efectos externos.
-- Commit y despliegue: no realizados por instrucción expresa.
+- Los commits de `main` posteriores a `eedc249f`, ajenos al PR #521, no se desplegaron en producción.
 - Entregas 4 y 5: requieren plan técnico y resolución de dependencias antes de implementar.
