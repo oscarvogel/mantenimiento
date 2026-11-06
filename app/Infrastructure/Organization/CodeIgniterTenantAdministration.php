@@ -4,17 +4,22 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Organization;
 
+use App\Application\Audit\AuditAction;
+use App\Application\Audit\AuditEntry;
+use App\Application\Audit\AuditScope;
+use App\Application\Audit\Port\AuditTrail;
 use App\Application\Organization\Port\TenantAdministrationPort;
 use CodeIgniter\Database\BaseConnection;
 use DomainException;
-use JsonException;
 use RuntimeException;
 use Throwable;
 
 final class CodeIgniterTenantAdministration implements TenantAdministrationPort
 {
-    public function __construct(private readonly BaseConnection $database)
-    {
+    public function __construct(
+        private readonly BaseConnection $database,
+        private readonly AuditTrail $audit,
+    ) {
     }
 
     public function branchesOverview(int $companyId, int $page, int $perPage): array
@@ -131,29 +136,51 @@ final class CodeIgniterTenantAdministration implements TenantAdministrationPort
 
     public function createBranch(int $companyId, array $data, int $actorUserId): int
     {
-        $this->company($companyId);
-        $this->assertUniqueBranchCode($companyId, $data['codigo']);
-        $now = date('Y-m-d H:i:s');
-        $this->database->table('sucursales')->insert([
-            ...$data,
-            'empresa_id' => $companyId,
-            'estado'     => 1,
-            'created_at' => $now,
-            'updated_at' => $now,
-            'created_by' => $actorUserId,
-            'updated_by' => $actorUserId,
-        ]);
+        $this->database->transBegin();
 
-        $branchId = (int) $this->database->insertID();
-        if ($branchId <= 0) {
-            throw new RuntimeException('No se pudo crear la sucursal.');
+        try {
+            $this->company($companyId);
+            $this->assertUniqueBranchCode($companyId, $data['codigo']);
+            $now = date('Y-m-d H:i:s');
+            $this->database->table('sucursales')->insert([
+                ...$data,
+                'empresa_id' => $companyId,
+                'estado'     => 1,
+                'created_at' => $now,
+                'updated_at' => $now,
+                'created_by' => $actorUserId,
+                'updated_by' => $actorUserId,
+            ]);
+
+            $branchId = (int) $this->database->insertID();
+            if ($branchId <= 0) {
+                throw new RuntimeException('No se pudo crear la sucursal.');
+            }
+
+            $this->audit->record(new AuditEntry(
+                scope: AuditScope::SUCURSAL,
+                companyId: $companyId,
+                branchId: $branchId,
+                action: AuditAction::SUCURSAL_CREADA,
+                entity: 'sucursales',
+                entityId: (string) $branchId,
+                actorUserId: $actorUserId,
+                actorCompanyId: $companyId,
+                before: null,
+                after: [...$data, 'estado' => 1],
+            ));
+
+            $this->commitOrFail();
+
+            log_message('notice', 'Usuario {actor} creó sucursal {branch} de empresa {company}', [
+                'actor' => $actorUserId, 'branch' => $branchId, 'company' => $companyId,
+            ]);
+
+            return $branchId;
+        } catch (Throwable $exception) {
+            $this->database->transRollback();
+            throw $exception;
         }
-
-        log_message('notice', 'Usuario {actor} creó sucursal {branch} de empresa {company}', [
-            'actor' => $actorUserId, 'branch' => $branchId, 'company' => $companyId,
-        ]);
-
-        return $branchId;
     }
 
     public function updateBranch(int $companyId, int $branchId, array $data, int $actorUserId): void
@@ -175,6 +202,27 @@ final class CodeIgniterTenantAdministration implements TenantAdministrationPort
                     'updated_at' => date('Y-m-d H:i:s'),
                     'updated_by' => $actorUserId,
                 ]);
+
+            $this->audit->record(new AuditEntry(
+                scope: AuditScope::SUCURSAL,
+                companyId: $companyId,
+                branchId: $branchId,
+                action: AuditAction::SUCURSAL_ACTUALIZADA,
+                entity: 'sucursales',
+                entityId: (string) $branchId,
+                actorUserId: $actorUserId,
+                actorCompanyId: $companyId,
+                before: [
+                    'codigo'                => $branch['codigo'],
+                    'nombre'                => $branch['nombre'],
+                    'direccion'             => $branch['direccion'],
+                    'email_alertas'         => $branch['email_alertas'],
+                    'idioma_notificaciones' => $branch['idioma_notificaciones'] ?? null,
+                    'estado'                => (int) $branch['estado'],
+                ],
+                after: $data,
+            ));
+
             $this->commitOrFail();
         } catch (Throwable $exception) {
             $this->database->transRollback();
@@ -216,15 +264,25 @@ final class CodeIgniterTenantAdministration implements TenantAdministrationPort
             }
 
             $this->replaceAccess($userId, $roleIds, $branchIds);
-            $this->appendHistory(
-                $userId,
-                $companyId,
-                'USUARIO_CREADO',
-                [],
-                ['nombre' => $data['nombre'], 'email' => $data['email'], 'telefono' => $data['telefono'], 'roles' => $roleIds, 'sucursales' => $branchIds],
-                $reason,
-                $actorUserId,
-            );
+            $this->audit->record(new AuditEntry(
+                scope: AuditScope::EMPRESA,
+                companyId: $companyId,
+                branchId: null,
+                action: AuditAction::USUARIO_CREADO,
+                entity: 'usuarios',
+                entityId: (string) $userId,
+                actorUserId: $actorUserId,
+                actorCompanyId: $companyId,
+                before: null,
+                after: [
+                    'nombre'     => $data['nombre'],
+                    'email'      => $data['email'],
+                    'telefono'   => $data['telefono'],
+                    'roles'      => $roleIds,
+                    'sucursales' => $branchIds,
+                ],
+                reason: $reason,
+            ));
             $this->commitOrFail();
 
             return $userId;
@@ -252,7 +310,19 @@ final class CodeIgniterTenantAdministration implements TenantAdministrationPort
                 'updated_at' => date('Y-m-d H:i:s'),
                 'updated_by' => $actorUserId,
             ]);
-            $this->appendHistory($userId, $companyId, 'USUARIO_ACTUALIZADO', $before, $data, $reason, $actorUserId);
+            $this->audit->record(new AuditEntry(
+                scope: AuditScope::EMPRESA,
+                companyId: $companyId,
+                branchId: null,
+                action: AuditAction::USUARIO_ACTUALIZADO,
+                entity: 'usuarios',
+                entityId: (string) $userId,
+                actorUserId: $actorUserId,
+                actorCompanyId: $companyId,
+                before: $before,
+                after: $data,
+                reason: $reason,
+            ));
             $this->commitOrFail();
         } catch (Throwable $exception) {
             $this->database->transRollback();
@@ -275,15 +345,19 @@ final class CodeIgniterTenantAdministration implements TenantAdministrationPort
             $branchIds = $this->validatedAccess($companyId, $roleIds, $branchIds);
             $before = ['roles' => $this->roleIds($userId), 'sucursales' => $this->branchIds($userId)];
             $this->replaceAccess($userId, $roleIds, $branchIds);
-            $this->appendHistory(
-                $userId,
-                $companyId,
-                'ASIGNACION_ACCESO',
-                $before,
-                ['roles' => $roleIds, 'sucursales' => $branchIds],
-                $reason,
-                $actorUserId,
-            );
+            $this->audit->record(new AuditEntry(
+                scope: AuditScope::EMPRESA,
+                companyId: $companyId,
+                branchId: null,
+                action: AuditAction::USUARIO_ACCESO_ASIGNADO,
+                entity: 'usuarios',
+                entityId: (string) $userId,
+                actorUserId: $actorUserId,
+                actorCompanyId: $companyId,
+                before: $before,
+                after: ['roles' => $roleIds, 'sucursales' => $branchIds],
+                reason: $reason,
+            ));
             $this->commitOrFail();
         } catch (Throwable $exception) {
             $this->database->transRollback();
@@ -307,15 +381,19 @@ final class CodeIgniterTenantAdministration implements TenantAdministrationPort
                 'updated_at'    => date('Y-m-d H:i:s'),
                 'updated_by'    => $actorUserId,
             ]);
-            $this->appendHistory(
-                $userId,
-                $companyId,
-                'PASSWORD_RESTABLECIDA',
-                [],
-                ['restablecida' => true],
-                $reason,
-                $actorUserId,
-            );
+            $this->audit->record(new AuditEntry(
+                scope: AuditScope::EMPRESA,
+                companyId: $companyId,
+                branchId: null,
+                action: AuditAction::USUARIO_PASSWORD_RESTABLECIDA,
+                entity: 'usuarios',
+                entityId: (string) $userId,
+                actorUserId: $actorUserId,
+                actorCompanyId: $companyId,
+                before: null,
+                after: ['restablecida' => true],
+                reason: $reason,
+            ));
             $this->commitOrFail();
         } catch (Throwable $exception) {
             $this->database->transRollback();
@@ -341,7 +419,8 @@ final class CodeIgniterTenantAdministration implements TenantAdministrationPort
     private function lockedBranch(int $companyId, int $branchId): array
     {
         $branch = $this->database->query(
-            'SELECT id, estado FROM sucursales WHERE id = ? AND empresa_id = ? AND deleted_at IS NULL FOR UPDATE',
+            'SELECT id, codigo, nombre, direccion, email_alertas, idioma_notificaciones, estado '
+            . 'FROM sucursales WHERE id = ? AND empresa_id = ? AND deleted_at IS NULL FOR UPDATE',
             [$branchId, $companyId],
         )->getRowArray();
         if ($branch === null) {
@@ -476,28 +555,6 @@ final class CodeIgniterTenantAdministration implements TenantAdministrationPort
             static fn (array $row): int => (int) $row['sucursal_id'],
             $this->database->table('usuario_sucursales')->select('sucursal_id')->where('usuario_id', $userId)->orderBy('sucursal_id')->get()->getResultArray(),
         );
-    }
-
-    /** @throws JsonException */
-    private function appendHistory(
-        int $userId,
-        int $companyId,
-        string $action,
-        array $before,
-        array $after,
-        string $reason,
-        int $actorUserId,
-    ): void {
-        $this->database->table('usuario_acceso_historial')->insert([
-            'usuario_id'            => $userId,
-            'empresa_id'            => $companyId,
-            'accion'                => $action,
-            'detalle_anterior'      => json_encode($before, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
-            'detalle_nuevo'         => json_encode($after, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
-            'motivo'                => $reason,
-            'actor_usuario_id'      => $actorUserId,
-            'created_at'            => date('Y-m-d H:i:s'),
-        ]);
     }
 
     private function commitOrFail(): void

@@ -67,6 +67,7 @@ final readonly class AppShellPayload
             $navigation[] = $this->item('telemetry-samples', 'Datos de telemetría', 'superadmin/telemetria/muestras', 'audit', $active);
             $navigation[] = $this->item('notification-settings', 'Configuración de notificaciones', 'superadmin/configuracion/notificaciones', 'notifications', $active);
             $navigation[] = $this->item('chatbot-audit', 'Auditoría del chatbot', 'superadmin?section=chat-audit', 'audit', $active);
+            $navigation[] = $this->item('audit-changes', 'Auditoría de cambios', 'superadmin?section=audit-changes', 'audit', $active);
         } elseif ($active !== 'command-center' && $active !== 'theoretical-cost-km' && ! $isTripPage) {
             if ($actor->hasPermission('gerencial.costo_km.ver')) {
                 $navigation[] = $this->item('theoretical-cost-km', 'Costo teórico por km', 'gerencial/costo-teorico-km', 'chart', $active);

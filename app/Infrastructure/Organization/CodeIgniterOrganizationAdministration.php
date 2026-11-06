@@ -4,17 +4,22 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Organization;
 
+use App\Application\Audit\AuditAction;
+use App\Application\Audit\AuditEntry;
+use App\Application\Audit\AuditScope;
+use App\Application\Audit\Port\AuditTrail;
 use App\Application\Organization\Port\OrganizationAdministrationPort;
 use CodeIgniter\Database\BaseConnection;
 use DomainException;
-use JsonException;
 use RuntimeException;
 use Throwable;
 
 final class CodeIgniterOrganizationAdministration implements OrganizationAdministrationPort
 {
-    public function __construct(private readonly BaseConnection $database)
-    {
+    public function __construct(
+        private readonly BaseConnection $database,
+        private readonly AuditTrail $audit,
+    ) {
     }
 
     public function overview(int $companiesPage, int $companiesPerPage, int $usersPage, int $usersPerPage): array
@@ -107,27 +112,49 @@ final class CodeIgniterOrganizationAdministration implements OrganizationAdminis
 
     public function createCompany(array $data, int $actorUserId): int
     {
-        $now = date('Y-m-d H:i:s');
-        $this->database->table('empresas')->insert([
-            ...$data,
-            'estado'     => 1,
-            'created_at' => $now,
-            'updated_at' => $now,
-            'created_by' => $actorUserId,
-            'updated_by' => $actorUserId,
-        ]);
+        $this->database->transBegin();
 
-        $companyId = (int) $this->database->insertID();
-        if ($companyId <= 0) {
-            throw new RuntimeException('No se pudo crear la empresa.');
+        try {
+            $now = date('Y-m-d H:i:s');
+            $this->database->table('empresas')->insert([
+                ...$data,
+                'estado'     => 1,
+                'created_at' => $now,
+                'updated_at' => $now,
+                'created_by' => $actorUserId,
+                'updated_by' => $actorUserId,
+            ]);
+
+            $companyId = (int) $this->database->insertID();
+            if ($companyId <= 0) {
+                throw new RuntimeException('No se pudo crear la empresa.');
+            }
+
+            $this->audit->record(new AuditEntry(
+                scope: AuditScope::EMPRESA,
+                companyId: $companyId,
+                branchId: null,
+                action: AuditAction::EMPRESA_CREADA,
+                entity: 'empresas',
+                entityId: (string) $companyId,
+                actorUserId: $actorUserId,
+                actorCompanyId: null,
+                before: null,
+                after: [...$data, 'estado' => 1],
+            ));
+
+            $this->commitOrFail();
+
+            log_message('notice', 'Superadministrador {actor} creó empresa {company}', [
+                'actor'   => $actorUserId,
+                'company' => $companyId,
+            ]);
+
+            return $companyId;
+        } catch (Throwable $exception) {
+            $this->database->transRollback();
+            throw $exception;
         }
-
-        log_message('notice', 'Superadministrador {actor} creó empresa {company}', [
-            'actor'   => $actorUserId,
-            'company' => $companyId,
-        ]);
-
-        return $companyId;
     }
 
     public function createCompanyAdministrator(
@@ -190,21 +217,25 @@ final class CodeIgniterOrganizationAdministration implements OrganizationAdminis
 
             // El rol Administrador representa acceso a todas las sucursales activas
             // de la empresa, por lo que no necesita filas en usuario_sucursales.
-            $this->appendHistory(
-                $userId,
-                $companyId,
-                'USUARIO_CREADO',
-                [],
-                [
-                    'nombre'      => $data['nombre'],
-                    'email'       => $data['email'],
-                    'roles'       => [$roleId],
-                    'sucursales'  => [],
-                    'alcance'     => 'TODAS_LAS_SUCURSALES',
+            $this->audit->record(new AuditEntry(
+                scope: AuditScope::EMPRESA,
+                companyId: $companyId,
+                branchId: null,
+                action: AuditAction::USUARIO_CREADO,
+                entity: 'usuarios',
+                entityId: (string) $userId,
+                actorUserId: $actorUserId,
+                actorCompanyId: null,
+                before: null,
+                after: [
+                    'nombre'     => $data['nombre'],
+                    'email'      => $data['email'],
+                    'roles'      => [$roleId],
+                    'sucursales' => [],
+                    'alcance'    => 'TODAS_LAS_SUCURSALES',
                 ],
-                $reason,
-                $actorUserId,
-            );
+                reason: $reason,
+            ));
 
             $this->commitOrFail();
 
@@ -217,38 +248,67 @@ final class CodeIgniterOrganizationAdministration implements OrganizationAdminis
 
     public function updateCompany(int $companyId, array $data, int $actorUserId): void
     {
-        $exists = $this->database->table('empresas')
-            ->select('id')
-            ->where('id', $companyId)
-            ->where('deleted_at', null)
-            ->get()->getRowArray();
+        $this->database->transBegin();
 
-        if ($exists === null) {
-            throw new DomainException('La empresa no existe.');
-        }
+        try {
+            $current = $this->database->query(
+                'SELECT razon_social, nombre_fantasia, cuit, email, telefono, estado '
+                . 'FROM empresas WHERE id = ? AND deleted_at IS NULL FOR UPDATE',
+                [$companyId],
+            )->getRowArray();
 
-        if ($data['estado'] === 0) {
-            $activeUsers = $this->database->table('usuarios')
-                ->where('empresa_id', $companyId)
-                ->where('activo', 1)
-                ->where('es_superadmin', 0)
-                ->where('deleted_at', null)
-                ->countAllResults();
-            if ($activeUsers > 0) {
-                throw new DomainException('No se puede inactivar una empresa que todavía tiene usuarios activos.');
+            if ($current === null) {
+                throw new DomainException('La empresa no existe.');
             }
+
+            if ($data['estado'] === 0) {
+                $activeUsers = $this->database->table('usuarios')
+                    ->where('empresa_id', $companyId)
+                    ->where('activo', 1)
+                    ->where('es_superadmin', 0)
+                    ->where('deleted_at', null)
+                    ->countAllResults();
+                if ($activeUsers > 0) {
+                    throw new DomainException('No se puede inactivar una empresa que todavía tiene usuarios activos.');
+                }
+            }
+
+            $this->database->table('empresas')->where('id', $companyId)->update([
+                ...$data,
+                'updated_at' => date('Y-m-d H:i:s'),
+                'updated_by' => $actorUserId,
+            ]);
+
+            $this->audit->record(new AuditEntry(
+                scope: AuditScope::EMPRESA,
+                companyId: $companyId,
+                branchId: null,
+                action: AuditAction::EMPRESA_ACTUALIZADA,
+                entity: 'empresas',
+                entityId: (string) $companyId,
+                actorUserId: $actorUserId,
+                actorCompanyId: null,
+                before: [
+                    'razon_social'    => $current['razon_social'],
+                    'nombre_fantasia' => $current['nombre_fantasia'],
+                    'cuit'            => $current['cuit'],
+                    'email'           => $current['email'],
+                    'telefono'        => $current['telefono'],
+                    'estado'          => (int) $current['estado'],
+                ],
+                after: $data,
+            ));
+
+            $this->commitOrFail();
+
+            log_message('notice', 'Superadministrador {actor} actualizó empresa {company}', [
+                'actor'   => $actorUserId,
+                'company' => $companyId,
+            ]);
+        } catch (Throwable $exception) {
+            $this->database->transRollback();
+            throw $exception;
         }
-
-        $this->database->table('empresas')->where('id', $companyId)->update([
-            ...$data,
-            'updated_at' => date('Y-m-d H:i:s'),
-            'updated_by' => $actorUserId,
-        ]);
-
-        log_message('notice', 'Superadministrador {actor} actualizó empresa {company}', [
-            'actor'   => $actorUserId,
-            'company' => $companyId,
-        ]);
     }
 
     public function assignUserToCompany(int $userId, int $companyId, string $reason, int $actorUserId): void
@@ -287,23 +347,27 @@ final class CodeIgniterOrganizationAdministration implements OrganizationAdminis
             $this->database->table('usuario_roles')->where('usuario_id', $userId)->delete();
             $this->database->table('usuario_sucursales')->where('usuario_id', $userId)->delete();
 
-            $this->appendHistory(
-                $userId,
-                $companyId,
-                'CAMBIO_EMPRESA',
-                [
-                    'empresa_id'   => $previousCompanyId,
-                    'roles'        => $previousRoles,
-                    'sucursales'   => $previousBranches,
+            $this->audit->record(new AuditEntry(
+                scope: AuditScope::EMPRESA,
+                companyId: $companyId,
+                branchId: null,
+                action: AuditAction::USUARIO_EMPRESA_CAMBIADA,
+                entity: 'usuarios',
+                entityId: (string) $userId,
+                actorUserId: $actorUserId,
+                actorCompanyId: null,
+                before: [
+                    'empresa_id' => $previousCompanyId,
+                    'roles'      => $previousRoles,
+                    'sucursales' => $previousBranches,
                 ],
-                [
-                    'empresa_id'   => $companyId,
-                    'roles'        => [],
-                    'sucursales'   => [],
+                after: [
+                    'empresa_id' => $companyId,
+                    'roles'      => [],
+                    'sucursales' => [],
                 ],
-                $reason,
-                $actorUserId,
-            );
+                reason: $reason,
+            ));
 
             $this->commitOrFail();
         } catch (Throwable $exception) {
@@ -357,15 +421,19 @@ final class CodeIgniterOrganizationAdministration implements OrganizationAdminis
             // El efecto era irreversible: al devolverle un rol acotado, las
             // asignaciones ya no existian y el usuario se quedaba sin ver
             // ningun equipo.
-            $this->appendHistory(
-                $userId,
-                (int) $user['empresa_id'],
-                'ASIGNACION_ROLES',
-                ['roles' => $previousRoles],
-                ['roles' => $roleIds],
-                $reason,
-                $actorUserId,
-            );
+            $this->audit->record(new AuditEntry(
+                scope: AuditScope::EMPRESA,
+                companyId: (int) $user['empresa_id'],
+                branchId: null,
+                action: AuditAction::USUARIO_ROLES_ASIGNADOS,
+                entity: 'usuarios',
+                entityId: (string) $userId,
+                actorUserId: $actorUserId,
+                actorCompanyId: null,
+                before: ['roles' => $previousRoles],
+                after: ['roles' => $roleIds],
+                reason: $reason,
+            ));
 
             $this->commitOrFail();
         } catch (Throwable $exception) {
@@ -411,33 +479,6 @@ final class CodeIgniterOrganizationAdministration implements OrganizationAdminis
             static fn (array $row): int => (int) $row['sucursal_id'],
             $this->database->table('usuario_sucursales')->select('sucursal_id')->where('usuario_id', $userId)->get()->getResultArray(),
         );
-    }
-
-    /**
-     * @param array<string, mixed> $before
-     * @param array<string, mixed> $after
-     *
-     * @throws JsonException
-     */
-    private function appendHistory(
-        int $userId,
-        ?int $companyId,
-        string $action,
-        array $before,
-        array $after,
-        string $reason,
-        int $actorUserId,
-    ): void {
-        $this->database->table('usuario_acceso_historial')->insert([
-            'usuario_id'               => $userId,
-            'empresa_id'               => $companyId,
-            'accion'                   => $action,
-            'detalle_anterior'         => json_encode($before, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
-            'detalle_nuevo'            => json_encode($after, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
-            'motivo'                   => $reason,
-            'actor_usuario_id'         => $actorUserId,
-            'created_at'               => date('Y-m-d H:i:s'),
-        ]);
     }
 
     private function commitOrFail(): void

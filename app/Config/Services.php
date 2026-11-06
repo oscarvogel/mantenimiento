@@ -2,6 +2,9 @@
 
 namespace Config;
 
+use App\Application\Audit\GetAuditTrail;
+use App\Application\Audit\Port\AuditTrail;
+use App\Application\Audit\Port\AuditTrailReadModel;
 use App\Application\Identity\Port\LoginAttemptLimiter;
 use App\Application\AppShell\GetAppShellContext;
 use App\Application\Platform\GetPlatformModuleCatalog;
@@ -89,6 +92,8 @@ use App\Application\Notifications\RunNotificationDispatch;
 use App\Application\Notifications\RunNotificationCycle;
 use App\Application\Notifications\SendWebPushTest;
 use App\Application\Notifications\UpdateGlobalNotificationSettings;
+use App\Infrastructure\Audit\CodeIgniterAuditTrail;
+use App\Infrastructure\Audit\CodeIgniterAuditTrailReadModel;
 use App\Infrastructure\Organization\CodeIgniterOrganizationAdministration;
 use App\Infrastructure\Organization\CodeIgniterTenantAdministration;
 use App\Infrastructure\Notifications\CodeIgniterEmailNotificationGateway;
@@ -2316,13 +2321,40 @@ return new AsignarPlan(
         );
     }
 
+    public static function auditTrail(bool $getShared = true): AuditTrail
+    {
+        if ($getShared) {
+            return static::getSharedInstance('auditTrail');
+        }
+
+        return new CodeIgniterAuditTrail(db_connect());
+    }
+
+    public static function auditTrailReadModel(bool $getShared = true): AuditTrailReadModel
+    {
+        if ($getShared) {
+            return static::getSharedInstance('auditTrailReadModel');
+        }
+
+        return new CodeIgniterAuditTrailReadModel(db_connect());
+    }
+
+    public static function getAuditTrail(bool $getShared = true): GetAuditTrail
+    {
+        if ($getShared) {
+            return static::getSharedInstance('getAuditTrail');
+        }
+
+        return new GetAuditTrail(static::auditTrailReadModel());
+    }
+
     public static function organizationAdministration(bool $getShared = true): OrganizationAdministrationPort
     {
         if ($getShared) {
             return static::getSharedInstance('organizationAdministration');
         }
 
-        return new CodeIgniterOrganizationAdministration(db_connect());
+        return new CodeIgniterOrganizationAdministration(db_connect(), static::auditTrail());
     }
 
     public static function tenantAdministrationPort(bool $getShared = true): TenantAdministrationPort
@@ -2331,7 +2363,7 @@ return new AsignarPlan(
             return static::getSharedInstance('tenantAdministrationPort');
         }
 
-        return new CodeIgniterTenantAdministration(db_connect());
+        return new CodeIgniterTenantAdministration(db_connect(), static::auditTrail());
     }
 
     public static function tenantAdministration(bool $getShared = true): TenantAdministrationService

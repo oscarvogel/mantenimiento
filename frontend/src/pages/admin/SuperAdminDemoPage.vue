@@ -4,6 +4,7 @@ import SuperAdminPage from './SuperAdminPage.vue'
 import DemoCompanyPanel from './components/DemoCompanyPanel.vue'
 import TripMasterCatalogsPanel from './components/TripMasterCatalogsPanel.vue'
 import ChatAuditPage from './ChatAuditPage.vue'
+import AuditChangesPage from './AuditChangesPage.vue'
 
 defineProps({
   data: {
@@ -12,7 +13,8 @@ defineProps({
   },
 })
 
-const section = ref(new URLSearchParams(window.location.search).get('section') === 'chat-audit' ? 'chat-audit' : 'administration')
+const sectionParam = new URLSearchParams(window.location.search).get('section')
+const section = ref(sectionParam === 'chat-audit' ? 'chat-audit' : sectionParam === 'audit-changes' ? 'audit-changes' : 'administration')
 </script>
 
 <template>
@@ -32,6 +34,12 @@ const section = ref(new URLSearchParams(window.location.search).get('section') =
         type="button"
         @click="section = 'chat-audit'"
       >Auditoría del chatbot</button>
+      <button
+        class="rounded-lg px-4 py-2 text-sm font-semibold"
+        :class="section === 'audit-changes' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'"
+        type="button"
+        @click="section = 'audit-changes'"
+      >Auditoría de cambios</button>
     </nav>
 
     <template v-if="section === 'administration'">
@@ -41,12 +49,20 @@ const section = ref(new URLSearchParams(window.location.search).get('section') =
     </template>
 
     <ChatAuditPage
-      v-else
+      v-else-if="section === 'chat-audit'"
       :data="{
         title: 'Auditoría global del chatbot',
         subtitle: 'Conversaciones de todas las empresas',
         showCompanyFilter: true,
         apiUrl: data.chatAudit?.apiUrl,
+      }"
+    />
+    <AuditChangesPage
+      v-else
+      :data="{
+        title: 'Auditoría de cambios',
+        subtitle: 'Altas, ediciones y permisos registrados en todas las empresas.',
+        apiUrl: data.auditChanges?.apiUrl,
       }"
     />
   </div>

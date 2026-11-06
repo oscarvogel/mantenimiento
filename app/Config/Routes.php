@@ -123,6 +123,7 @@ $routes->group('superadmin', ['filter' => 'superadmin'], static function ($route
     $routes->post('viajes/importaciones/(:num)/facturas/(:num)/viaje', 'TripInvoiceReview::assign/$1/$2');
     $routes->post('viajes/importaciones/(:num)/facturas/(:num)/desvincular', 'TripInvoiceReview::unassign/$1/$2');
     $routes->get('', 'SuperAdmin::index');
+    $routes->get('auditoria', 'AuditChanges::index');
     $routes->get('telemetria/muestras/exportar', 'AdminTelemetrySamples::export');
     $routes->get('telemetria/muestras', 'AdminTelemetrySamples::index');
     $routes->get('telemetria/muestras/exportar', 'AdminTelemetrySamples::export');

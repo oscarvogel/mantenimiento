@@ -51,6 +51,9 @@ final class AdministrationPayload
             'chatAudit' => [
                 'apiUrl' => base_url('mantenimiento/chatbot/auditoria'),
             ],
+            'auditChanges' => [
+                'apiUrl' => base_url('superadmin/auditoria'),
+            ],
             'oldInput' => $this->old([
                 'razon_social', 'nombre_fantasia', 'cuit', 'email', 'email_notificaciones', 'notificaciones_whatsapp_habilitadas', 'whatsapp_instance_id', 'idioma_notificaciones', 'telefono',
                 'admin_empresa_id', 'admin_nombre', 'admin_email', 'admin_motivo',

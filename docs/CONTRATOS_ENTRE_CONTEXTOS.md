@@ -192,6 +192,34 @@ recuperación del ciclo usa `AutomationExecutionRecorder` y `automatizacion_etap
 
 ---
 
+### 4.10 `AuditTrail` — auditoría transversal de cambios
+
+```php
+public function record(AuditEntry $entry): void;
+```
+
+Lo consumen los casos de uso y adaptadores que ejecutan operaciones sensibles. La entrada
+declara el alcance (`GLOBAL`, `EMPRESA` o `SUCURSAL`), la empresa y sucursal afectadas, el
+actor, la entidad, los valores anteriores y nuevos, el motivo y el contexto de la petición.
+
+Reglas del contrato:
+
+- Se escribe en la misma transacción que la operación sensible. Si la escritura falla, la
+  operación hace rollback (fail-closed).
+- `empresa_id` es la empresa afectada, no la del actor. `sucursal_id` solo existe en alcance
+  `SUCURSAL`.
+- `actor_empresa_id` distingue al superadministrador global, que no pertenece a una empresa.
+- Los valores se sanitizan antes de persistirse: contraseñas, tokens, secretos y certificados
+  se reemplazan por `***`.
+- La tabla `auditoria` es append-only: no se actualiza ni se borra.
+
+**Implementado el 06/11/2026.** El adaptador es `CodeIgniterAuditTrail`. Organización ya lo
+invoca para empresas, sucursales, usuarios, roles y restablecimiento de contraseña. Las
+operaciones de identidad dejaron de escribir en `usuario_acceso_historial`; esa tabla se
+conserva con sus filas históricas.
+
+---
+
 ## 5. Lo que falta implementar
 
 | Adaptador | Contexto que lo aporta | Bloqueado por |
