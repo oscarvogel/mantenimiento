@@ -196,9 +196,12 @@ describe('alta de viaje operativo', () => {
     const nameInput = wrapper.get('input[name="nombre"]')
     expect(nameInput.element.value).toBe('Capitán Leonidas')
     await vi.waitFor(() => {
-      expect(wrapper.find('select[name="provincia_id"] option[value="10"]').exists()).toBe(true)
+      const provinceField = wrapper.findAllComponents(AutocompleteSelect).find((component) => component.props('name') === 'provincia_id')
+      expect(provinceField?.props('options')).toEqual([{ value: '10', label: 'Misiones · Argentina' }])
     })
-    await wrapper.get('select[name="provincia_id"]').setValue('10')
+    const provinceField = wrapper.findAllComponents(AutocompleteSelect).find((component) => component.props('name') === 'provincia_id')
+    provinceField.vm.$emit('update:modelValue', '10')
+    await nextTick()
 
     const modalForm = wrapper.findAll('form').find((form) => form.text().includes('Guardar localidad'))
     await modalForm.trigger('submit')

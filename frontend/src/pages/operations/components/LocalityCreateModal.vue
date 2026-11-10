@@ -1,5 +1,6 @@
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue'
+import AutocompleteSelect from './AutocompleteSelect.vue'
 import { fieldClass, primaryButton, secondaryButton } from '../helpers.js'
 
 const props = defineProps({
@@ -20,7 +21,10 @@ const saving = ref(false)
 const error = ref('')
 const nameInput = ref(null)
 
-const provinceOptions = computed(() => provinces.value)
+const provinceOptions = computed(() => provinces.value.map((province) => ({
+  value: String(province.id),
+  label: province.label,
+})))
 const canSubmit = computed(() => !saving.value && name.value.trim().length >= 2 && provinceId.value !== '')
 
 const reset = () => {
@@ -125,10 +129,16 @@ watch(() => props.open, async (open) => {
           </label>
           <label class="block text-sm font-medium text-ink">
             Provincia <span class="text-red-700">*</span>
-            <select v-model="provinceId" name="provincia_id" required :disabled="loadingProvinces || saving" :class="[fieldClass, 'mt-1']">
-              <option value="">{{ loadingProvinces ? 'Cargando provincias…' : 'Elegí la provincia' }}</option>
-              <option v-for="province in provinceOptions" :key="province.id" :value="String(province.id)">{{ province.label }}</option>
-            </select>
+            <div class="mt-1">
+              <AutocompleteSelect
+                v-model="provinceId"
+                name="provincia_id"
+                :options="provinceOptions"
+                :placeholder="loadingProvinces ? 'Cargando provincias…' : 'Buscá la provincia'"
+                :disabled="loadingProvinces || saving"
+                required
+              />
+            </div>
           </label>
 
           <p v-if="provincesError" class="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm font-medium text-red-900" role="alert">
