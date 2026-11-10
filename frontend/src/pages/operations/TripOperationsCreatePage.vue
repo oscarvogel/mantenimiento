@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { PlusIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import PageHeading from './components/PageHeading.vue'
 import AutocompleteSelect from './components/AutocompleteSelect.vue'
+import LocalityCreateModal from './components/LocalityCreateModal.vue'
 import PanelCard from './components/PanelCard.vue'
 import { fieldClass, primaryButton, secondaryButton, today } from './helpers.js'
 
@@ -18,6 +19,7 @@ const drivers = computed(() => options.value.drivers ?? [])
 const customers = computed(() => options.value.customers ?? [])
 const currencies = computed(() => options.value.currencies?.length ? options.value.currencies : [{ code: 'ARS', label: 'Peso argentino' }])
 const localities = computed(() => options.value.localities ?? [])
+const extraLocalities = ref([])
 const company = computed(() => options.value.company ?? {})
 const nextNumber = computed(() => options.value.nextNumber ?? null)
 
@@ -167,8 +169,30 @@ const customerOptions = computed(() => customers.value.map((customer) => ({
   label: customer.label,
   hint: [customer.code ? `Código ${customer.code}` : '', customer.taxId ?? ''].filter(Boolean).join(' · '),
 })))
-const localityOptions = computed(() => localities.value.map((locality) => ({ value: locality.id, label: locality.label })))
-const localityName = (localityId) => localities.value.find((locality) => String(locality.id) === String(localityId))?.name ?? ''
+const localityOptions = computed(() => [...localities.value, ...extraLocalities.value].map((locality) => ({ value: locality.id, label: locality.label })))
+const localityName = (localityId) => [...localities.value, ...extraLocalities.value].find((locality) => String(locality.id) === String(localityId))?.name ?? ''
+const localityModalOpen = ref(false)
+const localityModalName = ref('')
+const localityTarget = ref(null)
+const openLocalityModal = (legIndex, field, name) => {
+  localityTarget.value = { legIndex, field }
+  localityModalName.value = name
+  localityModalOpen.value = true
+}
+const closeLocalityModal = () => {
+  localityModalOpen.value = false
+  localityTarget.value = null
+}
+const applyCreatedLocality = (locality) => {
+  if (!extraLocalities.value.some((item) => String(item.id) === String(locality.id))) {
+    extraLocalities.value = [...extraLocalities.value, locality]
+  }
+  const target = localityTarget.value
+  if (target && legs.value[target.legIndex]) {
+    legs.value[target.legIndex][target.field] = String(locality.id)
+  }
+  closeLocalityModal()
+}
 </script>
 
 <template>
@@ -273,8 +297,8 @@ const localityName = (localityId) => localities.value.find((locality) => String(
               </button>
             </div>
             <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Localidad de origen</span><AutocompleteSelect v-model="leg.localidad_origen_id" :name="`tramos[${index}][localidad_origen_id]`" :options="localityOptions" :search-url="links.localities" placeholder="Buscá la localidad" required /></label>
-              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Localidad de destino</span><AutocompleteSelect v-model="leg.localidad_destino_id" :name="`tramos[${index}][localidad_destino_id]`" :options="localityOptions" :search-url="links.localities" placeholder="Buscá la localidad" required /></label>
+              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Localidad de origen</span><AutocompleteSelect v-model="leg.localidad_origen_id" :name="`tramos[${index}][localidad_origen_id]`" :options="localityOptions" :search-url="links.localities" placeholder="Buscá la localidad" required allow-create @create="openLocalityModal(index, 'localidad_origen_id', $event)" /></label>
+              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Localidad de destino</span><AutocompleteSelect v-model="leg.localidad_destino_id" :name="`tramos[${index}][localidad_destino_id]`" :options="localityOptions" :search-url="links.localities" placeholder="Buscá la localidad" required allow-create @create="openLocalityModal(index, 'localidad_destino_id', $event)" /></label>
               <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Cliente del tramo</span><AutocompleteSelect v-model="leg.cliente_id" :name="`tramos[${index}][cliente_id]`" :options="customerOptions" placeholder="Elegí el cliente" required /></label>
               <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Toneladas (opcional)</span><input v-model="leg.toneladas" type="number" min="0" step="0.01" :name="`tramos[${index}][toneladas]`" :class="fieldClass" /></label>
             </div>
@@ -298,5 +322,15 @@ const localityName = (localityId) => localities.value.find((locality) => String(
         <button type="submit" :class="primaryButton">Iniciar viaje</button>
       </div>
     </form>
+
+    <LocalityCreateModal
+      :open="localityModalOpen"
+      :initial-name="localityModalName"
+      :create-url="links.localities"
+      :provinces-url="links.provinces"
+      :csrf="csrf"
+      @close="closeLocalityModal"
+      @created="applyCreatedLocality"
+    />
   </div>
 </template>

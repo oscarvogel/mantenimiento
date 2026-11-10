@@ -104,6 +104,37 @@ final class CodeIgniterTripLocalityLookup implements TripLocalityLookup
         return $results;
     }
 
+    public function provinces(): array
+    {
+        $rows = $this->database->table('provincias pr')
+            ->select('pr.id, pr.nombre AS provincia, pa.nombre AS pais')
+            ->join('paises pa', 'pa.id = pr.pais_id')
+            ->where('pr.activo', 1)
+            ->where('pa.activo', 1)
+            ->orderBy('pa.nombre', 'ASC')
+            ->orderBy('pr.nombre', 'ASC')
+            ->get()->getResultArray();
+
+        $provinces = [];
+        foreach ($rows as $row) {
+            $province = trim((string) ($row['provincia'] ?? ''));
+            $country = trim((string) ($row['pais'] ?? ''));
+            if ($province === '') {
+                continue;
+            }
+
+            $label = $country === '' || mb_strtolower($province, 'UTF-8') === mb_strtolower($country, 'UTF-8')
+                ? $province
+                : $province . ' · ' . $country;
+            $provinces[] = [
+                'id' => (int) $row['id'],
+                'label' => $label,
+            ];
+        }
+
+        return $provinces;
+    }
+
     /** @param array<string,mixed> $row */
     private function label(array $row): string
     {

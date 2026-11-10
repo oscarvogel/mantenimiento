@@ -31,6 +31,7 @@ final class GetTripFormOptions
             'index' => base_url('viajes/operativos'),
             'store' => base_url('viajes/operativos'),
             'localities' => base_url('viajes/operativos/localidades'),
+            'provinces' => base_url('viajes/operativos/localidades/provincias'),
         ];
         return $options;
     }

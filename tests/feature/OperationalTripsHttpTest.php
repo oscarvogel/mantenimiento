@@ -3,8 +3,10 @@
 declare(strict_types=1);
 
 use App\Application\Trips\AddTripLeg;
+use App\Application\Trips\CreateTripLocality;
 use App\Application\Trips\FinishTrip;
 use App\Application\Trips\GenerateOperationalTripSummaryPdf;
+use App\Application\Trips\ListTripLocalityProvinces;
 use App\Application\Trips\RegisterTripExpense;
 use App\Application\Trips\RegisterTripFuel;
 use App\Application\Trips\RegisterTripOtherEarning;
@@ -27,6 +29,8 @@ final class OperationalTripsHttpTest extends CIUnitTestCase
         self::assertInstanceOf(SaveTripLogbookEntry::class, service('saveTripLogbookEntry'));
         self::assertInstanceOf(DeleteTripLogbookEntry::class, service('deleteTripLogbookEntry'));
         self::assertInstanceOf(GenerateOperationalTripSummaryPdf::class, service('generateOperationalTripSummaryPdf'));
+        self::assertInstanceOf(CreateTripLocality::class, service('createTripLocality'));
+        self::assertInstanceOf(ListTripLocalityProvinces::class, service('listTripLocalityProvinces'));
     }
 
     public function testAnonymousCannotOpenOperationalTripsList(): void
@@ -47,6 +51,11 @@ final class OperationalTripsHttpTest extends CIUnitTestCase
     public function testAnonymousCannotOpenCreateForm(): void
     {
         $this->get('viajes/operativos/nuevo')->assertRedirect();
+    }
+
+    public function testAnonymousCannotListProvincesForLocalityCreation(): void
+    {
+        $this->get('viajes/operativos/localidades/provincias')->assertRedirect();
     }
 
 }

@@ -171,6 +171,7 @@ final class AddLegLocalityFake implements TripLocalityLookup
 {
     public function search(string $query, int $limit = 30): array { return []; }
     public function find(int $localityId): ?array { return ['id' => $localityId, 'name' => match ($localityId) { 1 => 'Rosario', 2 => 'Córdoba', default => 'Localidad ' . $localityId }, 'label' => 'Localidad QA']; }
+    public function provinces(): array { return []; }
 }
 
 final class AddLegUnitOfWorkFake implements TripsUnitOfWork

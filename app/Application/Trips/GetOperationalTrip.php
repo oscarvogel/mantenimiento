@@ -43,6 +43,7 @@ final class GetOperationalTrip
         $detail['links'] = [
             'detail' => base_url('viajes/operativos/' . $tripId),
             'localities' => base_url('viajes/operativos/localidades'),
+            'provinces' => base_url('viajes/operativos/localidades/provincias'),
             'summaryPdf' => base_url('viajes/operativos/' . $tripId . '/resumen.pdf'),
             'driverSettlementPdf' => base_url('viajes/operativos/' . $tripId . '/liquidacion-chofer.pdf'),
             'fuel' => base_url('viajes/operativos/' . $tripId . '/combustible'),

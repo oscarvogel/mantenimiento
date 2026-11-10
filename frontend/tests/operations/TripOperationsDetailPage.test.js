@@ -1,7 +1,8 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import TripOperationsDetailPage from '../../src/pages/operations/TripOperationsDetailPage.vue'
+import AutocompleteSelect from '../../src/pages/operations/components/AutocompleteSelect.vue'
 
 if (typeof HTMLDialogElement !== 'undefined' && !HTMLDialogElement.prototype.showModal) {
   HTMLDialogElement.prototype.showModal = vi.fn(function () { this.open = true })
@@ -28,6 +29,10 @@ const data = {
     { orden: 2, tipo: 'DESCARGA', tipo_label: 'Descarga', ubicacion: 'Córdoba', cliente: null, domicilio: null, fecha_estimada: null, descripcion_carga: null, cantidad: null, unidad: null, observaciones: null },
   ],
 }
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
 
 describe('detalle de viaje operativo', () => {
   it('muestra planificación, equipo, choferes y recorrido', () => {
@@ -459,6 +464,37 @@ describe('detalle de viaje operativo', () => {
     expect(wrapper.text()).toContain('Permanencia: 6 días')
     expect(wrapper.text()).toContain('Días calculados: 4')
     expect(wrapper.text()).toContain('Días a liquidar: 4')
+    wrapper.unmount()
+  })
+
+  it('abre el alta rápida de localidad desde el agregar tramo', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ provinces: [{ id: 10, label: 'Misiones · Argentina' }] }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const wrapper = mount(TripOperationsDetailPage, {
+      props: {
+        data: {
+          ...data,
+          canStart: false,
+          canCancel: false,
+          canAddLegs: true,
+          links: { ...data.links, localities: '/mantenimiento/viajes/operativos/localidades', provinces: '/mantenimiento/viajes/operativos/localidades/provincias' },
+          options: { expenseCategories: [], paymentMethods: [], currencies: [{ code: 'ARS', label: 'Peso argentino' }] },
+        },
+      },
+      global: { stubs: { teleport: true } },
+    })
+
+    const origin = wrapper.findAllComponents(AutocompleteSelect).find((component) => component.props('name') === 'localidad_origen_id')
+    origin.vm.$emit('create', 'Capitán Leonidas')
+    await nextTick()
+    await nextTick()
+
+    expect(wrapper.get('input[name="nombre"]').element.value).toBe('Capitán Leonidas')
+    expect(wrapper.text()).toContain('Dar de alta una localidad')
     wrapper.unmount()
   })
 

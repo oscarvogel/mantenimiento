@@ -1249,6 +1249,31 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
         );
     }
 
+    public static function listTripLocalityProvinces(bool $getShared = true): \App\Application\Trips\ListTripLocalityProvinces
+    {
+        if ($getShared) {
+            return static::getSharedInstance('listTripLocalityProvinces');
+        }
+
+        return new \App\Application\Trips\ListTripLocalityProvinces(
+            new \App\Infrastructure\Trips\CodeIgniterTripLocalityLookup(db_connect()),
+        );
+    }
+
+    public static function createTripLocality(bool $getShared = true): \App\Application\Trips\CreateTripLocality
+    {
+        if ($getShared) {
+            return static::getSharedInstance('createTripLocality');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\Trips\CreateTripLocality(
+            new \App\Infrastructure\Trips\CodeIgniterTripLocalityCreator($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripLocalityLookup($db),
+        );
+    }
+
     public static function finishTrip(bool $getShared = true): \App\Application\Trips\FinishTrip
     {
         if ($getShared) {
