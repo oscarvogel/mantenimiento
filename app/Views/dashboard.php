@@ -52,6 +52,6 @@ header('Cache-Control: no-store, must-revalidate');
         <p>Este panel necesita JavaScript habilitado para funcionar.</p>
     </noscript>
     <script id="maintenance-dashboard-data" type="application/json"><?= $dashboardJson ?></script>
-    <script type="module" src="<?= esc(base_url('assets/dashboard/' . $entry['file']), 'attr') ?>?v=<?= esc($entry['file'], 'attr') ?>"></script>
+    <script type="module" src="<?= esc(base_url('assets/dashboard/' . $entry['file']), 'attr') ?>"></script>
 </body>
 </html>

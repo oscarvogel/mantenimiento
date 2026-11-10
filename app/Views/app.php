@@ -55,6 +55,6 @@ header('Cache-Control: no-store, must-revalidate');
     <div id="maintenance-app"></div>
     <noscript><p>Esta aplicación necesita JavaScript habilitado para funcionar.</p></noscript>
     <script id="maintenance-app-data" type="application/json"><?= $appJson ?></script>
-    <script type="module" src="<?= esc(base_url('assets/dashboard/' . $entry['file']), 'attr') ?>?v=<?= esc($entry['file'], 'attr') ?>"></script>
+    <script type="module" src="<?= esc(base_url('assets/dashboard/' . $entry['file']), 'attr') ?>"></script>
 </body>
 </html>
