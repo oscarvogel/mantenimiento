@@ -31,6 +31,11 @@ final class SuperAdmin extends BaseController
         $companiesPerPage = PageSize::normalize($this->request->getGet('companies_per_page'));
         $usersPerPage = PageSize::normalize($this->request->getGet('users_per_page'));
         $data = $overview->execute($actor, $companiesPage, $companiesPerPage, $usersPage, $usersPerPage);
+        $data['frontendProfiles'] = service('frontendProfileCatalog')->all();
+        $data['companyPresentationProfiles'] = service('listCompanyPresentationProfiles')->execute(
+            $actor,
+            array_map('intval', array_column($data['companies'] ?? [], 'id')),
+        );
 
         if (isset($data['companies']) && is_array($data['companies']) && $data['companies'] !== []) {
             $ids = array_map('intval', array_column($data['companies'], 'id'));

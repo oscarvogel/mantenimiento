@@ -25,4 +25,15 @@ final class SuperAdminCompanyPresentationProfileTest extends TestCase
         self::assertStringContainsString('\'frontend_profile\' => \'required|max_length[64]\'', $controller);
         self::assertStringContainsString('$handler->execute($this->actor(), $companyId,', $controller);
     }
+
+    public function testOverviewPayloadIncludesCompiledProfilesAndCurrentCompanyAssignments(): void
+    {
+        $controller = file_get_contents(APPPATH . 'Controllers/SuperAdmin.php');
+        self::assertIsString($controller);
+
+        self::assertStringContainsString("service('frontendProfileCatalog')->all()", $controller);
+        self::assertStringContainsString("service('listCompanyPresentationProfiles')->execute(", $controller);
+        self::assertStringContainsString("\$data['frontendProfiles']", $controller);
+        self::assertStringContainsString("\$data['companyPresentationProfiles']", $controller);
+    }
 }
