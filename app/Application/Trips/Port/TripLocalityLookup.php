@@ -11,4 +11,7 @@ interface TripLocalityLookup
 
     /** @return array{id:int,name:string,label:string}|null */
     public function find(int $localityId): ?array;
+
+    /** @return list<array{id:int,label:string}> */
+    public function provinces(): array;
 }

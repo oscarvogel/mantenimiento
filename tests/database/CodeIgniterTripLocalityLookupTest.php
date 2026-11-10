@@ -74,4 +74,14 @@ final class CodeIgniterTripLocalityLookupTest extends CIUnitTestCase
         self::assertNotNull($locality);
         self::assertSame('San Juan · Capital · Argentina', $locality['label']);
     }
+
+    public function testProvincesReturnsActiveProvincesWithCountry(): void
+    {
+        $provinces = $this->lookup->provinces();
+
+        self::assertSame([
+            ['id' => 10, 'label' => 'San Juan · Argentina'],
+            ['id' => 20, 'label' => 'São Paulo · Brasil'],
+        ], $provinces);
+    }
 }

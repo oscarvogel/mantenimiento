@@ -19,6 +19,7 @@ use App\Application\Trips\UpdateTripExpenseCommand;
 use App\Application\Trips\UpdateTripFuelLoadCommand;
 use App\Application\Trips\UpdateTripDriverPercentageCommand;
 use App\Application\Trips\UpdateTripOtherEarningCommand;
+use App\Domain\Geography\InvalidLocalityInput;
 use App\Infrastructure\Identity\SessionActorContext;
 use CodeIgniter\HTTP\RedirectResponse;
 use CodeIgniter\HTTP\ResponseInterface;
@@ -73,6 +74,41 @@ final class OperationalTrips extends BaseController
                 log_message('error', 'No se pudieron buscar localidades para viajes: {message}', ['message' => $exception->getMessage()]);
             }
             return $this->response->setStatusCode($status)->setJSON(['message' => $exception instanceof DomainException ? $exception->getMessage() : 'No se pudieron buscar localidades.']);
+        }
+    }
+
+    public function provinces(): ResponseInterface
+    {
+        try {
+            return $this->response->setJSON([
+                'provinces' => service('listTripLocalityProvinces')->execute($this->actor()),
+            ]);
+        } catch (Throwable $exception) {
+            return $this->localityFailure($exception, 'No se pudieron cargar las provincias.');
+        }
+    }
+
+    public function storeLocality(): ResponseInterface
+    {
+        try {
+            $provinceId = filter_var(
+                $this->request->getPost('provincia_id'),
+                FILTER_VALIDATE_INT,
+                ['options' => ['min_range' => 1]],
+            );
+            if ($provinceId === false) {
+                throw new InvalidLocalityInput('Elegí la provincia de la localidad.');
+            }
+
+            return $this->response->setJSON([
+                'locality' => service('createTripLocality')->execute(
+                    $this->actor(),
+                    (int) $provinceId,
+                    (string) $this->request->getPost('nombre'),
+                ),
+            ]);
+        } catch (Throwable $exception) {
+            return $this->localityFailure($exception, 'No se pudo dar de alta la localidad.');
         }
     }
 
@@ -587,6 +623,22 @@ final class OperationalTrips extends BaseController
         }
 
         return $actor;
+    }
+
+    private function localityFailure(Throwable $exception, string $fallback): ResponseInterface
+    {
+        if ($exception instanceof InvalidLocalityInput) {
+            return $this->response->setStatusCode(422)->setJSON(['message' => $exception->getMessage()]);
+        }
+        if ($exception instanceof DomainException) {
+            return $this->response->setStatusCode(403)->setJSON(['message' => $exception->getMessage()]);
+        }
+
+        log_message('error', 'Falló un alta rápida de localidad de viajes: {message}', ['message' => $exception->getMessage()]);
+
+        return $this->response->setStatusCode(500)->setJSON([
+            'message' => ENVIRONMENT === 'development' ? $fallback . ' ' . $exception->getMessage() : $fallback,
+        ]);
     }
 
     private function failure(Throwable $exception, string $fallback, string $location = '/viajes/operativos'): RedirectResponse

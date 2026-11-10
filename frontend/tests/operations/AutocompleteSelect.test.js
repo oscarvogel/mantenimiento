@@ -48,6 +48,24 @@ describe('AutocompleteSelect', () => {
     wrapper.unmount()
   })
 
+  it('ofrece dar de alta el texto buscado cuando no hay resultados', async () => {
+    const wrapper = mount(AutocompleteSelect, {
+      props: { modelValue: null, options: [], name: 'localidad_origen_id', placeholder: 'Buscá la localidad', allowCreate: true },
+    })
+    const input = wrapper.get('input[role="combobox"]')
+
+    await input.trigger('focus')
+    await input.setValue('capitan leonidas')
+
+    const createButton = wrapper.findAll('button').find((button) => button.text().includes('Dar de alta'))
+    expect(createButton).toBeTruthy()
+    expect(createButton.text()).toContain('capitan leonidas')
+
+    await createButton.trigger('mousedown')
+    expect(wrapper.emitted('create')[0][0]).toBe('capitan leonidas')
+    wrapper.unmount()
+  })
+
   it('permite seleccionar varios choferes y quitarlos', async () => {
     const wrapper = mount(AutocompleteSelect, {
       props: { modelValue: [], options, name: 'choferes[]', multiple: true },

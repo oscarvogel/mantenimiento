@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { CheckIcon, ChevronUpDownIcon, XMarkIcon } from '@heroicons/vue/20/solid'
+import { CheckIcon, ChevronUpDownIcon, PlusIcon, XMarkIcon } from '@heroicons/vue/20/solid'
 import { fieldClass } from '../helpers.js'
 
 const props = defineProps({
@@ -14,8 +14,9 @@ const props = defineProps({
   clearable: { type: Boolean, default: true },
   emptyLabel: { type: String, default: 'Sin resultados' },
   searchUrl: { type: String, default: '' },
+  allowCreate: { type: Boolean, default: false },
 })
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'create'])
 
 const root = ref(null)
 const input = ref(null)
@@ -111,6 +112,12 @@ const select = (option) => {
     closeList()
   }
   input.value?.focus()
+}
+const createFromQuery = () => {
+  const term = query.value.trim()
+  if (term.length < 2) return
+  emit('create', term)
+  closeList()
 }
 const remove = (value) => {
   if (props.multiple) {
@@ -248,6 +255,16 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onClickOutside))
             <span v-if="option.hint" class="block truncate text-xs text-ink-muted">{{ option.hint }}</span>
           </span>
           <CheckIcon v-if="selectedValues.some((value) => same(value, option.value))" class="size-4 shrink-0 text-primary" aria-hidden="true" />
+        </button>
+      </li>
+      <li v-if="allowCreate && !searching && query.trim().length >= 2" class="border-t border-border-subtle">
+        <button
+          type="button"
+          class="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm font-semibold text-primary hover:bg-primary-subtle"
+          @mousedown.prevent="createFromQuery"
+        >
+          <PlusIcon class="size-4 shrink-0" aria-hidden="true" />
+          <span class="min-w-0 truncate">Dar de alta «{{ query.trim() }}»</span>
         </button>
       </li>
     </ul>

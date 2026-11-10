@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { nextTick } from 'vue'
 import TripOperationsCreatePage from '../../src/pages/operations/TripOperationsCreatePage.vue'
 import AutocompleteSelect from '../../src/pages/operations/components/AutocompleteSelect.vue'
 
@@ -23,6 +24,10 @@ const data = {
   ],
   currencies: [{ code: 'ARS', label: 'Peso argentino' }],
 }
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
 
 describe('alta de viaje operativo', () => {
   it('arma el formulario con un tramo, cliente, dos fletes y la protección CSRF', async () => {
@@ -164,6 +169,51 @@ describe('alta de viaje operativo', () => {
     expect(wrapper.text()).toContain('AC222AC · A01')
     expect(wrapper.text()).toContain('EE333FF · A02')
     expect(wrapper.text()).toContain('composición completa')
+    wrapper.unmount()
+  })
+
+  it('permite dar de alta una localidad desde el tramo y la selecciona', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ provinces: [{ id: 10, label: 'Misiones · Argentina' }] }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ locality: { id: 99, name: 'Capitán Leonidas', label: 'Capitán Leonidas · Misiones · Argentina', created: true } }) })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const wrapper = mount(TripOperationsCreatePage, {
+      props: {
+        data: {
+          ...data,
+          links: { ...data.links, localities: '/mantenimiento/viajes/operativos/localidades', provinces: '/mantenimiento/viajes/operativos/localidades/provincias' },
+        },
+      },
+      global: { stubs: { teleport: true } },
+    })
+
+    const origin = wrapper.findAllComponents(AutocompleteSelect).find((component) => component.props('name') === 'tramos[0][localidad_origen_id]')
+    origin.vm.$emit('create', 'Capitán Leonidas')
+    await nextTick()
+    await nextTick()
+
+    const nameInput = wrapper.get('input[name="nombre"]')
+    expect(nameInput.element.value).toBe('Capitán Leonidas')
+    await vi.waitFor(() => {
+      expect(wrapper.find('select[name="provincia_id"] option[value="10"]').exists()).toBe(true)
+    })
+    await wrapper.get('select[name="provincia_id"]').setValue('10')
+
+    const modalForm = wrapper.findAll('form').find((form) => form.text().includes('Guardar localidad'))
+    await modalForm.trigger('submit')
+    await vi.waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(2)
+    })
+    await nextTick()
+
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/mantenimiento/viajes/operativos/localidades',
+      expect.objectContaining({ method: 'POST' }),
+    )
+    expect(wrapper.get('input[name="tramos[0][localidad_origen_id]"]').attributes('value')).toBe('99')
+    const selectedOrigin = wrapper.findAllComponents(AutocompleteSelect).find((component) => component.props('name') === 'tramos[0][localidad_origen_id]')
+    expect(selectedOrigin.get('input[role="combobox"]').element.value).toBe('Capitán Leonidas · Misiones · Argentina')
     wrapper.unmount()
   })
 

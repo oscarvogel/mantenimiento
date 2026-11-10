@@ -480,6 +480,8 @@ final class CreateTripLocalityFake implements TripLocalityLookup
     {
         return ['id' => $localityId, 'name' => match ($localityId) { 1 => 'Rosario', 2 => 'Córdoba', 3 => 'Zárate', default => 'Localidad ' . $localityId }, 'label' => 'Localidad QA'];
     }
+
+    public function provinces(): array { return []; }
 }
 
 final class CreateTripUnitOfWorkFake implements TripsUnitOfWork
