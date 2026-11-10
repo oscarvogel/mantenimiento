@@ -84,3 +84,31 @@ raíz. No hubo migraciones.
 - Validación visual escritorio/móvil del buscador y del modal.
 - Desplegar en otro release los commits de `main` posteriores a `d9b66f1b`
   (diario de bordo y ajuste de cards), que no forman parte de este cambio.
+
+## 6. Actualización: provincia en autocompletado
+
+**Fecha:** 10/11/2026
+**Fix en `main`:** `20db1486`
+**Release desplegado:** `c1893641`
+**Tag del release:** `deploy/localidad-autocomplete-provincia-20261110`
+
+Se reemplazó el `<select>` de provincia del modal por el mismo componente de
+autocompletado que usa el sistema. El modal conserva nombre y provincia como
+datos básicos; el país sigue derivándose de la provincia.
+
+Este release se armó desde `34afbb1f` (producción + feature anterior) y solo
+publicó assets:
+
+- 4 bundles JS nuevos.
+- `assets/dashboard/.vite/manifest.json` al final.
+
+No se volvieron a subir archivos PHP porque no cambiaron. Backup del manifest
+anterior en `.deploy/locality-quick-create/backup-v2/`.
+
+Verificación: hashes remotos de los 4 bundles y del manifest coinciden con el
+release; los 30 assets referenciados por el manifest responden 200; `/login`
+200, `.env`/`app/`/`vendor/`/`writable/` 403, `migrate.php` 404 y el endpoint
+de provincias responde sin error 500.
+
+Pendiente: validación autenticada en producción del autocompletado de provincia
+y de la selección final de la localidad creada.
