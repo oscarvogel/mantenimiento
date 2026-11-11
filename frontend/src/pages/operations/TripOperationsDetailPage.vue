@@ -795,7 +795,7 @@ const facts = computed(() => {
               <AutocompleteSelect v-model="tripDraft.trailerIds" name="acoplado_id[]" :options="editTrailerOptions" placeholder="Sin semirremolque" multiple />
             </label>
             <label class="block">
-              <span class="mb-1.5 block text-sm font-semibold text-ink">Fecha real de salida</span>
+              <span class="mb-1.5 block text-sm font-semibold text-ink">{{ trip.estado === 'PLANIFICADO' ? 'Fecha de salida' : 'Fecha real de salida' }}</span>
               <input v-model="tripDraft.departure" type="date" name="fecha_salida_real" required :class="fieldClass" />
             </label>
             <label class="block">
@@ -803,7 +803,7 @@ const facts = computed(() => {
               <input v-model="tripDraft.returnAt" type="date" name="fecha_regreso_estimado" :class="fieldClass" />
             </label>
             <label class="block">
-              <span class="mb-1.5 block text-sm font-semibold text-ink">Odómetro real de salida (km)</span>
+              <span class="mb-1.5 block text-sm font-semibold text-ink">Odómetro de salida (km)</span>
               <input v-model="tripDraft.kmSalida" type="number" min="0" step="1" name="km_salida" required :class="fieldClass" />
             </label>
             <label class="block">
