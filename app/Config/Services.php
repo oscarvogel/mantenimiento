@@ -1274,6 +1274,41 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
         );
     }
 
+    public static function updateTrip(bool $getShared = true): \App\Application\Trips\UpdateTrip
+    {
+        if ($getShared) {
+            return static::getSharedInstance('updateTrip');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\Trips\UpdateTrip(
+            new \App\Infrastructure\Trips\CodeIgniterOperationalTripRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripFleetLookup(
+                new \App\Infrastructure\Assets\CodeIgniterEquipmentFleetLookup($db),
+                new \App\Infrastructure\Employees\CodeIgniterEmployeeDirectoryLookup($db),
+            ),
+            new \App\Infrastructure\Trips\CodeIgniterTripsUnitOfWork($db),
+        );
+    }
+
+    public static function updateTripLeg(bool $getShared = true): \App\Application\Trips\UpdateTripLeg
+    {
+        if ($getShared) {
+            return static::getSharedInstance('updateTripLeg');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\Trips\UpdateTripLeg(
+            new \App\Infrastructure\Trips\CodeIgniterOperationalTripRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripLegRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripDirectoryLookup($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripLocalityLookup($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripsUnitOfWork($db),
+        );
+    }
+
     public static function finishTrip(bool $getShared = true): \App\Application\Trips\FinishTrip
     {
         if ($getShared) {
@@ -1284,6 +1319,7 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
 
         return new \App\Application\Trips\FinishTrip(
             new \App\Infrastructure\Trips\CodeIgniterOperationalTripRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripLegRepository($db),
             new \App\Infrastructure\Trips\CodeIgniterTripReadingRecorder(static::registerReading(false)),
             new \App\Infrastructure\Trips\CodeIgniterTripsUnitOfWork($db),
             new \App\Infrastructure\Trips\SystemTripClock(),

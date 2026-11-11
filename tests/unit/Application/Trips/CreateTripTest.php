@@ -173,6 +173,25 @@ final class CreateTripTest extends TestCase
         self::assertSame('Salida temprano.', $command->notes);
     }
 
+    public function testElComandoPermiteTramosSinFletes(): void
+    {
+        $command = CreateTripCommand::fromInput($this->input([
+            'tramos' => [[
+                'codigo_origen_destino' => '947',
+                'origen' => 'Rosario',
+                'destino' => 'Córdoba',
+                'localidad_origen_id' => '1',
+                'localidad_destino_id' => '2',
+                'cliente_id' => '324',
+                'flete_facturacion' => '',
+                'flete_liquidacion' => '',
+            ]],
+        ]));
+
+        self::assertNull($command->legs[0]->invoiceAmount);
+        self::assertNull($command->legs[0]->liquidationAmount);
+    }
+
     public function testElComandoAceptaSoloLaFechaYNormalizaAlInicioDelDia(): void
     {
         $command = CreateTripCommand::fromInput($this->input([
@@ -439,6 +458,10 @@ final class CreateTripRepositoryFake implements OperationalTripRepository
     {
     }
 
+    public function updateDetails(Trip $trip, int $actorUserId): void
+    {
+    }
+
     public function updateDriverPercentage(int $companyId, int $tripId, int $employeeId, float $percentage, int $actorUserId): void
     {
     }
@@ -470,6 +493,15 @@ final class CreateTripLegsFake implements TripLegRepository
     }
 
     public function belongsToTrip(int $companyId, int $tripId, int $legId): bool { return true; }
+
+    public function update(int $companyId, int $branchId, int $tripId, int $legId, \App\Domain\Trips\TripLeg $leg, int $actorUserId): void
+    {
+    }
+
+    public function ordersWithMissingAmounts(int $companyId, int $tripId): array
+    {
+        return [];
+    }
 }
 
 final class CreateTripLocalityFake implements TripLocalityLookup

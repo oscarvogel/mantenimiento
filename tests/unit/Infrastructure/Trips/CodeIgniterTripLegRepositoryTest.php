@@ -62,6 +62,28 @@ final class CodeIgniterTripLegRepositoryTest extends TestCase
         self::assertFalse($repository->belongsToTrip(5, 56, $first));
     }
 
+    public function testPersistsMissingAmountsAndReportsLegsThatStillNeedThem(): void
+    {
+        $repository = new CodeIgniterTripLegRepository($this->database);
+        $first = $repository->add(5, 10, 55, new TripLeg('Rosario', 'Córdoba', null, null), 1);
+        $second = $repository->add(5, 10, 55, new TripLeg('Córdoba', 'Rosario', 600_000, 500_000), 1);
+
+        $rows = $this->database->table('viaje_operativo_tramos')->orderBy('orden')->get()->getResultArray();
+        self::assertNull($rows[0]['flete_facturacion']);
+        self::assertNull($rows[0]['flete_liquidacion']);
+        self::assertNull($rows[0]['flete_facturacion_ars']);
+        self::assertNull($rows[0]['flete_liquidacion_ars']);
+        self::assertSame([1], $repository->ordersWithMissingAmounts(5, 55));
+
+        $repository->update(5, 10, 55, $first, new TripLeg('Rosario', 'Córdoba', 1_000_000, 800_000), 1);
+
+        $updated = $this->database->table('viaje_operativo_tramos')->where('id', $first)->get()->getRowArray();
+        self::assertEquals(1_000_000.0, (float) $updated['flete_facturacion']);
+        self::assertEquals(800_000.0, (float) $updated['flete_liquidacion']);
+        self::assertSame([], $repository->ordersWithMissingAmounts(5, 55));
+        self::assertTrue($repository->belongsToTrip(5, 55, $second));
+    }
+
     private function trip(): Trip
     {
         return Trip::reconstitute(

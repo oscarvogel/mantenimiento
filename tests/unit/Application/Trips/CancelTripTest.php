@@ -115,6 +115,10 @@ final class CancelTripRepositoryFake implements OperationalTripRepository
     {
     }
 
+    public function updateDetails(Trip $trip, int $actorUserId): void
+    {
+    }
+
     public function conflicts(
         int $companyId,
         array $equipmentIds,

@@ -110,6 +110,35 @@ final class CodeIgniterOperationalTripRepositoryTest extends TestCase
         self::assertSame(145_350, $reloaded->departureKm());
     }
 
+    public function testUpdateDetailsReplacesAssignmentsAndDates(): void
+    {
+        $repository = new CodeIgniterOperationalTripRepository($this->database);
+        $id = $repository->add($this->trip(1), 1);
+        $trip = $repository->findForUpdate(5, [10], $id);
+        self::assertNotNull($trip);
+
+        $assignments = [
+            new TripAssignment(TripAssignment::TRACTOR, 8, new DateTimeImmutable('2026-10-22 00:00:00')),
+            new TripAssignment(TripAssignment::CHOFER, 12, new DateTimeImmutable('2026-10-22 00:00:00'), null, null, 15.0),
+        ];
+        $trip->updateOpenDetails(
+            new DateTimeImmutable('2026-10-22 00:00:00'),
+            null,
+            146_000,
+            $assignments,
+            'Salida corregida',
+        );
+        $repository->updateDetails($trip, 2);
+
+        $reloaded = $repository->findForUpdate(5, [10], $id);
+        self::assertNotNull($reloaded);
+        self::assertSame(8, $reloaded->truckId());
+        self::assertSame([12], $reloaded->driverIds());
+        self::assertSame(146_000, $reloaded->departureKm());
+        self::assertSame('Salida corregida', $reloaded->notes());
+        self::assertSame('2026-10-22 00:00:00', $reloaded->plannedDeparture()->format('Y-m-d H:i:s'));
+    }
+
     public function testFindForUpdateRespectsBranchScope(): void
     {
         $repository = new CodeIgniterOperationalTripRepository($this->database);

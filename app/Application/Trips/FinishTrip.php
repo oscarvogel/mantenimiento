@@ -7,6 +7,7 @@ namespace App\Application\Trips;
 use App\Application\Identity\ActorContext;
 use App\Application\Trips\Port\OperationalTripRepository;
 use App\Application\Trips\Port\TripClock;
+use App\Application\Trips\Port\TripLegRepository;
 use App\Application\Trips\Port\TripReadingRecorder;
 use App\Application\Trips\Port\TripsUnitOfWork;
 use DateTimeImmutable;
@@ -16,6 +17,7 @@ final class FinishTrip
 {
     public function __construct(
         private readonly OperationalTripRepository $trips,
+        private readonly TripLegRepository $legs,
         private readonly TripReadingRecorder $readings,
         private readonly TripsUnitOfWork $unitOfWork,
         private readonly TripClock $clock,
@@ -37,6 +39,14 @@ final class FinishTrip
             $trip = $this->trips->findForUpdate($companyId, $branchIds, $tripId);
             if ($trip === null) {
                 throw new DomainException('El viaje solicitado no existe o no está autorizado.');
+            }
+
+            $missingAmounts = $this->legs->ordersWithMissingAmounts($trip->companyId(), $tripId);
+            if ($missingAmounts !== []) {
+                throw new DomainException(
+                    'Completá el flete de facturación y el de liquidación de todos los tramos antes de cerrar el viaje. '
+                    . 'Faltan los tramos: ' . implode(', ', $missingAmounts) . '.',
+                );
             }
 
             $returnAt = ($at ?? $this->clock->now())->setTime(0, 0);

@@ -136,6 +136,37 @@ final class CodeIgniterOperationalTripRepository implements OperationalTripRepos
             ]);
     }
 
+    public function updateDetails(Trip $trip, int $actorUserId): void
+    {
+        $tripId = $trip->id();
+        if ($tripId === null) {
+            throw new RuntimeException('No se puede actualizar un viaje sin identidad.');
+        }
+
+        $now = date('Y-m-d H:i:s');
+        $updated = $this->database->table('viajes_operativos')
+            ->where('empresa_id', $trip->companyId())
+            ->where('id', $tripId)
+            ->update([
+                'fecha_salida_planificada' => $trip->plannedDeparture()->format('Y-m-d H:i:s'),
+                'fecha_regreso_planificada' => $trip->plannedReturn()?->format('Y-m-d H:i:s'),
+                'fecha_salida_real' => $trip->actualDeparture()?->format('Y-m-d H:i:s'),
+                'km_salida' => $trip->departureKm(),
+                'observaciones' => $trip->notes() !== '' ? $trip->notes() : null,
+                'updated_at' => $now,
+                'updated_by' => $actorUserId,
+            ]);
+        if (! $updated) {
+            throw new RuntimeException('No se pudo actualizar el viaje.');
+        }
+
+        $this->database->table('viaje_operativo_asignaciones')
+            ->where('empresa_id', $trip->companyId())
+            ->where('viaje_id', $tripId)
+            ->delete();
+        $this->insertAssignments($tripId, $trip, $now);
+    }
+
     public function updateDriverPercentage(int $companyId, int $tripId, int $employeeId, float $percentage, int $actorUserId): void
     {
         $this->database->table('viaje_operativo_asignaciones')

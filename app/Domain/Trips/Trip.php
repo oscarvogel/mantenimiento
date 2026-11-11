@@ -32,8 +32,8 @@ final class Trip
         private readonly int $branchId,
         private readonly int $number,
         private string $status,
-        private readonly DateTimeImmutable $plannedDeparture,
-        private readonly ?DateTimeImmutable $plannedReturn,
+        private DateTimeImmutable $plannedDeparture,
+        private ?DateTimeImmutable $plannedReturn,
         private ?DateTimeImmutable $actualDeparture,
         private ?DateTimeImmutable $actualReturn,
         private ?int $departureKm,
@@ -185,6 +185,42 @@ final class Trip
         $this->status = self::EN_CURSO;
         $this->actualDeparture = $at;
         $this->departureKm = $departureKm;
+    }
+
+    /**
+     * Actualiza la ficha del viaje mientras todavía no está cerrado.
+     *
+     * @param list<TripAssignment> $assignments
+     */
+    public function updateOpenDetails(
+        DateTimeImmutable $departure,
+        ?DateTimeImmutable $estimatedReturn,
+        int $departureKm,
+        array $assignments,
+        string $notes,
+    ): void {
+        if (! in_array($this->status, [self::PLANIFICADO, self::EN_CURSO], true)) {
+            throw new DomainException('Solo se puede editar un viaje planificado o en curso.');
+        }
+        if ($departureKm < 0) {
+            throw new DomainException('El odómetro de salida no puede ser negativo.');
+        }
+        $departure = $departure->setTime(0, 0);
+        $estimatedReturn = $estimatedReturn?->setTime(0, 0);
+        if ($estimatedReturn !== null && $estimatedReturn->format('Y-m-d') < $departure->format('Y-m-d')) {
+            throw new DomainException('El regreso estimado no puede ser anterior a la salida.');
+        }
+
+        $this->assertAssignments($assignments);
+
+        $this->plannedDeparture = $departure;
+        $this->plannedReturn = $estimatedReturn;
+        $this->departureKm = $departureKm;
+        if ($this->status === self::EN_CURSO) {
+            $this->actualDeparture = $departure;
+        }
+        $this->assignments = array_values($assignments);
+        $this->notes = trim($notes);
     }
 
     public function finish(DateTimeImmutable $at, int $returnKm): void

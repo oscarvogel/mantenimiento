@@ -507,4 +507,93 @@ describe('detalle de viaje operativo', () => {
     expect(wrapper.text()).toContain('En curso')
     wrapper.unmount()
   })
+
+  it('permite editar el viaje y un tramo mientras está abierto', async () => {
+    const wrapper = mount(TripOperationsDetailPage, {
+      props: {
+        data: {
+          ...data,
+          canStart: false,
+          canCancel: false,
+          canEdit: true,
+          canAddLegs: true,
+          canRegisterCosts: true,
+          links: { ...data.links, update: '/mantenimiento/viajes/operativos/42' },
+          trip: { ...data.trip, estado: 'EN_CURSO', estado_label: 'En curso', fecha_salida_real: '2026-10-20 00:00:00', km_salida: 145300 },
+          assignments: [
+            { rol: 'TRACTOR', rol_label: 'Tractor / camión', label: 'AA111AA · T01', equipo_id: 7, desde: '2026-10-20 00:00:00', hasta: null },
+            { rol: 'ACOPLADO', rol_label: 'Acoplado', label: 'AC222AC · A01', equipo_id: 9, desde: '2026-10-20 00:00:00', hasta: null },
+            { rol: 'CHOFER', rol_label: 'Chofer', label: 'Pérez, Juan', empleado_id: 11, porcentaje_liquidacion: 14, desde: '2026-10-20 00:00:00', hasta: null },
+          ],
+          legs: [{
+            id: 9, orden: 1, cliente: 'Cliente Sur', cliente_id: 324, localidad_origen_id: 1, localidad_destino_id: 2,
+            origen: 'Rosario', destino: 'Córdoba', km: 320, toneladas: 30, moneda: 'ARS', cotizacion: 1,
+            flete_facturacion: 1000000, flete_facturacion_ars: 1000000,
+            flete_liquidacion: 800000, flete_liquidacion_ars: 800000,
+            commission_ars: 112000, assigned_costs_ars: 250000, margin_ars: 638000,
+          }],
+          totals: {
+            has_legs: true, invoice_ars: 1000000, liquidation_ars: 800000,
+            invoice_complete: true, liquidation_complete: true, legs_without_amounts: [],
+            commission_ars: 112000, driver_percentage: 14, drivers_count: 1, multiple_drivers: false,
+            fuel_amount_ars: 0, expense_amount_ars: 0,
+          },
+          editOptions: {
+            tractors: [{ id: 7, label: 'AA111AA · T01', type: 'Camión', lastKm: 145300 }],
+            trailers: [{ id: 9, label: 'AC222AC · A01', type: 'Acoplado' }],
+            drivers: [{ id: 11, label: 'Pérez, Juan', employeeNumber: '100', assignedEquipmentLabel: 'AA111AA · T01' }],
+          },
+        },
+      },
+    })
+
+    const editTrip = wrapper.findAll('button').find((button) => button.text().includes('Editar viaje'))
+    await editTrip.trigger('click')
+    await nextTick()
+    const tripForm = wrapper.get('form[action="/mantenimiento/viajes/operativos/42"]')
+    expect(tripForm.get('input[name="km_salida"]').element.value).toBe('145300')
+    expect(tripForm.get('input[name="fecha_salida_real"]').element.value).toBe('2026-10-20')
+    expect(tripForm.get('input[name="choferes_porcentajes[11]"]').element.value).toBe('14')
+
+    const editLeg = wrapper.findAll('button').find((button) => button.text() === 'Editar')
+    await editLeg.trigger('click')
+    await nextTick()
+    const legForm = wrapper.get('form[action="/mantenimiento/viajes/operativos/42/tramos/9"]')
+    expect(legForm.get('input[name="flete_facturacion"]').element.value).toBe('1000000')
+    expect(legForm.get('input[name="flete_liquidacion"]').element.value).toBe('800000')
+    expect(legForm.get('input[name="flete_facturacion"]').attributes('required')).toBeUndefined()
+    wrapper.unmount()
+  })
+
+  it('bloquea el cierre si falta el flete de algún tramo', () => {
+    const wrapper = mount(TripOperationsDetailPage, {
+      props: {
+        data: {
+          ...data,
+          canStart: false,
+          canCancel: false,
+          canClose: true,
+          canRegisterCosts: false,
+          trip: { ...data.trip, estado: 'EN_CURSO', estado_label: 'En curso', km_salida: 145300 },
+          legs: [{
+            id: 9, orden: 1, cliente: null, origen: 'Rosario', destino: 'Córdoba', km: 320,
+            flete_facturacion_ars: null, flete_liquidacion_ars: null,
+            commission_ars: null, assigned_costs_ars: 0, margin_ars: null,
+          }],
+          totals: {
+            has_legs: true, invoice_ars: null, liquidation_ars: null,
+            invoice_complete: false, liquidation_complete: false, legs_without_amounts: [1],
+            commission_ars: null, driver_percentage: 14, drivers_count: 1, multiple_drivers: false,
+            fuel_amount_ars: 0, expense_amount_ars: 0,
+          },
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain('Completá el flete de facturación y el de liquidación de los tramos 1')
+    const closeButton = wrapper.findAll('button').find((button) => button.text().includes('Cerrar y generar lectura'))
+    expect(closeButton.attributes('disabled')).toBeDefined()
+    expect(wrapper.text()).toContain('Sin datos')
+    wrapper.unmount()
+  })
 })

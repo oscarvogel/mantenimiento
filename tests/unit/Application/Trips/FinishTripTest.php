@@ -6,10 +6,12 @@ use App\Application\Identity\ActorContext;
 use App\Application\Trips\FinishTrip;
 use App\Application\Trips\Port\OperationalTripRepository;
 use App\Application\Trips\Port\TripClock;
+use App\Application\Trips\Port\TripLegRepository;
 use App\Application\Trips\Port\TripReadingRecorder;
 use App\Application\Trips\Port\TripsUnitOfWork;
 use App\Domain\Trips\Trip;
 use App\Domain\Trips\TripAssignment;
+use App\Domain\Trips\TripLeg;
 use App\Domain\Trips\TripStop;
 use PHPUnit\Framework\TestCase;
 
@@ -19,7 +21,7 @@ final class FinishTripTest extends TestCase
     {
         $trips = new FinishTripRepositoryFake();
         $readings = new FinishTripReadingFake();
-        $handler = new FinishTrip($trips, $readings, new FinishTripUnitOfWorkFake(), new FinishTripClockFake());
+        $handler = new FinishTrip($trips, new FinishTripLegsFake(), $readings, new FinishTripUnitOfWorkFake(), new FinishTripClockFake());
 
         $at = new DateTimeImmutable('2026-10-21 18:30:00');
         $handler->execute($this->actor(['viajes.operar']), 55, $at, 145_700);
@@ -36,7 +38,7 @@ final class FinishTripTest extends TestCase
     {
         $trips = new FinishTripRepositoryFake();
         $readings = new FinishTripReadingFake();
-        $handler = new FinishTrip($trips, $readings, new FinishTripUnitOfWorkFake(), new FinishTripClockFake());
+        $handler = new FinishTrip($trips, new FinishTripLegsFake(), $readings, new FinishTripUnitOfWorkFake(), new FinishTripClockFake());
 
         $handler->execute($this->actor(['viajes.operar']), 55, null, 145_700);
 
@@ -47,10 +49,22 @@ final class FinishTripTest extends TestCase
     public function testRejectsPlannedTrip(): void
     {
         $trips = new FinishTripRepositoryFake(Trip::PLANIFICADO);
-        $handler = new FinishTrip($trips, new FinishTripReadingFake(), new FinishTripUnitOfWorkFake(), new FinishTripClockFake());
+        $handler = new FinishTrip($trips, new FinishTripLegsFake(), new FinishTripReadingFake(), new FinishTripUnitOfWorkFake(), new FinishTripClockFake());
 
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('en curso');
+
+        $handler->execute($this->actor(['viajes.operar']), 55, null, 145_700);
+    }
+
+    public function testRejectsClosingWhenAnyLegStillHasMissingAmounts(): void
+    {
+        $trips = new FinishTripRepositoryFake();
+        $legs = new FinishTripLegsFake([1, 3]);
+        $handler = new FinishTrip($trips, $legs, new FinishTripReadingFake(), new FinishTripUnitOfWorkFake(), new FinishTripClockFake());
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('Faltan los tramos: 1, 3');
 
         $handler->execute($this->actor(['viajes.operar']), 55, null, 145_700);
     }
@@ -96,8 +110,22 @@ final class FinishTripRepositoryFake implements OperationalTripRepository
     public function add(Trip $trip, int $actorUserId): int { return 1; }
     public function findForUpdate(int $companyId, ?array $branchIds, int $tripId): ?Trip { return $this->trip; }
     public function save(Trip $trip, int $actorUserId): void {}
+    public function updateDetails(Trip $trip, int $actorUserId): void {}
     public function updateDriverPercentage(int $companyId, int $tripId, int $employeeId, float $percentage, int $actorUserId): void {}
     public function conflicts(int $companyId, array $equipmentIds, array $employeeIds, DateTimeImmutable $from, ?DateTimeImmutable $to, ?int $excludeTripId = null): array { return []; }
+}
+
+final class FinishTripLegsFake implements TripLegRepository
+{
+    /** @param list<int> $missingOrders */
+    public function __construct(private array $missingOrders = [])
+    {
+    }
+
+    public function add(int $companyId, int $branchId, int $tripId, TripLeg $leg, int $actorUserId): int { return 1; }
+    public function update(int $companyId, int $branchId, int $tripId, int $legId, TripLeg $leg, int $actorUserId): void {}
+    public function belongsToTrip(int $companyId, int $tripId, int $legId): bool { return true; }
+    public function ordersWithMissingAmounts(int $companyId, int $tripId): array { return $this->missingOrders; }
 }
 
 final class FinishTripReadingFake implements TripReadingRecorder

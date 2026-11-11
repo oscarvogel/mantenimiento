@@ -255,6 +255,7 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
                     default => 'Chofer',
                 },
                 'label' => $label,
+                'equipo_id' => $row['equipo_id'] === null ? null : (int) $row['equipo_id'],
                 'empleado_id' => $row['empleado_id'] === null ? null : (int) $row['empleado_id'],
                 'desde' => $row['desde'],
                 'hasta' => $row['hasta'],
@@ -314,7 +315,7 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
     private function legDetails(int $companyId, int $tripId): array
     {
         $rows = $this->db->table('viaje_operativo_tramos t')
-            ->select('t.id, t.orden, t.codigo_origen_destino, t.cliente_id, t.origen, t.destino, t.km, t.toneladas, t.moneda, t.cotizacion, t.flete_facturacion, t.flete_facturacion_ars, t.flete_liquidacion, t.flete_liquidacion_ars, t.observaciones, c.codigo_origen AS cliente_codigo, c.nombre AS cliente')
+            ->select('t.id, t.orden, t.codigo_origen_destino, t.localidad_origen_id, t.localidad_destino_id, t.cliente_id, t.origen, t.destino, t.km, t.toneladas, t.moneda, t.cotizacion, t.flete_facturacion, t.flete_facturacion_ars, t.flete_liquidacion, t.flete_liquidacion_ars, t.observaciones, c.codigo_origen AS cliente_codigo, c.nombre AS cliente')
             ->join('clientes c', 'c.id = t.cliente_id AND c.empresa_id = t.empresa_id', 'left')
             ->where('t.empresa_id', $companyId)
             ->where('t.viaje_id', $tripId)
@@ -325,6 +326,8 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
             'id' => (int) $row['id'],
             'orden' => (int) $row['orden'],
             'codigo_origen_destino' => $row['codigo_origen_destino'] === null ? null : (int) $row['codigo_origen_destino'],
+            'localidad_origen_id' => $row['localidad_origen_id'] === null ? null : (int) $row['localidad_origen_id'],
+            'localidad_destino_id' => $row['localidad_destino_id'] === null ? null : (int) $row['localidad_destino_id'],
             'cliente_id' => $row['cliente_id'] === null ? null : (int) $row['cliente_id'],
             'cliente_codigo' => $row['cliente_codigo'] === null ? null : (string) $row['cliente_codigo'],
             'cliente' => $row['cliente'],
@@ -334,10 +337,10 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
             'toneladas' => $row['toneladas'] === null ? null : (float) $row['toneladas'],
             'moneda' => (string) $row['moneda'],
             'cotizacion' => (float) $row['cotizacion'],
-            'flete_facturacion' => (float) $row['flete_facturacion'],
-            'flete_facturacion_ars' => (float) $row['flete_facturacion_ars'],
-            'flete_liquidacion' => (float) $row['flete_liquidacion'],
-            'flete_liquidacion_ars' => (float) $row['flete_liquidacion_ars'],
+            'flete_facturacion' => $row['flete_facturacion'] === null ? null : (float) $row['flete_facturacion'],
+            'flete_facturacion_ars' => $row['flete_facturacion_ars'] === null ? null : (float) $row['flete_facturacion_ars'],
+            'flete_liquidacion' => $row['flete_liquidacion'] === null ? null : (float) $row['flete_liquidacion'],
+            'flete_liquidacion_ars' => $row['flete_liquidacion_ars'] === null ? null : (float) $row['flete_liquidacion_ars'],
             'observaciones' => $row['observaciones'],
         ], $rows);
     }

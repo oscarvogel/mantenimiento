@@ -19,6 +19,8 @@ interface OperationalTripRepository
 
     public function save(Trip $trip, int $actorUserId): void;
 
+    public function updateDetails(Trip $trip, int $actorUserId): void;
+
     public function updateDriverPercentage(int $companyId, int $tripId, int $employeeId, float $percentage, int $actorUserId): void;
 
     /**

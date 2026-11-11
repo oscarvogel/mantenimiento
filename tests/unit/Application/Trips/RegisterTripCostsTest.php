@@ -473,6 +473,10 @@ final class CostTripRepositoryFake implements OperationalTripRepository
     {
     }
 
+    public function updateDetails(Trip $trip, int $actorUserId): void
+    {
+    }
+
     public function updateDriverPercentage(int $companyId, int $tripId, int $employeeId, float $percentage, int $actorUserId): void
     {
         $this->tripId = $tripId;
@@ -628,6 +632,15 @@ final class CostLegRepositoryFake implements TripLegRepository
     public function belongsToTrip(int $companyId, int $tripId, int $legId): bool
     {
         return true;
+    }
+
+    public function update(int $companyId, int $branchId, int $tripId, int $legId, \App\Domain\Trips\TripLeg $leg, int $actorUserId): void
+    {
+    }
+
+    public function ordersWithMissingAmounts(int $companyId, int $tripId): array
+    {
+        return [];
     }
 }
 

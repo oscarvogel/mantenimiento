@@ -273,6 +273,45 @@ final class TripTest extends TestCase
         $trip->start(new DateTimeImmutable('2026-10-20 08:15:00'), 145_300);
     }
 
+    public function testUpdateOpenDetailsChangesDatesAssignmentsAndNotes(): void
+    {
+        $trip = $this->trip();
+        $trip->start(new DateTimeImmutable('2026-10-20 08:00:00'), 145_300);
+
+        $trip->updateOpenDetails(
+            new DateTimeImmutable('2026-10-22 08:00:00'),
+            null,
+            146_000,
+            [$this->assignment(TripAssignment::TRACTOR, 7), $this->assignment(TripAssignment::CHOFER, 11)],
+            'Corrección de salida',
+        );
+
+        self::assertSame('2026-10-22 00:00:00', $trip->plannedDeparture()->format('Y-m-d H:i:s'));
+        self::assertNull($trip->plannedReturn());
+        self::assertSame('2026-10-22 00:00:00', $trip->actualDeparture()?->format('Y-m-d H:i:s'));
+        self::assertSame(146_000, $trip->departureKm());
+        self::assertSame([11], $trip->driverIds());
+        self::assertSame('Corrección de salida', $trip->notes());
+    }
+
+    public function testFinishedTripCannotBeEdited(): void
+    {
+        $trip = $this->trip();
+        $trip->start(new DateTimeImmutable('2026-10-20 08:00:00'), 145_300);
+        $trip->finish(new DateTimeImmutable('2026-10-21 18:00:00'), 145_700);
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('planificado o en curso');
+
+        $trip->updateOpenDetails(
+            new DateTimeImmutable('2026-10-22 08:00:00'),
+            null,
+            146_000,
+            [$this->assignment(TripAssignment::TRACTOR, 7), $this->assignment(TripAssignment::CHOFER, 11)],
+            '',
+        );
+    }
+
     public function testStopRejectsNegativeQuantity(): void
     {
         $this->expectException(DomainException::class);

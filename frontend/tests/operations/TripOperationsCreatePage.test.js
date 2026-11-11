@@ -52,8 +52,11 @@ describe('alta de viaje operativo', () => {
     expect(wrapper.text()).toContain('Tramos de flete')
     expect(wrapper.text()).toContain('Localidad de origen')
     expect(wrapper.text()).toContain('Localidad de destino')
+    expect(wrapper.get('input[name="tramos[0][flete_facturacion]"]').attributes('required')).toBeUndefined()
+    expect(wrapper.get('input[name="tramos[0][flete_liquidacion]"]').attributes('required')).toBeUndefined()
     expect(wrapper.text()).toContain('Flete de facturación')
     expect(wrapper.text()).toContain('Flete de liquidación')
+    expect(wrapper.text()).toContain('opcional')
     const customer = wrapper.findAllComponents(AutocompleteSelect).find((component) => component.props('name') === 'tramos[0][cliente_id]')
     expect(customer.props('options')[0].hint).toContain('Código 324')
 

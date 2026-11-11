@@ -53,16 +53,17 @@ final class GetOperationalTrip
             'logbook' => base_url('viajes/operativos/' . $tripId . '/diario-bordo'),
             'percentage' => base_url('viajes/operativos/' . $tripId . '/porcentaje'),
             'legs' => base_url('viajes/operativos/' . $tripId . '/tramos'),
+            'update' => base_url('viajes/operativos/' . $tripId),
             'finish' => base_url('viajes/operativos/' . $tripId . '/cerrar'),
         ];
         $detail['canOperate'] = $actor->hasPermission('viajes.operar');
         $detail['canRegisterCosts'] = $detail['canOperate']
             && in_array($detail['trip']['estado'] ?? null, [Trip::PLANIFICADO, Trip::EN_CURSO], true);
+        $detail['canEdit'] = $detail['canRegisterCosts'];
         $detail['canStart'] = $detail['canOperate'] && ($detail['trip']['estado'] ?? null) === Trip::PLANIFICADO;
         $detail['canCancel'] = $detail['canOperate'] && ($detail['trip']['estado'] ?? null) === Trip::PLANIFICADO;
         $detail['canClose'] = $detail['canOperate'] && ($detail['trip']['estado'] ?? null) === Trip::EN_CURSO;
-        $detail['canAddLegs'] = $detail['canOperate']
-            && in_array($detail['trip']['estado'] ?? null, [Trip::PLANIFICADO, Trip::EN_CURSO], true);
+        $detail['canAddLegs'] = $detail['canRegisterCosts'];
 
         return $detail;
     }
@@ -130,19 +131,33 @@ final class GetOperationalTrip
         $totalLiquidation = 0.0;
         $totalAssigned = 0.0;
         $commissions = [];
+        $invoiceComplete = true;
+        $liquidationComplete = true;
+        $legsWithoutAmounts = [];
         foreach ($legs as $leg) {
             $legId = (int) $leg['id'];
-            $invoice = (float) ($leg['flete_facturacion_ars'] ?? 0);
-            $liquidation = (float) ($leg['flete_liquidacion_ars'] ?? 0);
+            $invoice = $leg['flete_facturacion_ars'] === null ? null : (float) $leg['flete_facturacion_ars'];
+            $liquidation = $leg['flete_liquidacion_ars'] === null ? null : (float) $leg['flete_liquidacion_ars'];
+            if ($invoice === null || $liquidation === null) {
+                $legsWithoutAmounts[] = (int) $leg['orden'];
+            }
+            if ($invoice === null) {
+                $invoiceComplete = false;
+            } else {
+                $totalInvoice += $invoice;
+            }
+            if ($liquidation === null) {
+                $liquidationComplete = false;
+            } else {
+                $totalLiquidation += $liquidation;
+            }
             $assignedFuel = round($fuelByLeg[$legId] ?? 0.0, 2);
             $assignedExpenses = round($expenseByLeg[$legId] ?? 0.0, 2);
             $assignedCosts = round($assignedFuel + $assignedExpenses, 2);
-            $commission = $percentage === null ? null : round($liquidation * $percentage / 100, 2);
-            $margin = $commission === null ? null : round($invoice - $assignedCosts - $commission, 2);
+            $commission = $percentage === null || $liquidation === null ? null : round($liquidation * $percentage / 100, 2);
+            $margin = $commission === null || $invoice === null ? null : round($invoice - $assignedCosts - $commission, 2);
             $marginPct = $margin === null || $invoice <= 0 ? null : round($margin / $invoice * 100, 1);
 
-            $totalInvoice += $invoice;
-            $totalLiquidation += $liquidation;
             $totalAssigned += $assignedCosts;
             if ($commission !== null) {
                 $commissions[] = $commission;
@@ -158,11 +173,13 @@ final class GetOperationalTrip
             ];
         }
 
-        $totalCommission = $percentage === null ? null : round(array_sum($commissions), 2);
+        $totalCommission = $percentage === null || ! $liquidationComplete ? null : round(array_sum($commissions), 2);
         $unassigned = round($totalFuel + $totalExpenses - $totalAssigned, 2);
         $operatingCost = $totalCommission === null ? null : round($totalFuel + $totalExpenses + $totalCommission + $otherEarningsAmount, 2);
-        $margin = $operatingCost === null || $legs === [] ? null : round($totalInvoice - $operatingCost, 2);
-        $marginPct = $margin === null || $totalInvoice <= 0 ? null : round($margin / $totalInvoice * 100, 1);
+        $invoiceTotal = $invoiceComplete ? round($totalInvoice, 2) : null;
+        $liquidationTotal = $liquidationComplete ? round($totalLiquidation, 2) : null;
+        $margin = $operatingCost === null || ! $invoiceComplete || $legs === [] ? null : round($totalInvoice - $operatingCost, 2);
+        $marginPct = $margin === null || $invoiceTotal === null || $invoiceTotal <= 0 ? null : round($margin / $invoiceTotal * 100, 1);
 
         $settlement = null;
         if ($totalCommission !== null) {
@@ -192,8 +209,11 @@ final class GetOperationalTrip
         $detail['legs'] = $enrichedLegs;
         $detail['totals'] = ($detail['totals'] ?? []) + [
             'has_legs' => $legs !== [],
-            'invoice_ars' => round($totalInvoice, 2),
-            'liquidation_ars' => round($totalLiquidation, 2),
+            'invoice_ars' => $invoiceTotal,
+            'liquidation_ars' => $liquidationTotal,
+            'invoice_complete' => $invoiceComplete,
+            'liquidation_complete' => $liquidationComplete,
+            'legs_without_amounts' => $legsWithoutAmounts,
             'commission_ars' => $totalCommission,
             'assigned_costs_ars' => round($totalAssigned, 2),
             'unassigned_costs_ars' => $unassigned,

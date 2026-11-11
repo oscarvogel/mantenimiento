@@ -94,6 +94,21 @@ final class AddTripLegTest extends TestCase
         self::assertSame(2, $command->destinationLocalityId);
     }
 
+    public function testCommandAcceptsLegWithoutAmounts(): void
+    {
+        $command = AddTripLegCommand::fromInput([
+            'viaje_id' => '55',
+            'origen' => 'Rosario',
+            'destino' => 'Córdoba',
+            'cliente_id' => '3',
+            'localidad_origen_id' => '1',
+            'localidad_destino_id' => '2',
+        ]);
+
+        self::assertNull($command->invoiceAmount);
+        self::assertNull($command->liquidationAmount);
+    }
+
     /** @param list<string> $permissions */
     private function actor(array $permissions): ActorContext
     {
@@ -135,6 +150,7 @@ final class AddLegTripRepositoryFake implements OperationalTripRepository
     public function add(Trip $trip, int $actorUserId): int { return 1; }
     public function findForUpdate(int $companyId, ?array $branchIds, int $tripId): ?Trip { return $this->trip; }
     public function save(Trip $trip, int $actorUserId): void {}
+    public function updateDetails(Trip $trip, int $actorUserId): void {}
     public function updateDriverPercentage(int $companyId, int $tripId, int $employeeId, float $percentage, int $actorUserId): void {}
     public function conflicts(int $companyId, array $equipmentIds, array $employeeIds, DateTimeImmutable $from, ?DateTimeImmutable $to, ?int $excludeTripId = null): array { return []; }
 }
@@ -150,9 +166,19 @@ final class AddLegRepositoryFake implements TripLegRepository
         return 1;
     }
 
+    public function update(int $companyId, int $branchId, int $tripId, int $legId, TripLeg $leg, int $actorUserId): void
+    {
+        $this->leg = $leg;
+    }
+
     public function belongsToTrip(int $companyId, int $tripId, int $legId): bool
     {
         return true;
+    }
+
+    public function ordersWithMissingAmounts(int $companyId, int $tripId): array
+    {
+        return [];
     }
 }
 

@@ -11,8 +11,8 @@ final class TripLeg
     public function __construct(
         private string $origin,
         private string $destination,
-        private float $invoiceAmount,
-        private float $liquidationAmount,
+        private ?float $invoiceAmount,
+        private ?float $liquidationAmount,
         private ?float $kilometers = null,
         private ?int $customerId = null,
         private string $currency = 'ARS',
@@ -30,7 +30,10 @@ final class TripLeg
         if ($origin === '' || $destination === '') {
             throw new DomainException('El tramo necesita origen y destino.');
         }
-        if ($invoiceAmount < 0 || $liquidationAmount < 0 || ($kilometers !== null && $kilometers < 0) || ($tonnes !== null && $tonnes < 0)) {
+        if (($invoiceAmount !== null && $invoiceAmount < 0)
+            || ($liquidationAmount !== null && $liquidationAmount < 0)
+            || ($kilometers !== null && $kilometers < 0)
+            || ($tonnes !== null && $tonnes < 0)) {
             throw new DomainException('Los importes, kilómetros y toneladas del tramo no pueden ser negativos.');
         }
         if ($originDestinationCode !== null && $originDestinationCode <= 0) {
@@ -51,8 +54,8 @@ final class TripLeg
 
         $this->origin = $origin;
         $this->destination = $destination;
-        $this->invoiceAmount = round($invoiceAmount, 4);
-        $this->liquidationAmount = round($liquidationAmount, 4);
+        $this->invoiceAmount = $invoiceAmount === null ? null : round($invoiceAmount, 4);
+        $this->liquidationAmount = $liquidationAmount === null ? null : round($liquidationAmount, 4);
         $this->kilometers = $kilometers === null ? null : round($kilometers, 2);
         $this->customerId = $customerId;
         $this->currency = $currency;
@@ -72,24 +75,24 @@ final class TripLeg
         return $this->destination;
     }
 
-    public function invoiceAmount(): float
+    public function invoiceAmount(): ?float
     {
         return $this->invoiceAmount;
     }
 
-    public function liquidationAmount(): float
+    public function liquidationAmount(): ?float
     {
         return $this->liquidationAmount;
     }
 
-    public function invoiceAmountArs(): float
+    public function invoiceAmountArs(): ?float
     {
-        return round($this->invoiceAmount * $this->exchangeRate, 4);
+        return $this->invoiceAmount === null ? null : round($this->invoiceAmount * $this->exchangeRate, 4);
     }
 
-    public function liquidationAmountArs(): float
+    public function liquidationAmountArs(): ?float
     {
-        return round($this->liquidationAmount * $this->exchangeRate, 4);
+        return $this->liquidationAmount === null ? null : round($this->liquidationAmount * $this->exchangeRate, 4);
     }
 
     public function kilometers(): ?float
@@ -137,8 +140,10 @@ final class TripLeg
         return $this->destinationLocalityId;
     }
 
-    public function commission(float $percentage): float
+    public function commission(float $percentage): ?float
     {
-        return round($this->liquidationAmountArs() * $percentage / 100, 4);
+        $base = $this->liquidationAmountArs();
+
+        return $base === null ? null : round($base * $percentage / 100, 4);
     }
 }

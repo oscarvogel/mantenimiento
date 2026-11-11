@@ -13,8 +13,8 @@ final readonly class TripLegInput
         public string $origin,
         public string $destination,
         public int $customerId,
-        public float $invoiceAmount,
-        public float $liquidationAmount,
+        public ?float $invoiceAmount,
+        public ?float $liquidationAmount,
         public ?float $kilometers = null,
         public ?float $tonnes = null,
         public string $currency = 'ARS',
@@ -50,8 +50,8 @@ final readonly class TripLegInput
             mb_substr($origin, 0, 200),
             mb_substr($destination, 0, 200),
             (int) $customerId,
-            self::amount($row['flete_facturacion'] ?? null, 'El flete de facturación'),
-            self::amount($row['flete_liquidacion'] ?? null, 'El flete de liquidación'),
+            self::optionalAmount($row['flete_facturacion'] ?? null, 'El flete de facturación'),
+            self::optionalAmount($row['flete_liquidacion'] ?? null, 'El flete de liquidación'),
             self::optionalAmount($row['km'] ?? null, 'Los kilómetros'),
             self::optionalAmount($row['toneladas'] ?? null, 'Las toneladas'),
             strtoupper(trim((string) ($row['moneda'] ?? 'ARS'))),
@@ -62,16 +62,6 @@ final readonly class TripLegInput
         );
     }
 
-    private static function amount(mixed $value, string $label): float
-    {
-        $raw = str_replace(',', '.', trim((string) ($value ?? '')));
-        if ($raw === '' || ! is_numeric($raw) || (float) $raw < 0) {
-            throw new DomainException($label . ' debe ser un importe mayor o igual a cero.');
-        }
-
-        return (float) $raw;
-    }
-
     private static function optionalAmount(mixed $value, string $label): ?float
     {
         $raw = str_replace(',', '.', trim((string) ($value ?? '')));
@@ -79,7 +69,7 @@ final readonly class TripLegInput
             return null;
         }
         if (! is_numeric($raw) || (float) $raw < 0) {
-            throw new DomainException($label . ' no pueden ser negativos.');
+            throw new DomainException($label . ' no puede ser negativo.');
         }
 
         return (float) $raw;

@@ -34,21 +34,7 @@ final class CodeIgniterTripLegRepository implements TripLegRepository
             'empresa_id' => $companyId,
             'sucursal_id' => $branchId,
             'orden' => $order,
-            'cliente_id' => $leg->customerId(),
-            'codigo_origen_destino' => $leg->originDestinationCode(),
-            'localidad_origen_id' => $leg->originLocalityId(),
-            'localidad_destino_id' => $leg->destinationLocalityId(),
-            'origen' => $leg->origin(),
-            'destino' => $leg->destination(),
-            'km' => $leg->kilometers() === null ? null : $this->decimal($leg->kilometers(), 2),
-            'toneladas' => $leg->tonnes() === null ? null : $this->decimal($leg->tonnes(), 2),
-            'moneda' => $leg->currency(),
-            'cotizacion' => $this->decimal($leg->exchangeRate(), 6),
-            'flete_facturacion' => $this->decimal($leg->invoiceAmount(), 4),
-            'flete_facturacion_ars' => $this->decimal($leg->invoiceAmountArs(), 4),
-            'flete_liquidacion' => $this->decimal($leg->liquidationAmount(), 4),
-            'flete_liquidacion_ars' => $this->decimal($leg->liquidationAmountArs(), 4),
-            'observaciones' => $leg->notes(),
+            ...$this->payload($leg),
             'created_at' => $now,
             'updated_at' => $now,
             'created_by' => $actorUserId,
@@ -66,6 +52,27 @@ final class CodeIgniterTripLegRepository implements TripLegRepository
         return $id;
     }
 
+    public function update(int $companyId, int $branchId, int $tripId, int $legId, TripLeg $leg, int $actorUserId): void
+    {
+        if ($companyId <= 0 || $branchId <= 0 || $tripId <= 0 || $legId <= 0) {
+            throw new RuntimeException('No se puede actualizar un tramo sin identificar empresa, sucursal, viaje y tramo.');
+        }
+
+        $updated = $this->database->table('viaje_operativo_tramos')
+            ->where('empresa_id', $companyId)
+            ->where('viaje_id', $tripId)
+            ->where('id', $legId)
+            ->update([
+                'sucursal_id' => $branchId,
+                ...$this->payload($leg),
+                'updated_at' => date('Y-m-d H:i:s'),
+                'updated_by' => $actorUserId,
+            ]);
+        if (! $updated) {
+            throw new RuntimeException('No se pudo actualizar el tramo del viaje.');
+        }
+    }
+
     public function belongsToTrip(int $companyId, int $tripId, int $legId): bool
     {
         return $this->database->table('viaje_operativo_tramos')
@@ -73,6 +80,44 @@ final class CodeIgniterTripLegRepository implements TripLegRepository
             ->where('viaje_id', $tripId)
             ->where('id', $legId)
             ->countAllResults() > 0;
+    }
+
+    public function ordersWithMissingAmounts(int $companyId, int $tripId): array
+    {
+        $rows = $this->database->table('viaje_operativo_tramos')
+            ->select('orden')
+            ->where('empresa_id', $companyId)
+            ->where('viaje_id', $tripId)
+            ->groupStart()
+            ->where('flete_facturacion', null)
+            ->orWhere('flete_liquidacion', null)
+            ->groupEnd()
+            ->orderBy('orden', 'ASC')
+            ->get()->getResultArray();
+
+        return array_map(static fn (array $row): int => (int) $row['orden'], $rows);
+    }
+
+    /** @return array<string,mixed> */
+    private function payload(TripLeg $leg): array
+    {
+        return [
+            'cliente_id' => $leg->customerId(),
+            'codigo_origen_destino' => $leg->originDestinationCode(),
+            'localidad_origen_id' => $leg->originLocalityId(),
+            'localidad_destino_id' => $leg->destinationLocalityId(),
+            'origen' => $leg->origin(),
+            'destino' => $leg->destination(),
+            'km' => $leg->kilometers() === null ? null : $this->decimal($leg->kilometers(), 2),
+            'toneladas' => $leg->tonnes() === null ? null : $this->decimal($leg->tonnes(), 2),
+            'moneda' => $leg->currency(),
+            'cotizacion' => $this->decimal($leg->exchangeRate(), 6),
+            'flete_facturacion' => $leg->invoiceAmount() === null ? null : $this->decimal($leg->invoiceAmount(), 4),
+            'flete_facturacion_ars' => $leg->invoiceAmountArs() === null ? null : $this->decimal($leg->invoiceAmountArs(), 4),
+            'flete_liquidacion' => $leg->liquidationAmount() === null ? null : $this->decimal($leg->liquidationAmount(), 4),
+            'flete_liquidacion_ars' => $leg->liquidationAmountArs() === null ? null : $this->decimal($leg->liquidationAmountArs(), 4),
+            'observaciones' => $leg->notes(),
+        ];
     }
 
     private function decimal(float $value, int $scale): string

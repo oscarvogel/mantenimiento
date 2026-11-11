@@ -179,6 +179,30 @@ final class GetOperationalTripTest extends TestCase
         self::assertSame(0.0, $detail['totals']['invoice_ars']);
     }
 
+    public function testDoesNotInventTotalsWhenLegsStillHaveMissingAmounts(): void
+    {
+        $detail = $this->detail([
+            'assignments' => [['rol' => 'CHOFER', 'porcentaje_liquidacion' => 14.0]],
+            'legs' => [[
+                'id' => 1,
+                'orden' => 1,
+                'origen' => 'Rosario',
+                'destino' => 'Córdoba',
+                'flete_facturacion_ars' => null,
+                'flete_liquidacion_ars' => null,
+            ]],
+        ]);
+
+        self::assertNull($detail['totals']['invoice_ars']);
+        self::assertNull($detail['totals']['liquidation_ars']);
+        self::assertNull($detail['totals']['commission_ars']);
+        self::assertNull($detail['totals']['margin_ars']);
+        self::assertSame([1], $detail['totals']['legs_without_amounts']);
+        self::assertFalse($detail['totals']['invoice_complete']);
+        self::assertFalse($detail['totals']['liquidation_complete']);
+        self::assertNull($detail['settlement']);
+    }
+
     public function testRejectsActorWithoutReadPermission(): void
     {
         $this->expectException(DomainException::class);

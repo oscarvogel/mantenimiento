@@ -1,6 +1,6 @@
 <script setup>
 import { computed, nextTick, ref } from 'vue'
-import { ArrowDownTrayIcon, BanknotesIcon, BeakerIcon, BookOpenIcon, CheckCircleIcon, CurrencyDollarIcon, ReceiptPercentIcon, XCircleIcon } from '@heroicons/vue/24/outline'
+import { ArrowDownTrayIcon, BanknotesIcon, BeakerIcon, BookOpenIcon, CheckCircleIcon, CurrencyDollarIcon, PencilSquareIcon, ReceiptPercentIcon, XCircleIcon } from '@heroicons/vue/24/outline'
 import PageHeading from './components/PageHeading.vue'
 import PanelCard from './components/PanelCard.vue'
 import AutocompleteSelect from './components/AutocompleteSelect.vue'
@@ -27,6 +27,8 @@ const earningConcepts = computed(() => options.value.earningConcepts ?? [])
 const csrf = computed(() => props.data.csrf ?? { name: 'csrf_test_name', hash: '' })
 const canRegisterCosts = computed(() => Boolean(props.data.canRegisterCosts))
 const canAddLegs = computed(() => Boolean(props.data.canAddLegs))
+const canEdit = computed(() => Boolean(props.data.canEdit))
+const editOptions = computed(() => props.data.editOptions ?? { branches: [], tractors: [], trailers: [], drivers: [] })
 const canClose = computed(() => Boolean(props.data.canClose))
 const currencies = computed(() => options.value.currencies?.length ? options.value.currencies : [{ code: 'ARS', label: 'Peso argentino' }])
 const customerOptions = computed(() => (options.value.customers ?? []).map((customer) => ({ value: customer.id, label: customer.label, hint: customer.code ? `Código ${customer.code}` : '' })))
@@ -39,9 +41,9 @@ const newLegDestinationId = ref('')
 const newLegCustomerId = ref('')
 const localityModalOpen = ref(false)
 const localityModalName = ref('')
-const localityTargetField = ref('localidad_origen_id')
-const openLocalityModal = (field, name) => {
-  localityTargetField.value = field
+const localityTarget = ref({ scope: 'new', field: 'localidad_origen_id' })
+const openLocalityModal = (field, name, scope = 'new') => {
+  localityTarget.value = { scope, field }
   localityModalName.value = name
   localityModalOpen.value = true
 }
@@ -52,7 +54,11 @@ const applyCreatedLocality = (locality) => {
   if (!extraLocalities.value.some((item) => String(item.id) === String(locality.id))) {
     extraLocalities.value = [...extraLocalities.value, locality]
   }
-  if (localityTargetField.value === 'localidad_destino_id') {
+  const target = localityTarget.value
+  if (target.scope === 'leg' && legDraft.value) {
+    if (target.field === 'localidad_destino_id') legDraft.value.destinationId = String(locality.id)
+    else legDraft.value.originId = String(locality.id)
+  } else if (target.field === 'localidad_destino_id') {
     newLegDestinationId.value = String(locality.id)
   } else {
     newLegOriginId.value = String(locality.id)
@@ -62,6 +68,77 @@ const applyCreatedLocality = (locality) => {
 const newLegCurrency = ref('ARS')
 const newLegExchangeRate = ref('1')
 const setNewLegCurrency = () => { newLegExchangeRate.value = newLegCurrency.value === 'ARS' ? '1' : '' }
+const dateValue = (value) => String(value ?? '').slice(0, 10)
+const tripBranchId = computed(() => Number(trip.value.sucursal_id ?? 0))
+const editTractorOptions = computed(() => (editOptions.value.tractors ?? [])
+  .filter((equipment) => !tripBranchId.value || Number(equipment.branchId) === tripBranchId.value)
+  .map((equipment) => ({
+    value: equipment.id,
+    label: equipment.label,
+    hint: [equipment.type, equipment.lastKm !== null && equipment.lastKm !== undefined ? `Último km ${Number(equipment.lastKm).toLocaleString('es-AR')}` : ''].filter(Boolean).join(' · '),
+  })))
+const editTrailerOptions = computed(() => (editOptions.value.trailers ?? [])
+  .filter((equipment) => !tripBranchId.value || Number(equipment.branchId) === tripBranchId.value)
+  .map((equipment) => ({
+    value: equipment.id,
+    label: equipment.label,
+    hint: equipment.type ?? '',
+  })))
+const editDriverOptions = computed(() => (editOptions.value.drivers ?? []).map((driver) => ({
+  value: driver.id,
+  label: driver.label,
+  hint: [driver.employeeNumber ? `Legajo ${driver.employeeNumber}` : '', driver.assignedEquipmentLabel ? `Asignado a ${driver.assignedEquipmentLabel}` : ''].filter(Boolean).join(' · '),
+})))
+const tripDialog = ref(null)
+const tripDraft = ref(null)
+const openTripEdit = () => {
+  const tractor = assignments.value.find((row) => row.rol === 'TRACTOR')
+  const driverRows = assignments.value.filter((row) => row.rol === 'CHOFER' && row.empleado_id)
+  tripDraft.value = {
+    tractorId: tractor?.equipo_id ? String(tractor.equipo_id) : '',
+    trailerIds: assignments.value.filter((row) => row.rol === 'ACOPLADO' && row.equipo_id).map((row) => String(row.equipo_id)),
+    departure: dateValue(trip.value.fecha_salida_real ?? trip.value.fecha_salida_planificada),
+    returnAt: dateValue(trip.value.fecha_regreso_planificada ?? trip.value.fecha_regreso_real),
+    kmSalida: trip.value.km_salida ?? '',
+    driverIds: driverRows.map((row) => String(row.empleado_id)),
+    percentages: Object.fromEntries(driverRows.map((row) => [String(row.empleado_id), row.porcentaje_liquidacion ?? row.master_percentage ?? ''])),
+    notes: trip.value.observaciones ?? '',
+  }
+  nextTick(() => tripDialog.value?.showModal())
+}
+const closeTripEdit = () => { tripDraft.value = null }
+const legDialog = ref(null)
+const legDraft = ref(null)
+const openLegEdit = (leg) => {
+  const extras = []
+  if (leg.localidad_origen_id) extras.push({ id: leg.localidad_origen_id, name: leg.origen, label: leg.origen })
+  if (leg.localidad_destino_id) extras.push({ id: leg.localidad_destino_id, name: leg.destino, label: leg.destino })
+  const missing = extras.filter((locality) => ![...localities.value, ...extraLocalities.value].some((item) => String(item.id) === String(locality.id)))
+  if (missing.length) extraLocalities.value = [...extraLocalities.value, ...missing]
+  legDraft.value = {
+    id: leg.id,
+    originId: leg.localidad_origen_id ? String(leg.localidad_origen_id) : '',
+    destinationId: leg.localidad_destino_id ? String(leg.localidad_destino_id) : '',
+    customerId: leg.cliente_id ? String(leg.cliente_id) : '',
+    tonnes: leg.toneladas ?? '',
+    km: leg.km ?? '',
+    currency: leg.moneda ?? 'ARS',
+    exchangeRate: leg.cotizacion ?? '1',
+    invoiceAmount: leg.flete_facturacion ?? '',
+    liquidationAmount: leg.flete_liquidacion ?? '',
+    notes: leg.observaciones ?? '',
+  }
+  nextTick(() => legDialog.value?.showModal())
+}
+const closeLegEdit = () => { legDraft.value = null }
+const setLegCurrency = () => {
+  if (legDraft.value) legDraft.value.exchangeRate = legDraft.value.currency === 'ARS' ? '1' : ''
+}
+const legsWithoutAmounts = computed(() => totals.value.legs_without_amounts ?? [])
+const closeBlocked = computed(() => legsWithoutAmounts.value.length > 0)
+const closeBlockMessage = computed(() => closeBlocked.value
+  ? `Completá el flete de facturación y el de liquidación de los tramos ${legsWithoutAmounts.value.join(', ')} antes de cerrar el viaje.`
+  : '')
 const entryDialog = ref(null)
 const activeEntryModal = ref('')
 const editingEntry = ref(null)
@@ -241,6 +318,9 @@ const legLabel = (legId) => {
 }
 const financialNote = computed(() => {
   if (!totals.value.has_legs) return 'Cargá al menos un tramo para calcular facturación, comisión y margen.'
+  if (legsWithoutAmounts.value.length > 0) {
+    return `Completá los fletes de facturación y liquidación de los tramos ${legsWithoutAmounts.value.join(', ')} para calcular facturación, comisión y margen.`
+  }
   if (totals.value.multiple_drivers) return 'Hay más de un chofer. Definí un chofer responsable para calcular la comisión.'
   if (totals.value.driver_percentage === null || totals.value.driver_percentage === undefined) {
     return 'El chofer no tiene un porcentaje de liquidación definido.'
@@ -289,6 +369,9 @@ const facts = computed(() => {
         <a v-if="trip.estado === 'FINALIZADO' && settlement && data.links?.driverSettlementPdf" :href="data.links.driverSettlementPdf" class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-success/40 bg-success-subtle px-3 py-2 text-sm font-semibold text-success-strong hover:bg-success/15">
           <ArrowDownTrayIcon class="size-4" aria-hidden="true" />Descargar liquidación para el chofer
         </a>
+        <button v-if="canEdit" type="button" @click="openTripEdit" class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-primary px-3 py-2 text-sm font-semibold text-primary hover:bg-primary-subtle">
+          <PencilSquareIcon class="size-4" aria-hidden="true" />Editar viaje
+        </button>
         <span class="inline-flex rounded-full px-3 py-1.5 text-sm font-semibold" :class="statusTone[trip.estado] ?? 'bg-surface-muted text-ink-muted'">{{ trip.estado_label }}</span>
       </template>
     </PageHeading>
@@ -376,6 +459,7 @@ const facts = computed(() => {
               <th class="px-3 py-2 text-right">Comisión</th>
               <th class="px-3 py-2 text-right">Costos asignados</th>
               <th class="px-3 py-2 text-right">Margen</th>
+              <th v-if="canEdit" class="px-3 py-2">Acciones</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-border-subtle">
@@ -387,11 +471,12 @@ const facts = computed(() => {
               </td>
               <td class="px-3 py-2 text-right text-ink-muted">{{ leg.toneladas === null ? '—' : number(leg.toneladas) }}</td>
               <td class="px-3 py-2 text-right text-ink-muted">{{ leg.km === null ? '—' : number(leg.km) }}</td>
-              <td class="px-3 py-2 text-right text-ink">{{ money(leg.flete_facturacion_ars) }}</td>
-              <td class="px-3 py-2 text-right text-ink">{{ money(leg.flete_liquidacion_ars) }}</td>
+              <td class="px-3 py-2 text-right text-ink">{{ moneyOrNoData(leg.flete_facturacion_ars) }}</td>
+              <td class="px-3 py-2 text-right text-ink">{{ moneyOrNoData(leg.flete_liquidacion_ars) }}</td>
               <td class="px-3 py-2 text-right text-ink-muted">{{ moneyOrNoData(leg.commission_ars) }}</td>
               <td class="px-3 py-2 text-right text-ink-muted">{{ money(leg.assigned_costs_ars) }}</td>
               <td class="px-3 py-2 text-right font-semibold" :class="leg.margin_ars === null ? 'text-ink-muted' : (leg.margin_ars < 0 ? 'text-danger-strong' : 'text-success-strong')">{{ moneyOrNoData(leg.margin_ars) }}</td>
+              <td v-if="canEdit" class="whitespace-nowrap px-3 py-2"><button type="button" :class="secondaryButton" @click="openLegEdit(leg)">Editar</button></td>
             </tr>
           </tbody>
         </table>
@@ -399,7 +484,7 @@ const facts = computed(() => {
       <form v-if="canAddLegs" method="post" :action="data.links?.legs" class="rounded-xl border border-border-subtle bg-surface p-4">
         <input type="hidden" :name="csrf.name" :value="csrf.hash" />
         <h3 class="text-sm font-bold text-ink">Agregar tramo</h3>
-        <p class="mt-1 text-xs text-ink-muted">El flete de liquidación es la base para el porcentaje del chofer. El de facturación es el ingreso del viaje.</p>
+        <p class="mt-1 text-xs text-ink-muted">El flete de liquidación es la base para el porcentaje del chofer. El de facturación es el ingreso del viaje. Ambos son opcionales mientras el viaje está abierto.</p>
         <div class="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Localidad de origen</span><AutocompleteSelect v-model="newLegOriginId" name="localidad_origen_id" :options="localityOptions" :search-url="data.links?.localities" placeholder="Buscá la localidad" required allow-create @create="openLocalityModal('localidad_origen_id', $event)" /></label>
           <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Localidad de destino</span><AutocompleteSelect v-model="newLegDestinationId" name="localidad_destino_id" :options="localityOptions" :search-url="data.links?.localities" placeholder="Buscá la localidad" required allow-create @create="openLocalityModal('localidad_destino_id', $event)" /></label>
@@ -412,8 +497,8 @@ const facts = computed(() => {
           <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cotización a ARS</span><input v-model="newLegExchangeRate" type="number" name="cotizacion" min="0.000001" step="0.000001" :required="newLegCurrency !== 'ARS'" :disabled="newLegCurrency === 'ARS'" :class="fieldClass" /><span class="mt-1 block text-xs text-ink-muted">{{ newLegCurrency === 'ARS' ? 'Para ARS se usa cotización 1.' : `Ingresá cuántos ARS vale 1 ${newLegCurrency}.` }}</span></label>
         </div>
         <div class="mt-3 grid gap-3 md:grid-cols-2">
-          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Flete de facturación ({{ newLegCurrency }})</span><input type="number" name="flete_facturacion" min="0" step="0.01" required :class="fieldClass" /></label>
-          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Flete de liquidación ({{ newLegCurrency }})</span><input type="number" name="flete_liquidacion" min="0" step="0.01" required :class="fieldClass" /></label>
+          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Flete de facturación ({{ newLegCurrency }}, opcional)</span><input type="number" name="flete_facturacion" min="0" step="0.01" :class="fieldClass" /></label>
+          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Flete de liquidación ({{ newLegCurrency }}, opcional)</span><input type="number" name="flete_liquidacion" min="0" step="0.01" :class="fieldClass" /></label>
         </div>
         <label class="mt-3 block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Observaciones</span><input type="text" name="observaciones" maxlength="500" :class="fieldClass" /></label>
         <button type="submit" :class="[primaryButton, 'mt-3']">Agregar tramo</button>
@@ -609,7 +694,8 @@ const facts = computed(() => {
             <p v-if="!totals.expense_amount_ars">No hay gastos cargados.</p>
             <p class="mt-1">Podés cerrar igual, pero revisá que corresponda.</p>
           </div>
-          <button type="submit" :class="[primaryButton, 'mt-3']">Cerrar y generar lectura</button>
+          <p v-if="closeBlocked" class="mt-3 rounded-lg border border-danger/30 bg-danger-subtle px-3 py-2 text-xs font-semibold text-danger-strong">{{ closeBlockMessage }}</p>
+          <button type="submit" :disabled="closeBlocked" :class="[primaryButton, 'mt-3', closeBlocked ? 'cursor-not-allowed opacity-50' : '']">Cerrar y generar lectura</button>
         </form>
 
         <form v-if="data.canCancel" method="post" :action="`${data.links?.detail ?? ''}/cancelar`" class="rounded-xl border border-danger/30 bg-danger-subtle/40 p-4">
@@ -687,6 +773,128 @@ const facts = computed(() => {
         </li>
       </ol>
     </PanelCard>
+
+    <dialog v-if="canEdit" ref="tripDialog" aria-labelledby="trip-edit-title" @close="closeTripEdit" @click.self="tripDialog?.close()" class="m-auto w-[min(52rem,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-xl border border-border bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
+      <div v-if="tripDraft" class="p-5 sm:p-6">
+        <div class="mb-5 flex items-start justify-between gap-4 border-b border-border-subtle pb-4">
+          <div>
+            <h2 id="trip-edit-title" class="text-lg font-bold text-ink">Editar viaje #{{ trip.numero }}</h2>
+            <p class="mt-1 text-sm text-ink-muted">Podés corregir equipo, fechas, odómetro, choferes y observaciones mientras el viaje no esté cerrado.</p>
+          </div>
+          <button type="button" aria-label="Cerrar" @click="tripDialog?.close()" class="grid size-9 shrink-0 place-items-center rounded-lg text-ink-muted hover:bg-surface-subtle hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">×</button>
+        </div>
+        <form method="post" :action="data.links?.update ?? data.links?.detail">
+          <input type="hidden" :name="csrf.name" :value="csrf.hash" />
+          <div class="grid gap-4 md:grid-cols-2">
+            <label class="block">
+              <span class="mb-1.5 block text-sm font-semibold text-ink">Tractor o camión</span>
+              <AutocompleteSelect v-model="tripDraft.tractorId" name="tractor_id" :options="editTractorOptions" placeholder="Elegí el tractor o camión" required />
+            </label>
+            <label class="block">
+              <span class="mb-1.5 block text-sm font-semibold text-ink">Semirremolques del viaje</span>
+              <AutocompleteSelect v-model="tripDraft.trailerIds" name="acoplado_id[]" :options="editTrailerOptions" placeholder="Sin semirremolque" multiple />
+            </label>
+            <label class="block">
+              <span class="mb-1.5 block text-sm font-semibold text-ink">Fecha real de salida</span>
+              <input v-model="tripDraft.departure" type="date" name="fecha_salida_real" required :class="fieldClass" />
+            </label>
+            <label class="block">
+              <span class="mb-1.5 block text-sm font-semibold text-ink">Fecha estimada de regreso (opcional)</span>
+              <input v-model="tripDraft.returnAt" type="date" name="fecha_regreso_estimado" :class="fieldClass" />
+            </label>
+            <label class="block">
+              <span class="mb-1.5 block text-sm font-semibold text-ink">Odómetro real de salida (km)</span>
+              <input v-model="tripDraft.kmSalida" type="number" min="0" step="1" name="km_salida" required :class="fieldClass" />
+            </label>
+            <label class="block">
+              <span class="mb-1.5 block text-sm font-semibold text-ink">Choferes</span>
+              <AutocompleteSelect v-model="tripDraft.driverIds" name="choferes[]" :options="editDriverOptions" placeholder="Elegí uno o más choferes" multiple required />
+            </label>
+          </div>
+          <div v-if="tripDraft.driverIds.length" class="mt-4 rounded-xl border border-border-subtle bg-surface p-3">
+            <p class="text-sm font-semibold text-ink">% de liquidación del chofer</p>
+            <div v-for="driverId in tripDraft.driverIds" :key="driverId" class="mt-3 flex flex-wrap items-center justify-between gap-2">
+              <span class="text-sm font-semibold text-ink">{{ editDriverOptions.find((driver) => String(driver.value) === String(driverId))?.label ?? `Chofer ${driverId}` }}</span>
+              <label class="flex items-center gap-1.5">
+                <input v-model="tripDraft.percentages[driverId]" type="number" min="0" max="100" step="0.01" :name="`choferes_porcentajes[${driverId}]`" :class="[fieldClass, 'w-24 text-right']" />
+                <span class="text-sm font-semibold text-ink-muted">%</span>
+              </label>
+            </div>
+          </div>
+          <label class="mt-4 block">
+            <span class="mb-1.5 block text-sm font-semibold text-ink">Observaciones</span>
+            <textarea v-model="tripDraft.notes" name="observaciones" rows="3" maxlength="1000" :class="fieldClass"></textarea>
+          </label>
+          <div class="mt-5 flex justify-end gap-2 border-t border-border-subtle pt-4">
+            <button type="button" @click="tripDialog?.close()" :class="secondaryButton">Volver</button>
+            <button type="submit" :class="primaryButton">Guardar cambios</button>
+          </div>
+        </form>
+      </div>
+    </dialog>
+
+    <dialog v-if="canEdit" ref="legDialog" aria-labelledby="leg-edit-title" @close="closeLegEdit" @click.self="legDialog?.close()" class="m-auto w-[min(52rem,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-xl border border-border bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
+      <div v-if="legDraft" class="p-5 sm:p-6">
+        <div class="mb-5 flex items-start justify-between gap-4 border-b border-border-subtle pb-4">
+          <div>
+            <h2 id="leg-edit-title" class="text-lg font-bold text-ink">Editar tramo del viaje #{{ trip.numero }}</h2>
+            <p class="mt-1 text-sm text-ink-muted">Los fletes se pueden completar ahora o antes de cerrar el viaje.</p>
+          </div>
+          <button type="button" aria-label="Cerrar" @click="legDialog?.close()" class="grid size-9 shrink-0 place-items-center rounded-lg text-ink-muted hover:bg-surface-subtle hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">×</button>
+        </div>
+        <form method="post" :action="`${data.links?.detail ?? ''}/tramos/${legDraft.id}`">
+          <input type="hidden" :name="csrf.name" :value="csrf.hash" />
+          <div class="grid gap-4 md:grid-cols-2">
+            <label class="block">
+              <span class="mb-1.5 block text-sm font-semibold text-ink">Localidad de origen</span>
+              <AutocompleteSelect v-model="legDraft.originId" name="localidad_origen_id" :options="localityOptions" :search-url="data.links?.localities" placeholder="Buscá la localidad" required allow-create @create="openLocalityModal('localidad_origen_id', $event, 'leg')" />
+            </label>
+            <label class="block">
+              <span class="mb-1.5 block text-sm font-semibold text-ink">Localidad de destino</span>
+              <AutocompleteSelect v-model="legDraft.destinationId" name="localidad_destino_id" :options="localityOptions" :search-url="data.links?.localities" placeholder="Buscá la localidad" required allow-create @create="openLocalityModal('localidad_destino_id', $event, 'leg')" />
+            </label>
+            <label class="block">
+              <span class="mb-1.5 block text-sm font-semibold text-ink">Cliente del tramo</span>
+              <AutocompleteSelect v-model="legDraft.customerId" name="cliente_id" :options="customerOptions" placeholder="Elegí el cliente" required />
+            </label>
+            <label class="block">
+              <span class="mb-1.5 block text-sm font-semibold text-ink">Toneladas (opcional)</span>
+              <input v-model="legDraft.tonnes" type="number" min="0" step="0.01" name="toneladas" :class="fieldClass" />
+            </label>
+            <label class="block">
+              <span class="mb-1.5 block text-sm font-semibold text-ink">Km del tramo (opcional)</span>
+              <input v-model="legDraft.km" type="number" min="0" step="0.01" name="km" :class="fieldClass" />
+            </label>
+            <label class="block">
+              <span class="mb-1.5 block text-sm font-semibold text-ink">Moneda</span>
+              <select v-model="legDraft.currency" name="moneda" :class="fieldClass" required @change="setLegCurrency">
+                <option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }} · {{ currency.label }}</option>
+              </select>
+            </label>
+            <label class="block">
+              <span class="mb-1.5 block text-sm font-semibold text-ink">Cotización a ARS</span>
+              <input v-model="legDraft.exchangeRate" type="number" min="0.000001" step="0.000001" name="cotizacion" :required="legDraft.currency !== 'ARS'" :disabled="legDraft.currency === 'ARS'" :class="fieldClass" />
+            </label>
+            <label class="block">
+              <span class="mb-1.5 block text-sm font-semibold text-ink">Flete de facturación ({{ legDraft.currency }}, opcional)</span>
+              <input v-model="legDraft.invoiceAmount" type="number" min="0" step="0.01" name="flete_facturacion" :class="fieldClass" />
+            </label>
+            <label class="block">
+              <span class="mb-1.5 block text-sm font-semibold text-ink">Flete de liquidación ({{ legDraft.currency }}, opcional)</span>
+              <input v-model="legDraft.liquidationAmount" type="number" min="0" step="0.01" name="flete_liquidacion" :class="fieldClass" />
+            </label>
+            <label class="block md:col-span-2">
+              <span class="mb-1.5 block text-sm font-semibold text-ink">Observaciones del tramo</span>
+              <input v-model="legDraft.notes" type="text" maxlength="500" name="observaciones" :class="fieldClass" />
+            </label>
+          </div>
+          <div class="mt-5 flex justify-end gap-2 border-t border-border-subtle pt-4">
+            <button type="button" @click="legDialog?.close()" :class="secondaryButton">Volver</button>
+            <button type="submit" :class="primaryButton">Guardar tramo</button>
+          </div>
+        </form>
+      </div>
+    </dialog>
 
     <dialog v-if="canRegisterCosts" ref="entryDialog" aria-labelledby="entry-dialog-title" @close="handleEntryDialogClose" @click.self="entryDialog?.close()" class="m-auto w-[min(48rem,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-xl border border-border bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
       <div v-if="activeEntryModal" class="p-5 sm:p-6">

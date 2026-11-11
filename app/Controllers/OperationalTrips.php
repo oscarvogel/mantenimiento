@@ -16,9 +16,11 @@ use App\Application\Trips\RegisterTripFuelCommand;
 use App\Application\Trips\RegisterTripOtherEarningCommand;
 use App\Application\Trips\SaveTripLogbookEntryCommand;
 use App\Application\Trips\UpdateTripCashMovementCommand;
+use App\Application\Trips\UpdateTripCommand;
 use App\Application\Trips\UpdateTripExpenseCommand;
 use App\Application\Trips\UpdateTripFuelLoadCommand;
 use App\Application\Trips\UpdateTripDriverPercentageCommand;
+use App\Application\Trips\UpdateTripLegCommand;
 use App\Application\Trips\UpdateTripOtherEarningCommand;
 use App\Domain\Geography\InvalidLocalityInput;
 use App\Infrastructure\Identity\SessionActorContext;
@@ -140,12 +142,48 @@ final class OperationalTrips extends BaseController
         }
     }
 
+    public function update(int $tripId): RedirectResponse
+    {
+        try {
+            $command = UpdateTripCommand::fromInput((array) $this->request->getPost());
+            service('updateTrip')->execute($this->actor(), $tripId, $command);
+
+            return redirect()->to('/viajes/operativos/' . $tripId)->with('success', 'El viaje quedó actualizado.');
+        } catch (Throwable $exception) {
+            return $this->failure($exception, 'No se pudo actualizar el viaje.', '/viajes/operativos/' . $tripId);
+        }
+    }
+
+    public function updateLeg(int $tripId, int $legId): RedirectResponse
+    {
+        try {
+            $command = UpdateTripLegCommand::fromInput(array_replace(
+                (array) $this->request->getPost(),
+                ['viaje_id' => $tripId, 'leg_id' => $legId],
+            ));
+            service('updateTripLeg')->execute($this->actor(), $command);
+
+            return redirect()->to('/viajes/operativos/' . $tripId)->with('success', 'El tramo quedó actualizado.');
+        } catch (Throwable $exception) {
+            return $this->failure($exception, 'No se pudo actualizar el tramo.', '/viajes/operativos/' . $tripId);
+        }
+    }
+
     public function show(int $tripId): string|RedirectResponse
     {
         try {
             $actor = $this->actor();
             $payload = service('getOperationalTrip')->execute($actor, $tripId);
             $payload['backUrl'] = base_url('viajes/operativos');
+            if (! empty($payload['canEdit'])) {
+                $formOptions = service('tripFormOptions')->execute($actor);
+                $payload['editOptions'] = [
+                    'branches' => $formOptions['branches'] ?? [],
+                    'tractors' => $formOptions['tractors'] ?? [],
+                    'trailers' => $formOptions['trailers'] ?? [],
+                    'drivers' => $formOptions['drivers'] ?? [],
+                ];
+            }
 
             return $this->renderApp($actor, 'trips-operations', 'trip-operations-detail', 'Detalle del viaje', $payload);
         } catch (Throwable $exception) {

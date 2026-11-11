@@ -287,7 +287,7 @@ const applyCreatedLocality = (locality) => {
       </PanelCard>
 
       <PanelCard title="Tramos de flete" :count="legs.length" allow-overflow>
-        <p class="mb-4 text-sm text-ink-muted">Completá origen, destino y un solo cliente por tramo. El flete de facturación y el de liquidación se cargan por separado.</p>
+        <p class="mb-4 text-sm text-ink-muted">Completá origen, destino y un solo cliente por tramo. Los fletes de facturación y liquidación son opcionales mientras el viaje está abierto; se pueden completar antes de cerrarlo.</p>
         <div class="space-y-4">
           <article v-for="(leg, index) in legs" :key="index" class="rounded-xl border border-border-subtle bg-surface p-4">
             <div class="mb-3 flex items-center justify-between gap-3">
@@ -308,8 +308,8 @@ const applyCreatedLocality = (locality) => {
               <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Cotización a ARS</span><input v-model="leg.cotizacion" type="number" min="0.000001" step="0.000001" :name="`tramos[${index}][cotizacion]`" :required="leg.moneda !== 'ARS'" :disabled="leg.moneda === 'ARS'" :class="fieldClass" /><span class="mt-1 block text-xs text-ink-muted">{{ leg.moneda === 'ARS' ? 'Para ARS se usa cotización 1.' : `Ingresá cuántos ARS vale 1 ${leg.moneda}.` }}</span></label>
             </div>
             <div class="mt-4 grid gap-4 md:grid-cols-2">
-              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Flete de facturación ({{ leg.moneda }})</span><input v-model="leg.flete_facturacion" type="number" min="0" step="0.01" :name="`tramos[${index}][flete_facturacion]`" required :class="fieldClass" /></label>
-              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Flete de liquidación ({{ leg.moneda }})</span><input v-model="leg.flete_liquidacion" type="number" min="0" step="0.01" :name="`tramos[${index}][flete_liquidacion]`" required :class="fieldClass" /></label>
+              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Flete de facturación ({{ leg.moneda }}, opcional)</span><input v-model="leg.flete_facturacion" type="number" min="0" step="0.01" :name="`tramos[${index}][flete_facturacion]`" :class="fieldClass" /></label>
+              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Flete de liquidación ({{ leg.moneda }}, opcional)</span><input v-model="leg.flete_liquidacion" type="number" min="0" step="0.01" :name="`tramos[${index}][flete_liquidacion]`" :class="fieldClass" /></label>
             </div>
             <label class="mt-4 block"><span class="mb-1.5 block text-sm font-semibold text-ink">Observaciones del tramo</span><input v-model="leg.observaciones" type="text" maxlength="500" :name="`tramos[${index}][observaciones]`" :class="fieldClass" /></label>
           </article>
