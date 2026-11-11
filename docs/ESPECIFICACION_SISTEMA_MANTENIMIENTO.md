@@ -634,6 +634,8 @@ Nunca se recalcula un viaje importado ni se le agrega un tramo operativo.
 
 **Dos fletes por tramo.** El `flete_facturacion` es lo que se le cobra al cliente y es el ingreso del viaje. El
 `flete_liquidacion` es la base sobre la que se calcula el porcentaje del chofer. No tienen por qué coincidir.
+Mientras el viaje está abierto, ambos pueden quedar sin informar y completarse después. Al cerrar, todos los
+tramos deben tener los dos fletes.
 
 **El combustible y el gasto pueden imputarse a un tramo.** Si se imputan, suman al margen de ese tramo. Si no,
 suman al margen del viaje y se muestran aparte como **costos sin asignar**: no se prorratean solos.
@@ -965,6 +967,8 @@ flowchart TD
 25. El número de comprobante es único por empresa, tipo y punto de venta, y se asigna dentro de una transacción.
 26. Un comprobante autorizado con CAE no se modifica ni se anula: se emite una nota de crédito.
 27. Un comprobante con CAE vencido no se reimprime sin autorización vigente.
+28. Un viaje `PLANIFICADO` o `EN_CURSO` se puede editar. Al cerrarlo, todos sus tramos deben tener flete de
+    facturación y de liquidación; mientras está abierto, ambos fletes pueden quedar pendientes.
 
 ---
 
