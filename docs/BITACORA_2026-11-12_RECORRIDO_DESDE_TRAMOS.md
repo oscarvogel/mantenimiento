@@ -147,8 +147,26 @@ Se dejan asentados porque son la clase de error que se repite en este repo:
 ## 6. Publicación
 
 - Rama: `fix/viajes-recorrido-desde-tramos`.
-- Commits: `2dfe4734` (código), `87a13690` (bundles).
-- PR y merge: pendientes de completar en el momento de escribir esta bitácora.
+- Commits: `2dfe4734` (código), `87a13690` (bundles), `96876df7` (documentación).
+- **PR #524** → merge squash `2ca42f8a` (`fix(viajes): el recorrido del tablero y del indice sale
+  de los tramos`). CI `test` en verde.
+- **Deploy a Ferozo:** `python scripts/deploy-ferozo.py --skip-tests --yes`
+  - `FROM=08517673` → `TO=2ca42f8a`.
+  - `FILES_STAGED=34`: 8 de runtime (3 PHP de `app/` + manifest) y 26 de `assets/dashboard/`.
+  - `MIGRATIONS=NONE` (esta entrega no cambia el esquema).
+  - `REMOTE_DELETIONS=SKIPPED_RETAINED_HASHED_ASSETS (1)`: el bundle anterior
+    (`main-DWguh_tA.js`) se conserva en el servidor.
+  - `UPLOAD=OK`, `SMOKE_TESTS=OK` (login 200, favicon 200, `.env`/`app/`/`vendor/`/`writable/` 403,
+    `migrate.php` 404), `HASH_LOCAL=OK`, `DEPLOY_STATUS=OK`.
+
+### 6.1 Verificación posterior en producción
+
+- **Por HTTP:** el bundle nuevo `main-u56HFRs4.js` responde 200 (954.701 bytes) y su contenido
+  incluye `Sin recorrido`, `tramos` y `paradas`. (Los nombres de las funciones auxiliares quedan
+  minificados en el bundle, así que no aparecen con su nombre original.)
+- **Por FTPS:** **8/8 archivos clave con SHA-256 idéntico al local** — los tres PHP del arreglo, el
+  manifest y los cuatro bundles nuevos. `migrate.php` **no está** en el servidor y el bundle
+  anterior se conserva.
 
 ---
 
