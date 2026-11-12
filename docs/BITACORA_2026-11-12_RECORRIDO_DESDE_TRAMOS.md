@@ -168,16 +168,41 @@ Se dejan asentados porque son la clase de error que se repite en este repo:
   manifest y los cuatro bundles nuevos. `migrate.php` **no está** en el servidor y el bundle
   anterior se conserva.
 
+### 6.2 Evidencia visual (operador)
+
+El operador Levantó una captura del tablero de viajes operativos en producción, a **1438×713**
+(ventana más angosta que la de la pantalla del cliente, 1638×969, y que 1366×768: el caso más
+exigente para el layout). En la tabla **Viajes en curso y próximos** los nueve viajes muestran su
+recorrido:
+
+| Viaje | Recorrido | Tramos |
+|---|---|---|
+| #5 | ELDORADO MISIONES → Curitiba | 2 tramos |
+| #9 | san francisco de paola - brasil → GASPAR BRASIL | 2 tramos |
+| #1 | Londrina → Curitiba | 2 tramos |
+| #6 | ELDORADO MISIONES → PORTO XAVIER BRASIL | 2 tramos |
+| #7 | PUERTO MINERAL MISIONES → PORTO XAVIER BRASIL | 2 tramos |
+| #2 | Ampére → Barrio Parque General San Martín | 1 tramo |
+| #3 | Misiones → SAN BERNARDO | 2 tramos |
+| #4 | Puerto Rico → Buenos Aires | 1 tramo |
+| #8 | itaquiraí brasil → SANTIAGO | 1 tramo |
+
+Lecturas de la captura:
+
+- **Ningún viaje muestra `Sin origen → Sin destino` ni `Sin recorrido`**: los nueve tienen al
+  menos un tramo, que es lo que el dominio garantiza al dar de alta. Esto confirma en datos
+  reales lo que se había inferido sin acceso a la base de producción.
+- **Ya no aparece la línea `0 paradas`**: con el recorrido resuelto, la segunda línea pasa a
+  decir `N tramos`, y las paradas se suman solo cuando hay paradas registradas.
+- **El layout aguanta las siete columnas** a 1438 px sin desbordes ni superposición de textos.
+
 ---
 
 ## 7. Pendientes
 
-- **Evidencia visual pendiente del operador.** En este entorno no hay sesión autenticada, así
-  que no se puede afirmar que el recorrido se vea bien a 1638x969 ni a 1366x768. El usuario
-  tiene que confirmarlo contra la pantalla real.
+- ~~Evidencia visual~~: **cubierta** por la captura de la sección 6.2 (1438×713).
 - **Estado de los viajes de producción.** No se puede consultar la base de producción desde
-  este entorno (Ferozo no tiene SSH ni CLI). Se infiere del dominio que los viajes tienen al
-  menos un tramo, pero si alguno no lo tuviera, seguirá mostrando `Sin recorrido` — que es la
-  conducta correcta.
+  este entorno (Ferozo no tiene SSH ni CLI), pero la captura de la sección 6.2 muestra los nueve
+  viajes con su recorrido, lo que confirma en datos reales que todos tienen tramos.
 - **Aplicar el mismo criterio a otras pantallas** que armen recorridos a mano, si las hay. En
   esta entrega se corrigieron el tablero y el índice, que eran los dos lugares con el defecto.
