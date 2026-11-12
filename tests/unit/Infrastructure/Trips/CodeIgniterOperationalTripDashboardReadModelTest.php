@@ -35,7 +35,7 @@ final class CodeIgniterOperationalTripDashboardReadModelTest extends TestCase
             id INTEGER PRIMARY KEY, viaje_id INTEGER, empresa_id INTEGER, importe_ars REAL
         )');
         $this->database->query('CREATE TABLE viaje_operativo_tramos (
-            id INTEGER PRIMARY KEY, viaje_id INTEGER, empresa_id INTEGER, flete_facturacion_ars REAL
+            id INTEGER PRIMARY KEY, viaje_id INTEGER, empresa_id INTEGER, orden INTEGER, origen TEXT, destino TEXT, flete_facturacion_ars REAL
         )');
         $this->database->query('CREATE TABLE viaje_operativo_asignaciones (
             id INTEGER PRIMARY KEY, viaje_id INTEGER, empresa_id INTEGER, rol TEXT,
@@ -93,9 +93,11 @@ final class CodeIgniterOperationalTripDashboardReadModelTest extends TestCase
             ['id' => 3, 'viaje_id' => 3, 'empresa_id' => 5, 'importe_ars' => 20000],
         ]);
         $this->database->table('viaje_operativo_tramos')->insertBatch([
-            ['id' => 1, 'viaje_id' => 1, 'empresa_id' => 5, 'flete_facturacion_ars' => 500000],
-            ['id' => 2, 'viaje_id' => 2, 'empresa_id' => 5, 'flete_facturacion_ars' => 900000],
-            ['id' => 3, 'viaje_id' => 3, 'empresa_id' => 5, 'flete_facturacion_ars' => 300000],
+            ['id' => 1, 'viaje_id' => 1, 'empresa_id' => 5, 'orden' => 1, 'origen' => 'Rosario', 'destino' => 'Córdoba', 'flete_facturacion_ars' => 500000],
+            ['id' => 2, 'viaje_id' => 2, 'empresa_id' => 5, 'orden' => 1, 'origen' => 'Córdoba', 'destino' => 'Mendoza', 'flete_facturacion_ars' => 900000],
+            ['id' => 3, 'viaje_id' => 3, 'empresa_id' => 5, 'orden' => 1, 'origen' => 'Rosario', 'destino' => 'Córdoba', 'flete_facturacion_ars' => 300000],
+            ['id' => 4, 'viaje_id' => 4, 'empresa_id' => 5, 'orden' => 1, 'origen' => 'Santa Fe', 'destino' => 'Rosario', 'flete_facturacion_ars' => 0],
+            ['id' => 5, 'viaje_id' => 4, 'empresa_id' => 5, 'orden' => 2, 'origen' => 'Rosario', 'destino' => 'Bahía Blanca', 'flete_facturacion_ars' => 0],
         ]);
         $this->database->table('viaje_operativo_asignaciones')->insertBatch([
             ['id' => 1, 'viaje_id' => 1, 'empresa_id' => 5, 'rol' => 'TRACTOR', 'equipo_id' => 7, 'empleado_id' => null],
@@ -145,10 +147,35 @@ final class CodeIgniterOperationalTripDashboardReadModelTest extends TestCase
         self::assertSame('Rosario', $details[1]['origen']);
         self::assertSame('Córdoba', $details[1]['destino']);
         self::assertSame(2, $details[1]['paradas']);
+        self::assertSame(1, $details[1]['tramos']);
         self::assertSame('BB222BB · T02', $details[2]['tractor']);
         self::assertSame('Córdoba', $details[2]['origen']);
         self::assertSame('Mendoza', $details[2]['destino']);
         self::assertSame([], (new CodeIgniterOperationalTripDashboardReadModel($this->database))->details(5, []));
+    }
+
+    public function testTheRouteComesFromTheLegsEvenWithoutStops(): void
+    {
+        // El viaje 4 no tiene paradas registradas: el recorrido tiene que salir
+        // de sus tramos, que son obligatorios.
+        $details = (new CodeIgniterOperationalTripDashboardReadModel($this->database))->details(5, [4]);
+
+        self::assertSame('Santa Fe', $details[4]['origen']);
+        self::assertSame('Bahía Blanca', $details[4]['destino']);
+        self::assertSame(0, $details[4]['paradas']);
+        self::assertSame(2, $details[4]['tramos']);
+    }
+
+    public function testTheStopsCompleteTheRouteOnlyWhenThereAreNoLegs(): void
+    {
+        // Un viaje sin tramos conserva el recorrido de sus paradas.
+        $this->database->table('viaje_operativo_tramos')->where('viaje_id', 2)->delete();
+        $details = (new CodeIgniterOperationalTripDashboardReadModel($this->database))->details(5, [2]);
+
+        self::assertSame('Córdoba', $details[2]['origen']);
+        self::assertSame('Mendoza', $details[2]['destino']);
+        self::assertSame(2, $details[2]['paradas']);
+        self::assertSame(0, $details[2]['tramos']);
     }
 
     public function testBranchesRespectsCompanyAndBranchScope(): void

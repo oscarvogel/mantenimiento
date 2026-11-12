@@ -278,7 +278,7 @@ final class GetOperationalTripsDashboard
 
     /**
      * @param list<array<string,mixed>> $rows
-     * @param array<int,array{tractor:?string,choferes:list<string>,origen:?string,destino:?string,paradas:int}> $details
+     * @param array<int,array{tractor:?string,choferes:list<string>,origen:?string,destino:?string,paradas:int,tramos:int}> $details
      * @param array<int,string> $branchNames
      * @return list<array<string,mixed>>
      */
@@ -287,7 +287,7 @@ final class GetOperationalTripsDashboard
         $items = [];
         foreach ($rows as $row) {
             $id = (int) $row['id'];
-            $detail = $details[$id] ?? ['tractor' => null, 'choferes' => [], 'origen' => null, 'destino' => null, 'paradas' => 0];
+            $detail = $details[$id] ?? ['tractor' => null, 'choferes' => [], 'origen' => null, 'destino' => null, 'paradas' => 0, 'tramos' => 0];
             $items[] = [
                 'id' => $id,
                 'numero' => (int) $row['numero'],
@@ -302,6 +302,7 @@ final class GetOperationalTripsDashboard
                 'origen' => $detail['origen'],
                 'destino' => $detail['destino'],
                 'paradas' => (int) $detail['paradas'],
+                'tramos' => (int) ($detail['tramos'] ?? 0),
                 'url' => base_url('viajes/operativos/' . $id),
             ];
         }

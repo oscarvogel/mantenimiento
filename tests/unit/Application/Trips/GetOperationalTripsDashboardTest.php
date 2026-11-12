@@ -42,6 +42,8 @@ final class GetOperationalTripsDashboardTest extends TestCase
         self::assertSame(['Juan Pérez'], $payload['currentTrips'][0]['choferes']);
         self::assertSame('Rosario', $payload['currentTrips'][0]['origen']);
         self::assertSame('Córdoba', $payload['currentTrips'][0]['destino']);
+        self::assertSame(1, $payload['currentTrips'][0]['tramos']);
+        self::assertSame(2, $payload['currentTrips'][0]['paradas']);
         self::assertSame('Argentina', $payload['currentTrips'][0]['sucursal']);
         self::assertSame([1, 2], $readModel->detailIds);
         self::assertSame([1, 1, 1, 1], array_map(static fn (array $item): int => $item['value'], $payload['statusBreakdown']));
@@ -194,6 +196,7 @@ final class DashboardReadModelFake implements OperationalTripDashboardReadModel
                 'origen' => 'Rosario',
                 'destino' => 'Córdoba',
                 'paradas' => 2,
+                'tramos' => 1,
             ],
             2 => [
                 'tractor' => 'AA222AA · T02',
@@ -201,6 +204,7 @@ final class DashboardReadModelFake implements OperationalTripDashboardReadModel
                 'origen' => 'Córdoba',
                 'destino' => 'Mendoza',
                 'paradas' => 3,
+                'tramos' => 2,
             ],
         ];
     }

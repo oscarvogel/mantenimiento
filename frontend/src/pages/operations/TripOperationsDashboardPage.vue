@@ -4,7 +4,7 @@ import { ArrowPathIcon, PlusIcon, TruckIcon } from '@heroicons/vue/24/outline'
 import EmptyState from './components/EmptyState.vue'
 import PageHeading from './components/PageHeading.vue'
 import PanelCard from './components/PanelCard.vue'
-import { fieldClass, primaryButton, secondaryButton } from './helpers.js'
+import { fieldClass, primaryButton, secondaryButton, tripRouteCounts, tripRouteLabel } from './helpers.js'
 
 const props = defineProps({ data: { type: Object, required: true } })
 
@@ -176,8 +176,8 @@ const bar = (value, max) => {
                 </td>
                 <td class="whitespace-nowrap px-4 py-3 text-ink-muted">{{ fmtDateTime(trip.fecha_salida) }}</td>
                 <td class="px-4 py-3">
-                  <p class="font-semibold text-ink">{{ trip.origen ?? 'Sin origen' }} → {{ trip.destino ?? 'Sin destino' }}</p>
-                  <p class="mt-0.5 text-xs text-ink-muted">{{ trip.paradas }} paradas</p>
+                  <p class="font-semibold text-ink">{{ tripRouteLabel(trip) }}</p>
+                  <p class="mt-0.5 text-xs text-ink-muted">{{ tripRouteCounts(trip) }}</p>
                 </td>
                 <td class="px-4 py-3 text-ink-muted">{{ trip.tractor ?? 'Sin tractor' }}</td>
                 <td class="px-4 py-3 text-ink-muted">{{ (trip.choferes ?? []).join(' · ') || 'Sin chofer' }}</td>

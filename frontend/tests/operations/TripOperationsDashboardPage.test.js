@@ -52,6 +52,7 @@ const data = () => ({
     origen: 'Rosario',
     destino: 'Córdoba',
     paradas: 2,
+    tramos: 2,
     url: '/mantenimiento/viajes/operativos/11',
   }],
 })
@@ -68,6 +69,7 @@ describe('tablero de viajes operativos', () => {
     expect(wrapper.text()).toContain('1.400.000')
     expect(wrapper.text()).toContain('#7')
     expect(wrapper.text()).toContain('Rosario → Córdoba')
+    expect(wrapper.text()).toContain('2 tramos · 2 paradas')
     expect(wrapper.text()).toContain('AA111AA · T01')
     expect(wrapper.text()).toContain('Juan Pérez')
     expect(wrapper.text()).toContain('Estado de los viajes')
@@ -81,6 +83,23 @@ describe('tablero de viajes operativos', () => {
     expect(wrapper.findAll('[data-status-row]')).toHaveLength(4)
     expect(wrapper.findAll('[data-month-row]')).toHaveLength(1)
     expect(wrapper.findAll('[data-branch-row]')).toHaveLength(1)
+    wrapper.unmount()
+  })
+
+  it('informa que el viaje no tiene recorrido cuando no hay tramos ni paradas', () => {
+    const payload = data()
+    payload.currentTrips = [{
+      ...payload.currentTrips[0],
+      origen: null,
+      destino: null,
+      paradas: 0,
+      tramos: 0,
+    }]
+    const wrapper = mount(TripOperationsDashboardPage, { props: { data: payload } })
+
+    expect(wrapper.text()).toContain('Sin recorrido')
+    expect(wrapper.text()).toContain('Sin tramos')
+    expect(wrapper.text()).not.toContain('Sin origen → Sin destino')
     wrapper.unmount()
   })
 

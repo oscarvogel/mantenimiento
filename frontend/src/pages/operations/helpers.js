@@ -81,3 +81,23 @@ export const readingDelta = (current, next, parser = parseFlexibleNumber) => {
 }
 
 export const kilometersDelta = (current, next) => readingDelta(current, next, parseKilometers)
+
+// El recorrido del viaje sale de sus tramos, que son obligatorios. Las
+// paradas son el itinerario fino y se registran aparte.
+export const tripRouteLabel = (trip) => {
+  const origin = String(trip?.origen ?? '').trim()
+  const destination = String(trip?.destino ?? '').trim()
+  if (origin === '' && destination === '') return 'Sin recorrido'
+
+  return `${origin || 'Sin origen'} → ${destination || 'Sin destino'}`
+}
+
+export const tripRouteCounts = (trip) => {
+  const legs = Number(trip?.tramos ?? 0)
+  const stops = Number(trip?.paradas ?? 0)
+  const parts = []
+  if (legs > 0) parts.push(`${legs} ${legs === 1 ? 'tramo' : 'tramos'}`)
+  if (stops > 0) parts.push(`${stops} ${stops === 1 ? 'parada' : 'paradas'}`)
+
+  return parts.length > 0 ? parts.join(' · ') : 'Sin tramos'
+}

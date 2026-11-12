@@ -16,7 +16,7 @@ const data = {
   trips: [{
     id: 42, numero: 7, estado: 'PLANIFICADO', estado_label: 'Planificado', sucursal_id: 10,
     fecha_salida_planificada: '2026-10-20 08:00:00', tractor: 'AA111AA · T01', acoplado: 'AC222AC · A01',
-    choferes: ['Pérez, Juan'], origen: 'Rosario', destino: 'Córdoba', paradas: 2,
+    choferes: ['Pérez, Juan'], origen: 'Rosario', destino: 'Córdoba', paradas: 2, tramos: 2,
   }],
   pagination: { page: 1, perPage: 20, total: 1, pages: 1 },
 }
@@ -28,6 +28,7 @@ describe('viajes operativos', () => {
     expect(wrapper.text()).toContain('Viajes operativos')
     expect(wrapper.text()).toContain('#7')
     expect(wrapper.text()).toContain('Rosario → Córdoba')
+    expect(wrapper.text()).toContain('2 tramos · 2 paradas')
     expect(wrapper.text()).toContain('AA111AA · T01')
     expect(wrapper.text()).toContain('Pérez, Juan')
     expect(wrapper.text()).toContain('20/10/2026')
@@ -35,6 +36,16 @@ describe('viajes operativos', () => {
     expect(wrapper.get('form').attributes('method')).toBe('get')
     expect(wrapper.get('a[href="/mantenimiento/viajes/operativos/42"]').text()).toContain('Ver viaje')
     expect(wrapper.get('a[href="/mantenimiento/viajes/operativos/nuevo"]').text()).toContain('Nuevo viaje')
+    wrapper.unmount()
+  })
+
+  it('informa que el viaje no tiene recorrido cuando no hay tramos ni paradas', () => {
+    const payload = { ...data, trips: [{ ...data.trips[0], origen: null, destino: null, paradas: 0, tramos: 0 }] }
+    const wrapper = mount(TripOperationsIndexPage, { props: { data: payload } })
+
+    expect(wrapper.text()).toContain('Sin recorrido')
+    expect(wrapper.text()).toContain('Sin tramos')
+    expect(wrapper.text()).not.toContain('Sin origen → Sin destino')
     wrapper.unmount()
   })
 

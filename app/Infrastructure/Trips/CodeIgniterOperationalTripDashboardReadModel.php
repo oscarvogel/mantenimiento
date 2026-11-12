@@ -107,6 +107,7 @@ final class CodeIgniterOperationalTripDashboardReadModel implements OperationalT
                 'origen' => null,
                 'destino' => null,
                 'paradas' => 0,
+                'tramos' => 0,
             ];
         }
 
@@ -133,6 +134,30 @@ final class CodeIgniterOperationalTripDashboardReadModel implements OperationalT
             }
         }
 
+        // El recorrido del viaje sale de sus tramos, que son obligatorios. Las
+        // paradas son el itinerario fino y se registran aparte: sin tramos no
+        // habria ningun recorrido que mostrar.
+        $legs = $this->db->table('viaje_operativo_tramos')
+            ->select('viaje_id, origen, destino')
+            ->where('empresa_id', $companyId)
+            ->whereIn('viaje_id', $tripIds)
+            ->orderBy('viaje_id', 'ASC')
+            ->orderBy('orden', 'ASC')
+            ->get()->getResultArray();
+
+        foreach ($legs as $leg) {
+            $tripId = (int) $leg['viaje_id'];
+            if (! isset($details[$tripId])) {
+                continue;
+            }
+            if ($details[$tripId]['origen'] === null) {
+                $details[$tripId]['origen'] = (string) $leg['origen'];
+            }
+            $details[$tripId]['destino'] = (string) $leg['destino'];
+            $details[$tripId]['tramos']++;
+        }
+
+        $stopLocations = [];
         $stops = $this->db->table('viaje_operativo_paradas')
             ->select('viaje_id, ubicacion')
             ->where('empresa_id', $companyId)
@@ -143,12 +168,21 @@ final class CodeIgniterOperationalTripDashboardReadModel implements OperationalT
 
         foreach ($stops as $stop) {
             $tripId = (int) $stop['viaje_id'];
-            $location = (string) $stop['ubicacion'];
-            $details[$tripId]['paradas']++;
-            if ($details[$tripId]['origen'] === null) {
-                $details[$tripId]['origen'] = $location;
+            if (! isset($details[$tripId])) {
+                continue;
             }
-            $details[$tripId]['destino'] = $location;
+            $details[$tripId]['paradas']++;
+            $stopLocations[$tripId][] = (string) $stop['ubicacion'];
+        }
+
+        // Sin tramos, el recorrido sale de las paradas: la primera es el
+        // origen y la ultima el destino.
+        foreach ($stopLocations as $tripId => $locations) {
+            if ($details[$tripId]['origen'] !== null) {
+                continue;
+            }
+            $details[$tripId]['origen'] = $locations[0];
+            $details[$tripId]['destino'] = $locations[count($locations) - 1];
         }
 
         return $details;

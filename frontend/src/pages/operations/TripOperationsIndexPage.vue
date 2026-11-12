@@ -4,7 +4,7 @@ import { ArrowPathIcon, ChartBarSquareIcon, PlusIcon, TruckIcon } from '@heroico
 import EmptyState from './components/EmptyState.vue'
 import PageHeading from './components/PageHeading.vue'
 import PanelCard from './components/PanelCard.vue'
-import { fieldClass, primaryButton, secondaryButton } from './helpers.js'
+import { fieldClass, primaryButton, secondaryButton, tripRouteCounts, tripRouteLabel } from './helpers.js'
 
 const props = defineProps({ data: { type: Object, required: true } })
 
@@ -113,8 +113,8 @@ const pageUrl = (page) => {
               <td class="px-4 py-3"><span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold" :class="statusTone[trip.estado] ?? 'bg-surface-muted text-ink-muted'">{{ trip.estado_label }}</span></td>
               <td class="whitespace-nowrap px-4 py-3 text-ink-muted">{{ fmtDate(trip.fecha_salida_real || trip.fecha_salida_planificada) }}</td>
               <td class="px-4 py-3">
-                <p class="font-semibold text-ink">{{ trip.origen ?? 'Sin origen' }} → {{ trip.destino ?? 'Sin destino' }}</p>
-                <p class="mt-0.5 text-xs text-ink-muted">{{ trip.paradas }} paradas</p>
+                <p class="font-semibold text-ink">{{ tripRouteLabel(trip) }}</p>
+                <p class="mt-0.5 text-xs text-ink-muted">{{ tripRouteCounts(trip) }}</p>
               </td>
               <td class="px-4 py-3 text-ink-muted">
                 <p>{{ trip.tractor ?? 'Sin tractor' }}</p>
