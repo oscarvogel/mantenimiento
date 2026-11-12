@@ -653,6 +653,11 @@ chofer: afectan la liquidación, no el margen operativo.
 **La fecha estimada de regreso es opcional al iniciar un viaje.** Si todavía no se conoce, el viaje puede guardarse
 sin ella. El equipo y los choferes siguen ocupados para la detección de conflictos hasta registrar el regreso real.
 
+**El recorrido que se muestra sale de los tramos.** En el tablero y en el listado de viajes operativos, el origen y el
+destino del viaje se toman de sus tramos, que son obligatorios. Las paradas son el itinerario fino: se cuentan y se
+muestran aparte, y solo completan el recorrido si el viaje no tiene tramos. Un viaje sin recorrido se informa como
+**Sin recorrido**, nunca como `Sin origen → Sin destino`.
+
 #### 5.13.2 Historial importado, solo lectura
 
 | Tabla legacy | Tabla del sistema | Contenido |

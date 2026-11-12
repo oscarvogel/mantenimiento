@@ -86,12 +86,14 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
         $ids = array_map(static fn (array $row): int => (int) $row['id'], $rows);
         $assignments = $this->assignmentsFor($companyId, $ids);
         $stops = $this->stopsFor($companyId, $ids);
+        $legs = $this->legsFor($companyId, $ids);
 
         $items = [];
         foreach ($rows as $row) {
             $id = (int) $row['id'];
             $tripAssignments = $assignments[$id] ?? [];
             $tripStops = $stops[$id] ?? [];
+            $tripLegs = $legs[$id] ?? null;
             $items[] = [
                 'id' => $id,
                 'numero' => (int) $row['numero'],
@@ -106,13 +108,46 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
                 'acoplado' => $this->roleLabel($tripAssignments, 'ACOPLADO'),
                 'acoplados' => $this->roleLabels($tripAssignments, 'ACOPLADO'),
                 'choferes' => $this->roleLabels($tripAssignments, 'CHOFER'),
-                'origen' => $tripStops[0]['ubicacion'] ?? null,
-                'destino' => $tripStops === [] ? null : $tripStops[count($tripStops) - 1]['ubicacion'],
+                // El recorrido comercial sale de los tramos, que son
+                // obligatorios. Las paradas son el itinerario fino: solo
+                // completan el recorrido si el viaje no tiene tramos.
+                'origen' => $tripLegs['origen'] ?? ($tripStops[0]['ubicacion'] ?? null),
+                'destino' => $tripLegs['destino'] ?? ($tripStops === [] ? null : $tripStops[count($tripStops) - 1]['ubicacion']),
                 'paradas' => count($tripStops),
+                'tramos' => $tripLegs === null ? 0 : $tripLegs['tramos'],
             ];
         }
 
         return ['items' => $items, 'total' => (int) $total];
+    }
+
+    /**
+     * Recorrido comercial de cada viaje: primer tramo y ultimo tramo.
+     *
+     * @param list<int> $ids
+     * @return array<int,array{origen:string,destino:string,tramos:int}>
+     */
+    private function legsFor(int $companyId, array $ids): array
+    {
+        $rows = $this->db->table('viaje_operativo_tramos')
+            ->select('viaje_id, origen, destino')
+            ->where('empresa_id', $companyId)
+            ->whereIn('viaje_id', $ids)
+            ->orderBy('viaje_id', 'ASC')
+            ->orderBy('orden', 'ASC')
+            ->get()->getResultArray();
+
+        $legs = [];
+        foreach ($rows as $row) {
+            $tripId = (int) $row['viaje_id'];
+            if (! isset($legs[$tripId])) {
+                $legs[$tripId] = ['origen' => (string) $row['origen'], 'destino' => (string) $row['destino'], 'tramos' => 0];
+            }
+            $legs[$tripId]['destino'] = (string) $row['destino'];
+            $legs[$tripId]['tramos']++;
+        }
+
+        return $legs;
     }
 
     public function find(int $companyId, ?array $branchIds, int $tripId): ?array

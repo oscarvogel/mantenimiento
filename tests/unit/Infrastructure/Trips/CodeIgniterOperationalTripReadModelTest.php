@@ -186,6 +186,8 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
         self::assertSame('Rosario', $trip['origen']);
         self::assertSame('Córdoba', $trip['destino']);
         self::assertSame(2, $trip['paradas']);
+        // El recorrido sale de los tramos, que son obligatorios.
+        self::assertSame(1, $trip['tramos']);
     }
 
     public function testListRespectsBranchScopeAndSearch(): void
@@ -195,6 +197,21 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
         self::assertSame(0, $readModel->list(5, [20], new OperationalTripFilters(), 1, 20)['total']);
         self::assertSame(1, $readModel->list(5, null, new OperationalTripFilters(search: '42'), 1, 20)['total']);
         self::assertSame(0, $readModel->list(5, null, new OperationalTripFilters(status: 'EN_CURSO'), 1, 20)['total']);
+    }
+
+    public function testTheListRouteComesFromTheLegsEvenWithoutStops(): void
+    {
+        // Sin paradas registradas, el recorrido del listado sale de los tramos.
+        $this->database->table('viaje_operativo_paradas')->where('viaje_id >', 0)->delete();
+
+        $payload = (new CodeIgniterOperationalTripReadModel($this->database))
+            ->list(5, [10], new OperationalTripFilters(), 1, 20);
+
+        $trip = $payload['items'][0];
+        self::assertSame('Rosario', $trip['origen']);
+        self::assertSame('Córdoba', $trip['destino']);
+        self::assertSame(0, $trip['paradas']);
+        self::assertSame(1, $trip['tramos']);
     }
 
     public function testFindReturnsAssignmentsAndStopsWithLabels(): void
