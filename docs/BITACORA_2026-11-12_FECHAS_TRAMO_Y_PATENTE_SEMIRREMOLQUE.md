@@ -204,6 +204,11 @@ las suites se corrieron antes sobre el mismo árbol y quedaron en verde (1763 + 
 > Al limpiar el árbol para el deploy se estacionaron en un stash los archivos sin versionar
 > de sesiones previas y se restauraron apenas terminó.
 
+> A diferencia del deploy del 11/11, este **no hizo backup previo** de `viaje_operativo_tramos`:
+> la migración solo agrega dos columnas nullable y no modifica ni borra datos existentes. A
+> eso se suma que su `down()` se niega a correr si hay tramos con fechas, así que el rollback
+> no puede perder información.
+
 ---
 
 ## 7. Pendientes
