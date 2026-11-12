@@ -74,6 +74,7 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
             id INTEGER PRIMARY KEY, viaje_id INTEGER, empresa_id INTEGER, sucursal_id INTEGER, orden INTEGER,
             codigo_origen_destino INTEGER NULL, localidad_origen_id INTEGER NULL, localidad_destino_id INTEGER NULL,
             cliente_id INTEGER NULL, origen TEXT, destino TEXT, km REAL NULL, toneladas REAL NULL, moneda TEXT, cotizacion REAL,
+            moneda_liquidacion TEXT NULL, cotizacion_liquidacion REAL NULL,
             flete_facturacion REAL, flete_facturacion_ars REAL, flete_liquidacion REAL, flete_liquidacion_ars REAL,
             fecha_inicio TEXT NULL, fecha_fin TEXT NULL, observaciones TEXT NULL
         )');
@@ -127,6 +128,7 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
             'id' => 1, 'viaje_id' => 1, 'empresa_id' => 5, 'sucursal_id' => 10, 'orden' => 1,
             'cliente_id' => 3, 'origen' => 'Rosario', 'destino' => 'Córdoba', 'km' => 320,
             'moneda' => 'ARS', 'cotizacion' => 1, 'flete_facturacion' => 1_000_000,
+            'moneda_liquidacion' => 'ARS', 'cotizacion_liquidacion' => 1,
             'flete_facturacion_ars' => 1_000_000, 'flete_liquidacion' => 800_000,
             'flete_liquidacion_ars' => 800_000, 'fecha_inicio' => '2026-10-20', 'fecha_fin' => '2026-10-21', 'observaciones' => null,
         ]);
@@ -211,6 +213,9 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
         self::assertCount(1, $detail['legs']);
         self::assertSame('Rosario', $detail['legs'][0]['origen']);
         self::assertSame(1_000_000.0, $detail['legs'][0]['flete_facturacion_ars']);
+        self::assertSame('ARS', $detail['legs'][0]['moneda']);
+        self::assertSame('ARS', $detail['legs'][0]['moneda_liquidacion']);
+        self::assertSame(1.0, $detail['legs'][0]['cotizacion_liquidacion']);
         self::assertSame('2026-10-20', $detail['legs'][0]['fecha_inicio']);
         self::assertSame('2026-10-21', $detail['legs'][0]['fecha_fin']);
         self::assertSame('CHOFER', $detail['expenses'][0]['pagado_por']);
@@ -254,5 +259,26 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
 
         self::assertNull($readModel->find(5, [20], 1));
         self::assertNull($readModel->find(6, null, 1));
+    }
+
+    public function testTheLiquidationCurrencyFallsBackToTheInvoiceCurrency(): void
+    {
+        $this->database->table('viaje_operativo_tramos')->insert([
+            'id' => 2, 'viaje_id' => 1, 'empresa_id' => 5, 'sucursal_id' => 10, 'orden' => 2,
+            'cliente_id' => 3, 'origen' => 'Córdoba', 'destino' => 'Rosario', 'km' => 320,
+            'moneda' => 'USD', 'cotizacion' => 1250,
+            'moneda_liquidacion' => null, 'cotizacion_liquidacion' => null,
+            'flete_facturacion' => 4_700, 'flete_facturacion_ars' => 5_875_000,
+            'flete_liquidacion' => 4_000, 'flete_liquidacion_ars' => 5_000_000,
+            'fecha_inicio' => null, 'fecha_fin' => null, 'observaciones' => null,
+        ]);
+
+        $detail = (new CodeIgniterOperationalTripReadModel($this->database))->find(5, [10], 1);
+
+        self::assertNotNull($detail);
+        self::assertCount(2, $detail['legs']);
+        self::assertSame('USD', $detail['legs'][1]['moneda']);
+        self::assertSame('USD', $detail['legs'][1]['moneda_liquidacion']);
+        self::assertSame(1250.0, $detail['legs'][1]['cotizacion_liquidacion']);
     }
 }

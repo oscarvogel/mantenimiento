@@ -44,7 +44,7 @@ final class AddTripLegTest extends TestCase
         self::assertSame(1, $id);
         self::assertNotNull($legs->leg);
         self::assertSame('Rosario', $legs->leg->origin());
-        self::assertSame(800_000.0, $legs->leg->liquidationAmount());
+        self::assertSame(800_000.0, $legs->leg->liquidation()->amount());
         self::assertSame(112_000.0, $legs->leg->commission(14.0));
         self::assertSame(55, $trips->trip->id());
     }
@@ -140,6 +140,176 @@ final class AddTripLegTest extends TestCase
             'localidad_destino_id' => '2',
             'fecha_inicio' => 'el martes',
         ]);
+    }
+
+    public function testTheLiquidationInheritsTheInvoiceCurrencyByDefault(): void
+    {
+        $command = AddTripLegCommand::fromInput([
+            'viaje_id' => '55',
+            'origen' => 'Rosario',
+            'destino' => 'Córdoba',
+            'cliente_id' => '3',
+            'localidad_origen_id' => '1',
+            'localidad_destino_id' => '2',
+            'flete_facturacion' => '4700',
+            'flete_liquidacion' => '4000',
+            'moneda' => 'USD',
+            'cotizacion' => '1250',
+        ]);
+
+        self::assertSame('USD', $command->liquidation()->currency());
+        self::assertSame(1_250.0, $command->liquidation()->exchangeRate());
+        self::assertSame(5_000_000.0, $command->liquidation()->amountArs());
+    }
+
+    public function testTheLiquidationCanBeLoadedInPesosWhileTheInvoiceIsInDollars(): void
+    {
+        $command = AddTripLegCommand::fromInput([
+            'viaje_id' => '55',
+            'origen' => 'Rosario',
+            'destino' => 'Córdoba',
+            'cliente_id' => '3',
+            'localidad_origen_id' => '1',
+            'localidad_destino_id' => '2',
+            'flete_facturacion' => '4700',
+            'flete_liquidacion' => '5875000',
+            'moneda' => 'USD',
+            'cotizacion' => '1250',
+            'moneda_liquidacion' => 'ARS',
+        ]);
+
+        self::assertSame('USD', $command->invoice()->currency());
+        self::assertSame(5_875_000.0, $command->invoice()->amountArs());
+        self::assertSame('ARS', $command->liquidation()->currency());
+        self::assertSame(1.0, $command->liquidation()->exchangeRate());
+        self::assertSame(5_875_000.0, $command->liquidation()->amountArs());
+    }
+
+    public function testTheLiquidationCanBeLoadedInAnotherForeignCurrency(): void
+    {
+        $command = AddTripLegCommand::fromInput([
+            'viaje_id' => '55',
+            'origen' => 'Rosario',
+            'destino' => 'Córdoba',
+            'cliente_id' => '3',
+            'localidad_origen_id' => '1',
+            'localidad_destino_id' => '2',
+            'flete_facturacion' => '4700',
+            'flete_liquidacion' => '30000',
+            'moneda' => 'USD',
+            'cotizacion' => '1250',
+            'moneda_liquidacion' => 'BRL',
+            'cotizacion_liquidacion' => '210',
+        ]);
+
+        self::assertSame('BRL', $command->liquidation()->currency());
+        self::assertSame(210.0, $command->liquidation()->exchangeRate());
+        self::assertSame(6_300_000.0, $command->liquidation()->amountArs());
+    }
+
+    public function testRejectsALiquidationInAnotherCurrencyWithoutRate(): void
+    {
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('cotización a ARS');
+
+        AddTripLegCommand::fromInput([
+            'viaje_id' => '55',
+            'origen' => 'Rosario',
+            'destino' => 'Córdoba',
+            'cliente_id' => '3',
+            'localidad_origen_id' => '1',
+            'localidad_destino_id' => '2',
+            'flete_liquidacion' => '30000',
+            'moneda' => 'USD',
+            'cotizacion' => '1250',
+            'moneda_liquidacion' => 'BRL',
+        ]);
+    }
+
+    public function testRejectsAnInvoiceInAnotherCurrencyWithoutRate(): void
+    {
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('cotización a ARS');
+
+        AddTripLegCommand::fromInput([
+            'viaje_id' => '55',
+            'origen' => 'Rosario',
+            'destino' => 'Córdoba',
+            'cliente_id' => '3',
+            'localidad_origen_id' => '1',
+            'localidad_destino_id' => '2',
+            'flete_facturacion' => '4700',
+            'moneda' => 'USD',
+        ]);
+    }
+
+    public function testRejectsALiquidationCurrencyThatIsNotAvailable(): void
+    {
+        $handler = new AddTripLeg(
+            new AddLegTripRepositoryFake(Trip::PLANIFICADO),
+            new AddLegRepositoryFake(),
+            new AddLegDirectoryFake(),
+            new AddLegLocalityFake(),
+            new AddLegUnitOfWorkFake(),
+        );
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('moneda de liquidación');
+
+        $handler->execute($this->actor(['viajes.operar']), new AddTripLegCommand(
+            55,
+            'Rosario',
+            'Córdoba',
+            4_700,
+            5_875_000,
+            null,
+            3,
+            'USD',
+            1_250.0,
+            null,
+            null,
+            null,
+            1,
+            2,
+            null,
+            null,
+            'XXX',
+            1.0,
+        ));
+    }
+
+    public function testAddsALegWithTheLiquidationInPesos(): void
+    {
+        $trips = new AddLegTripRepositoryFake(Trip::PLANIFICADO);
+        $legs = new AddLegRepositoryFake();
+        $handler = new AddTripLeg($trips, $legs, new AddLegDirectoryFake(), new AddLegLocalityFake(), new AddLegUnitOfWorkFake());
+
+        $handler->execute($this->actor(['viajes.operar']), new AddTripLegCommand(
+            55,
+            'Rosario',
+            'Córdoba',
+            4_700,
+            5_875_000,
+            320,
+            3,
+            'USD',
+            1_250.0,
+            'Carga de soja',
+            947,
+            30,
+            1,
+            2,
+            null,
+            null,
+            'ARS',
+        ));
+
+        self::assertNotNull($legs->leg);
+        self::assertSame('USD', $legs->leg->invoice()->currency());
+        self::assertSame(5_875_000.0, $legs->leg->invoice()->amountArs());
+        self::assertSame('ARS', $legs->leg->liquidation()->currency());
+        self::assertSame(5_875_000.0, $legs->leg->liquidation()->amountArs());
+        self::assertSame(822_500.0, $legs->leg->commission(14.0));
     }
 
     public function testAddsLegWithItsDates(): void
@@ -253,7 +423,7 @@ final class AddLegDirectoryFake implements TripDirectoryLookup
     public function expenseCategoryExists(int $companyId, int $categoryId): bool { return true; }
     public function paymentMethodExists(int $companyId, int $paymentMethodId): bool { return true; }
     public function concept(int $companyId, int $conceptId): ?array { return null; }
-    public function currencyExists(string $code): bool { return true; }
+    public function currencyExists(string $code): bool { return in_array($code, ['ARS', 'USD', 'BRL', 'EUR'], true); }
 }
 
 final class AddLegLocalityFake implements TripLocalityLookup

@@ -101,6 +101,9 @@ final class CodeIgniterTripLegRepository implements TripLegRepository
     /** @return array<string,mixed> */
     private function payload(TripLeg $leg): array
     {
+        $invoice = $leg->invoice();
+        $liquidation = $leg->liquidation();
+
         return [
             'cliente_id' => $leg->customerId(),
             'codigo_origen_destino' => $leg->originDestinationCode(),
@@ -110,12 +113,14 @@ final class CodeIgniterTripLegRepository implements TripLegRepository
             'destino' => $leg->destination(),
             'km' => $leg->kilometers() === null ? null : $this->decimal($leg->kilometers(), 2),
             'toneladas' => $leg->tonnes() === null ? null : $this->decimal($leg->tonnes(), 2),
-            'moneda' => $leg->currency(),
-            'cotizacion' => $this->decimal($leg->exchangeRate(), 6),
-            'flete_facturacion' => $leg->invoiceAmount() === null ? null : $this->decimal($leg->invoiceAmount(), 4),
-            'flete_facturacion_ars' => $leg->invoiceAmountArs() === null ? null : $this->decimal($leg->invoiceAmountArs(), 4),
-            'flete_liquidacion' => $leg->liquidationAmount() === null ? null : $this->decimal($leg->liquidationAmount(), 4),
-            'flete_liquidacion_ars' => $leg->liquidationAmountArs() === null ? null : $this->decimal($leg->liquidationAmountArs(), 4),
+            'moneda' => $invoice->currency(),
+            'cotizacion' => $this->decimal($invoice->exchangeRate(), 6),
+            'flete_facturacion' => $invoice->amount() === null ? null : $this->decimal($invoice->amount(), 4),
+            'flete_facturacion_ars' => $invoice->amountArs() === null ? null : $this->decimal($invoice->amountArs(), 4),
+            'moneda_liquidacion' => $liquidation->currency(),
+            'cotizacion_liquidacion' => $this->decimal($liquidation->exchangeRate(), 6),
+            'flete_liquidacion' => $liquidation->amount() === null ? null : $this->decimal($liquidation->amount(), 4),
+            'flete_liquidacion_ars' => $liquidation->amountArs() === null ? null : $this->decimal($liquidation->amountArs(), 4),
             'fecha_inicio' => $leg->startDate()?->format('Y-m-d'),
             'fecha_fin' => $leg->endDate()?->format('Y-m-d'),
             'observaciones' => $leg->notes(),

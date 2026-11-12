@@ -111,12 +111,10 @@ final class CreateTrip
                 $this->legs->add($companyId, $command->branchId, $id, new TripLeg(
                     $this->locality($input->originLocalityId)['name'],
                     $this->locality($input->destinationLocalityId)['name'],
-                    $input->invoiceAmount,
-                    $input->liquidationAmount,
+                    $input->invoice(),
+                    $input->liquidation(),
                     $input->kilometers,
                     $input->customerId,
-                    $input->currency,
-                    $input->exchangeRate,
                     $input->notes,
                     $input->originDestinationCode,
                     $input->tonnes,
@@ -164,6 +162,9 @@ final class CreateTrip
             }
             if (! $this->directory->currencyExists($leg->currency)) {
                 throw new DomainException('Una de las monedas de los tramos no está disponible.');
+            }
+            if (! $this->directory->currencyExists($leg->liquidation()->currency())) {
+                throw new DomainException('Una de las monedas de liquidación de los tramos no está disponible.');
             }
             $this->locality($leg->originLocalityId);
             $this->locality($leg->destinationLocalityId);

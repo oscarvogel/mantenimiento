@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Domain\Trips\Trip;
 use App\Domain\Trips\TripAssignment;
 use App\Domain\Trips\TripLeg;
+use App\Domain\Trips\TripLegAmount;
 use App\Domain\Trips\TripStop;
 use PHPUnit\Framework\TestCase;
 
@@ -176,19 +177,25 @@ final class TripTest extends TestCase
 
     public function testLegCommissionUsesLiquidationAmountAndCurrency(): void
     {
-        $leg = new TripLeg('Rosario', 'Córdoba', 1_000_000, 800_000, 320, null, 'ARS', 1.0);
+        $leg = new TripLeg(
+            'Rosario',
+            'Córdoba',
+            new TripLegAmount(1_000_000, 'ARS'),
+            new TripLegAmount(800_000, 'ARS'),
+            320,
+        );
 
-        self::assertSame(1_000_000.0, $leg->invoiceAmountArs());
-        self::assertSame(800_000.0, $leg->liquidationAmountArs());
+        self::assertSame(1_000_000.0, $leg->invoice()->amountArs());
+        self::assertSame(800_000.0, $leg->liquidation()->amountArs());
         self::assertSame(112_000.0, $leg->commission(14.0));
     }
 
     public function testLegRejectsNegativeAmountsAndEmptyRoute(): void
     {
         $this->expectException(DomainException::class);
-        $this->expectExceptionMessage('negativos');
+        $this->expectExceptionMessage('negativo');
 
-        new TripLeg('Rosario', 'Córdoba', -1, 0);
+        new TripLegAmount(-1);
     }
 
     public function testTripCanOnlyFinishWhenItIsInProgress(): void

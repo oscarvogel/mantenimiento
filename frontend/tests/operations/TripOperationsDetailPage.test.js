@@ -681,4 +681,85 @@ describe('detalle de viaje operativo', () => {
     expect(wrapper.text()).toContain('Sin datos')
     wrapper.unmount()
   })
+
+  it('carga el flete de liquidación en pesos aunque la facturación esté en dólares', async () => {
+    const wrapper = mount(TripOperationsDetailPage, {
+      props: {
+        data: {
+          ...data,
+          canStart: false,
+          canCancel: false,
+          canEdit: true,
+          canAddLegs: true,
+          links: { ...data.links, legs: '/mantenimiento/viajes/operativos/42/tramos' },
+          trip: { ...data.trip, estado: 'EN_CURSO', estado_label: 'En curso' },
+          options: { expenseCategories: [], paymentMethods: [], currencies: [{ code: 'ARS', label: 'Peso argentino' }, { code: 'USD', label: 'Dólar' }] },
+          legs: [{
+            id: 9, orden: 1, cliente: 'Cliente Sur', cliente_id: 324, localidad_origen_id: 1, localidad_destino_id: 2,
+            origen: 'Rosario', destino: 'Córdoba', km: 320, toneladas: 30,
+            moneda: 'USD', cotizacion: 1250,
+            moneda_liquidacion: 'ARS', cotizacion_liquidacion: 1,
+            flete_facturacion: 4700, flete_facturacion_ars: 5875000,
+            flete_liquidacion: 5875000, flete_liquidacion_ars: 5875000,
+            commission_ars: 822500, assigned_costs_ars: 0, margin_ars: 0,
+          }],
+          totals: {
+            has_legs: true, invoice_ars: 5875000, liquidation_ars: 5875000,
+            invoice_complete: true, liquidation_complete: true, legs_without_amounts: [],
+            commission_ars: 822500, driver_percentage: 14, drivers_count: 1, multiple_drivers: false,
+            fuel_amount_ars: 0, expense_amount_ars: 0,
+          },
+        },
+      },
+    })
+
+    // La tabla muestra los importes en pesos y deja el original a la vista.
+    expect(wrapper.find('td[title="USD 4.700,00"]').exists()).toBe(true)
+    expect(wrapper.find('td[title="ARS 5.875.000,00"]').exists()).toBe(true)
+
+    const editLeg = wrapper.findAll('button').find((button) => button.text() === 'Editar')
+    await editLeg.trigger('click')
+    await nextTick()
+
+    const legForm = wrapper.get('form[action="/mantenimiento/viajes/operativos/42/tramos/9"]')
+    expect(legForm.get('select[name="moneda"]').element.value).toBe('USD')
+    expect(legForm.get('select[name="moneda_liquidacion"]').element.value).toBe('ARS')
+    expect(legForm.get('input[name="cotizacion_liquidacion"]').attributes('disabled')).toBeDefined()
+    expect(legForm.get('input[name="flete_liquidacion"]').element.value).toBe('5875000')
+    wrapper.unmount()
+  })
+
+  it('ofrece cargar la liquidación en pesos al agregar un tramo', async () => {
+    const wrapper = mount(TripOperationsDetailPage, {
+      props: {
+        data: {
+          ...data,
+          canStart: false,
+          canCancel: false,
+          canEdit: true,
+          canAddLegs: true,
+          links: { ...data.links, legs: '/mantenimiento/viajes/operativos/42/tramos' },
+          trip: { ...data.trip, estado: 'EN_CURSO', estado_label: 'En curso' },
+          options: { expenseCategories: [], paymentMethods: [], currencies: [{ code: 'ARS', label: 'Peso argentino' }, { code: 'USD', label: 'Dólar' }] },
+        },
+      },
+    })
+
+    const legForm = wrapper.get('form[action="/mantenimiento/viajes/operativos/42/tramos"]')
+    await legForm.get('select[name="moneda"]').setValue('USD')
+    await nextTick()
+
+    // Mientras la liquidación sigue a la facturación, comparte su cotización.
+    expect(legForm.get('select[name="moneda_liquidacion"]').element.value).toBe('USD')
+    expect(legForm.get('input[name="cotizacion_liquidacion"]').attributes('disabled')).toBeDefined()
+
+    const pesos = legForm.findAll('button').find((button) => button.text() === 'En pesos')
+    await pesos.trigger('click')
+    await nextTick()
+
+    expect(legForm.get('select[name="moneda_liquidacion"]').element.value).toBe('ARS')
+    expect(legForm.get('input[name="cotizacion_liquidacion"]').attributes('disabled')).toBeDefined()
+    expect(legForm.text()).toContain('Flete de liquidación (ARS, opcional)')
+    wrapper.unmount()
+  })
 })
