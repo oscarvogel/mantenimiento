@@ -163,6 +163,7 @@ final class CodeIgniterTripFormReadModel implements TripFormReadModel
             ->where('activo', 1)
             ->orderBy('codigo', 'ASC')
             ->get()->getResultArray();
+        $exchangeRates = $this->exchangeRates($companyId);
 
         $addresses = $this->db->table('viajes_domicilios_clientes d')
             ->select('d.id, d.cliente_id, d.alias, d.calle, d.localidad')
@@ -206,10 +207,15 @@ final class CodeIgniterTripFormReadModel implements TripFormReadModel
                 'code' => $row['codigo_origen'] === null ? null : (string) $row['codigo_origen'],
                 'taxId' => $row['identificacion_fiscal'] === null ? null : (string) $row['identificacion_fiscal'],
             ], $customers),
-            'currencies' => array_map(static fn (array $row): array => [
-                'code' => (string) $row['codigo'],
-                'label' => (string) $row['nombre'],
-            ], $currencies),
+            'currencies' => array_map(static function (array $row) use ($exchangeRates): array {
+                $code = strtoupper((string) $row['codigo']);
+
+                return [
+                    'code' => $code,
+                    'label' => (string) $row['nombre'],
+                    'rate' => $code === 'ARS' ? 1.0 : ($exchangeRates[$code] ?? null),
+                ];
+            }, $currencies),
             'addresses' => array_map(static function (array $row): array {
                 $label = trim(implode(' · ', array_filter([
                     (string) $row['alias'],
@@ -235,6 +241,22 @@ final class CodeIgniterTripFormReadModel implements TripFormReadModel
      * @param array<string,mixed>|null $row
      * @return array{name:string,legalName:string,taxId:?string}
      */
+    /** @return array<string,float> */
+    private function exchangeRates(int $companyId): array
+    {
+        $rows = $this->db->table('viajes_cotizaciones')
+            ->select('moneda, cotizacion')
+            ->where('empresa_id', $companyId)
+            ->get()->getResultArray();
+
+        $rates = [];
+        foreach ($rows as $row) {
+            $rates[strtoupper((string) $row['moneda'])] = (float) $row['cotizacion'];
+        }
+
+        return $rates;
+    }
+
     private function companyData(?array $row): array
     {
         $legalName = trim((string) ($row['razon_social'] ?? ''));

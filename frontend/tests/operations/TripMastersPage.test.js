@@ -9,13 +9,20 @@ let main
 const data = {
   canEdit: true,
   csrf: { name: 'csrf_test', hash: 'secure-token' },
-  urls: { create: '/viajes/maestros/crear' },
+  urls: { create: '/viajes/maestros/crear', exchangeRates: '/viajes/maestros/cotizaciones' },
   catalogs: {
     clientes: {
       label: 'Clientes',
       items: [{ id: 21, nombre: 'Cliente de prueba', activo: 1, updateUrl: '/viajes/maestros/clientes/21', statusUrl: '/viajes/maestros/clientes/21/estado' }],
     },
     domicilios: { label: 'Domicilios', items: [] },
+    cotizaciones: {
+      label: 'Cotizaciones',
+      items: [
+        { id: 1, moneda: 'ARS', nombre: 'Peso argentino', cotizacion: 1 },
+        { id: 2, moneda: 'USD', nombre: 'Dólar estadounidense', cotizacion: 1234.5 },
+      ],
+    },
   },
   countries: [{ id: 1, nombre: 'Argentina', codigo_iso: 'AR', activo: 1 }],
   currencies: [],
@@ -85,5 +92,17 @@ describe('TripMastersPage editor', () => {
     expect(form.querySelector('select[name="moneda"]').value).toBe('ARS')
     expect(form.querySelector('input[type="hidden"][name="permite_editar_importe"]').value).toBe('0')
     expect(form.querySelector('input[type="checkbox"][name="permite_editar_importe"]').checked).toBe(true)
+  })
+
+  it('guarda la cotización vigente de cada moneda de la empresa', async () => {
+    wrapper = mount(TripMastersPage, { props: { data } })
+
+    await wrapper.findAll('button').find((button) => button.text() === 'Cotizaciones').trigger('click')
+
+    const form = wrapper.find('form[action="/viajes/maestros/cotizaciones"]')
+    expect(form.exists()).toBe(true)
+    expect(form.find('input[name="csrf_test"]').element.value).toBe('secure-token')
+    expect(form.find('input[name="cotizaciones[USD]"]').element.value).toBe('1234.5')
+    expect(form.find('input[name="cotizaciones[ARS]"]').exists()).toBe(false)
   })
 })

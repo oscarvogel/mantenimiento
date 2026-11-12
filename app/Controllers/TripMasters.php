@@ -33,8 +33,12 @@ final class TripMasters extends BaseController
             $payload['employees'] = $employees;
             $payload['urls'] = [
                 'create' => base_url('viajes/maestros'),
+                'exchangeRates' => base_url('viajes/maestros/cotizaciones'),
             ];
             foreach ($payload['catalogs'] as $key => &$catalog) {
+                if ($key === 'cotizaciones') {
+                    continue;
+                }
                 foreach ($catalog['items'] as &$item) {
                     $item['updateUrl'] = base_url('viajes/maestros/' . $key . '/' . (int) $item['id']);
                     $item['statusUrl'] = base_url('viajes/maestros/' . $key . '/' . (int) $item['id'] . '/estado');
@@ -57,6 +61,17 @@ final class TripMasters extends BaseController
     public function update(string $catalog, int $id): RedirectResponse
     {
         return $this->save($id, $catalog);
+    }
+
+    public function exchangeRates(): RedirectResponse
+    {
+        try {
+            $input = (array) ($this->request->getPost('cotizaciones') ?? []);
+            $this->catalog()->saveExchangeRates($this->actor(), $input);
+            return redirect()->to('/viajes/maestros#cotizaciones')->with('success', 'Las cotizaciones quedaron guardadas.');
+        } catch (Throwable $exception) {
+            return $this->failure($exception);
+        }
     }
 
     public function status(string $catalog, int $id): RedirectResponse

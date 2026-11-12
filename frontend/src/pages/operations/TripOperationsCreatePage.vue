@@ -41,8 +41,22 @@ const newLeg = () => ({
   liquidacion_segue_facturacion: true,
   fecha_inicio: '', fecha_fin: '', observaciones: '',
 })
-const setLegCurrency = (leg) => { onInvoiceCurrencyChange(leg) }
-const setLegLiquidationCurrency = (leg) => { onLiquidationCurrencyChange(leg) }
+const rateFor = (code) => currencies.value.find((currency) => currency.code === code)?.rate
+const setLegCurrency = (leg) => {
+  onInvoiceCurrencyChange(leg)
+  if (leg.moneda !== 'ARS' && (leg.cotizacion === '' || leg.cotizacion === null)) {
+    const rate = rateFor(leg.moneda)
+    if (rate !== null && rate !== undefined && rate !== '') leg.cotizacion = String(rate)
+  }
+}
+const setLegLiquidationCurrency = (leg) => {
+  onLiquidationCurrencyChange(leg)
+  const currency = liquidationCurrency(leg)
+  if (currency !== 'ARS' && !liquidationFollowsInvoice(leg) && (leg.cotizacion_liquidacion === '' || leg.cotizacion_liquidacion === null)) {
+    const rate = rateFor(currency)
+    if (rate !== null && rate !== undefined && rate !== '') leg.cotizacion_liquidacion = String(rate)
+  }
+}
 const legLiquidationInPesos = (leg) => { onLiquidationInPesos(leg) }
 const initialLegs = () => Array.isArray(old.value.tramos) && old.value.tramos.length
   ? old.value.tramos.map((row) => ({
