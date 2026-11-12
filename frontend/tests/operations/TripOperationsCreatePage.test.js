@@ -141,7 +141,7 @@ describe('alta de viaje operativo', () => {
     await wrapper.vm.$nextTick()
 
     expect(trailer.props('modelValue')).toEqual(['9'])
-    expect(wrapper.text()).toContain('Acoplado actual del camión: AC222AC · A01')
+    expect(wrapper.text()).toContain('Patente del semirremolque: AC222AC')
     expect(trailer.props('options').map((option) => option.hint)).toContain('Acoplado · Acoplado actual')
     wrapper.unmount()
   })
@@ -220,6 +220,26 @@ describe('alta de viaje operativo', () => {
     expect(wrapper.get('input[name="tramos[0][localidad_origen_id]"]').attributes('value')).toBe('99')
     const selectedOrigin = wrapper.findAllComponents(AutocompleteSelect).find((component) => component.props('name') === 'tramos[0][localidad_origen_id]')
     expect(selectedOrigin.get('input[role="combobox"]').element.value).toBe('Capitán Leonidas · Misiones · Argentina')
+    wrapper.unmount()
+  })
+
+  it('precarga la patente del semirremolque y las fechas del tramo', async () => {
+    const wrapper = mount(TripOperationsCreatePage, {
+      props: { data: { ...data, tractors: [{ ...data.tractors[0], linkedTrailerIds: [9] }] } },
+    })
+    const autocompletes = wrapper.findAllComponents(AutocompleteSelect)
+    const tractor = autocompletes.find((component) => component.props('name') === 'tractor_id')
+
+    tractor.vm.$emit('update:modelValue', 7)
+    await wrapper.vm.$nextTick()
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.text()).toContain('Semirremolque')
+    expect(wrapper.text()).toContain('AC222AC')
+    expect(wrapper.get('input[name="tramos[0][fecha_inicio]"]').attributes('type')).toBe('date')
+    expect(wrapper.get('input[name="tramos[0][fecha_fin]"]').attributes('type')).toBe('date')
+    expect(wrapper.text()).toContain('Fecha de inicio')
+    expect(wrapper.text()).toContain('Fecha de fin')
     wrapper.unmount()
   })
 

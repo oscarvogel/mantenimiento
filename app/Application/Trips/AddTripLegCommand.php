@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Trips;
 
+use DateTimeImmutable;
 use DomainException;
 
 final readonly class AddTripLegCommand
@@ -23,6 +24,8 @@ final readonly class AddTripLegCommand
         public ?float $tonnes = null,
         public ?int $originLocalityId = null,
         public ?int $destinationLocalityId = null,
+        public ?DateTimeImmutable $startDate = null,
+        public ?DateTimeImmutable $endDate = null,
     ) {
     }
 
@@ -49,6 +52,8 @@ final readonly class AddTripLegCommand
             self::optionalAmount($input['toneladas'] ?? null, 'Las toneladas'),
             self::requiredPositiveInt($input['localidad_origen_id'] ?? null, 'Elegí una localidad de origen para el tramo.'),
             self::requiredPositiveInt($input['localidad_destino_id'] ?? null, 'Elegí una localidad de destino para el tramo.'),
+            TripDateInput::optional($input['fecha_inicio'] ?? null, 'La fecha de inicio del tramo'),
+            TripDateInput::optional($input['fecha_fin'] ?? null, 'La fecha de fin del tramo'),
         );
     }
 

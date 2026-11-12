@@ -24,7 +24,7 @@ const company = computed(() => options.value.company ?? {})
 const nextNumber = computed(() => options.value.nextNumber ?? null)
 
 const old = computed(() => props.data.old ?? {})
-const newLeg = () => ({ localidad_origen_id: '', localidad_destino_id: '', cliente_id: '', km: '', toneladas: '', flete_facturacion: '', flete_liquidacion: '', moneda: 'ARS', cotizacion: '1', observaciones: '' })
+const newLeg = () => ({ localidad_origen_id: '', localidad_destino_id: '', cliente_id: '', km: '', toneladas: '', flete_facturacion: '', flete_liquidacion: '', moneda: 'ARS', cotizacion: '1', fecha_inicio: '', fecha_fin: '', observaciones: '' })
 const setLegCurrency = (leg) => { leg.cotizacion = leg.moneda === 'ARS' ? '1' : '' }
 const initialLegs = () => Array.isArray(old.value.tramos) && old.value.tramos.length
   ? old.value.tramos.map((row) => ({ ...newLeg(), ...row }))
@@ -60,10 +60,15 @@ const linkedTrailersFor = (equipmentId) => {
 const trailerHint = computed(() => {
   const linked = linkedTrailersFor(tractorId.value)
   if (linked.length === 0) return ''
-  if (linked.length === 1) return `Acoplado actual del camión: ${linked[0].label}.`
+  const plates = linked.map((trailer) => trailer.plate || trailer.label)
+  if (plates.length === 1) return `Patente del semirremolque: ${plates[0]}`
 
-  return `Bitrén: este camión tiene ${linked.length} semirremolques enganchados (${linked.map((trailer) => trailer.label).join(', ')}). Se preseleccionaron todos: el viaje registra la composición completa.`
+  return `Bitrén: este camión tiene ${linked.length} semirremolques enganchados (${plates.join(' · ')}). Se preseleccionaron todos: el viaje registra la composición completa.`
 })
+const selectedTrailerPlates = computed(() => trailerIds.value
+  .map((trailerId) => trailers.value.find((trailer) => String(trailer.id) === String(trailerId)))
+  .filter(Boolean)
+  .map((trailer) => trailer.plate || trailer.label))
 const companyLabel = computed(() => company.value.name || company.value.legalName || 'Empresa actual')
 const kmSalidaHint = computed(() => {
   const lastKm = selectedTractor.value?.lastKm
@@ -224,7 +229,7 @@ const applyCreatedLocality = (locality) => {
           </label>
         </div>
 
-        <div class="mt-4 grid gap-3 sm:grid-cols-3">
+        <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div class="rounded-xl border border-border-subtle bg-surface p-3">
             <span class="block text-xs font-semibold uppercase tracking-wide text-ink-muted">Empresa</span>
             <p class="mt-1 text-sm font-bold text-ink">{{ companyLabel }}</p>
@@ -234,6 +239,11 @@ const applyCreatedLocality = (locality) => {
             <span class="block text-xs font-semibold uppercase tracking-wide text-ink-muted">Dominio</span>
             <p class="mt-1 text-sm font-bold text-ink">{{ domain || 'Elegí el camión' }}</p>
             <p class="mt-0.5 text-xs text-ink-muted">{{ selectedTractor?.type ?? 'Patente del tractor' }}</p>
+          </div>
+          <div class="rounded-xl border border-border-subtle bg-surface p-3">
+            <span class="block text-xs font-semibold uppercase tracking-wide text-ink-muted">Semirremolque</span>
+            <p class="mt-1 text-sm font-bold text-ink">{{ selectedTrailerPlates.length ? selectedTrailerPlates.join(' · ') : 'Sin semirremolque' }}</p>
+            <p class="mt-0.5 text-xs text-ink-muted">Patente del acoplado</p>
           </div>
           <div class="rounded-xl border border-border-subtle bg-surface p-3">
             <span class="block text-xs font-semibold uppercase tracking-wide text-ink-muted">Nro. de viaje</span>
@@ -310,6 +320,10 @@ const applyCreatedLocality = (locality) => {
             <div class="mt-4 grid gap-4 md:grid-cols-2">
               <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Flete de facturación ({{ leg.moneda }}, opcional)</span><input v-model="leg.flete_facturacion" type="number" min="0" step="0.01" :name="`tramos[${index}][flete_facturacion]`" :class="fieldClass" /></label>
               <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Flete de liquidación ({{ leg.moneda }}, opcional)</span><input v-model="leg.flete_liquidacion" type="number" min="0" step="0.01" :name="`tramos[${index}][flete_liquidacion]`" :class="fieldClass" /></label>
+            </div>
+            <div class="mt-4 grid gap-4 md:grid-cols-2">
+              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Fecha de inicio (opcional)</span><input v-model="leg.fecha_inicio" type="date" :name="`tramos[${index}][fecha_inicio]`" :class="fieldClass" /></label>
+              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Fecha de fin (opcional)</span><input v-model="leg.fecha_fin" type="date" :name="`tramos[${index}][fecha_fin]`" :class="fieldClass" /></label>
             </div>
             <label class="mt-4 block"><span class="mb-1.5 block text-sm font-semibold text-ink">Observaciones del tramo</span><input v-model="leg.observaciones" type="text" maxlength="500" :name="`tramos[${index}][observaciones]`" :class="fieldClass" /></label>
           </article>

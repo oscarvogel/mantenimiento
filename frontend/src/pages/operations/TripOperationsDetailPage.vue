@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { ArrowDownTrayIcon, BanknotesIcon, BeakerIcon, BookOpenIcon, CheckCircleIcon, CurrencyDollarIcon, PencilSquareIcon, ReceiptPercentIcon, XCircleIcon } from '@heroicons/vue/24/outline'
 import PageHeading from './components/PageHeading.vue'
 import PanelCard from './components/PanelCard.vue'
@@ -76,6 +76,7 @@ const editTractorOptions = computed(() => (editOptions.value.tractors ?? [])
     value: equipment.id,
     label: equipment.label,
     hint: [equipment.type, equipment.lastKm !== null && equipment.lastKm !== undefined ? `Último km ${Number(equipment.lastKm).toLocaleString('es-AR')}` : ''].filter(Boolean).join(' · '),
+    linkedTrailerIds: (equipment.linkedTrailerIds ?? []).map(String),
   })))
 const editTrailerOptions = computed(() => (editOptions.value.trailers ?? [])
   .filter((equipment) => !tripBranchId.value || Number(equipment.branchId) === tripBranchId.value)
@@ -83,6 +84,7 @@ const editTrailerOptions = computed(() => (editOptions.value.trailers ?? [])
     value: equipment.id,
     label: equipment.label,
     hint: equipment.type ?? '',
+    plate: equipment.plate ?? '',
   })))
 const editDriverOptions = computed(() => (editOptions.value.drivers ?? []).map((driver) => ({
   value: driver.id,
@@ -91,12 +93,32 @@ const editDriverOptions = computed(() => (editOptions.value.drivers ?? []).map((
 })))
 const tripDialog = ref(null)
 const tripDraft = ref(null)
+const tripEditTractorBaseline = ref('')
+const linkedTrailerIdsFor = (equipmentId) => {
+  if (!equipmentId) return []
+  const option = editTractorOptions.value.find((row) => String(row.value) === String(equipmentId))
+
+  return option?.linkedTrailerIds ?? []
+}
+const trailerPlateFor = (trailerId) => editTrailerOptions.value.find((row) => String(row.value) === String(trailerId))?.plate ?? ''
+const editTrailerHint = computed(() => {
+  const plates = (tripDraft.value?.trailerIds ?? []).map(trailerPlateFor).filter(Boolean)
+  if (plates.length === 0) return 'Sin semirremolque asignado.'
+  if (plates.length === 1) return `Patente del semirremolque: ${plates[0]}`
+
+  return `Bitrén: ${plates.join(' · ')}`
+})
 const openTripEdit = () => {
   const tractor = assignments.value.find((row) => row.rol === 'TRACTOR')
   const driverRows = assignments.value.filter((row) => row.rol === 'CHOFER' && row.empleado_id)
+  const tractorId = tractor?.equipo_id ? String(tractor.equipo_id) : ''
+  const assignedTrailerIds = assignments.value.filter((row) => row.rol === 'ACOPLADO' && row.equipo_id).map((row) => String(row.equipo_id))
+  tripEditTractorBaseline.value = tractorId
   tripDraft.value = {
-    tractorId: tractor?.equipo_id ? String(tractor.equipo_id) : '',
-    trailerIds: assignments.value.filter((row) => row.rol === 'ACOPLADO' && row.equipo_id).map((row) => String(row.equipo_id)),
+    tractorId,
+    // Si el viaje todavia no tiene semirremolque, se completa con el que tiene
+    // enganchado el camion: el operador ve la patente sin buscarla.
+    trailerIds: assignedTrailerIds.length ? assignedTrailerIds : linkedTrailerIdsFor(tractorId),
     departure: dateValue(trip.value.fecha_salida_real ?? trip.value.fecha_salida_planificada),
     returnAt: dateValue(trip.value.fecha_regreso_planificada ?? trip.value.fecha_regreso_real),
     kmSalida: trip.value.km_salida ?? '',
@@ -107,6 +129,16 @@ const openTripEdit = () => {
   nextTick(() => tripDialog.value?.showModal())
 }
 const closeTripEdit = () => { tripDraft.value = null }
+watch(
+  () => tripDraft.value?.tractorId,
+  (value) => {
+    if (!tripDraft.value) return
+    if (String(value ?? '') === String(tripEditTractorBaseline.value ?? '')) return
+    // Al cambiar el tractor, el semirremolque queda con la patente que tiene
+    // enganchada: el operador ve el dominio sin buscarlo a mano.
+    tripDraft.value.trailerIds = linkedTrailerIdsFor(value)
+  },
+)
 const legDialog = ref(null)
 const legDraft = ref(null)
 const openLegEdit = (leg) => {
@@ -126,6 +158,8 @@ const openLegEdit = (leg) => {
     exchangeRate: leg.cotizacion ?? '1',
     invoiceAmount: leg.flete_facturacion ?? '',
     liquidationAmount: leg.flete_liquidacion ?? '',
+    startDate: dateValue(leg.fecha_inicio),
+    endDate: dateValue(leg.fecha_fin),
     notes: leg.observaciones ?? '',
   }
   nextTick(() => legDialog.value?.showModal())
@@ -309,6 +343,15 @@ const fmtDate = (value) => {
   const match = String(value ?? '').match(/^(\d{4})-(\d{2})-(\d{2})/)
   return match ? `${match[3]}/${match[2]}/${match[1]}` : 'Sin fecha'
 }
+const legDates = (leg) => {
+  const start = leg?.fecha_inicio ? fmtDate(leg.fecha_inicio) : ''
+  const end = leg?.fecha_fin ? fmtDate(leg.fecha_fin) : ''
+  if (start && end) return `${start} → ${end}`
+  if (start) return `Desde ${start}`
+  if (end) return `Hasta ${end}`
+
+  return '—'
+}
 const number = (value) => value === null || value === undefined || value === '' ? '—' : Number(value).toLocaleString('es-AR')
 const money = (value, currency = 'ARS') => `${currency} ${Number(value ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const moneyOrNoData = (value) => value === null || value === undefined ? 'Sin datos' : money(value)
@@ -452,6 +495,7 @@ const facts = computed(() => {
             <tr>
               <th class="px-3 py-2">#</th>
               <th class="px-3 py-2">Recorrido</th>
+              <th class="px-3 py-2">Fechas</th>
               <th class="px-3 py-2 text-right">Toneladas</th>
               <th class="px-3 py-2 text-right">Km</th>
               <th class="px-3 py-2 text-right">Flete facturación (ARS)</th>
@@ -469,6 +513,7 @@ const facts = computed(() => {
                 <p class="font-semibold text-ink">{{ leg.origen }} → {{ leg.destino }}</p>
                 <p v-if="leg.cliente" class="mt-0.5 text-xs text-ink-muted"><span v-if="leg.cliente_codigo">{{ leg.cliente_codigo }} · </span>{{ leg.cliente }}</p>
               </td>
+              <td class="px-3 py-2 text-ink-muted" :title="leg.fecha_inicio || leg.fecha_fin ? `Inicio: ${leg.fecha_inicio ?? 'sin fecha'} · Fin: ${leg.fecha_fin ?? 'sin fecha'}` : 'Sin fechas cargadas'">{{ legDates(leg) }}</td>
               <td class="px-3 py-2 text-right text-ink-muted">{{ leg.toneladas === null ? '—' : number(leg.toneladas) }}</td>
               <td class="px-3 py-2 text-right text-ink-muted">{{ leg.km === null ? '—' : number(leg.km) }}</td>
               <td class="px-3 py-2 text-right text-ink">{{ moneyOrNoData(leg.flete_facturacion_ars) }}</td>
@@ -499,6 +544,10 @@ const facts = computed(() => {
         <div class="mt-3 grid gap-3 md:grid-cols-2">
           <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Flete de facturación ({{ newLegCurrency }}, opcional)</span><input type="number" name="flete_facturacion" min="0" step="0.01" :class="fieldClass" /></label>
           <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Flete de liquidación ({{ newLegCurrency }}, opcional)</span><input type="number" name="flete_liquidacion" min="0" step="0.01" :class="fieldClass" /></label>
+        </div>
+        <div class="mt-3 grid gap-3 md:grid-cols-2">
+          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Fecha de inicio (opcional)</span><input type="date" name="fecha_inicio" :class="fieldClass" /><span class="mt-1 block text-xs text-ink-muted">Cuándo salió el tramo.</span></label>
+          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Fecha de fin (opcional)</span><input type="date" name="fecha_fin" :class="fieldClass" /><span class="mt-1 block text-xs text-ink-muted">Cuándo terminó el tramo.</span></label>
         </div>
         <label class="mt-3 block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Observaciones</span><input type="text" name="observaciones" maxlength="500" :class="fieldClass" /></label>
         <button type="submit" :class="[primaryButton, 'mt-3']">Agregar tramo</button>
@@ -789,10 +838,12 @@ const facts = computed(() => {
             <label class="block">
               <span class="mb-1.5 block text-sm font-semibold text-ink">Tractor o camión</span>
               <AutocompleteSelect v-model="tripDraft.tractorId" name="tractor_id" :options="editTractorOptions" placeholder="Elegí el tractor o camión" required />
+              <span class="mt-1 block text-xs text-ink-muted">Al elegir otro tractor, el semirremolque se completa con la patente que tiene enganchada.</span>
             </label>
             <label class="block">
               <span class="mb-1.5 block text-sm font-semibold text-ink">Semirremolques del viaje</span>
               <AutocompleteSelect v-model="tripDraft.trailerIds" name="acoplado_id[]" :options="editTrailerOptions" placeholder="Sin semirremolque" multiple />
+              <span class="mt-1 block text-xs text-ink-muted">{{ editTrailerHint }}</span>
             </label>
             <label class="block">
               <span class="mb-1.5 block text-sm font-semibold text-ink">{{ trip.estado === 'PLANIFICADO' ? 'Fecha de salida' : 'Fecha real de salida' }}</span>
@@ -882,6 +933,14 @@ const facts = computed(() => {
             <label class="block">
               <span class="mb-1.5 block text-sm font-semibold text-ink">Flete de liquidación ({{ legDraft.currency }}, opcional)</span>
               <input v-model="legDraft.liquidationAmount" type="number" min="0" step="0.01" name="flete_liquidacion" :class="fieldClass" />
+            </label>
+            <label class="block">
+              <span class="mb-1.5 block text-sm font-semibold text-ink">Fecha de inicio (opcional)</span>
+              <input v-model="legDraft.startDate" type="date" name="fecha_inicio" :class="fieldClass" />
+            </label>
+            <label class="block">
+              <span class="mb-1.5 block text-sm font-semibold text-ink">Fecha de fin (opcional)</span>
+              <input v-model="legDraft.endDate" type="date" name="fecha_fin" :class="fieldClass" />
             </label>
             <label class="block md:col-span-2">
               <span class="mb-1.5 block text-sm font-semibold text-ink">Observaciones del tramo</span>

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Trips;
 
+use DateTimeImmutable;
 use DomainException;
 
 final class TripLeg
@@ -22,6 +23,8 @@ final class TripLeg
         private ?float $tonnes = null,
         private ?int $originLocalityId = null,
         private ?int $destinationLocalityId = null,
+        private ?DateTimeImmutable $startDate = null,
+        private ?DateTimeImmutable $endDate = null,
     ) {
         $origin = trim($origin);
         $destination = trim($destination);
@@ -51,6 +54,11 @@ final class TripLeg
         if ($exchangeRate <= 0) {
             throw new DomainException('La cotización del tramo debe ser mayor que cero.');
         }
+        $startDate = $startDate?->setTime(0, 0);
+        $endDate = $endDate?->setTime(0, 0);
+        if ($startDate !== null && $endDate !== null && $endDate < $startDate) {
+            throw new DomainException('La fecha de fin del tramo no puede ser anterior a la fecha de inicio.');
+        }
 
         $this->origin = $origin;
         $this->destination = $destination;
@@ -63,6 +71,8 @@ final class TripLeg
         $this->notes = $notes === null ? null : (trim($notes) === '' ? null : trim($notes));
         $this->originDestinationCode = $originDestinationCode;
         $this->tonnes = $tonnes === null ? null : round($tonnes, 2);
+        $this->startDate = $startDate;
+        $this->endDate = $endDate;
     }
 
     public function origin(): string
@@ -138,6 +148,16 @@ final class TripLeg
     public function destinationLocalityId(): ?int
     {
         return $this->destinationLocalityId;
+    }
+
+    public function startDate(): ?DateTimeImmutable
+    {
+        return $this->startDate;
+    }
+
+    public function endDate(): ?DateTimeImmutable
+    {
+        return $this->endDate;
     }
 
     public function commission(float $percentage): ?float

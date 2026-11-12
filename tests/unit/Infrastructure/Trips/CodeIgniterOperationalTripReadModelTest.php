@@ -75,7 +75,7 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
             codigo_origen_destino INTEGER NULL, localidad_origen_id INTEGER NULL, localidad_destino_id INTEGER NULL,
             cliente_id INTEGER NULL, origen TEXT, destino TEXT, km REAL NULL, toneladas REAL NULL, moneda TEXT, cotizacion REAL,
             flete_facturacion REAL, flete_facturacion_ars REAL, flete_liquidacion REAL, flete_liquidacion_ars REAL,
-            observaciones TEXT NULL
+            fecha_inicio TEXT NULL, fecha_fin TEXT NULL, observaciones TEXT NULL
         )');
         $this->database->query('CREATE TABLE viaje_operativo_caja_movimientos (
             id INTEGER PRIMARY KEY, viaje_id INTEGER, empresa_id INTEGER, sucursal_id INTEGER, tipo TEXT,
@@ -128,7 +128,7 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
             'cliente_id' => 3, 'origen' => 'Rosario', 'destino' => 'Córdoba', 'km' => 320,
             'moneda' => 'ARS', 'cotizacion' => 1, 'flete_facturacion' => 1_000_000,
             'flete_facturacion_ars' => 1_000_000, 'flete_liquidacion' => 800_000,
-            'flete_liquidacion_ars' => 800_000, 'observaciones' => null,
+            'flete_liquidacion_ars' => 800_000, 'fecha_inicio' => '2026-10-20', 'fecha_fin' => '2026-10-21', 'observaciones' => null,
         ]);
         $this->database->table('viaje_operativo_gastos')->insert([
             'id' => 1, 'viaje_id' => 1, 'tramo_id' => 1, 'empresa_id' => 5, 'sucursal_id' => 10,
@@ -211,6 +211,8 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
         self::assertCount(1, $detail['legs']);
         self::assertSame('Rosario', $detail['legs'][0]['origen']);
         self::assertSame(1_000_000.0, $detail['legs'][0]['flete_facturacion_ars']);
+        self::assertSame('2026-10-20', $detail['legs'][0]['fecha_inicio']);
+        self::assertSame('2026-10-21', $detail['legs'][0]['fecha_fin']);
         self::assertSame('CHOFER', $detail['expenses'][0]['pagado_por']);
         self::assertSame(10, $detail['expenses'][0]['concepto_id']);
         self::assertSame('Peaje', $detail['expenses'][0]['concepto_catalogo']);

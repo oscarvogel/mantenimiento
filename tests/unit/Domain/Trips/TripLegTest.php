@@ -31,4 +31,60 @@ final class TripLegTest extends TestCase
 
         new TripLeg('Rosario', 'Córdoba', -1, null);
     }
+
+    public function testKeepsTheDatesOfTheLegWithoutTime(): void
+    {
+        $leg = new TripLeg(
+            'Rosario',
+            'Córdoba',
+            null,
+            null,
+            null,
+            null,
+            'ARS',
+            1.0,
+            null,
+            null,
+            null,
+            null,
+            null,
+            new DateTimeImmutable('2026-11-02 06:30:00'),
+            new DateTimeImmutable('2026-11-04 18:00:00'),
+        );
+
+        self::assertSame('2026-11-02', $leg->startDate()?->format('Y-m-d'));
+        self::assertSame('2026-11-04', $leg->endDate()?->format('Y-m-d'));
+    }
+
+    public function testAcceptsALegWithoutDates(): void
+    {
+        $leg = new TripLeg('Rosario', 'Córdoba', null, null);
+
+        self::assertNull($leg->startDate());
+        self::assertNull($leg->endDate());
+    }
+
+    public function testRejectsAnEndDateBeforeTheStartDate(): void
+    {
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('fecha de fin');
+
+        new TripLeg(
+            'Rosario',
+            'Córdoba',
+            null,
+            null,
+            null,
+            null,
+            'ARS',
+            1.0,
+            null,
+            null,
+            null,
+            null,
+            null,
+            new DateTimeImmutable('2026-11-04'),
+            new DateTimeImmutable('2026-11-02'),
+        );
+    }
 }

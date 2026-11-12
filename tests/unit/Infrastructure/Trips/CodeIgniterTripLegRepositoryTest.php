@@ -28,7 +28,7 @@ final class CodeIgniterTripLegRepositoryTest extends TestCase
             id INTEGER PRIMARY KEY AUTOINCREMENT, viaje_id INTEGER, empresa_id INTEGER, sucursal_id INTEGER,
             orden INTEGER, codigo_origen_destino INTEGER NULL, localidad_origen_id INTEGER NULL, localidad_destino_id INTEGER NULL, cliente_id INTEGER NULL, origen TEXT, destino TEXT, km REAL NULL, toneladas REAL NULL,
             moneda TEXT, cotizacion REAL, flete_facturacion REAL, flete_facturacion_ars REAL,
-            flete_liquidacion REAL, flete_liquidacion_ars REAL, observaciones TEXT NULL,
+            flete_liquidacion REAL, flete_liquidacion_ars REAL, fecha_inicio TEXT NULL, fecha_fin TEXT NULL, observaciones TEXT NULL,
             created_at TEXT NULL, updated_at TEXT NULL, created_by INTEGER NULL, updated_by INTEGER NULL
         )');
     }
@@ -82,6 +82,56 @@ final class CodeIgniterTripLegRepositoryTest extends TestCase
         self::assertEquals(800_000.0, (float) $updated['flete_liquidacion']);
         self::assertSame([], $repository->ordersWithMissingAmounts(5, 55));
         self::assertTrue($repository->belongsToTrip(5, 55, $second));
+    }
+
+    public function testPersistsTheDatesOfTheLeg(): void
+    {
+        $repository = new CodeIgniterTripLegRepository($this->database);
+        $first = $repository->add(5, 10, 55, new TripLeg(
+            'Rosario',
+            'Córdoba',
+            null,
+            null,
+            null,
+            null,
+            'ARS',
+            1.0,
+            null,
+            null,
+            null,
+            null,
+            null,
+            new DateTimeImmutable('2026-11-02'),
+            new DateTimeImmutable('2026-11-04'),
+        ), 1);
+        $second = $repository->add(5, 10, 55, new TripLeg('Córdoba', 'Rosario', null, null), 1);
+
+        $rows = $this->database->table('viaje_operativo_tramos')->orderBy('orden')->get()->getResultArray();
+        self::assertSame('2026-11-02', $rows[0]['fecha_inicio']);
+        self::assertSame('2026-11-04', $rows[0]['fecha_fin']);
+        self::assertNull($rows[1]['fecha_inicio']);
+        self::assertNull($rows[1]['fecha_fin']);
+
+        $repository->update(5, 10, 55, $first, new TripLeg(
+            'Rosario',
+            'Córdoba',
+            null,
+            null,
+            null,
+            null,
+            'ARS',
+            1.0,
+            null,
+            null,
+            null,
+            null,
+            null,
+            new DateTimeImmutable('2026-11-03'),
+        ), 1);
+
+        $updated = $this->database->table('viaje_operativo_tramos')->where('id', $first)->get()->getRowArray();
+        self::assertSame('2026-11-03', $updated['fecha_inicio']);
+        self::assertNull($updated['fecha_fin']);
     }
 
     private function trip(): Trip
