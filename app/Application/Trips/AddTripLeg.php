@@ -67,6 +67,8 @@ final class AddTripLeg
                 $command->tonnes,
                 $command->originLocalityId,
                 $command->destinationLocalityId,
+                $command->startDate,
+                $command->endDate,
             );
 
             return $this->legs->add($trip->companyId(), $trip->branchId(), $command->tripId, $leg, $actor->userId());

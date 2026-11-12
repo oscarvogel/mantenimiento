@@ -122,6 +122,8 @@ final class CreateTrip
                     $input->tonnes,
                     $input->originLocalityId,
                     $input->destinationLocalityId,
+                    $input->startDate,
+                    $input->endDate,
                 ), $actor->userId());
             }
 

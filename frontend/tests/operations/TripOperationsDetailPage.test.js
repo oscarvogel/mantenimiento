@@ -171,6 +171,7 @@ describe('detalle de viaje operativo', () => {
             id: 1, orden: 1, cliente: null, origen: 'Rosario', destino: 'Córdoba', km: 320,
             flete_facturacion_ars: 1000000, flete_liquidacion_ars: 800000,
             commission_ars: 112000, assigned_costs_ars: 250000, margin_ars: 638000,
+            fecha_inicio: '2026-10-20', fecha_fin: '2026-10-21',
           }],
           totals: {
             has_legs: true, invoice_ars: 1000000, commission_ars: 112000,
@@ -187,6 +188,8 @@ describe('detalle de viaje operativo', () => {
     expect(wrapper.text()).toContain('Rosario → Córdoba')
     expect(wrapper.text()).toContain('ARS 1.000.000,00')
     expect(wrapper.text()).toContain('ARS 638.000,00')
+    expect(wrapper.text()).toContain('Fechas')
+    expect(wrapper.text()).toContain('20/10/2026 → 21/10/2026')
     expect(wrapper.get('form[action="/mantenimiento/viajes/operativos/42/tramos"]').exists()).toBe(true)
     expect(wrapper.get('form[action="/mantenimiento/viajes/operativos/42/cerrar"]').exists()).toBe(true)
     expect(wrapper.get('input[name="fecha_regreso_real"]').attributes('type')).toBe('date')
@@ -531,6 +534,7 @@ describe('detalle de viaje operativo', () => {
             flete_facturacion: 1000000, flete_facturacion_ars: 1000000,
             flete_liquidacion: 800000, flete_liquidacion_ars: 800000,
             commission_ars: 112000, assigned_costs_ars: 250000, margin_ars: 638000,
+            fecha_inicio: '2026-10-20', fecha_fin: '2026-10-21',
           }],
           totals: {
             has_legs: true, invoice_ars: 1000000, liquidation_ars: 800000,
@@ -539,8 +543,8 @@ describe('detalle de viaje operativo', () => {
             fuel_amount_ars: 0, expense_amount_ars: 0,
           },
           editOptions: {
-            tractors: [{ id: 7, label: 'AA111AA · T01', type: 'Camión', lastKm: 145300 }],
-            trailers: [{ id: 9, label: 'AC222AC · A01', type: 'Acoplado' }],
+            tractors: [{ id: 7, label: 'AA111AA · T01', type: 'Camión', lastKm: 145300, linkedTrailerIds: [9] }],
+            trailers: [{ id: 9, label: 'AC222AC · A01', type: 'Acoplado', plate: 'AC222AC' }],
             drivers: [{ id: 11, label: 'Pérez, Juan', employeeNumber: '100', assignedEquipmentLabel: 'AA111AA · T01' }],
           },
         },
@@ -562,6 +566,87 @@ describe('detalle de viaje operativo', () => {
     expect(legForm.get('input[name="flete_facturacion"]').element.value).toBe('1000000')
     expect(legForm.get('input[name="flete_liquidacion"]').element.value).toBe('800000')
     expect(legForm.get('input[name="flete_facturacion"]').attributes('required')).toBeUndefined()
+    expect(legForm.get('input[name="fecha_inicio"]').element.value).toBe('2026-10-20')
+    expect(legForm.get('input[name="fecha_fin"]').element.value).toBe('2026-10-21')
+    wrapper.unmount()
+  })
+
+  it('carga las fechas del tramo y muestra la patente del semirremolque', async () => {
+    const wrapper = mount(TripOperationsDetailPage, {
+      props: {
+        data: {
+          ...data,
+          canStart: false,
+          canCancel: false,
+          canEdit: true,
+          canAddLegs: true,
+          links: { ...data.links, legs: '/mantenimiento/viajes/operativos/42/tramos' },
+          trip: { ...data.trip, estado: 'EN_CURSO', estado_label: 'En curso' },
+          assignments: [
+            { rol: 'TRACTOR', rol_label: 'Tractor / camión', label: 'AA111AA · T01', equipo_id: 7, desde: '2026-10-20 00:00:00', hasta: null },
+          ],
+          editOptions: {
+            tractors: [{ id: 7, label: 'AA111AA · T01', type: 'Camión', lastKm: 145300, linkedTrailerIds: [9] }],
+            trailers: [{ id: 9, label: 'AC222AC · A01', type: 'Acoplado', plate: 'AC222AC' }],
+            drivers: [],
+          },
+        },
+      },
+    })
+
+    const legForm = wrapper.get('form[action="/mantenimiento/viajes/operativos/42/tramos"]')
+    expect(legForm.get('input[name="fecha_inicio"]').attributes('type')).toBe('date')
+    expect(legForm.get('input[name="fecha_fin"]').attributes('type')).toBe('date')
+
+    const editTrip = wrapper.findAll('button').find((button) => button.text().includes('Editar viaje'))
+    await editTrip.trigger('click')
+    await nextTick()
+    expect(wrapper.text()).toContain('Patente del semirremolque: AC222AC')
+    wrapper.unmount()
+  })
+
+  it('completa el semirremolque con la patente al cambiar el tractor', async () => {
+    const wrapper = mount(TripOperationsDetailPage, {
+      props: {
+        data: {
+          ...data,
+          canStart: false,
+          canCancel: false,
+          canEdit: true,
+          links: { ...data.links, update: '/mantenimiento/viajes/operativos/42' },
+          trip: { ...data.trip, estado: 'EN_CURSO', estado_label: 'En curso' },
+          assignments: [
+            { rol: 'TRACTOR', rol_label: 'Tractor / camión', label: 'AA111AA · T01', equipo_id: 7, desde: '2026-10-20 00:00:00', hasta: null },
+          ],
+          editOptions: {
+            tractors: [
+              { id: 7, label: 'AA111AA · T01', type: 'Camión', lastKm: 145300, linkedTrailerIds: [9] },
+              { id: 8, label: 'BB222BB · T02', type: 'Camión', lastKm: 90000, linkedTrailerIds: [10] },
+            ],
+            trailers: [
+              { id: 9, label: 'AC222AC · A01', type: 'Acoplado', plate: 'AC222AC' },
+              { id: 10, label: 'EE333FF · A02', type: 'Acoplado', plate: 'EE333FF' },
+            ],
+            drivers: [],
+          },
+        },
+      },
+    })
+
+    const editTrip = wrapper.findAll('button').find((button) => button.text().includes('Editar viaje'))
+    await editTrip.trigger('click')
+    await nextTick()
+
+    const autocompletes = wrapper.findAllComponents(AutocompleteSelect)
+    const tractor = autocompletes.find((component) => component.props('name') === 'tractor_id')
+    const trailer = autocompletes.find((component) => component.props('name') === 'acoplado_id[]')
+
+    tractor.vm.$emit('update:modelValue', 8)
+    await nextTick()
+    await nextTick()
+
+    expect(trailer.props('modelValue')).toEqual(['10'])
+    expect(wrapper.text()).toContain('Patente del semirremolque: EE333FF')
     wrapper.unmount()
   })
 

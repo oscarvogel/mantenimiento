@@ -116,6 +116,8 @@ final class CodeIgniterTripLegRepository implements TripLegRepository
             'flete_facturacion_ars' => $leg->invoiceAmountArs() === null ? null : $this->decimal($leg->invoiceAmountArs(), 4),
             'flete_liquidacion' => $leg->liquidationAmount() === null ? null : $this->decimal($leg->liquidationAmount(), 4),
             'flete_liquidacion_ars' => $leg->liquidationAmountArs() === null ? null : $this->decimal($leg->liquidationAmountArs(), 4),
+            'fecha_inicio' => $leg->startDate()?->format('Y-m-d'),
+            'fecha_fin' => $leg->endDate()?->format('Y-m-d'),
             'observaciones' => $leg->notes(),
         ];
     }

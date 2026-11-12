@@ -71,6 +71,8 @@ final class UpdateTripLeg
                 $legCommand->tonnes,
                 $legCommand->originLocalityId,
                 $legCommand->destinationLocalityId,
+                $legCommand->startDate,
+                $legCommand->endDate,
             );
 
             $this->legs->update($trip->companyId(), $trip->branchId(), $legCommand->tripId, $command->legId, $leg, $actor->userId());

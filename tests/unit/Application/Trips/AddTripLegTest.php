@@ -109,6 +109,69 @@ final class AddTripLegTest extends TestCase
         self::assertNull($command->liquidationAmount);
     }
 
+    public function testCommandParsesTheLegDates(): void
+    {
+        $command = AddTripLegCommand::fromInput([
+            'viaje_id' => '55',
+            'origen' => 'Rosario',
+            'destino' => 'Córdoba',
+            'cliente_id' => '3',
+            'localidad_origen_id' => '1',
+            'localidad_destino_id' => '2',
+            'fecha_inicio' => '2026-11-02',
+            'fecha_fin' => '2026-11-04 18:00:00',
+        ]);
+
+        self::assertSame('2026-11-02', $command->startDate?->format('Y-m-d'));
+        self::assertSame('2026-11-04', $command->endDate?->format('Y-m-d'));
+    }
+
+    public function testCommandRejectsAnInvalidLegDate(): void
+    {
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('fecha de inicio');
+
+        AddTripLegCommand::fromInput([
+            'viaje_id' => '55',
+            'origen' => 'Rosario',
+            'destino' => 'Córdoba',
+            'cliente_id' => '3',
+            'localidad_origen_id' => '1',
+            'localidad_destino_id' => '2',
+            'fecha_inicio' => 'el martes',
+        ]);
+    }
+
+    public function testAddsLegWithItsDates(): void
+    {
+        $trips = new AddLegTripRepositoryFake(Trip::PLANIFICADO);
+        $legs = new AddLegRepositoryFake();
+        $handler = new AddTripLeg($trips, $legs, new AddLegDirectoryFake(), new AddLegLocalityFake(), new AddLegUnitOfWorkFake());
+
+        $handler->execute($this->actor(['viajes.operar']), new AddTripLegCommand(
+            55,
+            'Rosario',
+            'Córdoba',
+            null,
+            null,
+            null,
+            3,
+            'ARS',
+            1.0,
+            null,
+            null,
+            null,
+            1,
+            2,
+            new DateTimeImmutable('2026-11-02'),
+            new DateTimeImmutable('2026-11-04'),
+        ));
+
+        self::assertNotNull($legs->leg);
+        self::assertSame('2026-11-02', $legs->leg->startDate()?->format('Y-m-d'));
+        self::assertSame('2026-11-04', $legs->leg->endDate()?->format('Y-m-d'));
+    }
+
     /** @param list<string> $permissions */
     private function actor(array $permissions): ActorContext
     {

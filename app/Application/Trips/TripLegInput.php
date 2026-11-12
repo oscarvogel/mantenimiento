@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Trips;
 
+use DateTimeImmutable;
 use DomainException;
 
 final readonly class TripLegInput
@@ -22,6 +23,8 @@ final readonly class TripLegInput
         public ?string $notes = null,
         public ?int $originLocalityId = null,
         public ?int $destinationLocalityId = null,
+        public ?DateTimeImmutable $startDate = null,
+        public ?DateTimeImmutable $endDate = null,
     ) {
     }
 
@@ -59,6 +62,8 @@ final readonly class TripLegInput
             self::nullableText($row['observaciones'] ?? null),
             (int) $originLocalityId,
             (int) $destinationLocalityId,
+            TripDateInput::optional($row['fecha_inicio'] ?? null, 'La fecha de inicio del tramo'),
+            TripDateInput::optional($row['fecha_fin'] ?? null, 'La fecha de fin del tramo'),
         );
     }
 
