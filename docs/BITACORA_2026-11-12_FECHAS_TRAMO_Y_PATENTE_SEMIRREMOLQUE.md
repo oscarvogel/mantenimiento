@@ -177,20 +177,44 @@ Pruebas nuevas:
 
 ---
 
-## 6. Pendientes
+## 6. Publicación
 
-1. **Publicación.** El cambio sigue el flujo del proyecto: rama → PR a `main` → merge →
-   deploy. Los bundles de `assets/dashboard/` se reconstruyen y se suben con el source
-   (`npm run build` en `frontend/`); el build es reproducible y `npm run verify:build-sync`
-   avisa si quedó drift.
-2. **Producción (Ferozo).** Subir el release por FTPS y correr la migración con
-   `scripts/migrate-remote.php` (subido como `migrate.php`, invocado por HTTP con
-   `X-Migrate-Token`, y borrado al terminar). No hay `php spark` ni shell en Ferozo.
-3. **Datos existentes.** Los tramos ya cargados quedan sin fechas. Si el operador quiere
+**PR #522** → `feat(viajes): fechas por tramo y patente automatica del semirremolque`
+(merge squash `648d57ca`, rama `feat/viajes-fechas-tramo-patente-semirremolque`).
+
+**Deploy quirúrgico a Ferozo** por FTPS, con `scripts/deploy-ferozo.py`:
+
+| Dato | Valor |
+|---|---|
+| Base (último deploy) | `5d6233e0` |
+| Destino | `648d57ca` |
+| Archivos publicados | 42 (11 de `app/`, 1 migración, 26 de `assets/dashboard/`) |
+| Bundle anterior | conservado en Ferozo (limpieza aparte con remote-prune) |
+| Migración | `2026-11-12-090000_AddTripLegDates` aplicada por el portón HTTP |
+| `migrate.php` | borrado al terminar (`404`) |
+| Smoke tests | `login` 200, `favicon.ico` 200, `.env` 403, `app/` 403, `vendor/` 403, `writable/` 403 |
+| Hash local vs remoto | OK en `.htaccess`, `app/Config/Routes.php` y `manifest.json` |
+
+Verificación posterior: el bundle nuevo responde **200** y el manifest que sirve producción
+ya referencia `main-VFz3ppsr.js`.
+
+El deploy corrió con `--skip-tests` porque en esta máquina no hay PHP de Windows (solo WSL):
+las suites se corrieron antes sobre el mismo árbol y quedaron en verde (1763 + 466).
+
+> Al limpiar el árbol para el deploy se estacionaron en un stash los archivos sin versionar
+> de sesiones previas y se restauraron apenas terminó.
+
+---
+
+## 7. Pendientes
+
+1. **Verificación visual en producción.** Falta la captura de escritorio (1638x969) y de móvil
+   (1366x768) de la tabla con la columna *Fechas* en el navegador, contra datos reales. La
+   evidencia automatizada no alcanza para dar por aceptada la pantalla.
+2. **Datos existentes.** Los tramos ya cargados quedan sin fechas. Si el operador quiere
    fecharlos, se cargan desde *Editar tramo*; no hay carga masiva.
-4. **Verificación visual.** Falta la captura de escritorio (1638x969) y de móvil (1366x768) de
-   la tabla con la columna *Fechas* en el navegador, contra datos reales. La evidencia
-   automatizada no alcanza para dar por aceptada la pantalla.
-5. **Instalación desde cero.** La cadena de migraciones se corta en
+3. **Instalación desde cero.** La cadena de migraciones se corta en
    `2026-11-06-100000_AddPrincipalFlagToLocalities` (ver §5.1). Es un pendiente del contexto
    de Geografía y hay que resolverlo antes de que una instalación limpia pueda terminarse.
+4. **Limpieza de bundles huérfanos.** El bundle anterior (`main-Bjsb4qbY.js`) quedó en Ferozo
+   sin referenciar. Se borra aparte, con remote-prune, cuando se haga la próxima limpieza.
