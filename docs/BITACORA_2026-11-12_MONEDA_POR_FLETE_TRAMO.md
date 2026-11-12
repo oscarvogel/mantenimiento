@@ -178,8 +178,25 @@ convertir a mano, y la comisión sale sobre ese importe.**
 ## 5. Publicación
 
 - Rama: `feat/viajes-moneda-liquidation-tramo`.
-- PR a `main` y deploy quirúrgico por FTP a Ferozo con la migración por el portón HTTP
-  (`scripts/migrate-remote.php`), como en la entrega anterior.
+- **PR #523** a `main`, CI en verde (2m19s), merge squash `08517673`.
+- **Deploy quirúrgico por FTPS a Ferozo** (`scripts/deploy-ferozo.py --skip-tests --yes`),
+  del commit `648d57ca` al `08517673`:
+
+| Paso | Resultado |
+|---|---|
+| Archivos subidos | **41** (15 de `app/` + migración + 26 de `assets/dashboard/`) |
+| Bundle anterior | conservado en Ferozo (`main-VFz3ppsr.js`); se limpia aparte con remote-prune |
+| Migración por el portón HTTP | `MIGRATION_STATUS_HTTP=200` → `MIGRATIONS=OK` |
+| `migrate.php` | subido, ejecutado y **borrado** (`HTTP 404`) |
+| Smoke tests | `login` 200, `favicon.ico` 200, `.env` 403, `app/` 403, `vendor/` 403, `writable/` 403, `migrate.php` 404 |
+| Hash local vs remoto | `HASH_LOCAL=OK` |
+| Bundle nuevo en producción | `main-DWguh_tA.js` 200, `profile-CcENJYER.js` 200, manifest 200 |
+| Ruta de viajes | `/viajes/operativos/1` → 302 al login (sin sesión) |
+
+**Sin backup previo de `viaje_operativo_tramos`**: la migración es aditiva y nullable, no
+toca ni reescribe columnas existentes y el backfill solo copia valores que ya estaban. El
+`down()` está protegido para que la reversión no pueda perder el dato. Queda asentado por
+transparencia, igual que en el despliegue de las fechas de tramo.
 
 ---
 
