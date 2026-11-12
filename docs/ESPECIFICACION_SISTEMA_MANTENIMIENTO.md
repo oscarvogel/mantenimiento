@@ -623,7 +623,7 @@ Nunca se recalcula un viaje importado ni se le agrega un tramo operativo.
 | `viajes_operativos_numeracion` | Último número entregado por empresa. Se bloquea con `FOR UPDATE` al reservar. | empresa_id, ultimo_numero, updated_at |
 | `viaje_operativo_asignaciones` | Tractor, acoplado y choferes asignados, con su vigencia. | id, viaje_id, empresa_id, sucursal_id, rol, equipo_id, empleado_id, desde, hasta, motivo, created_at, porcentaje_liquidacion |
 | `viaje_operativo_paradas` | Recorrido ordenado: carga, descarga e hitos. | id, viaje_id, empresa_id, sucursal_id, orden, tipo, cliente_id, domicilio_id, ubicacion, fecha_estimada, fecha_real, descripcion_carga, cantidad, unidad_carga_id, observaciones |
-| `viaje_operativo_tramos` | Tramo comercial, con los dos fletes. | id, viaje_id, empresa_id, sucursal_id, orden, cliente_id, origen, destino, km, moneda, cotizacion, flete_facturacion, flete_facturacion_ars, flete_liquidacion, flete_liquidacion_ars, observaciones |
+| `viaje_operativo_tramos` | Tramo comercial, con los dos fletes. | id, viaje_id, empresa_id, sucursal_id, orden, cliente_id, origen, destino, km, moneda, cotizacion, flete_facturacion, flete_facturacion_ars, moneda_liquidacion, cotizacion_liquidacion, flete_liquidacion, flete_liquidacion_ars, fecha_inicio, fecha_fin, observaciones |
 | `viaje_operativo_combustible` | Carga de combustible del viaje, imputable a un tramo. | id, viaje_id, tramo_id, empresa_id, sucursal_id, fecha, litros, importe, moneda, cotizacion, importe_ars, kilometraje, estacion, comprobante, observaciones |
 | `viaje_operativo_gastos` | Gasto del viaje, imputable a un tramo, con su pagador. | id, viaje_id, tramo_id, empresa_id, sucursal_id, categoria_id, fecha, importe, moneda, cotizacion, importe_ars, medio_pago_id, pagado_de_caja, pagado_por, comprobante, observaciones |
 | `viaje_operativo_caja_movimientos` | Caja del chofer: anticipo, retiro y devolución. | id, viaje_id, empresa_id, sucursal_id, tipo, fecha, importe, moneda, cotizacion, importe_ars, observaciones |
@@ -636,6 +636,13 @@ Nunca se recalcula un viaje importado ni se le agrega un tramo operativo.
 `flete_liquidacion` es la base sobre la que se calcula el porcentaje del chofer. No tienen por qué coincidir.
 Mientras el viaje está abierto, ambos pueden quedar sin informar y completarse después. Al cerrar, todos los
 tramos deben tener los dos fletes.
+
+**Cada flete se carga en su propia moneda.** El `moneda` y la `cotizacion` del tramo son los del flete de
+facturación; el flete de liquidación tiene los suyos (`moneda_liquidacion` y `cotizacion_liquidacion`). Así el
+flete de liquidación se puede cargar en pesos aunque el de facturación esté en dólares o reales, y el operador no
+tiene que convertir a mano. Si no se informa la moneda de liquidación, el tramo hereda la de facturación y el
+comportamiento es el de siempre. Cada importe se conserva en su moneda original y se convierte a pesos para
+liquidar, facturar y medir el margen.
 
 **El combustible y el gasto pueden imputarse a un tramo.** Si se imputan, suman al margen de ese tramo. Si no,
 suman al margen del viaje y se muestran aparte como **costos sin asignar**: no se prorratean solos.

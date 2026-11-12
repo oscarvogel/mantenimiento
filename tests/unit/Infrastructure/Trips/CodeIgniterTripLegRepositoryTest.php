@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Domain\Trips\Trip;
 use App\Domain\Trips\TripAssignment;
 use App\Domain\Trips\TripLeg;
+use App\Domain\Trips\TripLegAmount;
 use App\Domain\Trips\TripStop;
 use App\Infrastructure\Trips\CodeIgniterTripLegRepository;
 use CodeIgniter\Database\BaseConnection;
@@ -27,7 +28,7 @@ final class CodeIgniterTripLegRepositoryTest extends TestCase
         $this->database->query('CREATE TABLE viaje_operativo_tramos (
             id INTEGER PRIMARY KEY AUTOINCREMENT, viaje_id INTEGER, empresa_id INTEGER, sucursal_id INTEGER,
             orden INTEGER, codigo_origen_destino INTEGER NULL, localidad_origen_id INTEGER NULL, localidad_destino_id INTEGER NULL, cliente_id INTEGER NULL, origen TEXT, destino TEXT, km REAL NULL, toneladas REAL NULL,
-            moneda TEXT, cotizacion REAL, flete_facturacion REAL, flete_facturacion_ars REAL,
+            moneda TEXT, cotizacion REAL, moneda_liquidacion TEXT NULL, cotizacion_liquidacion REAL NULL, flete_facturacion REAL, flete_facturacion_ars REAL,
             flete_liquidacion REAL, flete_liquidacion_ars REAL, fecha_inicio TEXT NULL, fecha_fin TEXT NULL, observaciones TEXT NULL,
             created_at TEXT NULL, updated_at TEXT NULL, created_by INTEGER NULL, updated_by INTEGER NULL
         )');
@@ -43,8 +44,20 @@ final class CodeIgniterTripLegRepositoryTest extends TestCase
     public function testAddsLegsInOrderAndValidatesTripScope(): void
     {
         $repository = new CodeIgniterTripLegRepository($this->database);
-        $first = $repository->add(5, 10, 55, new TripLeg('Rosario', 'Córdoba', 1_000_000, 800_000, 320, 3, 'ARS', 1.0, null, 947, 24.5, 101, 202), 1);
-        $second = $repository->add(5, 10, 55, new TripLeg('Córdoba', 'Rosario', 600_000, 500_000, 320), 1);
+        $first = $repository->add(5, 10, 55, new TripLeg(
+            'Rosario',
+            'Córdoba',
+            new TripLegAmount(1_000_000, 'ARS'),
+            new TripLegAmount(800_000, 'ARS'),
+            320,
+            3,
+            null,
+            947,
+            24.5,
+            101,
+            202,
+        ), 1);
+        $second = $repository->add(5, 10, 55, new TripLeg('Córdoba', 'Rosario', new TripLegAmount(600_000), new TripLegAmount(500_000), 320), 1);
 
         $rows = $this->database->table('viaje_operativo_tramos')->orderBy('orden')->get()->getResultArray();
         self::assertCount(2, $rows);
@@ -62,11 +75,33 @@ final class CodeIgniterTripLegRepositoryTest extends TestCase
         self::assertFalse($repository->belongsToTrip(5, 56, $first));
     }
 
+    public function testPersistsEachFreightWithItsOwnCurrency(): void
+    {
+        $repository = new CodeIgniterTripLegRepository($this->database);
+        $repository->add(5, 10, 55, new TripLeg(
+            'Rosario',
+            'Córdoba',
+            new TripLegAmount(4_700, 'USD', 1_250.0),
+            new TripLegAmount(5_875_000, 'ARS'),
+        ), 1);
+
+        $row = $this->database->table('viaje_operativo_tramos')->orderBy('orden')->get()->getRowArray();
+        self::assertSame('USD', $row['moneda']);
+        self::assertEquals(1_250.0, (float) $row['cotizacion']);
+        self::assertEquals(4_700.0, (float) $row['flete_facturacion']);
+        self::assertEquals(5_875_000.0, (float) $row['flete_facturacion_ars']);
+
+        self::assertSame('ARS', $row['moneda_liquidacion']);
+        self::assertEquals(1.0, (float) $row['cotizacion_liquidacion']);
+        self::assertEquals(5_875_000.0, (float) $row['flete_liquidacion']);
+        self::assertEquals(5_875_000.0, (float) $row['flete_liquidacion_ars']);
+    }
+
     public function testPersistsMissingAmountsAndReportsLegsThatStillNeedThem(): void
     {
         $repository = new CodeIgniterTripLegRepository($this->database);
-        $first = $repository->add(5, 10, 55, new TripLeg('Rosario', 'Córdoba', null, null), 1);
-        $second = $repository->add(5, 10, 55, new TripLeg('Córdoba', 'Rosario', 600_000, 500_000), 1);
+        $first = $repository->add(5, 10, 55, new TripLeg('Rosario', 'Córdoba', new TripLegAmount(null), new TripLegAmount(null)), 1);
+        $second = $repository->add(5, 10, 55, new TripLeg('Córdoba', 'Rosario', new TripLegAmount(600_000), new TripLegAmount(500_000)), 1);
 
         $rows = $this->database->table('viaje_operativo_tramos')->orderBy('orden')->get()->getResultArray();
         self::assertNull($rows[0]['flete_facturacion']);
@@ -75,7 +110,7 @@ final class CodeIgniterTripLegRepositoryTest extends TestCase
         self::assertNull($rows[0]['flete_liquidacion_ars']);
         self::assertSame([1], $repository->ordersWithMissingAmounts(5, 55));
 
-        $repository->update(5, 10, 55, $first, new TripLeg('Rosario', 'Córdoba', 1_000_000, 800_000), 1);
+        $repository->update(5, 10, 55, $first, new TripLeg('Rosario', 'Córdoba', new TripLegAmount(1_000_000), new TripLegAmount(800_000)), 1);
 
         $updated = $this->database->table('viaje_operativo_tramos')->where('id', $first)->get()->getRowArray();
         self::assertEquals(1_000_000.0, (float) $updated['flete_facturacion']);
@@ -90,12 +125,10 @@ final class CodeIgniterTripLegRepositoryTest extends TestCase
         $first = $repository->add(5, 10, 55, new TripLeg(
             'Rosario',
             'Córdoba',
+            new TripLegAmount(null),
+            new TripLegAmount(null),
             null,
             null,
-            null,
-            null,
-            'ARS',
-            1.0,
             null,
             null,
             null,
@@ -104,7 +137,7 @@ final class CodeIgniterTripLegRepositoryTest extends TestCase
             new DateTimeImmutable('2026-11-02'),
             new DateTimeImmutable('2026-11-04'),
         ), 1);
-        $second = $repository->add(5, 10, 55, new TripLeg('Córdoba', 'Rosario', null, null), 1);
+        $second = $repository->add(5, 10, 55, new TripLeg('Córdoba', 'Rosario', new TripLegAmount(null), new TripLegAmount(null)), 1);
 
         $rows = $this->database->table('viaje_operativo_tramos')->orderBy('orden')->get()->getResultArray();
         self::assertSame('2026-11-02', $rows[0]['fecha_inicio']);
@@ -115,12 +148,10 @@ final class CodeIgniterTripLegRepositoryTest extends TestCase
         $repository->update(5, 10, 55, $first, new TripLeg(
             'Rosario',
             'Córdoba',
+            new TripLegAmount(null),
+            new TripLegAmount(null),
             null,
             null,
-            null,
-            null,
-            'ARS',
-            1.0,
             null,
             null,
             null,

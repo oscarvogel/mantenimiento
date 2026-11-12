@@ -6,6 +6,14 @@ import AutocompleteSelect from './components/AutocompleteSelect.vue'
 import LocalityCreateModal from './components/LocalityCreateModal.vue'
 import PanelCard from './components/PanelCard.vue'
 import { fieldClass, primaryButton, secondaryButton, today } from './helpers.js'
+import {
+  effectiveLiquidationRate,
+  liquidationCurrency,
+  liquidationRateDisabled,
+  onInvoiceCurrencyChange,
+  onLiquidationCurrencyChange,
+  onLiquidationInPesos,
+} from '../../composables/useTripLegMoney.js'
 
 const props = defineProps({ data: { type: Object, required: true } })
 
@@ -24,10 +32,24 @@ const company = computed(() => options.value.company ?? {})
 const nextNumber = computed(() => options.value.nextNumber ?? null)
 
 const old = computed(() => props.data.old ?? {})
-const newLeg = () => ({ localidad_origen_id: '', localidad_destino_id: '', cliente_id: '', km: '', toneladas: '', flete_facturacion: '', flete_liquidacion: '', moneda: 'ARS', cotizacion: '1', fecha_inicio: '', fecha_fin: '', observaciones: '' })
-const setLegCurrency = (leg) => { leg.cotizacion = leg.moneda === 'ARS' ? '1' : '' }
+const newLeg = () => ({
+  localidad_origen_id: '', localidad_destino_id: '', cliente_id: '',
+  km: '', toneladas: '',
+  flete_facturacion: '', flete_liquidacion: '',
+  moneda: 'ARS', cotizacion: '1',
+  moneda_liquidacion: 'ARS', cotizacion_liquidacion: '',
+  liquidacion_segue_facturacion: true,
+  fecha_inicio: '', fecha_fin: '', observaciones: '',
+})
+const setLegCurrency = (leg) => { onInvoiceCurrencyChange(leg) }
+const setLegLiquidationCurrency = (leg) => { onLiquidationCurrencyChange(leg) }
+const legLiquidationInPesos = (leg) => { onLiquidationInPesos(leg) }
 const initialLegs = () => Array.isArray(old.value.tramos) && old.value.tramos.length
-  ? old.value.tramos.map((row) => ({ ...newLeg(), ...row }))
+  ? old.value.tramos.map((row) => ({
+    ...newLeg(),
+    ...row,
+    liquidacion_segue_facturacion: (row.moneda_liquidacion || row.moneda || 'ARS') === (row.moneda || 'ARS'),
+  }))
   : [newLeg()]
 const legs = ref(initialLegs())
 const tractorId = ref(old.value.tractor_id ?? '')
@@ -314,12 +336,16 @@ const applyCreatedLocality = (locality) => {
             </div>
             <div class="mt-4 grid gap-4 md:grid-cols-3">
               <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Km del tramo (opcional)</span><input v-model="leg.km" type="number" min="0" step="0.01" :name="`tramos[${index}][km]`" :class="fieldClass" /></label>
-              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Moneda</span><select v-model="leg.moneda" :name="`tramos[${index}][moneda]`" :class="fieldClass" required @change="setLegCurrency(leg)"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }} · {{ currency.label }}</option></select></label>
-              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Cotización a ARS</span><input v-model="leg.cotizacion" type="number" min="0.000001" step="0.000001" :name="`tramos[${index}][cotizacion]`" :required="leg.moneda !== 'ARS'" :disabled="leg.moneda === 'ARS'" :class="fieldClass" /><span class="mt-1 block text-xs text-ink-muted">{{ leg.moneda === 'ARS' ? 'Para ARS se usa cotización 1.' : `Ingresá cuántos ARS vale 1 ${leg.moneda}.` }}</span></label>
+              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Moneda del flete de facturación</span><select v-model="leg.moneda" :name="`tramos[${index}][moneda]`" :class="fieldClass" required @change="setLegCurrency(leg)"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }} · {{ currency.label }}</option></select></label>
+              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Cotización a ARS (facturación)</span><input v-model="leg.cotizacion" type="number" min="0.000001" step="0.000001" :name="`tramos[${index}][cotizacion]`" :required="leg.moneda !== 'ARS'" :disabled="leg.moneda === 'ARS'" :class="fieldClass" /><span class="mt-1 block text-xs text-ink-muted">{{ leg.moneda === 'ARS' ? 'Para ARS se usa cotización 1.' : `Ingresá cuántos ARS vale 1 ${leg.moneda}.` }}</span></label>
             </div>
             <div class="mt-4 grid gap-4 md:grid-cols-2">
               <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Flete de facturación ({{ leg.moneda }}, opcional)</span><input v-model="leg.flete_facturacion" type="number" min="0" step="0.01" :name="`tramos[${index}][flete_facturacion]`" :class="fieldClass" /></label>
-              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Flete de liquidación ({{ leg.moneda }}, opcional)</span><input v-model="leg.flete_liquidacion" type="number" min="0" step="0.01" :name="`tramos[${index}][flete_liquidacion]`" :class="fieldClass" /></label>
+              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Moneda del flete de liquidación</span><div class="flex gap-2"><select v-model="leg.moneda_liquidacion" :name="`tramos[${index}][moneda_liquidacion]`" :class="fieldClass" required @change="setLegLiquidationCurrency(leg)"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }} · {{ currency.label }}</option></select><button type="button" :class="secondaryButton" @click="legLiquidationInPesos(leg)">En pesos</button></div><span class="mt-1 block text-xs text-ink-muted">Se puede cargar en pesos aunque el flete de facturación esté en otra moneda.</span></label>
+            </div>
+            <div class="mt-4 grid gap-4 md:grid-cols-2">
+              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Cotización a ARS (liquidación)</span><input :value="effectiveLiquidationRate(leg)" type="number" min="0.000001" step="0.000001" :name="`tramos[${index}][cotizacion_liquidacion]`" :required="!liquidationRateDisabled(leg)" :disabled="liquidationRateDisabled(leg)" :class="fieldClass" @input="leg.cotizacion_liquidacion = $event.target.value" /><span class="mt-1 block text-xs text-ink-muted">{{ liquidationRateDisabled(leg) ? (liquidationCurrency(leg) === 'ARS' ? 'En pesos se usa cotización 1.' : 'Usa la misma cotización que la de facturación.') : `Ingresá cuántos ARS vale 1 ${liquidationCurrency(leg)}.` }}</span></label>
+              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Flete de liquidación ({{ liquidationCurrency(leg) }}, opcional)</span><input v-model="leg.flete_liquidacion" type="number" min="0" step="0.01" :name="`tramos[${index}][flete_liquidacion]`" :class="fieldClass" /></label>
             </div>
             <div class="mt-4 grid gap-4 md:grid-cols-2">
               <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Fecha de inicio (opcional)</span><input v-model="leg.fecha_inicio" type="date" :name="`tramos[${index}][fecha_inicio]`" :class="fieldClass" /></label>

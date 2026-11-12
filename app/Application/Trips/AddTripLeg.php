@@ -35,6 +35,10 @@ final class AddTripLeg
         if (! $this->directory->currencyExists($command->currency)) {
             throw new DomainException('La moneda elegida no está disponible.');
         }
+        $liquidation = $command->liquidation();
+        if (! $this->directory->currencyExists($liquidation->currency())) {
+            throw new DomainException('La moneda de liquidación elegida no está disponible.');
+        }
         if ($command->customerId === null) {
             throw new DomainException('Elegí un cliente para el tramo.');
         }
@@ -44,7 +48,7 @@ final class AddTripLeg
         $origin = $this->locality($command->originLocalityId);
         $destination = $this->locality($command->destinationLocalityId);
 
-        return $this->unitOfWork->transactional(function () use ($actor, $command, $companyId, $branchIds, $origin, $destination): int {
+        return $this->unitOfWork->transactional(function () use ($actor, $command, $companyId, $branchIds, $origin, $destination, $liquidation): int {
             $trip = $this->trips->findForUpdate($companyId, $branchIds, $command->tripId);
             if ($trip === null) {
                 throw new DomainException('El viaje solicitado no existe o no está autorizado.');
@@ -56,12 +60,10 @@ final class AddTripLeg
             $leg = new TripLeg(
                 $origin['name'],
                 $destination['name'],
-                $command->invoiceAmount,
-                $command->liquidationAmount,
+                $command->invoice(),
+                $liquidation,
                 $command->kilometers,
                 $command->customerId,
-                $command->currency,
-                $command->exchangeRate,
                 $command->notes,
                 $command->originDestinationCode,
                 $command->tonnes,

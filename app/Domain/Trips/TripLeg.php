@@ -12,12 +12,10 @@ final class TripLeg
     public function __construct(
         private string $origin,
         private string $destination,
-        private ?float $invoiceAmount,
-        private ?float $liquidationAmount,
+        private TripLegAmount $invoice,
+        private TripLegAmount $liquidation,
         private ?float $kilometers = null,
         private ?int $customerId = null,
-        private string $currency = 'ARS',
-        private float $exchangeRate = 1.0,
         private ?string $notes = null,
         private ?int $originDestinationCode = null,
         private ?float $tonnes = null,
@@ -28,16 +26,15 @@ final class TripLeg
     ) {
         $origin = trim($origin);
         $destination = trim($destination);
-        $currency = strtoupper(trim($currency));
 
         if ($origin === '' || $destination === '') {
             throw new DomainException('El tramo necesita origen y destino.');
         }
-        if (($invoiceAmount !== null && $invoiceAmount < 0)
-            || ($liquidationAmount !== null && $liquidationAmount < 0)
-            || ($kilometers !== null && $kilometers < 0)
-            || ($tonnes !== null && $tonnes < 0)) {
-            throw new DomainException('Los importes, kilómetros y toneladas del tramo no pueden ser negativos.');
+        if ($kilometers !== null && $kilometers < 0) {
+            throw new DomainException('Los kilómetros del tramo no pueden ser negativos.');
+        }
+        if ($tonnes !== null && $tonnes < 0) {
+            throw new DomainException('Las toneladas del tramo no pueden ser negativas.');
         }
         if ($originDestinationCode !== null && $originDestinationCode <= 0) {
             throw new DomainException('El código de origen y destino no es válido.');
@@ -48,12 +45,6 @@ final class TripLeg
         if ($customerId !== null && $customerId <= 0) {
             throw new DomainException('El cliente del tramo no es válido.');
         }
-        if (preg_match('/^[A-Z]{3}$/', $currency) !== 1) {
-            throw new DomainException('La moneda del tramo no es válida.');
-        }
-        if ($exchangeRate <= 0) {
-            throw new DomainException('La cotización del tramo debe ser mayor que cero.');
-        }
         $startDate = $startDate?->setTime(0, 0);
         $endDate = $endDate?->setTime(0, 0);
         if ($startDate !== null && $endDate !== null && $endDate < $startDate) {
@@ -62,12 +53,10 @@ final class TripLeg
 
         $this->origin = $origin;
         $this->destination = $destination;
-        $this->invoiceAmount = $invoiceAmount === null ? null : round($invoiceAmount, 4);
-        $this->liquidationAmount = $liquidationAmount === null ? null : round($liquidationAmount, 4);
+        $this->invoice = $invoice;
+        $this->liquidation = $liquidation;
         $this->kilometers = $kilometers === null ? null : round($kilometers, 2);
         $this->customerId = $customerId;
-        $this->currency = $currency;
-        $this->exchangeRate = $exchangeRate;
         $this->notes = $notes === null ? null : (trim($notes) === '' ? null : trim($notes));
         $this->originDestinationCode = $originDestinationCode;
         $this->tonnes = $tonnes === null ? null : round($tonnes, 2);
@@ -85,24 +74,14 @@ final class TripLeg
         return $this->destination;
     }
 
-    public function invoiceAmount(): ?float
+    public function invoice(): TripLegAmount
     {
-        return $this->invoiceAmount;
+        return $this->invoice;
     }
 
-    public function liquidationAmount(): ?float
+    public function liquidation(): TripLegAmount
     {
-        return $this->liquidationAmount;
-    }
-
-    public function invoiceAmountArs(): ?float
-    {
-        return $this->invoiceAmount === null ? null : round($this->invoiceAmount * $this->exchangeRate, 4);
-    }
-
-    public function liquidationAmountArs(): ?float
-    {
-        return $this->liquidationAmount === null ? null : round($this->liquidationAmount * $this->exchangeRate, 4);
+        return $this->liquidation;
     }
 
     public function kilometers(): ?float
@@ -113,16 +92,6 @@ final class TripLeg
     public function customerId(): ?int
     {
         return $this->customerId;
-    }
-
-    public function currency(): string
-    {
-        return $this->currency;
-    }
-
-    public function exchangeRate(): float
-    {
-        return $this->exchangeRate;
     }
 
     public function notes(): ?string
@@ -162,7 +131,7 @@ final class TripLeg
 
     public function commission(float $percentage): ?float
     {
-        $base = $this->liquidationAmountArs();
+        $base = $this->liquidation->amountArs();
 
         return $base === null ? null : round($base * $percentage / 100, 4);
     }

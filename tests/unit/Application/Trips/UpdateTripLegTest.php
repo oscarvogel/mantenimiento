@@ -49,9 +49,47 @@ final class UpdateTripLegTest extends TestCase
 
         self::assertNotNull($legs->updated);
         self::assertSame(9, $legs->legId);
-        self::assertNull($legs->updated->invoiceAmount());
-        self::assertNull($legs->updated->liquidationAmount());
+        self::assertNull($legs->updated->invoice()->amount());
+        self::assertNull($legs->updated->liquidation()->amount());
         self::assertSame('Rosario', $legs->updated->origin());
+    }
+
+    public function testUpdatesTheLiquidationInPesosWhileTheInvoiceIsInDollars(): void
+    {
+        $legs = new UpdateLegRepositoryFake();
+        $handler = new UpdateTripLeg(
+            new UpdateLegTripRepositoryFake(Trip::EN_CURSO),
+            $legs,
+            new UpdateLegDirectoryFake(),
+            new UpdateLegLocalityFake(),
+            new UpdateLegUnitOfWorkFake(),
+        );
+
+        $handler->execute($this->actor(), new UpdateTripLegCommand(9, new AddTripLegCommand(
+            55,
+            'Rosario',
+            'Córdoba',
+            4_700,
+            5_875_000,
+            320,
+            3,
+            'USD',
+            1_250.0,
+            'Carga de soja',
+            947,
+            30,
+            1,
+            2,
+            null,
+            null,
+            'ARS',
+        )));
+
+        self::assertNotNull($legs->updated);
+        self::assertSame('USD', $legs->updated->invoice()->currency());
+        self::assertSame(5_875_000.0, $legs->updated->invoice()->amountArs());
+        self::assertSame('ARS', $legs->updated->liquidation()->currency());
+        self::assertSame(5_875_000.0, $legs->updated->liquidation()->amountArs());
     }
 
     public function testRejectsClosedTrip(): void

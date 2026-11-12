@@ -315,36 +315,44 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
     private function legDetails(int $companyId, int $tripId): array
     {
         $rows = $this->db->table('viaje_operativo_tramos t')
-            ->select('t.id, t.orden, t.codigo_origen_destino, t.localidad_origen_id, t.localidad_destino_id, t.cliente_id, t.origen, t.destino, t.km, t.toneladas, t.moneda, t.cotizacion, t.flete_facturacion, t.flete_facturacion_ars, t.flete_liquidacion, t.flete_liquidacion_ars, t.fecha_inicio, t.fecha_fin, t.observaciones, c.codigo_origen AS cliente_codigo, c.nombre AS cliente')
+            ->select('t.id, t.orden, t.codigo_origen_destino, t.localidad_origen_id, t.localidad_destino_id, t.cliente_id, t.origen, t.destino, t.km, t.toneladas, t.moneda, t.cotizacion, t.moneda_liquidacion, t.cotizacion_liquidacion, t.flete_facturacion, t.flete_facturacion_ars, t.flete_liquidacion, t.flete_liquidacion_ars, t.fecha_inicio, t.fecha_fin, t.observaciones, c.codigo_origen AS cliente_codigo, c.nombre AS cliente')
             ->join('clientes c', 'c.id = t.cliente_id AND c.empresa_id = t.empresa_id', 'left')
             ->where('t.empresa_id', $companyId)
             ->where('t.viaje_id', $tripId)
             ->orderBy('t.orden', 'ASC')
             ->get()->getResultArray();
 
-        return array_map(static fn (array $row): array => [
-            'id' => (int) $row['id'],
-            'orden' => (int) $row['orden'],
-            'codigo_origen_destino' => $row['codigo_origen_destino'] === null ? null : (int) $row['codigo_origen_destino'],
-            'localidad_origen_id' => $row['localidad_origen_id'] === null ? null : (int) $row['localidad_origen_id'],
-            'localidad_destino_id' => $row['localidad_destino_id'] === null ? null : (int) $row['localidad_destino_id'],
-            'cliente_id' => $row['cliente_id'] === null ? null : (int) $row['cliente_id'],
-            'cliente_codigo' => $row['cliente_codigo'] === null ? null : (string) $row['cliente_codigo'],
-            'cliente' => $row['cliente'],
-            'origen' => (string) $row['origen'],
-            'destino' => (string) $row['destino'],
-            'km' => $row['km'] === null ? null : (float) $row['km'],
-            'toneladas' => $row['toneladas'] === null ? null : (float) $row['toneladas'],
-            'moneda' => (string) $row['moneda'],
-            'cotizacion' => (float) $row['cotizacion'],
-            'flete_facturacion' => $row['flete_facturacion'] === null ? null : (float) $row['flete_facturacion'],
-            'flete_facturacion_ars' => $row['flete_facturacion_ars'] === null ? null : (float) $row['flete_facturacion_ars'],
-            'flete_liquidacion' => $row['flete_liquidacion'] === null ? null : (float) $row['flete_liquidacion'],
-            'flete_liquidacion_ars' => $row['flete_liquidacion_ars'] === null ? null : (float) $row['flete_liquidacion_ars'],
-            'fecha_inicio' => $row['fecha_inicio'] === null ? null : (string) $row['fecha_inicio'],
-            'fecha_fin' => $row['fecha_fin'] === null ? null : (string) $row['fecha_fin'],
-            'observaciones' => $row['observaciones'],
-        ], $rows);
+        return array_map(static function (array $row): array {
+            // Los tramos cargados antes de que la liquidacion tuviera su propia
+            // moneda usaban la de facturacion para los dos fletes.
+            $liquidationCurrency = trim((string) ($row['moneda_liquidacion'] ?? ''));
+
+            return [
+                'id' => (int) $row['id'],
+                'orden' => (int) $row['orden'],
+                'codigo_origen_destino' => $row['codigo_origen_destino'] === null ? null : (int) $row['codigo_origen_destino'],
+                'localidad_origen_id' => $row['localidad_origen_id'] === null ? null : (int) $row['localidad_origen_id'],
+                'localidad_destino_id' => $row['localidad_destino_id'] === null ? null : (int) $row['localidad_destino_id'],
+                'cliente_id' => $row['cliente_id'] === null ? null : (int) $row['cliente_id'],
+                'cliente_codigo' => $row['cliente_codigo'] === null ? null : (string) $row['cliente_codigo'],
+                'cliente' => $row['cliente'],
+                'origen' => (string) $row['origen'],
+                'destino' => (string) $row['destino'],
+                'km' => $row['km'] === null ? null : (float) $row['km'],
+                'toneladas' => $row['toneladas'] === null ? null : (float) $row['toneladas'],
+                'moneda' => (string) $row['moneda'],
+                'cotizacion' => (float) $row['cotizacion'],
+                'moneda_liquidacion' => $liquidationCurrency === '' ? (string) $row['moneda'] : $liquidationCurrency,
+                'cotizacion_liquidacion' => $row['cotizacion_liquidacion'] === null ? (float) $row['cotizacion'] : (float) $row['cotizacion_liquidacion'],
+                'flete_facturacion' => $row['flete_facturacion'] === null ? null : (float) $row['flete_facturacion'],
+                'flete_facturacion_ars' => $row['flete_facturacion_ars'] === null ? null : (float) $row['flete_facturacion_ars'],
+                'flete_liquidacion' => $row['flete_liquidacion'] === null ? null : (float) $row['flete_liquidacion'],
+                'flete_liquidacion_ars' => $row['flete_liquidacion_ars'] === null ? null : (float) $row['flete_liquidacion_ars'],
+                'fecha_inicio' => $row['fecha_inicio'] === null ? null : (string) $row['fecha_inicio'],
+                'fecha_fin' => $row['fecha_fin'] === null ? null : (string) $row['fecha_fin'],
+                'observaciones' => $row['observaciones'],
+            ];
+        }, $rows);
     }
 
     /** @return list<array<string,mixed>> */

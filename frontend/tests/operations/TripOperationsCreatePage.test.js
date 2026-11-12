@@ -111,6 +111,33 @@ describe('alta de viaje operativo', () => {
     wrapper.unmount()
   })
 
+  it('carga el flete de liquidación en pesos aunque la facturación esté en dólares', async () => {
+    const wrapper = mount(TripOperationsCreatePage, {
+      props: {
+        data: {
+          ...data,
+          currencies: [{ code: 'ARS', label: 'Peso argentino' }, { code: 'USD', label: 'Dólar' }],
+        },
+      },
+    })
+
+    await wrapper.get('select[name="tramos[0][moneda]"]').setValue('USD')
+    await wrapper.vm.$nextTick()
+
+    // Mientras la liquidación sigue a la facturación, comparte su cotización.
+    expect(wrapper.get('select[name="tramos[0][moneda_liquidacion]"]').element.value).toBe('USD')
+    expect(wrapper.get('input[name="tramos[0][cotizacion_liquidacion]"]').attributes('disabled')).toBeDefined()
+
+    const pesos = wrapper.findAll('button').find((button) => button.text() === 'En pesos')
+    await pesos.trigger('click')
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.get('select[name="tramos[0][moneda_liquidacion]"]').element.value).toBe('ARS')
+    expect(wrapper.get('input[name="tramos[0][cotizacion_liquidacion]"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.text()).toContain('Flete de liquidación (ARS, opcional)')
+    wrapper.unmount()
+  })
+
   it('precarga dominio, sucursal, chofer, porcentaje y km al elegir el tractor', async () => {
     const wrapper = mount(TripOperationsCreatePage, { props: { data } })
     const tractor = wrapper.findAllComponents(AutocompleteSelect).find((component) => component.props('name') === 'tractor_id')
