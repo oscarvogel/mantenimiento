@@ -10,12 +10,25 @@ use DomainException;
 
 final readonly class OperationalTripFilters
 {
+    /**
+     * Estado derivado: el recorrido terminó (todos sus tramos tienen fecha de
+     * fin) pero el viaje sigue en curso porque todavía no se lo cerró.
+     * No es un estado del dominio: es lo que ve el operador en el listado.
+     */
+    public const PENDIENTE_CIERRE = 'PENDIENTE_CIERRE';
+
+    public const ORDER_ASC = 'asc';
+
+    public const ORDER_DESC = 'desc';
+
     public function __construct(
         public ?string $from = null,
         public ?string $to = null,
         public ?int $branchId = null,
         public ?string $status = null,
         public ?string $search = null,
+        public ?string $plate = null,
+        public string $order = self::ORDER_DESC,
     ) {
     }
 
@@ -34,10 +47,12 @@ final readonly class OperationalTripFilters
             self::positiveInt($query['sucursal'] ?? null),
             self::status($query['estado'] ?? null),
             self::search($query['buscar'] ?? null),
+            self::plate($query['patente'] ?? null),
+            self::order($query['orden'] ?? null),
         );
     }
 
-    /** @return array{from:?string,to:?string,branchId:?int,status:?string,search:?string} */
+    /** @return array{from:?string,to:?string,branchId:?int,status:?string,search:?string,plate:?string,order:string} */
     public function toArray(): array
     {
         return [
@@ -46,7 +61,15 @@ final readonly class OperationalTripFilters
             'branchId' => $this->branchId,
             'status' => $this->status,
             'search' => $this->search,
+            'plate' => $this->plate,
+            'order' => $this->order,
         ];
+    }
+
+    /** El listado arranca de más nuevo a más viejo; el operador puede invertirlo. */
+    public function isAscending(): bool
+    {
+        return $this->order === self::ORDER_ASC;
     }
 
     private static function date(mixed $value, string $label): ?string
@@ -72,8 +95,11 @@ final readonly class OperationalTripFilters
             return null;
         }
         $parsed = filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        if ($parsed === false) {
+            return null;
+        }
 
-        return $parsed === false ? null : (int) $parsed;
+        return (int) $parsed;
     }
 
     private static function status(mixed $value): ?string
@@ -82,7 +108,8 @@ final readonly class OperationalTripFilters
         if ($raw === '') {
             return null;
         }
-        if (! in_array($raw, [Trip::PLANIFICADO, Trip::EN_CURSO, Trip::FINALIZADO, Trip::CANCELADO], true)) {
+        $allowed = [Trip::PLANIFICADO, Trip::EN_CURSO, Trip::FINALIZADO, Trip::CANCELADO, self::PENDIENTE_CIERRE];
+        if (! in_array($raw, $allowed, true)) {
             throw new DomainException('El estado de viaje indicado no es válido.');
         }
 
@@ -97,6 +124,41 @@ final readonly class OperationalTripFilters
         }
         if (mb_strlen($raw) > 80) {
             throw new DomainException('La búsqueda no puede superar los 80 caracteres.');
+        }
+
+        return $raw;
+    }
+
+    /**
+     * Patente del equipo: tractor o semirremolque. Se busca por coincidencia
+     * parcial, sin distinguir mayúsculas.
+     */
+    private static function plate(mixed $value): ?string
+    {
+        $raw = trim((string) ($value ?? ''));
+        if ($raw === '') {
+            return null;
+        }
+        if (mb_strlen($raw) > 20) {
+            throw new DomainException('La patente no puede superar los 20 caracteres.');
+        }
+        // Los comodines quedan fuera: la patente es alfanumérica.
+        $raw = str_replace(['%', '_'], '', $raw);
+        if ($raw === '') {
+            return null;
+        }
+
+        return $raw;
+    }
+
+    private static function order(mixed $value): string
+    {
+        $raw = strtolower(trim((string) ($value ?? '')));
+        if ($raw === '') {
+            return self::ORDER_DESC;
+        }
+        if (! in_array($raw, [self::ORDER_ASC, self::ORDER_DESC], true)) {
+            throw new DomainException('El orden indicado no es válido.');
         }
 
         return $raw;

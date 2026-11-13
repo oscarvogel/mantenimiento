@@ -72,6 +72,7 @@ final class SummaryPdfReadModelFake implements OperationalTripReadModel
             'cashMovements' => [], 'otherEarnings' => [],
         ];
     }
+    public function equipmentOptions(int $companyId, ?array $branchIds): array { return []; }
 }
 
 final class SummaryPdfRendererFake implements OperationalTripSummaryPdfRenderer

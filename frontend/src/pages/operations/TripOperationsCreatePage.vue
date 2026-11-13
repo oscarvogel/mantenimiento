@@ -73,7 +73,6 @@ const trailerIds = ref(old.value.acoplado_id
 const branchId = ref(old.value.sucursal_id === undefined || old.value.sucursal_id === null ? '' : String(old.value.sucursal_id))
 const dateValue = (value) => String(value ?? '').slice(0, 10)
 const departure = ref(dateValue(old.value.fecha_salida_real) || today())
-const returnAt = ref(dateValue(old.value.fecha_regreso_estimado))
 const kmSalida = ref(old.value.km_salida ?? '')
 const selectedDrivers = ref(Array.isArray(old.value.choferes) ? old.value.choferes.map(String) : [])
 const autoDrivers = ref([])
@@ -292,11 +291,6 @@ const applyCreatedLocality = (locality) => {
           <label class="block">
             <span class="mb-1.5 block text-sm font-semibold text-ink">Fecha real de salida</span>
             <input v-model="departure" type="date" name="fecha_salida_real" required :class="fieldClass" />
-          </label>
-          <label class="block">
-            <span class="mb-1.5 block text-sm font-semibold text-ink">Fecha estimada de regreso (opcional)</span>
-            <input v-model="returnAt" type="date" name="fecha_regreso_estimado" :class="fieldClass" />
-            <span class="mt-1 block text-xs text-ink-muted">Si todavía no la sabés, dejala vacía. El equipo y el chofer quedan ocupados hasta cargar el regreso real.</span>
           </label>
           <label class="block">
             <span class="mb-1.5 block text-sm font-semibold text-ink">Odómetro real de salida (km)</span>

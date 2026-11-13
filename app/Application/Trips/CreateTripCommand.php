@@ -19,7 +19,6 @@ final readonly class CreateTripCommand
     public function __construct(
         public int $branchId,
         public DateTimeImmutable $departureAt,
-        public ?DateTimeImmutable $estimatedReturnAt,
         public int $truckId,
         public array $trailerIds,
         public array $driverIds,
@@ -37,10 +36,6 @@ final readonly class CreateTripCommand
         $truckId = self::positiveInt($input['tractor_id'] ?? null, 'Elegí el tractor o camión del viaje.');
         $trailerIds = self::trailerIds($input['acoplado_id'] ?? null);
         $departureAt = self::date($input['fecha_salida_real'] ?? null, 'La fecha real de salida');
-        $estimatedReturnAt = self::optionalDate($input['fecha_regreso_estimado'] ?? null, 'La fecha estimada de regreso');
-        if ($estimatedReturnAt !== null && $estimatedReturnAt->format('Y-m-d') < $departureAt->format('Y-m-d')) {
-            throw new DomainException('El regreso estimado no puede ser anterior a la salida real.');
-        }
         $departureKm = self::nonNegativeInt($input['km_salida'] ?? null, 'Ingresá el odómetro real de salida.');
 
         $driverIds = self::driverIds($input['choferes'] ?? null);
@@ -56,7 +51,6 @@ final readonly class CreateTripCommand
         return new self(
             $branchId,
             $departureAt,
-            $estimatedReturnAt,
             $truckId,
             $trailerIds,
             $driverIds,

@@ -40,6 +40,12 @@ final class CodeIgniterOperationalTripRepositoryTest extends TestCase
             tipo TEXT, cliente_id INTEGER NULL, domicilio_id INTEGER NULL, ubicacion TEXT, fecha_estimada TEXT NULL,
             fecha_real TEXT NULL, descripcion_carga TEXT NULL, cantidad REAL NULL, unidad_carga_id INTEGER NULL, observaciones TEXT NULL, created_at TEXT NULL
         )');
+        // Los tramos acotan el fin del viaje cuando todavia no hay regreso
+        // estimado: el equipo queda libre desde la fecha de fin del ultimo.
+        $this->database->query('CREATE TABLE viaje_operativo_tramos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, viaje_id INTEGER, empresa_id INTEGER, sucursal_id INTEGER, orden INTEGER,
+            origen TEXT, destino TEXT, fecha_fin TEXT NULL
+        )');
     }
 
     protected function tearDown(): void

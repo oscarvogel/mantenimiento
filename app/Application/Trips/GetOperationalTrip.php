@@ -40,6 +40,7 @@ final class GetOperationalTrip
 
         $detail = $this->costs($detail);
         $detail = $this->financials($detail);
+        $detail = $this->cierre($detail);
         $detail['links'] = [
             'detail' => base_url('viajes/operativos/' . $tripId),
             'localities' => base_url('viajes/operativos/localidades'),
@@ -64,6 +65,59 @@ final class GetOperationalTrip
         $detail['canCancel'] = $detail['canOperate'] && ($detail['trip']['estado'] ?? null) === Trip::PLANIFICADO;
         $detail['canClose'] = $detail['canOperate'] && ($detail['trip']['estado'] ?? null) === Trip::EN_CURSO;
         $detail['canAddLegs'] = $detail['canRegisterCosts'];
+
+        return $detail;
+    }
+
+    /**
+     * Estado derivado del recorrido.
+     *
+     * El estado del viaje no se deduce de los tramos: sólo cambia cuando se
+     * cierra el viaje. Como el operador cierra cada tramo con su fecha de
+     * fin, desde acá se ve si el recorrido terminó aunque el viaje siga en
+     * curso. Se calcula ese dato junto con la fecha de regreso y el odómetro
+     * que el cierre sugiere.
+     *
+     * @param array<string,mixed> $detail
+     * @return array<string,mixed>
+     */
+    private function cierre(array $detail): array
+    {
+        $legs = $detail['legs'] ?? [];
+        $estado = (string) ($detail['trip']['estado'] ?? '');
+        $cerrados = 0;
+        $fechaCierre = null;
+        foreach ($legs as $leg) {
+            $endDate = trim((string) ($leg['fecha_fin'] ?? ''));
+            if ($endDate === '' || str_starts_with($endDate, '0000-00-00')) {
+                continue;
+            }
+            $cerrados++;
+            if ($fechaCierre === null || $endDate > $fechaCierre) {
+                $fechaCierre = $endDate;
+            }
+        }
+
+        $recorridoCerrado = $legs !== [] && $cerrados === count($legs);
+        $kmSugerido = null;
+        foreach ($detail['assignments'] ?? [] as $assignment) {
+            if (($assignment['rol'] ?? '') !== 'TRACTOR') {
+                continue;
+            }
+            $kmActual = $assignment['km_actual'] ?? null;
+            $kmSalida = $detail['trip']['km_salida'] ?? null;
+            if ($kmActual !== null && ($kmSalida === null || (int) $kmActual > (int) $kmSalida)) {
+                $kmSugerido = (int) $kmActual;
+            }
+            break;
+        }
+
+        $detail['cierre_pendiente'] = $estado === Trip::EN_CURSO && $recorridoCerrado;
+        $detail['recorrido_cerrado'] = $recorridoCerrado;
+        // La fecha sugerida es la del ultimo tramo, y solo cuando el recorrido
+        // esta cerrado: con el viaje a medio camino no se propone un regreso.
+        $detail['fecha_cierre_sugerida'] = $recorridoCerrado && $fechaCierre !== null ? substr($fechaCierre, 0, 10) : null;
+        $detail['km_cierre_sugerido'] = $kmSugerido;
 
         return $detail;
     }

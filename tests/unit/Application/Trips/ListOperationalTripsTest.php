@@ -73,4 +73,5 @@ final class ListTripsReadModelFake implements OperationalTripReadModel
     {
         return null;
     }
+    public function equipmentOptions(int $companyId, ?array $branchIds): array { return []; }
 }

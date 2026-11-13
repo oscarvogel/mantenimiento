@@ -494,6 +494,7 @@ final class CostTripRepositoryFake implements OperationalTripRepository
     ): array {
         return [];
     }
+    public function updatePlannedReturn(int $companyId, int $tripId, ?DateTimeImmutable $returnAt, int $actorUserId): void {}
 }
 
 final class CostRepositoryFake implements TripCostRepository
@@ -642,6 +643,7 @@ final class CostLegRepositoryFake implements TripLegRepository
     {
         return [];
     }
+    public function lastLegEndDate(int $companyId, int $tripId): ?DateTimeImmutable { return null; }
 }
 
 final class CostUnitOfWorkFake implements TripsUnitOfWork

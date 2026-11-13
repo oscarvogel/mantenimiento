@@ -223,6 +223,26 @@ final class Trip
         $this->notes = trim($notes);
     }
 
+    /**
+     * Sincroniza el regreso estimado con el cierre del último tramo.
+     *
+     * El regreso estimado ya no se carga a mano: se completa solo con la
+     * fecha de fin del último tramo, y se vacía cuando ese tramo todavía no
+     * terminó. Se ignora una fecha anterior a la salida, porque un tramo
+     * cerrado antes de salir no informa un regreso.
+     */
+    public function syncPlannedReturn(?DateTimeImmutable $returnAt): void
+    {
+        if (! in_array($this->status, [self::PLANIFICADO, self::EN_CURSO], true)) {
+            return;
+        }
+        if ($returnAt !== null && $returnAt->format('Y-m-d') < $this->plannedDeparture->format('Y-m-d')) {
+            return;
+        }
+
+        $this->plannedReturn = $returnAt?->setTime(0, 0);
+    }
+
     public function finish(DateTimeImmutable $at, int $returnKm): void
     {
         if ($this->status !== self::EN_CURSO) {

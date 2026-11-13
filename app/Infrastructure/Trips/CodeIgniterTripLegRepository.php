@@ -7,6 +7,7 @@ namespace App\Infrastructure\Trips;
 use App\Application\Trips\Port\TripLegRepository;
 use App\Domain\Trips\TripLeg;
 use CodeIgniter\Database\BaseConnection;
+use DateTimeImmutable;
 use RuntimeException;
 
 final class CodeIgniterTripLegRepository implements TripLegRepository
@@ -96,6 +97,26 @@ final class CodeIgniterTripLegRepository implements TripLegRepository
             ->get()->getResultArray();
 
         return array_map(static fn (array $row): int => (int) $row['orden'], $rows);
+    }
+
+    public function lastLegEndDate(int $companyId, int $tripId): ?DateTimeImmutable
+    {
+        $row = $this->database->table('viaje_operativo_tramos')
+            ->select('fecha_fin')
+            ->where('empresa_id', $companyId)
+            ->where('viaje_id', $tripId)
+            ->orderBy('orden', 'DESC')
+            ->get()->getResultArray();
+        if ($row === []) {
+            return null;
+        }
+
+        $raw = trim((string) ($row[0]['fecha_fin'] ?? ''));
+        if ($raw === '' || str_starts_with($raw, '0000-00-00')) {
+            return null;
+        }
+
+        return new DateTimeImmutable(substr($raw, 0, 10));
     }
 
     /** @return array<string,mixed> */

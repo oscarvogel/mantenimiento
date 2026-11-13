@@ -73,6 +73,36 @@ describe('detalle de viaje operativo', () => {
     wrapper.unmount()
   })
 
+  it('avisa que el recorrido terminó y precarga el cierre con la fecha y el odómetro', () => {
+    const wrapper = mount(TripOperationsDetailPage, {
+      props: {
+        data: {
+          ...data,
+          canStart: false,
+          canCancel: false,
+          canClose: true,
+          cierre_pendiente: true,
+          recorrido_cerrado: true,
+          fecha_cierre_sugerida: '2026-11-11',
+          km_cierre_sugerido: 148900,
+          trip: {
+            ...data.trip,
+            estado: 'EN_CURSO',
+            estado_label: 'En curso',
+            fecha_salida_real: '2026-10-20 08:15:00',
+            km_salida: 145300,
+          },
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain('El recorrido terminó el 11/11/2026 pero el viaje sigue En curso')
+    expect(wrapper.get('input[name="fecha_regreso_real"]').attributes('value')).toBe('2026-11-11')
+    expect(wrapper.get('input[name="km_regreso"]').attributes('value')).toBe('148900')
+    expect(wrapper.text()).toContain('Regreso estimado (último tramo)')
+    wrapper.unmount()
+  })
+
   it('ofrece descargar el resumen PDF cuando el viaje terminó', () => {
     const wrapper = mount(TripOperationsDetailPage, {
       props: {

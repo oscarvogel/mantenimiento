@@ -129,6 +129,7 @@ final class CancelTripRepositoryFake implements OperationalTripRepository
     ): array {
         return [];
     }
+    public function updatePlannedReturn(int $companyId, int $tripId, ?DateTimeImmutable $returnAt, int $actorUserId): void {}
 }
 
 final class CancelTripUnitOfWorkFake implements TripsUnitOfWork

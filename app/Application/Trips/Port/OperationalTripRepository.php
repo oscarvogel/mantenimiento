@@ -21,6 +21,14 @@ interface OperationalTripRepository
 
     public function updateDetails(Trip $trip, int $actorUserId): void;
 
+    /**
+     * Guarda el regreso estimado del viaje.
+     *
+     * Lo completa el cierre del último tramo: el operador ya no lo carga a
+     * mano. Es una columna del viaje, no de las asignaciones.
+     */
+    public function updatePlannedReturn(int $companyId, int $tripId, ?DateTimeImmutable $returnAt, int $actorUserId): void;
+
     public function updateDriverPercentage(int $companyId, int $tripId, int $employeeId, float $percentage, int $actorUserId): void;
 
     /**

@@ -184,6 +184,10 @@ Los adelantos no cambian el margen del viaje; solo la liquidación final.
 | Rentabilidad histórica legacy | Implementado, solo legacy | `GetTripProfitability` |
 | Dashboard de viajes | Implementado | `TripsDashboard` |
 | Tablero de viajes operativos con viajes en curso, KPIs y gráficos | Implementado | `OperationalTripsDashboard`, `GetOperationalTripsDashboard` |
+| Filtro por patente y orden por fecha de salida (ascendente / descendente) en el tablero de viajes operativos | Implementado | `OperationalTripFilters`, `CodeIgniterOperationalTripReadModel` |
+| Estado derivado "recorrido cerrado": viaje En curso cuyos tramos tienen todos `fecha_fin` | Implementado | `CodeIgniterOperationalTripReadModel` (derivado, no persistido) |
+| Sugerencia de cierre (fecha del último tramo cerrado y km actual del tractor) para cerrar un viaje cuyo recorrido ya terminó | Implementado | `GetOperationalTrip::cierre()` |
+| `fecha_regreso_planificada` mantenida por el sistema como fecha del último tramo cerrado | Implementado | `AddTripLeg`, `UpdateTripLeg`, `Trip::syncPlannedReturn` |
 
 ### 4.2 Qué falta para el circuito descrito
 
@@ -196,6 +200,25 @@ queda es lo que la Fase 2 define y lo que depende de una respuesta del cliente:
 | Pago de la liquidación | No hay registro de pagos ni comprobante de pago. | Fase 2 de la sección 12.2 |
 | Permiso `viajes.liquidar` | Sin el permiso no se puede separar la aprobación del resto de los permisos de viajes. | Fase 2 de la sección 12.2 |
 | Definición de la liquidación por viaje o por período | Cambia la pantalla y el modelo de la Fase 2. | Sección 16, pregunta al cliente |
+
+### 4.2.1 Viajes que quedaron En curso con el recorrido terminado
+
+El 12/11/2026 el cliente señaló, en el video de un caso real, que un viaje ya cerrado por el
+operador seguía apareciendo como En curso. La causa verificada en código es que el cierre exige
+flete de facturación **y** de liquidación en todos los tramos (`FinishTrip` /
+`CodeIgniterTripLegRepository::ordersWithMissingAmounts`), y el botón de cierre queda deshabilitado
+mientras falte alguno.
+
+Decisión tomada con el cliente:
+
+- **No** se desbloquea el cierre por flete faltante: la regla de datos completos se mantiene.
+- El problema de visibility se resuelve con un **estado derivado**: el tablero y el detalle
+  muestran que el recorrido terminó y que falta cerrar el viaje.
+- El cierre sigue siendo **manual** y sigue exigiendo **odómetro de regreso** (dato que hoy no
+  existe en el sistema y hay que cargar).
+
+Consecuencia operativa: los viajes atascados en `EN_CURSO` con todos sus tramos cerrados se
+reabren uno por uno desde el detalle, cargando fecha de regreso y km de regreso.
 
 ### 4.3 Diferencia con la pantalla de rentabilidad actual
 
@@ -603,8 +626,15 @@ Reglas:
 - "Todos" muestra todos los viajes de la empresa y sucursales autorizadas.
 - Al elegir un dominio, se filtran los viajes de ese equipo.
 - El chofer se puede filtrar dentro del dominio.
+- La **patente** se filtra con un combo con búsqueda: se escribe parte de la patente y se elige de
+  las que existen en el parque; no se aceptan valores libres.
+- El **orden** es por fecha de salida (real si existe, planificada si no) y se puede cambiar entre
+  "Más recientes primero" y "Más antiguos primero".
 - La lista muestra margen solo si hay datos suficientes.
 - Desde cada fila se abre el detalle del viaje.
+- La columna **Estado** distingue el estado persistido del viaje de la situación del recorrido:
+  cuando todos los tramos tienen fecha de fin, se agrega la marca "Recorrido cerrado" y, si el
+  viaje sigue En curso, "Falta cerrar el viaje".
 
 ### 10.2 Nuevo / abrir viaje
 
@@ -635,6 +665,10 @@ Reglas:
 - Las paradas operativas son hitos separados y no reemplazan los tramos de flete.
 - Una futura distancia estimada de ruta basada en OSM debe quedar separada de los kilómetros reales medidos por odómetro.
 - El viaje se registra aprobado y ya iniciado: se pide fecha real y km de salida, y queda En curso al guardar.
+- El alta **no pide fecha estimada de regreso**. Es un dato derivado: el sistema lo mantiene con la
+  fecha del último tramo cerrado (`fecha_regreso_planificada`), y se puede ver en el detalle como
+  "Regreso estimado (último tramo)". Pedirla al cargar generaba fechas que contradecían al
+  recorrido real.
 
 ### 10.3 Viaje en curso
 
@@ -690,6 +724,12 @@ Reglas:
 - Se muestran advertencias si faltan combustible o gastos, pero no se bloquea el cierre si el usuario confirma.
 - Al cerrar se genera una lectura del equipo con origen `VIAJE`.
 - Se guardan los snapshots de facturación, costo, comisión, liquidación y margen.
+- Cuando el recorrido ya terminó (todos los tramos con `fecha_fin`), el detalle muestra un aviso
+  explícito y el formulario de cierre **precompleta** la fecha de regreso con la del último tramo
+  cerrado y el km de regreso con el km actual del tractor. El operador puede corregir los valores.
+  La sugerencia solo aparece cuando hay datos: no se propone km si el equipo no tiene lectura, ni
+  fecha si el recorrido no terminó.
+- El cierre es siempre manual: el sistema no cierra el viaje por su cuenta.
 
 ### 10.5 Liquidación del chofer
 
@@ -874,6 +914,7 @@ La Fase 2 (aprobación y pagos de liquidación) queda para después de validar e
 | 04/11/2026 | OpenCode | Se agrega el tablero de viajes operativos con viajes en curso, KPIs y gráficos; pasa a ser el acceso del módulo Viajes. El historial importado queda como entrada independiente. | 1545 pruebas PHP y 438 de frontend, sin fallos. |
 | 06/11/2026 | OpenCode | Se agrega el diario de bordo: cálculo de estadías por diferencia de fechas con franquicia por etapa y generación automática del haber vinculado. | Migración `2026-11-06-130000`, dominio, aplicación, read model y UI. |
 | 11/11/2026 | OpenCode | Los viajes abiertos se pueden editar y los fletes son opcionales hasta el cierre. | Migración `2026-11-11-090000`; edición de encabezado y tramos; cierre exige ambos fletes en todos los tramos. |
+| 12/11/2026 | Mavis | Se atienden los pedidos de los videos del cliente: filtro por patente y orden por fecha, estado derivado de "recorrido cerrado" con aviso y prefill del cierre, y la fecha estimada de regreso pasa a ser dato derivado del último tramo. | Sin cambios de esquema ni migración. El cierre por flete faltante **no** se desbloquea: el cierre sigue siendo manual y exige odómetro de regreso. Ver `docs/BITACORA_2026-11-12_PEDIDOS_VIDEOS_VIAJES_OPERATIVOS.md`. |
 
 Checklist para aprobar la Fase 1:
 

@@ -24,7 +24,7 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
         $this->database->query('CREATE TABLE empresas (id INTEGER PRIMARY KEY, razon_social TEXT, nombre_fantasia TEXT)');
         $this->database->query('CREATE TABLE sucursales (id INTEGER PRIMARY KEY, empresa_id INTEGER, codigo TEXT, nombre TEXT, estado INTEGER, deleted_at TEXT NULL)');
         $this->database->query('CREATE TABLE tipos_equipo (id INTEGER PRIMARY KEY, nombre TEXT)');
-        $this->database->query('CREATE TABLE equipos (id INTEGER PRIMARY KEY, empresa_id INTEGER, sucursal_id INTEGER, tipo_equipo_id INTEGER, codigo TEXT, patente TEXT, deleted_at TEXT NULL)');
+        $this->database->query('CREATE TABLE equipos (id INTEGER PRIMARY KEY, empresa_id INTEGER, sucursal_id INTEGER, tipo_equipo_id INTEGER, codigo TEXT, patente TEXT, km_actual INTEGER NULL, estado INTEGER DEFAULT 1, deleted_at TEXT NULL)');
         $this->database->query('CREATE TABLE empleados (id INTEGER PRIMARY KEY, empresa_id INTEGER, nombre TEXT, apellido TEXT, deleted_at TEXT NULL)');
         $this->database->query('CREATE TABLE clientes (id INTEGER PRIMARY KEY, empresa_id INTEGER, codigo_origen TEXT, nombre TEXT, activo INTEGER, deleted_at TEXT NULL)');
         $this->database->query('CREATE TABLE viajes_domicilios_clientes (id INTEGER PRIMARY KEY, empresa_id INTEGER, cliente_id INTEGER, alias TEXT, calle TEXT, localidad TEXT)');
@@ -213,6 +213,132 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
         self::assertSame('Córdoba', $trip['destino']);
         self::assertSame(0, $trip['paradas']);
         self::assertSame(1, $trip['tramos']);
+    }
+
+    public function testListFiltersByPlate(): void
+    {
+        $this->seedSecondTrip();
+
+        $readModel = new CodeIgniterOperationalTripReadModel($this->database);
+
+        $porTractor = $readModel->list(5, null, new OperationalTripFilters(plate: 'AA111'), 1, 20);
+        self::assertSame(1, $porTractor['total']);
+        self::assertSame(42, $porTractor['items'][0]['numero']);
+
+        // Sin distinguir mayusculas y con coincidencia parcial.
+        $parcial = $readModel->list(5, null, new OperationalTripFilters(plate: 'zz9'), 1, 20);
+        self::assertSame(1, $parcial['total']);
+        self::assertSame(77, $parcial['items'][0]['numero']);
+
+        // El segundo viaje lleva el semirremolque: tambien aparece.
+        $porAcoplado = $readModel->list(5, null, new OperationalTripFilters(plate: 'AC222'), 1, 20);
+        self::assertSame(1, $porAcoplado['total']);
+        self::assertSame(42, $porAcoplado['items'][0]['numero']);
+
+        self::assertSame(0, $readModel->list(5, null, new OperationalTripFilters(plate: 'NO EXISTE'), 1, 20)['total']);
+    }
+
+    public function testListCanBeOrderedFromOldestToNewest(): void
+    {
+        $this->seedSecondTrip();
+
+        $readModel = new CodeIgniterOperationalTripReadModel($this->database);
+
+        $recientes = $readModel->list(5, null, new OperationalTripFilters(), 1, 20);
+        self::assertSame(77, $recientes['items'][0]['numero']);
+
+        $antiguos = $readModel->list(5, null, new OperationalTripFilters(order: 'asc'), 1, 20);
+        self::assertSame(42, $antiguos['items'][0]['numero']);
+    }
+
+    public function testListFiltersTheTripsWaitingToBeClosed(): void
+    {
+        $this->seedSecondTrip();
+        // El segundo viaje sigue en curso con un tramo sin cerrar.
+        $this->database->table('viaje_operativo_tramos')
+            ->where('viaje_id', 2)
+            ->update(['fecha_fin' => null]);
+
+        $readModel = new CodeIgniterOperationalTripReadModel($this->database);
+
+        $pendientes = $readModel->list(5, null, new OperationalTripFilters(status: OperationalTripFilters::PENDIENTE_CIERRE), 1, 20);
+        self::assertSame(0, $pendientes['total']);
+
+        // Si el ultimo tramo tiene fecha de fin, el viaje queda esperando el cierre.
+        $this->database->table('viaje_operativo_tramos')
+            ->where('viaje_id', 2)
+            ->update(['fecha_fin' => '2026-10-30']);
+
+        $pendientes = $readModel->list(5, null, new OperationalTripFilters(status: OperationalTripFilters::PENDIENTE_CIERRE), 1, 20);
+        self::assertSame(1, $pendientes['total']);
+        self::assertSame(77, $pendientes['items'][0]['numero']);
+    }
+
+    public function testTheListMarksTheTripsWhoseRouteIsClosed(): void
+    {
+        $this->seedSecondTrip();
+        $this->database->table('viaje_operativo_tramos')
+            ->where('viaje_id', 2)
+            ->update(['fecha_fin' => null]);
+
+        $readModel = new CodeIgniterOperationalTripReadModel($this->database);
+
+        $items = $readModel->list(5, null, new OperationalTripFilters(), 1, 20)['items'];
+        $porNumero = [];
+        foreach ($items as $item) {
+            $porNumero[$item['numero']] = $item;
+        }
+
+        self::assertTrue($porNumero[42]['recorrido_cerrado']);
+        self::assertSame(1, $porNumero[42]['tramos_cerrados']);
+        self::assertSame('2026-10-21', substr((string) $porNumero[42]['fecha_fin_ultimo'], 0, 10));
+        self::assertFalse($porNumero[77]['recorrido_cerrado']);
+        self::assertSame(0, $porNumero[77]['tramos_cerrados']);
+    }
+
+    public function testEquipmentOptionsReturnsThePlatesOfTheFleet(): void
+    {
+        $options = (new CodeIgniterOperationalTripReadModel($this->database))->equipmentOptions(5, [10]);
+
+        self::assertSame(
+            [
+                ['value' => 'AA111AA', 'label' => 'AA111AA', 'hint' => 'T01'],
+                ['value' => 'AC222AC', 'label' => 'AC222AC', 'hint' => 'A01'],
+            ],
+            $options
+        );
+    }
+
+    /**
+     * Segundo viaje: otra patente, en curso y con un tramo ya cerrado.
+     */
+    private function seedSecondTrip(): void
+    {
+        $this->database->table('equipos')->insert([
+            'id' => 8, 'empresa_id' => 5, 'sucursal_id' => 10, 'tipo_equipo_id' => 1, 'codigo' => 'T02',
+            'patente' => 'ZZ999ZZ', 'km_actual' => 500_000, 'estado' => 1, 'deleted_at' => null,
+        ]);
+        $this->database->table('viajes_operativos')->insert([
+            'id' => 2, 'empresa_id' => 5, 'sucursal_id' => 10, 'numero' => 77, 'estado' => 'EN_CURSO',
+            'fecha_salida_planificada' => '2026-10-25 08:00:00', 'fecha_regreso_planificada' => '2026-10-30 18:00:00',
+            'fecha_salida_real' => '2026-10-25 08:00:00', 'fecha_regreso_real' => null,
+            'km_salida' => 500_000, 'km_regreso' => null, 'observaciones' => null, 'motivo_cancelacion' => null,
+            'created_at' => '2026-10-24 10:00:00',
+        ]);
+        $this->database->table('viaje_operativo_asignaciones')->insert([
+            'id' => 4, 'viaje_id' => 2, 'empresa_id' => 5, 'sucursal_id' => 10, 'rol' => 'TRACTOR', 'equipo_id' => 8,
+            'empleado_id' => null, 'desde' => '2026-10-25 08:00:00', 'hasta' => null, 'motivo' => null,
+            'porcentaje_liquidacion' => null,
+        ]);
+        $this->database->table('viaje_operativo_tramos')->insert([
+            'id' => 2, 'viaje_id' => 2, 'empresa_id' => 5, 'sucursal_id' => 10, 'orden' => 1,
+            'cliente_id' => 3, 'origen' => 'Rosario', 'destino' => 'Córdoba', 'km' => 320,
+            'moneda' => 'ARS', 'cotizacion' => 1, 'flete_facturacion' => 1_000_000,
+            'moneda_liquidacion' => 'ARS', 'cotizacion_liquidacion' => 1,
+            'flete_facturacion_ars' => 1_000_000, 'flete_liquidacion' => 800_000,
+            'flete_liquidacion_ars' => 800_000, 'fecha_inicio' => '2026-10-25', 'fecha_fin' => '2026-10-30',
+            'observaciones' => null,
+        ]);
     }
 
     public function testFindReturnsAssignmentsAndStopsWithLabels(): void

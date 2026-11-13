@@ -12,6 +12,14 @@ interface OperationalTripReadModel
     public function branches(int $companyId, ?array $branchIds): array;
 
     /**
+     * Patentes del parque para filtrar el listado por equipo.
+     *
+     * @param list<int>|null $branchIds
+     * @return list<array{value:string,label:string,hint:string}>
+     */
+    public function equipmentOptions(int $companyId, ?array $branchIds): array;
+
+    /**
      * @param list<int>|null $branchIds
      * @return array{items:list<array<string,mixed>>,total:int}
      */

@@ -20,6 +20,14 @@ final class ListOperationalTrips
         Trip::CANCELADO => 'Cancelado',
     ];
 
+    /**
+     * Estado derivado que el listado ofrece como filtro: el recorrido terminó
+     * pero el viaje sigue en curso porque todavía no se lo cerró.
+     */
+    private const DERIVED_STATUS_LABELS = [
+        OperationalTripFilters::PENDIENTE_CIERRE => 'Recorrido cerrado, falta cerrar el viaje',
+    ];
+
     public function __construct(private readonly OperationalTripReadModel $readModel)
     {
     }
@@ -38,22 +46,31 @@ final class ListOperationalTrips
         $branchIds = $actor->hasAllCompanyBranches() ? null : $actor->branchIds();
         $canOperate = $actor->hasPermission('viajes.operar');
         if ($branchIds === []) {
-            return $this->payload($filters, [], [], 0, $page, $canOperate);
+            return $this->payload($filters, [], [], [], 0, $page, $canOperate);
         }
 
         $branches = $this->readModel->branches($companyId, $branchIds);
+        $equipment = $this->readModel->equipmentOptions($companyId, $branchIds);
         $result = $this->readModel->list($companyId, $branchIds, $filters, $page, self::PER_PAGE);
 
-        return $this->payload($filters, $branches, $result['items'], $result['total'], $page, $canOperate);
+        return $this->payload($filters, $branches, $equipment, $result['items'], $result['total'], $page, $canOperate);
     }
 
     /**
      * @param list<array{id:int,code:string,name:string}> $branches
+     * @param list<array{value:string,label:string,hint:string}> $equipment
      * @param list<array<string,mixed>> $rows
      * @return array<string,mixed>
      */
-    private function payload(OperationalTripFilters $filters, array $branches, array $rows, int $total, int $page, bool $canOperate): array
-    {
+    private function payload(
+        OperationalTripFilters $filters,
+        array $branches,
+        array $equipment,
+        array $rows,
+        int $total,
+        int $page,
+        bool $canOperate,
+    ): array {
         $pages = max(1, (int) ceil($total / self::PER_PAGE));
         $page = min($page, $pages);
 
@@ -61,10 +78,11 @@ final class ListOperationalTrips
             'filters' => $filters->toArray() + ['branchName' => $this->branchName($branches, $filters->branchId)],
             'options' => [
                 'branches' => $branches,
+                'equipment' => $equipment,
                 'statuses' => array_map(
                     static fn (string $key, string $label): array => ['value' => $key, 'label' => $label],
-                    array_keys(self::STATUS_LABELS),
-                    array_values(self::STATUS_LABELS),
+                    array_keys(self::STATUS_LABELS + self::DERIVED_STATUS_LABELS),
+                    array_values(self::STATUS_LABELS + self::DERIVED_STATUS_LABELS),
                 ),
             ],
             'statusLabels' => self::STATUS_LABELS,

@@ -1,22 +1,26 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import TripOperationsIndexPage from '../../src/pages/operations/TripOperationsIndexPage.vue'
+import AutocompleteSelect from '../../src/pages/operations/components/AutocompleteSelect.vue'
 
 const data = {
   canOperate: true,
   links: { index: '/mantenimiento/viajes/operativos', create: '/mantenimiento/viajes/operativos/nuevo' },
-  filters: { from: '', to: '', branchId: null, status: null, search: null, branchName: null },
+  filters: { from: '', to: '', branchId: null, status: null, search: null, plate: null, order: 'desc', branchName: null },
   options: {
     branches: [{ id: 10, code: 'AR', name: 'Argentina' }],
+    equipment: [{ value: 'AA111AA', label: 'AA111AA', hint: 'T01' }],
     statuses: [
       { value: 'PLANIFICADO', label: 'Planificado' },
       { value: 'EN_CURSO', label: 'En curso' },
+      { value: 'PENDIENTE_CIERRE', label: 'Recorrido cerrado, falta cerrar el viaje' },
     ],
   },
   trips: [{
     id: 42, numero: 7, estado: 'PLANIFICADO', estado_label: 'Planificado', sucursal_id: 10,
     fecha_salida_planificada: '2026-10-20 08:00:00', tractor: 'AA111AA · T01', acoplado: 'AC222AC · A01',
     choferes: ['Pérez, Juan'], origen: 'Rosario', destino: 'Córdoba', paradas: 2, tramos: 2,
+    tramos_cerrados: 0, recorrido_cerrado: false, fecha_fin_ultimo: null,
   }],
   pagination: { page: 1, perPage: 20, total: 1, pages: 1 },
 }
@@ -53,6 +57,41 @@ describe('viajes operativos', () => {
     const wrapper = mount(TripOperationsIndexPage, { props: { data: { ...data, canOperate: false } } })
 
     expect(wrapper.find('a[href="/mantenimiento/viajes/operativos/nuevo"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('filtra por patente y deja elegir el orden', () => {
+    const wrapper = mount(TripOperationsIndexPage, { props: { data } })
+
+    const plate = wrapper.findAllComponents(AutocompleteSelect).find((component) => component.props('name') === 'patente')
+    expect(plate).toBeTruthy()
+    expect(plate.props('options')).toEqual([{ value: 'AA111AA', label: 'AA111AA', hint: 'T01' }])
+
+    const order = wrapper.get('select[name="orden"]')
+    expect(order.findAll('option').map((option) => option.attributes('value'))).toEqual(['desc', 'asc'])
+    expect(wrapper.text()).toContain('Más recientes primero')
+    expect(wrapper.text()).toContain('Más antiguos primero')
+    expect(wrapper.text()).toContain('Recorrido cerrado, falta cerrar el viaje')
+    wrapper.unmount()
+  })
+
+  it('avisa que el recorrido termino y que falta cerrar el viaje', () => {
+    const payload = {
+      ...data,
+      trips: [{
+        ...data.trips[0],
+        estado: 'EN_CURSO',
+        estado_label: 'En curso',
+        tramos: 2,
+        tramos_cerrados: 2,
+        recorrido_cerrado: true,
+        fecha_fin_ultimo: '2026-11-11',
+      }],
+    }
+    const wrapper = mount(TripOperationsIndexPage, { props: { data: payload } })
+
+    expect(wrapper.text()).toContain('Recorrido cerrado')
+    expect(wrapper.text()).toContain('Falta cerrar el viaje')
     wrapper.unmount()
   })
 

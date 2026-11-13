@@ -78,7 +78,22 @@ final class UpdateTripLeg
             );
 
             $this->legs->update($trip->companyId(), $trip->branchId(), $legCommand->tripId, $command->legId, $leg, $actor->userId());
+            $this->syncPlannedReturn($trip, $actor->userId());
         });
+    }
+
+    /**
+     * El regreso estimado del viaje se completa con la fecha de fin del
+     * último tramo: el operador ya no lo carga a mano.
+     */
+    private function syncPlannedReturn(Trip $trip, int $actorUserId): void
+    {
+        $tripId = $trip->id();
+        if ($tripId === null) {
+            return;
+        }
+        $trip->syncPlannedReturn($this->legs->lastLegEndDate($trip->companyId(), $tripId));
+        $this->trips->updatePlannedReturn($trip->companyId(), $tripId, $trip->plannedReturn(), $actorUserId);
     }
 
     private function company(ActorContext $actor): int

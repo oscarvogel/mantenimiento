@@ -22,7 +22,6 @@ final class UpdateTripTest extends TestCase
 
         $handler->execute($this->actor(), 55, new UpdateTripCommand(
             new DateTimeImmutable('2026-10-22 00:00:00'),
-            new DateTimeImmutable('2026-10-24 00:00:00'),
             7,
             [9],
             [11],
@@ -51,11 +50,12 @@ final class UpdateTripTest extends TestCase
         $handler->execute($this->actor(), 55, $this->command());
     }
 
-    public function testCommandAcceptsOptionalEstimatedReturn(): void
+    public function testElComandoNoCargaElRegresoEstimado(): void
     {
+        // El regreso estimado lo mantiene el sistema con la fecha de fin del
+        // ultimo tramo: el formulario ya no lo manda.
         $command = UpdateTripCommand::fromInput([
             'fecha_salida_real' => '2026-10-22',
-            'fecha_regreso_estimado' => '',
             'km_salida' => '146100',
             'tractor_id' => '7',
             'acoplado_id' => ['9'],
@@ -64,7 +64,7 @@ final class UpdateTripTest extends TestCase
             'observaciones' => ' Corrección ',
         ]);
 
-        self::assertNull($command->estimatedReturnAt);
+        self::assertFalse(property_exists($command, 'estimatedReturnAt'));
         self::assertSame(146_100, $command->departureKm);
         self::assertSame([9], $command->trailerIds);
         self::assertSame(15.5, $command->driverPercentages[11]);
@@ -75,7 +75,6 @@ final class UpdateTripTest extends TestCase
     {
         return new UpdateTripCommand(
             new DateTimeImmutable('2026-10-22 00:00:00'),
-            null,
             7,
             [9],
             [11],
@@ -133,6 +132,7 @@ final class UpdateTripRepositoryFake implements OperationalTripRepository
 
         return [];
     }
+    public function updatePlannedReturn(int $companyId, int $tripId, ?DateTimeImmutable $returnAt, int $actorUserId): void {}
 }
 
 final class UpdateTripFleetFake implements TripFleetLookup

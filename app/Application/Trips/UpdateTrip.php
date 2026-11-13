@@ -76,12 +76,19 @@ final class UpdateTrip
                 }
             }
 
+            // El regreso estimado lo mantiene el sistema con la fecha de fin
+            // del ultimo tramo: al editar el viaje se conserva.
+            $estimatedReturn = $trip->plannedReturn();
+            if ($estimatedReturn !== null && $estimatedReturn->format('Y-m-d') < $command->departureAt->format('Y-m-d')) {
+                $estimatedReturn = null;
+            }
+
             $conflicts = $this->trips->conflicts(
                 $companyId,
                 array_values(array_unique($equipmentIds)),
                 $command->driverIds,
                 $command->departureAt,
-                $command->estimatedReturnAt,
+                $estimatedReturn,
                 $tripId,
             );
             if ($conflicts !== []) {
@@ -89,17 +96,17 @@ final class UpdateTrip
             }
 
             $assignments = [
-                new TripAssignment(TripAssignment::TRACTOR, $command->truckId, $command->departureAt, $command->estimatedReturnAt),
+                new TripAssignment(TripAssignment::TRACTOR, $command->truckId, $command->departureAt, $estimatedReturn),
             ];
             foreach ($command->trailerIds as $trailerId) {
-                $assignments[] = new TripAssignment(TripAssignment::ACOPLADO, $trailerId, $command->departureAt, $command->estimatedReturnAt);
+                $assignments[] = new TripAssignment(TripAssignment::ACOPLADO, $trailerId, $command->departureAt, $estimatedReturn);
             }
             foreach ($command->driverIds as $driverId) {
                 $assignments[] = new TripAssignment(
                     TripAssignment::CHOFER,
                     $driverId,
                     $command->departureAt,
-                    $command->estimatedReturnAt,
+                    $estimatedReturn,
                     null,
                     $command->driverPercentages[$driverId] ?? null,
                 );
@@ -107,7 +114,7 @@ final class UpdateTrip
 
             $trip->updateOpenDetails(
                 $command->departureAt,
-                $command->estimatedReturnAt,
+                $estimatedReturn,
                 $command->departureKm,
                 $assignments,
                 $command->notes,
