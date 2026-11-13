@@ -71,24 +71,26 @@ final class CreateTrip
                 array_values(array_unique($equipmentIds)),
                 $command->driverIds,
                 $command->departureAt,
-                $command->estimatedReturnAt,
+                null,
             );
             if ($conflicts !== []) {
                 throw new DomainException($conflicts[0]->describe() . ' Elegí otra unidad, otro chofer u otra fecha.');
             }
 
+            // El regreso estimado no se carga a mano: lo completa el cierre
+            // del ultimo tramo. Hasta entonces el equipo queda ocupado.
             $assignments = [
-                new TripAssignment(TripAssignment::TRACTOR, $command->truckId, $command->departureAt, $command->estimatedReturnAt),
+                new TripAssignment(TripAssignment::TRACTOR, $command->truckId, $command->departureAt, null),
             ];
             foreach ($command->trailerIds as $trailerId) {
-                $assignments[] = new TripAssignment(TripAssignment::ACOPLADO, $trailerId, $command->departureAt, $command->estimatedReturnAt);
+                $assignments[] = new TripAssignment(TripAssignment::ACOPLADO, $trailerId, $command->departureAt, null);
             }
             foreach ($command->driverIds as $driverId) {
                 $assignments[] = new TripAssignment(
                     TripAssignment::CHOFER,
                     $driverId,
                     $command->departureAt,
-                    $command->estimatedReturnAt,
+                    null,
                     null,
                     $command->driverPercentages[$driverId] ?? null,
                 );
@@ -100,7 +102,7 @@ final class CreateTrip
                 $command->branchId,
                 $number,
                 $command->departureAt,
-                $command->estimatedReturnAt,
+                null,
                 $assignments,
                 [],
                 $command->departureKm,
@@ -124,6 +126,11 @@ final class CreateTrip
                     $input->endDate,
                 ), $actor->userId());
             }
+
+            // Los tramos ya cargados pueden traer la fecha de fin: con eso el
+            // viaje queda con su regreso estimado.
+            $trip->syncPlannedReturn($this->legs->lastLegEndDate($companyId, $id));
+            $this->trips->updatePlannedReturn($companyId, $id, $trip->plannedReturn(), $actor->userId());
 
             return new CreateTripResult($id, $number);
         });

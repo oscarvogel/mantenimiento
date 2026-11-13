@@ -185,6 +185,7 @@ final class LogbookTripRepositoryFake implements OperationalTripRepository
     public function updateDetails(Trip $trip, int $actorUserId): void {}
     public function updateDriverPercentage(int $companyId, int $tripId, int $employeeId, float $percentage, int $actorUserId): void {}
     public function conflicts(int $companyId, array $equipmentIds, array $employeeIds, DateTimeImmutable $from, ?DateTimeImmutable $to, ?int $excludeTripId = null): array { return []; }
+    public function updatePlannedReturn(int $companyId, int $tripId, ?DateTimeImmutable $returnAt, int $actorUserId): void {}
 }
 
 final class LogbookRepositoryFake implements TripLogbookRepository

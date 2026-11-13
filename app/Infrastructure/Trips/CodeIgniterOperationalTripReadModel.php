@@ -44,7 +44,48 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
         ], $builder->get()->getResultArray());
     }
 
+    /**
+     * Patentes del parque de la empresa para filtrar el listado.
+     *
+     * @param list<int>|null $branchIds
+     * @return list<array{value:string,label:string,hint:string}>
+     */
+    public function equipmentOptions(int $companyId, ?array $branchIds): array
+    {
+        if ($branchIds === []) {
+            return [];
+        }
+
+        $builder = $this->db->table('equipos')
+            ->select('patente, codigo')
+            ->where('empresa_id', $companyId)
+            ->where('estado', 1)
+            ->where('deleted_at', null)
+            ->where('patente IS NOT NULL')
+            ->where('patente <>', '')
+            ->orderBy('patente', 'ASC');
+        if ($branchIds !== null) {
+            $builder->whereIn('sucursal_id', $branchIds);
+        }
+
+        $options = [];
+        foreach ($builder->get()->getResultArray() as $row) {
+            $plate = trim((string) ($row['patente'] ?? ''));
+            if ($plate === '') {
+                continue;
+            }
+            $options[] = [
+                'value' => $plate,
+                'label' => $plate,
+                'hint' => trim((string) ($row['codigo'] ?? '')),
+            ];
+        }
+
+        return $options;
+    }
+
     public function list(int $companyId, ?array $branchIds, OperationalTripFilters $filters, int $page, int $perPage): array
+
     {
         if ($branchIds === []) {
             return ['items' => [], 'total' => 0];
@@ -52,9 +93,7 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
 
         $builder = $this->db->table('viajes_operativos v')
             ->select('v.*')
-            ->where('v.empresa_id', $companyId)
-            ->orderBy('v.fecha_salida_planificada', 'DESC')
-            ->orderBy('v.id', 'DESC');
+            ->where('v.empresa_id', $companyId);
         if ($branchIds !== null) {
             $builder->whereIn('v.sucursal_id', $branchIds);
         }
@@ -62,7 +101,28 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
             $builder->where('v.sucursal_id', $filters->branchId);
         }
         if ($filters->status !== null) {
-            $builder->where('v.estado', $filters->status);
+            if ($filters->status === OperationalTripFilters::PENDIENTE_CIERRE) {
+                // Recorrido terminado y viaje sin cerrar: todos los tramos con
+                // fecha de fin y al menos un tramo cargado.
+                $builder->where('v.estado', Trip::EN_CURSO);
+                $builder->whereIn('v.id', $this->db->table('viaje_operativo_tramos')
+                    ->select('viaje_id')
+                    ->where('empresa_id', $companyId));
+                $builder->whereNotIn('v.id', $this->db->table('viaje_operativo_tramos')
+                    ->select('viaje_id')
+                    ->where('empresa_id', $companyId)
+                    ->where('fecha_fin', null));
+            } else {
+                $builder->where('v.estado', $filters->status);
+            }
+        }
+        if ($filters->plate !== null) {
+            // La patente puede ser la del tractor o la de un semirremolque.
+            $builder->whereIn('v.id', $this->db->table('viaje_operativo_asignaciones a')
+                ->select('a.viaje_id')
+                ->join('equipos e', 'e.id = a.equipo_id AND e.empresa_id = a.empresa_id')
+                ->where('a.empresa_id', $companyId)
+                ->where('LOWER(e.patente) LIKE', '%' . mb_strtolower($filters->plate) . '%'));
         }
         if ($filters->from !== null) {
             $builder->where('v.fecha_salida_planificada >=', $filters->from . ' 00:00:00');
@@ -76,6 +136,9 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
                 ->orLike('v.observaciones', $filters->search)
                 ->groupEnd();
         }
+        $direction = $filters->isAscending() ? 'ASC' : 'DESC';
+        $builder->orderBy('COALESCE(v.fecha_salida_real, v.fecha_salida_planificada)', $direction, false);
+        $builder->orderBy('v.id', $direction);
 
         $total = $builder->countAllResults(false);
         $rows = $builder->get($perPage, max(0, ($page - 1) * $perPage))->getResultArray();
@@ -115,6 +178,11 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
                 'destino' => $tripLegs['destino'] ?? ($tripStops === [] ? null : $tripStops[count($tripStops) - 1]['ubicacion']),
                 'paradas' => count($tripStops),
                 'tramos' => $tripLegs === null ? 0 : $tripLegs['tramos'],
+                'tramos_cerrados' => $tripLegs === null ? 0 : $tripLegs['tramos_cerrados'],
+                'recorrido_cerrado' => $tripLegs !== null
+                    && $tripLegs['tramos'] > 0
+                    && $tripLegs['tramos_cerrados'] === $tripLegs['tramos'],
+                'fecha_fin_ultimo' => $tripLegs['fecha_fin_ultimo'] ?? null,
             ];
         }
 
@@ -130,7 +198,7 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
     private function legsFor(int $companyId, array $ids): array
     {
         $rows = $this->db->table('viaje_operativo_tramos')
-            ->select('viaje_id, origen, destino')
+            ->select('viaje_id, origen, destino, fecha_fin')
             ->where('empresa_id', $companyId)
             ->whereIn('viaje_id', $ids)
             ->orderBy('viaje_id', 'ASC')
@@ -141,10 +209,24 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
         foreach ($rows as $row) {
             $tripId = (int) $row['viaje_id'];
             if (! isset($legs[$tripId])) {
-                $legs[$tripId] = ['origen' => (string) $row['origen'], 'destino' => (string) $row['destino'], 'tramos' => 0];
+                $legs[$tripId] = [
+                    'origen' => (string) $row['origen'],
+                    'destino' => (string) $row['destino'],
+                    'tramos' => 0,
+                    'tramos_cerrados' => 0,
+                    'fecha_fin_ultimo' => null,
+                ];
             }
             $legs[$tripId]['destino'] = (string) $row['destino'];
             $legs[$tripId]['tramos']++;
+            $endDate = $row['fecha_fin'] === null ? null : trim((string) $row['fecha_fin']);
+            if ($endDate === null || $endDate === '' || $endDate === '0000-00-00' || $endDate === '0000-00-00 00:00:00') {
+                continue;
+            }
+            $legs[$tripId]['tramos_cerrados']++;
+            if ($legs[$tripId]['fecha_fin_ultimo'] === null || $endDate > $legs[$tripId]['fecha_fin_ultimo']) {
+                $legs[$tripId]['fecha_fin_ultimo'] = $endDate;
+            }
         }
 
         return $legs;
@@ -262,7 +344,7 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
     private function assignmentDetails(int $companyId, int $tripId): array
     {
         $rows = $this->db->table('viaje_operativo_asignaciones a')
-            ->select('a.rol, a.desde, a.hasta, a.equipo_id, a.empleado_id, a.porcentaje_liquidacion, e.patente, e.codigo, emp.nombre, emp.apellido')
+            ->select('a.rol, a.desde, a.hasta, a.equipo_id, a.empleado_id, a.porcentaje_liquidacion, e.patente, e.codigo, e.km_actual, emp.nombre, emp.apellido')
             ->join('equipos e', 'e.id = a.equipo_id AND e.empresa_id = a.empresa_id', 'left')
             ->join('empleados emp', 'emp.id = a.empleado_id AND emp.empresa_id = a.empresa_id', 'left')
             ->where('a.empresa_id', $companyId)
@@ -291,6 +373,7 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
                 },
                 'label' => $label,
                 'equipo_id' => $row['equipo_id'] === null ? null : (int) $row['equipo_id'],
+                'km_actual' => $row['km_actual'] === null ? null : (int) $row['km_actual'],
                 'empleado_id' => $row['empleado_id'] === null ? null : (int) $row['empleado_id'],
                 'desde' => $row['desde'],
                 'hasta' => $row['hasta'],

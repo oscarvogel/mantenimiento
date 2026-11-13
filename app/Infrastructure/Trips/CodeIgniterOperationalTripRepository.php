@@ -167,6 +167,18 @@ final class CodeIgniterOperationalTripRepository implements OperationalTripRepos
         $this->insertAssignments($tripId, $trip, $now);
     }
 
+    public function updatePlannedReturn(int $companyId, int $tripId, ?DateTimeImmutable $returnAt, int $actorUserId): void
+    {
+        $this->database->table('viajes_operativos')
+            ->where('empresa_id', $companyId)
+            ->where('id', $tripId)
+            ->update([
+                'fecha_regreso_planificada' => $returnAt?->format('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s'),
+                'updated_by' => $actorUserId,
+            ]);
+    }
+
     public function updateDriverPercentage(int $companyId, int $tripId, int $employeeId, float $percentage, int $actorUserId): void
     {
         $this->database->table('viaje_operativo_asignaciones')
@@ -190,7 +202,12 @@ final class CodeIgniterOperationalTripRepository implements OperationalTripRepos
         }
 
         $inicio = 'DATE(COALESCE(v.fecha_salida_real, v.fecha_salida_planificada))';
-        $fin = 'DATE(COALESCE(v.fecha_regreso_real, v.fecha_regreso_planificada))';
+        // El fin del viaje es el regreso real, el estimado que completa el
+        // ultimo tramo o, si todavia no hay ninguno, la fecha de fin del
+        // ultimo tramo cerrado: el equipo queda libre desde ahi.
+        $fin = 'DATE(COALESCE(v.fecha_regreso_real, v.fecha_regreso_planificada, (SELECT MAX(t.fecha_fin) FROM '
+            . $this->database->prefixTable('viaje_operativo_tramos')
+            . ' t WHERE t.viaje_id = v.id AND t.empresa_id = v.empresa_id)))';
         $sql = 'SELECT DISTINCT v.id, v.numero, v.estado, a.rol, a.equipo_id, a.empleado_id, '
             . 'COALESCE(v.fecha_salida_real, v.fecha_salida_planificada) AS inicio, '
             . 'COALESCE(v.fecha_regreso_real, v.fecha_regreso_planificada) AS fin '

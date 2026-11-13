@@ -169,6 +169,7 @@ final class UpdateLegTripRepositoryFake implements OperationalTripRepository
     public function updateDetails(Trip $trip, int $actorUserId): void {}
     public function updateDriverPercentage(int $companyId, int $tripId, int $employeeId, float $percentage, int $actorUserId): void {}
     public function conflicts(int $companyId, array $equipmentIds, array $employeeIds, DateTimeImmutable $from, ?DateTimeImmutable $to, ?int $excludeTripId = null): array { return []; }
+    public function updatePlannedReturn(int $companyId, int $tripId, ?DateTimeImmutable $returnAt, int $actorUserId): void {}
 }
 
 final class UpdateLegRepositoryFake implements TripLegRepository
@@ -185,6 +186,7 @@ final class UpdateLegRepositoryFake implements TripLegRepository
     }
     public function belongsToTrip(int $companyId, int $tripId, int $legId): bool { return $this->belongs; }
     public function ordersWithMissingAmounts(int $companyId, int $tripId): array { return []; }
+    public function lastLegEndDate(int $companyId, int $tripId): ?DateTimeImmutable { return null; }
 }
 
 final class UpdateLegDirectoryFake implements TripDirectoryLookup

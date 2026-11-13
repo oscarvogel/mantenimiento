@@ -1,15 +1,16 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { ArrowPathIcon, ChartBarSquareIcon, PlusIcon, TruckIcon } from '@heroicons/vue/24/outline'
 import EmptyState from './components/EmptyState.vue'
 import PageHeading from './components/PageHeading.vue'
 import PanelCard from './components/PanelCard.vue'
+import AutocompleteSelect from './components/AutocompleteSelect.vue'
 import { fieldClass, primaryButton, secondaryButton, tripRouteCounts, tripRouteLabel } from './helpers.js'
 
 const props = defineProps({ data: { type: Object, required: true } })
 
 const filters = computed(() => props.data.filters ?? {})
-const options = computed(() => props.data.options ?? { branches: [], statuses: [] })
+const options = computed(() => props.data.options ?? { branches: [], statuses: [], equipment: [] })
 const trips = computed(() => props.data.trips ?? [])
 const pagination = computed(() => props.data.pagination ?? { page: 1, perPage: 20, total: 0, pages: 1 })
 const links = computed(() => props.data.links ?? { index: '/viajes/operativos', dashboard: '/viajes/operativos/dashboard', create: '/viajes/operativos/nuevo' })
@@ -19,6 +20,10 @@ const statusTone = {
   FINALIZADO: 'bg-surface-muted text-ink-muted',
   CANCELADO: 'bg-danger-subtle text-danger-strong',
 }
+
+// El filtro de patente y el orden viajan en la URL: el formulario es GET.
+const plate = ref(props.data.filters?.plate ?? '')
+const order = ref(props.data.filters?.order ?? 'desc')
 
 const fmtDate = (value) => {
   const match = String(value ?? '').match(/^(\d{4})-(\d{2})-(\d{2})/)
@@ -48,7 +53,7 @@ const pageUrl = (page) => {
     </p>
 
     <PanelCard title="Filtros" class="mb-5">
-      <form method="get" class="grid gap-4 md:grid-cols-2 xl:grid-cols-5 xl:items-end">
+      <form method="get" class="grid gap-4 md:grid-cols-2 xl:grid-cols-4 xl:items-end">
         <label class="block">
           <span class="mb-1.5 block text-sm font-semibold text-ink">Desde</span>
           <input type="date" name="desde" :value="filters.from ?? ''" :class="fieldClass" />
@@ -72,10 +77,23 @@ const pageUrl = (page) => {
           </select>
         </label>
         <label class="block">
+          <span class="mb-1.5 block text-sm font-semibold text-ink">Patente</span>
+          <AutocompleteSelect v-model="plate" name="patente" :options="options.equipment ?? []" placeholder="Elegí tractor o acoplado" />
+          <span class="mt-1 block text-xs text-ink-muted">Trae todos los viajes del equipo, del más nuevo al más viejo.</span>
+        </label>
+        <label class="block">
+          <span class="mb-1.5 block text-sm font-semibold text-ink">Orden</span>
+          <select name="orden" :class="fieldClass">
+            <option value="desc" :selected="order === 'desc'">Más recientes primero</option>
+            <option value="asc" :selected="order === 'asc'">Más antiguos primero</option>
+          </select>
+          <span class="mt-1 block text-xs text-ink-muted">Para ver la historia de una patente, ordená de más antigua a más nueva.</span>
+        </label>
+        <label class="block">
           <span class="mb-1.5 block text-sm font-semibold text-ink">Buscar</span>
           <input type="search" name="buscar" :value="filters.search ?? ''" placeholder="Número u observaciones" :class="fieldClass" />
         </label>
-        <div class="flex flex-wrap gap-2 md:col-span-2 xl:col-span-5">
+        <div class="flex flex-wrap gap-2 md:col-span-2 xl:col-span-4">
           <button type="submit" :class="primaryButton"><ArrowPathIcon class="mr-2 size-4" aria-hidden="true" />Aplicar filtros</button>
           <a :href="links.index" :class="secondaryButton">Limpiar</a>
         </div>
@@ -110,7 +128,13 @@ const pageUrl = (page) => {
                 <span class="flex items-center gap-2 font-semibold text-ink"><TruckIcon class="size-4 text-ink-muted" aria-hidden="true" />#{{ trip.numero }}</span>
                 <span class="mt-0.5 block text-xs text-ink-muted">{{ trip.estado_label }}</span>
               </td>
-              <td class="px-4 py-3"><span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold" :class="statusTone[trip.estado] ?? 'bg-surface-muted text-ink-muted'">{{ trip.estado_label }}</span></td>
+              <td class="px-4 py-3">
+                <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold" :class="statusTone[trip.estado] ?? 'bg-surface-muted text-ink-muted'">{{ trip.estado_label }}</span>
+                <span v-if="trip.recorrido_cerrado && trip.estado === 'EN_CURSO'" class="mt-1 block">
+                  <span class="inline-flex rounded-full bg-warning-subtle px-2.5 py-1 text-xs font-semibold text-warning-strong">Recorrido cerrado</span>
+                  <span class="mt-0.5 block text-xs text-ink-muted">Falta cerrar el viaje</span>
+                </span>
+              </td>
               <td class="whitespace-nowrap px-4 py-3 text-ink-muted">{{ fmtDate(trip.fecha_salida_real || trip.fecha_salida_planificada) }}</td>
               <td class="px-4 py-3">
                 <p class="font-semibold text-ink">{{ tripRouteLabel(trip) }}</p>

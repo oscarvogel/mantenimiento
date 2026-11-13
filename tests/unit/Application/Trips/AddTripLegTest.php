@@ -49,6 +49,34 @@ final class AddTripLegTest extends TestCase
         self::assertSame(55, $trips->trip->id());
     }
 
+    public function testElRegresoEstimadoSeCompletaConLaFechaDelUltimoTramo(): void
+    {
+        $trips = new AddLegTripRepositoryFake(Trip::EN_CURSO);
+        $legs = new AddLegRepositoryFake();
+        $legs->lastLegEndDate = new DateTimeImmutable('2026-10-25 00:00:00');
+        $handler = new AddTripLeg($trips, $legs, new AddLegDirectoryFake(), new AddLegLocalityFake(), new AddLegUnitOfWorkFake());
+
+        $handler->execute($this->actor(['viajes.operar']), new AddTripLegCommand(
+            55,
+            'Rosario',
+            'Córdoba',
+            1_000_000,
+            800_000,
+            320,
+            3,
+            'ARS',
+            1.0,
+            'Carga de soja',
+            947,
+            30,
+            1,
+            2,
+        ));
+
+        self::assertNotNull($trips->plannedReturn);
+        self::assertSame('2026-10-25 00:00:00', $trips->plannedReturn->format('Y-m-d H:i:s'));
+    }
+
     public function testRejectsClosedTrip(): void
     {
         $handler = new AddTripLeg(
@@ -352,6 +380,7 @@ final class AddTripLegTest extends TestCase
 final class AddLegTripRepositoryFake implements OperationalTripRepository
 {
     public Trip $trip;
+    public ?DateTimeImmutable $plannedReturn = null;
 
     public function __construct(string $status)
     {
@@ -386,11 +415,16 @@ final class AddLegTripRepositoryFake implements OperationalTripRepository
     public function updateDetails(Trip $trip, int $actorUserId): void {}
     public function updateDriverPercentage(int $companyId, int $tripId, int $employeeId, float $percentage, int $actorUserId): void {}
     public function conflicts(int $companyId, array $equipmentIds, array $employeeIds, DateTimeImmutable $from, ?DateTimeImmutable $to, ?int $excludeTripId = null): array { return []; }
+    public function updatePlannedReturn(int $companyId, int $tripId, ?DateTimeImmutable $returnAt, int $actorUserId): void
+    {
+        $this->plannedReturn = $returnAt;
+    }
 }
 
 final class AddLegRepositoryFake implements TripLegRepository
 {
     public ?TripLeg $leg = null;
+    public ?DateTimeImmutable $lastLegEndDate = null;
 
     public function add(int $companyId, int $branchId, int $tripId, TripLeg $leg, int $actorUserId): int
     {
@@ -412,6 +446,10 @@ final class AddLegRepositoryFake implements TripLegRepository
     public function ordersWithMissingAmounts(int $companyId, int $tripId): array
     {
         return [];
+    }
+    public function lastLegEndDate(int $companyId, int $tripId): ?DateTimeImmutable
+    {
+        return $this->lastLegEndDate;
     }
 }
 

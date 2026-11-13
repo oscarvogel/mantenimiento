@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Trips\Port;
 
 use App\Domain\Trips\TripLeg;
+use DateTimeImmutable;
 
 interface TripLegRepository
 {
@@ -16,4 +17,11 @@ interface TripLegRepository
 
     /** @return list<int> Números de orden de los tramos a los que les falta alguno de los dos fletes. */
     public function ordersWithMissingAmounts(int $companyId, int $tripId): array;
+
+    /**
+     * Fecha de fin del último tramo del viaje, por orden.
+     *
+     * Es el dato con el que se completa el regreso estimado del viaje.
+     */
+    public function lastLegEndDate(int $companyId, int $tripId): ?DateTimeImmutable;
 }

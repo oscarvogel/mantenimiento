@@ -203,6 +203,39 @@ final class GetOperationalTripTest extends TestCase
         self::assertNull($detail['settlement']);
     }
 
+    public function testAvisaQueElRecorridoTerminoYElViajeSigueEnCurso(): void
+    {
+        $detail = $this->detail([
+            'trip' => ['id' => 55, 'numero' => 42, 'estado' => 'EN_CURSO', 'km_salida' => 145_300],
+            'assignments' => [['rol' => 'TRACTOR', 'equipo_id' => 7, 'km_actual' => 148_900]],
+            'legs' => [
+                ['id' => 1, 'orden' => 1, 'origen' => 'Rosario', 'destino' => 'Córdoba', 'fecha_fin' => '2026-11-02', 'flete_facturacion_ars' => 1_000_000.0, 'flete_liquidacion_ars' => 800_000.0],
+                ['id' => 2, 'orden' => 2, 'origen' => 'Córdoba', 'destino' => 'Rosario', 'fecha_fin' => '2026-11-11', 'flete_facturacion_ars' => 1_000_000.0, 'flete_liquidacion_ars' => 800_000.0],
+            ],
+        ]);
+
+        self::assertTrue($detail['recorrido_cerrado']);
+        self::assertTrue($detail['cierre_pendiente']);
+        self::assertSame('2026-11-11', $detail['fecha_cierre_sugerida']);
+        self::assertSame(148_900, $detail['km_cierre_sugerido']);
+    }
+
+    public function testUnTramoSinCerrarDejaElViajeEnCurso(): void
+    {
+        $detail = $this->detail([
+            'trip' => ['id' => 55, 'numero' => 42, 'estado' => 'EN_CURSO', 'km_salida' => 145_300],
+            'assignments' => [['rol' => 'TRACTOR', 'equipo_id' => 7, 'km_actual' => 148_900]],
+            'legs' => [
+                ['id' => 1, 'orden' => 1, 'origen' => 'Rosario', 'destino' => 'Córdoba', 'fecha_fin' => '2026-11-02', 'flete_facturacion_ars' => 1_000_000.0, 'flete_liquidacion_ars' => 800_000.0],
+                ['id' => 2, 'orden' => 2, 'origen' => 'Córdoba', 'destino' => 'Rosario', 'fecha_fin' => null, 'flete_facturacion_ars' => 1_000_000.0, 'flete_liquidacion_ars' => 800_000.0],
+            ],
+        ]);
+
+        self::assertFalse($detail['recorrido_cerrado']);
+        self::assertFalse($detail['cierre_pendiente']);
+        self::assertNull($detail['fecha_cierre_sugerida']);
+    }
+
     public function testRejectsActorWithoutReadPermission(): void
     {
         $this->expectException(DomainException::class);
@@ -272,4 +305,5 @@ final class GetOperationalTripReadModelFake implements OperationalTripReadModel
             'otherEarnings' => [],
         ], $this->data);
     }
+    public function equipmentOptions(int $companyId, ?array $branchIds): array { return []; }
 }

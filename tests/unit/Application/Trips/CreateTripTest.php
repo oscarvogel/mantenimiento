@@ -122,7 +122,6 @@ final class CreateTripTest extends TestCase
         $command = new CreateTripCommand(
             10,
             new DateTimeImmutable('2026-10-20 08:00:00'),
-            new DateTimeImmutable('2026-10-21 18:00:00'),
             7,
             [9],
             [11],
@@ -143,7 +142,6 @@ final class CreateTripTest extends TestCase
         $command = CreateTripCommand::fromInput([
             'sucursal_id' => '10',
             'fecha_salida_real' => '2026-10-20T08:00',
-            'fecha_regreso_estimado' => '2026-10-21T18:30',
             'tractor_id' => '7',
             'acoplado_id' => '9',
             'choferes' => ['11', '12'],
@@ -158,7 +156,6 @@ final class CreateTripTest extends TestCase
 
         self::assertSame(10, $command->branchId);
         self::assertSame('2026-10-20 00:00:00', $command->departureAt->format('Y-m-d H:i:s'));
-        self::assertSame('2026-10-21 00:00:00', $command->estimatedReturnAt?->format('Y-m-d H:i:s'));
         self::assertSame([11, 12], $command->driverIds);
         self::assertSame(145_300, $command->departureKm);
         self::assertSame(14.5, $command->driverPercentages[11]);
@@ -196,32 +193,20 @@ final class CreateTripTest extends TestCase
     {
         $command = CreateTripCommand::fromInput($this->input([
             'fecha_salida_real' => '2026-10-20',
-            'fecha_regreso_estimado' => '2026-10-21',
         ]));
 
         self::assertSame('2026-10-20 00:00:00', $command->departureAt->format('Y-m-d H:i:s'));
-        self::assertSame('2026-10-21 00:00:00', $command->estimatedReturnAt?->format('Y-m-d H:i:s'));
     }
 
-    public function testElRegresoEstimadoPuedeSerElMismoDia(): void
+    public function testElRegresoEstimadoNoSeCargaEnElAlta(): void
     {
+        // El regreso estimado lo completa el cierre del ultimo tramo: si el
+        // formulario lo manda, el comando lo ignora.
         $command = CreateTripCommand::fromInput($this->input([
-            'fecha_salida_real' => '2026-10-20',
-            'fecha_regreso_estimado' => '2026-10-20',
+            'fecha_regreso_estimado' => '2026-10-21',
         ]));
 
-        self::assertSame('2026-10-20 00:00:00', $command->estimatedReturnAt?->format('Y-m-d H:i:s'));
-    }
-
-    public function testElRegresoEstimadoNoPuedeSerAnteriorALaSalida(): void
-    {
-        $this->expectException(DomainException::class);
-        $this->expectExceptionMessage('no puede ser anterior');
-
-        CreateTripCommand::fromInput($this->input([
-            'fecha_salida_real' => '2026-10-20',
-            'fecha_regreso_estimado' => '2026-10-19',
-        ]));
+        self::assertFalse(property_exists($command, 'estimatedReturnAt'));
     }
 
     public function testCommandRequiresTheActualDepartureOdometer(): void
@@ -248,7 +233,6 @@ final class CreateTripTest extends TestCase
         $command = new CreateTripCommand(
             10,
             new DateTimeImmutable('2026-10-20 08:00:00'),
-            new DateTimeImmutable('2026-10-21 18:00:00'),
             7,
             [9, 10],
             [11],
@@ -335,7 +319,6 @@ final class CreateTripTest extends TestCase
         return array_replace([
             'sucursal_id' => '10',
             'fecha_salida_real' => '2026-10-20',
-            'fecha_regreso_estimado' => '2026-10-21',
             'km_salida' => '145300',
             'tractor_id' => '7',
             'acoplado_id' => '9',
@@ -351,7 +334,6 @@ final class CreateTripTest extends TestCase
         return new CreateTripCommand(
             10,
             new DateTimeImmutable('2026-10-20 00:00:00'),
-            new DateTimeImmutable('2026-10-21 00:00:00'),
             7,
             [9],
             [11, 12],
@@ -479,6 +461,7 @@ final class CreateTripRepositoryFake implements OperationalTripRepository
 
         return $this->conflicts;
     }
+    public function updatePlannedReturn(int $companyId, int $tripId, ?DateTimeImmutable $returnAt, int $actorUserId): void {}
 }
 
 final class CreateTripLegsFake implements TripLegRepository
@@ -502,6 +485,7 @@ final class CreateTripLegsFake implements TripLegRepository
     {
         return [];
     }
+    public function lastLegEndDate(int $companyId, int $tripId): ?DateTimeImmutable { return null; }
 }
 
 final class CreateTripLocalityFake implements TripLocalityLookup

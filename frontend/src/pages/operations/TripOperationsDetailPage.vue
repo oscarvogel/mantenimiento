@@ -39,6 +39,11 @@ const canAddLegs = computed(() => Boolean(props.data.canAddLegs))
 const canEdit = computed(() => Boolean(props.data.canEdit))
 const editOptions = computed(() => props.data.editOptions ?? { branches: [], tractors: [], trailers: [], drivers: [] })
 const canClose = computed(() => Boolean(props.data.canClose))
+// El recorrido puede estar terminado aunque el viaje siga en curso: el
+// cierre necesita fecha de regreso y odometro, y se sugieren con lo que hay.
+const cierrePendiente = computed(() => Boolean(props.data.cierre_pendiente))
+const fechaCierreSugerida = computed(() => String(props.data.fecha_cierre_sugerida ?? ''))
+const kmCierreSugerido = computed(() => props.data.km_cierre_sugerido ?? '')
 const currencies = computed(() => options.value.currencies?.length ? options.value.currencies : [{ code: 'ARS', label: 'Peso argentino' }])
 const customerOptions = computed(() => (options.value.customers ?? []).map((customer) => ({ value: customer.id, label: customer.label, hint: customer.code ? `Código ${customer.code}` : '' })))
 const localities = computed(() => options.value.localities ?? [])
@@ -150,7 +155,6 @@ const openTripEdit = () => {
     // enganchado el camion: el operador ve la patente sin buscarla.
     trailerIds: assignedTrailerIds.length ? assignedTrailerIds : linkedTrailerIdsFor(tractorId),
     departure: dateValue(trip.value.fecha_salida_real ?? trip.value.fecha_salida_planificada),
-    returnAt: dateValue(trip.value.fecha_regreso_planificada ?? trip.value.fecha_regreso_real),
     kmSalida: trip.value.km_salida ?? '',
     driverIds: driverRows.map((row) => String(row.empleado_id)),
     percentages: Object.fromEntries(driverRows.map((row) => [String(row.empleado_id), row.porcentaje_liquidacion ?? row.master_percentage ?? ''])),
@@ -443,13 +447,20 @@ const cashBalanceLabel = computed(() => {
 const facts = computed(() => {
   const started = ['EN_CURSO', 'FINALIZADO'].includes(trip.value.estado)
   const finished = trip.value.estado === 'FINALIZADO'
+  // Con el viaje abierto, el regreso estimado es el del ultimo tramo cerrado:
+  // es el dato que el operador tiene, no una fecha cargada a mano.
+  const returnValue = trip.value.fecha_regreso_real
+    ?? (started && fechaCierreSugerida.value ? fechaCierreSugerida.value : trip.value.fecha_regreso_planificada)
+  const returnLabel = finished
+    ? 'Regreso real'
+    : (started && fechaCierreSugerida.value ? 'Regreso estimado (último tramo)' : (started ? 'Regreso estimado' : 'Regreso'))
 
   return [
   ['Viaje', `#${trip.value.numero}`],
   ['Estado', trip.value.estado_label],
   ['Sucursal de origen', trip.value.sucursal],
   [started ? 'Salida real' : 'Salida', fmtDate(trip.value.fecha_salida_real ?? trip.value.fecha_salida_planificada)],
-  [finished ? 'Regreso real' : (started ? 'Regreso estimado' : 'Regreso'), trip.value.fecha_regreso_real || trip.value.fecha_regreso_planificada ? fmtDate(trip.value.fecha_regreso_real ?? trip.value.fecha_regreso_planificada) : 'Sin estimar'],
+  [returnLabel, returnValue ? fmtDate(returnValue) : 'Sin estimar'],
   ['Odómetro de salida', trip.value.km_salida === null ? null : `${number(trip.value.km_salida)} km`],
   ['Odómetro de regreso', trip.value.km_regreso === null ? null : `${number(trip.value.km_regreso)} km`],
   ['Observaciones', trip.value.observaciones],
@@ -783,6 +794,10 @@ const facts = computed(() => {
           <button type="submit" :class="[primaryButton, 'mt-3']">Iniciar viaje</button>
         </form>
 
+        <p v-if="cierrePendiente" class="mb-5 rounded-lg border border-warning/30 bg-warning-subtle px-3 py-2 text-xs text-warning-strong">
+          El recorrido terminó el {{ fmtDate(fechaCierreSugerida) }} pero el viaje sigue En curso. Cargá el odómetro de regreso y cerrá el viaje para liberar el equipo y registrar la lectura.
+        </p>
+
         <form v-if="canClose" method="post" :action="data.links?.finish" class="mb-5 rounded-xl border border-border-subtle bg-surface p-4">
           <input type="hidden" :name="csrf.name" :value="csrf.hash" />
           <h3 class="flex items-center gap-2 text-sm font-bold text-ink"><CheckCircleIcon class="size-4 text-success" aria-hidden="true" />Cerrar viaje</h3>
@@ -790,11 +805,13 @@ const facts = computed(() => {
           <div class="mt-3 grid gap-3 sm:grid-cols-2">
             <label class="block">
               <span class="mb-1.5 block text-sm font-semibold text-ink">Fecha de regreso</span>
-              <input type="date" name="fecha_regreso_real" :value="today" :class="fieldClass" />
+              <input type="date" name="fecha_regreso_real" :value="fechaCierreSugerida || today" :class="fieldClass" />
+              <span v-if="fechaCierreSugerida" class="mt-1 block text-xs text-ink-muted">Fecha de fin del último tramo cerrado.</span>
             </label>
             <label class="block">
               <span class="mb-1.5 block text-sm font-semibold text-ink">Odómetro de regreso</span>
-              <input type="number" name="km_regreso" min="0" step="1" required :min="trip.km_salida ?? 0" :class="fieldClass" />
+              <input type="number" name="km_regreso" min="0" step="1" required :min="trip.km_salida ?? 0" :value="kmCierreSugerido" :class="fieldClass" />
+              <span v-if="kmCierreSugerido" class="mt-1 block text-xs text-ink-muted">Última lectura conocida del equipo. Corregilo si el tablero marca otra cosa.</span>
             </label>
           </div>
           <div v-if="!totals.has_legs || !totals.fuel_amount_ars || !totals.expense_amount_ars" class="mt-3 rounded-lg border border-warning/30 bg-warning-subtle px-3 py-2 text-xs text-warning-strong">
@@ -908,10 +925,6 @@ const facts = computed(() => {
             <label class="block">
               <span class="mb-1.5 block text-sm font-semibold text-ink">{{ trip.estado === 'PLANIFICADO' ? 'Fecha de salida' : 'Fecha real de salida' }}</span>
               <input v-model="tripDraft.departure" type="date" name="fecha_salida_real" required :class="fieldClass" />
-            </label>
-            <label class="block">
-              <span class="mb-1.5 block text-sm font-semibold text-ink">Fecha estimada de regreso (opcional)</span>
-              <input v-model="tripDraft.returnAt" type="date" name="fecha_regreso_estimado" :class="fieldClass" />
             </label>
             <label class="block">
               <span class="mb-1.5 block text-sm font-semibold text-ink">Odómetro de salida (km)</span>
