@@ -232,6 +232,10 @@ Para cada funcionalidad:
 6. Ejecutar lint, suite PHPUnit, migraciones desde cero y una verificación HTTP real.
 7. Verificar escritorio y móvil cuando cambia UI; no afirmar aceptación visual sin evidencia.
 8. Actualizar documentación si cambia configuración, operación o lenguaje del dominio.
+9. Los schema SQLite de los tests de read model **replican el tipo real de las columnas** de las
+   migraciones. Un tipo divergente (`equipos.estado` es `VARCHAR 'ACTIVO'`, no un entero) hace
+   que la consulta pase en verde y devuelva **cero filas** en MySQL: es la forma más cara de
+   descubrir un bug recién en producción.
 
 Una tarea no está terminada si solo compila o si solo se ve bien. Debe cumplir reglas, permisos, migración, pruebas, manejo de errores, responsive y conservación histórica según la sección 18 de la spec.
 
