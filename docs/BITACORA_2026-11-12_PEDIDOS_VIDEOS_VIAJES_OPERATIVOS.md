@@ -320,6 +320,33 @@ opciones del combo con el filtro NUEVO   -> [AB499OK/T01, AC222AC/A01, BA999BA/T
 viajes que matchea el filtro 'ab499'     -> [10]  (AB499OK, ACTIVO)
 ```
 
+### Publicación del arreglo
+
+- PR **#526** `fix/viajes-filtro-patente-estado-equipos` → merge a `main` (`b652856a`).
+- Deploy incremental a Ferozo: **1 archivo runtime**
+  (`app/Infrastructure/Trips/CodeIgniterOperationalTripReadModel.php`), 0 migraciones,
+  `UPLOAD=OK`, `SMOKE_TESTS=OK`. Sin cambios de frontend: no hizo falta rebuild de bundles.
+- Verificación final **contra la base real de producción**, con una sonda de solo lectura subida
+  por FTPS con el mismo patrón de token que `migrate.php`, que se borró al terminar
+  (verificado con `HTTP 404` después):
+
+```text
+equipos totales             : 61
+estado = 1 (filtro VIEJO)  : 0        <- confirmacion en produccion del defecto
+estado = 'ACTIVO'           : 61
+opciones del combo (NUEVO)  : 58
+
+empresa 4 (la del cliente): opciones del combo = 54
+   - AA833CX, AB264AY, AB499OK, AC532DD, AD982GM, ...
+
+Filtro por patente 'ab499' con el read model desplegado:
+   - viaje #10 | En curso | AB499OK | salida 2026-11-12 | recorrido cerrado: no
+   - viaje #5  | En curso | AB499OK | salida 2026-10-24 | recorrido cerrado: si
+```
+
+El viaje **#5** es el del video del cliente (salida 24/10): con el fix ya aparece con
+"recorrido cerrado" y "falta cerrar el viaje", que es lo que pedía.
+
 ## Pendientes
 
 - [x] Confirmar con el cliente las 4 decisiones de arriba.
@@ -332,6 +359,7 @@ viajes que matchea el filtro 'ab499'     -> [10]  (AB499OK, ACTIVO)
       puede automatizar porque el odómetro de regreso no existe en el sistema. Requiere que el
       operador cierre cada viaje desde el detalle (con la fecha y el km ya precompletados).
 - [ ] Verificación visual en la resolución del cliente (1638x969) y en móvil, con sesión iniciada.
-- [ ] **En curso:** PR y deploy del arreglo del filtro por patente (ver la sección del defecto).
+- [x] PR #526 + merge + deploy del arreglo del filtro por patente, verificado contra la base real
+      de producción.
 
 
