@@ -59,14 +59,16 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
         $builder = $this->db->table('equipos')
             ->select('patente, codigo')
             ->where('empresa_id', $companyId)
-            ->where('estado', 1)
             ->where('deleted_at', null)
             ->where('patente IS NOT NULL')
             ->where('patente <>', '')
             ->orderBy('patente', 'ASC');
-        if ($branchIds !== null) {
-            $builder->whereIn('sucursal_id', $branchIds);
-        }
+        // No se filtra por `equipos.estado`: esa columna es VARCHAR ('ACTIVO' /
+        // 'BAJA'), no un entero, y el filtro sirve para consultar la historia de
+        // una patente: una unidad dada de baja conserva viajes consultables.
+        // Lo único que se descarta es la baja lógica (`deleted_at`).
+        // Tampoco se acota por sucursal: el listado de viajes ya está acotado,
+        // y un equipo asignado puede tener su ficha en otra sucursal.
 
         $options = [];
         foreach ($builder->get()->getResultArray() as $row) {

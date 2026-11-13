@@ -225,12 +225,13 @@ un viaje abierto con tramos ya fechados bloqueaba otros viajes del mismo equipo.
 
 ## Verificación
 
-- `php vendor/bin/phpunit tests/unit/{Application,Infrastructure,Domain}/Trips` → **OK (234 tests,
-  877 assertions)**.
-- Suite PHP completa → **OK (1816 tests, 7198 assertions, 45 skipped, 0 fallos)**.
+- `php vendor/bin/phpunit tests/unit/{Application,Infrastructure,Domain}/Trips` → **OK (235 tests,
+  880 assertions)**.
+- Suite PHP completa → **OK (1817 tests, 7201 assertions, 45 skipped, 0 fallos)**.
 - Suite de frontend → **OK (85 archivos, 478 tests)**.
 - `npm run build` (bundles) → OK; `ENCODING_QA=OK`.
 - Lint `php -l` de todos los archivos modificados → OK.
+- Verificación del arreglo contra **MariaDB real** (staging `fasa_189`) → ver la sección del defecto.
 
 Tests nuevos o ampliados:
 
@@ -269,6 +270,56 @@ Tests nuevos o ampliados:
   `.git/info/exclude` (exclusión local, no versionada) para que el árbol quedara limpio sin mover
   ni versionar nada.
 
+## Defecto encontrado en producción y corregido (13/11/2026)
+
+El cliente avisó que **el filtro por patente no funcionaba**: al escribir la patente, el combo
+respondía "Sin resultados" y no había forma de elegirla.
+
+### Síntoma
+
+En `Viajes > Viajes operativos`, el combo **Patente** se abría con "Sin resultados" para cualquier
+texto, aunque la patente buscada (AB 499 OK) estaba en la tabla, con viajes visibles.
+
+### Causa raíz
+
+`CodeIgniterOperationalTripReadModel::equipmentOptions()` (la lista de patentes que alimenta el
+combo) filtraba `equipos.estado = 1`. Pero **`equipos.estado` es `VARCHAR(20)`** con valores
+`'ACTIVO'` / `'BAJA'` (migración `2026-08-08-110021_CreateEquipmentTable.php:32-36`), no un
+entero. La comparación `'ACTIVO' = 1` no matchea nunca: la consulta devolvía **cero filas**.
+
+Como el combo `AutocompleteSelect` sólo envía el valor **seleccionado** (no el texto tipeado), sin
+opciones no había nada elegible y el filtro nunca podía aplicarse. El filtro en sí (el `LIKE` de
+patente en `list()`) estaba bien: el problema era la lista de opciones.
+
+**Por qué pasó el test:** el schema SQLite del test de read model definía
+`equipos.estado INTEGER DEFAULT 1`, mientras que en producción la columna es VARCHAR. El test
+pasaba porque comparaba `1 = 1`, y en MySQL la misma consulta devolvía cero filas.
+
+### Corrección
+
+1. `equipmentOptions()` deja de filtrar por `equipos.estado`. El filtro por patente sirve para
+   consultar la *historia* de una patente: una unidad dada de baja conserva viajes consultables.
+   Sólo se descarta la baja lógica (`deleted_at`) y las unidades sin patente.
+2. El combo deja de acotarse por sucursal: el listado de viajes ya está acotado, y una unidad
+   asignada puede tener su ficha en otra sucursal (si se acotara, podía faltar la patente que el
+   operador está viendo en un viaje).
+3. El schema SQLite del test replica ahora el tipo real (`estado TEXT DEFAULT 'ACTIVO'`) y se
+   agregaron casos de regresión: unidad `ACTIVO`, unidad `BAJA` (se ofrece), unidad con baja
+   lógica (no se ofrece), unidad sin patente (no se ofrece) y unidad de otra sucursal (se ofrece).
+
+### Verificación contra MariaDB real
+
+El defecto era invisible en SQLite, así que se verificó contra el MariaDB del entorno de prueba
+(`fasa_189`, contenedor `mantenimiento-test-db`, MariaDB 11), con tablas de prueba propias que se
+borraron al terminar:
+
+```text
+tipo real de equipos.estado              -> varchar(20) default 'ACTIVO'
+opciones del combo con el filtro VIEJO   -> []                                  (el bug)
+opciones del combo con el filtro NUEVO   -> [AB499OK/T01, AC222AC/A01, BA999BA/T09, BR111BR/T12]
+viajes que matchea el filtro 'ab499'     -> [10]  (AB499OK, ACTIVO)
+```
+
 ## Pendientes
 
 - [x] Confirmar con el cliente las 4 decisiones de arriba.
@@ -281,5 +332,6 @@ Tests nuevos o ampliados:
       puede automatizar porque el odómetro de regreso no existe en el sistema. Requiere que el
       operador cierre cada viaje desde el detalle (con la fecha y el km ya precompletados).
 - [ ] Verificación visual en la resolución del cliente (1638x969) y en móvil, con sesión iniciada.
+- [ ] **En curso:** PR y deploy del arreglo del filtro por patente (ver la sección del defecto).
 
 

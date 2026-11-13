@@ -24,7 +24,7 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
         $this->database->query('CREATE TABLE empresas (id INTEGER PRIMARY KEY, razon_social TEXT, nombre_fantasia TEXT)');
         $this->database->query('CREATE TABLE sucursales (id INTEGER PRIMARY KEY, empresa_id INTEGER, codigo TEXT, nombre TEXT, estado INTEGER, deleted_at TEXT NULL)');
         $this->database->query('CREATE TABLE tipos_equipo (id INTEGER PRIMARY KEY, nombre TEXT)');
-        $this->database->query('CREATE TABLE equipos (id INTEGER PRIMARY KEY, empresa_id INTEGER, sucursal_id INTEGER, tipo_equipo_id INTEGER, codigo TEXT, patente TEXT, km_actual INTEGER NULL, estado INTEGER DEFAULT 1, deleted_at TEXT NULL)');
+        $this->database->query('CREATE TABLE equipos (id INTEGER PRIMARY KEY, empresa_id INTEGER, sucursal_id INTEGER, tipo_equipo_id INTEGER, codigo TEXT, patente TEXT, km_actual INTEGER NULL, estado TEXT DEFAULT \'ACTIVO\', deleted_at TEXT NULL)');
         $this->database->query('CREATE TABLE empleados (id INTEGER PRIMARY KEY, empresa_id INTEGER, nombre TEXT, apellido TEXT, deleted_at TEXT NULL)');
         $this->database->query('CREATE TABLE clientes (id INTEGER PRIMARY KEY, empresa_id INTEGER, codigo_origen TEXT, nombre TEXT, activo INTEGER, deleted_at TEXT NULL)');
         $this->database->query('CREATE TABLE viajes_domicilios_clientes (id INTEGER PRIMARY KEY, empresa_id INTEGER, cliente_id INTEGER, alias TEXT, calle TEXT, localidad TEXT)');
@@ -107,8 +107,18 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
             ['id' => 2, 'nombre' => 'Acoplado'],
         ]);
         $this->database->table('equipos')->insertBatch([
-            ['id' => 7, 'empresa_id' => 5, 'sucursal_id' => 10, 'tipo_equipo_id' => 1, 'codigo' => 'T01', 'patente' => 'AA111AA', 'deleted_at' => null],
-            ['id' => 9, 'empresa_id' => 5, 'sucursal_id' => 10, 'tipo_equipo_id' => 2, 'codigo' => 'A01', 'patente' => 'AC222AC', 'deleted_at' => null],
+            ['id' => 7, 'empresa_id' => 5, 'sucursal_id' => 10, 'tipo_equipo_id' => 1, 'codigo' => 'T01', 'patente' => 'AA111AA', 'estado' => 'ACTIVO', 'deleted_at' => null],
+            ['id' => 9, 'empresa_id' => 5, 'sucursal_id' => 10, 'tipo_equipo_id' => 2, 'codigo' => 'A01', 'patente' => 'AC222AC', 'estado' => 'ACTIVO', 'deleted_at' => null],
+            // Unidad dada de baja: se ofrece igual, porque el filtro sirve para
+            // consultar la historia de una patente y sus viajes siguen vigentes.
+            ['id' => 21, 'empresa_id' => 5, 'sucursal_id' => 10, 'tipo_equipo_id' => 1, 'codigo' => 'T09', 'patente' => 'BA999BA', 'estado' => 'BAJA', 'deleted_at' => null],
+            // Baja lógica: no se ofrece.
+            ['id' => 22, 'empresa_id' => 5, 'sucursal_id' => 10, 'tipo_equipo_id' => 1, 'codigo' => 'T10', 'patente' => 'EL999EL', 'estado' => 'ACTIVO', 'deleted_at' => '2026-01-01 00:00:00'],
+            // Sin patente: no se ofrece.
+            ['id' => 23, 'empresa_id' => 5, 'sucursal_id' => 10, 'tipo_equipo_id' => 1, 'codigo' => 'T11', 'patente' => null, 'estado' => 'ACTIVO', 'deleted_at' => null],
+            // Otra sucursal: se ofrece igual, porque el combo no acota por
+            // sucursal (el listado de viajes ya está acotado).
+            ['id' => 24, 'empresa_id' => 5, 'sucursal_id' => 20, 'tipo_equipo_id' => 1, 'codigo' => 'T12', 'patente' => 'BR111BR', 'estado' => 'ACTIVO', 'deleted_at' => null],
         ]);
         $this->database->table('empleados')->insert(['id' => 11, 'empresa_id' => 5, 'nombre' => 'Juan', 'apellido' => 'Pérez', 'deleted_at' => null]);
         $this->database->table('clientes')->insert(['id' => 3, 'empresa_id' => 5, 'codigo_origen' => '324', 'nombre' => 'Cliente Sur', 'activo' => 1, 'deleted_at' => null]);
@@ -300,13 +310,28 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
     {
         $options = (new CodeIgniterOperationalTripReadModel($this->database))->equipmentOptions(5, [10]);
 
+        // `equipos.estado` es VARCHAR en producción ('ACTIVO' / 'BAJA'): un
+        // filtro por estado numérico dejaría el combo sin opciones y el filtro
+        // por patente sin poder aplicarse.
         self::assertSame(
             [
                 ['value' => 'AA111AA', 'label' => 'AA111AA', 'hint' => 'T01'],
                 ['value' => 'AC222AC', 'label' => 'AC222AC', 'hint' => 'A01'],
+                ['value' => 'BA999BA', 'label' => 'BA999BA', 'hint' => 'T09'],
+                ['value' => 'BR111BR', 'label' => 'BR111BR', 'hint' => 'T12'],
             ],
             $options
         );
+    }
+
+    public function testEquipmentOptionsIgnoresLogicalDeletionAndMissingPlates(): void
+    {
+        $options = (new CodeIgniterOperationalTripReadModel($this->database))->equipmentOptions(5, [10]);
+        $values = array_column($options, 'value');
+
+        self::assertNotContains('EL999EL', $values, 'Una unidad con baja lógica no se ofrece.');
+        self::assertNotContains('', $values, 'Una unidad sin patente no se ofrece.');
+        self::assertCount(4, $options);
     }
 
     /**
@@ -316,7 +341,7 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
     {
         $this->database->table('equipos')->insert([
             'id' => 8, 'empresa_id' => 5, 'sucursal_id' => 10, 'tipo_equipo_id' => 1, 'codigo' => 'T02',
-            'patente' => 'ZZ999ZZ', 'km_actual' => 500_000, 'estado' => 1, 'deleted_at' => null,
+            'patente' => 'ZZ999ZZ', 'km_actual' => 500_000, 'estado' => 'ACTIVO', 'deleted_at' => null,
         ]);
         $this->database->table('viajes_operativos')->insert([
             'id' => 2, 'empresa_id' => 5, 'sucursal_id' => 10, 'numero' => 77, 'estado' => 'EN_CURSO',
