@@ -246,6 +246,29 @@ Tests nuevos o ampliados:
 | `frontend/tests/operations/TripOperationsCreatePage.test.js` | El campo de fecha estimada ya no está en el formulario. |
 | `frontend/tests/operations/TripOperationsDetailPage.test.js` | Banner de recorrido cerrado y prefill del cierre. |
 
+## Publicación (12/11/2026)
+
+- PR **#525** `feat/viajes-filtro-patente-orden-estado-recorrido` → merge a `main` (`23a6d64e`).
+- Deploy incremental a Ferozo (`scripts/deploy-ferozo.py --yes --skip-tests`; las pruebas se
+  corrieron aparte, como en los releases anteriores):
+  - `FROM=3a0e1114` → `TO=23a6d64e`.
+  - **21 archivos runtime** (16 de `app/` + `assets/dashboard/`), **0 migraciones**, 0 borrados
+    bloqueantes. El bundle anterior (`main-DFnmAARc.js`) se conserva en Ferozo; la limpieza es
+    aparte con remote-prune.
+  - `UPLOAD=OK`, `SMOKE_TESTS=OK` (login 200, favicon 200, `.env` 403, `app/` 403, `vendor/` 403,
+    `writable/` 403, `migrate.php` 404).
+  - Estado: `.deploy/production.json` → `23a6d64e`.
+- Verificación posterior en producción:
+  - El manifest servido referencia el bundle nuevo (`assets/main-D_1ihtuV.js`).
+  - El bundle publicado contiene los textos nuevos: `Recorrido cerrado`, `Falta cerrar el viaje`,
+    `Regreso estimado`; y **no** contiene `fecha_regreso_estimado` (el campo ya no existe).
+  - Rutas: `/mantenimiento/login` 200; `/mantenimiento/viajes`, `/viajes/operativos` e `/inicio`
+    respondieron 302 al login (auth viva, sin 500).
+- Los archivos locales sin versionar del usuario (`.tmp/`, `node_modules/`, informes,
+  `GUIA_CARGA_VIAJE_COMPLETO.md`, skills instaladas) se preservaron intactos: se declararon en
+  `.git/info/exclude` (exclusión local, no versionada) para que el árbol quedara limpio sin mover
+  ni versionar nada.
+
 ## Pendientes
 
 - [x] Confirmar con el cliente las 4 decisiones de arriba.
@@ -253,9 +276,10 @@ Tests nuevos o ampliados:
 - [x] Implementar P3 + P4 (estado derivado + prefill del cierre).
 - [x] Implementar P5 (fechas como dato derivado).
 - [x] Actualizar `docs/ESPECIFICACION_VIAJES_CIRCUITO_LIQUIDACION.md` (secciones 4 y 10).
+- [x] PR + merge + deploy a producción verificado.
 - [ ] **Corrección de datos de los viajes hoy en `EN_CURSO` con todos sus tramos cerrados**: no se
       puede automatizar porque el odómetro de regreso no existe en el sistema. Requiere que el
       operador cierre cada viaje desde el detalle (con la fecha y el km ya precompletados).
-- [ ] Verificación visual en la resolución del cliente (1638x969) y en móvil.
-- [ ] Deploy a producción (PR + merge + deploy verificado, con bitácora).
+- [ ] Verificación visual en la resolución del cliente (1638x969) y en móvil, con sesión iniciada.
+
 
