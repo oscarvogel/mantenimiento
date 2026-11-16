@@ -37,13 +37,22 @@ lo mostraba sin indicar que había sido descartado.
 
 ## Evidencia de pruebas
 
-- PHPUnit: 19 pruebas, 97 aserciones, 0 fallos.
-- Vitest: 21 pruebas de `ReadingControlPage`, 0 fallos.
+- PHPUnit completo: 1820 pruebas, 7206 aserciones, 45 skipped, 0 fallos.
+- Vitest completo: 85 archivos, 478 pruebas, 0 fallos.
+- `BUILD_SYNC=OK`.
 - `php -l` sin errores en el controlador y el dominio.
+
+## Publicación
+
+- PR **#528** mergeado a `main` (`9a341171`).
+- Deploy incremental a Ferozo: **28 archivos**, 0 migraciones, `UPLOAD=OK`.
+- Smoke tests: login 200, `favicon.ico` 200, `.env`/`app/`/`vendor/`/`writable/`
+  403, `migrate.php` 404.
+- Estado productivo: `.deploy/production.json` → `9a341171`.
+- Bundle servido: `main-XNNWqsIi.js`; contiene la etiqueta `(descartado)`.
 
 ## Pendiente
 
-- Compilar bundles y desplegar el cambio.
 - Evaluar una segunda pasada de OCR o un modelo más preciso para odómetros.
 - Revisar en producción que la alerta de discrepancia llegue al Administrador
   cuando no exista Responsable de mantenimiento.
