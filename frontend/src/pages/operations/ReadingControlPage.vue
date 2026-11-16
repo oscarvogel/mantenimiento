@@ -496,7 +496,7 @@ const methodLabel = (item) => {
           <dl class="mt-4 grid gap-3 rounded-lg bg-surface-subtle p-4 text-sm sm:grid-cols-2">
             <div><dt class="text-ink-muted">Método</dt><dd class="font-semibold text-ink">{{ methodLabel(evidenceTarget) }}</dd></div>
             <div><dt class="text-ink-muted">Kilometraje confirmado</dt><dd class="font-semibold text-ink">{{ kmLabel(evidenceTarget) }} km</dd></div>
-            <div v-if="evidenceTarget.aiDetectedKm !== null && evidenceTarget.aiDetectedKm !== undefined"><dt class="text-ink-muted">IA detectó</dt><dd class="font-semibold text-ink">{{ formatNumberEs(evidenceTarget.aiDetectedKm, 0) }} km</dd></div>
+            <div v-if="evidenceTarget.aiDetectedKm !== null && evidenceTarget.aiDetectedKm !== undefined"><dt class="text-ink-muted">IA detectó</dt><dd class="font-semibold text-ink">{{ formatNumberEs(evidenceTarget.aiDetectedKm, 0) }} km<span v-if="evidenceTarget.readingMethod === 'FOTO_IA_CORREGIDA'" class="ml-1 text-xs font-semibold text-danger-strong">(descartado)</span></dd></div>
             <div v-if="evidenceTarget.aiConfidence !== null && evidenceTarget.aiConfidence !== undefined"><dt class="text-ink-muted">Confianza IA</dt><dd class="font-semibold text-ink">{{ Math.round(Number(evidenceTarget.aiConfidence) * 100) }}%</dd></div>
           </dl>
         </div>

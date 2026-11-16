@@ -10,6 +10,7 @@ use App\Infrastructure\PublicEquipmentAccess\CodeIgniterPublicEquipmentTokenRepo
 use App\Infrastructure\Measurement\MiniMaxOdometerImageAnalyzer;
 use App\Infrastructure\Measurement\ReadingEvidenceStorage;
 use App\Domain\Measurement\AiDiscrepancyPolicy;
+use App\Domain\Measurement\AiOdometerPlausibility;
 use App\Domain\Notifications\NotifiableEvent;
 use App\Domain\Notifications\NotificationSeverity;
 use CodeIgniter\HTTP\RedirectResponse;
@@ -92,6 +93,13 @@ final class PublicEquipmentReadings extends BaseController
 
             $evidenceRef = null;
             $storageError = null;
+            $detectedKm = $analysis?->kilometers;
+            $currentKm = $equipment['km_actual'] === null ? null : (int) $equipment['km_actual'];
+            $detectionDiscarded = ! (new AiOdometerPlausibility())->accepts($detectedKm, $currentKm);
+            $discardMessage = $detectionDiscarded
+                ? 'La IA leyó un valor menor al kilometraje actual. Ingresá el kilometraje manualmente.'
+                : null;
+
             if ($analysis === null || $analysis->evidenceValid) {
                 try {
                     $stored = $this->evidenceStorage()->store(
@@ -108,12 +116,14 @@ final class PublicEquipmentReadings extends BaseController
                         'company_id' => (int) $equipment['empresa_id'],
                         'equipment_id' => (int) $equipment['id'],
                         'expires_at' => time() + 1800,
-                        'km_detectado_ia' => $analysis?->kilometers,
+                        'km_detectado_ia' => $detectedKm,
                         'confianza_ia' => $analysis?->confidence,
-                        'legible_ia' => $analysis?->legible ?? false,
+                        'legible_ia' => $detectionDiscarded ? false : ($analysis?->legible ?? false),
                         'observacion_ia' => $analysis?->observation,
                         'evidencia_valida_ia' => $analysis?->evidenceValid ?? true,
                         'motivo_invalido_ia' => $analysis?->invalidReason,
+                        'deteccion_descartada_ia' => $detectionDiscarded,
+                        'motivo_descarte_ia' => $discardMessage,
                     ]);
                 } catch (Throwable $exception) {
                     $storageError = $exception->getMessage();
@@ -125,18 +135,19 @@ final class PublicEquipmentReadings extends BaseController
 
             return $this->response->setJSON([
                 'ok' => true,
-                'kilometers' => $analysis?->kilometers,
+                'kilometers' => $detectionDiscarded ? null : $detectedKm,
                 'confidence' => $analysis?->confidence,
-                'legible' => $analysis?->legible ?? false,
+                'legible' => $detectionDiscarded ? false : ($analysis?->legible ?? false),
                 'observation' => $analysis?->observation,
                 'evidenceValid' => $analysis?->evidenceValid ?? false,
                 'invalidReason' => $analysis?->invalidReason,
+                'deteccionDescartada' => $detectionDiscarded,
                 'evidenceError' => $analysis !== null && ! $analysis->evidenceValid
                     ? $this->invalidEvidenceMessage($analysis->invalidReason, $this->equipmentLocale($equipment))
                     : null,
                 'analysisError' => $analysis === null
                     ? 'No pudimos leer automáticamente el odómetro. Podés ingresar el kilometraje manualmente.'
-                    : null,
+                    : $discardMessage,
                 'evidenceRef' => $evidenceRef,
                 'storageReady' => $evidenceRef !== null,
                 'storageError' => $storageError,
@@ -534,6 +545,26 @@ final class PublicEquipmentReadings extends BaseController
         return (new AiDiscrepancyPolicy())->needsReview($detectedKm, $confirmedKm, $confidence);
     }
 
+    /** @return list<int> */
+    private function userIdsByRole(\CodeIgniter\Database\BaseConnection $database, int $companyId, string $roleName): array
+    {
+        $rows = $database->table('usuarios u')
+            ->select('DISTINCT u.id', false)
+            ->join('usuario_roles ur', 'ur.usuario_id = u.id', 'inner')
+            ->join('roles r', 'r.id = ur.rol_id', 'inner')
+            ->where('u.empresa_id', $companyId)
+            ->where('u.activo', 1)
+            ->where('u.deleted_at', null)
+            ->where('r.nombre', $roleName)
+            ->get()
+            ->getResultArray();
+
+        return array_values(array_filter(
+            array_map(static fn (array $row): int => (int) ($row['id'] ?? 0), $rows),
+            static fn (int $id): bool => $id > 0,
+        ));
+    }
+
     /** @param array<string,mixed> $equipment */
     private function publishAiDiscrepancyAlert(
         \CodeIgniter\Database\BaseConnection $database,
@@ -543,23 +574,12 @@ final class PublicEquipmentReadings extends BaseController
         int $confirmedKm,
         float $confidence,
     ): void {
-        $responsibles = $database->table('usuarios u')
-            ->select('DISTINCT u.id', false)
-            ->join('usuario_roles ur', 'ur.usuario_id = u.id', 'inner')
-            ->join('roles r', 'r.id = ur.rol_id', 'inner')
-            ->where('u.empresa_id', (int) $equipment['empresa_id'])
-            ->where('u.activo', 1)
-            ->where('u.deleted_at', null)
-            ->where('r.nombre', 'Responsable de mantenimiento')
-            ->get()
-            ->getResultArray();
-
-        $recipientIds = array_values(array_filter(
-            array_map(static fn (array $row): int => (int) ($row['id'] ?? 0), $responsibles),
-            static fn (int $id): bool => $id > 0,
-        ));
+        $recipientIds = $this->userIdsByRole($database, (int) $equipment['empresa_id'], 'Responsable de mantenimiento');
         if ($recipientIds === []) {
-            log_message('warning', 'Lectura {reading} con discrepancia IA sin Responsable de mantenimiento configurado.', [
+            $recipientIds = $this->userIdsByRole($database, (int) $equipment['empresa_id'], 'Administrador');
+        }
+        if ($recipientIds === []) {
+            log_message('warning', 'Lectura {reading} con discrepancia IA sin destinatario configurado.', [
                 'reading' => $readingId,
             ]);
             return;
