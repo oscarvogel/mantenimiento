@@ -110,6 +110,7 @@ describe('ReadingControlPage · evidencia', () => {
     expect(dialogText()).toContain('Evidencia de lectura')
     expect(dialogText()).toContain('184.950')
     expect(dialogText()).toContain('92%')
+    expect(dialogText()).toContain('(descartado)')
     expect(dialog.querySelector('img')?.getAttribute('src')).toBe('/mantenimiento/lecturas/99/evidencia')
     expect(wrapper.find('a[target="_blank"][href="/mantenimiento/lecturas/99/evidencia"]').exists()).toBe(false)
 

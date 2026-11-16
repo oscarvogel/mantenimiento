@@ -350,7 +350,7 @@ const equipmentSummary = computed(() => {
           <dl class="mt-4 grid gap-3 rounded-lg bg-surface-subtle p-4 text-sm sm:grid-cols-2">
             <div><dt class="text-ink-muted">Método</dt><dd class="font-semibold text-ink">{{ readingEvidenceLabel(readingEvidence) }}</dd></div>
             <div><dt class="text-ink-muted">Kilometraje confirmado</dt><dd class="font-semibold text-ink">{{ readingEvidence.kilometersLabel }}</dd></div>
-            <div v-if="readingEvidence.aiDetectedKm !== null && readingEvidence.aiDetectedKm !== undefined"><dt class="text-ink-muted">IA detectó</dt><dd class="font-semibold text-ink">{{ formatKilometers(readingEvidence.aiDetectedKm) }}</dd></div>
+            <div v-if="readingEvidence.aiDetectedKm !== null && readingEvidence.aiDetectedKm !== undefined"><dt class="text-ink-muted">IA detectó</dt><dd class="font-semibold text-ink">{{ formatKilometers(readingEvidence.aiDetectedKm) }}<span v-if="readingEvidence.evidenceMethod === 'FOTO_IA_CORREGIDA'" class="ml-1 text-xs font-semibold text-danger-strong">(descartado)</span></dd></div>
             <div v-if="readingEvidence.aiConfidence !== null && readingEvidence.aiConfidence !== undefined"><dt class="text-ink-muted">Confianza IA</dt><dd class="font-semibold text-ink">{{ Math.round(Number(readingEvidence.aiConfidence) * 100) }}%</dd></div>
             <div v-if="readingEvidence.aiObservation" class="sm:col-span-2"><dt class="text-ink-muted">Observación IA</dt><dd class="font-medium text-ink">{{ readingEvidence.aiObservation }}</dd></div>
           </dl>
