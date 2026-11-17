@@ -1,7 +1,11 @@
 # Bitácora 2026-11-17 — Canal de correo deshabilitado e instalación limpia de migraciones (#146)
 
 **Rama:** `fix/issue-146-canal-email-y-migraciones` (desde `origin/main` = `1ecbfc57`)
-**Alcance:** staging `fasa_189` y repositorio. **Producción no se tocó.**
+**Alcance:** staging `fasa_189` y repositorio. **Producción no se modificó.** Durante el
+intento de recuperación de la sección 6 se **leyó** un dump de producción (FTPS de sólo
+lectura, 10/10/2026); no se escribió nada en producción.
+**Incidente:** durante la prueba de SMTP se vaciaron tres tablas de staging y se perdieron
+el log histórico de entregas y las claves VAPID y de WhatsApp de staging (sección 6).
 **Documentos relacionados:** `docs/AUDITORIA_2026-11-17_ISSUES_473_Y_146.md`
 
 ---
@@ -92,7 +96,7 @@ no-op seguro.
 | Instalación limpia, código corregido | **"Migrations complete"** · 131/131 migraciones · 114 tablas |
 | `localidades.principal` | `tinyint(1) NOT NULL DEFAULT 0` |
 | Reversibilidad (`migrate:rollback --all` **sobre el esquema temporal**) | **OK**, "Done rolling back migrations", exit 0 · 0 migraciones restantes · 1 tabla (la propia `migrations`) |
-| Base de la app después de todo | **intacta**: 133 migraciones, 420 entregas, `localidades` presente |
+| Base de la app al terminar las pruebas de migración (**antes** del incidente de la sección 6) | **intacta**: 133 migraciones, 420 entregas, `localidades` presente. Las entregas se perdieron después, en la sección 6. |
 
 El esquema temporal se eliminó al terminar. Sólo quedó `mantenimiento_staging`.
 
@@ -166,6 +170,11 @@ operador no vería ningún error.
 
 ### 3.4 Qué se hace con las 241 entregas `FALLIDA` históricas
 
+> **Actualización:** estas filas **ya no existen**. Se perdieron con el vaciado de
+> `notificacion_entregas` y `notificacion_empresa_entregas` (sección 6), junto con las
+> 3 en `REINTENTO`. La reclasificación ya no es posible. Lo que sigue queda como el
+> criterio que se había adoptado, y aplica si el caso se repite en producción.
+
 **No se tocan.** Son el registro fiel de que el despachador intentó enviar y el canal
 estaba apagado. Su estado `FALLIDA` es correcto como registro histórico y, además,
 el despachador nunca vuelve a tomar entregas `FALLIDA` (sólo `PENDIENTE` y
@@ -177,8 +186,7 @@ alertas de un estado que ya cambió. La reclasificación de esas 241 entregas a
 auditoría, y **no** se ejecuta en este trabajo.
 
 Lo que sí cambia a futuro: con la corrección, cuando el canal se rehabilite, las
-entregas que estaban en espera se envían solas. De las 3 en `REINTENTO` que quedan
-en staging, el mecanismo las cubre.
+entregas que estaban en espera se envían solas.
 
 ## 4. Pruebas
 
@@ -204,7 +212,7 @@ error se vea).
 ### 4.2 Contra MariaDB real (staging `fasa_189`)
 
 - Instalación limpia en esquema temporal aislado, con control previo de la base
-  activa: **OK** con la corrección, **reprodución del defecto** sin ella.
+  activa: **OK** con la corrección, **reproducción del defecto** sin ella.
 - Reversibilidad con `migrate:rollback --all` **sólo sobre el esquema temporal**:
   **OK**.
 - `migrate:rollback` **nunca** se ejecutó sobre la base de la app.
@@ -254,6 +262,10 @@ id  canal  estado    intentos  proximo_intento   motivo
 780 EMAIL  REINTENTO  2        2026-11-17 07:02  El canal EMAIL está deshabilitado: lo apagó el administrador del sistema.
 ```
 
+La 780 ya estaba en `REINTENTO` cuando se apagó el canal: `deferred()` conserva ese
+estado y los intentos. Las entregas encoladas sin intentos previos quedan en
+`PENDIENTE` (sección 3.3).
+
 ### 5.3 Idempotencia y concurrencia
 
 - **Idempotencia:** la segunda corrida con la misma clave de ejecución devuelve
@@ -300,14 +312,29 @@ exitoso, así que este control queda **pendiente de un dispositivo real**.
 | `.env` de la app | sin definición de base: la conexión viene del env del contenedor |
 | `GET /login` · `/.env` | 200 · 403 |
 
-**Sobre las entradas CRITICAL/ERROR del log de hoy** (4 CRITICAL, 7 ERROR), todas
-anteriores al deploy final y **ninguna del build desplegado**:
+**Sobre las entradas CRITICAL/ERROR del log de hoy** (4 CRITICAL, 7 ERROR = 11 entradas).
+**Estado del gate: PARCIAL.** La tabla atribuye **8 de las 11**; las otras 3 quedan
+**sin atribuir** y hay que revisarlas antes de dar el gate por cerrado.
 
 | Hora (local) | Entrada | Origen |
 |---|---|---|
 | 07:55 (×2) | `Access denied ... to database 'mantenimiento_audit_mig_tmp'` | Esquema temporal de un incidente anterior, ya borrado. **No se reproduce**: no hay tarea, proceso ni variable que lo apunte, y la tarea diaria corre bien contra `mantenimiento_staging`. |
 | 07:57 y 08:00 | error de sintaxis SQL cerca de `)` | **Reproducción del Defecto A** en el contenedor de prueba, con el código original. |
 | 09:10 y 09:29 (×2 cada uno) | `Duplicate entry 'notificaciones:ciclo'` + `NotificationDispatchInProgress` | **Prueba de concurrencia**: el segundo despacho paralelo es rechazado por el bloqueo. Es el comportamiento esperado. |
+
+Observaciones:
+
+- **07:55 sin explicar.** El acceso a `mantenimiento_audit_mig_tmp` ocurrió **antes** de
+  que empezara la reproducción de este trabajo (07:57), así que lo originó otro proceso o
+  sesión. Que no se repita no identifica la causa. Pista: a las 07:55:50 otra sesión en
+  paralelo generó `dist/ferozo-backup-lecturas-20261117-075550.sql` (ver
+  `docs/AUDITORIA_2026-11-17_ISSUES_473_Y_146.md`).
+- **Las entradas de las 09:29 pueden ser del build desplegado.** El deploy final es
+  `bdqictyu4q5xkfuh6aoh7sr8-20261117T121937`; si esa marca es UTC, corresponde a las
+  09:19 local, antes de las entradas de las 09:29. A confirmar.
+- **Nivel de log del bloqueo.** El rechazo por bloqueo es comportamiento esperado pero
+  se registra como CRITICAL/ERROR. En producción, cualquier solapamiento de despachos
+  dispararía alarmas falsas. Conviene bajarlo a WARNING (pendiente 9).
 
 ## 6. Incidente durante la prueba: se vaciaron tres tablas de staging
 
@@ -322,8 +349,8 @@ restauración borró las filas y **no las repuso**: el respaldo se generaba con
 | `notificacion_entregas` | 420 | 0 | **Perdida (log histórico)** |
 | `notificacion_empresa_entregas` | 322 | 0 | **Perdida (log histórico)** |
 
-`notificaciones` (403 filas) **no se tocó**. **Producción no se tocó en ningún
-momento.**
+`notificaciones` (403 filas) **no se tocó**. **Producción no se modificó**; sí se leyó
+el dump de producción del 10/10/2026 para intentar la recuperación (ver abajo).
 
 **Qué se hizo para recuperar.** Se buscó una fuente de restauración antes de
 inventar datos:
@@ -331,7 +358,7 @@ inventar datos:
 - Backups programados de Coolify: son de **otro proyecto** (`femag_web`), no
   sirven.
 - Binlog de MariaDB: **`log_bin = OFF`**, no hay recuperación por binlog.
-- Volumenes y archivos del host: no hay copia de los datos de staging.
+- Volúmenes y archivos del host: no hay copia de los datos de staging.
 - Dump de producción (FTPS, 10/10/2026): contiene la fila de configuración de
   **producción**, pero sus valores cifrados **no se descifran con la clave de
   staging** (verificado: `SMTP_PASS_DESCIFRABLE=no`,
@@ -369,38 +396,45 @@ filas de usuario y 322 de empresa): las 241 `FALLIDA`, las 135 `ENVIADA`, las 41
 `PUSH` `OMITIDA` y las 3 `REINTENTO`. **No se reconstruyeron con datos
 inventados**: el estado de cada fila (si se envió, si falló, con qué error y en
 qué fecha) no es derivable de forma fiable, y reconstruirlas a mano sería
-precisar la historia. Los números y el desglose por motivo quedan registrados en
+falsear la historia. Los números y el desglose por motivo quedan registrados en
 la auditoría y en esta bitácora; las tablas **se repueblan solas** con las
 entregas nuevas. La pérdida es de trazabilidad histórica en un entorno de
 prueba, **no de datos operativos ni de producción**.
 
 **Cómo se evita que se repita.** Todo script que toque datos de staging tiene que:
 
-1. Respalpar **con una herramienta que exista en el contenedor** (`mariadb` con
+1. Respaldar **con una herramienta que exista en el contenedor** (`mariadb` con
    `--batch`, o `SELECT ... INTO OUTFILE`), no con `mysqldump`.
 2. Verificar que el respaldo **no está vacío** antes de borrar nada.
 3. Restaurar y **contar filas antes y después**, en el mismo script.
 
 ## 7. Pendientes
 
-1. **Web Push E2E: NO VERIFICADO.** Staging tenía 2 suscripciones y 41 entregas
-   `PUSH` en `OMITIDA` ("No existen dispositivos activos"): sin un dispositivo de
-   prueba real no hay entrega verificable. Requiere un equipo o navegador con
-   notificaciones push habilitado subscribed contra la clave VAPID vigente.
-2. **Claves VAPID y clave de la API de WhatsApp de staging**: perdidas con la
-   fila de configuración (sección 6). Web Push y WhatsApp quedan apagados en
-   staging; para rehabilitar Web Push hay que generar un par VAPID nuevo y volver
-   a suscribir los dispositivos.
-3. **Log histórico de entregas de staging**: perdido (sección 6). No se
-   reconstruyó con datos inventados. Los números y el desglose por motivo
-   quedan en la auditoría y en esta bitácora.
-4. **246 entregas `FALLIDA` históricas** (241 de usuario, 70 de empresa): sin
-   tocar. La reclasificación a criterio del operador, con su procedimiento.
-5. **Staging conserva las credenciales SMTP de producción** montadas en el env del
-   contenedor, con el canal apagado en la base. Se resuelve en Coolify, no por
-   código.
-6. **El PR (#534) queda sin mergear** hasta que el usuario lo autorice; el #146 y
-   el #7 quedan **abiertos**.
-7. **Producción no se verificó con estos cambios**: no se desplegó nada en
-   Ferozo. Antes de hacerlo hay que decidir si la migración correctiva se aplica
-   en producción y con qué ventana.
+1. **Web Push E2E: NO VERIFICADO.** No hay dispositivo de prueba real, y ahora además
+   faltan las claves VAPID (pendiente 2). Una entrega `OMITIDA` no cuenta como éxito.
+2. **Claves VAPID y clave de la API de WhatsApp de staging: perdidas** (sección 6). Web
+   Push y WhatsApp quedan apagados en staging. Para rehabilitar Web Push hay que generar
+   un par VAPID nuevo y volver a suscribir los dispositivos (las 2 suscripciones actuales
+   quedaron inservibles). Para WhatsApp hay que volver a cargar la clave de la API.
+3. **Log histórico de entregas de staging: perdido** (sección 6): 420 filas de usuario y
+   322 de empresa, incluidas las 241 + 70 `FALLIDA`. No se reconstruyó con datos
+   inventados; los números quedan en la auditoría y en esta bitácora. **Ya no hay
+   entregas `FALLIDA` históricas que reclasificar.**
+4. **Gate de logs: PARCIAL** (sección 5.7). Faltan atribuir 3 de las 11 entradas,
+   identificar el origen del acceso de las 07:55 y confirmar la hora del deploy final.
+5. **Staging conserva las credenciales SMTP de producción** en el env del contenedor,
+   con el canal apagado en la base. Hay que sacarlas o reemplazarlas en Coolify y evaluar
+   rotar la contraseña del buzón.
+6. **`php spark migrate` devuelve exit 0 aunque una migración falle** (sección 2.1). Antes
+   de desplegar en producción, el procedimiento tiene que verificar la cantidad de
+   migraciones aplicadas, no el código de salida.
+7. **Producción no se verificó con estos cambios**: no se desplegó nada en Ferozo. Antes
+   hay que decidir si la migración correctiva `2026-11-17-100000` se aplica en producción
+   y con qué ventana. La prueba `AddPrincipalFlagToLocalitiesMariaDbTest` se omite en CI:
+   la corrección del Defecto A sólo está verificada a mano contra MariaDB de staging.
+8. **Script de rollback** en `/tmp/fix146-rollback.sh` (efímero): reapuntar la app de
+   staging a `main` en `dc4d3bd28fbf0a484aa8dca21270dec54c112a90` y redisparar el deploy.
+9. **Nivel de log del rechazo por bloqueo** (`NotificationDispatchInProgress`): hoy
+   CRITICAL/ERROR; conviene WARNING para no generar alarmas falsas.
+10. **El PR (#534) queda sin mergear** hasta que el usuario lo autorice; el #146 y el #7
+    quedan **abiertos**.
