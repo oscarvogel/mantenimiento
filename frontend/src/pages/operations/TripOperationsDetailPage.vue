@@ -396,6 +396,9 @@ const settlementNote = computed(() => {
   if (settlement.value) return null
   if (totals.value.multiple_drivers) return 'Hay más de un chofer. La liquidación se calcula cuando hay un chofer responsable.'
   if (totals.value.driver_percentage === null || totals.value.driver_percentage === undefined) return 'El chofer no tiene un porcentaje de liquidación definido.'
+  const missing = legs.value.filter((leg) => leg.flete_liquidacion_ars === null || leg.flete_liquidacion_ars === undefined).map((leg) => leg.orden)
+  if (missing.length) return `Faltan las bases de liquidación de los tramos ${missing.join(', ')}.`
+
   return 'Cargá al menos un tramo para calcular la liquidación.'
 })
 const fmtDateTime = (value) => {
@@ -483,6 +486,9 @@ const facts = computed(() => {
         </a>
         <a v-if="data.canViewDriverSettlement && data.links?.driverSettlement" :href="data.links.driverSettlement" data-testid="driver-settlement-link" class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-success/40 bg-success-subtle px-3 py-2 text-sm font-semibold text-success-strong hover:bg-success/15">
           <ReceiptPercentIcon class="size-4" aria-hidden="true" />Ver liquidación del chofer
+        </a>
+        <a v-if="data.canViewDriverSettlement && data.links?.driverSettlementPdf" :href="data.links.driverSettlementPdf" target="_blank" rel="noopener" data-testid="driver-settlement-pdf-link" class="inline-flex min-h-10 items-center gap-2 whitespace-nowrap rounded-lg border border-success/40 px-3 py-2 text-sm font-semibold text-success-strong hover:bg-success/15">
+          <ArrowDownTrayIcon class="size-4" aria-hidden="true" />{{ trip.estado === 'FINALIZADO' ? 'PDF liquidación del chofer' : 'PDF liquidación (borrador)' }}
         </a>
         <button v-if="canEdit" type="button" @click="openTripEdit" class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-primary px-3 py-2 text-sm font-semibold text-primary hover:bg-primary-subtle">
           <PencilSquareIcon class="size-4" aria-hidden="true" />Editar viaje

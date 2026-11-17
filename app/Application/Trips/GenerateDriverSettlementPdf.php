@@ -26,7 +26,10 @@ final class GenerateDriverSettlementPdf
     public function execute(ActorContext $actor, int $tripId): string
     {
         $statement = $this->getSettlement->execute($actor, $tripId);
-        if (! ($statement['available'] ?? false)) {
+        // El borrador se imprime aunque falten datos, para revisarlo con el
+        // chofer: el PDF dice qué falta y no muestra un saldo. La definitiva
+        // necesita la liquidación completa.
+        if (! ($statement['available'] ?? false) && ($statement['status'] ?? null) === DriverSettlementStatement::DEFINITIVA) {
             throw new DomainException('No se puede emitir la liquidación: ' . lcfirst((string) ($statement['pending'] ?? 'faltan datos del chofer.')));
         }
 

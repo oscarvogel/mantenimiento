@@ -216,13 +216,42 @@ final class GetDriverSettlementTest extends TestCase
         self::assertStringNotContainsString('6000000', json_encode($renderer->received, JSON_THROW_ON_ERROR));
     }
 
-    public function testPdfIsRefusedWhenTheSettlementCannotBeCalculated(): void
+    public function testDraftPdfIsIssuedWithPendingDataSoItCanBeReviewed(): void
+    {
+        $renderer = new CapturingDriverSettlementRenderer();
+        (new GenerateDriverSettlementPdf(
+            new GetDriverSettlement(new GetOperationalTrip(new DriverSettlementReadModelFake($this->trip([
+                'legs' => [$this->leg(1, 6_000_000, 5_100_000), $this->leg(2, 0, 0, ['flete_facturacion' => null, 'flete_facturacion_ars' => null, 'flete_liquidacion' => null, 'flete_liquidacion_ars' => null])],
+            ])))),
+            $renderer,
+        ))->execute($this->actor(), 55);
+
+        self::assertFalse($renderer->received['available']);
+        self::assertSame('BORRADOR', $renderer->received['status']);
+        self::assertStringContainsString('tramos 2', (string) $renderer->received['pending']);
+    }
+
+    public function testRenderedIncompleteDraftSaysWhatIsMissingAndShowsNoBalance(): void
+    {
+        $statement = $this->statement(['legs' => [
+            $this->leg(1, 6_000_000, 5_100_000),
+            $this->leg(2, 0, 0, ['flete_facturacion' => null, 'flete_facturacion_ars' => null, 'flete_liquidacion' => null, 'flete_liquidacion_ars' => null]),
+        ]]);
+        $text = $this->pdfText((new DriverSettlementPdfGenerator())->render($statement));
+
+        self::assertStringContainsString('Pendiente', $text);
+        self::assertStringContainsString('Faltan bases de liquidaci', $text);
+        self::assertStringNotContainsString('Firma del chofer', $text);
+    }
+
+    public function testDefinitivePdfIsRefusedWhenTheSettlementCannotBeCalculated(): void
     {
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('porcentaje');
 
         (new GenerateDriverSettlementPdf(
             new GetDriverSettlement(new GetOperationalTrip(new DriverSettlementReadModelFake($this->trip([
+                'status' => 'FINALIZADO',
                 'assignments' => [['rol' => 'CHOFER', 'empleado_id' => 9, 'porcentaje_liquidacion' => null, 'master_percentage' => null, 'label' => 'Pérez, Juan']],
             ])))),
             new CapturingDriverSettlementRenderer(),

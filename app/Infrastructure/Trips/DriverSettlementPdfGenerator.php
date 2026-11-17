@@ -74,20 +74,20 @@ final class DriverSettlementPdfGenerator implements DriverSettlementPdfRenderer
                 $leg['comision_ars'] === null ? 'Sin dato' : $this->money($leg['comision_ars']),
             ], ['L', 'L', 'L', 'R', 'R', 'R', 'R']);
         }
-        $this->summaryLine($pdf, 'Base de liquidación total', $this->money($totals['base_ars'] ?? 0));
-        $this->summaryLine($pdf, 'Comisión total', $this->money($totals['commission_ars'] ?? 0), true);
+        $this->summaryLine($pdf, 'Base de liquidación total', ($totals['base_ars'] ?? null) === null ? 'Pendiente' : $this->money($totals['base_ars']));
+        $this->summaryLine($pdf, 'Comisión total', ($totals['commission_ars'] ?? null) === null ? 'Pendiente' : $this->money($totals['commission_ars']), true);
         $pdf->Ln(2);
 
         $this->section($pdf, 'Otros haberes');
         $this->tableHeader($pdf, [30, 90, 30, 30], ['Fecha', 'Concepto', 'Importe', 'Importe ARS']);
         $this->moneyRows($pdf, $statement['otherEarnings'] ?? [], 'No hay otros haberes cargados.', static fn (array $row): array => [$row['concepto'] ?? '']);
-        $this->summaryLine($pdf, 'Otros haberes total', $this->money($totals['other_earnings_ars'] ?? 0), true);
+        $this->summaryLine($pdf, 'Otros haberes total', $this->money(array_sum(array_column($statement['otherEarnings'] ?? [], 'importe_ars'))), true);
         $pdf->Ln(2);
 
         $this->section($pdf, 'Gastos adelantados por el chofer');
         $this->tableHeader($pdf, [30, 60, 30, 30, 30], ['Fecha', 'Concepto', 'Comprobante', 'Importe', 'Reintegro ARS']);
         $this->moneyRows($pdf, $statement['driverExpenses'] ?? [], 'No hay gastos adelantados por el chofer.', static fn (array $row): array => [$row['concepto'] ?? '', $row['comprobante'] ?? '-']);
-        $this->summaryLine($pdf, 'Reintegros total', $this->money($totals['driver_expenses_ars'] ?? 0), true);
+        $this->summaryLine($pdf, 'Reintegros total', $this->money(array_sum(array_column($statement['driverExpenses'] ?? [], 'importe_ars'))), true);
         $pdf->Ln(2);
 
         $this->section($pdf, 'Rendición de caja: anticipos y devoluciones');
@@ -98,12 +98,27 @@ final class DriverSettlementPdfGenerator implements DriverSettlementPdfRenderer
         $this->tableHeader($pdf, [30, 60, 30, 30, 30], ['Fecha', 'Concepto', 'Comprobante', 'Importe', 'Importe ARS']);
         $this->moneyRows($pdf, $statement['cashExpenses'] ?? [], 'No hay gastos pagados con caja.', static fn (array $row): array => [$row['concepto'] ?? '', $row['comprobante'] ?? '-']);
         $this->summaryLine($pdf, 'Caja entregada (caja inicial, anticipos y retiros)', $this->money($totals['cash_delivered_ars'] ?? 0));
-        $this->summaryLine($pdf, 'Gastos pagados con caja', $this->money($totals['cash_expenses_ars'] ?? 0));
+        $this->summaryLine($pdf, 'Gastos pagados con caja', $this->money(array_sum(array_column($statement['cashExpenses'] ?? [], 'importe_ars'))));
         $this->summaryLine($pdf, 'Devoluciones', $this->money($totals['cash_returned_ars'] ?? 0));
         $this->summaryLine($pdf, 'Saldo de caja pendiente de rendir', $this->money($totals['cash_balance_ars'] ?? 0), true);
         $pdf->Ln(2);
 
         $this->section($pdf, 'Resumen');
+        $available = (bool) ($statement['available'] ?? false);
+        if (! $available) {
+            // Sin liquidación completa no se inventa un saldo: se dice qué falta.
+            $pdf->SetFillColor(255, 243, 205);
+            $pdf->SetFont('Arial', 'B', 11);
+            $pdf->Cell(120, 11, $this->pdfText('Saldo final (borrador)'), 1, 0, 'L', true);
+            $pdf->Cell(64, 11, $this->pdfText('Pendiente'), 1, 1, 'R', true);
+            $pdf->SetFont('Arial', '', 9);
+            $pdf->MultiCell(0, 6, $this->pdfText(
+                (string) ($statement['pending'] ?? 'Faltan datos para calcular la liquidación.')
+                . ' Borrador para revisión: no es válido como liquidación definitiva.',
+            ), 0, 'L');
+
+            return $pdf->Output('S');
+        }
         $this->summaryLine($pdf, 'Comisión', $this->money($totals['commission_ars'] ?? 0));
         $this->summaryLine($pdf, 'Otros haberes', $this->money($totals['other_earnings_ars'] ?? 0));
         $this->summaryLine($pdf, 'Saldo de cuenta corriente (gastos, caja, anticipos y devoluciones)', $this->money($totals['account_balance_ars'] ?? 0));

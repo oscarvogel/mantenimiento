@@ -56,7 +56,7 @@ const identity = computed(() => [
   <div>
     <PageHeading eyebrow="Viajes · Liquidación" :title="`Liquidación del chofer · Viaje #${trip.numero ?? ''}`" description="Lo que corresponde al chofer por este viaje: base acordada, comisión, haberes, gastos, anticipos y saldo final." :back="{ href: data.links?.back ?? '/viajes/operativos', label: 'Volver al viaje' }">
       <template #actions>
-        <a v-if="available && data.links?.pdf" :href="data.links.pdf" target="_blank" rel="noopener" data-testid="driver-settlement-pdf" class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-primary px-3 py-2 text-sm font-semibold text-primary hover:bg-primary-subtle">
+        <a v-if="data.links?.pdf" :href="data.links.pdf" target="_blank" rel="noopener" data-testid="driver-settlement-pdf" class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-primary px-3 py-2 text-sm font-semibold text-primary hover:bg-primary-subtle">
           <PrinterIcon class="size-4" aria-hidden="true" />{{ draft ? 'Ver o imprimir borrador (PDF)' : 'Ver o imprimir PDF' }}
         </a>
       </template>

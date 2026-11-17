@@ -90,7 +90,8 @@ describe('liquidación del chofer', () => {
 
     expect(wrapper.get('[data-testid="driver-settlement-pending"]').text()).toContain('porcentaje')
     expect(wrapper.find('[data-testid="driver-settlement-summary"]').exists()).toBe(false)
-    expect(wrapper.find('[data-testid="driver-settlement-pdf"]').exists()).toBe(false)
+    // El borrador se puede imprimir igual: el PDF explica qué falta.
+    expect(wrapper.get('[data-testid="driver-settlement-pdf"]').attributes('href')).toContain('liquidacion-chofer.pdf')
     wrapper.unmount()
   })
 })
@@ -154,6 +155,44 @@ describe('detalle administrativo del viaje', () => {
     const link = wrapper.get('[data-testid="driver-settlement-link"]')
     expect(link.text()).toBe('Ver liquidación del chofer')
     expect(link.attributes('href')).toBe('/mantenimiento/viajes/operativos/42/liquidacion-chofer')
+    wrapper.unmount()
+  })
+
+  it('ofrece el PDF desde el detalle cuando la liquidación está calculada', () => {
+    const wrapper = mount(TripOperationsDetailPage, {
+      props: {
+        data: adminData({
+          canViewDriverSettlement: true,
+          settlement: { driver: 'Pérez, Juan', commission_ars: 1, other_earnings_ars: 0, driver_expenses_ars: 0, cash_expenses_ars: 0, advances_ars: 0, returns_ars: 0, account_balance_ars: 0, total_ars: 1 },
+          links: { detail: '/mantenimiento/viajes/operativos/42', driverSettlement: '/mantenimiento/viajes/operativos/42/liquidacion-chofer', driverSettlementPdf: '/mantenimiento/viajes/operativos/42/liquidacion-chofer.pdf' },
+        }),
+      },
+    })
+
+    const pdf = wrapper.get('[data-testid="driver-settlement-pdf-link"]')
+    expect(pdf.attributes('href')).toBe('/mantenimiento/viajes/operativos/42/liquidacion-chofer.pdf')
+    expect(pdf.text()).toBe('PDF liquidación (borrador)')
+    wrapper.unmount()
+  })
+
+  it('ofrece el PDF aunque falten bases y explica qué falta en el detalle', () => {
+    const wrapper = mount(TripOperationsDetailPage, {
+      props: {
+        data: adminData({
+          canViewDriverSettlement: true,
+          totals: { driver_percentage: 14 },
+          legs: [
+            { id: 1, orden: 1, origen: 'A', destino: 'B', flete_liquidacion_ars: 100, flete_facturacion_ars: 200, assigned_costs_ars: 0 },
+            { id: 2, orden: 2, origen: 'B', destino: 'C', flete_liquidacion_ars: null, flete_facturacion_ars: null, assigned_costs_ars: 0 },
+          ],
+          links: { detail: '/mantenimiento/viajes/operativos/42', driverSettlement: '/x', driverSettlementPdf: '/mantenimiento/viajes/operativos/42/liquidacion-chofer.pdf' },
+        }),
+      },
+    })
+
+    expect(wrapper.get('[data-testid="driver-settlement-pdf-link"]').attributes('href')).toBe('/mantenimiento/viajes/operativos/42/liquidacion-chofer.pdf')
+    expect(wrapper.text()).toContain('Faltan las bases de liquidación de los tramos 2.')
+    expect(wrapper.text()).not.toContain('Cargá al menos un tramo para calcular la liquidación')
     wrapper.unmount()
   })
 
