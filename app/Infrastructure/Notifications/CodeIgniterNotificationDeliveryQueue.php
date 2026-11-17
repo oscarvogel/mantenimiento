@@ -43,12 +43,11 @@ final class CodeIgniterNotificationDeliveryQueue implements NotificationDelivery
         // habilita un canal que el administrador dejó apagado. Si el correo está
         // deshabilitado no se encola ninguna entrega por correo (#146).
         $emailAvailable = $this->channels->isAvailable(NotificationChannel::EMAIL);
-        $wantsEmail = $preference->email !== DeliveryMode::DISABLED
-            && ($preference->email !== DeliveryMode::CRITICAL_ONLY || $severity === NotificationSeverity::CRITICAL);
+        $wantsEmail = $this->policy->shouldSchedule($preference->email, $severity);
 
-        if ($emailAvailable && $wantsEmail) {
+        if ($wantsEmail && $emailAvailable) {
             $this->enqueue($notificationId, 'EMAIL', "{$eventKey}:usuario:{$userId}:email", $preference->email);
-        } elseif (! $emailAvailable && $wantsEmail) {
+        } elseif ($wantsEmail && ! $emailAvailable) {
             // Queda escrito por qué no se encoló. Sin esta traza, una preferencia
             // de correo activa con el canal apagado sería indistinguible de una
             // notificación que nunca existió.
