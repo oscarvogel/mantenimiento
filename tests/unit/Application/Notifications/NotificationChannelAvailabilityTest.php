@@ -402,7 +402,7 @@ final class ChannelAvailabilityDisabledEmailGateway implements \App\Application\
     {
         throw NotificationChannelDisabledException::forChannel(
             NotificationChannel::EMAIL,
-            'El canal de correo está deshabilitado por el administrador del sistema.',
+            'lo apagó el administrador del sistema.',
         );
     }
 }

@@ -33,7 +33,7 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
             // reintentos ni marque el ciclo como fallido (#146).
             throw NotificationChannelDisabledException::forChannel(
                 NotificationChannel::EMAIL,
-                'El canal de correo está deshabilitado por el administrador del sistema.',
+                'lo apagó el administrador del sistema.',
             );
         }
 
