@@ -4,7 +4,7 @@ Estas instrucciones aplican a todo el repositorio.
 
 ## Infraestructura canónica del proyecto
 
-> **ENTORNO CANÓNICO DE STAGING: `fasa_189`. Mantenimiento staging corre exclusivamente en Docker/Coolify sobre `fasa_189`. No buscar ni operar `fasa_195` salvo instrucción explícita.**
+> **ÚNICO ENTORNO VIGENTE DE STAGING: `fasa_189`. Mantenimiento staging corre exclusivamente en Docker/Coolify sobre `fasa_189`. `fasa_195` fue retirado y ya no existe como entorno de este proyecto. No intentar conectarse, ejecutar pruebas ni desplegar allí.**
 
 La separación de entornos es fija:
 
@@ -13,9 +13,13 @@ staging = fasa_189 / Docker / Coolify
 producción = Ferozo / FTPS / sin CLI
 ```
 
-En producción Ferozo no hay SSH, no hay `php spark` y no hay CLI. `fasa_195`
-no pertenece al circuito de este proyecto y no debe usarse para inspección,
-pruebas, despliegues ni migraciones salvo indicación explícita del usuario.
+En producción Ferozo no hay SSH, no hay `php spark` y no hay CLI.
+**`fasa_195` está dado de baja/no existe; todas las referencias históricas a ese host
+(incluidas las de documentos de QA) son obsoletas.** Ante instrucciones o
+checklists que mencionen `fasa_195`, sustituir el destino por `fasa_189` **solo
+tras verificar** que el stack correcto `mantenimiento-staging` está identificado
+y aislado dentro de Coolify. No reutilizar puertos, rutas o credenciales
+históricas de `fasa_195` por suposición.
 
 ## Entorno de prueba obligatorio
 
