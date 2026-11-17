@@ -4,9 +4,26 @@ declare(strict_types=1);
 
 namespace App\Database\Migrations;
 
-use App\Infrastructure\Geography\ProvinceLocalityRegistry;
+use App\Infrastructure\Geography\PrincipalLocalityMarker;
 use CodeIgniter\Database\Migration;
 
+/**
+ * Agrega la marca `principal` a las localidades y deja el catálogo principal
+ * definido.
+ *
+ * Corrección 17/11/2026 (#146): la regla de Brasil se aplicaba sobre las
+ * provincias del país sin comprobar que la lista no estuviera vacía. En una
+ * instalación desde cero todavía no hay provincias cargadas, la consulta
+ * `provincia_id IN ()` es SQL inválido en MySQL/MariaDB y la instalación se
+ * cortaba en esta migración.
+ *
+ * El cambio no altera el resultado en las instalaciones donde esta migración
+ * ya se aplicó: allí la lista de provincias estaba poblada y la marca se
+ * calculó igual. Lo que cambia es que, si la lista está vacía, no se ejecuta
+ * una consulta que abortaría la instalación. La implementación de la regla vive
+ * ahora en `PrincipalLocalityMarker`, que comparten esta migración y la
+ * migración correctiva `2026-11-17-100000_ReapplyPrincipalLocalityFlags`.
+ */
 final class AddPrincipalFlagToLocalities extends Migration
 {
     public function up(): void
@@ -19,21 +36,7 @@ final class AddPrincipalFlagToLocalities extends Migration
             $this->db->resetDataCache();
         }
 
-        $countries = $this->countryIds();
-        $this->db->table('localidades')->update(['principal' => 0]);
-
-        if (isset($countries['URUGUAY'])) {
-            $this->markAll($this->provinceIds($countries['URUGUAY']));
-        }
-        if (isset($countries['CHILE'])) {
-            $this->markCities($this->provinceIds($countries['CHILE']));
-        }
-        if (isset($countries['BRASIL'])) {
-            $this->markBrazil($this->provinceIds($countries['BRASIL']));
-        }
-        if (isset($countries['ARGENTINA'])) {
-            (new ProvinceLocalityRegistry($this->db))->ensureForCountry($countries['ARGENTINA'], 'ARGENTINA');
-        }
+        (new PrincipalLocalityMarker($this->db))->applyFromScratch();
     }
 
     public function down(): void
@@ -58,62 +61,6 @@ final class AddPrincipalFlagToLocalities extends Migration
         if ($this->db->fieldExists('principal', 'localidades')) {
             $this->forge->dropColumn('localidades', 'principal');
             $this->db->resetDataCache();
-        }
-    }
-
-    /** @return array<string,int> */
-    private function countryIds(): array
-    {
-        $ids = [];
-        foreach ($this->db->table('paises')->select('id, codigo')->get()->getResultArray() as $row) {
-            $ids[strtoupper((string) $row['codigo'])] = (int) $row['id'];
-        }
-
-        return $ids;
-    }
-
-    /** @return list<int> */
-    private function provinceIds(int $countryId): array
-    {
-        return array_map(
-            static fn (array $row): int => (int) $row['id'],
-            $this->db->table('provincias')->select('id')->where('pais_id', $countryId)->get()->getResultArray(),
-        );
-    }
-
-    /** @param list<int> $provinceIds */
-    private function markAll(array $provinceIds): void
-    {
-        foreach (array_chunk($provinceIds, 500) as $chunk) {
-            $this->db->table('localidades')
-                ->whereIn('provincia_id', $chunk)
-                ->where('activo', 1)
-                ->update(['principal' => 1]);
-        }
-    }
-
-    /** @param list<int> $provinceIds */
-    private function markCities(array $provinceIds): void
-    {
-        foreach (array_chunk($provinceIds, 500) as $chunk) {
-            $this->db->table('localidades')
-                ->whereIn('provincia_id', $chunk)
-                ->where('activo', 1)
-                ->where('categoria_fuente', 'CIUDAD')
-                ->update(['principal' => 1]);
-        }
-    }
-
-    /** @param list<int> $provinceIds */
-    private function markBrazil(array $provinceIds): void
-    {
-        $codes = (new \Config\LocalityCatalog())->brazilPrincipalMunicipalityCodes;
-        foreach (array_chunk($codes, 200) as $chunk) {
-            $this->db->table('localidades')
-                ->whereIn('provincia_id', $provinceIds)
-                ->whereIn('codigo_fuente', $chunk)
-                ->where('activo', 1)
-                ->update(['principal' => 1]);
         }
     }
 
