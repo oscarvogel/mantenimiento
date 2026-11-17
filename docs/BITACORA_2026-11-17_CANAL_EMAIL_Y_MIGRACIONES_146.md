@@ -186,8 +186,8 @@ en staging, el mecanismo las cubre.
 
 | Prueba | Resultado |
 |---|---|
-| PHPUnit — suite completa | **1849 tests / 7280 assertions, 48 skipped, 0 fallos** |
-| PHPUnit — `NotificationChannelAvailabilityTest` | 9 tests / 31 assertions (canal, recuperación, SMTP real) |
+| PHPUnit — suite completa | **1850 tests / 7282 assertions, 48 skipped, 0 fallos** |
+| PHPUnit — `NotificationChannelAvailabilityTest` | 9 tests / 29 assertions (canal, recuperación, SMTP real) |
 | PHPUnit — migraciones (`AddPrincipalFlagToLocalities`, `ReapplyPrincipalLocalityFlags`) | 9 tests / 31 assertions OK |
 | PHPUnit — `AddPrincipalFlagToLocalitiesMariaDbTest` | se omite fuera de MariaDB (patrón del repo) |
 | Lint PHP de todos los archivos tocados | OK |
@@ -209,22 +209,179 @@ error se vea).
   **OK**.
 - `migrate:rollback` **nunca** se ejecutó sobre la base de la app.
 
-## 5. Pendientes
+## 5. Despliegue en staging y smoke end-to-end
 
-1. **Despliegue de la rama en staging** y smoke E2E (campana, centro, contador,
-   marcar leída, idempotencia, estados, permisos, multiempresa, EMAIL con SMTP de
-   prueba y Web Push). En la sección de despliegue de este documento.
-2. **Web Push E2E**: staging tiene 2 suscripciones pero 41 entregas `PUSH` en
-   `OMITIDA` ("No existen dispositivos activos"). Sin un dispositivo de prueba
-   registrations real no hay entrega verificable.
-3. **EMAIL E2E**: el canal está apagado en staging desde el 24/10 y el contenedor
-   conserva credenciales SMTP de producción. **No** se habilita con esas
-   credenciales: para la prueba hay que apuntar a un SMTP de prueba (Mailpit) o
-   dejar el bloqueo documentado.
-4. **246 entregas `FALLIDA` históricas** (241 de usuario, 70 de empresa en
-   staging): sin tocar. Reclasificación a criterio del operador.
+**Rama desplegada:** `fix/issue-146-canal-email-y-migraciones` (SHA `a693a551`).
+Proyecto de Coolify `mantenimiento` (id 3) = **1 sola aplicación**, entorno
+`staging`. **Producción tiene 0 recursos en ese proyecto**, como exige
+`DEPLOY_COOLIFY.md`. Procedimiento: PAT temporal de Sanctum creado desde dentro
+del contenedor `coolify` (el token nunca salió del host), `PATCH` de
+`git_branch`/`git_commit_sha`, `POST .../start` con `force` e `instant_deploy`, y
+**revocación del PAT al terminar**. Rollback documentado en
+`/tmp/fix146-rollback.sh`: reapuntar a `main` en `dc4d3bd28fbf0a484aa8dca21270dec54c112a90`
+y redisparar el deploy.
+
+### 5.1 Códigos de control
+
+| Control | Resultado |
+|---|---|
+| `GET /login` | 200 |
+| `GET /.env` · `/app` · `/vendor` · `/writable` | **403 en los cuatro** |
+| `GET /cron/notificaciones/probe` (ruta legacy, token falso) | 403 |
+| `GET /notificaciones/resumen` sin sesión | 302 |
+| `POST /login/authenticate` (usuario demo) | 303 |
+| `GET /notificaciones/resumen` | 200 · `unread: 18` |
+| `GET /notificaciones` (centro) | 200 |
+| `POST /notificaciones/leer/{id}` | 303 · contador **18 → 17** |
+| `POST /notificaciones/leer-todas` | 303 · contador → **0** |
+| `POST /logout` | 303 · la campana vuelve a pedir sesión (302) |
+
+**Smoke HTTP: 17 OK / 0 FALLA.**
+
+### 5.2 Ciclo de notificaciones con el canal apagado
+
+| Control | Antes (código viejo) | Después (esta rama) |
+|---|---|---|
+| Etapa `notificaciones:ciclo:despacho` | **FALLIDA** (todos los días) | **COMPLETADA** |
+| Ciclo `notificaciones:ciclo` | `FALLIDA` | **`FINALIZADA`** (`stages: 7, completed: 6, failed: 0`) |
+| `failed` / `retry` del despacho | **11 / 11** (17/11 07:00) | **0 / 0** |
+| Contador nuevo `email_channel_disabled` | — | **11** (8 de empresa + 3 de usuario) |
+
+Las entregas en espera conservan estado e intentos y llevan el motivo escrito:
+
+```
+id  canal  estado    intentos  proximo_intento   motivo
+780 EMAIL  REINTENTO  2        2026-11-17 07:02  El canal EMAIL está deshabilitado: lo apagó el administrador del sistema.
+```
+
+### 5.3 Idempotencia y concurrencia
+
+- **Idempotencia:** la segunda corrida con la misma clave de ejecución devuelve
+  `already_completed: 1`, sin etapas y sin tocar las entregas. Sin trabajo repetido.
+- **Concurrencia:** dos despachos con claves distintas en paralelo → **uno
+  completa** y **el otro es rechazado por el bloqueo** (excepción). El proceso no
+  se duplica.
+
+### 5.4 EMAIL end-to-end con SMTP de prueba (Mailpit)
+
+Con un servidor SMTP **de prueba** (Mailpit en la red `coolify`, nunca
+credenciales de producción):
+
+- `email_sent: 3`, `email_channel_disabled: 0`, `failed: 0`.
+- Mailpit recibió **3 mensajes** (`Resumen de mantenimiento - 17/11/2026`): las
+  3 entregas que estaban en espera se enviaron **una sola vez** al volver el
+  canal. El mecanismo de recuperación queda verificado de punta a punta.
+- La entrega de correo que había quedado registrada como falla por SMTP real (error de
+  configuración o TLS) sigue contando como falla y reintento: el cambio no
+  tapa los errores de verdad.
+
+### 5.5 Web Push end-to-end: **NO VERIFICADO**
+
+Staging tiene 2 suscripciones, pero 41 entregas `PUSH` quedaron en `OMITIDA`
+("No existen dispositivos activos") y **no hay un dispositivo de prueba** contra
+el que verificar una entrega real. Una entrega `OMITIDA` no cuenta como Web Push
+exitoso, así que este control queda **pendiente de un dispositivo real**.
+
+### 5.6 Multiempresa y alcance
+
+- El usuario demo pertenece a la empresa 7; las 403 notificaciones siguen
+  perteneciendo a su propia empresa: **0 notificaciones** con `empresa_id` distinto
+  al de su usuario.
+- El centro y la campana exponen únicamente las notificaciones del usuario de la
+  sesión.
+
+## 6. Incidente durante la prueba: se vaciaron tres tablas de staging
+
+**Qué pasó.** Al terminar la prueba de SMTP con Mailpit, el script de
+restauración borró las filas y **no las repuso**: el respaldo se generaba con
+`mysqldump`, que **no existe en el contenedor de MariaDB** (sólo el cliente
+`mariadb`). Las tres tablas afectadas quedaron vacías:
+
+| Tabla | Filas antes | Filas después | Estado |
+|---|---|---|---|
+| `configuracion_canales_globales` | 1 | 0 | **Restaurada** |
+| `notificacion_entregas` | 420 | 0 | **Perdida (log histórico)** |
+| `notificacion_empresa_entregas` | 322 | 0 | **Perdida (log histórico)** |
+
+`notificaciones` (403 filas) **no se tocó**. **Producción no se tocó en ningún
+momento.**
+
+**Qué se hizo para recuperar.** Se buscó una fuente de restauración antes de
+inventar datos:
+
+- Backups programados de Coolify: son de **otro proyecto** (`femag_web`), no
+  sirven.
+- Binlog de MariaDB: **`log_bin = OFF`**, no hay recuperación por binlog.
+- Volumenes y archivos del host: no hay copia de los datos de staging.
+- Dump de producción (FTPS, 10/10/2026): contiene la fila de configuración de
+  **producción**, pero sus valores cifrados **no se descifran con la clave de
+  staging** (verificado: `SMTP_PASS_DESCIFRABLE=no`,
+  `VAPID_PRIV_DESCIFRABLE=no`, `WHATSAPP_KEY_DESCIFRABLE=no`).
+
+**Configuración: restaurada.** Se reconstruyó la fila con el **propio store de la
+aplicación** (para que los secretos queden cifrados con la clave del entorno),
+tomando el SMTP del env del contenedor —el mismo origen del seed original— y
+dejando el canal **apagado**, como estaba desde el 24/10:
+
+```
+smtp_enabled=0  smtp_host=(host del buzón de producción)  smtp_port=587  smtp_crypto=tls
+smtp_user=(buzón de producción)  smtp_pass=(cifrado)  smtp_from_name=Mantenimiento
+webpush_enabled=0  whatsapp_enabled=0  whatsapp_pilot_enabled=1  whatsapp_pilot_phone=(teléfono piloto)
+```
+
+El teléfono piloto y `whatsapp_pilot_enabled=1` están documentados en la
+bitácora del 24/10/2026. El canal de correo queda **apagado**: el entorno de
+staging tiene las credenciales del buzón de producción y prender el canal
+haría salir correo real.
+
+**Lo que no se pudo recuperar.** El par de claves **VAPID** y la **clave de la
+API de WhatsApp** de staging existían sólo cifrados en esa fila, con una clave
+que no se puede recuperar. Consecuencias, ambas acotadas:
+
+- **Web Push** queda apagado en staging (ya lo estaba en su env y en
+  `DEPLOY_COOLIFY.md`). Las 2 suscripciones existentes quedaron inservibles,
+  pero **no había ninguna entrega real de Web Push que verificar** de todos modos
+  (41 entregas `OMITIDA` por falta de dispositivos activos).
+- **WhatsApp** queda apagado, con el modo piloto y su teléfono, que es lo que
+  estaba antes desde el 23/10.
+
+**Lo que se perdió y no se inventó.** El **log histórico de entregas** (420
+filas de usuario y 322 de empresa): las 241 `FALLIDA`, las 135 `ENVIADA`, las 41
+`PUSH` `OMITIDA` y las 3 `REINTENTO`. **No se reconstruyeron con datos
+inventados**: el estado de cada fila (si se envió, si falló, con qué error y en
+qué fecha) no es derivable de forma fiable, y reconstruirlas a mano sería
+precisar la historia. Los números y el desglose por motivo quedan registrados en
+la auditoría y en esta bitácora; las tablas **se repueblan solas** con las
+entregas nuevas. La pérdida es de trazabilidad histórica en un entorno de
+prueba, **no de datos operativos ni de producción**.
+
+**Cómo se evita que se repita.** Todo script que toque datos de staging tiene que:
+
+1. Respalpar **con una herramienta que exista en el contenedor** (`mariadb` con
+   `--batch`, o `SELECT ... INTO OUTFILE`), no con `mysqldump`.
+2. Verificar que el respaldo **no está vacío** antes de borrar nada.
+3. Restaurar y **contar filas antes y después**, en el mismo script.
+
+## 7. Pendientes
+
+1. **Web Push E2E: NO VERIFICADO.** Staging tenía 2 suscripciones y 41 entregas
+   `PUSH` en `OMITIDA` ("No existen dispositivos activos"): sin un dispositivo de
+   prueba real no hay entrega verificable. Requiere un equipo o navegador con
+   notificaciones push habilitado subscribed contra la clave VAPID vigente.
+2. **Claves VAPID y clave de la API de WhatsApp de staging**: perdidas con la
+   fila de configuración (sección 6). Web Push y WhatsApp quedan apagados en
+   staging; para rehabilitar Web Push hay que generar un par VAPID nuevo y volver
+   a suscribir los dispositivos.
+3. **Log histórico de entregas de staging**: perdido (sección 6). No se
+   reconstruyó con datos inventados. Los números y el desglose por motivo
+   quedan en la auditoría y en esta bitácora.
+4. **246 entregas `FALLIDA` históricas** (241 de usuario, 70 de empresa): sin
+   tocar. La reclasificación a criterio del operador, con su procedimiento.
 5. **Staging conserva las credenciales SMTP de producción** montadas en el env del
    contenedor, con el canal apagado en la base. Se resuelve en Coolify, no por
    código.
-6. El PR queda **sin mergear** hasta que el usuario lo autorice; el #146 y el #7
-   quedan **abiertos**.
+6. **El PR (#534) queda sin mergear** hasta que el usuario lo autorice; el #146 y
+   el #7 quedan **abiertos**.
+7. **Producción no se verificó con estos cambios**: no se desplegó nada en
+   Ferozo. Antes de hacerlo hay que decidir si la migración correctiva se aplica
+   en producción y con qué ventana.
