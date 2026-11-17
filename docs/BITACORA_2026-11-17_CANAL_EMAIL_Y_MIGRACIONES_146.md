@@ -290,6 +290,25 @@ exitoso, así que este control queda **pendiente de un dispositivo real**.
 - El centro y la campana exponen únicamente las notificaciones del usuario de la
   sesión.
 
+### 5.7 Gate de logs y estado del programado
+
+| Chequeo | Resultado |
+|---|---|
+| Tarea programada "Notificaciones diarias" | `php spark notifications:dispatch`, `0 10 * * *`, **habilitada**, `consecutive_failures = 0` |
+| Ejecuciones de la tarea | **success** los días 13, 14, 15, 16 y 17/11 (10:00 UTC) |
+| Base efectiva del contenedor | `database_default_database=mantenimiento_staging` |
+| `.env` de la app | sin definición de base: la conexión viene del env del contenedor |
+| `GET /login` · `/.env` | 200 · 403 |
+
+**Sobre las entradas CRITICAL/ERROR del log de hoy** (4 CRITICAL, 7 ERROR), todas
+anteriores al deploy final y **ninguna del build desplegado**:
+
+| Hora (local) | Entrada | Origen |
+|---|---|---|
+| 07:55 (×2) | `Access denied ... to database 'mantenimiento_audit_mig_tmp'` | Esquema temporal de un incidente anterior, ya borrado. **No se reproduce**: no hay tarea, proceso ni variable que lo apunte, y la tarea diaria corre bien contra `mantenimiento_staging`. |
+| 07:57 y 08:00 | error de sintaxis SQL cerca de `)` | **Reproducción del Defecto A** en el contenedor de prueba, con el código original. |
+| 09:10 y 09:29 (×2 cada uno) | `Duplicate entry 'notificaciones:ciclo'` + `NotificationDispatchInProgress` | **Prueba de concurrencia**: el segundo despacho paralelo es rechazado por el bloqueo. Es el comportamiento esperado. |
+
 ## 6. Incidente durante la prueba: se vaciaron tres tablas de staging
 
 **Qué pasó.** Al terminar la prueba de SMTP con Mailpit, el script de
