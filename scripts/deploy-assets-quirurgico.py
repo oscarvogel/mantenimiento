@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Deploy quirurgico del frontend a produccion (Ferozo, FTPS).
 
-Sube SOLO assets/dashboard (bundles + manifest). No toca PHP, vendor ni migraciones.
+Sube assets/dashboard (bundles + manifest) y, opcionalmente, archivos puntuales
+del repo pasados con --archivos (por ejemplo un PHP de app/). No toca vendor ni
+corre migraciones.
 
 Pasos:
   1. Verifica que estas en main, sin cambios locales y al dia con origin/main.
@@ -9,7 +11,8 @@ Pasos:
   3. Baja por FTPS el manifest que sirve produccion HOY (no usa copias locales viejas).
   4. Muestra el plan y pide confirmacion (salvo --yes).
   5. Respalda en .deploy/assets-<fecha>/ el manifest actual de produccion.
-  6. Sube los bundles nuevos que produccion no tiene.
+  6. Sube los bundles nuevos que produccion no tiene y los --archivos (respaldando
+     antes la version remota de cada uno).
   7. Sube el manifest al final (nunca apunta a un bundle que todavia no esta).
   8. Verifica por HTTP que cada bundle del manifest nuevo responda 200.
   9. Solo si todo da OK: respalda y borra los bundles huerfanos del manifest viejo.
@@ -18,10 +21,11 @@ Uso (desde la raiz del repo, en Windows):
   py -3 scripts\\deploy-assets-quirurgico.py --dry-run   # solo muestra el plan
   py -3 scripts\\deploy-assets-quirurgico.py             # despliega (pide confirmacion)
   py -3 scripts\\deploy-assets-quirurgico.py --yes       # despliega sin preguntar
+  py -3 scripts\\deploy-assets-quirurgico.py --archivos app/Application/Trips/X.php app/Infrastructure/Trips/Y.php
 
 Rollback: subir el manifest respaldado en .deploy/assets-<fecha>/manifest.json a
-/assets/dashboard/.vite/manifest.json y los bundles de .deploy/assets-<fecha>/huerfanos/
-a /assets/dashboard/assets/.
+/assets/dashboard/.vite/manifest.json, los bundles de .deploy/assets-<fecha>/huerfanos/
+a /assets/dashboard/assets/ y los archivos de .deploy/assets-<fecha>/archivos/ a su ruta.
 """
 from __future__ import annotations
 
@@ -43,6 +47,7 @@ LOCAL_MANIFEST = LOCAL_DIR / ".vite" / "manifest.json"
 REMOTE_DIR = "/assets/dashboard"
 REMOTE_MANIFEST = REMOTE_DIR + "/.vite/manifest.json"
 BASE_URL = "https://vogelconsultoria.com.ar/mantenimiento/"
+PROHIBIDOS = (".env", ".ferozo", "writable/", "vendor/", "frontend/", ".git/", ".deploy/", "tests/")
 
 spec = importlib.util.spec_from_file_location("ferozo_ftps", ROOT / "scripts" / "ferozo-ftps.py")
 ferozo = importlib.util.module_from_spec(spec)
@@ -113,6 +118,26 @@ def bajar(cliente, remoto: str) -> bytes:
     return buffer.getvalue()
 
 
+def validar_archivos(rutas: list[str]) -> list[str]:
+    limpias: list[str] = []
+    versionados = set(git("ls-files").splitlines())
+    for ruta in rutas:
+        r = ruta.replace("\\", "/").lstrip("./")
+        if any(r.startswith(p) or r == p.rstrip("/") for p in PROHIBIDOS):
+            fallar(f"{r} no se sube por este script.")
+        if r not in versionados or not (ROOT / r).is_file():
+            fallar(f"{r} no es un archivo versionado del repo.")
+        limpias.append(r)
+    return limpias
+
+
+def bajar_o_none(cliente, remoto: str) -> bytes | None:
+    try:
+        return bajar(cliente, remoto)
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def listar_remoto(cliente) -> set[str]:
     try:
         return {pathlib.PurePosixPath(n).name for n in cliente.nlst(REMOTE_DIR + "/assets")}
@@ -136,7 +161,9 @@ def main() -> int:
     parser.add_argument("--dry-run", action="store_true", help="Solo muestra el plan; no toca produccion.")
     parser.add_argument("--yes", action="store_true", help="No pide confirmacion.")
     parser.add_argument("--credentials", default=str(ROOT / ".ferozo-credentials"))
+    parser.add_argument("--archivos", nargs="*", default=[], help="Archivos del repo a subir ademas de los assets (ej. app/.../X.php).")
     args = parser.parse_args()
+    archivos = validar_archivos(args.archivos)
 
     sha = verificar_checkout()
     verificar_build()
@@ -155,8 +182,14 @@ def main() -> int:
         refs_actuales = referencias(json.loads(actual_bytes))
         en_remoto = listar_remoto(cliente)
 
-        if actual_bytes == nuevo_bytes:
-            print("   Produccion ya tiene este manifest. Nada que subir.")
+        remotos_actuales = {r: bajar_o_none(cliente, "/" + r) for r in archivos}
+        archivos_a_subir = [r for r in archivos if remotos_actuales[r] != (ROOT / r).read_bytes()]
+        print(f"   Archivos puntuales a subir: {len(archivos_a_subir)}")
+        for r in archivos_a_subir:
+            print(f"     * {r}{'' if remotos_actuales[r] is not None else ' (nuevo en produccion)'}")
+
+        if actual_bytes == nuevo_bytes and not archivos_a_subir:
+            print("   Produccion ya tiene este manifest y estos archivos. Nada que subir.")
             return 0
 
         a_subir = sorted(r for r in refs_nuevas if pathlib.PurePosixPath(r).name not in en_remoto)
@@ -180,7 +213,22 @@ def main() -> int:
         respaldo = ROOT / ".deploy" / f"assets-{dt.datetime.now():%Y%m%d-%H%M%S}-{sha}"
         (respaldo / "huerfanos" / "assets").mkdir(parents=True, exist_ok=True)
         (respaldo / "manifest.json").write_bytes(actual_bytes)
-        print(f"== 5. Respaldo del manifest actual en {respaldo.relative_to(ROOT)}")
+        for r in archivos_a_subir:
+            if remotos_actuales[r] is not None:
+                destino = respaldo / "archivos" / r
+                destino.parent.mkdir(parents=True, exist_ok=True)
+                destino.write_bytes(remotos_actuales[r])
+        print(f"== 5. Respaldo del manifest y archivos actuales en {respaldo.relative_to(ROOT)}")
+
+        if archivos_a_subir:
+            print("== 6a. Subiendo archivos puntuales")
+            for r in archivos_a_subir:
+                ferozo.ensure_remote_directory(cliente, "/" + str(pathlib.PurePosixPath(r).parent))
+                with (ROOT / r).open("rb") as handle:
+                    cliente.storbinary(f"STOR /{r}", handle, blocksize=256 * 1024)
+                if bajar(cliente, "/" + r) != (ROOT / r).read_bytes():
+                    fallar(f"{r} quedo distinto en produccion. Rollback: subir {respaldo / 'archivos' / r}")
+                print(f"   SUBIDO {r} (verificado)")
 
         print("== 6. Subiendo bundles")
         for r in a_subir:

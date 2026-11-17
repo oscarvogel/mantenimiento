@@ -195,7 +195,7 @@ final class DriverSettlementStatement
         return match ($type) {
             'CAJA_INICIAL' => 'Caja inicial',
             'ANTICIPO' => 'Anticipo',
-            'RETIRO' => 'Retiro',
+            'RETIRO' => 'Adelanto de sueldo',
             TripCashMovement::DEVOLUCION => 'Devolución',
             default => $type === '' ? 'Sin dato' : $type,
         };

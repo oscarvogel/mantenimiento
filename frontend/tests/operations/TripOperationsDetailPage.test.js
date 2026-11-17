@@ -157,7 +157,10 @@ describe('detalle de viaje operativo', () => {
           consumption: { km: 500, liters_per_100: 20, source: 'ODOMETRO_VIAJE' },
           fuel: [{ id: 1, fecha: '2026-10-20 10:00:00', litros: 100, importe: 50000, moneda: 'ARS', importe_ars: 50000, kilometraje: 145000, estacion: 'YPF', comprobante: 'A-1', observaciones: null }],
           expenses: [{ id: 1, fecha: '2026-10-20 11:00:00', importe: 20000, moneda: 'ARS', importe_ars: 20000, categoria: 'Peaje', medio_pago: 'Efectivo', pagado_de_caja: true, comprobante: 'T-1', observaciones: null }],
-          cashMovements: [{ id: 1, tipo: 'ANTICIPO', fecha: '2026-10-20 07:00:00', importe: 100000, moneda: 'ARS', importe_ars: 100000, observaciones: null }],
+          cashMovements: [
+            { id: 1, tipo: 'ANTICIPO', fecha: '2026-10-20 07:00:00', importe: 100000, moneda: 'ARS', importe_ars: 100000, observaciones: null },
+            { id: 2, tipo: 'RETIRO', fecha: '2026-10-20 08:00:00', importe: 1800000, moneda: 'ARS', importe_ars: 1800000, observaciones: null },
+          ],
           options: { expenseCategories: [{ id: 1, label: 'Peaje' }], paymentMethods: [{ id: 1, label: 'Efectivo' }], currencies: [{ code: 'ARS', label: 'Peso argentino' }] },
         },
       },
@@ -168,6 +171,13 @@ describe('detalle de viaje operativo', () => {
     expect(wrapper.text()).toContain('YPF')
     expect(wrapper.text()).toContain('Peaje')
     expect(wrapper.text()).toContain('Anticipo')
+    // El tipo RETIRO se muestra como "Adelanto de sueldo" para los choferes.
+    expect(wrapper.text()).toContain('Adelanto de sueldo')
+    expect(wrapper.text()).not.toMatch(/\bRetiro\b/)
+    const cashButton = wrapper.findAll('button').find((button) => button.text().includes('Caja del chofer'))
+    await cashButton.trigger('click')
+    await nextTick()
+    expect(wrapper.get('option[value="RETIRO"]').text()).toBe('Adelanto de sueldo')
     expect(wrapper.text()).toContain('Cargar combustible')
     expect(wrapper.text()).toContain('Cargar gasto')
     expect(wrapper.text()).toContain('Caja del chofer')

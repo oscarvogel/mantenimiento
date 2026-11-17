@@ -632,7 +632,7 @@ Nunca se recalcula un viaje importado ni se le agrega un tramo operativo.
 | `viaje_operativo_tramos` | Tramo comercial, con los dos fletes. | id, viaje_id, empresa_id, sucursal_id, orden, cliente_id, origen, destino, km, moneda, cotizacion, flete_facturacion, flete_facturacion_ars, moneda_liquidacion, cotizacion_liquidacion, flete_liquidacion, flete_liquidacion_ars, fecha_inicio, fecha_fin, observaciones |
 | `viaje_operativo_combustible` | Carga de combustible del viaje, imputable a un tramo. | id, viaje_id, tramo_id, empresa_id, sucursal_id, fecha, litros, importe, moneda, cotizacion, importe_ars, kilometraje, estacion, comprobante, observaciones |
 | `viaje_operativo_gastos` | Gasto del viaje, imputable a un tramo, con su pagador. | id, viaje_id, tramo_id, empresa_id, sucursal_id, categoria_id, fecha, importe, moneda, cotizacion, importe_ars, medio_pago_id, pagado_de_caja, pagado_por, comprobante, observaciones |
-| `viaje_operativo_caja_movimientos` | Caja del chofer: anticipo, retiro y devolución. | id, viaje_id, empresa_id, sucursal_id, tipo, fecha, importe, moneda, cotizacion, importe_ars, observaciones |
+| `viaje_operativo_caja_movimientos` | Caja del chofer: anticipo, adelanto de sueldo (tipo `RETIRO`) y devolución. | id, viaje_id, empresa_id, sucursal_id, tipo, fecha, importe, moneda, cotizacion, importe_ars, observaciones |
 | `viaje_operativo_otros_haberes` | Otros haberes del viaje, con su empleado. | id, viaje_id, empresa_id, sucursal_id, empleado_id, fecha, concepto, importe, moneda, cotizacion, importe_ars, observaciones |
 
 **Los estados del viaje** son `PLANIFICADO`, `EN_CURSO`, `FINALIZADO` y `CANCELADO`. La cancelación sale de

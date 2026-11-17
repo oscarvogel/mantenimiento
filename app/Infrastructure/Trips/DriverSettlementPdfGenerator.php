@@ -97,7 +97,7 @@ final class DriverSettlementPdfGenerator implements DriverSettlementPdfRenderer
         $this->section($pdf, 'Gastos pagados con caja');
         $this->tableHeader($pdf, [30, 60, 30, 30, 30], ['Fecha', 'Concepto', 'Comprobante', 'Importe', 'Importe ARS']);
         $this->moneyRows($pdf, $statement['cashExpenses'] ?? [], 'No hay gastos pagados con caja.', static fn (array $row): array => [$row['concepto'] ?? '', $row['comprobante'] ?? '-']);
-        $this->summaryLine($pdf, 'Caja entregada (caja inicial, anticipos y retiros)', $this->money($totals['cash_delivered_ars'] ?? 0));
+        $this->summaryLine($pdf, 'Caja entregada (caja inicial, anticipos y adelantos de sueldo)', $this->money($totals['cash_delivered_ars'] ?? 0));
         $this->summaryLine($pdf, 'Gastos pagados con caja', $this->money(array_sum(array_column($statement['cashExpenses'] ?? [], 'importe_ars'))));
         $this->summaryLine($pdf, 'Devoluciones', $this->money($totals['cash_returned_ars'] ?? 0));
         $this->summaryLine($pdf, 'Saldo de caja pendiente de rendir', $this->money($totals['cash_balance_ars'] ?? 0), true);
