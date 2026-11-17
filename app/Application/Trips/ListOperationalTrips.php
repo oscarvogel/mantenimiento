@@ -11,7 +11,11 @@ use DomainException;
 
 final class ListOperationalTrips
 {
-    private const PER_PAGE = 20;
+    /** Tamaño de página por defecto del listado (#532). */
+    public const DEFAULT_PER_PAGE = 25;
+
+    /** Tamaños de página que el operador puede elegir. Cualquier otro valor se rechaza. */
+    public const PER_PAGE_OPTIONS = [10, 25, 50, 100];
 
     private const STATUS_LABELS = [
         Trip::PLANIFICADO => 'Planificado',
@@ -33,7 +37,7 @@ final class ListOperationalTrips
     }
 
     /** @return array<string,mixed> */
-    public function execute(ActorContext $actor, OperationalTripFilters $filters, int $page = 1): array
+    public function execute(ActorContext $actor, OperationalTripFilters $filters, int $page = 1, int $perPage = self::DEFAULT_PER_PAGE): array
     {
         if ($actor->isSuperAdmin() || $actor->companyId() === null || ! $actor->hasPermission('viajes.ver')) {
             throw new DomainException('No tenés permiso para consultar viajes.');
@@ -41,19 +45,31 @@ final class ListOperationalTrips
         if ($page < 1) {
             throw new DomainException('La página de viajes solicitada no es válida.');
         }
+        if (! in_array($perPage, self::PER_PAGE_OPTIONS, true)) {
+            throw new DomainException('La cantidad de viajes por página no es válida.');
+        }
 
         $companyId = $actor->companyId();
         $branchIds = $actor->hasAllCompanyBranches() ? null : $actor->branchIds();
         $canOperate = $actor->hasPermission('viajes.operar');
         if ($branchIds === []) {
-            return $this->payload($filters, [], [], [], 0, $page, $canOperate);
+            return $this->payload($filters, [], [], [], 0, 1, $perPage, $canOperate);
         }
 
         $branches = $this->readModel->branches($companyId, $branchIds);
         $equipment = $this->readModel->equipmentOptions($companyId, $branchIds);
-        $result = $this->readModel->list($companyId, $branchIds, $filters, $page, self::PER_PAGE);
+        $result = $this->readModel->list($companyId, $branchIds, $filters, $page, $perPage);
 
-        return $this->payload($filters, $branches, $equipment, $result['items'], $result['total'], $page, $canOperate);
+        // Una página posterior a la última (por ejemplo, un enlace guardado
+        // cuando había más viajes) muestra la última página con datos en lugar
+        // de una grilla vacía que contradice el total.
+        $lastPage = max(1, (int) ceil($result['total'] / $perPage));
+        if ($page > $lastPage) {
+            $page = $lastPage;
+            $result = $this->readModel->list($companyId, $branchIds, $filters, $page, $perPage);
+        }
+
+        return $this->payload($filters, $branches, $equipment, $result['items'], $result['total'], $page, $perPage, $canOperate);
     }
 
     /**
@@ -69,10 +85,13 @@ final class ListOperationalTrips
         array $rows,
         int $total,
         int $page,
+        int $perPage,
         bool $canOperate,
     ): array {
-        $pages = max(1, (int) ceil($total / self::PER_PAGE));
+        $pages = max(1, (int) ceil($total / $perPage));
         $page = min($page, $pages);
+        $from = $total === 0 ? 0 : (($page - 1) * $perPage) + 1;
+        $to = $total === 0 ? 0 : min($total, $page * $perPage);
 
         return [
             'filters' => $filters->toArray() + ['branchName' => $this->branchName($branches, $filters->branchId)],
@@ -87,7 +106,17 @@ final class ListOperationalTrips
             ],
             'statusLabels' => self::STATUS_LABELS,
             'trips' => $rows,
-            'pagination' => ['page' => $page, 'perPage' => self::PER_PAGE, 'total' => $total, 'pages' => $pages],
+            'pagination' => [
+                'page' => $page,
+                'perPage' => $perPage,
+                'perPageOptions' => self::PER_PAGE_OPTIONS,
+                'total' => $total,
+                'pages' => $pages,
+                'from' => $from,
+                'to' => $to,
+            ],
+            // Distingue «todavía no hay viajes» de «ningún viaje cumple los filtros».
+            'hasActiveFilters' => $filters->hasActiveFilters(),
             'links' => [
                 'index' => base_url('viajes/operativos'),
                 'dashboard' => base_url('viajes/operativos/dashboard'),

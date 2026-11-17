@@ -9,6 +9,7 @@ use App\Application\Trips\AddTripLegCommand;
 use App\Application\Trips\CreateTripCommand;
 use App\Application\Trips\DeleteOperationalTripCost;
 use App\Application\Trips\DeleteOperationalTripCostCommand;
+use App\Application\Trips\ListOperationalTrips;
 use App\Application\Trips\OperationalTripFilters;
 use App\Application\Trips\RegisterTripCashMovementCommand;
 use App\Application\Trips\RegisterTripExpenseCommand;
@@ -32,6 +33,20 @@ use Throwable;
 
 final class OperationalTrips extends BaseController
 {
+    /**
+     * Tamaño de página pedido en la URL. Un valor ausente o fuera del catálogo
+     * vuelve al tamaño por defecto: una URL vieja o editada a mano no rompe el
+     * listado (#532).
+     */
+    private function perPage(mixed $value): int
+    {
+        $parsed = filter_var($value, FILTER_VALIDATE_INT);
+
+        return is_int($parsed) && in_array($parsed, ListOperationalTrips::PER_PAGE_OPTIONS, true)
+            ? $parsed
+            : ListOperationalTrips::DEFAULT_PER_PAGE;
+    }
+
     public function index(): string|RedirectResponse
     {
         try {
@@ -39,7 +54,8 @@ final class OperationalTrips extends BaseController
             $filters = OperationalTripFilters::fromQuery($this->request->getGet());
             $requestedPage = filter_var($this->request->getGet('pagina'), FILTER_VALIDATE_INT);
             $page = $requestedPage === false || $requestedPage === null ? 1 : $requestedPage;
-            $payload = service('listOperationalTrips')->execute($actor, $filters, $page);
+            $perPage = $this->perPage($this->request->getGet('por_pagina'));
+            $payload = service('listOperationalTrips')->execute($actor, $filters, $page, $perPage);
 
             return $this->renderApp($actor, 'trips-operations', 'trips-operations', 'Viajes operativos', $payload);
         } catch (Throwable $exception) {

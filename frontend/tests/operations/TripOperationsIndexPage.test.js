@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import TripOperationsIndexPage from '../../src/pages/operations/TripOperationsIndexPage.vue'
 import AutocompleteSelect from '../../src/pages/operations/components/AutocompleteSelect.vue'
@@ -100,5 +100,126 @@ describe('viajes operativos', () => {
 
     expect(wrapper.text()).toContain('Todavía no hay viajes operativos para mostrar')
     wrapper.unmount()
+  })
+})
+
+const trip = (id) => ({
+  id, numero: id, estado: 'FINALIZADO', estado_label: 'Finalizado', fecha_salida_real: '2026-11-01 08:00:00',
+  tractor: 'AA111AA', choferes: ['Pérez, Juan'], paradas: 2, tramos: [],
+})
+
+const pagedData = (pagination, extra = {}) => ({
+  filters: { order: 'desc' },
+  options: { branches: [], statuses: [], equipment: [] },
+  links: { index: '/viajes/operativos', dashboard: '/viajes/operativos/dashboard', create: '/viajes/operativos/nuevo' },
+  canOperate: true,
+  hasActiveFilters: false,
+  trips: [trip(1), trip(2)],
+  pagination: { perPageOptions: [10, 25, 50, 100], ...pagination },
+  ...extra,
+})
+
+const linkByText = (wrapper, text) => wrapper.findAll('nav a').find((link) => link.text() === text)
+const disabledByText = (wrapper, text) => wrapper.findAll('nav span[aria-disabled="true"]').find((item) => item.text() === text)
+
+beforeEach(() => {
+  window.history.replaceState({}, '', '/viajes/operativos?estado=FINALIZADO&orden=asc&pagina=2')
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
+
+describe('paginación de viajes operativos (#532)', () => {
+  it('muestra el rango visible, el total y la página actual', () => {
+    const wrapper = mount(TripOperationsIndexPage, {
+      props: { data: pagedData({ page: 2, perPage: 25, total: 346, pages: 14, from: 26, to: 50 }) },
+    })
+
+    expect(wrapper.text()).toContain('Mostrando 26–50 de 346 viajes')
+    expect(wrapper.text()).toContain('Página 2 de 14')
+  })
+
+  it('arma primera, anterior, siguiente y última conservando filtros y orden', () => {
+    const wrapper = mount(TripOperationsIndexPage, {
+      props: { data: pagedData({ page: 2, perPage: 25, total: 346, pages: 14, from: 26, to: 50 }) },
+    })
+
+    expect(linkByText(wrapper, 'Primera').attributes('href')).toBe('/viajes/operativos?estado=FINALIZADO&orden=asc')
+    expect(linkByText(wrapper, 'Anterior').attributes('href')).toBe('/viajes/operativos?estado=FINALIZADO&orden=asc')
+    expect(linkByText(wrapper, 'Siguiente').attributes('href')).toBe('/viajes/operativos?estado=FINALIZADO&orden=asc&pagina=3')
+    expect(linkByText(wrapper, 'Última').attributes('href')).toBe('/viajes/operativos?estado=FINALIZADO&orden=asc&pagina=14')
+  })
+
+  it('deshabilita primera y anterior en la primera página, y siguiente y última en la última', () => {
+    const first = mount(TripOperationsIndexPage, {
+      props: { data: pagedData({ page: 1, perPage: 25, total: 26, pages: 2, from: 1, to: 25 }) },
+    })
+    expect(disabledByText(first, 'Primera')).toBeTruthy()
+    expect(disabledByText(first, 'Anterior')).toBeTruthy()
+    expect(linkByText(first, 'Siguiente')).toBeTruthy()
+
+    const last = mount(TripOperationsIndexPage, {
+      props: { data: pagedData({ page: 2, perPage: 25, total: 26, pages: 2, from: 26, to: 26 }) },
+    })
+    expect(disabledByText(last, 'Siguiente')).toBeTruthy()
+    expect(disabledByText(last, 'Última')).toBeTruthy()
+    expect(linkByText(last, 'Anterior')).toBeTruthy()
+  })
+
+  it('con una sola página muestra el total y el tamaño, sin botones de navegación', () => {
+    const wrapper = mount(TripOperationsIndexPage, {
+      props: { data: pagedData({ page: 1, perPage: 25, total: 2, pages: 1, from: 1, to: 2 }) },
+    })
+
+    expect(wrapper.text()).toContain('Mostrando 1–2 de 2 viajes')
+    expect(wrapper.find('select[aria-label="Viajes por página"]').exists()).toBe(true)
+    expect(wrapper.find('select[aria-label="Ir a la página"]').exists()).toBe(false)
+    expect(linkByText(wrapper, 'Siguiente')).toBeUndefined()
+  })
+
+  it('al cambiar el tamaño vuelve a la primera página y conserva los filtros', async () => {
+    const assign = vi.fn()
+    vi.stubGlobal('location', { ...window.location, search: window.location.search, assign })
+    const wrapper = mount(TripOperationsIndexPage, {
+      props: { data: pagedData({ page: 2, perPage: 25, total: 346, pages: 14, from: 26, to: 50 }) },
+    })
+
+    await wrapper.find('select[aria-label="Viajes por página"]').setValue('50')
+
+    expect(assign).toHaveBeenCalledWith('/viajes/operativos?estado=FINALIZADO&orden=asc&por_pagina=50')
+  })
+
+  it('permite elegir una página concreta', async () => {
+    const assign = vi.fn()
+    vi.stubGlobal('location', { ...window.location, search: window.location.search, assign })
+    const wrapper = mount(TripOperationsIndexPage, {
+      props: { data: pagedData({ page: 2, perPage: 25, total: 346, pages: 14, from: 26, to: 50 }) },
+    })
+
+    await wrapper.find('select[aria-label="Ir a la página"]').setValue('7')
+
+    expect(assign).toHaveBeenCalledWith('/viajes/operativos?estado=FINALIZADO&orden=asc&pagina=7')
+  })
+
+  it('aplicar filtros conserva el tamaño elegido y no arrastra la página', () => {
+    const wrapper = mount(TripOperationsIndexPage, {
+      props: { data: pagedData({ page: 3, perPage: 50, total: 346, pages: 7, from: 101, to: 150 }) },
+    })
+
+    const form = wrapper.find('form[method="get"]')
+    expect(form.find('input[type="hidden"][name="por_pagina"]').attributes('value')).toBe('50')
+    expect(form.find('[name="pagina"]').exists()).toBe(false)
+  })
+
+  it('distingue la falta de viajes de la falta de resultados con filtros', () => {
+    const empty = { page: 1, perPage: 25, total: 0, pages: 1, from: 0, to: 0 }
+
+    const filtered = mount(TripOperationsIndexPage, { props: { data: pagedData(empty, { trips: [], hasActiveFilters: true }) } })
+    expect(filtered.text()).toContain('Ningún viaje cumple estos filtros')
+    expect(filtered.text()).not.toContain('Todavía no hay viajes operativos')
+
+    const none = mount(TripOperationsIndexPage, { props: { data: pagedData(empty, { trips: [], hasActiveFilters: false }) } })
+    expect(none.text()).toContain('Todavía no hay viajes operativos para mostrar')
   })
 })

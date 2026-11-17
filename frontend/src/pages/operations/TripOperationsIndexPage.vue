@@ -12,7 +12,21 @@ const props = defineProps({ data: { type: Object, required: true } })
 const filters = computed(() => props.data.filters ?? {})
 const options = computed(() => props.data.options ?? { branches: [], statuses: [], equipment: [] })
 const trips = computed(() => props.data.trips ?? [])
-const pagination = computed(() => props.data.pagination ?? { page: 1, perPage: 20, total: 0, pages: 1 })
+const pagination = computed(() => ({
+  page: 1,
+  perPage: 25,
+  perPageOptions: [10, 25, 50, 100],
+  total: 0,
+  pages: 1,
+  from: 0,
+  to: 0,
+  ...(props.data.pagination ?? {}),
+}))
+const numberFormat = new Intl.NumberFormat('es-AR')
+const fmtCount = (value) => numberFormat.format(Number(value ?? 0))
+const isFirstPage = computed(() => pagination.value.page <= 1)
+const isLastPage = computed(() => pagination.value.page >= pagination.value.pages)
+const pageNumbers = computed(() => Array.from({ length: pagination.value.pages }, (_, index) => index + 1))
 const links = computed(() => props.data.links ?? { index: '/viajes/operativos', dashboard: '/viajes/operativos/dashboard', create: '/viajes/operativos/nuevo' })
 const statusTone = {
   PLANIFICADO: 'bg-info-subtle text-info-strong',
@@ -29,13 +43,22 @@ const fmtDate = (value) => {
   const match = String(value ?? '').match(/^(\d{4})-(\d{2})-(\d{2})/)
   return match ? `${match[3]}/${match[2]}/${match[1]}` : 'Sin fecha'
 }
-const pageUrl = (page) => {
+// Filtros, orden y tamaño viajan en la URL: navegar entre páginas los conserva
+// y volver desde el detalle de un viaje recupera la misma página (#532).
+const listUrl = (changes) => {
   const query = new URLSearchParams(window.location.search)
-  if (page <= 1) query.delete('pagina')
-  else query.set('pagina', String(page))
+  for (const [key, value] of Object.entries(changes)) {
+    if (value === null) query.delete(key)
+    else query.set(key, String(value))
+  }
   const suffix = query.toString()
   return `${links.value.index}${suffix ? `?${suffix}` : ''}`
 }
+const pageUrl = (page) => listUrl({ pagina: page <= 1 ? null : page })
+// Cambiar el tamaño vuelve a la primera página: la posición anterior deja de tener sentido.
+const pageSizeUrl = (size) => listUrl({ pagina: null, por_pagina: Number(size) === 25 ? null : size })
+const goToPage = (event) => window.location.assign(pageUrl(Number(event.target.value)))
+const changePageSize = (event) => window.location.assign(pageSizeUrl(event.target.value))
 </script>
 
 <template>
@@ -54,6 +77,8 @@ const pageUrl = (page) => {
 
     <PanelCard title="Filtros" class="mb-5">
       <form method="get" class="grid gap-4 md:grid-cols-2 xl:grid-cols-4 xl:items-end">
+        <!-- Aplicar filtros vuelve a la primera página y conserva el tamaño elegido. -->
+        <input v-if="pagination.perPage !== 25" type="hidden" name="por_pagina" :value="pagination.perPage" />
         <label class="block">
           <span class="mb-1.5 block text-sm font-semibold text-ink">Desde</span>
           <input type="date" name="desde" :value="filters.from ?? ''" :class="fieldClass" />
@@ -100,7 +125,14 @@ const pageUrl = (page) => {
       </form>
     </PanelCard>
 
-    <PanelCard v-if="trips.length === 0" title="Viajes">
+    <PanelCard v-if="trips.length === 0 && data.hasActiveFilters" title="Viajes">
+      <EmptyState title="Ningún viaje cumple estos filtros" description="Probá con otro período, estado o patente, o limpiá los filtros para ver todos los viajes." />
+      <div class="mt-2 text-center">
+        <a :href="links.index" :class="secondaryButton">Limpiar filtros</a>
+      </div>
+    </PanelCard>
+
+    <PanelCard v-else-if="trips.length === 0" title="Viajes">
       <EmptyState title="Todavía no hay viajes operativos para mostrar" description="Cuando planifiques un viaje vas a ver acá su recorrido, equipo, choferes y estado. Los viajes importados se consultan en Historial." />
       <div v-if="data.canOperate" class="mt-2 text-center">
         <a :href="links.create" :class="primaryButton"><PlusIcon class="mr-2 size-4" aria-hidden="true" />Planificar el primer viaje</a>
@@ -151,11 +183,35 @@ const pageUrl = (page) => {
           </tbody>
         </table>
       </div>
-      <nav v-if="pagination.pages > 1" aria-label="Paginación de viajes operativos" class="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border-subtle pt-4">
-        <p class="text-xs text-ink-muted">Página {{ pagination.page }} de {{ pagination.pages }} · {{ pagination.total }} viajes</p>
-        <div class="flex gap-2">
-          <a :href="pageUrl(pagination.page - 1)" :class="[secondaryButton, pagination.page <= 1 ? 'pointer-events-none opacity-50' : '']">Anterior</a>
-          <a :href="pageUrl(pagination.page + 1)" :class="[secondaryButton, pagination.page >= pagination.pages ? 'pointer-events-none opacity-50' : '']">Siguiente</a>
+      <nav aria-label="Paginación de viajes operativos" class="mt-4 flex flex-col gap-3 border-t border-border-subtle pt-4 lg:flex-row lg:items-center lg:justify-between">
+        <p class="text-sm text-ink-muted" aria-live="polite">
+          Mostrando <span class="font-semibold text-ink">{{ fmtCount(pagination.from) }}–{{ fmtCount(pagination.to) }}</span>
+          de <span class="font-semibold text-ink">{{ fmtCount(pagination.total) }}</span> {{ Number(pagination.total) === 1 ? 'viaje' : 'viajes' }}
+          · Página {{ pagination.page }} de {{ pagination.pages }}
+        </p>
+        <div class="flex flex-wrap items-center gap-2">
+          <label class="flex items-center gap-2 text-sm font-semibold text-ink-muted">
+            Mostrar
+            <select :value="pagination.perPage" class="min-h-10 rounded-lg border border-border bg-white px-2 text-ink" aria-label="Viajes por página" @change="changePageSize">
+              <option v-for="size in pagination.perPageOptions" :key="size" :value="size">{{ size }}</option>
+            </select>
+          </label>
+          <template v-if="pagination.pages > 1">
+            <span v-if="isFirstPage" :class="[secondaryButton, 'cursor-not-allowed opacity-50']" aria-disabled="true">Primera</span>
+            <a v-else :href="pageUrl(1)" :class="secondaryButton">Primera</a>
+            <span v-if="isFirstPage" :class="[secondaryButton, 'cursor-not-allowed opacity-50']" aria-disabled="true">Anterior</span>
+            <a v-else :href="pageUrl(pagination.page - 1)" :class="secondaryButton" rel="prev">Anterior</a>
+            <label class="flex items-center gap-2 text-sm font-semibold text-ink-muted">
+              Página
+              <select :value="pagination.page" class="min-h-10 rounded-lg border border-border bg-white px-2 text-ink" aria-label="Ir a la página" @change="goToPage">
+                <option v-for="number in pageNumbers" :key="number" :value="number">{{ number }}</option>
+              </select>
+            </label>
+            <span v-if="isLastPage" :class="[secondaryButton, 'cursor-not-allowed opacity-50']" aria-disabled="true">Siguiente</span>
+            <a v-else :href="pageUrl(pagination.page + 1)" :class="secondaryButton" rel="next">Siguiente</a>
+            <span v-if="isLastPage" :class="[secondaryButton, 'cursor-not-allowed opacity-50']" aria-disabled="true">Última</span>
+            <a v-else :href="pageUrl(pagination.pages)" :class="secondaryButton">Última</a>
+          </template>
         </div>
       </nav>
     </PanelCard>
