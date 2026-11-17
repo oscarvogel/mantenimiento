@@ -53,7 +53,21 @@ alerta existía, pero no era accionable y no medía recurrencia.
 - Vitest: modal de evidencia y formulario de revisión.
 - Se regeneran los bundles del dashboard.
 
+## Publicación
+
+- Backup quirúrgico previo: `dist/ferozo-backup-lecturas-20261117-075550.sql`
+  (110.615 bytes, SHA-256 `21c1eb4bf74edaaef37c140feef1cc1f6ddd3512cac4e8dc8a5c842d33f2dd6d`).
+  Incluye `migrations`, `lecturas_equipo_evidencias` y `lecturas_equipo`.
+  El helper se eliminó y se verificó HTTP 404.
+- PR **#531** mergeado a `main` (`dce63c24`).
+- Deploy incremental a Ferozo: **48 archivos**, **1 migración**, `UPLOAD=OK`.
+- `MIGRATION_STATUS_HTTP=200`, `MIGRATIONS=OK`, `migrate.php` eliminado y 404.
+- Smoke tests: login 200, `favicon.ico` 200, `.env`/`app/`/`vendor/`/`writable/`
+  403, `migrate.php` 404.
+- Estado productivo: `.deploy/production.json` → `dce63c24`.
+- Bundle servido: `main-sFOYW3to.js`; contiene “Calidad de lectura IA”,
+  “Marcar como revisada” y “(descartado)”.
+
 ## Pendiente
 
-- Desplegar la migración y el código a producción.
 - Validar en producción que la revisión y la alerta funcionan con datos reales.
