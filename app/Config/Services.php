@@ -83,6 +83,7 @@ use App\Application\Notifications\MarkNotificationRead;
 use App\Application\Notifications\NotificationChannelPolicy;
 use App\Application\Notifications\Port\GlobalNotificationSettingsStore;
 use App\Application\Notifications\Port\DriverPhoneAuditReadModel;
+use App\Application\Notifications\Port\NotificationChannelAvailability;
 use App\Application\Notifications\Port\NotificationCronRateLimiter;
 use App\Application\Notifications\NotificationDeliverySchedule;
 use App\Application\Notifications\NotificationPreferenceResolution;
@@ -97,6 +98,7 @@ use App\Infrastructure\Audit\CodeIgniterAuditTrailReadModel;
 use App\Infrastructure\Organization\CodeIgniterOrganizationAdministration;
 use App\Infrastructure\Organization\CodeIgniterTenantAdministration;
 use App\Infrastructure\Notifications\CodeIgniterEmailNotificationGateway;
+use App\Infrastructure\Notifications\CodeIgniterGlobalNotificationChannelAvailability;
 use App\Infrastructure\Notifications\CodeIgniterGlobalNotificationSettingsStore;
 use App\Infrastructure\Notifications\CodeIgniterNotificationCronRateLimiter;
 use App\Infrastructure\Notifications\CodeIgniterNotificationDeliveryQueue;
@@ -617,10 +619,19 @@ class Services extends BaseService
             static::notificationClock(false),
             new NotificationDeliverySchedule(),
             new NotificationChannelPolicy(),
-            static::webPushAvailable(),
+            static::notificationChannelAvailability(false),
             (string) env('alerts.dailyRunTime', '07:00'),
             db_connect(),
         );
+    }
+
+    public static function notificationChannelAvailability(bool $getShared = true): NotificationChannelAvailability
+    {
+        if ($getShared) {
+            return static::getSharedInstance('notificationChannelAvailability');
+        }
+
+        return new CodeIgniterGlobalNotificationChannelAvailability(static::globalNotificationSettingsStore(false));
     }
 
     public static function webPushSubscriptionStore(bool $getShared = true): CodeIgniterWebPushSubscriptionStore
@@ -1129,16 +1140,6 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
         }
 
         return new SendWebPushTest(static::webPushGateway(false));
-    }
-
-    private static function webPushAvailable(): bool
-    {
-        $settings = static::globalNotificationSettingsStore(false)->get();
-
-        return (bool) ($settings['webpush_enabled'] ?? false)
-            && trim((string) ($settings['webpush_subject'] ?? '')) !== ''
-            && trim((string) ($settings['webpush_public_key'] ?? '')) !== ''
-            && trim((string) ($settings['webpush_private_key'] ?? '')) !== '';
     }
 
     public static function appShellPayload(bool $getShared = true): AppShellPayload

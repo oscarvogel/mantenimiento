@@ -11,6 +11,7 @@ use App\Application\Notifications\Port\NotificationProcessControl;
 use App\Application\Notifications\Port\WebPushGateway;
 use App\Application\Notifications\Port\WhatsAppNotificationDeliveryQueue;
 use App\Application\Notifications\Port\WhatsAppNotificationGateway;
+use App\Domain\Notifications\NotificationChannelDisabledException;
 use Throwable;
 
 final readonly class RunNotificationDispatch
@@ -40,7 +41,7 @@ final readonly class RunNotificationDispatch
             if ($executionId === null) {
                 return ['email_sent' => 0, 'company_email_sent' => 0, 'push_sent' => 0, 'whatsapp_sent' => 0, 'failed' => 0, 'retry' => 0, 'expired' => 0, 'skipped' => 0, 'already_completed' => 1];
             }
-            $summary = ['email_sent' => 0, 'company_email_sent' => 0, 'push_sent' => 0, 'whatsapp_sent' => 0, 'whatsapp_user_digests_scheduled' => 0, 'whatsapp_confirmed' => 0, 'whatsapp_gateway_failed' => 0, 'failed' => 0, 'retry' => 0, 'expired' => 0, 'skipped' => 0, 'already_completed' => 0];
+            $summary = ['email_sent' => 0, 'company_email_sent' => 0, 'push_sent' => 0, 'whatsapp_sent' => 0, 'whatsapp_user_digests_scheduled' => 0, 'whatsapp_confirmed' => 0, 'whatsapp_gateway_failed' => 0, 'failed' => 0, 'retry' => 0, 'expired' => 0, 'skipped' => 0, 'already_completed' => 0, 'email_channel_disabled' => 0];
             $this->dispatchEmail($summary, $limit);
             $this->dispatchCompanyEmail($summary, $limit);
             $this->dispatchPush($summary, $limit);
@@ -80,6 +81,16 @@ final readonly class RunNotificationDispatch
                     $this->deliveries->delivered((int) $item['id']);
                     $summary['email_sent']++;
                 }
+            } catch (NotificationChannelDisabledException $exception) {
+                // El canal está deshabilitado: no es una falla. Las entregas
+                // quedan en espera (no se pierden, no se cuentan como
+                // reintento) y se envían cuando el canal vuelva a estar
+                // disponible.
+                foreach ($items as $item) {
+                    $this->deliveries->deferred((int) $item['id'], $exception->getMessage());
+                    $summary['email_channel_disabled']++;
+                }
+                log_message('notice', 'Despacho de correo omitido: {reason}', ['reason' => $exception->getMessage()]);
             } catch (Throwable $exception) {
                 foreach ($items as $item) {
                     $retryable = (int) $item['intentos'] < 3;
@@ -133,6 +144,14 @@ final readonly class RunNotificationDispatch
                     $this->deliveries->deliveredCompany((int) $item['id']);
                     $summary['company_email_sent']++;
                 }
+            } catch (NotificationChannelDisabledException $exception) {
+                // Igual que el correo a usuarios: la entrega queda registrada y
+                // en espera, sin contar como falla ni como reintento.
+                foreach ($items as $item) {
+                    $this->deliveries->skippedCompany((int) $item['id'], $exception->getMessage());
+                    $summary['email_channel_disabled']++;
+                }
+                log_message('notice', 'Despacho de correo a empresa omitido: {reason}', ['reason' => $exception->getMessage()]);
             } catch (Throwable $exception) {
                 foreach ($items as $item) {
                     $retryable = (int) $item['intentos'] < 3;

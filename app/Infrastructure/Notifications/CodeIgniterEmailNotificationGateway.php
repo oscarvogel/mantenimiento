@@ -7,6 +7,8 @@ namespace App\Infrastructure\Notifications;
 use App\Application\Notifications\Port\EmailNotificationGateway;
 use App\Application\Notifications\Port\GlobalNotificationSettingsStore;
 use App\Application\Notifications\Port\NotificationClock;
+use App\Domain\Notifications\NotificationChannel;
+use App\Domain\Notifications\NotificationChannelDisabledException;
 use DomainException;
 use RuntimeException;
 
@@ -26,7 +28,13 @@ final class CodeIgniterEmailNotificationGateway implements EmailNotificationGate
 
         $settings = $this->settings->get();
         if (! (bool) ($settings['smtp_enabled'] ?? false)) {
-            throw new DomainException('No se pudo enviar el correo: el canal de correo está deshabilitado.');
+            // El canal está deshabilitado a propósito: no es una falla de
+            // envío. La excepción propia permite que el despacho no cuente
+            // reintentos ni marque el ciclo como fallido (#146).
+            throw NotificationChannelDisabledException::forChannel(
+                NotificationChannel::EMAIL,
+                'El canal de correo está deshabilitado por el administrador del sistema.',
+            );
         }
 
         $fromEmail = trim((string) ($settings['smtp_from_email'] ?? ''));

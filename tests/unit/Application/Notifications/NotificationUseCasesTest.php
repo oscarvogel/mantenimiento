@@ -223,11 +223,12 @@ final class FakeNotificationPreferenceStore implements NotificationPreferenceSto
 }
 final class FakeNotificationDeliveryQueue implements NotificationDeliveryQueue
 {
-    public array $scheduled = []; public array $dueByChannel = []; public array $delivered = []; public array $failed = []; public array $skipped = [];
+    public array $scheduled = []; public array $dueByChannel = []; public array $delivered = []; public array $failed = []; public array $skipped = []; public array $deferred = [];
     public function schedule(int $notificationId, int $userId, string $eventKey, NotificationSeverity $severity, NotificationPreference $preference): void { $this->scheduled[] = ['notification' => $notificationId, 'user' => $userId]; }
     public function due(string $channel, int $limit): array { return $this->dueByChannel[$channel] ?? []; }
     public function delivered(int $deliveryId): void { $this->delivered[] = $deliveryId; }
     public function skipped(int $deliveryId, string $reason): void { $this->skipped[] = $deliveryId; }
+    public function deferred(int $deliveryId, string $reason): void { $this->deferred[] = $deliveryId; }
     public function failed(int $deliveryId, string $error, bool $retryable): void { $this->failed[] = [$deliveryId, $retryable]; }
 }
 final class FakeWebPushSubscriptionStore implements WebPushSubscriptionStore

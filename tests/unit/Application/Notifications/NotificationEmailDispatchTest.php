@@ -93,6 +93,7 @@ final class Issue144Queue implements NotificationDeliveryQueue
     public function due(string $channel, int $limit): array { return $this->dueByChannel[$channel] ?? []; }
     public function delivered(int $deliveryId): void { $this->deliveredIds[] = $deliveryId; }
     public function skipped(int $deliveryId, string $reason): void {}
+    public function deferred(int $deliveryId, string $reason): void {}
     public function failed(int $deliveryId, string $error, bool $retryable): void { $this->failedIds[] = [$deliveryId, $retryable]; }
 }
 

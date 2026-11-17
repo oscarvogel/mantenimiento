@@ -333,6 +333,7 @@ final class ManagementReportQueue implements NotificationDeliveryQueue, CompanyN
     public function due(string $channel, int $limit): array { return []; }
     public function delivered(int $deliveryId): void {}
     public function skipped(int $deliveryId, string $reason): void {}
+    public function deferred(int $deliveryId, string $reason): void {}
     public function failed(int $deliveryId, string $error, bool $retryable): void {}
 
     // CompanyNotificationDeliveryQueue (informe gerencial).

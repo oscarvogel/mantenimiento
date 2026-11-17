@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Infrastructure\Notifications;
 
 use App\Application\Notifications\Port\CompanyNotificationDeliveryQueue;
+use App\Application\Notifications\Port\NotificationChannelAvailability;
 use App\Application\Notifications\Port\NotificationDeliveryQueue;
 use App\Application\Notifications\Port\NotificationClock;
 use App\Application\Notifications\NotificationDeliverySchedule;
 use App\Application\Notifications\NotificationChannelPolicy;
 use App\Domain\Notifications\DeliveryMode;
+use App\Domain\Notifications\NotificationChannel;
 use App\Domain\Notifications\NotifiableEvent;
 use App\Domain\Notifications\NotificationPreference;
 use App\Domain\Notifications\NotificationSeverity;
@@ -30,17 +32,34 @@ final class CodeIgniterNotificationDeliveryQueue implements NotificationDelivery
         'garantia.proxima',
     ];
 
-    public function __construct(private NotificationClock $clock, private NotificationDeliverySchedule $schedule, private NotificationChannelPolicy $policy, private bool $pushAvailable, private string $dailyRunTime = '07:00', private ?BaseConnection $db = null)
+    public function __construct(private NotificationClock $clock, private NotificationDeliverySchedule $schedule, private NotificationChannelPolicy $policy, private NotificationChannelAvailability $channels, private string $dailyRunTime = '07:00', private ?BaseConnection $db = null)
     {
         $this->db ??= Database::connect();
     }
 
     public function schedule(int $notificationId, int $userId, string $eventKey, NotificationSeverity $severity, NotificationPreference $preference): void
     {
-        if ($this->policy->shouldSchedule($preference->email, $severity)) {
+        // La disponibilidad del canal es global: una preferencia personal nunca
+        // habilita un canal que el administrador dejó apagado. Si el correo está
+        // deshabilitado no se encola ninguna entrega por correo (#146).
+        $emailAvailable = $this->channels->isAvailable(NotificationChannel::EMAIL);
+        $wantsEmail = $preference->email !== DeliveryMode::DISABLED
+            && ($preference->email !== DeliveryMode::CRITICAL_ONLY || $severity === NotificationSeverity::CRITICAL);
+
+        if ($emailAvailable && $wantsEmail) {
             $this->enqueue($notificationId, 'EMAIL', "{$eventKey}:usuario:{$userId}:email", $preference->email);
+        } elseif (! $emailAvailable && $wantsEmail) {
+            // Queda escrito por qué no se encoló. Sin esta traza, una preferencia
+            // de correo activa con el canal apagado sería indistinguible de una
+            // notificación que nunca existió.
+            log_message('notice', 'Notificación de correo no encolada para usuario {user}: {reason} ({event}).', [
+                'user' => $userId,
+                'reason' => $this->channels->unavailableReason(NotificationChannel::EMAIL),
+                'event' => $eventKey,
+            ]);
         }
-        if ($this->policy->shouldSchedule($preference->push, $severity, $this->pushAvailable)) {
+
+        if ($this->policy->shouldSchedule($preference->push, $severity, $this->channels->isAvailable(NotificationChannel::PUSH))) {
             $this->enqueue($notificationId, 'PUSH', "{$eventKey}:usuario:{$userId}:push", $preference->push);
         }
     }
@@ -53,9 +72,17 @@ final class CodeIgniterNotificationDeliveryQueue implements NotificationDelivery
 
         $recipient = (new CodeIgniterCompanyNotificationRecipientResolver($this->db))->resolve($event->companyId());
         $missingRecipient = $recipient === null;
+        $emailAvailable = $this->channels->isAvailable(NotificationChannel::EMAIL);
         $now = $this->clock->now()->format('Y-m-d H:i:s');
 
         $this->supersedeOppositePreventiveState($event, $now);
+
+        // Un informe de empresa es una foto del estado de ese momento: si el
+        // canal de correo está deshabilitado no se encola para enviar más
+        // tarde, sino que queda registrado que no se envió y por qué.
+        $omitted = $missingRecipient
+            ? 'Empresa sin destinatario de notificaciones por email habilitado.'
+            : ($emailAvailable ? null : $this->channels->unavailableReason(NotificationChannel::EMAIL));
 
         $this->db->table('notificacion_empresa_entregas')->ignore(true)->insert([
             'empresa_id' => $event->companyId(),
@@ -65,14 +92,20 @@ final class CodeIgniterNotificationDeliveryQueue implements NotificationDelivery
             'titulo' => $event->title(),
             'resumen' => $event->summary(),
             'url' => $event->url(),
-            'estado' => $missingRecipient ? 'OMITIDA' : 'PENDIENTE',
-            'ultimo_error' => $missingRecipient ? 'Empresa sin destinatario de notificaciones por email habilitado.' : null,
+            'estado' => $omitted === null ? 'PENDIENTE' : 'OMITIDA',
+            'ultimo_error' => $omitted,
             'created_at' => $now,
         ]);
 
         if ($missingRecipient) {
             log_message('notice', 'Notificación empresarial omitida para empresa {company}: sin email habilitado ({event}).', [
                 'company' => $event->companyId(),
+                'event' => $event->type(),
+            ]);
+        } elseif ($omitted !== null) {
+            log_message('notice', 'Notificación empresarial omitida para empresa {company}: {reason} ({event}).', [
+                'company' => $event->companyId(),
+                'reason' => $omitted,
                 'event' => $event->type(),
             ]);
         }
@@ -118,6 +151,21 @@ final class CodeIgniterNotificationDeliveryQueue implements NotificationDelivery
     {
         $this->db->table('notificacion_entregas')->where('id', $deliveryId)->update([
             'estado' => 'OMITIDA',
+            'ultimo_error' => mb_substr($reason, 0, 1000),
+            'updated_at' => $this->clock->now()->format('Y-m-d H:i:s'),
+        ]);
+    }
+
+    /**
+     * La entrega no se intentó porque el canal está deshabilitado.
+     *
+     * No se cambia el estado ni se cuentan intentos: la entrega sigue
+     * pendiente y se envía cuando el canal vuelva a estar disponible. Sólo se
+     * deja escrito por qué no salió, para que la traza sea explícita.
+     */
+    public function deferred(int $deliveryId, string $reason): void
+    {
+        $this->db->table('notificacion_entregas')->where('id', $deliveryId)->update([
             'ultimo_error' => mb_substr($reason, 0, 1000),
             'updated_at' => $this->clock->now()->format('Y-m-d H:i:s'),
         ]);
