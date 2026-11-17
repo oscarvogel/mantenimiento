@@ -224,6 +224,7 @@ $routes->get('telemetria', 'Telemetria::flota', ['filter' => 'permission:equipos
     // equipmentId. CSRF se aplica globalmente en Config\Filters.
     $routes->post('lecturas/control/reclamar', 'ReadingControl::claim', ['filter' => ['auth', 'permission:lecturas.cargar']]);
     $routes->get('lecturas/(:num)/evidencia', 'PublicEquipmentReadings::evidence/$1', ['filter' => ['auth', 'permission:equipos.ver']]);
+    $routes->post('lecturas/(:num)/evidencia/revisar', 'PublicEquipmentReadings::reviewEvidence/$1', ['filter' => ['auth', 'permission:lecturas.cargar']]);
     $routes->get('equipos/(:num)/operar', 'EquipmentOperations::show/$1', ['filter' => 'permission:equipos.ver']);
     $routes->post('equipos/(:num)/incidencias', 'EquipmentOperations::reportIncident/$1', ['filter' => 'permission:solicitudes.crear']);
     $routes->get('equipos/(:num)', 'EquipmentManagement::show/$1', ['filter' => 'permission:equipos.ver']);

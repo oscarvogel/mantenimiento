@@ -225,6 +225,12 @@ use App\Presentation\OperationsPayload;
 use App\Presentation\PreventivePlansPayload;
 use App\Application\ReadingControl\ClaimReadingReminder;
 use App\Application\ReadingControl\ListReadingControl;
+use App\Application\Measurement\ReviewReadingEvidence;
+use App\Application\Measurement\Port\AiDiscrepancyMetrics;
+use App\Application\Measurement\Port\AiOdometerQualityReadModel;
+use App\Infrastructure\Measurement\CodeIgniterReadingEvidenceReviewRepository;
+use App\Infrastructure\Measurement\CodeIgniterAiDiscrepancyMetrics;
+use App\Infrastructure\Measurement\CodeIgniterAiOdometerQualityReadModel;
 use App\Application\ReadingControl\Port\Clock as ReadingControlClock;
 use App\Presentation\QuickReadingsPayload;
 use App\Presentation\ReadingControl\ReadingControlPayload;
@@ -2191,6 +2197,33 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
         }
 
         return new ReadingControlSystemClock();
+    }
+
+    public static function reviewReadingEvidence(bool $getShared = true): ReviewReadingEvidence
+    {
+        if ($getShared) {
+            return static::getSharedInstance('reviewReadingEvidence');
+        }
+
+        return new ReviewReadingEvidence(new CodeIgniterReadingEvidenceReviewRepository(db_connect()));
+    }
+
+    public static function aiDiscrepancyMetrics(bool $getShared = true): AiDiscrepancyMetrics
+    {
+        if ($getShared) {
+            return static::getSharedInstance('aiDiscrepancyMetrics');
+        }
+
+        return new CodeIgniterAiDiscrepancyMetrics(db_connect());
+    }
+
+    public static function aiOdometerQuality(bool $getShared = true): AiOdometerQualityReadModel
+    {
+        if ($getShared) {
+            return static::getSharedInstance('aiOdometerQuality');
+        }
+
+        return new CodeIgniterAiOdometerQualityReadModel(db_connect());
     }
 
     public static function claimReadingReminder(bool $getShared = true): ClaimReadingReminder

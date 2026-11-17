@@ -429,7 +429,13 @@ final class OperationsPayload
                     'aiDetectedKm' => $row->aiDetectedKm,
                     'aiConfidence' => $row->aiConfidence,
                     'aiObservation' => $row->aiObservation,
+                    'evidenceReviewedAt' => $row->evidenceReviewedAt?->format('Y-m-d H:i:s'),
+                    'evidenceReviewedByName' => $row->evidenceReviewedByName,
+                    'evidenceReviewReason' => $row->evidenceReviewReason,
+                    'evidenceReviewObservation' => $row->evidenceReviewObservation,
                     'evidenceUrl' => $row->evidenceMethod === null ? null : base_url('mantenimiento/lecturas/' . $row->id . '/evidencia'),
+                    'reviewUrl' => $row->evidenceMethod === null ? null : base_url('mantenimiento/lecturas/' . $row->id . '/evidencia/revisar'),
+                    'canReview' => $row->evidenceMethod === 'FOTO_IA_CORREGIDA' && $row->evidenceReviewedAt === null,
                 ], $readings->items),
             ],
             'transfers' => [

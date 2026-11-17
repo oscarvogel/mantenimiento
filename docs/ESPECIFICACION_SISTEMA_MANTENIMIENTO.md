@@ -253,6 +253,8 @@ Los importes se almacenarán con `DECIMAL`, nunca con tipos de punto flotante. L
 | Tabla | Finalidad | Campos esenciales |
 |---|---|---|
 | `lecturas_equipo` | Conserva todas las lecturas de kilómetros y horómetro. | id, equipo_id, fecha_lectura, kilometraje, horometro, origen, referencia_importacion_id, usuario_id, observaciones, anulada |
+| `lecturas_equipo_evidencias` | Conserva la foto, la detección cruda de IA, el valor confirmado y el método de carga. | id, empresa_id, lectura_id, archivo_path, mime_type, km_detectado_ia, confianza_ia, estado_ia, km_confirmado, metodo_carga, observacion_ia |
+| `lecturas_equipo_evidencias_revisiones` | Registra la revisión humana de una discrepancia de IA, una por evidencia. | id, empresa_id, evidencia_id, lectura_id, motivo, observacion, revisado_por, revisado_at |
 
 **Motivo del diseño:** `km_actual` y `horas_actuales` en `equipos` facilitan los listados, pero `lecturas_equipo` es la fuente del historial y permite auditar cambios e importaciones.
 
@@ -264,6 +266,10 @@ Reglas:
 - No se aceptan retrocesos respecto de la última lectura válida, salvo permiso especial y justificación obligatoria.
 - Una lectura histórica corregida debe quedar auditada.
 - Al confirmar la lectura se actualizan los valores actuales del equipo dentro de la misma transacción.
+- Una detección de IA menor al kilometraje actual se descarta: no se precarga, se pide carga manual y se conserva el valor crudo para auditoría.
+- Las discrepancias de IA generan una alerta: `ADVERTENCIA` aislada y `CRITICA` por reincidencia (3 en 30 días por equipo o 5 en 7 días por empresa). El destinatario es el Responsable de mantenimiento; si no existe, el Administrador. En una alerta crítica se incluyen ambos.
+- La revisión de una discrepancia requiere motivo (`FALSO_POSITIVO_IA`, `LECTURA_CORREGIDA`, `REVISAR_MODELO` u `OTRO`), usuario, fecha y, para `OTRO`, observación.
+- La pantalla de control de lecturas muestra la tasa de discrepancia de IA por empresa y los equipos con más fallas en los últimos 90 días. Si no hay base suficiente, informa `SIN DATOS SUFICIENTES`.
 
 ### 5.4 Catálogo de mantenimiento
 
