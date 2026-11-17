@@ -530,12 +530,7 @@ const facts = computed(() => {
     </PanelCard>
 
     <section aria-label="Resumen económico" class="mb-5">
-      <div class="grid grid-cols-2 gap-3 lg:grid-cols-6">
-        <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
-          <p class="text-xs font-semibold text-ink-muted">Facturado</p>
-          <p class="mt-2 text-xl font-bold text-ink">{{ moneyOrNoData(totals.invoice_ars) }}</p>
-          <p class="mt-1 text-xs text-ink-muted">{{ legs.length }} tramo{{ legs.length === 1 ? '' : 's' }}</p>
-        </article>
+      <div class="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
           <p class="text-xs font-semibold text-ink-muted">Comisión chofer</p>
           <p class="mt-2 text-xl font-bold text-ink">{{ moneyOrNoData(totals.commission_ars) }}</p>
@@ -576,7 +571,6 @@ const facts = computed(() => {
               <th class="px-3 py-2">Fechas</th>
               <th class="px-3 py-2 text-right">Toneladas</th>
               <th class="px-3 py-2 text-right">Km</th>
-              <th class="px-3 py-2 text-right">Flete facturación (ARS)</th>
               <th class="px-3 py-2 text-right">Flete liquidación (ARS)</th>
               <th class="px-3 py-2 text-right">Comisión</th>
               <th class="px-3 py-2 text-right">Costos asignados</th>
@@ -594,7 +588,6 @@ const facts = computed(() => {
               <td class="px-3 py-2 text-ink-muted" :title="leg.fecha_inicio || leg.fecha_fin ? `Inicio: ${leg.fecha_inicio ?? 'sin fecha'} · Fin: ${leg.fecha_fin ?? 'sin fecha'}` : 'Sin fechas cargadas'">{{ legDates(leg) }}</td>
               <td class="px-3 py-2 text-right text-ink-muted">{{ leg.toneladas === null ? '—' : number(leg.toneladas) }}</td>
               <td class="px-3 py-2 text-right text-ink-muted">{{ leg.km === null ? '—' : number(leg.km) }}</td>
-              <td class="px-3 py-2 text-right text-ink" :title="legAmountTitle(leg, 'invoice')">{{ moneyOrNoData(leg.flete_facturacion_ars) }}</td>
               <td class="px-3 py-2 text-right text-ink" :title="legAmountTitle(leg, 'liquidation')">{{ moneyOrNoData(leg.flete_liquidacion_ars) }}<span class="block text-xs font-normal text-ink-muted" data-testid="leg-basis-mode">{{ leg.modo_liquidacion_label || 'Monto acordado' }}</span></td>
               <td class="px-3 py-2 text-right text-ink-muted">{{ moneyOrNoData(leg.commission_ars) }}</td>
               <td class="px-3 py-2 text-right text-ink-muted">{{ money(leg.assigned_costs_ars) }}</td>

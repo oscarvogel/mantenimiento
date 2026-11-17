@@ -216,7 +216,11 @@ describe('detalle de viaje operativo', () => {
     })
 
     expect(wrapper.text()).toContain('Rosario → Córdoba')
-    expect(wrapper.text()).toContain('ARS 1.000.000,00')
+    // El flete de facturación solo se ve al editar el tramo, no en el detalle.
+    expect(wrapper.text()).not.toContain('ARS 1.000.000,00')
+    expect(wrapper.text()).not.toContain('Facturado')
+    expect(wrapper.text()).not.toContain('Flete facturación (ARS)')
+    expect(wrapper.text()).toContain('ARS 800.000,00')
     expect(wrapper.text()).toContain('ARS 638.000,00')
     expect(wrapper.text()).toContain('Fechas')
     expect(wrapper.text()).toContain('20/10/2026 → 21/10/2026')
@@ -743,8 +747,8 @@ describe('detalle de viaje operativo', () => {
       },
     })
 
-    // La tabla muestra los importes en pesos y deja el original a la vista.
-    expect(wrapper.find('td[title="USD 4.700,00"]').exists()).toBe(true)
+    // La tabla no muestra el flete de facturación: solo se ve al editar el tramo.
+    expect(wrapper.find('td[title="USD 4.700,00"]').exists()).toBe(false)
     expect(wrapper.find('td[title="ARS 5.875.000,00"]').exists()).toBe(true)
 
     const editLeg = wrapper.findAll('button').find((button) => button.text() === 'Editar')
