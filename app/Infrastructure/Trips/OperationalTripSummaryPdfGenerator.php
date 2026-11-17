@@ -200,7 +200,7 @@ final class OperationalTripSummaryPdfGenerator implements OperationalTripSummary
             'Otros haberes' => 'other_earnings_ars',
             'Gastos pagados por el chofer' => 'driver_expenses_ars',
             'Gastos pagados con caja' => 'cash_expenses_ars',
-            'Caja inicial, anticipos y retiros' => 'advances_ars',
+            'Caja inicial, anticipos y adelantos de sueldo' => 'advances_ars',
             'Devoluciones' => 'returns_ars',
             'Cuenta corriente' => 'account_balance_ars',
         ] as $label => $field) {
@@ -385,7 +385,7 @@ final class OperationalTripSummaryPdfGenerator implements OperationalTripSummary
         return match ($value) {
             'CAJA_INICIAL' => 'Caja inicial',
             'ANTICIPO' => 'Anticipo',
-            'RETIRO' => 'Retiro',
+            'RETIRO' => 'Adelanto de sueldo',
             'DEVOLUCION' => 'Devolución',
             default => $value ?: 'Sin dato',
         };

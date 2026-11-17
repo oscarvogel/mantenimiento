@@ -269,7 +269,7 @@ const statusTone = {
   FINALIZADO: 'bg-surface-muted text-ink-muted',
   CANCELADO: 'bg-danger-subtle text-danger-strong',
 }
-const cashTypeLabel = { CAJA_INICIAL: 'Caja inicial', ANTICIPO: 'Anticipo', RETIRO: 'Retiro', DEVOLUCION: 'Devolución' }
+const cashTypeLabel = { CAJA_INICIAL: 'Caja inicial', ANTICIPO: 'Anticipo', RETIRO: 'Adelanto de sueldo', DEVOLUCION: 'Devolución' }
 
 const conceptOptionLabel = (concept) => `${concept.label} · ${money(concept.amount, concept.currency)}${concept.unit === 'DIA' ? ' / día' : ''}`
 const quantityLabel = (value) => Number(value ?? 0).toLocaleString('es-AR', { maximumFractionDigits: 2 })
@@ -479,7 +479,7 @@ const facts = computed(() => {
 
 <template>
   <div>
-    <PageHeading eyebrow="Viajes · Operativo" :title="`Viaje #${trip.numero}`" description="Seguimiento del recorrido, equipo, choferes, combustible, gastos y caja. Los retiros de caja no son costo del viaje." :back="{ href: data.backUrl ?? '/viajes/operativos', label: 'Volver a viajes operativos' }">
+    <PageHeading eyebrow="Viajes · Operativo" :title="`Viaje #${trip.numero}`" description="Seguimiento del recorrido, equipo, choferes, combustible, gastos y caja. Los movimientos de caja del chofer no son costo del viaje." :back="{ href: data.backUrl ?? '/viajes/operativos', label: 'Volver a viajes operativos' }">
       <template #actions>
         <a v-if="trip.estado === 'FINALIZADO' && data.links?.summaryPdf" :href="data.links.summaryPdf" class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-primary px-3 py-2 text-sm font-semibold text-primary hover:bg-primary-subtle">
           <ArrowDownTrayIcon class="size-4" aria-hidden="true" />Descargar resumen PDF
@@ -516,7 +516,7 @@ const facts = computed(() => {
       </button>
       <button type="button" aria-haspopup="dialog" @click="openEntryModal('cash')" class="group flex min-h-16 items-center gap-3 rounded-xl border border-border bg-surface-raised px-4 py-3 text-left shadow-card transition hover:border-primary hover:bg-primary-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
         <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary-subtle text-primary"><BanknotesIcon class="size-5" aria-hidden="true" /></span>
-        <span><span class="block text-sm font-bold text-ink">Caja del chofer</span><span class="mt-0.5 block text-xs text-ink-muted">Anticipo, retiro o devolución</span></span>
+        <span><span class="block text-sm font-bold text-ink">Caja del chofer</span><span class="mt-0.5 block text-xs text-ink-muted">Anticipo, adelanto de sueldo o devolución</span></span>
       </button>
     </section>
 
@@ -672,7 +672,7 @@ const facts = computed(() => {
             <div class="flex items-center justify-between gap-3"><dt class="text-ink-muted">Otros haberes</dt><dd class="font-semibold text-ink">{{ money(settlement.other_earnings_ars) }}</dd></div>
             <div class="flex items-center justify-between gap-3"><dt class="text-ink-muted">Gastos pagados por el chofer</dt><dd class="font-semibold text-ink">{{ money(settlement.driver_expenses_ars) }}</dd></div>
             <div class="flex items-center justify-between gap-3"><dt class="text-ink-muted">Gastos pagados con caja</dt><dd class="font-semibold text-ink">{{ money(settlement.cash_expenses_ars) }}</dd></div>
-            <div class="flex items-center justify-between gap-3"><dt class="text-ink-muted">Caja inicial, anticipos y retiros</dt><dd class="font-semibold text-danger-strong">- {{ money(settlement.advances_ars) }}</dd></div>
+            <div class="flex items-center justify-between gap-3"><dt class="text-ink-muted">Caja inicial, anticipos y adelantos de sueldo</dt><dd class="font-semibold text-danger-strong">- {{ money(settlement.advances_ars) }}</dd></div>
             <div class="flex items-center justify-between gap-3"><dt class="text-ink-muted">Devoluciones</dt><dd class="font-semibold text-ink">{{ money(settlement.returns_ars) }}</dd></div>
             <div class="flex items-center justify-between gap-3 border-t border-border-subtle pt-2"><dt class="font-semibold text-ink">Saldo de cuenta corriente</dt><dd class="font-bold" :class="settlement.account_balance_ars < 0 ? 'text-danger-strong' : 'text-success-strong'">{{ money(settlement.account_balance_ars) }}</dd></div>
           </dl>
@@ -1138,9 +1138,9 @@ const facts = computed(() => {
 
         <form v-else-if="activeEntryModal === 'cash'" method="post" :action="editingEntry ? movementUrl('cash', editingEntry.id) : data.links?.cash">
           <input type="hidden" :name="csrf.name" :value="csrf.hash" />
-          <p class="text-sm text-ink-muted">La caja inicial, los anticipos y los retiros aumentan el importe a rendir, pero no son costo del viaje. Las devoluciones reducen el saldo pendiente.</p>
+          <p class="text-sm text-ink-muted">La caja inicial, los anticipos y los adelantos de sueldo aumentan el importe a rendir, pero no son costo del viaje. Las devoluciones reducen el saldo pendiente.</p>
           <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Tipo</span><select name="tipo" :value="editingEntry?.tipo ?? 'ANTICIPO'" :class="fieldClass"><option value="CAJA_INICIAL">Caja inicial</option><option value="ANTICIPO">Anticipo</option><option value="RETIRO">Retiro</option><option value="DEVOLUCION">Devolución</option></select></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Tipo</span><select name="tipo" :value="editingEntry?.tipo ?? 'ANTICIPO'" :class="fieldClass"><option value="CAJA_INICIAL">Caja inicial</option><option value="ANTICIPO">Anticipo</option><option value="RETIRO">Adelanto de sueldo</option><option value="DEVOLUCION">Devolución</option></select></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Fecha y hora</span><input type="datetime-local" name="fecha" :value="editingEntry ? inputDateTime(editingEntry.fecha) : nowLocal()" required :class="fieldClass" /></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Importe</span><input type="number" name="importe" min="0.01" step="0.01" :value="editingEntry?.importe ?? ''" required :class="fieldClass" /></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select name="moneda" :value="editingEntry?.moneda ?? 'ARS'" :class="fieldClass" @change="applyRateFromSelect"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }} · {{ currency.label }}</option></select></label>

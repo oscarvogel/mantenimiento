@@ -119,6 +119,16 @@ final class GetDriverSettlementTest extends TestCase
         self::assertSame('Anticipo', $statement['cashMovements'][0]['tipo_label']);
     }
 
+    public function testWithdrawalIsShownAsSalaryAdvanceForTheDriver(): void
+    {
+        $statement = $this->statement(['cashMovements' => [
+            ['fecha' => '2026-11-01', 'tipo' => 'RETIRO', 'importe' => 1_800_000.0, 'moneda' => 'ARS', 'importe_ars' => 1_800_000.0],
+        ]]);
+
+        self::assertSame('Adelanto de sueldo', $statement['cashMovements'][0]['tipo_label']);
+        self::assertSame(1_800_000.0, $statement['totals']['advances_ars']);
+    }
+
     public function testOnlyTheResponsibleDriverEarningsAreShown(): void
     {
         $statement = $this->statement();
