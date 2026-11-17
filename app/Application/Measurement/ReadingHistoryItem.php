@@ -34,6 +34,10 @@ final readonly class ReadingHistoryItem
         public ?int $aiDetectedKm = null,
         public ?float $aiConfidence = null,
         public ?string $aiObservation = null,
+        public ?DateTimeImmutable $evidenceReviewedAt = null,
+        public ?string $evidenceReviewedByName = null,
+        public ?string $evidenceReviewReason = null,
+        public ?string $evidenceReviewObservation = null,
     ) {
     }
 }

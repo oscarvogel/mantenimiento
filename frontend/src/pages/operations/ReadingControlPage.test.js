@@ -35,7 +35,14 @@ const data = (overrides = {}) => ({
     types: [{ id: 3, name: 'Camión' }],
     statusOptions: [{ key: 'all', label: 'Todos' }],
     sortOptions: [{ key: 'age_asc', label: 'Más antiguos primero' }],
+    reviewReasons: [
+      { value: 'FALSO_POSITIVO_IA', label: 'Falso positivo de la IA' },
+      { value: 'LECTURA_CORREGIDA', label: 'Lectura corregida' },
+      { value: 'REVISAR_MODELO', label: 'Revisar modelo de IA' },
+      { value: 'OTRO', label: 'Otro motivo' },
+    ],
   },
+  csrf: { name: 'csrf_test', hash: 'tok-123' },
   routes: {
     index: '/mantenimiento/mantenimiento/lecturas/control',
     claim: '/mantenimiento/mantenimiento/lecturas/control/reclamar',
@@ -117,6 +124,27 @@ describe('ReadingControlPage · evidencia', () => {
     await dialogButton('Cerrar').trigger('click')
     await flushPromises()
     expect(dialogEl()).toBeNull()
+  })
+
+  it('permite marcar como revisada una detección descartada', async () => {
+    const wrapper = mountPage({
+      results: [row({
+        readingMethod: 'FOTO_IA_CORREGIDA',
+        evidenceUrl: '/mantenimiento/lecturas/99/evidencia',
+        aiDetectedKm: 17,
+        aiConfidence: 0.92,
+        canReview: true,
+        reviewUrl: '/mantenimiento/lecturas/99/evidencia/revisar',
+        evidenceReviewedAt: null,
+      })],
+    })
+
+    const evidenceButton = wrapper.findAll('button').find((button) => button.text().includes('Foto · IA corregida'))
+    await evidenceButton.trigger('click')
+
+    expect(dialogText()).toContain('Revisar detección de IA')
+    expect(dialogEl().querySelector('form[action="/mantenimiento/lecturas/99/evidencia/revisar"]')).not.toBeNull()
+    expect(dialogEl().querySelector('select[name="motivo"]')).not.toBeNull()
   })
 })
 

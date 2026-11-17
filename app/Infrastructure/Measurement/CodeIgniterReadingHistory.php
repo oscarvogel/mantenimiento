@@ -35,6 +35,13 @@ final class CodeIgniterReadingHistory implements ReadingHistoryPort
             $builder
                 ->select('ev.metodo_carga evidencia_metodo, ev.km_detectado_ia evidencia_km_ia, ev.confianza_ia evidencia_confianza, ev.observacion_ia evidencia_observacion', false)
                 ->join('lecturas_equipo_evidencias ev', 'ev.lectura_id = l.id AND ev.empresa_id = l.empresa_id', 'left');
+
+            if ($this->database->tableExists('lecturas_equipo_evidencias_revisiones')) {
+                $builder
+                    ->select('rv.revisado_at evidencia_revisada_at, rv.motivo evidencia_revision_motivo, rv.observacion evidencia_revision_observacion, ru.nombre evidencia_revisada_por', false)
+                    ->join('lecturas_equipo_evidencias_revisiones rv', 'rv.evidencia_id = ev.id AND rv.empresa_id = ev.empresa_id', 'left')
+                    ->join('usuarios ru', 'ru.id = rv.revisado_por', 'left');
+            }
         }
 
         $rows = $builder
@@ -119,6 +126,10 @@ final class CodeIgniterReadingHistory implements ReadingHistoryPort
                 ($row['evidencia_km_ia'] ?? null) === null ? null : (int) $row['evidencia_km_ia'],
                 ($row['evidencia_confianza'] ?? null) === null ? null : (float) $row['evidencia_confianza'],
                 ($row['evidencia_observacion'] ?? null) === null ? null : (string) $row['evidencia_observacion'],
+                ($row['evidencia_revisada_at'] ?? null) === null ? null : new DateTimeImmutable((string) $row['evidencia_revisada_at']),
+                ($row['evidencia_revisada_por'] ?? null) === null ? null : (string) $row['evidencia_revisada_por'],
+                ($row['evidencia_revision_motivo'] ?? null) === null ? null : (string) $row['evidencia_revision_motivo'],
+                ($row['evidencia_revision_observacion'] ?? null) === null ? null : (string) $row['evidencia_revision_observacion'],
             );
         }, $rows);
 

@@ -90,6 +90,11 @@ final class ReadingControl extends BaseController
                 // Mismo reloj del listado: la elegibilidad del botón
                 // (`needsClaim`) debe evaluarse en la misma jornada.
                 service('readingControlClock')->now(),
+                service('aiOdometerQuality')->summary(
+                    (int) $actor->companyId(),
+                    $actor->hasAllCompanyBranches() ? null : $actor->branchIds(),
+                    new \DateTimeImmutable('now'),
+                ),
             ),
         );
     }

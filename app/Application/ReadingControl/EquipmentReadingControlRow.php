@@ -37,6 +37,10 @@ final readonly class EquipmentReadingControlRow
         public ?int $aiDetectedKm = null,
         public ?float $aiConfidence = null,
         public ?string $evidenceUrl = null,
+        public ?string $evidenceReviewedAt = null,
+        public ?string $evidenceReviewedByName = null,
+        public ?string $evidenceReviewReason = null,
+        public ?string $evidenceReviewObservation = null,
     ) {
     }
 

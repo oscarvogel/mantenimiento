@@ -225,6 +225,32 @@ const methodLabel = (item) => {
       </div>
     </section>
 
+    <PanelCard v-if="data.aiQuality && data.aiQuality.total > 0" title="Calidad de lectura IA" class="mb-6">
+      <div class="grid gap-4 sm:grid-cols-3">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Lecturas con foto</p>
+          <p class="mt-2 text-2xl font-bold text-ink">{{ data.aiQuality.total }}</p>
+        </div>
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Discrepancias IA</p>
+          <p class="mt-2 text-2xl font-bold text-danger-strong">{{ data.aiQuality.discrepancies }}</p>
+        </div>
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Tasa de discrepancia</p>
+          <p class="mt-2 text-2xl font-bold text-ink">{{ data.aiQuality.rate }}%</p>
+        </div>
+      </div>
+      <div v-if="data.aiQuality.byEquipment && data.aiQuality.byEquipment.length" class="mt-4">
+        <p class="text-sm font-semibold text-ink">Equipos con más fallas (90 días)</p>
+        <ul class="mt-2 space-y-1 text-sm text-ink-muted">
+          <li v-for="item in data.aiQuality.byEquipment" :key="item.equipmentCode">
+            <span class="font-semibold text-ink">{{ item.equipmentCode }}</span>
+            · {{ item.discrepancies }} de {{ item.total }} lecturas ({{ item.rate }}%)
+          </li>
+        </ul>
+      </div>
+    </PanelCard>
+
     <PanelCard title="Buscar y filtrar" class="mb-6">
       <form method="get" :action="data.routes.index" class="grid gap-3 lg:grid-cols-[minmax(15rem,1fr)_11rem_11rem_13rem_13rem_auto] lg:items-end">
         <FormField label="Equipo, patente, chasis o chofer" for-id="reading-control-search">
@@ -499,6 +525,28 @@ const methodLabel = (item) => {
             <div v-if="evidenceTarget.aiDetectedKm !== null && evidenceTarget.aiDetectedKm !== undefined"><dt class="text-ink-muted">IA detectó</dt><dd class="font-semibold text-ink">{{ formatNumberEs(evidenceTarget.aiDetectedKm, 0) }} km<span v-if="evidenceTarget.readingMethod === 'FOTO_IA_CORREGIDA'" class="ml-1 text-xs font-semibold text-danger-strong">(descartado)</span></dd></div>
             <div v-if="evidenceTarget.aiConfidence !== null && evidenceTarget.aiConfidence !== undefined"><dt class="text-ink-muted">Confianza IA</dt><dd class="font-semibold text-ink">{{ Math.round(Number(evidenceTarget.aiConfidence) * 100) }}%</dd></div>
           </dl>
+          <div v-if="evidenceTarget.canReview" class="mt-4 rounded-xl border border-border bg-surface-subtle p-4">
+            <h3 class="text-sm font-semibold text-ink">Revisar detección de IA</h3>
+            <form :action="evidenceTarget.reviewUrl" method="post" class="mt-3 grid gap-3 sm:grid-cols-2">
+              <input type="hidden" :name="data.csrf.name" :value="data.csrf.hash">
+              <label class="block text-sm">
+                <span class="mb-1 block font-semibold text-ink">Motivo</span>
+                <select name="motivo" required :class="fieldClass">
+                  <option v-for="reason in data.catalogs.reviewReasons" :key="reason.value" :value="reason.value">{{ reason.label }}</option>
+                </select>
+              </label>
+              <label class="block text-sm">
+                <span class="mb-1 block font-semibold text-ink">Observación</span>
+                <input name="observacion" maxlength="255" :class="fieldClass" placeholder="Opcional, salvo Otro motivo">
+              </label>
+              <button type="submit" :class="primaryButton" class="sm:col-span-2">Marcar como revisada</button>
+            </form>
+          </div>
+          <div v-else-if="evidenceTarget.evidenceReviewedAt" class="mt-4 rounded-xl border border-border bg-surface-subtle p-4 text-sm">
+            <p class="font-semibold text-ink">Revisada por {{ evidenceTarget.evidenceReviewedByName || 'un usuario' }} el {{ evidenceTarget.evidenceReviewedAt }}</p>
+            <p class="mt-1 text-ink-muted">Motivo: {{ evidenceTarget.evidenceReviewReason || '-' }}</p>
+            <p v-if="evidenceTarget.evidenceReviewObservation" class="mt-1 text-ink-muted">{{ evidenceTarget.evidenceReviewObservation }}</p>
+          </div>
         </div>
       </div>
     </Teleport>

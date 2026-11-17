@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Presentation\ReadingControl;
 
+use App\Application\Measurement\AiOdometerQuality;
 use App\Application\ReadingControl\EquipmentReadingControlRow;
 use App\Application\ReadingControl\ReadingControlFilter;
 use App\Application\ReadingControl\ReadingControlQuery;
@@ -37,6 +38,7 @@ final class ReadingControlPayload
         array $types,
         array $claim = ['enabled' => false, 'reason' => null],
         ?\DateTimeImmutable $now = null,
+        ?AiOdometerQuality $aiQuality = null,
     ): array {
         $now ??= new \DateTimeImmutable('now');
 
@@ -62,6 +64,14 @@ final class ReadingControlPayload
                     'aiDetectedKm' => $item->aiDetectedKm,
                     'aiConfidence' => $item->aiConfidence,
                     'evidenceUrl' => $item->evidenceUrl,
+                    'evidenceReviewedAt' => $item->evidenceReviewedAt,
+                    'evidenceReviewedByName' => $item->evidenceReviewedByName,
+                    'evidenceReviewReason' => $item->evidenceReviewReason,
+                    'evidenceReviewObservation' => $item->evidenceReviewObservation,
+                    'reviewUrl' => $item->lastReadingId === null
+                        ? null
+                        : base_url('mantenimiento/lecturas/' . $item->lastReadingId . '/evidencia/revisar'),
+                    'canReview' => $item->readingMethod === 'FOTO_IA_CORREGIDA' && $item->evidenceReviewedAt === null,
                     'hasDriver' => $item->hasDriver(),
                     'hasValidPhone' => $item->hasValidPhone(),
                     'hasReading' => $item->hasReading(),
@@ -87,6 +97,12 @@ final class ReadingControlPayload
                     ['key' => ReadingControlQuery::SORT_AGE_DESC, 'label' => 'Más recientes primero'],
                     ['key' => ReadingControlQuery::SORT_CODE, 'label' => 'Por código de equipo'],
                 ],
+                'reviewReasons' => [
+                    ['value' => 'FALSO_POSITIVO_IA', 'label' => 'Falso positivo de la IA'],
+                    ['value' => 'LECTURA_CORREGIDA', 'label' => 'Lectura corregida'],
+                    ['value' => 'REVISAR_MODELO', 'label' => 'Revisar modelo de IA'],
+                    ['value' => 'OTRO', 'label' => 'Otro motivo'],
+                ],
             ],
             'routes' => [
                 'index' => base_url('mantenimiento/lecturas/control'),
@@ -97,6 +113,13 @@ final class ReadingControlPayload
             'claim' => [
                 'enabled' => (bool) $claim['enabled'],
                 'reason' => $claim['reason'] ?? null,
+            ],
+            'aiQuality' => $aiQuality === null ? null : [
+                'total' => $aiQuality->total,
+                'discrepancies' => $aiQuality->discrepancies,
+                'rate' => $aiQuality->rate,
+                'byEquipment' => $aiQuality->byEquipment,
+                'byMonth' => $aiQuality->byMonth,
             ],
             'readOnly' => false,
         ];

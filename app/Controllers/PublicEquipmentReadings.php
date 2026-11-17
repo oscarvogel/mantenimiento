@@ -6,10 +6,12 @@ namespace App\Controllers;
 
 use App\Application\Notifications\ReadingReceiptMessageBuilder;
 use App\Application\PublicEquipmentAccess\ResolvePublicEquipmentToken;
+use App\Infrastructure\Identity\SessionActorContext;
 use App\Infrastructure\PublicEquipmentAccess\CodeIgniterPublicEquipmentTokenRepository;
 use App\Infrastructure\Measurement\MiniMaxOdometerImageAnalyzer;
 use App\Infrastructure\Measurement\ReadingEvidenceStorage;
 use App\Domain\Measurement\AiDiscrepancyPolicy;
+use App\Domain\Measurement\AiDiscrepancySeverityPolicy;
 use App\Domain\Measurement\AiOdometerPlausibility;
 use App\Domain\Notifications\NotifiableEvent;
 use App\Domain\Notifications\NotificationSeverity;
@@ -202,6 +204,36 @@ final class PublicEquipmentReadings extends BaseController
         } catch (Throwable $exception) {
             log_message('warning', 'No se pudo leer evidencia de lectura: {message}', ['message' => $exception->getMessage()]);
             return $this->response->setStatusCode(404);
+        }
+    }
+
+    public function reviewEvidence(int $readingId): RedirectResponse
+    {
+        try {
+            $actor = (new SessionActorContext())->current();
+            if ($actor === null) {
+                throw new DomainException('No existe un contexto autenticado válido.');
+            }
+
+            service('reviewReadingEvidence')->execute(
+                $actor,
+                $readingId,
+                (string) $this->request->getPost('motivo'),
+                $this->request->getPost('observacion') === null
+                    ? null
+                    : (string) $this->request->getPost('observacion'),
+            );
+
+            return redirect()->back()->with('success', 'Evidencia marcada como revisada.');
+        } catch (DomainException $exception) {
+            return redirect()->back()->withInput()->with('error', $exception->getMessage());
+        } catch (Throwable $exception) {
+            log_message('error', 'No se pudo revisar la evidencia de lectura {reading}: {message}', [
+                'reading' => $readingId,
+                'message' => $exception->getMessage(),
+            ]);
+
+            return redirect()->back()->with('error', 'No se pudo revisar la evidencia.');
         }
     }
 
@@ -574,10 +606,14 @@ final class PublicEquipmentReadings extends BaseController
         int $confirmedKm,
         float $confidence,
     ): void {
-        $recipientIds = $this->userIdsByRole($database, (int) $equipment['empresa_id'], 'Responsable de mantenimiento');
-        if ($recipientIds === []) {
-            $recipientIds = $this->userIdsByRole($database, (int) $equipment['empresa_id'], 'Administrador');
-        }
+        $responsables = $this->userIdsByRole($database, (int) $equipment['empresa_id'], 'Responsable de mantenimiento');
+        $administradores = $this->userIdsByRole($database, (int) $equipment['empresa_id'], 'Administrador');
+        $equipmentCount = service('aiDiscrepancyMetrics')->equipmentCount((int) $equipment['empresa_id'], (int) $equipment['id'], 30);
+        $companyCount = service('aiDiscrepancyMetrics')->companyCount((int) $equipment['empresa_id'], 7);
+        $critical = (new AiDiscrepancySeverityPolicy())->isCritical($equipmentCount, $companyCount);
+        $recipientIds = $critical
+            ? array_values(array_unique(array_merge($responsables, $administradores)))
+            : ($responsables !== [] ? $responsables : $administradores);
         if ($recipientIds === []) {
             log_message('warning', 'Lectura {reading} con discrepancia IA sin destinatario configurado.', [
                 'reading' => $readingId,
@@ -593,11 +629,13 @@ final class PublicEquipmentReadings extends BaseController
             (int) $equipment['empresa_id'],
             (int) $equipment['sucursal_id'],
             'lectura.discrepancia_ia',
-            NotificationSeverity::CRITICAL,
+            $critical ? NotificationSeverity::CRITICAL : NotificationSeverity::WARNING,
             'Revisar lectura: ' . $equipmentCode,
             'La IA detectó ' . number_format($detectedKm, 0, ',', '.') . ' km (' . $confidencePercent
                 . '% de confianza), pero se confirmaron ' . number_format($confirmedKm, 0, ',', '.')
-                . ' km. Diferencia: ' . number_format($difference, 0, ',', '.') . ' km.',
+                . ' km. Diferencia: ' . number_format($difference, 0, ',', '.') . ' km.'
+                . ' Reincidencia: ' . $equipmentCount . ' en 30 días en el equipo; '
+                . $companyCount . ' en 7 días en la empresa.',
             'lectura_equipo',
             (string) $readingId,
             'lectura_discrepancia_ia:lectura:' . $readingId,

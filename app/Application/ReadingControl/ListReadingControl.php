@@ -170,10 +170,17 @@ final class ListReadingControl
         ];
 
         $hasEvidenceTable = $this->database->tableExists('lecturas_equipo_evidencias');
+        $hasReviewTable = $this->database->tableExists('lecturas_equipo_evidencias_revisiones');
         if ($hasEvidenceTable) {
             $select[] = 'ev.metodo_carga evidencia_metodo';
             $select[] = 'ev.km_detectado_ia evidencia_km_ia';
             $select[] = 'ev.confianza_ia evidencia_confianza_ia';
+        }
+        if ($hasEvidenceTable && $hasReviewTable) {
+            $select[] = 'rv.revisado_at evidencia_revisada_at';
+            $select[] = 'rv.motivo evidencia_revision_motivo';
+            $select[] = 'rv.observacion evidencia_revision_observacion';
+            $select[] = 'ru.nombre evidencia_revisada_por';
         }
 
         $builder = $this->database->table('equipos e')
@@ -186,6 +193,11 @@ final class ListReadingControl
 
         if ($hasEvidenceTable) {
             $builder->join('lecturas_equipo_evidencias ev', 'ev.lectura_id = lr.lectura_id AND ev.empresa_id = e.empresa_id', 'left');
+            if ($hasReviewTable) {
+                $builder
+                    ->join('lecturas_equipo_evidencias_revisiones rv', 'rv.evidencia_id = ev.id AND rv.empresa_id = ev.empresa_id', 'left')
+                    ->join('usuarios ru', 'ru.id = rv.revisado_por', 'left');
+            }
         }
 
         $builder->where('e.empresa_id', $companyId)
@@ -328,6 +340,10 @@ final class ListReadingControl
             evidenceUrl: ($row['ultima_lectura_id'] ?? null) === null || ($row['evidencia_metodo'] ?? null) === null
                 ? null
                 : base_url('mantenimiento/lecturas/' . (int) $row['ultima_lectura_id'] . '/evidencia'),
+            evidenceReviewedAt: ($row['evidencia_revisada_at'] ?? null) === null ? null : (string) $row['evidencia_revisada_at'],
+            evidenceReviewedByName: ($row['evidencia_revisada_por'] ?? null) === null ? null : (string) $row['evidencia_revisada_por'],
+            evidenceReviewReason: ($row['evidencia_revision_motivo'] ?? null) === null ? null : (string) $row['evidencia_revision_motivo'],
+            evidenceReviewObservation: ($row['evidencia_revision_observacion'] ?? null) === null ? null : (string) $row['evidencia_revision_observacion'],
         );
     }
 
