@@ -66,6 +66,20 @@ final readonly class OperationalTripFilters
         ];
     }
 
+    /**
+     * Hay al menos un filtro que recorta el conjunto de viajes. El orden no
+     * cuenta: cambia la secuencia, no qué viajes se muestran.
+     */
+    public function hasActiveFilters(): bool
+    {
+        return $this->from !== null
+            || $this->to !== null
+            || $this->branchId !== null
+            || $this->status !== null
+            || $this->search !== null
+            || $this->plate !== null;
+    }
+
     /** El listado arranca de más nuevo a más viejo; el operador puede invertirlo. */
     public function isAscending(): bool
     {

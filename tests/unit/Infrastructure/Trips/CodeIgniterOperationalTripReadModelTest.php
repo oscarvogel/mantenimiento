@@ -261,6 +261,36 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
         self::assertSame(42, $antiguos['items'][0]['numero']);
     }
 
+    public function testPagesCoverEveryTripOnceEvenWithTheSameDepartureDate(): void
+    {
+        // 27 viajes, todos con la misma fecha de salida: el desempate por id
+        // es lo único que evita repetir o saltear viajes entre páginas (#532).
+        for ($id = 100; $id < 127; $id++) {
+            $this->database->table('viajes_operativos')->insert([
+                'id' => $id, 'empresa_id' => 5, 'sucursal_id' => 10, 'numero' => $id, 'estado' => 'FINALIZADO',
+                'fecha_salida_planificada' => '2026-09-01 08:00:00', 'fecha_regreso_planificada' => null,
+                'fecha_salida_real' => '2026-09-01 08:00:00', 'fecha_regreso_real' => '2026-09-02 08:00:00',
+                'km_salida' => 1000, 'km_regreso' => 1200, 'observaciones' => 'lote paginado', 'motivo_cancelacion' => null,
+                'created_at' => '2026-09-01 07:00:00',
+            ]);
+        }
+        $readModel = new CodeIgniterOperationalTripReadModel($this->database);
+        $filters = new OperationalTripFilters(search: 'lote paginado');
+
+        $seen = [];
+        foreach ([1, 2, 3] as $page) {
+            $result = $readModel->list(5, null, $filters, $page, 10);
+            self::assertSame(27, $result['total']);
+            foreach ($result['items'] as $item) {
+                $seen[] = $item['numero'];
+            }
+        }
+
+        self::assertCount(27, $seen);
+        self::assertSame(range(126, 100), $seen);
+        self::assertSame([], $readModel->list(5, null, $filters, 4, 10)['items']);
+    }
+
     public function testListFiltersTheTripsWaitingToBeClosed(): void
     {
         $this->seedSecondTrip();
