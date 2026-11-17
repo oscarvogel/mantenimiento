@@ -114,4 +114,31 @@ final class AddPrincipalFlagToLocalitiesTest extends CIUnitTestCase
         self::assertFalse($this->db->fieldExists('principal', 'localidades'));
         self::assertSame(0, $this->db->table('localidades')->where('categoria_fuente', 'PROVINCIA')->countAllResults());
     }
+
+    public function testUpCompletesWhenBrazilHasNoProvincesYet(): void
+    {
+        // Una instalación desde cero todavía no tiene provincias cargadas.
+        // La regla de Brasil no puede ejecutarse con una lista vacía: la
+        // consulta `provincia_id IN ()` es SQL inválido en MySQL/MariaDB.
+        $this->db->table('provincias')->where('pais_id', 2)->delete();
+        $this->db->table('localidades')->where('provincia_id', 20)->delete();
+
+        $this->migration->up();
+
+        self::assertTrue($this->db->fieldExists('principal', 'localidades'));
+        self::assertSame(0, (int) $this->db->table('localidades')->where('id', 101)->countAllResults());
+    }
+
+    public function testUpCompletesWithAnEmptyCatalog(): void
+    {
+        // Sin países, sin provincias y sin localidades no hay nada que marcar.
+        $this->db->table('paises')->where('id >', 0)->delete();
+        $this->db->table('provincias')->where('id >', 0)->delete();
+        $this->db->table('localidades')->where('id >', 0)->delete();
+
+        $this->migration->up();
+
+        self::assertTrue($this->db->fieldExists('principal', 'localidades'));
+        self::assertSame(0, (int) $this->db->table('localidades')->countAllResults());
+    }
 }

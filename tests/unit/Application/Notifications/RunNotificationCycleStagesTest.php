@@ -318,6 +318,10 @@ final class CycleDeliveryQueue implements NotificationDeliveryQueue
     {
     }
 
+    public function deferred(int $deliveryId, string $reason): void
+    {
+    }
+
     public function failed(int $deliveryId, string $error, bool $retryable): void
     {
     }

@@ -76,11 +76,14 @@ final class NotificationPersistenceContractTest extends TestCase
         $source = file_get_contents(APPPATH . 'Application/Notifications/RunNotificationDispatch.php');
 
         self::assertIsString($source);
-        // 5 ocurrencias: 2 en dispatchEmail (delivered/failed), 2 en
-        // dispatchCompanyEmail (delivered/failed) y 1 en
+        // 7 ocurrencias: 3 en dispatchEmail (delivered/deferred/failed), 3 en
+        // dispatchCompanyEmail (delivered/skippedCompany/failedCompany) y 1 en
         // keepCurrentManagementReport (skippedCompany). Los puertos son strictos
         // sobre int, por eso el cast es obligatorio en cada llamada.
-        self::assertSame(5, substr_count($source, '(int) $item[\'id\']'));
+        //
+        // Las ramas `deferred` y `skippedCompany` son las del canal de correo
+        // deshabilitado: no son fallas, pero igual deben pasar un int estricto.
+        self::assertSame(7, substr_count($source, '(int) $item[\'id\']'));
         self::assertSame(6, substr_count($source, '(int) $delivery[\'id\']'));
         self::assertStringContainsString('(int) $delivery[\'usuario_id\']', $source);
     }

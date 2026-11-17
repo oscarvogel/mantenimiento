@@ -18,5 +18,14 @@ interface NotificationDeliveryQueue
 
     public function skipped(int $deliveryId, string $reason): void;
 
+    /**
+     * Anota por qué una entrega no se intentó sin cerrar ni fallar.
+     *
+     * Se usa cuando el canal está deshabilitado: la entrega queda en espera y
+     * se envía cuando el canal vuelva a estar disponible. Perderla o marcarla
+     * como fallida serían losses silenciosos o fallas falsas.
+     */
+    public function deferred(int $deliveryId, string $reason): void;
+
     public function failed(int $deliveryId, string $error, bool $retryable): void;
 }
