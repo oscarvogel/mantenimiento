@@ -16,4 +16,8 @@ enum AuditAction: string
     case USUARIO_ROLES_ASIGNADOS = 'usuario.roles_asignados';
     case USUARIO_ACCESO_ASIGNADO = 'usuario.acceso_asignado';
     case USUARIO_PASSWORD_RESTABLECIDA = 'usuario.password_restablecida';
+    case CLIENTE_CC_CARGO_REGISTRADO = 'cliente_cc.cargo_registrado';
+    case CLIENTE_CC_CARGO_ANULADO = 'cliente_cc.cargo_anulado';
+    case CLIENTE_CC_TRAMO_NO_COBRABLE = 'cliente_cc.tramo_no_cobrable';
+    case CLIENTE_CC_TRAMO_REABIERTO = 'cliente_cc.tramo_reabierto';
 }

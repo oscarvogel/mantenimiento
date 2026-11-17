@@ -50,6 +50,7 @@ seguir.
 | `NotificarEvento` | `NotifiableEventPublisher` | `app/Application/Notifications/Port/NotifiableEventPublisher.php` | Notifications | **Ya existía. Implementado.** |
 | `AcuseLecturaWhatsApp` (nuevo) | `ReadingReceiptNotifier` | `app/Application/Measurement/Port/ReadingReceiptNotifier.php` | Notifications | **Implementado.** Lo dispara `PublicEquipmentReadings` después del commit. |
 | Tools del chatbot | `ToolRegistry` | `app/Application/Chatbot/Port/ToolRegistry.php` | Chatbot | **Ya existía. Implementado.** |
+| — (nuevo, #530) | `BillableLegLookup` | `app/Application/CustomerAccounts/Port/BillableLegLookup.php` | Viajes (lectura) | **Implementado.** Cuenta corriente lee tramo, cliente, flete estimado y estado del viaje; bloquea el tramo al formalizar. No escribe en Viajes. |
 
 ---
 
@@ -217,6 +218,20 @@ Reglas del contrato:
 invoca para empresas, sucursales, usuarios, roles y restablecimiento de contraseña. Las
 operaciones de identidad dejaron de escribir en `usuario_acceso_historial`; esa tabla se
 conserva con sus filas históricas.
+
+
+### 4.11 `BillableLegLookup` — responde Viajes, lo consume Cuenta corriente de clientes
+
+```php
+/** @param list<int>|null $branchIds */
+public function findForUpdate(int $companyId, ?array $branchIds, int $legId): ?BillableLeg;
+```
+
+Devuelve el tramo con su cliente, sucursal, flete de facturación estimado (moneda,
+cotización y ARS) y si el viaje está `FINALIZADO`. Respeta empresa y sucursales del actor y
+bloquea la fila del tramo (`FOR UPDATE` en MySQL) para que dos formalizaciones simultáneas
+se ordenen. El flete estimado es solo sugerencia: la deuda la fija la cotización del
+evento de formalización (#530). Adaptador: `CodeIgniterBillableLegLookup`.
 
 ---
 

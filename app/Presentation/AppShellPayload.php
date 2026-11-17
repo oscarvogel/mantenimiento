@@ -30,7 +30,7 @@ final readonly class AppShellPayload
             : $active;
         $navigation = match ($active) {
             'command-center' => $this->platformNavigation($actor, $availableModules),
-            'trip-masters', 'trips-dashboard', 'trips-operations-dashboard', 'trips-operations', 'trip-operations-create', 'trip-operations-detail', 'trips-profitability' => array_values(array_filter([
+            'trip-masters', 'trips-dashboard', 'trips-operations-dashboard', 'trips-operations', 'trip-operations-create', 'trip-operations-detail', 'trips-profitability', 'trips-commercial-closing', 'customer-accounts', 'customer-account-detail' => array_values(array_filter([
                 $actor->hasPermission('viajes.ver')
                     ? $this->item('trips-operations-dashboard', 'Dashboard', 'viajes/operativos/dashboard', 'chart', $active)
                     : null,
@@ -42,6 +42,12 @@ final readonly class AppShellPayload
                     : null,
                 $actor->hasPermission('viajes.ver')
                     ? $this->item('trips-profitability', 'Rentabilidad', 'viajes/rentabilidad', 'chart', $active)
+                    : null,
+                $actor->hasPermission('clientes.cc.ver')
+                    ? $this->item('trips-commercial-closing', 'Cierre comercial', 'viajes/cierre-comercial', 'audit', $active)
+                    : null,
+                $actor->hasPermission('clientes.cc.ver')
+                    ? $this->item('customer-accounts', 'Cuenta corriente clientes', 'clientes/cuenta-corriente', 'users', $active === 'customer-account-detail' ? 'customer-accounts' : $active)
                     : null,
                 $actor->hasPermission('viajes.maestros.ver')
                     ? $this->item('trip-masters', 'Maestros', 'viajes/maestros', 'clipboard-list', $active)
@@ -57,10 +63,10 @@ final readonly class AppShellPayload
             : $this->platformNavigation($actor, $availableModules, match ($active) {
                 'theoretical-cost-km' => 'management',
                 'automations' => 'automations',
-                'trip-masters', 'trips-dashboard', 'trips-operations-dashboard', 'trips-operations', 'trip-operations-create', 'trip-operations-detail', 'trips-profitability' => 'trips',
+                'trip-masters', 'trips-dashboard', 'trips-operations-dashboard', 'trips-operations', 'trip-operations-create', 'trip-operations-detail', 'trips-profitability', 'trips-commercial-closing', 'customer-accounts', 'customer-account-detail' => 'trips',
                 default => 'maintenance',
             });
-        $isTripPage = in_array($active, ['trip-masters', 'trips-dashboard', 'trips-operations-dashboard', 'trips-operations', 'trip-operations-create', 'trip-operations-detail', 'trips-profitability'], true);
+        $isTripPage = in_array($active, ['trip-masters', 'trips-dashboard', 'trips-operations-dashboard', 'trips-operations', 'trip-operations-create', 'trip-operations-detail', 'trips-profitability', 'trips-commercial-closing', 'customer-accounts', 'customer-account-detail'], true);
         if ($active !== 'command-center' && $active !== 'theoretical-cost-km' && ! $isTripPage && $actor->isSuperAdmin()) {
             $navigation[] = $this->item('superadmin', 'Administración global', 'superadmin', 'building', $active);
             $navigation[] = $this->item('whatsapp-digest-preview', 'Previsualizar resumen WhatsApp', 'superadmin/whatsapp/resumen-diario', 'notifications', $active);

@@ -2677,4 +2677,132 @@ return new AsignarPlan(
      *     return new \CodeIgniter\Example();
      * }
      */
+
+    // Cuenta corriente de clientes (#530): composition root del contexto.
+
+    public static function formalizeLegCharge(bool $getShared = true): \App\Application\CustomerAccounts\FormalizeLegCharge
+    {
+        if ($getShared) {
+            return static::getSharedInstance('formalizeLegCharge');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\CustomerAccounts\FormalizeLegCharge(
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterBillableLegLookup($db),
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerAccountRepository($db),
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterExchangeRateCatalog($db),
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerAccountsUnitOfWork($db),
+            new \App\Infrastructure\CustomerAccounts\SystemCustomerAccountsClock(),
+            static::auditTrail(),
+        );
+    }
+
+    public static function annulCustomerCharge(bool $getShared = true): \App\Application\CustomerAccounts\AnnulCustomerCharge
+    {
+        if ($getShared) {
+            return static::getSharedInstance('annulCustomerCharge');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\CustomerAccounts\AnnulCustomerCharge(
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerAccountRepository($db),
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerAccountsUnitOfWork($db),
+            new \App\Infrastructure\CustomerAccounts\SystemCustomerAccountsClock(),
+            static::auditTrail(),
+        );
+    }
+
+    public static function markLegNonCollectible(bool $getShared = true): \App\Application\CustomerAccounts\MarkLegNonCollectible
+    {
+        if ($getShared) {
+            return static::getSharedInstance('markLegNonCollectible');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\CustomerAccounts\MarkLegNonCollectible(
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterBillableLegLookup($db),
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerAccountRepository($db),
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerAccountsUnitOfWork($db),
+            new \App\Infrastructure\CustomerAccounts\SystemCustomerAccountsClock(),
+            static::auditTrail(),
+        );
+    }
+
+    public static function reopenNonCollectibleLeg(bool $getShared = true): \App\Application\CustomerAccounts\ReopenNonCollectibleLeg
+    {
+        if ($getShared) {
+            return static::getSharedInstance('reopenNonCollectibleLeg');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\CustomerAccounts\ReopenNonCollectibleLeg(
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterBillableLegLookup($db),
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerAccountRepository($db),
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerAccountsUnitOfWork($db),
+            new \App\Infrastructure\CustomerAccounts\SystemCustomerAccountsClock(),
+            static::auditTrail(),
+        );
+    }
+
+    public static function registerOpeningBalance(bool $getShared = true): \App\Application\CustomerAccounts\RegisterOpeningBalance
+    {
+        if ($getShared) {
+            return static::getSharedInstance('registerOpeningBalance');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\CustomerAccounts\RegisterOpeningBalance(
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerAccountRepository($db),
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterExchangeRateCatalog($db),
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerAccountsUnitOfWork($db),
+            new \App\Infrastructure\CustomerAccounts\SystemCustomerAccountsClock(),
+            static::auditTrail(),
+        );
+    }
+
+    public static function getCommercialClosingQueue(bool $getShared = true): \App\Application\CustomerAccounts\GetCommercialClosingQueue
+    {
+        if ($getShared) {
+            return static::getSharedInstance('getCommercialClosingQueue');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\CustomerAccounts\GetCommercialClosingQueue(
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerAccountReadModel($db),
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterExchangeRateCatalog($db),
+        );
+    }
+
+    public static function listCustomerAccounts(bool $getShared = true): \App\Application\CustomerAccounts\ListCustomerAccounts
+    {
+        if ($getShared) {
+            return static::getSharedInstance('listCustomerAccounts');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\CustomerAccounts\ListCustomerAccounts(
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerAccountReadModel($db),
+        );
+    }
+
+    public static function getCustomerStatement(bool $getShared = true): \App\Application\CustomerAccounts\GetCustomerStatement
+    {
+        if ($getShared) {
+            return static::getSharedInstance('getCustomerStatement');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\CustomerAccounts\GetCustomerStatement(
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerAccountReadModel($db),
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterExchangeRateCatalog($db),
+        );
+    }
 }
