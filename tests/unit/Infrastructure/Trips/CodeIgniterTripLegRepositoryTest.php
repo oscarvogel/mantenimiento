@@ -6,6 +6,7 @@ use App\Domain\Trips\Trip;
 use App\Domain\Trips\TripAssignment;
 use App\Domain\Trips\TripLeg;
 use App\Domain\Trips\TripLegAmount;
+use App\Domain\Trips\TripLegLiquidationBasis;
 use App\Domain\Trips\TripStop;
 use App\Infrastructure\Trips\CodeIgniterTripLegRepository;
 use CodeIgniter\Database\BaseConnection;
@@ -28,9 +29,14 @@ final class CodeIgniterTripLegRepositoryTest extends TestCase
         $this->database->query('CREATE TABLE viaje_operativo_tramos (
             id INTEGER PRIMARY KEY AUTOINCREMENT, viaje_id INTEGER, empresa_id INTEGER, sucursal_id INTEGER,
             orden INTEGER, codigo_origen_destino INTEGER NULL, localidad_origen_id INTEGER NULL, localidad_destino_id INTEGER NULL, cliente_id INTEGER NULL, origen TEXT, destino TEXT, km REAL NULL, toneladas REAL NULL,
-            moneda TEXT, cotizacion REAL, moneda_liquidacion TEXT NULL, cotizacion_liquidacion REAL NULL, flete_facturacion REAL, flete_facturacion_ars REAL,
+            moneda TEXT, cotizacion REAL, moneda_liquidacion TEXT NULL, cotizacion_liquidacion REAL NULL, modo_liquidacion TEXT NULL, toneladas_liquidacion REAL NULL, precio_unitario_liquidacion REAL NULL, flete_facturacion REAL, flete_facturacion_ars REAL,
             flete_liquidacion REAL, flete_liquidacion_ars REAL, fecha_inicio TEXT NULL, fecha_fin TEXT NULL, observaciones TEXT NULL,
             created_at TEXT NULL, updated_at TEXT NULL, created_by INTEGER NULL, updated_by INTEGER NULL
+        )');
+        $this->database->query('CREATE TABLE viaje_operativo_movimientos_auditoria (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, empresa_id INTEGER, sucursal_id INTEGER, viaje_id INTEGER,
+            movimiento_tipo TEXT, movimiento_id INTEGER, accion TEXT, datos_anteriores TEXT NULL, datos_nuevos TEXT NULL,
+            usuario_id INTEGER NULL, created_at TEXT
         )');
     }
 
@@ -189,5 +195,70 @@ final class CodeIgniterTripLegRepositoryTest extends TestCase
             ],
             '',
         );
+    }
+
+    public function testPersistsThePerTonneAgreementWithItsComputedBase(): void
+    {
+        $repository = new CodeIgniterTripLegRepository($this->database);
+        $repository->add(5, 10, 55, new TripLeg(
+            'Rosario',
+            'Córdoba',
+            new TripLegAmount(2_000_000),
+            new TripLegAmount(1_350_000),
+            tonnes: 31.2,
+            liquidationBasis: TripLegLiquidationBasis::perTonne(30, 45_000),
+        ), 1);
+
+        $row = $this->database->table('viaje_operativo_tramos')->get()->getRowArray();
+        self::assertSame('POR_TONELADA', $row['modo_liquidacion']);
+        self::assertEquals(30.0, (float) $row['toneladas_liquidacion']);
+        self::assertEquals(45_000.0, (float) $row['precio_unitario_liquidacion']);
+        self::assertEquals(1_350_000.0, (float) $row['flete_liquidacion_ars']);
+        // Las toneladas operativas del tramo no se mezclan con el acuerdo.
+        self::assertEquals(31.2, (float) $row['toneladas']);
+        self::assertEquals(2_000_000.0, (float) $row['flete_facturacion_ars']);
+    }
+
+    public function testAnIncompletePerTonneAgreementBlocksTheClosingLikeAMissingFreight(): void
+    {
+        $repository = new CodeIgniterTripLegRepository($this->database);
+        $repository->add(5, 10, 55, new TripLeg(
+            'Rosario',
+            'Córdoba',
+            new TripLegAmount(2_000_000),
+            new TripLegAmount(null),
+            liquidationBasis: TripLegLiquidationBasis::perTonne(30, null),
+        ), 1);
+
+        self::assertSame([1], $repository->ordersWithMissingAmounts(5, 55));
+    }
+
+    public function testAuditsWhoChangedTheLegAndWhatItWasBefore(): void
+    {
+        $repository = new CodeIgniterTripLegRepository($this->database);
+        $id = $repository->add(5, 10, 55, new TripLeg('Rosario', 'Córdoba', new TripLegAmount(2_000_000), new TripLegAmount(1_250_000)), 1);
+
+        $repository->update(5, 10, 55, $id, new TripLeg(
+            'Rosario',
+            'Córdoba',
+            new TripLegAmount(2_000_000),
+            new TripLegAmount(1_350_000),
+            liquidationBasis: TripLegLiquidationBasis::perTonne(30, 45_000),
+        ), 7);
+
+        $audit = $this->database->table('viaje_operativo_movimientos_auditoria')->get()->getResultArray();
+        self::assertCount(1, $audit);
+        self::assertSame('TRAMO', $audit[0]['movimiento_tipo']);
+        self::assertSame('EDICION', $audit[0]['accion']);
+        self::assertSame($id, (int) $audit[0]['movimiento_id']);
+        self::assertSame(7, (int) $audit[0]['usuario_id']);
+        $before = json_decode((string) $audit[0]['datos_anteriores'], true, 512, JSON_THROW_ON_ERROR);
+        $after = json_decode((string) $audit[0]['datos_nuevos'], true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame('MONTO_ACORDADO', $before['modo_liquidacion']);
+        self::assertEquals(1_250_000.0, (float) $before['flete_liquidacion']);
+        self::assertSame('POR_TONELADA', $after['modo_liquidacion']);
+        self::assertEquals(1_350_000.0, (float) $after['flete_liquidacion']);
+        // Editar la liquidación no toca el flete comercial.
+        self::assertEquals((float) $before['flete_facturacion'], (float) $after['flete_facturacion']);
     }
 }

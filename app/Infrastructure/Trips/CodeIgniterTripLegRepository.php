@@ -59,18 +59,58 @@ final class CodeIgniterTripLegRepository implements TripLegRepository
             throw new RuntimeException('No se puede actualizar un tramo sin identificar empresa, sucursal, viaje y tramo.');
         }
 
+        $before = $this->database->table('viaje_operativo_tramos')
+            ->where('empresa_id', $companyId)
+            ->where('viaje_id', $tripId)
+            ->where('id', $legId)
+            ->get()->getRowArray();
+        if ($before === null) {
+            throw new RuntimeException('No se pudo actualizar el tramo del viaje.');
+        }
+        $now = date('Y-m-d H:i:s');
+        $changes = [
+            'sucursal_id' => $branchId,
+            ...$this->payload($leg),
+            'updated_at' => $now,
+            'updated_by' => $actorUserId,
+        ];
+
         $updated = $this->database->table('viaje_operativo_tramos')
             ->where('empresa_id', $companyId)
             ->where('viaje_id', $tripId)
             ->where('id', $legId)
-            ->update([
-                'sucursal_id' => $branchId,
-                ...$this->payload($leg),
-                'updated_at' => date('Y-m-d H:i:s'),
-                'updated_by' => $actorUserId,
-            ]);
+            ->update($changes);
         if (! $updated) {
             throw new RuntimeException('No se pudo actualizar el tramo del viaje.');
+        }
+
+        $this->audit($companyId, $branchId, $tripId, $legId, $before, array_merge($before, $changes), $actorUserId, $now);
+    }
+
+    /**
+     * Deja asentado quién cambió el tramo y qué valía antes: el tramo lleva
+     * los fletes y el acuerdo con el chofer, que son la base de la
+     * liquidación.
+     *
+     * @param array<string,mixed> $before
+     * @param array<string,mixed> $after
+     */
+    private function audit(int $companyId, int $branchId, int $tripId, int $legId, array $before, array $after, int $actorUserId, string $at): void
+    {
+        $inserted = $this->database->table('viaje_operativo_movimientos_auditoria')->insert([
+            'empresa_id' => $companyId,
+            'sucursal_id' => $branchId,
+            'viaje_id' => $tripId,
+            'movimiento_tipo' => 'TRAMO',
+            'movimiento_id' => $legId,
+            'accion' => 'EDICION',
+            'datos_anteriores' => json_encode($before, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR),
+            'datos_nuevos' => json_encode($after, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR),
+            'usuario_id' => $actorUserId,
+            'created_at' => $at,
+        ]);
+        if (! $inserted) {
+            throw new RuntimeException('No se pudo registrar la auditoría del tramo.');
         }
     }
 
@@ -124,6 +164,7 @@ final class CodeIgniterTripLegRepository implements TripLegRepository
     {
         $invoice = $leg->invoice();
         $liquidation = $leg->liquidation();
+        $basis = $leg->liquidationBasis();
 
         return [
             'cliente_id' => $leg->customerId(),
@@ -142,6 +183,9 @@ final class CodeIgniterTripLegRepository implements TripLegRepository
             'cotizacion_liquidacion' => $this->decimal($liquidation->exchangeRate(), 6),
             'flete_liquidacion' => $liquidation->amount() === null ? null : $this->decimal($liquidation->amount(), 4),
             'flete_liquidacion_ars' => $liquidation->amountArs() === null ? null : $this->decimal($liquidation->amountArs(), 4),
+            'modo_liquidacion' => $basis->mode(),
+            'toneladas_liquidacion' => $basis->tonnes() === null ? null : $this->decimal($basis->tonnes(), 3),
+            'precio_unitario_liquidacion' => $basis->unitPrice() === null ? null : $this->decimal($basis->unitPrice(), 4),
             'fecha_inicio' => $leg->startDate()?->format('Y-m-d'),
             'fecha_fin' => $leg->endDate()?->format('Y-m-d'),
             'observaciones' => $leg->notes(),

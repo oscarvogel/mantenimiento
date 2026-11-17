@@ -55,10 +55,14 @@ describe('alta de viaje operativo', () => {
     expect(wrapper.text()).toContain('Localidad de origen')
     expect(wrapper.text()).toContain('Localidad de destino')
     expect(wrapper.get('input[name="tramos[0][flete_facturacion]"]').attributes('required')).toBeUndefined()
+    // La modalidad de liquidación se elige de forma explícita (#533).
+    expect(wrapper.find('input[name="tramos[0][flete_liquidacion]"]').exists()).toBe(false)
+    expect(wrapper.get('input[name="tramos[0][modo_liquidacion]"][value="MONTO_ACORDADO"]').attributes('required')).toBeDefined()
+    await wrapper.get('input[name="tramos[0][modo_liquidacion]"][value="MONTO_ACORDADO"]').setValue(true)
     expect(wrapper.get('input[name="tramos[0][flete_liquidacion]"]').attributes('required')).toBeUndefined()
     expect(wrapper.text()).toContain('Flete de facturación')
-    expect(wrapper.text()).toContain('Flete de liquidación')
-    expect(wrapper.text()).toContain('opcional')
+    expect(wrapper.text()).toContain('Acuerdo con el chofer')
+    expect(wrapper.text()).toContain('Monto acordado (ARS, opcional)')
     const customer = wrapper.findAllComponents(AutocompleteSelect).find((component) => component.props('name') === 'tramos[0][cliente_id]')
     expect(customer.props('options')[0].hint).toContain('Código 324')
 
@@ -135,7 +139,8 @@ describe('alta de viaje operativo', () => {
 
     expect(wrapper.get('select[name="tramos[0][moneda_liquidacion]"]').element.value).toBe('ARS')
     expect(wrapper.get('input[name="tramos[0][cotizacion_liquidacion]"]').attributes('disabled')).toBeDefined()
-    expect(wrapper.text()).toContain('Flete de liquidación (ARS, opcional)')
+    await wrapper.get('input[name="tramos[0][modo_liquidacion]"][value="MONTO_ACORDADO"]').setValue(true)
+    expect(wrapper.text()).toContain('Monto acordado (ARS, opcional)')
     wrapper.unmount()
   })
 

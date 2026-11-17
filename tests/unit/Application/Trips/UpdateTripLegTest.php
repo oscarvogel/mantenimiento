@@ -92,6 +92,31 @@ final class UpdateTripLegTest extends TestCase
         self::assertSame(5_875_000.0, $legs->updated->liquidation()->amountArs());
     }
 
+    public function testSwitchesTheDriverAgreementToPerTonneWithoutTouchingTheInvoice(): void
+    {
+        $legs = new UpdateLegRepositoryFake();
+        $handler = new UpdateTripLeg(
+            new UpdateLegTripRepositoryFake(Trip::EN_CURSO),
+            $legs,
+            new UpdateLegDirectoryFake(),
+            new UpdateLegLocalityFake(),
+            new UpdateLegUnitOfWorkFake(),
+        );
+
+        $handler->execute($this->actor(), UpdateTripLegCommand::fromInput([
+            'leg_id' => 9, 'viaje_id' => 55, 'cliente_id' => 3, 'localidad_origen_id' => 1, 'localidad_destino_id' => 2,
+            'moneda' => 'USD', 'cotizacion' => '1250', 'flete_facturacion' => '4700',
+            'moneda_liquidacion' => 'ARS', 'modo_liquidacion' => 'POR_TONELADA',
+            'toneladas_liquidacion' => '30', 'precio_unitario_liquidacion' => '45000',
+        ]));
+
+        self::assertNotNull($legs->updated);
+        self::assertTrue($legs->updated->liquidationBasis()->isPerTonne());
+        self::assertSame(1_350_000.0, $legs->updated->liquidation()->amountArs());
+        self::assertSame(189_000.0, $legs->updated->commission(14.0));
+        self::assertSame(5_875_000.0, $legs->updated->invoice()->amountArs());
+    }
+
     public function testRejectsClosedTrip(): void
     {
         $handler = new UpdateTripLeg(

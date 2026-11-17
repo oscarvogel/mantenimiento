@@ -6,6 +6,10 @@ namespace App\Application\Trips\Port;
 
 interface DriverSettlementPdfRenderer
 {
-    /** @param array<string,mixed> $trip */
-    public function render(array $trip): string;
+    /**
+     * @param array<string,mixed> $statement Proyección segura de
+     *        {@see \App\Application\Trips\DriverSettlementStatement}: el PDF
+     *        no recibe el detalle administrativo del viaje.
+     */
+    public function render(array $statement): string;
 }

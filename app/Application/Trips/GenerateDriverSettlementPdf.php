@@ -6,27 +6,30 @@ namespace App\Application\Trips;
 
 use App\Application\Identity\ActorContext;
 use App\Application\Trips\Port\DriverSettlementPdfRenderer;
-use App\Domain\Trips\Trip;
 use DomainException;
 
+/**
+ * PDF de la liquidación del chofer.
+ *
+ * Imprime la misma proyección segura que la vista en pantalla: el renderer
+ * nunca recibe el detalle administrativo del viaje. Antes del cierre sale
+ * marcado como borrador.
+ */
 final class GenerateDriverSettlementPdf
 {
     public function __construct(
-        private readonly GetOperationalTrip $getTrip,
+        private readonly GetDriverSettlement $getSettlement,
         private readonly DriverSettlementPdfRenderer $renderer,
     ) {
     }
 
     public function execute(ActorContext $actor, int $tripId): string
     {
-        $trip = $this->getTrip->execute($actor, $tripId);
-        if (($trip['trip']['estado'] ?? null) !== Trip::FINALIZADO) {
-            throw new DomainException('La liquidación para el chofer se puede emitir cuando el viaje está finalizado.');
-        }
-        if (($trip['settlement'] ?? null) === null) {
-            throw new DomainException('No se puede emitir la liquidación: falta un chofer responsable con porcentaje definido.');
+        $statement = $this->getSettlement->execute($actor, $tripId);
+        if (! ($statement['available'] ?? false)) {
+            throw new DomainException('No se puede emitir la liquidación: ' . lcfirst((string) ($statement['pending'] ?? 'faltan datos del chofer.')));
         }
 
-        return $this->renderer->render($trip);
+        return $this->renderer->render($statement);
     }
 }

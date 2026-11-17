@@ -5,10 +5,13 @@ import PageHeading from './components/PageHeading.vue'
 import PanelCard from './components/PanelCard.vue'
 import AutocompleteSelect from './components/AutocompleteSelect.vue'
 import LocalityCreateModal from './components/LocalityCreateModal.vue'
+import TripLegLiquidationBasisFields from './components/TripLegLiquidationBasisFields.vue'
 import { fieldClass, primaryButton, secondaryButton, dangerButton, nowLocal } from './helpers.js'
 import {
   effectiveLiquidationRate,
+  emptyLiquidationBasis,
   legMoneyFromServer,
+  liquidationBasisFromServer,
   liquidationCurrency,
   liquidationRateDisabled,
   onInvoiceCurrencyChange,
@@ -79,6 +82,7 @@ const applyCreatedLocality = (locality) => {
   }
   closeLocalityModal()
 }
+const newLegBasis = ref(emptyLiquidationBasis())
 const newLegMoney = reactive({
   moneda: 'ARS',
   cotizacion: '1',
@@ -191,6 +195,7 @@ const openLegEdit = (leg) => {
     ...legMoneyFromServer(leg),
     invoiceAmount: leg.flete_facturacion ?? '',
     liquidationAmount: leg.flete_liquidacion ?? '',
+    basis: liquidationBasisFromServer(leg),
     startDate: dateValue(leg.fecha_inicio),
     endDate: dateValue(leg.fecha_fin),
     notes: leg.observaciones ?? '',
@@ -476,8 +481,8 @@ const facts = computed(() => {
         <a v-if="trip.estado === 'FINALIZADO' && data.links?.summaryPdf" :href="data.links.summaryPdf" class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-primary px-3 py-2 text-sm font-semibold text-primary hover:bg-primary-subtle">
           <ArrowDownTrayIcon class="size-4" aria-hidden="true" />Descargar resumen PDF
         </a>
-        <a v-if="trip.estado === 'FINALIZADO' && settlement && data.links?.driverSettlementPdf" :href="data.links.driverSettlementPdf" class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-success/40 bg-success-subtle px-3 py-2 text-sm font-semibold text-success-strong hover:bg-success/15">
-          <ArrowDownTrayIcon class="size-4" aria-hidden="true" />Descargar liquidación para el chofer
+        <a v-if="data.canViewDriverSettlement && data.links?.driverSettlement" :href="data.links.driverSettlement" data-testid="driver-settlement-link" class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-success/40 bg-success-subtle px-3 py-2 text-sm font-semibold text-success-strong hover:bg-success/15">
+          <ReceiptPercentIcon class="size-4" aria-hidden="true" />Ver liquidación del chofer
         </a>
         <button v-if="canEdit" type="button" @click="openTripEdit" class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-primary px-3 py-2 text-sm font-semibold text-primary hover:bg-primary-subtle">
           <PencilSquareIcon class="size-4" aria-hidden="true" />Editar viaje
@@ -555,7 +560,7 @@ const facts = computed(() => {
     </section>
 
     <PanelCard title="Tramos" :count="legs.length" class="mb-5" allow-overflow>
-      <p v-if="legs.length === 0" class="mb-4 text-sm text-ink-muted">Cargá el primer tramo con origen, destino y los dos fletes: facturación y liquidación.</p>
+      <p v-if="legs.length === 0" class="mb-4 text-sm text-ink-muted">Cargá el primer tramo con origen, destino, el flete de facturación y el acuerdo con el chofer.</p>
       <div v-else class="mb-4 overflow-x-auto">
         <table class="w-full min-w-[64rem] text-left text-sm">
           <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
@@ -584,7 +589,7 @@ const facts = computed(() => {
               <td class="px-3 py-2 text-right text-ink-muted">{{ leg.toneladas === null ? '—' : number(leg.toneladas) }}</td>
               <td class="px-3 py-2 text-right text-ink-muted">{{ leg.km === null ? '—' : number(leg.km) }}</td>
               <td class="px-3 py-2 text-right text-ink" :title="legAmountTitle(leg, 'invoice')">{{ moneyOrNoData(leg.flete_facturacion_ars) }}</td>
-              <td class="px-3 py-2 text-right text-ink" :title="legAmountTitle(leg, 'liquidation')">{{ moneyOrNoData(leg.flete_liquidacion_ars) }}</td>
+              <td class="px-3 py-2 text-right text-ink" :title="legAmountTitle(leg, 'liquidation')">{{ moneyOrNoData(leg.flete_liquidacion_ars) }}<span class="block text-xs font-normal text-ink-muted" data-testid="leg-basis-mode">{{ leg.modo_liquidacion_label || 'Monto acordado' }}</span></td>
               <td class="px-3 py-2 text-right text-ink-muted">{{ moneyOrNoData(leg.commission_ars) }}</td>
               <td class="px-3 py-2 text-right text-ink-muted">{{ money(leg.assigned_costs_ars) }}</td>
               <td class="px-3 py-2 text-right font-semibold" :class="leg.margin_ars === null ? 'text-ink-muted' : (leg.margin_ars < 0 ? 'text-danger-strong' : 'text-success-strong')">{{ moneyOrNoData(leg.margin_ars) }}</td>
@@ -596,7 +601,7 @@ const facts = computed(() => {
       <form v-if="canAddLegs" method="post" :action="data.links?.legs" class="rounded-xl border border-border-subtle bg-surface p-4">
         <input type="hidden" :name="csrf.name" :value="csrf.hash" />
         <h3 class="text-sm font-bold text-ink">Agregar tramo</h3>
-        <p class="mt-1 text-xs text-ink-muted">El flete de liquidación es la base para el porcentaje del chofer. El de facturación es el ingreso del viaje. Ambos son opcionales mientras el viaje está abierto.</p>
+        <p class="mt-1 text-xs text-ink-muted">El flete de facturación es el ingreso del viaje. El acuerdo con el chofer, por toneladas o con un monto acordado, es la base para su porcentaje. Los importes son opcionales mientras el viaje está abierto.</p>
         <div class="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Localidad de origen</span><AutocompleteSelect v-model="newLegOriginId" name="localidad_origen_id" :options="localityOptions" :search-url="data.links?.localities" placeholder="Buscá la localidad" required allow-create @create="openLocalityModal('localidad_origen_id', $event)" /></label>
           <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Localidad de destino</span><AutocompleteSelect v-model="newLegDestinationId" name="localidad_destino_id" :options="localityOptions" :search-url="data.links?.localities" placeholder="Buscá la localidad" required allow-create @create="openLocalityModal('localidad_destino_id', $event)" /></label>
@@ -614,8 +619,8 @@ const facts = computed(() => {
         </div>
         <div class="mt-3 grid gap-3 md:grid-cols-2">
           <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cotización a ARS (liquidación)</span><input :value="effectiveLiquidationRate(newLegMoney)" type="number" name="cotizacion_liquidacion" min="0.000001" step="0.000001" :required="!liquidationRateDisabled(newLegMoney)" :disabled="liquidationRateDisabled(newLegMoney)" :class="fieldClass" @input="newLegMoney.cotizacion_liquidacion = $event.target.value" /><span class="mt-1 block text-xs text-ink-muted">{{ liquidationRateDisabled(newLegMoney) ? (liquidationCurrency(newLegMoney) === 'ARS' ? 'En pesos se usa cotización 1.' : 'Usa la misma cotización que la de facturación.') : `Ingresá cuántos ARS vale 1 ${liquidationCurrency(newLegMoney)}.` }}</span></label>
-          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Flete de liquidación ({{ liquidationCurrency(newLegMoney) }}, opcional)</span><input type="number" name="flete_liquidacion" min="0" step="0.01" :class="fieldClass" /></label>
         </div>
+        <TripLegLiquidationBasisFields v-model="newLegBasis" class="mt-3" id-prefix="new-leg-basis" :currency="liquidationCurrency(newLegMoney)" dense />
         <div class="mt-3 grid gap-3 md:grid-cols-2">
           <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Fecha de inicio (opcional)</span><input type="date" name="fecha_inicio" :class="fieldClass" /><span class="mt-1 block text-xs text-ink-muted">Cuándo salió el tramo.</span></label>
           <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Fecha de fin (opcional)</span><input type="date" name="fecha_fin" :class="fieldClass" /><span class="mt-1 block text-xs text-ink-muted">Cuándo terminó el tramo.</span></label>
@@ -1018,10 +1023,7 @@ const facts = computed(() => {
               <input :value="effectiveLiquidationRate(legDraft)" type="number" min="0.000001" step="0.000001" name="cotizacion_liquidacion" :required="!liquidationRateDisabled(legDraft)" :disabled="liquidationRateDisabled(legDraft)" :class="fieldClass" @input="legDraft.cotizacion_liquidacion = $event.target.value" />
               <span class="mt-1.5 block text-xs text-ink-muted">{{ liquidationRateDisabled(legDraft) ? (liquidationCurrency(legDraft) === 'ARS' ? 'En pesos se usa cotización 1.' : 'Usa la misma cotización que la de facturación.') : `Ingresá cuántos ARS vale 1 ${liquidationCurrency(legDraft)}.` }}</span>
             </label>
-            <label class="block">
-              <span class="mb-1.5 block text-sm font-semibold text-ink">Flete de liquidación ({{ liquidationCurrency(legDraft) }}, opcional)</span>
-              <input v-model="legDraft.liquidationAmount" type="number" min="0" step="0.01" name="flete_liquidacion" :class="fieldClass" />
-            </label>
+            <TripLegLiquidationBasisFields v-model="legDraft.basis" class="md:col-span-2" id-prefix="edit-leg-basis" :currency="liquidationCurrency(legDraft)" />
             <label class="block">
               <span class="mb-1.5 block text-sm font-semibold text-ink">Fecha de inicio (opcional)</span>
               <input v-model="legDraft.startDate" type="date" name="fecha_inicio" :class="fieldClass" />

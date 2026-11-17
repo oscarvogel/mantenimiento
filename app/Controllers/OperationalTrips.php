@@ -206,6 +206,22 @@ final class OperationalTrips extends BaseController
         }
     }
 
+    /**
+     * Vista «Liquidación del chofer». El payload es solo la proyección segura:
+     * los importes comerciales del viaje no viajan al navegador.
+     */
+    public function driverSettlement(int $tripId): string|RedirectResponse
+    {
+        try {
+            $actor = $this->actor();
+            $payload = service('getDriverSettlement')->execute($actor, $tripId);
+
+            return $this->renderApp($actor, 'trips-operations', 'trip-driver-settlement', 'Liquidación del chofer', $payload);
+        } catch (Throwable $exception) {
+            return $this->failure($exception, 'No se pudo cargar la liquidación del chofer.', '/viajes/operativos/' . $tripId);
+        }
+    }
+
     public function driverSettlementPdf(int $tripId): ResponseInterface
     {
         try {
@@ -213,7 +229,9 @@ final class OperationalTrips extends BaseController
 
             return $this->response
                 ->setHeader('Content-Type', 'application/pdf')
-                ->setHeader('Content-Disposition', 'attachment; filename="liquidacion-chofer-viaje-' . $tripId . '.pdf"')
+                // En línea: se abre en el visor del navegador para revisarla e imprimirla.
+                ->setHeader('Content-Disposition', 'inline; filename="liquidacion-chofer-viaje-' . $tripId . '.pdf"')
+                ->setHeader('Cache-Control', 'private, no-store')
                 ->setHeader('Content-Length', (string) strlen($pdf))
                 ->setBody($pdf);
         } catch (Throwable $exception) {

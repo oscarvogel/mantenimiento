@@ -30,6 +30,7 @@ import TripOperationsDashboardPage from './TripOperationsDashboardPage.vue'
 import TripOperationsIndexPage from './TripOperationsIndexPage.vue'
 import TripOperationsCreatePage from './TripOperationsCreatePage.vue'
 import TripOperationsDetailPage from './TripOperationsDetailPage.vue'
+import TripDriverSettlementPage from './TripDriverSettlementPage.vue'
 import TripProfitabilityPage from './TripProfitabilityPage.vue'
 
 export {
@@ -65,6 +66,7 @@ export {
   TripOperationsIndexPage,
   TripOperationsCreatePage,
   TripOperationsDetailPage,
+  TripDriverSettlementPage,
   TripProfitabilityPage,
 }
 
@@ -99,6 +101,7 @@ export const operationPageComponents = Object.freeze({
   'trips-operations': TripOperationsIndexPage,
   'trip-operations-create': TripOperationsCreatePage,
   'trip-operations-detail': TripOperationsDetailPage,
+  'trip-driver-settlement': TripDriverSettlementPage,
   'trips-profitability': TripProfitabilityPage,
 })
 

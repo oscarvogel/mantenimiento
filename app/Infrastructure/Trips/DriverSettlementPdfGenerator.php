@@ -9,13 +9,12 @@ use FPDF;
 
 final class DriverSettlementPdfGenerator implements DriverSettlementPdfRenderer
 {
-    /** @param array<string,mixed> $trip */
-    public function render(array $trip): string
+    /** @param array<string,mixed> $statement Proyección de DriverSettlementStatement. */
+    public function render(array $statement): string
     {
-        $record = $trip['trip'] ?? [];
-        $settlement = $trip['settlement'] ?? [];
-        $assignments = $trip['assignments'] ?? [];
-        $driver = $this->assignment($assignments, 'CHOFER');
+        $record = $statement['trip'] ?? [];
+        $totals = $statement['totals'] ?? [];
+        $draft = ($statement['status'] ?? null) !== 'DEFINITIVA';
 
         $pdf = new class('P', 'mm', 'A4') extends FPDF {
             public function Footer(): void
@@ -26,7 +25,7 @@ final class DriverSettlementPdfGenerator implements DriverSettlementPdfRenderer
                 $this->Cell(0, 5, 'Viaje - Pagina ' . $this->PageNo(), 0, 0, 'R');
             }
         };
-        $pdf->SetTitle($this->pdfText('Liquidación para el chofer - Viaje #' . ($record['numero'] ?? '')));
+        $pdf->SetTitle($this->pdfText('Liquidación del chofer - Viaje #' . ($record['numero'] ?? '')));
         $pdf->SetAuthor('Mantenimiento');
         $pdf->SetMargins(13, 11, 13);
         $pdf->SetAutoPageBreak(true, 11);
@@ -35,112 +34,100 @@ final class DriverSettlementPdfGenerator implements DriverSettlementPdfRenderer
         $pdf->SetFont('Arial', 'B', 18);
         $pdf->SetTextColor(25, 48, 72);
         $pdf->Cell(0, 10, $this->pdfText('Liquidación del chofer'), 0, 1, 'L');
+        if ($draft) {
+            $pdf->SetFillColor(255, 243, 205);
+            $pdf->SetTextColor(133, 77, 14);
+            $pdf->SetFont('Arial', 'B', 10);
+            $pdf->Cell(0, 8, $this->pdfText('BORRADOR - ' . (string) ($statement['status_label'] ?? '')), 0, 1, 'L', true);
+        }
         $pdf->SetTextColor(0, 0, 0);
         $pdf->SetFont('Arial', '', 10);
-        $pdf->Cell(0, 6, $this->pdfText((string) ($trip['company']['name'] ?? '')), 0, 1, 'L');
+        $pdf->Cell(0, 6, $this->pdfText((string) ($statement['company']['name'] ?? '')), 0, 1, 'L');
         $pdf->Cell(0, 6, $this->pdfText('Viaje #' . ($record['numero'] ?? '') . ' - ' . (string) ($record['sucursal'] ?? '')), 0, 1, 'L');
-        $pdf->Cell(0, 6, $this->pdfText('Chofer: ' . ($driver['label'] ?? 'Sin dato')), 0, 1, 'L');
-        $pdf->Cell(0, 6, $this->pdfText('Unidad: ' . $this->assignmentLabel($assignments, 'TRACTOR')), 0, 1, 'L');
+        $pdf->Cell(0, 6, $this->pdfText('Chofer: ' . ($statement['driver']['label'] ?? 'Sin dato')), 0, 1, 'L');
+        $pdf->Cell(0, 6, $this->pdfText('Unidad: ' . ($statement['unit'] ?? 'Sin dato')), 0, 1, 'L');
         $pdf->Cell(0, 6, $this->pdfText('Salida: ' . $this->date($record['fecha_salida_real'] ?? null) . '    Regreso: ' . $this->date($record['fecha_regreso_real'] ?? null)), 0, 1, 'L');
-        $pdf->Ln(5);
+        $pdf->Cell(0, 6, $this->pdfText('Porcentaje del chofer: ' . ($statement['percentage'] === null ? 'Sin definir' : $this->number($statement['percentage']) . ' %')), 0, 1, 'L');
+        $pdf->Ln(4);
 
-        $this->section($pdf, 'Comisión por tramo');
-        $widths = [92, 38, 22, 28];
-        $this->tableHeader($pdf, $widths, ['Recorrido', 'Base liquidación', '%', 'Comisión ARS']);
-        $legs = $trip['legs'] ?? [];
+        $this->section($pdf, 'Base de liquidación y comisión por tramo');
+        $widths = [36, 22, 36, 26, 16, 24, 24];
+        $this->tableHeader($pdf, $widths, ['Recorrido', 'Modalidad', 'Detalle', 'Base', 'Cotiz.', 'Base ARS', 'Comisión ARS'], 7);
+        $legs = $statement['legs'] ?? [];
         if ($legs === []) {
             $this->emptyRow($pdf, 'No hay tramos cargados.');
         }
         foreach ($legs as $leg) {
-            $route = trim((string) ($leg['origen'] ?? '') . ' -> ' . (string) ($leg['destino'] ?? ''));
+            $currency = (string) ($leg['moneda'] ?? 'ARS');
+            $detail = ($leg['modo'] ?? null) === 'POR_TONELADA'
+                ? ($leg['toneladas'] === null || $leg['precio_unitario'] === null
+                    ? 'Sin cargar'
+                    : $this->number($leg['toneladas'], 3) . ' t x ' . $this->money($leg['precio_unitario'], $currency))
+                : 'Importe global';
             $this->tableRow($pdf, $widths, [
-                $route,
-                $this->money($leg['flete_liquidacion_ars'] ?? 0),
-                $this->number($driver['porcentaje_liquidacion'] ?? 0) . '%',
-                $this->money($leg['commission_ars'] ?? 0),
-            ], ['L', 'R', 'R', 'R']);
+                trim((string) ($leg['origen'] ?? '') . ' -> ' . (string) ($leg['destino'] ?? '')),
+                (string) ($leg['modo_label'] ?? ''),
+                $detail,
+                $leg['importe'] === null ? 'Sin dato' : $this->money($leg['importe'], $currency),
+                $leg['cotizacion'] === null ? '-' : $this->number($leg['cotizacion'], 4),
+                $leg['importe_ars'] === null ? 'Sin dato' : $this->money($leg['importe_ars']),
+                $leg['comision_ars'] === null ? 'Sin dato' : $this->money($leg['comision_ars']),
+            ], ['L', 'L', 'L', 'R', 'R', 'R', 'R']);
         }
-        $this->summaryLine($pdf, 'Comisión total', $this->money($settlement['commission_ars'] ?? 0), true);
+        $this->summaryLine($pdf, 'Base de liquidación total', $this->money($totals['base_ars'] ?? 0));
+        $this->summaryLine($pdf, 'Comisión total', $this->money($totals['commission_ars'] ?? 0), true);
         $pdf->Ln(2);
 
         $this->section($pdf, 'Otros haberes');
-        $this->tableHeader($pdf, [30, 118, 32], ['Fecha', 'Concepto', 'Importe ARS']);
-        $otherEarnings = array_values(array_filter(
-            $trip['otherEarnings'] ?? [],
-            static fn (array $row): bool => (int) ($row['empleado_id'] ?? 0) === (int) ($driver['empleado_id'] ?? 0),
-        ));
-        if ($otherEarnings === []) {
-            $this->emptyRow($pdf, 'No hay otros haberes cargados.');
-        }
-        foreach ($otherEarnings as $row) {
-            $this->tableRow($pdf, [30, 118, 32], [
-                $this->date($row['fecha'] ?? null), (string) ($row['concepto'] ?? ''), $this->money($row['importe_ars'] ?? 0),
-            ], ['L', 'L', 'R']);
-        }
-        $this->summaryLine($pdf, 'Otros haberes total', $this->money($settlement['other_earnings_ars'] ?? 0), true);
+        $this->tableHeader($pdf, [30, 90, 30, 30], ['Fecha', 'Concepto', 'Importe', 'Importe ARS']);
+        $this->moneyRows($pdf, $statement['otherEarnings'] ?? [], 'No hay otros haberes cargados.', static fn (array $row): array => [$row['concepto'] ?? '']);
+        $this->summaryLine($pdf, 'Otros haberes total', $this->money($totals['other_earnings_ars'] ?? 0), true);
         $pdf->Ln(2);
 
         $this->section($pdf, 'Gastos adelantados por el chofer');
-        $this->tableHeader($pdf, [30, 74, 42, 34], ['Fecha', 'Concepto', 'Comprobante', 'Reintegro ARS']);
-        $driverExpenses = array_values(array_filter(
-            $trip['expenses'] ?? [],
-            static fn (array $row): bool => strtoupper((string) ($row['pagado_por'] ?? '')) === 'CHOFER',
-        ));
-        if ($driverExpenses === []) {
-            $this->emptyRow($pdf, 'No hay gastos adelantados por el chofer.');
-        }
-        foreach ($driverExpenses as $row) {
-            $this->tableRow($pdf, [30, 74, 42, 34], [
-                $this->date($row['fecha'] ?? null), (string) ($row['categoria'] ?? 'Gasto'),
-                (string) ($row['comprobante'] ?? '—'), $this->money($row['importe_ars'] ?? 0),
-            ], ['L', 'L', 'L', 'R']);
-        }
-        $this->summaryLine($pdf, 'Reintegros total', $this->money($settlement['driver_expenses_ars'] ?? 0), true);
+        $this->tableHeader($pdf, [30, 60, 30, 30, 30], ['Fecha', 'Concepto', 'Comprobante', 'Importe', 'Reintegro ARS']);
+        $this->moneyRows($pdf, $statement['driverExpenses'] ?? [], 'No hay gastos adelantados por el chofer.', static fn (array $row): array => [$row['concepto'] ?? '', $row['comprobante'] ?? '-']);
+        $this->summaryLine($pdf, 'Reintegros total', $this->money($totals['driver_expenses_ars'] ?? 0), true);
         $pdf->Ln(2);
 
-        $this->section($pdf, 'Rendición de caja');
-        $this->tableHeader($pdf, [30, 54, 44, 52], ['Fecha', 'Movimiento', 'Importe', 'Equivalente ARS']);
-        $cashMovements = $trip['cashMovements'] ?? [];
-        if ($cashMovements === []) {
-            $this->emptyRow($pdf, 'No hubo movimientos de caja.');
-        }
-        foreach ($cashMovements as $row) {
-            $currency = strtoupper((string) ($row['moneda'] ?? 'ARS'));
-            $amount = $currency . ' ' . $this->number($row['importe'] ?? 0);
-            $this->tableRow($pdf, [30, 54, 44, 52], [
-                $this->date($row['fecha'] ?? null), $this->cashType((string) ($row['tipo'] ?? '')),
-                $amount, $this->money($row['importe_ars'] ?? 0),
-            ], ['L', 'L', 'R', 'R']);
-        }
+        $this->section($pdf, 'Rendición de caja: anticipos y devoluciones');
+        $this->tableHeader($pdf, [30, 90, 30, 30], ['Fecha', 'Movimiento', 'Importe', 'Equivalente ARS']);
+        $this->moneyRows($pdf, $statement['cashMovements'] ?? [], 'No hubo movimientos de caja.', static fn (array $row): array => [$row['tipo_label'] ?? '']);
+
         $this->section($pdf, 'Gastos pagados con caja');
-        $this->tableHeader($pdf, [30, 80, 42, 28], ['Fecha', 'Concepto', 'Comprobante', 'Importe ARS']);
-        $cashExpenses = array_values(array_filter(
-            $trip['expenses'] ?? [],
-            static fn (array $row): bool => strtoupper((string) ($row['pagado_por'] ?? '')) === 'CAJA',
-        ));
-        if ($cashExpenses === []) {
-            $this->emptyRow($pdf, 'No hay gastos pagados con caja.');
-        }
-        foreach ($cashExpenses as $row) {
-            $this->tableRow($pdf, [30, 80, 42, 28], [
-                $this->date($row['fecha'] ?? null), (string) ($row['categoria'] ?? 'Gasto'),
-                (string) ($row['comprobante'] ?? '-'), $this->money($row['importe_ars'] ?? 0),
-            ], ['L', 'L', 'L', 'R']);
-        }
-        $this->summaryLine($pdf, 'Caja entregada', $this->money($trip['totals']['cash_delivered_ars'] ?? 0));
-        $this->summaryLine($pdf, 'Gastos pagados con caja', $this->money($trip['totals']['cash_expenses_ars'] ?? 0));
-        $this->summaryLine($pdf, 'Devoluciones', $this->money($trip['totals']['cash_returned_ars'] ?? 0));
-        $this->summaryLine($pdf, 'Saldo de caja pendiente de rendir', $this->money($trip['totals']['cash_balance_ars'] ?? 0), true);
+        $this->tableHeader($pdf, [30, 60, 30, 30, 30], ['Fecha', 'Concepto', 'Comprobante', 'Importe', 'Importe ARS']);
+        $this->moneyRows($pdf, $statement['cashExpenses'] ?? [], 'No hay gastos pagados con caja.', static fn (array $row): array => [$row['concepto'] ?? '', $row['comprobante'] ?? '-']);
+        $this->summaryLine($pdf, 'Caja entregada (caja inicial, anticipos y retiros)', $this->money($totals['cash_delivered_ars'] ?? 0));
+        $this->summaryLine($pdf, 'Gastos pagados con caja', $this->money($totals['cash_expenses_ars'] ?? 0));
+        $this->summaryLine($pdf, 'Devoluciones', $this->money($totals['cash_returned_ars'] ?? 0));
+        $this->summaryLine($pdf, 'Saldo de caja pendiente de rendir', $this->money($totals['cash_balance_ars'] ?? 0), true);
         $pdf->Ln(2);
+
+        $this->section($pdf, 'Resumen');
+        $this->summaryLine($pdf, 'Comisión', $this->money($totals['commission_ars'] ?? 0));
+        $this->summaryLine($pdf, 'Otros haberes', $this->money($totals['other_earnings_ars'] ?? 0));
+        $this->summaryLine($pdf, 'Saldo de cuenta corriente (gastos, caja, anticipos y devoluciones)', $this->money($totals['account_balance_ars'] ?? 0));
+        $pdf->Ln(1);
 
         $pdf->SetFillColor(232, 241, 252);
         $pdf->SetFont('Arial', 'B', 12);
-        $pdf->Cell(120, 11, $this->pdfText('Saldo final de liquidación'), 1, 0, 'L', true);
-        $pdf->Cell(70, 11, $this->pdfText($this->money($settlement['total_ars'] ?? 0)), 1, 1, 'R', true);
+        $pdf->Cell(120, 11, $this->pdfText($draft ? 'Saldo final (borrador)' : 'Saldo final de liquidación'), 1, 0, 'L', true);
+        $pdf->Cell(64, 11, $this->pdfText($this->money($totals['total_ars'] ?? 0)), 1, 1, 'R', true);
         $pdf->SetFont('Arial', '', 9);
-        $pdf->MultiCell(0, 6, $this->pdfText('Importe positivo: a cobrar por el chofer. Importe negativo: saldo a rendir por el chofer.'), 0, 'L');
+        $pdf->MultiCell(0, 6, $this->pdfText(
+            'Importe positivo: a cobrar por el chofer. Importe negativo: saldo a rendir por el chofer. Importes consolidados en pesos argentinos (ARS).'
+            . ($draft ? ' Borrador para revisión: no es válido como liquidación definitiva hasta que el viaje se cierre.' : ''),
+        ), 0, 'L');
         $pdf->Ln(4);
 
+        if ($draft) {
+            return $pdf->Output('S');
+        }
+
+        // Las firmas van juntas: no se separa la línea de su leyenda.
+        if ($pdf->GetY() > 255) {
+            $pdf->AddPage();
+        }
         $pdf->Cell(77, 8, '', 'B', 0, 'C');
         $pdf->Cell(26, 8, '', 0, 0);
         $pdf->Cell(77, 8, '', 'B', 1, 'C');
@@ -154,16 +141,43 @@ final class DriverSettlementPdfGenerator implements DriverSettlementPdfRenderer
         return $pdf->Output('S');
     }
 
-    /** @param list<float|int> $widths @param list<string> $headers */
-    private function tableHeader(FPDF $pdf, array $widths, array $headers): void
+    /**
+     * Filas con fecha, columnas propias, importe en su moneda y equivalente en pesos.
+     *
+     * @param list<array<string,mixed>> $rows
+     * @param callable(array<string,mixed>):list<mixed> $columns
+     */
+    private function moneyRows(FPDF $pdf, array $rows, string $empty, callable $columns): void
     {
-        $pdf->SetFont('Arial', 'B', 8);
+        if ($rows === []) {
+            $this->emptyRow($pdf, $empty);
+
+            return;
+        }
+        foreach ($rows as $row) {
+            $middle = array_map(static fn (mixed $value): string => (string) $value, $columns($row));
+            $widths = count($middle) === 1 ? [30, 90, 30, 30] : [30, 60, 30, 30, 30];
+            $alignments = count($middle) === 1 ? ['L', 'L', 'R', 'R'] : ['L', 'L', 'L', 'R', 'R'];
+            $this->tableRow($pdf, $widths, [
+                $this->date($row['fecha'] ?? null),
+                ...$middle,
+                $this->money($row['importe'] ?? 0, (string) ($row['moneda'] ?? 'ARS')),
+                $this->money($row['importe_ars'] ?? 0),
+            ], $alignments);
+        }
+    }
+
+    /** @param list<float|int> $widths @param list<string> $headers */
+    private function tableHeader(FPDF $pdf, array $widths, array $headers, int $size = 8): void
+    {
+        $pdf->SetFont('Arial', 'B', $size);
         $pdf->SetFillColor(240, 244, 248);
         foreach ($headers as $index => $header) {
             $pdf->Cell($widths[$index], 6, $this->pdfText($header), 1, 0, 'L', true);
         }
         $pdf->Ln();
-        $pdf->SetFont('Arial', '', 8);
+        // Las filas usan la misma letra que su encabezado.
+        $pdf->SetFont('Arial', '', $size);
     }
 
     /** @param list<float|int> $widths @param list<string> $values @param list<string> $alignments */
@@ -205,35 +219,6 @@ final class DriverSettlementPdfGenerator implements DriverSettlementPdfRenderer
         $pdf->SetFont('Arial', '', 8);
     }
 
-    /** @param list<array<string,mixed>> $assignments @return array<string,mixed> */
-    private function assignment(array $assignments, string $role): array
-    {
-        foreach ($assignments as $assignment) {
-            if (($assignment['rol'] ?? null) === $role) {
-                return $assignment;
-            }
-        }
-
-        return [];
-    }
-
-    /** @param list<array<string,mixed>> $assignments */
-    private function assignmentLabel(array $assignments, string $role): string
-    {
-        return (string) ($this->assignment($assignments, $role)['label'] ?? 'Sin dato');
-    }
-
-    private function cashType(string $value): string
-    {
-        return match ($value) {
-            'CAJA_INICIAL' => 'Caja inicial',
-            'ANTICIPO' => 'Anticipo',
-            'RETIRO' => 'Retiro',
-            'DEVOLUCION' => 'Devolución',
-            default => $value ?: 'Sin dato',
-        };
-    }
-
     private function date(mixed $value): string
     {
         if (! is_string($value) || trim($value) === '') {
@@ -244,14 +229,15 @@ final class DriverSettlementPdfGenerator implements DriverSettlementPdfRenderer
         return $timestamp === false ? $value : date('d/m/Y', $timestamp);
     }
 
-    private function number(mixed $value): string
+    private function number(mixed $value, int $decimals = 2): string
     {
-        return number_format((float) $value, 2, ',', '.');
+        return number_format((float) $value, $decimals, ',', '.');
     }
 
-    private function money(mixed $value): string
+    /** Código ISO de la moneda, nunca un símbolo ambiguo como "$". */
+    private function money(mixed $value, string $currency = 'ARS'): string
     {
-        return '$ ' . number_format((float) $value, 2, ',', '.');
+        return strtoupper($currency) . ' ' . number_format((float) $value, 2, ',', '.');
     }
 
     private function fit(FPDF $pdf, string $value, float $width): string

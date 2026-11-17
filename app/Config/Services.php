@@ -1619,9 +1619,18 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
         }
 
         return new \App\Application\Trips\GenerateDriverSettlementPdf(
-            static::getOperationalTrip(),
+            static::getDriverSettlement(),
             new \App\Infrastructure\Trips\DriverSettlementPdfGenerator(),
         );
+    }
+
+    public static function getDriverSettlement(bool $getShared = true): \App\Application\Trips\GetDriverSettlement
+    {
+        if ($getShared) {
+            return static::getSharedInstance('getDriverSettlement');
+        }
+
+        return new \App\Application\Trips\GetDriverSettlement(static::getOperationalTrip());
     }
 
     public static function tripFormOptions(bool $getShared = true): \App\Application\Trips\GetTripFormOptions

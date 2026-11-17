@@ -124,6 +124,7 @@ final class CreateTrip
                     $input->destinationLocalityId,
                     $input->startDate,
                     $input->endDate,
+                    $input->liquidationBasis(),
                 ), $actor->userId());
             }
 

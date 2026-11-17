@@ -62,3 +62,34 @@ export const legMoneyFromServer = (leg) => {
     liquidacion_segue_facturacion: (leg.moneda_liquidacion || moneda) === moneda,
   }
 }
+
+const toNumber = (value) => {
+  if (value === null || value === undefined || String(value).trim() === '') return null
+  const parsed = Number(String(value).replace(',', '.'))
+
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+/**
+ * Acuerdo con el chofer para la base de liquidacion (#533):
+ * { modo: 'POR_TONELADA' | 'MONTO_ACORDADO' | '', toneladas, precio, monto }
+ */
+export const emptyLiquidationBasis = () => ({ modo: '', toneladas: '', precio: '', monto: '' })
+
+/** Acuerdo de un tramo guardado. Los tramos anteriores son monto acordado. */
+export const liquidationBasisFromServer = (leg) => ({
+  modo: leg.modo_liquidacion || 'MONTO_ACORDADO',
+  toneladas: leg.toneladas_liquidacion ?? '',
+  precio: leg.precio_unitario_liquidacion ?? '',
+  monto: (leg.modo_liquidacion || 'MONTO_ACORDADO') === 'MONTO_ACORDADO' ? (leg.flete_liquidacion ?? '') : '',
+})
+
+/** Base de liquidacion que resulta del acuerdo, o null si falta un dato. */
+export const liquidationBasisAmount = (basis) => {
+  if (basis.modo === 'MONTO_ACORDADO') return toNumber(basis.monto)
+  if (basis.modo !== 'POR_TONELADA') return null
+  const tonnes = toNumber(basis.toneladas)
+  const price = toNumber(basis.precio)
+
+  return tonnes === null || price === null ? null : Math.round(tonnes * price * 10000) / 10000
+}

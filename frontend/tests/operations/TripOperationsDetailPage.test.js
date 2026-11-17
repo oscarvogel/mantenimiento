@@ -789,7 +789,8 @@ describe('detalle de viaje operativo', () => {
 
     expect(legForm.get('select[name="moneda_liquidacion"]').element.value).toBe('ARS')
     expect(legForm.get('input[name="cotizacion_liquidacion"]').attributes('disabled')).toBeDefined()
-    expect(legForm.text()).toContain('Flete de liquidación (ARS, opcional)')
+    await legForm.get('input[name="modo_liquidacion"][value="MONTO_ACORDADO"]').setValue(true)
+    expect(legForm.text()).toContain('Monto acordado (ARS, opcional)')
     wrapper.unmount()
   })
 })

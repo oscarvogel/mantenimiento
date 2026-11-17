@@ -5,9 +5,11 @@ import PageHeading from './components/PageHeading.vue'
 import AutocompleteSelect from './components/AutocompleteSelect.vue'
 import LocalityCreateModal from './components/LocalityCreateModal.vue'
 import PanelCard from './components/PanelCard.vue'
+import TripLegLiquidationBasisFields from './components/TripLegLiquidationBasisFields.vue'
 import { fieldClass, primaryButton, secondaryButton, today } from './helpers.js'
 import {
   effectiveLiquidationRate,
+  emptyLiquidationBasis,
   liquidationCurrency,
   liquidationRateDisabled,
   onInvoiceCurrencyChange,
@@ -39,6 +41,7 @@ const newLeg = () => ({
   moneda: 'ARS', cotizacion: '1',
   moneda_liquidacion: 'ARS', cotizacion_liquidacion: '',
   liquidacion_segue_facturacion: true,
+  basis: emptyLiquidationBasis(),
   fecha_inicio: '', fecha_fin: '', observaciones: '',
 })
 const rateFor = (code) => currencies.value.find((currency) => currency.code === code)?.rate
@@ -63,6 +66,14 @@ const initialLegs = () => Array.isArray(old.value.tramos) && old.value.tramos.le
     ...newLeg(),
     ...row,
     liquidacion_segue_facturacion: (row.moneda_liquidacion || row.moneda || 'ARS') === (row.moneda || 'ARS'),
+    basis: {
+      // Un alta devuelta con errores trae el modo elegido; si no lo trae, el
+      // importe que se había escrito era un monto acordado.
+      modo: row.modo_liquidacion || (row.flete_liquidacion ? 'MONTO_ACORDADO' : ''),
+      toneladas: row.toneladas_liquidacion ?? '',
+      precio: row.precio_unitario_liquidacion ?? '',
+      monto: row.flete_liquidacion ?? '',
+    },
   }))
   : [newLeg()]
 const legs = ref(initialLegs())
@@ -353,8 +364,8 @@ const applyCreatedLocality = (locality) => {
             </div>
             <div class="mt-4 grid gap-4 md:grid-cols-2">
               <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Cotización a ARS (liquidación)</span><input :value="effectiveLiquidationRate(leg)" type="number" min="0.000001" step="0.000001" :name="`tramos[${index}][cotizacion_liquidacion]`" :required="!liquidationRateDisabled(leg)" :disabled="liquidationRateDisabled(leg)" :class="fieldClass" @input="leg.cotizacion_liquidacion = $event.target.value" /><span class="mt-1 block text-xs text-ink-muted">{{ liquidationRateDisabled(leg) ? (liquidationCurrency(leg) === 'ARS' ? 'En pesos se usa cotización 1.' : 'Usa la misma cotización que la de facturación.') : `Ingresá cuántos ARS vale 1 ${liquidationCurrency(leg)}.` }}</span></label>
-              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Flete de liquidación ({{ liquidationCurrency(leg) }}, opcional)</span><input v-model="leg.flete_liquidacion" type="number" min="0" step="0.01" :name="`tramos[${index}][flete_liquidacion]`" :class="fieldClass" /></label>
             </div>
+            <TripLegLiquidationBasisFields v-model="leg.basis" class="mt-4" :id-prefix="`create-leg-${index}-basis`" :name-prefix="`tramos[${index}]`" :currency="liquidationCurrency(leg)" />
             <div class="mt-4 grid gap-4 md:grid-cols-2">
               <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Fecha de inicio (opcional)</span><input v-model="leg.fecha_inicio" type="date" :name="`tramos[${index}][fecha_inicio]`" :class="fieldClass" /></label>
               <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Fecha de fin (opcional)</span><input v-model="leg.fecha_fin" type="date" :name="`tramos[${index}][fecha_fin]`" :class="fieldClass" /></label>

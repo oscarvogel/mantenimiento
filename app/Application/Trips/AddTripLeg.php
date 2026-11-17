@@ -71,6 +71,7 @@ final class AddTripLeg
                 $command->destinationLocalityId,
                 $command->startDate,
                 $command->endDate,
+                $command->liquidationBasis(),
             );
 
             $legId = $this->legs->add($trip->companyId(), $trip->branchId(), $command->tripId, $leg, $actor->userId());

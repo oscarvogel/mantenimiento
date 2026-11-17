@@ -97,6 +97,7 @@ final class InitialSeeder extends Seeder
             'viajes.ver' => 'Ver el dashboard y los viajes de la empresa',
             'viajes.economico.ver' => 'Ver el económico del período en el tablero de viajes',
             'viajes.operar' => 'Crear, iniciar y cancelar viajes operativos',
+            'viajes.liquidacion_chofer.ver' => 'Consultar e imprimir la liquidación del chofer de un viaje',
             'viajes.maestros.ver' => 'Consultar los maestros de Viajes',
             'viajes.maestros.editar' => 'Crear y actualizar los maestros de Viajes',
         ];
@@ -122,7 +123,7 @@ final class InitialSeeder extends Seeder
                 'notificaciones.ver',
                 'proveedores.ver', 'proveedores.editar',
                 'chatbot.usar',
-                'viajes.ver', 'viajes.operar', 'viajes.maestros.ver', 'viajes.maestros.editar',
+                'viajes.ver', 'viajes.operar', 'viajes.liquidacion_chofer.ver', 'viajes.maestros.ver', 'viajes.maestros.editar',
             ],
             'Tecnico u operador' => [
                 'equipos.ver', 'lecturas.cargar', 'lecturas.ver', 'solicitudes.crear',
@@ -130,7 +131,7 @@ final class InitialSeeder extends Seeder
             ],
             'Solicitante' => ['solicitudes.crear', 'notificaciones.ver', 'chatbot.usar'],
             'Consulta' => ['equipos.ver', 'lecturas.ver', 'ordenes.ver', 'reportes.ver', 'importaciones.ver', 'notificaciones.ver', 'viajes.ver'],
-            'Gerencial' => ['gerencial.costo_km.ver', 'gerencial.costo_km.editar', 'viajes.ver', 'viajes.economico.ver'],
+            'Gerencial' => ['gerencial.costo_km.ver', 'gerencial.costo_km.editar', 'viajes.ver', 'viajes.economico.ver', 'viajes.liquidacion_chofer.ver'],
         ];
         foreach ($rolePermissions as $roleName => $keys) {
             foreach ($keys as $key) {

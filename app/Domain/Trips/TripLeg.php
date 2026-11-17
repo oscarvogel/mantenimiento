@@ -23,6 +23,7 @@ final class TripLeg
         private ?int $destinationLocalityId = null,
         private ?DateTimeImmutable $startDate = null,
         private ?DateTimeImmutable $endDate = null,
+        private ?TripLegLiquidationBasis $liquidationBasis = null,
     ) {
         $origin = trim($origin);
         $destination = trim($destination);
@@ -51,10 +52,21 @@ final class TripLeg
             throw new DomainException('La fecha de fin del tramo no puede ser anterior a la fecha de inicio.');
         }
 
+        // La base acordada con el chofer y el flete de liquidación son el mismo
+        // importe: uno dice de dónde sale y el otro en qué moneda está.
+        $liquidationBasis ??= TripLegLiquidationBasis::agreedAmount($liquidation->amount());
+        $basisAmount = $liquidationBasis->amount();
+        $liquidationAmount = $liquidation->amount();
+        if (($basisAmount === null) !== ($liquidationAmount === null)
+            || ($basisAmount !== null && abs($basisAmount - (float) $liquidationAmount) > 0.00005)) {
+            throw new DomainException('El flete de liquidación no coincide con la base acordada con el chofer.');
+        }
+
         $this->origin = $origin;
         $this->destination = $destination;
         $this->invoice = $invoice;
         $this->liquidation = $liquidation;
+        $this->liquidationBasis = $liquidationBasis;
         $this->kilometers = $kilometers === null ? null : round($kilometers, 2);
         $this->customerId = $customerId;
         $this->notes = $notes === null ? null : (trim($notes) === '' ? null : trim($notes));
@@ -82,6 +94,11 @@ final class TripLeg
     public function liquidation(): TripLegAmount
     {
         return $this->liquidation;
+    }
+
+    public function liquidationBasis(): TripLegLiquidationBasis
+    {
+        return $this->liquidationBasis ?? TripLegLiquidationBasis::agreedAmount($this->liquidation->amount());
     }
 
     public function kilometers(): ?float

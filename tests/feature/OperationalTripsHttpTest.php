@@ -5,6 +5,8 @@ declare(strict_types=1);
 use App\Application\Trips\AddTripLeg;
 use App\Application\Trips\CreateTripLocality;
 use App\Application\Trips\FinishTrip;
+use App\Application\Trips\GenerateDriverSettlementPdf;
+use App\Application\Trips\GetDriverSettlement;
 use App\Application\Trips\GenerateOperationalTripSummaryPdf;
 use App\Application\Trips\ListTripLocalityProvinces;
 use App\Application\Trips\RegisterTripExpense;
@@ -31,6 +33,30 @@ final class OperationalTripsHttpTest extends CIUnitTestCase
         self::assertInstanceOf(GenerateOperationalTripSummaryPdf::class, service('generateOperationalTripSummaryPdf'));
         self::assertInstanceOf(CreateTripLocality::class, service('createTripLocality'));
         self::assertInstanceOf(ListTripLocalityProvinces::class, service('listTripLocalityProvinces'));
+        self::assertInstanceOf(GetDriverSettlement::class, service('getDriverSettlement'));
+        self::assertInstanceOf(GenerateDriverSettlementPdf::class, service('generateDriverSettlementPdf'));
+    }
+
+    public function testAnonymousCannotOpenTheDriverSettlement(): void
+    {
+        $this->get('viajes/operativos/42/liquidacion-chofer')->assertRedirect();
+    }
+
+    public function testAnonymousCannotDownloadTheDriverSettlementPdf(): void
+    {
+        $this->get('viajes/operativos/42/liquidacion-chofer.pdf')->assertRedirect();
+    }
+
+    public function testDriverSettlementRoutesRequireTheirOwnPermission(): void
+    {
+        $routes = (string) file_get_contents(APPPATH . 'Config/Routes.php');
+        foreach (['liquidacion-chofer', 'liquidacion-chofer.pdf'] as $path) {
+            self::assertMatchesRegularExpression(
+                "#'viajes/operativos/\\(:num\\)/" . preg_quote($path, '#') . "',[^\\n]*'auth', 'permission:viajes\\.liquidacion_chofer\\.ver'#",
+                $routes,
+                $path,
+            );
+        }
     }
 
     public function testAnonymousCannotOpenOperationalTripsList(): void

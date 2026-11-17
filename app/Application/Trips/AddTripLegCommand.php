@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Trips;
 
 use App\Domain\Trips\TripLegAmount;
+use App\Domain\Trips\TripLegLiquidationBasis;
 use DateTimeImmutable;
 use DomainException;
 
@@ -35,6 +36,7 @@ final readonly class AddTripLegCommand
         public ?DateTimeImmutable $endDate = null,
         public string $liquidationCurrency = '',
         public ?float $liquidationExchangeRate = null,
+        public ?TripLegLiquidationBasis $liquidationBasis = null,
     ) {
     }
 
@@ -68,6 +70,10 @@ final readonly class AddTripLegCommand
             TripDateInput::optional($input['fecha_fin'] ?? null, 'La fecha de fin del tramo'),
             $liquidationCurrency,
             $liquidationCurrency === '' ? null : self::optionalRate($input['cotizacion_liquidacion'] ?? null),
+            TripLegLiquidationBasisInput::fromInput(
+                $input,
+                self::optionalAmount($input['flete_liquidacion'] ?? null, 'El flete de liquidación'),
+            ),
         );
 
         // Se resuelve la liquidacion para avisar temprano si le falta la
@@ -94,12 +100,15 @@ final readonly class AddTripLegCommand
      */
     public function liquidation(): TripLegAmount
     {
+        // Por toneladas, el importe sale de toneladas × precio: lo que venga
+        // escrito en el flete de liquidación no se usa.
+        $amount = $this->liquidationBasis === null ? $this->liquidationAmount : $this->liquidationBasis->amount();
         $currency = $this->liquidationCurrency === ''
             ? strtoupper(trim($this->currency))
             : strtoupper(trim($this->liquidationCurrency));
 
         if ($currency === 'ARS') {
-            return new TripLegAmount($this->liquidationAmount, 'ARS', 1.0);
+            return new TripLegAmount($amount, 'ARS', 1.0);
         }
 
         $rate = $this->liquidationExchangeRate;
@@ -110,7 +119,13 @@ final readonly class AddTripLegCommand
             throw new DomainException('Ingresá la cotización a ARS para el flete de liquidación en ' . $currency . '.');
         }
 
-        return new TripLegAmount($this->liquidationAmount, $currency, $rate);
+        return new TripLegAmount($amount, $currency, $rate);
+    }
+
+    /** Cómo se acordó con el chofer la base de liquidación del tramo. */
+    public function liquidationBasis(): TripLegLiquidationBasis
+    {
+        return $this->liquidationBasis ?? TripLegLiquidationBasis::agreedAmount($this->liquidationAmount);
     }
 
     private static function optionalAmount(mixed $value, string $label): ?float

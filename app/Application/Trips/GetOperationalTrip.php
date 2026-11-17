@@ -47,6 +47,7 @@ final class GetOperationalTrip
             'provinces' => base_url('viajes/operativos/localidades/provincias'),
             'summaryPdf' => base_url('viajes/operativos/' . $tripId . '/resumen.pdf'),
             'driverSettlementPdf' => base_url('viajes/operativos/' . $tripId . '/liquidacion-chofer.pdf'),
+            'driverSettlement' => base_url('viajes/operativos/' . $tripId . '/liquidacion-chofer'),
             'fuel' => base_url('viajes/operativos/' . $tripId . '/combustible'),
             'expense' => base_url('viajes/operativos/' . $tripId . '/gastos'),
             'cash' => base_url('viajes/operativos/' . $tripId . '/caja'),
@@ -65,6 +66,8 @@ final class GetOperationalTrip
         $detail['canCancel'] = $detail['canOperate'] && ($detail['trip']['estado'] ?? null) === Trip::PLANIFICADO;
         $detail['canClose'] = $detail['canOperate'] && ($detail['trip']['estado'] ?? null) === Trip::EN_CURSO;
         $detail['canAddLegs'] = $detail['canRegisterCosts'];
+        $detail['canViewDriverSettlement'] = $actor->hasPermission(GetDriverSettlement::PERMISSION)
+            && ($detail['trip']['estado'] ?? null) !== Trip::CANCELADO;
 
         return $detail;
     }
