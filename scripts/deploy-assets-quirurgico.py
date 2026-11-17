@@ -131,6 +131,22 @@ def validar_archivos(rutas: list[str]) -> list[str]:
     return limpias
 
 
+def version_remota(ruta: str, contenido: bytes | None) -> str:
+    """Dice a que commit del repo corresponde el archivo que hay en produccion."""
+    if contenido is None:
+        return "no existe en produccion"
+    shas = git("log", "--format=%h", "-15", "--", ruta).splitlines()
+    for indice, sha in enumerate(shas):
+        resultado = subprocess.run(["git", "show", f"{sha}:{ruta}"], cwd=ROOT, capture_output=True)
+        if resultado.returncode == 0 and resultado.stdout.replace(b"\r\n", b"\n") == contenido.replace(b"\r\n", b"\n"):
+            if indice == 0:
+                return f"ya esta igual que {sha}"
+            intermedios = ", ".join(shas[:indice])
+            aviso = "" if indice == 1 else "  <<< ATENCION: se suben tambien commits intermedios"
+            return f"produccion = {sha}; se suben: {intermedios}{aviso}"
+    return "  <<< ATENCION: produccion no coincide con ninguna version reciente del repo (drift)"
+
+
 def bajar_o_none(cliente, remoto: str) -> bytes | None:
     try:
         return bajar(cliente, remoto)
@@ -186,7 +202,8 @@ def main() -> int:
         archivos_a_subir = [r for r in archivos if remotos_actuales[r] != (ROOT / r).read_bytes()]
         print(f"   Archivos puntuales a subir: {len(archivos_a_subir)}")
         for r in archivos_a_subir:
-            print(f"     * {r}{'' if remotos_actuales[r] is not None else ' (nuevo en produccion)'}")
+            print(f"     * {r}")
+            print(f"         {version_remota(r, remotos_actuales[r])}")
 
         if actual_bytes == nuevo_bytes and not archivos_a_subir:
             print("   Produccion ya tiene este manifest y estos archivos. Nada que subir.")
