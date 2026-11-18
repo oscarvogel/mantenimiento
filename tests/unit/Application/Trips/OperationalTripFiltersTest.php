@@ -71,4 +71,28 @@ final class OperationalTripFiltersTest extends TestCase
 
         OperationalTripFilters::fromQuery(['patente' => str_repeat('A', 21)]);
     }
+
+    public function testLeeCamionClienteYChoferDesdeLaConsulta(): void
+    {
+        $filters = OperationalTripFilters::fromQuery(['camion' => '7', 'cliente' => '3', 'chofer' => '11']);
+
+        self::assertSame(7, $filters->equipmentId);
+        self::assertSame(3, $filters->customerId);
+        self::assertSame(11, $filters->driverId);
+        self::assertTrue($filters->hasActiveFilters());
+        self::assertSame(['equipmentId' => 7, 'customerId' => 3, 'driverId' => 11], array_intersect_key(
+            $filters->toArray(),
+            ['equipmentId' => true, 'customerId' => true, 'driverId' => true],
+        ));
+    }
+
+    public function testCamionClienteYChoferInvalidosNoFiltran(): void
+    {
+        $filters = OperationalTripFilters::fromQuery(['camion' => '', 'cliente' => 'abc', 'chofer' => '-4']);
+
+        self::assertNull($filters->equipmentId);
+        self::assertNull($filters->customerId);
+        self::assertNull($filters->driverId);
+        self::assertFalse($filters->hasActiveFilters());
+    }
 }

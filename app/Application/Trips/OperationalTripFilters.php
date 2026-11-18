@@ -29,6 +29,9 @@ final readonly class OperationalTripFilters
         public ?string $search = null,
         public ?string $plate = null,
         public string $order = self::ORDER_DESC,
+        public ?int $equipmentId = null,
+        public ?int $customerId = null,
+        public ?int $driverId = null,
     ) {
     }
 
@@ -49,10 +52,13 @@ final readonly class OperationalTripFilters
             self::search($query['buscar'] ?? null),
             self::plate($query['patente'] ?? null),
             self::order($query['orden'] ?? null),
+            self::positiveInt($query['camion'] ?? null),
+            self::positiveInt($query['cliente'] ?? null),
+            self::positiveInt($query['chofer'] ?? null),
         );
     }
 
-    /** @return array{from:?string,to:?string,branchId:?int,status:?string,search:?string,plate:?string,order:string} */
+    /** @return array{from:?string,to:?string,branchId:?int,status:?string,search:?string,plate:?string,order:string,equipmentId:?int,customerId:?int,driverId:?int} */
     public function toArray(): array
     {
         return [
@@ -63,6 +69,9 @@ final readonly class OperationalTripFilters
             'search' => $this->search,
             'plate' => $this->plate,
             'order' => $this->order,
+            'equipmentId' => $this->equipmentId,
+            'customerId' => $this->customerId,
+            'driverId' => $this->driverId,
         ];
     }
 
@@ -77,7 +86,10 @@ final readonly class OperationalTripFilters
             || $this->branchId !== null
             || $this->status !== null
             || $this->search !== null
-            || $this->plate !== null;
+            || $this->plate !== null
+            || $this->equipmentId !== null
+            || $this->customerId !== null
+            || $this->driverId !== null;
     }
 
     /** El listado arranca de más nuevo a más viejo; el operador puede invertirlo. */
