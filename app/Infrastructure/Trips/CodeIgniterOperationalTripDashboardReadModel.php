@@ -49,13 +49,13 @@ final class CodeIgniterOperationalTripDashboardReadModel implements OperationalT
         $builder = $this->db->table('viajes_operativos v')
             ->select('v.id, v.numero, v.estado, v.sucursal_id, v.fecha_salida_planificada, v.fecha_regreso_planificada, v.fecha_salida_real, v.fecha_regreso_real, v.km_salida, v.km_regreso, COALESCE(f.litros, 0) AS litros, COALESCE(f.importe_ars, 0) AS combustible_ars, COALESCE(g.importe_ars, 0) AS gastos_ars, COALESCE(l.flete_facturacion_ars, 0) AS flete_facturacion_ars')
             ->join(
-                "(SELECT viaje_id, SUM(litros) AS litros, SUM(importe_ars) AS importe_ars FROM {$fuel} GROUP BY viaje_id) f",
+                "(SELECT viaje_id, SUM(litros) AS litros, SUM(importe_ars) AS importe_ars FROM {$fuel} WHERE deleted_at IS NULL GROUP BY viaje_id) f",
                 'f.viaje_id = v.id',
                 'left',
                 false,
             )
             ->join(
-                "(SELECT viaje_id, SUM(importe_ars) AS importe_ars FROM {$expenses} GROUP BY viaje_id) g",
+                "(SELECT viaje_id, SUM(importe_ars) AS importe_ars FROM {$expenses} WHERE deleted_at IS NULL GROUP BY viaje_id) g",
                 'g.viaje_id = v.id',
                 'left',
                 false,

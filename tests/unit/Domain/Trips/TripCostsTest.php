@@ -25,6 +25,15 @@ final class TripCostsTest extends TestCase
         new TripFuelLoad(new DateTimeImmutable(), 0, new TripMoney(100));
     }
 
+    public function testFuelCanWaitForItsPrice(): void
+    {
+        $load = new TripFuelLoad(new DateTimeImmutable('2026-11-15 09:00:00'), 300.0, null);
+
+        self::assertNull($load->money());
+        self::assertFalse($load->hasPrice());
+        self::assertTrue((new TripFuelLoad(new DateTimeImmutable('2026-11-15 09:00:00'), 300.0, new TripMoney(435_000.0)))->hasPrice());
+    }
+
     public function testExpenseRequiresPositiveAmount(): void
     {
         $this->expectException(DomainException::class);

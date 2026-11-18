@@ -25,7 +25,7 @@ final class CodeIgniterTripCostRepository implements TripCostRepository
             'tramo_id' => $legId,
             'fecha' => $load->date()->format('Y-m-d H:i:s'),
             'litros' => $this->decimal($load->liters(), 2),
-            ...$this->moneyColumns($load->money()),
+            ...$this->fuelMoneyColumns($load),
             'kilometraje' => $load->odometer(),
             'estacion' => $load->station(),
             'comprobante' => $load->receipt(),
@@ -67,7 +67,7 @@ final class CodeIgniterTripCostRepository implements TripCostRepository
             'tramo_id' => $legId,
             'fecha' => $load->date()->format('Y-m-d H:i:s'),
             'litros' => $this->decimal($load->liters(), 2),
-            ...$this->moneyColumns($load->money()),
+            ...$this->fuelMoneyColumns($load),
             'kilometraje' => $load->odometer(),
             'estacion' => $load->station(),
             'comprobante' => $load->receipt(),
@@ -267,6 +267,18 @@ final class CodeIgniterTripCostRepository implements TripCostRepository
         if (! $inserted) {
             throw new RuntimeException('No se pudo registrar la auditoría del movimiento.');
         }
+    }
+
+    /** @return array{importe:?string,moneda:string,cotizacion:string,importe_ars:?string} */
+    private function fuelMoneyColumns(TripFuelLoad $load): array
+    {
+        $money = $load->money();
+        if ($money === null) {
+            // Sin precio todavía: se completa después desde «Combustible sin precio».
+            return ['importe' => null, 'moneda' => 'ARS', 'cotizacion' => $this->decimal(1.0, 6), 'importe_ars' => null];
+        }
+
+        return $this->moneyColumns($money);
     }
 
     /** @return array{importe:string,moneda:string,cotizacion:string,importe_ars:string} */

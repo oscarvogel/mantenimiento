@@ -67,6 +67,28 @@ final class GetOperationalTripTest extends TestCase
         self::assertSame(638_000.0, $detail['legs'][0]['margin_ars']);
     }
 
+    public function testFuelWithoutPriceCountsLitersButNotCost(): void
+    {
+        $detail = $this->detail([
+            'legs' => [[
+                'id' => 1, 'orden' => 1, 'origen' => 'Rosario', 'destino' => 'Córdoba',
+                'flete_facturacion_ars' => 1_000_000.0, 'flete_liquidacion_ars' => 800_000.0,
+            ]],
+            'fuel' => [
+                ['importe_ars' => 200_000.0, 'tramo_id' => 1, 'litros' => 300.0, 'kilometraje' => null],
+                ['importe_ars' => null, 'importe' => null, 'tramo_id' => 1, 'litros' => 120.5, 'kilometraje' => null],
+            ],
+        ]);
+
+        self::assertSame(420.5, $detail['totals']['fuel_liters']);
+        self::assertSame(200_000.0, $detail['totals']['fuel_amount_ars']);
+        self::assertSame(1, $detail['totals']['fuel_without_price']);
+        self::assertSame(120.5, $detail['totals']['fuel_liters_without_price']);
+        self::assertSame(200_000.0, $detail['totals']['assigned_costs_ars']);
+        self::assertTrue($detail['canCompleteFuelPrices']);
+        self::assertStringEndsWith('viajes/operativos/combustible-sin-precio', $detail['links']['fuelPending']);
+    }
+
     public function testUsesMasterPercentageWhenTripAssignmentHasNone(): void
     {
         $detail = $this->detail([
