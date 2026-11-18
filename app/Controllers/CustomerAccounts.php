@@ -79,7 +79,7 @@ final class CustomerAccounts extends BaseController
         try {
             service('reopenNonCollectibleLeg')->execute($this->actor(), $legId, (string) $this->request->getPost('motivo'));
 
-            return redirect()->to($this->back())->with('success', 'El tramo volvió a pendientes de formalizar.');
+            return redirect()->to($this->back())->with('success', 'El tramo se reabrió y volvió a la cola del cierre comercial.');
         } catch (Throwable $exception) {
             return $this->failure($exception, 'No se pudo reabrir el tramo.', $this->back());
         }

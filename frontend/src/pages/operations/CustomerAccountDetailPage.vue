@@ -7,6 +7,7 @@
 import { computed, nextTick, ref } from 'vue'
 import PageHeading from './components/PageHeading.vue'
 import PanelCard from './components/PanelCard.vue'
+import FlashMessages from './components/FlashMessages.vue'
 import { fieldClass, primaryButton, secondaryButton, dangerButton } from './helpers.js'
 
 const props = defineProps({ data: { type: Object, required: true } })
@@ -62,6 +63,20 @@ const onOpeningCurrency = () => {
   opening.value.cotizacion = opening.value.moneda === 'ARS' ? '' : (currentRates.value[opening.value.moneda] ?? '')
 }
 
+const openingPreviewArs = computed(() => {
+  const amount = Number(opening.value.importe)
+  const rate = opening.value.moneda === 'ARS' ? 1 : Number(opening.value.cotizacion)
+  if (!(amount > 0) || !(rate > 0)) return null
+
+  return Math.round(amount * rate * 100) / 100
+})
+// La descripción del libro puede empezar con el mismo tipo ("Saldo inicial …"): no repetirlo.
+const detail = (row) => {
+  const text = String(row.descripcion ?? '')
+
+  return text.startsWith(row.tipo_label) ? text.slice(row.tipo_label.length).replace(/^[\s·:-]+/, '') : text
+}
+
 // Anular
 const annulDialog = ref(null)
 const annulling = ref(null)
@@ -78,6 +93,7 @@ const openAnnul = (row) => {
         <button v-if="canFormalize && !data.hasOpeningBalance" type="button" :class="secondaryButton" data-testid="open-opening-balance" @click="openOpening">Cargar saldo inicial</button>
       </template>
     </PageHeading>
+    <FlashMessages :flash="data.flash" />
 
     <section aria-label="Saldo" class="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
       <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card"><p class="text-xs font-semibold text-ink-muted">Debe</p><p class="mt-2 text-xl font-bold text-ink">{{ money(totals.debe_ars) }}</p></article>
@@ -87,7 +103,26 @@ const openAnnul = (row) => {
 
     <PanelCard title="Movimientos" :count="movements.length" flush>
       <p v-if="movements.length === 0" class="p-5 text-sm text-ink-muted" data-testid="statement-empty">Este cliente todavía no tiene movimientos.</p>
-      <div v-else class="overflow-x-auto">
+      <ul v-else class="divide-y divide-border-subtle sm:hidden" data-testid="statement-cards">
+        <li v-for="row in movements" :key="row.id" class="space-y-1 px-4 py-3 text-sm" :class="row.cargo_anulado && row.tipo !== 'ANULACION' ? 'opacity-60' : ''">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <p class="font-semibold text-ink">{{ row.tipo_label }}<span v-if="row.cargo_anulado && row.tipo !== 'ANULACION'" class="ml-2 rounded-full bg-surface-muted px-2 py-0.5 text-xs font-semibold text-ink-muted">Anulado</span></p>
+              <p class="text-xs text-ink-muted">{{ fmtDate(row.fecha) }} · {{ detail(row) }}</p>
+              <p v-if="origin(row)" class="text-xs text-ink-muted">{{ origin(row) }}</p>
+            </div>
+            <div class="whitespace-nowrap text-right">
+              <p class="font-semibold text-ink">{{ row.debe_ars ? money(row.debe_ars) : `−${money(row.haber_ars)}` }}</p>
+              <p class="text-xs" :class="balanceClass(row.saldo_ars)">Saldo {{ money(row.saldo_ars) }}</p>
+            </div>
+          </div>
+          <div class="flex gap-3">
+            <a v-if="row.viaje_id" :href="`${links.tripsBase}/${row.viaje_id}`" class="text-xs font-semibold text-primary hover:underline">Ver viaje</a>
+            <button v-if="canFormalize && row.cargo_vigente" type="button" class="text-xs font-semibold text-danger-strong hover:underline" @click="openAnnul(row)">Anular</button>
+          </div>
+        </li>
+      </ul>
+      <div v-if="movements.length > 0" class="hidden overflow-x-auto sm:block">
         <table class="w-full min-w-[60rem] text-left text-sm" data-testid="statement-table">
           <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
             <tr><th class="px-3 py-2">Fecha</th><th class="px-3 py-2">Concepto</th><th class="px-3 py-2">Origen</th><th class="px-3 py-2 text-right">Debe</th><th class="px-3 py-2 text-right">Haber</th><th class="px-3 py-2 text-right">Saldo</th><th v-if="canFormalize" class="px-3 py-2"></th></tr>
@@ -98,13 +133,13 @@ const openAnnul = (row) => {
               <td class="px-3 py-2">
                 <span class="font-semibold text-ink">{{ row.tipo_label }}</span>
                 <span v-if="row.cargo_anulado && row.tipo !== 'ANULACION'" class="ml-2 rounded-full bg-surface-muted px-2 py-0.5 text-xs font-semibold text-ink-muted">Anulado</span>
-                <span class="block text-xs text-ink-muted">{{ row.descripcion }}</span>
+                <span class="block text-xs text-ink-muted">{{ detail(row) }}</span>
                 <a v-if="row.viaje_id" :href="`${links.tripsBase}/${row.viaje_id}`" class="text-xs font-semibold text-primary hover:underline">Ver viaje</a>
               </td>
               <td class="px-3 py-2 text-xs text-ink-muted">{{ origin(row) }}</td>
-              <td class="px-3 py-2 text-right text-ink">{{ row.debe_ars ? money(row.debe_ars) : '' }}</td>
-              <td class="px-3 py-2 text-right text-ink">{{ row.haber_ars ? money(row.haber_ars) : '' }}</td>
-              <td class="px-3 py-2 text-right font-semibold" :class="balanceClass(row.saldo_ars)">{{ money(row.saldo_ars) }}</td>
+              <td class="whitespace-nowrap px-3 py-2 text-right text-ink">{{ row.debe_ars ? money(row.debe_ars) : '' }}</td>
+              <td class="whitespace-nowrap px-3 py-2 text-right text-ink">{{ row.haber_ars ? money(row.haber_ars) : '' }}</td>
+              <td class="whitespace-nowrap px-3 py-2 text-right font-semibold" :class="balanceClass(row.saldo_ars)">{{ money(row.saldo_ars) }}</td>
               <td v-if="canFormalize" class="whitespace-nowrap px-3 py-2"><button v-if="row.cargo_vigente" type="button" :class="secondaryButton" @click="openAnnul(row)">Anular</button></td>
             </tr>
           </tbody>
@@ -130,6 +165,10 @@ const openAnnul = (row) => {
           <label v-if="opening.moneda !== 'ARS'" class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cotización a ARS</span><input v-model="opening.cotizacion" type="number" name="cotizacion" min="0.000001" step="0.000001" required :class="fieldClass" /></label>
           <label class="block sm:col-span-2"><span class="mb-1 block text-xs font-semibold text-ink-muted">Observaciones</span><input v-model="opening.observaciones" type="text" name="observaciones" maxlength="500" :class="fieldClass" /></label>
         </div>
+        <p class="mt-4 rounded-lg border border-info/30 bg-info-subtle px-3 py-2 text-sm text-info-strong" data-testid="opening-preview">
+          <template v-if="openingPreviewArs !== null">Se registra {{ opening.sentido === 'HABER' ? 'un saldo a favor' : 'un saldo a cobrar' }} de <strong>{{ money(openingPreviewArs) }}</strong>.</template>
+          <template v-else>Completá el importe{{ opening.moneda === 'ARS' ? '' : ' y la cotización' }} para ver el saldo en ARS.</template>
+        </p>
         <div class="mt-5 flex justify-end gap-2 border-t border-border-subtle pt-4">
           <button type="button" :class="secondaryButton" @click="openingDialog?.close()">Volver</button>
           <button type="submit" :class="primaryButton">Registrar saldo inicial</button>

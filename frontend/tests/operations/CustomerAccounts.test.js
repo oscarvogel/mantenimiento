@@ -87,6 +87,38 @@ describe('cierre comercial', () => {
     wrapper.unmount()
   })
 
+  it('muestra el resultado de la última acción, también los errores de validación', () => {
+    const wrapper = mount(TripCommercialClosingPage, { props: { data: queueData({ flash: { success: null, error: 'Indicá el número o la referencia del memo autorizado.', warning: null } }) } })
+    expect(wrapper.get('[role="alert"]').text()).toBe('Indicá el número o la referencia del memo autorizado.')
+    wrapper.unmount()
+
+    for (const [component, data] of [
+      [CustomerAccountsPage, { links, rows: [], totals: {}, customers: [], flash: { success: 'El cargo quedó anulado.' } }],
+      [CustomerAccountDetailPage, { links, customer: { nombre: 'X' }, movements: [], totals: {}, flash: { success: 'El cargo quedó anulado.' } }],
+    ]) {
+      const page = mount(component, { props: { data } })
+      expect(page.get('[data-testid="flash-messages"]').text()).toBe('El cargo quedó anulado.')
+      page.unmount()
+    }
+  })
+
+  it('muestra la diferencia negativa con el signo delante de la moneda', async () => {
+    const wrapper = mount(TripCommercialClosingPage, { props: { data: queueData() }, attachTo: document.body })
+    await wrapper.findAll('button').find((button) => button.text() === 'Formalizar').trigger('click')
+    await nextTick()
+    await wrapper.get('input[name="cotizacion"]').setValue('1490')
+    expect(wrapper.get('[data-testid="formalize-preview"]').text()).toContain('−ARS 112.000,00')
+    wrapper.unmount()
+  })
+
+  it('en celular muestra tarjetas con la acción a la vista', () => {
+    const wrapper = mount(TripCommercialClosingPage, { props: { data: queueData() } })
+    const card = wrapper.get('[data-testid="closing-card-9"]')
+    expect(card.text()).toContain('Viaje #16 · Tramo 1')
+    expect(card.findAll('button').map((button) => button.text())).toEqual(['Formalizar', 'No cobrable'])
+    wrapper.unmount()
+  })
+
   it('pide motivo para marcar no cobrable y no muestra acciones sin permiso', async () => {
     const wrapper = mount(TripCommercialClosingPage, { props: { data: queueData() }, attachTo: document.body })
     await wrapper.findAll('button').find((button) => button.text() === 'No cobrable').trigger('click')
@@ -167,8 +199,11 @@ describe('cuenta corriente de clientes', () => {
     const table = wrapper.get('[data-testid="statement-table"]').text()
     expect(table).toContain('USD 2.800,00 × 1.578 (informada, 10/11/2026)')
     expect(table).toContain('Anulado')
-    // Solo el cargo vigente se puede anular.
-    expect(wrapper.findAll('button').filter((button) => button.text() === 'Anular')).toHaveLength(1)
+    // Solo el cargo vigente se puede anular (en la tabla de escritorio y en las tarjetas de celular).
+    expect(wrapper.get('[data-testid="statement-table"]').findAll('button').filter((button) => button.text() === 'Anular')).toHaveLength(1)
+    expect(wrapper.get('[data-testid="statement-cards"]').findAll('button').filter((button) => button.text() === 'Anular')).toHaveLength(1)
+    // La descripción no repite el tipo del movimiento.
+    expect(wrapper.get('[data-testid="statement-table"]').text()).not.toContain('Factura emitida Viaje #16 · Tramo 1 · Factura emitida')
 
     await wrapper.get('[data-testid="open-opening-balance"]').trigger('click')
     await nextTick()
@@ -176,6 +211,9 @@ describe('cuenta corriente de clientes', () => {
     expect(form.attributes('action')).toBe('/mantenimiento/clientes/cuenta-corriente/4/saldo-inicial')
     await form.get('select[name="moneda"]').setValue('USD')
     expect(form.get('input[name="cotizacion"]').element.value).toBe('1600')
+    await form.get('input[name="importe"]').setValue('100')
+    await form.get('select[name="sentido"]').setValue('HABER')
+    expect(wrapper.get('[data-testid="opening-preview"]').text()).toBe('Se registra un saldo a favor de ARS 160.000,00.')
     wrapper.unmount()
   })
 })

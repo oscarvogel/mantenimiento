@@ -11,6 +11,7 @@
 import { computed, nextTick, ref } from 'vue'
 import PageHeading from './components/PageHeading.vue'
 import PanelCard from './components/PanelCard.vue'
+import FlashMessages from './components/FlashMessages.vue'
 import { fieldClass, primaryButton, secondaryButton, dangerButton } from './helpers.js'
 
 const props = defineProps({ data: { type: Object, required: true } })
@@ -35,6 +36,7 @@ const tabs = [
 const tabUrl = (key) => `${links.value.queue ?? ''}?estado=${key}`
 const tabLabels = Object.fromEntries(tabs.map((tab) => [tab.key, tab.label]))
 
+const signedMoney = (value) => `${value > 0 ? '+' : '−'}${money(Math.abs(value))}`
 const money = (value, currency = 'ARS') => `${currency} ${Number(value ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const rateText = (value) => Number(value ?? 0).toLocaleString('es-AR', { maximumFractionDigits: 6 })
 const fmtDate = (value) => {
@@ -116,6 +118,7 @@ const openReason = (kind, row) => {
 <template>
   <div>
     <PageHeading eyebrow="Viajes · Cuenta corriente" title="Cierre comercial" description="Tramos de viajes finalizados y en qué quedó su cobro. Cerrar el viaje no genera deuda: el cargo nace al formalizar cada tramo." :back="{ href: links.accounts ?? '/clientes/cuenta-corriente', label: 'Ver cuenta corriente de clientes' }" />
+    <FlashMessages :flash="data.flash" />
 
     <nav class="mb-4 flex flex-wrap gap-2" aria-label="Estado comercial" data-testid="closing-tabs">
       <a v-for="tab in tabs" :key="tab.key" :href="tabUrl(tab.key)" :aria-current="status === tab.key ? 'page' : undefined" class="inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold" :class="status === tab.key ? 'border-primary bg-primary-subtle text-primary' : 'border-border bg-surface-raised text-ink hover:bg-surface-muted'">
@@ -131,7 +134,39 @@ const openReason = (kind, row) => {
 
     <PanelCard :title="tabLabels[status] ?? 'Tramos'" :count="rows.length" flush>
       <p v-if="rows.length === 0" class="p-5 text-sm text-ink-muted" data-testid="closing-empty">No hay tramos en este estado.</p>
-      <div v-else class="overflow-x-auto">
+      <ul v-else class="divide-y divide-border-subtle sm:hidden" data-testid="closing-cards">
+        <li v-for="row in rows" :key="row.tramo_id" class="space-y-2 px-4 py-3 text-sm" :data-testid="`closing-card-${row.tramo_id}`">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <a :href="`${links.tripsBase}/${row.viaje_id}`" class="font-semibold text-primary hover:underline">Viaje #{{ row.numero }} · Tramo {{ row.orden }}</a>
+              <p class="text-ink">{{ row.origen }} → {{ row.destino }}</p>
+              <p :class="row.cliente ? 'text-ink-muted' : 'text-ink-muted italic'">{{ row.cliente ?? 'Sin cliente' }} · regreso {{ fmtDate(row.fecha_regreso_real) }}</p>
+            </div>
+            <div class="whitespace-nowrap text-right">
+              <template v-if="row.cargo">
+                <p class="font-semibold text-ink">{{ money(row.cargo.importe_ars) }}</p>
+                <p v-if="row.cargo.moneda !== 'ARS'" class="text-xs text-ink-muted">{{ money(row.cargo.importe, row.cargo.moneda) }} × {{ rateText(row.cargo.cotizacion) }}</p>
+              </template>
+              <p v-else class="text-xs text-ink-muted">{{ estimate(row) }}</p>
+            </div>
+          </div>
+          <p v-if="row.cargo" class="text-xs text-ink-muted">{{ row.cargo.modalidad_label }} {{ row.cargo.documento_numero ?? '' }} · {{ fmtDate(row.cargo.documento_fecha) }}</p>
+          <p v-else-if="row.motivo_no_cobrable" class="text-xs text-ink-muted">Motivo: {{ row.motivo_no_cobrable }}</p>
+          <div v-if="canFormalize || status === 'SIN_CLIENTE'" class="flex flex-wrap gap-2">
+            <template v-if="status === 'PENDIENTE' && canFormalize">
+              <button type="button" :class="primaryButton" @click="openFormalize(row)">Formalizar</button>
+              <button type="button" :class="secondaryButton" @click="openReason('no-cobrable', row)">No cobrable</button>
+            </template>
+            <template v-else-if="status === 'SIN_CLIENTE'">
+              <a :href="`${links.tripsBase}/${row.viaje_id}`" :class="secondaryButton">Cargar cliente en el viaje</a>
+              <button v-if="canFormalize" type="button" :class="secondaryButton" @click="openReason('no-cobrable', row)">No cobrable</button>
+            </template>
+            <button v-else-if="status === 'FORMALIZADO' && canFormalize && row.cargo" type="button" :class="secondaryButton" @click="openReason('anular', row)">Anular</button>
+            <button v-else-if="status === 'NO_COBRABLE' && canFormalize" type="button" :class="secondaryButton" @click="openReason('reabrir', row)">Reabrir</button>
+          </div>
+        </li>
+      </ul>
+      <div v-if="rows.length > 0" class="hidden overflow-x-auto sm:block">
         <table class="w-full min-w-[60rem] text-left text-sm" data-testid="closing-table">
           <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
             <tr>
@@ -150,7 +185,7 @@ const openReason = (kind, row) => {
               <td class="px-3 py-2 text-ink">{{ row.origen }} → {{ row.destino }}</td>
               <td class="px-3 py-2" :class="row.cliente ? 'text-ink' : 'text-ink-muted'">{{ row.cliente ?? 'Sin cliente' }}</td>
               <td class="px-3 py-2 text-ink-muted">{{ fmtDate(row.fecha_regreso_real) }}</td>
-              <td class="px-3 py-2 text-right">
+              <td class="whitespace-nowrap px-3 py-2 text-right">
                 <template v-if="row.cargo">
                   <span class="font-semibold text-ink">{{ money(row.cargo.importe_ars) }}</span>
                   <span v-if="row.cargo.moneda !== 'ARS'" class="block text-xs text-ink-muted">{{ money(row.cargo.importe, row.cargo.moneda) }} × {{ rateText(row.cargo.cotizacion) }}</span>
@@ -226,7 +261,7 @@ const openReason = (kind, row) => {
         <div class="mt-4 rounded-lg border border-info/30 bg-info-subtle px-3 py-2 text-sm text-info-strong" data-testid="formalize-preview">
           <template v-if="previewArs !== null">
             Se registra un cargo de <strong>{{ money(previewArs) }}</strong> en la cuenta corriente de {{ selected.cliente }}.
-            <span v-if="previewDifference !== null && previewDifference !== 0" class="block text-xs">Diferencia con la estimación del viaje: {{ previewDifference > 0 ? '+' : '' }}{{ money(previewDifference) }}.</span>
+            <span v-if="previewDifference !== null && previewDifference !== 0" class="block text-xs">Diferencia con la estimación del viaje: {{ signedMoney(previewDifference) }}.</span>
           </template>
           <template v-else>Completá el importe{{ isPesos ? '' : ' y la cotización' }} para ver el cargo en ARS.</template>
         </div>

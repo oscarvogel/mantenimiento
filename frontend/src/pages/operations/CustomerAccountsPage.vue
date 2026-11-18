@@ -6,6 +6,7 @@
 import { computed, nextTick, ref } from 'vue'
 import PageHeading from './components/PageHeading.vue'
 import PanelCard from './components/PanelCard.vue'
+import FlashMessages from './components/FlashMessages.vue'
 import { fieldClass, primaryButton, secondaryButton } from './helpers.js'
 
 const props = defineProps({ data: { type: Object, required: true } })
@@ -46,6 +47,7 @@ const goToCustomer = () => {
         <button type="button" :class="secondaryButton" data-testid="open-customer" @click="openPicker">{{ canFormalize ? 'Abrir cuenta / saldo inicial' : 'Buscar cliente' }}</button>
       </template>
     </PageHeading>
+    <FlashMessages :flash="data.flash" />
 
     <section aria-label="Totales" class="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
       <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card"><p class="text-xs font-semibold text-ink-muted">Debe</p><p class="mt-2 text-xl font-bold text-ink">{{ money(totals.debe_ars) }}</p></article>
@@ -60,7 +62,13 @@ const goToCustomer = () => {
 
     <PanelCard title="Clientes con movimientos" :count="rows.length" flush>
       <p v-if="rows.length === 0" class="p-5 text-sm text-ink-muted" data-testid="accounts-empty">Todavía no hay movimientos. Formalizá tramos desde el cierre comercial o cargá el saldo inicial de un cliente.</p>
-      <div v-else class="overflow-x-auto">
+      <ul v-else class="divide-y divide-border-subtle sm:hidden" data-testid="accounts-cards">
+        <li v-for="row in rows" :key="row.id" class="flex items-start justify-between gap-3 px-4 py-3 text-sm">
+          <div><a :href="`${links.accounts}/${row.id}`" class="font-semibold text-primary hover:underline">{{ row.nombre }}</a><p class="text-xs text-ink-muted">Último movimiento {{ fmtDate(row.ultimo_movimiento) }}</p></div>
+          <div class="whitespace-nowrap text-right font-semibold" :class="balanceClass(row.saldo_ars)">{{ money(row.saldo_ars) }}<p class="text-xs font-normal text-ink-muted">{{ balanceLabel(row.saldo_ars) }}</p></div>
+        </li>
+      </ul>
+      <div v-if="rows.length > 0" class="hidden overflow-x-auto sm:block">
         <table class="w-full min-w-[44rem] text-left text-sm" data-testid="accounts-table">
           <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
             <tr><th class="px-3 py-2">Cliente</th><th class="px-3 py-2">Último movimiento</th><th class="px-3 py-2 text-right">Debe</th><th class="px-3 py-2 text-right">Haber</th><th class="px-3 py-2 text-right">Saldo</th></tr>
@@ -69,9 +77,9 @@ const goToCustomer = () => {
             <tr v-for="row in rows" :key="row.id">
               <td class="px-3 py-2"><a :href="`${links.accounts}/${row.id}`" class="font-semibold text-primary hover:underline">{{ row.nombre }}</a><span v-if="row.identificacion_fiscal" class="block text-xs text-ink-muted">{{ row.identificacion_fiscal }}</span></td>
               <td class="px-3 py-2 text-ink-muted">{{ fmtDate(row.ultimo_movimiento) }}</td>
-              <td class="px-3 py-2 text-right text-ink">{{ money(row.debe_ars) }}</td>
-              <td class="px-3 py-2 text-right text-ink">{{ money(row.haber_ars) }}</td>
-              <td class="px-3 py-2 text-right font-semibold" :class="balanceClass(row.saldo_ars)">{{ money(row.saldo_ars) }}<span class="block text-xs font-normal text-ink-muted">{{ balanceLabel(row.saldo_ars) }}</span></td>
+              <td class="whitespace-nowrap px-3 py-2 text-right text-ink">{{ money(row.debe_ars) }}</td>
+              <td class="whitespace-nowrap px-3 py-2 text-right text-ink">{{ money(row.haber_ars) }}</td>
+              <td class="whitespace-nowrap px-3 py-2 text-right font-semibold" :class="balanceClass(row.saldo_ars)">{{ money(row.saldo_ars) }}<span class="block text-xs font-normal text-ink-muted">{{ balanceLabel(row.saldo_ars) }}</span></td>
             </tr>
           </tbody>
         </table>
