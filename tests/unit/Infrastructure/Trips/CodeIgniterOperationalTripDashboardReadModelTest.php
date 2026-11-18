@@ -30,10 +30,10 @@ final class CodeIgniterOperationalTripDashboardReadModelTest extends TestCase
             fecha_regreso_real TEXT NULL, km_salida INTEGER NULL, km_regreso INTEGER NULL
         )');
         $this->database->query('CREATE TABLE viaje_operativo_combustible (
-            id INTEGER PRIMARY KEY, viaje_id INTEGER, empresa_id INTEGER, litros REAL, importe_ars REAL
+            id INTEGER PRIMARY KEY, viaje_id INTEGER, empresa_id INTEGER, litros REAL, importe_ars REAL NULL, deleted_at TEXT NULL
         )');
         $this->database->query('CREATE TABLE viaje_operativo_gastos (
-            id INTEGER PRIMARY KEY, viaje_id INTEGER, empresa_id INTEGER, importe_ars REAL
+            id INTEGER PRIMARY KEY, viaje_id INTEGER, empresa_id INTEGER, importe_ars REAL, deleted_at TEXT NULL
         )');
         $this->database->query('CREATE TABLE viaje_operativo_tramos (
             id INTEGER PRIMARY KEY, viaje_id INTEGER, empresa_id INTEGER, orden INTEGER, cliente_id INTEGER NULL, origen TEXT, destino TEXT, flete_facturacion_ars REAL
@@ -137,6 +137,17 @@ final class CodeIgniterOperationalTripDashboardReadModelTest extends TestCase
         self::assertSame(50000.0, $byId[1]['gastos_ars']);
         self::assertSame(500000.0, $byId[1]['flete_facturacion_ars']);
         self::assertSame(300.0, $byId[2]['litros']);
+
+        // Una carga sin precio suma litros pero no costo; una quitada no suma nada.
+        $this->database->table('viaje_operativo_combustible')->insertBatch([
+            ['id' => 4, 'viaje_id' => 1, 'empresa_id' => 5, 'litros' => 40, 'importe_ars' => null, 'deleted_at' => null],
+            ['id' => 5, 'viaje_id' => 1, 'empresa_id' => 5, 'litros' => 999, 'importe_ars' => 999999, 'deleted_at' => '2026-10-02 10:00:00'],
+        ]);
+        $this->database->table('viaje_operativo_gastos')->insert(['id' => 4, 'viaje_id' => 1, 'empresa_id' => 5, 'importe_ars' => 777777, 'deleted_at' => '2026-10-02 10:00:00']);
+        $trip1 = array_column($readModel->trips(5, [10], new OperationalTripFilters()), null, 'id')[1];
+        self::assertSame(140.0, $trip1['litros']);
+        self::assertSame(100000.0, $trip1['combustible_ars']);
+        self::assertSame(50000.0, $trip1['gastos_ars']);
         self::assertNull($byId[4]['km_regreso']);
 
         self::assertCount(1, $readModel->trips(5, [20], new OperationalTripFilters()));

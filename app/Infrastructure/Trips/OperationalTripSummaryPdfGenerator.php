@@ -112,7 +112,7 @@ final class OperationalTripSummaryPdfGenerator implements OperationalTripSummary
             $this->tableRow($pdf, $widths, [
                 $this->date($row['fecha'] ?? null), $this->number($row['litros'] ?? 0),
                 $this->numberOrNoData($row['kilometraje'] ?? null), $station ?: 'Sin dato',
-                $this->money($row['importe_ars'] ?? 0),
+                ($row['importe_ars'] ?? null) === null ? 'Sin precio' : $this->money($row['importe_ars']),
             ], ['L', 'R', 'R', 'L', 'R']);
         }
         $pdf->Ln(3);

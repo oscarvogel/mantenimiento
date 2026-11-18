@@ -60,6 +60,23 @@ final class RegisterTripCostsTest extends TestCase
         self::assertSame(10, $costs->branchId);
     }
 
+    public function testRegistersFuelWithoutPriceToCompleteLater(): void
+    {
+        $costs = new CostRepositoryFake();
+        $handler = new RegisterTripFuel(new CostTripRepositoryFake($this->trip()), $costs, new CostDirectoryFake(), new CostLegRepositoryFake(), new CostUnitOfWorkFake());
+
+        $handler->execute($this->actor(['viajes.operar']), new RegisterTripFuelCommand(
+            55,
+            new DateTimeImmutable('2026-10-20 10:00:00'),
+            320.0,
+            null,
+        ));
+
+        self::assertSame(320.0, $costs->fuel?->liters());
+        self::assertNull($costs->fuel?->money());
+        self::assertFalse($costs->fuel?->hasPrice());
+    }
+
     public function testRegistersExpenseAndRejectsUnknownCategory(): void
     {
         $costs = new CostRepositoryFake();

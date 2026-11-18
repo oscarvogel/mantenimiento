@@ -188,6 +188,46 @@ describe('detalle de viaje operativo', () => {
     wrapper.unmount()
   })
 
+  it('deja cargar combustible sin importe y marca lo que falta en un viaje finalizado', async () => {
+    const open = mount(TripOperationsDetailPage, {
+      props: { data: { ...data, canRegisterCosts: true, links: { ...data.links, fuel: '/mantenimiento/viajes/operativos/42/combustible' }, options: { currencies: [{ code: 'ARS', label: 'Peso argentino' }] } } },
+    })
+    const fuelButton = open.findAll('button').find((button) => button.text().includes('Cargar combustible'))
+    await fuelButton.trigger('click')
+    await nextTick()
+    const amount = open.get('form[action="/mantenimiento/viajes/operativos/42/combustible"] input[name="importe"]')
+    expect(amount.attributes('required')).toBeUndefined()
+    expect(open.text()).toContain('dejá el importe vacío')
+    open.unmount()
+
+    const finished = mount(TripOperationsDetailPage, {
+      props: {
+        data: {
+          ...data,
+          trip: { ...data.trip, estado: 'FINALIZADO', estado_label: 'Finalizado' },
+          canStart: false,
+          canCancel: false,
+          canRegisterCosts: false,
+          canCompleteFuelPrices: true,
+          links: { ...data.links, fuelPending: '/mantenimiento/viajes/operativos/combustible-sin-precio' },
+          totals: { fuel_liters: 420.5, fuel_amount_ars: 50000, fuel_without_price: 1, fuel_liters_without_price: 320.5, expense_amount_ars: 0, direct_cost_ars: 50000 },
+          fuel: [
+            { id: 1, fecha: '2026-10-20 10:00:00', litros: 100, importe: 50000, moneda: 'ARS', importe_ars: 50000, kilometraje: null, estacion: 'YPF', comprobante: null, observaciones: null },
+            { id: 2, fecha: '2026-10-21 10:00:00', litros: 320.5, importe: null, moneda: 'ARS', importe_ars: null, sin_precio: true, kilometraje: null, estacion: 'Playa propia', comprobante: null, observaciones: null },
+          ],
+        },
+      },
+    })
+
+    expect(finished.findAll('[data-fuel-without-price]')).toHaveLength(1)
+    expect(finished.get('[data-fuel-without-price]').text()).toBe('Sin precio')
+    const banner = finished.get('[data-fuel-pending-banner]')
+    expect(banner.text()).toContain('1 carga sin precio')
+    expect(banner.get('a').attributes('href')).toBe('/mantenimiento/viajes/operativos/combustible-sin-precio')
+    expect(finished.text()).toContain('salvo el precio del combustible que falta')
+    finished.unmount()
+  })
+
   it('muestra tramos, comisión, margen y cierre del viaje', async () => {
     const wrapper = mount(TripOperationsDetailPage, {
       props: {

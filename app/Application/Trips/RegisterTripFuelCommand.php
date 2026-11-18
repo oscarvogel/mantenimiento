@@ -12,7 +12,7 @@ final readonly class RegisterTripFuelCommand
         public int $tripId,
         public DateTimeImmutable $date,
         public float $liters,
-        public float $amount,
+        public ?float $amount,
         public string $currency = 'ARS',
         public float $exchangeRate = 1.0,
         public ?int $odometer = null,

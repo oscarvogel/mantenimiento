@@ -27,6 +27,7 @@ import TripMastersPage from './TripMastersPage.vue'
 import TripsDashboardPage from './TripsDashboardPage.vue'
 import TripDetailPage from './TripDetailPage.vue'
 import TripOperationsDashboardPage from './TripOperationsDashboardPage.vue'
+import TripFuelPendingPage from './TripFuelPendingPage.vue'
 import TripOperationsIndexPage from './TripOperationsIndexPage.vue'
 import TripOperationsCreatePage from './TripOperationsCreatePage.vue'
 import TripOperationsDetailPage from './TripOperationsDetailPage.vue'
@@ -66,6 +67,7 @@ export {
   TripsDashboardPage,
   TripDetailPage,
   TripOperationsDashboardPage,
+  TripFuelPendingPage,
   TripOperationsIndexPage,
   TripOperationsCreatePage,
   TripOperationsDetailPage,
@@ -104,6 +106,7 @@ export const operationPageComponents = Object.freeze({
   'trips-dashboard': TripsDashboardPage,
   'trip-detail': TripDetailPage,
   'trips-operations-dashboard': TripOperationsDashboardPage,
+  'trips-fuel-pending': TripFuelPendingPage,
   'trips-operations': TripOperationsIndexPage,
   'trip-operations-create': TripOperationsCreatePage,
   'trip-operations-detail': TripOperationsDetailPage,

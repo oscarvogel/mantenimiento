@@ -57,6 +57,7 @@ final class GetOperationalTrip
             'legs' => base_url('viajes/operativos/' . $tripId . '/tramos'),
             'update' => base_url('viajes/operativos/' . $tripId),
             'finish' => base_url('viajes/operativos/' . $tripId . '/cerrar'),
+            'fuelPending' => base_url('viajes/operativos/combustible-sin-precio'),
         ];
         $detail['canOperate'] = $actor->hasPermission('viajes.operar');
         $detail['canRegisterCosts'] = $detail['canOperate']
@@ -66,6 +67,9 @@ final class GetOperationalTrip
         $detail['canCancel'] = $detail['canOperate'] && ($detail['trip']['estado'] ?? null) === Trip::PLANIFICADO;
         $detail['canClose'] = $detail['canOperate'] && ($detail['trip']['estado'] ?? null) === Trip::EN_CURSO;
         $detail['canAddLegs'] = $detail['canRegisterCosts'];
+        // Los precios pendientes se completan aunque el viaje esté finalizado.
+        $detail['canCompleteFuelPrices'] = $detail['canOperate']
+            && ($detail['trip']['estado'] ?? null) !== Trip::CANCELADO;
         $detail['canViewDriverSettlement'] = $actor->hasPermission(GetDriverSettlement::PERMISSION)
             && ($detail['trip']['estado'] ?? null) !== Trip::CANCELADO;
 
@@ -298,10 +302,18 @@ final class GetOperationalTrip
 
         $fuelLiters = 0.0;
         $fuelAmount = 0.0;
+        $fuelWithoutPrice = 0;
+        $fuelLitersWithoutPrice = 0.0;
         $odometers = [];
         foreach ($fuel as $row) {
             $fuelLiters += (float) $row['litros'];
-            $fuelAmount += (float) $row['importe_ars'];
+            if (($row['importe_ars'] ?? null) === null) {
+                // Sin precio todavía: suma al consumo pero no al costo.
+                $fuelWithoutPrice++;
+                $fuelLitersWithoutPrice += (float) $row['litros'];
+            } else {
+                $fuelAmount += (float) $row['importe_ars'];
+            }
             if ($row['kilometraje'] !== null) {
                 $odometers[] = (int) $row['kilometraje'];
             }
@@ -343,6 +355,8 @@ final class GetOperationalTrip
         $detail['totals'] = [
             'fuel_liters' => round($fuelLiters, 2),
             'fuel_amount_ars' => round($fuelAmount, 2),
+            'fuel_without_price' => $fuelWithoutPrice,
+            'fuel_liters_without_price' => round($fuelLitersWithoutPrice, 2),
             'expense_amount_ars' => round($expenseAmount, 2),
             'direct_cost_ars' => round($fuelAmount + $expenseAmount, 2),
             'cash_delivered_ars' => round($cashDelivered, 2),

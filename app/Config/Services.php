@@ -1333,6 +1333,32 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
         );
     }
 
+    public static function listPendingFuelPrices(bool $getShared = true): \App\Application\Trips\ListPendingFuelPrices
+    {
+        if ($getShared) {
+            return static::getSharedInstance('listPendingFuelPrices');
+        }
+
+        return new \App\Application\Trips\ListPendingFuelPrices(
+            new \App\Infrastructure\Trips\CodeIgniterPendingFuelPriceRepository(db_connect()),
+        );
+    }
+
+    public static function completeFuelPrices(bool $getShared = true): \App\Application\Trips\CompleteFuelPrices
+    {
+        if ($getShared) {
+            return static::getSharedInstance('completeFuelPrices');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\Trips\CompleteFuelPrices(
+            new \App\Infrastructure\Trips\CodeIgniterPendingFuelPriceRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripDirectoryLookup($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripsUnitOfWork($db),
+        );
+    }
+
     public static function registerTripFuel(bool $getShared = true): \App\Application\Trips\RegisterTripFuel
     {
         if ($getShared) {
