@@ -231,6 +231,17 @@ final class CustomerAccountsIntegrationTest extends TestCase
         self::assertSame('CATALOGO_EMPRESA', $charge['cotizacion_fuente']);
         self::assertEquals(4_480_000, $charge['importe_ars']);
 
+        // Aceptar la cotización precargada sin cambiarla también es fuente catálogo;
+        // cambiarla la vuelve manual.
+        $this->annul()->execute($this->actor(), $chargeId, 'Prueba de fuente de cotización');
+        $accepted = $this->formalize(9, 'MEMO_AUTORIZADO', 2800, 'USD', 1600, 'M-2');
+        self::assertSame('CATALOGO_EMPRESA', $this->db->table('cliente_cc_cargos')->where('id', $accepted)->get()->getRowArray()['cotizacion_fuente']);
+        $this->annul()->execute($this->actor(), $accepted, 'Prueba de fuente de cotización');
+        $chargeId = $this->formalize(9, 'MEMO_AUTORIZADO', 2800, 'USD', 1600.5, 'M-3');
+        self::assertSame('MANUAL', $this->db->table('cliente_cc_cargos')->where('id', $chargeId)->get()->getRowArray()['cotizacion_fuente']);
+        $this->annul()->execute($this->actor(), $chargeId, 'Prueba de fuente de cotización');
+        $chargeId = $this->formalize(9, 'MEMO_AUTORIZADO', 2800, 'USD', null, 'M-4');
+
         // Cambiar el catálogo después no recalcula el cargo.
         $this->db->table('viajes_cotizaciones')->where('moneda', 'USD')->update(['cotizacion' => 2000]);
         self::assertEquals(4_480_000, $this->db->table('cliente_cc_cargos')->where('id', $chargeId)->get()->getRowArray()['importe_ars']);

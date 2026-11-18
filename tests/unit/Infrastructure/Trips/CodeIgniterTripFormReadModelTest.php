@@ -32,7 +32,7 @@ final class CodeIgniterTripFormReadModelTest extends TestCase
         $this->database->query('CREATE TABLE equipo_relaciones (id INTEGER PRIMARY KEY, empresa_id INTEGER, equipo_principal_id INTEGER, equipo_relacionado_id INTEGER, tipo_relacion TEXT, desde TEXT, hasta TEXT NULL)');
         $this->database->query('CREATE TABLE empleados (id INTEGER PRIMARY KEY, empresa_id INTEGER, nombre TEXT, apellido TEXT, legajo TEXT NULL, activo INTEGER, deleted_at TEXT NULL)');
         $this->database->query('CREATE TABLE employee_equipment_assignments (id INTEGER PRIMARY KEY, empresa_id INTEGER, empleado_id INTEGER, equipo_id INTEGER, rol TEXT, fecha_desde TEXT, fecha_hasta TEXT NULL)');
-        $this->database->query('CREATE TABLE clientes (id INTEGER PRIMARY KEY, empresa_id INTEGER, codigo_origen TEXT, nombre TEXT, identificacion_fiscal TEXT NULL, activo INTEGER, deleted_at TEXT NULL)');
+        $this->database->query('CREATE TABLE clientes (id INTEGER PRIMARY KEY, empresa_id INTEGER, origen VARCHAR(80) NOT NULL DEFAULT \'BACKUP_TRANSPORTE\', codigo_origen TEXT, nombre TEXT, identificacion_fiscal TEXT NULL, activo INTEGER, deleted_at TEXT NULL)');
         $this->database->query('CREATE TABLE viajes_domicilios_clientes (id INTEGER PRIMARY KEY, empresa_id INTEGER, cliente_id INTEGER, alias TEXT, calle TEXT, localidad TEXT, activo INTEGER)');
         $this->database->query('CREATE TABLE viajes_unidades_carga (id INTEGER PRIMARY KEY, empresa_id INTEGER, nombre TEXT, simbolo TEXT, activo INTEGER)');
         $this->database->query('CREATE TABLE viajes_monedas (codigo TEXT PRIMARY KEY, nombre TEXT, activo INTEGER)');
@@ -108,6 +108,13 @@ final class CodeIgniterTripFormReadModelTest extends TestCase
         self::assertSame(14.0, $options['drivers'][0]['liquidationPercentage']);
         self::assertSame('Cliente Sur', $options['customers'][0]['label']);
         self::assertSame('324', $options['customers'][0]['code']);
+
+        // Un cliente creado a mano en Maestros tiene una clave técnica aleatoria: no se muestra.
+        $this->database->table('clientes')->insert(['id' => 9, 'empresa_id' => 5, 'origen' => 'MANUAL_VIAJES', 'codigo_origen' => 'ff591ef85117881650e91735d9f0f17d', 'nombre' => 'Zeta manual', 'identificacion_fiscal' => null, 'activo' => 1, 'deleted_at' => null]);
+        $manual = array_values(array_filter($this->readModel()->options(5, [10])['customers'], static fn (array $customer): bool => $customer['id'] === 9));
+        self::assertCount(1, $manual);
+        self::assertArrayHasKey('code', $manual[0]);
+        self::assertNull($manual[0]['code']);
         self::assertSame('Planta · Ruta 9 · Rosario', $options['addresses'][0]['label']);
         self::assertSame('Tonelada (tn)', $options['loadUnits'][0]['label']);
         self::assertSame(['ARS', 'USD'], array_column($options['currencies'], 'code'));
