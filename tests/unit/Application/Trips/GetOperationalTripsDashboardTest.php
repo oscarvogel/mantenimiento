@@ -19,6 +19,10 @@ final class GetOperationalTripsDashboardTest extends TestCase
         );
 
         self::assertSame([5, [10, 20], 10], $readModel->tripsQuery);
+        self::assertSame([['id' => 7, 'label' => 'AA111AA · T01']], $payload['options']['equipment']);
+        self::assertSame([['id' => 3, 'label' => 'Cliente Sur']], $payload['options']['customers']);
+        self::assertSame([['id' => 11, 'label' => 'Juan Pérez']], $payload['options']['drivers']);
+        self::assertSame([['id' => 10, 'code' => 'AR', 'name' => 'Argentina'], ['id' => 20, 'code' => 'BR', 'name' => 'Brasil']], $payload['options']['branches']);
         self::assertSame(1, $payload['summary']['en_curso']);
         self::assertSame(1, $payload['summary']['planificados']);
         self::assertSame(1, $payload['summary']['finalizados']);
@@ -125,9 +129,51 @@ final class GetOperationalTripsDashboardTest extends TestCase
     }
 }
 
+final class GetOperationalTripsDashboardScopeTest extends TestCase
+{
+    public function testPassesTruckCustomerAndDriverFiltersToTheReadModel(): void
+    {
+        $readModel = new DashboardReadModelFake();
+        $payload = (new GetOperationalTripsDashboard($readModel))->execute(
+            new ActorContext(1, 5, false, false, [], ['viajes.ver'], [10]),
+            OperationalTripFilters::fromQuery(['camion' => '7', 'cliente' => '3', 'chofer' => '11']),
+        );
+
+        self::assertSame(7, $readModel->tripsFilters?->equipmentId);
+        self::assertSame(3, $readModel->tripsFilters?->customerId);
+        self::assertSame(11, $readModel->tripsFilters?->driverId);
+        self::assertSame(7, $payload['filters']['equipmentId']);
+        self::assertSame(3, $payload['filters']['customerId']);
+        self::assertSame(11, $payload['filters']['driverId']);
+    }
+
+    public function testWithoutBranchesTheOptionsAreEmpty(): void
+    {
+        $payload = (new GetOperationalTripsDashboard(new DashboardReadModelFake()))->execute(
+            new ActorContext(1, 5, false, false, [], ['viajes.ver'], []),
+            new OperationalTripFilters(),
+        );
+
+        self::assertSame([], $payload['options']['equipment']);
+        self::assertSame([], $payload['options']['customers']);
+        self::assertSame([], $payload['options']['drivers']);
+    }
+}
+
 final class DashboardReadModelFake implements OperationalTripDashboardReadModel
 {
     public array $tripsQuery = [];
+
+    public ?OperationalTripFilters $tripsFilters = null;
+
+    public function filterOptions(int $companyId, ?array $branchIds): array
+    {
+        return [
+            'equipment' => [['id' => 7, 'label' => 'AA111AA · T01']],
+            'customers' => [['id' => 3, 'label' => 'Cliente Sur']],
+            'drivers' => [['id' => 11, 'label' => 'Juan Pérez']],
+        ];
+    }
 
     public array $detailIds = [];
 
@@ -178,9 +224,10 @@ final class DashboardReadModelFake implements OperationalTripDashboardReadModel
         ];
     }
 
-    public function trips(int $companyId, ?array $branchIds, ?int $branchId): array
+    public function trips(int $companyId, ?array $branchIds, OperationalTripFilters $filters): array
     {
-        $this->tripsQuery = [$companyId, $branchIds, $branchId];
+        $this->tripsQuery = [$companyId, $branchIds, $filters->branchId];
+        $this->tripsFilters = $filters;
 
         return $this->rows;
     }

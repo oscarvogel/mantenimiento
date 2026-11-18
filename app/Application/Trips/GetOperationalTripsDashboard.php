@@ -15,6 +15,8 @@ final class GetOperationalTripsDashboard
 {
     private const MONTHS = 6;
 
+    private const EMPTY_OPTIONS = ['equipment' => [], 'customers' => [], 'drivers' => []];
+
     private const STATUS_LABELS = [
         Trip::PLANIFICADO => 'Planificado',
         Trip::EN_CURSO => 'En curso',
@@ -47,11 +49,12 @@ final class GetOperationalTripsDashboard
         $canOperate = $actor->hasPermission('viajes.operar');
         $canSeeEconomics = $actor->hasPermission('viajes.economico.ver');
         if ($branchIds === []) {
-            return $this->payload($filters, [], $this->emptySummary(), [], [], [], [], $canOperate, $canSeeEconomics);
+            return $this->payload($filters, [], self::EMPTY_OPTIONS, $this->emptySummary(), [], [], [], [], $canOperate, $canSeeEconomics);
         }
 
         $branches = $this->readModel->branches($companyId, $branchIds);
-        $rows = $this->readModel->trips($companyId, $branchIds, $filters->branchId);
+        $filterOptions = $this->readModel->filterOptions($companyId, $branchIds);
+        $rows = $this->readModel->trips($companyId, $branchIds, $filters);
 
         $currentRows = [];
         $periodRows = [];
@@ -92,6 +95,7 @@ final class GetOperationalTripsDashboard
         return $this->payload(
             $filters,
             $branches,
+            $filterOptions,
             $summary,
             $this->statusBreakdown($summary),
             $this->monthly($periodRows),
@@ -337,6 +341,7 @@ final class GetOperationalTripsDashboard
 
     /**
      * @param list<array{id:int,code:string,name:string}> $branches
+     * @param array{equipment:list<array{id:int,label:string}>,customers:list<array{id:int,label:string}>,drivers:list<array{id:int,label:string}>} $filterOptions
      * @param array<string,mixed> $summary
      * @param list<array{key:string,label:string,value:int,tone:string}> $statusBreakdown
      * @param list<array<string,mixed>> $monthly
@@ -347,6 +352,7 @@ final class GetOperationalTripsDashboard
     private function payload(
         OperationalTripFilters $filters,
         array $branches,
+        array $filterOptions,
         array $summary,
         array $statusBreakdown,
         array $monthly,
@@ -367,7 +373,7 @@ final class GetOperationalTripsDashboard
 
         return [
             'filters' => $filters->toArray() + ['branchName' => $this->branchName($branches, $filters->branchId)],
-            'options' => ['branches' => $branches],
+            'options' => ['branches' => $branches] + $filterOptions,
             'summary' => $summary,
             'statusBreakdown' => $statusBreakdown,
             'monthly' => $monthly,

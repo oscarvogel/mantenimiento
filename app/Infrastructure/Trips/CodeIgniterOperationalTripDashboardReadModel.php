@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Trips;
 
+use App\Application\Trips\OperationalTripFilters;
 use App\Application\Trips\Port\OperationalTripDashboardReadModel;
 use CodeIgniter\Database\BaseConnection;
 
@@ -35,7 +36,7 @@ final class CodeIgniterOperationalTripDashboardReadModel implements OperationalT
         ], $builder->get()->getResultArray());
     }
 
-    public function trips(int $companyId, ?array $branchIds, ?int $branchId): array
+    public function trips(int $companyId, ?array $branchIds, OperationalTripFilters $filters): array
     {
         if ($branchIds === []) {
             return [];
@@ -71,9 +72,10 @@ final class CodeIgniterOperationalTripDashboardReadModel implements OperationalT
         if ($branchIds !== null) {
             $builder->whereIn('v.sucursal_id', $branchIds);
         }
-        if ($branchId !== null) {
-            $builder->where('v.sucursal_id', $branchId);
+        if ($filters->branchId !== null) {
+            $builder->where('v.sucursal_id', $filters->branchId);
         }
+        OperationalTripScopeConditions::apply($builder, $this->db, $companyId, $filters);
 
         return array_map(static fn (array $row): array => [
             'id' => (int) $row['id'],
@@ -91,6 +93,78 @@ final class CodeIgniterOperationalTripDashboardReadModel implements OperationalT
             'gastos_ars' => (float) $row['gastos_ars'],
             'flete_facturacion_ars' => (float) $row['flete_facturacion_ars'],
         ], $builder->get()->getResultArray());
+    }
+
+    public function filterOptions(int $companyId, ?array $branchIds): array
+    {
+        $empty = ['equipment' => [], 'customers' => [], 'drivers' => []];
+        if ($branchIds === []) {
+            return $empty;
+        }
+
+        $scope = $this->db->table('viajes_operativos')
+            ->select('id')
+            ->where('empresa_id', $companyId);
+        if ($branchIds !== null) {
+            $scope->whereIn('sucursal_id', $branchIds);
+        }
+        $tripIds = array_map(static fn (array $row): int => (int) $row['id'], $scope->get()->getResultArray());
+        if ($tripIds === []) {
+            return $empty;
+        }
+
+        $equipment = $this->db->table('viaje_operativo_asignaciones a')
+            ->distinct()
+            ->select('e.id, e.patente, e.codigo')
+            ->join('equipos e', 'e.id = a.equipo_id AND e.empresa_id = a.empresa_id')
+            ->where('a.empresa_id', $companyId)
+            ->where('a.rol', 'TRACTOR')
+            ->whereIn('a.viaje_id', $tripIds)
+            ->get()->getResultArray();
+
+        $drivers = $this->db->table('viaje_operativo_asignaciones a')
+            ->distinct()
+            ->select('emp.id, emp.nombre, emp.apellido')
+            ->join('empleados emp', 'emp.id = a.empleado_id AND emp.empresa_id = a.empresa_id')
+            ->where('a.empresa_id', $companyId)
+            ->where('a.rol', 'CHOFER')
+            ->whereIn('a.viaje_id', $tripIds)
+            ->get()->getResultArray();
+
+        $customers = $this->db->table('viaje_operativo_tramos t')
+            ->distinct()
+            ->select('c.id, c.nombre')
+            ->join('clientes c', 'c.id = t.cliente_id AND c.empresa_id = t.empresa_id')
+            ->where('t.empresa_id', $companyId)
+            ->whereIn('t.viaje_id', $tripIds)
+            ->get()->getResultArray();
+
+        return [
+            'equipment' => $this->sortedOptions(array_map(fn (array $row): array => [
+                'id' => (int) $row['id'],
+                'label' => $this->equipmentLabel($row),
+            ], $equipment)),
+            'customers' => $this->sortedOptions(array_map(static fn (array $row): array => [
+                'id' => (int) $row['id'],
+                'label' => trim((string) $row['nombre']),
+            ], $customers)),
+            'drivers' => $this->sortedOptions(array_map(static fn (array $row): array => [
+                'id' => (int) $row['id'],
+                'label' => trim((string) ($row['nombre'] ?? '') . ' ' . (string) ($row['apellido'] ?? '')),
+            ], $drivers)),
+        ];
+    }
+
+    /**
+     * @param list<array{id:int,label:string}> $options
+     * @return list<array{id:int,label:string}>
+     */
+    private function sortedOptions(array $options): array
+    {
+        $options = array_values(array_filter($options, static fn (array $option): bool => $option['label'] !== ''));
+        usort($options, static fn (array $a, array $b): int => strcasecmp($a['label'], $b['label']) ?: $a['id'] <=> $b['id']);
+
+        return $options;
     }
 
     public function details(int $companyId, array $tripIds): array

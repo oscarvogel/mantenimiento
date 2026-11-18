@@ -127,6 +127,7 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
                 ->where('a.empresa_id', $companyId)
                 ->where('LOWER(e.patente) LIKE', '%' . mb_strtolower($filters->plate) . '%'));
         }
+        OperationalTripScopeConditions::apply($builder, $this->db, $companyId, $filters);
         if ($filters->from !== null) {
             $builder->where('v.fecha_salida_planificada >=', $filters->from . ' 00:00:00');
         }
