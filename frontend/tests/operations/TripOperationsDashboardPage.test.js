@@ -157,17 +157,24 @@ describe('tablero de viajes operativos', () => {
     wrapper.unmount()
   })
 
-  it('filtra por camión, cliente y chofer conservando la selección', () => {
+  it('filtra por camión, cliente y chofer con búsqueda y conserva la selección', async () => {
     const payload = data()
-    payload.filters = { ...payload.filters, equipmentId: 8, customerId: 3, driverId: 11 }
-    const wrapper = mount(TripOperationsDashboardPage, { props: { data: payload } })
+    payload.filters = { ...payload.filters, equipmentId: 8, customerId: 3, driverId: null }
+    const wrapper = mount(TripOperationsDashboardPage, { props: { data: payload }, attachTo: document.body })
 
-    const truck = wrapper.find('select[name="camion"]')
-    expect(truck.findAll('option').map((option) => option.text())).toEqual(['Todos', 'AA111AA · T01', 'BB222BB · T02'])
-    expect(truck.element.value).toBe('8')
-    expect(wrapper.find('select[name="cliente"]').element.value).toBe('3')
-    expect(wrapper.find('select[name="chofer"]').element.value).toBe('11')
+    expect(wrapper.find('input[type="hidden"][name="camion"]').element.value).toBe('8')
+    expect(wrapper.find('input[type="hidden"][name="cliente"]').element.value).toBe('3')
+    expect(wrapper.find('input[type="hidden"][name="chofer"]').element.value).toBe('')
+    expect(wrapper.find('[data-filter="camion"] input:not([type="hidden"])').element.value).toBe('BB222BB · T02')
+
+    const search = wrapper.find('[data-filter="camion"] input:not([type="hidden"])')
+    await search.trigger('focus')
+    await search.setValue('aa111')
+    const visible = wrapper.findAll('[data-filter="camion"] [role="option"]').map((option) => option.text())
+    expect(visible.some((text) => text.includes('AA111AA · T01'))).toBe(true)
+    expect(visible.some((text) => text.includes('BB222BB · T02'))).toBe(false)
     expect(wrapper.find('form[data-dashboard-filters]').attributes('action')).toBe('/mantenimiento/viajes/operativos/dashboard')
+    wrapper.unmount()
   })
 
   it('avisa que ningún viaje coincide en vez de invitar a cargar el primero', () => {

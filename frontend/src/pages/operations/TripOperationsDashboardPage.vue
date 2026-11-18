@@ -1,6 +1,7 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, reactive } from 'vue'
 import { ArrowPathIcon, PlusIcon, TruckIcon } from '@heroicons/vue/24/outline'
+import AutocompleteSelect from './components/AutocompleteSelect.vue'
 import EmptyState from './components/EmptyState.vue'
 import PageHeading from './components/PageHeading.vue'
 import PanelCard from './components/PanelCard.vue'
@@ -18,10 +19,16 @@ const options = computed(() => ({
   drivers: [],
   ...(props.data.options ?? {}),
 }))
+const asOptions = (items) => (items ?? []).map((item) => ({ value: String(item.id), label: item.label }))
+const selection = reactive({
+  camion: props.data.filters?.equipmentId ? String(props.data.filters.equipmentId) : '',
+  cliente: props.data.filters?.customerId ? String(props.data.filters.customerId) : '',
+  chofer: props.data.filters?.driverId ? String(props.data.filters.driverId) : '',
+})
 const scopeFilters = computed(() => [
-  { key: 'camion', label: 'Camión', empty: 'Todos', items: options.value.equipment, selected: filters.value.equipmentId },
-  { key: 'cliente', label: 'Cliente', empty: 'Todos', items: options.value.customers, selected: filters.value.customerId },
-  { key: 'chofer', label: 'Chofer', empty: 'Todos', items: options.value.drivers, selected: filters.value.driverId },
+  { key: 'camion', label: 'Camión', placeholder: 'Todos los camiones', options: asOptions(options.value.equipment) },
+  { key: 'cliente', label: 'Cliente', placeholder: 'Todos los clientes', options: asOptions(options.value.customers) },
+  { key: 'chofer', label: 'Chofer', placeholder: 'Todos los choferes', options: asOptions(options.value.drivers) },
 ])
 const statusBreakdown = computed(() => props.data.statusBreakdown ?? [])
 const monthly = computed(() => props.data.monthly ?? [])
@@ -131,13 +138,16 @@ const bar = (value, max) => {
             <option v-for="branch in options.branches" :key="branch.id" :value="branch.id" :selected="String(branch.id) === String(filters.branchId ?? '')">{{ branch.code }} · {{ branch.name }}</option>
           </select>
         </label>
-        <label v-for="filter in scopeFilters" :key="filter.key" class="block">
+        <div v-for="filter in scopeFilters" :key="filter.key" class="block" :data-filter="filter.key">
           <span class="mb-1.5 block text-sm font-semibold text-ink">{{ filter.label }}</span>
-          <select :name="filter.key" :class="fieldClass" :data-filter="filter.key">
-            <option value="">{{ filter.empty }}</option>
-            <option v-for="item in filter.items" :key="item.id" :value="item.id" :selected="String(item.id) === String(filter.selected ?? '')">{{ item.label }}</option>
-          </select>
-        </label>
+          <AutocompleteSelect
+            v-model="selection[filter.key]"
+            :name="filter.key"
+            :options="filter.options"
+            :placeholder="filter.placeholder"
+            empty-label="Ningún resultado con ese texto"
+          />
+        </div>
         <div class="flex flex-wrap gap-2 md:col-span-2 xl:col-span-3">
           <button type="submit" :class="primaryButton"><ArrowPathIcon class="mr-2 size-4" aria-hidden="true" />Aplicar</button>
           <a :href="links.index" :class="secondaryButton">Limpiar</a>
