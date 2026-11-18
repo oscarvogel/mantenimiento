@@ -12,7 +12,12 @@ const data = () => ({
     history: '/mantenimiento/viajes',
   },
   filters: { from: '2026-10-01', to: '2026-10-31', branchId: 10, status: null, search: null, branchName: 'Argentina' },
-  options: { branches: [{ id: 10, code: 'AR', name: 'Argentina' }] },
+  options: {
+    branches: [{ id: 10, code: 'AR', name: 'Argentina' }],
+    equipment: [{ id: 7, label: 'AA111AA · T01' }, { id: 8, label: 'BB222BB · T02' }],
+    customers: [{ id: 3, label: 'Cliente Sur' }],
+    drivers: [{ id: 11, label: 'Juan Pérez' }],
+  },
   summary: {
     en_curso: 1,
     planificados: 1,
@@ -130,6 +135,7 @@ describe('tablero de viajes operativos', () => {
   it('muestra el estado vacío y oculta el alta cuando no puede operar', () => {
     const payload = data()
     payload.canOperate = false
+    payload.filters = { from: null, to: null, branchId: null, equipmentId: null, customerId: null, driverId: null }
     payload.summary = {
       ...payload.summary,
       en_curso: 0,
@@ -149,5 +155,38 @@ describe('tablero de viajes operativos', () => {
     expect(wrapper.find('table').exists()).toBe(false)
     expect(wrapper.find('a[href="/mantenimiento/viajes/operativos/nuevo"]').exists()).toBe(false)
     wrapper.unmount()
+  })
+
+  it('filtra por camión, cliente y chofer con búsqueda y conserva la selección', async () => {
+    const payload = data()
+    payload.filters = { ...payload.filters, equipmentId: 8, customerId: 3, driverId: null }
+    const wrapper = mount(TripOperationsDashboardPage, { props: { data: payload }, attachTo: document.body })
+
+    expect(wrapper.find('input[type="hidden"][name="camion"]').element.value).toBe('8')
+    expect(wrapper.find('input[type="hidden"][name="cliente"]').element.value).toBe('3')
+    expect(wrapper.find('input[type="hidden"][name="chofer"]').element.value).toBe('')
+    expect(wrapper.find('[data-filter="camion"] input:not([type="hidden"])').element.value).toBe('BB222BB · T02')
+
+    const search = wrapper.find('[data-filter="camion"] input:not([type="hidden"])')
+    await search.trigger('focus')
+    await search.setValue('aa111')
+    const visible = wrapper.findAll('[data-filter="camion"] [role="option"]').map((option) => option.text())
+    expect(visible.some((text) => text.includes('AA111AA · T01'))).toBe(true)
+    expect(visible.some((text) => text.includes('BB222BB · T02'))).toBe(false)
+    expect(wrapper.find('form[data-dashboard-filters]').attributes('action')).toBe('/mantenimiento/viajes/operativos/dashboard')
+    wrapper.unmount()
+  })
+
+  it('avisa que ningún viaje coincide en vez de invitar a cargar el primero', () => {
+    const payload = data()
+    payload.filters = { ...payload.filters, equipmentId: 8 }
+    payload.summary = { ...payload.summary, total: 0, active_total: 0, en_curso: 0, planificados: 0 }
+    payload.currentTrips = []
+    const wrapper = mount(TripOperationsDashboardPage, { props: { data: payload } })
+
+    expect(wrapper.text()).toContain('Ningún viaje coincide con los filtros')
+    expect(wrapper.text()).not.toContain('Todavía no hay viajes operativos')
+    expect(wrapper.text()).not.toContain('Registrar el primer viaje')
+    expect(wrapper.find('section[aria-label="Indicadores de viajes operativos"]').exists()).toBe(false)
   })
 })

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Application\Trips\OperationalTripFilters;
 use App\Infrastructure\Trips\CodeIgniterOperationalTripDashboardReadModel;
 use CodeIgniter\Database\BaseConnection;
 use Config\Database;
@@ -35,8 +36,13 @@ final class CodeIgniterOperationalTripDashboardReadModelTest extends TestCase
             id INTEGER PRIMARY KEY, viaje_id INTEGER, empresa_id INTEGER, importe_ars REAL
         )');
         $this->database->query('CREATE TABLE viaje_operativo_tramos (
-            id INTEGER PRIMARY KEY, viaje_id INTEGER, empresa_id INTEGER, orden INTEGER, origen TEXT, destino TEXT, flete_facturacion_ars REAL
+            id INTEGER PRIMARY KEY, viaje_id INTEGER, empresa_id INTEGER, orden INTEGER, cliente_id INTEGER NULL, origen TEXT, destino TEXT, flete_facturacion_ars REAL
         )');
+        $this->database->query('CREATE TABLE clientes (id INTEGER PRIMARY KEY, empresa_id INTEGER, nombre TEXT)');
+        $this->database->table('clientes')->insertBatch([
+            ['id' => 3, 'empresa_id' => 5, 'nombre' => 'Cliente Sur'],
+            ['id' => 4, 'empresa_id' => 5, 'nombre' => 'Agro Norte'],
+        ]);
         $this->database->query('CREATE TABLE viaje_operativo_asignaciones (
             id INTEGER PRIMARY KEY, viaje_id INTEGER, empresa_id INTEGER, rol TEXT,
             equipo_id INTEGER NULL, empleado_id INTEGER NULL
@@ -93,11 +99,11 @@ final class CodeIgniterOperationalTripDashboardReadModelTest extends TestCase
             ['id' => 3, 'viaje_id' => 3, 'empresa_id' => 5, 'importe_ars' => 20000],
         ]);
         $this->database->table('viaje_operativo_tramos')->insertBatch([
-            ['id' => 1, 'viaje_id' => 1, 'empresa_id' => 5, 'orden' => 1, 'origen' => 'Rosario', 'destino' => 'Córdoba', 'flete_facturacion_ars' => 500000],
-            ['id' => 2, 'viaje_id' => 2, 'empresa_id' => 5, 'orden' => 1, 'origen' => 'Córdoba', 'destino' => 'Mendoza', 'flete_facturacion_ars' => 900000],
-            ['id' => 3, 'viaje_id' => 3, 'empresa_id' => 5, 'orden' => 1, 'origen' => 'Rosario', 'destino' => 'Córdoba', 'flete_facturacion_ars' => 300000],
-            ['id' => 4, 'viaje_id' => 4, 'empresa_id' => 5, 'orden' => 1, 'origen' => 'Santa Fe', 'destino' => 'Rosario', 'flete_facturacion_ars' => 0],
-            ['id' => 5, 'viaje_id' => 4, 'empresa_id' => 5, 'orden' => 2, 'origen' => 'Rosario', 'destino' => 'Bahía Blanca', 'flete_facturacion_ars' => 0],
+            ['id' => 1, 'viaje_id' => 1, 'empresa_id' => 5, 'orden' => 1, 'cliente_id' => 3, 'origen' => 'Rosario', 'destino' => 'Córdoba', 'flete_facturacion_ars' => 500000],
+            ['id' => 2, 'viaje_id' => 2, 'empresa_id' => 5, 'orden' => 1, 'cliente_id' => 4, 'origen' => 'Córdoba', 'destino' => 'Mendoza', 'flete_facturacion_ars' => 900000],
+            ['id' => 3, 'viaje_id' => 3, 'empresa_id' => 5, 'orden' => 1, 'cliente_id' => 3, 'origen' => 'Rosario', 'destino' => 'Córdoba', 'flete_facturacion_ars' => 300000],
+            ['id' => 4, 'viaje_id' => 4, 'empresa_id' => 5, 'cliente_id' => null, 'orden' => 1, 'origen' => 'Santa Fe', 'destino' => 'Rosario', 'flete_facturacion_ars' => 0],
+            ['id' => 5, 'viaje_id' => 4, 'empresa_id' => 5, 'cliente_id' => null, 'orden' => 2, 'origen' => 'Rosario', 'destino' => 'Bahía Blanca', 'flete_facturacion_ars' => 0],
         ]);
         $this->database->table('viaje_operativo_asignaciones')->insertBatch([
             ['id' => 1, 'viaje_id' => 1, 'empresa_id' => 5, 'rol' => 'TRACTOR', 'equipo_id' => 7, 'empleado_id' => null],
@@ -123,7 +129,7 @@ final class CodeIgniterOperationalTripDashboardReadModelTest extends TestCase
     {
         $readModel = new CodeIgniterOperationalTripDashboardReadModel($this->database);
 
-        $rows = $readModel->trips(5, [10], null);
+        $rows = $readModel->trips(5, [10], new OperationalTripFilters());
         self::assertCount(3, $rows);
         $byId = array_column($rows, null, 'id');
         self::assertSame(100.0, $byId[1]['litros']);
@@ -133,9 +139,9 @@ final class CodeIgniterOperationalTripDashboardReadModelTest extends TestCase
         self::assertSame(300.0, $byId[2]['litros']);
         self::assertNull($byId[4]['km_regreso']);
 
-        self::assertCount(1, $readModel->trips(5, [20], null));
-        self::assertCount(1, $readModel->trips(5, null, 20));
-        self::assertSame([], $readModel->trips(5, [], null));
+        self::assertCount(1, $readModel->trips(5, [20], new OperationalTripFilters()));
+        self::assertCount(1, $readModel->trips(5, null, new OperationalTripFilters(branchId: 20)));
+        self::assertSame([], $readModel->trips(5, [], new OperationalTripFilters()));
     }
 
     public function testDetailsReturnsEquipmentDriversAndRouteForCurrentTrips(): void
@@ -187,5 +193,45 @@ final class CodeIgniterOperationalTripDashboardReadModelTest extends TestCase
         ], $readModel->branches(5, [10]));
         self::assertSame([], $readModel->branches(5, []));
         self::assertSame([], $readModel->branches(6, null));
+    }
+
+    public function testFiltersByTruckCustomerAndDriver(): void
+    {
+        $readModel = new CodeIgniterOperationalTripDashboardReadModel($this->database);
+        $ids = static fn (array $rows): array => array_column($rows, 'id');
+
+        self::assertSame([1], $ids($readModel->trips(5, null, new OperationalTripFilters(equipmentId: 7))));
+        self::assertSame([2], $ids($readModel->trips(5, null, new OperationalTripFilters(equipmentId: 8))));
+        self::assertSame([1, 3], $ids($readModel->trips(5, null, new OperationalTripFilters(customerId: 3))));
+        self::assertSame([1], $ids($readModel->trips(5, [10], new OperationalTripFilters(customerId: 3))));
+        self::assertSame([1], $ids($readModel->trips(5, null, new OperationalTripFilters(driverId: 11))));
+        self::assertSame([], $readModel->trips(5, null, new OperationalTripFilters(equipmentId: 8, customerId: 3)));
+        // El chofer no es un camión: el id 11 como equipo no trae nada.
+        self::assertSame([], $readModel->trips(5, null, new OperationalTripFilters(equipmentId: 11)));
+    }
+
+    public function testFilterOptionsListOnlyWhatAppearsInTripsOfTheScope(): void
+    {
+        $readModel = new CodeIgniterOperationalTripDashboardReadModel($this->database);
+
+        $options = $readModel->filterOptions(5, null);
+        self::assertSame([
+            ['id' => 7, 'label' => 'AA111AA · T01'],
+            ['id' => 8, 'label' => 'BB222BB · T02'],
+        ], $options['equipment']);
+        self::assertSame([
+            ['id' => 4, 'label' => 'Agro Norte'],
+            ['id' => 3, 'label' => 'Cliente Sur'],
+        ], $options['customers']);
+        self::assertSame([['id' => 11, 'label' => 'Juan Pérez']], $options['drivers']);
+
+        // Brasil sólo tiene el viaje 3: sin asignaciones y con Cliente Sur.
+        $brazil = $readModel->filterOptions(5, [20]);
+        self::assertSame([], $brazil['equipment']);
+        self::assertSame([['id' => 3, 'label' => 'Cliente Sur']], $brazil['customers']);
+        self::assertSame([], $brazil['drivers']);
+
+        self::assertSame(['equipment' => [], 'customers' => [], 'drivers' => []], $readModel->filterOptions(5, []));
+        self::assertSame(['equipment' => [], 'customers' => [], 'drivers' => []], $readModel->filterOptions(6, null));
     }
 }
