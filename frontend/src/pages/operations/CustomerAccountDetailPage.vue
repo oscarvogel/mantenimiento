@@ -69,11 +69,13 @@ const openingPreviewArs = computed(() => {
 
   return Math.round(amount * rate * 100) / 100
 })
-// La descripción del libro puede empezar con el mismo tipo ("Saldo inicial …"): no repetirlo.
+// El asiento de saldo inicial se describe "Saldo inicial <referencia>": al lado del
+// tipo, mostrar solo la referencia. El resto de las descripciones va completa.
 const detail = (row) => {
   const text = String(row.descripcion ?? '')
+  if (row.tipo !== 'SALDO_INICIAL' || !text.startsWith('Saldo inicial')) return text
 
-  return text.startsWith(row.tipo_label) ? text.slice(row.tipo_label.length).replace(/^[\s·:-]+/, '') : text
+  return text.slice('Saldo inicial'.length).trim() || 'Sin referencia'
 }
 
 // Anular

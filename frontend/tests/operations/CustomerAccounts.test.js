@@ -173,6 +173,7 @@ describe('cuenta corriente de clientes', () => {
           movements: [
             { id: 1, fecha: '2026-11-10', tipo: 'CARGO', tipo_label: 'Memo autorizado', descripcion: 'Viaje #16 · Tramo 1 · Memo autorizado M-77', cargo_id: 30, cargo_vigente: false, cargo_anulado: true, viaje_id: 16, moneda: 'USD', importe_original: 2800, cotizacion: 1578, cotizacion_fecha: '2026-11-10', cotizacion_fuente: 'MANUAL', debe_ars: 4418400, haber_ars: 0, saldo_ars: 4418400 },
             { id: 2, fecha: '2026-11-10', tipo: 'CARGO', tipo_label: 'Factura emitida', descripcion: 'Viaje #16 · Tramo 1 · Factura emitida 0003-1', cargo_id: 31, cargo_vigente: true, cargo_anulado: false, viaje_id: 16, moneda: 'USD', importe_original: 2800, cotizacion: 1490, cotizacion_fecha: '2026-11-10', cotizacion_fuente: 'MANUAL', debe_ars: 4172000, haber_ars: 0, saldo_ars: 8590400 },
+            { id: 4, fecha: '2026-11-01', tipo: 'SALDO_INICIAL', tipo_label: 'Saldo inicial', descripcion: 'Saldo inicial Resumen ERP', cargo_id: 32, cargo_vigente: true, cargo_anulado: false, viaje_id: null, moneda: 'ARS', importe_original: 1, cotizacion: 1, cotizacion_fecha: '2026-11-01', cotizacion_fuente: 'PESOS', debe_ars: 1, haber_ars: 0, saldo_ars: 1 },
             { id: 3, fecha: '2026-11-17', tipo: 'ANULACION', tipo_label: 'Anulación', descripcion: 'Anulación del cargo #30', cargo_id: 30, cargo_vigente: false, cargo_anulado: true, viaje_id: 16, moneda: 'USD', debe_ars: 0, haber_ars: 4418400, saldo_ars: 4172000 },
           ],
         },
@@ -185,10 +186,13 @@ describe('cuenta corriente de clientes', () => {
     expect(table).toContain('USD 2.800,00 × 1.578 (informada, 10/11/2026)')
     expect(table).toContain('Anulado')
     // Solo el cargo vigente se puede anular (en la tabla de escritorio y en las tarjetas de celular).
-    expect(wrapper.get('[data-testid="statement-table"]').findAll('button').filter((button) => button.text() === 'Anular')).toHaveLength(1)
-    expect(wrapper.get('[data-testid="statement-cards"]').findAll('button').filter((button) => button.text() === 'Anular')).toHaveLength(1)
+    expect(wrapper.get('[data-testid="statement-table"]').findAll('button').filter((button) => button.text() === 'Anular')).toHaveLength(2)
+    expect(wrapper.get('[data-testid="statement-cards"]').findAll('button').filter((button) => button.text() === 'Anular')).toHaveLength(2)
+    // El saldo inicial muestra solo su referencia al lado del tipo.
+    expect(wrapper.get('[data-testid="statement-table"]').text()).not.toContain('Saldo inicial Resumen ERP')
+    expect(wrapper.get('[data-testid="statement-table"]').text()).toContain('Resumen ERP')
     // La descripción no repite el tipo del movimiento.
-    expect(wrapper.get('[data-testid="statement-table"]').text()).not.toContain('Factura emitida Viaje #16 · Tramo 1 · Factura emitida')
+    expect(wrapper.get('[data-testid="statement-table"]').text()).toContain('Anulación del cargo #30')
 
     await wrapper.get('[data-testid="open-opening-balance"]').trigger('click')
     await nextTick()
