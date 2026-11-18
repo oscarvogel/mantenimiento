@@ -11,7 +11,6 @@
 import { computed, nextTick, ref } from 'vue'
 import PageHeading from './components/PageHeading.vue'
 import PanelCard from './components/PanelCard.vue'
-import FlashMessages from './components/FlashMessages.vue'
 import { fieldClass, primaryButton, secondaryButton, dangerButton } from './helpers.js'
 
 const props = defineProps({ data: { type: Object, required: true } })
@@ -118,7 +117,6 @@ const openReason = (kind, row) => {
 <template>
   <div>
     <PageHeading eyebrow="Viajes · Cuenta corriente" title="Cierre comercial" description="Tramos de viajes finalizados y en qué quedó su cobro. Cerrar el viaje no genera deuda: el cargo nace al formalizar cada tramo." :back="{ href: links.accounts ?? '/clientes/cuenta-corriente', label: 'Ver cuenta corriente de clientes' }" />
-    <FlashMessages :flash="data.flash" />
 
     <nav class="mb-4 flex flex-wrap gap-2" aria-label="Estado comercial" data-testid="closing-tabs">
       <a v-for="tab in tabs" :key="tab.key" :href="tabUrl(tab.key)" :aria-current="status === tab.key ? 'page' : undefined" class="inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold" :class="status === tab.key ? 'border-primary bg-primary-subtle text-primary' : 'border-border bg-surface-raised text-ink hover:bg-surface-muted'">

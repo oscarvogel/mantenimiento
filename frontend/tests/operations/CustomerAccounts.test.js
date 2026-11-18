@@ -87,21 +87,6 @@ describe('cierre comercial', () => {
     wrapper.unmount()
   })
 
-  it('muestra el resultado de la última acción, también los errores de validación', () => {
-    const wrapper = mount(TripCommercialClosingPage, { props: { data: queueData({ flash: { success: null, error: 'Indicá el número o la referencia del memo autorizado.', warning: null } }) } })
-    expect(wrapper.get('[role="alert"]').text()).toBe('Indicá el número o la referencia del memo autorizado.')
-    wrapper.unmount()
-
-    for (const [component, data] of [
-      [CustomerAccountsPage, { links, rows: [], totals: {}, customers: [], flash: { success: 'El cargo quedó anulado.' } }],
-      [CustomerAccountDetailPage, { links, customer: { nombre: 'X' }, movements: [], totals: {}, flash: { success: 'El cargo quedó anulado.' } }],
-    ]) {
-      const page = mount(component, { props: { data } })
-      expect(page.get('[data-testid="flash-messages"]').text()).toBe('El cargo quedó anulado.')
-      page.unmount()
-    }
-  })
-
   it('muestra la diferencia negativa con el signo delante de la moneda', async () => {
     const wrapper = mount(TripCommercialClosingPage, { props: { data: queueData() }, attachTo: document.body })
     await wrapper.findAll('button').find((button) => button.text() === 'Formalizar').trigger('click')

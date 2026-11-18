@@ -6,7 +6,6 @@
 import { computed, nextTick, ref } from 'vue'
 import PageHeading from './components/PageHeading.vue'
 import PanelCard from './components/PanelCard.vue'
-import FlashMessages from './components/FlashMessages.vue'
 import { fieldClass, primaryButton, secondaryButton } from './helpers.js'
 
 const props = defineProps({ data: { type: Object, required: true } })
@@ -47,7 +46,6 @@ const goToCustomer = () => {
         <button type="button" :class="secondaryButton" data-testid="open-customer" @click="openPicker">{{ canFormalize ? 'Abrir cuenta / saldo inicial' : 'Buscar cliente' }}</button>
       </template>
     </PageHeading>
-    <FlashMessages :flash="data.flash" />
 
     <section aria-label="Totales" class="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
       <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card"><p class="text-xs font-semibold text-ink-muted">Debe</p><p class="mt-2 text-xl font-bold text-ink">{{ money(totals.debe_ars) }}</p></article>
