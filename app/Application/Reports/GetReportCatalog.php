@@ -44,6 +44,14 @@ final class GetReportCatalog
             ],
         ];
 
+        $entries[] = [
+            'key' => 'telemetry-reliability',
+            'label' => 'Confiabilidad de telemetría',
+            'description' => 'Compara los kilómetros de telemetría con los que cargan los choferes, por equipo y período, para decidir si se puede dejar de depender de la carga manual.',
+            'url' => base_url('reportes/telemetria'),
+            'state' => 'available',
+        ];
+
         if ($actor->hasPermission('viajes.ver')) {
             $entries[] = [
                 'key' => 'trips-profitability',
