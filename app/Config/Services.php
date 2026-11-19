@@ -63,6 +63,9 @@ use App\Application\PreventiveMaintenance\ReevaluateEquipmentAfterReading;
 use App\Application\WorkOrders\StartWorkOrder;
 use App\Application\Reports\GetMaintenanceReport;
 use App\Application\Reports\GetReportCatalog;
+use App\Application\Reports\GetTelemetryReliabilityReport;
+use App\Application\Reports\ReportScopeFactory;
+use App\Domain\Reports\TelemetryReadingReliability;
 use App\Application\Organization\AssignUserCompanyHandler;
 use App\Application\Organization\AssignUserRolesHandler;
 use App\Application\Organization\CreateCompanyHandler;
@@ -218,6 +221,7 @@ use App\Infrastructure\WorkOrders\CodeIgniterWorkOrderRepository;
 use App\Infrastructure\WorkOrders\CodeIgniterWorkOrderTransaction;
 use App\Infrastructure\WorkOrders\SystemClock as WorkOrderClock;
 use App\Infrastructure\Reports\CodeIgniterMaintenanceReportReadModel;
+use App\Infrastructure\Reports\CodeIgniterTelemetryReliabilityDataReader;
 use App\Infrastructure\Reports\SystemReportClock;
 use App\Domain\PreventiveMaintenance\EvaluadorVencimiento;
 use App\Domain\PreventiveMaintenance\ResolverPlantillasCompatibles;
@@ -405,6 +409,19 @@ class Services extends BaseService
         }
 
         return new GetReportCatalog();
+    }
+
+    public static function telemetryReliabilityReport(bool $getShared = true): GetTelemetryReliabilityReport
+    {
+        if ($getShared) {
+            return static::getSharedInstance('telemetryReliabilityReport');
+        }
+
+        return new GetTelemetryReliabilityReport(
+            new CodeIgniterTelemetryReliabilityDataReader(db_connect()),
+            new ReportScopeFactory(new SystemReportClock()),
+            new TelemetryReadingReliability(),
+        );
     }
 
     public static function globalNotificationSettingsStore(bool $getShared = true): GlobalNotificationSettingsStore

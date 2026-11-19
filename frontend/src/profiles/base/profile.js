@@ -4,7 +4,7 @@ import ApplicationShell from '../../components/ApplicationShell.vue'
 import { operationPageComponents } from '../../pages/operations/index.js'
 import { adminPagesByType } from '../../pages/admin/index.js'
 import { managerialPagesByType } from '../../pages/gerencia/index.js'
-import { ReportsPage } from '../../pages/reports/index.js'
+import { ReportsPage, TelemetryReliabilityPage } from '../../pages/reports/index.js'
 import { AutomationsPage } from '../../pages/automations/index.js'
 import { NotificationCenterPage } from '../../pages/notifications/index.js'
 import CommandCenterPage from '../../pages/platform/CommandCenterPage.vue'
@@ -14,6 +14,7 @@ const basePages = Object.freeze({
   ...adminPagesByType,
   ...managerialPagesByType,
   reports: ReportsPage,
+  'telemetry-reliability': TelemetryReliabilityPage,
   automations: AutomationsPage,
   notifications: NotificationCenterPage,
   'command-center': CommandCenterPage,
