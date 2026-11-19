@@ -308,7 +308,7 @@ final class OperationalTrips extends BaseController
                 $tripId,
                 $this->requiredDateTime('fecha'),
                 $this->requiredFloat('litros'),
-                $this->requiredFloat('importe'),
+                $this->optionalAmount('importe'),
                 $this->currency(),
                 $this->rate(),
                 $this->optionalInt('kilometraje'),
@@ -445,7 +445,7 @@ final class OperationalTrips extends BaseController
                 $movementId,
                 $this->requiredDateTime('fecha'),
                 $this->requiredFloat('litros'),
-                $this->requiredFloat('importe'),
+                $this->optionalAmount('importe'),
                 $this->currency(),
                 $this->rate(),
                 $this->optionalInt('kilometraje'),
@@ -646,6 +646,20 @@ final class OperationalTrips extends BaseController
         $value = filter_var($raw, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
 
         return $value === false ? null : (int) $value;
+    }
+
+    /** Importe que puede quedar para después: vacío significa «sin precio todavía». */
+    private function optionalAmount(string $key): ?float
+    {
+        $raw = str_replace(',', '.', trim((string) $this->request->getPost($key)));
+        if ($raw === '') {
+            return null;
+        }
+        if (! is_numeric($raw) || (float) $raw <= 0) {
+            throw new DomainException('El importe debe ser mayor que cero, o dejalo vacío para cargarlo después.');
+        }
+
+        return (float) $raw;
     }
 
     private function optionalFloat(string $key): ?float

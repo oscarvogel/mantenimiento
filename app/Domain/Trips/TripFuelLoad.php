@@ -12,7 +12,7 @@ final readonly class TripFuelLoad
     public function __construct(
         private DateTimeImmutable $date,
         private float $liters,
-        private TripMoney $money,
+        private ?TripMoney $money,
         private ?int $odometer = null,
         private ?string $station = null,
         private ?string $receipt = null,
@@ -36,9 +36,15 @@ final readonly class TripFuelLoad
         return $this->liters;
     }
 
-    public function money(): TripMoney
+    /** Null mientras la carga espera su precio: cuenta litros, no costo. */
+    public function money(): ?TripMoney
     {
         return $this->money;
+    }
+
+    public function hasPrice(): bool
+    {
+        return $this->money !== null;
     }
 
     public function odometer(): ?int

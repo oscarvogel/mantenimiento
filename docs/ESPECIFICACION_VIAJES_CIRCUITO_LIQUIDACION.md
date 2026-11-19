@@ -248,6 +248,7 @@ Es un análisis de margen de empresa. No es la liquidación del chofer y no incl
 12. **La liquidación para el chofer se imprime en un PDF separado del resumen interno.** Incluye comisión, haberes, reintegros y rendición de caja; no muestra margen ni rentabilidad de la empresa.
 13. **Los fletes son opcionales mientras el viaje está abierto.** Un tramo puede cargarse sin flete de facturación o de liquidación y completarse después. Al cerrar el viaje, todos los tramos deben tener ambos fletes.
 14. **Un viaje PLANIFICADO o EN_CURSO se puede editar.** Se pueden corregir fechas, odómetro de salida, equipo, choferes, porcentajes, observaciones y tramos. Un viaje FINALIZADO o CANCELADO no se edita.
+15. **El combustible se puede cargar sin precio.** Se registran los litros en el momento y el importe se completa después, desde la carga o desde la pantalla «Combustible sin precio», que junta las pendientes de todos los viajes. Mientras no tiene precio la carga cuenta para el consumo y no para el costo ni el margen. Es la única excepción a la decisión 9: en un viaje FINALIZADO se puede agregar el precio que faltaba (nunca cambiar uno ya cargado), queda auditado con acción `PRECIO`. En un viaje CANCELADO no.
 
 ---
 
@@ -915,6 +916,7 @@ La Fase 2 (aprobación y pagos de liquidación) queda para después de validar e
 | 06/11/2026 | OpenCode | Se agrega el diario de bordo: cálculo de estadías por diferencia de fechas con franquicia por etapa y generación automática del haber vinculado. | Migración `2026-11-06-130000`, dominio, aplicación, read model y UI. |
 | 11/11/2026 | OpenCode | Los viajes abiertos se pueden editar y los fletes son opcionales hasta el cierre. | Migración `2026-11-11-090000`; edición de encabezado y tramos; cierre exige ambos fletes en todos los tramos. |
 | 12/11/2026 | Mavis | Se atienden los pedidos de los videos del cliente: filtro por patente y orden por fecha, estado derivado de "recorrido cerrado" con aviso y prefill del cierre, y la fecha estimada de regreso pasa a ser dato derivado del último tramo. | Sin cambios de esquema ni migración. El cierre por flete faltante **no** se desbloquea: el cierre sigue siendo manual y exige odómetro de regreso. Ver `docs/BITACORA_2026-11-12_PEDIDOS_VIDEOS_VIAJES_OPERATIVOS.md`. |
+| 18/11/2026 | Claude | Pedido de Carlos: cargar combustible sin importe y completar los precios más tarde, también con el viaje ya cerrado. | Migración `2026-11-18-120000` (importe e importe_ars nullable en `viaje_operativo_combustible`). Pantalla `viajes/operativos/combustible-sin-precio` con permiso `viajes.operar`. El tablero deja de sumar costos quitados (soft delete). |
 
 Checklist para aprobar la Fase 1:
 

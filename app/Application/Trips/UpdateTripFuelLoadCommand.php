@@ -13,7 +13,7 @@ final readonly class UpdateTripFuelLoadCommand
         public int $movementId,
         public DateTimeImmutable $date,
         public float $liters,
-        public float $amount,
+        public ?float $amount,
         public string $currency,
         public float $exchangeRate,
         public ?int $odometer,

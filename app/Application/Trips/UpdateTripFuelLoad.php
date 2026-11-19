@@ -53,7 +53,7 @@ final class UpdateTripFuelLoad
             $load = new TripFuelLoad(
                 $command->date,
                 $command->liters,
-                new TripMoney($command->amount, $command->currency, $command->exchangeRate),
+                $command->amount === null ? null : new TripMoney($command->amount, $command->currency, $command->exchangeRate),
                 $command->odometer,
                 $command->station,
                 $command->receipt,

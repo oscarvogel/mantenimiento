@@ -38,6 +38,8 @@ const expenseConcepts = computed(() => options.value.expenseConcepts ?? [])
 const earningConcepts = computed(() => options.value.earningConcepts ?? [])
 const csrf = computed(() => props.data.csrf ?? { name: 'csrf_test_name', hash: '' })
 const canRegisterCosts = computed(() => Boolean(props.data.canRegisterCosts))
+const canCompleteFuelPrices = computed(() => Boolean(props.data.canCompleteFuelPrices))
+const fuelWithoutPrice = computed(() => Number(props.data.totals?.fuel_without_price ?? 0))
 const canAddLegs = computed(() => Boolean(props.data.canAddLegs))
 const canEdit = computed(() => Boolean(props.data.canEdit))
 const editOptions = computed(() => props.data.editOptions ?? { branches: [], tractors: [], trailers: [], drivers: [] })
@@ -818,9 +820,10 @@ const facts = computed(() => {
               <span v-if="kmCierreSugerido" class="mt-1 block text-xs text-ink-muted">Última lectura conocida del equipo. Corregilo si el tablero marca otra cosa.</span>
             </label>
           </div>
-          <div v-if="!totals.has_legs || !totals.fuel_amount_ars || !totals.expense_amount_ars" class="mt-3 rounded-lg border border-warning/30 bg-warning-subtle px-3 py-2 text-xs text-warning-strong">
+          <div v-if="!totals.has_legs || !totals.fuel_liters || fuelWithoutPrice > 0 || !totals.expense_amount_ars" class="mt-3 rounded-lg border border-warning/30 bg-warning-subtle px-3 py-2 text-xs text-warning-strong">
             <p v-if="!totals.has_legs">No hay tramos cargados.</p>
-            <p v-if="!totals.fuel_amount_ars">No hay combustible cargado.</p>
+            <p v-if="!totals.fuel_liters">No hay combustible cargado.</p>
+            <p v-else-if="fuelWithoutPrice > 0" data-close-fuel-pending>{{ fuelWithoutPrice === 1 ? 'Hay 1 carga' : `Hay ${fuelWithoutPrice} cargas` }} de combustible sin precio. Podés cerrar y completarlas después en «Combustible sin precio».</p>
             <p v-if="!totals.expense_amount_ars">No hay gastos cargados.</p>
             <p class="mt-1">Podés cerrar igual, pero revisá que corresponda.</p>
           </div>
@@ -843,13 +846,17 @@ const facts = computed(() => {
 
     <div class="space-y-5">
       <PanelCard title="Combustible" :count="fuel.length">
-        <p v-if="!canRegisterCosts" class="mb-4 rounded-lg bg-surface p-3 text-sm text-ink-muted">El viaje está cancelado o finalizado; sus costos quedan de solo lectura.</p>
+        <p v-if="!canRegisterCosts" class="mb-4 rounded-lg bg-surface p-3 text-sm text-ink-muted">El viaje está cancelado o finalizado; sus costos quedan de solo lectura<template v-if="fuelWithoutPrice > 0 && canCompleteFuelPrices">, salvo el precio del combustible que falta</template>.</p>
+        <div v-if="fuelWithoutPrice > 0" class="mb-4 flex flex-col gap-2 rounded-lg border border-warning/30 bg-warning-subtle px-3 py-2 text-sm text-warning-strong sm:flex-row sm:items-center sm:justify-between" data-fuel-pending-banner>
+          <p>{{ fuelWithoutPrice === 1 ? '1 carga' : `${fuelWithoutPrice} cargas` }} sin precio ({{ liters(totals.fuel_liters_without_price) }}). El costo y el margen del viaje no las incluyen todavía.</p>
+          <a v-if="canCompleteFuelPrices" :href="data.links?.fuelPending" class="shrink-0 font-semibold underline">Completar precios</a>
+        </div>
         <p v-if="fuel.length === 0" class="text-sm text-ink-muted">Todavía no hay cargas de combustible.</p>
         <div v-else class="overflow-x-auto">
           <table class="w-full min-w-[52rem] text-left text-sm">
             <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-3 py-2">Fecha</th><th class="px-3 py-2 text-right">Litros</th><th class="px-3 py-2 text-right">Importe</th><th class="px-3 py-2 text-right">ARS</th><th class="px-3 py-2 text-right">Odómetro</th><th class="px-3 py-2">Tramo</th><th class="px-3 py-2">Estación</th><th class="px-3 py-2">Comprobante</th><th class="px-3 py-2">Observaciones</th><th v-if="canRegisterCosts" class="px-3 py-2">Acciones</th></tr></thead>
             <tbody class="divide-y divide-border-subtle">
-              <tr v-for="load in fuel" :key="load.id"><td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ fmtDateTime(load.fecha) }}</td><td class="px-3 py-2 text-right text-ink">{{ number(load.litros) }}</td><td class="px-3 py-2 text-right text-ink-muted">{{ money(load.importe, load.moneda) }}</td><td class="px-3 py-2 text-right font-semibold text-ink">{{ money(load.importe_ars) }}</td><td class="px-3 py-2 text-right text-ink-muted">{{ load.kilometraje === null ? '—' : number(load.kilometraje) }}</td><td class="px-3 py-2 text-ink-muted">{{ legLabel(load.tramo_id) }}</td><td class="px-3 py-2 text-ink-muted">{{ load.estacion || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ load.comprobante || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ load.observaciones || '—' }}</td><td v-if="canRegisterCosts" class="whitespace-nowrap px-3 py-2"><div class="flex gap-2"><button type="button" :class="secondaryButton" @click="openEditModal('fuel', load)">Editar</button><form method="post" :action="movementUrl('fuel', load.id, true)" @submit="confirmDelete($event, 'esta carga de combustible')"><input type="hidden" :name="csrf.name" :value="csrf.hash" /><button type="submit" :class="dangerButton">Quitar</button></form></div></td></tr>
+              <tr v-for="load in fuel" :key="load.id"><td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ fmtDateTime(load.fecha) }}</td><td class="px-3 py-2 text-right text-ink">{{ number(load.litros) }}</td><template v-if="load.importe === null || load.importe === undefined"><td colspan="2" class="px-3 py-2 text-right" data-fuel-without-price><span class="rounded-full bg-warning-subtle px-2 py-0.5 text-xs font-semibold text-warning-strong">Sin precio</span></td></template><template v-else><td class="px-3 py-2 text-right text-ink-muted">{{ money(load.importe, load.moneda) }}</td><td class="px-3 py-2 text-right font-semibold text-ink">{{ money(load.importe_ars) }}</td></template><td class="px-3 py-2 text-right text-ink-muted">{{ load.kilometraje === null ? '—' : number(load.kilometraje) }}</td><td class="px-3 py-2 text-ink-muted">{{ legLabel(load.tramo_id) }}</td><td class="px-3 py-2 text-ink-muted">{{ load.estacion || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ load.comprobante || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ load.observaciones || '—' }}</td><td v-if="canRegisterCosts" class="whitespace-nowrap px-3 py-2"><div class="flex gap-2"><button type="button" :class="secondaryButton" @click="openEditModal('fuel', load)">Editar</button><form method="post" :action="movementUrl('fuel', load.id, true)" @submit="confirmDelete($event, 'esta carga de combustible')"><input type="hidden" :name="csrf.name" :value="csrf.hash" /><button type="submit" :class="dangerButton">Quitar</button></form></div></td></tr>
             </tbody>
           </table>
         </div>
@@ -1056,11 +1063,11 @@ const facts = computed(() => {
 
         <form v-if="activeEntryModal === 'fuel'" method="post" :action="editingEntry ? movementUrl('fuel', editingEntry.id) : data.links?.fuel">
           <input type="hidden" :name="csrf.name" :value="csrf.hash" />
-          <p class="text-sm text-ink-muted">Los litros y el odómetro permiten calcular el consumo del viaje.</p>
+          <p class="text-sm text-ink-muted">Los litros y el odómetro permiten calcular el consumo del viaje. Si todavía no tenés el precio, dejá el importe vacío: la carga queda en «Combustible sin precio» para completarla después.</p>
           <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Fecha y hora</span><input type="datetime-local" name="fecha" :value="editingEntry ? inputDateTime(editingEntry.fecha) : nowLocal()" required :class="fieldClass" /></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Litros</span><input type="number" name="litros" min="0.01" step="0.01" :value="editingEntry?.litros ?? ''" required :class="fieldClass" /></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Importe</span><input type="number" name="importe" min="0.01" step="0.01" :value="editingEntry?.importe ?? ''" required :class="fieldClass" /></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Importe (opcional)</span><input type="number" name="importe" min="0.01" step="0.01" :value="editingEntry?.importe ?? ''" placeholder="Sin precio todavía" :class="fieldClass" data-fuel-amount /></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select name="moneda" :value="editingEntry?.moneda ?? 'ARS'" :class="fieldClass" @change="applyRateFromSelect"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }} · {{ currency.label }}</option></select></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cotización a ARS</span><input type="number" name="cotizacion" min="0.000001" step="0.000001" :value="editingEntry?.cotizacion ?? 1" :class="fieldClass" /></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Odómetro</span><input type="number" name="kilometraje" min="1" step="1" :value="editingEntry?.kilometraje ?? ''" :class="fieldClass" /></label>
