@@ -347,6 +347,8 @@ $routes->group('mantenimiento/chatbot/auditoria', ['filter' => ['auth']], static
 $routes->group('reportes', ['filter' => ['auth', 'permission:reportes.ver']], static function ($routes): void {
     $routes->get('', 'Reports::index');
     $routes->get('exportar', 'Reports::export');
+    $routes->get('telemetria', 'Reports::telemetryReliability');
+    $routes->get('telemetria/exportar', 'Reports::exportTelemetryReliability');
 });
 
 // Seguimiento de automatizaciones: sólo lectura. No ejecuta, envía ni reintenta

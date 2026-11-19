@@ -1,40 +1,40 @@
 {
-  "_admin-DdPmu6cp.js": {
-    "file": "assets/admin-DdPmu6cp.js",
+  "_admin-Cn90CtuU.js": {
+    "file": "assets/admin-Cn90CtuU.js",
     "name": "admin",
     "imports": [
-      "_vendor-ChUK1ftR.js"
-    ]
-  },
-  "_chatbot-Bbi5pc97.js": {
-    "file": "assets/chatbot-Bbi5pc97.js",
-    "name": "chatbot",
-    "isDynamicEntry": true,
-    "imports": [
-      "_vendor-ChUK1ftR.js"
-    ],
-    "css": [
-      "assets/chatbot-p1890OXW.css"
+      "_vendor-DdBtSHb5.js"
     ]
   },
   "_chatbot-p1890OXW.css": {
     "file": "assets/chatbot-p1890OXW.css",
     "src": "_chatbot-p1890OXW.css"
   },
-  "_reports-1BjfAqR1.js": {
-    "file": "assets/reports-1BjfAqR1.js",
+  "_chatbot-yvNWfiQo.js": {
+    "file": "assets/chatbot-yvNWfiQo.js",
+    "name": "chatbot",
+    "isDynamicEntry": true,
+    "imports": [
+      "_vendor-DdBtSHb5.js"
+    ],
+    "css": [
+      "assets/chatbot-p1890OXW.css"
+    ]
+  },
+  "_reports-CkB-FhCi.js": {
+    "file": "assets/reports-CkB-FhCi.js",
     "name": "reports",
     "imports": [
-      "_admin-DdPmu6cp.js",
-      "_vendor-ChUK1ftR.js"
+      "_admin-Cn90CtuU.js",
+      "_vendor-DdBtSHb5.js"
     ]
   },
   "_vendor-BTrKGrB8.css": {
     "file": "assets/vendor-BTrKGrB8.css",
     "src": "_vendor-BTrKGrB8.css"
   },
-  "_vendor-ChUK1ftR.js": {
-    "file": "assets/vendor-ChUK1ftR.js",
+  "_vendor-DdBtSHb5.js": {
+    "file": "assets/vendor-DdBtSHb5.js",
     "name": "vendor",
     "css": [
       "assets/vendor-BTrKGrB8.css"
@@ -87,18 +87,18 @@
     "src": "src/assets/platform/trips-card.jpg"
   },
   "src/main.js": {
-    "file": "assets/main-BonzAooQ.js",
+    "file": "assets/main-DZLt7HX6.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
     "imports": [
-      "_vendor-ChUK1ftR.js",
-      "_chatbot-Bbi5pc97.js",
-      "_admin-DdPmu6cp.js",
-      "_reports-1BjfAqR1.js"
+      "_vendor-DdBtSHb5.js",
+      "_chatbot-yvNWfiQo.js",
+      "_admin-Cn90CtuU.js",
+      "_reports-CkB-FhCi.js"
     ],
     "dynamicImports": [
-      "_chatbot-Bbi5pc97.js",
+      "_chatbot-yvNWfiQo.js",
       "src/pages/operations/components/FleetTelemetryMap.vue",
       "node_modules/gsap/index.js",
       "src/profiles/platform/profile.js",
@@ -106,7 +106,7 @@
       "src/profiles/cliente_piloto/profile.js"
     ],
     "css": [
-      "assets/main-BIiRkFkC.css"
+      "assets/main-BwKCAhJz.css"
     ],
     "assets": [
       "assets/portal-hero-Dd-Ff3YR.jpg",
@@ -122,58 +122,58 @@
     ]
   },
   "src/pages/operations/components/FleetTelemetryMap.vue": {
-    "file": "assets/FleetTelemetryMap-BJCMRiYm.js",
+    "file": "assets/FleetTelemetryMap-B9kw2v2K.js",
     "name": "FleetTelemetryMap",
     "src": "src/pages/operations/components/FleetTelemetryMap.vue",
     "isDynamicEntry": true,
     "imports": [
-      "_vendor-ChUK1ftR.js",
-      "_chatbot-Bbi5pc97.js"
+      "_vendor-DdBtSHb5.js",
+      "_chatbot-yvNWfiQo.js"
     ],
     "css": [
       "assets/FleetTelemetryMap-eJHHeTQZ.css"
     ]
   },
   "src/profiles/cliente_piloto/profile.js": {
-    "file": "assets/profile--ONeE301.js",
+    "file": "assets/profile-DbHFX0wQ.js",
     "name": "profile",
     "src": "src/profiles/cliente_piloto/profile.js",
     "isDynamicEntry": true,
     "imports": [
       "src/main.js",
-      "_vendor-ChUK1ftR.js",
-      "_chatbot-Bbi5pc97.js",
-      "_admin-DdPmu6cp.js",
-      "_reports-1BjfAqR1.js"
+      "_vendor-DdBtSHb5.js",
+      "_chatbot-yvNWfiQo.js",
+      "_admin-Cn90CtuU.js",
+      "_reports-CkB-FhCi.js"
     ],
     "css": [
       "assets/profile-DV70kWFs.css"
     ]
   },
   "src/profiles/platform/profile.js": {
-    "file": "assets/profile-BBBJbO33.js",
+    "file": "assets/profile-D9dMpEc1.js",
     "name": "profile",
     "src": "src/profiles/platform/profile.js",
     "isDynamicEntry": true,
     "imports": [
       "src/main.js",
-      "_vendor-ChUK1ftR.js",
-      "_chatbot-Bbi5pc97.js",
-      "_admin-DdPmu6cp.js",
-      "_reports-1BjfAqR1.js"
+      "_vendor-DdBtSHb5.js",
+      "_chatbot-yvNWfiQo.js",
+      "_admin-Cn90CtuU.js",
+      "_reports-CkB-FhCi.js"
     ]
   },
   "src/profiles/vogel/profile.js": {
-    "file": "assets/profile-BdHy0Q8Y.js",
+    "file": "assets/profile-IY-b1_c1.js",
     "name": "profile",
     "src": "src/profiles/vogel/profile.js",
     "isDynamicEntry": true,
     "imports": [
       "src/main.js",
-      "_vendor-ChUK1ftR.js",
-      "_chatbot-Bbi5pc97.js",
-      "_admin-DdPmu6cp.js",
-      "_reports-1BjfAqR1.js"
+      "_vendor-DdBtSHb5.js",
+      "_chatbot-yvNWfiQo.js",
+      "_admin-Cn90CtuU.js",
+      "_reports-CkB-FhCi.js"
     ]
   }
 }
