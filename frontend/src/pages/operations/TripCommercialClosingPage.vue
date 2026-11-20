@@ -21,6 +21,8 @@ const rows = computed(() => props.data.rows ?? [])
 const counts = computed(() => props.data.counts ?? {})
 const status = computed(() => props.data.status ?? 'PENDIENTE')
 const canFormalize = computed(() => Boolean(props.data.canFormalize))
+const canOperateTrips = computed(() => Boolean(props.data.canOperateTrips))
+const hasActions = computed(() => canFormalize.value || (status.value === 'SIN_CLIENTE' && canOperateTrips.value))
 const currentRates = computed(() => props.data.currentRates ?? {})
 const currencies = computed(() => props.data.currencies ?? ['ARS'])
 const modalities = computed(() => props.data.modalities ?? [])
@@ -150,13 +152,13 @@ const openReason = (kind, row) => {
           </div>
           <p v-if="row.cargo" class="text-xs text-ink-muted">{{ row.cargo.modalidad_label }} {{ row.cargo.documento_numero ?? '' }} · {{ fmtDate(row.cargo.documento_fecha) }}</p>
           <p v-else-if="row.motivo_no_cobrable" class="text-xs text-ink-muted">Motivo: {{ row.motivo_no_cobrable }}</p>
-          <div v-if="canFormalize || status === 'SIN_CLIENTE'" class="flex flex-wrap gap-2">
+          <div v-if="hasActions" class="flex flex-wrap gap-2">
             <template v-if="status === 'PENDIENTE' && canFormalize">
               <button type="button" :class="primaryButton" @click="openFormalize(row)">Formalizar</button>
               <button type="button" :class="secondaryButton" @click="openReason('no-cobrable', row)">No cobrable</button>
             </template>
             <template v-else-if="status === 'SIN_CLIENTE'">
-              <a :href="`${links.tripsBase}/${row.viaje_id}`" :class="secondaryButton">Cargar cliente en el viaje</a>
+              <a v-if="canOperateTrips" :href="`${links.tripsBase}/${row.viaje_id}`" :class="secondaryButton">Cargar cliente en el viaje</a>
               <button v-if="canFormalize" type="button" :class="secondaryButton" @click="openReason('no-cobrable', row)">No cobrable</button>
             </template>
             <button v-else-if="status === 'FORMALIZADO' && canFormalize && row.cargo" type="button" :class="secondaryButton" @click="openReason('anular', row)">Anular</button>
@@ -174,7 +176,7 @@ const openReason = (kind, row) => {
               <th class="px-3 py-2">Regreso</th>
               <th class="px-3 py-2 text-right">{{ status === 'FORMALIZADO' ? 'Cargo en ARS' : 'Flete estimado' }}</th>
               <th class="px-3 py-2">{{ status === 'FORMALIZADO' ? 'Documento' : (status === 'NO_COBRABLE' ? 'Motivo' : '') }}</th>
-              <th v-if="canFormalize || status === 'SIN_CLIENTE'" class="px-3 py-2">Acciones</th>
+              <th v-if="hasActions" class="px-3 py-2">Acciones</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-border-subtle">
@@ -194,14 +196,14 @@ const openReason = (kind, row) => {
                 <template v-if="row.cargo">{{ row.cargo.modalidad_label }}<span class="block text-xs">{{ row.cargo.documento_numero ?? '' }} · {{ fmtDate(row.cargo.documento_fecha) }}</span></template>
                 <template v-else-if="row.motivo_no_cobrable">{{ row.motivo_no_cobrable }}</template>
               </td>
-              <td v-if="canFormalize || status === 'SIN_CLIENTE'" class="whitespace-nowrap px-3 py-2">
+              <td v-if="hasActions" class="whitespace-nowrap px-3 py-2">
                 <div class="flex gap-2">
                   <template v-if="status === 'PENDIENTE' && canFormalize">
                     <button type="button" :class="primaryButton" @click="openFormalize(row)">Formalizar</button>
                     <button type="button" :class="secondaryButton" @click="openReason('no-cobrable', row)">No cobrable</button>
                   </template>
                   <template v-else-if="status === 'SIN_CLIENTE'">
-                    <a :href="`${links.tripsBase}/${row.viaje_id}`" :class="secondaryButton">Cargar cliente en el viaje</a>
+                    <a v-if="canOperateTrips" :href="`${links.tripsBase}/${row.viaje_id}`" :class="secondaryButton">Cargar cliente en el viaje</a>
                     <button v-if="canFormalize" type="button" :class="secondaryButton" @click="openReason('no-cobrable', row)">No cobrable</button>
                   </template>
                   <button v-else-if="status === 'FORMALIZADO' && canFormalize && row.cargo" type="button" :class="secondaryButton" @click="openReason('anular', row)">Anular</button>

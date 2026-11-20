@@ -55,6 +55,8 @@ final class GetCommercialClosingQueue
             'invoiceTypes' => ChargeDocument::INVOICE_TYPES,
             'currencies' => $this->rates->currencies(),
             'canFormalize' => $actor->hasPermission(CustomerAccountAccess::FORMALIZE),
+            // Cargar el cliente en el viaje exige operar viajes; sin ese permiso el link no sirve.
+            'canOperateTrips' => $actor->hasPermission('viajes.operar'),
         ];
     }
 }

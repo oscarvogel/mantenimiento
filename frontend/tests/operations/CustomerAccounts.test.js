@@ -42,6 +42,7 @@ const queueData = (overrides = {}) => ({
   ],
   invoiceTypes: ['FACTURA_A', 'FACTURA_B'],
   canFormalize: true,
+  canOperateTrips: true,
   ...overrides,
 })
 
@@ -115,6 +116,20 @@ describe('cierre comercial', () => {
 
     const readOnly = mount(TripCommercialClosingPage, { props: { data: queueData({ canFormalize: false }) } })
     expect(readOnly.findAll('button').some((button) => button.text() === 'Formalizar')).toBe(false)
+    readOnly.unmount()
+  })
+
+  it('en sin cliente oculta el link para cargar el cliente si no puede operar viajes', () => {
+    const noClient = { ...pendingLeg, cliente_id: null, cliente: null, estado_comercial: 'SIN_CLIENTE' }
+    const operator = mount(TripCommercialClosingPage, { props: { data: queueData({ status: 'SIN_CLIENTE', rows: [noClient] }) } })
+    expect(operator.text()).toContain('Cargar cliente en el viaje')
+    operator.unmount()
+
+    const readOnly = mount(TripCommercialClosingPage, {
+      props: { data: queueData({ status: 'SIN_CLIENTE', rows: [noClient], canFormalize: false, canOperateTrips: false }) },
+    })
+    expect(readOnly.text()).not.toContain('Cargar cliente en el viaje')
+    expect(readOnly.text()).not.toContain('Acciones')
     readOnly.unmount()
   })
 
