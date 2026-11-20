@@ -978,6 +978,24 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
         );
     }
 
+    /**
+     * Conciliación de combustible: litros declarados por el chofer contra
+     * cargas vistas por el sensor del tanque. Los viajes llegan por el
+     * contrato `ViajesDeclaradosReader`, cuyo adaptador es del contexto Viajes.
+     */
+    public static function conciliacionCombustible(bool $getShared = true): \App\Application\Telematic\GetConciliacionCombustible
+    {
+        if ($getShared) {
+            return static::getSharedInstance('conciliacionCombustible');
+        }
+
+        return new \App\Application\Telematic\GetConciliacionCombustible(
+            new \App\Infrastructure\Trips\CodeIgniterViajesDeclaradosReader(db_connect()),
+            static::serieMuestras(false),
+            static::notificationClock(false),
+        );
+    }
+
     public static function reporteConsumoFlota(bool $getShared = true): \App\Application\Telematic\GetReporteConsumoFlota
     {
         if ($getShared) {
