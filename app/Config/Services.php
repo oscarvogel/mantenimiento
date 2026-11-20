@@ -996,6 +996,20 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
         );
     }
 
+    /** Uso de la flota, excesos de velocidad y cortes de la telemetría. */
+    public static function usoFlota(bool $getShared = true): \App\Application\Telematic\GetUsoFlota
+    {
+        if ($getShared) {
+            return static::getSharedInstance('usoFlota');
+        }
+
+        return new \App\Application\Telematic\GetUsoFlota(
+            new \App\Infrastructure\Telematic\CodeIgniterFleetTelemetryBoardReader(db_connect()),
+            static::serieMuestras(false),
+            static::notificationClock(false),
+        );
+    }
+
     public static function reporteConsumoFlota(bool $getShared = true): \App\Application\Telematic\GetReporteConsumoFlota
     {
         if ($getShared) {
