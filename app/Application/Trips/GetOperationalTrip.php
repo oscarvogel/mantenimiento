@@ -6,16 +6,24 @@ namespace App\Application\Trips;
 
 use App\Application\Identity\ActorContext;
 use App\Application\Trips\Port\OperationalTripReadModel;
+use App\Application\Trips\Port\TripOdometerTelemetry;
 use App\Domain\Trips\Trip;
 use App\Domain\Trips\TripCashMovement;
 use App\Domain\Trips\TripConsumption;
+use App\Domain\Trips\TripReturnOdometer;
 use App\Domain\Trips\TripSettlement;
+use DateTimeImmutable;
+use DateTimeZone;
 use DomainException;
+use Throwable;
 
 final class GetOperationalTrip
 {
-    public function __construct(private readonly OperationalTripReadModel $readModel)
-    {
+    public function __construct(
+        private readonly OperationalTripReadModel $readModel,
+        private readonly ?TripOdometerTelemetry $telemetry = null,
+        private readonly ?string $localTimezone = null,
+    ) {
     }
 
     /** @return array<string,mixed> */
@@ -40,7 +48,7 @@ final class GetOperationalTrip
 
         $detail = $this->costs($detail);
         $detail = $this->financials($detail);
-        $detail = $this->cierre($detail);
+        $detail = $this->cierre($detail, (int) $actor->companyId());
         $detail['links'] = [
             'detail' => base_url('viajes/operativos/' . $tripId),
             'localities' => base_url('viajes/operativos/localidades'),
@@ -89,7 +97,7 @@ final class GetOperationalTrip
      * @param array<string,mixed> $detail
      * @return array<string,mixed>
      */
-    private function cierre(array $detail): array
+    private function cierre(array $detail, int $companyId): array
     {
         $legs = $detail['legs'] ?? [];
         $estado = (string) ($detail['trip']['estado'] ?? '');
@@ -107,27 +115,67 @@ final class GetOperationalTrip
         }
 
         $recorridoCerrado = $legs !== [] && $cerrados === count($legs);
-        $kmSugerido = null;
+        $fechaSugerida = $recorridoCerrado && $fechaCierre !== null ? substr($fechaCierre, 0, 10) : null;
+        $kmSalida = ($detail['trip']['km_salida'] ?? null) === null ? null : (int) $detail['trip']['km_salida'];
+        $sugerencia = null;
         foreach ($detail['assignments'] ?? [] as $assignment) {
             if (($assignment['rol'] ?? '') !== 'TRACTOR') {
                 continue;
             }
-            $kmActual = $assignment['km_actual'] ?? null;
-            $kmSalida = $detail['trip']['km_salida'] ?? null;
-            if ($kmActual !== null && ($kmSalida === null || (int) $kmActual > (int) $kmSalida)) {
-                $kmSugerido = (int) $kmActual;
-            }
+            $kmActual = ($assignment['km_actual'] ?? null) === null ? null : (int) $assignment['km_actual'];
+            $sugerencia = TripReturnOdometer::suggest(
+                $kmSalida,
+                $kmActual,
+                $estado === Trip::EN_CURSO ? $this->telemetryOdometer($companyId, (int) ($assignment['equipo_id'] ?? 0), $fechaSugerida) : null,
+            );
             break;
         }
+        $kmSugerido = $sugerencia['km'] ?? null;
 
         $detail['cierre_pendiente'] = $estado === Trip::EN_CURSO && $recorridoCerrado;
         $detail['recorrido_cerrado'] = $recorridoCerrado;
         // La fecha sugerida es la del ultimo tramo, y solo cuando el recorrido
         // esta cerrado: con el viaje a medio camino no se propone un regreso.
-        $detail['fecha_cierre_sugerida'] = $recorridoCerrado && $fechaCierre !== null ? substr($fechaCierre, 0, 10) : null;
+        $detail['fecha_cierre_sugerida'] = $fechaSugerida;
         $detail['km_cierre_sugerido'] = $kmSugerido;
+        $detail['km_cierre_sugerencia'] = $sugerencia;
 
         return $detail;
+    }
+
+    /**
+     * Odómetro según telemetría hasta el fin del día de regreso (hora local),
+     * o el último disponible si el recorrido todavía no tiene fecha de fin.
+     * Una falla de la telemetría nunca impide abrir el viaje.
+     *
+     * @return array{km:int, observed_at:string, provider:string}|null
+     */
+    private function telemetryOdometer(int $companyId, int $equipmentId, ?string $returnDate): ?array
+    {
+        if ($this->telemetry === null || $equipmentId <= 0) {
+            return null;
+        }
+        try {
+            $untilUtc = null;
+            if ($returnDate !== null) {
+                $untilUtc = (new DateTimeImmutable($returnDate . ' 23:59:59', new DateTimeZone($this->localTimezone ?? date_default_timezone_get())))
+                    ->setTimezone(new DateTimeZone('UTC'))
+                    ->format('Y-m-d H:i:s');
+            }
+
+            $reading = $this->telemetry->odometerAt($companyId, $equipmentId, $untilUtc);
+            if ($reading === null) {
+                return null;
+            }
+            // La telemetría guarda UTC; al operador se le muestra su hora local.
+            $reading['observed_at'] = (new DateTimeImmutable($reading['observed_at'], new DateTimeZone('UTC')))
+                ->setTimezone(new DateTimeZone($this->localTimezone ?? date_default_timezone_get()))
+                ->format('Y-m-d H:i:s');
+
+            return $reading;
+        } catch (Throwable) {
+            return null;
+        }
     }
 
     /** @param array<string,mixed> $detail @return array<string,mixed> */
@@ -370,6 +418,10 @@ final class GetOperationalTrip
             'km' => $km,
             'liters_per_100' => $km === null ? null : TripConsumption::litersPer100Km($fuelLiters, $km),
             'source' => $source,
+            'typical_range' => [
+                'min' => TripConsumption::TYPICAL_MIN_LITERS_PER_100,
+                'max' => TripConsumption::TYPICAL_MAX_LITERS_PER_100,
+            ],
         ];
 
         return $detail;

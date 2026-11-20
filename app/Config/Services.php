@@ -1656,6 +1656,8 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
 
         return new \App\Application\Trips\GetOperationalTrip(
             new \App\Infrastructure\Trips\CodeIgniterOperationalTripReadModel(db_connect()),
+            new \App\Infrastructure\Trips\CodeIgniterTripOdometerTelemetry(db_connect()),
+            config('App')->appTimezone,
         );
     }
 

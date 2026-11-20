@@ -6,6 +6,7 @@ use App\Application\Identity\ActorContext;
 use App\Application\Trips\GetOperationalTrip;
 use App\Application\Trips\OperationalTripFilters;
 use App\Application\Trips\Port\OperationalTripReadModel;
+use App\Application\Trips\Port\TripOdometerTelemetry;
 use PHPUnit\Framework\TestCase;
 
 final class GetOperationalTripTest extends TestCase
@@ -242,6 +243,56 @@ final class GetOperationalTripTest extends TestCase
         self::assertSame(148_900, $detail['km_cierre_sugerido']);
     }
 
+    public function testSugiereElOdometroDeRegresoDeLaTelemetriaHastaElFinDelRecorrido(): void
+    {
+        $telemetry = new GetOperationalTripTelemetryFake(['km' => 148_650, 'observed_at' => '2026-11-11 22:40:00', 'provider' => 'AUTOTRAC']);
+        $detail = $this->detail([
+            'trip' => ['id' => 55, 'numero' => 42, 'estado' => 'EN_CURSO', 'km_salida' => 145_300],
+            'assignments' => [['rol' => 'TRACTOR', 'equipo_id' => 7, 'km_actual' => 148_900]],
+            'legs' => [
+                ['id' => 2, 'orden' => 1, 'origen' => 'Córdoba', 'destino' => 'Rosario', 'fecha_fin' => '2026-11-11', 'flete_facturacion_ars' => 1_000_000.0, 'flete_liquidacion_ars' => 800_000.0],
+            ],
+        ], $telemetry);
+
+        self::assertSame(148_650, $detail['km_cierre_sugerido'], 'La telemetría del día de regreso gana a la última lectura del equipo');
+        self::assertSame('TELEMETRIA', $detail['km_cierre_sugerencia']['source']);
+        self::assertSame('AUTOTRAC', $detail['km_cierre_sugerencia']['provider']);
+        self::assertSame('2026-11-11 19:40:00', $detail['km_cierre_sugerencia']['observed_at'], 'Se muestra en hora local');
+        // Fin del 11/11 en Buenos Aires (UTC-3) = 12/11 02:59:59 UTC.
+        self::assertSame([5, 7, '2026-11-12 02:59:59'], $telemetry->query);
+    }
+
+    public function testSinTelemetriaSugiereLaUltimaLecturaDelEquipo(): void
+    {
+        $detail = $this->detail([
+            'trip' => ['id' => 55, 'numero' => 42, 'estado' => 'EN_CURSO', 'km_salida' => 145_300],
+            'assignments' => [['rol' => 'TRACTOR', 'equipo_id' => 7, 'km_actual' => 148_900]],
+            'legs' => [],
+        ], new GetOperationalTripTelemetryFake(null));
+
+        self::assertSame(148_900, $detail['km_cierre_sugerido']);
+        self::assertSame('EQUIPO', $detail['km_cierre_sugerencia']['source']);
+    }
+
+    public function testUnaFallaDeTelemetriaNoImpideAbrirElViaje(): void
+    {
+        $detail = $this->detail([
+            'trip' => ['id' => 55, 'numero' => 42, 'estado' => 'EN_CURSO', 'km_salida' => 145_300],
+            'assignments' => [['rol' => 'TRACTOR', 'equipo_id' => 7, 'km_actual' => 148_900]],
+        ], new GetOperationalTripTelemetryFake(null, true));
+
+        self::assertSame(148_900, $detail['km_cierre_sugerido']);
+    }
+
+    public function testExponeElRangoTipicoDeConsumoParaAvisarAlCerrar(): void
+    {
+        $detail = $this->detail([
+            'trip' => ['id' => 55, 'numero' => 42, 'estado' => 'EN_CURSO', 'km_salida' => 145_300],
+        ]);
+
+        self::assertSame(['min' => 20.0, 'max' => 60.0], $detail['consumption']['typical_range']);
+    }
+
     public function testUnTramoSinCerrarDejaElViajeEnCurso(): void
     {
         $detail = $this->detail([
@@ -281,9 +332,9 @@ final class GetOperationalTripTest extends TestCase
     }
 
     /** @param array<string,mixed> $data */
-    private function detail(array $data): array
+    private function detail(array $data, ?TripOdometerTelemetry $telemetry = null): array
     {
-        return (new GetOperationalTrip(new GetOperationalTripReadModelFake('EN_CURSO', $data)))->execute(
+        return (new GetOperationalTrip(new GetOperationalTripReadModelFake('EN_CURSO', $data), $telemetry, 'America/Argentina/Buenos_Aires'))->execute(
             new ActorContext(1, 5, false, false, [], ['viajes.ver', 'viajes.operar'], [10]),
             55,
         );
@@ -328,4 +379,24 @@ final class GetOperationalTripReadModelFake implements OperationalTripReadModel
         ], $this->data);
     }
     public function equipmentOptions(int $companyId, ?array $branchIds): array { return []; }
+}
+
+final class GetOperationalTripTelemetryFake implements TripOdometerTelemetry
+{
+    public array $query = [];
+
+    /** @param array{km:int, observed_at:string, provider:string}|null $reading */
+    public function __construct(private ?array $reading, private bool $fails = false)
+    {
+    }
+
+    public function odometerAt(int $companyId, int $equipmentId, ?string $untilUtc): ?array
+    {
+        $this->query = [$companyId, $equipmentId, $untilUtc];
+        if ($this->fails) {
+            throw new RuntimeException('Telemetría caída');
+        }
+
+        return $this->reading;
+    }
 }
