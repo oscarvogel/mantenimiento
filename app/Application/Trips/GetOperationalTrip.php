@@ -73,7 +73,7 @@ final class GetOperationalTrip
             && in_array($detail['trip']['estado'] ?? null, [Trip::PLANIFICADO, Trip::EN_CURSO], true);
         $detail['canEdit'] = $detail['canRegisterCosts'];
         $detail['canStart'] = $detail['canOperate'] && ($detail['trip']['estado'] ?? null) === Trip::PLANIFICADO;
-        $detail['canCancel'] = $detail['canOperate'] && ($detail['trip']['estado'] ?? null) === Trip::PLANIFICADO;
+        $detail['canCancel'] = $detail['canRegisterCosts'];
         $detail['canClose'] = $detail['canOperate'] && ($detail['trip']['estado'] ?? null) === Trip::EN_CURSO;
         $detail['canAddLegs'] = $detail['canRegisterCosts'];
         // Los precios pendientes se completan aunque el viaje esté finalizado.

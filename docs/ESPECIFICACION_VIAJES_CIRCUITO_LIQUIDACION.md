@@ -304,7 +304,8 @@ El viaje es la raíz de consistencia. Contiene:
 | `PLANIFICADO` | Abrir / iniciar | `EN_CURSO` | Fecha real y km de salida obligatorios. |
 | `PLANIFICADO` | Cancelar | `CANCELADO` | Motivo obligatorio. |
 | `EN_CURSO` | Cerrar | `FINALIZADO` | Fecha y km de regreso; lectura generada; resumen económico. |
-| `EN_CURSO` | Cancelar | — | No permitido: ya salió. Se debe cerrar o registrar una incidencia. |
+| `EN_CURSO` | Cancelar | `CANCELADO` | Motivo obligatorio. Es la anulación de un viaje cargado por error o duplicado: no generó lectura ni liquidación, conserva su historial y libera equipo y chofer. Decisión de Oscar del 20/11/2026. |
+| `FINALIZADO` | Cancelar | — | No permitido: ya generó la lectura del equipo. Se corrige con movimientos o reversiones. |
 
 ---
 

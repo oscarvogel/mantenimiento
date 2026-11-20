@@ -265,8 +265,11 @@ final class Trip
 
     public function cancel(string $reason): void
     {
-        if ($this->status !== self::PLANIFICADO) {
-            throw new DomainException('Solo se puede cancelar un viaje que todavía no empezó.');
+        // Un viaje en curso también se puede anular (carga duplicada o por
+        // error): no generó lectura del equipo ni liquidación, y conserva su
+        // historial. Un viaje finalizado ya publicó su lectura y no se anula.
+        if (! in_array($this->status, [self::PLANIFICADO, self::EN_CURSO], true)) {
+            throw new DomainException('Solo se puede cancelar un viaje planificado o en curso. Un viaje finalizado no se anula.');
         }
         $reason = trim($reason);
         if ($reason === '') {

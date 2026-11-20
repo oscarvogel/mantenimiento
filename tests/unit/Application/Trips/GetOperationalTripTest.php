@@ -26,7 +26,7 @@ final class GetOperationalTripTest extends TestCase
         self::assertSame(base_url('viajes/operativos/55'), $detail['links']['detail']);
     }
 
-    public function testHidesActionsWhenTripAlreadyStarted(): void
+    public function testStartedTripCanBeClosedOrCancelledButNotStarted(): void
     {
         $readModel = new GetOperationalTripReadModelFake('EN_CURSO');
         $detail = (new GetOperationalTrip($readModel))->execute(
@@ -35,8 +35,19 @@ final class GetOperationalTripTest extends TestCase
         );
 
         self::assertFalse($detail['canStart']);
-        self::assertFalse($detail['canCancel']);
+        self::assertTrue($detail['canCancel']);
         self::assertTrue($detail['canClose']);
+    }
+
+    public function testFinishedTripCannotBeCancelled(): void
+    {
+        $readModel = new GetOperationalTripReadModelFake('FINALIZADO');
+        $detail = (new GetOperationalTrip($readModel))->execute(
+            new ActorContext(1, 5, false, false, [], ['viajes.ver', 'viajes.operar'], [10]),
+            55,
+        );
+
+        self::assertFalse($detail['canCancel']);
     }
 
     public function testComputesCommissionAndMarginWithAssignedAndUnassignedCosts(): void
