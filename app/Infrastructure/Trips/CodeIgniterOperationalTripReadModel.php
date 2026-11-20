@@ -437,7 +437,7 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
     private function legDetails(int $companyId, int $tripId): array
     {
         $rows = $this->db->table('viaje_operativo_tramos t')
-            ->select('t.id, t.orden, t.codigo_origen_destino, t.localidad_origen_id, t.localidad_destino_id, t.cliente_id, t.origen, t.destino, t.km, t.toneladas, t.moneda, t.cotizacion, t.moneda_liquidacion, t.cotizacion_liquidacion, t.modo_liquidacion, t.toneladas_liquidacion, t.precio_unitario_liquidacion, t.flete_facturacion, t.flete_facturacion_ars, t.flete_liquidacion, t.flete_liquidacion_ars, t.fecha_inicio, t.fecha_fin, t.observaciones, c.codigo_origen AS cliente_codigo, c.nombre AS cliente')
+            ->select('t.id, t.orden, t.codigo_origen_destino, t.localidad_origen_id, t.localidad_destino_id, t.cliente_id, t.origen, t.destino, t.km, t.toneladas, t.moneda, t.cotizacion, t.moneda_liquidacion, t.cotizacion_liquidacion, t.modo_liquidacion, t.toneladas_liquidacion, t.precio_unitario_liquidacion, t.flete_facturacion, t.flete_facturacion_ars, t.flete_liquidacion, t.flete_liquidacion_ars, t.fecha_inicio, t.fecha_fin, t.observaciones, c.codigo_origen AS cliente_codigo, c.origen AS cliente_origen, c.nombre AS cliente')
             ->join('clientes c', 'c.id = t.cliente_id AND c.empresa_id = t.empresa_id', 'left')
             ->where('t.empresa_id', $companyId)
             ->where('t.viaje_id', $tripId)
@@ -459,7 +459,7 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
                 'localidad_origen_id' => $row['localidad_origen_id'] === null ? null : (int) $row['localidad_origen_id'],
                 'localidad_destino_id' => $row['localidad_destino_id'] === null ? null : (int) $row['localidad_destino_id'],
                 'cliente_id' => $row['cliente_id'] === null ? null : (int) $row['cliente_id'],
-                'cliente_codigo' => $row['cliente_codigo'] === null ? null : (string) $row['cliente_codigo'],
+                'cliente_codigo' => CustomerDisplayCode::for($row['cliente_origen'] ?? null, $row['cliente_codigo'] === null ? null : (string) $row['cliente_codigo']),
                 'cliente' => $row['cliente'],
                 'origen' => (string) $row['origen'],
                 'destino' => (string) $row['destino'],
@@ -746,7 +746,7 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
             ->get()->getResultArray();
         $exchangeRates = $this->exchangeRates($companyId);
         $customers = $this->db->table('clientes')
-            ->select('id, codigo_origen, nombre')
+            ->select('id, origen, codigo_origen, nombre')
             ->where('empresa_id', $companyId)
             ->where('activo', 1)
             ->where('deleted_at', null)
@@ -782,7 +782,7 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
             'customers' => array_map(static fn (array $row): array => [
                 'id' => (int) $row['id'],
                 'label' => (string) $row['nombre'],
-                'code' => (string) $row['codigo_origen'],
+                'code' => CustomerDisplayCode::for($row['origen'] ?? null, $row['codigo_origen'] === null ? null : (string) $row['codigo_origen']),
             ], $customers),
         ];
     }

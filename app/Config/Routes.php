@@ -69,6 +69,16 @@ $routes->post('viajes/operativos/(:num)/diario-bordo/(:num)', 'OperationalTrips:
 $routes->post('viajes/operativos/(:num)/diario-bordo/(:num)/eliminar', 'OperationalTrips::deleteLogbookEntry/$1/$2', ['filter' => ['auth', 'permission:viajes.operar']]);
 $routes->post('viajes/operativos/(:num)/porcentaje', 'OperationalTrips::updateDriverPercentage/$1', ['filter' => ['auth', 'permission:viajes.operar']]);
 
+// Cuenta corriente de clientes en ARS (#530): cierre comercial por tramo y estado de cuenta.
+$routes->get('viajes/cierre-comercial', 'CustomerAccounts::closingQueue', ['filter' => ['auth', 'permission:clientes.cc.ver']]);
+$routes->post('viajes/cierre-comercial/tramos/(:num)/formalizar', 'CustomerAccounts::formalize/$1', ['filter' => ['auth', 'permission:clientes.cc.formalizar']]);
+$routes->post('viajes/cierre-comercial/tramos/(:num)/no-cobrable', 'CustomerAccounts::markNonCollectible/$1', ['filter' => ['auth', 'permission:clientes.cc.formalizar']]);
+$routes->post('viajes/cierre-comercial/tramos/(:num)/reabrir', 'CustomerAccounts::reopenNonCollectible/$1', ['filter' => ['auth', 'permission:clientes.cc.formalizar']]);
+$routes->post('clientes/cuenta-corriente/cargos/(:num)/anular', 'CustomerAccounts::annul/$1', ['filter' => ['auth', 'permission:clientes.cc.formalizar']]);
+$routes->get('clientes/cuenta-corriente', 'CustomerAccounts::accounts', ['filter' => ['auth', 'permission:clientes.cc.ver']]);
+$routes->get('clientes/cuenta-corriente/(:num)', 'CustomerAccounts::statement/$1', ['filter' => ['auth', 'permission:clientes.cc.ver']]);
+$routes->post('clientes/cuenta-corriente/(:num)/saldo-inicial', 'CustomerAccounts::openingBalance/$1', ['filter' => ['auth', 'permission:clientes.cc.formalizar']]);
+
 // Maestros independientes del módulo operativo de viajes y de la telemetría.
 $routes->group('viajes/maestros', ['filter' => ['auth']], static function ($routes): void {
     $routes->get('', 'TripMasters::index', ['filter' => 'permission:viajes.maestros.ver']);

@@ -151,7 +151,7 @@ final class CodeIgniterTripFormReadModel implements TripFormReadModel
         }
 
         $customers = $this->db->table('clientes')
-            ->select('id, codigo_origen, nombre, identificacion_fiscal')
+            ->select('id, origen, codigo_origen, nombre, identificacion_fiscal')
             ->where('empresa_id', $companyId)
             ->where('activo', 1)
             ->where('deleted_at', null)
@@ -204,7 +204,7 @@ final class CodeIgniterTripFormReadModel implements TripFormReadModel
             'customers' => array_map(static fn (array $row): array => [
                 'id' => (int) $row['id'],
                 'label' => (string) $row['nombre'],
-                'code' => $row['codigo_origen'] === null ? null : (string) $row['codigo_origen'],
+                'code' => CustomerDisplayCode::for($row['origen'] ?? null, $row['codigo_origen'] === null ? null : (string) $row['codigo_origen']),
                 'taxId' => $row['identificacion_fiscal'] === null ? null : (string) $row['identificacion_fiscal'],
             ], $customers),
             'currencies' => array_map(static function (array $row) use ($exchangeRates): array {

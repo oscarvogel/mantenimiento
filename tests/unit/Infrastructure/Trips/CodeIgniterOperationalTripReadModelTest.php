@@ -26,7 +26,7 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
         $this->database->query('CREATE TABLE tipos_equipo (id INTEGER PRIMARY KEY, nombre TEXT)');
         $this->database->query('CREATE TABLE equipos (id INTEGER PRIMARY KEY, empresa_id INTEGER, sucursal_id INTEGER, tipo_equipo_id INTEGER, codigo TEXT, patente TEXT, km_actual INTEGER NULL, estado TEXT DEFAULT \'ACTIVO\', deleted_at TEXT NULL)');
         $this->database->query('CREATE TABLE empleados (id INTEGER PRIMARY KEY, empresa_id INTEGER, nombre TEXT, apellido TEXT, deleted_at TEXT NULL)');
-        $this->database->query('CREATE TABLE clientes (id INTEGER PRIMARY KEY, empresa_id INTEGER, codigo_origen TEXT, nombre TEXT, activo INTEGER, deleted_at TEXT NULL)');
+        $this->database->query('CREATE TABLE clientes (id INTEGER PRIMARY KEY, empresa_id INTEGER, origen VARCHAR(80) NOT NULL DEFAULT \'BACKUP_TRANSPORTE\', codigo_origen TEXT, nombre TEXT, activo INTEGER, deleted_at TEXT NULL)');
         $this->database->query('CREATE TABLE viajes_domicilios_clientes (id INTEGER PRIMARY KEY, empresa_id INTEGER, cliente_id INTEGER, alias TEXT, calle TEXT, localidad TEXT)');
         $this->database->query('CREATE TABLE viajes_unidades_carga (id INTEGER PRIMARY KEY, nombre TEXT, simbolo TEXT)');
         $this->database->query('CREATE TABLE viajes_operativos (
@@ -417,6 +417,13 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
         self::assertSame(1.0, $detail['legs'][0]['cotizacion_liquidacion']);
         self::assertSame('2026-10-20', $detail['legs'][0]['fecha_inicio']);
         self::assertSame('2026-10-21', $detail['legs'][0]['fecha_fin']);
+        self::assertSame('324', $detail['legs'][0]['cliente_codigo']);
+
+        // Un cliente creado a mano tiene una clave técnica aleatoria: el tramo no la muestra.
+        $this->database->table('clientes')->where('id', 3)->update(['origen' => 'MANUAL_VIAJES', 'codigo_origen' => 'ff591ef85117881650e91735d9f0f17d']);
+        $manual = (new CodeIgniterOperationalTripReadModel($this->database))->find(5, [10], 1);
+        self::assertNull($manual['legs'][0]['cliente_codigo']);
+        self::assertSame('Cliente Sur', $manual['legs'][0]['cliente']);
         self::assertSame('CHOFER', $detail['expenses'][0]['pagado_por']);
         self::assertSame(10, $detail['expenses'][0]['concepto_id']);
         self::assertSame('Peaje', $detail['expenses'][0]['concepto_catalogo']);
