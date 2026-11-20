@@ -161,6 +161,7 @@ onBeforeUnmount(() => {
       <main
         id="main-content"
         class="ui-view-enter ui-vt-content mx-auto w-full max-w-[96rem] px-4 py-6 sm:px-6 sm:py-8 lg:px-7 lg:py-8 xl:px-9"
+        :class="{ 'pb-24 sm:pb-24 lg:pb-24': !isPlatformShell }"
         tabindex="-1"
       >
         <slot />
