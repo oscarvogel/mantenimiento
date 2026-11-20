@@ -280,6 +280,39 @@ final class TripTest extends TestCase
         $trip->start(new DateTimeImmutable('2026-10-20 08:15:00'), 145_300);
     }
 
+    public function testTripInProgressCanBeCancelledWithReason(): void
+    {
+        $trip = $this->trip();
+        $trip->start(new DateTimeImmutable('2026-10-20 08:15:00'), 145_300);
+
+        $trip->cancel('Viaje cargado por error.');
+
+        self::assertSame(Trip::CANCELADO, $trip->status());
+        self::assertSame('Viaje cargado por error.', $trip->cancellationReason());
+        self::assertSame(145_300, $trip->departureKm());
+    }
+
+    public function testFinishedTripCannotBeCancelled(): void
+    {
+        $trip = $this->trip();
+        $trip->start(new DateTimeImmutable('2026-10-20 08:15:00'), 145_300);
+        $trip->finish(new DateTimeImmutable('2026-10-22 18:00:00'), 146_000);
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('finalizado no se anula');
+
+        $trip->cancel('Se quiso anular tarde.');
+    }
+
+    public function testCancelledTripCannotBeCancelledAgain(): void
+    {
+        $trip = $this->trip();
+        $trip->cancel('El cliente suspendió la carga.');
+
+        $this->expectException(DomainException::class);
+        $trip->cancel('Otra vez.');
+    }
+
     public function testUpdateOpenDetailsChangesDatesAssignmentsAndNotes(): void
     {
         $trip = $this->trip();
