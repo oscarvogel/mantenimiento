@@ -114,11 +114,26 @@ describe('detalle de viaje operativo', () => {
       },
     })
 
-    expect(wrapper.get('a[href="/mantenimiento/viajes/operativos/42/resumen.pdf"]').text()).toContain('Descargar resumen PDF')
+    expect(wrapper.get('a[href="/mantenimiento/viajes/operativos/42/resumen.pdf"]').text()).toContain('Resumen del viaje (PDF)')
     wrapper.unmount()
   })
 
-  it('no ofrece descargar el resumen PDF antes del cierre', () => {
+  it('ofrece el resumen PDF como borrador mientras el viaje está en curso', () => {
+    const wrapper = mount(TripOperationsDetailPage, {
+      props: {
+        data: {
+          ...data,
+          links: { ...data.links, summaryPdf: '/mantenimiento/viajes/operativos/42/resumen.pdf' },
+          trip: { ...data.trip, estado: 'EN_CURSO', estado_label: 'En curso' },
+        },
+      },
+    })
+
+    expect(wrapper.get('[data-testid="trip-summary-pdf-link"]').text()).toContain('Resumen del viaje (borrador)')
+    wrapper.unmount()
+  })
+
+  it('no ofrece el resumen PDF mientras el viaje está planificado', () => {
     const wrapper = mount(TripOperationsDetailPage, {
       props: {
         data: {

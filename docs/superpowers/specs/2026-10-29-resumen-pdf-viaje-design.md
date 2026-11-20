@@ -37,3 +37,12 @@ Permitir descargar desde el detalle de un viaje finalizado un PDF basado en el r
 El destino elegido por el usuario es `TSA Argentina` en `fasa_189`. El viaje histórico importado #102 ya contiene sus cuatro fletes, seis cargas de combustible, cinco gastos, seis movimientos de cuenta y un haber; no se duplican esas filas ni se modifica el historial importado.
 
 Para validar las pantallas operativas y la descarga se crea un viaje separado, identificado en observaciones como `PRUEBA PLAYWRIGHT`. Se usa el tractor AF 117 ZK con su lectura vigente como odómetro de salida y se conserva el recorrido de 6.139 km con una lectura de regreso posterior. Las fechas del viaje de prueba corresponden a la fecha de la validación. Así se prueba el circuito actual sin retroceder la lectura del equipo ni alterar el viaje legacy #102.
+
+## Actualización 2026-11-20: indicadores y borrador en curso
+
+Pedido operativo: un resumen imprimible con los KPI del viaje, también mientras el viaje sigue abierto.
+
+- **Viaje en curso:** el PDF se descarga marcado como **BORRADOR**, con un aviso de que los datos pueden cambiar hasta el cierre. El botón dice «Resumen del viaje (borrador)». Planificado y Cancelado siguen sin resumen, porque no tienen recorrido.
+- **Indicadores del viaje** (primera página, debajo del encabezado): km recorridos, días de viaje (a hoy, si sigue en curso), litros cargados, consumo (L/100 km), rendimiento (km/L), toneladas, facturación, costo operativo, margen operativo, facturación por km, costo por km y combustible por km.
+- El cálculo vive en `App\Domain\Trips\TripKpis`, sin dependencias de infraestructura. Un indicador sin datos reales queda «Sin dato»: no se divide por cero ni se estima un valor faltante. Los km salen de la misma fuente que el detalle del viaje (odómetro de salida y regreso, o el de las cargas como estimación), y el PDF aclara cuál se usó.
+- El pie indica la fecha de generación.
