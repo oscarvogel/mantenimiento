@@ -156,15 +156,7 @@ final class Equipment
         bool $canCorrect,
         ?string $correctionReason,
     ): bool {
-        if ($this->status !== self::ACTIVE) {
-            throw new DomainException('No se pueden registrar lecturas en un equipo dado de baja.');
-        }
-        if ($measurement->hasKilometers() && ! $this->type->tracksKilometers()) {
-            throw new DomainException('El tipo de equipo no controla kilometraje.');
-        }
-        if ($measurement->hasHours() && ! $this->type->tracksHours()) {
-            throw new DomainException('El tipo de equipo no controla horómetro.');
-        }
+        $this->assertAcceptsUsage($measurement);
 
         $kilometersRegress = $measurement->kilometers() !== null
             && $this->currentKilometers !== null
@@ -198,6 +190,47 @@ final class Equipment
         }
 
         return $isCorrection;
+    }
+
+    /**
+     * Registra una lectura histórica: un kilometraje menor al actual que
+     * corresponde a una fecha anterior a otra lectura mayor ya registrada (por
+     * ejemplo, el regreso de un viaje que se cierra después de que el camión
+     * hizo otro viaje). No es un retroceso del odómetro: la lectura se guarda
+     * con su fecha y el odómetro actual no se toca.
+     *
+     * Si ninguna lectura posterior la cubre, sí es un retroceso y aplica la
+     * regla general: permiso especial y motivo.
+     */
+    public function recordHistoricalUsage(UsageMeasurement $measurement, bool $coveredByLaterReading): void
+    {
+        $this->assertAcceptsUsage($measurement);
+        if ($measurement->kilometers() === null || ! $this->isBelowCurrentKilometers($measurement)) {
+            throw new DomainException('Solo una lectura menor al odómetro actual puede registrarse como histórica.');
+        }
+        if (! $coveredByLaterReading) {
+            throw new DomainException('Un retroceso requiere permiso y un motivo de entre 5 y 255 caracteres.');
+        }
+    }
+
+    public function isBelowCurrentKilometers(UsageMeasurement $measurement): bool
+    {
+        return $measurement->kilometers() !== null
+            && $this->currentKilometers !== null
+            && $measurement->kilometers() < $this->currentKilometers;
+    }
+
+    private function assertAcceptsUsage(UsageMeasurement $measurement): void
+    {
+        if ($this->status !== self::ACTIVE) {
+            throw new DomainException('No se pueden registrar lecturas en un equipo dado de baja.');
+        }
+        if ($measurement->hasKilometers() && ! $this->type->tracksKilometers()) {
+            throw new DomainException('El tipo de equipo no controla kilometraje.');
+        }
+        if ($measurement->hasHours() && ! $this->type->tracksHours()) {
+            throw new DomainException('El tipo de equipo no controla horómetro.');
+        }
     }
 
     /**

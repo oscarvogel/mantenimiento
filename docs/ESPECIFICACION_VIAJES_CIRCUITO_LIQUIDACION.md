@@ -740,6 +740,9 @@ Reglas:
   recorridos, los litros y el consumo que va a quedar, y se recalcula al cambiar el km de regreso.
   Si el consumo sale fuera de 20 a 60 L/100 km (`TripConsumption::TYPICAL_*`) o el regreso no supera
   la salida, avisa que se revisen los odómetros o las cargas. Avisa, no bloquea.
+- **Viaje viejo que se cierra tarde (20/11/2026).** Si el camión ya tiene una lectura posterior mayor
+  (por ejemplo, de un viaje más nuevo), la lectura del cierre se guarda como histórica y no baja el
+  odómetro del equipo. Ver la excepción en la especificación del sistema (retrocesos).
 - **Confirmación (20/11/2026).** Antes de enviar, pide confirmar el cierre con los km y el consumo,
   y aclara que el viaje ya no se va a poder editar.
 

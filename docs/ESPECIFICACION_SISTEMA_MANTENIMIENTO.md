@@ -264,6 +264,12 @@ Reglas:
 - Al menos uno debe estar informado.
 - No se aceptan valores negativos.
 - No se aceptan retrocesos respecto de la última lectura válida, salvo permiso especial y justificación obligatoria.
+  - **Excepción: lectura histórica de viaje (20/11/2026, decisión del usuario).** Al cerrar un viaje se
+    genera una lectura con origen `VIAJE` y la fecha de regreso. Si su km es menor al odómetro actual
+    **y** existe una lectura vigente posterior con km igual o mayor (el camión ya hizo otro viaje), se
+    guarda como lectura histórica: no es corrección, no pide motivo y **no modifica el odómetro
+    actual**. Sin una lectura posterior que la cubra, sigue siendo un retroceso y aplica la regla
+    general. No aplica a lecturas manuales, de OT ni de importación.
 - Una lectura histórica corregida debe quedar auditada.
 - Al confirmar la lectura se actualizan los valores actuales del equipo dentro de la misma transacción.
 - Una detección de IA menor al kilometraje actual se descarta: no se precarga, se pide carga manual y se conserva el valor crudo para auditoría.

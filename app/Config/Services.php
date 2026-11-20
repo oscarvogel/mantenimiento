@@ -2172,6 +2172,7 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
             new CodeIgniterEquipmentRepository($database),
             new CodeIgniterReadingRepository($database),
             new CodeIgniterUnitOfWork($database),
+            new \App\Infrastructure\Measurement\CodeIgniterLaterReadingLookup($database),
         );
     }
 
