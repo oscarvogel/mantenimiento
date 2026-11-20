@@ -99,7 +99,10 @@ final class CodeIgniterTelemetryBucketStore implements TelemetryBucketStore
             }
 
             $cursorActual = new DateTimeImmutable((string) $cursorRow['cursor_hasta_utc'], new DateTimeZone('UTC'));
-            $cursorFinal = $cursorSolicitado > $cursorActual ? $cursorSolicitado : $cursorActual;
+            // Comparar fechas con fechas: `string > DateTimeImmutable` en PHP 8
+            // siempre da false (el objeto gana) y el cursor quedaba congelado.
+            $cursorPedido = $cursorHasta->setTimezone(new DateTimeZone('UTC'));
+            $cursorFinal = $cursorPedido > $cursorActual ? $cursorPedido : $cursorActual;
 
             $insertados = 0;
             foreach ($buckets as $bucket) {

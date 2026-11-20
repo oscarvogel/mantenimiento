@@ -120,6 +120,30 @@ final class CodeIgniterTelemetryBucketStoreTest extends CIUnitTestCase
         ), 'Una transacción revertida no debe contaminar el siguiente reintento.');
     }
 
+    public function testElCursorAvanzaEnCadaCorridaYNuncaRetrocede(): void
+    {
+        $utc = new DateTimeZone('UTC');
+        $registrada = new DateTimeImmutable('2026-10-11 14:00:00', $utc);
+        $this->store->guardarCerradosYAvanzarCursor(
+            7, 10, 42, '123', 'WIALON', [], new DateTimeImmutable('2026-10-11 13:05:00', $utc), $registrada,
+        );
+
+        // Regresión: el cursor ya existe y la corrida siguiente debe moverlo.
+        $this->store->guardarCerradosYAvanzarCursor(
+            7, 10, 42, '123', 'WIALON', [], new DateTimeImmutable('2026-10-11 14:00:00', $utc), $registrada,
+        );
+        self::assertSame('2026-10-11 14:00:00', $this->store->cursor(7, 10, '123')->format('Y-m-d H:i:s'));
+
+        $this->store->guardarCerradosYAvanzarCursor(
+            7, 10, 42, '123', 'WIALON', [], new DateTimeImmutable('2026-10-11 12:00:00', $utc), $registrada,
+        );
+        self::assertSame(
+            '2026-10-11 14:00:00',
+            $this->store->cursor(7, 10, '123')->format('Y-m-d H:i:s'),
+            'Una ventana vieja no puede hacer retroceder el cursor.',
+        );
+    }
+
     public function testOtraEmpresaNoPuedeLeerNiAvanzarElCursorDeLaUnidad(): void
     {
         $registrada = new DateTimeImmutable('2026-10-10 12:20:00', new DateTimeZone('UTC'));
