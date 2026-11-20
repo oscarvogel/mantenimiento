@@ -54,6 +54,7 @@ $routes->post('viajes/operativos/(:num)/combustible', 'OperationalTrips::addFuel
 $routes->post('viajes/operativos/(:num)/combustible/(:num)', 'OperationalTrips::updateFuel/$1/$2', ['filter' => ['auth', 'permission:viajes.operar']]);
 $routes->post('viajes/operativos/(:num)/combustible/(:num)/eliminar', 'OperationalTrips::deleteFuel/$1/$2', ['filter' => ['auth', 'permission:viajes.operar']]);
 $routes->post('viajes/operativos/(:num)/gastos', 'OperationalTrips::addExpense/$1', ['filter' => ['auth', 'permission:viajes.operar']]);
+$routes->post('viajes/operativos/(:num)/gastos/reatribuir-caja', 'OperationalTrips::reattributeExpensesToCash/$1', ['filter' => ['auth', 'permission:viajes.operar']]);
 $routes->post('viajes/operativos/(:num)/gastos/(:num)', 'OperationalTrips::updateExpense/$1/$2', ['filter' => ['auth', 'permission:viajes.operar']]);
 $routes->post('viajes/operativos/(:num)/gastos/(:num)/eliminar', 'OperationalTrips::deleteExpense/$1/$2', ['filter' => ['auth', 'permission:viajes.operar']]);
 $routes->post('viajes/operativos/(:num)/caja', 'OperationalTrips::addCashMovement/$1', ['filter' => ['auth', 'permission:viajes.operar']]);

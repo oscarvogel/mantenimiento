@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Application\Assets\Port\EquipmentRepository;
 use App\Application\Identity\ActorContext;
+use App\Application\Measurement\Port\LaterReadingLookup;
 use App\Application\Measurement\Port\ReadingRepository;
 use App\Application\Measurement\Port\UnitOfWork;
 use App\Application\Measurement\RegisterReadingCommand;
@@ -78,6 +79,64 @@ final class RegisterReadingHandlerTest extends TestCase
 
         self::assertTrue($result->correction);
         self::assertSame('Corrección del valor anterior', $readings->appended?->correctionReason());
+    }
+
+    public function testTripReadingBelowCurrentIsHistoricalWhenALaterReadingCoversIt(): void
+    {
+        $equipment = $this->equipment(1_729_288, null);
+        $equipmentRepository = new ReadingEquipmentRepositoryFake($equipment);
+        $readings = new ReadingRepositoryFake();
+        $lookup = new LaterReadingLookupFake(true);
+        $handler = new RegisterReadingHandler($equipmentRepository, $readings, new MeasurementUnitOfWorkFake(), $lookup);
+
+        $result = $handler->execute(
+            $this->actor(['viajes.operar'], [7]),
+            new RegisterReadingCommand(10, new DateTimeImmutable('2026-11-10 00:00:00'), 1_727_587, null, EquipmentReading::TRIP, 'Viaje #62', notes: 'Lectura generada al cerrar el viaje.'),
+        );
+
+        self::assertFalse($result->correction, 'Una lectura histórica no es una corrección');
+        self::assertSame(1_729_288, $result->currentKilometers, 'El odómetro actual no baja');
+        self::assertSame(0, $equipmentRepository->updates);
+        self::assertSame(1_727_587, $readings->appended?->measurement()->kilometers());
+        self::assertStringContainsString('Lectura histórica', (string) $readings->appended?->notes());
+        self::assertSame([5, 10, '2026-11-10 00:00:00', 1_727_587], $lookup->query);
+    }
+
+    public function testTripReadingBelowCurrentWithoutLaterReadingIsStillARegression(): void
+    {
+        $equipmentRepository = new ReadingEquipmentRepositoryFake($this->equipment(1_729_288, null));
+        $readings = new ReadingRepositoryFake();
+        $handler = new RegisterReadingHandler($equipmentRepository, $readings, new MeasurementUnitOfWorkFake(), new LaterReadingLookupFake(false));
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('Un retroceso requiere permiso');
+
+        try {
+            $handler->execute(
+                $this->actor(['viajes.operar'], [7]),
+                new RegisterReadingCommand(10, new DateTimeImmutable('2026-11-10'), 1_727_587, null, EquipmentReading::TRIP, 'Viaje #62'),
+            );
+        } finally {
+            self::assertNull($readings->appended);
+        }
+    }
+
+    public function testManualReadingBelowCurrentNeverBecomesHistorical(): void
+    {
+        $handler = new RegisterReadingHandler(
+            new ReadingEquipmentRepositoryFake($this->equipment(1000, null)),
+            new ReadingRepositoryFake(),
+            new MeasurementUnitOfWorkFake(),
+            new LaterReadingLookupFake(true),
+        );
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('Un retroceso requiere permiso');
+
+        $handler->execute(
+            $this->actor(['lecturas.cargar'], [7]),
+            new RegisterReadingCommand(10, new DateTimeImmutable('2026-08-01'), 900, null, EquipmentReading::MANUAL),
+        );
     }
 
     public function testPersistenceFailureRollsBackBeforeUpdatingSnapshot(): void
@@ -166,5 +225,21 @@ final class MeasurementUnitOfWorkFake implements UnitOfWork
             $this->rollbacks++;
             throw $exception;
         }
+    }
+}
+
+final class LaterReadingLookupFake implements LaterReadingLookup
+{
+    public array $query = [];
+
+    public function __construct(private bool $covered)
+    {
+    }
+
+    public function hasLaterReadingAtOrAbove(int $companyId, int $equipmentId, DateTimeImmutable $after, int $kilometers): bool
+    {
+        $this->query = [$companyId, $equipmentId, $after->format('Y-m-d H:i:s'), $kilometers];
+
+        return $this->covered;
     }
 }

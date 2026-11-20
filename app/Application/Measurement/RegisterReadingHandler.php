@@ -6,6 +6,7 @@ namespace App\Application\Measurement;
 
 use App\Application\Assets\Port\EquipmentRepository;
 use App\Application\Identity\ActorContext;
+use App\Application\Measurement\Port\LaterReadingLookup;
 use App\Application\Measurement\Port\ReadingRepository;
 use App\Application\Measurement\Port\UnitOfWork;
 use App\Domain\Measurement\EquipmentReading;
@@ -18,6 +19,7 @@ final class RegisterReadingHandler
         private readonly EquipmentRepository $equipment,
         private readonly ReadingRepository $readings,
         private readonly UnitOfWork $unitOfWork,
+        private readonly ?LaterReadingLookup $laterReadings = null,
     ) {
     }
 
@@ -32,11 +34,33 @@ final class RegisterReadingHandler
             }
 
             $measurement = UsageMeasurement::from($command->kilometers, $command->hours);
-            $correction = $equipment->recordUsage(
-                $measurement,
-                $actor->hasPermission('lecturas.corregir'),
-                $command->correctionReason,
-            );
+            // El cierre de un viaje viejo puede traer un km menor al actual porque el
+            // camión ya hizo otro viaje: es una lectura histórica, no un retroceso.
+            // Solo para lecturas de viaje y solo si una lectura posterior la cubre.
+            $historical = $command->origin === EquipmentReading::TRIP
+                && $this->laterReadings !== null
+                && $equipment->isBelowCurrentKilometers($measurement);
+            if ($historical) {
+                $equipment->recordHistoricalUsage(
+                    $measurement,
+                    $this->laterReadings->hasLaterReadingAtOrAbove(
+                        $companyId,
+                        $command->equipmentId,
+                        $command->recordedAt,
+                        (int) $measurement->kilometers(),
+                    ),
+                );
+                $correction = false;
+            } else {
+                $correction = $equipment->recordUsage(
+                    $measurement,
+                    $actor->hasPermission('lecturas.corregir'),
+                    $command->correctionReason,
+                );
+            }
+            $notes = $historical
+                ? trim(($command->notes ?? '') . ' Lectura histórica: es anterior a una lectura mayor del equipo y no modifica el odómetro actual.')
+                : $command->notes;
 
             $reading = EquipmentReading::record(
                 $companyId,
@@ -49,10 +73,12 @@ final class RegisterReadingHandler
                 $actor->userId(),
                 $correction,
                 $command->correctionReason,
-                $command->notes,
+                $notes,
             );
             $readingId = $this->readings->append($reading);
-            $this->equipment->updateCurrentUsage($equipment, $actor->userId());
+            if (! $historical) {
+                $this->equipment->updateCurrentUsage($equipment, $actor->userId());
+            }
 
             return new RegisterReadingResult(
                 $readingId,

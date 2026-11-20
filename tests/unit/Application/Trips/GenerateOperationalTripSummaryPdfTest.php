@@ -26,21 +26,60 @@ final class GenerateOperationalTripSummaryPdfTest extends TestCase
         self::assertSame('FINALIZADO', $renderer->trip['trip']['estado']);
     }
 
-    public function testDoesNotRenderTripThatIsStillInProgress(): void
+    public function testRendersTripInProgressAsDraft(): void
     {
         $renderer = new SummaryPdfRendererFake();
         $useCase = new GenerateOperationalTripSummaryPdf(
             new GetOperationalTrip(new SummaryPdfReadModelFake('EN_CURSO')),
             $renderer,
+            static fn (): string => '2026-11-20',
+        );
+
+        self::assertSame('%PDF-example', $useCase->execute(new ActorContext(12, 5, false, false, [], ['viajes.ver'], [10]), 42));
+        self::assertTrue($renderer->trip['summary']['draft']);
+        self::assertSame('2026-11-20', $renderer->trip['summary']['generated_on']);
+        self::assertSame(22, $renderer->trip['summary']['kpis']['days'], 'En curso cuenta los días hasta hoy');
+    }
+
+    public function testFinalizedTripIsNotADraftAndCarriesItsIndicators(): void
+    {
+        $renderer = new SummaryPdfRendererFake();
+        (new GenerateOperationalTripSummaryPdf(
+            new GetOperationalTrip(new SummaryPdfReadModelFake('FINALIZADO')),
+            $renderer,
+            static fn (): string => '2026-11-20',
+        ))->execute(new ActorContext(12, 5, false, false, [], ['viajes.ver'], [10]), 42);
+
+        self::assertFalse($renderer->trip['summary']['draft']);
+        self::assertSame('ODOMETRO_VIAJE', $renderer->trip['summary']['consumption_source']);
+        self::assertSame(1_000, $renderer->trip['summary']['kpis']['km']);
+        self::assertSame(40.0, $renderer->trip['summary']['kpis']['liters_per_100_km']);
+        self::assertSame(2.5, $renderer->trip['summary']['kpis']['km_per_liter']);
+        self::assertSame(25.0, $renderer->trip['summary']['kpis']['tons']);
+    }
+
+    /** @dataProvider statusesWithoutRoute */
+    public function testDoesNotRenderTripWithoutRoute(string $status): void
+    {
+        $renderer = new SummaryPdfRendererFake();
+        $useCase = new GenerateOperationalTripSummaryPdf(
+            new GetOperationalTrip(new SummaryPdfReadModelFake($status)),
+            $renderer,
         );
         $this->expectException(DomainException::class);
-        $this->expectExceptionMessage('solo se puede descargar');
+        $this->expectExceptionMessage('en curso o finalizado');
 
         try {
             $useCase->execute(new ActorContext(12, 5, false, false, [], ['viajes.ver'], [10]), 42);
         } finally {
             self::assertNull($renderer->trip);
         }
+    }
+
+    /** @return array<string,array{string}> */
+    public static function statusesWithoutRoute(): array
+    {
+        return ['planificado' => ['PLANIFICADO'], 'cancelado' => ['CANCELADO']];
     }
 }
 
@@ -67,8 +106,19 @@ final class SummaryPdfReadModelFake implements OperationalTripReadModel
         $this->query = [$companyId, $branchIds, $tripId];
 
         return [
-            'trip' => ['id' => $tripId, 'numero' => 42, 'estado' => $this->status],
-            'assignments' => [], 'legs' => [], 'stops' => [], 'fuel' => [], 'expenses' => [],
+            'trip' => [
+                'id' => $tripId, 'numero' => 42, 'estado' => $this->status,
+                'fecha_salida_real' => '2026-10-30', 'km_salida' => 100_000,
+                'fecha_regreso_real' => $this->status === 'FINALIZADO' ? '2026-11-17' : null,
+                'km_regreso' => $this->status === 'FINALIZADO' ? 101_000 : null,
+            ],
+            'assignments' => [], 'stops' => [], 'expenses' => [],
+            'legs' => [
+                ['id' => 1, 'orden' => 1, 'toneladas' => 25, 'flete_facturacion_ars' => null, 'flete_liquidacion_ars' => null],
+            ],
+            'fuel' => [
+                ['id' => 1, 'litros' => 400, 'importe' => 800_000, 'importe_ars' => 800_000, 'moneda' => 'ARS', 'kilometraje' => null, 'tramo_id' => null],
+            ],
             'cashMovements' => [], 'otherEarnings' => [],
         ];
     }

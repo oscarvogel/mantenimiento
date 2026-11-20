@@ -29,6 +29,13 @@ interface TripCostRepository
 
     public function softDeleteCashMovement(int $tripId, int $companyId, int $movementId, int $actorUserId): bool;
 
+    /**
+     * Imputa a la caja del chofer los gastos activos pagados por la empresa.
+     *
+     * Devuelve cuántos gastos se reatribuyeron.
+     */
+    public function reattributeCompanyExpensesToCash(int $tripId, int $companyId, int $actorUserId): int;
+
     public function addOtherEarning(int $tripId, int $companyId, int $branchId, TripOtherEarning $earning, int $actorUserId, ?int $logbookEntryId = null): int;
 
     public function updateOtherEarning(int $tripId, int $companyId, int $movementId, TripOtherEarning $earning, int $actorUserId, ?int $logbookEntryId = null): bool;

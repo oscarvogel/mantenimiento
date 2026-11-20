@@ -219,6 +219,7 @@ final class LogbookCostRepositoryFake implements TripCostRepository
     public function softDeleteFuel(int $tripId, int $companyId, int $movementId, int $actorUserId): bool { return true; }
     public function softDeleteExpense(int $tripId, int $companyId, int $movementId, int $actorUserId): bool { return true; }
     public function softDeleteCashMovement(int $tripId, int $companyId, int $movementId, int $actorUserId): bool { return true; }
+    public function reattributeCompanyExpensesToCash(int $tripId, int $companyId, int $actorUserId): int { return 0; }
 
     public function addOtherEarning(int $tripId, int $companyId, int $branchId, TripOtherEarning $earning, int $actorUserId, ?int $logbookEntryId = null): int
     {

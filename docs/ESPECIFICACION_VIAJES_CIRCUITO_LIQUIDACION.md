@@ -731,6 +731,20 @@ Reglas:
   La sugerencia solo aparece cuando hay datos: no se propone km si el equipo no tiene lectura, ni
   fecha si el recorrido no terminó.
 - El cierre es siempre manual: el sistema no cierra el viaje por su cuenta.
+- **Km de regreso desde telemetría (20/11/2026).** Si el tractor tiene telemetría con kilometraje, la
+  sugerencia es la última lectura de telemetría hasta el fin del día de regreso (hora local), aunque
+  el camión haya seguido andando después. Sin telemetría, se usa la última lectura conocida del
+  equipo. Solo se sugiere una lectura mayor que el odómetro de salida, y el texto de ayuda dice de
+  dónde salió (`TripReturnOdometer`).
+- **Consumo antes de cerrar (20/11/2026).** El formulario muestra el odómetro de salida, los km
+  recorridos, los litros y el consumo que va a quedar, y se recalcula al cambiar el km de regreso.
+  Si el consumo sale fuera de 20 a 60 L/100 km (`TripConsumption::TYPICAL_*`) o el regreso no supera
+  la salida, avisa que se revisen los odómetros o las cargas. Avisa, no bloquea.
+- **Viaje viejo que se cierra tarde (20/11/2026).** Si el camión ya tiene una lectura posterior mayor
+  (por ejemplo, de un viaje más nuevo), la lectura del cierre se guarda como histórica y no baja el
+  odómetro del equipo. Ver la excepción en la especificación del sistema (retrocesos).
+- **Confirmación (20/11/2026).** Antes de enviar, pide confirmar el cierre con los km y el consumo,
+  y aclara que el viaje ya no se va a poder editar.
 
 ### 10.5 Liquidación del chofer
 
@@ -917,6 +931,7 @@ La Fase 2 (aprobación y pagos de liquidación) queda para después de validar e
 | 11/11/2026 | OpenCode | Los viajes abiertos se pueden editar y los fletes son opcionales hasta el cierre. | Migración `2026-11-11-090000`; edición de encabezado y tramos; cierre exige ambos fletes en todos los tramos. |
 | 12/11/2026 | Mavis | Se atienden los pedidos de los videos del cliente: filtro por patente y orden por fecha, estado derivado de "recorrido cerrado" con aviso y prefill del cierre, y la fecha estimada de regreso pasa a ser dato derivado del último tramo. | Sin cambios de esquema ni migración. El cierre por flete faltante **no** se desbloquea: el cierre sigue siendo manual y exige odómetro de regreso. Ver `docs/BITACORA_2026-11-12_PEDIDOS_VIDEOS_VIAJES_OPERATIVOS.md`. |
 | 18/11/2026 | Claude | Pedido de Carlos: cargar combustible sin importe y completar los precios más tarde, también con el viaje ya cerrado. | Migración `2026-11-18-120000` (importe e importe_ars nullable en `viaje_operativo_combustible`). Pantalla `viajes/operativos/combustible-sin-precio` con permiso `viajes.operar`. El tablero deja de sumar costos quitados (soft delete). |
+| 20/11/2026 | Claude | Pedido de Carlos: resumen PDF con KPI también en curso (borrador); al cerrar, km de regreso sugerido por telemetría, consumo previo con aviso fuera de rango y confirmación. | Sin migraciones. `TripKpis`, `TripReturnOdometer`, puerto `TripOdometerTelemetry` (lee `telematia_muestras` y `telematia_buckets`). |
 
 Checklist para aprobar la Fase 1:
 

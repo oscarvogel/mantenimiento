@@ -25,6 +25,8 @@ describe('combustible sin precio', () => {
     expect(wrapper.get('[data-fuel-save]').attributes('disabled')).toBeDefined()
     expect(wrapper.get('form[data-fuel-prices]').attributes('action')).toBe('/mantenimiento/viajes/operativos/combustible-sin-precio')
     expect(wrapper.get('input[name="csrf_test_name"]').element.value).toBe('abc123')
+    // El botón Guardar no queda debajo del asistente flotante.
+    expect(wrapper.get('[data-fuel-save-bar]').classes()).toContain('pr-24')
   })
 
   it('calcula el importe desde el precio por litro y al revés', async () => {

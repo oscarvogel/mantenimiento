@@ -68,7 +68,8 @@ export function useAlerts() {
       const danger = options.danger === true
       const result = await Swal.fire({
         title,
-        text: text || undefined,
+        // `html` solo con contenido ya escapado por quien llama.
+        ...(options.html ? { html: options.html } : { text: text || undefined }),
         icon: options.icon ?? 'warning',
         showCancelButton: true,
         confirmButtonText,
