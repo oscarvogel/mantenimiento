@@ -23,12 +23,22 @@ use DateTimeZone;
  */
 final class FilaAMuestra
 {
+    /**
+     * @param DateTimeZone|null $zonaSalida Zona en la que se devuelven las fechas.
+     *                                      La tabla guarda hora local; null las
+     *                                      deja en esa zona.
+     */
+    public function __construct(private readonly ?DateTimeZone $zonaSalida = null)
+    {
+    }
+
     /** @param array<string,mixed> $fila */
     public function __invoke(array $fila): MuestraEquipo
     {
         $zonaPersistida = new DateTimeZone((new \Config\App())->appTimezone);
-        $observada = new DateTimeImmutable((string) $fila['observada_en'], $zonaPersistida);
-        $registrada = new DateTimeImmutable((string) ($fila['registrada_en'] ?? $fila['observada_en']), $zonaPersistida);
+        $zona = $this->zonaSalida ?? $zonaPersistida;
+        $observada = (new DateTimeImmutable((string) $fila['observada_en'], $zonaPersistida))->setTimezone($zona);
+        $registrada = (new DateTimeImmutable((string) ($fila['registrada_en'] ?? $fila['observada_en']), $zonaPersistida))->setTimezone($zona);
 
         $instantanea = new InstantaneaEquipo(
             $observada,

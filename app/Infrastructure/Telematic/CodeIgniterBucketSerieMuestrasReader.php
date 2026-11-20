@@ -53,12 +53,16 @@ final class CodeIgniterBucketSerieMuestrasReader implements SerieMuestrasReader
             ->get()
             ->getResultArray();
 
+        // La tabla guarda UTC; el contrato de SerieMuestrasReader devuelve la
+        // serie en la zona de `$desde`. Las comparaciones siguientes son por
+        // instante, así que la zona no las cambia.
+        $zona = $desde->getTimezone();
         $muestras = [];
         $indice = 0;
         foreach ($filas as $fila) {
-            $primera = $this->fecha((string) $fila['primera_observada_en']);
-            $ultima = $this->fecha((string) $fila['ultima_observada_en']);
-            $registrada = $this->fecha((string) ($fila['created_at'] ?? $fila['ultima_observada_en']));
+            $primera = $this->fecha((string) $fila['primera_observada_en'], $zona);
+            $ultima = $this->fecha((string) $fila['ultima_observada_en'], $zona);
+            $registrada = $this->fecha((string) ($fila['created_at'] ?? $fila['ultima_observada_en']), $zona);
 
             if ($primera >= $desdeUtc && $primera <= $hastaUtc) {
                 $muestras[] = ['muestra' => $this->muestra($fila, 'inicio', $primera, $registrada), 'indice' => $indice++];
@@ -118,9 +122,9 @@ final class CodeIgniterBucketSerieMuestrasReader implements SerieMuestrasReader
         );
     }
 
-    private function fecha(string $valor): DateTimeImmutable
+    private function fecha(string $valor, DateTimeZone $zona): DateTimeImmutable
     {
-        return (new DateTimeImmutable($valor, new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('UTC'));
+        return (new DateTimeImmutable($valor, new DateTimeZone('UTC')))->setTimezone($zona);
     }
 
     private function flotante(mixed $valor): ?float

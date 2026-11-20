@@ -16,6 +16,12 @@ use DateTimeImmutable;
  * ordenar produce consumos negativos y duraciones imposibles en silencio. Por
  * eso la lista devuelta va siempre en orden ascendente de `observadaEn`.
  *
+ * **Todas las muestras vuelven en la zona horaria de `$desde`.** La serie junta
+ * fuentes que guardan en zonas distintas (`telematia_muestras` en hora local,
+ * `telematia_buckets` en UTC). Ordenar no depende de la zona, pero mostrar sí:
+ * sin esta regla, una hora formateada salía corrida tres horas según de qué
+ * tabla viniera la muestra.
+ *
  * La empresa es el primer parámetro y no es opcional. El scoping por
  * `empresa_id` es una invariante de seguridad, no un filtro de presentación: una
  * lectura de histórico sin empresa devolvería datos de otro cliente, y en este

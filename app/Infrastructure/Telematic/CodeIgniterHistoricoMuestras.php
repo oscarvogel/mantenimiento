@@ -88,7 +88,8 @@ final class CodeIgniterHistoricoMuestras implements HistoricoMuestras, SerieMues
             ->get()
             ->getResultArray();
 
-        $mapeo = new FilaAMuestra();
+        // Contrato de SerieMuestrasReader: la serie vuelve en la zona de `$desde`.
+        $mapeo = new FilaAMuestra($desde->getTimezone());
 
         return array_map($mapeo, $filas);
     }

@@ -162,6 +162,31 @@ final class CodeIgniterBucketSerieMuestrasReaderTest extends CIUnitTestCase
         );
     }
 
+    public function testLaSerieVuelveEnLaZonaPedidaAunqueCadaTablaGuardeEnUnaDistinta(): void
+    {
+        // Muestras en hora local y buckets en UTC: pedida en hora de Buenos Aires,
+        // toda la serie tiene que volver en hora de Buenos Aires.
+        $this->insertarMuestra('gestya', 20, '2026-10-10 12:06:00');
+        $this->insertar(7, 42, '123', '2026-10-10 12:00:00', '2026-10-10 12:04:00', 100, 99, -34.0, -69.0);
+        $reader = new CodeIgniterTelematicSerieMuestrasReader(
+            new CodeIgniterHistoricoMuestras($this->mysql),
+            new CodeIgniterBucketSerieMuestrasReader($this->mysql),
+        );
+        $local = new DateTimeZone('America/Argentina/Buenos_Aires');
+
+        $serie = $reader->serie(
+            7,
+            42,
+            new DateTimeImmutable('2026-10-10 09:00:00', $local),
+            new DateTimeImmutable('2026-10-10 09:15:00', $local),
+        );
+
+        self::assertSame(
+            ['2026-10-10 09:00:00-03:00', '2026-10-10 09:04:00-03:00', '2026-10-10 09:06:00-03:00'],
+            array_map(static fn ($muestra): string => $muestra->observadaEn()->format('Y-m-d H:i:sP'), $serie),
+        );
+    }
+
     private function insertar(int $empresaId, int $equipoId, string $unidad, string $primera, string $ultima, int $kmInicio, int $kmFin, float $latitud, float $longitud, int $integracionId = 10): void
     {
         $this->mysql->table('telematia_buckets')->insert([
