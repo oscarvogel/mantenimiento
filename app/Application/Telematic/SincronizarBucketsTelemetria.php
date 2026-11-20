@@ -52,7 +52,7 @@ final readonly class SincronizarBucketsTelemetria
 
         $utc = new DateTimeZone('UTC');
         $ahoraUtc = $ahora->setTimezone($utc);
-        $hasta = $this->limiteAlineado($ahoraUtc);
+        $hastaCorrida = $this->limiteAlineado($ahoraUtc);
         $resultado = ['insertados' => 0, 'yaExistentes' => 0];
 
         foreach ($unidadesVinculadas as $unidadExterna => $equipoId) {
@@ -61,6 +61,9 @@ final readonly class SincronizarBucketsTelemetria
                 throw new InvalidArgumentException('Cada unidad histórica debe pertenecer a un equipo válido.');
             }
 
+            // Cada unidad parte del límite de la corrida: el recorte de una
+            // unidad atrasada no debe arrastrarse a las siguientes.
+            $hasta = $hastaCorrida;
             $cursor = $this->buckets->cursor($empresaId, $integrationId, $unidadExterna);
             if ($cursor === null) {
                 // No cargar historia extensa dentro del pedido web. La primera

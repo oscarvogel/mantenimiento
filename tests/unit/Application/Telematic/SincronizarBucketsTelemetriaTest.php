@@ -138,6 +138,24 @@ final class SincronizarBucketsTelemetriaTest extends TestCase
         self::assertSame('2026-10-06 00:55:00', $store->cursor(4, 8, '28396292')?->format('Y-m-d H:i:s'));
     }
 
+    public function testElRecorteDeUnaUnidadAtrasadaNoFrenaALasUnidadesSiguientes(): void
+    {
+        $utc = new \DateTimeZone('UTC');
+        $store = new BucketsEnMemoria();
+        $store->cursores['4:8:atrasada'] = new DateTimeImmutable('2026-10-06 00:00:00', $utc);
+        $store->cursores['4:8:al-dia'] = new DateTimeImmutable('2026-10-10 10:00:00', $utc);
+        $lector = new LectorHistoricoEnMemoria();
+        $sync = new SincronizarBucketsTelemetria($lector, $store, new AgregadorBucketsTelemetria());
+
+        $sync->sincronizar(4, 8, 'wialon', ['atrasada' => 34, 'al-dia' => 35], new DateTimeImmutable('2026-10-10 10:12:00', $utc));
+
+        // Regresión: el `$hasta` recortado para la unidad atrasada se arrastraba a la siguiente,
+        // que quedaba con una ventana anterior a su cursor y se salteaba en cada corrida.
+        self::assertSame(['atrasada', 'al-dia'], array_column($lector->ventanas, 'unidad'));
+        self::assertSame('2026-10-10 10:10:00', $lector->ventanas[1]['hasta']->format('Y-m-d H:i:s'));
+        self::assertSame('2026-10-10 10:10:00', $store->cursor(4, 8, 'al-dia')?->format('Y-m-d H:i:s'));
+    }
+
     public function testUnFalloDelLectorNoAvanzaElCursorNiSeInterpretaComoVentanaVacia(): void
     {
         $lector = new LectorHistoricoEnMemoria(fallar: true);
