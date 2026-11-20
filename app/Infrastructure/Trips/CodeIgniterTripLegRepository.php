@@ -120,6 +120,7 @@ final class CodeIgniterTripLegRepository implements TripLegRepository
             ->where('empresa_id', $companyId)
             ->where('viaje_id', $tripId)
             ->where('id', $legId)
+            ->where('anulado_at', null)
             ->countAllResults() > 0;
     }
 
@@ -129,6 +130,7 @@ final class CodeIgniterTripLegRepository implements TripLegRepository
             ->select('orden')
             ->where('empresa_id', $companyId)
             ->where('viaje_id', $tripId)
+            ->where('anulado_at', null)
             ->groupStart()
             ->where('flete_facturacion', null)
             ->orWhere('flete_liquidacion', null)
@@ -145,6 +147,7 @@ final class CodeIgniterTripLegRepository implements TripLegRepository
             ->select('fecha_fin')
             ->where('empresa_id', $companyId)
             ->where('viaje_id', $tripId)
+            ->where('anulado_at', null)
             ->orderBy('orden', 'DESC')
             ->get()->getResultArray();
         if ($row === []) {

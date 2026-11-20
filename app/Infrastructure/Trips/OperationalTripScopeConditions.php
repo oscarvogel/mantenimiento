@@ -35,6 +35,7 @@ final class OperationalTripScopeConditions
             $builder->whereIn('v.id', $db->table('viaje_operativo_tramos')
                 ->select('viaje_id')
                 ->where('empresa_id', $companyId)
+                ->where('anulado_at', null)
                 ->where('cliente_id', $filters->customerId));
         }
     }

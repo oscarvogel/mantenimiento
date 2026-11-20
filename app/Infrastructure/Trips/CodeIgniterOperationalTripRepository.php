@@ -207,7 +207,7 @@ final class CodeIgniterOperationalTripRepository implements OperationalTripRepos
         // ultimo tramo cerrado: el equipo queda libre desde ahi.
         $fin = 'DATE(COALESCE(v.fecha_regreso_real, v.fecha_regreso_planificada, (SELECT MAX(t.fecha_fin) FROM '
             . $this->database->prefixTable('viaje_operativo_tramos')
-            . ' t WHERE t.viaje_id = v.id AND t.empresa_id = v.empresa_id)))';
+            . ' t WHERE t.viaje_id = v.id AND t.empresa_id = v.empresa_id AND t.anulado_at IS NULL)))';
         $sql = 'SELECT DISTINCT v.id, v.numero, v.estado, a.rol, a.equipo_id, a.empleado_id, '
             . 'COALESCE(v.fecha_salida_real, v.fecha_salida_planificada) AS inicio, '
             . 'COALESCE(v.fecha_regreso_real, v.fecha_regreso_planificada) AS fin '

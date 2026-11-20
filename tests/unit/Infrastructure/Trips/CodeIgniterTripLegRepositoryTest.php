@@ -31,7 +31,7 @@ final class CodeIgniterTripLegRepositoryTest extends TestCase
             orden INTEGER, codigo_origen_destino INTEGER NULL, localidad_origen_id INTEGER NULL, localidad_destino_id INTEGER NULL, cliente_id INTEGER NULL, origen TEXT, destino TEXT, km REAL NULL, toneladas REAL NULL,
             moneda TEXT, cotizacion REAL, moneda_liquidacion TEXT NULL, cotizacion_liquidacion REAL NULL, modo_liquidacion TEXT NULL, toneladas_liquidacion REAL NULL, precio_unitario_liquidacion REAL NULL, flete_facturacion REAL, flete_facturacion_ars REAL,
             flete_liquidacion REAL, flete_liquidacion_ars REAL, fecha_inicio TEXT NULL, fecha_fin TEXT NULL, observaciones TEXT NULL,
-            created_at TEXT NULL, updated_at TEXT NULL, created_by INTEGER NULL, updated_by INTEGER NULL
+            created_at TEXT NULL, updated_at TEXT NULL, created_by INTEGER NULL, updated_by INTEGER NULL, anulado_at TEXT NULL, anulado_por INTEGER NULL, motivo_anulacion TEXT NULL
         )');
         $this->database->query('CREATE TABLE viaje_operativo_movimientos_auditoria (
             id INTEGER PRIMARY KEY AUTOINCREMENT, empresa_id INTEGER, sucursal_id INTEGER, viaje_id INTEGER,

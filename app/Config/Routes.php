@@ -48,6 +48,7 @@ $routes->post('viajes/operativos/(:num)/iniciar', 'OperationalTrips::start/$1', 
 $routes->post('viajes/operativos/(:num)/cerrar', 'OperationalTrips::finish/$1', ['filter' => ['auth', 'permission:viajes.operar']]);
 $routes->post('viajes/operativos/(:num)/tramos', 'OperationalTrips::addLeg/$1', ['filter' => ['auth', 'permission:viajes.operar']]);
 $routes->post('viajes/operativos/(:num)/tramos/(:num)', 'OperationalTrips::updateLeg/$1/$2', ['filter' => ['auth', 'permission:viajes.operar']]);
+$routes->post('viajes/operativos/(:num)/tramos/(:num)/anular', 'OperationalTrips::cancelLeg/$1/$2', ['filter' => ['auth', 'permission:viajes.operar']]);
 $routes->post('viajes/operativos/(:num)', 'OperationalTrips::update/$1', ['filter' => ['auth', 'permission:viajes.operar']]);
 $routes->post('viajes/operativos/(:num)/cancelar', 'OperationalTrips::cancel/$1', ['filter' => ['auth', 'permission:viajes.operar']]);
 $routes->post('viajes/operativos/(:num)/combustible', 'OperationalTrips::addFuel/$1', ['filter' => ['auth', 'permission:viajes.operar']]);

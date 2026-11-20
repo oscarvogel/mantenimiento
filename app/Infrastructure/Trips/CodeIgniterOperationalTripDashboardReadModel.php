@@ -61,7 +61,7 @@ final class CodeIgniterOperationalTripDashboardReadModel implements OperationalT
                 false,
             )
             ->join(
-                "(SELECT viaje_id, SUM(flete_facturacion_ars) AS flete_facturacion_ars FROM {$legs} GROUP BY viaje_id) l",
+                "(SELECT viaje_id, SUM(flete_facturacion_ars) AS flete_facturacion_ars FROM {$legs} WHERE anulado_at IS NULL GROUP BY viaje_id) l",
                 'l.viaje_id = v.id',
                 'left',
                 false,
@@ -136,6 +136,7 @@ final class CodeIgniterOperationalTripDashboardReadModel implements OperationalT
             ->select('c.id, c.nombre')
             ->join('clientes c', 'c.id = t.cliente_id AND c.empresa_id = t.empresa_id')
             ->where('t.empresa_id', $companyId)
+            ->where('t.anulado_at', null)
             ->whereIn('t.viaje_id', $tripIds)
             ->get()->getResultArray();
 
@@ -214,6 +215,7 @@ final class CodeIgniterOperationalTripDashboardReadModel implements OperationalT
         $legs = $this->db->table('viaje_operativo_tramos')
             ->select('viaje_id, origen, destino')
             ->where('empresa_id', $companyId)
+            ->where('anulado_at', null)
             ->whereIn('viaje_id', $tripIds)
             ->orderBy('viaje_id', 'ASC')
             ->orderBy('orden', 'ASC')

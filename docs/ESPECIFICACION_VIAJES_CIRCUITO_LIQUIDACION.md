@@ -307,6 +307,8 @@ El viaje es la raíz de consistencia. Contiene:
 | `EN_CURSO` | Cancelar | `CANCELADO` | Motivo obligatorio. Es la anulación de un viaje cargado por error o duplicado: no generó lectura ni liquidación, conserva su historial y libera equipo y chofer. Decisión de Oscar del 20/11/2026. |
 | `FINALIZADO` | Cancelar | — | No permitido: ya generó la lectura del equipo. Se corrige con movimientos o reversiones. |
 
+**Anulación de tramos (20/11/2026).** Un tramo de un viaje `PLANIFICADO` o `EN_CURSO` se puede anular con motivo obligatorio. No se borra: guarda `anulado_at`, `anulado_por` y `motivo_anulacion`, y queda en la auditoría con acción `ANULACION`. Un tramo anulado no cuenta en fletes, comisión, margen, liquidación del chofer, tablero ni cuenta corriente de clientes, no bloquea el cierre por fletes faltantes, no define el regreso estimado, no se edita y no recibe costos. Si tiene combustible o gastos imputados, primero hay que pasarlos a otro tramo o dejarlos sin tramo. En la pantalla del viaje los tramos anulados se listan aparte.
+
 ---
 
 ## 7. Modelo de datos propuesto
