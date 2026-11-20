@@ -53,6 +53,10 @@ final class OperationalTripSummaryPdfGeneratorTest extends TestCase
                 'margin_pct' => 79.49, 'km' => 6_139,
             ],
             'consumption' => ['km' => 6_139, 'liters_per_100' => 35.27],
+            'summary' => [
+                'draft' => false, 'generated_on' => '2026-11-20', 'consumption_source' => 'ODOMETRO_VIAJE',
+                'kpis' => \App\Domain\Trips\TripKpis::calculate(6_139, 92.0, 202_164.0, 3_850_000.0, null, 3_060_336.0, null, 32),
+            ],
             'settlement' => [
                 'driver' => 'Marcelo Matluk', 'commission_ars' => 539_000,
                 'other_earnings_ars' => 40_000, 'driver_expenses_ars' => 0,
@@ -68,5 +72,25 @@ final class OperationalTripSummaryPdfGeneratorTest extends TestCase
         self::assertStringContainsString('Combustible', $pdf);
         self::assertStringContainsString('Margen operativo', $pdf);
         self::assertStringContainsString('Sin dato', $pdf);
+        self::assertStringContainsString('Indicadores del viaje', $pdf);
+        self::assertStringContainsString('km/L', $pdf);
+        self::assertStringContainsString('Generado el 20/11/2026', $pdf);
+        self::assertStringNotContainsString('BORRADOR', $pdf);
+    }
+
+    public function testMarksTripInProgressAsDraft(): void
+    {
+        $pdf = (new OperationalTripSummaryPdfGenerator())->render([
+            'trip' => ['numero' => 21, 'estado' => 'EN_CURSO', 'fecha_salida_real' => '2026-10-30', 'km_salida' => 1_727_000],
+            'summary' => [
+                'draft' => true, 'generated_on' => '2026-11-20', 'consumption_source' => null,
+                'kpis' => \App\Domain\Trips\TripKpis::calculate(null, 2_012.0, 3_118_861.0, null, null, null, null, 22),
+            ],
+        ]);
+
+        self::assertStringStartsWith('%PDF-', $pdf);
+        self::assertStringContainsString('BORRADOR - Viaje en curso', $pdf);
+        self::assertStringContainsString('a hoy', $pdf);
+        self::assertStringContainsString(iconv('UTF-8', 'windows-1252//TRANSLIT//IGNORE', 'falta') , $pdf);
     }
 }
