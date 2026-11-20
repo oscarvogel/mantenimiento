@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Infrastructure\Telematic;
 
+use App\Database\Migrations\AddRawWialonMessagesToTelemetryBuckets;
 use App\Database\Migrations\CreateTelemetryBuckets;
 use App\Domain\Telematic\BucketTelemetria;
 use App\Domain\Telematic\MensajeHistorico;
@@ -52,6 +53,9 @@ final class CodeIgniterTelemetryBucketStoreTest extends CIUnitTestCase
         $this->mysql->query('DROP TABLE IF EXISTS telematia_cursor');
         $this->mysql->query('DROP TABLE IF EXISTS telematia_buckets');
         $this->migracion()->up();
+        // El adaptador graba `mensajes_fuente_json`, que agregó una migración
+        // posterior: sin ella cada INSERT falla y la transacción se revierte.
+        $this->migracionMensajesCrudos()->up();
         $this->store = new CodeIgniterTelemetryBucketStore($this->mysql);
     }
 
@@ -206,5 +210,14 @@ final class CodeIgniterTelemetryBucketStoreTest extends CIUnitTestCase
         }
 
         return new CreateTelemetryBuckets(new Forge($this->mysql));
+    }
+
+    private function migracionMensajesCrudos(): AddRawWialonMessagesToTelemetryBuckets
+    {
+        if (! class_exists(AddRawWialonMessagesToTelemetryBuckets::class, false)) {
+            require_once ROOTPATH . 'app/Database/Migrations/2026-10-12-130000_AddRawWialonMessagesToTelemetryBuckets.php';
+        }
+
+        return new AddRawWialonMessagesToTelemetryBuckets(new Forge($this->mysql));
     }
 }

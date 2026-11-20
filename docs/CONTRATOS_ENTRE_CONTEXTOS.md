@@ -51,6 +51,7 @@ seguir.
 | `AcuseLecturaWhatsApp` (nuevo) | `ReadingReceiptNotifier` | `app/Application/Measurement/Port/ReadingReceiptNotifier.php` | Notifications | **Implementado.** Lo dispara `PublicEquipmentReadings` después del commit. |
 | Tools del chatbot | `ToolRegistry` | `app/Application/Chatbot/Port/ToolRegistry.php` | Chatbot | **Ya existía. Implementado.** |
 | — (nuevo, #530) | `BillableLegLookup` | `app/Application/CustomerAccounts/Port/BillableLegLookup.php` | Viajes (lectura) | **Implementado.** Cuenta corriente lee tramo, cliente, flete estimado y estado del viaje; bloquea el tramo al formalizar. No escribe en Viajes. |
+| — (nuevo) | `ViajesDeclaradosReader` | `app/Application/Telematic/Port/ViajesDeclaradosReader.php` | Viajes (lectura) | **Implementado.** Telemetría lee los viajes en curso y finalizados con su tractor y los litros declarados por el chofer, para conciliarlos con el sensor del tanque. No escribe en Viajes. |
 
 ---
 
@@ -234,6 +235,25 @@ se ordenen. El flete estimado es solo sugerencia: la deuda la fija la cotizació
 evento de formalización (#530). Adaptador: `CodeIgniterBillableLegLookup`.
 
 ---
+
+### 4.12 `ViajesDeclaradosReader` — responde Viajes, lo consume Telemetría
+
+```php
+interface ViajesDeclaradosReader
+{
+    /** @return list<ViajeDeclarado> */
+    public function viajesEntre(int $empresaId, ?array $sucursalIds, DateTimeImmutable $desde, DateTimeImmutable $hasta): array;
+}
+```
+
+Puerto del consumidor: vive en `Application/Telematic/Port` porque la conciliación de
+combustible es de Telemetría, y el adaptador `App\Infrastructure\Trips\CodeIgniterViajesDeclaradosReader`
+es de Viajes porque es quien conoce sus tablas. Devuelve solo viajes `EN_CURSO` y
+`FINALIZADO` con salida real que se superponen con el período; los litros son la suma de las
+cargas vigentes (sin `deleted_at`) y el tractor es la primera asignación `TRACTOR`. Cada
+consulta del adaptador lleva `empresa_id`, también las de asignaciones, combustible y equipos.
+`$sucursalIds` en null son todas las de la empresa; una lista vacía no devuelve nada. Un viaje
+con regreso anterior a la salida queda afuera: Viajes lo conserva para revisión (regla 20).
 
 ## 5. Lo que falta implementar
 
