@@ -94,6 +94,9 @@ const closePreview = computed(() => {
 // la pantalla, además de la regla del dominio que lo rechaza al guardar.
 const closeKmInvalid = computed(() => closePreview.value.km !== null && closePreview.value.km <= 0)
 const alerts = useAlerts()
+// Las acciones del encabezado comparten un único formato: mismo alto, borde
+// y tipografía, y el texto en una sola línea.
+const headerAction = `${secondaryButton} gap-2 whitespace-nowrap`
 const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char])
 let closeConfirmed = false
 const confirmClose = async (event) => {
@@ -578,19 +581,21 @@ const facts = computed(() => {
   <div>
     <PageHeading eyebrow="Viajes · Operativo" :title="`Viaje #${trip.numero}`" description="Seguimiento del recorrido, equipo, choferes, combustible, gastos y caja. Los movimientos de caja del chofer no son costo del viaje." :back="{ href: data.backUrl ?? '/viajes/operativos', label: 'Volver a viajes operativos' }">
       <template #actions>
-        <a v-if="['EN_CURSO', 'FINALIZADO'].includes(trip.estado) && data.links?.summaryPdf" :href="data.links.summaryPdf" data-testid="trip-summary-pdf-link" class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-primary px-3 py-2 text-sm font-semibold text-primary hover:bg-primary-subtle">
-          <ArrowDownTrayIcon class="size-4" aria-hidden="true" />{{ trip.estado === 'FINALIZADO' ? 'Resumen del viaje (PDF)' : 'Resumen del viaje (borrador)' }}
-        </a>
-        <a v-if="data.canViewDriverSettlement && data.links?.driverSettlement" :href="data.links.driverSettlement" data-testid="driver-settlement-link" class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-success/40 bg-success-subtle px-3 py-2 text-sm font-semibold text-success-strong hover:bg-success/15">
-          <ReceiptPercentIcon class="size-4" aria-hidden="true" />Ver liquidación del chofer
-        </a>
-        <a v-if="data.canViewDriverSettlement && data.links?.driverSettlementPdf" :href="data.links.driverSettlementPdf" target="_blank" rel="noopener" data-testid="driver-settlement-pdf-link" class="inline-flex min-h-10 items-center gap-2 whitespace-nowrap rounded-lg border border-success/40 px-3 py-2 text-sm font-semibold text-success-strong hover:bg-success/15">
-          <ArrowDownTrayIcon class="size-4" aria-hidden="true" />{{ trip.estado === 'FINALIZADO' ? 'PDF liquidación del chofer' : 'PDF liquidación (borrador)' }}
-        </a>
-        <button v-if="canEdit" type="button" @click="openTripEdit" class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-primary px-3 py-2 text-sm font-semibold text-primary hover:bg-primary-subtle">
-          <PencilSquareIcon class="size-4" aria-hidden="true" />Editar viaje
-        </button>
-        <span class="inline-flex rounded-full px-3 py-1.5 text-sm font-semibold" :class="statusTone[trip.estado] ?? 'bg-surface-muted text-ink-muted'">{{ trip.estado_label }}</span>
+        <div class="flex flex-wrap items-center gap-2 sm:justify-end" data-testid="trip-header-actions">
+          <a v-if="['EN_CURSO', 'FINALIZADO'].includes(trip.estado) && data.links?.summaryPdf" :href="data.links.summaryPdf" data-testid="trip-summary-pdf-link" :class="headerAction">
+            <ArrowDownTrayIcon class="size-4 shrink-0 text-ink-muted" aria-hidden="true" />{{ trip.estado === 'FINALIZADO' ? 'Resumen del viaje (PDF)' : 'Resumen del viaje (borrador)' }}
+          </a>
+          <a v-if="data.canViewDriverSettlement && data.links?.driverSettlement" :href="data.links.driverSettlement" data-testid="driver-settlement-link" :class="headerAction">
+            <ReceiptPercentIcon class="size-4 shrink-0 text-ink-muted" aria-hidden="true" />Ver liquidación del chofer
+          </a>
+          <a v-if="data.canViewDriverSettlement && data.links?.driverSettlementPdf" :href="data.links.driverSettlementPdf" target="_blank" rel="noopener" data-testid="driver-settlement-pdf-link" :class="headerAction">
+            <ArrowDownTrayIcon class="size-4 shrink-0 text-ink-muted" aria-hidden="true" />{{ trip.estado === 'FINALIZADO' ? 'PDF liquidación del chofer' : 'PDF liquidación (borrador)' }}
+          </a>
+          <button v-if="canEdit" type="button" @click="openTripEdit" :class="headerAction">
+            <PencilSquareIcon class="size-4 shrink-0 text-ink-muted" aria-hidden="true" />Editar viaje
+          </button>
+          <span class="inline-flex min-h-10 items-center rounded-full px-3 text-sm font-semibold" :class="statusTone[trip.estado] ?? 'bg-surface-muted text-ink-muted'">{{ trip.estado_label }}</span>
+        </div>
       </template>
     </PageHeading>
 
