@@ -46,16 +46,19 @@ final class CodeIgniterSerieMuestrasReader implements SerieMuestrasReader
             return [];
         }
 
+        // La tabla guarda hora local: la ventana se pasa a esa zona antes de
+        // comparar, y la serie vuelve en la zona de `$desde` (contrato del puerto).
+        $zonaPersistida = new \DateTimeZone((new \Config\App())->appTimezone);
         $filas = $this->mysql->table(self::TABLA)
             ->where('empresa_id', $empresaId)
             ->where('equipo_id', $equipoId)
-            ->where('observada_en >=', $desde->format('Y-m-d H:i:s'))
-            ->where('observada_en <=', $hasta->format('Y-m-d H:i:s'))
+            ->where('observada_en >=', $desde->setTimezone($zonaPersistida)->format('Y-m-d H:i:s'))
+            ->where('observada_en <=', $hasta->setTimezone($zonaPersistida)->format('Y-m-d H:i:s'))
             ->orderBy('observada_en', 'ASC')
             ->get()
             ->getResultArray();
 
-        $mapeo = new FilaAMuestra();
+        $mapeo = new FilaAMuestra($desde->getTimezone());
 
         return array_map($mapeo, $filas);
     }

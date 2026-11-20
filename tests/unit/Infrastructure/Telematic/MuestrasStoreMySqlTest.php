@@ -199,6 +199,23 @@ final class MuestrasStoreMySqlTest extends CIUnitTestCase
         self::assertNotNull($fila['observada_en']);
     }
 
+    public function testLaSerieSePuedePedirEnUtcYVuelveEnUtc(): void
+    {
+        // La tabla guarda hora local: 06:15 en Buenos Aires son las 09:15 UTC.
+        $this->store->guardar($this->muestra('2026-10-10 06:15:00'));
+        $utc = new \DateTimeZone('UTC');
+
+        $serie = (new \App\Infrastructure\Telematic\CodeIgniterSerieMuestrasReader($this->mysql))->serie(
+            7,
+            42,
+            new DateTimeImmutable('2026-10-10 09:00:00', $utc),
+            new DateTimeImmutable('2026-10-10 09:30:00', $utc),
+        );
+
+        self::assertCount(1, $serie, 'La ventana en UTC tiene que pasarse a hora local antes de consultar.');
+        self::assertSame('2026-10-10 09:15:00+00:00', $serie[0]->observadaEn()->format('Y-m-d H:i:sP'));
+    }
+
     private function conteo(): int
     {
         return (int) $this->mysql->table(self::TABLA)->countAllResults();
