@@ -30,6 +30,8 @@
 !/writable/debugbar/index.html
 !/writable/debugbar/.gitkeep
 /writable/_diag_backup/
+/writable/respaldos/
+*.sql.gz
 
 # =============================================================================
 # PHP y herramientas

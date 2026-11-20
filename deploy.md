@@ -647,6 +647,18 @@ Para `--full`, el release puede contener runtime y documentación operativa segu
 
 `vendor/` sigue siendo un paso separado salvo que el procedimiento completo indique explícitamente lo contrario.
 
+## Respaldo diario de la base
+
+`php spark respaldo:db` vuelca la base a `writable/respaldos/respaldo-<base>-<fecha>.sql.gz`, verifica que el archivo termine con la línea `-- Fin del respaldo: …` y recién entonces borra los respaldos con más de 14 días (`--dias=N` para cambiarlo; siempre quedan los últimos tres). Solo lee la base. La carpeta no se versiona y Apache no la sirve.
+
+Cron en Ferozo (todos los días a las 4:15):
+
+```text
+15 4 * * *  php /ruta/a/la/app/spark respaldo:db >> /ruta/a/la/app/writable/logs/respaldo.log 2>&1
+```
+
+Cada corrida deja una línea `RESPALDO=OK …` o `RESPALDO=ERROR …` en ese log. El respaldo queda en el mismo hosting: bajarlo a otro lado cada tanto.
+
 ## Criterio operativo
 
 El flujo cotidiano esperado queda reducido a:
