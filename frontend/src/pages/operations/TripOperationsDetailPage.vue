@@ -43,6 +43,40 @@ const canCompleteFuelPrices = computed(() => Boolean(props.data.canCompleteFuelP
 const fuelWithoutPrice = computed(() => Number(props.data.totals?.fuel_without_price ?? 0))
 const canAddLegs = computed(() => Boolean(props.data.canAddLegs))
 const canEdit = computed(() => Boolean(props.data.canEdit))
+const canCancelTrip = computed(() => Boolean(props.data.canCancel))
+const canCancelLegs = computed(() => Boolean(props.data.canCancelLegs))
+const cancelledLegs = computed(() => props.data.cancelled_legs ?? [])
+// Un único diálogo de anulación para el viaje y para cada tramo: motivo
+// obligatorio y una confirmación clara de que no se puede deshacer.
+const cancelDialog = ref(null)
+const cancelTarget = ref(null)
+const openTripCancel = () => {
+  if (tripDialog.value?.open) tripDialog.value.close()
+  cancelTarget.value = {
+    kind: 'trip',
+    action: `${props.data.links?.detail ?? ''}/cancelar`,
+    field: 'motivo_cancelacion',
+    title: `Anular el viaje #${props.data.trip?.numero ?? ''}`,
+    description: 'El viaje queda Cancelado: no suma en fletes, márgenes, liquidación ni cuenta corriente, y libera el equipo y el chofer. Conserva todo su historial y el motivo queda registrado. No se puede deshacer.',
+    button: 'Anular viaje',
+  }
+  nextTick(() => cancelDialog.value?.showModal())
+}
+const openLegCancel = (leg) => {
+  if (legDialog.value?.open) legDialog.value.close()
+  cancelTarget.value = {
+    kind: 'leg',
+    action: `${props.data.links?.legs ?? ''}/${leg.id}/anular`,
+    field: 'motivo_anulacion',
+    title: `Anular el tramo ${leg.orden}: ${leg.origen} → ${leg.destino}`,
+    description: (leg.assigned_costs_ars ?? 0) > 0
+      ? 'Este tramo tiene combustible o gastos imputados. Antes de anularlo, pasalos a otro tramo o dejalos sin tramo.'
+      : 'El tramo deja de contar en fletes, comisión, margen, liquidación y cuenta corriente. Conserva sus datos y el motivo queda registrado. No se puede deshacer.',
+    button: 'Anular tramo',
+  }
+  nextTick(() => cancelDialog.value?.showModal())
+}
+const closeCancelDialog = () => { cancelTarget.value = null }
 const editOptions = computed(() => props.data.editOptions ?? { branches: [], tractors: [], trailers: [], drivers: [] })
 const canClose = computed(() => Boolean(props.data.canClose))
 // El recorrido puede estar terminado aunque el viaje siga en curso: el
@@ -594,6 +628,9 @@ const facts = computed(() => {
           <button v-if="canEdit" type="button" @click="openTripEdit" :class="headerAction">
             <PencilSquareIcon class="size-4 shrink-0 text-ink-muted" aria-hidden="true" />Editar viaje
           </button>
+          <button v-if="canCancelTrip" type="button" aria-haspopup="dialog" @click="openTripCancel" :class="[dangerButton, 'gap-2 whitespace-nowrap']" data-testid="trip-cancel-button">
+            <XCircleIcon class="size-4 shrink-0" aria-hidden="true" />Anular viaje
+          </button>
           <span class="inline-flex min-h-10 items-center rounded-full px-3 text-sm font-semibold" :class="statusTone[trip.estado] ?? 'bg-surface-muted text-ink-muted'">{{ trip.estado_label }}</span>
         </div>
       </template>
@@ -694,10 +731,20 @@ const facts = computed(() => {
               <td class="px-3 py-2 text-right text-ink-muted">{{ moneyOrNoData(leg.commission_ars) }}</td>
               <td class="px-3 py-2 text-right text-ink-muted">{{ money(leg.assigned_costs_ars) }}</td>
               <td class="px-3 py-2 text-right font-semibold" :class="leg.margin_ars === null ? 'text-ink-muted' : (leg.margin_ars < 0 ? 'text-danger-strong' : 'text-success-strong')">{{ moneyOrNoData(leg.margin_ars) }}</td>
-              <td v-if="canEdit" class="whitespace-nowrap px-3 py-2"><button type="button" :class="secondaryButton" @click="openLegEdit(leg)">Editar</button></td>
+              <td v-if="canEdit" class="whitespace-nowrap px-3 py-2"><div class="flex gap-2"><button type="button" :class="secondaryButton" @click="openLegEdit(leg)">Editar</button><button v-if="canCancelLegs" type="button" aria-haspopup="dialog" :class="dangerButton" :data-testid="`leg-cancel-${leg.id}`" @click="openLegCancel(leg)">Anular</button></div></td>
             </tr>
           </tbody>
         </table>
+      </div>
+      <div v-if="cancelledLegs.length" class="mb-4 rounded-xl border border-border-subtle bg-surface p-4" data-testid="cancelled-legs">
+        <h3 class="text-sm font-bold text-ink">Tramos anulados ({{ cancelledLegs.length }})</h3>
+        <p class="mt-1 text-xs text-ink-muted">No cuentan en fletes, comisión, margen, liquidación ni cuenta corriente.</p>
+        <ul class="mt-3 divide-y divide-border-subtle">
+          <li v-for="leg in cancelledLegs" :key="leg.id" class="py-2 text-sm first:pt-0 last:pb-0">
+            <p class="text-ink-muted line-through">{{ leg.orden }}. {{ leg.origen }} → {{ leg.destino }}<span v-if="leg.cliente"> · {{ leg.cliente }}</span></p>
+            <p class="mt-0.5 text-xs text-ink-muted">Anulado {{ fmtDateTime(leg.anulado_at) }}<span v-if="leg.anulado_por"> por {{ leg.anulado_por }}</span> · Motivo: {{ leg.motivo_anulacion }}</p>
+          </li>
+        </ul>
       </div>
       <form v-if="canAddLegs" method="post" :action="data.links?.legs" class="rounded-xl border border-border-subtle bg-surface p-4">
         <input type="hidden" :name="csrf.name" :value="csrf.hash" />
@@ -890,7 +937,7 @@ const facts = computed(() => {
         </ul>
       </PanelCard>
 
-      <PanelCard title="Acciones" v-if="data.canStart || data.canCancel || canClose">
+      <PanelCard title="Acciones" v-if="data.canStart || canClose">
         <form v-if="data.canStart" method="post" :action="`${data.links?.detail ?? ''}/iniciar`" class="mb-5 rounded-xl border border-border-subtle bg-surface p-4">
           <input type="hidden" :name="csrf.name" :value="csrf.hash" />
           <h3 class="flex items-center gap-2 text-sm font-bold text-ink"><CheckCircleIcon class="size-4 text-success" aria-hidden="true" />Registrar salida real</h3>
@@ -946,16 +993,6 @@ const facts = computed(() => {
           <button type="submit" :disabled="closeBlocked || closeKmInvalid" :class="[primaryButton, 'mt-3', closeBlocked || closeKmInvalid ? 'cursor-not-allowed opacity-50' : '']" data-testid="close-submit">Cerrar y generar lectura</button>
         </form>
 
-        <form v-if="data.canCancel" method="post" :action="`${data.links?.detail ?? ''}/cancelar`" class="rounded-xl border border-danger/30 bg-danger-subtle/40 p-4">
-          <input type="hidden" :name="csrf.name" :value="csrf.hash" />
-          <h3 class="flex items-center gap-2 text-sm font-bold text-danger-strong"><XCircleIcon class="size-4" aria-hidden="true" />Cancelar viaje</h3>
-          <p class="mt-1 text-xs text-ink-muted">El viaje cancelado conserva su recorrido y asignaciones; el motivo queda registrado.</p>
-          <label class="mt-3 block">
-            <span class="mb-1.5 block text-sm font-semibold text-ink">Motivo de cancelación</span>
-            <textarea name="motivo_cancelacion" rows="3" maxlength="500" required :class="fieldClass"></textarea>
-          </label>
-          <button type="submit" :class="[dangerButton, 'mt-3']">Cancelar viaje</button>
-        </form>
       </PanelCard>
     </div>
 
@@ -1075,7 +1112,8 @@ const facts = computed(() => {
             <span class="mb-1.5 block text-sm font-semibold text-ink">Observaciones</span>
             <textarea v-model="tripDraft.notes" name="observaciones" rows="3" maxlength="1000" :class="fieldClass"></textarea>
           </label>
-          <div class="mt-5 flex justify-end gap-2 border-t border-border-subtle pt-4">
+          <div class="mt-5 flex flex-wrap justify-end gap-2 border-t border-border-subtle pt-4">
+            <button v-if="canCancelTrip" type="button" @click="openTripCancel" :class="[dangerButton, 'mr-auto']" data-testid="trip-edit-cancel-button">Anular viaje</button>
             <button type="button" @click="tripDialog?.close()" :class="secondaryButton">Volver</button>
             <button type="submit" :class="primaryButton">Guardar cambios</button>
           </div>
@@ -1158,7 +1196,8 @@ const facts = computed(() => {
               <input v-model="legDraft.notes" type="text" maxlength="500" name="observaciones" :class="fieldClass" />
             </label>
           </div>
-          <div class="mt-5 flex justify-end gap-2 border-t border-border-subtle pt-4">
+          <div class="mt-5 flex flex-wrap justify-end gap-2 border-t border-border-subtle pt-4">
+            <button v-if="canCancelLegs" type="button" @click="openLegCancel(legs.find((item) => item.id === legDraft.id) ?? legDraft)" :class="[dangerButton, 'mr-auto']" data-testid="leg-edit-cancel-button">Anular tramo</button>
             <button type="button" @click="legDialog?.close()" :class="secondaryButton">Volver</button>
             <button type="submit" :class="primaryButton">Guardar tramo</button>
           </div>
@@ -1270,6 +1309,27 @@ const facts = computed(() => {
             <label class="block sm:col-span-2 lg:col-span-3"><span class="mb-1 block text-xs font-semibold text-ink-muted">Observaciones</span><input type="text" name="observaciones" maxlength="500" :value="editingEntry?.observaciones ?? ''" :class="fieldClass" /></label>
           </div>
           <div class="mt-5 flex justify-end gap-2 border-t border-border-subtle pt-4"><button type="button" @click="entryDialog?.close()" :class="secondaryButton">Volver</button><button type="submit" :class="primaryButton">{{ editingEntry ? 'Guardar cambios' : 'Guardar movimiento' }}</button></div>
+        </form>
+      </div>
+    </dialog>
+
+    <dialog v-if="canCancelTrip || canCancelLegs" ref="cancelDialog" aria-labelledby="cancel-dialog-title" @close="closeCancelDialog" @click.self="cancelDialog?.close()" class="m-auto w-[min(36rem,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-xl border border-border bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60" data-testid="cancel-dialog">
+      <div v-if="cancelTarget" class="p-5 sm:p-6">
+        <div class="mb-4 flex items-start justify-between gap-4 border-b border-border-subtle pb-4">
+          <h2 id="cancel-dialog-title" class="flex items-center gap-2 text-lg font-bold text-danger-strong"><XCircleIcon class="size-5 shrink-0" aria-hidden="true" />{{ cancelTarget.title }}</h2>
+          <button type="button" aria-label="Cerrar" @click="cancelDialog?.close()" class="grid size-9 shrink-0 place-items-center rounded-lg text-ink-muted hover:bg-surface-subtle hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">×</button>
+        </div>
+        <form method="post" :action="cancelTarget.action">
+          <input type="hidden" :name="csrf.name" :value="csrf.hash" />
+          <p class="text-sm text-ink-muted">{{ cancelTarget.description }}</p>
+          <label class="mt-4 block">
+            <span class="mb-1.5 block text-sm font-semibold text-ink">Motivo de la anulación</span>
+            <textarea :name="cancelTarget.field" rows="3" maxlength="500" required placeholder="Por ejemplo: cargado por error, duplicado" :class="fieldClass"></textarea>
+          </label>
+          <div class="mt-5 flex justify-end gap-2 border-t border-border-subtle pt-4">
+            <button type="button" @click="cancelDialog?.close()" :class="secondaryButton">Volver</button>
+            <button type="submit" :class="dangerButton">{{ cancelTarget.button }}</button>
+          </div>
         </form>
       </div>
     </dialog>

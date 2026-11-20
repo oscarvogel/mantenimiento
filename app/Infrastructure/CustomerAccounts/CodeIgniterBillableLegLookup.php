@@ -25,7 +25,7 @@ final class CodeIgniterBillableLegLookup implements BillableLegLookup
         $trips = $this->database->prefixTable('viajes_operativos');
         $sql = 'SELECT t.id, t.viaje_id, t.sucursal_id, t.cliente_id, t.moneda, t.cotizacion, t.flete_facturacion, t.flete_facturacion_ars, v.estado'
             . ' FROM ' . $legs . ' t JOIN ' . $trips . ' v ON v.id = t.viaje_id AND v.empresa_id = t.empresa_id'
-            . ' WHERE t.empresa_id = ? AND t.id = ?';
+            . ' WHERE t.empresa_id = ? AND t.id = ? AND t.anulado_at IS NULL';
         $binds = [$companyId, $legId];
         if ($branchIds !== null) {
             $sql .= ' AND v.sucursal_id IN (' . implode(',', array_fill(0, count($branchIds), '?')) . ')';

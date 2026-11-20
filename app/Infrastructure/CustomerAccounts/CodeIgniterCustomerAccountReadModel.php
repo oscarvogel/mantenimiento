@@ -207,7 +207,7 @@ final class CodeIgniterCustomerAccountReadModel implements CustomerAccountReadMo
             . ' LEFT JOIN ' . $this->table('clientes') . ' c ON c.empresa_id = t.empresa_id AND c.id = t.cliente_id'
             . ' LEFT JOIN ' . $this->table('cliente_cc_cargos') . " cg ON cg.empresa_id = t.empresa_id AND cg.tramo_id = t.id AND cg.estado = 'VIGENTE'"
             . ' LEFT JOIN ' . $this->table('cliente_cc_tramos_no_cobrables') . " nc ON nc.empresa_id = t.empresa_id AND nc.tramo_id = t.id AND nc.estado = 'VIGENTE'"
-            . ' WHERE t.empresa_id = ?';
+            . ' WHERE t.empresa_id = ? AND t.anulado_at IS NULL';
         $binds = [$companyId];
         if ($branchIds !== null) {
             $sql .= ' AND v.sucursal_id IN (' . implode(',', array_fill(0, count($branchIds), '?')) . ')';

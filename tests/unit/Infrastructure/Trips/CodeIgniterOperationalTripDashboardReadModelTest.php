@@ -36,7 +36,7 @@ final class CodeIgniterOperationalTripDashboardReadModelTest extends TestCase
             id INTEGER PRIMARY KEY, viaje_id INTEGER, empresa_id INTEGER, importe_ars REAL, deleted_at TEXT NULL
         )');
         $this->database->query('CREATE TABLE viaje_operativo_tramos (
-            id INTEGER PRIMARY KEY, viaje_id INTEGER, empresa_id INTEGER, orden INTEGER, cliente_id INTEGER NULL, origen TEXT, destino TEXT, flete_facturacion_ars REAL
+            id INTEGER PRIMARY KEY, viaje_id INTEGER, empresa_id INTEGER, orden INTEGER, cliente_id INTEGER NULL, origen TEXT, destino TEXT, flete_facturacion_ars REAL, anulado_at TEXT NULL, anulado_por INTEGER NULL, motivo_anulacion TEXT NULL
         )');
         $this->database->query('CREATE TABLE clientes (id INTEGER PRIMARY KEY, empresa_id INTEGER, nombre TEXT)');
         $this->database->table('clientes')->insertBatch([

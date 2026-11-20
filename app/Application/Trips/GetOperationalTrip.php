@@ -76,6 +76,8 @@ final class GetOperationalTrip
         $detail['canCancel'] = $detail['canRegisterCosts'];
         $detail['canClose'] = $detail['canOperate'] && ($detail['trip']['estado'] ?? null) === Trip::EN_CURSO;
         $detail['canAddLegs'] = $detail['canRegisterCosts'];
+        $detail['canCancelLegs'] = $detail['canRegisterCosts'];
+        $detail['cancelled_legs'] = $detail['cancelled_legs'] ?? [];
         // Los precios pendientes se completan aunque el viaje esté finalizado.
         $detail['canCompleteFuelPrices'] = $detail['canOperate']
             && ($detail['trip']['estado'] ?? null) !== Trip::CANCELADO;

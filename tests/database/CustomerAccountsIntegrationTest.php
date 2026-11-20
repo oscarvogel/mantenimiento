@@ -71,7 +71,7 @@ final class CustomerAccountsIntegrationTest extends TestCase
             "CREATE TABLE sucursales (id {$pk}, empresa_id {$int}, nombre VARCHAR(255))",
             "CREATE TABLE clientes (id {$pk}, empresa_id {$int} NOT NULL, nombre VARCHAR(255), identificacion_fiscal VARCHAR(50) NULL, email VARCHAR(255) NULL, telefono VARCHAR(50) NULL, activo TINYINT DEFAULT 1, deleted_at DATETIME NULL, UNIQUE KEY uq_clientes_empresa_id (empresa_id, id))",
             "CREATE TABLE viajes_operativos (id {$pk}, empresa_id {$int}, sucursal_id {$int}, numero {$int}, estado VARCHAR(20) DEFAULT 'PLANIFICADO', fecha_regreso_real DATETIME NULL)",
-            "CREATE TABLE viaje_operativo_tramos (id {$pk}, viaje_id {$int}, empresa_id {$int} NOT NULL, sucursal_id {$int}, orden {$int}, cliente_id {$int} NULL, origen VARCHAR(200), destino VARCHAR(200), moneda CHAR(3) DEFAULT 'ARS', cotizacion DECIMAL(18,6) DEFAULT 1, flete_facturacion DECIMAL(18,4) NULL, flete_facturacion_ars DECIMAL(18,4) NULL, fecha_inicio DATE NULL, fecha_fin DATE NULL, UNIQUE KEY uq_viaje_operativo_tramos_empresa_id (empresa_id, id))",
+            "CREATE TABLE viaje_operativo_tramos (id {$pk}, viaje_id {$int}, empresa_id {$int} NOT NULL, sucursal_id {$int}, orden {$int}, cliente_id {$int} NULL, origen VARCHAR(200), destino VARCHAR(200), moneda CHAR(3) DEFAULT 'ARS', cotizacion DECIMAL(18,6) DEFAULT 1, flete_facturacion DECIMAL(18,4) NULL, flete_facturacion_ars DECIMAL(18,4) NULL, fecha_inicio DATE NULL, fecha_fin DATE NULL, anulado_at DATETIME NULL, anulado_por {$int} NULL, motivo_anulacion VARCHAR(500) NULL, UNIQUE KEY uq_viaje_operativo_tramos_empresa_id (empresa_id, id))",
             "CREATE TABLE viajes_monedas (id {$pk}, codigo CHAR(3), activo TINYINT)",
             "CREATE TABLE viajes_cotizaciones (id {$pk}, empresa_id {$int}, moneda CHAR(3), cotizacion DECIMAL(18,6))",
             "CREATE TABLE permisos (id {$pk}, clave VARCHAR(100) UNIQUE, descripcion VARCHAR(255), created_at DATETIME NULL, updated_at DATETIME NULL)",
@@ -291,6 +291,19 @@ final class CustomerAccountsIntegrationTest extends TestCase
 
         $branchQueue = $this->queue()->execute(new ActorContext(1, 5, false, false, [], self::ALL, [3]));
         self::assertSame([13], array_column($branchQueue['rows'], 'tramo_id'));
+    }
+
+    public function testCancelledLegsLeaveTheQueueAndCannotBeFormalized(): void
+    {
+        $this->db->table('viaje_operativo_tramos')->where('id', 13)->update([
+            'anulado_at' => '2026-11-20 16:00:00', 'motivo_anulacion' => 'Cargado por error',
+        ]);
+
+        $branchQueue = $this->queue()->execute(new ActorContext(1, 5, false, false, [], self::ALL, [3]));
+        self::assertSame([], array_column($branchQueue['rows'], 'tramo_id'));
+
+        $this->expectExceptionMessage('no existe o no está autorizado');
+        $this->formalize(13, 'CIERRE_COMERCIAL_APROBADO', 1000, 'ARS', null, null, null, new ActorContext(1, 5, false, false, [], self::ALL, [3]));
     }
 
     public function testOpeningBalanceIsUniquePerCustomerAndShowsInTheAccountList(): void

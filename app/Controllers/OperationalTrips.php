@@ -185,6 +185,18 @@ final class OperationalTrips extends BaseController
         }
     }
 
+    public function cancelLeg(int $tripId, int $legId): RedirectResponse
+    {
+        try {
+            $reason = (string) $this->request->getPost('motivo_anulacion');
+            service('cancelTripLeg')->execute($this->actor(), $tripId, $legId, $reason);
+
+            return redirect()->to('/viajes/operativos/' . $tripId)->with('success', 'El tramo quedó anulado y conserva su historial.');
+        } catch (Throwable $exception) {
+            return $this->failure($exception, 'No se pudo anular el tramo.', '/viajes/operativos/' . $tripId);
+        }
+    }
+
     public function show(int $tripId): string|RedirectResponse
     {
         try {

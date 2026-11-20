@@ -76,8 +76,9 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
             cliente_id INTEGER NULL, origen TEXT, destino TEXT, km REAL NULL, toneladas REAL NULL, moneda TEXT, cotizacion REAL,
             moneda_liquidacion TEXT NULL, cotizacion_liquidacion REAL NULL, modo_liquidacion TEXT NULL, toneladas_liquidacion REAL NULL, precio_unitario_liquidacion REAL NULL,
             flete_facturacion REAL, flete_facturacion_ars REAL, flete_liquidacion REAL, flete_liquidacion_ars REAL,
-            fecha_inicio TEXT NULL, fecha_fin TEXT NULL, observaciones TEXT NULL
+            fecha_inicio TEXT NULL, fecha_fin TEXT NULL, observaciones TEXT NULL, anulado_at TEXT NULL, anulado_por INTEGER NULL, motivo_anulacion TEXT NULL
         )');
+        $this->database->query('CREATE TABLE usuarios (id INTEGER PRIMARY KEY, nombre TEXT)');
         $this->database->query('CREATE TABLE viaje_operativo_caja_movimientos (
             id INTEGER PRIMARY KEY, viaje_id INTEGER, empresa_id INTEGER, sucursal_id INTEGER, tipo TEXT,
             fecha TEXT, importe REAL, moneda TEXT, cotizacion REAL, importe_ars REAL, observaciones TEXT NULL, deleted_at TEXT NULL
@@ -180,6 +181,33 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
         if (isset($this->database)) {
             $this->database->close();
         }
+    }
+
+    public function testCancelledLegsLeaveTheTotalsAndTheRouteButStayVisibleApart(): void
+    {
+        $this->database->table('usuarios')->insert(['id' => 4, 'nombre' => 'Camila Kunrath']);
+        $this->database->table('viaje_operativo_tramos')->insert([
+            'id' => 2, 'viaje_id' => 1, 'empresa_id' => 5, 'sucursal_id' => 10, 'orden' => 2,
+            'cliente_id' => 3, 'origen' => 'Córdoba', 'destino' => 'Mendoza', 'km' => 600,
+            'moneda' => 'ARS', 'cotizacion' => 1, 'flete_facturacion' => 500_000, 'flete_facturacion_ars' => 500_000,
+            'moneda_liquidacion' => 'ARS', 'cotizacion_liquidacion' => 1, 'flete_liquidacion' => 400_000, 'flete_liquidacion_ars' => 400_000,
+            'fecha_inicio' => '2026-10-21', 'fecha_fin' => null, 'observaciones' => null,
+            'anulado_at' => '2026-10-22 10:00:00', 'anulado_por' => 4, 'motivo_anulacion' => 'Cargado dos veces',
+        ]);
+        $readModel = new CodeIgniterOperationalTripReadModel($this->database);
+
+        $detail = $readModel->find(5, [10], 1);
+        self::assertSame([1], array_column($detail['legs'], 'id'));
+        self::assertCount(1, $detail['cancelled_legs']);
+        self::assertSame(2, $detail['cancelled_legs'][0]['orden']);
+        self::assertSame('Cargado dos veces', $detail['cancelled_legs'][0]['motivo_anulacion']);
+        self::assertSame('Camila Kunrath', $detail['cancelled_legs'][0]['anulado_por']);
+
+        // El listado no cuenta el tramo anulado: el recorrido sigue cerrado.
+        $trip = $readModel->list(5, [10], new OperationalTripFilters(), 1, 20)['items'][0];
+        self::assertSame(1, $trip['tramos']);
+        self::assertSame('Córdoba', $trip['destino']);
+        self::assertTrue($trip['recorrido_cerrado']);
     }
 
     public function testListShowsRouteEquipmentDriversAndStatus(): void

@@ -110,10 +110,12 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
                 $builder->where('v.estado', Trip::EN_CURSO);
                 $builder->whereIn('v.id', $this->db->table('viaje_operativo_tramos')
                     ->select('viaje_id')
-                    ->where('empresa_id', $companyId));
+                    ->where('empresa_id', $companyId)
+                    ->where('anulado_at', null));
                 $builder->whereNotIn('v.id', $this->db->table('viaje_operativo_tramos')
                     ->select('viaje_id')
                     ->where('empresa_id', $companyId)
+                    ->where('anulado_at', null)
                     ->where('fecha_fin', null));
             } else {
                 $builder->where('v.estado', $filters->status);
@@ -204,6 +206,7 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
         $rows = $this->db->table('viaje_operativo_tramos')
             ->select('viaje_id, origen, destino, fecha_fin')
             ->where('empresa_id', $companyId)
+            ->where('anulado_at', null)
             ->whereIn('viaje_id', $ids)
             ->orderBy('viaje_id', 'ASC')
             ->orderBy('orden', 'ASC')
@@ -289,6 +292,8 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
             ],
             'assignments' => $this->assignmentDetails($companyId, $tripId),
             'legs' => $this->legDetails($companyId, $tripId),
+            // Los tramos anulados se muestran aparte y no entran en ningún total.
+            'cancelled_legs' => $this->cancelledLegDetails($companyId, $tripId),
             'stops' => $this->stopDetails($companyId, $tripId),
             'fuel' => $this->fuelDetails($companyId, $tripId),
             'expenses' => $this->expenseDetails($companyId, $tripId),
@@ -441,6 +446,7 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
             ->join('clientes c', 'c.id = t.cliente_id AND c.empresa_id = t.empresa_id', 'left')
             ->where('t.empresa_id', $companyId)
             ->where('t.viaje_id', $tripId)
+            ->where('t.anulado_at', null)
             ->orderBy('t.orden', 'ASC')
             ->get()->getResultArray();
 
@@ -483,6 +489,33 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
                 'observaciones' => $row['observaciones'],
             ];
         }, $rows);
+    }
+
+    /** @return list<array<string,mixed>> */
+    private function cancelledLegDetails(int $companyId, int $tripId): array
+    {
+        $rows = $this->db->table('viaje_operativo_tramos t')
+            ->select('t.id, t.orden, t.origen, t.destino, t.flete_facturacion_ars, t.flete_liquidacion_ars, t.anulado_at, t.motivo_anulacion, c.nombre AS cliente, u.nombre AS anulado_por_nombre')
+            ->join('clientes c', 'c.id = t.cliente_id AND c.empresa_id = t.empresa_id', 'left')
+            ->join('usuarios u', 'u.id = t.anulado_por', 'left')
+            ->where('t.empresa_id', $companyId)
+            ->where('t.viaje_id', $tripId)
+            ->where('t.anulado_at IS NOT NULL', null, false)
+            ->orderBy('t.orden', 'ASC')
+            ->get()->getResultArray();
+
+        return array_map(static fn (array $row): array => [
+            'id' => (int) $row['id'],
+            'orden' => (int) $row['orden'],
+            'origen' => (string) $row['origen'],
+            'destino' => (string) $row['destino'],
+            'cliente' => $row['cliente'],
+            'flete_facturacion_ars' => $row['flete_facturacion_ars'] === null ? null : (float) $row['flete_facturacion_ars'],
+            'flete_liquidacion_ars' => $row['flete_liquidacion_ars'] === null ? null : (float) $row['flete_liquidacion_ars'],
+            'anulado_at' => (string) $row['anulado_at'],
+            'anulado_por' => $row['anulado_por_nombre'],
+            'motivo_anulacion' => (string) $row['motivo_anulacion'],
+        ], $rows);
     }
 
     /** @return list<array<string,mixed>> */

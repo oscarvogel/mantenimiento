@@ -1333,6 +1333,22 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
         );
     }
 
+    public static function cancelTripLeg(bool $getShared = true): \App\Application\Trips\CancelTripLeg
+    {
+        if ($getShared) {
+            return static::getSharedInstance('cancelTripLeg');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\Trips\CancelTripLeg(
+            new \App\Infrastructure\Trips\CodeIgniterOperationalTripRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripLegRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripLegCancellationStore($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripsUnitOfWork($db),
+        );
+    }
+
     public static function finishTrip(bool $getShared = true): \App\Application\Trips\FinishTrip
     {
         if ($getShared) {

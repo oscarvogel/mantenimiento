@@ -258,17 +258,50 @@ describe('detalle de viaje operativo', () => {
     wrapper.unmount()
   })
 
-  it('ofrece iniciar y cancelar mientras el viaje está planificado', () => {
+  it('ofrece iniciar y anular mientras el viaje está planificado', async () => {
     const wrapper = mount(TripOperationsDetailPage, { props: { data } })
 
     const forms = wrapper.findAll('form')
     expect(forms.map((form) => form.attributes('action'))).toEqual([
       '/mantenimiento/viajes/operativos/42/iniciar',
-      '/mantenimiento/viajes/operativos/42/cancelar',
     ])
+    // La anulación está a la vista en el encabezado y abre un diálogo con motivo obligatorio.
+    await wrapper.get('[data-testid="trip-cancel-button"]').trigger('click')
+    const dialog = wrapper.get('[data-testid="cancel-dialog"]')
+    expect(dialog.get('form').attributes('action')).toBe('/mantenimiento/viajes/operativos/42/cancelar')
+    expect(dialog.get('textarea').attributes('name')).toBe('motivo_cancelacion')
+    expect(dialog.get('textarea').attributes('required')).toBeDefined()
+    expect(dialog.text()).toContain('No se puede deshacer')
     expect(wrapper.get('input[name="fecha_salida_real"]').attributes('type')).toBe('date')
     expect(wrapper.text()).toContain('Fecha de salida')
     expect(wrapper.text()).not.toContain('Fecha y hora de salida')
+    wrapper.unmount()
+  })
+
+  it('anula un tramo con motivo y lista los tramos anulados aparte', async () => {
+    const wrapper = mount(TripOperationsDetailPage, {
+      props: {
+        data: {
+          ...data,
+          canEdit: true,
+          canCancelLegs: true,
+          links: { ...data.links, legs: '/mantenimiento/viajes/operativos/42/tramos' },
+          legs: [{ id: 7, orden: 1, origen: 'Mendoza', destino: 'Dionisio Cerqueira', cliente: 'Prosper', flete_liquidacion_ars: 3290000, assigned_costs_ars: 0 }],
+          cancelled_legs: [{ id: 8, orden: 2, origen: 'Dionisio Cerqueira', destino: 'Mendoza', cliente: 'Prosper', anulado_at: '2026-11-20 16:00:00', anulado_por: 'Camila Kunrath', motivo_anulacion: 'Duplicado' }],
+        },
+      },
+    })
+
+    await wrapper.get('[data-testid="leg-cancel-7"]').trigger('click')
+    const dialog = wrapper.get('[data-testid="cancel-dialog"]')
+    expect(dialog.get('form').attributes('action')).toBe('/mantenimiento/viajes/operativos/42/tramos/7/anular')
+    expect(dialog.get('textarea').attributes('name')).toBe('motivo_anulacion')
+    expect(dialog.text()).toContain('Anular el tramo 1: Mendoza → Dionisio Cerqueira')
+
+    const cancelled = wrapper.get('[data-testid="cancelled-legs"]')
+    expect(cancelled.text()).toContain('Tramos anulados (1)')
+    expect(cancelled.text()).toContain('Camila Kunrath')
+    expect(cancelled.text()).toContain('Duplicado')
     wrapper.unmount()
   })
 
