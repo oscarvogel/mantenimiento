@@ -50,6 +50,7 @@ final class GetOperationalTrip
             'driverSettlement' => base_url('viajes/operativos/' . $tripId . '/liquidacion-chofer'),
             'fuel' => base_url('viajes/operativos/' . $tripId . '/combustible'),
             'expense' => base_url('viajes/operativos/' . $tripId . '/gastos'),
+            'reattributeExpenses' => base_url('viajes/operativos/' . $tripId . '/gastos/reatribuir-caja'),
             'cash' => base_url('viajes/operativos/' . $tripId . '/caja'),
             'earnings' => base_url('viajes/operativos/' . $tripId . '/haberes'),
             'logbook' => base_url('viajes/operativos/' . $tripId . '/diario-bordo'),

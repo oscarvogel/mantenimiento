@@ -454,6 +454,30 @@ const cashBalanceLabel = computed(() => {
   if (balance < 0) return 'A favor del chofer'
   return 'Sin saldo'
 })
+const cashAdvanceTotal = computed(() => cashMovements.value.reduce((total, movement) => {
+  const amount = Number(movement.importe_ars ?? 0)
+  return total + (movement.tipo === 'DEVOLUCION' ? -amount : amount)
+}, 0))
+const companyPaidExpenses = computed(() => expenses.value.filter((expense) => {
+  const payer = String(expense.pagado_por ?? 'EMPRESA').toUpperCase()
+  return payer !== 'CAJA' && payer !== 'CHOFER'
+}))
+const companyPaidExpensesAmount = computed(() => companyPaidExpenses.value
+  .reduce((total, expense) => total + Number(expense.importe_ars ?? 0), 0))
+const canReattributeCompanyExpenses = computed(() => canRegisterCosts.value
+  && cashAdvanceTotal.value > 0
+  && companyPaidExpenses.value.length > 0)
+const defaultExpensePayer = computed(() => cashAdvanceTotal.value > 0 ? 'CAJA' : 'EMPRESA')
+const expensePayerHint = computed(() => cashAdvanceTotal.value > 0
+  ? `En este viaje hay ${money(cashAdvanceTotal.value)} de adelantos. Si el chofer pagó este gasto con ese dinero, dejá «Caja del chofer» para descontarlo del saldo.`
+  : '«Caja del chofer» descuenta el gasto del adelanto. «Empresa» no afecta la liquidación del chofer.')
+const confirmReattributeCompanyExpenses = (event) => {
+  const label = companyPaidExpenses.value.length === 1
+    ? 'el gasto'
+    : `los ${companyPaidExpenses.value.length} gastos`
+  const message = `Se va a marcar ${label} por ${money(companyPaidExpensesAmount.value)} como «Caja del chofer». Eso descuenta el saldo del adelanto. ¿Continuar?`
+  if (!window.confirm(message)) event.preventDefault()
+}
 const facts = computed(() => {
   const started = ['EN_CURSO', 'FINALIZADO'].includes(trip.value.estado)
   const finished = trip.value.estado === 'FINALIZADO'
@@ -664,6 +688,14 @@ const facts = computed(() => {
     </section>
 
     <PanelCard title="Liquidación del chofer" class="mb-5" allow-overflow>
+      <div v-if="canReattributeCompanyExpenses" class="mb-4 rounded-lg border border-warning/30 bg-warning-subtle px-3 py-3 text-sm text-warning-strong">
+        <p><strong>{{ money(companyPaidExpensesAmount) }}</strong> en {{ companyPaidExpenses.length === 1 ? 'un gasto está marcado' : `${companyPaidExpenses.length} gastos están marcados` }} como «Pagado por: Empresa» y no descuentan el adelanto.</p>
+        <p class="mt-1">Si el chofer los pagó con la plata del adelanto, pasalos a «Caja del chofer». El total a liquidar se recalcula al instante.</p>
+        <form method="post" :action="data.links?.reattributeExpenses" class="mt-2" @submit="confirmReattributeCompanyExpenses">
+          <input type="hidden" :name="csrf.name" :value="csrf.hash" />
+          <button type="submit" :class="secondaryButton">Reatribuir a la caja del chofer</button>
+        </form>
+      </div>
       <p v-if="settlementNote" class="rounded-lg border border-info/30 bg-info-subtle px-3 py-2 text-sm text-info-strong">{{ settlementNote }}</p>
       <div class="grid gap-5" :class="settlementNote ? '' : 'xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]'">
         <div v-if="!settlementNote" class="rounded-xl border border-border-subtle bg-surface p-4">
@@ -1092,7 +1124,7 @@ const facts = computed(() => {
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cotización a ARS</span><input type="number" name="cotizacion" min="0.000001" step="0.000001" :value="editingEntry?.cotizacion ?? 1" :class="fieldClass" /></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Medio de pago</span><select name="medio_pago_id" :value="editingEntry?.medio_pago_id ?? ''" :class="fieldClass"><option value="">Sin medio</option><option v-for="method in options.paymentMethods" :key="method.id" :value="method.id">{{ method.label }}</option></select></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Tramo (opcional)</span><select name="tramo_id" :value="editingEntry?.tramo_id ?? ''" :class="fieldClass"><option value="">Todo el viaje</option><option v-for="leg in legs" :key="leg.id" :value="leg.id">{{ leg.orden }} · {{ leg.origen }} → {{ leg.destino }}</option></select></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Pagado por</span><select name="pagado_por" :value="editingEntry?.pagado_por ?? 'EMPRESA'" :class="fieldClass"><option value="EMPRESA">Empresa</option><option value="CHOFER">Chofer (a reintegrar)</option><option value="CAJA">Caja del chofer</option></select></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Pagado por</span><select name="pagado_por" :value="editingEntry?.pagado_por ?? defaultExpensePayer" :class="fieldClass"><option value="EMPRESA">Empresa</option><option value="CHOFER">Chofer (a reintegrar)</option><option value="CAJA">Caja del chofer</option></select><span class="mt-1 block text-xs text-ink-muted">{{ expensePayerHint }}</span></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Comprobante</span><input type="text" name="comprobante" maxlength="80" :value="editingEntry?.comprobante ?? ''" :class="fieldClass" /></label>
             <label class="block sm:col-span-2 lg:col-span-3"><span class="mb-1 block text-xs font-semibold text-ink-muted">Observaciones</span><input type="text" name="observaciones" maxlength="500" :value="editingEntry?.observaciones ?? ''" :class="fieldClass" /></label>
           </div>

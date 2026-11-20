@@ -286,6 +286,45 @@ describe('detalle de viaje operativo', () => {
     wrapper.unmount()
   })
 
+  it('avisa los gastos de empresa que no descuentan el adelanto y propone caja del chofer', async () => {
+    const wrapper = mount(TripOperationsDetailPage, {
+      props: {
+        data: {
+          ...data,
+          canStart: false,
+          canCancel: false,
+          canRegisterCosts: true,
+          links: {
+            ...data.links,
+            expense: '/mantenimiento/viajes/operativos/42/gastos',
+            reattributeExpenses: '/mantenimiento/viajes/operativos/42/gastos/reatribuir-caja',
+          },
+          expenses: [{
+            id: 1, fecha: '2026-11-19 11:58:00', importe: 94900, moneda: 'ARS', importe_ars: 94900,
+            categoria: 'Peaje', concepto_catalogo: null, cantidad: 1, medio_pago: 'Efectivo',
+            pagado_de_caja: false, pagado_por: 'EMPRESA', comprobante: null, observaciones: null,
+          }],
+          cashMovements: [
+            { id: 1, tipo: 'ANTICIPO', fecha: '2026-11-19 12:01:00', importe: 100000, moneda: 'ARS', importe_ars: 100000, observaciones: null },
+          ],
+          options: { expenseCategories: [], paymentMethods: [], currencies: [{ code: 'ARS', label: 'Peso argentino' }] },
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain('ARS 94.900,00')
+    expect(wrapper.text()).toContain('no descuentan el adelanto')
+    expect(wrapper.get('form[action="/mantenimiento/viajes/operativos/42/gastos/reatribuir-caja"]').exists()).toBe(true)
+
+    const expenseButton = wrapper.findAll('button').find((button) => button.text().includes('Cargar gasto'))
+    await expenseButton.trigger('click')
+    await nextTick()
+
+    expect(wrapper.get('select[name="pagado_por"]').element.value).toBe('CAJA')
+    expect(wrapper.text()).toContain('ARS 100.000,00 de adelantos')
+    wrapper.unmount()
+  })
+
   it('muestra la liquidación del chofer y permite cargar otros haberes', () => {
     const wrapper = mount(TripOperationsDetailPage, {
       props: {
