@@ -356,6 +356,25 @@ final class OperationalTrips extends BaseController
         }
     }
 
+    public function reattributeExpensesToCash(int $tripId): RedirectResponse
+    {
+        try {
+            $count = service('reattributeTripExpensesToCash')->execute($this->actor(), $tripId);
+            if ($count === 0) {
+                return redirect()->to('/viajes/operativos/' . $tripId)
+                    ->with('success', 'No había gastos pagados por la empresa para pasar a la caja.');
+            }
+
+            $message = $count === 1
+                ? 'El gasto pagado por la empresa quedó imputado a la caja del chofer.'
+                : "Los {$count} gastos pagados por la empresa quedaron imputados a la caja del chofer.";
+
+            return redirect()->to('/viajes/operativos/' . $tripId)->with('success', $message);
+        } catch (Throwable $exception) {
+            return $this->failure($exception, 'No se pudieron reatribuir los gastos a la caja.', '/viajes/operativos/' . $tripId);
+        }
+    }
+
     public function addOtherEarning(int $tripId): RedirectResponse
     {
         try {

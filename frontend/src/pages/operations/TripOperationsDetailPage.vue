@@ -7,6 +7,7 @@ import AutocompleteSelect from './components/AutocompleteSelect.vue'
 import LocalityCreateModal from './components/LocalityCreateModal.vue'
 import TripLegLiquidationBasisFields from './components/TripLegLiquidationBasisFields.vue'
 import { fieldClass, primaryButton, secondaryButton, dangerButton, nowLocal } from './helpers.js'
+import { useAlerts } from '../../composables/useAlerts.js'
 import {
   effectiveLiquidationRate,
   emptyLiquidationBasis,
@@ -49,6 +50,76 @@ const canClose = computed(() => Boolean(props.data.canClose))
 const cierrePendiente = computed(() => Boolean(props.data.cierre_pendiente))
 const fechaCierreSugerida = computed(() => String(props.data.fecha_cierre_sugerida ?? ''))
 const kmCierreSugerido = computed(() => props.data.km_cierre_sugerido ?? '')
+const kmCierreSugerencia = computed(() => props.data.km_cierre_sugerencia ?? null)
+// Odómetro de regreso que el operador está por confirmar: arranca con la
+// sugerencia y se recalcula el consumo con cada cambio, antes de cerrar.
+const kmRegresoDraft = ref(kmCierreSugerido.value === '' ? '' : String(kmCierreSugerido.value))
+watch(kmCierreSugerido, (value) => { kmRegresoDraft.value = value === '' ? '' : String(value) })
+const kmCierreHint = computed(() => {
+  const suggestion = kmCierreSugerencia.value
+  if (!kmCierreSugerido.value) return ''
+  if (suggestion?.source === 'TELEMETRIA') {
+    const provider = suggestion.provider ? ` (${suggestion.provider})` : ''
+    const observed = suggestion.observed_at ? ` del ${fmtDateTime(suggestion.observed_at)}` : ''
+    return `Lectura de telemetría${provider}${observed}. Corregila si el tablero marca otra cosa.`
+  }
+  return 'Última lectura conocida del equipo. Corregilo si el tablero marca otra cosa.'
+})
+const closePreview = computed(() => {
+  const departure = trip.value.km_salida === null || trip.value.km_salida === undefined ? null : Number(trip.value.km_salida)
+  const arrival = kmRegresoDraft.value === '' ? null : Number(kmRegresoDraft.value)
+  const liters = Number(totals.value.fuel_liters ?? 0)
+  const range = consumption.value.typical_range ?? { min: 20, max: 60 }
+  if (departure === null || arrival === null || !Number.isFinite(arrival)) {
+    return { km: null, litersPer100: null, kmPerLiter: null, warning: '' }
+  }
+  const km = arrival - departure
+  if (km <= 0) {
+    return { km, litersPer100: null, kmPerLiter: null, warning: 'El odómetro de regreso tiene que ser mayor que el de salida. Revisá los dos contra el tablero.' }
+  }
+  if (liters <= 0) {
+    return { km, litersPer100: null, kmPerLiter: null, warning: 'No hay litros cargados: el consumo del viaje va a quedar sin calcular.' }
+  }
+  const litersPer100 = Math.round((liters / km) * 1000) / 10
+  const kmPerLiter = Math.round((km / liters) * 100) / 100
+  let warning = ''
+  if (litersPer100 > range.max) {
+    warning = `El consumo da ${litersPer100.toLocaleString('es-AR')} L/100 km, más de lo normal para un camión (${range.min} a ${range.max}). Revisá el odómetro de salida y el de regreso, o si hay cargas que no son de este viaje.`
+  } else if (litersPer100 < range.min) {
+    warning = `El consumo da ${litersPer100.toLocaleString('es-AR')} L/100 km, menos de lo normal para un camión (${range.min} a ${range.max}). Revisá los odómetros o si falta cargar combustible.`
+  }
+  return { km, litersPer100, kmPerLiter, warning }
+})
+// Un regreso que no supera la salida no es un cierre posible: se bloquea en
+// la pantalla, además de la regla del dominio que lo rechaza al guardar.
+const closeKmInvalid = computed(() => closePreview.value.km !== null && closePreview.value.km <= 0)
+const alerts = useAlerts()
+const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char])
+let closeConfirmed = false
+const confirmClose = async (event) => {
+  if (closeConfirmed) return
+  event.preventDefault()
+  if (closeBlocked.value || closeKmInvalid.value) return
+  const form = event.currentTarget ?? event.target
+  const preview = closePreview.value
+  const rows = []
+  if (preview.km !== null) rows.push(['Km recorridos', `${number(preview.km)} km`])
+  if (preview.litersPer100 !== null) rows.push(['Consumo', `${preview.litersPer100.toLocaleString('es-AR')} L/100 km · ${preview.kmPerLiter.toLocaleString('es-AR')} km/L`])
+  const table = rows.length
+    ? `<dl class="ui-swal-summary">${rows.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join('')}</dl>`
+    : ''
+  const warning = preview.warning ? `<p class="ui-swal-warning">${escapeHtml(preview.warning)}</p>` : ''
+  const confirmed = await alerts.confirm({
+    title: `¿Cerrar el viaje #${trip.value.numero}?`,
+    html: `<p>Va a quedar <strong>Finalizado</strong> y ya no se va a poder editar.</p>${table}${warning}`,
+    button: 'Cerrar viaje',
+    cancel: 'Seguir revisando',
+    icon: preview.warning ? 'warning' : 'question',
+  })
+  if (!confirmed) return
+  closeConfirmed = true
+  form.requestSubmit ? form.requestSubmit() : form.submit()
+}
 const currencies = computed(() => options.value.currencies?.length ? options.value.currencies : [{ code: 'ARS', label: 'Peso argentino' }])
 const customerOptions = computed(() => (options.value.customers ?? []).map((customer) => ({ value: customer.id, label: customer.label, hint: customer.code ? `Código ${customer.code}` : '' })))
 const localities = computed(() => options.value.localities ?? [])
@@ -454,6 +525,30 @@ const cashBalanceLabel = computed(() => {
   if (balance < 0) return 'A favor del chofer'
   return 'Sin saldo'
 })
+const cashAdvanceTotal = computed(() => cashMovements.value.reduce((total, movement) => {
+  const amount = Number(movement.importe_ars ?? 0)
+  return total + (movement.tipo === 'DEVOLUCION' ? -amount : amount)
+}, 0))
+const companyPaidExpenses = computed(() => expenses.value.filter((expense) => {
+  const payer = String(expense.pagado_por ?? 'EMPRESA').toUpperCase()
+  return payer !== 'CAJA' && payer !== 'CHOFER'
+}))
+const companyPaidExpensesAmount = computed(() => companyPaidExpenses.value
+  .reduce((total, expense) => total + Number(expense.importe_ars ?? 0), 0))
+const canReattributeCompanyExpenses = computed(() => canRegisterCosts.value
+  && cashAdvanceTotal.value > 0
+  && companyPaidExpenses.value.length > 0)
+const defaultExpensePayer = computed(() => cashAdvanceTotal.value > 0 ? 'CAJA' : 'EMPRESA')
+const expensePayerHint = computed(() => cashAdvanceTotal.value > 0
+  ? `En este viaje hay ${money(cashAdvanceTotal.value)} de adelantos. Si el chofer pagó este gasto con ese dinero, dejá «Caja del chofer» para descontarlo del saldo.`
+  : '«Caja del chofer» descuenta el gasto del adelanto. «Empresa» no afecta la liquidación del chofer.')
+const confirmReattributeCompanyExpenses = (event) => {
+  const label = companyPaidExpenses.value.length === 1
+    ? 'el gasto'
+    : `los ${companyPaidExpenses.value.length} gastos`
+  const message = `Se va a marcar ${label} por ${money(companyPaidExpensesAmount.value)} como «Caja del chofer». Eso descuenta el saldo del adelanto. ¿Continuar?`
+  if (!window.confirm(message)) event.preventDefault()
+}
 const facts = computed(() => {
   const started = ['EN_CURSO', 'FINALIZADO'].includes(trip.value.estado)
   const finished = trip.value.estado === 'FINALIZADO'
@@ -483,8 +578,8 @@ const facts = computed(() => {
   <div>
     <PageHeading eyebrow="Viajes · Operativo" :title="`Viaje #${trip.numero}`" description="Seguimiento del recorrido, equipo, choferes, combustible, gastos y caja. Los movimientos de caja del chofer no son costo del viaje." :back="{ href: data.backUrl ?? '/viajes/operativos', label: 'Volver a viajes operativos' }">
       <template #actions>
-        <a v-if="trip.estado === 'FINALIZADO' && data.links?.summaryPdf" :href="data.links.summaryPdf" class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-primary px-3 py-2 text-sm font-semibold text-primary hover:bg-primary-subtle">
-          <ArrowDownTrayIcon class="size-4" aria-hidden="true" />Descargar resumen PDF
+        <a v-if="['EN_CURSO', 'FINALIZADO'].includes(trip.estado) && data.links?.summaryPdf" :href="data.links.summaryPdf" data-testid="trip-summary-pdf-link" class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-primary px-3 py-2 text-sm font-semibold text-primary hover:bg-primary-subtle">
+          <ArrowDownTrayIcon class="size-4" aria-hidden="true" />{{ trip.estado === 'FINALIZADO' ? 'Resumen del viaje (PDF)' : 'Resumen del viaje (borrador)' }}
         </a>
         <a v-if="data.canViewDriverSettlement && data.links?.driverSettlement" :href="data.links.driverSettlement" data-testid="driver-settlement-link" class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-success/40 bg-success-subtle px-3 py-2 text-sm font-semibold text-success-strong hover:bg-success/15">
           <ReceiptPercentIcon class="size-4" aria-hidden="true" />Ver liquidación del chofer
@@ -664,6 +759,14 @@ const facts = computed(() => {
     </section>
 
     <PanelCard title="Liquidación del chofer" class="mb-5" allow-overflow>
+      <div v-if="canReattributeCompanyExpenses" class="mb-4 rounded-lg border border-warning/30 bg-warning-subtle px-3 py-3 text-sm text-warning-strong">
+        <p><strong>{{ money(companyPaidExpensesAmount) }}</strong> en {{ companyPaidExpenses.length === 1 ? 'un gasto está marcado' : `${companyPaidExpenses.length} gastos están marcados` }} como «Pagado por: Empresa» y no descuentan el adelanto.</p>
+        <p class="mt-1">Si el chofer los pagó con la plata del adelanto, pasalos a «Caja del chofer». El total a liquidar se recalcula al instante.</p>
+        <form method="post" :action="data.links?.reattributeExpenses" class="mt-2" @submit="confirmReattributeCompanyExpenses">
+          <input type="hidden" :name="csrf.name" :value="csrf.hash" />
+          <button type="submit" :class="secondaryButton">Reatribuir a la caja del chofer</button>
+        </form>
+      </div>
       <p v-if="settlementNote" class="rounded-lg border border-info/30 bg-info-subtle px-3 py-2 text-sm text-info-strong">{{ settlementNote }}</p>
       <div class="grid gap-5" :class="settlementNote ? '' : 'xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]'">
         <div v-if="!settlementNote" class="rounded-xl border border-border-subtle bg-surface p-4">
@@ -804,7 +907,7 @@ const facts = computed(() => {
           El recorrido terminó el {{ fmtDate(fechaCierreSugerida) }} pero el viaje sigue En curso. Cargá el odómetro de regreso y cerrá el viaje para liberar el equipo y registrar la lectura.
         </p>
 
-        <form v-if="canClose" method="post" :action="data.links?.finish" class="mb-5 rounded-xl border border-border-subtle bg-surface p-4">
+        <form v-if="canClose" method="post" :action="data.links?.finish" class="mb-5 rounded-xl border border-border-subtle bg-surface p-4" data-testid="close-trip-form" @submit="confirmClose">
           <input type="hidden" :name="csrf.name" :value="csrf.hash" />
           <h3 class="flex items-center gap-2 text-sm font-bold text-ink"><CheckCircleIcon class="size-4 text-success" aria-hidden="true" />Cerrar viaje</h3>
           <p class="mt-1 text-xs text-ink-muted">Al cerrar, el viaje pasa a Finalizado y se genera la lectura del equipo con el km de regreso.</p>
@@ -816,10 +919,17 @@ const facts = computed(() => {
             </label>
             <label class="block">
               <span class="mb-1.5 block text-sm font-semibold text-ink">Odómetro de regreso</span>
-              <input type="number" name="km_regreso" min="0" step="1" required :min="trip.km_salida ?? 0" :value="kmCierreSugerido" :class="fieldClass" />
-              <span v-if="kmCierreSugerido" class="mt-1 block text-xs text-ink-muted">Última lectura conocida del equipo. Corregilo si el tablero marca otra cosa.</span>
+              <input v-model="kmRegresoDraft" type="number" name="km_regreso" step="1" required :min="trip.km_salida ?? 0" :class="fieldClass" data-testid="close-km-regreso" />
+              <span v-if="kmCierreHint" class="mt-1 block text-xs text-ink-muted" data-testid="close-km-hint">{{ kmCierreHint }}</span>
             </label>
           </div>
+          <div class="mt-3 grid gap-2 rounded-lg border border-border-subtle bg-surface-raised px-3 py-2 text-sm sm:grid-cols-4" data-testid="close-preview">
+            <div><p class="text-xs text-ink-muted">Odómetro de salida</p><p class="font-semibold text-ink">{{ trip.km_salida === null || trip.km_salida === undefined ? '—' : `${number(trip.km_salida)} km` }}</p><button v-if="canEdit" type="button" class="text-xs font-semibold text-primary hover:underline" @click="openTripEdit">Corregir</button></div>
+            <div><p class="text-xs text-ink-muted">Km recorridos</p><p class="font-semibold text-ink" data-testid="close-km-recorridos">{{ closePreview.km === null || closePreview.km <= 0 ? '—' : `${number(closePreview.km)} km` }}</p></div>
+            <div><p class="text-xs text-ink-muted">Litros del viaje</p><p class="font-semibold text-ink">{{ liters(totals.fuel_liters) }}</p></div>
+            <div><p class="text-xs text-ink-muted">Consumo</p><p class="font-semibold text-ink" data-testid="close-consumption">{{ closePreview.litersPer100 === null ? '—' : `${closePreview.litersPer100.toLocaleString('es-AR')} L/100 km` }}</p><p v-if="closePreview.kmPerLiter !== null" class="text-xs text-ink-muted">{{ closePreview.kmPerLiter.toLocaleString('es-AR') }} km/L</p></div>
+          </div>
+          <p v-if="closePreview.warning" class="mt-3 rounded-lg border border-danger/30 bg-danger-subtle px-3 py-2 text-xs font-semibold text-danger-strong" data-testid="close-consumption-warning">{{ closePreview.warning }}</p>
           <div v-if="!totals.has_legs || !totals.fuel_liters || fuelWithoutPrice > 0 || !totals.expense_amount_ars" class="mt-3 rounded-lg border border-warning/30 bg-warning-subtle px-3 py-2 text-xs text-warning-strong">
             <p v-if="!totals.has_legs">No hay tramos cargados.</p>
             <p v-if="!totals.fuel_liters">No hay combustible cargado.</p>
@@ -828,7 +938,7 @@ const facts = computed(() => {
             <p class="mt-1">Podés cerrar igual, pero revisá que corresponda.</p>
           </div>
           <p v-if="closeBlocked" class="mt-3 rounded-lg border border-danger/30 bg-danger-subtle px-3 py-2 text-xs font-semibold text-danger-strong">{{ closeBlockMessage }}</p>
-          <button type="submit" :disabled="closeBlocked" :class="[primaryButton, 'mt-3', closeBlocked ? 'cursor-not-allowed opacity-50' : '']">Cerrar y generar lectura</button>
+          <button type="submit" :disabled="closeBlocked || closeKmInvalid" :class="[primaryButton, 'mt-3', closeBlocked || closeKmInvalid ? 'cursor-not-allowed opacity-50' : '']" data-testid="close-submit">Cerrar y generar lectura</button>
         </form>
 
         <form v-if="data.canCancel" method="post" :action="`${data.links?.detail ?? ''}/cancelar`" class="rounded-xl border border-danger/30 bg-danger-subtle/40 p-4">
@@ -1092,7 +1202,7 @@ const facts = computed(() => {
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cotización a ARS</span><input type="number" name="cotizacion" min="0.000001" step="0.000001" :value="editingEntry?.cotizacion ?? 1" :class="fieldClass" /></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Medio de pago</span><select name="medio_pago_id" :value="editingEntry?.medio_pago_id ?? ''" :class="fieldClass"><option value="">Sin medio</option><option v-for="method in options.paymentMethods" :key="method.id" :value="method.id">{{ method.label }}</option></select></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Tramo (opcional)</span><select name="tramo_id" :value="editingEntry?.tramo_id ?? ''" :class="fieldClass"><option value="">Todo el viaje</option><option v-for="leg in legs" :key="leg.id" :value="leg.id">{{ leg.orden }} · {{ leg.origen }} → {{ leg.destino }}</option></select></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Pagado por</span><select name="pagado_por" :value="editingEntry?.pagado_por ?? 'EMPRESA'" :class="fieldClass"><option value="EMPRESA">Empresa</option><option value="CHOFER">Chofer (a reintegrar)</option><option value="CAJA">Caja del chofer</option></select></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Pagado por</span><select name="pagado_por" :value="editingEntry?.pagado_por ?? defaultExpensePayer" :class="fieldClass"><option value="EMPRESA">Empresa</option><option value="CHOFER">Chofer (a reintegrar)</option><option value="CAJA">Caja del chofer</option></select><span class="mt-1 block text-xs text-ink-muted">{{ expensePayerHint }}</span></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Comprobante</span><input type="text" name="comprobante" maxlength="80" :value="editingEntry?.comprobante ?? ''" :class="fieldClass" /></label>
             <label class="block sm:col-span-2 lg:col-span-3"><span class="mb-1 block text-xs font-semibold text-ink-muted">Observaciones</span><input type="text" name="observaciones" maxlength="500" :value="editingEntry?.observaciones ?? ''" :class="fieldClass" /></label>
           </div>

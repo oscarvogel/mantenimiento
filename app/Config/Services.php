@@ -1491,6 +1491,21 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
         );
     }
 
+    public static function reattributeTripExpensesToCash(bool $getShared = true): \App\Application\Trips\ReattributeTripExpensesToCash
+    {
+        if ($getShared) {
+            return static::getSharedInstance('reattributeTripExpensesToCash');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\Trips\ReattributeTripExpensesToCash(
+            new \App\Infrastructure\Trips\CodeIgniterOperationalTripRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripCostRepository($db),
+            new \App\Infrastructure\Trips\CodeIgniterTripsUnitOfWork($db),
+        );
+    }
+
     public static function registerTripOtherEarning(bool $getShared = true): \App\Application\Trips\RegisterTripOtherEarning
     {
         if ($getShared) {
@@ -1641,6 +1656,8 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
 
         return new \App\Application\Trips\GetOperationalTrip(
             new \App\Infrastructure\Trips\CodeIgniterOperationalTripReadModel(db_connect()),
+            new \App\Infrastructure\Trips\CodeIgniterTripOdometerTelemetry(db_connect()),
+            config('App')->appTimezone,
         );
     }
 

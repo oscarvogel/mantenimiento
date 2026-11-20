@@ -20,7 +20,9 @@ final class OperationalTripSummaryPdfGenerator implements OperationalTripSummary
         $pdf->AddPage();
 
         $this->title($pdf, 'Resumen del viaje #' . ($trip['trip']['numero'] ?? ''));
+        $this->draftNotice($pdf, $trip['summary'] ?? []);
         $this->identity($pdf, $trip);
+        $this->kpis($pdf, $trip);
         $this->legs($pdf, $trip['legs'] ?? []);
         $this->fuel($pdf, $trip['fuel'] ?? []);
         $this->expenses($pdf, $trip['expenses'] ?? []);
@@ -31,8 +33,120 @@ final class OperationalTripSummaryPdfGenerator implements OperationalTripSummary
         $this->otherEarnings($pdf, $trip['otherEarnings'] ?? []);
         $this->settlement($pdf, $trip['settlement'] ?? null);
         $this->profitability($pdf, $trip['totals'] ?? [], $trip['settlement'] ?? null);
+        $this->generatedOn($pdf, $trip['summary'] ?? []);
 
         return $pdf->Output('S');
+    }
+
+    /** @param array<string,mixed> $summary */
+    private function draftNotice(FPDF $pdf, array $summary): void
+    {
+        if (! ($summary['draft'] ?? false)) {
+            return;
+        }
+        $pdf->SetFont('Arial', 'B', 9);
+        $pdf->SetFillColor(255, 237, 213);
+        $pdf->SetTextColor(124, 45, 18);
+        $pdf->MultiCell(0, 5.5, $this->pdfText(
+            'BORRADOR - Viaje en curso. Los datos pueden cambiar hasta que se cierre el viaje: '
+            . 'faltan el odómetro de regreso y, posiblemente, cargas, gastos o tramos.'
+        ), 0, 'L', true);
+        $pdf->SetTextColor(0, 0, 0);
+        $pdf->Ln(2);
+    }
+
+    /** @param array<string,mixed> $trip */
+    private function kpis(FPDF $pdf, array $trip): void
+    {
+        $kpis = $trip['summary']['kpis'] ?? null;
+        if (! is_array($kpis)) {
+            return;
+        }
+        $totals = $trip['totals'] ?? [];
+        $draft = (bool) ($trip['summary']['draft'] ?? false);
+        $marginText = $this->moneyOrNoData($totals['margin_ars'] ?? null);
+        if (($totals['margin_pct'] ?? null) !== null) {
+            $marginText .= ' (' . $this->number($totals['margin_pct']) . '%)';
+        }
+
+        $this->section($pdf, 'Indicadores del viaje');
+        $pdf->Ln(1);
+        $this->kpiGrid($pdf, [
+            ['Km recorridos', $this->unit($kpis['km'] ?? null, 'km', 0)],
+            [$draft ? 'Días de viaje (a hoy)' : 'Días de viaje', $this->unit($kpis['days'] ?? null, $kpis['days'] === 1 ? 'día' : 'días', 0)],
+            ['Litros cargados', $this->unit($kpis['liters'] ?? null, 'L', 2)],
+            ['Consumo', $this->unit($kpis['liters_per_100_km'] ?? null, 'L/100 km', 1)],
+            ['Rendimiento', $this->unit($kpis['km_per_liter'] ?? null, 'km/L', 2)],
+            ['Toneladas', $this->unit($kpis['tons'] ?? null, 'tn', 2)],
+            ['Facturación', $this->moneyOrNoData($totals['invoice_ars'] ?? null)],
+            ['Costo operativo', $this->moneyOrNoData($totals['operating_cost_ars'] ?? null)],
+            ['Margen operativo', $marginText],
+            ['Facturación por km', $this->moneyOrNoData($kpis['invoice_per_km'] ?? null)],
+            ['Costo por km', $this->moneyOrNoData($kpis['cost_per_km'] ?? null)],
+            ['Combustible por km', $this->moneyOrNoData($kpis['fuel_cost_per_km'] ?? null)],
+        ]);
+
+        $note = match ($trip['summary']['consumption_source'] ?? null) {
+            'ODOMETRO_VIAJE' => 'Km y consumo calculados con el odómetro de salida y de regreso.',
+            'ODOMETRO_COMBUSTIBLE' => 'Km y consumo estimados con el odómetro de las cargas de combustible: falta el odómetro de regreso.',
+            default => 'Sin km recorridos: faltan el odómetro de regreso o al menos dos cargas de combustible con odómetro.',
+        };
+        $pdf->SetFont('Arial', 'I', 7.5);
+        $pdf->MultiCell(0, 4, $this->pdfText($note . ' Consumo = litros cargados en el viaje / km recorridos.'), 0, 'L');
+        $pdf->SetFont('Arial', '', 8);
+        $pdf->Ln(3);
+    }
+
+    /** @param list<array{0:string,1:string}> $items */
+    private function kpiGrid(FPDF $pdf, array $items): void
+    {
+        $columns = 4;
+        $gap = 2.0;
+        $width = (190 - $gap * ($columns - 1)) / $columns;
+        $height = 14.0;
+        $left = 10.0;
+        foreach (array_chunk($items, $columns) as $row) {
+            if ($pdf->GetY() + $height > 280) {
+                $pdf->AddPage();
+            }
+            $top = $pdf->GetY();
+            foreach ($row as $index => [$label, $value]) {
+                $x = $left + $index * ($width + $gap);
+                $pdf->SetFillColor(246, 248, 250);
+                $pdf->SetDrawColor(214, 222, 230);
+                $pdf->Rect($x, $top, $width, $height, 'DF');
+                $pdf->SetXY($x + 2, $top + 1.8);
+                $pdf->SetFont('Arial', '', 7);
+                $pdf->SetTextColor(90, 102, 115);
+                $pdf->Cell($width - 4, 4, $this->fit($pdf, $label, $width - 4), 0, 2, 'L');
+                $pdf->SetFont('Arial', 'B', 10);
+                $pdf->SetTextColor(25, 48, 72);
+                $pdf->Cell($width - 4, 6, $this->fit($pdf, $value, $width - 4), 0, 0, 'L');
+            }
+            $pdf->SetXY($left, $top + $height + $gap);
+        }
+        $pdf->SetTextColor(0, 0, 0);
+        $pdf->SetDrawColor(0, 0, 0);
+        $pdf->SetFont('Arial', '', 8);
+    }
+
+    /** @param array<string,mixed> $summary */
+    private function generatedOn(FPDF $pdf, array $summary): void
+    {
+        if (($summary['generated_on'] ?? null) === null) {
+            return;
+        }
+        $pdf->Ln(4);
+        $pdf->SetFont('Arial', 'I', 7.5);
+        $pdf->SetTextColor(90, 102, 115);
+        $pdf->Cell(0, 5, $this->pdfText('Generado el ' . $this->date($summary['generated_on'])
+            . (($summary['draft'] ?? false) ? ' · Borrador: el viaje sigue en curso.' : '')), 0, 1, 'L');
+        $pdf->SetTextColor(0, 0, 0);
+    }
+
+    private function unit(mixed $value, string $unit, int $decimals): string
+    {
+        return $value === null ? 'Sin dato' : number_format((float) $value, $decimals, ',', '.') . ' ' . $unit;
     }
 
     /** @param array<string,mixed> $trip */

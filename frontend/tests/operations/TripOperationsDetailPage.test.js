@@ -1,8 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import TripOperationsDetailPage from '../../src/pages/operations/TripOperationsDetailPage.vue'
 import AutocompleteSelect from '../../src/pages/operations/components/AutocompleteSelect.vue'
+
+const alertsConfirm = vi.hoisted(() => vi.fn())
+vi.mock('../../src/composables/useAlerts.js', () => ({ useAlerts: () => ({ confirm: alertsConfirm }) }))
 
 if (typeof HTMLDialogElement !== 'undefined' && !HTMLDialogElement.prototype.showModal) {
   HTMLDialogElement.prototype.showModal = vi.fn(function () { this.open = true })
@@ -98,8 +101,116 @@ describe('detalle de viaje operativo', () => {
 
     expect(wrapper.text()).toContain('El recorrido terminó el 11/11/2026 pero el viaje sigue En curso')
     expect(wrapper.get('input[name="fecha_regreso_real"]').attributes('value')).toBe('2026-11-11')
-    expect(wrapper.get('input[name="km_regreso"]').attributes('value')).toBe('148900')
+    expect(wrapper.get('input[name="km_regreso"]').element.value).toBe('148900')
     expect(wrapper.text()).toContain('Regreso estimado (último tramo)')
+    wrapper.unmount()
+  })
+
+  const closingTrip = (overrides = {}) => ({
+    ...data,
+    canStart: false,
+    canCancel: false,
+    canClose: true,
+    canEdit: true,
+    links: { ...data.links, finish: '/mantenimiento/viajes/operativos/42/cerrar' },
+    totals: { has_legs: true, fuel_liters: 2012, expense_amount_ars: 160900, fuel_without_price: 0 },
+    consumption: { km: null, liters_per_100: null, source: null, typical_range: { min: 20, max: 60 } },
+    km_cierre_sugerido: 1732150,
+    km_cierre_sugerencia: { km: 1732150, source: 'TELEMETRIA', observed_at: '2026-11-17 19:40:00', provider: 'AUTOTRAC' },
+    trip: { ...data.trip, numero: 21, estado: 'EN_CURSO', estado_label: 'En curso', fecha_salida_real: '2026-10-30 08:00:00', km_salida: 1727000 },
+    ...overrides,
+  })
+
+  it('sugiere el odómetro de regreso desde la telemetría y muestra el consumo antes de cerrar', () => {
+    const wrapper = mount(TripOperationsDetailPage, { props: { data: closingTrip() } })
+
+    expect(wrapper.get('[data-testid="close-km-regreso"]').element.value).toBe('1732150')
+    expect(wrapper.get('[data-testid="close-km-hint"]').text()).toContain('Lectura de telemetría (AUTOTRAC) del 17/11/2026 19:40')
+    expect(wrapper.get('[data-testid="close-preview"]').text()).toContain('5.150 km')
+    expect(wrapper.get('[data-testid="close-consumption"]').text()).toBe('39,1 L/100 km')
+    expect(wrapper.find('[data-testid="close-consumption-warning"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('avisa cuando el consumo que va a quedar está fuera de lo normal', async () => {
+    const wrapper = mount(TripOperationsDetailPage, { props: { data: closingTrip() } })
+
+    await wrapper.get('[data-testid="close-km-regreso"]').setValue('1729288')
+
+    expect(wrapper.get('[data-testid="close-consumption"]').text()).toBe('87,9 L/100 km')
+    expect(wrapper.get('[data-testid="close-consumption-warning"]').text()).toContain('más de lo normal')
+    wrapper.unmount()
+  })
+
+  it('avisa si el odómetro de regreso no supera al de salida', async () => {
+    const wrapper = mount(TripOperationsDetailPage, { props: { data: closingTrip() } })
+
+    await wrapper.get('[data-testid="close-km-regreso"]').setValue('1726000')
+
+    expect(wrapper.get('[data-testid="close-consumption-warning"]').text()).toContain('mayor que el de salida')
+    wrapper.unmount()
+  })
+
+  it('sin telemetría aclara que es la última lectura conocida del equipo', () => {
+    const wrapper = mount(TripOperationsDetailPage, {
+      props: { data: closingTrip({ km_cierre_sugerencia: { km: 1732150, source: 'EQUIPO', observed_at: null, provider: null } }) },
+    })
+
+    expect(wrapper.get('[data-testid="close-km-hint"]').text()).toContain('Última lectura conocida del equipo')
+    wrapper.unmount()
+  })
+
+  it('pide confirmación con el diálogo del sistema y no envía si se cancela', async () => {
+    alertsConfirm.mockReset().mockResolvedValue(false)
+    const wrapper = mount(TripOperationsDetailPage, { props: { data: closingTrip() } })
+    const form = wrapper.get('[data-testid="close-trip-form"]').element
+    form.requestSubmit = vi.fn()
+
+    const event = new Event('submit', { cancelable: true })
+    form.dispatchEvent(event)
+    await flushPromises()
+
+    expect(event.defaultPrevented).toBe(true)
+    expect(alertsConfirm).toHaveBeenCalledOnce()
+    const options = alertsConfirm.mock.calls[0][0]
+    expect(options.title).toBe('¿Cerrar el viaje #21?')
+    expect(options.html).toContain('ya no se va a poder editar')
+    expect(options.html).toContain('39,1 L/100 km')
+    expect(options.button).toBe('Cerrar viaje')
+    expect(form.requestSubmit).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('envía el cierre cuando se confirma', async () => {
+    alertsConfirm.mockReset().mockResolvedValue(true)
+    const wrapper = mount(TripOperationsDetailPage, { props: { data: closingTrip() } })
+    const form = wrapper.get('[data-testid="close-trip-form"]').element
+    form.requestSubmit = vi.fn()
+
+    form.dispatchEvent(new Event('submit', { cancelable: true }))
+    await flushPromises()
+
+    expect(form.requestSubmit).toHaveBeenCalledOnce()
+    wrapper.unmount()
+  })
+
+  it('no deja cerrar si el odómetro de regreso no supera al de salida', async () => {
+    alertsConfirm.mockReset().mockResolvedValue(true)
+    const wrapper = mount(TripOperationsDetailPage, { props: { data: closingTrip() } })
+    await wrapper.get('[data-testid="close-km-regreso"]').setValue('480321')
+
+    expect(wrapper.get('[data-testid="close-km-recorridos"]').text()).toBe('—')
+    expect(wrapper.get('[data-testid="close-submit"]').attributes('disabled')).toBeDefined()
+
+    const form = wrapper.get('[data-testid="close-trip-form"]').element
+    form.requestSubmit = vi.fn()
+    const event = new Event('submit', { cancelable: true })
+    form.dispatchEvent(event)
+    await flushPromises()
+
+    expect(event.defaultPrevented).toBe(true)
+    expect(alertsConfirm).not.toHaveBeenCalled()
+    expect(form.requestSubmit).not.toHaveBeenCalled()
     wrapper.unmount()
   })
 
@@ -114,11 +225,26 @@ describe('detalle de viaje operativo', () => {
       },
     })
 
-    expect(wrapper.get('a[href="/mantenimiento/viajes/operativos/42/resumen.pdf"]').text()).toContain('Descargar resumen PDF')
+    expect(wrapper.get('a[href="/mantenimiento/viajes/operativos/42/resumen.pdf"]').text()).toContain('Resumen del viaje (PDF)')
     wrapper.unmount()
   })
 
-  it('no ofrece descargar el resumen PDF antes del cierre', () => {
+  it('ofrece el resumen PDF como borrador mientras el viaje está en curso', () => {
+    const wrapper = mount(TripOperationsDetailPage, {
+      props: {
+        data: {
+          ...data,
+          links: { ...data.links, summaryPdf: '/mantenimiento/viajes/operativos/42/resumen.pdf' },
+          trip: { ...data.trip, estado: 'EN_CURSO', estado_label: 'En curso' },
+        },
+      },
+    })
+
+    expect(wrapper.get('[data-testid="trip-summary-pdf-link"]').text()).toContain('Resumen del viaje (borrador)')
+    wrapper.unmount()
+  })
+
+  it('no ofrece el resumen PDF mientras el viaje está planificado', () => {
     const wrapper = mount(TripOperationsDetailPage, {
       props: {
         data: {
@@ -283,6 +409,45 @@ describe('detalle de viaje operativo', () => {
     await fuelButton.trigger('click')
     await nextTick()
     expect(wrapper.find('select[name="tramo_id"]').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('avisa los gastos de empresa que no descuentan el adelanto y propone caja del chofer', async () => {
+    const wrapper = mount(TripOperationsDetailPage, {
+      props: {
+        data: {
+          ...data,
+          canStart: false,
+          canCancel: false,
+          canRegisterCosts: true,
+          links: {
+            ...data.links,
+            expense: '/mantenimiento/viajes/operativos/42/gastos',
+            reattributeExpenses: '/mantenimiento/viajes/operativos/42/gastos/reatribuir-caja',
+          },
+          expenses: [{
+            id: 1, fecha: '2026-11-19 11:58:00', importe: 94900, moneda: 'ARS', importe_ars: 94900,
+            categoria: 'Peaje', concepto_catalogo: null, cantidad: 1, medio_pago: 'Efectivo',
+            pagado_de_caja: false, pagado_por: 'EMPRESA', comprobante: null, observaciones: null,
+          }],
+          cashMovements: [
+            { id: 1, tipo: 'ANTICIPO', fecha: '2026-11-19 12:01:00', importe: 100000, moneda: 'ARS', importe_ars: 100000, observaciones: null },
+          ],
+          options: { expenseCategories: [], paymentMethods: [], currencies: [{ code: 'ARS', label: 'Peso argentino' }] },
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain('ARS 94.900,00')
+    expect(wrapper.text()).toContain('no descuentan el adelanto')
+    expect(wrapper.get('form[action="/mantenimiento/viajes/operativos/42/gastos/reatribuir-caja"]').exists()).toBe(true)
+
+    const expenseButton = wrapper.findAll('button').find((button) => button.text().includes('Cargar gasto'))
+    await expenseButton.trigger('click')
+    await nextTick()
+
+    expect(wrapper.get('select[name="pagado_por"]').element.value).toBe('CAJA')
+    expect(wrapper.text()).toContain('ARS 100.000,00 de adelantos')
     wrapper.unmount()
   })
 

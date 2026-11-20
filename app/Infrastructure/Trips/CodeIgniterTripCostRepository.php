@@ -110,6 +110,34 @@ final class CodeIgniterTripCostRepository implements TripCostRepository
         return $this->softDeleteMovement('viaje_operativo_gastos', 'GASTO', $tripId, $companyId, $movementId, $actorUserId);
     }
 
+    public function reattributeCompanyExpensesToCash(int $tripId, int $companyId, int $actorUserId): int
+    {
+        $rows = $this->database->table('viaje_operativo_gastos')
+            ->select('id')
+            ->where('empresa_id', $companyId)
+            ->where('viaje_id', $tripId)
+            ->where('deleted_at', null)
+            ->groupStart()
+                ->where('pagado_por', 'EMPRESA')
+                ->orWhere('pagado_por', null)
+                ->orWhere('pagado_por', '')
+            ->groupEnd()
+            ->get()->getResultArray();
+
+        $reattributed = 0;
+        foreach ($rows as $row) {
+            $movementId = (int) $row['id'];
+            if ($this->updateMovement('viaje_operativo_gastos', 'GASTO', $tripId, $companyId, $movementId, $actorUserId, [
+                'pagado_de_caja' => 1,
+                'pagado_por' => 'CAJA',
+            ])) {
+                $reattributed++;
+            }
+        }
+
+        return $reattributed;
+    }
+
     public function softDeleteCashMovement(int $tripId, int $companyId, int $movementId, int $actorUserId): bool
     {
         return $this->softDeleteMovement('viaje_operativo_caja_movimientos', 'CAJA', $tripId, $companyId, $movementId, $actorUserId);

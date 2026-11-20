@@ -17,6 +17,7 @@ use App\Application\Trips\RegisterTripFuel;
 use App\Application\Trips\RegisterTripFuelCommand;
 use App\Application\Trips\RegisterTripOtherEarning;
 use App\Application\Trips\RegisterTripOtherEarningCommand;
+use App\Application\Trips\ReattributeTripExpensesToCash;
 use App\Application\Trips\DeleteOperationalTripCost;
 use App\Application\Trips\DeleteOperationalTripCostCommand;
 use App\Application\Trips\UpdateTripOtherEarning;
@@ -430,6 +431,35 @@ final class RegisterTripCostsTest extends TestCase
         ));
     }
 
+    public function testReattributesCompanyExpensesToCashForOpenTrip(): void
+    {
+        $costs = new CostRepositoryFake();
+        $costs->reattributedToCash = 2;
+        $handler = new ReattributeTripExpensesToCash(
+            new CostTripRepositoryFake($this->trip()),
+            $costs,
+            new CostUnitOfWorkFake(),
+        );
+
+        $count = $handler->execute($this->actor(['viajes.operar']), 55);
+
+        self::assertSame(2, $count);
+        self::assertSame(55, $costs->tripId);
+        self::assertSame(5, $costs->companyId);
+    }
+
+    public function testRejectsReattributingExpensesWithoutOperatePermission(): void
+    {
+        $handler = new ReattributeTripExpensesToCash(
+            new CostTripRepositoryFake($this->trip()),
+            new CostRepositoryFake(),
+            new CostUnitOfWorkFake(),
+        );
+
+        $this->expectException(DomainException::class);
+        $handler->execute($this->actor(['viajes.ver']), 55);
+    }
+
     /** @param list<string> $permissions */
     private function actor(array $permissions): ActorContext
     {
@@ -525,6 +555,7 @@ final class CostRepositoryFake implements TripCostRepository
     public int $tripId = 0;
     public int $companyId = 0;
     public int $branchId = 0;
+    public int $reattributedToCash = 0;
 
     public function addFuel(int $tripId, int $companyId, int $branchId, TripFuelLoad $load, int $actorUserId, ?int $legId = null): int
     {
@@ -577,6 +608,14 @@ final class CostRepositoryFake implements TripCostRepository
     public function softDeleteFuel(int $tripId, int $companyId, int $movementId, int $actorUserId): bool { return true; }
     public function softDeleteExpense(int $tripId, int $companyId, int $movementId, int $actorUserId): bool { return true; }
     public function softDeleteCashMovement(int $tripId, int $companyId, int $movementId, int $actorUserId): bool { return true; }
+
+    public function reattributeCompanyExpensesToCash(int $tripId, int $companyId, int $actorUserId): int
+    {
+        $this->tripId = $tripId;
+        $this->companyId = $companyId;
+
+        return $this->reattributedToCash;
+    }
 
     public function addOtherEarning(int $tripId, int $companyId, int $branchId, TripOtherEarning $earning, int $actorUserId, ?int $logbookEntryId = null): int
     {
