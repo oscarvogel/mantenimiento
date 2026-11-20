@@ -183,3 +183,44 @@
     animation: none;
   }
 }
+
+/* Resumen de datos dentro de una confirmación (p. ej. cerrar viaje). */
+.swal2-html-container.ui-swal-html .ui-swal-summary {
+  display: grid;
+  gap: 0.375rem;
+  margin: 0.875rem 0 0;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid rgb(var(--border));
+  border-radius: 0.5rem;
+  background: rgb(var(--surface));
+  text-align: left;
+}
+
+.swal2-html-container.ui-swal-html .ui-swal-summary > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.875rem;
+}
+
+.swal2-html-container.ui-swal-html .ui-swal-summary dt {
+  color: rgb(var(--ink-muted));
+}
+
+.swal2-html-container.ui-swal-html .ui-swal-summary dd {
+  margin: 0;
+  color: rgb(var(--ink-strong));
+  font-weight: 600;
+  text-align: right;
+}
+
+.swal2-html-container.ui-swal-html .ui-swal-warning {
+  margin: 0.75rem 0 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  background: rgb(var(--danger-subtle));
+  color: rgb(var(--danger-strong));
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-align: left;
+}

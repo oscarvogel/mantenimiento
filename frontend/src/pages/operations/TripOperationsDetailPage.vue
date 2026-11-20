@@ -7,6 +7,7 @@ import AutocompleteSelect from './components/AutocompleteSelect.vue'
 import LocalityCreateModal from './components/LocalityCreateModal.vue'
 import TripLegLiquidationBasisFields from './components/TripLegLiquidationBasisFields.vue'
 import { fieldClass, primaryButton, secondaryButton, dangerButton, nowLocal } from './helpers.js'
+import { useAlerts } from '../../composables/useAlerts.js'
 import {
   effectiveLiquidationRate,
   emptyLiquidationBasis,
@@ -89,15 +90,35 @@ const closePreview = computed(() => {
   }
   return { km, litersPer100, kmPerLiter, warning }
 })
-const confirmClose = (event) => {
+// Un regreso que no supera la salida no es un cierre posible: se bloquea en
+// la pantalla, además de la regla del dominio que lo rechaza al guardar.
+const closeKmInvalid = computed(() => closePreview.value.km !== null && closePreview.value.km <= 0)
+const alerts = useAlerts()
+const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char])
+let closeConfirmed = false
+const confirmClose = async (event) => {
+  if (closeConfirmed) return
+  event.preventDefault()
+  if (closeBlocked.value || closeKmInvalid.value) return
+  const form = event.currentTarget ?? event.target
   const preview = closePreview.value
-  const lines = [`¿Cerrar el viaje #${trip.value.numero}?`, '', 'Va a quedar Finalizado y ya no se va a poder editar.']
-  if (preview.km !== null && preview.km > 0) {
-    lines.push('', `Km recorridos: ${number(preview.km)}`)
-    if (preview.litersPer100 !== null) lines.push(`Consumo: ${preview.litersPer100.toLocaleString('es-AR')} L/100 km (${preview.kmPerLiter.toLocaleString('es-AR')} km/L)`)
-  }
-  if (preview.warning) lines.push('', `Atención: ${preview.warning}`)
-  if (!window.confirm(lines.join('\n'))) event.preventDefault()
+  const rows = []
+  if (preview.km !== null) rows.push(['Km recorridos', `${number(preview.km)} km`])
+  if (preview.litersPer100 !== null) rows.push(['Consumo', `${preview.litersPer100.toLocaleString('es-AR')} L/100 km · ${preview.kmPerLiter.toLocaleString('es-AR')} km/L`])
+  const table = rows.length
+    ? `<dl class="ui-swal-summary">${rows.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join('')}</dl>`
+    : ''
+  const warning = preview.warning ? `<p class="ui-swal-warning">${escapeHtml(preview.warning)}</p>` : ''
+  const confirmed = await alerts.confirm({
+    title: `¿Cerrar el viaje #${trip.value.numero}?`,
+    html: `<p>Va a quedar <strong>Finalizado</strong> y ya no se va a poder editar.</p>${table}${warning}`,
+    button: 'Cerrar viaje',
+    cancel: 'Seguir revisando',
+    icon: preview.warning ? 'warning' : 'question',
+  })
+  if (!confirmed) return
+  closeConfirmed = true
+  form.requestSubmit ? form.requestSubmit() : form.submit()
 }
 const currencies = computed(() => options.value.currencies?.length ? options.value.currencies : [{ code: 'ARS', label: 'Peso argentino' }])
 const customerOptions = computed(() => (options.value.customers ?? []).map((customer) => ({ value: customer.id, label: customer.label, hint: customer.code ? `Código ${customer.code}` : '' })))
@@ -898,13 +919,13 @@ const facts = computed(() => {
             </label>
             <label class="block">
               <span class="mb-1.5 block text-sm font-semibold text-ink">Odómetro de regreso</span>
-              <input v-model="kmRegresoDraft" type="number" name="km_regreso" min="0" step="1" required :min="trip.km_salida ?? 0" :class="fieldClass" data-testid="close-km-regreso" />
+              <input v-model="kmRegresoDraft" type="number" name="km_regreso" step="1" required :min="trip.km_salida ?? 0" :class="fieldClass" data-testid="close-km-regreso" />
               <span v-if="kmCierreHint" class="mt-1 block text-xs text-ink-muted" data-testid="close-km-hint">{{ kmCierreHint }}</span>
             </label>
           </div>
           <div class="mt-3 grid gap-2 rounded-lg border border-border-subtle bg-surface-raised px-3 py-2 text-sm sm:grid-cols-4" data-testid="close-preview">
             <div><p class="text-xs text-ink-muted">Odómetro de salida</p><p class="font-semibold text-ink">{{ trip.km_salida === null || trip.km_salida === undefined ? '—' : `${number(trip.km_salida)} km` }}</p><button v-if="canEdit" type="button" class="text-xs font-semibold text-primary hover:underline" @click="openTripEdit">Corregir</button></div>
-            <div><p class="text-xs text-ink-muted">Km recorridos</p><p class="font-semibold text-ink">{{ closePreview.km === null ? '—' : `${number(closePreview.km)} km` }}</p></div>
+            <div><p class="text-xs text-ink-muted">Km recorridos</p><p class="font-semibold text-ink" data-testid="close-km-recorridos">{{ closePreview.km === null || closePreview.km <= 0 ? '—' : `${number(closePreview.km)} km` }}</p></div>
             <div><p class="text-xs text-ink-muted">Litros del viaje</p><p class="font-semibold text-ink">{{ liters(totals.fuel_liters) }}</p></div>
             <div><p class="text-xs text-ink-muted">Consumo</p><p class="font-semibold text-ink" data-testid="close-consumption">{{ closePreview.litersPer100 === null ? '—' : `${closePreview.litersPer100.toLocaleString('es-AR')} L/100 km` }}</p><p v-if="closePreview.kmPerLiter !== null" class="text-xs text-ink-muted">{{ closePreview.kmPerLiter.toLocaleString('es-AR') }} km/L</p></div>
           </div>
@@ -917,7 +938,7 @@ const facts = computed(() => {
             <p class="mt-1">Podés cerrar igual, pero revisá que corresponda.</p>
           </div>
           <p v-if="closeBlocked" class="mt-3 rounded-lg border border-danger/30 bg-danger-subtle px-3 py-2 text-xs font-semibold text-danger-strong">{{ closeBlockMessage }}</p>
-          <button type="submit" :disabled="closeBlocked" :class="[primaryButton, 'mt-3', closeBlocked ? 'cursor-not-allowed opacity-50' : '']">Cerrar y generar lectura</button>
+          <button type="submit" :disabled="closeBlocked || closeKmInvalid" :class="[primaryButton, 'mt-3', closeBlocked || closeKmInvalid ? 'cursor-not-allowed opacity-50' : '']" data-testid="close-submit">Cerrar y generar lectura</button>
         </form>
 
         <form v-if="data.canCancel" method="post" :action="`${data.links?.detail ?? ''}/cancelar`" class="rounded-xl border border-danger/30 bg-danger-subtle/40 p-4">

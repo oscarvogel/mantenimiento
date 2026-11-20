@@ -1,8 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import TripOperationsDetailPage from '../../src/pages/operations/TripOperationsDetailPage.vue'
 import AutocompleteSelect from '../../src/pages/operations/components/AutocompleteSelect.vue'
+
+const alertsConfirm = vi.hoisted(() => vi.fn())
+vi.mock('../../src/composables/useAlerts.js', () => ({ useAlerts: () => ({ confirm: alertsConfirm }) }))
 
 if (typeof HTMLDialogElement !== 'undefined' && !HTMLDialogElement.prototype.showModal) {
   HTMLDialogElement.prototype.showModal = vi.fn(function () { this.open = true })
@@ -157,30 +160,57 @@ describe('detalle de viaje operativo', () => {
     wrapper.unmount()
   })
 
-  it('pide confirmación antes de cerrar y no envía si se cancela', async () => {
-    const confirm = vi.fn(() => false)
-    vi.stubGlobal('confirm', confirm)
+  it('pide confirmación con el diálogo del sistema y no envía si se cancela', async () => {
+    alertsConfirm.mockReset().mockResolvedValue(false)
     const wrapper = mount(TripOperationsDetailPage, { props: { data: closingTrip() } })
+    const form = wrapper.get('[data-testid="close-trip-form"]').element
+    form.requestSubmit = vi.fn()
 
     const event = new Event('submit', { cancelable: true })
-    wrapper.get('[data-testid="close-trip-form"]').element.dispatchEvent(event)
+    form.dispatchEvent(event)
+    await flushPromises()
 
-    expect(confirm).toHaveBeenCalledOnce()
-    expect(confirm.mock.calls[0][0]).toContain('¿Cerrar el viaje #21?')
-    expect(confirm.mock.calls[0][0]).toContain('ya no se va a poder editar')
-    expect(confirm.mock.calls[0][0]).toContain('Consumo: 39,1 L/100 km')
     expect(event.defaultPrevented).toBe(true)
+    expect(alertsConfirm).toHaveBeenCalledOnce()
+    const options = alertsConfirm.mock.calls[0][0]
+    expect(options.title).toBe('¿Cerrar el viaje #21?')
+    expect(options.html).toContain('ya no se va a poder editar')
+    expect(options.html).toContain('39,1 L/100 km')
+    expect(options.button).toBe('Cerrar viaje')
+    expect(form.requestSubmit).not.toHaveBeenCalled()
     wrapper.unmount()
   })
 
-  it('envía el cierre cuando se confirma', () => {
-    vi.stubGlobal('confirm', vi.fn(() => true))
+  it('envía el cierre cuando se confirma', async () => {
+    alertsConfirm.mockReset().mockResolvedValue(true)
     const wrapper = mount(TripOperationsDetailPage, { props: { data: closingTrip() } })
+    const form = wrapper.get('[data-testid="close-trip-form"]').element
+    form.requestSubmit = vi.fn()
 
+    form.dispatchEvent(new Event('submit', { cancelable: true }))
+    await flushPromises()
+
+    expect(form.requestSubmit).toHaveBeenCalledOnce()
+    wrapper.unmount()
+  })
+
+  it('no deja cerrar si el odómetro de regreso no supera al de salida', async () => {
+    alertsConfirm.mockReset().mockResolvedValue(true)
+    const wrapper = mount(TripOperationsDetailPage, { props: { data: closingTrip() } })
+    await wrapper.get('[data-testid="close-km-regreso"]').setValue('480321')
+
+    expect(wrapper.get('[data-testid="close-km-recorridos"]').text()).toBe('—')
+    expect(wrapper.get('[data-testid="close-submit"]').attributes('disabled')).toBeDefined()
+
+    const form = wrapper.get('[data-testid="close-trip-form"]').element
+    form.requestSubmit = vi.fn()
     const event = new Event('submit', { cancelable: true })
-    wrapper.get('[data-testid="close-trip-form"]').element.dispatchEvent(event)
+    form.dispatchEvent(event)
+    await flushPromises()
 
-    expect(event.defaultPrevented).toBe(false)
+    expect(event.defaultPrevented).toBe(true)
+    expect(alertsConfirm).not.toHaveBeenCalled()
+    expect(form.requestSubmit).not.toHaveBeenCalled()
     wrapper.unmount()
   })
 
