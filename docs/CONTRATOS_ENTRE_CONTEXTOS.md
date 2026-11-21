@@ -52,6 +52,8 @@ seguir.
 | Tools del chatbot | `ToolRegistry` | `app/Application/Chatbot/Port/ToolRegistry.php` | Chatbot | **Ya existía. Implementado.** |
 | — (nuevo, #530) | `BillableLegLookup` | `app/Application/CustomerAccounts/Port/BillableLegLookup.php` | Viajes (lectura) | **Implementado.** Cuenta corriente lee tramo, cliente, flete estimado y estado del viaje; bloquea el tramo al formalizar. No escribe en Viajes. |
 | — (nuevo) | `ViajesDeclaradosReader` | `app/Application/Telematic/Port/ViajesDeclaradosReader.php` | Viajes (lectura) | **Implementado.** Telemetría lee los viajes en curso y finalizados con su tractor y los litros declarados por el chofer, para conciliarlos con el sensor del tanque. No escribe en Viajes. |
+| — (nuevo) | `LecturaKmVigenteReader` | `app/Application/PreventiveMaintenance/Port/LecturaKmVigenteReader.php` | Medición (lectura) | **Implementado.** Preventivo lee la lectura que define el odómetro actual y su fecha, para anclar el GPS. No escribe lecturas. |
+| — (nuevo) | `OdometroGpsReader` | `app/Application/PreventiveMaintenance/Port/OdometroGpsReader.php` | Telemetría (lectura) | **Implementado.** Preventivo lee el odómetro del GPS para estimar el km actual y anticipar el service. |
 
 ---
 
@@ -254,6 +256,39 @@ cargas vigentes (sin `deleted_at`) y el tractor es la primera asignación `TRACT
 consulta del adaptador lleva `empresa_id`, también las de asignaciones, combustible y equipos.
 `$sucursalIds` en null son todas las de la empresa; una lista vacía no devuelve nada. Un viaje
 con regreso anterior a la salida queda afuera: Viajes lo conserva para revisión (regla 20).
+
+### 4.13 `LecturaKmVigenteReader` — responde Medición, lo consume Preventivo
+
+```php
+interface LecturaKmVigenteReader
+{
+    /** @param list<int> $equipoIds @return array<int, LecturaKmVigente> */
+    public function vigentes(int $empresaId, array $equipoIds): array;
+}
+```
+
+Puerto del consumidor: vive en `Application/PreventiveMaintenance/Port` porque el service
+estimado por GPS es de Preventivo, y el adaptador `App\Infrastructure\Measurement\CodeIgniterLecturaKmVigenteReader`
+es de Medición. La lectura vigente es la más reciente no anulada cuyo km es el odómetro actual
+del equipo: una lectura histórica de viaje, que no mueve el odómetro, no cuenta. Un equipo sin
+una lectura que respalde su odómetro (por ejemplo, cargado por importación) no aparece. La
+consulta lleva `empresa_id` en las dos tablas.
+
+### 4.14 `OdometroGpsReader` — responde Telemetría, lo consume Preventivo
+
+```php
+interface OdometroGpsReader
+{
+    /** @return list<OdometroGps> */
+    public function odometros(int $empresaId, int $equipoId, DateTimeImmutable $desde, DateTimeImmutable $hasta): array;
+}
+```
+
+Puerto del consumidor en `Application/PreventiveMaintenance/Port`; el adaptador
+`App\Infrastructure\Telematic\SerieOdometroGpsReader` lee `SerieMuestrasReader` (muestras y
+buckets, recortados por empresa) y devuelve solo el odómetro. No interpreta: anclar el GPS a la
+lectura y validar la diferencia es regla de Preventivo (`EstimacionKmGps`). El odómetro del GPS
+tiene otra base que el del camión, por eso Preventivo solo usa diferencias.
 
 ## 5. Lo que falta implementar
 

@@ -1010,6 +1010,27 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
         );
     }
 
+    /**
+     * Services estimados por GPS: el próximo service de cada plan por km con
+     * los km que sumó el GPS desde la última lectura. La lectura vigente la
+     * responde Medición y el odómetro del GPS, Telemetría.
+     */
+    public static function servicesEstimadosPorGps(bool $getShared = true): \App\Application\PreventiveMaintenance\GetServicesEstimadosPorGps
+    {
+        if ($getShared) {
+            return static::getSharedInstance('servicesEstimadosPorGps');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\PreventiveMaintenance\GetServicesEstimadosPorGps(
+            new CodeIgniterPreventivePlanReadModel($db),
+            new \App\Infrastructure\Measurement\CodeIgniterLecturaKmVigenteReader($db),
+            new \App\Infrastructure\Telematic\SerieOdometroGpsReader(static::serieMuestras(false)),
+            new SystemClock(),
+        );
+    }
+
     public static function reporteConsumoFlota(bool $getShared = true): \App\Application\Telematic\GetReporteConsumoFlota
     {
         if ($getShared) {
