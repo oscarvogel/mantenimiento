@@ -116,6 +116,23 @@ Desplegado el 21/11/2026 de `cf750421` a `e58a163e` (merge de #554): incluye #55
   vencidos. 1,7 s.
 - Sin desborde horizontal.
 
+## Gráficos (#556)
+
+La primera versión de la pantalla trajo solo tarjetas y tablas; el dashboard de análisis del 20/11 tenía gráficos. Se
+sumaron, con los datos en vivo de cada pestaña y sin tocar el backend:
+
+- **Uso:** línea de tiempo del período con los cortes del proveedor (tooltip por corte) y rankings por camión de km,
+  motor encendido detenido y excesos. Los camiones sin dato se listan aparte, nunca como cero.
+- **Combustible:** barra apilada con el resultado de la conciliación.
+- **Services:** km al próximo service alrededor del cero, con el color del estado del plan. La escala sale del mayor
+  valor normal: un odómetro corrupto (ITV9J84 en staging, millones de km) se recorta con aviso en lugar de achicar al
+  resto. Se detectó en la revisión visual en staging.
+
+Desplegado en producción de `e58a163e` a `90a69bb5`: 32 archivos, solo el build del dashboard; sin migraciones ni PHP.
+Smoke tests OK y manifest más bundles remotos iguales a `main`. Con sesión de Administrador: los dos cortes de Obersat
+en la línea de tiempo, BEN4G47 primero en excesos (15), los tres Autotrac sin odómetro listados aparte y AC532DD
+vencido por 2.521 km según el GPS.
+
 ## Pendiente
 
 - Corregir el desfase propio de cada GPS en los services estimados.
