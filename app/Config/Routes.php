@@ -368,6 +368,9 @@ $routes->group('gerencial/costo-teorico-km', ['filter' => ['auth', 'permission:g
     $routes->get('escenarios/(:num)/versiones/(:num)/excel', 'TheoreticalCosts::export/$1/$2');
 });
 
+// Tablero de flota: solo lectura. Cada pestaña es un GET con sus filtros.
+$routes->get('gerencial/flota', 'FleetBoard::index', ['filter' => ['auth', 'permission:gerencial.flota.ver']]);
+
 $routes->group('', ['filter' => ['auth', 'permission:notificaciones.ver']], static function ($routes): void {
     $routes->get('notificaciones', 'Notifications::index');
     $routes->get('notificaciones/resumen', 'Notifications::summary');

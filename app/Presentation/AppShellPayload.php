@@ -56,30 +56,31 @@ final readonly class AppShellPayload
                     ? $this->item('trip-masters', 'Maestros', 'viajes/maestros', 'clipboard-list', $active)
                     : null,
             ])),
-            'theoretical-cost-km' => $actor->hasPermission('gerencial.costo_km.ver')
-                ? [$this->item('managerial-cost-km', 'Costo teórico por km', 'gerencial/costo-teorico-km', 'chart', 'managerial-cost-km')]
-                : [],
+            'theoretical-cost-km', 'fleet-board' => $this->managementNavigation($actor, $active),
             default => [$this->item('dashboard', 'Dashboard', 'dashboard', 'dashboard', $active)],
         };
         $payload['moduleNavigation'] = $active === 'command-center'
             ? []
             : $this->platformNavigation($actor, $availableModules, match ($active) {
-                'theoretical-cost-km' => 'management',
+                'theoretical-cost-km', 'fleet-board' => 'management',
                 'automations' => 'automations',
                 'trip-masters', 'trips-dashboard', 'trips-operations-dashboard', 'trips-operations', 'trip-operations-create', 'trip-operations-detail', 'trips-fuel-pending', 'trips-profitability', 'trips-commercial-closing', 'customer-accounts', 'customer-account-detail' => 'trips',
                 default => 'maintenance',
             });
         $isTripPage = in_array($active, ['trip-masters', 'trips-dashboard', 'trips-operations-dashboard', 'trips-operations', 'trip-operations-create', 'trip-operations-detail', 'trips-fuel-pending', 'trips-profitability', 'trips-commercial-closing', 'customer-accounts', 'customer-account-detail'], true);
-        if ($active !== 'command-center' && $active !== 'theoretical-cost-km' && ! $isTripPage && $actor->isSuperAdmin()) {
+        if ($active !== 'command-center' && ! in_array($active, ['theoretical-cost-km', 'fleet-board'], true) && ! $isTripPage && $actor->isSuperAdmin()) {
             $navigation[] = $this->item('superadmin', 'Administración global', 'superadmin', 'building', $active);
             $navigation[] = $this->item('whatsapp-digest-preview', 'Previsualizar resumen WhatsApp', 'superadmin/whatsapp/resumen-diario', 'notifications', $active);
             $navigation[] = $this->item('telemetry-samples', 'Datos de telemetría', 'superadmin/telemetria/muestras', 'audit', $active);
             $navigation[] = $this->item('notification-settings', 'Configuración de notificaciones', 'superadmin/configuracion/notificaciones', 'notifications', $active);
             $navigation[] = $this->item('chatbot-audit', 'Auditoría del chatbot', 'superadmin?section=chat-audit', 'audit', $active);
             $navigation[] = $this->item('audit-changes', 'Auditoría de cambios', 'superadmin?section=audit-changes', 'audit', $active);
-        } elseif ($active !== 'command-center' && $active !== 'theoretical-cost-km' && ! $isTripPage) {
+        } elseif ($active !== 'command-center' && ! in_array($active, ['theoretical-cost-km', 'fleet-board'], true) && ! $isTripPage) {
             if ($actor->hasPermission('gerencial.costo_km.ver')) {
                 $navigation[] = $this->item('theoretical-cost-km', 'Costo teórico por km', 'gerencial/costo-teorico-km', 'chart', $active);
+            }
+            if ($actor->hasPermission('gerencial.flota.ver')) {
+                $navigation[] = $this->item('fleet-board', 'Tablero de flota', 'gerencial/flota', 'chart', $active);
             }
             if ($actor->hasPermission('equipos.ver')) {
                 $navigation[] = $this->item('equipment', 'Equipos', 'mantenimiento/equipos', 'truck', $active);
@@ -165,6 +166,30 @@ final readonly class AppShellPayload
         ];
 
         return $payload;
+    }
+
+    /**
+     * Navegación propia del módulo Gerencial. Las claves empiezan con
+     * `managerial-`: el sidebar las usa para mostrar el módulo como Gerencial.
+     *
+     * @return list<array<string,mixed>>
+     */
+    private function managementNavigation(ActorContext $actor, string $active): array
+    {
+        $current = match ($active) {
+            'theoretical-cost-km' => 'managerial-cost-km',
+            'fleet-board' => 'managerial-fleet-board',
+            default => $active,
+        };
+
+        return array_values(array_filter([
+            $actor->hasPermission('gerencial.costo_km.ver')
+                ? $this->item('managerial-cost-km', 'Costo teórico por km', 'gerencial/costo-teorico-km', 'chart', $current)
+                : null,
+            $actor->hasPermission('gerencial.flota.ver')
+                ? $this->item('managerial-fleet-board', 'Tablero de flota', 'gerencial/flota', 'truck', $current)
+                : null,
+        ]));
     }
 
     /** @return array<string,mixed> */

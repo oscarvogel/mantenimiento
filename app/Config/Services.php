@@ -1031,6 +1031,24 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
         );
     }
 
+    /**
+     * Tablero de flota de Gerencial: coordina uso de la flota, conciliación de
+     * combustible y services estimados, y calcula solo la pestaña activa.
+     */
+    public static function tableroFlota(bool $getShared = true): \App\Application\Gerencial\GetTableroFlota
+    {
+        if ($getShared) {
+            return static::getSharedInstance('tableroFlota');
+        }
+
+        return new \App\Application\Gerencial\GetTableroFlota(
+            static::usoFlota(false),
+            static::conciliacionCombustible(false),
+            static::servicesEstimadosPorGps(false),
+            new \App\Infrastructure\Telematic\CodeIgniterFleetTelemetryBoardReader(db_connect()),
+        );
+    }
+
     public static function reporteConsumoFlota(bool $getShared = true): \App\Application\Telematic\GetReporteConsumoFlota
     {
         if ($getShared) {

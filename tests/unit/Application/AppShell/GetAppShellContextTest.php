@@ -301,6 +301,33 @@ final class GetAppShellContextTest extends TestCase
         self::assertTrue($managementModule[0]['active']);
     }
 
+    public function testFleetBoardSharesTheManagerialNavigationWithTheTheoreticalCost(): void
+    {
+        $context = new GetAppShellContext(new AppShellReadModelFake());
+        $actor = new ActorContext(7, 5, false, false, ['Gerencial'], ['gerencial.costo_km.ver', 'gerencial.flota.ver'], [9]);
+
+        $payload = (new AppShellPayload($context, new GetPlatformModuleCatalog()))->for($actor, 'fleet-board');
+
+        self::assertSame(['managerial-cost-km', 'managerial-fleet-board'], array_column($payload['navigation'], 'key'));
+        self::assertSame([false, true], array_column($payload['navigation'], 'active'));
+        self::assertStringEndsWith('/gerencial/flota', $payload['navigation'][1]['href']);
+        $managementModule = array_values(array_filter(
+            $payload['moduleNavigation'],
+            static fn (array $item): bool => $item['key'] === 'module-management',
+        ));
+        self::assertTrue($managementModule[0]['active']);
+    }
+
+    public function testFleetBoardNavigationOnlyListsWhatTheActorCanOpen(): void
+    {
+        $context = new GetAppShellContext(new AppShellReadModelFake());
+        $actor = new ActorContext(7, 5, false, false, ['Gerencial'], ['gerencial.flota.ver'], [9]);
+
+        $payload = (new AppShellPayload($context, new GetPlatformModuleCatalog()))->for($actor, 'fleet-board');
+
+        self::assertSame(['managerial-fleet-board'], array_column($payload['navigation'], 'key'));
+    }
+
     public function testQuickNavigationDoesNotGrantMaintenanceToAnActorWithoutAnEntryPermission(): void
     {
         $context = new GetAppShellContext(new AppShellReadModelFake());
