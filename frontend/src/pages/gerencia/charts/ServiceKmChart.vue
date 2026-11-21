@@ -38,7 +38,12 @@ const filas = computed(() => props.planes
   .filter((fila) => fila.km !== null && fila.km !== undefined)
   .sort((a, b) => a.km - b.km))
 const visibles = computed(() => filas.value.slice(0, props.limit))
-const escala = computed(() => Math.min(props.tope, Math.max(1, ...visibles.value.map((fila) => Math.abs(fila.km)))))
+// La escala sale de los valores normales (hasta el tope): un valor atípico se
+// recorta en lugar de achicar todas las demás barras.
+const escala = computed(() => {
+  const normales = visibles.value.map((fila) => Math.abs(fila.km)).filter((km) => km <= props.tope)
+  return normales.length ? Math.max(1, ...normales) : props.tope
+})
 const ancho = (km) => Math.max(1, (Math.min(Math.abs(km), escala.value) / escala.value) * 50)
 const recortada = (km) => Math.abs(km) > escala.value
 const texto = (fila) => (fila.km < 0 ? `Pasado por ${props.formatKm(Math.abs(fila.km))}` : `Faltan ${props.formatKm(fila.km)}`)

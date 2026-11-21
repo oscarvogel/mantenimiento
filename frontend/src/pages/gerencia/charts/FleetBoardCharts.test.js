@@ -86,7 +86,8 @@ describe('ServiceKmChart', () => {
     expect(filas[0].text()).toContain('Pasado por 10333744 km')
     expect(filas[0].text()).toContain('Fuera de escala')
     expect(filas[2].text()).toContain('Faltan 2731 km · Próximo · GPS')
-    expect(filas[1].find('span[style]').attributes('style')).toMatch(/left: \d/)
+    // La escala sale del mayor valor normal (5.906 km), no del odómetro corrupto.
+    expect(filas[1].find('span[style]').attributes('style')).toContain('width: 50%')
   })
 })
 
