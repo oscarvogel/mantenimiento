@@ -81,8 +81,42 @@ En escritorio y en móvil (375 px) aparecieron cuatro problemas, que se corrigie
 3. «1 siguen abiertos» pasó a concordar en singular.
 4. La diferencia de combustible sin dato repetía «Sin datos» en el detalle.
 
+## Producción (Ferozo)
+
+Desplegado el 21/11/2026 de `cf750421` a `e58a163e` (merge de #554): incluye #552, #553 y #554.
+
+1. **Auditoría previa, solo lectura.** Los 26 archivos runtime que tocaba el deploy coincidían byte a byte con
+   `cf750421` en producción, `Routes.php` y `Services.php` incluidos: no había deriva que pisar.
+2. **Backup quirúrgico** por helper efímero con `X-Migrate-Token`: `migrations`, `permisos` y `rol_permisos`, 50.516
+   bytes, 3 tablas, 280 filas, SHA-256 `04bfa258b6b0a940775758ba55850753f7998cf33b69e8df0deebb88570beb36`, en
+   `dist/ferozo-backup-tablero-20261121-085832.sql`. `backup.php` eliminado y verificado 404.
+3. **Merge** de #554 con CI verde (el repo no admite auto-merge).
+4. **Deploy incremental** con `scripts/deploy-ferozo.py --yes --skip-tests`: 55 archivos, sin `vendor/` ni `.env`; los
+   bundles anteriores se conservan. `--skip-tests` porque el equipo local no tiene PHP de Windows: el árbol de `main`
+   es idéntico al de la rama ya probada (PHPUnit 2.119, Vitest 536, `verify:build-sync` y CI).
+5. **Migración** `AddFleetBoardPermission` aplicada por `migrate.php`, eliminado y verificado 404.
+
+| Control | Resultado |
+|---|---|
+| Hash remoto de los 29 archivos publicados contra `e58a163e` | 29 iguales |
+| `/login` · `favicon.ico` | 200 |
+| `/.env` · `/.env.example` · `app/` · `vendor/` · `writable/` | 403 |
+| `migrate.php` · `backup.php` | 404 |
+| `/gerencial/flota` sin sesión | 302 al login |
+| Bundles del manifest | 25, todos 200 |
+| Log del día | sin errores posteriores al deploy (tres de las 00:05-00:15, previos: lock de notificaciones) |
+
+**Con sesión de Administrador** (empresa 4, 30 días):
+
+- **Uso:** 19 unidades, 113.746 km, 2.391 h de motor, **25 excesos** y los **dos cortes de Obersat** (47 h y 262 h,
+  ambos cerrados), los mismos del análisis. 3 unidades sin reportar. **1,5 s** de respuesta: el temor por los 9,7 s
+  de staging no se confirma en Ferozo.
+- **Combustible:** 30 viajes, ninguno con veredicto todavía, cada uno con su motivo. 1,3 s.
+- **Services:** 3 de 26 planes con estimación (AC532DD, BEN6G63, BEN5D63), como en la validación; «Pasado por» en los
+  vencidos. 1,7 s.
+- Sin desborde horizontal.
+
 ## Pendiente
 
-- Medir el tiempo de la pestaña Uso en producción (Ferozo): en staging son 9,7 s con 14 camiones y 30 días.
 - Corregir el desfase propio de cada GPS en los services estimados.
 - Acelerar la recuperación del cursor de buckets, para que los cortes largos se rellenen antes.
