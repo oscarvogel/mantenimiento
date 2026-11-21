@@ -1,6 +1,10 @@
 <script setup>
 import { computed } from 'vue'
 import { ExclamationTriangleIcon, HomeIcon, TruckIcon } from '@heroicons/vue/24/outline'
+import FleetRankingChart from './charts/FleetRankingChart.vue'
+import FleetCutsTimeline from './charts/FleetCutsTimeline.vue'
+import ServiceKmChart from './charts/ServiceKmChart.vue'
+import ConciliationShareBar from './charts/ConciliationShareBar.vue'
 
 const props = defineProps({
   data: { type: Object, required: true },
@@ -94,6 +98,15 @@ const excesos = computed(() => resultado.value.excesos ?? [])
 const cortes = computed(() => resultado.value.cortes ?? [])
 const viajes = computed(() => resultado.value.viajes ?? [])
 const planes = computed(() => resultado.value.planes ?? [])
+
+const periodo = computed(() => resultado.value.periodo ?? {})
+const serie = (campo) => unidades.value.map((unidad) => ({ key: unidad.equipoId, label: unidad.patente, value: unidad[campo] ?? null }))
+const kmPorUnidad = computed(() => serie('km'))
+const motorDetenido = computed(() => serie('porcentajeMotorDetenido'))
+const excesosPorUnidad = computed(() => unidades.value
+  .filter((unidad) => Number(unidad.excesos) > 0)
+  .map((unidad) => ({ key: unidad.equipoId, label: unidad.patente, value: unidad.excesos })))
+const kmTexto = (value) => `${number.format(Number(value))} km`
 
 const tarjetas = computed(() => {
   const t = totales.value
@@ -227,6 +240,36 @@ const tarjetas = computed(() => {
         </ul>
       </section>
 
+      <section aria-label="Gráficos de uso" class="mt-6 grid gap-4">
+        <FleetCutsTimeline :desde="periodo.desde" :hasta="periodo.hasta" :cortes="cortes" :format-date="fecha" />
+        <div class="grid gap-4 lg:grid-cols-3">
+          <FleetRankingChart
+            id="fleet-board-km-chart"
+            title="Km recorridos"
+            description="Odómetro del GPS en el período."
+            :items="kmPorUnidad"
+            :formatter="kmTexto"
+          />
+          <FleetRankingChart
+            id="fleet-board-idle-chart"
+            title="Motor encendido con el camión detenido"
+            description="Porcentaje de las horas de motor."
+            :items="motorDetenido"
+            :formatter="(value) => unDecimal(value, '%')"
+            bar-class="bg-warning"
+          />
+          <FleetRankingChart
+            id="fleet-board-speeding-chart"
+            title="Excesos de velocidad"
+            :description="`Episodios de más de ${entero(resultado.umbrales?.velocidadExcesoKmh)} km/h.`"
+            :items="excesosPorUnidad"
+            :formatter="(value) => entero(value)"
+            bar-class="bg-danger"
+            empty-text="Ningún camión superó el límite en el período."
+          />
+        </div>
+      </section>
+
       <section class="mt-6 overflow-hidden rounded-xl border border-border bg-surface-raised" aria-labelledby="fleet-board-units">
         <div class="border-b border-border px-5 py-4 sm:px-6">
           <h2 id="fleet-board-units" class="text-lg font-bold text-ink">Uso por unidad</h2>
@@ -293,7 +336,9 @@ const tarjetas = computed(() => {
     </template>
 
     <!-- Combustible -->
-    <section v-else-if="vista === 'combustible'" class="mt-6 overflow-hidden rounded-xl border border-border bg-surface-raised" aria-labelledby="fleet-board-fuel">
+    <template v-else-if="vista === 'combustible'">
+    <ConciliationShareBar class="mt-6" :por-estado="totales.porEstado ?? {}" />
+    <section class="mt-6 overflow-hidden rounded-xl border border-border bg-surface-raised" aria-labelledby="fleet-board-fuel">
       <div class="border-b border-border px-5 py-4 sm:px-6">
         <h2 id="fleet-board-fuel" class="text-lg font-bold text-ink">Declarado por el chofer contra el sensor del tanque</h2>
         <p class="mt-1 text-sm leading-6 text-ink-muted">
@@ -348,9 +393,12 @@ const tarjetas = computed(() => {
         No hay viajes en curso ni finalizados en el período y la sucursal seleccionados.
       </p>
     </section>
+    </template>
 
     <!-- Services por GPS -->
-    <section v-else class="mt-6 overflow-hidden rounded-xl border border-border bg-surface-raised" aria-labelledby="fleet-board-services">
+    <template v-else>
+    <ServiceKmChart class="mt-6" :planes="planes" :format-km="kmTexto" />
+    <section class="mt-6 overflow-hidden rounded-xl border border-border bg-surface-raised" aria-labelledby="fleet-board-services">
       <div class="border-b border-border px-5 py-4 sm:px-6">
         <h2 id="fleet-board-services" class="text-lg font-bold text-ink">Próximo service estimado con el GPS</h2>
         <p class="mt-1 text-sm leading-6 text-ink-muted">
@@ -401,6 +449,7 @@ const tarjetas = computed(() => {
         No hay planes preventivos por kilometraje en la sucursal seleccionada.
       </p>
     </section>
+    </template>
 
     <p class="mt-4 text-xs leading-5 text-ink-muted">
       «Sin datos» significa que falta información mínima para el indicador (regla 17). Este tablero es de solo lectura.
