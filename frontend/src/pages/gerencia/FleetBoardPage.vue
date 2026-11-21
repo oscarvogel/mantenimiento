@@ -21,6 +21,12 @@ const dateTime = new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: '2-di
 
 const SIN_DATOS = 'Sin datos'
 const vacio = (value) => value === null || value === undefined
+const plural = (cantidad, singular, varios) => (Number(cantidad) === 1 ? singular : varios)
+/** Km que faltan para el service; negativo es un service ya pasado, no "faltan -X". */
+const restantes = (value) => {
+  if (vacio(value)) return SIN_DATOS
+  return Number(value) < 0 ? `Pasado por ${number.format(Math.abs(Number(value)))} km` : `Faltan ${number.format(Number(value))} km`
+}
 const entero = (value, sufijo = '') => vacio(value) ? SIN_DATOS : `${number.format(Number(value))}${sufijo}`
 const unDecimal = (value, sufijo = '') => vacio(value) ? SIN_DATOS : `${decimal.format(Number(value))}${sufijo}`
 const conSigno = (value, sufijo = '') => vacio(value) ? SIN_DATOS : `${Number(value) > 0 ? '+' : ''}${decimal.format(Number(value))}${sufijo}`
@@ -97,7 +103,7 @@ const tarjetas = computed(() => {
       { label: 'Con veredicto', value: entero(t.conVeredicto), hint: 'La telemetría vio el viaje completo' },
       { label: 'Litros declarados', value: entero(t.litrosDeclarados, ' L'), hint: 'Solo viajes con veredicto' },
       { label: 'Litros detectados', value: entero(t.litrosDetectados, ' L'), hint: 'Cargas vistas por el sensor' },
-      { label: 'Diferencia', value: conSigno(t.diferenciaPorcentaje, '%'), hint: `${conSigno(t.diferenciaLitros, ' L')} · tolerancia ${unDecimal(resultado.value.tolerancia, '%')}` },
+      { label: 'Diferencia', value: conSigno(t.diferenciaPorcentaje, '%'), hint: vacio(t.diferenciaLitros) ? `Tolerancia ${unDecimal(resultado.value.tolerancia, '%')}` : `${conSigno(t.diferenciaLitros, ' L')} · tolerancia ${unDecimal(resultado.value.tolerancia, '%')}` },
     ]
   }
   if (vista.value === 'services') {
@@ -115,7 +121,7 @@ const tarjetas = computed(() => {
     { label: 'Horas de motor', value: unDecimal(t.horasMotor, ' h'), hint: `${entero(t.unidadesConHorasMotor)} unidades con horómetro` },
     { label: 'Excesos de velocidad', value: entero(t.excesos), hint: `Más de ${entero(resultado.value.umbrales?.velocidadExcesoKmh)} km/h en dos muestras` },
     { label: 'Sin reportar', value: entero(t.sinReportar), hint: `Más de ${entero(resultado.value.umbrales?.sinReportarHoras)} h sin datos` },
-    { label: 'Cortes del proveedor', value: entero(t.cortes), hint: `${entero(t.cortesAbiertos)} siguen abiertos` },
+    { label: 'Cortes del proveedor', value: entero(t.cortes), hint: `${entero(t.cortesAbiertos)} ${plural(t.cortesAbiertos, 'sigue abierto', 'siguen abiertos')}` },
   ]
 })
 </script>
@@ -142,13 +148,13 @@ const tarjetas = computed(() => {
       </a>
     </header>
 
-    <nav class="mt-6 flex gap-2 overflow-x-auto border-b border-border" aria-label="Secciones del tablero">
+    <nav class="mt-6 grid grid-cols-3 border-b border-border" aria-label="Secciones del tablero">
       <a
         v-for="pestana in pestanas"
         :key="pestana.clave"
         :href="pestana.href"
         :aria-current="pestana.activa ? 'page' : undefined"
-        class="-mb-px inline-flex min-h-11 shrink-0 items-center border-b-2 px-4 text-sm font-semibold"
+        class="-mb-px flex min-h-11 items-center justify-center border-b-2 px-2 py-2 text-center text-sm font-semibold leading-tight sm:justify-start sm:px-4 sm:text-left"
         :class="pestana.activa ? 'border-primary text-primary' : 'border-transparent text-ink-muted hover:text-ink'"
       >{{ pestana.etiqueta }}</a>
     </nav>
@@ -372,7 +378,7 @@ const tarjetas = computed(() => {
               <td class="whitespace-nowrap px-4 py-3 text-right tabular-nums text-ink">{{ entero(fila.proximoKm, ' km') }}</td>
               <td class="whitespace-nowrap px-4 py-3">
                 <span class="rounded-full px-2.5 py-1 text-xs font-semibold" :class="(plan[fila.real?.estado] ?? plan.SIN_DATOS).tono">{{ (plan[fila.real?.estado] ?? plan.SIN_DATOS).etiqueta }}</span>
-                <span class="mt-1 block text-xs tabular-nums text-ink-muted">Faltan {{ entero(fila.real?.kmRestantes, ' km') }}</span>
+                <span class="mt-1 block text-xs tabular-nums text-ink-muted">{{ restantes(fila.real?.kmRestantes) }}</span>
                 <span class="block text-xs text-ink-muted">Lectura: {{ fila.lectura ? `${entero(fila.lectura.km)} · ${fecha(fila.lectura.fecha)}` : SIN_DATOS }}</span>
               </td>
               <td class="whitespace-nowrap px-4 py-3 text-right tabular-nums text-ink">
@@ -382,7 +388,7 @@ const tarjetas = computed(() => {
               <td class="min-w-56 px-4 py-3">
                 <template v-if="fila.estimado">
                   <span class="rounded-full px-2.5 py-1 text-xs font-semibold" :class="(plan[fila.estimado.estado] ?? plan.SIN_DATOS).tono">{{ (plan[fila.estimado.estado] ?? plan.SIN_DATOS).etiqueta }}</span>
-                  <span class="mt-1 block text-xs tabular-nums text-ink-muted">Faltan {{ entero(fila.estimado.kmRestantes, ' km') }} · {{ entero(fila.estimado.km, ' km') }}</span>
+                  <span class="mt-1 block text-xs tabular-nums text-ink-muted">{{ restantes(fila.estimado.kmRestantes) }} · {{ entero(fila.estimado.km, ' km') }}</span>
                   <span v-if="fila.seAdelanta" class="block text-xs font-semibold text-warning-strong">El GPS adelanta el service</span>
                 </template>
                 <span v-else class="block text-xs leading-5 text-ink-muted">Sin estimación: {{ fila.motivo }}</span>

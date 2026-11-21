@@ -38,12 +38,22 @@ describe('FleetBoardPage', () => {
 
     expect(wrapper.text()).toContain('Cortes del proveedor de telemetría')
     expect(wrapper.text()).toContain('14 de 14 unidades')
+    expect(wrapper.text()).toContain('0 siguen abiertos')
     expect(wrapper.text()).toContain('Corte del proveedor')
     expect(wrapper.text()).toContain('5.876')
     expect(wrapper.text()).toContain('19,8%')
     expect(wrapper.text()).toContain('Sin datos')
     expect(wrapper.text()).not.toMatch(/RHB1C77[^]*\b0%/)
     expect(wrapper.find('a[href="/mantenimiento/equipos/1?tab=telemetria"]').exists()).toBe(true)
+  })
+
+  it('does not repeat "Sin datos" in the difference hint and agrees the open cuts in number', () => {
+    const fuel = mountPage('combustible', { tolerancia: 15, totales: { viajes: 2, conVeredicto: 0, diferenciaLitros: null, diferenciaPorcentaje: null }, viajes: [] })
+    expect(fuel.text()).toContain('Tolerancia 15%')
+    expect(fuel.text()).not.toContain('Sin datos · tolerancia')
+
+    const usage = mountPage('uso', { totales: { cortes: 1, cortesAbiertos: 1 }, unidades: [], excesos: [], cortes: [] })
+    expect(usage.text()).toContain('1 sigue abierto')
   })
 
   it('shows the fuel reconciliation verdict and the reason when there is none', () => {
@@ -68,6 +78,7 @@ describe('FleetBoardPage', () => {
       totales: { planes: 2, conEstimacion: 1, seAdelantan: 1, porEstadoEstimado: { PROXIMO: 1, VENCIDO: 0 } },
       planes: [
         { planId: 1, equipoId: 1, patente: 'AB499OK', servicio: 'Service motor', sucursal: 'Posadas', proximoKm: 1020624, real: { estado: 'AL_DIA', kmRestantes: 7119 }, lectura: { km: 1013505, fecha: '2026-11-16 12:48' }, gps: { kmDesdeLectura: 4388, hasta: '2026-11-20 20:00' }, estimado: { km: 1017893, kmRestantes: 2731, estado: 'PROXIMO' }, motivo: null, seAdelanta: true },
+        { planId: 3, equipoId: 3, patente: 'AF117ZK', servicio: 'Service motor', sucursal: 'Posadas', proximoKm: 490444, real: { estado: 'VENCIDO', kmRestantes: -5906 }, lectura: { km: 496350, fecha: '2026-11-20 00:00' }, gps: { kmDesdeLectura: null, hasta: null }, estimado: null, motivo: 'El equipo no tiene odómetro de GPS.', seAdelanta: false },
         { planId: 2, equipoId: 2, patente: 'GZD587', servicio: 'Service motor', sucursal: 'Posadas', proximoKm: 200000, real: { estado: 'SIN_DATOS', kmRestantes: null }, lectura: null, gps: { kmDesdeLectura: null, hasta: null }, estimado: null, motivo: 'No hay una lectura vigente del odómetro.', seAdelanta: false },
       ],
     })
@@ -76,7 +87,9 @@ describe('FleetBoardPage', () => {
     expect(wrapper.text()).toContain('+4.388 km')
     expect(wrapper.text()).toContain('Faltan 2.731 km')
     expect(wrapper.text()).toContain('Sin estimación: No hay una lectura vigente del odómetro.')
+    expect(wrapper.text()).toContain('Pasado por 5.906 km')
     expect(wrapper.find('select[name="dias"]').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('Faltan -')
     expect(wrapper.find('a[href="/mantenimiento/equipos/1"]').exists()).toBe(true)
   })
 })
