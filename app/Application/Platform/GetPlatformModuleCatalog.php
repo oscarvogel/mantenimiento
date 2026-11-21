@@ -91,8 +91,10 @@ final class GetPlatformModuleCatalog
                 && ! $actor->isSuperAdmin()
                 && ($actor->hasPermission('viajes.ver') || $actor->hasPermission('viajes.maestros.ver'));
             $tripsPath = $actor->hasPermission('viajes.ver') ? 'viajes/operativos/dashboard' : 'viajes/maestros';
+            $canTheoreticalCost = $actor->hasPermission('gerencial.costo_km.ver');
+            $canFleetBoard = ! $actor->isSuperAdmin() && $actor->companyId() !== null && $actor->hasPermission('gerencial.flota.ver');
             $managementEnabled = $module['key'] === 'management'
-                && $actor->hasPermission('gerencial.costo_km.ver');
+                && ($canTheoreticalCost || $canFleetBoard);
             $reportsEnabled = $module['key'] === 'reports'
                 && ! $actor->isSuperAdmin()
                 && $actor->companyId() !== null
@@ -104,7 +106,7 @@ final class GetPlatformModuleCatalog
             $enabled = $tripsEnabled || $managementEnabled || $reportsEnabled || $automationsEnabled;
             $landingPath = match (true) {
                 $tripsEnabled => $tripsPath,
-                $managementEnabled => 'gerencial/costo-teorico-km',
+                $managementEnabled => $canTheoreticalCost ? 'gerencial/costo-teorico-km' : 'gerencial/flota',
                 $reportsEnabled => 'reportes',
                 $automationsEnabled => 'automatizaciones',
                 default => null,

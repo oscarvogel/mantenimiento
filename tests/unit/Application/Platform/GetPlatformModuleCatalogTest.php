@@ -108,6 +108,27 @@ final class GetPlatformModuleCatalogTest extends TestCase
         self::assertSame('Operativo', $management['status']);
     }
 
+    public function testEnablesManagementModuleOnTheFleetBoardWithOnlyItsPermission(): void
+    {
+        $actor = new ActorContext(12, 4, false, false, ['Gerencial'], ['gerencial.flota.ver'], [8]);
+
+        $modules = (new GetPlatformModuleCatalog())->execute($actor);
+        $management = array_values(array_filter($modules, static fn (array $module): bool => $module['key'] === 'management'))[0];
+
+        self::assertSame('gerencial/flota', $management['landingPath']);
+        self::assertSame('available', $management['state']);
+    }
+
+    public function testKeepsTheTheoreticalCostAsManagementLandingWhenBothPermissionsExist(): void
+    {
+        $actor = new ActorContext(12, 4, false, false, ['Gerencial'], ['gerencial.flota.ver', 'gerencial.costo_km.ver'], [8]);
+
+        $modules = (new GetPlatformModuleCatalog())->execute($actor);
+        $management = array_values(array_filter($modules, static fn (array $module): bool => $module['key'] === 'management'))[0];
+
+        self::assertSame('gerencial/costo-teorico-km', $management['landingPath']);
+    }
+
     public function testKeepsManagementModuleDisabledWithoutItsPermission(): void
     {
         $actor = new ActorContext(12, 4, false, false, ['Consulta'], ['equipos.ver'], [8]);

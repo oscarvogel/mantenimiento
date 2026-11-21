@@ -94,6 +94,7 @@ final class InitialSeeder extends Seeder
             'chatbot.usar' => 'Usar el chatbot asistente del sistema de mantenimiento',
             'gerencial.costo_km.ver' => 'Consultar costo teórico por kilómetro dentro de Gerencial',
             'gerencial.costo_km.editar' => 'Configurar y guardar escenarios de costo teórico por kilómetro',
+            'gerencial.flota.ver' => 'Consultar el tablero de flota dentro de Gerencial',
             'viajes.ver' => 'Ver el dashboard y los viajes de la empresa',
             'viajes.economico.ver' => 'Ver el económico del período en el tablero de viajes',
             'viajes.operar' => 'Crear, iniciar y cancelar viajes operativos',
@@ -133,7 +134,7 @@ final class InitialSeeder extends Seeder
             ],
             'Solicitante' => ['solicitudes.crear', 'notificaciones.ver', 'chatbot.usar'],
             'Consulta' => ['equipos.ver', 'lecturas.ver', 'ordenes.ver', 'reportes.ver', 'importaciones.ver', 'notificaciones.ver', 'viajes.ver'],
-            'Gerencial' => ['gerencial.costo_km.ver', 'gerencial.costo_km.editar', 'viajes.ver', 'viajes.economico.ver', 'viajes.liquidacion_chofer.ver', 'clientes.cc.ver'],
+            'Gerencial' => ['gerencial.costo_km.ver', 'gerencial.costo_km.editar', 'gerencial.flota.ver', 'viajes.ver', 'viajes.economico.ver', 'viajes.liquidacion_chofer.ver', 'clientes.cc.ver'],
         ];
         foreach ($rolePermissions as $roleName => $keys) {
             foreach ($keys as $key) {
