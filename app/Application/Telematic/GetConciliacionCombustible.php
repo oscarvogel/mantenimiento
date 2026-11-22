@@ -139,6 +139,9 @@ final readonly class GetConciliacionCombustible
                 'consumo' => self::redondear($r->consumoMedido()),
                 'litrosPor100Km' => self::redondear($r->litrosPor100KmMedido()),
                 'coberturaSensor' => $r->coberturaSensor() === null ? null : (int) round($r->coberturaSensor() * 100),
+                // Lo medido se informa siempre que hay datos; si la telemetría no
+                // vio el viaje completo, es parcial y no hay veredicto.
+                'completo' => $r->medicionCompleta(),
                 'detalleCargas' => array_map(static fn ($c): array => [
                     'inicio' => $hora($c->inicio()),
                     'fin' => $hora($c->fin()),

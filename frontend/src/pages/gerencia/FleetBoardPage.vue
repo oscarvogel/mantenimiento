@@ -64,6 +64,10 @@ const sucursalLabel = computed(() => {
 const resumenFiltros = computed(() => usaPeriodo.value
   ? `${sucursalLabel.value} · últimos ${filtros.value.dias ?? 30} días`
   : `${sucursalLabel.value} · a hoy`)
+// Lo medido sin el viaje completo a la vista se muestra igual, marcado: es lo que
+// registró el sensor, no un veredicto.
+const esParcial = (viaje) => viaje?.medido?.completo === false
+  && (!vacio(viaje.medido?.litros) || !vacio(viaje.medido?.consumo) || !vacio(viaje.medido?.km))
 const equipoUrl = (id) => (urls.value.equipment && id ? `${urls.value.equipment.replace(/\/$/, '')}/${id}` : null)
 
 const tono = {
@@ -356,7 +360,7 @@ const tarjetas = computed(() => {
               <th scope="col" class="px-4 py-3 text-right">Detectado</th>
               <th scope="col" class="px-4 py-3 text-right">Diferencia</th>
               <th scope="col" class="px-4 py-3 text-right">L/100 km decl.</th>
-              <th scope="col" class="px-4 py-3 text-right">L/100 km medido</th>
+              <th scope="col" class="px-4 py-3 text-right">Consumo medido</th>
               <th scope="col" class="px-4 py-3 text-right">Sensor</th>
             </tr>
           </thead>
@@ -377,13 +381,22 @@ const tarjetas = computed(() => {
               <td class="whitespace-nowrap px-4 py-3 text-right tabular-nums text-ink">
                 {{ entero(viaje.medido?.litros, ' L') }}
                 <span class="block text-xs text-ink-muted">{{ entero(viaje.medido?.cargas) }} cargas</span>
+                <span
+                  v-if="esParcial(viaje)"
+                  class="mt-1 inline-block rounded-full bg-warning-subtle px-2 py-0.5 text-[11px] font-semibold text-warning-strong"
+                  title="La telemetría no vio el viaje completo: son las cargas que registró el sensor (al menos esos litros). Sin veredicto ni consumo."
+                >Parcial</span>
               </td>
               <td class="whitespace-nowrap px-4 py-3 text-right font-semibold tabular-nums text-ink">
                 {{ conSigno(viaje.diferencia?.litros, ' L') }}
                 <span class="block text-xs font-normal text-ink-muted">{{ conSigno(viaje.diferencia?.porcentaje, '%') }}</span>
               </td>
               <td class="whitespace-nowrap px-4 py-3 text-right tabular-nums text-ink-muted">{{ unDecimal(viaje.declarado?.litrosPor100Km) }}</td>
-              <td class="whitespace-nowrap px-4 py-3 text-right tabular-nums text-ink-muted">{{ unDecimal(viaje.medido?.litrosPor100Km) }}</td>
+              <td class="whitespace-nowrap px-4 py-3 text-right tabular-nums text-ink-muted">
+                {{ unDecimal(viaje.medido?.litrosPor100Km) }}
+                <span class="block text-xs">{{ vacio(viaje.medido?.consumo) ? 'Consumo: sin datos' : `Consumo: ${entero(viaje.medido.consumo, ' L')}` }}</span>
+                <span v-if="!vacio(viaje.medido?.km)" class="block text-xs">{{ entero(viaje.medido.km, ' km GPS') }}</span>
+              </td>
               <td class="whitespace-nowrap px-4 py-3 text-right tabular-nums text-ink-muted">{{ entero(viaje.medido?.coberturaSensor, '%') }}</td>
             </tr>
           </tbody>
