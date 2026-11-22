@@ -93,6 +93,18 @@ RHB1C77 pasó de 10:11:41 a 07:11:41. Coincide con la simulación previa (4.329 
 
 El log del día no registró la línea de la migración: el umbral de log de producción no guarda `notice`.
 
+## Conciliación de combustible: un viaje en curso se informa como en curso
+
+En producción la pestaña Combustible del tablero mostraba los 30 viajes como «Sin datos suficientes» y casi todos con
+«0 L / 0 cargas». No era el cálculo: los 30 viajes están **en curso** (ninguno finalizado, algunos abiertos desde el
+15/10, y cinco camiones con dos viajes abiertos a la vez) y solo el #21 tiene cargas declaradas (8 cargas, 2.812 L).
+
+El estado se decidía en este orden: primero los controles de telemetría y recién después «en curso». Un viaje abierto
+con un problema de telemetría quedaba como «Sin datos suficientes» y el motivo tapaba la causa principal: el chofer
+declara las cargas al volver. Ahora un viaje en curso se informa siempre como **en curso**, y el problema de telemetría,
+si lo hay, se agrega al motivo («Además: …»). Un viaje finalizado sigue igual. Tests:
+`ConciliacionCombustibleViajeTest` (+3).
+
 ## Pendiente
 
 - Confirmar que las muestras nuevas de Autotrac, ingeridas con el mapeo corregido, entran con demora normal.
@@ -100,3 +112,4 @@ El log del día no registró la línea de la migración: el umbral de log de pro
 - Odómetro del histórico de Wialon: buscar otra fuente (contador de la unidad o distancia por posiciones).
 - Acelerar la recuperación del cursor.
 - Consultar con Obersat por NEB021 y OJG526, y por los tanques desconectados.
+- Cerrar en el sistema los viajes que ya volvieron y cargar su combustible: sin eso la conciliación no tiene qué comparar.

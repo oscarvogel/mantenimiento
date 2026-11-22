@@ -27,6 +27,8 @@ use DateTimeImmutable;
  */
 final readonly class ConciliacionCombustibleViaje
 {
+    private const MOTIVO_EN_CURSO = 'Las cargas se declaran al volver; todavía no se compara.';
+
     /**
      * @param list<CargaDetectada> $cargasDetectadas
      */
@@ -64,10 +66,14 @@ final readonly class ConciliacionCombustibleViaje
         $detector ??= new DetectorCargasCombustible($politica);
         $margen = $politica->margenExtremosMinutos * 60;
 
+        // Un viaje en curso se informa siempre como en curso, aunque además la
+        // telemetría tenga un problema: el motivo principal de que no haya
+        // veredicto es que el chofer declara las cargas al volver. El problema de
+        // telemetría se agrega al motivo para que no se pierda.
         $sinDatos = static fn (string $motivo, ?float $cobertura = null, ?int $hueco = null): self => new self(
             $viaje,
-            EstadoConciliacion::SinDatosSuficientes,
-            $motivo,
+            $viaje->enCurso() ? EstadoConciliacion::EnCurso : EstadoConciliacion::SinDatosSuficientes,
+            $viaje->enCurso() ? self::MOTIVO_EN_CURSO . ' Además: ' . lcfirst($motivo) : $motivo,
             $desde,
             $hasta,
             [],
@@ -127,7 +133,7 @@ final readonly class ConciliacionCombustibleViaje
         $kmGps = self::medirKmGps($dentro);
 
         if ($viaje->enCurso()) {
-            return new self($viaje, EstadoConciliacion::EnCurso, 'Las cargas se declaran al volver; todavía no se compara.', $desde, $hasta, $cargas, $litros, $nivelSalida, $nivelRegreso, $kmGps, $cobertura, $hueco, $politica);
+            return new self($viaje, EstadoConciliacion::EnCurso, self::MOTIVO_EN_CURSO, $desde, $hasta, $cargas, $litros, $nivelSalida, $nivelRegreso, $kmGps, $cobertura, $hueco, $politica);
         }
 
         if ($nivelSalida === null || $nivelRegreso === null) {
