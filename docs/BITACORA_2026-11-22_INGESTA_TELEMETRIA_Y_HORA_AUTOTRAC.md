@@ -68,9 +68,35 @@ continuidad de la serie y el ancla de los services de BEN5D63 y BEN6G63.
   ni filas ya bien, dos capturas reales separadas 3 h y idempotencia.
 - Suite completa: 2.125 pruebas, sin fallos (51 salteadas que piden MySQL).
 
+## Deploy a producción (22/11/2026)
+
+Staging (`fasa_189`) quedó sin verificar desde esta red (SSH y ping a `192.168.0.189` sin respuesta); el usuario
+desplegó la rama y corrió `php spark migrate` en staging, y pidió seguir a producción. Por eso el deploy se hizo con
+backup completo de las tablas que toca la migración y verificación posterior con datos reales.
+
+1. **Auditoría previa:** `AutotracSnapshotMapper.php`, `Routes.php` y `Services.php` iguales a `90a69bb5` en el servidor;
+   la migración no existía. Sin deriva.
+2. **Backup** por helper efímero: `migrations`, `telematia_ultima_lectura` (19 filas) y `telematia_muestras` (22.716
+   filas) completas, 21.522.298 bytes, SHA-256 `506f363a5336533f3baea5b2145c5963d9a38dab852b8c5cfb62cdee48afe845`, en
+   `dist/ferozo-backup-autotrac-20261122-081544.sql`. Helper borrado y verificado 404.
+3. **Deploy incremental** de `90a69bb5` a `e3468e74` (merge de #558): 2 archivos, migración aplicada por `migrate.php`,
+   borrado y 404. Smoke tests OK.
+4. **Verificación** con otra exportación de solo lectura:
+
+| Tabla | Proveedor | Filas | Corridas (> 60 min) | Demora mediana | Máx. en el futuro |
+|---|---|---|---|---|---|
+| `telematia_muestras` | autotrac | 4.330 | **0** | 5,1 min | 43 s |
+| `telematia_muestras` | wialon | 18.387 | 0 | 0,4 min | 22 s (sin tocar) |
+| `telematia_ultima_lectura` | autotrac | 5 | **0** | — | ninguna |
+
+RHB1C77 pasó de 10:11:41 a 07:11:41. Coincide con la simulación previa (4.329 corregidas, 0 duplicados, 43 s).
+
+El log del día no registró la línea de la migración: el umbral de log de producción no guarda `notice`.
+
 ## Pendiente
 
-- Probar en staging y desplegar con backup previo de `telematia_muestras` y `telematia_ultima_lectura` (Autotrac).
+- Confirmar que las muestras nuevas de Autotrac, ingeridas con el mapeo corregido, entran con demora normal.
+- Verificar en staging (`fasa_189`) cuando vuelva a estar alcanzable.
 - Odómetro del histórico de Wialon: buscar otra fuente (contador de la unidad o distancia por posiciones).
 - Acelerar la recuperación del cursor.
 - Consultar con Obersat por NEB021 y OJG526, y por los tanques desconectados.
