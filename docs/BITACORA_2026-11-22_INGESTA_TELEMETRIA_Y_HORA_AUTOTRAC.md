@@ -124,6 +124,38 @@ medido y la marca «Parcial».
 
 Tests: `ConciliacionCombustibleViajeTest` (+3), `FleetBoardPage.test.js` (+1).
 
+## Deploy a producción (22/11/2026) — conciliación: lo medido se muestra aunque no haya veredicto
+
+Deploy quirúrgico desde `e3468e74` (SHA productivo registrado) hasta `6eb62d7b` (merge de #561). El diff
+incluye también el fix de «viaje en curso» de #560, que aún no estaba en producción.
+
+`fasa_189` siguió inaccesible desde esta red (SSH y ping a `192.168.0.189` sin respuesta), así que no hubo
+verificación en staging: el cambio es de lectura (dominio + presentación), sin migraciones ni escritura.
+
+1. **Auditoría previa:** los 5 archivos clave de producción (`GetConciliacionCombustible.php`,
+   `ConciliacionCombustibleViaje.php`, `Routes.php`, `Services.php` y el manifest del dashboard) coincidían
+   byte a byte con `e3468e74`. Sin deriva.
+2. **Respaldo de lo que se pisaba:** `app/Application/Telematic`, `app/Domain/Telematic` y `assets/dashboard`
+   completos en `dist/backup-produccion-20261122-084915` — 387 archivos, 63.336.792 bytes, SHA-256 por archivo
+   en `dist/last-backup-sha256.txt`. Sirve de rollback a nivel de archivo.
+3. **Pruebas previas:** PHPUnit 2131 OK (51 skipped, piden MySQL) y Vitest 544 OK, ambos por separado del
+   orquestador porque el PHP local no está en el PATH de Windows (se corrieron en WSL, PHP 8.5.4).
+   `npm run verify:build-sync`: OK (los bundles versionados son el build del source).
+4. **Deploy incremental** con `scripts/deploy-ferozo.py --yes --skip-tests`: 33 archivos publicados (los 2 PHP
+   y el build completo de `assets/dashboard`), 0 migraciones, 1 bundle anterior conservado en el hosting (el
+   manifest nuevo deja de referenciarlo; la limpieza es aparte).
+5. **Smoke tests:** login 200; `favicon.ico` 200; `.env`, `app/`, `vendor/` y `writable/` 403; `migrate.php` 404.
+6. **Verificación por hash:** los 7 archivos publicados coinciden con los blobs de `6eb62d7b`. La página servida
+   referencia el bundle nuevo (`main-mm3PRuBg.js`).
+7. **Verificación funcional en producción** con un helper temporal de solo lectura (token `MIGRATE_TOKEN`,
+   sesión `READ ONLY`, vencido a las 3 h, borrado y verificado 404): 30 viajes, **16 con medición**,
+   **8.645,1 L detectados**, **0 consumos y 0 veredictos**, los 30 marcados como parciales. Antes del deploy
+   esos viajes mostraban «0 L / 0 cargas»; ahora muestran lo que vio el sensor, con la marca «Parcial».
+
+Ejemplo de la salida (viaje 29, AC532DD): 180,5 L en 1 carga, 253 km GPS, sin consumo, motivo «Las cargas se
+declaran al volver; todavía no se compara. Además: hay un hueco de 9 h sin lecturas del tanque: pudo haber una
+carga que no se vio».
+
 ## Pendiente
 
 - Confirmar que las muestras nuevas de Autotrac, ingeridas con el mapeo corregido, entran con demora normal.
