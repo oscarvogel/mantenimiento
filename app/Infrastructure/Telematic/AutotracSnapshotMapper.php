@@ -98,13 +98,24 @@ final class AutotracSnapshotMapper
         return $latest;
     }
 
+    /**
+     * ATIC informa las horas en UTC y sin zona (`2026-11-22T10:11:41`). Antes se
+     * interpretaban como hora local y quedaban corridas 3 h hacia adelante: en
+     * producción, el 100% de las muestras de Autotrac tenía la hora observada
+     * ~175 min después de la hora en que se registró, algo imposible.
+     *
+     * Una fecha que trae su zona (`Z` o `-03:00`) se respeta tal cual. El
+     * resultado se devuelve en la zona de la aplicación, como el resto de las
+     * fuentes, porque las tablas guardan la hora sin zona.
+     */
     private function date(mixed $value): ?DateTimeImmutable
     {
         if (! is_string($value) || trim($value) === '') {
             return null;
         }
         try {
-            return new DateTimeImmutable($value, new DateTimeZone(date_default_timezone_get()));
+            return (new DateTimeImmutable(trim($value), new DateTimeZone('UTC')))
+                ->setTimezone(new DateTimeZone(date_default_timezone_get()));
         } catch (\Throwable) {
             return null;
         }
