@@ -160,6 +160,53 @@ final class ConciliacionCombustibleViajeTest extends TestCase
         self::assertNull($resultado->diferenciaLitros());
     }
 
+    public function testUnViajeEnCursoSinTelemetriaSeInformaEnCursoConElProblemaEnElMotivo(): void
+    {
+        // Producción, 22/11: los 30 viajes abiertos aparecían "Sin datos
+        // suficientes" y tapaban el motivo principal, que el viaje no se cerró.
+        $resultado = ConciliacionCombustibleViaje::evaluar(
+            $this->viaje(0.0, ViajeDeclarado::EN_CURSO, regreso: null),
+            [],
+            $this->fecha('2026-10-27 12:00'),
+        );
+
+        self::assertSame(EstadoConciliacion::EnCurso, $resultado->estado());
+        self::assertSame(
+            'Las cargas se declaran al volver; todavía no se compara. Además: no hay telemetría del camión durante el viaje.',
+            $resultado->motivo(),
+        );
+        self::assertNull($resultado->litrosDetectados());
+    }
+
+    public function testUnViajeEnCursoConElSensorCaidoTambienSeInformaEnCurso(): void
+    {
+        $muestras = $this->viajeCompleto();
+        $km = array_map(static fn ($m): ?int => $m->kilometraje(), $muestras);
+        $sinTanque = SerieTanque::cada(30, '2026-10-25 18:00', array_fill(0, count($muestras), null), $km);
+
+        $resultado = ConciliacionCombustibleViaje::evaluar(
+            $this->viaje(0.0, ViajeDeclarado::EN_CURSO, regreso: null),
+            $sinTanque,
+            $this->fecha('2026-10-27 12:00'),
+        );
+
+        self::assertSame(EstadoConciliacion::EnCurso, $resultado->estado());
+        self::assertStringContainsString('Además: el sensor del tanque solo reportó en el 0%', (string) $resultado->motivo());
+        self::assertSame(0.0, $resultado->coberturaSensor());
+    }
+
+    public function testUnViajeEnCursoSinTractorSeInformaEnCurso(): void
+    {
+        $resultado = ConciliacionCombustibleViaje::evaluar(
+            $this->viaje(0.0, ViajeDeclarado::EN_CURSO, equipoId: null, regreso: null),
+            [],
+            $this->fecha('2026-10-27 12:00'),
+        );
+
+        self::assertSame(EstadoConciliacion::EnCurso, $resultado->estado());
+        self::assertStringContainsString('Además: el viaje no tiene tractor asignado.', (string) $resultado->motivo());
+    }
+
     public function testUnRegresoSinHoraCubreElDiaCompleto(): void
     {
         $viaje = $this->viaje(420.0, regreso: '2026-10-27 00:00');
