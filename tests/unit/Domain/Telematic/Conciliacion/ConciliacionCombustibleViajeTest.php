@@ -160,6 +160,46 @@ final class ConciliacionCombustibleViajeTest extends TestCase
         self::assertNull($resultado->diferenciaLitros());
     }
 
+    public function testConUnHuecoLargoLoMedidoSeInformaComoParcialYSinDiferencia(): void
+    {
+        // Lo que vio el sensor sirve para mirar el viaje aunque no alcance para un veredicto.
+        $completo = $this->viajeCompleto();
+        $cortado = array_merge(array_slice($completo, 0, 40), array_slice($completo, 60));
+
+        $resultado = $this->evaluar($this->viaje(600.0), $cortado);
+
+        self::assertSame(EstadoConciliacion::SinDatosSuficientes, $resultado->estado());
+        self::assertFalse($resultado->medicionCompleta());
+        // Las cargas vistas son un piso real; el consumo no: una carga que no se
+        // vio en el hueco lo haría salir de menos.
+        self::assertEqualsWithDelta(400.0, $resultado->litrosDetectados(), 1.0);
+        self::assertNull($resultado->consumoMedido());
+        self::assertNull($resultado->litrosPor100KmMedido());
+        self::assertSame(800, $resultado->kmGps());
+        self::assertNull($resultado->diferenciaLitros());
+    }
+
+    public function testConElSensorALaMitadTambienSeMuestraLoQueVio(): void
+    {
+        $muestras = $this->viajeCompleto();
+        $litros = [];
+        foreach ($muestras as $i => $muestra) {
+            $litros[] = $i % 2 === 0 ? null : $muestra->combustibleLitros();
+        }
+        $km = array_map(static fn ($m): ?int => $m->kilometraje(), $muestras);
+
+        $resultado = $this->evaluar($this->viaje(600.0), SerieTanque::cada(30, '2026-10-25 18:00', $litros, $km));
+
+        self::assertFalse($resultado->medicionCompleta());
+        self::assertNotNull($resultado->litrosDetectados());
+        self::assertNull($resultado->diferenciaPorcentaje());
+    }
+
+    public function testUnaMedicionCompletaSeMarcaComoCompleta(): void
+    {
+        self::assertTrue($this->evaluar($this->viaje(420.0), $this->viajeCompleto())->medicionCompleta());
+    }
+
     public function testUnViajeEnCursoSinTelemetriaSeInformaEnCursoConElProblemaEnElMotivo(): void
     {
         // Producción, 22/11: los 30 viajes abiertos aparecían "Sin datos

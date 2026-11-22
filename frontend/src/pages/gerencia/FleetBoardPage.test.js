@@ -62,15 +62,32 @@ describe('FleetBoardPage', () => {
       totales: { viajes: 2, conVeredicto: 1, litrosDeclarados: 1200, litrosDetectados: 1134, diferenciaLitros: 66, diferenciaPorcentaje: 5.8 },
       viajes: [
         { viajeId: 1, numero: 21, patente: 'JLH877', desde: '2026-10-30 00:00', hasta: '2026-11-04 18:00', estado: 'SIN_DATOS_SUFICIENTES', estadoEtiqueta: 'Sin datos suficientes', motivo: 'El sensor del tanque solo reportó en el 47% de las lecturas del viaje.', declarado: { litros: 2812, cargas: 8 }, medido: { litros: null, cargas: 0, coberturaSensor: 47 }, diferencia: { litros: null, porcentaje: null } },
-        { viajeId: 2, numero: 22, patente: 'AB499OK', desde: '2026-10-26 00:00', hasta: '2026-11-03 18:00', estado: 'CONCILIADO', estadoEtiqueta: 'Conciliado', motivo: null, declarado: { litros: 1200, cargas: 3, litrosPor100Km: 33 }, medido: { litros: 1134, cargas: 3, litrosPor100Km: 31.2, coberturaSensor: 98 }, diferencia: { litros: 66, porcentaje: 5.8 } },
+        { viajeId: 2, numero: 22, patente: 'AB499OK', desde: '2026-10-26 00:00', hasta: '2026-11-03 18:00', estado: 'CONCILIADO', estadoEtiqueta: 'Conciliado', motivo: null, declarado: { litros: 1200, cargas: 3, litrosPor100Km: 33 }, medido: { litros: 1134, cargas: 3, consumo: 1134, km: 3630, litrosPor100Km: 31.2, coberturaSensor: 98, completo: true }, diferencia: { litros: 66, porcentaje: 5.8 } },
       ],
     })
 
     expect(wrapper.text()).toContain('Declarado por el chofer contra el sensor del tanque')
+    expect(wrapper.text()).toContain('Consumo: 1.134 L')
     expect(wrapper.text()).toContain('el 47% de las lecturas')
     expect(wrapper.text()).toContain('Conciliado')
     expect(wrapper.text()).toContain('+5,8%')
     expect(wrapper.text()).toContain('Últimos 15 días')
+  })
+
+  it('shows what the sensor measured on an open trip, marked as partial', () => {
+    const wrapper = mountPage('combustible', {
+      tolerancia: 15,
+      totales: { viajes: 1, conVeredicto: 0, diferenciaLitros: null, diferenciaPorcentaje: null },
+      viajes: [
+        { viajeId: 5, numero: 29, patente: 'AC532DD', desde: '2026-11-19 00:00', hasta: '2026-11-22 09:00', estado: 'EN_CURSO', estadoEtiqueta: 'Viaje en curso', motivo: 'Las cargas se declaran al volver; todavía no se compara. Además: hay un hueco de 9 h sin lecturas del tanque: pudo haber una carga que no se vio.', declarado: { litros: 0, cargas: 0 }, medido: { litros: 512, cargas: 1, km: 1830, consumo: null, litrosPor100Km: null, coberturaSensor: 97, completo: false }, diferencia: { litros: null, porcentaje: null } },
+      ],
+    })
+
+    expect(wrapper.text()).toContain('Viaje en curso')
+    expect(wrapper.text()).toContain('512 L')
+    expect(wrapper.text()).toContain('Parcial')
+    expect(wrapper.text()).toContain('Consumo: sin datos')
+    expect(wrapper.text()).toContain('1.830 km GPS')
   })
 
   it('shows real and estimated service state and hides the period filter', () => {

@@ -45,6 +45,7 @@ final readonly class ConciliacionCombustibleViaje
         private ?int $kmGps,
         private ?float $coberturaSensor,
         private ?int $huecoMaximoMinutos,
+        private bool $medicionCompleta,
         private PoliticaConciliacion $politica,
     ) {
     }
@@ -66,14 +67,11 @@ final readonly class ConciliacionCombustibleViaje
         $detector ??= new DetectorCargasCombustible($politica);
         $margen = $politica->margenExtremosMinutos * 60;
 
-        // Un viaje en curso se informa siempre como en curso, aunque además la
-        // telemetría tenga un problema: el motivo principal de que no haya
-        // veredicto es que el chofer declara las cargas al volver. El problema de
-        // telemetría se agrega al motivo para que no se pierda.
-        $sinDatos = static fn (string $motivo, ?float $cobertura = null, ?int $hueco = null): self => new self(
+        // Sin tractor o sin muestras no hay nada medido.
+        $sinMedicion = static fn (string $motivo): self => new self(
             $viaje,
             $viaje->enCurso() ? EstadoConciliacion::EnCurso : EstadoConciliacion::SinDatosSuficientes,
-            $viaje->enCurso() ? self::MOTIVO_EN_CURSO . ' Además: ' . lcfirst($motivo) : $motivo,
+            self::motivoEnCurso($viaje, $motivo),
             $desde,
             $hasta,
             [],
@@ -81,13 +79,14 @@ final readonly class ConciliacionCombustibleViaje
             null,
             null,
             null,
-            $cobertura,
-            $hueco,
+            null,
+            null,
+            false,
             $politica,
         );
 
         if ($viaje->equipoId === null) {
-            return $sinDatos('El viaje no tiene tractor asignado.');
+            return $sinMedicion('El viaje no tiene tractor asignado.');
         }
 
         $dentro = array_values(array_filter(
@@ -96,59 +95,88 @@ final readonly class ConciliacionCombustibleViaje
         ));
 
         if ($dentro === []) {
-            return $sinDatos('No hay telemetría del camión durante el viaje.');
+            return $sinMedicion('No hay telemetría del camión durante el viaje.');
         }
 
+        // Primero se mide todo lo que la telemetría permite, aunque después no
+        // alcance para un veredicto: lo que vio el sensor sirve para mirar el
+        // viaje. Sin ninguna lectura del tanque no hay litros medidos (null, no
+        // cero: un cero parecería que el camión no cargó).
         $conTanque = array_values(array_filter(
             $dentro,
             static fn (MuestraEquipo $m): bool => $m->combustibleLitros() !== null,
         ));
         $cobertura = count($conTanque) / count($dentro);
-
-        if ($cobertura < $politica->coberturaSensorMinima) {
-            return $sinDatos(sprintf(
-                'El sensor del tanque solo reportó en el %d%% de las lecturas del viaje.',
-                (int) round($cobertura * 100),
-            ), $cobertura);
-        }
-
         $hueco = self::medirHuecoMaximo($conTanque, $desde, $hasta);
-        if ($hueco > $politica->huecoMaximoMinutos) {
-            return $sinDatos(sprintf(
-                'Hay un hueco de %d h sin lecturas del tanque: pudo haber una carga que no se vio.',
-                intdiv($hueco, 60),
-            ), $cobertura, $hueco);
-        }
-
-        $nivelSalida = self::nivelCercano($muestras, $desde->getTimestamp() - $margen, $desde->getTimestamp(), true);
-        $nivelRegreso = $viaje->enCurso()
-            ? self::nivelCercano($conTanque, $hasta->getTimestamp() - $margen, $hasta->getTimestamp(), false)
-            : self::nivelCercano($muestras, $hasta->getTimestamp(), $hasta->getTimestamp() + $margen, false);
-
-        $cargas = array_values(array_filter(
-            $detector->detectar($muestras),
-            static fn (CargaDetectada $c): bool => $c->fin() >= $desde && $c->fin() <= $hasta,
-        ));
-        $litros = array_sum(array_map(static fn (CargaDetectada $c): float => $c->litros(), $cargas));
         $kmGps = self::medirKmGps($dentro);
 
+        $nivelSalida = null;
+        $nivelRegreso = null;
+        $cargas = [];
+        $litros = null;
+        if ($conTanque !== []) {
+            $nivelSalida = self::nivelCercano($muestras, $desde->getTimestamp() - $margen, $desde->getTimestamp(), true);
+            $nivelRegreso = $viaje->enCurso()
+                ? self::nivelCercano($conTanque, $hasta->getTimestamp() - $margen, $hasta->getTimestamp(), false)
+                : self::nivelCercano($muestras, $hasta->getTimestamp(), $hasta->getTimestamp() + $margen, false);
+            $cargas = array_values(array_filter(
+                $detector->detectar($muestras),
+                static fn (CargaDetectada $c): bool => $c->fin() >= $desde && $c->fin() <= $hasta,
+            ));
+            $litros = array_sum(array_map(static fn (CargaDetectada $c): float => $c->litros(), $cargas));
+        }
+
+        // Después se decide si la medición alcanza para un veredicto (regla 17:
+        // con la telemetría incompleta no se señala a nadie).
+        $falta = match (true) {
+            $cobertura < $politica->coberturaSensorMinima => sprintf(
+                'El sensor del tanque solo reportó en el %d%% de las lecturas del viaje.',
+                (int) round($cobertura * 100),
+            ),
+            $hueco > $politica->huecoMaximoMinutos => sprintf(
+                'Hay un hueco de %d h sin lecturas del tanque: pudo haber una carga que no se vio.',
+                intdiv($hueco, 60),
+            ),
+            $nivelSalida === null => 'No hay lectura del tanque al salir.',
+            $nivelRegreso === null => 'No hay lectura del tanque al volver.',
+            default => null,
+        };
+        $completa = $falta === null;
+        $medido = static fn (EstadoConciliacion $estado, ?string $motivo): self => new self(
+            $viaje, $estado, $motivo, $desde, $hasta, $cargas, $litros, $nivelSalida, $nivelRegreso, $kmGps, $cobertura, $hueco, $completa, $politica,
+        );
+
+        // Un viaje en curso se informa siempre como en curso: el motivo principal
+        // de que no haya veredicto es que el chofer declara las cargas al volver.
         if ($viaje->enCurso()) {
-            return new self($viaje, EstadoConciliacion::EnCurso, self::MOTIVO_EN_CURSO, $desde, $hasta, $cargas, $litros, $nivelSalida, $nivelRegreso, $kmGps, $cobertura, $hueco, $politica);
+            return $medido(EstadoConciliacion::EnCurso, self::motivoEnCurso($viaje, $falta));
         }
 
-        if ($nivelSalida === null || $nivelRegreso === null) {
-            return $sinDatos(
-                $nivelSalida === null
-                    ? 'No hay lectura del tanque al salir.'
-                    : 'No hay lectura del tanque al volver.',
-                $cobertura,
-                $hueco,
-            );
+        if (! $completa) {
+            return $medido(EstadoConciliacion::SinDatosSuficientes, $falta);
         }
 
-        $estado = self::veredicto($viaje->litrosDeclarados, $litros, $politica->toleranciaPorcentaje);
+        return $medido(self::veredicto($viaje->litrosDeclarados, (float) $litros, $politica->toleranciaPorcentaje), null);
+    }
 
-        return new self($viaje, $estado, null, $desde, $hasta, $cargas, $litros, $nivelSalida, $nivelRegreso, $kmGps, $cobertura, $hueco, $politica);
+    /** El motivo de un viaje en curso dice primero eso, y después lo que falte. */
+    private static function motivoEnCurso(ViajeDeclarado $viaje, ?string $falta): ?string
+    {
+        if (! $viaje->enCurso()) {
+            return $falta;
+        }
+
+        return $falta === null ? self::MOTIVO_EN_CURSO : self::MOTIVO_EN_CURSO . ' Además: ' . lcfirst($falta);
+    }
+
+    /**
+     * La telemetría vio el viaje completo: sensor en la mayoría de las lecturas,
+     * sin huecos largos y con nivel al salir y al volver. Si no, lo medido se
+     * muestra como parcial y no hay veredicto.
+     */
+    public function medicionCompleta(): bool
+    {
+        return $this->medicionCompleta;
     }
 
     public function viaje(): ViajeDeclarado
@@ -228,10 +256,15 @@ final readonly class ConciliacionCombustibleViaje
         return $this->kmGps;
     }
 
-    /** Nivel al salir − nivel al volver + cargas detectadas. */
+    /**
+     * Nivel al salir − nivel al volver + cargas detectadas. Solo con la medición
+     * completa: con un hueco, una carga que no se vio hace que el consumo salga
+     * de menos. Sobre producción (22/11) daba 6,9 a 23 L/100 km en viajes con
+     * cortes, contra una flota que consume 33 a 41.
+     */
     public function consumoMedido(): ?float
     {
-        if ($this->nivelSalida === null || $this->nivelRegreso === null || $this->litrosDetectados === null) {
+        if (! $this->medicionCompleta || $this->nivelSalida === null || $this->nivelRegreso === null || $this->litrosDetectados === null) {
             return null;
         }
 

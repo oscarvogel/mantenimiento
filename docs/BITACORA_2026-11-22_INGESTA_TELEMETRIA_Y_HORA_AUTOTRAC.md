@@ -105,6 +105,25 @@ declara las cargas al volver. Ahora un viaje en curso se informa siempre como **
 si lo hay, se agrega al motivo («Además: …»). Un viaje finalizado sigue igual. Tests:
 `ConciliacionCombustibleViajeTest` (+3).
 
+## Conciliación: lo medido se muestra aunque no haya veredicto
+
+Aunque un viaje no tenga veredicto (en curso, o con la telemetría incompleta), lo que vio el sensor sirve para mirarlo.
+Ahora el dominio mide siempre que hay muestras, y marca si la medición es completa (`medicionCompleta()`):
+
+- **Litros detectados (cargas vistas) y km GPS** se informan siempre, marcados como **parciales** si la telemetría no vio
+  el viaje completo. Las cargas vistas son un piso real: «al menos esos litros». Si el tanque nunca reportó, no hay
+  litros medidos (sin dato, no cero).
+- **Consumo y L/100 km medidos, solo con la medición completa.** Con un hueco, una carga que no se vio hace que el consumo
+  salga de menos. Sobre los viajes reales del 22/11 daba 6,9 a 23,5 L/100 km (AG007VR 6,9; AC532DD 18,2; HLD283 16,3)
+  contra una flota que consume 33 a 41: mostrarlo sería inventar un número (regla 17).
+- La diferencia y el veredicto siguen exigiendo telemetría completa.
+
+Sobre la exportación del 22/11, la pestaña pasa a mostrar km GPS en 16 de los 30 viajes y litros vistos en 12 (por
+ejemplo AB499OK 1.940 L, JLH877 1.288 L, AC532DD 1.213 L), todos parciales por los cortes. La pantalla suma el consumo
+medido y la marca «Parcial».
+
+Tests: `ConciliacionCombustibleViajeTest` (+3), `FleetBoardPage.test.js` (+1).
+
 ## Pendiente
 
 - Confirmar que las muestras nuevas de Autotrac, ingeridas con el mapeo corregido, entran con demora normal.
