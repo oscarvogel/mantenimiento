@@ -6,6 +6,7 @@ namespace App\Application\TripMasters;
 
 use App\Application\Identity\ActorContext;
 use App\Application\TripMasters\Port\TripMasterRepository;
+use App\Domain\Trips\TripConcept;
 use DateTimeImmutable;
 use DomainException;
 
@@ -232,32 +233,32 @@ final readonly class TripMasterCatalog
             throw new DomainException('La fecha de fin no es válida.');
         }
         if ($catalog === 'conceptos') {
-            $categoria = strtoupper((string) ($data['categoria'] ?? ''));
-            if (! in_array($categoria, ['GASTO', 'HABER', 'AMBOS'], true)) {
-                throw new DomainException('Elegí si el concepto aplica a gastos, haberes o ambos.');
-            }
-            $data['categoria'] = $categoria;
-
-            $unidad = strtoupper((string) ($data['unidad'] ?? ''));
-            if (! in_array($unidad, ['DIA', 'UNIDAD', 'FIJO'], true)) {
-                throw new DomainException('Elegí si el concepto se mide por día, por unidad o es un importe fijo.');
-            }
-            $data['unidad'] = $unidad;
-
+            // La misma regla de dominio que usa el alta en línea desde el
+            // viaje: el maestro y el viaje no pueden divergir.
             $importe = str_replace(',', '.', trim((string) ($data['importe_unitario'] ?? '')));
-            if ($importe === '' || ! is_numeric($importe) || (float) $importe < 0) {
+            if ($importe === '' || ! is_numeric($importe)) {
                 throw new DomainException('Ingresá un importe unitario válido, mayor o igual a cero.');
             }
-            $data['importe_unitario'] = $importe;
-
-            $moneda = strtoupper((string) ($data['moneda'] ?? 'ARS'));
-            if (preg_match('/^[A-Z]{3}$/', $moneda) !== 1) {
-                throw new DomainException('La moneda del concepto no es válida.');
-            }
-            $data['moneda'] = $moneda;
-
+            $editable = true;
             if (array_key_exists('permite_editar_importe', $input)) {
-                $data['permite_editar_importe'] = (string) $input['permite_editar_importe'] === '1' ? '1' : '0';
+                $editable = (string) $input['permite_editar_importe'] === '1';
+            }
+            $concept = new TripConcept(
+                (string) ($data['nombre'] ?? ''),
+                (string) ($data['categoria'] ?? ''),
+                (string) ($data['unidad'] ?? ''),
+                (float) $importe,
+                (string) ($data['moneda'] ?? 'ARS'),
+                $editable,
+            );
+
+            $data['nombre'] = $concept->name();
+            $data['categoria'] = $concept->category();
+            $data['unidad'] = $concept->unit();
+            $data['importe_unitario'] = $concept->unitAmount();
+            $data['moneda'] = $concept->currency();
+            if (array_key_exists('permite_editar_importe', $input)) {
+                $data['permite_editar_importe'] = $concept->amountEditable() ? '1' : '0';
             } else {
                 unset($data['permite_editar_importe']);
             }

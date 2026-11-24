@@ -5,6 +5,7 @@ import PageHeading from './components/PageHeading.vue'
 import PanelCard from './components/PanelCard.vue'
 import AutocompleteSelect from './components/AutocompleteSelect.vue'
 import LocalityCreateModal from './components/LocalityCreateModal.vue'
+import TripConceptCreateModal from './components/TripConceptCreateModal.vue'
 import TripLegLiquidationBasisFields from './components/TripLegLiquidationBasisFields.vue'
 import { fieldClass, primaryButton, secondaryButton, dangerButton, nowLocal } from './helpers.js'
 import { useAlerts } from '../../composables/useAlerts.js'
@@ -35,8 +36,18 @@ const totals = computed(() => props.data.totals ?? {})
 const legs = computed(() => props.data.legs ?? [])
 const consumption = computed(() => props.data.consumption ?? {})
 const options = computed(() => props.data.options ?? { expenseCategories: [], paymentMethods: [], currencies: [] })
-const expenseConcepts = computed(() => options.value.expenseConcepts ?? [])
-const earningConcepts = computed(() => options.value.earningConcepts ?? [])
+// Los conceptos creados en esta pantalla se suman a los que ya venían del
+// catálogo: el operador no tiene que salir del viaje ni recargar la página.
+const createdConcepts = ref([])
+const canCreateConcepts = computed(() => Boolean(props.data.canCreateConcepts))
+const expenseConcepts = computed(() => [
+  ...(options.value.expenseConcepts ?? []),
+  ...createdConcepts.value.filter((concept) => ['GASTO', 'AMBOS'].includes(concept.categoria)),
+])
+const earningConcepts = computed(() => [
+  ...(options.value.earningConcepts ?? []),
+  ...createdConcepts.value.filter((concept) => ['HABER', 'AMBOS'].includes(concept.categoria)),
+])
 const csrf = computed(() => props.data.csrf ?? { name: 'csrf_test_name', hash: '' })
 const canRegisterCosts = computed(() => Boolean(props.data.canRegisterCosts))
 const canCompleteFuelPrices = computed(() => Boolean(props.data.canCompleteFuelPrices))
@@ -351,14 +362,22 @@ const closeBlockMessage = computed(() => closeBlocked.value
 const entryDialog = ref(null)
 const activeEntryModal = ref('')
 const editingEntry = ref(null)
+const expenseConceptId = ref('')
+const earningConceptId = ref('')
+const expenseForm = ref(null)
+const earningForm = ref(null)
 const openEntryModal = (type) => {
   editingEntry.value = null
   activeEntryModal.value = type
+  expenseConceptId.value = ''
+  earningConceptId.value = ''
   nextTick(() => entryDialog.value?.showModal())
 }
 const openEditModal = (type, entry) => {
   editingEntry.value = entry
   activeEntryModal.value = type
+  expenseConceptId.value = entry?.concepto_id ?? ''
+  earningConceptId.value = entry?.concepto_id ?? ''
   nextTick(() => entryDialog.value?.showModal())
 }
 const movementUrl = (type, id, remove = false) => {
@@ -384,12 +403,45 @@ const cashTypeLabel = { CAJA_INICIAL: 'Caja inicial', ANTICIPO: 'Anticipo', RETI
 const conceptOptionLabel = (concept) => `${concept.label} · ${money(concept.amount, concept.currency)}${concept.unit === 'DIA' ? ' / día' : ''}`
 const quantityLabel = (value) => Number(value ?? 0).toLocaleString('es-AR', { maximumFractionDigits: 2 })
 const earningConceptLabel = (earning) => earning.concepto_catalogo || earning.concepto || 'Sin concepto'
-const applyConceptToForm = (event) => {
-  const form = event.target.closest('form')
+const expenseConceptOptions = computed(() => expenseConcepts.value.map((concept) => ({ value: concept.id, label: conceptOptionLabel(concept) })))
+const earningConceptOptions = computed(() => earningConcepts.value.map((concept) => ({ value: concept.id, label: conceptOptionLabel(concept) })))
+const logbookConceptOptions = computed(() => logbookDayOptions.value.map((concept) => ({ value: concept.id, label: conceptOptionLabel(concept) })))
+
+// Alta de un concepto sin salir del viaje: el modal se abre sobre el
+// diálogo del movimiento y el concepto nuevo queda elegido en el momento.
+const conceptModalOpen = ref(false)
+const conceptModalName = ref('')
+const conceptModalKind = ref('expense')
+const conceptModalDefaults = computed(() => {
+  if (conceptModalKind.value === 'expense') return { category: 'GASTO', unit: 'UNIDAD' }
+  if (conceptModalKind.value === 'logbook') return { category: 'HABER', unit: 'DIA' }
+  return { category: 'HABER', unit: 'UNIDAD' }
+})
+const openConceptModal = (name, kind = 'expense') => {
+  conceptModalName.value = name
+  conceptModalKind.value = kind
+  conceptModalOpen.value = true
+}
+const closeConceptModal = () => { conceptModalOpen.value = false }
+const applyCreatedConcept = (concept) => {
+  if (!createdConcepts.value.some((item) => String(item.id) === String(concept.id))) {
+    createdConcepts.value = [...createdConcepts.value, concept]
+  }
+  if (conceptModalKind.value === 'expense') {
+    expenseConceptId.value = concept.id
+    nextTick(() => applyConceptToForm(expenseForm.value, concept.id))
+  } else if (conceptModalKind.value === 'earning') {
+    earningConceptId.value = concept.id
+    nextTick(() => applyConceptToForm(earningForm.value, concept.id))
+  } else if (conceptModalKind.value === 'logbook' && logbookDraft.value) {
+    logbookDraft.value.conceptoId = concept.id
+  }
+}
+
+const applyConceptToForm = (form, conceptId) => {
   if (!form) return
   const list = form.dataset.conceptKind === 'expense' ? expenseConcepts.value : earningConcepts.value
-  const conceptId = form.querySelector('select[name="concepto_id"]')?.value
-  const concept = list.find((item) => String(item.id) === String(conceptId))
+  const concept = list.find((item) => String(item.id) === String(conceptId ?? ''))
   const quantityInput = form.querySelector('input[name="cantidad"]')
   const amountInput = form.querySelector('input[name="importe"]')
   if (!amountInput) return
@@ -663,7 +715,7 @@ const facts = computed(() => {
         <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary-subtle text-primary"><CurrencyDollarIcon class="size-5" aria-hidden="true" /></span>
         <span><span class="block text-sm font-bold text-ink">Cargar haber</span><span class="mt-0.5 block text-xs text-ink-muted">Estadías y adicionales</span></span>
       </button>
-      <button v-if="driverOptions.length > 0 && logbookDayOptions.length > 0" type="button" aria-haspopup="dialog" @click="openLogbookModal()" class="group flex min-h-16 items-center gap-3 rounded-xl border border-border bg-surface-raised px-4 py-3 text-left shadow-card transition hover:border-primary hover:bg-primary-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+      <button v-if="driverOptions.length > 0" type="button" aria-haspopup="dialog" @click="openLogbookModal()" class="group flex min-h-16 items-center gap-3 rounded-xl border border-border bg-surface-raised px-4 py-3 text-left shadow-card transition hover:border-primary hover:bg-primary-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
         <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary-subtle text-primary"><BookOpenIcon class="size-5" aria-hidden="true" /></span>
         <span><span class="block text-sm font-bold text-ink">Diario de bordo</span><span class="mt-0.5 block text-xs text-ink-muted">Estadías por etapa</span></span>
       </button>
@@ -879,7 +931,7 @@ const facts = computed(() => {
 
     <PanelCard title="Diario de bordo" :count="logbook.length" class="mb-5" allow-overflow>
       <p class="text-sm text-ink-muted">Cargá llegada y salida de cada etapa. El sistema calcula los días por diferencia de fechas y descuenta la franquicia de esa etapa (48 h por defecto). La estadía se genera automáticamente como haber del chofer.</p>
-      <p v-if="logbookDayOptions.length === 0" class="mt-3 rounded-lg border border-warning/30 bg-warning-subtle px-3 py-2 text-sm text-warning-strong">No hay conceptos de haber liquidados por día. Cargalos en Maestros de viajes para calcular estadías.</p>
+      <p v-if="logbookDayOptions.length === 0" class="mt-3 rounded-lg border border-warning/30 bg-warning-subtle px-3 py-2 text-sm text-warning-strong">Todavía no hay conceptos de haber liquidados por día, así que todavía no se pueden calcular estadías.<button v-if="canCreateConcepts" type="button" class="ml-1 font-semibold underline" @click="openConceptModal('Estadía', 'logbook')">Crear el concepto acá mismo</button><span v-else> Cargalos en Maestros de viajes para calcular estadías.</span></p>
       <p v-else-if="logbook.length === 0" class="mt-3 text-sm text-ink-muted">Todavía no hay etapas cargadas. Usá “Diario de bordo” para registrar carga, fronteras y descarga.</p>
       <div v-else class="mt-4 overflow-x-auto">
         <table class="w-full min-w-[64rem] text-left text-sm">
@@ -1247,13 +1299,13 @@ const facts = computed(() => {
           <div class="mt-5 flex justify-end gap-2 border-t border-border-subtle pt-4"><button type="button" @click="entryDialog?.close()" :class="secondaryButton">Volver</button><button type="submit" :class="primaryButton">{{ editingEntry ? 'Guardar cambios' : 'Guardar combustible' }}</button></div>
         </form>
 
-        <form v-else-if="activeEntryModal === 'expense'" method="post" :action="editingEntry ? movementUrl('expense', editingEntry.id) : data.links?.expense" data-concept-kind="expense">
+        <form v-else-if="activeEntryModal === 'expense'" ref="expenseForm" method="post" :action="editingEntry ? movementUrl('expense', editingEntry.id) : data.links?.expense" data-concept-kind="expense">
           <input type="hidden" :name="csrf.name" :value="csrf.hash" />
           <p class="text-sm text-ink-muted">Peajes, viáticos, carga/descarga y otros gastos del viaje. Si elegís un concepto, podés calcular el importe por cantidad.</p>
           <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Categoría</span><select name="categoria_id" :value="editingEntry?.categoria_id ?? ''" :class="fieldClass"><option value="">Sin categoría</option><option v-for="category in options.expenseCategories" :key="category.id" :value="category.id">{{ category.label }}</option></select></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Concepto del catálogo</span><select name="concepto_id" :value="editingEntry?.concepto_id ?? ''" :class="fieldClass" @change="applyConceptToForm"><option value="">Sin concepto</option><option v-for="concept in expenseConcepts" :key="concept.id" :value="concept.id">{{ conceptOptionLabel(concept) }}</option></select></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cantidad</span><input type="number" name="cantidad" min="0.01" step="0.01" :value="editingEntry?.cantidad ?? 1" :class="fieldClass" @input="applyConceptToForm" /></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Concepto del catálogo</span><AutocompleteSelect v-model="expenseConceptId" name="concepto_id" :options="expenseConceptOptions" placeholder="Buscá o escribí un concepto" :allow-create="canCreateConcepts" empty-label="No hay conceptos con ese nombre" @update:model-value="(value) => applyConceptToForm(expenseForm, value)" @create="(name) => openConceptModal(name, 'expense')" /><span v-if="canCreateConcepts" class="mt-1 block text-xs text-ink-muted">Si no existe, escribilo y usá «Dar de alta» para crearlo sin salir del viaje.</span></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cantidad</span><input type="number" name="cantidad" min="0.01" step="0.01" :value="editingEntry?.cantidad ?? 1" :class="fieldClass" @input="applyConceptToForm(expenseForm, expenseConceptId)" /></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Fecha y hora</span><input type="datetime-local" name="fecha" :value="editingEntry ? inputDateTime(editingEntry.fecha) : nowLocal()" required :class="fieldClass" /></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Importe</span><input type="number" name="importe" min="0.01" step="0.01" :value="editingEntry?.importe ?? ''" required :class="fieldClass" /></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select name="moneda" :value="editingEntry?.moneda ?? 'ARS'" :class="fieldClass" @change="applyRateFromSelect"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }} · {{ currency.label }}</option></select></label>
@@ -1268,15 +1320,15 @@ const facts = computed(() => {
           <div class="mt-5 flex justify-end gap-2 border-t border-border-subtle pt-4"><button type="button" @click="entryDialog?.close()" :class="secondaryButton">Volver</button><button type="submit" :class="primaryButton">{{ editingEntry ? 'Guardar cambios' : 'Guardar gasto' }}</button></div>
         </form>
 
-        <form v-else-if="activeEntryModal === 'earning'" method="post" :action="editingEntry ? movementUrl('earning', editingEntry.id) : data.links?.earnings" data-concept-kind="earning">
+        <form v-else-if="activeEntryModal === 'earning'" ref="earningForm" method="post" :action="editingEntry ? movementUrl('earning', editingEntry.id) : data.links?.earnings" data-concept-kind="earning">
           <input type="hidden" :name="csrf.name" :value="csrf.hash" />
           <p class="text-sm text-ink-muted">Estadías y otros haberes del chofer. Elegí un concepto para calcular el importe por cantidad.</p>
           <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <label v-if="driverOptions.length > 1" class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Chofer</span><select name="empleado_id" :value="editingEntry?.empleado_id ?? driverOptions[0]?.value" :class="fieldClass"><option v-for="driver in driverOptions" :key="driver.value" :value="driver.value">{{ driver.label }}</option></select></label>
             <input v-else type="hidden" name="empleado_id" :value="editingEntry?.empleado_id ?? driverOptions[0]?.value ?? ''">
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Fecha</span><input type="date" name="fecha" :value="editingEntry?.fecha ?? today" required :class="fieldClass" /></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Concepto del catálogo</span><select name="concepto_id" :value="editingEntry?.concepto_id ?? ''" :class="fieldClass" @change="applyConceptToForm"><option value="">Concepto libre</option><option v-for="concept in earningConcepts" :key="concept.id" :value="concept.id">{{ conceptOptionLabel(concept) }}</option></select></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cantidad (días o unidades)</span><input type="number" name="cantidad" min="0.01" step="0.01" :value="editingEntry?.cantidad ?? 1" :class="fieldClass" @input="applyConceptToForm" /></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Concepto del catálogo</span><AutocompleteSelect v-model="earningConceptId" name="concepto_id" :options="earningConceptOptions" placeholder="Buscá o escribí un concepto" :allow-create="canCreateConcepts" empty-label="No hay conceptos con ese nombre" @update:model-value="(value) => applyConceptToForm(earningForm, value)" @create="(name) => openConceptModal(name, 'earning')" /><span v-if="canCreateConcepts" class="mt-1 block text-xs text-ink-muted">Si no existe, escribilo y usá «Dar de alta» para crearlo sin salir del viaje.</span></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cantidad (días o unidades)</span><input type="number" name="cantidad" min="0.01" step="0.01" :value="editingEntry?.cantidad ?? 1" :class="fieldClass" @input="applyConceptToForm(earningForm, earningConceptId)" /></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Importe</span><input type="number" name="importe" min="0.01" step="0.01" :value="editingEntry?.importe ?? ''" required :class="fieldClass" /></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select name="moneda" :value="editingEntry?.moneda ?? 'ARS'" :class="fieldClass"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }} · {{ currency.label }}</option></select></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cotización a ARS</span><input type="number" name="cotizacion" min="0.000001" step="0.000001" :value="editingEntry?.cotizacion ?? 1" :class="fieldClass" /></label>
@@ -1298,7 +1350,7 @@ const facts = computed(() => {
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Llegada</span><input v-model="logbookDraft.llegada" type="date" name="llegada" required :class="fieldClass" /></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Salida</span><input v-model="logbookDraft.salida" type="date" name="salida" :class="fieldClass" /></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Franquicia (horas)</span><input v-model="logbookDraft.horasLibres" type="number" name="horas_libres" min="0" step="1" :class="fieldClass" /><span class="mt-1 block text-xs text-ink-muted">48 h por defecto en cada etapa.</span></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Concepto de estadía</span><select v-model="logbookDraft.conceptoId" name="concepto_id" required :class="fieldClass"><option value="">Elegí el concepto</option><option v-for="concept in logbookDayOptions" :key="concept.id" :value="concept.id">{{ conceptOptionLabel(concept) }}</option></select></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Concepto de estadía</span><AutocompleteSelect v-model="logbookDraft.conceptoId" name="concepto_id" :options="logbookConceptOptions" placeholder="Buscá o escribí un concepto" :allow-create="canCreateConcepts" empty-label="No hay conceptos por día" required @create="(name) => openConceptModal(name, 'logbook')" /><span v-if="canCreateConcepts" class="mt-1 block text-xs text-ink-muted">Podés crear el concepto de estadía acá mismo, sin ir a Maestros de viajes.</span></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Días a liquidar (opcional)</span><input v-model="logbookDraft.diasAjustados" type="number" name="dias_ajustados" min="0" step="0.01" :placeholder="logbookCalculatedDays === null ? '' : String(logbookCalculatedDays)" :class="fieldClass" /><span class="mt-1 block text-xs text-ink-muted">Si lo dejás vacío se usan los días calculados.</span></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Motivo de la corrección</span><input v-model="logbookDraft.motivoAjuste" type="text" name="motivo_ajuste" maxlength="500" :class="fieldClass" /><span class="mt-1 block text-xs text-ink-muted">Obligatorio si corregís los días.</span></label>
             <label class="block sm:col-span-2 lg:col-span-3"><span class="mb-1 block text-xs font-semibold text-ink-muted">Observaciones</span><input v-model="logbookDraft.observaciones" type="text" name="observaciones" maxlength="500" :class="fieldClass" /></label>
@@ -1356,6 +1408,19 @@ const facts = computed(() => {
       :csrf="csrf"
       @close="closeLocalityModal"
       @created="applyCreatedLocality"
+    />
+
+    <TripConceptCreateModal
+      :open="conceptModalOpen"
+      :initial-name="conceptModalName"
+      :create-url="data.links?.concept ?? ''"
+      :csrf="csrf"
+      :default-category="conceptModalDefaults.category"
+      :default-unit="conceptModalDefaults.unit"
+      :restrict-daily-earning="conceptModalKind === 'logbook'"
+      :currencies="currencies"
+      @close="closeConceptModal"
+      @created="applyCreatedConcept"
     />
   </div>
 </template>

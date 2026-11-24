@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Application\Trips\AddTripLeg;
+use App\Application\Trips\CreateTripConcept;
 use App\Application\Trips\CreateTripLocality;
 use App\Application\Trips\FinishTrip;
 use App\Application\Trips\GenerateDriverSettlementPdf;
@@ -82,6 +83,29 @@ final class OperationalTripsHttpTest extends CIUnitTestCase
     public function testAnonymousCannotListProvincesForLocalityCreation(): void
     {
         $this->get('viajes/operativos/localidades/provincias')->assertRedirect();
+    }
+
+    public function testCreateTripConceptServiceIsWired(): void
+    {
+        self::assertInstanceOf(CreateTripConcept::class, service('createTripConcept'));
+    }
+
+    public function testCreatingAConceptWithoutCsrfIsRejected(): void
+    {
+        // El alta de un concepto es una mutacion: sin token CSRF no se crea nada.
+        $this->expectException(\CodeIgniter\Security\Exceptions\SecurityException::class);
+
+        $this->post('viajes/operativos/42/conceptos', ['nombre' => 'Viático cena']);
+    }
+
+    public function testConceptCreationRequiresTripOperationPermission(): void
+    {
+        $routes = (string) file_get_contents(APPPATH . 'Config/Routes.php');
+
+        self::assertMatchesRegularExpression(
+            "#'viajes/operativos/\\(:num\\)/conceptos',[^\\n]*'auth', 'permission:viajes\\.operar'#",
+            $routes,
+        );
     }
 
 }
