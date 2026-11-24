@@ -64,12 +64,16 @@ final class GetOperationalTrip
             'earnings' => base_url('viajes/operativos/' . $tripId . '/haberes'),
             'logbook' => base_url('viajes/operativos/' . $tripId . '/diario-bordo'),
             'percentage' => base_url('viajes/operativos/' . $tripId . '/porcentaje'),
+            'concept' => base_url('viajes/operativos/' . $tripId . '/conceptos'),
             'legs' => base_url('viajes/operativos/' . $tripId . '/tramos'),
             'update' => base_url('viajes/operativos/' . $tripId),
             'finish' => base_url('viajes/operativos/' . $tripId . '/cerrar'),
             'fuelPending' => base_url('viajes/operativos/combustible-sin-precio'),
         ];
         $detail['canOperate'] = $actor->hasPermission('viajes.operar');
+        // El concepto se puede dar de alta en el lugar: no hace falta salir
+        // del viaje para ir a Maestros de Viajes.
+        $detail['canCreateConcepts'] = CreateTripConcept::canCreateConcept($actor);
         $detail['canRegisterCosts'] = $detail['canOperate']
             && in_array($detail['trip']['estado'] ?? null, [Trip::PLANIFICADO, Trip::EN_CURSO], true);
         $detail['canEdit'] = $detail['canRegisterCosts'];

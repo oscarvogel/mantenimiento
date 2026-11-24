@@ -57,6 +57,7 @@ seguir.
 | Módulo de Combustible: lectura de las cargas del viaje | `FuelPanelReader` | `app/Application/Trips/Port/FuelPanelReader.php` | Viajes (lectura, mismo contexto) | **Implementado.** El módulo de Combustible de la plataforma lee `viaje_operativo_combustible`, la misma tabla que usa la conciliación: módulo y tabla no pueden discrepar. No cruza de contexto. |
 | Módulo de Combustible: conciliación con el sensor | `GetConciliacionCombustible` | `app/Application/Telematic/GetConciliacionCombustible.php` | Telemetría (lectura) | **Implementado.** La consume el módulo de Combustible (`viajes/combustible`) además de Gerencial. Exige `gerencial.flota.ver`: sin ese permiso el módulo muestra lo declarado y no inventa una comparación. No escribe nada. |
 | Módulo de Combustible: monedas y cotizaciones | `PendingFuelPriceRepository::currencies()` | `app/Application/Trips/Port/PendingFuelPriceRepository.php` | Viajes (lectura, mismo contexto) | **Implementado.** El módulo usa el catálogo de monedas de la empresa para cargar una carga en la moneda en que se pagó. Sin `viajes.operar` el módulo no ofrece cargar nada. |
+| Alta de conceptos desde el viaje | `TripConceptCatalog` | `app/Application/Trips/Port/TripConceptCatalog.php` | Viajes (escritura, mismo contexto) | **Implementado.** El alta en línea del viaje escribe en `viajes_conceptos`, el mismo catálogo que administra Maestros de Viajes: el concepto nuevo y el concepto del maestro son la misma fila y comparten la misma regla de dominio (`TripConcept`). No cruza de contexto. |
 
 ---
 

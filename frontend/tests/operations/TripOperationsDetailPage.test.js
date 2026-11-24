@@ -3,6 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import TripOperationsDetailPage from '../../src/pages/operations/TripOperationsDetailPage.vue'
 import AutocompleteSelect from '../../src/pages/operations/components/AutocompleteSelect.vue'
+import TripConceptCreateModal from '../../src/pages/operations/components/TripConceptCreateModal.vue'
 
 const alertsConfirm = vi.hoisted(() => vi.fn())
 vi.mock('../../src/composables/useAlerts.js', () => ({ useAlerts: () => ({ confirm: alertsConfirm }) }))
@@ -626,7 +627,10 @@ describe('detalle de viaje operativo', () => {
 
     const form = wrapper.get('form[action="/mantenimiento/viajes/operativos/42/haberes"]')
     expect(form.exists()).toBe(true)
-    expect(form.get('select[name="concepto_id"]').text()).toContain('Estadía Sider')
+    // El concepto se elige con un combo con búsqueda: las opciones siguen
+    // siendo las del catálogo, pero ya no es un <select> nativo.
+    const conceptSelect = form.getComponent(AutocompleteSelect)
+    expect(conceptSelect.props('options').map((option) => option.label).join(' ')).toContain('Estadía Sider')
     wrapper.unmount()
   })
 
@@ -657,18 +661,120 @@ describe('detalle de viaje operativo', () => {
     await nextTick()
 
     const form = wrapper.get('form[action="/mantenimiento/viajes/operativos/42/gastos"]')
-    await form.get('select[name="concepto_id"]').setValue('10')
+    const conceptSelect = form.getComponent(AutocompleteSelect)
+    await conceptSelect.setValue('10')
     await form.get('input[name="cantidad"]').setValue('1.5')
-    await form.get('select[name="concepto_id"]').trigger('change')
+    await conceptSelect.setValue('10')
 
     expect(form.get('input[name="importe"]').element.value).toBe('75000.00')
     expect(form.get('input[name="importe"]').element.readOnly).toBe(true)
-    expect(form.get('select[name="concepto_id"] option[value="10"]').text()).toContain('Estadía Sider')
-    expect(form.get('select[name="concepto_id"] option[value="10"]').text()).toContain('ARS 50.000,00 / día')
+    expect(form.get('input[name="concepto_id"]').element.value).toBe('10')
+    expect(conceptSelect.get('input[role="combobox"]').element.value).toContain('Estadía Sider')
+    expect(conceptSelect.get('input[role="combobox"]').element.value).toContain('ARS 50.000,00 / día')
 
-    await form.get('select[name="concepto_id"]').setValue('11')
-    await form.get('select[name="concepto_id"]').trigger('change')
+    await conceptSelect.setValue('11')
     expect(form.get('input[name="importe"]').element.readOnly).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('crea un concepto desde el viaje sin salir de la pantalla', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        concept: { id: 77, label: 'Viático cena', categoria: 'GASTO', unit: 'UNIDAD', amount: 5000, currency: 'ARS', editable: true },
+      }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const wrapper = mount(TripOperationsDetailPage, {
+      props: {
+        data: {
+          ...data,
+          canStart: false,
+          canCancel: false,
+          canRegisterCosts: true,
+          canCreateConcepts: true,
+          links: {
+            ...data.links,
+            expense: '/mantenimiento/viajes/operativos/42/gastos',
+            concept: '/mantenimiento/viajes/operativos/42/conceptos',
+          },
+          options: {
+            expenseCategories: [],
+            paymentMethods: [],
+            currencies: [{ code: 'ARS', label: 'Peso argentino' }],
+            expenseConcepts: [],
+          },
+        },
+      },
+    })
+
+    const expenseButton = wrapper.findAll('button').find((button) => button.text().includes('Cargar gasto'))
+    await expenseButton.trigger('click')
+    await nextTick()
+
+    // El operador escribe un concepto que no existe y lo da de alta.
+    const conceptSelect = wrapper.get('form[action="/mantenimiento/viajes/operativos/42/gastos"]')
+      .findAllComponents(AutocompleteSelect)
+      .find((component) => component.props('name') === 'concepto_id')
+    conceptSelect.vm.$emit('create', 'Viático cena')
+    await nextTick()
+    await nextTick()
+
+    const modal = wrapper.getComponent(TripConceptCreateModal)
+    expect(modal.get('input[name="nombre"]').element.value).toBe('Viático cena')
+    await modal.get('input[name="importe_unitario"]').setValue('5000')
+    await modal.get('form').trigger('submit')
+    await flushPromises()
+    await nextTick()
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const [url, request] = fetchMock.mock.calls[0]
+    expect(url).toBe('/mantenimiento/viajes/operativos/42/conceptos')
+    expect(request.body).toContain('nombre=Vi%C3%A1tico+cena')
+    expect(request.body).toContain('categoria=GASTO')
+    expect(request.body).toContain('importe_unitario=5000')
+
+    // El concepto queda elegido y el importe calculado: no hay que recargar.
+    const form = wrapper.get('form[action="/mantenimiento/viajes/operativos/42/gastos"]')
+    expect(form.get('input[name="concepto_id"]').element.value).toBe('77')
+    expect(form.get('input[name="importe"]').element.value).toBe('5000.00')
+    wrapper.unmount()
+  })
+
+  it('ofrece crear el concepto de estadía cuando todavía no hay conceptos por día', async () => {
+    const wrapper = mount(TripOperationsDetailPage, {
+      props: {
+        data: {
+          ...data,
+          canStart: false,
+          canCancel: false,
+          canRegisterCosts: true,
+          canCreateConcepts: true,
+          assignments: [
+            { rol: 'TRACTOR', rol_label: 'Tractor / camión', label: 'AA111AA · T01', desde: '2026-10-20 08:00:00', hasta: null },
+            { rol: 'CHOFER', rol_label: 'Chofer', label: 'Pérez, Juan', empleado_id: 11, desde: '2026-10-20 08:00:00', hasta: null },
+          ],
+          links: { ...data.links, logbook: '/mantenimiento/viajes/operativos/42/diario-bordo' },
+          options: { expenseCategories: [], paymentMethods: [], currencies: [{ code: 'ARS', label: 'Peso argentino' }], earningConcepts: [] },
+        },
+      },
+    })
+
+    // El diario de bordo se puede abrir aunque no haya conceptos cargados.
+    const logbookButton = wrapper.findAll('button').find((button) => button.text().includes('Diario de bordo'))
+    expect(logbookButton).toBeTruthy()
+    expect(wrapper.text()).toContain('Todavía no hay conceptos de haber liquidados por día')
+
+    const createButton = wrapper.findAll('button').find((button) => button.text().includes('Crear el concepto acá mismo'))
+    expect(createButton).toBeTruthy()
+    await createButton.trigger('click')
+    await nextTick()
+    await nextTick()
+
+    const modal = wrapper.getComponent(TripConceptCreateModal)
+    expect(modal.get('select[name="categoria"]').element.value).toBe('HABER')
+    expect(modal.get('select[name="unidad"]').element.value).toBe('DIA')
     wrapper.unmount()
   })
 

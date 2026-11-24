@@ -7,6 +7,7 @@ namespace App\Controllers;
 use App\Application\Identity\ActorContext;
 use App\Application\Trips\AddTripLegCommand;
 use App\Application\Trips\CreateTripCommand;
+use App\Application\Trips\CreateTripConceptCommand;
 use App\Application\Trips\DeleteOperationalTripCost;
 use App\Application\Trips\DeleteOperationalTripCostCommand;
 use App\Application\Trips\ListOperationalTrips;
@@ -131,6 +132,33 @@ final class OperationalTrips extends BaseController
             ]);
         } catch (Throwable $exception) {
             return $this->localityFailure($exception, 'No se pudo dar de alta la localidad.');
+        }
+    }
+
+    /**
+     * Alta de un concepto del catálogo desde el propio viaje.
+     *
+     * Responde JSON para que el operador pueda seguir cargando el gasto o el
+     * haber sin salir de la pantalla del viaje.
+     */
+    public function addConcept(int $tripId): ResponseInterface
+    {
+        try {
+            $command = CreateTripConceptCommand::fromInput((array) $this->request->getPost());
+
+            return $this->response->setJSON([
+                'concept' => service('createTripConcept')->execute($this->actor(), $tripId, $command),
+            ]);
+        } catch (Throwable $exception) {
+            if (! $exception instanceof DomainException) {
+                log_message('error', 'Falló el alta de un concepto de viaje: {message}', ['message' => $exception->getMessage()]);
+            }
+
+            return $this->response->setStatusCode($exception instanceof DomainException ? 422 : 500)->setJSON([
+                'message' => $exception instanceof DomainException
+                    ? $exception->getMessage()
+                    : 'No se pudo dar de alta el concepto.',
+            ]);
         }
     }
 

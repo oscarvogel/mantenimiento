@@ -1262,6 +1262,22 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
         );
     }
 
+    /**
+     * Alta de un concepto del catálogo desde el propio viaje.
+     */
+    public static function createTripConcept(bool $getShared = true): \App\Application\Trips\CreateTripConcept
+    {
+        if ($getShared) {
+            return static::getSharedInstance('createTripConcept');
+        }
+
+        return new \App\Application\Trips\CreateTripConcept(
+            new \App\Infrastructure\Trips\CodeIgniterTripConceptCatalog(db_connect()),
+            new \App\Infrastructure\Trips\CodeIgniterOperationalTripReadModel(db_connect()),
+            new \App\Infrastructure\Trips\CodeIgniterTripDirectoryLookup(db_connect()),
+        );
+    }
+
     public static function getTripsDashboard(bool $getShared = true): \App\Application\Trips\GetTripsDashboard
     {
         if ($getShared) {

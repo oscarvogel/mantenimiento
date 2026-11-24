@@ -170,6 +170,7 @@ Los adelantos no cambian el margen del viaje; solo la liquidación final.
 | Otros haberes del viaje | Implementado | `viaje_operativo_otros_haberes`, `TripOtherEarning` |
 | Diario de bordo con cálculo automático de estadías | Implementado | `viaje_operativo_diario_bordo`, `TripLogbookEntry`, `SaveTripLogbookEntry` |
 | Catálogo de conceptos de gasto/haber con importe, categoría y unidad | Implementado | `viajes_conceptos`, `TripMasterCatalog` |
+| Alta de concepto desde el propio viaje, sin salir de la pantalla | Implementado | `CreateTripConcept`, `POST viajes/operativos/(:num)/conceptos` |
 | Concepto, cantidad e importe unitario en gastos y haberes | Implementado | `viaje_operativo_gastos`, `viaje_operativo_otros_haberes` |
 | Alta de viaje aprobado directamente En curso con salida y km reales | Implementado | `CreateTrip`, `Trip::startImmediately` |
 | Inicio separado de viajes preexistentes `PLANIFICADO` | Conservado para registros anteriores | `StartTrip` |

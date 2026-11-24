@@ -23,6 +23,15 @@ Los registros de empresa incluyen `empresa_id`, claves e índices para las consu
 
 Los períodos de liquidación se validan para impedir superposiciones activas del mismo empleado. Esta tabla configura porcentajes; no calcula ni contabiliza liquidaciones. El viaje o liquidación final deberá guardar una copia del porcentaje aplicado.
 
+## Alta de conceptos desde el viaje
+
+Los conceptos de gasto y haber también se pueden dar de alta **desde el propio viaje**
+(`POST viajes/operativos/(:num)/conceptos`), sin salir de la pantalla: el operador
+escribe el concepto en el combo, elige «Dar de alta» y lo crea en el lugar, con la
+misma validación que aplica el maestro. Habilita `viajes.operar` o
+`viajes.maestros.editar`. El concepto creado queda en el catálogo de la empresa y
+sirve para los próximos viajes. Ver `docs/BITACORA_2026-11-24_ALTA_CONCEPTOS_DESDE_VIAJE.md`.
+
 ## Decisiones todavía abiertas
 
 La rentabilidad, los documentos obligatorios según corredor y el perfil de ruteo quedan fuera de este corte. Los tipos documentales son catálogos editables; no implican reglas de obligatoriedad. Los requisitos se completarán cuando la empresa responda.
