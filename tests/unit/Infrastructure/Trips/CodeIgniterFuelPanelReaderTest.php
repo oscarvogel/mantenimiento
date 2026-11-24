@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Application\Trips\FuelPanelFilters;
 use App\Infrastructure\Trips\CodeIgniterFuelPanelReader;
 use CodeIgniter\Database\BaseConnection;
 use Config\Database;
@@ -39,7 +40,8 @@ final class CodeIgniterFuelPanelReaderTest extends TestCase
         $this->db->query('CREATE TABLE viaje_operativo_combustible (
             id INTEGER PRIMARY KEY, viaje_id INTEGER, empresa_id INTEGER, sucursal_id INTEGER, tramo_id INTEGER NULL,
             fecha DATETIME, litros DECIMAL(14,2), importe DECIMAL(18,4) NULL, moneda CHAR(3), cotizacion DECIMAL(18,6),
-            importe_ars DECIMAL(18,4) NULL, deleted_at DATETIME NULL
+            importe_ars DECIMAL(18,4) NULL, kilometraje INTEGER NULL, estacion VARCHAR(120) NULL,
+            comprobante VARCHAR(80) NULL, observaciones VARCHAR(500) NULL, deleted_at DATETIME NULL
         )');
 
         $this->db->table('sucursales')->insertBatch([
@@ -48,17 +50,20 @@ final class CodeIgniterFuelPanelReaderTest extends TestCase
         ]);
         $this->db->table('equipos')->insertBatch([
             ['id' => 7, 'empresa_id' => 4, 'codigo' => 'T07', 'patente' => 'ONN137'],
+            ['id' => 8, 'empresa_id' => 4, 'codigo' => 'T08', 'patente' => 'XYZ999'],
             ['id' => 9, 'empresa_id' => 5, 'codigo' => 'X09', 'patente' => 'OTRA001'],
         ]);
         $this->db->table('viajes_operativos')->insertBatch([
             ['id' => 1, 'empresa_id' => 4, 'sucursal_id' => 10, 'numero' => 21, 'estado' => 'FINALIZADO', 'fecha_salida_real' => '2026-10-30 00:00:00', 'fecha_regreso_real' => '2026-11-17 18:00:00', 'km_salida' => 1720460, 'km_regreso' => 1727587],
             ['id' => 2, 'empresa_id' => 4, 'sucursal_id' => 20, 'numero' => 22, 'estado' => 'EN_CURSO', 'fecha_salida_real' => '2026-11-10 08:00:00', 'fecha_regreso_real' => null, 'km_salida' => 1000, 'km_regreso' => null],
+            ['id' => 4, 'empresa_id' => 4, 'sucursal_id' => 10, 'numero' => 24, 'estado' => 'EN_CURSO', 'fecha_salida_real' => '2026-11-12 08:00:00', 'fecha_regreso_real' => null, 'km_salida' => null, 'km_regreso' => null],
             // De otra empresa: no entra.
             ['id' => 3, 'empresa_id' => 5, 'sucursal_id' => 10, 'numero' => 23, 'estado' => 'EN_CURSO', 'fecha_salida_real' => '2026-11-10 08:00:00', 'fecha_regreso_real' => null, 'km_salida' => null, 'km_regreso' => null],
         ]);
         $this->db->table('viaje_operativo_asignaciones')->insertBatch([
             ['id' => 1, 'viaje_id' => 1, 'empresa_id' => 4, 'sucursal_id' => 10, 'rol' => 'TRACTOR', 'equipo_id' => 7, 'empleado_id' => null],
             ['id' => 2, 'viaje_id' => 1, 'empresa_id' => 4, 'sucursal_id' => 10, 'rol' => 'CHOFER', 'equipo_id' => null, 'empleado_id' => 30],
+            ['id' => 4, 'viaje_id' => 2, 'empresa_id' => 4, 'sucursal_id' => 20, 'rol' => 'TRACTOR', 'equipo_id' => 8, 'empleado_id' => null],
             // Asignación de otra empresa: no le da tractor.
             ['id' => 3, 'viaje_id' => 1, 'empresa_id' => 5, 'sucursal_id' => 10, 'rol' => 'TRACTOR', 'equipo_id' => 9, 'empleado_id' => null],
         ]);
@@ -75,7 +80,7 @@ final class CodeIgniterFuelPanelReaderTest extends TestCase
 
     public function testSumsTheLiveLoadsOfEachTripAndCountsTheOnesWithoutPrice(): void
     {
-        $filas = $this->reader->viajes(4, null);
+        $filas = $this->reader->viajes(4, null, new FuelPanelFilters());
         $porNumero = [];
         foreach ($filas as $fila) {
             $porNumero[(int) $fila['numero']] = $fila;
@@ -88,24 +93,65 @@ final class CodeIgniterFuelPanelReaderTest extends TestCase
         self::assertSame(1, $porNumero[21]['cargas_sin_precio']);
         self::assertSame(193.0, $porNumero[21]['litros_sin_precio']);
         self::assertSame('ONN137', $porNumero[21]['patente']);
+        self::assertSame(7, $porNumero[21]['equipo_id']);
         self::assertSame('Posadas', $porNumero[21]['sucursal']);
 
         // El viaje sin tractor no inventa una patente.
-        self::assertNull($porNumero[22]['patente']);
+        self::assertNull($porNumero[24]['patente']);
+    }
+
+    public function testListsTheLoadsThatAreWaitingForTheirPrice(): void
+    {
+        $filas = $this->reader->viajes(4, null, new FuelPanelFilters());
+        $porNumero = [];
+        foreach ($filas as $fila) {
+            $porNumero[(int) $fila['numero']] = $fila;
+        }
+
+        self::assertCount(1, $porNumero[21]['cargas_pendientes']);
+        self::assertSame(2, $porNumero[21]['cargas_pendientes'][0]['id']);
+        self::assertSame(193.0, $porNumero[21]['cargas_pendientes'][0]['litros']);
+        self::assertSame([], $porNumero[22]['cargas_pendientes']);
+    }
+
+    public function testFiltersByTruck(): void
+    {
+        $filas = $this->reader->viajes(4, null, new FuelPanelFilters(null, null, 8));
+        $numeros = array_map(static fn (array $fila): int => (int) $fila['numero'], $filas);
+
+        self::assertSame([22], $numeros);
+
+        // El camión que no es tractor del viaje no lo trae.
+        $otro = array_map(
+            static fn (array $fila): int => (int) $fila['numero'],
+            $this->reader->viajes(4, null, new FuelPanelFilters(null, null, 9)),
+        );
+        self::assertSame([], $otro);
+    }
+
+    public function testListsTheTrucksOfTheCompanyAsFilterOptions(): void
+    {
+        $camiones = $this->reader->camiones(4);
+
+        self::assertSame([
+            ['id' => 7, 'label' => 'ONN137 · T07', 'patente' => 'ONN137'],
+            ['id' => 8, 'label' => 'XYZ999 · T08', 'patente' => 'XYZ999'],
+        ], $camiones);
     }
 
     public function testDoesNotReadOtherCompaniesNorBranchesOutsideTheScope(): void
     {
-        $filas = $this->reader->viajes(4, [10]);
+        $filas = $this->reader->viajes(4, [10], new FuelPanelFilters());
         $numeros = array_map(static fn (array $fila): int => (int) $fila['numero'], $filas);
 
-        self::assertSame([21], $numeros);
-        self::assertSame([], $this->reader->viajes(4, []));
+        // Los dos viajes de la sucursal 10, del más nuevo al más viejo.
+        self::assertSame([24, 21], $numeros);
+        self::assertSame([], $this->reader->viajes(4, [], new FuelPanelFilters()));
 
         // La otra empresa solo ve sus propios viajes.
         $otraEmpresa = array_map(
             static fn (array $fila): int => (int) $fila['numero'],
-            $this->reader->viajes(5, null),
+            $this->reader->viajes(5, null, new FuelPanelFilters()),
         );
         self::assertSame([23], $otraEmpresa);
     }

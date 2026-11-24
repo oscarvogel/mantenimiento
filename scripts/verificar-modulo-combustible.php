@@ -168,7 +168,9 @@ try {
     );
 
     // 1. El panel, tal como lo arma el controller FuelModule.
-    $panel = service('panelCombustible')->execute($actor, $dias, null);
+    $desde = date('Y-m-d', strtotime('-' . $dias . ' days'));
+    $filtros = new \App\Application\Trips\FuelPanelFilters($desde, date('Y-m-d'));
+    $panel = service('panelCombustible')->execute($actor, $filtros);
 
     // 2. La conciliacion contra el sensor (solo con gerencial.flota.ver).
     $conciliacion = service('conciliacionCombustible')->execute($actor, $dias, null);
@@ -186,7 +188,6 @@ try {
 
     // La misma ventana que usa el caso de uso (salida real cargada, viaje no
     // cancelado, dentro del periodo), para comparar mantera con el panel.
-    $desde = date('Y-m-d', strtotime('-' . $dias . ' days'));
     $sqlVentana = "SELECT COUNT(*) AS cargas, COALESCE(SUM(f.litros), 0) AS litros, "
         . 'COALESCE(SUM(f.importe_ars), 0) AS importe_ars, '
         . 'SUM(CASE WHEN f.importe IS NULL THEN 1 ELSE 0 END) AS cargas_sin_precio, '

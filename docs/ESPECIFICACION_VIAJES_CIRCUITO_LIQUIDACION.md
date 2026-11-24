@@ -772,8 +772,51 @@ Reglas:
 ```
 
 ### 10.6 Historial legacy
-
 Se conserva como está: solo lectura, con viajes, tramos, combustible, gastos, cuenta corriente, comprobantes y otros haberes importados. No se recalcula ni se mezcla con el circuito nuevo.
+
+### 10.7 Módulo de Combustible (operativo)
+
+```text
+┌ Combustible ───────────────────────────────────────────────────────────┐
+│ [Combustible] [Conciliación con el sensor]                             │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Desde [__] Hasta [__] Camión [Todos ▾]        [Aplicar] [Limpiar]      │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Litros cargados │ Importe │ Consumo promedio │ Viajes sin combustible  │
+│ 2.812 L         │ $...    │ 39,5 L/100 km     │ 39                     │
+│                 │         │ 1 viaje medido    │                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Fecha     │ Camión   │ Viaje │ Litros │ Importe │ Km │ Consumo │ Acción│
+│ 30/10/26  │ ONN137   │ #21   │ 2.812  │ $...   │...│ 39,5    │[...]  │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+Reglas:
+
+- La pantalla es la del **trabajo diario**: qué se cargó en cada viaje, cuánto consume y
+  qué falta cargar. Lee la tabla de cargas del viaje (`viaje_operativo_combustible`),
+  la misma que usa la conciliación: módulo y tabla no pueden discrepar.
+- El **período** se filtra por fechas (desde/hasta) y por **camión**. El camión se elige
+  con un combo con búsqueda: se escribe parte de la patente y se elige de las que
+  existen; no se aceptan valores libres.
+- Entra un viaje que **empezó antes del final del período y terminó después del inicio**,
+  o que sigue en curso: un viaje abierto de hace 40 días sigue consumiendo hoy.
+- El **consumo promedio** se calcula con lo declarado (litros sobre kilómetros) de los
+  viajes que se pueden medir, con la **misma regla que el tablero de viajes operativos**
+  (`TripConsumption::litersPer100Km`), y muestra **cuántos viajes hay detrás**. Sin
+  odómetro de salida y de regreso no hay consumo: se dice "Sin datos", nunca cero.
+- Desde cada fila se puede **cargar el combustible que falta** (litros, importe, moneda,
+  cotización, odómetro, estación, comprobante y observaciones) y **completar el importe**
+  de las cargas que esperan su precio. Ambas operaciones exigen `viajes.operar` y son las
+  mismas que se hacen desde la ficha del viaje: el módulo no tiene un modelo de
+  combustible propio, sólo deja capturar más rápido lo que falta.
+- Un viaje **finalizado** no admite cargas nuevas: de él sólo se completa el precio de
+  las cargas que ya tiene.
+- La **conciliación con el sensor del tanque** es un dato gerencial y va en su propia
+  pestaña, visible sólo con `gerencial.flota.ver`. Sin ese permiso el módulo no la
+  muestra: no se inventa una comparación.
+- Cuando falta un dato se informa **el motivo** (regla 32): nunca un cero que parezca
+  medido.
 
 ---
 
@@ -941,6 +984,7 @@ La Fase 2 (aprobación y pagos de liquidación) queda para después de validar e
 | 12/11/2026 | Mavis | Se atienden los pedidos de los videos del cliente: filtro por patente y orden por fecha, estado derivado de "recorrido cerrado" con aviso y prefill del cierre, y la fecha estimada de regreso pasa a ser dato derivado del último tramo. | Sin cambios de esquema ni migración. El cierre por flete faltante **no** se desbloquea: el cierre sigue siendo manual y exige odómetro de regreso. Ver `docs/BITACORA_2026-11-12_PEDIDOS_VIDEOS_VIAJES_OPERATIVOS.md`. |
 | 18/11/2026 | Claude | Pedido de Carlos: cargar combustible sin importe y completar los precios más tarde, también con el viaje ya cerrado. | Migración `2026-11-18-120000` (importe e importe_ars nullable en `viaje_operativo_combustible`). Pantalla `viajes/operativos/combustible-sin-precio` con permiso `viajes.operar`. El tablero deja de sumar costos quitados (soft delete). |
 | 20/11/2026 | Claude | Pedido de Carlos: resumen PDF con KPI también en curso (borrador); al cerrar, km de regreso sugerido por telemetría, consumo previo con aviso fuera de rango y confirmación. | Sin migraciones. `TripKpis`, `TripReturnOdometer`, puerto `TripOdometerTelemetry` (lee `telematia_muestras` y `telematia_buckets`). |
+| 24/11/2026 | Claude | El módulo de Combustible pasa a ser **operativo**: refleja el combustible cargado por viaje, muestra el consumo promedio con su base, filtra por fecha y camión y permite cargar lo que falta (carga nueva e importes pendientes). La conciliación con el sensor pasa a su propia pestaña. | Sin migraciones. Decisión del cliente en `docs/BITACORA_2026-11-24_MODULO_COMBUSTIBLE_OPERATIVO.md`. |
 
 Checklist para aprobar la Fase 1:
 

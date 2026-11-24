@@ -37,7 +37,7 @@ final class GetPlatformModuleCatalog
         [
             'key' => 'fuel',
             'label' => 'Combustible',
-            'description' => 'Lo que declaró cada viaje, lo que falta completar y la conciliación contra el sensor.',
+            'description' => 'Combustible cargado por viaje, consumo y carga de lo que falta.',
             'icon' => 'fuel',
         ],
         [
