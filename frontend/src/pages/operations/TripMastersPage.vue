@@ -112,6 +112,10 @@ const selectedCatalog = computed(() => catalogs.value[selected.value] ?? { label
 const conceptCategoryLabels = { GASTO: 'Gastos', HABER: 'Haberes', AMBOS: 'Gastos y haberes' }
 const conceptUnitLabels = { DIA: 'por día', UNIDAD: 'por unidad', FIJO: 'importe fijo' }
 const cotizacionItems = computed(() => catalogs.value.cotizaciones?.items ?? [])
+const liquidationDefaultValue = computed(() => {
+  const value = props.data.liquidationDefault
+  return value === null || value === undefined || value === '' ? '' : Number(value)
+})
 const catalogFields = computed(() => fieldsByCatalog[formCatalog.value] ?? [])
 const formCatalogLabel = computed(() => catalogs.value[formCatalog.value]?.label ?? '')
 const catalogItems = computed(() => {
@@ -430,6 +434,35 @@ function statusMessage(item) {
         </div>
         <button v-if="props.data.canEdit" type="button" :class="primaryButton" @click="openCreate(selected)">Agregar {{ selectedCatalog.label.toLocaleLowerCase('es') }}</button>
       </header>
+
+      <div v-if="selected === 'liquidaciones'" class="border-b border-border-subtle p-4 sm:p-5">
+        <h3 class="text-sm font-semibold text-ink">Porcentaje por defecto de la empresa</h3>
+        <p class="mt-1 max-w-3xl text-sm text-ink-muted">
+          Se usa cuando el chofer no tiene un porcentaje propio vigente en el maestro: es el respaldo para los
+          choferes que se dan de alta después de la última carga. Si lo dejás vacío, sus viajes quedan sin comisión.
+        </p>
+        <form v-if="props.data.canEdit" method="post" :action="props.data.urls.liquidationDefault" class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+          <input type="hidden" :name="props.data.csrf.name" :value="props.data.csrf.hash">
+          <label class="block">
+            <span class="text-sm font-medium text-ink">Porcentaje</span>
+            <input
+              type="number"
+              name="porcentaje_defecto"
+              min="0"
+              max="100"
+              step="0.01"
+              inputmode="decimal"
+              :value="liquidationDefaultValue"
+              placeholder="Ej. 14"
+              :class="inputClass"
+            >
+          </label>
+          <button type="submit" :class="primaryButton">Guardar porcentaje por defecto</button>
+        </form>
+        <p v-else class="mt-4 text-sm font-semibold text-ink">
+          {{ liquidationDefaultValue === null ? 'Sin porcentaje por defecto: los choferes sin fila en el maestro quedan sin comisión.' : `${liquidationDefaultValue}%` }}
+        </p>
+      </div>
       <div v-if="selectedCatalog.items?.length" class="flex flex-col gap-3 border-b border-border-subtle p-4 sm:flex-row sm:items-center sm:p-5">
         <label class="block min-w-0 flex-1">
           <span class="sr-only">Buscar en {{ selectedCatalog.label }}</span>

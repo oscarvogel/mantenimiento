@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\TripMasters;
 
 use App\Application\TripMasters\Port\TripMasterRepository;
+use App\Infrastructure\Trips\DriverLiquidationDefault;
 use CodeIgniter\Database\BaseBuilder;
 use CodeIgniter\Database\BaseConnection;
 use DomainException;
@@ -185,8 +186,7 @@ final readonly class CodeIgniterTripMasterRepository implements TripMasterReposi
     }
 
     public function hasOverlappingLiquidationRate(int $companyId, int $employeeId, string $from, ?string $to, ?int $exceptId = null): bool
-    {
-        $builder = $this->db->table('viajes_porcentajes_liquidacion_chofer')
+    {        $builder = $this->db->table('viajes_porcentajes_liquidacion_chofer')
             ->where('empresa_id', $companyId)->where('empleado_id', $employeeId)->where('activo', 1)
             ->groupStart()->where('vigente_hasta IS NULL', null, false)->orWhere('vigente_hasta >=', $from)->groupEnd();
         if ($to !== null) {
@@ -196,6 +196,47 @@ final readonly class CodeIgniterTripMasterRepository implements TripMasterReposi
             $builder->where('id !=', $exceptId);
         }
         return $builder->countAllResults() > 0;
+    }
+
+    public function liquidationDefault(int $companyId): ?float
+    {
+        return DriverLiquidationDefault::read($this->db, $companyId);
+    }
+
+    public function saveLiquidationDefault(int $companyId, ?float $percentage, int $userId): void
+    {
+        $now = date('Y-m-d H:i:s');
+        if ($percentage === null) {
+            $this->db->table('viajes_porcentaje_liquidacion_defecto')
+                ->where('empresa_id', $companyId)
+                ->delete();
+
+            return;
+        }
+
+        $existing = $this->db->table('viajes_porcentaje_liquidacion_defecto')
+            ->where('empresa_id', $companyId)
+            ->get()->getRowArray();
+        if ($existing === null) {
+            $this->db->table('viajes_porcentaje_liquidacion_defecto')->insert([
+                'empresa_id' => $companyId,
+                'porcentaje' => $percentage,
+                'created_at' => $now,
+                'updated_at' => $now,
+                'created_by' => $userId,
+                'updated_by' => $userId,
+            ]);
+
+            return;
+        }
+
+        $this->db->table('viajes_porcentaje_liquidacion_defecto')
+            ->where('empresa_id', $companyId)
+            ->update([
+                'porcentaje' => $percentage,
+                'updated_at' => $now,
+                'updated_by' => $userId,
+            ]);
     }
 
     private function table(string $catalog): string

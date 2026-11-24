@@ -86,6 +86,7 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
         $this->database->query('CREATE TABLE viajes_categorias_gasto (id INTEGER PRIMARY KEY, empresa_id INTEGER, nombre TEXT, activo INTEGER)');
         $this->database->query('CREATE TABLE viajes_conceptos (id INTEGER PRIMARY KEY, empresa_id INTEGER, nombre TEXT, categoria TEXT, unidad TEXT, importe_unitario REAL, moneda TEXT, permite_editar_importe INTEGER, activo INTEGER)');
         $this->database->query('CREATE TABLE viajes_porcentajes_liquidacion_chofer (id INTEGER PRIMARY KEY, empresa_id INTEGER, empleado_id INTEGER, porcentaje REAL, vigente_desde TEXT, vigente_hasta TEXT NULL, activo INTEGER)');
+        $this->database->query('CREATE TABLE viajes_porcentaje_liquidacion_defecto (id INTEGER PRIMARY KEY, empresa_id INTEGER, porcentaje REAL, created_at TEXT NULL, updated_at TEXT NULL, created_by INTEGER NULL, updated_by INTEGER NULL)');
         $this->database->query('CREATE TABLE viajes_medios_pago (id INTEGER PRIMARY KEY, empresa_id INTEGER, nombre TEXT, activo INTEGER)');
         $this->database->query('CREATE TABLE viajes_monedas (codigo TEXT PRIMARY KEY, nombre TEXT, activo INTEGER)');
         $this->database->query('CREATE TABLE viajes_cotizaciones (id INTEGER PRIMARY KEY AUTOINCREMENT, empresa_id INTEGER, moneda TEXT, cotizacion REAL)');
@@ -208,6 +209,28 @@ final class CodeIgniterOperationalTripReadModelTest extends TestCase
         self::assertSame(1, $trip['tramos']);
         self::assertSame('Córdoba', $trip['destino']);
         self::assertTrue($trip['recorrido_cerrado']);
+    }
+
+    public function testElViajeExponeElPorcentajePorDefectoDeLaEmpresa(): void
+    {
+        $this->database->table('viajes_porcentaje_liquidacion_defecto')->insert([
+            'id' => 1, 'empresa_id' => 5, 'porcentaje' => 14,
+            'created_at' => '2026-11-24 10:00:00', 'updated_at' => '2026-11-24 10:00:00',
+            'created_by' => 1, 'updated_by' => 1,
+        ]);
+
+        $detail = (new CodeIgniterOperationalTripReadModel($this->database))->find(5, [10], 1);
+
+        self::assertNotNull($detail);
+        self::assertSame(14.0, $detail['company_default_percentage']);
+    }
+
+    public function testSinPorcentajePorDefectoElViajeLoDevuelveEnNull(): void
+    {
+        $detail = (new CodeIgniterOperationalTripReadModel($this->database))->find(5, [10], 1);
+
+        self::assertNotNull($detail);
+        self::assertNull($detail['company_default_percentage']);
     }
 
     public function testListShowsRouteEquipmentDriversAndStatus(): void

@@ -7,6 +7,7 @@ namespace App\Application\Trips;
 use App\Application\Identity\ActorContext;
 use App\Application\Trips\Port\OperationalTripReadModel;
 use App\Application\Trips\Port\TripOdometerTelemetry;
+use App\Domain\Trips\DriverLiquidationPercentage;
 use App\Domain\Trips\Trip;
 use App\Domain\Trips\TripCashMovement;
 use App\Domain\Trips\TripConsumption;
@@ -196,15 +197,16 @@ final class GetOperationalTrip
         $percentage = null;
         $percentageSource = null;
         if ($driversCount === 1) {
-            $assignmentPercentage = $drivers[0]['porcentaje_liquidacion'] ?? null;
-            $masterPercentage = $drivers[0]['master_percentage'] ?? null;
-            if ($assignmentPercentage !== null) {
-                $percentage = (float) $assignmentPercentage;
-                $percentageSource = 'VIAJE';
-            } elseif ($masterPercentage !== null) {
-                $percentage = (float) $masterPercentage;
-                $percentageSource = 'MAESTRO';
-            }
+            // El viaje manda, después el maestro y al final el porcentaje por
+            // defecto de la empresa: ese último es el respaldo para los
+            // choferes que todavía no tienen fila en el maestro.
+            $resolved = DriverLiquidationPercentage::resolve(
+                ($drivers[0]['porcentaje_liquidacion'] ?? null) === null ? null : (float) $drivers[0]['porcentaje_liquidacion'],
+                ($drivers[0]['master_percentage'] ?? null) === null ? null : (float) $drivers[0]['master_percentage'],
+                ($detail['company_default_percentage'] ?? null) === null ? null : (float) $detail['company_default_percentage'],
+            );
+            $percentage = $resolved->value();
+            $percentageSource = $resolved->source();
         }
         $driverId = $driversCount === 1 ? ($drivers[0]['empleado_id'] ?? null) : null;
         $otherEarnings = $detail['otherEarnings'] ?? [];

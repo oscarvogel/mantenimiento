@@ -190,4 +190,47 @@ final class TripMasterCatalogTest extends TestCase
         $this->expectException(DomainException::class);
         (new TripMasterCatalog($repository))->saveExchangeRates($this->actor(['viajes.maestros.ver']), ['USD' => '100']);
     }
+
+    public function testThePageExposesTheCompanyDefaultPercentage(): void
+    {
+        $repository = $this->createMock(TripMasterRepository::class);
+        $repository->method('list')->willReturn([]);
+        $repository->method('liquidationDefault')->with(7)->willReturn(14.0);
+
+        $page = (new TripMasterCatalog($repository))->page($this->actor());
+
+        self::assertSame(14.0, $page['liquidationDefault']);
+    }
+
+    public function testTheCompanyDefaultPercentageIsSavedForTheCompany(): void
+    {
+        $repository = $this->createMock(TripMasterRepository::class);
+        $repository->expects(self::once())->method('saveLiquidationDefault')->with(7, 14.0, 12);
+
+        (new TripMasterCatalog($repository))->saveLiquidationDefault($this->actor(), 14.0);
+    }
+
+    public function testTheCompanyDefaultPercentageCanBeCleared(): void
+    {
+        $repository = $this->createMock(TripMasterRepository::class);
+        $repository->expects(self::once())->method('saveLiquidationDefault')->with(7, null, 12);
+
+        (new TripMasterCatalog($repository))->saveLiquidationDefault($this->actor(), null);
+    }
+
+    public function testTheCompanyDefaultPercentageCannotBeOutOfRange(): void
+    {
+        $repository = $this->createMock(TripMasterRepository::class);
+        $repository->expects(self::never())->method('saveLiquidationDefault');
+        $this->expectException(DomainException::class);
+        (new TripMasterCatalog($repository))->saveLiquidationDefault($this->actor(), 140.0);
+    }
+
+    public function testReadOnlyActorCannotSaveTheCompanyDefaultPercentage(): void
+    {
+        $repository = $this->createMock(TripMasterRepository::class);
+        $repository->expects(self::never())->method('saveLiquidationDefault');
+        $this->expectException(DomainException::class);
+        (new TripMasterCatalog($repository))->saveLiquidationDefault($this->actor(['viajes.maestros.ver']), 14.0);
+    }
 }

@@ -35,4 +35,14 @@ interface TripMasterRepository
     public function saveExchangeRates(int $companyId, array $rates, int $userId): void;
 
     public function hasOverlappingLiquidationRate(int $companyId, int $employeeId, string $from, ?string $to, ?int $exceptId = null): bool;
+
+    /**
+     * Porcentaje de liquidación por defecto de la empresa, si tiene uno.
+     * Null cuando la empresa no definió un valor: en ese caso el porcentaje
+     * queda sin resolver en lugar de inventarse.
+     */
+    public function liquidationDefault(int $companyId): ?float;
+
+    /** Guarda el porcentaje por defecto de la empresa; null lo deja sin definir. */
+    public function saveLiquidationDefault(int $companyId, ?float $percentage, int $userId): void;
 }

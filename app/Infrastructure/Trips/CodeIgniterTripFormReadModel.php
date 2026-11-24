@@ -133,6 +133,10 @@ final class CodeIgniterTripFormReadModel implements TripFormReadModel
             }
         }
 
+        // Respaldo de la empresa para los choferes que todavia no tienen fila
+        // en el maestro: el alta precarga ese valor en lugar de dejarla vacia.
+        $companyDefaultPercentage = DriverLiquidationDefault::read($this->db, $companyId);
+
         $assignments = $this->db->table('employee_equipment_assignments a')
             ->select('a.empleado_id, a.equipo_id, e.codigo, e.patente')
             ->join('equipos e', 'e.id = a.equipo_id AND e.empresa_id = a.empresa_id')
@@ -181,6 +185,7 @@ final class CodeIgniterTripFormReadModel implements TripFormReadModel
 
         return [
             'company' => $this->companyData($company),
+            'liquidationDefaultPercentage' => $companyDefaultPercentage,
             'nextNumber' => $nextNumber,
             'branches' => array_map(static fn (array $row): array => [
                 'id' => (int) $row['id'],
@@ -189,8 +194,12 @@ final class CodeIgniterTripFormReadModel implements TripFormReadModel
             ], $branches->get()->getResultArray()),
             'tractors' => $tractors,
             'trailers' => $trailers,
-            'drivers' => array_map(static function (array $row) use ($assignedByDriver, $percentageByDriver): array {
+            'drivers' => array_map(static function (array $row) use ($assignedByDriver, $percentageByDriver, $companyDefaultPercentage): array {
                 $assignment = $assignedByDriver[(int) $row['id']] ?? null;
+                $percentage = $percentageByDriver[(int) $row['id']] ?? null;
+                $source = $percentage !== null
+                    ? 'MAESTRO'
+                    : ($companyDefaultPercentage !== null ? 'EMPRESA' : null);
 
                 return [
                     'id' => (int) $row['id'],
@@ -198,7 +207,8 @@ final class CodeIgniterTripFormReadModel implements TripFormReadModel
                     'employeeNumber' => $row['legajo'] === null ? null : (string) $row['legajo'],
                     'equipmentId' => $assignment['equipmentId'] ?? null,
                     'assignedEquipmentLabel' => $assignment['equipmentLabel'] ?? null,
-                    'liquidationPercentage' => $percentageByDriver[(int) $row['id']] ?? null,
+                    'liquidationPercentage' => $percentage ?? $companyDefaultPercentage,
+                    'liquidationPercentageSource' => $source,
                 ];
             }, $drivers),
             'customers' => array_map(static fn (array $row): array => [

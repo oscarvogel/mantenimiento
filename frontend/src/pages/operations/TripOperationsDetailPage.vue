@@ -533,6 +533,17 @@ const legDates = (leg) => {
 const number = (value) => value === null || value === undefined || value === '' ? '—' : Number(value).toLocaleString('es-AR')
 const money = (value, currency = 'ARS') => `${currency} ${Number(value ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const moneyOrNoData = (value) => value === null || value === undefined ? 'Sin datos' : money(value)
+// El origen del porcentaje importa: si vino del valor por defecto de la
+// empresa, el chofer todavia no tiene un acuerdo propio cargado.
+const driverPercentageLabel = computed(() => {
+  if (totals.value.driver_percentage === null || totals.value.driver_percentage === undefined) return 'Sin %'
+  const source = {
+    VIAJE: 'del viaje',
+    MAESTRO: 'del maestro de porcentajes',
+    EMPRESA: 'del porcentaje por defecto de la empresa',
+  }[totals.value.driver_percentage_source]
+  return source ? `${totals.value.driver_percentage}% · ${source}` : `${totals.value.driver_percentage}%`
+})
 const legLabel = (legId) => {
   const leg = legs.value.find((row) => String(row.id) === String(legId))
   return leg ? `Tramo ${leg.orden}: ${leg.origen} → ${leg.destino}` : 'Todo el viaje'
@@ -541,6 +552,9 @@ const financialNote = computed(() => {
   if (!totals.value.has_legs) return 'Cargá al menos un tramo para calcular facturación, comisión y margen.'
   if (legsWithoutAmounts.value.length > 0) {
     return `Completá los fletes de facturación y liquidación de los tramos ${legsWithoutAmounts.value.join(', ')} para calcular facturación, comisión y margen.`
+  }
+  if (totals.value.driver_percentage_source === 'EMPRESA') {
+    return 'El chofer no tiene un porcentaje propio en el maestro: se está usando el porcentaje por defecto de la empresa.'
   }
   if (totals.value.multiple_drivers) return 'Hay más de un chofer. Definí un chofer responsable para calcular la comisión.'
   if (totals.value.driver_percentage === null || totals.value.driver_percentage === undefined) {
@@ -673,7 +687,7 @@ const facts = computed(() => {
         <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
           <p class="text-xs font-semibold text-ink-muted">Comisión chofer</p>
           <p class="mt-2 text-xl font-bold text-ink">{{ moneyOrNoData(totals.commission_ars) }}</p>
-          <p class="mt-1 text-xs text-ink-muted">{{ totals.driver_percentage === null || totals.driver_percentage === undefined ? 'Sin %' : `${totals.driver_percentage}%` }}</p>
+          <p class="mt-1 text-xs text-ink-muted">{{ driverPercentageLabel }}</p>
         </article>
         <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
           <p class="text-xs font-semibold text-ink-muted">Combustible</p>

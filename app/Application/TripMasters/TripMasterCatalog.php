@@ -57,8 +57,27 @@ final readonly class TripMasterCatalog
             'catalogs' => $catalogs,
             'currencies' => $this->repository->list('monedas', $companyId),
             'countries' => $this->repository->list('paises', $companyId),
+            // Respaldo para los choferes que todavia no tienen fila en el
+            // maestro de porcentajes.
+            'liquidationDefault' => $this->repository->liquidationDefault($companyId),
             'canEdit' => $actor->hasPermission('viajes.maestros.editar'),
         ];
+    }
+
+    /**
+     * Guarda el porcentaje de liquidacion por defecto de la empresa.
+     *
+     * Es el respaldo para los choferes que no tienen fila en el maestro: sin
+     * el, sus viajes quedan sin comision. Un valor null deja la empresa sin
+     * default, que es el comportamiento de siempre.
+     */
+    public function saveLiquidationDefault(ActorContext $actor, ?float $percentage): void
+    {
+        $this->authorize($actor, true);
+        if ($percentage !== null && ($percentage < 0 || $percentage > 100)) {
+            throw new DomainException('El porcentaje por defecto debe estar entre 0 y 100.');
+        }
+        $this->repository->saveLiquidationDefault((int) $actor->companyId(), $percentage, $actor->userId());
     }
 
     /**

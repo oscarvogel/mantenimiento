@@ -47,6 +47,8 @@ Los adelantos **no** son un costo del viaje: son movimientos de cuenta corriente
 | **Flete de facturación** | Importe que se cobra al cliente por el tramo. Es el ingreso del viaje. |
 | **Flete de liquidación** | Base sobre la que se calcula el porcentaje del chofer. No tiene que coincidir con el flete de facturación. |
 | **Comisión del chofer** | `flete de liquidación del tramo × porcentaje del chofer`. |
+| **Porcentaje del chofer** | Parte que se le lleva al chofer sobre el flete de liquidación. Sale de la copia del viaje, de la fila vigente del maestro de porcentajes o, si el chofer no tiene fila, del porcentaje por defecto de la empresa. |
+| **Porcentaje por defecto de la empresa** | Respaldo único de la empresa para los choferes que todavía no tienen fila en el maestro de porcentajes. Es opcional y se edita en Maestros de Viajes. |
 | **Combustible** | Cargas de combustible del viaje. Se usa para consumo y como costo. |
 | **Gasto del viaje** | Peajes, gomería, aduana, estacionamiento, viáticos y otros gastos. Puede estar pagado por la empresa, por el chofer o con la caja del viaje. |
 | **Cuenta corriente del chofer** | Libro de movimientos entre la empresa y el chofer: adelantos, devoluciones, gastos a favor, otros haberes y ajustes. |
@@ -156,6 +158,7 @@ Los adelantos no cambian el margen del viaje; solo la liquidación final.
 | Numeración correlativa por empresa | Implementado | `viajes_operativos_numeracion` |
 | Asignación de tractor, semirremolques (composición) y choferes | Implementado | `viaje_operativo_asignaciones` |
 | Porcentaje de liquidación con vigencia | Implementado | `viajes_porcentajes_liquidacion_chofer` |
+| Porcentaje por defecto de la empresa (respaldo del maestro) | Implementado | `viajes_porcentaje_liquidacion_defecto` |
 | Copia del porcentaje en el viaje | Implementado | `viaje_operativo_asignaciones.porcentaje_liquidacion` |
 | Paradas / recorrido | Implementado | `viaje_operativo_paradas` |
 | Tramos con dos fletes (facturación y liquidación) | Implementado | `viaje_operativo_tramos`, `TripLeg` |
@@ -237,18 +240,19 @@ Es un análisis de margen de empresa. No es la liquidación del chofer y no incl
 1. **Dos fletes por tramo:** uno para facturación y otro para liquidación.
 2. **El porcentaje del chofer se aplica al flete de liquidación del tramo**, no al de facturación.
 3. **El porcentaje sale del maestro de choferes**, pero se puede modificar para el viaje y queda guardado como copia.
-4. **El combustible y los gastos pueden imputarse opcionalmente a un tramo.**
-5. **Si un costo no se imputa a un tramo, suma al viaje pero no al margen del tramo.** No se prorratea automáticamente.
-6. **El margen del viaje incluye todos los costos del viaje**, estén o no asignados a un tramo.
-7. **La caja inicial, los anticipos, los adelantos de sueldo y las devoluciones no son costo del viaje.** La caja inicial, los anticipos y los adelantos de sueldo (tipo interno `RETIRO`) son dinero entregado al chofer y afectan el saldo por rendir y la liquidación; las devoluciones reducen ese saldo.
-8. **El cierre del viaje requiere km de regreso y fecha de regreso.** Genera una lectura del equipo con origen `VIAJE`.
-9. **El viaje finalizado conserva su historial y no se edita.** Las correcciones se hacen con ajustes o reversiones auditadas.
-10. **No se migra la cuenta corriente legacy como libro operativo.** El análisis del backup concluyó que no reconcilia. La cuenta nueva se implementa limpia; la historia legacy queda de solo lectura.
-11. **La fecha estimada de regreso al iniciar un viaje es opcional.** Si no se informa, el equipo y los choferes asignados siguen ocupados para la detección de conflictos hasta registrar el regreso real.
-12. **La liquidación para el chofer se imprime en un PDF separado del resumen interno.** Incluye comisión, haberes, reintegros y rendición de caja; no muestra margen ni rentabilidad de la empresa.
-13. **Los fletes son opcionales mientras el viaje está abierto.** Un tramo puede cargarse sin flete de facturación o de liquidación y completarse después. Al cerrar el viaje, todos los tramos deben tener ambos fletes.
-14. **Un viaje PLANIFICADO o EN_CURSO se puede editar.** Se pueden corregir fechas, odómetro de salida, equipo, choferes, porcentajes, observaciones y tramos. Un viaje FINALIZADO o CANCELADO no se edita.
-15. **El combustible se puede cargar sin precio.** Se registran los litros en el momento y el importe se completa después, desde la carga o desde la pantalla «Combustible sin precio», que junta las pendientes de todos los viajes. Mientras no tiene precio la carga cuenta para el consumo y no para el costo ni el margen. Es la única excepción a la decisión 9: en un viaje FINALIZADO se puede agregar el precio que faltaba (nunca cambiar uno ya cargado), queda auditado con acción `PRECIO`. En un viaje CANCELADO no.
+4. **Si el chofer no tiene fila en el maestro, se aplica el porcentaje por defecto de la empresa.** El maestro se carga por lotes: un chofer que se da de alta después de la última carga no tiene fila y sus viajes quedaban sin comisión ("Sin datos"). El porcentaje por defecto es el respaldo de la empresa, se edita en Maestros de Viajes y es opcional: si no está definido, el porcentaje queda sin resolver en lugar de inventarse un número. El orden de resolución es: copia del viaje → fila vigente del maestro → porcentaje por defecto de la empresa.
+5. **El combustible y los gastos pueden imputarse opcionalmente a un tramo.**
+6. **Si un costo no se imputa a un tramo, suma al viaje pero no al margen del tramo.** No se prorratea automáticamente.
+7. **El margen del viaje incluye todos los costos del viaje**, estén o no asignados a un tramo.
+8. **La caja inicial, los anticipos, los adelantos de sueldo y las devoluciones no son costo del viaje.** La caja inicial, los anticipos y los adelantos de sueldo (tipo interno `RETIRO`) son dinero entregado al chofer y afectan el saldo por rendir y la liquidación; las devoluciones reducen ese saldo.
+9. **El cierre del viaje requiere km de regreso y fecha de regreso.** Genera una lectura del equipo con origen `VIAJE`.
+10. **El viaje finalizado conserva su historial y no se edita.** Las correcciones se hacen con ajustes o reversiones auditadas.
+11. **No se migra la cuenta corriente legacy como libro operativo.** El análisis del backup concluyó que no reconcilia. La cuenta nueva se implementa limpia; la historia legacy queda de solo lectura.
+12. **La fecha estimada de regreso al iniciar un viaje es opcional.** Si no se informa, el equipo y los choferes asignados siguen ocupados para la detección de conflictos hasta registrar el regreso real.
+13. **La liquidación para el chofer se imprime en un PDF separado del resumen interno.** Incluye comisión, haberes, reintegros y rendición de caja; no muestra margen ni rentabilidad de la empresa.
+14. **Los fletes son opcionales mientras el viaje está abierto.** Un tramo puede cargarse sin flete de facturación o de liquidación y completarse después. Al cerrar el viaje, todos los tramos deben tener ambos fletes.
+15. **Un viaje PLANIFICADO o EN_CURSO se puede editar.** Se pueden corregir fechas, odómetro de salida, equipo, choferes, porcentajes, observaciones y tramos. Un viaje FINALIZADO o CANCELADO no se edita.
+16. **El combustible se puede cargar sin precio.** Se registran los litros en el momento y el importe se completa después, desde la carga o desde la pantalla «Combustible sin precio», que junta las pendientes de todos los viajes. Mientras no tiene precio la carga cuenta para el consumo y no para el costo ni el margen. Es la única excepción a la decisión 10: en un viaje FINALIZADO se puede agregar el precio que faltaba (nunca cambiar uno ya cargado), queda auditado con acción `PRECIO`. En un viaje CANCELADO no.
 
 ---
 
