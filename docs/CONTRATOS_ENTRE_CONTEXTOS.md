@@ -54,6 +54,8 @@ seguir.
 | — (nuevo) | `ViajesDeclaradosReader` | `app/Application/Telematic/Port/ViajesDeclaradosReader.php` | Viajes (lectura) | **Implementado.** Telemetría lee los viajes en curso y finalizados con su tractor y los litros declarados por el chofer, para conciliarlos con el sensor del tanque. No escribe en Viajes. |
 | — (nuevo) | `LecturaKmVigenteReader` | `app/Application/PreventiveMaintenance/Port/LecturaKmVigenteReader.php` | Medición (lectura) | **Implementado.** Preventivo lee la lectura que define el odómetro actual y su fecha, para anclar el GPS. No escribe lecturas. |
 | — (nuevo) | `OdometroGpsReader` | `app/Application/PreventiveMaintenance/Port/OdometroGpsReader.php` | Telemetría (lectura) | **Implementado.** Preventivo lee el odómetro del GPS para estimar el km actual y anticipar el service. |
+| Módulo de Combustible: lectura de las cargas del viaje | `FuelPanelReader` | `app/Application/Trips/Port/FuelPanelReader.php` | Viajes (lectura, mismo contexto) | **Implementado.** El módulo de Combustible de la plataforma lee `viaje_operativo_combustible`, la misma tabla que usa la conciliación: módulo y tabla no pueden discrepar. No cruza de contexto. |
+| Módulo de Combustible: conciliación con el sensor | `GetConciliacionCombustible` | `app/Application/Telematic/GetConciliacionCombustible.php` | Telemetría (lectura) | **Implementado.** La consume el módulo de Combustible (`viajes/combustible`) además de Gerencial. Exige `gerencial.flota.ver`: sin ese permiso el módulo muestra lo declarado y no inventa una comparación. No escribe nada. |
 
 ---
 

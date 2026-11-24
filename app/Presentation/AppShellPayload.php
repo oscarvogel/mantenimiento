@@ -57,25 +57,28 @@ final readonly class AppShellPayload
                     : null,
             ])),
             'theoretical-cost-km', 'fleet-board' => $this->managementNavigation($actor, $active),
+            'fuel-module' => $this->fuelNavigation($actor, $active),
             default => [$this->item('dashboard', 'Dashboard', 'dashboard', 'dashboard', $active)],
         };
         $payload['moduleNavigation'] = $active === 'command-center'
             ? []
             : $this->platformNavigation($actor, $availableModules, match ($active) {
                 'theoretical-cost-km', 'fleet-board' => 'management',
+                'fuel-module' => 'fuel',
                 'automations' => 'automations',
                 'trip-masters', 'trips-dashboard', 'trips-operations-dashboard', 'trips-operations', 'trip-operations-create', 'trip-operations-detail', 'trips-fuel-pending', 'trips-profitability', 'trips-commercial-closing', 'customer-accounts', 'customer-account-detail' => 'trips',
                 default => 'maintenance',
             });
         $isTripPage = in_array($active, ['trip-masters', 'trips-dashboard', 'trips-operations-dashboard', 'trips-operations', 'trip-operations-create', 'trip-operations-detail', 'trips-fuel-pending', 'trips-profitability', 'trips-commercial-closing', 'customer-accounts', 'customer-account-detail'], true);
-        if ($active !== 'command-center' && ! in_array($active, ['theoretical-cost-km', 'fleet-board'], true) && ! $isTripPage && $actor->isSuperAdmin()) {
+        $isModulePage = in_array($active, ['theoretical-cost-km', 'fleet-board', 'fuel-module'], true);
+        if ($active !== 'command-center' && ! $isModulePage && ! $isTripPage && $actor->isSuperAdmin()) {
             $navigation[] = $this->item('superadmin', 'Administración global', 'superadmin', 'building', $active);
             $navigation[] = $this->item('whatsapp-digest-preview', 'Previsualizar resumen WhatsApp', 'superadmin/whatsapp/resumen-diario', 'notifications', $active);
             $navigation[] = $this->item('telemetry-samples', 'Datos de telemetría', 'superadmin/telemetria/muestras', 'audit', $active);
             $navigation[] = $this->item('notification-settings', 'Configuración de notificaciones', 'superadmin/configuracion/notificaciones', 'notifications', $active);
             $navigation[] = $this->item('chatbot-audit', 'Auditoría del chatbot', 'superadmin?section=chat-audit', 'audit', $active);
             $navigation[] = $this->item('audit-changes', 'Auditoría de cambios', 'superadmin?section=audit-changes', 'audit', $active);
-        } elseif ($active !== 'command-center' && ! in_array($active, ['theoretical-cost-km', 'fleet-board'], true) && ! $isTripPage) {
+        } elseif ($active !== 'command-center' && ! $isModulePage && ! $isTripPage) {
             if ($actor->hasPermission('gerencial.costo_km.ver')) {
                 $navigation[] = $this->item('theoretical-cost-km', 'Costo teórico por km', 'gerencial/costo-teorico-km', 'chart', $active);
             }
@@ -188,6 +191,23 @@ final readonly class AppShellPayload
                 : null,
             $actor->hasPermission('gerencial.flota.ver')
                 ? $this->item('managerial-fleet-board', 'Tablero de flota', 'gerencial/flota', 'truck', $current)
+                : null,
+        ]));
+    }
+
+    /**
+     * Navegación propia del módulo de Combustible.
+     *
+     * @return list<array<string,mixed>>
+     */
+    private function fuelNavigation(ActorContext $actor, string $active): array
+    {
+        return array_values(array_filter([
+            $actor->hasPermission('viajes.ver')
+                ? $this->item('fuel-module', 'Combustible', 'viajes/combustible', 'module-fuel', $active)
+                : null,
+            $actor->hasPermission('viajes.operar')
+                ? $this->item('fuel-pending', 'Combustible sin precio', 'viajes/operativos/combustible-sin-precio', 'module-fuel', $active)
                 : null,
         ]));
     }
