@@ -307,6 +307,17 @@ foreach ($db->table('empleados')->select('id, nombre, apellido, activo')->where(
     ];
 }
 
+// --- Usuarios (para saber quien cargo cada costo) ---
+$usuariosPorId = [];
+if (existeTabla($db, 'usuarios')) {
+    $sel = cols($db, 'usuarios', ['id', 'nombre', 'email']);
+    if ($sel !== []) {
+        foreach ($db->table('usuarios')->select(implode(', ', $sel))->get()->getResultArray() as $usuario) {
+            $usuariosPorId[(int) $usuario['id']] = trim((string) ($usuario['nombre'] ?? '') . ' (' . (string) ($usuario['email'] ?? '') . ')');
+        }
+    }
+}
+
 // --- Asignaciones ---
 $asignacionesPorViaje = [];
 if (existeTabla($db, 'viaje_operativo_asignaciones')) {
@@ -415,6 +426,7 @@ if (existeTabla($db, 'viaje_operativo_combustible')) {
     $sel = cols($db, 'viaje_operativo_combustible', [
         'id', 'viaje_id', 'tramo_id', 'fecha', 'litros', 'importe', 'moneda', 'cotizacion',
         'importe_ars', 'kilometraje', 'estacion', 'comprobante', 'observaciones',
+        'created_at', 'created_by',
     ]);
     if ($sel !== []) {
         $builder = $db->table('viaje_operativo_combustible')
@@ -830,6 +842,10 @@ foreach ($detalle as $fila) {
             'estacion' => $carga['estacion'] ?? null,
             'comprobante' => $carga['comprobante'] ?? null,
             'observaciones' => $carga['observaciones'] ?? null,
+            'registrada_en' => $carga['created_at'] ?? null,
+            'registrada_por' => isset($carga['created_by']) && $carga['created_by'] !== null
+                ? ($usuariosPorId[(int) $carga['created_by']] ?? ('usuario#' . (int) $carga['created_by']))
+                : null,
         ];
     }
 }
@@ -1037,6 +1053,132 @@ $salidas = array_values(array_filter(array_map(
 ), static fn (?string $v): bool => $v !== null));
 sort($salidas);
 
+// ============================================================================
+// Lo que ve el modulo de Combustible (Gerencial > Flota > Combustible).
+// ============================================================================
+// Replica CodeIgniterViajesDeclaradosReader::viajesEntre(): lee la MISMA tabla
+// de cargas, pero filtrando por estado, fecha_salida_real, ventana de dias y
+// sucursal. Si hay cargas que el modulo no ve, las dos vistas no coinciden.
+$conciliacion = [];
+if (existeTabla($db, 'viaje_operativo_combustible') && existeTabla($db, 'viajes_operativos')) {
+    $filtroBorrado = tieneColumna($db, 'viaje_operativo_combustible', 'deleted_at') ? ' AND deleted_at IS NULL' : '';
+    $viajesPorId = [];
+    foreach ($viajes as $viaje) {
+        $viajesPorId[(int) $viaje['id']] = $viaje;
+    }
+
+    foreach ([30, 90] as $diasVentana) {
+        $desde = date('Y-m-d H:i:s', strtotime('-' . $diasVentana . ' days'));
+        $hasta = date('Y-m-d H:i:s');
+        $visibles = $db->query(
+            'SELECT v.id, v.numero, v.estado, v.sucursal_id, v.fecha_salida_real, v.fecha_regreso_real, '
+            . 'COALESCE(f.litros, 0) AS litros, COALESCE(f.cargas, 0) AS cargas '
+            . 'FROM viajes_operativos v '
+            . 'LEFT JOIN (SELECT viaje_id, SUM(litros) AS litros, COUNT(*) AS cargas FROM viaje_operativo_combustible '
+            . 'WHERE empresa_id = ?' . $filtroBorrado . ' GROUP BY viaje_id) f ON f.viaje_id = v.id '
+            . 'WHERE v.empresa_id = ? AND v.estado IN (?, ?) '
+            . 'AND v.fecha_salida_real IS NOT NULL AND v.fecha_salida_real <= ? '
+            . 'AND (v.fecha_regreso_real IS NULL OR v.fecha_regreso_real >= ?) '
+            . 'ORDER BY v.id ASC',
+            [$empresaId, $empresaId, 'EN_CURSO', 'FINALIZADO', $hasta, $desde]
+        )->getResultArray();
+
+        $visiblesPorId = [];
+        $litrosVisibles = 0.0;
+        $cargasVisibles = 0;
+        $viajesConCargas = [];
+        foreach ($visibles as $fila) {
+            $visiblesPorId[(int) $fila['id']] = $fila;
+            $litrosVisibles += num($fila['litros']);
+            $cargasVisibles += (int) $fila['cargas'];
+            if ((int) $fila['cargas'] > 0) {
+                $viajesConCargas[] = [
+                    'numero' => (int) $fila['numero'],
+                    'estado' => (string) $fila['estado'],
+                    'litros' => round(num($fila['litros']), 2),
+                    'cargas' => (int) $fila['cargas'],
+                ];
+            }
+        }
+
+        // Cargas de la tabla que el modulo no muestra, con el motivo.
+        $cargasNoVisibles = [];
+        foreach ($combustiblePorViaje as $viajeId => $filas) {
+            $viajeId = (int) $viajeId;
+            if (isset($visiblesPorId[$viajeId])) {
+                continue;
+            }
+            $viaje = $viajesPorId[$viajeId] ?? null;
+            if ($viaje === null) {
+                $motivo = 'el viaje no existe';
+            } elseif ((string) $viaje['estado'] === 'CANCELADO') {
+                $motivo = 'viaje cancelado: el modulo solo mira EN_CURSO y FINALIZADO';
+            } elseif (($viaje['fecha_salida_real'] ?? null) === null) {
+                $motivo = 'el viaje no tiene fecha de salida real cargada';
+            } else {
+                $motivo = 'fuera de la ventana de ' . $diasVentana . ' dias';
+            }
+            foreach ($filas as $fila) {
+                $cargasNoVisibles[] = [
+                    'viaje_id' => $viajeId,
+                    'viaje_numero' => $viaje === null ? null : (int) $viaje['numero'],
+                    'fecha' => $fila['fecha'] ?? null,
+                    'litros' => round(num($fila['litros'] ?? null), 2),
+                    'importe_ars' => round(num($fila['importe_ars'] ?? null), 2),
+                    'motivo' => $motivo,
+                ];
+            }
+        }
+
+        $conciliacion[] = [
+            'ventana_dias' => $diasVentana,
+            'desde' => $desde,
+            'hasta' => $hasta,
+            'viajes_en_ventana' => count($visibles),
+            'viajes_con_cargas' => $viajesConCargas,
+            'litros_declarados' => round($litrosVisibles, 2),
+            'cargas_declaradas' => $cargasVisibles,
+            'tabla_total_litros' => round($litrosTotales, 2),
+            'tabla_total_cargas' => $cargasTotales,
+            'coincide' => abs($litrosVisibles - $litrosTotales) < 0.01 && $cargasVisibles === $cargasTotales,
+            'cargas_no_visibles' => $cargasNoVisibles,
+        ];
+    }
+}
+
+// --- Tabla de combustible del historial importado (solo lectura, legacy) ---
+$combustibleHistorico = null;
+if (existeTabla($db, 'viaje_combustible')) {
+    $sel = cols($db, 'viaje_combustible', ['id', 'litros', 'importe', 'codigo_concepto', 'fecha', 'observaciones']);
+    $tieneViaje = tieneColumna($db, 'viaje_combustible', 'viaje_id');
+    $tieneEmpresa = tieneColumna($db, 'viaje_combustible', 'empresa_id');
+    $builder = $db->table('viaje_combustible')->select(implode(', ', $sel));
+    if ($tieneEmpresa) {
+        $builder->where('empresa_id', $empresaId);
+    }
+    $filas = $builder->get()->getResultArray();
+    $litros = 0.0;
+    $importe = 0.0;
+    $sinLitros = 0;
+    foreach ($filas as $fila) {
+        $litros += num($fila['litros'] ?? null);
+        $importe += num($fila['importe'] ?? null);
+        if (num($fila['litros'] ?? null) <= 0) {
+            $sinLitros++;
+        }
+    }
+    $combustibleHistorico = [
+        'tabla' => 'viaje_combustible',
+        'origen' => 'historial importado del ERP de transporte (solo lectura)',
+        'filas' => count($filas),
+        'litros' => round($litros, 2),
+        'importe' => round($importe, 2),
+        'filas_sin_litros' => $sinLitros,
+        'tiene_viaje_id' => $tieneViaje,
+        'tiene_empresa_id' => $tieneEmpresa,
+    ];
+}
+
 $informe = [
     'ok' => true,
     'generado_en' => date('Y-m-d H:i:s'),
@@ -1059,6 +1201,10 @@ $informe = [
     ],
     'combustible' => [
         'cargas' => $cargasTotales,
+        'tabla' => 'viaje_operativo_combustible',
+        'modulo_conciliacion' => 'Gerencial > Flota > Combustible',
+        'conciliacion_con_el_modulo' => $conciliacion,
+        'tabla_historico_importado' => $combustibleHistorico,
         'litros' => round($litrosTotales, 2),
         'importe_ars' => round($importeCombustibleTotal, 2),
         'precio_medio_ars_litro' => $precioMedio,

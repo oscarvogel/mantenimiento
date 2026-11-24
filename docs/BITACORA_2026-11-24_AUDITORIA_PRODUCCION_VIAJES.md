@@ -112,7 +112,49 @@ entre 78% y 89% porque falta el costo de combustible de esos viajes.
 - **No se cargó el precio de las 5 cargas de combustible sin precio.** El
   precio de un surtidor es un dato de la carga: se completa en la app.
 
-## 6. Pendientes
+## 6. Combustible: dónde vive el dato y si coincide con el módulo
+
+El sistema tiene **dos cosas que se llaman "Combustible"**, y conviene no
+confundirlas:
+
+| Qué es | Dónde vive | Estado |
+|---|---|---|
+| **Módulo de plataforma "Combustible"** (card "Próximamente" del portal) | `GetPlatformModuleCatalog::FUTURE_MODULES['fuel']` — "Consumo, rendimientos y control de abastecimiento" | **No implementado.** No es un contexto de la especificación: la spec (§5.13, §6.12, Etapa 6) define `CargaCombustible` como **entidad hija del agregado `Viaje`**, y su tabla es `viaje_operativo_combustible`. |
+| **Conciliación de combustible** (Gerencial → Tablero de flota → pestaña "Combustible", permiso `gerencial.flota.ver`) | Lee `viaje_operativo_combustible` por el puerto `ViajesDeclaradosReader` (`CodeIgniterViajesDeclaradosReader`) | **Implementada y viva.** Compara los litros declarados por el chofer contra el sensor del tanque. |
+| **"Combustible sin precio"** (menú de Viajes, permiso `viajes.operar`) | Misma tabla | **Implementada.** Lista las cargas con litros pero sin precio. |
+
+**Coherencia verificada en producción el 24/11/2026** con la misma consulta que
+usa el módulo (`CodeIgniterViajesDeclaradosReader::viajesEntre`):
+
+| Ventana | Cargas que ve el módulo | Litros | Cargas en la tabla | Litros en la tabla | Coincide |
+|---|---|---|---|---|---|
+| 30 días | 8 | 2.812 | 8 | 2.812 | **Sí** |
+| 90 días | 8 | 2.812 | 8 | 2.812 | **Sí** |
+
+Cero cargas ocultas al módulo en ninguna de las dos ventanas. **La tabla de
+combustible y el módulo de combustible coinciden.**
+
+Lo que el módulo **no** muestra no es un problema de coherencia, sino de carga:
+solo 1 de 42 viajes tiene combustible declarado, así que para los otros 41 la
+conciliación dice "sin datos suficientes" con su motivo.
+
+### Origen de las 8 cargas
+
+Las cargó **el propio usuario desde la app**: `carlos.tsa`
+(gimenezcarlosgabriel@gmail.com), el 19/11/2026 entre las 18:42 y las 18:48, en
+seis cargas seguidas. No vinieron de un importador ni de un script.
+
+### La segunda tabla de combustible: el historial importado
+
+`viaje_combustible` (historial del ERP de transporte, **solo lectura**) tiene
+**10.001 cargas, 4.291.109,92 L y 2.319.854.872,53 ARS**, de las cuales 771
+filas vienen sin litros.
+
+Los dos conjuntos **no se mezclan**: el operativo se escribe y calcula, el
+histórico importado se solo lee. El módulo de conciliación trabaja sobre el
+operativo; la ficha del viaje del historial muestra el histórico.
+
+## 7. Pendientes
 
 1. **Cargar el combustible de los viajes en curso.** Sin esto el margen que
    muestra el sistema no sirve para decidir. Es la brecha más grande.
