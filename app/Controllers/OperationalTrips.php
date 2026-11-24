@@ -25,6 +25,7 @@ use App\Application\Trips\UpdateTripLegCommand;
 use App\Application\Trips\UpdateTripOtherEarningCommand;
 use App\Domain\Geography\InvalidLocalityInput;
 use App\Infrastructure\Identity\SessionActorContext;
+use App\Controllers\Traits\InterpretsTripCostInput;
 use CodeIgniter\HTTP\RedirectResponse;
 use CodeIgniter\HTTP\ResponseInterface;
 use DateTimeImmutable;
@@ -33,6 +34,8 @@ use Throwable;
 
 final class OperationalTrips extends BaseController
 {
+    use InterpretsTripCostInput;
+
     /**
      * Tamaño de página pedido en la URL. Un valor ausente o fuera del catálogo
      * vuelve al tamaño por defecto: una URL vieja o editada a mano no rompe el
@@ -616,26 +619,6 @@ final class OperationalTrips extends BaseController
         }
     }
 
-    private function requiredDateTime(string $key): DateTimeImmutable
-    {
-        $value = $this->optionalDateTime($this->request->getPost($key), 'La fecha del movimiento');
-        if ($value === null) {
-            throw new DomainException('Indicá la fecha del movimiento.');
-        }
-
-        return $value;
-    }
-
-    private function requiredFloat(string $key): float
-    {
-        $raw = str_replace(',', '.', trim((string) $this->request->getPost($key)));
-        if ($raw === '' || ! is_numeric($raw) || (float) $raw <= 0) {
-            throw new DomainException('Ingresá un importe o cantidad mayor que cero.');
-        }
-
-        return (float) $raw;
-    }
-
     private function requiredInt(string $key, string $message): int
     {
         $value = filter_var(trim((string) $this->request->getPost($key)), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
@@ -666,91 +649,6 @@ final class OperationalTrips extends BaseController
         }
 
         return $date;
-    }
-
-    private function optionalInt(string $key): ?int
-    {
-        $raw = trim((string) $this->request->getPost($key));
-        if ($raw === '') {
-            return null;
-        }
-        $value = filter_var($raw, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
-
-        return $value === false ? null : (int) $value;
-    }
-
-    /** Importe que puede quedar para después: vacío significa «sin precio todavía». */
-    private function optionalAmount(string $key): ?float
-    {
-        $raw = str_replace(',', '.', trim((string) $this->request->getPost($key)));
-        if ($raw === '') {
-            return null;
-        }
-        if (! is_numeric($raw) || (float) $raw <= 0) {
-            throw new DomainException('El importe debe ser mayor que cero, o dejalo vacío para cargarlo después.');
-        }
-
-        return (float) $raw;
-    }
-
-    private function optionalFloat(string $key): ?float
-    {
-        $raw = str_replace(',', '.', trim((string) $this->request->getPost($key)));
-        if ($raw === '') {
-            return null;
-        }
-        if (! is_numeric($raw) || (float) $raw <= 0) {
-            throw new DomainException('La cantidad debe ser mayor que cero.');
-        }
-
-        return (float) $raw;
-    }
-
-    private function currency(): string
-    {
-        $currency = strtoupper(trim((string) $this->request->getPost('moneda')));
-        if (preg_match('/^[A-Z]{3}$/', $currency) !== 1) {
-            throw new DomainException('La moneda no es válida.');
-        }
-
-        return $currency;
-    }
-
-    private function rate(): float
-    {
-        $raw = str_replace(',', '.', trim((string) $this->request->getPost('cotizacion')));
-        if ($raw === '') {
-            return 1.0;
-        }
-        if (! is_numeric($raw) || (float) $raw <= 0) {
-            throw new DomainException('La cotización debe ser mayor que cero.');
-        }
-
-        return (float) $raw;
-    }
-
-    private function text(string $key, int $max): ?string
-    {
-        $value = trim((string) $this->request->getPost($key));
-
-        return $value === '' ? null : mb_substr($value, 0, $max);
-    }
-
-    private function optionalDateTime(mixed $value, string $label = 'La fecha real de salida'): ?DateTimeImmutable
-    {
-        $raw = trim((string) ($value ?? ''));
-        if ($raw === '') {
-            return null;
-        }
-        foreach (['!Y-m-d\TH:i', '!Y-m-d H:i:s', '!Y-m-d\TH:i:s'] as $format) {
-            $date = DateTimeImmutable::createFromFormat($format, $raw);
-            $errors = DateTimeImmutable::getLastErrors();
-            if ($date !== false && ($errors === false || ($errors['warning_count'] === 0 && $errors['error_count'] === 0))) {
-                return $date;
-            }
-        }
-
-        throw new DomainException($label . ' no es válida.');
     }
 
     private function optionalDate(mixed $value, string $label = 'La fecha real de salida'): ?DateTimeImmutable

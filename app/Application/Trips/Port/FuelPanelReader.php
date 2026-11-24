@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Application\Trips\Port;
 
+use App\Application\Trips\FuelPanelFilters;
+
 /**
  * Lectura de las cargas de combustible declaradas por viaje.
  *
@@ -26,10 +28,19 @@ interface FuelPanelReader
      * @return list<array{
      *     id:int, numero:int, estado:string, sucursal_id:int, sucursal:?string,
      *     fecha_salida_real:?string, fecha_regreso_real:?string,
-     *     km_salida:?int, km_regreso:?int, patente:?string,
+     *     km_salida:?int, km_regreso:?int, patente:?string, equipo_id:?int,
      *     litros:float, cargas:int, importe_ars:float,
-     *     cargas_sin_precio:int, litros_sin_precio:float
+     *     cargas_sin_precio:int, litros_sin_precio:float,
+     *     cargas_pendientes:list<array{id:int, litros:float, fecha:?string, estacion:?string, comprobante:?string}>
      * }>
      */
-    public function viajes(int $companyId, ?array $branchIds): array;
+    public function viajes(int $companyId, ?array $branchIds, FuelPanelFilters $filters): array;
+
+    /**
+     * Camiones que se pueden usar como filtro: los tractores asignados a los
+     * viajes de la empresa.
+     *
+     * @return list<array{id:int, label:string, patente:string}>
+     */
+    public function camiones(int $companyId): array;
 }

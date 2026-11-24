@@ -1448,6 +1448,18 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
         );
     }
 
+    /** Monedas y cotizaciones para cargar combustible en los viajes. */
+    public static function tripCurrencies(bool $getShared = true): \App\Application\Trips\ListTripCurrencies
+    {
+        if ($getShared) {
+            return static::getSharedInstance('tripCurrencies');
+        }
+
+        return new \App\Application\Trips\ListTripCurrencies(
+            new \App\Infrastructure\Trips\CodeIgniterPendingFuelPriceRepository(db_connect()),
+        );
+    }
+
     public static function panelCombustible(bool $getShared = true): \App\Application\Trips\GetPanelCombustible
     {
         if ($getShared) {
