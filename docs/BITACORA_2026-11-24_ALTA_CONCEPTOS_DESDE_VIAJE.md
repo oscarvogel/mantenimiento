@@ -98,10 +98,71 @@ día, que es lo único que el diario sabe liquidar.
 
 Suite completa: PHPUnit y Vitest en verde.
 
+## Publicación
+
+- PR **#572** (`feat/viajes-alta-conceptos-desde-el-viaje`) → merge squash en `main`
+  con el commit `61ecd3b9`. CI verde sobre el mismo SHA.
+- Spec de viajes, Maestros de Viajes y registro de contratos actualizados.
+
+## Deploy a producción (Ferozo)
+
+Orquestador `scripts/deploy-ferozo.py --yes`, incremental desde `9b178aae`:
+
+```text
+PHPUNIT=RUNNING          (2221 tests, 0 fallos)
+FRONTEND_TESTS=RUNNING   (557 tests, 0 fallos)
+FRONTEND_BUILD=RUNNING
+DASHBOARD_FILES_STAGED=26
+FILES_STAGED=42
+UPLOAD=OK                (36 archivos, 15 directorios)
+MIGRATIONS=NONE
+HTTP login           200
+HTTP favicon.ico     200
+HTTP .env            403
+HTTP app/            403
+HTTP vendor/         403
+HTTP writable/       403
+HTTP migrate.php     404
+SMOKE_TESTS=OK
+DEPLOY_STATUS=OK
+FROM=9b178aae0b5a27afdd407356f8b8108db115e7
+TO=61ecd3b962a3d5b27584450271e3e6104162366b
+```
+
+El deploy corrió desde WSL: en Windows no hay PHP local y el orquestador lo
+necesita para ejecutar PHPUnit antes de subir (`ERROR: No se encontró PHP local
+para ejecutar PHPUnit`). Con `php` de WSL (`/usr/bin/php`, 8.5.4) el mismo
+comando corre completo.
+
+### Verificación (no un 200)
+
+- **Archivos en el servidor**: los cinco archivos nuevos y los modificados
+  existen en Ferozo por FTPS y coinciden **byte a byte** con los locales
+  (`app/Domain/Trips/TripConcept.php`, `app/Application/Trips/CreateTripConcept.php`,
+  `app/Application/Trips/CreateTripConceptCommand.php`,
+  `app/Application/Trips/Port/TripConceptCatalog.php`,
+  `app/Infrastructure/Trips/CodeIgniterTripConceptCatalog.php`,
+  `app/Config/Routes.php`, `app/Config/Services.php`,
+  `app/Controllers/OperationalTrips.php`, `assets/dashboard/assets/main-D6xOU1w7.js`,
+  `assets/dashboard/assets/main-CbP-x0Gk.css`).
+- **Ruta viva**: `POST /mantenimiento/viajes/operativos/42/conceptos` responde
+  **303** (redirección de autenticación) mientras una ruta inexistente responde
+  **404**: la ruta está registrada y la protege el filtro de sesión.
+- **Bundle servido**: `main-D6xOU1w7.js` se sirve en producción y contiene el
+  código de la pantalla nueva (`Crear un concepto`, `TripConceptCreateModal`,
+  `Crear el concepto ac…`). Ojo: el bundle escapa los acentos (`Buscá` queda
+  como `Busc\u00e1`), así que un `grep` con el texto acentuado da falso
+  negativo.
+
 ## Pendientes
 
 - Falta la verificación visual en la pantalla real (escritorio 1638×969 y móvil):
   el diálogo de alta rápida se diseñó con el mismo patrón que el de localidades
   (`LocalityCreateModal`), pero no se probó con un dedo ni con datos reales de TSA.
-- La publicación sigue el flujo del proyecto: rama + PR a `main` + merge +
-  deploy verificado a Ferozo.
+- Observación de higiene del servidor (preexistente, ajena a este cambio): en la
+  raíz de Ferozo siguen directorios del layout viejo de CodeIgniter
+  (`Application/`, `Config/`, `Controllers/`, `Domain/`, `Infrastructure/`,
+  `Presentation/`). La app activa usa `app/` (`index.php` carga
+  `FCPATH . 'app/Config/Paths.php'`), así que son archivos muertos, pero
+  `.htaccess` no los bloquea porque no están en su lista. Limpiarlos requiere
+  una operación remota explícita, fuera de este despliegue.
