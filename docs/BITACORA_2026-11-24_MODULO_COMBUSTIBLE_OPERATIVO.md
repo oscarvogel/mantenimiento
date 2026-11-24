@@ -108,7 +108,38 @@ de uso que usa la ficha del viaje. La tabla de combustible del sistema sigue sie
 - Vitest: **555 pruebas OK** (92 archivos), con 11 casos de la pantalla nueva.
 - Build del frontend y `verify:build-sync` en verde.
 
-## 6. Pendientes
+## 6. Despliegue y verificación en producción
+
+- **PR #570**, merge `9b178aae`. CI en verde.
+- Deploy a Ferozo: `FROM=cc4b3083 TO=9b178aae`, `UPLOAD=OK`, `MIGRATIONS=NONE`,
+  `SMOKE_TESTS=OK` (login 200, favicon 200, `.env`/`app/`/`vendor/`/`writable/` 403,
+  `migrate.php` 404), `HASH_LOCAL=OK`.
+- **Verificación contra la base real** (script de solo lectura, borrado del release
+  al terminar, `404` confirmado): el módulo nuevo lee la tabla igual que antes y
+  además muestra el consumo.
+  - Panel = tabla: **8 cargas, 2.812 L, 3.110.061 ARS, 5 cargas y 1.431 L sin
+    precio** → `coincide_total: true`.
+  - Consumo: **39,5 L/100 km**, **1 viaje medido**, 7.127 km.
+  - Conciliación: 40 viajes, 0 con veredicto (39 en curso, 1 sin datos suficientes).
+- Rutas en producción: `GET viajes/combustible` → 302 a `/login`; con filtros
+  (`?desde=...&hasta=...`) también. Los POST de carga y de precios existen y
+  responden 303 (rechazo de CSRF): sin sesión no entran al controller.
+- Bundles nuevos servidos (`main-DhNs0ZF1.js`, `profile-Sdn3hAJf.js` → 200). Raíz
+  del release con 21 entradas, sin temporales.
+
+### Un fallo que valió registrar
+
+El primer push del PR **falló el gate de build-sync del CI**. La causa: los bundles
+versionados se commitearon **antes** de los dos últimos retoques de la pantalla
+(contador de importes y filtro de camión en la pestaña de conciliación), así que el
+CI reconstruía y encontraba hashes distintos (`main-DhNs0ZF1.js` contra el
+`main-DTmupo76.js` commiteado).
+
+La lección: **reconstruir y commitear los bundles después del último cambio del
+source, no antes**. `npm run build` + `npm run verify:build-sync` tienen que correr
+después de la última edición, no antes de commitear.
+
+## 7. Pendientes
 
 1. **Cargar el combustible que falta** en los viajes en curso. Con la pantalla
    operativa y el botón a mano, la brecha de 37 cargas (9.926,6 L) deja de ser un
