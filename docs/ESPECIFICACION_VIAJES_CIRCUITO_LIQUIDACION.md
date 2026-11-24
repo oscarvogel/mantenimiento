@@ -163,6 +163,7 @@ Los adelantos no cambian el margen del viaje; solo la liquidación final.
 | Paradas / recorrido | Implementado | `viaje_operativo_paradas` |
 | Tramos con dos fletes (facturación y liquidación) | Implementado | `viaje_operativo_tramos`, `TripLeg` |
 | Combustible por viaje, multi-moneda | Implementado | `viaje_operativo_combustible` |
+| Módulo de Combustible del portal (fuente única: la tabla de cargas del viaje) | Implementado | `viajes/combustible`, `GetPanelCombustible` |
 | Gastos por viaje, multi-moneda | Implementado | `viaje_operativo_gastos` |
 | Imputación opcional de combustible y gastos a un tramo | Implementado | `viaje_operativo_combustible.tramo_id`, `viaje_operativo_gastos.tramo_id` |
 | Caja del chofer: anticipo, adelanto de sueldo (tipo `RETIRO`), devolución | Implementado | `viaje_operativo_caja_movimientos` |
@@ -253,6 +254,7 @@ Es un análisis de margen de empresa. No es la liquidación del chofer y no incl
 14. **Los fletes son opcionales mientras el viaje está abierto.** Un tramo puede cargarse sin flete de facturación o de liquidación y completarse después. Al cerrar el viaje, todos los tramos deben tener ambos fletes.
 15. **Un viaje PLANIFICADO o EN_CURSO se puede editar.** Se pueden corregir fechas, odómetro de salida, equipo, choferes, porcentajes, observaciones y tramos. Un viaje FINALIZADO o CANCELADO no se edita.
 16. **El combustible se puede cargar sin precio.** Se registran los litros en el momento y el importe se completa después, desde la carga o desde la pantalla «Combustible sin precio», que junta las pendientes de todos los viajes. Mientras no tiene precio la carga cuenta para el consumo y no para el costo ni el margen. Es la única excepción a la decisión 10: en un viaje FINALIZADO se puede agregar el precio que faltaba (nunca cambiar uno ya cargado), queda auditado con acción `PRECIO`. En un viaje CANCELADO no.
+17. **El módulo de Combustible de la plataforma no tiene tabla propia: muestra `viaje_operativo_combustible`.** La carga de combustible pertenece al viaje (entidad hija del agregado `Viaje`), así que el módulo y la tabla tienen que decir lo mismo por construcción. El módulo agrega la conciliación contra el sensor del tanque, que es un dato gerencial y solo se muestra con permiso `gerencial.flota.ver`. El historial importado del ERP (`viaje_combustible`) queda separado: es de solo lectura y no alimenta el módulo.
 
 ---
 

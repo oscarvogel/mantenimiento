@@ -5,6 +5,7 @@ import FleetRankingChart from './charts/FleetRankingChart.vue'
 import FleetCutsTimeline from './charts/FleetCutsTimeline.vue'
 import ServiceKmChart from './charts/ServiceKmChart.vue'
 import ConciliationShareBar from './charts/ConciliationShareBar.vue'
+import FuelReconciliationTable from '../../components/FuelReconciliationTable.vue'
 
 const props = defineProps({
   data: { type: Object, required: true },
@@ -64,10 +65,6 @@ const sucursalLabel = computed(() => {
 const resumenFiltros = computed(() => usaPeriodo.value
   ? `${sucursalLabel.value} · últimos ${filtros.value.dias ?? 30} días`
   : `${sucursalLabel.value} · a hoy`)
-// Lo medido sin el viaje completo a la vista se muestra igual, marcado: es lo que
-// registró el sensor, no un veredicto.
-const esParcial = (viaje) => viaje?.medido?.completo === false
-  && (!vacio(viaje.medido?.litros) || !vacio(viaje.medido?.consumo) || !vacio(viaje.medido?.km))
 const equipoUrl = (id) => (urls.value.equipment && id ? `${urls.value.equipment.replace(/\/$/, '')}/${id}` : null)
 
 const tono = {
@@ -82,13 +79,6 @@ const senal = {
   SIN_REPORTAR: { etiqueta: 'Sin reportar', tono: tono.peligro },
   SIN_DATOS: { etiqueta: 'Sin datos', tono: tono.neutro },
   CORTE_INTEGRACION: { etiqueta: 'Corte del proveedor', tono: tono.aviso },
-}
-const conciliacion = {
-  CONCILIADO: tono.ok,
-  DECLARADO_SUPERA: tono.peligro,
-  DECLARADO_MENOR: tono.aviso,
-  SIN_DATOS_SUFICIENTES: tono.neutro,
-  EN_CURSO: tono.info,
 }
 const plan = {
   AL_DIA: { etiqueta: 'Al día', tono: tono.ok },
@@ -342,70 +332,7 @@ const tarjetas = computed(() => {
     <!-- Combustible -->
     <template v-else-if="vista === 'combustible'">
     <ConciliationShareBar class="mt-6" :por-estado="totales.porEstado ?? {}" />
-    <section class="mt-6 overflow-hidden rounded-xl border border-border bg-surface-raised" aria-labelledby="fleet-board-fuel">
-      <div class="border-b border-border px-5 py-4 sm:px-6">
-        <h2 id="fleet-board-fuel" class="text-lg font-bold text-ink">Declarado por el chofer contra el sensor del tanque</h2>
-        <p class="mt-1 text-sm leading-6 text-ink-muted">
-          Se compara por viaje, porque las cargas se declaran todas al volver. Sin veredicto cuando la telemetría no vio el
-          viaje completo: un corte del GPS no se imputa al chofer.
-        </p>
-      </div>
-      <div v-if="viajes.length" class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-border text-left text-sm">
-          <thead class="bg-surface-muted text-xs font-semibold uppercase tracking-wide text-ink-muted">
-            <tr>
-              <th scope="col" class="px-4 py-3">Viaje</th>
-              <th scope="col" class="px-4 py-3">Resultado</th>
-              <th scope="col" class="px-4 py-3 text-right">Declarado</th>
-              <th scope="col" class="px-4 py-3 text-right">Detectado</th>
-              <th scope="col" class="px-4 py-3 text-right">Diferencia</th>
-              <th scope="col" class="px-4 py-3 text-right">L/100 km decl.</th>
-              <th scope="col" class="px-4 py-3 text-right">Consumo medido</th>
-              <th scope="col" class="px-4 py-3 text-right">Sensor</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-border-subtle">
-            <tr v-for="viaje in viajes" :key="viaje.viajeId" class="align-top hover:bg-surface-subtle">
-              <th scope="row" class="whitespace-nowrap px-4 py-3 font-semibold text-ink">
-                Nº {{ viaje.numero }} · {{ viaje.patente ?? 'Sin tractor' }}
-                <span class="block text-xs font-normal text-ink-muted">{{ fecha(viaje.desde) }} → {{ fecha(viaje.hasta) }}</span>
-              </th>
-              <td class="min-w-56 px-4 py-3">
-                <span class="rounded-full px-2.5 py-1 text-xs font-semibold" :class="conciliacion[viaje.estado] ?? tono.neutro">{{ viaje.estadoEtiqueta }}</span>
-                <span v-if="viaje.motivo" class="mt-1 block text-xs leading-5 text-ink-muted">{{ viaje.motivo }}</span>
-              </td>
-              <td class="whitespace-nowrap px-4 py-3 text-right tabular-nums text-ink">
-                {{ entero(viaje.declarado?.litros, ' L') }}
-                <span class="block text-xs text-ink-muted">{{ entero(viaje.declarado?.cargas) }} cargas</span>
-              </td>
-              <td class="whitespace-nowrap px-4 py-3 text-right tabular-nums text-ink">
-                {{ entero(viaje.medido?.litros, ' L') }}
-                <span class="block text-xs text-ink-muted">{{ entero(viaje.medido?.cargas) }} cargas</span>
-                <span
-                  v-if="esParcial(viaje)"
-                  class="mt-1 inline-block rounded-full bg-warning-subtle px-2 py-0.5 text-[11px] font-semibold text-warning-strong"
-                  title="La telemetría no vio el viaje completo: son las cargas que registró el sensor (al menos esos litros). Sin veredicto ni consumo."
-                >Parcial</span>
-              </td>
-              <td class="whitespace-nowrap px-4 py-3 text-right font-semibold tabular-nums text-ink">
-                {{ conSigno(viaje.diferencia?.litros, ' L') }}
-                <span class="block text-xs font-normal text-ink-muted">{{ conSigno(viaje.diferencia?.porcentaje, '%') }}</span>
-              </td>
-              <td class="whitespace-nowrap px-4 py-3 text-right tabular-nums text-ink-muted">{{ unDecimal(viaje.declarado?.litrosPor100Km) }}</td>
-              <td class="whitespace-nowrap px-4 py-3 text-right tabular-nums text-ink-muted">
-                {{ unDecimal(viaje.medido?.litrosPor100Km) }}
-                <span class="block text-xs">{{ vacio(viaje.medido?.consumo) ? 'Consumo: sin datos' : `Consumo: ${entero(viaje.medido.consumo, ' L')}` }}</span>
-                <span v-if="!vacio(viaje.medido?.km)" class="block text-xs">{{ entero(viaje.medido.km, ' km GPS') }}</span>
-              </td>
-              <td class="whitespace-nowrap px-4 py-3 text-right tabular-nums text-ink-muted">{{ entero(viaje.medido?.coberturaSensor, '%') }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <p v-else role="status" class="px-5 py-10 text-center text-sm leading-6 text-ink-muted">
-        No hay viajes en curso ni finalizados en el período y la sucursal seleccionados.
-      </p>
-    </section>
+    <FuelReconciliationTable :viajes="viajes" />
     </template>
 
     <!-- Services por GPS -->

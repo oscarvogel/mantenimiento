@@ -37,7 +37,7 @@ final class GetPlatformModuleCatalog
         [
             'key' => 'fuel',
             'label' => 'Combustible',
-            'description' => 'Consumo, rendimientos y control de abastecimiento.',
+            'description' => 'Lo que declaró cada viaje, lo que falta completar y la conciliación contra el sensor.',
             'icon' => 'fuel',
         ],
         [
@@ -91,6 +91,13 @@ final class GetPlatformModuleCatalog
                 && ! $actor->isSuperAdmin()
                 && ($actor->hasPermission('viajes.ver') || $actor->hasPermission('viajes.maestros.ver'));
             $tripsPath = $actor->hasPermission('viajes.ver') ? 'viajes/operativos/dashboard' : 'viajes/maestros';
+            // El modulo de Combustible muestra la tabla de cargas del viaje: la
+            // misma que usa la conciliacion. No hay tabla propia: una sola
+            // fuente de verdad.
+            $fuelEnabled = $module['key'] === 'fuel'
+                && ! $actor->isSuperAdmin()
+                && $actor->companyId() !== null
+                && $actor->hasPermission('viajes.ver');
             $canTheoreticalCost = $actor->hasPermission('gerencial.costo_km.ver');
             $canFleetBoard = ! $actor->isSuperAdmin() && $actor->companyId() !== null && $actor->hasPermission('gerencial.flota.ver');
             $managementEnabled = $module['key'] === 'management'
@@ -103,9 +110,10 @@ final class GetPlatformModuleCatalog
                 && ! $actor->isSuperAdmin()
                 && $actor->companyId() !== null
                 && $actor->hasPermission('automatizaciones.ver');
-            $enabled = $tripsEnabled || $managementEnabled || $reportsEnabled || $automationsEnabled;
+            $enabled = $tripsEnabled || $fuelEnabled || $managementEnabled || $reportsEnabled || $automationsEnabled;
             $landingPath = match (true) {
                 $tripsEnabled => $tripsPath,
+                $fuelEnabled => 'viajes/combustible',
                 $managementEnabled => $canTheoreticalCost ? 'gerencial/costo-teorico-km' : 'gerencial/flota',
                 $reportsEnabled => 'reportes',
                 $automationsEnabled => 'automatizaciones',

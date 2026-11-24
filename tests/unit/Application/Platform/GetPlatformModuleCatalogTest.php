@@ -209,6 +209,41 @@ final class GetPlatformModuleCatalogTest extends TestCase
         self::assertSame('not_implemented', $automations['state']);
     }
 
+    public function testEnablesFuelModuleForTripReaders(): void
+    {
+        $actor = new ActorContext(12, 4, false, false, ['Consulta'], ['viajes.ver'], [8]);
+
+        $modules = (new GetPlatformModuleCatalog())->execute($actor);
+        $fuel = $this->module($modules, 'fuel');
+
+        self::assertSame('viajes/combustible', $fuel['landingPath']);
+        self::assertSame('available', $fuel['state']);
+        self::assertSame('Operativo', $fuel['status']);
+    }
+
+    public function testKeepsFuelModuleDisabledWithoutTripReadPermission(): void
+    {
+        $actor = new ActorContext(12, 4, false, false, ['Consulta'], ['viajes.operar'], [8]);
+
+        $modules = (new GetPlatformModuleCatalog())->execute($actor);
+        $fuel = $this->module($modules, 'fuel');
+
+        self::assertNull($fuel['landingPath']);
+        self::assertSame('not_implemented', $fuel['state']);
+        self::assertSame('Sin implementación aún', $fuel['status']);
+    }
+
+    public function testSuperadministratorDoesNotGainTenantFuelAccess(): void
+    {
+        $actor = new ActorContext(1, null, true, true, ['Superadministrador'], ['viajes.ver'], []);
+
+        $modules = (new GetPlatformModuleCatalog())->execute($actor);
+        $fuel = $this->module($modules, 'fuel');
+
+        self::assertNull($fuel['landingPath']);
+        self::assertSame('not_implemented', $fuel['state']);
+    }
+
     /**
      * @param list<array<string,mixed>> $modules
      * @return array<string,mixed>

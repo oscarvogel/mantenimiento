@@ -1448,6 +1448,18 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
         );
     }
 
+    public static function panelCombustible(bool $getShared = true): \App\Application\Trips\GetPanelCombustible
+    {
+        if ($getShared) {
+            return static::getSharedInstance('panelCombustible');
+        }
+
+        return new \App\Application\Trips\GetPanelCombustible(
+            new \App\Infrastructure\Trips\CodeIgniterFuelPanelReader(db_connect()),
+            new \App\Infrastructure\Trips\SystemTripClock(),
+        );
+    }
+
     public static function completeFuelPrices(bool $getShared = true): \App\Application\Trips\CompleteFuelPrices
     {
         if ($getShared) {

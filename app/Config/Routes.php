@@ -34,6 +34,8 @@ $routes->get('viajes/rentabilidad', 'TripProfitability::index', ['filter' => ['a
 $routes->get('viajes/operativos/dashboard', 'OperationalTripsDashboard::index', ['filter' => ['auth', 'permission:viajes.ver']]);
 $routes->get('viajes/operativos/combustible-sin-precio', 'OperationalTripFuelPrices::index', ['filter' => ['auth', 'permission:viajes.operar']]);
 $routes->post('viajes/operativos/combustible-sin-precio', 'OperationalTripFuelPrices::save', ['filter' => ['auth', 'permission:viajes.operar']]);
+// Modulo de Combustible: lo declarado por cada viaje contra el sensor del tanque.
+$routes->get('viajes/combustible', 'FuelModule::index', ['filter' => ['auth', 'permission:viajes.ver']]);
 $routes->get('viajes/operativos', 'OperationalTrips::index', ['filter' => ['auth', 'permission:viajes.ver']]);
 $routes->get('viajes/operativos/nuevo', 'OperationalTrips::create', ['filter' => ['auth', 'permission:viajes.operar']]);
 $routes->get('viajes/operativos/localidades', 'OperationalTrips::localities', ['filter' => ['auth', 'permission:viajes.operar']]);
