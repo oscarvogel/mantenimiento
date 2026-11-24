@@ -10,6 +10,7 @@
     "test:watch": "vitest",
     "qa:visual": "node scripts/visual-qa.mjs",
     "qa:login": "node scripts/login-visual-qa.mjs",
+    "qa:wheel": "node scripts/number-wheel-qa.mjs",
     "qa:encoding:source": "node scripts/encoding-qa.mjs source",
     "qa:encoding:build": "node scripts/encoding-qa.mjs build",
     "verify:build-sync": "node scripts/verify-build-sync.mjs"

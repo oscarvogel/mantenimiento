@@ -1,4 +1,5 @@
 import { installConfirmForms } from './confirmForms.js'
+import { installNumberInputWheelGuard } from './numberInputWheel.js'
 import { useAlerts } from '../composables/useAlerts.js'
 
 const FLASH_ORDER = ['error', 'warning', 'success', 'info']
@@ -14,6 +15,7 @@ const flashHandlers = {
 export function installGlobalBehaviors() {
   installConfirmForms()
   installNativeFormFeedback()
+  installNumberInputWheelGuard()
 }
 
 function isFormControl(target) {
