@@ -34,6 +34,7 @@ final class TripMasters extends BaseController
             $payload['urls'] = [
                 'create' => base_url('viajes/maestros'),
                 'exchangeRates' => base_url('viajes/maestros/cotizaciones'),
+                'liquidationDefault' => base_url('viajes/maestros/liquidaciones/default'),
             ];
             foreach ($payload['catalogs'] as $key => &$catalog) {
                 if ($key === 'cotizaciones') {
@@ -69,6 +70,31 @@ final class TripMasters extends BaseController
             $input = (array) ($this->request->getPost('cotizaciones') ?? []);
             $this->catalog()->saveExchangeRates($this->actor(), $input);
             return redirect()->to('/viajes/maestros#cotizaciones')->with('success', 'Las cotizaciones quedaron guardadas.');
+        } catch (Throwable $exception) {
+            return $this->failure($exception);
+        }
+    }
+
+    /**
+     * Porcentaje de liquidacion por defecto de la empresa: el respaldo para
+     * los choferes que todavia no tienen fila en el maestro de porcentajes.
+     */
+    public function liquidationDefault(): RedirectResponse
+    {
+        try {
+            $raw = trim((string) ($this->request->getPost('porcentaje_defecto') ?? ''));
+            $percentage = null;
+            if ($raw !== '') {
+                $percentage = str_replace(',', '.', $raw);
+                if (! is_numeric($percentage)) {
+                    throw new DomainException('Ingresá un porcentaje numérico.');
+                }
+                $percentage = (float) $percentage;
+            }
+            $this->catalog()->saveLiquidationDefault($this->actor(), $percentage);
+            return redirect()->to('/viajes/maestros#liquidaciones')->with('success', $percentage === null
+                ? 'El porcentaje por defecto quedó sin definir.'
+                : 'El porcentaje por defecto de la empresa quedó guardado.');
         } catch (Throwable $exception) {
             return $this->failure($exception);
         }

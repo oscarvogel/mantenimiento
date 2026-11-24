@@ -26,6 +26,7 @@ final class CodeIgniterTripFormReadModelTest extends TestCase
         $this->database->query('CREATE TABLE viajes_operativos_numeracion (empresa_id INTEGER PRIMARY KEY, ultimo_numero INTEGER, updated_at TEXT NULL)');
         $this->database->query('CREATE TABLE lecturas_equipo (id INTEGER PRIMARY KEY, empresa_id INTEGER, equipo_id INTEGER, fecha_lectura TEXT, kilometraje INTEGER NULL, anulada INTEGER)');
         $this->database->query('CREATE TABLE viajes_porcentajes_liquidacion_chofer (id INTEGER PRIMARY KEY, empresa_id INTEGER, empleado_id INTEGER, porcentaje REAL, vigente_desde TEXT, vigente_hasta TEXT NULL, activo INTEGER)');
+        $this->database->query('CREATE TABLE viajes_porcentaje_liquidacion_defecto (id INTEGER PRIMARY KEY, empresa_id INTEGER, porcentaje REAL, created_at TEXT NULL, updated_at TEXT NULL, created_by INTEGER NULL, updated_by INTEGER NULL)');
         $this->database->query('CREATE TABLE sucursales (id INTEGER PRIMARY KEY, empresa_id INTEGER, codigo TEXT, nombre TEXT, estado INTEGER, deleted_at TEXT NULL)');
         $this->database->query('CREATE TABLE tipos_equipo (id INTEGER PRIMARY KEY, nombre TEXT)');
         $this->database->query('CREATE TABLE equipos (id INTEGER PRIMARY KEY, empresa_id INTEGER, sucursal_id INTEGER, tipo_equipo_id INTEGER, codigo TEXT, patente TEXT, estado TEXT, deleted_at TEXT NULL)');
@@ -147,6 +148,39 @@ final class CodeIgniterTripFormReadModelTest extends TestCase
         $options = $this->readModel()->options(5, [10]);
 
         self::assertSame([], $options['tractors'][0]['linkedTrailerIds']);
+    }
+
+    public function testElAltaPrecargaElPorcentajePorDefectoCuandoElChoferNoTieneFilaEnElMaestro(): void
+    {
+        // Chofer nuevo: todavia no tiene fila en el maestro de porcentajes.
+        $this->database->table('empleados')->insert(['id' => 12, 'empresa_id' => 5, 'nombre' => 'Nuevo', 'apellido' => 'Chofer', 'legajo' => '101', 'activo' => 1, 'deleted_at' => null]);
+        $this->database->table('viajes_porcentaje_liquidacion_defecto')->insert([
+            'id' => 1, 'empresa_id' => 5, 'porcentaje' => 14,
+            'created_at' => '2026-11-24 10:00:00', 'updated_at' => '2026-11-24 10:00:00',
+            'created_by' => 1, 'updated_by' => 1,
+        ]);
+
+        $options = $this->readModel()->options(5, [10]);
+        $drivers = array_column($options['drivers'], null, 'id');
+
+        self::assertSame(14.0, $options['liquidationDefaultPercentage']);
+        self::assertSame(14.0, $drivers[12]['liquidationPercentage']);
+        self::assertSame('EMPRESA', $drivers[12]['liquidationPercentageSource']);
+        // El chofer con fila en el maestro conserva el origen del maestro.
+        self::assertSame(14.0, $drivers[11]['liquidationPercentage']);
+        self::assertSame('MAESTRO', $drivers[11]['liquidationPercentageSource']);
+    }
+
+    public function testSinPorcentajePorDefectoElChoferSinMaestroQuedaSinPorcentaje(): void
+    {
+        $this->database->table('empleados')->insert(['id' => 12, 'empresa_id' => 5, 'nombre' => 'Nuevo', 'apellido' => 'Chofer', 'legajo' => '101', 'activo' => 1, 'deleted_at' => null]);
+
+        $options = $this->readModel()->options(5, [10]);
+        $drivers = array_column($options['drivers'], null, 'id');
+
+        self::assertNull($options['liquidationDefaultPercentage']);
+        self::assertNull($drivers[12]['liquidationPercentage']);
+        self::assertNull($drivers[12]['liquidationPercentageSource']);
     }
 
     private function readModel(): CodeIgniterTripFormReadModel

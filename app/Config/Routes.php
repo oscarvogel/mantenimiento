@@ -85,6 +85,7 @@ $routes->group('viajes/maestros', ['filter' => ['auth']], static function ($rout
     $routes->get('', 'TripMasters::index', ['filter' => 'permission:viajes.maestros.ver']);
     $routes->post('', 'TripMasters::create', ['filter' => 'permission:viajes.maestros.editar']);
     $routes->post('cotizaciones', 'TripMasters::exchangeRates', ['filter' => 'permission:viajes.maestros.editar']);
+    $routes->post('liquidaciones/default', 'TripMasters::liquidationDefault', ['filter' => 'permission:viajes.maestros.editar']);
     $routes->post('(:segment)/(:num)', 'TripMasters::update/$1/$2', ['filter' => 'permission:viajes.maestros.editar']);
     $routes->post('(:segment)/(:num)/estado', 'TripMasters::status/$1/$2', ['filter' => 'permission:viajes.maestros.editar']);
 });

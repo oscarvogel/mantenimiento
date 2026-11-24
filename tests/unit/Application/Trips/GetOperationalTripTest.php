@@ -121,6 +121,45 @@ final class GetOperationalTripTest extends TestCase
         self::assertNotNull($detail['settlement']);
     }
 
+    public function testUsesTheCompanyDefaultWhenNeitherTheTripNorTheMasterHasAPercentage(): void
+    {
+        $detail = $this->detail([
+            'assignments' => [['rol' => 'CHOFER', 'empleado_id' => 7, 'porcentaje_liquidacion' => null, 'master_percentage' => null, 'label' => 'Ana Chofer']],
+            'company_default_percentage' => 14.0,
+            'legs' => [[
+                'id' => 1,
+                'orden' => 1,
+                'origen' => 'Rosario',
+                'destino' => 'Córdoba',
+                'flete_facturacion_ars' => 1_000_000.0,
+                'flete_liquidacion_ars' => 800_000.0,
+            ]],
+        ]);
+
+        self::assertSame(14.0, $detail['totals']['driver_percentage']);
+        self::assertSame('EMPRESA', $detail['totals']['driver_percentage_source']);
+        self::assertSame(112_000.0, $detail['totals']['commission_ars']);
+    }
+
+    public function testWithoutAnySourceThePercentageStaysUndefined(): void
+    {
+        $detail = $this->detail([
+            'assignments' => [['rol' => 'CHOFER', 'empleado_id' => 7, 'porcentaje_liquidacion' => null, 'master_percentage' => null, 'label' => 'Ana Chofer']],
+            'legs' => [[
+                'id' => 1,
+                'orden' => 1,
+                'origen' => 'Rosario',
+                'destino' => 'Córdoba',
+                'flete_facturacion_ars' => 1_000_000.0,
+                'flete_liquidacion_ars' => 800_000.0,
+            ]],
+        ]);
+
+        self::assertNull($detail['totals']['driver_percentage']);
+        self::assertNull($detail['totals']['driver_percentage_source']);
+        self::assertNull($detail['totals']['commission_ars']);
+    }
+
     public function testComputesDriverSettlementWithEarningsExpensesAndCash(): void
     {        $detail = $this->detail([
             'assignments' => [['rol' => 'CHOFER', 'empleado_id' => 7, 'porcentaje_liquidacion' => 14.0, 'label' => 'Ana Chofer']],

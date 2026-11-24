@@ -273,6 +273,9 @@ final class CodeIgniterOperationalTripReadModel implements OperationalTripReadMo
                     ? (string) $company['razon_social']
                     : (string) ($company['nombre_fantasia'] ?? ''),
             ],
+            // Respaldo para los choferes que no tienen fila en el maestro de
+            // porcentajes de liquidacion.
+            'company_default_percentage' => DriverLiquidationDefault::read($this->db, $companyId),
             'trip' => [
                 'id' => (int) $row['id'],
                 'numero' => (int) $row['numero'],
