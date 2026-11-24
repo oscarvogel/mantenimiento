@@ -82,14 +82,22 @@ Nunca un cero que parezca medido (regla 32 de la especificación).
   migraciones), catálogo de plataforma y la ruta HTTP.
 - Vitest: la pantalla del módulo y la extracción de la tabla de conciliación
   (los tests del tablero de flota siguen en verde).
-- La tabla y el módulo coinciden: medido en producción el 24/11/2026.
+- La tabla y el módulo coinciden: medido en producción el 24/11/2026, con el
+  camino real del módulo (composition root) contra MySQL. Las cinco medidas
+  comparadas dan idénticas: 8 cargas, 2.812 L, 3.110.061 ARS, 5 cargas y 1.431 L
+  sin precio. Ver `docs/BITACORA_2026-11-24_VERIFICACION_MODULO_COMBUSTIBLE_PRODUCCION.md`.
 
 ## 5. Pendientes
 
 1. **Cargar el combustible de los viajes en curso.** Con 41 de 42 viajes sin
    combustible, el módulo muestra "sin datos" y los márgenes están inflados. Es
-   la brecha más grande y es carga de la operación.
+   la brecha más grande y es carga de la operación. La conciliación medió que
+   **13 de esos viajes tienen cargas vistas por el sensor y no declaradas**
+   (9.926,6 L en 37 cargas): son la prueba de que el combustible se cargó y no se
+   registró.
 2. **Completar los 5 precios pendientes** del viaje 21 (1.431 L) desde la bandeja
    «Combustible sin precio».
 3. **Repetir el smoke de staging en `fasa_189`** cuando la VPN vuelva: el host
    sigue inalcanzable desde esta máquina.
+4. **Revisión visual de la pantalla autenticada** por parte del cliente: desde la
+   máquina de desarrollo no hay sesión de usuario de la app.
