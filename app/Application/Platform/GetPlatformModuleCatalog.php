@@ -98,6 +98,12 @@ final class GetPlatformModuleCatalog
                 && ! $actor->isSuperAdmin()
                 && $actor->companyId() !== null
                 && $actor->hasPermission('viajes.ver');
+            // Neumaticos arranca por sus maestros: sin marcas ni depositos no
+            // hay padron que cargar.
+            $tiresEnabled = $module['key'] === 'tires'
+                && ! $actor->isSuperAdmin()
+                && $actor->companyId() !== null
+                && $actor->hasPermission('neumaticos.ver');
             $canTheoreticalCost = $actor->hasPermission('gerencial.costo_km.ver');
             $canFleetBoard = ! $actor->isSuperAdmin() && $actor->companyId() !== null && $actor->hasPermission('gerencial.flota.ver');
             $managementEnabled = $module['key'] === 'management'
@@ -110,10 +116,11 @@ final class GetPlatformModuleCatalog
                 && ! $actor->isSuperAdmin()
                 && $actor->companyId() !== null
                 && $actor->hasPermission('automatizaciones.ver');
-            $enabled = $tripsEnabled || $fuelEnabled || $managementEnabled || $reportsEnabled || $automationsEnabled;
+            $enabled = $tripsEnabled || $fuelEnabled || $tiresEnabled || $managementEnabled || $reportsEnabled || $automationsEnabled;
             $landingPath = match (true) {
                 $tripsEnabled => $tripsPath,
                 $fuelEnabled => 'viajes/combustible',
+                $tiresEnabled => 'neumaticos/maestros',
                 $managementEnabled => $canTheoreticalCost ? 'gerencial/costo-teorico-km' : 'gerencial/flota',
                 $reportsEnabled => 'reportes',
                 $automationsEnabled => 'automatizaciones',

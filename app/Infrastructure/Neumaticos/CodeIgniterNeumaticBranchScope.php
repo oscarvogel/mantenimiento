@@ -26,4 +26,25 @@ final class CodeIgniterNeumaticBranchScope implements NeumaticBranchScope
             ->where('deleted_at', null)
             ->countAllResults() === 1;
     }
+
+    public function activeBranches(int $companyId, ?array $branchIds): array
+    {
+        if ($branchIds === []) {
+            return [];
+        }
+        $query = $this->database->table('sucursales')
+            ->select('id, nombre')
+            ->where('empresa_id', $companyId)
+            ->where('estado', 1)
+            ->where('deleted_at', null)
+            ->orderBy('nombre', 'ASC');
+        if ($branchIds !== null) {
+            $query->whereIn('id', $branchIds);
+        }
+
+        return array_map(static fn (array $row): array => [
+            'id' => (int) $row['id'],
+            'name' => (string) $row['nombre'],
+        ], $query->get()->getResultArray());
+    }
 }

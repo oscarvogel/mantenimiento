@@ -166,10 +166,52 @@ existencia de un neumático en un depósito es siempre 0 o 1? Hoy no se limita.
   - `migrate:rollback` deja 0 tablas y 0 permisos de neumáticos; volver a migrar: OK.
   - `InitialSeeder` asigna `neumaticos.ver` a 5 roles y `neumaticos.operar` a 2.
 
-## 7. Qué sigue
+## 7. Pantallas, paso 2b-1: maestros y tarjeta del portal (rama `feat/neumaticos-pantallas`)
 
-- Paso 2b: controlador, rutas y pantallas del padrón, la ficha, el depósito y los maestros;
-  la tarjeta del portal abre el módulo.
+El paso 2b se partió en tres PRs: **2b-1** maestros y portal, **2b-2** padrón, alta, ficha y
+cambio de estado, **2b-3** depósito.
+
+**Qué hace 2b-1:**
+
+- `neumaticos/maestros`: marcas, modelos, tipos de cubierta y depósitos en pestañas, con alta en
+  línea, edición en modal, activar e inactivar y búsqueda. En móvil cada registro es una
+  tarjeta, sin tabla con scroll horizontal.
+- La tarjeta **Neumáticos** del portal `/inicio` pasa a *Operativo* para quien tiene
+  `neumaticos.ver`, y entra a los maestros: sin marcas ni depósitos no hay padrón que cargar.
+  En 2b-2 la entrada pasa al padrón. El módulo tiene su navegación propia y retorno al portal.
+- Caso de uso `NeumaticMasterCatalog` (`page`, `save`, `setActive`), puerto
+  `NeumaticMasterRepository` y adaptador `CodeIgniterNeumaticMasterRepository`.
+  `NeumaticBranchScope` suma `activeBranches()` para elegir la sucursal del depósito.
+
+**Reglas:**
+
+- Ver exige `neumaticos.ver`; crear, editar, activar e inactivar exigen `neumaticos.operar`.
+  No se creó un permiso aparte para maestros: se registra como decisión revisable.
+- El nombre es único por empresa sin distinguir mayúsculas; el del modelo, dentro de su marca.
+- Un modelo necesita una marca activa de la empresa. Un depósito necesita una sucursal activa
+  de la empresa **y** dentro de las sucursales del usuario; los depósitos de otra sucursal no se
+  ven ni se editan.
+- Un maestro no se borra: se inactiva. Una marca inactiva deja de ofrecerse para modelos y
+  neumáticos nuevos; lo que ya la usa la conserva.
+
+**Evidencia:**
+
+- `tests/database/Neumaticos/NeumaticMastersTest.php` (12 pruebas, contra la migración real),
+  `tests/feature/NeumaticMastersHttpTest.php` (anónimo, CSRF, permiso por ruta) y 3 casos en
+  `GetPlatformModuleCatalogTest`. PHPUnit completo: 2332 pruebas, sin fallos.
+- `TireMastersPage.test.js` (11 casos). Vitest completo: 577 pruebas en 94 archivos.
+- `npm run build` y `verify:build-sync`: OK.
+
+**Lección operativa:** un worktree con `vendor` compartido por junction **no sirve para
+probar**: el autoloader de Composer resuelve la ruta real y carga las clases `App\` del checkout
+original, no las del worktree. Los tests pasaban o fallaban contra otro código. El worktree
+necesita su propia copia de `vendor`.
+
+## 8. Qué sigue
+
+- 2b-2: padrón, alta, ficha y cambio de estado. Antes, confirmar con el cliente si la ficha
+  muestra precio, origen y observaciones.
+- 2b-3: depósito con existencias y movimientos.
 - Adaptadores de `NeumaticReadingRecorder`, `GomeriaOrderLauncher` y
   `PreventiveNeumaticEventPublisher` (ver `CONTRATOS_ENTRE_CONTEXTOS.md` §5).
 - Todo lo que resuelve en qué equipo está el neumático sigue bloqueado por D7.

@@ -3068,4 +3068,19 @@ return new AsignarPlan(
             new \App\Infrastructure\Neumaticos\CodeIgniterNeumaticRepository(db_connect()),
         );
     }
+
+    public static function neumaticMasterCatalog(bool $getShared = true): \App\Application\Neumaticos\NeumaticMasterCatalog
+    {
+        if ($getShared) {
+            return static::getSharedInstance('neumaticMasterCatalog');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\Neumaticos\NeumaticMasterCatalog(
+            new \App\Infrastructure\Neumaticos\CodeIgniterNeumaticMasterRepository($db),
+            new \App\Infrastructure\Neumaticos\CodeIgniterNeumaticCatalog($db),
+            new \App\Infrastructure\Neumaticos\CodeIgniterNeumaticBranchScope($db),
+        );
+    }
 }
