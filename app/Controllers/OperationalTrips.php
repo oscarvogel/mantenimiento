@@ -8,6 +8,7 @@ use App\Application\Identity\ActorContext;
 use App\Application\Trips\AddTripLegCommand;
 use App\Application\Trips\CreateTripCommand;
 use App\Application\Trips\CreateTripConceptCommand;
+use App\Application\Trips\CreateTripExpenseCategoryCommand;
 use App\Application\Trips\DeleteOperationalTripCost;
 use App\Application\Trips\DeleteOperationalTripCostCommand;
 use App\Application\Trips\ListOperationalTrips;
@@ -158,6 +159,30 @@ final class OperationalTrips extends BaseController
                 'message' => $exception instanceof DomainException
                     ? $exception->getMessage()
                     : 'No se pudo dar de alta el concepto.',
+            ]);
+        }
+    }
+
+    /**
+     * Alta de una categoría de gasto desde el propio viaje.
+     */
+    public function addExpenseCategory(int $tripId): ResponseInterface
+    {
+        try {
+            $command = CreateTripExpenseCategoryCommand::fromInput((array) $this->request->getPost());
+
+            return $this->response->setJSON([
+                'category' => service('createTripExpenseCategory')->execute($this->actor(), $tripId, $command),
+            ]);
+        } catch (Throwable $exception) {
+            if (! $exception instanceof DomainException) {
+                log_message('error', 'Falló el alta de una categoría de gasto de viaje: {message}', ['message' => $exception->getMessage()]);
+            }
+
+            return $this->response->setStatusCode($exception instanceof DomainException ? 422 : 500)->setJSON([
+                'message' => $exception instanceof DomainException
+                    ? $exception->getMessage()
+                    : 'No se pudo dar de alta la categoría.',
             ]);
         }
     }
