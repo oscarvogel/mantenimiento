@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Application\Identity\ActorContext;
+use App\Application\Neumaticos\MountNeumaticCommand;
 use App\Application\Neumaticos\NeumaticRegistryFilters;
 use App\Application\Neumaticos\RegisterNeumaticCommand;
 use App\Application\Neumaticos\UpdateNeumaticCommand;
@@ -64,7 +65,17 @@ final class Neumatics extends BaseController
                 'index' => base_url(self::BASE),
                 'update' => base_url(self::BASE . '/' . $id),
                 'status' => base_url(self::BASE . '/' . $id . '/estado'),
+                'mount' => base_url(self::BASE . '/' . $id . '/colocar'),
+                'remove' => base_url(self::BASE . '/' . $id . '/extraer'),
+                'deposit' => base_url(self::BASE . '/deposito'),
             ];
+            $payload['oldInput'] = [];
+            foreach (['equipo_id', 'eje', 'lado', 'lugar', 'boton', 'km', 'fecha'] as $field) {
+                $value = old($field);
+                if (is_string($value) && $value !== '') {
+                    $payload['oldInput'][$field] = $value;
+                }
+            }
 
             return $this->renderApp($actor, 'tire-detail', 'tire-detail', 'Neumático ' . $payload['neumatic']['number'], $payload);
         } catch (Throwable $exception) {
@@ -126,6 +137,54 @@ final class Neumatics extends BaseController
             return redirect()->to(base_url(self::BASE . '/' . $id))->with('success', 'El estado del neumático quedó actualizado.');
         } catch (Throwable $exception) {
             return $this->failure($exception, base_url(self::BASE . '/' . $id));
+        }
+    }
+
+    public function mount(int $id): RedirectResponse
+    {
+        $back = base_url(self::BASE . '/' . $id);
+        try {
+            $result = service('mountNeumatic')->execute($this->actor(), new MountNeumaticCommand(
+                $id,
+                $this->requiredInt('equipo_id', 'Elegí el equipo donde se coloca el neumático.'),
+                $this->requiredInt('eje', 'Elegí el eje.'),
+                trim((string) $this->request->getPost('lado')),
+                trim((string) $this->request->getPost('lugar')),
+                $this->requiredInt('km', 'Indicá el kilometraje del equipo al colocar el neumático.'),
+                trim((string) $this->request->getPost('boton')) ?: null,
+                $this->optionalDateTime('fecha'),
+            ));
+
+            $message = sprintf('Quedó colocado en %s, %s.', $result['equipment'], $result['position']);
+            if ($result['movedToBranch']) {
+                $message .= ' Pasó a la sucursal del equipo.';
+            }
+            if ($result['depositExits'] > 0) {
+                $message .= ' Se registró su salida del depósito.';
+            }
+
+            return redirect()->to($back)->with('success', $message);
+        } catch (Throwable $exception) {
+            return $this->failure($exception, $back . '#colocar');
+        }
+    }
+
+    public function remove(int $id): RedirectResponse
+    {
+        $back = base_url(self::BASE . '/' . $id);
+        try {
+            $result = service('removeNeumatic')->execute(
+                $this->actor(),
+                $id,
+                $this->requiredInt('km', 'Indicá el kilometraje del equipo al extraer el neumático.'),
+                $this->optionalDateTime('fecha'),
+            );
+
+            return redirect()->to($back)->with('success', $result['reliable']
+                ? sprintf('El neumático quedó extraído. Recorrió %s en esa colocación.', $result['label'])
+                : 'El neumático quedó extraído. El km de extracción es menor al de colocación: el rendimiento queda sin datos suficientes.');
+        } catch (Throwable $exception) {
+            return $this->failure($exception, $back . '#extraer');
         }
     }
 

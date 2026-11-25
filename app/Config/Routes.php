@@ -114,6 +114,8 @@ $routes->group('neumaticos', ['filter' => ['auth']], static function ($routes): 
     $routes->get('(:num)', 'Neumatics::show/$1', ['filter' => 'permission:neumaticos.ver']);
     $routes->post('(:num)', 'Neumatics::update/$1', ['filter' => 'permission:neumaticos.operar']);
     $routes->post('(:num)/estado', 'Neumatics::status/$1', ['filter' => 'permission:neumaticos.operar']);
+    $routes->post('(:num)/colocar', 'Neumatics::mount/$1', ['filter' => 'permission:neumaticos.operar']);
+    $routes->post('(:num)/extraer', 'Neumatics::remove/$1', ['filter' => 'permission:neumaticos.operar']);
 });
 
 // Depósito de neumáticos: existencias y movimientos.

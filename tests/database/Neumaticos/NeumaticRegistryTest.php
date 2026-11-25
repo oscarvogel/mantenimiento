@@ -15,6 +15,8 @@ use App\Application\Neumaticos\RegisterNeumaticCommand;
 use App\Application\Neumaticos\UpdateNeumatic;
 use App\Application\Neumaticos\UpdateNeumaticCommand;
 use App\Database\Migrations\CreateNeumaticosTables;
+use App\Domain\Neumaticos\NeumaticPosition;
+use App\Infrastructure\Assets\CodeIgniterEquipmentFleetLookup;
 use App\Infrastructure\Neumaticos\CodeIgniterNeumaticBranchScope;
 use App\Infrastructure\Neumaticos\CodeIgniterNeumaticCatalog;
 use App\Infrastructure\Neumaticos\CodeIgniterNeumaticRegistryReadModel;
@@ -239,11 +241,61 @@ final class NeumaticRegistryTest extends TestCase
         return new GetNeumaticRegistry(new CodeIgniterNeumaticRegistryReadModel($this->database), new CodeIgniterNeumaticBranchScope($this->database));
     }
 
+    public function testTheRegistryAndTheDetailSayWhereTheTireIsMounted(): void
+    {
+        $this->database->table('tipos_equipo')->insert(['id' => 1, 'nombre' => 'Tractor']);
+        $this->database->table('equipos')->insertBatch([
+            ['id' => 40, 'empresa_id' => 7, 'sucursal_id' => 1, 'tipo_equipo_id' => 1, 'codigo' => 'M40', 'patente' => 'AB123CD', 'estado' => 'ACTIVO'],
+            ['id' => 41, 'empresa_id' => 7, 'sucursal_id' => 1, 'tipo_equipo_id' => 1, 'codigo' => 'M41', 'patente' => 'ZZ999ZZ', 'estado' => 'BAJA'],
+        ]);
+        $mounted = $this->register(1, 'TSA 1');
+        $free = $this->register(1, 'TSA 2');
+        $repository = new CodeIgniterNeumaticRepository($this->database);
+        $tire = $repository->findForUpdate(7, null, $mounted);
+        $tire?->mount(40, new NeumaticPosition(2, 'I', 'E'), new DateTimeImmutable('2026-11-02 08:00'), 100_000);
+        $repository->save($tire, 12);
+
+        $items = $this->registry()->execute($this->operator(), NeumaticRegistryFilters::fromQuery([]))['items'];
+        self::assertSame('AB123CD · M40 · Eje 2 · izquierdo · exterior', $items[0]['mountedOn']);
+        self::assertNull($items[1]['mountedOn']);
+
+        $detail = $this->detail()->execute($this->operator(), $mounted);
+        self::assertSame('AB123CD · M40', $detail['location']['equipmentLabel']);
+        self::assertSame('Eje 2 · izquierdo · exterior', $detail['location']['position']);
+        self::assertSame(100_000, $detail['location']['mountedKm']);
+        self::assertTrue($detail['mounting']['canRemove']);
+        self::assertFalse($detail['mounting']['canMount']);
+        self::assertSame('AB123CD · M40', $detail['performance']['mountings'][0]['equipment_label']);
+
+        $freeDetail = $this->detail()->execute($this->operator(), $free);
+        self::assertNull($freeDetail['location']);
+        self::assertTrue($freeDetail['mounting']['canMount']);
+        self::assertSame(['AB123CD · M40'], array_column($freeDetail['mounting']['equipment'], 'label'), 'solo equipos activos');
+        self::assertSame(['Izquierdo', 'Derecho'], array_column($freeDetail['mounting']['sides'], 'label'));
+        self::assertSame(10, $freeDetail['mounting']['maxAxle']);
+    }
+
+    public function testATireThatCannotRollExplainsWhyItCannotBeMounted(): void
+    {
+        $id = $this->register(1, 'TSA 1');
+        $this->changeStatus($id, 'EN_REPARACION', 'Pinchadura');
+
+        $detail = $this->detail()->execute($this->operator(), $id);
+
+        self::assertFalse($detail['mounting']['canMount']);
+        self::assertSame('Un neumático en estado "En reparación" no se puede colocar en un equipo.', $detail['mounting']['blockedReason']);
+        self::assertSame([], $detail['mounting']['equipment']);
+    }
+
     private function detail(): GetNeumaticDetail
     {
+        $fleet = new CodeIgniterEquipmentFleetLookup($this->database);
+
         return new GetNeumaticDetail(
             new CodeIgniterNeumaticRegistryReadModel($this->database),
             new GetNeumaticPerformance(new CodeIgniterNeumaticRepository($this->database)),
+            $fleet,
+            $fleet,
         );
     }
 

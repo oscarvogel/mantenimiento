@@ -15,7 +15,7 @@ interface NeumaticRegistryReadModel
 {
     /**
      * @param list<int>|null $branchIds
-     * @return array{total: int, items: list<array{id: int, number: string, status: string, size: string, year: int|null, brandName: string|null, modelName: string|null, coverTypeName: string|null, branchId: int, branchName: string}>}
+     * @return array{total: int, items: list<array{id: int, number: string, status: string, size: string, year: int|null, brandName: string|null, modelName: string|null, coverTypeName: string|null, branchId: int, branchName: string, mountedOn: string|null}>}
      */
     public function search(int $companyId, ?array $branchIds, NeumaticRegistryFilters $filters, int $limit): array;
 

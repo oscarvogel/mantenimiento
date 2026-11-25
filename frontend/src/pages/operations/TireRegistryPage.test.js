@@ -131,4 +131,14 @@ describe('TireRegistryPage', () => {
     expect(wrapper.text()).toContain('Todavía no hay marcas activas.')
     expect(wrapper.find('select[name="marca"]').exists()).toBe(false)
   })
+
+  it('dice dónde está colocado cada neumático', () => {
+    const wrapper = mountPage({
+      items: [tire(1, 'TSA 1', { mountedOn: 'AB123CD · M40 · Eje 2 · izquierdo · exterior' }), tire(2, 'TSA 2', { mountedOn: null })],
+    })
+
+    const rows = wrapper.findAll('ul a')
+    expect(rows[0].text()).toContain('Colocado en AB123CD · M40 · Eje 2 · izquierdo · exterior')
+    expect(rows[1].text()).not.toContain('Colocado en')
+  })
 })

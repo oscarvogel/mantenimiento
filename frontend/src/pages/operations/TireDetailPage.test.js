@@ -109,6 +109,73 @@ describe('TireDetailPage', () => {
     expect(wrapper.find('form').exists()).toBe(false)
     expect(wrapper.text()).toContain('En reparación')
   })
+
+  const mountingOptions = (overrides = {}) => ({
+    canMount: true,
+    canRemove: false,
+    blockedReason: null,
+    equipment: [{ id: 40, branchId: 1, label: 'AB123CD · M40', plate: 'AB123CD', code: 'M40' }],
+    maxAxle: 10,
+    sides: [{ value: 'I', label: 'Izquierdo' }, { value: 'D', label: 'Derecho' }],
+    slots: [{ value: 'E', label: 'Exterior' }, { value: 'I', label: 'Interior' }, { value: 'S', label: 'Simple' }],
+    ...overrides,
+  })
+
+  it('sin colocar ofrece colocarlo con eje, lado, rueda y km', () => {
+    const wrapper = mountPage({ location: null, mounting: mountingOptions(), urls: { ...data().urls, mount: '/neumaticos/7/colocar' } })
+
+    const form = wrapper.find('form#colocar')
+    expect(form.attributes('action')).toBe('/neumaticos/7/colocar')
+    expect(form.findAll('#tire-mount-axle option')).toHaveLength(10)
+    expect(form.findAll('#tire-mount-side option').map((option) => option.text())).toEqual(['Izquierdo', 'Derecho'])
+    expect(form.findAll('#tire-mount-slot option').map((option) => option.text())).toEqual(['Exterior', 'Interior', 'Simple'])
+    expect(form.find('#tire-mount-km').attributes('required')).toBeDefined()
+    expect(wrapper.findComponent({ name: 'AutocompleteSelect' }).props('options')).toEqual([{ value: 40, label: 'AB123CD · M40' }])
+    expect(wrapper.text()).toContain('Se registra una lectura de km del equipo.')
+  })
+
+  it('colocado muestra dónde está y ofrece extraerlo', () => {
+    const wrapper = mountPage({
+      location: { equipmentId: 40, equipmentLabel: 'AB123CD · M40', position: 'Eje 2 · izquierdo · exterior', mountedAt: '2026-11-02', mountedKm: 100000 },
+      mounting: mountingOptions({ canMount: false, canRemove: true, equipment: [] }),
+      urls: { ...data().urls, remove: '/neumaticos/7/extraer' },
+    })
+
+    expect(wrapper.text()).toContain('Colocado en AB123CD · M40, Eje 2 · izquierdo · exterior.')
+    expect(wrapper.text()).toContain('Desde el 02/11/2026')
+    expect(wrapper.find('form#extraer').attributes('action')).toBe('/neumaticos/7/extraer')
+    expect(wrapper.find('form#colocar').exists()).toBe(false)
+  })
+
+  it('explica por qué no se puede colocar', () => {
+    const wrapper = mountPage({
+      location: null,
+      mounting: mountingOptions({ canMount: false, blockedReason: 'Un neumático en estado "En reparación" no se puede colocar en un equipo.', equipment: [] }),
+    })
+
+    expect(wrapper.text()).toContain('Un neumático en estado "En reparación" no se puede colocar en un equipo.')
+    expect(wrapper.find('form#colocar').exists()).toBe(false)
+  })
+
+  it('sin equipos activos lo avisa en vez de mostrar un formulario vacío', () => {
+    const wrapper = mountPage({ location: null, mounting: mountingOptions({ equipment: [] }) })
+
+    expect(wrapper.text()).toContain('No hay equipos activos en tus sucursales para colocarlo.')
+    expect(wrapper.find('form#colocar').exists()).toBe(false)
+  })
+
+  it('el rendimiento nombra el equipo y la posición de cada colocación', () => {
+    const wrapper = mountPage({
+      performance: {
+        total_km: 12500,
+        total_label: '12.500 km',
+        mountings: [{ equipment_label: 'AB123CD · M40', position_label: 'Eje 2 · izquierdo · exterior', mounted_at: '2026-11-02', removed_at: '2026-11-20', label: '12.500 km' }],
+      },
+    })
+
+    expect(wrapper.text()).toContain('AB123CD · M40 · Eje 2 · izquierdo · exterior')
+    expect(wrapper.text()).toContain('02/11/2026 → 20/11/2026')
+  })
 })
 
 describe('tireStatus', () => {

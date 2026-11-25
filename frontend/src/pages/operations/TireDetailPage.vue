@@ -1,13 +1,21 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { PencilSquareIcon } from '@heroicons/vue/24/outline'
+import AutocompleteSelect from './components/AutocompleteSelect.vue'
 import CsrfInput from './components/CsrfInput.vue'
 import FormField from './components/FormField.vue'
 import PageHeading from './components/PageHeading.vue'
-import { fieldClass, primaryButton, secondaryButton } from './helpers.js'
+import { fieldClass, formatKilometers, primaryButton, secondaryButton } from './helpers.js'
 import { formatDateTimeDmy, nowLocalMinutes, tireStatusTone } from './tireStatus.js'
 
 const props = defineProps({ data: { type: Object, required: true } })
+
+const location = computed(() => props.data.location ?? null)
+const mounting = computed(() => props.data.mounting ?? { canMount: false, canRemove: false, equipment: [], sides: [], slots: [], maxAxle: 10 })
+const old = computed(() => props.data.oldInput ?? {})
+const equipmentOptions = computed(() => (mounting.value.equipment ?? []).map((item) => ({ value: item.id, label: item.label })))
+const axles = computed(() => Array.from({ length: mounting.value.maxAxle ?? 10 }, (_, index) => index + 1))
+const mountForm = ref({ equipment: old.value.equipo_id ?? '' })
 
 const tire = computed(() => props.data.neumatic)
 const options = computed(() => props.data.options ?? { brands: [], models: [], coverTypes: [] })
@@ -119,6 +127,74 @@ const facts = computed(() => [
       </section>
     </div>
 
+    <section id="ubicacion" class="rounded-xl border border-border bg-surface-raised p-4 sm:p-5" aria-labelledby="tire-detail-location">
+      <h2 id="tire-detail-location" class="text-base font-bold text-ink">Ubicación</h2>
+
+      <template v-if="location">
+        <p class="mt-2 text-sm text-ink">
+          Colocado en <strong>{{ location.equipmentLabel }}</strong>, {{ location.position }}.
+        </p>
+        <p class="text-sm text-ink-muted">Desde el {{ formatDateTimeDmy(location.mountedAt) }}, con el equipo en {{ formatKilometers(location.mountedKm) }}.</p>
+
+        <form v-if="mounting.canRemove" id="extraer" method="post" :action="data.urls.remove" class="mt-4 grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
+          <CsrfInput :csrf="data.csrf" />
+          <FormField label="Km del equipo al extraer" for-id="tire-remove-km" hint="Si es menor al de colocación, el rendimiento queda sin datos suficientes.">
+            <input id="tire-remove-km" name="km" type="number" inputmode="numeric" min="0" step="1" required :value="old.km" :class="fieldClass" />
+          </FormField>
+          <FormField label="Fecha y hora" for-id="tire-remove-date">
+            <input id="tire-remove-date" name="fecha" type="datetime-local" required :max="now" :value="old.fecha ?? now" :class="fieldClass" />
+          </FormField>
+          <div>
+            <button type="submit" :class="primaryButton">Extraer</button>
+          </div>
+        </form>
+      </template>
+
+      <template v-else>
+        <p class="mt-2 text-sm text-ink-muted">No está colocado en ningún equipo.</p>
+        <p v-if="mounting.blockedReason" class="mt-2 text-sm text-ink-muted">{{ mounting.blockedReason }}</p>
+        <p v-else-if="mounting.canMount && equipmentOptions.length === 0" class="mt-2 text-sm text-ink-muted">No hay equipos activos en tus sucursales para colocarlo.</p>
+
+        <form v-else-if="mounting.canMount" id="colocar" method="post" :action="data.urls.mount" class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <CsrfInput :csrf="data.csrf" />
+          <div class="sm:col-span-2">
+            <span class="mb-1.5 block text-sm font-semibold text-ink">Equipo</span>
+            <AutocompleteSelect v-model="mountForm.equipment" name="equipo_id" :options="equipmentOptions" required placeholder="Buscá por patente o código" />
+          </div>
+          <FormField label="Eje" for-id="tire-mount-axle">
+            <select id="tire-mount-axle" name="eje" required :class="fieldClass">
+              <option v-for="axle in axles" :key="axle" :value="axle" :selected="String(axle) === (old.eje ?? '1')">Eje {{ axle }}</option>
+            </select>
+          </FormField>
+          <FormField label="Lado" for-id="tire-mount-side">
+            <select id="tire-mount-side" name="lado" required :class="fieldClass">
+              <option v-for="side in mounting.sides" :key="side.value" :value="side.value" :selected="side.value === old.lado">{{ side.label }}</option>
+            </select>
+          </FormField>
+          <FormField label="Rueda" for-id="tire-mount-slot" hint="Simple: la única rueda de ese lado del eje.">
+            <select id="tire-mount-slot" name="lugar" required :class="fieldClass">
+              <option v-for="slot in mounting.slots" :key="slot.value" :value="slot.value" :selected="slot.value === old.lugar">{{ slot.label }}</option>
+            </select>
+          </FormField>
+          <FormField label="Botón (opcional)" for-id="tire-mount-button">
+            <input id="tire-mount-button" name="boton" maxlength="10" autocomplete="off" :value="old.boton" :class="fieldClass" />
+          </FormField>
+          <FormField label="Km del equipo" for-id="tire-mount-km">
+            <input id="tire-mount-km" name="km" type="number" inputmode="numeric" min="0" step="1" required :value="old.km" :class="fieldClass" />
+          </FormField>
+          <FormField label="Fecha y hora" for-id="tire-mount-date">
+            <input id="tire-mount-date" name="fecha" type="datetime-local" required :max="now" :value="old.fecha ?? now" :class="fieldClass" />
+          </FormField>
+          <p class="text-sm text-ink-muted sm:col-span-2 lg:col-span-4">
+            Se registra una lectura de km del equipo. Si el neumático está en un depósito, se le da salida; si es de otra sucursal, pasa a la del equipo.
+          </p>
+          <div class="sm:col-span-2 lg:col-span-4">
+            <button type="submit" :class="primaryButton">Colocar</button>
+          </div>
+        </form>
+      </template>
+    </section>
+
     <section class="rounded-xl border border-border bg-surface-raised p-4 sm:p-5" aria-labelledby="tire-detail-performance">
       <h2 id="tire-detail-performance" class="text-base font-bold text-ink">Rendimiento</h2>
       <p class="mt-2 text-sm text-ink">
@@ -126,9 +202,12 @@ const facts = computed(() => [
       </p>
       <p v-if="performance.mountings.length === 0" class="mt-1 text-sm text-ink-muted">Todavía no tiene colocaciones en equipos registradas.</p>
       <ul v-else class="mt-3 divide-y divide-border-subtle">
-        <li v-for="(mounting, index) in performance.mountings" :key="index" class="flex flex-col gap-1 py-2 text-sm sm:flex-row sm:justify-between">
-          <span class="text-ink">{{ formatDateTimeDmy(mounting.mounted_at) }} → {{ mounting.removed_at ? formatDateTimeDmy(mounting.removed_at) : 'colocado' }}</span>
-          <span class="font-semibold text-ink">{{ mounting.label }}</span>
+        <li v-for="(item, index) in performance.mountings" :key="index" class="flex flex-col gap-1 py-2 text-sm sm:flex-row sm:justify-between">
+          <span class="min-w-0 text-ink">
+            <span class="block font-semibold">{{ item.equipment_label }} · {{ item.position_label }}</span>
+            <span class="text-ink-muted">{{ formatDateTimeDmy(item.mounted_at) }} → {{ item.removed_at ? formatDateTimeDmy(item.removed_at) : 'colocado' }}</span>
+          </span>
+          <span class="font-semibold text-ink">{{ item.label }}</span>
         </li>
       </ul>
     </section>

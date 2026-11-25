@@ -46,6 +46,18 @@ final class NeumaticsHttpTest extends CIUnitTestCase
         $this->post('neumaticos/7/estado', ['estado' => 'MEDIO_USO', 'motivo' => 'x']);
     }
 
+    public function testMountingWithoutCsrfIsRejected(): void
+    {
+        $this->expectException(\CodeIgniter\Security\Exceptions\SecurityException::class);
+        $this->post('neumaticos/7/colocar', ['equipo_id' => '10', 'eje' => '1', 'lado' => 'I', 'lugar' => 'E', 'km' => '1000']);
+    }
+
+    public function testRemovingWithoutCsrfIsRejected(): void
+    {
+        $this->expectException(\CodeIgniter\Security\Exceptions\SecurityException::class);
+        $this->post('neumaticos/7/extraer', ['km' => '1000']);
+    }
+
     public function testEveryRouteDeclaresItsPermission(): void
     {
         $routes = (string) file_get_contents(APPPATH . 'Config/Routes.php');
@@ -54,7 +66,7 @@ final class NeumaticsHttpTest extends CIUnitTestCase
         foreach (["''", "'\\(:num\\)'"] as $path) {
             self::assertMatchesRegularExpression("#->get\\({$path}, 'Neumatics::[a-z]+(/\\\$1)?', \\['filter' => 'permission:neumaticos\\.ver'\\]#", $routes);
         }
-        foreach (["''", "'\\(:num\\)'", "'\\(:num\\)/estado'"] as $path) {
+        foreach (["''", "'\\(:num\\)'", "'\\(:num\\)/estado'", "'\\(:num\\)/colocar'", "'\\(:num\\)/extraer'"] as $path) {
             self::assertMatchesRegularExpression("#->post\\({$path}, 'Neumatics::[a-z]+(/\\\$1)?', \\['filter' => 'permission:neumaticos\\.operar'\\]#", $routes);
         }
     }

@@ -3119,9 +3119,14 @@ return new AsignarPlan(
             return static::getSharedInstance('neumaticDetail');
         }
 
+        $db = db_connect();
+        $fleet = new \App\Infrastructure\Assets\CodeIgniterEquipmentFleetLookup($db);
+
         return new \App\Application\Neumaticos\GetNeumaticDetail(
-            new \App\Infrastructure\Neumaticos\CodeIgniterNeumaticRegistryReadModel(db_connect()),
+            new \App\Infrastructure\Neumaticos\CodeIgniterNeumaticRegistryReadModel($db),
             static::getNeumaticPerformance(false),
+            $fleet,
+            $fleet,
         );
     }
 
