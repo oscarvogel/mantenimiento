@@ -32,6 +32,7 @@ import FuelModulePage from './FuelModulePage.vue'
 import TireMastersPage from './TireMastersPage.vue'
 import TireRegistryPage from './TireRegistryPage.vue'
 import TireDetailPage from './TireDetailPage.vue'
+import TireDepositPage from './TireDepositPage.vue'
 import TripOperationsIndexPage from './TripOperationsIndexPage.vue'
 import TripOperationsCreatePage from './TripOperationsCreatePage.vue'
 import TripOperationsDetailPage from './TripOperationsDetailPage.vue'
@@ -76,6 +77,7 @@ export {
   TireMastersPage,
   TireRegistryPage,
   TireDetailPage,
+  TireDepositPage,
   TripOperationsIndexPage,
   TripOperationsCreatePage,
   TripOperationsDetailPage,
@@ -119,6 +121,7 @@ export const operationPageComponents = Object.freeze({
   'tire-masters': TireMastersPage,
   'tire-registry': TireRegistryPage,
   'tire-detail': TireDetailPage,
+  'tire-deposit': TireDepositPage,
   'trips-operations': TripOperationsIndexPage,
   'trip-operations-create': TripOperationsCreatePage,
   'trip-operations-detail': TripOperationsDetailPage,

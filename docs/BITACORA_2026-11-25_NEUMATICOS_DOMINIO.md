@@ -273,9 +273,41 @@ necesita su propia copia de `vendor`.
     la fecha por defecto del cambio de estado no cae en el futuro.
 - Mejora posible, no hecha: en móvil los filtros ocupan media pantalla antes de la lista.
 
-## 9. Qué sigue
+## 9. Pantallas, paso 2b-3: depósito (rama `feat/neumaticos-deposito`)
 
-- 2b-3: depósito con existencias y movimientos.
+**Qué hace:**
+
+- `neumaticos/deposito`: depósitos activos como filtro con su cantidad de neumáticos,
+  existencias distintas de cero (la negativa se marca), y los últimos 50 movimientos con signo,
+  planilla o motivo, hora y usuario. Cada neumático lleva a su ficha.
+- **Registrar movimiento**, sobre el caso de uso `RegisterDepositMovement` que ya existía:
+  - *Entrada*: solo ofrece neumáticos que pueden ingresar (no en estado final); pide planilla.
+  - *Salida*: solo ofrece los que hay en el depósito elegido, con cuántos hay; pide planilla.
+  - *Ajuste*: cualquier neumático, cantidad con signo, motivo obligatorio.
+  - El servidor vuelve a validar todo. Si rechaza, el formulario se reabre con lo cargado.
+- Caso de uso de lectura `GetNeumaticDeposit`, puerto `NeumaticDepositReadModel` y su
+  adaptador. La navegación del módulo queda: Padrón, Depósito, Maestros.
+
+**Evidencia:**
+
+- `tests/database/Neumaticos/NeumaticDepositScreenTest.php` (7, contra la migración real) y
+  `tests/feature/NeumaticDepositsHttpTest.php` (4). PHPUnit completo: 2358 pruebas, sin fallos.
+- `TireDepositPage.test.js` (10). Vitest completo: 606 pruebas en 97 archivos. `npm run build`
+  y `verify:build-sync`: OK.
+- `RouteResolutionTest` encontró un enlace armado con el fragmento dentro de `base_url()`
+  (`neumaticos/maestros#depositos`); se corrigió armando la URL y agregando el `#` afuera.
+- **Verificación visual** en instancia temporal de `fasa_189`, con la imagen de staging, base
+  temporal y datos de prueba cargados por SQL. Al terminar se verificó en cero.
+  - Entrada de `TSA 181917` a Central con planilla → aviso con la existencia resultante (1).
+  - Salida: el selector ofrece solo `TSA 181917`, con "hay 1". Una salida de 2 se rechaza con
+    "hay 1 y se quieren sacar 2", y el formulario conserva tipo, neumático, cantidad y planilla.
+  - Ajuste de −1 sobre `TSA 229704` con motivo: existencia −1, marcada en rojo; el historial
+    muestra −1 con el motivo y el usuario.
+  - Móvil (375 px): sin scroll horizontal; el formulario entra completo y arranca en el depósito
+    filtrado.
+
+## 10. Qué sigue
+
 - Adaptadores de `NeumaticReadingRecorder`, `GomeriaOrderLauncher` y
   `PreventiveNeumaticEventPublisher` (ver `CONTRATOS_ENTRE_CONTEXTOS.md` §5).
 - Todo lo que resuelve en qué equipo está el neumático sigue bloqueado por D7.

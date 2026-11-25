@@ -116,6 +116,12 @@ $routes->group('neumaticos', ['filter' => ['auth']], static function ($routes): 
     $routes->post('(:num)/estado', 'Neumatics::status/$1', ['filter' => 'permission:neumaticos.operar']);
 });
 
+// Depósito de neumáticos: existencias y movimientos.
+$routes->group('neumaticos/deposito', ['filter' => ['auth']], static function ($routes): void {
+    $routes->get('', 'NeumaticDeposits::index', ['filter' => 'permission:neumaticos.ver']);
+    $routes->post('movimientos', 'NeumaticDeposits::movement', ['filter' => 'permission:neumaticos.operar']);
+});
+
 // Refresco manual de la telemetría. POST + CSRF + permiso: escribir datos
 // aunque sean de telemetría no es una operación de sólo ver. El mismo camino
 // sirve en staging y en producción, donde no hay cron de sistema ni CLI.

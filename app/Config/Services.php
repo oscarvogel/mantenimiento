@@ -3124,4 +3124,15 @@ return new AsignarPlan(
             static::getNeumaticPerformance(false),
         );
     }
+
+    public static function neumaticDeposit(bool $getShared = true): \App\Application\Neumaticos\GetNeumaticDeposit
+    {
+        if ($getShared) {
+            return static::getSharedInstance('neumaticDeposit');
+        }
+
+        return new \App\Application\Neumaticos\GetNeumaticDeposit(
+            new \App\Infrastructure\Neumaticos\CodeIgniterNeumaticDepositReadModel(db_connect()),
+        );
+    }
 }
