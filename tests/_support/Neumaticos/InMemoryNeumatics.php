@@ -140,6 +140,18 @@ final class InMemoryNeumatics implements NeumaticRepository, NeumaticCatalog, Ne
         return ($this->branches[$branchId] ?? null) === $companyId;
     }
 
+    public function activeBranches(int $companyId, ?array $branchIds): array
+    {
+        $result = [];
+        foreach ($this->branches as $id => $company) {
+            if ($company === $companyId && ($branchIds === null || in_array($id, $branchIds, true))) {
+                $result[] = ['id' => $id, 'name' => 'Sucursal ' . $id];
+            }
+        }
+
+        return $result;
+    }
+
     public function isActiveDeposit(int $companyId, ?array $branchIds, int $depositId): bool
     {
         $deposit = $this->deposits[$depositId] ?? null;
