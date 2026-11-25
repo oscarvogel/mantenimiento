@@ -2993,4 +2993,79 @@ return new AsignarPlan(
             new \App\Infrastructure\CustomerAccounts\CodeIgniterExchangeRateCatalog($db),
         );
     }
+
+    public static function registerNeumatic(bool $getShared = true): \App\Application\Neumaticos\RegisterNeumatic
+    {
+        if ($getShared) {
+            return static::getSharedInstance('registerNeumatic');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\Neumaticos\RegisterNeumatic(
+            new \App\Infrastructure\Neumaticos\CodeIgniterNeumaticRepository($db),
+            new \App\Infrastructure\Neumaticos\CodeIgniterNeumaticCatalog($db),
+            new \App\Infrastructure\Neumaticos\CodeIgniterNeumaticBranchScope($db),
+            new \App\Infrastructure\Neumaticos\CodeIgniterNeumaticsUnitOfWork($db),
+            new \App\Infrastructure\Neumaticos\SystemNeumaticClock(),
+        );
+    }
+
+    public static function updateNeumatic(bool $getShared = true): \App\Application\Neumaticos\UpdateNeumatic
+    {
+        if ($getShared) {
+            return static::getSharedInstance('updateNeumatic');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\Neumaticos\UpdateNeumatic(
+            new \App\Infrastructure\Neumaticos\CodeIgniterNeumaticRepository($db),
+            new \App\Infrastructure\Neumaticos\CodeIgniterNeumaticCatalog($db),
+            new \App\Infrastructure\Neumaticos\CodeIgniterNeumaticsUnitOfWork($db),
+            new \App\Infrastructure\Neumaticos\SystemNeumaticClock(),
+        );
+    }
+
+    public static function changeNeumaticStatus(bool $getShared = true): \App\Application\Neumaticos\ChangeNeumaticStatus
+    {
+        if ($getShared) {
+            return static::getSharedInstance('changeNeumaticStatus');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\Neumaticos\ChangeNeumaticStatus(
+            new \App\Infrastructure\Neumaticos\CodeIgniterNeumaticRepository($db),
+            new \App\Infrastructure\Neumaticos\CodeIgniterNeumaticsUnitOfWork($db),
+            new \App\Infrastructure\Neumaticos\SystemNeumaticClock(),
+        );
+    }
+
+    public static function registerNeumaticDepositMovement(bool $getShared = true): \App\Application\Neumaticos\RegisterDepositMovement
+    {
+        if ($getShared) {
+            return static::getSharedInstance('registerNeumaticDepositMovement');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\Neumaticos\RegisterDepositMovement(
+            new \App\Infrastructure\Neumaticos\CodeIgniterNeumaticRepository($db),
+            new \App\Infrastructure\Neumaticos\CodeIgniterNeumaticDepositRepository($db),
+            new \App\Infrastructure\Neumaticos\CodeIgniterNeumaticsUnitOfWork($db),
+            new \App\Infrastructure\Neumaticos\SystemNeumaticClock(),
+        );
+    }
+
+    public static function getNeumaticPerformance(bool $getShared = true): \App\Application\Neumaticos\GetNeumaticPerformance
+    {
+        if ($getShared) {
+            return static::getSharedInstance('getNeumaticPerformance');
+        }
+
+        return new \App\Application\Neumaticos\GetNeumaticPerformance(
+            new \App\Infrastructure\Neumaticos\CodeIgniterNeumaticRepository(db_connect()),
+        );
+    }
 }

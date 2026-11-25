@@ -103,6 +103,8 @@ final class InitialSeeder extends Seeder
             'viajes.maestros.editar' => 'Crear y actualizar los maestros de Viajes',
             'clientes.cc.ver' => 'Consultar la cuenta corriente de clientes y el control de cierre comercial',
             'clientes.cc.formalizar' => 'Formalizar el cobro de tramos, registrar saldos iniciales y anular cargos de clientes',
+            'neumaticos.ver' => 'Consultar el padrón, la ficha y el rendimiento de neumáticos',
+            'neumaticos.operar' => 'Dar de alta neumáticos, cambiar su estado y registrar movimientos de depósito',
         ];
         $permissionIds = [];
         foreach ($permissions as $key => $description) {
@@ -127,14 +129,16 @@ final class InitialSeeder extends Seeder
                 'proveedores.ver', 'proveedores.editar',
                 'chatbot.usar',
                 'viajes.ver', 'viajes.operar', 'viajes.liquidacion_chofer.ver', 'viajes.maestros.ver', 'viajes.maestros.editar',
+                'neumaticos.ver', 'neumaticos.operar',
             ],
             'Tecnico u operador' => [
                 'equipos.ver', 'lecturas.cargar', 'lecturas.ver', 'solicitudes.crear',
                 'ordenes.ver', 'ordenes.mi_trabajo', 'notificaciones.ver', 'chatbot.usar',
+                'neumaticos.ver',
             ],
             'Solicitante' => ['solicitudes.crear', 'notificaciones.ver', 'chatbot.usar'],
-            'Consulta' => ['equipos.ver', 'lecturas.ver', 'ordenes.ver', 'reportes.ver', 'importaciones.ver', 'notificaciones.ver', 'viajes.ver'],
-            'Gerencial' => ['gerencial.costo_km.ver', 'gerencial.costo_km.editar', 'gerencial.flota.ver', 'viajes.ver', 'viajes.economico.ver', 'viajes.liquidacion_chofer.ver', 'clientes.cc.ver'],
+            'Consulta' => ['equipos.ver', 'lecturas.ver', 'ordenes.ver', 'reportes.ver', 'importaciones.ver', 'notificaciones.ver', 'viajes.ver', 'neumaticos.ver'],
+            'Gerencial' => ['gerencial.costo_km.ver', 'gerencial.costo_km.editar', 'gerencial.flota.ver', 'viajes.ver', 'viajes.economico.ver', 'viajes.liquidacion_chofer.ver', 'clientes.cc.ver', 'neumaticos.ver'],
         ];
         foreach ($rolePermissions as $roleName => $keys) {
             foreach ($keys as $key) {

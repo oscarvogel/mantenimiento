@@ -22,5 +22,5 @@ interface NeumaticDepositRepository
      * Guarda la existencia y su movimiento en la misma transacción: no hay
      * saldo sin movimiento que lo explique.
      */
-    public function record(NeumaticDepositStock $stock, NeumaticDepositMovement $movement, int $actorUserId): void;
+    public function record(int $companyId, NeumaticDepositStock $stock, NeumaticDepositMovement $movement, int $actorUserId): void;
 }

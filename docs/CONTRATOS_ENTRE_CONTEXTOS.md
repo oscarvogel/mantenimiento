@@ -43,6 +43,7 @@ seguir.
 | — (nuevo) | `EmployeeDirectoryLookup` | `app/Application/Employees/Port/EmployeeDirectoryLookup.php` | Employees | **Implementado.** Resuelve el chofer. |
 | `RegistrarLecturaCommand` (Viajes) | `TripReadingRecorder` | `app/Application/Trips/Port/TripReadingRecorder.php` | Measurement | **Implementado y en uso.** |
 | `RegistrarLecturaCommand` (Neumáticos) | `NeumaticReadingRecorder` | `app/Application/Neumaticos/Port/NeumaticReadingRecorder.php` | Measurement | **Contrato escrito. Falta adaptador.** |
+| — (nuevo) | `NeumaticBranchScope` | `app/Application/Neumaticos/Port/NeumaticBranchScope.php` | Organización (lectura) | **Implementado.** Neumáticos confirma que la sucursal es de la empresa y está activa (`CodeIgniterNeumaticBranchScope`). No escribe en `sucursales`. |
 | `CostoOperativoPorEquipoQuery` | `OperationalCostByEquipmentQuery` | `app/Application/Trips/Port/OperationalCostByEquipmentQuery.php` | Viajes | **Contrato escrito. Falta adaptador.** |
 | `AbrirOrdenGomeriaCommand` | `GomeriaOrderLauncher` + `LaunchGomeriaOrderCommand` | `app/Application/Neumaticos/Port/GomeriaOrderLauncher.php` | WorkOrders | **Contrato escrito. Falta adaptador.** |
 | Publicación de eventos de preventivo | `PreventiveNeumaticEventPublisher` | `app/Application/Neumaticos/Port/PreventiveNeumaticEventPublisher.php` | PreventiveMaintenance | **Contrato escrito. Falta adaptador.** |

@@ -17,20 +17,20 @@ final class NeumaticCatalogGuard
     {
     }
 
-    public function assert(?int $brandId, ?int $modelId, ?int $coverTypeId): void
+    public function assert(int $companyId, ?int $brandId, ?int $modelId, ?int $coverTypeId): void
     {
-        if ($brandId !== null && ! $this->catalog->isActiveBrand($brandId)) {
+        if ($brandId !== null && ! $this->catalog->isActiveBrand($companyId, $brandId)) {
             throw new DomainException('La marca elegida no existe o está inactiva.');
         }
         if ($modelId !== null) {
             if ($brandId === null) {
                 throw new DomainException('Elegí la marca antes del modelo.');
             }
-            if (! $this->catalog->isActiveModelOfBrand($modelId, $brandId)) {
+            if (! $this->catalog->isActiveModelOfBrand($companyId, $modelId, $brandId)) {
                 throw new DomainException('El modelo elegido no es de esa marca o está inactivo.');
             }
         }
-        if ($coverTypeId !== null && ! $this->catalog->isActiveCoverType($coverTypeId)) {
+        if ($coverTypeId !== null && ! $this->catalog->isActiveCoverType($companyId, $coverTypeId)) {
             throw new DomainException('El tipo de cubierta elegido no existe o está inactivo.');
         }
     }
