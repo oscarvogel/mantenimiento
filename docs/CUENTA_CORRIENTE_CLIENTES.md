@@ -38,7 +38,9 @@
 
 ## Fuera de esta etapa
 
-- Cobros y recibos (#536), cheques (#537), tesorería (#538).
+- Cobros, recibos y cheques: implementados en la etapa 2 (#536), ver
+  `docs/RECIBOS_COBRANZAS_CLIENTES.md`. La cartera completa de cheques (#537) y la
+  tesorería (#538) siguen fuera.
 - Un documento que agrupe varios tramos con vínculo N:M (hoy cada tramo lleva su referencia).
 - Modalidad tentativa al planificar el viaje; PDF/Excel del estado de cuenta; reporte estimado vs. definitivo.
 - País y moneda habitual del cliente, CNPJ/CPF.

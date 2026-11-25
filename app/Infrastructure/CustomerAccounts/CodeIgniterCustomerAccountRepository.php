@@ -51,6 +51,21 @@ final class CodeIgniterCustomerAccountRepository implements CustomerAccountRepos
             ->countAllResults() > 0;
     }
 
+    public function hasActiveImputations(int $companyId, int $chargeId): bool
+    {
+        if (! $this->database->tableExists('cliente_recibo_imputaciones')) {
+            return false;
+        }
+
+        return $this->database->table('cliente_recibo_imputaciones i')
+            ->join('cliente_recibos r', 'r.empresa_id = i.empresa_id AND r.id = i.recibo_id')
+            ->where('i.empresa_id', $companyId)
+            ->where('i.cargo_id', $chargeId)
+            ->where('i.estado', 'VIGENTE')
+            ->where('r.estado', 'CONFIRMADO')
+            ->countAllResults() > 0;
+    }
+
     public function addCharge(int $companyId, CustomerCharge $charge, int $userId, DateTimeImmutable $now): int
     {
         $leg = $charge->leg();

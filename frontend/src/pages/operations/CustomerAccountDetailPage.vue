@@ -17,6 +17,15 @@ const customer = computed(() => props.data.customer ?? {})
 const movements = computed(() => props.data.movements ?? [])
 const totals = computed(() => props.data.totals ?? {})
 const canFormalize = computed(() => Boolean(props.data.canFormalize))
+const canRegisterReceipt = computed(() => Boolean(props.data.canRegisterReceipt))
+const canImpute = computed(() => Boolean(props.data.canImpute))
+const canPrintReceipt = computed(() => Boolean(props.data.canPrintReceipt))
+const canCancelReceipt = computed(() => Boolean(props.data.canCancelReceipt))
+const collection = computed(() => props.data.summary ?? {})
+const pendingDocuments = computed(() => props.data.pendingDocuments ?? [])
+const recentReceipts = computed(() => props.data.receipts ?? [])
+const advances = computed(() => props.data.advances ?? [])
+const pendingInstruments = computed(() => props.data.pendingInstruments ?? [])
 const currencies = computed(() => props.data.currencies ?? ['ARS'])
 const currentRates = computed(() => props.data.currentRates ?? {})
 
@@ -85,12 +94,44 @@ const openAnnul = (row) => {
   annulling.value = row
   nextTick(() => annulDialog.value?.showModal())
 }
+
+// Imputar anticipos disponibles a documentos pendientes.
+const imputeDialog = ref(null)
+const impute = ref({ recibo_id: '', cargo_id: '', importe: '' })
+const openImpute = (advance = null) => {
+  impute.value = { recibo_id: String(advance?.id ?? advances.value[0]?.id ?? ''), cargo_id: '', importe: '' }
+  nextTick(() => imputeDialog.value?.showModal())
+}
+const selectedAdvance = computed(() => advances.value.find((advance) => String(advance.id) === String(impute.value.recibo_id)) ?? null)
+const selectedDocument = computed(() => pendingDocuments.value.find((document) => String(document.id) === String(impute.value.cargo_id)) ?? null)
+const applyImputeAll = () => {
+  if (!selectedDocument.value || !selectedAdvance.value) return
+  const available = Number(selectedAdvance.value.disponible_ars ?? 0)
+  const pending = Number(selectedDocument.value.pendiente_ars ?? 0)
+  impute.value.importe = Math.min(available, pending).toFixed(2)
+}
+const statusClass = (status) => ({
+  PENDIENTE: 'bg-warning-subtle text-warning-strong',
+  PARCIAL: 'bg-info-subtle text-info-strong',
+  COBRADO: 'bg-success-subtle text-success-strong',
+}[status] ?? 'bg-surface-muted text-ink-muted')
+
+// Anular un recibo desde la cuenta corriente.
+const receiptAnnulDialog = ref(null)
+const annullingReceipt = ref(null)
+const openReceiptAnnul = (receipt) => {
+  annullingReceipt.value = receipt
+  nextTick(() => receiptAnnulDialog.value?.showModal())
+}
 </script>
 
 <template>
   <div>
     <PageHeading eyebrow="Clientes · Cuenta corriente" :title="customer.nombre ?? 'Cliente'" :description="customer.identificacion_fiscal ? `CUIT/ID fiscal ${customer.identificacion_fiscal} · Estado de cuenta en pesos` : 'Estado de cuenta en pesos'" :back="{ href: links.accounts ?? '/clientes/cuenta-corriente', label: 'Volver a cuenta corriente' }">
       <template #actions>
+        <a v-if="canRegisterReceipt" :href="`${links.newReceiptBase}${customer.id}`" :class="primaryButton" data-testid="new-receipt">Nuevo recibo</a>
+        <a :href="`${links.receipts ?? '/clientes/recibos'}?q=${encodeURIComponent(customer.nombre ?? '')}`" :class="secondaryButton">Ver recibos</a>
+        <button v-if="canImpute && advances.length" type="button" :class="secondaryButton" data-testid="open-impute-advance" @click="openImpute()">Imputar anticipos</button>
         <button v-if="canFormalize && !data.hasOpeningBalance" type="button" :class="secondaryButton" data-testid="open-opening-balance" @click="openOpening">Cargar saldo inicial</button>
       </template>
     </PageHeading>
@@ -100,6 +141,57 @@ const openAnnul = (row) => {
       <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card"><p class="text-xs font-semibold text-ink-muted">Haber</p><p class="mt-2 text-xl font-bold text-ink">{{ money(totals.haber_ars) }}</p></article>
       <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card"><p class="text-xs font-semibold text-ink-muted">{{ balanceLabel }}</p><p class="mt-2 text-xl font-bold" :class="balanceClass(totals.saldo_ars)" data-testid="statement-balance">{{ money(totals.saldo_ars) }}</p></article>
     </section>
+
+    <section aria-label="Cobranzas" class="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card"><p class="text-xs font-semibold text-ink-muted">Saldo deudor</p><p class="mt-2 text-xl font-bold text-danger-strong">{{ money(collection.saldo_deudor_ars) }}</p></article>
+      <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card"><p class="text-xs font-semibold text-ink-muted">Saldo a favor</p><p class="mt-2 text-xl font-bold text-success-strong">{{ money(collection.saldo_favor_ars) }}</p></article>
+      <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card"><p class="text-xs font-semibold text-ink-muted">Total cobrado</p><p class="mt-2 text-xl font-bold text-ink" data-testid="collection-collected">{{ money(collection.total_cobrado_ars) }}</p></article>
+      <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card"><p class="text-xs font-semibold text-ink-muted">Anticipos disponibles</p><p class="mt-2 text-xl font-bold text-ink" data-testid="collection-advances">{{ money(collection.anticipos_disponibles_ars) }}</p><p v-if="Number(collection.medios_pendientes_ars) > 0" class="text-xs text-warning-strong">{{ money(collection.medios_pendientes_ars) }} en medios pendientes</p></article>
+    </section>
+
+    <div class="mb-5 grid gap-4 lg:grid-cols-2">
+      <PanelCard title="Documentos pendientes de cobro" :count="pendingDocuments.length">
+        <p v-if="pendingDocuments.length === 0" class="text-sm text-ink-muted" data-testid="pending-documents-empty">No hay documentos a cobrar. Formalizá tramos desde el cierre comercial o cargá un saldo inicial.</p>
+        <ul v-else class="divide-y divide-border-subtle text-sm" data-testid="pending-documents">
+          <li v-for="document in pendingDocuments" :key="document.id" class="flex items-start justify-between gap-3 py-2">
+            <div>
+              <p class="font-semibold text-ink">{{ document.documento }}</p>
+              <p class="text-xs text-ink-muted">{{ fmtDate(document.documento_fecha) }} · {{ document.modalidad_label }}</p>
+              <p v-if="document.recibos.length" class="text-xs text-ink-muted">Cancelado por: {{ document.recibos.map((receipt) => receipt.numero_visible).join(', ') }}</p>
+            </div>
+            <div class="text-right">
+              <p class="font-semibold text-ink">{{ money(document.pendiente_ars) }}</p>
+              <span class="mt-1 inline-flex rounded-full px-2 py-0.5 text-xs font-semibold" :class="statusClass(document.estado_cobranza)">{{ document.estado_cobranza_label }}</span>
+              <p class="text-xs text-ink-muted">de {{ money(document.importe_ars) }}</p>
+            </div>
+          </li>
+        </ul>
+      </PanelCard>
+
+      <PanelCard title="Recibos recientes" :count="recentReceipts.length">
+        <p v-if="recentReceipts.length === 0" class="text-sm text-ink-muted">Todavía no hay recibos confirmados.</p>
+        <ul v-else class="divide-y divide-border-subtle text-sm" data-testid="recent-receipts">
+          <li v-for="receipt in recentReceipts" :key="receipt.id" class="flex items-start justify-between gap-3 py-2">
+            <div>
+              <a :href="`${links.receiptsBase}${receipt.id}`" class="font-semibold text-primary hover:underline">{{ receipt.numero_visible }}</a>
+              <p class="text-xs text-ink-muted">{{ fmtDate(receipt.fecha_emision) }} · acreditado {{ money(receipt.acreditado_ars) }}</p>
+              <p v-if="Number(receipt.disponible_ars) > 0 && canImpute" class="text-xs text-info-strong">Anticipo disponible {{ money(receipt.disponible_ars) }} · <button type="button" class="font-semibold underline" @click="openImpute(receipt)">imputar</button></p>
+            </div>
+            <div class="text-right"><p class="font-semibold text-ink">{{ money(receipt.total_ars) }}</p><a v-if="canPrintReceipt" :href="`${links.receiptsBase}${receipt.id}/imprimir`" target="_blank" rel="noopener" class="text-xs font-semibold text-primary hover:underline">Imprimir</a><button v-if="canCancelReceipt && receipt.estado === 'CONFIRMADO'" type="button" class="ml-2 text-xs font-semibold text-danger-strong hover:underline" @click="openReceiptAnnul(receipt)">Anular</button></div>
+          </li>
+        </ul>
+      </PanelCard>
+    </div>
+
+    <PanelCard v-if="pendingInstruments.length" title="Medios pendientes de acreditación" :count="pendingInstruments.length" class="mb-5">
+      <ul class="divide-y divide-border-subtle text-sm" data-testid="pending-instruments">
+        <li v-for="instrument in pendingInstruments" :key="instrument.id" class="flex items-start justify-between gap-3 py-2">
+          <div><p class="font-semibold text-ink">{{ instrument.medio_label }} · {{ instrument.recibo_numero }}</p><p class="text-xs text-ink-muted">{{ instrument.banco ?? '' }} {{ instrument.referencia ?? '' }} · {{ fmtDate(instrument.fecha) }}</p></div>
+          <div class="text-right"><p class="font-semibold text-warning-strong">{{ money(instrument.importe_ars) }}</p><a :href="`${links.receiptsBase}${instrument.recibo_id}`" class="text-xs font-semibold text-primary hover:underline">Ver recibo</a></div>
+        </li>
+      </ul>
+      <p class="mt-2 text-xs text-ink-muted">Estos importes todavía no reducen el saldo: se acreditan cuando el cheque o la transferencia se hacen efectivos.</p>
+    </PanelCard>
 
     <PanelCard title="Movimientos" :count="movements.length" flush>
       <p v-if="movements.length === 0" class="p-5 text-sm text-ink-muted" data-testid="statement-empty">Este cliente todavía no tiene movimientos.</p>
@@ -118,6 +210,7 @@ const openAnnul = (row) => {
           </div>
           <div class="flex gap-3">
             <a v-if="row.viaje_id" :href="`${links.tripsBase}/${row.viaje_id}`" class="text-xs font-semibold text-primary hover:underline">Ver viaje</a>
+            <a v-if="row.recibo_id" :href="`${links.receiptsBase}${row.recibo_id}`" class="text-xs font-semibold text-primary hover:underline">Ver recibo {{ row.recibo_numero_visible }}</a>
             <button v-if="canFormalize && row.cargo_vigente" type="button" class="text-xs font-semibold text-danger-strong hover:underline" @click="openAnnul(row)">Anular</button>
           </div>
         </li>
@@ -135,6 +228,7 @@ const openAnnul = (row) => {
                 <span v-if="row.cargo_anulado && row.tipo !== 'ANULACION'" class="ml-2 rounded-full bg-surface-muted px-2 py-0.5 text-xs font-semibold text-ink-muted">Anulado</span>
                 <span class="block text-xs text-ink-muted">{{ detail(row) }}</span>
                 <a v-if="row.viaje_id" :href="`${links.tripsBase}/${row.viaje_id}`" class="text-xs font-semibold text-primary hover:underline">Ver viaje</a>
+                <a v-if="row.recibo_id" :href="`${links.receiptsBase}${row.recibo_id}`" class="text-xs font-semibold text-primary hover:underline">Ver recibo {{ row.recibo_numero_visible }}</a>
               </td>
               <td class="px-3 py-2 text-xs text-ink-muted">{{ origin(row) }}</td>
               <td class="whitespace-nowrap px-3 py-2 text-right text-ink">{{ row.debe_ars ? money(row.debe_ars) : '' }}</td>
@@ -187,6 +281,49 @@ const openAnnul = (row) => {
         <div class="mt-5 flex justify-end gap-2 border-t border-border-subtle pt-4">
           <button type="button" :class="secondaryButton" @click="annulDialog?.close()">Volver</button>
           <button type="submit" :class="dangerButton">Anular cargo</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog v-if="canImpute" ref="imputeDialog" aria-labelledby="impute-title" @click.self="imputeDialog?.close()" class="m-auto w-[min(38rem,calc(100vw-2rem))] rounded-xl border border-border bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
+      <form method="post" :action="`${links.receiptsBase}${impute.recibo_id}/imputar`" class="p-5 sm:p-6" data-testid="advance-impute-form">
+        <input type="hidden" :name="csrf.name" :value="csrf.hash" />
+        <h2 id="impute-title" class="text-lg font-bold text-ink">Imputar anticipo a un documento</h2>
+        <p class="mt-1 text-sm text-ink-muted">Se aplica crédito ya acreditado de un recibo confirmado. No genera un nuevo movimiento en la cuenta corriente.</p>
+        <div class="mt-4 grid gap-3 sm:grid-cols-2">
+          <label class="block sm:col-span-2"><span class="mb-1 block text-xs font-semibold text-ink-muted">Recibo con saldo disponible</span>
+            <select v-model="impute.recibo_id" :class="fieldClass" required data-testid="advance-receipt">
+              <option v-for="advance in advances" :key="advance.id" :value="advance.id">{{ advance.numero_visible }} · disponible {{ money(advance.disponible_ars) }}</option>
+            </select>
+          </label>
+          <label class="block sm:col-span-2"><span class="mb-1 block text-xs font-semibold text-ink-muted">Documento pendiente</span>
+            <select v-model="impute.cargo_id" :class="fieldClass" required data-testid="advance-document">
+              <option value="" disabled>Elegí un documento</option>
+              <option v-for="document in pendingDocuments.filter((doc) => Number(doc.pendiente_ars) > 0)" :key="document.id" :value="document.id">{{ document.documento }} · pendiente {{ money(document.pendiente_ars) }}</option>
+            </select>
+          </label>
+          <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Importe</span>
+            <input v-model="impute.importe" type="text" inputmode="decimal" name="imputaciones[0][importe]" required :class="fieldClass" />
+            <input type="hidden" name="imputaciones[0][cargo_id]" :value="impute.cargo_id" />
+          </label>
+          <div class="flex items-end"><button type="button" :class="secondaryButton" @click="applyImputeAll">Aplicar lo máximo posible</button></div>
+        </div>
+        <div class="mt-5 flex justify-end gap-2 border-t border-border-subtle pt-4">
+          <button type="button" :class="secondaryButton" @click="imputeDialog?.close()">Volver</button>
+          <button type="submit" :class="primaryButton">Imputar el anticipo</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog v-if="canCancelReceipt" ref="receiptAnnulDialog" aria-labelledby="receipt-annul-account-title" @click.self="receiptAnnulDialog?.close()" class="m-auto w-[min(36rem,calc(100vw-2rem))] rounded-xl border border-border bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
+      <form v-if="annullingReceipt" method="post" :action="`${links.receiptsBase}${annullingReceipt.id}/anular`" class="p-5 sm:p-6" data-testid="account-receipt-annul-form">
+        <input type="hidden" :name="csrf.name" :value="csrf.hash" />
+        <h2 id="receipt-annul-account-title" class="text-lg font-bold text-ink">Anular el recibo {{ annullingReceipt.numero_visible }}</h2>
+        <p class="mt-1 text-sm text-ink-muted">{{ money(annullingReceipt.total_ars) }} · Se agrega un contraasiento por lo acreditado y los documentos recuperan su saldo. El recibo queda conservado como anulado.</p>
+        <label class="mt-3 block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Motivo</span><textarea name="motivo" rows="3" minlength="5" maxlength="500" required :class="fieldClass"></textarea></label>
+        <div class="mt-5 flex justify-end gap-2 border-t border-border-subtle pt-4">
+          <button type="button" :class="secondaryButton" @click="receiptAnnulDialog?.close()">Volver</button>
+          <button type="submit" :class="dangerButton">Anular recibo</button>
         </div>
       </form>
     </dialog>

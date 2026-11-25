@@ -30,7 +30,7 @@ final readonly class AppShellPayload
             : $active;
         $navigation = match ($active) {
             'command-center' => $this->platformNavigation($actor, $availableModules),
-            'trip-masters', 'trips-dashboard', 'trips-operations-dashboard', 'trips-operations', 'trip-operations-create', 'trip-operations-detail', 'trips-fuel-pending', 'trips-profitability', 'trips-commercial-closing', 'customer-accounts', 'customer-account-detail' => array_values(array_filter([
+            'trip-masters', 'trips-dashboard', 'trips-operations-dashboard', 'trips-operations', 'trip-operations-create', 'trip-operations-detail', 'trips-fuel-pending', 'trips-profitability', 'trips-commercial-closing', 'customer-accounts', 'customer-account-detail', 'customer-receipts', 'customer-receipt-form', 'customer-receipt-detail' => array_values(array_filter([
                 $actor->hasPermission('viajes.ver')
                     ? $this->item('trips-operations-dashboard', 'Dashboard', 'viajes/operativos/dashboard', 'chart', $active)
                     : null,
@@ -52,6 +52,9 @@ final readonly class AppShellPayload
                 $actor->hasPermission('clientes.cc.ver')
                     ? $this->item('customer-accounts', 'Cuenta corriente clientes', 'clientes/cuenta-corriente', 'users', $active === 'customer-account-detail' ? 'customer-accounts' : $active)
                     : null,
+                $actor->hasPermission('clientes.recibos.ver')
+                    ? $this->item('customer-receipts', 'Recibos de cobranza', 'clientes/recibos', 'audit', in_array($active, ['customer-receipt-form', 'customer-receipt-detail'], true) ? 'customer-receipts' : $active)
+                    : null,
                 $actor->hasPermission('viajes.maestros.ver')
                     ? $this->item('trip-masters', 'Maestros', 'viajes/maestros', 'clipboard-list', $active)
                     : null,
@@ -68,10 +71,10 @@ final readonly class AppShellPayload
                 'fuel-module' => 'fuel',
                 'tire-registry', 'tire-detail', 'tire-deposit', 'tire-masters' => 'tires',
                 'automations' => 'automations',
-                'trip-masters', 'trips-dashboard', 'trips-operations-dashboard', 'trips-operations', 'trip-operations-create', 'trip-operations-detail', 'trips-fuel-pending', 'trips-profitability', 'trips-commercial-closing', 'customer-accounts', 'customer-account-detail' => 'trips',
+                'trip-masters', 'trips-dashboard', 'trips-operations-dashboard', 'trips-operations', 'trip-operations-create', 'trip-operations-detail', 'trips-fuel-pending', 'trips-profitability', 'trips-commercial-closing', 'customer-accounts', 'customer-account-detail', 'customer-receipts', 'customer-receipt-form', 'customer-receipt-detail' => 'trips',
                 default => 'maintenance',
             });
-        $isTripPage = in_array($active, ['trip-masters', 'trips-dashboard', 'trips-operations-dashboard', 'trips-operations', 'trip-operations-create', 'trip-operations-detail', 'trips-fuel-pending', 'trips-profitability', 'trips-commercial-closing', 'customer-accounts', 'customer-account-detail'], true);
+        $isTripPage = in_array($active, ['trip-masters', 'trips-dashboard', 'trips-operations-dashboard', 'trips-operations', 'trip-operations-create', 'trip-operations-detail', 'trips-fuel-pending', 'trips-profitability', 'trips-commercial-closing', 'customer-accounts', 'customer-account-detail', 'customer-receipts', 'customer-receipt-form', 'customer-receipt-detail'], true);
         $isModulePage = in_array($active, ['theoretical-cost-km', 'fleet-board', 'fuel-module', 'tire-registry', 'tire-detail', 'tire-deposit', 'tire-masters'], true);
         if ($active !== 'command-center' && ! $isModulePage && ! $isTripPage && $actor->isSuperAdmin()) {
             $navigation[] = $this->item('superadmin', 'Administración global', 'superadmin', 'building', $active);

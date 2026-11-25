@@ -356,3 +356,19 @@ carga de datos para el padrÃ³n existente y su pantalla de catÃ¡logo.
 
 **Pendiente.** No se hizo en este corte porque implica una migraciÃ³n con carga de datos sobre
 las unidades reales, y el padrÃ³n definitivo de flota todavÃ­a no estÃ¡ confirmado (D7).
+
+---
+
+## 7. Recibos y cobranzas de clientes (#536)
+
+| Contrato | Archivo | Responde | Estado |
+|---|---|---|---|
+| `CustomerReceiptReadModel` | `app/Application/CustomerAccounts/Port/CustomerReceiptReadModel.php` | Cuenta corriente (lectura, mismo contexto) | **Implementado.** Listado paginado, detalle, formulario, resumen de cobranza y anticipos. El saldo se deriva de `cliente_cc_movimientos`; no hay segundo ledger. |
+| `CustomerReceiptRepository` | `app/Application/CustomerAccounts/Port/CustomerReceiptRepository.php` | Cuenta corriente (escritura, mismo contexto) | **Implementado.** Numeración bloqueada, medios, cheques, imputaciones, adjuntos y asientos idempotentes. |
+| `ReceiptAttachmentStorage` / `ReceiptFileInspector` | `app/Application/CustomerAccounts/Port/` | Plataforma (archivos privados) | **Implementado** reutilizando el almacenamiento privado y la inspección `finfo` ya auditados, en la carpeta `recibos`. |
+| `CustomerReceiptPdfRenderer` | `app/Application/CustomerAccounts/Port/CustomerReceiptPdfRenderer.php` | Plataforma (PDF) | **Implementado** con FPDF. Es un comprobante interno, no fiscal. |
+| Tabla `cliente_cheques` | `2026-11-25-160000_CreateCustomerReceipts` | Cuenta corriente ? Tesorería (#537) | **Preparada.** Identidad y estado del cheque separados del medio; #537 agrega movimientos de cartera sin duplicar filas. |
+| Columnas `conciliado_at`, `conciliado_por`, `cuenta_destino` | `cliente_recibo_medios` | Cuenta corriente ? Tesorería (#538) | **Preparadas.** La conciliación bloquea la anulación del recibo. |
+
+La política de acreditación por medio y las alternativas evaluadas están en
+`docs/RECIBOS_COBRANZAS_CLIENTES.md`.

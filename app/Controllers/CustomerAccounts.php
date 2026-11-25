@@ -156,9 +156,12 @@ final class CustomerAccounts extends BaseController
         return [
             'queue' => base_url('viajes/cierre-comercial'),
             'accounts' => base_url('clientes/cuenta-corriente'),
+            'receipts' => base_url('clientes/recibos'),
             // Familias que el frontend completa con el id (terminan en barra).
             'legsBase' => base_url('viajes/cierre-comercial/tramos/'),
             'chargesBase' => base_url('clientes/cuenta-corriente/cargos/'),
+            'receiptsBase' => base_url('clientes/recibos/'),
+            'newReceiptBase' => base_url('clientes/recibos/nuevo/'),
             'tripsBase' => base_url('viajes/operativos'),
         ];
     }

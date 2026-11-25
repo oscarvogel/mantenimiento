@@ -165,7 +165,7 @@ final class CustomerAccountsIntegrationTest extends TestCase
         self::assertEquals(4_284_000, $charge['importe_estimado_ars']);
         self::assertSame('MANUAL', $charge['cotizacion_fuente']);
 
-        $statement = (new GetCustomerStatement($this->readModel(), new CodeIgniterExchangeRateCatalog($this->db)))->execute($this->actor(), 4);
+        $statement = (new GetCustomerStatement($this->readModel(), new CodeIgniterExchangeRateCatalog($this->db), new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerReceiptReadModel($this->db)))->execute($this->actor(), 4);
         self::assertSame(4_418_400.0, $statement['totals']['saldo_ars']);
         self::assertCount(1, $statement['movements']);
         self::assertSame('Viaje #16 · Tramo 1 · Memo autorizado M-77', $statement['movements'][0]['descripcion']);
@@ -183,7 +183,7 @@ final class CustomerAccountsIntegrationTest extends TestCase
         self::assertSame(1, $this->queue()->execute($this->actor())['counts']['PENDIENTE'] - 2, 'El tramo vuelve a pendientes.');
         $this->formalize(9, 'FACTURA_EMITIDA', 2800, 'USD', 1490, '0003-00001234', 'FACTURA_A');
 
-        $statement = (new GetCustomerStatement($this->readModel(), new CodeIgniterExchangeRateCatalog($this->db)))->execute($this->actor(), 4);
+        $statement = (new GetCustomerStatement($this->readModel(), new CodeIgniterExchangeRateCatalog($this->db), new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerReceiptReadModel($this->db)))->execute($this->actor(), 4);
         // Los cargos van con la fecha de su documento (10/11) y el contraasiento
         // con la del día en que se anuló (17/11).
         self::assertSame(['CARGO', 'CARGO', 'ANULACION'], array_column($statement['movements'], 'tipo'));

@@ -103,6 +103,12 @@ final class InitialSeeder extends Seeder
             'viajes.maestros.editar' => 'Crear y actualizar los maestros de Viajes',
             'clientes.cc.ver' => 'Consultar la cuenta corriente de clientes y el control de cierre comercial',
             'clientes.cc.formalizar' => 'Formalizar el cobro de tramos, registrar saldos iniciales y anular cargos de clientes',
+            'clientes.recibos.ver' => 'Consultar recibos de cobranza y documentos pendientes de cobro',
+            'clientes.recibos.registrar' => 'Registrar recibos de cobranza en borrador',
+            'clientes.recibos.confirmar' => 'Confirmar recibos y acreditar medios de pago',
+            'clientes.recibos.anular' => 'Anular recibos de cobranza con contraasientos',
+            'clientes.recibos.imputar' => 'Imputar pagos y anticipos a documentos del cliente',
+            'clientes.recibos.imprimir' => 'Imprimir o descargar recibos de cobranza',
             'neumaticos.ver' => 'Consultar el padrón, la ficha y el rendimiento de neumáticos',
             'neumaticos.operar' => 'Dar de alta neumáticos, cambiar su estado y registrar movimientos de depósito',
         ];
@@ -138,7 +144,7 @@ final class InitialSeeder extends Seeder
             ],
             'Solicitante' => ['solicitudes.crear', 'notificaciones.ver', 'chatbot.usar'],
             'Consulta' => ['equipos.ver', 'lecturas.ver', 'ordenes.ver', 'reportes.ver', 'importaciones.ver', 'notificaciones.ver', 'viajes.ver', 'neumaticos.ver'],
-            'Gerencial' => ['gerencial.costo_km.ver', 'gerencial.costo_km.editar', 'gerencial.flota.ver', 'viajes.ver', 'viajes.economico.ver', 'viajes.liquidacion_chofer.ver', 'clientes.cc.ver', 'neumaticos.ver'],
+            'Gerencial' => ['gerencial.costo_km.ver', 'gerencial.costo_km.editar', 'gerencial.flota.ver', 'viajes.ver', 'viajes.economico.ver', 'viajes.liquidacion_chofer.ver', 'clientes.cc.ver', 'clientes.recibos.ver', 'clientes.recibos.imprimir', 'neumaticos.ver'],
         ];
         foreach ($rolePermissions as $roleName => $keys) {
             foreach ($keys as $key) {
