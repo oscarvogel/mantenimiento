@@ -111,9 +111,65 @@ Reglas de aplicación:
 Pregunta abierta: `deposito_stock.cantidad` admite más de 1, pero cada neumático es único. ¿La
 existencia de un neumático en un depósito es siempre 0 o 1? Hoy no se limita.
 
-## 6. Qué sigue
+## 6. Persistencia (paso 2a, rama `feat/neumaticos-persistencia`)
 
-- Migraciones de §5.12 y adaptadores de persistencia.
+**Migraciones:**
+
+- `2026-11-25-100000_CreateNeumaticosTables`: `neumatico_marcas`, `neumatico_modelos`,
+  `neumatico_tipos_cubierta`, `neumaticos_estados`, `neumaticos`,
+  `neumatico_estado_historial`, `depositos`, `deposito_stock` y `deposito_movimientos`.
+- `2026-11-25-100100_AddNeumaticosPermissions`: `neumaticos.ver` (Administrador,
+  Responsable de mantenimiento, Técnico u operador, Consulta y Gerencial) y
+  `neumaticos.operar` (Administrador y Responsable de mantenimiento). `InitialSeeder` asigna
+  los mismos roles.
+
+**Decisiones de esquema:**
+
+- **Catálogos por empresa.** Marcas, modelos y tipos de cubierta llevan `empresa_id`, como
+  `marcas` de equipos. Las FK compuestas `(empresa_id, id)` impiden en la base que un
+  neumático use el catálogo o la sucursal de otra empresa. El puerto `NeumaticCatalog`
+  recibe la empresa.
+- **`neumaticos_estados` es un catálogo de referencia** con los 11 códigos del dominio. No
+  guarda `estado_origen`/`estado_destino` como dice la spec §5.12: las transiciones viven en
+  `NeumaticStatus` y una segunda copia en la tabla divergiría. La FK impide guardar un estado
+  inexistente.
+- **Número único por empresa:** índice `uq_neumaticos_empresa_numero`.
+- **Sin `deleted_at` en `neumaticos`:** un neumático no se borra, se da de baja por estado.
+  La bitácora y los movimientos son append-only.
+- **Colocaciones diferidas al paso 3.** `neumatico_ubicaciones` y `neumatico_colocaciones`
+  llegan con la colocación y la extracción, que generan lecturas del equipo. Hasta entonces
+  el repositorio rechaza guardar un neumático con colocaciones en lugar de perderlas en
+  silencio.
+- `origen`, `precio` y `observaciones` de la spec no están todavía: el dominio no los
+  modela. Se suman con la ficha del neumático (paso 2b) si el cliente los usa.
+- No se cargan catálogos iniciales: son por empresa y los del sistema anterior son de una sola
+  (TSA). La carga va con las pantallas de maestros.
+
+**Adaptadores** en `app/Infrastructure/Neumaticos` y casos de uso conectados en
+`Config\Services`: `registerNeumatic`, `updateNeumatic`, `changeNeumaticStatus`,
+`registerNeumaticDepositMovement` y `getNeumaticPerformance`.
+
+**Evidencia:**
+
+- `tests/database/Neumaticos/NeumaticosPersistenceTest.php` (16 pruebas) corre **las
+  migraciones reales** sobre SQLite con FK activas, no un esquema copiado a mano.
+- Suite completa: 2311 pruebas, sin fallos (51 saltadas, las de MySQL ya existentes).
+- **MariaDB 11 de staging (`fasa_189`, stack `mantenimiento-staging`)**, sobre una base
+  temporal en el contenedor `mantenimiento-mariadb-staging` y un contenedor descartable de la
+  misma imagen. La base y el contenedor de staging no se tocaron, y lo temporal se borró al
+  terminar:
+  - Migraciones desde cero en dos lotes (código de la imagen `bc95bf34` y luego esta rama):
+    OK. Tipos reales: `numero varchar(20)`, `estado varchar(20)`,
+    `anio_fabricacion smallint(4) unsigned`.
+  - La base rechaza el número duplicado en la empresa, la marca de otra empresa, la sucursal
+    de otra empresa y un estado inexistente. Acepta el mismo número en otra empresa.
+  - `migrate:rollback` deja 0 tablas y 0 permisos de neumáticos; volver a migrar: OK.
+  - `InitialSeeder` asigna `neumaticos.ver` a 5 roles y `neumaticos.operar` a 2.
+
+## 7. Qué sigue
+
+- Paso 2b: controlador, rutas y pantallas del padrón, la ficha, el depósito y los maestros;
+  la tarjeta del portal abre el módulo.
 - Adaptadores de `NeumaticReadingRecorder`, `GomeriaOrderLauncher` y
   `PreventiveNeumaticEventPublisher` (ver `CONTRATOS_ENTRE_CONTEXTOS.md` §5).
 - Todo lo que resuelve en qué equipo está el neumático sigue bloqueado por D7.

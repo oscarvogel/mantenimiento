@@ -45,13 +45,13 @@ final class InMemoryNeumatics implements NeumaticRepository, NeumaticCatalog, Ne
     /** @var array<int, int> companyId por sucursal activa */
     public array $branches = [];
 
-    /** @var list<int> */
+    /** @var array<int, int> empresa por marca */
     public array $brands = [];
 
-    /** @var array<int, int> marca por modelo */
+    /** @var array<int, array{company: int, brand: int}> */
     public array $models = [];
 
-    /** @var list<int> */
+    /** @var array<int, int> empresa por tipo de cubierta */
     public array $coverTypes = [];
 
     public DateTimeImmutable $now;
@@ -120,19 +120,19 @@ final class InMemoryNeumatics implements NeumaticRepository, NeumaticCatalog, Ne
         $this->savedBy[] = $actorUserId;
     }
 
-    public function isActiveBrand(int $brandId): bool
+    public function isActiveBrand(int $companyId, int $brandId): bool
     {
-        return in_array($brandId, $this->brands, true);
+        return ($this->brands[$brandId] ?? null) === $companyId;
     }
 
-    public function isActiveModelOfBrand(int $modelId, int $brandId): bool
+    public function isActiveModelOfBrand(int $companyId, int $modelId, int $brandId): bool
     {
-        return ($this->models[$modelId] ?? null) === $brandId;
+        return ($this->models[$modelId] ?? null) === ['company' => $companyId, 'brand' => $brandId];
     }
 
-    public function isActiveCoverType(int $coverTypeId): bool
+    public function isActiveCoverType(int $companyId, int $coverTypeId): bool
     {
-        return in_array($coverTypeId, $this->coverTypes, true);
+        return ($this->coverTypes[$coverTypeId] ?? null) === $companyId;
     }
 
     public function isActiveInCompany(int $companyId, int $branchId): bool
@@ -161,7 +161,7 @@ final class InMemoryNeumatics implements NeumaticRepository, NeumaticCatalog, Ne
         return ($this->stocks[$depositId . ':' . $neumaticId] ?? null)?->quantity();
     }
 
-    public function record(NeumaticDepositStock $stock, NeumaticDepositMovement $movement, int $actorUserId): void
+    public function record(int $companyId, NeumaticDepositStock $stock, NeumaticDepositMovement $movement, int $actorUserId): void
     {
         $this->stocks[$stock->depositId() . ':' . $stock->neumaticId()] = $stock;
         $this->movements[] = $movement;

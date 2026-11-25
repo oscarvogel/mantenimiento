@@ -28,9 +28,9 @@ final class NeumaticUseCasesTest extends TestCase
     {
         $this->store = new InMemoryNeumatics();
         $this->store->branches = [1 => 7, 2 => 7, 9 => 8];
-        $this->store->brands = [3];
-        $this->store->models = [5 => 3];
-        $this->store->coverTypes = [2];
+        $this->store->brands = [3 => 7, 6 => 8];
+        $this->store->models = [5 => ['company' => 7, 'brand' => 3]];
+        $this->store->coverTypes = [2 => 7];
     }
 
     public function testRegistersATireInTheActorCompany(): void
@@ -83,12 +83,20 @@ final class NeumaticUseCasesTest extends TestCase
 
     public function testRejectsAModelThatIsNotOfTheBrand(): void
     {
-        $this->store->brands = [3, 4];
+        $this->store->brands = [3 => 7, 4 => 7];
 
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('El modelo elegido no es de esa marca o está inactivo.');
 
         $this->register()->execute($this->operator(), new RegisterNeumaticCommand(1, 'TSA 1', 4, 5));
+    }
+
+    public function testRejectsABrandOfAnotherCompany(): void
+    {
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('La marca elegida no existe o está inactiva.');
+
+        $this->register()->execute($this->operator(), new RegisterNeumaticCommand(1, 'TSA 1', 6));
     }
 
     public function testRejectsAModelWithoutBrand(): void

@@ -34,7 +34,7 @@ final class RegisterNeumatic
         if (! $access->coversBranch($command->branchId) || ! $this->branches->isActiveInCompany($access->companyId, $command->branchId)) {
             throw new DomainException('La sucursal elegida no existe o no está autorizada.');
         }
-        (new NeumaticCatalogGuard($this->catalog))->assert($command->brandId, $command->modelId, $command->coverTypeId);
+        (new NeumaticCatalogGuard($this->catalog))->assert($access->companyId, $command->brandId, $command->modelId, $command->coverTypeId);
 
         $now = $this->clock->now();
         $registeredAt = $command->registeredAt ?? $now;

@@ -30,7 +30,7 @@ final class UpdateNeumatic
         if ($command->neumaticId <= 0) {
             throw new DomainException(NeumaticAccess::NOT_FOUND);
         }
-        (new NeumaticCatalogGuard($this->catalog))->assert($command->brandId, $command->modelId, $command->coverTypeId);
+        (new NeumaticCatalogGuard($this->catalog))->assert($access->companyId, $command->brandId, $command->modelId, $command->coverTypeId);
 
         $this->unitOfWork->transactional(function () use ($access, $command, $actor): void {
             $neumatic = $this->neumatics->findForUpdate($access->companyId, $access->branchIds, $command->neumaticId)

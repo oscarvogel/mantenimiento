@@ -74,7 +74,7 @@ final class RegisterDepositMovement
             $stock = $this->deposits->stockForUpdate($command->depositId, $command->neumaticId)
                 ?? NeumaticDepositStock::empty($command->depositId, $command->neumaticId);
             $movement->applyTo($stock);
-            $this->deposits->record($stock, $movement, $actor->userId());
+            $this->deposits->record($access->companyId, $stock, $movement, $actor->userId());
 
             return $stock->quantity();
         });
