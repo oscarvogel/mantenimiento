@@ -244,13 +244,13 @@ final class GetPlatformModuleCatalogTest extends TestCase
         self::assertSame('not_implemented', $fuel['state']);
     }
 
-    public function testEnablesTiresModuleOnItsMastersForTireReaders(): void
+    public function testEnablesTiresModuleOnItsRegistryForTireReaders(): void
     {
         $actor = new ActorContext(12, 4, false, false, ['Consulta'], ['neumaticos.ver'], [8]);
 
         $tires = $this->module((new GetPlatformModuleCatalog())->execute($actor), 'tires');
 
-        self::assertSame('neumaticos/maestros', $tires['landingPath']);
+        self::assertSame('neumaticos', $tires['landingPath']);
         self::assertSame('available', $tires['state']);
         self::assertSame('Operativo', $tires['status']);
     }

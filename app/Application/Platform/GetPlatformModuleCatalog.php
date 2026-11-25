@@ -98,8 +98,7 @@ final class GetPlatformModuleCatalog
                 && ! $actor->isSuperAdmin()
                 && $actor->companyId() !== null
                 && $actor->hasPermission('viajes.ver');
-            // Neumaticos arranca por sus maestros: sin marcas ni depositos no
-            // hay padron que cargar.
+            // Neumaticos entra por su padron.
             $tiresEnabled = $module['key'] === 'tires'
                 && ! $actor->isSuperAdmin()
                 && $actor->companyId() !== null
@@ -120,7 +119,7 @@ final class GetPlatformModuleCatalog
             $landingPath = match (true) {
                 $tripsEnabled => $tripsPath,
                 $fuelEnabled => 'viajes/combustible',
-                $tiresEnabled => 'neumaticos/maestros',
+                $tiresEnabled => 'neumaticos',
                 $managementEnabled => $canTheoreticalCost ? 'gerencial/costo-teorico-km' : 'gerencial/flota',
                 $reportsEnabled => 'reportes',
                 $automationsEnabled => 'automatizaciones',
