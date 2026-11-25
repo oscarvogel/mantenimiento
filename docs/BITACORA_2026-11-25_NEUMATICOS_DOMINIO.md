@@ -199,8 +199,25 @@ cambio de estado, **2b-3** depósito.
 - `tests/database/Neumaticos/NeumaticMastersTest.php` (12 pruebas, contra la migración real),
   `tests/feature/NeumaticMastersHttpTest.php` (anónimo, CSRF, permiso por ruta) y 3 casos en
   `GetPlatformModuleCatalogTest`. PHPUnit completo: 2332 pruebas, sin fallos.
-- `TireMastersPage.test.js` (11 casos). Vitest completo: 577 pruebas en 94 archivos.
+- `TireMastersPage.test.js` (12 casos, incluye los dos defectos de la verificación). Vitest completo: 578 pruebas en 94 archivos.
 - `npm run build` y `verify:build-sync`: OK.
+
+**Verificación visual** (instancia temporal en `fasa_189`, no `mantenimiento-staging`): contenedor
+con `--rm` y tope de 60 min, la misma imagen de staging, el código de la rama y una base temporal
+con migraciones y `InitialSeeder`. Se abrió por un túnel SSH y se borró al terminar: contenedor,
+base, vigilante, archivos y puertos en cero, verificado. Staging siguió con su deploy de `main`.
+
+- Portal: la tarjeta **Neumáticos · Operativo** entra a los maestros.
+- Escritorio: alta de marca, rechazo de `MICHELIN` duplicado, modelo con su marca, depósito con
+  sucursal preseleccionada, edición en modal e inactivar/activar. Todo con su mensaje.
+- Móvil (375 px): sin scroll horizontal; cada registro es una tarjeta con nombre, detalle, estado
+  y acciones. MariaDB rechaza `deposito central` contra `Depósito Central` (sin distinguir
+  mayúsculas ni tildes).
+- **Dos defectos encontrados y corregidos en la verificación:**
+  1. Los mensajes del servidor salían **dos veces**: el shell ya los muestra (`consumeFlash`, el
+     error en modal) y la página los repetía en un banner. Se quitaron los banners de la página.
+  2. En móvil la pestaña activa quedaba **fuera de la vista** (Depósitos, a la derecha). Ahora se
+     desplaza para quedar visible al abrir y al cambiar de pestaña.
 
 **Lección operativa:** un worktree con `vendor` compartido por junction **no sirve para
 probar**: el autoloader de Composer resuelve la ruta real y carga las clases `App\` del checkout

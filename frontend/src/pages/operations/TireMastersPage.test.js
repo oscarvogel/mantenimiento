@@ -128,10 +128,25 @@ describe('TireMastersPage', () => {
     expect(wrapper.text()).toContain('Michelin')
   })
 
-  it('muestra el mensaje de error del servidor', () => {
-    const wrapper = mountPage({ flash: { error: 'Ya existe la marca "Michelin" en la empresa.' } })
+  it('no repite los mensajes del servidor: los muestra el shell', () => {
+    const wrapper = mountPage({ flash: { error: 'Ya existe la marca "Michelin" en la empresa.', success: 'Listo' } })
 
-    expect(wrapper.find('[role="alert"]').text()).toBe('Ya existe la marca "Michelin" en la empresa.')
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('Ya existe la marca')
+  })
+
+  it('deja a la vista la pestaña elegida', async () => {
+    const calls = []
+    const original = Element.prototype.scrollIntoView
+    Element.prototype.scrollIntoView = function () { calls.push(this.textContent.trim()) }
+    try {
+      const wrapper = mountPage()
+      await tab(wrapper, 'Depósitos').trigger('click')
+      await new Promise((resolve) => setTimeout(resolve))
+      expect(calls.at(-1)).toContain('Depósitos')
+    } finally {
+      Element.prototype.scrollIntoView = original
+    }
   })
 
   it('abre la pestaña que indica el hash de la URL', () => {

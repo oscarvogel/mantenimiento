@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { PencilSquareIcon } from '@heroicons/vue/24/outline'
 import CsrfInput from './components/CsrfInput.vue'
 import FormField from './components/FormField.vue'
@@ -51,11 +51,22 @@ const visibleItems = computed(() => {
 const cannotCreateModel = computed(() => selected.value === 'modelos' && activeBrands.value.length === 0)
 const cannotCreateDeposit = computed(() => selected.value === 'depositos' && branches.value.length === 0)
 
+const tablist = ref(null)
+
+// En móvil las pestañas desbordan: la elegida tiene que quedar a la vista.
+const revealSelectedTab = async () => {
+  await nextTick()
+  tablist.value?.querySelector('[aria-selected="true"]')?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
+}
+
+onMounted(revealSelectedTab)
+
 const select = (key) => {
   selected.value = key
   query.value = ''
   status.value = 'all'
   if (typeof window !== 'undefined') window.history.replaceState(null, '', `#${key}`)
+  revealSelectedTab()
 }
 
 const detail = (item) => {
@@ -89,10 +100,8 @@ const brandOptionsFor = (item) => {
       description="Marcas, modelos, tipos de cubierta y depósitos que se usan al dar de alta y mover neumáticos. Un registro inactivo se conserva en lo que ya lo usa."
     />
 
-    <div v-if="data.flash?.success" class="rounded-xl border border-success/30 bg-success-soft px-4 py-3 text-sm font-medium text-success-strong" role="status">{{ data.flash.success }}</div>
-    <div v-if="data.flash?.error" class="rounded-xl border border-danger/30 bg-danger-subtle px-4 py-3 text-sm font-medium text-danger-strong" role="alert">{{ data.flash.error }}</div>
-
-    <div class="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Maestros de neumáticos">
+    <!-- Los mensajes del servidor (data.flash) los muestra el shell: no se repiten acá. -->
+    <div ref="tablist" class="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Maestros de neumáticos">
       <button
         v-for="key in keys"
         :key="key"
