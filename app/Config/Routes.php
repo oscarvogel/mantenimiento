@@ -89,6 +89,20 @@ $routes->get('clientes/cuenta-corriente', 'CustomerAccounts::accounts', ['filter
 $routes->get('clientes/cuenta-corriente/(:num)', 'CustomerAccounts::statement/$1', ['filter' => ['auth', 'permission:clientes.cc.ver']]);
 $routes->post('clientes/cuenta-corriente/(:num)/saldo-inicial', 'CustomerAccounts::openingBalance/$1', ['filter' => ['auth', 'permission:clientes.cc.formalizar']]);
 
+// Recibos y cobranzas de clientes (#536).
+$routes->get('clientes/recibos', 'CustomerReceipts::index', ['filter' => ['auth', 'permission:clientes.recibos.ver']]);
+$routes->get('clientes/recibos/nuevo/(:num)', 'CustomerReceipts::create/$1', ['filter' => ['auth', 'permission:clientes.recibos.registrar']]);
+$routes->post('clientes/recibos', 'CustomerReceipts::store', ['filter' => ['auth', 'permission:clientes.recibos.registrar']]);
+$routes->get('clientes/recibos/(:num)', 'CustomerReceipts::show/$1', ['filter' => ['auth', 'permission:clientes.recibos.ver']]);
+$routes->post('clientes/recibos/(:num)/confirmar', 'CustomerReceipts::confirm/$1', ['filter' => ['auth', 'permission:clientes.recibos.confirmar']]);
+$routes->post('clientes/recibos/(:num)/anular', 'CustomerReceipts::annul/$1', ['filter' => ['auth', 'permission:clientes.recibos.anular']]);
+$routes->post('clientes/recibos/(:num)/descartar', 'CustomerReceipts::discard/$1', ['filter' => ['auth', 'permission:clientes.recibos.registrar']]);
+$routes->post('clientes/recibos/(:num)/medios/(:num)/acreditar', 'CustomerReceipts::accredit/$1/$2', ['filter' => ['auth', 'permission:clientes.recibos.confirmar']]);
+$routes->post('clientes/recibos/(:num)/imputar', 'CustomerReceipts::impute/$1', ['filter' => ['auth', 'permission:clientes.recibos.imputar']]);
+$routes->get('clientes/recibos/(:num)/imprimir', 'CustomerReceipts::print/$1', ['filter' => ['auth', 'permission:clientes.recibos.imprimir']]);
+$routes->post('clientes/recibos/(:num)/adjuntos', 'CustomerReceipts::uploadAttachment/$1', ['filter' => ['auth', 'permission:clientes.recibos.registrar']]);
+$routes->get('clientes/recibos/(:num)/adjuntos/(:num)', 'CustomerReceipts::downloadAttachment/$1/$2', ['filter' => ['auth', 'permission:clientes.recibos.ver']]);
+
 // Maestros independientes del módulo operativo de viajes y de la telemetría.
 $routes->group('viajes/maestros', ['filter' => ['auth']], static function ($routes): void {
     $routes->get('', 'TripMasters::index', ['filter' => 'permission:viajes.maestros.ver']);

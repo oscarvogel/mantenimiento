@@ -43,6 +43,12 @@ final class AnnulCustomerCharge
             if ($charge === null) {
                 throw new DomainException('El cargo no existe o ya está anulado.');
             }
+            if ($this->accounts->hasActiveImputations($companyId, $chargeId)) {
+                throw new DomainException(
+                    'El cargo tiene pagos imputados de recibos confirmados. '
+                    . 'Anulá primero esos recibos para restituir el saldo y evitar imputaciones huérfanas.',
+                );
+            }
             $this->accounts->annulCharge($companyId, $chargeId, $reason, $actor->userId(), $this->clock->now());
             CustomerAccountAudit::record(
                 $this->audit, $actor, $companyId, null, AuditAction::CLIENTE_CC_CARGO_ANULADO, 'cliente_cc_cargos', $chargeId,

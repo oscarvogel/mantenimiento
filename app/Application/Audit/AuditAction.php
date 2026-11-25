@@ -20,4 +20,11 @@ enum AuditAction: string
     case CLIENTE_CC_CARGO_ANULADO = 'cliente_cc.cargo_anulado';
     case CLIENTE_CC_TRAMO_NO_COBRABLE = 'cliente_cc.tramo_no_cobrable';
     case CLIENTE_CC_TRAMO_REABIERTO = 'cliente_cc.tramo_reabierto';
+    case CLIENTE_RECIBO_REGISTRADO = 'cliente_recibo.registrado';
+    case CLIENTE_RECIBO_CONFIRMADO = 'cliente_recibo.confirmado';
+    case CLIENTE_RECIBO_ANULADO = 'cliente_recibo.anulado';
+    case CLIENTE_RECIBO_MEDIO_ACREDITADO = 'cliente_recibo.medio_acreditado';
+    case CLIENTE_RECIBO_PAGO_IMPUTADO = 'cliente_recibo.pago_imputado';
+    case CLIENTE_RECIBO_BORRADOR_DESCARTADO = 'cliente_recibo.borrador_descartado';
+    case CLIENTE_RECIBO_ADJUNTO_AGREGADO = 'cliente_recibo.adjunto_agregado';
 }

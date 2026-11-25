@@ -13,16 +13,20 @@ final class LocalPrivateAttachmentStorage implements EquipmentAttachmentStorage
     private readonly string $root;
     private readonly string $projectRoot;
 
-    public function __construct(?string $root = null)
+    public function __construct(?string $root = null, string $folder = 'equipos')
     {
         $projectRoot = defined('ROOTPATH')
             ? rtrim((string) ROOTPATH, '\\/')
             : dirname(__DIR__, 4);
         $this->projectRoot = $projectRoot;
+        $folder = trim($folder, '/\\');
+        if ($folder === '' || preg_match('/^[a-z0-9][a-z0-9_-]{0,40}$/', $folder) !== 1) {
+            throw new RuntimeException('La carpeta privada de adjuntos no es válida.');
+        }
         $defaultRoot = dirname($projectRoot)
             . DIRECTORY_SEPARATOR . basename($projectRoot) . '-private'
             . DIRECTORY_SEPARATOR . 'uploads'
-            . DIRECTORY_SEPARATOR . 'equipos';
+            . DIRECTORY_SEPARATOR . $folder;
         $resolvedRoot = rtrim(trim($root ?? $defaultRoot), '\\/');
         if ($resolvedRoot === '') {
             throw new RuntimeException('La raíz privada de adjuntos no puede estar vacía.');

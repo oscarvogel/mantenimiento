@@ -41,6 +41,9 @@ import TripProfitabilityPage from './TripProfitabilityPage.vue'
 import TripCommercialClosingPage from './TripCommercialClosingPage.vue'
 import CustomerAccountsPage from './CustomerAccountsPage.vue'
 import CustomerAccountDetailPage from './CustomerAccountDetailPage.vue'
+import CustomerReceiptsPage from './CustomerReceiptsPage.vue'
+import CustomerReceiptFormPage from './CustomerReceiptFormPage.vue'
+import CustomerReceiptDetailPage from './CustomerReceiptDetailPage.vue'
 
 export {
   AssetsIndexPage,
@@ -86,6 +89,9 @@ export {
   TripCommercialClosingPage,
   CustomerAccountsPage,
   CustomerAccountDetailPage,
+  CustomerReceiptsPage,
+  CustomerReceiptFormPage,
+  CustomerReceiptDetailPage,
 }
 
 export const operationPageComponents = Object.freeze({
@@ -128,6 +134,9 @@ export const operationPageComponents = Object.freeze({
   'trips-commercial-closing': TripCommercialClosingPage,
   'customer-accounts': CustomerAccountsPage,
   'customer-account-detail': CustomerAccountDetailPage,
+  'customer-receipts': CustomerReceiptsPage,
+  'customer-receipt-form': CustomerReceiptFormPage,
+  'customer-receipt-detail': CustomerReceiptDetailPage,
   'trip-driver-settlement': TripDriverSettlementPage,
   'trips-profitability': TripProfitabilityPage,
 })

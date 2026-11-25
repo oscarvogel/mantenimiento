@@ -110,17 +110,23 @@ final class CodeIgniterCustomerAccountReadModel implements CustomerAccountReadMo
             return null;
         }
 
-        $movements = $this->database->table('cliente_cc_movimientos m')
-            ->select('m.id, m.fecha, m.tipo, m.cargo_id, m.debe_ars, m.haber_ars, m.descripcion, m.created_at,'
+        $hasReceipts = $this->database->tableExists('cliente_recibos');
+        $hasReceiptLedger = $hasReceipts && $this->database->fieldExists('recibo_id', 'cliente_cc_movimientos');
+        $builder = $this->database->table('cliente_cc_movimientos m')
+            ->select('m.id, m.fecha, m.tipo, m.cargo_id, ' . ($hasReceiptLedger ? 'm.recibo_id' : 'NULL AS recibo_id') . ', m.debe_ars, m.haber_ars, m.descripcion, m.created_at,'
                 . ' cg.modalidad, cg.documento_tipo, cg.documento_numero, cg.importe_original, cg.moneda, cg.cotizacion, cg.cotizacion_fecha, cg.cotizacion_fuente,'
-                . ' cg.estado AS cargo_estado, cg.viaje_id, u.nombre AS usuario')
+                . ' cg.estado AS cargo_estado, cg.viaje_id, u.nombre AS usuario,'
+                . ' ' . ($hasReceipts ? 'rc.serie AS recibo_serie, rc.numero AS recibo_numero, rc.estado AS recibo_estado' : 'NULL AS recibo_serie, NULL AS recibo_numero, NULL AS recibo_estado'))
             ->join('cliente_cc_cargos cg', 'cg.empresa_id = m.empresa_id AND cg.id = m.cargo_id', 'left')
             ->join('usuarios u', 'u.id = m.created_by', 'left')
             ->where('m.empresa_id', $companyId)
             ->where('m.cliente_id', $customerId)
             ->orderBy('m.fecha', 'ASC')
-            ->orderBy('m.id', 'ASC')
-            ->get()->getResultArray();
+            ->orderBy('m.id', 'ASC');
+        if ($hasReceipts) {
+            $builder->join('cliente_recibos rc', 'rc.empresa_id = m.empresa_id AND rc.id = m.recibo_id', 'left');
+        }
+        $movements = $builder->get()->getResultArray();
 
         $balance = 0.0;
         $debit = 0.0;
@@ -139,13 +145,20 @@ final class CodeIgniterCustomerAccountReadModel implements CustomerAccountReadMo
                 'tipo_label' => match ($row['tipo']) {
                     'CARGO' => CustomerCharge::LABELS[$row['modalidad']] ?? 'Cargo',
                     'SALDO_INICIAL' => 'Saldo inicial',
-                    'ANULACION' => 'Anulación',
+                    'ANULACION' => 'Anulación de cargo',
+                    'COBRO' => 'Cobro de recibo',
+                    'ANULACION_RECIBO' => 'Anulación de recibo',
                     default => (string) $row['tipo'],
                 },
                 'descripcion' => $row['descripcion'],
                 'cargo_id' => $row['cargo_id'] === null ? null : (int) $row['cargo_id'],
                 'cargo_vigente' => $row['tipo'] !== 'ANULACION' && $row['cargo_estado'] === 'VIGENTE',
                 'cargo_anulado' => $row['cargo_estado'] === 'ANULADO',
+                'recibo_id' => $row['recibo_id'] === null ? null : (int) $row['recibo_id'],
+                'recibo_numero_visible' => $row['recibo_numero'] === null
+                    ? null
+                    : (string) $row['recibo_serie'] . '-' . str_pad((string) $row['recibo_numero'], 6, '0', STR_PAD_LEFT),
+                'recibo_estado' => $row['recibo_estado'],
                 'viaje_id' => $row['viaje_id'] === null ? null : (int) $row['viaje_id'],
                 'documento_tipo' => $row['documento_tipo'],
                 'documento_numero' => $row['documento_numero'],

@@ -17,6 +17,9 @@ interface CustomerAccountRepository
 
     public function hasActiveNonCollectible(int $companyId, string $activeKey): bool;
 
+    /** ¿El cargo tiene imputaciones vigentes de recibos confirmados? */
+    public function hasActiveImputations(int $companyId, int $chargeId): bool;
+
     /** Guarda el cargo y su asiento en el libro ARS. Devuelve el id del cargo. */
     public function addCharge(int $companyId, CustomerCharge $charge, int $userId, DateTimeImmutable $now): int;
 

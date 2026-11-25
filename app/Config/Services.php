@@ -3006,6 +3006,193 @@ return new AsignarPlan(
         return new \App\Application\CustomerAccounts\GetCustomerStatement(
             new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerAccountReadModel($db),
             new \App\Infrastructure\CustomerAccounts\CodeIgniterExchangeRateCatalog($db),
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerReceiptReadModel($db),
+        );
+    }
+
+    // Recibos y cobranzas de clientes (#536): composition root del contexto.
+
+    public static function createCustomerReceipt(bool $getShared = true): \App\Application\CustomerAccounts\CreateCustomerReceipt
+    {
+        if ($getShared) {
+            return static::getSharedInstance('createCustomerReceipt');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\CustomerAccounts\CreateCustomerReceipt(
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerReceiptRepository($db),
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterExchangeRateCatalog($db),
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerAccountsUnitOfWork($db),
+            new \App\Infrastructure\CustomerAccounts\SystemCustomerAccountsClock(),
+            static::auditTrail(),
+        );
+    }
+
+    public static function confirmCustomerReceipt(bool $getShared = true): \App\Application\CustomerAccounts\ConfirmCustomerReceipt
+    {
+        if ($getShared) {
+            return static::getSharedInstance('confirmCustomerReceipt');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\CustomerAccounts\ConfirmCustomerReceipt(
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerReceiptRepository($db),
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerAccountsUnitOfWork($db),
+            new \App\Infrastructure\CustomerAccounts\SystemCustomerAccountsClock(),
+            static::auditTrail(),
+        );
+    }
+
+    public static function annulCustomerReceipt(bool $getShared = true): \App\Application\CustomerAccounts\AnnullCustomerReceipt
+    {
+        if ($getShared) {
+            return static::getSharedInstance('annulCustomerReceipt');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\CustomerAccounts\AnnullCustomerReceipt(
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerReceiptRepository($db),
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerAccountsUnitOfWork($db),
+            new \App\Infrastructure\CustomerAccounts\SystemCustomerAccountsClock(),
+            static::auditTrail(),
+        );
+    }
+
+    public static function accreditReceiptInstrument(bool $getShared = true): \App\Application\CustomerAccounts\AccreditReceiptInstrument
+    {
+        if ($getShared) {
+            return static::getSharedInstance('accreditReceiptInstrument');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\CustomerAccounts\AccreditReceiptInstrument(
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerReceiptRepository($db),
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerAccountsUnitOfWork($db),
+            new \App\Infrastructure\CustomerAccounts\SystemCustomerAccountsClock(),
+            static::auditTrail(),
+        );
+    }
+
+    public static function imputeCustomerPayment(bool $getShared = true): \App\Application\CustomerAccounts\ImputeCustomerPayment
+    {
+        if ($getShared) {
+            return static::getSharedInstance('imputeCustomerPayment');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\CustomerAccounts\ImputeCustomerPayment(
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerReceiptRepository($db),
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerAccountsUnitOfWork($db),
+            new \App\Infrastructure\CustomerAccounts\SystemCustomerAccountsClock(),
+            static::auditTrail(),
+        );
+    }
+
+    public static function discardCustomerReceiptDraft(bool $getShared = true): \App\Application\CustomerAccounts\DiscardCustomerReceiptDraft
+    {
+        if ($getShared) {
+            return static::getSharedInstance('discardCustomerReceiptDraft');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\CustomerAccounts\DiscardCustomerReceiptDraft(
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerReceiptRepository($db),
+            new \App\Infrastructure\CustomerAccounts\LocalPrivateReceiptAttachmentStorage(),
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerAccountsUnitOfWork($db),
+            new \App\Infrastructure\CustomerAccounts\SystemCustomerAccountsClock(),
+            static::auditTrail(),
+        );
+    }
+
+    public static function listCustomerReceipts(bool $getShared = true): \App\Application\CustomerAccounts\ListCustomerReceipts
+    {
+        if ($getShared) {
+            return static::getSharedInstance('listCustomerReceipts');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\CustomerAccounts\ListCustomerReceipts(
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerReceiptReadModel($db),
+        );
+    }
+
+    public static function getCustomerReceiptForm(bool $getShared = true): \App\Application\CustomerAccounts\GetCustomerReceiptForm
+    {
+        if ($getShared) {
+            return static::getSharedInstance('getCustomerReceiptForm');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\CustomerAccounts\GetCustomerReceiptForm(
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerReceiptReadModel($db),
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterExchangeRateCatalog($db),
+        );
+    }
+
+    public static function getCustomerReceipt(bool $getShared = true): \App\Application\CustomerAccounts\GetCustomerReceipt
+    {
+        if ($getShared) {
+            return static::getSharedInstance('getCustomerReceipt');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\CustomerAccounts\GetCustomerReceipt(
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerReceiptReadModel($db),
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterExchangeRateCatalog($db),
+        );
+    }
+
+    public static function generateCustomerReceiptPdf(bool $getShared = true): \App\Application\CustomerAccounts\GenerateCustomerReceiptPdf
+    {
+        if ($getShared) {
+            return static::getSharedInstance('generateCustomerReceiptPdf');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\CustomerAccounts\GenerateCustomerReceiptPdf(
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerReceiptReadModel($db),
+            new \App\Infrastructure\CustomerAccounts\FpdfCustomerReceiptPdfGenerator(),
+        );
+    }
+
+    public static function uploadReceiptAttachment(bool $getShared = true): \App\Application\CustomerAccounts\UploadReceiptAttachment
+    {
+        if ($getShared) {
+            return static::getSharedInstance('uploadReceiptAttachment');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\CustomerAccounts\UploadReceiptAttachment(
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerReceiptRepository($db),
+            new \App\Infrastructure\CustomerAccounts\FileinfoReceiptFileInspector(),
+            new \App\Infrastructure\CustomerAccounts\LocalPrivateReceiptAttachmentStorage(),
+            new \App\Infrastructure\CustomerAccounts\SystemCustomerAccountsClock(),
+            static::auditTrail(),
+        );
+    }
+
+    public static function downloadReceiptAttachment(bool $getShared = true): \App\Application\CustomerAccounts\DownloadReceiptAttachment
+    {
+        if ($getShared) {
+            return static::getSharedInstance('downloadReceiptAttachment');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\CustomerAccounts\DownloadReceiptAttachment(
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerReceiptRepository($db),
+            new \App\Infrastructure\CustomerAccounts\LocalPrivateReceiptAttachmentStorage(),
         );
     }
 
