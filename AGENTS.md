@@ -170,7 +170,7 @@ Cada tarea debe tener un agente propietario. Si cruza contextos, dividir el trab
 - Es dueño del padrón y del ciclo de vida del neumático, que es un activo con historial propio, independiente del equipo que lo monta.
 - **La gomería no es un módulo paralelo:** se apoya en `WorkOrders` con origen `GOMERIA`. Duplicar el ciclo de vida de una orden sería el error más caro del proyecto.
 - Contratos ya escritos en `app/Application/Neumaticos/Port`: `GomeriaOrderLauncher`, `NeumaticReadingRecorder` y `PreventiveNeumaticEventPublisher`. Falta sus adaptadores.
-- Dominio, casos de uso y persistencia escritos (`app/Domain/Neumaticos`, `app/Application/Neumaticos`, `app/Infrastructure/Neumaticos`, migraciones `2026-11-25`). Pantallas de maestros, padrón y ficha hechas; faltan la del depósito y las colocaciones en equipos. Los supuestos y las transiciones del ciclo de vida confirmadas por el cliente están en `docs/BITACORA_2026-11-25_NEUMATICOS_DOMINIO.md`.
+- Dominio, casos de uso y persistencia escritos (`app/Domain/Neumaticos`, `app/Application/Neumaticos`, `app/Infrastructure/Neumaticos`, migraciones `2026-11-25`). Pantallas de maestros, padrón, ficha y depósito hechas; faltan las colocaciones en equipos, la gomería sobre órdenes de trabajo y los eventos al preventivo. Los supuestos y las transiciones del ciclo de vida confirmadas por el cliente están en `docs/BITACORA_2026-11-25_NEUMATICOS_DOMINIO.md`.
 - Bloqueado por D7 (padrón definitivo de flota).
 
 ### 14. Facturación electrónica
