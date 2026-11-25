@@ -339,13 +339,20 @@ necesita su propia copia de `vendor`.
   posición ocupada rechazada por la base, posición liberada al extraer) y 2 tests nuevos de
   `RegisterReadingHandlerTest`. PHPUnit completo: 2376 pruebas, sin fallos. Vitest: 606;
   `verify:build-sync` OK.
-- **Pendiente: la verificación en MariaDB de staging.** El 25/11 `fasa_189` dejó de responder
-  por SSH (timeout en el puerto 22) antes de copiar nada. El script está listo: migración desde
-  cero, los dos índices únicos con NULL, la FK compuesta a `equipos`, liberar la posición al
-  extraer y el rollback.
+- **MariaDB 11 de staging (`fasa_189`)**, sobre una base temporal y un contenedor descartable de
+  la imagen de `mantenimiento-staging` con el código del commit `f6bd84df`. La base y la app de
+  staging no se tocaron; base, contenedor y archivos temporales quedaron en cero, verificado:
+  - Migraciones desde cero: OK. Tipos reales: `lugar varchar(5)`, `lado varchar(1)`,
+    `posicion varchar(1)`, `activa tinyint(1)`, `km_colocacion int(11) unsigned`.
+  - La base rechaza un neumático colocado dos veces a la vez, dos neumáticos en la misma
+    posición y un equipo de otra empresa (FK compuesta).
+  - Al extraer (`activa = NULL`) la posición queda libre y el mismo neumático se vuelve a
+    colocar: el historial queda con 2 filas.
+  - Rollback: la tabla desaparece; volver a migrar: OK.
+  - La primera corrida se postergó porque `fasa_189` no era accesible desde la red del usuario.
 
 ## 11. Qué sigue
 
-- Verificar la migración de colocaciones en MariaDB cuando `fasa_189` vuelva.
+- Deploy a Ferozo por el portón `migrate.php` (`scripts/aplicar-migraciones-produccion.py`).
 - 3b: pantallas para colocar y extraer desde la ficha, y los neumáticos de cada equipo.
 - Adaptadores de `GomeriaOrderLauncher` y `PreventiveNeumaticEventPublisher`.
