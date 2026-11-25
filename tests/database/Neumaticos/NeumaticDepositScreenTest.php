@@ -17,6 +17,7 @@ use CodeIgniter\Database\BaseConnection;
 use Config\Database;
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
+use Tests\Support\Neumaticos\NeumaticSchema;
 use Tests\Support\Neumaticos\InMemoryNeumatics;
 
 /**
@@ -48,6 +49,7 @@ final class NeumaticDepositScreenTest extends TestCase
         ]);
         $this->database->table('usuarios')->insert(['id' => 12, 'nombre' => 'Carla Gómez']);
         (new CreateNeumaticosTables(Database::forge($this->database)))->up();
+        NeumaticSchema::installMountings($this->database);
         $this->database->table('neumatico_marcas')->insert(['id' => 3, 'empresa_id' => 7, 'nombre' => 'Michelin', 'activo' => 1]);
         $this->database->table('depositos')->insertBatch([
             ['id' => 4, 'empresa_id' => 7, 'sucursal_id' => 1, 'nombre' => 'Central', 'ubicacion' => 'Ruta 14', 'activo' => 1],

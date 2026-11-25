@@ -66,7 +66,7 @@ final class RegisterDepositMovementTest extends TestCase
     public function testAMountedTireCannotEnterADeposit(): void
     {
         $tire = $this->store->neumatics[$this->tireId];
-        $tire->mount(10, new NeumaticPosition('E1', 'I', '1'), new DateTimeImmutable('2026-11-02'), 1000);
+        $tire->mount(10, new NeumaticPosition(1, 'I', 'E'), new DateTimeImmutable('2026-11-02'), 1000);
 
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('El neumático está colocado en un equipo. Extraelo antes de ingresarlo al depósito.');

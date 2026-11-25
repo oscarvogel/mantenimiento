@@ -14,6 +14,7 @@ use CodeIgniter\Database\BaseConnection;
 use Config\Database;
 use DomainException;
 use PHPUnit\Framework\TestCase;
+use Tests\Support\Neumaticos\NeumaticSchema;
 
 /**
  * Maestros de Neumáticos: caso de uso y adaptador contra el esquema de la
@@ -44,6 +45,7 @@ final class NeumaticMastersTest extends TestCase
             ['id' => 9, 'empresa_id' => 8, 'nombre' => 'Otra', 'estado' => 1],
         ]);
         (new CreateNeumaticosTables(Database::forge($this->database)))->up();
+        NeumaticSchema::installMountings($this->database);
     }
 
     protected function tearDown(): void

@@ -102,6 +102,33 @@ final class RegisterReadingHandlerTest extends TestCase
         self::assertSame([5, 10, '2026-11-10 00:00:00', 1_727_587], $lookup->query);
     }
 
+    public function testTireReadingNeedsOnlyTheTirePermissionAndCanBeHistorical(): void
+    {
+        $equipmentRepository = new ReadingEquipmentRepositoryFake($this->equipment(1_729_288, null));
+        $readings = new ReadingRepositoryFake();
+        $handler = new RegisterReadingHandler($equipmentRepository, $readings, new MeasurementUnitOfWorkFake(), new LaterReadingLookupFake(true));
+
+        $result = $handler->execute(
+            $this->actor(['neumaticos.operar'], [7]),
+            new RegisterReadingCommand(10, new DateTimeImmutable('2026-11-10 00:00:00'), 1_727_587, null, EquipmentReading::TIRE, 'Neumático TSA 1'),
+        );
+
+        self::assertFalse($result->correction, 'Una lectura histórica no es una corrección');
+        self::assertSame(1_729_288, $result->currentKilometers, 'El odómetro actual no baja');
+        self::assertSame(0, $equipmentRepository->updates);
+        self::assertSame(EquipmentReading::TIRE, $readings->appended?->origin());
+    }
+
+    public function testTheTirePermissionDoesNotAllowOtherOrigins(): void
+    {
+        $handler = new RegisterReadingHandler(new ReadingEquipmentRepositoryFake($this->equipment(100, null)), new ReadingRepositoryFake(), new MeasurementUnitOfWorkFake());
+
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('No tenés permiso para cargar lecturas.');
+
+        $handler->execute($this->actor(['neumaticos.operar'], [7]), new RegisterReadingCommand(10, new DateTimeImmutable('2026-11-10'), 200, null, EquipmentReading::MANUAL));
+    }
+
     public function testTripReadingBelowCurrentWithoutLaterReadingIsStillARegression(): void
     {
         $equipmentRepository = new ReadingEquipmentRepositoryFake($this->equipment(1_729_288, null));

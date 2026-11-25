@@ -25,6 +25,7 @@ use Config\Database;
 use DateTimeImmutable;
 use DomainException;
 use PHPUnit\Framework\TestCase;
+use Tests\Support\Neumaticos\NeumaticSchema;
 use Tests\Support\Neumaticos\InMemoryNeumatics;
 
 /**
@@ -57,6 +58,7 @@ final class NeumaticRegistryTest extends TestCase
         ]);
         $this->database->table('usuarios')->insertBatch([['id' => 12, 'nombre' => 'Carla Gómez'], ['id' => 20, 'nombre' => 'Otro']]);
         (new CreateNeumaticosTables(Database::forge($this->database)))->up();
+        NeumaticSchema::installMountings($this->database);
         $this->database->table('neumatico_marcas')->insertBatch([
             ['id' => 3, 'empresa_id' => 7, 'nombre' => 'Michelin', 'activo' => 1],
             ['id' => 4, 'empresa_id' => 7, 'nombre' => 'Xbri', 'activo' => 0],

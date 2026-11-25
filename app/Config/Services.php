@@ -3135,4 +3135,42 @@ return new AsignarPlan(
             new \App\Infrastructure\Neumaticos\CodeIgniterNeumaticDepositReadModel(db_connect()),
         );
     }
+
+    /**
+     * Colocar y extraer comparten la conexión con Medición: la lectura del
+     * equipo queda en la misma transacción que la colocación.
+     */
+    public static function mountNeumatic(bool $getShared = true): \App\Application\Neumaticos\MountNeumatic
+    {
+        if ($getShared) {
+            return static::getSharedInstance('mountNeumatic');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\Neumaticos\MountNeumatic(
+            new \App\Infrastructure\Neumaticos\CodeIgniterNeumaticRepository($db),
+            new \App\Infrastructure\Neumaticos\CodeIgniterNeumaticDepositRepository($db),
+            new \App\Infrastructure\Assets\CodeIgniterEquipmentFleetLookup($db),
+            new \App\Infrastructure\Neumaticos\MeasurementNeumaticReadingRecorder(static::registerReading(false)),
+            new \App\Infrastructure\Neumaticos\CodeIgniterNeumaticsUnitOfWork($db),
+            new \App\Infrastructure\Neumaticos\SystemNeumaticClock(),
+        );
+    }
+
+    public static function removeNeumatic(bool $getShared = true): \App\Application\Neumaticos\RemoveNeumatic
+    {
+        if ($getShared) {
+            return static::getSharedInstance('removeNeumatic');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\Neumaticos\RemoveNeumatic(
+            new \App\Infrastructure\Neumaticos\CodeIgniterNeumaticRepository($db),
+            new \App\Infrastructure\Neumaticos\MeasurementNeumaticReadingRecorder(static::registerReading(false)),
+            new \App\Infrastructure\Neumaticos\CodeIgniterNeumaticsUnitOfWork($db),
+            new \App\Infrastructure\Neumaticos\SystemNeumaticClock(),
+        );
+    }
 }

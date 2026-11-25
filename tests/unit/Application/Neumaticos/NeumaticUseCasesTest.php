@@ -210,9 +210,9 @@ final class NeumaticUseCasesTest extends TestCase
     public function testAViewerReadsThePerformance(): void
     {
         $tire = Neumatic::register(7, 1, new NeumaticNumber('TSA 1'), new DateTimeImmutable('2026-10-01'));
-        $tire->mount(10, new NeumaticPosition('E1', 'I', '1'), new DateTimeImmutable('2026-10-02'), 100_000);
+        $tire->mount(10, new NeumaticPosition(1, 'I', 'E'), new DateTimeImmutable('2026-10-02'), 100_000);
         $tire->remove(new DateTimeImmutable('2026-10-20'), 112_500);
-        $tire->mount(11, new NeumaticPosition('E2', 'D', '2'), new DateTimeImmutable('2026-10-21'), 50_000);
+        $tire->mount(11, new NeumaticPosition(2, 'D', 'I'), new DateTimeImmutable('2026-10-21'), 50_000);
         $id = $this->store->add($tire, 12);
 
         $view = (new GetNeumaticPerformance($this->store))->execute($this->actor(['neumaticos.ver']), $id);

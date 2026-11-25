@@ -277,19 +277,38 @@ final class NeumaticTest extends TestCase
 
     public function testPositionIsNormalizedAndComparedByValue(): void
     {
-        $position = new NeumaticPosition(' e2 ', 'i', '1', ' ');
+        $position = new NeumaticPosition(2, ' i ', 'e', ' ');
 
-        self::assertSame('E2', $position->place);
+        self::assertSame(2, $position->axle);
+        self::assertSame('I', $position->side);
         self::assertNull($position->button);
-        self::assertTrue($position->equals(new NeumaticPosition('E2', 'I', '1')));
-        self::assertFalse($position->equals(new NeumaticPosition('E2', 'D', '1')));
+        self::assertSame('Eje 2 · izquierdo · exterior', $position->label());
+        self::assertTrue($position->equals(new NeumaticPosition(2, 'I', 'E')));
+        self::assertFalse($position->equals(new NeumaticPosition(2, 'D', 'E')));
     }
 
-    public function testPositionRejectsMissingOrTooLongParts(): void
+    public function testTheButtonDescribesButDoesNotMakeADifferentSpot(): void
     {
-        $this->expectException(DomainException::class);
+        $withButton = new NeumaticPosition(3, 'D', 'I', 'b4');
 
-        new NeumaticPosition('E2', 'ID', '1');
+        self::assertSame('Eje 3 · derecho · interior · botón B4', $withButton->label());
+        self::assertTrue($withButton->sameSpotAs(new NeumaticPosition(3, 'D', 'I')));
+        self::assertFalse($withButton->equals(new NeumaticPosition(3, 'D', 'I')));
+    }
+
+    public function testPositionOnlyAcceptsTheClosedValues(): void
+    {
+        foreach ([[0, 'I', 'E'], [11, 'I', 'E'], [1, 'X', 'E'], [1, 'I', 'Z']] as [$axle, $side, $slot]) {
+            try {
+                new NeumaticPosition($axle, $side, $slot);
+                self::fail(sprintf('Aceptó eje %d, lado %s, lugar %s.', $axle, $side, $slot));
+            } catch (DomainException) {
+            }
+        }
+
+        self::assertSame(1, NeumaticPosition::fromStored('1', 'D', 'S', null)->axle);
+        $this->expectException(DomainException::class);
+        NeumaticPosition::fromStored('E1', 'D', 'S', null);
     }
 
     private function newTire(): Neumatic
@@ -299,7 +318,7 @@ final class NeumaticTest extends TestCase
 
     private function position(): NeumaticPosition
     {
-        return new NeumaticPosition('E1', 'I', '1');
+        return new NeumaticPosition(1, 'I', 'E');
     }
 
     private function at(string $date): DateTimeImmutable

@@ -37,7 +37,9 @@ final class RegisterReadingHandler
             // El cierre de un viaje viejo puede traer un km menor al actual porque el
             // camión ya hizo otro viaje: es una lectura histórica, no un retroceso.
             // Solo para lecturas de viaje y solo si una lectura posterior la cubre.
-            $historical = $command->origin === EquipmentReading::TRIP
+            // Lo mismo vale para la colocacion o extraccion de un neumatico cargada
+            // desde una planilla atrasada (decision del 25/11/2026).
+            $historical = in_array($command->origin, [EquipmentReading::TRIP, EquipmentReading::TIRE], true)
                 && $this->laterReadings !== null
                 && $equipment->isBelowCurrentKilometers($measurement);
             if ($historical) {
@@ -103,7 +105,9 @@ final class RegisterReadingHandler
             && ($actor->hasPermission('ordenes.cerrar') || $actor->hasPermission('ordenes.editar'));
         $canRecordTripReading = $command->origin === EquipmentReading::TRIP
             && $actor->hasPermission('viajes.operar');
-        if (! $canLoadReading && ! $canRecordWorkOrderReading && ! $canRecordTripReading) {
+        $canRecordTireReading = $command->origin === EquipmentReading::TIRE
+            && $actor->hasPermission('neumaticos.operar');
+        if (! $canLoadReading && ! $canRecordWorkOrderReading && ! $canRecordTripReading && ! $canRecordTireReading) {
             throw new DomainException('No tenés permiso para cargar lecturas.');
         }
 
