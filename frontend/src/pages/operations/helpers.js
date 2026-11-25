@@ -70,6 +70,7 @@ export const formatReadingOrigin = (origin) => ({
   MANUAL: 'Carga manual',
   QR_ANONIMO: 'QR anónimo',
   VIAJE: 'Cierre de viaje',
+  NEUMATICO: 'Colocación de neumático',
   DEMO: 'Demo',
 }[String(origin ?? '').toUpperCase()] ?? (origin || 'Carga manual'))
 

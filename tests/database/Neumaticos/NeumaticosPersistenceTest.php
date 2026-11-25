@@ -210,7 +210,7 @@ final class NeumaticosPersistenceTest extends TestCase
     public function testMountingsAreNotSilentlyDropped(): void
     {
         $tire = Neumatic::register(7, 1, new NeumaticNumber('TSA 1'), new DateTimeImmutable('2026-11-01'));
-        $tire->mount(10, new NeumaticPosition('E1', 'I', '1'), new DateTimeImmutable('2026-11-02'), 1000);
+        $tire->mount(10, new NeumaticPosition(1, 'I', 'E'), new DateTimeImmutable('2026-11-02'), 1000);
 
         $this->expectException(LogicException::class);
 

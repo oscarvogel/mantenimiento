@@ -27,7 +27,7 @@ final class GetNeumaticPerformance
      *     status_label: string,
      *     total_km: int|null,
      *     total_label: string,
-     *     mountings: list<array{equipment_id: int, place: string, side: string, slot: string, button: string|null, mounted_at: string, mounted_km: int, removed_at: string|null, removed_km: int|null, km: int|null, reliable: bool|null, label: string}>
+     *     mountings: list<array{equipment_id: int, axle: int, side: string, slot: string, button: string|null, position_label: string, mounted_at: string, mounted_km: int, removed_at: string|null, removed_km: int|null, km: int|null, reliable: bool|null, label: string}>
      * }
      */
     public function execute(ActorContext $actor, int $neumaticId): array
@@ -43,10 +43,11 @@ final class GetNeumaticPerformance
             $performance = $mounting->performance();
             $mountings[] = [
                 'equipment_id' => $mounting->equipmentId,
-                'place' => $mounting->position->place,
+                'axle' => $mounting->position->axle,
                 'side' => $mounting->position->side,
                 'slot' => $mounting->position->slot,
                 'button' => $mounting->position->button,
+                'position_label' => $mounting->position->label(),
                 'mounted_at' => $mounting->mountedAt->format('Y-m-d'),
                 'mounted_km' => $mounting->mountedKm,
                 'removed_at' => $mounting->removedAt?->format('Y-m-d'),
