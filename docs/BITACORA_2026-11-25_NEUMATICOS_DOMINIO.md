@@ -224,10 +224,57 @@ probar**: el autoloader de Composer resuelve la ruta real y carga las clases `Ap
 original, no las del worktree. Los tests pasaban o fallaban contra otro código. El worktree
 necesita su propia copia de `vendor`.
 
-## 8. Qué sigue
+## 8. Pantallas, paso 2b-2: padrón, alta, ficha y cambio de estado (rama `feat/neumaticos-padron`)
 
-- 2b-2: padrón, alta, ficha y cambio de estado. Antes, confirmar con el cliente si la ficha
-  muestra precio, origen y observaciones.
+**Qué hace:**
+
+- `neumaticos`: el padrón, con filtros por texto (número, marca, modelo o medida), estado,
+  sucursal y marca. Cada fila lleva a la ficha. Se muestran hasta 300; si hay más, se avisa y se
+  pide afinar los filtros. La tarjeta del portal entra acá.
+- Alta en un modal: número, sucursal, marca, modelo (solo los de la marca elegida), tipo de
+  cubierta, medida, año, **estado inicial** (para cargar neumáticos que ya están en uso; no
+  ofrece estados finales) y fecha de alta. Si el servidor rechaza el alta, el modal se reabre
+  con lo cargado.
+- `neumaticos/{id}`: la ficha con datos, edición (el número y la sucursal no se cambian),
+  **cambio de estado** con motivo y fecha, rendimiento e historial de estados con usuario.
+- Casos de uso de lectura `GetNeumaticRegistry` y `GetNeumaticDetail`, filtros
+  `NeumaticRegistryFilters`, puerto `NeumaticRegistryReadModel` y su adaptador.
+
+**Reglas:**
+
+- La ficha ofrece **solo las transiciones que permite el dominio** (`NeumaticStatus::nextStates`):
+  la pantalla no puede ofrecer un cambio que el caso de uso rechace. Quien solo consulta no
+  ve transiciones; un estado final lo explica y no ofrece ninguna.
+- **Corrección de catálogos (cambio en `UpdateNeumatic`):** solo se valida la referencia que
+  cambia. Un neumático con una marca, un modelo o un tipo hoy inactivo los conserva al corregir
+  otro dato; lo inactivo no se puede elegir para otro neumático.
+- El rendimiento dice `sin datos suficientes` hasta que existan colocaciones (paso 3).
+- La lectura del padrón resuelve el nombre de la sucursal (Organización) y del usuario de la
+  bitácora (Identidad), solo lectura. Registrado en `CONTRATOS_ENTRE_CONTEXTOS.md`.
+
+**Pendiente de decisión del cliente:** la ficha no muestra precio, origen ni observaciones
+(la spec §5.12 los nombra). No se agregaron: el dominio no los modela y no hubo confirmación.
+
+**Evidencia:**
+
+- `tests/database/Neumaticos/NeumaticRegistryTest.php` (9, contra la migración real, incluye la
+  regresión de catálogos inactivos) y `tests/feature/NeumaticsHttpTest.php` (6).
+  PHPUnit completo: 2347 pruebas, sin fallos.
+- `TireRegistryPage.test.js` (9) y `TireDetailPage.test.js` (9). Vitest completo: 596 pruebas
+  en 96 archivos. `npm run build` y `verify:build-sync`: OK.
+- **Verificación visual** en instancia temporal de `fasa_189`, con la imagen actual de staging,
+  el código de la rama, base temporal y túnel SSH. Al terminar se verificó en cero.
+  - Escritorio: portal → padrón vacío con su guía → maestros (marca y modelo) → alta con número
+    en minúscula (queda `TSA 181917`) → ficha → cambio a *En reparación* con motivo. La ficha
+    pasa a ofrecer *Reparado* y *Baja definitiva*.
+  - Móvil (375 px): padrón filtrado por estado, ficha completa y alta repetida rechazada con el
+    modal reabierto y los datos conservados. Sin scroll horizontal.
+  - El reloj de la app y el del navegador coinciden (`America/Argentina/Buenos_Aires`), así que
+    la fecha por defecto del cambio de estado no cae en el futuro.
+- Mejora posible, no hecha: en móvil los filtros ocupan media pantalla antes de la lista.
+
+## 9. Qué sigue
+
 - 2b-3: depósito con existencias y movimientos.
 - Adaptadores de `NeumaticReadingRecorder`, `GomeriaOrderLauncher` y
   `PreventiveNeumaticEventPublisher` (ver `CONTRATOS_ENTRE_CONTEXTOS.md` §5).

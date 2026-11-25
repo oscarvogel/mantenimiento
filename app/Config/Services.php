@@ -3098,4 +3098,30 @@ return new AsignarPlan(
             new \App\Infrastructure\Neumaticos\CodeIgniterNeumaticBranchScope($db),
         );
     }
+
+    public static function neumaticRegistry(bool $getShared = true): \App\Application\Neumaticos\GetNeumaticRegistry
+    {
+        if ($getShared) {
+            return static::getSharedInstance('neumaticRegistry');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\Neumaticos\GetNeumaticRegistry(
+            new \App\Infrastructure\Neumaticos\CodeIgniterNeumaticRegistryReadModel($db),
+            new \App\Infrastructure\Neumaticos\CodeIgniterNeumaticBranchScope($db),
+        );
+    }
+
+    public static function neumaticDetail(bool $getShared = true): \App\Application\Neumaticos\GetNeumaticDetail
+    {
+        if ($getShared) {
+            return static::getSharedInstance('neumaticDetail');
+        }
+
+        return new \App\Application\Neumaticos\GetNeumaticDetail(
+            new \App\Infrastructure\Neumaticos\CodeIgniterNeumaticRegistryReadModel(db_connect()),
+            static::getNeumaticPerformance(false),
+        );
+    }
 }

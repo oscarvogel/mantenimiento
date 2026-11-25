@@ -58,7 +58,7 @@ final readonly class AppShellPayload
             ])),
             'theoretical-cost-km', 'fleet-board' => $this->managementNavigation($actor, $active),
             'fuel-module' => $this->fuelNavigation($actor, $active),
-            'tire-masters' => $this->tiresNavigation($actor, $active),
+            'tire-registry', 'tire-detail', 'tire-masters' => $this->tiresNavigation($actor, $active),
             default => [$this->item('dashboard', 'Dashboard', 'dashboard', 'dashboard', $active)],
         };
         $payload['moduleNavigation'] = $active === 'command-center'
@@ -66,13 +66,13 @@ final readonly class AppShellPayload
             : $this->platformNavigation($actor, $availableModules, match ($active) {
                 'theoretical-cost-km', 'fleet-board' => 'management',
                 'fuel-module' => 'fuel',
-                'tire-masters' => 'tires',
+                'tire-registry', 'tire-detail', 'tire-masters' => 'tires',
                 'automations' => 'automations',
                 'trip-masters', 'trips-dashboard', 'trips-operations-dashboard', 'trips-operations', 'trip-operations-create', 'trip-operations-detail', 'trips-fuel-pending', 'trips-profitability', 'trips-commercial-closing', 'customer-accounts', 'customer-account-detail' => 'trips',
                 default => 'maintenance',
             });
         $isTripPage = in_array($active, ['trip-masters', 'trips-dashboard', 'trips-operations-dashboard', 'trips-operations', 'trip-operations-create', 'trip-operations-detail', 'trips-fuel-pending', 'trips-profitability', 'trips-commercial-closing', 'customer-accounts', 'customer-account-detail'], true);
-        $isModulePage = in_array($active, ['theoretical-cost-km', 'fleet-board', 'fuel-module', 'tire-masters'], true);
+        $isModulePage = in_array($active, ['theoretical-cost-km', 'fleet-board', 'fuel-module', 'tire-registry', 'tire-detail', 'tire-masters'], true);
         if ($active !== 'command-center' && ! $isModulePage && ! $isTripPage && $actor->isSuperAdmin()) {
             $navigation[] = $this->item('superadmin', 'Administración global', 'superadmin', 'building', $active);
             $navigation[] = $this->item('whatsapp-digest-preview', 'Previsualizar resumen WhatsApp', 'superadmin/whatsapp/resumen-diario', 'notifications', $active);
@@ -222,6 +222,9 @@ final readonly class AppShellPayload
     private function tiresNavigation(ActorContext $actor, string $active): array
     {
         return array_values(array_filter([
+            $actor->hasPermission('neumaticos.ver')
+                ? $this->item('tire-registry', 'Padrón', 'neumaticos', 'module-tires', $active === 'tire-detail' ? 'tire-registry' : $active)
+                : null,
             $actor->hasPermission('neumaticos.ver')
                 ? $this->item('tire-masters', 'Maestros', 'neumaticos/maestros', 'clipboard-list', $active)
                 : null,
