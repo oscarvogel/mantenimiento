@@ -6,6 +6,7 @@ namespace App\Infrastructure\Neumaticos;
 
 use App\Application\Neumaticos\NeumaticRegistryFilters;
 use App\Application\Neumaticos\Port\NeumaticRegistryReadModel;
+use App\Domain\Neumaticos\NeumaticPosition;
 use CodeIgniter\Database\BaseBuilder;
 use CodeIgniter\Database\BaseConnection;
 
@@ -148,6 +149,10 @@ final class CodeIgniterNeumaticRegistryReadModel implements NeumaticRegistryRead
             ->join('neumatico_marcas b', 'b.id = n.marca_id AND b.empresa_id = n.empresa_id', 'left')
             ->join('neumatico_modelos m', 'm.id = n.modelo_id AND m.empresa_id = n.empresa_id', 'left')
             ->join('neumatico_tipos_cubierta t', 't.id = n.tipo_cubierta_id AND t.empresa_id = n.empresa_id', 'left')
+            // Dónde está colocado hoy: la colocación activa y su equipo
+            // (Registro de activos, solo lectura del nombre).
+            ->join('neumatico_colocaciones c', 'c.neumatico_id = n.id AND c.empresa_id = n.empresa_id AND c.activa = 1', 'left')
+            ->join('equipos e', 'e.id = c.equipo_id AND e.empresa_id = c.empresa_id', 'left')
             ->where('n.empresa_id', $companyId);
         if ($branchIds !== null) {
             $query->whereIn('n.sucursal_id', $branchIds);
@@ -159,12 +164,14 @@ final class CodeIgniterNeumaticRegistryReadModel implements NeumaticRegistryRead
     private function columns(): string
     {
         return 'n.id, n.numero, n.estado, n.medida, n.anio_fabricacion, n.sucursal_id, s.nombre AS branch_name, '
-            . 'b.nombre AS brand_name, m.nombre AS model_name, t.descripcion AS cover_type_name';
+            . 'b.nombre AS brand_name, m.nombre AS model_name, t.descripcion AS cover_type_name, '
+            . 'c.equipo_id AS mounted_equipment_id, e.patente AS mounted_plate, e.codigo AS mounted_code, '
+            . 'c.lugar AS mounted_axle, c.lado AS mounted_side, c.posicion AS mounted_slot';
     }
 
     /**
      * @param array<string, mixed> $row
-     * @return array{id: int, number: string, status: string, size: string, year: int|null, brandName: string|null, modelName: string|null, coverTypeName: string|null, branchId: int, branchName: string}
+     * @return array{id: int, number: string, status: string, size: string, year: int|null, brandName: string|null, modelName: string|null, coverTypeName: string|null, branchId: int, branchName: string, mountedOn: string|null}
      */
     private function item(array $row): array
     {
@@ -179,7 +186,26 @@ final class CodeIgniterNeumaticRegistryReadModel implements NeumaticRegistryRead
             'coverTypeName' => $row['cover_type_name'] === null ? null : (string) $row['cover_type_name'],
             'branchId' => (int) $row['sucursal_id'],
             'branchName' => (string) $row['branch_name'],
+            'mountedOn' => $this->mountedOn($row),
         ];
+    }
+
+    /**
+     * "AB123CD · M10 · Eje 2 · izquierdo · exterior", o null si no está colocado.
+     *
+     * @param array<string, mixed> $row
+     */
+    private function mountedOn(array $row): ?string
+    {
+        if (($row['mounted_equipment_id'] ?? null) === null) {
+            return null;
+        }
+        $plate = trim((string) ($row['mounted_plate'] ?? ''));
+        $code = trim((string) ($row['mounted_code'] ?? ''));
+        $equipment = $plate !== '' ? $plate . ($code !== '' ? ' · ' . $code : '') : $code;
+        $position = NeumaticPosition::fromStored((string) $row['mounted_axle'], (string) $row['mounted_side'], (string) $row['mounted_slot'], null);
+
+        return $equipment . ' · ' . $position->spotLabel();
     }
 
     private static function nullableInt(mixed $value): ?int

@@ -113,6 +113,7 @@ const describe = (item) => [item.brandName, item.modelName, item.size].filter(Bo
             <div class="min-w-0">
               <p class="font-semibold text-ink">{{ item.number }}</p>
               <p class="mt-0.5 truncate text-sm text-ink-muted">{{ describe(item) || 'Sin marca ni medida cargadas' }}</p>
+              <p v-if="item.mountedOn" class="mt-0.5 truncate text-sm text-ink">Colocado en {{ item.mountedOn }}</p>
             </div>
             <div class="flex flex-wrap items-center gap-2 text-sm">
               <span class="text-ink-muted">{{ item.branchName }}</span>
