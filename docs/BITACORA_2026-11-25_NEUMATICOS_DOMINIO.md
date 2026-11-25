@@ -351,8 +351,53 @@ necesita su propia copia de `vendor`.
   - Rollback: la tabla desaparece; volver a migrar: OK.
   - La primera corrida se postergó porque `fasa_189` no era accesible desde la red del usuario.
 
-## 11. Qué sigue
+## 11. Paso 3b: colocar y extraer desde la ficha (rama `feat/neumaticos-colocar-pantalla`)
+
+**Qué hace:**
+
+- La ficha suma la sección **Ubicación**:
+  - Colocado: dónde está (equipo y posición), desde cuándo y con qué km, y el formulario para
+    **extraer** (km y fecha).
+  - No colocado: el formulario para **colocar** (equipo activo de las sucursales del usuario,
+    eje, lado, rueda, botón opcional, km y fecha), con el aviso de que registra una lectura,
+    saca el neumático del depósito y lo pasa a la sucursal del equipo.
+  - Si el estado no permite colocarlo, explica por qué. Si no hay equipos activos, lo dice.
+- El rendimiento nombra el equipo y la posición de cada colocación.
+- El padrón dice dónde está colocado cada neumático.
+- `GetNeumaticDetail` usa `EquipmentFleetLookup` (nombre del equipo, aunque esté de baja) y
+  `EquipmentFleetCatalog` (equipos activos). Rutas `POST neumaticos/{id}/colocar` y
+  `POST neumaticos/{id}/extraer` con `neumaticos.operar` y CSRF.
+
+**Evidencia:**
+
+- PHPUnit completo: 2380 pruebas, sin fallos. Vitest: 612 (5 casos nuevos en la ficha, 1 en el
+  padrón). `verify:build-sync` OK.
+- **Verificación de punta a punta en MariaDB real** (instancia temporal de `fasa_189` con la
+  imagen de staging; al terminar, todo en cero, verificado):
+  - Colocar TSA 181917 (en el depósito Central) en AB123CD, eje 2 izquierdo exterior, con
+    120.500 km: Medición registró la lectura `NEUMATICO` con su referencia, el odómetro pasó
+    de 120.000 a 120.500 y el depósito registró la salida automática (`COLOCACION`). Todo en
+    una sola transacción.
+  - **Rollback real:** un primer intento falló en Medición ("El tipo de equipo no controla
+    kilometraje", porque el tipo de prueba tenía `controla_km = 0`). La base quedó con 0
+    colocaciones, 0 lecturas y la existencia del depósito en 1: la salida automática se deshizo.
+  - Colocar TSA 229704 en la posición ocupada: rechazado, nombrando al neumático que la ocupa,
+    y el formulario conserva lo cargado.
+  - Colocarla en la rueda interior con fecha de ayer y 119.000 km (menor al actual): lectura
+    **histórica**, el odómetro no bajó, y el neumático **pasó de Posadas a la sucursal del
+    equipo**.
+  - Extraer TSA 181917 con 132.000 km: 11.500 km de rendimiento, lectura registrada, odómetro
+    en 132.000, la colocación queda cerrada y el formulario de colocar vuelve a aparecer.
+  - TSA 001 (en reparación) explica por qué no se puede colocar.
+  - Móvil (375 px): el formulario se apila en una columna, sin scroll horizontal.
+
+**Pregunta abierta para el cliente:** los equipos de tipo **Máquina** controlan horas y no km
+(en staging hay 3). Colocar un neumático en una máquina hoy falla en Medición con "El tipo de
+equipo no controla kilometraje". ¿Las máquinas llevan neumáticos que haya que seguir? Si es así,
+hay que decidir si la colocación en una máquina registra horas o no registra lectura.
+
+## 12. Qué sigue
 
 - Deploy a Ferozo por el portón `migrate.php` (`scripts/aplicar-migraciones-produccion.py`).
-- 3b: pantallas para colocar y extraer desde la ficha, y los neumáticos de cada equipo.
+- Mapa de posiciones del equipo: qué neumático va en cada eje, lado y rueda.
 - Adaptadores de `GomeriaOrderLauncher` y `PreventiveNeumaticEventPublisher`.
