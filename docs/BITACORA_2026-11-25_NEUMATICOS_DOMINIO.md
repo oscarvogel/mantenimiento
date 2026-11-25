@@ -76,10 +76,43 @@ Transiciones vigentes:
 
 Cambiar una regla es editar `NeumaticStatus::nextStates()` y su prueba.
 
-## 5. Qué sigue
+## 5. Casos de uso (segundo PR, rama `feat/neumaticos-casos-de-uso`)
 
-- Casos de uso de §5.5 (`RegistrarNeumatico`, `ColocarNeumatico`, `ExtraerNeumatico`,
-  `CambiarEstadoNeumatico`, movimientos de depósito) con puertos falsos.
+En `app/Application/Neumaticos`, probados con dobles en memoria
+(`tests/_support/Neumaticos/InMemoryNeumatics.php`), sin base:
+
+| Plan §5.5 | Caso de uso | Permiso |
+|---|---|---|
+| `RegistrarNeumaticoCommand` | `RegisterNeumatic` | `neumaticos.operar` |
+| `ActualizarNeumaticoCommand` | `UpdateNeumatic` | `neumaticos.operar` |
+| `CambiarEstadoNeumaticoCommand` | `ChangeNeumaticStatus` | `neumaticos.operar` |
+| `RegistrarEntradaDepositoCommand` / `RegistrarSalidaDepositoCommand` | `RegisterDepositMovement` (entrada, salida o ajuste) | `neumaticos.operar` |
+| `ObtenerRendimientoNeumaticoQuery` | `GetNeumaticPerformance` | `neumaticos.ver` (también `operar`) |
+
+Puertos nuevos en `app/Application/Neumaticos/Port`: `NeumaticRepository`, `NeumaticCatalog`,
+`NeumaticBranchScope`, `NeumaticDepositRepository`, `NeumaticsUnitOfWork` y `NeumaticClock`.
+En el dominio se sumó `NeumaticDepositMovement`.
+
+Reglas de aplicación:
+
+- Todo acceso lleva empresa y sucursales del actor. Un neumático, sucursal o depósito de otra
+  empresa responde igual que uno inexistente.
+- El Superadministrador global no opera neumáticos: no tiene empresa.
+- El número es único **por empresa**; otra empresa puede usar el mismo. La migración debe
+  respaldarlo con un índice único `(empresa_id, numero)`.
+- El modelo tiene que ser de la marca elegida, y marca, modelo y tipo de cubierta tienen que
+  estar activos.
+- Altas, cambios de estado y movimientos no aceptan fecha futura.
+- Un neumático colocado o en estado final no ingresa a un depósito.
+- Existencia y movimiento se guardan juntos: no hay saldo sin movimiento que lo explique.
+- Los permisos `neumaticos.ver` y `neumaticos.operar` todavía no existen en la base: los crea
+  la migración del próximo PR.
+
+Pregunta abierta: `deposito_stock.cantidad` admite más de 1, pero cada neumático es único. ¿La
+existencia de un neumático en un depósito es siempre 0 o 1? Hoy no se limita.
+
+## 6. Qué sigue
+
 - Migraciones de §5.12 y adaptadores de persistencia.
 - Adaptadores de `NeumaticReadingRecorder`, `GomeriaOrderLauncher` y
   `PreventiveNeumaticEventPublisher` (ver `CONTRATOS_ENTRE_CONTEXTOS.md` §5).
