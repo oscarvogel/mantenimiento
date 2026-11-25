@@ -44,6 +44,20 @@ final class CodeIgniterNeumaticDepositRepository implements NeumaticDepositRepos
         return $row === null ? null : NeumaticDepositStock::reconstitute($depositId, $neumaticId, (int) $row['cantidad']);
     }
 
+    public function positiveStocksForUpdate(int $companyId, int $neumaticId): array
+    {
+        $sql = 'SELECT deposito_id, cantidad FROM ' . $this->database->prefixTable('deposito_stock')
+            . ' WHERE empresa_id = ? AND neumatico_id = ? AND cantidad > 0 ORDER BY deposito_id';
+        if ($this->database->DBDriver !== 'SQLite3') {
+            $sql .= ' FOR UPDATE';
+        }
+
+        return array_map(
+            static fn (array $row): NeumaticDepositStock => NeumaticDepositStock::reconstitute((int) $row['deposito_id'], $neumaticId, (int) $row['cantidad']),
+            $this->database->query($sql, [$companyId, $neumaticId])->getResultArray(),
+        );
+    }
+
     public function record(int $companyId, NeumaticDepositStock $stock, NeumaticDepositMovement $movement, int $actorUserId): void
     {
         $now = date(self::DATETIME);

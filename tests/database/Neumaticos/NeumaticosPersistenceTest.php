@@ -30,6 +30,7 @@ use DateTimeImmutable;
 use DomainException;
 use LogicException;
 use PHPUnit\Framework\TestCase;
+use Tests\Support\Neumaticos\NeumaticSchema;
 use Tests\Support\Neumaticos\InMemoryNeumatics;
 use Throwable;
 
@@ -66,6 +67,7 @@ final class NeumaticosPersistenceTest extends TestCase
         $this->database->table('usuarios')->insertBatch([['id' => 12], ['id' => 13]]);
 
         (new CreateNeumaticosTables(Database::forge($this->database)))->up();
+        NeumaticSchema::installMountings($this->database);
 
         $now = '2026-11-01 00:00:00';
         $this->database->table('neumatico_marcas')->insertBatch([
@@ -207,14 +209,63 @@ final class NeumaticosPersistenceTest extends TestCase
         self::assertNull($this->repository()->find(7, [], $id));
     }
 
-    public function testMountingsAreNotSilentlyDropped(): void
+    public function testMountingsRoundTripWithTheirRemoval(): void
     {
+        $this->equipment(10);
         $tire = Neumatic::register(7, 1, new NeumaticNumber('TSA 1'), new DateTimeImmutable('2026-11-01'));
-        $tire->mount(10, new NeumaticPosition(1, 'I', 'E'), new DateTimeImmutable('2026-11-02'), 1000);
+        $id = $this->repository()->add($tire, 12);
 
-        $this->expectException(LogicException::class);
+        $loaded = $this->repository()->findForUpdate(7, null, $id);
+        $loaded?->mount(10, new NeumaticPosition(2, 'D', 'I', 'b4'), new DateTimeImmutable('2026-11-02 08:00'), 100_000);
+        $this->repository()->save($loaded, 12);
+        $mounted = $this->repository()->find(7, null, $id);
+        self::assertTrue($mounted?->isMounted());
+        self::assertSame('Eje 2 · derecho · interior · botón B4', $mounted?->currentMounting()?->position->label());
 
-        $this->repository()->add($tire, 12);
+        $mounted->remove(new DateTimeImmutable('2026-11-20 17:00'), 112_500);
+        $this->repository()->save($mounted, 13);
+
+        $removed = $this->repository()->find(7, null, $id);
+        self::assertFalse($removed?->isMounted());
+        self::assertSame(12_500, $removed?->totalKilometers());
+        $row = $this->database->table('neumatico_colocaciones')->where('neumatico_id', $id)->get()->getRowArray();
+        self::assertNull($row['activa']);
+        self::assertSame('2', $row['lugar']);
+        self::assertSame(13, (int) $row['updated_by']);
+        self::assertSame(1, $this->database->table('neumatico_colocaciones')->countAllResults(), 'el historial no se duplica');
+    }
+
+    public function testTheDatabaseRejectsTwoTiresInTheSameSpot(): void
+    {
+        $this->equipment(10);
+        foreach (['TSA 1', 'TSA 2'] as $index => $number) {
+            $tire = Neumatic::register(7, 1, new NeumaticNumber($number), new DateTimeImmutable('2026-11-01'));
+            $tire->mount(10, new NeumaticPosition(1, 'I', 'E'), new DateTimeImmutable('2026-11-02'), 1000);
+            if ($index === 1) {
+                $this->expectException(Throwable::class);
+            }
+            $this->repository()->add($tire, 12);
+        }
+    }
+
+    public function testTheSpotIsFreeAgainAfterTheRemoval(): void
+    {
+        $this->equipment(10);
+        $first = Neumatic::register(7, 1, new NeumaticNumber('TSA 1'), new DateTimeImmutable('2026-11-01'));
+        $first->mount(10, new NeumaticPosition(1, 'I', 'E'), new DateTimeImmutable('2026-11-02'), 1000);
+        $first->remove(new DateTimeImmutable('2026-11-03'), 1500);
+        $this->repository()->add($first, 12);
+
+        $second = Neumatic::register(7, 1, new NeumaticNumber('TSA 2'), new DateTimeImmutable('2026-11-01'));
+        $second->mount(10, new NeumaticPosition(1, 'I', 'E'), new DateTimeImmutable('2026-11-04'), 1500);
+
+        self::assertGreaterThan(0, $this->repository()->add($second, 12));
+    }
+
+    private function equipment(int $id): void
+    {
+        $this->database->table('tipos_equipo')->insert(['id' => 1, 'nombre' => 'Tractor']);
+        $this->database->table('equipos')->insert(['id' => $id, 'empresa_id' => 7, 'sucursal_id' => 1, 'tipo_equipo_id' => 1, 'codigo' => 'M' . $id, 'patente' => 'AB' . $id . 'CD']);
     }
 
     public function testDepositMovementsKeepStockAndMovementTogether(): void

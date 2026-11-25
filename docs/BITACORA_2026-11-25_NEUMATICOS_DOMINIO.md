@@ -306,8 +306,46 @@ necesita su propia copia de `vendor`.
   - Móvil (375 px): sin scroll horizontal; el formulario entra completo y arranca en el depósito
     filtrado.
 
-## 10. Qué sigue
+## 10. Paso 3a: colocación y extracción (rama `feat/neumaticos-colocaciones`)
 
-- Adaptadores de `NeumaticReadingRecorder`, `GomeriaOrderLauncher` y
-  `PreventiveNeumaticEventPublisher` (ver `CONTRATOS_ENTRE_CONTEXTOS.md` §5).
-- Todo lo que resuelve en qué equipo está el neumático sigue bloqueado por D7.
+**Decisiones del usuario (25/11/2026):**
+
+1. **Posición cerrada:** eje (1 a 10), lado (izquierdo/derecho) y rueda exterior, interior o
+   simple (única del lado). El botón es texto opcional y no distingue posiciones. Se guarda en
+   las columnas del sistema anterior: lugar = eje, lado `I`/`D`, posición `E`/`I`/`S`.
+2. **Km atrasado:** se acepta como lectura histórica, igual que los viajes.
+3. **Neumático en depósito:** la colocación le da salida automática (planilla `COLOCACION`).
+4. **Otra sucursal:** el neumático pasa a la sucursal del equipo.
+
+**Qué se hizo:**
+
+- Dominio: `NeumaticPosition` con valores cerrados, `label()` y `spotLabel()`.
+- **Medición:** origen `NEUMATICO`, aceptado con `neumaticos.operar`, histórico como `VIAJE`.
+  El frontend lo muestra como "Colocación de neumático". Ver `CONTRATOS_ENTRE_CONTEXTOS.md` §4.3.
+- Migración `2026-11-25-150000_CreateNeumaticoColocaciones`: **una sola tabla**, una fila por
+  colocación. La spec separa ubicaciones e historial; acá la ubicación actual es la fila con
+  `activa = 1` (NULL después de extraer). Dos índices únicos sobre `activa` hacen cumplir en la
+  base que un neumático esté en un solo lugar y que una posición tenga un solo neumático, sin
+  borrar historial.
+- El repositorio guarda y lee las colocaciones (solo agrega al final y cierra la activa).
+- Contrato nuevo `EquipmentFleetCatalog` (Assets): equipos activos con scope de sucursal.
+- Casos de uso `MountNeumatic` y `RemoveNeumatic`: una sola transacción con la lectura del
+  equipo. La extracción no manda el neumático a un depósito: lo decide el operador.
+- **D7 no bloquea:** se coloca sobre los equipos que ya existen en el sistema.
+
+**Evidencia:**
+
+- `MountAndRemoveNeumaticTest` (13), los tests de persistencia de colocaciones (ida y vuelta,
+  posición ocupada rechazada por la base, posición liberada al extraer) y 2 tests nuevos de
+  `RegisterReadingHandlerTest`. PHPUnit completo: 2376 pruebas, sin fallos. Vitest: 606;
+  `verify:build-sync` OK.
+- **Pendiente: la verificación en MariaDB de staging.** El 25/11 `fasa_189` dejó de responder
+  por SSH (timeout en el puerto 22) antes de copiar nada. El script está listo: migración desde
+  cero, los dos índices únicos con NULL, la FK compuesta a `equipos`, liberar la posición al
+  extraer y el rollback.
+
+## 11. Qué sigue
+
+- Verificar la migración de colocaciones en MariaDB cuando `fasa_189` vuelva.
+- 3b: pantallas para colocar y extraer desde la ficha, y los neumáticos de cada equipo.
+- Adaptadores de `GomeriaOrderLauncher` y `PreventiveNeumaticEventPublisher`.

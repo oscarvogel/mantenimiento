@@ -4,15 +4,66 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Assets;
 
+use App\Application\Assets\Port\EquipmentFleetCatalog;
 use App\Application\Assets\Port\EquipmentFleetLookup;
 use App\Domain\Assets\Equipment;
 use App\Domain\Assets\EquipmentRelation;
 use CodeIgniter\Database\BaseConnection;
 
-final class CodeIgniterEquipmentFleetLookup implements EquipmentFleetLookup
+final class CodeIgniterEquipmentFleetLookup implements EquipmentFleetLookup, EquipmentFleetCatalog
 {
     public function __construct(private readonly BaseConnection $database)
     {
+    }
+
+    public function activeEquipment(int $companyId, ?array $branchIds): array
+    {
+        if ($branchIds === []) {
+            return [];
+        }
+        $query = $this->database->table('equipos e')
+            ->select('e.id, e.sucursal_id, e.codigo, e.patente')
+            ->where('e.empresa_id', $companyId)
+            ->where('e.estado', Equipment::ACTIVE)
+            ->where('e.deleted_at', null)
+            ->orderBy('e.patente', 'ASC')
+            ->orderBy('e.codigo', 'ASC');
+        if ($branchIds !== null) {
+            $query->whereIn('e.sucursal_id', $branchIds);
+        }
+
+        return array_map(fn (array $row): array => $this->catalogItem($row), $query->get()->getResultArray());
+    }
+
+    public function activeEquipmentById(int $companyId, int $equipmentId): ?array
+    {
+        $row = $this->database->table('equipos e')
+            ->select('e.id, e.sucursal_id, e.codigo, e.patente')
+            ->where('e.empresa_id', $companyId)
+            ->where('e.id', $equipmentId)
+            ->where('e.estado', Equipment::ACTIVE)
+            ->where('e.deleted_at', null)
+            ->get()->getRowArray();
+
+        return $row === null ? null : $this->catalogItem($row);
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     * @return array{id: int, branchId: int, label: string, plate: string, code: string}
+     */
+    private function catalogItem(array $row): array
+    {
+        $plate = trim((string) ($row['patente'] ?? ''));
+        $code = trim((string) ($row['codigo'] ?? ''));
+
+        return [
+            'id' => (int) $row['id'],
+            'branchId' => (int) $row['sucursal_id'],
+            'label' => $plate !== '' ? $plate . ($code !== '' ? ' · ' . $code : '') : $code,
+            'plate' => $plate,
+            'code' => $code,
+        ];
     }
 
     public function equipment(int $companyId, int $equipmentId): ?array

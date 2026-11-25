@@ -169,9 +169,9 @@ Cada tarea debe tener un agente propietario. Si cruza contextos, dividir el trab
 - Lenguaje: Neumático, Marca, Modelo, Estado, Ubicación, Colocación, Depósito y Gomería.
 - Es dueño del padrón y del ciclo de vida del neumático, que es un activo con historial propio, independiente del equipo que lo monta.
 - **La gomería no es un módulo paralelo:** se apoya en `WorkOrders` con origen `GOMERIA`. Duplicar el ciclo de vida de una orden sería el error más caro del proyecto.
-- Contratos ya escritos en `app/Application/Neumaticos/Port`: `GomeriaOrderLauncher`, `NeumaticReadingRecorder` y `PreventiveNeumaticEventPublisher`. Falta sus adaptadores.
-- Dominio, casos de uso y persistencia escritos (`app/Domain/Neumaticos`, `app/Application/Neumaticos`, `app/Infrastructure/Neumaticos`, migraciones `2026-11-25`). Pantallas de maestros, padrón, ficha y depósito hechas; faltan las colocaciones en equipos, la gomería sobre órdenes de trabajo y los eventos al preventivo. Los supuestos y las transiciones del ciclo de vida confirmadas por el cliente están en `docs/BITACORA_2026-11-25_NEUMATICOS_DOMINIO.md`.
-- Bloqueado por D7 (padrón definitivo de flota).
+- Contratos en `app/Application/Neumaticos/Port`: `NeumaticReadingRecorder` implementado (origen `NEUMATICO` en Medición); `GomeriaOrderLauncher` y `PreventiveNeumaticEventPublisher` sin adaptador.
+- Dominio, casos de uso y persistencia escritos (`app/Domain/Neumaticos`, `app/Application/Neumaticos`, `app/Infrastructure/Neumaticos`, migraciones `2026-11-25`). Pantallas de maestros, padrón, ficha y depósito hechas; colocación y extracción hechas en dominio y aplicación (falta su pantalla); faltan la gomería sobre órdenes de trabajo y los eventos al preventivo. Los supuestos y las transiciones del ciclo de vida confirmadas por el cliente están en `docs/BITACORA_2026-11-25_NEUMATICOS_DOMINIO.md`.
+- D7 (padrón definitivo de flota) ya no bloquea: se coloca sobre los equipos existentes. Sigue condicionando la importación por patente.
 
 ### 14. Facturación electrónica
 

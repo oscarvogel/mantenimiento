@@ -14,6 +14,7 @@ use App\Domain\Neumaticos\Neumatic;
 use App\Domain\Neumaticos\NeumaticDepositMovement;
 use App\Domain\Neumaticos\NeumaticDepositStock;
 use App\Domain\Neumaticos\NeumaticNumber;
+use App\Domain\Neumaticos\NeumaticPosition;
 use DateTimeImmutable;
 use Throwable;
 
@@ -171,6 +172,32 @@ final class InMemoryNeumatics implements NeumaticRepository, NeumaticCatalog, Ne
     public function stock(int $depositId, int $neumaticId): ?int
     {
         return ($this->stocks[$depositId . ':' . $neumaticId] ?? null)?->quantity();
+    }
+
+    public function positiveStocksForUpdate(int $companyId, int $neumaticId): array
+    {
+        $result = [];
+        foreach ($this->stocks as $stock) {
+            $deposit = $this->deposits[$stock->depositId()] ?? null;
+            if ($stock->neumaticId() === $neumaticId && $stock->quantity() > 0 && ($deposit === null || $deposit['company'] === $companyId)) {
+                $result[] = NeumaticDepositStock::reconstitute($stock->depositId(), $neumaticId, $stock->quantity());
+            }
+        }
+
+        return $result;
+    }
+
+    public function occupant(int $companyId, int $equipmentId, NeumaticPosition $position): ?string
+    {
+        foreach ($this->neumatics as $neumatic) {
+            $mounting = $neumatic->currentMounting();
+            if ($neumatic->companyId() === $companyId && $mounting !== null
+                && $mounting->equipmentId === $equipmentId && $mounting->position->sameSpotAs($position)) {
+                return $neumatic->number()->value;
+            }
+        }
+
+        return null;
     }
 
     public function record(int $companyId, NeumaticDepositStock $stock, NeumaticDepositMovement $movement, int $actorUserId): void

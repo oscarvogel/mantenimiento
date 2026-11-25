@@ -42,7 +42,8 @@ seguir.
 | `EquipoPorPatenteQuery` | `EquipmentFleetLookup` | `app/Application/Assets/Port/EquipmentFleetLookup.php` | Assets | **Implementado.** Resuelve por id y por patente. |
 | — (nuevo) | `EmployeeDirectoryLookup` | `app/Application/Employees/Port/EmployeeDirectoryLookup.php` | Employees | **Implementado.** Resuelve el chofer. |
 | `RegistrarLecturaCommand` (Viajes) | `TripReadingRecorder` | `app/Application/Trips/Port/TripReadingRecorder.php` | Measurement | **Implementado y en uso.** |
-| `RegistrarLecturaCommand` (Neumáticos) | `NeumaticReadingRecorder` | `app/Application/Neumaticos/Port/NeumaticReadingRecorder.php` | Measurement | **Contrato escrito. Falta adaptador.** |
+| `RegistrarLecturaCommand` (Neumáticos) | `NeumaticReadingRecorder` | `app/Application/Neumaticos/Port/NeumaticReadingRecorder.php` | Measurement | **Implementado** (`MeasurementNeumaticReadingRecorder`). Colocar y extraer registran la lectura con origen `NEUMATICO` dentro de la misma transacción. |
+| — (nuevo) | `EquipmentFleetCatalog` | `app/Application/Assets/Port/EquipmentFleetCatalog.php` | Assets (lectura) | **Implementado** por `CodeIgniterEquipmentFleetLookup`. Equipos activos (`estado = 'ACTIVO'`, sin baja) con el scope de sucursal, para elegir dónde colocar un neumático. Separado de `EquipmentFleetLookup` para no obligar a Viajes a implementar métodos que no usa. |
 | — (nuevo) | `NeumaticBranchScope` | `app/Application/Neumaticos/Port/NeumaticBranchScope.php` | Organización (lectura) | **Implementado.** Neumáticos confirma que la sucursal es de la empresa y está activa (`CodeIgniterNeumaticBranchScope`). No escribe en `sucursales`. |
 | — (nuevo) | `NeumaticRegistryReadModel` | `app/Application/Neumaticos/Port/NeumaticRegistryReadModel.php` | Organización e Identidad (lectura) | **Implementado.** El padrón y la ficha leen el nombre de la sucursal (`sucursales`) y el del usuario de la bitácora (`usuarios`) para mostrarlos. Solo lectura, siempre con la empresa del actor. |
 | — (nuevo) | `NeumaticDepositReadModel` | `app/Application/Neumaticos/Port/NeumaticDepositReadModel.php` | Organización e Identidad (lectura) | **Implementado.** La pantalla del depósito lee el nombre de la sucursal del depósito y el del usuario de cada movimiento. Solo lectura, con la empresa y las sucursales del actor. |
@@ -124,6 +125,12 @@ public function record(ActorContext $actor, int $equipmentId, DateTimeImmutable 
 `IMPORTACION`, `CARGA_RAPIDA`, `ALTA_INICIAL`, `QR_ANONIMO` y `VIAJE`. No tiene un origen
 para eventos de neumático. Hay que agregar `NEUMATICO` a ese dominio **antes** de
 implementar el adaptador, y esa adición es un cambio de dominio, no de infraestructura.
+
+**Resuelto el 25/11/2026:** `EquipmentReading::TIRE = 'NEUMATICO'`. `RegisterReadingHandler`
+acepta ese origen con `neumaticos.operar` (sin `lecturas.cargar`), y lo trata como a `VIAJE`: un
+km menor al actual del equipo, cubierto por una lectura posterior, queda como lectura histórica
+y no baja el odómetro (decisión del usuario: las planillas atrasadas se pueden cargar). El
+permiso de neumáticos no habilita ningún otro origen.
 
 ### 4.4 `OperationalCostByEquipmentQuery` — responde Viajes
 
@@ -301,7 +308,7 @@ tiene otra base que el del camión, por eso Preventivo solo usa diferencias.
 
 | Adaptador | Contexto que lo aporta | Bloqueado por |
 |---|---|---|
-| `NeumaticReadingRecorder` → `RegisterReadingHandler` | Measurement | D7, y agregar origen `NEUMATICO` al dominio |
+| `NeumaticReadingRecorder` → `RegisterReadingHandler` | Measurement | **Implementado** el 25/11/2026. D7 no lo bloquea: se coloca sobre los equipos que ya existen. |
 | `OperationalCostByEquipmentQuery` → read model de viajes | Viajes | D5 (una o cuatro empresas) |
 | `GomeriaOrderLauncher` → caso de uso de órdenes | WorkOrders | Fase 3 |
 | `PreventiveNeumaticEventPublisher` → plan preventivo | PreventiveMaintenance | Fase 3 |

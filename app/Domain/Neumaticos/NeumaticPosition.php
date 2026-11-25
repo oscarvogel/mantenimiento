@@ -89,8 +89,14 @@ final readonly class NeumaticPosition
 
     public function label(): string
     {
-        $label = sprintf('Eje %d · %s · %s', $this->axle, self::SIDES[$this->side], self::SLOTS[$this->slot]);
+        return $this->button === null ? $this->spotLabel() : $this->spotLabel() . ' · botón ' . $this->button;
+    }
 
-        return $this->button === null ? $label : $label . ' · botón ' . $this->button;
+    /**
+     * El lugar sin el botón: es lo que puede estar ocupado.
+     */
+    public function spotLabel(): string
+    {
+        return sprintf('Eje %d · %s · %s', $this->axle, self::SIDES[$this->side], self::SLOTS[$this->slot]);
     }
 }

@@ -23,4 +23,12 @@ interface NeumaticDepositRepository
      * saldo sin movimiento que lo explique.
      */
     public function record(int $companyId, NeumaticDepositStock $stock, NeumaticDepositMovement $movement, int $actorUserId): void;
+
+    /**
+     * Existencias positivas del neumático en cualquier depósito de la
+     * empresa, con bloqueo: son las que una colocación tiene que sacar.
+     *
+     * @return list<NeumaticDepositStock>
+     */
+    public function positiveStocksForUpdate(int $companyId, int $neumaticId): array;
 }
