@@ -65,6 +65,7 @@ final class GetOperationalTrip
             'logbook' => base_url('viajes/operativos/' . $tripId . '/diario-bordo'),
             'percentage' => base_url('viajes/operativos/' . $tripId . '/porcentaje'),
             'concept' => base_url('viajes/operativos/' . $tripId . '/conceptos'),
+            'category' => base_url('viajes/operativos/' . $tripId . '/categorias-gasto'),
             'legs' => base_url('viajes/operativos/' . $tripId . '/tramos'),
             'update' => base_url('viajes/operativos/' . $tripId),
             'finish' => base_url('viajes/operativos/' . $tripId . '/cerrar'),
@@ -74,6 +75,7 @@ final class GetOperationalTrip
         // El concepto se puede dar de alta en el lugar: no hace falta salir
         // del viaje para ir a Maestros de Viajes.
         $detail['canCreateConcepts'] = CreateTripConcept::canCreateConcept($actor);
+        $detail['canCreateExpenseCategories'] = CreateTripExpenseCategory::canCreateCategory($actor);
         $detail['canRegisterCosts'] = $detail['canOperate']
             && in_array($detail['trip']['estado'] ?? null, [Trip::PLANIFICADO, Trip::EN_CURSO], true);
         $detail['canEdit'] = $detail['canRegisterCosts'];

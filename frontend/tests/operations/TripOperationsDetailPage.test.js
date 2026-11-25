@@ -661,7 +661,7 @@ describe('detalle de viaje operativo', () => {
     await nextTick()
 
     const form = wrapper.get('form[action="/mantenimiento/viajes/operativos/42/gastos"]')
-    const conceptSelect = form.getComponent(AutocompleteSelect)
+    const conceptSelect = form.findAllComponents(AutocompleteSelect)[1]
     await conceptSelect.setValue('10')
     await form.get('input[name="cantidad"]').setValue('1.5')
     await conceptSelect.setValue('10')

@@ -77,6 +77,7 @@ $routes->post('viajes/operativos/(:num)/porcentaje', 'OperationalTrips::updateDr
 // Alta rapida de un concepto del catalogo desde el propio viaje: el operador
 // no deja la pantalla para ir a Maestros de Viajes.
 $routes->post('viajes/operativos/(:num)/conceptos', 'OperationalTrips::addConcept/$1', ['filter' => ['auth', 'permission:viajes.operar']]);
+$routes->post('viajes/operativos/(:num)/categorias-gasto', 'OperationalTrips::addExpenseCategory/$1', ['filter' => ['auth', 'permission:viajes.operar']]);
 
 // Cuenta corriente de clientes en ARS (#530): cierre comercial por tramo y estado de cuenta.
 $routes->get('viajes/cierre-comercial', 'CustomerAccounts::closingQueue', ['filter' => ['auth', 'permission:clientes.cc.ver']]);

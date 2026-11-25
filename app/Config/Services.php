@@ -1278,6 +1278,21 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
         );
     }
 
+    /**
+     * Alta de una categoría de gasto desde el propio viaje.
+     */
+    public static function createTripExpenseCategory(bool $getShared = true): \App\Application\Trips\CreateTripExpenseCategory
+    {
+        if ($getShared) {
+            return static::getSharedInstance('createTripExpenseCategory');
+        }
+
+        return new \App\Application\Trips\CreateTripExpenseCategory(
+            new \App\Infrastructure\Trips\CodeIgniterTripExpenseCategoryCatalog(db_connect()),
+            new \App\Infrastructure\Trips\CodeIgniterOperationalTripReadModel(db_connect()),
+        );
+    }
+
     public static function getTripsDashboard(bool $getShared = true): \App\Application\Trips\GetTripsDashboard
     {
         if ($getShared) {

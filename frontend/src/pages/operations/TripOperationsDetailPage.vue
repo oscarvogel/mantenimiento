@@ -6,6 +6,7 @@ import PanelCard from './components/PanelCard.vue'
 import AutocompleteSelect from './components/AutocompleteSelect.vue'
 import LocalityCreateModal from './components/LocalityCreateModal.vue'
 import TripConceptCreateModal from './components/TripConceptCreateModal.vue'
+import TripExpenseCategoryCreateModal from './components/TripExpenseCategoryCreateModal.vue'
 import TripLegLiquidationBasisFields from './components/TripLegLiquidationBasisFields.vue'
 import { fieldClass, primaryButton, secondaryButton, dangerButton, nowLocal } from './helpers.js'
 import { useAlerts } from '../../composables/useAlerts.js'
@@ -39,7 +40,9 @@ const options = computed(() => props.data.options ?? { expenseCategories: [], pa
 // Los conceptos creados en esta pantalla se suman a los que ya venían del
 // catálogo: el operador no tiene que salir del viaje ni recargar la página.
 const createdConcepts = ref([])
+const createdExpenseCategories = ref([])
 const canCreateConcepts = computed(() => Boolean(props.data.canCreateConcepts))
+const canCreateExpenseCategories = computed(() => Boolean(props.data.canCreateExpenseCategories))
 const expenseConcepts = computed(() => [
   ...(options.value.expenseConcepts ?? []),
   ...createdConcepts.value.filter((concept) => ['GASTO', 'AMBOS'].includes(concept.categoria)),
@@ -363,6 +366,7 @@ const entryDialog = ref(null)
 const activeEntryModal = ref('')
 const editingEntry = ref(null)
 const expenseConceptId = ref('')
+const expenseCategoryId = ref('')
 const earningConceptId = ref('')
 const expenseForm = ref(null)
 const earningForm = ref(null)
@@ -370,6 +374,7 @@ const openEntryModal = (type) => {
   editingEntry.value = null
   activeEntryModal.value = type
   expenseConceptId.value = ''
+  expenseCategoryId.value = ''
   earningConceptId.value = ''
   nextTick(() => entryDialog.value?.showModal())
 }
@@ -377,6 +382,7 @@ const openEditModal = (type, entry) => {
   editingEntry.value = entry
   activeEntryModal.value = type
   expenseConceptId.value = entry?.concepto_id ?? ''
+  expenseCategoryId.value = entry?.categoria_id ?? ''
   earningConceptId.value = entry?.concepto_id ?? ''
   nextTick(() => entryDialog.value?.showModal())
 }
@@ -404,6 +410,10 @@ const conceptOptionLabel = (concept) => `${concept.label} · ${money(concept.amo
 const quantityLabel = (value) => Number(value ?? 0).toLocaleString('es-AR', { maximumFractionDigits: 2 })
 const earningConceptLabel = (earning) => earning.concepto_catalogo || earning.concepto || 'Sin concepto'
 const expenseConceptOptions = computed(() => expenseConcepts.value.map((concept) => ({ value: concept.id, label: conceptOptionLabel(concept) })))
+const expenseCategoryOptions = computed(() => [
+  ...(options.value.expenseCategories ?? []),
+  ...createdExpenseCategories.value,
+].map((category) => ({ value: category.id, label: category.label })))
 const earningConceptOptions = computed(() => earningConcepts.value.map((concept) => ({ value: concept.id, label: conceptOptionLabel(concept) })))
 const logbookConceptOptions = computed(() => logbookDayOptions.value.map((concept) => ({ value: concept.id, label: conceptOptionLabel(concept) })))
 
@@ -411,6 +421,8 @@ const logbookConceptOptions = computed(() => logbookDayOptions.value.map((concep
 // diálogo del movimiento y el concepto nuevo queda elegido en el momento.
 const conceptModalOpen = ref(false)
 const conceptModalName = ref('')
+const categoryModalOpen = ref(false)
+const categoryModalName = ref('')
 const conceptModalKind = ref('expense')
 const conceptModalDefaults = computed(() => {
   if (conceptModalKind.value === 'expense') return { category: 'GASTO', unit: 'UNIDAD' }
@@ -436,6 +448,19 @@ const applyCreatedConcept = (concept) => {
   } else if (conceptModalKind.value === 'logbook' && logbookDraft.value) {
     logbookDraft.value.conceptoId = concept.id
   }
+}
+
+const openCategoryModal = (name) => {
+  categoryModalName.value = name
+  categoryModalOpen.value = true
+}
+const closeCategoryModal = () => { categoryModalOpen.value = false }
+const applyCreatedCategory = (category) => {
+  if (!createdExpenseCategories.value.some((item) => String(item.id) === String(category.id))) {
+    createdExpenseCategories.value = [...createdExpenseCategories.value, category]
+  }
+  expenseCategoryId.value = category.id
+  closeCategoryModal()
 }
 
 const applyConceptToForm = (form, conceptId) => {
@@ -1303,7 +1328,7 @@ const facts = computed(() => {
           <input type="hidden" :name="csrf.name" :value="csrf.hash" />
           <p class="text-sm text-ink-muted">Peajes, viáticos, carga/descarga y otros gastos del viaje. Si elegís un concepto, podés calcular el importe por cantidad.</p>
           <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Categoría</span><select name="categoria_id" :value="editingEntry?.categoria_id ?? ''" :class="fieldClass"><option value="">Sin categoría</option><option v-for="category in options.expenseCategories" :key="category.id" :value="category.id">{{ category.label }}</option></select></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Categoría</span><AutocompleteSelect v-model="expenseCategoryId" name="categoria_id" :options="expenseCategoryOptions" placeholder="Buscá o escribí una categoría" :allow-create="canCreateExpenseCategories" empty-label="No hay categorías con ese nombre" @create="(name) => openCategoryModal(name)" /><span v-if="canCreateExpenseCategories" class="mt-1 block text-xs text-ink-muted">Si no existe, escribila y usé “Dar de alta” para crearla sin salir del viaje.</span></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Concepto del catálogo</span><AutocompleteSelect v-model="expenseConceptId" name="concepto_id" :options="expenseConceptOptions" placeholder="Buscá o escribí un concepto" :allow-create="canCreateConcepts" empty-label="No hay conceptos con ese nombre" @update:model-value="(value) => applyConceptToForm(expenseForm, value)" @create="(name) => openConceptModal(name, 'expense')" /><span v-if="canCreateConcepts" class="mt-1 block text-xs text-ink-muted">Si no existe, escribilo y usá «Dar de alta» para crearlo sin salir del viaje.</span></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cantidad</span><input type="number" name="cantidad" min="0.01" step="0.01" :value="editingEntry?.cantidad ?? 1" :class="fieldClass" @input="applyConceptToForm(expenseForm, expenseConceptId)" /></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Fecha y hora</span><input type="datetime-local" name="fecha" :value="editingEntry ? inputDateTime(editingEntry.fecha) : nowLocal()" required :class="fieldClass" /></label>
@@ -1421,6 +1446,14 @@ const facts = computed(() => {
       :currencies="currencies"
       @close="closeConceptModal"
       @created="applyCreatedConcept"
+    />
+    <TripExpenseCategoryCreateModal
+      :open="categoryModalOpen"
+      :initial-name="categoryModalName"
+      :create-url="data.links?.category ?? ''"
+      :csrf="csrf"
+      @close="closeCategoryModal"
+      @created="applyCreatedCategory"
     />
   </div>
 </template>
