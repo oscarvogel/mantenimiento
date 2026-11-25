@@ -34,7 +34,7 @@ Pruebas: `tests/unit/Domain/Neumaticos` (40 pruebas). Suite completa: 2261 prueb
 | 3 | Extracción no anterior a colocación | `NeumaticMounting`. |
 | 4 | `km_extraccion < km_colocacion` deja el rendimiento no confiable | `NeumaticPerformance::between()`. No es excepción: se registra y se informa `sin datos suficientes`. |
 | 5 | Stock no negativo sin ajuste documentado | `NeumaticDepositStock::dispatch()` / `adjust()`. |
-| 6 | BAJA DEFINITIVA solo desde RECAPADA, VULCANIZADA o DESCARTE | `NeumaticStatus::nextStates()`. |
+| 6 | NUEVA no pasa directo a BAJA DEFINITIVA | `NeumaticStatus::nextStates()`. Llegan a la baja EN REPARACION, RECAPADA, VULCANIZADA y DESCARTE. |
 
 ## 3. Supuestos tomados (revisar con el cliente)
 
@@ -50,21 +50,31 @@ estado:
 5. **No se da de alta en un estado final** (BAJA DEFINITIVA, TRANSFERIDA, VENDIDA).
 6. Las posiciones no se cierran a un catálogo: solo se validan los largos del sistema anterior.
 
-## 4. Preguntas abiertas sobre el ciclo de vida
+## 4. Ciclo de vida: preguntas respondidas el 25/11/2026
 
-El diagrama de §5.1 del plan está incompleto. Hasta que el cliente responda, se aplicó solo lo
-que el diagrama y la invariante 6 dicen juntos:
+El diagrama de §5.1 del plan estaba incompleto. Respuestas del cliente:
 
-1. **EN REPARACION → BAJA DEFINITIVA.** El diagrama la dibuja, pero contradice la invariante 6.
-   Se aplicó la invariante y la transición **no** está permitida. ¿Un neumático que no tiene
-   arreglo pasa a DESCARTE desde EN REPARACION?
-2. **¿Vuelve a rodar un neumático RECAPADO o VULCANIZADO?** El diagrama no muestra una salida
-   hacia EN REPARACION ni hacia 1/2 USO. Hoy, desde esos estados, solo se puede ir a BAJA
-   DEFINITIVA. Si en la práctica un recapado se repara otra vez, falta esa transición.
-3. **¿NUEVA puede ir a EN REPARACION** (pinchadura de una cubierta nueva) sin pasar por 1/2 USO?
-4. **¿1/2 USO puede ir a la venta?** Hoy solo NUEVA llega a P/VENTA.
+1. **EN REPARACION → BAJA DEFINITIVA: sí.** Un neumático sin arreglo se da de baja desde
+   reparación. La invariante 6 queda acotada a su texto literal: NUEVA no pasa directo a la baja.
+2. **RECAPADA o VULCANIZADA → EN REPARACION: sí.** Un neumático recapado o vulcanizado puede
+   volver a repararse.
+3. **NUEVA → EN REPARACION: sí**, sin pasar por 1/2 USO.
+4. **1/2 USO → P/VENTA: sí.**
 
-Cambiar cualquiera de estas reglas es editar `NeumaticStatus::nextStates()` y su prueba.
+Transiciones vigentes:
+
+| Desde | Hacia |
+|---|---|
+| NUEVA | 1/2 USO, EN REPARACION, P/VENTA |
+| 1/2 USO | EN REPARACION, P/VENTA |
+| EN REPARACION | REPARADO, BAJA DEFINITIVA |
+| REPARADO | VULCANIZADA, RECAPADA, DESCARTE, TRANSFERIDA |
+| RECAPADA, VULCANIZADA | EN REPARACION, BAJA DEFINITIVA |
+| DESCARTE | BAJA DEFINITIVA |
+| P/VENTA | VENDIDA |
+| BAJA DEFINITIVA, TRANSFERIDA, VENDIDA | — (finales) |
+
+Cambiar una regla es editar `NeumaticStatus::nextStates()` y su prueba.
 
 ## 5. Qué sigue
 

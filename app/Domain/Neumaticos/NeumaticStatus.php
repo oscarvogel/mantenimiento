@@ -7,12 +7,12 @@ namespace App\Domain\Neumaticos;
 /**
  * Ciclo de vida del neumático: los 11 estados del sistema anterior, tal cual.
  *
- * Las transiciones salen del plan de ampliación (§5.1) y de su invariante 6:
- * un neumático no llega a BAJA DEFINITIVA sin pasar antes por RECAPADA,
- * VULCANIZADA o DESCARTE. El diagrama del plan dibuja además un salto de
- * EN REPARACION a BAJA DEFINITIVA que contradice esa invariante; se aplica la
- * invariante y el salto queda registrado como pregunta abierta en
- * `docs/BITACORA_2026-11-25_NEUMATICOS_DOMINIO.md`.
+ * Las transiciones salen del plan de ampliación (§5.1), completadas con las
+ * respuestas del cliente del 25/11/2026 (ver
+ * `docs/BITACORA_2026-11-25_NEUMATICOS_DOMINIO.md`): un neumático en
+ * reparación puede darse de baja, uno recapado o vulcanizado puede volver a
+ * repararse, uno nuevo puede entrar a reparación y uno de 1/2 uso se puede
+ * vender. Invariante 6: NUEVA nunca pasa directo a BAJA DEFINITIVA.
  */
 enum NeumaticStatus: string
 {
@@ -39,11 +39,12 @@ enum NeumaticStatus: string
     public function nextStates(): array
     {
         return match ($this) {
-            self::NEW => [self::HALF_USED, self::FOR_SALE],
-            self::HALF_USED => [self::IN_REPAIR],
-            self::IN_REPAIR => [self::REPAIRED],
+            self::NEW => [self::HALF_USED, self::IN_REPAIR, self::FOR_SALE],
+            self::HALF_USED => [self::IN_REPAIR, self::FOR_SALE],
+            self::IN_REPAIR => [self::REPAIRED, self::WRITTEN_OFF],
             self::REPAIRED => [self::VULCANIZED, self::RETREADED, self::DISCARDED, self::TRANSFERRED],
-            self::RETREADED, self::VULCANIZED, self::DISCARDED => [self::WRITTEN_OFF],
+            self::RETREADED, self::VULCANIZED => [self::IN_REPAIR, self::WRITTEN_OFF],
+            self::DISCARDED => [self::WRITTEN_OFF],
             self::FOR_SALE => [self::SOLD],
             self::WRITTEN_OFF, self::TRANSFERRED, self::SOLD => [],
         };

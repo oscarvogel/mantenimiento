@@ -30,9 +30,25 @@ final class NeumaticStatusTest extends TestCase
         self::assertTrue(NeumaticStatus::FOR_SALE->canTransitionTo(NeumaticStatus::SOLD));
     }
 
-    public function testWriteOffOnlyComesFromRetreadedVulcanizedOrDiscarded(): void
+    public function testANewTireCanGoToRepairWithoutHalfUse(): void
     {
-        $allowed = [NeumaticStatus::RETREADED, NeumaticStatus::VULCANIZED, NeumaticStatus::DISCARDED];
+        self::assertTrue(NeumaticStatus::NEW->canTransitionTo(NeumaticStatus::IN_REPAIR));
+    }
+
+    public function testARetreadedOrVulcanizedTireCanBeRepairedAgain(): void
+    {
+        self::assertTrue(NeumaticStatus::RETREADED->canTransitionTo(NeumaticStatus::IN_REPAIR));
+        self::assertTrue(NeumaticStatus::VULCANIZED->canTransitionTo(NeumaticStatus::IN_REPAIR));
+    }
+
+    public function testAHalfUsedTireCanBeSold(): void
+    {
+        self::assertTrue(NeumaticStatus::HALF_USED->canTransitionTo(NeumaticStatus::FOR_SALE));
+    }
+
+    public function testWriteOffComesFromRepairRetreadedVulcanizedOrDiscarded(): void
+    {
+        $allowed = [NeumaticStatus::IN_REPAIR, NeumaticStatus::RETREADED, NeumaticStatus::VULCANIZED, NeumaticStatus::DISCARDED];
 
         foreach (NeumaticStatus::cases() as $status) {
             self::assertSame(
