@@ -347,6 +347,31 @@ final class GetAppShellContextTest extends TestCase
         self::assertTrue($managementModule[0]['active']);
     }
 
+    public function testMaintenanceMenuLeavesOtherPortalModulesToThePortal(): void
+    {
+        $context = new GetAppShellContext(new AppShellReadModelFake());
+        $actor = new ActorContext(7, 5, false, false, ['Administrador'], [
+            'equipos.ver', 'planes.ver', 'ordenes.ver', 'reportes.ver', 'automatizaciones.ver',
+            'gerencial.costo_km.ver', 'gerencial.flota.ver',
+        ], [9]);
+        $shell = new AppShellPayload($context, new GetPlatformModuleCatalog());
+
+        $maintenance = $shell->for($actor, 'work-orders');
+        $keys = array_column($maintenance['navigation'], 'key');
+        foreach (['reports', 'automations', 'fleet-board', 'theoretical-cost-km'] as $moduleKey) {
+            self::assertNotContains($moduleKey, $keys);
+        }
+        $circuit = array_values(array_filter($maintenance['navigation'], static fn (array $item): bool => $item['key'] === 'maintenance'));
+        self::assertSame('Circuito de mantenimiento', $circuit[0]['label']);
+
+        $reports = $shell->for($actor, 'reports');
+        self::assertSame(['reports'], array_column($reports['navigation'], 'key'));
+        $active = array_values(array_filter($reports['moduleNavigation'], static fn (array $item): bool => $item['active'] === true));
+        self::assertSame('module-reports', $active[0]['key']);
+
+        self::assertSame(['automations'], array_column($shell->for($actor, 'automations')['navigation'], 'key'));
+    }
+
     public function testFleetBoardNavigationOnlyListsWhatTheActorCanOpen(): void
     {
         $context = new GetAppShellContext(new AppShellReadModelFake());

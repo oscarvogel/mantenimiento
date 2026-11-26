@@ -173,7 +173,6 @@ onBeforeUnmount(() => {
         class="ui-vt-sidebar ui-sidebar-surface"
         :navigation="navigation"
         :module-navigation="props.shell.moduleNavigation ?? []"
-        :logout="props.shell.logout"
         collapsible
         :collapsed="desktopNavCollapsed"
         @toggle-width="toggleDesktopNav"
@@ -207,7 +206,6 @@ onBeforeUnmount(() => {
           mobile
           :navigation="navigation"
           :module-navigation="props.shell.moduleNavigation ?? []"
-          :logout="props.shell.logout"
           @close="closeSidebar"
         />
       </div>

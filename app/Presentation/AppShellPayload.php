@@ -63,6 +63,9 @@ final readonly class AppShellPayload
             'theoretical-cost-km', 'fleet-board' => $this->managementNavigation($actor, $active),
             'fuel-module' => $this->fuelNavigation($actor, $active),
             'tire-registry', 'tire-detail', 'tire-deposit', 'tire-masters' => $this->tiresNavigation($actor, $active),
+            // Reportes y Automatizaciones son módulos del portal: no muestran el menú de Mantenimiento.
+            'reports' => $actor->hasPermission('reportes.ver') ? [$this->item('reports', 'Reportes', 'reportes', 'chart', $active)] : [],
+            'automations' => $actor->hasPermission('automatizaciones.ver') ? [$this->item('automations', 'Automatizaciones', 'automatizaciones', 'notifications', $active)] : [],
             default => [$this->item('dashboard', 'Resumen', 'dashboard', 'dashboard', $active)],
         };
         $payload['moduleNavigation'] = $active === 'command-center'
@@ -72,11 +75,12 @@ final readonly class AppShellPayload
                 'fuel-module' => 'fuel',
                 'tire-registry', 'tire-detail', 'tire-deposit', 'tire-masters' => 'tires',
                 'automations' => 'automations',
+                'reports' => 'reports',
                 'trip-masters', 'trips-dashboard', 'trips-operations-dashboard', 'trips-operations', 'trip-operations-create', 'trip-operations-detail', 'trips-fuel-pending', 'trips-profitability', 'trips-commercial-closing', 'customer-accounts', 'customer-account-detail' => 'trips',
                 default => 'maintenance',
             });
         $isTripPage = in_array($active, ['trip-masters', 'trips-dashboard', 'trips-operations-dashboard', 'trips-operations', 'trip-operations-create', 'trip-operations-detail', 'trips-fuel-pending', 'trips-profitability', 'trips-commercial-closing', 'customer-accounts', 'customer-account-detail'], true);
-        $isModulePage = in_array($active, ['theoretical-cost-km', 'fleet-board', 'fuel-module', 'tire-registry', 'tire-detail', 'tire-deposit', 'tire-masters'], true);
+        $isModulePage = in_array($active, ['theoretical-cost-km', 'fleet-board', 'fuel-module', 'tire-registry', 'tire-detail', 'tire-deposit', 'tire-masters', 'reports', 'automations'], true);
         if ($active !== 'command-center' && ! $isModulePage && ! $isTripPage && $actor->isSuperAdmin()) {
             $navigation[] = $this->item('superadmin', 'Administración global', 'superadmin', 'building', $active);
             $navigation[] = $this->item('whatsapp-digest-preview', 'Previsualizar resumen WhatsApp', 'superadmin/whatsapp/resumen-diario', 'notifications', $active);
@@ -85,12 +89,6 @@ final readonly class AppShellPayload
             $navigation[] = $this->item('chatbot-audit', 'Auditoría del chatbot', 'superadmin?section=chat-audit', 'audit', $active);
             $navigation[] = $this->item('audit-changes', 'Auditoría de cambios', 'superadmin?section=audit-changes', 'audit', $active);
         } elseif ($active !== 'command-center' && ! $isModulePage && ! $isTripPage) {
-            if ($actor->hasPermission('gerencial.costo_km.ver')) {
-                $navigation[] = $this->item('theoretical-cost-km', 'Costo teórico por km', 'gerencial/costo-teorico-km', 'chart', $active);
-            }
-            if ($actor->hasPermission('gerencial.flota.ver')) {
-                $navigation[] = $this->item('fleet-board', 'Tablero de flota', 'gerencial/flota', 'chart', $active);
-            }
             if ($actor->hasPermission('equipos.ver')) {
                 $navigation[] = $this->item('equipment', 'Equipos', 'mantenimiento/equipos', 'truck', $active);
                 $navigation[] = $this->item('fleet-telemetry', 'Telemetría de flota', 'mantenimiento/telemetria', 'map', $active);
@@ -103,7 +101,7 @@ final readonly class AppShellPayload
                 $navigation[] = $this->item('reading-control', 'Control de lecturas', 'mantenimiento/lecturas/control', 'clipboard-list', $active);
             }
             if ($this->canSeeOperations($actor)) {
-                $navigation[] = $this->item('maintenance', 'Mantenimiento', 'mantenimiento', 'wrench', $active);
+                $navigation[] = $this->item('maintenance', 'Circuito de mantenimiento', 'mantenimiento', 'wrench', $active);
             }
             if ($actor->hasPermission('ordenes.ver') || $actor->hasPermission('ordenes.mi_trabajo')) {
                 $navigation[] = $this->item('work-orders', 'Órdenes de trabajo', 'mantenimiento/ordenes', 'wrench', $active);
@@ -153,12 +151,6 @@ final readonly class AppShellPayload
             }
             if ($actor->hasPermission('chatbot.auditoria.empresa')) {
                 $navigation[] = $this->item('chatbot-audit', 'Historial del chatbot', 'administracion/usuarios?section=chat-audit', 'audit', $active);
-            }
-            if ($actor->hasPermission('reportes.ver')) {
-                $navigation[] = $this->item('reports', 'Reportes', 'reportes', 'chart', $active);
-            }
-            if ($actor->hasPermission('automatizaciones.ver')) {
-                $navigation[] = $this->item('automations', 'Automatizaciones', 'automatizaciones', 'notifications', $active);
             }
         }
 

@@ -6,7 +6,6 @@ import { computed, ref, watch } from 'vue'
 import {
   ArrowLeftIcon,
   ArrowPathRoundedSquareIcon,
-  ArrowRightStartOnRectangleIcon,
   ArrowUpTrayIcon,
   BeakerIcon,
   BellIcon,
@@ -36,7 +35,6 @@ import { groupNavigation } from '../ui/navigationGroups.js'
 const props = defineProps({
   navigation: { type: Array, required: true },
   moduleNavigation: { type: Array, default: () => [] },
-  logout: { type: Object, default: null },
   mobile: { type: Boolean, default: false },
   collapsible: { type: Boolean, default: false },
   collapsed: { type: Boolean, default: false },
@@ -49,13 +47,17 @@ const isManagerialNavigation = computed(() => props.navigation.some((item) => St
 const isTripNavigation = computed(() => props.navigation.some((item) => ['trip-masters', 'trips-dashboard', 'trips-operations-dashboard', 'trips-operations', 'trips-profitability'].includes(item.key)))
 const moduleTitle = computed(() => (isManagerialNavigation.value ? 'Gerencial' : (isTripNavigation.value ? 'Viajes' : 'Mantenimiento')))
 const portalLink = computed(() => props.moduleNavigation.find((item) => item.key === 'platform-home' && item.href && !item.disabled))
-const railKeys = new Set(['dashboard', 'work-orders', 'quick-readings', 'equipment', 'my-work', 'report-failure'])
+// Íconos fijos de la barra contraída, en este orden. Quien no ve planes es perfil de campo
+// (mismo criterio que el portal): sus accesos son Mi trabajo e Informar falla.
+const officeRailKeys = ['dashboard', 'work-orders', 'work-requests', 'plans', 'equipment', 'quick-readings']
+const fieldRailKeys = ['dashboard', 'my-work', 'report-failure', 'quick-readings', 'work-orders', 'equipment']
 const railLinks = computed(() => {
   const available = props.navigation.filter((item) => item.href && !item.disabled)
   if (isPlatformNavigation.value || isManagerialNavigation.value) return available
 
   // Siempre los mismos íconos en el mismo lugar: sumar la página actual los corría.
-  const preferred = available.filter((item) => railKeys.has(item.key))
+  const keys = available.some((item) => item.key === 'plans') ? officeRailKeys : fieldRailKeys
+  const preferred = keys.map((key) => available.find((item) => item.key === key)).filter(Boolean)
   return preferred.length > 1 ? preferred : available.slice(0, 6)
 })
 
@@ -143,7 +145,6 @@ const customIconNames = {
   users: 'usuarios',
   'work-orders': 'ordenes-trabajo',
   services: 'servicios-mantenimiento',
-  logout: 'cerrar-sesion',
 }
 const customIconUrl = (item) => {
   const name = customIconNames[item.key] ?? customIconNames[item.icon] ?? null
@@ -155,7 +156,6 @@ const markCustomIconFailed = (item) => {
   const name = customIconNames[item.key] ?? customIconNames[item.icon]
   failedCustomIcons.value = new Set([...failedCustomIcons.value, name])
 }
-const logoutIconUrl = computed(() => customIconUrl({ key: 'logout' }))
 const showDemoEntry = computed(() => props.navigation.some((item) => item.key === 'superadmin'))
 
 const openDemoCompany = () => {
@@ -298,28 +298,5 @@ const openDemoCompany = () => {
         </ul>
       </section>
     </nav>
-
-
-    <div v-if="logout" class="border-t border-white/10" :class="collapsed ? 'p-2' : 'p-4'">
-      <component
-        :is="logout.method === 'post' ? 'form' : 'div'"
-        :action="logout.method === 'post' ? logout.href : undefined"
-        :method="logout.method === 'post' ? 'post' : undefined"
-      >
-        <input v-if="logout.method === 'post' && logout.csrfName" type="hidden" :name="logout.csrfName" :value="logout.csrfValue" />
-        <component
-          :is="logout.method === 'post' ? 'button' : 'a'"
-          :type="logout.method === 'post' ? 'submit' : undefined"
-          :href="logout.method === 'post' ? undefined : logout.href"
-          class="ui-interactive flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-secondary-100 hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-300"
-          :class="{ 'justify-center': collapsed }"
-          :title="collapsed ? 'Cerrar sesión' : undefined"
-        >
-          <img v-if="logoutIconUrl" :src="logoutIconUrl" alt="" class="size-6 shrink-0" width="24" height="24" aria-hidden="true" @error="markCustomIconFailed({ key: 'logout' })" />
-          <ArrowRightStartOnRectangleIcon v-else class="size-5" aria-hidden="true" />
-          <span :class="{ 'sr-only': collapsed }">Cerrar sesión</span>
-        </component>
-      </component>
-    </div>
   </aside>
 </template>

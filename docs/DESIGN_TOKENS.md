@@ -84,8 +84,10 @@ Si falta el dato se muestra `Sin datos` o `Sin fecha`, nunca un cero inventado. 
 
 Hay una sola navegación: la barra lateral, marino en los dos temas.
 
-- En escritorio, el menú inicia como barra de íconos con accesos del módulo activo. Al expandirlo aparecen los nombres y secciones. La elección se conserva al navegar durante la sesión de la pestaña.
-- Arriba: "Volver al portal" (`/inicio`) y el nombre del módulo, con el selector para cambiar de módulo (`ModuleSwitcher.vue`). El encabezado muestra la empresa, el tema, los avisos y el usuario.
+- En escritorio, el menú inicia como barra de íconos. Al expandirlo aparecen los nombres y secciones, superpuestos al contenido; por eso cada página arranca contraída y no se recuerda la elección.
+- La barra contraída muestra siempre los mismos íconos, en el mismo orden (`AppSidebar.vue`): Resumen, Órdenes, Solicitudes, Preventivos, Equipos y Km/horas. Quien no ve planes (perfil de campo, mismo criterio que el portal) ve Resumen, Mi trabajo, Informar falla, Km/horas, Órdenes y Equipos. La página actual no se suma: correría los íconos. El nombre de cada ícono aparece al instante con el mouse o el teclado.
+- Arriba: "Volver al portal" (`/inicio`) y el nombre del módulo, con el selector para cambiar de módulo (`ModuleSwitcher.vue`). El encabezado muestra el módulo actual, la empresa, los avisos y "Mi cuenta" (tema y cerrar sesión; la barra no repite "Cerrar sesión").
+- El menú de Mantenimiento no lista módulos que ya tienen su lugar en el portal (Reportes, Gerencial, Automatizaciones). Reportes y Automatizaciones muestran su propio menú.
 - Los ítems se agrupan por tarea del día en `frontend/src/ui/navigationGroups.js`: Operación, Flota, Planificación, Comercial y Análisis siempre visibles; Configuración y Administración global plegadas, salvo que la página actual esté adentro. Un ítem que no figura en ningún grupo cae en "Más": nada se pierde. Los permisos los decide el servidor.
 - El portal y Gerencial mantienen una lista simple.
 - En el celular, la barra inferior (`MobileTabBar.vue`) muestra Resumen, Km/horas y Órdenes (Viajes en ese módulo), solo los permitidos, más Menú. El aviso flotante de scroll queda por encima de la barra.

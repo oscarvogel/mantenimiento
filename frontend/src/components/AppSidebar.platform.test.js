@@ -45,12 +45,27 @@ describe('AppSidebar module navigation', () => {
     const item = (key, label, active = false) => ({ key, label, href: `/${key}`, active })
     const navigation = [
       item('dashboard', 'Resumen'), item('equipment', 'Equipos'), item('work-orders', 'Órdenes de trabajo'),
-      item('plans', 'Planes', true), item('suppliers', 'Proveedores'),
+      item('plans', 'Planes'), item('suppliers', 'Proveedores', true),
     ]
     const wrapper = mount(AppSidebar, { props: { navigation, logout: null, collapsible: true, collapsed: true } })
 
     const hrefs = wrapper.get('#desktop-primary-navigation').findAll('a').map((link) => link.attributes('href'))
-    expect(hrefs).toEqual(['/dashboard', '/equipment', '/work-orders'])
+    expect(hrefs).toEqual(['/dashboard', '/work-orders', '/plans', '/equipment'])
+  })
+
+  it('oficina y campo tienen sus propios íconos fijos', () => {
+    const item = (key) => ({ key, label: key, href: `/${key}` })
+    const office = ['equipment', 'quick-readings', 'work-orders', 'work-requests', 'plans', 'dashboard', 'my-work', 'report-failure'].map(item)
+    const rail = (navigation) => mount(AppSidebar, { props: { navigation, collapsible: true, collapsed: true } })
+      .get('#desktop-primary-navigation').findAll('a').map((link) => link.attributes('href'))
+
+    expect(rail(office)).toEqual(['/dashboard', '/work-orders', '/work-requests', '/plans', '/equipment', '/quick-readings'])
+    expect(rail(office.filter((entry) => entry.key !== 'plans'))).toEqual(['/dashboard', '/my-work', '/report-failure', '/quick-readings', '/work-orders', '/equipment'])
+  })
+
+  it('no repite Cerrar sesión: vive en Mi cuenta', () => {
+    const wrapper = mount(AppSidebar, { props: { navigation: [{ key: 'dashboard', label: 'Resumen', href: '/dashboard' }] } })
+    expect(wrapper.text()).not.toContain('Cerrar sesión')
   })
 
   it('muestra el dashboard de viajes como primera opción del módulo', () => {
