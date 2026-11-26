@@ -179,6 +179,74 @@ Capturas en `docs/screenshots/588/staging-*.png`.
 - Nada más: no se registran cobros ni se modifican saldos de clientes en staging. El flujo
   de cobro y de anulación se validó sobre la instancia temporal, con base propia.
 
+## 3.2 Despliegue en producción (Ferozo) — 26/11/2026
+
+Producción corre en Ferozo: sin SSH, sin CLI y sin `php spark`. El código se sube por FTPS y
+las migraciones se aplican por un portón HTTP (`scripts/migrate.php`) que se sube, se usa y se
+borra dentro de la misma operación.
+
+**Estado de partida.** La versión en producción era `18d3f859` y la base tenía el esquema
+completo salvo la migración de #588. Por eso el despliegue se hizo en dos pasadas.
+
+### Pasada 1 — esquema
+
+Se subió solo el archivo de migración y el portón; después se consultó el estado, se
+corrieron las migraciones y se borró el portón.
+
+El mensaje `OK: estado reportado. Sin cambios en la base` que aparece en la salida **es el del
+consulta de estado** (`?status=1`), no el de la ejecución: el portón tiene dos finales
+distintos y el que confirma la aplicación es `OK: migraciones aplicadas.` La verificación
+posterior, leyendo el esquema directamente contra la base de producción, dio:
+
+| Medida | Valor |
+| --- | --- |
+| Migración `2026-11-26-100000` registrada | sí, batch 58 |
+| Migraciones registradas en total | 149 |
+| Archivo remoto de la migración | idéntico al local (SHA-256) |
+| `cliente_cc_movimientos`: 8 columnas nuevas | las 8 presentes |
+| `cliente_cc_pagos` / `cliente_cc_imputaciones` | presentes, con todas sus columnas |
+| Movimientos en el libro | 0 |
+| Movimientos sin moneda / sin importe original | 0 / 0 |
+
+El libro de cuenta corriente de producción está vacío, así que el backfill no tenía historial
+que migrar.
+
+### Pasada 2 — código
+
+`python scripts/deploy-ferozo.py --from-sha 18d3f859 --yes`: 68 archivos subidos (58 de
+aplicación y 26 bundles del dashboard), migraciones sin pendientes, portón borrado (404) y
+*smoke tests* en verde (`login` 200; `.env`, `app/`, `vendor/` y `writable/` 403;
+`migrate.php` 404).
+
+Antes de subir, la suite completa se corrió en verde: **2430 pruebas y 9105 aserciones, sin
+fallos**, ejecutadas en el contenedor Linux de staging con el mismo código que fue a
+producción. En Windows la suite frena en un solo test (`ArchivoRespaldoBucketsTest`), porque
+`symlink()` exige privilegios que esta máquina no tiene; no es un defecto del cambio.
+
+### Verificación posterior
+
+Once archivos del release comparados byte a byte entre el repo y Ferozo: **todos idénticos**.
+El `Routes.php` remoto expone las tres rutas nuevas de cobranza con el permiso
+`clientes.cc.cobrar`. Por HTTP: `/login` 200, `/inicio` 200 y `/clientes/cuenta-corriente`
+200 — la pantalla responde, no hay 500 por columnas faltantes.
+
+En producción **no se registró ningún cobro ni se modificó ningún saldo**: la verificación
+fue por HTTP, esquema y código remoto, sin entrar a la interfaz con un usuario real.
+
+### Una nota sobre el portón
+
+El historial de migraciones se imprime con `?` en lugar de la versión. No es que la base no
+las tenga: el portón lee `version` y `name` del historial, y el historial de CodeIgniter
+expone `version` y `class`. Para confirmarlo se leyó el esquema directamente contra la base.
+
+### Rollback en producción
+
+1. **Aplicación**: volver al commit anterior (`18d3f859`) por el mismo orquestador, con
+   `--from-sha` apuntando al commit actual. Los asientos de cobranza quedan en la base, pero
+   el código anterior no los lee.
+2. **Esquema**: el `down()` se niega si ya hay cobranzas, imputaciones o asientos de
+   cobranza, para no borrar historia.
+
 ## 4. Despliegue
 
 El ambiente de prueba vigente es **`fasa_189` / Docker / Coolify**
@@ -196,6 +264,22 @@ El ambiente de prueba vigente es **`fasa_189` / Docker / Coolify**
 4. Verificar: entrar a *Cuenta corriente clientes* y comprobar que el botón *Registrar cobro*
    aparece para el Administrador.
 
+### Aplicación en producción (Ferozo)
+
+Producción no tiene SSH ni CLI: el despliegue es por FTPS y las migraciones por portón HTTP.
+
+1. **Pasada 1 — esquema.** Subir la migración y `scripts/migrate.php` al release, consultar
+   `migrate.php?status=1`, correr `migrate.php` y borrar el portón. Con el código viejo
+   corriendo, porque la migración es aditiva.
+2. **Pasada 2 — código.** `python scripts/deploy-ferozo.py --from-sha <commit-base> --yes`.
+   El orquestador sube el delta, aplica las migraciones pendientes, borra el portón y corre
+   los *smoke tests*.
+3. **Verificar.** Comparar por FTPS los archivos clave contra el repo, revisar las rutas
+   remotas y pedir por HTTP la pantalla de cuenta corriente.
+
+El orden inverso (código antes que esquema) da 500 en la pantalla de cuenta corriente
+durante el intervalo entre ambas pasadas.
+
 ### Rollback
 
 1. **Aplicación**: volver al commit anterior. Los asientos de cobranza quedan en la base, pero
@@ -210,10 +294,14 @@ El ambiente de prueba vigente es **`fasa_189` / Docker / Coolify**
 
 ### Lo que no se hizo
 
-- **No se aplicó la migración a `mantenimiento_staging` ni a producción.** La validación
-  corrió sobre bases temporales (`cc588_tmp`, `cc588_e2e`) que se eliminaron al terminar.
-- **No se mergeó a `main`** ni se cerró el issue: queda a criterio de la revisión.
-- **No se tocó el PR #587** ni se empezó #589 o #537/#538.
+- **No se registraron cobros ni se modificaron saldos en producción.** La base de producción
+  tiene 0 movimientos en `cliente_cc_movimientos`: la migración quedó aplicada, pero sin
+  historial que migrar ni que alterar. El flujo de cobro se validó en la instancia temporal
+  y en staging.
+- **No se cambió ninguna clave ni dato de usuario en producción.** La verificación de la
+  pantalla se hizo por HTTP, esquema y código remoto.
+- **No se tocaron #587, #589 ni #537/#538**, y no se cierra ningún issue: #588 sigue abierto
+  hasta que la revisión lo confirme.
 
 ## 5. Integración con #587
 
