@@ -17,8 +17,9 @@ final class CommandCenter extends BaseController
             return redirect()->to('/login');
         }
 
-        $branch = (string) $this->request->getGet('sucursal');
-        $home = $this->portalHome()->execute($actor, ctype_digit($branch) ? (int) $branch : null);
+        // Solo un número entero: cualquier otra forma (texto, array) se ignora.
+        $branch = $this->request->getGet('sucursal');
+        $home = $this->portalHome()->execute($actor, is_string($branch) && ctype_digit($branch) ? (int) $branch : null);
         $url = static fn (?string $path): ?string => $path === null ? null : base_url($path);
         $withUrl = static fn (array $items): array => array_map(
             static fn (array $item): array => [...$item, 'href' => $url($item['href'])],

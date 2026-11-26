@@ -278,7 +278,8 @@ final class AssetManagement extends BaseController
     /** Búsqueda rápida del encabezado: patente o código, dentro de la empresa y sucursales del actor. */
     public function quickSearch(): ResponseInterface
     {
-        $query = trim((string) $this->request->getGet('q'));
+        $query = $this->request->getGet('q');
+        $query = is_string($query) ? trim($query) : '';
         if (mb_strlen($query) < 2) {
             return $this->response->setJSON(['items' => []]);
         }
