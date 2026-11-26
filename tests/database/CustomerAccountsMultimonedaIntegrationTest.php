@@ -52,6 +52,9 @@ final class CustomerAccountsMultimonedaIntegrationTest extends TestCase
     private ConnectionInterface $db;
     private bool $mysql = false;
 
+    /** Parámetros de la conexión real, para abrir sesiones adicionales sobre el mismo esquema. */
+    private array $connectionParams = [];
+
     /** @var list<AuditEntry> */
     private array $audited = [];
 
@@ -62,7 +65,7 @@ final class CustomerAccountsMultimonedaIntegrationTest extends TestCase
         $connection = getenv('CUSTOMER_ACCOUNTS_MYSQL');
         if (is_string($connection) && $connection !== '') {
             [$host, $user, $password, $database] = explode(':', $connection);
-            $this->db = Database::connect([
+            $this->connectionParams = [
                 'hostname' => $host,
                 'username' => $user,
                 'password' => $password,
@@ -72,9 +75,12 @@ final class CustomerAccountsMultimonedaIntegrationTest extends TestCase
                 'DBDebug' => true,
                 'charset' => 'utf8mb4',
                 'DBCollat' => 'utf8mb4_general_ci',
-            ], false);
+            ];
+            $this->db = Database::connect($this->connectionParams, false);
             $this->mysql = true;
             $this->db->query('SET FOREIGN_KEY_CHECKS = 0');
+            // Un bloqueo esperando metadatos no debe colgar la suite.
+            $this->db->query('SET SESSION lock_wait_timeout = 15');
             foreach (['cliente_cc_imputaciones', 'cliente_cc_pagos', 'cliente_cc_movimientos', 'cliente_cc_tramos_no_cobrables', 'cliente_cc_cargos', 'rol_permisos', 'roles', 'permisos', 'viajes_cotizaciones', 'viajes_monedas', 'viaje_operativo_tramos', 'viajes_operativos', 'clientes', 'sucursales', 'usuarios', 'empresas'] as $table) {
                 $this->db->query('DROP TABLE IF EXISTS ' . $table);
             }
@@ -460,32 +466,42 @@ final class CustomerAccountsMultimonedaIntegrationTest extends TestCase
 
         $chargeId = $this->formalize(9, 'MEMO_AUTORIZADO', 1_000, 'USD', 1_500, 'M-1');
 
-        // La primera sesión abre el documento y lo deja bloqueado.
-        $first = Database::connect((array) config('Database')->tests, true);
-        $first->query('SET autocommit = 0');
-        $first->query(
-            'SELECT id FROM cliente_cc_cargos WHERE empresa_id = ? AND id = ? FOR UPDATE',
-            [self::COMPANY, $chargeId],
-        );
+        // Las dos sesiones se abren sobre el mismo esquema real, no sobre la
+        // configuración de pruebas (que en local es SQLite en memoria).
+        $first = Database::connect($this->connectionParams, true);
+        $second = null;
 
-        // La segunda sesión no puede imputar contra el documento bloqueado.
-        $second = Database::connect((array) config('Database')->tests, true);
-        $second->query('SET autocommit = 0');
-        $blocked = false;
         try {
-            $second->query(
+            // La primera sesión abre el documento y lo deja bloqueado.
+            $first->query('SET autocommit = 0');
+            $first->query(
                 'SELECT id FROM cliente_cc_cargos WHERE empresa_id = ? AND id = ? FOR UPDATE',
                 [self::COMPANY, $chargeId],
             );
-        } catch (RuntimeException) {
-            $blocked = true;
-        }
-        self::assertTrue($blocked, 'La segunda sesión tiene que esperar el bloqueo del documento.');
 
-        $first->query('ROLLBACK');
-        $first->close();
-        $second->query('ROLLBACK');
-        $second->close();
+            // La segunda sesión no puede imputar contra el documento bloqueado:
+            // el bloqueo se resuelve rápido para no esperar el timeout por defecto.
+            $second = Database::connect($this->connectionParams, true);
+            $second->query('SET autocommit = 0');
+            $second->query('SET SESSION innodb_lock_wait_timeout = 3');
+            $blocked = false;
+            try {
+                $second->query(
+                    'SELECT id FROM cliente_cc_cargos WHERE empresa_id = ? AND id = ? FOR UPDATE',
+                    [self::COMPANY, $chargeId],
+                );
+            } catch (RuntimeException) {
+                $blocked = true;
+            }
+            self::assertTrue($blocked, 'La segunda sesión tiene que esperar el bloqueo del documento.');
+        } finally {
+            $first->query('ROLLBACK');
+            $first->close();
+            if ($second instanceof ConnectionInterface) {
+                $second->query('ROLLBACK');
+                $second->close();
+            }
+        }
     }
 
     /** #21 Aislamiento multiempresa. */
