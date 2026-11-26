@@ -49,13 +49,11 @@
 }
 
 .workspace-shell {
-  --workspace-sidebar-width: 15rem;
+  /* El contenido reserva solo la barra de íconos; expandida, la barra se superpone. */
+  --workspace-sidebar-width: 4.5rem;
+  --workspace-sidebar-expanded-width: 17rem;
   --workspace-sidebar-duration: 240ms;
   --workspace-sidebar-ease: cubic-bezier(0.2, 0, 0, 1);
-}
-
-.workspace-shell--collapsed {
-  --workspace-sidebar-width: 4.5rem;
 }
 
 @media (min-width: 1024px) {
@@ -64,9 +62,12 @@
     transition: width var(--workspace-sidebar-duration) var(--workspace-sidebar-ease);
   }
 
+  .workspace-sidebar--expanded {
+    width: var(--workspace-sidebar-expanded-width);
+  }
+
   .workspace-content {
     padding-inline-start: var(--workspace-sidebar-width);
-    transition: padding-inline-start var(--workspace-sidebar-duration) var(--workspace-sidebar-ease);
   }
 
   .workspace-sidebar-reveal {

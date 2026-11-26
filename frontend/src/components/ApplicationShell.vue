@@ -75,14 +75,28 @@ const openSidebar = (trigger) => {
   sidebarOpen.value = true
 }
 
-const toggleDesktopNav = () => {
-  desktopNavCollapsed.value = !desktopNavCollapsed.value
+const setDesktopNavCollapsed = (collapsed) => {
+  desktopNavCollapsed.value = collapsed
   try {
-    window.sessionStorage.setItem(desktopNavStorageKey, desktopNavCollapsed.value ? 'collapsed' : 'expanded')
+    window.sessionStorage.setItem(desktopNavStorageKey, collapsed ? 'collapsed' : 'expanded')
   } catch {
     // El menú sigue funcionando aunque el navegador bloquee el almacenamiento.
   }
 }
+const toggleDesktopNav = () => setDesktopNavCollapsed(!desktopNavCollapsed.value)
+
+// Expandida, la barra se superpone al contenido: Escape la vuelve a colapsar.
+const collapseDesktopNavOnEscape = (event) => {
+  if (event.key === 'Escape') setDesktopNavCollapsed(true)
+}
+watch(
+  desktopNavCollapsed,
+  (collapsed) => {
+    if (collapsed) document.removeEventListener('keydown', collapseDesktopNavOnEscape)
+    else document.addEventListener('keydown', collapseDesktopNavOnEscape)
+  },
+  { immediate: true },
+)
 
 const handleEscape = (event) => {
   if (event.key === 'Escape') closeSidebar()
@@ -136,6 +150,7 @@ onBeforeUnmount(() => {
   desktopBreakpoint?.removeEventListener?.('change', closeDrawerOnDesktop)
   document.body.classList.remove('overflow-hidden')
   document.removeEventListener('keydown', handleEscape)
+  document.removeEventListener('keydown', collapseDesktopNavOnEscape)
 })
 </script>
 
@@ -147,8 +162,20 @@ onBeforeUnmount(() => {
     Ir al contenido principal
   </a>
 
-  <div class="workspace-shell min-h-screen bg-surface-subtle" :class="{ 'workspace-shell--collapsed': desktopNavCollapsed }">
-    <div class="workspace-sidebar fixed inset-y-0 left-0 z-30 hidden lg:block">
+  <div class="workspace-shell min-h-screen bg-surface-subtle">
+    <button
+      v-if="!desktopNavCollapsed"
+      type="button"
+      data-test="sidebar-scrim"
+      class="fixed inset-0 z-[35] hidden cursor-default lg:block"
+      tabindex="-1"
+      aria-hidden="true"
+      @click="setDesktopNavCollapsed(true)"
+    ></button>
+    <div
+      class="workspace-sidebar fixed inset-y-0 left-0 z-40 hidden lg:block"
+      :class="{ 'workspace-sidebar--expanded shadow-sidebar': !desktopNavCollapsed }"
+    >
       <AppSidebar
         class="ui-vt-sidebar ui-sidebar-surface"
         :navigation="navigation"

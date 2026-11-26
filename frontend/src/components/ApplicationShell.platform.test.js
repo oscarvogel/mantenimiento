@@ -45,6 +45,40 @@ describe('ApplicationShell platform context', () => {
     nextPage.unmount()
   })
 
+  it('expandir la barra no desplaza el contenido y se cierra con clic afuera o Escape', async () => {
+    const wrapper = mount(ApplicationShell, {
+      attachTo: document.body,
+      props: {
+        shell: {
+          user: { name: 'Juan Díaz', initials: 'JD', roleLabel: 'Administrador' },
+          company: { name: 'Flota Demo', scopeLabel: 'Central', branches: [] },
+          navigation: [{ key: 'platform-home', label: 'Inicio', href: '/inicio', icon: 'platform-home', active: true }],
+          notifications: { enabled: false },
+          logout: null,
+        },
+      },
+    })
+    const toggle = () => wrapper.get('button[aria-controls="desktop-primary-navigation"]')
+    const contentClass = wrapper.get('.workspace-content').classes().join(' ')
+    const shellClass = wrapper.get('.workspace-shell').classes().join(' ')
+
+    await toggle().trigger('click')
+    expect(toggle().attributes('aria-expanded')).toBe('true')
+    expect(wrapper.get('.workspace-content').classes().join(' ')).toBe(contentClass)
+    expect(wrapper.get('.workspace-shell').classes().join(' ')).toBe(shellClass)
+    expect(wrapper.get('.workspace-sidebar').classes()).toContain('shadow-sidebar')
+
+    await wrapper.get('[data-test="sidebar-scrim"]').trigger('click')
+    expect(toggle().attributes('aria-expanded')).toBe('false')
+    expect(window.sessionStorage.getItem('maintenance.desktop-menu')).toBe('collapsed')
+
+    await toggle().trigger('click')
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    await nextTick()
+    expect(toggle().attributes('aria-expanded')).toBe('false')
+    wrapper.unmount()
+  })
+
   it('does not present the maintenance chatbot as a platform module', () => {
     const wrapper = mount(ApplicationShell, {
       props: {

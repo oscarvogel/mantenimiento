@@ -54,6 +54,8 @@ const emit = defineEmits(['navigate', 'icon-error'])
     />
     <span :class="compact ? 'sr-only' : 'min-w-0 flex-1 leading-5'">
       <span class="block">{{ label }}</span>
+      <!-- Solo los módulos del portal traen descripción: dice qué se hace en cada uno. -->
+      <span v-if="!compact && props.item.description" class="mt-0.5 block text-xs font-normal leading-4 text-white/65">{{ props.item.description }}</span>
     </span>
     <span v-if="props.item.badge" :class="compact ? 'sr-only' : 'platform-nav-badge rounded-full px-2 py-0.5 text-xs font-bold leading-4'">{{ props.item.badge }}</span>
   </a>

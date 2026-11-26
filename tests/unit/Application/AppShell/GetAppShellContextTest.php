@@ -236,6 +236,21 @@ final class GetAppShellContextTest extends TestCase
         self::assertNull($payload['homeUrl']);
     }
 
+    public function testPlatformNavigationCarriesModuleDescriptions(): void
+    {
+        $context = new GetAppShellContext(new AppShellReadModelFake());
+        $actor = new ActorContext(7, 5, false, false, ['Consulta'], ['equipos.ver'], [9]);
+        $catalog = new GetPlatformModuleCatalog();
+
+        $navigation = (new AppShellPayload($context, $catalog))->for($actor, 'command-center')['navigation'];
+
+        self::assertSame('Lo que pasa hoy en la flota', $navigation[0]['description']);
+        $descriptions = array_column($catalog->execute($actor), 'description', 'key');
+        foreach (array_slice($navigation, 1) as $item) {
+            self::assertSame($descriptions[substr($item['key'], strlen('module-'))], $item['description']);
+        }
+    }
+
     public function testUserWithoutMaintenanceEntryPermissionDoesNotGetModuleOrReturnAccess(): void
     {
         $context = new GetAppShellContext(new AppShellReadModelFake());

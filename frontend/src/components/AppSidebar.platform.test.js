@@ -24,6 +24,23 @@ describe('AppSidebar module navigation', () => {
     expect(wrapper.text()).not.toContain('Gestión de flota')
   })
 
+  it('muestra la descripción solo expandida', () => {
+    const navigation = [
+      { key: 'platform-home', label: 'Inicio', href: '/inicio', icon: 'platform-home', active: true, description: 'Lo que pasa hoy en la flota' },
+      { key: 'module-fuel', label: 'Combustible', href: '/combustible', icon: 'module-fuel', description: 'Cargas, consumo y faltantes' },
+    ]
+
+    const expanded = mount(AppSidebar, { props: { navigation, logout: null, collapsible: true, collapsed: false } })
+    const link = expanded.get('a[href="/combustible"]')
+    expect(link.text()).toContain('Combustible')
+    expect(link.text()).toContain('Cargas, consumo y faltantes')
+
+    const collapsed = mount(AppSidebar, { props: { navigation, logout: null, collapsible: true, collapsed: true } })
+    const rail = collapsed.get('a[href="/combustible"]')
+    expect(collapsed.text()).not.toContain('Cargas, consumo y faltantes')
+    expect(rail.attributes('title')).toBe('Combustible')
+  })
+
   it('muestra el dashboard de viajes como primera opción del módulo', () => {
     const navigation = [
       { key: 'trips-operations-dashboard', label: 'Dashboard', href: '/viajes/operativos/dashboard', icon: 'chart', active: true },

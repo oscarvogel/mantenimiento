@@ -265,6 +265,7 @@ final readonly class AppShellPayload
         $navigation = [[
             ...$this->item('platform-home', 'Inicio', 'inicio', 'platform-home', ''),
             'active' => $activeModule === 'home',
+            'description' => 'Lo que pasa hoy en la flota',
         ]];
 
         foreach ($modules as $module) {
@@ -272,6 +273,7 @@ final readonly class AppShellPayload
             $navigation[] = [
                 'key' => 'module-' . $module['key'],
                 'label' => $module['label'],
+                'description' => $module['description'],
                 'href' => $canEnter ? base_url($module['landingPath']) : null,
                 'icon' => 'module-' . $module['icon'],
                 'active' => $activeModule === $module['key'] && $canEnter,
