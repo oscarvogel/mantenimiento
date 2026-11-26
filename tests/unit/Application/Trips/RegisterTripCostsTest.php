@@ -469,6 +469,35 @@ final class RegisterTripCostsTest extends TestCase
         $handler->execute($this->actor(['viajes.ver']), 55);
     }
 
+    public function testAnticiposHistoricosMantienenArsAunqueCambieCotizacionCatalogo(): void
+    {
+        $trip = $this->trip();
+        $costs = new CostRepositoryFake();
+        $lookup = new CostDirectoryFake();
+        $lookup->exchangeRates = ['BRL' => 999.0]; // catálogo cambiado después de la carga histórica
+
+        $handler = new RegisterTripCashMovement(
+            new CostTripRepositoryFake($trip),
+            $costs,
+            $lookup,
+            new CostUnitOfWorkFake(),
+        );
+
+        $handler->execute($this->actor(['viajes.operar']), new RegisterTripCashMovementCommand(55, 'ANTICIPO', new DateTimeImmutable('2026-11-14 17:48:00'), 300.0, 'BRL', exchangeRate: 290.0));
+        $handler->execute($this->actor(['viajes.operar']), new RegisterTripCashMovementCommand(55, 'ANTICIPO', new DateTimeImmutable('2026-11-14 18:00:00'), 150000.0, 'ARS', exchangeRate: 1.0));
+
+        self::assertCount(2, $costs->cashMovements);
+        self::assertSame(87000.0, $costs->cashMovements[0]->money()->amountArs());
+        self::assertSame(290.0, $costs->cashMovements[0]->money()->exchangeRate());
+        self::assertSame(150000.0, $costs->cashMovements[1]->money()->amountArs());
+        self::assertSame(237000.0, $costs->cashMovements[0]->money()->amountArs() + $costs->cashMovements[1]->money()->amountArs());
+
+        // Cambio de cotización de catálogo en entorno de prueba: no recalcula históricos.
+        $lookup->exchangeRates['BRL'] = 500.0;
+        self::assertSame(87000.0, $costs->cashMovements[0]->money()->amountArs());
+        self::assertSame(290.0, $costs->cashMovements[0]->money()->exchangeRate());
+    }
+
     public function testRegistersCashMovementInForeignCurrencyUsingCatalogRate(): void
     {
         $costs = new CostRepositoryFake();
@@ -747,8 +776,8 @@ final class RegisterTripCostsTest extends TestCase
         $handler->execute($this->actor(['viajes.operar']), new UpdateTripFuelLoadCommand(
             55, 77, new DateTimeImmutable('2026-10-20 10:00:00'), 50.0, 100.0, 'USD', null, null, null, null, 'nota', null, false, null
         ));
-        self::assertSame(1000.0, $costs->fuel?->money()?->exchangeRate());
-        self::assertSame(100000.0, $costs->fuel?->money()?->amountArs());
+        self::assertSame(1000.0, $costs->fuel?->money()->exchangeRate());
+        self::assertSame(100000.0, $costs->fuel?->money()->amountArs());
     }
 
     public function testUpdateOtherEarningRequiresReasonOnMonetaryChange(): void
@@ -911,6 +940,8 @@ final class CostRepositoryFake implements TripCostRepository
     public ?TripFuelLoad $fuel = null;
     public ?TripExpense $expense = null;
     public ?TripCashMovement $cashMovement = null;
+    /** @var list<TripCashMovement> */
+    public array $cashMovements = [];
     public ?TripOtherEarning $otherEarning = null;
     public ?array $cashMovementRow = null;
     public ?array $fuelRow = null;
@@ -950,8 +981,9 @@ final class CostRepositoryFake implements TripCostRepository
         $this->companyId = $companyId;
         $this->branchId = $branchId;
         $this->cashMovement = $movement;
+        $this->cashMovements[] = $movement;
 
-        return 1;
+        return count($this->cashMovements);
     }
 
     public function updateFuel(int $tripId, int $companyId, int $movementId, TripFuelLoad $load, int $actorUserId, ?int $legId = null, ?string $changeReason = null): bool

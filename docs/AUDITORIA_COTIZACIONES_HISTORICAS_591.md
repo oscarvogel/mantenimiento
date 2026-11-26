@@ -72,37 +72,42 @@ El viaje 28 fue auditado en modo read-only. Movimientos extraídos (todos, inclu
 - Observaciones: PIX [REDACTADO]
 - Evidencia confirmación explícita tasa==1: None
 
-### Tramo facturacion / TRAMO_FACTURACION #140
-- Estado viaje: EN_CURSO | Estado registro: ACTIVO
-- Fecha: 2026-11-17 10:14:07
-- Tipo registro: None
-- Importe original: 5040 USD
-- Cotización registrada: 1500
-- Cotización vigente catálogo (referencia, no aplicada): 1500
-- ARS registrado: 7560000
-- ARS esperado por original×cotización registrada: 7560000
-- Diferencia ARS: 0
-- Clasificación: OK (OK)
-- Observaciones: None
-- Evidencia confirmación explícita tasa==1: None
+## 5.1 Trazabilidad histórica caja #95 (viaje 28 / viaje operativo 83)
 
-### Tramo liquidacion / TRAMO_LIQUIDACION #140
-- Estado viaje: EN_CURSO | Estado registro: ACTIVO
-- Fecha: 2026-11-17 10:14:07
-- Tipo registro: None
-- Importe original: 5800000 ARS
-- Cotización registrada: 1
-- Cotización vigente catálogo (referencia, no aplicada): None
-- ARS registrado: 5800000
-- ARS esperado por original×cotización registrada: 5800000
-- Diferencia ARS: 0
-- Clasificación: OK (OK)
-- Observaciones: None
-- Evidencia confirmación explícita tasa==1: None
+Investigación read-only ejecutada el 2026-11-26 contra producción (`a0110632_mant`) con script efímero FTPS+HTTPS, token efímero, `START TRANSACTION READ ONLY`, borrado remoto verificado y HTTP 404 posterior.
+
+Fuente: `viaje_operativo_movimientos_auditoria` (movimiento_tipo=CAJA, movimiento_id=95, viaje_id=83).
+
+| Campo | Valor |
+|---|---|
+| Auditoría id | 275 |
+| Acción | EDICION |
+| Fecha auditoría | 2026-11-26 11:44:57 |
+| Usuario auditoría | 7 - Mariela Pawluk (mariela@tsa.com.ar, activo) |
+| Movimiento creado por | 19 - Kunrath Camila (ventas@webtsa.com.ar, activo), 2026-11-25 17:49:04 |
+| Última actualización movimiento | 2026-11-26 11:44:57 por usuario 7 |
+
+### Antes / Después (evidencia JSON auditoría)
+
+| Campo | Antes | Después |
+|---|---:|---:|
+| importe | 300.0000 BRL | 300.0000 BRL |
+| moneda | BRL | BRL |
+| cotizacion | 1.000000 | 290.000000 |
+| importe_ars | 300.0000 | 87000.0000 |
+| observaciones | PIX [REDACTADO] | PIX [REDACTADO] |
+
+### Conclusión de trazabilidad
+
+- **TRAZABILIDAD_HISTORICA_DISPONIBLE** para el cambio monetario observado en auditoría #275.
+- El estado reportado originalmente en #591 (BRL 300, cotización 1, ARS 300) **sí existe como estado anterior** en la auditoría del movimiento #95; el estado actual en producción es BRL 300, cotización 290, ARS 87000.
+- El cambio registrado modifica cotización e importe ARS; no modifica importe original, moneda ni observaciones. No hay `motivo_cambio` en `datos_nuevos` de esta fila histórica (la fila no lo contiene).
+- Impacto económico del cambio auditado: +86.700 ARS en caja del viaje (300 × 290 - 300 × 1). Es diferencia entre estado anterior y actual del mismo movimiento; no implica corrección automática adicional.
+- Rendición/liquidación que consumen `importe_ars` histórico deben reflejar 87.000 ARS para este movimiento en el estado actual. No se recalcula ni modifica nada en producción.
 
 ## Conclusión viaje 28
 
-En la extracción actual, el movimiento de caja BRL 300 tiene cotización registrada 290 y ARS registrado 87000; no aparece como tasa==1. El caso reportado originalmente en #591 (BRL 300, cotización 1, ARS 300) no se observa en el estado actual de producción auditado. No se realizaron correcciones automáticas.
+En la extracción actual, el movimiento de caja BRL 300 tiene cotización registrada 290 y ARS registrado 87000; no aparece como tasa==1. El caso originalmente reportado en #591 (BRL 300, cotización 1, ARS 300) quedó explicado por la auditoría #275: existió como estado anterior y fue corregido a cotización 290 / ARS 87.000 por usuario 7 (Mariela Pawluk) el 2026-11-26 11:44:57. No se realizaron correcciones automáticas.
 
 ## Artefactos
 

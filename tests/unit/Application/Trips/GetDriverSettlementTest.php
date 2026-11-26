@@ -297,6 +297,48 @@ final class GetDriverSettlementTest extends TestCase
         self::assertStringNotContainsString('Firma del chofer', $text);
     }
 
+    public function testHistoricalCashAdvancesKeepStoredArsEvenIfCatalogRateChanges(): void
+    {
+        $trip = $this->trip([
+            'status' => 'FINALIZADO',
+            'cashMovements' => [
+                ['fecha' => '2026-11-01', 'tipo' => 'ANTICIPO', 'importe' => 300.0, 'moneda' => 'BRL', 'cotizacion' => 290.0, 'importe_ars' => 87000.0],
+                ['fecha' => '2026-11-01', 'tipo' => 'ANTICIPO', 'importe' => 150000.0, 'moneda' => 'ARS', 'cotizacion' => 1.0, 'importe_ars' => 150000.0],
+            ],
+            'expenses' => [],
+            'otherEarnings' => [],
+        ]);
+
+        $statement = (new GetDriverSettlement(new GetOperationalTrip(new DriverSettlementReadModelFake($trip))))
+            ->execute($this->actor(), 55);
+
+        self::assertSame(237000.0, $statement['totals']['advances_ars']);
+        self::assertSame(237000.0, $statement['totals']['cash_delivered_ars']);
+        self::assertSame(87000.0, $statement['cashMovements'][0]['importe_ars']);
+        self::assertSame(290.0, $statement['cashMovements'][0]['cotizacion']);
+        self::assertSame(150000.0, $statement['cashMovements'][1]['importe_ars']);
+        self::assertNull($statement['cashMovements'][1]['cotizacion']);
+
+        // Simula cambio de cotización de catálogo en entorno de prueba: el
+        // detalle/liquidación usa valores históricos almacenados, no el catálogo.
+        $catalogRates = ['BRL' => 999.0];
+        unset($catalogRates);
+        $statementAfterCatalogChange = (new GetDriverSettlement(new GetOperationalTrip(new DriverSettlementReadModelFake($trip))))
+            ->execute($this->actor(), 55);
+
+        self::assertSame($statement['totals']['advances_ars'], $statementAfterCatalogChange['totals']['advances_ars']);
+        self::assertSame($statement['totals']['total_ars'], $statementAfterCatalogChange['totals']['total_ars']);
+        self::assertSame($statement['cashMovements'], $statementAfterCatalogChange['cashMovements']);
+
+        $text = $this->pdfText((new DriverSettlementPdfGenerator())->render($statementAfterCatalogChange));
+        self::assertStringContainsString('BRL 300,00', $text);
+        self::assertStringContainsString('ARS 87.000,00', $text);
+        self::assertStringContainsString('ARS 150.000,00', $text);
+        self::assertStringContainsString('ARS 237.000,00', $text);
+        self::assertStringNotContainsString('999,000000', $text);
+        self::assertStringNotContainsString('999,00', $text);
+    }
+
     private function actor(): ActorContext
     {
         return new ActorContext(1, 5, false, false, [], self::PERMISSIONS, [10]);

@@ -93,4 +93,76 @@ final class OperationalTripSummaryPdfGeneratorTest extends TestCase
         self::assertStringContainsString('a hoy', $pdf);
         self::assertStringContainsString(iconv('UTF-8', 'windows-1252//TRANSLIT//IGNORE', 'falta') , $pdf);
     }
+
+    public function testHistoricalCashAdvancesAreRenderedWithStoredArs(): void
+    {
+        $pdf = (new OperationalTripSummaryPdfGenerator())->render([
+            'company' => ['name' => 'TSA Argentina'],
+            'trip' => [
+                'numero' => 591,
+                'estado' => 'FINALIZADO',
+                'sucursal' => 'TSA Argentina',
+            ],
+            'assignments' => [['rol' => 'CHOFER', 'label' => 'Carlos Sosa', 'porcentaje_liquidacion' => 10.0]],
+            'legs' => [[
+                'id' => 1, 'orden' => 1, 'origen' => 'AR', 'destino' => 'BR', 'cliente' => 'Cliente',
+                'modo_liquidacion' => 'MONTO_ACORDADO', 'toneladas_liquidacion' => null, 'precio_unitario_liquidacion' => null,
+                'moneda' => 'ARS', 'flete_facturacion' => 1000000.0, 'flete_facturacion_ars' => 1000000.0,
+                'moneda_liquidacion' => 'ARS', 'flete_liquidacion' => 1000000.0, 'flete_liquidacion_ars' => 1000000.0,
+                'commission_ars' => 100000.0, 'assigned_costs_ars' => 0.0, 'margin_ars' => 900000.0, 'margin_pct' => 90.0,
+            ]],
+            'fuel' => [],
+            'expenses' => [],
+            'cashMovements' => [
+                ['fecha' => '2026-11-14', 'tipo' => 'ANTICIPO', 'importe' => 300.0, 'moneda' => 'BRL', 'cotizacion' => 290.0, 'importe_ars' => 87000.0],
+                ['fecha' => '2026-11-14', 'tipo' => 'ANTICIPO', 'importe' => 150000.0, 'moneda' => 'ARS', 'cotizacion' => 1.0, 'importe_ars' => 150000.0],
+            ],
+            'otherEarnings' => [],
+            'totals' => [
+                'has_legs' => true,
+                'invoice_ars' => 1000000.0,
+                'liquidation_ars' => 1000000.0,
+                'commission_ars' => 100000.0,
+                'fuel_liters' => 0.0,
+                'fuel_amount_ars' => 0.0,
+                'operating_cost_ars' => 0.0,
+                'margin_ars' => 900000.0,
+                'margin_pct' => 90.0,
+                'other_earnings_ars' => 0.0,
+                'driver_expenses_ars' => 0.0,
+                'cash_expenses_ars' => 0.0,
+                'advances_ars' => 237000.0,
+                'returns_ars' => 0.0,
+                'settlement_available' => true,
+            ],
+            'settlement' => [
+                'commission_ars' => 100000.0,
+                'other_earnings_ars' => 0.0,
+                'driver_expenses_ars' => 0.0,
+                'cash_expenses_ars' => 0.0,
+                'advances_ars' => 237000.0,
+                'returns_ars' => 0.0,
+                'account_balance_ars' => 0.0,
+                'total_ars' => -137000.0,
+            ],
+        ]);
+
+        $text = $this->pdfText($pdf);
+        self::assertStringContainsString('87.000,00', $text);
+        self::assertStringContainsString('150.000,00', $text);
+        self::assertStringContainsString('237.000,00', $text);
+        self::assertStringContainsString('BRL 300,00 x 290,00', $text);
+    }
+
+    private function pdfText(string $pdf): string
+    {
+        $text = '';
+        preg_match_all('/stream\r?\n(.*?)\r?\nendstream/s', $pdf, $matches);
+        foreach ($matches[1] as $stream) {
+            $inflated = @gzuncompress($stream);
+            $text .= $inflated === false ? $stream : $inflated;
+        }
+
+        return (string) iconv('windows-1252', 'UTF-8//IGNORE', $text);
+    }
 }
