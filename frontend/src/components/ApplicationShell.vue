@@ -222,7 +222,7 @@ onBeforeUnmount(() => {
       </div>
     </Transition>
 
-    <div class="workspace-content sm:p-4" :inert="sidebarOpen || undefined">
+    <div class="workspace-content sm:p-4 lg:pl-[var(--workspace-sidebar-width)]" :inert="sidebarOpen || undefined">
       <!-- overflow-clip recorta las esquinas sin crear un contenedor de scroll: el encabezado sigue siendo sticky. -->
       <div class="relative min-h-screen overflow-clip bg-surface-subtle sm:min-h-[calc(100vh-2rem)] sm:rounded-panel">
       <RouteLines />

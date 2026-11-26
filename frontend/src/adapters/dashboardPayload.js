@@ -81,6 +81,7 @@ const normalizeNavigation = (navigation) => {
     .map((item, index) => ({
       key: asText(item.key, `item-${index}`),
       label: asText(item.label, 'Sección'),
+      description: asText(item.description),
       href: asUrl(item.href),
       icon: asText(item.icon, 'dashboard'),
       active: Boolean(item.active),

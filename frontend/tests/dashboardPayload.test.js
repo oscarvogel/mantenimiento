@@ -197,3 +197,18 @@ describe('normalizeDashboardPayload', () => {
     expect(manager.upcomingMaintenance[0].actionLabel).toBe('Atender')
   })
 })
+
+describe('normalizeAppShellPayload', () => {
+  // Regresión: la normalización descartaba la descripción y la barra expandida del portal no la mostraba.
+  it('conserva la descripción de cada ítem del portal', () => {
+    const shell = normalizeAppShellPayload({
+      navigation: [
+        { key: 'platform-home', label: 'Inicio', href: '/inicio', description: 'Lo que pasa hoy en la flota' },
+        { key: 'module-fuel', label: 'Combustible', href: '/combustible' },
+      ],
+    })
+
+    expect(shell.navigation[0].description).toBe('Lo que pasa hoy en la flota')
+    expect(shell.navigation[1].description).toBe('')
+  })
+})

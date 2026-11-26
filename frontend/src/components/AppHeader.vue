@@ -74,7 +74,7 @@ defineExpose({
       <slot name="search" />
     </div>
 
-    <div class="ml-auto flex items-center gap-2 sm:gap-3 md:ml-0">
+    <div class="ml-auto flex items-center gap-2 sm:gap-3">
       <a
         v-if="homeUrl"
         :href="homeUrl"
