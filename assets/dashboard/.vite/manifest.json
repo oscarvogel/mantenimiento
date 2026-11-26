@@ -6,10 +6,6 @@
       "_vendor-CYfzuk1k.js"
     ]
   },
-  "_chatbot-p1890OXW.css": {
-    "file": "assets/chatbot-p1890OXW.css",
-    "src": "_chatbot-p1890OXW.css"
-  },
   "_chatbot-DyybNhyC.js": {
     "file": "assets/chatbot-DyybNhyC.js",
     "name": "chatbot",
@@ -20,6 +16,10 @@
     "css": [
       "assets/chatbot-p1890OXW.css"
     ]
+  },
+  "_chatbot-p1890OXW.css": {
+    "file": "assets/chatbot-p1890OXW.css",
+    "src": "_chatbot-p1890OXW.css"
   },
   "_reports-Blw18P4L.js": {
     "file": "assets/reports-Blw18P4L.js",
@@ -135,7 +135,7 @@
     ]
   },
   "src/profiles/cliente_piloto/profile.js": {
-    "file": "assets/profile-Cwp9Aihn.js",
+    "file": "assets/profile-CrVOJ_A-.js",
     "name": "profile",
     "src": "src/profiles/cliente_piloto/profile.js",
     "isDynamicEntry": true,
@@ -151,7 +151,7 @@
     ]
   },
   "src/profiles/platform/profile.js": {
-    "file": "assets/profile-CrVOJ_A-.js",
+    "file": "assets/profile-Cwp9Aihn.js",
     "name": "profile",
     "src": "src/profiles/platform/profile.js",
     "isDynamicEntry": true,
