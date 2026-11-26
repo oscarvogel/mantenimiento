@@ -384,6 +384,7 @@ final class OperationalTrips extends BaseController
                 $this->text('comprobante', 80),
                 $this->text('observaciones', 500),
                 $this->optionalInt('tramo_id'),
+                $this->confirmsRateOne(),
             );
             service('registerTripFuel')->execute($this->actor(), $command);
 
@@ -415,6 +416,7 @@ final class OperationalTrips extends BaseController
                 $paidBy,
                 $this->optionalInt('concepto_id'),
                 $this->optionalFloat('cantidad'),
+                $this->confirmsRateOne(),
             );
             service('registerTripExpense')->execute($this->actor(), $command);
 
@@ -453,6 +455,7 @@ final class OperationalTrips extends BaseController
                 'importe' => $this->request->getPost('importe'),
                 'moneda' => $this->request->getPost('moneda'),
                 'cotizacion' => $this->request->getPost('cotizacion'),
+                'confirma_cotizacion_uno' => $this->request->getPost('confirma_cotizacion_uno'),
                 'concepto' => $this->request->getPost('concepto'),
                 'concepto_id' => $this->request->getPost('concepto_id'),
                 'cantidad' => $this->request->getPost('cantidad'),
@@ -515,6 +518,7 @@ final class OperationalTrips extends BaseController
                 $this->currency(),
                 $this->rate(),
                 $this->text('observaciones', 500),
+                $this->confirmsRateOne(),
             );
             service('registerTripCashMovement')->execute($this->actor(), $command);
 
@@ -540,6 +544,8 @@ final class OperationalTrips extends BaseController
                 $this->text('comprobante', 80),
                 $this->text('observaciones', 500),
                 $this->optionalInt('tramo_id'),
+                $this->confirmsRateOne(),
+                $this->changeReason(),
             );
             service('updateTripFuelLoad')->execute($this->actor(), $command);
 
@@ -569,6 +575,8 @@ final class OperationalTrips extends BaseController
                 $paidBy,
                 $this->text('comprobante', 80),
                 $this->text('observaciones', 500),
+                $this->confirmsRateOne(),
+                $this->changeReason(),
             );
             service('updateTripExpense')->execute($this->actor(), $command);
 
@@ -590,6 +598,8 @@ final class OperationalTrips extends BaseController
                 $this->currency(),
                 $this->rate(),
                 $this->text('observaciones', 500),
+                $this->confirmsRateOne(),
+                $this->changeReason(),
             );
             service('updateTripCashMovement')->execute($this->actor(), $command);
 
@@ -644,6 +654,8 @@ final class OperationalTrips extends BaseController
                 $this->optionalFloat('cantidad') ?? 1.0,
                 trim((string) $this->request->getPost('concepto')),
                 $this->text('observaciones', 500),
+                $this->confirmsRateOne(),
+                $this->changeReason(),
             );
             service('updateTripOtherEarning')->execute($this->actor(), $command);
 

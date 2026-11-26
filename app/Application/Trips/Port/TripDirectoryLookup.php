@@ -24,4 +24,7 @@ interface TripDirectoryLookup
     public function concept(int $companyId, int $conceptId): ?array;
 
     public function currencyExists(string $code): bool;
+
+    /** Cotización configurada para la moneda en la empresa, o null si no hay. */
+    public function exchangeRateFor(int $companyId, string $currency): ?float;
 }

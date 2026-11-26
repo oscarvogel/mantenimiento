@@ -213,9 +213,9 @@ final class LogbookCostRepositoryFake implements TripCostRepository
     public function addFuel(int $tripId, int $companyId, int $branchId, TripFuelLoad $load, int $actorUserId, ?int $legId = null): int { return 1; }
     public function addExpense(int $tripId, int $companyId, int $branchId, TripExpense $expense, int $actorUserId, ?int $legId = null): int { return 1; }
     public function addCashMovement(int $tripId, int $companyId, int $branchId, TripCashMovement $movement, int $actorUserId): int { return 1; }
-    public function updateFuel(int $tripId, int $companyId, int $movementId, TripFuelLoad $load, int $actorUserId, ?int $legId = null): bool { return true; }
-    public function updateExpense(int $tripId, int $companyId, int $movementId, TripExpense $expense, int $actorUserId, ?int $legId = null): bool { return true; }
-    public function updateCashMovement(int $tripId, int $companyId, int $movementId, TripCashMovement $movement, int $actorUserId): bool { return true; }
+    public function updateFuel(int $tripId, int $companyId, int $movementId, TripFuelLoad $load, int $actorUserId, ?int $legId = null, ?string $changeReason = null): bool { return true; }
+    public function updateExpense(int $tripId, int $companyId, int $movementId, TripExpense $expense, int $actorUserId, ?int $legId = null, ?string $changeReason = null): bool { return true; }
+    public function updateCashMovement(int $tripId, int $companyId, int $movementId, TripCashMovement $movement, int $actorUserId, ?string $changeReason = null): bool { return true; }
     public function softDeleteFuel(int $tripId, int $companyId, int $movementId, int $actorUserId): bool { return true; }
     public function softDeleteExpense(int $tripId, int $companyId, int $movementId, int $actorUserId): bool { return true; }
     public function softDeleteCashMovement(int $tripId, int $companyId, int $movementId, int $actorUserId): bool { return true; }
@@ -228,7 +228,7 @@ final class LogbookCostRepositoryFake implements TripCostRepository
         return 1;
     }
 
-    public function updateOtherEarning(int $tripId, int $companyId, int $movementId, TripOtherEarning $earning, int $actorUserId, ?int $logbookEntryId = null): bool
+    public function updateOtherEarning(int $tripId, int $companyId, int $movementId, TripOtherEarning $earning, int $actorUserId, ?int $logbookEntryId = null, ?string $changeReason = null): bool
     {
         $this->earning = $earning;
         $this->movementId = $movementId;
@@ -245,6 +245,11 @@ final class LogbookCostRepositoryFake implements TripCostRepository
     }
 
     public function logbookEntryIdForEarning(int $tripId, int $companyId, int $movementId): ?int { return null; }
+    public function findCashMovement(int $tripId, int $companyId, int $movementId): ?array { return null; }
+    public function findFuelLoad(int $tripId, int $companyId, int $movementId): ?array { return null; }
+    public function findExpense(int $tripId, int $companyId, int $movementId): ?array { return null; }
+    public function findOtherEarning(int $tripId, int $companyId, int $movementId): ?array { return null; }
+    public function suspiciousHistoricalMovements(int $companyId): array { return []; }
 }
 
 final class LogbookFleetFake implements TripFleetLookup
@@ -272,6 +277,7 @@ final class LogbookDirectoryFake implements TripDirectoryLookup
     public function paymentMethodExists(int $companyId, int $paymentMethodId): bool { return true; }
     public function concept(int $companyId, int $conceptId): ?array { return $this->concept; }
     public function currencyExists(string $code): bool { return true; }
+    public function exchangeRateFor(int $companyId, string $currency): ?float { return strtoupper(trim($currency)) === 'ARS' ? 1.0 : 1.0; }
 }
 
 final class LogbookUnitOfWorkFake implements TripsUnitOfWork

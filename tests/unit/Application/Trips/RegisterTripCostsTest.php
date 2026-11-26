@@ -20,6 +20,12 @@ use App\Application\Trips\RegisterTripOtherEarningCommand;
 use App\Application\Trips\ReattributeTripExpensesToCash;
 use App\Application\Trips\DeleteOperationalTripCost;
 use App\Application\Trips\DeleteOperationalTripCostCommand;
+use App\Application\Trips\UpdateTripCashMovement;
+use App\Application\Trips\UpdateTripCashMovementCommand;
+use App\Application\Trips\UpdateTripExpense;
+use App\Application\Trips\UpdateTripExpenseCommand;
+use App\Application\Trips\UpdateTripFuelLoad;
+use App\Application\Trips\UpdateTripFuelLoadCommand;
 use App\Application\Trips\UpdateTripOtherEarning;
 use App\Application\Trips\UpdateTripOtherEarningCommand;
 use App\Application\Trips\UpdateTripDriverPercentage;
@@ -349,6 +355,7 @@ final class RegisterTripCostsTest extends TestCase
     public function testUpdatesOtherEarningWithFixedConcept(): void
     {
         $costs = new CostRepositoryFake();
+        $costs->otherEarningRow = ['importe' => 80000.0, 'moneda' => 'ARS', 'cotizacion' => 1.0, 'importe_ars' => 80000.0];
         $directory = new CostDirectoryFake();
         $directory->concept = [
             'id' => 9,
@@ -379,6 +386,8 @@ final class RegisterTripCostsTest extends TestCase
             quantity: 1.5,
             concept: '',
             notes: null,
+            confirmForeignRateOne: false,
+            changeReason: 'Corrección de cantidad',
         ));
 
         self::assertTrue($costs->otherEarningUpdated);
@@ -458,6 +467,111 @@ final class RegisterTripCostsTest extends TestCase
 
         $this->expectException(DomainException::class);
         $handler->execute($this->actor(['viajes.ver']), 55);
+    }
+
+    public function testRegistersCashMovementInForeignCurrencyUsingCatalogRate(): void
+    {
+        $costs = new CostRepositoryFake();
+        $costs->cashMovementRow = $this->cashRow('BRL', 1.0, 300.0);
+        $directory = new CostDirectoryFake();
+        $directory->exchangeRates['BRL'] = 280.0;
+        $handler = new RegisterTripCashMovement(new CostTripRepositoryFake($this->trip()), $costs, $directory, new CostUnitOfWorkFake());
+
+        $handler->execute($this->actor(['viajes.operar']), new RegisterTripCashMovementCommand(
+            55, 'ANTICIPO', new DateTimeImmutable('2026-11-14 17:48:00'), 300.0, 'BRL', null, 'PIX Mariela'
+        ));
+
+        self::assertSame('BRL', $costs->cashMovement?->money()->currency());
+        self::assertSame(280.0, $costs->cashMovement?->money()->exchangeRate());
+        self::assertSame(84000.0, $costs->cashMovement?->money()->amountArs());
+    }
+
+    public function testRejectsForeignCurrencyWithoutRateAndWithoutCatalog(): void
+    {
+        $handler = new RegisterTripCashMovement(new CostTripRepositoryFake($this->trip()), new CostRepositoryFake(), new CostDirectoryFake(), new CostUnitOfWorkFake());
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('cotización');
+        $handler->execute($this->actor(['viajes.operar']), new RegisterTripCashMovementCommand(
+            55, 'ANTICIPO', new DateTimeImmutable('2026-11-14 17:48:00'), 300.0, 'BRL', null, null
+        ));
+    }
+
+    public function testRejectsForeignRateOneWithoutExplicitConfirmation(): void
+    {
+        $handler = new RegisterTripCashMovement(new CostTripRepositoryFake($this->trip()), new CostRepositoryFake(), new CostDirectoryFake(), new CostUnitOfWorkFake());
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('Confirmá');
+        $handler->execute($this->actor(['viajes.operar']), new RegisterTripCashMovementCommand(
+            55, 'ANTICIPO', new DateTimeImmutable('2026-11-14 17:48:00'), 300.0, 'BRL', 1.0, null, false
+        ));
+    }
+
+    public function testAllowsForeignRateOneWithExplicitConfirmation(): void
+    {
+        $costs = new CostRepositoryFake();
+        $handler = new RegisterTripCashMovement(new CostTripRepositoryFake($this->trip()), $costs, new CostDirectoryFake(), new CostUnitOfWorkFake());
+
+        $handler->execute($this->actor(['viajes.operar']), new RegisterTripCashMovementCommand(
+            55, 'ANTICIPO', new DateTimeImmutable('2026-11-14 17:48:00'), 300.0, 'BRL', 1.0, null, true
+        ));
+
+        self::assertSame(1.0, $costs->cashMovement?->money()->exchangeRate());
+        self::assertSame(300.0, $costs->cashMovement?->money()->amountArs());
+    }
+
+    public function testArsCashMovementForcesRateOne(): void
+    {
+        $costs = new CostRepositoryFake();
+        $handler = new RegisterTripCashMovement(new CostTripRepositoryFake($this->trip()), $costs, new CostDirectoryFake(), new CostUnitOfWorkFake());
+
+        $handler->execute($this->actor(['viajes.operar']), new RegisterTripCashMovementCommand(
+            55, 'ANTICIPO', new DateTimeImmutable('2026-11-14 17:48:00'), 150000.0, 'ARS', 999.0, null
+        ));
+
+        self::assertSame(1.0, $costs->cashMovement?->money()->exchangeRate());
+        self::assertSame(150000.0, $costs->cashMovement?->money()->amountArs());
+    }
+
+    public function testIssue591MandatoryCaseTotals(): void
+    {
+        $costs = new CostRepositoryFake();
+        $handler = new RegisterTripCashMovement(new CostTripRepositoryFake($this->trip()), $costs, new CostDirectoryFake(), new CostUnitOfWorkFake());
+
+        $handler->execute($this->actor(['viajes.operar']), new RegisterTripCashMovementCommand(
+            55, 'ANTICIPO', new DateTimeImmutable('2026-11-14 17:48:00'), 300.0, 'BRL', 280.0, 'PIX Mariela', false
+        ));
+        $brlAdvance = $costs->cashMovement?->money()->amountArs();
+
+        $handler->execute($this->actor(['viajes.operar']), new RegisterTripCashMovementCommand(
+            55, 'ANTICIPO', new DateTimeImmutable('2026-11-14 18:00:00'), 150000.0, 'ARS', 1.0, null, false
+        ));
+        $arsAdvance = $costs->cashMovement?->money()->amountArs();
+
+        self::assertSame(84000.0, $brlAdvance);
+        self::assertSame(150000.0, $arsAdvance);
+        self::assertSame(234000.0, $brlAdvance + $arsAdvance);
+    }
+
+    public function testUpdateCashMovementPreservesHistoricalRateWhenMoneyUnchanged(): void
+    {
+        $costs = new CostRepositoryFake();
+        $costs->cashMovementRow = $this->cashRow('BRL', 280.0, 300.0);
+        $handler = new UpdateTripCashMovement(new CostTripRepositoryFake($this->trip()), $costs, new CostDirectoryFake(), new CostUnitOfWorkFake());
+
+        $handler->execute($this->actor(['viajes.operar']), new UpdateTripCashMovementCommand(
+            55, 77, 'ANTICIPO', new DateTimeImmutable('2026-11-14 17:48:00'), 300.0, 'BRL', null, 'nota nueva'
+        ));
+
+        self::assertSame(280.0, $costs->cashMovement?->money()->exchangeRate());
+        self::assertSame(84000.0, $costs->cashMovement?->money()->amountArs());
+        self::assertSame('nota nueva', $costs->cashMovement?->notes());
+    }
+
+    private function cashRow(string $currency, float $rate, float $amount): array
+    {
+        return ['id' => 77, 'viaje_id' => 55, 'empresa_id' => 5, 'sucursal_id' => 10, 'tipo' => 'ANTICIPO', 'fecha' => '2026-11-14 17:48:00', 'importe' => $amount, 'moneda' => $currency, 'cotizacion' => $rate, 'importe_ars' => round($amount * $rate, 4), 'observaciones' => 'PIX Mariela'];
     }
 
     /** @param list<string> $permissions */
@@ -550,6 +664,11 @@ final class CostRepositoryFake implements TripCostRepository
     public ?TripExpense $expense = null;
     public ?TripCashMovement $cashMovement = null;
     public ?TripOtherEarning $otherEarning = null;
+    public ?array $cashMovementRow = null;
+    public ?array $fuelRow = null;
+    public ?array $expenseRow = null;
+    public ?array $otherEarningRow = null;
+    public ?string $lastChangeReason = null;
     public bool $otherEarningUpdated = false;
     public bool $otherEarningDeleted = false;
     public int $tripId = 0;
@@ -587,21 +706,24 @@ final class CostRepositoryFake implements TripCostRepository
         return 1;
     }
 
-    public function updateFuel(int $tripId, int $companyId, int $movementId, TripFuelLoad $load, int $actorUserId, ?int $legId = null): bool
+    public function updateFuel(int $tripId, int $companyId, int $movementId, TripFuelLoad $load, int $actorUserId, ?int $legId = null, ?string $changeReason = null): bool
     {
         $this->fuel = $load;
+        $this->lastChangeReason = $changeReason;
         return true;
     }
 
-    public function updateExpense(int $tripId, int $companyId, int $movementId, TripExpense $expense, int $actorUserId, ?int $legId = null): bool
+    public function updateExpense(int $tripId, int $companyId, int $movementId, TripExpense $expense, int $actorUserId, ?int $legId = null, ?string $changeReason = null): bool
     {
         $this->expense = $expense;
+        $this->lastChangeReason = $changeReason;
         return true;
     }
 
-    public function updateCashMovement(int $tripId, int $companyId, int $movementId, TripCashMovement $movement, int $actorUserId): bool
+    public function updateCashMovement(int $tripId, int $companyId, int $movementId, TripCashMovement $movement, int $actorUserId, ?string $changeReason = null): bool
     {
         $this->cashMovement = $movement;
+        $this->lastChangeReason = $changeReason;
         return true;
     }
 
@@ -627,12 +749,13 @@ final class CostRepositoryFake implements TripCostRepository
         return 1;
     }
 
-    public function updateOtherEarning(int $tripId, int $companyId, int $movementId, TripOtherEarning $earning, int $actorUserId, ?int $logbookEntryId = null): bool
+    public function updateOtherEarning(int $tripId, int $companyId, int $movementId, TripOtherEarning $earning, int $actorUserId, ?int $logbookEntryId = null, ?string $changeReason = null): bool
     {
         $this->tripId = $tripId;
         $this->companyId = $companyId;
         $this->otherEarning = $earning;
         $this->otherEarningUpdated = true;
+        $this->lastChangeReason = $changeReason;
 
         return true;
     }
@@ -650,6 +773,12 @@ final class CostRepositoryFake implements TripCostRepository
     {
         return null;
     }
+
+    public function findCashMovement(int $tripId, int $companyId, int $movementId): ?array { return $this->cashMovementRow; }
+    public function findFuelLoad(int $tripId, int $companyId, int $movementId): ?array { return $this->fuelRow; }
+    public function findExpense(int $tripId, int $companyId, int $movementId): ?array { return $this->expenseRow; }
+    public function findOtherEarning(int $tripId, int $companyId, int $movementId): ?array { return $this->otherEarningRow; }
+    public function suspiciousHistoricalMovements(int $companyId): array { return []; }
 }
 
 final class CostFleetFake implements TripFleetLookup
@@ -677,6 +806,16 @@ final class CostDirectoryFake implements TripDirectoryLookup
     public function paymentMethodExists(int $companyId, int $paymentMethodId): bool { return true; }
     public function concept(int $companyId, int $conceptId): ?array { return $this->concept; }
     public function currencyExists(string $code): bool { return true; }
+    /** @var array<string,float> */
+    public array $exchangeRates = [];
+    public function exchangeRateFor(int $companyId, string $currency): ?float
+    {
+        $currency = strtoupper(trim($currency));
+        if ($currency === 'ARS') {
+            return 1.0;
+        }
+        return $this->exchangeRates[$currency] ?? null;
+    }
 }
 
 final class CostLegRepositoryFake implements TripLegRepository

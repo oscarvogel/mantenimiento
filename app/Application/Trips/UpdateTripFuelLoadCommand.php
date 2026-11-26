@@ -15,12 +15,14 @@ final readonly class UpdateTripFuelLoadCommand
         public float $liters,
         public ?float $amount,
         public string $currency,
-        public float $exchangeRate,
+        public ?float $exchangeRate,
         public ?int $odometer,
         public ?string $station,
         public ?string $receipt,
         public ?string $notes,
         public ?int $legId,
+        public bool $confirmForeignRateOne = false,
+        public ?string $changeReason = null,
     ) {
     }
 }

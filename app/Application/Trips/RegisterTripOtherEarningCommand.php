@@ -15,11 +15,12 @@ final readonly class RegisterTripOtherEarningCommand
         public DateTimeImmutable $date,
         public float $amount,
         public string $currency = 'ARS',
-        public float $exchangeRate = 1.0,
+        public ?float $exchangeRate = null,
         public string $concept = '',
         public ?string $notes = null,
         public ?int $conceptId = null,
         public ?float $quantity = null,
+        public bool $confirmForeignRateOne = false,
     ) {
     }
 
@@ -37,6 +38,7 @@ final readonly class RegisterTripOtherEarningCommand
             throw new DomainException('Indicá el concepto del haber.');
         }
         $quantity = self::optionalQuantity($input['cantidad'] ?? null);
+        $confirm = $input['confirma_cotizacion_uno'] ?? false;
 
         return new self(
             $tripId,
@@ -49,6 +51,7 @@ final readonly class RegisterTripOtherEarningCommand
             self::nullableText($input['observaciones'] ?? null),
             $conceptId,
             $quantity,
+            $confirm === '1' || $confirm === 1 || $confirm === true || $confirm === 'true',
         );
     }
 
@@ -99,11 +102,11 @@ final readonly class RegisterTripOtherEarningCommand
         return (float) $raw;
     }
 
-    private static function rate(mixed $value): float
+    private static function rate(mixed $value): ?float
     {
         $raw = str_replace(',', '.', trim((string) ($value ?? '')));
         if ($raw === '') {
-            return 1.0;
+            return null;
         }
         if (! is_numeric($raw) || (float) $raw <= 0) {
             throw new DomainException('La cotización del haber debe ser mayor que cero.');

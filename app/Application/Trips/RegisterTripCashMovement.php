@@ -11,7 +11,6 @@ use App\Application\Trips\Port\TripDirectoryLookup;
 use App\Application\Trips\Port\TripsUnitOfWork;
 use App\Domain\Trips\Trip;
 use App\Domain\Trips\TripCashMovement;
-use App\Domain\Trips\TripMoney;
 use DomainException;
 
 final class RegisterTripCashMovement
@@ -31,10 +30,6 @@ final class RegisterTripCashMovement
         if ($branchIds === []) {
             throw new DomainException('El viaje solicitado no existe o no está autorizado.');
         }
-        if (! $this->directory->currencyExists($command->currency)) {
-            throw new DomainException('La moneda elegida no está disponible.');
-        }
-
         return $this->unitOfWork->transactional(function () use ($actor, $command, $companyId, $branchIds): int {
             $trip = $this->trips->findForUpdate($companyId, $branchIds, $command->tripId);
             if ($trip === null) {
@@ -44,12 +39,15 @@ final class RegisterTripCashMovement
                 throw new DomainException('No se puede mover la caja de un viaje cancelado o finalizado.');
             }
 
-            $movement = new TripCashMovement(
-                $command->type,
-                $command->date,
-                new TripMoney($command->amount, $command->currency, $command->exchangeRate),
-                $command->notes,
+            $money = TripMoneyRules::resolve(
+                $this->directory,
+                $companyId,
+                $command->amount,
+                $command->currency,
+                $command->exchangeRate,
+                $command->confirmForeignRateOne,
             );
+            $movement = new TripCashMovement($command->type, $command->date, $money, $command->notes);
 
             return $this->costs->addCashMovement($trip->id() ?? 0, $companyId, $trip->branchId(), $movement, $actor->userId());
         });

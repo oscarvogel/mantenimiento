@@ -15,11 +15,13 @@ final readonly class UpdateTripOtherEarningCommand
         public DateTimeImmutable $date,
         public float $amount,
         public string $currency,
-        public float $exchangeRate,
+        public ?float $exchangeRate,
         public ?int $conceptId,
         public float $quantity,
         public string $concept,
         public ?string $notes,
+        public bool $confirmForeignRateOne = false,
+        public ?string $changeReason = null,
     ) {
     }
 }

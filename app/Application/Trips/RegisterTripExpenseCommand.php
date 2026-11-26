@@ -14,7 +14,7 @@ final readonly class RegisterTripExpenseCommand
         public float $amount,
         public ?int $categoryId = null,
         public string $currency = 'ARS',
-        public float $exchangeRate = 1.0,
+        public ?float $exchangeRate = null,
         public ?int $paymentMethodId = null,
         public bool $paidFromCash = false,
         public ?string $receipt = null,
@@ -23,6 +23,7 @@ final readonly class RegisterTripExpenseCommand
         public string $paidBy = 'EMPRESA',
         public ?int $conceptId = null,
         public ?float $quantity = null,
+        public bool $confirmForeignRateOne = false,
     ) {
     }
 }

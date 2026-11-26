@@ -164,6 +164,7 @@ final class FuelPriceDirectoryFake implements TripDirectoryLookup
     public function paymentMethodExists(int $companyId, int $paymentMethodId): bool { return true; }
     public function concept(int $companyId, int $conceptId): ?array { return null; }
     public function currencyExists(string $code): bool { return in_array($code, ['ARS', 'USD'], true); }
+    public function exchangeRateFor(int $companyId, string $currency): ?float { $c = strtoupper(trim($currency)); return $c === 'ARS' ? 1.0 : 1.0; }
 }
 
 final class FuelPriceUnitOfWorkFake implements TripsUnitOfWork
