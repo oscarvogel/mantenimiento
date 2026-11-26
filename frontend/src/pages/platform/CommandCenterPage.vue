@@ -3,6 +3,7 @@ import * as uiLabels from '../../ui/labels.js'
 import { formatNumber } from '../../ui/format.js'
 import { moduleIconFor } from '../../ui/moduleIcons.js'
 import { secondaryButton } from '../../ui/buttons.js'
+import FleetAvailabilityPanel from './components/FleetAvailabilityPanel.vue'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import {
   ArrowPathRoundedSquareIcon,
@@ -103,6 +104,12 @@ onBeforeUnmount(() => cardMotionPreference?.revert())
       </a>
     </div>
 
+    <div
+      data-test="portal-grid"
+      class="grid items-start gap-7"
+      :class="{ 'xl:grid-cols-[minmax(0,1fr)_360px]': data.fleet }"
+    >
+    <div class="min-w-0 space-y-8">
     <section v-if="indicators.length" aria-labelledby="indicators-heading">
       <div class="mb-3.5 flex items-baseline justify-between gap-3">
         <h2 id="indicators-heading" class="text-lg font-semibold text-ink">Mantenimiento preventivo</h2>
@@ -264,6 +271,10 @@ onBeforeUnmount(() => cardMotionPreference?.revert())
         <p class="mt-1 text-sm">Consultá al administrador de tu empresa para conocer tus accesos.</p>
       </div>
     </section>
+    </div>
+
+    <FleetAvailabilityPanel v-if="data.fleet" :fleet="data.fleet" />
+    </div>
   </div>
 </template>
 

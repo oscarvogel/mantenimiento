@@ -193,4 +193,15 @@ describe('CommandCenterPage', () => {
     expect(wrapper.find('[aria-disabled="true"][aria-label="Mantenimiento: No habilitado para tu cuenta"]').exists()).toBe(true)
     expect(wrapper.text()).toContain('Consultá a tu administrador')
   })
+
+  it('la columna de flota aparece solo cuando el servidor la envía', () => {
+    const withoutFleet = mount(CommandCenterPage, { props: { data: managementData } })
+    expect(withoutFleet.find('[data-test="portal-grid"]').classes()).not.toContain('xl:grid-cols-[minmax(0,1fr)_360px]')
+    expect(withoutFleet.find('#fleet-heading').exists()).toBe(false)
+
+    const fleet = { total: 1, counts: { operative: 1, inShop: 0, stopped: 0 }, stopped: [], inShop: [], branches: [], branchId: null, allUrl: '/e', formUrl: '/inicio' }
+    const withFleet = mount(CommandCenterPage, { props: { data: { ...managementData, fleet } } })
+    expect(withFleet.get('[data-test="portal-grid"]').classes()).toContain('xl:grid-cols-[minmax(0,1fr)_360px]')
+    expect(withFleet.get('#fleet-heading').text()).toBe('Estado de la flota')
+  })
 })
