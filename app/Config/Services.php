@@ -1260,6 +1260,7 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
         return new \App\Application\Platform\GetPortalHome(
             static::platformModuleCatalog(),
             new \App\Infrastructure\Platform\MaintenanceDashboardPortalSummary(static::maintenanceDashboard()),
+            static::fleetAvailability(),
         );
     }
 

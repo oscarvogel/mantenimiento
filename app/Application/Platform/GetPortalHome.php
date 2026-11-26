@@ -23,11 +23,16 @@ final readonly class GetPortalHome
     public function __construct(
         private GetPlatformModuleCatalog $catalog,
         private PortalMaintenanceSummary $maintenance,
+        private GetFleetAvailability $fleet,
     ) {
     }
 
-    /** @return array{profile:string,modules:list<array<string,mixed>>,indicators:list<array<string,mixed>>,attention:list<array<string,mixed>>,shortcuts:list<array<string,mixed>>} */
-    public function execute(ActorContext $actor): array
+    /**
+     * La flota tiene su propia regla (equipos.ver), independiente del perfil.
+     *
+     * @return array{profile:string,modules:list<array<string,mixed>>,indicators:list<array<string,mixed>>,attention:list<array<string,mixed>>,shortcuts:list<array<string,mixed>>,fleet:?array<string,mixed>}
+     */
+    public function execute(ActorContext $actor, ?int $fleetBranchId = null): array
     {
         $home = [
             'profile' => 'modules',
@@ -35,6 +40,7 @@ final readonly class GetPortalHome
             'indicators' => [],
             'attention' => [],
             'shortcuts' => [],
+            'fleet' => $this->fleet->execute($actor, $fleetBranchId),
         ];
         if ($actor->isSuperAdmin() || $actor->companyId() === null) {
             return $home;

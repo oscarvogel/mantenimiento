@@ -3,8 +3,10 @@
 declare(strict_types=1);
 
 use App\Application\Identity\ActorContext;
+use App\Application\Platform\GetFleetAvailability;
 use App\Application\Platform\GetPlatformModuleCatalog;
 use App\Application\Platform\GetPortalHome;
+use App\Application\Platform\Port\FleetAvailabilityReadModel;
 use App\Application\Platform\Port\PortalMaintenanceSummary;
 use PHPUnit\Framework\TestCase;
 
@@ -28,7 +30,7 @@ final class GetPortalHomeTest extends TestCase
     public function testIndicatorsFollowPermissionsAndNeverInventCompliance(): void
     {
         $summary = $this->summary(['preventiveCompliance' => null]);
-        $home = (new GetPortalHome(new GetPlatformModuleCatalog(), $summary))->execute($this->actor(['planes.ver']));
+        $home = (new GetPortalHome(new GetPlatformModuleCatalog(), $summary, $this->fleet()))->execute($this->actor(['planes.ver']));
 
         self::assertSame(['overdue', 'due-soon', 'compliance'], array_column($home['indicators'], 'key'));
         self::assertNull($home['indicators'][2]['value']);
@@ -39,7 +41,7 @@ final class GetPortalHomeTest extends TestCase
     public function testFieldUserGetsShortcutsInsteadOfIndicators(): void
     {
         $summary = $this->summary();
-        $home = (new GetPortalHome(new GetPlatformModuleCatalog(), $summary))
+        $home = (new GetPortalHome(new GetPlatformModuleCatalog(), $summary, $this->fleet()))
             ->execute($this->actor(['ordenes.mi_trabajo', 'lecturas.cargar', 'solicitudes.crear']));
 
         self::assertSame('field', $home['profile']);
@@ -52,7 +54,7 @@ final class GetPortalHomeTest extends TestCase
     public function testSuperAdminAndUsersWithoutDailyWorkOnlySeeModules(): void
     {
         $summary = $this->summary();
-        $portal = new GetPortalHome(new GetPlatformModuleCatalog(), $summary);
+        $portal = new GetPortalHome(new GetPlatformModuleCatalog(), $summary, $this->fleet());
 
         $superAdmin = $portal->execute(new ActorContext(1, null, true, true, ['Superadministrador'], [], []));
         $viewer = $portal->execute($this->actor(['reportes.ver']));
@@ -63,6 +65,47 @@ final class GetPortalHomeTest extends TestCase
         self::assertSame(0, $summary->calls);
     }
 
+    public function testFleetIsPresentOnlyWithEquipmentPermission(): void
+    {
+        $portal = $this->home();
+
+        $manager = $portal->execute($this->actor(['planes.ver', 'equipos.ver']));
+        $field = $portal->execute($this->actor(['lecturas.cargar', 'equipos.ver']));
+        $withoutEquipment = $portal->execute($this->actor(['planes.ver']));
+        $superAdmin = $portal->execute(new ActorContext(1, null, true, true, ['Superadministrador'], ['equipos.ver'], []));
+
+        self::assertSame(1, $manager['fleet']['total']);
+        self::assertSame(1, $field['fleet']['counts']['operative']);
+        self::assertNull($withoutEquipment['fleet']);
+        self::assertNull($superAdmin['fleet']);
+    }
+
+    public function testFleetBranchFilterReachesTheFleetUseCase(): void
+    {
+        $home = $this->home()->execute($this->actor(['equipos.ver']), 8);
+
+        self::assertSame(8, $home['fleet']['branchId']);
+    }
+
+    private function fleet(): GetFleetAvailability
+    {
+        return new GetFleetAvailability(new class () implements FleetAvailabilityReadModel {
+            public function rows(int $companyId, ?array $branchIds, ?int $branchId): array
+            {
+                return [[
+                    'equipmentId' => 1, 'code' => 'TR-01', 'plate' => null, 'branchName' => 'Casa Central',
+                    'orderId' => null, 'orderNumber' => null, 'orderStatus' => null, 'openedAt' => null,
+                    'outOfService' => false, 'stopStartedAt' => null, 'stopEndedAt' => null, 'reason' => null,
+                ]];
+            }
+
+            public function branches(int $companyId, ?array $branchIds): array
+            {
+                return [['id' => 8, 'name' => 'Casa Central']];
+            }
+        });
+    }
+
     /** @param list<string> $permissions */
     private function actor(array $permissions): ActorContext
     {
@@ -71,7 +114,7 @@ final class GetPortalHomeTest extends TestCase
 
     private function home(): GetPortalHome
     {
-        return new GetPortalHome(new GetPlatformModuleCatalog(), $this->summary());
+        return new GetPortalHome(new GetPlatformModuleCatalog(), $this->summary(), $this->fleet());
     }
 
     /** @param array<string,mixed> $metrics */

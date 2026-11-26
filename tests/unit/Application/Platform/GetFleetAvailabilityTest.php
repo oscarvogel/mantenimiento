@@ -54,6 +54,19 @@ final class GetFleetAvailabilityTest extends TestCase
         self::assertNull($result['branchId']);
     }
 
+    // Regresión: con todas las sucursales, canAccessBranch acepta cualquier id; una sucursal
+    // inexistente o de otra empresa quedaba "seleccionada" y la flota se veía vacía.
+    public function testBranchOutsideTheActiveCompanyBranchesIsIgnoredForAllBranchActors(): void
+    {
+        $port = new FleetAvailabilityReadModelFake([]);
+        $allBranches = new ActorContext(7, 5, false, true, ['Administrador'], ['equipos.ver'], []);
+
+        $result = (new GetFleetAvailability($port))->execute($allBranches, 99);
+
+        self::assertSame([5, null, null], $port->lastRowsCall);
+        self::assertNull($result['branchId']);
+    }
+
     public function testAuthorizedBranchFilterReachesThePort(): void
     {
         $port = new FleetAvailabilityReadModelFake([]);

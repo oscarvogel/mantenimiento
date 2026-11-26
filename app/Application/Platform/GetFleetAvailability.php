@@ -29,11 +29,12 @@ final readonly class GetFleetAvailability
         if ($actor->isSuperAdmin() || $companyId === null || ! $actor->hasPermission('equipos.ver')) {
             return null;
         }
-        // Una sucursal que el actor no puede ver se ignora: nunca filtra hacia datos ajenos.
-        if ($branchId !== null && ! $actor->canAccessBranch($companyId, $branchId)) {
+        $branchIds = $actor->hasAllCompanyBranches() ? null : $actor->branchIds();
+        $branches = $this->readModel->branches($companyId, $branchIds);
+        // Solo vale una sucursal activa y permitida; cualquier otra se ignora y nunca filtra hacia datos ajenos.
+        if ($branchId !== null && ! in_array($branchId, array_column($branches, 'id'), true)) {
             $branchId = null;
         }
-        $branchIds = $actor->hasAllCompanyBranches() ? null : $actor->branchIds();
 
         $equipment = [];
         foreach ($this->readModel->rows($companyId, $branchIds, $branchId) as $row) {
@@ -68,7 +69,7 @@ final readonly class GetFleetAvailability
             'counts' => $counts,
             'stopped' => $this->firstOldest($stopped),
             'inShop' => $this->firstOldest($inShop),
-            'branches' => $this->readModel->branches($companyId, $branchIds),
+            'branches' => $branches,
             'branchId' => $branchId,
         ];
     }

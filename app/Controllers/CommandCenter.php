@@ -17,7 +17,8 @@ final class CommandCenter extends BaseController
             return redirect()->to('/login');
         }
 
-        $home = $this->portalHome()->execute($actor);
+        $branch = (string) $this->request->getGet('sucursal');
+        $home = $this->portalHome()->execute($actor, ctype_digit($branch) ? (int) $branch : null);
         $url = static fn (?string $path): ?string => $path === null ? null : base_url($path);
         $withUrl = static fn (array $items): array => array_map(
             static fn (array $item): array => [...$item, 'href' => $url($item['href'])],
@@ -48,10 +49,31 @@ final class CommandCenter extends BaseController
                 'indicators' => $withUrl($home['indicators']),
                 'attention' => $withUrl($home['attention']),
                 'shortcuts' => $withUrl($home['shortcuts']),
+                'fleet' => $this->fleetView($home['fleet']),
                 'userName' => (string) session()->get('usuario_nombre'),
                 'globalAdminUrl' => $actor->isSuperAdmin() ? base_url('superadmin') : null,
             ],
         );
+    }
+
+    /** @param array<string,mixed>|null $fleet @return array<string,mixed>|null */
+    private function fleetView(?array $fleet): ?array
+    {
+        if ($fleet === null) {
+            return null;
+        }
+        $withHref = static fn (array $rows): array => array_map(
+            static fn (array $row): array => [...$row, 'href' => base_url('mantenimiento/equipos/' . (int) $row['equipmentId'])],
+            $rows,
+        );
+
+        return [
+            ...$fleet,
+            'stopped' => $withHref($fleet['stopped']),
+            'inShop' => $withHref($fleet['inShop']),
+            'allUrl' => base_url('mantenimiento/equipos'),
+            'formUrl' => base_url('inicio'),
+        ];
     }
 
     private function portalHome(): GetPortalHome
