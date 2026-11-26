@@ -136,3 +136,6 @@ frontend/telemetry-preview.js
 docs/*.pdf
 docs/*.docx
 docs/_semi_texto_extraido.txt
+
+# graphify (grafo local, se regenera)
+/graphify-out/
