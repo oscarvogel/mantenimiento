@@ -23,7 +23,7 @@ interface CustomerAccountRepository
     /**
      * Cargo vigente bloqueado para anularlo.
      *
-     * @return array{id:int,cliente_id:int,sentido:string,importe_ars:float,documento_fecha:string}|null
+     * @return array{id:int,cliente_id:int,sentido:string,importe_ars:float,importe_original:float,moneda:string,cotizacion:float,cotizacion_fecha:string,cotizacion_fuente:string,documento_fecha:string}|null
      */
     public function findActiveChargeForUpdate(int $companyId, int $chargeId): ?array;
 

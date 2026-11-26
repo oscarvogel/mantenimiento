@@ -2992,6 +2992,7 @@ return new AsignarPlan(
 
         return new \App\Application\CustomerAccounts\ListCustomerAccounts(
             new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerAccountReadModel($db),
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterExchangeRateCatalog($db),
         );
     }
 
@@ -3005,7 +3006,58 @@ return new AsignarPlan(
 
         return new \App\Application\CustomerAccounts\GetCustomerStatement(
             new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerAccountReadModel($db),
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerPaymentReadModel($db),
             new \App\Infrastructure\CustomerAccounts\CodeIgniterExchangeRateCatalog($db),
+        );
+    }
+
+    /** Cobranzas de clientes: alta, acreditación y anulación (#588). */
+    public static function registerCustomerPayment(bool $getShared = true): \App\Application\CustomerAccounts\RegisterCustomerPayment
+    {
+        if ($getShared) {
+            return static::getSharedInstance('registerCustomerPayment');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\CustomerAccounts\RegisterCustomerPayment(
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerPaymentRepository($db),
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterExchangeRateCatalog($db),
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerAccountsUnitOfWork($db),
+            new \App\Infrastructure\CustomerAccounts\SystemCustomerAccountsClock(),
+            static::auditTrail(),
+        );
+    }
+
+    public static function creditCustomerPayment(bool $getShared = true): \App\Application\CustomerAccounts\CreditCustomerPayment
+    {
+        if ($getShared) {
+            return static::getSharedInstance('creditCustomerPayment');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\CustomerAccounts\CreditCustomerPayment(
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerPaymentRepository($db),
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerAccountsUnitOfWork($db),
+            new \App\Infrastructure\CustomerAccounts\SystemCustomerAccountsClock(),
+            static::auditTrail(),
+        );
+    }
+
+    public static function annulCustomerPayment(bool $getShared = true): \App\Application\CustomerAccounts\AnnulCustomerPayment
+    {
+        if ($getShared) {
+            return static::getSharedInstance('annulCustomerPayment');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\CustomerAccounts\AnnulCustomerPayment(
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerPaymentRepository($db),
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerAccountsUnitOfWork($db),
+            new \App\Infrastructure\CustomerAccounts\SystemCustomerAccountsClock(),
+            static::auditTrail(),
         );
     }
 

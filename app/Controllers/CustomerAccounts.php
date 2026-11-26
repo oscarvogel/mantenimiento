@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Application\CustomerAccounts\ListCustomerAccounts;
 use App\Application\CustomerAccounts\FormalizeLegChargeCommand;
+use App\Application\CustomerAccounts\PaymentImputationInput;
+use App\Application\CustomerAccounts\RegisterCustomerPaymentCommand;
 use App\Application\CustomerAccounts\RegisterOpeningBalanceCommand;
 use App\Application\Identity\ActorContext;
+use App\Domain\CustomerAccounts\Money;
 use App\Infrastructure\Identity\SessionActorContext;
 use CodeIgniter\HTTP\RedirectResponse;
 use DateTimeImmutable;
@@ -103,12 +107,79 @@ final class CustomerAccounts extends BaseController
             $payload = service('listCustomerAccounts')->execute(
                 $actor,
                 $this->request->getGet('q') === null ? null : (string) $this->request->getGet('q'),
+                $this->request->getGet('moneda') === null ? null : (string) $this->request->getGet('moneda'),
+                $this->page(),
+                $this->perPage(),
             );
             $payload['links'] = $this->links();
+            $payload['returnTo'] = self::ACCOUNTS;
 
             return $this->renderApp($actor, 'customer-accounts', 'customer-accounts', 'Cuenta corriente de clientes', $payload);
         } catch (Throwable $exception) {
             return $this->failure($exception, 'No se pudo cargar la cuenta corriente de clientes.', '/viajes/operativos');
+        }
+    }
+
+    /**
+     * Registra un cobro del cliente, con las imputaciones a documentos de la
+     * misma moneda (#588).
+     */
+    public function registerPayment(int $customerId): RedirectResponse
+    {
+        $location = self::ACCOUNTS . '/' . $customerId;
+        try {
+            $imputations = [];
+            $chargeIds = (array) ($this->request->getPost('cargo_id') ?? []);
+            $amounts = (array) ($this->request->getPost('importe_cargo') ?? []);
+            foreach ($chargeIds as $index => $chargeId) {
+                $amount = trim((string) ($amounts[$index] ?? ''));
+                if ($chargeId === '' || $amount === '') {
+                    continue;
+                }
+                $imputations[] = new PaymentImputationInput((int) $chargeId, $amount);
+            }
+
+            $command = new RegisterCustomerPaymentCommand(
+                $customerId,
+                $this->requiredDate('fecha', 'La fecha del cobro'),
+                strtoupper(trim((string) $this->request->getPost('moneda'))),
+                $this->requiredAmountText('importe'),
+                $this->optionalRate(),
+                strtoupper(trim((string) $this->request->getPost('medio'))),
+                $this->text('referencia', 100),
+                $this->text('observaciones', 500),
+                $this->request->getPost('diferido') !== null,
+                $imputations,
+            );
+            service('registerCustomerPayment')->execute($this->actor(), $command);
+
+            return redirect()->to($location)->with('success', 'El cobro quedó registrado en la cuenta corriente del cliente.');
+        } catch (Throwable $exception) {
+            return $this->failure($exception, 'No se pudo registrar el cobro.', $location);
+        }
+    }
+
+    /** Acredita un cobro diferido: recién ahí impacta en el libro (#588). */
+    public function creditPayment(int $paymentId): RedirectResponse
+    {
+        try {
+            service('creditCustomerPayment')->execute($this->actor(), $paymentId);
+
+            return redirect()->to($this->back())->with('success', 'El cobro quedó acreditado y impactó en la cuenta corriente.');
+        } catch (Throwable $exception) {
+            return $this->failure($exception, 'No se pudo acreditar el cobro.', $this->back());
+        }
+    }
+
+    /** Anula un cobro: restituye la deuda con contraasiento (#588). */
+    public function annulPayment(int $paymentId): RedirectResponse
+    {
+        try {
+            service('annulCustomerPayment')->execute($this->actor(), $paymentId, (string) $this->request->getPost('motivo'));
+
+            return redirect()->to($this->back())->with('success', 'El cobro quedó anulado y se restituyó la deuda del cliente.');
+        } catch (Throwable $exception) {
+            return $this->failure($exception, 'No se pudo anular el cobro.', $this->back());
         }
     }
 
@@ -159,8 +230,24 @@ final class CustomerAccounts extends BaseController
             // Familias que el frontend completa con el id (terminan en barra).
             'legsBase' => base_url('viajes/cierre-comercial/tramos/'),
             'chargesBase' => base_url('clientes/cuenta-corriente/cargos/'),
+            'paymentsBase' => base_url('clientes/cuenta-corriente/cobranzas/'),
             'tripsBase' => base_url('viajes/operativos'),
         ];
+    }
+
+    /** Página pedida, con el mismo patrón de Viajes (#532). */
+    private function page(): int
+    {
+        $page = (int) ($this->request->getGet('pagina') ?? 1);
+
+        return $page > 0 ? $page : 1;
+    }
+
+    private function perPage(): int
+    {
+        $perPage = (int) ($this->request->getGet('por_pagina') ?? ListCustomerAccounts::DEFAULT_PER_PAGE);
+
+        return in_array($perPage, ListCustomerAccounts::PER_PAGE_OPTIONS, true) ? $perPage : ListCustomerAccounts::DEFAULT_PER_PAGE;
     }
 
 
@@ -195,6 +282,25 @@ final class CustomerAccounts extends BaseController
         }
 
         return (float) $raw;
+    }
+
+    /**
+     * Importe exacto como texto decimal.
+     *
+     * El cobro no puede pasar por un float: el dominio calcula en centavos
+     * enteros y un importe con cuatro decimales se perdería en el camino.
+     */
+    private function requiredAmountText(string $key): string
+    {
+        $raw = str_replace(',', '.', trim((string) $this->request->getPost($key)));
+        if ($raw === '' || preg_match('/^\d+(\.\d{1,4})?$/', $raw) !== 1) {
+            throw new DomainException('El importe debe ser un número mayor que cero.');
+        }
+        if (Money::toMinor($raw) <= 0) {
+            throw new DomainException('El importe debe ser mayor que cero.');
+        }
+
+        return $raw;
     }
 
     private function currency(): string

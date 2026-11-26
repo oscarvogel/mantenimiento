@@ -20,4 +20,7 @@ enum AuditAction: string
     case CLIENTE_CC_CARGO_ANULADO = 'cliente_cc.cargo_anulado';
     case CLIENTE_CC_TRAMO_NO_COBRABLE = 'cliente_cc.tramo_no_cobrable';
     case CLIENTE_CC_TRAMO_REABIERTO = 'cliente_cc.tramo_reabierto';
+    case CLIENTE_CC_COBRANZA_REGISTRADA = 'cliente_cc.cobranza_registrada';
+    case CLIENTE_CC_COBRANZA_ACREDITADA = 'cliente_cc.cobranza_acreditada';
+    case CLIENTE_CC_COBRANZA_ANULADA = 'cliente_cc.cobranza_anulada';
 }

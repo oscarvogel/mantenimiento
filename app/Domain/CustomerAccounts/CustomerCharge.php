@@ -23,6 +23,15 @@ final readonly class CustomerCharge
     public const CIERRE_COMERCIAL_APROBADO = 'CIERRE_COMERCIAL_APROBADO';
     public const SALDO_INICIAL = 'SALDO_INICIAL';
 
+    /**
+     * Deuda prevista (#589): existe comercialmente pero todavía no es exigible.
+     *
+     * Se declara acá para que el modelo de #588 ya distinga deuda prevista de
+     * deuda formalizada. #589 le dá su circuito de formalización; este módulo
+     * no la genera.
+     */
+    public const PREVISTA = 'PREVISTA';
+
     /** Un cargo de tramo siempre va al Debe; el saldo inicial puede ser a favor del cliente. */
     public const DEBE = 'DEBE';
     public const HABER = 'HABER';
@@ -35,6 +44,7 @@ final readonly class CustomerCharge
         self::FACTURA_EMITIDA => 'Factura emitida',
         self::CIERRE_COMERCIAL_APROBADO => 'Cierre comercial aprobado',
         self::SALDO_INICIAL => 'Saldo inicial',
+        self::PREVISTA => 'Deuda prevista',
     ];
 
     private float $amountArs;
