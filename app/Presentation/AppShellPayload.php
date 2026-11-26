@@ -25,6 +25,10 @@ final readonly class AppShellPayload
         $payload['homeUrl'] = $active !== 'command-center' && $availableModules !== []
             && $canEnterModule ? base_url('inicio')
             : null;
+        // Búsqueda de equipos del encabezado: solo para quien puede ver equipos de una empresa.
+        $payload['equipmentSearchUrl'] = ! $actor->isSuperAdmin() && $actor->companyId() !== null && $actor->hasPermission('equipos.ver')
+            ? base_url('mantenimiento/equipos/buscar')
+            : null;
         $tripOperationsActive = in_array($active, ['trips-operations', 'trip-operations-create', 'trip-operations-detail'], true)
             ? 'trips-operations'
             : $active;

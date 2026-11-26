@@ -214,6 +214,7 @@ export function normalizeAppShellPayload(payload) {
       href: item.disabled ? null : item.href,
     })),
     homeUrl: source.homeUrl ? asUrl(source.homeUrl, '#') : null,
+    equipmentSearchUrl: source.equipmentSearchUrl ? asUrl(source.equipmentSearchUrl, '#') : null,
     notifications: notifications
       ? {
           enabled: Boolean(notifications.enabled),

@@ -212,3 +212,11 @@ describe('normalizeAppShellPayload', () => {
     expect(shell.navigation[1].description).toBe('')
   })
 })
+
+describe('normalizeAppShellPayload — búsqueda de equipos', () => {
+  it('propaga la URL de búsqueda solo cuando el servidor la envía', () => {
+    expect(normalizeAppShellPayload({ equipmentSearchUrl: '/mantenimiento/equipos/buscar' }).equipmentSearchUrl)
+      .toBe('/mantenimiento/equipos/buscar')
+    expect(normalizeAppShellPayload({}).equipmentSearchUrl).toBeNull()
+  })
+})

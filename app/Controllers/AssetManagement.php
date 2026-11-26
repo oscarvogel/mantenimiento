@@ -275,6 +275,28 @@ final class AssetManagement extends BaseController
         }
     }
 
+    /** Búsqueda rápida del encabezado: patente o código, dentro de la empresa y sucursales del actor. */
+    public function quickSearch(): ResponseInterface
+    {
+        $query = trim((string) $this->request->getGet('q'));
+        if (mb_strlen($query) < 2) {
+            return $this->response->setJSON(['items' => []]);
+        }
+
+        try {
+            $result = $this->equipmentList()->execute($this->actor(), new EquipmentListQuery($query, perPage: 8));
+        } catch (DomainException) {
+            return $this->response->setStatusCode(403)->setJSON(['items' => []]);
+        }
+
+        return $this->response->setJSON(['items' => array_map(static fn (array $row): array => [
+            'id' => (int) $row['id'],
+            'label' => implode(' · ', array_filter([(string) $row['codigo'], (string) ($row['patente'] ?? '')])),
+            'detail' => implode(' · ', array_filter([(string) ($row['sucursal_nombre'] ?? ''), (string) ($row['tipo_nombre'] ?? '')])),
+            'href' => base_url('mantenimiento/equipos/' . (int) $row['id']),
+        ], $result['items'])]);
+    }
+
     private function actor(): ActorContext
     {
         $actor = (new SessionActorContext())->current();

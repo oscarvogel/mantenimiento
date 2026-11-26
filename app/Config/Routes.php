@@ -240,6 +240,7 @@ $routes->get('telemetria', 'Telemetria::flota', ['filter' => 'permission:equipos
     $routes->post('telemetria/integraciones', 'Telemetria::guardarIntegracion', ['filter' => 'permission:equipos.editar']);
     $routes->get('', 'MaintenanceCircuit::index', ['filter' => 'permission:equipos.ver']);
     $routes->get('equipos', 'AssetManagement::index', ['filter' => 'permission:equipos.ver']);
+    $routes->get('equipos/buscar', 'AssetManagement::quickSearch', ['filter' => 'permission:equipos.ver']);
     $routes->post('equipos', 'AssetManagement::createEquipment', ['filter' => 'permission:equipos.editar']);
 
     $routes->get('servicios', 'MaintenanceServices::index', ['filter' => 'permission:planes.ver']);

@@ -4,6 +4,7 @@ import AppHeader from './AppHeader.vue'
 import AppSidebar from './AppSidebar.vue'
 import MobileTabBar from './MobileTabBar.vue'
 import RouteLines from './RouteLines.vue'
+import EquipmentSearchBox from './EquipmentSearchBox.vue'
 import LazyChatWidget from '../pages/operations/components/LazyChatWidget.vue'
 import ScrollCta from './ScrollCta.vue'
 import { withFieldShortcuts } from '../ui/fieldShortcuts.js'
@@ -237,6 +238,9 @@ onBeforeUnmount(() => {
         :menu-open="sidebarOpen"
         @open-menu="openSidebar"
       >
+        <template v-if="props.shell.equipmentSearchUrl" #search>
+          <EquipmentSearchBox :url="props.shell.equipmentSearchUrl" />
+        </template>
         <template v-if="!isPlatformShell" #assistant>
           <div id="operations-assistant-launcher" ref="assistantLauncher" class="size-11 shrink-0" />
         </template>

@@ -251,6 +251,19 @@ final class GetAppShellContextTest extends TestCase
         }
     }
 
+    public function testEquipmentSearchIsOfferedOnlyToEquipmentReadersOfACompany(): void
+    {
+        $payload = new AppShellPayload(new GetAppShellContext(new AppShellReadModelFake()), new GetPlatformModuleCatalog());
+
+        $reader = $payload->for(new ActorContext(7, 5, false, false, ['Consulta'], ['equipos.ver'], [9]), 'command-center');
+        $withoutPermission = $payload->for(new ActorContext(8, 5, false, false, ['Consulta'], ['ordenes.ver'], [9]), 'command-center');
+        $superAdmin = $payload->for(new ActorContext(1, null, true, true, ['Superadministrador'], ['equipos.ver'], []), 'command-center');
+
+        self::assertStringEndsWith('/mantenimiento/equipos/buscar', $reader['equipmentSearchUrl']);
+        self::assertNull($withoutPermission['equipmentSearchUrl']);
+        self::assertNull($superAdmin['equipmentSearchUrl']);
+    }
+
     public function testUserWithoutMaintenanceEntryPermissionDoesNotGetModuleOrReturnAccess(): void
     {
         $context = new GetAppShellContext(new AppShellReadModelFake());

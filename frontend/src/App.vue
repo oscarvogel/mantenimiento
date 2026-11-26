@@ -47,6 +47,7 @@ const shell = computed(() => ({
   navigation: props.dashboard.navigation,
   notifications: props.dashboard.notifications,
   homeUrl: props.dashboard.homeUrl,
+  equipmentSearchUrl: props.dashboard.equipmentSearchUrl ?? null,
   moduleNavigation: props.dashboard.moduleNavigation,
   logout: props.dashboard.logout,
 }))
