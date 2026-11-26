@@ -1,4 +1,6 @@
 <script setup>
+import * as uiLabels from '../../ui/labels.js'
+import * as format from '../../ui/format.js'
 import { ArrowDownTrayIcon, ArrowUpTrayIcon, EyeIcon, WrenchScrewdriverIcon } from '@heroicons/vue/24/outline'
 import CsrfInput from './components/CsrfInput.vue'
 import EmptyState from './components/EmptyState.vue'
@@ -79,9 +81,9 @@ defineProps({ data: { type: Object, required: true } })
           <table class="w-full min-w-[52rem] text-left text-sm">
             <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-6 py-3">Fecha</th><th class="px-6 py-3">Archivo</th><th class="px-6 py-3">Resultado</th><th class="px-6 py-3">Estado</th><th class="px-6 py-3"><span class="sr-only">Acción</span></th></tr></thead>
             <tbody class="divide-y divide-border-subtle">
-              <tr v-for="item in data.imports.items" :key="item.id" class="hover:bg-brand-50/60">
-                <td class="px-6 py-4"><span class="font-medium text-ink">{{ item.date }}</span><br><span class="text-xs text-ink-muted">{{ item.userName || 'Usuario' }}</span></td>
-                <td class="px-6 py-4"><span class="font-semibold text-ink">{{ item.originalFile }}</span><br><span class="text-xs text-ink-muted">{{ item.type }}</span></td>
+              <tr v-for="item in data.imports.items" :key="item.id" class="hover:bg-secondary-100/60">
+                <td class="px-6 py-4"><span class="font-medium text-ink">{{ format.formatDateTime(item.date) }}</span><br><span class="text-xs text-ink-muted">{{ item.userName || 'Usuario' }}</span></td>
+                <td class="px-6 py-4"><span class="font-semibold text-ink">{{ item.originalFile }}</span><br><span class="text-xs text-ink-muted">{{ uiLabels.humanizeCode(item.type) }}</span></td>
                 <td class="px-6 py-4 text-ink-muted"><span class="font-medium text-ink">{{ item.importedRows }}</span> importadas · <span class="text-danger-strong">{{ item.errorRows }} errores</span> · <span class="text-warning-strong">{{ item.duplicateRows }} duplicadas</span><p v-if="item.summary" class="mt-1 text-xs">{{ item.summary }}</p></td>
                 <td class="px-6 py-4"><StatusBadge :status="item.status" /></td>
                 <td class="px-6 py-4 text-right"><a :href="item.detailUrl" :class="secondaryButton"><EyeIcon class="mr-1.5 size-4" aria-hidden="true" />Ver detalle</a></td>
@@ -91,7 +93,7 @@ defineProps({ data: { type: Object, required: true } })
         </div>
         <ul class="divide-y divide-border-subtle md:hidden">
           <li v-for="item in data.imports.items" :key="item.id" class="p-5">
-            <div class="flex items-start justify-between gap-3"><div class="min-w-0"><p class="truncate font-semibold text-ink">{{ item.originalFile }}</p><p class="mt-1 text-xs text-ink-muted">{{ item.date }} · {{ item.type }}</p></div><StatusBadge :status="item.status" /></div>
+            <div class="flex items-start justify-between gap-3"><div class="min-w-0"><p class="truncate font-semibold text-ink">{{ item.originalFile }}</p><p class="mt-1 text-xs text-ink-muted">{{ format.formatDateTime(item.date) }} · {{ uiLabels.humanizeCode(item.type) }}</p></div><StatusBadge :status="item.status" /></div>
             <p class="mt-3 text-sm text-ink-muted">{{ item.importedRows }} importadas · {{ item.errorRows }} errores · {{ item.duplicateRows }} duplicadas</p>
             <a :href="item.detailUrl" :class="`${secondaryButton} mt-4 w-full`">Ver detalle</a>
           </li>

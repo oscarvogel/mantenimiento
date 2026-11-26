@@ -1,4 +1,5 @@
 <script setup>
+import * as format from '../../ui/format.js'
 import { computed } from 'vue'
 import { ArrowPathIcon, ChartBarSquareIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
 import EmptyState from './components/EmptyState.vue'
@@ -15,13 +16,11 @@ const trips = computed(() => props.data.trips ?? [])
 const pagination = computed(() => props.data.pagination ?? { page: 1, pages: 1, total: 0 })
 const links = computed(() => props.data.links ?? { index: '/viajes/rentabilidad', history: '/viajes' })
 
-const fmt = (value) => Number(value ?? 0).toLocaleString('es-AR', { maximumFractionDigits: 0 })
+const fmt = (value) => format.formatNumber(value ?? 0)
+const money = (value) => format.formatMoney(value ?? 0)
 const fmt2 = (value) => Number(value ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const fmtPct = (value) => value === null || value === undefined ? 'Sin datos' : `${Number(value).toLocaleString('es-AR', { maximumFractionDigits: 1 })}%`
-const fmtDate = (value) => {
-  const match = String(value ?? '').match(/^(\d{4})-(\d{2})-(\d{2})/)
-  return match ? `${match[3]}/${match[2]}/${match[1]}` : 'Sin fecha'
-}
+const fmtDate = (value) => format.formatDate(value)
 const qualityTone = {
   COMPLETO: 'bg-success-subtle text-success-strong',
   PARCIAL: 'bg-warning-subtle text-warning-strong',
@@ -105,16 +104,16 @@ const tripUrl = (id) => `${links.value.history}/${id}`
         </article>
         <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
           <p class="text-xs font-semibold text-ink-muted">Ingresos facturados</p>
-          <p class="mt-2 text-2xl font-bold text-ink">$ {{ fmt(summary.revenue) }}</p>
+          <p class="mt-2 text-2xl font-bold text-ink">{{ money(summary.revenue) }}</p>
         </article>
         <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
           <p class="text-xs font-semibold text-ink-muted">Costos directos</p>
-          <p class="mt-2 text-2xl font-bold text-ink">$ {{ fmt(summary.direct_cost) }}</p>
+          <p class="mt-2 text-2xl font-bold text-ink">{{ money(summary.direct_cost) }}</p>
           <p class="mt-1 text-xs text-ink-muted">combustible + gastos + viáticos + chofer</p>
         </article>
         <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
           <p class="text-xs font-semibold text-ink-muted">Margen</p>
-          <p class="mt-2 text-2xl font-bold" :class="marginTone(summary.margin)">$ {{ fmt(summary.margin) }}</p>
+          <p class="mt-2 text-2xl font-bold" :class="marginTone(summary.margin)">{{ money(summary.margin) }}</p>
         </article>
         <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
           <p class="text-xs font-semibold text-ink-muted">Margen %</p>

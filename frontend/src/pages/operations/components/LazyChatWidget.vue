@@ -1,4 +1,5 @@
 <script setup>
+import { primaryButton } from '../../../ui/buttons.js'
 import { defineAsyncComponent, onMounted, ref } from 'vue'
 import ChatRobot from './ChatRobot.vue'
 
@@ -35,15 +36,15 @@ onMounted(loadBriefing)
   <button
     v-else
     type="button"
-    class="ui-interactive fixed bottom-6 right-6 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary-hover"
+    
     aria-label="Abrir asistente IA"
     title="Abrir asistente IA"
     @click="load"
-  >
+   :class="[primaryButton, 'fixed bottom-24 right-6 z-50 size-14 shadow-lg lg:bottom-6']">
     <ChatRobot variant="fab" />
     <span
       v-if="unread > 0"
-      class="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-danger-foreground"
+      class="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1 text-xs font-bold text-danger-foreground"
       aria-label="Alertas pendientes"
     >
       {{ unread > 99 ? '99+' : unread }}

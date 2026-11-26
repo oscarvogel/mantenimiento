@@ -110,7 +110,7 @@ function buildModal(panel, state) {
         const top = createElement('span', 'flex flex-wrap items-center gap-2')
         const name = createElement('strong', 'text-sm text-ink', candidate.name)
         top.append(name)
-        if (candidate.code) top.append(createElement('span', 'rounded bg-surface-muted px-1.5 py-0.5 text-[11px] font-semibold text-ink-muted', candidate.code))
+        if (candidate.code) top.append(createElement('span', 'rounded bg-surface-muted px-1.5 py-0.5 text-xs font-semibold text-ink-muted', candidate.code))
         const meta = createElement('span', 'mt-1 block text-xs text-ink-muted', [candidate.scope, candidate.frequency].filter(Boolean).join(' · '))
         copy.append(top, meta)
         label.append(input, copy)

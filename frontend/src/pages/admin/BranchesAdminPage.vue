@@ -1,4 +1,5 @@
 <script setup>
+import { primaryButton, secondaryButton } from '../../ui/buttons.js'
 import {
   BellAlertIcon,
   EnvelopeIcon,
@@ -72,7 +73,7 @@ defineProps({
           <span class="mt-1.5 block text-xs text-ink-muted">Afecta WhatsApp y la pantalla pública de lectura.</span>
         </label>
         <div class="sm:col-span-2 lg:col-span-12">
-          <button type="submit" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary-hover active:bg-primary-active">
+          <button type="submit" :class="primaryButton">
             <MapPinIcon class="size-5" aria-hidden="true" />
             Crear sucursal
           </button>
@@ -138,7 +139,7 @@ defineProps({
               </select>
             </label>
             <div class="sm:col-span-12">
-              <button type="submit" class="inline-flex min-h-11 items-center justify-center rounded-lg border border-primary px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary-subtle">Guardar cambios</button>
+              <button type="submit" :class="secondaryButton">Guardar cambios</button>
             </div>
           </form>
 

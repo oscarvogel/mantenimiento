@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { XMarkIcon } from '@heroicons/vue/24/outline'
+import BaseDialog from '../../../ui/BaseDialog.vue'
 import CsrfInput from './CsrfInput.vue'
 import FormField from './FormField.vue'
 import { fieldClass, formatDateDmy, primaryButton, secondaryButton } from '../helpers.js'
@@ -16,41 +16,12 @@ const emit = defineEmits(['close'])
 const originLabel = computed(() => {
   const origin = String(props.expiration.origin || '').trim().toUpperCase()
   if (!origin) return null
-  return origin === 'MANUAL' ? 'Carga manual' : `Origen: ${origin}`
+  return origin === 'MANUAL' ? 'Carga manual' : `Origen: ${humanizeCode(origin)}`
 })
 </script>
 
 <template>
-  <Teleport to="body">
-    <div
-      class="fixed inset-0 z-[80] flex items-center justify-center bg-black/45 p-4"
-      role="presentation"
-      @mousedown.self="emit('close')"
-    >
-      <section
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="renew-expiration-modal-title"
-        class="w-full max-w-xl rounded-xl bg-surface-raised shadow-2xl"
-      >
-        <header class="flex items-start justify-between border-b border-border-subtle px-6 py-4">
-          <div>
-            <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Renovación</p>
-            <h2 id="renew-expiration-modal-title" class="mt-1 text-lg font-bold text-ink">
-              {{ expiration.typeName }}
-            </h2>
-            <p class="mt-1 text-sm text-ink-muted">{{ expiration.subjectName }}</p>
-          </div>
-          <button
-            type="button"
-            class="rounded-md p-2 text-ink-muted hover:bg-surface-subtle"
-            aria-label="Cerrar"
-            @click="emit('close')"
-          >
-            <XMarkIcon class="size-5" aria-hidden="true" />
-          </button>
-        </header>
-
+  <BaseDialog eyebrow="Renovación" :title="expiration.typeName" :description="expiration.subjectName" size="lg" @close="emit('close')">
         <div class="border-b border-border-subtle bg-surface-subtle px-6 py-4">
           <div class="grid gap-3 text-sm sm:grid-cols-2">
             <div>
@@ -133,7 +104,5 @@ const originLabel = computed(() => {
             <button type="submit" :class="primaryButton">Guardar renovación</button>
           </div>
         </form>
-      </section>
-    </div>
-  </Teleport>
+  </BaseDialog>
 </template>

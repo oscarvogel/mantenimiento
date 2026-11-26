@@ -1,4 +1,5 @@
 <script setup>
+import * as format from '../../ui/format.js'
 import { computed, ref } from 'vue'
 import { ArrowPathIcon, ChartBarSquareIcon, PlusIcon, TruckIcon } from '@heroicons/vue/24/outline'
 import EmptyState from './components/EmptyState.vue'
@@ -39,10 +40,7 @@ const statusTone = {
 const plate = ref(props.data.filters?.plate ?? '')
 const order = ref(props.data.filters?.order ?? 'desc')
 
-const fmtDate = (value) => {
-  const match = String(value ?? '').match(/^(\d{4})-(\d{2})-(\d{2})/)
-  return match ? `${match[3]}/${match[2]}/${match[1]}` : 'Sin fecha'
-}
+const fmtDate = (value) => format.formatDate(value)
 // Filtros, orden y tamaño viajan en la URL: navegar entre páginas los conserva
 // y volver desde el detalle de un viaje recupera la misma página (#532).
 const listUrl = (changes) => {

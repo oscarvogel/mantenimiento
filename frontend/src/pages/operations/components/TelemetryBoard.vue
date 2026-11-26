@@ -1,4 +1,5 @@
 <script setup>
+import { secondaryButton } from '../../../ui/buttons.js'
 /**
  * Tablero de telemetría del equipo.
  *
@@ -144,7 +145,7 @@ const mapaEnlaceDe = (fuente) => {
       <form method="post" :action="telemetry.refreshUrl">
         <input type="hidden" :name="telemetry.csrf.name" :value="telemetry.csrf.hash" />
         <input type="hidden" name="equipment_id" :value="equipment.id" />
-        <button type="submit" class="ui-interactive inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-primary bg-surface px-4 py-2.5 text-sm font-semibold text-primary transition hover:bg-primary-subtle">
+        <button type="submit" :class="secondaryButton">
           Actualizar telemetría
         </button>
       </form>
@@ -268,11 +269,11 @@ const mapaEnlaceDe = (fuente) => {
                   </h2>
                   <button
                     type="button"
-                    class="ui-interactive shrink-0 rounded-lg border border-border bg-surface px-3 py-2 text-sm font-semibold text-ink shadow-sm"
+                    
                     aria-label="Cerrar el mapa"
                     autofocus
                     @click="mapaAbierto = null"
-                  >
+                   :class="[secondaryButton, 'shrink-0']">
                     Cerrar mapa
                   </button>
                 </header>

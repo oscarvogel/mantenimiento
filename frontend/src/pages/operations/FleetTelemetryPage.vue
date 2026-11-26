@@ -1,4 +1,6 @@
 <script setup>
+import { primaryButton, secondaryButton, secondaryButtonSm } from '../../ui/buttons.js'
+import * as format from '../../ui/format.js'
 import { computed, defineAsyncComponent, ref } from 'vue'
 import { ExclamationTriangleIcon, MapPinIcon, MagnifyingGlassIcon } from '@heroicons/vue/24/outline'
 
@@ -79,7 +81,7 @@ const signalSummary = computed(() => Object.entries(freshnessNames)
           : state === 'SIN_RESPUESTA' ? `${count} sin respuesta`
             : `${count} sin señal`,
   })))
-const formatNumber = (value) => value === null || value === undefined ? '—' : new Intl.NumberFormat('es-AR', { maximumFractionDigits: 1 }).format(value)
+const formatNumber = (value) => format.formatNumber(value, 1, '—')
 const valueLabel = (value, unit) => value === null || value === undefined ? 'Sin dato' : `${formatNumber(value)} ${unit}`
 const engineLabel = (source) => source?.engineOn === true ? 'Encendido' : source?.engineOn === false ? 'Apagado' : 'Sin dato'
 const idlingLabel = (source) => source?.idling === true ? 'Activo' : source?.idling === false ? 'Sin ralentí' : 'Sin dato'
@@ -213,7 +215,7 @@ const formatDiagnosticValue = (value, unit) => value === null || value === undef
               <td class="whitespace-nowrap px-4 py-3 text-sm font-semibold text-ink">{{ valueLabel(sourceFor(unit)?.voltage, 'V') }}</td>
               <td class="whitespace-nowrap px-4 py-3 text-sm font-semibold text-ink">{{ speedLabel(sourceFor(unit)) }}</td>
               <td class="min-w-36 px-4 py-3"><span class="rounded-full px-2.5 py-1 text-xs font-semibold" :class="freshnessTone[sourceStatus(unit)]">{{ freshnessNames[sourceStatus(unit)] }}</span><p class="mt-1.5 text-xs text-ink-muted">{{ observedLabel(sourceFor(unit)) }}</p></td>
-              <td class="whitespace-nowrap px-4 py-3"><button type="button" class="rounded-lg border border-primary px-3 py-2 text-xs font-semibold text-primary hover:bg-primary-subtle" :data-test="`diagnostic-open-${unit.equipmentId}`" @click="openDiagnostic(unit)">Revisar lecturas</button></td>
+              <td class="whitespace-nowrap px-4 py-3"><button type="button"  :data-test="`diagnostic-open-${unit.equipmentId}`" @click="openDiagnostic(unit)" :class="secondaryButtonSm">Revisar lecturas</button></td>
             </tr>
           </tbody>
         </table>
@@ -229,7 +231,7 @@ const formatDiagnosticValue = (value, unit) => value === null || value === undef
             <div><p class="text-xs text-ink-muted">Horómetro</p><p class="mt-0.5 text-sm font-semibold text-ink">{{ valueLabel(sourceFor(unit)?.hours, 'h') }}</p></div>
             <div><p class="text-xs text-ink-muted">Velocidad</p><p class="mt-0.5 text-sm font-semibold text-ink">{{ speedLabel(sourceFor(unit)) }}</p></div>
           </div>
-          <div class="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-ink-muted"><span>Ralentí: {{ idlingLabel(sourceFor(unit)) }}</span><span>{{ observedLabel(sourceFor(unit)) }}</span><button type="button" class="rounded-lg border border-primary px-3 py-2 font-semibold text-primary" :data-test="`diagnostic-open-${unit.equipmentId}`" @click="openDiagnostic(unit)">Revisar lecturas</button></div>
+          <div class="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-ink-muted"><span>Ralentí: {{ idlingLabel(sourceFor(unit)) }}</span><span>{{ observedLabel(sourceFor(unit)) }}</span><button type="button"  :data-test="`diagnostic-open-${unit.equipmentId}`" @click="openDiagnostic(unit)" :class="secondaryButton">Revisar lecturas</button></div>
         </article>
       </div>
       <p v-else class="px-5 py-8 text-center text-sm text-ink-muted">No hay equipos que coincidan con estos filtros.</p>
@@ -238,11 +240,11 @@ const formatDiagnosticValue = (value, unit) => value === null || value === undef
     <section v-if="diagnosticEquipment" class="overflow-hidden rounded-2xl border border-border bg-surface-raised shadow-card" data-test="diagnostic-panel" aria-labelledby="fleet-diagnostic-title">
       <div class="flex flex-wrap items-start justify-between gap-3 border-b border-border-subtle px-5 py-4">
         <div><h2 id="fleet-diagnostic-title" class="text-base font-bold text-ink">Diagnóstico de {{ diagnosticEquipment.plate || diagnosticEquipment.code }}</h2><p class="mt-1 text-sm text-ink-muted">Capturas guardadas y viajes reconstruidos para comparar en un mismo día.</p></div>
-        <button type="button" class="rounded-lg border border-border px-3 py-2 text-sm font-semibold text-ink-muted hover:bg-surface-muted" @click="closeDiagnostic">Cerrar</button>
+        <button type="button" @click="closeDiagnostic" :class="secondaryButton">Cerrar</button>
       </div>
       <div class="flex flex-col gap-3 border-b border-border-subtle p-5 sm:flex-row sm:items-end">
         <label class="grid gap-1.5 text-sm font-semibold text-ink">Día a revisar<input v-model="diagnosticDate" type="date" :max="data.today" data-test="diagnostic-date" class="min-h-11 rounded-lg border border-border-strong bg-surface-raised px-3 text-sm font-normal" /></label>
-        <button type="button" data-test="diagnostic-load" :disabled="diagnosticLoading || !diagnosticDate" class="min-h-11 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white disabled:cursor-wait disabled:opacity-60" @click="loadDiagnostic">{{ diagnosticLoading ? 'Cargando…' : 'Cargar día' }}</button>
+        <button type="button" data-test="diagnostic-load" :disabled="diagnosticLoading || !diagnosticDate" @click="loadDiagnostic" :class="primaryButton">{{ diagnosticLoading ? 'Cargando…' : 'Cargar día' }}</button>
       </div>
       <p v-if="diagnosticError" role="alert" class="mx-5 mt-4 rounded-lg border border-danger bg-danger-subtle p-3 text-sm text-danger-strong">{{ diagnosticError }}</p>
       <div v-if="diagnosticData" class="space-y-5 p-5" data-test="diagnostic-result">

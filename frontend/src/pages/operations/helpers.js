@@ -1,10 +1,6 @@
-export const fieldClass = 'block min-h-11 w-full rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-primary-foreground file:transition-colors hover:file:bg-primary-hover focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-ink-subtle'
-
-export const primaryButton = 'ui-interactive ui-glare inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary-hover active:bg-primary-active disabled:cursor-not-allowed disabled:opacity-50'
-
-export const secondaryButton = 'ui-interactive inline-flex min-h-10 items-center justify-center rounded-lg border border-border-strong bg-surface-raised px-3.5 py-2 text-sm font-semibold text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50'
-
-export const dangerButton = 'ui-interactive inline-flex min-h-10 items-center justify-center rounded-lg border border-danger/30 bg-surface-raised px-3.5 py-2 text-sm font-semibold text-danger-strong hover:bg-danger-subtle disabled:cursor-not-allowed disabled:opacity-50'
+import { formatDate, formatNumber } from '../../ui/format.js'
+// Moved to src/ui/buttons.js; re-exported so existing imports keep working.
+export * from '../../ui/buttons.js'
 
 export const localDateValue = (date) => {
   const year = String(date.getFullYear()).padStart(4, '0')
@@ -16,11 +12,7 @@ export const localDateValue = (date) => {
 
 export const today = () => localDateValue(new Date())
 
-export const formatDateDmy = (value) => {
-  const raw = String(value ?? '').trim()
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw)
-  return match ? `${match[3]}/${match[2]}/${match[1]}` : raw
-}
+export const formatDateDmy = (value) => formatDate(value, '')
 
 export const nowLocal = () => {
   const date = new Date(Date.now() - new Date().getTimezoneOffset() * 60_000)
@@ -52,12 +44,7 @@ export const normalizeDecimalInput = (value) => {
   return /^\d+(?:[.,]\d)?$/.test(raw) ? raw.replace(',', '.') : raw
 }
 
-export const formatNumberEs = (value, maximumFractionDigits = 1) => {
-  if (value === null || value === undefined || value === '') return 'sin datos'
-  const number = Number(value)
-  if (!Number.isFinite(number)) return 'sin datos'
-  return new Intl.NumberFormat('es-AR', { maximumFractionDigits, minimumFractionDigits: 0 }).format(number)
-}
+export const formatNumberEs = (value, maximumFractionDigits = 1) => formatNumber(value, maximumFractionDigits, 'sin datos')
 
 export const formatKilometers = (value) => value === null || value === undefined || value === '' ? 'sin datos' : `${formatNumberEs(value, 0)} km`
 export const formatHours = (value) => value === null || value === undefined || value === '' ? 'sin datos' : `${formatNumberEs(value, 1)} h`

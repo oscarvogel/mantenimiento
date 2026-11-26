@@ -1,4 +1,6 @@
 <script setup>
+import { primaryButton, secondaryButton } from '../ui/buttons.js'
+import * as format from '../ui/format.js'
 import { computed } from 'vue'
 import { ArrowRightIcon, ChevronRightIcon } from '@heroicons/vue/20/solid'
 import {
@@ -37,11 +39,7 @@ const telemetryRefreshUrl = computed(() =>
     : '#',
 )
 const financial = computed(() => props.dashboard.financial || {})
-const formatCurrency = (value) => new Intl.NumberFormat('es-AR', {
-  style: 'currency',
-  currency: 'ARS',
-  maximumFractionDigits: 0,
-}).format(Number(value) || 0)
+const formatCurrency = (value) => format.formatMoney(value)
 const toNullableNumber = (value) => (
   value === null || value === undefined || value === '' || !Number.isFinite(Number(value))
     ? null
@@ -186,8 +184,8 @@ const actionableExecutiveAlerts = computed(() => executiveAlerts.value.filter((a
           />
           <button
             type="submit"
-            class="ui-interactive inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-primary bg-surface px-4 py-2.5 text-sm font-semibold text-primary transition hover:bg-primary-subtle sm:w-auto"
-          >
+            
+           :class="[secondaryButton, 'w-full sm:w-auto']">
             <ArrowPathIcon class="size-5" aria-hidden="true" />
             Actualizar telemetría
           </button>
@@ -195,24 +193,24 @@ const actionableExecutiveAlerts = computed(() => executiveAlerts.value.filter((a
         <a
           v-if="dashboard.links.equipment !== '#'"
           :href="dashboard.links.equipment"
-          class="ui-interactive inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-primary bg-surface px-4 py-2.5 text-sm font-semibold text-primary transition hover:bg-primary-subtle"
-        >
+          
+         :class="secondaryButton">
           <TruckIcon class="size-5" aria-hidden="true" />
           Ver flota
         </a>
         <a
           v-if="dashboard.links.maintenance !== '#'"
           :href="dashboard.links.maintenance"
-          class="ui-interactive ui-glare inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary-hover"
-        >
+          
+         :class="primaryButton">
           <WrenchScrewdriverIcon class="size-5" aria-hidden="true" />
           Ver mantenimiento
         </a>
         <a
           v-if="dashboard.links.theoreticalCostKm && dashboard.links.theoreticalCostKm !== '#'"
           :href="dashboard.links.theoreticalCostKm"
-          class="ui-interactive inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border-strong bg-surface-raised px-4 py-2.5 text-sm font-semibold text-ink transition hover:border-primary hover:bg-primary-subtle hover:text-primary"
-        >
+          
+         :class="secondaryButton">
           <ChartBarIcon class="size-5" aria-hidden="true" />
           Costo teórico por km
         </a>
@@ -292,7 +290,7 @@ const actionableExecutiveAlerts = computed(() => executiveAlerts.value.filter((a
           <h3 class="text-sm font-bold text-ink">Evolución últimos 6 meses</h3>
           <div class="mt-4 flex h-44 items-end gap-3 rounded-lg bg-surface-subtle px-4 py-4">
             <div v-for="item in financial.history" :key="item.month" class="flex min-w-0 flex-1 flex-col items-center justify-end gap-2">
-              <span class="text-[11px] font-semibold text-ink-muted"><CountUp :value="Number(item.totalArs) || 0" :formatter="formatCurrency" /></span>
+              <span class="text-xs font-semibold text-ink-muted"><CountUp :value="Number(item.totalArs) || 0" :formatter="formatCurrency" /></span>
               <div class="flex h-28 w-full items-end justify-center">
                 <div
                   class="w-full max-w-16 rounded-t-md bg-primary"

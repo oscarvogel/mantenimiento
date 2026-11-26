@@ -76,7 +76,7 @@ const texto = (fila) => (fila.km < 0 ? `Pasado por ${props.formatKm(Math.abs(fil
             }"
           ></span>
         </div>
-        <p v-if="recortada(fila.km)" class="mt-0.5 text-[11px] text-ink-muted">Fuera de escala: la barra está recortada.</p>
+        <p v-if="recortada(fila.km)" class="mt-0.5 text-xs text-ink-muted">Fuera de escala: la barra está recortada.</p>
       </li>
     </ul>
     <p v-else role="status" class="mt-4 rounded-lg bg-surface-subtle px-4 py-5 text-sm text-ink-muted">No hay planes con km para graficar.</p>

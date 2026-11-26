@@ -1,4 +1,5 @@
 <script setup>
+import * as format from '../../ui/format.js'
 /**
  * Control de cierre comercial (#530).
  *
@@ -38,15 +39,9 @@ const tabUrl = (key) => `${links.value.queue ?? ''}?estado=${key}`
 const tabLabels = Object.fromEntries(tabs.map((tab) => [tab.key, tab.label]))
 
 const signedMoney = (value) => `${value > 0 ? '+' : '−'}${money(Math.abs(value))}`
-const money = (value, currency = 'ARS') => `${currency} ${Number(value ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+const money = (value, currency = 'ARS') => format.formatMoney(value ?? 0, { currency, cents: true })
 const rateText = (value) => Number(value ?? 0).toLocaleString('es-AR', { maximumFractionDigits: 6 })
-const fmtDate = (value) => {
-  const raw = String(value ?? '').slice(0, 10)
-  if (!raw) return 'Sin fecha'
-  const [year, month, day] = raw.split('-')
-
-  return `${day}/${month}/${year}`
-}
+const fmtDate = (value) => format.formatDate(value)
 const today = () => {
   const now = new Date()
   const pad = (n) => String(n).padStart(2, '0')

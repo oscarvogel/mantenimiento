@@ -188,7 +188,7 @@ const reportIncident = async () => {
       </form>
     </PanelCard>
 
-    <PanelCard v-if="data.can.reportIncident" title="Reportar un problema">
+    <PanelCard v-if="data.can.reportIncident" id="reportar-problema" class="scroll-mt-24" title="Reportar un problema">
       <p class="mb-3 text-sm text-ink-muted">No hace falta completar una orden de trabajo. Contá qué viste y mantenimiento lo revisará.</p>
       <form class="space-y-3" :aria-busy="incidentSaving" @submit.prevent="reportIncident">
         <label for="incident-description" class="sr-only">Descripción del problema</label>

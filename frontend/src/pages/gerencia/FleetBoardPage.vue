@@ -1,4 +1,5 @@
 <script setup>
+import { primaryButton, secondaryButton } from '../../ui/buttons.js'
 import { computed } from 'vue'
 import { ExclamationTriangleIcon, HomeIcon, TruckIcon } from '@heroicons/vue/24/outline'
 import FleetRankingChart from './charts/FleetRankingChart.vue'
@@ -149,8 +150,8 @@ const tarjetas = computed(() => {
       <a
         v-if="urls.portal"
         :href="urls.portal"
-        class="inline-flex min-h-11 items-center justify-center gap-2 self-start rounded-lg border border-border-strong bg-surface-raised px-4 py-2.5 text-sm font-semibold text-ink hover:bg-surface-muted sm:self-auto"
-      >
+        
+       :class="[secondaryButton, 'self-start sm:self-auto']">
         <HomeIcon class="size-5" aria-hidden="true" />Volver al inicio
       </a>
     </header>
@@ -198,7 +199,7 @@ const tarjetas = computed(() => {
           </select>
         </label>
         <input v-else type="hidden" name="dias" :value="filtros.dias" />
-        <button type="submit" class="min-h-11 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary-hover">
+        <button type="submit" :class="primaryButton">
           Aplicar
         </button>
       </form>

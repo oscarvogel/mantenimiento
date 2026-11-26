@@ -1,4 +1,6 @@
 <script setup>
+import { primaryButton, secondaryButton } from '../../ui/buttons.js'
+import * as format from '../../ui/format.js'
 import { computed, ref } from 'vue'
 import { ArrowDownTrayIcon, ChartBarSquareIcon, FunnelIcon, HomeIcon } from '@heroicons/vue/24/outline'
 import CountUp from '../../components/CountUp.vue'
@@ -20,16 +22,10 @@ const tabs = [
   ['quality', 'Calidad'],
   ['orders', 'Órdenes'],
 ]
-const currency = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 2 })
 const number = new Intl.NumberFormat('es-AR')
-const date = new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })
 
-const money = (value) => currency.format(Number(value) || 0)
-const dateLabel = (value) => {
-  if (!value) return '—'
-  const parsed = new Date(String(value).replace(' ', 'T'))
-  return Number.isNaN(parsed.getTime()) ? '—' : date.format(parsed)
-}
+const money = (value) => format.formatMoney(value)
+const dateLabel = (value) => format.formatDate(value)
 const statusLabel = (status) => ({
   BORRADOR: 'Borrador', EMITIDA: 'Emitida', EN_PROCESO: 'En proceso',
   EN_ESPERA_REPUESTOS: 'En espera', FINALIZADA: 'Finalizada', CANCELADA: 'Cancelada',
@@ -82,10 +78,10 @@ const pagination = computed(() => props.data.orders.pagination)
         <p class="mt-2 max-w-3xl text-sm leading-6 text-ink-muted">Una lectura clara del período, con el detalle disponible cuando lo necesitás.</p>
       </div>
       <div class="flex flex-wrap items-center gap-2 self-start sm:self-auto">
-        <a v-if="portalUrl" :href="portalUrl" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border-strong bg-surface-raised px-4 py-2.5 text-sm font-semibold text-ink hover:bg-surface-muted">
+        <a v-if="portalUrl" :href="portalUrl" :class="secondaryButton">
           <HomeIcon class="size-5" aria-hidden="true" />Volver al inicio
         </a>
-        <a :href="urls.export" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border-strong bg-surface-raised px-4 py-2.5 text-sm font-semibold text-ink hover:bg-surface-muted">
+        <a :href="urls.export" :class="secondaryButton">
           <ArrowDownTrayIcon class="size-5" aria-hidden="true" />Exportar órdenes CSV
         </a>
       </div>
@@ -103,7 +99,7 @@ const pagination = computed(() => props.data.orders.pagination)
         <label class="grid gap-1.5 text-sm font-semibold text-ink">Desde<input type="date" name="desde" :value="data.filters.from" required class="min-h-11 rounded-lg border border-border-strong bg-surface-raised px-3 text-sm font-normal text-ink" /></label>
         <label class="grid gap-1.5 text-sm font-semibold text-ink">Hasta<input type="date" name="hasta" :value="data.filters.to" required class="min-h-11 rounded-lg border border-border-strong bg-surface-raised px-3 text-sm font-normal text-ink" /></label>
         <label class="grid gap-1.5 text-sm font-semibold text-ink">Resultados por página<select name="per_page" class="min-h-11 rounded-lg border border-border-strong bg-surface-raised px-3 text-sm font-normal text-ink"><option v-for="size in [5, 10, 25]" :key="size" :value="size" :selected="Number(data.filters.perPage) === size">{{ size }}</option></select></label>
-        <button type="submit" class="min-h-11 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary-hover">Aplicar filtros</button>
+        <button type="submit" :class="primaryButton">Aplicar filtros</button>
       </form>
     </details>
 

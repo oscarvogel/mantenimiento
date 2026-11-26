@@ -1,4 +1,5 @@
 <script setup>
+import { primaryButton, secondaryButton } from '../../ui/buttons.js'
 import { computed, ref } from 'vue'
 import { BellAlertIcon, BuildingOffice2Icon, ChatBubbleLeftRightIcon, IdentificationIcon, PlusIcon, ShieldCheckIcon, UserGroupIcon, UserPlusIcon } from '@heroicons/vue/24/outline'
 import AdminMetric from './components/AdminMetric.vue'
@@ -118,7 +119,7 @@ const sections = [
         </div>
         <form v-if="data.migrations.pendingCount > 0" method="post" :action="data.actions.applyMigrations" data-confirm data-confirm-title="¿Aplicar migraciones pendientes?" data-confirm-text="Se ejecutarán únicamente las migraciones que todavía no fueron aplicadas." data-confirm-button="Aplicar migraciones" class="shrink-0">
           <CsrfField :csrf="data.csrf" />
-          <button type="submit" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary/90">
+          <button type="submit" :class="primaryButton">
             Aplicar {{ data.migrations.pendingCount }} pendiente(s)
           </button>
         </form>
@@ -156,7 +157,7 @@ const sections = [
       </div>
       <form method="post" :action="data.actions.dispatchNotifications" data-confirm data-confirm-title="¿Ejecutar el ciclo de notificaciones?" data-confirm-text="Se procesarán los eventos y canales pendientes con la configuración actual." data-confirm-button="Ejecutar ahora" class="shrink-0">
         <CsrfField :csrf="data.csrf" />
-        <button type="submit" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary-hover active:bg-primary-active">
+        <button type="submit" :class="primaryButton">
           Ejecutar ahora
         </button>
       </form>
@@ -229,7 +230,7 @@ const sections = [
                   <option value="">Seleccionar equipo y servicio…</option>
                   <option v-for="plan in data.preventiveTestPlans || []" :key="plan.id" :value="plan.id">{{ plan.label }}</option>
                 </select>
-                <button type="submit" :disabled="!data.whatsapp.available || !data.whatsapp.pilotPhoneConfigured || !(data.preventiveTestPlans || []).length" data-confirm data-confirm-title="¿Enviar prueba preventiva?" data-confirm-text="El WhatsApp irá únicamente al teléfono piloto." data-confirm-button="Enviar prueba" class="mt-3 inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50">Probar mantenimiento</button>
+                <button type="submit" :disabled="!data.whatsapp.available || !data.whatsapp.pilotPhoneConfigured || !(data.preventiveTestPlans || []).length" data-confirm data-confirm-title="¿Enviar prueba preventiva?" data-confirm-text="El WhatsApp irá únicamente al teléfono piloto." data-confirm-button="Enviar prueba" :class="[primaryButton, 'mt-3']">Probar mantenimiento</button>
               </form>
 
               <form method="post" :action="data.whatsapp.testByPlateAction" class="rounded-lg border border-border bg-white p-4">
@@ -240,7 +241,7 @@ const sections = [
                 <select name="etapa" class="mt-2 min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink">
                   <option value="initial">Lunes</option><option value="wednesday">Miércoles</option><option value="friday">Viernes</option>
                 </select>
-                <button type="submit" :disabled="!data.whatsapp.available || !data.whatsapp.pilotPhoneConfigured" class="mt-3 inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50">Probar kilometraje</button>
+                <button type="submit" :disabled="!data.whatsapp.available || !data.whatsapp.pilotPhoneConfigured" :class="[primaryButton, 'mt-3']">Probar kilometraje</button>
               </form>
 
               <form method="post" :action="data.whatsapp.testWeeklyReminderAction" class="rounded-lg border border-border bg-white p-4">
@@ -250,7 +251,7 @@ const sections = [
                   <select name="etapa" class="min-h-11 rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink"><option value="initial">Lunes</option><option value="wednesday">Miércoles</option><option value="friday">Viernes</option></select>
                   <select name="escenario" class="min-h-11 rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink"><option value="missing">Sin lectura esta semana</option><option value="actual">Lecturas reales</option></select>
                 </div>
-                <button type="submit" :disabled="!data.whatsapp.available || !data.whatsapp.pilotEnabled || !data.whatsapp.pilotPhoneConfigured" class="mt-3 inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50">Simular semana</button>
+                <button type="submit" :disabled="!data.whatsapp.available || !data.whatsapp.pilotEnabled || !data.whatsapp.pilotPhoneConfigured" :class="[primaryButton, 'mt-3']">Simular semana</button>
               </form>
 
               <form method="post" :action="data.whatsapp.testExpirationDigestAction" class="rounded-lg border border-border bg-white p-4">
@@ -265,7 +266,7 @@ const sections = [
                     <option value="">Móvil…</option><option v-for="equipment in data.expirationTestEquipment || []" :key="equipment.id" :value="equipment.id">{{ equipment.label }}</option>
                   </select>
                 </div>
-                <button type="submit" :disabled="!data.whatsapp.available || !data.whatsapp.pilotPhoneConfigured" class="mt-3 inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50">Probar vencimientos</button>
+                <button type="submit" :disabled="!data.whatsapp.available || !data.whatsapp.pilotPhoneConfigured" :class="[primaryButton, 'mt-3']">Probar vencimientos</button>
               </form>
 
               <form method="post" :action="data.whatsapp.testUserDigestAction" class="rounded-lg border border-border bg-white p-4 lg:col-span-2">
@@ -282,7 +283,7 @@ const sections = [
                     <option v-for="equipment in data.expirationTestEquipment || []" :key="equipment.id" :value="equipment.id">{{ equipment.label }}</option>
                   </select>
                 </div>
-                <button type="submit" :disabled="!data.whatsapp.available || !(data.userDigestTestUsers || []).length" data-confirm data-confirm-title="¿Enviar resumen diario de prueba?" data-confirm-text="Se creará un vencimiento ficticio temporal para validar el resumen WhatsApp del usuario seleccionado." data-confirm-button="Enviar prueba" class="mt-3 inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50">Probar resumen de usuario</button>
+                <button type="submit" :disabled="!data.whatsapp.available || !(data.userDigestTestUsers || []).length" data-confirm data-confirm-title="¿Enviar resumen diario de prueba?" data-confirm-text="Se creará un vencimiento ficticio temporal para validar el resumen WhatsApp del usuario seleccionado." data-confirm-button="Enviar prueba" :class="[primaryButton, 'mt-3']">Probar resumen de usuario</button>
               </form>
             </div>
           </details>
@@ -349,11 +350,11 @@ const sections = [
         <p class="mt-1 text-sm text-ink-muted">Administrá organizaciones sin tener todos los formularios abiertos al mismo tiempo.</p>
       </div>
       <div class="flex flex-wrap gap-2">
-        <button v-if="data.permissions.companiesEdit" type="button" class="inline-flex min-h-10 items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground" @click="showCreateCompany = !showCreateCompany">
+        <button v-if="data.permissions.companiesEdit" type="button" @click="showCreateCompany = !showCreateCompany" :class="primaryButton">
           <PlusIcon class="size-4" aria-hidden="true" />
           {{ showCreateCompany ? 'Cerrar alta' : 'Nueva empresa' }}
         </button>
-        <button v-if="data.permissions.createCompanyAdministrators" type="button" class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-border-strong px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted" @click="showCreateAdministrator = !showCreateAdministrator">
+        <button v-if="data.permissions.createCompanyAdministrators" type="button" @click="showCreateAdministrator = !showCreateAdministrator" :class="secondaryButton">
           <UserPlusIcon class="size-4" aria-hidden="true" />
           {{ showCreateAdministrator ? 'Cerrar administrador' : 'Nuevo administrador' }}
         </button>
@@ -422,7 +423,7 @@ const sections = [
           <span><span class="block text-sm font-medium text-ink">Enviar notificaciones por email</span><span class="mt-1 block text-xs leading-5 text-ink-muted">Podés desactivar el canal sin borrar el destinatario.</span></span>
         </label>
         <div class="sm:col-span-2 lg:col-span-6">
-          <button type="submit" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary-hover active:bg-primary-active">
+          <button type="submit" :class="primaryButton">
             <BuildingOffice2Icon class="size-5" aria-hidden="true" />
             Crear empresa
           </button>
@@ -538,7 +539,7 @@ const sections = [
               </select>
               <span class="mt-1 block text-xs leading-5 text-ink-muted">Solo se muestran perfiles incluidos en esta versión del sistema.</span>
             </label>
-            <button type="submit" class="inline-flex min-h-11 items-center justify-center rounded-lg border border-primary px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary-subtle">Guardar perfil</button>
+            <button type="submit" :class="secondaryButton">Guardar perfil</button>
           </form>
 
           <form v-if="data.permissions.companiesEdit" method="post" :action="company.actions.update" data-confirm data-confirm-title="¿Guardar los cambios de la empresa?" data-confirm-text="Los datos de la empresa se actualizarán en el sistema." data-confirm-button="Guardar empresa" class="grid gap-4 p-5 sm:grid-cols-2">
@@ -668,7 +669,7 @@ const sections = [
               </div>
             </div>
             <div class="flex flex-wrap gap-2 sm:col-span-2">
-              <button type="submit" class="inline-flex min-h-11 items-center justify-center rounded-lg border border-primary px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary-subtle">Guardar empresa</button>
+              <button type="submit" :class="secondaryButton">Guardar empresa</button>
               <button
                 type="submit"
                 :formaction="`${company.actions.update}/notificaciones/prueba`"
@@ -693,8 +694,8 @@ const sections = [
                 data-confirm-text="Usará los datos actuales de la empresa y los destinatarios guardados."
                 data-confirm-button="Enviar informe"
                 :disabled="!company.active"
-                class="inline-flex min-h-11 items-center justify-center rounded-lg border border-primary px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary-subtle disabled:cursor-not-allowed disabled:opacity-50"
-              >
+                
+               :class="secondaryButton">
                 Probar informe diario
               </button>
               <button
@@ -708,8 +709,8 @@ const sections = [
                 data-confirm-text="Usará los datos actuales de la empresa y los destinatarios guardados."
                 data-confirm-button="Enviar informe"
                 :disabled="!company.active"
-                class="inline-flex min-h-11 items-center justify-center rounded-lg border border-border-strong px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50"
-              >
+                
+               :class="secondaryButton">
                 Probar informe semanal
               </button>
               <button
@@ -822,7 +823,7 @@ const sections = [
                 <span class="mb-1.5 block text-sm font-medium text-ink">Motivo de la asignación</span>
                 <input name="motivo" minlength="5" maxlength="255" required placeholder="Ej.: responsabilidades aprobadas" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/20" />
               </label>
-              <button type="submit" class="mt-4 inline-flex min-h-11 items-center justify-center rounded-lg border border-primary px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary-subtle">Guardar roles</button>
+              <button type="submit" :class="[secondaryButton, 'mt-4']">Guardar roles</button>
             </form>
 
             <div v-if="!data.permissions.assignCompanies && !data.permissions.assignRoles" class="lg:col-span-2">

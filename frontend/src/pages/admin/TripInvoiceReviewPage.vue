@@ -1,4 +1,6 @@
 <script setup>
+import * as uiLabels from '../../ui/labels.js'
+import * as format from '../../ui/format.js'
 import { computed, reactive } from 'vue'
 import { ArrowPathIcon, MagnifyingGlassIcon, XCircleIcon } from '@heroicons/vue/24/outline'
 import AdminPageHeading from './components/AdminPageHeading.vue'
@@ -17,11 +19,8 @@ const searchTerms = reactive({})
 const searchResults = reactive({})
 const searching = reactive({})
 
-const fmt = (value) => Number(value ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-const fmtDate = (value) => {
-  const match = String(value ?? '').match(/^(\d{4})-(\d{2})-(\d{2})/)
-  return match ? `${match[3]}/${match[2]}/${match[1]}` : 'Sin fecha'
-}
+const fmt = (value) => format.formatMoney(value ?? 0, { cents: true })
+const fmtDate = (value) => format.formatDate(value)
 const pageUrl = (page) => {
   const query = new URLSearchParams(window.location.search)
   if (page <= 1) query.delete('page')
@@ -82,8 +81,8 @@ const search = async (item) => {
       <article v-for="item in items" :key="item.id" class="rounded-2xl border border-border bg-surface-raised p-5 shadow-sm">
         <div class="flex flex-wrap items-start justify-between gap-4">
           <div class="min-w-0">
-            <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Factura #{{ item.clave_legacy }} · {{ item.tipo || 'sin tipo' }} · {{ fmtDate(item.fecha) }}</p>
-            <h2 class="mt-1 text-lg font-bold text-ink">{{ item.unit || 'Sin unidad' }} · $ {{ fmt(item.total_ars ?? item.total) }}</h2>
+            <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Factura #{{ item.clave_legacy }} · {{ uiLabels.humanizeCode(item.tipo || 'sin tipo') }} · {{ fmtDate(item.fecha) }}</p>
+            <h2 class="mt-1 text-lg font-bold text-ink">{{ item.unit || 'Sin unidad' }} · {{ fmt(item.total_ars ?? item.total) }}</h2>
             <p class="mt-1 text-sm text-ink-muted">{{ item.origin || 'Origen sin dato' }} → {{ item.destination || 'Destino sin dato' }}</p>
             <p v-if="item.remitos?.length" class="mt-0.5 text-xs text-ink-muted">Remitos: {{ item.remitos.join(' · ') }}</p>
           </div>

@@ -1,4 +1,5 @@
 <script setup>
+import * as format from '../../ui/format.js'
 import { computed, onMounted, ref, watch } from 'vue'
 import {
   ArrowDownTrayIcon,
@@ -33,12 +34,7 @@ const expandedItems = ref(new Set())
 const valueOrBlank = (value) => (value === null || value === undefined ? '' : String(value))
 const normalize = (value) => valueOrBlank(value).trim().toLowerCase()
 
-const formatNumber = (value) => {
-  if (value === null || value === undefined || value === '') return null
-  const number = Number(value)
-  if (Number.isNaN(number)) return null
-  return number.toLocaleString('es-AR', { maximumFractionDigits: 1 })
-}
+const formatNumber = (value) => format.formatNumber(value, 1, null)
 
 const formatPriority = (priority) => {
   if (!priority) return '-'
@@ -350,7 +346,7 @@ watch(selectedTemplateId, () => readStoredHints())
                 <p class="font-mono text-xs text-ink-muted">{{ task.code }}<span v-if="task.durationMinutes"> - {{ task.durationMinutes }} min</span></p>
               </div>
               <div class="flex flex-wrap items-center gap-1">
-                <span v-for="chip in taskChips(task)" :key="task.id + '-' + chip" class="rounded-full bg-surface-muted px-2 py-0.5 text-[11px] font-semibold text-ink-muted">{{ chip }}</span>
+                <span v-for="chip in taskChips(task)" :key="task.id + '-' + chip" class="rounded-full bg-surface-muted px-2 py-0.5 text-xs font-semibold text-ink-muted">{{ chip }}</span>
               </div>
               <div v-if="data.canEdit" class="flex items-center gap-2">
                 <button type="button" :class="primaryButton" class="!min-h-9 !px-3 !py-1.5 text-xs" :disabled="!task.updateUrl" :title="task.updateUrl ? 'Editar tarea' : 'Falta URL de edición'" @click="openTaskModal(item, task)">Editar</button>

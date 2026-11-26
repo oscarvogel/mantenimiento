@@ -1,4 +1,6 @@
 <script setup>
+import * as format from '../../ui/format.js'
+import { dangerButton } from '../../ui/buttons.js'
 import { computed, ref } from 'vue'
 import { ClockIcon, MagnifyingGlassIcon, PencilSquareIcon, UserMinusIcon, UserPlusIcon } from '@heroicons/vue/24/outline'
 import CsrfInput from './components/CsrfInput.vue'
@@ -125,7 +127,7 @@ const openExpiration = (employee) => {
               </tr>
             </thead>
             <tbody class="divide-y divide-border-subtle">
-              <tr v-for="employee in data.employees" :key="employee.id" class="hover:bg-brand-50/50">
+              <tr v-for="employee in data.employees" :key="employee.id" class="hover:bg-secondary-100/50">
                 <td class="px-5 py-4">
                   <div class="flex items-center gap-3">
                     <div class="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border-subtle bg-surface-subtle text-sm font-bold text-ink-muted">
@@ -151,7 +153,7 @@ const openExpiration = (employee) => {
                   >
                     {{ employee.active ? 'Activo' : 'Baja' }}
                   </span>
-                  <div v-if="!employee.active && employee.terminatedAt" class="mt-1 text-xs text-ink-muted">{{ employee.terminatedAt }}</div>
+                  <div v-if="!employee.active && employee.terminatedAt" class="mt-1 text-xs text-ink-muted">{{ format.formatDateTime(employee.terminatedAt) }}</div>
                 </td>
                 <td class="px-5 py-4">
                   <span v-if="employee.expirations.length === 0" class="text-xs text-ink-muted">Sin vencimientos</span>
@@ -170,7 +172,7 @@ const openExpiration = (employee) => {
                         <textarea name="observaciones" maxlength="2000" rows="2" :value="expiration.notes" placeholder="Observaciones" :class="fieldClass"></textarea>
                         <div class="flex gap-2">
                           <button type="submit" :class="primaryButton">Guardar</button>
-                          <button type="submit" :formaction="expiration.deactivateUrl" class="inline-flex items-center rounded-md border border-danger/30 px-3 py-2 text-sm font-semibold text-danger-strong hover:bg-danger/5">Retirar</button>
+                          <button type="submit" :formaction="expiration.deactivateUrl" :class="dangerButton">Retirar</button>
                         </div>
                       </form>
                     </details>
@@ -189,9 +191,9 @@ const openExpiration = (employee) => {
                     </button>
                     <button
                       type="button"
-                      class="inline-flex items-center rounded-md border border-danger/30 px-3 py-2 text-sm font-semibold text-danger-strong hover:bg-danger/5"
+                      
                       @click="openTerminate(employee)"
-                    >
+                     :class="dangerButton">
                       <UserMinusIcon class="mr-1.5 size-4" aria-hidden="true" />Baja
                     </button>
                   </div>
@@ -245,9 +247,9 @@ const openExpiration = (employee) => {
               <button v-if="data.canEdit && employee.active" type="button" :class="secondaryButton" class="flex-1" @click="openEdit(employee)">Editar</button>
               <button
                 type="button"
-                class="flex-1 rounded-md border border-danger/30 px-3 py-2 text-sm font-semibold text-danger-strong"
+                
                 @click="openTerminate(employee)"
-              >
+               :class="[dangerButton, 'flex-1']">
                 Dar de baja
               </button>
             </div>
@@ -261,11 +263,11 @@ const openExpiration = (employee) => {
       <div class="border-b border-border-subtle p-5">
         <div v-if="selectedHistoryEmployee" class="mb-4 flex flex-wrap items-center gap-2">
           <span class="text-sm font-semibold text-ink">Historial filtrado por:</span>
-          <span class="inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1.5 text-sm font-semibold text-brand-700">
+          <span class="inline-flex items-center gap-2 rounded-full bg-secondary-100 px-3 py-1.5 text-sm font-semibold text-secondary-700">
             <img v-if="selectedHistoryEmployee.photoUrl" :src="selectedHistoryEmployee.photoUrl" :alt="`Foto de ${selectedHistoryEmployee.name}`" class="size-6 rounded-full object-cover" />
             {{ selectedHistoryEmployee.name }}
           </span>
-          <a :href="`${data.routes.index}#historial-asignaciones`" class="text-sm font-semibold text-brand-700 hover:underline">Quitar filtro</a>
+          <a :href="`${data.routes.index}#historial-asignaciones`" class="text-sm font-semibold text-secondary-700 hover:underline">Quitar filtro</a>
         </div>
         <form method="get" :action="data.routes.index" class="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(14rem,1fr)_minmax(12rem,1fr)_10rem_10rem_11rem_auto] xl:items-end">
           <FormField label="Chofer" for-id="history-driver">
@@ -325,7 +327,7 @@ const openExpiration = (employee) => {
               </tr>
             </thead>
             <tbody class="divide-y divide-border-subtle">
-              <tr v-for="assignment in data.assignmentHistory" :key="assignment.id" class="hover:bg-brand-50/50">
+              <tr v-for="assignment in data.assignmentHistory" :key="assignment.id" class="hover:bg-secondary-100/50">
                 <td class="px-5 py-4">
                   <div class="flex items-center gap-3">
                     <img v-if="assignment.employeePhotoUrl" :src="assignment.employeePhotoUrl" :alt="`Foto de ${assignment.employeeName}`" class="size-9 rounded-full border border-border-subtle object-cover" />
@@ -336,12 +338,12 @@ const openExpiration = (employee) => {
                   </div>
                 </td>
                 <td class="px-5 py-4">
-                  <a :href="assignment.equipmentUrl" class="font-semibold text-brand-700 hover:underline">{{ assignment.equipmentCode }}</a>
+                  <a :href="assignment.equipmentUrl" class="font-semibold text-secondary-700 hover:underline">{{ assignment.equipmentCode }}</a>
                   <div class="text-xs text-ink-muted">{{ assignment.equipmentPlate || 'Sin patente' }}</div>
                 </td>
                 <td class="px-5 py-4 text-ink-muted">{{ assignment.branchName || '—' }}</td>
-                <td class="px-5 py-4 text-ink-muted">{{ assignment.startsAt }}</td>
-                <td class="px-5 py-4 text-ink-muted">{{ assignment.endsAt || 'Actual' }}</td>
+                <td class="px-5 py-4 text-ink-muted">{{ format.formatDateTime(assignment.startsAt) }}</td>
+                <td class="px-5 py-4 text-ink-muted">{{ format.formatDateTime(assignment.endsAt, 'Actual') }}</td>
                 <td class="px-5 py-4">
                   <span
                     :class="assignment.current ? 'bg-success-soft text-success-strong' : 'bg-surface-subtle text-ink-muted'"
@@ -374,7 +376,7 @@ const openExpiration = (employee) => {
                 {{ assignment.current ? 'Vigente' : 'Histórica' }}
               </span>
             </div>
-            <p class="mt-2 text-xs text-ink-muted">{{ assignment.startsAt }} → {{ assignment.endsAt || 'Actual' }}</p>
+            <p class="mt-2 text-xs text-ink-muted">{{ format.formatDateTime(assignment.startsAt) }} → {{ format.formatDateTime(assignment.endsAt, 'Actual') }}</p>
             <a :href="assignment.equipmentUrl" :class="`${secondaryButton} mt-3 w-full`">Ver móvil</a>
           </li>
         </ul>

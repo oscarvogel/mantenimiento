@@ -1,4 +1,6 @@
 <script setup>
+import { secondaryButton } from '../../ui/buttons.js'
+import * as format from '../../ui/format.js'
 /**
  * Liquidación del chofer (#533).
  *
@@ -23,16 +25,10 @@ const cashExpenses = computed(() => props.data.cashExpenses ?? [])
 const draft = computed(() => props.data.status !== 'DEFINITIVA')
 const available = computed(() => Boolean(props.data.available))
 
-const money = (value, currency = 'ARS') => `${currency} ${Number(value ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-const moneyOrNoData = (value, currency = 'ARS') => (value === null || value === undefined ? 'Sin dato' : money(value, currency))
+const money = (value, currency = 'ARS') => format.formatMoney(value ?? 0, { currency, cents: true })
+const moneyOrNoData = (value, currency = 'ARS') => format.formatMoney(value, { currency, cents: true })
 const number = (value, digits = 2) => Number(value ?? 0).toLocaleString('es-AR', { minimumFractionDigits: digits, maximumFractionDigits: digits })
-const fmtDate = (value) => {
-  const raw = String(value ?? '').slice(0, 10)
-  if (!raw) return 'Sin dato'
-  const [year, month, day] = raw.split('-')
-
-  return `${day}/${month}/${year}`
-}
+const fmtDate = (value) => format.formatDate(value)
 const legDetail = (leg) => {
   if (leg.modo !== 'POR_TONELADA') return 'Importe global'
   if (leg.toneladas === null || leg.toneladas === undefined || leg.precio_unitario === null || leg.precio_unitario === undefined) return 'Sin cargar'
@@ -56,7 +52,7 @@ const identity = computed(() => [
   <div>
     <PageHeading eyebrow="Viajes · Liquidación" :title="`Liquidación del chofer · Viaje #${trip.numero ?? ''}`" description="Lo que corresponde al chofer por este viaje: base acordada, comisión, haberes, gastos, anticipos y saldo final." :back="{ href: data.links?.back ?? '/viajes/operativos', label: 'Volver al viaje' }">
       <template #actions>
-        <a v-if="data.links?.pdf" :href="data.links.pdf" target="_blank" rel="noopener" data-testid="driver-settlement-pdf" class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-primary px-3 py-2 text-sm font-semibold text-primary hover:bg-primary-subtle">
+        <a v-if="data.links?.pdf" :href="data.links.pdf" target="_blank" rel="noopener" data-testid="driver-settlement-pdf" :class="secondaryButton">
           <PrinterIcon class="size-4" aria-hidden="true" />{{ draft ? 'Ver o imprimir borrador (PDF)' : 'Ver o imprimir PDF' }}
         </a>
       </template>

@@ -1,4 +1,6 @@
 <script setup>
+import * as format from '../../ui/format.js'
+import { primaryButton, secondaryButton } from '../../ui/buttons.js'
 import { EnvelopeIcon, GlobeAltIcon, LockClosedIcon, PaperAirplaneIcon } from '@heroicons/vue/24/outline'
 import AdminPageHeading from './components/AdminPageHeading.vue'
 import CsrfField from './components/CsrfField.vue'
@@ -40,7 +42,7 @@ const toneClass = (tone) => ({
           <CsrfField :csrf="data.csrf" />
           <button
             type="submit"
-            class="inline-flex min-h-11 items-center justify-center rounded-lg bg-warning px-4 py-2.5 text-sm font-semibold text-warning-foreground"
+            class="inline-flex min-h-11 items-center justify-center rounded-lg bg-warning px-4 py-2.5 text-sm font-semibold text-secondary-900"
           >
             Aplicar migraciones
           </button>
@@ -51,7 +53,7 @@ const toneClass = (tone) => ({
     <div class="rounded-xl border border-border bg-surface-raised px-5 py-4 text-sm text-ink-muted shadow-card">
       <strong class="text-ink">Origen actual:</strong>
       {{ data.settings.source === 'database' ? 'configuración guardada en el sistema' : 'variables de entorno (.env)' }}.
-      <span v-if="data.settings.updatedAt"> Última modificación: {{ data.settings.updatedAt }}.</span>
+      <span v-if="data.settings.updatedAt"> Última modificación: {{ format.formatDateTime(data.settings.updatedAt) }}.</span>
       Los secretos nunca se muestran en pantalla.
     </div>
 
@@ -189,7 +191,7 @@ const toneClass = (tone) => ({
       <div class="flex items-center gap-3 rounded-xl border border-border bg-surface-raised p-4 shadow-card">
         <LockClosedIcon class="size-5 text-ink-muted" />
         <p class="flex-1 text-sm text-ink-muted">Las contraseñas y claves privadas se guardan cifradas y nunca vuelven al navegador.</p>
-        <button type="submit" class="inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground">Guardar configuración</button>
+        <button type="submit" :class="primaryButton">Guardar configuración</button>
       </div>
     </form>
 
@@ -199,7 +201,7 @@ const toneClass = (tone) => ({
       <form method="post" :action="data.actions.testEmail" class="mt-4 flex flex-col gap-3 sm:flex-row">
         <CsrfField :csrf="data.csrf" />
         <input type="email" name="test_email" required :value="data.settings.smtpFromEmail" placeholder="destino@empresa.com" class="min-h-11 flex-1 rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink" />
-        <button type="submit" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-primary px-4 py-2.5 text-sm font-semibold text-primary">
+        <button type="submit" :class="secondaryButton">
           <PaperAirplaneIcon class="size-5" /> Enviar prueba
         </button>
       </form>

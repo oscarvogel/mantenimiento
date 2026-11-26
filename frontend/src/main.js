@@ -14,6 +14,7 @@ import { installTemplateServicePicker } from './ui/templateServicePicker.js'
 import { consumeFlash, installGlobalBehaviors } from './ui/globals.js'
 import { installScrollReveal } from './ui/scrollReveal.js'
 import { initializeTheme } from './ui/theme.js'
+import '@fontsource-variable/inter/wght.css'
 import './styles.css'
 
 initializeTheme()

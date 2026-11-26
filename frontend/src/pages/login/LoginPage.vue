@@ -1,4 +1,5 @@
 <script setup>
+import { primaryButton } from '../../ui/buttons.js'
 import { ref } from 'vue'
 import { EyeIcon, EyeSlashIcon, ShieldCheckIcon } from '@heroicons/vue/24/outline'
 import BrandLogo from '../../components/BrandLogo.vue'
@@ -12,10 +13,10 @@ const brandAsset = (name) => `${baseUrl}assets/brand/${name}.svg`
 
 <template>
   <main
-    class="relative min-h-dvh overflow-hidden bg-brand-950 bg-cover bg-center px-4 py-5 sm:px-6 sm:py-8 lg:grid lg:place-items-center lg:px-10"
+    class="relative min-h-dvh overflow-hidden bg-secondary-900 bg-cover bg-center px-4 py-5 sm:px-6 sm:py-8 lg:grid lg:place-items-center lg:px-10"
     :style="{ backgroundImage: `url(${data.backgroundUrl})` }"
   >
-    <div class="absolute inset-0 bg-brand-950/80 backdrop-blur-[2px]" aria-hidden="true"></div>
+    <div class="absolute inset-0 bg-secondary-900/80 backdrop-blur-[2px]" aria-hidden="true"></div>
 
     <section
       aria-labelledby="login-title"
@@ -66,7 +67,7 @@ const brandAsset = (name) => `${baseUrl}assets/brand/${name}.svg`
               :value="data.email"
               :aria-invalid="Boolean(data.errors?.email)"
               :aria-describedby="data.errors?.email ? 'login-email-error' : undefined"
-              class="mt-2 block min-h-12 w-full rounded-xl border border-border bg-brand-50 px-4 py-3 text-sm text-ink shadow-sm outline-none transition placeholder:text-ink-subtle focus:border-border-focus focus:bg-white focus:text-brand-950 focus:ring-4 focus:ring-primary/10"
+              class="mt-2 block min-h-12 w-full rounded-xl border border-border bg-secondary-100 px-4 py-3 text-sm text-ink shadow-sm outline-none transition placeholder:text-ink-subtle focus:border-border-focus focus:bg-white focus:text-secondary-900 focus:ring-4 focus:ring-primary/10"
               placeholder="nombre@empresa.com"
             />
             <p v-if="data.errors?.email" id="login-email-error" role="alert" class="mt-2 text-sm font-medium text-danger-strong">
@@ -86,12 +87,12 @@ const brandAsset = (name) => `${baseUrl}assets/brand/${name}.svg`
                 required
                 :aria-invalid="Boolean(data.errors?.password)"
                 :aria-describedby="data.errors?.password ? 'login-password-error' : undefined"
-                class="block min-h-12 w-full rounded-xl border border-border bg-brand-50 py-3 pl-4 pr-12 text-sm text-ink shadow-sm outline-none transition focus:border-border-focus focus:bg-white focus:text-brand-950 focus:ring-4 focus:ring-primary/10"
+                class="block min-h-12 w-full rounded-xl border border-border bg-secondary-100 py-3 pl-4 pr-12 text-sm text-ink shadow-sm outline-none transition focus:border-border-focus focus:bg-white focus:text-secondary-900 focus:ring-4 focus:ring-primary/10"
                 placeholder="Ingresá tu contraseña"
               />
               <button
                 type="button"
-                class="absolute inset-y-0 right-1 flex min-h-11 min-w-11 items-center justify-center rounded-lg text-ink-muted transition hover:bg-brand-100 hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                class="absolute inset-y-0 right-1 flex min-h-11 min-w-11 items-center justify-center rounded-lg text-ink-muted transition hover:bg-secondary-100 hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 :aria-label="passwordVisible ? 'Ocultar contraseña' : 'Mostrar contraseña'"
                 :aria-pressed="passwordVisible"
                 @click="passwordVisible = !passwordVisible"
@@ -107,8 +108,8 @@ const brandAsset = (name) => `${baseUrl}assets/brand/${name}.svg`
 
           <button
             type="submit"
-            class="flex min-h-12 w-full items-center justify-center rounded-xl bg-primary px-5 py-3 text-sm font-bold text-primary-foreground shadow-lg shadow-primary/20 transition hover:bg-primary-hover focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/25 active:bg-primary-active"
-          >
+            
+           :class="[primaryButton, 'w-full shadow-lg shadow-primary/20']">
             Iniciar sesión
           </button>
         </form>
@@ -118,47 +119,47 @@ const brandAsset = (name) => `${baseUrl}assets/brand/${name}.svg`
             <div class="rounded-xl bg-surface-muted p-3">
               <img :src="brandAsset('icon-equipment')" alt="" class="size-6" width="24" height="24" aria-hidden="true" />
               <p class="mt-2 text-sm font-bold text-ink">Equipos</p>
-              <p class="mt-1 hidden text-[0.68rem] font-semibold uppercase tracking-wide text-ink-muted sm:block">Estado y uso</p>
+              <p class="mt-1 hidden text-xs font-semibold uppercase tracking-wide text-ink-muted sm:block">Estado y uso</p>
             </div>
             <div class="rounded-xl bg-surface-muted p-3">
               <img :src="brandAsset('icon-services')" alt="" class="size-6" width="24" height="24" aria-hidden="true" />
               <p class="mt-2 text-sm font-bold text-ink">Servicios</p>
-              <p class="mt-1 hidden text-[0.68rem] font-semibold uppercase tracking-wide text-ink-muted sm:block">Planes y OT</p>
+              <p class="mt-1 hidden text-xs font-semibold uppercase tracking-wide text-ink-muted sm:block">Planes y OT</p>
             </div>
             <div class="rounded-xl bg-surface-muted p-3">
               <img :src="brandAsset('icon-reports')" alt="" class="size-6" width="24" height="24" aria-hidden="true" />
               <p class="mt-2 text-sm font-bold text-ink">Reportes</p>
-              <p class="mt-1 hidden text-[0.68rem] font-semibold uppercase tracking-wide text-ink-muted sm:block">Decisiones claras</p>
+              <p class="mt-1 hidden text-xs font-semibold uppercase tracking-wide text-ink-muted sm:block">Decisiones claras</p>
             </div>
           </div>
         </div>
       </div>
 
       <div
-        class="relative m-2 hidden min-h-[42.5rem] overflow-hidden rounded-[1.35rem] bg-brand-950 bg-cover bg-[68%_center] lg:flex lg:flex-col lg:justify-end"
+        class="relative m-2 hidden min-h-[42.5rem] overflow-hidden rounded-[1.35rem] bg-secondary-900 bg-cover bg-[68%_center] lg:flex lg:flex-col lg:justify-end"
         :style="{ backgroundImage: `url(${data.backgroundUrl})` }"
       >
-        <div class="absolute inset-0 bg-gradient-to-t from-brand-950 via-brand-950/55 to-brand-950/10" aria-hidden="true"></div>
+        <div class="absolute inset-0 bg-gradient-to-t from-secondary-900 via-secondary-900/55 to-secondary-900/10" aria-hidden="true"></div>
         <div class="relative p-10 xl:p-12">
-          <span class="inline-flex rounded-full border border-white/25 bg-brand-950/60 px-3 py-1 text-[0.7rem] font-bold uppercase tracking-[0.18em] text-brand-100 backdrop-blur">
+          <span class="inline-flex rounded-full border border-white/25 bg-secondary-900/60 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-secondary-100 backdrop-blur">
             Sistema de gestión
           </span>
           <h2 class="mt-5 max-w-[10ch] text-5xl font-bold leading-[0.98] tracking-tight text-white xl:text-6xl">
             Mantené tu flota en movimiento.
           </h2>
-          <div class="mt-7 rounded-xl border border-white/25 bg-brand-950/75 p-5 text-base font-semibold leading-7 text-white backdrop-blur-sm">
+          <div class="mt-7 rounded-xl border border-white/25 bg-secondary-900/75 p-5 text-base font-semibold leading-7 text-white backdrop-blur-sm">
             Equipos, lecturas, servicios y órdenes en una sola herramienta operativa para toda la empresa.
           </div>
           <div class="mt-5 flex flex-wrap gap-2">
-            <span class="inline-flex items-center gap-2 rounded-full border border-white/30 bg-brand-950/55 px-3 py-2 text-xs font-semibold text-white">
+            <span class="inline-flex items-center gap-2 rounded-full border border-white/30 bg-secondary-900/55 px-3 py-2 text-xs font-semibold text-white">
               <img :src="brandAsset('icon-preventive')" alt="" class="size-5 rounded-md" width="20" height="20" aria-hidden="true" />
               Control preventivo
             </span>
-            <span class="inline-flex items-center gap-2 rounded-full border border-white/30 bg-brand-950/55 px-3 py-2 text-xs font-semibold text-white">
+            <span class="inline-flex items-center gap-2 rounded-full border border-white/30 bg-secondary-900/55 px-3 py-2 text-xs font-semibold text-white">
               <img :src="brandAsset('icon-multicompany')" alt="" class="size-5 rounded-md" width="20" height="20" aria-hidden="true" />
               Multiempresa
             </span>
-            <span class="inline-flex items-center gap-2 rounded-full border border-white/30 bg-brand-950/55 px-3 py-2 text-xs font-semibold text-white">
+            <span class="inline-flex items-center gap-2 rounded-full border border-white/30 bg-secondary-900/55 px-3 py-2 text-xs font-semibold text-white">
               <img :src="brandAsset('icon-history')" alt="" class="size-5 rounded-md" width="20" height="20" aria-hidden="true" />
               Historial trazable
             </span>
@@ -167,7 +168,7 @@ const brandAsset = (name) => `${baseUrl}assets/brand/${name}.svg`
       </div>
     </section>
 
-    <p class="relative mx-auto mt-4 flex w-full max-w-[75rem] items-center justify-center gap-2 text-center text-xs font-medium text-brand-100 lg:absolute lg:bottom-4">
+    <p class="relative mx-auto mt-4 flex w-full max-w-[75rem] items-center justify-center gap-2 text-center text-xs font-medium text-secondary-100 lg:absolute lg:bottom-4">
       <ShieldCheckIcon class="size-4" aria-hidden="true" />
       Acceso protegido y actividad trazable
     </p>

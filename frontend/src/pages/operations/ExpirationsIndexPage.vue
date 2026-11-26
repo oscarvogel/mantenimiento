@@ -182,7 +182,7 @@ const closeEdit = () => {
               </tr>
             </thead>
             <tbody class="divide-y divide-border-subtle">
-              <tr v-for="item in data.items" :key="item.id" class="hover:bg-brand-50/50">
+              <tr v-for="item in data.items" :key="item.id" class="hover:bg-secondary-100/50">
                 <td class="px-5 py-4">
                   <div class="font-semibold text-ink">{{ item.subjectName }}</div>
                   <div class="mt-1 text-xs text-ink-muted">{{ item.subjectType === 'EQUIPO' ? 'Equipo / móvil' : 'Empleado / chofer' }}</div>

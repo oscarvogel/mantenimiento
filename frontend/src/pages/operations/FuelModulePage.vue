@@ -1,4 +1,5 @@
 <script setup>
+import * as format from '../../ui/format.js'
 import { computed, nextTick, reactive, ref } from 'vue'
 import { BeakerIcon, HomeIcon } from '@heroicons/vue/24/outline'
 import FuelReconciliationTable from '../../components/FuelReconciliationTable.vue'
@@ -25,19 +26,13 @@ const consumo = computed(() => totales.value.consumo ?? {})
 
 const number = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 })
 const decimal = new Intl.NumberFormat('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
-const money = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 })
-const date = new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' })
 
 const SIN_DATOS = 'Sin datos'
 const vacio = (value) => value === null || value === undefined
 const entero = (value, sufijo = '') => vacio(value) ? SIN_DATOS : `${number.format(Number(value))}${sufijo}`
 const litros = (value) => vacio(value) ? SIN_DATOS : `${decimal.format(Number(value))} L`
-const pesos = (value) => vacio(value) ? SIN_DATOS : money.format(Number(value))
-const fecha = (value) => {
-  if (!value) return SIN_DATOS
-  const parsed = new Date(String(value).replace(' ', 'T'))
-  return Number.isNaN(parsed.getTime()) ? SIN_DATOS : date.format(parsed)
-}
+const pesos = (value) => format.formatMoney(value)
+const fecha = (value) => format.formatDate(value)
 const fechaCorta = (value) => {
   if (!value) return ''
   const raw = String(value)
@@ -202,8 +197,8 @@ const hayFiltros = computed(() => Boolean(filtros.value.desde || filtros.value.h
       <a
         v-if="urls.portal"
         :href="urls.portal"
-        class="inline-flex min-h-11 items-center justify-center gap-2 self-start rounded-lg border border-border-strong bg-surface-raised px-4 py-2.5 text-sm font-semibold text-ink hover:bg-surface-muted sm:self-auto"
-      >
+        
+       :class="[secondaryButton, 'self-start sm:self-auto']">
         <HomeIcon class="size-5" aria-hidden="true" />Volver al inicio
       </a>
     </header>
@@ -388,8 +383,8 @@ const hayFiltros = computed(() => Boolean(filtros.value.desde || filtros.value.h
       <a
         v-if="urls.pending"
         :href="urls.pending"
-        class="mt-3 inline-flex min-h-11 items-center justify-center rounded-lg border border-border-strong bg-surface-raised px-4 py-2.5 text-sm font-semibold text-ink hover:bg-surface-muted"
-      >
+        
+       :class="[secondaryButton, 'mt-3']">
         Ver todas las cargas sin precio
       </a>
     </section>

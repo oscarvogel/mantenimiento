@@ -1,4 +1,6 @@
 <script setup>
+import { primaryButton, secondaryButton, secondaryButtonSm } from '../../ui/buttons.js'
+import * as format from '../../ui/format.js'
 import { computed, onMounted, reactive, ref } from 'vue'
 
 const props = defineProps({ data: { type: Object, default: () => ({}) } })
@@ -96,13 +98,7 @@ function scopeLabel(value) {
   return SCOPE_LABELS[value] ?? value
 }
 
-function formatDate(value) {
-  if (!value) return '—'
-  const normalized = value.includes('T') ? value : value.replace(' ', 'T')
-  const date = new Date(normalized)
-  if (Number.isNaN(date.getTime())) return value
-  return new Intl.DateTimeFormat('es-AR', { dateStyle: 'short', timeStyle: 'short' }).format(date)
-}
+const formatDate = (value) => format.formatDateTime(value)
 
 function pretty(value) {
   return value === null || value === undefined ? '—' : JSON.stringify(value, null, 2)
@@ -128,8 +124,8 @@ onMounted(() => load(1))
       <input v-model="filters.dateTo" class="rounded-lg border border-border-strong bg-surface px-3 py-2 text-ink focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" type="date" aria-label="Fecha hasta">
       <input v-model="filters.q" class="rounded-lg border border-border-strong bg-surface px-3 py-2 text-ink placeholder:text-ink-subtle focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="Texto, entidad o usuario" aria-label="Texto, entidad o usuario">
       <div class="flex gap-2 md:col-span-2 xl:col-span-4">
-        <button class="ui-interactive rounded-lg bg-primary px-4 py-2 font-semibold text-primary-foreground hover:bg-primary-hover" type="submit">Filtrar</button>
-        <button class="ui-interactive rounded-lg border border-border-strong bg-surface px-4 py-2 font-semibold text-ink hover:bg-surface-muted" type="button" @click="reset">Limpiar</button>
+        <button type="submit" :class="primaryButton">Filtrar</button>
+        <button type="button" @click="reset" :class="secondaryButton">Limpiar</button>
       </div>
     </form>
 
@@ -174,9 +170,9 @@ onMounted(() => load(1))
     <footer v-if="pages > 1" class="flex items-center justify-between text-sm">
       <span class="text-ink-muted">{{ total }} cambios</span>
       <div class="flex gap-2">
-        <button type="button" class="rounded border border-border-strong bg-surface px-3 py-1 text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50" :disabled="page <= 1" @click="load(page - 1)">Anterior</button>
+        <button type="button" :disabled="page <= 1" @click="load(page - 1)" :class="secondaryButtonSm">Anterior</button>
         <span class="px-2 py-1 text-ink-muted">{{ page }} / {{ pages }}</span>
-        <button type="button" class="rounded border border-border-strong bg-surface px-3 py-1 text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50" :disabled="page >= pages" @click="load(page + 1)">Siguiente</button>
+        <button type="button" :disabled="page >= pages" @click="load(page + 1)" :class="secondaryButtonSm">Siguiente</button>
       </div>
     </footer>
 
@@ -186,7 +182,7 @@ onMounted(() => load(1))
           <h2 class="font-semibold text-ink">Cambio #{{ selected.id }}</h2>
           <p class="mt-1 text-sm text-ink-muted">{{ actionLabel(selected.action) }} · {{ formatDate(selected.fecha) }}</p>
         </div>
-        <button type="button" class="rounded-lg border border-border-strong px-3 py-1 text-sm font-semibold text-ink hover:bg-surface-muted" @click="selected = null">Cerrar</button>
+        <button type="button" @click="selected = null" :class="secondaryButtonSm">Cerrar</button>
       </div>
 
       <dl class="mt-4 grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-4">

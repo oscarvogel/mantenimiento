@@ -17,75 +17,75 @@ const navigation = [
 ]
 
 describe('AppSidebar', () => {
-  it('muestra sólo las seis entradas operativas principales al iniciar', () => {
+  it('muestra lo diario arriba, por secciones, y deja la configuración plegada', () => {
     const wrapper = mount(AppSidebar, { props: { navigation } })
 
+    expect(wrapper.findAll('nav h2').map((node) => node.text())).toEqual(['Operación', 'Flota', 'Planificación', 'Análisis'])
     const visibleLinks = wrapper.findAll('nav a').filter((node) => node.isVisible())
     expect(visibleLinks.map((node) => node.text().trim())).toEqual([
       'Dashboard',
-      'Equipos',
+      'Registrar km/horas',
       'Control de lecturas',
+      'Equipos',
       'Mantenimiento',
       'Preventivos',
       'Reportes',
     ])
-    expect(wrapper.get('button[aria-controls="secondary-navigation"]').text()).toContain('Más opciones')
-    expect(wrapper.get('button[aria-controls="secondary-navigation"]').attributes('aria-expanded')).toBe('false')
+    const settings = wrapper.get('button[aria-controls="nav-group-configuracion"]')
+    expect(settings.text()).toContain('Configuración')
+    expect(settings.attributes('aria-expanded')).toBe('false')
     expect(wrapper.get('a[aria-current="page"]').text()).toContain('Equipos')
   })
 
-  it('muestra Dashboard de Viajes antes de Maestros en el primer nivel', () => {
+  it('muestra el historial de Viajes en Operación y sus maestros en Configuración', () => {
     const tripsNavigation = [
       { key: 'trips-dashboard', label: 'Dashboard', href: '/viajes', icon: 'truck' },
       { key: 'trip-masters', label: 'Maestros', href: '/viajes/maestros', icon: 'clipboard-list' },
     ]
     const wrapper = mount(AppSidebar, { props: { navigation: tripsNavigation } })
 
-    const primaryLinks = wrapper.findAll('nav > ul > li a')
-    expect(primaryLinks.map((node) => node.attributes('href'))).toEqual(['/viajes', '/viajes/maestros'])
-    expect(wrapper.find('button[aria-controls="secondary-navigation"]').exists()).toBe(false)
+    expect(wrapper.findAll('nav a').map((node) => node.attributes('href'))).toEqual(['/viajes', '/viajes/maestros'])
+    expect(wrapper.get('a[href="/viajes"]').isVisible()).toBe(true)
+    expect(wrapper.get('#nav-group-configuracion').find('a[href="/viajes/maestros"]').exists()).toBe(true)
   })
 
-  it('mantiene todas las entradas secundarias accesibles sin perder href', async () => {
+  it('mantiene todas las entradas de configuración accesibles sin perder href', async () => {
     const wrapper = mount(AppSidebar, { props: { navigation } })
 
-    await wrapper.get('button[aria-controls="secondary-navigation"]').trigger('click')
+    await wrapper.get('button[aria-controls="nav-group-configuracion"]').trigger('click')
 
-    expect(wrapper.get('button[aria-controls="secondary-navigation"]').attributes('aria-expanded')).toBe('true')
-    expect(wrapper.find('a[href="/mantenimiento/lecturas/rapidas"]').isVisible()).toBe(true)
+    expect(wrapper.get('button[aria-controls="nav-group-configuracion"]').attributes('aria-expanded')).toBe('true')
     expect(wrapper.find('a[href="/mantenimiento/importaciones"]').isVisible()).toBe(true)
     expect(wrapper.find('a[href="/mantenimiento/maestros/vencimientos"]').isVisible()).toBe(true)
     expect(wrapper.find('a[href="/administracion/sucursales"]').isVisible()).toBe(true)
   })
 
-  it('abre automáticamente Más opciones cuando la ruta activa es secundaria', () => {
-    const secondaryActive = navigation.map((item) => ({
+  it('abre la configuración cuando la ruta activa está ahí', () => {
+    const settingsActive = navigation.map((item) => ({
       ...item,
       active: item.key === 'imports',
     }))
-    const wrapper = mount(AppSidebar, { props: { navigation: secondaryActive } })
+    const wrapper = mount(AppSidebar, { props: { navigation: settingsActive } })
 
-    expect(wrapper.get('button[aria-controls="secondary-navigation"]').attributes('aria-expanded')).toBe('true')
+    expect(wrapper.get('button[aria-controls="nav-group-configuracion"]').attributes('aria-expanded')).toBe('true')
     expect(wrapper.get('a[aria-current="page"]').text()).toContain('Importaciones')
   })
 
-  it('mantiene disponibles entradas desconocidas dentro de Más opciones', async () => {
+  it('no pierde entradas desconocidas: quedan en Más', async () => {
     const wrapper = mount(AppSidebar, {
       props: {
         navigation: [{ key: 'custom', label: 'Personalizado', href: '/custom', icon: 'dashboard' }],
       },
     })
 
-    expect(wrapper.find('a[href="/custom"]').exists()).toBe(true)
-    expect(wrapper.get('button[aria-controls="secondary-navigation"]').attributes('aria-expanded')).toBe('false')
-    await wrapper.get('button[aria-controls="secondary-navigation"]').trigger('click')
-    expect(wrapper.get('button[aria-controls="secondary-navigation"]').attributes('aria-expanded')).toBe('true')
-    expect(wrapper.get('a[href="/custom"]').attributes('href')).toBe('/custom')
+    const more = wrapper.get('button[aria-controls="nav-group-mas"]')
+    expect(more.attributes('aria-expanded')).toBe('false')
+    await more.trigger('click')
+    expect(wrapper.get('a[href="/custom"]').isVisible()).toBe(true)
   })
 
-  it('no duplica Maestros ni renombra Tipos de vencimiento', async () => {
+  it('no duplica Maestros ni renombra Tipos de vencimiento', () => {
     const wrapper = mount(AppSidebar, { props: { navigation } })
-    await wrapper.get('button[aria-controls="secondary-navigation"]').trigger('click')
 
     const labels = wrapper.findAll('nav a').map((node) => node.text().trim())
     expect(labels.filter((label) => label === 'Maestros')).toHaveLength(1)

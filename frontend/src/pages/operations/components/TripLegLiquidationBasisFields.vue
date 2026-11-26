@@ -1,4 +1,5 @@
 <script setup>
+import * as format from '../../../ui/format.js'
 /**
  * Acuerdo con el chofer para la base de liquidación de un tramo (#533).
  *
@@ -35,7 +36,7 @@ const update = (field, value) => emit('update:modelValue', { ...props.modelValue
 
 // Solo para mostrar: el importe que vale lo calcula el servidor al guardar.
 const calculated = computed(() => liquidationBasisAmount(props.modelValue))
-const formatted = (value) => `${props.currency} ${Number(value).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+const formatted = (value) => format.formatMoney(value, { currency: props.currency, cents: true })
 </script>
 
 <template>

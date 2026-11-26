@@ -38,7 +38,8 @@ describe('AppSidebar module navigation', () => {
     const nav = wrapper.get('nav[aria-label="Navegación principal"]')
     expect(nav.findAll('a')[0].text()).toContain('Dashboard')
     expect(nav.find('a[href="/viajes/operativos/dashboard"]').attributes('aria-current')).toBe('page')
-    expect(wrapper.text()).toContain('Más opciones')
+    expect(nav.get('a[href="/mantenimiento/empleados"]').isVisible()).toBe(true)
+    expect(nav.get('#nav-group-configuracion').find('a[href="/viajes/maestros"]').exists()).toBe(true)
   })
 
   it('shows a dedicated Gerencial menu without operational maintenance entries', () => {

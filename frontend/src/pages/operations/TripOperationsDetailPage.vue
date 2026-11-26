@@ -1,4 +1,6 @@
 <script setup>
+import * as uiLabels from '../../ui/labels.js'
+import * as format from '../../ui/format.js'
 import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { ArrowDownTrayIcon, BanknotesIcon, BeakerIcon, BookOpenIcon, CheckCircleIcon, CurrencyDollarIcon, PencilSquareIcon, ReceiptPercentIcon, XCircleIcon } from '@heroicons/vue/24/outline'
 import PageHeading from './components/PageHeading.vue'
@@ -588,16 +590,8 @@ const settlementNote = computed(() => {
 
   return 'Cargá al menos un tramo para calcular la liquidación.'
 })
-const fmtDateTime = (value) => {
-  const match = String(value ?? '').match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?/)
-  if (!match) return 'Sin fecha'
-  const date = `${match[3]}/${match[2]}/${match[1]}`
-  return match[4] ? `${date} ${match[4]}:${match[5]}` : date
-}
-const fmtDate = (value) => {
-  const match = String(value ?? '').match(/^(\d{4})-(\d{2})-(\d{2})/)
-  return match ? `${match[3]}/${match[2]}/${match[1]}` : 'Sin fecha'
-}
+const fmtDateTime = (value) => format.formatDateTime(value)
+const fmtDate = (value) => format.formatDate(value)
 const legDates = (leg) => {
   const start = leg?.fecha_inicio ? fmtDate(leg.fecha_inicio) : ''
   const end = leg?.fecha_fin ? fmtDate(leg.fecha_fin) : ''
@@ -608,8 +602,8 @@ const legDates = (leg) => {
   return '—'
 }
 const number = (value) => value === null || value === undefined || value === '' ? '—' : Number(value).toLocaleString('es-AR')
-const money = (value, currency = 'ARS') => `${currency} ${Number(value ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-const moneyOrNoData = (value) => value === null || value === undefined ? 'Sin datos' : money(value)
+const money = (value, currency = 'ARS') => format.formatMoney(value ?? 0, { currency, cents: true })
+const moneyOrNoData = (value) => format.formatMoney(value, { cents: true })
 // El origen del porcentaje importa: si vino del valor por defecto de la
 // empresa, el chofer todavia no tiene un acuerdo propio cargado.
 const driverPercentageLabel = computed(() => {
@@ -946,7 +940,7 @@ const facts = computed(() => {
             <table class="w-full min-w-[42rem] text-left text-sm">
               <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-3 py-2">Fecha</th><th class="px-3 py-2">Concepto</th><th class="px-3 py-2">Chofer</th><th class="px-3 py-2 text-right">ARS</th><th v-if="canRegisterCosts" class="px-3 py-2">Acciones</th></tr></thead>
               <tbody class="divide-y divide-border-subtle">
-                <tr v-for="earning in otherEarnings" :key="earning.id"><td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ fmtDateTime(earning.fecha) }}</td><td class="px-3 py-2 text-ink">{{ earningConceptLabel(earning) }}<span v-if="earning.generado_por_diario" class="ml-2 rounded bg-info-subtle px-1.5 py-0.5 text-[10px] font-bold uppercase text-info-strong">Diario</span><span v-if="earning.importe_unitario !== null && earning.importe_unitario !== undefined && earning.cantidad" class="block text-xs text-ink-muted">{{ quantityLabel(earning.cantidad) }} × {{ money(earning.importe_unitario, earning.moneda) }}</span></td><td class="px-3 py-2 text-ink-muted">{{ earning.empleado || '—' }}</td><td class="px-3 py-2 text-right font-semibold text-ink">{{ money(earning.importe_ars) }}</td><td v-if="canRegisterCosts" class="whitespace-nowrap px-3 py-2"><span v-if="earning.generado_por_diario" class="text-xs text-ink-muted">Se corrige en el diario de bordo</span><div v-else class="flex gap-2"><button type="button" :class="secondaryButton" @click="openEditModal('earning', earning)">Editar</button><form method="post" :action="movementUrl('earning', earning.id, true)" @submit="confirmDelete($event, 'este haber')"><input type="hidden" :name="csrf.name" :value="csrf.hash" /><button type="submit" :class="dangerButton">Quitar</button></form></div></td></tr>
+                <tr v-for="earning in otherEarnings" :key="earning.id"><td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ fmtDateTime(earning.fecha) }}</td><td class="px-3 py-2 text-ink">{{ earningConceptLabel(earning) }}<span v-if="earning.generado_por_diario" class="ml-2 rounded bg-info-subtle px-1.5 py-0.5 text-xs font-bold uppercase text-info-strong">Diario</span><span v-if="earning.importe_unitario !== null && earning.importe_unitario !== undefined && earning.cantidad" class="block text-xs text-ink-muted">{{ quantityLabel(earning.cantidad) }} × {{ money(earning.importe_unitario, earning.moneda) }}</span></td><td class="px-3 py-2 text-ink-muted">{{ earning.empleado || '—' }}</td><td class="px-3 py-2 text-right font-semibold text-ink">{{ money(earning.importe_ars) }}</td><td v-if="canRegisterCosts" class="whitespace-nowrap px-3 py-2"><span v-if="earning.generado_por_diario" class="text-xs text-ink-muted">Se corrige en el diario de bordo</span><div v-else class="flex gap-2"><button type="button" :class="secondaryButton" @click="openEditModal('earning', earning)">Editar</button><form method="post" :action="movementUrl('earning', earning.id, true)" @submit="confirmDelete($event, 'este haber')"><input type="hidden" :name="csrf.name" :value="csrf.hash" /><button type="submit" :class="dangerButton">Quitar</button></form></div></td></tr>
               </tbody>
             </table>
           </div>
@@ -1112,7 +1106,7 @@ const facts = computed(() => {
           <table class="w-full min-w-[64rem] text-left text-sm">
             <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-3 py-2">Fecha</th><th class="px-3 py-2">Categoría</th><th class="px-3 py-2">Concepto</th><th class="px-3 py-2 text-right">Cant.</th><th class="px-3 py-2 text-right">Importe</th><th class="px-3 py-2 text-right">ARS</th><th class="px-3 py-2">Medio</th><th class="px-3 py-2">Tramo</th><th class="px-3 py-2">Pagado por</th><th class="px-3 py-2">Comprobante</th><th class="px-3 py-2">Observaciones</th><th v-if="canRegisterCosts" class="px-3 py-2">Acciones</th></tr></thead>
             <tbody class="divide-y divide-border-subtle">
-              <tr v-for="expense in expenses" :key="expense.id"><td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ fmtDateTime(expense.fecha) }}</td><td class="px-3 py-2 text-ink">{{ expense.categoria || 'Sin categoría' }}</td><td class="px-3 py-2 text-ink">{{ expense.concepto_catalogo || '—' }}</td><td class="px-3 py-2 text-right text-ink-muted">{{ quantityLabel(expense.cantidad) }}</td><td class="px-3 py-2 text-right text-ink-muted">{{ money(expense.importe, expense.moneda) }}</td><td class="px-3 py-2 text-right font-semibold text-ink">{{ money(expense.importe_ars) }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.medio_pago || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ legLabel(expense.tramo_id) }}</td><td class="px-3 py-2 text-ink-muted">{{ paidByLabel[expense.pagado_por] ?? 'Empresa' }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.comprobante || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.observaciones || '—' }}</td><td v-if="canRegisterCosts" class="whitespace-nowrap px-3 py-2"><div class="flex gap-2"><button type="button" :class="secondaryButton" @click="openEditModal('expense', expense)">Editar</button><form method="post" :action="movementUrl('expense', expense.id, true)" @submit="confirmDelete($event, 'este gasto')"><input type="hidden" :name="csrf.name" :value="csrf.hash" /><button type="submit" :class="dangerButton">Quitar</button></form></div></td></tr>
+              <tr v-for="expense in expenses" :key="expense.id"><td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ fmtDateTime(expense.fecha) }}</td><td class="px-3 py-2 text-ink">{{ uiLabels.humanizeCode(expense.categoria || 'Sin categoría') }}</td><td class="px-3 py-2 text-ink">{{ expense.concepto_catalogo || '—' }}</td><td class="px-3 py-2 text-right text-ink-muted">{{ quantityLabel(expense.cantidad) }}</td><td class="px-3 py-2 text-right text-ink-muted">{{ money(expense.importe, expense.moneda) }}</td><td class="px-3 py-2 text-right font-semibold text-ink">{{ money(expense.importe_ars) }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.medio_pago || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ legLabel(expense.tramo_id) }}</td><td class="px-3 py-2 text-ink-muted">{{ paidByLabel[expense.pagado_por] ?? 'Empresa' }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.comprobante || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.observaciones || '—' }}</td><td v-if="canRegisterCosts" class="whitespace-nowrap px-3 py-2"><div class="flex gap-2"><button type="button" :class="secondaryButton" @click="openEditModal('expense', expense)">Editar</button><form method="post" :action="movementUrl('expense', expense.id, true)" @submit="confirmDelete($event, 'este gasto')"><input type="hidden" :name="csrf.name" :value="csrf.hash" /><button type="submit" :class="dangerButton">Quitar</button></form></div></td></tr>
             </tbody>
           </table>
         </div>

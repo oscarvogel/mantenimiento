@@ -1,4 +1,5 @@
 <script setup>
+import { primaryButton, secondaryButton } from '../../ui/buttons.js'
 import { ChevronDownIcon, ClockIcon, IdentificationIcon, KeyIcon, PlusIcon, ShieldCheckIcon, UserIcon, UserPlusIcon, UsersIcon } from '@heroicons/vue/24/outline'
 import AdminMetric from './components/AdminMetric.vue'
 import AdminPageHeading from './components/AdminPageHeading.vue'
@@ -101,7 +102,7 @@ const includesId = (ids, id) => ids.includes(Number(id))
           <input name="motivo" minlength="5" maxlength="255" required :value="data.oldInput.motivo" placeholder="Ej.: incorporación aprobada" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/20" />
         </label>
         <div class="sm:col-span-2">
-          <button type="submit" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary-hover active:bg-primary-active">
+          <button type="submit" :class="primaryButton">
             <PlusIcon class="size-5" aria-hidden="true" />
             Crear usuario
           </button>
@@ -176,7 +177,7 @@ const includesId = (ids, id) => ids.includes(Number(id))
                   <input name="motivo" minlength="5" maxlength="255" required class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
                 </label>
                 <div class="sm:col-span-2">
-                  <button type="submit" class="inline-flex min-h-11 items-center justify-center rounded-lg border border-primary px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary-subtle">Guardar cuenta</button>
+                  <button type="submit" :class="secondaryButton">Guardar cuenta</button>
                 </div>
               </form>
 
@@ -238,7 +239,7 @@ const includesId = (ids, id) => ids.includes(Number(id))
                   <p class="mt-2 text-xs font-semibold text-primary">Actualmente: {{ user.roles.map((role) => role.name).join(', ') || 'sin roles' }} · {{ user.allCompanyBranches ? 'todas las sucursales activas' : `${user.branches.length} sucursal(es)` }}</p>
                 </div>
                 <div class="sm:col-span-2">
-                  <button type="submit" class="inline-flex min-h-11 items-center justify-center rounded-lg border border-primary px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary-subtle">Guardar acceso</button>
+                  <button type="submit" :class="secondaryButton">Guardar acceso</button>
                 </div>
               </form>
             </section>

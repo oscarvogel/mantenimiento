@@ -1,5 +1,6 @@
 <script setup>
-import { computed, nextTick, ref, watch } from 'vue'
+import BaseDialog from '../../../ui/BaseDialog.vue'
+import { computed, ref, watch } from 'vue'
 import AutocompleteSelect from './AutocompleteSelect.vue'
 import { fieldClass, primaryButton, secondaryButton } from '../helpers.js'
 
@@ -19,7 +20,6 @@ const loadingProvinces = ref(false)
 const provincesError = ref('')
 const saving = ref(false)
 const error = ref('')
-const nameInput = ref(null)
 
 const provinceOptions = computed(() => provinces.value.map((province) => ({
   value: String(province.id),
@@ -103,32 +103,19 @@ const retryProvinces = () => {
 watch(() => props.open, async (open) => {
   if (!open) return
   reset()
-  await nextTick()
-  nameInput.value?.focus()
   await loadProvinces()
 }, { immediate: true })
 </script>
 
 <template>
-  <Teleport to="body">
-    <div v-if="open" class="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-6" @click.self="close" @keydown.esc="close">
-      <section class="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-2xl border border-border bg-surface-raised p-5 shadow-2xl sm:rounded-2xl sm:p-6" role="dialog" aria-modal="true" aria-labelledby="locality-create-title">
-        <header class="flex items-start justify-between gap-4">
-          <div>
-            <p class="text-xs font-bold uppercase tracking-wide text-primary">Alta rápida</p>
-            <h2 id="locality-create-title" class="mt-1 text-xl font-semibold text-ink">Dar de alta una localidad</h2>
-            <p class="mt-1 text-sm text-ink-muted">Solo pedimos los datos básicos. El país se toma de la provincia.</p>
-          </div>
-          <button type="button" class="grid size-9 shrink-0 place-items-center rounded-lg text-ink-muted hover:bg-surface-subtle hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" aria-label="Cerrar" :disabled="saving" @click="close">×</button>
-        </header>
-
-        <form class="mt-5 space-y-4" @submit.prevent="save">
+  <BaseDialog :open="open" eyebrow="Alta rápida" title="Dar de alta una localidad" description="Solo pedimos los datos básicos. El país se toma de la provincia." :persistent="saving" title-id="locality-create-title" @close="close">
+        <form class="space-y-4 p-6" @submit.prevent="save">
           <label class="block text-sm font-medium text-ink">
-            Nombre de la localidad <span class="text-red-700">*</span>
-            <input ref="nameInput" v-model="name" type="text" name="nombre" maxlength="120" autocomplete="off" placeholder="Ej.: Capitán Leonidas" required :class="[fieldClass, 'mt-1']" />
+            Nombre de la localidad <span class="text-danger-strong">*</span>
+            <input v-model="name" type="text" name="nombre" maxlength="120" autocomplete="off" placeholder="Ej.: Capitán Leonidas" required :class="[fieldClass, 'mt-1']" />
           </label>
           <label class="block text-sm font-medium text-ink">
-            Provincia <span class="text-red-700">*</span>
+            Provincia <span class="text-danger-strong">*</span>
             <div class="mt-1">
               <AutocompleteSelect
                 v-model="provinceId"
@@ -141,11 +128,11 @@ watch(() => props.open, async (open) => {
             </div>
           </label>
 
-          <p v-if="provincesError" class="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm font-medium text-red-900" role="alert">
+          <p v-if="provincesError" class="rounded-lg border border-danger/30 bg-danger-subtle px-3 py-2 text-sm font-medium text-danger-strong" role="alert">
             {{ provincesError }}
             <button type="button" class="ml-1 font-semibold underline" @click="retryProvinces">Reintentar</button>
           </p>
-          <p v-if="error" class="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm font-medium text-red-900" role="alert">{{ error }}</p>
+          <p v-if="error" class="rounded-lg border border-danger/30 bg-danger-subtle px-3 py-2 text-sm font-medium text-danger-strong" role="alert">{{ error }}</p>
           <p class="text-xs text-ink-muted">Si la localidad ya existe en esa provincia, se reutiliza para no duplicarla.</p>
 
           <div class="flex flex-col-reverse gap-2 border-t border-border-subtle pt-4 sm:flex-row sm:justify-end">
@@ -153,7 +140,5 @@ watch(() => props.open, async (open) => {
             <button type="submit" :class="primaryButton" :disabled="!canSubmit">{{ saving ? 'Guardando…' : 'Guardar localidad' }}</button>
           </div>
         </form>
-      </section>
-    </div>
-  </Teleport>
+  </BaseDialog>
 </template>

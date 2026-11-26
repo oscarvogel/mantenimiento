@@ -4,6 +4,7 @@ import { ArrowPathIcon, CheckCircleIcon, ExclamationTriangleIcon, MagnifyingGlas
 import CsrfInput from './components/CsrfInput.vue'
 import EmptyState from './components/EmptyState.vue'
 import PageHeading from './components/PageHeading.vue'
+import { isReportFailureMode } from '../../ui/fieldShortcuts.js'
 import PaginationBar from './components/PaginationBar.vue'
 import PanelCard from './components/PanelCard.vue'
 import { fieldClass, formatHours, formatKilometers, kilometersDelta, normalizeDecimalInput, nowLocal, parseFlexibleNumber, parseKilometers, primaryButton, readingDelta, secondaryButton } from './helpers.js'
@@ -15,6 +16,12 @@ const totalToSave = ref(0)
 const currentSavingIndex = ref(0)
 const commonRecordedAt = ref(props.data.recordedAtDefault || nowLocal())
 const search = ref(props.data.filters.q || '')
+
+// "Informar falla" (spec §6.2) reuses this fleet search: pick the unit, then report on
+// its field page, where the incident form already lives.
+const reportFailure = isReportFailureMode(window.location.search)
+const baseUrl = document.body?.dataset?.baseUrl ?? '/'
+const reportUrl = (equipment) => `${baseUrl}mantenimiento/equipos/${equipment.id}/operar#reportar-problema`
 const statusFilter = ref('')
 const rows = reactive(Object.fromEntries(props.data.equipment.items.map((equipment) => [equipment.id, {
   value: '', recordedAt: commonRecordedAt.value, currentKm: equipment.currentKm, currentHours: equipment.currentHours, status: 'pending', message: '',
@@ -197,8 +204,31 @@ const focusNextReadingInput = (event) => {
 </script>
 
 <template>
-  <PageHeading title="Lecturas rápidas" eyebrow="Carga y mantenimiento preventivo" description="Cargá la flota con Enter, guardá y resolvé los vencimientos desde la misma pantalla." />
-  <form method="post" :action="data.routes.submit" @submit.prevent="submitRows">
+  <template v-if="reportFailure">
+    <PageHeading title="Informar una falla" eyebrow="Solicitudes" description="Elegí el equipo que tiene el problema para describirlo." />
+    <PanelCard title="Equipos" :count="data.equipment.total">
+      <label class="block text-sm font-semibold text-ink">Buscar por código, patente o chasis
+        <span class="relative mt-1 block">
+          <MagnifyingGlassIcon class="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-ink-subtle" aria-hidden="true" />
+          <input v-model="search" type="search" autocomplete="off" :class="`${fieldClass} pl-10`" />
+        </span>
+      </label>
+      <EmptyState v-if="visibleEquipment.length === 0" class="mt-4" title="No hay coincidencias" description="Probá con otro código, patente o chasis." />
+      <ul v-else class="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+        <li v-for="equipment in visibleEquipment" :key="equipment.id">
+          <a :href="reportUrl(equipment)" class="ui-interactive flex min-h-16 items-center justify-between gap-3 rounded-xl border border-border bg-surface-raised px-4 py-3 hover:border-primary/40 hover:bg-primary-subtle/40">
+            <span class="min-w-0">
+              <span class="block truncate font-bold text-ink">{{ equipment.code }}<span v-if="equipment.plate" class="font-medium text-ink-muted"> · {{ equipment.plate }}</span></span>
+              <span class="block truncate text-sm text-ink-muted">{{ equipment.typeName }}<template v-if="equipment.branchName"> · {{ equipment.branchName }}</template></span>
+            </span>
+            <span class="shrink-0 text-sm font-semibold text-primary">Informar</span>
+          </a>
+        </li>
+      </ul>
+    </PanelCard>
+  </template>
+  <PageHeading v-if="!reportFailure" title="Lecturas rápidas" eyebrow="Carga y mantenimiento preventivo" description="Cargá la flota con Enter, guardá y resolvé los vencimientos desde la misma pantalla." />
+  <form v-if="!reportFailure" method="post" :action="data.routes.submit" @submit.prevent="submitRows">
     <CsrfInput :csrf="data.csrf" />
     <PanelCard title="Equipos activos" :count="data.equipment.total">
       <div class="mb-3 grid gap-3 border-b border-border-subtle pb-3 xl:grid-cols-[minmax(18rem,1fr)_13rem_13rem_auto] xl:items-end">
@@ -228,7 +258,7 @@ const focusNextReadingInput = (event) => {
               <td class="px-3 py-2"><div class="relative max-w-52"><input :id="`quick-reading-${equipment.id}`" v-model="rows[equipment.id].value" data-reading-input="true" :data-equipment-id="equipment.id" type="text" :inputmode="readingKey(equipment) === 'hours' ? 'decimal' : 'numeric'" autocomplete="off" placeholder="Ingresar lectura" :disabled="!data.canRegister || saving" :class="`${fieldClass} pr-10 font-semibold tabular-nums ${rowError(equipment) ? 'border-danger' : ''}`" @keydown.enter.prevent="focusNextReadingInput" /><span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-ink-muted">{{ readingUnit(equipment) }}</span></div><p v-if="rowError(equipment)" class="mt-1 text-xs font-semibold text-danger-strong">{{ rowError(equipment) }}</p><p v-else-if="inputDelta(equipment)" class="mt-1 text-xs text-ink-muted">{{ inputDelta(equipment) }} desde la última</p><p v-if="rows[equipment.id].message" class="mt-1 text-xs" :class="rows[equipment.id].status === 'error' ? 'text-danger-strong' : 'text-success-strong'">{{ rows[equipment.id].message }}</p></td>
               <td class="px-3 py-2"><template v-if="primaryPlan(equipment)"><div class="font-medium">{{ primaryPlan(equipment).serviceName }}</div><div class="text-xs text-ink-muted">{{ formatPlanPoint(primaryPlan(equipment), 'base') }}</div></template><span v-else>—</span></td>
               <td class="px-3 py-2"><template v-if="primaryPlan(equipment)"><div class="font-medium">{{ primaryPlan(equipment).serviceName }}</div><div class="text-xs text-ink-muted">{{ formatPlanPoint(primaryPlan(equipment), 'next') }}</div></template><span v-else>—</span></td>
-              <td class="px-3 py-2"><a v-if="maintenance[equipment.id]?.state === 'SIN_PLAN' && equipment.assignPlanUrl" :href="equipment.assignPlanUrl" class="inline-flex rounded-full border border-warning/40 bg-warning-subtle px-2.5 py-1 text-xs font-bold text-warning-strong hover:border-warning hover:bg-warning-subtle" title="Asignar un plan preventivo">Sin plan · Asignar</a><span v-else class="inline-flex rounded-full border px-2.5 py-1 text-xs font-bold" :class="preventiveClass(equipment)">{{ preventiveLabel(equipment) }}</span><details v-if="missingPlanDetails(equipment).length" class="mt-1 text-[11px] text-danger-strong"><summary class="cursor-pointer font-semibold">Ver faltantes</summary><div v-for="detail in missingPlanDetails(equipment)" :key="detail" class="mt-1">{{ detail }}</div></details><div v-else-if="maintenance[equipment.id]?.planCount > 1" class="mt-1 text-[11px] text-ink-subtle">+{{ maintenance[equipment.id].planCount - 1 }} planes</div></td>
+              <td class="px-3 py-2"><a v-if="maintenance[equipment.id]?.state === 'SIN_PLAN' && equipment.assignPlanUrl" :href="equipment.assignPlanUrl" class="inline-flex rounded-full border border-warning/40 bg-warning-subtle px-2.5 py-1 text-xs font-bold text-warning-strong hover:border-warning hover:bg-warning-subtle" title="Asignar un plan preventivo">Sin plan · Asignar</a><span v-else class="inline-flex rounded-full border px-2.5 py-1 text-xs font-bold" :class="preventiveClass(equipment)">{{ preventiveLabel(equipment) }}</span><details v-if="missingPlanDetails(equipment).length" class="mt-1 text-xs text-danger-strong"><summary class="cursor-pointer font-semibold">Ver faltantes</summary><div v-for="detail in missingPlanDetails(equipment)" :key="detail" class="mt-1">{{ detail }}</div></details><div v-else-if="maintenance[equipment.id]?.planCount > 1" class="mt-1 text-xs text-ink-subtle">+{{ maintenance[equipment.id].planCount - 1 }} planes</div></td>
               <td class="px-3 py-2"><template v-if="primaryPlan(equipment)?.order"><div class="text-xs font-bold text-success-strong">{{ primaryPlan(equipment).order.number }}</div><a :href="`${data.routes.workOrderBase}/${primaryPlan(equipment).order.id}/imprimir`" target="_blank" rel="noopener" :class="`${secondaryButton} mt-1 px-2 py-1 text-xs`"><PrinterIcon class="mr-1 size-4" />Imprimir</a></template><button v-else-if="data.canGenerateOrder && primaryPlan(equipment)?.noticeId" type="button" :disabled="orderSaving[equipment.id]" :class="`${primaryButton} px-2 py-1 text-xs`" @click="generateOrder(equipment)"><ArrowPathIcon v-if="orderSaving[equipment.id]" class="mr-1 size-4 animate-spin" /><WrenchScrewdriverIcon v-else class="mr-1 size-4" />{{ orderSaving[equipment.id] ? 'Generando…' : 'Generar OT' }}</button><span v-else-if="maintenance[equipment.id]?.state === 'PROXIMO'" class="text-xs font-semibold text-warning-strong">Próximo service</span><span v-else class="text-xs text-ink-subtle">—</span><p v-if="orderErrors[equipment.id]" class="mt-1 text-xs text-danger-strong">{{ orderErrors[equipment.id] }}</p></td>
             </tr>
           </tbody>

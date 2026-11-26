@@ -1,4 +1,5 @@
 <script setup>
+import { secondaryButton } from '../../ui/buttons.js'
 import { computed } from 'vue'
 import { ArrowPathIcon, BellAlertIcon, ChartBarSquareIcon, ClockIcon, Cog6ToothIcon, HomeIcon, InboxArrowDownIcon, InformationCircleIcon, SignalIcon } from '@heroicons/vue/24/outline'
 
@@ -65,7 +66,7 @@ const deliveryRows = computed(() => [
         <h1 class="mt-1 text-2xl font-bold tracking-tight text-ink sm:text-3xl">Automatizaciones</h1>
         <p class="mt-2 max-w-3xl text-sm leading-6 text-ink-muted">Qué está configurado, qué evidencia existe y qué necesita atención, sin ejecutar ni enviar nada desde esta pantalla.</p>
       </div>
-      <a v-if="portalUrl" :href="portalUrl" class="inline-flex min-h-11 items-center justify-center gap-2 self-start rounded-lg border border-border-strong bg-surface-raised px-4 py-2.5 text-sm font-semibold text-ink hover:bg-surface-muted sm:self-auto">
+      <a v-if="portalUrl" :href="portalUrl" :class="[secondaryButton, 'self-start sm:self-auto']">
         <HomeIcon class="size-5" aria-hidden="true" />Volver al inicio
       </a>
     </header>

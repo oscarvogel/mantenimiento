@@ -187,6 +187,7 @@ export function normalizeAppShellPayload(payload) {
       profile: allowedPresentationProfiles.has(requestedProfile) ? requestedProfile : 'base',
     },
     user: {
+      id: asCount(user.id) || null,
       name: userName,
       email: asText(user.email),
       roles,

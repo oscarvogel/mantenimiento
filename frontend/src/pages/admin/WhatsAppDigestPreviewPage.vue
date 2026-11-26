@@ -1,4 +1,5 @@
 <script setup>
+import { primaryButton } from '../../ui/buttons.js'
 import AdminPageHeading from './components/AdminPageHeading.vue'
 
 defineProps({
@@ -38,7 +39,7 @@ defineProps({
             </option>
           </select>
         </label>
-        <button type="submit" class="min-h-11 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+        <button type="submit" :class="primaryButton">
           Ver mensajes
         </button>
       </form>

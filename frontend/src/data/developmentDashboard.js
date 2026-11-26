@@ -11,7 +11,7 @@ export const developmentDashboard = {
     branches: [{ id: 1, name: 'Casa central' }],
   },
   navigation: [
-    { key: 'dashboard', label: 'Dashboard', href: '#dashboard', icon: 'dashboard', active: true },
+    { key: 'dashboard', label: 'Resumen', href: '#dashboard', icon: 'dashboard', active: true },
     { key: 'equipment', label: 'Camiones', href: '#camiones', icon: 'truck' },
     { key: 'maintenance', label: 'Servicios', href: '#servicios', icon: 'maintenance' },
     { key: 'workshops', label: 'Talleres', href: '#talleres', icon: 'workshop' },

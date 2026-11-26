@@ -1,4 +1,5 @@
 <script setup>
+import * as format from '../../ui/format.js'
 import { computed } from 'vue'
 import { ArrowPathIcon, ChartBarSquareIcon, ExclamationTriangleIcon, TruckIcon } from '@heroicons/vue/24/outline'
 import EmptyState from './components/EmptyState.vue'
@@ -26,12 +27,9 @@ const maxKm = computed(() => Math.max(...recentMonthly.value.map((month) => Numb
 const maxLiters = computed(() => Math.max(...recentMonthly.value.map((month) => Number(month.liters) || 0), 1))
 const consumptionAvailable = computed(() => summary.value.liters_per_100 !== null && summary.value.liters_per_100 !== undefined)
 
-const fmt = (value) => Number(value ?? 0).toLocaleString('es-AR', { maximumFractionDigits: 0 })
-const fmt1 = (value) => Number(value ?? 0).toLocaleString('es-AR', { maximumFractionDigits: 1 })
-const fmtDate = (value) => {
-  const match = String(value ?? '').match(/^(\d{4})-(\d{2})-(\d{2})/)
-  return match ? `${match[3]}/${match[2]}/${match[1]}` : 'Sin fecha'
-}
+const fmt = (value) => format.formatNumber(value ?? 0)
+const fmt1 = (value) => format.formatNumber(value ?? 0, 1)
+const fmtDate = (value) => format.formatDate(value)
 const bar = (value, max) => `${Math.max(2, Math.round((Number(value) || 0) / max * 100))}%`
 const qualityTone = { success: 'bg-success', warning: 'bg-warning', danger: 'bg-danger' }
 const pageUrl = (page) => {

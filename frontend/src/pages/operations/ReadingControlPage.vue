@@ -1,4 +1,5 @@
 <script setup>
+import * as format from '../../ui/format.js'
 import { computed, ref } from 'vue'
 import {
   ArrowPathIcon,
@@ -348,7 +349,7 @@ const methodLabel = (item) => {
               </tr>
             </thead>
             <tbody class="divide-y divide-border-subtle">
-              <tr v-for="item in data.results" :key="item.equipmentId" class="hover:bg-brand-50/50">
+              <tr v-for="item in data.results" :key="item.equipmentId" class="hover:bg-secondary-100/50">
                 <td class="px-5 py-4">
                   <div class="font-semibold text-ink">{{ item.equipmentCode }}</div>
                   <div class="mt-1 text-xs text-ink-muted">{{ item.equipmentPlate || 'Sin patente' }}</div>
@@ -381,11 +382,11 @@ const methodLabel = (item) => {
                   <button
                     v-if="canClaimRow(item)"
                     type="button"
-                    class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-primary px-3.5 py-2 text-sm font-semibold text-primary hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    
                     :disabled="claimBusy"
                     :aria-label="`Reclamar por WhatsApp al chofer de ${item.equipmentCode}`"
                     @click="openClaim(item)"
-                  >
+                   :class="secondaryButton">
                     <ChatBubbleLeftEllipsisIcon class="size-4" aria-hidden="true" />
                     Reclamar por WhatsApp
                   </button>
@@ -439,10 +440,10 @@ const methodLabel = (item) => {
             <button
               v-if="canClaimRow(item)"
               type="button"
-              class="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-primary px-3.5 py-2 text-sm font-semibold text-primary hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-60"
+              
               :disabled="claimBusy"
               @click="openClaim(item)"
-            >
+             :class="[secondaryButton, 'w-full']">
               <ChatBubbleLeftEllipsisIcon class="size-4" aria-hidden="true" />
               Reclamar por WhatsApp
             </button>
@@ -543,7 +544,7 @@ const methodLabel = (item) => {
             </form>
           </div>
           <div v-else-if="evidenceTarget.evidenceReviewedAt" class="mt-4 rounded-xl border border-border bg-surface-subtle p-4 text-sm">
-            <p class="font-semibold text-ink">Revisada por {{ evidenceTarget.evidenceReviewedByName || 'un usuario' }} el {{ evidenceTarget.evidenceReviewedAt }}</p>
+            <p class="font-semibold text-ink">Revisada por {{ evidenceTarget.evidenceReviewedByName || 'un usuario' }} el {{ format.formatDateTime(evidenceTarget.evidenceReviewedAt) }}</p>
             <p class="mt-1 text-ink-muted">Motivo: {{ evidenceTarget.evidenceReviewReason || '-' }}</p>
             <p v-if="evidenceTarget.evidenceReviewObservation" class="mt-1 text-ink-muted">{{ evidenceTarget.evidenceReviewObservation }}</p>
           </div>

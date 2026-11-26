@@ -2,8 +2,10 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import AppHeader from './AppHeader.vue'
 import AppSidebar from './AppSidebar.vue'
+import MobileTabBar from './MobileTabBar.vue'
 import LazyChatWidget from '../pages/operations/components/LazyChatWidget.vue'
 import ScrollCta from './ScrollCta.vue'
+import { withFieldShortcuts } from '../ui/fieldShortcuts.js'
 
 const props = defineProps({
   shell: {
@@ -20,6 +22,10 @@ const sidebarOpen = ref(false)
 const header = ref(null)
 const mobileDrawer = ref(null)
 const isPlatformShell = computed(() => props.shell.navigation.some((item) => item.key === 'platform-home'))
+// Adds "Mi trabajo" and "Informar falla" from what the server already allowed.
+const navigation = computed(() => (isPlatformShell.value
+  ? props.shell.navigation
+  : withFieldShortcuts(props.shell.navigation, props.shell.user, window.location.search)))
 const focusableSelector = [
   'a[href]',
   'button:not([disabled])',
@@ -100,7 +106,8 @@ onBeforeUnmount(() => {
     <div class="fixed inset-y-0 left-0 z-30 hidden w-[15rem] lg:block">
       <AppSidebar
         class="ui-vt-sidebar ui-sidebar-surface"
-        :navigation="props.shell.navigation"
+        :navigation="navigation"
+        :module-navigation="props.shell.moduleNavigation ?? []"
         :logout="props.shell.logout"
       />
     </div>
@@ -114,7 +121,7 @@ onBeforeUnmount(() => {
       <button
         v-if="sidebarOpen"
         type="button"
-        class="fixed inset-0 z-40 cursor-default bg-brand-950/60 lg:hidden"
+        class="fixed inset-0 z-40 cursor-default bg-secondary-900/60 lg:hidden"
         aria-label="Cerrar menú principal"
         @click="closeSidebar"
       ></button>
@@ -139,7 +146,8 @@ onBeforeUnmount(() => {
       >
         <AppSidebar
           mobile
-          :navigation="props.shell.navigation"
+          :navigation="navigation"
+          :module-navigation="props.shell.moduleNavigation ?? []"
           :logout="props.shell.logout"
           @close="closeSidebar"
         />
@@ -154,7 +162,6 @@ onBeforeUnmount(() => {
         :company="props.shell.company"
         :notifications="props.shell.notifications"
         :menu-open="sidebarOpen"
-        :module-navigation="props.shell.moduleNavigation"
         @open-menu="openSidebar"
       />
 
@@ -175,5 +182,6 @@ onBeforeUnmount(() => {
     :label="props.scrollCta.label"
     :description="props.scrollCta.description"
   />
+  <MobileTabBar v-if="!isPlatformShell" :navigation="navigation" :menu-open="sidebarOpen" @open-menu="openSidebar" />
   <LazyChatWidget v-if="!isPlatformShell" />
 </template>

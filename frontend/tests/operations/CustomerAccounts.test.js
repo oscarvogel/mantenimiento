@@ -60,7 +60,7 @@ describe('cierre comercial', () => {
     expect(wrapper.get('[data-testid="closing-tabs"]').text()).toContain('Sin cliente2')
     const row = wrapper.get('[data-testid="closing-row-9"]')
     expect(row.text()).toContain('Grupo Pluma')
-    expect(row.text()).toContain('USD 2.800,00 · est. ARS 4.284.000,00')
+    expect(row.text()).toContain('US$\u00a02.800,00 · est. $\u00a04.284.000,00')
     wrapper.unmount()
   })
 
@@ -75,8 +75,8 @@ describe('cierre comercial', () => {
     expect(form.get('input[name="cotizacion"]').element.value).toBe('1578')
     expect(form.get('input[name="importe"]').element.value).toBe('2800')
     // 2.800 × 1.578 = 4.418.400; la estimación era 4.284.000.
-    expect(wrapper.get('[data-testid="formalize-preview"]').text()).toContain('ARS 4.418.400,00')
-    expect(wrapper.get('[data-testid="formalize-preview"]').text()).toContain('+ARS 134.400,00')
+    expect(wrapper.get('[data-testid="formalize-preview"]').text()).toContain('$\u00a04.418.400,00')
+    expect(wrapper.get('[data-testid="formalize-preview"]').text()).toContain('+$\u00a0134.400,00')
 
     await form.get('select[name="modalidad"]').setValue('FACTURA_EMITIDA')
     expect(form.find('select[name="documento_tipo"]').exists()).toBe(true)
@@ -93,7 +93,7 @@ describe('cierre comercial', () => {
     await wrapper.findAll('button').find((button) => button.text() === 'Formalizar').trigger('click')
     await nextTick()
     await wrapper.get('input[name="cotizacion"]').setValue('1490')
-    expect(wrapper.get('[data-testid="formalize-preview"]').text()).toContain('−ARS 112.000,00')
+    expect(wrapper.get('[data-testid="formalize-preview"]').text()).toContain('−$\u00a0112.000,00')
     wrapper.unmount()
   })
 
@@ -141,8 +141,8 @@ describe('cierre comercial', () => {
     }
     const wrapper = mount(TripCommercialClosingPage, { props: { data: queueData({ status: 'FORMALIZADO', rows: [formalized], returnTo: '/viajes/cierre-comercial?estado=FORMALIZADO' }) }, attachTo: document.body })
     const row = wrapper.get('[data-testid="closing-row-9"]')
-    expect(row.text()).toContain('ARS 4.418.400,00')
-    expect(row.text()).toContain('USD 2.800,00 × 1.578')
+    expect(row.text()).toContain('$\u00a04.418.400,00')
+    expect(row.text()).toContain('US$\u00a02.800,00 × 1.578')
     expect(row.text()).toContain('M-77')
 
     await wrapper.findAll('button').find((button) => button.text() === 'Anular').trigger('click')
@@ -166,7 +166,7 @@ describe('cuenta corriente de clientes', () => {
       },
     })
 
-    expect(wrapper.get('[data-testid="accounts-total"]').text()).toBe('ARS 4.397.000,00')
+    expect(wrapper.get('[data-testid="accounts-total"]').text()).toBe('$\u00a04.397.000,00')
     expect(wrapper.get('[data-testid="accounts-table"]').text()).toContain('a cobrar')
     expect(wrapper.get('a[href="/mantenimiento/clientes/cuenta-corriente/7"]').text()).toBe('Lottus Transportes')
     wrapper.unmount()
@@ -196,9 +196,9 @@ describe('cuenta corriente de clientes', () => {
       attachTo: document.body,
     })
 
-    expect(wrapper.get('[data-testid="statement-balance"]').text()).toBe('ARS 4.172.000,00')
+    expect(wrapper.get('[data-testid="statement-balance"]').text()).toBe('$\u00a04.172.000,00')
     const table = wrapper.get('[data-testid="statement-table"]').text()
-    expect(table).toContain('USD 2.800,00 × 1.578 (informada, 10/11/2026)')
+    expect(table).toContain('US$\u00a02.800,00 × 1.578 (informada, 10/11/2026)')
     expect(table).toContain('Anulado')
     // Solo el cargo vigente se puede anular (en la tabla de escritorio y en las tarjetas de celular).
     expect(wrapper.get('[data-testid="statement-table"]').findAll('button').filter((button) => button.text() === 'Anular')).toHaveLength(2)
@@ -217,7 +217,7 @@ describe('cuenta corriente de clientes', () => {
     expect(form.get('input[name="cotizacion"]').element.value).toBe('1600')
     await form.get('input[name="importe"]').setValue('100')
     await form.get('select[name="sentido"]').setValue('HABER')
-    expect(wrapper.get('[data-testid="opening-preview"]').text()).toBe('Se registra un saldo a favor de ARS 160.000,00.')
+    expect(wrapper.get('[data-testid="opening-preview"]').text()).toBe('Se registra un saldo a favor de $\u00a0160.000,00.')
     wrapper.unmount()
   })
 })

@@ -89,7 +89,7 @@ const hayViajes = computed(() => props.viajes.length > 0)
               <span class="block text-xs text-ink-muted">{{ entero(viaje.medido?.cargas) }} cargas</span>
               <span
                 v-if="esParcial(viaje)"
-                class="mt-1 inline-block rounded-full bg-warning-subtle px-2 py-0.5 text-[11px] font-semibold text-warning-strong"
+                class="mt-1 inline-block rounded-full bg-warning-subtle px-2 py-0.5 text-xs font-semibold text-warning-strong"
                 title="La telemetría no vio el viaje completo: son las cargas que registró el sensor (al menos esos litros). Sin veredicto ni consumo."
               >Parcial</span>
             </td>

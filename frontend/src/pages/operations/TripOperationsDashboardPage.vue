@@ -1,4 +1,5 @@
 <script setup>
+import * as format from '../../ui/format.js'
 import { computed, reactive } from 'vue'
 import { ArrowPathIcon, PlusIcon, TruckIcon } from '@heroicons/vue/24/outline'
 import AutocompleteSelect from './components/AutocompleteSelect.vue'
@@ -90,17 +91,10 @@ const kpis = computed(() => [
   },
 ])
 
-const fmt = (value) => Number(value ?? 0).toLocaleString('es-AR', { maximumFractionDigits: 0 })
-const fmt1 = (value) => Number(value ?? 0).toLocaleString('es-AR', { maximumFractionDigits: 1 })
-const fmtMoney = (value) => new Intl.NumberFormat('es-AR', {
-  style: 'currency',
-  currency: 'ARS',
-  maximumFractionDigits: 0,
-}).format(Number(value ?? 0))
-const fmtDateTime = (value) => {
-  const match = String(value ?? '').match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/)
-  return match ? `${match[3]}/${match[2]}/${match[1]} ${match[4]}:${match[5]}` : 'Sin fecha'
-}
+const fmt = (value) => format.formatNumber(value ?? 0)
+const fmt1 = (value) => format.formatNumber(value ?? 0, 1)
+const fmtMoney = (value) => format.formatMoney(value ?? 0)
+const fmtDateTime = (value) => format.formatDateTime(value)
 const bar = (value, max) => {
   const amount = Number(value) || 0
   if (amount <= 0 || max <= 0) return '0%'

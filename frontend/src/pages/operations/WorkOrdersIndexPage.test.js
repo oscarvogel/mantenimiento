@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { DOMWrapper, mount } from '@vue/test-utils'
 import WorkOrdersIndexPage from './WorkOrdersIndexPage.vue'
 
 const data = () => ({
@@ -31,6 +31,7 @@ const data = () => ({
 
 afterEach(() => {
   document.body.innerHTML = ''
+  window.history.replaceState(null, '', '/')
 })
 
 describe('WorkOrdersIndexPage', () => {
@@ -74,7 +75,8 @@ describe('WorkOrdersIndexPage', () => {
     expect(button).toBeDefined()
     await button.trigger('click')
 
-    const dialog = wrapper.find('[role="dialog"]')
+    // The modal is a BaseDialog teleported to <body>, outside the page wrapper.
+    const dialog = new DOMWrapper(document.body.querySelector('[role="dialog"]'))
     expect(dialog.exists()).toBe(true)
     expect(dialog.text()).toContain('Registrar trabajo realizado')
     const search = dialog.find('input[type="search"]')
@@ -117,7 +119,7 @@ describe('WorkOrdersIndexPage', () => {
     expect(wrapper.find('[data-testid="work-order-detail"]').exists()).toBe(true)
     expect(wrapper.text()).toContain('Cambiar aceite')
     expect(wrapper.text()).toContain('Control general')
-    expect(wrapper.text()).toContain('Total: $ 0,00')
+    expect(wrapper.text()).toContain('Total: $\u00a00')
   })
 
   it('muestra moneda original y equivalente histórico ARS para una OT en BRL', async () => {
@@ -126,13 +128,13 @@ describe('WorkOrdersIndexPage', () => {
     const detailButton = order.findAll('button').find((button) => button.text().includes('Ver detalle'))
     await detailButton.trigger('click')
 
-    expect(order.text()).toContain('otros R$ 624,90')
-    expect(order.text()).toContain('Total original: R$ 624,90')
-    expect(order.text()).toContain('1 BRL = $ 350,00 ARS')
+    expect(order.text()).toContain('otros BRL\u00a0625')
+    expect(order.text()).toContain('Total original: BRL\u00a0625')
+    expect(order.text()).toContain('1 BRL = $\u00a0350,00 ARS')
     expect(order.text()).toContain('Fecha cotización: 12/08/2026')
     expect(order.text()).toContain('Origen cotización: BCRA')
-    expect(order.text()).toContain('Total histórico ARS: $ 218.715,00')
-    expect(order.text()).not.toContain('Total: $ 624,90')
+    expect(order.text()).toContain('Total histórico ARS: $\u00a0218.715')
+    expect(order.text()).not.toContain('Total: $\u00a0625')
   })
 
   it('permite anular una OT activa con motivo obligatorio', async () => {
@@ -161,5 +163,21 @@ describe('WorkOrdersIndexPage', () => {
     expect(modal.textContent).toContain('Cerrar OT-00033')
     expect(modal.querySelector('form').getAttribute('action')).toBe('/mantenimiento/ordenes/33/cerrar')
     expect(modal.textContent).toContain('Revisar pastillas')
+  })
+
+  it('en Mi trabajo agrupa las órdenes por lo que hay que hacer y oculta filtros y totales', () => {
+    window.history.replaceState(null, '', '/mantenimiento/ordenes?responsable_id=7&vista=mi-trabajo')
+    const wrapper = mount(WorkOrdersIndexPage, { props: { data: data() } })
+
+    expect(wrapper.get('h1').text()).toBe('Mi trabajo')
+    expect(wrapper.findAll('section[aria-label] > h2').map((node) => node.text())).toEqual(['En curso (1)', 'Para empezar (1)', 'En espera de repuestos (1)'])
+    expect(wrapper.find('form[method="get"]').exists()).toBe(false)
+    expect(wrapper.find('[aria-label="Indicadores de órdenes"]').exists()).toBe(false)
+  })
+
+  it('en Mi trabajo sin órdenes lo dice con palabras propias', () => {
+    window.history.replaceState(null, '', '/mantenimiento/ordenes?responsable_id=7&vista=mi-trabajo')
+    const wrapper = mount(WorkOrdersIndexPage, { props: { data: { ...data(), orders: [] } } })
+    expect(wrapper.text()).toContain('No tenés órdenes asignadas')
   })
 })

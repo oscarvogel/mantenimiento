@@ -427,7 +427,7 @@ describe('imports-show', () => {
     expect(wrapper.get('form[action="/mantenimiento/importaciones/8/confirmar"]').attributes('method')).toBe('post')
     expect(wrapper.get('form[action="/mantenimiento/importaciones/8/cancelar"]').attributes('method')).toBe('post')
     expect(wrapper.text()).toContain('CAM-01')
-    expect(wrapper.text()).toContain('VALIDA')
+    expect(wrapper.text()).toContain('Válida')
   })
 
   it('abre y cierra un modal Vue propio sin depender del confirmador global', async () => {

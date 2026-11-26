@@ -22,7 +22,7 @@ const sizes = {
   <span
     role="img"
     aria-label="Vogel Consultoría"
-    class="block rounded-sm bg-brand-950 bg-no-repeat"
+    class="block rounded-sm bg-secondary-900 bg-no-repeat"
     :class="sizes[size]"
     :style="{
       backgroundImage: `url('${logoUrl}')`,

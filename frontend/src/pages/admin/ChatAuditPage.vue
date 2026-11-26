@@ -1,4 +1,6 @@
 <script setup>
+import { primaryButton, secondaryButton, secondaryButtonSm } from '../../ui/buttons.js'
+import * as format from '../../ui/format.js'
 import { computed, onMounted, reactive, ref } from 'vue'
 
 const props = defineProps({ data: { type: Object, default: () => ({}) } })
@@ -54,7 +56,7 @@ function reset() {
   load(1)
 }
 
-function formatDate(value) { return value ? new Intl.DateTimeFormat('es-AR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value)) : '—' }
+const formatDate = (value) => format.formatDateTime(value)
 function pretty(value) { return typeof value === 'string' ? value : JSON.stringify(value, null, 2) }
 onMounted(() => load(1))
 </script>
@@ -73,8 +75,8 @@ onMounted(() => load(1))
       <input v-model="filters.dateTo" class="rounded-lg border border-border-strong bg-surface px-3 py-2 text-ink focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" type="date" aria-label="Fecha hasta">
       <input v-model="filters.q" class="rounded-lg border border-border-strong bg-surface px-3 py-2 text-ink placeholder:text-ink-subtle focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="Texto o ID conversación" aria-label="Texto o ID de conversación">
       <div class="flex gap-2 md:col-span-2 xl:col-span-5">
-        <button class="ui-interactive rounded-lg bg-primary px-4 py-2 font-semibold text-primary-foreground hover:bg-primary-hover" type="submit">Filtrar</button>
-        <button class="ui-interactive rounded-lg border border-border-strong bg-surface px-4 py-2 font-semibold text-ink hover:bg-surface-muted" type="button" @click="reset">Limpiar</button>
+        <button type="submit" :class="primaryButton">Filtrar</button>
+        <button type="button" @click="reset" :class="secondaryButton">Limpiar</button>
       </div>
     </form>
 
@@ -96,12 +98,12 @@ onMounted(() => load(1))
 
     <footer v-if="pages > 1" class="flex items-center justify-between text-sm">
       <span class="text-ink-muted">{{ total }} conversaciones</span>
-      <div class="flex gap-2"><button type="button" class="rounded border border-border-strong bg-surface px-3 py-1 text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50" :disabled="page <= 1" @click="load(page - 1)">Anterior</button><span class="px-2 py-1 text-ink-muted">{{ page }} / {{ pages }}</span><button type="button" class="rounded border border-border-strong bg-surface px-3 py-1 text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50" :disabled="page >= pages" @click="load(page + 1)">Siguiente</button></div>
+      <div class="flex gap-2"><button type="button" :disabled="page <= 1" @click="load(page - 1)" :class="secondaryButtonSm">Anterior</button><span class="px-2 py-1 text-ink-muted">{{ page }} / {{ pages }}</span><button type="button" :disabled="page >= pages" @click="load(page + 1)" :class="secondaryButtonSm">Siguiente</button></div>
     </footer>
 
-    <div v-if="selected || detailLoading" class="fixed inset-0 z-50 flex justify-end bg-brand-950/60" role="presentation" @click.self="selected = null">
+    <div v-if="selected || detailLoading" class="fixed inset-0 z-50 flex justify-end bg-secondary-900/60" role="presentation" @click.self="selected = null">
       <aside class="h-full w-full overflow-y-auto bg-surface-raised p-5 text-ink shadow-2xl md:max-w-3xl" role="dialog" aria-modal="true" aria-labelledby="chat-audit-detail-title">
-        <button type="button" class="ui-interactive float-right rounded-lg border border-border-strong bg-surface px-3 py-1 text-sm font-semibold text-ink hover:bg-surface-muted" @click="selected = null">Cerrar</button>
+        <button type="button" @click="selected = null" :class="[secondaryButtonSm, 'float-right']">Cerrar</button>
         <p v-if="detailLoading" id="chat-audit-detail-title" class="text-ink-muted" role="status" aria-live="polite">Cargando detalle…</p>
         <template v-else-if="selected">
           <h2 id="chat-audit-detail-title" class="pr-20 text-xl font-bold text-ink">#{{ selected.id }} · {{ selected.title || 'Sin título' }}</h2>

@@ -1,4 +1,5 @@
 <script setup>
+import * as format from '../../ui/format.js'
 import { computed, reactive, ref } from 'vue'
 import EmptyState from './components/EmptyState.vue'
 import PageHeading from './components/PageHeading.vue'
@@ -57,13 +58,8 @@ const filledArs = computed(() => filled.value.reduce((total, load) => {
 }, 0))
 
 const number = (value, decimals = 2) => Number(value ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: decimals })
-const money = (value) => `ARS ${Number(value ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-const dateTime = (value) => {
-  if (!value) return '—'
-  const [date, time = ''] = String(value).split(' ')
-  const [year, month, day] = date.split('-')
-  return `${day}/${month}/${year} ${time.slice(0, 5)}`.trim()
-}
+const money = (value) => format.formatMoney(value ?? 0, { cents: true })
+const dateTime = (value) => format.formatDateTime(value)
 const statusLabel = { PLANIFICADO: 'Planificado', EN_CURSO: 'En curso', FINALIZADO: 'Finalizado' }
 const statusBadge = {
   EN_CURSO: 'bg-success-subtle text-success-strong',

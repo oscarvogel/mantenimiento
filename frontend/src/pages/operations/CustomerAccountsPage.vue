@@ -1,4 +1,5 @@
 <script setup>
+import * as format from '../../ui/format.js'
 /**
  * Cuenta corriente de clientes (#530): un saldo único en ARS por cliente,
  * derivado del libro de movimientos (Debe − Haber).
@@ -16,14 +17,8 @@ const totals = computed(() => props.data.totals ?? {})
 const customers = computed(() => props.data.customers ?? [])
 const canFormalize = computed(() => Boolean(props.data.canFormalize))
 
-const money = (value) => `ARS ${Number(value ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-const fmtDate = (value) => {
-  const raw = String(value ?? '').slice(0, 10)
-  if (!raw) return '—'
-  const [year, month, day] = raw.split('-')
-
-  return `${day}/${month}/${year}`
-}
+const money = (value) => format.formatMoney(value ?? 0, { cents: true })
+const fmtDate = (value) => format.formatDate(value)
 const balanceClass = (value) => (value > 0 ? 'text-danger-strong' : (value < 0 ? 'text-success-strong' : 'text-ink-muted'))
 const balanceLabel = (value) => (value > 0 ? 'a cobrar' : (value < 0 ? 'a favor del cliente' : 'saldada'))
 

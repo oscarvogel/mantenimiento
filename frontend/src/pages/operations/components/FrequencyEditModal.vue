@@ -1,6 +1,6 @@
 <script setup>
+import BaseDialog from '../../../ui/BaseDialog.vue'
 import { nextTick, ref, watch } from 'vue'
-import { XMarkIcon } from '@heroicons/vue/24/outline'
 import CsrfInput from './CsrfInput.vue'
 import FormField from './FormField.vue'
 import { fieldClass, primaryButton, secondaryButton } from '../helpers.js'
@@ -50,17 +50,6 @@ watch(
 function close() {
   if (submitting.value) return
   emit('close')
-}
-
-function onBackdrop(event) {
-  if (event.target === event.currentTarget) close()
-}
-
-function onKeydown(event) {
-  if (event.key === 'Escape') {
-    event.preventDefault()
-    close()
-  }
 }
 
 function numericValue(value) {
@@ -148,82 +137,58 @@ async function onSubmit(event) {
 </script>
 
 <template>
-  <Teleport to="body">
-    <div
-      v-if="open && localItem"
-      class="fixed inset-0 z-50 flex items-end justify-center bg-ink/50 px-4 py-6 sm:items-center"
-      role="dialog"
-      aria-modal="true"
-      :aria-labelledby="'frequency-modal-title-' + localItem.id"
-      tabindex="-1"
-      @click="onBackdrop"
-      @keydown="onKeydown"
-    >
-      <div class="flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-        <header class="flex items-start justify-between gap-3 border-b border-border-subtle px-5 py-4">
-          <div class="min-w-0">
-            <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Frecuencia preventiva</p>
-            <h2 :id="'frequency-modal-title-' + localItem.id" class="truncate text-base font-bold text-ink">
-              {{ localItem.serviceName || 'Editar frecuencia' }}
-            </h2>
-          </div>
-          <button type="button" :class="secondaryButton" class="!min-h-9 !px-2" :disabled="submitting" aria-label="Cerrar" @click="close">
-            <XMarkIcon class="size-4" aria-hidden="true" />
-          </button>
-        </header>
+  <BaseDialog :open="open && !!localItem" eyebrow="Frecuencia preventiva" :title="localItem?.serviceName || 'Editar frecuencia'" :title-id="localItem ? 'frequency-modal-title-' + localItem.id : ''" :persistent="submitting" size="lg" @close="close">
 
-        <form ref="form" class="flex max-h-[75vh] flex-col" @submit="onSubmit">
-          <CsrfInput :csrf="csrf" />
-          <div class="grid flex-1 gap-3 overflow-y-auto px-5 py-4 md:grid-cols-3">
-            <FormField label="Cada (km)" :for-id="'frequency-' + localItem.id + '-km'">
-              <input :id="'frequency-' + localItem.id + '-km'" v-model="localItem.intervalKm" name="intervalo_km" type="number" min="1" step="1" :class="fieldClass" :disabled="!canEdit" />
-            </FormField>
-            <FormField label="Cada (horas)" :for-id="'frequency-' + localItem.id + '-hours'">
-              <input :id="'frequency-' + localItem.id + '-hours'" v-model="localItem.intervalHours" name="intervalo_horas" type="number" min="0.01" step="0.01" :class="fieldClass" :disabled="!canEdit" />
-            </FormField>
-            <FormField label="Cada (días)" :for-id="'frequency-' + localItem.id + '-days'">
-              <input :id="'frequency-' + localItem.id + '-days'" v-model="localItem.intervalDays" name="intervalo_dias" type="number" min="1" step="1" :class="fieldClass" :disabled="!canEdit" />
-            </FormField>
+    <form ref="form" class="flex max-h-[75vh] flex-col" @submit="onSubmit">
+      <CsrfInput :csrf="csrf" />
+      <div class="grid flex-1 gap-3 overflow-y-auto px-5 py-4 md:grid-cols-3">
+        <FormField label="Cada (km)" :for-id="'frequency-' + localItem.id + '-km'">
+          <input :id="'frequency-' + localItem.id + '-km'" v-model="localItem.intervalKm" name="intervalo_km" type="number" min="1" step="1" :class="fieldClass" :disabled="!canEdit" />
+        </FormField>
+        <FormField label="Cada (horas)" :for-id="'frequency-' + localItem.id + '-hours'">
+          <input :id="'frequency-' + localItem.id + '-hours'" v-model="localItem.intervalHours" name="intervalo_horas" type="number" min="0.01" step="0.01" :class="fieldClass" :disabled="!canEdit" />
+        </FormField>
+        <FormField label="Cada (días)" :for-id="'frequency-' + localItem.id + '-days'">
+          <input :id="'frequency-' + localItem.id + '-days'" v-model="localItem.intervalDays" name="intervalo_dias" type="number" min="1" step="1" :class="fieldClass" :disabled="!canEdit" />
+        </FormField>
 
-            <FormField label="Avisar antes (km)" :for-id="'frequency-' + localItem.id + '-warning-km'">
-              <input :id="'frequency-' + localItem.id + '-warning-km'" v-model="localItem.warningKm" name="anticipacion_km" type="number" min="0" step="1" :class="fieldClass" :disabled="!canEdit" />
-            </FormField>
-            <FormField label="Avisar antes (horas)" :for-id="'frequency-' + localItem.id + '-warning-hours'">
-              <input :id="'frequency-' + localItem.id + '-warning-hours'" v-model="localItem.warningHours" name="anticipacion_horas" type="number" min="0" step="0.01" :class="fieldClass" :disabled="!canEdit" />
-            </FormField>
-            <FormField label="Avisar antes (días)" :for-id="'frequency-' + localItem.id + '-warning-days'">
-              <input :id="'frequency-' + localItem.id + '-warning-days'" v-model="localItem.warningDays" name="anticipacion_dias" type="number" min="0" step="1" :class="fieldClass" :disabled="!canEdit" />
-            </FormField>
+        <FormField label="Avisar antes (km)" :for-id="'frequency-' + localItem.id + '-warning-km'">
+          <input :id="'frequency-' + localItem.id + '-warning-km'" v-model="localItem.warningKm" name="anticipacion_km" type="number" min="0" step="1" :class="fieldClass" :disabled="!canEdit" />
+        </FormField>
+        <FormField label="Avisar antes (horas)" :for-id="'frequency-' + localItem.id + '-warning-hours'">
+          <input :id="'frequency-' + localItem.id + '-warning-hours'" v-model="localItem.warningHours" name="anticipacion_horas" type="number" min="0" step="0.01" :class="fieldClass" :disabled="!canEdit" />
+        </FormField>
+        <FormField label="Avisar antes (días)" :for-id="'frequency-' + localItem.id + '-warning-days'">
+          <input :id="'frequency-' + localItem.id + '-warning-days'" v-model="localItem.warningDays" name="anticipacion_dias" type="number" min="0" step="1" :class="fieldClass" :disabled="!canEdit" />
+        </FormField>
 
-            <FormField label="Prioridad" :for-id="'frequency-' + localItem.id + '-priority'">
-              <select :id="'frequency-' + localItem.id + '-priority'" v-model="localItem.priority" name="prioridad" :class="fieldClass" :disabled="!canEdit">
-                <option value="BAJA">Baja</option>
-                <option value="MEDIA">Media</option>
-                <option value="ALTA">Alta</option>
-                <option value="CRITICA">Crítica</option>
-              </select>
-            </FormField>
-            <label class="flex items-center gap-2 self-end pb-3 text-sm font-semibold text-ink md:col-span-2">
-              <input v-model="localItem.active" name="activo" type="checkbox" value="1" :disabled="!canEdit" class="size-4 rounded border-border text-primary focus:ring-primary/20" />
-              Servicio activo en la plantilla
-            </label>
+        <FormField label="Prioridad" :for-id="'frequency-' + localItem.id + '-priority'">
+          <select :id="'frequency-' + localItem.id + '-priority'" v-model="localItem.priority" name="prioridad" :class="fieldClass" :disabled="!canEdit">
+            <option value="BAJA">Baja</option>
+            <option value="MEDIA">Media</option>
+            <option value="ALTA">Alta</option>
+            <option value="CRITICA">Crítica</option>
+          </select>
+        </FormField>
+        <label class="flex items-center gap-2 self-end pb-3 text-sm font-semibold text-ink md:col-span-2">
+          <input v-model="localItem.active" name="activo" type="checkbox" value="1" :disabled="!canEdit" class="size-4 rounded border-border text-primary focus:ring-primary/20" />
+          Servicio activo en la plantilla
+        </label>
 
-            <FormField label="Observaciones" :for-id="'frequency-' + localItem.id + '-notes'" class="md:col-span-3">
-              <textarea :id="'frequency-' + localItem.id + '-notes'" v-model="localItem.notes" name="observaciones" rows="3" maxlength="1000" :class="fieldClass" :disabled="!canEdit"></textarea>
-            </FormField>
+        <FormField label="Observaciones" :for-id="'frequency-' + localItem.id + '-notes'" class="md:col-span-3">
+          <textarea :id="'frequency-' + localItem.id + '-notes'" v-model="localItem.notes" name="observaciones" rows="3" maxlength="1000" :class="fieldClass" :disabled="!canEdit"></textarea>
+        </FormField>
 
-            <p v-if="errorMessage" class="rounded-md bg-danger-subtle px-3 py-2 text-sm text-danger-strong md:col-span-3" role="alert">
-              {{ errorMessage }}
-            </p>
-          </div>
-          <footer class="flex flex-wrap items-center justify-end gap-2 border-t border-border-subtle bg-surface-subtle px-5 py-3">
-            <button type="button" :class="secondaryButton" :disabled="submitting" @click="close">Cancelar</button>
-            <button type="submit" :class="primaryButton" :disabled="submitting || !canEdit">
-              {{ submitting ? 'Guardando…' : 'Guardar frecuencia' }}
-            </button>
-          </footer>
-        </form>
+        <p v-if="errorMessage" class="rounded-md bg-danger-subtle px-3 py-2 text-sm text-danger-strong md:col-span-3" role="alert">
+          {{ errorMessage }}
+        </p>
       </div>
-    </div>
-  </Teleport>
+      <footer class="flex flex-wrap items-center justify-end gap-2 border-t border-border-subtle bg-surface-subtle px-5 py-3">
+        <button type="button" :class="secondaryButton" :disabled="submitting" @click="close">Cancelar</button>
+        <button type="submit" :class="primaryButton" :disabled="submitting || !canEdit">
+          {{ submitting ? 'Guardando…' : 'Guardar frecuencia' }}
+        </button>
+      </footer>
+    </form>
+  </BaseDialog>
 </template>

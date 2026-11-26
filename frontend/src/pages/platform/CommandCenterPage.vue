@@ -1,4 +1,5 @@
 <script setup>
+import * as uiLabels from '../../ui/labels.js'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import {
   ArrowRightIcon,
@@ -106,7 +107,7 @@ onBeforeUnmount(() => cardMotionPreference?.revert())
 <template>
   <div ref="pageRoot" class="mx-auto max-w-[86rem] space-y-7 pb-10 sm:space-y-9">
     <section
-      class="relative isolate flex min-h-[19rem] items-center overflow-hidden rounded-3xl bg-brand-950 bg-cover bg-center px-6 py-9 text-white shadow-card sm:min-h-[21rem] sm:px-10 lg:px-12"
+      class="relative isolate flex min-h-[19rem] items-center overflow-hidden rounded-3xl bg-secondary-900 bg-cover bg-center px-6 py-9 text-white shadow-card sm:min-h-[21rem] sm:px-10 lg:px-12"
       :style="heroStyle"
       aria-labelledby="command-center-heading"
     >
@@ -141,7 +142,7 @@ onBeforeUnmount(() => cardMotionPreference?.revert())
               :href="module.href"
               :style="cardStyle(module)"
               data-module-card
-              class="group relative isolate flex min-h-[13.5rem] flex-col overflow-hidden rounded-2xl border border-brand-700 bg-brand-950 bg-cover bg-center p-4 text-white shadow-card transition duration-200 hover:-translate-y-0.5 hover:border-primary hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-subtle sm:p-5"
+              class="group relative isolate flex min-h-[13.5rem] flex-col overflow-hidden rounded-2xl border border-secondary-700 bg-secondary-900 bg-cover bg-center p-4 text-white shadow-card transition duration-200 hover:-translate-y-0.5 hover:border-primary hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-subtle sm:p-5"
             >
               <div class="flex items-start justify-between gap-3">
                 <span class="flex size-12 items-center justify-center rounded-xl bg-primary text-white shadow-lg" aria-hidden="true">
@@ -149,7 +150,7 @@ onBeforeUnmount(() => cardMotionPreference?.revert())
                 </span>
                 <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-2.5 py-1 text-xs font-semibold text-emerald-200">
                   <span class="size-1.5 rounded-full bg-emerald-400" aria-hidden="true"></span>
-                  {{ module.status }}
+                  {{ uiLabels.humanizeCode(module.status) }}
                 </span>
               </div>
               <div class="mt-auto pt-6">
@@ -167,10 +168,10 @@ onBeforeUnmount(() => cardMotionPreference?.revert())
               type="button"
               disabled
               aria-disabled="true"
-              :aria-label="`${module.label}: ${module.status}`"
+              :aria-label="`${module.label}: ${uiLabels.humanizeCode(module.status)}`"
               :style="cardStyle(module)"
               data-module-card
-              class="relative isolate flex min-h-[13.5rem] cursor-not-allowed flex-col overflow-hidden rounded-2xl border border-brand-700 bg-brand-950 bg-cover bg-center p-4 text-left text-white shadow-card opacity-85 sm:p-5"
+              class="relative isolate flex min-h-[13.5rem] cursor-not-allowed flex-col overflow-hidden rounded-2xl border border-secondary-700 bg-secondary-900 bg-cover bg-center p-4 text-left text-white shadow-card opacity-85 sm:p-5"
               :class="module.key === 'maintenance' ? 'opacity-85' : ''"
             >
               <div class="flex items-start justify-between gap-3">
@@ -178,10 +179,10 @@ onBeforeUnmount(() => cardMotionPreference?.revert())
                   <component :is="iconFor(module.icon)" class="size-6" />
                 </span>
                 <span
-                  class="module-status--pending max-w-[9.5rem] rounded-full bg-surface-muted px-2.5 py-1 text-center text-[0.65rem] font-semibold leading-4 text-ink-muted"
+                  class="module-status--pending max-w-[9.5rem] rounded-full bg-surface-muted px-2.5 py-1 text-center text-xs font-semibold leading-4 text-ink-muted"
                   :class="module.state === 'not_implemented' ? 'bg-white/10 text-blue-100' : (module.state === 'restricted' ? 'bg-warning-subtle text-warning-strong' : '')"
                 >
-                  {{ module.status }}
+                  {{ uiLabels.humanizeCode(module.status) }}
                 </span>
               </div>
               <div class="mt-auto pt-6">

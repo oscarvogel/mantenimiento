@@ -1,4 +1,5 @@
 <script setup>
+import * as format from '../../ui/format.js'
 import { computed, ref } from 'vue'
 import {
   ArrowUpTrayIcon,
@@ -40,7 +41,7 @@ const countries = [
 ]
 const requiredCountries = computed(() => countries.filter((country) => requirements.value[country.key]))
 const blockingIssues = computed(() => (summary.value.issues_page ?? []).filter((issue) => issue.severity === 'ERROR'))
-const fmt = (value) => Number(value ?? 0).toLocaleString('es-AR')
+const fmt = (value) => format.formatNumber(value ?? 0)
 
 const metrics = computed(() => [
   { label: 'Viajes nuevos', value: counts.value.trips_new, tone: 'text-ink' },
@@ -252,7 +253,7 @@ const decisionIcon = { success: 'bg-success/15 text-success', warning: 'bg-warni
             </div>
             <p class="mt-1 text-xs text-ink-muted">{{ fmt(classification[country.key]?.new) }} nuevos</p>
             <div class="mt-3 flex flex-wrap gap-1">
-              <span v-for="domain in classification[country.key]?.domains ?? []" :key="domain" class="rounded bg-surface-muted px-1.5 py-0.5 font-mono text-[11px] text-ink-muted">{{ domain }}</span>
+              <span v-for="domain in classification[country.key]?.domains ?? []" :key="domain" class="rounded bg-surface-muted px-1.5 py-0.5 font-mono text-xs text-ink-muted">{{ domain }}</span>
               <span v-if="!(classification[country.key]?.domains ?? []).length" class="text-xs text-ink-subtle">Sin dominios</span>
             </div>
             <div class="mt-4">

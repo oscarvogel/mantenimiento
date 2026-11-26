@@ -1,4 +1,6 @@
 <script setup>
+import * as uiLabels from '../ui/labels.js'
+import { ghostButtonSm } from '../ui/buttons.js'
 import { computed } from 'vue'
 import {
   BellAlertIcon,
@@ -195,7 +197,7 @@ const companyPressure = (company) => Math.min(
             <p class="mt-1 text-2xl font-bold tracking-tight text-ink-strong">{{ kpi.value }}</p>
           </div>
         </div>
-        <p class="mt-2 truncate text-[11px] text-ink-subtle">{{ kpi.detail }}</p>
+        <p class="mt-2 truncate text-xs text-ink-subtle">{{ kpi.detail }}</p>
         <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-surface-muted">
           <span
             class="block h-full rounded-full transition-all"
@@ -231,7 +233,7 @@ const companyPressure = (company) => Math.min(
         <div v-if="data.attention.length" class="overflow-x-auto">
           <table class="w-full min-w-[42rem] border-collapse text-left">
             <thead>
-              <tr class="border-b border-border-subtle bg-surface/35 text-[11px] font-semibold uppercase tracking-wide text-ink-subtle">
+              <tr class="border-b border-border-subtle bg-surface/35 text-xs font-semibold uppercase tracking-wide text-ink-subtle">
                 <th class="px-5 py-3">Empresa</th>
                 <th class="px-4 py-3">Tipo de situación</th>
                 <th class="px-4 py-3 text-center">Cantidad</th>
@@ -260,8 +262,8 @@ const companyPressure = (company) => Math.min(
                   <a
                     v-if="item.actionUrl !== '#'"
                     :href="item.actionUrl"
-                    class="inline-flex min-h-8 items-center justify-center rounded-md border border-primary/30 bg-primary-subtle px-3 text-xs font-semibold text-primary transition hover:border-primary/50 hover:bg-primary-subtle/80"
-                  >
+                    
+                   :class="ghostButtonSm">
                     {{ item.actionLabel }}
                   </a>
                 </td>
@@ -297,7 +299,7 @@ const companyPressure = (company) => Math.min(
             </span>
             <span class="min-w-0 flex-1 truncate text-sm text-ink-muted">{{ row.label }}</span>
             <span class="shrink-0 text-right text-sm font-bold text-ink-strong">
-              {{ number(row.value) }}<span v-if="row.suffix" class="ml-1 text-[10px] font-medium text-ink-subtle">{{ row.suffix }}</span>
+              {{ number(row.value) }}<span v-if="row.suffix" class="ml-1 text-xs font-medium text-ink-subtle">{{ row.suffix }}</span>
             </span>
           </div>
         </div>
@@ -346,7 +348,7 @@ const companyPressure = (company) => Math.min(
                 :style="{ width: `${companyPressure(company)}%` }"
               ></span>
             </div>
-            <div class="mt-3 flex items-center justify-between gap-2 text-[11px]">
+            <div class="mt-3 flex items-center justify-between gap-2 text-xs">
               <span class="inline-flex items-center gap-1 text-danger" title="Vencidos">
                 <ExclamationTriangleIcon class="size-3.5" aria-hidden="true" />{{ number(company.overdue) }}
               </span>
@@ -380,11 +382,11 @@ const companyPressure = (company) => Math.min(
             <div class="flex items-center gap-3">
               <component :is="row.icon" class="size-5 shrink-0 text-primary" aria-hidden="true" />
               <span class="min-w-0 flex-1 truncate text-sm font-medium text-ink">{{ row.label }}</span>
-              <span class="inline-flex shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-bold" :class="communicationTone(row.tone)">
-                {{ row.status }}
+              <span class="inline-flex shrink-0 rounded-full border px-2.5 py-1 text-xs font-bold" :class="communicationTone(row.tone)">
+                {{ uiLabels.humanizeCode(row.status) }}
               </span>
             </div>
-            <p v-if="row.lastRun" class="mt-1.5 pl-8 text-[10px] text-ink-subtle">Última ejecución: {{ row.lastRun }}</p>
+            <p v-if="row.lastRun" class="mt-1.5 pl-8 text-xs text-ink-subtle">Última ejecución: {{ row.lastRun }}</p>
           </div>
         </div>
         <div class="border-t border-border-subtle px-5 py-3">
@@ -403,7 +405,7 @@ const companyPressure = (company) => Math.min(
             </span>
             <div>
               <h2 id="drivers-title" class="text-sm font-bold text-ink">Choferes y KM</h2>
-              <p class="text-[11px] text-ink-muted">Información global de la flota.</p>
+              <p class="text-xs text-ink-muted">Información global de la flota.</p>
             </div>
           </div>
           <div class="divide-y divide-border-subtle px-5">
@@ -430,15 +432,15 @@ const companyPressure = (company) => Math.min(
               </span>
               <div>
                 <h2 id="chatbot-title" class="text-sm font-bold text-ink">Chatbot</h2>
-                <p class="text-[11px] text-ink-muted">Uso del asistente virtual.</p>
+                <p class="text-xs text-ink-muted">Uso del asistente virtual.</p>
               </div>
             </div>
-            <a v-if="data.links.chatAudit !== '#'" :href="data.links.chatAudit" class="text-[10px] font-semibold text-primary hover:text-primary-hover">Ver auditoría</a>
+            <a v-if="data.links.chatAudit !== '#'" :href="data.links.chatAudit" class="text-xs font-semibold text-primary hover:text-primary-hover">Ver auditoría</a>
           </div>
           <div class="flex items-center gap-5 px-5 py-4">
             <div class="min-w-0 flex-1">
               <p class="text-2xl font-bold text-ink">{{ number(data.chatbot.queriesToday) }}</p>
-              <p class="text-[11px] text-ink-muted">consultas hoy</p>
+              <p class="text-xs text-ink-muted">consultas hoy</p>
             </div>
             <div class="flex items-center gap-3 border-l border-border-subtle pl-5">
               <div
@@ -446,11 +448,11 @@ const companyPressure = (company) => Math.min(
                 :style="{ background: `conic-gradient(rgb(var(--success)) ${chatbotRate}%, rgb(var(--surface-muted)) 0)` }"
               >
                 <span class="absolute inset-[4px] rounded-full bg-surface-raised"></span>
-                <span class="relative text-[10px] font-bold text-ink">{{ chatbotRate }}%</span>
+                <span class="relative text-xs font-bold text-ink">{{ chatbotRate }}%</span>
               </div>
               <div>
                 <p class="text-xs font-semibold text-ink">{{ number(data.chatbot.responsesToday) }}</p>
-                <p class="text-[10px] text-ink-muted">respuestas IA</p>
+                <p class="text-xs text-ink-muted">respuestas IA</p>
               </div>
             </div>
           </div>

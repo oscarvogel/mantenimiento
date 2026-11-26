@@ -50,7 +50,7 @@ describe('ReportsPage', () => {
     const wrapper = mountPage()
 
     expect(wrapper.get('h1').text()).toContain('Reportes')
-    expect(wrapper.text()).toContain('$ 150.000,50')
+    expect(wrapper.text()).toContain('$ 150.001')
     expect(wrapper.text()).toContain('Sin datos suficientes')
     expect(wrapper.findAll('[role="tab"]').map((tab) => tab.text())).toEqual(['Resumen', 'Costos', 'Calidad', 'Órdenes'])
     expect(wrapper.get('details').attributes('open')).toBeUndefined()

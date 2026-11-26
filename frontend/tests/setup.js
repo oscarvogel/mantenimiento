@@ -15,6 +15,15 @@ if (typeof HTMLFormElement !== 'undefined') {
   }
 }
 
+// jsdom has <dialog> but not its modal methods; mimic the `open` attribute they toggle.
+if (typeof HTMLDialogElement !== 'undefined') {
+  HTMLDialogElement.prototype.showModal ??= function showModal() { this.setAttribute('open', '') }
+  HTMLDialogElement.prototype.close ??= function close() {
+    this.removeAttribute('open')
+    this.dispatchEvent(new Event('close'))
+  }
+}
+
 afterEach(() => {
   document.body.innerHTML = ''
   document.body.className = ''

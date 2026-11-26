@@ -1,4 +1,5 @@
 <script setup>
+import * as uiLabels from '../../ui/labels.js'
 import { computed, ref, watch } from 'vue'
 import { PlusIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import PageHeading from './components/PageHeading.vue'
@@ -284,7 +285,7 @@ const applyCreatedLocality = (locality) => {
           <div class="rounded-xl border border-border-subtle bg-surface p-3">
             <span class="block text-xs font-semibold uppercase tracking-wide text-ink-muted">Dominio</span>
             <p class="mt-1 text-sm font-bold text-ink">{{ domain || 'Elegí el camión' }}</p>
-            <p class="mt-0.5 text-xs text-ink-muted">{{ selectedTractor?.type ?? 'Patente del tractor' }}</p>
+            <p class="mt-0.5 text-xs text-ink-muted">{{ uiLabels.humanizeCode(selectedTractor?.type || 'Patente del tractor') }}</p>
           </div>
           <div class="rounded-xl border border-border-subtle bg-surface p-3">
             <span class="block text-xs font-semibold uppercase tracking-wide text-ink-muted">Semirremolque</span>

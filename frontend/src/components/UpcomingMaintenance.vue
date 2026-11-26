@@ -1,4 +1,5 @@
 <script setup>
+import { ghostButton, ghostButtonSm, primaryButton } from '../ui/buttons.js'
 import { ArrowRightIcon } from '@heroicons/vue/20/solid'
 import MaintenanceStatus from './MaintenanceStatus.vue'
 import EmptyMaintenance from './EmptyMaintenance.vue'
@@ -58,7 +59,7 @@ defineProps({
                 <MaintenanceStatus :status="item.tone" :label="item.statusLabel" />
               </td>
               <td class="px-6 py-4 text-right">
-                <a v-if="item.actionUrl && item.actionLabel" :href="item.actionUrl" class="inline-flex min-h-9 items-center rounded-lg bg-primary-subtle px-3 py-1.5 text-xs font-semibold text-primary hover:bg-brand-100">{{ item.actionLabel }}</a>
+                <a v-if="item.actionUrl && item.actionLabel" :href="item.actionUrl" :class="ghostButtonSm">{{ item.actionLabel }}</a>
               </td>
             </tr>
           </tbody>
@@ -79,7 +80,7 @@ defineProps({
               <span class="font-semibold text-ink">{{ item.remaining }}</span>
               <span class="text-ink-muted">{{ item.branch }}</span>
             </div>
-            <a v-if="item.actionUrl && item.actionLabel" :href="item.actionUrl" class="mt-4 inline-flex min-h-10 w-full items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary-hover">{{ item.actionLabel }}</a>
+            <a v-if="item.actionUrl && item.actionLabel" :href="item.actionUrl" :class="[primaryButton, 'mt-4 w-full']">{{ item.actionLabel }}</a>
           </article>
         </li>
       </ul>
@@ -87,8 +88,8 @@ defineProps({
       <div v-if="maintenanceUrl !== '#'" class="border-t border-border-subtle p-4 sm:hidden">
         <a
           :href="maintenanceUrl"
-          class="flex min-h-11 items-center justify-center rounded-lg bg-primary-subtle px-4 text-sm font-semibold text-primary hover:bg-brand-100"
-        >
+          
+         :class="ghostButton">
           Ver todos los mantenimientos
         </a>
       </div>

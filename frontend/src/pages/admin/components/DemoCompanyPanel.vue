@@ -1,4 +1,5 @@
 <script setup>
+import { dangerButton, secondaryButton } from '../../../ui/buttons.js'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { XMarkIcon } from '@heroicons/vue/24/outline'
 import CsrfField from './CsrfField.vue'
@@ -40,7 +41,7 @@ const confirmRegenerate = (event) => {
             <h2 id="demo-company-title" class="mt-1 text-xl font-bold text-ink">Empresa demo</h2>
             <p class="mt-1 text-sm text-ink-muted">Creá o restablecé una empresa poblada para presentar y probar el sistema.</p>
           </div>
-          <button type="button" class="rounded-lg border border-border px-3 py-2 text-ink-muted hover:bg-surface-muted" aria-label="Cerrar" @click="open = false">
+          <button type="button"  aria-label="Cerrar" @click="open = false" :class="secondaryButton">
             <XMarkIcon class="size-5" aria-hidden="true" />
           </button>
         </header>
@@ -73,8 +74,8 @@ const confirmRegenerate = (event) => {
           </div>
 
           <div class="sm:col-span-2 flex flex-wrap justify-end gap-2 border-t border-border-subtle pt-4">
-            <button type="button" class="inline-flex min-h-11 items-center rounded-lg border border-border px-4 py-2.5 text-sm font-semibold text-ink hover:bg-surface-muted" @click="open = false">Cancelar</button>
-            <button type="submit" name="demo_accion" value="regenerar" class="inline-flex min-h-11 items-center rounded-lg border border-danger px-4 py-2.5 text-sm font-semibold text-danger-strong hover:bg-danger-subtle" @click="confirmRegenerate">Regenerar demo</button>
+            <button type="button" @click="open = false" :class="secondaryButton">Cancelar</button>
+            <button type="submit" name="demo_accion" value="regenerar" @click="confirmRegenerate" :class="dangerButton">Regenerar demo</button>
             <button type="submit" name="demo_accion" value="crear" class="inline-flex min-h-11 items-center rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground hover:bg-accent-hover">Crear empresa demo</button>
           </div>
         </form>

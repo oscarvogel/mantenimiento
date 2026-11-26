@@ -136,7 +136,7 @@ const problemas = computed(() => {
   <div class="space-y-6">
     <header class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <p class="text-[0.6875rem] font-bold uppercase tracking-[0.08em] text-primary">Telemetría</p>
+        <p class="text-xs font-bold uppercase tracking-[0.08em] text-primary">Telemetría</p>
         <h1 class="mt-1 text-2xl font-bold tracking-tight text-ink sm:text-3xl">Consumo por viaje</h1>
         <p class="mt-2 max-w-3xl text-sm leading-6 text-ink-muted">
           Combustible por trayecto, derivado del histórico de capturas. El origen del odómetro es la

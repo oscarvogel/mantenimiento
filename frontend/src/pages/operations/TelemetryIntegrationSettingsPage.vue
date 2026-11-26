@@ -1,4 +1,5 @@
 <script setup>
+import { secondaryButton } from '../../ui/buttons.js'
 import { computed, reactive, ref } from 'vue'
 import PageHeading from './components/PageHeading.vue'
 import TelemetryUnitCombobox from './components/TelemetryUnitCombobox.vue'
@@ -203,13 +204,13 @@ const usedUnitIds = (integrationId, equipmentId) => Object.entries(mappings[inte
             <span class="rounded-full bg-success-subtle px-3 py-1 text-xs font-bold text-success">{{ integration.active ? 'Activo' : 'Inactivo' }}</span>
             <button
               type="button"
-              class="ui-interactive inline-flex min-h-10 items-center justify-center rounded-lg border border-border px-3 py-2 text-sm font-semibold text-ink hover:bg-surface-muted disabled:cursor-wait disabled:opacity-60"
+              
               :data-load-units="integration.id"
               :disabled="loadingIntegrationId === integration.id"
               :aria-expanded="openIntegrationId === integration.id"
               @click="loadUnits(integration)"
               v-if="integration.active"
-            >
+             :class="secondaryButton">
               {{ loadingIntegrationId === integration.id ? `Consultando ${providerLabel(integration.provider)}…` : openIntegrationId === integration.id ? 'Actualizar unidades' : 'Vincular equipos' }}
             </button>
           </div>

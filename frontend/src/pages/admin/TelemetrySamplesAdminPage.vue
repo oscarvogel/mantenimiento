@@ -1,4 +1,6 @@
 <script setup>
+import * as format from '../../ui/format.js'
+import { primaryButton, secondaryButton } from '../../ui/buttons.js'
 import { computed } from 'vue'
 import { ArrowDownTrayIcon, ArrowPathIcon, CircleStackIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
 import AdminPageHeading from './components/AdminPageHeading.vue'
@@ -96,11 +98,11 @@ const formatNumber = (value, digits = 1) => value === null || value === undefine
         </label>
       </div>
       <div class="mt-4 flex flex-wrap items-center gap-3">
-        <button type="submit" class="inline-flex min-h-10 items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-strong">
+        <button type="submit" :class="primaryButton">
           <ArrowPathIcon class="size-4" aria-hidden="true" /> Aplicar filtros
         </button>
-        <a v-if="data.view === 'samples' && data.selectedCompanyId && data.selectedIntegrationId" :href="samplesExportUrl" class="inline-flex min-h-10 items-center rounded-lg border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">Exportar todas las muestras (CSV)</a>
-        <a :href="basePath + (data.selectedCompanyId ? '?empresa=' + data.selectedCompanyId + '&integracion=' + (data.selectedIntegrationId || '') : '')" class="inline-flex min-h-10 items-center rounded-lg border border-border px-4 py-2 text-sm font-semibold text-ink-muted hover:bg-surface-muted">Limpiar fechas y unidad</a>
+        <a v-if="data.view === 'samples' && data.selectedCompanyId && data.selectedIntegrationId" :href="samplesExportUrl" :class="secondaryButton">Exportar todas las muestras (CSV)</a>
+        <a :href="basePath + (data.selectedCompanyId ? '?empresa=' + data.selectedCompanyId + '&integracion=' + (data.selectedIntegrationId || '') : '')" :class="secondaryButton">Limpiar fechas y unidad</a>
       </div>
     </form>
 
@@ -114,9 +116,9 @@ const formatNumber = (value, digits = 1) => value === null || value === undefine
         </div>
         <div class="grid gap-2 text-sm text-ink-muted sm:grid-cols-2 md:min-w-[34rem] xl:grid-cols-4">
           <div class="rounded-lg bg-surface-subtle p-3"><span class="block text-xs uppercase">Capturas encontradas</span><strong class="mt-1 block text-lg text-ink">{{ data.total.toLocaleString('es-AR') }}</strong></div>
-          <div class="rounded-lg bg-surface-subtle p-3"><span class="block text-xs uppercase">Primera observación</span><strong class="mt-1 block text-sm text-ink">{{ data.summary.firstObservedAt || '—' }}</strong></div>
-          <div class="rounded-lg bg-surface-subtle p-3"><span class="block text-xs uppercase">Última observación</span><strong class="mt-1 block text-sm text-ink">{{ data.summary.lastObservedAt || '—' }}</strong></div>
-          <div class="rounded-lg bg-surface-subtle p-3"><span class="block text-xs uppercase">Última captura guardada</span><strong class="mt-1 block text-sm text-ink">{{ data.summary.lastRecordedAt || '—' }}</strong></div>
+          <div class="rounded-lg bg-surface-subtle p-3"><span class="block text-xs uppercase">Primera observación</span><strong class="mt-1 block text-sm text-ink">{{ format.formatDateTime(data.summary.firstObservedAt, '—') }}</strong></div>
+          <div class="rounded-lg bg-surface-subtle p-3"><span class="block text-xs uppercase">Última observación</span><strong class="mt-1 block text-sm text-ink">{{ format.formatDateTime(data.summary.lastObservedAt, '—') }}</strong></div>
+          <div class="rounded-lg bg-surface-subtle p-3"><span class="block text-xs uppercase">Última captura guardada</span><strong class="mt-1 block text-sm text-ink">{{ format.formatDateTime(data.summary.lastRecordedAt, '—') }}</strong></div>
         </div>
       </div>
         <p class="mt-4 border-t border-border-subtle pt-3 text-xs text-ink-muted">La hora de observación viene del proveedor. La hora de ingesta indica cuándo se guardó en el sistema. Esta pantalla consulta los datos existentes; no llama al proveedor ni inicia una ingesta.</p>
@@ -136,7 +138,7 @@ const formatNumber = (value, digits = 1) => value === null || value === undefine
         <div><h2 class="font-semibold text-ink">Capturas crudas</h2><p class="mt-1 text-sm text-ink-muted">{{ data.total ? `Mostrando ${firstRow}–${lastRow} de ${data.total.toLocaleString('es-AR')}` : 'No hay muestras para estos filtros.' }}</p></div>
         <div class="flex flex-wrap items-center gap-2">
           <span class="rounded-full bg-surface-muted px-3 py-1 text-xs font-semibold text-ink-muted">Más recientes primero · {{ data.perPage }} por página</span>
-          <a :href="exportUrl" title="Descarga todos los registros que coinciden con los filtros" class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-primary px-3 py-2 text-sm font-semibold text-primary hover:bg-primary-subtle">
+          <a :href="exportUrl" title="Descarga todos los registros que coinciden con los filtros" :class="secondaryButton">
             <ArrowDownTrayIcon class="size-4" aria-hidden="true" /> Exportar CSV
           </a>
         </div>
@@ -152,7 +154,7 @@ const formatNumber = (value, digits = 1) => value === null || value === undefine
           <tbody class="divide-y divide-border-subtle">
             <template v-if="data.view === 'buckets'">
               <tr v-for="bucket in data.buckets" :key="bucket.id" class="align-top hover:bg-surface-subtle/60">
-                <td class="whitespace-nowrap px-4 py-3"><div class="font-medium text-ink">{{ bucket.bucket_inicio_utc }} → {{ bucket.bucket_fin_utc }}</div><div class="mt-1 text-xs text-ink-muted">Observaciones {{ bucket.primera_observada_en }} → {{ bucket.ultima_observada_en }}</div><div class="mt-1 text-[11px] text-ink-muted">Guardado {{ bucket.created_at }} · #{{ bucket.id }}</div></td>
+                <td class="whitespace-nowrap px-4 py-3"><div class="font-medium text-ink">{{ bucket.bucket_inicio_utc }} → {{ bucket.bucket_fin_utc }}</div><div class="mt-1 text-xs text-ink-muted">Observaciones {{ bucket.primera_observada_en }} → {{ bucket.ultima_observada_en }}</div><div class="mt-1 text-xs text-ink-muted">Guardado {{ format.formatDateTime(bucket.created_at) }} · #{{ bucket.id }}</div></td>
                 <td class="px-4 py-3"><div class="font-semibold text-ink">{{ bucket.unidad_externa }}</div><div class="mt-1 text-xs text-ink-muted">{{ bucket.equipo_codigo || 'Equipo sin código' }}<span v-if="bucket.equipo_patente"> · {{ bucket.equipo_patente }}</span> · ID {{ bucket.equipo_id }}</div></td>
                 <td class="whitespace-nowrap px-4 py-3 text-xs text-ink-muted"><div>{{ formatNumber(bucket.combustible_inicio_litros, 2) }} → {{ formatNumber(bucket.combustible_fin_litros, 2) }} l</div></td>
                 <td class="whitespace-nowrap px-4 py-3 text-xs text-ink-muted"><div>Odómetro {{ formatNumber(bucket.kilometraje_inicio, 0) }} → {{ formatNumber(bucket.kilometraje_fin, 0) }} km</div><div class="mt-1">Motor {{ formatNumber(bucket.horas_decimales_inicio, 2) }} → {{ formatNumber(bucket.horas_decimales_fin, 2) }} h</div></td>
@@ -161,7 +163,7 @@ const formatNumber = (value, digits = 1) => value === null || value === undefine
                 <td class="max-w-md px-4 py-3 text-xs text-ink-muted">
                   <details v-if="bucket.mensajes_fuente_json" class="space-y-2">
                     <summary class="cursor-pointer font-semibold text-primary">Ver {{ sourceMessageCount(bucket.mensajes_fuente_json) }} mensajes recibidos</summary>
-                    <pre class="mt-2 max-h-96 min-w-96 overflow-auto whitespace-pre-wrap break-words rounded-md bg-surface-subtle p-3 text-[11px]">{{ prettyJson(bucket.mensajes_fuente_json) }}</pre>
+                    <pre class="mt-2 max-h-96 min-w-96 overflow-auto whitespace-pre-wrap break-words rounded-md bg-surface-subtle p-3 text-xs">{{ prettyJson(bucket.mensajes_fuente_json) }}</pre>
                   </details>
                   <span v-else>Este intervalo se guardó antes de habilitar el detalle crudo.</span>
                 </td>
@@ -169,7 +171,7 @@ const formatNumber = (value, digits = 1) => value === null || value === undefine
             </template>
             <template v-else>
             <tr v-for="sample in data.samples" :key="sample.id" class="align-top hover:bg-surface-subtle/60">
-              <td class="whitespace-nowrap px-4 py-3"><div class="font-medium text-ink">{{ sample.observada_en }}</div><div class="mt-1 text-xs text-ink-muted">Ingresada {{ sample.registrada_en || '—' }}</div><div class="mt-1 text-[11px] text-ink-muted">#{{ sample.id }}</div></td>
+              <td class="whitespace-nowrap px-4 py-3"><div class="font-medium text-ink">{{ sample.observada_en }}</div><div class="mt-1 text-xs text-ink-muted">Ingresada {{ sample.registrada_en || '—' }}</div><div class="mt-1 text-xs text-ink-muted">#{{ sample.id }}</div></td>
               <td class="px-4 py-3"><div class="font-semibold text-ink">{{ sample.unidad_externa }}</div><div class="mt-1 text-xs text-ink-muted">{{ sample.equipo_codigo || 'Equipo sin código' }}<span v-if="sample.equipo_patente"> · {{ sample.equipo_patente }}</span> · ID {{ sample.equipo_id }}</div></td>
               <td class="whitespace-nowrap px-4 py-3 text-xs text-ink-muted"><div>Lat/Lon: {{ sample.latitud ?? '—' }}, {{ sample.longitud ?? '—' }}</div><div class="mt-1">Velocidad: {{ formatNumber(sample.velocidad_kmh) }} km/h</div><div class="mt-1">Rumbo {{ sample.rumbo ?? '—' }}° · altitud {{ formatNumber(sample.altitud_m) }} m</div><div class="mt-1">Satélites: {{ sample.satelites ?? '—' }}</div></td>
               <td class="whitespace-nowrap px-4 py-3 text-xs text-ink-muted"><div>Odómetro: {{ formatNumber(sample.kilometraje, 0) }} km</div><div class="mt-1">Motor: {{ formatNumber(sample.horas_decimales, 2) }} h</div><div class="mt-1">Combustible: {{ formatNumber(sample.combustible_litros, 2) }} l</div><div class="mt-1">Voltaje: {{ formatNumber(sample.voltaje, 2) }} V</div></td>
@@ -177,8 +179,8 @@ const formatNumber = (value, digits = 1) => value === null || value === undefine
               <td class="max-w-sm px-4 py-3 text-xs text-ink-muted">
                 <details v-if="sample.sensores_json || sample.anomalias" class="space-y-2">
                   <summary class="cursor-pointer font-semibold text-primary">Ver datos adicionales</summary>
-                  <div v-if="sample.sensores_json"><strong>Sensores recibidos</strong><pre class="mt-1 max-h-56 overflow-auto rounded-md bg-surface-subtle p-2 text-[11px]">{{ prettyJson(sample.sensores_json) }}</pre></div>
-                  <div v-if="sample.anomalias" class="mt-2"><strong class="text-warning-strong">Anomalías</strong><pre class="mt-1 max-h-56 overflow-auto rounded-md bg-warning-subtle p-2 text-[11px]">{{ prettyJson(sample.anomalias) }}</pre></div>
+                  <div v-if="sample.sensores_json"><strong>Sensores recibidos</strong><pre class="mt-1 max-h-56 overflow-auto rounded-md bg-surface-subtle p-2 text-xs">{{ prettyJson(sample.sensores_json) }}</pre></div>
+                  <div v-if="sample.anomalias" class="mt-2"><strong class="text-warning-strong">Anomalías</strong><pre class="mt-1 max-h-56 overflow-auto rounded-md bg-warning-subtle p-2 text-xs">{{ prettyJson(sample.anomalias) }}</pre></div>
                 </details>
                 <span v-else>Sin sensores adicionales ni anomalías</span>
               </td>
@@ -195,7 +197,7 @@ const formatNumber = (value, digits = 1) => value === null || value === undefine
       <nav v-if="data.totalPages > 1" class="flex items-center justify-between border-t border-border-subtle px-5 py-4" aria-label="Paginación de muestras">
         <a v-if="data.page > 1" :href="pageUrl(data.page - 1)" class="rounded-lg border border-border px-3 py-2 text-sm font-semibold text-ink hover:bg-surface-muted">Anterior</a><span v-else class="text-sm text-ink-muted">Primera página</span>
         <span class="text-sm text-ink-muted">Página {{ data.page }} de {{ data.totalPages }}</span>
-        <a v-if="data.page < data.totalPages" :href="pageUrl(data.page + 1)" class="rounded-lg border border-border px-3 py-2 text-sm font-semibold text-ink hover:bg-surface-muted">Siguiente</a><span v-else class="text-sm text-ink-muted">Última página</span>
+        <a v-if="data.page < data.totalPages" :href="pageUrl(data.page + 1)" :class="secondaryButton">Siguiente</a><span v-else class="text-sm text-ink-muted">Última página</span>
       </nav>
     </section>
   </main>

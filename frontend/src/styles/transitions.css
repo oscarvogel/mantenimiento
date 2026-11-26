@@ -58,14 +58,17 @@
 }
 
 .ui-sidebar-surface.platform-sidebar {
-  --sidebar-surface-rgb: var(--brand-950);
-  color: rgb(var(--brand-100));
-  background-color: rgb(var(--brand-950));
+  --sidebar-surface-rgb: var(--secondary-900);
+  color: rgb(var(--secondary-100));
+  background-color: rgb(var(--secondary-900));
 }
 
+/* In dark mode secondary-900 is as dark as the canvas: the sidebar would melt
+ * into the page. surface-inverse keeps the 1.3:1 gap the token test enforces. */
 html[data-theme='dark'] .ui-sidebar-surface.platform-sidebar {
-  color: rgb(var(--brand-100));
-  background-color: rgb(var(--brand-950));
+  --sidebar-surface-rgb: var(--surface-inverse);
+  color: rgb(var(--secondary-100));
+  background-color: rgb(var(--surface-inverse));
 }
 
 .platform-brand-row {
@@ -78,29 +81,30 @@ html[data-theme='dark'] .ui-sidebar-surface.platform-sidebar {
 }
 
 .platform-sidebar .platform-nav-active {
-  border-color: rgb(var(--brand-400) / 0.5);
-  background: linear-gradient(110deg, rgb(var(--primary)), rgb(var(--brand-700)));
+  border-color: rgb(var(--secondary-400) / 0.5);
+  /* Fixed steps: the sidebar is navy in both themes, and dark --primary is a light blue. */
+  background: linear-gradient(110deg, rgb(var(--primary-600)), rgb(var(--secondary-700)));
   color: white;
   box-shadow: 0 8px 20px rgb(0 0 0 / 0.18);
 }
 
 .platform-sidebar .platform-nav-disabled {
-  color: rgb(var(--brand-200) / 0.78);
+  color: rgb(var(--secondary-200) / 0.78);
 }
 
 .platform-sidebar .platform-nav-status {
-  color: rgb(var(--brand-300) / 0.78);
+  color: rgb(var(--secondary-200));
 }
 
 .platform-sidebar .platform-nav-badge {
   flex: none;
   white-space: nowrap;
   background: rgb(255 255 255 / 0.1);
-  color: rgb(var(--brand-100));
+  color: rgb(var(--secondary-100));
 }
 
 .platform-sidebar-note {
-  background: linear-gradient(130deg, rgb(var(--brand-800) / 0.92), rgb(var(--brand-900) / 0.82));
+  background: linear-gradient(130deg, rgb(var(--secondary-800) / 0.92), rgb(var(--secondary-900) / 0.82));
 }
 
 html[data-theme='dark'] .ui-sidebar-surface {
@@ -436,4 +440,15 @@ html[data-theme='dark'] .ui-sidebar-surface {
   .ui-card-interactive:active {
     transform: none;
   }
+}
+
+/* Phone tab bar (MobileTabBar.vue): same navy as the sidebar in each theme, and room for
+ * the iPhone home indicator. */
+.mobile-tabbar {
+  background-color: rgb(var(--secondary-900));
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+html[data-theme='dark'] .mobile-tabbar {
+  background-color: rgb(var(--surface-inverse));
 }

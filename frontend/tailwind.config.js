@@ -1,3 +1,8 @@
+// Fixed 100-900 scales defined as RGB channels in src/styles.css.
+const scale = (name) => Object.fromEntries(
+  [100, 200, 300, 400, 500, 600, 700, 800, 900].map((step) => [step, `rgb(var(--${name}-${step}) / <alpha-value>)`]),
+)
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{vue,js}'],
@@ -5,20 +10,10 @@ export default {
   theme: {
     extend: {
       colors: {
-        brand: {
-          950: 'rgb(var(--brand-950) / <alpha-value>)',
-          900: 'rgb(var(--brand-900) / <alpha-value>)',
-          800: 'rgb(var(--brand-800) / <alpha-value>)',
-          700: 'rgb(var(--brand-700) / <alpha-value>)',
-          600: 'rgb(var(--brand-600) / <alpha-value>)',
-          500: 'rgb(var(--brand-500) / <alpha-value>)',
-          400: 'rgb(var(--brand-400) / <alpha-value>)',
-          300: 'rgb(var(--brand-300) / <alpha-value>)',
-          200: 'rgb(var(--brand-200) / <alpha-value>)',
-          100: 'rgb(var(--brand-100) / <alpha-value>)',
-          50: 'rgb(var(--brand-50) / <alpha-value>)',
-        },
+        secondary: scale('secondary'),
+        neutral: scale('neutral'),
         primary: {
+          ...scale('primary'),
           DEFAULT: 'rgb(var(--primary) / <alpha-value>)',
           hover: 'rgb(var(--primary-hover) / <alpha-value>)',
           active: 'rgb(var(--primary-active) / <alpha-value>)',
@@ -26,6 +21,7 @@ export default {
           foreground: 'rgb(var(--primary-foreground) / <alpha-value>)',
         },
         accent: {
+          ...scale('accent'),
           DEFAULT: 'rgb(var(--accent) / <alpha-value>)',
           hover: 'rgb(var(--accent-hover) / <alpha-value>)',
           active: 'rgb(var(--accent-active) / <alpha-value>)',
@@ -92,8 +88,16 @@ export default {
         card: '0 1px 2px rgb(var(--shadow-rgb) / 0.04), 0 8px 24px rgb(var(--shadow-rgb) / 0.05)',
         sidebar: '8px 0 24px rgb(var(--shadow-rgb) / 0.16)',
       },
+      // Moderate scale (docs/DESIGN_TOKENS.md): nothing below 13px. Redefining
+      // xs/sm/xl here grows the ~2,500 existing usages without touching them.
+      fontSize: {
+        xs: ['0.8125rem', { lineHeight: '1.125rem' }],
+        sm: ['0.9375rem', { lineHeight: '1.375rem' }],
+        xl: ['1.375rem', { lineHeight: '1.875rem' }],
+      },
       fontFamily: {
-        sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+        // Self-hosted through @fontsource-variable/inter (imported in main.js).
+        sans: ['"Inter Variable"', 'Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
       },
     },
   },

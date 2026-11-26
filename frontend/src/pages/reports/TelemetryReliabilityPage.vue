@@ -1,4 +1,5 @@
 <script setup>
+import { primaryButton, secondaryButton } from '../../ui/buttons.js'
 import { computed } from 'vue'
 import { ArrowDownTrayIcon, ArrowLeftIcon, ChartBarSquareIcon, HomeIcon } from '@heroicons/vue/24/outline'
 
@@ -73,22 +74,22 @@ const summaryCards = computed(() => [
         <a
           v-if="portalUrl"
           :href="portalUrl"
-          class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border-strong bg-surface-raised px-4 py-2.5 text-sm font-semibold text-ink hover:bg-surface-muted"
-        >
+          
+         :class="secondaryButton">
           <HomeIcon class="size-5" aria-hidden="true" />Volver al inicio
         </a>
         <a
           v-if="urls.index"
           :href="urls.index"
-          class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border-strong bg-surface-raised px-4 py-2.5 text-sm font-semibold text-ink hover:bg-surface-muted"
-        >
+          
+         :class="secondaryButton">
           <ArrowLeftIcon class="size-5" aria-hidden="true" />Reportes
         </a>
         <a
           v-if="urls.export"
           :href="urls.export"
-          class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border-strong bg-surface-raised px-4 py-2.5 text-sm font-semibold text-ink hover:bg-surface-muted"
-        >
+          
+         :class="secondaryButton">
           <ArrowDownTrayIcon class="size-5" aria-hidden="true" />Exportar CSV
         </a>
       </div>
@@ -128,7 +129,7 @@ const summaryCards = computed(() => [
           Hasta
           <input type="date" name="hasta" :value="filters.to" required class="min-h-11 rounded-lg border border-border-strong bg-surface-raised px-3 text-sm font-normal text-ink" />
         </label>
-        <button type="submit" class="min-h-11 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary-hover">
+        <button type="submit" :class="primaryButton">
           Aplicar
         </button>
       </form>

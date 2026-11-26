@@ -99,7 +99,7 @@ const mostrar = (pista, banda, evento) => {
       </div>
       <div v-else class="h-6 rounded-md bg-success/70" role="img" aria-label="Sin cortes del proveedor en el período"></div>
 
-      <div class="relative mt-2 h-4 text-[11px] text-ink-muted" aria-hidden="true">
+      <div class="relative mt-2 h-4 text-xs text-ink-muted" aria-hidden="true">
         <span
           v-for="(marca, indice) in marcas"
           :key="indice"

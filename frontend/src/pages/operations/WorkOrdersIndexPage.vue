@@ -1,5 +1,8 @@
 <script setup>
+import * as uiLabels from '../../ui/labels.js'
+import * as format from '../../ui/format.js'
 import { computed, reactive, ref } from 'vue'
+import { groupMyWork, isMyWorkView } from '../../ui/fieldShortcuts.js'
 import { ArrowPathIcon, ChevronDownIcon, DocumentArrowUpIcon, MagnifyingGlassIcon, PlusIcon, PrinterIcon, WrenchScrewdriverIcon } from '@heroicons/vue/24/outline'
 import CsrfInput from './components/CsrfInput.vue'
 import CountUp from '../../components/CountUp.vue'
@@ -43,18 +46,13 @@ const kpiCards = computed(() => [
 
 const formatEntry = (order) => {
   const values = []
-  if (order.entryKm !== null) values.push(`${Number(order.entryKm).toLocaleString('es-AR')} km`)
-  if (order.entryHours !== null && order.entryHours !== '') values.push(`${order.entryHours} h`)
+  if (order.entryKm !== null) values.push(`${format.formatNumber(order.entryKm)} km`)
+  if (order.entryHours !== null && order.entryHours !== '') values.push(`${format.formatNumber(order.entryHours, 1)} h`)
   return values.length ? values.join(' · ') : 'Sin lectura de ingreso'
 }
-const formatMoney = (value) => Number(value ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-const currencyPrefix = (currency) => {
-  const code = String(currency || 'ARS').toUpperCase()
-  if (code === 'ARS') return '$'
-  if (code === 'BRL') return 'R$'
-  return code
-}
-const formatCurrencyMoney = (value, currency) => `${currencyPrefix(currency)} ${formatMoney(value)}`
+const formatMoney = (value) => format.formatMoney(value ?? 0)
+const formatRate = (value) => format.formatMoney(value ?? 0, { cents: true })
+const formatCurrencyMoney = (value, currency) => format.formatMoney(value ?? 0, { currency })
 const hasForeignHistoricalCost = (order) => {
   const historical = order.historicalCost
   return Boolean(historical?.currency && historical.currency !== 'ARS' && historical.originalAmount !== null)
@@ -101,11 +99,16 @@ const updateCloseForm = (value) => {
   if (activeCloseOrder.value) closeForms[activeCloseOrder.value.id] = value
 }
 for (const order of props.data.orders ?? []) closeStateFor(order)
+
+// "Mi trabajo" (spec §6.2) is this list filtered by the server to my orders, grouped by
+// what to do next. The filters and totals belong to the full list, so they hide here.
+const myWork = isMyWorkView(window.location.search)
+const sections = computed(() => (myWork ? groupMyWork(props.data.orders) : [{ title: '', orders: props.data.orders }]))
 </script>
 
 <template>
   <div>
-    <PageHeading eyebrow="Taller" title="Órdenes de trabajo" description="Consultá las órdenes existentes o registrá rápidamente un trabajo correctivo realizado.">
+    <PageHeading eyebrow="Taller" :title="myWork ? 'Mi trabajo' : 'Órdenes de trabajo'" :description="myWork ? 'Las órdenes asignadas a vos, en el orden en que conviene atenderlas.' : 'Consultá las órdenes existentes o registrá rápidamente un trabajo correctivo realizado.'">
       <template #actions>
         <div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
           <a v-if="data.can.editOrder" :href="data.routes.importDocument" :class="`${secondaryButton} w-full justify-center sm:w-auto`"><DocumentArrowUpIcon class="mr-2 size-4" aria-hidden="true" />Importar orden de taller</a>
@@ -114,14 +117,14 @@ for (const order of props.data.orders ?? []) closeStateFor(order)
       </template>
     </PageHeading>
 
-    <section aria-label="Indicadores de órdenes" class="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-2 sm:gap-3 xl:grid-cols-6">
+    <section v-if="!myWork" aria-label="Indicadores de órdenes" class="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-2 sm:gap-3 xl:grid-cols-6">
       <a v-for="card in kpiCards" :key="card.label" :href="card.href" class="ui-glare rounded-xl border border-border bg-surface-raised p-3 transition hover:border-primary/40 hover:shadow-sm sm:p-4">
-        <p class="text-[0.65rem] font-bold uppercase leading-4 tracking-wide text-ink-muted sm:text-xs">{{ card.label }}</p>
+        <p class="text-xs font-bold uppercase leading-4 tracking-wide text-ink-muted sm:text-xs">{{ card.label }}</p>
         <p class="mt-1 text-2xl font-bold text-ink sm:mt-2 sm:text-3xl"><CountUp :value="Number(card.value) || 0" /></p>
       </a>
     </section>
 
-    <form method="get" :action="data.routes.index" class="mb-6 grid gap-2 rounded-xl border border-border bg-surface-raised p-3 sm:gap-3 sm:p-4 lg:grid-cols-[minmax(16rem,1.6fr)_repeat(3,minmax(10rem,1fr))_auto]">
+    <form v-if="!myWork" method="get" :action="data.routes.index" class="mb-6 grid gap-2 rounded-xl border border-border bg-surface-raised p-3 sm:gap-3 sm:p-4 lg:grid-cols-[minmax(16rem,1.6fr)_repeat(3,minmax(10rem,1fr))_auto]">
       <label class="relative"><span class="sr-only">Buscar OT</span><MagnifyingGlassIcon class="pointer-events-none absolute left-3 top-3 size-5 text-ink-subtle" /><input name="q" type="search" :value="data.filters.q" placeholder="Número, equipo o patente" :class="`${fieldClass} pl-10`" /></label>
       <select name="estado" :value="data.filters.status" :class="fieldClass"><option value="">Todos los estados</option><option value="EMITIDA">Emitida</option><option value="EN_PROCESO">En proceso</option><option value="ESPERA_REPUESTOS">Espera repuestos</option><option value="FINALIZADA">Finalizada</option><option value="CANCELADA">Cancelada</option></select>
       <select name="sucursal_id" :value="data.filters.branchId" :class="fieldClass"><option value="">Todas las sucursales</option><option v-for="branch in data.branches" :key="branch.id" :value="branch.id">{{ branch.name }}</option></select>
@@ -136,14 +139,18 @@ for (const order of props.data.orders ?? []) closeStateFor(order)
       <div><h2 class="text-lg font-bold text-ink">{{ ordersHeading }}</h2><p class="text-sm text-ink-muted">{{ ordersSummary }}</p></div>
     </div>
 
-    <EmptyState v-if="data.orders.length === 0" title="No se encontraron órdenes" description="Probá cambiar los filtros de búsqueda o registrá el correctivo si todavía no existe." />
-    <div v-else class="space-y-3">
-      <article v-for="order in data.orders" :id="`orden-${order.id}`" :key="order.id" class="scroll-mt-24 rounded-xl border border-border bg-surface-raised p-4 sm:p-5">
+    <EmptyState v-if="data.orders.length === 0 && myWork" title="No tenés órdenes asignadas" description="Cuando te asignen una orden de trabajo va a aparecer acá." />
+    <EmptyState v-else-if="data.orders.length === 0" title="No se encontraron órdenes" description="Probá cambiar los filtros de búsqueda o registrá el correctivo si todavía no existe." />
+    <div v-else class="space-y-8">
+      <section v-for="section in sections" :key="section.title || 'todas'" :aria-label="section.title || undefined">
+      <h2 v-if="section.title" class="mb-3 text-lg font-bold text-ink">{{ section.title }} <span class="text-sm font-semibold text-ink-muted">({{ section.orders.length }})</span></h2>
+      <div class="space-y-3">
+      <article v-for="order in section.orders" :id="`orden-${order.id}`" :key="order.id" class="scroll-mt-24 rounded-xl border border-border bg-surface-raised p-4 sm:p-5">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div class="min-w-0">
             <div class="flex flex-wrap items-center gap-2"><h3 class="font-bold text-ink">{{ order.number }} · {{ order.equipmentCode }}</h3><StatusBadge :status="order.status" /><span v-if="order.delayed" class="rounded-full bg-danger-subtle px-2 py-1 text-xs font-bold text-danger-strong">DEMORADA</span></div>
             <p class="mt-1 text-sm text-ink-muted"><span v-if="order.plate">{{ order.plate }} · </span>{{ order.serviceName }} · {{ order.branchName }}</p>
-            <dl class="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm"><div><dt class="inline text-ink-muted">Prioridad: </dt><dd class="inline font-semibold text-ink">{{ order.priority }}</dd></div><div><dt class="inline text-ink-muted">Responsable: </dt><dd class="inline font-semibold text-ink">{{ order.ownerName }}</dd></div><div><dt class="inline text-ink-muted">Fecha de apertura: </dt><dd class="inline font-semibold text-ink">{{ order.openedAt }} · hace {{ order.ageDays }} días</dd></div><div><dt class="inline text-ink-muted">Ingreso: </dt><dd class="inline font-semibold text-ink">{{ formatEntry(order) }}</dd></div></dl>
+            <dl class="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm"><div><dt class="inline text-ink-muted">Prioridad: </dt><dd class="inline font-semibold text-ink">{{ uiLabels.humanizeCode(order.priority) }}</dd></div><div><dt class="inline text-ink-muted">Responsable: </dt><dd class="inline font-semibold text-ink">{{ order.ownerName }}</dd></div><div><dt class="inline text-ink-muted">Fecha de apertura: </dt><dd class="inline font-semibold text-ink">{{ format.formatDateTime(order.openedAt) }} · {{ format.formatRelativeDays(order.openedAt) }}</dd></div><div><dt class="inline text-ink-muted">Ingreso: </dt><dd class="inline font-semibold text-ink">{{ formatEntry(order) }}</dd></div></dl>
           </div>
           <div class="flex flex-wrap gap-2 lg:justify-end">
             <button type="button" :class="secondaryButton" :aria-expanded="isExpanded(order.id)" :aria-controls="`detalle-orden-${order.id}`" @click="toggleDetail(order.id)"><ChevronDownIcon class="mr-2 size-4 transition" :class="isExpanded(order.id) ? 'rotate-180' : ''" />{{ isExpanded(order.id) ? 'Ocultar detalle' : 'Ver detalle' }}</button>
@@ -159,35 +166,37 @@ for (const order of props.data.orders ?? []) closeStateFor(order)
           <section class="rounded-xl bg-surface-subtle p-4">
             <h4 class="font-bold text-ink">Detalle de la intervención</h4>
             <dl class="mt-3 grid gap-2 text-sm">
-              <div><dt class="inline text-ink-muted">Origen: </dt><dd class="inline font-semibold text-ink">{{ order.origin }}</dd></div>
-              <div><dt class="inline text-ink-muted">Inicio: </dt><dd class="inline font-semibold text-ink">{{ order.startedAt || 'Sin iniciar' }}</dd></div>
-              <div><dt class="inline text-ink-muted">Finalización: </dt><dd class="inline font-semibold text-ink">{{ order.finishedAt || 'Pendiente' }}</dd></div>
+              <div><dt class="inline text-ink-muted">Origen: </dt><dd class="inline font-semibold text-ink">{{ uiLabels.humanizeCode(order.origin) }}</dd></div>
+              <div><dt class="inline text-ink-muted">Inicio: </dt><dd class="inline font-semibold text-ink">{{ format.formatDateTime(order.startedAt, 'Sin iniciar') }}</dd></div>
+              <div><dt class="inline text-ink-muted">Finalización: </dt><dd class="inline font-semibold text-ink">{{ format.formatDateTime(order.finishedAt, 'Pendiente') }}</dd></div>
               <div v-if="order.diagnosis"><dt class="inline text-ink-muted">Diagnóstico: </dt><dd class="inline text-ink">{{ order.diagnosis }}</dd></div>
               <div v-if="order.notes"><dt class="inline text-ink-muted">Observaciones: </dt><dd class="inline text-ink">{{ order.notes }}</dd></div>
             </dl>
           </section>
           <section class="rounded-xl bg-surface-subtle p-4">
             <h4 class="font-bold text-ink">Tareas, repuestos y costos</h4>
-            <ul v-if="order.tasks.length" class="mt-3 space-y-2 text-sm"><li v-for="task in order.tasks" :key="task.id"><strong class="text-ink">{{ task.description }}</strong><span class="text-ink-muted"> · {{ task.status }}</span><p v-if="task.workPerformed" class="mt-1 text-ink-muted">{{ task.workPerformed }}</p></li></ul>
+            <ul v-if="order.tasks.length" class="mt-3 space-y-2 text-sm"><li v-for="task in order.tasks" :key="task.id"><strong class="text-ink">{{ task.description }}</strong><span class="text-ink-muted"> · {{ uiLabels.humanizeCode(task.status) }}</span><p v-if="task.workPerformed" class="mt-1 text-ink-muted">{{ task.workPerformed }}</p></li></ul>
             <p v-else class="mt-3 text-sm text-ink-muted">Esta orden no tiene tareas preventivas asociadas.</p>
-            <ul v-if="order.parts?.length" class="mt-4 space-y-2 border-t border-border-subtle pt-3 text-sm"><li v-for="part in order.parts" :key="part.id" class="flex flex-wrap justify-between gap-2"><span><strong class="text-ink">{{ part.description }}</strong><span v-if="part.code" class="ml-2 text-xs text-ink-muted">{{ part.code }}</span><span class="ml-2 text-xs text-ink-muted">× {{ part.quantity }}</span><span v-if="part.supplierName" class="block text-xs text-ink-muted">{{ part.supplierName }}</span><span v-if="part.warrantyDate || part.warrantyKm || part.warrantyHours" class="block text-xs text-success-strong">Garantía: {{ part.warrantyDate || 'sin fecha' }}<template v-if="part.warrantyKm"> · {{ part.warrantyKm }} km</template><template v-if="part.warrantyHours"> · {{ part.warrantyHours }} h</template></span></span><span class="font-semibold text-ink">$ {{ formatMoney(part.quantity * part.unitPrice) }}</span></li></ul>
+            <ul v-if="order.parts?.length" class="mt-4 space-y-2 border-t border-border-subtle pt-3 text-sm"><li v-for="part in order.parts" :key="part.id" class="flex flex-wrap justify-between gap-2"><span><strong class="text-ink">{{ part.description }}</strong><span v-if="part.code" class="ml-2 text-xs text-ink-muted">{{ part.code }}</span><span class="ml-2 text-xs text-ink-muted">× {{ part.quantity }}</span><span v-if="part.supplierName" class="block text-xs text-ink-muted">{{ part.supplierName }}</span><span v-if="part.warrantyDate || part.warrantyKm || part.warrantyHours" class="block text-xs text-success-strong">Garantía: {{ format.formatDateTime(part.warrantyDate, 'sin fecha') }}<template v-if="part.warrantyKm"> · {{ format.formatNumber(part.warrantyKm) }} km</template><template v-if="part.warrantyHours"> · {{ format.formatNumber(part.warrantyHours, 1) }} h</template></span></span><span class="font-semibold text-ink">{{ formatMoney(part.quantity * part.unitPrice) }}</span></li></ul>
             <template v-if="hasForeignHistoricalCost(order)">
               <p class="mt-4 border-t border-border-subtle pt-3 text-sm text-ink-muted">Costos originales: mano de obra {{ formatCurrencyMoney(order.costs.labor, order.historicalCost.currency) }} · repuestos {{ formatCurrencyMoney(order.costs.parts, order.historicalCost.currency) }} · otros {{ formatCurrencyMoney(order.costs.other, order.historicalCost.currency) }}</p>
               <p class="mt-1 font-bold text-ink">Total original: {{ formatCurrencyMoney(order.historicalCost.originalAmount, order.historicalCost.currency) }}</p>
               <dl class="mt-3 grid gap-1 text-sm">
-                <div v-if="order.historicalCost.exchangeRateArs !== null"><dt class="inline text-ink-muted">Tipo de cambio histórico: </dt><dd class="inline font-semibold text-ink">1 {{ order.historicalCost.currency }} = $ {{ formatMoney(order.historicalCost.exchangeRateArs) }} ARS</dd></div>
+                <div v-if="order.historicalCost.exchangeRateArs !== null"><dt class="inline text-ink-muted">Tipo de cambio histórico: </dt><dd class="inline font-semibold text-ink">1 {{ order.historicalCost.currency }} = {{ formatRate(order.historicalCost.exchangeRateArs) }} ARS</dd></div>
                 <div v-if="order.historicalCost.exchangeRateDate"><dt class="inline text-ink-muted">Fecha cotización: </dt><dd class="inline text-ink">{{ formatExchangeRateDate(order.historicalCost.exchangeRateDate) }}</dd></div>
                 <div v-if="order.historicalCost.exchangeRateSource"><dt class="inline text-ink-muted">Origen cotización: </dt><dd class="inline text-ink">{{ order.historicalCost.exchangeRateSource }}</dd></div>
               </dl>
-              <p v-if="order.historicalCost.amountArs !== null" class="mt-2 font-bold text-ink">Total histórico ARS: $ {{ formatMoney(order.historicalCost.amountArs) }}</p>
+              <p v-if="order.historicalCost.amountArs !== null" class="mt-2 font-bold text-ink">Total histórico ARS: {{ formatMoney(order.historicalCost.amountArs) }}</p>
             </template>
             <template v-else>
-              <p class="mt-4 border-t border-border-subtle pt-3 text-sm text-ink-muted">Costos: mano de obra $ {{ formatMoney(order.costs.labor) }} · repuestos $ {{ formatMoney(order.costs.parts) }} · otros $ {{ formatMoney(order.costs.other) }}</p>
-              <p class="mt-1 font-bold text-ink">Total: $ {{ formatMoney(order.costs.total) }}</p>
+              <p class="mt-4 border-t border-border-subtle pt-3 text-sm text-ink-muted">Costos: mano de obra {{ formatMoney(order.costs.labor) }} · repuestos {{ formatMoney(order.costs.parts) }} · otros {{ formatMoney(order.costs.other) }}</p>
+              <p class="mt-1 font-bold text-ink">Total: {{ formatMoney(order.costs.total) }}</p>
             </template>
           </section>
         </div>
       </article>
+      </div>
+      </section>
     </div>
 
     <nav v-if="data.pagination.totalPages > 1" class="mt-6 flex items-center justify-between gap-3" aria-label="Paginación de órdenes"><a v-if="data.pagination.previousUrl" :href="data.pagination.previousUrl" :class="secondaryButton">Anterior</a><span v-else></span><span class="text-sm text-ink-muted">Página {{ data.pagination.page }} de {{ data.pagination.totalPages }}</span><a v-if="data.pagination.nextUrl" :href="data.pagination.nextUrl" :class="secondaryButton">Siguiente</a><span v-else></span></nav>

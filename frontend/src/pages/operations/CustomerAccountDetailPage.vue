@@ -1,4 +1,5 @@
 <script setup>
+import * as format from '../../ui/format.js'
 /**
  * Estado de cuenta de un cliente (#530): movimientos en ARS con saldo
  * acumulado. Cada cargo muestra el importe, la moneda y la cotización con que
@@ -20,15 +21,9 @@ const canFormalize = computed(() => Boolean(props.data.canFormalize))
 const currencies = computed(() => props.data.currencies ?? ['ARS'])
 const currentRates = computed(() => props.data.currentRates ?? {})
 
-const money = (value, currency = 'ARS') => `${currency} ${Number(value ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+const money = (value, currency = 'ARS') => format.formatMoney(value ?? 0, { currency, cents: true })
 const rateText = (value) => Number(value ?? 0).toLocaleString('es-AR', { maximumFractionDigits: 6 })
-const fmtDate = (value) => {
-  const raw = String(value ?? '').slice(0, 10)
-  if (!raw) return '—'
-  const [year, month, day] = raw.split('-')
-
-  return `${day}/${month}/${year}`
-}
+const fmtDate = (value) => format.formatDate(value)
 const today = () => {
   const now = new Date()
   const pad = (n) => String(n).padStart(2, '0')
