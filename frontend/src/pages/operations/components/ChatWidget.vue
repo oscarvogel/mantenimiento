@@ -1,20 +1,11 @@
 <template>
-  <button
+  <ChatLauncher
     v-if="!isOpen"
-    @click="toggle"
-    
-    aria-label="Abrir asistente IA"
-    title="Abrir asistente IA"
-   :class="[primaryButton, 'group fixed bottom-24 right-6 z-50 size-14 shadow-lg lg:bottom-6']">
-    <ChatRobot variant="fab" :state="robotState" />
-    <span
-      v-if="briefing?.unread > 0"
-      class="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1 text-xs font-bold text-danger-foreground"
-      aria-label="Alertas pendientes"
-    >
-      {{ briefing.unread > 99 ? '99+' : briefing.unread }}
-    </span>
-  </button>
+    :target="launcherTarget"
+    :unread="Number(briefing?.unread ?? 0)"
+    :state="robotState"
+    @open="toggle"
+  />
 
   <div
     v-if="isOpen"
@@ -176,6 +167,7 @@ import ChatMessage from './ChatMessage.vue'
 import ChatToolConfirm from './ChatToolConfirm.vue'
 import ChatVoiceButton from './ChatVoiceButton.vue'
 import ChatRobot from './ChatRobot.vue'
+import ChatLauncher from './ChatLauncher.vue'
 
 const REQUEST_TIMEOUT_MS = 30000
 const CHAT_STORAGE_KEY = 'mantenimiento.chatbot.conv'
@@ -185,6 +177,7 @@ const CHATBOT_BASE_PATH = `${appBaseUrl}mantenimiento/chatbot`
 
 const props = defineProps({
   autoOpen: { type: Boolean, default: false },
+  launcherTarget: { type: Object, default: null },
 })
 
 const isOpen = ref(props.autoOpen)

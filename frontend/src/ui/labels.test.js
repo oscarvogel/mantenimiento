@@ -16,7 +16,7 @@ describe('humanizeCode', () => {
 
   it('no toca lo que ya es texto ni las siglas', () => {
     expect(humanizeCode('Operativo')).toBe('Operativo')
-    expect(humanizeCode('Sin implementación aún')).toBe('Sin implementación aún')
+    expect(humanizeCode('Próximamente')).toBe('Próximamente')
     expect(humanizeCode('BCRA')).toBe('BCRA')
     expect(humanizeCode(null)).toBe('')
   })

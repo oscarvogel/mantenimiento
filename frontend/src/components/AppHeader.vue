@@ -43,7 +43,7 @@ defineExpose({
       type="button"
       class="ui-interactive mr-3 rounded-lg p-2 text-ink-muted hover:bg-surface-muted hover:text-ink lg:hidden"
       :aria-label="menuOpen ? 'Cerrar menú principal' : 'Abrir menú principal'"
-      @click="emit('open-menu')"
+      @click="emit('open-menu', $event.currentTarget)"
       aria-controls="mobile-main-menu"
       :aria-expanded="menuOpen"
     >
@@ -67,13 +67,14 @@ defineExpose({
       </a>
       <ThemeToggle />
       <AppNotificationBell v-if="notifications.enabled" v-bind="notifications" />
-      <div class="flex min-w-0 items-center gap-3">
+      <slot name="assistant" />
+      <div class="min-w-0 items-center gap-3" :class="$slots.assistant ? 'hidden sm:flex' : 'flex'">
         <span class="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary-subtle text-xs font-bold text-primary">
           {{ user.initials }}
         </span>
         <div class="hidden min-w-0 text-left md:block">
           <p class="max-w-40 truncate text-sm font-semibold text-ink">{{ user.name }}</p>
-          <p class="max-w-40 truncate text-xs text-ink-muted">{{ user.roleLabel }}</p>
+          <p v-if="user.roleLabel && user.roleLabel !== user.name" class="max-w-40 truncate text-xs text-ink-muted">{{ user.roleLabel }}</p>
         </div>
       </div>
     </div>

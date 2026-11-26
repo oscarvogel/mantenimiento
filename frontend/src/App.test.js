@@ -11,7 +11,7 @@ const dashboard = normalizeDashboardPayload({
   moduleNavigation: [
     { key: 'platform-home', label: 'Inicio', href: '/inicio' },
     { key: 'module-maintenance', label: 'Mantenimiento', href: '/dashboard', active: true, status: 'Operativo' },
-    { key: 'module-trips', label: 'Viajes', disabled: true, status: 'Sin implementación aún' },
+    { key: 'module-trips', label: 'Viajes', disabled: true, status: 'Próximamente' },
   ],
   charts: {
     preventiveByState: [

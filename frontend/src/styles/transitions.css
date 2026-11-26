@@ -5,13 +5,13 @@
 
 /* Entrada de vista (fallback cuando no hay View Transitions API) */
 .ui-view-enter {
-  animation: ui-view-enter 180ms ease-out both;
+  animation: ui-view-enter 180ms cubic-bezier(0.2, 0, 0, 1) both;
 }
 
 @keyframes ui-view-enter {
   from {
-    opacity: 0;
-    transform: translateY(6px);
+    opacity: 0.94;
+    transform: translateY(3px);
   }
   to {
     opacity: 1;
@@ -46,6 +46,67 @@
 
 .ui-vt-content {
   view-transition-name: ui-vt-content;
+}
+
+.workspace-shell {
+  --workspace-sidebar-width: 15rem;
+  --workspace-sidebar-duration: 240ms;
+  --workspace-sidebar-ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+.workspace-shell--collapsed {
+  --workspace-sidebar-width: 4.5rem;
+}
+
+@media (min-width: 1024px) {
+  .workspace-sidebar {
+    width: var(--workspace-sidebar-width);
+    transition: width var(--workspace-sidebar-duration) var(--workspace-sidebar-ease);
+  }
+
+  .workspace-content {
+    padding-inline-start: var(--workspace-sidebar-width);
+    transition: padding-inline-start var(--workspace-sidebar-duration) var(--workspace-sidebar-ease);
+  }
+
+  .workspace-sidebar-reveal {
+    animation: workspace-sidebar-reveal 150ms var(--workspace-sidebar-ease) 70ms backwards;
+  }
+
+  .workspace-sidebar-chevron {
+    transition: transform 180ms var(--workspace-sidebar-ease);
+  }
+}
+
+@keyframes workspace-sidebar-reveal {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.workspace-drawer-enter-active {
+  transition: transform 250ms var(--workspace-sidebar-ease);
+}
+
+.workspace-drawer-leave-active {
+  transition: transform 180ms ease-in;
+}
+
+.workspace-drawer-enter-from,
+.workspace-drawer-leave-to {
+  transform: translateX(calc(-100% - 1rem));
+}
+
+.workspace-backdrop-enter-active {
+  transition: opacity 220ms ease-out;
+}
+
+.workspace-backdrop-leave-active {
+  transition: opacity 180ms ease-in;
+}
+
+.workspace-backdrop-enter-from,
+.workspace-backdrop-leave-to {
+  opacity: 0;
 }
 
 /* Desktop sidebar: keep the original full-height layout and soften only the
@@ -101,10 +162,6 @@ html[data-theme='dark'] .ui-sidebar-surface.platform-sidebar {
   white-space: nowrap;
   background: rgb(255 255 255 / 0.1);
   color: rgb(var(--secondary-100));
-}
-
-.platform-sidebar-note {
-  background: linear-gradient(130deg, rgb(var(--secondary-800) / 0.92), rgb(var(--secondary-900) / 0.82));
 }
 
 html[data-theme='dark'] .ui-sidebar-surface {
@@ -383,9 +440,26 @@ html[data-theme='dark'] .ui-sidebar-surface {
 
   .ui-view-enter,
   .ui-details-animated[open] > summary ~ *,
+  .workspace-sidebar-reveal,
   ::view-transition-old(root),
   ::view-transition-new(root) {
     animation: none;
+  }
+
+  .workspace-sidebar,
+  .workspace-content,
+  .workspace-sidebar-chevron,
+  .workspace-drawer-enter-active,
+  .workspace-drawer-leave-active,
+  .workspace-backdrop-enter-active,
+  .workspace-backdrop-leave-active {
+    transition: none;
+  }
+
+  ::view-transition-group(ui-vt-sidebar),
+  ::view-transition-group(ui-vt-header),
+  ::view-transition-group(ui-vt-content) {
+    animation-duration: 0s;
   }
 
   .ui-interactive,

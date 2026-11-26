@@ -7,7 +7,7 @@ describe('AppSidebar module navigation', () => {
     const navigation = [
       { key: 'platform-home', label: 'Inicio', href: '/inicio', icon: 'platform-home', active: true },
       { key: 'module-maintenance', label: 'Mantenimiento', href: '/dashboard', icon: 'module-maintenance', active: false },
-      { key: 'module-trips', label: 'Viajes', href: null, icon: 'module-trips', disabled: true, status: 'Sin implementación aún', badge: null },
+      { key: 'module-trips', label: 'Viajes', href: null, icon: 'module-trips', disabled: true, status: 'Próximamente', badge: null },
     ]
     const wrapper = mount(AppSidebar, { props: { navigation, logout: null } })
 
@@ -15,8 +15,8 @@ describe('AppSidebar module navigation', () => {
     expect(nav.find('a[href="/inicio"]').attributes('aria-current')).toBe('page')
     expect(nav.find('a[href="/dashboard"]').text()).toContain('Mantenimiento')
     expect(nav.text()).toContain('Viajes')
-    expect(nav.find('[aria-label="Viajes: Sin implementación aún"]').exists()).toBe(true)
-    expect(nav.text()).toContain('Sin implementación aún')
+    expect(nav.find('[aria-label="Viajes: Próximamente"]').exists()).toBe(true)
+    expect(nav.text()).toContain('Próximamente')
     expect(nav.text()).not.toContain('Dashboard')
     expect(nav.text()).not.toContain('Equipos')
     expect(nav.text()).not.toContain('Control de lecturas')

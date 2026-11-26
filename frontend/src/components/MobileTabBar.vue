@@ -57,7 +57,7 @@ const tabClass = (tab) => {
           class="ui-interactive flex min-h-16 w-full flex-col items-center justify-center gap-1 text-xs font-semibold text-secondary-200 hover:text-white"
           aria-controls="mobile-main-menu"
           :aria-expanded="menuOpen ? 'true' : 'false'"
-          @click="emit('open-menu')"
+          @click="emit('open-menu', $event.currentTarget)"
         >
           <Bars3Icon class="size-6" aria-hidden="true" />
           Menú

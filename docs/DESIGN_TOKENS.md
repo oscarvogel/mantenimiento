@@ -72,10 +72,13 @@ Si falta el dato se muestra `Sin datos` o `Sin fecha`, nunca un cero inventado. 
 
 Hay una sola navegación: la barra lateral, marino en los dos temas.
 
-- Arriba: "Volver al portal" (`/inicio`) y el nombre del módulo, con el selector para cambiar de módulo (`ModuleSwitcher.vue`). Se eliminó la barra de módulos bajo el encabezado, que ahora solo muestra la empresa, el tema, los avisos y el usuario.
+- En escritorio, el menú inicia como barra de íconos con accesos del módulo activo. Al expandirlo aparecen los nombres y secciones. La elección se conserva al navegar durante la sesión de la pestaña.
+- Arriba: "Volver al portal" (`/inicio`) y el nombre del módulo, con el selector para cambiar de módulo (`ModuleSwitcher.vue`). El encabezado muestra la empresa, el tema, los avisos y el usuario.
 - Los ítems se agrupan por tarea del día en `frontend/src/ui/navigationGroups.js`: Operación, Flota, Planificación, Comercial y Análisis siempre visibles; Configuración y Administración global plegadas, salvo que la página actual esté adentro. Un ítem que no figura en ningún grupo cae en "Más": nada se pierde. Los permisos los decide el servidor.
 - El portal y Gerencial mantienen una lista simple.
-- En el celular, la barra inferior (`MobileTabBar.vue`) muestra Resumen, Km/horas y Órdenes (Viajes en ese módulo), solo los permitidos, más Menú. Los elementos flotantes (chat, aviso de scroll) se levantan por encima.
+- En el celular, la barra inferior (`MobileTabBar.vue`) muestra Resumen, Km/horas y Órdenes (Viajes en ese módulo), solo los permitidos, más Menú. El aviso flotante de scroll queda por encima de la barra.
+- El asistente de los módulos está en el encabezado. Su botón queda fuera del área que ocupan formularios, tablas y la barra inferior.
+- La barra y el contenido se expanden juntos en escritorio. En móvil se desplaza el menú y cambia la opacidad del fondo. Con `prefers-reduced-motion: reduce` los cambios son inmediatos.
 - La barra usa pasos fijos (`secondary-900` en claro, `surface-inverse` en oscuro). El ítem activo usa un degradado `primary-600` → `secondary-700`, nunca `--primary`, que en oscuro es un azul claro. Los íconos propios usan siempre la variante para fondo oscuro. La prueba de contraste cubre estos pares.
 
 ### Accesos de campo (spec §6.1 y §6.2)

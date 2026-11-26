@@ -4,6 +4,7 @@
 // items grouped by daily task.
 import { computed, ref, watch } from 'vue'
 import {
+  ArrowLeftIcon,
   ArrowPathRoundedSquareIcon,
   ArrowRightStartOnRectangleIcon,
   ArrowUpTrayIcon,
@@ -13,23 +14,21 @@ import {
   BuildingStorefrontIcon,
   CalendarDaysIcon,
   ChartBarSquareIcon,
+  ChevronDoubleRightIcon,
   ChevronDownIcon,
-  CircleStackIcon,
   ClipboardDocumentCheckIcon,
   ClipboardDocumentListIcon,
-  Cog6ToothIcon,
-  DocumentTextIcon,
   ExclamationTriangleIcon,
   HomeIcon,
   LinkIcon,
   MapIcon,
-  SparklesIcon,
   TruckIcon,
   UsersIcon,
   WrenchScrewdriverIcon,
   XMarkIcon,
 } from '@heroicons/vue/24/outline'
 import BrandLogo from './BrandLogo.vue'
+import { moduleIcons } from '../ui/moduleIcons.js'
 import ModuleSwitcher from './ModuleSwitcher.vue'
 import SidebarLink from './SidebarLink.vue'
 import { groupNavigation } from '../ui/navigationGroups.js'
@@ -39,14 +38,26 @@ const props = defineProps({
   moduleNavigation: { type: Array, default: () => [] },
   logout: { type: Object, default: null },
   mobile: { type: Boolean, default: false },
+  collapsible: { type: Boolean, default: false },
+  collapsed: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['close'])
+const emit = defineEmits(['close', 'toggle-width'])
 
 const isPlatformNavigation = computed(() => props.navigation.some((item) => item.key === 'platform-home'))
 const isManagerialNavigation = computed(() => props.navigation.some((item) => String(item.key).startsWith('managerial-')))
 const isTripNavigation = computed(() => props.navigation.some((item) => ['trip-masters', 'trips-dashboard', 'trips-operations-dashboard', 'trips-operations', 'trips-profitability'].includes(item.key)))
 const moduleTitle = computed(() => (isManagerialNavigation.value ? 'Gerencial' : (isTripNavigation.value ? 'Viajes' : 'Mantenimiento')))
+const portalLink = computed(() => props.moduleNavigation.find((item) => item.key === 'platform-home' && item.href && !item.disabled))
+const railKeys = new Set(['dashboard', 'work-orders', 'quick-readings', 'equipment', 'my-work', 'report-failure'])
+const railLinks = computed(() => {
+  const available = props.navigation.filter((item) => item.href && !item.disabled)
+  if (isPlatformNavigation.value || isManagerialNavigation.value) return available
+
+  const preferred = available.filter((item) => railKeys.has(item.key))
+  const shortcuts = preferred.length > 1 ? preferred : available.slice(0, 6)
+  return [...new Set([...shortcuts, ...available.filter((item) => item.active)])]
+})
 
 // The portal and Gerencial are short flat lists; operational modules get sections.
 const groups = computed(() => (
@@ -102,15 +113,7 @@ const icons = {
   'my-work': ClipboardDocumentCheckIcon,
   'report-failure': ExclamationTriangleIcon,
   'platform-home': HomeIcon,
-  'module-wrench': WrenchScrewdriverIcon,
-  'module-truck': TruckIcon,
-  'module-fuel': BeakerIcon,
-  'module-tires': CircleStackIcon,
-  'module-billing': DocumentTextIcon,
-  'module-management': ChartBarSquareIcon,
-  'module-reports': ChartBarSquareIcon,
-  'module-automations': Cog6ToothIcon,
-  'module-ai': SparklesIcon,
+  ...Object.fromEntries(Object.entries(moduleIcons).map(([name, icon]) => [`module-${name}`, icon])),
 }
 const iconFor = (item) => icons[item.icon] ?? ClipboardDocumentCheckIcon
 const visibleLabel = (item) => {
@@ -164,9 +167,31 @@ const openDemoCompany = () => {
 <template>
   <!-- `platform-sidebar` carries the navy surface and its item styles (transitions.css). -->
   <aside class="ui-sidebar-surface platform-sidebar flex h-full w-full flex-col">
+    <div v-if="collapsible" class="relative z-10 flex h-[6.5rem] shrink-0 items-center gap-2 border-b border-white/10 px-3">
+      <div class="flex w-12 shrink-0 flex-col items-center gap-1">
+        <BrandLogo size="small" />
+        <button
+          type="button"
+          class="grid size-11 place-items-center rounded-lg text-secondary-100 hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-300"
+          :aria-label="collapsed ? 'Expandir menú lateral' : 'Contraer menú lateral'"
+          :title="collapsed ? 'Expandir menú lateral' : 'Contraer menú lateral'"
+          :aria-expanded="!collapsed"
+          aria-controls="desktop-primary-navigation"
+          @click="emit('toggle-width')"
+        >
+          <ChevronDoubleRightIcon class="workspace-sidebar-chevron size-5" :class="{ 'rotate-180': !collapsed }" aria-hidden="true" />
+        </button>
+      </div>
+      <div v-if="!collapsed" class="workspace-sidebar-reveal min-w-0 flex-1">
+        <span v-if="isPlatformNavigation" class="block text-sm font-semibold leading-snug text-white">Vogel Consultoría</span>
+        <ModuleSwitcher v-else :modules="moduleNavigation" :fallback-title="moduleTitle" />
+      </div>
+    </div>
+
     <div
+      v-else
       class="flex items-start justify-between gap-2 border-b border-white/10 px-5"
-      :class="isPlatformNavigation ? 'platform-brand-row h-28 items-center' : 'min-h-[4.5rem] py-3'"
+      :class="isPlatformNavigation ? 'platform-brand-row h-28' : 'min-h-[4.5rem] py-3'"
     >
       <BrandLogo v-if="isPlatformNavigation" size="platform" />
       <ModuleSwitcher v-else :modules="moduleNavigation" :fallback-title="moduleTitle" />
@@ -181,7 +206,26 @@ const openDemoCompany = () => {
       </button>
     </div>
 
-    <nav aria-label="Navegación principal" class="ui-sidebar-scroll flex-1 overflow-y-auto px-3 py-4">
+    <nav v-if="collapsed" id="desktop-primary-navigation" aria-label="Navegación principal" class="ui-sidebar-scroll flex-1 overflow-y-auto px-2 py-3">
+      <ul class="space-y-1">
+        <li v-if="!isPlatformNavigation && portalLink">
+          <SidebarLink :item="portalLink" label="Volver al portal" :icon="ArrowLeftIcon" compact />
+        </li>
+        <li v-for="item in railLinks" :key="item.key">
+          <SidebarLink
+            :item="item"
+            :label="visibleLabel(item)"
+            :active="isActive(item)"
+            :icon="iconFor(item)"
+            :icon-url="customIconUrl(item)"
+            compact
+            @icon-error="markCustomIconFailed(item)"
+          />
+        </li>
+      </ul>
+    </nav>
+
+    <nav v-else :id="collapsible ? 'desktop-primary-navigation' : undefined" aria-label="Navegación principal" class="ui-sidebar-scroll flex-1 overflow-y-auto px-3 py-3" :class="{ 'workspace-sidebar-reveal': collapsible }">
       <section v-for="group in groups" :key="group.title || 'all'" class="mb-3 last:mb-0">
         <button
           v-if="group.collapsible"
@@ -254,12 +298,8 @@ const openDemoCompany = () => {
       </section>
     </nav>
 
-    <div v-if="isPlatformNavigation" class="platform-sidebar-note mx-4 mb-4 rounded-xl border border-white/10 px-3 py-3">
-      <p class="text-sm font-semibold text-white">Una plataforma para crecer</p>
-      <p class="mt-1 text-xs leading-5 text-secondary-200">Los módulos se habilitan a medida que están implementados.</p>
-    </div>
 
-    <div v-if="logout" class="border-t border-white/10 p-4">
+    <div v-if="logout" class="border-t border-white/10" :class="collapsed ? 'p-2' : 'p-4'">
       <component
         :is="logout.method === 'post' ? 'form' : 'div'"
         :action="logout.method === 'post' ? logout.href : undefined"
@@ -270,11 +310,13 @@ const openDemoCompany = () => {
           :is="logout.method === 'post' ? 'button' : 'a'"
           :type="logout.method === 'post' ? 'submit' : undefined"
           :href="logout.method === 'post' ? undefined : logout.href"
-          class="ui-interactive flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-secondary-100 hover:bg-white/10 hover:text-white"
+          class="ui-interactive flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-secondary-100 hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-300"
+          :class="{ 'justify-center': collapsed }"
+          :title="collapsed ? 'Cerrar sesión' : undefined"
         >
           <img v-if="logoutIconUrl" :src="logoutIconUrl" alt="" class="size-6 shrink-0" width="24" height="24" aria-hidden="true" @error="markCustomIconFailed({ key: 'logout' })" />
           <ArrowRightStartOnRectangleIcon v-else class="size-5" aria-hidden="true" />
-          Cerrar sesión
+          <span :class="{ 'sr-only': collapsed }">Cerrar sesión</span>
         </component>
       </component>
     </div>

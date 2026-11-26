@@ -11,6 +11,7 @@ const props = defineProps({
   iconUrl: { type: String, default: null },
   showStatus: { type: Boolean, default: false },
   nested: { type: Boolean, default: false },
+  compact: { type: Boolean, default: false },
 })
 const emit = defineEmits(['navigate', 'icon-error'])
 </script>
@@ -37,7 +38,9 @@ const emit = defineEmits(['navigate', 'icon-error'])
     :class="[
       nested ? 'min-h-10 py-2' : 'min-h-11 py-2.5',
       active ? 'platform-nav-active' : 'text-secondary-100 hover:bg-white/10 hover:text-white',
+      compact ? 'justify-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-300' : '',
     ]"
+    :title="compact ? label : undefined"
     :aria-current="active ? 'page' : undefined"
     @click="emit('navigate')"
   >
@@ -49,10 +52,9 @@ const emit = defineEmits(['navigate', 'icon-error'])
       :class="[nested ? 'size-4' : 'size-5', active ? 'text-white' : 'text-secondary-300 group-hover:text-white']"
       aria-hidden="true"
     />
-    <span class="min-w-0 flex-1 leading-5" :title="props.item.status ? `${label}: ${uiLabels.humanizeCode(props.item.status)}` : label">
+    <span :class="compact ? 'sr-only' : 'min-w-0 flex-1 leading-5'">
       <span class="block">{{ label }}</span>
-      <span v-if="showStatus && props.item.status" class="platform-nav-status block text-xs leading-4">{{ uiLabels.humanizeCode(props.item.status) }}</span>
     </span>
-    <span v-if="props.item.badge" class="platform-nav-badge rounded-full px-2 py-0.5 text-xs font-bold leading-4">{{ props.item.badge }}</span>
+    <span v-if="props.item.badge" :class="compact ? 'sr-only' : 'platform-nav-badge rounded-full px-2 py-0.5 text-xs font-bold leading-4'">{{ props.item.badge }}</span>
   </a>
 </template>

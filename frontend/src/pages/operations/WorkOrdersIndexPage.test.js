@@ -69,6 +69,34 @@ describe('WorkOrdersIndexPage', () => {
     expect(wrapper.findAll('a').some((link) => link.text().includes('Volver a Mantenimiento'))).toBe(false)
   })
 
+  it('permite desplegar los filtros adicionales y los indicadores sin perder la búsqueda', async () => {
+    const wrapper = mount(WorkOrdersIndexPage, { props: { data: data() } })
+    const filtersButton = wrapper.get('button[aria-controls="work-order-extra-filters"]')
+    const indicatorsButton = wrapper.get('button[aria-controls="work-order-indicators"]')
+    const search = wrapper.get('input[name="q"]')
+
+    expect(filtersButton.attributes('aria-expanded')).toBe('false')
+    expect(indicatorsButton.attributes('aria-expanded')).toBe('false')
+    await search.setValue('OT-00031')
+    await filtersButton.trigger('click')
+    await indicatorsButton.trigger('click')
+
+    expect(filtersButton.attributes('aria-expanded')).toBe('true')
+    expect(indicatorsButton.attributes('aria-expanded')).toBe('true')
+    expect(search.element.value).toBe('OT-00031')
+    expect(wrapper.get('#work-order-extra-filters select[name="estado"]').element.form).toBe(search.element.form)
+    expect(wrapper.get('#work-order-indicators').find('a[href="/mantenimiento/ordenes?atencion=delayed"]').exists()).toBe(true)
+  })
+
+  it('deja abiertos los filtros adicionales si hay estado, sucursal o responsable aplicado', () => {
+    const payload = data()
+    payload.filters = { ...payload.filters, branchId: 2 }
+    const wrapper = mount(WorkOrdersIndexPage, { props: { data: payload } })
+
+    expect(wrapper.get('button[aria-controls="work-order-extra-filters"]').attributes('aria-expanded')).toBe('true')
+    expect(wrapper.get('select[name="sucursal_id"]').element.value).toBe('2')
+  })
+
   it('lanza un correctivo rápido sin abandonar el listado', async () => {
     const wrapper = mount(WorkOrdersIndexPage, { props: { data: data() } })
     const button = wrapper.findAll('button').find((item) => item.text().includes('Registrar correctivo'))

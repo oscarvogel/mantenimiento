@@ -61,6 +61,19 @@ describe('QuickReadingsPage', () => {
     expect(wrapper.text()).not.toContain('AB499OK')
   })
 
+  it('permite desplegar los filtros y la fecha sin duplicar el formulario', async () => {
+    const wrapper = mount(QuickReadingsPage, { props: { data: baseData() } })
+    const disclosure = wrapper.get('button[aria-controls="quick-reading-options"]')
+    const options = wrapper.get('#quick-reading-options')
+
+    expect(disclosure.attributes('aria-expanded')).toBe('false')
+    expect(options.classes()).toContain('hidden')
+    await disclosure.trigger('click')
+    expect(disclosure.attributes('aria-expanded')).toBe('true')
+    expect(options.classes()).not.toContain('hidden')
+    expect(wrapper.findAll('input[type="datetime-local"]')).toHaveLength(1)
+  })
+
   it('busca código o patente sin distinguir mayúsculas, espacios ni guiones', async () => {
     const wrapper = mount(QuickReadingsPage, { props: { data: baseData() } })
     const search = wrapper.find('input[type="search"]')
@@ -107,9 +120,13 @@ describe('QuickReadingsPage', () => {
 
   it('valida una lectura menor a la actual sin impedir guardar otras filas válidas', async () => {
     const wrapper = mount(QuickReadingsPage, { props: { data: baseData() } })
-    await wrapper.find('#quick-reading-10').setValue('120000')
+    const input = wrapper.get('#quick-reading-10')
+    await input.setValue('120000')
     await wrapper.find('#quick-reading-20').setValue('8350,5')
-    expect(wrapper.text()).toContain('No puede ser menor a 125.430 km.')
+    expect(wrapper.get('label[for="quick-reading-10"]').text()).toContain('AB499OK')
+    expect(input.attributes('aria-invalid')).toBe('true')
+    expect(input.attributes('aria-describedby')).toContain('quick-reading-feedback-10')
+    expect(wrapper.get('#quick-reading-feedback-10').text()).toContain('No puede ser menor a 125.430 km.')
     expect(wrapper.text()).toContain('1 lectura lista para guardar')
     expect(wrapper.find('button[type="submit"]').text()).toContain('Guardar 1 lectura')
     expect(wrapper.find('button[type="submit"]').attributes('disabled')).toBeUndefined()

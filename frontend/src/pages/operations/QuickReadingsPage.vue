@@ -1,6 +1,6 @@
 <script setup>
 import { computed, reactive, ref } from 'vue'
-import { ArrowPathIcon, CheckCircleIcon, ExclamationTriangleIcon, MagnifyingGlassIcon, PrinterIcon, WrenchScrewdriverIcon } from '@heroicons/vue/24/outline'
+import { ArrowPathIcon, CheckCircleIcon, ChevronDownIcon, ExclamationTriangleIcon, MagnifyingGlassIcon, PrinterIcon, WrenchScrewdriverIcon } from '@heroicons/vue/24/outline'
 import CsrfInput from './components/CsrfInput.vue'
 import EmptyState from './components/EmptyState.vue'
 import PageHeading from './components/PageHeading.vue'
@@ -16,6 +16,7 @@ const totalToSave = ref(0)
 const currentSavingIndex = ref(0)
 const commonRecordedAt = ref(props.data.recordedAtDefault || nowLocal())
 const search = ref(props.data.filters.q || '')
+const showMobileOptions = ref(Boolean(props.data.filters.branchId || props.data.filters.typeId))
 
 // "Informar falla" (spec §6.2) reuses this fleet search: pick the unit, then report on
 // its field page, where the incident form already lives.
@@ -59,6 +60,7 @@ const inputDelta = (equipment) => {
 const enteredRows = computed(() => props.data.equipment.items.filter(({ id }) => rows[id].value !== ''))
 const readyRows = computed(() => enteredRows.value.filter((equipment) => !rowError(equipment)))
 const invalidRows = computed(() => enteredRows.value.filter((equipment) => Boolean(rowError(equipment))))
+const keepSaveVisible = computed(() => saving.value || readyRows.value.length > 0)
 const maintenanceCounts = computed(() => {
   const counts = { OK: 0, PROXIMO: 0, VENCIDO: 0, PROBLEMA: 0, SIN_PLAN: 0 }
   props.data.equipment.items.forEach(({ id }) => { const state = maintenance[id]?.state || 'SIN_PLAN'; if (Object.hasOwn(counts, state)) counts[state] += 1 })
@@ -84,7 +86,7 @@ const visibleEquipment = computed(() => {
     return matches && (!statusFilter.value || (maintenance[equipment.id]?.state || 'SIN_PLAN') === statusFilter.value)
   })
 })
-const saveButtonLabel = computed(() => saving.value ? `Guardando ${currentSavingIndex.value} de ${totalToSave.value}…` : readyRows.value.length ? `Guardar ${readyRows.value.length} lectura${readyRows.value.length === 1 ? '' : 's'}` : invalidRows.value.length ? 'Corregí las lecturas marcadas' : 'Ingresá al menos una lectura')
+const saveButtonLabel = computed(() => saving.value ? `Guardando ${currentSavingIndex.value} de ${totalToSave.value}…` : readyRows.value.length ? `Guardar ${readyRows.value.length} lectura${readyRows.value.length === 1 ? '' : 's'}` : 'Guardar lecturas')
 const primaryPlan = (equipment) => maintenance[equipment.id]?.primaryPlan || null
 const formatPlanPoint = (plan, prefix) => {
   if (!plan) return '—'
@@ -121,7 +123,7 @@ const preventiveLabel = (equipment) => {
   const formatted = critical.unit === 'km' ? Math.round(absolute).toLocaleString('es-AR') : absolute.toLocaleString('es-AR', { minimumFractionDigits: critical.unit === 'h' ? 1 : 0, maximumFractionDigits: 1 })
   return snapshot.state === 'VENCIDO' ? `Vencido ${formatted} ${critical.unit}` : `Faltan ${formatted} ${critical.unit}`
 }
-const preventiveClass = (equipment) => ({ OK: 'border-success/30 bg-success-subtle/50 text-success-strong', PROXIMO: 'border-warning/40 bg-warning-subtle/60 text-warning-strong', VENCIDO: 'border-danger/30 bg-danger-subtle/60 text-danger-strong', PROBLEMA: 'border-danger/30 bg-danger-subtle/40 text-danger-strong', SIN_PLAN: 'border-border bg-surface-muted text-ink-muted' }[maintenance[equipment.id]?.state || 'SIN_PLAN'])
+const preventiveClass = (equipment) => ({ OK: 'border-success/30 bg-success-subtle/50 text-success-strong', PROXIMO: 'border-warning/40 bg-warning-subtle text-warning-foreground', VENCIDO: 'border-danger/30 bg-danger-subtle/60 text-danger-strong', PROBLEMA: 'border-danger/30 bg-danger-subtle/40 text-danger-strong', SIN_PLAN: 'border-border bg-surface-muted text-ink-muted' }[maintenance[equipment.id]?.state || 'SIN_PLAN'])
 const applyCommonRecordedAt = () => props.data.equipment.items.forEach(({ id }) => { rows[id].recordedAt = commonRecordedAt.value })
 const refreshTimestamp = () => { commonRecordedAt.value = nowLocal(); applyCommonRecordedAt() }
 const changeCatalogFilter = (key, value) => {
@@ -227,45 +229,214 @@ const focusNextReadingInput = (event) => {
       </ul>
     </PanelCard>
   </template>
-  <PageHeading v-if="!reportFailure" title="Lecturas rápidas" eyebrow="Carga y mantenimiento preventivo" description="Cargá la flota con Enter, guardá y resolvé los vencimientos desde la misma pantalla." />
+  <header v-if="!reportFailure" class="mb-4 border-b border-border-subtle pb-4 sm:mb-8 sm:pb-5">
+    <h1 class="text-3xl font-bold tracking-tight text-ink sm:text-4xl">Registrar km/horas</h1>
+    <p class="mt-2 max-w-prose text-sm leading-6 text-ink-muted">Buscá el equipo, ingresá la lectura y guardá las que estén listas.</p>
+  </header>
   <form v-if="!reportFailure" method="post" :action="data.routes.submit" @submit.prevent="submitRows">
     <CsrfInput :csrf="data.csrf" />
-    <PanelCard title="Equipos activos" :count="data.equipment.total">
-      <div class="mb-3 grid gap-3 border-b border-border-subtle pb-3 xl:grid-cols-[minmax(18rem,1fr)_13rem_13rem_auto] xl:items-end">
-        <label class="block text-sm font-semibold text-ink">Buscar móvil<span class="relative mt-1 block"><MagnifyingGlassIcon class="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-ink-subtle" /><input v-model="search" data-quick-search type="search" autocomplete="off" placeholder="Código, patente o chasis…" :class="`${fieldClass} pl-10`" /></span></label>
-        <label class="block text-sm font-semibold text-ink">Sucursal<select :value="data.filters.branchId" :class="`${fieldClass} mt-1`" @change="changeCatalogFilter('branch', $event.target.value)"><option value="">Todas</option><option v-for="branch in data.catalogs.branches" :key="branch.id" :value="branch.id">{{ branch.name }}</option></select></label>
-        <label class="block text-sm font-semibold text-ink">Tipo<select :value="data.filters.typeId" :class="`${fieldClass} mt-1`" @change="changeCatalogFilter('type', $event.target.value)"><option value="">Todos</option><option v-for="type in data.catalogs.types" :key="type.id" :value="type.id">{{ type.name }}</option></select></label>
-        <div class="flex items-end gap-2"><label class="text-sm font-semibold text-ink">Fecha de lectura<input v-model="commonRecordedAt" type="datetime-local" :class="`${fieldClass} mt-1`" @change="applyCommonRecordedAt" /></label><button type="button" :class="secondaryButton" title="Usar fecha y hora actual" aria-label="Usar fecha y hora actual" @click="refreshTimestamp">Usar ahora</button></div>
+    <PanelCard title="Equipos activos" :count="data.equipment.total" allow-overflow flush>
+      <div class="space-y-4 p-3 sm:p-6">
+        <div class="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-[minmax(0,1.5fr)_repeat(2,minmax(0,1fr))_minmax(0,1.5fr)] xl:items-end">
+          <label class="col-span-2 min-w-0 text-sm font-semibold text-ink xl:col-span-1">
+            Buscar equipo
+            <span class="relative mt-1 block">
+              <MagnifyingGlassIcon class="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-ink-subtle" aria-hidden="true" />
+              <input v-model="search" data-quick-search type="search" autocomplete="off" placeholder="Código, patente o chasis…" :class="[fieldClass, 'pl-10']" />
+            </span>
+          </label>
+          <button
+            type="button"
+            class="ui-interactive col-span-2 flex min-h-11 items-center justify-between gap-2 rounded-md px-1 text-left text-sm font-semibold text-primary hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus lg:hidden"
+            :aria-expanded="showMobileOptions"
+            aria-controls="quick-reading-options"
+            @click="showMobileOptions = !showMobileOptions"
+          >
+            Filtros y fecha de lectura
+            <ChevronDownIcon class="size-4 shrink-0" :class="{ 'rotate-180': showMobileOptions }" aria-hidden="true" />
+          </button>
+          <div
+            id="quick-reading-options"
+            class="col-span-2 grid-cols-2 gap-3 lg:grid xl:contents"
+            :class="showMobileOptions ? 'grid' : 'hidden'"
+          >
+            <label class="min-w-0 text-sm font-semibold text-ink">
+              Sucursal
+              <select :value="data.filters.branchId" :class="[fieldClass, 'mt-1']" @change="changeCatalogFilter('branch', $event.target.value)">
+                <option value="">Todas</option>
+                <option v-for="branch in data.catalogs.branches" :key="branch.id" :value="branch.id">{{ branch.name }}</option>
+              </select>
+            </label>
+            <label class="min-w-0 text-sm font-semibold text-ink">
+              Tipo
+              <select :value="data.filters.typeId" :class="[fieldClass, 'mt-1']" @change="changeCatalogFilter('type', $event.target.value)">
+                <option value="">Todos</option>
+                <option v-for="type in data.catalogs.types" :key="type.id" :value="type.id">{{ type.name }}</option>
+              </select>
+            </label>
+            <div class="col-span-2 min-w-0 xl:col-span-1">
+              <div class="flex min-w-0 flex-wrap items-center justify-between gap-x-2">
+                <label for="quick-reading-common-date" class="text-sm font-semibold text-ink">Fecha de lectura</label>
+                <button type="button" class="ui-interactive inline-flex min-h-11 items-center whitespace-nowrap rounded-md px-1 text-xs font-semibold text-primary underline underline-offset-4 hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus" aria-label="Usar fecha y hora actual" @click="refreshTimestamp">Usar ahora</button>
+              </div>
+              <input id="quick-reading-common-date" v-model="commonRecordedAt" type="datetime-local" :class="[fieldClass, 'min-w-0']" @change="applyCommonRecordedAt" />
+            </div>
+            <div role="group" aria-label="Estado del plan preventivo" class="col-span-2 flex flex-wrap gap-2 text-xs font-semibold xl:col-span-4">
+              <button
+                v-for="item in statusFilters"
+                :key="item.key"
+                type="button"
+                class="ui-interactive min-h-11 rounded-lg border px-3 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+                :class="statusFilter === item.key ? 'border-primary bg-primary-subtle text-primary' : 'border-border-subtle bg-surface-raised text-ink-muted hover:border-primary hover:text-primary'"
+                :aria-pressed="statusFilter === item.key"
+                @click="statusFilter = item.key"
+              >{{ item.label }} {{ item.count }}</button>
+            </div>
+          </div>
+        </div>
+
+        <p v-if="data.canRegister && visibleEquipment.length" class="hidden text-xs text-ink-muted lg:block">Con Enter podés pasar al siguiente equipo y guardar las lecturas válidas desde la última fila.</p>
+
+        <div v-if="results.length" class="flex flex-wrap items-center gap-2 text-xs" aria-live="polite">
+          <span class="font-semibold text-ink-muted">Última carga:</span>
+          <span v-for="result in results" :key="`${result.rowNumber}-${result.equipmentId}`" class="inline-flex min-w-0 items-center gap-1.5 rounded-md bg-surface-muted px-2 py-1" :class="result.success ? 'text-success-strong' : 'text-danger-strong'">
+            <CheckCircleIcon v-if="result.success" class="size-4 shrink-0" aria-hidden="true" />
+            <ExclamationTriangleIcon v-else class="size-4 shrink-0" aria-hidden="true" />
+            <span class="[overflow-wrap:anywhere]"><span class="sr-only">{{ result.success ? 'Guardada:' : 'Error:' }} </span>{{ props.data.equipment.items.find((item) => item.id === result.equipmentId)?.code }}</span>
+          </span>
+        </div>
+
+        <p v-if="invalidRows.length" class="text-sm font-semibold text-danger-strong">{{ invalidRows.length }} lectura{{ invalidRows.length === 1 ? '' : 's' }} para corregir. Las válidas se pueden guardar.</p>
       </div>
 
-      <div class="mb-3 flex flex-wrap gap-2 text-xs font-semibold">
-        <button v-for="item in statusFilters" :key="item.key" type="button" class="ui-interactive rounded-full border px-3 py-1.5" :class="statusFilter === item.key ? 'border-primary bg-primary text-primary-foreground shadow-sm' : 'border-border bg-surface-raised text-ink-muted hover:border-primary/40 hover:bg-primary-subtle/40'" :aria-pressed="statusFilter === item.key" @click="statusFilter = item.key">{{ item.label }} {{ item.count }}</button>
+      <div
+        v-if="data.canRegister && data.equipment.items.length"
+        class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-y border-border-subtle bg-surface-raised px-4 py-2.5 sm:px-6"
+        :class="{ 'sticky top-[4.5rem] z-10': keepSaveVisible }"
+      >
+        <p aria-live="polite" class="text-xs text-ink-muted">
+          <template v-if="readyRows.length || saving">{{ readyRows.length }} lectura{{ readyRows.length === 1 ? '' : 's' }} lista{{ readyRows.length === 1 ? '' : 's' }} para guardar</template>
+          <template v-else-if="invalidRows.length">Corregí las lecturas marcadas.</template>
+          <template v-else>Ingresá una lectura para guardar.</template>
+        </p>
+        <button type="submit" :disabled="saving || !readyRows.length" :class="[primaryButton, 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus']">
+          <ArrowPathIcon v-if="saving" class="size-5 shrink-0 animate-spin" aria-hidden="true" />
+          {{ saveButtonLabel }}
+        </button>
       </div>
 
-      <p class="mb-3 text-xs text-ink-muted">Ingresá una lectura y presioná Enter para avanzar. Al terminar, se guardan las lecturas válidas.</p>
+      <EmptyState v-if="data.equipment.items.length === 0" class="m-4 sm:m-6" title="No hay equipos para los filtros seleccionados" />
+      <EmptyState v-else-if="visibleEquipment.length === 0" class="m-4 sm:m-6" title="No hay coincidencias" description="Probá con otro código, patente o chasis, o cambiá el filtro de estado." />
+      <template v-else>
+        <table role="table" aria-label="Lecturas por equipo" class="block w-full text-sm xl:table xl:table-fixed xl:border-collapse">
+          <thead role="rowgroup" class="sr-only bg-surface-subtle text-left text-xs text-ink-muted xl:not-sr-only xl:table-header-group">
+            <tr role="row">
+              <th role="columnheader" scope="col" class="w-[16%] px-4 py-3 sm:pl-6">Equipo</th>
+              <th role="columnheader" scope="col" class="w-[15%] px-3 py-3">Última lectura</th>
+              <th role="columnheader" scope="col" class="w-[23%] px-3 py-3">Nueva lectura</th>
+              <th role="columnheader" scope="col" class="w-[28%] px-3 py-3">Mantenimiento preventivo</th>
+              <th role="columnheader" scope="col" class="w-[18%] px-3 py-3">Acciones del plan</th>
+            </tr>
+          </thead>
+          <tbody role="rowgroup" class="block divide-y divide-border-subtle xl:table-row-group">
+            <tr
+              v-for="equipment in visibleEquipment"
+              :key="equipment.id"
+              role="row"
+              class="grid min-w-0 grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] gap-3 px-4 py-3 focus-within:bg-primary-subtle/30 sm:grid-cols-2 sm:px-6 sm:py-4 xl:table-row"
+            >
+              <td role="cell" class="block min-w-0 [overflow-wrap:anywhere] sm:col-span-2 xl:table-cell xl:px-4 xl:py-4 xl:pl-6 xl:align-top">
+                <strong class="block text-base text-ink xl:text-sm">{{ equipment.code }}</strong>
+                <span class="block text-xs text-ink-muted">{{ equipment.plate || 'Sin patente' }}</span>
+              </td>
+              <td role="cell" class="block min-w-0 [overflow-wrap:anywhere] xl:table-cell xl:px-3 xl:py-4 xl:align-top">
+                <span :id="`quick-reading-current-${equipment.id}`">
+                  <span class="block text-xs font-semibold text-ink-muted xl:sr-only">Última lectura </span>
+                  <strong class="font-semibold tabular-nums text-ink">{{ formattedCurrent(equipment) }}</strong>
+                </span>
+              </td>
+              <td role="cell" class="col-span-2 block min-w-0 sm:col-span-1 xl:table-cell xl:px-3 xl:py-3 xl:align-top">
+                <label :for="`quick-reading-${equipment.id}`" class="mb-1 block text-xs font-semibold text-ink-muted xl:sr-only">
+                  Nueva lectura <span class="sr-only">de {{ equipment.code }} en {{ readingUnit(equipment) === 'h' ? 'horas' : 'kilómetros' }}</span>
+                </label>
+                <div class="relative">
+                  <input
+                    :id="`quick-reading-${equipment.id}`"
+                    v-model="rows[equipment.id].value"
+                    data-reading-input="true"
+                    :data-equipment-id="equipment.id"
+                    type="text"
+                    :inputmode="readingKey(equipment) === 'hours' ? 'decimal' : 'numeric'"
+                    autocomplete="off"
+                    placeholder="Ingresar lectura"
+                    :disabled="!data.canRegister || saving"
+                    :aria-invalid="Boolean(rowError(equipment))"
+                    :aria-describedby="`quick-reading-current-${equipment.id} quick-reading-feedback-${equipment.id}`"
+                    :class="[fieldClass, 'pr-10 font-semibold tabular-nums']"
+                    @keydown.enter.prevent="focusNextReadingInput"
+                  />
+                  <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-ink-muted" aria-hidden="true">{{ readingUnit(equipment) }}</span>
+                </div>
+                <div :id="`quick-reading-feedback-${equipment.id}`" aria-live="polite" class="[overflow-wrap:anywhere]">
+                  <p v-if="rowError(equipment)" class="mt-1 text-xs font-semibold text-danger-strong">{{ rowError(equipment) }}</p>
+                  <p v-else-if="inputDelta(equipment)" class="mt-1 text-xs text-ink-muted">{{ inputDelta(equipment) }} desde la última</p>
+                  <p v-if="rows[equipment.id].message" class="mt-1 text-xs" :class="rows[equipment.id].status === 'error' ? 'text-danger-strong' : 'text-success-strong'">{{ rows[equipment.id].message }}</p>
+                </div>
+              </td>
+              <td role="cell" class="col-span-2 block min-w-0 border-t border-border-subtle pt-3 [overflow-wrap:anywhere] sm:col-span-1 xl:table-cell xl:border-0 xl:px-3 xl:py-4 xl:align-top">
+                <a v-if="maintenance[equipment.id]?.state === 'SIN_PLAN' && equipment.assignPlanUrl" :href="equipment.assignPlanUrl" class="ui-interactive inline-flex min-h-11 items-center rounded-md px-1 text-xs font-semibold text-primary underline underline-offset-4 hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus" title="Asignar un plan preventivo">Sin plan · Asignar</a>
+                <span v-else class="inline-flex rounded-md border px-2 py-1 text-xs font-semibold" :class="preventiveClass(equipment)">{{ preventiveLabel(equipment) }}</span>
 
-      <div v-if="results.length" class="mb-3 flex flex-wrap gap-2 text-xs" aria-live="polite"><span class="font-semibold text-ink-muted">Última carga:</span><span v-for="result in results" :key="`${result.rowNumber}-${result.equipmentId}`" class="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1" :class="result.success ? 'text-success-strong' : 'text-danger-strong'"><CheckCircleIcon v-if="result.success" class="size-4" /><ExclamationTriangleIcon v-else class="size-4" />{{ props.data.equipment.items.find((item) => item.id === result.equipmentId)?.code }}</span></div>
+                <template v-if="primaryPlan(equipment)">
+                  <p class="mt-2 font-medium text-ink">{{ primaryPlan(equipment).serviceName }}</p>
+                  <dl class="mt-1 grid grid-cols-2 gap-2 text-xs">
+                    <div class="min-w-0">
+                      <dt class="text-ink-muted">Último service</dt>
+                      <dd class="font-medium tabular-nums text-ink">{{ formatPlanPoint(primaryPlan(equipment), 'base') }}</dd>
+                    </div>
+                    <div class="min-w-0">
+                      <dt class="text-ink-muted">Próximo service</dt>
+                      <dd class="font-medium tabular-nums text-ink">{{ formatPlanPoint(primaryPlan(equipment), 'next') }}</dd>
+                    </div>
+                  </dl>
+                </template>
 
-      <EmptyState v-if="data.equipment.items.length === 0" title="No hay equipos para los filtros seleccionados" />
-      <EmptyState v-else-if="visibleEquipment.length === 0" title="No hay coincidencias" description="Probá con otro código, patente o chasis." />
-      <div v-else class="overflow-x-auto rounded-xl border border-border">
-        <table class="w-full min-w-[1240px] border-collapse text-sm">
-          <thead class="bg-surface-muted text-left text-xs font-bold uppercase tracking-wide text-ink-muted"><tr><th class="px-3 py-2">Equipo</th><th class="px-3 py-2">Última lectura</th><th class="px-3 py-2">Nueva lectura</th><th class="px-3 py-2">Último service</th><th class="px-3 py-2">Próximo service</th><th class="px-3 py-2">Estado</th><th class="px-3 py-2">Acción</th></tr></thead>
-          <tbody class="divide-y divide-border-subtle bg-surface-raised">
-            <tr v-for="equipment in visibleEquipment" :key="equipment.id" class="hover:bg-surface-muted/40">
-              <td class="px-3 py-2"><strong class="text-primary">{{ equipment.code }}</strong><div class="text-xs text-ink-muted">{{ equipment.plate || 'Sin patente' }}</div></td>
-              <td class="px-3 py-2 font-semibold tabular-nums">{{ formattedCurrent(equipment) }}</td>
-              <td class="px-3 py-2"><div class="relative max-w-52"><input :id="`quick-reading-${equipment.id}`" v-model="rows[equipment.id].value" data-reading-input="true" :data-equipment-id="equipment.id" type="text" :inputmode="readingKey(equipment) === 'hours' ? 'decimal' : 'numeric'" autocomplete="off" placeholder="Ingresar lectura" :disabled="!data.canRegister || saving" :class="`${fieldClass} pr-10 font-semibold tabular-nums ${rowError(equipment) ? 'border-danger' : ''}`" @keydown.enter.prevent="focusNextReadingInput" /><span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-ink-muted">{{ readingUnit(equipment) }}</span></div><p v-if="rowError(equipment)" class="mt-1 text-xs font-semibold text-danger-strong">{{ rowError(equipment) }}</p><p v-else-if="inputDelta(equipment)" class="mt-1 text-xs text-ink-muted">{{ inputDelta(equipment) }} desde la última</p><p v-if="rows[equipment.id].message" class="mt-1 text-xs" :class="rows[equipment.id].status === 'error' ? 'text-danger-strong' : 'text-success-strong'">{{ rows[equipment.id].message }}</p></td>
-              <td class="px-3 py-2"><template v-if="primaryPlan(equipment)"><div class="font-medium">{{ primaryPlan(equipment).serviceName }}</div><div class="text-xs text-ink-muted">{{ formatPlanPoint(primaryPlan(equipment), 'base') }}</div></template><span v-else>—</span></td>
-              <td class="px-3 py-2"><template v-if="primaryPlan(equipment)"><div class="font-medium">{{ primaryPlan(equipment).serviceName }}</div><div class="text-xs text-ink-muted">{{ formatPlanPoint(primaryPlan(equipment), 'next') }}</div></template><span v-else>—</span></td>
-              <td class="px-3 py-2"><a v-if="maintenance[equipment.id]?.state === 'SIN_PLAN' && equipment.assignPlanUrl" :href="equipment.assignPlanUrl" class="inline-flex rounded-full border border-warning/40 bg-warning-subtle px-2.5 py-1 text-xs font-bold text-warning-strong hover:border-warning hover:bg-warning-subtle" title="Asignar un plan preventivo">Sin plan · Asignar</a><span v-else class="inline-flex rounded-full border px-2.5 py-1 text-xs font-bold" :class="preventiveClass(equipment)">{{ preventiveLabel(equipment) }}</span><details v-if="missingPlanDetails(equipment).length" class="mt-1 text-xs text-danger-strong"><summary class="cursor-pointer font-semibold">Ver faltantes</summary><div v-for="detail in missingPlanDetails(equipment)" :key="detail" class="mt-1">{{ detail }}</div></details><div v-else-if="maintenance[equipment.id]?.planCount > 1" class="mt-1 text-xs text-ink-subtle">+{{ maintenance[equipment.id].planCount - 1 }} planes</div></td>
-              <td class="px-3 py-2"><template v-if="primaryPlan(equipment)?.order"><div class="text-xs font-bold text-success-strong">{{ primaryPlan(equipment).order.number }}</div><a :href="`${data.routes.workOrderBase}/${primaryPlan(equipment).order.id}/imprimir`" target="_blank" rel="noopener" :class="`${secondaryButton} mt-1 px-2 py-1 text-xs`"><PrinterIcon class="mr-1 size-4" />Imprimir</a></template><button v-else-if="data.canGenerateOrder && primaryPlan(equipment)?.noticeId" type="button" :disabled="orderSaving[equipment.id]" :class="`${primaryButton} px-2 py-1 text-xs`" @click="generateOrder(equipment)"><ArrowPathIcon v-if="orderSaving[equipment.id]" class="mr-1 size-4 animate-spin" /><WrenchScrewdriverIcon v-else class="mr-1 size-4" />{{ orderSaving[equipment.id] ? 'Generando…' : 'Generar OT' }}</button><span v-else-if="maintenance[equipment.id]?.state === 'PROXIMO'" class="text-xs font-semibold text-warning-strong">Próximo service</span><span v-else class="text-xs text-ink-subtle">—</span><p v-if="orderErrors[equipment.id]" class="mt-1 text-xs text-danger-strong">{{ orderErrors[equipment.id] }}</p></td>
+                <details v-if="missingPlanDetails(equipment).length" class="mt-1 text-xs text-danger-strong">
+                  <summary class="cursor-pointer rounded-md py-3 font-semibold underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus">Ver faltantes</summary>
+                  <ul class="space-y-1">
+                    <li v-for="detail in missingPlanDetails(equipment)" :key="detail">{{ detail }}</li>
+                  </ul>
+                </details>
+                <p v-else-if="maintenance[equipment.id]?.planCount > 1" class="mt-1 text-xs text-ink-muted">+{{ maintenance[equipment.id].planCount - 1 }} planes</p>
+              </td>
+              <td
+                role="cell"
+                class="col-span-2 min-w-0 [overflow-wrap:anywhere] sm:col-span-1 sm:border-t sm:border-border-subtle sm:pt-3 xl:table-cell xl:border-0 xl:px-3 xl:py-4 xl:pr-6 xl:align-top"
+                :class="primaryPlan(equipment)?.order || (data.canGenerateOrder && primaryPlan(equipment)?.noticeId) || orderErrors[equipment.id] ? 'block' : 'hidden'"
+              >
+                <template v-if="primaryPlan(equipment)?.order">
+                  <p class="text-xs font-semibold text-success-strong">{{ primaryPlan(equipment).order.number }}</p>
+                  <a :href="`${data.routes.workOrderBase}/${primaryPlan(equipment).order.id}/imprimir`" target="_blank" rel="noopener" :class="[secondaryButton, 'mt-1.5']">
+                    <PrinterIcon class="size-4 shrink-0" aria-hidden="true" />Imprimir
+                  </a>
+                </template>
+                <button v-else-if="data.canGenerateOrder && primaryPlan(equipment)?.noticeId" type="button" :disabled="orderSaving[equipment.id]" :class="secondaryButton" @click="generateOrder(equipment)">
+                  <ArrowPathIcon v-if="orderSaving[equipment.id]" class="size-4 shrink-0 animate-spin" aria-hidden="true" />
+                  <WrenchScrewdriverIcon v-else class="size-4 shrink-0" aria-hidden="true" />
+                  {{ orderSaving[equipment.id] ? 'Generando…' : 'Generar OT' }}
+                </button>
+                <span v-else class="sr-only">Sin acciones disponibles</span>
+                <p v-if="orderErrors[equipment.id]" role="alert" class="mt-1 text-xs text-danger-strong">{{ orderErrors[equipment.id] }}</p>
+              </td>
             </tr>
           </tbody>
         </table>
-      </div>
-      <div v-if="invalidRows.length" class="mt-3 text-sm font-semibold text-danger-strong">{{ invalidRows.length }} lectura{{ invalidRows.length === 1 ? '' : 's' }} para corregir. Las válidas se pueden guardar.</div>
-      <template #footer><div class="grid gap-4 border-t border-border-subtle px-5 py-4 sm:px-6 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center"><PaginationBar :pagination="data.equipment.pagination" embedded compact-single-page /><div class="flex flex-col gap-1.5 sm:items-end"><div class="text-xs text-ink-muted">{{ readyRows.length }} lectura{{ readyRows.length === 1 ? '' : 's' }} lista{{ readyRows.length === 1 ? '' : 's' }} para guardar</div><button v-if="data.canRegister && data.equipment.items.length" type="submit" :disabled="saving || !readyRows.length" :class="`${primaryButton} w-full sm:w-auto`"><ArrowPathIcon class="mr-2 size-5" :class="saving ? 'animate-spin' : ''" />{{ saveButtonLabel }}</button></div></div></template>
+      </template>
+      <template #footer>
+        <div class="border-t border-border-subtle px-4 py-3 sm:px-6">
+          <PaginationBar :pagination="data.equipment.pagination" embedded compact-single-page />
+        </div>
+      </template>
     </PanelCard>
   </form>
 </template>

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import AppHeader from './AppHeader.vue'
 import AppSidebar from './AppSidebar.vue'
 import MobileTabBar from './MobileTabBar.vue'
@@ -18,9 +18,22 @@ const props = defineProps({
   },
 })
 
+const desktopNavStorageKey = 'maintenance.desktop-menu'
+const getDesktopNavCollapsed = () => {
+  try {
+    return window.sessionStorage.getItem(desktopNavStorageKey) !== 'expanded'
+  } catch {
+    return true
+  }
+}
+
 const sidebarOpen = ref(false)
+const desktopNavCollapsed = ref(getDesktopNavCollapsed())
 const header = ref(null)
 const mobileDrawer = ref(null)
+const assistantLauncher = ref(null)
+let drawerTrigger = null
+let desktopBreakpoint = null
 const isPlatformShell = computed(() => props.shell.navigation.some((item) => item.key === 'platform-home'))
 // Adds "Mi trabajo" and "Informar falla" from what the server already allowed.
 const navigation = computed(() => (isPlatformShell.value
@@ -35,18 +48,40 @@ const focusableSelector = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(',')
 
+const drawerControls = () => [...(mobileDrawer.value?.querySelectorAll(focusableSelector) ?? [])]
+  .filter((control) => control.getClientRects().length > 0)
+
 const focusFirstDrawerControl = () => {
-  mobileDrawer.value?.querySelector(focusableSelector)?.focus()
+  if (!sidebarOpen.value) return
+  const first = drawerControls()[0] ?? mobileDrawer.value
+  first?.focus({ preventScroll: true })
 }
 
 const closeSidebar = () => {
   if (!sidebarOpen.value) return
   sidebarOpen.value = false
-  nextTick(() => header.value?.focusMenuButton())
+  const trigger = drawerTrigger
+  drawerTrigger = null
+  nextTick(() => {
+    if (sidebarOpen.value || desktopBreakpoint?.matches) return
+    if (trigger?.isConnected) trigger.focus({ preventScroll: true })
+    else header.value?.focusMenuButton()
+  })
 }
 
-const openSidebar = () => {
+const openSidebar = (trigger) => {
+  if (sidebarOpen.value) return
+  drawerTrigger = trigger ?? document.activeElement
   sidebarOpen.value = true
+}
+
+const toggleDesktopNav = () => {
+  desktopNavCollapsed.value = !desktopNavCollapsed.value
+  try {
+    window.sessionStorage.setItem(desktopNavStorageKey, desktopNavCollapsed.value ? 'collapsed' : 'expanded')
+  } catch {
+    // El menú sigue funcionando aunque el navegador bloquee el almacenamiento.
+  }
 }
 
 const handleEscape = (event) => {
@@ -56,7 +91,7 @@ const handleEscape = (event) => {
 const handleDrawerKeydown = (event) => {
   if (event.key !== 'Tab' || !mobileDrawer.value) return
 
-  const controls = [...mobileDrawer.value.querySelectorAll(focusableSelector)]
+  const controls = drawerControls()
   if (!controls.length) {
     event.preventDefault()
     mobileDrawer.value.focus()
@@ -88,7 +123,17 @@ watch(
   { immediate: true },
 )
 
+const closeDrawerOnDesktop = (event) => {
+  if (event.matches) closeSidebar()
+}
+
+onMounted(() => {
+  desktopBreakpoint = window.matchMedia?.('(min-width: 1024px)')
+  desktopBreakpoint?.addEventListener?.('change', closeDrawerOnDesktop)
+})
+
 onBeforeUnmount(() => {
+  desktopBreakpoint?.removeEventListener?.('change', closeDrawerOnDesktop)
   document.body.classList.remove('overflow-hidden')
   document.removeEventListener('keydown', handleEscape)
 })
@@ -102,37 +147,31 @@ onBeforeUnmount(() => {
     Ir al contenido principal
   </a>
 
-  <div class="min-h-screen bg-surface-subtle">
-    <div class="fixed inset-y-0 left-0 z-30 hidden w-[15rem] lg:block">
+  <div class="workspace-shell min-h-screen bg-surface-subtle" :class="{ 'workspace-shell--collapsed': desktopNavCollapsed }">
+    <div class="workspace-sidebar fixed inset-y-0 left-0 z-30 hidden lg:block">
       <AppSidebar
         class="ui-vt-sidebar ui-sidebar-surface"
         :navigation="navigation"
         :module-navigation="props.shell.moduleNavigation ?? []"
         :logout="props.shell.logout"
+        collapsible
+        :collapsed="desktopNavCollapsed"
+        @toggle-width="toggleDesktopNav"
       />
     </div>
 
-    <Transition
-      enter-active-class="transition-opacity duration-200"
-      enter-from-class="opacity-0"
-      leave-active-class="transition-opacity duration-150"
-      leave-to-class="opacity-0"
-    >
+    <Transition name="workspace-backdrop">
       <button
         v-if="sidebarOpen"
         type="button"
         class="fixed inset-0 z-40 cursor-default bg-secondary-900/60 lg:hidden"
-        aria-label="Cerrar menú principal"
+        tabindex="-1"
+        aria-hidden="true"
         @click="closeSidebar"
       ></button>
     </Transition>
 
-    <Transition
-      enter-active-class="transition-transform duration-200 ease-out"
-      enter-from-class="-translate-x-full"
-      leave-active-class="transition-transform duration-150 ease-in"
-      leave-to-class="-translate-x-full"
-    >
+    <Transition name="workspace-drawer" @before-leave="(drawer) => { drawer.inert = true }">
       <div
         v-if="sidebarOpen"
         id="mobile-main-menu"
@@ -154,7 +193,7 @@ onBeforeUnmount(() => {
       </div>
     </Transition>
 
-    <div class="lg:pl-[15rem]">
+    <div class="workspace-content" :inert="sidebarOpen || undefined">
       <AppHeader
         ref="header"
         class="ui-vt-header"
@@ -163,7 +202,11 @@ onBeforeUnmount(() => {
         :notifications="props.shell.notifications"
         :menu-open="sidebarOpen"
         @open-menu="openSidebar"
-      />
+      >
+        <template v-if="!isPlatformShell" #assistant>
+          <div id="operations-assistant-launcher" ref="assistantLauncher" class="size-11 shrink-0" />
+        </template>
+      </AppHeader>
 
       <main
         id="main-content"
@@ -182,6 +225,6 @@ onBeforeUnmount(() => {
     :label="props.scrollCta.label"
     :description="props.scrollCta.description"
   />
-  <MobileTabBar v-if="!isPlatformShell" :navigation="navigation" :menu-open="sidebarOpen" @open-menu="openSidebar" />
-  <LazyChatWidget v-if="!isPlatformShell" />
+  <MobileTabBar v-if="!isPlatformShell" :navigation="navigation" :menu-open="sidebarOpen" :inert="sidebarOpen || undefined" @open-menu="openSidebar" />
+  <LazyChatWidget v-if="assistantLauncher" :launcher-target="assistantLauncher" />
 </template>

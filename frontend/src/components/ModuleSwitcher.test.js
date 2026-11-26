@@ -17,7 +17,7 @@ const modules = [
   href: href ?? null,
   active: index === 1,
   disabled: !href,
-  status: href ? 'Operativo' : 'Sin implementación aún',
+  status: href ? 'Operativo' : 'Próximamente',
 }))
 
 const render = (list = modules) => mount(ModuleSwitcher, { props: { modules: list, fallbackTitle: 'Mantenimiento' } })
@@ -36,7 +36,7 @@ describe('ModuleSwitcher', () => {
     for (const module of modules.filter((item) => item.key !== 'platform-home')) {
       expect(wrapper.text()).toContain(module.label)
     }
-    const future = wrapper.get('[aria-label="Combustible: Sin implementación aún"]')
+    const future = wrapper.get('[aria-label="Combustible: Próximamente"]')
     expect(future.element.tagName).not.toBe('A')
   })
 
