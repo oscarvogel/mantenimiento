@@ -467,8 +467,9 @@ final class CustomerAccountsMultimonedaIntegrationTest extends TestCase
         $chargeId = $this->formalize(9, 'MEMO_AUTORIZADO', 1_000, 'USD', 1_500, 'M-1');
 
         // Las dos sesiones se abren sobre el mismo esquema real, no sobre la
-        // configuración de pruebas (que en local es SQLite en memoria).
-        $first = Database::connect($this->connectionParams, true);
+        // configuración de pruebas (que en local es SQLite en memoria). Deben
+        // ser conexiones distintas: con la instancia compartida serían la misma.
+        $first = Database::connect($this->connectionParams, false);
         $second = null;
 
         try {
@@ -481,7 +482,7 @@ final class CustomerAccountsMultimonedaIntegrationTest extends TestCase
 
             // La segunda sesión no puede imputar contra el documento bloqueado:
             // el bloqueo se resuelve rápido para no esperar el timeout por defecto.
-            $second = Database::connect($this->connectionParams, true);
+            $second = Database::connect($this->connectionParams, false);
             $second->query('SET autocommit = 0');
             $second->query('SET SESSION innodb_lock_wait_timeout = 3');
             $blocked = false;

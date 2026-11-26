@@ -51,7 +51,9 @@ final class CustomerAccountsIntegrationTest extends TestCase
             [$host, $user, $password, $database] = explode(':', $mysql);
             $this->db = Database::connect(['hostname' => $host, 'username' => $user, 'password' => $password, 'database' => $database, 'DBDriver' => 'MySQLi', 'DBPrefix' => '', 'DBDebug' => true, 'charset' => 'utf8mb4', 'DBCollat' => 'utf8mb4_general_ci'], false);
             $this->db->query('SET FOREIGN_KEY_CHECKS = 0');
-            foreach (['cliente_cc_movimientos', 'cliente_cc_tramos_no_cobrables', 'cliente_cc_cargos', 'rol_permisos', 'roles', 'permisos', 'viajes_cotizaciones', 'viajes_monedas', 'viaje_operativo_tramos', 'viajes_operativos', 'clientes', 'sucursales', 'usuarios', 'empresas'] as $table) {
+            // Las tablas de cobranza (#588) se limpian también: sus claves foráneas
+            // apuntan a los cargos y bloquean el borrado si quedan filas de otra prueba.
+            foreach (['cliente_cc_imputaciones', 'cliente_cc_pagos', 'cliente_cc_movimientos', 'cliente_cc_tramos_no_cobrables', 'cliente_cc_cargos', 'rol_permisos', 'roles', 'permisos', 'viajes_cotizaciones', 'viajes_monedas', 'viaje_operativo_tramos', 'viajes_operativos', 'clientes', 'sucursales', 'usuarios', 'empresas'] as $table) {
                 $this->db->query('DROP TABLE IF EXISTS ' . $table);
             }
             $this->db->query('SET FOREIGN_KEY_CHECKS = 1');
@@ -145,14 +147,19 @@ final class CustomerAccountsIntegrationTest extends TestCase
 
         $this->db->table('cliente_cc_movimientos')->where('cargo_id', $chargeId)->delete();
         $this->db->table('cliente_cc_cargos')->where('id', $chargeId)->delete();
+
+        // La etapa multimoneda (#588) es la última migración y se revierte primero:
+        // sus tablas referencian a los cargos y MySQL no permite soltar la tabla
+        // padre con la hija viva.
+        (new AddMultimonedaCustomerAccounts(Database::forge($this->db)))->down();
+        $this->db->resetDataCache();
+        self::assertFalse($this->db->tableExists('cliente_cc_pagos'));
+        self::assertFalse($this->db->tableExists('cliente_cc_imputaciones'));
+
         $migration->down();
         $this->db->resetDataCache();
         self::assertFalse($this->db->tableExists('cliente_cc_cargos'));
-        // El permiso de cobranzas es de la etapa multimoneda (#588).
-        self::assertSame(['clientes.cc.cobrar'], $this->permissionsOf(1));
-
-        (new AddMultimonedaCustomerAccounts(Database::forge($this->db)))->down();
-        $this->db->resetDataCache();
+        self::assertSame([], $this->permissionsOf(1));
         self::assertSame(0, $this->db->table('permisos')->like('clave', 'clientes.cc', 'after')->countAllResults());
     }
 
