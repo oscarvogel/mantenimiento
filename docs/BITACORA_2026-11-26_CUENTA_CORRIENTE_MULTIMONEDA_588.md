@@ -114,6 +114,71 @@ Contenedor temporal con la imagen de staging, base temporal `cc588_e2e`, migraci
 5. **Orden de reversión**: MySQL no permite soltar la tabla padre con la hija viva, así que el
    `down()` de #588 tiene que correr antes que el de #530. La prueba de rollback lo refleja.
 
+## 3.1 Validación en `mantenimiento-staging` (26/11/2026)
+
+La validación de punta a punta corrió primero en una instancia temporal. Después se
+repitió sobre el ambiente de staging real, con los datos reales de la base.
+
+**Merge:** `fe3c5532` (squash del PR #590) sobre `main`.
+
+**Orden aplicado en staging, a propósito:**
+
+1. **Primero la migración**, con el código viejo corriendo. La migración es aditiva: agrega
+   columnas y tablas nuevas, así que la versión anterior de la aplicación la ignora y no se
+   rompe nada. Aplicarla en este orden evita la ventana en la que el código nuevo consulta
+   columnas que todavía no existen.
+2. **Después el código**, ya con el esquema listo.
+
+Si se hiciera al revés (código primero, migración después), la pantalla de *Cuenta corriente
+de clientes* devolvería 500 durante el intervalo entre ambas.
+
+**Resultado de la migración sobre los datos reales:**
+
+| Medida | Valor |
+| --- | --- |
+| Movimientos en el libro | 9 |
+| Movimientos sin moneda | 0 |
+| Movimientos sin importe original | 0 |
+| Movimientos huérfanos (sin cargo) | 0 |
+| Cargos sin moneda / sin cotización | 0 / 0 |
+
+**Valores verificados en la interfaz contra el cálculo por SQL** (empresa 7 *Transporte
+Demo S.A.*, cotización USD 1.600 vigente):
+
+| Cliente | Pantalla | SQL | ¿Coincide? |
+| --- | --- | --- | --- |
+| Grupo Pluma QA — ARS | ARS 0,00 (saldada) | 0 | Sí |
+| Grupo Pluma QA — USD | USD 2.700,00 a cobrar | 2.700 | Sí |
+| Grupo Pluma QA — histórico | ARS 4.320.000,00 | 4.320.000 | Sí |
+| Lottus Transportes QA | ARS 4.147.000,00 a cobrar | 4.147.000 | Sí |
+| Consolidado histórico | ARS 8.467.000,00 | 8.467.000 | Sí |
+
+El botón *Registrar cobro* aparece para el Administrador de la empresa, con el permiso
+`clientes.cc.cobrar` ya concedido por la migración (el rol existía, así que no hizo falta
+correr el seeder). Los documentos muestran cada cotización congelada con su origen
+(*informada* o *catálogo de la empresa*) y su fecha. Móvil a 375 px, sin scroll horizontal.
+
+Capturas en `docs/screenshots/588/staging-*.png`.
+
+**Dos cosas que aparecieron en el camino y conviene conocer:**
+
+- El recurso de Coolify tenía el **commit pineado** (`git_commit_sha = cff7014a`): cada
+  *Deploy* construía ese SHA y no el HEAD de `main`, así que el código de #588 no llegaba a
+  staging aunque el merge estuviera hecho. Se despineó a `HEAD` y el recurso vuelve a seguir
+  la rama.
+- El deploy dejó pendiente `CreateNeumaticoColocaciones` (migración de #581, ya mergeado en
+  `main`): el código nuevo la usa, así que se aplicó en el mismo pase. No es parte de #588,
+  pero dejar esa migración pendiente rompe la pantalla de colocaciones de neumáticos.
+
+**Lo que se tocó en staging y cómo se dejó:**
+
+- La migración de #588 (aplicada, es el objetivo) y la de colocaciones (estaba pendiente).
+- La clave del usuario `demo@mantenimiento.local` se cambió **de forma reversible** para
+  poder entrar a la interfaz: se guardó el hash original en una tabla de respaldo y se
+  restauró al terminar. La tabla de respaldo se borró y el hash quedó como estaba.
+- Nada más: no se registran cobros ni se modifican saldos de clientes en staging. El flujo
+  de cobro y de anulación se validó sobre la instancia temporal, con base propia.
+
 ## 4. Despliegue
 
 El ambiente de prueba vigente es **`fasa_189` / Docker / Coolify**
