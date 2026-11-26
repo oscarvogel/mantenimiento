@@ -11,7 +11,7 @@
         <div class="container d-flex gap-2">
             <?= view('partials/brand_link', ['href' => base_url('superadmin'), 'label' => 'Administración global']) ?>
             <div class="ms-auto d-flex gap-2">
-                <a class="btn btn-outline-light btn-sm" href="<?= base_url('dashboard') ?>">Dashboard</a>
+                <a class="btn btn-outline-light btn-sm" href="<?= base_url('dashboard') ?>">Resumen</a>
                 <form method="post" action="<?= base_url('logout') ?>">
                     <?= csrf_field() ?>
                     <button class="btn btn-outline-light btn-sm" type="submit">Cerrar sesión</button>

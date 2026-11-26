@@ -32,7 +32,7 @@ final readonly class AppShellPayload
             'command-center' => $this->platformNavigation($actor, $availableModules),
             'trip-masters', 'trips-dashboard', 'trips-operations-dashboard', 'trips-operations', 'trip-operations-create', 'trip-operations-detail', 'trips-fuel-pending', 'trips-profitability', 'trips-commercial-closing', 'customer-accounts', 'customer-account-detail' => array_values(array_filter([
                 $actor->hasPermission('viajes.ver')
-                    ? $this->item('trips-operations-dashboard', 'Dashboard', 'viajes/operativos/dashboard', 'chart', $active)
+                    ? $this->item('trips-operations-dashboard', 'Resumen', 'viajes/operativos/dashboard', 'chart', $active)
                     : null,
                 $actor->hasPermission('viajes.ver')
                     ? $this->item('trips-dashboard', 'Historial', 'viajes', 'truck', $active)
@@ -59,7 +59,7 @@ final readonly class AppShellPayload
             'theoretical-cost-km', 'fleet-board' => $this->managementNavigation($actor, $active),
             'fuel-module' => $this->fuelNavigation($actor, $active),
             'tire-registry', 'tire-detail', 'tire-deposit', 'tire-masters' => $this->tiresNavigation($actor, $active),
-            default => [$this->item('dashboard', 'Dashboard', 'dashboard', 'dashboard', $active)],
+            default => [$this->item('dashboard', 'Resumen', 'dashboard', 'dashboard', $active)],
         };
         $payload['moduleNavigation'] = $active === 'command-center'
             ? []

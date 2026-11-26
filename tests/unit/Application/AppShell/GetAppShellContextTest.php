@@ -21,6 +21,7 @@ final class GetAppShellContextTest extends TestCase
         self::assertSame('Transportes Demo', $result['company']['name']);
         self::assertSame([['id' => 9, 'name' => 'Central']], $result['company']['branches']);
         self::assertSame(['Consulta'], $result['user']['roles']);
+        self::assertSame(7, $result['user']['id']);
         self::assertFalse($result['user']['isSuperAdmin']);
         self::assertSame('base', $result['presentation']['profile']);
     }

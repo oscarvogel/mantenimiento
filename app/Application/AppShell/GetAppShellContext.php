@@ -39,6 +39,8 @@ final readonly class GetAppShellContext
             'mode' => $actor->isSuperAdmin() ? 'global' : 'tenant',
             'presentation' => ['profile' => $profileKey],
             'user' => [
+                // The UI builds "Mi trabajo" (orders where I am responsible); scoping stays server-side.
+                'id' => $actor->userId(),
                 'name' => (string) $context['user']['nombre'],
                 'email' => (string) $context['user']['email'],
                 'roles' => $actor->roles(),
