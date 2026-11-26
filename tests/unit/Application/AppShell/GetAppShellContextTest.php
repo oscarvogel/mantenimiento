@@ -229,7 +229,7 @@ final class GetAppShellContextTest extends TestCase
         self::assertTrue($payload['navigation'][0]['active']);
         self::assertTrue($payload['navigation'][1]['disabled']);
         self::assertNull($payload['navigation'][1]['href']);
-        self::assertSame('Sin implementación aún', $payload['navigation'][1]['status']);
+        self::assertSame('Próximamente', $payload['navigation'][1]['status']);
         self::assertNull($payload['navigation'][1]['badge']);
         self::assertFalse($payload['navigation'][2]['disabled']);
         self::assertStringEndsWith('/dashboard', $payload['navigation'][2]['href']);
@@ -275,7 +275,7 @@ final class GetAppShellContextTest extends TestCase
         self::assertStringEndsWith('/dashboard', $payload['moduleNavigation'][2]['href']);
         self::assertTrue($payload['moduleNavigation'][1]['disabled']);
         self::assertNull($payload['moduleNavigation'][1]['href']);
-        self::assertSame('Sin implementación aún', $payload['moduleNavigation'][1]['status']);
+        self::assertSame('Próximamente', $payload['moduleNavigation'][1]['status']);
     }
 
     public function testManagerialShellGetsItsOwnNavigationInsteadOfMaintenanceLinks(): void

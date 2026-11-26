@@ -128,7 +128,7 @@ final class GetPlatformModuleCatalog
             $entry = [
                 ...$module,
                 'landingPath' => $landingPath,
-                'status' => $enabled ? 'Operativo' : 'Sin implementación aún',
+                'status' => $enabled ? 'Operativo' : 'Próximamente',
                 'state' => $enabled ? 'available' : 'not_implemented',
             ];
             if ($module['key'] === 'trips') {

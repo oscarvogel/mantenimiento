@@ -24,7 +24,7 @@ final class GetPlatformModuleCatalogTest extends TestCase
         self::assertSame('available', $maintenance['state']);
         self::assertSame('Operativo', $maintenance['status']);
         $fuel = $this->module($modules, 'fuel');
-        self::assertSame('Sin implementación aún', $fuel['status']);
+        self::assertSame('Próximamente', $fuel['status']);
         self::assertSame('not_implemented', $fuel['state']);
     }
 
@@ -138,7 +138,7 @@ final class GetPlatformModuleCatalogTest extends TestCase
 
         self::assertNull($management['landingPath']);
         self::assertSame('not_implemented', $management['state']);
-        self::assertSame('Sin implementación aún', $management['status']);
+        self::assertSame('Próximamente', $management['status']);
     }
 
     public function testEnablesReportsModuleOnlyForTenantReportReaders(): void
@@ -230,7 +230,7 @@ final class GetPlatformModuleCatalogTest extends TestCase
 
         self::assertNull($fuel['landingPath']);
         self::assertSame('not_implemented', $fuel['state']);
-        self::assertSame('Sin implementación aún', $fuel['status']);
+        self::assertSame('Próximamente', $fuel['status']);
     }
 
     public function testSuperadministratorDoesNotGainTenantFuelAccess(): void

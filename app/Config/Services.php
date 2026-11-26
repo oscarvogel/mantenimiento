@@ -1251,6 +1251,18 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
         return new GetPlatformModuleCatalog();
     }
 
+    public static function portalHome(bool $getShared = true): \App\Application\Platform\GetPortalHome
+    {
+        if ($getShared) {
+            return static::getSharedInstance('portalHome');
+        }
+
+        return new \App\Application\Platform\GetPortalHome(
+            static::platformModuleCatalog(),
+            new \App\Infrastructure\Platform\MaintenanceDashboardPortalSummary(static::maintenanceDashboard()),
+        );
+    }
+
     public static function tripMasterCatalog(bool $getShared = true): \App\Application\TripMasters\TripMasterCatalog
     {
         if ($getShared) {
