@@ -17,6 +17,7 @@ final class CustomerAccountAccess
 {
     public const VIEW = 'clientes.cc.ver';
     public const FORMALIZE = 'clientes.cc.formalizar';
+    public const COBRAR = 'clientes.cc.cobrar';
 
     public static function view(ActorContext $actor): int
     {
@@ -26,6 +27,11 @@ final class CustomerAccountAccess
     public static function formalize(ActorContext $actor): int
     {
         return self::company($actor, self::FORMALIZE, 'No tenés permiso para formalizar cobros de clientes.');
+    }
+
+    public static function cobrar(ActorContext $actor): int
+    {
+        return self::company($actor, self::COBRAR, 'No tenés permiso para registrar cobranzas de clientes.');
     }
 
     /** @return list<int>|null `null` = todas las sucursales de la empresa. */

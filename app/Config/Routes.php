@@ -79,12 +79,16 @@ $routes->post('viajes/operativos/(:num)/porcentaje', 'OperationalTrips::updateDr
 $routes->post('viajes/operativos/(:num)/conceptos', 'OperationalTrips::addConcept/$1', ['filter' => ['auth', 'permission:viajes.operar']]);
 $routes->post('viajes/operativos/(:num)/categorias-gasto', 'OperationalTrips::addExpenseCategory/$1', ['filter' => ['auth', 'permission:viajes.operar']]);
 
-// Cuenta corriente de clientes en ARS (#530): cierre comercial por tramo y estado de cuenta.
+// Cuenta corriente de clientes: cierre comercial por tramo y estado de cuenta
+// multimoneda (#530, #588).
 $routes->get('viajes/cierre-comercial', 'CustomerAccounts::closingQueue', ['filter' => ['auth', 'permission:clientes.cc.ver']]);
 $routes->post('viajes/cierre-comercial/tramos/(:num)/formalizar', 'CustomerAccounts::formalize/$1', ['filter' => ['auth', 'permission:clientes.cc.formalizar']]);
 $routes->post('viajes/cierre-comercial/tramos/(:num)/no-cobrable', 'CustomerAccounts::markNonCollectible/$1', ['filter' => ['auth', 'permission:clientes.cc.formalizar']]);
 $routes->post('viajes/cierre-comercial/tramos/(:num)/reabrir', 'CustomerAccounts::reopenNonCollectible/$1', ['filter' => ['auth', 'permission:clientes.cc.formalizar']]);
 $routes->post('clientes/cuenta-corriente/cargos/(:num)/anular', 'CustomerAccounts::annul/$1', ['filter' => ['auth', 'permission:clientes.cc.formalizar']]);
+$routes->post('clientes/cuenta-corriente/cobranzas/(:num)/acreditar', 'CustomerAccounts::creditPayment/$1', ['filter' => ['auth', 'permission:clientes.cc.cobrar']]);
+$routes->post('clientes/cuenta-corriente/cobranzas/(:num)/anular', 'CustomerAccounts::annulPayment/$1', ['filter' => ['auth', 'permission:clientes.cc.cobrar']]);
+$routes->post('clientes/cuenta-corriente/(:num)/cobranzas', 'CustomerAccounts::registerPayment/$1', ['filter' => ['auth', 'permission:clientes.cc.cobrar']]);
 $routes->get('clientes/cuenta-corriente', 'CustomerAccounts::accounts', ['filter' => ['auth', 'permission:clientes.cc.ver']]);
 $routes->get('clientes/cuenta-corriente/(:num)', 'CustomerAccounts::statement/$1', ['filter' => ['auth', 'permission:clientes.cc.ver']]);
 $routes->post('clientes/cuenta-corriente/(:num)/saldo-inicial', 'CustomerAccounts::openingBalance/$1', ['filter' => ['auth', 'permission:clientes.cc.formalizar']]);

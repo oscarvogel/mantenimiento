@@ -62,6 +62,29 @@ export const formatNumberEs = (value, maximumFractionDigits = 1) => {
 export const formatKilometers = (value) => value === null || value === undefined || value === '' ? 'sin datos' : `${formatNumberEs(value, 0)} km`
 export const formatHours = (value) => value === null || value === undefined || value === '' ? 'sin datos' : `${formatNumberEs(value, 1)} h`
 
+// Importes con su moneda. El formato es el de la cuenta corriente: la moneda
+// delante y dos decimales, con el separador de miles que usa es-AR.
+export const formatMoney = (value, currency = 'ARS') => {
+  const number = Number(value ?? 0)
+  if (!Number.isFinite(number)) return `${currency} 0,00`
+
+  return `${currency} ${number.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
+// Cotizaciones: hasta seis decimales, que es la escala del catálogo.
+export const formatRate = (value) => {
+  const number = Number(value ?? 0)
+  if (!Number.isFinite(number)) return '—'
+
+  return number.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 6 })
+}
+
+export const rateSourceLabel = (source) => ({
+  CATALOGO_EMPRESA: 'catálogo de la empresa',
+  MANUAL: 'informada',
+  PESOS: 'pesos',
+}[String(source ?? '').toUpperCase()] ?? (source || '—'))
+
 export const formatReadingOrigin = (origin) => ({
   CARGA_RAPIDA: 'Carga rápida',
   ORDEN_TRABAJO: 'Cierre de orden',

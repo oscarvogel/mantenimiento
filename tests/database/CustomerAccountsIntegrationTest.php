@@ -16,9 +16,11 @@ use App\Application\CustomerAccounts\RegisterOpeningBalance;
 use App\Application\CustomerAccounts\RegisterOpeningBalanceCommand;
 use App\Application\CustomerAccounts\ReopenNonCollectibleLeg;
 use App\Application\Identity\ActorContext;
+use App\Database\Migrations\AddMultimonedaCustomerAccounts;
 use App\Database\Migrations\CreateCustomerAccounts;
 use App\Infrastructure\CustomerAccounts\CodeIgniterBillableLegLookup;
 use App\Infrastructure\CustomerAccounts\CodeIgniterCustomerAccountReadModel;
+use App\Infrastructure\CustomerAccounts\CodeIgniterCustomerPaymentReadModel;
 use App\Infrastructure\CustomerAccounts\CodeIgniterCustomerAccountRepository;
 use App\Infrastructure\CustomerAccounts\CodeIgniterCustomerAccountsUnitOfWork;
 use App\Infrastructure\CustomerAccounts\CodeIgniterExchangeRateCatalog;
@@ -73,7 +75,7 @@ final class CustomerAccountsIntegrationTest extends TestCase
             "CREATE TABLE viajes_operativos (id {$pk}, empresa_id {$int}, sucursal_id {$int}, numero {$int}, estado VARCHAR(20) DEFAULT 'PLANIFICADO', fecha_regreso_real DATETIME NULL)",
             "CREATE TABLE viaje_operativo_tramos (id {$pk}, viaje_id {$int}, empresa_id {$int} NOT NULL, sucursal_id {$int}, orden {$int}, cliente_id {$int} NULL, origen VARCHAR(200), destino VARCHAR(200), moneda CHAR(3) DEFAULT 'ARS', cotizacion DECIMAL(18,6) DEFAULT 1, flete_facturacion DECIMAL(18,4) NULL, flete_facturacion_ars DECIMAL(18,4) NULL, fecha_inicio DATE NULL, fecha_fin DATE NULL, anulado_at DATETIME NULL, anulado_por {$int} NULL, motivo_anulacion VARCHAR(500) NULL, UNIQUE KEY uq_viaje_operativo_tramos_empresa_id (empresa_id, id))",
             "CREATE TABLE viajes_monedas (id {$pk}, codigo CHAR(3), activo TINYINT)",
-            "CREATE TABLE viajes_cotizaciones (id {$pk}, empresa_id {$int}, moneda CHAR(3), cotizacion DECIMAL(18,6))",
+            "CREATE TABLE viajes_cotizaciones (id {$pk}, empresa_id {$int}, moneda CHAR(3), cotizacion DECIMAL(18,6), updated_at DATETIME NULL)",
             "CREATE TABLE permisos (id {$pk}, clave VARCHAR(100) UNIQUE, descripcion VARCHAR(255), created_at DATETIME NULL, updated_at DATETIME NULL)",
             "CREATE TABLE roles (id {$pk}, nombre VARCHAR(100))",
             "CREATE TABLE rol_permisos (id {$pk}, rol_id {$int}, permiso_id {$int}, created_at DATETIME NULL)",
@@ -107,6 +109,8 @@ final class CustomerAccountsIntegrationTest extends TestCase
 
         require_once APPPATH . 'Database/Migrations/2026-11-18-090000_CreateCustomerAccounts.php';
         (new CreateCustomerAccounts(Database::forge($this->db)))->up();
+        require_once APPPATH . 'Database/Migrations/2026-11-26-100000_AddMultimonedaCustomerAccounts.php';
+        (new AddMultimonedaCustomerAccounts(Database::forge($this->db)))->up();
     }
 
     protected function tearDown(): void
@@ -118,12 +122,13 @@ final class CustomerAccountsIntegrationTest extends TestCase
 
     public function testMigrationGrantsViewToEconomicRolesAndFormalizeOnlyToAdministrators(): void
     {
-        self::assertSame(['clientes.cc.formalizar', 'clientes.cc.ver'], $this->permissionsOf(1));
+        // `clientes.cc.cobrar` lo agrega la etapa multimoneda (#588).
+        self::assertSame(['clientes.cc.cobrar', 'clientes.cc.formalizar', 'clientes.cc.ver'], $this->permissionsOf(1));
         self::assertSame(['clientes.cc.ver', 'viajes.economico.ver'], $this->permissionsOf(2));
         self::assertSame([], $this->permissionsOf(3));
 
         (new CreateCustomerAccounts(Database::forge($this->db)))->up();
-        self::assertSame(['clientes.cc.formalizar', 'clientes.cc.ver'], $this->permissionsOf(1), 'up() es idempotente');
+        self::assertSame(['clientes.cc.cobrar', 'clientes.cc.formalizar', 'clientes.cc.ver'], $this->permissionsOf(1), 'up() es idempotente');
     }
 
     public function testDownRefusesOnceThereAreMovementsAndCleansUpWhenEmpty(): void
@@ -143,6 +148,11 @@ final class CustomerAccountsIntegrationTest extends TestCase
         $migration->down();
         $this->db->resetDataCache();
         self::assertFalse($this->db->tableExists('cliente_cc_cargos'));
+        // El permiso de cobranzas es de la etapa multimoneda (#588).
+        self::assertSame(['clientes.cc.cobrar'], $this->permissionsOf(1));
+
+        (new AddMultimonedaCustomerAccounts(Database::forge($this->db)))->down();
+        $this->db->resetDataCache();
         self::assertSame(0, $this->db->table('permisos')->like('clave', 'clientes.cc', 'after')->countAllResults());
     }
 
@@ -165,7 +175,7 @@ final class CustomerAccountsIntegrationTest extends TestCase
         self::assertEquals(4_284_000, $charge['importe_estimado_ars']);
         self::assertSame('MANUAL', $charge['cotizacion_fuente']);
 
-        $statement = (new GetCustomerStatement($this->readModel(), new CodeIgniterExchangeRateCatalog($this->db)))->execute($this->actor(), 4);
+        $statement = (new GetCustomerStatement($this->readModel(), new CodeIgniterCustomerPaymentReadModel($this->db), new CodeIgniterExchangeRateCatalog($this->db)))->execute($this->actor(), 4);
         self::assertSame(4_418_400.0, $statement['totals']['saldo_ars']);
         self::assertCount(1, $statement['movements']);
         self::assertSame('Viaje #16 · Tramo 1 · Memo autorizado M-77', $statement['movements'][0]['descripcion']);
@@ -183,7 +193,7 @@ final class CustomerAccountsIntegrationTest extends TestCase
         self::assertSame(1, $this->queue()->execute($this->actor())['counts']['PENDIENTE'] - 2, 'El tramo vuelve a pendientes.');
         $this->formalize(9, 'FACTURA_EMITIDA', 2800, 'USD', 1490, '0003-00001234', 'FACTURA_A');
 
-        $statement = (new GetCustomerStatement($this->readModel(), new CodeIgniterExchangeRateCatalog($this->db)))->execute($this->actor(), 4);
+        $statement = (new GetCustomerStatement($this->readModel(), new CodeIgniterCustomerPaymentReadModel($this->db), new CodeIgniterExchangeRateCatalog($this->db)))->execute($this->actor(), 4);
         // Los cargos van con la fecha de su documento (10/11) y el contraasiento
         // con la del día en que se anuló (17/11).
         self::assertSame(['CARGO', 'CARGO', 'ANULACION'], array_column($statement['movements'], 'tipo'));
@@ -312,7 +322,7 @@ final class CustomerAccountsIntegrationTest extends TestCase
         $register->execute($this->actor(), new RegisterOpeningBalanceCommand(7, 'DEBE', new DateTimeImmutable('2026-11-01'), 250_000, 'ARS', null, 'Resumen ERP octubre'));
         $this->formalize(10, 'CIERRE_COMERCIAL_APROBADO', 4_147_000, 'ARS', null);
 
-        $accounts = (new ListCustomerAccounts($this->readModel()))->execute($this->actor());
+        $accounts = (new ListCustomerAccounts($this->readModel(), new CodeIgniterExchangeRateCatalog($this->db)))->execute($this->actor());
         self::assertSame(['Lottus Transportes'], array_column($accounts['rows'], 'nombre'));
         self::assertSame(4_397_000.0, $accounts['totals']['saldo_ars']);
 
