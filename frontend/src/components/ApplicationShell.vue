@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import AppHeader from './AppHeader.vue'
 import AppSidebar from './AppSidebar.vue'
 import MobileTabBar from './MobileTabBar.vue'
+import RouteLines from './RouteLines.vue'
 import LazyChatWidget from '../pages/operations/components/LazyChatWidget.vue'
 import ScrollCta from './ScrollCta.vue'
 import { withFieldShortcuts } from '../ui/fieldShortcuts.js'
@@ -162,7 +163,8 @@ onBeforeUnmount(() => {
     Ir al contenido principal
   </a>
 
-  <div class="workspace-shell min-h-screen bg-surface-subtle">
+  <!-- Marco Vogel desde sm: la barra navy y el marco son la misma superficie; en celular no hay marco. -->
+  <div class="workspace-shell min-h-screen bg-surface-subtle sm:bg-frame">
     <button
       v-if="!desktopNavCollapsed"
       type="button"
@@ -220,13 +222,18 @@ onBeforeUnmount(() => {
       </div>
     </Transition>
 
-    <div class="workspace-content" :inert="sidebarOpen || undefined">
+    <div class="workspace-content sm:p-4" :inert="sidebarOpen || undefined">
+      <!-- overflow-clip recorta las esquinas sin crear un contenedor de scroll: el encabezado sigue siendo sticky. -->
+      <div class="relative min-h-screen overflow-clip bg-surface-subtle sm:min-h-[calc(100vh-2rem)] sm:rounded-panel">
+      <RouteLines />
       <AppHeader
         ref="header"
         class="ui-vt-header"
         :user="props.shell.user"
         :company="props.shell.company"
         :notifications="props.shell.notifications"
+        :equipment-search-url="props.shell.equipmentSearchUrl ?? null"
+        :logout="props.shell.logout"
         :menu-open="sidebarOpen"
         @open-menu="openSidebar"
       >
@@ -243,6 +250,7 @@ onBeforeUnmount(() => {
       >
         <slot />
       </main>
+      </div>
     </div>
   </div>
 
