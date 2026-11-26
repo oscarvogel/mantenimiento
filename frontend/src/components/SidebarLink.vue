@@ -38,9 +38,8 @@ const emit = defineEmits(['navigate', 'icon-error'])
     :class="[
       nested ? 'min-h-10 py-2' : 'min-h-11 py-2.5',
       active ? 'platform-nav-active' : 'text-secondary-100 hover:bg-white/10 hover:text-white',
-      compact ? 'justify-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-300' : '',
+      compact ? 'relative justify-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-300' : '',
     ]"
-    :title="compact ? label : undefined"
     :aria-current="active ? 'page' : undefined"
     @click="emit('navigate')"
   >
@@ -57,6 +56,13 @@ const emit = defineEmits(['navigate', 'icon-error'])
       <!-- Solo los módulos del portal traen descripción: dice qué se hace en cada uno. -->
       <span v-if="!compact && props.item.description" class="mt-0.5 block text-xs font-normal leading-4 text-white/65">{{ props.item.description }}</span>
     </span>
+    <!-- Nombre al instante al pasar el mouse o con teclado; el title nativo tardaba un segundo. -->
+    <span
+      v-if="compact"
+      data-test="rail-tooltip"
+      class="pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 whitespace-nowrap rounded-lg bg-secondary-900 px-3 py-1.5 text-xs font-semibold text-white shadow-card ring-1 ring-white/15 group-hover:block group-focus-visible:block"
+      aria-hidden="true"
+    >{{ label }}</span>
     <span v-if="props.item.badge" :class="compact ? 'sr-only' : 'platform-nav-badge rounded-full px-2 py-0.5 text-xs font-bold leading-4'">{{ props.item.badge }}</span>
   </a>
 </template>

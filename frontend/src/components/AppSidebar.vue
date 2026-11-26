@@ -54,9 +54,9 @@ const railLinks = computed(() => {
   const available = props.navigation.filter((item) => item.href && !item.disabled)
   if (isPlatformNavigation.value || isManagerialNavigation.value) return available
 
+  // Siempre los mismos íconos en el mismo lugar: sumar la página actual los corría.
   const preferred = available.filter((item) => railKeys.has(item.key))
-  const shortcuts = preferred.length > 1 ? preferred : available.slice(0, 6)
-  return [...new Set([...shortcuts, ...available.filter((item) => item.active)])]
+  return preferred.length > 1 ? preferred : available.slice(0, 6)
 })
 
 // The portal and Gerencial are short flat lists; operational modules get sections.
@@ -206,7 +206,8 @@ const openDemoCompany = () => {
       </button>
     </div>
 
-    <nav v-if="collapsed" id="desktop-primary-navigation" aria-label="Navegación principal" class="ui-sidebar-scroll flex-1 overflow-y-auto px-2 py-3">
+    <!-- Sin overflow: el nombre de cada ícono sale por fuera de la barra. -->
+    <nav v-if="collapsed" id="desktop-primary-navigation" aria-label="Navegación principal" class="flex-1 px-2 py-3">
       <ul class="space-y-1">
         <li v-if="!isPlatformNavigation && portalLink">
           <SidebarLink :item="portalLink" label="Volver al portal" :icon="ArrowLeftIcon" compact />

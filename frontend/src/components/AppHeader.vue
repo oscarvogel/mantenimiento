@@ -34,6 +34,11 @@ const props = defineProps({
     type: Object,
     default: null,
   },
+  // Módulo actual; en el portal no hay.
+  moduleName: {
+    type: String,
+    default: null,
+  },
 })
 
 const firstName = computed(() => String(props.user.name ?? '').trim().split(/\s+/)[0] ?? '')
@@ -65,7 +70,10 @@ defineExpose({
     <div class="flex min-w-0 flex-1 items-center gap-3 md:flex-none">
       <span data-test="user-avatar" class="flex size-12 shrink-0 items-center justify-center rounded-full bg-accent-400 text-base font-bold text-secondary-900" aria-hidden="true">{{ user.initials }}</span>
       <div class="min-w-0">
-        <p class="truncate text-lg font-semibold text-ink">Hola, {{ firstName }}</p>
+        <p class="flex min-w-0 items-center gap-2">
+          <span class="truncate text-lg font-semibold text-ink">Hola, {{ firstName }}</span>
+          <span v-if="moduleName" data-test="current-module" class="shrink-0 rounded-pill bg-primary-subtle px-2.5 py-0.5 text-xs font-semibold text-primary">{{ moduleName }}</span>
+        </p>
         <p class="truncate text-xs text-ink-muted">{{ companyLine }}</p>
       </div>
     </div>

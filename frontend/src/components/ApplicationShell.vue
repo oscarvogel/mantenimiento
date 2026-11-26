@@ -20,17 +20,12 @@ const props = defineProps({
   },
 })
 
-const desktopNavStorageKey = 'maintenance.desktop-menu'
-const getDesktopNavCollapsed = () => {
-  try {
-    return window.sessionStorage.getItem(desktopNavStorageKey) !== 'expanded'
-  } catch {
-    return true
-  }
-}
-
 const sidebarOpen = ref(false)
-const desktopNavCollapsed = ref(getDesktopNavCollapsed())
+// Expandida, la barra tapa el contenido: cada página arranca contraída, no se recuerda.
+const desktopNavCollapsed = ref(true)
+// Nombre del módulo en el encabezado: con la barra contraída no hay otra pista de dónde estás.
+const currentModule = computed(() => (props.shell.moduleNavigation ?? [])
+  .find((item) => item.active && item.key !== 'platform-home')?.label ?? null)
 const header = ref(null)
 const mobileDrawer = ref(null)
 const assistantLauncher = ref(null)
@@ -79,11 +74,6 @@ const openSidebar = (trigger) => {
 
 const setDesktopNavCollapsed = (collapsed) => {
   desktopNavCollapsed.value = collapsed
-  try {
-    window.sessionStorage.setItem(desktopNavStorageKey, collapsed ? 'collapsed' : 'expanded')
-  } catch {
-    // El menú sigue funcionando aunque el navegador bloquee el almacenamiento.
-  }
 }
 const toggleDesktopNav = () => setDesktopNavCollapsed(!desktopNavCollapsed.value)
 
@@ -232,6 +222,7 @@ onBeforeUnmount(() => {
         class="ui-vt-header"
         :user="props.shell.user"
         :company="props.shell.company"
+        :module-name="currentModule"
         :notifications="props.shell.notifications"
         :equipment-search-url="props.shell.equipmentSearchUrl ?? null"
         :logout="props.shell.logout"

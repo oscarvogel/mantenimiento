@@ -38,7 +38,19 @@ describe('AppSidebar module navigation', () => {
     const collapsed = mount(AppSidebar, { props: { navigation, logout: null, collapsible: true, collapsed: true } })
     const rail = collapsed.get('a[href="/combustible"]')
     expect(collapsed.text()).not.toContain('Cargas, consumo y faltantes')
-    expect(rail.attributes('title')).toBe('Combustible')
+    expect(rail.get('[data-test="rail-tooltip"]').text()).toBe('Combustible')
+  })
+
+  it('la barra contraída de un módulo muestra siempre los mismos íconos, aunque la página actual no esté entre ellos', () => {
+    const item = (key, label, active = false) => ({ key, label, href: `/${key}`, active })
+    const navigation = [
+      item('dashboard', 'Resumen'), item('equipment', 'Equipos'), item('work-orders', 'Órdenes de trabajo'),
+      item('plans', 'Planes', true), item('suppliers', 'Proveedores'),
+    ]
+    const wrapper = mount(AppSidebar, { props: { navigation, logout: null, collapsible: true, collapsed: true } })
+
+    const hrefs = wrapper.get('#desktop-primary-navigation').findAll('a').map((link) => link.attributes('href'))
+    expect(hrefs).toEqual(['/dashboard', '/equipment', '/work-orders'])
   })
 
   it('muestra el dashboard de viajes como primera opción del módulo', () => {
