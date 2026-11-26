@@ -34,17 +34,12 @@ const attention = computed(() => list(props.data.attention))
 const shortcuts = computed(() => list(props.data.shortcuts))
 const isManagement = computed(() => props.data.profile === 'management')
 const availableCount = computed(() => modules.value.filter((module) => module.state === 'available').length)
-const firstName = computed(() => {
-  const name = typeof props.data.userName === 'string' ? props.data.userName.trim() : ''
-  return name.split(/\s+/)[0] || 'Usuario'
-})
-const weekday = new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date())
-const today = weekday.charAt(0).toUpperCase() + weekday.slice(1)
-const subtitle = computed(() => {
-  if (isManagement.value) return 'Esto es lo que pasa hoy en la flota.'
-  if (shortcuts.value.length) return 'Tu trabajo del día, a un toque.'
-  return 'Elegí el módulo con el que vas a trabajar.'
-})
+
+// Vencidos y próximos son las dos tarjetas grandes; el resto va en la fila compacta.
+const heroKeys = ['overdue', 'due-soon']
+const heroIndicators = computed(() => heroKeys.map((key) => indicators.value.find((item) => item.key === key)).filter(Boolean))
+const miniIndicators = computed(() => indicators.value.filter((item) => !heroKeys.includes(item.key)))
+const plansUrl = computed(() => indicators.value.find((item) => item.key === 'compliance')?.href ?? null)
 
 const indicatorTones = {
   danger: 'text-danger-strong',
@@ -52,6 +47,7 @@ const indicatorTones = {
   success: 'text-success-strong',
   neutral: 'text-ink',
 }
+const heroDots = { danger: 'bg-accent-400', warning: 'bg-warning', success: 'bg-success', neutral: 'bg-ink-subtle' }
 const indicatorValue = (indicator) => indicator.value === null || indicator.value === undefined
   ? null
   : `${formatNumber(indicator.value)}${indicator.unit ? ` ${indicator.unit}` : ''}`
@@ -96,105 +92,127 @@ onBeforeUnmount(() => cardMotionPreference?.revert())
 </script>
 
 <template>
-  <div ref="pageRoot" class="mx-auto max-w-[84rem] space-y-7 pb-8 sm:space-y-9">
-    <header class="flex flex-wrap items-end justify-between gap-x-8 gap-y-3 border-b border-border-subtle pb-5 sm:pb-6">
-      <div>
-        <h1 id="command-center-heading" class="text-3xl font-bold tracking-tight text-ink sm:text-4xl">Hola, {{ firstName }}</h1>
-        <p class="mt-1.5 text-sm text-ink-muted sm:text-base">{{ subtitle }}</p>
-      </div>
-      <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <p class="text-xs font-medium text-ink-muted sm:text-sm">{{ today }}</p>
-        <a v-if="data.globalAdminUrl" :href="data.globalAdminUrl" :class="secondaryButton">
-          <ShieldCheckIcon class="size-5" aria-hidden="true" />
-          Administración global
-        </a>
-      </div>
-    </header>
+  <div ref="pageRoot" class="mx-auto max-w-[84rem] space-y-8 pb-8">
+    <!-- El saludo está en el encabezado del shell; acá queda el título accesible de la página. -->
+    <h1 id="command-center-heading" class="sr-only">Inicio</h1>
 
-    <div
-      v-if="isManagement || indicators.length"
-      class="grid items-start gap-6 lg:gap-7"
-      :class="{ 'xl:grid-cols-[minmax(0,1.18fr)_minmax(0,1fr)]': isManagement && indicators.length }"
-    >
-      <section v-if="isManagement" aria-labelledby="attention-heading" class="min-w-0 rounded-2xl border border-border-subtle bg-surface-raised p-4 sm:p-6">
-        <h2 id="attention-heading" class="text-lg font-bold text-ink">Requiere atención hoy</h2>
-        <ul v-if="attention.length" class="mt-3 divide-y divide-border-subtle">
-          <li v-for="(item, index) in attention" :key="`${item.title}-${index}`">
-            <component
-              :is="item.href ? 'a' : 'div'"
-              :href="item.href ?? undefined"
-              class="flex flex-col items-start gap-2.5 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4"
-              :class="item.href ? 'ui-interactive group -mx-2 rounded-lg px-2 hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus' : ''"
-            >
-              <span class="flex min-w-0 flex-1 flex-col items-start gap-2 sm:basis-60">
-                <span class="shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold" :class="attentionTypes[item.status]?.tone ?? 'bg-surface-muted text-ink-muted'">
-                  {{ uiLabels.humanizeCode(item.statusLabel) }}
-                </span>
-                <span class="min-w-0 [overflow-wrap:anywhere]">
-                  <span class="block font-semibold text-ink">{{ item.title }}</span>
-                  <span class="block text-sm text-ink-muted">{{ item.detail }}</span>
-                </span>
-              </span>
-              <span v-if="item.href" class="inline-flex shrink-0 items-center gap-2 text-sm font-semibold text-primary group-hover:text-primary-hover">
-                <span class="underline underline-offset-4">{{ attentionTypes[item.status]?.action ?? 'Ver detalle' }}</span>
-                <ArrowRightIcon class="size-4 shrink-0" aria-hidden="true" />
-              </span>
-            </component>
-          </li>
-        </ul>
-        <p v-else class="mt-3 flex items-center gap-2 text-sm text-ink-muted">
-          <CheckCircleIcon class="size-5 text-success-strong" aria-hidden="true" />
-          No hay mantenimientos vencidos ni equipos sin lecturas al día.
-        </p>
-      </section>
-
-      <section v-if="indicators.length" aria-labelledby="indicators-heading" class="min-w-0">
-        <h2 id="indicators-heading" class="mb-3 text-lg font-bold text-ink">Indicadores de hoy</h2>
-        <ul class="grid grid-cols-2 gap-2.5 sm:gap-3" :class="{ 'md:grid-cols-4 xl:grid-cols-2': isManagement }">
-          <li v-for="indicator in indicators" :key="indicator.key">
-            <a
-              :href="indicator.href"
-              data-indicator
-              class="ui-interactive group flex h-full flex-col rounded-xl border border-border-subtle bg-surface-raised p-3 hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus sm:p-4"
-            >
-              <span class="min-h-9 text-xs font-medium text-ink-muted sm:min-h-0 sm:text-sm">{{ indicator.key === 'compliance' ? 'Planes preventivos al día' : indicator.label }}</span>
-              <span v-if="indicatorValue(indicator) !== null" class="mt-1 text-2xl font-bold tabular-nums sm:mt-2 sm:text-3xl" :class="indicatorTones[indicator.tone] ?? 'text-ink'">
-                {{ indicatorValue(indicator) }}
-              </span>
-              <span v-else class="mt-1 text-sm font-semibold text-ink-muted sm:mt-2 sm:text-base">Sin datos suficientes</span>
-              <span class="mt-auto inline-flex items-center gap-1 pt-2 text-xs font-semibold text-primary group-hover:text-primary-hover sm:pt-3 sm:text-sm">
-                Ver detalle
-                <ArrowRightIcon class="size-4 shrink-0 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
-              </span>
-            </a>
-          </li>
-        </ul>
-      </section>
+    <div v-if="data.globalAdminUrl" class="flex justify-end">
+      <a :href="data.globalAdminUrl" :class="secondaryButton">
+        <ShieldCheckIcon class="size-5" aria-hidden="true" />
+        Administración global
+      </a>
     </div>
 
+    <section v-if="indicators.length" aria-labelledby="indicators-heading">
+      <div class="mb-3.5 flex items-baseline justify-between gap-3">
+        <h2 id="indicators-heading" class="text-lg font-semibold text-ink">Mantenimiento preventivo</h2>
+        <a v-if="plansUrl" :href="plansUrl" class="text-sm text-ink-muted hover:text-ink">Ver planes</a>
+      </div>
+
+      <div v-if="heroIndicators.length" class="grid gap-4 sm:grid-cols-2">
+        <a
+          v-for="(indicator, index) in heroIndicators"
+          :key="indicator.key"
+          :href="indicator.href"
+          data-test="hero-indicator"
+          class="ui-interactive group relative flex min-h-[172px] flex-col overflow-hidden rounded-card p-6 shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+          :class="index === 0 ? 'bg-surface-inverse text-white' : 'bg-surface-raised text-ink'"
+        >
+          <!-- Trama de puntos decorativa. -->
+          <span class="hero-dots pointer-events-none absolute -right-8 -top-2 h-56 w-64 opacity-[0.12]" aria-hidden="true"></span>
+          <span class="relative text-sm font-medium" :class="index === 0 ? 'text-white/80' : 'text-ink-muted'">{{ indicator.label }}</span>
+          <span
+            v-if="indicatorValue(indicator) !== null"
+            class="relative mt-2 text-5xl font-semibold tabular-nums tracking-tight"
+            :class="index === 0 ? 'text-white' : (indicatorTones[indicator.tone] ?? 'text-ink')"
+          >{{ indicatorValue(indicator) }}</span>
+          <span v-else class="relative mt-2 text-base font-semibold" :class="index === 0 ? 'text-white/80' : 'text-ink-muted'">Sin datos</span>
+          <span class="relative mt-auto flex items-center justify-end gap-1.5 pt-4 text-sm font-semibold" :class="index === 0 ? 'text-white' : 'text-primary'">
+            <span class="mr-auto size-2 rounded-full" :class="heroDots[indicator.tone] ?? 'bg-ink-subtle'" aria-hidden="true"></span>
+            Ver detalle
+            <ArrowRightIcon class="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+          </span>
+        </a>
+      </div>
+
+      <div v-if="miniIndicators.length" class="mt-3.5 grid gap-4 sm:grid-cols-2">
+        <a
+          v-for="indicator in miniIndicators"
+          :key="indicator.key"
+          :href="indicator.href"
+          data-test="mini-indicator"
+          class="ui-interactive flex items-center justify-between gap-3 rounded-[18px] bg-surface-raised px-5 py-3.5 text-sm text-ink-muted shadow-card hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+        >
+          <span>{{ indicator.key === 'compliance' ? 'Planes preventivos al día' : indicator.label }}</span>
+          <b v-if="indicatorValue(indicator) !== null" class="text-xl font-semibold tabular-nums text-ink">{{ indicatorValue(indicator) }}</b>
+          <span v-else class="font-semibold">Sin datos</span>
+        </a>
+      </div>
+    </section>
+
     <section v-if="shortcuts.length" aria-labelledby="shortcuts-heading">
-      <h2 id="shortcuts-heading" class="mb-3 text-lg font-bold text-ink">Tu trabajo de hoy</h2>
-      <ul class="grid gap-3 sm:grid-cols-3">
-        <li v-for="shortcut in shortcuts" :key="shortcut.key">
+      <h2 id="shortcuts-heading" class="sr-only">Tu trabajo de hoy</h2>
+      <ul class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <li v-for="(shortcut, index) in shortcuts" :key="shortcut.key">
           <a
             :href="shortcut.href"
-            class="ui-interactive group flex h-full min-h-24 items-start gap-4 rounded-xl border border-border-subtle bg-surface-raised p-4 hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+            :title="shortcut.description"
+            data-test="shortcut-pill"
+            class="ui-interactive flex h-[58px] items-center gap-3 rounded-[18px] px-2.5 font-semibold shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+            :class="index === 0 ? 'bg-primary-300 text-secondary-900' : 'bg-surface-raised text-ink hover:bg-surface-muted'"
           >
-            <span class="flex size-11 shrink-0 items-center justify-center rounded-lg bg-primary-subtle text-primary" aria-hidden="true">
-              <component :is="shortcutIcons[shortcut.key] ?? ClipboardDocumentCheckIcon" class="size-6" />
+            <span
+              class="flex size-[38px] shrink-0 items-center justify-center rounded-full"
+              :class="index === 0 ? 'bg-white text-secondary-900' : 'bg-secondary-900 text-white dark:bg-neutral-100 dark:text-secondary-900'"
+              aria-hidden="true"
+            >
+              <component :is="shortcutIcons[shortcut.key] ?? ClipboardDocumentCheckIcon" class="size-[18px]" />
             </span>
-            <span>
-              <span class="block font-bold text-ink group-hover:text-primary">{{ shortcut.label }}</span>
-              <span class="mt-1 block text-sm text-ink-muted">{{ shortcut.description }}</span>
-            </span>
+            {{ shortcut.label }}
           </a>
         </li>
       </ul>
     </section>
 
+    <section v-if="isManagement" aria-labelledby="attention-heading">
+      <h2 id="attention-heading" class="mb-3.5 text-lg font-semibold text-ink">Requiere atención hoy</h2>
+      <template v-if="attention.length">
+        <div class="mb-2 hidden grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,0.9fr)_10rem] gap-3 px-5 text-xs text-ink-subtle sm:grid" aria-hidden="true">
+          <span>Equipo</span><span>Motivo</span><span>Estado</span><span></span>
+        </div>
+        <ul class="space-y-2">
+          <li v-for="(item, index) in attention" :key="`${item.title}-${index}`">
+            <component
+              :is="item.href ? 'a' : 'div'"
+              :href="item.href ?? undefined"
+              data-test="attention-row"
+              class="grid min-h-[62px] grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 rounded-[18px] bg-surface-raised px-4 py-3 shadow-card sm:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,0.9fr)_10rem] sm:px-5"
+              :class="item.href ? 'ui-interactive group hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus' : ''"
+            >
+              <span class="min-w-0 font-semibold text-ink [overflow-wrap:anywhere]">{{ item.title }}</span>
+              <span class="order-last col-span-2 min-w-0 text-sm text-ink-muted sm:order-none sm:col-span-1">{{ item.detail }}</span>
+              <span
+                data-test="status-pill"
+                class="w-max rounded-pill px-3 py-1 text-xs font-semibold"
+                :class="attentionTypes[item.status]?.tone ?? 'bg-surface-muted text-ink-muted'"
+              >{{ uiLabels.humanizeCode(item.statusLabel) }}</span>
+              <span v-if="item.href" class="hidden items-center justify-end gap-1.5 text-sm font-semibold text-ink group-hover:text-primary sm:inline-flex">
+                {{ attentionTypes[item.status]?.action ?? 'Ver detalle' }}
+                <ArrowRightIcon class="size-4 shrink-0" aria-hidden="true" />
+              </span>
+            </component>
+          </li>
+        </ul>
+      </template>
+      <p v-else class="flex items-center gap-2 rounded-[18px] bg-surface-raised px-5 py-4 text-sm text-ink-muted shadow-card">
+        <CheckCircleIcon class="size-5 text-success-strong" aria-hidden="true" />
+        No hay mantenimientos vencidos ni equipos sin lecturas al día.
+      </p>
+    </section>
+
     <section aria-labelledby="available-modules-heading">
-      <div class="mb-3 flex flex-wrap items-end justify-between gap-3">
-        <h2 id="available-modules-heading" class="text-lg font-bold text-ink">Módulos</h2>
+      <div class="mb-3.5 flex flex-wrap items-baseline justify-between gap-3">
+        <h2 id="available-modules-heading" class="text-lg font-semibold text-ink">Módulos</h2>
         <p v-if="modules.length" class="text-sm text-ink-muted">
           {{ availableCount }} {{ availableCount === 1 ? 'disponible' : 'disponibles' }} de {{ modules.length }}
         </p>
@@ -206,19 +224,16 @@ onBeforeUnmount(() => cardMotionPreference?.revert())
             v-if="module.state === 'available' && module.href"
             :href="module.href"
             data-module-card
-            class="ui-interactive group flex h-full items-start gap-3.5 rounded-xl border border-border-subtle bg-surface-raised p-4 hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus sm:p-5"
+            class="ui-interactive group flex items-center gap-3 rounded-[18px] bg-surface-raised px-4 py-3.5 shadow-card hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
           >
-            <span class="flex size-11 shrink-0 items-center justify-center rounded-lg bg-primary-subtle text-primary" aria-hidden="true">
-              <component :is="moduleIconFor(module.icon)" class="size-6" />
+            <span class="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary-subtle text-primary" aria-hidden="true">
+              <component :is="moduleIconFor(module.icon)" class="size-5" />
             </span>
-            <div class="flex min-w-0 flex-1 flex-col self-stretch">
-              <h3 class="font-bold text-ink">{{ module.label }}</h3>
-              <p class="mb-2 mt-1 text-sm text-ink-muted">{{ module.description }}</p>
-              <span class="mt-auto inline-flex items-center gap-1.5 text-sm font-semibold text-primary group-hover:text-primary-hover">
-                Ingresar
-                <ArrowRightIcon class="size-4 transition-transform group-hover:translate-x-1" aria-hidden="true" />
-              </span>
-            </div>
+            <span class="min-w-0 flex-1">
+              <span class="block font-semibold text-ink">{{ module.label }}</span>
+              <span class="block truncate text-xs text-ink-subtle">{{ module.description }}</span>
+            </span>
+            <ArrowRightIcon class="size-4 shrink-0 text-ink-subtle transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
           </a>
 
           <div
@@ -227,30 +242,35 @@ onBeforeUnmount(() => cardMotionPreference?.revert())
             aria-disabled="true"
             :aria-label="`${module.label}: ${uiLabels.humanizeCode(module.status)}`"
             data-module-card
-            class="module-card--unavailable flex h-full items-start gap-3.5 rounded-xl border border-dashed border-border bg-surface-subtle p-4 sm:p-5"
+            class="module-card--unavailable flex items-center gap-3 rounded-[18px] border border-dashed border-border px-4 py-3.5"
           >
-            <span class="flex size-11 shrink-0 items-center justify-center rounded-lg bg-surface-muted text-ink-muted" aria-hidden="true">
-              <component :is="moduleIconFor(module.icon)" class="size-6" />
+            <span class="flex size-10 shrink-0 items-center justify-center rounded-full bg-surface-muted text-ink-muted" aria-hidden="true">
+              <component :is="moduleIconFor(module.icon)" class="size-5" />
             </span>
-            <div class="min-w-0">
-              <h3 class="font-bold text-ink">{{ module.label }}</h3>
-              <p class="mt-1 text-sm text-ink-muted">{{ module.description }}</p>
+            <span class="min-w-0 flex-1">
+              <span class="block font-semibold text-ink">{{ module.label }}</span>
               <span
-                class="module-status--pending mt-2 inline-block rounded-md px-2 py-0.5 text-xs font-semibold"
+                class="module-status--pending mt-1 inline-block rounded-pill px-2 py-0.5 text-xs font-semibold"
                 :class="module.state === 'restricted' ? 'bg-warning-subtle text-warning-foreground' : 'bg-surface-muted text-ink-muted'"
-              >
-                {{ uiLabels.humanizeCode(module.status) }}
-              </span>
-              <p v-if="module.state === 'restricted'" class="mt-2 text-sm text-ink-muted">Consultá a tu administrador</p>
-            </div>
+              >{{ uiLabels.humanizeCode(module.status) }}</span>
+              <span v-if="module.state === 'restricted'" class="mt-1 block text-xs text-ink-muted">Consultá a tu administrador</span>
+            </span>
           </div>
         </template>
       </div>
 
-      <div v-else class="rounded-2xl border border-border bg-surface-raised p-6 text-ink-muted">
+      <div v-else class="rounded-card bg-surface-raised p-6 text-ink-muted shadow-card">
         <h3 class="font-semibold text-ink">Sin módulos habilitados para tu cuenta</h3>
         <p class="mt-1 text-sm">Consultá al administrador de tu empresa para conocer tus accesos.</p>
       </div>
     </section>
   </div>
 </template>
+
+<style scoped>
+.hero-dots {
+  background-image: radial-gradient(currentColor 2px, transparent 2.2px);
+  background-size: 11px 11px;
+  mask-image: radial-gradient(closest-side, #000 55%, transparent);
+}
+</style>
