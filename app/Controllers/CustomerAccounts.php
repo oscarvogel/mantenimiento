@@ -10,6 +10,7 @@ use App\Application\CustomerAccounts\PaymentImputationInput;
 use App\Application\CustomerAccounts\RegisterCustomerPaymentCommand;
 use App\Application\CustomerAccounts\RegisterOpeningBalanceCommand;
 use App\Application\Identity\ActorContext;
+use App\Domain\CustomerAccounts\Money;
 use App\Infrastructure\Identity\SessionActorContext;
 use CodeIgniter\HTTP\RedirectResponse;
 use DateTimeImmutable;
@@ -142,7 +143,7 @@ final class CustomerAccounts extends BaseController
                 $customerId,
                 $this->requiredDate('fecha', 'La fecha del cobro'),
                 strtoupper(trim((string) $this->request->getPost('moneda'))),
-                $this->requiredAmount('importe'),
+                $this->requiredAmountText('importe'),
                 $this->optionalRate(),
                 strtoupper(trim((string) $this->request->getPost('medio'))),
                 $this->text('referencia', 100),
@@ -281,6 +282,25 @@ final class CustomerAccounts extends BaseController
         }
 
         return (float) $raw;
+    }
+
+    /**
+     * Importe exacto como texto decimal.
+     *
+     * El cobro no puede pasar por un float: el dominio calcula en centavos
+     * enteros y un importe con cuatro decimales se perdería en el camino.
+     */
+    private function requiredAmountText(string $key): string
+    {
+        $raw = str_replace(',', '.', trim((string) $this->request->getPost($key)));
+        if ($raw === '' || preg_match('/^\d+(\.\d{1,4})?$/', $raw) !== 1) {
+            throw new DomainException('El importe debe ser un número mayor que cero.');
+        }
+        if (Money::toMinor($raw) <= 0) {
+            throw new DomainException('El importe debe ser mayor que cero.');
+        }
+
+        return $raw;
     }
 
     private function currency(): string
