@@ -1263,6 +1263,17 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
         );
     }
 
+    public static function fleetAvailability(bool $getShared = true): \App\Application\Platform\GetFleetAvailability
+    {
+        if ($getShared) {
+            return static::getSharedInstance('fleetAvailability');
+        }
+
+        return new \App\Application\Platform\GetFleetAvailability(
+            new \App\Infrastructure\Platform\CodeIgniterFleetAvailabilityReadModel(db_connect()),
+        );
+    }
+
     public static function tripMasterCatalog(bool $getShared = true): \App\Application\TripMasters\TripMasterCatalog
     {
         if ($getShared) {
