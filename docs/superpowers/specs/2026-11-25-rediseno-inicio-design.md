@@ -47,7 +47,7 @@ pantalla por pantalla.
 
 ### Shell (todas las pantallas)
 
-- **Marco**: `secondary-900` (oscuro: `secondary-800`), radio 40 px; lienzo `surface-subtle`
+- **Marco**: token `frame` = `surface-inverse` (claro `secondary-900`, oscuro `secondary-600`), radio 40 px; lienzo `surface-subtle`
   con radio 32 px y líneas de ruta muy tenues de fondo (SVG decorativo, `aria-hidden`).
 - **Celular** (< 640 px): sin marco ni barra lateral; contenido a ancho completo; se mantiene
   `MobileTabBar` actual.

@@ -73,6 +73,8 @@
   --surface-muted: var(--neutral-200);
   --surface-raised: 255 255 255;
   --surface-inverse: var(--secondary-900);
+  /* Marco del shell: sigue a surface-inverse para despegarse del lienzo también en oscuro. */
+  --frame: var(--surface-inverse);
   --ink: var(--secondary-900);
   --ink-strong: var(--secondary-900);
   --ink-muted: var(--neutral-600);

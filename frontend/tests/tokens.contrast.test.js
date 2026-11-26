@@ -64,6 +64,10 @@ const pairs = [
   ['ink-inverse', 'surface-inverse', TEXT],
   ['border-focus', 'surface', NON_TEXT],
   ['surface-inverse', 'surface-subtle', SURFACE_GAP],
+  // Marco del shell: texto y marca activa sobre el marino, y el lienzo debe despegarse del marco.
+  ['ink-inverse', 'frame', TEXT],
+  ['accent-400', 'frame', NON_TEXT],
+  ['surface-subtle', 'frame', SURFACE_GAP],
 ]
 
 // The navy sidebar uses fixed steps: secondary-900 in light, surface-inverse in dark.

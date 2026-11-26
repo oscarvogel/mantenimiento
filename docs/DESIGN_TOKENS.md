@@ -25,9 +25,21 @@ que apunta a otro paso de la misma escala.
 | `surface-subtle` (fondo de página) | neutral-100 | neutral-900 |
 | `surface` / `surface-raised` | blanco | neutral-800 |
 | `surface-inverse` (barra lateral oscura) | secondary-900 | secondary-600 |
+| `frame` (marco del shell) | secondary-900 | secondary-600 (sigue a `surface-inverse`) |
 | `ink` | secondary-900 | neutral-200 |
 | `ink-muted` / `ink-subtle` | neutral-600 / 500 | neutral-300 / 400 |
 | `border` | neutral-300 | neutral-600 |
+
+## Radios
+
+| Clase | Valor | Para qué |
+|---|---|---|
+| `rounded-pill` | 9999px | Botones y accesos en píldora, búsqueda, estados |
+| `rounded-card` | 24px | Tarjetas de indicador |
+| `rounded-panel` | 32px | Lienzo del shell y paneles grandes |
+| `rounded-frame` | 40px | Marco marino del shell |
+
+La sombra de tarjeta es `shadow-card`. El marco no tiene sombra.
 
 ## Reglas
 

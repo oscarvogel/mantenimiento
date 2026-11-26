@@ -35,6 +35,7 @@ export default {
           raised: 'rgb(var(--surface-raised) / <alpha-value>)',
           inverse: 'rgb(var(--surface-inverse) / <alpha-value>)',
         },
+        frame: 'rgb(var(--frame) / <alpha-value>)',
         ink: {
           DEFAULT: 'rgb(var(--ink) / <alpha-value>)',
           strong: 'rgb(var(--ink-strong) / <alpha-value>)',
@@ -83,6 +84,13 @@ export default {
           scheduled: 'rgb(var(--maintenance-scheduled) / <alpha-value>)',
           inactive: 'rgb(var(--maintenance-inactive) / <alpha-value>)',
         },
+      },
+      // Shell rediseñado (docs/DESIGN_TOKENS.md, "Radios").
+      borderRadius: {
+        pill: '9999px',
+        card: '24px',
+        panel: '32px',
+        frame: '40px',
       },
       boxShadow: {
         card: '0 1px 2px rgb(var(--shadow-rgb) / 0.04), 0 8px 24px rgb(var(--shadow-rgb) / 0.05)',
