@@ -1,2 +1,8 @@
 data/catalogos-localidades/**/*.csv text eol=crlf
 data/catalogos-localidades/**/*.csv.gz binary
+
+# Frontend build inputs: deterministic LF for cross-platform Vite/Vue builds (#591).
+frontend/**/*.{vue,js,mjs,cjs,ts,tsx,jsx,json,css,scss,html,svg,md,yml,yaml} text eol=lf
+frontend/.env* text eol=lf
+frontend/.gitignore text eol=lf
+frontend/.npmrc text eol=lf
