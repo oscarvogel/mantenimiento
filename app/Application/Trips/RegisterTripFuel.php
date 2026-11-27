@@ -12,7 +12,6 @@ use App\Application\Trips\Port\TripLegRepository;
 use App\Application\Trips\Port\TripsUnitOfWork;
 use App\Domain\Trips\Trip;
 use App\Domain\Trips\TripFuelLoad;
-use App\Domain\Trips\TripMoney;
 use DomainException;
 
 final class RegisterTripFuel
@@ -33,13 +32,6 @@ final class RegisterTripFuel
         if ($branchIds === []) {
             throw new DomainException('El viaje solicitado no existe o no está autorizado.');
         }
-        if (! $this->directory->currencyExists($command->currency)) {
-            throw new DomainException('La moneda elegida no está disponible.');
-        }
-        if ($command->exchangeRate <= 0) {
-            throw new DomainException('La cotización debe ser mayor que cero.');
-        }
-
         return $this->unitOfWork->transactional(function () use ($actor, $command, $companyId, $branchIds): int {
             $trip = $this->trips->findForUpdate($companyId, $branchIds, $command->tripId);
             if ($trip === null) {
@@ -52,10 +44,19 @@ final class RegisterTripFuel
                 throw new DomainException('El tramo elegido no pertenece al viaje.');
             }
 
+            $money = $command->amount === null ? null : TripMoneyRules::resolve(
+                $this->directory,
+                $companyId,
+                $command->amount,
+                $command->currency,
+                $command->exchangeRate,
+                $command->confirmForeignRateOne,
+            );
+
             $load = new TripFuelLoad(
                 $command->date,
                 $command->liters,
-                $command->amount === null ? null : new TripMoney($command->amount, $command->currency, $command->exchangeRate),
+                $money,
                 $command->odometer,
                 $command->station,
                 $command->receipt,

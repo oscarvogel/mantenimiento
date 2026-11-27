@@ -370,12 +370,111 @@ const expenseCategoryId = ref('')
 const earningConceptId = ref('')
 const expenseForm = ref(null)
 const earningForm = ref(null)
+const fuelForm = ref(null)
+const cashForm = ref(null)
+const otherEarningForm = ref(null)
+const entryMoney = reactive({ currency: 'ARS', rate: '1', amount: '' })
+const money = (value, currency = 'ARS') => `${currency} ${Number(value ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+const parseRate = (value) => {
+  const raw = String(value ?? '').trim().replace(',', '.')
+  if (raw === '' || !Number.isFinite(Number(raw))) return null
+  return Number(raw)
+}
+const parseAmount = (value) => {
+  const raw = String(value ?? '').trim().replace(',', '.')
+  if (raw === '' || !Number.isFinite(Number(raw))) return null
+  return Number(raw)
+}
+const currencyRate = (code) => {
+  const rate = rateFor(code)
+  const parsed = parseRate(rate)
+  return parsed !== null && parsed > 0 ? parsed : null
+}
+const syncEntryMoney = (entry = null) => {
+  const currency = String(entry?.moneda ?? 'ARS').toUpperCase()
+  const catalogRate = currencyRate(currency)
+  entryMoney.currency = currency
+  entryMoney.amount = entry?.importe ?? entry?.amount ?? ''
+  if (currency === 'ARS') {
+    entryMoney.rate = '1'
+    return
+  }
+  const existing = parseRate(entry?.cotizacion)
+  entryMoney.rate = existing !== null && existing > 0 ? String(entry.cotizacion) : (catalogRate !== null ? String(catalogRate) : '')
+}
+const onEntryCurrencyChange = (event) => {
+  const currency = String(event?.target?.value ?? 'ARS').toUpperCase()
+  entryMoney.currency = currency
+  if (currency === 'ARS') {
+    entryMoney.rate = '1'
+    return
+  }
+  const catalogRate = currencyRate(currency)
+  entryMoney.rate = catalogRate !== null ? String(catalogRate) : ''
+}
+const onEntryRateInput = (event) => { entryMoney.rate = String(event?.target?.value ?? '') }
+const onEntryAmountInput = (event) => { entryMoney.amount = String(event?.target?.value ?? '') }
+const entryRateDisabled = computed(() => entryMoney.currency === 'ARS')
+const entryEquivalentArs = computed(() => {
+  const amount = parseAmount(entryMoney.amount)
+  const rate = entryMoney.currency === 'ARS' ? 1 : parseRate(entryMoney.rate)
+  if (amount === null || rate === null || rate <= 0) return null
+  return amount * rate
+})
+const needsForeignRateOneConfirmation = (currency, rate) => currency !== 'ARS' && rate !== null && Math.abs(rate - 1) < 0.0000005
+const confirmForeignRateOne = async (form) => {
+  const currency = String(form?.querySelector('[name="moneda"]')?.value ?? 'ARS').toUpperCase()
+  const rate = parseRate(form?.querySelector('[name="cotizacion"]')?.value)
+  const confirmInput = form?.querySelector('input[name="confirma_cotizacion_uno"]')
+  if (confirmInput) confirmInput.value = '0'
+  if (!needsForeignRateOneConfirmation(currency, rate)) return true
+  const ok = await alerts.confirm({
+    title: 'Confirmar cotización',
+    message: `Ingresaste cotización 1 para ${currency}. Si es correcta, se guardará con ese valor. ¿Querés continuar?`,
+    confirmLabel: 'Guardar con cotización 1',
+    tone: 'warning',
+  })
+  if (ok && confirmInput) confirmInput.value = '1'
+  return ok
+}
+const monetaryEntryChanged = (form) => {
+  if (!editingEntry.value) return false
+  const entry = editingEntry.value
+  const amount = parseAmount(form?.querySelector('[name="importe"]')?.value)
+  const currency = String(form?.querySelector('[name="moneda"]')?.value ?? 'ARS').toUpperCase()
+  const rate = currency === 'ARS' ? 1 : parseRate(form?.querySelector('[name="cotizacion"]')?.value)
+  const curAmount = parseAmount(entry?.importe)
+  const curCurrency = String(entry?.moneda ?? 'ARS').toUpperCase()
+  const curRate = parseRate(entry?.cotizacion)
+  if (amount !== null && curAmount !== null && Math.abs(amount - curAmount) > 0.00005) return true
+  if (currency !== curCurrency) return true
+  if (rate !== null && curRate !== null && Math.abs(rate - curRate) > 0.0000005) return true
+  if ((rate === null) !== (curRate === null)) return true
+  return false
+}
+const submitEntryForm = async (event) => {
+  const form = event.currentTarget
+  const reasonInput = form?.querySelector('input[name="motivo_cambio"]')
+  if (reasonInput) {
+    const required = monetaryEntryChanged(form)
+    reasonInput.required = required
+    if (!required) reasonInput.value = reasonInput.value.trim()
+    if (required && !String(reasonInput.value ?? '').trim()) {
+      event.preventDefault()
+      reasonInput.reportValidity()
+      return
+    }
+  }
+  if (await confirmForeignRateOne(form)) return
+  event.preventDefault()
+}
 const openEntryModal = (type) => {
   editingEntry.value = null
   activeEntryModal.value = type
   expenseConceptId.value = ''
   expenseCategoryId.value = ''
   earningConceptId.value = ''
+  syncEntryMoney(null)
   nextTick(() => entryDialog.value?.showModal())
 }
 const openEditModal = (type, entry) => {
@@ -384,6 +483,7 @@ const openEditModal = (type, entry) => {
   expenseConceptId.value = entry?.concepto_id ?? ''
   expenseCategoryId.value = entry?.categoria_id ?? ''
   earningConceptId.value = entry?.concepto_id ?? ''
+  syncEntryMoney(entry)
   nextTick(() => entryDialog.value?.showModal())
 }
 const movementUrl = (type, id, remove = false) => {
@@ -608,7 +708,6 @@ const legDates = (leg) => {
   return '—'
 }
 const number = (value) => value === null || value === undefined || value === '' ? '—' : Number(value).toLocaleString('es-AR')
-const money = (value, currency = 'ARS') => `${currency} ${Number(value ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const moneyOrNoData = (value) => value === null || value === undefined ? 'Sin datos' : money(value)
 // El origen del porcentaje importa: si vino del valor por defecto de la
 // empresa, el chofer todavia no tiene un acuerdo propio cargado.
@@ -1306,35 +1405,39 @@ const facts = computed(() => {
           <button type="button" aria-label="Cerrar" @click="entryDialog?.close()" class="grid size-9 shrink-0 place-items-center rounded-lg text-ink-muted hover:bg-surface-subtle hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">×</button>
         </div>
 
-        <form v-if="activeEntryModal === 'fuel'" method="post" :action="editingEntry ? movementUrl('fuel', editingEntry.id) : data.links?.fuel">
+        <form v-if="activeEntryModal === 'fuel'" ref="fuelForm" method="post" :action="editingEntry ? movementUrl('fuel', editingEntry.id) : data.links?.fuel" @submit="submitEntryForm">
           <input type="hidden" :name="csrf.name" :value="csrf.hash" />
-          <p class="text-sm text-ink-muted">Los litros y el odómetro permiten calcular el consumo del viaje. Si todavía no tenés el precio, dejá el importe vacío: la carga queda en «Combustible sin precio» para completarla después.</p>
+          <input type="hidden" name="confirma_cotizacion_uno" value="0" />
+          <p class="text-sm text-ink-muted">Los litros y el odómetro permiten calcular el consumo del viaje. Si todavía no tenés el precio, dejá el importe vacío: la carga queda en “Combustible sin precio” para completarla después.</p>
           <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Fecha y hora</span><input type="datetime-local" name="fecha" :value="editingEntry ? inputDateTime(editingEntry.fecha) : nowLocal()" required :class="fieldClass" /></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Litros</span><input type="number" name="litros" min="0.01" step="0.01" :value="editingEntry?.litros ?? ''" required :class="fieldClass" /></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Importe (opcional)</span><input type="number" name="importe" min="0.01" step="0.01" :value="editingEntry?.importe ?? ''" placeholder="Sin precio todavía" :class="fieldClass" data-fuel-amount /></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select name="moneda" :value="editingEntry?.moneda ?? 'ARS'" :class="fieldClass" @change="applyRateFromSelect"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }} · {{ currency.label }}</option></select></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cotización a ARS</span><input type="number" name="cotizacion" min="0.000001" step="0.000001" :value="editingEntry?.cotizacion ?? 1" :class="fieldClass" /></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Importe (opcional)</span><input type="number" name="importe" min="0.01" step="0.01" :value="entryMoney.amount" placeholder="Sin precio todavía" :class="fieldClass" data-fuel-amount @input="onEntryAmountInput" /></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select name="moneda" :value="entryMoney.currency" :class="fieldClass" @change="onEntryCurrencyChange"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }} · {{ currency.label }}</option></select></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cotización a ARS</span><input type="number" name="cotizacion" min="0.000001" step="0.000001" :value="entryMoney.rate" :disabled="entryRateDisabled" :required="entryMoney.currency !== 'ARS'" :class="fieldClass" @input="onEntryRateInput" /><span v-if="entryMoney.currency !== 'ARS' && !currencyRate(entryMoney.currency)" class="mt-1 block text-xs text-warning-strong">No hay cotización configurada para esta empresa. Ingresala manualmente.</span></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Odómetro</span><input type="number" name="kilometraje" min="1" step="1" :value="editingEntry?.kilometraje ?? ''" :class="fieldClass" /></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Estación</span><input type="text" name="estacion" maxlength="120" :value="editingEntry?.estacion ?? ''" :class="fieldClass" /></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Tramo (opcional)</span><select name="tramo_id" :value="editingEntry?.tramo_id ?? ''" :class="fieldClass"><option value="">Todo el viaje</option><option v-for="leg in legs" :key="leg.id" :value="leg.id">{{ leg.orden }} · {{ leg.origen }} → {{ leg.destino }}</option></select></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Comprobante</span><input type="text" name="comprobante" maxlength="80" :value="editingEntry?.comprobante ?? ''" :class="fieldClass" /></label>
             <label class="block sm:col-span-2 lg:col-span-3"><span class="mb-1 block text-xs font-semibold text-ink-muted">Observaciones</span><input type="text" name="observaciones" maxlength="500" :value="editingEntry?.observaciones ?? ''" :class="fieldClass" /></label>
           </div>
+          <p v-if="entryEquivalentArs !== null" class="mt-3 text-sm font-semibold text-ink">Equivalente: {{ money(entryEquivalentArs, 'ARS') }}</p>
+          <label v-if="editingEntry" class="mt-4 block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Motivo del cambio</span><input type="text" name="motivo_cambio" maxlength="500" :class="fieldClass" placeholder="Explicá por qué corregís este movimiento" /><span class="mt-1 block text-xs text-ink-muted">Obligatorio solo si cambiás importe, moneda o cotización.</span></label>
           <div class="mt-5 flex justify-end gap-2 border-t border-border-subtle pt-4"><button type="button" @click="entryDialog?.close()" :class="secondaryButton">Volver</button><button type="submit" :class="primaryButton">{{ editingEntry ? 'Guardar cambios' : 'Guardar combustible' }}</button></div>
         </form>
 
-        <form v-else-if="activeEntryModal === 'expense'" ref="expenseForm" method="post" :action="editingEntry ? movementUrl('expense', editingEntry.id) : data.links?.expense" data-concept-kind="expense">
+        <form v-else-if="activeEntryModal === 'expense'" ref="expenseForm" method="post" :action="editingEntry ? movementUrl('expense', editingEntry.id) : data.links?.expense" data-concept-kind="expense" @submit="submitEntryForm">
           <input type="hidden" :name="csrf.name" :value="csrf.hash" />
+          <input type="hidden" name="confirma_cotizacion_uno" value="0" />
           <p class="text-sm text-ink-muted">Peajes, viáticos, carga/descarga y otros gastos del viaje. Si elegís un concepto, podés calcular el importe por cantidad.</p>
           <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Categoría</span><AutocompleteSelect v-model="expenseCategoryId" name="categoria_id" :options="expenseCategoryOptions" placeholder="Buscá o escribí una categoría" :allow-create="canCreateExpenseCategories" empty-label="No hay categorías con ese nombre" @create="(name) => openCategoryModal(name)" /><span v-if="canCreateExpenseCategories" class="mt-1 block text-xs text-ink-muted">Si no existe, escribila y usé “Dar de alta” para crearla sin salir del viaje.</span></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Concepto del catálogo</span><AutocompleteSelect v-model="expenseConceptId" name="concepto_id" :options="expenseConceptOptions" placeholder="Buscá o escribí un concepto" :allow-create="canCreateConcepts" empty-label="No hay conceptos con ese nombre" @update:model-value="(value) => applyConceptToForm(expenseForm, value)" @create="(name) => openConceptModal(name, 'expense')" /><span v-if="canCreateConcepts" class="mt-1 block text-xs text-ink-muted">Si no existe, escribilo y usá «Dar de alta» para crearlo sin salir del viaje.</span></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Categoría</span><AutocompleteSelect v-model="expenseCategoryId" name="categoria_id" :options="expenseCategoryOptions" placeholder="Buscá o escribí una categoría" :allow-create="canCreateExpenseCategories" empty-label="No hay categorías con ese nombre" @create="(name) => openCategoryModal(name)" /><span v-if="canCreateExpenseCategories" class="mt-1 block text-xs text-ink-muted">Si no existe, escribila y usá "Dar de alta" para crearla sin salir del viaje.</span></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Concepto del catálogo</span><AutocompleteSelect v-model="expenseConceptId" name="concepto_id" :options="expenseConceptOptions" placeholder="Buscá o escribí un concepto" :allow-create="canCreateConcepts" empty-label="No hay conceptos con ese nombre" @update:model-value="(value) => applyConceptToForm(expenseForm, value)" @create="(name) => openConceptModal(name, 'expense')" /><span v-if="canCreateConcepts" class="mt-1 block text-xs text-ink-muted">Si no existe, escribilo y usá “Dar de alta” para crearlo sin salir del viaje.</span></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cantidad</span><input type="number" name="cantidad" min="0.01" step="0.01" :value="editingEntry?.cantidad ?? 1" :class="fieldClass" @input="applyConceptToForm(expenseForm, expenseConceptId)" /></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Fecha y hora</span><input type="datetime-local" name="fecha" :value="editingEntry ? inputDateTime(editingEntry.fecha) : nowLocal()" required :class="fieldClass" /></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Importe</span><input type="number" name="importe" min="0.01" step="0.01" :value="editingEntry?.importe ?? ''" required :class="fieldClass" /></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select name="moneda" :value="editingEntry?.moneda ?? 'ARS'" :class="fieldClass" @change="applyRateFromSelect"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }} · {{ currency.label }}</option></select></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cotización a ARS</span><input type="number" name="cotizacion" min="0.000001" step="0.000001" :value="editingEntry?.cotizacion ?? 1" :class="fieldClass" /></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Importe</span><input type="number" name="importe" min="0.01" step="0.01" :value="entryMoney.amount" required :class="fieldClass" @input="onEntryAmountInput" /></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select name="moneda" :value="entryMoney.currency" :class="fieldClass" @change="onEntryCurrencyChange"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }} · {{ currency.label }}</option></select></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cotización a ARS</span><input type="number" name="cotizacion" min="0.000001" step="0.000001" :value="entryMoney.rate" :disabled="entryRateDisabled" :required="entryMoney.currency !== 'ARS'" :class="fieldClass" @input="onEntryRateInput" /><span v-if="entryMoney.currency !== 'ARS' && !currencyRate(entryMoney.currency)" class="mt-1 block text-xs text-warning-strong">No hay cotización configurada para esta empresa. Ingresala manualmente.</span></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Medio de pago</span><select name="medio_pago_id" :value="editingEntry?.medio_pago_id ?? ''" :class="fieldClass"><option value="">Sin medio</option><option v-for="method in options.paymentMethods" :key="method.id" :value="method.id">{{ method.label }}</option></select></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Tramo (opcional)</span><select name="tramo_id" :value="editingEntry?.tramo_id ?? ''" :class="fieldClass"><option value="">Todo el viaje</option><option v-for="leg in legs" :key="leg.id" :value="leg.id">{{ leg.orden }} · {{ leg.origen }} → {{ leg.destino }}</option></select></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Pagado por</span><select name="pagado_por" :value="editingEntry?.pagado_por ?? defaultExpensePayer" :class="fieldClass"><option value="EMPRESA">Empresa</option><option value="CHOFER">Chofer (a reintegrar)</option><option value="CAJA">Caja del chofer</option></select><span class="mt-1 block text-xs text-ink-muted">{{ expensePayerHint }}</span></label>
@@ -1342,25 +1445,30 @@ const facts = computed(() => {
             <label class="block sm:col-span-2 lg:col-span-3"><span class="mb-1 block text-xs font-semibold text-ink-muted">Observaciones</span><input type="text" name="observaciones" maxlength="500" :value="editingEntry?.observaciones ?? ''" :class="fieldClass" /></label>
           </div>
           <p class="mt-2 text-xs text-ink-muted">Si el concepto no permite editar el importe, se calcula como cantidad × importe unitario.</p>
+          <p v-if="entryEquivalentArs !== null" class="mt-2 text-sm font-semibold text-ink">Equivalente: {{ money(entryEquivalentArs, 'ARS') }}</p>
+          <label v-if="editingEntry" class="mt-4 block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Motivo del cambio</span><input type="text" name="motivo_cambio" maxlength="500" :class="fieldClass" placeholder="Explicá por qué corregís este movimiento" /><span class="mt-1 block text-xs text-ink-muted">Obligatorio solo si cambiás importe, moneda o cotización.</span></label>
           <div class="mt-5 flex justify-end gap-2 border-t border-border-subtle pt-4"><button type="button" @click="entryDialog?.close()" :class="secondaryButton">Volver</button><button type="submit" :class="primaryButton">{{ editingEntry ? 'Guardar cambios' : 'Guardar gasto' }}</button></div>
         </form>
 
-        <form v-else-if="activeEntryModal === 'earning'" ref="earningForm" method="post" :action="editingEntry ? movementUrl('earning', editingEntry.id) : data.links?.earnings" data-concept-kind="earning">
+        <form v-else-if="activeEntryModal === 'earning'" ref="earningForm" method="post" :action="editingEntry ? movementUrl('earning', editingEntry.id) : data.links?.earnings" data-concept-kind="earning" @submit="submitEntryForm">
           <input type="hidden" :name="csrf.name" :value="csrf.hash" />
+          <input type="hidden" name="confirma_cotizacion_uno" value="0" />
           <p class="text-sm text-ink-muted">Estadías y otros haberes del chofer. Elegí un concepto para calcular el importe por cantidad.</p>
           <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <label v-if="driverOptions.length > 1" class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Chofer</span><select name="empleado_id" :value="editingEntry?.empleado_id ?? driverOptions[0]?.value" :class="fieldClass"><option v-for="driver in driverOptions" :key="driver.value" :value="driver.value">{{ driver.label }}</option></select></label>
             <input v-else type="hidden" name="empleado_id" :value="editingEntry?.empleado_id ?? driverOptions[0]?.value ?? ''">
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Fecha</span><input type="date" name="fecha" :value="editingEntry?.fecha ?? today" required :class="fieldClass" /></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Concepto del catálogo</span><AutocompleteSelect v-model="earningConceptId" name="concepto_id" :options="earningConceptOptions" placeholder="Buscá o escribí un concepto" :allow-create="canCreateConcepts" empty-label="No hay conceptos con ese nombre" @update:model-value="(value) => applyConceptToForm(earningForm, value)" @create="(name) => openConceptModal(name, 'earning')" /><span v-if="canCreateConcepts" class="mt-1 block text-xs text-ink-muted">Si no existe, escribilo y usá «Dar de alta» para crearlo sin salir del viaje.</span></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Concepto del catálogo</span><AutocompleteSelect v-model="earningConceptId" name="concepto_id" :options="earningConceptOptions" placeholder="Buscá o escribí un concepto" :allow-create="canCreateConcepts" empty-label="No hay conceptos con ese nombre" @update:model-value="(value) => applyConceptToForm(earningForm, value)" @create="(name) => openConceptModal(name, 'earning')" /><span v-if="canCreateConcepts" class="mt-1 block text-xs text-ink-muted">Si no existe, escribilo y usá “Dar de alta” para crearlo sin salir del viaje.</span></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cantidad (días o unidades)</span><input type="number" name="cantidad" min="0.01" step="0.01" :value="editingEntry?.cantidad ?? 1" :class="fieldClass" @input="applyConceptToForm(earningForm, earningConceptId)" /></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Importe</span><input type="number" name="importe" min="0.01" step="0.01" :value="editingEntry?.importe ?? ''" required :class="fieldClass" /></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select name="moneda" :value="editingEntry?.moneda ?? 'ARS'" :class="fieldClass"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }} · {{ currency.label }}</option></select></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cotización a ARS</span><input type="number" name="cotizacion" min="0.000001" step="0.000001" :value="editingEntry?.cotizacion ?? 1" :class="fieldClass" /></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Importe</span><input type="number" name="importe" min="0.01" step="0.01" :value="entryMoney.amount" required :class="fieldClass" @input="onEntryAmountInput" /></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select name="moneda" :value="entryMoney.currency" :class="fieldClass" @change="onEntryCurrencyChange"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }} · {{ currency.label }}</option></select></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cotización a ARS</span><input type="number" name="cotizacion" min="0.000001" step="0.000001" :value="entryMoney.rate" :disabled="entryRateDisabled" :required="entryMoney.currency !== 'ARS'" :class="fieldClass" @input="onEntryRateInput" /><span v-if="entryMoney.currency !== 'ARS' && !currencyRate(entryMoney.currency)" class="mt-1 block text-xs text-warning-strong">No hay cotización configurada para esta empresa. Ingresala manualmente.</span></label>
             <label class="block sm:col-span-2 lg:col-span-3"><span class="mb-1 block text-xs font-semibold text-ink-muted">Concepto libre (si no elegís uno del catálogo)</span><input type="text" name="concepto" maxlength="120" :value="editingEntry?.concepto ?? ''" :class="fieldClass" /></label>
             <label class="block sm:col-span-2 lg:col-span-3"><span class="mb-1 block text-xs font-semibold text-ink-muted">Observaciones</span><input type="text" name="observaciones" maxlength="500" :value="editingEntry?.observaciones ?? ''" :class="fieldClass" /></label>
           </div>
           <p class="mt-2 text-xs text-ink-muted">Si el concepto no permite editar el importe, se calcula como cantidad × importe unitario.</p>
+          <p v-if="entryEquivalentArs !== null" class="mt-2 text-sm font-semibold text-ink">Equivalente: {{ money(entryEquivalentArs, 'ARS') }}</p>
+          <label v-if="editingEntry" class="mt-4 block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Motivo del cambio</span><input type="text" name="motivo_cambio" maxlength="500" :class="fieldClass" placeholder="Explicá por qué corregís este movimiento" /><span class="mt-1 block text-xs text-ink-muted">Obligatorio solo si cambiás importe, moneda o cotización.</span></label>
           <div class="mt-5 flex justify-end gap-2 border-t border-border-subtle pt-4"><button type="button" @click="entryDialog?.close()" :class="secondaryButton">Volver</button><button type="submit" :class="primaryButton">{{ editingEntry ? 'Guardar cambios' : 'Guardar haber' }}</button></div>
         </form>
 
@@ -1388,17 +1496,20 @@ const facts = computed(() => {
           <div class="mt-5 flex justify-end gap-2 border-t border-border-subtle pt-4"><button type="button" @click="entryDialog?.close()" :class="secondaryButton">Volver</button><button type="submit" :class="primaryButton">{{ editingEntry ? 'Guardar cambios' : 'Guardar etapa' }}</button></div>
         </form>
 
-        <form v-else-if="activeEntryModal === 'cash'" method="post" :action="editingEntry ? movementUrl('cash', editingEntry.id) : data.links?.cash">
+        <form v-else-if="activeEntryModal === 'cash'" ref="cashForm" method="post" :action="editingEntry ? movementUrl('cash', editingEntry.id) : data.links?.cash" @submit="submitEntryForm">
           <input type="hidden" :name="csrf.name" :value="csrf.hash" />
+          <input type="hidden" name="confirma_cotizacion_uno" value="0" />
           <p class="text-sm text-ink-muted">La caja inicial, los anticipos y los adelantos de sueldo aumentan el importe a rendir, pero no son costo del viaje. Las devoluciones reducen el saldo pendiente.</p>
           <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Tipo</span><select name="tipo" :value="editingEntry?.tipo ?? 'ANTICIPO'" :class="fieldClass"><option value="CAJA_INICIAL">Caja inicial</option><option value="ANTICIPO">Anticipo</option><option value="RETIRO">Adelanto de sueldo</option><option value="DEVOLUCION">Devolución</option></select></label>
             <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Fecha y hora</span><input type="datetime-local" name="fecha" :value="editingEntry ? inputDateTime(editingEntry.fecha) : nowLocal()" required :class="fieldClass" /></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Importe</span><input type="number" name="importe" min="0.01" step="0.01" :value="editingEntry?.importe ?? ''" required :class="fieldClass" /></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select name="moneda" :value="editingEntry?.moneda ?? 'ARS'" :class="fieldClass" @change="applyRateFromSelect"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }} · {{ currency.label }}</option></select></label>
-            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cotización a ARS</span><input type="number" name="cotizacion" min="0.000001" step="0.000001" :value="editingEntry?.cotizacion ?? 1" :class="fieldClass" /></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Importe</span><input type="number" name="importe" min="0.01" step="0.01" :value="entryMoney.amount" required :class="fieldClass" @input="onEntryAmountInput" /></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Moneda</span><select name="moneda" :value="entryMoney.currency" :class="fieldClass" @change="onEntryCurrencyChange"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }} · {{ currency.label }}</option></select></label>
+            <label class="block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Cotización a ARS</span><input type="number" name="cotizacion" min="0.000001" step="0.000001" :value="entryMoney.rate" :disabled="entryRateDisabled" :required="entryMoney.currency !== 'ARS'" :class="fieldClass" @input="onEntryRateInput" /><span v-if="entryMoney.currency !== 'ARS' && !currencyRate(entryMoney.currency)" class="mt-1 block text-xs text-warning-strong">No hay cotización configurada para esta empresa. Ingresala manualmente.</span></label>
             <label class="block sm:col-span-2 lg:col-span-3"><span class="mb-1 block text-xs font-semibold text-ink-muted">Observaciones</span><input type="text" name="observaciones" maxlength="500" :value="editingEntry?.observaciones ?? ''" :class="fieldClass" /></label>
           </div>
+          <p v-if="entryEquivalentArs !== null" class="mt-3 text-sm font-semibold text-ink">Equivalente: {{ money(entryEquivalentArs, 'ARS') }}</p>
+          <label v-if="editingEntry" class="mt-4 block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Motivo del cambio</span><input type="text" name="motivo_cambio" maxlength="500" :class="fieldClass" placeholder="Explicá por qué corregís este movimiento" /><span class="mt-1 block text-xs text-ink-muted">Obligatorio solo si cambiás importe, moneda o cotización.</span></label>
           <div class="mt-5 flex justify-end gap-2 border-t border-border-subtle pt-4"><button type="button" @click="entryDialog?.close()" :class="secondaryButton">Volver</button><button type="submit" :class="primaryButton">{{ editingEntry ? 'Guardar cambios' : 'Guardar movimiento' }}</button></div>
         </form>
       </div>

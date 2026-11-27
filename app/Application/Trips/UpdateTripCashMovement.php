@@ -11,7 +11,6 @@ use App\Application\Trips\Port\TripDirectoryLookup;
 use App\Application\Trips\Port\TripsUnitOfWork;
 use App\Domain\Trips\Trip;
 use App\Domain\Trips\TripCashMovement;
-use App\Domain\Trips\TripMoney;
 use DomainException;
 
 final class UpdateTripCashMovement
@@ -31,13 +30,6 @@ final class UpdateTripCashMovement
         if ($branchIds === []) {
             throw new DomainException('El viaje solicitado no existe o no está autorizado.');
         }
-        if (! $this->directory->currencyExists($command->currency)) {
-            throw new DomainException('La moneda elegida no está disponible.');
-        }
-        if ($command->exchangeRate <= 0) {
-            throw new DomainException('La cotización debe ser mayor que cero.');
-        }
-
         $this->unitOfWork->transactional(function () use ($actor, $command, $companyId, $branchIds): void {
             $trip = $this->trips->findForUpdate($companyId, $branchIds, $command->tripId);
             if ($trip === null) {
@@ -47,13 +39,34 @@ final class UpdateTripCashMovement
                 throw new DomainException('No se puede editar la caja de un viaje cancelado o finalizado.');
             }
 
-            $movement = new TripCashMovement(
-                strtoupper($command->type),
-                $command->date,
-                new TripMoney($command->amount, $command->currency, $command->exchangeRate),
-                $command->notes,
+            $current = $this->costs->findCashMovement($trip->id() ?? 0, $companyId, $command->movementId);
+            if ($current === null) {
+                throw new DomainException('El movimiento de caja no existe en este viaje o ya fue quitado.');
+            }
+
+            $resolved = TripMoneyRules::resolveForUpdate(
+                $this->directory,
+                $companyId,
+                $command->amount,
+                $command->currency,
+                $command->exchangeRate,
+                $command->confirmForeignRateOne,
+                [
+                    'importe' => (float) ($current['importe'] ?? 0),
+                    'moneda' => (string) ($current['moneda'] ?? 'ARS'),
+                    'cotizacion' => (float) ($current['cotizacion'] ?? 1),
+                ],
             );
-            if (! $this->costs->updateCashMovement($trip->id() ?? 0, $companyId, $command->movementId, $movement, $actor->userId())) {
+
+            $movement = new TripCashMovement(strtoupper($command->type), $command->date, $resolved['money'], $command->notes);
+            if ($resolved['changed']) {
+                $reason = trim((string) $command->changeReason);
+                if ($reason === '') {
+                    throw new DomainException('Indicá el motivo del cambio monetario.');
+                }
+            }
+
+            if (! $this->costs->updateCashMovement($trip->id() ?? 0, $companyId, $command->movementId, $movement, $actor->userId(), $command->changeReason)) {
                 throw new DomainException('El movimiento de caja no existe en este viaje o ya fue quitado.');
             }
         });

@@ -14,12 +14,13 @@ final readonly class RegisterTripFuelCommand
         public float $liters,
         public ?float $amount,
         public string $currency = 'ARS',
-        public float $exchangeRate = 1.0,
+        public ?float $exchangeRate = null,
         public ?int $odometer = null,
         public ?string $station = null,
         public ?string $receipt = null,
         public ?string $notes = null,
         public ?int $legId = null,
+        public bool $confirmForeignRateOne = false,
     ) {
     }
 }

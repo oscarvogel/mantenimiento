@@ -1152,3 +1152,176 @@ describe('detalle de viaje operativo', () => {
     wrapper.unmount()
   })
 })
+  describe('motivo de cambio monetario (#591)', () => {
+    const base591 = (overrides = {}) => ({
+      ...data,
+      canStart: false,
+      canCancel: false,
+      canRegisterCosts: true,
+      canCompleteFuelPrices: true,
+      canEdit: true,
+      trip: { ...data.trip, id: 42, numero: 7, estado: 'EN_CURSO', estado_label: 'En curso', fecha_salida_real: '2026-10-20 08:00:00', km_salida: 145300 },
+      links: {
+        ...data.links,
+        fuel: '/mantenimiento/viajes/operativos/42/combustible',
+        expense: '/mantenimiento/viajes/operativos/42/gastos',
+        cash: '/mantenimiento/viajes/operativos/42/caja',
+        earnings: '/mantenimiento/viajes/operativos/42/haberes',
+        detail: '/mantenimiento/viajes/operativos/42',
+      },
+      assignments: [
+        { rol: 'TRACTOR', rol_label: 'Tractor / camión', label: 'AA111AA · T01', desde: '2026-10-20 08:00:00', hasta: null },
+        { rol: 'CHOFER', rol_label: 'Chofer', label: 'Pérez, Juan', empleado_id: 11, desde: '2026-10-20 08:00:00', hasta: null },
+      ],
+      options: {
+        expenseCategories: [{ id: 1, label: 'Peaje' }],
+        paymentMethods: [{ id: 1, label: 'Efectivo' }],
+        currencies: [
+          { code: 'ARS', label: 'Peso argentino' },
+          { code: 'BRL', label: 'Real brasileño' },
+          { code: 'USD', label: 'Dólar estadounidense' },
+        ],
+        earningConcepts: [],
+        expenseConcepts: [],
+      },
+      totals: { fuel_liters: 0, fuel_amount_ars: 0, expense_amount_ars: 0, direct_cost_ars: 0 },
+      fuel: [],
+      expenses: [],
+      cashMovements: [],
+      otherEarnings: [],
+      legs: [],
+      ...overrides,
+    })
+
+    const submitForm = async (form) => {
+      const event = new Event('submit', { bubbles: true, cancelable: true })
+      form.dispatchEvent(event)
+      await flushPromises()
+      await nextTick()
+      return event
+    }
+
+    it('permite editar solo observaciones sin motivo en caja y preserva valores monetarios', async () => {
+      alertsConfirm.mockReset().mockResolvedValue(true)
+      const wrapper = mount(TripOperationsDetailPage, {
+        props: {
+          data: base591({
+            cashMovements: [{ id: 10, tipo: 'ANTICIPO', fecha: '2026-10-20 07:00:00', importe: 300, moneda: 'BRL', cotizacion: 290, importe_ars: 87000, observaciones: 'original' }],
+          }),
+        },
+      })
+      const edit = wrapper.findAll('button').find((b) => b.text() === 'Editar')
+      await edit.trigger('click')
+      await nextTick()
+      const form = wrapper.get('form[action="/mantenimiento/viajes/operativos/42/caja/10"]')
+      await form.get('input[name="observaciones"]').setValue('solo nota')
+      const reason = form.get('input[name="motivo_cambio"]')
+      expect(reason.attributes('required')).toBeUndefined()
+      const event = await submitForm(form.element)
+      expect(event.defaultPrevented).toBe(false)
+      expect(reason.element.value).toBe('')
+      expect(form.get('input[name="importe"]').element.value).toBe('300')
+      expect(form.get('select[name="moneda"]').element.value).toBe('BRL')
+      expect(form.get('input[name="cotizacion"]').element.value).toBe('290')
+      wrapper.unmount()
+    })
+
+    it('exige motivo ante cambio monetario real en caja', async () => {
+      alertsConfirm.mockReset().mockResolvedValue(true)
+      const wrapper = mount(TripOperationsDetailPage, {
+        props: {
+          data: base591({
+            cashMovements: [{ id: 10, tipo: 'ANTICIPO', fecha: '2026-10-20 07:00:00', importe: 300, moneda: 'BRL', cotizacion: 290, importe_ars: 87000, observaciones: null }],
+          }),
+        },
+      })
+      const edit = wrapper.findAll('button').find((b) => b.text() === 'Editar')
+      await edit.trigger('click')
+      await nextTick()
+      const form = wrapper.get('form[action="/mantenimiento/viajes/operativos/42/caja/10"]')
+      await form.get('input[name="cotizacion"]').setValue('291')
+      const reason = form.get('input[name="motivo_cambio"]')
+      reason.element.reportValidity = vi.fn()
+      const event = await submitForm(form.element)
+      expect(event.defaultPrevented).toBe(true)
+      expect(reason.attributes('required')).toBeDefined()
+      await reason.setValue('Corrección')
+      const event2 = await submitForm(form.element)
+      expect(event2.defaultPrevented).toBe(false)
+      wrapper.unmount()
+    })
+
+    it('no marca cambio monetario por valores numéricamente equivalentes', async () => {
+      alertsConfirm.mockReset().mockResolvedValue(true)
+      const wrapper = mount(TripOperationsDetailPage, {
+        props: {
+          data: base591({
+            cashMovements: [{ id: 10, tipo: 'ANTICIPO', fecha: '2026-10-20 07:00:00', importe: 300, moneda: 'BRL', cotizacion: 290, importe_ars: 87000, observaciones: null }],
+          }),
+        },
+      })
+      const edit = wrapper.findAll('button').find((b) => b.text() === 'Editar')
+      await edit.trigger('click')
+      await nextTick()
+      const form = wrapper.get('form[action="/mantenimiento/viajes/operativos/42/caja/10"]')
+      await form.get('input[name="cotizacion"]').setValue('290.000000')
+      await form.get('input[name="importe"]').setValue('300.00')
+      await form.get('input[name="observaciones"]').setValue('nota')
+      const reason = form.get('input[name="motivo_cambio"]')
+      const event = await submitForm(form.element)
+      expect(event.defaultPrevented).toBe(false)
+      expect(reason.attributes('required')).toBeUndefined()
+      wrapper.unmount()
+    })
+
+    it('aplica la regla en combustible, gastos, otros haberes y caja', async () => {
+      alertsConfirm.mockReset().mockResolvedValue(true)
+      const cases = [
+        {
+          name: 'fuel',
+          overrides: { fuel: [{ id: 1, fecha: '2026-10-20 10:00:00', litros: 100, importe: 50000, moneda: 'ARS', cotizacion: 1, importe_ars: 50000, kilometraje: 145000, estacion: 'YPF', comprobante: null, observaciones: null }] },
+          action: '/mantenimiento/viajes/operativos/42/combustible/1',
+          change: (form) => form.get('input[name="importe"]').setValue('51000'),
+        },
+        {
+          name: 'expense',
+          overrides: { expenses: [{ id: 2, fecha: '2026-10-20 11:00:00', importe: 20000, moneda: 'ARS', cotizacion: 1, importe_ars: 20000, categoria: 'Peaje', categoria_id: 1, medio_pago: 'Efectivo', medio_pago_id: 1, pagado_de_caja: false, comprobante: null, observaciones: null, cantidad: 1 }] },
+          action: '/mantenimiento/viajes/operativos/42/gastos/2',
+          change: (form) => form.get('input[name="importe"]').setValue('21000'),
+        },
+        {
+          name: 'earning',
+          overrides: { otherEarnings: [{ id: 3, empleado_id: 11, empleado: 'Pérez, Juan', fecha: '2026-10-20', concepto: 'Espera', concepto_id: null, cantidad: 1, importe: 25000, importe_unitario: null, moneda: 'ARS', cotizacion: 1, importe_ars: 25000, observaciones: null }] },
+          action: '/mantenimiento/viajes/operativos/42/haberes/3',
+          change: (form) => form.get('input[name="importe"]').setValue('26000'),
+        },
+        {
+          name: 'cash',
+          overrides: { cashMovements: [{ id: 4, tipo: 'ANTICIPO', fecha: '2026-10-20 07:00:00', importe: 100000, moneda: 'ARS', cotizacion: 1, importe_ars: 100000, observaciones: null }] },
+          action: '/mantenimiento/viajes/operativos/42/caja/4',
+          change: (form) => form.get('input[name="importe"]').setValue('101000'),
+        },
+      ]
+
+      for (const c of cases) {
+        const wrapper = mount(TripOperationsDetailPage, { props: { data: base591(c.overrides) } })
+        const edit = wrapper.findAll('button').find((b) => b.text() === 'Editar')
+        await edit.trigger('click')
+        await nextTick()
+        const form = wrapper.get(`form[action="${c.action}"]`)
+        await form.get('input[name="observaciones"]').setValue('solo nota')
+        const reason = form.get('input[name="motivo_cambio"]')
+        let event = await submitForm(form.element)
+        expect(event.defaultPrevented, `${c.name} notes-only`).toBe(false)
+        expect(reason.attributes('required'), `${c.name} notes-only required`).toBeUndefined()
+
+        await c.change(form)
+        reason.element.reportValidity = vi.fn()
+        event = await submitForm(form.element)
+        expect(event.defaultPrevented, `${c.name} monetary`).toBe(true)
+        expect(reason.attributes('required'), `${c.name} monetary required`).toBeDefined()
+        wrapper.unmount()
+      }
+    })
+  })
+

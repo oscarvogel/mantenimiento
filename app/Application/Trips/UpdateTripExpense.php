@@ -12,7 +12,6 @@ use App\Application\Trips\Port\TripLegRepository;
 use App\Application\Trips\Port\TripsUnitOfWork;
 use App\Domain\Trips\Trip;
 use App\Domain\Trips\TripExpense;
-use App\Domain\Trips\TripMoney;
 use DomainException;
 
 final class UpdateTripExpense
@@ -33,12 +32,6 @@ final class UpdateTripExpense
         if ($branchIds === []) {
             throw new DomainException('El viaje solicitado no existe o no está autorizado.');
         }
-        if (! $this->directory->currencyExists($command->currency)) {
-            throw new DomainException('La moneda elegida no está disponible.');
-        }
-        if ($command->exchangeRate <= 0) {
-            throw new DomainException('La cotización debe ser mayor que cero.');
-        }
         if ($command->categoryId !== null && ! $this->directory->expenseCategoryExists($companyId, $command->categoryId)) {
             throw new DomainException('La categoría de gasto elegida no está disponible.');
         }
@@ -58,17 +51,46 @@ final class UpdateTripExpense
                 throw new DomainException('El tramo elegido no pertenece al viaje.');
             }
 
+            $current = $this->costs->findExpense($trip->id() ?? 0, $companyId, $command->movementId);
+            if ($current === null) {
+                throw new DomainException('El gasto no existe en este viaje o ya fue quitado.');
+            }
+
+            $resolved = TripMoneyRules::resolveForUpdate(
+                $this->directory,
+                $companyId,
+                $command->amount,
+                $command->currency,
+                $command->exchangeRate,
+                $command->confirmForeignRateOne,
+                [
+                    'importe' => (float) ($current['importe'] ?? 0),
+                    'moneda' => (string) ($current['moneda'] ?? 'ARS'),
+                    'cotizacion' => (float) ($current['cotizacion'] ?? 1),
+                ],
+            );
+
             $expense = new TripExpense(
                 $command->date,
-                new TripMoney($command->amount, $command->currency, $command->exchangeRate),
+                $resolved['money'],
                 $command->categoryId,
                 $command->paymentMethodId,
                 $command->paidBy === 'CAJA',
                 $command->receipt,
                 $command->notes,
                 $command->paidBy,
+                $current['concepto_id'] === null ? null : (int) $current['concepto_id'],
+                (float) ($current['cantidad'] ?? 1.0),
+                $current['importe_unitario'] === null ? null : (float) $current['importe_unitario'],
             );
-            if (! $this->costs->updateExpense($trip->id() ?? 0, $companyId, $command->movementId, $expense, $actor->userId(), $command->legId)) {
+            if ($resolved['changed']) {
+                $reason = trim((string) $command->changeReason);
+                if ($reason === '') {
+                    throw new DomainException('Indicá el motivo del cambio monetario.');
+                }
+            }
+
+            if (! $this->costs->updateExpense($trip->id() ?? 0, $companyId, $command->movementId, $expense, $actor->userId(), $command->legId, $command->changeReason)) {
                 throw new DomainException('El gasto no existe en este viaje o ya fue quitado.');
             }
         });

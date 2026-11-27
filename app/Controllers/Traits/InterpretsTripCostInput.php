@@ -85,17 +85,37 @@ trait InterpretsTripCostInput
         return $currency;
     }
 
-    protected function rate(): float
+    protected function rate(): ?float
     {
         $raw = str_replace(',', '.', trim((string) $this->request->getPost('cotizacion')));
         if ($raw === '') {
-            return 1.0;
+            return null;
         }
         if (! is_numeric($raw) || (float) $raw <= 0) {
             throw new DomainException('La cotización debe ser mayor que cero.');
         }
 
         return (float) $raw;
+    }
+
+    protected function confirmsRateOne(): bool
+    {
+        $value = $this->request->getPost('confirma_cotizacion_uno');
+
+        return $value === '1' || $value === 1 || $value === true || $value === 'true';
+    }
+
+    protected function changeReason(): ?string
+    {
+        $value = trim((string) $this->request->getPost('motivo_cambio'));
+        if ($value === '') {
+            return null;
+        }
+        if (mb_strlen($value) > 500) {
+            throw new DomainException('El motivo del cambio monetario no puede superar los 500 caracteres.');
+        }
+
+        return $value;
     }
 
     protected function text(string $key, int $max): ?string

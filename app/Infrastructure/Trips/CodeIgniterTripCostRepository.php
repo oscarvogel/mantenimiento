@@ -61,7 +61,7 @@ final class CodeIgniterTripCostRepository implements TripCostRepository
         ]);
     }
 
-    public function updateFuel(int $tripId, int $companyId, int $movementId, TripFuelLoad $load, int $actorUserId, ?int $legId = null): bool
+    public function updateFuel(int $tripId, int $companyId, int $movementId, TripFuelLoad $load, int $actorUserId, ?int $legId = null, ?string $changeReason = null): bool
     {
         return $this->updateMovement('viaje_operativo_combustible', 'COMBUSTIBLE', $tripId, $companyId, $movementId, $actorUserId, [
             'tramo_id' => $legId,
@@ -72,10 +72,10 @@ final class CodeIgniterTripCostRepository implements TripCostRepository
             'estacion' => $load->station(),
             'comprobante' => $load->receipt(),
             'observaciones' => $load->notes(),
-        ]);
+        ], $changeReason);
     }
 
-    public function updateExpense(int $tripId, int $companyId, int $movementId, TripExpense $expense, int $actorUserId, ?int $legId = null): bool
+    public function updateExpense(int $tripId, int $companyId, int $movementId, TripExpense $expense, int $actorUserId, ?int $legId = null, ?string $changeReason = null): bool
     {
         return $this->updateMovement('viaje_operativo_gastos', 'GASTO', $tripId, $companyId, $movementId, $actorUserId, [
             'tramo_id' => $legId,
@@ -87,17 +87,17 @@ final class CodeIgniterTripCostRepository implements TripCostRepository
             'pagado_por' => $expense->paidBy(),
             'comprobante' => $expense->receipt(),
             'observaciones' => $expense->notes(),
-        ]);
+        ], $changeReason);
     }
 
-    public function updateCashMovement(int $tripId, int $companyId, int $movementId, TripCashMovement $movement, int $actorUserId): bool
+    public function updateCashMovement(int $tripId, int $companyId, int $movementId, TripCashMovement $movement, int $actorUserId, ?string $changeReason = null): bool
     {
         return $this->updateMovement('viaje_operativo_caja_movimientos', 'CAJA', $tripId, $companyId, $movementId, $actorUserId, [
             'tipo' => $movement->type(),
             'fecha' => $movement->date()->format('Y-m-d H:i:s'),
             ...$this->moneyColumns($movement->money()),
             'observaciones' => $movement->notes(),
-        ]);
+        ], $changeReason);
     }
 
     public function softDeleteFuel(int $tripId, int $companyId, int $movementId, int $actorUserId): bool
@@ -158,7 +158,7 @@ final class CodeIgniterTripCostRepository implements TripCostRepository
         ]);
     }
 
-    public function updateOtherEarning(int $tripId, int $companyId, int $movementId, TripOtherEarning $earning, int $actorUserId, ?int $logbookEntryId = null): bool
+    public function updateOtherEarning(int $tripId, int $companyId, int $movementId, TripOtherEarning $earning, int $actorUserId, ?int $logbookEntryId = null, ?string $changeReason = null): bool
     {
         return $this->updateMovement('viaje_operativo_otros_haberes', 'HABER', $tripId, $companyId, $movementId, $actorUserId, [
             'empleado_id' => $earning->employeeId(),
@@ -170,7 +170,7 @@ final class CodeIgniterTripCostRepository implements TripCostRepository
             'concepto' => $earning->concept(),
             ...$this->moneyColumns($earning->money()),
             'observaciones' => $earning->notes(),
-        ]);
+        ], $changeReason);
     }
 
     public function logbookEntryIdForEarning(int $tripId, int $companyId, int $movementId): ?int
@@ -186,6 +186,73 @@ final class CodeIgniterTripCostRepository implements TripCostRepository
         $id = $row['diario_bordo_id'] ?? null;
 
         return $id === null ? null : (int) $id;
+    }
+
+    public function findCashMovement(int $tripId, int $companyId, int $movementId): ?array
+    {
+        return $this->activeMovement('viaje_operativo_caja_movimientos', $tripId, $companyId, $movementId);
+    }
+
+    public function findFuelLoad(int $tripId, int $companyId, int $movementId): ?array
+    {
+        return $this->activeMovement('viaje_operativo_combustible', $tripId, $companyId, $movementId);
+    }
+
+    public function findExpense(int $tripId, int $companyId, int $movementId): ?array
+    {
+        return $this->activeMovement('viaje_operativo_gastos', $tripId, $companyId, $movementId);
+    }
+
+    public function findOtherEarning(int $tripId, int $companyId, int $movementId): ?array
+    {
+        return $this->activeMovement('viaje_operativo_otros_haberes', $tripId, $companyId, $movementId);
+    }
+
+    public function suspiciousHistoricalMovements(int $companyId): array
+    {
+        $rows = [];
+        $defs = [
+            ['table' => 'viaje_operativo_caja_movimientos', 'tipo' => 'CAJA', 'fecha' => 'fecha', 'amount' => 'importe'],
+            ['table' => 'viaje_operativo_gastos', 'tipo' => 'GASTO', 'fecha' => 'fecha', 'amount' => 'importe'],
+            ['table' => 'viaje_operativo_combustible', 'tipo' => 'COMBUSTIBLE', 'fecha' => 'fecha', 'amount' => 'importe'],
+            ['table' => 'viaje_operativo_otros_haberes', 'tipo' => 'HABER', 'fecha' => 'fecha', 'amount' => 'importe'],
+        ];
+
+        foreach ($defs as $def) {
+            $builder = $this->database->table($def['table'] . ' m')
+                ->select('m.id, m.viaje_id, m.fecha, m.importe, m.moneda, m.cotizacion, m.importe_ars, m.created_at, v.estado AS viaje_estado, v.sucursal_id, v.numero AS viaje_numero')
+                ->join('viajes_operativos v', 'v.id = m.viaje_id AND v.empresa_id = m.empresa_id')
+                ->where('m.empresa_id', $companyId)
+                ->where('m.deleted_at', null)
+                ->where('m.moneda !=', 'ARS')
+                ->groupStart()
+                    ->where('m.cotizacion <=', 1)
+                    ->orWhere('m.cotizacion', null)
+                ->groupEnd()
+                ->orderBy('m.fecha', 'ASC')
+                ->orderBy('m.id', 'ASC');
+
+            foreach ($builder->get()->getResultArray() as $row) {
+                $rows[] = [
+                    'movimiento_tipo' => $def['tipo'],
+                    'movimiento_id' => (int) $row['id'],
+                    'viaje_id' => (int) $row['viaje_id'],
+                    'viaje_numero' => $row['viaje_numero'] === null ? null : (int) $row['viaje_numero'],
+                    'viaje_estado' => (string) ($row['viaje_estado'] ?? ''),
+                    'sucursal_id' => $row['sucursal_id'] === null ? null : (int) $row['sucursal_id'],
+                    'fecha' => $row['fecha'],
+                    'importe' => $row['importe'] === null ? null : (float) $row['importe'],
+                    'moneda' => (string) ($row['moneda'] ?? ''),
+                    'cotizacion' => $row['cotizacion'] === null ? null : (float) $row['cotizacion'],
+                    'importe_ars' => $row['importe_ars'] === null ? null : (float) $row['importe_ars'],
+                    'created_at' => $row['created_at'],
+                ];
+            }
+        }
+
+        usort($rows, static fn (array $a, array $b): int => strcmp((string) $a['fecha'], (string) $b['fecha']) ?: ($a['movimiento_id'] <=> $b['movimiento_id']));
+
+        return $rows;
     }
 
     public function softDeleteOtherEarning(int $tripId, int $companyId, int $movementId, int $actorUserId): bool
@@ -216,7 +283,7 @@ final class CodeIgniterTripCostRepository implements TripCostRepository
     }
 
     /** @param array<string,mixed> $changes */
-    private function updateMovement(string $table, string $type, int $tripId, int $companyId, int $movementId, int $actorUserId, array $changes): bool
+    private function updateMovement(string $table, string $type, int $tripId, int $companyId, int $movementId, int $actorUserId, array $changes, ?string $changeReason = null): bool
     {
         $before = $this->activeMovement($table, $tripId, $companyId, $movementId);
         if ($before === null) {
@@ -235,7 +302,13 @@ final class CodeIgniterTripCostRepository implements TripCostRepository
             throw new RuntimeException('No se pudieron guardar los cambios del movimiento.');
         }
 
-        $this->auditMovement($companyId, (int) $before['sucursal_id'], $tripId, $type, $movementId, 'EDICION', $before, array_merge($before, $changes), $actorUserId, $now);
+        $after = array_merge($before, $changes);
+        $reason = $this->normalizeChangeReason($changeReason);
+        if ($reason !== null && $this->isMonetaryChange($before, $after)) {
+            $after['motivo_cambio'] = $reason;
+        }
+
+        $this->auditMovement($companyId, (int) $before['sucursal_id'], $tripId, $type, $movementId, 'EDICION', $before, $after, $actorUserId, $now);
 
         return true;
     }
@@ -318,6 +391,40 @@ final class CodeIgniterTripCostRepository implements TripCostRepository
             'cotizacion' => $this->decimal($money->exchangeRate(), 6),
             'importe_ars' => $this->decimal($money->amountArs(), 4),
         ];
+    }
+
+    private function normalizeChangeReason(?string $reason): ?string
+    {
+        $reason = trim((string) $reason);
+        if ($reason === '') {
+            return null;
+        }
+        if (mb_strlen($reason) > 500) {
+            throw new RuntimeException('El motivo del cambio monetario no puede superar los 500 caracteres.');
+        }
+
+        return $reason;
+    }
+
+    /**
+     * @param array<string,mixed> $before
+     * @param array<string,mixed> $after
+     */
+    private function isMonetaryChange(array $before, array $after): bool
+    {
+        foreach (['importe', 'moneda', 'cotizacion', 'importe_ars'] as $field) {
+            $b = $before[$field] ?? null;
+            $a = $after[$field] ?? null;
+            if ($b === $a) {
+                continue;
+            }
+            if (is_numeric($b) && is_numeric($a) && abs((float) $b - (float) $a) <= 0.00005) {
+                continue;
+            }
+            return true;
+        }
+
+        return false;
     }
 
     private function decimal(float $value, int $scale): string
