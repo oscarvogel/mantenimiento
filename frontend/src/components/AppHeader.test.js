@@ -39,6 +39,14 @@ describe('AppHeader', () => {
     expect(wrapper.text()).toContain('Empresa · Central')
   })
 
+  it('en el celular, dentro de un módulo, el saludo y la empresa ceden lugar a la píldora', () => {
+    const wrapper = mount(AppHeader, { props: { user: { name: 'Juan Díaz', initials: 'JD' }, company: { name: 'Flota Demo' }, moduleName: 'Mantenimiento' } })
+    expect(wrapper.get('[data-test="current-module"]').text()).toBe('Mantenimiento')
+    expect(wrapper.get('p span').classes()).toEqual(expect.arrayContaining(['hidden', 'sm:inline']))
+    const portal = mount(AppHeader, { props: { user: { name: 'Juan Díaz', initials: 'JD' }, company: { name: 'Flota Demo' } } })
+    expect(portal.get('p span').classes()).not.toContain('hidden')
+  })
+
   it('la campana solo con avisos habilitados', () => {
     expect(mountHeader().findComponent({ name: 'AppNotificationBell' }).exists()).toBe(false)
     expect(mountHeader(null, { notifications: { enabled: true, summaryUrl: '#', centerUrl: '#' } })

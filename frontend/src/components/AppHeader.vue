@@ -54,7 +54,7 @@ defineExpose({
 
 <template>
   <div class="sticky top-0 z-20 bg-surface-subtle">
-  <header class="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-4 sm:px-6 lg:px-7 xl:px-9">
+  <header class="flex flex-wrap items-center gap-x-3 gap-y-3 sm:gap-x-4 px-4 py-4 sm:px-6 lg:px-7 xl:px-9">
     <button
       ref="menuButton"
       type="button"
@@ -68,13 +68,14 @@ defineExpose({
     </button>
 
     <div class="flex min-w-0 flex-1 items-center gap-3 md:flex-none">
-      <span data-test="user-avatar" class="flex size-12 shrink-0 items-center justify-center rounded-full bg-accent-400 text-base font-bold text-secondary-900" aria-hidden="true">{{ user.initials }}</span>
+      <span data-test="user-avatar" class="size-12 shrink-0 items-center justify-center rounded-full bg-accent-400 text-base font-bold text-secondary-900" :class="moduleName ? 'hidden sm:flex' : 'flex'" aria-hidden="true">{{ user.initials }}</span>
       <div class="min-w-0">
         <p class="flex min-w-0 items-center gap-2">
-          <span class="truncate text-lg font-semibold text-ink">Hola, {{ firstName }}</span>
-          <span v-if="moduleName" data-test="current-module" class="shrink-0 rounded-pill bg-primary-subtle px-2.5 py-0.5 text-xs font-semibold text-primary">{{ moduleName }}</span>
+          <!-- En el celular, dentro de un módulo, solo entra la píldora: avatar y saludo se la comían. -->
+          <span class="truncate text-lg font-semibold text-ink" :class="{ 'hidden sm:inline': moduleName }">Hola, {{ firstName }}</span>
+          <span v-if="moduleName" data-test="current-module" class="min-w-0 truncate rounded-pill bg-primary-subtle px-2 sm:px-2.5 py-0.5 text-xs font-semibold text-primary">{{ moduleName }}</span>
         </p>
-        <p class="truncate text-xs text-ink-muted">{{ companyLine }}</p>
+        <p class="truncate text-xs text-ink-muted" :class="{ 'hidden sm:block': moduleName }">{{ companyLine }}</p>
       </div>
     </div>
 
