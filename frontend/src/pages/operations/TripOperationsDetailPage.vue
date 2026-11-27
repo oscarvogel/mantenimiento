@@ -765,10 +765,14 @@ const companyPaidExpensesAmount = computed(() => companyPaidExpenses.value
 const canReattributeCompanyExpenses = computed(() => canRegisterCosts.value
   && cashAdvanceTotal.value > 0
   && companyPaidExpenses.value.length > 0)
-const defaultExpensePayer = computed(() => cashAdvanceTotal.value > 0 ? 'CAJA' : 'EMPRESA')
+// En la operación diaria el gasto del viaje sale de la caja del chofer, así que
+// el pagador arranca siempre en «Caja del chofer». Si el viaje no tiene
+// adelantos, el importe queda a favor del chofer en la liquidación. «Empresa»
+// se elige a mano cuando el gasto lo pagó la empresa.
+const defaultExpensePayer = 'CAJA'
 const expensePayerHint = computed(() => cashAdvanceTotal.value > 0
-  ? `En este viaje hay ${money(cashAdvanceTotal.value)} de adelantos. Si el chofer pagó este gasto con ese dinero, dejá «Caja del chofer» para descontarlo del saldo.`
-  : '«Caja del chofer» descuenta el gasto del adelanto. «Empresa» no afecta la liquidación del chofer.')
+  ? `En este viaje hay ${money(cashAdvanceTotal.value)} de adelantos. «Caja del chofer» descuenta este gasto del saldo del adelanto; «Empresa» no afecta la liquidación del chofer.`
+  : '«Caja del chofer» deja este gasto a favor del chofer en la liquidación. «Empresa» no afecta la liquidación del chofer.')
 const confirmReattributeCompanyExpenses = (event) => {
   const label = companyPaidExpenses.value.length === 1
     ? 'el gasto'

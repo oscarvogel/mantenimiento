@@ -485,6 +485,34 @@ describe('detalle de viaje operativo', () => {
     wrapper.unmount()
   })
 
+  it('arranca el gasto en caja del chofer aunque el viaje no tenga adelantos', async () => {
+    const wrapper = mount(TripOperationsDetailPage, {
+      props: {
+        data: {
+          ...data,
+          canStart: false,
+          canCancel: false,
+          canRegisterCosts: true,
+          links: {
+            ...data.links,
+            expense: '/mantenimiento/viajes/operativos/42/gastos',
+          },
+          expenses: [],
+          cashMovements: [],
+          options: { expenseCategories: [], paymentMethods: [], currencies: [{ code: 'ARS', label: 'Peso argentino' }] },
+        },
+      },
+    })
+
+    const expenseButton = wrapper.findAll('button').find((button) => button.text().includes('Cargar gasto'))
+    await expenseButton.trigger('click')
+    await nextTick()
+
+    expect(wrapper.get('select[name="pagado_por"]').element.value).toBe('CAJA')
+    expect(wrapper.text()).toContain('a favor del chofer en la liquidación')
+    wrapper.unmount()
+  })
+
   it('muestra la liquidación del chofer y permite cargar otros haberes', () => {
     const wrapper = mount(TripOperationsDetailPage, {
       props: {
