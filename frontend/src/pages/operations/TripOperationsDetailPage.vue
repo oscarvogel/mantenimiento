@@ -1422,7 +1422,7 @@ const facts = computed(() => {
             <label class="block sm:col-span-2 lg:col-span-3"><span class="mb-1 block text-xs font-semibold text-ink-muted">Observaciones</span><input type="text" name="observaciones" maxlength="500" :value="editingEntry?.observaciones ?? ''" :class="fieldClass" /></label>
           </div>
           <p v-if="entryEquivalentArs !== null" class="mt-3 text-sm font-semibold text-ink">Equivalente: {{ money(entryEquivalentArs, 'ARS') }}</p>
-          <label v-if="editingEntry" class="mt-4 block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Motivo del cambio</span><input type="text" name="motivo_cambio" maxlength="500" required :class="fieldClass" placeholder="Explicá por qué corregís este movimiento" /></label>
+          <label v-if="editingEntry" class="mt-4 block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Motivo del cambio</span><input type="text" name="motivo_cambio" maxlength="500" :class="fieldClass" placeholder="Explicá por qué corregís este movimiento" /><span class="mt-1 block text-xs text-ink-muted">Obligatorio solo si cambiás importe, moneda o cotización.</span></label>
           <div class="mt-5 flex justify-end gap-2 border-t border-border-subtle pt-4"><button type="button" @click="entryDialog?.close()" :class="secondaryButton">Volver</button><button type="submit" :class="primaryButton">{{ editingEntry ? 'Guardar cambios' : 'Guardar combustible' }}</button></div>
         </form>
 
@@ -1446,7 +1446,7 @@ const facts = computed(() => {
           </div>
           <p class="mt-2 text-xs text-ink-muted">Si el concepto no permite editar el importe, se calcula como cantidad × importe unitario.</p>
           <p v-if="entryEquivalentArs !== null" class="mt-2 text-sm font-semibold text-ink">Equivalente: {{ money(entryEquivalentArs, 'ARS') }}</p>
-          <label v-if="editingEntry" class="mt-4 block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Motivo del cambio</span><input type="text" name="motivo_cambio" maxlength="500" required :class="fieldClass" placeholder="Explicá por qué corregís este movimiento" /></label>
+          <label v-if="editingEntry" class="mt-4 block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Motivo del cambio</span><input type="text" name="motivo_cambio" maxlength="500" :class="fieldClass" placeholder="Explicá por qué corregís este movimiento" /><span class="mt-1 block text-xs text-ink-muted">Obligatorio solo si cambiás importe, moneda o cotización.</span></label>
           <div class="mt-5 flex justify-end gap-2 border-t border-border-subtle pt-4"><button type="button" @click="entryDialog?.close()" :class="secondaryButton">Volver</button><button type="submit" :class="primaryButton">{{ editingEntry ? 'Guardar cambios' : 'Guardar gasto' }}</button></div>
         </form>
 
@@ -1468,7 +1468,7 @@ const facts = computed(() => {
           </div>
           <p class="mt-2 text-xs text-ink-muted">Si el concepto no permite editar el importe, se calcula como cantidad × importe unitario.</p>
           <p v-if="entryEquivalentArs !== null" class="mt-2 text-sm font-semibold text-ink">Equivalente: {{ money(entryEquivalentArs, 'ARS') }}</p>
-          <label v-if="editingEntry" class="mt-4 block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Motivo del cambio</span><input type="text" name="motivo_cambio" maxlength="500" required :class="fieldClass" placeholder="Explicá por qué corregís este movimiento" /></label>
+          <label v-if="editingEntry" class="mt-4 block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Motivo del cambio</span><input type="text" name="motivo_cambio" maxlength="500" :class="fieldClass" placeholder="Explicá por qué corregís este movimiento" /><span class="mt-1 block text-xs text-ink-muted">Obligatorio solo si cambiás importe, moneda o cotización.</span></label>
           <div class="mt-5 flex justify-end gap-2 border-t border-border-subtle pt-4"><button type="button" @click="entryDialog?.close()" :class="secondaryButton">Volver</button><button type="submit" :class="primaryButton">{{ editingEntry ? 'Guardar cambios' : 'Guardar haber' }}</button></div>
         </form>
 
@@ -1509,7 +1509,7 @@ const facts = computed(() => {
             <label class="block sm:col-span-2 lg:col-span-3"><span class="mb-1 block text-xs font-semibold text-ink-muted">Observaciones</span><input type="text" name="observaciones" maxlength="500" :value="editingEntry?.observaciones ?? ''" :class="fieldClass" /></label>
           </div>
           <p v-if="entryEquivalentArs !== null" class="mt-3 text-sm font-semibold text-ink">Equivalente: {{ money(entryEquivalentArs, 'ARS') }}</p>
-          <label v-if="editingEntry" class="mt-4 block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Motivo del cambio</span><input type="text" name="motivo_cambio" maxlength="500" required :class="fieldClass" placeholder="Explicá por qué corregís este movimiento" /></label>
+          <label v-if="editingEntry" class="mt-4 block"><span class="mb-1 block text-xs font-semibold text-ink-muted">Motivo del cambio</span><input type="text" name="motivo_cambio" maxlength="500" :class="fieldClass" placeholder="Explicá por qué corregís este movimiento" /><span class="mt-1 block text-xs text-ink-muted">Obligatorio solo si cambiás importe, moneda o cotización.</span></label>
           <div class="mt-5 flex justify-end gap-2 border-t border-border-subtle pt-4"><button type="button" @click="entryDialog?.close()" :class="secondaryButton">Volver</button><button type="submit" :class="primaryButton">{{ editingEntry ? 'Guardar cambios' : 'Guardar movimiento' }}</button></div>
         </form>
       </div>
