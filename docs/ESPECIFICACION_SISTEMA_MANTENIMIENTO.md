@@ -585,6 +585,25 @@ flowchart TD
 
 **Motivo del diseño:** las alertas deben ser idempotentes. Ejecutar dos veces el proceso no puede enviar el mismo aviso dos veces para el mismo evento.
 
+#### Elegibilidad de mensajes WhatsApp dirigidos al chofer
+
+Un mensaje de WhatsApp dirigido al chofer de una unidad solo se genera y se envía si, al momento de
+la generación **y** otra vez inmediatamente antes del envío, existe una asignación vigente y el
+destinatario sigue siendo elegible:
+
+- asignación `rol = CHOFER`, `fecha_desde <= hoy` y `fecha_hasta IS NULL OR fecha_hasta >= hoy`;
+- empleado no borrado y `activo = 1`;
+- equipo no borrado y `estado = 'ACTIVO'`;
+- tipo de equipo con `controla_km = 1`;
+- empresa no borrada, activa y con WhatsApp habilitado.
+
+El predicado es único (`DriverNotificationEligibilityPolicy`) y se aplica a todos los tipos dirigidos
+al chofer: recordatorio semanal, reclamo manual, resumen de vencimientos, preventivos y acuse de
+lectura. Si la entrega ya estaba en cola y deja de cumplir el criterio, se marca `OMITIDA` con un
+código estable en `notificacion_whatsapp_entregas.motivo_cancelacion`, el detalle en `ultimo_error` y
+una fila de auditoría `notificacion.whatsapp_cancelada`. Los contadores se suman al resumen del ciclo
+(`whatsapp_cancelled` y `whatsapp_cancelled_<motivo>`).
+
 ---
 
 ### 5.12 Neumáticos y gomería

@@ -9,6 +9,7 @@ use App\Application\Notifications\Port\WebPushGateway;
 use App\Application\Notifications\Port\WhatsAppNotificationDeliveryQueue;
 use App\Application\Notifications\Port\WhatsAppNotificationGateway;
 use App\Application\Notifications\RunNotificationDispatch;
+use App\Domain\Notifications\DriverNotificationEligibility;
 use App\Domain\Notifications\NotifiableEvent;
 use App\Domain\Notifications\NotificationPreference;
 use App\Domain\Notifications\NotificationSeverity;
@@ -147,6 +148,18 @@ final class CancellationRaceWhatsAppQueue implements WhatsAppNotificationDeliver
     {
         return false;
     }
+
+    public function lastCancellationSummary(): array
+    {
+        return [];
+    }
+
+    public function revalidateBeforeSend(int $deliveryId): ?DriverNotificationEligibility
+    {
+        return null;
+    }
+
+    public function cancelled(int $deliveryId, string $reasonCode, string $reasonText): void {}
 
     public function accepted(int $deliveryId, string $messageId, string $status): void {}
 

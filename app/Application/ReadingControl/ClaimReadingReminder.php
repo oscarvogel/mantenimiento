@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\ReadingControl;
 
 use App\Application\Identity\ActorContext;
+use App\Application\Notifications\Port\DriverNotificationEligibilityReader;
 use App\Application\Notifications\Port\GlobalNotificationSettingsStore;
 use App\Application\Notifications\Port\NotificationClock;
 use App\Application\Notifications\Port\WhatsAppNotificationDeliveryQueue;
@@ -75,34 +76,13 @@ final class ClaimReadingReminder
         ) lr
         SQL;
 
-    /**
-     * Asignacion de chofer vigente: una sola fila por equipo.
-     */
-    private const ACTIVE_DRIVER_SQL = <<<'SQL'
-        (
-            SELECT a.empresa_id, a.equipo_id, a.empleado_id
-            FROM employee_equipment_assignments a
-            WHERE a.rol = 'CHOFER'
-              AND a.fecha_hasta IS NULL
-              AND a.id = (
-                  SELECT a2.id
-                  FROM employee_equipment_assignments a2
-                  WHERE a2.empresa_id = a.empresa_id
-                    AND a2.equipo_id = a.equipo_id
-                    AND a2.rol = 'CHOFER'
-                    AND a2.fecha_hasta IS NULL
-                  ORDER BY a2.fecha_desde DESC, a2.id DESC
-                  LIMIT 1
-              )
-        ) drv
-        SQL;
-
     public function __construct(
         private readonly BaseConnection $database,
         private readonly WhatsAppNotificationGateway $gateway,
         private readonly WhatsAppNotificationDeliveryQueue $queue,
         private readonly GlobalNotificationSettingsStore $settings,
         private readonly NotificationClock $clock,
+        private readonly DriverNotificationEligibilityReader $eligibility,
     ) {
     }
 
@@ -131,8 +111,9 @@ final class ClaimReadingReminder
         }
 
         $equipment = $this->database->table('equipos e')
-            ->select('e.id, e.codigo, e.patente, e.empresa_id')
+            ->select('e.id, e.codigo, e.patente, e.empresa_id, s.idioma_notificaciones')
             ->join('tipos_equipo te', 'te.id = e.tipo_equipo_id AND te.activo = 1', 'inner')
+            ->join('sucursales s', 's.id = e.sucursal_id AND s.empresa_id = e.empresa_id', 'left')
             ->where('e.id', $equipmentId)
             ->where('e.empresa_id', $companyId)
             ->where('e.estado', 'ACTIVO')
@@ -146,19 +127,23 @@ final class ClaimReadingReminder
         }
 
         // --- Destinatario: lo resuelve el servidor, nunca el navegador ------
-        $driver = $this->database->table('equipos e')
-            ->select('drv.empleado_id, emp.nombre, emp.apellido, emp.telefono, s.idioma_notificaciones')
-            ->join(self::ACTIVE_DRIVER_SQL, 'drv.equipo_id = e.id AND drv.empresa_id = e.empresa_id', 'left', false)
-            ->join('empleados emp', 'emp.id = drv.empleado_id AND emp.empresa_id = drv.empresa_id AND emp.activo = 1 AND emp.deleted_at IS NULL', 'left')
-            ->join('sucursales s', 's.id = e.sucursal_id AND s.empresa_id = e.empresa_id', 'left')
-            ->where('e.id', $equipmentId)
-            ->where('e.empresa_id', $companyId)
+        $employeeId = $this->eligibility->findCurrentDriver(
+            $companyId,
+            $equipmentId,
+            $this->clock->now()->format('Y-m-d'),
+        );
+        if ($employeeId === null) {
+            throw new DomainException('El equipo no tiene un chofer activo asignado.');
+        }
+
+        $driver = $this->database->table('empleados')
+            ->select('nombre, apellido, telefono')
+            ->where('id', $employeeId)
+            ->where('empresa_id', $companyId)
             ->get()
             ->getRowArray();
-
-        $employeeId = (int) ($driver['empleado_id'] ?? 0);
-        if ($employeeId <= 0) {
-            throw new DomainException('El equipo no tiene un chofer activo asignado.');
+        if ($driver === null) {
+            throw new DomainException('No se pudo cargar el legajo del chofer asignado.');
         }
 
         $realPhone = $this->gateway->normalizePhone((string) ($driver['telefono'] ?? ''));
@@ -233,7 +218,7 @@ final class ClaimReadingReminder
             $equipmentLabel = 'el equipo';
         }
 
-        $branchLocale = trim((string) ($driver['idioma_notificaciones'] ?? ''));
+        $branchLocale = trim((string) ($equipment['idioma_notificaciones'] ?? ''));
         $locale = $branchLocale !== '' ? $branchLocale : (string) ($company['idioma_notificaciones'] ?? 'ES');
 
         $message = (new ReadingReminderMessageBuilder())->build(

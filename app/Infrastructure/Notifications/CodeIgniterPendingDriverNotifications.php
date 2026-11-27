@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Notifications;
 
 use App\Application\Employees\Port\PendingDriverNotifications;
+use App\Domain\Notifications\DriverNotificationTypes;
 use CodeIgniter\Database\BaseConnection;
 
 /**
@@ -17,20 +18,6 @@ use CodeIgniter\Database\BaseConnection;
  */
 final class CodeIgniterPendingDriverNotifications implements PendingDriverNotifications
 {
-    /**
-     * Tipos de entrega cuyo destinatario es el chofer de la unidad.
-     *
-     * @var list<string>
-     */
-    private const DRIVER_DELIVERY_TYPES = [
-        'equipo.recordatorio_lectura_semanal',
-        'equipo.reclamo_manual_lectura',
-        'equipo.resumen_vencimientos',
-        'preventivo.proximo',
-        'preventivo.vencido',
-        'equipo.lectura_registrada',
-    ];
-
     public function __construct(private readonly BaseConnection $database)
     {
     }
@@ -54,7 +41,7 @@ final class CodeIgniterPendingDriverNotifications implements PendingDriverNotifi
             ->where('empresa_id', $companyId)
             ->where('equipo_id', $equipmentId)
             ->where('empleado_id', $employeeId)
-            ->whereIn('tipo_evento', self::DRIVER_DELIVERY_TYPES)
+            ->whereIn('tipo_evento', DriverNotificationTypes::all())
             ->whereIn('estado', ['PENDIENTE', 'REINTENTO'])
             ->update([
                 'estado' => 'OMITIDA',
