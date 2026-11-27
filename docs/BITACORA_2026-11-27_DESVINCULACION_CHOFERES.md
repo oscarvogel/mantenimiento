@@ -83,10 +83,32 @@ La suite completa incluye los tests de integración SQLite, que en CI se saltan 
 | Concurrencia con despacho | `NotificationDispatchCancellationTest` |
 | Regresión de semanales y reclamos | suite de Notifications + `ClaimReadingReminderTest` |
 
+## Validación en staging — `fasa_189` (27/11/2026)
+
+- Host verificado: `fasa_189` (192.168.0.189). Se usó un contenedor temporal `mant-593-validation` a partir de la imagen del staging existente (`fe3c5532`), con el código de la rama montado en `app/` y `assets/`, red `coolify`, puerto 18093, volúmenes temporales y la misma MariaDB de staging. **No se modificó el contenedor `mantenimiento-staging` ni el environment `production`.**
+- Migración `2026-11-27-090000_AddClosureAuditToEmployeeEquipmentAssignments` aplicada (`migrate:status`, batch 68).
+- Login demo `demo@mantenimiento.local` (se restableció la contraseña de staging al valor documentado `Demo12345`): 303 a `/inicio`.
+- Ficha `/mantenimiento/equipos/109`: 200; payload con `unassignUrl`, `current: null` después de la desvinculación y `history` con `closureReason`/`closureNotes`.
+- Desvinculación por POST: 303 a la ficha. Datos verificados:
+  - Asignación 103 (empresa 7 / equipo 109 / empleado 79): `fecha_hasta = 2026-11-27`, `motivo_cierre = Validacion staging #593`, `observaciones_cierre = Unidad demo para validar desvinculacion`, `updated_by = 16`.
+  - Empleado 79: `activo = 1`, sin fecha de baja.
+  - Equipo 109: `estado = ACTIVO`.
+  - Entrega 5963 (`PENDIENTE`, teléfono dummy): `OMITIDA`, `ultimo_error` = “Cancelada por desvinculación del chofer (asignación #103): …”, `proximo_intento = NULL`.
+  - Auditoría 20: `asignacion.chofer_cerrada`, entidad `employee_equipment_assignments`/103, empresa 7, actor 16, motivo, before/after JSON y `notificaciones_canceladas = 1`.
+  - 0 asignaciones abiertas y 0 candidatos del scheduler para el equipo 109.
+  - Reasignación posterior: nueva asignación 106 abierta para el empleado 79; el historial conserva la 103 cerrada.
+- Aislamiento externo: `alerts.webCronEnabled = false`, SMTP vacío y sin tarea programada en el contenedor de validación; la entrega de prueba usó teléfono dummy y fue cancelada. **No se envió ningún WhatsApp ni correo.**
+- La asignación real de TSA (97, empresa 4 / NEB021 / empleado 4) **no se tocó**.
+- Contenedor temporal y volúmenes eliminados; el staging existente quedó `healthy`.
+
 ## Pendiente
 
-1. **Staging `fasa_189`**: aplicar la migración y validar el flujo completo con notificaciones externas aisladas (modo piloto o gateway de prueba): asignar, desvincular, verificar cancelación y reasignar.
-2. **Caso TSA**: no cerrar la asignación 97 por SQL. Con la funcionalidad desplegada y la confirmación del administrador, ejecutar la desvinculación por la pantalla con fecha efectiva y motivo. Después, verificar que el siguiente ciclo no selecciona al chofer.
-3. **Producción Ferozo**: promover solo con CI verde y evidencia de staging. Orden: migración, código, assets; smoke de ficha de equipo y cron.
-4. **Datos históricos**: no se corrigen los 4 intervalos inválidos ni la baja con fecha futura. Quedan para una revisión de calidad de datos independiente.
-5. **Issues #594 y #595**: no se implementan en este PR.
+1. **Caso TSA**: no cerrar la asignación 97 por SQL. Con la funcionalidad desplegada y la confirmación del administrador, ejecutar la desvinculación por la pantalla con fecha efectiva y motivo. Después, verificar que el siguiente ciclo no selecciona al chofer.
+2. **Producción Ferozo**: promover solo con CI verde y esta evidencia de staging. Orden: migración, código, assets; smoke de ficha de equipo y cron.
+3. **Datos históricos**: no se corrigen los 4 intervalos inválidos ni la baja con fecha futura. Quedan para una revisión de calidad de datos independiente.
+4. **Issues #594 y #595**: no se implementan en este PR.
+5. **Cierre del incidente**: no cerrar #593 hasta regularizar la asignación real y comprobar el siguiente ciclo.
+
+## CI
+
+- Run `45995990425` de `Issue 15 check`: **verde** (PHP syntax, PHPUnit, frontend tests, build sync, tooling self-test).
