@@ -44,6 +44,25 @@ final class UnassignDriverContractTest extends TestCase
         self::assertStringContainsString('data-confirm', $view);
     }
 
+    public function testDriverActionsShareOneRowAndOneSize(): void
+    {
+        $view = (string) file_get_contents(ROOTPATH . 'frontend/src/pages/operations/EquipmentDetailPage.vue');
+
+        self::assertStringContainsString('id="equipment-driver-form"', $view);
+        self::assertStringContainsString('class="grid max-w-md grid-cols-1 gap-3 sm:grid-cols-2"', $view);
+        self::assertStringContainsString('dangerButtonLarge', $view);
+        self::assertStringContainsString('min-h-11', $view);
+        self::assertStringContainsString('px-4 py-2.5', $view);
+        self::assertStringContainsString('rounded-lg', $view);
+        self::assertStringContainsString('border border-danger/30', $view);
+        self::assertStringContainsString('type="button"', $view);
+        self::assertStringContainsString('@click="toggleUnassign"', $view);
+        self::assertStringContainsString('aria-controls="equipment-driver-unassign"', $view);
+        self::assertStringContainsString('<summary class="sr-only"', $view);
+        self::assertStringContainsString('${primaryButton} w-full', $view);
+        self::assertStringContainsString('${dangerButtonLarge} w-full', $view);
+    }
+
     public function testMigrationAddsClosureColumnsWithSafeDown(): void
     {
         $migration = (string) file_get_contents(
