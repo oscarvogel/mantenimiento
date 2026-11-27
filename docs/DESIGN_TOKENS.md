@@ -127,6 +127,11 @@ La pantalla no muestra códigos internos ni datos crudos.
 | Encabezado de página | `pages/operations/components/PageHeading.vue` | Etiqueta en `primary`, título, bajada y acciones. Sin línea divisoria. |
 | Tarjeta | `pages/operations/components/PanelCard.vue` | `rounded-card` y `shadow-card`, sin borde. |
 | Filtro con conteo | `frontend/src/components/ui/FilterChip.vue` | Enlace (`href`, `aria-current`) o botón (`aria-pressed`, evento `select`). El activo va en `action`. |
+| Pestañas | clase `ui-tabs` (`styles.css`) | Va en el elemento `role="tablist"` (o en un `nav` de enlaces). Selector de píldoras sobre fondo suave; la activa sale de `aria-selected="true"` o `aria-current="page"`, no de clases. Pisa los subrayados y botones viejos de cada pantalla. |
+| Tabla | clase `ui-table` (`styles.css`) | Cada fila es una píldora suave sin líneas. No va en tablas adaptables que pasan a ficha en el celular (`block … xl:table`): esas arman su propia fila redondeada. |
+| Tarjeta destacada | `MetricCard` con `emphasis`, o clase `ui-card-emphasis` | La cifra más urgente de un resumen, en `surface-inverse` con los textos de adentro en claro. Una sola por resumen. |
+| Puntos decorativos | clase `hero-dots` | Fondo punteado de las tarjetas destacadas (inicio y resúmenes). |
+| Meta de una ficha | slot `meta` de `PageHeading` | Estado y datos cortos de la entidad, junto al título. |
 | Etiqueta de campo | `pages/operations/components/FormField.vue` | Props `hint` y `error`. Conecta el campo con `v-slot="field"` y `v-bind="field.control"`. |
 | Estado | `pages/operations/components/StatusBadge.vue` | Muestra texto legible ("En proceso") e ícono por tono. No depende solo del color. |
 | Modal | `frontend/src/ui/BaseDialog.vue` | Sobre `<dialog>` nativo, que maneja el foco, Escape y queda encima de todo. Props: `title`, `description`, `eyebrow`, `open`, `persistent` (mientras guarda), `size` (`sm`…`xl`), `titleId`, `closeLabel`. Al abrir enfoca el primer campo. Cerrado, no queda en el DOM. |

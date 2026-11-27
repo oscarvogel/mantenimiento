@@ -85,6 +85,16 @@ final class CodeIgniterWorkRequestRepositoryTest extends CIUnitTestCase
         self::assertEquals(['PENDIENTE' => 3, 'APROBADA' => 1, 'RECHAZADA' => 1], $repository->listScoped(5, null, [], 1, 25, null)['statusCounts']);
     }
 
+    public function testCountsOnlyWhatTheListCanShow(): void
+    {
+        // Solicitud con un reportante que ya no existe: el listado no la muestra, la píldora tampoco la cuenta.
+        $this->database->table('solicitudes_mantenimiento')->insert(['id' => 7, 'empresa_id' => 5, 'sucursal_id' => 10, 'equipo_id' => 1, 'reportado_por' => 99, 'fecha_reporte' => '2026-11-20 08:00:00', 'descripcion' => 'Huérfana', 'estado' => 'PENDIENTE']);
+        $result = (new CodeIgniterWorkRequestRepository($this->database))->listScoped(5, [10], [], 1, 25, null);
+
+        self::assertSame(4, $result['total']);
+        self::assertSame($result['total'], array_sum($result['statusCounts']));
+    }
+
     private function dropTables(): void
     {
         foreach (['solicitudes_mantenimiento', 'usuarios', 'equipos', 'sucursales'] as $table) {

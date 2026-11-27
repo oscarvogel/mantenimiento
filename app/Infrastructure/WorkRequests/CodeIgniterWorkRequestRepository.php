@@ -137,7 +137,10 @@ final class CodeIgniterWorkRequestRepository implements WorkRequestRepository
     {
         $query = $this->database->table('solicitudes_mantenimiento s')
             ->select('s.estado, COUNT(*) total')
+            // Mismas uniones que el listado: lo que cuenta una píldora es lo que lista al tocarla.
             ->join('equipos e', 'e.id = s.equipo_id AND e.empresa_id = s.empresa_id', 'inner')
+            ->join('sucursales suc', 'suc.id = s.sucursal_id AND suc.empresa_id = s.empresa_id', 'inner')
+            ->join('usuarios u', 'u.id = s.reportado_por', 'inner')
             ->where('s.empresa_id', $companyId);
         $this->applyScope($query, $branchIds, $reportedBy);
         $this->applyFilters($query, ['status' => ''] + $filters);
