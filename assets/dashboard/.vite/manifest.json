@@ -86,7 +86,7 @@
     "isDynamicEntry": true
   },
   "src/main.js": {
-    "file": "assets/main-BQZnv5Bh.js",
+    "file": "assets/main-B2UdOAq4.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
@@ -122,7 +122,7 @@
     ]
   },
   "src/profiles/cliente_piloto/profile.js": {
-    "file": "assets/profile-Blcn1LcR.js",
+    "file": "assets/profile-D624UVJ2.js",
     "name": "profile",
     "src": "src/profiles/cliente_piloto/profile.js",
     "isDynamicEntry": true,
@@ -138,7 +138,7 @@
     ]
   },
   "src/profiles/platform/profile.js": {
-    "file": "assets/profile-O9E0KzfJ.js",
+    "file": "assets/profile-CDnLtFZL.js",
     "name": "profile",
     "src": "src/profiles/platform/profile.js",
     "isDynamicEntry": true,
@@ -151,7 +151,7 @@
     ]
   },
   "src/profiles/vogel/profile.js": {
-    "file": "assets/profile-wQzfxLjE.js",
+    "file": "assets/profile-DJj-ez3j.js",
     "name": "profile",
     "src": "src/profiles/vogel/profile.js",
     "isDynamicEntry": true,
