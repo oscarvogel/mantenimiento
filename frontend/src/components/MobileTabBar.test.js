@@ -34,4 +34,10 @@ describe('MobileTabBar', () => {
     const wrapper = mount(MobileTabBar, { props: { navigation } })
     expect(wrapper.findAll('a').map((link) => link.text())).toEqual(['Resumen', 'Km/horas', 'Falla', 'Mi trabajo'])
   })
+
+  it('a la oficina (ve planes) le muestra órdenes y solicitudes, no los accesos de campo', () => {
+    const navigation = [item('dashboard'), item('quick-readings'), item('report-failure'), item('work-orders'), item('my-work'), item('work-requests'), item('plans')]
+    const wrapper = mount(MobileTabBar, { props: { navigation } })
+    expect(wrapper.findAll('a').map((link) => link.text())).toEqual(['Resumen', 'Órdenes', 'Solicitudes', 'Km/horas'])
+  })
 })

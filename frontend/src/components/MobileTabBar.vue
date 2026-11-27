@@ -2,7 +2,7 @@
 // Phone-only bar with the daily actions within thumb reach. It shows only the items the
 // server sent (permissions stay server-side); "Menú" opens the full sidebar.
 import { computed } from 'vue'
-import { ArrowPathRoundedSquareIcon, Bars3Icon, ClipboardDocumentCheckIcon, ExclamationTriangleIcon, HomeIcon, WrenchScrewdriverIcon } from '@heroicons/vue/24/outline'
+import { ArrowPathRoundedSquareIcon, Bars3Icon, ClipboardDocumentCheckIcon, ClipboardDocumentListIcon, ExclamationTriangleIcon, HomeIcon, WrenchScrewdriverIcon } from '@heroicons/vue/24/outline'
 
 const props = defineProps({
   navigation: { type: Array, required: true },
@@ -19,7 +19,16 @@ const shortcuts = [
   { keys: ['my-work', 'work-orders', 'trips-operations'], label: 'Órdenes', icon: WrenchScrewdriverIcon },
 ]
 
-const tabs = computed(() => shortcuts
+// Oficina (ve planes, mismo criterio que la barra de escritorio): órdenes y solicitudes.
+const officeShortcuts = [
+  shortcuts[0],
+  { keys: ['work-orders'], label: 'Órdenes', icon: WrenchScrewdriverIcon },
+  { keys: ['work-requests'], label: 'Solicitudes', icon: ClipboardDocumentListIcon },
+  shortcuts[1],
+]
+const isOffice = computed(() => props.navigation.some((entry) => entry.key === 'plans'))
+
+const tabs = computed(() => (isOffice.value ? officeShortcuts : shortcuts)
   .map((shortcut) => {
     const item = shortcut.keys
       .map((key) => props.navigation.find((entry) => entry.key === key && !entry.disabled && entry.href))

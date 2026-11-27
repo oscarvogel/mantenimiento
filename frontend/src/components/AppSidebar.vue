@@ -51,12 +51,15 @@ const portalLink = computed(() => props.moduleNavigation.find((item) => item.key
 // (mismo criterio que el portal): sus accesos son Mi trabajo e Informar falla.
 const officeRailKeys = ['dashboard', 'work-orders', 'work-requests', 'plans', 'equipment', 'quick-readings']
 const fieldRailKeys = ['dashboard', 'my-work', 'report-failure', 'quick-readings', 'work-orders', 'equipment']
+// Viajes sigue el orden del menú; Historial (solo lectura del ERP anterior) queda en el desplegado.
+const tripRailKeys = ['trips-operations-dashboard', 'trips-operations', 'trips-fuel-pending', 'trips-commercial-closing', 'customer-accounts', 'trips-profitability']
 const railLinks = computed(() => {
   const available = props.navigation.filter((item) => item.href && !item.disabled)
   if (isPlatformNavigation.value || isManagerialNavigation.value) return available
 
   // Siempre los mismos íconos en el mismo lugar: sumar la página actual los corría.
-  const keys = available.some((item) => item.key === 'plans') ? officeRailKeys : fieldRailKeys
+  const has = (key) => available.some((item) => item.key === key)
+  const keys = isTripNavigation.value ? tripRailKeys : (has('plans') ? officeRailKeys : fieldRailKeys)
   const preferred = keys.map((key) => available.find((item) => item.key === key)).filter(Boolean)
   return preferred.length > 1 ? preferred : available.slice(0, 6)
 })

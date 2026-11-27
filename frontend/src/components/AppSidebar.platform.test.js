@@ -63,6 +63,14 @@ describe('AppSidebar module navigation', () => {
     expect(rail(office.filter((entry) => entry.key !== 'plans'))).toEqual(['/dashboard', '/my-work', '/report-failure', '/quick-readings', '/work-orders', '/equipment'])
   })
 
+  it('en Viajes los íconos fijos siguen el orden del menú, sin Historial', () => {
+    const keys = ['trips-operations-dashboard', 'trips-dashboard', 'trips-operations', 'trips-fuel-pending', 'trips-profitability', 'trips-commercial-closing', 'customer-accounts', 'trip-masters']
+    const navigation = keys.map((key) => ({ key, label: key, href: `/${key}` }))
+    const hrefs = mount(AppSidebar, { props: { navigation, collapsible: true, collapsed: true } })
+      .get('#desktop-primary-navigation').findAll('a').map((link) => link.attributes('href'))
+    expect(hrefs).toEqual(['/trips-operations-dashboard', '/trips-operations', '/trips-fuel-pending', '/trips-commercial-closing', '/customer-accounts', '/trips-profitability'])
+  })
+
   it('no repite Cerrar sesión: vive en Mi cuenta', () => {
     const wrapper = mount(AppSidebar, { props: { navigation: [{ key: 'dashboard', label: 'Resumen', href: '/dashboard' }] } })
     expect(wrapper.text()).not.toContain('Cerrar sesión')
