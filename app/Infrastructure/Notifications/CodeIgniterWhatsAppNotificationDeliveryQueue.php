@@ -424,7 +424,7 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
                 continue;
             }
             $expires = new \DateTimeImmutable($expires->format('Y-m-d'));
-            $days = (int) $today->diff($expires)->format('%r%a');
+            $days = (int) $todayDate->diff($expires)->format('%r%a');
             $warningDays = max(0, (int) ($row['dias_aviso_previo'] ?? 30));
             $milestones = array_values(array_unique([$warningDays, 15, 7, 0]));
             if ($days >= 0 && ! in_array($days, $milestones, true)) {
