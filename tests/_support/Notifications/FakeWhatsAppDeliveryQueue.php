@@ -19,6 +19,14 @@ final class FakeWhatsAppDeliveryQueue implements WhatsAppNotificationDeliveryQue
     /** @var list<array{companyId:int,deliveryKey:string,phone:string,instanceId:string,message:string,scheduledAt:string}> */
     public array $enqueued = [];
 
+    /** @var array<int,bool> Estado despachable por id; por defecto, sí. */
+    public array $pending = [];
+
+    public function stillPending(int $deliveryId): bool
+    {
+        return $this->pending[$deliveryId] ?? true;
+    }
+
     public function enqueueManagementReadingReport(
         int $companyId,
         string $deliveryKey,

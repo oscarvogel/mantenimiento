@@ -1237,9 +1237,24 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
         return $rows;
     }
 
-    public function accepted(int $deliveryId, string $messageId, string $status): void
+    public function stillPending(int $deliveryId): bool
     {
-        $now = $this->clock->now()->format('Y-m-d H:i:s');
+        if ($deliveryId <= 0) {
+            return false;
+        }
+
+        $row = $this->db->table('notificacion_whatsapp_entregas')
+            ->select('estado')
+            ->where('id', $deliveryId)
+            ->get()
+            ->getRowArray();
+
+        return $row !== null
+            && in_array((string) ($row['estado'] ?? ''), ['PENDIENTE', 'REINTENTO'], true);
+    }
+
+    public function accepted(int $deliveryId, string $messageId, string $status): void
+    {        $now = $this->clock->now()->format('Y-m-d H:i:s');
         $normalizedStatus = strtolower(trim($status));
         $final = in_array($normalizedStatus, ['accepted', 'delivered', 'read'], true);
 

@@ -160,6 +160,11 @@ final class RecordingDeliveryQueue implements WhatsAppNotificationDeliveryQueue
         return [];
     }
 
+    public function stillPending(int $deliveryId): bool
+    {
+        return true;
+    }
+
     public function awaitingConfirmation(int $limit): array
     {
         return [];
