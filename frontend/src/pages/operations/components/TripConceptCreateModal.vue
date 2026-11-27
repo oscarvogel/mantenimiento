@@ -143,7 +143,7 @@ watch(() => props.open, (open) => {
           </label>
         </div>
 
-        <label class="flex items-center gap-3 rounded-lg border border-border-subtle bg-surface px-3 py-3 text-sm font-medium text-ink">
+        <label class="flex items-center gap-3 rounded-2xl bg-surface-subtle px-3 py-3 text-sm font-medium text-ink">
           <input v-model="amountEditable" type="checkbox" name="permite_editar_importe" class="size-4 rounded border-border text-primary focus:ring-primary" />
           <span>Permitir editar el importe al cargarlo</span>
         </label>

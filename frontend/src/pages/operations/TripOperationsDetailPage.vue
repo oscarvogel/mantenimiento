@@ -746,7 +746,7 @@ const facts = computed(() => {
 
     <PanelCard title="Datos generales" class="mb-5">
       <dl class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <div v-for="([label, value]) in facts" :key="label" class="min-w-0 rounded-lg border border-border-subtle bg-surface p-3">
+        <div v-for="([label, value]) in facts" :key="label" class="min-w-0 rounded-2xl bg-surface-subtle p-3">
           <dt class="text-xs font-semibold text-ink-muted">{{ label }}</dt>
           <dd class="mt-1 break-words text-sm font-semibold text-ink">{{ value === null || value === undefined || value === '' ? '—' : value }}</dd>
         </div>
@@ -821,7 +821,7 @@ const facts = computed(() => {
           </tbody>
         </table>
       </div>
-      <div v-if="cancelledLegs.length" class="mb-4 rounded-xl border border-border-subtle bg-surface p-4" data-testid="cancelled-legs">
+      <div v-if="cancelledLegs.length" class="mb-4 rounded-2xl bg-surface-subtle p-4" data-testid="cancelled-legs">
         <h3 class="text-sm font-bold text-ink">Tramos anulados ({{ cancelledLegs.length }})</h3>
         <p class="mt-1 text-xs text-ink-muted">No cuentan en fletes, comisión, margen, liquidación ni cuenta corriente.</p>
         <ul class="mt-3 divide-y divide-border-subtle">
@@ -831,7 +831,7 @@ const facts = computed(() => {
           </li>
         </ul>
       </div>
-      <form v-if="canAddLegs" method="post" :action="data.links?.legs" class="rounded-xl border border-border-subtle bg-surface p-4">
+      <form v-if="canAddLegs" method="post" :action="data.links?.legs" class="rounded-2xl bg-surface-subtle p-4">
         <input type="hidden" :name="csrf.name" :value="csrf.hash" />
         <h3 class="text-sm font-bold text-ink">Agregar tramo</h3>
         <p class="mt-1 text-xs text-ink-muted">El flete de facturación es el ingreso del viaje. El acuerdo con el chofer, por toneladas o con un monto acordado, es la base para su porcentaje. Los importes son opcionales mientras el viaje está abierto.</p>
@@ -906,7 +906,7 @@ const facts = computed(() => {
       </div>
       <p v-if="settlementNote" class="rounded-lg border border-info/30 bg-info-subtle px-3 py-2 text-sm text-info-strong">{{ settlementNote }}</p>
       <div class="grid gap-5" :class="settlementNote ? '' : 'xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]'">
-        <div v-if="!settlementNote" class="rounded-xl border border-border-subtle bg-surface p-4">
+        <div v-if="!settlementNote" class="rounded-2xl bg-surface-subtle p-4">
           <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Chofer responsable</p>
           <p class="mt-1 text-lg font-bold text-ink">{{ settlement.driver || 'Sin dato' }}</p>
           <dl class="mt-4 space-y-2 text-sm">
@@ -922,7 +922,7 @@ const facts = computed(() => {
             <p class="text-sm font-bold text-ink">Total a liquidar</p>
             <p class="text-xl font-extrabold" :class="settlement.total_ars < 0 ? 'text-danger-strong' : 'text-primary'">{{ money(settlement.total_ars) }}</p>
           </div>
-          <div v-if="otherEarnings.length" class="mt-3 rounded-lg border border-border-subtle bg-surface p-3">
+          <div v-if="otherEarnings.length" class="mt-3 rounded-2xl bg-surface-subtle p-3">
             <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Detalle de haberes</p>
             <ul class="mt-2 space-y-1 text-xs">
               <li v-for="earning in otherEarnings" :key="`settlement-${earning.id}`" class="flex items-start justify-between gap-3">
@@ -1023,7 +1023,7 @@ const facts = computed(() => {
       </PanelCard>
 
       <PanelCard title="Acciones" v-if="data.canStart || canClose">
-        <form v-if="data.canStart" method="post" :action="`${data.links?.detail ?? ''}/iniciar`" class="mb-5 rounded-xl border border-border-subtle bg-surface p-4">
+        <form v-if="data.canStart" method="post" :action="`${data.links?.detail ?? ''}/iniciar`" class="mb-5 rounded-2xl bg-surface-subtle p-4">
           <input type="hidden" :name="csrf.name" :value="csrf.hash" />
           <h3 class="flex items-center gap-2 text-sm font-bold text-ink"><CheckCircleIcon class="size-4 text-success" aria-hidden="true" />Registrar salida real</h3>
           <p class="mt-1 text-xs text-ink-muted">Al iniciar, el viaje pasa a En curso. Si no indicás la fecha, se usa la fecha actual.</p>
@@ -1044,7 +1044,7 @@ const facts = computed(() => {
           El recorrido terminó el {{ fmtDate(fechaCierreSugerida) }} pero el viaje sigue En curso. Cargá el odómetro de regreso y cerrá el viaje para liberar el equipo y registrar la lectura.
         </p>
 
-        <form v-if="canClose" method="post" :action="data.links?.finish" class="mb-5 rounded-xl border border-border-subtle bg-surface p-4" data-testid="close-trip-form" @submit="confirmClose">
+        <form v-if="canClose" method="post" :action="data.links?.finish" class="mb-5 rounded-2xl bg-surface-subtle p-4" data-testid="close-trip-form" @submit="confirmClose">
           <input type="hidden" :name="csrf.name" :value="csrf.hash" />
           <h3 class="flex items-center gap-2 text-sm font-bold text-ink"><CheckCircleIcon class="size-4 text-success" aria-hidden="true" />Cerrar viaje</h3>
           <p class="mt-1 text-xs text-ink-muted">Al cerrar, el viaje pasa a Finalizado y se genera la lectura del equipo con el km de regreso.</p>
@@ -1129,7 +1129,7 @@ const facts = computed(() => {
     <PanelCard title="Paradas operativas" :count="stops.length" class="mt-5">
       <p v-if="stops.length === 0" class="text-sm text-ink-muted">No hay paradas operativas cargadas. Los tramos con cliente y fletes se administran en la sección Tramos.</p>
       <ol v-else class="space-y-4">
-        <li v-for="stop in stops" :key="stop.orden" class="rounded-xl border border-border-subtle bg-surface p-4">
+        <li v-for="stop in stops" :key="stop.orden" class="rounded-2xl bg-surface-subtle p-4">
           <div class="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Parada {{ stop.orden }} · {{ stop.tipo_label }}</p>
@@ -1183,7 +1183,7 @@ const facts = computed(() => {
               <AutocompleteSelect v-model="tripDraft.driverIds" name="choferes[]" :options="editDriverOptions" placeholder="Elegí uno o más choferes" multiple required />
             </label>
           </div>
-          <div v-if="tripDraft.driverIds.length" class="mt-4 rounded-xl border border-border-subtle bg-surface p-3">
+          <div v-if="tripDraft.driverIds.length" class="mt-4 rounded-2xl bg-surface-subtle p-3">
             <p class="text-sm font-semibold text-ink">% de liquidación del chofer</p>
             <div v-for="driverId in tripDraft.driverIds" :key="driverId" class="mt-3 flex flex-wrap items-center justify-between gap-2">
               <span class="text-sm font-semibold text-ink">{{ editDriverOptions.find((driver) => String(driver.value) === String(driverId))?.label ?? `Chofer ${driverId}` }}</span>

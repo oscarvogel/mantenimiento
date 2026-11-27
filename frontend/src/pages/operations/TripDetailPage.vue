@@ -46,7 +46,7 @@ const facts = computed(() => [
 
     <PanelCard title="Datos generales" class="mb-5">
       <dl class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <div v-for="([label, value]) in facts" :key="label" class="min-w-0 rounded-lg border border-border-subtle bg-surface p-3">
+        <div v-for="([label, value]) in facts" :key="label" class="min-w-0 rounded-2xl bg-surface-subtle p-3">
           <dt class="text-xs font-semibold text-ink-muted">{{ label }}</dt>
           <dd class="mt-1 break-words text-sm font-semibold text-ink">{{ display(value) }}</dd>
         </div>

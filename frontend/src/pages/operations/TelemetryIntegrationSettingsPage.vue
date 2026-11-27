@@ -216,7 +216,7 @@ const usedUnitIds = (integrationId, equipmentId) => Object.entries(mappings[inte
           </div>
         </div>
 
-        <div v-if="openIntegrationId === integration.id" class="mt-5 rounded-xl border border-border bg-surface-muted/40 p-4 sm:p-5">
+        <div v-if="openIntegrationId === integration.id" class="mt-5 rounded-2xl bg-surface-muted/40 p-4 sm:p-5">
           <p v-if="loadErrors[integration.id]" role="alert" class="rounded-lg border border-danger/20 bg-danger-subtle p-3 text-sm text-danger">
             {{ loadErrors[integration.id] }}
           </p>

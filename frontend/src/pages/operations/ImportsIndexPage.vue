@@ -20,7 +20,7 @@ defineProps({ data: { type: Object, required: true } })
 
     <PanelCard v-if="data.canUpload" title="Nueva importación" class="mb-6">
       <div class="space-y-5">
-        <section class="rounded-xl border border-border-subtle bg-surface-subtle/60 p-4 sm:p-5" aria-labelledby="import-templates-title">
+        <section class="rounded-2xl bg-surface-subtle/60 p-4 sm:p-5" aria-labelledby="import-templates-title">
           <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div>
               <h3 id="import-templates-title" class="text-sm font-bold text-ink">Plantillas disponibles</h3>
@@ -35,7 +35,7 @@ defineProps({ data: { type: Object, required: true } })
           </div>
         </section>
 
-        <section class="rounded-xl border border-border-subtle bg-surface-subtle/40 p-4 sm:p-5" aria-labelledby="import-file-title">
+        <section class="rounded-2xl bg-surface-subtle/40 p-4 sm:p-5" aria-labelledby="import-file-title">
           <div class="mb-4">
             <h3 id="import-file-title" class="text-sm font-bold text-ink">Validar archivo</h3>
             <p class="mt-1 text-sm text-ink-muted">Elegí el tipo de información y cargá el archivo correspondiente.</p>
@@ -58,7 +58,7 @@ defineProps({ data: { type: Object, required: true } })
           </form>
         </section>
 
-        <section class="rounded-xl border border-border-subtle bg-surface-subtle/40 p-4 sm:p-5" aria-labelledby="driver-import-title">
+        <section class="rounded-2xl bg-surface-subtle/40 p-4 sm:p-5" aria-labelledby="driver-import-title">
           <div class="mb-4">
             <h3 id="driver-import-title" class="text-sm font-bold text-ink">Choferes por móvil</h3>
             <p class="mt-1 text-sm text-ink-muted">Revisá la asignación de cada chofer a su móvil mediante un archivo XLSX.</p>

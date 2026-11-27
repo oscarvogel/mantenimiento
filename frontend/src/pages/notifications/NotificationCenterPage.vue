@@ -187,7 +187,7 @@ async function sendTestPush() {
             <option v-for="event in eventTypes" :key="event[0]" :value="event[0]">{{ event[1] }}</option>
           </select>
         </label>
-        <form :key="selectedEventType" :action="data.urls.preferences" method="post" class="mt-4 grid gap-4 rounded-lg border border-border-subtle bg-surface-subtle p-4 sm:grid-cols-2">
+        <form :key="selectedEventType" :action="data.urls.preferences" method="post" class="mt-4 grid gap-4 rounded-2xl bg-surface-subtle p-4 sm:grid-cols-2">
           <input v-for="(value, name) in csrfFields()" :key="name" type="hidden" :name="name" :value="value">
           <input type="hidden" name="event_type" :value="selectedEventType">
           <input type="hidden" name="internal" value="INMEDIATO">

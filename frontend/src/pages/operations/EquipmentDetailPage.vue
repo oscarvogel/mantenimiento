@@ -362,7 +362,7 @@ const equipmentSummary = computed(() => {
             <div v-if="readingEvidence.aiConfidence !== null && readingEvidence.aiConfidence !== undefined"><dt class="text-ink-muted">Confianza IA</dt><dd class="font-semibold text-ink">{{ Math.round(Number(readingEvidence.aiConfidence) * 100) }}%</dd></div>
             <div v-if="readingEvidence.aiObservation" class="sm:col-span-2"><dt class="text-ink-muted">Observación IA</dt><dd class="font-medium text-ink">{{ readingEvidence.aiObservation }}</dd></div>
           </dl>
-          <div v-if="readingEvidence.canReview" class="mt-4 rounded-xl border border-border bg-surface-subtle p-4">
+          <div v-if="readingEvidence.canReview" class="mt-4 rounded-2xl bg-surface-subtle p-4">
             <h3 class="text-sm font-semibold text-ink">Revisar detección de IA</h3>
             <form :action="readingEvidence.reviewUrl" method="post" class="mt-3 grid gap-3 sm:grid-cols-2">
               <input type="hidden" :name="data.csrf.name" :value="data.csrf.hash">
@@ -379,7 +379,7 @@ const equipmentSummary = computed(() => {
               <button type="submit" :class="primaryButton" class="sm:col-span-2">Marcar como revisada</button>
             </form>
           </div>
-          <div v-else-if="readingEvidence.evidenceReviewedAt" class="mt-4 rounded-xl border border-border bg-surface-subtle p-4 text-sm">
+          <div v-else-if="readingEvidence.evidenceReviewedAt" class="mt-4 rounded-2xl bg-surface-subtle p-4 text-sm">
             <p class="font-semibold text-ink">Revisada por {{ readingEvidence.evidenceReviewedByName || 'un usuario' }} el {{ format.formatDateTime(readingEvidence.evidenceReviewedAt) }}</p>
             <p class="mt-1 text-ink-muted">Motivo: {{ readingEvidence.evidenceReviewReason || '-' }}</p>
             <p v-if="readingEvidence.evidenceReviewObservation" class="mt-1 text-ink-muted">{{ readingEvidence.evidenceReviewObservation }}</p>

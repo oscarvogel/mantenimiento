@@ -287,7 +287,7 @@ watch([() => proposal.currency, () => proposal.serviceDate], async ([currency, s
         <h2 id="work-order-confirm-title" class="mt-1 text-xl font-bold text-ink">{{ confirmationTitle }}</h2>
         <p class="mt-2 text-sm text-ink-muted">{{ confirmationDescription }}</p>
 
-        <dl class="mt-5 divide-y divide-border rounded-xl border border-border bg-surface px-4 text-sm">
+        <dl class="mt-5 divide-y divide-border rounded-2xl bg-surface-subtle px-4 text-sm">
           <div class="flex items-center justify-between gap-4 py-3"><dt class="text-ink-muted">Equipo</dt><dd class="text-right font-semibold text-ink">{{ selectedEquipment?.code || 'Sin equipo' }}{{ selectedEquipment?.plate ? ` · ${selectedEquipment.plate}` : '' }}</dd></div>
           <div class="flex items-center justify-between gap-4 py-3"><dt class="text-ink-muted">Fecha del trabajo</dt><dd class="text-right font-semibold text-ink">{{ format.formatDateTime(proposal.serviceDate, 'Sin fecha') }}</dd></div>
           <div v-if="proposal.readingValue !== null && proposal.readingValue !== undefined && proposal.readingValue !== ''" class="flex items-center justify-between gap-4 py-3"><dt class="text-ink-muted">{{ historicalCorrectiveReading && pendingAction === 'corrective' ? 'Lectura histórica de la OT' : 'Lectura a registrar' }}</dt><dd class="text-right font-semibold text-ink">{{ formatReading(proposal.readingValue) }} {{ proposal.readingType === 'horas' ? 'h' : 'km' }}</dd></div>
@@ -298,7 +298,7 @@ watch([() => proposal.currency, () => proposal.serviceDate], async ([currency, s
           <div v-if="pendingAction !== 'corrective'" class="flex items-center justify-between gap-4 py-3"><dt class="text-ink-muted">Trabajos preventivos</dt><dd class="font-semibold text-ink">{{ preventiveWorks.length }}</dd></div>
         </dl>
 
-        <div v-if="pendingAction === 'both' && parseMoney(proposal.totalAmount) !== null" class="mt-4 rounded-xl border border-border bg-surface p-4">
+        <div v-if="pendingAction === 'both' && parseMoney(proposal.totalAmount) !== null" class="mt-4 rounded-2xl bg-surface-subtle p-4">
           <p class="text-sm font-semibold text-ink">Distribución del importe</p>
           <p class="mt-1 text-xs text-ink-muted">Para no duplicar el costo, indicá cuánto corresponde a cada OT.</p>
           <div class="mt-3 grid gap-3 sm:grid-cols-2">

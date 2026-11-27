@@ -95,7 +95,7 @@ const search = async (item) => {
         </div>
 
         <div class="mt-4 grid gap-4 lg:grid-cols-2">
-          <div class="rounded-xl border border-border-subtle bg-surface p-4">
+          <div class="rounded-2xl bg-surface-subtle p-4">
             <p class="text-sm font-bold text-ink">Sugerencias del sistema</p>
             <p v-if="!item.candidates.length" class="mt-1 text-sm text-ink-muted">Sin candidatos automáticos. Buscá el viaje manualmente.</p>
             <ul v-else class="mt-3 space-y-2">
@@ -113,7 +113,7 @@ const search = async (item) => {
             </ul>
           </div>
 
-          <div class="rounded-xl border border-border-subtle bg-surface p-4">
+          <div class="rounded-2xl bg-surface-subtle p-4">
             <p class="text-sm font-bold text-ink">Buscar otro viaje</p>
             <div class="mt-2 flex flex-wrap items-end gap-2">
               <label class="block min-w-48 flex-1">

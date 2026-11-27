@@ -175,26 +175,26 @@ const sections = [
       </div>
 
       <div class="grid gap-4 p-5 sm:grid-cols-2 sm:p-6 lg:grid-cols-4">
-        <div class="rounded-lg border border-border bg-surface-subtle p-4">
+        <div class="rounded-2xl bg-surface-subtle p-4">
           <span class="text-xs font-semibold uppercase tracking-wide text-ink-subtle">Canal</span>
           <p class="mt-1 text-sm font-semibold text-ink">{{ data.whatsapp.enabled ? 'Habilitado' : 'Deshabilitado' }}</p>
         </div>
-        <div class="rounded-lg border border-border bg-surface-subtle p-4">
+        <div class="rounded-2xl bg-surface-subtle p-4">
           <span class="text-xs font-semibold uppercase tracking-wide text-ink-subtle">API key</span>
           <p class="mt-1 text-sm font-semibold text-ink">{{ data.whatsapp.apiKeyConfigured ? 'Configurada' : 'Sin configurar' }}</p>
         </div>
-        <div class="rounded-lg border border-border bg-surface-subtle p-4">
+        <div class="rounded-2xl bg-surface-subtle p-4">
           <span class="text-xs font-semibold uppercase tracking-wide text-ink-subtle">Instancia emisora</span>
           <p class="mt-1 break-all text-sm font-semibold text-ink">{{ data.whatsapp.instanceId || 'Sin definir' }}</p>
         </div>
-        <div class="rounded-lg border border-border bg-surface-subtle p-4">
+        <div class="rounded-2xl bg-surface-subtle p-4">
           <span class="text-xs font-semibold uppercase tracking-wide text-ink-subtle">Estado</span>
           <p class="mt-1 text-sm font-semibold" :class="data.whatsapp.available ? 'text-success' : 'text-danger'">
             {{ data.whatsapp.available ? 'Lista para enviar' : 'Configuración incompleta' }}
           </p>
         </div>
 
-        <div class="sm:col-span-2 lg:col-span-4 rounded-lg border border-border bg-surface-subtle p-4">
+        <div class="sm:col-span-2 lg:col-span-4 rounded-2xl bg-surface-subtle p-4">
           <p class="text-sm font-medium text-ink">URL del gateway</p>
           <p class="mt-1 break-all font-mono text-xs text-ink-muted">{{ data.whatsapp.apiUrl || 'Sin configurar' }}</p>
           <p class="mt-2 text-xs leading-5 text-ink-muted">La API key no se muestra. El número emisor pertenece a la instancia conectada en Vogel WhatsApp API.</p>
@@ -226,7 +226,7 @@ const sections = [
                 <CsrfField :csrf="data.csrf" />
                 <p class="text-sm font-semibold text-ink">Mantenimiento preventivo</p>
                 <p class="mt-1 text-xs text-ink-muted">Usa un plan real y envía sólo al teléfono piloto.</p>
-                <select name="plan_id" required class="mt-3 min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink">
+                <select name="plan_id" required class="mt-3 min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink">
                   <option value="">Seleccionar equipo y servicio…</option>
                   <option v-for="plan in data.preventiveTestPlans || []" :key="plan.id" :value="plan.id">{{ plan.label }}</option>
                 </select>
@@ -237,8 +237,8 @@ const sections = [
                 <CsrfField :csrf="data.csrf" />
                 <p class="text-sm font-semibold text-ink">Recordatorio de kilometraje</p>
                 <p class="mt-1 text-xs text-ink-muted">Prueba un equipo concreto sin contactar al chofer real.</p>
-                <input name="patente_equipo" required autocomplete="off" placeholder="Patente o código" class="mt-3 min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink" />
-                <select name="etapa" class="mt-2 min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink">
+                <input name="patente_equipo" required autocomplete="off" placeholder="Patente o código" class="mt-3 min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink" />
+                <select name="etapa" class="mt-2 min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink">
                   <option value="initial">Lunes</option><option value="wednesday">Miércoles</option><option value="friday">Viernes</option>
                 </select>
                 <button type="submit" :disabled="!data.whatsapp.available || !data.whatsapp.pilotPhoneConfigured" :class="[primaryButton, 'mt-3']">Probar kilometraje</button>
@@ -248,8 +248,8 @@ const sections = [
                 <CsrfField :csrf="data.csrf" />
                 <p class="text-sm font-semibold text-ink">Simulación semanal</p>
                 <div class="mt-3 grid gap-2 sm:grid-cols-2">
-                  <select name="etapa" class="min-h-11 rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink"><option value="initial">Lunes</option><option value="wednesday">Miércoles</option><option value="friday">Viernes</option></select>
-                  <select name="escenario" class="min-h-11 rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink"><option value="missing">Sin lectura esta semana</option><option value="actual">Lecturas reales</option></select>
+                  <select name="etapa" class="min-h-11 rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink"><option value="initial">Lunes</option><option value="wednesday">Miércoles</option><option value="friday">Viernes</option></select>
+                  <select name="escenario" class="min-h-11 rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink"><option value="missing">Sin lectura esta semana</option><option value="actual">Lecturas reales</option></select>
                 </div>
                 <button type="submit" :disabled="!data.whatsapp.available || !data.whatsapp.pilotEnabled || !data.whatsapp.pilotPhoneConfigured" :class="[primaryButton, 'mt-3']">Simular semana</button>
               </form>
@@ -259,10 +259,10 @@ const sections = [
                 <p class="text-sm font-semibold text-ink">Resumen de vencimientos</p>
                 <p class="mt-1 text-xs text-ink-muted">Diagnóstico Hito #414, sólo al teléfono piloto.</p>
                 <div class="mt-3 grid gap-2">
-                  <select name="empresa_id" required class="min-h-11 rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink">
+                  <select name="empresa_id" required class="min-h-11 rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink">
                     <option value="">Empresa…</option><option v-for="company in data.expirationTestCompanies || []" :key="company.id" :value="company.id">{{ company.displayName }}</option>
                   </select>
-                  <select name="equipo_id" required class="min-h-11 rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink">
+                  <select name="equipo_id" required class="min-h-11 rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink">
                     <option value="">Móvil…</option><option v-for="equipment in data.expirationTestEquipment || []" :key="equipment.id" :value="equipment.id">{{ equipment.label }}</option>
                   </select>
                 </div>
@@ -274,11 +274,11 @@ const sections = [
                 <p class="text-sm font-semibold text-ink">Resumen diario de usuario</p>
                 <p class="mt-1 text-xs text-ink-muted">Genera un vencimiento ficticio para un equipo, arma el resumen real del usuario y lo envía de inmediato para validar el circuito completo.</p>
                 <div class="mt-3 grid gap-2 sm:grid-cols-2">
-                  <select name="usuario_id" required class="min-h-11 rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink">
+                  <select name="usuario_id" required class="min-h-11 rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink">
                     <option value="">Usuario con celular…</option>
                     <option v-for="user in data.userDigestTestUsers || []" :key="user.id" :value="user.id">{{ user.label }}</option>
                   </select>
-                  <select name="equipo_id" required class="min-h-11 rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink">
+                  <select name="equipo_id" required class="min-h-11 rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink">
                     <option value="">Equipo de la misma empresa…</option>
                     <option v-for="equipment in data.expirationTestEquipment || []" :key="equipment.id" :value="equipment.id">{{ equipment.label }}</option>
                   </select>
@@ -307,7 +307,7 @@ const sections = [
                 <CsrfField :csrf="data.csrf" />
                 <p class="text-sm font-semibold text-ink">Prueba técnica a un número</p>
                 <div class="mt-3 flex flex-col gap-2 sm:flex-row">
-                  <input name="telefono_prueba" inputmode="tel" maxlength="30" placeholder="Celular de prueba" class="min-h-11 flex-1 rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink" />
+                  <input name="telefono_prueba" inputmode="tel" maxlength="30" placeholder="Celular de prueba" class="min-h-11 flex-1 rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink" />
                   <button type="submit" :disabled="!data.whatsapp.available" class="min-h-11 rounded-lg border border-border-strong px-4 py-2.5 text-sm font-semibold text-ink disabled:opacity-50">Enviar prueba técnica</button>
                 </div>
               </form>
@@ -376,48 +376,48 @@ const sections = [
         <CsrfField :csrf="data.csrf" />
         <label class="block lg:col-span-3">
           <span class="mb-1.5 block text-sm font-medium text-ink">Razón social <span class="text-danger" aria-hidden="true">*</span></span>
-          <input name="razon_social" maxlength="255" required :value="data.oldInput.razon_social" autocomplete="organization" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          <input name="razon_social" maxlength="255" required :value="data.oldInput.razon_social" autocomplete="organization" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/20" />
         </label>
         <label class="block lg:col-span-3">
           <span class="mb-1.5 block text-sm font-medium text-ink">Nombre de fantasía</span>
-          <input name="nombre_fantasia" maxlength="255" :value="data.oldInput.nombre_fantasia" autocomplete="organization" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          <input name="nombre_fantasia" maxlength="255" :value="data.oldInput.nombre_fantasia" autocomplete="organization" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
         </label>
         <label class="block sm:col-span-1 lg:col-span-2">
           <span class="mb-1.5 block text-sm font-medium text-ink">CUIT</span>
-          <input name="cuit" maxlength="20" :value="data.oldInput.cuit" inputmode="numeric" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          <input name="cuit" maxlength="20" :value="data.oldInput.cuit" inputmode="numeric" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
         </label>
         <label class="block sm:col-span-1 lg:col-span-2">
           <span class="mb-1.5 block text-sm font-medium text-ink">Email general</span>
-          <input type="email" name="email" maxlength="255" :value="data.oldInput.email" autocomplete="email" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          <input type="email" name="email" maxlength="255" :value="data.oldInput.email" autocomplete="email" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
         </label>
         <label class="block sm:col-span-1 lg:col-span-2">
           <span class="mb-1.5 block text-sm font-medium text-ink">Teléfono</span>
-          <input name="telefono" maxlength="50" :value="data.oldInput.telefono" autocomplete="tel" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          <input name="telefono" maxlength="50" :value="data.oldInput.telefono" autocomplete="tel" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
         </label>
         <label class="block sm:col-span-2 lg:col-span-4">
           <span class="mb-1.5 block text-sm font-medium text-ink">Correo para notificaciones de mantenimiento</span>
-          <input type="email" name="email_notificaciones" maxlength="255" :value="data.oldInput.email_notificaciones" placeholder="alertas@empresa.com" autocomplete="email" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          <input type="email" name="email_notificaciones" maxlength="255" :value="data.oldInput.email_notificaciones" placeholder="alertas@empresa.com" autocomplete="email" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/20" />
           <span class="mt-1.5 block text-xs leading-5 text-ink-muted">Recibirá preventivos próximos o vencidos, OT y alertas operativas. Si queda vacío se usa el email general.</span>
         </label>
-        <label class="flex items-start gap-3 rounded-lg border border-border bg-surface-subtle p-3 sm:col-span-2 lg:col-span-2">
+        <label class="flex items-start gap-3 rounded-2xl bg-surface-subtle p-3 sm:col-span-2 lg:col-span-2">
           <input type="hidden" name="notificaciones_whatsapp_habilitadas" value="0" />
           <input type="checkbox" name="notificaciones_whatsapp_habilitadas" value="1" class="mt-0.5 size-4 rounded border-border-strong text-primary focus:ring-primary" />
           <span><span class="block text-sm font-medium text-ink">Habilitar WhatsApp para esta empresa</span><span class="mt-1 block text-xs leading-5 text-ink-muted">Los vencimientos podrán notificarse al chofer asignado.</span></span>
         </label>
         <label class="block sm:col-span-2 lg:col-span-2">
           <span class="mb-1.5 block text-sm font-medium text-ink">Instance ID WhatsApp</span>
-          <input name="whatsapp_instance_id" maxlength="100" placeholder="default" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          <input name="whatsapp_instance_id" maxlength="100" placeholder="default" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
           <span class="mt-1.5 block text-xs leading-5 text-ink-muted">Si queda vacío usa la instancia global configurada.</span>
         </label>
         <label class="block sm:col-span-2 lg:col-span-2">
           <span class="mb-1.5 block text-sm font-medium text-ink">Idioma de avisos y carga pública</span>
-          <select name="idioma_notificaciones" :value="data.oldInput.idioma_notificaciones || 'ES'" required class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20">
+          <select name="idioma_notificaciones" :value="data.oldInput.idioma_notificaciones || 'ES'" required class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20">
             <option value="ES">Español</option>
             <option value="PT">Português</option>
           </select>
           <span class="mt-1.5 block text-xs leading-5 text-ink-muted">Define el idioma del recordatorio semanal y de la pantalla pública de kilometraje.</span>
         </label>
-        <label class="flex items-start gap-3 rounded-lg border border-border bg-surface-subtle p-3 sm:col-span-2 lg:col-span-2">
+        <label class="flex items-start gap-3 rounded-2xl bg-surface-subtle p-3 sm:col-span-2 lg:col-span-2">
           <input type="hidden" name="notificaciones_email_habilitadas" value="0" />
           <input type="checkbox" name="notificaciones_email_habilitadas" value="1" checked class="mt-0.5 size-4 rounded border-border-strong text-primary focus:ring-primary" />
           <span><span class="block text-sm font-medium text-ink">Enviar notificaciones por email</span><span class="mt-1 block text-xs leading-5 text-ink-muted">Podés desactivar el canal sin borrar el destinatario.</span></span>
@@ -455,30 +455,30 @@ const sections = [
         <CsrfField :csrf="data.csrf" />
         <label class="block lg:col-span-3">
           <span class="mb-1.5 block text-sm font-medium text-ink">Empresa <span class="text-danger" aria-hidden="true">*</span></span>
-          <select name="admin_empresa_id" required :value="data.oldInput.admin_empresa_id" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20">
+          <select name="admin_empresa_id" required :value="data.oldInput.admin_empresa_id" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20">
             <option value="" disabled>Seleccionar empresa</option>
             <option v-for="company in data.assignableCompanies" :key="company.id" :value="company.id">{{ company.name }}</option>
           </select>
         </label>
         <label class="block lg:col-span-3">
           <span class="mb-1.5 block text-sm font-medium text-ink">Nombre completo <span class="text-danger" aria-hidden="true">*</span></span>
-          <input name="admin_nombre" maxlength="255" required :value="data.oldInput.admin_nombre" autocomplete="name" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          <input name="admin_nombre" maxlength="255" required :value="data.oldInput.admin_nombre" autocomplete="name" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
         </label>
         <label class="block lg:col-span-3">
           <span class="mb-1.5 block text-sm font-medium text-ink">Email de acceso <span class="text-danger" aria-hidden="true">*</span></span>
-          <input type="email" name="admin_email" maxlength="255" required :value="data.oldInput.admin_email" autocomplete="email" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          <input type="email" name="admin_email" maxlength="255" required :value="data.oldInput.admin_email" autocomplete="email" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
         </label>
         <label class="block lg:col-span-3">
           <span class="mb-1.5 block text-sm font-medium text-ink">Motivo <span class="text-danger" aria-hidden="true">*</span></span>
-          <input name="admin_motivo" minlength="5" maxlength="255" required :value="data.oldInput.admin_motivo" placeholder="Ej.: alta inicial aprobada" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          <input name="admin_motivo" minlength="5" maxlength="255" required :value="data.oldInput.admin_motivo" placeholder="Ej.: alta inicial aprobada" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/20" />
         </label>
         <label class="block lg:col-span-3">
           <span class="mb-1.5 block text-sm font-medium text-ink">Contraseña temporal <span class="text-danger" aria-hidden="true">*</span></span>
-          <input type="password" name="admin_password" minlength="8" maxlength="255" required autocomplete="new-password" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          <input type="password" name="admin_password" minlength="8" maxlength="255" required autocomplete="new-password" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
         </label>
         <label class="block lg:col-span-3">
           <span class="mb-1.5 block text-sm font-medium text-ink">Confirmar contraseña <span class="text-danger" aria-hidden="true">*</span></span>
-          <input type="password" name="admin_password_confirmation" minlength="8" maxlength="255" required autocomplete="new-password" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          <input type="password" name="admin_password_confirmation" minlength="8" maxlength="255" required autocomplete="new-password" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
         </label>
         <div class="lg:col-span-6">
           <p class="mb-3 text-xs leading-5 text-ink-muted">La cuenta se crea activa con el rol Administrador y acceso automático a todas las sucursales actuales y futuras de la empresa.</p>
@@ -534,7 +534,7 @@ const sections = [
             <input type="hidden" name="users_per_page" :value="data.usersPagination.perPage" />
             <label class="block">
               <span class="mb-1.5 block text-sm font-medium text-ink">Perfil visual de esta empresa</span>
-              <select name="frontend_profile" required :value="company.presentationProfile" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20">
+              <select name="frontend_profile" required :value="company.presentationProfile" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20">
                 <option v-for="profile in data.presentationProfiles" :key="profile.key" :value="profile.key">{{ profile.label }}</option>
               </select>
               <span class="mt-1 block text-xs leading-5 text-ink-muted">Solo se muestran perfiles incluidos en esta versión del sistema.</span>
@@ -546,59 +546,59 @@ const sections = [
             <CsrfField :csrf="data.csrf" />
             <label class="block">
               <span class="mb-1.5 block text-sm font-medium text-ink">Razón social</span>
-              <input name="razon_social" required maxlength="255" :value="company.razonSocial" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+              <input name="razon_social" required maxlength="255" :value="company.razonSocial" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
             </label>
             <label class="block">
               <span class="mb-1.5 block text-sm font-medium text-ink">Nombre de fantasía</span>
-              <input name="nombre_fantasia" maxlength="255" :value="company.nombreFantasia" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+              <input name="nombre_fantasia" maxlength="255" :value="company.nombreFantasia" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
             </label>
             <label class="block">
               <span class="mb-1.5 block text-sm font-medium text-ink">CUIT</span>
-              <input name="cuit" maxlength="20" :value="company.cuit" inputmode="numeric" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+              <input name="cuit" maxlength="20" :value="company.cuit" inputmode="numeric" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
             </label>
             <label class="block">
               <span class="mb-1.5 block text-sm font-medium text-ink">Email general</span>
-              <input type="email" name="email" maxlength="255" :value="company.email" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+              <input type="email" name="email" maxlength="255" :value="company.email" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
             </label>
             <label class="block sm:col-span-2">
               <span class="mb-1.5 block text-sm font-medium text-ink">Correo para notificaciones de mantenimiento</span>
-              <input type="email" name="email_notificaciones" maxlength="255" :value="company.notificationEmail" placeholder="Usará el email general si queda vacío" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/20" />
+              <input type="email" name="email_notificaciones" maxlength="255" :value="company.notificationEmail" placeholder="Usará el email general si queda vacío" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/20" />
               <span class="mt-1.5 block text-xs leading-5 text-ink-muted">Destino de preventivos próximos/vencidos, OT y demás alertas operativas de esta empresa.</span>
             </label>
             <label class="block">
               <span class="mb-1.5 block text-sm font-medium text-ink">Teléfono</span>
-              <input name="telefono" maxlength="50" :value="company.telefono" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+              <input name="telefono" maxlength="50" :value="company.telefono" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
             </label>
             <label class="block">
               <span class="mb-1.5 block text-sm font-medium text-ink">Estado</span>
-              <select name="estado" :value="company.active ? '1' : '0'" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20">
+              <select name="estado" :value="company.active ? '1' : '0'" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20">
                 <option value="1">Activa</option>
                 <option value="0">Inactiva</option>
               </select>
             </label>
             <label class="block">
               <span class="mb-1.5 block text-sm font-medium text-ink">Instance ID WhatsApp</span>
-              <input name="whatsapp_instance_id" maxlength="100" :value="company.whatsappInstanceId" placeholder="Usará la instancia global" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+              <input name="whatsapp_instance_id" maxlength="100" :value="company.whatsappInstanceId" placeholder="Usará la instancia global" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
             </label>
             <label class="block">
               <span class="mb-1.5 block text-sm font-medium text-ink">Idioma de avisos y carga pública</span>
-              <select name="idioma_notificaciones" :value="company.notificationLocale || 'ES'" required class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20">
+              <select name="idioma_notificaciones" :value="company.notificationLocale || 'ES'" required class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20">
                 <option value="ES">Español</option>
                 <option value="PT">Português</option>
               </select>
               <span class="mt-1.5 block text-xs leading-5 text-ink-muted">Se usa en el recordatorio semanal y en el formulario público abierto desde el link.</span>
             </label>
-            <label class="flex items-start gap-3 rounded-lg border border-border bg-surface-subtle p-3">
+            <label class="flex items-start gap-3 rounded-2xl bg-surface-subtle p-3">
               <input type="hidden" name="notificaciones_whatsapp_habilitadas" value="0" />
               <input type="checkbox" name="notificaciones_whatsapp_habilitadas" value="1" :checked="company.whatsappEnabled" class="mt-0.5 size-4 rounded border-border-strong text-primary focus:ring-primary" />
               <span><span class="block text-sm font-medium text-ink">WhatsApp habilitado</span><span class="mt-1 block text-xs leading-5 text-ink-muted">Permite avisos al chofer de esta empresa.</span></span>
             </label>
-            <label class="flex items-start gap-3 rounded-lg border border-border bg-surface-subtle p-3 sm:col-span-2">
+            <label class="flex items-start gap-3 rounded-2xl bg-surface-subtle p-3 sm:col-span-2">
               <input type="hidden" name="notificaciones_email_habilitadas" value="0" />
               <input type="checkbox" name="notificaciones_email_habilitadas" value="1" :checked="company.notificationEmailEnabled" class="mt-0.5 size-4 rounded border-border-strong text-primary focus:ring-primary" />
               <span><span class="block text-sm font-medium text-ink">Enviar notificaciones de mantenimiento por email</span><span class="mt-1 block text-xs leading-5 text-ink-muted">Al desactivarlo se conserva el correo configurado, pero no se generan entregas empresariales.</span></span>
             </label>
-            <div class="rounded-lg border border-border bg-surface-subtle p-4 sm:col-span-2">
+            <div class="rounded-2xl bg-surface-subtle p-4 sm:col-span-2">
               <div class="mb-3">
                 <p class="text-sm font-semibold text-ink">Informes para dueño / gerencia</p>
                 <p class="mt-1 text-xs leading-5 text-ink-muted">Se envían separados de las alertas operativas. Podés indicar varios correos separados por coma.</p>
@@ -606,7 +606,7 @@ const sections = [
               </div>
               <label class="block">
                 <span class="mb-1.5 block text-sm font-medium text-ink">Destinatarios de informes</span>
-                <input name="emails_informes" maxlength="1000" :value="company.managementReportEmails" placeholder="gerencia@empresa.com, dueño@empresa.com" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                <input name="emails_informes" maxlength="1000" :value="company.managementReportEmails" placeholder="gerencia@empresa.com, dueño@empresa.com" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
                 <span class="mt-1 block text-xs text-ink-muted">Si queda vacío se usa el correo de notificaciones y luego el email general.</span>
               </label>
               <div class="mt-4 grid gap-3 sm:grid-cols-2">
@@ -618,7 +618,7 @@ const sections = [
                   </label>
                   <label class="mt-3 block">
                     <span class="mb-1 block text-xs font-medium text-ink-muted">Hora</span>
-                    <input type="time" name="informe_diario_hora" :value="company.dailyReportTime || '07:00'" class="min-h-10 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink" />
+                    <input type="time" name="informe_diario_hora" :value="company.dailyReportTime || '07:00'" class="min-h-10 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink" />
                   </label>
                 </div>
                 <div class="rounded-lg border border-border bg-white p-3">
@@ -630,13 +630,13 @@ const sections = [
                   <div class="mt-3 grid grid-cols-2 gap-2">
                     <label class="block">
                       <span class="mb-1 block text-xs font-medium text-ink-muted">Día</span>
-                      <select name="informe_semanal_dia" :value="company.weeklyReportDay || 1" class="min-h-10 w-full rounded-lg border border-border-strong bg-white px-2 py-2 text-sm text-ink">
+                      <select name="informe_semanal_dia" :value="company.weeklyReportDay || 1" class="min-h-10 w-full rounded-pill border border-transparent bg-surface-muted px-2 py-2 text-sm text-ink">
                         <option :value="1">Lunes</option><option :value="2">Martes</option><option :value="3">Miércoles</option><option :value="4">Jueves</option><option :value="5">Viernes</option><option :value="6">Sábado</option><option :value="7">Domingo</option>
                       </select>
                     </label>
                     <label class="block">
                       <span class="mb-1 block text-xs font-medium text-ink-muted">Hora</span>
-                      <input type="time" name="informe_semanal_hora" :value="company.weeklyReportTime || '07:00'" class="min-h-10 w-full rounded-lg border border-border-strong bg-white px-2 py-2 text-sm text-ink" />
+                      <input type="time" name="informe_semanal_hora" :value="company.weeklyReportTime || '07:00'" class="min-h-10 w-full rounded-pill border border-transparent bg-surface-muted px-2 py-2 text-sm text-ink" />
                     </label>
                   </div>
                 </div>
@@ -653,16 +653,16 @@ const sections = [
                 <div class="mt-3 grid gap-3 sm:grid-cols-3">
                   <label class="block">
                     <span class="mb-1 block text-xs font-medium text-ink-muted">Teléfono de gerencia</span>
-                    <input name="telefono_gerencia" maxlength="20" :value="company.managementPhone" placeholder="54911333333333" class="min-h-10 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink" />
+                    <input name="telefono_gerencia" maxlength="20" :value="company.managementPhone" placeholder="54911333333333" class="min-h-10 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink" />
                     <span class="mt-1 block text-xs text-ink-muted">Formato internacional, solo dígitos.</span>
                   </label>
                   <label class="block">
                     <span class="mb-1 block text-xs font-medium text-ink-muted">Hora</span>
-                    <input type="time" name="informe_lecturas_hora" :value="company.readingReportTime || '08:00'" class="min-h-10 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink" />
+                    <input type="time" name="informe_lecturas_hora" :value="company.readingReportTime || '08:00'" class="min-h-10 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink" />
                   </label>
                   <label class="block">
                     <span class="mb-1 block text-xs font-medium text-ink-muted">Avisar a partir de</span>
-                    <input type="number" name="informe_lecturas_dias" min="1" max="90" :value="company.readingReportDays || 7" class="min-h-10 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink" />
+                    <input type="number" name="informe_lecturas_dias" min="1" max="90" :value="company.readingReportDays || 7" class="min-h-10 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink" />
                     <span class="mt-1 block text-xs text-ink-muted">Días sin lectura.</span>
                   </label>
                 </div>
@@ -785,7 +785,7 @@ const sections = [
           </div>
 
           <div v-else class="grid gap-6 p-5 lg:grid-cols-2 lg:p-6">
-            <form v-if="data.permissions.assignCompanies" method="post" :action="user.actions.assignCompany" data-confirm data-confirm-title="¿Asignar la empresa al usuario?" data-confirm-text="Se actualizará el acceso del usuario con trazabilidad." data-confirm-button="Asignar" class="rounded-xl border border-border-subtle bg-surface-subtle p-4">
+            <form v-if="data.permissions.assignCompanies" method="post" :action="user.actions.assignCompany" data-confirm data-confirm-title="¿Asignar la empresa al usuario?" data-confirm-text="Se actualizará el acceso del usuario con trazabilidad." data-confirm-button="Asignar" class="rounded-2xl bg-surface-subtle p-4">
               <CsrfField :csrf="data.csrf" />
               <div class="mb-4 flex items-center gap-2">
                 <BuildingOffice2Icon class="size-5 text-accent-active" aria-hidden="true" />
@@ -793,19 +793,19 @@ const sections = [
               </div>
               <label class="block">
                 <span class="mb-1.5 block text-sm font-medium text-ink">Empresa</span>
-                <select name="empresa_id" required :value="user.companyId" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20">
+                <select name="empresa_id" required :value="user.companyId" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20">
                   <option v-for="company in data.assignableCompanies" :key="company.id" :value="company.id">{{ company.name }}</option>
                 </select>
               </label>
               <label class="mt-3 block">
                 <span class="mb-1.5 block text-sm font-medium text-ink">Motivo del cambio</span>
-                <input name="motivo" minlength="5" maxlength="255" required placeholder="Ej.: reasignación organizativa" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                <input name="motivo" minlength="5" maxlength="255" required placeholder="Ej.: reasignación organizativa" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/20" />
               </label>
               <p class="mt-2 text-xs leading-5 text-warning-strong">Un traslado retira los roles y sucursales anteriores.</p>
               <button type="submit" class="mt-4 inline-flex min-h-11 items-center justify-center rounded-lg border border-accent-active px-4 py-2.5 text-sm font-semibold text-accent-active transition-colors hover:bg-accent-subtle">Asignar empresa</button>
             </form>
 
-            <form v-if="data.permissions.assignRoles" method="post" :action="user.actions.assignRoles" data-confirm data-confirm-title="¿Asignar los roles al usuario?" data-confirm-text="Se actualizarán los permisos del usuario con trazabilidad." data-confirm-button="Asignar" class="rounded-xl border border-border-subtle bg-surface-subtle p-4">
+            <form v-if="data.permissions.assignRoles" method="post" :action="user.actions.assignRoles" data-confirm data-confirm-title="¿Asignar los roles al usuario?" data-confirm-text="Se actualizarán los permisos del usuario con trazabilidad." data-confirm-button="Asignar" class="rounded-2xl bg-surface-subtle p-4">
               <CsrfField :csrf="data.csrf" />
               <fieldset>
                 <legend class="mb-3 flex items-center gap-2 font-semibold text-ink">
@@ -821,7 +821,7 @@ const sections = [
               </fieldset>
               <label class="mt-3 block">
                 <span class="mb-1.5 block text-sm font-medium text-ink">Motivo de la asignación</span>
-                <input name="motivo" minlength="5" maxlength="255" required placeholder="Ej.: responsabilidades aprobadas" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                <input name="motivo" minlength="5" maxlength="255" required placeholder="Ej.: responsabilidades aprobadas" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/20" />
               </label>
               <button type="submit" :class="[secondaryButton, 'mt-4']">Guardar roles</button>
             </form>

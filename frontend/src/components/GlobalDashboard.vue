@@ -333,7 +333,7 @@ const companyPressure = (company) => Math.min(
             v-for="company in data.companies.slice(0, 4)"
             :key="company.id"
             :href="company.actionUrl"
-            class="group rounded-xl border border-border-subtle bg-surface/45 p-3.5 transition hover:border-primary/30 hover:bg-primary-subtle/20"
+            class="group rounded-2xl bg-surface-subtle/45 p-3.5 transition hover:border-primary/30 hover:bg-primary-subtle/20"
           >
             <div class="flex items-start gap-2">
               <span class="mt-1 size-2.5 shrink-0 rounded-full" :class="companyTone(company.tone).dot"></span>

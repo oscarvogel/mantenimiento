@@ -526,7 +526,7 @@ const methodLabel = (item) => {
             <div v-if="evidenceTarget.aiDetectedKm !== null && evidenceTarget.aiDetectedKm !== undefined"><dt class="text-ink-muted">IA detectó</dt><dd class="font-semibold text-ink">{{ formatNumberEs(evidenceTarget.aiDetectedKm, 0) }} km<span v-if="evidenceTarget.readingMethod === 'FOTO_IA_CORREGIDA'" class="ml-1 text-xs font-semibold text-danger-strong">(descartado)</span></dd></div>
             <div v-if="evidenceTarget.aiConfidence !== null && evidenceTarget.aiConfidence !== undefined"><dt class="text-ink-muted">Confianza IA</dt><dd class="font-semibold text-ink">{{ Math.round(Number(evidenceTarget.aiConfidence) * 100) }}%</dd></div>
           </dl>
-          <div v-if="evidenceTarget.canReview" class="mt-4 rounded-xl border border-border bg-surface-subtle p-4">
+          <div v-if="evidenceTarget.canReview" class="mt-4 rounded-2xl bg-surface-subtle p-4">
             <h3 class="text-sm font-semibold text-ink">Revisar detección de IA</h3>
             <form :action="evidenceTarget.reviewUrl" method="post" class="mt-3 grid gap-3 sm:grid-cols-2">
               <input type="hidden" :name="data.csrf.name" :value="data.csrf.hash">
@@ -543,7 +543,7 @@ const methodLabel = (item) => {
               <button type="submit" :class="primaryButton" class="sm:col-span-2">Marcar como revisada</button>
             </form>
           </div>
-          <div v-else-if="evidenceTarget.evidenceReviewedAt" class="mt-4 rounded-xl border border-border bg-surface-subtle p-4 text-sm">
+          <div v-else-if="evidenceTarget.evidenceReviewedAt" class="mt-4 rounded-2xl bg-surface-subtle p-4 text-sm">
             <p class="font-semibold text-ink">Revisada por {{ evidenceTarget.evidenceReviewedByName || 'un usuario' }} el {{ format.formatDateTime(evidenceTarget.evidenceReviewedAt) }}</p>
             <p class="mt-1 text-ink-muted">Motivo: {{ evidenceTarget.evidenceReviewReason || '-' }}</p>
             <p v-if="evidenceTarget.evidenceReviewObservation" class="mt-1 text-ink-muted">{{ evidenceTarget.evidenceReviewObservation }}</p>

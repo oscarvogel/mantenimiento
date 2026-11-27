@@ -500,7 +500,7 @@ function statusMessage(item) {
       </div>
     </section>
 
-    <details class="rounded-xl border border-border-subtle bg-surface-raised">
+    <details class="rounded-card bg-surface-raised shadow-card">
       <summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-ink">Monedas y países disponibles · Solo consulta</summary>
       <div class="grid gap-5 border-t border-border-subtle p-4 sm:grid-cols-2">
         <section>

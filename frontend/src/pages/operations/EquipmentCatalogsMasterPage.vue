@@ -130,7 +130,7 @@ const sectionCount = computed(() => ({
           </label>
           <button v-if="section === 'brands'" type="button" :class="primaryButton" @click="openCreateBrand"><PlusIcon class="mr-2 size-5" aria-hidden="true" />Nueva marca</button>
           <button v-if="section === 'models'" type="button" :class="primaryButton" @click="openCreateModel"><PlusIcon class="mr-2 size-5" aria-hidden="true" />Nuevo modelo</button>
-          <div v-if="section === 'types'" class="flex items-center rounded-lg border border-border bg-surface-subtle px-3 text-sm text-ink-muted">
+          <div v-if="section === 'types'" class="flex items-center rounded-2xl bg-surface-subtle px-3 text-sm text-ink-muted">
             <AdjustmentsHorizontalIcon class="mr-2 size-5" aria-hidden="true" />Configuración de uso
           </div>
         </div>
@@ -252,14 +252,14 @@ const sectionCount = computed(() => ({
 
             <form v-else-if="modal.kind === 'model-edit'" method="post" :action="modal.item.updateUrl" class="space-y-4">
               <CsrfInput :csrf="data.csrf" />
-              <div class="rounded-lg border border-border bg-surface-subtle p-3 text-sm text-ink-muted">{{ modal.item.brandName }} · {{ modal.item.typeName }}</div>
+              <div class="rounded-2xl bg-surface-subtle p-3 text-sm text-ink-muted">{{ modal.item.brandName }} · {{ modal.item.typeName }}</div>
               <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Nombre</span><input name="nombre" maxlength="100" required :value="modal.item.name" :class="fieldClass" /></label>
               <div class="flex justify-end gap-2 border-t border-border-subtle pt-4"><button type="button" :class="secondaryButton" @click="closeModal">Cancelar</button><button type="submit" :class="primaryButton">Guardar cambios</button></div>
             </form>
 
             <form v-else method="post" :action="modal.item.updateUrl" class="space-y-4">
               <CsrfInput :csrf="data.csrf" />
-              <div class="rounded-lg border border-border bg-surface-subtle p-3"><p class="font-semibold text-ink">{{ modal.item.name }}</p><p class="mt-1 text-xs text-ink-muted">Estas opciones definen qué lectura corresponde registrar para este tipo de equipo.</p></div>
+              <div class="rounded-2xl bg-surface-subtle p-3"><p class="font-semibold text-ink">{{ modal.item.name }}</p><p class="mt-1 text-xs text-ink-muted">Estas opciones definen qué lectura corresponde registrar para este tipo de equipo.</p></div>
               <label class="flex items-center justify-between gap-3 rounded-lg border border-border p-3 text-sm text-ink"><span><strong class="block">Controla kilómetros</strong><span class="text-xs text-ink-muted">Habilita kilometraje y recordatorios por km.</span></span><input type="checkbox" name="controla_km" value="1" :checked="modal.item.controlsKm" class="size-5 rounded border-border-strong" /></label>
               <label class="flex items-center justify-between gap-3 rounded-lg border border-border p-3 text-sm text-ink"><span><strong class="block">Controla horas</strong><span class="text-xs text-ink-muted">Habilita horómetro y mantenimiento por horas.</span></span><input type="checkbox" name="controla_horas" value="1" :checked="modal.item.controlsHours" class="size-5 rounded border-border-strong" /></label>
               <div class="flex justify-end gap-2 border-t border-border-subtle pt-4"><button type="button" :class="secondaryButton" @click="closeModal">Cancelar</button><button type="submit" :class="primaryButton">Guardar configuración</button></div>

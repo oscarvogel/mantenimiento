@@ -69,11 +69,11 @@ onMounted(() => load(1))
     </header>
 
     <form class="grid gap-3 rounded-card bg-surface-raised p-4 shadow-card" @submit.prevent="load(1)">
-      <input v-if="showCompanyFilter" v-model="filters.companyId" class="rounded-lg border border-border-strong bg-surface px-3 py-2 text-ink placeholder:text-ink-subtle focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" inputmode="numeric" placeholder="ID empresa" aria-label="ID de empresa">
-      <input v-model="filters.userId" class="rounded-lg border border-border-strong bg-surface px-3 py-2 text-ink placeholder:text-ink-subtle focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" inputmode="numeric" placeholder="ID usuario" aria-label="ID de usuario">
-      <input v-model="filters.dateFrom" class="rounded-lg border border-border-strong bg-surface px-3 py-2 text-ink focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" type="date" aria-label="Fecha desde">
-      <input v-model="filters.dateTo" class="rounded-lg border border-border-strong bg-surface px-3 py-2 text-ink focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" type="date" aria-label="Fecha hasta">
-      <input v-model="filters.q" class="rounded-lg border border-border-strong bg-surface px-3 py-2 text-ink placeholder:text-ink-subtle focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="Texto o ID conversación" aria-label="Texto o ID de conversación">
+      <input v-if="showCompanyFilter" v-model="filters.companyId" class="rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-ink placeholder:text-ink-subtle focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" inputmode="numeric" placeholder="ID empresa" aria-label="ID de empresa">
+      <input v-model="filters.userId" class="rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-ink placeholder:text-ink-subtle focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" inputmode="numeric" placeholder="ID usuario" aria-label="ID de usuario">
+      <input v-model="filters.dateFrom" class="rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-ink focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" type="date" aria-label="Fecha desde">
+      <input v-model="filters.dateTo" class="rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-ink focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" type="date" aria-label="Fecha hasta">
+      <input v-model="filters.q" class="rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-ink placeholder:text-ink-subtle focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="Texto o ID conversación" aria-label="Texto o ID de conversación">
       <div class="flex gap-2 md:col-span-2 xl:col-span-5">
         <button type="submit" :class="primaryButton">Filtrar</button>
         <button type="button" @click="reset" :class="secondaryButton">Limpiar</button>
@@ -109,7 +109,7 @@ onMounted(() => load(1))
           <h2 id="chat-audit-detail-title" class="pr-20 text-xl font-bold text-ink">#{{ selected.id }} · {{ selected.title || 'Sin título' }}</h2>
           <p class="mt-1 text-sm text-ink-muted">{{ selected.companyName }} · {{ selected.userName || selected.userEmail }} · {{ selected.messageCount }} mensajes</p>
           <ol class="mt-5 space-y-4">
-            <li v-for="message in selected.messages" :key="message.id" class="rounded-xl border border-border-subtle bg-surface p-4">
+            <li v-for="message in selected.messages" :key="message.id" class="rounded-2xl bg-surface-subtle p-4">
               <div class="mb-2 flex flex-wrap justify-between gap-2 text-xs font-semibold uppercase text-ink-muted"><span>{{ message.role }}</span><span>{{ formatDate(message.createdAt) }} · tokens {{ message.tokensUsed ?? '—' }}</span></div>
               <p class="whitespace-pre-wrap text-sm text-ink">{{ message.content }}</p>
               <details v-if="message.toolCalls" class="mt-3 rounded-lg bg-surface-subtle p-3"><summary class="cursor-pointer font-semibold text-ink">Llamadas a herramientas</summary><pre class="mt-2 overflow-x-auto whitespace-pre-wrap text-xs text-ink-muted">{{ pretty(message.toolCalls) }}</pre></details>

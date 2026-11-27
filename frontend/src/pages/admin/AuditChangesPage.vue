@@ -115,14 +115,14 @@ onMounted(() => load(1))
     </header>
 
     <form class="grid gap-3 rounded-card bg-surface-raised p-4 md:grid-cols-2 xl:grid-cols-4 shadow-card" @submit.prevent="load(1)">
-      <input v-model="filters.companyId" class="rounded-lg border border-border-strong bg-surface px-3 py-2 text-ink placeholder:text-ink-subtle focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" inputmode="numeric" placeholder="ID empresa" aria-label="ID de empresa">
-      <input v-model="filters.branchId" class="rounded-lg border border-border-strong bg-surface px-3 py-2 text-ink placeholder:text-ink-subtle focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" inputmode="numeric" placeholder="ID sucursal" aria-label="ID de sucursal">
-      <input v-model="filters.actorUserId" class="rounded-lg border border-border-strong bg-surface px-3 py-2 text-ink placeholder:text-ink-subtle focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" inputmode="numeric" placeholder="ID usuario actor" aria-label="ID de usuario actor">
-      <input v-model="filters.action" class="rounded-lg border border-border-strong bg-surface px-3 py-2 text-ink placeholder:text-ink-subtle focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="Acción (ej.: usuario.creado)" aria-label="Acción">
-      <input v-model="filters.entity" class="rounded-lg border border-border-strong bg-surface px-3 py-2 text-ink placeholder:text-ink-subtle focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="Entidad (ej.: usuarios)" aria-label="Entidad">
-      <input v-model="filters.dateFrom" class="rounded-lg border border-border-strong bg-surface px-3 py-2 text-ink focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" type="date" aria-label="Fecha desde">
-      <input v-model="filters.dateTo" class="rounded-lg border border-border-strong bg-surface px-3 py-2 text-ink focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" type="date" aria-label="Fecha hasta">
-      <input v-model="filters.q" class="rounded-lg border border-border-strong bg-surface px-3 py-2 text-ink placeholder:text-ink-subtle focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="Texto, entidad o usuario" aria-label="Texto, entidad o usuario">
+      <input v-model="filters.companyId" class="rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-ink placeholder:text-ink-subtle focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" inputmode="numeric" placeholder="ID empresa" aria-label="ID de empresa">
+      <input v-model="filters.branchId" class="rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-ink placeholder:text-ink-subtle focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" inputmode="numeric" placeholder="ID sucursal" aria-label="ID de sucursal">
+      <input v-model="filters.actorUserId" class="rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-ink placeholder:text-ink-subtle focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" inputmode="numeric" placeholder="ID usuario actor" aria-label="ID de usuario actor">
+      <input v-model="filters.action" class="rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-ink placeholder:text-ink-subtle focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="Acción (ej.: usuario.creado)" aria-label="Acción">
+      <input v-model="filters.entity" class="rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-ink placeholder:text-ink-subtle focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="Entidad (ej.: usuarios)" aria-label="Entidad">
+      <input v-model="filters.dateFrom" class="rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-ink focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" type="date" aria-label="Fecha desde">
+      <input v-model="filters.dateTo" class="rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-ink focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" type="date" aria-label="Fecha hasta">
+      <input v-model="filters.q" class="rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-ink placeholder:text-ink-subtle focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="Texto, entidad o usuario" aria-label="Texto, entidad o usuario">
       <div class="flex gap-2 md:col-span-2 xl:col-span-4">
         <button type="submit" :class="primaryButton">Filtrar</button>
         <button type="button" @click="reset" :class="secondaryButton">Limpiar</button>
@@ -199,11 +199,11 @@ onMounted(() => load(1))
       <div class="mt-5 grid gap-4 lg:grid-cols-2">
         <section>
           <h3 class="text-sm font-semibold uppercase text-ink-muted">Valores anteriores</h3>
-          <pre class="mt-2 max-h-80 overflow-auto rounded-lg border border-border bg-surface-subtle p-3 text-xs text-ink">{{ pretty(selected.before) }}</pre>
+          <pre class="mt-2 max-h-80 overflow-auto rounded-2xl bg-surface-subtle p-3 text-xs text-ink">{{ pretty(selected.before) }}</pre>
         </section>
         <section>
           <h3 class="text-sm font-semibold uppercase text-ink-muted">Valores nuevos</h3>
-          <pre class="mt-2 max-h-80 overflow-auto rounded-lg border border-border bg-surface-subtle p-3 text-xs text-ink">{{ pretty(selected.after) }}</pre>
+          <pre class="mt-2 max-h-80 overflow-auto rounded-2xl bg-surface-subtle p-3 text-xs text-ink">{{ pretty(selected.after) }}</pre>
         </section>
       </div>
     </div>

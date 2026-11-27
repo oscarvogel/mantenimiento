@@ -76,7 +76,7 @@ const includesId = (ids, id) => ids.includes(Number(id))
           <input type="password" name="password_confirmation" minlength="8" maxlength="255" required autocomplete="new-password" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
         </label>
 
-        <fieldset class="rounded-xl border border-border-subtle bg-surface-subtle p-4">
+        <fieldset class="rounded-2xl bg-surface-subtle p-4">
           <legend class="px-1 text-sm font-semibold text-ink">Roles</legend>
           <div class="mt-2 grid gap-2 sm:grid-cols-2">
             <label v-for="role in data.roles" :key="role.id" class="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm text-ink transition-colors hover:border-primary/50 hover:bg-surface-muted">
@@ -86,7 +86,7 @@ const includesId = (ids, id) => ids.includes(Number(id))
           </div>
         </fieldset>
 
-        <fieldset class="rounded-xl border border-border-subtle bg-surface-subtle p-4">
+        <fieldset class="rounded-2xl bg-surface-subtle p-4">
           <legend class="px-1 text-sm font-semibold text-ink">Sucursales</legend>
           <div class="mt-2 grid gap-2 sm:grid-cols-2">
             <label v-for="branch in data.assignableBranches" :key="branch.id" class="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm text-ink transition-colors hover:border-primary/50 hover:bg-surface-muted">
@@ -210,7 +210,7 @@ const includesId = (ids, id) => ids.includes(Number(id))
 
               <form v-else method="post" :action="user.actions.assignAccess" data-confirm data-confirm-title="¿Guardar el acceso del usuario?" data-confirm-text="Se asignarán roles y sucursales auditando el motivo del cambio." data-confirm-button="Guardar acceso" class="grid gap-4 sm:grid-cols-2">
                 <CsrfField :csrf="data.csrf" />
-                <fieldset class="rounded-xl border border-border-subtle bg-surface-subtle p-4">
+                <fieldset class="rounded-2xl bg-surface-subtle p-4">
                   <legend class="px-1 text-sm font-semibold text-ink">Roles</legend>
                   <div class="mt-2 space-y-2">
                     <label v-for="role in data.roles" :key="role.id" class="flex min-h-10 cursor-pointer items-center gap-3 rounded-lg px-2 py-1 text-sm text-ink transition-colors hover:bg-surface-muted">
@@ -219,7 +219,7 @@ const includesId = (ids, id) => ids.includes(Number(id))
                     </label>
                   </div>
                 </fieldset>
-                <fieldset class="rounded-xl border border-border-subtle bg-surface-subtle p-4">
+                <fieldset class="rounded-2xl bg-surface-subtle p-4">
                   <legend class="px-1 text-sm font-semibold text-ink">Sucursales</legend>
                   <div v-if="user.allCompanyBranches" class="mb-2 rounded-lg bg-info-subtle px-3 py-2 text-xs font-medium text-info-strong">Acceso automático a todas las sucursales activas.</div>
                   <div class="space-y-2">

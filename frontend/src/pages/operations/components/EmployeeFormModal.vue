@@ -22,7 +22,7 @@ const title = computed(() => isEditing.value ? 'Editar empleado' : 'Nuevo emplea
 
     <form method="post" :action="action" enctype="multipart/form-data" class="grid gap-4 p-6 lg:grid-cols-3">
       <CsrfInput :csrf="csrf" />
-      <div class="lg:col-span-3 flex items-center gap-4 rounded-lg border border-border-subtle bg-surface-subtle/40 p-4">
+      <div class="lg:col-span-3 flex items-center gap-4 rounded-2xl bg-surface-subtle/40 p-4">
         <div class="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border-subtle bg-white text-lg font-bold text-ink-muted">
           <img v-if="employee?.photoUrl" :src="employee.photoUrl" :alt="`Foto de ${employee.fullName}`" class="h-full w-full object-cover" />
           <span v-else>{{ (employee?.firstName || 'N').slice(0, 1).toUpperCase() }}</span>

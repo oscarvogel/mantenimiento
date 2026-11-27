@@ -25,7 +25,7 @@ defineProps({
           <select
             id="digest-preview-company"
             name="empresa_id"
-            class="min-h-11 rounded-lg border border-border-strong bg-surface px-3 text-sm font-normal text-ink"
+            class="min-h-11 rounded-pill border border-transparent bg-surface-muted px-3 text-sm font-normal text-ink"
             required
           >
             <option value="">Seleccioná una empresa</option>

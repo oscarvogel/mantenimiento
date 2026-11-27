@@ -160,7 +160,7 @@ const decisionIcon = { success: 'bg-success/15 text-success', warning: 'bg-warni
           <input name="archivo" type="file" accept=".zip,application/zip" required :class="fieldClass" @change="hasFile = Boolean($event.target.files?.length)" />
           <span class="mt-1.5 block text-xs text-ink-muted">Hasta {{ data.maxSizeMb }} MB. Después de validarlo vas a asignar la sucursal de Argentina, la de Brasil y la de los viajes sin clasificar.</span>
         </label>
-        <div class="rounded-xl border border-border bg-surface p-4 text-sm text-ink-muted">
+        <div class="rounded-2xl bg-surface-subtle p-4 text-sm text-ink-muted">
           <strong class="text-ink">Nada se guarda en este paso.</strong> Primero se valida el manifiesto, se clasifican los viajes por evidencia y se muestran las advertencias.
         </div>
         <button type="submit" :disabled="!companyId || !hasFile" :class="primaryButton"><ArrowUpTrayIcon class="mr-2 size-5" aria-hidden="true" />Validar paquete</button>
@@ -226,11 +226,11 @@ const decisionIcon = { success: 'bg-success/15 text-success', warning: 'bg-warni
         <template v-if="invoices.available">
           <p class="text-sm text-ink-muted">El paquete incluye comprobantes de venta. Se guardan como historia de solo lectura y se vinculan a los viajes para calcular rentabilidad.</p>
           <dl class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
-            <div class="rounded-xl border border-border bg-surface px-3 py-2"><dt class="text-xs font-semibold text-ink-muted">Facturas</dt><dd class="mt-1 text-xl font-bold text-ink">{{ fmt(invoices.total) }}</dd></div>
-            <div class="rounded-xl border border-border bg-surface px-3 py-2"><dt class="text-xs font-semibold text-ink-muted">Con unidad</dt><dd class="mt-1 text-xl font-bold text-ink">{{ fmt(invoices.with_unit) }}</dd></div>
-            <div class="rounded-xl border border-border bg-surface px-3 py-2"><dt class="text-xs font-semibold text-ink-muted">Vínculo automático</dt><dd class="mt-1 text-xl font-bold text-success-strong">{{ fmt(invoices.auto_matches) }}</dd></div>
-            <div class="rounded-xl border border-border bg-surface px-3 py-2"><dt class="text-xs font-semibold text-ink-muted">A revisar</dt><dd class="mt-1 text-xl font-bold text-warning-strong">{{ fmt(invoices.review_matches) }}</dd></div>
-            <div class="rounded-xl border border-border bg-surface px-3 py-2"><dt class="text-xs font-semibold text-ink-muted">Sin vínculo</dt><dd class="mt-1 text-xl font-bold text-ink-muted">{{ fmt(invoices.unmatched) }}</dd></div>
+            <div class="rounded-2xl bg-surface-subtle px-3 py-2"><dt class="text-xs font-semibold text-ink-muted">Facturas</dt><dd class="mt-1 text-xl font-bold text-ink">{{ fmt(invoices.total) }}</dd></div>
+            <div class="rounded-2xl bg-surface-subtle px-3 py-2"><dt class="text-xs font-semibold text-ink-muted">Con unidad</dt><dd class="mt-1 text-xl font-bold text-ink">{{ fmt(invoices.with_unit) }}</dd></div>
+            <div class="rounded-2xl bg-surface-subtle px-3 py-2"><dt class="text-xs font-semibold text-ink-muted">Vínculo automático</dt><dd class="mt-1 text-xl font-bold text-success-strong">{{ fmt(invoices.auto_matches) }}</dd></div>
+            <div class="rounded-2xl bg-surface-subtle px-3 py-2"><dt class="text-xs font-semibold text-ink-muted">A revisar</dt><dd class="mt-1 text-xl font-bold text-warning-strong">{{ fmt(invoices.review_matches) }}</dd></div>
+            <div class="rounded-2xl bg-surface-subtle px-3 py-2"><dt class="text-xs font-semibold text-ink-muted">Sin vínculo</dt><dd class="mt-1 text-xl font-bold text-ink-muted">{{ fmt(invoices.unmatched) }}</dd></div>
           </dl>
           <div v-if="confirmed" class="mt-4 flex flex-wrap items-center gap-3">
             <a :href="data.actions.reviewInvoices" :class="primaryButton"><CheckCircleIcon class="mr-2 size-5" aria-hidden="true" />Revisar vínculos factura-viaje</a>
@@ -246,7 +246,7 @@ const decisionIcon = { success: 'bg-success/15 text-success', warning: 'bg-warni
         <component :is="pending ? 'form' : 'div'" v-bind="pending ? { method: 'post', action: data.actions.branches } : {}" class="mt-4">
           <CsrfField v-if="pending" :csrf="data.csrf" />
           <div class="grid gap-4 md:grid-cols-3">
-          <article v-for="country in countries" :key="country.key" class="rounded-xl border border-border bg-surface p-4">
+          <article v-for="country in countries" :key="country.key" class="rounded-2xl bg-surface-subtle p-4">
             <div class="flex flex-wrap items-center justify-between gap-2">
               <h3 class="font-bold text-ink">{{ country.label }}</h3>
               <span class="rounded-full bg-surface-muted px-2.5 py-1 text-xs font-bold text-ink-muted">{{ fmt(classification[country.key]?.trips) }} viajes</span>
@@ -282,7 +282,7 @@ const decisionIcon = { success: 'bg-success/15 text-success', warning: 'bg-warni
       <PanelCard title="Qué se va a revisar u omitir" :count="counts.warnings">
         <p v-if="!issueGroups.length" class="flex items-center gap-2 text-sm font-semibold text-success-strong"><CheckCircleIcon class="size-5" aria-hidden="true" />Sin observaciones. El paquete se puede importar tal cual.</p>
         <div v-else class="space-y-3">
-          <details v-for="group in issueGroups" :key="group.key" class="group rounded-xl border border-border bg-surface" open>
+          <details v-for="group in issueGroups" :key="group.key" class="group rounded-2xl bg-surface-subtle" open>
             <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3">
               <div>
                 <p class="font-semibold text-ink">{{ group.label }}</p>

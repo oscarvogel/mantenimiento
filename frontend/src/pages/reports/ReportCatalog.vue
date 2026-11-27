@@ -38,7 +38,7 @@ const stateTone = (state) => ({
           <span class="mt-2 text-sm leading-6 text-ink-muted">{{ entry.description }}</span>
           <span class="mt-auto flex items-center gap-1.5 pt-3 text-sm font-semibold text-primary">Abrir informe<ArrowTopRightOnSquareIcon class="size-4" aria-hidden="true" /></span>
         </a>
-        <div v-else class="flex h-full min-h-32 flex-col rounded-lg border border-border bg-surface-muted p-4">
+        <div v-else class="flex h-full min-h-32 flex-col rounded-2xl bg-surface-muted p-4">
           <span class="flex items-start justify-between gap-3">
             <span class="text-base font-semibold text-ink">{{ entry.label }}</span>
             <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold" :class="stateTone(entry.state)">

@@ -78,7 +78,7 @@
       />
       <div
         v-if="briefing && !briefingDismissed"
-        class="rounded-xl border border-border bg-surface p-3 text-sm"
+        class="rounded-2xl bg-surface-subtle p-3 text-sm"
         data-testid="chat-proactive-briefing"
       >
         <div class="flex items-start justify-between gap-2">
@@ -108,7 +108,7 @@
 
       <div
         v-if="briefing?.suggestions?.length && !loading"
-        class="sticky bottom-0 z-10 -mx-1 flex flex-wrap gap-2 rounded-xl border border-border bg-surface/95 p-2 backdrop-blur"
+        class="sticky bottom-0 z-10 -mx-1 flex flex-wrap gap-2 rounded-2xl bg-surface-subtle/95 p-2 backdrop-blur"
         data-testid="chat-quick-actions"
       >
         <button
@@ -141,7 +141,7 @@
           v-model="input"
           type="text"
           placeholder="Escribí tu mensaje..."
-          class="min-w-0 flex-1 rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-border-focus"
+          class="min-w-0 flex-1 rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-border-focus"
           :disabled="loading"
         />
         <button

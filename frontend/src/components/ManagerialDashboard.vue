@@ -447,7 +447,7 @@ const actionableExecutiveAlerts = computed(() => executiveAlerts.value.filter((a
               :key="alert.label"
               :href="alert.href"
               :style="{ '--ui-stagger-index': index }"
-              class="ui-card-interactive ui-stagger-item group flex items-center gap-3 rounded-lg border border-border-subtle bg-surface px-3.5 py-3 transition hover:border-primary/30 hover:bg-primary-subtle/40"
+              class="ui-card-interactive ui-stagger-item group flex items-center gap-3 rounded-2xl bg-surface-subtle px-3.5 py-3 transition hover:border-primary/30 hover:bg-primary-subtle/40"
             >
               <span class="flex size-10 shrink-0 items-center justify-center rounded-lg" :class="alert.urgent ? 'bg-danger-subtle text-danger' : 'bg-success-subtle text-success'">
                 <ExclamationTriangleIcon v-if="alert.urgent" class="size-5" aria-hidden="true" />

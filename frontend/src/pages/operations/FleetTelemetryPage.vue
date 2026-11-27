@@ -250,10 +250,10 @@ const formatDiagnosticValue = (value, unit) => value === null || value === undef
       <div v-if="diagnosticData" class="space-y-5 p-5" data-test="diagnostic-result">
         <p class="rounded-lg border border-warning bg-warning-subtle p-3 text-sm text-warning-strong">Son capturas guardadas y viajes derivados del histórico. Esta comparación ayuda a encontrar diferencias; no valida por sí sola la exactitud del proveedor ni actualiza el kilometraje operativo.</p>
         <div class="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Resumen del diagnóstico">
-          <article class="rounded-xl border border-border bg-surface-subtle/50 p-3"><p class="text-xs font-semibold uppercase text-ink-muted">Capturas guardadas</p><p class="mt-1 text-xl font-bold text-ink">{{ diagnosticData.summary.sampleCount }}</p></article>
-          <article class="rounded-xl border border-border bg-surface-subtle/50 p-3"><p class="text-xs font-semibold uppercase text-ink-muted">Viajes reconstruidos</p><p class="mt-1 text-xl font-bold text-ink">{{ diagnosticData.summary.tripCount }}</p></article>
-          <article class="rounded-xl border border-border bg-surface-subtle/50 p-3"><p class="text-xs font-semibold uppercase text-ink-muted">Cobertura del día</p><p class="mt-1 text-xl font-bold text-ink">{{ diagnosticData.summary.coveragePercent }}%</p></article>
-          <article class="rounded-xl border border-border bg-surface-subtle/50 p-3"><p class="text-xs font-semibold uppercase text-ink-muted">Calibración</p><p class="mt-1 text-sm font-bold text-ink">{{ diagnosticData.summary.uncalibrated ? 'Provisoria' : 'Configurada' }}</p></article>
+          <article class="rounded-2xl bg-surface-subtle/50 p-3"><p class="text-xs font-semibold uppercase text-ink-muted">Capturas guardadas</p><p class="mt-1 text-xl font-bold text-ink">{{ diagnosticData.summary.sampleCount }}</p></article>
+          <article class="rounded-2xl bg-surface-subtle/50 p-3"><p class="text-xs font-semibold uppercase text-ink-muted">Viajes reconstruidos</p><p class="mt-1 text-xl font-bold text-ink">{{ diagnosticData.summary.tripCount }}</p></article>
+          <article class="rounded-2xl bg-surface-subtle/50 p-3"><p class="text-xs font-semibold uppercase text-ink-muted">Cobertura del día</p><p class="mt-1 text-xl font-bold text-ink">{{ diagnosticData.summary.coveragePercent }}%</p></article>
+          <article class="rounded-2xl bg-surface-subtle/50 p-3"><p class="text-xs font-semibold uppercase text-ink-muted">Calibración</p><p class="mt-1 text-sm font-bold text-ink">{{ diagnosticData.summary.uncalibrated ? 'Provisoria' : 'Configurada' }}</p></article>
         </div>
         <p v-if="!diagnosticData.summary.coverageSufficient && diagnosticData.summary.coverageReason" class="text-sm text-warning-strong">{{ diagnosticData.summary.coverageReason }}</p>
         <div class="overflow-x-auto rounded-xl border border-border">

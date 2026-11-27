@@ -51,22 +51,22 @@ const confirmRegenerate = (event) => {
 
           <label class="block sm:col-span-2">
             <span class="mb-1.5 block text-sm font-medium text-ink">Email de acceso demo</span>
-            <input type="email" name="demo_email" maxlength="255" required value="demo@mantenimiento.local" autocomplete="email" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+            <input type="email" name="demo_email" maxlength="255" required value="demo@mantenimiento.local" autocomplete="email" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
           </label>
 
           <label class="block">
             <span class="mb-1.5 block text-sm font-medium text-ink">Contraseña</span>
-            <input type="password" name="demo_password" minlength="8" maxlength="255" required autocomplete="new-password" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+            <input type="password" name="demo_password" minlength="8" maxlength="255" required autocomplete="new-password" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
           </label>
 
           <label class="block">
             <span class="mb-1.5 block text-sm font-medium text-ink">Repetir contraseña</span>
-            <input type="password" name="demo_password_confirmation" minlength="8" maxlength="255" required autocomplete="new-password" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+            <input type="password" name="demo_password_confirmation" minlength="8" maxlength="255" required autocomplete="new-password" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
           </label>
 
           <label class="block sm:col-span-2 sm:max-w-40">
             <span class="mb-1.5 block text-sm font-medium text-ink">Vigencia (días)</span>
-            <input type="number" name="demo_dias" min="1" max="90" required value="15" class="min-h-11 w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+            <input type="number" name="demo_dias" min="1" max="90" required value="15" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
           </label>
 
           <div class="sm:col-span-2 rounded-xl border border-info/20 bg-info-subtle p-4 text-sm text-info-strong">

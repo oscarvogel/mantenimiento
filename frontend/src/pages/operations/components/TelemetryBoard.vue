@@ -157,7 +157,7 @@ const mapaEnlaceDe = (fuente) => {
       description="Cuando se vincule el proveedor de telemetría, acá vas a ver la ubicación y las lecturas del equipo."
     />
 
-    <section class="rounded-xl border border-border bg-surface-subtle/50 p-4" aria-labelledby="telemetry-kilometers-title">
+    <section class="rounded-2xl bg-surface-subtle/50 p-4" aria-labelledby="telemetry-kilometers-title">
       <div class="flex flex-wrap items-baseline justify-between gap-2">
         <h3 id="telemetry-kilometers-title" class="text-xs font-bold uppercase tracking-wide text-ink-muted">
           Comparación de kilometraje
@@ -165,14 +165,14 @@ const mapaEnlaceDe = (fuente) => {
         <p class="text-xs text-ink-muted">La lectura de telemetría es informativa; no modifica la del sistema.</p>
       </div>
       <div class="mt-3 grid gap-3 sm:grid-cols-2">
-        <div class="rounded-lg border border-border bg-surface p-3">
+        <div class="rounded-2xl bg-surface-subtle p-3">
           <p class="text-xs text-ink-muted">Del sistema · chofer</p>
           <p class="mt-1 text-xl font-bold tabular-nums text-ink">{{ formatKm(telemetry.equipmentKm) }} km</p>
         </div>
         <div
           v-for="fuente in telemetry.sources"
           :key="`km-${fuente.integrationId}`"
-          class="rounded-lg border border-border bg-surface p-3"
+          class="rounded-2xl bg-surface-subtle p-3"
         >
           <p class="text-xs text-ink-muted">{{ fuente.integrationName || fuente.provider }}</p>
           <p class="mt-1 text-xl font-bold tabular-nums text-ink">{{ formatKm(fuente.kilometers) }} km</p>
@@ -189,7 +189,7 @@ const mapaEnlaceDe = (fuente) => {
     <div
       v-for="(fuente, indice) in telemetry.sources"
       :key="fuente.integrationId"
-      class="rounded-2xl border border-border bg-surface p-5"
+      class="rounded-2xl bg-surface-subtle p-5"
     >
       <!-- cabecera: de dónde viene y cuándo habló -->
       <div class="flex flex-wrap items-start justify-between gap-3">
@@ -222,7 +222,7 @@ const mapaEnlaceDe = (fuente) => {
       <div class="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         <!-- MAPA: chico, click para agrandar -->
         <div class="space-y-2">
-          <div class="relative overflow-hidden rounded-xl border border-border bg-surface">
+          <div class="relative overflow-hidden rounded-2xl bg-surface-subtle">
             <iframe
               v-if="posicion(fuente)"
               :src="mapaSrcDe(fuente)"
@@ -244,7 +244,7 @@ const mapaEnlaceDe = (fuente) => {
             <button
               v-if="posicion(fuente)"
               type="button"
-              class="ui-interactive absolute right-2 top-2 rounded-lg border border-border bg-surface/95 px-3 py-2 text-xs font-semibold text-ink shadow"
+              class="ui-interactive absolute right-2 top-2 rounded-2xl bg-surface-subtle/95 px-3 py-2 text-xs font-semibold text-ink shadow"
               aria-label="Ampliar el mapa"
               @click="mapaAbierto = fuente.integrationId"
             >
@@ -262,7 +262,7 @@ const mapaEnlaceDe = (fuente) => {
               @click.self="mapaAbierto = null"
               @keydown.esc="mapaAbierto = null"
             >
-              <section class="flex h-full max-h-[min(90vh,900px)] w-full max-w-7xl flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-2xl">
+              <section class="flex h-full max-h-[min(90vh,900px)] w-full max-w-7xl flex-col overflow-hidden rounded-2xl bg-surface-subtle shadow-2xl">
                 <header class="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-5">
                   <h2 id="telemetry-map-title" class="font-semibold text-ink">
                     Última ubicación conocida de {{ equipment.code }}
@@ -311,7 +311,7 @@ const mapaEnlaceDe = (fuente) => {
         </div>
 
         <!-- La capacidad se carga en la ficha; sin ella sólo mostramos los litros que informa Wialon. -->
-        <div class="flex h-full min-h-40 items-center gap-5 rounded-xl border border-border bg-surface-subtle/60 p-5 sm:gap-7">
+        <div class="flex h-full min-h-40 items-center gap-5 rounded-2xl bg-surface-subtle/60 p-5 sm:gap-7">
           <div class="flex size-24 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 sm:size-28" aria-hidden="true">
             <svg class="size-16 text-primary sm:size-[4.5rem]" viewBox="0 0 96 96" fill="none">
               <path d="M26 25.5A7.5 7.5 0 0 1 33.5 18h29a7.5 7.5 0 0 1 7.5 7.5v47a7.5 7.5 0 0 1-7.5 7.5h-29a7.5 7.5 0 0 1-7.5-7.5v-47Z" stroke="currentColor" stroke-width="3" />

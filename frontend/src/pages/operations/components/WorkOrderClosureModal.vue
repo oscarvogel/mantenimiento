@@ -59,7 +59,7 @@ const removePart = (index) => { props.formState.repuestos?.splice(index, 1) }
           <legend class="text-base font-bold text-ink">Tareas de la orden</legend>
           <p class="text-sm text-ink-muted">Completá las {{ order.tasks.length }} tarea{{ order.tasks.length === 1 ? '' : 's' }} antes de confirmar el cierre.</p>
 
-          <article v-for="(task, index) in order.tasks" :key="task.id" class="rounded-xl border border-border bg-surface-subtle p-4">
+          <article v-for="(task, index) in order.tasks" :key="task.id" class="rounded-2xl bg-surface-subtle p-4">
             <div class="flex items-start gap-3">
               <span class="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary-subtle text-sm font-bold text-primary">{{ index + 1 }}</span>
               <div class="min-w-0 flex-1">
@@ -97,7 +97,7 @@ const removePart = (index) => { props.formState.repuestos?.splice(index, 1) }
           </article>
         </fieldset>
 
-        <fieldset v-else class="grid gap-3 rounded-xl border border-border bg-surface-subtle p-4">
+        <fieldset v-else class="grid gap-3 rounded-2xl bg-surface-subtle p-4">
           <FormField label="Trabajo realizado" :for-id="`order-${order.id}-work-performed`" hint="Describí concretamente qué se reparó o reemplazó. Mínimo 5 caracteres.">
             <textarea
               :id="`order-${order.id}-work-performed`"
@@ -130,7 +130,7 @@ const removePart = (index) => { props.formState.repuestos?.splice(index, 1) }
           </div>
         </div>
 
-        <fieldset class="grid gap-4 rounded-xl border border-border bg-surface-subtle p-4">
+        <fieldset class="grid gap-4 rounded-2xl bg-surface-subtle p-4">
           <div>
             <legend class="text-base font-bold text-ink">Costos del servicio</legend>
             <p class="mt-1 text-sm text-ink-muted">Informá los montos del cierre. Si un concepto no tuvo costo, dejalo en 0.</p>
@@ -153,7 +153,7 @@ const removePart = (index) => { props.formState.repuestos?.splice(index, 1) }
           <p class="text-xs text-ink-muted">El total definitivo se recalcula en el servidor a partir de los tres importes.</p>
         </fieldset>
 
-        <fieldset class="grid gap-4 rounded-xl border border-border bg-surface-subtle p-4">
+        <fieldset class="grid gap-4 rounded-2xl bg-surface-subtle p-4">
           <div class="flex flex-wrap items-start justify-between gap-3"><div><legend class="text-base font-bold text-ink">Repuestos e insumos</legend><p class="mt-1 text-sm text-ink-muted">Registrá lo colocado para conservar trazabilidad y, si corresponde, sus límites de garantía.</p></div><button type="button" :class="secondaryButton" @click="addPart">Agregar repuesto</button></div>
           <div v-if="formState.repuestos?.length" class="grid gap-3">
             <article v-for="(part, index) in formState.repuestos" :key="index" class="grid gap-3 rounded-lg border border-border-subtle bg-surface-raised p-3 sm:grid-cols-2 lg:grid-cols-4">
