@@ -22,8 +22,8 @@
     "file": "assets/chatbot-DO6L-G3P.css",
     "src": "_chatbot-DO6L-G3P.css"
   },
-  "_reports-Cm5O-khZ.js": {
-    "file": "assets/reports-Cm5O-khZ.js",
+  "_reports-DRUywO7D.js": {
+    "file": "assets/reports-DRUywO7D.js",
     "name": "reports",
     "imports": [
       "_chatbot-B7B9l862.js",
@@ -86,7 +86,7 @@
     "isDynamicEntry": true
   },
   "src/main.js": {
-    "file": "assets/main-Bmz8RVFe.js",
+    "file": "assets/main-ITbuNQKX.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
@@ -94,7 +94,7 @@
       "_vendor-CPbI5RYP.js",
       "_chatbot-B7B9l862.js",
       "_admin-ouNwGVjb.js",
-      "_reports-Cm5O-khZ.js"
+      "_reports-DRUywO7D.js"
     ],
     "dynamicImports": [
       "_chatbot-B7B9l862.js",
@@ -105,7 +105,7 @@
       "src/profiles/cliente_piloto/profile.js"
     ],
     "css": [
-      "assets/main-C_nrjMp-.css"
+      "assets/main-RGHHpAYj.css"
     ]
   },
   "src/pages/operations/components/FleetTelemetryMap.vue": {
@@ -122,7 +122,7 @@
     ]
   },
   "src/profiles/cliente_piloto/profile.js": {
-    "file": "assets/profile-BxYkJ_Hl.js",
+    "file": "assets/profile-DZfdXoAa.js",
     "name": "profile",
     "src": "src/profiles/cliente_piloto/profile.js",
     "isDynamicEntry": true,
@@ -131,14 +131,14 @@
       "_vendor-CPbI5RYP.js",
       "_chatbot-B7B9l862.js",
       "_admin-ouNwGVjb.js",
-      "_reports-Cm5O-khZ.js"
+      "_reports-DRUywO7D.js"
     ],
     "css": [
       "assets/profile-DV70kWFs.css"
     ]
   },
   "src/profiles/platform/profile.js": {
-    "file": "assets/profile-Bi2y24Zy.js",
+    "file": "assets/profile-BFQ1Ej1p.js",
     "name": "profile",
     "src": "src/profiles/platform/profile.js",
     "isDynamicEntry": true,
@@ -147,11 +147,11 @@
       "_vendor-CPbI5RYP.js",
       "_chatbot-B7B9l862.js",
       "_admin-ouNwGVjb.js",
-      "_reports-Cm5O-khZ.js"
+      "_reports-DRUywO7D.js"
     ]
   },
   "src/profiles/vogel/profile.js": {
-    "file": "assets/profile-CO9y2ZkG.js",
+    "file": "assets/profile-WGyK8OMm.js",
     "name": "profile",
     "src": "src/profiles/vogel/profile.js",
     "isDynamicEntry": true,
@@ -160,7 +160,7 @@
       "_vendor-CPbI5RYP.js",
       "_chatbot-B7B9l862.js",
       "_admin-ouNwGVjb.js",
-      "_reports-Cm5O-khZ.js"
+      "_reports-DRUywO7D.js"
     ]
   }
 }
