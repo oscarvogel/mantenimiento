@@ -101,6 +101,8 @@ Las pantallas de superadministración (`admin/SuperAdmin*`, `TelemetrySamples`, 
 
 ### Task 4: Piezas compartidas y maqueta de los 5 patrones
 
+> **Cambio al ejecutar (26/11):** el repo ya tenía piezas compartidas: `buttons.js` (con `fieldClass`), `PageHeading`, `PanelCard` y `StatusBadge`. Se les cambió el estilo en lugar de crear `PageHeader`, `DataPanel`, `StatusPill` y clases `ui-*` paralelas. La única pieza nueva es `FilterChip`. Las tareas 5 a 9 usan esas piezas; el detalle está en `docs/superpowers/specs/2026-11-26-rediseno-interiores-design.md`.
+
 **Files:**
 - Create: `frontend/src/components/ui/PageHeader.vue` (título, bajada y acciones), `frontend/src/components/ui/StatusPill.vue` (tono `neutral|info|success|warning|danger`), `frontend/src/components/ui/DataPanel.vue` (`rounded-panel`, `shadow-card`, con título y acción opcionales)
 - Modify: `frontend/src/styles.css`: en `@layer components`, las clases `ui-btn-primary`, `ui-btn-secondary`, `ui-btn-ghost` (píldora), `ui-field` y `ui-table`

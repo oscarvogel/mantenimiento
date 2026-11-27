@@ -80,6 +80,18 @@ const sidebarPairs = [
   ['ink-inverse', 'primary-600', TEXT],
 ]
 
+// Rediseño de interiores (docs/superpowers/specs/2026-11-26-rediseno-interiores-design.md):
+// botón principal en marino y píldoras de estado sobre su fondo suave.
+pairs.push(
+  ['action-foreground', 'action', TEXT],
+  ['action', 'surface-subtle', NON_TEXT],
+  ['info-strong', 'info-subtle', TEXT],
+  ['success-strong', 'success-subtle', TEXT],
+  ['warning-strong', 'warning-subtle', TEXT],
+  ['danger-strong', 'danger-subtle', TEXT],
+  ['ink-muted', 'surface-muted', TEXT],
+)
+
 describe.each(Object.entries(themes))('tokens del tema %s', (theme, vars) => {
   it.each(pairs)('%s sobre %s alcanza %d:1', (fg, bg, min) => {
     expect(contrast(vars, fg, bg)).toBeGreaterThanOrEqual(min)

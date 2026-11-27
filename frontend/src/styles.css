@@ -75,6 +75,9 @@
   --surface-inverse: var(--secondary-900);
   /* Marco del shell: sigue a surface-inverse para despegarse del lienzo también en oscuro. */
   --frame: var(--surface-inverse);
+  /* Botón principal: marino en claro (rediseño de interiores, 26/11). */
+  --action: var(--secondary-900);
+  --action-foreground: 255 255 255;
   --ink: var(--secondary-900);
   --ink-strong: var(--secondary-900);
   --ink-muted: var(--neutral-600);
@@ -132,6 +135,8 @@ html[data-theme='dark'] {
   --surface-raised: var(--neutral-800);
   /* secondary-900 would be as dark as the canvas; 600 keeps the sidebar visible. */
   --surface-inverse: var(--secondary-600);
+  --action: var(--primary-300);
+  --action-foreground: var(--secondary-900);
   --ink: var(--neutral-200);
   --ink-strong: var(--neutral-100);
   --ink-muted: var(--neutral-300);

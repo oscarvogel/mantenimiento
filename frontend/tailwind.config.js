@@ -36,6 +36,10 @@ export default {
           inverse: 'rgb(var(--surface-inverse) / <alpha-value>)',
         },
         frame: 'rgb(var(--frame) / <alpha-value>)',
+        action: {
+          DEFAULT: 'rgb(var(--action) / <alpha-value>)',
+          foreground: 'rgb(var(--action-foreground) / <alpha-value>)',
+        },
         ink: {
           DEFAULT: 'rgb(var(--ink) / <alpha-value>)',
           strong: 'rgb(var(--ink-strong) / <alpha-value>)',

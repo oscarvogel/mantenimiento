@@ -19,8 +19,10 @@ que apunta a otro paso de la misma escala.
 
 | Token | Claro | Oscuro |
 |---|---|---|
-| `primary` (botón, enlace) | primary-600 | primary-300 |
+| `primary` (enlace, foco, estado informativo) | primary-600 | primary-300 |
 | `primary-foreground` | blanco | secondary-900 |
+| `action` (botón principal) | secondary-900 | primary-300 |
+| `action-foreground` | blanco | secondary-900 |
 | `accent` | accent-500 | accent-400 |
 | `surface-subtle` (fondo de página) | neutral-100 | neutral-900 |
 | `surface` / `surface-raised` | blanco | neutral-800 |
@@ -120,8 +122,11 @@ La pantalla no muestra códigos internos ni datos crudos.
 
 | Pieza | Dónde | Uso |
 |---|---|---|
-| Botones | `frontend/src/ui/buttons.js` | `primaryButton`, `secondaryButton`, `dangerButton`, `ghostButton`, sus versiones `…Sm` e `iconButton`. Son clases: sirven en `<button>`, `<a>` y submit. Las clases de ubicación (`w-full`, `mt-4`) se agregan aparte: `:class="[primaryButton, 'w-full']"`. |
-| Campo | `fieldClass` (mismo archivo) | Se pinta en rojo con `aria-invalid="true"`. |
+| Botones | `frontend/src/ui/buttons.js` | En píldora; el principal en `action` (marino). `primaryButton`, `secondaryButton`, `dangerButton`, `ghostButton`, sus versiones `…Sm` e `iconButton`. Son clases: sirven en `<button>`, `<a>` y submit. Las clases de ubicación (`w-full`, `mt-4`) se agregan aparte: `:class="[primaryButton, 'w-full']"`. |
+| Campo | `fieldClass` (mismo archivo) | Fondo suave sin borde, en píldora (el `textarea` con esquinas grandes). Se pinta en rojo con `aria-invalid="true"`. |
+| Encabezado de página | `pages/operations/components/PageHeading.vue` | Etiqueta en `primary`, título, bajada y acciones. Sin línea divisoria. |
+| Tarjeta | `pages/operations/components/PanelCard.vue` | `rounded-card` y `shadow-card`, sin borde. |
+| Filtro con conteo | `frontend/src/components/ui/FilterChip.vue` | Enlace (`href`, `aria-current`) o botón (`aria-pressed`, evento `select`). El activo va en `action`. |
 | Etiqueta de campo | `pages/operations/components/FormField.vue` | Props `hint` y `error`. Conecta el campo con `v-slot="field"` y `v-bind="field.control"`. |
 | Estado | `pages/operations/components/StatusBadge.vue` | Muestra texto legible ("En proceso") e ícono por tono. No depende solo del color. |
 | Modal | `frontend/src/ui/BaseDialog.vue` | Sobre `<dialog>` nativo, que maneja el foco, Escape y queda encima de todo. Props: `title`, `description`, `eyebrow`, `open`, `persistent` (mientras guarda), `size` (`sm`…`xl`), `titleId`, `closeLabel`. Al abrir enfoca el primer campo. Cerrado, no queda en el DOM. |

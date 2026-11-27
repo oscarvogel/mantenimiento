@@ -2,14 +2,15 @@
 // and submit inputs alike. Size is part of each constant on purpose: stacking a size
 // class over another padding class leaves the winner to Tailwind's CSS order.
 
-const base = 'ui-interactive inline-flex items-center justify-center gap-2 rounded-lg font-semibold disabled:cursor-not-allowed disabled:opacity-50'
-const md = 'min-h-11 px-4 py-2.5 text-sm'
-const sm = 'min-h-9 px-3 py-1.5 text-xs'
+// Rediseño de interiores (26/11): píldoras; el principal en marino (`action`), no en azul.
+const base = 'ui-interactive inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-pill font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-raised disabled:cursor-not-allowed disabled:opacity-50'
+const md = 'min-h-11 px-5 py-2.5 text-sm'
+const sm = 'min-h-9 px-3.5 py-1.5 text-xs'
 
 const variant = {
-  primary: 'ui-glare bg-primary text-primary-foreground shadow-sm hover:bg-primary-hover active:bg-primary-active',
-  secondary: 'border border-border-strong bg-surface-raised text-ink hover:bg-surface-muted',
-  danger: 'border border-danger/30 bg-surface-raised text-danger-strong hover:bg-danger-subtle',
+  primary: 'bg-action text-action-foreground hover:bg-action/90 active:bg-action/80',
+  secondary: 'bg-surface-raised text-ink shadow-card ring-1 ring-border-subtle hover:bg-surface-muted',
+  danger: 'bg-surface-raised text-danger-strong ring-1 ring-danger/30 hover:bg-danger-subtle',
   ghost: 'text-primary hover:bg-primary-subtle',
 }
 
@@ -28,4 +29,5 @@ export const ghostButtonSm = button('ghost', sm)
 // Square button for a lone icon: the caller must give it an aria-label.
 export const iconButton = `${base} size-11 text-ink-muted hover:bg-surface-muted hover:text-ink`
 
-export const fieldClass = 'block min-h-11 w-full rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-primary-foreground file:transition-colors hover:file:bg-primary-hover focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-ink-subtle aria-[invalid=true]:border-danger aria-[invalid=true]:ring-danger/15'
+// Campo sobre fondo suave, sin borde visible; en píldora salvo el textarea, que va con esquinas grandes.
+export const fieldClass = 'block min-h-11 w-full rounded-2xl border border-transparent bg-surface-muted px-4 py-2 text-sm text-ink placeholder:text-ink-subtle [&:not(textarea)]:rounded-pill file:mr-3 file:rounded-pill file:border-0 file:bg-action file:px-3.5 file:py-1.5 file:text-sm file:font-semibold file:text-action-foreground file:transition-colors hover:file:bg-action/90 focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:opacity-60 aria-[invalid=true]:border-danger aria-[invalid=true]:ring-2 aria-[invalid=true]:ring-danger/15'
