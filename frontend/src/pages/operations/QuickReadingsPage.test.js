@@ -53,6 +53,21 @@ describe('QuickReadingsPage', () => {
     expect(wrapper.findAll('[data-reading-input="true"]')).toHaveLength(2)
   })
 
+  it('patrón Carga: encabezado compartido, estados en píldoras y una fila por equipo', async () => {
+    const wrapper = mount(QuickReadingsPage, { props: { data: baseData() } })
+
+    expect(wrapper.get('h1').text()).toBe('Registrar km/horas')
+    expect(wrapper.text()).toContain('Campo')
+    const chips = wrapper.get('[role="group"][aria-label="Estado del plan preventivo"]').findAll('button')
+    expect(chips[0].classes()).toContain('rounded-pill')
+    expect(chips[0].attributes('aria-pressed')).toBe('true')
+    // Cada equipo es una fila redondeada; la tabla no usa .ui-table, que pintaba celdas sueltas en el celular.
+    expect(wrapper.get('table').classes()).not.toContain('ui-table')
+    expect(wrapper.get('tbody tr').classes()).toContain('rounded-[18px]')
+    await chips[1].trigger('click')
+    expect(chips[1].attributes('aria-pressed')).toBe('true')
+  })
+
   it('filtra inmediatamente los móviles visibles mientras se escribe', async () => {
     const wrapper = mount(QuickReadingsPage, { props: { data: baseData() } })
     await wrapper.find('input[type="search"]').setValue('CH-20')

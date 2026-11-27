@@ -7,6 +7,7 @@ import PageHeading from './components/PageHeading.vue'
 import { isReportFailureMode } from '../../ui/fieldShortcuts.js'
 import PaginationBar from './components/PaginationBar.vue'
 import PanelCard from './components/PanelCard.vue'
+import FilterChip from '../../components/ui/FilterChip.vue'
 import { fieldClass, formatHours, formatKilometers, kilometersDelta, normalizeDecimalInput, nowLocal, parseFlexibleNumber, parseKilometers, primaryButton, readingDelta, secondaryButton } from './helpers.js'
 
 const props = defineProps({ data: { type: Object, required: true } })
@@ -229,10 +230,7 @@ const focusNextReadingInput = (event) => {
       </ul>
     </PanelCard>
   </template>
-  <header v-if="!reportFailure" class="mb-4 border-b border-border-subtle pb-4 sm:mb-8 sm:pb-5">
-    <h1 class="text-3xl font-bold tracking-tight text-ink sm:text-4xl">Registrar km/horas</h1>
-    <p class="mt-2 max-w-prose text-sm leading-6 text-ink-muted">Buscá el equipo, ingresá la lectura y guardá las que estén listas.</p>
-  </header>
+  <PageHeading v-if="!reportFailure" eyebrow="Campo" title="Registrar km/horas" description="Buscá el equipo, ingresá la lectura y guardá las que estén listas." />
   <form v-if="!reportFailure" method="post" :action="data.routes.submit" @submit.prevent="submitRows">
     <CsrfInput :csrf="data.csrf" />
     <PanelCard title="Equipos activos" :count="data.equipment.total" allow-overflow flush>
@@ -282,15 +280,7 @@ const focusNextReadingInput = (event) => {
               <input id="quick-reading-common-date" v-model="commonRecordedAt" type="datetime-local" :class="[fieldClass, 'min-w-0']" @change="applyCommonRecordedAt" />
             </div>
             <div role="group" aria-label="Estado del plan preventivo" class="col-span-2 flex flex-wrap gap-2 text-xs font-semibold xl:col-span-4">
-              <button
-                v-for="item in statusFilters"
-                :key="item.key"
-                type="button"
-                class="ui-interactive min-h-11 rounded-lg border px-3 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
-                :class="statusFilter === item.key ? 'border-primary bg-primary-subtle text-primary' : 'border-border-subtle bg-surface-raised text-ink-muted hover:border-primary hover:text-primary'"
-                :aria-pressed="statusFilter === item.key"
-                @click="statusFilter = item.key"
-              >{{ item.label }} {{ item.count }}</button>
+              <FilterChip v-for="item in statusFilters" :key="item.key" :label="item.label" :count="item.count" :active="statusFilter === item.key" @select="statusFilter = item.key" />
             </div>
           </div>
         </div>
@@ -311,7 +301,7 @@ const focusNextReadingInput = (event) => {
 
       <div
         v-if="data.canRegister && data.equipment.items.length"
-        class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-y border-border-subtle bg-surface-raised px-4 py-2.5 sm:px-6"
+        class="mx-3 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl bg-surface-muted px-4 py-2.5 sm:mx-6"
         :class="{ 'sticky top-[4.5rem] z-10': keepSaveVisible }"
       >
         <p aria-live="polite" class="text-xs text-ink-muted">
@@ -328,8 +318,9 @@ const focusNextReadingInput = (event) => {
       <EmptyState v-if="data.equipment.items.length === 0" class="m-4 sm:m-6" title="No hay equipos para los filtros seleccionados" />
       <EmptyState v-else-if="visibleEquipment.length === 0" class="m-4 sm:m-6" title="No hay coincidencias" description="Probá con otro código, patente o chasis, o cambiá el filtro de estado." />
       <template v-else>
-        <table role="table" aria-label="Lecturas por equipo" class="ui-table block w-full text-sm xl:table xl:table-fixed xl:border-collapse">
-          <thead role="rowgroup" class="sr-only bg-surface-subtle text-left text-xs text-ink-muted xl:not-sr-only xl:table-header-group">
+        <!-- Fila redondeada por equipo: ficha apilada en el celular, tabla desde xl (patrón Carga). -->
+        <table role="table" aria-label="Lecturas por equipo" class="block w-full text-sm xl:table xl:table-fixed xl:border-separate xl:border-spacing-y-1.5">
+          <thead role="rowgroup" class="sr-only text-left text-xs font-semibold text-ink-subtle xl:not-sr-only xl:table-header-group">
             <tr role="row">
               <th role="columnheader" scope="col" class="w-[16%] px-4 py-3 sm:pl-6">Equipo</th>
               <th role="columnheader" scope="col" class="w-[15%] px-3 py-3">Última lectura</th>
@@ -338,12 +329,12 @@ const focusNextReadingInput = (event) => {
               <th role="columnheader" scope="col" class="w-[18%] px-3 py-3">Acciones del plan</th>
             </tr>
           </thead>
-          <tbody role="rowgroup" class="block divide-y divide-border-subtle xl:table-row-group">
+          <tbody role="rowgroup" class="block space-y-2 px-3 pt-3 sm:px-6 xl:table-row-group xl:space-y-0">
             <tr
               v-for="equipment in visibleEquipment"
               :key="equipment.id"
               role="row"
-              class="grid min-w-0 grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] gap-3 px-4 py-3 focus-within:bg-primary-subtle/30 sm:grid-cols-2 sm:px-6 sm:py-4 xl:table-row"
+              class="grid min-w-0 grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] gap-3 rounded-[18px] bg-surface-subtle px-4 py-3 sm:grid-cols-2 sm:py-4 xl:table-row xl:bg-transparent xl:[&>td:first-child]:rounded-l-[14px] xl:[&>td:last-child]:rounded-r-[14px] xl:[&>td]:bg-surface-subtle"
             >
               <td role="cell" class="block min-w-0 [overflow-wrap:anywhere] sm:col-span-2 xl:table-cell xl:px-4 xl:py-4 xl:pl-6 xl:align-top">
                 <strong class="block text-base text-ink xl:text-sm">{{ equipment.code }}</strong>
@@ -383,9 +374,9 @@ const focusNextReadingInput = (event) => {
                   <p v-if="rows[equipment.id].message" class="mt-1 text-xs" :class="rows[equipment.id].status === 'error' ? 'text-danger-strong' : 'text-success-strong'">{{ rows[equipment.id].message }}</p>
                 </div>
               </td>
-              <td role="cell" class="col-span-2 block min-w-0 border-t border-border-subtle pt-3 [overflow-wrap:anywhere] sm:col-span-1 xl:table-cell xl:border-0 xl:px-3 xl:py-4 xl:align-top">
+              <td role="cell" class="col-span-2 block min-w-0 [overflow-wrap:anywhere] sm:col-span-1 xl:table-cell xl:px-3 xl:py-4 xl:align-top">
                 <a v-if="maintenance[equipment.id]?.state === 'SIN_PLAN' && equipment.assignPlanUrl" :href="equipment.assignPlanUrl" class="ui-interactive inline-flex min-h-11 items-center rounded-md px-1 text-xs font-semibold text-primary underline underline-offset-4 hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus" title="Asignar un plan preventivo">Sin plan · Asignar</a>
-                <span v-else class="inline-flex rounded-md border px-2 py-1 text-xs font-semibold" :class="preventiveClass(equipment)">{{ preventiveLabel(equipment) }}</span>
+                <span v-else class="inline-flex rounded-pill border px-2.5 py-1 text-xs font-semibold" :class="preventiveClass(equipment)">{{ preventiveLabel(equipment) }}</span>
 
                 <template v-if="primaryPlan(equipment)">
                   <p class="mt-2 font-medium text-ink">{{ primaryPlan(equipment).serviceName }}</p>
@@ -411,7 +402,7 @@ const focusNextReadingInput = (event) => {
               </td>
               <td
                 role="cell"
-                class="col-span-2 min-w-0 [overflow-wrap:anywhere] sm:col-span-1 sm:border-t sm:border-border-subtle sm:pt-3 xl:table-cell xl:border-0 xl:px-3 xl:py-4 xl:pr-6 xl:align-top"
+                class="col-span-2 min-w-0 [overflow-wrap:anywhere] sm:col-span-1 xl:table-cell xl:px-3 xl:py-4 xl:pr-6 xl:align-top"
                 :class="primaryPlan(equipment)?.order || (data.canGenerateOrder && primaryPlan(equipment)?.noticeId) || orderErrors[equipment.id] ? 'block' : 'hidden'"
               >
                 <template v-if="primaryPlan(equipment)?.order">
@@ -433,7 +424,7 @@ const focusNextReadingInput = (event) => {
         </table>
       </template>
       <template #footer>
-        <div class="border-t border-border-subtle px-4 py-3 sm:px-6">
+        <div class="px-4 py-3 sm:px-6">
           <PaginationBar :pagination="data.equipment.pagination" embedded compact-single-page />
         </div>
       </template>
