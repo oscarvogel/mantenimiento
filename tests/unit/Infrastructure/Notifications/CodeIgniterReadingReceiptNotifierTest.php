@@ -207,7 +207,8 @@ final class CodeIgniterReadingReceiptNotifierTest extends TestCase
             CREATE TABLE sucursales (id INTEGER PRIMARY KEY, empresa_id INTEGER, nombre TEXT, estado INTEGER,
                 deleted_at TEXT NULL, idioma_notificaciones TEXT);
             CREATE TABLE equipos (id INTEGER PRIMARY KEY, empresa_id INTEGER, sucursal_id INTEGER,
-                codigo TEXT, patente TEXT NULL, estado TEXT, deleted_at TEXT NULL);
+                tipo_equipo_id INTEGER, codigo TEXT, patente TEXT NULL, estado TEXT, deleted_at TEXT NULL);
+            CREATE TABLE tipos_equipo (id INTEGER PRIMARY KEY, controla_km INTEGER);
             CREATE TABLE empleados (id INTEGER PRIMARY KEY, empresa_id INTEGER, nombre TEXT, apellido TEXT,
                 telefono TEXT NULL, activo INTEGER, deleted_at TEXT NULL);
             CREATE TABLE employee_equipment_assignments (id INTEGER PRIMARY KEY, empresa_id INTEGER,
@@ -239,10 +240,11 @@ final class CodeIgniterReadingReceiptNotifierTest extends TestCase
         $this->db->table('sucursales')->insert([
             'id' => 7, 'empresa_id' => 5, 'nombre' => 'Central', 'estado' => 1, 'deleted_at' => null, 'idioma_notificaciones' => '',
         ]);
+        $this->db->table('tipos_equipo')->insert(['id' => 1, 'controla_km' => 1]);
         $this->db->table('equipos')->insertBatch([
-            ['id' => 10, 'empresa_id' => 5, 'sucursal_id' => 7, 'codigo' => 'CAM-01', 'patente' => 'AA123BB', 'estado' => 'ACTIVO', 'deleted_at' => null],
-            ['id' => 11, 'empresa_id' => 5, 'sucursal_id' => 7, 'codigo' => 'CAM-SIN-CHOFER', 'patente' => null, 'estado' => 'ACTIVO', 'deleted_at' => null],
-            ['id' => 12, 'empresa_id' => 5, 'sucursal_id' => 7, 'codigo' => 'CAM-SIN-TEL', 'patente' => null, 'estado' => 'ACTIVO', 'deleted_at' => null],
+            ['id' => 10, 'empresa_id' => 5, 'sucursal_id' => 7, 'tipo_equipo_id' => 1, 'codigo' => 'CAM-01', 'patente' => 'AA123BB', 'estado' => 'ACTIVO', 'deleted_at' => null],
+            ['id' => 11, 'empresa_id' => 5, 'sucursal_id' => 7, 'tipo_equipo_id' => 1, 'codigo' => 'CAM-SIN-CHOFER', 'patente' => null, 'estado' => 'ACTIVO', 'deleted_at' => null],
+            ['id' => 12, 'empresa_id' => 5, 'sucursal_id' => 7, 'tipo_equipo_id' => 1, 'codigo' => 'CAM-SIN-TEL', 'patente' => null, 'estado' => 'ACTIVO', 'deleted_at' => null],
         ]);
         $this->db->table('empleados')->insertBatch([
             ['id' => 55, 'empresa_id' => 5, 'nombre' => 'Juan', 'apellido' => 'Pérez', 'telefono' => '5493514449999', 'activo' => 1, 'deleted_at' => null],

@@ -39,9 +39,9 @@ final readonly class RunNotificationDispatch
         try {
             $executionId = $this->processes->start($process, $executionKey);
             if ($executionId === null) {
-                return ['email_sent' => 0, 'company_email_sent' => 0, 'push_sent' => 0, 'whatsapp_sent' => 0, 'failed' => 0, 'retry' => 0, 'expired' => 0, 'skipped' => 0, 'already_completed' => 1];
+                return ['email_sent' => 0, 'company_email_sent' => 0, 'push_sent' => 0, 'whatsapp_sent' => 0, 'whatsapp_cancelled' => 0, 'failed' => 0, 'retry' => 0, 'expired' => 0, 'skipped' => 0, 'already_completed' => 1];
             }
-            $summary = ['email_sent' => 0, 'company_email_sent' => 0, 'push_sent' => 0, 'whatsapp_sent' => 0, 'whatsapp_user_digests_scheduled' => 0, 'whatsapp_confirmed' => 0, 'whatsapp_gateway_failed' => 0, 'failed' => 0, 'retry' => 0, 'expired' => 0, 'skipped' => 0, 'already_completed' => 0, 'email_channel_disabled' => 0];
+            $summary = ['email_sent' => 0, 'company_email_sent' => 0, 'push_sent' => 0, 'whatsapp_sent' => 0, 'whatsapp_cancelled' => 0, 'whatsapp_user_digests_scheduled' => 0, 'whatsapp_confirmed' => 0, 'whatsapp_gateway_failed' => 0, 'failed' => 0, 'retry' => 0, 'expired' => 0, 'skipped' => 0, 'already_completed' => 0, 'email_channel_disabled' => 0];
             $this->dispatchEmail($summary, $limit);
             $this->dispatchCompanyEmail($summary, $limit);
             $this->dispatchPush($summary, $limit);
@@ -244,13 +244,32 @@ final readonly class RunNotificationDispatch
         $intervalMs = max(0, min(10000, (int) env('alerts.whatsappSendIntervalMs', 2000)));
         $attempt = 0;
 
-        foreach ($this->whatsAppDeliveries->due($whatsAppLimit) as $delivery) {
+        $batch = $this->whatsAppDeliveries->due($whatsAppLimit);
+        $this->addCancellationCounters($summary, $this->whatsAppDeliveries->lastCancellationSummary());
+
+        foreach ($batch as $delivery) {
             $deliveryId = (int) ($delivery['id'] ?? 0);
             // Una cancelación concurrente (desvinculación de chofer, baja del
             // equipo, etc.) puede ocurrir entre due() y el envío. Se relee el
             // estado para no despachar una entrega que ya quedó OMITIDA.
             if (! $this->whatsAppDeliveries->stillPending($deliveryId)) {
                 $summary['skipped']++;
+                continue;
+            }
+
+            // Revalidación just-in-time: además del estado, se vuelve a evaluar
+            // el predicado único del destinatario inmediatamente antes de enviar
+            // y en cada reintento.
+            $blocked = $this->whatsAppDeliveries->revalidateBeforeSend($deliveryId);
+            if ($blocked !== null) {
+                $this->whatsAppDeliveries->cancelled(
+                    $deliveryId,
+                    (string) $blocked->reasonCode(),
+                    (string) $blocked->reasonText(),
+                );
+                $summary['whatsapp_cancelled']++;
+                $reasonKey = 'whatsapp_cancelled_' . strtolower((string) $blocked->reasonCode());
+                $summary[$reasonKey] = ((int) ($summary[$reasonKey] ?? 0)) + 1;
                 continue;
             }
 
@@ -280,6 +299,29 @@ final readonly class RunNotificationDispatch
                 $summary['failed']++;
                 $summary['retry'] += $retryable ? 1 : 0;
             }
+        }
+    }
+
+    /**
+     * Suma las cancelaciones de la última selección al resumen del ciclo,
+     * con un contador por código de motivo.
+     *
+     * @param array<string,int> $summary
+     * @param array<string,int> $counters
+     */
+    private function addCancellationCounters(array &$summary, array $counters): void
+    {
+        foreach ($counters as $reason => $count) {
+            if ($reason === 'total') {
+                continue;
+            }
+            $count = (int) $count;
+            if ($count <= 0) {
+                continue;
+            }
+            $summary['whatsapp_cancelled'] += $count;
+            $key = 'whatsapp_cancelled_' . strtolower((string) $reason);
+            $summary[$key] = ((int) ($summary[$key] ?? 0)) + $count;
         }
     }
 

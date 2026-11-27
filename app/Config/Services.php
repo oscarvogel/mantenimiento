@@ -85,6 +85,7 @@ use App\Application\Notifications\ManageWebPushSubscriptions;
 use App\Application\Notifications\MarkNotificationRead;
 use App\Application\Notifications\NotificationChannelPolicy;
 use App\Application\Notifications\Port\GlobalNotificationSettingsStore;
+use App\Application\Notifications\Port\DriverNotificationEligibilityReader;
 use App\Application\Notifications\Port\DriverPhoneAuditReadModel;
 use App\Application\Notifications\Port\NotificationChannelAvailability;
 use App\Application\Notifications\Port\NotificationCronRateLimiter;
@@ -106,6 +107,7 @@ use App\Infrastructure\Notifications\CodeIgniterGlobalNotificationSettingsStore;
 use App\Infrastructure\Notifications\CodeIgniterNotificationCronRateLimiter;
 use App\Infrastructure\Notifications\CodeIgniterNotificationDeliveryQueue;
 use App\Infrastructure\Notifications\CodeIgniterWhatsAppNotificationDeliveryQueue;
+use App\Infrastructure\Notifications\CodeIgniterDriverNotificationEligibilityReader;
 use App\Infrastructure\Notifications\CodeIgniterNotificationPreferenceStore;
 use App\Infrastructure\Notifications\CodeIgniterReadingReceiptNotifier;
 use App\Infrastructure\Notifications\VogelWhatsAppApiGateway;
@@ -694,6 +696,15 @@ class Services extends BaseService
         );
     }
 
+    public static function driverNotificationEligibilityReader(bool $getShared = true): DriverNotificationEligibilityReader
+    {
+        if ($getShared) {
+            return static::getSharedInstance('driverNotificationEligibilityReader');
+        }
+
+        return new CodeIgniterDriverNotificationEligibilityReader(db_connect());
+    }
+
     public static function whatsAppNotificationDeliveryQueue(bool $getShared = true): CodeIgniterWhatsAppNotificationDeliveryQueue
     {
         if ($getShared) {
@@ -705,6 +716,8 @@ class Services extends BaseService
             static::whatsAppGateway(false),
             static::globalNotificationSettingsStore(false),
             db_connect(),
+            static::driverNotificationEligibilityReader(false),
+            static::auditTrail(false),
         );
     }
 
@@ -2451,6 +2464,7 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
             static::whatsAppNotificationDeliveryQueue(false),
             static::globalNotificationSettingsStore(false),
             static::notificationClock(),
+            static::driverNotificationEligibilityReader(false),
         );
     }
 
@@ -2465,6 +2479,7 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
             static::whatsAppGateway(false),
             static::globalNotificationSettingsStore(false),
             static::notificationClock(false),
+            static::driverNotificationEligibilityReader(false),
         );
     }
 

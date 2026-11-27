@@ -17,6 +17,7 @@ enum AuditAction: string
     case USUARIO_ACCESO_ASIGNADO = 'usuario.acceso_asignado';
     case USUARIO_PASSWORD_RESTABLECIDA = 'usuario.password_restablecida';
     case ASIGNACION_CHOFER_CERRADA = 'asignacion.chofer_cerrada';
+    case NOTIFICACION_WHATSAPP_CANCELADA = 'notificacion.whatsapp_cancelada';
     case CLIENTE_CC_CARGO_REGISTRADO = 'cliente_cc.cargo_registrado';
     case CLIENTE_CC_CARGO_ANULADO = 'cliente_cc.cargo_anulado';
     case CLIENTE_CC_TRAMO_NO_COBRABLE = 'cliente_cc.tramo_no_cobrable';

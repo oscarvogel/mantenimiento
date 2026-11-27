@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Notifications;
 
+use App\Application\Audit\AuditAction;
+use App\Application\Audit\AuditEntry;
+use App\Application\Audit\AuditScope;
+use App\Application\Audit\Port\AuditTrail;
+use App\Application\Notifications\Port\DriverNotificationEligibilityReader;
 use App\Application\Notifications\Port\GlobalNotificationSettingsStore;
 use App\Application\Notifications\Port\NotificationClock;
 use App\Application\Notifications\Port\WhatsAppNotificationDeliveryQueue;
@@ -11,7 +16,10 @@ use App\Application\Notifications\Port\WhatsAppNotificationGateway;
 use App\Application\Notifications\ReadingReminderMessageBuilder;
 use App\Application\Notifications\ScheduleManagementReadingReport;
 use App\Application\Notifications\UserWhatsAppDigestSchedule;
+use App\Domain\Notifications\DriverNotificationEligibility;
+use App\Domain\Notifications\DriverNotificationTypes;
 use App\Domain\Notifications\NotifiableEvent;
+use App\Infrastructure\Audit\CodeIgniterAuditTrail;
 use CodeIgniter\Database\BaseConnection;
 use Config\Database;
 use App\Infrastructure\PublicEquipmentAccess\CodeIgniterPublicEquipmentTokenRepository;
@@ -19,13 +27,26 @@ use Throwable;
 
 final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNotificationDeliveryQueue
 {
+    private readonly DriverNotificationEligibilityReader $eligibility;
+
+    private readonly AuditTrail $audit;
+
+    /** @var array<string,int> */
+    private array $lastCancellationSummary = ['total' => 0];
+
+    private ?bool $supportsCancellationReason = null;
+
     public function __construct(
         private readonly NotificationClock $clock,
         private readonly WhatsAppNotificationGateway $gateway,
         private readonly GlobalNotificationSettingsStore $settings,
         private ?BaseConnection $db = null,
+        ?DriverNotificationEligibilityReader $eligibility = null,
+        ?AuditTrail $audit = null,
     ) {
         $this->db ??= Database::connect();
+        $this->eligibility = $eligibility ?? new CodeIgniterDriverNotificationEligibilityReader($this->db);
+        $this->audit = $audit ?? new CodeIgniterAuditTrail($this->db);
     }
 
     public function scheduleUserDailyDigests(): int
@@ -326,24 +347,23 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             return;
         }
 
-        $driver = $this->db->table('employee_equipment_assignments a')
-            ->select('a.empleado_id, emp.nombre, emp.apellido, emp.telefono')
-            ->join('empleados emp', 'emp.id = a.empleado_id AND emp.empresa_id = a.empresa_id', 'inner')
-            ->where('a.empresa_id', $companyId)
-            ->where('a.equipo_id', $equipmentId)
-            ->where('a.rol', 'CHOFER')
-            ->where('a.fecha_hasta', null)
-            ->where('emp.activo', 1)
-            ->where('emp.deleted_at', null)
-            ->orderBy('a.id', 'DESC')
+        $todayDate = \DateTimeImmutable::createFromInterface($this->clock->now())->setTime(0, 0);
+        $today = $todayDate->format('Y-m-d');
+        $employeeId = $this->eligibility->findCurrentDriver($companyId, $equipmentId, $today);
+        if ($employeeId === null) {
+            return;
+        }
+
+        $driver = $this->db->table('empleados')
+            ->select('nombre, apellido, telefono')
+            ->where('id', $employeeId)
+            ->where('empresa_id', $companyId)
             ->get()->getRowArray();
         if ($driver === null) {
             return;
         }
 
-        $employeeId = (int) $driver['empleado_id'];
-        $today = new \DateTimeImmutable($this->clock->now()->format('Y-m-d'));
-        $todayKey = $today->format('Ymd');
+        $todayKey = $todayDate->format('Ymd');
         $key = 'resumen_vencimientos:empresa:' . $companyId . ':chofer:' . $employeeId . ':fecha:' . $todayKey;
         if ($this->db->table('notificacion_whatsapp_entregas')->where('clave_entrega', $key)->countAllResults() > 0) {
             return;
@@ -354,12 +374,23 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             ->where('empresa_id', $companyId)
             ->where('empleado_id', $employeeId)
             ->where('rol', 'CHOFER')
-            ->where('fecha_hasta', null)
+            ->where('fecha_desde <=', $today)
+            ->groupStart()
+                ->where('fecha_hasta', null)
+                ->orWhere('fecha_hasta >=', $today)
+            ->groupEnd()
             ->get()->getResultArray();
-        $equipmentIds = array_values(array_unique(array_filter(array_map(
-            static fn (array $row): int => (int) ($row['equipo_id'] ?? 0),
-            $assignedEquipment,
-        ))));
+        $equipmentIds = [];
+        foreach ($assignedEquipment as $assigned) {
+            $candidateId = (int) ($assigned['equipo_id'] ?? 0);
+            if ($candidateId <= 0 || in_array($candidateId, $equipmentIds, true)) {
+                continue;
+            }
+            if ($this->eligibility->evaluate($companyId, $candidateId, $employeeId, $today)->isBlocked()) {
+                continue;
+            }
+            $equipmentIds[] = $candidateId;
+        }
         if ($equipmentIds === []) {
             return;
         }
@@ -496,13 +527,17 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
         }
 
         $equipmentId = (int) $plan['equipo_id'];
-        $driver = $this->db->table('employee_equipment_assignments a')
-            ->select('a.empleado_id, emp.nombre, emp.apellido, emp.telefono')
-            ->join('empleados emp', 'emp.id = a.empleado_id AND emp.empresa_id = a.empresa_id', 'inner')
-            ->where('a.empresa_id', $companyId)->where('a.equipo_id', $equipmentId)
-            ->where('a.rol', 'CHOFER')->where('a.fecha_hasta', null)
-            ->where('emp.activo', 1)->where('emp.deleted_at', null)
-            ->orderBy('a.id', 'DESC')->get()->getRowArray();
+        $today = $this->clock->now()->format('Y-m-d');
+        $employeeId = $this->eligibility->findCurrentDriver($companyId, $equipmentId, $today);
+        if ($employeeId === null) {
+            return 0;
+        }
+
+        $driver = $this->db->table('empleados')
+            ->select('nombre, apellido, telefono')
+            ->where('id', $employeeId)
+            ->where('empresa_id', $companyId)
+            ->get()->getRowArray();
         if ($driver === null) {
             return 0;
         }
@@ -524,7 +559,6 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             return 0;
         }
 
-        $employeeId = (int) $driver['empleado_id'];
         $cycle = preg_replace('/[^A-Za-z0-9_.:-]+/', '-', $event->logicalKey());
         $key = 'preventivo_chofer:empresa:' . $companyId . ':plan:' . $planId . ':chofer:' . $employeeId . ':ciclo:' . $cycle;
         if ($testKey !== null && trim($testKey) !== '') {
@@ -699,11 +733,15 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
 
         $weekKey = $now->format('o-\\WW');
         $weekStart = \DateTimeImmutable::createFromInterface($now)->modify('monday this week')->setTime(0, 0);
+        $today = $now->format('Y-m-d');
         $timestamp = $now->format('Y-m-d H:i:s');
         $testSuffix = trim((string) $testKey) === ''
             ? ''
             : ':prueba:' . preg_replace('/[^A-Za-z0-9_.-]+/', '-', trim((string) $testKey));
 
+        // La consulta solo carga candidatos: filtra por rol y por la ventana de
+        // vigencia para no leer todo el historial. La decisión final la toma el
+        // predicado único (política de dominio) dentro del bucle.
         $rows = $this->db->table('employee_equipment_assignments a')
             ->select('a.id assignment_id, a.empresa_id, a.equipo_id, a.empleado_id')
             ->select('emp.nombre, emp.apellido, emp.telefono')
@@ -717,15 +755,12 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             ->join('sucursales s', 's.id = e.sucursal_id AND s.empresa_id = e.empresa_id', 'inner')
             ->join('empresas co', 'co.id = a.empresa_id', 'inner')
             ->where('a.rol', 'CHOFER')
-            ->where('a.fecha_hasta', null)
-            ->where('emp.activo', 1)
-            ->where('emp.deleted_at', null)
-            ->where('e.estado', 'ACTIVO')
-            ->where('e.deleted_at', null)
-            ->where('te.controla_km', 1)
-            ->where('co.estado', 1)
-            ->where('co.deleted_at', null)
-            ->where('co.notificaciones_whatsapp_habilitadas', 1)
+            ->where('a.fecha_desde <=', $today)
+            ->groupStart()
+                ->where('a.fecha_hasta', null)
+                ->orWhere('a.fecha_hasta >=', $today)
+            ->groupEnd()
+            ->orderBy('a.fecha_desde', 'DESC')
             ->orderBy('a.id', 'DESC')
             ->get()
             ->getResultArray();
@@ -743,10 +778,14 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
             if ($companyId <= 0 || $equipmentId <= 0 || isset($seenEquipment[$equipmentKey])) {
                 continue;
             }
-            $seenEquipment[$equipmentKey] = true;
 
             $employeeId = (int) $row['empleado_id'];
             $branchId = (int) ($row['sucursal_id'] ?? 0);
+
+            if ($this->eligibility->evaluate($companyId, $equipmentId, $employeeId, $today)->isBlocked()) {
+                continue;
+            }
+            $seenEquipment[$equipmentKey] = true;
 
             if ($stage !== 'initial' && ! $simulateMissingReading
                 && $this->hasKilometerReadingSince($companyId, $equipmentId, $weekStart)) {
@@ -917,19 +956,30 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
         return null;
     }
 
-    private function isCurrentDriverAssignment(int $companyId, int $equipmentId, int $employeeId): bool
+    private function today(): string
     {
-        if ($companyId <= 0 || $equipmentId <= 0 || $employeeId <= 0) {
-            return false;
+        return $this->clock->now()->format('Y-m-d');
+    }
+
+    /**
+     * Aplica el predicado único a una fila de la cola.
+     *
+     * @param array<string,mixed> $row
+     */
+    private function blockedReasonForRow(array $row): ?DriverNotificationEligibility
+    {
+        if (! DriverNotificationTypes::targetsDriver((string) ($row['tipo_evento'] ?? ''))) {
+            return null;
         }
 
-        return $this->db->table('employee_equipment_assignments')
-            ->where('empresa_id', $companyId)
-            ->where('equipo_id', $equipmentId)
-            ->where('empleado_id', $employeeId)
-            ->where('rol', 'CHOFER')
-            ->where('fecha_hasta', null)
-            ->countAllResults() > 0;
+        $result = $this->eligibility->evaluate(
+            (int) ($row['empresa_id'] ?? 0),
+            (int) ($row['equipo_id'] ?? 0),
+            (int) ($row['empleado_id'] ?? 0),
+            $this->today(),
+        );
+
+        return $result->isBlocked() ? $result : null;
     }
 
     private function hasKilometerReadingSince(int $companyId, int $equipmentId, \DateTimeInterface $since): bool
@@ -1092,10 +1142,12 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
 
     public function due(int $limit): array
     {
+        $this->lastCancellationSummary = ['total' => 0];
+
         $dispatchLimit = max(1, min(1000, $limit));
-        // Leemos por delante del batch real porque una entrega semanal puede quedar
-        // obsoleta por un cambio de chofer. Si sólo leyéramos exactamente el batch,
-        // esas filas viejas podrían demorar el recordatorio de la unidad actual.
+        // Leemos por delante del batch real porque una entrega puede quedar
+        // obsoleta por un cambio de chofer. Si sólo leyéramos exactamente el
+        // batch, esas filas viejas podrían demorar el mensaje de la unidad actual.
         $scanLimit = min(1000, max($dispatchLimit, $dispatchLimit * 10));
 
         $rows = $this->db->table('notificacion_whatsapp_entregas')
@@ -1143,27 +1195,27 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
                 continue;
             }
 
-            if ((string) ($row['tipo_evento'] ?? '') !== 'equipo.recordatorio_lectura_semanal') {
+            // Predicado único para todos los tipos dirigidos al chofer. La cola
+            // conserva la foto del destinatario al momento de programar; antes de
+            // enviar hay que validar la realidad actual. Si ya no es elegible, la
+            // entrega se cancela con motivo estructurado.
+            $blocked = $this->blockedReasonForRow($row);
+            if ($blocked !== null) {
+                $this->cancelled(
+                    (int) ($row['id'] ?? 0),
+                    (string) $blocked->reasonCode(),
+                    (string) $blocked->reasonText(),
+                );
+                continue;
+            }
+
+            if ((string) ($row['tipo_evento'] ?? '') !== DriverNotificationTypes::WEEKLY_READING_REMINDER) {
                 $dispatchable[] = $row;
                 continue;
             }
 
             $deliveryId = (int) ($row['id'] ?? 0);
             $deliveryKey = (string) ($row['clave_entrega'] ?? '');
-            $companyId = (int) ($row['empresa_id'] ?? 0);
-            $equipmentId = (int) ($row['equipo_id'] ?? 0);
-            $employeeId = (int) ($row['empleado_id'] ?? 0);
-
-            // La cola conserva la foto del destinatario al momento de programar.
-            // Antes de enviar hay que validar la realidad actual: si el chofer cambió
-            // de unidad, el mensaje viejo no puede salir aunque siga PENDIENTE/REINTENTO.
-            if (! $this->isCurrentDriverAssignment($companyId, $equipmentId, $employeeId)) {
-                $this->skipped(
-                    $deliveryId,
-                    'Chofer ya no asignado al equipo al momento del despacho.',
-                );
-                continue;
-            }
 
             if ((str_starts_with($deliveryKey, 'seguimiento_lectura_miercoles:')
                     || str_starts_with($deliveryKey, 'seguimiento_lectura_viernes:'))
@@ -1251,6 +1303,124 @@ final class CodeIgniterWhatsAppNotificationDeliveryQueue implements WhatsAppNoti
 
         return $row !== null
             && in_array((string) ($row['estado'] ?? ''), ['PENDIENTE', 'REINTENTO'], true);
+    }
+
+    public function lastCancellationSummary(): array
+    {
+        return $this->lastCancellationSummary;
+    }
+
+    public function revalidateBeforeSend(int $deliveryId): ?DriverNotificationEligibility
+    {
+        if ($deliveryId <= 0) {
+            return null;
+        }
+
+        $row = $this->db->table('notificacion_whatsapp_entregas')
+            ->select('empresa_id, equipo_id, empleado_id, tipo_evento')
+            ->where('id', $deliveryId)
+            ->get()
+            ->getRowArray();
+
+        if ($row === null) {
+            return null;
+        }
+
+        return $this->blockedReasonForRow($row);
+    }
+
+    public function cancelled(int $deliveryId, string $reasonCode, string $reasonText): void
+    {
+        if ($deliveryId <= 0) {
+            return;
+        }
+
+        $reasonCode = strtoupper(trim($reasonCode));
+        $reasonText = trim(preg_replace('/\s+/u', ' ', $reasonText) ?? '');
+        if ($reasonCode === '' || $reasonText === '') {
+            return;
+        }
+
+        $row = $this->db->table('notificacion_whatsapp_entregas')
+            ->select('id, empresa_id, equipo_id, empleado_id, tipo_evento, estado, clave_entrega')
+            ->where('id', $deliveryId)
+            ->get()
+            ->getRowArray();
+        if ($row === null) {
+            return;
+        }
+
+        $now = $this->clock->now()->format('Y-m-d H:i:s');
+        $updates = [
+            'estado' => 'OMITIDA',
+            'ultimo_error' => mb_substr($reasonCode . ': ' . $reasonText, 0, 1000),
+            'proximo_intento' => null,
+            'updated_at' => $now,
+        ];
+        // Compatibilidad de despliegue: si el archivo nuevo llegara antes que la
+        // migración, la cancelación sigue funcionando con el texto en
+        // ultimo_error; el código estructurado se agrega cuando la columna existe.
+        if ($this->supportsCancellationReason()) {
+            $updates['motivo_cancelacion'] = $reasonCode;
+        }
+
+        $this->db->table('notificacion_whatsapp_entregas')
+            ->where('id', $deliveryId)
+            ->whereIn('estado', ['PENDIENTE', 'REINTENTO'])
+            ->update($updates);
+
+        if ($this->db->affectedRows() <= 0) {
+            return;
+        }
+
+        $this->lastCancellationSummary['total'] = ((int) ($this->lastCancellationSummary['total'] ?? 0)) + 1;
+        $this->lastCancellationSummary[$reasonCode] = ((int) ($this->lastCancellationSummary[$reasonCode] ?? 0)) + 1;
+
+        $this->recordCancellationAudit($row, $reasonCode, $reasonText, $now);
+    }
+
+    private function supportsCancellationReason(): bool
+    {
+        return $this->supportsCancellationReason ??= $this->db->fieldExists(
+            'motivo_cancelacion',
+            'notificacion_whatsapp_entregas',
+        );
+    }
+
+    /** @param array<string,mixed> $row */
+    private function recordCancellationAudit(array $row, string $reasonCode, string $reasonText, string $now): void
+    {
+        try {
+            $this->audit->record(new AuditEntry(
+                scope: AuditScope::EMPRESA,
+                companyId: (int) ($row['empresa_id'] ?? 0),
+                branchId: null,
+                action: AuditAction::NOTIFICACION_WHATSAPP_CANCELADA,
+                entity: 'notificacion_whatsapp_entregas',
+                entityId: (string) (int) ($row['id'] ?? 0),
+                actorUserId: null,
+                actorCompanyId: null,
+                before: [
+                    'estado' => (string) ($row['estado'] ?? ''),
+                    'tipo_evento' => (string) ($row['tipo_evento'] ?? ''),
+                    'equipo_id' => $row['equipo_id'] ?? null,
+                    'empleado_id' => $row['empleado_id'] ?? null,
+                    'clave_entrega' => (string) ($row['clave_entrega'] ?? ''),
+                ],
+                after: [
+                    'estado' => 'OMITIDA',
+                    'motivo_cancelacion' => $reasonCode,
+                    'detalle' => $reasonText,
+                ],
+                reason: $reasonText,
+                occurredAt: new \DateTimeImmutable($now),
+            ));
+        } catch (Throwable $exception) {
+            log_message('error', 'No se pudo auditar la cancelación de la entrega WhatsApp {delivery}: {message}', [
+                'delivery' => (int) ($row['id'] ?? 0),
+                'message' => $exception->getMessage(),
+            ]);
+        }
     }
 
     public function accepted(int $deliveryId, string $messageId, string $status): void

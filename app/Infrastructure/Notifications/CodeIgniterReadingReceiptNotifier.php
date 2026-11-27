@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Notifications;
 
 use App\Application\Measurement\Port\ReadingReceiptNotifier;
+use App\Application\Notifications\Port\DriverNotificationEligibilityReader;
 use App\Application\Notifications\Port\GlobalNotificationSettingsStore;
 use App\Application\Notifications\Port\NotificationClock;
 use App\Application\Notifications\Port\WhatsAppNotificationGateway;
@@ -19,31 +20,16 @@ final readonly class CodeIgniterReadingReceiptNotifier implements ReadingReceipt
     private const EVENT_TYPE = 'equipo.lectura_registrada';
     private const DELIVERY_KEY_PREFIX = 'lectura.registrada';
 
-    private const ACTIVE_DRIVER_SQL = <<<'SQL'
-        (
-            SELECT a.empresa_id, a.equipo_id, a.empleado_id
-            FROM employee_equipment_assignments a
-            WHERE a.rol = 'CHOFER'
-              AND a.fecha_hasta IS NULL
-              AND a.id = (
-                  SELECT a2.id
-                  FROM employee_equipment_assignments a2
-                  WHERE a2.empresa_id = a.empresa_id
-                    AND a2.equipo_id = a.equipo_id
-                    AND a2.rol = 'CHOFER'
-                    AND a2.fecha_hasta IS NULL
-                  ORDER BY a2.fecha_desde DESC, a2.id DESC
-                  LIMIT 1
-              )
-        ) drv
-        SQL;
+    private readonly DriverNotificationEligibilityReader $eligibility;
 
     public function __construct(
         private BaseConnection $database,
         private WhatsAppNotificationGateway $gateway,
         private GlobalNotificationSettingsStore $settings,
         private NotificationClock $clock,
+        ?DriverNotificationEligibilityReader $eligibility = null,
     ) {
+        $this->eligibility = $eligibility ?? new CodeIgniterDriverNotificationEligibilityReader($database);
     }
 
     public function notify(int $companyId, int $equipmentId, int $readingId): void
@@ -80,7 +66,7 @@ final readonly class CodeIgniterReadingReceiptNotifier implements ReadingReceipt
         $globalInstanceId = trim((string) ($settings['whatsapp_instance_id'] ?? 'default'));
 
         $driver = $this->currentDriver($companyId, $equipmentId);
-        $employeeId = (int) ($driver['empleado_id'] ?? 0);
+        $employeeId = (int) ($driver['id'] ?? 0);
         $realPhone = $this->gateway->normalizePhone((string) ($driver['telefono'] ?? ''));
         $destination = $pilotEnabled ? $pilotPhone : $realPhone;
 
@@ -199,12 +185,19 @@ final readonly class CodeIgniterReadingReceiptNotifier implements ReadingReceipt
     /** @return array<string,mixed>|null */
     private function currentDriver(int $companyId, int $equipmentId): ?array
     {
-        $row = $this->database->table('equipos e')
-            ->select('drv.empleado_id, emp.nombre, emp.apellido, emp.telefono')
-            ->join(self::ACTIVE_DRIVER_SQL, 'drv.equipo_id = e.id AND drv.empresa_id = e.empresa_id', 'left', false)
-            ->join('empleados emp', 'emp.id = drv.empleado_id AND emp.empresa_id = drv.empresa_id AND emp.activo = 1 AND emp.deleted_at IS NULL', 'left')
-            ->where('e.id', $equipmentId)
-            ->where('e.empresa_id', $companyId)
+        $employeeId = $this->eligibility->findCurrentDriver(
+            $companyId,
+            $equipmentId,
+            $this->clock->now()->format('Y-m-d'),
+        );
+        if ($employeeId === null) {
+            return null;
+        }
+
+        $row = $this->database->table('empleados')
+            ->select('id, nombre, apellido, telefono')
+            ->where('id', $employeeId)
+            ->where('empresa_id', $companyId)
             ->get()
             ->getRowArray();
 
