@@ -396,8 +396,50 @@ necesita su propia copia de `vendor`.
 equipo no controla kilometraje". ¿Las máquinas llevan neumáticos que haya que seguir? Si es así,
 hay que decidir si la colocación en una máquina registra horas o no registra lectura.
 
-## 12. Qué sigue
+## 12. Despliegue a producción (Ferozo), 25/11/2026
 
-- Deploy a Ferozo por el portón `migrate.php` (`scripts/aplicar-migraciones-produccion.py`).
+**Qué se desplegó:** `main` en `18d3f859` (PRs #575, #577, #578, #579, #580, #581, #582 y #585),
+más los cambios de Viajes que ya estaban en `main`. Script: `scripts/deploy-ferozo.py`,
+incremental.
+
+**Control previo (solo lectura por FTPS):**
+
+- `.deploy/production.json` decía `61ecd3b9`, pero `Routes.php`, `Services.php` y
+  `OperationalTrips.php` de producción coincidían con `cff7014a`: un deploy quirúrgico de Viajes
+  que no actualiza ese registro.
+- Se compararon los 10 archivos que el deploy sobrescribía: 9 iguales a `cff7014a` y el seeder
+  igual a `811ebc77`, la versión inmediata anterior al cambio de #578. **Ningún cambio hecho a
+  mano en producción** se iba a perder.
+
+**Ejecución:**
+
+- Primer intento: el script abortó antes de tocar producción porque busca PHP solo en
+  `C:\xampp` o en el PATH de Windows, y en esta máquina PHP está en WSL.
+- Se corrió la suite en WSL sobre `18d3f859` (2380 pruebas, sin fallos) y
+  `npm run verify:build-sync` (OK), y se desplegó con `--skip-tests --yes`.
+- Resultado: `UPLOAD=OK` (105 archivos, 26 bundles), `MIGRATIONS=OK` (las 3 de Neumáticos),
+  `MIGRATE_PHP_REMOVED=OK`, `SMOKE_TESTS=OK` (login 200; `.env`, `app/`, `vendor/`, `writable/`
+  403; `migrate.php` 404), `HASH_LOCAL=OK`, `DEPLOY_STATUS=OK`. `production.json` quedó en
+  `18d3f859`.
+
+**Verificación HTTP posterior:** `neumaticos`, `neumaticos/maestros`, `neumaticos/deposito` y
+`neumaticos/1` responden 302 al login (existen y exigen sesión); los 22 bundles del manifest
+responden 200.
+
+**Pendiente:** revisión con sesión en producción (portal → tarjeta Neumáticos → maestros, alta y
+colocación). Desde la máquina de desarrollo no se ingresa con credenciales reales.
+
+**Lecciones:**
+
+- Que `deploy-ferozo.py` encuentre el PHP de WSL, para no depender de `--skip-tests`.
+- El deploy quirúrgico no actualiza `.deploy/production.json`: antes de un incremental conviene
+  comparar por FTPS los archivos que se van a sobrescribir.
+- Leer `DEPLOY_STATUS` del log: un `tail` en un pipe oculta el código de salida del script.
+
+## 13. Qué sigue
+
+- Revisión con sesión en producción.
+- Respuestas del cliente: máquinas con neumáticos, precio/origen/observaciones en la ficha, y
+  si la existencia en depósito es siempre 0 o 1.
 - Mapa de posiciones del equipo: qué neumático va en cada eje, lado y rueda.
 - Adaptadores de `GomeriaOrderLauncher` y `PreventiveNeumaticEventPublisher`.
