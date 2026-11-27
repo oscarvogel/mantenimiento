@@ -151,7 +151,7 @@ async function sendTestPush() {
       id="notification-panel-inbox"
       role="tabpanel"
       aria-labelledby="notification-tab-inbox"
-      class="overflow-hidden rounded-xl border border-border bg-surface-raised"
+      class="overflow-hidden rounded-card bg-surface-raised shadow-card"
     >
       <div class="border-b border-border-subtle px-4 py-4 sm:px-5">
         <h2 class="font-bold text-ink">Bandeja reciente</h2>
@@ -176,14 +176,14 @@ async function sendTestPush() {
       id="notification-panel-preferences"
       role="tabpanel"
       aria-labelledby="notification-tab-preferences"
-      class="rounded-xl border border-border bg-surface-raised p-4 sm:p-6"
+      class="rounded-card bg-surface-raised p-4 sm:p-6 shadow-card"
     >
       <div class="max-w-3xl">
         <h2 class="text-lg font-bold text-ink">Preferencias por evento</h2>
         <p class="mt-1 text-sm text-ink-muted">Los valores mostrados son los efectivos actuales. Al guardar, tu elección personal pasa a prevalecer sobre los defaults de tus roles.</p>
         <label class="mt-5 grid gap-1.5 text-sm font-semibold text-ink">
           Tipo de aviso
-          <select v-model="selectedEventType" class="min-h-11 rounded-lg border border-border-strong bg-surface-raised px-3 font-normal text-ink">
+          <select v-model="selectedEventType" class="min-h-11 rounded-pill border border-transparent bg-surface-muted px-3 font-normal text-ink">
             <option v-for="event in eventTypes" :key="event[0]" :value="event[0]">{{ event[1] }}</option>
           </select>
         </label>
@@ -194,7 +194,7 @@ async function sendTestPush() {
           <div class="sm:col-span-2"><p class="font-semibold text-ink">{{ selectedEvent[1] }}</p><p class="text-xs text-ink-muted">Canal interno: siempre activo</p></div>
           <label v-for="channel in ['email','push']" :key="channel" class="grid gap-1.5 text-xs font-semibold uppercase tracking-wide text-ink-muted">
             {{ channel }}
-            <select :name="channel" class="min-h-11 rounded-lg border border-border-strong bg-surface-raised px-3 text-sm font-normal normal-case text-ink">
+            <select :name="channel" class="min-h-11 rounded-pill border border-transparent bg-surface-muted px-3 text-sm font-normal normal-case text-ink">
               <option v-for="mode in modes" :key="mode[0]" :value="mode[0]" :selected="(selectedPreferences[channel] ?? (channel === 'email' ? 'RESUMEN' : 'CRITICO')) === mode[0]">{{ mode[1] }}</option>
             </select>
           </label>
@@ -208,7 +208,7 @@ async function sendTestPush() {
       id="notification-panel-devices"
       role="tabpanel"
       aria-labelledby="notification-tab-devices"
-      class="rounded-xl border border-border bg-surface-raised p-4 sm:p-6"
+      class="rounded-card bg-surface-raised p-4 sm:p-6 shadow-card"
     >
       <div class="flex items-start gap-3"><DevicePhoneMobileIcon class="size-6 shrink-0 text-primary"/><div><h2 class="text-lg font-bold text-ink">Notificaciones en este dispositivo</h2><p class="text-sm text-ink-muted">El permiso se solicita únicamente cuando elegís activarlas.</p></div></div>
       <p class="mt-4 rounded-lg bg-surface-muted px-4 py-3 text-sm font-semibold text-ink" role="status">{{ pushStatus }}</p>

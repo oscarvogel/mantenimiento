@@ -137,7 +137,7 @@ const decisionIcon = { success: 'bg-success/15 text-success', warning: 'bg-warni
     <p v-if="data.flash?.error" role="alert" class="rounded-xl border border-danger/30 bg-danger-subtle p-4 text-danger-strong">{{ data.flash.error }}</p>
     <p v-if="data.flash?.success" role="status" class="rounded-xl border border-success/30 bg-success-subtle p-4 text-success-strong">{{ data.flash.success }}</p>
 
-    <section v-if="data.mode === 'form'" class="mx-auto max-w-3xl rounded-2xl border border-border bg-surface-raised p-6 shadow-sm">
+    <section v-if="data.mode === 'form'" class="mx-auto max-w-3xl rounded-card bg-surface-raised p-6 shadow-card">
       <div class="mb-5 flex items-start gap-4">
         <span class="rounded-xl bg-primary/10 p-3 text-primary"><ArrowUpTrayIcon class="size-7" aria-hidden="true" /></span>
         <div>
@@ -304,7 +304,7 @@ const decisionIcon = { success: 'bg-success/15 text-success', warning: 'bg-warni
 
       <PanelCard title="Filas hijas del agregado">
         <div class="overflow-x-auto">
-          <table class="min-w-full text-left text-sm">
+          <table class="ui-table min-w-full text-left text-sm">
             <thead>
               <tr class="border-b border-border text-xs uppercase tracking-wide text-ink-muted">
                 <th class="px-3 py-3">Tabla legacy</th><th class="px-3 py-3">Destino</th><th class="px-3 py-3 text-right">Declaradas</th><th class="px-3 py-3 text-right">Válidas</th><th class="px-3 py-3 text-right">Huérfanas</th><th class="px-3 py-3 text-right">Con error</th>
@@ -324,7 +324,7 @@ const decisionIcon = { success: 'bg-success/15 text-success', warning: 'bg-warni
         </div>
       </PanelCard>
 
-      <details class="rounded-2xl border border-border bg-surface-raised">
+      <details class="rounded-card bg-surface-raised shadow-card">
         <summary class="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-5 py-4">
           <span class="font-bold text-ink">Contenido del paquete</span>
           <span class="text-xs text-ink-muted">{{ summary.manifest?.length ?? 0 }} tablas · {{ summary.source?.file }}</span>

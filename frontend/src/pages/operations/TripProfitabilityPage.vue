@@ -97,25 +97,25 @@ const tripUrl = (id) => `${links.value.history}/${id}`
 
     <template v-else>
       <section aria-label="Indicadores" class="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
+        <article class="rounded-card bg-surface-raised p-4 shadow-card">
           <p class="text-xs font-semibold text-ink-muted">Viajes analizados</p>
           <p class="mt-2 text-2xl font-bold text-ink">{{ fmt(summary.trips_analyzable) }} <span class="text-sm font-semibold text-ink-muted">/ {{ fmt(summary.trips_total) }}</span></p>
           <p class="mt-1 text-xs text-ink-muted">cobertura factura {{ fmtPct(summary.invoice_coverage) }}</p>
         </article>
-        <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
+        <article class="rounded-card bg-surface-raised p-4 shadow-card">
           <p class="text-xs font-semibold text-ink-muted">Ingresos facturados</p>
           <p class="mt-2 text-2xl font-bold text-ink">{{ money(summary.revenue) }}</p>
         </article>
-        <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
+        <article class="rounded-card bg-surface-raised p-4 shadow-card">
           <p class="text-xs font-semibold text-ink-muted">Costos directos</p>
           <p class="mt-2 text-2xl font-bold text-ink">{{ money(summary.direct_cost) }}</p>
           <p class="mt-1 text-xs text-ink-muted">combustible + gastos + viáticos + chofer</p>
         </article>
-        <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
+        <article class="rounded-card bg-surface-raised p-4 shadow-card">
           <p class="text-xs font-semibold text-ink-muted">Margen</p>
           <p class="mt-2 text-2xl font-bold" :class="marginTone(summary.margin)">{{ money(summary.margin) }}</p>
         </article>
-        <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
+        <article class="rounded-card bg-surface-raised p-4 shadow-card">
           <p class="text-xs font-semibold text-ink-muted">Margen %</p>
           <p class="mt-2 text-2xl font-bold" :class="marginTone(summary.margin)">{{ fmtPct(summary.margin_pct) }}</p>
         </article>
@@ -127,8 +127,8 @@ const tripUrl = (id) => `${links.value.history}/${id}`
           <p>Ingreso = facturas vinculadas confirmadas o automáticas, netas de notas de crédito. Costos = combustible, gastos de viaje, viáticos/otros haberes y porcentaje del chofer sobre el flete de tramo legacy. No incluye mantenimiento, neumáticos, seguros ni depreciación. Si falta factura o costo, el margen queda como sin datos suficientes.</p>
         </div>
         <div class="overflow-x-auto">
-          <table class="w-full min-w-[72rem] text-left text-sm">
-            <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
+          <table class="ui-table w-full min-w-[72rem] text-left text-sm">
+            <thead class="text-xs font-semibold text-ink-subtle">
               <tr>
                 <th class="px-3 py-3">Viaje</th>
                 <th class="px-3 py-3">Fecha</th>

@@ -203,7 +203,7 @@ const hayFiltros = computed(() => Boolean(filtros.value.desde || filtros.value.h
       </a>
     </header>
 
-    <form :action="urls.index" method="get" class="mt-6 rounded-xl border border-border bg-surface-raised" data-fuel-filters>
+    <form :action="urls.index" method="get" class="mt-6 rounded-card bg-surface-raised shadow-card" data-fuel-filters>
       <div class="grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-4 lg:items-end sm:p-5">
         <label class="block">
           <span class="mb-1.5 block text-sm font-semibold text-ink">Desde</span>
@@ -238,7 +238,7 @@ const hayFiltros = computed(() => Boolean(filtros.value.desde || filtros.value.h
     <section aria-labelledby="fuel-module-summary" class="mt-6">
       <h2 id="fuel-module-summary" class="sr-only">Resumen</h2>
       <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <article v-for="card in tarjetas" :key="card.label" class="rounded-xl border border-border bg-surface-raised p-4" :data-testid="card.testid">
+        <article v-for="card in tarjetas" :key="card.label" class="rounded-card bg-surface-raised p-4 shadow-card" :data-testid="card.testid">
           <p class="text-xs font-bold uppercase tracking-wide text-ink-muted">{{ card.label }}</p>
           <p class="mt-1 text-2xl font-bold tabular-nums text-ink">{{ card.value }}</p>
           <p class="mt-1 text-xs leading-5 text-ink-muted">{{ card.hint }}</p>
@@ -271,7 +271,7 @@ const hayFiltros = computed(() => Boolean(filtros.value.desde || filtros.value.h
       </button>
     </div>
 
-    <section v-show="pestana === 'combustible'" class="mt-6 overflow-hidden rounded-xl border border-border bg-surface-raised" aria-labelledby="fuel-module-trips">
+    <section v-show="pestana === 'combustible'" class="mt-6 overflow-hidden rounded-card bg-surface-raised shadow-card" aria-labelledby="fuel-module-trips">
       <div class="border-b border-border px-5 py-4 sm:px-6">
         <h2 id="fuel-module-trips" class="text-lg font-bold text-ink">Combustible por viaje</h2>
         <p class="mt-1 text-sm leading-6 text-ink-muted">
@@ -279,7 +279,7 @@ const hayFiltros = computed(() => Boolean(filtros.value.desde || filtros.value.h
         </p>
       </div>
       <div v-if="viajes.length" class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-border text-left text-sm">
+        <table class="ui-table min-w-full divide-y divide-border text-left text-sm">
           <thead class="bg-surface-muted text-xs font-semibold uppercase tracking-wide text-ink-muted">
             <tr>
               <th scope="col" class="px-4 py-3">Fecha</th>
@@ -354,7 +354,7 @@ const hayFiltros = computed(() => Boolean(filtros.value.desde || filtros.value.h
       </div>
     </section>
 
-    <section v-if="sinSalidaReal.length" class="mt-6 overflow-hidden rounded-xl border border-border bg-surface-raised" aria-labelledby="fuel-module-without-departure">
+    <section v-if="sinSalidaReal.length" class="mt-6 overflow-hidden rounded-card bg-surface-raised shadow-card" aria-labelledby="fuel-module-without-departure">
       <div class="border-b border-border px-5 py-4 sm:px-6">
         <h2 id="fuel-module-without-departure" class="text-lg font-bold text-ink">Viajes sin salida real cargada</h2>
         <p class="mt-1 text-sm leading-6 text-ink-muted">
@@ -369,7 +369,7 @@ const hayFiltros = computed(() => Boolean(filtros.value.desde || filtros.value.h
       </ul>
     </section>
 
-    <section class="mt-6 rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="fuel-module-pending">
+    <section class="mt-6 rounded-card bg-surface-raised p-5 sm:p-6 shadow-card" aria-labelledby="fuel-module-pending">
       <h2 id="fuel-module-pending" class="text-lg font-bold text-ink">Cargas sin precio</h2>
       <p class="mt-1 text-sm leading-6 text-ink-muted">
         <template v-if="totales.cargas_sin_precio > 0">
@@ -390,7 +390,7 @@ const hayFiltros = computed(() => Boolean(filtros.value.desde || filtros.value.h
     </section>
 
     <!-- Cargar una carga de combustible en un viaje -->
-    <dialog v-if="puedeEditar" ref="cargarDialog" aria-labelledby="fuel-cargar-title" @click.self="cargarDialog?.close()" class="m-auto w-[min(44rem,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-xl border border-border bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
+    <dialog v-if="puedeEditar" ref="cargarDialog" aria-labelledby="fuel-cargar-title" @click.self="cargarDialog?.close()" class="m-auto w-[min(44rem,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-card bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
       <div v-if="cargarViaje" class="p-5 sm:p-6">
         <div class="mb-5 flex items-start justify-between gap-4 border-b border-border-subtle pb-4">
           <div>
@@ -455,7 +455,7 @@ const hayFiltros = computed(() => Boolean(filtros.value.desde || filtros.value.h
     </dialog>
 
     <!-- Completar los importes de las cargas que esperan su precio -->
-    <dialog v-if="puedeEditar" ref="preciosDialog" aria-labelledby="fuel-precios-title" @click.self="preciosDialog?.close()" class="m-auto w-[min(52rem,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-xl border border-border bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
+    <dialog v-if="puedeEditar" ref="preciosDialog" aria-labelledby="fuel-precios-title" @click.self="preciosDialog?.close()" class="m-auto w-[min(52rem,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-card bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
       <div v-if="preciosViaje" class="p-5 sm:p-6">
         <div class="mb-5 flex items-start justify-between gap-4 border-b border-border-subtle pb-4">
           <div>

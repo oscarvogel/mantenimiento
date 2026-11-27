@@ -208,7 +208,7 @@ const methodLabel = (item) => {
     </PageHeading>
 
     <section class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Resumen de lecturas">
-      <div class="rounded-xl border border-border bg-surface-raised p-5">
+      <div class="rounded-card bg-surface-raised p-5 shadow-card">
         <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Equipos</p>
         <p class="mt-2 text-3xl font-bold text-ink">{{ data.summary.total }}</p>
       </div>
@@ -220,7 +220,7 @@ const methodLabel = (item) => {
         <p class="text-xs font-semibold uppercase tracking-wide text-warning-foreground">Más de 7 días</p>
         <p class="mt-2 text-3xl font-bold text-warning-foreground">{{ data.summary.antiguos }}</p>
       </div>
-      <div class="rounded-xl border border-border bg-surface-raised p-5">
+      <div class="rounded-card bg-surface-raised p-5 shadow-card">
         <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">En esta página</p>
         <p class="mt-2 text-3xl font-bold text-ink">{{ data.results.length }}</p>
       </div>
@@ -334,8 +334,8 @@ const methodLabel = (item) => {
 
       <template v-else>
         <div class="hidden overflow-x-auto md:block">
-          <table class="w-full min-w-[64rem] text-left text-sm">
-            <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
+          <table class="ui-table w-full min-w-[64rem] text-left text-sm">
+            <thead class="text-xs font-semibold text-ink-subtle">
               <tr>
                 <th class="px-5 py-3">Equipo</th>
                 <th class="px-5 py-3">Tipo</th>
@@ -507,7 +507,7 @@ const methodLabel = (item) => {
         aria-labelledby="reading-evidence-title"
         @click.self="closeEvidence"
       >
-        <div class="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-xl border border-border bg-surface-raised p-5 shadow-xl">
+        <div class="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-card bg-surface-raised p-5 shadow-xl">
           <div class="flex items-start justify-between gap-4">
             <div>
               <h2 id="reading-evidence-title" class="text-lg font-semibold text-ink">Evidencia de lectura</h2>
@@ -565,7 +565,7 @@ const methodLabel = (item) => {
         aria-labelledby="reading-control-claim-title"
         @click.self="closeClaim"
       >
-        <div class="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-surface-raised p-5 shadow-xl">
+        <div class="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-card bg-surface-raised p-5 shadow-xl">
           <h2 id="reading-control-claim-title" class="text-lg font-semibold text-ink">
             {{ confirmLabel(claimTarget) }}
           </h2>

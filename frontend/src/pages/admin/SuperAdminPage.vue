@@ -58,7 +58,7 @@ const sections = [
       </template>
     </AdminPageHeading>
 
-    <nav class="mb-6 flex flex-wrap gap-2 rounded-xl border border-border bg-surface-raised p-2 shadow-sm" aria-label="Secciones de administración global">
+    <nav class="mb-6 flex flex-wrap gap-2 rounded-card bg-surface-raised p-2 shadow-card" aria-label="Secciones de administración global">
       <button
         v-for="section in sections"
         :key="section.key"
@@ -78,31 +78,31 @@ const sections = [
     </section>
 
     <section v-if="activeSection === 'summary'" class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-      <button type="button" class="group rounded-xl border border-border bg-surface-raised p-5 text-left shadow-sm transition hover:border-primary/30 hover:bg-primary-subtle/30" @click="activeSection = 'companies'">
+      <button type="button" class="group rounded-card bg-surface-raised p-5 text-left shadow-card transition hover:border-primary/30 hover:bg-primary-subtle/30" @click="activeSection = 'companies'">
         <BuildingOffice2Icon class="size-7 text-primary" aria-hidden="true" />
         <h2 class="mt-4 font-semibold text-ink">Empresas</h2>
         <p class="mt-1 text-sm leading-6 text-ink-muted">Datos fiscales, estado y destinatarios de alertas.</p>
         <span class="mt-4 inline-flex text-sm font-semibold text-primary">Administrar empresas →</span>
       </button>
-      <button type="button" class="group rounded-xl border border-border bg-surface-raised p-5 text-left shadow-sm transition hover:border-primary/30 hover:bg-primary-subtle/30" @click="activeSection = 'users'">
+      <button type="button" class="group rounded-card bg-surface-raised p-5 text-left shadow-card transition hover:border-primary/30 hover:bg-primary-subtle/30" @click="activeSection = 'users'">
         <UserGroupIcon class="size-7 text-primary" aria-hidden="true" />
         <h2 class="mt-4 font-semibold text-ink">Usuarios</h2>
         <p class="mt-1 text-sm leading-6 text-ink-muted">Empresa asignada, roles y permisos efectivos.</p>
         <span class="mt-4 inline-flex text-sm font-semibold text-primary">Administrar usuarios →</span>
       </button>
-      <button type="button" class="group rounded-xl border border-border bg-surface-raised p-5 text-left shadow-sm transition hover:border-primary/30 hover:bg-primary-subtle/30" @click="activeSection = 'notifications'">
+      <button type="button" class="group rounded-card bg-surface-raised p-5 text-left shadow-card transition hover:border-primary/30 hover:bg-primary-subtle/30" @click="activeSection = 'notifications'">
         <BellAlertIcon class="size-7 text-warning-strong" aria-hidden="true" />
         <h2 class="mt-4 font-semibold text-ink">Notificaciones</h2>
         <p class="mt-1 text-sm leading-6 text-ink-muted">Procesá alertas y revisá el canal de correo por empresa.</p>
         <span class="mt-4 inline-flex text-sm font-semibold text-primary">Gestionar notificaciones →</span>
       </button>
-      <a :href="data.actions.importLocalities" class="group rounded-xl border border-border bg-surface-raised p-5 text-left shadow-sm transition hover:border-primary/30 hover:bg-primary-subtle/30">
+      <a :href="data.actions.importLocalities" class="group rounded-card bg-surface-raised p-5 text-left shadow-card transition hover:border-primary/30 hover:bg-primary-subtle/30">
         <span class="inline-flex size-7 items-center justify-center rounded-lg bg-primary-subtle text-lg font-bold text-primary" aria-hidden="true">⌖</span>
         <h2 class="mt-4 font-semibold text-ink">Localidades</h2>
         <p class="mt-1 text-sm leading-6 text-ink-muted">Cargá catálogos oficiales compartidos por todas las empresas.</p>
         <span class="mt-4 inline-flex text-sm font-semibold text-primary">Importar localidades →</span>
       </a>
-      <div class="rounded-xl border border-border bg-surface-raised p-5 shadow-sm">
+      <div class="rounded-card bg-surface-raised p-5 shadow-card">
         <ShieldCheckIcon class="size-7 text-success" aria-hidden="true" />
         <h2 class="mt-4 font-semibold text-ink">Alcance global</h2>
         <p class="mt-1 text-sm leading-6 text-ink-muted">Los cambios realizados aquí impactan en todas las empresas habilitadas.</p>
@@ -150,7 +150,7 @@ const sections = [
       </div>
     </section>
 
-    <section v-if="activeSection === 'notifications' && data.permissions.companiesEdit" class="mb-8 flex flex-col gap-4 rounded-xl border border-border bg-surface-raised p-5 shadow-card sm:flex-row sm:items-center sm:justify-between sm:p-6" aria-labelledby="notification-process-title">
+    <section v-if="activeSection === 'notifications' && data.permissions.companiesEdit" class="mb-8 flex flex-col gap-4 rounded-card bg-surface-raised p-5 shadow-card sm:flex-row sm:items-center sm:justify-between sm:p-6" aria-labelledby="notification-process-title">
       <div>
         <h2 id="notification-process-title" class="font-semibold text-ink">Procesar notificaciones ahora</h2>
         <p class="mt-1 max-w-2xl text-sm leading-6 text-ink-muted">Detecta vencimientos, genera eventos pendientes y despacha Email, Web Push y WhatsApp según la configuración disponible. La idempotencia evita duplicar el mismo ciclo.</p>
@@ -163,7 +163,7 @@ const sections = [
       </form>
     </section>
 
-    <section v-if="activeSection === 'notifications' && data.permissions.companiesEdit && data.whatsapp" class="mb-8 overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card" aria-labelledby="whatsapp-config-title">
+    <section v-if="activeSection === 'notifications' && data.permissions.companiesEdit && data.whatsapp" class="mb-8 overflow-hidden rounded-card bg-surface-raised shadow-card" aria-labelledby="whatsapp-config-title">
       <div class="flex items-center gap-3 border-b border-border-subtle bg-surface-subtle px-5 py-4 sm:px-6">
         <span class="flex size-10 items-center justify-center rounded-lg bg-primary-subtle text-primary">
           <ChatBubbleLeftRightIcon class="size-5" aria-hidden="true" />
@@ -317,7 +317,7 @@ const sections = [
       </div>
     </section>
 
-    <section v-if="activeSection === 'notifications'" class="mb-8 overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card" aria-labelledby="notification-company-status-title">
+    <section v-if="activeSection === 'notifications'" class="mb-8 overflow-hidden rounded-card bg-surface-raised shadow-card" aria-labelledby="notification-company-status-title">
       <div class="border-b border-border-subtle px-5 py-4 sm:px-6">
         <h2 id="notification-company-status-title" class="font-semibold text-ink">Canales por empresa</h2>
         <p class="mt-1 text-sm text-ink-muted">Verificá rápidamente qué empresas tienen configurado el correo de mantenimiento.</p>
@@ -344,7 +344,7 @@ const sections = [
       </div>
     </section>
 
-    <section v-if="activeSection === 'companies'" class="mb-5 flex flex-col gap-3 rounded-xl border border-border bg-surface-raised p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+    <section v-if="activeSection === 'companies'" class="mb-5 flex flex-col gap-3 rounded-card bg-surface-raised p-4 shadow-card sm:flex-row sm:items-center sm:justify-between">
       <div>
         <h2 class="font-semibold text-ink">Empresas</h2>
         <p class="mt-1 text-sm text-ink-muted">Administrá organizaciones sin tener todos los formularios abiertos al mismo tiempo.</p>
@@ -361,7 +361,7 @@ const sections = [
       </div>
     </section>
 
-    <section v-if="activeSection === 'companies' && data.permissions.companiesEdit && showCreateCompany" class="mb-8 overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card" aria-labelledby="create-company-title">
+    <section v-if="activeSection === 'companies' && data.permissions.companiesEdit && showCreateCompany" class="mb-8 overflow-hidden rounded-card bg-surface-raised shadow-card" aria-labelledby="create-company-title">
       <div class="flex items-center gap-3 border-b border-border-subtle bg-surface-subtle px-5 py-4 sm:px-6">
         <span class="flex size-10 items-center justify-center rounded-lg bg-primary-subtle text-primary">
           <PlusIcon class="size-5" aria-hidden="true" />
@@ -433,7 +433,7 @@ const sections = [
 
     <section
       v-if="activeSection === 'companies' && data.permissions.createCompanyAdministrators && showCreateAdministrator"
-      class="mb-8 overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card"
+      class="mb-8 overflow-hidden rounded-card bg-surface-raised shadow-card"
       aria-labelledby="create-company-administrator-title"
     >
       <div class="flex items-center gap-3 border-b border-border-subtle bg-surface-subtle px-5 py-4 sm:px-6">
@@ -504,7 +504,7 @@ const sections = [
       </div>
 
       <div v-if="data.companies.length" class="grid gap-4 xl:grid-cols-2">
-        <article v-for="company in data.companies" :key="company.id" class="overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card">
+        <article v-for="company in data.companies" :key="company.id" class="overflow-hidden rounded-card bg-surface-raised shadow-card">
           <div class="flex items-start justify-between gap-4 border-b border-border-subtle px-5 py-4">
             <div class="flex min-w-0 items-center gap-3">              <span class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary-subtle text-primary">
                 <BuildingOffice2Icon class="size-5" aria-hidden="true" />
@@ -761,7 +761,7 @@ const sections = [
       </div>
 
       <div class="space-y-4">
-        <article v-for="user in data.users" :key="user.id" class="overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card">
+        <article v-for="user in data.users" :key="user.id" class="overflow-hidden rounded-card bg-surface-raised shadow-card">
           <div class="flex flex-col gap-3 border-b border-border-subtle px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div class="flex min-w-0 items-center gap-3">
               <span class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-surface-muted text-ink-muted">

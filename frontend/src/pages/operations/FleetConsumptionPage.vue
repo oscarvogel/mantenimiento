@@ -276,7 +276,7 @@ const problemas = computed(() => {
 
       <PanelCard title="Viajes" :count="viajes.length" flush>
         <div class="overflow-x-auto">
-          <table class="w-full min-w-[46rem] text-left text-sm">
+          <table class="ui-table w-full min-w-[46rem] text-left text-sm">
             <thead class="border-b border-border-subtle text-xs uppercase tracking-wide text-ink-muted">
               <tr>
                 <th class="px-4 py-3 font-bold">Fecha</th>

@@ -50,7 +50,7 @@ const texto = (fila) => (fila.km < 0 ? `Pasado por ${props.formatKm(Math.abs(fil
 </script>
 
 <template>
-  <article id="fleet-board-service-chart" class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6">
+  <article id="fleet-board-service-chart" class="rounded-card bg-surface-raised p-5 sm:p-6 shadow-card">
     <h3 class="text-base font-bold text-ink">Km para el próximo service</h3>
     <p class="mt-1 text-sm leading-6 text-ink-muted">
       Los más urgentes primero. A la izquierda del cero, services ya pasados. Se usa el km estimado por GPS cuando hay; si no, el de la última lectura.

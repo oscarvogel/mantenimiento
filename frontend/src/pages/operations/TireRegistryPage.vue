@@ -56,12 +56,12 @@ const describe = (item) => [item.brandName, item.modelName, item.size].filter(Bo
       </template>
     </PageHeading>
 
-    <p v-if="data.canOperate && brands.length === 0" class="rounded-xl border border-border bg-surface-raised px-4 py-3 text-sm text-ink-muted">
+    <p v-if="data.canOperate && brands.length === 0" class="rounded-card bg-surface-raised px-4 py-3 text-sm text-ink-muted shadow-card">
       Todavía no hay marcas activas. Podés dar de alta neumáticos sin marca, o
       <a :href="data.urls.masters" class="font-semibold text-primary hover:text-primary-hover">cargarlas en Maestros</a>.
     </p>
 
-    <form method="get" :action="data.urls.index" class="grid gap-3 rounded-xl border border-border bg-surface-raised p-4 sm:grid-cols-2 lg:grid-cols-[minmax(12rem,1fr)_12rem_12rem_12rem_auto] sm:p-5" aria-label="Filtrar el padrón">
+    <form method="get" :action="data.urls.index" class="grid gap-3 rounded-card bg-surface-raised p-4 sm:grid-cols-2 lg:grid-cols-[minmax(12rem,1fr)_12rem_12rem_12rem_auto] sm:p-5 shadow-card" aria-label="Filtrar el padrón">
       <label>
         <span class="mb-1.5 block text-sm font-semibold text-ink">Buscar</span>
         <input name="q" type="search" :value="filters.q" placeholder="Número, marca, modelo o medida" :class="fieldClass" />
@@ -93,7 +93,7 @@ const describe = (item) => [item.brandName, item.modelName, item.size].filter(Bo
       </div>
     </form>
 
-    <section class="overflow-hidden rounded-xl border border-border bg-surface-raised" aria-labelledby="tire-registry-list">
+    <section class="overflow-hidden rounded-card bg-surface-raised shadow-card" aria-labelledby="tire-registry-list">
       <div class="border-b border-border-subtle px-4 py-3 sm:px-5">
         <h2 id="tire-registry-list" class="text-base font-bold text-ink">
           {{ data.total }} {{ data.total === 1 ? 'neumático' : 'neumáticos' }}

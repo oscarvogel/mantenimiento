@@ -18,7 +18,7 @@ defineProps({
       description="Elegí una empresa para ver el texto que recibiría cada usuario con avisos pendientes. La vista previa no envía mensajes ni modifica notificaciones."
     />
 
-    <section class="rounded-2xl border border-border bg-surface-raised p-4 shadow-sm sm:p-6">
+    <section class="rounded-card bg-surface-raised p-4 shadow-card sm:p-6">
       <form :action="data.actions.preview" method="get" class="flex flex-col gap-3 sm:flex-row sm:items-end">
         <label for="digest-preview-company" class="grid flex-1 gap-1.5 text-sm font-semibold text-ink">
           Empresa
@@ -66,7 +66,7 @@ defineProps({
         <article
           v-for="preview in data.previews"
           :key="preview.userId"
-          class="overflow-hidden rounded-2xl border border-border bg-surface-raised shadow-sm"
+          class="overflow-hidden rounded-card bg-surface-raised shadow-card"
         >
           <div class="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle px-4 py-3 sm:px-5">
             <div>
@@ -78,7 +78,7 @@ defineProps({
           <pre class="max-h-[34rem] overflow-auto whitespace-pre-wrap break-words p-4 text-sm leading-6 text-ink sm:p-5">{{ preview.message }}</pre>
         </article>
       </section>
-      <div v-else class="rounded-2xl border border-border bg-surface-raised p-5 text-sm text-ink-muted" role="status">
+      <div v-else class="rounded-card bg-surface-raised p-5 text-sm text-ink-muted shadow-card" role="status">
         No hay mensajes pendientes para usuarios habilitados de {{ data.selectedCompanyName }}.
       </div>
     </template>

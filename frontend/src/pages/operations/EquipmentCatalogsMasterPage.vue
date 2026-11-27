@@ -150,8 +150,8 @@ const sectionCount = computed(() => ({
       <div v-if="section === 'types'">
         <EmptyState v-if="filteredTypes.length === 0" title="No encontramos tipos de equipo" description="Probá cambiar la búsqueda o el estado." />
         <div v-else class="overflow-x-auto">
-          <table class="w-full min-w-[44rem] text-left text-sm">
-            <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
+          <table class="ui-table w-full min-w-[44rem] text-left text-sm">
+            <thead class="text-xs font-semibold text-ink-subtle">
               <tr><th class="px-5 py-3">Tipo</th><th class="px-5 py-3">Kilómetros</th><th class="px-5 py-3">Horas</th><th class="px-5 py-3">Estado</th><th class="px-5 py-3 text-right">Acciones</th></tr>
             </thead>
             <tbody class="divide-y divide-border-subtle">
@@ -174,8 +174,8 @@ const sectionCount = computed(() => ({
       <div v-if="section === 'brands'">
         <EmptyState v-if="filteredBrands.length === 0" title="No encontramos marcas" description="Probá cambiar la búsqueda o el estado." />
         <div v-else class="overflow-x-auto">
-          <table class="w-full min-w-[40rem] text-left text-sm">
-            <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
+          <table class="ui-table w-full min-w-[40rem] text-left text-sm">
+            <thead class="text-xs font-semibold text-ink-subtle">
               <tr><th class="px-5 py-3">Marca</th><th class="px-5 py-3">Estado</th><th class="px-5 py-3 text-right">Acciones</th></tr>
             </thead>
             <tbody class="divide-y divide-border-subtle">
@@ -193,8 +193,8 @@ const sectionCount = computed(() => ({
       <div v-if="section === 'models'">
         <EmptyState v-if="filteredModels.length === 0" title="No encontramos modelos" description="Probá cambiar la búsqueda o los filtros." />
         <div v-else class="overflow-x-auto">
-          <table class="w-full min-w-[58rem] text-left text-sm">
-            <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
+          <table class="ui-table w-full min-w-[58rem] text-left text-sm">
+            <thead class="text-xs font-semibold text-ink-subtle">
               <tr><th class="px-5 py-3">Modelo</th><th class="px-5 py-3">Marca</th><th class="px-5 py-3">Tipo</th><th class="px-5 py-3">Estado</th><th class="px-5 py-3 text-right">Acciones</th></tr>
             </thead>
             <tbody class="divide-y divide-border-subtle">
@@ -214,7 +214,7 @@ const sectionCount = computed(() => ({
 
     <Teleport to="body">
       <div v-if="modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-[1px]" @click.self="closeModal">
-        <section class="w-full max-w-xl overflow-hidden rounded-2xl border border-border bg-surface-raised shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="master-modal-title">
+        <section class="w-full max-w-xl overflow-hidden rounded-card bg-surface-raised shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="master-modal-title">
           <header class="flex items-start justify-between gap-4 border-b border-border-subtle px-5 py-4">
             <div>
               <p class="text-xs font-bold uppercase tracking-[0.14em] text-primary">Maestros</p>

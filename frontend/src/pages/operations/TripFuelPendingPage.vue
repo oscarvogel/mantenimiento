@@ -87,17 +87,17 @@ const statusBadge = {
       <input type="hidden" :name="csrf.name" :value="csrf.hash" />
 
       <div class="mb-5 grid gap-3 sm:grid-cols-3">
-        <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
+        <article class="rounded-card bg-surface-raised p-4 shadow-card">
           <p class="text-xs font-semibold text-ink-muted">Cargas sin precio</p>
           <p class="mt-2 text-2xl font-bold text-ink" data-summary-loads>{{ number(summary.loads, 0) }}</p>
           <p class="mt-1 text-xs text-ink-muted">en {{ number(summary.trips, 0) }} {{ summary.trips === 1 ? 'viaje' : 'viajes' }}</p>
         </article>
-        <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
+        <article class="rounded-card bg-surface-raised p-4 shadow-card">
           <p class="text-xs font-semibold text-ink-muted">Litros sin valorizar</p>
           <p class="mt-2 text-2xl font-bold text-ink">{{ number(summary.liters) }} L</p>
           <p class="mt-1 text-xs text-ink-muted">Cuentan para el consumo, no para el costo</p>
         </article>
-        <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
+        <article class="rounded-card bg-surface-raised p-4 shadow-card">
           <label class="block">
             <span class="text-xs font-semibold text-ink-muted">Mismo precio por litro para las vacías</span>
             <div class="mt-2 flex gap-2">
@@ -148,7 +148,7 @@ const statusBadge = {
       </PanelCard>
 
       <!-- pr-24 deja libre la esquina del botón flotante del asistente, como ScrollCta. -->
-      <div class="sticky bottom-0 z-10 mt-5 flex flex-col gap-3 rounded-xl border border-border bg-surface-raised p-4 pr-24 shadow-card sm:flex-row sm:items-center sm:justify-between" data-fuel-save-bar>
+      <div class="sticky bottom-0 z-10 mt-5 flex flex-col gap-3 rounded-card bg-surface-raised p-4 pr-24 shadow-card sm:flex-row sm:items-center sm:justify-between" data-fuel-save-bar>
         <p class="text-sm text-ink-muted" data-fuel-total>
           <template v-if="filled.length === 0">Todavía no completaste ningún importe.</template>
           <template v-else>{{ filled.length }} {{ filled.length === 1 ? 'carga' : 'cargas' }} con precio · {{ money(filledArs) }}</template>

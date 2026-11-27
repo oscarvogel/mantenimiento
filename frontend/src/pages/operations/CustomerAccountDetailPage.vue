@@ -91,9 +91,9 @@ const openAnnul = (row) => {
     </PageHeading>
 
     <section aria-label="Saldo" class="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-      <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card"><p class="text-xs font-semibold text-ink-muted">Debe</p><p class="mt-2 text-xl font-bold text-ink">{{ money(totals.debe_ars) }}</p></article>
-      <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card"><p class="text-xs font-semibold text-ink-muted">Haber</p><p class="mt-2 text-xl font-bold text-ink">{{ money(totals.haber_ars) }}</p></article>
-      <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card"><p class="text-xs font-semibold text-ink-muted">{{ balanceLabel }}</p><p class="mt-2 text-xl font-bold" :class="balanceClass(totals.saldo_ars)" data-testid="statement-balance">{{ money(totals.saldo_ars) }}</p></article>
+      <article class="rounded-card bg-surface-raised p-4 shadow-card"><p class="text-xs font-semibold text-ink-muted">Debe</p><p class="mt-2 text-xl font-bold text-ink">{{ money(totals.debe_ars) }}</p></article>
+      <article class="rounded-card bg-surface-raised p-4 shadow-card"><p class="text-xs font-semibold text-ink-muted">Haber</p><p class="mt-2 text-xl font-bold text-ink">{{ money(totals.haber_ars) }}</p></article>
+      <article class="rounded-card bg-surface-raised p-4 shadow-card"><p class="text-xs font-semibold text-ink-muted">{{ balanceLabel }}</p><p class="mt-2 text-xl font-bold" :class="balanceClass(totals.saldo_ars)" data-testid="statement-balance">{{ money(totals.saldo_ars) }}</p></article>
     </section>
 
     <PanelCard title="Movimientos" :count="movements.length" flush>
@@ -118,8 +118,8 @@ const openAnnul = (row) => {
         </li>
       </ul>
       <div v-if="movements.length > 0" class="hidden overflow-x-auto sm:block">
-        <table class="w-full min-w-[60rem] text-left text-sm" data-testid="statement-table">
-          <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
+        <table class="ui-table w-full min-w-[60rem] text-left text-sm" data-testid="statement-table">
+          <thead class="text-xs font-semibold text-ink-subtle">
             <tr><th class="px-3 py-2">Fecha</th><th class="px-3 py-2">Concepto</th><th class="px-3 py-2">Origen</th><th class="px-3 py-2 text-right">Debe</th><th class="px-3 py-2 text-right">Haber</th><th class="px-3 py-2 text-right">Saldo</th><th v-if="canFormalize" class="px-3 py-2"></th></tr>
           </thead>
           <tbody class="divide-y divide-border-subtle">
@@ -142,7 +142,7 @@ const openAnnul = (row) => {
       </div>
     </PanelCard>
 
-    <dialog v-if="canFormalize" ref="openingDialog" aria-labelledby="opening-title" @click.self="openingDialog?.close()" class="m-auto w-[min(40rem,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-xl border border-border bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
+    <dialog v-if="canFormalize" ref="openingDialog" aria-labelledby="opening-title" @click.self="openingDialog?.close()" class="m-auto w-[min(40rem,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-card bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
       <form method="post" :action="links.openingBalance" class="p-5 sm:p-6" data-testid="opening-form">
         <input type="hidden" :name="csrf.name" :value="csrf.hash" />
         <h2 id="opening-title" class="text-lg font-bold text-ink">Saldo inicial de {{ customer.nombre }}</h2>
@@ -171,7 +171,7 @@ const openAnnul = (row) => {
       </form>
     </dialog>
 
-    <dialog v-if="canFormalize" ref="annulDialog" aria-labelledby="annul-title" @click.self="annulDialog?.close()" class="m-auto w-[min(36rem,calc(100vw-2rem))] rounded-xl border border-border bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
+    <dialog v-if="canFormalize" ref="annulDialog" aria-labelledby="annul-title" @click.self="annulDialog?.close()" class="m-auto w-[min(36rem,calc(100vw-2rem))] rounded-card bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
       <form v-if="annulling" method="post" :action="`${links.chargesBase}${annulling.cargo_id}/anular`" class="p-5 sm:p-6" data-testid="annul-form">
         <input type="hidden" :name="csrf.name" :value="csrf.hash" />
         <input type="hidden" name="volver" :value="data.returnTo" />

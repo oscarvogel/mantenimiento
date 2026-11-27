@@ -29,7 +29,7 @@ const ancho = (value) => (maximo.value <= 0 || Number(value) <= 0 ? 0 : Math.max
 </script>
 
 <template>
-  <article :id="id" class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6">
+  <article :id="id" class="rounded-card bg-surface-raised p-5 sm:p-6 shadow-card">
     <h3 class="text-base font-bold text-ink">{{ title }}</h3>
     <p v-if="description" class="mt-1 text-sm leading-6 text-ink-muted">{{ description }}</p>
 

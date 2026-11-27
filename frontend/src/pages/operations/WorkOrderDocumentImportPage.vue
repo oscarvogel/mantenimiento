@@ -174,7 +174,7 @@ watch([() => proposal.currency, () => proposal.serviceDate], async ([currency, s
       <template #actions><a :href="data.routes.orders" :class="secondaryButton"><ArrowLeftIcon class="mr-2 size-4" />Volver a OT</a></template>
     </PageHeading>
 
-    <section v-if="data.mode === 'upload'" class="mx-auto max-w-3xl rounded-2xl border border-border bg-surface-raised p-6 shadow-sm">
+    <section v-if="data.mode === 'upload'" class="mx-auto max-w-3xl rounded-card bg-surface-raised p-6 shadow-card">
       <div class="mb-5 flex items-start gap-4"><div class="rounded-xl bg-primary/10 p-3 text-primary"><ArrowUpTrayIcon class="size-7" /></div><div><h2 class="text-lg font-bold text-ink">Foto o PDF de la orden del taller</h2><p class="mt-1 text-sm text-ink-muted">Formatos admitidos: JPG, PNG y PDF. El original queda guardado para auditoría.</p></div></div>
       <form method="post" :action="data.routes.upload" enctype="multipart/form-data" class="space-y-5">
         <CsrfInput :csrf="data.csrf" />
@@ -188,14 +188,14 @@ watch([() => proposal.currency, () => proposal.serviceDate], async ([currency, s
 
     <div v-else class="space-y-5">
       <section class="grid gap-4 xl:grid-cols-[minmax(19rem,.85fr)_minmax(0,1.65fr)]">
-        <article class="rounded-2xl border border-border bg-surface-raised p-5 shadow-sm">
+        <article class="rounded-card bg-surface-raised p-5 shadow-card">
           <div class="flex items-start justify-between gap-3"><div><p class="text-xs font-bold uppercase tracking-wide text-ink-muted">Documento original</p><h2 class="mt-1 font-bold text-ink">{{ data.import.originalName }}</h2></div><DocumentTextIcon class="size-7 text-primary" /></div>
           <dl class="mt-5 space-y-3 text-sm"><div class="flex justify-between gap-3"><dt class="text-ink-muted">Estado</dt><dd class="font-semibold text-ink">{{ uiLabels.humanizeCode(data.import.status) }}</dd></div><div class="flex justify-between gap-3"><dt class="text-ink-muted">Tipo</dt><dd class="font-semibold text-ink">{{ uiLabels.fileTypeLabel(data.import.mimeType) }}</dd></div></dl>
           <div v-if="data.import.error" class="mt-4 rounded-xl border border-warning/30 bg-warning/10 p-3 text-sm text-ink"><ExclamationTriangleIcon class="mr-1 inline size-4" />{{ data.import.error }}</div>
           <div class="mt-5 flex flex-wrap gap-2"><a :href="data.routes.download" target="_blank" :class="secondaryButton">Ver original</a><form v-if="!isConfirmed" method="post" :action="data.routes.reanalyze"><CsrfInput :csrf="data.csrf" /><button :class="secondaryButton"><ArrowPathIcon class="mr-2 size-4" />Reanalizar</button></form></div>
         </article>
 
-        <article class="rounded-2xl border border-border bg-surface-raised p-5 shadow-sm">
+        <article class="rounded-card bg-surface-raised p-5 shadow-card">
           <h2 class="text-lg font-bold text-ink">Datos a confirmar</h2>
           <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <label class="rounded-xl bg-surface p-3"><span class="text-xs font-bold uppercase text-ink-muted">Equipo</span><select v-model.number="proposal.selectedEquipmentId" :disabled="isConfirmed || contextLoading" :class="`${fieldClass} mt-2`"><option :value="null">Seleccionar equipo</option><option v-for="equipment in data.equipmentOptions" :key="equipment.id" :value="equipment.id">{{ equipment.code }}{{ equipment.plate ? ` · ${equipment.plate}` : '' }}</option></select><span class="mt-1 block text-xs text-ink-muted">Patente IA: {{ analysis.plate || 'no detectada' }} · confianza {{ confidenceLabel(analysis.confidence?.plate) }}</span><span v-if="contextLoading" class="mt-1 block text-xs text-primary">Actualizando planes del equipo…</span></label>
@@ -242,14 +242,14 @@ watch([() => proposal.currency, () => proposal.serviceDate], async ([currency, s
         <label v-if="!isConfirmed" class="mt-4 flex items-start gap-2 text-sm text-ink"><input v-model="proposal.confirmPossibleDuplicate" type="checkbox" class="mt-1 size-4 rounded border-border-strong text-primary" /><span>Revisé la importación anterior y confirmo que este documento corresponde a un trabajo distinto y debe continuar.</span></label>
       </section>
 
-      <section class="rounded-2xl border border-border bg-surface-raised p-5 shadow-sm">
+      <section class="rounded-card bg-surface-raised p-5 shadow-card">
         <div class="flex flex-wrap items-end justify-between gap-3"><div><p class="text-xs font-bold uppercase tracking-wide text-ink-muted">Trabajos interpretados</p><h2 class="mt-1 text-lg font-bold text-ink">Revisá qué fue correctivo y qué fue preventivo</h2></div><div class="text-sm text-ink-muted"><strong class="text-ink">{{ correctiveWorks.length }}</strong> correctivos · <strong class="text-ink">{{ preventiveWorks.length }}</strong> preventivos</div></div>
-        <div class="mt-4 overflow-x-auto"><table class="min-w-full text-left text-sm"><thead><tr class="border-b border-border text-xs uppercase tracking-wide text-ink-muted"><th class="px-2 py-3">Incluir</th><th class="px-2 py-3">Trabajo</th><th class="px-2 py-3">Clasificación</th><th class="px-2 py-3">Confianza</th></tr></thead><tbody><tr v-for="(item, index) in proposal.works" :key="index" class="border-b border-border/70 align-top"><td class="px-2 py-3"><input v-model="item.included" :disabled="isConfirmed" type="checkbox" class="size-4 rounded border-border-strong text-primary" /></td><td class="px-2 py-3"><input v-model="item.description" :disabled="isConfirmed" :class="fieldClass" /><p v-if="item.source_text && item.source_text !== item.description" class="mt-1 max-w-xl text-xs text-ink-muted">Original: {{ item.source_text }}</p></td><td class="px-2 py-3"><select v-model="item.classification" :disabled="isConfirmed" :class="fieldClass"><option value="correctivo">Correctivo</option><option value="preventivo">Preventivo</option><option value="revisar">Revisar</option></select></td><td class="px-2 py-3"><span :class="item.confidence >= .85 ? 'font-semibold text-success' : item.confidence >= .6 ? 'font-semibold text-warning' : 'font-semibold text-danger'">{{ Math.round((item.confidence || 0) * 100) }}%</span></td></tr></tbody></table></div>
+        <div class="mt-4 overflow-x-auto"><table class="ui-table min-w-full text-left text-sm"><thead><tr class="border-b border-border text-xs uppercase tracking-wide text-ink-muted"><th class="px-2 py-3">Incluir</th><th class="px-2 py-3">Trabajo</th><th class="px-2 py-3">Clasificación</th><th class="px-2 py-3">Confianza</th></tr></thead><tbody><tr v-for="(item, index) in proposal.works" :key="index" class="border-b border-border/70 align-top"><td class="px-2 py-3"><input v-model="item.included" :disabled="isConfirmed" type="checkbox" class="size-4 rounded border-border-strong text-primary" /></td><td class="px-2 py-3"><input v-model="item.description" :disabled="isConfirmed" :class="fieldClass" /><p v-if="item.source_text && item.source_text !== item.description" class="mt-1 max-w-xl text-xs text-ink-muted">Original: {{ item.source_text }}</p></td><td class="px-2 py-3"><select v-model="item.classification" :disabled="isConfirmed" :class="fieldClass"><option value="correctivo">Correctivo</option><option value="preventivo">Preventivo</option><option value="revisar">Revisar</option></select></td><td class="px-2 py-3"><span :class="item.confidence >= .85 ? 'font-semibold text-success' : item.confidence >= .6 ? 'font-semibold text-warning' : 'font-semibold text-danger'">{{ Math.round((item.confidence || 0) * 100) }}%</span></td></tr></tbody></table></div>
       </section>
 
       <section class="grid gap-4 lg:grid-cols-2">
-        <article class="rounded-2xl border border-border bg-surface-raised p-5 shadow-sm"><h2 class="font-bold text-ink">Repuestos y consumibles detectados</h2><ul class="mt-3 space-y-2 text-sm"><li v-for="(item, index) in proposal.materials" :key="index" class="flex justify-between gap-4 rounded-lg bg-surface px-3 py-2"><span>{{ item.description }}</span><strong>{{ item.quantity ?? '—' }} {{ item.unit || '' }}</strong></li><li v-if="!proposal.materials?.length" class="text-ink-muted">No se detectaron materiales.</li></ul></article>
-        <article class="rounded-2xl border border-border bg-surface-raised p-5 shadow-sm">
+        <article class="rounded-card bg-surface-raised p-5 shadow-card"><h2 class="font-bold text-ink">Repuestos y consumibles detectados</h2><ul class="mt-3 space-y-2 text-sm"><li v-for="(item, index) in proposal.materials" :key="index" class="flex justify-between gap-4 rounded-lg bg-surface px-3 py-2"><span>{{ item.description }}</span><strong>{{ item.quantity ?? '—' }} {{ item.unit || '' }}</strong></li><li v-if="!proposal.materials?.length" class="text-ink-muted">No se detectaron materiales.</li></ul></article>
+        <article class="rounded-card bg-surface-raised p-5 shadow-card">
           <h2 class="font-bold text-ink">Plan preventivo a registrar</h2>
           <select v-model.number="proposal.selectedPlanId" :disabled="isConfirmed || contextLoading" :class="`${fieldClass} mt-3`"><option :value="null">No seleccionar plan</option><option v-for="plan in proposal.preventivePlans" :key="plan.id" :value="plan.id">{{ plan.servicio_nombre || `Plan #${plan.id}` }} · coincidencia {{ plan.matchScore || 0 }}%</option></select>
           <div v-if="selectedPlan" class="mt-3 text-sm text-ink-muted">
@@ -282,7 +282,7 @@ watch([() => proposal.currency, () => proposal.serviceDate], async ([currency, s
     </div>
 
     <div v-if="pendingAction" class="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4" role="presentation" @click.self="closeConfirmation" @keydown.esc="closeConfirmation">
-      <section role="dialog" aria-modal="true" aria-labelledby="work-order-confirm-title" class="w-full max-w-lg rounded-2xl border border-border bg-surface-raised p-6 shadow-2xl">
+      <section role="dialog" aria-modal="true" aria-labelledby="work-order-confirm-title" class="w-full max-w-lg rounded-card bg-surface-raised p-6 shadow-2xl">
         <p class="text-xs font-bold uppercase tracking-wide text-primary">Confirmar creación</p>
         <h2 id="work-order-confirm-title" class="mt-1 text-xl font-bold text-ink">{{ confirmationTitle }}</h2>
         <p class="mt-2 text-sm text-ink-muted">{{ confirmationDescription }}</p>

@@ -65,8 +65,8 @@ const stopEdit = () => {
       </div>
 
       <div v-else class="overflow-x-auto">
-        <table class="w-full min-w-[52rem] text-left text-sm">
-          <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
+        <table class="ui-table w-full min-w-[52rem] text-left text-sm">
+          <thead class="text-xs font-semibold text-ink-subtle">
             <tr>
               <th class="px-5 py-3">Nombre</th>
               <th class="px-5 py-3">Aplica a</th>

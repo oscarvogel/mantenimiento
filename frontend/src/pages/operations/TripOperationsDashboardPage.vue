@@ -167,7 +167,7 @@ const bar = (value, max) => {
 
     <template v-if="hasData">
       <section aria-label="Indicadores de viajes operativos" class="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
-        <article v-for="kpi in kpis" :key="kpi.key" class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
+        <article v-for="kpi in kpis" :key="kpi.key" class="rounded-card bg-surface-raised p-4 shadow-card">
           <p class="text-xs font-semibold text-ink-muted">{{ kpi.label }}</p>
           <p class="mt-2 font-bold text-ink" :class="kpi.compact ? 'text-base leading-6' : 'text-2xl'">{{ kpi.value }}</p>
           <p class="mt-1 text-xs text-ink-muted">{{ kpi.hint }}</p>
@@ -183,8 +183,8 @@ const bar = (value, max) => {
           description="Cuando registres un viaje operativo va a aparecer acá con su recorrido, equipo y choferes."
         />
         <div v-else class="overflow-x-auto">
-          <table class="w-full min-w-[64rem] text-left text-sm">
-            <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
+          <table class="ui-table w-full min-w-[64rem] text-left text-sm">
+            <thead class="text-xs font-semibold text-ink-subtle">
               <tr>
                 <th class="px-4 py-3">Viaje</th>
                 <th class="px-4 py-3">Estado</th>

@@ -19,7 +19,7 @@ const stateTone = (state) => ({
 </script>
 
 <template>
-  <section aria-labelledby="report-catalog-title" class="rounded-xl border border-border bg-surface-raised">
+  <section aria-labelledby="report-catalog-title" class="rounded-card bg-surface-raised shadow-card">
     <div class="border-b border-border px-5 py-4 sm:px-6">
       <h2 id="report-catalog-title" class="text-lg font-bold text-ink">Informes y consultas</h2>
       <p class="mt-1 max-w-3xl text-sm leading-6 text-ink-muted">Sólo se habilitan los informes que podés consultar con tu empresa y tus permisos. Las categorías pendientes no abren una pantalla vacía.</p>

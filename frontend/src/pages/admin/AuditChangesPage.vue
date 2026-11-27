@@ -114,7 +114,7 @@ onMounted(() => load(1))
       <p class="mt-1 text-sm text-ink-muted">{{ data.subtitle || 'Operaciones sensibles registradas en todas las empresas.' }}</p>
     </header>
 
-    <form class="grid gap-3 rounded-xl border border-border bg-surface-raised p-4 md:grid-cols-2 xl:grid-cols-4" @submit.prevent="load(1)">
+    <form class="grid gap-3 rounded-card bg-surface-raised p-4 md:grid-cols-2 xl:grid-cols-4 shadow-card" @submit.prevent="load(1)">
       <input v-model="filters.companyId" class="rounded-lg border border-border-strong bg-surface px-3 py-2 text-ink placeholder:text-ink-subtle focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" inputmode="numeric" placeholder="ID empresa" aria-label="ID de empresa">
       <input v-model="filters.branchId" class="rounded-lg border border-border-strong bg-surface px-3 py-2 text-ink placeholder:text-ink-subtle focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" inputmode="numeric" placeholder="ID sucursal" aria-label="ID de sucursal">
       <input v-model="filters.actorUserId" class="rounded-lg border border-border-strong bg-surface px-3 py-2 text-ink placeholder:text-ink-subtle focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" inputmode="numeric" placeholder="ID usuario actor" aria-label="ID de usuario actor">
@@ -133,7 +133,7 @@ onMounted(() => load(1))
     <p v-if="loading" class="text-sm text-ink-muted" role="status" aria-live="polite">Cargando cambios…</p>
     <div v-else-if="!items.length" class="rounded-xl border border-dashed border-border-strong p-8 text-center text-ink-muted">No hay cambios registrados para estos filtros.</div>
 
-    <div v-else class="overflow-hidden rounded-xl border border-border bg-surface-raised">
+    <div v-else class="overflow-hidden rounded-card bg-surface-raised shadow-card">
       <div class="hidden grid-cols-12 gap-3 border-b border-border-subtle bg-surface-subtle px-4 py-2 text-xs font-semibold uppercase text-ink-muted md:grid">
         <span class="col-span-2">Fecha</span>
         <span class="col-span-3">Empresa / sucursal</span>
@@ -176,7 +176,7 @@ onMounted(() => load(1))
       </div>
     </footer>
 
-    <div v-if="selected" class="rounded-xl border border-border bg-surface-raised p-5">
+    <div v-if="selected" class="rounded-card bg-surface-raised p-5 shadow-card">
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 class="font-semibold text-ink">Cambio #{{ selected.id }}</h2>

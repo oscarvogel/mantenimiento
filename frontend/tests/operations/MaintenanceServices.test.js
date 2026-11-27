@@ -105,8 +105,8 @@ describe('configuración de tareas del servicio', () => {
 
     expect(wrapper.text()).toContain('Intervalo en horas')
     expect(wrapper.text()).toContain('Avisar con anticipación')
-    expect(wrapper.find('input[name="intervalo_km"]').classes()).toContain('bg-surface-raised')
-    expect(wrapper.find('textarea[name="descripcion"]').classes()).toContain('bg-surface-raised')
+    expect(wrapper.find('input[name="intervalo_km"]').classes()).toContain('bg-surface-muted')
+    expect(wrapper.find('textarea[name="descripcion"]').classes()).toContain('bg-surface-muted')
   })
 
   it('usa el ancho completo del catálogo mientras el servicio está en edición', async () => {

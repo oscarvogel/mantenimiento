@@ -15,7 +15,7 @@ defineProps({
 </script>
 
 <template>
-  <section v-if="companies.length" class="mt-8 overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card" aria-labelledby="company-ai-title">
+  <section v-if="companies.length" class="mt-8 overflow-hidden rounded-card bg-surface-raised shadow-card" aria-labelledby="company-ai-title">
     <div class="flex items-center gap-3 border-b border-border-subtle bg-surface-subtle px-5 py-4 sm:px-6">
       <span class="flex size-10 items-center justify-center rounded-lg bg-primary-subtle text-primary">
         <CpuChipIcon class="size-5" aria-hidden="true" />

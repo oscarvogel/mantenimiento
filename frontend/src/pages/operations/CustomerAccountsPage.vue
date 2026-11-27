@@ -43,9 +43,9 @@ const goToCustomer = () => {
     </PageHeading>
 
     <section aria-label="Totales" class="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-      <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card"><p class="text-xs font-semibold text-ink-muted">Debe</p><p class="mt-2 text-xl font-bold text-ink">{{ money(totals.debe_ars) }}</p></article>
-      <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card"><p class="text-xs font-semibold text-ink-muted">Haber</p><p class="mt-2 text-xl font-bold text-ink">{{ money(totals.haber_ars) }}</p></article>
-      <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card"><p class="text-xs font-semibold text-ink-muted">Saldo total</p><p class="mt-2 text-xl font-bold" :class="balanceClass(totals.saldo_ars)" data-testid="accounts-total">{{ money(totals.saldo_ars) }}</p></article>
+      <article class="rounded-card bg-surface-raised p-4 shadow-card"><p class="text-xs font-semibold text-ink-muted">Debe</p><p class="mt-2 text-xl font-bold text-ink">{{ money(totals.debe_ars) }}</p></article>
+      <article class="rounded-card bg-surface-raised p-4 shadow-card"><p class="text-xs font-semibold text-ink-muted">Haber</p><p class="mt-2 text-xl font-bold text-ink">{{ money(totals.haber_ars) }}</p></article>
+      <article class="rounded-card bg-surface-raised p-4 shadow-card"><p class="text-xs font-semibold text-ink-muted">Saldo total</p><p class="mt-2 text-xl font-bold" :class="balanceClass(totals.saldo_ars)" data-testid="accounts-total">{{ money(totals.saldo_ars) }}</p></article>
     </section>
 
     <form method="get" :action="links.accounts" class="mb-4 flex flex-wrap gap-2">
@@ -62,8 +62,8 @@ const goToCustomer = () => {
         </li>
       </ul>
       <div v-if="rows.length > 0" class="hidden overflow-x-auto sm:block">
-        <table class="w-full min-w-[44rem] text-left text-sm" data-testid="accounts-table">
-          <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
+        <table class="ui-table w-full min-w-[44rem] text-left text-sm" data-testid="accounts-table">
+          <thead class="text-xs font-semibold text-ink-subtle">
             <tr><th class="px-3 py-2">Cliente</th><th class="px-3 py-2">Último movimiento</th><th class="px-3 py-2 text-right">Debe</th><th class="px-3 py-2 text-right">Haber</th><th class="px-3 py-2 text-right">Saldo</th></tr>
           </thead>
           <tbody class="divide-y divide-border-subtle">
@@ -79,7 +79,7 @@ const goToCustomer = () => {
       </div>
     </PanelCard>
 
-    <dialog ref="pickerDialog" aria-labelledby="picker-title" @click.self="pickerDialog?.close()" class="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-xl border border-border bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
+    <dialog ref="pickerDialog" aria-labelledby="picker-title" @click.self="pickerDialog?.close()" class="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-card bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
       <form class="p-5 sm:p-6" @submit.prevent="goToCustomer">
         <h2 id="picker-title" class="text-lg font-bold text-ink">Elegí el cliente</h2>
         <p class="mt-1 text-sm text-ink-muted">Desde su estado de cuenta podés {{ canFormalize ? 'cargar el saldo inicial y ' : '' }}ver todos sus movimientos.</p>

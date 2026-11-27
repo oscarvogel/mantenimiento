@@ -34,7 +34,7 @@ const confirmRegenerate = (event) => {
 <template>
   <Teleport to="body">
     <div v-if="open" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4" @click.self="open = false">
-      <section class="w-full max-w-2xl overflow-hidden rounded-2xl border border-border bg-surface-raised shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="demo-company-title">
+      <section class="w-full max-w-2xl overflow-hidden rounded-card bg-surface-raised shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="demo-company-title">
         <header class="flex items-start justify-between gap-4 border-b border-border-subtle bg-surface-subtle px-5 py-4 sm:px-6">
           <div>
             <p class="text-xs font-bold uppercase tracking-[0.14em] text-accent-active">Solo superadmin</p>

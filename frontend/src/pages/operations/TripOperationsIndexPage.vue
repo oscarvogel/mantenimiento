@@ -68,7 +68,7 @@ const changePageSize = (event) => window.location.assign(pageSizeUrl(event.targe
       </template>
     </PageHeading>
 
-    <p class="mb-5 rounded-xl border border-border bg-surface-raised px-4 py-3 text-sm text-ink-muted">
+    <p class="mb-5 rounded-card bg-surface-raised px-4 py-3 text-sm text-ink-muted shadow-card">
       Este listado muestra solo viajes operativos planificados en el sistema. Los viajes importados del ERP anterior se consultan en
       <a :href="links.history ?? '/viajes'" class="font-semibold text-primary hover:text-primary-hover">Historial</a>.
     </p>
@@ -139,8 +139,8 @@ const changePageSize = (event) => window.location.assign(pageSizeUrl(event.targe
 
     <PanelCard v-else title="Viajes" :count="pagination.total">
       <div class="overflow-x-auto">
-        <table class="w-full min-w-[64rem] text-left text-sm">
-          <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
+        <table class="ui-table w-full min-w-[64rem] text-left text-sm">
+          <thead class="text-xs font-semibold text-ink-subtle">
             <tr>
               <th class="px-4 py-3">Viaje</th>
               <th class="px-4 py-3">Estado</th>

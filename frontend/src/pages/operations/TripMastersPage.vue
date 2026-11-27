@@ -234,7 +234,7 @@ function statusMessage(item) {
     </nav>
 
     <section v-if="selected === 'clientes'" class="grid min-w-0 gap-4 lg:grid-cols-[minmax(17rem,0.36fr)_minmax(0,0.64fr)]">
-      <aside class="min-w-0 overflow-hidden rounded-2xl border border-border bg-surface-raised">
+      <aside class="min-w-0 overflow-hidden rounded-card bg-surface-raised shadow-card">
         <div class="space-y-4 border-b border-border-subtle p-4 sm:p-5">
           <div class="flex items-start justify-between gap-3">
             <div>
@@ -282,7 +282,7 @@ function statusMessage(item) {
         </div>
       </aside>
 
-      <section v-if="selectedCustomer" class="min-w-0 space-y-5 rounded-2xl border border-border bg-surface-raised p-4 sm:p-6" aria-labelledby="customer-title">
+      <section v-if="selectedCustomer" class="min-w-0 space-y-5 rounded-card bg-surface-raised p-4 sm:p-6 shadow-card" aria-labelledby="customer-title">
         <header class="flex flex-col gap-4 border-b border-border-subtle pb-5 sm:flex-row sm:items-start sm:justify-between">
           <div class="min-w-0">
             <div class="flex flex-wrap items-center gap-3">
@@ -335,7 +335,7 @@ function statusMessage(item) {
           </div>
 
           <div v-if="customerDomiciles.length" class="mt-4 overflow-x-auto">
-            <table class="w-full min-w-[38rem] border-separate border-spacing-0 text-left text-sm">
+            <table class="ui-table w-full min-w-[38rem] border-separate border-spacing-0 text-left text-sm">
               <thead>
                 <tr class="bg-surface-muted text-xs font-semibold text-ink-muted">
                   <th class="rounded-l-lg px-3 py-3">Domicilio</th>
@@ -388,7 +388,7 @@ function statusMessage(item) {
       </section>
     </section>
 
-    <section v-else-if="selected === 'cotizaciones'" class="overflow-hidden rounded-2xl border border-border bg-surface-raised">
+    <section v-else-if="selected === 'cotizaciones'" class="overflow-hidden rounded-card bg-surface-raised shadow-card">
       <header class="border-b border-border-subtle p-4 sm:p-5">
         <h2 class="text-lg font-semibold text-ink">Cotizaciones</h2>
         <p class="mt-1 max-w-3xl text-sm text-ink-muted">Definí cuántos pesos vale cada moneda. Se usan como valor inicial al cargar viajes y gastos; cada movimiento conserva la cotización con la que se guardó.</p>
@@ -426,7 +426,7 @@ function statusMessage(item) {
       </div>
     </section>
 
-    <section v-else class="overflow-hidden rounded-2xl border border-border bg-surface-raised">
+    <section v-else class="overflow-hidden rounded-card bg-surface-raised shadow-card">
       <header class="flex flex-col gap-4 border-b border-border-subtle p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
         <div>
           <h2 class="text-lg font-semibold text-ink">{{ selectedCatalog.label }}</h2>

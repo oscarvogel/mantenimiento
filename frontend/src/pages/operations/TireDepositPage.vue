@@ -84,7 +84,7 @@ const signed = (movement) => {
       </template>
     </PageHeading>
 
-    <p v-if="deposits.length === 0" class="rounded-xl border border-border bg-surface-raised p-5 text-sm text-ink-muted">
+    <p v-if="deposits.length === 0" class="rounded-card bg-surface-raised p-5 text-sm text-ink-muted shadow-card">
       Todavía no hay depósitos activos.
       <a :href="data.urls.masters" class="font-semibold text-primary hover:text-primary-hover">Cargalos en Maestros</a>
       para poder registrar entradas y salidas.
@@ -106,7 +106,7 @@ const signed = (movement) => {
         </a>
       </nav>
 
-      <section class="overflow-hidden rounded-xl border border-border bg-surface-raised" aria-labelledby="tire-deposit-stock">
+      <section class="overflow-hidden rounded-card bg-surface-raised shadow-card" aria-labelledby="tire-deposit-stock">
         <div class="border-b border-border-subtle px-4 py-3 sm:px-5">
           <h2 id="tire-deposit-stock" class="text-base font-bold text-ink">Existencias</h2>
         </div>
@@ -126,7 +126,7 @@ const signed = (movement) => {
         </ul>
       </section>
 
-      <section class="overflow-hidden rounded-xl border border-border bg-surface-raised" aria-labelledby="tire-deposit-movements">
+      <section class="overflow-hidden rounded-card bg-surface-raised shadow-card" aria-labelledby="tire-deposit-movements">
         <div class="border-b border-border-subtle px-4 py-3 sm:px-5">
           <h2 id="tire-deposit-movements" class="text-base font-bold text-ink">Últimos movimientos</h2>
           <p v-if="movements.length >= data.movementsLimit" class="mt-1 text-sm text-ink-muted">Se muestran los últimos {{ data.movementsLimit }}.</p>

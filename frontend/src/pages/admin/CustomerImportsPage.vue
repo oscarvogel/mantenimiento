@@ -72,7 +72,7 @@ const buttonClass = 'min-h-11 rounded-lg bg-slate-900 px-4 py-2 font-semibold te
       </section>
       <section class="overflow-hidden rounded-xl border border-slate-200 bg-white" aria-label="Clientes del archivo">
         <div class="overflow-x-auto">
-          <table class="w-full text-left text-sm">
+          <table class="ui-table w-full text-left text-sm">
             <caption class="p-4 text-left font-semibold text-slate-800">Clientes del archivo · página {{ batch.page }} de {{ batch.pages }}</caption>
             <thead class="bg-slate-50 text-slate-600"><tr><th scope="col" class="p-3">Fila</th><th scope="col" class="p-3">Cliente</th><th scope="col" class="p-3">Documento</th><th scope="col" class="p-3">Domicilio original</th><th scope="col" class="p-3">Revisión</th></tr></thead>
             <tbody class="divide-y divide-slate-100">

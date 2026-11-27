@@ -38,7 +38,7 @@ const includesId = (ids, id) => ids.includes(Number(id))
       <AdminMetric label="Inactivos" :value="data.metrics.inactive" tone="muted" />
     </section>
 
-    <details v-if="data.permissions.create" :open="Boolean(data.oldInput.nombre || data.oldInput.email || data.oldInput.motivo || data.flash?.error)" class="ui-details-animated group mb-8 overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card" aria-labelledby="new-user-title">
+    <details v-if="data.permissions.create" :open="Boolean(data.oldInput.nombre || data.oldInput.email || data.oldInput.motivo || data.flash?.error)" class="ui-details-animated group mb-8 overflow-hidden rounded-card bg-surface-raised shadow-card" aria-labelledby="new-user-title">
       <summary class="flex cursor-pointer list-none items-center gap-3 border-b border-border-subtle bg-surface-subtle px-5 py-4 hover:bg-surface-muted sm:px-6">
         <span class="flex size-10 items-center justify-center rounded-lg bg-primary-subtle text-primary">
           <UserPlusIcon class="size-5" aria-hidden="true" />
@@ -54,26 +54,26 @@ const includesId = (ids, id) => ids.includes(Number(id))
         <CsrfField :csrf="data.csrf" />
         <label class="block">
           <span class="mb-1.5 block text-sm font-medium text-ink">Nombre <span class="text-danger" aria-hidden="true">*</span></span>
-          <input name="nombre" maxlength="255" required :value="data.oldInput.nombre" autocomplete="name" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          <input name="nombre" maxlength="255" required :value="data.oldInput.nombre" autocomplete="name" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
         </label>
         <label class="block">
           <span class="mb-1.5 block text-sm font-medium text-ink">Email <span class="text-danger" aria-hidden="true">*</span></span>
-          <input type="email" name="email" maxlength="255" required :value="data.oldInput.email" autocomplete="email" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          <input type="email" name="email" maxlength="255" required :value="data.oldInput.email" autocomplete="email" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
           <span class="mt-1 block text-xs text-ink-subtle">Este email será el usuario de acceso al sistema.</span>
         </label>
         <label class="block">
           <span class="mb-1.5 block text-sm font-medium text-ink">Celular / WhatsApp</span>
-          <input name="telefono" inputmode="tel" maxlength="20" :value="data.oldInput.telefono" autocomplete="tel" placeholder="5493764123456" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          <input name="telefono" inputmode="tel" maxlength="20" :value="data.oldInput.telefono" autocomplete="tel" placeholder="5493764123456" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/20" />
           <span class="mt-1 block text-xs text-ink-subtle">Opcional. Formato internacional, solo números. Ej.: 5493764123456.</span>
         </label>
         <label class="block">
           <span class="mb-1.5 block text-sm font-medium text-ink">Contraseña inicial <span class="text-danger" aria-hidden="true">*</span></span>
-          <input type="password" name="password" minlength="8" maxlength="255" required autocomplete="new-password" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          <input type="password" name="password" minlength="8" maxlength="255" required autocomplete="new-password" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
           <span class="mt-1 block text-xs text-ink-subtle">Mínimo 8 caracteres.</span>
         </label>
         <label class="block">
           <span class="mb-1.5 block text-sm font-medium text-ink">Repetir contraseña <span class="text-danger" aria-hidden="true">*</span></span>
-          <input type="password" name="password_confirmation" minlength="8" maxlength="255" required autocomplete="new-password" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          <input type="password" name="password_confirmation" minlength="8" maxlength="255" required autocomplete="new-password" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
         </label>
 
         <fieldset class="rounded-xl border border-border-subtle bg-surface-subtle p-4">
@@ -99,7 +99,7 @@ const includesId = (ids, id) => ids.includes(Number(id))
 
         <label class="block sm:col-span-2">
           <span class="mb-1.5 block text-sm font-medium text-ink">Motivo del alta <span class="text-danger" aria-hidden="true">*</span></span>
-          <input name="motivo" minlength="5" maxlength="255" required :value="data.oldInput.motivo" placeholder="Ej.: incorporación aprobada" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          <input name="motivo" minlength="5" maxlength="255" required :value="data.oldInput.motivo" placeholder="Ej.: incorporación aprobada" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/20" />
         </label>
         <div class="sm:col-span-2">
           <button type="submit" :class="primaryButton">
@@ -120,7 +120,7 @@ const includesId = (ids, id) => ids.includes(Number(id))
       </div>
 
       <div class="space-y-4">
-        <article v-for="user in data.users" :key="user.id" class="overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card">
+        <article v-for="user in data.users" :key="user.id" class="overflow-hidden rounded-card bg-surface-raised shadow-card">
           <div class="flex flex-col gap-3 border-b border-border-subtle px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div class="flex min-w-0 items-center gap-3">
               <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary-subtle text-primary">
@@ -153,28 +153,28 @@ const includesId = (ids, id) => ids.includes(Number(id))
                 <CsrfField :csrf="data.csrf" />
                 <label class="block">
                   <span class="mb-1.5 block text-sm font-medium text-ink">Nombre</span>
-                  <input name="nombre" maxlength="255" required :value="user.name" autocomplete="name" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                  <input name="nombre" maxlength="255" required :value="user.name" autocomplete="name" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
                 </label>
                 <label class="block">
                   <span class="mb-1.5 block text-sm font-medium text-ink">Email</span>
-                  <input type="email" name="email" maxlength="255" required :value="user.email" autocomplete="email" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                  <input type="email" name="email" maxlength="255" required :value="user.email" autocomplete="email" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
                   <span class="mt-1 block text-xs leading-5 text-warning-strong">Es el usuario de acceso. Si lo cambiás, el correo anterior deja de servir para ingresar.</span>
                 </label>
                 <label class="block sm:col-span-2">
                   <span class="mb-1.5 block text-sm font-medium text-ink">Celular / WhatsApp</span>
-                  <input name="telefono" inputmode="tel" maxlength="20" :value="user.phone" autocomplete="tel" placeholder="5493764123456" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                  <input name="telefono" inputmode="tel" maxlength="20" :value="user.phone" autocomplete="tel" placeholder="5493764123456" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/20" />
                   <span class="mt-1 block text-xs text-ink-subtle">Opcional. Se usa como contacto para WhatsApp. Formato internacional, solo números.</span>
                 </label>
                 <label class="block sm:col-span-1">
                   <span class="mb-1.5 block text-sm font-medium text-ink">Estado</span>
-                  <select name="activo" :value="user.active ? '1' : '0'" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20">
+                  <select name="activo" :value="user.active ? '1' : '0'" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20">
                     <option value="1">Activo</option>
                     <option v-if="user.canDeactivate" value="0">Inactivo</option>
                   </select>
                 </label>
                 <label class="block sm:col-span-1">
                   <span class="mb-1.5 block text-sm font-medium text-ink">Motivo</span>
-                  <input name="motivo" minlength="5" maxlength="255" required class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                  <input name="motivo" minlength="5" maxlength="255" required class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
                 </label>
                 <div class="sm:col-span-2">
                   <button type="submit" :class="secondaryButton">Guardar cuenta</button>
@@ -231,7 +231,7 @@ const includesId = (ids, id) => ids.includes(Number(id))
                 </fieldset>
                 <label class="block sm:col-span-2">
                   <span class="mb-1.5 block text-sm font-medium text-ink">Motivo de la asignación</span>
-                  <input name="motivo" minlength="5" maxlength="255" required class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                  <input name="motivo" minlength="5" maxlength="255" required class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
                 </label>
                 <div class="rounded-xl border border-primary/20 bg-primary-subtle p-4 text-sm text-ink sm:col-span-2">
                   <p class="font-semibold">Resumen de acceso</p>
@@ -255,15 +255,15 @@ const includesId = (ids, id) => ids.includes(Number(id))
               <CsrfField :csrf="data.csrf" />
               <label class="block">
                 <span class="mb-1.5 block text-sm font-medium text-ink">Nueva contraseña</span>
-                <input type="password" name="password" minlength="8" maxlength="255" required autocomplete="new-password" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                <input type="password" name="password" minlength="8" maxlength="255" required autocomplete="new-password" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
               </label>
               <label class="block">
                 <span class="mb-1.5 block text-sm font-medium text-ink">Repetir contraseña</span>
-                <input type="password" name="password_confirmation" minlength="8" maxlength="255" required autocomplete="new-password" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                <input type="password" name="password_confirmation" minlength="8" maxlength="255" required autocomplete="new-password" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
               </label>
               <label class="block">
                 <span class="mb-1.5 block text-sm font-medium text-ink">Motivo</span>
-                <input name="motivo" minlength="5" maxlength="255" required class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                <input name="motivo" minlength="5" maxlength="255" required class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
               </label>
               <div class="sm:col-span-3">
                 <button type="submit" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-warning-strong px-4 py-2.5 text-sm font-semibold text-warning-strong transition-colors hover:bg-warning-subtle">

@@ -134,7 +134,7 @@ const reportIncident = async () => {
 
 <template>
   <div class="mx-auto max-w-3xl space-y-4 pb-8">
-    <section class="rounded-2xl border border-border bg-surface-raised p-5 shadow-sm">
+    <section class="rounded-card bg-surface-raised p-5 shadow-card">
       <div class="flex items-start justify-between gap-3">
         <div>
           <p class="text-xs font-bold uppercase tracking-wider text-primary">Portal del chofer</p>

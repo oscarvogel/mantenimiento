@@ -132,7 +132,7 @@ describe('BranchesAdminPage single-item layout', () => {
     expect(wrapper.get('details[aria-labelledby="new-branch-title"]').attributes('open')).toBeUndefined()
     expect(wrapper.find('nav').exists()).toBe(false)
     expect(wrapper.find('[class*="xl:grid-cols-1"]').exists()).toBe(true)
-    expect(wrapper.get('input[name="codigo"]').classes()).toContain('bg-surface-raised')
+    expect(wrapper.get('input[name="codigo"]').classes()).toContain('bg-surface-muted')
   })
 })
 
@@ -209,7 +209,7 @@ describe('UsersAdminPage', () => {
 
     expect(wrapper.get('details[aria-labelledby="new-user-title"]').attributes('open')).toBeUndefined()
     expect(wrapper.find('nav[aria-label="Paginación"]').exists()).toBe(false)
-    expect(wrapper.get('input[name="nombre"]').classes()).toContain('bg-surface-raised')
+    expect(wrapper.get('input[name="nombre"]').classes()).toContain('bg-surface-muted')
     expect(wrapper.get('input[name="motivo"]').classes()).not.toContain('bg-white')
   })
 })

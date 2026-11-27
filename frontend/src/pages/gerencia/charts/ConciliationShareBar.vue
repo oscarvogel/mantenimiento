@@ -26,7 +26,7 @@ const activo = ref(null)
 </script>
 
 <template>
-  <article id="fleet-board-fuel-chart" class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6">
+  <article id="fleet-board-fuel-chart" class="rounded-card bg-surface-raised p-5 sm:p-6 shadow-card">
     <h3 class="text-base font-bold text-ink">Resultado de la conciliación</h3>
     <p class="mt-1 text-sm leading-6 text-ink-muted">Viajes del período según lo que pudo comparar la telemetría.</p>
 

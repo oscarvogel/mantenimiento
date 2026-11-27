@@ -66,7 +66,7 @@ const mostrar = (pista, banda, evento) => {
 </script>
 
 <template>
-  <article id="fleet-board-timeline" class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6">
+  <article id="fleet-board-timeline" class="rounded-card bg-surface-raised p-5 sm:p-6 shadow-card">
     <h3 class="text-base font-bold text-ink">Datos recibidos en el período</h3>
     <p class="mt-1 text-sm leading-6 text-ink-muted">
       Cada franja ámbar es un corte del proveedor: horas en que no llegaron datos de la mayoría de las unidades.

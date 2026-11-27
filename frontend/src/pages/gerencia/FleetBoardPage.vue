@@ -167,7 +167,7 @@ const tarjetas = computed(() => {
       >{{ pestana.etiqueta }}</a>
     </nav>
 
-    <details class="group mt-6 rounded-xl border border-border bg-surface-raised">
+    <details class="group mt-6 rounded-card bg-surface-raised shadow-card">
       <summary class="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 marker:hidden sm:px-5">
         <span class="min-w-0">
           <span class="block text-sm font-semibold text-ink">{{ usaPeriodo ? 'Período y sucursal' : 'Sucursal' }}</span>
@@ -180,7 +180,7 @@ const tarjetas = computed(() => {
         <input type="hidden" name="vista" :value="vista" />
         <label class="grid gap-1.5 text-sm font-semibold text-ink">
           Sucursal
-          <select name="sucursal_id" class="min-h-11 rounded-lg border border-border-strong bg-surface-raised px-3 text-sm font-normal text-ink">
+          <select name="sucursal_id" class="min-h-11 rounded-pill border border-transparent bg-surface-muted px-3 text-sm font-normal text-ink">
             <option value="">Todas las autorizadas</option>
             <option
               v-for="branch in branches"
@@ -192,7 +192,7 @@ const tarjetas = computed(() => {
         </label>
         <label v-if="usaPeriodo" class="grid gap-1.5 text-sm font-semibold text-ink">
           Período
-          <select name="dias" class="min-h-11 rounded-lg border border-border-strong bg-surface-raised px-3 text-sm font-normal text-ink">
+          <select name="dias" class="min-h-11 rounded-pill border border-transparent bg-surface-muted px-3 text-sm font-normal text-ink">
             <option v-for="dias in opciones.dias" :key="dias" :value="dias" :selected="Number(filtros.dias) === Number(dias)">
               Últimos {{ dias }} días
             </option>
@@ -208,7 +208,7 @@ const tarjetas = computed(() => {
     <section aria-labelledby="fleet-board-summary" class="mt-6">
       <h2 id="fleet-board-summary" class="sr-only">Resumen</h2>
       <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
-        <article v-for="card in tarjetas" :key="card.label" class="rounded-xl border border-border bg-surface-raised p-4">
+        <article v-for="card in tarjetas" :key="card.label" class="rounded-card bg-surface-raised p-4 shadow-card">
           <p class="text-xs font-bold uppercase tracking-wide text-ink-muted">{{ card.label }}</p>
           <p class="mt-1 text-2xl font-bold tabular-nums text-ink">{{ card.value }}</p>
           <p class="mt-1 text-xs leading-5 text-ink-muted">{{ card.hint }}</p>
@@ -265,12 +265,12 @@ const tarjetas = computed(() => {
         </div>
       </section>
 
-      <section class="mt-6 overflow-hidden rounded-xl border border-border bg-surface-raised" aria-labelledby="fleet-board-units">
+      <section class="mt-6 overflow-hidden rounded-card bg-surface-raised shadow-card" aria-labelledby="fleet-board-units">
         <div class="border-b border-border px-5 py-4 sm:px-6">
           <h2 id="fleet-board-units" class="text-lg font-bold text-ink">Uso por unidad</h2>
         </div>
         <div v-if="unidades.length" class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-border text-left text-sm">
+          <table class="ui-table min-w-full divide-y divide-border text-left text-sm">
             <thead class="bg-surface-muted text-xs font-semibold uppercase tracking-wide text-ink-muted">
               <tr>
                 <th scope="col" class="px-4 py-3">Unidad</th>
@@ -313,7 +313,7 @@ const tarjetas = computed(() => {
         </p>
       </section>
 
-      <section v-if="excesos.length" class="mt-6 overflow-hidden rounded-xl border border-border bg-surface-raised" aria-labelledby="fleet-board-speeding">
+      <section v-if="excesos.length" class="mt-6 overflow-hidden rounded-card bg-surface-raised shadow-card" aria-labelledby="fleet-board-speeding">
         <div class="border-b border-border px-5 py-4 sm:px-6">
           <h2 id="fleet-board-speeding" class="text-lg font-bold text-ink">Excesos de velocidad</h2>
           <p class="mt-1 text-sm leading-6 text-ink-muted">
@@ -339,7 +339,7 @@ const tarjetas = computed(() => {
     <!-- Services por GPS -->
     <template v-else>
     <ServiceKmChart class="mt-6" :planes="planes" :format-km="kmTexto" />
-    <section class="mt-6 overflow-hidden rounded-xl border border-border bg-surface-raised" aria-labelledby="fleet-board-services">
+    <section class="mt-6 overflow-hidden rounded-card bg-surface-raised shadow-card" aria-labelledby="fleet-board-services">
       <div class="border-b border-border px-5 py-4 sm:px-6">
         <h2 id="fleet-board-services" class="text-lg font-bold text-ink">Próximo service estimado con el GPS</h2>
         <p class="mt-1 text-sm leading-6 text-ink-muted">
@@ -348,7 +348,7 @@ const tarjetas = computed(() => {
         </p>
       </div>
       <div v-if="planes.length" class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-border text-left text-sm">
+        <table class="ui-table min-w-full divide-y divide-border text-left text-sm">
           <thead class="bg-surface-muted text-xs font-semibold uppercase tracking-wide text-ink-muted">
             <tr>
               <th scope="col" class="px-4 py-3">Unidad y service</th>

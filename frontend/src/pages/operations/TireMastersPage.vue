@@ -117,7 +117,7 @@ const brandOptionsFor = (item) => {
       </button>
     </div>
 
-    <section v-if="data.canEdit" class="rounded-xl border border-border bg-surface-raised p-4 sm:p-5" :aria-labelledby="`tire-master-create-${selected}`">
+    <section v-if="data.canEdit" class="rounded-card bg-surface-raised p-4 sm:p-5 shadow-card" :aria-labelledby="`tire-master-create-${selected}`">
       <h2 :id="`tire-master-create-${selected}`" class="text-base font-bold text-ink">{{ copy[selected].create }}</h2>
 
       <p v-if="cannotCreateModel" class="mt-2 text-sm text-ink-muted">
@@ -160,7 +160,7 @@ const brandOptionsFor = (item) => {
       </form>
     </section>
 
-    <section class="overflow-hidden rounded-xl border border-border bg-surface-raised" :aria-labelledby="`tire-master-list-${selected}`">
+    <section class="overflow-hidden rounded-card bg-surface-raised shadow-card" :aria-labelledby="`tire-master-list-${selected}`">
       <div class="flex flex-col gap-3 border-b border-border-subtle p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
         <h2 :id="`tire-master-list-${selected}`" class="text-base font-bold text-ink">
           {{ catalogs[selected]?.label }}

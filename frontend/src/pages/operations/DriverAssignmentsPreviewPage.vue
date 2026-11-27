@@ -49,8 +49,8 @@ function statusIcon(status) {
 
     <PanelCard title="Resultado por fila" :count="data.rows.length" flush>
       <div class="overflow-x-auto">
-        <table class="w-full min-w-[68rem] text-left text-sm">
-          <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
+        <table class="ui-table w-full min-w-[68rem] text-left text-sm">
+          <thead class="text-xs font-semibold text-ink-subtle">
             <tr>
               <th class="px-5 py-3">Origen</th>
               <th class="px-5 py-3">Patente</th>

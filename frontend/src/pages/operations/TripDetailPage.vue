@@ -57,8 +57,8 @@ const facts = computed(() => [
       <PanelCard v-for="section in sections" :key="section.key" :title="section.title" :count="(data[section.key] ?? []).length">
         <p v-if="!(data[section.key] ?? []).length" class="text-sm text-ink-muted">Este viaje no tiene registros en esta sección.</p>
         <div v-else class="overflow-x-auto">
-          <table class="w-full min-w-[42rem] text-left text-sm">
-            <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th v-for="([key, label]) in section.columns" :key="key" class="whitespace-nowrap px-3 py-2">{{ label }}</th></tr></thead>
+          <table class="ui-table w-full min-w-[42rem] text-left text-sm">
+            <thead class="text-xs font-semibold text-ink-subtle"><tr><th v-for="([key, label]) in section.columns" :key="key" class="whitespace-nowrap px-3 py-2">{{ label }}</th></tr></thead>
             <tbody class="divide-y divide-border-subtle">
               <tr v-for="(row, index) in data[section.key]" :key="`${row.item ?? row.id ?? index}-${row.sub_item ?? ''}`">
                 <td v-for="([key]) in section.columns" :key="key" class="max-w-64 px-3 py-2 text-ink-muted">{{ formatted(key, row[key]) }}</td>

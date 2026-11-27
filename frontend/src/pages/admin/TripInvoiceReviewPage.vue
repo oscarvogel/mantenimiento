@@ -78,7 +78,7 @@ const search = async (item) => {
     <p class="text-sm text-ink-muted">{{ data.import?.company }} · importación #{{ data.import?.id }} · {{ pagination.total }} facturas</p>
 
     <section class="space-y-4">
-      <article v-for="item in items" :key="item.id" class="rounded-2xl border border-border bg-surface-raised p-5 shadow-sm">
+      <article v-for="item in items" :key="item.id" class="rounded-card bg-surface-raised p-5 shadow-card">
         <div class="flex flex-wrap items-start justify-between gap-4">
           <div class="min-w-0">
             <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Factura #{{ item.clave_legacy }} · {{ uiLabels.humanizeCode(item.tipo || 'sin tipo') }} · {{ fmtDate(item.fecha) }}</p>

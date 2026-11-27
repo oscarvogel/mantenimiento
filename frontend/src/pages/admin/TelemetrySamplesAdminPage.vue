@@ -64,37 +64,37 @@ const formatNumber = (value, digits = 1) => value === null || value === undefine
       description="Elegí una empresa y su integración para revisar el histórico guardado. En los intervalos Wialon nuevos también podés comparar cada mensaje original con los valores normalizados."
     />
 
-    <form method="get" :action="basePath" class="rounded-xl border border-border bg-surface-raised p-5 shadow-card sm:p-6">
+    <form method="get" :action="basePath" class="rounded-card bg-surface-raised p-5 shadow-card sm:p-6">
       <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-6 xl:items-end">
         <label class="space-y-1.5 text-sm font-medium text-ink">
           <span>Empresa</span>
-          <select name="empresa" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" @change="$event.target.form.submit()">
+          <select name="empresa" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" @change="$event.target.form.submit()">
             <option v-for="company in data.companies" :key="company.id" :value="company.id" :selected="company.id === data.selectedCompanyId">{{ company.label }}</option>
           </select>
         </label>
         <label class="space-y-1.5 text-sm font-medium text-ink">
           <span>Proveedor de datos</span>
-          <select name="integracion" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" :disabled="data.integrations.length === 0">
+          <select name="integracion" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" :disabled="data.integrations.length === 0">
             <option v-for="integration in data.integrations" :key="integration.id" :value="integration.id" :selected="integration.id === data.selectedIntegrationId">{{ integration.label }}</option>
           </select>
         </label>
         <label class="space-y-1.5 text-sm font-medium text-ink">
           <span>Datos para revisar</span>
-          <select name="vista" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20">
+          <select name="vista" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20">
             <option v-for="view in data.availableViews" :key="view.id" :value="view.id" :selected="view.id === data.view">{{ view.label }}</option>
           </select>
         </label>
         <label class="space-y-1.5 text-sm font-medium text-ink">
           <span>Unidad externa</span>
-          <input name="unidad" :value="data.filters.unit" type="search" maxlength="100" placeholder="ID o nombre informado" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          <input name="unidad" :value="data.filters.unit" type="search" maxlength="100" placeholder="ID o nombre informado" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
         </label>
         <label class="space-y-1.5 text-sm font-medium text-ink">
           <span>Desde</span>
-          <input name="desde" :value="data.filters.from" type="date" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          <input name="desde" :value="data.filters.from" type="date" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
         </label>
         <label class="space-y-1.5 text-sm font-medium text-ink">
           <span>Hasta</span>
-          <input name="hasta" :value="data.filters.to" type="date" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          <input name="hasta" :value="data.filters.to" type="date" class="min-h-11 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
         </label>
       </div>
       <div class="mt-4 flex flex-wrap items-center gap-3">
@@ -106,7 +106,7 @@ const formatNumber = (value, digits = 1) => value === null || value === undefine
       </div>
     </form>
 
-    <section v-if="data.selectedIntegration" class="rounded-xl border border-border bg-surface-raised p-5 shadow-card sm:p-6" aria-label="Estado de la integración">
+    <section v-if="data.selectedIntegration" class="rounded-card bg-surface-raised p-5 shadow-card sm:p-6" aria-label="Estado de la integración">
       <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
           <p class="text-xs font-bold uppercase tracking-wide text-ink-muted">Integración seleccionada</p>
@@ -128,12 +128,12 @@ const formatNumber = (value, digits = 1) => value === null || value === undefine
       <ExclamationTriangleIcon class="size-5 shrink-0" aria-hidden="true" />
       <div><h2 class="font-semibold">El histórico todavía no está preparado</h2><p class="mt-1 text-sm">No se encontró la tabla de muestras. Hay que aplicar la migración de telemetría antes de poder consultar capturas.</p></div>
     </section>
-    <section v-else-if="data.companies.length === 0" class="rounded-xl border border-border bg-surface-raised p-8 text-center text-sm text-ink-muted shadow-card">No hay empresas para consultar.</section>
-    <section v-else-if="data.integrations.length === 0" class="flex gap-3 rounded-xl border border-border bg-surface-raised p-5 text-ink-muted shadow-card">
+    <section v-else-if="data.companies.length === 0" class="rounded-card bg-surface-raised p-8 text-center text-sm text-ink-muted shadow-card">No hay empresas para consultar.</section>
+    <section v-else-if="data.integrations.length === 0" class="flex gap-3 rounded-card bg-surface-raised p-5 text-ink-muted shadow-card">
       <CircleStackIcon class="size-5 shrink-0" aria-hidden="true" />
       <div><h2 class="font-semibold text-ink">Esta empresa no tiene un proveedor configurado</h2><p class="mt-1 text-sm">Elegí otra empresa o revisá la configuración de telemetría de esta cuenta.</p></div>
     </section>
-    <section v-else class="overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card">
+    <section v-else class="overflow-hidden rounded-card bg-surface-raised shadow-card">
       <div class="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle px-5 py-4">
         <div><h2 class="font-semibold text-ink">Capturas crudas</h2><p class="mt-1 text-sm text-ink-muted">{{ data.total ? `Mostrando ${firstRow}–${lastRow} de ${data.total.toLocaleString('es-AR')}` : 'No hay muestras para estos filtros.' }}</p></div>
         <div class="flex flex-wrap items-center gap-2">
@@ -144,11 +144,11 @@ const formatNumber = (value, digits = 1) => value === null || value === undefine
         </div>
       </div>
       <div v-if="data.view === 'buckets' ? data.buckets.length : data.samples.length" class="overflow-x-auto">
-        <table class="min-w-[1250px] w-full text-left text-sm">
-          <thead v-if="data.view === 'buckets'" class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr>
+        <table class="ui-table min-w-[1250px] w-full text-left text-sm">
+          <thead v-if="data.view === 'buckets'" class="text-xs font-semibold text-ink-subtle"><tr>
             <th class="px-4 py-3">Intervalo UTC</th><th class="px-4 py-3">Unidad / equipo</th><th class="px-4 py-3">Combustible</th><th class="px-4 py-3">Kilometraje / motor</th><th class="px-4 py-3">Ralentí / motor</th><th class="px-4 py-3">Velocidad / posición</th><th class="px-4 py-3">Mensaje original</th>
           </tr></thead>
-          <thead v-else class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr>
+          <thead v-else class="text-xs font-semibold text-ink-subtle"><tr>
             <th class="px-4 py-3">Observada / ingresada</th><th class="px-4 py-3">Unidad / equipo</th><th class="px-4 py-3">Posición</th><th class="px-4 py-3">Uso y combustible</th><th class="px-4 py-3">Estado</th><th class="px-4 py-3">Sensores / anomalías</th>
           </tr></thead>
           <tbody class="divide-y divide-border-subtle">

@@ -50,7 +50,7 @@ const toneClass = (tone) => ({
       </div>
     </section>
 
-    <div class="rounded-xl border border-border bg-surface-raised px-5 py-4 text-sm text-ink-muted shadow-card">
+    <div class="rounded-card bg-surface-raised px-5 py-4 text-sm text-ink-muted shadow-card">
       <strong class="text-ink">Origen actual:</strong>
       {{ data.settings.source === 'database' ? 'configuración guardada en el sistema' : 'variables de entorno (.env)' }}.
       <span v-if="data.settings.updatedAt"> Última modificación: {{ format.formatDateTime(data.settings.updatedAt) }}.</span>
@@ -60,7 +60,7 @@ const toneClass = (tone) => ({
     <form method="post" :action="data.actions.save" class="space-y-6">
       <CsrfField :csrf="data.csrf" />
 
-      <section class="overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card">
+      <section class="overflow-hidden rounded-card bg-surface-raised shadow-card">
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle px-5 py-4 sm:px-6">
           <div class="flex items-center gap-3">
             <span class="flex size-10 items-center justify-center rounded-lg bg-primary-subtle text-primary">
@@ -130,7 +130,7 @@ const toneClass = (tone) => ({
         </div>
       </section>
 
-      <section class="overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card">
+      <section class="overflow-hidden rounded-card bg-surface-raised shadow-card">
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle px-5 py-4 sm:px-6">
           <div class="flex items-center gap-3">
             <span class="flex size-10 items-center justify-center rounded-lg bg-accent-subtle text-accent-active"><GlobeAltIcon class="size-5" /></span>
@@ -150,7 +150,7 @@ const toneClass = (tone) => ({
         </div>
       </section>
 
-      <section class="overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card">
+      <section class="overflow-hidden rounded-card bg-surface-raised shadow-card">
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle px-5 py-4 sm:px-6">
           <div class="flex items-center gap-3">
             <span class="flex size-10 items-center justify-center rounded-lg bg-success-subtle text-success"><PaperAirplaneIcon class="size-5" /></span>
@@ -188,14 +188,14 @@ const toneClass = (tone) => ({
         </div>
       </section>
 
-      <div class="flex items-center gap-3 rounded-xl border border-border bg-surface-raised p-4 shadow-card">
+      <div class="flex items-center gap-3 rounded-card bg-surface-raised p-4 shadow-card">
         <LockClosedIcon class="size-5 text-ink-muted" />
         <p class="flex-1 text-sm text-ink-muted">Las contraseñas y claves privadas se guardan cifradas y nunca vuelven al navegador.</p>
         <button type="submit" :class="primaryButton">Guardar configuración</button>
       </div>
     </form>
 
-    <section class="rounded-xl border border-border bg-surface-raised p-5 shadow-card sm:p-6">
+    <section class="rounded-card bg-surface-raised p-5 shadow-card sm:p-6">
       <h2 class="font-semibold text-ink">Probar correo</h2>
       <p class="mt-1 text-sm text-ink-muted">Usa la configuración ya guardada. Guardá primero cualquier cambio pendiente.</p>
       <form method="post" :action="data.actions.testEmail" class="mt-4 flex flex-col gap-3 sm:flex-row">

@@ -76,7 +76,7 @@ const closeEdit = () => {
     </PageHeading>
 
     <section class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Resumen de vencimientos">
-      <div class="rounded-xl border border-border bg-surface-raised p-5">
+      <div class="rounded-card bg-surface-raised p-5 shadow-card">
         <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Mostrados</p>
         <p class="mt-2 text-3xl font-bold text-ink">{{ data.summary.total }}</p>
       </div>
@@ -88,7 +88,7 @@ const closeEdit = () => {
         <p class="text-xs font-semibold uppercase tracking-wide text-warning-foreground">Próximos 7 días</p>
         <p class="mt-2 text-3xl font-bold text-warning-foreground">{{ data.summary.next7 }}</p>
       </div>
-      <div class="rounded-xl border border-border bg-surface-raised p-5">
+      <div class="rounded-card bg-surface-raised p-5 shadow-card">
         <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Próximos 30 días</p>
         <p class="mt-2 text-3xl font-bold text-ink">{{ data.summary.next30 }}</p>
       </div>
@@ -169,8 +169,8 @@ const closeEdit = () => {
 
       <template v-else>
         <div class="hidden overflow-x-auto md:block">
-          <table class="w-full min-w-[64rem] text-left text-sm">
-            <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
+          <table class="ui-table w-full min-w-[64rem] text-left text-sm">
+            <thead class="text-xs font-semibold text-ink-subtle">
               <tr>
                 <th class="px-5 py-3">Sujeto</th>
                 <th class="px-5 py-3">Vencimiento</th>

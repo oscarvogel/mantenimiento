@@ -73,8 +73,8 @@ const identity = computed(() => [
     <PanelCard title="Base de liquidación y comisión por tramo" :count="legs.length" class="mb-5" flush>
       <p v-if="legs.length === 0" class="p-5 text-sm text-ink-muted">Todavía no hay tramos cargados.</p>
       <div v-else class="overflow-x-auto">
-        <table class="w-full min-w-[52rem] text-left text-sm" data-testid="driver-settlement-legs">
-          <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
+        <table class="ui-table w-full min-w-[52rem] text-left text-sm" data-testid="driver-settlement-legs">
+          <thead class="text-xs font-semibold text-ink-subtle">
             <tr>
               <th class="px-3 py-2">#</th>
               <th class="px-3 py-2">Recorrido</th>

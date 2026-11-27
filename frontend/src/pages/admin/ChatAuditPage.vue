@@ -68,7 +68,7 @@ onMounted(() => load(1))
       <p class="mt-1 text-sm text-ink-muted">{{ data.subtitle }}</p>
     </header>
 
-    <form class="grid gap-3 rounded-xl border border-border bg-surface-raised p-4" @submit.prevent="load(1)">
+    <form class="grid gap-3 rounded-card bg-surface-raised p-4 shadow-card" @submit.prevent="load(1)">
       <input v-if="showCompanyFilter" v-model="filters.companyId" class="rounded-lg border border-border-strong bg-surface px-3 py-2 text-ink placeholder:text-ink-subtle focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" inputmode="numeric" placeholder="ID empresa" aria-label="ID de empresa">
       <input v-model="filters.userId" class="rounded-lg border border-border-strong bg-surface px-3 py-2 text-ink placeholder:text-ink-subtle focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" inputmode="numeric" placeholder="ID usuario" aria-label="ID de usuario">
       <input v-model="filters.dateFrom" class="rounded-lg border border-border-strong bg-surface px-3 py-2 text-ink focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" type="date" aria-label="Fecha desde">
@@ -84,7 +84,7 @@ onMounted(() => load(1))
     <p v-if="loading" class="text-sm text-ink-muted" role="status" aria-live="polite">Cargando conversaciones…</p>
     <div v-else-if="!items.length" class="rounded-xl border border-dashed border-border-strong p-8 text-center text-ink-muted">No hay conversaciones para estos filtros.</div>
 
-    <div v-else class="overflow-hidden rounded-xl border border-border bg-surface-raised">
+    <div v-else class="overflow-hidden rounded-card bg-surface-raised shadow-card">
       <div class="hidden grid-cols-12 gap-3 border-b border-border-subtle bg-surface-subtle px-4 py-2 text-xs font-semibold uppercase text-ink-muted md:grid">
         <span class="col-span-3">Empresa / usuario</span><span class="col-span-4">Conversación</span><span class="col-span-2">Mensajes</span><span class="col-span-3">Última actividad</span>
       </div>

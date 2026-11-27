@@ -669,7 +669,7 @@ onMounted(initialize)
       <button type="button" role="tab" :aria-selected="activeTab === 'history'" class="min-h-11 inline-flex shrink-0 items-center gap-2 border-b-2 px-4 text-sm font-semibold" :class="activeTab === 'history' ? 'border-primary text-primary' : 'border-transparent text-ink-muted hover:text-ink'" @click="activeTab = 'history'"><ClockIcon class="size-4" aria-hidden="true" />Escenarios guardados <span class="rounded-full bg-surface-muted px-2 py-0.5 text-xs">{{ scenarios.length }}</span></button>
     </div>
 
-    <div v-if="loading" role="status" class="rounded-xl border border-border bg-surface-raised px-5 py-8 text-center text-sm text-ink-muted">Cargando equipos e historial…</div>
+    <div v-if="loading" role="status" class="rounded-card bg-surface-raised px-5 py-8 text-center text-sm text-ink-muted shadow-card">Cargando equipos e historial…</div>
 
     <template v-else-if="activeTab === 'calculator'">
       <section v-if="pendingAssumptions.length" data-testid="assumptions-warning" role="status" aria-live="polite" aria-labelledby="assumptions-warning-title" class="rounded-lg border border-warning/30 bg-warning-subtle px-3 py-2.5 text-sm">
@@ -700,7 +700,7 @@ onMounted(initialize)
           <span class="min-w-0"><span class="block truncate text-xs font-semibold sm:text-sm">{{ step.shortTitle }}</span><span v-if="index < 3" class="block text-xs sm:text-xs">{{ pendingForStep(index) ? `${pendingForStep(index)} pendientes` : 'Listo' }}</span></span>
         </button>
       </nav>
-      <section v-if="activeResult" class="rounded-xl border border-border bg-surface-raised p-4 xl:hidden" aria-labelledby="mobile-result-title" aria-live="polite">
+      <section v-if="activeResult" class="rounded-card bg-surface-raised p-4 xl:hidden shadow-card" aria-labelledby="mobile-result-title" aria-live="polite">
         <div class="flex items-start justify-between gap-3">
           <div class="min-w-0"><p class="text-xs font-bold uppercase tracking-wide text-primary">Costo teórico</p><h2 id="mobile-result-title" class="mt-0.5 text-sm font-semibold text-ink">Costo por km recorrido</h2><p class="mt-1 text-2xl font-bold tracking-tight text-ink tabular-nums">{{ currencyLabel(costArs, 'ARS') }} <span class="text-sm font-semibold text-ink-muted">/ km</span></p><p class="text-xs text-ink-muted">{{ currencyLabel(costUsd, 'USD') }} / km</p></div>
           <span class="shrink-0 rounded-full px-2 py-1 text-xs font-bold" :class="resultIsStale ? 'bg-warning-subtle text-warning-strong' : coverageComplete ? 'bg-success-subtle text-success-strong' : 'bg-warning-subtle text-warning-strong'">{{ resultIsStale ? 'Actualizar' : coverageComplete ? 'Completo' : 'Parcial' }}</span>
@@ -713,7 +713,7 @@ onMounted(initialize)
       </section>
       <div class="grid items-start gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)]">
         <div class="space-y-6">
-          <section v-show="wizardStep === 0" class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="equipment-title">
+          <section v-show="wizardStep === 0" class="rounded-card bg-surface-raised p-5 sm:p-6 shadow-card" aria-labelledby="equipment-title">
             <div class="mb-4 flex items-start gap-3"><span class="rounded-lg bg-primary-subtle p-2 text-primary"><TruckIcon class="size-5" aria-hidden="true" /></span><div><h2 id="equipment-title" class="font-bold text-ink">Conjunto y utilización</h2><p class="mt-1 text-sm text-ink-muted">El escenario general no requiere asociar equipos. Si querés identificar el conjunto, seleccioná tractor y semi. Los kilómetros mensuales incluyen recorridos cargados y vacíos.</p></div></div>
             <div class="grid gap-4 sm:grid-cols-2">
               <label class="grid gap-1.5 text-sm font-semibold text-ink"><span class="inline-flex items-center gap-1">Tractor (opcional)<ContextHelp label="Ayuda: tractor opcional" text="Asociar un tractor solo identifica qué equipo representa el escenario. No toma automáticamente un precio de compra ni es obligatorio para calcular." /></span><select v-model="selection.tractor_id" :disabled="!canEdit" class="min-h-11 rounded-lg border border-border-strong bg-surface px-3 font-normal disabled:opacity-70"><option value="">Sin asociar</option><option v-for="item in assets.tractores" :key="item.id" :value="String(item.id)">{{ item.codigo }} · {{ item.descripcion }}<template v-if="item.sucursal"> ({{ item.sucursal }})</template></option></select></label>
@@ -723,7 +723,7 @@ onMounted(initialize)
             <div class="mt-4 rounded-lg bg-info-subtle p-3 text-sm text-info-strong">Asociar un tractor o un semi es opcional; podés seleccionar uno solo, ambos o ninguno.</div>
           </section>
 
-          <section v-show="wizardStep === 0" class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="quote-title">
+          <section v-show="wizardStep === 0" class="rounded-card bg-surface-raised p-5 sm:p-6 shadow-card" aria-labelledby="quote-title">
             <div class="mb-4"><h2 id="quote-title" class="font-bold text-ink">Cotización de referencia</h2><p class="mt-1 text-sm text-ink-muted">Se aplica a los importes en USD de este escenario y queda guardada con él.</p></div>
             <div class="grid gap-4 sm:grid-cols-3">
               <label class="grid gap-1.5 text-sm font-semibold text-ink"><span class="inline-flex items-center gap-1">ARS por 1 USD<ContextHelp label="Ayuda: cotización del dólar" text="Pesos equivalentes a un dólar. El cálculo usa esta cotización para convertir a pesos los valores cargados en USD, como reposición de tractor y semi." /></span><input id="fx-rate" v-model="parameters.fx.ars_por_usd" type="number" min="0.01" step="0.01" inputmode="decimal" :disabled="!canEdit" placeholder="Ej.: 1.250" class="min-h-11 rounded-lg border border-border-strong bg-surface px-3 font-normal disabled:opacity-70" @input="markExchangeRateManual" /></label>
@@ -737,7 +737,7 @@ onMounted(initialize)
             <p v-if="exchangeError" role="status" class="mt-2 rounded-lg bg-warning-subtle p-3 text-xs text-warning-strong">{{ exchangeError }} La cotización queda editable para que puedas cargarla manualmente.</p>
           </section>
 
-          <section v-show="wizardStep === 0" class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="assets-title">
+          <section v-show="wizardStep === 0" class="rounded-card bg-surface-raised p-5 sm:p-6 shadow-card" aria-labelledby="assets-title">
             <div class="mb-4"><h2 id="assets-title" class="font-bold text-ink">Valor y vida útil de los activos</h2><p class="mt-1 text-sm text-ink-muted">En USD, por separado. Se estima depreciación lineal entre valor de reposición y residual. Si dejás residual vacío, se estima en 30% del valor de reposición.</p></div>
             <div class="grid gap-4 lg:grid-cols-2">
               <fieldset class="min-w-0 rounded-lg border border-border-subtle p-4"><legend class="px-1 text-sm font-bold text-ink">Tractor</legend><div class="grid gap-3 sm:grid-cols-3"><label class="grid gap-1 text-xs font-semibold text-ink-muted"><span class="inline-flex items-center gap-1">Reposición (US$)<ContextHelp label="Ayuda: valor de reposición del tractor" text="Precio estimado para reemplazar el tractor por uno equivalente, expresado en dólares. El sistema le resta el residual y distribuye la depreciación durante la vida útil." /></span><input id="tractor-value" v-model="parameters.tractor.valor_usd" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /></label><label class="grid gap-1 text-xs font-semibold text-ink-muted"><span class="inline-flex items-center gap-1">Residual (US$)<ContextHelp label="Ayuda: valor residual del tractor" text="Valor que se estima recuperar al terminar la vida útil. Si lo dejás vacío, el cálculo usa el 30 % del valor de reposición; podés ingresar otro valor." /></span><input v-model="parameters.tractor.valor_residual_usd" @input="markResidualManual('tractor')" type="number" min="0" step="0.01" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /><span v-if="numberOrNull(parameters.tractor.valor_residual_usd) === null && effectiveResidual('', parameters.tractor.valor_usd) !== null" class="text-xs font-normal">Estimado al 30%: {{ currencyLabel(effectiveResidual('', parameters.tractor.valor_usd), 'USD') }}</span></label><label class="grid gap-1 text-xs font-semibold text-ink-muted"><span class="inline-flex items-center gap-1">Vida útil (años)<ContextHelp label="Ayuda: vida útil del tractor" text="Años durante los que se estima que el tractor estará en servicio antes de reemplazarlo. Divide la depreciación entre esos años." /></span><input v-model="parameters.tractor.vida_util_anios" type="number" min="0.1" step="0.1" :disabled="!canEdit" class="min-h-10 w-full rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink disabled:opacity-70" /></label></div></fieldset>
@@ -745,7 +745,7 @@ onMounted(initialize)
             </div>
           </section>
 
-          <section v-show="wizardStep === 1" class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="variable-costs-title">
+          <section v-show="wizardStep === 1" class="rounded-card bg-surface-raised p-5 sm:p-6 shadow-card" aria-labelledby="variable-costs-title">
             <div class="mb-4"><h2 id="variable-costs-title" class="font-bold text-ink">Costos por uso</h2><p class="mt-1 text-sm text-ink-muted">Ingresá supuestos representativos de tu operación. Los importes en USD usan la cotización indicada arriba.</p></div>
             <details class="mb-4 rounded-lg border border-info/30 bg-info-subtle p-3 text-sm text-info-strong">
               <summary class="flex cursor-pointer list-none items-center justify-between gap-3 font-semibold">Supuestos técnicos documentados <span class="text-xs font-medium">Opcional · ver</span></summary>
@@ -783,7 +783,7 @@ onMounted(initialize)
             </div>
           </section>
 
-          <section v-show="wizardStep === 2" id="monthly-costs" class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="monthly-title">
+          <section v-show="wizardStep === 2" id="monthly-costs" class="rounded-card bg-surface-raised p-5 sm:p-6 shadow-card" aria-labelledby="monthly-title">
             <div class="mb-4"><h2 id="monthly-title" class="font-bold text-ink">Costos mensuales y mantenimiento</h2><p class="mt-1 text-sm text-ink-muted">Cada costo mensual se distribuye sobre los km previstos. Mantenimiento y reparaciones se estiman juntos como porcentaje del costo total.</p></div>
             <div class="space-y-2">
               <div v-for="(item, index) in parameters.costos_mensuales" :key="`monthly-${index}`" class="grid grid-cols-[minmax(5rem,1fr)_minmax(5rem,1fr)_4.5rem_1.5rem] gap-2 sm:grid-cols-[minmax(7rem,1fr)_minmax(7rem,1fr)_5rem_1.5rem]">
@@ -815,7 +815,7 @@ onMounted(initialize)
             </details>
           </section>
 
-          <section v-show="wizardStep === 3" class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="trip-title">
+          <section v-show="wizardStep === 3" class="rounded-card bg-surface-raised p-5 sm:p-6 shadow-card" aria-labelledby="trip-title">
             <div class="mb-4"><h2 id="trip-title" class="font-bold text-ink">Simulación de un viaje</h2><p class="mt-1 text-sm text-ink-muted">El costo del tramo no facturado y los peajes se distribuyen entre los kilómetros que sí se cobran.</p></div>
             <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <label class="grid gap-1 text-xs font-semibold text-ink-muted"><span class="inline-flex items-center gap-1">Km facturables<ContextHelp label="Ayuda: kilómetros facturables" text="Kilómetros del viaje por los que se cobrará al cliente. El costo de todos los tramos y peajes se divide por esta cantidad para sugerir una tarifa por km facturable." /></span><input v-model="trip.km_facturables" type="number" min="0" step="1" :disabled="!canEdit" class="min-h-10 rounded-lg border border-border-strong bg-surface px-3 text-sm font-normal text-ink disabled:opacity-70" /></label>
@@ -825,7 +825,7 @@ onMounted(initialize)
             </div>
           </section>
 
-          <div class="flex flex-col gap-3 rounded-xl border border-border bg-surface-raised p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+          <div class="flex flex-col gap-3 rounded-card bg-surface-raised p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5 shadow-card">
             <button v-if="wizardStep > 0" type="button" class="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border-strong px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted" @click="goToWizardStep(wizardStep - 1)"><ArrowLeftIcon class="size-4" aria-hidden="true" />Anterior</button>
             <span v-else class="hidden sm:block text-xs text-ink-muted">Podés cambiar los supuestos después.</span>
             <p class="text-center text-xs text-ink-muted">Paso {{ wizardStep + 1 }} de {{ wizardSteps.length }}</p>
@@ -837,7 +837,7 @@ onMounted(initialize)
         </div>
 
         <aside class="hidden space-y-4 xl:sticky xl:top-5 xl:block">
-          <section v-if="activeResult" class="overflow-hidden rounded-xl border border-border bg-surface-raised" aria-labelledby="result-title" aria-live="polite">
+          <section v-if="activeResult" class="overflow-hidden rounded-card bg-surface-raised shadow-card" aria-labelledby="result-title" aria-live="polite">
             <div class="border-b border-border-subtle p-5 sm:p-6">
               <div class="flex items-start justify-between gap-3"><div><p class="text-xs font-bold uppercase tracking-wide text-primary">Resultado teórico</p><h2 id="result-title" class="mt-1 text-lg font-bold text-ink">Costo por km recorrido</h2></div><span class="rounded-full px-2.5 py-1 text-xs font-bold" :class="resultIsStale ? 'bg-warning-subtle text-warning-strong' : coverageComplete ? 'bg-success-subtle text-success-strong' : 'bg-warning-subtle text-warning-strong'">{{ resultIsStale ? 'Pendiente de actualizar' : coverageComplete ? 'Cobertura completa' : 'Cobertura parcial' }}</span></div>
               <p class="mt-3 text-3xl font-bold tracking-tight text-ink tabular-nums">{{ currencyLabel(costArs, 'ARS') }}<span class="text-base font-semibold text-ink-muted"> / km</span></p>
@@ -890,12 +890,12 @@ onMounted(initialize)
     </template>
 
     <section v-else class="space-y-5" aria-labelledby="history-title">
-      <div class="flex flex-col gap-4 rounded-xl border border-border bg-surface-raised p-5 sm:flex-row sm:items-end sm:justify-between sm:p-6">
+      <div class="flex flex-col gap-4 rounded-card bg-surface-raised p-5 sm:flex-row sm:items-end sm:justify-between sm:p-6 shadow-card">
         <div><h2 id="history-title" class="text-lg font-bold text-ink">Escenarios guardados</h2><p class="mt-1 text-sm text-ink-muted">Cada versión conserva sus supuestos y cotización originales.</p></div>
         <div class="grid grid-cols-2 gap-2 sm:flex sm:items-end"><label class="grid gap-1 text-xs font-semibold text-ink-muted">Desde<input v-model="fromDate" type="date" class="min-h-10 rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink" /></label><label class="grid gap-1 text-xs font-semibold text-ink-muted">Hasta<input v-model="toDate" type="date" class="min-h-10 rounded-lg border border-border-strong bg-surface px-2 text-sm font-normal text-ink" /></label><button type="button" @click="loadScenarios" :class="[secondaryButton, 'col-span-2 sm:col-span-1']">Filtrar</button></div>
       </div>
       <div v-if="scenarios.length" class="grid gap-3 lg:grid-cols-2">
-        <article v-for="item in scenarios" :key="scenarioKey(item)" class="rounded-xl border border-border bg-surface-raised p-4 sm:p-5">
+        <article v-for="item in scenarios" :key="scenarioKey(item)" class="rounded-card bg-surface-raised p-4 sm:p-5 shadow-card">
           <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div class="min-w-0"><h3 class="truncate font-bold text-ink">{{ item.nombre || 'Escenario sin nombre' }}</h3><p class="mt-1 text-sm text-ink-muted">{{ equipmentScenarioLabel(item) }}</p><p class="mt-1 text-xs text-ink-subtle">Versión {{ item.version ?? 1 }} · {{ scenarioDate(item) }}</p></div>
             <span class="shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold" :class="item.versiones?.find((version) => version.numero === latestVersion(item))?.cobertura === 'completa' ? 'bg-success-subtle text-success-strong' : 'bg-warning-subtle text-warning-strong'">{{ item.versiones?.find((version) => version.numero === latestVersion(item))?.cobertura === 'completa' ? 'Cobertura completa' : 'Cobertura parcial' }}</span>

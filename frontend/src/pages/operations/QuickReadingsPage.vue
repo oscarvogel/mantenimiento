@@ -218,7 +218,7 @@ const focusNextReadingInput = (event) => {
       <EmptyState v-if="visibleEquipment.length === 0" class="mt-4" title="No hay coincidencias" description="Probá con otro código, patente o chasis." />
       <ul v-else class="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
         <li v-for="equipment in visibleEquipment" :key="equipment.id">
-          <a :href="reportUrl(equipment)" class="ui-interactive flex min-h-16 items-center justify-between gap-3 rounded-xl border border-border bg-surface-raised px-4 py-3 hover:border-primary/40 hover:bg-primary-subtle/40">
+          <a :href="reportUrl(equipment)" class="ui-interactive flex min-h-16 items-center justify-between gap-3 rounded-card bg-surface-raised px-4 py-3 hover:border-primary/40 hover:bg-primary-subtle/40 shadow-card">
             <span class="min-w-0">
               <span class="block truncate font-bold text-ink">{{ equipment.code }}<span v-if="equipment.plate" class="font-medium text-ink-muted"> · {{ equipment.plate }}</span></span>
               <span class="block truncate text-sm text-ink-muted">{{ equipment.typeName }}<template v-if="equipment.branchName"> · {{ equipment.branchName }}</template></span>
@@ -328,7 +328,7 @@ const focusNextReadingInput = (event) => {
       <EmptyState v-if="data.equipment.items.length === 0" class="m-4 sm:m-6" title="No hay equipos para los filtros seleccionados" />
       <EmptyState v-else-if="visibleEquipment.length === 0" class="m-4 sm:m-6" title="No hay coincidencias" description="Probá con otro código, patente o chasis, o cambiá el filtro de estado." />
       <template v-else>
-        <table role="table" aria-label="Lecturas por equipo" class="block w-full text-sm xl:table xl:table-fixed xl:border-collapse">
+        <table role="table" aria-label="Lecturas por equipo" class="ui-table block w-full text-sm xl:table xl:table-fixed xl:border-collapse">
           <thead role="rowgroup" class="sr-only bg-surface-subtle text-left text-xs text-ink-muted xl:not-sr-only xl:table-header-group">
             <tr role="row">
               <th role="columnheader" scope="col" class="w-[16%] px-4 py-3 sm:pl-6">Equipo</th>

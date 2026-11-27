@@ -78,8 +78,8 @@ defineProps({ data: { type: Object, required: true } })
       <EmptyState v-if="data.imports.items.length === 0" title="Todavía no hay importaciones" description="Las cargas dentro de tu alcance aparecerán acá." />
       <template v-else>
         <div class="hidden overflow-x-auto md:block">
-          <table class="w-full min-w-[52rem] text-left text-sm">
-            <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-6 py-3">Fecha</th><th class="px-6 py-3">Archivo</th><th class="px-6 py-3">Resultado</th><th class="px-6 py-3">Estado</th><th class="px-6 py-3"><span class="sr-only">Acción</span></th></tr></thead>
+          <table class="ui-table w-full min-w-[52rem] text-left text-sm">
+            <thead class="text-xs font-semibold text-ink-subtle"><tr><th class="px-6 py-3">Fecha</th><th class="px-6 py-3">Archivo</th><th class="px-6 py-3">Resultado</th><th class="px-6 py-3">Estado</th><th class="px-6 py-3"><span class="sr-only">Acción</span></th></tr></thead>
             <tbody class="divide-y divide-border-subtle">
               <tr v-for="item in data.imports.items" :key="item.id" class="hover:bg-secondary-100/60">
                 <td class="px-6 py-4"><span class="font-medium text-ink">{{ format.formatDateTime(item.date) }}</span><br><span class="text-xs text-ink-muted">{{ item.userName || 'Usuario' }}</span></td>

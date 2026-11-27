@@ -58,7 +58,7 @@ const buttonClass = 'min-h-11 rounded-lg bg-slate-900 px-4 py-2 font-semibold te
         <p v-if="data.preview.total === 0" role="alert" class="text-sm font-semibold text-red-800">El archivo no contiene localidades para importar.</p>
         <p v-if="data.preview.errors" role="alert" class="text-sm font-semibold text-red-800">Corregí el archivo y volvé a subirlo. No se va a guardar ninguna fila mientras haya errores. Se muestran hasta 100 errores de ejemplo.</p>
         <div v-if="data.preview.errorSamples?.length" class="overflow-x-auto rounded-lg border border-slate-200">
-          <table class="w-full min-w-[38rem] text-left text-sm">
+          <table class="ui-table w-full min-w-[38rem] text-left text-sm">
             <thead class="bg-slate-50 text-slate-600"><tr><th class="p-3">Fila</th><th class="p-3">Código</th><th class="p-3">Localidad</th><th class="p-3">Detalle</th></tr></thead>
             <tbody class="divide-y divide-slate-100"><tr v-for="row in data.preview.errorSamples" :key="`${row.row}-${row.code}`"><td class="p-3 align-top">{{ row.row }}</td><td class="p-3 align-top">{{ row.code }}</td><td class="p-3 align-top">{{ row.name }}</td><td class="p-3 align-top text-red-800"><ul><li v-for="message in row.messages" :key="message">{{ message }}</li></ul></td></tr></tbody>
           </table>

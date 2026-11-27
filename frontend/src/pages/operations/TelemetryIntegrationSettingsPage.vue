@@ -126,7 +126,7 @@ const usedUnitIds = (integrationId, equipmentId) => Object.entries(mappings[inte
       description="Conectá las cuentas de telemetría de tu empresa y elegí qué unidad del proveedor corresponde a cada equipo."
     />
 
-    <section class="rounded-2xl border border-border bg-surface-raised p-5 shadow-card sm:p-6">
+    <section class="rounded-card bg-surface-raised p-5 shadow-card sm:p-6">
       <form method="post" :action="data.actions.save" class="grid gap-5">
         <input type="hidden" :name="data.csrf.name" :value="data.csrf.hash" />
 
@@ -194,7 +194,7 @@ const usedUnitIds = (integrationId, equipmentId) => Object.entries(mappings[inte
 
     <section v-if="integrations.length" class="space-y-4">
       <h2 class="text-base font-semibold text-ink">Cuentas conectadas en esta empresa</h2>
-      <article v-for="integration in integrations" :key="integration.id" class="rounded-2xl border border-border bg-surface-raised p-5 shadow-card sm:p-6">
+      <article v-for="integration in integrations" :key="integration.id" class="rounded-card bg-surface-raised p-5 shadow-card sm:p-6">
         <div class="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p class="font-semibold text-ink">{{ integration.name }} <span class="font-normal text-ink-muted">· {{ providerLabel(integration.provider) }}</span></p>
@@ -244,7 +244,7 @@ const usedUnitIds = (integrationId, equipmentId) => Object.entries(mappings[inte
             <form v-if="snapshots[integration.id].units.length > 0" method="post" :action="integration.saveLinksUrl" class="mt-4">
               <input type="hidden" :name="data.csrf.name" :value="data.csrf.hash" />
               <div v-if="snapshots[integration.id].equipment.length" class="overflow-x-auto rounded-lg border border-border">
-                <table class="w-full min-w-[38rem] text-left text-sm">
+                <table class="ui-table w-full min-w-[38rem] text-left text-sm">
                   <thead class="bg-surface-raised text-xs uppercase tracking-wide text-ink-muted">
                     <tr>
                       <th scope="col" class="px-3 py-3 font-semibold">Equipo</th>
