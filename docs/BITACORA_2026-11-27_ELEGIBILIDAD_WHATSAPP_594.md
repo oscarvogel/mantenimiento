@@ -119,3 +119,32 @@ revertirla para volver al código anterior.
 - #595 (unidades en taller / fuera de servicio): sigue pendiente de decisión del cliente.
 - Corrección de datos históricos (intervalos inválidos, bajas con fecha futura).
 - La operación de desvinculación ya entregada en #593.
+
+## 7. Validación en staging — `fasa_189` (27/11/2026)
+
+- **Host verificado:** `fasa_189` (`192.168.0.189`). **No se modificó** el contenedor
+  `mantenimiento-staging` (`bdqictyu4q5xkfuh6aoh7sr8-20261127T112812`) ni su base
+  `mantenimiento_staging`.
+- **Base clonada:** `mantenimiento_594_verify` en el MariaDB 11.8 de staging (134 tablas, 329,8 MB),
+  creada y eliminada para esta validación.
+- **Contenedor temporal:** `mant-594-validation` desde la imagen
+  `bdqictyu4q5xkfuh6aoh7sr8:fe3c5532745530b9a382eb18ea3c2ecf7d3c958b`, con el código de `main`
+  (`70d9eafc779048f95d6bed5c208da8f8e05bb0ac`) montado en `app/`, red `coolify`, sin cron, sin SMTP
+  y sin envíos reales.
+- **Migración:** aplicada con `php spark migrate` (batch 69). Columna
+  `motivo_cancelacion varchar(40) NULL`. `up()`/`down()` idempotentes verificados sobre MariaDB,
+  incluida la reaplicación.
+- **21 comprobaciones PASS** sobre la app real y MariaDB real:
+  - `findCurrentDriver` y `evaluate` con asignación vigente;
+  - `due()` incluye la entrega elegible;
+  - asignación cerrada → `OMITIDA` + `ASIGNACION_CERRADA` + texto + auditoría;
+  - asignación que termina hoy → sigue elegible;
+  - empleado inactivo → `EMPLEADO_INACTIVO`;
+  - tipo sin kilometraje → `TIPO_SIN_KILOMETRAJE`;
+  - empresa sin WhatsApp → `WHATSAPP_EMPRESA_DESHABILITADO`;
+  - `revalidateBeforeSend` bloquea después de `due()`;
+  - un tipo que no va al chofer (`informe.gerencial.diario`) no se filtra;
+  - contadores por motivo y total.
+- **Staging intacto:** contenedor `healthy`; `mantenimiento_staging` sin la columna nueva;
+  contenedor temporal, base clonada y archivos temporales eliminados y verificados.
+- **Producción:** no se tocó.
