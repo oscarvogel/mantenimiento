@@ -376,68 +376,58 @@ html[data-theme='dark'] .ui-sidebar-surface {
   background-clip: padding-box;
 }
 
-/* Animated light/dark selector. The thumb carries the state while the two
- * icons keep the control understandable at a glance. */
-.ui-theme-toggle {
-  display: inline-flex;
-  width: 3.25rem;
-  height: 2rem;
+/* Botón de tema "Classic" de theme-toggles (Alfie Jones, MIT, v4.10.1 — toggles.dev).
+ * Copiado de su CSS; solo cambia el tamaño y el foco, que siguen al resto de la app. */
+.theme-toggle {
+  --theme-toggle__classic--duration: 500ms;
+  display: inline-grid;
+  width: 2.75rem;
+  height: 2.75rem;
   flex: 0 0 auto;
-  align-items: center;
-  border: 1px solid rgb(var(--border-strong));
+  place-items: center;
+  border: none;
   border-radius: 999px;
-  padding: 0.2rem;
-  color: rgb(var(--ink-muted));
-  background: rgb(var(--surface-muted));
+  background: none;
+  color: inherit;
+  font-size: 1.5rem;
+  cursor: pointer;
 }
 
-.ui-theme-toggle__track {
-  position: relative;
-  display: block;
-  width: 100%;
-  height: 100%;
+.theme-toggle:focus-visible {
+  outline: 2px solid rgb(var(--border-focus));
+  outline-offset: 2px;
 }
 
-.ui-theme-toggle__icon {
-  position: absolute;
-  top: 50%;
-  z-index: 1;
-  width: 0.9rem;
-  height: 0.9rem;
-  transform: translateY(-50%) scale(0.78) rotate(-18deg);
-  opacity: 0.55;
-  transition: transform 220ms ease, opacity 220ms ease, color 220ms ease;
+.theme-toggle__classic path {
+  transition-timing-function: cubic-bezier(0, 0, 0.15, 1.25);
+  transform-origin: center;
+  transition-duration: calc(var(--theme-toggle__classic--duration) * 0.8);
 }
 
-.ui-theme-toggle__sun {
-  left: 0.22rem;
+.theme-toggle__classic g path {
+  transition-property: opacity, transform;
+  transition-delay: calc(var(--theme-toggle__classic--duration) * 0.2);
 }
 
-.ui-theme-toggle__moon {
-  right: 0.22rem;
+.theme-toggle__classic :first-child path {
+  transition-property: transform, d;
 }
 
-.ui-theme-toggle__icon.is-active {
-  color: rgb(var(--accent));
-  transform: translateY(-50%) scale(1) rotate(0deg);
-  opacity: 1;
+.theme-toggle--toggled .theme-toggle__classic g path {
+  transform: scale(0.5) rotate(45deg);
+  opacity: 0;
+  transition-delay: 0s;
 }
 
-.ui-theme-toggle__thumb {
-  position: absolute;
-  top: 50%;
-  left: 0;
-  width: 1.35rem;
-  height: 1.35rem;
-  border-radius: 999px;
-  background: rgb(var(--surface-raised));
-  box-shadow: 0 1px 3px rgb(var(--shadow-rgb) / 0.24);
-  transform: translate(0, -50%);
-  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), background-color 220ms ease;
+.theme-toggle--toggled .theme-toggle__classic :first-child path {
+  d: path("M-12 5h30a1 1 0 0 0 9 13v24h-39Z");
+  transition-delay: calc(var(--theme-toggle__classic--duration) * 0.2);
 }
 
-.ui-theme-toggle__thumb.is-dark {
-  transform: translate(1.55rem, -50%);
+@supports not (d: path("")) {
+  .theme-toggle--toggled .theme-toggle__classic :first-child path {
+    transform: translate3d(-12px, 10px, 0);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -512,9 +502,8 @@ html[data-theme='dark'] .ui-sidebar-surface {
     transform: none !important;
   }
 
-  .ui-theme-toggle__icon,
-  .ui-theme-toggle__thumb {
-    transition: none;
+  .theme-toggle * {
+    transition: none !important;
   }
 
   .ui-interactive:not(:disabled):hover,
