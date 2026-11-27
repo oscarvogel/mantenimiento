@@ -148,3 +148,39 @@ revertirla para volver al código anterior.
 - **Staging intacto:** contenedor `healthy`; `mantenimiento_staging` sin la columna nueva;
   contenedor temporal, base clonada y archivos temporales eliminados y verificados.
 - **Producción:** no se tocó.
+
+## 8. Despliegue a producción — Ferozo (27/11/2026)
+
+**Orden aplicado:**
+
+1. Backup completo de `/app` en `dist/backup-pre-70d9eafc/app` (1374 archivos, 175 directorios,
+   5.221.500 bytes).
+2. Baseline verificado contra `07af593e`: 8/9 archivos idénticos; `Services.php` solo difería por
+   CRLF/LF (contenido normalizado idéntico).
+3. Subida del archivo de migración y de `migrate.php`; migración aplicada por HTTP con token.
+   - `2026-11-27-120000` aplicada, **batch 60**.
+   - Columna `motivo_cancelacion varchar(40) NULL` confirmada.
+   - `migrate.php` eliminado y verificado 404.
+4. Subida de los 15 archivos restantes: **15/15 hashes SHA-256 OK** (más el de la migración).
+5. Smoke: `/` 302, `/login` 200, manifest 200, `.env`/`app` 403, `migrate.php` 404, ficha canónica 302.
+
+**Incidente y corrección:**
+
+- El ciclo de las **16:50** falló en `notificaciones:ciclo:recoleccion` con
+  `Error: Call to a member function diff() on string`: en `scheduleDriverForEvent` la fecha pasó a
+  string para el predicado único y quedó un `$today->diff($expires)`.
+- Corrección de una línea (`$todayDate->diff($expires)`) subida de inmediato (hash verificado).
+- **PR #601** (`817a508b996ce43e14a01b9a7ca0583d1ec3b03f`) con la corrección y una prueba funcional
+  nueva (`WhatsAppExpirationDigestScheduleTest`) que cubre el resumen para chofer elegible y no
+  elegible.
+- Ciclos posteriores: **16:55, 17:00 y 17:05 completos**, incluida `recoleccion` (65 eventos) y
+  `despacho` con el nuevo contador `whatsapp_cancelled`.
+- Única etapa fallida desde las 16:45: la `recoleccion` de las 16:50.
+
+**Estado final:**
+
+- 0 entregas `PENDIENTE`/`REINTENTO` con destinatario inelegible.
+- 0 cancelaciones nuevas (no había pendientes inelegibles al momento del deploy).
+- Cola: 2 recordatorios semanales en `PENDIENTE_CONFIRMACION` (ya enviados), sin cambios.
+- `migrate.php` ausente; `writable/` y el resto del sitio sin cambios.
+- Backup de rollback disponible en `dist/backup-pre-70d9eafc/app`.
