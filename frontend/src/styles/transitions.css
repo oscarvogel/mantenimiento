@@ -376,6 +376,43 @@ html[data-theme='dark'] .ui-sidebar-surface {
   background-clip: padding-box;
 }
 
+/* Cambio de tema: el tema nuevo entra como un corte en diagonal de 600 ms (theme.js).
+ * A oscuro barre desde arriba a la izquierda; a claro, en sentido contrario. Solo anima
+ * la captura de la página entera, así que los nombres de las navegaciones se apagan. */
+html[data-theme-transition] .ui-vt-header,
+html[data-theme-transition] .ui-vt-sidebar,
+html[data-theme-transition] .ui-vt-content {
+  view-transition-name: none;
+}
+
+html[data-theme-transition]::view-transition-old(root) {
+  animation: none;
+}
+
+html[data-theme-transition]::view-transition-new(root) {
+  animation-duration: 600ms;
+  animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+  animation-fill-mode: both;
+}
+
+html[data-theme-transition='to-dark']::view-transition-new(root) {
+  animation-name: theme-wipe-from-top-left;
+}
+
+html[data-theme-transition='to-light']::view-transition-new(root) {
+  animation-name: theme-wipe-from-bottom-right;
+}
+
+@keyframes theme-wipe-from-top-left {
+  from { clip-path: polygon(0 0, 0 0, 0 0); }
+  to { clip-path: polygon(0 0, 200% 0, 0 200%); }
+}
+
+@keyframes theme-wipe-from-bottom-right {
+  from { clip-path: polygon(100% 100%, 100% 100%, 100% 100%); }
+  to { clip-path: polygon(100% 100%, -100% 100%, 100% -100%); }
+}
+
 /* Botón de tema "Classic" de theme-toggles (Alfie Jones, MIT, v4.10.1 — toggles.dev).
  * Copiado de su CSS; solo cambia el tamaño y el foco, que siguen al resto de la app. */
 .theme-toggle {

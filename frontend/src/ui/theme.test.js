@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   STORAGE_KEY,
   applyTheme,
@@ -30,6 +30,55 @@ describe('theme selector', () => {
     applyTheme('light')
     expect(toggleTheme()).toBe('dark')
     expect(toggleTheme()).toBe('light')
+  })
+
+  describe('con la API de transiciones', () => {
+    let finish
+    let reducedMotion
+
+    beforeEach(() => {
+      reducedMotion = false
+      window.matchMedia = vi.fn(() => ({ matches: reducedMotion }))
+      document.startViewTransition = vi.fn((update) => {
+        update()
+        return { finished: new Promise((resolve) => { finish = resolve }) }
+      })
+    })
+
+    afterEach(() => {
+      delete document.startViewTransition
+      delete window.matchMedia
+      delete document.documentElement.dataset.themeTransition
+    })
+
+    it('anima el cambio y marca la dirección de la diagonal mientras dura', async () => {
+      applyTheme('light')
+
+      expect(toggleTheme()).toBe('dark')
+      expect(document.startViewTransition).toHaveBeenCalledTimes(1)
+      expect(document.documentElement.dataset.themeTransition).toBe('to-dark')
+      expect(getTheme()).toBe('dark')
+
+      finish()
+      await Promise.resolve()
+      await Promise.resolve()
+      expect(document.documentElement.dataset.themeTransition).toBeUndefined()
+    })
+
+    it('al volver a claro barre en sentido contrario', () => {
+      applyTheme('dark')
+      expect(toggleTheme()).toBe('light')
+      expect(document.documentElement.dataset.themeTransition).toBe('to-light')
+    })
+
+    it('con movimiento reducido cambia al instante', () => {
+      reducedMotion = true
+      applyTheme('light')
+
+      expect(toggleTheme()).toBe('dark')
+      expect(document.startViewTransition).not.toHaveBeenCalled()
+      expect(document.documentElement.dataset.themeTransition).toBeUndefined()
+    })
   })
 
   it('initializes from the stored value and ignores invalid values', () => {
