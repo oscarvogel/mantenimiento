@@ -30,6 +30,7 @@ import BrandLogo from './BrandLogo.vue'
 import { moduleIcons } from '../ui/moduleIcons.js'
 import ModuleSwitcher from './ModuleSwitcher.vue'
 import SidebarLink from './SidebarLink.vue'
+import ThemeToggle from './ThemeToggle.vue'
 import { groupNavigation } from '../ui/navigationGroups.js'
 
 const props = defineProps({
@@ -327,6 +328,22 @@ const openDemoCompany = () => {
         </ul>
       </section>
     </nav>
+    <!-- Tema al pie, fijo: contraída solo el botón (su nombre en el globo); expandida o en el celular, con la palabra. -->
+    <div
+      data-test="sidebar-theme"
+      class="flex shrink-0 items-center border-t border-white/10 py-3"
+      :class="collapsed ? 'justify-center px-2' : 'justify-between gap-3 px-5'"
+    >
+      <span v-if="!collapsed" class="text-sm font-medium text-secondary-100">Tema</span>
+      <ThemeToggle
+        class="text-secondary-100 hover:bg-white/10 hover:text-white focus-visible:outline-accent-300"
+        @mouseenter="collapsed && showRailTip($event, $event.currentTarget.getAttribute('aria-label'))"
+        @mouseleave="hideRailTip"
+        @focusin="collapsed && showRailTip($event, $event.currentTarget.getAttribute('aria-label'))"
+        @focusout="hideRailTip"
+        @click="hideRailTip"
+      />
+    </div>
     <span
       v-if="collapsed && railTip"
       data-test="rail-tooltip"

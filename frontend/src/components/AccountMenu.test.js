@@ -6,11 +6,10 @@ import AccountMenu from './AccountMenu.vue'
 const logout = { method: 'post', href: '/cerrar-sesion', csrfName: 'csrf_test', csrfValue: 'abc' }
 
 describe('AccountMenu', () => {
-  it('abre con el botón Mi cuenta y contiene tema y cerrar sesión', async () => {
+  it('abre con el botón Mi cuenta y contiene cerrar sesión y ya no el tema', async () => {
     const wrapper = mount(AccountMenu, {
       attachTo: document.body,
       props: { user: { name: 'Juan Díaz', initials: 'JD' }, logout },
-      global: { stubs: { ThemeToggle: { template: '<button data-test="theme-toggle" />' } } },
     })
     const button = wrapper.get('button[aria-haspopup="true"]')
     expect(button.text()).toContain('Mi cuenta')
@@ -18,7 +17,7 @@ describe('AccountMenu', () => {
 
     await button.trigger('click')
     expect(button.attributes('aria-expanded')).toBe('true')
-    expect(wrapper.find('[data-test="theme-toggle"]').exists()).toBe(true)
+    expect(wrapper.find('[data-theme-toggle]').exists()).toBe(false)
     const form = wrapper.get('form')
     expect(form.attributes('method')).toBe('post')
     expect(form.attributes('action')).toBe('/cerrar-sesion')

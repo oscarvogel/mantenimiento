@@ -96,6 +96,25 @@ describe('AppSidebar module navigation', () => {
     expect(hrefs).toEqual(['/trips-operations-dashboard', '/trips-operations', '/trips-fuel-pending', '/trips-commercial-closing', '/customer-accounts', '/trips-profitability'])
   })
 
+  it('el tema va al pie: contraída solo el botón con su nombre en el globo; expandida, con la palabra', async () => {
+    const navigation = [{ key: 'dashboard', label: 'Resumen', href: '/dashboard' }]
+    const collapsed = mount(AppSidebar, { attachTo: document.body, props: { navigation, collapsible: true, collapsed: true } })
+    const footer = collapsed.get('[data-test="sidebar-theme"]')
+    expect(footer.text()).toBe('')
+
+    const button = footer.get('[data-theme-toggle]')
+    button.element.getBoundingClientRect = () => ({ top: 600, height: 44, left: 0, right: 72, bottom: 644, width: 72 })
+    await button.trigger('mouseenter')
+    expect(collapsed.get('[data-test="rail-tooltip"]').text()).toBe(button.attributes('aria-label'))
+    await button.trigger('click')
+    expect(collapsed.find('[data-test="rail-tooltip"]').exists()).toBe(false)
+    collapsed.unmount()
+
+    const expanded = mount(AppSidebar, { props: { navigation, collapsible: true, collapsed: false } })
+    expect(expanded.get('[data-test="sidebar-theme"]').text()).toBe('Tema')
+    expect(mount(AppSidebar, { props: { navigation, mobile: true } }).find('[data-test="sidebar-theme"] [data-theme-toggle]').exists()).toBe(true)
+  })
+
   it('no repite Cerrar sesión: vive en Mi cuenta', () => {
     const wrapper = mount(AppSidebar, { props: { navigation: [{ key: 'dashboard', label: 'Resumen', href: '/dashboard' }] } })
     expect(wrapper.text()).not.toContain('Cerrar sesión')

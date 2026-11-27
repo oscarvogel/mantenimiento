@@ -33,7 +33,6 @@ onBeforeUnmount(() => window.removeEventListener('maintenance:theme-change', syn
     class="theme-toggle ui-interactive"
     :class="{ 'theme-toggle--toggled': isDark }"
     :aria-label="label"
-    :title="label"
     :aria-pressed="isDark"
     @click="changeTheme"
   >

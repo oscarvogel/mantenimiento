@@ -1,8 +1,7 @@
 <script setup>
-// "Mi cuenta": tema y cierre de sesión, que antes vivían sueltos en el encabezado.
+// "Mi cuenta": el cierre de sesión. El tema vive al pie de la barra lateral.
 import { ArrowRightStartOnRectangleIcon, ChevronDownIcon, UserIcon } from '@heroicons/vue/24/outline'
 import { onBeforeUnmount, ref, watch } from 'vue'
-import ThemeToggle from './ThemeToggle.vue'
 
 const props = defineProps({
   user: { type: Object, required: true },
@@ -57,10 +56,6 @@ onBeforeUnmount(() => {
       class="absolute right-0 top-full z-50 mt-2 w-64 rounded-card border border-border-subtle bg-surface-raised p-2 shadow-card"
     >
       <p class="truncate px-3 pb-2 pt-1 text-sm font-semibold text-ink">{{ props.user.name }}</p>
-      <div class="flex min-h-11 items-center justify-between gap-3 rounded-lg px-3 text-sm text-ink">
-        <span>Tema</span>
-        <ThemeToggle />
-      </div>
       <form v-if="props.logout" :action="props.logout.href" :method="props.logout.method === 'post' ? 'post' : 'get'">
         <input v-if="props.logout.method === 'post' && props.logout.csrfName" type="hidden" :name="props.logout.csrfName" :value="props.logout.csrfValue" />
         <button
