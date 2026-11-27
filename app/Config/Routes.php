@@ -286,6 +286,7 @@ $routes->get('telemetria', 'Telemetria::flota', ['filter' => 'permission:equipos
     $routes->post('equipos/(:num)/qr/regenerar', 'AssetManagement::regenerateQr/$1', ['filter' => 'permission:equipos.editar']);
     $routes->post('equipos/(:num)/editar', 'EquipmentManagement::update/$1', ['filter' => 'permission:equipos.editar']);
     $routes->post('equipos/(:num)/chofer', 'EquipmentManagement::assignDriver/$1', ['filter' => 'permission:empleados.editar']);
+    $routes->post('equipos/(:num)/chofer/desvincular', 'EquipmentManagement::unassignDriver/$1', ['filter' => 'permission:empleados.editar']);
     $routes->post('equipos/(:num)/trasladar', 'EquipmentManagement::transfer/$1', ['filter' => 'permission:equipos.editar']);
     $routes->post('equipos/(:num)/baja', 'EquipmentManagement::decommission/$1', ['filter' => 'permission:equipos.editar']);
     $routes->post('equipos/(:num)/adjuntos', 'EquipmentManagement::uploadAttachment/$1', ['filter' => 'permission:equipos.editar']);

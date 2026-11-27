@@ -71,8 +71,9 @@ final class CodeIgniterEmployeeRepository implements EmployeeRepository
 
     public function findForUpdate(int $companyId, int $employeeId): ?Employee
     {
+        $lock = $this->database->DBDriver === 'SQLite3' ? '' : ' FOR UPDATE';
         $row = $this->database->query(
-            'SELECT * FROM empleados WHERE empresa_id = ? AND id = ? AND deleted_at IS NULL FOR UPDATE',
+            'SELECT * FROM empleados WHERE empresa_id = ? AND id = ? AND deleted_at IS NULL' . $lock,
             [$companyId, $employeeId],
         )->getRowArray();
 

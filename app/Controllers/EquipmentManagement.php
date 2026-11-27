@@ -33,8 +33,12 @@ use App\Application\Assets\UpdateEquipmentCommand;
 use App\Application\Assets\UpdateEquipmentHandler;
 use App\Application\Identity\ActorContext;
 use App\Application\Employees\EmployeeService;
+use App\Application\Employees\UnassignDriver;
 use App\Infrastructure\Employees\CodeIgniterEmployeeAssignmentRepository;
 use App\Infrastructure\Employees\CodeIgniterEmployeeRepository;
+use App\Infrastructure\Employees\CodeIgniterEmployeeUnitOfWork;
+use App\Infrastructure\Employees\SystemEmployeesClock;
+use App\Infrastructure\Notifications\CodeIgniterPendingDriverNotifications;
 use App\Application\Measurement\CorrectReadingCommand;
 use App\Application\Measurement\CorrectReadingHandler;
 use App\Application\Measurement\ListReadingHistoryHandler;
@@ -167,6 +171,7 @@ final class EquipmentManagement extends BaseController
             (new EmployeeService(
                 new CodeIgniterEmployeeRepository($database),
                 new CodeIgniterEmployeeAssignmentRepository($database),
+                new CodeIgniterEmployeeUnitOfWork($database),
             ))->assignDriver(
                 $actor,
                 $employeeId,
@@ -179,6 +184,53 @@ final class EquipmentManagement extends BaseController
         } catch (Throwable $exception) {
             return $this->failure($exception, $this->equipmentUrl($equipmentId));
         }
+    }
+
+    public function unassignDriver(int $equipmentId): RedirectResponse
+    {
+        try {
+            $actor = $this->actor();
+            $effectiveDate = $this->dateTime(
+                (string) $this->request->getPost('fecha_hasta'),
+                'La fecha efectiva de la desvinculación no es válida.',
+            );
+            $reason = trim((string) $this->request->getPost('motivo'));
+            $notes = $this->nullableString($this->request->getPost('observaciones'));
+
+            $result = $this->unassignDriverHandler()->execute(
+                $actor,
+                $equipmentId,
+                $effectiveDate,
+                $reason,
+                $notes,
+            );
+
+            if ($result->alreadyUnassigned) {
+                return $this->success($equipmentId, 'La unidad ya no tenía un chofer vigente. No se modificó el historial.');
+            }
+
+            $message = 'Chofer desvinculado correctamente. El empleado sigue activo y el historial fue conservado.';
+            if ($result->cancelledNotifications > 0) {
+                $message .= ' Se cancelaron ' . $result->cancelledNotifications . ' mensajes pendientes.';
+            }
+
+            return $this->success($equipmentId, $message);
+        } catch (Throwable $exception) {
+            return $this->failure($exception, $this->equipmentUrl($equipmentId));
+        }
+    }
+
+    private function unassignDriverHandler(): UnassignDriver
+    {
+        $database = db_connect();
+
+        return new UnassignDriver(
+            new CodeIgniterEmployeeAssignmentRepository($database),
+            new CodeIgniterEmployeeUnitOfWork($database),
+            new CodeIgniterPendingDriverNotifications($database),
+            service('auditTrail'),
+            new SystemEmployeesClock(),
+        );
     }
 
     public function createRelation(int $equipmentId): RedirectResponse
@@ -564,8 +616,12 @@ final class EquipmentManagement extends BaseController
             ->where('a.fecha_hasta', null)
             ->get()->getRowArray();
 
+        $closureSelect = $database->fieldExists('motivo_cierre', 'employee_equipment_assignments')
+            ? 'a.motivo_cierre, a.observaciones_cierre'
+            : 'NULL motivo_cierre, NULL observaciones_cierre';
+
         $history = $database->table('employee_equipment_assignments a')
-            ->select('a.id, a.empleado_id, a.fecha_desde, a.fecha_hasta, a.observaciones, e.nombre, e.apellido')
+            ->select('a.id, a.empleado_id, a.fecha_desde, a.fecha_hasta, a.observaciones, ' . $closureSelect . ', e.nombre, e.apellido', false)
             ->join('empleados e', 'e.id = a.empleado_id', 'inner')
             ->where('a.empresa_id', $companyId)
             ->where('a.equipo_id', $equipmentId)
@@ -589,6 +645,7 @@ final class EquipmentManagement extends BaseController
         return [
             'canEdit' => $canEdit,
             'assignUrl' => base_url('mantenimiento/equipos/' . $equipmentId . '/chofer'),
+            'unassignUrl' => base_url('mantenimiento/equipos/' . $equipmentId . '/chofer/desvincular'),
             'current' => $current === null ? null : [
                 'employeeId' => (int) $current['empleado_id'],
                 'name' => trim((string) $current['nombre'] . ' ' . (string) $current['apellido']),
@@ -606,6 +663,8 @@ final class EquipmentManagement extends BaseController
                 'from' => (string) $row['fecha_desde'],
                 'to' => $row['fecha_hasta'] === null ? null : (string) $row['fecha_hasta'],
                 'notes' => $row['observaciones'],
+                'closureReason' => $row['motivo_cierre'] ?? null,
+                'closureNotes' => $row['observaciones_cierre'] ?? null,
             ], $history),
         ];
     }

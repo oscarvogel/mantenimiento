@@ -172,6 +172,35 @@ const equipmentSummary = computed(() => {
               {{ data.driverAssignment.current ? 'Cambiar chofer' : 'Asignar chofer' }}
             </button>
           </form>
+
+          <details v-if="data.driverAssignment.canEdit && data.driverAssignment.current && data.equipment.status === 'ACTIVO'" class="ui-details-animated mt-6">
+            <summary :class="dangerButton">Desvincular chofer</summary>
+            <form
+              method="post"
+              :action="data.driverAssignment.unassignUrl"
+              data-confirm
+              data-confirm-title="¿Desvincular al chofer de esta unidad?"
+              data-confirm-text="El empleado seguirá activo. La unidad quedará sin chofer y se cancelarán los mensajes pendientes de esta asignación. El historial se conserva."
+              data-confirm-button="Desvincular"
+              data-confirm-danger="true"
+              class="mt-3 grid gap-4 rounded-xl border border-border bg-white p-4 sm:grid-cols-2"
+            >
+              <CsrfInput :csrf="data.csrf" />
+              <FormField label="Fecha efectiva" for-id="equipment-driver-unassign-date">
+                <input id="equipment-driver-unassign-date" type="date" name="fecha_hasta" required :value="today()" :max="today()" :class="fieldClass" />
+              </FormField>
+              <FormField label="Motivo" for-id="equipment-driver-unassign-reason">
+                <input id="equipment-driver-unassign-reason" name="motivo" required minlength="5" maxlength="255" placeholder="Ej.: unidad siniestrada, en taller" :class="fieldClass" />
+              </FormField>
+              <FormField label="Observaciones" for-id="equipment-driver-unassign-notes" class="sm:col-span-2">
+                <textarea id="equipment-driver-unassign-notes" name="observaciones" maxlength="1000" rows="3" placeholder="Contexto adicional para el historial (opcional)" :class="fieldClass"></textarea>
+              </FormField>
+              <p class="text-sm leading-6 text-ink-muted sm:col-span-2">
+                El empleado no se da de baja. La unidad queda sin chofer y los mensajes pendientes de esta asignación se cancelan con el motivo registrado.
+              </p>
+              <button type="submit" :class="`${dangerButton} sm:justify-self-start`">Desvincular chofer</button>
+            </form>
+          </details>
         </div>
 
         <div>
@@ -182,6 +211,8 @@ const equipmentSummary = computed(() => {
               <p class="font-semibold text-ink">{{ item.name }}</p>
               <p class="mt-1 text-xs text-ink-muted">{{ item.from }} → {{ item.to || 'Actual' }}</p>
               <p v-if="item.notes" class="mt-1 text-xs text-ink-muted">{{ item.notes }}</p>
+              <p v-if="item.closureReason" class="mt-1 text-xs text-ink-muted">Motivo de cierre: {{ item.closureReason }}</p>
+              <p v-if="item.closureNotes" class="mt-1 text-xs text-ink-muted">{{ item.closureNotes }}</p>
             </li>
           </ul>
         </div>

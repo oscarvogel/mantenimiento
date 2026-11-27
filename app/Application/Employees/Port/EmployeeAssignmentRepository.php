@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Employees\Port;
 
+use App\Application\Employees\ClosedDriverAssignment;
 use App\Domain\Employees\EmployeeEquipmentAssignment;
 use DateTimeImmutable;
 
@@ -43,5 +44,20 @@ interface EmployeeAssignmentRepository
         int $employeeId,
         DateTimeImmutable $endsAt,
         int $actorUserId,
+        ?string $reason = null,
     ): void;
+
+    /**
+     * Cierra la asignación de chofer vigente de un equipo, sin crear un
+     * reemplazo. Devuelve null si el equipo ya no tiene chofer vigente
+     * (operación idempotente).
+     */
+    public function closeCurrentForEquipment(
+        int $companyId,
+        int $equipmentId,
+        DateTimeImmutable $endsAt,
+        string $reason,
+        ?string $notes,
+        int $actorUserId,
+    ): ?ClosedDriverAssignment;
 }

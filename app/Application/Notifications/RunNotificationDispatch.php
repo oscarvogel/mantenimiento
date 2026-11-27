@@ -245,6 +245,15 @@ final readonly class RunNotificationDispatch
         $attempt = 0;
 
         foreach ($this->whatsAppDeliveries->due($whatsAppLimit) as $delivery) {
+            $deliveryId = (int) ($delivery['id'] ?? 0);
+            // Una cancelación concurrente (desvinculación de chofer, baja del
+            // equipo, etc.) puede ocurrir entre due() y el envío. Se relee el
+            // estado para no despachar una entrega que ya quedó OMITIDA.
+            if (! $this->whatsAppDeliveries->stillPending($deliveryId)) {
+                $summary['skipped']++;
+                continue;
+            }
+
             if ($attempt > 0 && $intervalMs > 0) {
                 usleep($intervalMs * 1000);
             }

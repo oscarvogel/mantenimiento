@@ -41,6 +41,15 @@ interface WhatsAppNotificationDeliveryQueue
     /** @return list<array<string,mixed>> */
     public function due(int $limit): array;
 
+    /**
+     * Indica si la entrega sigue en un estado despachable.
+     *
+     * Se consulta inmediatamente antes de enviar: una cancelación concurrente
+     * (por ejemplo, una desvinculación de chofer) deja la fila en OMITIDA y el
+     * mensaje no debe salir aunque ya estuviera en el lote seleccionado.
+     */
+    public function stillPending(int $deliveryId): bool;
+
     public function accepted(int $deliveryId, string $messageId, string $status): void;
 
     /** @return list<array<string,mixed>> */

@@ -62,6 +62,7 @@ seguir.
 | Módulo de Combustible: conciliación con el sensor | `GetConciliacionCombustible` | `app/Application/Telematic/GetConciliacionCombustible.php` | Telemetría (lectura) | **Implementado.** La consume el módulo de Combustible (`viajes/combustible`) además de Gerencial. Exige `gerencial.flota.ver`: sin ese permiso el módulo muestra lo declarado y no inventa una comparación. No escribe nada. |
 | Módulo de Combustible: monedas y cotizaciones | `PendingFuelPriceRepository::currencies()` | `app/Application/Trips/Port/PendingFuelPriceRepository.php` | Viajes (lectura, mismo contexto) | **Implementado.** El módulo usa el catálogo de monedas de la empresa para cargar una carga en la moneda en que se pagó. Sin `viajes.operar` el módulo no ofrece cargar nada. |
 | Alta de conceptos desde el viaje | `TripConceptCatalog` | `app/Application/Trips/Port/TripConceptCatalog.php` | Viajes (escritura, mismo contexto) | **Implementado.** El alta en línea del viaje escribe en `viajes_conceptos`, el mismo catálogo que administra Maestros de Viajes: el concepto nuevo y el concepto del maestro son la misma fila y comparten la misma regla de dominio (`TripConcept`). No cruza de contexto. |
+| Cancelación de mensajes al chofer desvinculado (#593) | `PendingDriverNotifications` | `app/Application/Employees/Port/PendingDriverNotifications.php` | Notifications (escritura de cancelación) | **Implementado.** Empleados cierra la asignación y Notifications marca `OMITIDA` las entregas `PENDIENTE`/`REINTENTO` del chofer para esa unidad. No toca entregas ya aceptadas ni notificaciones internas. |
 
 ---
 
@@ -303,6 +304,33 @@ Puerto del consumidor en `Application/PreventiveMaintenance/Port`; el adaptador
 buckets, recortados por empresa) y devuelve solo el odómetro. No interpreta: anclar el GPS a la
 lectura y validar la diferencia es regla de Preventivo (`EstimacionKmGps`). El odómetro del GPS
 tiene otra base que el del camión, por eso Preventivo solo usa diferencias.
+
+### 4.15 `PendingDriverNotifications` — responde Notifications, lo consume Employees
+
+```php
+public function cancelForAssignment(
+    int $companyId,
+    int $equipmentId,
+    int $employeeId,
+    int $assignmentId,
+    string $reason,
+): int;
+```
+
+Lo consume `UnassignDriver` (#593) dentro de la misma transacción que cierra la asignación y
+escribe la auditoría. El adaptador `CodeIgniterPendingDriverNotifications` marca `OMITIDA` las
+entregas de WhatsApp `PENDIENTE`/`REINTENTO` del chofer para esa unidad, con el motivo en
+`ultimo_error` y `proximo_intento = null`.
+
+Reglas del contrato:
+
+- Solo cancela entregas **no enviadas**. `ACEPTADA` y `PENDIENTE_CONFIRMACION` ya salieron y no
+  se tocan.
+- Solo toca tipos cuyo destinatario es el chofer: recordatorio semanal, reclamo manual, resumen
+  de vencimientos, preventivos y acuse de lectura. No toca resúmenes de usuarios ni avisos
+  internos de responsables.
+- Filtra siempre por `empresa_id`, `equipo_id` y `empleado_id`.
+- Es idempotente: una segunda cancelación no encuentra filas pendientes y devuelve `0`.
 
 ## 5. Lo que falta implementar
 

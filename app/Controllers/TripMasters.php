@@ -9,6 +9,7 @@ use App\Application\Identity\ActorContext;
 use App\Application\TripMasters\TripMasterCatalog;
 use App\Infrastructure\Employees\CodeIgniterEmployeeAssignmentRepository;
 use App\Infrastructure\Employees\CodeIgniterEmployeeRepository;
+use App\Infrastructure\Employees\CodeIgniterEmployeeUnitOfWork;
 use App\Infrastructure\Identity\SessionActorContext;
 use CodeIgniter\HTTP\RedirectResponse;
 use CodeIgniter\HTTP\ResponseInterface;
@@ -132,7 +133,11 @@ final class TripMasters extends BaseController
     private function employeeService(): EmployeeService
     {
         $database = db_connect();
-        return new EmployeeService(new CodeIgniterEmployeeRepository($database), new CodeIgniterEmployeeAssignmentRepository($database));
+        return new EmployeeService(
+            new CodeIgniterEmployeeRepository($database),
+            new CodeIgniterEmployeeAssignmentRepository($database),
+            new CodeIgniterEmployeeUnitOfWork($database),
+        );
     }
 
     private function actor(): ActorContext
