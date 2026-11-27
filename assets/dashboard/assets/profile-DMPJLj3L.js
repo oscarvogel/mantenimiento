@@ -1,1 +1,0 @@
-import{b as o}from"./main-kZNbOURu.js";import"./vendor-CPbI5RYP.js";import"./chatbot-Da-C5wIx.js";import"./admin-DJaFiABR.js";import"./reports-C4zR_xDy.js";const i=Object.freeze({...o,key:"platform"});export{i as default};
