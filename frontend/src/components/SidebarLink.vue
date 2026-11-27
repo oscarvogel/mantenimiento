@@ -7,13 +7,11 @@ const props = defineProps({
   label: { type: String, required: true },
   active: { type: Boolean, default: false },
   icon: { type: [Object, Function], required: true },
-  // Brand SVG drawn for dark backgrounds; null falls back to the Heroicon.
-  iconUrl: { type: String, default: null },
   showStatus: { type: Boolean, default: false },
   nested: { type: Boolean, default: false },
   compact: { type: Boolean, default: false },
 })
-const emit = defineEmits(['navigate', 'icon-error'])
+const emit = defineEmits(['navigate'])
 </script>
 
 <template>
@@ -23,8 +21,7 @@ const emit = defineEmits(['navigate', 'icon-error'])
     aria-disabled="true"
     :aria-label="`${label}: ${uiLabels.humanizeCode(props.item.status ?? props.item.badge ?? 'No disponible')}`"
   >
-    <img v-if="iconUrl" :src="iconUrl" alt="" class="size-6 shrink-0" width="24" height="24" aria-hidden="true" @error="emit('icon-error')" />
-    <component :is="icon" v-else class="size-5 shrink-0" aria-hidden="true" />
+    <component :is="icon" class="size-5 shrink-0" aria-hidden="true" />
     <span class="min-w-0 flex-1 leading-5">
       <span class="block">{{ label }}</span>
       <span v-if="showStatus && props.item.status" class="platform-nav-status block text-xs leading-4">{{ uiLabels.humanizeCode(props.item.status) }}</span>
@@ -43,10 +40,8 @@ const emit = defineEmits(['navigate', 'icon-error'])
     :aria-current="active ? 'page' : undefined"
     @click="emit('navigate')"
   >
-    <img v-if="iconUrl" :src="iconUrl" alt="" class="size-6 shrink-0" width="24" height="24" aria-hidden="true" @error="emit('icon-error')" />
     <component
       :is="icon"
-      v-else
       class="shrink-0"
       :class="[nested ? 'size-4' : 'size-5', active ? 'text-white' : 'text-secondary-300 group-hover:text-white']"
       aria-hidden="true"

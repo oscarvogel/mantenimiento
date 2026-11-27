@@ -115,6 +115,18 @@ describe('AppSidebar module navigation', () => {
     expect(mount(AppSidebar, { props: { navigation, mobile: true } }).find('[data-test="sidebar-theme"] [data-theme-toggle]').exists()).toBe(true)
   })
 
+  it('todos los íconos de la barra son del mismo juego (Heroicons), sin SVG propios', () => {
+    const item = (key, icon) => ({ key, label: key, href: `/${key}`, icon })
+    const navigation = [item('dashboard', 'dashboard'), item('work-orders', 'wrench'), item('equipment', 'truck'), item('users', 'users')]
+    document.body.dataset.baseUrl = '/' // en la app real está; los SVG propios se armaban con ella
+    for (const collapsed of [false, true]) {
+      const nav = mount(AppSidebar, { props: { navigation, collapsible: true, collapsed } }).get('#desktop-primary-navigation')
+      expect(nav.findAll('img')).toHaveLength(0)
+      expect(nav.findAll('a svg').length).toBe(nav.findAll('a').length)
+    }
+    delete document.body.dataset.baseUrl
+  })
+
   it('no repite Cerrar sesión: vive en Mi cuenta', () => {
     const wrapper = mount(AppSidebar, { props: { navigation: [{ key: 'dashboard', label: 'Resumen', href: '/dashboard' }] } })
     expect(wrapper.text()).not.toContain('Cerrar sesión')

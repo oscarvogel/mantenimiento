@@ -1,14 +1,22 @@
 <script setup>
 import { primaryButton } from '../../ui/buttons.js'
 import { ref } from 'vue'
-import { EyeIcon, EyeSlashIcon, ShieldCheckIcon } from '@heroicons/vue/24/outline'
+import {
+  BuildingOffice2Icon,
+  CalendarDaysIcon,
+  ChartBarSquareIcon,
+  ClockIcon,
+  EyeIcon,
+  EyeSlashIcon,
+  ShieldCheckIcon,
+  TruckIcon,
+  WrenchScrewdriverIcon,
+} from '@heroicons/vue/24/outline'
 import BrandLogo from '../../components/BrandLogo.vue'
 
 defineProps({ data: { type: Object, required: true } })
 
 const passwordVisible = ref(false)
-const baseUrl = document.body?.dataset?.baseUrl ?? '/'
-const brandAsset = (name) => `${baseUrl}assets/brand/${name}.svg`
 </script>
 
 <template>
@@ -117,17 +125,17 @@ const brandAsset = (name) => `${baseUrl}assets/brand/${name}.svg`
         <div class="mt-8 border-t border-border-subtle pt-6">
           <div class="grid grid-cols-3 gap-2 sm:gap-3">
             <div class="rounded-xl bg-surface-muted p-3">
-              <img :src="brandAsset('icon-equipment')" alt="" class="size-6" width="24" height="24" aria-hidden="true" />
+              <TruckIcon class="size-6 text-primary" aria-hidden="true" />
               <p class="mt-2 text-sm font-bold text-ink">Equipos</p>
               <p class="mt-1 hidden text-xs font-semibold uppercase tracking-wide text-ink-muted sm:block">Estado y uso</p>
             </div>
             <div class="rounded-xl bg-surface-muted p-3">
-              <img :src="brandAsset('icon-services')" alt="" class="size-6" width="24" height="24" aria-hidden="true" />
+              <WrenchScrewdriverIcon class="size-6 text-primary" aria-hidden="true" />
               <p class="mt-2 text-sm font-bold text-ink">Servicios</p>
               <p class="mt-1 hidden text-xs font-semibold uppercase tracking-wide text-ink-muted sm:block">Planes y OT</p>
             </div>
             <div class="rounded-xl bg-surface-muted p-3">
-              <img :src="brandAsset('icon-reports')" alt="" class="size-6" width="24" height="24" aria-hidden="true" />
+              <ChartBarSquareIcon class="size-6 text-primary" aria-hidden="true" />
               <p class="mt-2 text-sm font-bold text-ink">Reportes</p>
               <p class="mt-1 hidden text-xs font-semibold uppercase tracking-wide text-ink-muted sm:block">Decisiones claras</p>
             </div>
@@ -152,15 +160,15 @@ const brandAsset = (name) => `${baseUrl}assets/brand/${name}.svg`
           </div>
           <div class="mt-5 flex flex-wrap gap-2">
             <span class="inline-flex items-center gap-2 rounded-full border border-white/30 bg-secondary-900/55 px-3 py-2 text-xs font-semibold text-white">
-              <img :src="brandAsset('icon-preventive')" alt="" class="size-5 rounded-md" width="20" height="20" aria-hidden="true" />
+              <CalendarDaysIcon class="size-5 text-secondary-100" aria-hidden="true" />
               Control preventivo
             </span>
             <span class="inline-flex items-center gap-2 rounded-full border border-white/30 bg-secondary-900/55 px-3 py-2 text-xs font-semibold text-white">
-              <img :src="brandAsset('icon-multicompany')" alt="" class="size-5 rounded-md" width="20" height="20" aria-hidden="true" />
+              <BuildingOffice2Icon class="size-5 text-secondary-100" aria-hidden="true" />
               Multiempresa
             </span>
             <span class="inline-flex items-center gap-2 rounded-full border border-white/30 bg-secondary-900/55 px-3 py-2 text-xs font-semibold text-white">
-              <img :src="brandAsset('icon-history')" alt="" class="size-5 rounded-md" width="20" height="20" aria-hidden="true" />
+              <ClockIcon class="size-5 text-secondary-100" aria-hidden="true" />
               Historial trazable
             </span>
           </div>

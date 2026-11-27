@@ -5,29 +5,13 @@
 import { computed, ref, watch } from 'vue'
 import {
   ArrowLeftIcon,
-  ArrowPathRoundedSquareIcon,
-  ArrowUpTrayIcon,
   BeakerIcon,
-  BellIcon,
-  BuildingOffice2Icon,
-  BuildingStorefrontIcon,
-  CalendarDaysIcon,
-  ChartBarSquareIcon,
   ChevronDoubleRightIcon,
   ChevronDownIcon,
-  ClipboardDocumentCheckIcon,
-  ClipboardDocumentListIcon,
-  ExclamationTriangleIcon,
-  HomeIcon,
-  LinkIcon,
-  MapIcon,
-  TruckIcon,
-  UsersIcon,
-  WrenchScrewdriverIcon,
   XMarkIcon,
 } from '@heroicons/vue/24/outline'
 import BrandLogo from './BrandLogo.vue'
-import { moduleIcons } from '../ui/moduleIcons.js'
+import { navigationIconFor } from '../ui/navigationIcons.js'
 import ModuleSwitcher from './ModuleSwitcher.vue'
 import SidebarLink from './SidebarLink.vue'
 import ThemeToggle from './ThemeToggle.vue'
@@ -92,36 +76,6 @@ const toggleGroup = (group) => {
 // "Configuración" → "nav-group-configuracion".
 const groupId = (group) => `nav-group-${group.title.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z]+/g, '-')}`
 
-const icons = {
-  dashboard: HomeIcon,
-  truck: TruckIcon,
-  equipment: TruckIcon,
-  'fleet-telemetry': MapIcon,
-  map: MapIcon,
-  wrench: WrenchScrewdriverIcon,
-  maintenance: WrenchScrewdriverIcon,
-  calendar: CalendarDaysIcon,
-  services: ClipboardDocumentCheckIcon,
-  building: BuildingOffice2Icon,
-  upload: ArrowUpTrayIcon,
-  branches: BuildingStorefrontIcon,
-  integrations: LinkIcon,
-  users: UsersIcon,
-  chart: ChartBarSquareIcon,
-  readings: ArrowPathRoundedSquareIcon,
-  'clipboard-list': ClipboardDocumentListIcon,
-  workshop: BuildingOffice2Icon,
-  workshops: BuildingOffice2Icon,
-  providers: BuildingOffice2Icon,
-  reports: ChartBarSquareIcon,
-  audit: ClipboardDocumentListIcon,
-  notifications: BellIcon,
-  'my-work': ClipboardDocumentCheckIcon,
-  'report-failure': ExclamationTriangleIcon,
-  'platform-home': HomeIcon,
-  ...Object.fromEntries(Object.entries(moduleIcons).map(([name, icon]) => [`module-${name}`, icon])),
-}
-const iconFor = (item) => icons[item.icon] ?? ClipboardDocumentCheckIcon
 const visibleLabel = (item) => {
   if (item.key === 'plans') return 'Preventivos'
   if (item.key === 'services') return 'Servicios'
@@ -129,37 +83,6 @@ const visibleLabel = (item) => {
 }
 const isActive = (item) => item.active === true || (item.key === 'fleet-telemetry' && fleetConsumption.value?.active === true)
 
-// Brand icons: the sidebar is navy in both themes, so always the variant drawn for dark.
-const customIconBaseUrl = document.body?.dataset?.baseUrl ?? ''
-const failedCustomIcons = ref(new Set())
-const customIconNames = {
-  dashboard: 'inicio',
-  equipment: 'equipos',
-  'quick-readings': 'lecturas',
-  plans: 'planes',
-  maintenance: 'mantenimiento',
-  employees: 'empleados',
-  notifications: 'notificaciones',
-  imports: 'importaciones',
-  'preventive-library': 'biblioteca-preventiva',
-  reports: 'reportes',
-  superadmin: 'superadmin',
-  'chatbot-audit': 'auditoria-ia',
-  branches: 'sucursales',
-  users: 'usuarios',
-  'work-orders': 'ordenes-trabajo',
-  services: 'servicios-mantenimiento',
-}
-const customIconUrl = (item) => {
-  const name = customIconNames[item.key] ?? customIconNames[item.icon] ?? null
-  return name && customIconBaseUrl && !failedCustomIcons.value.has(name)
-    ? `${customIconBaseUrl}assets/brand/icons/dark/${name}.svg`
-    : null
-}
-const markCustomIconFailed = (item) => {
-  const name = customIconNames[item.key] ?? customIconNames[item.icon]
-  failedCustomIcons.value = new Set([...failedCustomIcons.value, name])
-}
 const showDemoEntry = computed(() => props.navigation.some((item) => item.key === 'superadmin'))
 
 // Nombre del ícono de la barra contraída: un solo globo fijo, fuera del nav que se desplaza.
@@ -248,10 +171,8 @@ const openDemoCompany = () => {
             :item="item"
             :label="visibleLabel(item)"
             :active="isActive(item)"
-            :icon="iconFor(item)"
-            :icon-url="customIconUrl(item)"
+            :icon="navigationIconFor(item)"
             compact
-            @icon-error="markCustomIconFailed(item)"
           />
         </li>
       </ul>
@@ -278,12 +199,10 @@ const openDemoCompany = () => {
                 :item="item"
                 :label="visibleLabel(item)"
                 :active="isActive(item)"
-                :icon="iconFor(item)"
-                :icon-url="customIconUrl(item)"
+                :icon="navigationIconFor(item)"
                 :show-status="isPlatformNavigation"
                 :class="item.key === 'fleet-telemetry' && fleetConsumption ? 'pr-12' : ''"
                 @navigate="emit('close')"
-                @icon-error="markCustomIconFailed(item)"
               />
               <button
                 v-if="item.key === 'fleet-telemetry' && fleetConsumption"
@@ -308,7 +227,7 @@ const openDemoCompany = () => {
                   :item="fleetConsumption"
                   :label="fleetConsumption.label"
                   :active="fleetConsumption.active === true"
-                  :icon="ChartBarSquareIcon"
+                  :icon="navigationIconFor(fleetConsumption)"
                   nested
                   @navigate="emit('close')"
                 />
