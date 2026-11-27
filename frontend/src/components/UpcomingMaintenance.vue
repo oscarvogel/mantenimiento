@@ -17,7 +17,7 @@ defineProps({
 </script>
 
 <template>
-  <section aria-labelledby="upcoming-title" class="overflow-hidden rounded-xl border border-border bg-surface-raised">
+  <section aria-labelledby="upcoming-title" class="overflow-hidden rounded-card bg-surface-raised shadow-card">
     <div class="flex items-center justify-between gap-4 border-b border-border-subtle px-5 py-4 sm:px-6">
       <div>
         <h2 id="upcoming-title" class="text-base font-bold text-ink sm:text-lg">Mantenimientos próximos</h2>
@@ -37,7 +37,7 @@ defineProps({
 
     <template v-else>
       <div class="hidden overflow-x-auto md:block">
-        <table class="w-full min-w-[44rem] border-collapse text-left">
+        <table class="ui-table w-full min-w-[44rem] border-collapse text-left">
           <caption class="sr-only">Mantenimientos próximos y vencidos por equipo</caption>
           <thead>
             <tr class="bg-surface-subtle text-xs font-semibold uppercase tracking-wide text-ink-muted">

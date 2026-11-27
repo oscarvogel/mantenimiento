@@ -91,7 +91,7 @@ onBeforeUnmount(() => {
 
     <div
       v-if="open"
-      class="fixed inset-x-3 top-[4.25rem] z-50 overflow-hidden rounded-xl border border-border bg-surface-raised shadow-xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-11 sm:w-96"
+      class="fixed inset-x-3 top-[4.25rem] z-50 overflow-hidden rounded-card bg-surface-raised shadow-xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-11 sm:w-96"
       role="dialog"
       aria-label="Resumen de notificaciones"
     >

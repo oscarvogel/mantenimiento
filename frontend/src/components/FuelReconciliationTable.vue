@@ -48,7 +48,7 @@ const hayViajes = computed(() => props.viajes.length > 0)
 </script>
 
 <template>
-  <section class="mt-6 overflow-hidden rounded-xl border border-border bg-surface-raised" aria-labelledby="fuel-reconciliation-heading">
+  <section class="mt-6 overflow-hidden rounded-card bg-surface-raised shadow-card" aria-labelledby="fuel-reconciliation-heading">
     <div class="border-b border-border px-5 py-4 sm:px-6">
       <h2 id="fuel-reconciliation-heading" class="text-lg font-bold text-ink">Declarado por el chofer contra el sensor del tanque</h2>
       <p class="mt-1 text-sm leading-6 text-ink-muted">
@@ -57,7 +57,7 @@ const hayViajes = computed(() => props.viajes.length > 0)
       </p>
     </div>
     <div v-if="hayViajes" class="overflow-x-auto">
-      <table class="min-w-full divide-y divide-border text-left text-sm">
+      <table class="ui-table min-w-full divide-y divide-border text-left text-sm">
         <thead class="bg-surface-muted text-xs font-semibold uppercase tracking-wide text-ink-muted">
           <tr>
             <th scope="col" class="px-4 py-3">Viaje</th>

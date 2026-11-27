@@ -278,10 +278,3 @@ onBeforeUnmount(() => cardMotionPreference?.revert())
   </div>
 </template>
 
-<style scoped>
-.hero-dots {
-  background-image: radial-gradient(currentColor 2px, transparent 2.2px);
-  background-size: 11px 11px;
-  mask-image: radial-gradient(closest-side, #000 55%, transparent);
-}
-</style>

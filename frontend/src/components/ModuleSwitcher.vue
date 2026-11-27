@@ -66,7 +66,7 @@ const title = computed(() => current.value?.label ?? props.fallbackTitle)
         </span>
         <ChevronUpDownIcon class="size-5 shrink-0 text-secondary-300" aria-hidden="true" />
       </summary>
-      <ul class="absolute inset-x-0 top-full z-40 mt-2 rounded-xl border border-border bg-surface-raised p-1.5 text-ink shadow-xl">
+      <ul class="absolute inset-x-0 top-full z-40 mt-2 rounded-card bg-surface-raised p-1.5 text-ink shadow-xl">
         <li v-for="item in others" :key="item.key">
           <a
             v-if="!item.disabled && item.href"

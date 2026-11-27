@@ -38,7 +38,7 @@ const barTone = (status) => ({
 
 <template>
   <section aria-label="Indicadores gráficos de mantenimiento" class="mt-6 grid gap-4 xl:grid-cols-2">
-    <article class="rounded-xl border border-border bg-surface-raised p-5 shadow-card sm:p-6">
+    <article class="rounded-card bg-surface-raised p-5 shadow-card sm:p-6">
       <div class="flex items-start justify-between gap-3">
         <div>
           <h2 class="text-base font-bold text-ink sm:text-lg">Estado del mantenimiento preventivo</h2>
@@ -83,7 +83,7 @@ const barTone = (status) => ({
       <p v-else class="mt-5 rounded-lg bg-surface-subtle px-4 py-5 text-sm text-ink-muted">Todavía no hay planes preventivos con datos suficientes para graficar.</p>
     </article>
 
-    <article class="rounded-xl border border-border bg-surface-raised p-5 shadow-card sm:p-6">
+    <article class="rounded-card bg-surface-raised p-5 shadow-card sm:p-6">
       <div class="flex items-start justify-between gap-3">
         <div>
           <h2 class="text-base font-bold text-ink sm:text-lg">Órdenes abiertas por estado</h2>

@@ -183,7 +183,7 @@ const companyPressure = (company) => Math.min(
         v-for="(kpi, index) in kpis"
         :key="kpi.key"
         v-reveal="{ delay: 25 + index * 20 }"
-        class="group relative overflow-hidden rounded-xl border border-border bg-surface-raised p-4 shadow-card transition duration-200 hover:-translate-y-0.5 hover:border-border-strong"
+        class="group relative overflow-hidden rounded-card bg-surface-raised p-4 shadow-card transition duration-200 hover:-translate-y-0.5 hover:border-border-strong"
       >
         <div class="flex min-w-0 items-start gap-3">
           <span
@@ -209,7 +209,7 @@ const companyPressure = (company) => Math.min(
     </section>
 
     <div class="grid items-stretch gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(20rem,0.78fr)]">
-      <section v-reveal="{ delay: 90 }" class="overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card" aria-labelledby="global-attention-title">
+      <section v-reveal="{ delay: 90 }" class="overflow-hidden rounded-card bg-surface-raised shadow-card" aria-labelledby="global-attention-title">
         <div class="flex items-center justify-between gap-4 border-b border-border-subtle px-5 py-4">
           <div class="flex min-w-0 items-center gap-3">
             <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-danger-subtle text-danger">
@@ -231,7 +231,7 @@ const companyPressure = (company) => Math.min(
         </div>
 
         <div v-if="data.attention.length" class="overflow-x-auto">
-          <table class="w-full min-w-[42rem] border-collapse text-left">
+          <table class="ui-table w-full min-w-[42rem] border-collapse text-left">
             <thead>
               <tr class="border-b border-border-subtle bg-surface/35 text-xs font-semibold uppercase tracking-wide text-ink-subtle">
                 <th class="px-5 py-3">Empresa</th>
@@ -282,7 +282,7 @@ const companyPressure = (company) => Math.min(
         </div>
       </section>
 
-      <section v-reveal="{ delay: 120 }" class="overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card" aria-labelledby="today-title">
+      <section v-reveal="{ delay: 120 }" class="overflow-hidden rounded-card bg-surface-raised shadow-card" aria-labelledby="today-title">
         <div class="flex items-center gap-3 border-b border-border-subtle px-5 py-4">
           <span class="flex size-9 items-center justify-center rounded-lg bg-primary-subtle text-primary">
             <ClockIcon class="size-5" aria-hidden="true" />
@@ -307,7 +307,7 @@ const companyPressure = (company) => Math.min(
     </div>
 
     <div class="grid items-stretch gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(17rem,0.82fr)_minmax(18rem,0.92fr)]">
-      <section v-reveal="{ delay: 140 }" class="overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card" aria-labelledby="companies-state-title">
+      <section v-reveal="{ delay: 140 }" class="overflow-hidden rounded-card bg-surface-raised shadow-card" aria-labelledby="companies-state-title">
         <div class="flex items-center justify-between gap-4 border-b border-border-subtle px-5 py-4">
           <div class="flex items-center gap-3">
             <span class="flex size-9 items-center justify-center rounded-lg bg-primary-subtle text-primary">
@@ -367,7 +367,7 @@ const companyPressure = (company) => Math.min(
         <div v-else class="px-5 py-8 text-sm text-ink-muted">No hay empresas activas para mostrar.</div>
       </section>
 
-      <section v-reveal="{ delay: 170 }" class="overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card" aria-labelledby="communications-title">
+      <section v-reveal="{ delay: 170 }" class="overflow-hidden rounded-card bg-surface-raised shadow-card" aria-labelledby="communications-title">
         <div class="flex items-center gap-3 border-b border-border-subtle px-5 py-4">
           <span class="flex size-9 items-center justify-center rounded-lg bg-primary-subtle text-primary">
             <PaperAirplaneIcon class="size-5" aria-hidden="true" />
@@ -398,7 +398,7 @@ const companyPressure = (company) => Math.min(
       </section>
 
       <div class="grid gap-5">
-        <section v-reveal="{ delay: 190 }" class="overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card" aria-labelledby="drivers-title">
+        <section v-reveal="{ delay: 190 }" class="overflow-hidden rounded-card bg-surface-raised shadow-card" aria-labelledby="drivers-title">
           <div class="flex items-center gap-3 border-b border-border-subtle px-5 py-3.5">
             <span class="flex size-8 items-center justify-center rounded-lg bg-primary-subtle text-primary">
               <UserGroupIcon class="size-[18px]" aria-hidden="true" />
@@ -424,7 +424,7 @@ const companyPressure = (company) => Math.min(
           </div>
         </section>
 
-        <section v-reveal="{ delay: 210 }" class="overflow-hidden rounded-xl border border-border bg-surface-raised shadow-card" aria-labelledby="chatbot-title">
+        <section v-reveal="{ delay: 210 }" class="overflow-hidden rounded-card bg-surface-raised shadow-card" aria-labelledby="chatbot-title">
           <div class="flex items-start justify-between gap-3 border-b border-border-subtle px-5 py-3.5">
             <div class="flex items-center gap-3">
               <span class="flex size-8 items-center justify-center rounded-lg bg-primary-subtle text-primary">
