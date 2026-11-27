@@ -231,7 +231,7 @@ const facts = computed(() => [
     <Teleport to="body">
       <div v-if="editing" class="fixed inset-0 z-[80] flex items-start justify-center overflow-y-auto bg-black/45 p-4 sm:items-center" role="presentation" @mousedown.self="editing = false" @keydown.esc="editing = false">
         <section role="dialog" aria-modal="true" aria-labelledby="tire-edit-title" class="w-full max-w-2xl rounded-xl bg-surface-raised shadow-2xl">
-          <header class="border-b border-border-subtle px-6 py-4">
+          <header class="px-6 pt-5">
             <h2 id="tire-edit-title" class="text-lg font-bold text-ink">Editar datos de {{ tire.number }}</h2>
             <p class="mt-1 text-sm text-ink-muted">El número y la sucursal no se cambian desde acá.</p>
           </header>

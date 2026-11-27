@@ -730,11 +730,11 @@ const facts = computed(() => {
         <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary-subtle text-primary"><ReceiptPercentIcon class="size-5" aria-hidden="true" /></span>
         <span><span class="block text-sm font-bold text-ink">Cargar gasto</span><span class="mt-0.5 block text-xs text-ink-muted">Peajes, viáticos y otros</span></span>
       </button>
-      <button v-if="driverOptions.length > 0" type="button" aria-haspopup="dialog" @click="openEntryModal('earning')" class="group flex min-h-16 items-center gap-3 rounded-xl border border-border bg-surface-raised px-4 py-3 text-left shadow-card transition hover:border-primary hover:bg-primary-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+      <button v-if="driverOptions.length > 0" type="button" aria-haspopup="dialog" @click="openEntryModal('earning')" class="group flex min-h-16 items-center gap-3 rounded-card bg-surface-raised px-4 py-3 text-left shadow-card transition hover:border-primary hover:bg-primary-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
         <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary-subtle text-primary"><CurrencyDollarIcon class="size-5" aria-hidden="true" /></span>
         <span><span class="block text-sm font-bold text-ink">Cargar haber</span><span class="mt-0.5 block text-xs text-ink-muted">Estadías y adicionales</span></span>
       </button>
-      <button v-if="driverOptions.length > 0" type="button" aria-haspopup="dialog" @click="openLogbookModal()" class="group flex min-h-16 items-center gap-3 rounded-xl border border-border bg-surface-raised px-4 py-3 text-left shadow-card transition hover:border-primary hover:bg-primary-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+      <button v-if="driverOptions.length > 0" type="button" aria-haspopup="dialog" @click="openLogbookModal()" class="group flex min-h-16 items-center gap-3 rounded-card bg-surface-raised px-4 py-3 text-left shadow-card transition hover:border-primary hover:bg-primary-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
         <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary-subtle text-primary"><BookOpenIcon class="size-5" aria-hidden="true" /></span>
         <span><span class="block text-sm font-bold text-ink">Diario de bordo</span><span class="mt-0.5 block text-xs text-ink-muted">Estadías por etapa</span></span>
       </button>
@@ -1060,7 +1060,7 @@ const facts = computed(() => {
               <span v-if="kmCierreHint" class="mt-1 block text-xs text-ink-muted" data-testid="close-km-hint">{{ kmCierreHint }}</span>
             </label>
           </div>
-          <div class="mt-3 grid gap-2 rounded-lg border border-border-subtle bg-surface-raised px-3 py-2 text-sm sm:grid-cols-4" data-testid="close-preview">
+          <div class="mt-3 grid gap-2 rounded-2xl bg-surface-subtle px-3 py-2 text-sm sm:grid-cols-4" data-testid="close-preview">
             <div><p class="text-xs text-ink-muted">Odómetro de salida</p><p class="font-semibold text-ink">{{ trip.km_salida === null || trip.km_salida === undefined ? '—' : `${number(trip.km_salida)} km` }}</p><button v-if="canEdit" type="button" class="text-xs font-semibold text-primary hover:underline" @click="openTripEdit">Corregir</button></div>
             <div><p class="text-xs text-ink-muted">Km recorridos</p><p class="font-semibold text-ink" data-testid="close-km-recorridos">{{ closePreview.km === null || closePreview.km <= 0 ? '—' : `${number(closePreview.km)} km` }}</p></div>
             <div><p class="text-xs text-ink-muted">Litros del viaje</p><p class="font-semibold text-ink">{{ liters(totals.fuel_liters) }}</p></div>
@@ -1150,7 +1150,7 @@ const facts = computed(() => {
 
     <dialog v-if="canEdit" ref="tripDialog" aria-labelledby="trip-edit-title" @close="closeTripEdit" @click.self="tripDialog?.close()" class="m-auto w-[min(52rem,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-card bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
       <div v-if="tripDraft" class="p-5 sm:p-6">
-        <div class="mb-5 flex items-start justify-between gap-4 border-b border-border-subtle pb-4">
+        <div class="mb-5 flex items-start justify-between gap-4 pb-1">
           <div>
             <h2 id="trip-edit-title" class="text-lg font-bold text-ink">Editar viaje #{{ trip.numero }}</h2>
             <p class="mt-1 text-sm text-ink-muted">Podés corregir equipo, fechas, odómetro, choferes y observaciones mientras el viaje no esté cerrado.</p>
@@ -1208,7 +1208,7 @@ const facts = computed(() => {
 
     <dialog v-if="canEdit" ref="legDialog" aria-labelledby="leg-edit-title" @close="closeLegEdit" @click.self="legDialog?.close()" class="m-auto w-[min(52rem,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-card bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
       <div v-if="legDraft" class="p-5 sm:p-6">
-        <div class="mb-5 flex items-start justify-between gap-4 border-b border-border-subtle pb-4">
+        <div class="mb-5 flex items-start justify-between gap-4 pb-1">
           <div>
             <h2 id="leg-edit-title" class="text-lg font-bold text-ink">Editar tramo del viaje #{{ trip.numero }}</h2>
             <p class="mt-1 text-sm text-ink-muted">Los fletes se pueden completar ahora o antes de cerrar el viaje.</p>
@@ -1292,7 +1292,7 @@ const facts = computed(() => {
 
     <dialog v-if="canRegisterCosts" ref="entryDialog" aria-labelledby="entry-dialog-title" @close="handleEntryDialogClose" @click.self="entryDialog?.close()" class="m-auto w-[min(48rem,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-card bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
       <div v-if="activeEntryModal" class="p-5 sm:p-6">
-        <div class="mb-5 flex items-start justify-between gap-4 border-b border-border-subtle pb-4">
+        <div class="mb-5 flex items-start justify-between gap-4 pb-1">
           <div>
             <h2 id="entry-dialog-title" class="text-lg font-bold text-ink">{{ entryDialogTitle }}</h2>
             <p class="mt-1 text-sm text-ink-muted">Viaje #{{ trip.numero }}</p>
@@ -1400,7 +1400,7 @@ const facts = computed(() => {
 
     <dialog v-if="canCancelTrip || canCancelLegs" ref="cancelDialog" aria-labelledby="cancel-dialog-title" @close="closeCancelDialog" @click.self="cancelDialog?.close()" class="m-auto w-[min(36rem,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-card bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60" data-testid="cancel-dialog">
       <div v-if="cancelTarget" class="p-5 sm:p-6">
-        <div class="mb-4 flex items-start justify-between gap-4 border-b border-border-subtle pb-4">
+        <div class="mb-4 flex items-start justify-between gap-4 pb-1">
           <h2 id="cancel-dialog-title" class="flex items-center gap-2 text-lg font-bold text-danger-strong"><XCircleIcon class="size-5 shrink-0" aria-hidden="true" />{{ cancelTarget.title }}</h2>
           <button type="button" aria-label="Cerrar" @click="cancelDialog?.close()" class="grid size-9 shrink-0 place-items-center rounded-lg text-ink-muted hover:bg-surface-subtle hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">×</button>
         </div>
