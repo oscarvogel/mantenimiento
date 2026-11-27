@@ -92,6 +92,7 @@ const equipmentSummary = computed(() => {
 <template>
   <div>
     <PageHeading eyebrow="Ficha del equipo" :title="data.equipment.code" :description="`${data.equipment.typeName} · ${data.equipment.branchCode} · ${data.equipment.branchName}`" :back="{ label: 'Volver al listado', href: data.routes.index }">
+      <template #meta><StatusBadge :status="data.equipment.status" /><p v-if="data.equipment.endDate" class="text-sm font-medium text-danger-strong">Baja: {{ format.formatDateTime(data.equipment.endDate) }}</p></template>
       <template #actions><div class="flex flex-wrap gap-2"><a v-if="data.equipment.status === 'ACTIVO'" :href="correctiveOrderUrl" :class="primaryButton">Nueva OT correctiva</a><a :href="data.routes.qr" target="_blank" rel="noopener" :class="secondaryButton"><QrCodeIcon class="mr-2 size-5" aria-hidden="true" />Ver QR</a><a v-if="data.can.edit" :href="data.routes.addPlansFromTemplate" :class="secondaryButton">Agregar planes desde plantilla</a><a :href="data.routes.maintenance" :class="secondaryButton">Circuito preventivo</a></div></template>
     </PageHeading>
 
@@ -125,7 +126,6 @@ const equipmentSummary = computed(() => {
         </p>
       </article>
     </section>
-    <div class="mb-6 flex items-center gap-3"><StatusBadge :status="data.equipment.status" /><p v-if="data.equipment.endDate" class="text-sm font-medium text-danger-strong">Baja: {{ format.formatDateTime(data.equipment.endDate) }}</p></div>
 
     <PanelCard title="Foto principal" class="mb-6">
       <div class="grid gap-6 md:grid-cols-[minmax(0,22rem)_1fr]">

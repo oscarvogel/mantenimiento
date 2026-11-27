@@ -1,3 +1,4 @@
+import { fieldClass } from './buttons.js'
 function normalizePlanState(state) {
   return String(state ?? '').toUpperCase()
 }
@@ -96,7 +97,7 @@ function statusBadge(state) {
     SIN_DATOS: 'bg-surface-muted text-ink-muted',
   }
   const label = labels[normalized] ?? (normalized || 'SIN DATOS')
-  return `<span class="inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${classes[normalized] ?? classes.SIN_DATOS}">${label}</span>`
+  return `<span class="inline-flex rounded-pill px-2.5 py-1 text-xs font-bold ${classes[normalized] ?? classes.SIN_DATOS}">${label}</span>`
 }
 
 function createPanel(sourceUrl) {
@@ -106,9 +107,9 @@ function createPanel(sourceUrl) {
   const preventiveActions = maintenancePanel.firstElementChild
   const panel = document.createElement('section')
   panel.dataset.equipmentAssignedPlans = 'true'
-  panel.className = 'mb-6 overflow-hidden rounded-2xl border border-border bg-white shadow-card'
+  panel.className = 'mb-6 overflow-hidden rounded-card bg-surface-raised shadow-card'
   panel.innerHTML = `
-    <div class="flex flex-col gap-3 border-b border-border px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+    <div class="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
       <div>
         <div class="flex items-center gap-2">
           <h2 class="font-bold text-ink">Planes preventivos asignados</h2>
@@ -139,7 +140,7 @@ function renderPlans(panel, plans) {
   if (!plans.length) {
     content.className = 'p-5'
     content.innerHTML = `
-      <div class="rounded-xl border border-dashed border-border-strong p-6 text-center">
+      <div class="rounded-2xl bg-surface-subtle p-6 text-center">
         <p class="font-semibold text-ink">Este equipo todavía no tiene planes preventivos asignados.</p>
         <p class="mt-1 text-sm text-ink-muted">Usá “Agregar planes” para asignar el primero sin salir de la ficha.</p>
       </div>`
@@ -148,8 +149,8 @@ function renderPlans(panel, plans) {
 
   content.className = 'overflow-x-auto'
   content.innerHTML = `
-    <table class="ui-table-hover w-full min-w-[68rem] text-left text-sm">
-      <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
+    <table class="ui-table w-full min-w-[68rem] text-left text-sm">
+      <thead class="text-xs font-semibold text-ink-subtle">
         <tr>
           <th class="px-4 py-3">Servicio</th>
           <th class="px-4 py-3">Frecuencia</th>
@@ -187,9 +188,9 @@ function createLastMaintenanceModal() {
   modal.dataset.planLastModal = 'true'
   modal.className = 'fixed inset-0 z-50 hidden items-center justify-center bg-black/40 p-4'
   modal.innerHTML = `
-    <div class="w-full max-w-lg rounded-2xl bg-white shadow-xl" role="dialog" aria-modal="true" aria-labelledby="plan-last-title">
+    <div class="w-full max-w-lg rounded-card bg-surface-raised shadow-xl" role="dialog" aria-modal="true" aria-labelledby="plan-last-title">
       <form data-plan-last-form>
-        <div class="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
+        <div class="flex items-start justify-between gap-4 px-5 pt-5">
           <div>
             <h3 id="plan-last-title" class="text-lg font-bold text-ink">Registrar última realización</h3>
             <p data-plan-last-service class="mt-1 text-sm text-ink-muted"></p>
@@ -200,20 +201,20 @@ function createLastMaintenanceModal() {
           <div data-plan-last-km class="hidden">
             <label class="mb-1 block text-sm font-semibold text-ink" for="plan-last-km-input">Kilometraje de la última realización</label>
             <div class="flex items-center gap-2">
-              <input id="plan-last-km-input" name="base_km" type="number" min="0" step="1" inputmode="numeric" class="w-full rounded-xl border border-border px-3 py-2 text-sm" placeholder="Ej. 120000">
+              <input id="plan-last-km-input" name="base_km" type="number" min="0" step="1" inputmode="numeric" class="${fieldClass}" placeholder="Ej. 120000">
               <span class="text-sm text-ink-muted">km</span>
             </div>
           </div>
           <div data-plan-last-hours class="hidden">
             <label class="mb-1 block text-sm font-semibold text-ink" for="plan-last-hours-input">Horómetro de la última realización</label>
             <div class="flex items-center gap-2">
-              <input id="plan-last-hours-input" name="base_horas" type="number" min="0" step="0.1" inputmode="decimal" class="w-full rounded-xl border border-border px-3 py-2 text-sm" placeholder="Ej. 3450.5">
+              <input id="plan-last-hours-input" name="base_horas" type="number" min="0" step="0.1" inputmode="decimal" class="${fieldClass}" placeholder="Ej. 3450.5">
               <span class="text-sm text-ink-muted">h</span>
             </div>
           </div>
           <div data-plan-last-date class="hidden">
             <label class="mb-1 block text-sm font-semibold text-ink" for="plan-last-date-input">Fecha de la última realización</label>
-            <input id="plan-last-date-input" name="base_fecha" type="date" class="w-full rounded-xl border border-border px-3 py-2 text-sm">
+            <input id="plan-last-date-input" name="base_fecha" type="date" class="${fieldClass}">
           </div>
           <div data-plan-last-feedback class="hidden rounded-xl px-3 py-2 text-sm"></div>
           <p class="text-xs text-ink-muted">Al guardar se recalculan automáticamente el próximo vencimiento y el estado del plan.</p>
