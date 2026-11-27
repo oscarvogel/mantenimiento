@@ -1,18 +1,14 @@
 {
-  "_admin-DoR27lqa.js": {
-    "file": "assets/admin-DoR27lqa.js",
+  "_admin-D6sbAt9Q.js": {
+    "file": "assets/admin-D6sbAt9Q.js",
     "name": "admin",
     "imports": [
       "_vendor-BvsezyV8.js",
-      "_chatbot-Dm0EwvHy.js"
+      "_chatbot-CZ_0JLW0.js"
     ]
   },
-  "_chatbot-DO6L-G3P.css": {
-    "file": "assets/chatbot-DO6L-G3P.css",
-    "src": "_chatbot-DO6L-G3P.css"
-  },
-  "_chatbot-Dm0EwvHy.js": {
-    "file": "assets/chatbot-Dm0EwvHy.js",
+  "_chatbot-CZ_0JLW0.js": {
+    "file": "assets/chatbot-CZ_0JLW0.js",
     "name": "chatbot",
     "isDynamicEntry": true,
     "imports": [
@@ -22,12 +18,16 @@
       "assets/chatbot-DO6L-G3P.css"
     ]
   },
-  "_reports-CHxu_YGC.js": {
-    "file": "assets/reports-CHxu_YGC.js",
+  "_chatbot-DO6L-G3P.css": {
+    "file": "assets/chatbot-DO6L-G3P.css",
+    "src": "_chatbot-DO6L-G3P.css"
+  },
+  "_reports--yXfirpk.js": {
+    "file": "assets/reports--yXfirpk.js",
     "name": "reports",
     "imports": [
-      "_chatbot-Dm0EwvHy.js",
-      "_admin-DoR27lqa.js",
+      "_chatbot-CZ_0JLW0.js",
+      "_admin-D6sbAt9Q.js",
       "_vendor-BvsezyV8.js"
     ]
   },
@@ -86,18 +86,18 @@
     "isDynamicEntry": true
   },
   "src/main.js": {
-    "file": "assets/main-BBBc_GCx.js",
+    "file": "assets/main-BF3CZJcQ.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
     "imports": [
       "_vendor-BvsezyV8.js",
-      "_chatbot-Dm0EwvHy.js",
-      "_admin-DoR27lqa.js",
-      "_reports-CHxu_YGC.js"
+      "_chatbot-CZ_0JLW0.js",
+      "_admin-D6sbAt9Q.js",
+      "_reports--yXfirpk.js"
     ],
     "dynamicImports": [
-      "_chatbot-Dm0EwvHy.js",
+      "_chatbot-CZ_0JLW0.js",
       "src/pages/operations/components/FleetTelemetryMap.vue",
       "node_modules/gsap/index.js",
       "src/profiles/platform/profile.js",
@@ -105,62 +105,62 @@
       "src/profiles/cliente_piloto/profile.js"
     ],
     "css": [
-      "assets/main-BYIkEDHJ.css"
+      "assets/main-hXjjWb7R.css"
     ]
   },
   "src/pages/operations/components/FleetTelemetryMap.vue": {
-    "file": "assets/FleetTelemetryMap-1JOBQRmZ.js",
+    "file": "assets/FleetTelemetryMap-Bub_10cm.js",
     "name": "FleetTelemetryMap",
     "src": "src/pages/operations/components/FleetTelemetryMap.vue",
     "isDynamicEntry": true,
     "imports": [
       "_vendor-BvsezyV8.js",
-      "_chatbot-Dm0EwvHy.js"
+      "_chatbot-CZ_0JLW0.js"
     ],
     "css": [
       "assets/FleetTelemetryMap-DFnGY69W.css"
     ]
   },
   "src/profiles/cliente_piloto/profile.js": {
-    "file": "assets/profile-D3OzcCLq.js",
+    "file": "assets/profile-DZ7JOTej.js",
     "name": "profile",
     "src": "src/profiles/cliente_piloto/profile.js",
     "isDynamicEntry": true,
     "imports": [
       "src/main.js",
       "_vendor-BvsezyV8.js",
-      "_chatbot-Dm0EwvHy.js",
-      "_admin-DoR27lqa.js",
-      "_reports-CHxu_YGC.js"
+      "_chatbot-CZ_0JLW0.js",
+      "_admin-D6sbAt9Q.js",
+      "_reports--yXfirpk.js"
     ],
     "css": [
       "assets/profile-DV70kWFs.css"
     ]
   },
   "src/profiles/platform/profile.js": {
-    "file": "assets/profile-BI_5oG7b.js",
+    "file": "assets/profile-B4M4nP1P.js",
     "name": "profile",
     "src": "src/profiles/platform/profile.js",
     "isDynamicEntry": true,
     "imports": [
       "src/main.js",
       "_vendor-BvsezyV8.js",
-      "_chatbot-Dm0EwvHy.js",
-      "_admin-DoR27lqa.js",
-      "_reports-CHxu_YGC.js"
+      "_chatbot-CZ_0JLW0.js",
+      "_admin-D6sbAt9Q.js",
+      "_reports--yXfirpk.js"
     ]
   },
   "src/profiles/vogel/profile.js": {
-    "file": "assets/profile-EjmYk2jl.js",
+    "file": "assets/profile-PzuiCi4H.js",
     "name": "profile",
     "src": "src/profiles/vogel/profile.js",
     "isDynamicEntry": true,
     "imports": [
       "src/main.js",
       "_vendor-BvsezyV8.js",
-      "_chatbot-Dm0EwvHy.js",
-      "_admin-DoR27lqa.js",
-      "_reports-CHxu_YGC.js"
+      "_chatbot-CZ_0JLW0.js",
+      "_admin-D6sbAt9Q.js",
+      "_reports--yXfirpk.js"
     ]
   }
 }
