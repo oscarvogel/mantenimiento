@@ -108,7 +108,7 @@ const sectionCount = computed(() => ({
 
     <PanelCard title="Catálogos de equipos" :count="sectionCount" flush>
       <div class="border-b border-border-subtle p-4 sm:p-5">
-        <div class="flex flex-wrap gap-2" role="tablist" aria-label="Catálogos de equipos">
+        <div class="ui-tabs" role="tablist" aria-label="Catálogos de equipos">
           <button type="button" role="tab" :aria-selected="section === 'types'" :class="[secondaryButton, section === 'types' ? '!border-primary !bg-primary-subtle !text-primary' : '']" @click="selectSection('types')">Tipos de equipo <span class="ml-2 text-xs">{{ data.catalogs.types.length }}</span></button>
           <button type="button" role="tab" :aria-selected="section === 'brands'" :class="[secondaryButton, section === 'brands' ? '!border-primary !bg-primary-subtle !text-primary' : '']" @click="selectSection('brands')">Marcas <span class="ml-2 text-xs">{{ data.management.brands.total }}</span></button>
           <button type="button" role="tab" :aria-selected="section === 'models'" :class="[secondaryButton, section === 'models' ? '!border-primary !bg-primary-subtle !text-primary' : '']" @click="selectSection('models')">Modelos <span class="ml-2 text-xs">{{ data.management.models.total }}</span></button>

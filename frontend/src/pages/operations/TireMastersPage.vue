@@ -101,7 +101,7 @@ const brandOptionsFor = (item) => {
     />
 
     <!-- Los mensajes del servidor (data.flash) los muestra el shell: no se repiten acá. -->
-    <div ref="tablist" class="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Maestros de neumáticos">
+    <div ref="tablist" class="ui-tabs" role="tablist" aria-label="Maestros de neumáticos">
       <button
         v-for="key in keys"
         :key="key"

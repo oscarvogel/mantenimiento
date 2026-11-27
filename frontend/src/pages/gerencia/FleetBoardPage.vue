@@ -156,7 +156,7 @@ const tarjetas = computed(() => {
       </a>
     </header>
 
-    <nav class="mt-6 grid grid-cols-3 border-b border-border" aria-label="Secciones del tablero">
+    <nav class="ui-tabs mt-6" aria-label="Secciones del tablero">
       <a
         v-for="pestana in pestanas"
         :key="pestana.clave"

@@ -664,7 +664,7 @@ onMounted(initialize)
     </div>
     <div v-if="notice" role="status" class="rounded-xl border border-success/30 bg-success-subtle px-4 py-3 text-sm font-medium text-success-strong">{{ notice }}</div>
 
-    <div class="flex gap-2 overflow-x-auto border-b border-border" role="tablist" aria-label="Costo teórico por km">
+    <div class="ui-tabs" role="tablist" aria-label="Costo teórico por km">
       <button type="button" role="tab" :aria-selected="activeTab === 'calculator'" class="min-h-11 shrink-0 border-b-2 px-4 text-sm font-semibold" :class="activeTab === 'calculator' ? 'border-primary text-primary' : 'border-transparent text-ink-muted hover:text-ink'" @click="activeTab = 'calculator'">Calculadora</button>
       <button type="button" role="tab" :aria-selected="activeTab === 'history'" class="min-h-11 inline-flex shrink-0 items-center gap-2 border-b-2 px-4 text-sm font-semibold" :class="activeTab === 'history' ? 'border-primary text-primary' : 'border-transparent text-ink-muted hover:text-ink'" @click="activeTab = 'history'"><ClockIcon class="size-4" aria-hidden="true" />Escenarios guardados <span class="rounded-full bg-surface-muted px-2 py-0.5 text-xs">{{ scenarios.length }}</span></button>
     </div>

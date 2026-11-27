@@ -218,7 +218,7 @@ function statusMessage(item) {
         <h2 class="text-sm font-semibold text-ink">Catálogos de la empresa</h2>
         <p class="mt-1 text-sm text-ink-muted">Elegí qué información querés administrar.</p>
       </div>
-      <div class="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Maestros de viajes">
+      <div class="ui-tabs" role="tablist" aria-label="Maestros de viajes">
         <button
           v-for="key in catalogKeys"
           :key="key"

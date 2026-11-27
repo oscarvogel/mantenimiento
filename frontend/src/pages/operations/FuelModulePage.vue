@@ -246,7 +246,7 @@ const hayFiltros = computed(() => Boolean(filtros.value.desde || filtros.value.h
       </div>
     </section>
 
-    <div v-if="conciliacion" class="mt-6 flex gap-1 border-b border-border" role="tablist" aria-label="Vistas del módulo de combustible">
+    <div v-if="conciliacion" class="ui-tabs mt-6" role="tablist" aria-label="Vistas del módulo de combustible">
       <button
         type="button"
         role="tab"

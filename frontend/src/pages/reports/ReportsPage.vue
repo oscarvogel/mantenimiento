@@ -103,7 +103,7 @@ const pagination = computed(() => props.data.orders.pagination)
       </form>
     </details>
 
-    <div class="mt-6 overflow-x-auto border-b border-border" role="tablist" aria-label="Secciones del reporte">
+    <div class="ui-tabs mt-6" role="tablist" aria-label="Secciones del reporte">
       <div class="flex min-w-max gap-1">
         <button v-for="tab in tabs" :id="`report-tab-${tab[0]}`" :key="tab[0]" type="button" role="tab" :aria-selected="activeTab === tab[0]" :aria-controls="`report-panel-${tab[0]}`" class="min-h-11 border-b-2 px-4 py-2.5 text-sm font-semibold transition" :class="activeTab === tab[0] ? 'border-primary text-primary' : 'border-transparent text-ink-muted hover:border-border-strong hover:text-ink'" @click="activeTab = tab[0]">{{ tab[1] }}</button>
       </div>

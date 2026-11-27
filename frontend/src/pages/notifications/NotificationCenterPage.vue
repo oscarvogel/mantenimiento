@@ -125,7 +125,7 @@ async function sendTestPush() {
       </form>
     </header>
 
-    <div class="overflow-x-auto border-b border-border" role="tablist" aria-label="Secciones de notificaciones">
+    <div class="ui-tabs" role="tablist" aria-label="Secciones de notificaciones">
       <div class="flex min-w-max gap-1">
         <button
           v-for="tab in tabs"

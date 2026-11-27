@@ -95,8 +95,8 @@ const equipmentSummary = computed(() => {
       <template #actions><div class="flex flex-wrap gap-2"><a v-if="data.equipment.status === 'ACTIVO'" :href="correctiveOrderUrl" :class="primaryButton">Nueva OT correctiva</a><a :href="data.routes.qr" target="_blank" rel="noopener" :class="secondaryButton"><QrCodeIcon class="mr-2 size-5" aria-hidden="true" />Ver QR</a><a v-if="data.can.edit" :href="data.routes.addPlansFromTemplate" :class="secondaryButton">Agregar planes desde plantilla</a><a :href="data.routes.maintenance" :class="secondaryButton">Circuito preventivo</a></div></template>
     </PageHeading>
 
-    <nav class="mb-6 overflow-x-auto border-b border-border" aria-label="Secciones de la ficha">
-      <div class="flex min-w-max gap-1" role="tablist" aria-label="Información del equipo">
+    <nav class="mb-6" aria-label="Secciones de la ficha">
+      <div class="ui-tabs" role="tablist" aria-label="Información del equipo">
         <button
           v-for="tab in tabs"
           :id="`equipment-tab-${tab.id}`"
@@ -117,7 +117,7 @@ const equipmentSummary = computed(() => {
     <div id="equipment-panel-resumen" v-show="activeTab === 'resumen'" role="tabpanel" aria-labelledby="equipment-tab-resumen">
 
     <section aria-label="Resumen del equipo" class="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-      <article v-for="metric in equipmentSummary" :key="metric.label" class="rounded-xl border border-border bg-white p-4 shadow-card">
+      <article v-for="metric in equipmentSummary" :key="metric.label" class="rounded-card bg-surface-raised p-4 shadow-card">
         <p class="text-xs text-ink-muted">{{ metric.label }}</p>
         <p class="mt-2 font-bold text-ink">
           <CountUp v-if="metric.numeric" :value="Number(metric.value)" :suffix="metric.suffix" :formatter="metric.formatter" />
