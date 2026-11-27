@@ -91,7 +91,7 @@ const mostrar = (pista, banda, evento) => {
             <div
               v-if="tooltip && tooltip.pista === pista.nombre"
               role="tooltip"
-              class="pointer-events-none absolute bottom-full z-10 mb-2 w-max max-w-64 -translate-x-1/2 rounded-lg border border-border bg-surface-raised px-3 py-2 text-xs leading-5 text-ink shadow-card"
+              class="pointer-events-none absolute bottom-full z-10 mb-2 w-max max-w-64 -translate-x-1/2 rounded-card bg-surface-raised px-3 py-2 text-xs leading-5 text-ink shadow-card"
               :style="{ left: `${tooltip.izquierda}px` }"
             >{{ tooltip.texto }}</div>
           </div>

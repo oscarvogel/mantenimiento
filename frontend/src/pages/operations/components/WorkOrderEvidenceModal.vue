@@ -16,7 +16,7 @@ const emit = defineEmits(['close'])
 
     <div class="overflow-y-auto p-5 sm:p-6">
       <div class="grid gap-4 sm:grid-cols-2">
-        <article v-for="evidence in order.evidence" :key="`${evidence.source || 'equipment_attachment'}-${evidence.id}`" class="overflow-hidden rounded-xl border border-border bg-white">
+        <article v-for="evidence in order.evidence" :key="`${evidence.source || 'equipment_attachment'}-${evidence.id}`" class="overflow-hidden rounded-card bg-surface-raised shadow-card">
           <a
             v-if="evidence.isImage"
             :href="evidence.previewUrl"

@@ -316,7 +316,7 @@ watch(selectedTemplateId, () => readStoredHints())
     <EmptyState v-if="items.length === 0" title="Todavía no hay biblioteca importada" description="Importá la biblioteca preventiva desde Excel para crear la primera plantilla y sus servicios." />
     <EmptyState v-else-if="filteredItems.length === 0" :title="searchActive ? 'Sin resultados para la búsqueda' : 'Esta plantilla no tiene servicios'" :description="searchActive ? 'Probá con otro servicio, código o palabra clave dentro de la plantilla seleccionada.' : 'Elegí otra plantilla o importá más servicios para esta.'" />
 
-    <ul v-else class="overflow-hidden rounded-2xl border border-border-subtle bg-white">
+    <ul v-else class="overflow-hidden rounded-card bg-surface-raised shadow-card">
       <li v-for="item in filteredItems" :key="item.id" class="border-b border-border-subtle last:border-b-0">
         <div class="flex flex-wrap items-center gap-3 px-4 py-3">
           <button type="button" class="flex min-w-0 flex-1 items-center gap-2 text-left" :aria-expanded="isExpanded(item)" :aria-controls="'library-item-' + item.id" @click="toggleItem(item)">
@@ -339,7 +339,7 @@ watch(selectedTemplateId, () => readStoredHints())
           </div>
 
           <p v-if="!item.tasks || item.tasks.length === 0" class="rounded-lg border border-dashed border-border px-3 py-4 text-xs text-ink-muted">Este servicio aún no tiene tareas definidas. Usá <strong>Agregar tarea</strong> para vincular una existente o crear una nueva.</p>
-          <ul v-else class="divide-y divide-border-subtle overflow-hidden rounded-lg border border-border-subtle bg-white">
+          <ul v-else class="divide-y divide-border-subtle overflow-hidden rounded-card bg-surface-raised shadow-card">
             <li v-for="task in item.tasks" :key="task.id" class="flex flex-wrap items-center gap-3 px-3 py-2 sm:px-4">
               <div class="min-w-0 flex-1">
                 <p class="truncate text-sm font-semibold text-ink">{{ task.name }}</p>

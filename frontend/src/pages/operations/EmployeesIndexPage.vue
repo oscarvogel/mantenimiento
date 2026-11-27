@@ -163,7 +163,7 @@ const openExpiration = (employee) => {
                         <StatusBadge :status="expiration.status" />
                         <span class="text-xs text-ink">{{ expiration.typeName }} · {{ formatDateDmy(expiration.expiresAt) }}</span>
                       </summary>
-                      <form v-if="data.canEdit && employee.active" method="post" :action="expiration.updateUrl" class="mt-2 grid min-w-[18rem] gap-2 rounded-lg border border-border bg-white p-3 shadow-card">
+                      <form v-if="data.canEdit && employee.active" method="post" :action="expiration.updateUrl" class="mt-2 grid min-w-[18rem] gap-2 rounded-card bg-surface-raised p-3 shadow-card">
                         <CsrfInput :csrf="data.csrf" />
                         <input type="hidden" name="return_to" value="/mantenimiento/empleados" />
                         <input type="text" inputmode="numeric" autocomplete="off" name="fecha_emision" :value="formatDateDmy(expiration.issuedAt)" placeholder="Emisión · DD/MM/AAAA" pattern="[0-9]{2}/[0-9]{2}/[0-9]{4}" :class="fieldClass" />

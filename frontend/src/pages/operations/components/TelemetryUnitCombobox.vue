@@ -124,7 +124,7 @@ const onKeydown = (event) => {
       ref="listbox"
       role="listbox"
       :aria-label="`Unidades de Wialon para ${label}`"
-      class="absolute z-30 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-border bg-surface-raised p-1 shadow-xl"
+      class="absolute z-30 mt-1 max-h-64 w-full overflow-y-auto rounded-card bg-surface-raised p-1 shadow-xl"
       @mousedown.prevent
     >
       <button

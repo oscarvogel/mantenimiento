@@ -58,17 +58,19 @@ const sections = [
       </template>
     </AdminPageHeading>
 
-    <nav class="mb-6 flex flex-wrap gap-2 rounded-card bg-surface-raised p-2 shadow-card" aria-label="Secciones de administración global">
-      <button
-        v-for="section in sections"
-        :key="section.key"
-        type="button"
-        class="inline-flex min-h-10 items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold transition-colors"
-        :class="activeSection === section.key ? 'bg-primary text-primary-foreground shadow-sm' : 'text-ink-muted hover:bg-surface-muted hover:text-ink'"
-        @click="activeSection = section.key"
-      >
-        {{ section.label }}
-      </button>
+    <nav class="mb-6" aria-label="Secciones de administración global">
+      <div class="ui-tabs" role="tablist" aria-label="Secciones de administración global">
+        <button
+          v-for="section in sections"
+          :key="section.key"
+          type="button"
+          role="tab"
+          :aria-selected="activeSection === section.key"
+          @click="activeSection = section.key"
+        >
+          {{ section.label }}
+        </button>
+      </div>
     </nav>
 
     <section v-if="activeSection === 'summary'" aria-label="Resumen de administración" class="mb-6 grid gap-3 sm:grid-cols-3">
@@ -126,17 +128,17 @@ const sections = [
       </div>
 
       <div class="mt-4 grid gap-3 md:grid-cols-3">
-        <div class="rounded-lg border border-border bg-surface-raised p-4">
+        <div class="rounded-card bg-surface-raised p-4 shadow-card">
           <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Fix #319</p>
           <p class="mt-1 text-sm font-semibold" :class="data.migrations.target319Registered ? 'text-success' : 'text-warning-strong'">
             {{ data.migrations.target319Registered ? 'Migración registrada' : 'Migración NO registrada' }}
           </p>
         </div>
-        <div class="rounded-lg border border-border bg-surface-raised p-4">
+        <div class="rounded-card bg-surface-raised p-4 shadow-card">
           <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Duplicados activos</p>
           <p class="mt-1 text-sm font-semibold text-ink">{{ data.migrations.duplicateActiveGroups }} grupo(s) · {{ data.migrations.duplicateActiveRows }} registro(s)</p>
         </div>
-        <div class="rounded-lg border border-border bg-surface-raised p-4">
+        <div class="rounded-card bg-surface-raised p-4 shadow-card">
           <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Migraciones registradas</p>
           <p class="mt-1 text-sm font-semibold text-ink">{{ data.migrations.appliedCount }}</p>
         </div>
@@ -213,7 +215,7 @@ const sections = [
           </p>
         </div>
 
-        <div class="sm:col-span-2 lg:col-span-4 overflow-hidden rounded-lg border border-border bg-white">
+        <div class="sm:col-span-2 lg:col-span-4 overflow-hidden rounded-card bg-surface-raised shadow-card">
           <div class="border-b border-border-subtle px-4 py-3">
             <p class="text-sm font-semibold text-ink">Herramientas y pruebas</p>
             <p class="mt-1 text-xs text-ink-muted">Las acciones de diagnóstico quedan agrupadas para no recargar la pantalla.</p>
@@ -222,7 +224,7 @@ const sections = [
           <details class="border-b border-border-subtle">
             <summary class="cursor-pointer px-4 py-3 text-sm font-medium text-ink">Pruebas piloto de WhatsApp</summary>
             <div class="grid gap-4 border-t border-border-subtle bg-surface-subtle p-4 lg:grid-cols-2">
-              <form method="post" :action="data.whatsapp.testPreventiveAction" class="rounded-lg border border-border bg-white p-4">
+              <form method="post" :action="data.whatsapp.testPreventiveAction" class="rounded-card bg-surface-raised p-4 shadow-card">
                 <CsrfField :csrf="data.csrf" />
                 <p class="text-sm font-semibold text-ink">Mantenimiento preventivo</p>
                 <p class="mt-1 text-xs text-ink-muted">Usa un plan real y envía sólo al teléfono piloto.</p>
@@ -233,7 +235,7 @@ const sections = [
                 <button type="submit" :disabled="!data.whatsapp.available || !data.whatsapp.pilotPhoneConfigured || !(data.preventiveTestPlans || []).length" data-confirm data-confirm-title="¿Enviar prueba preventiva?" data-confirm-text="El WhatsApp irá únicamente al teléfono piloto." data-confirm-button="Enviar prueba" :class="[primaryButton, 'mt-3']">Probar mantenimiento</button>
               </form>
 
-              <form method="post" :action="data.whatsapp.testByPlateAction" class="rounded-lg border border-border bg-white p-4">
+              <form method="post" :action="data.whatsapp.testByPlateAction" class="rounded-card bg-surface-raised p-4 shadow-card">
                 <CsrfField :csrf="data.csrf" />
                 <p class="text-sm font-semibold text-ink">Recordatorio de kilometraje</p>
                 <p class="mt-1 text-xs text-ink-muted">Prueba un equipo concreto sin contactar al chofer real.</p>
@@ -244,7 +246,7 @@ const sections = [
                 <button type="submit" :disabled="!data.whatsapp.available || !data.whatsapp.pilotPhoneConfigured" :class="[primaryButton, 'mt-3']">Probar kilometraje</button>
               </form>
 
-              <form method="post" :action="data.whatsapp.testWeeklyReminderAction" class="rounded-lg border border-border bg-white p-4">
+              <form method="post" :action="data.whatsapp.testWeeklyReminderAction" class="rounded-card bg-surface-raised p-4 shadow-card">
                 <CsrfField :csrf="data.csrf" />
                 <p class="text-sm font-semibold text-ink">Simulación semanal</p>
                 <div class="mt-3 grid gap-2 sm:grid-cols-2">
@@ -254,7 +256,7 @@ const sections = [
                 <button type="submit" :disabled="!data.whatsapp.available || !data.whatsapp.pilotEnabled || !data.whatsapp.pilotPhoneConfigured" :class="[primaryButton, 'mt-3']">Simular semana</button>
               </form>
 
-              <form method="post" :action="data.whatsapp.testExpirationDigestAction" class="rounded-lg border border-border bg-white p-4">
+              <form method="post" :action="data.whatsapp.testExpirationDigestAction" class="rounded-card bg-surface-raised p-4 shadow-card">
                 <CsrfField :csrf="data.csrf" />
                 <p class="text-sm font-semibold text-ink">Resumen de vencimientos</p>
                 <p class="mt-1 text-xs text-ink-muted">Diagnóstico Hito #414, sólo al teléfono piloto.</p>
@@ -269,7 +271,7 @@ const sections = [
                 <button type="submit" :disabled="!data.whatsapp.available || !data.whatsapp.pilotPhoneConfigured" :class="[primaryButton, 'mt-3']">Probar vencimientos</button>
               </form>
 
-              <form method="post" :action="data.whatsapp.testUserDigestAction" class="rounded-lg border border-border bg-white p-4 lg:col-span-2">
+              <form method="post" :action="data.whatsapp.testUserDigestAction" class="rounded-card bg-surface-raised p-4 lg:col-span-2 shadow-card">
                 <CsrfField :csrf="data.csrf" />
                 <p class="text-sm font-semibold text-ink">Resumen diario de usuario</p>
                 <p class="mt-1 text-xs text-ink-muted">Genera un vencimiento ficticio para un equipo, arma el resumen real del usuario y lo envía de inmediato para validar el circuito completo.</p>
@@ -291,19 +293,19 @@ const sections = [
           <details>
             <summary class="cursor-pointer px-4 py-3 text-sm font-medium text-ink">Diagnóstico y configuración avanzada</summary>
             <div class="grid gap-4 border-t border-border-subtle bg-surface-subtle p-4 lg:grid-cols-2">
-              <form method="post" :action="data.whatsapp.auditDriverPhonesAction" class="rounded-lg border border-border bg-white p-4">
+              <form method="post" :action="data.whatsapp.auditDriverPhonesAction" class="rounded-card bg-surface-raised p-4 shadow-card">
                 <CsrfField :csrf="data.csrf" />
                 <p class="text-sm font-semibold text-ink">Auditoría de celulares</p>
                 <p class="mt-1 text-xs text-ink-muted">Detecta choferes con teléfonos faltantes o inválidos. No envía mensajes a choferes.</p>
                 <button type="submit" class="mt-3 inline-flex min-h-11 items-center justify-center rounded-lg border border-border-strong px-4 py-2.5 text-sm font-semibold text-ink">Auditar celulares</button>
               </form>
-              <form method="post" :action="data.whatsapp.preparePilotAction" class="rounded-lg border border-border bg-white p-4">
+              <form method="post" :action="data.whatsapp.preparePilotAction" class="rounded-card bg-surface-raised p-4 shadow-card">
                 <CsrfField :csrf="data.csrf" />
                 <p class="text-sm font-semibold text-ink">Preparar escenario del cron</p>
                 <p class="mt-1 text-xs text-ink-muted">Prepara datos demo para validar el ciclo global de notificaciones.</p>
                 <button type="submit" :disabled="!data.whatsapp.available" class="mt-3 inline-flex min-h-11 items-center justify-center rounded-lg border border-border-strong px-4 py-2.5 text-sm font-semibold text-ink disabled:opacity-50">Preparar escenario</button>
               </form>
-              <form method="post" :action="data.whatsapp.testAction" class="rounded-lg border border-border bg-white p-4 lg:col-span-2">
+              <form method="post" :action="data.whatsapp.testAction" class="rounded-card bg-surface-raised p-4 lg:col-span-2 shadow-card">
                 <CsrfField :csrf="data.csrf" />
                 <p class="text-sm font-semibold text-ink">Prueba técnica a un número</p>
                 <div class="mt-3 flex flex-col gap-2 sm:flex-row">
@@ -610,7 +612,7 @@ const sections = [
                 <span class="mt-1 block text-xs text-ink-muted">Si queda vacío se usa el correo de notificaciones y luego el email general.</span>
               </label>
               <div class="mt-4 grid gap-3 sm:grid-cols-2">
-                <div class="rounded-lg border border-border bg-white p-3">
+                <div class="rounded-card bg-surface-raised p-3 shadow-card">
                   <label class="flex items-start gap-3">
                     <input type="hidden" name="informe_diario_habilitado" value="0" />
                     <input type="checkbox" name="informe_diario_habilitado" value="1" :checked="company.dailyReportEnabled" class="mt-0.5 size-4 rounded border-border-strong text-primary focus:ring-primary" />
@@ -621,7 +623,7 @@ const sections = [
                     <input type="time" name="informe_diario_hora" :value="company.dailyReportTime || '07:00'" class="min-h-10 w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink" />
                   </label>
                 </div>
-                <div class="rounded-lg border border-border bg-white p-3">
+                <div class="rounded-card bg-surface-raised p-3 shadow-card">
                   <label class="flex items-start gap-3">
                     <input type="hidden" name="informe_semanal_habilitado" value="0" />
                     <input type="checkbox" name="informe_semanal_habilitado" value="1" :checked="company.weeklyReportEnabled" class="mt-0.5 size-4 rounded border-border-strong text-primary focus:ring-primary" />
@@ -641,7 +643,7 @@ const sections = [
                   </div>
                 </div>
               </div>
-              <div class="mt-4 rounded-lg border border-border bg-white p-3">
+              <div class="mt-4 rounded-card bg-surface-raised p-3 shadow-card">
                 <label class="flex items-start gap-3">
                   <input type="hidden" name="informe_lecturas_whatsapp_habilitado" value="0" />
                   <input type="checkbox" name="informe_lecturas_whatsapp_habilitado" value="1" :checked="company.readingReportEnabled" class="mt-0.5 size-4 rounded border-border-strong text-primary focus:ring-primary" />
@@ -813,7 +815,7 @@ const sections = [
                   Roles empresariales
                 </legend>
                 <div class="grid gap-2 sm:grid-cols-2">
-                  <label v-for="role in data.roles" :key="role.id" class="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-border bg-white px-3 py-2 text-sm text-ink transition-colors hover:border-primary/50">
+                  <label v-for="role in data.roles" :key="role.id" class="flex min-h-11 cursor-pointer items-center gap-3 rounded-card bg-surface-raised px-3 py-2 text-sm text-ink transition-colors hover:border-primary/50 shadow-card">
                     <input type="checkbox" name="roles[]" :value="role.id" :checked="isRoleAssigned(user, role.id)" class="size-4 rounded border-border-strong text-primary focus:ring-primary" />
                     <span>{{ role.name }}</span>
                   </label>

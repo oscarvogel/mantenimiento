@@ -15,20 +15,10 @@ const section = ref(new URLSearchParams(window.location.search).get('section') =
 
 <template>
   <div class="space-y-5">
-    <nav class="flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-white p-2" aria-label="Administración de empresa">
-      <button
-        class="rounded-lg px-4 py-2 text-sm font-semibold"
-        :class="section === 'users' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'"
-        type="button"
-        @click="section = 'users'"
-      >Usuarios y acceso</button>
-      <button
-        class="rounded-lg px-4 py-2 text-sm font-semibold"
-        :class="section === 'chat-audit' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'"
-        type="button"
-        @click="section = 'chat-audit'"
-      >Historial del chatbot</button>
-    </nav>
+    <div class="ui-tabs" role="tablist" aria-label="Administración de empresa">
+      <button type="button" role="tab" :aria-selected="section === 'users'" @click="section = 'users'">Usuarios y acceso</button>
+      <button type="button" role="tab" :aria-selected="section === 'chat-audit'" @click="section = 'chat-audit'">Historial del chatbot</button>
+    </div>
 
     <UsersAdminPage v-if="section === 'users'" :data="data" />
 

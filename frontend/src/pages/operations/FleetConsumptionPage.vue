@@ -185,7 +185,7 @@ const problemas = computed(() => {
               spellcheck="false"
               :placeholder="etiquetaEquipoSeleccionado || 'Buscar por patente o sucursal…'"
               :value="listaEquiposAbierta ? consultaEquipo : etiquetaEquipoSeleccionado"
-              class="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm"
+              class="w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm"
               data-test="selector-equipo"
               @focus="abrirListaEquipos"
               @input="buscarEquipos"
@@ -198,7 +198,7 @@ const problemas = computed(() => {
               ref="listaEquipos"
               role="listbox"
               aria-label="Equipos disponibles"
-              class="absolute z-40 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border border-border bg-surface-raised p-1 shadow-xl"
+              class="absolute z-40 mt-1 max-h-72 w-full overflow-y-auto rounded-card bg-surface-raised p-1 shadow-xl"
               @mousedown.prevent
             >
               <button

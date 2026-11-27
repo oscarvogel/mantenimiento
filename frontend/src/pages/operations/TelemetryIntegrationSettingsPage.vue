@@ -271,7 +271,7 @@ const usedUnitIds = (integrationId, equipmentId) => Object.entries(mappings[inte
                   </tbody>
                 </table>
               </div>
-              <p v-else class="rounded-lg border border-border bg-surface-raised p-4 text-sm text-ink-muted">No hay equipos activos en esta empresa para vincular.</p>
+              <p v-else class="rounded-card bg-surface-raised p-4 text-sm text-ink-muted shadow-card">No hay equipos activos en esta empresa para vincular.</p>
 
               <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
                 <p class="max-w-2xl text-xs leading-5 text-ink-muted">Cada unidad se puede asignar a un equipo en esta cuenta. Los cambios se validan contra {{ providerLabel(integration.provider) }} y quedan asociados a esta empresa.</p>

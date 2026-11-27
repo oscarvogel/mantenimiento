@@ -99,7 +99,7 @@ const search = async (item) => {
             <p class="text-sm font-bold text-ink">Sugerencias del sistema</p>
             <p v-if="!item.candidates.length" class="mt-1 text-sm text-ink-muted">Sin candidatos automáticos. Buscá el viaje manualmente.</p>
             <ul v-else class="mt-3 space-y-2">
-              <li v-for="candidate in item.candidates" :key="candidate.trip_id" class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border-subtle bg-surface-raised px-3 py-2">
+              <li v-for="candidate in item.candidates" :key="candidate.trip_id" class="flex flex-wrap items-center justify-between gap-2 rounded-card bg-surface-raised px-3 py-2 shadow-card">
                 <div>
                   <p class="text-sm font-semibold text-ink">Viaje #{{ candidate.trip_number }} · {{ candidate.trip_domain }}</p>
                   <p class="text-xs text-ink-muted">{{ fmtDate(candidate.trip_date) }} · puntaje {{ candidate.score }} · {{ candidate.confidence }}</p>
@@ -125,7 +125,7 @@ const search = async (item) => {
               </button>
             </div>
             <ul v-if="searchResults[item.id]?.length" class="mt-3 space-y-2">
-              <li v-for="trip in searchResults[item.id]" :key="trip.id" class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border-subtle bg-surface-raised px-3 py-2">
+              <li v-for="trip in searchResults[item.id]" :key="trip.id" class="flex flex-wrap items-center justify-between gap-2 rounded-card bg-surface-raised px-3 py-2 shadow-card">
                 <div>
                   <p class="text-sm font-semibold text-ink">Viaje #{{ trip.number }} · {{ trip.domain }}</p>
                   <p class="text-xs text-ink-muted">{{ fmtDate(trip.date) }}</p>

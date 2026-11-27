@@ -40,7 +40,7 @@ const activo = ref(null)
           :style="{ width: `${segmento.ancho}%` }"
           @mouseenter="activo = segmento"
         ></div>
-        <div v-if="activo" role="tooltip" class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-border bg-surface-raised px-3 py-2 text-xs text-ink shadow-card">
+        <div v-if="activo" role="tooltip" class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 whitespace-nowrap rounded-card bg-surface-raised px-3 py-2 text-xs text-ink shadow-card">
           {{ activo.etiqueta }}: {{ activo.cantidad }} de {{ total }} viajes
         </div>
       </div>

@@ -79,7 +79,7 @@ const includesId = (ids, id) => ids.includes(Number(id))
         <fieldset class="rounded-2xl bg-surface-subtle p-4">
           <legend class="px-1 text-sm font-semibold text-ink">Roles</legend>
           <div class="mt-2 grid gap-2 sm:grid-cols-2">
-            <label v-for="role in data.roles" :key="role.id" class="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm text-ink transition-colors hover:border-primary/50 hover:bg-surface-muted">
+            <label v-for="role in data.roles" :key="role.id" class="flex min-h-11 cursor-pointer items-center gap-3 rounded-card bg-surface-raised px-3 py-2 text-sm text-ink transition-colors hover:border-primary/50 hover:bg-surface-muted shadow-card">
               <input type="checkbox" name="roles[]" :value="role.id" :checked="includesId(data.oldInput.roleIds, role.id)" class="size-4 rounded border-border-strong text-primary focus:ring-primary" />
               <span>{{ role.name }}</span>
             </label>
@@ -89,7 +89,7 @@ const includesId = (ids, id) => ids.includes(Number(id))
         <fieldset class="rounded-2xl bg-surface-subtle p-4">
           <legend class="px-1 text-sm font-semibold text-ink">Sucursales</legend>
           <div class="mt-2 grid gap-2 sm:grid-cols-2">
-            <label v-for="branch in data.assignableBranches" :key="branch.id" class="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm text-ink transition-colors hover:border-primary/50 hover:bg-surface-muted">
+            <label v-for="branch in data.assignableBranches" :key="branch.id" class="flex min-h-11 cursor-pointer items-center gap-3 rounded-card bg-surface-raised px-3 py-2 text-sm text-ink transition-colors hover:border-primary/50 hover:bg-surface-muted shadow-card">
               <input type="checkbox" name="sucursales[]" :value="branch.id" :checked="includesId(data.oldInput.branchIds, branch.id)" class="size-4 rounded border-border-strong text-primary focus:ring-primary" />
               <span>{{ branch.name }}</span>
             </label>

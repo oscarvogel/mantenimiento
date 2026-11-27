@@ -190,7 +190,7 @@ const changePageSize = (event) => window.location.assign(pageSizeUrl(event.targe
         <div class="flex flex-wrap items-center gap-2">
           <label class="flex items-center gap-2 text-sm font-semibold text-ink-muted">
             Mostrar
-            <select :value="pagination.perPage" class="min-h-10 rounded-lg border border-border bg-white px-2 text-ink" aria-label="Viajes por página" @change="changePageSize">
+            <select :value="pagination.perPage" class="min-h-10 rounded-pill border border-transparent bg-surface-muted px-2 text-ink" aria-label="Viajes por página" @change="changePageSize">
               <option v-for="size in pagination.perPageOptions" :key="size" :value="size">{{ size }}</option>
             </select>
           </label>
@@ -201,7 +201,7 @@ const changePageSize = (event) => window.location.assign(pageSizeUrl(event.targe
             <a v-else :href="pageUrl(pagination.page - 1)" :class="secondaryButton" rel="prev">Anterior</a>
             <label class="flex items-center gap-2 text-sm font-semibold text-ink-muted">
               Página
-              <select :value="pagination.page" class="min-h-10 rounded-lg border border-border bg-white px-2 text-ink" aria-label="Ir a la página" @change="goToPage">
+              <select :value="pagination.page" class="min-h-10 rounded-pill border border-transparent bg-surface-muted px-2 text-ink" aria-label="Ir a la página" @change="goToPage">
                 <option v-for="number in pageNumbers" :key="number" :value="number">{{ number }}</option>
               </select>
             </label>
