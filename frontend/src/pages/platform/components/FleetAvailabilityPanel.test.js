@@ -33,6 +33,15 @@ describe('FleetAvailabilityPanel', () => {
     expect(wrapper.get('[data-test="donut-summary"]').text()).toBe('118 equipos activos: 104 operativos, 10 en taller y 4 detenidos.')
   })
 
+  it('con un solo tramo el anillo va entero, sin corte', () => {
+    const wrapper = mount(FleetAvailabilityPanel, {
+      props: { fleet: { ...fleet, total: 1, counts: { operative: 0, inShop: 1, stopped: 0 } } },
+    })
+    const [segment] = wrapper.findAll('[data-test="donut-segment"]')
+    const circumference = 2 * Math.PI * 78
+    expect(Number(segment.attributes('stroke-dasharray').split(' ')[0])).toBeCloseTo(circumference)
+  })
+
   it('sin equipos activos muestra Sin datos y ningún tramo', () => {
     const wrapper = mount(FleetAvailabilityPanel, {
       props: { fleet: { ...fleet, total: 0, counts: { operative: 0, inShop: 0, stopped: 0 }, stopped: [], inShop: [] } },

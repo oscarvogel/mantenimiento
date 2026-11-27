@@ -22,13 +22,15 @@ const total = computed(() => props.fleet.total ?? 0)
 // Tramos consecutivos alrededor del círculo; los vacíos no se dibujan.
 const segments = computed(() => {
   if (total.value <= 0) return []
+  // Con un solo tramo el anillo va entero: el espacio entre tramos dejaba un corte arriba.
+  const gap = parts.value.filter((part) => part.value > 0).length > 1 ? GAP : 0
   let offset = 0
   return parts.value.flatMap((part) => {
     const length = (CIRCUMFERENCE * part.value) / total.value
     const start = offset
     offset += length
     if (part.value <= 0) return []
-    return [{ ...part, dash: `${Math.max(length - GAP, 1)} ${CIRCUMFERENCE}`, dashOffset: -start }]
+    return [{ ...part, dash: `${Math.max(length - gap, 1)} ${CIRCUMFERENCE}`, dashOffset: -start }]
   })
 })
 
@@ -47,7 +49,6 @@ const lists = computed(() => [
     empty: 'No hay equipos detenidos.',
     icon: TruckIcon,
     iconTone: 'bg-danger-subtle text-danger-strong',
-    sinceLabel: 'parado',
   },
   {
     key: 'inShop',
@@ -58,7 +59,6 @@ const lists = computed(() => [
     empty: 'No hay equipos en taller.',
     icon: WrenchScrewdriverIcon,
     iconTone: 'bg-accent-subtle text-accent-800 dark:text-accent-300',
-    sinceLabel: 'en taller',
   },
 ])
 
@@ -127,13 +127,16 @@ const submitOnChange = (event) => event.target.form?.requestSubmit()
             <span class="flex size-11 shrink-0 items-center justify-center rounded-[14px]" :class="list.iconTone" aria-hidden="true">
               <component :is="list.icon" class="size-5" />
             </span>
+            <!-- Dos renglones a todo el ancho: con una columna aparte a la derecha se cortaban equipo y motivo. -->
             <span class="min-w-0 flex-1">
-              <span class="block truncate text-sm font-semibold text-ink">{{ item.label }}</span>
-              <span class="block truncate text-xs text-ink-subtle">{{ [item.branchName, item.reason].filter(Boolean).join(' · ') }}</span>
-            </span>
-            <span class="shrink-0 text-right text-xs">
-              <span class="block font-semibold text-ink">{{ item.orderNumber }}</span>
-              <span class="block text-ink-subtle">{{ list.sinceLabel }} {{ formatRelativeDays(item.since, new Date(), 'sin fecha') }}</span>
+              <span class="flex items-baseline justify-between gap-2">
+                <span class="truncate text-sm font-semibold text-ink">{{ item.label }}</span>
+                <span class="shrink-0 text-xs font-semibold text-ink">{{ item.orderNumber }}</span>
+              </span>
+              <span class="flex items-baseline justify-between gap-2 text-xs text-ink-subtle">
+                <span class="truncate">{{ [item.branchName, item.reason].filter(Boolean).join(' · ') }}</span>
+                <span class="shrink-0">{{ formatRelativeDays(item.since, new Date(), 'sin fecha') }}</span>
+              </span>
             </span>
             <ArrowRightIcon class="size-4 shrink-0 text-ink-subtle opacity-0 transition-opacity group-hover:opacity-100" aria-hidden="true" />
           </a>
