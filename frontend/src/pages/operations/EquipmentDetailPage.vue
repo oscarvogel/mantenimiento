@@ -33,6 +33,21 @@ const reviewReasons = [
 ]
 
 const props = defineProps({ data: { type: Object, required: true } })
+
+// Acciones de chofer: mismo tamaño para el primario y el danger outline.
+// Se conserva el estilo danger existente y se igualan las dimensiones del primario.
+const dangerButtonLarge = 'ui-interactive inline-flex min-h-11 items-center justify-center rounded-lg border border-danger/30 bg-surface-raised px-4 py-2.5 text-sm font-semibold text-danger-strong hover:bg-danger-subtle disabled:cursor-not-allowed disabled:opacity-50'
+const unassignDetails = ref(null)
+const unassignOpen = ref(false)
+const toggleUnassign = () => {
+  const details = unassignDetails.value
+  if (!details) return
+  details.open = !details.open
+  unassignOpen.value = details.open
+}
+const syncUnassignOpen = () => {
+  unassignOpen.value = Boolean(unassignDetails.value?.open)
+}
 const data = computed(() => {
   const readings = props.data.readings
   const workOrderHistory = props.data.workOrderHistory
@@ -152,29 +167,49 @@ const equipmentSummary = computed(() => {
             <span v-if="data.driverAssignment.current.notes"> · {{ data.driverAssignment.current.notes }}</span>
           </p>
 
-          <form v-if="data.driverAssignment.canEdit && data.equipment.status === 'ACTIVO'" method="post" :action="data.driverAssignment.assignUrl" class="mt-5 grid gap-4 sm:grid-cols-2">
+          <form id="equipment-driver-form" v-if="data.driverAssignment.canEdit && data.equipment.status === 'ACTIVO'" method="post" :action="data.driverAssignment.assignUrl" class="mt-5 space-y-4">
             <CsrfInput :csrf="data.csrf" />
-            <FormField label="Empleado / chofer" for-id="equipment-driver">
-              <select id="equipment-driver" name="empleado_id" required :class="fieldClass">
-                <option value="">Seleccionar chofer</option>
-                <option v-for="employee in data.driverAssignment.employees" :key="employee.id" :value="employee.id" :selected="String(employee.id) === String(data.driverAssignment.current?.employeeId || '')">
-                  {{ employee.name }}
-                </option>
-              </select>
-            </FormField>
-            <FormField label="Desde" for-id="equipment-driver-from">
-              <input id="equipment-driver-from" type="date" name="fecha_desde" required :value="today()" :max="today()" :class="fieldClass" />
-            </FormField>
-            <FormField label="Observaciones" for-id="equipment-driver-notes" class="sm:col-span-2">
-              <input id="equipment-driver-notes" name="observaciones" maxlength="1000" placeholder="Ej.: cambio de unidad" :class="fieldClass" />
-            </FormField>
-            <button type="submit" :class="`${primaryButton} sm:justify-self-start`">
-              {{ data.driverAssignment.current ? 'Cambiar chofer' : 'Asignar chofer' }}
-            </button>
+            <div class="grid gap-4 sm:grid-cols-2">
+              <FormField label="Empleado / chofer" for-id="equipment-driver">
+                <select id="equipment-driver" name="empleado_id" required :class="fieldClass">
+                  <option value="">Seleccionar chofer</option>
+                  <option v-for="employee in data.driverAssignment.employees" :key="employee.id" :value="employee.id" :selected="String(employee.id) === String(data.driverAssignment.current?.employeeId || '')">
+                    {{ employee.name }}
+                  </option>
+                </select>
+              </FormField>
+              <FormField label="Desde" for-id="equipment-driver-from">
+                <input id="equipment-driver-from" type="date" name="fecha_desde" required :value="today()" :max="today()" :class="fieldClass" />
+              </FormField>
+              <FormField label="Observaciones" for-id="equipment-driver-notes" class="sm:col-span-2">
+                <input id="equipment-driver-notes" name="observaciones" maxlength="1000" placeholder="Ej.: cambio de unidad" :class="fieldClass" />
+              </FormField>
+            </div>
+            <div class="grid max-w-md grid-cols-1 gap-3 sm:grid-cols-2">
+              <button type="submit" :class="`${primaryButton} w-full`">
+                {{ data.driverAssignment.current ? 'Cambiar chofer' : 'Asignar chofer' }}
+              </button>
+              <button
+                v-if="data.driverAssignment.current"
+                type="button"
+                :class="`${dangerButtonLarge} w-full`"
+                :aria-expanded="unassignOpen ? 'true' : 'false'"
+                aria-controls="equipment-driver-unassign"
+                @click="toggleUnassign"
+              >
+                Desvincular chofer
+              </button>
+            </div>
           </form>
 
-          <details v-if="data.driverAssignment.canEdit && data.driverAssignment.current && data.equipment.status === 'ACTIVO'" class="ui-details-animated mt-6">
-            <summary :class="dangerButton">Desvincular chofer</summary>
+          <details
+            id="equipment-driver-unassign"
+            ref="unassignDetails"
+            v-if="data.driverAssignment.canEdit && data.driverAssignment.current && data.equipment.status === 'ACTIVO'"
+            class="ui-details-animated"
+            @toggle="syncUnassignOpen"
+          >
+            <summary class="sr-only" tabindex="-1" aria-hidden="true">Desvincular chofer</summary>
             <form
               method="post"
               :action="data.driverAssignment.unassignUrl"
