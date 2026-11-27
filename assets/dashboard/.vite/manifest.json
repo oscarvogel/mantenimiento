@@ -86,14 +86,14 @@
     "isDynamicEntry": true
   },
   "src/main.js": {
-    "file": "assets/main-BzcSXMjg.js",
+    "file": "assets/main-hfVhtR7x.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
     "imports": [
       "_vendor-CSBjL59h.js",
-      "_chatbot-B5Ht8LKi.js",
       "_admin-BEmUYhB9.js",
+      "_chatbot-B5Ht8LKi.js",
       "_reports-rNBZozsu.js"
     ],
     "dynamicImports": [
@@ -122,15 +122,15 @@
     ]
   },
   "src/profiles/cliente_piloto/profile.js": {
-    "file": "assets/profile-BUxn6SCQ.js",
+    "file": "assets/profile-1-N-i0aV.js",
     "name": "profile",
     "src": "src/profiles/cliente_piloto/profile.js",
     "isDynamicEntry": true,
     "imports": [
       "src/main.js",
       "_vendor-CSBjL59h.js",
-      "_chatbot-B5Ht8LKi.js",
       "_admin-BEmUYhB9.js",
+      "_chatbot-B5Ht8LKi.js",
       "_reports-rNBZozsu.js"
     ],
     "css": [
@@ -138,28 +138,28 @@
     ]
   },
   "src/profiles/platform/profile.js": {
-    "file": "assets/profile-CKCEat8N.js",
+    "file": "assets/profile-DA6vuK9p.js",
     "name": "profile",
     "src": "src/profiles/platform/profile.js",
     "isDynamicEntry": true,
     "imports": [
       "src/main.js",
       "_vendor-CSBjL59h.js",
-      "_chatbot-B5Ht8LKi.js",
       "_admin-BEmUYhB9.js",
+      "_chatbot-B5Ht8LKi.js",
       "_reports-rNBZozsu.js"
     ]
   },
   "src/profiles/vogel/profile.js": {
-    "file": "assets/profile-CsX7BJTv.js",
+    "file": "assets/profile-Db_lZgTz.js",
     "name": "profile",
     "src": "src/profiles/vogel/profile.js",
     "isDynamicEntry": true,
     "imports": [
       "src/main.js",
       "_vendor-CSBjL59h.js",
-      "_chatbot-B5Ht8LKi.js",
       "_admin-BEmUYhB9.js",
+      "_chatbot-B5Ht8LKi.js",
       "_reports-rNBZozsu.js"
     ]
   }
