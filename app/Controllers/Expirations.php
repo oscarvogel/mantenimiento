@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Presentation\ExpirationSummary;
 use App\Application\Identity\ActorContext;
 use App\Domain\Expirations\Expiration;
 use App\Domain\Expirations\ExpirationSubjectType;
@@ -62,20 +63,19 @@ final class Expirations extends BaseController
                 $expirationTypeId = 0;
             }
 
-            $items = $readModel->upcoming($companyId, [
+            $filters = [
                 'subject' => $subject,
                 'status' => $status,
                 'branchId' => $branchId > 0 ? $branchId : null,
                 'expirationTypeId' => $expirationTypeId > 0 ? $expirationTypeId : null,
                 'q' => $search,
-            ], $allowedBranches);
-
-            $summary = [
-                'total' => count($items),
-                'overdue' => count(array_filter($items, static fn (array $item): bool => (int) $item['daysUntil'] < 0)),
-                'next7' => count(array_filter($items, static fn (array $item): bool => (int) $item['daysUntil'] >= 0 && (int) $item['daysUntil'] <= 7)),
-                'next30' => count(array_filter($items, static fn (array $item): bool => (int) $item['daysUntil'] >= 0 && (int) $item['daysUntil'] <= 30)),
             ];
+            $items = $readModel->upcoming($companyId, $filters, $allowedBranches);
+            // Las píldoras cuentan con los demás filtros pero sin el de estado: elegir "Vencidos"
+            // no deja en cero a "Próximos 7 días".
+            $summary = ExpirationSummary::of($status === 'todos'
+                ? $items
+                : $readModel->upcoming($companyId, ['status' => 'todos'] + $filters, $allowedBranches));
 
             return $this->renderApp($actor, 'expirations', 'expirations-index', 'Próximos vencimientos', [
                 'items' => $items,
