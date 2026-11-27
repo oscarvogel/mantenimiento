@@ -34,6 +34,11 @@ const props = defineProps({
     type: Object,
     default: null,
   },
+  // Solo el portal la pasa: la fecha del día bajo el saludo.
+  today: {
+    type: Date,
+    default: null,
+  },
   // Módulo actual; en el portal no hay.
   moduleName: {
     type: String,
@@ -42,6 +47,11 @@ const props = defineProps({
 })
 
 const firstName = computed(() => String(props.user.name ?? '').trim().split(/\s+/)[0] ?? '')
+const todayLabel = computed(() => {
+  if (!props.today) return ''
+  const text = new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }).format(props.today)
+  return text.charAt(0).toUpperCase() + text.slice(1)
+})
 const companyLine = computed(() => [props.company.name, props.company.scopeLabel].filter(Boolean).join(' · '))
 
 const emit = defineEmits(['open-menu'])
@@ -75,6 +85,7 @@ defineExpose({
           <span class="truncate text-lg font-semibold text-ink" :class="{ 'hidden sm:inline': moduleName }">Hola, {{ firstName }}</span>
           <span v-if="moduleName" data-test="current-module" class="min-w-0 truncate rounded-pill bg-primary-subtle px-2 sm:px-2.5 py-0.5 text-xs font-semibold text-primary">{{ moduleName }}</span>
         </p>
+        <p v-if="todayLabel" data-test="today" class="truncate text-sm font-medium text-ink-muted">{{ todayLabel }}</p>
         <p class="truncate text-xs text-ink-muted" :class="{ 'hidden sm:block': moduleName }">{{ companyLine }}</p>
       </div>
     </div>

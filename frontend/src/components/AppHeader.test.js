@@ -47,6 +47,12 @@ describe('AppHeader', () => {
     expect(portal.get('p span').classes()).not.toContain('hidden')
   })
 
+  it('en el portal muestra la fecha del día bajo el saludo', () => {
+    const wrapper = mountHeader(null, { today: new Date(2026, 10, 26, 12) })
+    expect(wrapper.get('[data-test="today"]').text()).toBe('Jueves, 26 de noviembre')
+    expect(mountHeader().find('[data-test="today"]').exists()).toBe(false)
+  })
+
   it('la campana solo con avisos habilitados', () => {
     expect(mountHeader().findComponent({ name: 'AppNotificationBell' }).exists()).toBe(false)
     expect(mountHeader(null, { notifications: { enabled: true, summaryUrl: '#', centerUrl: '#' } })

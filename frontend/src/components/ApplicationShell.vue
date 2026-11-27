@@ -221,6 +221,7 @@ onBeforeUnmount(() => {
         :user="props.shell.user"
         :company="props.shell.company"
         :module-name="currentModule"
+        :today="isPlatformShell ? new Date() : null"
         :notifications="props.shell.notifications"
         :equipment-search-url="props.shell.equipmentSearchUrl ?? null"
         :logout="props.shell.logout"
