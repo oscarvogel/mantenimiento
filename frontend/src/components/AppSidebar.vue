@@ -161,6 +161,14 @@ const markCustomIconFailed = (item) => {
 }
 const showDemoEntry = computed(() => props.navigation.some((item) => item.key === 'superadmin'))
 
+// Nombre del ícono de la barra contraída: un solo globo fijo, fuera del nav que se desplaza.
+const railTip = ref(null)
+const showRailTip = (event, label) => {
+  const box = event.currentTarget.getBoundingClientRect()
+  railTip.value = { label, top: box.top + box.height / 2 }
+}
+const hideRailTip = () => { railTip.value = null }
+
 const openDemoCompany = () => {
   window.dispatchEvent(new CustomEvent('maintenance:open-demo-company'))
   emit('close')
@@ -209,13 +217,32 @@ const openDemoCompany = () => {
       </button>
     </div>
 
-    <!-- Sin overflow: el nombre de cada ícono sale por fuera de la barra. -->
-    <nav v-if="collapsed" id="desktop-primary-navigation" aria-label="Navegación principal" class="flex-1 px-2 py-3">
+    <nav
+      v-if="collapsed"
+      id="desktop-primary-navigation"
+      aria-label="Navegación principal"
+      class="ui-sidebar-scroll flex-1 overflow-y-auto px-2 py-3"
+      @scroll="hideRailTip"
+      @keydown.escape="hideRailTip"
+    >
       <ul class="space-y-1">
-        <li v-if="!isPlatformNavigation && portalLink">
+        <li
+          v-if="!isPlatformNavigation && portalLink"
+          @mouseenter="showRailTip($event, 'Volver al portal')"
+          @mouseleave="hideRailTip"
+          @focusin="showRailTip($event, 'Volver al portal')"
+          @focusout="hideRailTip"
+        >
           <SidebarLink :item="portalLink" label="Volver al portal" :icon="ArrowLeftIcon" compact />
         </li>
-        <li v-for="item in railLinks" :key="item.key">
+        <li
+          v-for="item in railLinks"
+          :key="item.key"
+          @mouseenter="showRailTip($event, visibleLabel(item))"
+          @mouseleave="hideRailTip"
+          @focusin="showRailTip($event, visibleLabel(item))"
+          @focusout="hideRailTip"
+        >
           <SidebarLink
             :item="item"
             :label="visibleLabel(item)"
@@ -228,7 +255,6 @@ const openDemoCompany = () => {
         </li>
       </ul>
     </nav>
-
     <nav v-else :id="collapsible ? 'desktop-primary-navigation' : undefined" aria-label="Navegación principal" class="ui-sidebar-scroll flex-1 overflow-y-auto px-3 py-3" :class="{ 'workspace-sidebar-reveal': collapsible }">
       <section v-for="group in groups" :key="group.title || 'all'" class="mb-3 last:mb-0">
         <button
@@ -301,5 +327,12 @@ const openDemoCompany = () => {
         </ul>
       </section>
     </nav>
+    <span
+      v-if="collapsed && railTip"
+      data-test="rail-tooltip"
+      class="pointer-events-none fixed z-50 -translate-y-1/2 whitespace-nowrap rounded-lg bg-secondary-900 px-3 py-1.5 text-xs font-semibold text-white shadow-card ring-1 ring-white/15"
+      :style="{ top: `${railTip.top}px`, left: 'calc(var(--workspace-sidebar-width, 4.5rem) + 0.5rem)' }"
+      aria-hidden="true"
+    >{{ railTip.label }}</span>
   </aside>
 </template>

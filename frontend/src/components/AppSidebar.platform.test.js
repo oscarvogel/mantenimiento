@@ -38,7 +38,32 @@ describe('AppSidebar module navigation', () => {
     const collapsed = mount(AppSidebar, { props: { navigation, logout: null, collapsible: true, collapsed: true } })
     const rail = collapsed.get('a[href="/combustible"]')
     expect(collapsed.text()).not.toContain('Cargas, consumo y faltantes')
-    expect(rail.get('[data-test="rail-tooltip"]').text()).toBe('Combustible')
+    expect(rail.text()).toBe('Combustible')
+  })
+
+  it('la barra contraída se desplaza y el nombre del ícono flota fuera de ella', async () => {
+    const navigation = [
+      { key: 'platform-home', label: 'Inicio', href: '/inicio', icon: 'platform-home', active: true },
+      { key: 'module-fuel', label: 'Combustible', href: '/combustible', icon: 'module-fuel' },
+    ]
+    const wrapper = mount(AppSidebar, { attachTo: document.body, props: { navigation, collapsible: true, collapsed: true } })
+    const nav = wrapper.get('#desktop-primary-navigation')
+    expect(nav.classes()).toContain('overflow-y-auto')
+    expect(wrapper.find('[data-test="rail-tooltip"]').exists()).toBe(false)
+
+    const row = nav.get('a[href="/combustible"]').element.closest('li')
+    row.getBoundingClientRect = () => ({ top: 100, height: 44, left: 0, right: 72, bottom: 144, width: 72 })
+    await row.dispatchEvent(new Event('mouseenter'))
+    await wrapper.vm.$nextTick()
+    const tip = wrapper.get('[data-test="rail-tooltip"]')
+    expect(tip.text()).toBe('Combustible')
+    expect(tip.classes()).toContain('fixed')
+    expect(tip.attributes('style')).toContain('top: 122px')
+    expect(wrapper.findAll('[data-test="rail-tooltip"]')).toHaveLength(1)
+
+    await nav.trigger('scroll')
+    expect(wrapper.find('[data-test="rail-tooltip"]').exists()).toBe(false)
+    wrapper.unmount()
   })
 
   it('la barra contraída de un módulo muestra siempre los mismos íconos, aunque la página actual no esté entre ellos', () => {

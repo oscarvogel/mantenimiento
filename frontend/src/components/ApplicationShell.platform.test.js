@@ -25,7 +25,7 @@ describe('ApplicationShell platform context', () => {
     const nav = () => wrapper.get('#desktop-primary-navigation')
     expect(toggle.attributes('aria-expanded')).toBe('false')
     expect(nav().get('a[href="/inicio"]').attributes('aria-current')).toBe('page')
-    expect(nav().get('a[href="/dashboard"] [data-test="rail-tooltip"]').text()).toBe('Mantenimiento')
+    expect(nav().get('a[href="/dashboard"]').text()).toBe('Mantenimiento')
     expect(nav().text()).not.toContain('Facturación')
 
     await toggle.trigger('click')
