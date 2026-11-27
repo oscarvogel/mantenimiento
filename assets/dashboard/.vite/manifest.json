@@ -1,18 +1,18 @@
 {
-  "_admin-Dd3hQcnh.js": {
-    "file": "assets/admin-Dd3hQcnh.js",
+  "_admin-BEiov4zH.js": {
+    "file": "assets/admin-BEiov4zH.js",
     "name": "admin",
     "imports": [
-      "_vendor-CSBjL59h.js",
-      "_chatbot-CrvnmzS1.js"
+      "_vendor-RCuW0sem.js",
+      "_chatbot-BAEwjDkW.js"
     ]
   },
-  "_chatbot-CrvnmzS1.js": {
-    "file": "assets/chatbot-CrvnmzS1.js",
+  "_chatbot-BAEwjDkW.js": {
+    "file": "assets/chatbot-BAEwjDkW.js",
     "name": "chatbot",
     "isDynamicEntry": true,
     "imports": [
-      "_vendor-CSBjL59h.js"
+      "_vendor-RCuW0sem.js"
     ],
     "css": [
       "assets/chatbot-DO6L-G3P.css"
@@ -22,21 +22,21 @@
     "file": "assets/chatbot-DO6L-G3P.css",
     "src": "_chatbot-DO6L-G3P.css"
   },
-  "_reports-CF7JXwJJ.js": {
-    "file": "assets/reports-CF7JXwJJ.js",
+  "_reports-Bu8flJrO.js": {
+    "file": "assets/reports-Bu8flJrO.js",
     "name": "reports",
     "imports": [
-      "_chatbot-CrvnmzS1.js",
-      "_admin-Dd3hQcnh.js",
-      "_vendor-CSBjL59h.js"
+      "_chatbot-BAEwjDkW.js",
+      "_admin-BEiov4zH.js",
+      "_vendor-RCuW0sem.js"
     ]
   },
   "_vendor-CF0y71XY.css": {
     "file": "assets/vendor-CF0y71XY.css",
     "src": "_vendor-CF0y71XY.css"
   },
-  "_vendor-CSBjL59h.js": {
-    "file": "assets/vendor-CSBjL59h.js",
+  "_vendor-RCuW0sem.js": {
+    "file": "assets/vendor-RCuW0sem.js",
     "name": "vendor",
     "css": [
       "assets/vendor-CF0y71XY.css"
@@ -86,18 +86,18 @@
     "isDynamicEntry": true
   },
   "src/main.js": {
-    "file": "assets/main-B2UdOAq4.js",
+    "file": "assets/main-2VbPFT60.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
     "imports": [
-      "_vendor-CSBjL59h.js",
-      "_admin-Dd3hQcnh.js",
-      "_chatbot-CrvnmzS1.js",
-      "_reports-CF7JXwJJ.js"
+      "_vendor-RCuW0sem.js",
+      "_admin-BEiov4zH.js",
+      "_chatbot-BAEwjDkW.js",
+      "_reports-Bu8flJrO.js"
     ],
     "dynamicImports": [
-      "_chatbot-CrvnmzS1.js",
+      "_chatbot-BAEwjDkW.js",
       "src/pages/operations/components/FleetTelemetryMap.vue",
       "node_modules/gsap/index.js",
       "src/profiles/platform/profile.js",
@@ -109,58 +109,58 @@
     ]
   },
   "src/pages/operations/components/FleetTelemetryMap.vue": {
-    "file": "assets/FleetTelemetryMap-DBOIFsEJ.js",
+    "file": "assets/FleetTelemetryMap-BpwqKAvb.js",
     "name": "FleetTelemetryMap",
     "src": "src/pages/operations/components/FleetTelemetryMap.vue",
     "isDynamicEntry": true,
     "imports": [
-      "_vendor-CSBjL59h.js",
-      "_chatbot-CrvnmzS1.js"
+      "_vendor-RCuW0sem.js",
+      "_chatbot-BAEwjDkW.js"
     ],
     "css": [
       "assets/FleetTelemetryMap-DFnGY69W.css"
     ]
   },
   "src/profiles/cliente_piloto/profile.js": {
-    "file": "assets/profile-D624UVJ2.js",
+    "file": "assets/profile-ButCrwny.js",
     "name": "profile",
     "src": "src/profiles/cliente_piloto/profile.js",
     "isDynamicEntry": true,
     "imports": [
       "src/main.js",
-      "_vendor-CSBjL59h.js",
-      "_admin-Dd3hQcnh.js",
-      "_chatbot-CrvnmzS1.js",
-      "_reports-CF7JXwJJ.js"
+      "_vendor-RCuW0sem.js",
+      "_admin-BEiov4zH.js",
+      "_chatbot-BAEwjDkW.js",
+      "_reports-Bu8flJrO.js"
     ],
     "css": [
       "assets/profile-DV70kWFs.css"
     ]
   },
   "src/profiles/platform/profile.js": {
-    "file": "assets/profile-CDnLtFZL.js",
+    "file": "assets/profile-jy_HYIQ5.js",
     "name": "profile",
     "src": "src/profiles/platform/profile.js",
     "isDynamicEntry": true,
     "imports": [
       "src/main.js",
-      "_vendor-CSBjL59h.js",
-      "_admin-Dd3hQcnh.js",
-      "_chatbot-CrvnmzS1.js",
-      "_reports-CF7JXwJJ.js"
+      "_vendor-RCuW0sem.js",
+      "_admin-BEiov4zH.js",
+      "_chatbot-BAEwjDkW.js",
+      "_reports-Bu8flJrO.js"
     ]
   },
   "src/profiles/vogel/profile.js": {
-    "file": "assets/profile-DJj-ez3j.js",
+    "file": "assets/profile-DDYRqR4c.js",
     "name": "profile",
     "src": "src/profiles/vogel/profile.js",
     "isDynamicEntry": true,
     "imports": [
       "src/main.js",
-      "_vendor-CSBjL59h.js",
-      "_admin-Dd3hQcnh.js",
-      "_chatbot-CrvnmzS1.js",
-      "_reports-CF7JXwJJ.js"
+      "_vendor-RCuW0sem.js",
+      "_admin-BEiov4zH.js",
+      "_chatbot-BAEwjDkW.js",
+      "_reports-Bu8flJrO.js"
     ]
   }
 }
