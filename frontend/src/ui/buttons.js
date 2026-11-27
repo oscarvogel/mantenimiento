@@ -3,7 +3,7 @@
 // class over another padding class leaves the winner to Tailwind's CSS order.
 
 // Rediseño de interiores (26/11): píldoras; el principal en marino (`action`), no en azul.
-const base = 'ui-interactive inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-pill font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-raised disabled:cursor-not-allowed disabled:opacity-50'
+const base = 'ui-interactive inline-flex items-center justify-center gap-2 rounded-pill text-center font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-raised disabled:cursor-not-allowed disabled:opacity-50'
 const md = 'min-h-11 px-5 py-2.5 text-sm'
 const sm = 'min-h-9 px-3.5 py-1.5 text-xs'
 

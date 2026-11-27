@@ -61,31 +61,49 @@ describe('WorkOrdersIndexPage', () => {
     expect(wrapper.findAll('a[href="/mantenimiento/ordenes"]').some((link) => link.text().includes('Limpiar filtros'))).toBe(true)
   })
 
-  it('prioriza una distribución compacta para indicadores y acciones en móvil', () => {
-    const wrapper = mount(WorkOrdersIndexPage, { props: { data: data() } })
+  it('los contadores son píldoras siempre visibles que filtran, con la activa marcada', () => {
+    const payload = data()
+    payload.filters = { ...payload.filters, status: 'EN_PROCESO' }
+    const wrapper = mount(WorkOrdersIndexPage, { props: { data: payload } })
 
-    expect(wrapper.get('[aria-label="Indicadores de órdenes"]').classes()).toContain('grid-cols-2')
+    const chips = wrapper.get('nav[aria-label="Indicadores de órdenes"]')
+    expect(chips.classes()).toContain('overflow-x-auto')
+    expect(chips.findAll('a').map((chip) => chip.text())).toEqual([
+      'Todas', 'OT abiertas 4', 'Emitidas 1', 'En proceso 1', 'Esperando repuestos 2', 'Demoradas 1', 'Finalizadas hoy 3',
+    ])
+    expect(chips.get('a[href="/mantenimiento/ordenes?estado=EN_PROCESO"]').attributes('aria-current')).toBe('true')
+    expect(chips.get('a[href="/mantenimiento/ordenes"]').attributes('aria-current')).toBeUndefined()
+    // Cada píldora lista exactamente lo que cuenta.
+    expect(chips.find('a[href="/mantenimiento/ordenes?atencion=open"]').text()).toBe('OT abiertas 4')
+    expect(chips.find('a[href="/mantenimiento/ordenes?atencion=finished-today"]').text()).toBe('Finalizadas hoy 3')
+    expect(chips.find('a[href="/mantenimiento/ordenes?atencion=delayed"]').exists()).toBe(true)
     expect(wrapper.find('.w-full.flex-col').exists()).toBe(true)
     expect(wrapper.findAll('a').some((link) => link.text().includes('Volver a Mantenimiento'))).toBe(false)
   })
 
-  it('permite desplegar los filtros adicionales y los indicadores sin perder la búsqueda', async () => {
+  it('sin filtros marca "Todas" como activa; con la vista de abiertas, marca esa', () => {
+    const wrapper = mount(WorkOrdersIndexPage, { props: { data: data() } })
+    expect(wrapper.get('nav[aria-label="Indicadores de órdenes"] a[href="/mantenimiento/ordenes"]').attributes('aria-current')).toBe('true')
+
+    const payload = data()
+    payload.filters = { ...payload.filters, attention: 'open' }
+    const open = mount(WorkOrdersIndexPage, { props: { data: payload } })
+    expect(open.get('nav[aria-label="Indicadores de órdenes"] a[href="/mantenimiento/ordenes?atencion=open"]').attributes('aria-current')).toBe('true')
+    expect(open.get('nav[aria-label="Indicadores de órdenes"] a[href="/mantenimiento/ordenes"]').attributes('aria-current')).toBeUndefined()
+  })
+
+  it('permite desplegar los filtros adicionales sin perder la búsqueda', async () => {
     const wrapper = mount(WorkOrdersIndexPage, { props: { data: data() } })
     const filtersButton = wrapper.get('button[aria-controls="work-order-extra-filters"]')
-    const indicatorsButton = wrapper.get('button[aria-controls="work-order-indicators"]')
     const search = wrapper.get('input[name="q"]')
 
     expect(filtersButton.attributes('aria-expanded')).toBe('false')
-    expect(indicatorsButton.attributes('aria-expanded')).toBe('false')
     await search.setValue('OT-00031')
     await filtersButton.trigger('click')
-    await indicatorsButton.trigger('click')
 
     expect(filtersButton.attributes('aria-expanded')).toBe('true')
-    expect(indicatorsButton.attributes('aria-expanded')).toBe('true')
     expect(search.element.value).toBe('OT-00031')
     expect(wrapper.get('#work-order-extra-filters select[name="estado"]').element.form).toBe(search.element.form)
-    expect(wrapper.get('#work-order-indicators').find('a[href="/mantenimiento/ordenes?atencion=delayed"]').exists()).toBe(true)
   })
 
   it('deja abiertos los filtros adicionales si hay estado, sucursal o responsable aplicado', () => {
@@ -132,7 +150,7 @@ describe('WorkOrdersIndexPage', () => {
     const wrapper = mount(WorkOrdersIndexPage, { props: { data: data() } })
     expect(wrapper.text()).toContain('OT-00031 · CAM-01')
     expect(wrapper.text()).toContain('Fecha de apertura:')
-    expect(wrapper.text()).toContain('DEMORADA')
+    expect(wrapper.text()).toContain('Demorada')
     expect(wrapper.find('a[href="/mantenimiento/ordenes/31/imprimir"]').attributes('target')).toBe('_blank')
     expect(wrapper.find('form[action="/mantenimiento/ordenes/31/iniciar"]').exists()).toBe(true)
     expect(wrapper.find('form[action="/mantenimiento/ordenes/32/reanudar"]').exists()).toBe(true)

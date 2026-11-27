@@ -72,9 +72,15 @@ final class CodeIgniterWorkOrderDashboardReadModel implements WorkOrderDashboard
         if ($ownerId > 0) {
             $builder->where('o.responsable_usuario_id', $ownerId);
         }
-        if (($filters['attention'] ?? '') === 'delayed') {
+        // Vistas de las píldoras del listado: cada una usa el mismo criterio que su contador en kpis().
+        $attention = $filters['attention'] ?? '';
+        if ($attention === 'delayed') {
             $builder->whereIn('o.estado', self::OPEN_STATES)
                 ->where('DATEDIFF(CURDATE(), DATE(o.fecha_apertura)) >=', self::DELAY_DAYS, false);
+        } elseif ($attention === 'open') {
+            $builder->whereIn('o.estado', self::OPEN_STATES);
+        } elseif ($attention === 'finished-today') {
+            $builder->where('o.estado', 'FINALIZADA')->where('DATE(o.fecha_finalizacion) = CURDATE()', null, false);
         }
 
         return $builder;

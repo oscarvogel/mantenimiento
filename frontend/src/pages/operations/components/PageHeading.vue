@@ -19,6 +19,6 @@ defineProps({
       <h1 class="break-words text-3xl font-bold tracking-tight text-ink sm:text-4xl">{{ title }}</h1>
       <p v-if="description" class="mt-1.5 max-w-prose text-sm leading-6 text-ink-muted">{{ description }}</p>
     </div>
-    <div v-if="$slots.actions" class="flex max-w-full flex-wrap items-center gap-2"><slot name="actions" /></div>
+    <div v-if="$slots.actions" class="flex w-full flex-wrap items-center gap-2 sm:w-auto"><slot name="actions" /></div>
   </header>
 </template>
