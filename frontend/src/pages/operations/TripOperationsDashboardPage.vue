@@ -167,7 +167,7 @@ const bar = (value, max) => {
 
     <template v-if="hasData">
       <section aria-label="Indicadores de viajes operativos" class="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
-        <article v-for="kpi in kpis" :key="kpi.key" class="rounded-card bg-surface-raised p-4 shadow-card">
+        <article v-for="(kpi, index) in kpis" :key="kpi.key" class="rounded-card p-4" :class="index === 0 ? 'ui-card-emphasis' : 'bg-surface-raised shadow-card'">
           <p class="text-xs font-semibold text-ink-muted">{{ kpi.label }}</p>
           <p class="mt-2 font-bold text-ink" :class="kpi.compact ? 'text-base leading-6' : 'text-2xl'">{{ kpi.value }}</p>
           <p class="mt-1 text-xs text-ink-muted">{{ kpi.hint }}</p>

@@ -7,13 +7,15 @@ const props = defineProps({
   metric: { type: Object, required: true },
   hint: { type: String, default: '' },
   tone: { type: String, default: 'primary' },
+  // La cifra principal del reporte va en la tarjeta oscura.
+  emphasis: { type: Boolean, default: false },
 })
 
 const tones = {
-  primary: 'border-l-primary',
-  success: 'border-l-success',
-  warning: 'border-l-warning',
-  danger: 'border-l-danger',
+  primary: 'bg-primary',
+  success: 'bg-success',
+  warning: 'bg-warning',
+  danger: 'bg-danger',
 }
 
 const numericValue = computed(() => {
@@ -23,7 +25,8 @@ const numericValue = computed(() => {
 </script>
 
 <template>
-  <article class="rounded-xl border border-border border-l-4 bg-surface-raised p-5 shadow-card" :class="tones[tone] ?? tones.primary">
+  <article class="rounded-card p-5" :class="emphasis ? 'ui-card-emphasis' : 'bg-surface-raised shadow-card'">
+    <span class="mb-3 block h-1 w-8 rounded-pill" :class="emphasis ? 'bg-accent-400' : (tones[tone] ?? tones.primary)" aria-hidden="true"></span>
     <p class="text-sm font-semibold text-ink-muted">{{ label }}</p>
     <p v-if="metric.available" class="mt-2 text-2xl font-bold tracking-tight text-ink">
       <CountUp v-if="numericValue !== null" :value="numericValue" :formatter="metric.formatter" />

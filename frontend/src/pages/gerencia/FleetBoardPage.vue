@@ -208,7 +208,7 @@ const tarjetas = computed(() => {
     <section aria-labelledby="fleet-board-summary" class="mt-6">
       <h2 id="fleet-board-summary" class="sr-only">Resumen</h2>
       <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
-        <article v-for="card in tarjetas" :key="card.label" class="rounded-card bg-surface-raised p-4 shadow-card">
+        <article v-for="(card, index) in tarjetas" :key="card.label" class="rounded-card p-4" :class="index === 0 ? 'ui-card-emphasis' : 'bg-surface-raised shadow-card'">
           <p class="text-xs font-bold uppercase tracking-wide text-ink-muted">{{ card.label }}</p>
           <p class="mt-1 text-2xl font-bold tabular-nums text-ink">{{ card.value }}</p>
           <p class="mt-1 text-xs leading-5 text-ink-muted">{{ card.hint }}</p>

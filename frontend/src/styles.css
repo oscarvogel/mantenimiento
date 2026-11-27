@@ -206,6 +206,11 @@ html[data-theme='dark'] {
 /* Rediseño de interiores: cada fila de una tabla es una píldora suave, sin líneas
    (docs/superpowers/specs/2026-11-26-rediseno-interiores-design.md). */
 @layer components {
+  /* Tarjeta destacada de un resumen: la cifra más urgente en oscuro, como la del inicio. Los
+     textos de adentro pasan a claro sin tocar cada plantilla. */
+  .ui-card-emphasis { background-color: rgb(var(--surface-inverse)); color: rgb(var(--ink-inverse)); }
+  .ui-card-emphasis :is(.text-ink, .text-ink-strong) { color: rgb(var(--ink-inverse)); }
+  .ui-card-emphasis :is(.text-ink-muted, .text-ink-subtle) { color: rgb(var(--ink-inverse) / 0.75); }
   /* Puntos decorativos de las tarjetas destacadas (inicio y resúmenes de los módulos). */
   .hero-dots {
     background-image: radial-gradient(currentColor 2px, transparent 2.2px);

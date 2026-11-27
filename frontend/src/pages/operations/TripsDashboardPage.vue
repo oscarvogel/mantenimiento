@@ -95,7 +95,7 @@ const domainUrl = (domain) => {
 
     <template v-else>
       <section aria-label="Indicadores" class="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <article class="rounded-card bg-surface-raised p-4 shadow-card">
+        <article class="ui-card-emphasis rounded-card p-4">
           <p class="text-xs font-semibold text-ink-muted">Viajes</p>
           <p class="mt-2 text-2xl font-bold text-ink">{{ fmt(summary.trips) }}</p>
         </article>

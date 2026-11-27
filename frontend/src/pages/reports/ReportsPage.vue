@@ -111,7 +111,7 @@ const pagination = computed(() => props.data.orders.pagination)
 
     <section v-if="activeTab === 'summary'" id="report-panel-summary" role="tabpanel" aria-labelledby="report-tab-summary" class="mt-6 space-y-6">
       <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <ReportMetricCard label="Costo total" :metric="metrics.totalCost" hint="Finalizadas en el período" />
+        <ReportMetricCard emphasis label="Costo total" :metric="metrics.totalCost" hint="Finalizadas en el período" />
         <ReportMetricCard label="Órdenes abiertas" :metric="metrics.openOrders" hint="Abiertas actualmente en el alcance" tone="warning" />
         <ReportMetricCard label="Finalizadas" :metric="metrics.completedOrders" hint="Finalizadas en el período" tone="success" />
         <ReportMetricCard label="Detención" :metric="metrics.downtimeHours" hint="Sólo intervalos válidos" tone="danger" />
