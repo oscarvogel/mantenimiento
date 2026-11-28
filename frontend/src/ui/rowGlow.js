@@ -13,6 +13,8 @@ const ROW_SELECTORS = {
   table: 'tbody > tr',
   // Tarjetas que reemplazan a la tabla en el celular.
   card: ['sm', 'md', 'lg'].map((size) => `ul.divide-y[class~="${size}:hidden"] > li`).join(', '),
+  // Tarjetas sueltas que hacen de fila (las órdenes del Circuito).
+  block: '[data-glow-row]',
 }
 
 export function rememberSuccessfulSave(now = Date.now()) {
@@ -39,14 +41,33 @@ function collectRows(root) {
       const base = rowKey(element)
       const count = seen.get(base) ?? 0
       seen.set(base, count + 1)
-      return { element, key: count ? `${base}#${count}` : base, signature: hash(element.textContent.replace(/\s+/g, ' ').trim()) }
+      const badge = element.querySelector('[data-status-tone]')
+      return {
+        element,
+        badge,
+        key: count ? `${base}#${count}` : base,
+        signature: hash(element.textContent.replace(/\s+/g, ' ').trim()),
+        tone: badge?.dataset.statusTone ?? null,
+      }
     })
   }
   return rows
 }
 
 function snapshotOf(rows) {
-  return Object.fromEntries(Object.entries(rows).map(([kind, list]) => [kind, Object.fromEntries(list.map((row) => [row.key, row.signature]))]))
+  return Object.fromEntries(Object.entries(rows).map(([kind, list]) => [kind, Object.fromEntries(list.map((row) => [row.key, [row.signature, row.tone]]))]))
+}
+
+function animateOnce(element, className, done = () => {}) {
+  element.classList.add(className)
+  // Sin `once`: el fin de la animación de la etiqueta sube hasta la fila y lo consumiría.
+  const finish = (event) => {
+    if (event.target !== element) return
+    element.removeEventListener('animationend', finish)
+    element.classList.remove(className)
+    done()
+  }
+  element.addEventListener('animationend', finish)
 }
 
 export function installRowGlow(root, { now = Date.now(), storage = sessionStorage, page = location.pathname + location.search } = {}) {
@@ -63,11 +84,18 @@ export function installRowGlow(root, { now = Date.now(), storage = sessionStorag
       for (const [kind, list] of Object.entries(collectRows(root))) {
         const before = previous.rows?.[kind]
         if (!before || Object.keys(before).length === 0) continue
-        const changed = list.filter((row) => before[row.key] !== row.signature)
+        // Las fotos viejas guardaban solo la firma.
+        const previousOf = (row) => [].concat(before[row.key] ?? [])
+        const changed = list.filter((row) => previousOf(row)[0] !== row.signature || (previousOf(row)[1] ?? row.tone) !== row.tone)
         if (changed.length === 0 || changed.length > MAX_GLOWING) continue
         changed.forEach((row) => {
-          row.element.classList.add('ui-row-glow')
-          row.element.addEventListener('animationend', () => row.element.classList.remove('ui-row-glow'), { once: true })
+          animateOnce(row.element, 'ui-row-glow')
+          const previousTone = previousOf(row)[1]
+          // La etiqueta arranca con el color del estado anterior y pasa al nuevo.
+          if (row.badge && previousTone && previousTone !== row.tone) {
+            row.badge.dataset.statusFrom = previousTone
+            animateOnce(row.badge, 'ui-status-changed', () => delete row.badge.dataset.statusFrom)
+          }
           glowing.push(row.element)
         })
       }

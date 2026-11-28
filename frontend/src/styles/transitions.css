@@ -212,6 +212,26 @@ html[data-theme='dark'] .ui-sidebar-surface.platform-sidebar {
   100% { background-color: transparent; }
 }
 
+/* Etiqueta de estado que cambió desde la última visita (rowGlow.js): arranca con el color
+ * del estado anterior, pasa al nuevo y hace un pulso chico. */
+.ui-status-changed {
+  animation: ui-status-changed 700ms cubic-bezier(0.2, 0, 0, 1) 200ms backwards;
+}
+
+.ui-status-changed[data-status-from='success'] { --status-from-bg: var(--success-subtle); --status-from-fg: var(--success-strong); }
+.ui-status-changed[data-status-from='warning'] { --status-from-bg: var(--warning-subtle); --status-from-fg: var(--warning-foreground); }
+.ui-status-changed[data-status-from='danger'] { --status-from-bg: var(--danger-subtle); --status-from-fg: var(--danger-strong); }
+.ui-status-changed[data-status-from='info'] { --status-from-bg: var(--info-subtle); --status-from-fg: var(--info-strong); }
+.ui-status-changed[data-status-from='muted'] { --status-from-bg: var(--surface-muted); --status-from-fg: var(--ink-muted); }
+
+@keyframes ui-status-changed {
+  from {
+    background-color: rgb(var(--status-from-bg));
+    color: rgb(var(--status-from-fg));
+  }
+  45% { transform: scale(1.08); }
+}
+
 /* Botón de un formulario ya enviado: aro girando hasta que llega la página siguiente. */
 button.ui-submitting {
   cursor: progress;

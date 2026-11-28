@@ -22,12 +22,14 @@ const toneByStatus = {
   SIN_DATOS: 'muted', BAJA: 'muted', ANULADA: 'muted', CANCELADA: 'muted', RETIRADO: 'muted', FUERA_DE_FILTRO: 'muted',
 }
 
-const tone = computed(() => tones[toneByStatus[props.status]] ?? tones.info)
+// data-status-tone: rowGlow.js lo usa para pasar del color anterior al nuevo.
+const toneName = computed(() => toneByStatus[props.status] ?? 'info')
+const tone = computed(() => tones[toneName.value])
 const label = computed(() => humanizeCode(props.status))
 </script>
 
 <template>
-  <span class="inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold" :class="tone.classes">
+  <span class="inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold" :class="tone.classes" :data-status-tone="toneName">
     <component :is="tone.icon" class="size-3.5 shrink-0" aria-hidden="true" />
     {{ label }}
   </span>

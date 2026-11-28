@@ -41,6 +41,25 @@ describe('brillo en filas nuevas o editadas', () => {
     expect(visit(table([['/e/1', 'Otro']]), { page: '/equipos?pagina=2', now: Date.now() + 20 })).toEqual([])
   })
 
+  it('si cambió el estado, la etiqueta arranca con el color anterior; si no, no se toca', () => {
+    const order = (text, tone) => `<article data-glow-row><a href="/o/${text}">OT ${text}</a><span data-status-tone="${tone}">x</span></article>`
+    visit(order(1, 'info') + order(2, 'info'))
+    rememberSuccessfulSave(Date.now() + 10)
+    // La 1 pasa a otro estado; la 2 cambia de texto pero sigue con el mismo tono.
+    visit(order(1, 'success') + order('2 editada', 'info').replace('/o/2 editada', '/o/2'), { now: Date.now() + 20 })
+
+    const [first, second] = document.querySelectorAll('[data-status-tone]')
+    expect(first.classList).toContain('ui-status-changed')
+    expect(first.dataset.statusFrom).toBe('info')
+    expect(second.classList).not.toContain('ui-status-changed')
+
+    // Al terminar la etiqueta, la fila sigue brillando: su fin no se confunde con el de la fila.
+    first.dispatchEvent(new Event('animationend', { bubbles: true }))
+    expect(first.classList).not.toContain('ui-status-changed')
+    expect(first.dataset.statusFrom).toBeUndefined()
+    expect(first.closest('article').classList).toContain('ui-row-glow')
+  })
+
   it('también brillan las tarjetas del celular', () => {
     const cards = (text) => `<ul class="divide-y md:hidden"><li><a href="/o/1">${text}</a></li></ul>`
     visit(cards('Orden 1 · Emitida'))
