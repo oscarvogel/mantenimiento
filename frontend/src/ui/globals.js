@@ -1,6 +1,7 @@
 import { installConfirmForms } from './confirmForms.js'
 import { installNumberInputWheelGuard } from './numberInputWheel.js'
 import { useAlerts } from '../composables/useAlerts.js'
+import { rememberSuccessfulSave } from './rowGlow.js'
 
 const FLASH_ORDER = ['error', 'warning', 'success', 'info']
 
@@ -93,6 +94,7 @@ function clearInvalidState(event) {
 
 export function consumeFlash(flash) {
   if (!flash || typeof flash !== 'object') return
+  if (typeof flash.success === 'string' && flash.success !== '') rememberSuccessfulSave()
   const alerts = useAlerts()
 
   for (const key of FLASH_ORDER) {

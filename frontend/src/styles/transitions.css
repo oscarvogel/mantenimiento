@@ -202,6 +202,16 @@ html[data-theme='dark'] .ui-sidebar-surface.platform-sidebar {
   background: rgb(var(--accent-400));
 }
 
+/* Fila nueva o editada al volver a una lista (rowGlow.js): un tinte amarillo que se apaga. */
+.ui-row-glow {
+  animation: ui-row-glow 1600ms ease-out;
+}
+
+@keyframes ui-row-glow {
+  0%, 25% { background-color: rgb(var(--accent-400) / 0.22); }
+  100% { background-color: transparent; }
+}
+
 /* Botón de un formulario ya enviado: aro girando hasta que llega la página siguiente. */
 button.ui-submitting {
   cursor: progress;

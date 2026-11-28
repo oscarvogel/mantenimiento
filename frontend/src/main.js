@@ -13,6 +13,7 @@ import { installQuickPlanAssignment } from './ui/quickPlanAssignment.js'
 import { installTemplateServicePicker } from './ui/templateServicePicker.js'
 import { consumeFlash, installGlobalBehaviors } from './ui/globals.js'
 import { installScrollReveal } from './ui/scrollReveal.js'
+import { installRowGlow } from './ui/rowGlow.js'
 import { initializeTheme } from './ui/theme.js'
 import '@fontsource-variable/inter/wght.css'
 import './styles.css'
@@ -120,6 +121,8 @@ if (root) {
       installLibraryTaskStatus(root, payload)
     }
     if (serverPayload) consumeFlash(serverPayload.data?.flash)
+    // Después del flash: un guardado exitoso recién avisado también cuenta.
+    installRowGlow(root)
   })
 }
 
