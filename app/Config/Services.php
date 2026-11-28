@@ -92,6 +92,7 @@ use App\Application\Notifications\Port\NotificationCronRateLimiter;
 use App\Application\Notifications\NotificationDeliverySchedule;
 use App\Application\Notifications\NotificationPreferenceResolution;
 use App\Application\Notifications\NotificationRecipientScopePolicy;
+use App\Application\Notifications\UserNotificationEmailPolicy;
 use App\Application\Notifications\PublishNotifiableEvent;
 use App\Application\Notifications\RunNotificationDispatch;
 use App\Application\Notifications\RunNotificationCycle;
@@ -641,6 +642,7 @@ class Services extends BaseService
             static::notificationChannelAvailability(false),
             (string) env('alerts.dailyRunTime', '07:00'),
             db_connect(),
+            new UserNotificationEmailPolicy(),
         );
     }
 
@@ -727,7 +729,7 @@ class Services extends BaseService
             return static::getSharedInstance('notificationRecipients');
         }
 
-        return new CodeIgniterNotificationRecipientResolver(new NotificationRecipientScopePolicy(), db_connect());
+        return new CodeIgniterNotificationRecipientResolver(new NotificationRecipientScopePolicy(), new UserNotificationEmailPolicy(), db_connect());
     }
 
     public static function notificationUnitOfWork(bool $getShared = true): CodeIgniterNotificationUnitOfWork
