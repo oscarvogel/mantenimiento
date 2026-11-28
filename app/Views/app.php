@@ -42,6 +42,10 @@ header('Cache-Control: no-store, must-revalidate');
             } catch (_) {
                 document.documentElement.dataset.theme = 'light';
             }
+            // Con transición de página, la entrada de respaldo del contenido sobra (transitions.css).
+            addEventListener('pagereveal', (event) => {
+                if (event.viewTransition) document.documentElement.dataset.arrivedByTransition = '';
+            }, { once: true });
         })();
     </script>
     <?php if (isset($preloadImage) && is_string($preloadImage) && $preloadImage !== ''): ?>
@@ -50,11 +54,14 @@ header('Cache-Control: no-store, must-revalidate');
     <?php foreach (($entry['css'] ?? []) as $stylesheet): ?>
         <link rel="stylesheet" href="<?= esc(base_url('assets/dashboard/' . $stylesheet), 'attr') ?>">
     <?php endforeach; ?>
+    <!-- La página llega vacía y Vue la arma: sin bloquear, la transición de página
+         fundiría la anterior en una página en blanco y el contenido aparecería de golpe.
+         Va en el head porque `blocking` solo cuenta ahí; type=module ya espera al body. -->
+    <script type="module" blocking="render" src="<?= esc(base_url('assets/dashboard/' . $entry['file']), 'attr') ?>"></script>
 </head>
 <body data-base-url="<?= esc(rtrim(base_url(), '/') . '/', 'attr') ?>">
     <div id="maintenance-app"></div>
     <noscript><p>Esta aplicación necesita JavaScript habilitado para funcionar.</p></noscript>
     <script id="maintenance-app-data" type="application/json"><?= $appJson ?></script>
-    <script type="module" src="<?= esc(base_url('assets/dashboard/' . $entry['file']), 'attr') ?>"></script>
 </body>
 </html>

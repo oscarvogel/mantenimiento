@@ -19,4 +19,14 @@ final class AppShellAssetScriptTest extends TestCase
             );
         }
     }
+
+    /** Sin esto la transición entre páginas funde la anterior en una página vacía. */
+    public function testEntryBlocksFirstRenderFromTheHead(): void
+    {
+        $contents = (string) file_get_contents(APPPATH . 'Views/app.php');
+        $head     = explode('</head>', $contents, 2)[0];
+
+        self::assertMatchesRegularExpression('/<script type="module" blocking="render" src=/', $head);
+        self::assertSame(1, substr_count($contents, '<script type="module"'));
+    }
 }

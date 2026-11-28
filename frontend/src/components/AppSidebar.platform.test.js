@@ -78,6 +78,32 @@ describe('AppSidebar module navigation', () => {
     expect(hrefs).toEqual(['/dashboard', '/work-orders', '/plans', '/equipment'])
   })
 
+  it('hay una sola marca amarilla: con dos, el navegador cancela la transición entre páginas', async () => {
+    const navigation = [
+      { key: 'fleet-telemetry', label: 'Telemetría de flota', href: '/telemetria' },
+      { key: 'fleet-consumption', label: 'Consumo', href: '/consumo', active: true },
+      { key: 'equipment', label: 'Equipos', href: '/equipos' },
+    ]
+    // Montada en el documento para que isVisible vea el submenú oculto.
+    const wrapper = mount(AppSidebar, { props: { navigation, collapsible: true, collapsed: false }, attachTo: document.body })
+    // Una marca oculta (submenú cerrado) no cuenta: el navegador no la captura.
+    const markedHrefs = () => wrapper.findAll('[data-test="nav-marker"]')
+      .filter((marker) => marker.isVisible())
+      .map((marker) => marker.element.closest('a').getAttribute('href'))
+
+    // Telemetría queda resaltada como sección, pero la marca va en la página actual.
+    expect(markedHrefs()).toEqual(['/consumo'])
+
+    // Con el submenú cerrado, la marca vuelve a la sección.
+    await wrapper.get('[aria-controls="fleet-consumption-navigation"]').trigger('click')
+    expect(markedHrefs()).toEqual(['/telemetria'])
+
+    // Contraída, Consumo entra entre los íconos: la marca queda solo en él.
+    await wrapper.setProps({ collapsed: true })
+    expect(markedHrefs()).toEqual(['/consumo'])
+    wrapper.unmount()
+  })
+
   it('oficina y campo tienen sus propios íconos fijos', () => {
     const item = (key) => ({ key, label: key, href: `/${key}` })
     const office = ['equipment', 'quick-readings', 'work-orders', 'work-requests', 'plans', 'dashboard', 'my-work', 'report-failure'].map(item)

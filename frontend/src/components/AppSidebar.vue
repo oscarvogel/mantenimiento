@@ -180,6 +180,7 @@ const openDemoCompany = () => {
             :item="item"
             :label="visibleLabel(item)"
             :active="isActive(item)"
+            :marker="item.active === true || !railLinks.some((link) => link.active === true)"
             :icon="navigationIconFor(item)"
             compact
           />
@@ -210,6 +211,7 @@ const openDemoCompany = () => {
                 :active="isActive(item)"
                 :icon="navigationIconFor(item)"
                 :show-status="isPlatformNavigation"
+                :marker="!(item.key === 'fleet-telemetry' && fleetConsumption?.active && fleetOpen)"
                 :class="item.key === 'fleet-telemetry' && fleetConsumption ? 'pr-12' : ''"
                 @navigate="emit('close')"
               />

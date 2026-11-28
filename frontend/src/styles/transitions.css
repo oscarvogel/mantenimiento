@@ -19,14 +19,53 @@
   }
 }
 
-@view-transition {
-  navigation: auto;
+/* Cambio de página: la barra y el encabezado quedan quietos, el contenido viejo se apaga
+ * y el nuevo sube 6px. Con movimiento reducido no hay transición. */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition {
+    navigation: auto;
+  }
 }
 
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation-duration: 180ms;
   animation-timing-function: ease-out;
+}
+
+/* Sin esto el contenido se estira entre la altura vieja y la nueva. */
+::view-transition-group(ui-vt-content) {
+  animation: none;
+}
+
+::view-transition-old(ui-vt-content) {
+  animation: ui-vt-content-out 90ms ease-in both;
+}
+
+::view-transition-new(ui-vt-content) {
+  animation: ui-vt-content-in 220ms cubic-bezier(0.2, 0, 0, 1) 60ms both;
+}
+
+@keyframes ui-vt-content-out {
+  to { opacity: 0; }
+}
+
+@keyframes ui-vt-content-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* La marca amarilla viaja de la opción anterior a la nueva. */
+::view-transition-group(ui-vt-nav-marker) {
+  animation-duration: 260ms;
+  animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Si llegó con transición, la entrada de respaldo sobra (app.php marca el documento). */
+html[data-arrived-by-transition] .ui-view-enter {
+  animation: none;
 }
 
 /* Elementos persistentes entre navegaciones multipágina */
@@ -148,9 +187,11 @@ html[data-theme='dark'] .ui-sidebar-surface.platform-sidebar {
   color: white;
 }
 
-/* Marca amarilla de página activa pegada al borde de la barra (rediseño del shell). */
-.platform-sidebar .platform-nav-active::before {
-  content: "";
+/* Marca amarilla de página activa pegada al borde de la barra (rediseño del shell).
+ * Es un elemento y no un ::before porque un pseudo-elemento no puede tener nombre de
+ * transición, y sin nombre no viaja entre páginas. */
+.platform-sidebar .platform-nav-marker {
+  view-transition-name: ui-vt-nav-marker;
   position: absolute;
   left: -0.5rem;
   top: 50%;
@@ -159,6 +200,29 @@ html[data-theme='dark'] .ui-sidebar-surface.platform-sidebar {
   transform: translateY(-50%);
   border-radius: 0 0.5rem 0.5rem 0;
   background: rgb(var(--accent-400));
+}
+
+/* Botón de un formulario ya enviado: aro girando hasta que llega la página siguiente. */
+button.ui-submitting {
+  cursor: progress;
+}
+
+button.ui-submitting::before {
+  content: "";
+  display: inline-block;
+  flex: none;
+  width: 1em;
+  height: 1em;
+  margin-inline-end: 0.5rem;
+  vertical-align: -0.125em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 999px;
+  animation: ui-submitting-spin 700ms linear infinite;
+}
+
+@keyframes ui-submitting-spin {
+  to { transform: rotate(360deg); }
 }
 
 .platform-sidebar .platform-nav-disabled {
@@ -381,7 +445,8 @@ html[data-theme='dark'] .ui-sidebar-surface {
  * la captura de la página entera, así que los nombres de las navegaciones se apagan. */
 html[data-theme-transition] .ui-vt-header,
 html[data-theme-transition] .ui-vt-sidebar,
-html[data-theme-transition] .ui-vt-content {
+html[data-theme-transition] .ui-vt-content,
+html[data-theme-transition] .platform-nav-marker {
   view-transition-name: none;
 }
 

@@ -10,6 +10,8 @@ const props = defineProps({
   showStatus: { type: Boolean, default: false },
   nested: { type: Boolean, default: false },
   compact: { type: Boolean, default: false },
+  // Una sola marca amarilla por página: si hay dos, el navegador cancela la transición.
+  marker: { type: Boolean, default: true },
 })
 const emit = defineEmits(['navigate'])
 </script>
@@ -40,6 +42,7 @@ const emit = defineEmits(['navigate'])
     :aria-current="active ? 'page' : undefined"
     @click="emit('navigate')"
   >
+    <span v-if="active && marker" class="platform-nav-marker" data-test="nav-marker" aria-hidden="true" />
     <component
       :is="icon"
       class="shrink-0"

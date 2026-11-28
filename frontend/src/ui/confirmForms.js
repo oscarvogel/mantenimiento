@@ -27,6 +27,7 @@ function markSubmitting(form, submitter) {
   submit.dataset.originalLabel = original
   submit.dataset.originalDisabled = String(submit.disabled)
   submit.disabled = true
+  submit.classList.add('ui-submitting')
   submit.textContent = 'Guardando…'
 }
 
@@ -36,6 +37,7 @@ function restoreSubmitButton(form, submitter) {
 
   if (submit.dataset.originalLabel) {
     submit.textContent = submit.dataset.originalLabel
+    submit.classList.remove('ui-submitting')
     submit.disabled = submit.dataset.originalDisabled === 'true'
     delete submit.dataset.originalLabel
     delete submit.dataset.originalDisabled
