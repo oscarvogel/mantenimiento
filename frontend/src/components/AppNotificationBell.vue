@@ -1,4 +1,6 @@
 <script setup>
+import LoadingBlocks from './LoadingBlocks.vue'
+import * as format from '../ui/format.js'
 import { BellIcon } from '@heroicons/vue/24/outline'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
@@ -17,12 +19,8 @@ const items = ref([])
 
 const label = computed(() => unread.value ? `${unread.value} notificaciones sin leer` : 'Notificaciones')
 
-const formatDate = (value) => {
-  if (!value) return ''
-  const parsed = new Date(String(value).replace(' ', 'T'))
-  if (Number.isNaN(parsed.getTime())) return value
-  return new Intl.DateTimeFormat('es-AR', { dateStyle: 'short', timeStyle: 'short' }).format(parsed)
-}
+const formatDate = (value) => format.formatRelativeDays(value, new Date(), '')
+const formatExactDate = (value) => format.formatDateTime(value, '')
 
 const severityClass = (severity) => {
   const value = String(severity || '').toUpperCase()
@@ -87,14 +85,14 @@ onBeforeUnmount(() => {
       @click.stop="toggle"
     >
       <BellIcon class="size-6" aria-hidden="true" />
-      <span v-if="unread" class="absolute right-0 top-0 min-w-4 rounded-full bg-danger px-1 text-center text-[10px] font-bold leading-4 text-white">
+      <span v-if="unread" class="absolute right-0 top-0 min-w-4 rounded-full bg-danger px-1 text-center text-xs font-bold leading-4 text-white">
         {{ unread > 99 ? '99+' : unread }}
       </span>
     </button>
 
     <div
       v-if="open"
-      class="fixed inset-x-3 top-[4.25rem] z-50 overflow-hidden rounded-xl border border-border bg-surface-raised shadow-xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-11 sm:w-96"
+      class="fixed inset-x-3 top-[4.25rem] z-50 overflow-hidden rounded-card bg-surface-raised shadow-xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-11 sm:w-96"
       role="dialog"
       aria-label="Resumen de notificaciones"
     >
@@ -106,7 +104,7 @@ onBeforeUnmount(() => {
         <a :href="centerUrl" class="text-xs font-semibold text-primary hover:underline">Ver todas</a>
       </div>
 
-      <div v-if="loading && !items.length" class="px-4 py-8 text-center text-sm text-ink-muted">Cargando notificaciones…</div>
+      <LoadingBlocks v-if="loading && !items.length" label="Cargando notificaciones…" class="px-4 py-2" />
       <div v-else-if="error && !items.length" class="px-4 py-6 text-center">
         <p class="text-sm font-medium text-ink">No se pudo cargar el resumen.</p>
         <button type="button" class="mt-2 text-xs font-semibold text-primary hover:underline" @click="loadSummary">Reintentar</button>
@@ -129,7 +127,7 @@ onBeforeUnmount(() => {
               <span v-if="(item.state ?? 'PENDIENTE') === 'PENDIENTE' && !item.readAt" class="mt-1 size-2 shrink-0 rounded-full bg-primary" title="Sin leer" />
             </span>
             <span class="mt-0.5 block text-xs leading-5 text-ink-muted">{{ item.summary }}</span>
-            <span class="mt-1 block text-[11px] text-ink-subtle">{{ formatDate(item.createdAt) }}</span>
+            <span class="mt-1 block text-xs text-ink-subtle" :title="formatExactDate(item.createdAt)">{{ formatDate(item.createdAt) }}</span>
           </span>
         </a>
       </div>

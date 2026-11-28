@@ -1,4 +1,5 @@
 <script setup>
+import * as format from '../../ui/format.js'
 import { computed, nextTick, reactive, ref } from 'vue'
 import { BeakerIcon, HomeIcon } from '@heroicons/vue/24/outline'
 import FuelReconciliationTable from '../../components/FuelReconciliationTable.vue'
@@ -25,19 +26,13 @@ const consumo = computed(() => totales.value.consumo ?? {})
 
 const number = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 })
 const decimal = new Intl.NumberFormat('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
-const money = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 })
-const date = new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' })
 
 const SIN_DATOS = 'Sin datos'
 const vacio = (value) => value === null || value === undefined
 const entero = (value, sufijo = '') => vacio(value) ? SIN_DATOS : `${number.format(Number(value))}${sufijo}`
 const litros = (value) => vacio(value) ? SIN_DATOS : `${decimal.format(Number(value))} L`
-const pesos = (value) => vacio(value) ? SIN_DATOS : money.format(Number(value))
-const fecha = (value) => {
-  if (!value) return SIN_DATOS
-  const parsed = new Date(String(value).replace(' ', 'T'))
-  return Number.isNaN(parsed.getTime()) ? SIN_DATOS : date.format(parsed)
-}
+const pesos = (value) => format.formatMoney(value)
+const fecha = (value) => format.formatDate(value)
 const fechaCorta = (value) => {
   if (!value) return ''
   const raw = String(value)
@@ -202,13 +197,13 @@ const hayFiltros = computed(() => Boolean(filtros.value.desde || filtros.value.h
       <a
         v-if="urls.portal"
         :href="urls.portal"
-        class="inline-flex min-h-11 items-center justify-center gap-2 self-start rounded-lg border border-border-strong bg-surface-raised px-4 py-2.5 text-sm font-semibold text-ink hover:bg-surface-muted sm:self-auto"
-      >
+        
+       :class="[secondaryButton, 'self-start sm:self-auto']">
         <HomeIcon class="size-5" aria-hidden="true" />Volver al inicio
       </a>
     </header>
 
-    <form :action="urls.index" method="get" class="mt-6 rounded-xl border border-border bg-surface-raised" data-fuel-filters>
+    <form :action="urls.index" method="get" class="mt-6 rounded-card bg-surface-raised shadow-card" data-fuel-filters>
       <div class="grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-4 lg:items-end sm:p-5">
         <label class="block">
           <span class="mb-1.5 block text-sm font-semibold text-ink">Desde</span>
@@ -243,7 +238,7 @@ const hayFiltros = computed(() => Boolean(filtros.value.desde || filtros.value.h
     <section aria-labelledby="fuel-module-summary" class="mt-6">
       <h2 id="fuel-module-summary" class="sr-only">Resumen</h2>
       <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <article v-for="card in tarjetas" :key="card.label" class="rounded-xl border border-border bg-surface-raised p-4" :data-testid="card.testid">
+        <article v-for="card in tarjetas" :key="card.label" class="rounded-card bg-surface-raised p-4 shadow-card" :data-testid="card.testid">
           <p class="text-xs font-bold uppercase tracking-wide text-ink-muted">{{ card.label }}</p>
           <p class="mt-1 text-2xl font-bold tabular-nums text-ink">{{ card.value }}</p>
           <p class="mt-1 text-xs leading-5 text-ink-muted">{{ card.hint }}</p>
@@ -251,7 +246,7 @@ const hayFiltros = computed(() => Boolean(filtros.value.desde || filtros.value.h
       </div>
     </section>
 
-    <div v-if="conciliacion" class="mt-6 flex gap-1 border-b border-border" role="tablist" aria-label="Vistas del módulo de combustible">
+    <div v-if="conciliacion" class="ui-tabs mt-6" role="tablist" aria-label="Vistas del módulo de combustible">
       <button
         type="button"
         role="tab"
@@ -276,7 +271,7 @@ const hayFiltros = computed(() => Boolean(filtros.value.desde || filtros.value.h
       </button>
     </div>
 
-    <section v-show="pestana === 'combustible'" class="mt-6 overflow-hidden rounded-xl border border-border bg-surface-raised" aria-labelledby="fuel-module-trips">
+    <section v-show="pestana === 'combustible'" class="mt-6 overflow-hidden rounded-card bg-surface-raised shadow-card" aria-labelledby="fuel-module-trips">
       <div class="border-b border-border px-5 py-4 sm:px-6">
         <h2 id="fuel-module-trips" class="text-lg font-bold text-ink">Combustible por viaje</h2>
         <p class="mt-1 text-sm leading-6 text-ink-muted">
@@ -284,7 +279,7 @@ const hayFiltros = computed(() => Boolean(filtros.value.desde || filtros.value.h
         </p>
       </div>
       <div v-if="viajes.length" class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-border text-left text-sm">
+        <table class="ui-table min-w-full divide-y divide-border text-left text-sm">
           <thead class="bg-surface-muted text-xs font-semibold uppercase tracking-wide text-ink-muted">
             <tr>
               <th scope="col" class="px-4 py-3">Fecha</th>
@@ -359,7 +354,7 @@ const hayFiltros = computed(() => Boolean(filtros.value.desde || filtros.value.h
       </div>
     </section>
 
-    <section v-if="sinSalidaReal.length" class="mt-6 overflow-hidden rounded-xl border border-border bg-surface-raised" aria-labelledby="fuel-module-without-departure">
+    <section v-if="sinSalidaReal.length" class="mt-6 overflow-hidden rounded-card bg-surface-raised shadow-card" aria-labelledby="fuel-module-without-departure">
       <div class="border-b border-border px-5 py-4 sm:px-6">
         <h2 id="fuel-module-without-departure" class="text-lg font-bold text-ink">Viajes sin salida real cargada</h2>
         <p class="mt-1 text-sm leading-6 text-ink-muted">
@@ -374,7 +369,7 @@ const hayFiltros = computed(() => Boolean(filtros.value.desde || filtros.value.h
       </ul>
     </section>
 
-    <section class="mt-6 rounded-xl border border-border bg-surface-raised p-5 sm:p-6" aria-labelledby="fuel-module-pending">
+    <section class="mt-6 rounded-card bg-surface-raised p-5 sm:p-6 shadow-card" aria-labelledby="fuel-module-pending">
       <h2 id="fuel-module-pending" class="text-lg font-bold text-ink">Cargas sin precio</h2>
       <p class="mt-1 text-sm leading-6 text-ink-muted">
         <template v-if="totales.cargas_sin_precio > 0">
@@ -388,14 +383,14 @@ const hayFiltros = computed(() => Boolean(filtros.value.desde || filtros.value.h
       <a
         v-if="urls.pending"
         :href="urls.pending"
-        class="mt-3 inline-flex min-h-11 items-center justify-center rounded-lg border border-border-strong bg-surface-raised px-4 py-2.5 text-sm font-semibold text-ink hover:bg-surface-muted"
-      >
+        
+       :class="[secondaryButton, 'mt-3']">
         Ver todas las cargas sin precio
       </a>
     </section>
 
     <!-- Cargar una carga de combustible en un viaje -->
-    <dialog v-if="puedeEditar" ref="cargarDialog" aria-labelledby="fuel-cargar-title" @click.self="cargarDialog?.close()" class="m-auto w-[min(44rem,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-xl border border-border bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
+    <dialog v-if="puedeEditar" ref="cargarDialog" aria-labelledby="fuel-cargar-title" @click.self="cargarDialog?.close()" class="m-auto w-[min(44rem,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-card bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
       <div v-if="cargarViaje" class="p-5 sm:p-6">
         <div class="mb-5 flex items-start justify-between gap-4 border-b border-border-subtle pb-4">
           <div>
@@ -460,7 +455,7 @@ const hayFiltros = computed(() => Boolean(filtros.value.desde || filtros.value.h
     </dialog>
 
     <!-- Completar los importes de las cargas que esperan su precio -->
-    <dialog v-if="puedeEditar" ref="preciosDialog" aria-labelledby="fuel-precios-title" @click.self="preciosDialog?.close()" class="m-auto w-[min(52rem,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-xl border border-border bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
+    <dialog v-if="puedeEditar" ref="preciosDialog" aria-labelledby="fuel-precios-title" @click.self="preciosDialog?.close()" class="m-auto w-[min(52rem,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-card bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
       <div v-if="preciosViaje" class="p-5 sm:p-6">
         <div class="mb-5 flex items-start justify-between gap-4 border-b border-border-subtle pb-4">
           <div>

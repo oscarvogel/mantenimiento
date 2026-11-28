@@ -1,4 +1,6 @@
 <script setup>
+import * as uiLabels from '../../ui/labels.js'
+import * as format from '../../ui/format.js'
 import { ArrowDownTrayIcon, QrCodeIcon } from '@heroicons/vue/24/outline'
 import { computed, ref } from 'vue'
 import CsrfInput from './components/CsrfInput.vue'
@@ -105,11 +107,12 @@ const equipmentSummary = computed(() => {
 <template>
   <div>
     <PageHeading eyebrow="Ficha del equipo" :title="data.equipment.code" :description="`${data.equipment.typeName} · ${data.equipment.branchCode} · ${data.equipment.branchName}`" :back="{ label: 'Volver al listado', href: data.routes.index }">
+      <template #meta><StatusBadge :status="data.equipment.status" /><p v-if="data.equipment.endDate" class="text-sm font-medium text-danger-strong">Baja: {{ format.formatDateTime(data.equipment.endDate) }}</p></template>
       <template #actions><div class="flex flex-wrap gap-2"><a v-if="data.equipment.status === 'ACTIVO'" :href="correctiveOrderUrl" :class="primaryButton">Nueva OT correctiva</a><a :href="data.routes.qr" target="_blank" rel="noopener" :class="secondaryButton"><QrCodeIcon class="mr-2 size-5" aria-hidden="true" />Ver QR</a><a v-if="data.can.edit" :href="data.routes.addPlansFromTemplate" :class="secondaryButton">Agregar planes desde plantilla</a><a :href="data.routes.maintenance" :class="secondaryButton">Circuito preventivo</a></div></template>
     </PageHeading>
 
-    <nav class="mb-6 overflow-x-auto border-b border-border" aria-label="Secciones de la ficha">
-      <div class="flex min-w-max gap-1" role="tablist" aria-label="Información del equipo">
+    <nav class="mb-6" aria-label="Secciones de la ficha">
+      <div class="ui-tabs" role="tablist" aria-label="Información del equipo">
         <button
           v-for="tab in tabs"
           :id="`equipment-tab-${tab.id}`"
@@ -130,7 +133,7 @@ const equipmentSummary = computed(() => {
     <div id="equipment-panel-resumen" v-show="activeTab === 'resumen'" role="tabpanel" aria-labelledby="equipment-tab-resumen">
 
     <section aria-label="Resumen del equipo" class="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-      <article v-for="metric in equipmentSummary" :key="metric.label" class="rounded-xl border border-border bg-white p-4 shadow-card">
+      <article v-for="metric in equipmentSummary" :key="metric.label" class="rounded-card bg-surface-raised p-4 shadow-card">
         <p class="text-xs text-ink-muted">{{ metric.label }}</p>
         <p class="mt-2 font-bold text-ink">
           <CountUp v-if="metric.numeric" :value="Number(metric.value)" :suffix="metric.suffix" :formatter="metric.formatter" />
@@ -138,7 +141,6 @@ const equipmentSummary = computed(() => {
         </p>
       </article>
     </section>
-    <div class="mb-6 flex items-center gap-3"><StatusBadge :status="data.equipment.status" /><p v-if="data.equipment.endDate" class="text-sm font-medium text-danger-strong">Baja: {{ data.equipment.endDate }}</p></div>
 
     <PanelCard title="Foto principal" class="mb-6">
       <div class="grid gap-6 md:grid-cols-[minmax(0,22rem)_1fr]">
@@ -152,7 +154,7 @@ const equipmentSummary = computed(() => {
             <FormField label="Descripción opcional" for-id="detail-primary-photo-description"><input id="detail-primary-photo-description" name="descripcion" maxlength="1000" :class="fieldClass" /></FormField>
             <button type="submit" :class="`${primaryButton} justify-self-start`">{{ data.primaryPhoto ? 'Reemplazar foto' : 'Guardar foto' }}</button>
           </form>
-          <details v-if="data.can.edit && data.primaryPhoto" class="ui-details-animated mt-4"><summary :class="dangerButton">Retirar foto</summary><form method="post" :action="data.routes.retirePrimaryPhoto" data-confirm data-confirm-title="¿Retirar la foto principal?" data-confirm-text="La imagen dejará de mostrarse en la ficha del equipo." data-confirm-button="Retirar" data-confirm-danger="true" class="mt-3 max-w-sm rounded-xl border border-border bg-white p-4 shadow-card"><CsrfInput :csrf="data.csrf" /><FormField label="Motivo" for-id="primary-photo-retire-reason"><textarea id="primary-photo-retire-reason" name="motivo" minlength="5" maxlength="255" required :class="fieldClass"></textarea></FormField><button type="submit" :class="`${dangerButton} mt-3`">Confirmar retiro</button></form></details>
+          <details v-if="data.can.edit && data.primaryPhoto" class="ui-details-animated mt-4"><summary :class="dangerButton">Retirar foto</summary><form method="post" :action="data.routes.retirePrimaryPhoto" data-confirm data-confirm-title="¿Retirar la foto principal?" data-confirm-text="La imagen dejará de mostrarse en la ficha del equipo." data-confirm-button="Retirar" data-confirm-danger="true" class="mt-3 max-w-sm rounded-card bg-surface-raised p-4 shadow-card"><CsrfInput :csrf="data.csrf" /><FormField label="Motivo" for-id="primary-photo-retire-reason"><textarea id="primary-photo-retire-reason" name="motivo" minlength="5" maxlength="255" required :class="fieldClass"></textarea></FormField><button type="submit" :class="`${dangerButton} mt-3`">Confirmar retiro</button></form></details>
         </div>
       </div>
     </PanelCard>
@@ -274,8 +276,8 @@ const equipmentSummary = computed(() => {
       </form>
       <EmptyState v-if="!data.expirations || data.expirations.length === 0" title="No hay vencimientos registrados" description="Los vencimientos importados o cargados para este móvil aparecerán acá." />
       <div v-else class="overflow-x-auto">
-        <table class="w-full min-w-[44rem] text-left text-sm">
-          <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
+        <table class="ui-table w-full min-w-[44rem] text-left text-sm">
+          <thead class="text-xs font-semibold text-ink-subtle">
             <tr><th class="px-4 py-3">Tipo</th><th class="px-4 py-3">Vence</th><th class="px-4 py-3">Estado</th><th class="px-4 py-3">Documento</th><th class="px-4 py-3">Origen</th></tr>
           </thead>
           <tbody class="divide-y divide-border-subtle">
@@ -285,8 +287,8 @@ const equipmentSummary = computed(() => {
               <td class="px-4 py-4"><StatusBadge :status="expiration.status" /></td>
               <td class="px-4 py-4 text-ink-muted">{{ expiration.documentNumber || '—' }}</td>
               <td class="px-4 py-4 text-ink-muted">
-                {{ expiration.origin }}
-                <button v-if="data.can.edit" type="button" class="mt-2 text-xs font-semibold text-brand-700 hover:underline" @click="editingExpiration = expiration">
+                {{ uiLabels.humanizeCode(expiration.origin) }}
+                <button v-if="data.can.edit" type="button" class="mt-2 text-xs font-semibold text-secondary-700 hover:underline" @click="editingExpiration = expiration">
                   Editar vencimiento
                 </button>
               </td>
@@ -298,7 +300,7 @@ const equipmentSummary = computed(() => {
 
     <Teleport to="body">
       <div v-if="editingExpiration" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/55 p-4" @click.self="closeExpirationModal">
-        <div class="w-full max-w-lg rounded-2xl border border-border bg-surface-raised p-6 shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="expiration-edit-title">
+        <div class="w-full max-w-lg rounded-card bg-surface-raised p-6 shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="expiration-edit-title">
           <div class="mb-5 flex items-start justify-between gap-4">
             <div>
               <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Vencimiento</p>
@@ -360,13 +362,13 @@ const equipmentSummary = computed(() => {
         <CsrfInput :csrf="data.csrf" /><FormField label="Equipo relacionado" for-id="detail-related-equipment"><select id="detail-related-equipment" name="equipo_relacionado_id" required :class="fieldClass"><option v-for="candidate in data.relatedCandidates" :key="candidate.id" :value="candidate.id">{{ candidate.code }} · {{ candidate.typeName }}</option></select></FormField><FormField label="Tipo" for-id="detail-relation-type"><select id="detail-relation-type" name="tipo_relacion" :class="fieldClass"><option value="TRACTOR_ACOPLADO">Tractor-acoplado</option><option value="OTRO">Otro</option></select></FormField><FormField label="Desde" for-id="detail-relation-start"><input id="detail-relation-start" type="datetime-local" name="desde" required :value="nowLocal()" :class="fieldClass" /></FormField><button type="submit" :class="`${primaryButton} self-end`">Relacionar</button><FormField label="Observaciones" for-id="detail-relation-notes" class="md:col-span-4"><input id="detail-relation-notes" name="observaciones" maxlength="500" :class="fieldClass" /></FormField>
       </form>
       <EmptyState v-if="data.relations.items.length === 0" title="No hay relaciones registradas" />
-      <div v-else class="overflow-x-auto"><table class="ui-table-hover w-full min-w-[52rem] text-left text-sm"><thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-4 py-3">Equipos</th><th class="px-4 py-3">Tipo</th><th class="px-4 py-3">Vigencia</th><th class="px-4 py-3">Registro</th><th class="px-4 py-3">Acción</th></tr></thead><tbody class="divide-y divide-border-subtle"><tr v-for="relation in data.relations.items" :key="relation.id"><td class="px-4 py-4 font-semibold text-ink">{{ relation.principalCode }} ↔ {{ relation.relatedCode }}</td><td class="px-4 py-4 text-ink-muted">{{ relation.type }}</td><td class="px-4 py-4">{{ relation.from }}<br><span class="text-xs text-ink-muted">{{ relation.to ? `Hasta ${relation.to}` : 'Activa' }}</span></td><td class="px-4 py-4">{{ relation.userName }}<br><span v-if="relation.notes" class="text-xs text-ink-muted">{{ relation.notes }}</span></td><td class="px-4 py-4"><details v-if="data.can.edit && !relation.to" class="ui-details-animated"><summary :class="secondaryButton">Finalizar</summary><form method="post" :action="relation.finishUrl" data-confirm data-confirm-title="¿Finalizar esta relación?" data-confirm-text="La relación dejará de estar activa. El historial se conservará." data-confirm-button="Finalizar relación" class="mt-3 w-72 rounded-xl border border-border bg-white p-4 shadow-card"><CsrfInput :csrf="data.csrf" /><FormField label="Hasta" :for-id="`relation-end-${relation.id}`"><input :id="`relation-end-${relation.id}`" type="datetime-local" name="hasta" required :value="nowLocal()" :class="fieldClass" /></FormField><FormField label="Observaciones de cierre" :for-id="`relation-end-notes-${relation.id}`" class="mt-3"><textarea :id="`relation-end-notes-${relation.id}`" name="observaciones_fin" maxlength="500" :class="fieldClass"></textarea></FormField><button type="submit" :class="`${primaryButton} mt-3`">Finalizar relación</button></form></details></td></tr></tbody></table></div>
+      <div v-else class="overflow-x-auto"><table class="ui-table ui-table-hover w-full min-w-[52rem] text-left text-sm"><thead class="text-xs font-semibold text-ink-subtle"><tr><th class="px-4 py-3">Equipos</th><th class="px-4 py-3">Tipo</th><th class="px-4 py-3">Vigencia</th><th class="px-4 py-3">Registro</th><th class="px-4 py-3">Acción</th></tr></thead><tbody class="divide-y divide-border-subtle"><tr v-for="relation in data.relations.items" :key="relation.id"><td class="px-4 py-4 font-semibold text-ink">{{ relation.principalCode }} ↔ {{ relation.relatedCode }}</td><td class="px-4 py-4 text-ink-muted">{{ uiLabels.humanizeCode(relation.type) }}</td><td class="px-4 py-4">{{ relation.from }}<br><span class="text-xs text-ink-muted">{{ relation.to ? `Hasta ${relation.to}` : 'Activa' }}</span></td><td class="px-4 py-4">{{ relation.userName }}<br><span v-if="relation.notes" class="text-xs text-ink-muted">{{ relation.notes }}</span></td><td class="px-4 py-4"><details v-if="data.can.edit && !relation.to" class="ui-details-animated"><summary :class="secondaryButton">Finalizar</summary><form method="post" :action="relation.finishUrl" data-confirm data-confirm-title="¿Finalizar esta relación?" data-confirm-text="La relación dejará de estar activa. El historial se conservará." data-confirm-button="Finalizar relación" class="mt-3 w-72 rounded-card bg-surface-raised p-4 shadow-card"><CsrfInput :csrf="data.csrf" /><FormField label="Hasta" :for-id="`relation-end-${relation.id}`"><input :id="`relation-end-${relation.id}`" type="datetime-local" name="hasta" required :value="nowLocal()" :class="fieldClass" /></FormField><FormField label="Observaciones de cierre" :for-id="`relation-end-notes-${relation.id}`" class="mt-3"><textarea :id="`relation-end-notes-${relation.id}`" name="observaciones_fin" maxlength="500" :class="fieldClass"></textarea></FormField><button type="submit" :class="`${primaryButton} mt-3`">Finalizar relación</button></form></details></td></tr></tbody></table></div>
       <template #footer><PaginationBar :pagination="data.relations.pagination" /></template>
     </PanelCard>
     </div>
 
     <div id="equipment-panel-mantenimiento" v-show="activeTab === 'mantenimiento'" role="tabpanel" aria-labelledby="equipment-tab-mantenimiento">
-    <div class="mb-6 flex flex-col gap-4 rounded-xl border border-brand-200 bg-brand-50 p-5 sm:flex-row sm:items-center sm:justify-between">
+    <div class="mb-6 flex flex-col gap-4 rounded-xl border border-secondary-200 bg-secondary-100 p-5 sm:flex-row sm:items-center sm:justify-between">
       <div><h2 class="font-bold text-ink">Gestión preventiva</h2><p class="mt-1 text-sm text-ink-muted">Consultá el circuito del equipo o asignale planes desde una plantilla.</p></div>
       <div class="flex flex-wrap gap-2"><a v-if="data.can.edit" :href="data.routes.addPlansFromTemplate" :class="primaryButton">Agregar planes</a><a :href="data.routes.maintenance" :class="secondaryButton">Ver mantenimiento</a></div>
     </div>
@@ -378,7 +380,7 @@ const equipmentSummary = computed(() => {
         <CsrfInput :csrf="data.csrf" /><FormField label="Archivo" for-id="detail-attachment-file" :hint="`PDF o imagen, hasta ${data.maxUploadMb} MB.`"><input id="detail-attachment-file" type="file" name="archivo" accept=".pdf,.jpg,.jpeg,.png,.webp" required :class="fieldClass" /></FormField><FormField label="Tipo" for-id="detail-attachment-type"><select id="detail-attachment-type" name="tipo" required :class="fieldClass"><option v-for="type in ['DOCUMENTO','FOTO','MANUAL','COMPROBANTE','OTRO']" :key="type" :value="type">{{ type }}</option></select></FormField><FormField label="Descripción" for-id="detail-attachment-description"><input id="detail-attachment-description" name="descripcion" maxlength="500" :class="fieldClass" /></FormField><button type="submit" :class="`${primaryButton} sm:justify-self-start`">Subir adjunto</button>
       </form>
       <EmptyState v-if="data.attachments.items.length === 0" title="No hay adjuntos para este equipo" />
-      <div v-else class="overflow-x-auto"><table class="w-full min-w-[52rem] text-left text-sm"><thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-4 py-3">Archivo</th><th class="px-4 py-3">Tipo</th><th class="px-4 py-3">Registro</th><th class="px-4 py-3">Estado</th><th class="px-4 py-3">Acción</th></tr></thead><tbody class="divide-y divide-border-subtle"><tr v-for="attachment in data.attachments.items" :key="attachment.id" :class="attachment.retiredAt ? 'bg-surface-subtle text-ink-muted' : ''"><td class="px-4 py-4"><span class="font-semibold">{{ attachment.originalName }}</span><br><span class="text-xs text-ink-muted">{{ attachment.mimeType }} · {{ attachment.sizeKb }} KB</span></td><td class="px-4 py-4">{{ attachment.type }}<br><span v-if="attachment.description" class="text-xs text-ink-muted">{{ attachment.description }}</span></td><td class="px-4 py-4">{{ attachment.createdAt }}<br><span class="text-xs text-ink-muted">{{ attachment.createdByName }}</span></td><td class="px-4 py-4"><StatusBadge :status="attachment.retiredAt ? 'RETIRADO' : 'ACTIVO'" /><p v-if="attachment.retirementReason" class="mt-1 text-xs">{{ attachment.retirementReason }}</p></td><td class="px-4 py-4"><div v-if="!attachment.retiredAt" class="flex gap-2"><a :href="attachment.downloadUrl" :class="secondaryButton"><ArrowDownTrayIcon class="mr-1.5 size-4" aria-hidden="true" />Descargar</a><details v-if="data.can.edit" class="ui-details-animated"><summary :class="dangerButton">Retirar</summary><form method="post" :action="attachment.retireUrl" data-confirm data-confirm-title="¿Retirar este adjunto?" data-confirm-text="El archivo dejará de estar disponible para descarga." data-confirm-button="Retirar" data-confirm-danger="true" class="mt-3 w-72 rounded-xl border border-border bg-white p-4 shadow-card"><CsrfInput :csrf="data.csrf" /><FormField label="Motivo" :for-id="`attachment-reason-${attachment.id}`"><textarea :id="`attachment-reason-${attachment.id}`" name="motivo" minlength="5" maxlength="255" required :class="fieldClass"></textarea></FormField><button type="submit" :class="`${dangerButton} mt-3`">Confirmar retiro</button></form></details></div></td></tr></tbody></table></div>
+      <div v-else class="overflow-x-auto"><table class="ui-table w-full min-w-[52rem] text-left text-sm"><thead class="text-xs font-semibold text-ink-subtle"><tr><th class="px-4 py-3">Archivo</th><th class="px-4 py-3">Tipo</th><th class="px-4 py-3">Registro</th><th class="px-4 py-3">Estado</th><th class="px-4 py-3">Acción</th></tr></thead><tbody class="divide-y divide-border-subtle"><tr v-for="attachment in data.attachments.items" :key="attachment.id" :class="attachment.retiredAt ? 'bg-surface-subtle text-ink-muted' : ''"><td class="px-4 py-4"><span class="font-semibold">{{ attachment.originalName }}</span><br><span class="text-xs text-ink-muted">{{ uiLabels.fileTypeLabel(attachment.mimeType) }} · {{ attachment.sizeKb }} KB</span></td><td class="px-4 py-4">{{ uiLabels.humanizeCode(attachment.type) }}<br><span v-if="attachment.description" class="text-xs text-ink-muted">{{ attachment.description }}</span></td><td class="px-4 py-4">{{ format.formatDateTime(attachment.createdAt) }}<br><span class="text-xs text-ink-muted">{{ attachment.createdByName }}</span></td><td class="px-4 py-4"><StatusBadge :status="attachment.retiredAt ? 'RETIRADO' : 'ACTIVO'" /><p v-if="attachment.retirementReason" class="mt-1 text-xs">{{ attachment.retirementReason }}</p></td><td class="px-4 py-4"><div v-if="!attachment.retiredAt" class="flex gap-2"><a :href="attachment.downloadUrl" :class="secondaryButton"><ArrowDownTrayIcon class="mr-1.5 size-4" aria-hidden="true" />Descargar</a><details v-if="data.can.edit" class="ui-details-animated"><summary :class="dangerButton">Retirar</summary><form method="post" :action="attachment.retireUrl" data-confirm data-confirm-title="¿Retirar este adjunto?" data-confirm-text="El archivo dejará de estar disponible para descarga." data-confirm-button="Retirar" data-confirm-danger="true" class="mt-3 w-72 rounded-card bg-surface-raised p-4 shadow-card"><CsrfInput :csrf="data.csrf" /><FormField label="Motivo" :for-id="`attachment-reason-${attachment.id}`"><textarea :id="`attachment-reason-${attachment.id}`" name="motivo" minlength="5" maxlength="255" required :class="fieldClass"></textarea></FormField><button type="submit" :class="`${dangerButton} mt-3`">Confirmar retiro</button></form></details></div></td></tr></tbody></table></div>
       <template #footer><PaginationBar :pagination="data.attachments.pagination" /></template>
     </PanelCard>
     </div>
@@ -396,7 +398,7 @@ const equipmentSummary = computed(() => {
     <PanelCard title="Historial de lecturas" :count="data.readings?.total ?? null">
       <p v-if="data.readings === null" class="text-sm text-ink-muted">No tenés permiso para consultar lecturas.</p>
       <EmptyState v-else-if="data.readings.items.length === 0" title="No hay lecturas registradas" />
-      <div v-else class="overflow-x-auto"><table class="w-full min-w-[66rem] text-left text-sm"><thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-4 py-3">Fecha</th><th class="px-4 py-3">Valores</th><th class="px-4 py-3">Origen y autor</th><th class="px-4 py-3">Estado</th><th class="px-4 py-3">Evidencia</th><th class="px-4 py-3">Acción</th></tr></thead><tbody class="divide-y divide-border-subtle"><tr v-for="reading in data.readings.items" :key="reading.id" :class="reading.annulled ? 'bg-surface-subtle text-ink-muted' : ''"><td class="px-4 py-4">{{ reading.recordedAt }}</td><td class="px-4 py-4">{{ reading.kilometersLabel }}<br>{{ reading.hoursLabel }}</td><td class="px-4 py-4">{{ reading.origin }}<br><span class="text-xs text-ink-muted">{{ reading.userName }} · {{ reading.branchId }}</span></td><td class="px-4 py-4"><StatusBadge :status="reading.annulled ? 'ANULADA' : reading.correctedReadingId ? 'CORRECCION' : 'VALIDA'" /><p v-if="reading.annulmentReason || reading.correctionReason" class="mt-1 text-xs">{{ reading.annulmentReason || reading.correctionReason }}</p><p v-if="reading.replacementReadingId" class="text-xs">Reemplazada por #{{ reading.replacementReadingId }}</p></td><td class="px-4 py-4"><button v-if="reading.evidenceUrl" type="button" class="font-semibold text-primary hover:underline" @click="readingEvidence = reading">{{ readingEvidenceLabel(reading) }}</button><span v-else class="text-xs text-ink-muted">Sin foto histórica</span></td><td class="px-4 py-4"><details v-if="data.can.correctReadings && !reading.annulled" class="ui-details-animated"><summary :class="secondaryButton">Corregir</summary><form method="post" :action="reading.correctUrl" data-confirm data-confirm-title="¿Guardar la corrección de esta lectura?" data-confirm-text="Se registrará como corrección auditada del historial del equipo." data-confirm-button="Guardar corrección" class="mt-3 w-80 rounded-xl border border-border bg-white p-4 shadow-card"><CsrfInput :csrf="data.csrf" /><FormField label="Kilómetros" :for-id="`correct-km-${reading.id}`"><input :id="`correct-km-${reading.id}`" type="number" min="0" name="kilometraje" :value="reading.kilometers" :disabled="!data.equipment.controlsKm" :class="fieldClass" /></FormField><FormField label="Horómetro total actual" :for-id="`correct-hours-${reading.id}`" class="mt-3"><input :id="`correct-hours-${reading.id}`" type="text" inputmode="decimal" autocomplete="off" name="horometro" :value="reading.hours" :disabled="!data.equipment.controlsHours" :class="fieldClass" /></FormField><FormField label="Motivo obligatorio" :for-id="`correct-reason-${reading.id}`" class="mt-3"><textarea :id="`correct-reason-${reading.id}`" name="motivo" minlength="5" maxlength="255" rows="2" required :class="fieldClass"></textarea></FormField><FormField label="Observaciones" :for-id="`correct-notes-${reading.id}`" class="mt-3"><textarea :id="`correct-notes-${reading.id}`" name="observaciones" rows="2" :class="fieldClass"></textarea></FormField><button type="submit" :class="`${primaryButton} mt-3`">Guardar corrección auditada</button></form></details></td></tr></tbody></table></div>
+      <div v-else class="overflow-x-auto"><table class="ui-table w-full min-w-[66rem] text-left text-sm"><thead class="text-xs font-semibold text-ink-subtle"><tr><th class="px-4 py-3">Fecha</th><th class="px-4 py-3">Valores</th><th class="px-4 py-3">Origen y autor</th><th class="px-4 py-3">Estado</th><th class="px-4 py-3">Evidencia</th><th class="px-4 py-3">Acción</th></tr></thead><tbody class="divide-y divide-border-subtle"><tr v-for="reading in data.readings.items" :key="reading.id" :class="reading.annulled ? 'bg-surface-subtle text-ink-muted' : ''"><td class="px-4 py-4">{{ format.formatDateTime(reading.recordedAt) }}</td><td class="px-4 py-4">{{ reading.kilometersLabel }}<br>{{ reading.hoursLabel }}</td><td class="px-4 py-4">{{ formatReadingOrigin(reading.origin) }}<br><span class="text-xs text-ink-muted">{{ reading.userName }} · {{ reading.branchId }}</span></td><td class="px-4 py-4"><StatusBadge :status="reading.annulled ? 'ANULADA' : reading.correctedReadingId ? 'CORRECCION' : 'VALIDA'" /><p v-if="reading.annulmentReason || reading.correctionReason" class="mt-1 text-xs">{{ reading.annulmentReason || reading.correctionReason }}</p><p v-if="reading.replacementReadingId" class="text-xs">Reemplazada por #{{ reading.replacementReadingId }}</p></td><td class="px-4 py-4"><button v-if="reading.evidenceUrl" type="button" class="font-semibold text-primary hover:underline" @click="readingEvidence = reading">{{ readingEvidenceLabel(reading) }}</button><span v-else class="text-xs text-ink-muted">Sin foto histórica</span></td><td class="px-4 py-4"><details v-if="data.can.correctReadings && !reading.annulled" class="ui-details-animated"><summary :class="secondaryButton">Corregir</summary><form method="post" :action="reading.correctUrl" data-confirm data-confirm-title="¿Guardar la corrección de esta lectura?" data-confirm-text="Se registrará como corrección auditada del historial del equipo." data-confirm-button="Guardar corrección" class="mt-3 w-80 rounded-card bg-surface-raised p-4 shadow-card"><CsrfInput :csrf="data.csrf" /><FormField label="Kilómetros" :for-id="`correct-km-${reading.id}`"><input :id="`correct-km-${reading.id}`" type="number" min="0" name="kilometraje" :value="reading.kilometers" :disabled="!data.equipment.controlsKm" :class="fieldClass" /></FormField><FormField label="Horómetro total actual" :for-id="`correct-hours-${reading.id}`" class="mt-3"><input :id="`correct-hours-${reading.id}`" type="text" inputmode="decimal" autocomplete="off" name="horometro" :value="reading.hours" :disabled="!data.equipment.controlsHours" :class="fieldClass" /></FormField><FormField label="Motivo obligatorio" :for-id="`correct-reason-${reading.id}`" class="mt-3"><textarea :id="`correct-reason-${reading.id}`" name="motivo" minlength="5" maxlength="255" rows="2" required :class="fieldClass"></textarea></FormField><FormField label="Observaciones" :for-id="`correct-notes-${reading.id}`" class="mt-3"><textarea :id="`correct-notes-${reading.id}`" name="observaciones" rows="2" :class="fieldClass"></textarea></FormField><button type="submit" :class="`${primaryButton} mt-3`">Guardar corrección auditada</button></form></details></td></tr></tbody></table></div>
       <template v-if="data.readings" #footer><PaginationBar :pagination="data.readings.pagination" /></template>
     </PanelCard>
     </div>
@@ -410,11 +412,11 @@ const equipmentSummary = computed(() => {
         aria-labelledby="equipment-reading-evidence-title"
         @click.self="closeReadingEvidence"
       >
-        <div class="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-xl border border-border bg-surface-raised p-5 shadow-xl">
+        <div class="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-card bg-surface-raised p-5 shadow-xl">
           <div class="flex items-start justify-between gap-4">
             <div>
               <h2 id="equipment-reading-evidence-title" class="text-lg font-semibold text-ink">Evidencia de lectura</h2>
-              <p class="mt-1 text-sm text-ink-muted">{{ data.equipment.code }} · {{ readingEvidence.recordedAt }}</p>
+              <p class="mt-1 text-sm text-ink-muted">{{ data.equipment.code }} · {{ format.formatDateTime(readingEvidence.recordedAt) }}</p>
             </div>
             <button type="button" :class="secondaryButton" @click="closeReadingEvidence">Cerrar</button>
           </div>
@@ -426,7 +428,7 @@ const equipmentSummary = computed(() => {
             <div v-if="readingEvidence.aiConfidence !== null && readingEvidence.aiConfidence !== undefined"><dt class="text-ink-muted">Confianza IA</dt><dd class="font-semibold text-ink">{{ Math.round(Number(readingEvidence.aiConfidence) * 100) }}%</dd></div>
             <div v-if="readingEvidence.aiObservation" class="sm:col-span-2"><dt class="text-ink-muted">Observación IA</dt><dd class="font-medium text-ink">{{ readingEvidence.aiObservation }}</dd></div>
           </dl>
-          <div v-if="readingEvidence.canReview" class="mt-4 rounded-xl border border-border bg-surface-subtle p-4">
+          <div v-if="readingEvidence.canReview" class="mt-4 rounded-2xl bg-surface-subtle p-4">
             <h3 class="text-sm font-semibold text-ink">Revisar detección de IA</h3>
             <form :action="readingEvidence.reviewUrl" method="post" class="mt-3 grid gap-3 sm:grid-cols-2">
               <input type="hidden" :name="data.csrf.name" :value="data.csrf.hash">
@@ -443,8 +445,8 @@ const equipmentSummary = computed(() => {
               <button type="submit" :class="primaryButton" class="sm:col-span-2">Marcar como revisada</button>
             </form>
           </div>
-          <div v-else-if="readingEvidence.evidenceReviewedAt" class="mt-4 rounded-xl border border-border bg-surface-subtle p-4 text-sm">
-            <p class="font-semibold text-ink">Revisada por {{ readingEvidence.evidenceReviewedByName || 'un usuario' }} el {{ readingEvidence.evidenceReviewedAt }}</p>
+          <div v-else-if="readingEvidence.evidenceReviewedAt" class="mt-4 rounded-2xl bg-surface-subtle p-4 text-sm">
+            <p class="font-semibold text-ink">Revisada por {{ readingEvidence.evidenceReviewedByName || 'un usuario' }} el {{ format.formatDateTime(readingEvidence.evidenceReviewedAt) }}</p>
             <p class="mt-1 text-ink-muted">Motivo: {{ readingEvidence.evidenceReviewReason || '-' }}</p>
             <p v-if="readingEvidence.evidenceReviewObservation" class="mt-1 text-ink-muted">{{ readingEvidence.evidenceReviewObservation }}</p>
           </div>
@@ -468,11 +470,11 @@ const equipmentSummary = computed(() => {
 
           <EmptyState v-if="data.workOrderHistory.items.length === 0" title="No hay órdenes para los filtros indicados" description="Las OT correctivas y preventivas del equipo aparecerán en este historial." />
           <div v-else class="overflow-x-auto">
-            <table class="ui-table-hover w-full min-w-[76rem] text-left text-sm">
-              <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-4 py-3">OT / Fecha</th><th class="px-4 py-3">Tipo</th><th class="px-4 py-3">Tarea / trabajo realizado</th><th class="px-4 py-3">Km / horas</th><th class="px-4 py-3">Estado</th><th class="px-4 py-3">Acciones</th></tr></thead>
+            <table class="ui-table ui-table-hover w-full min-w-[76rem] text-left text-sm">
+              <thead class="text-xs font-semibold text-ink-subtle"><tr><th class="px-4 py-3">OT / Fecha</th><th class="px-4 py-3">Tipo</th><th class="px-4 py-3">Tarea / trabajo realizado</th><th class="px-4 py-3">Km / horas</th><th class="px-4 py-3">Estado</th><th class="px-4 py-3">Acciones</th></tr></thead>
               <tbody class="divide-y divide-border-subtle">
                 <tr v-for="order in data.workOrderHistory.items" :key="order.id">
-                  <td class="px-4 py-4"><strong class="text-ink">{{ order.number }}</strong><br><span class="text-xs text-ink-muted">{{ order.date }}</span></td>
+                  <td class="px-4 py-4"><strong class="text-ink">{{ order.number }}</strong><br><span class="text-xs text-ink-muted">{{ format.formatDateTime(order.date) }}</span></td>
                   <td class="px-4 py-4"><span class="font-semibold text-ink">{{ order.typeLabel }}</span><br><span class="text-xs text-ink-muted">{{ order.serviceName }}</span></td>
                   <td class="max-w-xl px-4 py-4"><p class="font-medium text-ink">{{ order.work }}</p></td>
                   <td class="whitespace-nowrap px-4 py-4 font-semibold text-ink">{{ order.readingLabel }}</td>

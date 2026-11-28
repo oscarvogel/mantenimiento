@@ -1,4 +1,5 @@
 <script setup>
+import * as format from '../../ui/format.js'
 import { computed, reactive } from 'vue'
 import { ArrowPathIcon, PlusIcon, TruckIcon } from '@heroicons/vue/24/outline'
 import AutocompleteSelect from './components/AutocompleteSelect.vue'
@@ -90,17 +91,10 @@ const kpis = computed(() => [
   },
 ])
 
-const fmt = (value) => Number(value ?? 0).toLocaleString('es-AR', { maximumFractionDigits: 0 })
-const fmt1 = (value) => Number(value ?? 0).toLocaleString('es-AR', { maximumFractionDigits: 1 })
-const fmtMoney = (value) => new Intl.NumberFormat('es-AR', {
-  style: 'currency',
-  currency: 'ARS',
-  maximumFractionDigits: 0,
-}).format(Number(value ?? 0))
-const fmtDateTime = (value) => {
-  const match = String(value ?? '').match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/)
-  return match ? `${match[3]}/${match[2]}/${match[1]} ${match[4]}:${match[5]}` : 'Sin fecha'
-}
+const fmt = (value) => format.formatNumber(value ?? 0)
+const fmt1 = (value) => format.formatNumber(value ?? 0, 1)
+const fmtMoney = (value) => format.formatMoney(value ?? 0)
+const fmtDateTime = (value) => format.formatDateTime(value)
 const bar = (value, max) => {
   const amount = Number(value) || 0
   if (amount <= 0 || max <= 0) return '0%'
@@ -173,7 +167,7 @@ const bar = (value, max) => {
 
     <template v-if="hasData">
       <section aria-label="Indicadores de viajes operativos" class="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
-        <article v-for="kpi in kpis" :key="kpi.key" class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
+        <article v-for="(kpi, index) in kpis" :key="kpi.key" class="rounded-card p-4" :class="index === 0 ? 'ui-card-emphasis' : 'bg-surface-raised shadow-card'">
           <p class="text-xs font-semibold text-ink-muted">{{ kpi.label }}</p>
           <p class="mt-2 font-bold text-ink" :class="kpi.compact ? 'text-base leading-6' : 'text-2xl'">{{ kpi.value }}</p>
           <p class="mt-1 text-xs text-ink-muted">{{ kpi.hint }}</p>
@@ -189,8 +183,8 @@ const bar = (value, max) => {
           description="Cuando registres un viaje operativo va a aparecer acá con su recorrido, equipo y choferes."
         />
         <div v-else class="overflow-x-auto">
-          <table class="w-full min-w-[64rem] text-left text-sm">
-            <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
+          <table class="ui-table w-full min-w-[64rem] text-left text-sm">
+            <thead class="text-xs font-semibold text-ink-subtle">
               <tr>
                 <th class="px-4 py-3">Viaje</th>
                 <th class="px-4 py-3">Estado</th>

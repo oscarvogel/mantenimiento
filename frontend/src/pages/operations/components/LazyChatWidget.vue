@@ -1,6 +1,10 @@
 <script setup>
 import { defineAsyncComponent, onMounted, ref } from 'vue'
-import ChatRobot from './ChatRobot.vue'
+import ChatLauncher from './ChatLauncher.vue'
+
+defineProps({
+  launcherTarget: { type: Object, default: null },
+})
 
 const ChatWidget = defineAsyncComponent(() => import('./ChatWidget.vue'))
 const loaded = ref(false)
@@ -31,22 +35,6 @@ onMounted(loadBriefing)
 </script>
 
 <template>
-  <ChatWidget v-if="loaded" :auto-open="true" />
-  <button
-    v-else
-    type="button"
-    class="ui-interactive fixed bottom-6 right-6 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary-hover"
-    aria-label="Abrir asistente IA"
-    title="Abrir asistente IA"
-    @click="load"
-  >
-    <ChatRobot variant="fab" />
-    <span
-      v-if="unread > 0"
-      class="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-danger-foreground"
-      aria-label="Alertas pendientes"
-    >
-      {{ unread > 99 ? '99+' : unread }}
-    </span>
-  </button>
+  <ChatWidget v-if="loaded" :auto-open="true" :launcher-target="launcherTarget" />
+  <ChatLauncher v-else :target="launcherTarget" :unread="unread" @open="load" />
 </template>

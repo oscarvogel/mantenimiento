@@ -1,4 +1,5 @@
 <script setup>
+import { secondaryButton } from '../../ui/buttons.js'
 import { computed, reactive, ref } from 'vue'
 import PageHeading from './components/PageHeading.vue'
 import TelemetryUnitCombobox from './components/TelemetryUnitCombobox.vue'
@@ -125,7 +126,7 @@ const usedUnitIds = (integrationId, equipmentId) => Object.entries(mappings[inte
       description="Conectá las cuentas de telemetría de tu empresa y elegí qué unidad del proveedor corresponde a cada equipo."
     />
 
-    <section class="rounded-2xl border border-border bg-surface-raised p-5 shadow-card sm:p-6">
+    <section class="rounded-card bg-surface-raised p-5 shadow-card sm:p-6">
       <form method="post" :action="data.actions.save" class="grid gap-5">
         <input type="hidden" :name="data.csrf.name" :value="data.csrf.hash" />
 
@@ -193,7 +194,7 @@ const usedUnitIds = (integrationId, equipmentId) => Object.entries(mappings[inte
 
     <section v-if="integrations.length" class="space-y-4">
       <h2 class="text-base font-semibold text-ink">Cuentas conectadas en esta empresa</h2>
-      <article v-for="integration in integrations" :key="integration.id" class="rounded-2xl border border-border bg-surface-raised p-5 shadow-card sm:p-6">
+      <article v-for="integration in integrations" :key="integration.id" class="rounded-card bg-surface-raised p-5 shadow-card sm:p-6">
         <div class="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p class="font-semibold text-ink">{{ integration.name }} <span class="font-normal text-ink-muted">· {{ providerLabel(integration.provider) }}</span></p>
@@ -203,19 +204,19 @@ const usedUnitIds = (integrationId, equipmentId) => Object.entries(mappings[inte
             <span class="rounded-full bg-success-subtle px-3 py-1 text-xs font-bold text-success">{{ integration.active ? 'Activo' : 'Inactivo' }}</span>
             <button
               type="button"
-              class="ui-interactive inline-flex min-h-10 items-center justify-center rounded-lg border border-border px-3 py-2 text-sm font-semibold text-ink hover:bg-surface-muted disabled:cursor-wait disabled:opacity-60"
+              
               :data-load-units="integration.id"
               :disabled="loadingIntegrationId === integration.id"
               :aria-expanded="openIntegrationId === integration.id"
               @click="loadUnits(integration)"
               v-if="integration.active"
-            >
+             :class="secondaryButton">
               {{ loadingIntegrationId === integration.id ? `Consultando ${providerLabel(integration.provider)}…` : openIntegrationId === integration.id ? 'Actualizar unidades' : 'Vincular equipos' }}
             </button>
           </div>
         </div>
 
-        <div v-if="openIntegrationId === integration.id" class="mt-5 rounded-xl border border-border bg-surface-muted/40 p-4 sm:p-5">
+        <div v-if="openIntegrationId === integration.id" class="mt-5 rounded-2xl bg-surface-muted/40 p-4 sm:p-5">
           <p v-if="loadErrors[integration.id]" role="alert" class="rounded-lg border border-danger/20 bg-danger-subtle p-3 text-sm text-danger">
             {{ loadErrors[integration.id] }}
           </p>
@@ -243,7 +244,7 @@ const usedUnitIds = (integrationId, equipmentId) => Object.entries(mappings[inte
             <form v-if="snapshots[integration.id].units.length > 0" method="post" :action="integration.saveLinksUrl" class="mt-4">
               <input type="hidden" :name="data.csrf.name" :value="data.csrf.hash" />
               <div v-if="snapshots[integration.id].equipment.length" class="overflow-x-auto rounded-lg border border-border">
-                <table class="w-full min-w-[38rem] text-left text-sm">
+                <table class="ui-table w-full min-w-[38rem] text-left text-sm">
                   <thead class="bg-surface-raised text-xs uppercase tracking-wide text-ink-muted">
                     <tr>
                       <th scope="col" class="px-3 py-3 font-semibold">Equipo</th>
@@ -270,7 +271,7 @@ const usedUnitIds = (integrationId, equipmentId) => Object.entries(mappings[inte
                   </tbody>
                 </table>
               </div>
-              <p v-else class="rounded-lg border border-border bg-surface-raised p-4 text-sm text-ink-muted">No hay equipos activos en esta empresa para vincular.</p>
+              <p v-else class="rounded-card bg-surface-raised p-4 text-sm text-ink-muted shadow-card">No hay equipos activos en esta empresa para vincular.</p>
 
               <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
                 <p class="max-w-2xl text-xs leading-5 text-ink-muted">Cada unidad se puede asignar a un equipo en esta cuenta. Los cambios se validan contra {{ providerLabel(integration.provider) }} y quedan asociados a esta empresa.</p>

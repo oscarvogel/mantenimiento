@@ -5,7 +5,20 @@ const reducedMotion = () =>
   typeof window.matchMedia === 'function' &&
   window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
+// La entrada del aviso (sweetalert2.css) se quita al terminar: si sigue declarada, SweetAlert
+// espera su fin al cerrar y el aviso queda trabado.
+// Sin `once`: la animación del ícono también termina y sube hasta el popup.
+const markEntered = (popup) => {
+  const done = (event) => {
+    if (event.target !== popup) return
+    popup.removeEventListener('animationend', done)
+    popup.classList.add('ui-swal-entered')
+  }
+  popup.addEventListener('animationend', done)
+}
+
 const alertDefaults = {
+  didOpen: markEntered,
   customClass: {
     container: 'ui-swal-customized',
     popup: 'ui-swal-popup',
@@ -92,6 +105,7 @@ export function useAlerts() {
         animation: false,
         allowOutsideClick: () => !Swal.isLoading(),
         allowEscapeKey: true,
+        didOpen: markEntered,
         ...(reducedMotion() && { showClass: { popup: '' }, hideClass: { popup: '' } }),
       })
       return result.isConfirmed === true

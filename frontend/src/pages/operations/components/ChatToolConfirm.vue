@@ -13,7 +13,7 @@
     <div class="flex gap-2">
       <button
         @click="$emit('confirm')"
-        class="ui-interactive rounded-lg bg-warning px-3 py-1 text-xs text-warning-foreground hover:bg-warning-strong"
+        class="ui-interactive rounded-lg bg-warning px-3 py-1 text-xs text-secondary-900 hover:bg-warning-strong"
       >
         Confirmar
       </button>

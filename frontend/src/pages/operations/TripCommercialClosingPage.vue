@@ -1,4 +1,5 @@
 <script setup>
+import * as format from '../../ui/format.js'
 /**
  * Control de cierre comercial (#530).
  *
@@ -38,15 +39,9 @@ const tabUrl = (key) => `${links.value.queue ?? ''}?estado=${key}`
 const tabLabels = Object.fromEntries(tabs.map((tab) => [tab.key, tab.label]))
 
 const signedMoney = (value) => `${value > 0 ? '+' : '−'}${money(Math.abs(value))}`
-const money = (value, currency = 'ARS') => `${currency} ${Number(value ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+const money = (value, currency = 'ARS') => format.formatMoney(value ?? 0, { currency, cents: true })
 const rateText = (value) => Number(value ?? 0).toLocaleString('es-AR', { maximumFractionDigits: 6 })
-const fmtDate = (value) => {
-  const raw = String(value ?? '').slice(0, 10)
-  if (!raw) return 'Sin fecha'
-  const [year, month, day] = raw.split('-')
-
-  return `${day}/${month}/${year}`
-}
+const fmtDate = (value) => format.formatDate(value)
 const today = () => {
   const now = new Date()
   const pad = (n) => String(n).padStart(2, '0')
@@ -167,8 +162,8 @@ const openReason = (kind, row) => {
         </li>
       </ul>
       <div v-if="rows.length > 0" class="hidden overflow-x-auto sm:block">
-        <table class="w-full min-w-[60rem] text-left text-sm" data-testid="closing-table">
-          <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
+        <table class="ui-table w-full min-w-[60rem] text-left text-sm" data-testid="closing-table">
+          <thead class="text-xs font-semibold text-ink-subtle">
             <tr>
               <th class="px-3 py-2">Viaje</th>
               <th class="px-3 py-2">Recorrido</th>
@@ -216,7 +211,7 @@ const openReason = (kind, row) => {
       </div>
     </PanelCard>
 
-    <dialog v-if="canFormalize" ref="formalizeDialog" aria-labelledby="formalize-title" @click.self="formalizeDialog?.close()" class="m-auto w-[min(48rem,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-xl border border-border bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
+    <dialog v-if="canFormalize" ref="formalizeDialog" aria-labelledby="formalize-title" @click.self="formalizeDialog?.close()" class="m-auto w-[min(48rem,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-card bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
       <form v-if="selected" method="post" :action="`${links.legsBase}${selected.tramo_id}/formalizar`" class="p-5 sm:p-6" data-testid="formalize-form">
         <input type="hidden" :name="csrf.name" :value="csrf.hash" />
         <input type="hidden" name="volver" :value="data.returnTo" />
@@ -273,7 +268,7 @@ const openReason = (kind, row) => {
       </form>
     </dialog>
 
-    <dialog v-if="canFormalize" ref="reasonDialog" aria-labelledby="reason-title" @click.self="reasonDialog?.close()" class="m-auto w-[min(36rem,calc(100vw-2rem))] rounded-xl border border-border bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
+    <dialog v-if="canFormalize" ref="reasonDialog" aria-labelledby="reason-title" @click.self="reasonDialog?.close()" class="m-auto w-[min(36rem,calc(100vw-2rem))] rounded-card bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
       <form v-if="reasonAction" method="post" :action="reasonAction.url" class="p-5 sm:p-6" data-testid="reason-form">
         <input type="hidden" :name="csrf.name" :value="csrf.hash" />
         <input type="hidden" name="volver" :value="data.returnTo" />

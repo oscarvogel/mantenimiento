@@ -1,44 +1,83 @@
 {
-  "_admin-CdiJGqqt.js": {
-    "file": "assets/admin-CdiJGqqt.js",
+  "_admin-DAUF9rcz.js": {
+    "file": "assets/admin-DAUF9rcz.js",
     "name": "admin",
     "imports": [
-      "_vendor-CYfzuk1k.js"
+      "_vendor-B594v3Eo.js",
+      "_chatbot-Cx3UyBdi.js"
     ]
   },
-  "_chatbot-DyybNhyC.js": {
-    "file": "assets/chatbot-DyybNhyC.js",
+  "_chatbot-Cx3UyBdi.js": {
+    "file": "assets/chatbot-Cx3UyBdi.js",
     "name": "chatbot",
     "isDynamicEntry": true,
     "imports": [
-      "_vendor-CYfzuk1k.js"
+      "_vendor-B594v3Eo.js"
     ],
     "css": [
-      "assets/chatbot-p1890OXW.css"
+      "assets/chatbot-DO6L-G3P.css"
     ]
   },
-  "_chatbot-p1890OXW.css": {
-    "file": "assets/chatbot-p1890OXW.css",
-    "src": "_chatbot-p1890OXW.css"
+  "_chatbot-DO6L-G3P.css": {
+    "file": "assets/chatbot-DO6L-G3P.css",
+    "src": "_chatbot-DO6L-G3P.css"
   },
-  "_reports-Blw18P4L.js": {
-    "file": "assets/reports-Blw18P4L.js",
+  "_reports-Pc1HZA-q.js": {
+    "file": "assets/reports-Pc1HZA-q.js",
     "name": "reports",
     "imports": [
-      "_admin-CdiJGqqt.js",
-      "_vendor-CYfzuk1k.js"
+      "_chatbot-Cx3UyBdi.js",
+      "_admin-DAUF9rcz.js",
+      "_vendor-B594v3Eo.js"
     ]
   },
-  "_vendor-BTrKGrB8.css": {
-    "file": "assets/vendor-BTrKGrB8.css",
-    "src": "_vendor-BTrKGrB8.css"
-  },
-  "_vendor-CYfzuk1k.js": {
-    "file": "assets/vendor-CYfzuk1k.js",
+  "_vendor-B594v3Eo.js": {
+    "file": "assets/vendor-B594v3Eo.js",
     "name": "vendor",
     "css": [
-      "assets/vendor-BTrKGrB8.css"
+      "assets/vendor-CF0y71XY.css"
+    ],
+    "assets": [
+      "assets/inter-cyrillic-ext-wght-normal-BOeWTOD4.woff2",
+      "assets/inter-cyrillic-wght-normal-DqGufNeO.woff2",
+      "assets/inter-greek-ext-wght-normal-DlzME5K_.woff2",
+      "assets/inter-greek-wght-normal-CkhJZR-_.woff2",
+      "assets/inter-vietnamese-wght-normal-CBcvBZtf.woff2",
+      "assets/inter-latin-ext-wght-normal-DO1Apj_S.woff2",
+      "assets/inter-latin-wght-normal-Dx4kXJAl.woff2"
     ]
+  },
+  "_vendor-CF0y71XY.css": {
+    "file": "assets/vendor-CF0y71XY.css",
+    "src": "_vendor-CF0y71XY.css"
+  },
+  "node_modules/@fontsource-variable/inter/files/inter-cyrillic-ext-wght-normal.woff2": {
+    "file": "assets/inter-cyrillic-ext-wght-normal-BOeWTOD4.woff2",
+    "src": "node_modules/@fontsource-variable/inter/files/inter-cyrillic-ext-wght-normal.woff2"
+  },
+  "node_modules/@fontsource-variable/inter/files/inter-cyrillic-wght-normal.woff2": {
+    "file": "assets/inter-cyrillic-wght-normal-DqGufNeO.woff2",
+    "src": "node_modules/@fontsource-variable/inter/files/inter-cyrillic-wght-normal.woff2"
+  },
+  "node_modules/@fontsource-variable/inter/files/inter-greek-ext-wght-normal.woff2": {
+    "file": "assets/inter-greek-ext-wght-normal-DlzME5K_.woff2",
+    "src": "node_modules/@fontsource-variable/inter/files/inter-greek-ext-wght-normal.woff2"
+  },
+  "node_modules/@fontsource-variable/inter/files/inter-greek-wght-normal.woff2": {
+    "file": "assets/inter-greek-wght-normal-CkhJZR-_.woff2",
+    "src": "node_modules/@fontsource-variable/inter/files/inter-greek-wght-normal.woff2"
+  },
+  "node_modules/@fontsource-variable/inter/files/inter-latin-ext-wght-normal.woff2": {
+    "file": "assets/inter-latin-ext-wght-normal-DO1Apj_S.woff2",
+    "src": "node_modules/@fontsource-variable/inter/files/inter-latin-ext-wght-normal.woff2"
+  },
+  "node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2": {
+    "file": "assets/inter-latin-wght-normal-Dx4kXJAl.woff2",
+    "src": "node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2"
+  },
+  "node_modules/@fontsource-variable/inter/files/inter-vietnamese-wght-normal.woff2": {
+    "file": "assets/inter-vietnamese-wght-normal-CBcvBZtf.woff2",
+    "src": "node_modules/@fontsource-variable/inter/files/inter-vietnamese-wght-normal.woff2"
   },
   "node_modules/gsap/index.js": {
     "file": "assets/gsap-C-UGJFrr.js",
@@ -46,59 +85,19 @@
     "src": "node_modules/gsap/index.js",
     "isDynamicEntry": true
   },
-  "src/assets/platform/ai-card.jpg": {
-    "file": "assets/ai-card-Bif2XNNK.jpg",
-    "src": "src/assets/platform/ai-card.jpg"
-  },
-  "src/assets/platform/automations-card.jpg": {
-    "file": "assets/automations-card-RiUiw6K5.jpg",
-    "src": "src/assets/platform/automations-card.jpg"
-  },
-  "src/assets/platform/billing-card.jpg": {
-    "file": "assets/billing-card-CjMAOhC3.jpg",
-    "src": "src/assets/platform/billing-card.jpg"
-  },
-  "src/assets/platform/fuel-card.jpg": {
-    "file": "assets/fuel-card-D9Zc01Ku.jpg",
-    "src": "src/assets/platform/fuel-card.jpg"
-  },
-  "src/assets/platform/maintenance-card.jpg": {
-    "file": "assets/maintenance-card-uYK8y_5B.jpg",
-    "src": "src/assets/platform/maintenance-card.jpg"
-  },
-  "src/assets/platform/management-card.jpg": {
-    "file": "assets/management-card-0ljX2I3p.jpg",
-    "src": "src/assets/platform/management-card.jpg"
-  },
-  "src/assets/platform/portal-hero.jpg": {
-    "file": "assets/portal-hero-Dd-Ff3YR.jpg",
-    "src": "src/assets/platform/portal-hero.jpg"
-  },
-  "src/assets/platform/reports-card.jpg": {
-    "file": "assets/reports-card-C18Twu5b.jpg",
-    "src": "src/assets/platform/reports-card.jpg"
-  },
-  "src/assets/platform/tires-card.jpg": {
-    "file": "assets/tires-card-CsQWVLPl.jpg",
-    "src": "src/assets/platform/tires-card.jpg"
-  },
-  "src/assets/platform/trips-card.jpg": {
-    "file": "assets/trips-card-qkUzH-aR.jpg",
-    "src": "src/assets/platform/trips-card.jpg"
-  },
   "src/main.js": {
-    "file": "assets/main-9KiNjI8g.js",
+    "file": "assets/main-VkG5AnOm.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
     "imports": [
-      "_vendor-CYfzuk1k.js",
-      "_chatbot-DyybNhyC.js",
-      "_admin-CdiJGqqt.js",
-      "_reports-Blw18P4L.js"
+      "_vendor-B594v3Eo.js",
+      "_admin-DAUF9rcz.js",
+      "_chatbot-Cx3UyBdi.js",
+      "_reports-Pc1HZA-q.js"
     ],
     "dynamicImports": [
-      "_chatbot-DyybNhyC.js",
+      "_chatbot-Cx3UyBdi.js",
       "src/pages/operations/components/FleetTelemetryMap.vue",
       "node_modules/gsap/index.js",
       "src/profiles/platform/profile.js",
@@ -106,74 +105,62 @@
       "src/profiles/cliente_piloto/profile.js"
     ],
     "css": [
-      "assets/main-DN8gIh97.css"
-    ],
-    "assets": [
-      "assets/portal-hero-Dd-Ff3YR.jpg",
-      "assets/maintenance-card-uYK8y_5B.jpg",
-      "assets/trips-card-qkUzH-aR.jpg",
-      "assets/fuel-card-D9Zc01Ku.jpg",
-      "assets/tires-card-CsQWVLPl.jpg",
-      "assets/billing-card-CjMAOhC3.jpg",
-      "assets/management-card-0ljX2I3p.jpg",
-      "assets/reports-card-C18Twu5b.jpg",
-      "assets/automations-card-RiUiw6K5.jpg",
-      "assets/ai-card-Bif2XNNK.jpg"
+      "assets/main-DAjpFABA.css"
     ]
   },
   "src/pages/operations/components/FleetTelemetryMap.vue": {
-    "file": "assets/FleetTelemetryMap-Bx5dT-Zt.js",
+    "file": "assets/FleetTelemetryMap-BSBthN4k.js",
     "name": "FleetTelemetryMap",
     "src": "src/pages/operations/components/FleetTelemetryMap.vue",
     "isDynamicEntry": true,
     "imports": [
-      "_vendor-CYfzuk1k.js",
-      "_chatbot-DyybNhyC.js"
+      "_vendor-B594v3Eo.js",
+      "_chatbot-Cx3UyBdi.js"
     ],
     "css": [
-      "assets/FleetTelemetryMap-eJHHeTQZ.css"
+      "assets/FleetTelemetryMap-DFnGY69W.css"
     ]
   },
   "src/profiles/cliente_piloto/profile.js": {
-    "file": "assets/profile-BGC_UQD0.js",
+    "file": "assets/profile-BxGDuQ2m.js",
     "name": "profile",
     "src": "src/profiles/cliente_piloto/profile.js",
     "isDynamicEntry": true,
     "imports": [
       "src/main.js",
-      "_vendor-CYfzuk1k.js",
-      "_chatbot-DyybNhyC.js",
-      "_admin-CdiJGqqt.js",
-      "_reports-Blw18P4L.js"
+      "_vendor-B594v3Eo.js",
+      "_admin-DAUF9rcz.js",
+      "_chatbot-Cx3UyBdi.js",
+      "_reports-Pc1HZA-q.js"
     ],
     "css": [
       "assets/profile-DV70kWFs.css"
     ]
   },
   "src/profiles/platform/profile.js": {
-    "file": "assets/profile-DSrO7bTW.js",
+    "file": "assets/profile-BYQl8WzF.js",
     "name": "profile",
     "src": "src/profiles/platform/profile.js",
     "isDynamicEntry": true,
     "imports": [
       "src/main.js",
-      "_vendor-CYfzuk1k.js",
-      "_chatbot-DyybNhyC.js",
-      "_admin-CdiJGqqt.js",
-      "_reports-Blw18P4L.js"
+      "_vendor-B594v3Eo.js",
+      "_admin-DAUF9rcz.js",
+      "_chatbot-Cx3UyBdi.js",
+      "_reports-Pc1HZA-q.js"
     ]
   },
   "src/profiles/vogel/profile.js": {
-    "file": "assets/profile-x2pTIO5P.js",
+    "file": "assets/profile-B4BHJTf7.js",
     "name": "profile",
     "src": "src/profiles/vogel/profile.js",
     "isDynamicEntry": true,
     "imports": [
       "src/main.js",
-      "_vendor-CYfzuk1k.js",
-      "_chatbot-DyybNhyC.js",
-      "_admin-CdiJGqqt.js",
-      "_reports-Blw18P4L.js"
+      "_vendor-B594v3Eo.js",
+      "_admin-DAUF9rcz.js",
+      "_chatbot-Cx3UyBdi.js",
+      "_reports-Pc1HZA-q.js"
     ]
   }
 }

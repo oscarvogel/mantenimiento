@@ -54,7 +54,7 @@ const issueLabel = (field) => labels[field] ?? field
     <PageHeading eyebrow="Vista previa" :title="data.header.originalFile" :description="`${data.header.type} · ${data.header.status}${data.header.summary ? ` · ${data.header.summary}` : ''}`" :back="{ label: 'Volver a importaciones', href: data.routes.back }" />
 
     <section aria-label="Resumen de validación" class="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-      <article v-for="metric in [{label:'Total',value:data.header.totalRows,tone:'text-ink'},{label:'Válidas',value:data.header.validRows,tone:'text-success-strong'},{label:'Errores',value:data.header.errorRows,tone:'text-danger-strong'},{label:'Duplicadas',value:data.header.duplicateRows,tone:'text-warning-strong'}]" :key="metric.label" class="rounded-xl border border-border bg-white p-4 shadow-card sm:p-5">
+      <article v-for="metric in [{label:'Total',value:data.header.totalRows,tone:'text-ink'},{label:'Válidas',value:data.header.validRows,tone:'text-success-strong'},{label:'Errores',value:data.header.errorRows,tone:'text-danger-strong'},{label:'Duplicadas',value:data.header.duplicateRows,tone:'text-warning-strong'}]" :key="metric.label" class="rounded-card bg-surface-raised p-4 shadow-card sm:p-5">
         <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ metric.label }}</p><p class="mt-2 text-2xl font-bold" :class="metric.tone"><CountUp :value="Number(metric.value) || 0" /></p>
       </article>
     </section>
@@ -83,7 +83,7 @@ const issueLabel = (field) => labels[field] ?? field
         @keydown.esc.window="closeConfirmation"
       >
         <section
-          class="relative w-full max-w-md rounded-2xl border border-border bg-white p-6 shadow-2xl"
+          class="relative w-full max-w-md rounded-card bg-surface-raised p-6 shadow-2xl"
           role="dialog"
           aria-modal="true"
           :aria-labelledby="`import-confirm-title-${pendingAction}`"
@@ -108,7 +108,7 @@ const issueLabel = (field) => labels[field] ?? field
           </p>
 
           <div class="mt-7 flex justify-end gap-3">
-            <button type="button" class="rounded-lg border border-border bg-white px-4 py-2.5 font-semibold text-ink hover:bg-surface-subtle" @click="closeConfirmation">
+            <button type="button" class="rounded-card bg-surface-raised px-4 py-2.5 font-semibold text-ink hover:bg-surface-subtle shadow-card" @click="closeConfirmation">
               Volver
             </button>
             <button
@@ -127,8 +127,8 @@ const issueLabel = (field) => labels[field] ?? field
       <EmptyState v-if="data.rows.items.length === 0" title="No hay filas visibles" description="No hay resultados dentro de tu alcance para esta página." />
       <template v-else>
         <div class="hidden overflow-x-auto md:block">
-          <table class="w-full min-w-[50rem] text-left text-sm">
-            <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-6 py-3">Fila</th><th class="px-6 py-3">Estado</th><th class="px-6 py-3">Datos normalizados</th><th class="px-6 py-3">Errores / resultado</th></tr></thead>
+          <table class="ui-table w-full min-w-[50rem] text-left text-sm">
+            <thead class="text-xs font-semibold text-ink-subtle"><tr><th class="px-6 py-3">Fila</th><th class="px-6 py-3">Estado</th><th class="px-6 py-3">Datos normalizados</th><th class="px-6 py-3">Errores / resultado</th></tr></thead>
             <tbody class="divide-y divide-border-subtle"><tr v-for="row in data.rows.items" :key="row.rowNumber"><td class="px-6 py-4 font-semibold text-ink">#{{ row.rowNumber }}</td><td class="px-6 py-4"><StatusBadge :status="row.status" /></td><td class="px-6 py-4"><dl class="grid gap-1 text-sm"> <div v-for="item in humanRows(row)" :key="item.label" class="flex gap-2"><dt class="font-semibold text-ink">{{ item.label }}:</dt><dd>{{ item.value }}</dd></div></dl><details class="mt-3"><summary class="cursor-pointer text-xs font-semibold text-primary">Ver datos técnicos</summary><pre class="mt-2 max-w-xl whitespace-pre-wrap break-words rounded-lg bg-surface-subtle p-3 text-xs text-ink">{{ JSON.stringify(row.normalizedData, null, 2) }}</pre></details></td><td class="px-6 py-4"><div v-for="issue in row.issues" :key="`${issue.field}-${issue.message}`" class="mb-2 text-sm text-danger-strong"><strong>{{ issueLabel(issue.field) }}:</strong> {{ issue.message }}<span v-if="issue.value"> · Valor recibido: {{ issue.value }}</span></div><p v-if="row.result" class="text-sm text-ink-muted">{{ row.result }}</p></td></tr></tbody>
           </table>
         </div>

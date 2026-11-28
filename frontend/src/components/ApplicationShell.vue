@@ -1,9 +1,13 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import AppHeader from './AppHeader.vue'
 import AppSidebar from './AppSidebar.vue'
+import MobileTabBar from './MobileTabBar.vue'
+import RouteLines from './RouteLines.vue'
+import EquipmentSearchBox from './EquipmentSearchBox.vue'
 import LazyChatWidget from '../pages/operations/components/LazyChatWidget.vue'
 import ScrollCta from './ScrollCta.vue'
+import { withFieldShortcuts } from '../ui/fieldShortcuts.js'
 
 const props = defineProps({
   shell: {
@@ -17,9 +21,21 @@ const props = defineProps({
 })
 
 const sidebarOpen = ref(false)
+// Expandida, la barra tapa el contenido: cada página arranca contraída, no se recuerda.
+const desktopNavCollapsed = ref(true)
+// Nombre del módulo en el encabezado: con la barra contraída no hay otra pista de dónde estás.
+const currentModule = computed(() => (props.shell.moduleNavigation ?? [])
+  .find((item) => item.active && item.key !== 'platform-home')?.label ?? null)
 const header = ref(null)
 const mobileDrawer = ref(null)
+const assistantLauncher = ref(null)
+let drawerTrigger = null
+let desktopBreakpoint = null
 const isPlatformShell = computed(() => props.shell.navigation.some((item) => item.key === 'platform-home'))
+// Adds "Mi trabajo" and "Informar falla" from what the server already allowed.
+const navigation = computed(() => (isPlatformShell.value
+  ? props.shell.navigation
+  : withFieldShortcuts(props.shell.navigation, props.shell.user, window.location.search)))
 const focusableSelector = [
   'a[href]',
   'button:not([disabled])',
@@ -29,19 +45,50 @@ const focusableSelector = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(',')
 
+const drawerControls = () => [...(mobileDrawer.value?.querySelectorAll(focusableSelector) ?? [])]
+  .filter((control) => control.getClientRects().length > 0)
+
 const focusFirstDrawerControl = () => {
-  mobileDrawer.value?.querySelector(focusableSelector)?.focus()
+  if (!sidebarOpen.value) return
+  const first = drawerControls()[0] ?? mobileDrawer.value
+  first?.focus({ preventScroll: true })
 }
 
 const closeSidebar = () => {
   if (!sidebarOpen.value) return
   sidebarOpen.value = false
-  nextTick(() => header.value?.focusMenuButton())
+  const trigger = drawerTrigger
+  drawerTrigger = null
+  nextTick(() => {
+    if (sidebarOpen.value || desktopBreakpoint?.matches) return
+    if (trigger?.isConnected) trigger.focus({ preventScroll: true })
+    else header.value?.focusMenuButton()
+  })
 }
 
-const openSidebar = () => {
+const openSidebar = (trigger) => {
+  if (sidebarOpen.value) return
+  drawerTrigger = trigger ?? document.activeElement
   sidebarOpen.value = true
 }
+
+const setDesktopNavCollapsed = (collapsed) => {
+  desktopNavCollapsed.value = collapsed
+}
+const toggleDesktopNav = () => setDesktopNavCollapsed(!desktopNavCollapsed.value)
+
+// Expandida, la barra se superpone al contenido: Escape la vuelve a colapsar.
+const collapseDesktopNavOnEscape = (event) => {
+  if (event.key === 'Escape') setDesktopNavCollapsed(true)
+}
+watch(
+  desktopNavCollapsed,
+  (collapsed) => {
+    if (collapsed) document.removeEventListener('keydown', collapseDesktopNavOnEscape)
+    else document.addEventListener('keydown', collapseDesktopNavOnEscape)
+  },
+  { immediate: true },
+)
 
 const handleEscape = (event) => {
   if (event.key === 'Escape') closeSidebar()
@@ -50,7 +97,7 @@ const handleEscape = (event) => {
 const handleDrawerKeydown = (event) => {
   if (event.key !== 'Tab' || !mobileDrawer.value) return
 
-  const controls = [...mobileDrawer.value.querySelectorAll(focusableSelector)]
+  const controls = drawerControls()
   if (!controls.length) {
     event.preventDefault()
     mobileDrawer.value.focus()
@@ -82,9 +129,20 @@ watch(
   { immediate: true },
 )
 
+const closeDrawerOnDesktop = (event) => {
+  if (event.matches) closeSidebar()
+}
+
+onMounted(() => {
+  desktopBreakpoint = window.matchMedia?.('(min-width: 1024px)')
+  desktopBreakpoint?.addEventListener?.('change', closeDrawerOnDesktop)
+})
+
 onBeforeUnmount(() => {
+  desktopBreakpoint?.removeEventListener?.('change', closeDrawerOnDesktop)
   document.body.classList.remove('overflow-hidden')
   document.removeEventListener('keydown', handleEscape)
+  document.removeEventListener('keydown', collapseDesktopNavOnEscape)
 })
 </script>
 
@@ -96,36 +154,43 @@ onBeforeUnmount(() => {
     Ir al contenido principal
   </a>
 
-  <div class="min-h-screen bg-surface-subtle">
-    <div class="fixed inset-y-0 left-0 z-30 hidden w-[15rem] lg:block">
+  <!-- Marco Vogel desde sm: la barra navy y el marco son la misma superficie; en celular no hay marco. -->
+  <div class="workspace-shell min-h-screen bg-surface-subtle sm:bg-frame">
+    <button
+      v-if="!desktopNavCollapsed"
+      type="button"
+      data-test="sidebar-scrim"
+      class="fixed inset-0 z-[35] hidden cursor-default lg:block"
+      tabindex="-1"
+      aria-hidden="true"
+      @click="setDesktopNavCollapsed(true)"
+    ></button>
+    <div
+      class="workspace-sidebar fixed inset-y-0 left-0 z-40 hidden lg:block"
+      :class="{ 'workspace-sidebar--expanded shadow-sidebar': !desktopNavCollapsed }"
+    >
       <AppSidebar
         class="ui-vt-sidebar ui-sidebar-surface"
-        :navigation="props.shell.navigation"
-        :logout="props.shell.logout"
+        :navigation="navigation"
+        :module-navigation="props.shell.moduleNavigation ?? []"
+        collapsible
+        :collapsed="desktopNavCollapsed"
+        @toggle-width="toggleDesktopNav"
       />
     </div>
 
-    <Transition
-      enter-active-class="transition-opacity duration-200"
-      enter-from-class="opacity-0"
-      leave-active-class="transition-opacity duration-150"
-      leave-to-class="opacity-0"
-    >
+    <Transition name="workspace-backdrop">
       <button
         v-if="sidebarOpen"
         type="button"
-        class="fixed inset-0 z-40 cursor-default bg-brand-950/60 lg:hidden"
-        aria-label="Cerrar menú principal"
+        class="fixed inset-0 z-40 cursor-default bg-secondary-900/60 lg:hidden"
+        tabindex="-1"
+        aria-hidden="true"
         @click="closeSidebar"
       ></button>
     </Transition>
 
-    <Transition
-      enter-active-class="transition-transform duration-200 ease-out"
-      enter-from-class="-translate-x-full"
-      leave-active-class="transition-transform duration-150 ease-in"
-      leave-to-class="-translate-x-full"
-    >
+    <Transition name="workspace-drawer" @before-leave="(drawer) => { drawer.inert = true }">
       <div
         v-if="sidebarOpen"
         id="mobile-main-menu"
@@ -139,24 +204,37 @@ onBeforeUnmount(() => {
       >
         <AppSidebar
           mobile
-          :navigation="props.shell.navigation"
-          :logout="props.shell.logout"
+          :navigation="navigation"
+          :module-navigation="props.shell.moduleNavigation ?? []"
           @close="closeSidebar"
         />
       </div>
     </Transition>
 
-    <div class="lg:pl-[15rem]">
+    <div class="workspace-content sm:p-4 lg:pl-[var(--workspace-sidebar-width)]" :inert="sidebarOpen || undefined">
+      <!-- overflow-clip recorta las esquinas sin crear un contenedor de scroll: el encabezado sigue siendo sticky. -->
+      <div class="relative min-h-screen overflow-clip bg-surface-subtle sm:min-h-[calc(100vh-2rem)] sm:rounded-panel">
+      <RouteLines />
       <AppHeader
         ref="header"
         class="ui-vt-header"
         :user="props.shell.user"
         :company="props.shell.company"
+        :module-name="currentModule"
+        :today="isPlatformShell ? new Date() : null"
         :notifications="props.shell.notifications"
+        :equipment-search-url="props.shell.equipmentSearchUrl ?? null"
+        :logout="props.shell.logout"
         :menu-open="sidebarOpen"
-        :module-navigation="props.shell.moduleNavigation"
         @open-menu="openSidebar"
-      />
+      >
+        <template v-if="props.shell.equipmentSearchUrl" #search>
+          <EquipmentSearchBox :url="props.shell.equipmentSearchUrl" />
+        </template>
+        <template v-if="!isPlatformShell" #assistant>
+          <div id="operations-assistant-launcher" ref="assistantLauncher" class="size-11 shrink-0" />
+        </template>
+      </AppHeader>
 
       <main
         id="main-content"
@@ -166,6 +244,7 @@ onBeforeUnmount(() => {
       >
         <slot />
       </main>
+      </div>
     </div>
   </div>
 
@@ -175,5 +254,6 @@ onBeforeUnmount(() => {
     :label="props.scrollCta.label"
     :description="props.scrollCta.description"
   />
-  <LazyChatWidget v-if="!isPlatformShell" />
+  <MobileTabBar v-if="!isPlatformShell" :navigation="navigation" :menu-open="sidebarOpen" :inert="sidebarOpen || undefined" @open-menu="openSidebar" />
+  <LazyChatWidget v-if="assistantLauncher" :launcher-target="assistantLauncher" />
 </template>

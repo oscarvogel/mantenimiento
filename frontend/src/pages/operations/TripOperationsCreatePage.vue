@@ -1,4 +1,5 @@
 <script setup>
+import * as uiLabels from '../../ui/labels.js'
 import { computed, ref, watch } from 'vue'
 import { PlusIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import PageHeading from './components/PageHeading.vue'
@@ -276,22 +277,22 @@ const applyCreatedLocality = (locality) => {
         </div>
 
         <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div class="rounded-xl border border-border-subtle bg-surface p-3">
+          <div class="rounded-2xl bg-surface-subtle p-3">
             <span class="block text-xs font-semibold uppercase tracking-wide text-ink-muted">Empresa</span>
             <p class="mt-1 text-sm font-bold text-ink">{{ companyLabel }}</p>
             <p v-if="company.taxId" class="mt-0.5 text-xs text-ink-muted">{{ company.taxId }}</p>
           </div>
-          <div class="rounded-xl border border-border-subtle bg-surface p-3">
+          <div class="rounded-2xl bg-surface-subtle p-3">
             <span class="block text-xs font-semibold uppercase tracking-wide text-ink-muted">Dominio</span>
             <p class="mt-1 text-sm font-bold text-ink">{{ domain || 'Elegí el camión' }}</p>
-            <p class="mt-0.5 text-xs text-ink-muted">{{ selectedTractor?.type ?? 'Patente del tractor' }}</p>
+            <p class="mt-0.5 text-xs text-ink-muted">{{ uiLabels.humanizeCode(selectedTractor?.type || 'Patente del tractor') }}</p>
           </div>
-          <div class="rounded-xl border border-border-subtle bg-surface p-3">
+          <div class="rounded-2xl bg-surface-subtle p-3">
             <span class="block text-xs font-semibold uppercase tracking-wide text-ink-muted">Semirremolque</span>
             <p class="mt-1 text-sm font-bold text-ink">{{ selectedTrailerPlates.length ? selectedTrailerPlates.join(' · ') : 'Sin semirremolque' }}</p>
             <p class="mt-0.5 text-xs text-ink-muted">Patente del acoplado</p>
           </div>
-          <div class="rounded-xl border border-border-subtle bg-surface p-3">
+          <div class="rounded-2xl bg-surface-subtle p-3">
             <span class="block text-xs font-semibold uppercase tracking-wide text-ink-muted">Nro. de viaje</span>
             <p class="mt-1 text-sm font-bold text-ink">{{ nextNumber === null ? 'Automático' : `#${nextNumber}` }}</p>
             <p class="mt-0.5 text-xs text-ink-muted">Se confirma al guardar.</p>
@@ -317,7 +318,7 @@ const applyCreatedLocality = (locality) => {
             <span v-if="assignedDriverNames.length" class="mt-1 block text-xs font-semibold text-primary">Chofer asignado al equipo: {{ assignedDriverNames.join(', ') }}.</span>
             <span v-else class="mt-1 block text-xs text-ink-muted">Buscá por nombre o legajo. Los seleccionados quedan como etiquetas.</span>
           </label>
-          <div class="rounded-xl border border-border-subtle bg-surface p-3">
+          <div class="rounded-2xl bg-surface-subtle p-3">
             <p class="text-sm font-semibold text-ink">% de liquidación del chofer</p>
             <p class="mt-1 text-xs text-ink-muted">Se guarda el porcentaje vigente al iniciar y después podés ajustarlo.</p>
             <p v-if="selectedDriverRows.length === 0" class="mt-3 text-sm text-ink-muted">Elegí un chofer para ver su porcentaje.</p>
@@ -340,7 +341,7 @@ const applyCreatedLocality = (locality) => {
       <PanelCard title="Tramos de flete" :count="legs.length" allow-overflow>
         <p class="mb-4 text-sm text-ink-muted">Completá origen, destino y un solo cliente por tramo. Los fletes de facturación y liquidación son opcionales mientras el viaje está abierto; se pueden completar antes de cerrarlo.</p>
         <div class="space-y-4">
-          <article v-for="(leg, index) in legs" :key="index" class="rounded-xl border border-border-subtle bg-surface p-4">
+          <article v-for="(leg, index) in legs" :key="index" class="rounded-2xl bg-surface-subtle p-4">
             <div class="mb-3 flex items-center justify-between gap-3">
               <h3 class="text-sm font-bold text-ink">Tramo {{ index + 1 }}</h3>
               <button v-if="legs.length > 1" type="button" :class="secondaryButton" @click="removeLeg(index)">

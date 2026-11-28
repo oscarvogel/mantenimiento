@@ -2,13 +2,13 @@ import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import AppHeader from './AppHeader.vue'
 
-const mountHeader = (homeUrl = null, moduleNavigation = []) => mount(AppHeader, {
+const mountHeader = (homeUrl = null, extra = {}) => mount(AppHeader, {
   props: {
-    user: { name: 'Operador', initials: 'OP', roleLabel: 'Técnico' },
+    user: { name: 'Juan Díaz', initials: 'JD', roleLabel: 'Técnico' },
     company: { name: 'Empresa', scopeLabel: 'Central' },
     notifications: { enabled: false },
     homeUrl,
-    moduleNavigation,
+    ...extra,
   },
   global: {
     stubs: {
@@ -31,56 +31,47 @@ describe('AppHeader', () => {
     expect(wrapper.find('a[aria-label="Ir al Centro de mandos"]').exists()).toBe(false)
   })
 
-  it('shows authorized platform modules and keeps future modules visible without links', () => {
-    const wrapper = mountHeader(null, [
-      { key: 'platform-home', label: 'Inicio', href: '/inicio', active: false },
-      { key: 'module-maintenance', label: 'Mantenimiento', href: '/dashboard', active: true, status: 'Operativo' },
-      { key: 'module-trips', label: 'Viajes', href: null, disabled: true, status: 'Sin implementación aún' },
-    ])
+  it('saluda con iniciales, nombre y empresa', () => {
+    const wrapper = mountHeader()
 
-    const nav = wrapper.get('nav[aria-label="Módulos de la plataforma"]')
-    expect(nav.find('a[href="/inicio"]').text()).toContain('Inicio')
-    expect(nav.find('a[href="/dashboard"]').attributes('aria-current')).toBe('page')
-    expect(nav.text()).toContain('Mantenimiento')
-    expect(nav.text()).toContain('Viajes')
-    expect(nav.find('[aria-label="Viajes: Sin implementación aún"]').exists()).toBe(true)
-    expect(nav.find('a[aria-label="Viajes: Sin implementación aún"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="user-avatar"]').text()).toBe('JD')
+    expect(wrapper.text()).toContain('Hola, Juan')
+    expect(wrapper.text()).toContain('Empresa · Central')
   })
 
-  it('keeps every module reachable instead of clipping modules off-screen', () => {
-    const modules = [
-      ['platform-home', 'Inicio', '/inicio'],
-      ['module-maintenance', 'Mantenimiento', '/dashboard'],
-      ['module-trips', 'Viajes'],
-      ['module-fuel', 'Combustible'],
-      ['module-tires', 'Neumáticos'],
-      ['module-billing', 'Facturación'],
-      ['module-management', 'Gerencial'],
-      ['module-reports', 'Reportes'],
-      ['module-automation', 'Automatizaciones'],
-      ['module-ai', 'Inteligencia Artificial'],
-    ].map(([key, label, href], index) => ({
-      key,
-      label,
-      href: href ?? null,
-      active: index === 1,
-      disabled: !href,
-      status: href ? 'Operativo' : 'Sin implementación aún',
-    }))
-    const wrapper = mountHeader(null, modules)
+  it('en el celular, dentro de un módulo, el saludo y la empresa ceden lugar a la píldora', () => {
+    const wrapper = mount(AppHeader, { props: { user: { name: 'Juan Díaz', initials: 'JD' }, company: { name: 'Flota Demo' }, moduleName: 'Mantenimiento' } })
+    expect(wrapper.get('[data-test="current-module"]').text()).toBe('Mantenimiento')
+    expect(wrapper.get('p span').classes()).toEqual(expect.arrayContaining(['hidden', 'sm:inline']))
+    const portal = mount(AppHeader, { props: { user: { name: 'Juan Díaz', initials: 'JD' }, company: { name: 'Flota Demo' } } })
+    expect(portal.get('p span').classes()).not.toContain('hidden')
+  })
 
-    const nav = wrapper.get('nav[aria-label="Módulos de la plataforma"]')
-    const list = nav.get('ul')
+  it('en el portal muestra la fecha del día bajo el saludo', () => {
+    const wrapper = mountHeader(null, { today: new Date(2026, 10, 26, 12) })
+    expect(wrapper.get('[data-test="today"]').text()).toBe('Jueves, 26 de noviembre')
+    expect(mountHeader().find('[data-test="today"]').exists()).toBe(false)
+  })
 
-    // El menu no scrollea en horizontal: los modulos primarios van en linea y
-    // el resto queda en el desplegable "Modulos", de modo que ninguno se recorta.
-    expect(list.classes().some((className) => className.includes('overflow-x-auto'))).toBe(false)
-    expect(nav.text()).toContain('Módulos')
+  it('la campana solo con avisos habilitados', () => {
+    expect(mountHeader().findComponent({ name: 'AppNotificationBell' }).exists()).toBe(false)
+    expect(mountHeader(null, { notifications: { enabled: true, summaryUrl: '#', centerUrl: '#' } })
+      .findComponent({ name: 'AppNotificationBell' }).exists()).toBe(true)
+  })
 
-    // Todo modulo sigue siendo alcanzable, sea primario o del desplegable.
-    for (const module of modules) {
-      expect(nav.text()).toContain(module.label)
-    }
-    expect(nav.text()).toContain('Sin implementación aún')
+  it('sin URL de búsqueda no hay buscador', () => {
+    const wrapper = mount(AppHeader, {
+      props: { user: { name: 'Juan', initials: 'J' }, company: { name: 'E', scopeLabel: 'C' } },
+      slots: { search: '<input data-test="search-slot" />' },
+      global: { stubs: { AppNotificationBell: true, ThemeToggle: true } },
+    })
+    expect(wrapper.find('[data-test="search-slot"]').exists()).toBe(false)
+
+    const withSearch = mount(AppHeader, {
+      props: { user: { name: 'Juan', initials: 'J' }, company: { name: 'E', scopeLabel: 'C' }, equipmentSearchUrl: '/buscar' },
+      slots: { search: '<input data-test="search-slot" />' },
+      global: { stubs: { AppNotificationBell: true, ThemeToggle: true } },
+    })
+    expect(withSearch.find('[data-test="search-slot"]').exists()).toBe(true)
   })
 })

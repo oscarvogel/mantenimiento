@@ -1,4 +1,5 @@
 <script setup>
+import * as format from '../../ui/format.js'
 import { computed } from 'vue'
 import { ArrowPathIcon, ChartBarSquareIcon, ExclamationTriangleIcon, TruckIcon } from '@heroicons/vue/24/outline'
 import EmptyState from './components/EmptyState.vue'
@@ -26,12 +27,9 @@ const maxKm = computed(() => Math.max(...recentMonthly.value.map((month) => Numb
 const maxLiters = computed(() => Math.max(...recentMonthly.value.map((month) => Number(month.liters) || 0), 1))
 const consumptionAvailable = computed(() => summary.value.liters_per_100 !== null && summary.value.liters_per_100 !== undefined)
 
-const fmt = (value) => Number(value ?? 0).toLocaleString('es-AR', { maximumFractionDigits: 0 })
-const fmt1 = (value) => Number(value ?? 0).toLocaleString('es-AR', { maximumFractionDigits: 1 })
-const fmtDate = (value) => {
-  const match = String(value ?? '').match(/^(\d{4})-(\d{2})-(\d{2})/)
-  return match ? `${match[3]}/${match[2]}/${match[1]}` : 'Sin fecha'
-}
+const fmt = (value) => format.formatNumber(value ?? 0)
+const fmt1 = (value) => format.formatNumber(value ?? 0, 1)
+const fmtDate = (value) => format.formatDate(value)
 const bar = (value, max) => `${Math.max(2, Math.round((Number(value) || 0) / max * 100))}%`
 const qualityTone = { success: 'bg-success', warning: 'bg-warning', danger: 'bg-danger' }
 const pageUrl = (page) => {
@@ -97,27 +95,27 @@ const domainUrl = (domain) => {
 
     <template v-else>
       <section aria-label="Indicadores" class="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
+        <article class="ui-card-emphasis rounded-card p-4">
           <p class="text-xs font-semibold text-ink-muted">Viajes</p>
           <p class="mt-2 text-2xl font-bold text-ink">{{ fmt(summary.trips) }}</p>
         </article>
-        <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
+        <article class="rounded-card bg-surface-raised p-4 shadow-card">
           <p class="text-xs font-semibold text-ink-muted">Km confiables</p>
           <p class="mt-2 text-2xl font-bold text-ink">{{ fmt(summary.km) }}</p>
           <p class="mt-1 text-xs text-ink-muted">cobertura {{ fmt1(summary.km_coverage) }}%</p>
         </article>
-        <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
+        <article class="rounded-card bg-surface-raised p-4 shadow-card">
           <p class="text-xs font-semibold text-ink-muted">Litros cargados</p>
           <p class="mt-2 text-2xl font-bold text-ink">{{ fmt(summary.liters) }}</p>
           <p class="mt-1 text-xs text-ink-muted">{{ fmt(summary.fuel_trips) }} viajes con carga</p>
         </article>
-        <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
+        <article class="rounded-card bg-surface-raised p-4 shadow-card">
           <p class="text-xs font-semibold text-ink-muted">Consumo</p>
           <p v-if="consumptionAvailable" class="mt-2 text-2xl font-bold text-ink">{{ fmt1(summary.liters_per_100) }}<span class="ml-1 text-sm font-semibold text-ink-muted">L/100 km</span></p>
           <p v-else class="mt-2 text-lg font-semibold text-ink-muted">Sin datos suficientes</p>
           <p class="mt-1 text-xs text-ink-muted">sobre km con lectura confiable</p>
         </article>
-        <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
+        <article class="rounded-card bg-surface-raised p-4 shadow-card">
           <p class="text-xs font-semibold text-ink-muted">Cobertura combustible</p>
           <p class="mt-2 text-2xl font-bold text-ink">{{ fmt1(summary.fuel_coverage) }}%</p>
         </article>
@@ -126,8 +124,8 @@ const domainUrl = (domain) => {
       <PanelCard title="Viajes del período" :count="pagination.total" class="mb-5">
         <p class="mb-3 text-sm text-ink-muted">Seleccioná un viaje para consultar su recorrido, combustible, gastos y demás datos importados.</p>
         <div class="overflow-x-auto">
-          <table class="w-full min-w-[56rem] text-left text-sm">
-            <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-4 py-3">Salida</th><th class="px-4 py-3">Viaje</th><th class="px-4 py-3">Dominio</th><th class="px-4 py-3">Sucursal</th><th class="px-4 py-3 text-right">Odómetro salida</th><th class="px-4 py-3 text-right">Odómetro regreso</th><th class="px-4 py-3 text-right">Litros</th><th class="px-4 py-3 text-right">Detalle</th></tr></thead>
+          <table class="ui-table w-full min-w-[56rem] text-left text-sm">
+            <thead class="text-xs font-semibold text-ink-subtle"><tr><th class="px-4 py-3">Salida</th><th class="px-4 py-3">Viaje</th><th class="px-4 py-3">Dominio</th><th class="px-4 py-3">Sucursal</th><th class="px-4 py-3 text-right">Odómetro salida</th><th class="px-4 py-3 text-right">Odómetro regreso</th><th class="px-4 py-3 text-right">Litros</th><th class="px-4 py-3 text-right">Detalle</th></tr></thead>
             <tbody class="divide-y divide-border-subtle">
               <tr v-for="trip in trips" :key="trip.id">
                 <td class="whitespace-nowrap px-4 py-3 text-ink-muted">{{ fmtDate(trip.fecha_salida) }}</td>
@@ -193,8 +191,8 @@ const domainUrl = (domain) => {
       <PanelCard title="Top unidades por km confiable" :count="topDomains.length">
         <p class="mb-3 text-sm text-ink-muted">Ordenadas por kilómetros con lectura confiable. Seleccioná una unidad para filtrar el historial.</p>
         <div class="overflow-x-auto">
-          <table class="w-full min-w-[44rem] text-left text-sm">
-            <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
+          <table class="ui-table w-full min-w-[44rem] text-left text-sm">
+            <thead class="text-xs font-semibold text-ink-subtle">
               <tr>
                 <th class="px-4 py-3">Dominio</th>
                 <th class="px-4 py-3 text-right">Viajes</th>

@@ -1,4 +1,5 @@
 <script setup>
+import * as format from '../../../ui/format.js'
 /**
  * Acuerdo con el chofer para la base de liquidación de un tramo (#533).
  *
@@ -35,7 +36,7 @@ const update = (field, value) => emit('update:modelValue', { ...props.modelValue
 
 // Solo para mostrar: el importe que vale lo calcula el servidor al guardar.
 const calculated = computed(() => liquidationBasisAmount(props.modelValue))
-const formatted = (value) => `${props.currency} ${Number(value).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+const formatted = (value) => format.formatMoney(value, { currency: props.currency, cents: true })
 </script>
 
 <template>
@@ -52,7 +53,7 @@ const formatted = (value) => `${props.currency} ${Number(value).toLocaleString('
     <div v-if="mode === 'POR_TONELADA'" class="mt-3 grid gap-3 md:grid-cols-3">
       <label class="block"><span :class="labelClass">Toneladas acordadas</span><input :value="modelValue.toneladas" type="number" :name="fieldName('toneladas_liquidacion')" min="0" step="0.001" :class="fieldClass" @input="update('toneladas', $event.target.value)" /></label>
       <label class="block"><span :class="labelClass">Precio por tonelada ({{ currency }})</span><input :value="modelValue.precio" type="number" :name="fieldName('precio_unitario_liquidacion')" min="0" step="0.01" :class="fieldClass" @input="update('precio', $event.target.value)" /></label>
-      <div class="block"><span :class="labelClass">Base de liquidación</span><p class="rounded-lg border border-border-subtle bg-surface-muted px-3 py-2 text-sm font-semibold text-ink" data-testid="liquidation-basis-total">{{ calculated === null ? 'Cargá toneladas y precio' : formatted(calculated) }}</p></div>
+      <div class="block"><span :class="labelClass">Base de liquidación</span><p class="rounded-2xl bg-surface-muted px-3 py-2 text-sm font-semibold text-ink" data-testid="liquidation-basis-total">{{ calculated === null ? 'Cargá toneladas y precio' : formatted(calculated) }}</p></div>
     </div>
     <div v-else-if="mode === 'MONTO_ACORDADO'" class="mt-3 grid gap-3 md:grid-cols-2">
       <label class="block"><span :class="labelClass">Monto acordado ({{ currency }}, opcional)</span><input :value="modelValue.monto" type="number" :name="fieldName('flete_liquidacion')" min="0" step="0.01" :class="fieldClass" @input="update('monto', $event.target.value)" /></label>

@@ -54,7 +54,7 @@ function updateInactiveChip(row, active) {
   const chipContainer = [...row.querySelectorAll('div')].find((node) => node.className.includes('flex-wrap') && node.querySelector('span'))
   if (!chipContainer) return
   const chip = document.createElement('span')
-  chip.className = 'rounded-full bg-surface-muted px-2 py-0.5 text-[11px] font-semibold text-ink-muted'
+  chip.className = 'rounded-full bg-surface-muted px-2 py-0.5 text-xs font-semibold text-ink-muted'
   chip.textContent = 'Inactiva'
   chip.dataset.libraryTaskInactiveChip = 'true'
   chipContainer.appendChild(chip)

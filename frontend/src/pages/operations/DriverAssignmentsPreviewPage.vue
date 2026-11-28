@@ -1,4 +1,5 @@
 <script setup>
+import * as uiLabels from '../../ui/labels.js'
 import { ArrowLeftIcon, CheckCircleIcon, ExclamationTriangleIcon, XCircleIcon } from '@heroicons/vue/24/outline'
 import CsrfInput from './components/CsrfInput.vue'
 import CountUp from '../../components/CountUp.vue'
@@ -48,8 +49,8 @@ function statusIcon(status) {
 
     <PanelCard title="Resultado por fila" :count="data.rows.length" flush>
       <div class="overflow-x-auto">
-        <table class="w-full min-w-[68rem] text-left text-sm">
-          <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
+        <table class="ui-table w-full min-w-[68rem] text-left text-sm">
+          <thead class="text-xs font-semibold text-ink-subtle">
             <tr>
               <th class="px-5 py-3">Origen</th>
               <th class="px-5 py-3">Patente</th>
@@ -67,7 +68,7 @@ function statusIcon(status) {
               <td class="px-5 py-4">
                 <span class="inline-flex items-center gap-1.5 font-medium" :class="statusClass(row.status)">
                   <component :is="statusIcon(row.status)" class="size-4" aria-hidden="true" />
-                  {{ row.status }}
+                  {{ uiLabels.humanizeCode(row.status) }}
                 </span>
               </td>
               <td class="px-5 py-4 font-medium text-ink">{{ row.action }}</td>
@@ -91,7 +92,7 @@ function statusIcon(status) {
         <form method="post" :action="data.routes.confirm">
           <CsrfInput :csrf="data.csrf" />
           <input type="hidden" name="preview_token" :value="data.previewToken" />
-          <button type="submit" class="inline-flex items-center justify-center rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">
+          <button type="submit" class="inline-flex items-center justify-center rounded-lg bg-secondary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-secondary-700">
             Confirmar importación
           </button>
         </form>

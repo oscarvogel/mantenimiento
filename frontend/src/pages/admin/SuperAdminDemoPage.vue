@@ -19,24 +19,24 @@ const section = ref(sectionParam === 'chat-audit' ? 'chat-audit' : sectionParam 
 
 <template>
   <div class="space-y-5">
-    <nav class="flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-white p-2" aria-label="Administración global">
-      <a v-if="data.customerImportsUrl" :href="data.customerImportsUrl" class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">Importar clientes</a>
-      <a v-if="data.tripImportsUrl" :href="data.tripImportsUrl" class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">Importar viajes</a>
+    <nav class="flex flex-wrap gap-2 rounded-card bg-surface-raised p-2 shadow-card" aria-label="Administración global">
+      <a v-if="data.customerImportsUrl" :href="data.customerImportsUrl" class="rounded-lg px-4 py-2 text-sm font-semibold text-ink-muted hover:bg-surface-muted">Importar clientes</a>
+      <a v-if="data.tripImportsUrl" :href="data.tripImportsUrl" class="rounded-lg px-4 py-2 text-sm font-semibold text-ink-muted hover:bg-surface-muted">Importar viajes</a>
       <button
         class="rounded-lg px-4 py-2 text-sm font-semibold"
-        :class="section === 'administration' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'"
+        :class="section === 'administration' ? 'bg-action text-action-foreground' : 'text-ink-muted hover:bg-surface-muted'"
         type="button"
         @click="section = 'administration'"
       >Administración</button>
       <button
         class="rounded-lg px-4 py-2 text-sm font-semibold"
-        :class="section === 'chat-audit' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'"
+        :class="section === 'chat-audit' ? 'bg-action text-action-foreground' : 'text-ink-muted hover:bg-surface-muted'"
         type="button"
         @click="section = 'chat-audit'"
       >Auditoría del chatbot</button>
       <button
         class="rounded-lg px-4 py-2 text-sm font-semibold"
-        :class="section === 'audit-changes' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'"
+        :class="section === 'audit-changes' ? 'bg-action text-action-foreground' : 'text-ink-muted hover:bg-surface-muted'"
         type="button"
         @click="section = 'audit-changes'"
       >Auditoría de cambios</button>

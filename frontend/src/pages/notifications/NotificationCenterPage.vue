@@ -1,4 +1,6 @@
 <script setup>
+import * as uiLabels from '../../ui/labels.js'
+import { dangerButton, primaryButton, secondaryButton } from '../../ui/buttons.js'
 import { computed, onMounted, ref } from 'vue'
 import { BellIcon, CheckCircleIcon, DevicePhoneMobileIcon } from '@heroicons/vue/24/outline'
 import PaginationBar from '../operations/components/PaginationBar.vue'
@@ -119,11 +121,11 @@ async function sendTestPush() {
       </div>
       <form v-if="activeTab === 'inbox' && notificationPage.unread" :action="data.urls.readAll" method="post">
         <input v-for="(value, name) in csrfFields()" :key="name" type="hidden" :name="name" :value="value">
-        <button class="min-h-11 rounded-lg border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary-subtle">Marcar todas como leídas</button>
+        <button :class="secondaryButton">Marcar todas como leídas</button>
       </form>
     </header>
 
-    <div class="overflow-x-auto border-b border-border" role="tablist" aria-label="Secciones de notificaciones">
+    <div class="ui-tabs" role="tablist" aria-label="Secciones de notificaciones">
       <div class="flex min-w-max gap-1">
         <button
           v-for="tab in tabs"
@@ -149,7 +151,7 @@ async function sendTestPush() {
       id="notification-panel-inbox"
       role="tabpanel"
       aria-labelledby="notification-tab-inbox"
-      class="overflow-hidden rounded-xl border border-border bg-surface-raised"
+      class="overflow-hidden rounded-card bg-surface-raised shadow-card"
     >
       <div class="border-b border-border-subtle px-4 py-4 sm:px-5">
         <h2 class="font-bold text-ink">Bandeja reciente</h2>
@@ -159,7 +161,7 @@ async function sendTestPush() {
         <article v-for="(item, index) in notificationPage.items" :key="item.id" :style="{ '--ui-stagger-index': index }" class="ui-stagger-item flex gap-3 p-4 sm:p-5" :class="isPending(item) && !item.readAt && 'bg-primary-subtle/40'">
           <BellIcon class="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
           <div class="min-w-0 flex-1">
-            <div class="flex flex-wrap items-center gap-2"><h3 class="font-semibold text-ink">{{ item.title }}</h3><span class="rounded-full bg-surface-muted px-2 py-0.5 text-xs text-ink-muted">{{ item.severity }}</span><span v-if="stateLabel(item)" class="rounded-full bg-success-subtle px-2 py-0.5 text-xs text-success-strong">{{ stateLabel(item) }}</span></div>
+            <div class="flex flex-wrap items-center gap-2"><h3 class="font-semibold text-ink">{{ item.title }}</h3><span class="rounded-full bg-surface-muted px-2 py-0.5 text-xs text-ink-muted">{{ uiLabels.humanizeCode(item.severity) }}</span><span v-if="stateLabel(item)" class="rounded-full bg-success-subtle px-2 py-0.5 text-xs text-success-strong">{{ stateLabel(item) }}</span></div>
             <p class="mt-1 text-sm text-ink-muted">{{ item.summary }}</p>
             <div class="mt-3 flex flex-wrap gap-3 text-sm"><a v-if="item.url" :href="item.url" class="font-semibold text-primary hover:underline">Abrir detalle</a><form v-if="isPending(item) && !item.readAt" :action="`${data.urls.read}/${item.id}`" method="post"><input v-for="(value, name) in csrfFields()" :key="name" type="hidden" :name="name" :value="value"><button class="font-semibold text-ink-muted hover:text-primary">Marcar leída</button></form></div>
           </div>
@@ -174,29 +176,29 @@ async function sendTestPush() {
       id="notification-panel-preferences"
       role="tabpanel"
       aria-labelledby="notification-tab-preferences"
-      class="rounded-xl border border-border bg-surface-raised p-4 sm:p-6"
+      class="rounded-card bg-surface-raised p-4 sm:p-6 shadow-card"
     >
       <div class="max-w-3xl">
         <h2 class="text-lg font-bold text-ink">Preferencias por evento</h2>
         <p class="mt-1 text-sm text-ink-muted">Los valores mostrados son los efectivos actuales. Al guardar, tu elección personal pasa a prevalecer sobre los defaults de tus roles.</p>
         <label class="mt-5 grid gap-1.5 text-sm font-semibold text-ink">
           Tipo de aviso
-          <select v-model="selectedEventType" class="min-h-11 rounded-lg border border-border-strong bg-surface-raised px-3 font-normal text-ink">
+          <select v-model="selectedEventType" class="min-h-11 rounded-pill border border-transparent bg-surface-muted px-3 font-normal text-ink">
             <option v-for="event in eventTypes" :key="event[0]" :value="event[0]">{{ event[1] }}</option>
           </select>
         </label>
-        <form :key="selectedEventType" :action="data.urls.preferences" method="post" class="mt-4 grid gap-4 rounded-lg border border-border-subtle bg-surface-subtle p-4 sm:grid-cols-2">
+        <form :key="selectedEventType" :action="data.urls.preferences" method="post" class="mt-4 grid gap-4 rounded-2xl bg-surface-subtle p-4 sm:grid-cols-2">
           <input v-for="(value, name) in csrfFields()" :key="name" type="hidden" :name="name" :value="value">
           <input type="hidden" name="event_type" :value="selectedEventType">
           <input type="hidden" name="internal" value="INMEDIATO">
           <div class="sm:col-span-2"><p class="font-semibold text-ink">{{ selectedEvent[1] }}</p><p class="text-xs text-ink-muted">Canal interno: siempre activo</p></div>
           <label v-for="channel in ['email','push']" :key="channel" class="grid gap-1.5 text-xs font-semibold uppercase tracking-wide text-ink-muted">
             {{ channel }}
-            <select :name="channel" class="min-h-11 rounded-lg border border-border-strong bg-surface-raised px-3 text-sm font-normal normal-case text-ink">
+            <select :name="channel" class="min-h-11 rounded-pill border border-transparent bg-surface-muted px-3 text-sm font-normal normal-case text-ink">
               <option v-for="mode in modes" :key="mode[0]" :value="mode[0]" :selected="(selectedPreferences[channel] ?? (channel === 'email' ? 'RESUMEN' : 'CRITICO')) === mode[0]">{{ mode[1] }}</option>
             </select>
           </label>
-          <div class="sm:col-span-2"><button class="min-h-11 w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-hover sm:w-auto">Guardar preferencia</button></div>
+          <div class="sm:col-span-2"><button :class="[primaryButton, 'w-full sm:w-auto']">Guardar preferencia</button></div>
         </form>
       </div>
     </section>
@@ -206,11 +208,11 @@ async function sendTestPush() {
       id="notification-panel-devices"
       role="tabpanel"
       aria-labelledby="notification-tab-devices"
-      class="rounded-xl border border-border bg-surface-raised p-4 sm:p-6"
+      class="rounded-card bg-surface-raised p-4 sm:p-6 shadow-card"
     >
       <div class="flex items-start gap-3"><DevicePhoneMobileIcon class="size-6 shrink-0 text-primary"/><div><h2 class="text-lg font-bold text-ink">Notificaciones en este dispositivo</h2><p class="text-sm text-ink-muted">El permiso se solicita únicamente cuando elegís activarlas.</p></div></div>
       <p class="mt-4 rounded-lg bg-surface-muted px-4 py-3 text-sm font-semibold text-ink" role="status">{{ pushStatus }}</p>
-      <div class="mt-4 grid gap-3 sm:flex sm:flex-wrap"><button type="button" class="min-h-11 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50" :disabled="busy || !pushConfigured || !!currentSubscription" @click="activatePush">Activar en este dispositivo</button><button type="button" class="min-h-11 rounded-lg border border-primary px-4 py-2.5 text-sm font-semibold text-primary disabled:opacity-50" :disabled="busy || !currentSubscription" @click="sendTestPush">Enviar push de prueba</button><button type="button" class="min-h-11 rounded-lg border border-danger px-4 py-2.5 text-sm font-semibold text-danger disabled:opacity-50" :disabled="busy || !currentSubscription" @click="deactivatePush">Desactivar este dispositivo</button></div>
+      <div class="mt-4 grid gap-3 sm:flex sm:flex-wrap"><button type="button" :disabled="busy || !pushConfigured || !!currentSubscription" @click="activatePush" :class="primaryButton">Activar en este dispositivo</button><button type="button" :disabled="busy || !currentSubscription" @click="sendTestPush" :class="secondaryButton">Enviar push de prueba</button><button type="button" :disabled="busy || !currentSubscription" @click="deactivatePush" :class="dangerButton">Desactivar este dispositivo</button></div>
       <p v-if="pushMessage" class="mt-3 text-sm text-ink-muted" role="status">{{ pushMessage }}</p>
     </section>
   </section>

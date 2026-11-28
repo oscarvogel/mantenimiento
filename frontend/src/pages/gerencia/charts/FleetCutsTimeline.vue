@@ -66,7 +66,7 @@ const mostrar = (pista, banda, evento) => {
 </script>
 
 <template>
-  <article id="fleet-board-timeline" class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6">
+  <article id="fleet-board-timeline" class="rounded-card bg-surface-raised p-5 sm:p-6 shadow-card">
     <h3 class="text-base font-bold text-ink">Datos recibidos en el período</h3>
     <p class="mt-1 text-sm leading-6 text-ink-muted">
       Cada franja ámbar es un corte del proveedor: horas en que no llegaron datos de la mayoría de las unidades.
@@ -91,7 +91,7 @@ const mostrar = (pista, banda, evento) => {
             <div
               v-if="tooltip && tooltip.pista === pista.nombre"
               role="tooltip"
-              class="pointer-events-none absolute bottom-full z-10 mb-2 w-max max-w-64 -translate-x-1/2 rounded-lg border border-border bg-surface-raised px-3 py-2 text-xs leading-5 text-ink shadow-card"
+              class="pointer-events-none absolute bottom-full z-10 mb-2 w-max max-w-64 -translate-x-1/2 rounded-card bg-surface-raised px-3 py-2 text-xs leading-5 text-ink shadow-card"
               :style="{ left: `${tooltip.izquierda}px` }"
             >{{ tooltip.texto }}</div>
           </div>
@@ -99,7 +99,7 @@ const mostrar = (pista, banda, evento) => {
       </div>
       <div v-else class="h-6 rounded-md bg-success/70" role="img" aria-label="Sin cortes del proveedor en el período"></div>
 
-      <div class="relative mt-2 h-4 text-[11px] text-ink-muted" aria-hidden="true">
+      <div class="relative mt-2 h-4 text-xs text-ink-muted" aria-hidden="true">
         <span
           v-for="(marca, indice) in marcas"
           :key="indice"

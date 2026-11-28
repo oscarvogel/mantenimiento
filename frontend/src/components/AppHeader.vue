@@ -1,21 +1,8 @@
 <script setup>
-import {
-  Bars3Icon,
-  BeakerIcon,
-  ChevronDownIcon,
-  ChartBarSquareIcon,
-  CircleStackIcon,
-  Cog6ToothIcon,
-  DocumentTextIcon,
-  HomeIcon,
-  SparklesIcon,
-  Squares2X2Icon,
-  TruckIcon,
-  WrenchScrewdriverIcon,
-} from '@heroicons/vue/24/outline'
+import { Bars3Icon, Squares2X2Icon } from '@heroicons/vue/24/outline'
 import { computed, ref } from 'vue'
+import AccountMenu from './AccountMenu.vue'
 import AppNotificationBell from './AppNotificationBell.vue'
-import ThemeToggle from './ThemeToggle.vue'
 
 const props = defineProps({
   user: {
@@ -34,35 +21,41 @@ const props = defineProps({
     type: String,
     default: null,
   },
-  moduleNavigation: {
-    type: Array,
-    default: () => [],
-  },
   menuOpen: {
     type: Boolean,
     default: false,
   },
+  // Solo llega si el servidor habilita la búsqueda de equipos para este usuario.
+  equipmentSearchUrl: {
+    type: String,
+    default: null,
+  },
+  logout: {
+    type: Object,
+    default: null,
+  },
+  // Solo el portal la pasa: la fecha del día bajo el saludo.
+  today: {
+    type: Date,
+    default: null,
+  },
+  // Módulo actual; en el portal no hay.
+  moduleName: {
+    type: String,
+    default: null,
+  },
 })
+
+const firstName = computed(() => String(props.user.name ?? '').trim().split(/\s+/)[0] ?? '')
+const todayLabel = computed(() => {
+  if (!props.today) return ''
+  const text = new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }).format(props.today)
+  return text.charAt(0).toUpperCase() + text.slice(1)
+})
+const companyLine = computed(() => [props.company.name, props.company.scopeLabel].filter(Boolean).join(' · '))
 
 const emit = defineEmits(['open-menu'])
 const menuButton = ref(null)
-const moduleIcons = {
-  'platform-home': HomeIcon,
-  'module-wrench': WrenchScrewdriverIcon,
-  'module-truck': TruckIcon,
-  'module-fuel': BeakerIcon,
-  'module-tires': CircleStackIcon,
-  'module-billing': DocumentTextIcon,
-  'module-management': ChartBarSquareIcon,
-  'module-reports': ChartBarSquareIcon,
-  'module-automations': Cog6ToothIcon,
-  'module-ai': SparklesIcon,
-}
-
-const moduleIconFor = (name) => moduleIcons[name] ?? Squares2X2Icon
-const primaryModuleKeys = new Set(['platform-home', 'module-wrench', 'module-management'])
-const primaryModules = computed(() => props.moduleNavigation.filter((item) => primaryModuleKeys.has(item.key)))
-const additionalModules = computed(() => props.moduleNavigation.filter((item) => !primaryModuleKeys.has(item.key)))
 
 defineExpose({
   focusMenuButton: () => menuButton.value?.focus(),
@@ -70,120 +63,51 @@ defineExpose({
 </script>
 
 <template>
-  <div class="sticky top-0 z-20 bg-surface-raised">
-  <header class="flex h-[4.5rem] items-center border-b border-border bg-surface-raised px-4 sm:px-6 lg:px-7 xl:px-9">
+  <div class="sticky top-0 z-20 bg-surface-subtle">
+  <header class="flex flex-wrap items-center gap-x-3 gap-y-3 sm:gap-x-4 px-4 py-4 sm:px-6 lg:px-7 xl:px-9">
     <button
       ref="menuButton"
       type="button"
-      class="ui-interactive mr-3 rounded-lg p-2 text-ink-muted hover:bg-surface-muted hover:text-ink lg:hidden"
+      class="ui-interactive rounded-lg p-2 text-ink-muted hover:bg-surface-muted hover:text-ink lg:hidden"
       :aria-label="menuOpen ? 'Cerrar menú principal' : 'Abrir menú principal'"
-      @click="emit('open-menu')"
+      @click="emit('open-menu', $event.currentTarget)"
       aria-controls="mobile-main-menu"
       :aria-expanded="menuOpen"
     >
       <Bars3Icon class="size-6" aria-hidden="true" />
     </button>
 
-    <div class="min-w-0 flex-1">
-      <p class="truncate text-sm font-semibold text-ink">{{ company.name }}</p>
-      <p class="mt-0.5 truncate text-xs text-ink-muted">{{ company.scopeLabel }}</p>
+    <div class="flex min-w-0 flex-1 items-center gap-3 md:flex-none">
+      <span data-test="user-avatar" class="size-12 shrink-0 items-center justify-center rounded-full bg-accent-400 text-base font-bold text-secondary-900" :class="moduleName ? 'hidden sm:flex' : 'flex'" aria-hidden="true">{{ user.initials }}</span>
+      <div class="min-w-0">
+        <p class="flex min-w-0 items-center gap-2">
+          <!-- En el celular, dentro de un módulo, solo entra la píldora: avatar y saludo se la comían. -->
+          <span class="truncate text-lg font-semibold text-ink" :class="{ 'hidden sm:inline': moduleName }">Hola, {{ firstName }}</span>
+          <span v-if="moduleName" data-test="current-module" class="min-w-0 truncate rounded-pill bg-primary-subtle px-2 sm:px-2.5 py-0.5 text-xs font-semibold text-primary">{{ moduleName }}</span>
+        </p>
+        <p v-if="todayLabel" data-test="today" class="truncate text-sm font-medium text-ink-muted">{{ todayLabel }}</p>
+        <p class="truncate text-xs text-ink-muted" :class="{ 'hidden sm:block': moduleName }">{{ companyLine }}</p>
+      </div>
     </div>
 
-    <div class="flex items-center gap-1 sm:gap-3">
+    <div v-if="equipmentSearchUrl" class="order-last w-full md:order-none md:mx-auto md:w-auto md:max-w-md md:flex-1">
+      <slot name="search" />
+    </div>
+
+    <div class="ml-auto flex items-center gap-2 sm:gap-3">
       <a
         v-if="homeUrl"
         :href="homeUrl"
-        class="ui-interactive flex size-10 shrink-0 items-center justify-center rounded-lg text-ink-muted hover:bg-surface-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+        class="ui-interactive flex size-11 shrink-0 items-center justify-center rounded-full bg-surface-raised text-ink-muted shadow-card hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
         aria-label="Ir al Centro de mandos"
         title="Centro de mandos"
       >
         <Squares2X2Icon class="size-5" aria-hidden="true" />
       </a>
-      <ThemeToggle />
       <AppNotificationBell v-if="notifications.enabled" v-bind="notifications" />
-      <div class="flex min-w-0 items-center gap-3">
-        <span class="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary-subtle text-xs font-bold text-primary">
-          {{ user.initials }}
-        </span>
-        <div class="hidden min-w-0 text-left md:block">
-          <p class="max-w-40 truncate text-sm font-semibold text-ink">{{ user.name }}</p>
-          <p class="max-w-40 truncate text-xs text-ink-muted">{{ user.roleLabel }}</p>
-        </div>
-      </div>
+      <slot name="assistant" />
+      <AccountMenu :user="user" :logout="logout" />
     </div>
   </header>
-  <nav
-    v-if="props.moduleNavigation.length"
-    aria-label="Módulos de la plataforma"
-    class="border-b border-border bg-surface-raised px-4 sm:px-6 lg:px-7 xl:px-9"
-  >
-    <ul class="mx-auto flex max-w-[96rem] flex-nowrap items-center gap-x-1 py-2.5 sm:gap-x-2">
-      <li v-for="item in primaryModules" :key="item.key" class="shrink-0">
-        <a
-          v-if="!item.disabled && item.href"
-          :href="item.href"
-          :aria-label="item.label"
-          :title="item.label"
-          :aria-current="item.active ? 'page' : undefined"
-          class="ui-interactive inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
-          :class="item.active
-            ? 'border-primary bg-primary text-primary-foreground shadow-sm'
-            : 'border-transparent text-ink-muted hover:border-border hover:bg-surface-muted hover:text-ink'"
-        >
-          <component :is="moduleIconFor(item.icon)" class="size-4 shrink-0" aria-hidden="true" />
-          <span class="hidden sm:inline">{{ item.label }}</span>
-        </a>
-        <button
-          v-else
-          type="button"
-          disabled
-          aria-disabled="true"
-          :aria-label="`${item.label}: ${item.status || 'Sin implementación aún'}`"
-          :title="item.status || 'Sin implementación aún'"
-          class="inline-flex min-h-10 cursor-not-allowed items-center gap-2 rounded-lg border border-border-subtle bg-surface-muted/70 px-3 py-2 text-sm font-medium text-ink-subtle"
-        >
-          <component :is="moduleIconFor(item.icon)" class="size-4 shrink-0" aria-hidden="true" />
-          <span class="hidden sm:inline">{{ item.label }}</span>
-          <span class="hidden text-[10px] font-medium lg:inline">{{ item.status || 'Sin implementación aún' }}</span>
-        </button>
-      </li>
-      <li v-if="additionalModules.length" class="shrink-0">
-        <details class="group relative">
-          <summary
-            class="ui-interactive inline-flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-lg border border-transparent px-3 py-2 text-sm font-semibold text-ink-muted transition-colors hover:border-border hover:bg-surface-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus [&::-webkit-details-marker]:hidden"
-          >
-            <Squares2X2Icon class="size-4 shrink-0" aria-hidden="true" />
-            <span>Módulos</span>
-            <ChevronDownIcon class="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
-          </summary>
-          <ul class="absolute left-0 top-full z-30 mt-2 w-72 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-border bg-surface-raised p-1.5 shadow-xl">
-            <li v-for="item in additionalModules" :key="item.key">
-              <a
-                v-if="!item.disabled && item.href"
-                :href="item.href"
-                :aria-current="item.active ? 'page' : undefined"
-                class="ui-interactive flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
-                :class="item.active ? 'bg-primary-subtle text-primary' : 'text-ink-muted hover:bg-surface-muted hover:text-ink'"
-              >
-                <component :is="moduleIconFor(item.icon)" class="size-4 shrink-0" aria-hidden="true" />
-                <span class="min-w-0 flex-1">{{ item.label }}</span>
-                <span v-if="item.active" class="text-xs font-semibold">Actual</span>
-              </a>
-              <div
-                v-else
-                class="flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm text-ink-subtle"
-                :aria-label="`${item.label}: ${item.status || 'Sin implementación aún'}`"
-                :title="item.status || 'Sin implementación aún'"
-              >
-                <component :is="moduleIconFor(item.icon)" class="size-4 shrink-0" aria-hidden="true" />
-                <span class="min-w-0 flex-1">{{ item.label }}</span>
-                <span class="text-xs">{{ item.status || 'Sin implementación aún' }}</span>
-              </div>
-            </li>
-          </ul>
-        </details>
-      </li>
-    </ul>
-  </nav>
   </div>
 </template>

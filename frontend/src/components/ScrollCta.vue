@@ -1,4 +1,5 @@
 <script setup>
+import { primaryButton } from '../ui/buttons.js'
 import { ArrowRightIcon } from '@heroicons/vue/20/solid'
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 
@@ -34,11 +35,11 @@ onBeforeUnmount(() => {
     <a
       v-if="visible && href !== '#'"
       :href="href"
-      class="ui-scroll-cta ui-interactive ui-glare fixed bottom-4 left-4 right-24 z-30 flex min-h-12 items-center justify-between gap-3 rounded-xl bg-primary px-4 py-2.5 text-primary-foreground shadow-lg shadow-brand-950/20 sm:hidden"
-    >
+      
+     :class="[primaryButton, 'ui-scroll-cta fixed bottom-[5.5rem] left-4 right-24 z-30 justify-between shadow-lg shadow-secondary-900/20 sm:hidden']">
       <span class="min-w-0">
         <span class="block truncate text-sm font-bold">{{ label }}</span>
-        <span v-if="description" class="block truncate text-[0.6875rem] text-primary-foreground/75">{{ description }}</span>
+        <span v-if="description" class="block truncate text-xs text-primary-foreground/75">{{ description }}</span>
       </span>
       <ArrowRightIcon class="size-5 shrink-0" aria-hidden="true" />
     </a>

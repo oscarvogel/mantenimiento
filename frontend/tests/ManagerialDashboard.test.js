@@ -8,6 +8,23 @@ const wrappers = []
 afterEach(() => wrappers.splice(0).forEach((wrapper) => wrapper.unmount()))
 
 describe('ManagerialDashboard', () => {
+  it('encabezado sin saludo repetido y la cifra urgente primero, en la tarjeta oscura', () => {
+    const wrapper = mount(ManagerialDashboard, {
+      props: {
+        dashboard: normalizeDashboardPayload({ view: 'managerial', user: { name: 'Admin Demo' }, company: { name: 'TSA' }, metrics: { maintenanceOverdue: 3 }, links: {} }),
+        firstName: 'Admin',
+      },
+    })
+    wrappers.push(wrapper)
+
+    expect(wrapper.get('h1').text()).toBe('Estado del mantenimiento')
+    expect(wrapper.text()).not.toContain('Buen día')
+    const cards = wrapper.get('[aria-label="Indicadores gerenciales"]').findAll('article')
+    expect(cards[0].text()).toContain('Preventivos vencidos')
+    expect(cards[0].classes()).toContain('bg-surface-inverse')
+    expect(cards.slice(1).every((card) => !card.classes().includes('bg-surface-inverse'))).toBe(true)
+  })
+
   it('shows missing data instead of a fabricated preventive compliance percentage', () => {
     const wrapper = mount(ManagerialDashboard, {
       props: {

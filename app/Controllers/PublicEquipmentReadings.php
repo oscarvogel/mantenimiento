@@ -69,15 +69,17 @@ final class PublicEquipmentReadings extends BaseController
     {
         $stored = null;
         $equipment = null;
+        $locale = 'ES';
 
         try {
             $access = $this->resolve($token);
             $equipment = $this->equipment((int) $access['empresa_id'], (int) $access['equipo_id']);
             if ($equipment === null) {
-                throw new DomainException('El acceso público no es válido.');
+                throw new DomainException($this->tr($locale, 'invalid_access'));
             }
+            $locale = $this->equipmentLocale($equipment);
 
-            [$tempPath, $mime] = $this->validatedEvidenceUpload();
+            [$tempPath, $mime] = $this->validatedEvidenceUpload($locale);
 
             // La IA no depende del almacenamiento persistente: primero analizamos
             // el archivo temporal recibido. Si luego falla el staging, el chofer
@@ -99,7 +101,7 @@ final class PublicEquipmentReadings extends BaseController
             $currentKm = $equipment['km_actual'] === null ? null : (int) $equipment['km_actual'];
             $detectionDiscarded = ! (new AiOdometerPlausibility())->accepts($detectedKm, $currentKm);
             $discardMessage = $detectionDiscarded
-                ? 'La IA leyó un valor menor al kilometraje actual. Ingresá el kilometraje manualmente.'
+                ? $this->tr($locale, 'ai_lower')
                 : null;
 
             if ($analysis === null || $analysis->evidenceValid) {
@@ -145,10 +147,10 @@ final class PublicEquipmentReadings extends BaseController
                 'invalidReason' => $analysis?->invalidReason,
                 'deteccionDescartada' => $detectionDiscarded,
                 'evidenceError' => $analysis !== null && ! $analysis->evidenceValid
-                    ? $this->invalidEvidenceMessage($analysis->invalidReason, $this->equipmentLocale($equipment))
+                    ? $this->invalidEvidenceMessage($analysis->invalidReason, $locale)
                     : null,
                 'analysisError' => $analysis === null
-                    ? 'No pudimos leer automáticamente el odómetro. Podés ingresar el kilometraje manualmente.'
+                    ? $this->tr($locale, 'ai_unreadable')
                     : $discardMessage,
                 'evidenceRef' => $evidenceRef,
                 'storageReady' => $evidenceRef !== null,
@@ -169,7 +171,7 @@ final class PublicEquipmentReadings extends BaseController
                 'ok' => false,
                 'error' => $exception instanceof DomainException
                     ? $exception->getMessage()
-                    : 'No pudimos procesar la foto. Volvé a tomarla.',
+                    : $this->tr($locale, 'photo_retake'),
                 'csrfToken' => csrf_token(),
                 'csrfHash' => csrf_hash(),
             ]);
@@ -305,7 +307,7 @@ final class PublicEquipmentReadings extends BaseController
                         : null,
                 );
             } else {
-                [$evidenceTempPath, $evidenceMime] = $this->validatedEvidenceUpload();
+                [$evidenceTempPath, $evidenceMime] = $this->validatedEvidenceUpload($locale);
                 try {
                     $aiAnalysis = MiniMaxOdometerImageAnalyzer::fromEnv()->analyze($evidenceTempPath, $evidenceMime);
                 } catch (Throwable $exception) {
@@ -730,37 +732,36 @@ final class PublicEquipmentReadings extends BaseController
     }
 
     /** @return array{0:string,1:string} */
-    private function validatedEvidenceUpload(): array
+    private function validatedEvidenceUpload(string $locale): array
     {
         $file = $this->request->getFile('evidence_photo');
         if ($file === null) {
-            throw new DomainException('La foto del tablero es obligatoria.');
+            throw new DomainException($this->tr($locale, 'photo_required'));
         }
         if (! $file->isValid()) {
-            $error = $file->getError();
-            $message = match ($error) {
-                UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'La foto es demasiado grande para subirla. Volvé a tomarla o elegí una imagen más liviana.',
-                UPLOAD_ERR_PARTIAL => 'La foto se subió de forma incompleta. Volvé a intentarlo.',
-                UPLOAD_ERR_NO_FILE => 'La foto del tablero es obligatoria.',
-                default => 'No se pudo recibir la foto del tablero. Volvé a intentarlo.',
+            $key = match ($file->getError()) {
+                UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'photo_too_big_upload',
+                UPLOAD_ERR_PARTIAL => 'photo_partial',
+                UPLOAD_ERR_NO_FILE => 'photo_required',
+                default => 'photo_not_received',
             };
-            throw new DomainException($message);
+            throw new DomainException($this->tr($locale, $key));
         }
         if ($file->hasMoved()) {
-            throw new DomainException('La foto del tablero ya no está disponible. Volvé a seleccionarla.');
+            throw new DomainException($this->tr($locale, 'photo_moved'));
         }
         if ($file->getSize() <= 0 || $file->getSize() > self::MAX_EVIDENCE_BYTES) {
-            throw new DomainException('La foto del tablero supera el tamaño permitido de 8 MB.');
+            throw new DomainException($this->tr($locale, 'photo_size'));
         }
 
         $mime = strtolower((string) $file->getMimeType());
         if (! in_array($mime, ['image/jpeg', 'image/png'], true)) {
-            throw new DomainException('La evidencia debe ser una foto JPG o PNG.');
+            throw new DomainException($this->tr($locale, 'photo_type'));
         }
 
         $tempPath = $file->getTempName();
         if ($tempPath === '' || ! is_file($tempPath)) {
-            throw new DomainException('No se pudo procesar la foto del tablero.');
+            throw new DomainException($this->tr($locale, 'photo_unprocessable'));
         }
 
         return [$tempPath, $mime];
@@ -874,6 +875,19 @@ final class PublicEquipmentReadings extends BaseController
             'receipt_hours' => 'Horímetro registrado',
             'receipt_code' => 'Comprovante',
             'receipt_help' => 'Guarde este comprovante.',
+            'evidence_ready' => 'Foto salva como evidência ✓',
+            'evidence_preview_alt' => 'Pré-visualização da evidência',
+            'evidence_kept' => 'A foto já foi salva. Você pode registrar a leitura sem selecioná-la novamente.',
+            'preparing' => 'Preparando foto...',
+            'photo_failed' => 'Não conseguimos processar a foto.',
+            'not_readable' => 'Não conseguimos ler o hodômetro automaticamente. Você pode digitar o valor manualmente.',
+            'photo_sent_on_submit' => 'A foto será enviada ao registrar a leitura.',
+            'ai_detected' => 'A IA detectou {km} km{confidence}. Revise o valor e corrija se necessário.',
+            'ai_confidence' => ' · confiança {percent}%',
+            'number_locale' => 'pt-BR',
+            'photo_saved_on_submit' => 'A foto será salva junto com a leitura ao registrar.',
+            'retake_before_submit' => 'Selecione ou tire uma foto novamente antes de registrar.',
+            'photo_required_submit' => 'Selecione ou tire uma foto antes de registrar.',
             ];
         }
 
@@ -898,6 +912,19 @@ final class PublicEquipmentReadings extends BaseController
             'receipt_hours' => 'Horómetro registrado',
             'receipt_code' => 'Comprobante',
             'receipt_help' => 'Guardá este comprobante.',
+            'evidence_ready' => 'Foto guardada como evidencia ✓',
+            'evidence_preview_alt' => 'Vista previa de la evidencia',
+            'evidence_kept' => 'La foto ya quedó guardada. Podés registrar la lectura sin volver a seleccionarla.',
+            'preparing' => 'Preparando foto...',
+            'photo_failed' => 'No pudimos procesar la foto.',
+            'not_readable' => 'No pudimos leer automáticamente el odómetro. Podés escribir el valor manualmente.',
+            'photo_sent_on_submit' => 'La foto se enviará al registrar la lectura.',
+            'ai_detected' => 'IA detectó {km} km{confidence}. Revisá el valor y corregilo si hace falta.',
+            'ai_confidence' => ' · confianza {percent}%',
+            'number_locale' => 'es-AR',
+            'photo_saved_on_submit' => 'La foto se guardará junto con la lectura al registrar.',
+            'retake_before_submit' => 'Volvé a seleccionar o tomar una foto antes de registrar.',
+            'photo_required_submit' => 'Seleccioná o sacá una foto antes de registrar.',
         ];
     }
 
@@ -922,6 +949,17 @@ final class PublicEquipmentReadings extends BaseController
             'register_failed' => 'Não foi possível registrar a leitura.',
             'invalid_km' => 'A quilometragem não é válida.',
             'invalid_hours' => 'O horímetro não é válido.',
+            'ai_lower' => 'A IA leu um valor menor que a quilometragem atual. Digite a quilometragem manualmente.',
+            'ai_unreadable' => 'Não conseguimos ler o hodômetro automaticamente. Você pode informar a quilometragem manualmente.',
+            'photo_retake' => 'Não conseguimos processar a foto. Tire outra.',
+            'photo_required' => 'A foto do painel é obrigatória.',
+            'photo_too_big_upload' => 'A foto é grande demais para enviar. Tire outra ou escolha uma imagem mais leve.',
+            'photo_partial' => 'A foto foi enviada de forma incompleta. Tente novamente.',
+            'photo_not_received' => 'Não foi possível receber a foto do painel. Tente novamente.',
+            'photo_moved' => 'A foto do painel não está mais disponível. Selecione-a novamente.',
+            'photo_size' => 'A foto do painel excede o tamanho permitido de 8 MB.',
+            'photo_type' => 'A evidência deve ser uma foto JPG ou PNG.',
+            'photo_unprocessable' => 'Não foi possível processar a foto do painel.',
         ];
         $es = [
             'invalid_access' => 'El acceso público no es válido o dejó de estar vigente.',
@@ -942,6 +980,17 @@ final class PublicEquipmentReadings extends BaseController
             'register_failed' => 'No se pudo registrar la lectura.',
             'invalid_km' => 'El kilometraje no es válido.',
             'invalid_hours' => 'El horómetro no es válido.',
+            'ai_lower' => 'La IA leyó un valor menor al kilometraje actual. Ingresá el kilometraje manualmente.',
+            'ai_unreadable' => 'No pudimos leer automáticamente el odómetro. Podés ingresar el kilometraje manualmente.',
+            'photo_retake' => 'No pudimos procesar la foto. Volvé a tomarla.',
+            'photo_required' => 'La foto del tablero es obligatoria.',
+            'photo_too_big_upload' => 'La foto es demasiado grande para subirla. Volvé a tomarla o elegí una imagen más liviana.',
+            'photo_partial' => 'La foto se subió de forma incompleta. Volvé a intentarlo.',
+            'photo_not_received' => 'No se pudo recibir la foto del tablero. Volvé a intentarlo.',
+            'photo_moved' => 'La foto del tablero ya no está disponible. Volvé a seleccionarla.',
+            'photo_size' => 'La foto del tablero supera el tamaño permitido de 8 MB.',
+            'photo_type' => 'La evidencia debe ser una foto JPG o PNG.',
+            'photo_unprocessable' => 'No se pudo procesar la foto del tablero.',
         ];
 
         $catalog = $this->normalizeLocale($locale) === 'PT' ? $pt : $es;

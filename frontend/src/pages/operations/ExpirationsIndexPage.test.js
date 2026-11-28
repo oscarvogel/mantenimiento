@@ -33,6 +33,17 @@ const baseData = () => ({
 })
 
 describe('ExpirationsIndexPage', () => {
+  it('las píldoras filtran por estado, marcan la activa y conservan los demás filtros', () => {
+    const data = { ...baseData(), summary: { total: 9, overdue: 2, next7: 3, next30: 5 } }
+    const nav = mount(ExpirationsIndexPage, { props: { data } }).get('nav[aria-label="Vencimientos por estado"]')
+
+    expect(nav.findAll('a').map((chip) => chip.text())).toEqual(['Todos 9', 'Vencidos 2', 'Próximos 7 días 3', 'Próximos 30 días 5'])
+    const active = nav.get('a[aria-current="true"]')
+    expect(active.text()).toBe('Próximos 30 días 5')
+    expect(active.attributes('href')).toBe('/mantenimiento/vencimientos?tipo=EQUIPO&tipo_vencimiento_id=11&sucursal_id=2&estado=30')
+    expect(nav.get('a').attributes('href')).toBe('/mantenimiento/vencimientos?tipo=EQUIPO&tipo_vencimiento_id=11&sucursal_id=2')
+  })
+
   it('separa el sujeto del tipo de documentación y conserva la selección', () => {
     const wrapper = mount(ExpirationsIndexPage, { props: { data: baseData() } })
 

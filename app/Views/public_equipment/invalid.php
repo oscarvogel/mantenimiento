@@ -1,9 +1,9 @@
-<!doctype html>
-<html lang="<?= esc(strtolower($locale ?? 'ES')) ?>">
-<head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title><?= esc($title ?? 'Acceso no disponible') ?></title>
-<style>body{font-family:system-ui,sans-serif;background:#f5f6f8;margin:0}main{max-width:520px;margin:60px auto;padding:20px}.card{background:white;padding:24px;border-radius:16px}</style>
-</head>
-<body><main><section class="card"><h1><?= esc($title ?? 'Acceso no disponible') ?></h1><p><?= esc($message) ?></p></section></main></body>
+<?= view('partials/public_page_head', ['locale' => $locale ?? 'ES', 'title' => $title ?? 'Acceso no disponible']) ?>
+<main class="mx-auto max-w-lg px-4 py-10">
+    <section class="rounded-card bg-surface-raised p-6 shadow-card" role="alert">
+        <h1 class="text-xl font-bold text-ink-strong"><?= esc($title ?? 'Acceso no disponible') ?></h1>
+        <p class="mt-2 text-sm leading-relaxed text-ink-muted"><?= esc($message) ?></p>
+    </section>
+</main>
+</body>
 </html>

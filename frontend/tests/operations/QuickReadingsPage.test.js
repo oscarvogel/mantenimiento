@@ -41,7 +41,7 @@ const dataFor = (count = 2) => ({
 })
 const render = (data = dataFor()) => mount(QuickReadingsPage, { props: { data }, attachTo: document.body })
 
-afterEach(() => { vi.unstubAllGlobals(); document.body.innerHTML = '' })
+afterEach(() => { vi.unstubAllGlobals(); document.body.innerHTML = ''; window.history.replaceState(null, '', '/') })
 
 describe('QuickReadingsPage', () => {
   it('muestra una sola entrada operativa por equipo y prioriza km si controla ambos contadores', () => {
@@ -152,5 +152,19 @@ describe('QuickReadingsPage', () => {
     await input.trigger('keydown.enter')
 
     expect(submit).toHaveBeenCalled()
+  })
+
+  it('en modo falla lista los equipos como tarjetas que llevan al formulario del problema', async () => {
+    window.history.replaceState(null, '', '/mantenimiento/lecturas/rapidas?accion=falla')
+    document.body.dataset.baseUrl = '/app/'
+    const wrapper = render(dataFor(2))
+
+    expect(wrapper.get('h1').text()).toBe('Informar una falla')
+    expect(wrapper.find('table').exists()).toBe(false)
+    expect(wrapper.get('a[href="/app/mantenimiento/equipos/2/operar#reportar-problema"]').text()).toContain('CAM-2')
+
+    await wrapper.get('input[type="search"]').setValue('cam-1')
+    expect(wrapper.findAll('a[href*="/operar#reportar-problema"]')).toHaveLength(1)
+    delete document.body.dataset.baseUrl
   })
 })

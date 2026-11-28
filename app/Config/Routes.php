@@ -244,6 +244,7 @@ $routes->get('telemetria', 'Telemetria::flota', ['filter' => 'permission:equipos
     $routes->post('telemetria/integraciones', 'Telemetria::guardarIntegracion', ['filter' => 'permission:equipos.editar']);
     $routes->get('', 'MaintenanceCircuit::index', ['filter' => 'permission:equipos.ver']);
     $routes->get('equipos', 'AssetManagement::index', ['filter' => 'permission:equipos.ver']);
+    $routes->get('equipos/buscar', 'AssetManagement::quickSearch', ['filter' => 'permission:equipos.ver']);
     $routes->post('equipos', 'AssetManagement::createEquipment', ['filter' => 'permission:equipos.editar']);
 
     $routes->get('servicios', 'MaintenanceServices::index', ['filter' => 'permission:planes.ver']);
@@ -345,7 +346,8 @@ $routes->get('telemetria', 'Telemetria::flota', ['filter' => 'permission:equipos
     $routes->post('equipos/(:num)/planes', 'MaintenanceCircuit::assignPlan/$1', ['filter' => 'permission:planes.editar']);
     $routes->post('vencimientos/detectar', 'MaintenanceCircuit::detectOverdue', ['filter' => 'permission:planes.editar']);
     $routes->post('avisos/(:num)/orden', 'MaintenanceCircuit::generateOrder/$1', ['filter' => 'permission:ordenes.editar']);
-    $routes->get('ordenes', 'WorkOrders::index', ['filter' => 'permission:ordenes.ver']);
+    // Con solo `ordenes.mi_trabajo` entra a "Mi trabajo": la consulta le muestra solo sus órdenes.
+    $routes->get('ordenes', 'WorkOrders::index', ['filter' => 'permission:ordenes.ver,ordenes.mi_trabajo']);
     // El acceso de lectura es OR (creador o revisor); el caso de uso vuelve a
     // validarlo para no depender de la composición de filtros de rutas.
     $routes->get('solicitudes', 'WorkRequests::index');

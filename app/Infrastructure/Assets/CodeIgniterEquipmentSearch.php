@@ -60,6 +60,8 @@ final class CodeIgniterEquipmentSearch implements EquipmentListReadModel, Equipm
     private function filters(BaseBuilder $builder, ?string $query, ?int $typeId, ?int $brandId, ?int $branchId, ?string $status): void
     {
         if ($query !== null) {
+            // like() no escapa % ni _ del valor; sin esto "%%" devolvía toda la flota.
+            $query = $this->database->escapeLikeString($query);
             $builder->groupStart()
                 ->like('e.codigo', $query, 'both', null, true)
                 ->orLike('e.patente', $query, 'both', null, true)

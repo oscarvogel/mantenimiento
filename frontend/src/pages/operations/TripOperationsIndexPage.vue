@@ -1,4 +1,5 @@
 <script setup>
+import * as format from '../../ui/format.js'
 import { computed, ref } from 'vue'
 import { ArrowPathIcon, ChartBarSquareIcon, PlusIcon, TruckIcon } from '@heroicons/vue/24/outline'
 import EmptyState from './components/EmptyState.vue'
@@ -39,10 +40,7 @@ const statusTone = {
 const plate = ref(props.data.filters?.plate ?? '')
 const order = ref(props.data.filters?.order ?? 'desc')
 
-const fmtDate = (value) => {
-  const match = String(value ?? '').match(/^(\d{4})-(\d{2})-(\d{2})/)
-  return match ? `${match[3]}/${match[2]}/${match[1]}` : 'Sin fecha'
-}
+const fmtDate = (value) => format.formatDate(value)
 // Filtros, orden y tamaño viajan en la URL: navegar entre páginas los conserva
 // y volver desde el detalle de un viaje recupera la misma página (#532).
 const listUrl = (changes) => {
@@ -70,7 +68,7 @@ const changePageSize = (event) => window.location.assign(pageSizeUrl(event.targe
       </template>
     </PageHeading>
 
-    <p class="mb-5 rounded-xl border border-border bg-surface-raised px-4 py-3 text-sm text-ink-muted">
+    <p class="mb-5 rounded-card bg-surface-raised px-4 py-3 text-sm text-ink-muted shadow-card">
       Este listado muestra solo viajes operativos planificados en el sistema. Los viajes importados del ERP anterior se consultan en
       <a :href="links.history ?? '/viajes'" class="font-semibold text-primary hover:text-primary-hover">Historial</a>.
     </p>
@@ -141,8 +139,8 @@ const changePageSize = (event) => window.location.assign(pageSizeUrl(event.targe
 
     <PanelCard v-else title="Viajes" :count="pagination.total">
       <div class="overflow-x-auto">
-        <table class="w-full min-w-[64rem] text-left text-sm">
-          <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
+        <table class="ui-table w-full min-w-[64rem] text-left text-sm">
+          <thead class="text-xs font-semibold text-ink-subtle">
             <tr>
               <th class="px-4 py-3">Viaje</th>
               <th class="px-4 py-3">Estado</th>
@@ -192,7 +190,7 @@ const changePageSize = (event) => window.location.assign(pageSizeUrl(event.targe
         <div class="flex flex-wrap items-center gap-2">
           <label class="flex items-center gap-2 text-sm font-semibold text-ink-muted">
             Mostrar
-            <select :value="pagination.perPage" class="min-h-10 rounded-lg border border-border bg-white px-2 text-ink" aria-label="Viajes por página" @change="changePageSize">
+            <select :value="pagination.perPage" class="min-h-10 rounded-pill border border-transparent bg-surface-muted px-2 text-ink" aria-label="Viajes por página" @change="changePageSize">
               <option v-for="size in pagination.perPageOptions" :key="size" :value="size">{{ size }}</option>
             </select>
           </label>
@@ -203,7 +201,7 @@ const changePageSize = (event) => window.location.assign(pageSizeUrl(event.targe
             <a v-else :href="pageUrl(pagination.page - 1)" :class="secondaryButton" rel="prev">Anterior</a>
             <label class="flex items-center gap-2 text-sm font-semibold text-ink-muted">
               Página
-              <select :value="pagination.page" class="min-h-10 rounded-lg border border-border bg-white px-2 text-ink" aria-label="Ir a la página" @change="goToPage">
+              <select :value="pagination.page" class="min-h-10 rounded-pill border border-transparent bg-surface-muted px-2 text-ink" aria-label="Ir a la página" @change="goToPage">
                 <option v-for="number in pageNumbers" :key="number" :value="number">{{ number }}</option>
               </select>
             </label>

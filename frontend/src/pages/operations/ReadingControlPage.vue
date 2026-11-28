@@ -1,4 +1,5 @@
 <script setup>
+import * as format from '../../ui/format.js'
 import { computed, ref } from 'vue'
 import {
   ArrowPathIcon,
@@ -207,7 +208,7 @@ const methodLabel = (item) => {
     </PageHeading>
 
     <section class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Resumen de lecturas">
-      <div class="rounded-xl border border-border bg-surface-raised p-5">
+      <div class="rounded-card bg-surface-raised p-5 shadow-card">
         <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Equipos</p>
         <p class="mt-2 text-3xl font-bold text-ink">{{ data.summary.total }}</p>
       </div>
@@ -219,7 +220,7 @@ const methodLabel = (item) => {
         <p class="text-xs font-semibold uppercase tracking-wide text-warning-foreground">Más de 7 días</p>
         <p class="mt-2 text-3xl font-bold text-warning-foreground">{{ data.summary.antiguos }}</p>
       </div>
-      <div class="rounded-xl border border-border bg-surface-raised p-5">
+      <div class="rounded-card bg-surface-raised p-5 shadow-card">
         <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">En esta página</p>
         <p class="mt-2 text-3xl font-bold text-ink">{{ data.results.length }}</p>
       </div>
@@ -333,8 +334,8 @@ const methodLabel = (item) => {
 
       <template v-else>
         <div class="hidden overflow-x-auto md:block">
-          <table class="w-full min-w-[64rem] text-left text-sm">
-            <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
+          <table class="ui-table w-full min-w-[64rem] text-left text-sm">
+            <thead class="text-xs font-semibold text-ink-subtle">
               <tr>
                 <th class="px-5 py-3">Equipo</th>
                 <th class="px-5 py-3">Tipo</th>
@@ -348,7 +349,7 @@ const methodLabel = (item) => {
               </tr>
             </thead>
             <tbody class="divide-y divide-border-subtle">
-              <tr v-for="item in data.results" :key="item.equipmentId" class="hover:bg-brand-50/50">
+              <tr v-for="item in data.results" :key="item.equipmentId" class="hover:bg-secondary-100/50">
                 <td class="px-5 py-4">
                   <div class="font-semibold text-ink">{{ item.equipmentCode }}</div>
                   <div class="mt-1 text-xs text-ink-muted">{{ item.equipmentPlate || 'Sin patente' }}</div>
@@ -381,11 +382,11 @@ const methodLabel = (item) => {
                   <button
                     v-if="canClaimRow(item)"
                     type="button"
-                    class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-primary px-3.5 py-2 text-sm font-semibold text-primary hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    
                     :disabled="claimBusy"
                     :aria-label="`Reclamar por WhatsApp al chofer de ${item.equipmentCode}`"
                     @click="openClaim(item)"
-                  >
+                   :class="secondaryButton">
                     <ChatBubbleLeftEllipsisIcon class="size-4" aria-hidden="true" />
                     Reclamar por WhatsApp
                   </button>
@@ -439,10 +440,10 @@ const methodLabel = (item) => {
             <button
               v-if="canClaimRow(item)"
               type="button"
-              class="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-primary px-3.5 py-2 text-sm font-semibold text-primary hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-60"
+              
               :disabled="claimBusy"
               @click="openClaim(item)"
-            >
+             :class="[secondaryButton, 'w-full']">
               <ChatBubbleLeftEllipsisIcon class="size-4" aria-hidden="true" />
               Reclamar por WhatsApp
             </button>
@@ -506,7 +507,7 @@ const methodLabel = (item) => {
         aria-labelledby="reading-evidence-title"
         @click.self="closeEvidence"
       >
-        <div class="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-xl border border-border bg-surface-raised p-5 shadow-xl">
+        <div class="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-card bg-surface-raised p-5 shadow-xl">
           <div class="flex items-start justify-between gap-4">
             <div>
               <h2 id="reading-evidence-title" class="text-lg font-semibold text-ink">Evidencia de lectura</h2>
@@ -525,7 +526,7 @@ const methodLabel = (item) => {
             <div v-if="evidenceTarget.aiDetectedKm !== null && evidenceTarget.aiDetectedKm !== undefined"><dt class="text-ink-muted">IA detectó</dt><dd class="font-semibold text-ink">{{ formatNumberEs(evidenceTarget.aiDetectedKm, 0) }} km<span v-if="evidenceTarget.readingMethod === 'FOTO_IA_CORREGIDA'" class="ml-1 text-xs font-semibold text-danger-strong">(descartado)</span></dd></div>
             <div v-if="evidenceTarget.aiConfidence !== null && evidenceTarget.aiConfidence !== undefined"><dt class="text-ink-muted">Confianza IA</dt><dd class="font-semibold text-ink">{{ Math.round(Number(evidenceTarget.aiConfidence) * 100) }}%</dd></div>
           </dl>
-          <div v-if="evidenceTarget.canReview" class="mt-4 rounded-xl border border-border bg-surface-subtle p-4">
+          <div v-if="evidenceTarget.canReview" class="mt-4 rounded-2xl bg-surface-subtle p-4">
             <h3 class="text-sm font-semibold text-ink">Revisar detección de IA</h3>
             <form :action="evidenceTarget.reviewUrl" method="post" class="mt-3 grid gap-3 sm:grid-cols-2">
               <input type="hidden" :name="data.csrf.name" :value="data.csrf.hash">
@@ -542,8 +543,8 @@ const methodLabel = (item) => {
               <button type="submit" :class="primaryButton" class="sm:col-span-2">Marcar como revisada</button>
             </form>
           </div>
-          <div v-else-if="evidenceTarget.evidenceReviewedAt" class="mt-4 rounded-xl border border-border bg-surface-subtle p-4 text-sm">
-            <p class="font-semibold text-ink">Revisada por {{ evidenceTarget.evidenceReviewedByName || 'un usuario' }} el {{ evidenceTarget.evidenceReviewedAt }}</p>
+          <div v-else-if="evidenceTarget.evidenceReviewedAt" class="mt-4 rounded-2xl bg-surface-subtle p-4 text-sm">
+            <p class="font-semibold text-ink">Revisada por {{ evidenceTarget.evidenceReviewedByName || 'un usuario' }} el {{ format.formatDateTime(evidenceTarget.evidenceReviewedAt) }}</p>
             <p class="mt-1 text-ink-muted">Motivo: {{ evidenceTarget.evidenceReviewReason || '-' }}</p>
             <p v-if="evidenceTarget.evidenceReviewObservation" class="mt-1 text-ink-muted">{{ evidenceTarget.evidenceReviewObservation }}</p>
           </div>
@@ -564,7 +565,7 @@ const methodLabel = (item) => {
         aria-labelledby="reading-control-claim-title"
         @click.self="closeClaim"
       >
-        <div class="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-surface-raised p-5 shadow-xl">
+        <div class="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-card bg-surface-raised p-5 shadow-xl">
           <h2 id="reading-control-claim-title" class="text-lg font-semibold text-ink">
             {{ confirmLabel(claimTarget) }}
           </h2>

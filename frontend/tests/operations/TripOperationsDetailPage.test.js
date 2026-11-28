@@ -1,9 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { flushPromises, mount } from '@vue/test-utils'
+import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import TripOperationsDetailPage from '../../src/pages/operations/TripOperationsDetailPage.vue'
 import AutocompleteSelect from '../../src/pages/operations/components/AutocompleteSelect.vue'
-import TripConceptCreateModal from '../../src/pages/operations/components/TripConceptCreateModal.vue'
 
 const alertsConfirm = vi.hoisted(() => vi.fn())
 vi.mock('../../src/composables/useAlerts.js', () => ({ useAlerts: () => ({ confirm: alertsConfirm }) }))
@@ -427,11 +426,11 @@ describe('detalle de viaje operativo', () => {
 
     expect(wrapper.text()).toContain('Rosario → Córdoba')
     // El flete de facturación solo se ve al editar el tramo, no en el detalle.
-    expect(wrapper.text()).not.toContain('ARS 1.000.000,00')
+    expect(wrapper.text()).not.toContain('$\u00a01.000.000,00')
     expect(wrapper.text()).not.toContain('Facturado')
     expect(wrapper.text()).not.toContain('Flete facturación (ARS)')
-    expect(wrapper.text()).toContain('ARS 800.000,00')
-    expect(wrapper.text()).toContain('ARS 638.000,00')
+    expect(wrapper.text()).toContain('$\u00a0800.000,00')
+    expect(wrapper.text()).toContain('$\u00a0638.000,00')
     expect(wrapper.text()).toContain('Fechas')
     expect(wrapper.text()).toContain('20/10/2026 → 21/10/2026')
     expect(wrapper.get('form[action="/mantenimiento/viajes/operativos/42/tramos"]').exists()).toBe(true)
@@ -472,7 +471,7 @@ describe('detalle de viaje operativo', () => {
       },
     })
 
-    expect(wrapper.text()).toContain('ARS 94.900,00')
+    expect(wrapper.text()).toContain('$\u00a094.900,00')
     expect(wrapper.text()).toContain('no descuentan el adelanto')
     expect(wrapper.get('form[action="/mantenimiento/viajes/operativos/42/gastos/reatribuir-caja"]').exists()).toBe(true)
 
@@ -481,7 +480,7 @@ describe('detalle de viaje operativo', () => {
     await nextTick()
 
     expect(wrapper.get('select[name="pagado_por"]').element.value).toBe('CAJA')
-    expect(wrapper.text()).toContain('ARS 100.000,00 de adelantos')
+    expect(wrapper.text()).toContain('$\u00a0100.000,00 de adelantos')
     wrapper.unmount()
   })
 
@@ -548,7 +547,7 @@ describe('detalle de viaje operativo', () => {
 
     expect(wrapper.text()).toContain('Liquidación del chofer')
     expect(wrapper.text()).toContain('Total a liquidar')
-    expect(wrapper.text()).toContain('ARS 82.000,00')
+    expect(wrapper.text()).toContain('$\u00a082.000,00')
     expect(wrapper.text()).toContain('Espera en descarga')
     expect(wrapper.text()).toContain('20/10/2026')
     expect(wrapper.findAll('button').some((button) => button.text().includes('Cargar haber'))).toBe(true)
@@ -698,7 +697,7 @@ describe('detalle de viaje operativo', () => {
     expect(form.get('input[name="importe"]').element.readOnly).toBe(true)
     expect(form.get('input[name="concepto_id"]').element.value).toBe('10')
     expect(conceptSelect.get('input[role="combobox"]').element.value).toContain('Estadía Sider')
-    expect(conceptSelect.get('input[role="combobox"]').element.value).toContain('ARS 50.000,00 / día')
+    expect(conceptSelect.get('input[role="combobox"]').element.value).toContain('$\u00a050.000,00 / día')
 
     await conceptSelect.setValue('11')
     expect(form.get('input[name="importe"]').element.readOnly).toBe(false)
@@ -749,7 +748,8 @@ describe('detalle de viaje operativo', () => {
     await nextTick()
     await nextTick()
 
-    const modal = wrapper.getComponent(TripConceptCreateModal)
+    // BaseDialog teleports the form to <body>.
+    const modal = new DOMWrapper(document.body.querySelector('dialog'))
     expect(modal.get('input[name="nombre"]').element.value).toBe('Viático cena')
     await modal.get('input[name="importe_unitario"]').setValue('5000')
     await modal.get('form').trigger('submit')
@@ -800,7 +800,8 @@ describe('detalle de viaje operativo', () => {
     await nextTick()
     await nextTick()
 
-    const modal = wrapper.getComponent(TripConceptCreateModal)
+    // BaseDialog teleports the form to <body>.
+    const modal = new DOMWrapper(document.body.querySelector('dialog'))
     expect(modal.get('select[name="categoria"]').element.value).toBe('HABER')
     expect(modal.get('select[name="unidad"]').element.value).toBe('DIA')
     wrapper.unmount()
@@ -831,8 +832,8 @@ describe('detalle de viaje operativo', () => {
     })
 
     expect(wrapper.text()).toContain('Estadía Sider')
-    expect(wrapper.text()).toContain('1,5 × ARS 50.000,00')
-    expect(wrapper.text()).toContain('ARS 75.000,00')
+    expect(wrapper.text()).toContain('1,5 × $\u00a050.000,00')
+    expect(wrapper.text()).toContain('$\u00a075.000,00')
     wrapper.unmount()
   })
 
@@ -867,7 +868,7 @@ describe('detalle de viaje operativo', () => {
     expect(wrapper.text()).toContain('Diario de bordo')
     expect(wrapper.text()).toContain('Frontera Brasil')
     expect(wrapper.text()).toContain('6 días')
-    expect(wrapper.text()).toContain('ARS 200.000,00')
+    expect(wrapper.text()).toContain('$\u00a0200.000,00')
     expect(wrapper.get('form[action="/mantenimiento/viajes/operativos/42/diario-bordo/5/eliminar"]').exists()).toBe(true)
 
     const logbookButton = wrapper.findAll('button').find((button) => button.text().includes('Diario de bordo'))
@@ -1130,8 +1131,8 @@ describe('detalle de viaje operativo', () => {
     })
 
     // La tabla no muestra el flete de facturación: solo se ve al editar el tramo.
-    expect(wrapper.find('td[title="USD 4.700,00"]').exists()).toBe(false)
-    expect(wrapper.find('td[title="ARS 5.875.000,00"]').exists()).toBe(true)
+    expect(wrapper.find('td[title="US$\u00a04.700,00"]').exists()).toBe(false)
+    expect(wrapper.find('td[title="$\u00a05.875.000,00"]').exists()).toBe(true)
 
     const editLeg = wrapper.findAll('button').find((button) => button.text() === 'Editar')
     await editLeg.trigger('click')

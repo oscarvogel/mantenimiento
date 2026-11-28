@@ -82,7 +82,7 @@ const facts = computed(() => [
     </PageHeading>
 
     <div class="grid gap-6 lg:grid-cols-2">
-      <section class="rounded-xl border border-border bg-surface-raised p-4 sm:p-5" aria-labelledby="tire-detail-data">
+      <section class="rounded-card bg-surface-raised p-4 sm:p-5 shadow-card" aria-labelledby="tire-detail-data">
         <div class="flex items-center justify-between gap-3">
           <h2 id="tire-detail-data" class="text-base font-bold text-ink">Datos</h2>
           <button v-if="data.canOperate" type="button" :class="secondaryButton" @click="editing = true">
@@ -98,7 +98,7 @@ const facts = computed(() => [
         </dl>
       </section>
 
-      <section class="rounded-xl border border-border bg-surface-raised p-4 sm:p-5" aria-labelledby="tire-detail-status">
+      <section class="rounded-card bg-surface-raised p-4 sm:p-5 shadow-card" aria-labelledby="tire-detail-status">
         <h2 id="tire-detail-status" class="text-base font-bold text-ink">Estado</h2>
         <p class="mt-2 text-sm text-ink-muted">
           Actual: <span :class="tireStatusTone(tire.status)" class="rounded-full px-2.5 py-1 text-xs font-semibold">{{ tire.statusLabel }}</span>
@@ -127,7 +127,7 @@ const facts = computed(() => [
       </section>
     </div>
 
-    <section id="ubicacion" class="rounded-xl border border-border bg-surface-raised p-4 sm:p-5" aria-labelledby="tire-detail-location">
+    <section id="ubicacion" class="rounded-card bg-surface-raised p-4 sm:p-5 shadow-card" aria-labelledby="tire-detail-location">
       <h2 id="tire-detail-location" class="text-base font-bold text-ink">Ubicación</h2>
 
       <template v-if="location">
@@ -195,7 +195,7 @@ const facts = computed(() => [
       </template>
     </section>
 
-    <section class="rounded-xl border border-border bg-surface-raised p-4 sm:p-5" aria-labelledby="tire-detail-performance">
+    <section class="rounded-card bg-surface-raised p-4 sm:p-5 shadow-card" aria-labelledby="tire-detail-performance">
       <h2 id="tire-detail-performance" class="text-base font-bold text-ink">Rendimiento</h2>
       <p class="mt-2 text-sm text-ink">
         Kilómetros recorridos: <strong>{{ performance.total_label }}</strong>
@@ -212,7 +212,7 @@ const facts = computed(() => [
       </ul>
     </section>
 
-    <section class="rounded-xl border border-border bg-surface-raised p-4 sm:p-5" aria-labelledby="tire-detail-log">
+    <section class="rounded-card bg-surface-raised p-4 sm:p-5 shadow-card" aria-labelledby="tire-detail-log">
       <h2 id="tire-detail-log" class="text-base font-bold text-ink">Historial de estados</h2>
       <ol class="mt-4 space-y-4 border-l-2 border-border-subtle pl-4">
         <li v-for="(entry, index) in log" :key="index" class="relative">
@@ -231,7 +231,7 @@ const facts = computed(() => [
     <Teleport to="body">
       <div v-if="editing" class="fixed inset-0 z-[80] flex items-start justify-center overflow-y-auto bg-black/45 p-4 sm:items-center" role="presentation" @mousedown.self="editing = false" @keydown.esc="editing = false">
         <section role="dialog" aria-modal="true" aria-labelledby="tire-edit-title" class="w-full max-w-2xl rounded-xl bg-surface-raised shadow-2xl">
-          <header class="border-b border-border-subtle px-6 py-4">
+          <header class="px-6 pt-5">
             <h2 id="tire-edit-title" class="text-lg font-bold text-ink">Editar datos de {{ tire.number }}</h2>
             <p class="mt-1 text-sm text-ink-muted">El número y la sucursal no se cambian desde acá.</p>
           </header>

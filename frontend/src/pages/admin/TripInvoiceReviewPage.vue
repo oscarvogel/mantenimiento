@@ -1,4 +1,6 @@
 <script setup>
+import * as uiLabels from '../../ui/labels.js'
+import * as format from '../../ui/format.js'
 import { computed, reactive } from 'vue'
 import { ArrowPathIcon, MagnifyingGlassIcon, XCircleIcon } from '@heroicons/vue/24/outline'
 import AdminPageHeading from './components/AdminPageHeading.vue'
@@ -17,11 +19,8 @@ const searchTerms = reactive({})
 const searchResults = reactive({})
 const searching = reactive({})
 
-const fmt = (value) => Number(value ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-const fmtDate = (value) => {
-  const match = String(value ?? '').match(/^(\d{4})-(\d{2})-(\d{2})/)
-  return match ? `${match[3]}/${match[2]}/${match[1]}` : 'Sin fecha'
-}
+const fmt = (value) => format.formatMoney(value ?? 0, { cents: true })
+const fmtDate = (value) => format.formatDate(value)
 const pageUrl = (page) => {
   const query = new URLSearchParams(window.location.search)
   if (page <= 1) query.delete('page')
@@ -79,11 +78,11 @@ const search = async (item) => {
     <p class="text-sm text-ink-muted">{{ data.import?.company }} · importación #{{ data.import?.id }} · {{ pagination.total }} facturas</p>
 
     <section class="space-y-4">
-      <article v-for="item in items" :key="item.id" class="rounded-2xl border border-border bg-surface-raised p-5 shadow-sm">
+      <article v-for="item in items" :key="item.id" class="rounded-card bg-surface-raised p-5 shadow-card">
         <div class="flex flex-wrap items-start justify-between gap-4">
           <div class="min-w-0">
-            <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Factura #{{ item.clave_legacy }} · {{ item.tipo || 'sin tipo' }} · {{ fmtDate(item.fecha) }}</p>
-            <h2 class="mt-1 text-lg font-bold text-ink">{{ item.unit || 'Sin unidad' }} · $ {{ fmt(item.total_ars ?? item.total) }}</h2>
+            <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Factura #{{ item.clave_legacy }} · {{ uiLabels.humanizeCode(item.tipo || 'sin tipo') }} · {{ fmtDate(item.fecha) }}</p>
+            <h2 class="mt-1 text-lg font-bold text-ink">{{ item.unit || 'Sin unidad' }} · {{ fmt(item.total_ars ?? item.total) }}</h2>
             <p class="mt-1 text-sm text-ink-muted">{{ item.origin || 'Origen sin dato' }} → {{ item.destination || 'Destino sin dato' }}</p>
             <p v-if="item.remitos?.length" class="mt-0.5 text-xs text-ink-muted">Remitos: {{ item.remitos.join(' · ') }}</p>
           </div>
@@ -96,11 +95,11 @@ const search = async (item) => {
         </div>
 
         <div class="mt-4 grid gap-4 lg:grid-cols-2">
-          <div class="rounded-xl border border-border-subtle bg-surface p-4">
+          <div class="rounded-2xl bg-surface-subtle p-4">
             <p class="text-sm font-bold text-ink">Sugerencias del sistema</p>
             <p v-if="!item.candidates.length" class="mt-1 text-sm text-ink-muted">Sin candidatos automáticos. Buscá el viaje manualmente.</p>
             <ul v-else class="mt-3 space-y-2">
-              <li v-for="candidate in item.candidates" :key="candidate.trip_id" class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border-subtle bg-surface-raised px-3 py-2">
+              <li v-for="candidate in item.candidates" :key="candidate.trip_id" class="flex flex-wrap items-center justify-between gap-2 rounded-card bg-surface-raised px-3 py-2 shadow-card">
                 <div>
                   <p class="text-sm font-semibold text-ink">Viaje #{{ candidate.trip_number }} · {{ candidate.trip_domain }}</p>
                   <p class="text-xs text-ink-muted">{{ fmtDate(candidate.trip_date) }} · puntaje {{ candidate.score }} · {{ candidate.confidence }}</p>
@@ -114,7 +113,7 @@ const search = async (item) => {
             </ul>
           </div>
 
-          <div class="rounded-xl border border-border-subtle bg-surface p-4">
+          <div class="rounded-2xl bg-surface-subtle p-4">
             <p class="text-sm font-bold text-ink">Buscar otro viaje</p>
             <div class="mt-2 flex flex-wrap items-end gap-2">
               <label class="block min-w-48 flex-1">
@@ -126,7 +125,7 @@ const search = async (item) => {
               </button>
             </div>
             <ul v-if="searchResults[item.id]?.length" class="mt-3 space-y-2">
-              <li v-for="trip in searchResults[item.id]" :key="trip.id" class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border-subtle bg-surface-raised px-3 py-2">
+              <li v-for="trip in searchResults[item.id]" :key="trip.id" class="flex flex-wrap items-center justify-between gap-2 rounded-card bg-surface-raised px-3 py-2 shadow-card">
                 <div>
                   <p class="text-sm font-semibold text-ink">Viaje #{{ trip.number }} · {{ trip.domain }}</p>
                   <p class="text-xs text-ink-muted">{{ fmtDate(trip.date) }}</p>

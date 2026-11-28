@@ -50,8 +50,35 @@ export function initializeTheme() {
   return applyTheme(getStoredTheme() ?? 'light')
 }
 
+let runningTransition = null
+
+// El tema nuevo entra como un corte en diagonal (transitions.css, "Cambio de tema"). Sin la API
+// o con movimiento reducido, cambia al instante.
 export function toggleTheme() {
-  return applyTheme(getTheme() === 'dark' ? 'light' : 'dark')
+  const root = document.documentElement
+  // Durante la animación el tema todavía no cambió: el destino pendiente manda.
+  const current = root.dataset.themeTransition === 'to-dark' ? 'dark'
+    : root.dataset.themeTransition === 'to-light' ? 'light'
+      : getTheme()
+  const next = current === 'dark' ? 'light' : 'dark'
+  const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+
+  if (typeof document.startViewTransition !== 'function' || reducedMotion) {
+    return applyTheme(next)
+  }
+
+  root.dataset.themeTransition = next === 'dark' ? 'to-dark' : 'to-light'
+  const transition = document.startViewTransition(() => applyTheme(next))
+  runningTransition = transition
+  transition.finished.finally(() => {
+    // Un segundo clic arranca otra transición: la marca es de esa, no se borra.
+    if (runningTransition === transition) {
+      delete root.dataset.themeTransition
+      runningTransition = null
+    }
+  })
+
+  return next
 }
 
 export { STORAGE_KEY }

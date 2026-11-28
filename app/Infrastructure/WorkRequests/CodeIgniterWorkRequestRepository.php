@@ -85,6 +85,7 @@ final class CodeIgniterWorkRequestRepository implements WorkRequestRepository
                 'reportedBy' => (string) $row['reportado_por_nombre'],
             ], $rows),
             'total' => $total,
+            'statusCounts' => $this->statusCounts($companyId, $branchIds, $filters, $reportedBy),
             'page' => $page,
             'perPage' => $perPage,
             'totalPages' => max(1, (int) ceil($total / $perPage)),
@@ -123,6 +124,32 @@ final class CodeIgniterWorkRequestRepository implements WorkRequestRepository
                 'agrupada_en_id' => $groupRequestId,
                 'updated_at' => $now,
             ]);
+    }
+
+    /**
+     * Cantidad por estado de todo lo que el usuario ve, con la búsqueda aplicada pero sin el filtro
+     * de estado: las píldoras del listado muestran cuántas hay en cada estado antes de elegir uno.
+     *
+     * @param list<int>|null $branchIds @param array<string,mixed> $filters
+     * @return array<string,int>
+     */
+    private function statusCounts(int $companyId, ?array $branchIds, array $filters, ?int $reportedBy): array
+    {
+        $query = $this->database->table('solicitudes_mantenimiento s')
+            ->select('s.estado, COUNT(*) total')
+            // Mismas uniones que el listado: lo que cuenta una píldora es lo que lista al tocarla.
+            ->join('equipos e', 'e.id = s.equipo_id AND e.empresa_id = s.empresa_id', 'inner')
+            ->join('sucursales suc', 'suc.id = s.sucursal_id AND suc.empresa_id = s.empresa_id', 'inner')
+            ->join('usuarios u', 'u.id = s.reportado_por', 'inner')
+            ->where('s.empresa_id', $companyId);
+        $this->applyScope($query, $branchIds, $reportedBy);
+        $this->applyFilters($query, ['status' => ''] + $filters);
+        $counts = [];
+        foreach ($query->groupBy('s.estado')->get()->getResultArray() as $row) {
+            $counts[(string) $row['estado']] = (int) $row['total'];
+        }
+
+        return $counts;
     }
 
     private function applyScope(object $query, ?array $branchIds, ?int $reportedBy): void

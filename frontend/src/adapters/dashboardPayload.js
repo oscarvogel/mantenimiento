@@ -81,6 +81,7 @@ const normalizeNavigation = (navigation) => {
     .map((item, index) => ({
       key: asText(item.key, `item-${index}`),
       label: asText(item.label, 'Sección'),
+      description: asText(item.description),
       href: asUrl(item.href),
       icon: asText(item.icon, 'dashboard'),
       active: Boolean(item.active),
@@ -187,6 +188,7 @@ export function normalizeAppShellPayload(payload) {
       profile: allowedPresentationProfiles.has(requestedProfile) ? requestedProfile : 'base',
     },
     user: {
+      id: asCount(user.id) || null,
       name: userName,
       email: asText(user.email),
       roles,
@@ -212,6 +214,7 @@ export function normalizeAppShellPayload(payload) {
       href: item.disabled ? null : item.href,
     })),
     homeUrl: source.homeUrl ? asUrl(source.homeUrl, '#') : null,
+    equipmentSearchUrl: source.equipmentSearchUrl ? asUrl(source.equipmentSearchUrl, '#') : null,
     notifications: notifications
       ? {
           enabled: Boolean(notifications.enabled),

@@ -1,4 +1,5 @@
 <script setup>
+import { secondaryButton } from '../../ui/buttons.js'
 import { computed } from 'vue'
 import { ArrowPathIcon, BellAlertIcon, ChartBarSquareIcon, ClockIcon, Cog6ToothIcon, HomeIcon, InboxArrowDownIcon, InformationCircleIcon, SignalIcon } from '@heroicons/vue/24/outline'
 
@@ -65,7 +66,7 @@ const deliveryRows = computed(() => [
         <h1 class="mt-1 text-2xl font-bold tracking-tight text-ink sm:text-3xl">Automatizaciones</h1>
         <p class="mt-2 max-w-3xl text-sm leading-6 text-ink-muted">Qué está configurado, qué evidencia existe y qué necesita atención, sin ejecutar ni enviar nada desde esta pantalla.</p>
       </div>
-      <a v-if="portalUrl" :href="portalUrl" class="inline-flex min-h-11 items-center justify-center gap-2 self-start rounded-lg border border-border-strong bg-surface-raised px-4 py-2.5 text-sm font-semibold text-ink hover:bg-surface-muted sm:self-auto">
+      <a v-if="portalUrl" :href="portalUrl" :class="[secondaryButton, 'self-start sm:self-auto']">
         <HomeIcon class="size-5" aria-hidden="true" />Volver al inicio
       </a>
     </header>
@@ -84,7 +85,7 @@ const deliveryRows = computed(() => [
       </div>
 
       <div v-if="processes.length" class="grid gap-4 lg:grid-cols-2">
-        <article v-for="process in processes" :key="process.key" class="rounded-xl border border-border bg-surface-raised p-5">
+        <article v-for="process in processes" :key="process.key" class="rounded-card bg-surface-raised p-5 shadow-card">
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
               <h3 class="text-base font-bold text-ink">{{ process.label }}</h3>
@@ -117,14 +118,14 @@ const deliveryRows = computed(() => [
           <p class="mt-4 rounded-lg px-3 py-2 text-sm font-medium" :class="Number(process.failed) > 0 ? 'bg-danger-subtle text-danger-strong' : (Number(process.pending) > 0 ? 'bg-warning-subtle text-warning-strong' : 'bg-surface-muted text-ink-muted')">{{ actionMessage(process) }}</p>
         </article>
       </div>
-      <p v-else role="status" class="rounded-xl border border-border bg-surface-raised px-5 py-10 text-center text-sm text-ink-muted">No hay evidencia de automatizaciones para tu alcance.</p>
+      <p v-else role="status" class="rounded-card bg-surface-raised px-5 py-10 text-center text-sm text-ink-muted shadow-card">No hay evidencia de automatizaciones para tu alcance.</p>
     </section>
 
     <section aria-labelledby="deliveries-title" class="mt-8">
       <h2 id="deliveries-title" class="text-lg font-bold text-ink">Entregas por canal</h2>
       <p class="mt-1 text-sm text-ink-muted">Conteos agregados de las entregas registradas en tu empresa y sucursales autorizadas.</p>
       <div class="mt-3 grid gap-4 sm:grid-cols-3">
-        <article v-for="row in deliveryRows" :key="row.key" class="rounded-xl border border-border bg-surface-raised p-5">
+        <article v-for="row in deliveryRows" :key="row.key" class="rounded-card bg-surface-raised p-5 shadow-card">
           <div class="flex items-center gap-2"><component :is="row.icon" class="size-5 text-primary" aria-hidden="true" /><h3 class="text-base font-bold text-ink">{{ row.label }}</h3></div>
           <dl class="mt-4 space-y-2 text-sm">
             <div class="flex items-center justify-between gap-3"><dt class="text-ink-muted">Pendientes</dt><dd class="font-semibold text-warning-strong">{{ number.format(Number(row.data.pending) || 0) }}</dd></div>
@@ -136,7 +137,7 @@ const deliveryRows = computed(() => [
       </div>
     </section>
 
-    <section aria-labelledby="limitations-title" class="mt-8 rounded-xl border border-border bg-surface-raised p-5 sm:p-6">
+    <section aria-labelledby="limitations-title" class="mt-8 rounded-card bg-surface-raised p-5 sm:p-6 shadow-card">
       <h2 id="limitations-title" class="flex items-center gap-2 text-lg font-bold text-ink"><ChartBarSquareIcon class="size-5 text-primary" aria-hidden="true" />Alcance de esta evidencia</h2>
       <ul class="mt-3 list-disc space-y-1 pl-5 text-sm leading-6 text-ink-muted">
         <li v-for="limitation in limitations" :key="limitation">{{ limitation }}</li>

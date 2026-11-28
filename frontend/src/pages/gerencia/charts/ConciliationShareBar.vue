@@ -26,7 +26,7 @@ const activo = ref(null)
 </script>
 
 <template>
-  <article id="fleet-board-fuel-chart" class="rounded-xl border border-border bg-surface-raised p-5 sm:p-6">
+  <article id="fleet-board-fuel-chart" class="rounded-card bg-surface-raised p-5 sm:p-6 shadow-card">
     <h3 class="text-base font-bold text-ink">Resultado de la conciliación</h3>
     <p class="mt-1 text-sm leading-6 text-ink-muted">Viajes del período según lo que pudo comparar la telemetría.</p>
 
@@ -40,7 +40,7 @@ const activo = ref(null)
           :style="{ width: `${segmento.ancho}%` }"
           @mouseenter="activo = segmento"
         ></div>
-        <div v-if="activo" role="tooltip" class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-border bg-surface-raised px-3 py-2 text-xs text-ink shadow-card">
+        <div v-if="activo" role="tooltip" class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 whitespace-nowrap rounded-card bg-surface-raised px-3 py-2 text-xs text-ink shadow-card">
           {{ activo.etiqueta }}: {{ activo.cantidad }} de {{ total }} viajes
         </div>
       </div>

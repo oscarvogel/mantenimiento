@@ -10,15 +10,17 @@ defineProps({
 </script>
 
 <template>
-  <header class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-    <div>
-      <a v-if="back" :href="back.href" class="mb-3 inline-flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary-hover">
+  <header class="mb-6 flex flex-wrap items-end justify-between gap-x-8 gap-y-4 sm:mb-7">
+    <div class="min-w-0">
+      <a v-if="back" :href="back.href" class="mb-2 inline-flex min-h-11 items-center gap-1 rounded-md text-sm font-semibold text-primary hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus">
         <ArrowLeftIcon class="size-4" aria-hidden="true" />{{ back.label }}
       </a>
-      <p class="text-[0.6875rem] font-bold uppercase tracking-[0.08em] text-primary">{{ eyebrow }}</p>
-      <h1 class="mt-1 text-2xl font-bold tracking-tight text-ink sm:text-3xl">{{ title }}</h1>
-      <p class="mt-2 max-w-3xl text-sm leading-6 text-ink-muted">{{ description }}</p>
+      <p v-if="eyebrow" class="mb-1 text-sm font-semibold text-primary">{{ eyebrow }}</p>
+      <h1 class="break-words text-3xl font-bold tracking-tight text-ink sm:text-4xl">{{ title }}</h1>
+      <p v-if="description" class="mt-1.5 max-w-prose text-sm leading-6 text-ink-muted">{{ description }}</p>
+      <!-- Fichas: estado y datos cortos de la entidad, junto al título (patrón Ficha). -->
+      <div v-if="$slots.meta" class="mt-2 flex flex-wrap items-center gap-2"><slot name="meta" /></div>
     </div>
-    <slot name="actions"></slot>
+    <div v-if="$slots.actions" class="flex w-full flex-wrap items-center gap-2 sm:w-auto"><slot name="actions" /></div>
   </header>
 </template>

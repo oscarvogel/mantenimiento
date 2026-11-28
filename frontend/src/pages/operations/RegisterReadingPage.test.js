@@ -92,6 +92,7 @@ describe('RegisterReadingPage', () => {
   it('conserva la carga masiva existente mediante modo=masivo', () => {
     window.history.replaceState({}, '', '/mantenimiento/lecturas/rapidas?modo=masivo')
     const wrapper = mount(RegisterReadingPage, { props: { data: data() } })
-    expect(wrapper.text()).toContain('Lecturas rápidas')
+    expect(wrapper.get('h1').text()).toBe('Registrar km/horas')
+    expect(wrapper.get('[data-quick-search]').attributes('type')).toBe('search')
   })
 })

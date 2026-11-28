@@ -1,62 +1,56 @@
-<!doctype html>
-<html lang="<?= esc(strtolower($locale ?? 'ES')) ?>">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title><?= esc($labels['title'] ?? 'Registrar lectura') ?></title>
-    <style>
-        body{font-family:system-ui,-apple-system,sans-serif;background:#f5f6f8;margin:0;color:#1f2937}
-        main{max-width:520px;margin:0 auto;padding:24px 16px}
-        .card{background:#fff;border-radius:18px;padding:22px;box-shadow:0 8px 28px rgba(0,0,0,.08)}
-        h1{font-size:1.5rem;margin:0 0 6px}.muted{color:#6b7280;margin:0 0 18px}
-        label{display:block;font-weight:600;margin:16px 0 6px}
-        input,textarea{box-sizing:border-box;width:100%;font-size:1.15rem;padding:13px;border:1px solid #cbd5e1;border-radius:10px}\n        input[type=file]{font-size:1rem;background:#f8fafc}
-        button{width:100%;margin-top:20px;padding:15px;border:0;border-radius:11px;font-size:1.1rem;font-weight:700;cursor:pointer}
-        .msg{padding:12px;border-radius:10px;margin:12px 0}.ok{background:#dcfce7}.err{background:#fee2e2}
-        .reading{font-size:.95rem;background:#f8fafc;padding:12px;border-radius:10px}
-        .help{font-size:.9rem;color:#64748b;margin:6px 0 0;line-height:1.4}
-        .done{text-align:center;padding:18px 8px 6px}.done h2{margin:0 0 8px;font-size:1.35rem;color:#166534}.done p{margin:0;color:#475569;line-height:1.5}
-        button[disabled]{opacity:.65;cursor:wait}.ai-status{margin-top:10px;padding:10px 12px;border-radius:10px;background:#eef2ff;color:#3730a3;font-size:.9rem;line-height:1.4}.ai-status.error{background:#fff7ed;color:#9a3412}.evidence-ready{margin-top:10px;padding:10px 12px;border-radius:10px;background:#ecfdf5;color:#166534;font-weight:600}.evidence-preview{display:block;max-width:100%;max-height:220px;margin-top:10px;border-radius:10px;object-fit:contain;background:#f8fafc}
-    </style>
-</head>
-<body>
-<main>
-    <section class="card">
-        <h1><?= esc($equipment['codigo']) ?></h1>
-        <p class="muted"><?= esc($equipment['patente'] ?? $equipment['tipo_nombre']) ?></p>
+<?php
+// Página que abre el chofer al escanear el QR del equipo, sin sesión. HTML del servidor con la
+// hoja de estilos de la app (partials/public_page_head.php); el JS del flujo de la foto es propio.
+// Las clases se repiten a mano: Tailwind las encuentra porque frontend/tailwind.config.js lee esta carpeta.
+// La píldora va solo en los campos de una línea; el área de texto usa rounded-2xl.
+$fieldClass = 'min-h-12 w-full [&:not(textarea)]:rounded-pill border border-transparent bg-surface-muted px-4 py-2 text-lg text-ink placeholder:text-ink-subtle focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/15 aria-[invalid=true]:border-danger';
+$fileClass  = 'w-full rounded-2xl bg-surface-muted p-2 text-sm text-ink file:mr-3 file:rounded-pill file:border-0 file:bg-action file:px-4 file:py-2 file:text-sm file:font-semibold file:text-action-foreground';
+$labelClass = 'mb-1.5 mt-6 block text-sm font-semibold text-ink';
+$helpClass  = 'mt-1.5 text-sm leading-snug text-ink-muted';
+?>
+<?= view('partials/public_page_head', ['locale' => $locale ?? 'ES', 'title' => $labels['title'] ?? 'Registrar lectura']) ?>
+<style>
+    /* El JS del flujo de la foto marca los problemas con la clase "error". */
+    .ai-status.error { background: rgb(var(--warning-subtle)); color: rgb(var(--warning-foreground)); }
+</style>
+<main class="mx-auto max-w-lg px-4 py-6">
+    <section class="rounded-card bg-surface-raised p-5 shadow-card sm:p-6">
+        <p class="text-xs font-bold uppercase tracking-wide text-primary"><?= esc($labels['title'] ?? 'Registrar lectura') ?></p>
+        <h1 class="mt-1 text-2xl font-bold text-ink-strong"><?= esc($equipment['codigo']) ?></h1>
+        <p class="mt-0.5 text-sm text-ink-muted"><?= esc($equipment['patente'] ?? $equipment['tipo_nombre']) ?></p>
 
-        <?php if ($success): ?><div class="msg ok"><?= esc($success) ?></div><?php endif ?>
-        <?php if ($error): ?><div class="msg err"><?= esc($error) ?></div><?php endif ?>
+        <?php if ($success): ?><div class="mt-4 rounded-2xl bg-success-subtle px-4 py-3 text-sm font-medium text-success-strong" role="status"><?= esc($success) ?></div><?php endif ?>
+        <?php if ($error): ?><div class="mt-4 rounded-2xl bg-danger-subtle px-4 py-3 text-sm font-medium text-danger-strong" role="alert"><?= esc($error) ?></div><?php endif ?>
 
-        <div class="reading">
+        <div class="mt-4 space-y-1 rounded-2xl bg-surface-muted px-4 py-3 text-sm text-ink">
             <?php if ($equipment['km_actual'] !== null): ?>
-                <?= esc($labels['last_km'] ?? 'Último kilometraje') ?>: <strong><?= number_format((int) $equipment['km_actual'], 0, ',', '.') ?> km</strong><br>
+                <div><?= esc($labels['last_km'] ?? 'Último kilometraje') ?>: <strong class="tabular-nums"><?= number_format((int) $equipment['km_actual'], 0, ',', '.') ?> km</strong></div>
             <?php endif ?>
             <?php if ($equipment['horas_actuales'] !== null): ?>
-                <?= esc($labels['last_hours'] ?? 'Último horómetro') ?>: <strong><?= esc($equipment['horas_actuales']) ?> h</strong>
+                <div><?= esc($labels['last_hours'] ?? 'Último horómetro') ?>: <strong class="tabular-nums"><?= esc($equipment['horas_actuales']) ?> h</strong></div>
             <?php endif ?>
         </div>
 
         <?php if (! empty($registered)): ?>
-            <div class="done" role="status">
-                <h2><?= esc($labels['registered_title'] ?? 'Lectura registrada') ?></h2>
-                <p><?= esc($labels['registered_help'] ?? 'La lectura quedó guardada correctamente. Ya podés cerrar esta ventana.') ?></p>
+            <div class="pt-6 text-center" role="status">
+                <h2 class="text-xl font-bold text-success-strong"><?= esc($labels['registered_title'] ?? 'Lectura registrada') ?></h2>
+                <p class="mt-2 text-sm leading-relaxed text-ink-muted"><?= esc($labels['registered_help'] ?? 'La lectura quedó guardada correctamente. Ya podés cerrar esta ventana.') ?></p>
                 <?php if (! empty($readingReceipt)): ?>
-                    <div class="reading" style="margin-top:14px;text-align:left">
+                    <div class="mt-4 space-y-1 rounded-2xl bg-surface-muted px-4 py-3 text-left text-sm text-ink">
                         <?php if (($readingReceipt['kilometers'] ?? null) !== null): ?>
                             <div><?= esc($labels['receipt_km'] ?? 'Kilometraje registrado') ?>:
-                                <strong><?= number_format((int) $readingReceipt['kilometers'], 0, ',', '.') ?> km</strong>
+                                <strong class="tabular-nums"><?= number_format((int) $readingReceipt['kilometers'], 0, ',', '.') ?> km</strong>
                             </div>
                         <?php endif ?>
                         <?php if (($readingReceipt['hours'] ?? null) !== null): ?>
                             <div><?= esc($labels['receipt_hours'] ?? 'Horómetro registrado') ?>:
-                                <strong><?= number_format((float) $readingReceipt['hours'], 1, ',', '.') ?> h</strong>
+                                <strong class="tabular-nums"><?= number_format((float) $readingReceipt['hours'], 1, ',', '.') ?> h</strong>
                             </div>
                         <?php endif ?>
                         <div><?= esc($labels['receipt_code'] ?? 'Comprobante') ?>:
                             <strong><?= esc($readingReceipt['code'] ?? '') ?></strong>
                         </div>
-                        <p class="help"><?= esc($labels['receipt_help'] ?? 'Guardá este comprobante.') ?></p>
+                        <p class="<?= $helpClass ?>"><?= esc($labels['receipt_help'] ?? 'Guardá este comprobante.') ?></p>
                     </div>
                 <?php endif ?>
             </div>
@@ -65,37 +59,38 @@
             <?= csrf_field() ?>
             <input type="hidden" name="request_key" value="<?= esc($requestKey) ?>">
             <input type="hidden" id="evidence_ref" name="evidence_ref" value="<?= esc(old('evidence_ref')) ?>">
-            <label for="evidence_photo"><?= esc($labels['photo'] ?? 'Foto obligatoria del tablero') ?></label>
-            <input id="evidence_photo" name="evidence_photo" type="file" accept="image/jpeg,image/png" capture="environment" required>
-            <p class="help"><?= esc($labels['photo_help'] ?? 'Sacá una foto nítida donde se vea el odómetro. La foto quedará guardada como evidencia.') ?></p>
-            <div id="evidence-ready" class="evidence-ready" hidden>Foto guardada como evidencia ✓</div>
-            <img id="evidence-preview" class="evidence-preview" hidden alt="Vista previa de la evidencia">
-            <div id="ai-status" class="ai-status" hidden role="status" aria-live="polite"></div>
+            <label for="evidence_photo" class="<?= $labelClass ?>"><?= esc($labels['photo'] ?? 'Foto obligatoria del tablero') ?></label>
+            <input id="evidence_photo" name="evidence_photo" type="file" accept="image/jpeg,image/png" capture="environment" required class="<?= $fileClass ?>">
+            <p class="<?= $helpClass ?>"><?= esc($labels['photo_help'] ?? 'Sacá una foto nítida donde se vea el odómetro. La foto quedará guardada como evidencia.') ?></p>
+            <!-- Sin clases de display: le ganarían al atributo hidden que maneja el JS. -->
+            <div id="evidence-ready" class="mt-3 rounded-2xl bg-success-subtle px-4 py-3 text-sm font-semibold text-success-strong" hidden><?= esc($labels['evidence_ready'] ?? 'Foto guardada como evidencia ✓') ?></div>
+            <img id="evidence-preview" class="mt-3 max-h-56 w-full rounded-2xl bg-surface-muted object-contain" hidden alt="<?= esc($labels['evidence_preview_alt'] ?? 'Vista previa de la evidencia', 'attr') ?>">
+            <div id="ai-status" class="ai-status mt-3 rounded-2xl bg-info-subtle px-4 py-3 text-sm leading-snug text-info-strong" hidden role="status" aria-live="polite"></div>
 
             <?php if ((int) $equipment['controla_km'] === 1): ?>
-                <label for="kilometers"><?= esc($labels['current_km'] ?? 'Kilómetros actuales') ?></label>
+                <label for="kilometers" class="<?= $labelClass ?>"><?= esc($labels['current_km'] ?? 'Kilómetros actuales') ?></label>
                 <input id="kilometers" name="kilometers" type="number" inputmode="numeric" min="0"
-                       value="<?= esc(old('kilometers')) ?>" required autofocus>
-                <p class="help"><?= esc($labels['current_km_help'] ?? 'Ejemplo: si el tablero muestra 494497, escribí 494497.') ?></p>
+                       value="<?= esc(old('kilometers')) ?>" required autofocus class="<?= $fieldClass ?> tabular-nums">
+                <p class="<?= $helpClass ?>"><?= esc($labels['current_km_help'] ?? 'Ejemplo: si el tablero muestra 494497, escribí 494497.') ?></p>
             <?php endif ?>
 
             <?php if ((int) $equipment['controla_horas'] === 1): ?>
-                <label for="hours"><?= esc($labels['current_hours'] ?? 'Horas actuales') ?></label>
+                <label for="hours" class="<?= $labelClass ?>"><?= esc($labels['current_hours'] ?? 'Horas actuales') ?></label>
                 <input id="hours" name="hours" type="number" inputmode="decimal" min="0" step="0.1"
-                       value="<?= esc(old('hours')) ?>" required>
+                       value="<?= esc(old('hours')) ?>" required class="<?= $fieldClass ?> tabular-nums">
             <?php endif ?>
 
-            <label for="notes"><?= esc($labels['notes'] ?? 'Observación (opcional)') ?></label>
-            <textarea id="notes" name="notes" rows="3" maxlength="500"><?= esc(old('notes')) ?></textarea>
+            <label for="notes" class="<?= $labelClass ?>"><?= esc($labels['notes'] ?? 'Observación (opcional)') ?></label>
+            <textarea id="notes" name="notes" rows="3" maxlength="500" class="<?= $fieldClass ?> rounded-2xl py-3 text-base"><?= esc(old('notes')) ?></textarea>
 
             <?php if ($largeJump): ?>
-                <label style="font-weight:500">
-                    <input type="checkbox" name="confirm_large_jump" value="1" required style="width:auto">
+                <label class="mt-5 flex items-start gap-3 rounded-2xl bg-warning-subtle px-4 py-3 text-sm font-medium text-warning-foreground">
+                    <input type="checkbox" name="confirm_large_jump" value="1" required class="mt-0.5 size-5 shrink-0">
                     <?= esc($labels['confirm_jump'] ?? 'Confirmo que revisé el valor y es correcto.') ?>
                 </label>
             <?php endif ?>
 
-            <button type="submit" id="reading-submit" data-saving-label="<?= esc($labels['saving'] ?? 'Guardando...') ?>"><?= esc($labels['submit'] ?? 'Registrar lectura') ?></button>
+            <button type="submit" id="reading-submit" class="ui-interactive mt-7 inline-flex min-h-12 w-full items-center justify-center rounded-pill bg-action px-5 py-3 text-base font-semibold text-action-foreground hover:bg-action/90 active:bg-action/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60" data-saving-label="<?= esc($labels['saving'] ?? 'Guardando...') ?>"><?= esc($labels['submit'] ?? 'Registrar lectura') ?></button>
         </form>
         <script>
         (() => {
@@ -110,6 +105,9 @@
             const evidencePreview = document.getElementById('evidence-preview');
             if (!form || !submit || !photo) return;
 
+            // Textos del flujo en el idioma de la sucursal (labels() del controlador).
+            const text = <?= json_encode($labels, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+            const fill = (template, values) => template.replace(/\{(\w+)\}/g, (_, key) => values[key] ?? '');
             const analysisUrl = <?= json_encode(base_url('mantenimiento/publico/equipo/' . rawurlencode($token) . '/lectura/analizar'), JSON_UNESCAPED_SLASHES) ?>;
             let evidenceReady = Boolean(evidenceRef && evidenceRef.value);
 
@@ -128,7 +126,7 @@
                 evidenceReadyBox.hidden = false;
                 status.hidden = false;
                 status.classList.remove('error');
-                status.textContent = 'La foto ya quedó guardada. Podés registrar la lectura sin volver a seleccionarla.';
+                status.textContent = text.evidence_kept;
             }
 
             async function optimizePhoto(file) {
@@ -173,10 +171,10 @@
 
                 status.hidden = false;
                 status.classList.remove('error');
-                status.textContent = 'Preparando foto...';
+                status.textContent = text.preparing;
 
                 const uploadFile = await optimizePhoto(file);
-                status.textContent = <?= json_encode($labels['analyzing'] ?? 'Analizando foto...') ?>;
+                status.textContent = text.analyzing;
 
                 const data = new FormData();
                 data.append('evidence_photo', uploadFile, uploadFile.name || 'odometro.jpg');
@@ -198,7 +196,7 @@
                     }
 
                     if (!response.ok || !payload.ok) {
-                        throw new Error(payload.error || 'No pudimos procesar la foto.');
+                        throw new Error(payload.error || text.photo_failed);
                     }
 
                     if (payload.evidenceValid === false && payload.evidenceError) {
@@ -233,9 +231,9 @@
 
                     if (!payload.legible || payload.kilometers == null) {
                         status.classList.add('error');
-                        status.textContent = payload.analysisError || 'No pudimos leer automáticamente el odómetro. Podés escribir el valor manualmente.';
+                        status.textContent = payload.analysisError || text.not_readable;
                         if (!payload.evidenceRef) {
-                            status.textContent += ' La foto se enviará al registrar la lectura.';
+                            status.textContent += ' ' + text.photo_sent_on_submit;
                         }
                         return;
                     }
@@ -245,10 +243,10 @@
                         km.focus();
                         km.select();
                     }
-                    const confidence = payload.confidence == null ? '' : ' · confianza ' + Math.round(payload.confidence * 100) + '%';
-                    status.textContent = 'IA detectó ' + Number(payload.kilometers).toLocaleString('es-AR') + ' km' + confidence + '. Revisá el valor y corregilo si hace falta.';
+                    const confidence = payload.confidence == null ? '' : fill(text.ai_confidence, { percent: Math.round(payload.confidence * 100) });
+                    status.textContent = fill(text.ai_detected, { km: Number(payload.kilometers).toLocaleString(text.number_locale), confidence });
                     if (!payload.evidenceRef) {
-                        status.textContent += ' La foto se guardará junto con la lectura al registrar.';
+                        status.textContent += ' ' + text.photo_saved_on_submit;
                     }
                 } catch (error) {
                     evidenceReady = false;
@@ -256,7 +254,7 @@
                     photo.required = true;
                     setSubmitAvailable(false);
                     status.classList.add('error');
-                    status.textContent = (error && error.message ? error.message : 'No pudimos procesar la foto.') + ' Volvé a seleccionar o tomar una foto antes de registrar.';
+                    status.textContent = (error && error.message ? error.message : text.photo_failed) + ' ' + text.retake_before_submit;
                 }
             }
 
@@ -268,7 +266,7 @@
                     event.preventDefault();
                     status.hidden = false;
                     status.classList.add('error');
-                    status.textContent = 'Seleccioná o sacá una foto antes de registrar.';
+                    status.textContent = text.photo_required_submit;
                     return;
                 }
 

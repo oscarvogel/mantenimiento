@@ -223,9 +223,12 @@ final class ReadingControlReadOnlyContractTest extends TestCase
     public function testSidebarKeepsReadingControlPrimaryAndNestsConsumptionUnderTelemetry(): void
     {
         $sidebar = (string) file_get_contents(ROOTPATH . 'frontend/src/components/AppSidebar.vue');
+        $groups = (string) file_get_contents(ROOTPATH . 'frontend/src/ui/navigationGroups.js');
 
-        self::assertStringContainsString("'reading-control'", $sidebar);
-        self::assertStringContainsString("const primaryKeys = ['dashboard', 'trips-operations-dashboard', 'trips-dashboard', 'trips-operations', 'trips-profitability', 'trip-masters', 'equipment', 'fleet-telemetry', 'reading-control'", $sidebar);
+        // Since the UI step 5 the sidebar is grouped: reading control sits in "Operación",
+        // a section that never collapses, so it stays visible at first level.
+        self::assertMatchesRegularExpression("/title: 'Operación',\\s*keys: \\[[^\\]]*'reading-control'/", $groups);
+        self::assertStringNotContainsString('collapsible', (string) strstr(strstr($groups, "title: 'Operación'"), "title: 'Flota'", true));
         self::assertStringContainsString("v-if=\"item.key === 'fleet-telemetry' && fleetConsumption\"", $sidebar);
     }
 }

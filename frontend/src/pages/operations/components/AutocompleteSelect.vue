@@ -236,7 +236,7 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onClickOutside))
       <input v-for="value in selectedValues" :key="`hidden-${value}`" type="hidden" :name="name" :value="value" />
     </template>
 
-    <ul v-if="open" class="absolute z-50 mt-1 max-h-64 w-full overflow-auto rounded-lg border border-border bg-surface-raised py-1 shadow-xl" role="listbox">
+    <ul v-if="open" class="absolute z-50 mt-1 max-h-64 w-full overflow-auto rounded-card bg-surface-raised py-1 shadow-xl" role="listbox">
       <li v-if="searching" class="px-3 py-2 text-sm text-ink-muted">Buscando localidades…</li>
       <li v-else-if="props.searchUrl && query.trim().length < 2" class="px-3 py-2 text-sm text-ink-muted">Escribí al menos dos letras para buscar.</li>
       <li v-else-if="filtered.length === 0" class="px-3 py-2 text-sm text-ink-muted">{{ emptyLabel }}</li>

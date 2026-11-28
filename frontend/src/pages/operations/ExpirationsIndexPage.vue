@@ -12,6 +12,7 @@ import PageHeading from './components/PageHeading.vue'
 import PanelCard from './components/PanelCard.vue'
 import StatusBadge from './components/StatusBadge.vue'
 import EditExpirationModal from './components/EditExpirationModal.vue'
+import FilterChip from '../../components/ui/FilterChip.vue'
 import RenewExpirationModal from './components/RenewExpirationModal.vue'
 import { fieldClass, formatDateDmy, primaryButton, secondaryButton } from './helpers.js'
 
@@ -24,6 +25,25 @@ const data = computed(() => ({
   summary: props.data.summary ?? { total: 0, overdue: 0, next7: 0, next30: 0 },
   filters: props.data.filters ?? { subject: 'TODOS', status: 'todos', branchId: '', expirationTypeId: '', q: '' },
 }))
+
+// Píldoras por estado: conservan sujeto, documentación, sucursal y búsqueda.
+const statusChips = computed(() => {
+  const { filters, summary, routes } = data.value
+  const href = (status) => {
+    const query = new URLSearchParams()
+    if (filters.q) query.set('q', filters.q)
+    if (filters.subject && filters.subject !== 'TODOS') query.set('tipo', filters.subject)
+    if (filters.expirationTypeId) query.set('tipo_vencimiento_id', filters.expirationTypeId)
+    if (filters.branchId) query.set('sucursal_id', filters.branchId)
+    if (status !== 'todos') query.set('estado', status)
+    const text = query.toString()
+    return text ? `${routes.index}?${text}` : routes.index
+  }
+  return [
+    ['Todos', 'todos', summary.total], ['Vencidos', 'vencidos', summary.overdue],
+    ['Próximos 7 días', '7', summary.next7], ['Próximos 30 días', '30', summary.next30],
+  ].map(([label, status, count]) => ({ label, count, href: href(status), active: (filters.status || 'todos') === status }))
+})
 
 const daysLabel = (days) => {
   const value = Number(days)
@@ -75,24 +95,9 @@ const closeEdit = () => {
       </template>
     </PageHeading>
 
-    <section class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Resumen de vencimientos">
-      <div class="rounded-xl border border-border bg-surface-raised p-5">
-        <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Mostrados</p>
-        <p class="mt-2 text-3xl font-bold text-ink">{{ data.summary.total }}</p>
-      </div>
-      <div class="rounded-xl border border-danger/20 bg-danger-subtle p-5">
-        <p class="text-xs font-semibold uppercase tracking-wide text-danger-strong">Vencidos</p>
-        <p class="mt-2 text-3xl font-bold text-danger-strong">{{ data.summary.overdue }}</p>
-      </div>
-      <div class="rounded-xl border border-warning/25 bg-warning-subtle p-5">
-        <p class="text-xs font-semibold uppercase tracking-wide text-warning-foreground">Próximos 7 días</p>
-        <p class="mt-2 text-3xl font-bold text-warning-foreground">{{ data.summary.next7 }}</p>
-      </div>
-      <div class="rounded-xl border border-border bg-surface-raised p-5">
-        <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Próximos 30 días</p>
-        <p class="mt-2 text-3xl font-bold text-ink">{{ data.summary.next30 }}</p>
-      </div>
-    </section>
+    <nav aria-label="Vencimientos por estado" class="-mx-1 mb-4 flex gap-2 overflow-x-auto px-1 pb-2 pt-1 [scrollbar-width:none]">
+      <FilterChip v-for="chip in statusChips" :key="chip.label" :label="chip.label" :count="chip.count" :href="chip.href" :active="chip.active" />
+    </nav>
 
     <PanelCard title="Filtrar vencimientos" class="mb-6">
       <form method="get" :action="data.routes.index" class="grid gap-3 lg:grid-cols-[minmax(15rem,1fr)_10rem_13rem_11rem_13rem_auto] lg:items-end">
@@ -169,8 +174,8 @@ const closeEdit = () => {
 
       <template v-else>
         <div class="hidden overflow-x-auto md:block">
-          <table class="w-full min-w-[64rem] text-left text-sm">
-            <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
+          <table class="ui-table w-full min-w-[64rem] text-left text-sm">
+            <thead class="text-xs font-semibold text-ink-subtle">
               <tr>
                 <th class="px-5 py-3">Sujeto</th>
                 <th class="px-5 py-3">Vencimiento</th>
@@ -182,7 +187,7 @@ const closeEdit = () => {
               </tr>
             </thead>
             <tbody class="divide-y divide-border-subtle">
-              <tr v-for="item in data.items" :key="item.id" class="hover:bg-brand-50/50">
+              <tr v-for="item in data.items" :key="item.id" class="hover:bg-secondary-100/50">
                 <td class="px-5 py-4">
                   <div class="font-semibold text-ink">{{ item.subjectName }}</div>
                   <div class="mt-1 text-xs text-ink-muted">{{ item.subjectType === 'EQUIPO' ? 'Equipo / móvil' : 'Empleado / chofer' }}</div>

@@ -1,5 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue'
+import { fieldClass, primaryButton, secondaryButton } from '../../ui/buttons.js'
+import PageHeading from './components/PageHeading.vue'
 
 const props = defineProps({ data: { type: Object, required: true } })
 
@@ -131,10 +133,8 @@ const catalogItems = computed(() => {
 })
 const actionForForm = computed(() => editing.value?.updateUrl ?? props.data.urls.create)
 
-const buttonClass = 'inline-flex min-h-10 items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2'
-const primaryButton = `${buttonClass} bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50`
-const secondaryButton = `${buttonClass} border border-border bg-surface-raised text-ink hover:bg-surface-muted`
-const inputClass = 'mt-1 block min-h-11 w-full rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm text-ink focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20'
+// Botones y campos compartidos (frontend/src/ui/buttons.js); antes esta pantalla tenía los suyos.
+const inputClass = `mt-1 ${fieldClass}`
 
 function catalogItemTitle(catalogKey, item) {
   if (catalogKey === 'liquidaciones') {
@@ -202,23 +202,17 @@ function statusMessage(item) {
 
 <template>
   <div class="mx-auto w-full max-w-[90rem] space-y-6 p-4 sm:p-6 lg:p-8">
-    <header class="space-y-2">
-      <div class="space-y-2">
-        <p class="text-xs font-bold uppercase tracking-[0.16em] text-primary">Viajes · Configuración</p>
-        <h1 class="text-2xl font-bold tracking-tight text-ink sm:text-3xl">Maestros de viajes</h1>
-        <p class="max-w-3xl text-sm leading-6 text-ink-muted">Administrá los datos que se reutilizan al planificar y cerrar viajes. Los registros inactivos se conservan en el historial.</p>
-      </div>
-    </header>
+    <PageHeading eyebrow="Viajes · Configuración" title="Maestros de viajes" description="Administrá los datos que se reutilizan al planificar y cerrar viajes. Los registros inactivos se conservan en el historial." />
 
-    <div v-if="props.data.flash?.success" class="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-900" role="status">{{ props.data.flash.success }}</div>
-    <div v-if="props.data.flash?.error" class="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm font-medium text-red-900" role="alert">{{ props.data.flash.error }}</div>
+    <div v-if="props.data.flash?.success" class="rounded-2xl bg-success-subtle px-4 py-3 text-sm font-medium text-success-strong" role="status">{{ props.data.flash.success }}</div>
+    <div v-if="props.data.flash?.error" class="rounded-2xl bg-danger-subtle px-4 py-3 text-sm font-medium text-danger-strong" role="alert">{{ props.data.flash.error }}</div>
 
     <nav class="space-y-3" aria-label="Catálogos de la empresa">
       <div>
         <h2 class="text-sm font-semibold text-ink">Catálogos de la empresa</h2>
         <p class="mt-1 text-sm text-ink-muted">Elegí qué información querés administrar.</p>
       </div>
-      <div class="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Maestros de viajes">
+      <div class="ui-tabs" role="tablist" aria-label="Maestros de viajes">
         <button
           v-for="key in catalogKeys"
           :key="key"
@@ -234,7 +228,7 @@ function statusMessage(item) {
     </nav>
 
     <section v-if="selected === 'clientes'" class="grid min-w-0 gap-4 lg:grid-cols-[minmax(17rem,0.36fr)_minmax(0,0.64fr)]">
-      <aside class="min-w-0 overflow-hidden rounded-2xl border border-border bg-surface-raised">
+      <aside class="min-w-0 overflow-hidden rounded-card bg-surface-raised shadow-card">
         <div class="space-y-4 border-b border-border-subtle p-4 sm:p-5">
           <div class="flex items-start justify-between gap-3">
             <div>
@@ -245,11 +239,11 @@ function statusMessage(item) {
           </div>
           <label class="block">
             <span class="sr-only">Buscar clientes</span>
-            <input v-model="customerQuery" type="search" class="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="Buscar por nombre, CUIT o contacto">
+            <input v-model="customerQuery" type="search" class="w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="Buscar por nombre, CUIT o contacto">
           </label>
           <label class="block">
             <span class="sr-only">Filtrar clientes por estado</span>
-            <select v-model="customerStatus" class="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-ink focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20">
+            <select v-model="customerStatus" class="w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2.5 text-sm text-ink focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20">
               <option value="all">Todos los estados</option>
               <option value="active">Activos</option>
               <option value="inactive">Inactivos</option>
@@ -270,7 +264,7 @@ function statusMessage(item) {
                 <span class="block truncate text-sm font-semibold text-ink">{{ customer.nombre }}</span>
                 <span class="mt-1 block truncate text-xs text-ink-muted">{{ customer.identificacion_fiscal || 'Sin CUIT informado' }}</span>
               </span>
-              <span class="shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold" :class="Number(customer.activo) === 1 ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700'">
+              <span class="shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold" :class="Number(customer.activo) === 1 ? 'bg-emerald-100 text-emerald-800' : 'bg-surface-muted text-ink'">
                 {{ Number(customer.activo) === 1 ? 'Activo' : 'Inactivo' }}
               </span>
             </button>
@@ -282,12 +276,12 @@ function statusMessage(item) {
         </div>
       </aside>
 
-      <section v-if="selectedCustomer" class="min-w-0 space-y-5 rounded-2xl border border-border bg-surface-raised p-4 sm:p-6" aria-labelledby="customer-title">
-        <header class="flex flex-col gap-4 border-b border-border-subtle pb-5 sm:flex-row sm:items-start sm:justify-between">
+      <section v-if="selectedCustomer" class="min-w-0 space-y-5 rounded-card bg-surface-raised p-4 sm:p-6 shadow-card" aria-labelledby="customer-title">
+        <header class="flex flex-col gap-4 pb-1 sm:flex-row sm:items-start sm:justify-between">
           <div class="min-w-0">
             <div class="flex flex-wrap items-center gap-3">
               <h2 id="customer-title" class="text-xl font-bold tracking-tight text-ink">{{ selectedCustomer.nombre }}</h2>
-              <span class="rounded-full px-2.5 py-1 text-xs font-semibold" :class="Number(selectedCustomer.activo) === 1 ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700'">
+              <span class="rounded-full px-2.5 py-1 text-xs font-semibold" :class="Number(selectedCustomer.activo) === 1 ? 'bg-emerald-100 text-emerald-800' : 'bg-surface-muted text-ink'">
                 {{ Number(selectedCustomer.activo) === 1 ? 'Activo' : 'Inactivo' }}
               </span>
             </div>
@@ -335,7 +329,7 @@ function statusMessage(item) {
           </div>
 
           <div v-if="customerDomiciles.length" class="mt-4 overflow-x-auto">
-            <table class="w-full min-w-[38rem] border-separate border-spacing-0 text-left text-sm">
+            <table class="ui-table w-full min-w-[38rem] border-separate border-spacing-0 text-left text-sm">
               <thead>
                 <tr class="bg-surface-muted text-xs font-semibold text-ink-muted">
                   <th class="rounded-l-lg px-3 py-3">Domicilio</th>
@@ -354,7 +348,7 @@ function statusMessage(item) {
                   <td class="border-b border-border-subtle px-3 py-3 text-ink">{{ domicile.localidad }}<template v-if="domicile.provincia">, {{ domicile.provincia }}</template></td>
                   <td class="border-b border-border-subtle px-3 py-3 text-ink">{{ domicile.pais_nombre }}</td>
                   <td class="border-b border-border-subtle px-3 py-3">
-                    <span class="rounded-full px-2.5 py-1 text-xs font-semibold" :class="Number(domicile.activo) === 1 ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700'">
+                    <span class="rounded-full px-2.5 py-1 text-xs font-semibold" :class="Number(domicile.activo) === 1 ? 'bg-emerald-100 text-emerald-800' : 'bg-surface-muted text-ink'">
                       {{ Number(domicile.activo) === 1 ? 'Activo' : 'Inactivo' }}
                     </span>
                   </td>
@@ -380,7 +374,7 @@ function statusMessage(item) {
         </section>
       </section>
 
-      <section v-else class="flex min-h-72 items-center justify-center rounded-2xl border border-dashed border-border p-8 text-center lg:col-start-2 lg:row-start-1">
+      <section v-else class="flex min-h-72 items-center justify-center rounded-card bg-surface-raised p-8 text-center shadow-card lg:col-start-2 lg:row-start-1">
         <div>
           <h2 class="font-semibold text-ink">Seleccioná un cliente</h2>
           <p class="mt-1 text-sm text-ink-muted">Sus datos y domicilios aparecerán acá.</p>
@@ -388,8 +382,8 @@ function statusMessage(item) {
       </section>
     </section>
 
-    <section v-else-if="selected === 'cotizaciones'" class="overflow-hidden rounded-2xl border border-border bg-surface-raised">
-      <header class="border-b border-border-subtle p-4 sm:p-5">
+    <section v-else-if="selected === 'cotizaciones'" class="overflow-hidden rounded-card bg-surface-raised shadow-card">
+      <header class="p-4 sm:p-5">
         <h2 class="text-lg font-semibold text-ink">Cotizaciones</h2>
         <p class="mt-1 max-w-3xl text-sm text-ink-muted">Definí cuántos pesos vale cada moneda. Se usan como valor inicial al cargar viajes y gastos; cada movimiento conserva la cotización con la que se guardó.</p>
       </header>
@@ -426,8 +420,8 @@ function statusMessage(item) {
       </div>
     </section>
 
-    <section v-else class="overflow-hidden rounded-2xl border border-border bg-surface-raised">
-      <header class="flex flex-col gap-4 border-b border-border-subtle p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+    <section v-else class="overflow-hidden rounded-card bg-surface-raised shadow-card">
+      <header class="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
         <div>
           <h2 class="text-lg font-semibold text-ink">{{ selectedCatalog.label }}</h2>
           <p class="mt-1 text-sm text-ink-muted">Los registros inactivos se conservan para mantener la historia.</p>
@@ -466,11 +460,11 @@ function statusMessage(item) {
       <div v-if="selectedCatalog.items?.length" class="flex flex-col gap-3 border-b border-border-subtle p-4 sm:flex-row sm:items-center sm:p-5">
         <label class="block min-w-0 flex-1">
           <span class="sr-only">Buscar en {{ selectedCatalog.label }}</span>
-          <input v-model="catalogQuery" type="search" class="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="Buscar por nombre o descripción">
+          <input v-model="catalogQuery" type="search" class="w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="Buscar por nombre o descripción">
         </label>
         <label>
           <span class="sr-only">Filtrar por estado</span>
-          <select v-model="catalogStatus" class="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-ink sm:w-48">
+          <select v-model="catalogStatus" class="w-full rounded-pill border border-transparent bg-surface-muted px-3 py-2.5 text-sm text-ink sm:w-48">
             <option value="all">Todos los estados</option>
             <option value="active">Activos</option>
             <option value="inactive">Inactivos</option>
@@ -482,7 +476,7 @@ function statusMessage(item) {
           <div class="min-w-0">
             <h3 class="font-semibold text-ink">{{ catalogItemTitle(selected, item) }}</h3>
             <p v-if="catalogItemDetail(selected, item)" class="mt-1 break-words text-sm text-ink-muted">{{ catalogItemDetail(selected, item) }}</p>
-            <span class="mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold" :class="Number(item.activo) === 1 ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700'">{{ Number(item.activo) === 1 ? 'Activo' : 'Inactivo' }}</span>
+            <span class="mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold" :class="Number(item.activo) === 1 ? 'bg-emerald-100 text-emerald-800' : 'bg-surface-muted text-ink'">{{ Number(item.activo) === 1 ? 'Activo' : 'Inactivo' }}</span>
           </div>
           <div v-if="props.data.canEdit" class="flex shrink-0 gap-2">
             <button type="button" :class="secondaryButton" @click="openEdit(selected, item)">Editar</button>
@@ -500,7 +494,7 @@ function statusMessage(item) {
       </div>
     </section>
 
-    <details class="rounded-xl border border-border-subtle bg-surface-raised">
+    <details class="rounded-card bg-surface-raised shadow-card">
       <summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-ink">Monedas y países disponibles · Solo consulta</summary>
       <div class="grid gap-5 border-t border-border-subtle p-4 sm:grid-cols-2">
         <section>

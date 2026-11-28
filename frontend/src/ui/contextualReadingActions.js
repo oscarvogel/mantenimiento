@@ -1,3 +1,5 @@
+import { secondaryButton, secondaryButtonSm } from './buttons.js'
+
 const normalizeHref = (value) => {
   try { return new URL(value, window.location.origin).href } catch { return String(value || '') }
 }
@@ -13,9 +15,8 @@ const action = (href, compact = false) => {
   link.href = href
   link.dataset.contextualReadingAction = 'true'
   link.textContent = 'Registrar km/horas'
-  link.className = compact
-    ? 'inline-flex min-h-9 items-center justify-center rounded-lg border border-primary px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary-subtle'
-    : 'inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary-hover'
+  // Botón secundario compartido: en la ficha la acción principal ya es "Nueva OT correctiva".
+  link.className = compact ? secondaryButtonSm : secondaryButton
   return link
 }
 

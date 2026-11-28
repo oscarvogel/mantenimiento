@@ -35,6 +35,11 @@ const props = defineProps({
     type: String,
     required: true,
   },
+  // La cifra más urgente del resumen va en la tarjeta oscura, como en el inicio.
+  emphasis: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const toneStyles = {
@@ -51,7 +56,7 @@ const toneStyles = {
     value: 'text-danger-strong',
   },
   orders: {
-    icon: 'bg-violet-50 text-violet-700',
+    icon: 'bg-info-subtle text-info-strong',
     value: 'text-ink',
   },
 }
@@ -70,23 +75,24 @@ const isNumericValue = computed(() => {
 </script>
 
 <template>
-  <article :class="['relative overflow-hidden rounded-xl border border-border bg-surface-raised p-5 sm:p-6', href !== '#' && 'ui-card-interactive ui-glare']">
+  <article :class="['relative flex flex-col overflow-hidden rounded-card p-5 sm:p-6', emphasis ? 'bg-surface-inverse text-ink-inverse' : 'bg-surface-raised shadow-card', href !== '#' && 'ui-card-interactive']">
+    <span v-if="emphasis" class="hero-dots pointer-events-none absolute -right-8 -top-2 h-56 w-64 opacity-[0.12]" aria-hidden="true"></span>
     <div class="flex items-start justify-between gap-4">
       <div>
-        <p class="text-sm font-medium text-ink-muted">{{ label }}</p>
-        <p class="mt-2 text-3xl font-bold tracking-tight" :class="toneStyles[props.tone].value">
+        <p class="text-sm font-medium" :class="emphasis ? 'text-ink-inverse/80' : 'text-ink-muted'">{{ label }}</p>
+        <p class="mt-2 text-4xl font-bold tracking-tight" :class="emphasis ? 'text-ink-inverse' : toneStyles[props.tone].value">
           <CountUp v-if="isNumericValue" :value="Number(value)" :suffix="suffix" />
           <template v-else>{{ value }}</template>
         </p>
       </div>
-      <span class="flex size-11 items-center justify-center rounded-lg" :class="toneStyles[props.tone].icon">
+      <span v-if="!emphasis" class="flex size-11 items-center justify-center rounded-2xl" :class="toneStyles[props.tone].icon">
         <component :is="icons[props.tone]" class="size-6" aria-hidden="true" />
       </span>
     </div>
-    <a v-if="href !== '#'" :href="href" class="mt-5 inline-flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary-hover">
+    <a v-if="href !== '#'" :href="href" class="relative mt-auto inline-flex items-center gap-1 self-end pt-5 text-sm font-semibold" :class="emphasis ? 'text-ink-inverse hover:underline' : 'text-primary hover:text-primary-hover'">
       {{ linkLabel }}
       <ArrowRightIcon class="size-4" aria-hidden="true" />
     </a>
-    <span v-else class="mt-5 inline-flex text-sm font-medium text-ink-subtle">{{ linkLabel }}</span>
+    <span v-else class="mt-auto inline-flex self-end pt-5 text-sm font-medium" :class="emphasis ? 'text-ink-inverse/70' : 'text-ink-subtle'">{{ linkLabel }}</span>
   </article>
 </template>

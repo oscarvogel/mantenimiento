@@ -1,4 +1,5 @@
 <script setup>
+import * as format from '../../ui/format.js'
 import { computed } from 'vue'
 import { ArrowPathIcon, ChartBarSquareIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
 import EmptyState from './components/EmptyState.vue'
@@ -15,13 +16,11 @@ const trips = computed(() => props.data.trips ?? [])
 const pagination = computed(() => props.data.pagination ?? { page: 1, pages: 1, total: 0 })
 const links = computed(() => props.data.links ?? { index: '/viajes/rentabilidad', history: '/viajes' })
 
-const fmt = (value) => Number(value ?? 0).toLocaleString('es-AR', { maximumFractionDigits: 0 })
+const fmt = (value) => format.formatNumber(value ?? 0)
+const money = (value) => format.formatMoney(value ?? 0)
 const fmt2 = (value) => Number(value ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const fmtPct = (value) => value === null || value === undefined ? 'Sin datos' : `${Number(value).toLocaleString('es-AR', { maximumFractionDigits: 1 })}%`
-const fmtDate = (value) => {
-  const match = String(value ?? '').match(/^(\d{4})-(\d{2})-(\d{2})/)
-  return match ? `${match[3]}/${match[2]}/${match[1]}` : 'Sin fecha'
-}
+const fmtDate = (value) => format.formatDate(value)
 const qualityTone = {
   COMPLETO: 'bg-success-subtle text-success-strong',
   PARCIAL: 'bg-warning-subtle text-warning-strong',
@@ -98,25 +97,25 @@ const tripUrl = (id) => `${links.value.history}/${id}`
 
     <template v-else>
       <section aria-label="Indicadores" class="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
+        <article class="rounded-card bg-surface-raised p-4 shadow-card">
           <p class="text-xs font-semibold text-ink-muted">Viajes analizados</p>
           <p class="mt-2 text-2xl font-bold text-ink">{{ fmt(summary.trips_analyzable) }} <span class="text-sm font-semibold text-ink-muted">/ {{ fmt(summary.trips_total) }}</span></p>
           <p class="mt-1 text-xs text-ink-muted">cobertura factura {{ fmtPct(summary.invoice_coverage) }}</p>
         </article>
-        <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
+        <article class="rounded-card bg-surface-raised p-4 shadow-card">
           <p class="text-xs font-semibold text-ink-muted">Ingresos facturados</p>
-          <p class="mt-2 text-2xl font-bold text-ink">$ {{ fmt(summary.revenue) }}</p>
+          <p class="mt-2 text-2xl font-bold text-ink">{{ money(summary.revenue) }}</p>
         </article>
-        <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
+        <article class="rounded-card bg-surface-raised p-4 shadow-card">
           <p class="text-xs font-semibold text-ink-muted">Costos directos</p>
-          <p class="mt-2 text-2xl font-bold text-ink">$ {{ fmt(summary.direct_cost) }}</p>
+          <p class="mt-2 text-2xl font-bold text-ink">{{ money(summary.direct_cost) }}</p>
           <p class="mt-1 text-xs text-ink-muted">combustible + gastos + viáticos + chofer</p>
         </article>
-        <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
+        <article class="rounded-card bg-surface-raised p-4 shadow-card">
           <p class="text-xs font-semibold text-ink-muted">Margen</p>
-          <p class="mt-2 text-2xl font-bold" :class="marginTone(summary.margin)">$ {{ fmt(summary.margin) }}</p>
+          <p class="mt-2 text-2xl font-bold" :class="marginTone(summary.margin)">{{ money(summary.margin) }}</p>
         </article>
-        <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
+        <article class="rounded-card bg-surface-raised p-4 shadow-card">
           <p class="text-xs font-semibold text-ink-muted">Margen %</p>
           <p class="mt-2 text-2xl font-bold" :class="marginTone(summary.margin)">{{ fmtPct(summary.margin_pct) }}</p>
         </article>
@@ -128,8 +127,8 @@ const tripUrl = (id) => `${links.value.history}/${id}`
           <p>Ingreso = facturas vinculadas confirmadas o automáticas, netas de notas de crédito. Costos = combustible, gastos de viaje, viáticos/otros haberes y porcentaje del chofer sobre el flete de tramo legacy. No incluye mantenimiento, neumáticos, seguros ni depreciación. Si falta factura o costo, el margen queda como sin datos suficientes.</p>
         </div>
         <div class="overflow-x-auto">
-          <table class="w-full min-w-[72rem] text-left text-sm">
-            <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
+          <table class="ui-table w-full min-w-[72rem] text-left text-sm">
+            <thead class="text-xs font-semibold text-ink-subtle">
               <tr>
                 <th class="px-3 py-3">Viaje</th>
                 <th class="px-3 py-3">Fecha</th>

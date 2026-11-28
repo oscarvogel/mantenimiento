@@ -33,7 +33,7 @@ const isNumericValue = computed(() => (
 </script>
 
 <template>
-  <div class="rounded-xl border border-border bg-surface-raised px-4 py-3 shadow-card">
+  <div class="rounded-card bg-surface-raised px-4 py-3 shadow-card">
     <p class="text-xs font-semibold uppercase tracking-wide text-ink-subtle">{{ label }}</p>
     <p class="mt-1 text-2xl font-bold tracking-tight" :class="textTones[tone] || 'text-ink'">
       <CountUp v-if="isNumericValue" :value="Number(value)" />

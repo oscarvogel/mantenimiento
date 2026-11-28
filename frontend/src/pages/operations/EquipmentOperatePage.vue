@@ -134,7 +134,7 @@ const reportIncident = async () => {
 
 <template>
   <div class="mx-auto max-w-3xl space-y-4 pb-8">
-    <section class="rounded-2xl border border-border bg-surface-raised p-5 shadow-sm">
+    <section class="rounded-card bg-surface-raised p-5 shadow-card">
       <div class="flex items-start justify-between gap-3">
         <div>
           <p class="text-xs font-bold uppercase tracking-wider text-primary">Portal del chofer</p>
@@ -188,7 +188,7 @@ const reportIncident = async () => {
       </form>
     </PanelCard>
 
-    <PanelCard v-if="data.can.reportIncident" title="Reportar un problema">
+    <PanelCard v-if="data.can.reportIncident" id="reportar-problema" class="scroll-mt-24" title="Reportar un problema">
       <p class="mb-3 text-sm text-ink-muted">No hace falta completar una orden de trabajo. Contá qué viste y mantenimiento lo revisará.</p>
       <form class="space-y-3" :aria-busy="incidentSaving" @submit.prevent="reportIncident">
         <label for="incident-description" class="sr-only">Descripción del problema</label>

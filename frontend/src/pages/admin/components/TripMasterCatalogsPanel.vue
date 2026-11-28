@@ -1,4 +1,5 @@
 <script setup>
+import { primaryButton } from '../../../ui/buttons.js'
 import CsrfField from './CsrfField.vue'
 
 const props = defineProps({
@@ -27,7 +28,7 @@ const confirmImport = (event) => {
       </div>
       <form method="post" :action="props.data.tripMasterCatalogsAction" class="shrink-0" @submit="confirmImport">
         <CsrfField :csrf="props.data.csrf" />
-        <button type="submit" class="inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90">
+        <button type="submit" :class="primaryButton">
           Completar catálogos de TSA
         </button>
       </form>

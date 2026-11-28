@@ -1,4 +1,6 @@
 <script setup>
+import { secondaryButton } from './ui/buttons.js'
+import { primaryButton } from './ui/buttons.js'
 import { computed } from 'vue'
 import { ArrowRightIcon, ChevronRightIcon } from '@heroicons/vue/20/solid'
 import {
@@ -45,6 +47,7 @@ const shell = computed(() => ({
   navigation: props.dashboard.navigation,
   notifications: props.dashboard.notifications,
   homeUrl: props.dashboard.homeUrl,
+  equipmentSearchUrl: props.dashboard.equipmentSearchUrl ?? null,
   moduleNavigation: props.dashboard.moduleNavigation,
   logout: props.dashboard.logout,
 }))
@@ -200,24 +203,24 @@ const scrollCta = computed(() => {
           <a
             v-if="dashboard.links.equipment !== '#'"
             :href="dashboard.links.equipment"
-            class="ui-interactive ui-glare inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary-hover"
-          >
+            
+           :class="primaryButton">
             <TruckIcon class="size-5" aria-hidden="true" />
             Ver equipos
           </a>
           <a
             v-if="dashboard.links.quickReadings !== '#'"
             :href="dashboard.links.quickReadings"
-            class="ui-interactive inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-primary bg-surface px-4 py-2.5 text-sm font-semibold text-primary transition hover:bg-primary-subtle"
-          >
+            
+           :class="secondaryButton">
             <ArrowPathIcon class="size-5" aria-hidden="true" />
             Registrar lectura
           </a>
           <a
             v-if="dashboard.links.correctiveOrder !== '#'"
             :href="dashboard.links.correctiveOrder"
-            class="ui-interactive ui-glare inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary-hover"
-          >
+            
+           :class="primaryButton">
             <WrenchScrewdriverIcon class="size-5" aria-hidden="true" />
             Nueva OT
           </a>

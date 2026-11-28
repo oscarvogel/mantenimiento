@@ -19,6 +19,7 @@ defineProps({
   <span
     class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold"
     :class="active ? 'bg-success-subtle text-success-strong' : 'bg-surface-muted text-ink-muted'"
+    :data-status-tone="active ? 'success' : 'muted'"
   >
     {{ active ? activeLabel : inactiveLabel }}
   </span>

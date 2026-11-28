@@ -1,4 +1,5 @@
 <script setup>
+import { primaryButton } from '../ui/buttons.js'
 import { ClipboardDocumentCheckIcon } from '@heroicons/vue/24/outline'
 
 defineProps({
@@ -21,8 +22,8 @@ defineProps({
     <a
       v-if="actionUrl !== '#'"
       :href="actionUrl"
-      class="mt-5 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary-hover active:bg-primary-active"
-    >
+      
+     :class="[primaryButton, 'mt-5']">
       Ver planes de mantenimiento
     </a>
   </div>

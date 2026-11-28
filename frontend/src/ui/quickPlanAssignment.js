@@ -181,7 +181,7 @@ export function installQuickPlanAssignment(root, serverPayload) {
 
     results.innerHTML = visible.map((service) => {
       const checked = selected.has(Number(service.id))
-      return `<article class="rounded-xl border ${checked ? 'border-primary bg-brand-50' : 'border-border bg-white'} p-4">
+      return `<article class="rounded-xl border ${checked ? 'border-primary bg-secondary-100' : 'border-border bg-white'} p-4">
         <div class="flex items-start gap-3">
           <input type="checkbox" data-service-select="${service.id}" ${checked ? 'checked' : ''} class="mt-1 size-4 rounded border-border-strong text-primary focus:ring-primary" />
           <div class="min-w-0 flex-1">

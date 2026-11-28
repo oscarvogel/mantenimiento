@@ -1,4 +1,5 @@
 <script setup>
+import { primaryButton, secondaryButton } from '../../ui/buttons.js'
 import { computed } from 'vue'
 import { ArrowDownTrayIcon, ArrowLeftIcon, ChartBarSquareIcon, HomeIcon } from '@heroicons/vue/24/outline'
 
@@ -73,28 +74,28 @@ const summaryCards = computed(() => [
         <a
           v-if="portalUrl"
           :href="portalUrl"
-          class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border-strong bg-surface-raised px-4 py-2.5 text-sm font-semibold text-ink hover:bg-surface-muted"
-        >
+          
+         :class="secondaryButton">
           <HomeIcon class="size-5" aria-hidden="true" />Volver al inicio
         </a>
         <a
           v-if="urls.index"
           :href="urls.index"
-          class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border-strong bg-surface-raised px-4 py-2.5 text-sm font-semibold text-ink hover:bg-surface-muted"
-        >
+          
+         :class="secondaryButton">
           <ArrowLeftIcon class="size-5" aria-hidden="true" />Reportes
         </a>
         <a
           v-if="urls.export"
           :href="urls.export"
-          class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border-strong bg-surface-raised px-4 py-2.5 text-sm font-semibold text-ink hover:bg-surface-muted"
-        >
+          
+         :class="secondaryButton">
           <ArrowDownTrayIcon class="size-5" aria-hidden="true" />Exportar CSV
         </a>
       </div>
     </header>
 
-    <details class="group mt-6 rounded-xl border border-border bg-surface-raised" open>
+    <details class="group mt-6 rounded-card bg-surface-raised shadow-card" open>
       <summary class="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 marker:hidden sm:px-5">
         <span class="min-w-0">
           <span class="block text-sm font-semibold text-ink">Período y sucursal</span>
@@ -110,7 +111,7 @@ const summaryCards = computed(() => [
       >
         <label class="grid gap-1.5 text-sm font-semibold text-ink">
           Sucursal
-          <select name="sucursal_id" class="min-h-11 rounded-lg border border-border-strong bg-surface-raised px-3 text-sm font-normal text-ink">
+          <select name="sucursal_id" class="min-h-11 rounded-pill border border-transparent bg-surface-muted px-3 text-sm font-normal text-ink">
             <option value="">Todas las autorizadas</option>
             <option
               v-for="branch in branches"
@@ -122,13 +123,13 @@ const summaryCards = computed(() => [
         </label>
         <label class="grid gap-1.5 text-sm font-semibold text-ink">
           Desde
-          <input type="date" name="desde" :value="filters.from" required class="min-h-11 rounded-lg border border-border-strong bg-surface-raised px-3 text-sm font-normal text-ink" />
+          <input type="date" name="desde" :value="filters.from" required class="min-h-11 rounded-pill border border-transparent bg-surface-muted px-3 text-sm font-normal text-ink" />
         </label>
         <label class="grid gap-1.5 text-sm font-semibold text-ink">
           Hasta
-          <input type="date" name="hasta" :value="filters.to" required class="min-h-11 rounded-lg border border-border-strong bg-surface-raised px-3 text-sm font-normal text-ink" />
+          <input type="date" name="hasta" :value="filters.to" required class="min-h-11 rounded-pill border border-transparent bg-surface-muted px-3 text-sm font-normal text-ink" />
         </label>
-        <button type="submit" class="min-h-11 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary-hover">
+        <button type="submit" :class="primaryButton">
           Aplicar
         </button>
       </form>
@@ -142,7 +143,7 @@ const summaryCards = computed(() => [
     <section aria-labelledby="reliability-summary-title" class="mt-6">
       <h2 id="reliability-summary-title" class="sr-only">Resumen del período</h2>
       <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
-        <article v-for="card in summaryCards" :key="card.label" class="rounded-xl border border-border bg-surface-raised p-4">
+        <article v-for="card in summaryCards" :key="card.label" class="rounded-card bg-surface-raised p-4 shadow-card">
           <p class="text-xs font-bold uppercase tracking-wide text-ink-muted">{{ card.label }}</p>
           <p class="mt-1 text-2xl font-bold tabular-nums text-ink">{{ card.value }}</p>
           <p class="mt-1 text-xs leading-5 text-ink-muted">{{ card.hint }}</p>
@@ -150,7 +151,7 @@ const summaryCards = computed(() => [
       </div>
     </section>
 
-    <section class="mt-6 overflow-hidden rounded-xl border border-border bg-surface-raised" aria-labelledby="reliability-table-title">
+    <section class="mt-6 overflow-hidden rounded-card bg-surface-raised shadow-card" aria-labelledby="reliability-table-title">
       <div class="border-b border-border px-5 py-4 sm:px-6">
         <h2 id="reliability-table-title" class="text-lg font-bold text-ink">Detalle por equipo</h2>
         <p class="mt-1 text-sm leading-6 text-ink-muted">
@@ -160,7 +161,7 @@ const summaryCards = computed(() => [
       </div>
 
       <div v-if="hasRows" class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-border text-left text-sm">
+        <table class="ui-table min-w-full divide-y divide-border text-left text-sm">
           <thead class="bg-surface-muted text-xs font-semibold uppercase tracking-wide text-ink-muted">
             <tr>
               <th scope="col" class="px-4 py-3">Equipo</th>

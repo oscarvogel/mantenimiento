@@ -5,13 +5,13 @@
 
 /* Entrada de vista (fallback cuando no hay View Transitions API) */
 .ui-view-enter {
-  animation: ui-view-enter 180ms ease-out both;
+  animation: ui-view-enter 180ms cubic-bezier(0.2, 0, 0, 1) both;
 }
 
 @keyframes ui-view-enter {
   from {
-    opacity: 0;
-    transform: translateY(6px);
+    opacity: 0.94;
+    transform: translateY(3px);
   }
   to {
     opacity: 1;
@@ -19,14 +19,53 @@
   }
 }
 
-@view-transition {
-  navigation: auto;
+/* Cambio de página: la barra y el encabezado quedan quietos, el contenido viejo se apaga
+ * y el nuevo sube 6px. Con movimiento reducido no hay transición. */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition {
+    navigation: auto;
+  }
 }
 
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation-duration: 180ms;
   animation-timing-function: ease-out;
+}
+
+/* Sin esto el contenido se estira entre la altura vieja y la nueva. */
+::view-transition-group(ui-vt-content) {
+  animation: none;
+}
+
+::view-transition-old(ui-vt-content) {
+  animation: ui-vt-content-out 90ms ease-in both;
+}
+
+::view-transition-new(ui-vt-content) {
+  animation: ui-vt-content-in 220ms cubic-bezier(0.2, 0, 0, 1) 60ms both;
+}
+
+@keyframes ui-vt-content-out {
+  to { opacity: 0; }
+}
+
+@keyframes ui-vt-content-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* La marca amarilla viaja de la opción anterior a la nueva. */
+::view-transition-group(ui-vt-nav-marker) {
+  animation-duration: 260ms;
+  animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Si llegó con transición, la entrada de respaldo sobra (app.php marca el documento). */
+html[data-arrived-by-transition] .ui-view-enter {
+  animation: none;
 }
 
 /* Elementos persistentes entre navegaciones multipágina */
@@ -48,6 +87,68 @@
   view-transition-name: ui-vt-content;
 }
 
+.workspace-shell {
+  /* El contenido reserva solo la barra de íconos; expandida, la barra se superpone. */
+  --workspace-sidebar-width: 4.5rem;
+  --workspace-sidebar-expanded-width: 17rem;
+  --workspace-sidebar-duration: 240ms;
+  --workspace-sidebar-ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@media (min-width: 1024px) {
+  .workspace-sidebar {
+    width: var(--workspace-sidebar-width);
+    transition: width var(--workspace-sidebar-duration) var(--workspace-sidebar-ease);
+  }
+
+  .workspace-sidebar--expanded {
+    width: var(--workspace-sidebar-expanded-width);
+  }
+
+  .workspace-content {
+    padding-inline-start: var(--workspace-sidebar-width);
+  }
+
+  .workspace-sidebar-reveal {
+    animation: workspace-sidebar-reveal 150ms var(--workspace-sidebar-ease) 70ms backwards;
+  }
+
+  .workspace-sidebar-chevron {
+    transition: transform 180ms var(--workspace-sidebar-ease);
+  }
+}
+
+@keyframes workspace-sidebar-reveal {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.workspace-drawer-enter-active {
+  transition: transform 250ms var(--workspace-sidebar-ease);
+}
+
+.workspace-drawer-leave-active {
+  transition: transform 180ms ease-in;
+}
+
+.workspace-drawer-enter-from,
+.workspace-drawer-leave-to {
+  transform: translateX(calc(-100% - 1rem));
+}
+
+.workspace-backdrop-enter-active {
+  transition: opacity 220ms ease-out;
+}
+
+.workspace-backdrop-leave-active {
+  transition: opacity 180ms ease-in;
+}
+
+.workspace-backdrop-enter-from,
+.workspace-backdrop-leave-to {
+  opacity: 0;
+}
+
 /* Desktop sidebar: keep the original full-height layout and soften only the
  * junction with the page, so navigation and content read as one composition. */
 .ui-sidebar-surface {
@@ -58,14 +159,17 @@
 }
 
 .ui-sidebar-surface.platform-sidebar {
-  --sidebar-surface-rgb: var(--brand-950);
-  color: rgb(var(--brand-100));
-  background-color: rgb(var(--brand-950));
+  --sidebar-surface-rgb: var(--secondary-900);
+  color: rgb(var(--secondary-100));
+  background-color: rgb(var(--secondary-900));
 }
 
+/* In dark mode secondary-900 is as dark as the canvas: the sidebar would melt
+ * into the page. surface-inverse keeps the 1.3:1 gap the token test enforces. */
 html[data-theme='dark'] .ui-sidebar-surface.platform-sidebar {
-  color: rgb(var(--brand-100));
-  background-color: rgb(var(--brand-950));
+  --sidebar-surface-rgb: var(--surface-inverse);
+  color: rgb(var(--secondary-100));
+  background-color: rgb(var(--surface-inverse));
 }
 
 .platform-brand-row {
@@ -78,29 +182,102 @@ html[data-theme='dark'] .ui-sidebar-surface.platform-sidebar {
 }
 
 .platform-sidebar .platform-nav-active {
-  border-color: rgb(var(--brand-400) / 0.5);
-  background: linear-gradient(110deg, rgb(var(--primary)), rgb(var(--brand-700)));
+  position: relative;
+  background: rgb(255 255 255 / 0.08);
   color: white;
-  box-shadow: 0 8px 20px rgb(0 0 0 / 0.18);
+}
+
+/* Marca amarilla de página activa pegada al borde de la barra (rediseño del shell).
+ * Es un elemento y no un ::before porque un pseudo-elemento no puede tener nombre de
+ * transición, y sin nombre no viaja entre páginas. */
+.platform-sidebar .platform-nav-marker {
+  view-transition-name: ui-vt-nav-marker;
+  position: absolute;
+  left: -0.5rem;
+  top: 50%;
+  width: 0.375rem;
+  height: 1.125rem;
+  transform: translateY(-50%);
+  border-radius: 0 0.5rem 0.5rem 0;
+  background: rgb(var(--accent-400));
+}
+
+/* Fila nueva o editada al volver a una lista (rowGlow.js): un tinte amarillo que se apaga. */
+.ui-row-glow {
+  animation: ui-row-glow 1600ms ease-out;
+}
+
+@keyframes ui-row-glow {
+  0%, 25% { background-color: rgb(var(--accent-400) / 0.22); }
+  100% { background-color: transparent; }
+}
+
+/* Etiqueta de estado que cambió desde la última visita (rowGlow.js): arranca con el color
+ * del estado anterior, pasa al nuevo y hace un pulso chico. */
+.ui-status-changed {
+  animation: ui-status-changed 700ms cubic-bezier(0.2, 0, 0, 1) 200ms backwards;
+}
+
+.ui-status-changed[data-status-from='success'] { --status-from-bg: var(--success-subtle); --status-from-fg: var(--success-strong); }
+.ui-status-changed[data-status-from='warning'] { --status-from-bg: var(--warning-subtle); --status-from-fg: var(--warning-foreground); }
+.ui-status-changed[data-status-from='danger'] { --status-from-bg: var(--danger-subtle); --status-from-fg: var(--danger-strong); }
+.ui-status-changed[data-status-from='info'] { --status-from-bg: var(--info-subtle); --status-from-fg: var(--info-strong); }
+.ui-status-changed[data-status-from='muted'] { --status-from-bg: var(--surface-muted); --status-from-fg: var(--ink-muted); }
+
+@keyframes ui-status-changed {
+  from {
+    background-color: rgb(var(--status-from-bg));
+    color: rgb(var(--status-from-fg));
+  }
+  45% { transform: scale(1.08); }
+}
+
+/* Campo con error al intentar guardar (globals.js): un sacudón corto, una sola vez. */
+.ui-shake {
+  animation: ui-shake 340ms cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+@keyframes ui-shake {
+  20%, 60% { transform: translateX(-4px); }
+  40%, 80% { transform: translateX(4px); }
+}
+
+/* Botón de un formulario ya enviado: aro girando hasta que llega la página siguiente. */
+button.ui-submitting {
+  cursor: progress;
+}
+
+button.ui-submitting::before {
+  content: "";
+  display: inline-block;
+  flex: none;
+  width: 1em;
+  height: 1em;
+  margin-inline-end: 0.5rem;
+  vertical-align: -0.125em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 999px;
+  animation: ui-submitting-spin 700ms linear infinite;
+}
+
+@keyframes ui-submitting-spin {
+  to { transform: rotate(360deg); }
 }
 
 .platform-sidebar .platform-nav-disabled {
-  color: rgb(var(--brand-200) / 0.78);
+  color: rgb(var(--secondary-200) / 0.78);
 }
 
 .platform-sidebar .platform-nav-status {
-  color: rgb(var(--brand-300) / 0.78);
+  color: rgb(var(--secondary-200));
 }
 
 .platform-sidebar .platform-nav-badge {
   flex: none;
   white-space: nowrap;
   background: rgb(255 255 255 / 0.1);
-  color: rgb(var(--brand-100));
-}
-
-.platform-sidebar-note {
-  background: linear-gradient(130deg, rgb(var(--brand-800) / 0.92), rgb(var(--brand-900) / 0.82));
+  color: rgb(var(--secondary-100));
 }
 
 html[data-theme='dark'] .ui-sidebar-surface {
@@ -303,68 +480,96 @@ html[data-theme='dark'] .ui-sidebar-surface {
   background-clip: padding-box;
 }
 
-/* Animated light/dark selector. The thumb carries the state while the two
- * icons keep the control understandable at a glance. */
-.ui-theme-toggle {
-  display: inline-flex;
-  width: 3.25rem;
-  height: 2rem;
+/* Cambio de tema: el tema nuevo entra como un corte en diagonal de 600 ms (theme.js).
+ * A oscuro barre desde arriba a la izquierda; a claro, en sentido contrario. Solo anima
+ * la captura de la página entera, así que los nombres de las navegaciones se apagan. */
+html[data-theme-transition] .ui-vt-header,
+html[data-theme-transition] .ui-vt-sidebar,
+html[data-theme-transition] .ui-vt-content,
+html[data-theme-transition] .platform-nav-marker {
+  view-transition-name: none;
+}
+
+html[data-theme-transition]::view-transition-old(root) {
+  animation: none;
+}
+
+html[data-theme-transition]::view-transition-new(root) {
+  animation-duration: 600ms;
+  animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+  animation-fill-mode: both;
+}
+
+html[data-theme-transition='to-dark']::view-transition-new(root) {
+  animation-name: theme-wipe-from-top-left;
+}
+
+html[data-theme-transition='to-light']::view-transition-new(root) {
+  animation-name: theme-wipe-from-bottom-right;
+}
+
+@keyframes theme-wipe-from-top-left {
+  from { clip-path: polygon(0 0, 0 0, 0 0); }
+  to { clip-path: polygon(0 0, 200% 0, 0 200%); }
+}
+
+@keyframes theme-wipe-from-bottom-right {
+  from { clip-path: polygon(100% 100%, 100% 100%, 100% 100%); }
+  to { clip-path: polygon(100% 100%, -100% 100%, 100% -100%); }
+}
+
+/* Botón de tema "Classic" de theme-toggles (Alfie Jones, MIT, v4.10.1 — toggles.dev).
+ * Copiado de su CSS; solo cambia el tamaño y el foco, que siguen al resto de la app. */
+.theme-toggle {
+  --theme-toggle__classic--duration: 500ms;
+  display: inline-grid;
+  width: 2.75rem;
+  height: 2.75rem;
   flex: 0 0 auto;
-  align-items: center;
-  border: 1px solid rgb(var(--border-strong));
+  place-items: center;
+  border: none;
   border-radius: 999px;
-  padding: 0.2rem;
-  color: rgb(var(--ink-muted));
-  background: rgb(var(--surface-muted));
+  background: none;
+  color: inherit;
+  font-size: 1.5rem;
+  cursor: pointer;
 }
 
-.ui-theme-toggle__track {
-  position: relative;
-  display: block;
-  width: 100%;
-  height: 100%;
+.theme-toggle:focus-visible {
+  outline: 2px solid rgb(var(--border-focus));
+  outline-offset: 2px;
 }
 
-.ui-theme-toggle__icon {
-  position: absolute;
-  top: 50%;
-  z-index: 1;
-  width: 0.9rem;
-  height: 0.9rem;
-  transform: translateY(-50%) scale(0.78) rotate(-18deg);
-  opacity: 0.55;
-  transition: transform 220ms ease, opacity 220ms ease, color 220ms ease;
+.theme-toggle__classic path {
+  transition-timing-function: cubic-bezier(0, 0, 0.15, 1.25);
+  transform-origin: center;
+  transition-duration: calc(var(--theme-toggle__classic--duration) * 0.8);
 }
 
-.ui-theme-toggle__sun {
-  left: 0.22rem;
+.theme-toggle__classic g path {
+  transition-property: opacity, transform;
+  transition-delay: calc(var(--theme-toggle__classic--duration) * 0.2);
 }
 
-.ui-theme-toggle__moon {
-  right: 0.22rem;
+.theme-toggle__classic :first-child path {
+  transition-property: transform, d;
 }
 
-.ui-theme-toggle__icon.is-active {
-  color: rgb(var(--accent));
-  transform: translateY(-50%) scale(1) rotate(0deg);
-  opacity: 1;
+.theme-toggle--toggled .theme-toggle__classic g path {
+  transform: scale(0.5) rotate(45deg);
+  opacity: 0;
+  transition-delay: 0s;
 }
 
-.ui-theme-toggle__thumb {
-  position: absolute;
-  top: 50%;
-  left: 0;
-  width: 1.35rem;
-  height: 1.35rem;
-  border-radius: 999px;
-  background: rgb(var(--surface-raised));
-  box-shadow: 0 1px 3px rgb(var(--shadow-rgb) / 0.24);
-  transform: translate(0, -50%);
-  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), background-color 220ms ease;
+.theme-toggle--toggled .theme-toggle__classic :first-child path {
+  d: path("M-12 5h30a1 1 0 0 0 9 13v24h-39Z");
+  transition-delay: calc(var(--theme-toggle__classic--duration) * 0.2);
 }
 
-.ui-theme-toggle__thumb.is-dark {
-  transform: translate(1.55rem, -50%);
+@supports not (d: path("")) {
+  .theme-toggle--toggled .theme-toggle__classic :first-child path {
+    transform: translate3d(-12px, 10px, 0);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -379,9 +584,26 @@ html[data-theme='dark'] .ui-sidebar-surface {
 
   .ui-view-enter,
   .ui-details-animated[open] > summary ~ *,
+  .workspace-sidebar-reveal,
   ::view-transition-old(root),
   ::view-transition-new(root) {
     animation: none;
+  }
+
+  .workspace-sidebar,
+  .workspace-content,
+  .workspace-sidebar-chevron,
+  .workspace-drawer-enter-active,
+  .workspace-drawer-leave-active,
+  .workspace-backdrop-enter-active,
+  .workspace-backdrop-leave-active {
+    transition: none;
+  }
+
+  ::view-transition-group(ui-vt-sidebar),
+  ::view-transition-group(ui-vt-header),
+  ::view-transition-group(ui-vt-content) {
+    animation-duration: 0s;
   }
 
   .ui-interactive,
@@ -422,9 +644,8 @@ html[data-theme='dark'] .ui-sidebar-surface {
     transform: none !important;
   }
 
-  .ui-theme-toggle__icon,
-  .ui-theme-toggle__thumb {
-    transition: none;
+  .theme-toggle * {
+    transition: none !important;
   }
 
   .ui-interactive:not(:disabled):hover,
@@ -436,4 +657,15 @@ html[data-theme='dark'] .ui-sidebar-surface {
   .ui-card-interactive:active {
     transform: none;
   }
+}
+
+/* Phone tab bar (MobileTabBar.vue): same navy as the sidebar in each theme, and room for
+ * the iPhone home indicator. */
+.mobile-tabbar {
+  background-color: rgb(var(--secondary-900));
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+html[data-theme='dark'] .mobile-tabbar {
+  background-color: rgb(var(--surface-inverse));
 }

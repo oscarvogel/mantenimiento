@@ -1,4 +1,7 @@
 <script setup>
+import LoadingBlocks from '../../components/LoadingBlocks.vue'
+import { primaryButton, secondaryButton, secondaryButtonSm } from '../../ui/buttons.js'
+import * as format from '../../ui/format.js'
 import { computed, onMounted, reactive, ref } from 'vue'
 
 const props = defineProps({ data: { type: Object, default: () => ({}) } })
@@ -96,13 +99,7 @@ function scopeLabel(value) {
   return SCOPE_LABELS[value] ?? value
 }
 
-function formatDate(value) {
-  if (!value) return '—'
-  const normalized = value.includes('T') ? value : value.replace(' ', 'T')
-  const date = new Date(normalized)
-  if (Number.isNaN(date.getTime())) return value
-  return new Intl.DateTimeFormat('es-AR', { dateStyle: 'short', timeStyle: 'short' }).format(date)
-}
+const formatDate = (value) => format.formatDateTime(value)
 
 function pretty(value) {
   return value === null || value === undefined ? '—' : JSON.stringify(value, null, 2)
@@ -118,26 +115,26 @@ onMounted(() => load(1))
       <p class="mt-1 text-sm text-ink-muted">{{ data.subtitle || 'Operaciones sensibles registradas en todas las empresas.' }}</p>
     </header>
 
-    <form class="grid gap-3 rounded-xl border border-border bg-surface-raised p-4 md:grid-cols-2 xl:grid-cols-4" @submit.prevent="load(1)">
-      <input v-model="filters.companyId" class="rounded-lg border border-border-strong bg-surface px-3 py-2 text-ink placeholder:text-ink-subtle focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" inputmode="numeric" placeholder="ID empresa" aria-label="ID de empresa">
-      <input v-model="filters.branchId" class="rounded-lg border border-border-strong bg-surface px-3 py-2 text-ink placeholder:text-ink-subtle focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" inputmode="numeric" placeholder="ID sucursal" aria-label="ID de sucursal">
-      <input v-model="filters.actorUserId" class="rounded-lg border border-border-strong bg-surface px-3 py-2 text-ink placeholder:text-ink-subtle focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" inputmode="numeric" placeholder="ID usuario actor" aria-label="ID de usuario actor">
-      <input v-model="filters.action" class="rounded-lg border border-border-strong bg-surface px-3 py-2 text-ink placeholder:text-ink-subtle focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="Acción (ej.: usuario.creado)" aria-label="Acción">
-      <input v-model="filters.entity" class="rounded-lg border border-border-strong bg-surface px-3 py-2 text-ink placeholder:text-ink-subtle focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="Entidad (ej.: usuarios)" aria-label="Entidad">
-      <input v-model="filters.dateFrom" class="rounded-lg border border-border-strong bg-surface px-3 py-2 text-ink focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" type="date" aria-label="Fecha desde">
-      <input v-model="filters.dateTo" class="rounded-lg border border-border-strong bg-surface px-3 py-2 text-ink focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" type="date" aria-label="Fecha hasta">
-      <input v-model="filters.q" class="rounded-lg border border-border-strong bg-surface px-3 py-2 text-ink placeholder:text-ink-subtle focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="Texto, entidad o usuario" aria-label="Texto, entidad o usuario">
+    <form class="grid gap-3 rounded-card bg-surface-raised p-4 md:grid-cols-2 xl:grid-cols-4 shadow-card" @submit.prevent="load(1)">
+      <input v-model="filters.companyId" class="rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-ink placeholder:text-ink-subtle focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" inputmode="numeric" placeholder="ID empresa" aria-label="ID de empresa">
+      <input v-model="filters.branchId" class="rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-ink placeholder:text-ink-subtle focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" inputmode="numeric" placeholder="ID sucursal" aria-label="ID de sucursal">
+      <input v-model="filters.actorUserId" class="rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-ink placeholder:text-ink-subtle focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" inputmode="numeric" placeholder="ID usuario actor" aria-label="ID de usuario actor">
+      <input v-model="filters.action" class="rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-ink placeholder:text-ink-subtle focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="Acción (ej.: usuario.creado)" aria-label="Acción">
+      <input v-model="filters.entity" class="rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-ink placeholder:text-ink-subtle focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="Entidad (ej.: usuarios)" aria-label="Entidad">
+      <input v-model="filters.dateFrom" class="rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-ink focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" type="date" aria-label="Fecha desde">
+      <input v-model="filters.dateTo" class="rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-ink focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" type="date" aria-label="Fecha hasta">
+      <input v-model="filters.q" class="rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-ink placeholder:text-ink-subtle focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="Texto, entidad o usuario" aria-label="Texto, entidad o usuario">
       <div class="flex gap-2 md:col-span-2 xl:col-span-4">
-        <button class="ui-interactive rounded-lg bg-primary px-4 py-2 font-semibold text-primary-foreground hover:bg-primary-hover" type="submit">Filtrar</button>
-        <button class="ui-interactive rounded-lg border border-border-strong bg-surface px-4 py-2 font-semibold text-ink hover:bg-surface-muted" type="button" @click="reset">Limpiar</button>
+        <button type="submit" :class="primaryButton">Filtrar</button>
+        <button type="button" @click="reset" :class="secondaryButton">Limpiar</button>
       </div>
     </form>
 
     <p v-if="error" class="rounded-lg border border-danger/35 bg-danger-subtle p-3 text-sm font-medium text-danger-strong" role="alert" aria-live="assertive">{{ error }}</p>
-    <p v-if="loading" class="text-sm text-ink-muted" role="status" aria-live="polite">Cargando cambios…</p>
+    <LoadingBlocks v-if="loading" label="Cargando cambios…" :rows="5" class="rounded-card bg-surface-raised px-4 shadow-card" />
     <div v-else-if="!items.length" class="rounded-xl border border-dashed border-border-strong p-8 text-center text-ink-muted">No hay cambios registrados para estos filtros.</div>
 
-    <div v-else class="overflow-hidden rounded-xl border border-border bg-surface-raised">
+    <div v-else class="overflow-hidden rounded-card bg-surface-raised shadow-card">
       <div class="hidden grid-cols-12 gap-3 border-b border-border-subtle bg-surface-subtle px-4 py-2 text-xs font-semibold uppercase text-ink-muted md:grid">
         <span class="col-span-2">Fecha</span>
         <span class="col-span-3">Empresa / sucursal</span>
@@ -174,19 +171,19 @@ onMounted(() => load(1))
     <footer v-if="pages > 1" class="flex items-center justify-between text-sm">
       <span class="text-ink-muted">{{ total }} cambios</span>
       <div class="flex gap-2">
-        <button type="button" class="rounded border border-border-strong bg-surface px-3 py-1 text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50" :disabled="page <= 1" @click="load(page - 1)">Anterior</button>
+        <button type="button" :disabled="page <= 1" @click="load(page - 1)" :class="secondaryButtonSm">Anterior</button>
         <span class="px-2 py-1 text-ink-muted">{{ page }} / {{ pages }}</span>
-        <button type="button" class="rounded border border-border-strong bg-surface px-3 py-1 text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50" :disabled="page >= pages" @click="load(page + 1)">Siguiente</button>
+        <button type="button" :disabled="page >= pages" @click="load(page + 1)" :class="secondaryButtonSm">Siguiente</button>
       </div>
     </footer>
 
-    <div v-if="selected" class="rounded-xl border border-border bg-surface-raised p-5">
+    <div v-if="selected" class="rounded-card bg-surface-raised p-5 shadow-card">
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 class="font-semibold text-ink">Cambio #{{ selected.id }}</h2>
           <p class="mt-1 text-sm text-ink-muted">{{ actionLabel(selected.action) }} · {{ formatDate(selected.fecha) }}</p>
         </div>
-        <button type="button" class="rounded-lg border border-border-strong px-3 py-1 text-sm font-semibold text-ink hover:bg-surface-muted" @click="selected = null">Cerrar</button>
+        <button type="button" @click="selected = null" :class="secondaryButtonSm">Cerrar</button>
       </div>
 
       <dl class="mt-4 grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-4">
@@ -203,11 +200,11 @@ onMounted(() => load(1))
       <div class="mt-5 grid gap-4 lg:grid-cols-2">
         <section>
           <h3 class="text-sm font-semibold uppercase text-ink-muted">Valores anteriores</h3>
-          <pre class="mt-2 max-h-80 overflow-auto rounded-lg border border-border bg-surface-subtle p-3 text-xs text-ink">{{ pretty(selected.before) }}</pre>
+          <pre class="mt-2 max-h-80 overflow-auto rounded-2xl bg-surface-subtle p-3 text-xs text-ink">{{ pretty(selected.before) }}</pre>
         </section>
         <section>
           <h3 class="text-sm font-semibold uppercase text-ink-muted">Valores nuevos</h3>
-          <pre class="mt-2 max-h-80 overflow-auto rounded-lg border border-border bg-surface-subtle p-3 text-xs text-ink">{{ pretty(selected.after) }}</pre>
+          <pre class="mt-2 max-h-80 overflow-auto rounded-2xl bg-surface-subtle p-3 text-xs text-ink">{{ pretty(selected.after) }}</pre>
         </section>
       </div>
     </div>

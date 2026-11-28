@@ -1,4 +1,6 @@
 <script setup>
+import * as uiLabels from '../../ui/labels.js'
+import * as format from '../../ui/format.js'
 import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { ArrowDownTrayIcon, BanknotesIcon, BeakerIcon, BookOpenIcon, CheckCircleIcon, CurrencyDollarIcon, PencilSquareIcon, ReceiptPercentIcon, XCircleIcon } from '@heroicons/vue/24/outline'
 import PageHeading from './components/PageHeading.vue'
@@ -374,7 +376,7 @@ const fuelForm = ref(null)
 const cashForm = ref(null)
 const otherEarningForm = ref(null)
 const entryMoney = reactive({ currency: 'ARS', rate: '1', amount: '' })
-const money = (value, currency = 'ARS') => `${currency} ${Number(value ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+const money = (value, currency = 'ARS') => format.formatMoney(value ?? 0, { currency, cents: true })
 const parseRate = (value) => {
   const raw = String(value ?? '').trim().replace(',', '.')
   if (raw === '' || !Number.isFinite(Number(raw))) return null
@@ -688,16 +690,8 @@ const settlementNote = computed(() => {
 
   return 'Cargá al menos un tramo para calcular la liquidación.'
 })
-const fmtDateTime = (value) => {
-  const match = String(value ?? '').match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?/)
-  if (!match) return 'Sin fecha'
-  const date = `${match[3]}/${match[2]}/${match[1]}`
-  return match[4] ? `${date} ${match[4]}:${match[5]}` : date
-}
-const fmtDate = (value) => {
-  const match = String(value ?? '').match(/^(\d{4})-(\d{2})-(\d{2})/)
-  return match ? `${match[3]}/${match[2]}/${match[1]}` : 'Sin fecha'
-}
+const fmtDateTime = (value) => format.formatDateTime(value)
+const fmtDate = (value) => format.formatDate(value)
 const legDates = (leg) => {
   const start = leg?.fecha_inicio ? fmtDate(leg.fecha_inicio) : ''
   const end = leg?.fecha_fin ? fmtDate(leg.fecha_fin) : ''
@@ -708,7 +702,7 @@ const legDates = (leg) => {
   return '—'
 }
 const number = (value) => value === null || value === undefined || value === '' ? '—' : Number(value).toLocaleString('es-AR')
-const moneyOrNoData = (value) => value === null || value === undefined ? 'Sin datos' : money(value)
+const moneyOrNoData = (value) => format.formatMoney(value, { cents: true })
 // El origen del porcentaje importa: si vino del valor por defecto de la
 // empresa, el chofer todavia no tiene un acuerdo propio cargado.
 const driverPercentageLabel = computed(() => {
@@ -831,23 +825,23 @@ const facts = computed(() => {
     </PageHeading>
 
     <section v-if="canRegisterCosts" aria-label="Cargar movimientos del viaje" class="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-      <button type="button" aria-haspopup="dialog" @click="openEntryModal('fuel')" class="group flex min-h-16 items-center gap-3 rounded-xl border border-border bg-surface-raised px-4 py-3 text-left shadow-card transition hover:border-primary hover:bg-primary-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+      <button type="button" aria-haspopup="dialog" @click="openEntryModal('fuel')" class="group flex min-h-16 items-center gap-3 rounded-card bg-surface-raised px-4 py-3 text-left shadow-card transition hover:border-primary hover:bg-primary-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
         <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary-subtle text-primary"><BeakerIcon class="size-5" aria-hidden="true" /></span>
         <span><span class="block text-sm font-bold text-ink">Cargar combustible</span><span class="mt-0.5 block text-xs text-ink-muted">Registrar una carga</span></span>
       </button>
-      <button type="button" aria-haspopup="dialog" @click="openEntryModal('expense')" class="group flex min-h-16 items-center gap-3 rounded-xl border border-border bg-surface-raised px-4 py-3 text-left shadow-card transition hover:border-primary hover:bg-primary-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+      <button type="button" aria-haspopup="dialog" @click="openEntryModal('expense')" class="group flex min-h-16 items-center gap-3 rounded-card bg-surface-raised px-4 py-3 text-left shadow-card transition hover:border-primary hover:bg-primary-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
         <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary-subtle text-primary"><ReceiptPercentIcon class="size-5" aria-hidden="true" /></span>
         <span><span class="block text-sm font-bold text-ink">Cargar gasto</span><span class="mt-0.5 block text-xs text-ink-muted">Peajes, viáticos y otros</span></span>
       </button>
-      <button v-if="driverOptions.length > 0" type="button" aria-haspopup="dialog" @click="openEntryModal('earning')" class="group flex min-h-16 items-center gap-3 rounded-xl border border-border bg-surface-raised px-4 py-3 text-left shadow-card transition hover:border-primary hover:bg-primary-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+      <button v-if="driverOptions.length > 0" type="button" aria-haspopup="dialog" @click="openEntryModal('earning')" class="group flex min-h-16 items-center gap-3 rounded-card bg-surface-raised px-4 py-3 text-left shadow-card transition hover:border-primary hover:bg-primary-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
         <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary-subtle text-primary"><CurrencyDollarIcon class="size-5" aria-hidden="true" /></span>
         <span><span class="block text-sm font-bold text-ink">Cargar haber</span><span class="mt-0.5 block text-xs text-ink-muted">Estadías y adicionales</span></span>
       </button>
-      <button v-if="driverOptions.length > 0" type="button" aria-haspopup="dialog" @click="openLogbookModal()" class="group flex min-h-16 items-center gap-3 rounded-xl border border-border bg-surface-raised px-4 py-3 text-left shadow-card transition hover:border-primary hover:bg-primary-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+      <button v-if="driverOptions.length > 0" type="button" aria-haspopup="dialog" @click="openLogbookModal()" class="group flex min-h-16 items-center gap-3 rounded-card bg-surface-raised px-4 py-3 text-left shadow-card transition hover:border-primary hover:bg-primary-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
         <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary-subtle text-primary"><BookOpenIcon class="size-5" aria-hidden="true" /></span>
         <span><span class="block text-sm font-bold text-ink">Diario de bordo</span><span class="mt-0.5 block text-xs text-ink-muted">Estadías por etapa</span></span>
       </button>
-      <button type="button" aria-haspopup="dialog" @click="openEntryModal('cash')" class="group flex min-h-16 items-center gap-3 rounded-xl border border-border bg-surface-raised px-4 py-3 text-left shadow-card transition hover:border-primary hover:bg-primary-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+      <button type="button" aria-haspopup="dialog" @click="openEntryModal('cash')" class="group flex min-h-16 items-center gap-3 rounded-card bg-surface-raised px-4 py-3 text-left shadow-card transition hover:border-primary hover:bg-primary-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
         <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary-subtle text-primary"><BanknotesIcon class="size-5" aria-hidden="true" /></span>
         <span><span class="block text-sm font-bold text-ink">Caja del chofer</span><span class="mt-0.5 block text-xs text-ink-muted">Anticipo, adelanto de sueldo o devolución</span></span>
       </button>
@@ -855,7 +849,7 @@ const facts = computed(() => {
 
     <PanelCard title="Datos generales" class="mb-5">
       <dl class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <div v-for="([label, value]) in facts" :key="label" class="min-w-0 rounded-lg border border-border-subtle bg-surface p-3">
+        <div v-for="([label, value]) in facts" :key="label" class="min-w-0 rounded-2xl bg-surface-subtle p-3">
           <dt class="text-xs font-semibold text-ink-muted">{{ label }}</dt>
           <dd class="mt-1 break-words text-sm font-semibold text-ink">{{ value === null || value === undefined || value === '' ? '—' : value }}</dd>
         </div>
@@ -864,27 +858,27 @@ const facts = computed(() => {
 
     <section aria-label="Resumen económico" class="mb-5">
       <div class="grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
+        <article class="rounded-card bg-surface-raised p-4 shadow-card">
           <p class="text-xs font-semibold text-ink-muted">Comisión chofer</p>
           <p class="mt-2 text-xl font-bold text-ink">{{ moneyOrNoData(totals.commission_ars) }}</p>
           <p class="mt-1 text-xs text-ink-muted">{{ driverPercentageLabel }}</p>
         </article>
-        <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
+        <article class="rounded-card bg-surface-raised p-4 shadow-card">
           <p class="text-xs font-semibold text-ink-muted">Combustible</p>
           <p class="mt-2 text-xl font-bold text-ink">{{ money(totals.fuel_amount_ars) }}</p>
           <p class="mt-1 text-xs text-ink-muted">{{ liters(totals.fuel_liters) }}</p>
         </article>
-        <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
+        <article class="rounded-card bg-surface-raised p-4 shadow-card">
           <p class="text-xs font-semibold text-ink-muted">Gastos</p>
           <p class="mt-2 text-xl font-bold text-ink">{{ money(totals.expense_amount_ars) }}</p>
           <p class="mt-1 text-xs text-ink-muted">del viaje</p>
         </article>
-        <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
+        <article class="rounded-card bg-surface-raised p-4 shadow-card">
           <p class="text-xs font-semibold text-ink-muted">Costos sin asignar</p>
           <p class="mt-2 text-xl font-bold text-ink">{{ money(totals.unassigned_costs_ars) }}</p>
           <p class="mt-1 text-xs text-ink-muted">no imputados a un tramo</p>
         </article>
-        <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
+        <article class="rounded-card bg-surface-raised p-4 shadow-card">
           <p class="text-xs font-semibold text-ink-muted">Margen del viaje</p>
           <p class="mt-2 text-xl font-bold" :class="totals.margin_ars === null || totals.margin_ars === undefined ? 'text-ink-muted' : (totals.margin_ars < 0 ? 'text-danger-strong' : 'text-success-strong')">{{ moneyOrNoData(totals.margin_ars) }}</p>
           <p class="mt-1 text-xs text-ink-muted">{{ totals.margin_pct === null || totals.margin_pct === undefined ? 'Sin datos suficientes' : `${totals.margin_pct}%` }}</p>
@@ -896,8 +890,8 @@ const facts = computed(() => {
     <PanelCard title="Tramos" :count="legs.length" class="mb-5" allow-overflow>
       <p v-if="legs.length === 0" class="mb-4 text-sm text-ink-muted">Cargá el primer tramo con origen, destino, el flete de facturación y el acuerdo con el chofer.</p>
       <div v-else class="mb-4 overflow-x-auto">
-        <table class="w-full min-w-[64rem] text-left text-sm">
-          <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
+        <table class="ui-table w-full min-w-[64rem] text-left text-sm">
+          <thead class="text-xs font-semibold text-ink-subtle">
             <tr>
               <th class="px-3 py-2">#</th>
               <th class="px-3 py-2">Recorrido</th>
@@ -930,7 +924,7 @@ const facts = computed(() => {
           </tbody>
         </table>
       </div>
-      <div v-if="cancelledLegs.length" class="mb-4 rounded-xl border border-border-subtle bg-surface p-4" data-testid="cancelled-legs">
+      <div v-if="cancelledLegs.length" class="mb-4 rounded-2xl bg-surface-subtle p-4" data-testid="cancelled-legs">
         <h3 class="text-sm font-bold text-ink">Tramos anulados ({{ cancelledLegs.length }})</h3>
         <p class="mt-1 text-xs text-ink-muted">No cuentan en fletes, comisión, margen, liquidación ni cuenta corriente.</p>
         <ul class="mt-3 divide-y divide-border-subtle">
@@ -940,7 +934,7 @@ const facts = computed(() => {
           </li>
         </ul>
       </div>
-      <form v-if="canAddLegs" method="post" :action="data.links?.legs" class="rounded-xl border border-border-subtle bg-surface p-4">
+      <form v-if="canAddLegs" method="post" :action="data.links?.legs" class="rounded-2xl bg-surface-subtle p-4">
         <input type="hidden" :name="csrf.name" :value="csrf.hash" />
         <h3 class="text-sm font-bold text-ink">Agregar tramo</h3>
         <p class="mt-1 text-xs text-ink-muted">El flete de facturación es el ingreso del viaje. El acuerdo con el chofer, por toneladas o con un monto acordado, es la base para su porcentaje. Los importes son opcionales mientras el viaje está abierto.</p>
@@ -973,31 +967,31 @@ const facts = computed(() => {
     </PanelCard>
 
     <section aria-label="Resumen de costos" class="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-6">
-      <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
+      <article class="rounded-card bg-surface-raised p-4 shadow-card">
         <p class="text-xs font-semibold text-ink-muted">Combustible</p>
         <p class="mt-2 text-xl font-bold text-ink">{{ liters(totals.fuel_liters) }}</p>
         <p class="mt-1 text-xs text-ink-muted">{{ money(totals.fuel_amount_ars) }}</p>
       </article>
-      <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
+      <article class="rounded-card bg-surface-raised p-4 shadow-card">
         <p class="text-xs font-semibold text-ink-muted">Gastos</p>
         <p class="mt-2 text-xl font-bold text-ink">{{ money(totals.expense_amount_ars) }}</p>
       </article>
-      <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
+      <article class="rounded-card bg-surface-raised p-4 shadow-card">
         <p class="text-xs font-semibold text-ink-muted">Combustible + gastos</p>
         <p class="mt-2 text-xl font-bold text-ink">{{ money(totals.direct_cost_ars) }}</p>
         <p class="mt-1 text-xs text-ink-muted">sin comisión</p>
       </article>
-      <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
+      <article class="rounded-card bg-surface-raised p-4 shadow-card">
         <p class="text-xs font-semibold text-ink-muted">Consumo</p>
         <p class="mt-2 text-xl font-bold text-ink">{{ consumptionValue }}</p>
         <p class="mt-1 text-xs text-ink-muted">{{ consumptionSource }}</p>
       </article>
-      <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
+      <article class="rounded-card bg-surface-raised p-4 shadow-card">
         <p class="text-xs font-semibold text-ink-muted">Caja entregada</p>
         <p class="mt-2 text-xl font-bold text-ink">{{ money(totals.cash_delivered_ars) }}</p>
         <p class="mt-1 text-xs text-ink-muted">devuelto {{ money(totals.cash_returned_ars) }}</p>
       </article>
-      <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
+      <article class="rounded-card bg-surface-raised p-4 shadow-card">
         <p class="text-xs font-semibold text-ink-muted">Saldo de caja</p>
         <p class="mt-2 text-xl font-bold" :class="Number(totals.cash_balance_ars) === 0 ? 'text-ink' : 'text-warning-strong'">{{ money(totals.cash_balance_ars) }}</p>
         <p class="mt-1 text-xs text-ink-muted">{{ cashBalanceLabel }}</p>
@@ -1015,7 +1009,7 @@ const facts = computed(() => {
       </div>
       <p v-if="settlementNote" class="rounded-lg border border-info/30 bg-info-subtle px-3 py-2 text-sm text-info-strong">{{ settlementNote }}</p>
       <div class="grid gap-5" :class="settlementNote ? '' : 'xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]'">
-        <div v-if="!settlementNote" class="rounded-xl border border-border-subtle bg-surface p-4">
+        <div v-if="!settlementNote" class="rounded-2xl bg-surface-subtle p-4">
           <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Chofer responsable</p>
           <p class="mt-1 text-lg font-bold text-ink">{{ settlement.driver || 'Sin dato' }}</p>
           <dl class="mt-4 space-y-2 text-sm">
@@ -1031,7 +1025,7 @@ const facts = computed(() => {
             <p class="text-sm font-bold text-ink">Total a liquidar</p>
             <p class="text-xl font-extrabold" :class="settlement.total_ars < 0 ? 'text-danger-strong' : 'text-primary'">{{ money(settlement.total_ars) }}</p>
           </div>
-          <div v-if="otherEarnings.length" class="mt-3 rounded-lg border border-border-subtle bg-surface p-3">
+          <div v-if="otherEarnings.length" class="mt-3 rounded-2xl bg-surface-subtle p-3">
             <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Detalle de haberes</p>
             <ul class="mt-2 space-y-1 text-xs">
               <li v-for="earning in otherEarnings" :key="`settlement-${earning.id}`" class="flex items-start justify-between gap-3">
@@ -1046,10 +1040,10 @@ const facts = computed(() => {
         <div>
           <p v-if="otherEarnings.length === 0" class="text-sm text-ink-muted">Todavía no hay otros haberes cargados. Usá “Diario de bordo” para calcular una estadía o “Cargar haber” para un adicional.</p>
           <div v-else class="overflow-x-auto">
-            <table class="w-full min-w-[42rem] text-left text-sm">
-              <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-3 py-2">Fecha</th><th class="px-3 py-2">Concepto</th><th class="px-3 py-2">Chofer</th><th class="px-3 py-2 text-right">ARS</th><th v-if="canRegisterCosts" class="px-3 py-2">Acciones</th></tr></thead>
+            <table class="ui-table w-full min-w-[42rem] text-left text-sm">
+              <thead class="text-xs font-semibold text-ink-subtle"><tr><th class="px-3 py-2">Fecha</th><th class="px-3 py-2">Concepto</th><th class="px-3 py-2">Chofer</th><th class="px-3 py-2 text-right">ARS</th><th v-if="canRegisterCosts" class="px-3 py-2">Acciones</th></tr></thead>
               <tbody class="divide-y divide-border-subtle">
-                <tr v-for="earning in otherEarnings" :key="earning.id"><td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ fmtDateTime(earning.fecha) }}</td><td class="px-3 py-2 text-ink">{{ earningConceptLabel(earning) }}<span v-if="earning.generado_por_diario" class="ml-2 rounded bg-info-subtle px-1.5 py-0.5 text-[10px] font-bold uppercase text-info-strong">Diario</span><span v-if="earning.importe_unitario !== null && earning.importe_unitario !== undefined && earning.cantidad" class="block text-xs text-ink-muted">{{ quantityLabel(earning.cantidad) }} × {{ money(earning.importe_unitario, earning.moneda) }}</span></td><td class="px-3 py-2 text-ink-muted">{{ earning.empleado || '—' }}</td><td class="px-3 py-2 text-right font-semibold text-ink">{{ money(earning.importe_ars) }}</td><td v-if="canRegisterCosts" class="whitespace-nowrap px-3 py-2"><span v-if="earning.generado_por_diario" class="text-xs text-ink-muted">Se corrige en el diario de bordo</span><div v-else class="flex gap-2"><button type="button" :class="secondaryButton" @click="openEditModal('earning', earning)">Editar</button><form method="post" :action="movementUrl('earning', earning.id, true)" @submit="confirmDelete($event, 'este haber')"><input type="hidden" :name="csrf.name" :value="csrf.hash" /><button type="submit" :class="dangerButton">Quitar</button></form></div></td></tr>
+                <tr v-for="earning in otherEarnings" :key="earning.id"><td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ fmtDateTime(earning.fecha) }}</td><td class="px-3 py-2 text-ink">{{ earningConceptLabel(earning) }}<span v-if="earning.generado_por_diario" class="ml-2 rounded bg-info-subtle px-1.5 py-0.5 text-xs font-bold uppercase text-info-strong">Diario</span><span v-if="earning.importe_unitario !== null && earning.importe_unitario !== undefined && earning.cantidad" class="block text-xs text-ink-muted">{{ quantityLabel(earning.cantidad) }} × {{ money(earning.importe_unitario, earning.moneda) }}</span></td><td class="px-3 py-2 text-ink-muted">{{ earning.empleado || '—' }}</td><td class="px-3 py-2 text-right font-semibold text-ink">{{ money(earning.importe_ars) }}</td><td v-if="canRegisterCosts" class="whitespace-nowrap px-3 py-2"><span v-if="earning.generado_por_diario" class="text-xs text-ink-muted">Se corrige en el diario de bordo</span><div v-else class="flex gap-2"><button type="button" :class="secondaryButton" @click="openEditModal('earning', earning)">Editar</button><form method="post" :action="movementUrl('earning', earning.id, true)" @submit="confirmDelete($event, 'este haber')"><input type="hidden" :name="csrf.name" :value="csrf.hash" /><button type="submit" :class="dangerButton">Quitar</button></form></div></td></tr>
               </tbody>
             </table>
           </div>
@@ -1062,8 +1056,8 @@ const facts = computed(() => {
       <p v-if="logbookDayOptions.length === 0" class="mt-3 rounded-lg border border-warning/30 bg-warning-subtle px-3 py-2 text-sm text-warning-strong">Todavía no hay conceptos de haber liquidados por día, así que todavía no se pueden calcular estadías.<button v-if="canCreateConcepts" type="button" class="ml-1 font-semibold underline" @click="openConceptModal('Estadía', 'logbook')">Crear el concepto acá mismo</button><span v-else> Cargalos en Maestros de viajes para calcular estadías.</span></p>
       <p v-else-if="logbook.length === 0" class="mt-3 text-sm text-ink-muted">Todavía no hay etapas cargadas. Usá “Diario de bordo” para registrar carga, fronteras y descarga.</p>
       <div v-else class="mt-4 overflow-x-auto">
-        <table class="w-full min-w-[64rem] text-left text-sm">
-          <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
+        <table class="ui-table w-full min-w-[64rem] text-left text-sm">
+          <thead class="text-xs font-semibold text-ink-subtle">
             <tr>
               <th class="px-3 py-2">#</th>
               <th class="px-3 py-2">Etapa</th>
@@ -1132,7 +1126,7 @@ const facts = computed(() => {
       </PanelCard>
 
       <PanelCard title="Acciones" v-if="data.canStart || canClose">
-        <form v-if="data.canStart" method="post" :action="`${data.links?.detail ?? ''}/iniciar`" class="mb-5 rounded-xl border border-border-subtle bg-surface p-4">
+        <form v-if="data.canStart" method="post" :action="`${data.links?.detail ?? ''}/iniciar`" class="mb-5 rounded-2xl bg-surface-subtle p-4">
           <input type="hidden" :name="csrf.name" :value="csrf.hash" />
           <h3 class="flex items-center gap-2 text-sm font-bold text-ink"><CheckCircleIcon class="size-4 text-success" aria-hidden="true" />Registrar salida real</h3>
           <p class="mt-1 text-xs text-ink-muted">Al iniciar, el viaje pasa a En curso. Si no indicás la fecha, se usa la fecha actual.</p>
@@ -1153,7 +1147,7 @@ const facts = computed(() => {
           El recorrido terminó el {{ fmtDate(fechaCierreSugerida) }} pero el viaje sigue En curso. Cargá el odómetro de regreso y cerrá el viaje para liberar el equipo y registrar la lectura.
         </p>
 
-        <form v-if="canClose" method="post" :action="data.links?.finish" class="mb-5 rounded-xl border border-border-subtle bg-surface p-4" data-testid="close-trip-form" @submit="confirmClose">
+        <form v-if="canClose" method="post" :action="data.links?.finish" class="mb-5 rounded-2xl bg-surface-subtle p-4" data-testid="close-trip-form" @submit="confirmClose">
           <input type="hidden" :name="csrf.name" :value="csrf.hash" />
           <h3 class="flex items-center gap-2 text-sm font-bold text-ink"><CheckCircleIcon class="size-4 text-success" aria-hidden="true" />Cerrar viaje</h3>
           <p class="mt-1 text-xs text-ink-muted">Al cerrar, el viaje pasa a Finalizado y se genera la lectura del equipo con el km de regreso.</p>
@@ -1169,7 +1163,7 @@ const facts = computed(() => {
               <span v-if="kmCierreHint" class="mt-1 block text-xs text-ink-muted" data-testid="close-km-hint">{{ kmCierreHint }}</span>
             </label>
           </div>
-          <div class="mt-3 grid gap-2 rounded-lg border border-border-subtle bg-surface-raised px-3 py-2 text-sm sm:grid-cols-4" data-testid="close-preview">
+          <div class="mt-3 grid gap-2 rounded-2xl bg-surface-subtle px-3 py-2 text-sm sm:grid-cols-4" data-testid="close-preview">
             <div><p class="text-xs text-ink-muted">Odómetro de salida</p><p class="font-semibold text-ink">{{ trip.km_salida === null || trip.km_salida === undefined ? '—' : `${number(trip.km_salida)} km` }}</p><button v-if="canEdit" type="button" class="text-xs font-semibold text-primary hover:underline" @click="openTripEdit">Corregir</button></div>
             <div><p class="text-xs text-ink-muted">Km recorridos</p><p class="font-semibold text-ink" data-testid="close-km-recorridos">{{ closePreview.km === null || closePreview.km <= 0 ? '—' : `${number(closePreview.km)} km` }}</p></div>
             <div><p class="text-xs text-ink-muted">Litros del viaje</p><p class="font-semibold text-ink">{{ liters(totals.fuel_liters) }}</p></div>
@@ -1199,8 +1193,8 @@ const facts = computed(() => {
         </div>
         <p v-if="fuel.length === 0" class="text-sm text-ink-muted">Todavía no hay cargas de combustible.</p>
         <div v-else class="overflow-x-auto">
-          <table class="w-full min-w-[52rem] text-left text-sm">
-            <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-3 py-2">Fecha</th><th class="px-3 py-2 text-right">Litros</th><th class="px-3 py-2 text-right">Importe</th><th class="px-3 py-2 text-right">ARS</th><th class="px-3 py-2 text-right">Odómetro</th><th class="px-3 py-2">Tramo</th><th class="px-3 py-2">Estación</th><th class="px-3 py-2">Comprobante</th><th class="px-3 py-2">Observaciones</th><th v-if="canRegisterCosts" class="px-3 py-2">Acciones</th></tr></thead>
+          <table class="ui-table w-full min-w-[52rem] text-left text-sm">
+            <thead class="text-xs font-semibold text-ink-subtle"><tr><th class="px-3 py-2">Fecha</th><th class="px-3 py-2 text-right">Litros</th><th class="px-3 py-2 text-right">Importe</th><th class="px-3 py-2 text-right">ARS</th><th class="px-3 py-2 text-right">Odómetro</th><th class="px-3 py-2">Tramo</th><th class="px-3 py-2">Estación</th><th class="px-3 py-2">Comprobante</th><th class="px-3 py-2">Observaciones</th><th v-if="canRegisterCosts" class="px-3 py-2">Acciones</th></tr></thead>
             <tbody class="divide-y divide-border-subtle">
               <tr v-for="load in fuel" :key="load.id"><td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ fmtDateTime(load.fecha) }}</td><td class="px-3 py-2 text-right text-ink">{{ number(load.litros) }}</td><template v-if="load.importe === null || load.importe === undefined"><td colspan="2" class="px-3 py-2 text-right" data-fuel-without-price><span class="rounded-full bg-warning-subtle px-2 py-0.5 text-xs font-semibold text-warning-strong">Sin precio</span></td></template><template v-else><td class="px-3 py-2 text-right text-ink-muted">{{ money(load.importe, load.moneda) }}</td><td class="px-3 py-2 text-right font-semibold text-ink">{{ money(load.importe_ars) }}</td></template><td class="px-3 py-2 text-right text-ink-muted">{{ load.kilometraje === null ? '—' : number(load.kilometraje) }}</td><td class="px-3 py-2 text-ink-muted">{{ legLabel(load.tramo_id) }}</td><td class="px-3 py-2 text-ink-muted">{{ load.estacion || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ load.comprobante || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ load.observaciones || '—' }}</td><td v-if="canRegisterCosts" class="whitespace-nowrap px-3 py-2"><div class="flex gap-2"><button type="button" :class="secondaryButton" @click="openEditModal('fuel', load)">Editar</button><form method="post" :action="movementUrl('fuel', load.id, true)" @submit="confirmDelete($event, 'esta carga de combustible')"><input type="hidden" :name="csrf.name" :value="csrf.hash" /><button type="submit" :class="dangerButton">Quitar</button></form></div></td></tr>
             </tbody>
@@ -1212,10 +1206,10 @@ const facts = computed(() => {
         <p v-if="!canRegisterCosts" class="mb-4 rounded-lg bg-surface p-3 text-sm text-ink-muted">El viaje está cancelado o finalizado; sus costos quedan de solo lectura.</p>
         <p v-if="expenses.length === 0" class="text-sm text-ink-muted">Todavía no hay gastos cargados.</p>
         <div v-else class="overflow-x-auto">
-          <table class="w-full min-w-[64rem] text-left text-sm">
-            <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-3 py-2">Fecha</th><th class="px-3 py-2">Categoría</th><th class="px-3 py-2">Concepto</th><th class="px-3 py-2 text-right">Cant.</th><th class="px-3 py-2 text-right">Importe</th><th class="px-3 py-2 text-right">ARS</th><th class="px-3 py-2">Medio</th><th class="px-3 py-2">Tramo</th><th class="px-3 py-2">Pagado por</th><th class="px-3 py-2">Comprobante</th><th class="px-3 py-2">Observaciones</th><th v-if="canRegisterCosts" class="px-3 py-2">Acciones</th></tr></thead>
+          <table class="ui-table w-full min-w-[64rem] text-left text-sm">
+            <thead class="text-xs font-semibold text-ink-subtle"><tr><th class="px-3 py-2">Fecha</th><th class="px-3 py-2">Categoría</th><th class="px-3 py-2">Concepto</th><th class="px-3 py-2 text-right">Cant.</th><th class="px-3 py-2 text-right">Importe</th><th class="px-3 py-2 text-right">ARS</th><th class="px-3 py-2">Medio</th><th class="px-3 py-2">Tramo</th><th class="px-3 py-2">Pagado por</th><th class="px-3 py-2">Comprobante</th><th class="px-3 py-2">Observaciones</th><th v-if="canRegisterCosts" class="px-3 py-2">Acciones</th></tr></thead>
             <tbody class="divide-y divide-border-subtle">
-              <tr v-for="expense in expenses" :key="expense.id"><td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ fmtDateTime(expense.fecha) }}</td><td class="px-3 py-2 text-ink">{{ expense.categoria || 'Sin categoría' }}</td><td class="px-3 py-2 text-ink">{{ expense.concepto_catalogo || '—' }}</td><td class="px-3 py-2 text-right text-ink-muted">{{ quantityLabel(expense.cantidad) }}</td><td class="px-3 py-2 text-right text-ink-muted">{{ money(expense.importe, expense.moneda) }}</td><td class="px-3 py-2 text-right font-semibold text-ink">{{ money(expense.importe_ars) }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.medio_pago || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ legLabel(expense.tramo_id) }}</td><td class="px-3 py-2 text-ink-muted">{{ paidByLabel[expense.pagado_por] ?? 'Empresa' }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.comprobante || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.observaciones || '—' }}</td><td v-if="canRegisterCosts" class="whitespace-nowrap px-3 py-2"><div class="flex gap-2"><button type="button" :class="secondaryButton" @click="openEditModal('expense', expense)">Editar</button><form method="post" :action="movementUrl('expense', expense.id, true)" @submit="confirmDelete($event, 'este gasto')"><input type="hidden" :name="csrf.name" :value="csrf.hash" /><button type="submit" :class="dangerButton">Quitar</button></form></div></td></tr>
+              <tr v-for="expense in expenses" :key="expense.id"><td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ fmtDateTime(expense.fecha) }}</td><td class="px-3 py-2 text-ink">{{ uiLabels.humanizeCode(expense.categoria || 'Sin categoría') }}</td><td class="px-3 py-2 text-ink">{{ expense.concepto_catalogo || '—' }}</td><td class="px-3 py-2 text-right text-ink-muted">{{ quantityLabel(expense.cantidad) }}</td><td class="px-3 py-2 text-right text-ink-muted">{{ money(expense.importe, expense.moneda) }}</td><td class="px-3 py-2 text-right font-semibold text-ink">{{ money(expense.importe_ars) }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.medio_pago || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ legLabel(expense.tramo_id) }}</td><td class="px-3 py-2 text-ink-muted">{{ paidByLabel[expense.pagado_por] ?? 'Empresa' }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.comprobante || '—' }}</td><td class="px-3 py-2 text-ink-muted">{{ expense.observaciones || '—' }}</td><td v-if="canRegisterCosts" class="whitespace-nowrap px-3 py-2"><div class="flex gap-2"><button type="button" :class="secondaryButton" @click="openEditModal('expense', expense)">Editar</button><form method="post" :action="movementUrl('expense', expense.id, true)" @submit="confirmDelete($event, 'este gasto')"><input type="hidden" :name="csrf.name" :value="csrf.hash" /><button type="submit" :class="dangerButton">Quitar</button></form></div></td></tr>
             </tbody>
           </table>
         </div>
@@ -1225,8 +1219,8 @@ const facts = computed(() => {
         <p v-if="!canRegisterCosts" class="mb-4 rounded-lg bg-surface p-3 text-sm text-ink-muted">El viaje está cancelado o finalizado; la caja queda de solo lectura.</p>
         <p v-if="cashMovements.length === 0" class="text-sm text-ink-muted">Todavía no hay movimientos de caja.</p>
         <div v-else class="overflow-x-auto">
-          <table class="w-full min-w-[42rem] text-left text-sm">
-            <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted"><tr><th class="px-3 py-2">Fecha</th><th class="px-3 py-2">Tipo</th><th class="px-3 py-2 text-right">Importe</th><th class="px-3 py-2 text-right">ARS</th><th class="px-3 py-2">Observaciones</th><th v-if="canRegisterCosts" class="px-3 py-2">Acciones</th></tr></thead>
+          <table class="ui-table w-full min-w-[42rem] text-left text-sm">
+            <thead class="text-xs font-semibold text-ink-subtle"><tr><th class="px-3 py-2">Fecha</th><th class="px-3 py-2">Tipo</th><th class="px-3 py-2 text-right">Importe</th><th class="px-3 py-2 text-right">ARS</th><th class="px-3 py-2">Observaciones</th><th v-if="canRegisterCosts" class="px-3 py-2">Acciones</th></tr></thead>
             <tbody class="divide-y divide-border-subtle">
               <tr v-for="movement in cashMovements" :key="movement.id"><td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ fmtDateTime(movement.fecha) }}</td><td class="px-3 py-2 text-ink">{{ cashTypeLabel[movement.tipo] ?? movement.tipo }}</td><td class="px-3 py-2 text-right text-ink-muted">{{ money(movement.importe, movement.moneda) }}</td><td class="px-3 py-2 text-right font-semibold text-ink">{{ money(movement.importe_ars) }}</td><td class="px-3 py-2 text-ink-muted">{{ movement.observaciones || '—' }}</td><td v-if="canRegisterCosts" class="whitespace-nowrap px-3 py-2"><div class="flex gap-2"><button type="button" :class="secondaryButton" @click="openEditModal('cash', movement)">Editar</button><form method="post" :action="movementUrl('cash', movement.id, true)" @submit="confirmDelete($event, 'este movimiento de caja')"><input type="hidden" :name="csrf.name" :value="csrf.hash" /><button type="submit" :class="dangerButton">Quitar</button></form></div></td></tr>
             </tbody>
@@ -1238,7 +1232,7 @@ const facts = computed(() => {
     <PanelCard title="Paradas operativas" :count="stops.length" class="mt-5">
       <p v-if="stops.length === 0" class="text-sm text-ink-muted">No hay paradas operativas cargadas. Los tramos con cliente y fletes se administran en la sección Tramos.</p>
       <ol v-else class="space-y-4">
-        <li v-for="stop in stops" :key="stop.orden" class="rounded-xl border border-border-subtle bg-surface p-4">
+        <li v-for="stop in stops" :key="stop.orden" class="rounded-2xl bg-surface-subtle p-4">
           <div class="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Parada {{ stop.orden }} · {{ stop.tipo_label }}</p>
@@ -1257,9 +1251,9 @@ const facts = computed(() => {
       </ol>
     </PanelCard>
 
-    <dialog v-if="canEdit" ref="tripDialog" aria-labelledby="trip-edit-title" @close="closeTripEdit" @click.self="tripDialog?.close()" class="m-auto w-[min(52rem,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-xl border border-border bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
+    <dialog v-if="canEdit" ref="tripDialog" aria-labelledby="trip-edit-title" @close="closeTripEdit" @click.self="tripDialog?.close()" class="m-auto w-[min(52rem,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-card bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
       <div v-if="tripDraft" class="p-5 sm:p-6">
-        <div class="mb-5 flex items-start justify-between gap-4 border-b border-border-subtle pb-4">
+        <div class="mb-5 flex items-start justify-between gap-4 pb-1">
           <div>
             <h2 id="trip-edit-title" class="text-lg font-bold text-ink">Editar viaje #{{ trip.numero }}</h2>
             <p class="mt-1 text-sm text-ink-muted">Podés corregir equipo, fechas, odómetro, choferes y observaciones mientras el viaje no esté cerrado.</p>
@@ -1292,7 +1286,7 @@ const facts = computed(() => {
               <AutocompleteSelect v-model="tripDraft.driverIds" name="choferes[]" :options="editDriverOptions" placeholder="Elegí uno o más choferes" multiple required />
             </label>
           </div>
-          <div v-if="tripDraft.driverIds.length" class="mt-4 rounded-xl border border-border-subtle bg-surface p-3">
+          <div v-if="tripDraft.driverIds.length" class="mt-4 rounded-2xl bg-surface-subtle p-3">
             <p class="text-sm font-semibold text-ink">% de liquidación del chofer</p>
             <div v-for="driverId in tripDraft.driverIds" :key="driverId" class="mt-3 flex flex-wrap items-center justify-between gap-2">
               <span class="text-sm font-semibold text-ink">{{ editDriverOptions.find((driver) => String(driver.value) === String(driverId))?.label ?? `Chofer ${driverId}` }}</span>
@@ -1315,9 +1309,9 @@ const facts = computed(() => {
       </div>
     </dialog>
 
-    <dialog v-if="canEdit" ref="legDialog" aria-labelledby="leg-edit-title" @close="closeLegEdit" @click.self="legDialog?.close()" class="m-auto w-[min(52rem,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-xl border border-border bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
+    <dialog v-if="canEdit" ref="legDialog" aria-labelledby="leg-edit-title" @close="closeLegEdit" @click.self="legDialog?.close()" class="m-auto w-[min(52rem,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-card bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
       <div v-if="legDraft" class="p-5 sm:p-6">
-        <div class="mb-5 flex items-start justify-between gap-4 border-b border-border-subtle pb-4">
+        <div class="mb-5 flex items-start justify-between gap-4 pb-1">
           <div>
             <h2 id="leg-edit-title" class="text-lg font-bold text-ink">Editar tramo del viaje #{{ trip.numero }}</h2>
             <p class="mt-1 text-sm text-ink-muted">Los fletes se pueden completar ahora o antes de cerrar el viaje.</p>
@@ -1399,9 +1393,9 @@ const facts = computed(() => {
       </div>
     </dialog>
 
-    <dialog v-if="canRegisterCosts" ref="entryDialog" aria-labelledby="entry-dialog-title" @close="handleEntryDialogClose" @click.self="entryDialog?.close()" class="m-auto w-[min(48rem,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-xl border border-border bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
+    <dialog v-if="canRegisterCosts" ref="entryDialog" aria-labelledby="entry-dialog-title" @close="handleEntryDialogClose" @click.self="entryDialog?.close()" class="m-auto w-[min(48rem,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-card bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
       <div v-if="activeEntryModal" class="p-5 sm:p-6">
-        <div class="mb-5 flex items-start justify-between gap-4 border-b border-border-subtle pb-4">
+        <div class="mb-5 flex items-start justify-between gap-4 pb-1">
           <div>
             <h2 id="entry-dialog-title" class="text-lg font-bold text-ink">{{ entryDialogTitle }}</h2>
             <p class="mt-1 text-sm text-ink-muted">Viaje #{{ trip.numero }}</p>
@@ -1519,9 +1513,9 @@ const facts = computed(() => {
       </div>
     </dialog>
 
-    <dialog v-if="canCancelTrip || canCancelLegs" ref="cancelDialog" aria-labelledby="cancel-dialog-title" @close="closeCancelDialog" @click.self="cancelDialog?.close()" class="m-auto w-[min(36rem,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-xl border border-border bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60" data-testid="cancel-dialog">
+    <dialog v-if="canCancelTrip || canCancelLegs" ref="cancelDialog" aria-labelledby="cancel-dialog-title" @close="closeCancelDialog" @click.self="cancelDialog?.close()" class="m-auto w-[min(36rem,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-card bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60" data-testid="cancel-dialog">
       <div v-if="cancelTarget" class="p-5 sm:p-6">
-        <div class="mb-4 flex items-start justify-between gap-4 border-b border-border-subtle pb-4">
+        <div class="mb-4 flex items-start justify-between gap-4 pb-1">
           <h2 id="cancel-dialog-title" class="flex items-center gap-2 text-lg font-bold text-danger-strong"><XCircleIcon class="size-5 shrink-0" aria-hidden="true" />{{ cancelTarget.title }}</h2>
           <button type="button" aria-label="Cerrar" @click="cancelDialog?.close()" class="grid size-9 shrink-0 place-items-center rounded-lg text-ink-muted hover:bg-surface-subtle hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">×</button>
         </div>

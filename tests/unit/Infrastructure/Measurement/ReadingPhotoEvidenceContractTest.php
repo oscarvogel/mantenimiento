@@ -71,10 +71,11 @@ final class ReadingPhotoEvidenceContractTest extends TestCase
         self::assertStringContainsString('evidenceReady = true', $source);
         self::assertStringContainsString('photo.required = false', $source);
         self::assertStringContainsString('const hasDirectPhoto = Boolean(photo.files && photo.files[0])', $source);
-        self::assertStringContainsString('La foto se enviará al registrar la lectura.', $source);
+        // Los textos del flujo salen del catálogo del controlador (también en portugués).
+        self::assertStringContainsString('text.photo_sent_on_submit', $source);
         self::assertStringContainsString('optimizePhoto(file)', $source);
         self::assertStringContainsString("photo.value = ''", $source);
-        self::assertStringContainsString("'Preparando foto...'", $source);
+        self::assertStringContainsString('text.preparing', $source);
         self::assertStringContainsString('payload.evidenceValid === false', $source);
         self::assertStringContainsString('payload.evidenceError', $source);
     }

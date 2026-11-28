@@ -1,0 +1,12 @@
+# graphify: solo código fuente (app/, frontend/src, tests/, scripts/).
+# Bundles compilados, datos, infraestructura y documentación quedan fuera.
+assets/
+build/
+data/
+docker/
+docs/
+writable/
+.superpowers/
+frontend/node_modules/
+frontend/dist/
+*.min.js

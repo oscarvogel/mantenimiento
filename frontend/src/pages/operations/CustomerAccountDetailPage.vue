@@ -159,18 +159,18 @@ const openPaymentAnnul = (row) => {
     </PageHeading>
 
     <section aria-label="Saldos por moneda" class="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      <article v-for="code in balanceCodes" :key="code" class="rounded-xl border border-border bg-surface-raised p-4 shadow-card" :data-testid="`balance-card-${code}`">
+      <article v-for="code in balanceCodes" :key="code" class="rounded-card bg-surface-raised p-4 shadow-card" :data-testid="`balance-card-${code}`">
         <p class="text-xs font-semibold text-ink-muted">{{ code }}</p>
         <p class="mt-2 text-xl font-bold" :class="balanceClass(currencyBalance(code).saldo_original)">{{ formatMoney(currencyAmount(code), code) }}</p>
         <p class="text-xs text-ink-muted">{{ balanceLabel(currencyBalance(code).saldo_original) }}</p>
         <p class="mt-1 text-xs text-ink-muted">Histórico {{ formatMoney(currencyBalance(code).saldo_ars) }}</p>
       </article>
-      <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
+      <article class="rounded-card bg-surface-raised p-4 shadow-card">
         <p class="text-xs font-semibold text-ink-muted">Consolidado histórico</p>
         <p class="mt-2 text-xl font-bold" :class="balanceClass(totals.saldo_ars)" data-testid="statement-balance">{{ formatMoney(totals.saldo_ars) }}</p>
         <p class="text-xs text-ink-muted">Debe {{ formatMoney(totals.debe_ars) }} · Haber {{ formatMoney(totals.haber_ars) }}</p>
       </article>
-      <article class="rounded-xl border border-border bg-surface-raised p-4 shadow-card">
+      <article class="rounded-card bg-surface-raised p-4 shadow-card">
         <p class="text-xs font-semibold text-ink-muted">Valorización actual</p>
         <p class="mt-2 text-xl font-bold text-ink" data-testid="statement-valuation">{{ valuation.disponible ? formatMoney(valuation.ars) : 'No disponible' }}</p>
         <p class="text-xs text-ink-muted">{{ valuation.disponible ? 'Saldo pendiente a cotizaciones vigentes' : `Sin cotización para ${(valuation.monedas_sin_cotizacion ?? []).join(', ')}` }}</p>
@@ -196,8 +196,8 @@ const openPaymentAnnul = (row) => {
         </li>
       </ul>
       <div v-if="documents.length > 0" class="hidden overflow-x-auto sm:block">
-        <table class="w-full min-w-[64rem] text-left text-sm" data-testid="documents-table">
-          <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
+        <table class="ui-table w-full min-w-[64rem] text-left text-sm" data-testid="documents-table">
+          <thead class="text-xs font-semibold text-ink-subtle">
             <tr><th class="px-3 py-2">Fecha</th><th class="px-3 py-2">Documento</th><th class="px-3 py-2">Moneda</th><th class="px-3 py-2 text-right">Importe original</th><th class="px-3 py-2 text-right">Pagado</th><th class="px-3 py-2 text-right">Saldo pendiente</th><th class="px-3 py-2 text-right">Cotización</th><th class="px-3 py-2 text-right">Equivalente ARS</th><th class="px-3 py-2">Cobranza</th></tr>
           </thead>
           <tbody class="divide-y divide-border-subtle">
@@ -276,8 +276,8 @@ const openPaymentAnnul = (row) => {
         </li>
       </ul>
       <div v-if="visibleMovements.length > 0" class="hidden overflow-x-auto sm:block">
-        <table class="w-full min-w-[60rem] text-left text-sm" data-testid="statement-table">
-          <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
+        <table class="ui-table w-full min-w-[60rem] text-left text-sm" data-testid="statement-table">
+          <thead class="text-xs font-semibold text-ink-subtle">
             <tr><th class="px-3 py-2">Fecha</th><th class="px-3 py-2">Concepto</th><th class="px-3 py-2">Origen</th><th class="px-3 py-2 text-right">Debe</th><th class="px-3 py-2 text-right">Haber</th><th class="px-3 py-2 text-right">Saldo</th><th v-if="canFormalize" class="px-3 py-2"></th></tr>
           </thead>
           <tbody class="divide-y divide-border-subtle">
@@ -301,7 +301,7 @@ const openPaymentAnnul = (row) => {
       </div>
     </PanelCard>
 
-    <dialog v-if="canFormalize" ref="openingDialog" aria-labelledby="opening-title" @click.self="openingDialog?.close()" class="m-auto w-[min(40rem,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-xl border border-border bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
+    <dialog v-if="canFormalize" ref="openingDialog" aria-labelledby="opening-title" @click.self="openingDialog?.close()" class="m-auto w-[min(40rem,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-card bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
       <form method="post" :action="links.openingBalance" class="p-5 sm:p-6" data-testid="opening-form">
         <input type="hidden" :name="csrf.name" :value="csrf.hash" />
         <h2 id="opening-title" class="text-lg font-bold text-ink">Saldo inicial de {{ customer.nombre }}</h2>
@@ -330,7 +330,7 @@ const openPaymentAnnul = (row) => {
       </form>
     </dialog>
 
-    <dialog v-if="canCollect" ref="paymentDialog" aria-labelledby="payment-title" @click.self="paymentDialog?.close()" class="m-auto w-[min(46rem,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-xl border border-border bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
+    <dialog v-if="canCollect" ref="paymentDialog" aria-labelledby="payment-title" @click.self="paymentDialog?.close()" class="m-auto w-[min(46rem,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-card bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
       <form method="post" :action="`${links.accounts}/${customer.id}/cobranzas`" class="p-5 sm:p-6" data-testid="payment-form">
         <input type="hidden" :name="csrf.name" :value="csrf.hash" />
         <h2 id="payment-title" class="text-lg font-bold text-ink">Registrar un cobro</h2>
@@ -379,7 +379,7 @@ const openPaymentAnnul = (row) => {
       </form>
     </dialog>
 
-    <dialog v-if="canFormalize" ref="annulDialog" aria-labelledby="annul-title" @click.self="annulDialog?.close()" class="m-auto w-[min(36rem,calc(100vw-2rem))] rounded-xl border border-border bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
+    <dialog v-if="canFormalize" ref="annulDialog" aria-labelledby="annul-title" @click.self="annulDialog?.close()" class="m-auto w-[min(36rem,calc(100vw-2rem))] rounded-card bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
       <form v-if="annulling" method="post" :action="`${links.chargesBase}${annulling.cargo_id}/anular`" class="p-5 sm:p-6" data-testid="annul-form">
         <input type="hidden" :name="csrf.name" :value="csrf.hash" />
         <input type="hidden" name="volver" :value="data.returnTo" />
@@ -394,7 +394,7 @@ const openPaymentAnnul = (row) => {
       </form>
     </dialog>
 
-    <dialog v-if="canCollect" ref="paymentAnnulDialog" aria-labelledby="payment-annul-title" @click.self="paymentAnnulDialog?.close()" class="m-auto w-[min(36rem,calc(100vw-2rem))] rounded-xl border border-border bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
+    <dialog v-if="canCollect" ref="paymentAnnulDialog" aria-labelledby="payment-annul-title" @click.self="paymentAnnulDialog?.close()" class="m-auto w-[min(36rem,calc(100vw-2rem))] rounded-card bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/60">
       <form v-if="annullingPayment" method="post" :action="`${links.paymentsBase}${annullingPayment.id}/anular`" class="p-5 sm:p-6" data-testid="payment-annul-form">
         <input type="hidden" :name="csrf.name" :value="csrf.hash" />
         <input type="hidden" name="volver" :value="data.returnTo" />

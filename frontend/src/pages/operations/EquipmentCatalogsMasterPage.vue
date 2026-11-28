@@ -108,10 +108,10 @@ const sectionCount = computed(() => ({
 
     <PanelCard title="Catálogos de equipos" :count="sectionCount" flush>
       <div class="border-b border-border-subtle p-4 sm:p-5">
-        <div class="flex flex-wrap gap-2" role="tablist" aria-label="Catálogos de equipos">
-          <button type="button" role="tab" :aria-selected="section === 'types'" :class="[secondaryButton, section === 'types' ? '!border-primary !bg-primary-subtle !text-primary' : '']" @click="selectSection('types')">Tipos de equipo <span class="ml-2 text-xs">{{ data.catalogs.types.length }}</span></button>
-          <button type="button" role="tab" :aria-selected="section === 'brands'" :class="[secondaryButton, section === 'brands' ? '!border-primary !bg-primary-subtle !text-primary' : '']" @click="selectSection('brands')">Marcas <span class="ml-2 text-xs">{{ data.management.brands.total }}</span></button>
-          <button type="button" role="tab" :aria-selected="section === 'models'" :class="[secondaryButton, section === 'models' ? '!border-primary !bg-primary-subtle !text-primary' : '']" @click="selectSection('models')">Modelos <span class="ml-2 text-xs">{{ data.management.models.total }}</span></button>
+        <div class="ui-tabs" role="tablist" aria-label="Catálogos de equipos">
+          <button type="button" role="tab" :aria-selected="section === 'types'"  @click="selectSection('types')">Tipos de equipo <span class="ml-2 text-xs">{{ data.catalogs.types.length }}</span></button>
+          <button type="button" role="tab" :aria-selected="section === 'brands'"  @click="selectSection('brands')">Marcas <span class="ml-2 text-xs">{{ data.management.brands.total }}</span></button>
+          <button type="button" role="tab" :aria-selected="section === 'models'"  @click="selectSection('models')">Modelos <span class="ml-2 text-xs">{{ data.management.models.total }}</span></button>
         </div>
 
         <div class="mt-4 grid gap-3 lg:grid-cols-[minmax(15rem,1fr)_12rem_auto]">
@@ -130,7 +130,7 @@ const sectionCount = computed(() => ({
           </label>
           <button v-if="section === 'brands'" type="button" :class="primaryButton" @click="openCreateBrand"><PlusIcon class="mr-2 size-5" aria-hidden="true" />Nueva marca</button>
           <button v-if="section === 'models'" type="button" :class="primaryButton" @click="openCreateModel"><PlusIcon class="mr-2 size-5" aria-hidden="true" />Nuevo modelo</button>
-          <div v-if="section === 'types'" class="flex items-center rounded-lg border border-border bg-surface-subtle px-3 text-sm text-ink-muted">
+          <div v-if="section === 'types'" class="flex items-center rounded-2xl bg-surface-subtle px-3 text-sm text-ink-muted">
             <AdjustmentsHorizontalIcon class="mr-2 size-5" aria-hidden="true" />Configuración de uso
           </div>
         </div>
@@ -150,8 +150,8 @@ const sectionCount = computed(() => ({
       <div v-if="section === 'types'">
         <EmptyState v-if="filteredTypes.length === 0" title="No encontramos tipos de equipo" description="Probá cambiar la búsqueda o el estado." />
         <div v-else class="overflow-x-auto">
-          <table class="w-full min-w-[44rem] text-left text-sm">
-            <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
+          <table class="ui-table w-full min-w-[44rem] text-left text-sm">
+            <thead class="text-xs font-semibold text-ink-subtle">
               <tr><th class="px-5 py-3">Tipo</th><th class="px-5 py-3">Kilómetros</th><th class="px-5 py-3">Horas</th><th class="px-5 py-3">Estado</th><th class="px-5 py-3 text-right">Acciones</th></tr>
             </thead>
             <tbody class="divide-y divide-border-subtle">
@@ -174,8 +174,8 @@ const sectionCount = computed(() => ({
       <div v-if="section === 'brands'">
         <EmptyState v-if="filteredBrands.length === 0" title="No encontramos marcas" description="Probá cambiar la búsqueda o el estado." />
         <div v-else class="overflow-x-auto">
-          <table class="w-full min-w-[40rem] text-left text-sm">
-            <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
+          <table class="ui-table w-full min-w-[40rem] text-left text-sm">
+            <thead class="text-xs font-semibold text-ink-subtle">
               <tr><th class="px-5 py-3">Marca</th><th class="px-5 py-3">Estado</th><th class="px-5 py-3 text-right">Acciones</th></tr>
             </thead>
             <tbody class="divide-y divide-border-subtle">
@@ -193,8 +193,8 @@ const sectionCount = computed(() => ({
       <div v-if="section === 'models'">
         <EmptyState v-if="filteredModels.length === 0" title="No encontramos modelos" description="Probá cambiar la búsqueda o los filtros." />
         <div v-else class="overflow-x-auto">
-          <table class="w-full min-w-[58rem] text-left text-sm">
-            <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
+          <table class="ui-table w-full min-w-[58rem] text-left text-sm">
+            <thead class="text-xs font-semibold text-ink-subtle">
               <tr><th class="px-5 py-3">Modelo</th><th class="px-5 py-3">Marca</th><th class="px-5 py-3">Tipo</th><th class="px-5 py-3">Estado</th><th class="px-5 py-3 text-right">Acciones</th></tr>
             </thead>
             <tbody class="divide-y divide-border-subtle">
@@ -214,7 +214,7 @@ const sectionCount = computed(() => ({
 
     <Teleport to="body">
       <div v-if="modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-[1px]" @click.self="closeModal">
-        <section class="w-full max-w-xl overflow-hidden rounded-2xl border border-border bg-surface-raised shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="master-modal-title">
+        <section class="w-full max-w-xl overflow-hidden rounded-card bg-surface-raised shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="master-modal-title">
           <header class="flex items-start justify-between gap-4 border-b border-border-subtle px-5 py-4">
             <div>
               <p class="text-xs font-bold uppercase tracking-[0.14em] text-primary">Maestros</p>
@@ -252,14 +252,14 @@ const sectionCount = computed(() => ({
 
             <form v-else-if="modal.kind === 'model-edit'" method="post" :action="modal.item.updateUrl" class="space-y-4">
               <CsrfInput :csrf="data.csrf" />
-              <div class="rounded-lg border border-border bg-surface-subtle p-3 text-sm text-ink-muted">{{ modal.item.brandName }} · {{ modal.item.typeName }}</div>
+              <div class="rounded-2xl bg-surface-subtle p-3 text-sm text-ink-muted">{{ modal.item.brandName }} · {{ modal.item.typeName }}</div>
               <label class="block"><span class="mb-1.5 block text-sm font-semibold text-ink">Nombre</span><input name="nombre" maxlength="100" required :value="modal.item.name" :class="fieldClass" /></label>
               <div class="flex justify-end gap-2 border-t border-border-subtle pt-4"><button type="button" :class="secondaryButton" @click="closeModal">Cancelar</button><button type="submit" :class="primaryButton">Guardar cambios</button></div>
             </form>
 
             <form v-else method="post" :action="modal.item.updateUrl" class="space-y-4">
               <CsrfInput :csrf="data.csrf" />
-              <div class="rounded-lg border border-border bg-surface-subtle p-3"><p class="font-semibold text-ink">{{ modal.item.name }}</p><p class="mt-1 text-xs text-ink-muted">Estas opciones definen qué lectura corresponde registrar para este tipo de equipo.</p></div>
+              <div class="rounded-2xl bg-surface-subtle p-3"><p class="font-semibold text-ink">{{ modal.item.name }}</p><p class="mt-1 text-xs text-ink-muted">Estas opciones definen qué lectura corresponde registrar para este tipo de equipo.</p></div>
               <label class="flex items-center justify-between gap-3 rounded-lg border border-border p-3 text-sm text-ink"><span><strong class="block">Controla kilómetros</strong><span class="text-xs text-ink-muted">Habilita kilometraje y recordatorios por km.</span></span><input type="checkbox" name="controla_km" value="1" :checked="modal.item.controlsKm" class="size-5 rounded border-border-strong" /></label>
               <label class="flex items-center justify-between gap-3 rounded-lg border border-border p-3 text-sm text-ink"><span><strong class="block">Controla horas</strong><span class="text-xs text-ink-muted">Habilita horómetro y mantenimiento por horas.</span></span><input type="checkbox" name="controla_horas" value="1" :checked="modal.item.controlsHours" class="size-5 rounded border-border-strong" /></label>
               <div class="flex justify-end gap-2 border-t border-border-subtle pt-4"><button type="button" :class="secondaryButton" @click="closeModal">Cancelar</button><button type="submit" :class="primaryButton">Guardar configuración</button></div>

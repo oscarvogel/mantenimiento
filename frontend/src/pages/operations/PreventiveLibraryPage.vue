@@ -1,4 +1,5 @@
 <script setup>
+import * as format from '../../ui/format.js'
 import { computed, onMounted, ref, watch } from 'vue'
 import {
   ArrowDownTrayIcon,
@@ -33,12 +34,7 @@ const expandedItems = ref(new Set())
 const valueOrBlank = (value) => (value === null || value === undefined ? '' : String(value))
 const normalize = (value) => valueOrBlank(value).trim().toLowerCase()
 
-const formatNumber = (value) => {
-  if (value === null || value === undefined || value === '') return null
-  const number = Number(value)
-  if (Number.isNaN(number)) return null
-  return number.toLocaleString('es-AR', { maximumFractionDigits: 1 })
-}
+const formatNumber = (value) => format.formatNumber(value, 1, null)
 
 const formatPriority = (priority) => {
   if (!priority) return '-'
@@ -320,7 +316,7 @@ watch(selectedTemplateId, () => readStoredHints())
     <EmptyState v-if="items.length === 0" title="Todavía no hay biblioteca importada" description="Importá la biblioteca preventiva desde Excel para crear la primera plantilla y sus servicios." />
     <EmptyState v-else-if="filteredItems.length === 0" :title="searchActive ? 'Sin resultados para la búsqueda' : 'Esta plantilla no tiene servicios'" :description="searchActive ? 'Probá con otro servicio, código o palabra clave dentro de la plantilla seleccionada.' : 'Elegí otra plantilla o importá más servicios para esta.'" />
 
-    <ul v-else class="overflow-hidden rounded-2xl border border-border-subtle bg-white">
+    <ul v-else class="overflow-hidden rounded-card bg-surface-raised shadow-card">
       <li v-for="item in filteredItems" :key="item.id" class="border-b border-border-subtle last:border-b-0">
         <div class="flex flex-wrap items-center gap-3 px-4 py-3">
           <button type="button" class="flex min-w-0 flex-1 items-center gap-2 text-left" :aria-expanded="isExpanded(item)" :aria-controls="'library-item-' + item.id" @click="toggleItem(item)">
@@ -343,14 +339,14 @@ watch(selectedTemplateId, () => readStoredHints())
           </div>
 
           <p v-if="!item.tasks || item.tasks.length === 0" class="rounded-lg border border-dashed border-border px-3 py-4 text-xs text-ink-muted">Este servicio aún no tiene tareas definidas. Usá <strong>Agregar tarea</strong> para vincular una existente o crear una nueva.</p>
-          <ul v-else class="divide-y divide-border-subtle overflow-hidden rounded-lg border border-border-subtle bg-white">
+          <ul v-else class="divide-y divide-border-subtle overflow-hidden rounded-card bg-surface-raised shadow-card">
             <li v-for="task in item.tasks" :key="task.id" class="flex flex-wrap items-center gap-3 px-3 py-2 sm:px-4">
               <div class="min-w-0 flex-1">
                 <p class="truncate text-sm font-semibold text-ink">{{ task.name }}</p>
                 <p class="font-mono text-xs text-ink-muted">{{ task.code }}<span v-if="task.durationMinutes"> - {{ task.durationMinutes }} min</span></p>
               </div>
               <div class="flex flex-wrap items-center gap-1">
-                <span v-for="chip in taskChips(task)" :key="task.id + '-' + chip" class="rounded-full bg-surface-muted px-2 py-0.5 text-[11px] font-semibold text-ink-muted">{{ chip }}</span>
+                <span v-for="chip in taskChips(task)" :key="task.id + '-' + chip" class="rounded-full bg-surface-muted px-2 py-0.5 text-xs font-semibold text-ink-muted">{{ chip }}</span>
               </div>
               <div v-if="data.canEdit" class="flex items-center gap-2">
                 <button type="button" :class="primaryButton" class="!min-h-9 !px-3 !py-1.5 text-xs" :disabled="!task.updateUrl" :title="task.updateUrl ? 'Editar tarea' : 'Falta URL de edición'" @click="openTaskModal(item, task)">Editar</button>

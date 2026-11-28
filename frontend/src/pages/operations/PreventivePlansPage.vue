@@ -119,8 +119,8 @@ const closeEditModal = () => { editingPlan.value = null }
       </template>
     </PageHeading>
 
-    <section class="overflow-hidden rounded-2xl border border-border bg-surface-raised shadow-card">
-      <div class="border-b border-border bg-surface-subtle p-4 sm:p-5">
+    <section class="overflow-hidden rounded-card bg-surface-raised shadow-card">
+      <div class="p-4 sm:p-5">
         <form method="get" :action="data.routes.index" class="grid gap-3 md:grid-cols-[minmax(15rem,1.3fr)_minmax(14rem,1fr)_minmax(12rem,.9fr)_minmax(11rem,.8fr)_auto] md:items-end">
           <FormField label="Buscar" for-id="plans-search"><input id="plans-search" v-model="localSearch" name="q" type="search" placeholder="Patente, equipo o servicio" :class="fieldClass" /></FormField>
           <FormField label="Equipo" for-id="plans-equipment">
@@ -153,7 +153,7 @@ const closeEditModal = () => { editingPlan.value = null }
         <a :href="data.routes.equipmentIndex" class="text-sm font-semibold text-primary hover:underline">Asignar servicios desde Equipos →</a>
       </div>
 
-      <div v-if="visiblePlans.length === 0" class="m-5 rounded-xl border border-border-subtle bg-surface-subtle">
+      <div v-if="visiblePlans.length === 0" class="m-5 rounded-2xl bg-surface-subtle">
         <EmptyState :title="data.plans.total === 0 ? 'No hay planes asignados' : 'No encontramos planes con esos filtros'" :description="data.plans.total === 0 ? 'Asigná un servicio desde la ficha de un equipo para comenzar.' : 'Probá limpiando los filtros o seleccioná otra sucursal, equipo o estado.'" />
         <div class="flex flex-wrap justify-center gap-2 border-t border-border-subtle px-5 pb-5 pt-4">
           <a :href="data.routes.equipmentIndex" :class="primaryButton">Ver equipos</a>
@@ -162,8 +162,8 @@ const closeEditModal = () => { editingPlan.value = null }
       </div>
 
       <div v-else class="overflow-x-auto">
-        <table class="ui-table-hover w-full min-w-[72rem] text-left text-sm">
-          <thead class="bg-surface-subtle text-xs uppercase tracking-wide text-ink-muted">
+        <table class="ui-table ui-table-hover w-full min-w-[72rem] text-left text-sm">
+          <thead class="text-xs font-semibold text-ink-subtle">
             <tr>
               <th class="px-4 py-3">Equipo</th><th class="px-4 py-3">Servicio</th><th class="px-4 py-3">Situación / próximo</th><th class="px-4 py-3">Prioridad</th><th class="px-4 py-3">Estado</th><th class="px-4 py-3 text-right">Acción</th>
             </tr>
@@ -209,7 +209,7 @@ const closeEditModal = () => { editingPlan.value = null }
     </section>
 
     <div v-if="editingPlan" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4" role="dialog" aria-modal="true" data-testid="edit-plan-modal" @click.self="closeEditModal">
-      <section class="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-border bg-surface-raised shadow-2xl">
+      <section class="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-card bg-surface-raised shadow-2xl">
         <header class="flex items-start justify-between gap-4 border-b border-border bg-surface-raised px-5 py-4 sm:px-6">
           <div>
             <p class="text-xs font-bold uppercase tracking-wide text-primary">Última realización</p>
@@ -222,7 +222,7 @@ const closeEditModal = () => { editingPlan.value = null }
         <form method="post" :action="editingPlan.editUrl" class="grid gap-4 p-5 md:grid-cols-2 sm:p-6">
           <CsrfInput :csrf="data.csrf" />
 
-          <div class="md:col-span-2 rounded-xl border border-border bg-surface-subtle p-4">
+          <div class="md:col-span-2 rounded-2xl bg-surface-subtle p-4">
             <p class="text-sm font-semibold text-ink">Definición del Servicio</p>
             <p v-for="([key, criterion]) in planCriteria(editingPlan)" :key="key" class="mt-1 text-sm text-ink-muted">{{ criterionText(key, criterion) }}</p>
             <p class="mt-2 text-xs text-ink-muted">Para cambiar frecuencia, anticipación o prioridad editá el Servicio de mantenimiento. El cambio se aplicará a todos los equipos que lo usan.</p>

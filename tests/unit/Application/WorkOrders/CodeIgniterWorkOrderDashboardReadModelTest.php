@@ -144,6 +144,24 @@ final class CodeIgniterWorkOrderDashboardReadModelTest extends TestCase
         self::assertSame([102], $this->idsFor(['q' => 'corre', 'attention' => 'delayed']));
     }
 
+    // Las píldoras "OT abiertas" y "Finalizadas hoy" listan exactamente lo que cuentan.
+    public function testFiltersOpenOrdersWithTheSameStatesAsTheCounter(): void
+    {
+        $ids = $this->idsFor(['attention' => 'open']);
+        sort($ids);
+
+        self::assertSame([101, 102, 106, 108], $ids);
+        self::assertSame(4, $this->search([])['kpis']['open']);
+    }
+
+    public function testFiltersOrdersFinishedToday(): void
+    {
+        $this->database->table('ordenes_trabajo')->where('id', 104)->update(['fecha_finalizacion' => date('Y-m-d') . ' 10:00:00']);
+
+        self::assertSame([104], $this->idsFor(['attention' => 'finished-today']));
+        self::assertSame(1, $this->search([])['kpis']['finishedToday']);
+    }
+
     // 7) La paginación cuenta bien usando el mismo filtro.
 
     public function testPaginatesWithoutRepeatingOrLosingMatchedOrders(): void

@@ -1,20 +1,11 @@
 <template>
-  <button
+  <ChatLauncher
     v-if="!isOpen"
-    @click="toggle"
-    class="ui-interactive group fixed bottom-6 right-6 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary-hover"
-    aria-label="Abrir asistente IA"
-    title="Abrir asistente IA"
-  >
-    <ChatRobot variant="fab" :state="robotState" />
-    <span
-      v-if="briefing?.unread > 0"
-      class="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-danger-foreground"
-      aria-label="Alertas pendientes"
-    >
-      {{ briefing.unread > 99 ? '99+' : briefing.unread }}
-    </span>
-  </button>
+    :target="launcherTarget"
+    :unread="Number(briefing?.unread ?? 0)"
+    :state="robotState"
+    @open="toggle"
+  />
 
   <div
     v-if="isOpen"
@@ -32,7 +23,7 @@
       <div class="flex items-center gap-2">
         <ChatRobot variant="fab" :state="robotState" />
         <span id="chat-widget-title" class="font-medium text-sm">Asistente IA</span>
-        <span v-if="!isConnected" class="rounded bg-danger px-1.5 py-0.5 text-[10px] text-danger-foreground">offline</span>
+        <span v-if="!isConnected" class="rounded bg-danger px-1.5 py-0.5 text-xs text-danger-foreground">offline</span>
       </div>
       <div class="flex items-center gap-1">
         <button
@@ -68,7 +59,7 @@
       </div>
       <div
         v-if="historyTruncated"
-        class="text-center text-[11px] text-ink-subtle"
+        class="text-center text-xs text-ink-subtle"
       >
         Mostrando los últimos {{ CHAT_VISIBLE_HISTORY_LIMIT }} mensajes
       </div>
@@ -87,7 +78,7 @@
       />
       <div
         v-if="briefing && !briefingDismissed"
-        class="rounded-xl border border-border bg-surface p-3 text-sm"
+        class="rounded-2xl bg-surface-subtle p-3 text-sm"
         data-testid="chat-proactive-briefing"
       >
         <div class="flex items-start justify-between gap-2">
@@ -107,24 +98,24 @@
         <ul v-if="briefing.items?.length" class="mt-3 space-y-2">
           <li v-for="item in briefing.items" :key="item.id" class="rounded-lg bg-surface-raised p-2">
             <p class="text-xs font-semibold text-ink">{{ item.title }}</p>
-            <p class="mt-0.5 text-[11px] text-ink-muted">{{ item.summary }}</p>
+            <p class="mt-0.5 text-xs text-ink-muted">{{ item.summary }}</p>
           </li>
         </ul>
-        <p v-if="briefing.moreCount > 0" class="mt-2 text-[11px] text-ink-subtle">
+        <p v-if="briefing.moreCount > 0" class="mt-2 text-xs text-ink-subtle">
           Hay {{ briefing.moreCount }} avisos más.
         </p>
       </div>
 
       <div
         v-if="briefing?.suggestions?.length && !loading"
-        class="sticky bottom-0 z-10 -mx-1 flex flex-wrap gap-2 rounded-xl border border-border bg-surface/95 p-2 backdrop-blur"
+        class="sticky bottom-0 z-10 -mx-1 flex flex-wrap gap-2 rounded-2xl bg-surface-subtle/95 p-2 backdrop-blur"
         data-testid="chat-quick-actions"
       >
         <button
           v-for="suggestion in briefing.suggestions"
           :key="`quick-${suggestion}`"
           type="button"
-          class="ui-interactive rounded-full border border-border px-2.5 py-1 text-[11px] text-ink hover:bg-surface-raised"
+          class="ui-interactive rounded-full border border-border px-2.5 py-1 text-xs text-ink hover:bg-surface-raised"
           @click="sendSuggestion(suggestion)"
         >
           {{ suggestion }}
@@ -150,16 +141,16 @@
           v-model="input"
           type="text"
           placeholder="Escribí tu mensaje..."
-          class="min-w-0 flex-1 rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-border-focus"
+          class="min-w-0 flex-1 rounded-pill border border-transparent bg-surface-muted px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-border-focus"
           :disabled="loading"
         />
         <button
           type="submit"
           :disabled="!input.trim() || loading"
-          class="ui-interactive flex min-h-10 min-w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground hover:bg-primary-hover disabled:opacity-50"
+          
           aria-label="Enviar mensaje"
           title="Enviar"
-        >
+         :class="[primaryButton, 'min-w-10']">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
           </svg>
@@ -170,11 +161,13 @@
 </template>
 
 <script setup>
+import { primaryButton } from '../../../ui/buttons.js'
 import { ref, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import ChatMessage from './ChatMessage.vue'
 import ChatToolConfirm from './ChatToolConfirm.vue'
 import ChatVoiceButton from './ChatVoiceButton.vue'
 import ChatRobot from './ChatRobot.vue'
+import ChatLauncher from './ChatLauncher.vue'
 
 const REQUEST_TIMEOUT_MS = 30000
 const CHAT_STORAGE_KEY = 'mantenimiento.chatbot.conv'
@@ -184,6 +177,7 @@ const CHATBOT_BASE_PATH = `${appBaseUrl}mantenimiento/chatbot`
 
 const props = defineProps({
   autoOpen: { type: Boolean, default: false },
+  launcherTarget: { type: Object, default: null },
 })
 
 const isOpen = ref(props.autoOpen)

@@ -13,11 +13,14 @@ final class PermissionFilter implements FilterInterface
 {
     public function before(RequestInterface $request, $arguments = null)
     {
-        $permission = is_array($arguments) ? ($arguments[0] ?? null) : null;
-        $actor      = (new SessionActorContext())->current();
+        // `permission:a,b` alcanza con uno de los dos. Sin argumentos no pasa nadie.
+        $permissions = is_array($arguments) ? $arguments : [];
+        $actor       = (new SessionActorContext())->current();
 
-        if (is_string($permission) && $permission !== '' && $actor !== null && $actor->hasPermission($permission)) {
-            return null;
+        foreach ($permissions as $permission) {
+            if (is_string($permission) && $permission !== '' && $actor !== null && $actor->hasPermission($permission)) {
+                return null;
+            }
         }
 
         // 403 real con una pantalla en español. El mensaje NO revela que permiso

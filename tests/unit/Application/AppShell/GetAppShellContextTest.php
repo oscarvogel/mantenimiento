@@ -21,6 +21,7 @@ final class GetAppShellContextTest extends TestCase
         self::assertSame('Transportes Demo', $result['company']['name']);
         self::assertSame([['id' => 9, 'name' => 'Central']], $result['company']['branches']);
         self::assertSame(['Consulta'], $result['user']['roles']);
+        self::assertSame(7, $result['user']['id']);
         self::assertFalse($result['user']['isSuperAdmin']);
         self::assertSame('base', $result['presentation']['profile']);
     }
@@ -228,11 +229,39 @@ final class GetAppShellContextTest extends TestCase
         self::assertTrue($payload['navigation'][0]['active']);
         self::assertTrue($payload['navigation'][1]['disabled']);
         self::assertNull($payload['navigation'][1]['href']);
-        self::assertSame('Sin implementación aún', $payload['navigation'][1]['status']);
+        self::assertSame('Próximamente', $payload['navigation'][1]['status']);
         self::assertNull($payload['navigation'][1]['badge']);
         self::assertFalse($payload['navigation'][2]['disabled']);
         self::assertStringEndsWith('/dashboard', $payload['navigation'][2]['href']);
         self::assertNull($payload['homeUrl']);
+    }
+
+    public function testPlatformNavigationCarriesModuleDescriptions(): void
+    {
+        $context = new GetAppShellContext(new AppShellReadModelFake());
+        $actor = new ActorContext(7, 5, false, false, ['Consulta'], ['equipos.ver'], [9]);
+        $catalog = new GetPlatformModuleCatalog();
+
+        $navigation = (new AppShellPayload($context, $catalog))->for($actor, 'command-center')['navigation'];
+
+        self::assertSame('Lo que pasa hoy en la flota', $navigation[0]['description']);
+        $descriptions = array_column($catalog->execute($actor), 'description', 'key');
+        foreach (array_slice($navigation, 1) as $item) {
+            self::assertSame($descriptions[substr($item['key'], strlen('module-'))], $item['description']);
+        }
+    }
+
+    public function testEquipmentSearchIsOfferedOnlyToEquipmentReadersOfACompany(): void
+    {
+        $payload = new AppShellPayload(new GetAppShellContext(new AppShellReadModelFake()), new GetPlatformModuleCatalog());
+
+        $reader = $payload->for(new ActorContext(7, 5, false, false, ['Consulta'], ['equipos.ver'], [9]), 'command-center');
+        $withoutPermission = $payload->for(new ActorContext(8, 5, false, false, ['Consulta'], ['ordenes.ver'], [9]), 'command-center');
+        $superAdmin = $payload->for(new ActorContext(1, null, true, true, ['Superadministrador'], ['equipos.ver'], []), 'command-center');
+
+        self::assertStringEndsWith('/mantenimiento/equipos/buscar', $reader['equipmentSearchUrl']);
+        self::assertNull($withoutPermission['equipmentSearchUrl']);
+        self::assertNull($superAdmin['equipmentSearchUrl']);
     }
 
     public function testUserWithoutMaintenanceEntryPermissionDoesNotGetModuleOrReturnAccess(): void
@@ -274,7 +303,7 @@ final class GetAppShellContextTest extends TestCase
         self::assertStringEndsWith('/dashboard', $payload['moduleNavigation'][2]['href']);
         self::assertTrue($payload['moduleNavigation'][1]['disabled']);
         self::assertNull($payload['moduleNavigation'][1]['href']);
-        self::assertSame('Sin implementación aún', $payload['moduleNavigation'][1]['status']);
+        self::assertSame('Próximamente', $payload['moduleNavigation'][1]['status']);
     }
 
     public function testManagerialShellGetsItsOwnNavigationInsteadOfMaintenanceLinks(): void
@@ -316,6 +345,31 @@ final class GetAppShellContextTest extends TestCase
             static fn (array $item): bool => $item['key'] === 'module-management',
         ));
         self::assertTrue($managementModule[0]['active']);
+    }
+
+    public function testMaintenanceMenuLeavesOtherPortalModulesToThePortal(): void
+    {
+        $context = new GetAppShellContext(new AppShellReadModelFake());
+        $actor = new ActorContext(7, 5, false, false, ['Administrador'], [
+            'equipos.ver', 'planes.ver', 'ordenes.ver', 'reportes.ver', 'automatizaciones.ver',
+            'gerencial.costo_km.ver', 'gerencial.flota.ver',
+        ], [9]);
+        $shell = new AppShellPayload($context, new GetPlatformModuleCatalog());
+
+        $maintenance = $shell->for($actor, 'work-orders');
+        $keys = array_column($maintenance['navigation'], 'key');
+        foreach (['reports', 'automations', 'fleet-board', 'theoretical-cost-km'] as $moduleKey) {
+            self::assertNotContains($moduleKey, $keys);
+        }
+        $circuit = array_values(array_filter($maintenance['navigation'], static fn (array $item): bool => $item['key'] === 'maintenance'));
+        self::assertSame('Circuito de mantenimiento', $circuit[0]['label']);
+
+        $reports = $shell->for($actor, 'reports');
+        self::assertSame(['reports'], array_column($reports['navigation'], 'key'));
+        $active = array_values(array_filter($reports['moduleNavigation'], static fn (array $item): bool => $item['active'] === true));
+        self::assertSame('module-reports', $active[0]['key']);
+
+        self::assertSame(['automations'], array_column($shell->for($actor, 'automations')['navigation'], 'key'));
     }
 
     public function testFleetBoardNavigationOnlyListsWhatTheActorCanOpen(): void

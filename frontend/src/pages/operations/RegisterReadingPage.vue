@@ -138,7 +138,7 @@ const save = async () => {
     </PanelCard>
 
     <PanelCard v-if="selected" title="2. Cargar valor actual">
-      <div class="mb-4 rounded-lg border border-border bg-surface-subtle p-4">
+      <div class="mb-4 rounded-2xl bg-surface-subtle p-4">
         <strong class="text-ink">{{ selected.code }}<span v-if="selected.plate"> · {{ selected.plate }}</span></strong>
         <p class="mt-1 text-sm text-ink-muted">Última lectura: {{ currentLabel }}</p>
       </div>

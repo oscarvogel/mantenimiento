@@ -1,4 +1,5 @@
 <script setup>
+import { secondaryButtonSm } from '../../../ui/buttons.js'
 import { computed, nextTick, ref, useId } from 'vue'
 import { fieldClass } from '../helpers.js'
 
@@ -106,11 +107,11 @@ const onKeydown = (event) => {
       <button
         v-if="selectedUnit"
         type="button"
-        class="ui-interactive inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg border border-border px-3 text-xs font-semibold text-ink-muted hover:bg-surface-muted focus:outline-none focus:ring-2 focus:ring-primary/20"
+        
         :aria-label="`Quitar unidad seleccionada para ${label}`"
         @mousedown.prevent
         @click="clear"
-      >
+       :class="[secondaryButtonSm, 'shrink-0']">
         Quitar
       </button>
     </div>
@@ -123,7 +124,7 @@ const onKeydown = (event) => {
       ref="listbox"
       role="listbox"
       :aria-label="`Unidades de Wialon para ${label}`"
-      class="absolute z-30 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-border bg-surface-raised p-1 shadow-xl"
+      class="absolute z-30 mt-1 max-h-64 w-full overflow-y-auto rounded-card bg-surface-raised p-1 shadow-xl"
       @mousedown.prevent
     >
       <button
