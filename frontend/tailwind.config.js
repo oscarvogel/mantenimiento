@@ -5,7 +5,8 @@ const scale = (name) => Object.fromEntries(
 
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: ['./index.html', './src/**/*.{vue,js}'],
+  // Las páginas públicas del QR son PHP con clases de Tailwind (app/Views/public_equipment).
+  content: ['./index.html', './src/**/*.{vue,js}', '../app/Views/public_equipment/**/*.php', '../app/Views/partials/public_page_head.php'],
   darkMode: 'selector',
   theme: {
     extend: {
