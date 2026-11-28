@@ -255,8 +255,45 @@ Confirmados por escrito por el usuario. Se actualizó solo `email_notificaciones
 - Se descartó `administración@webtsa.com.ar` (con acento): `FILTER_VALIDATE_EMAIL` lo marca inválido y la política caería al correo de ingreso. El usuario confirmó la forma sin acento.
 - Consulta final: los cuatro usuarios de prueba (`7`, `10`, `16`, `23`) conservan su `email` original; `16` y `23` tienen `email_notificaciones = NULL`. No se envió correo de QA a los destinatarios reales.
 
+## Despliegue en producción (Ferozo, 28/11/2026)
+
+El usuario autorizó explícitamente el despliegue y eligió cargar él los dos correos de resumen. Por lo tanto el deploy **no modificó datos de usuarios**: solo esquema, código y assets.
+
+### Base real y preflight
+
+- El archivo local `.deploy/production.json` decía `393b42ac85b6a85acbc9920560e1348be1a8167d`, pero la comparación de hashes de archivos remotos contra el historial mostró que el checkout de Ferozo equivalía a `d936775c1af6994d4e02b0fcf1d050eda6802e66`. El `assets/dashboard/.vite/manifest.json` remoto coincidía byte a byte con el de `HEAD`.
+- `deploy-ferozo.py --dry-run --from-sha d936775c`: 13 archivos PHP, 1 migración y 3 cambios frontend. Con base `04d049baf770aba74aae6b5b6a1b913b2181cdae` (el commit que agregó la migración y la política) quedaron 11 archivos PHP y 0 migraciones para la pasada de código.
+- El despliegue se preparó en un clon temporal limpio sobre `main`, sin tocar los archivos ajenos sin versionar del workspace. El tool nativo de worktree no pudo crear el espacio, así que se usó un clon local con `--branch main`.
+- PHPUnit completo con XAMPP: `2566 tests`, `1 error` preexistente y ajeno (`ArchivoRespaldoBucketsTest::testRechazaUnEnlaceSimbolicoQueSaleDeWritable`, `symlink(): Permission denied`). La suite enfocada del cambio dio `268 tests, 1101 assertions, OK`. Vitest: `627/627`. Build: `ENCODING_QA=OK`. El bundle `admin-DiZH88Lz.js` contiene la etiqueta «Correo para res…».
+- Como el error de `symlink` detiene al orquestador, se ejecutó el deploy con `--skip-tests`, pero los tests enfocados, Vitest y el build se ejecutaron explícitamente antes y el build quedó incluido en el release.
+
+### Pasada 1 — esquema
+
+- Se subió únicamente `2026-11-28-100000_AddUserNotificationEmailSnapshot.php` y el portón temporal `scripts/migrate.php`.
+- `migrate.php?status=1` respondió `200`; la ejecución devolvió `MIGRATIONS=OK`; el portón se borró y quedó en `404`.
+- `UserNotificationEmailPolicy.php` se subió por separado: fue agregada en el mismo commit que la migración y, al usar `04d049ba` como base de la pasada 2, el diff incremental no la habría incluido.
+
+### Pasada 2 — código y assets
+
+- Comando: `python scripts/deploy-ferozo.py --from-sha 04d049ba... --yes --skip-tests --state-file <temporal>`.
+- El orquestador informó `TO=dfba89001726ed083c8a0e73cf03084416f3aec4`: es un commit local del clon que solo agrega los assets generados; el código fuente desplegado es `195d6a5a427a90a87afc94d6fc5b8160d708228b`. `.deploy/production.json` se actualizó con ese SHA fuente, no con el commit temporal de build.
+- `FILES_STAGED=48`, `UPLOAD=OK`, `MIGRATIONS=NONE`. Se conservaron 3 bundles con hash viejo que el manifiesto nuevo ya no referencia; la limpieza queda para `remote-prune`.
+- Smoke HTTP: `/login` `200`, `/favicon.ico` `200`, `/.env`, `/app/`, `/vendor/` y `/writable/` `403`, `/migrate.php` `404`.
+- El manifiesto y los bundles `admin-DiZH88Lz.js` y `main-B7wdfw06.js` se sirvieron por HTTP con `200` y hash SHA256 idéntico al release local.
+
+### Verificación remota posterior
+
+- Se descargaron por FTPS 10 árboles de producción y se compararon 15 archivos críticos byte a byte contra el release: `MISMATCHES=0`.
+- Se subió, ejecutó y borró una sonda de solo lectura protegida por `MIGRATE_TOKEN`. Resultado:
+  - `usuarios.email_notificaciones varchar(255) nullable=YES`
+  - `notificacion_entregas.destinatario varchar(255) nullable=YES`
+  - Migración registrada: `2026-11-28-100000`
+  - Usuario `7`: ingreso `mariela@tsa.com.ar`, `email_notificaciones = null`
+  - Usuario `10`: ingreso `gimenezcarlosgabriel@gmail.com`, `email_notificaciones = null`
+- La sonda quedó borrada (`404`) y no se envió ningún correo de prueba a los destinatarios reales.
+
 ## Estado pendiente
 
-- **Producción Ferozo**: no fue tocada. No hay aprobación para desplegar allí; cuando se autorice, seguir `docs/DEPLOY_FEROZO.md` y validar con smoke HTTP.
+- **Carga de destinos reales en producción**: la hace el usuario por el ABM, porque no se le pidió acceso a producción ni se modificaron sus datos. Usuario `7` (empresa `4`): `mariela@webtsa.com.ar`. Usuario `10` (empresa `4`): `administracion@webtsa.com.ar`. El correo de ingreso de ambos debe quedar intacto.
 - **Canal de correo en staging**: quedó deshabilitado (`smtp_enabled = 0`), tal como estaba antes de la prueba. Los resúmenes diarios no se enviarán en staging hasta que el administrador lo habilite.
 - **Bandeja y piloto**: no hubo acceso a casillas reales ni piloto con Mariela/Carlos; la evidencia es de estado `ENVIADA` y traza en base, no de lectura en la bandeja.
