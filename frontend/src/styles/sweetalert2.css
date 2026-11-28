@@ -21,6 +21,22 @@
   color: rgb(var(--ink));
 }
 
+/* Entrada del aviso: `animation: false` apaga la de SweetAlert, que agranda y rebota.
+ * Esta sube 8px y aparece, igual que el contenido al cambiar de página.
+ * Al cerrar, SweetAlert espera el fin de cualquier `animation` o `transition` del popup; si
+ * la entrada sigue declarada, el aviso no se cierra nunca. Por eso useAlerts.js le pone
+ * `ui-swal-entered` cuando termina, y eso la quita. */
+.swal2-popup.ui-swal-popup:not(.ui-swal-entered) {
+  animation: ui-swal-enter 220ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+@keyframes ui-swal-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
 .swal2-title.ui-swal-title {
   color: rgb(var(--ink-strong));
   font-weight: 700;

@@ -172,10 +172,13 @@ describe('useAlerts: tipos de alerta', () => {
 
     alerts.success('Importación procesada')
     const options = Swal.fire.mock.calls.at(-1)[0]
+    // didOpen solo marca el fin de la entrada (useAlerts.js); no cierra nada por su cuenta.
+    options.didOpen?.(popup)
     confirmButton.click()
 
-    expect(options.didOpen).toBeUndefined()
     expect(Swal.close).not.toHaveBeenCalled()
+    popup.dispatchEvent(new Event('animationend'))
+    expect(popup.classList).toContain('ui-swal-entered')
   })
 })
 

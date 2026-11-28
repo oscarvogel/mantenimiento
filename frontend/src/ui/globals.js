@@ -38,9 +38,19 @@ function installNativeFormFeedback() {
     form.dataset.validationFocusQueued = 'true'
     queueMicrotask(() => {
       delete form.dataset.validationFocusQueued
-      if (control.isConnected && !control.disabled) control.focus()
+      if (!control.isConnected || control.disabled) return
+      control.focus()
+      shakeField(control)
     })
   }, true)
+
+  // Validación propia de Vue: después del submit, el primer campo marcado se sacude.
+  // No se mira mientras se escribe: Lecturas rápidas marca filas en vivo.
+  document.addEventListener('submit', (event) => {
+    const form = event.target
+    if (!(form instanceof HTMLFormElement)) return
+    requestAnimationFrame(() => shakeFirstInvalid(form))
+  })
 
   document.addEventListener('input', clearInvalidState)
   document.addEventListener('change', clearInvalidState)
@@ -84,6 +94,21 @@ function installNativeFormFeedback() {
       delete button.dataset.originalFeedbackLabel
     })
   })
+}
+
+// Un sacudón corto: dice "acá" sin depender del color. Con movimiento reducido no se mueve.
+export function shakeField(field) {
+  field.classList.remove('ui-shake')
+  void field.offsetWidth // reinicia la animación si ya se estaba sacudiendo
+  field.classList.add('ui-shake')
+  field.addEventListener('animationend', () => field.classList.remove('ui-shake'), { once: true })
+}
+
+// También al cargar: la página que vuelve del servidor con errores en los campos.
+export function shakeFirstInvalid(root) {
+  const field = root?.querySelector('[aria-invalid="true"]')
+  if (field) shakeField(field)
+  return field ?? null
 }
 
 function clearInvalidState(event) {

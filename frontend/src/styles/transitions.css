@@ -232,6 +232,16 @@ html[data-theme='dark'] .ui-sidebar-surface.platform-sidebar {
   45% { transform: scale(1.08); }
 }
 
+/* Campo con error al intentar guardar (globals.js): un sacudón corto, una sola vez. */
+.ui-shake {
+  animation: ui-shake 340ms cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+@keyframes ui-shake {
+  20%, 60% { transform: translateX(-4px); }
+  40%, 80% { transform: translateX(4px); }
+}
+
 /* Botón de un formulario ya enviado: aro girando hasta que llega la página siguiente. */
 button.ui-submitting {
   cursor: progress;
