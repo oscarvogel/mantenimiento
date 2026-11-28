@@ -70,7 +70,7 @@ final class TenantAdministrationService
         );
     }
 
-    public function updateUser(ActorContext $actor, int $userId, array $data, string $reason): void
+    public function updateUser(ActorContext $actor, int $userId, array $data, string $reason): bool
     {
         if ($userId <= 0) {
             throw new DomainException('El usuario no es válido.');
@@ -79,6 +79,7 @@ final class TenantAdministrationService
         $companyId = $this->companyFor($actor, 'usuarios.editar');
         $name = trim((string) ($data['nombre'] ?? ''));
         $email = mb_strtolower(trim((string) ($data['email'] ?? '')));
+        $notificationEmail = $this->normalizeNotificationEmail($data['email_notificaciones'] ?? null);
         $phone = $this->normalizePhone($data['telefono'] ?? null);
         $active = (int) ($data['activo'] ?? -1);
 
@@ -89,10 +90,10 @@ final class TenantAdministrationService
             throw new DomainException('No podés desactivar tu propia cuenta.');
         }
 
-        $this->administration->updateUser(
+        return $this->administration->updateUser(
             $companyId,
             $userId,
-            ['nombre' => $name, 'email' => $email, 'telefono' => $phone, 'activo' => $active],
+            ['nombre' => $name, 'email' => $email, 'email_notificaciones' => $notificationEmail, 'telefono' => $phone, 'activo' => $active],
             $this->reason($reason),
             $actor->userId(),
         );
@@ -198,6 +199,7 @@ final class TenantAdministrationService
     {
         $name = trim((string) ($data['nombre'] ?? ''));
         $email = mb_strtolower(trim((string) ($data['email'] ?? '')));
+        $notificationEmail = $this->normalizeNotificationEmail($data['email_notificaciones'] ?? null);
         $phone = $this->normalizePhone($data['telefono'] ?? null);
         $password = (string) ($data['password'] ?? '');
 
@@ -208,7 +210,20 @@ final class TenantAdministrationService
             throw new DomainException('La contraseña debe tener al menos 8 caracteres.');
         }
 
-        return ['nombre' => $name, 'email' => $email, 'telefono' => $phone, 'password' => $password];
+        return ['nombre' => $name, 'email' => $email, 'email_notificaciones' => $notificationEmail, 'telefono' => $phone, 'password' => $password];
+    }
+
+    private function normalizeNotificationEmail(mixed $value): ?string
+    {
+        $email = mb_strtolower(trim((string) $value));
+        if ($email === '') {
+            return null;
+        }
+        if (mb_strlen($email) > 255 || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+            throw new DomainException('El correo para resúmenes no es válido.');
+        }
+
+        return $email;
     }
 
     private function normalizePhone(mixed $phone): ?string
