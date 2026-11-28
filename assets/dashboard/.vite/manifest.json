@@ -86,7 +86,7 @@
     "isDynamicEntry": true
   },
   "src/main.js": {
-    "file": "assets/main-DgLTQtp1.js",
+    "file": "assets/main-DyIkYpBM.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
@@ -105,7 +105,7 @@
       "src/profiles/cliente_piloto/profile.js"
     ],
     "css": [
-      "assets/main-Bc_K8rFN.css"
+      "assets/main-BHI-ZYaA.css"
     ]
   },
   "src/pages/operations/components/FleetTelemetryMap.vue": {
@@ -122,7 +122,7 @@
     ]
   },
   "src/profiles/cliente_piloto/profile.js": {
-    "file": "assets/profile-3ECHcATh.js",
+    "file": "assets/profile-Z4gQuuFl.js",
     "name": "profile",
     "src": "src/profiles/cliente_piloto/profile.js",
     "isDynamicEntry": true,
@@ -138,7 +138,7 @@
     ]
   },
   "src/profiles/platform/profile.js": {
-    "file": "assets/profile-CJNFO8xP.js",
+    "file": "assets/profile-16aQT-Fd.js",
     "name": "profile",
     "src": "src/profiles/platform/profile.js",
     "isDynamicEntry": true,
@@ -151,7 +151,7 @@
     ]
   },
   "src/profiles/vogel/profile.js": {
-    "file": "assets/profile-BztDpN_x.js",
+    "file": "assets/profile-nV2h33z5.js",
     "name": "profile",
     "src": "src/profiles/vogel/profile.js",
     "isDynamicEntry": true,
