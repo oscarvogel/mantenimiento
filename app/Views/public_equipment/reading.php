@@ -63,8 +63,8 @@ $helpClass  = 'mt-1.5 text-sm leading-snug text-ink-muted';
             <input id="evidence_photo" name="evidence_photo" type="file" accept="image/jpeg,image/png" capture="environment" required class="<?= $fileClass ?>">
             <p class="<?= $helpClass ?>"><?= esc($labels['photo_help'] ?? 'Sacá una foto nítida donde se vea el odómetro. La foto quedará guardada como evidencia.') ?></p>
             <!-- Sin clases de display: le ganarían al atributo hidden que maneja el JS. -->
-            <div id="evidence-ready" class="mt-3 rounded-2xl bg-success-subtle px-4 py-3 text-sm font-semibold text-success-strong" hidden>Foto guardada como evidencia ✓</div>
-            <img id="evidence-preview" class="mt-3 max-h-56 w-full rounded-2xl bg-surface-muted object-contain" hidden alt="Vista previa de la evidencia">
+            <div id="evidence-ready" class="mt-3 rounded-2xl bg-success-subtle px-4 py-3 text-sm font-semibold text-success-strong" hidden><?= esc($labels['evidence_ready'] ?? 'Foto guardada como evidencia ✓') ?></div>
+            <img id="evidence-preview" class="mt-3 max-h-56 w-full rounded-2xl bg-surface-muted object-contain" hidden alt="<?= esc($labels['evidence_preview_alt'] ?? 'Vista previa de la evidencia', 'attr') ?>">
             <div id="ai-status" class="ai-status mt-3 rounded-2xl bg-info-subtle px-4 py-3 text-sm leading-snug text-info-strong" hidden role="status" aria-live="polite"></div>
 
             <?php if ((int) $equipment['controla_km'] === 1): ?>
@@ -105,6 +105,9 @@ $helpClass  = 'mt-1.5 text-sm leading-snug text-ink-muted';
             const evidencePreview = document.getElementById('evidence-preview');
             if (!form || !submit || !photo) return;
 
+            // Textos del flujo en el idioma de la sucursal (labels() del controlador).
+            const text = <?= json_encode($labels, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+            const fill = (template, values) => template.replace(/\{(\w+)\}/g, (_, key) => values[key] ?? '');
             const analysisUrl = <?= json_encode(base_url('mantenimiento/publico/equipo/' . rawurlencode($token) . '/lectura/analizar'), JSON_UNESCAPED_SLASHES) ?>;
             let evidenceReady = Boolean(evidenceRef && evidenceRef.value);
 
@@ -123,7 +126,7 @@ $helpClass  = 'mt-1.5 text-sm leading-snug text-ink-muted';
                 evidenceReadyBox.hidden = false;
                 status.hidden = false;
                 status.classList.remove('error');
-                status.textContent = 'La foto ya quedó guardada. Podés registrar la lectura sin volver a seleccionarla.';
+                status.textContent = text.evidence_kept;
             }
 
             async function optimizePhoto(file) {
@@ -168,10 +171,10 @@ $helpClass  = 'mt-1.5 text-sm leading-snug text-ink-muted';
 
                 status.hidden = false;
                 status.classList.remove('error');
-                status.textContent = 'Preparando foto...';
+                status.textContent = text.preparing;
 
                 const uploadFile = await optimizePhoto(file);
-                status.textContent = <?= json_encode($labels['analyzing'] ?? 'Analizando foto...') ?>;
+                status.textContent = text.analyzing;
 
                 const data = new FormData();
                 data.append('evidence_photo', uploadFile, uploadFile.name || 'odometro.jpg');
@@ -193,7 +196,7 @@ $helpClass  = 'mt-1.5 text-sm leading-snug text-ink-muted';
                     }
 
                     if (!response.ok || !payload.ok) {
-                        throw new Error(payload.error || 'No pudimos procesar la foto.');
+                        throw new Error(payload.error || text.photo_failed);
                     }
 
                     if (payload.evidenceValid === false && payload.evidenceError) {
@@ -228,9 +231,9 @@ $helpClass  = 'mt-1.5 text-sm leading-snug text-ink-muted';
 
                     if (!payload.legible || payload.kilometers == null) {
                         status.classList.add('error');
-                        status.textContent = payload.analysisError || 'No pudimos leer automáticamente el odómetro. Podés escribir el valor manualmente.';
+                        status.textContent = payload.analysisError || text.not_readable;
                         if (!payload.evidenceRef) {
-                            status.textContent += ' La foto se enviará al registrar la lectura.';
+                            status.textContent += ' ' + text.photo_sent_on_submit;
                         }
                         return;
                     }
@@ -240,10 +243,10 @@ $helpClass  = 'mt-1.5 text-sm leading-snug text-ink-muted';
                         km.focus();
                         km.select();
                     }
-                    const confidence = payload.confidence == null ? '' : ' · confianza ' + Math.round(payload.confidence * 100) + '%';
-                    status.textContent = 'IA detectó ' + Number(payload.kilometers).toLocaleString('es-AR') + ' km' + confidence + '. Revisá el valor y corregilo si hace falta.';
+                    const confidence = payload.confidence == null ? '' : fill(text.ai_confidence, { percent: Math.round(payload.confidence * 100) });
+                    status.textContent = fill(text.ai_detected, { km: Number(payload.kilometers).toLocaleString(text.number_locale), confidence });
                     if (!payload.evidenceRef) {
-                        status.textContent += ' La foto se guardará junto con la lectura al registrar.';
+                        status.textContent += ' ' + text.photo_saved_on_submit;
                     }
                 } catch (error) {
                     evidenceReady = false;
@@ -251,7 +254,7 @@ $helpClass  = 'mt-1.5 text-sm leading-snug text-ink-muted';
                     photo.required = true;
                     setSubmitAvailable(false);
                     status.classList.add('error');
-                    status.textContent = (error && error.message ? error.message : 'No pudimos procesar la foto.') + ' Volvé a seleccionar o tomar una foto antes de registrar.';
+                    status.textContent = (error && error.message ? error.message : text.photo_failed) + ' ' + text.retake_before_submit;
                 }
             }
 
@@ -263,7 +266,7 @@ $helpClass  = 'mt-1.5 text-sm leading-snug text-ink-muted';
                     event.preventDefault();
                     status.hidden = false;
                     status.classList.add('error');
-                    status.textContent = 'Seleccioná o sacá una foto antes de registrar.';
+                    status.textContent = text.photo_required_submit;
                     return;
                 }
 
