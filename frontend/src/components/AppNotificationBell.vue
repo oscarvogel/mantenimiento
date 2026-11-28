@@ -1,4 +1,5 @@
 <script setup>
+import LoadingBlocks from './LoadingBlocks.vue'
 import * as format from '../ui/format.js'
 import { BellIcon } from '@heroicons/vue/24/outline'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
@@ -103,7 +104,7 @@ onBeforeUnmount(() => {
         <a :href="centerUrl" class="text-xs font-semibold text-primary hover:underline">Ver todas</a>
       </div>
 
-      <div v-if="loading && !items.length" class="px-4 py-8 text-center text-sm text-ink-muted">Cargando notificaciones…</div>
+      <LoadingBlocks v-if="loading && !items.length" label="Cargando notificaciones…" class="px-4 py-2" />
       <div v-else-if="error && !items.length" class="px-4 py-6 text-center">
         <p class="text-sm font-medium text-ink">No se pudo cargar el resumen.</p>
         <button type="button" class="mt-2 text-xs font-semibold text-primary hover:underline" @click="loadSummary">Reintentar</button>

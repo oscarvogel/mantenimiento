@@ -6,7 +6,7 @@ import { ExclamationTriangleIcon, MapPinIcon, MagnifyingGlassIcon } from '@heroi
 
 const FleetTelemetryMap = defineAsyncComponent({
   loader: () => import('./components/FleetTelemetryMap.vue'),
-  loadingComponent: { template: '<div class="min-h-80 bg-surface-muted sm:min-h-[26rem]" aria-label="Cargando mapa" />' },
+  loadingComponent: { template: '<div role="status" class="min-h-80 animate-pulse bg-surface-muted sm:min-h-[26rem]"><span class="sr-only">Cargando mapa</span></div>' },
   delay: 0,
 })
 

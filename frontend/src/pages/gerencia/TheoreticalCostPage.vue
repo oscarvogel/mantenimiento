@@ -1,4 +1,5 @@
 <script setup>
+import LoadingBlocks from '../../components/LoadingBlocks.vue'
 import { primaryButton, secondaryButton } from '../../ui/buttons.js'
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import {
@@ -669,7 +670,7 @@ onMounted(initialize)
       <button type="button" role="tab" :aria-selected="activeTab === 'history'" class="min-h-11 inline-flex shrink-0 items-center gap-2 border-b-2 px-4 text-sm font-semibold" :class="activeTab === 'history' ? 'border-primary text-primary' : 'border-transparent text-ink-muted hover:text-ink'" @click="activeTab = 'history'"><ClockIcon class="size-4" aria-hidden="true" />Escenarios guardados <span class="rounded-full bg-surface-muted px-2 py-0.5 text-xs">{{ scenarios.length }}</span></button>
     </div>
 
-    <div v-if="loading" role="status" class="rounded-card bg-surface-raised px-5 py-8 text-center text-sm text-ink-muted shadow-card">Cargando equipos e historial…</div>
+    <LoadingBlocks v-if="loading" label="Cargando equipos e historial…" :rows="4" class="rounded-card bg-surface-raised px-5 py-2 shadow-card" />
 
     <template v-else-if="activeTab === 'calculator'">
       <section v-if="pendingAssumptions.length" data-testid="assumptions-warning" role="status" aria-live="polite" aria-labelledby="assumptions-warning-title" class="rounded-lg border border-warning/30 bg-warning-subtle px-3 py-2.5 text-sm">

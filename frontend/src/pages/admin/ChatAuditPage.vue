@@ -1,4 +1,5 @@
 <script setup>
+import LoadingBlocks from '../../components/LoadingBlocks.vue'
 import { primaryButton, secondaryButton, secondaryButtonSm } from '../../ui/buttons.js'
 import * as format from '../../ui/format.js'
 import { computed, onMounted, reactive, ref } from 'vue'
@@ -81,7 +82,7 @@ onMounted(() => load(1))
     </form>
 
     <p v-if="error" class="rounded-lg border border-danger/35 bg-danger-subtle p-3 text-sm font-medium text-danger-strong" role="alert" aria-live="assertive">{{ error }}</p>
-    <p v-if="loading" class="text-sm text-ink-muted" role="status" aria-live="polite">Cargando conversaciones…</p>
+    <LoadingBlocks v-if="loading" label="Cargando conversaciones…" :rows="5" class="rounded-card bg-surface-raised px-4 shadow-card" />
     <div v-else-if="!items.length" class="rounded-xl border border-dashed border-border-strong p-8 text-center text-ink-muted">No hay conversaciones para estos filtros.</div>
 
     <div v-else class="overflow-hidden rounded-card bg-surface-raised shadow-card">
@@ -104,7 +105,7 @@ onMounted(() => load(1))
     <div v-if="selected || detailLoading" class="fixed inset-0 z-50 flex justify-end bg-secondary-900/60" role="presentation" @click.self="selected = null">
       <aside class="h-full w-full overflow-y-auto bg-surface-raised p-5 text-ink shadow-2xl md:max-w-3xl" role="dialog" aria-modal="true" aria-labelledby="chat-audit-detail-title">
         <button type="button" @click="selected = null" :class="[secondaryButtonSm, 'float-right']">Cerrar</button>
-        <p v-if="detailLoading" id="chat-audit-detail-title" class="text-ink-muted" role="status" aria-live="polite">Cargando detalle…</p>
+        <LoadingBlocks v-if="detailLoading" id="chat-audit-detail-title" label="Cargando detalle…" :rows="4" class="pr-20" />
         <template v-else-if="selected">
           <h2 id="chat-audit-detail-title" class="pr-20 text-xl font-bold text-ink">#{{ selected.id }} · {{ selected.title || 'Sin título' }}</h2>
           <p class="mt-1 text-sm text-ink-muted">{{ selected.companyName }} · {{ selected.userName || selected.userEmail }} · {{ selected.messageCount }} mensajes</p>

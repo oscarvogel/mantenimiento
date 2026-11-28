@@ -1,4 +1,5 @@
 <script setup>
+import LoadingBlocks from '../../components/LoadingBlocks.vue'
 import { primaryButton, secondaryButton, secondaryButtonSm } from '../../ui/buttons.js'
 import * as format from '../../ui/format.js'
 import { computed, onMounted, reactive, ref } from 'vue'
@@ -130,7 +131,7 @@ onMounted(() => load(1))
     </form>
 
     <p v-if="error" class="rounded-lg border border-danger/35 bg-danger-subtle p-3 text-sm font-medium text-danger-strong" role="alert" aria-live="assertive">{{ error }}</p>
-    <p v-if="loading" class="text-sm text-ink-muted" role="status" aria-live="polite">Cargando cambios…</p>
+    <LoadingBlocks v-if="loading" label="Cargando cambios…" :rows="5" class="rounded-card bg-surface-raised px-4 shadow-card" />
     <div v-else-if="!items.length" class="rounded-xl border border-dashed border-border-strong p-8 text-center text-ink-muted">No hay cambios registrados para estos filtros.</div>
 
     <div v-else class="overflow-hidden rounded-card bg-surface-raised shadow-card">
