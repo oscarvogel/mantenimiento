@@ -112,7 +112,7 @@ final class NotificationDispatchEligibilityTest extends TestCase
 
 final class EligibilityFakeDeliveryQueue implements NotificationDeliveryQueue
 {
-    public function schedule(int $notificationId, int $userId, string $eventKey, NotificationSeverity $severity, NotificationPreference $preference): void {}
+    public function schedule(int $notificationId, int $userId, string $eventKey, NotificationSeverity $severity, NotificationPreference $preference, ?string $deliveryEmail = null): void {}
 
     public function due(string $channel, int $limit): array
     {

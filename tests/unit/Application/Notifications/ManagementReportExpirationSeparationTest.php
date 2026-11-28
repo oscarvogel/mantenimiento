@@ -329,7 +329,7 @@ final class ManagementReportQueue implements NotificationDeliveryQueue, CompanyN
     public array $skippedIds = [];
 
     // NotificationDeliveryQueue (canal usuario): sin datos en este escenario.
-    public function schedule(int $notificationId, int $userId, string $eventKey, NotificationSeverity $severity, NotificationPreference $preference): void {}
+    public function schedule(int $notificationId, int $userId, string $eventKey, NotificationSeverity $severity, NotificationPreference $preference, ?string $deliveryEmail = null): void {}
     public function due(string $channel, int $limit): array { return []; }
     public function delivered(int $deliveryId): void {}
     public function skipped(int $deliveryId, string $reason): void {}

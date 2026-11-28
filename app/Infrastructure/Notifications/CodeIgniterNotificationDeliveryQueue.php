@@ -37,7 +37,7 @@ final class CodeIgniterNotificationDeliveryQueue implements NotificationDelivery
         $this->db ??= Database::connect();
     }
 
-    public function schedule(int $notificationId, int $userId, string $eventKey, NotificationSeverity $severity, NotificationPreference $preference): void
+    public function schedule(int $notificationId, int $userId, string $eventKey, NotificationSeverity $severity, NotificationPreference $preference, ?string $deliveryEmail = null): void
     {
         // La disponibilidad del canal es global: una preferencia personal nunca
         // habilita un canal que el administrador dejó apagado. Si el correo está

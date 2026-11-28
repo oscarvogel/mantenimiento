@@ -88,7 +88,7 @@ final class WebPushQueueFake implements NotificationDeliveryQueue
     public array $deferred = [];
     public array $delivered = [];
 
-    public function schedule(int $notificationId, int $userId, string $eventKey, NotificationSeverity $severity, NotificationPreference $preference): void {}
+    public function schedule(int $notificationId, int $userId, string $eventKey, NotificationSeverity $severity, NotificationPreference $preference, ?string $deliveryEmail = null): void {}
     public function due(string $channel, int $limit): array { return strtoupper($channel) === 'PUSH' ? $this->duePush : []; }
     public function delivered(int $deliveryId): void { $this->delivered[] = $deliveryId; }
     public function skipped(int $deliveryId, string $reason): void { $this->skipped[] = $deliveryId; }
