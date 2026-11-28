@@ -127,6 +127,36 @@ describe('AppSidebar module navigation', () => {
     delete document.body.dataset.baseUrl
   })
 
+  it('arriba, el nombre del módulo; debajo, "Volver al portal" como renglón propio, fuera del menú', async () => {
+    const navigation = [{ key: 'trips-operations-dashboard', label: 'Resumen', href: '/viajes/operativos/dashboard', active: true }]
+    const moduleNavigation = [
+      { key: 'platform-home', label: 'Inicio', href: '/inicio', description: 'Lo que pasa hoy en la flota' },
+      { key: 'module-trips', label: 'Viajes', href: '/viajes', active: true },
+      { key: 'module-maintenance', label: 'Mantenimiento', href: '/dashboard' },
+    ]
+    const props = { navigation, moduleNavigation, collapsible: true }
+
+    const expanded = mount(AppSidebar, { props: { ...props, collapsed: false } })
+    const row = expanded.get('[data-test="sidebar-portal"]')
+    expect(row.get('a').attributes('href')).toBe('/inicio')
+    expect(row.text()).toBe('Volver al portal')
+    expect(expanded.get('#desktop-primary-navigation').find('a[href="/inicio"]').exists()).toBe(false)
+    expect(expanded.text()).toContain('Viajes')
+    expect(expanded.find('a[href="/dashboard"]').exists()).toBe(false) // no hay selector de módulos
+
+    const collapsed = mount(AppSidebar, { attachTo: document.body, props: { ...props, collapsed: true } })
+    const rail = collapsed.get('[data-test="sidebar-portal"]')
+    rail.element.getBoundingClientRect = () => ({ top: 110, height: 60, left: 0, right: 72, bottom: 170, width: 72 })
+    await rail.trigger('mouseenter')
+    expect(collapsed.get('[data-test="rail-tooltip"]').text()).toBe('Volver al portal')
+    expect(collapsed.get('#desktop-primary-navigation').find('a[href="/inicio"]').exists()).toBe(false)
+    collapsed.unmount()
+
+    const mobile = mount(AppSidebar, { props: { navigation, moduleNavigation, mobile: true } })
+    await mobile.get('[data-test="sidebar-portal"] a').trigger('click')
+    expect(mobile.emitted('close')).toHaveLength(1)
+  })
+
   it('no repite Cerrar sesión: vive en Mi cuenta', () => {
     const wrapper = mount(AppSidebar, { props: { navigation: [{ key: 'dashboard', label: 'Resumen', href: '/dashboard' }] } })
     expect(wrapper.text()).not.toContain('Cerrar sesión')

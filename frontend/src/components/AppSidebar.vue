@@ -1,7 +1,7 @@
 <script setup>
 // The only navigation of the app (docs/DESIGN_TOKENS.md, "Navegación"): navy in both
-// themes, the module switch and the way back to the portal on top, and the module's own
-// items grouped by daily task.
+// themes, the module name on top, the way back to the portal as its own row, and the
+// module's own items grouped by daily task.
 import { computed, ref, watch } from 'vue'
 import {
   ArrowLeftIcon,
@@ -12,7 +12,6 @@ import {
 } from '@heroicons/vue/24/outline'
 import BrandLogo from './BrandLogo.vue'
 import { navigationIconFor } from '../ui/navigationIcons.js'
-import ModuleHeading from './ModuleHeading.vue'
 import SidebarLink from './SidebarLink.vue'
 import ThemeToggle from './ThemeToggle.vue'
 import { groupNavigation } from '../ui/navigationGroups.js'
@@ -31,7 +30,12 @@ const isPlatformNavigation = computed(() => props.navigation.some((item) => item
 const isManagerialNavigation = computed(() => props.navigation.some((item) => String(item.key).startsWith('managerial-')))
 const isTripNavigation = computed(() => props.navigation.some((item) => ['trip-masters', 'trips-dashboard', 'trips-operations-dashboard', 'trips-operations', 'trips-profitability'].includes(item.key)))
 const moduleTitle = computed(() => (isManagerialNavigation.value ? 'Gerencial' : (isTripNavigation.value ? 'Viajes' : 'Mantenimiento')))
-const portalLink = computed(() => props.moduleNavigation.find((item) => item.key === 'platform-home' && item.href && !item.disabled))
+// Sin la descripción del catálogo ("Lo que pasa hoy en la flota"): acá es solo la vuelta.
+const portalLink = computed(() => {
+  const home = props.moduleNavigation.find((item) => item.key === 'platform-home' && item.href && !item.disabled)
+  return home ? { ...home, description: null } : null
+})
+const moduleName = computed(() => props.moduleNavigation.find((item) => item.active && item.key !== 'platform-home')?.label ?? moduleTitle.value)
 // Íconos fijos de la barra contraída, en este orden. Quien no ve planes es perfil de campo
 // (mismo criterio que el portal): sus accesos son Mi trabajo e Informar falla.
 const officeRailKeys = ['dashboard', 'work-orders', 'work-requests', 'plans', 'equipment', 'quick-readings']
@@ -119,7 +123,7 @@ const openDemoCompany = () => {
       </div>
       <div v-if="!collapsed" class="workspace-sidebar-reveal min-w-0 flex-1">
         <span v-if="isPlatformNavigation" class="block text-sm font-semibold leading-snug text-white">Vogel Consultoría</span>
-        <ModuleHeading v-else :modules="moduleNavigation" :fallback-title="moduleTitle" />
+        <p v-else class="truncate text-base font-bold text-white">{{ moduleName }}</p>
       </div>
     </div>
 
@@ -129,7 +133,7 @@ const openDemoCompany = () => {
       :class="isPlatformNavigation ? 'platform-brand-row h-28' : 'min-h-[4.5rem] py-3'"
     >
       <BrandLogo v-if="isPlatformNavigation" size="platform" />
-      <ModuleHeading v-else :modules="moduleNavigation" :fallback-title="moduleTitle" />
+      <p v-else class="min-w-0 truncate pt-2.5 text-base font-bold text-white">{{ moduleName }}</p>
       <button
         v-if="mobile"
         type="button"
@@ -141,6 +145,20 @@ const openDemoCompany = () => {
       </button>
     </div>
 
+    <!-- Volver al portal: renglón propio, fijo bajo el encabezado y separado del menú del módulo. -->
+    <div
+      v-if="!isPlatformNavigation && portalLink"
+      data-test="sidebar-portal"
+      class="shrink-0 border-b border-white/10 py-2"
+      :class="collapsed ? 'px-2' : 'px-3'"
+      @mouseenter="collapsed && showRailTip($event, 'Volver al portal')"
+      @mouseleave="hideRailTip"
+      @focusin="collapsed && showRailTip($event, 'Volver al portal')"
+      @focusout="hideRailTip"
+    >
+      <SidebarLink :item="portalLink" label="Volver al portal" :icon="ArrowLeftIcon" :compact="collapsed" @navigate="emit('close')" />
+    </div>
+
     <nav
       v-if="collapsed"
       id="desktop-primary-navigation"
@@ -150,15 +168,6 @@ const openDemoCompany = () => {
       @keydown.escape="hideRailTip"
     >
       <ul class="space-y-1">
-        <li
-          v-if="!isPlatformNavigation && portalLink"
-          @mouseenter="showRailTip($event, 'Volver al portal')"
-          @mouseleave="hideRailTip"
-          @focusin="showRailTip($event, 'Volver al portal')"
-          @focusout="hideRailTip"
-        >
-          <SidebarLink :item="portalLink" label="Volver al portal" :icon="ArrowLeftIcon" compact />
-        </li>
         <li
           v-for="item in railLinks"
           :key="item.key"
