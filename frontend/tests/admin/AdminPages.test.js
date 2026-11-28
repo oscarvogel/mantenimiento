@@ -158,6 +158,10 @@ describe('UsersAdminPage', () => {
     expect(wrapper.get('form[action="/administracion/usuarios"] input[name="telefono"]').attributes('placeholder')).toBe('5493764123456')
     expect(wrapper.get('form[action="/administracion/usuarios/2"] input[name="telefono"]').element.value).toBe('5493764123456')
     expect(wrapper.get('form[action="/administracion/usuarios/3"] input[name="telefono"]').element.value).toBe('')
+    expect(wrapper.get('form[action="/administracion/usuarios"] input[name="email_notificaciones"]').attributes('type')).toBe('email')
+    expect(wrapper.get('form[action="/administracion/usuarios/2"] input[name="email_notificaciones"]').element.value).toBe('resumen@transportes.test')
+    expect(wrapper.get('form[action="/administracion/usuarios/3"] input[name="email_notificaciones"]').element.value).toBe('')
+    expect(wrapper.text()).toContain('Cambiar este correo no modifica el ingreso')
     expect(wrapper.text()).toContain('Sin celular configurado')
     expect(wrapper.get('form[action="/administracion/usuarios/3/acceso"] input[name="sucursales[]"][value="4"]').element.checked).toBe(true)
     expect(wrapper.find('nav[aria-label="Paginación"]').exists()).toBe(false)
@@ -203,7 +207,7 @@ describe('UsersAdminPage', () => {
       users: [usersAdminData.users[0]],
       metrics: { total: 1, active: 1, inactive: 0 },
       pagination: { ...usersAdminData.pagination, totalPages: 1, total: 1, nextUrl: null },
-      oldInput: { nombre: '', email: '', telefono: '', motivo: '', roleIds: [], branchIds: [] },
+      oldInput: { nombre: '', email: '', email_notificaciones: '', telefono: '', motivo: '', roleIds: [], branchIds: [] },
       flash: { success: '', error: '' },
     })
 

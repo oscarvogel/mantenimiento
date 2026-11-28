@@ -56,9 +56,14 @@ const includesId = (ids, id) => ids.includes(Number(id))
           <input name="nombre" maxlength="255" required :value="data.oldInput.nombre" autocomplete="name" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
         </label>
         <label class="block">
-          <span class="mb-1.5 block text-sm font-medium text-ink">Email <span class="text-danger" aria-hidden="true">*</span></span>
+          <span class="mb-1.5 block text-sm font-medium text-ink">Email de ingreso <span class="text-danger" aria-hidden="true">*</span></span>
           <input type="email" name="email" maxlength="255" required :value="data.oldInput.email" autocomplete="email" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
           <span class="mt-1 block text-xs text-ink-subtle">Este email será el usuario de acceso al sistema.</span>
+        </label>
+        <label class="block">
+          <span class="mb-1.5 block text-sm font-medium text-ink">Correo para resúmenes</span>
+          <input type="email" name="email_notificaciones" maxlength="255" :value="data.oldInput.email_notificaciones" autocomplete="off" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          <span class="mt-1 block text-xs text-ink-subtle">Si se deja vacío, los resúmenes llegan al email de ingreso. Cambiar este correo no modifica el ingreso.</span>
         </label>
         <label class="block">
           <span class="mb-1.5 block text-sm font-medium text-ink">Celular / WhatsApp</span>
@@ -155,9 +160,14 @@ const includesId = (ids, id) => ids.includes(Number(id))
                   <input name="nombre" maxlength="255" required :value="user.name" autocomplete="name" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
                 </label>
                 <label class="block">
-                  <span class="mb-1.5 block text-sm font-medium text-ink">Email</span>
+                  <span class="mb-1.5 block text-sm font-medium text-ink">Email de ingreso</span>
                   <input type="email" name="email" maxlength="255" required :value="user.email" autocomplete="email" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
                   <span class="mt-1 block text-xs leading-5 text-warning-strong">Es el usuario de acceso. Si lo cambiás, el correo anterior deja de servir para ingresar.</span>
+                </label>
+                <label class="block">
+                  <span class="mb-1.5 block text-sm font-medium text-ink">Correo para resúmenes</span>
+                  <input type="email" name="email_notificaciones" maxlength="255" :value="user.notificationEmail" autocomplete="off" class="min-h-11 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                  <span class="mt-1 block text-xs text-ink-subtle">Si se deja vacío, los resúmenes llegan al email de ingreso. Cambiar este correo no modifica el ingreso.</span>
                 </label>
                 <label class="block sm:col-span-2">
                   <span class="mb-1.5 block text-sm font-medium text-ink">Celular / WhatsApp</span>
@@ -182,7 +192,8 @@ const includesId = (ids, id) => ids.includes(Number(id))
 
               <dl v-else class="grid gap-4 rounded-xl bg-surface-subtle p-4 text-sm sm:grid-cols-2">
                 <div><dt class="text-ink-subtle">Nombre</dt><dd class="mt-1 font-medium text-ink">{{ user.name }}</dd></div>
-                <div><dt class="text-ink-subtle">Email</dt><dd class="mt-1 break-all font-medium text-ink">{{ user.email }}</dd></div>
+                <div><dt class="text-ink-subtle">Email de ingreso</dt><dd class="mt-1 break-all font-medium text-ink">{{ user.email }}</dd></div>
+                <div><dt class="text-ink-subtle">Correo para resúmenes</dt><dd class="mt-1 break-all font-medium text-ink">{{ user.notificationEmail || 'Igual al de ingreso' }}</dd></div>
                 <div><dt class="text-ink-subtle">Celular / WhatsApp</dt><dd class="mt-1 font-medium text-ink">{{ user.phone || 'Sin configurar' }}</dd></div>
               </dl>
 
