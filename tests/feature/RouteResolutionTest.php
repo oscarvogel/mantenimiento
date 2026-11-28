@@ -256,10 +256,12 @@ final class RouteResolutionTest extends CIUnitTestCase
             $revisados++;
         }
 
-        self::assertGreaterThan(
-            8,
+        // Piso contra un escáner roto. Desde 2026-11-27 casi toda la navegación es Vue (la cubren los
+        // tests de paths del frontend): se borraron las vistas Bootstrap sin uso que aportaban enlaces.
+        self::assertGreaterThanOrEqual(
+            2,
             $revisados,
-            'Se esperaban al menos 8 enlaces y solo se revisaron ' . $revisados . '.',
+            'Se esperaban al menos 2 enlaces y solo se revisaron ' . $revisados . '.',
         );
     }
 
@@ -290,10 +292,11 @@ final class RouteResolutionTest extends CIUnitTestCase
             $revisados++;
         }
 
-        self::assertGreaterThan(
-            20,
+        // Piso contra un escáner roto; ver el comentario del test de enlaces.
+        self::assertGreaterThanOrEqual(
+            1,
             $revisados,
-            'Se esperaban al menos 20 formularios y solo se revisaron ' . $revisados . '.',
+            'Se esperaba al menos 1 formulario y solo se revisaron ' . $revisados . '.',
         );
     }
 

@@ -85,6 +85,9 @@ Un guard global, en un solo lugar, que cubre todos los formularios:
   no los alcanza. Son pantallas del circuito preventivo y de administración global, fuera
   del flujo reportado; quedan señaladas para integrarlas (mismo script, un `<script>` por
   vista) en un PR aparte.
+  *Actualización 2026-11-27:* `maintenance_circuit/*`, `superadmin/index.php` y `assets/index.php`
+  se borraron: ningún controlador las renderizaba (las pantallas reales son de Vue). Solo queda
+  `public_equipment/reading.php`.
 - **No se tocó** la semántica de `step` ni la validación de los campos: un `stepMismatch`
   sigue marcando el campo como inválido, igual que antes.
 
