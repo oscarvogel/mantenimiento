@@ -12,7 +12,7 @@ import {
 } from '@heroicons/vue/24/outline'
 import BrandLogo from './BrandLogo.vue'
 import { navigationIconFor } from '../ui/navigationIcons.js'
-import ModuleSwitcher from './ModuleSwitcher.vue'
+import ModuleHeading from './ModuleHeading.vue'
 import SidebarLink from './SidebarLink.vue'
 import ThemeToggle from './ThemeToggle.vue'
 import { groupNavigation } from '../ui/navigationGroups.js'
@@ -119,7 +119,7 @@ const openDemoCompany = () => {
       </div>
       <div v-if="!collapsed" class="workspace-sidebar-reveal min-w-0 flex-1">
         <span v-if="isPlatformNavigation" class="block text-sm font-semibold leading-snug text-white">Vogel Consultoría</span>
-        <ModuleSwitcher v-else :modules="moduleNavigation" :fallback-title="moduleTitle" />
+        <ModuleHeading v-else :modules="moduleNavigation" :fallback-title="moduleTitle" />
       </div>
     </div>
 
@@ -129,7 +129,7 @@ const openDemoCompany = () => {
       :class="isPlatformNavigation ? 'platform-brand-row h-28' : 'min-h-[4.5rem] py-3'"
     >
       <BrandLogo v-if="isPlatformNavigation" size="platform" />
-      <ModuleSwitcher v-else :modules="moduleNavigation" :fallback-title="moduleTitle" />
+      <ModuleHeading v-else :modules="moduleNavigation" :fallback-title="moduleTitle" />
       <button
         v-if="mobile"
         type="button"

@@ -1,43 +1,29 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
-import ModuleSwitcher from './ModuleSwitcher.vue'
+import ModuleHeading from './ModuleHeading.vue'
 
 const modules = [
-  ['platform-home', 'Inicio', '/inicio'],
-  ['module-maintenance', 'Mantenimiento', '/dashboard'],
-  ['module-trips', 'Viajes', '/viajes'],
-  ['module-fuel', 'Combustible'],
-  ['module-tires', 'Neumáticos'],
-  ['module-billing', 'Facturación'],
-  ['module-management', 'Gerencial', '/gerencial'],
-  ['module-ai', 'Inteligencia Artificial'],
-].map(([key, label, href], index) => ({
-  key,
-  label,
-  href: href ?? null,
-  active: index === 1,
-  disabled: !href,
-  status: href ? 'Operativo' : 'Próximamente',
-}))
+  { key: 'platform-home', label: 'Inicio', href: '/inicio' },
+  { key: 'module-maintenance', label: 'Mantenimiento', href: '/dashboard', active: true },
+  { key: 'module-trips', label: 'Viajes', href: '/viajes' },
+  { key: 'module-fuel', label: 'Combustible', href: null, disabled: true, status: 'Próximamente' },
+]
 
-const render = (list = modules) => mount(ModuleSwitcher, { props: { modules: list, fallbackTitle: 'Mantenimiento' } })
+const render = (list = modules) => mount(ModuleHeading, { props: { modules: list, fallbackTitle: 'Mantenimiento' } })
 
-describe('ModuleSwitcher', () => {
+describe('ModuleHeading', () => {
   it('ofrece volver al portal y nombra el módulo actual', () => {
     const wrapper = render()
     expect(wrapper.get('a[href="/inicio"]').text()).toContain('Volver al portal')
-    expect(wrapper.get('summary').text()).toContain('Mantenimiento')
+    expect(wrapper.get('p').text()).toBe('Mantenimiento')
   })
 
-  it('deja alcanzable cada módulo habilitado y muestra los futuros sin enlace', () => {
+  it('no cambia de módulo por su cuenta: eso se hace desde el portal', () => {
     const wrapper = render()
-    expect(wrapper.find('a[href="/viajes"]').exists()).toBe(true)
-    expect(wrapper.find('a[href="/gerencial"]').exists()).toBe(true)
-    for (const module of modules.filter((item) => item.key !== 'platform-home')) {
-      expect(wrapper.text()).toContain(module.label)
-    }
-    const future = wrapper.get('[aria-label="Combustible: Próximamente"]')
-    expect(future.element.tagName).not.toBe('A')
+    expect(wrapper.findAll('a')).toHaveLength(1)
+    expect(wrapper.find('details').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('Viajes')
+    expect(wrapper.text()).not.toContain('Cambiar de módulo')
   })
 
   it('sin módulos del servidor muestra el nombre de respaldo y no inventa el portal', () => {
