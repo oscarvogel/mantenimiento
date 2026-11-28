@@ -1,7 +1,7 @@
 # Diseño — Destinatario del resumen diario por usuario, separado del login
 
 **Fecha:** 28 de noviembre de 2026
-**Estado:** Diseño aprobado en conversación; pendiente de revisión del documento escrito.
+**Estado:** Aprobado e implementado el 28/11/2026. Ejecución verificada localmente (PHPUnit/Vitest/build locales; sin HTTP en staging, sin verificación visual/móvil, sin piloto con usuarios reales); pendiente de verificación en `fasa_189` y de carga de las direcciones confirmadas por el usuario.
 **Bounded contexts:** Notifications (dueño del despacho) e Identidad/Organización (dueño de `usuarios`).
 **Decisión del usuario:** los correos con los que Mariela y Carlos ingresan deben permanecer tal cual. El resumen diario debe poder enviarse a otras direcciones sin modificar esas credenciales.
 
