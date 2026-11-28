@@ -26,6 +26,7 @@ Notifications (política, resolver, cola y publicación) y Organización/Identid
 | 5 | `6e37be90` | `feat(notificaciones): guardar y usar el destinatario efectivo de cada entrega` |
 | 6 | `6ac418e4` | `feat(organizacion): correo de resumen en altas y ediciones de usuario` |
 | 7 | `77328d84` | `feat(admin): correo para resumenes separado del ingreso en usuarios` |
+| 8 | `217f57d0` | `docs(notificaciones): bitacora del destinatario de resumen separado del login` |
 
 ## Archivos y migración
 
@@ -208,9 +209,54 @@ Los artefactos regenerados en `assets/dashboard/` fueron revertidos después de 
 - **(f) Tipos SQLite de columnas no usadas en tests del resolver difieren levemente de la migración.** Los schemas SQLite replican el tipo real de las columnas relevantes para la consulta/regresión; columnas no usadas pueden tener diferencias menores sin afectar la semántica ejercida.
 - **(g) Warning cosmético de `-d extension=sqlite3`.** En este entorno PHP 8.2.12 ya carga `sqlite3`; pasar `-d extension=sqlite3` emite warning de carga duplicada/cosmético, por eso la verificación completa se ejecutó sin ese flag.
 
-## Datos operativos / estado pendiente
+## Verificación real en staging (Task 9, 28/11/2026)
 
-- **Staging `fasa_189`**: pendiente de verificación. No se tocó staging ni producción en esta tarea (Task 9). Antes de cualquier acción en staging hay que identificar host `fasa_189`, stack `mantenimiento-staging`, commit/checkout, puerto y volúmenes.
-- **Correos reales de Mariela/Carlos**: pendiente de confirmación por escrito. No se cargan direcciones inventadas. Solo actualizar `usuarios.email_notificaciones` por `usuario_id` + `empresa_id` tras recibir: correo de ingreso vigente y correo de resumen deseado para cada uno.
-- **Producción Ferozo**: no tocar sin aprobación explícita. Ferozo no tiene CLI; seguir `docs/DEPLOY_FEROZO.md` y validar con smoke HTTP cuando corresponda.
-- **Aceptación visual/móvil y piloto**: **no hubo aceptación visual/móvil ni piloto con usuarios reales** en este cierre. Vitest verde no equivale a verificación visual. La verificación HTTP real y la verificación visual/móvil quedan para la Task 9 en `fasa_189`.
+### Entorno identificado y despliegue
+
+- Host verificado por SSH: `fasa_189`. Stack Coolify: `mantenimiento-staging`, aplicación `bdqictyu4q5xkfuh6aoh7sr8`.
+- Contenedor anterior: `d56fb6120fd3` / imagen `bdqictyu4q5xkfuh6aoh7sr8:fe3c5532745530b9a382eb18ea3c2ecf7d3c958b`.
+- Contenedor nuevo: `eac02b37fbc3` / imagen `bdqictyu4q5xkfuh6aoh7sr8:217f57d0e47e0bc1628defb73e33c9ace61c48f9`, estado `healthy`.
+- Deploy encolado con PAT temporal de Coolify; `git_branch=main` y `git_commit_sha=217f57d0e47e0bc1628defb73e33c9ace61c48f9`. El token temporal (id `91`) fue revocado al terminar: quedan `0` tokens con nombre `resumen-deploy-temporal`. Los archivos temporales del host y del contenedor fueron borrados.
+- HTTP sobre el host canónico `https://mantenimiento.staging.186.5.245.12.sslip.io`: `/login` → `200`; `/.env`, `/app`, `/vendor` y `/writable` → `403`. El alias `bdqictyu4q5xkfuh6aoh7sr8...sslip.io` sirve el HTML pero usa el `baseURL` canónico, por lo que el navegador bloquea los assets por CORS; la verificación visual se hizo en el host canónico.
+
+### Migraciones
+
+- `2026-11-28-100000_AddUserNotificationEmailSnapshot` se aplicó **antes** de reemplazar el código, a las `10:06:31` ART (batch `69`), usando el mecanismo documentado para Docker/Coolify.
+- `2026-11-27-120000_AddCancellationReasonToWhatsAppDeliveries` estaba pendiente por el checkout anterior; se aplicó después del deploy a las `10:31:01` ART (batch `70`).
+- Columnas verificadas: `usuarios.email_notificaciones varchar(255) NULL` y `notificacion_entregas.destinatario varchar(255) NULL`.
+- `php spark migrate:status` quedó con `0` migraciones pendientes.
+
+### ABM: evidencia visual y auditoría
+
+- Escritorio (`1440x900`) y móvil (`375x812`): los dos campos se muestran con etiquetas distintas —“Email de ingreso” y “Correo para resúmenes”— y la ayuda “Cambiar este correo no modifica el ingreso”. En móvil no hay desbordamiento horizontal (`scrollWidth = innerWidth = 375`).
+- Evidencia: `docs/screenshots/2026-11-28-destinatario-resumen/admin-usuarios-escritorio.png` y `docs/screenshots/2026-11-28-destinatario-resumen/admin-usuarios-movil.png`.
+- Edición de prueba: usuario `23` (empresa `7`), `email_notificaciones = resumen-qa@webtsa.test`, motivo `Verificacion resumen staging 28/11`. El formulario mostró el mensaje «El correo de resumen no modifica el usuario de ingreso».
+- Auditoría `id=21`, acción `usuario.actualizado`: `valores_anteriores` contiene `email: gerencial@mantenimiento.local` y `email_notificaciones: null`; `valores_nuevos` conserva el mismo `email` y registra `email_notificaciones: resumen-qa@webtsa.test`.
+- El valor de QA del usuario `23` fue revertido a `NULL` después de la verificación.
+
+### Ciclo de notificaciones e idempotencia
+
+- Prueba controlada con el usuario `16` (empresa `7`): `email = demo@mantenimiento.local`, `email_notificaciones = qa-resumen@vogelconsultoria.com.ar`. El canal SMTP global se habilitó temporalmente (`smtp_enabled = 1`) y se restauró a `0` al final.
+- Se publicó el evento `qa:destinatario:202611281325` por el caso de uso real. Resultado: `created=1`, `duplicates=0`, `recipients=1`.
+- Entrega `id=783`, clave `qa:destinatario:202611281325:usuario:16:email`: `destinatario = qa-resumen@vogelconsultoria.com.ar`, es decir el correo de resumen y **no** el de ingreso. Se dejó `proximo_intento = NULL` para que la fila quedara vencida en esta prueba.
+- Primera ejecución `php spark notifications:dispatch qa-destinatario-20261128-1329`: `email_sent=1`, `failed=0`, `retry=0`. La entrega `783` pasó a `ENVIADA` a las `10:29:40` ART, sin `ultimo_error`. Esto acredita la aceptación por SMTP; **no se comprobó la bandeja de entrada**.
+- Segunda ejecución con la misma clave: `already_completed=1`, `email_sent=0`. La clave sigue teniendo `1` fila y `1` entrega `ENVIADA`: no hay duplicados.
+- Los valores de QA del usuario `16` y del canal SMTP fueron restaurados. La entrega `783` se conserva como traza; no se borraron notificaciones ni entregas.
+
+### Destinos reales cargados
+
+Confirmados por escrito por el usuario. Se actualizó solo `email_notificaciones`, con guarda por `id`, `empresa_id` y correo de ingreso actual:
+
+| Usuario | Empresa | Email de ingreso (sin cambios) | Correo para resúmenes |
+|---|---|---|---|
+| `7` | `4` | `mariela@tsa.com.ar` | `mariela@webtsa.com.ar` |
+| `10` | `4` | `gimenezcarlosgabriel@gmail.com` | `administracion@webtsa.com.ar` |
+
+- Se descartó `administración@webtsa.com.ar` (con acento): `FILTER_VALIDATE_EMAIL` lo marca inválido y la política caería al correo de ingreso. El usuario confirmó la forma sin acento.
+- Consulta final: los cuatro usuarios de prueba (`7`, `10`, `16`, `23`) conservan su `email` original; `16` y `23` tienen `email_notificaciones = NULL`. No se envió correo de QA a los destinatarios reales.
+
+## Estado pendiente
+
+- **Producción Ferozo**: no fue tocada. No hay aprobación para desplegar allí; cuando se autorice, seguir `docs/DEPLOY_FEROZO.md` y validar con smoke HTTP.
+- **Canal de correo en staging**: quedó deshabilitado (`smtp_enabled = 0`), tal como estaba antes de la prueba. Los resúmenes diarios no se enviarán en staging hasta que el administrador lo habilite.
+- **Bandeja y piloto**: no hubo acceso a casillas reales ni piloto con Mariela/Carlos; la evidencia es de estado `ENVIADA` y traza en base, no de lectura en la bandeja.
