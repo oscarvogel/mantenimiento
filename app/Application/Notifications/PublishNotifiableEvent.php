@@ -46,7 +46,7 @@ final readonly class PublishNotifiableEvent implements NotifiableEventPublisher
                     continue;
                 }
                 $preference = $this->preferences->resolve($recipient->userId, $event->type());
-                $this->deliveries->schedule($notificationId, $recipient->userId, $event->logicalKey(), $event->severity(), $preference);
+                $this->deliveries->schedule($notificationId, $recipient->userId, $event->logicalKey(), $event->severity(), $preference, $recipient->email);
                 $created++;
             }
 

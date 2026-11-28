@@ -55,6 +55,20 @@ final class NotificationUseCasesTest extends TestCase
         self::assertSame(10, $queue->scheduled[0]['user']);
     }
 
+    public function testPublishPassesTheResolvedDeliveryEmailToTheQueue(): void
+    {
+        $repository = new FakeNotificationRepository();
+        $queue = new FakeNotificationDeliveryQueue();
+        $resolver = new FakeNotificationRecipientResolver([
+            new NotificationRecipient(10, 5, 'resumen@example.com'),
+        ]);
+        $useCase = new PublishNotifiableEvent($resolver, $repository, new FakeNotificationPreferenceStore(), $queue, new FakeNotificationUnitOfWork());
+
+        $useCase->execute($this->event());
+
+        self::assertSame('resumen@example.com', $queue->scheduled[0]['email']);
+    }
+
     public function testNotificationCenterPassesCompanyUserAndBranchScope(): void
     {
         $repository = new FakeNotificationRepository();
@@ -224,7 +238,7 @@ final class FakeNotificationPreferenceStore implements NotificationPreferenceSto
 final class FakeNotificationDeliveryQueue implements NotificationDeliveryQueue
 {
     public array $scheduled = []; public array $dueByChannel = []; public array $delivered = []; public array $failed = []; public array $skipped = []; public array $deferred = [];
-    public function schedule(int $notificationId, int $userId, string $eventKey, NotificationSeverity $severity, NotificationPreference $preference, ?string $deliveryEmail = null): void { $this->scheduled[] = ['notification' => $notificationId, 'user' => $userId]; }
+    public function schedule(int $notificationId, int $userId, string $eventKey, NotificationSeverity $severity, NotificationPreference $preference, ?string $deliveryEmail = null): void { $this->scheduled[] = ['notification' => $notificationId, 'user' => $userId, 'email' => $deliveryEmail]; }
     public function due(string $channel, int $limit): array { return $this->dueByChannel[$channel] ?? []; }
     public function delivered(int $deliveryId): void { $this->delivered[] = $deliveryId; }
     public function skipped(int $deliveryId, string $reason): void { $this->skipped[] = $deliveryId; }
