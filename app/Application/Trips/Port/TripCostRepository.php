@@ -17,11 +17,11 @@ interface TripCostRepository
 
     public function addCashMovement(int $tripId, int $companyId, int $branchId, TripCashMovement $movement, int $actorUserId): int;
 
-    public function updateFuel(int $tripId, int $companyId, int $movementId, TripFuelLoad $load, int $actorUserId, ?int $legId = null): bool;
+    public function updateFuel(int $tripId, int $companyId, int $movementId, TripFuelLoad $load, int $actorUserId, ?int $legId = null, ?string $changeReason = null): bool;
 
-    public function updateExpense(int $tripId, int $companyId, int $movementId, TripExpense $expense, int $actorUserId, ?int $legId = null): bool;
+    public function updateExpense(int $tripId, int $companyId, int $movementId, TripExpense $expense, int $actorUserId, ?int $legId = null, ?string $changeReason = null): bool;
 
-    public function updateCashMovement(int $tripId, int $companyId, int $movementId, TripCashMovement $movement, int $actorUserId): bool;
+    public function updateCashMovement(int $tripId, int $companyId, int $movementId, TripCashMovement $movement, int $actorUserId, ?string $changeReason = null): bool;
 
     public function softDeleteFuel(int $tripId, int $companyId, int $movementId, int $actorUserId): bool;
 
@@ -38,9 +38,24 @@ interface TripCostRepository
 
     public function addOtherEarning(int $tripId, int $companyId, int $branchId, TripOtherEarning $earning, int $actorUserId, ?int $logbookEntryId = null): int;
 
-    public function updateOtherEarning(int $tripId, int $companyId, int $movementId, TripOtherEarning $earning, int $actorUserId, ?int $logbookEntryId = null): bool;
+    public function updateOtherEarning(int $tripId, int $companyId, int $movementId, TripOtherEarning $earning, int $actorUserId, ?int $logbookEntryId = null, ?string $changeReason = null): bool;
 
     public function softDeleteOtherEarning(int $tripId, int $companyId, int $movementId, int $actorUserId): bool;
 
     public function logbookEntryIdForEarning(int $tripId, int $companyId, int $movementId): ?int;
+
+    /** @return array<string,mixed>|null */
+    public function findCashMovement(int $tripId, int $companyId, int $movementId): ?array;
+
+    /** @return array<string,mixed>|null */
+    public function findFuelLoad(int $tripId, int $companyId, int $movementId): ?array;
+
+    /** @return array<string,mixed>|null */
+    public function findExpense(int $tripId, int $companyId, int $movementId): ?array;
+
+    /** @return array<string,mixed>|null */
+    public function findOtherEarning(int $tripId, int $companyId, int $movementId): ?array;
+
+    /** @return list<array<string,mixed>> */
+    public function suspiciousHistoricalMovements(int $companyId): array;
 }

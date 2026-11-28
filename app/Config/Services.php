@@ -85,12 +85,14 @@ use App\Application\Notifications\ManageWebPushSubscriptions;
 use App\Application\Notifications\MarkNotificationRead;
 use App\Application\Notifications\NotificationChannelPolicy;
 use App\Application\Notifications\Port\GlobalNotificationSettingsStore;
+use App\Application\Notifications\Port\DriverNotificationEligibilityReader;
 use App\Application\Notifications\Port\DriverPhoneAuditReadModel;
 use App\Application\Notifications\Port\NotificationChannelAvailability;
 use App\Application\Notifications\Port\NotificationCronRateLimiter;
 use App\Application\Notifications\NotificationDeliverySchedule;
 use App\Application\Notifications\NotificationPreferenceResolution;
 use App\Application\Notifications\NotificationRecipientScopePolicy;
+use App\Application\Notifications\UserNotificationEmailPolicy;
 use App\Application\Notifications\PublishNotifiableEvent;
 use App\Application\Notifications\RunNotificationDispatch;
 use App\Application\Notifications\RunNotificationCycle;
@@ -106,6 +108,7 @@ use App\Infrastructure\Notifications\CodeIgniterGlobalNotificationSettingsStore;
 use App\Infrastructure\Notifications\CodeIgniterNotificationCronRateLimiter;
 use App\Infrastructure\Notifications\CodeIgniterNotificationDeliveryQueue;
 use App\Infrastructure\Notifications\CodeIgniterWhatsAppNotificationDeliveryQueue;
+use App\Infrastructure\Notifications\CodeIgniterDriverNotificationEligibilityReader;
 use App\Infrastructure\Notifications\CodeIgniterNotificationPreferenceStore;
 use App\Infrastructure\Notifications\CodeIgniterReadingReceiptNotifier;
 use App\Infrastructure\Notifications\VogelWhatsAppApiGateway;
@@ -639,6 +642,7 @@ class Services extends BaseService
             static::notificationChannelAvailability(false),
             (string) env('alerts.dailyRunTime', '07:00'),
             db_connect(),
+            new UserNotificationEmailPolicy(),
         );
     }
 
@@ -694,6 +698,15 @@ class Services extends BaseService
         );
     }
 
+    public static function driverNotificationEligibilityReader(bool $getShared = true): DriverNotificationEligibilityReader
+    {
+        if ($getShared) {
+            return static::getSharedInstance('driverNotificationEligibilityReader');
+        }
+
+        return new CodeIgniterDriverNotificationEligibilityReader(db_connect());
+    }
+
     public static function whatsAppNotificationDeliveryQueue(bool $getShared = true): CodeIgniterWhatsAppNotificationDeliveryQueue
     {
         if ($getShared) {
@@ -705,6 +718,8 @@ class Services extends BaseService
             static::whatsAppGateway(false),
             static::globalNotificationSettingsStore(false),
             db_connect(),
+            static::driverNotificationEligibilityReader(false),
+            static::auditTrail(false),
         );
     }
 
@@ -714,7 +729,7 @@ class Services extends BaseService
             return static::getSharedInstance('notificationRecipients');
         }
 
-        return new CodeIgniterNotificationRecipientResolver(new NotificationRecipientScopePolicy(), db_connect());
+        return new CodeIgniterNotificationRecipientResolver(new NotificationRecipientScopePolicy(), new UserNotificationEmailPolicy(), db_connect());
     }
 
     public static function notificationUnitOfWork(bool $getShared = true): CodeIgniterNotificationUnitOfWork
@@ -2475,6 +2490,7 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
             static::whatsAppNotificationDeliveryQueue(false),
             static::globalNotificationSettingsStore(false),
             static::notificationClock(),
+            static::driverNotificationEligibilityReader(false),
         );
     }
 
@@ -2489,6 +2505,7 @@ public static function getEquipmentTelemetry(bool $getShared = true): \App\Appli
             static::whatsAppGateway(false),
             static::globalNotificationSettingsStore(false),
             static::notificationClock(false),
+            static::driverNotificationEligibilityReader(false),
         );
     }
 
@@ -3016,6 +3033,7 @@ return new AsignarPlan(
 
         return new \App\Application\CustomerAccounts\ListCustomerAccounts(
             new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerAccountReadModel($db),
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterExchangeRateCatalog($db),
         );
     }
 
@@ -3029,7 +3047,58 @@ return new AsignarPlan(
 
         return new \App\Application\CustomerAccounts\GetCustomerStatement(
             new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerAccountReadModel($db),
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerPaymentReadModel($db),
             new \App\Infrastructure\CustomerAccounts\CodeIgniterExchangeRateCatalog($db),
+        );
+    }
+
+    /** Cobranzas de clientes: alta, acreditación y anulación (#588). */
+    public static function registerCustomerPayment(bool $getShared = true): \App\Application\CustomerAccounts\RegisterCustomerPayment
+    {
+        if ($getShared) {
+            return static::getSharedInstance('registerCustomerPayment');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\CustomerAccounts\RegisterCustomerPayment(
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerPaymentRepository($db),
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterExchangeRateCatalog($db),
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerAccountsUnitOfWork($db),
+            new \App\Infrastructure\CustomerAccounts\SystemCustomerAccountsClock(),
+            static::auditTrail(),
+        );
+    }
+
+    public static function creditCustomerPayment(bool $getShared = true): \App\Application\CustomerAccounts\CreditCustomerPayment
+    {
+        if ($getShared) {
+            return static::getSharedInstance('creditCustomerPayment');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\CustomerAccounts\CreditCustomerPayment(
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerPaymentRepository($db),
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerAccountsUnitOfWork($db),
+            new \App\Infrastructure\CustomerAccounts\SystemCustomerAccountsClock(),
+            static::auditTrail(),
+        );
+    }
+
+    public static function annulCustomerPayment(bool $getShared = true): \App\Application\CustomerAccounts\AnnulCustomerPayment
+    {
+        if ($getShared) {
+            return static::getSharedInstance('annulCustomerPayment');
+        }
+
+        $db = db_connect();
+
+        return new \App\Application\CustomerAccounts\AnnulCustomerPayment(
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerPaymentRepository($db),
+            new \App\Infrastructure\CustomerAccounts\CodeIgniterCustomerAccountsUnitOfWork($db),
+            new \App\Infrastructure\CustomerAccounts\SystemCustomerAccountsClock(),
+            static::auditTrail(),
         );
     }
 

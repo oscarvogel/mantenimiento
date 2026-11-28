@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Notifications\Port;
 
+use App\Domain\Notifications\DriverNotificationEligibility;
 use App\Domain\Notifications\NotifiableEvent;
 
 interface WhatsAppNotificationDeliveryQueue
@@ -40,6 +41,41 @@ interface WhatsAppNotificationDeliveryQueue
 
     /** @return list<array<string,mixed>> */
     public function due(int $limit): array;
+
+    /**
+     * Contadores de cancelaciones producidas durante la última llamada a due().
+     *
+     * Devuelve `total` y un contador por código de motivo. Es estado de la
+     * llamada, no histórico: el despacho lo consume inmediatamente después de
+     * due() para sumarlo al resumen del ciclo.
+     *
+     * @return array<string,int>
+     */
+    public function lastCancellationSummary(): array;
+
+    /**
+     * Indica si la entrega sigue en un estado despachable.
+     *
+     * Se consulta inmediatamente antes de enviar: una cancelación concurrente
+     * (por ejemplo, una desvinculación de chofer) deja la fila en OMITIDA y el
+     * mensaje no debe salir aunque ya estuviera en el lote seleccionado.
+     */
+    public function stillPending(int $deliveryId): bool;
+
+    /**
+     * Revalida la elegibilidad del destinatario justo antes de enviar.
+     *
+     * Devuelve null cuando la entrega puede salir, o el motivo estructurado
+     * cuando debe cancelarse. Se aplica a todos los tipos dirigidos al chofer y
+     * también en los reintentos.
+     */
+    public function revalidateBeforeSend(int $deliveryId): ?DriverNotificationEligibility;
+
+    /**
+     * Marca la entrega como OMITIDA con motivo estructurado (código + texto) y
+     * registra la auditoría correspondiente.
+     */
+    public function cancelled(int $deliveryId, string $reasonCode, string $reasonText): void;
 
     public function accepted(int $deliveryId, string $messageId, string $status): void;
 

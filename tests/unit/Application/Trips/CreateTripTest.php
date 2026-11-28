@@ -385,6 +385,11 @@ final class CreateTripTest extends TestCase
             {
                 return true;
             }
+
+            public function exchangeRateFor(int $companyId, string $currency): ?float
+            {
+                return strtoupper(trim($currency)) === 'ARS' ? 1.0 : 1.0;
+            }
         };
     }
 

@@ -14,6 +14,8 @@ use CodeIgniter\Database\BaseConnection;
  */
 final class CodeIgniterExchangeRateCatalog implements ExchangeRateCatalog
 {
+    private ?bool $updatedAt = null;
+
     public function __construct(private readonly BaseConnection $database)
     {
     }
@@ -43,16 +45,47 @@ final class CodeIgniterExchangeRateCatalog implements ExchangeRateCatalog
 
     public function currentRate(int $companyId, string $currency): ?float
     {
+        $detail = $this->currentRateDetail($companyId, $currency);
+
+        return $detail === null ? null : $detail['rate'];
+    }
+
+    public function currentRateDetail(int $companyId, string $currency): ?array
+    {
         $currency = strtoupper(trim($currency));
         if ($currency === 'ARS') {
-            return 1.0;
+            return ['rate' => 1.0, 'fecha' => null, 'fuente' => 'PESOS'];
         }
+
+        $hasUpdatedAt = $this->hasUpdatedAt();
         $row = $this->database->table('viajes_cotizaciones')
-            ->select('cotizacion')
+            ->select('cotizacion' . ($hasUpdatedAt ? ', updated_at' : ''))
             ->where('empresa_id', $companyId)
             ->where('moneda', $currency)
             ->get()->getRowArray();
+        if ($row === null) {
+            return null;
+        }
 
-        return $row === null ? null : (float) $row['cotizacion'];
+        $rate = (float) $row['cotizacion'];
+        if ($rate <= 0) {
+            return null;
+        }
+
+        return [
+            'rate' => $rate,
+            'fecha' => ! $hasUpdatedAt || $row['updated_at'] === null ? null : substr((string) $row['updated_at'], 0, 10),
+            'fuente' => 'CATALOGO_EMPRESA',
+        ];
+    }
+
+    /** La fecha de la cotización es `updated_at`; el esquema lo define así. */
+    private function hasUpdatedAt(): bool
+    {
+        if ($this->updatedAt === null) {
+            $this->updatedAt = $this->database->fieldExists('updated_at', 'viajes_cotizaciones');
+        }
+
+        return $this->updatedAt;
     }
 }

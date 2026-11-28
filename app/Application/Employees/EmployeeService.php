@@ -6,6 +6,7 @@ namespace App\Application\Employees;
 
 use App\Application\Employees\Port\EmployeeAssignmentRepository;
 use App\Application\Employees\Port\EmployeeRepository;
+use App\Application\Employees\Port\EmployeeUnitOfWork;
 use App\Application\Identity\ActorContext;
 use App\Domain\Employees\Employee;
 use DateTimeImmutable;
@@ -16,6 +17,7 @@ final class EmployeeService
     public function __construct(
         private readonly EmployeeRepository $employees,
         private readonly EmployeeAssignmentRepository $assignments,
+        private readonly EmployeeUnitOfWork $unitOfWork,
     ) {}
 
     public function create(
@@ -114,14 +116,23 @@ final class EmployeeService
         string $reason,
     ): void {
         $companyId = $this->tenant($actor, 'empleados.editar');
-        $employee = $this->employees->findForUpdate($companyId, $employeeId);
-        if ($employee === null) {
-            throw new DomainException('El empleado no existe en la empresa.');
-        }
 
-        $employee->terminate($terminatedAt, $reason);
-        $this->employees->save($employee, $actor->userId());
-        $this->assignments->closeCurrentForEmployee($companyId, $employeeId, $terminatedAt, $actor->userId());
+        $this->unitOfWork->transactional(function () use ($actor, $companyId, $employeeId, $terminatedAt, $reason): void {
+            $employee = $this->employees->findForUpdate($companyId, $employeeId);
+            if ($employee === null) {
+                throw new DomainException('El empleado no existe en la empresa.');
+            }
+
+            $employee->terminate($terminatedAt, $reason);
+            $this->employees->save($employee, $actor->userId());
+            $this->assignments->closeCurrentForEmployee(
+                $companyId,
+                $employeeId,
+                $terminatedAt,
+                $actor->userId(),
+                $reason,
+            );
+        });
     }
 
     /** @return list<array<string,mixed>> */

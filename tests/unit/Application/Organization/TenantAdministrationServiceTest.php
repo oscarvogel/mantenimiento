@@ -94,12 +94,58 @@ final class TenantAdministrationServiceTest extends CIUnitTestCase
         self::assertSame([
             'nombre' => 'Carlos',
             'email' => 'gimenezcarlosgabriel@gmail.com',
+            'email_notificaciones' => null,
             'telefono' => '5493764123456',
             'activo' => 1,
         ], $port->userData);
         self::assertSame('Cambio de correo', $port->reason);
         self::assertArrayNotHasKey('password', $port->userData);
         self::assertArrayNotHasKey('password_hash', $port->userData);
+    }
+
+    public function testUpdateUserNormalizesTheNotificationEmailWithoutTouchingTheLoginEmail(): void
+    {
+        $port = new RecordingTenantAdministration();
+        $service = new TenantAdministrationService($port);
+
+        $service->updateUser($this->administrator(), 2, [
+            'nombre' => 'Mariela',
+            'email' => 'mariela@tsa.com.ar',
+            'email_notificaciones' => '  Mariela.Resumen@TSA.com.ar ',
+            'telefono' => '5493764123456',
+            'activo' => 1,
+        ], 'Cambio de destino de resumen');
+
+        self::assertSame('mariela.resumen@tsa.com.ar', $port->userData['email_notificaciones']);
+        self::assertSame('mariela@tsa.com.ar', $port->userData['email']);
+    }
+
+    public function testUpdateUserRejectsAnInvalidNotificationEmail(): void
+    {
+        $port = new RecordingTenantAdministration();
+        $service = new TenantAdministrationService($port);
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('El correo para resúmenes no es válido.');
+
+        $service->updateUser($this->administrator(), 2, [
+            'nombre' => 'Mariela', 'email' => 'mariela@tsa.com.ar',
+            'email_notificaciones' => 'casilla-inexistente', 'telefono' => '', 'activo' => 1,
+        ], 'Cambio de destino de resumen');
+    }
+
+    public function testCreateUserNormalizesTheNotificationEmail(): void
+    {
+        $port = new RecordingTenantAdministration();
+        $service = new TenantAdministrationService($port);
+
+        $service->createUser($this->administrator(), [
+            'nombre' => 'Mariela', 'email' => 'mariela@tsa.com.ar',
+            'email_notificaciones' => ' Resumen@TSA.com.ar ', 'telefono' => '', 'password' => 'clave-segura-123',
+        ], [3], [], 'Alta aprobada');
+
+        self::assertSame('resumen@tsa.com.ar', $port->userData['email_notificaciones']);
+        self::assertSame('mariela@tsa.com.ar', $port->userData['email']);
     }
 
     public function testCannotChangeOwnAccess(): void
@@ -186,6 +232,7 @@ final class RecordingTenantAdministration implements TenantAdministrationPort
     public array $roleIds = [];
     public array $branchIds = [];
     public ?string $reason = null;
+    public bool $loginEmailChanged = false;
     /** @var array{int, int}|null */
     public ?array $pagination = null;
 
@@ -230,11 +277,13 @@ final class RecordingTenantAdministration implements TenantAdministrationPort
         return 20;
     }
 
-    public function updateUser(int $companyId, int $userId, array $data, string $reason, int $actorUserId): void
+    public function updateUser(int $companyId, int $userId, array $data, string $reason, int $actorUserId): bool
     {
         $this->lastCompanyId = $companyId;
         $this->userData = $data;
         $this->reason = $reason;
+
+        return $this->loginEmailChanged;
     }
 
     public function assignUserAccess(int $companyId, int $userId, array $roleIds, array $branchIds, string $reason, int $actorUserId): void

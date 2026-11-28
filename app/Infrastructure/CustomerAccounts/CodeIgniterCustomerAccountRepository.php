@@ -104,8 +104,14 @@ final class CodeIgniterCustomerAccountRepository implements CustomerAccountRepos
             'fecha' => $document->date()->format('Y-m-d'),
             'tipo' => $leg === null ? 'SALDO_INICIAL' : 'CARGO',
             'cargo_id' => $chargeId,
+            'moneda' => $rate->currency(),
+            'debe_original' => $charge->side() === CustomerCharge::DEBE ? $this->amount($charge->originalAmount()) : '0.0000',
+            'haber_original' => $charge->side() === CustomerCharge::HABER ? $this->amount($charge->originalAmount()) : '0.0000',
             'debe_ars' => $charge->debitArs(),
             'haber_ars' => $charge->creditArs(),
+            'cotizacion' => $rate->rate(),
+            'cotizacion_fecha' => $rate->date()->format('Y-m-d'),
+            'cotizacion_fuente' => $rate->source(),
             'descripcion' => mb_substr($this->describe($companyId, $charge, $number), 0, 255),
             'clave' => 'CARGO:' . $chargeId,
             'created_at' => $now->format('Y-m-d H:i:s'),
@@ -117,7 +123,7 @@ final class CodeIgniterCustomerAccountRepository implements CustomerAccountRepos
 
     public function findActiveChargeForUpdate(int $companyId, int $chargeId): ?array
     {
-        $sql = 'SELECT id, cliente_id, sentido, importe_ars, documento_fecha FROM ' . $this->database->prefixTable(self::CHARGES)
+        $sql = 'SELECT id, cliente_id, sentido, importe_ars, importe_original, moneda, cotizacion, cotizacion_fecha, cotizacion_fuente, documento_fecha FROM ' . $this->database->prefixTable(self::CHARGES)
             . " WHERE empresa_id = ? AND id = ? AND estado = 'VIGENTE'";
         if ($this->database->DBDriver !== 'SQLite3') {
             $sql .= ' FOR UPDATE';
@@ -132,6 +138,11 @@ final class CodeIgniterCustomerAccountRepository implements CustomerAccountRepos
             'cliente_id' => (int) $row['cliente_id'],
             'sentido' => (string) $row['sentido'],
             'importe_ars' => (float) $row['importe_ars'],
+            'importe_original' => (float) $row['importe_original'],
+            'moneda' => (string) $row['moneda'],
+            'cotizacion' => (float) $row['cotizacion'],
+            'cotizacion_fecha' => (string) $row['cotizacion_fecha'],
+            'cotizacion_fuente' => (string) $row['cotizacion_fuente'],
             'documento_fecha' => (string) $row['documento_fecha'],
         ];
     }
@@ -164,8 +175,14 @@ final class CodeIgniterCustomerAccountRepository implements CustomerAccountRepos
             'fecha' => $now->format('Y-m-d'),
             'tipo' => 'ANULACION',
             'cargo_id' => $chargeId,
+            'moneda' => $charge['moneda'],
+            'debe_original' => $isDebit ? '0.0000' : $this->amount($charge['importe_original']),
+            'haber_original' => $isDebit ? $this->amount($charge['importe_original']) : '0.0000',
             'debe_ars' => $isDebit ? 0 : $charge['importe_ars'],
             'haber_ars' => $isDebit ? $charge['importe_ars'] : 0,
+            'cotizacion' => $charge['cotizacion'],
+            'cotizacion_fecha' => $charge['cotizacion_fecha'],
+            'cotizacion_fuente' => $charge['cotizacion_fuente'],
             'descripcion' => mb_substr('Anulación del cargo #' . $chargeId . ': ' . $reason, 0, 255),
             'clave' => 'ANULACION:' . $chargeId,
             'created_at' => $now->format('Y-m-d H:i:s'),
@@ -206,6 +223,12 @@ final class CodeIgniterCustomerAccountRepository implements CustomerAccountRepos
             ]);
 
         return $this->database->affectedRows() === 1;
+    }
+
+    /** El importe original se escribe con la escala de la columna (4 decimales). */
+    private function amount(float $value): string
+    {
+        return number_format($value, 4, '.', '');
     }
 
     private function describe(int $companyId, CustomerCharge $charge, ?string $number): string

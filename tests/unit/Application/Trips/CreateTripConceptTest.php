@@ -196,6 +196,11 @@ final class CreateTripConceptTest extends TestCase
             {
                 return $this->currencyExists;
             }
+
+            public function exchangeRateFor(int $companyId, string $currency): ?float
+            {
+                return strtoupper(trim($currency)) === 'ARS' ? 1.0 : 1.0;
+            }
         };
     }
 

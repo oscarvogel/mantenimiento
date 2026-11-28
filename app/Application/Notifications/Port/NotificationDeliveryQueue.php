@@ -9,7 +9,11 @@ use App\Domain\Notifications\NotificationSeverity;
 
 interface NotificationDeliveryQueue
 {
-    public function schedule(int $notificationId, int $userId, string $eventKey, NotificationSeverity $severity, NotificationPreference $preference): void;
+    /**
+     * @param string|null $deliveryEmail correo de entrega ya resuelto; null conserva
+     *                                  el comportamiento histórico y se resuelve en `due()`
+     */
+    public function schedule(int $notificationId, int $userId, string $eventKey, NotificationSeverity $severity, NotificationPreference $preference, ?string $deliveryEmail = null): void;
 
     /** @return list<array{id:int,notification_id:int,usuario_id:int,sucursal_id?:int,email:string,canal:string,titulo:string,resumen:string,url:?string,severidad:string,intentos:int}> */
     public function due(string $channel, int $limit): array;

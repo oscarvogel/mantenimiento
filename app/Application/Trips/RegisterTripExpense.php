@@ -12,7 +12,6 @@ use App\Application\Trips\Port\TripLegRepository;
 use App\Application\Trips\Port\TripsUnitOfWork;
 use App\Domain\Trips\Trip;
 use App\Domain\Trips\TripExpense;
-use App\Domain\Trips\TripMoney;
 use DomainException;
 
 final class RegisterTripExpense
@@ -75,9 +74,17 @@ final class RegisterTripExpense
                 throw new DomainException('El tramo elegido no pertenece al viaje.');
             }
 
+            $money = TripMoneyRules::resolve(
+                $this->directory,
+                $companyId,
+                $amount,
+                $command->currency,
+                $command->exchangeRate,
+                $command->confirmForeignRateOne,
+            );
             $expense = new TripExpense(
                 $command->date,
-                new TripMoney($amount, $command->currency, $command->exchangeRate),
+                $money,
                 $command->categoryId,
                 $command->paymentMethodId,
                 $command->paidFromCash,

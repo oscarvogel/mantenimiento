@@ -33,10 +33,41 @@ final class EmployeeEquipmentAssignmentTest extends TestCase
             new DateTimeImmutable('2026-08-01'),
         );
 
-        $assignment->close(new DateTimeImmutable('2026-09-07'));
+        $assignment->close(new DateTimeImmutable('2026-09-07'), 'Desvinculación de la unidad', 'Unidad siniestrada');
 
         self::assertFalse($assignment->isCurrent());
         self::assertSame('2026-09-07', $assignment->endsAt()?->format('Y-m-d'));
+        self::assertSame('Desvinculación de la unidad', $assignment->closureReason());
+        self::assertSame('Unidad siniestrada', $assignment->closureNotes());
+    }
+
+    public function testClosingAssignmentRequiresReason(): void
+    {
+        $assignment = EmployeeEquipmentAssignment::create(
+            3,
+            10,
+            20,
+            EmployeeEquipmentAssignment::ROLE_DRIVER,
+            new DateTimeImmutable('2026-08-01'),
+        );
+
+        $this->expectException(DomainException::class);
+        $assignment->close(new DateTimeImmutable('2026-09-07'), '   ');
+    }
+
+    public function testRejectsClosingTwice(): void
+    {
+        $assignment = EmployeeEquipmentAssignment::create(
+            3,
+            10,
+            20,
+            EmployeeEquipmentAssignment::ROLE_DRIVER,
+            new DateTimeImmutable('2026-08-01'),
+        );
+        $assignment->close(new DateTimeImmutable('2026-09-07'), 'Fin de la asignación');
+
+        $this->expectException(DomainException::class);
+        $assignment->close(new DateTimeImmutable('2026-09-08'), 'Segundo cierre');
     }
 
     public function testRejectsUnsupportedRole(): void
@@ -62,6 +93,6 @@ final class EmployeeEquipmentAssignmentTest extends TestCase
         );
 
         $this->expectException(DomainException::class);
-        $assignment->close(new DateTimeImmutable('2026-09-06'));
+        $assignment->close(new DateTimeImmutable('2026-09-06'), 'Desvinculación');
     }
 }

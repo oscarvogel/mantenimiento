@@ -147,11 +147,11 @@ final class ReadingControlReadOnlyContractTest extends TestCase
         $reminder = PhpSource::codeOf(APPPATH . 'Application/ReadingControl/ClaimReadingReminder.php');
 
         // empresa -> equipo -> asignacion vigente -> chofer -> telefono.
-        // El chofer vigente se resuelve con la constante SQL ACTIVE_DRIVER_SQL.
-        self::assertStringContainsString("a.rol = 'CHOFER'", $reminder);
-        self::assertStringContainsString('a.fecha_hasta IS NULL', $reminder);
-        self::assertStringContainsString('emp.activo = 1', $reminder);
-        self::assertStringContainsString('emp.deleted_at IS NULL', $reminder);
+        // El chofer vigente se resuelve con el predicado único compartido; el
+        // reclamo no replica el criterio de elegibilidad.
+        self::assertStringContainsString('$this->eligibility->findCurrentDriver(', $reminder);
+        self::assertStringContainsString('$companyId,', $reminder);
+        self::assertStringNotContainsString('a.fecha_hasta IS NULL', $reminder);
         self::assertStringContainsString('normalizePhone', $reminder);
         // Concatenación explícita: en una cadena doble, PHP interpolaría
         // $employeeId y lanzaría Undefined variable.
@@ -163,8 +163,7 @@ final class ReadingControlReadOnlyContractTest extends TestCase
         $reminder = PhpSource::codeOf(APPPATH . 'Application/ReadingControl/ClaimReadingReminder.php');
 
         self::assertStringContainsString("->where('e.empresa_id', \$companyId)", $reminder);
-        self::assertStringContainsString('a2.empresa_id = a.empresa_id', $reminder);
-        self::assertStringContainsString('emp.empresa_id = drv.empresa_id', $reminder);
+        self::assertStringContainsString("->where('e.id', \$equipmentId)", $reminder);
         self::assertStringContainsString('l2.empresa_id = le.empresa_id', $reminder);
     }
 
@@ -208,16 +207,17 @@ final class ReadingControlReadOnlyContractTest extends TestCase
         self::assertStringNotContainsString('lecturas.controlar', $shell);
     }
 
-    public function testHotfixAddsNoMigration(): void
+    public function testClaimFeatureAddsNoOwnMigration(): void
     {
-        $root = dirname(APPPATH, 2);
-        $diff = shell_exec(
-            sprintf('git -C %s diff --name-only origin/main...HEAD -- app/Database/Migrations 2>/dev/null', escapeshellarg($root)),
-        );
+        // El reclamo manual usa la tabla de entregas existente. Cualquier
+        // migración posterior (como la de motivo de cancelación de #594) no
+        // debe introducir columnas propias del reclamo.
+        $contents = '';
+        foreach (glob(APPPATH . 'Database/Migrations/*.php') ?: [] as $file) {
+            $contents .= (string) file_get_contents($file);
+        }
 
-        $changed = array_values(array_filter(array_map('trim', explode("\n", (string) $diff))));
-
-        self::assertSame([], $changed, 'Este hotfix no debe agregar ni modificar migraciones.');
+        self::assertStringNotContainsString('reclamo_manual_lectura', $contents);
     }
 
     public function testSidebarKeepsReadingControlPrimaryAndNestsConsumptionUnderTelemetry(): void

@@ -12,7 +12,6 @@ use App\Application\Trips\Port\TripLegRepository;
 use App\Application\Trips\Port\TripsUnitOfWork;
 use App\Domain\Trips\Trip;
 use App\Domain\Trips\TripFuelLoad;
-use App\Domain\Trips\TripMoney;
 use DomainException;
 
 final class UpdateTripFuelLoad
@@ -33,13 +32,6 @@ final class UpdateTripFuelLoad
         if ($branchIds === []) {
             throw new DomainException('El viaje solicitado no existe o no está autorizado.');
         }
-        if (! $this->directory->currencyExists($command->currency)) {
-            throw new DomainException('La moneda elegida no está disponible.');
-        }
-        if ($command->exchangeRate <= 0) {
-            throw new DomainException('La cotización debe ser mayor que cero.');
-        }
-
         $this->unitOfWork->transactional(function () use ($actor, $command, $companyId, $branchIds): void {
             $trip = $this->trips->findForUpdate($companyId, $branchIds, $command->tripId);
             if ($trip === null) {
@@ -50,16 +42,49 @@ final class UpdateTripFuelLoad
                 throw new DomainException('El tramo elegido no pertenece al viaje.');
             }
 
+            $current = $this->costs->findFuelLoad($trip->id() ?? 0, $companyId, $command->movementId);
+            if ($current === null) {
+                throw new DomainException('La carga de combustible no existe en este viaje o ya fue quitada.');
+            }
+
+            $money = null;
+            if ($command->amount !== null) {
+                $resolved = TripMoneyRules::resolveForUpdate(
+                    $this->directory,
+                    $companyId,
+                    $command->amount,
+                    $command->currency,
+                    $command->exchangeRate,
+                    $command->confirmForeignRateOne,
+                    [
+                        'importe' => (float) ($current['importe'] ?? 0),
+                        'moneda' => (string) ($current['moneda'] ?? 'ARS'),
+                        'cotizacion' => (float) ($current['cotizacion'] ?? 1),
+                    ],
+                );
+                $money = $resolved['money'];
+            }
+
             $load = new TripFuelLoad(
                 $command->date,
                 $command->liters,
-                $command->amount === null ? null : new TripMoney($command->amount, $command->currency, $command->exchangeRate),
+                $money,
                 $command->odometer,
                 $command->station,
                 $command->receipt,
                 $command->notes,
             );
-            if (! $this->costs->updateFuel($trip->id() ?? 0, $companyId, $command->movementId, $load, $actor->userId(), $command->legId)) {
+            $monetaryChanged = ($command->amount === null)
+                ? ((float) ($current['importe'] ?? 0) !== 0.0 || $current['importe_ars'] !== null)
+                : (bool) ($resolved['changed'] ?? false);
+            if ($monetaryChanged) {
+                $reason = trim((string) $command->changeReason);
+                if ($reason === '') {
+                    throw new DomainException('Indicá el motivo del cambio monetario.');
+                }
+            }
+
+            if (! $this->costs->updateFuel($trip->id() ?? 0, $companyId, $command->movementId, $load, $actor->userId(), $command->legId, $command->changeReason)) {
                 throw new DomainException('La carga de combustible no existe en este viaje o ya fue quitada.');
             }
         });

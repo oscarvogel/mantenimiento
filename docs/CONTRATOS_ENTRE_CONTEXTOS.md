@@ -63,6 +63,9 @@ seguir.
 | Módulo de Combustible: conciliación con el sensor | `GetConciliacionCombustible` | `app/Application/Telematic/GetConciliacionCombustible.php` | Telemetría (lectura) | **Implementado.** La consume el módulo de Combustible (`viajes/combustible`) además de Gerencial. Exige `gerencial.flota.ver`: sin ese permiso el módulo muestra lo declarado y no inventa una comparación. No escribe nada. |
 | Módulo de Combustible: monedas y cotizaciones | `PendingFuelPriceRepository::currencies()` | `app/Application/Trips/Port/PendingFuelPriceRepository.php` | Viajes (lectura, mismo contexto) | **Implementado.** El módulo usa el catálogo de monedas de la empresa para cargar una carga en la moneda en que se pagó. Sin `viajes.operar` el módulo no ofrece cargar nada. |
 | Alta de conceptos desde el viaje | `TripConceptCatalog` | `app/Application/Trips/Port/TripConceptCatalog.php` | Viajes (escritura, mismo contexto) | **Implementado.** El alta en línea del viaje escribe en `viajes_conceptos`, el mismo catálogo que administra Maestros de Viajes: el concepto nuevo y el concepto del maestro son la misma fila y comparten la misma regla de dominio (`TripConcept`). No cruza de contexto. |
+| Cancelación de mensajes al chofer desvinculado (#593) | `PendingDriverNotifications` | `app/Application/Employees/Port/PendingDriverNotifications.php` | Notifications (escritura de cancelación) | **Implementado.** Empleados cierra la asignación y Notifications marca `OMITIDA` las entregas `PENDIENTE`/`REINTENTO` del chofer para esa unidad. No toca entregas ya aceptadas ni notificaciones internas. |
+| Elegibilidad de destinatarios chofer (#594) | `DriverNotificationEligibilityReader` | `app/Application/Notifications/Port/DriverNotificationEligibilityReader.php` | Employees + Assets + Organization (lectura) | **Implementado.** Notifications lo usa al generar y al despachar cualquier mensaje al chofer. El criterio único vive en `DriverNotificationEligibilityPolicy`; ningún adaptador replica el predicado. |
+| Destinatario del resumen diario por usuario | `UserNotificationEmailPolicy` + `NotificationDeliveryQueue::schedule(..., ?string $deliveryEmail = null)` | `app/Application/Notifications/UserNotificationEmailPolicy.php` y `app/Application/Notifications/Port/NotificationDeliveryQueue.php` | Notifications → Organization (lectura directa preexistente de `usuarios.email_notificaciones` bajo `NotificationRecipientResolver`, sin nuevo puerto de Organization) y Presentation (ABM tenant) | **Implementado.** La política resuelve la precedencia `email_notificaciones → email`; el resolver de infraestructura lee esos campos directamente bajo el contrato `NotificationRecipientResolver` (sin nuevo puerto de Organization). La cola guarda el efectivo en `notificacion_entregas.destinatario`. `usuarios.email` sigue siendo exclusivamente la credencial de ingreso. |
 
 ---
 
@@ -304,6 +307,75 @@ Puerto del consumidor en `Application/PreventiveMaintenance/Port`; el adaptador
 buckets, recortados por empresa) y devuelve solo el odómetro. No interpreta: anclar el GPS a la
 lectura y validar la diferencia es regla de Preventivo (`EstimacionKmGps`). El odómetro del GPS
 tiene otra base que el del camión, por eso Preventivo solo usa diferencias.
+
+### 4.15 `PendingDriverNotifications` — responde Notifications, lo consume Employees
+
+```php
+public function cancelForAssignment(
+    int $companyId,
+    int $equipmentId,
+    int $employeeId,
+    int $assignmentId,
+    string $reason,
+): int;
+```
+
+Lo consume `UnassignDriver` (#593) dentro de la misma transacción que cierra la asignación y
+escribe la auditoría. El adaptador `CodeIgniterPendingDriverNotifications` marca `OMITIDA` las
+entregas de WhatsApp `PENDIENTE`/`REINTENTO` del chofer para esa unidad, con el motivo en
+`ultimo_error` y `proximo_intento = null`.
+
+Reglas del contrato:
+
+- Solo cancela entregas **no enviadas**. `ACEPTADA` y `PENDIENTE_CONFIRMACION` ya salieron y no
+  se tocan.
+- Solo toca tipos cuyo destinatario es el chofer: recordatorio semanal, reclamo manual, resumen
+  de vencimientos, preventivos y acuse de lectura. No toca resúmenes de usuarios ni avisos
+  internos de responsables.
+- Filtra siempre por `empresa_id`, `equipo_id` y `empleado_id`.
+- Es idempotente: una segunda cancelación no encuentra filas pendientes y devuelve `0`.
+
+### 4.16 `DriverNotificationEligibilityReader` — responde Employees/Assets/Organization, lo consume Notifications
+
+```php
+public function evaluate(
+    int $companyId,
+    int $equipmentId,
+    int $employeeId,
+    string $today, // Y-m-d en la zona horaria de la empresa
+): DriverNotificationEligibility;
+
+public function findCurrentDriver(
+    int $companyId,
+    int $equipmentId,
+    string $today,
+): ?int;
+```
+
+El adaptador `CodeIgniterDriverNotificationEligibilityReader` carga los hechos y delega la decisión en
+`App\Domain\Notifications\DriverNotificationEligibilityPolicy`. Es el **único** predicado que decide si
+un chofer puede recibir un mensaje de una unidad: lo usan la generación (recordatorio semanal,
+vencimientos, preventivos, acuse de lectura y reclamo manual) y el despacho (`due()` y
+`revalidateBeforeSend()`).
+
+Criterios, en orden de evaluación:
+
+1. Asignación `rol = CHOFER` y `fecha_desde <= hoy`.
+2. `fecha_hasta IS NULL OR fecha_hasta >= hoy` (una asignación que termina hoy sigue vigente hoy).
+3. Empleado no borrado y `activo = 1`.
+4. Equipo no borrado y `estado = 'ACTIVO'`.
+5. Tipo de equipo con `controla_km = 1`.
+6. Empresa no borrada, `estado = 1` y WhatsApp habilitado.
+
+Cuando falla, devuelve un código estable (`CHOFER_SIN_ASIGNACION`, `ASIGNACION_NO_INICIADA`,
+`ASIGNACION_CERRADA`, `EMPLEADO_INACTIVO`, `EMPLEADO_ELIMINADO`, `EQUIPO_INACTIVO`,
+`EQUIPO_ELIMINADO`, `TIPO_SIN_KILOMETRAJE`, `EMPRESA_INACTIVA`, `EMPRESA_ELIMINADA`,
+`WHATSAPP_EMPRESA_DESHABILITADO`) y un texto humano. La entrega se marca `OMITIDA`, el código se
+persiste en `notificacion_whatsapp_entregas.motivo_cancelacion`, el texto en `ultimo_error` y se
+registra `notificacion.whatsapp_cancelada` en `auditoria`.
+
+`findCurrentDriver()` devuelve el empleado de la asignación **más reciente ya iniciada** que pasa el
+predicado, o `null`. No retrocede a una asignación anterior si la más reciente está bloqueada.
 
 ## 5. Lo que falta implementar
 

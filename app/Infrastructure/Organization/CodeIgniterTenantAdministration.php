@@ -59,7 +59,7 @@ final class CodeIgniterTenantAdministration implements TenantAdministrationPort
         $usersActive = $this->database->table('usuarios')->where('empresa_id', $companyId)
             ->where('es_superadmin', 0)->where('deleted_at', null)->where('activo', 1)->countAllResults();
         $users = $this->database->table('usuarios')
-            ->select('id, empresa_id, nombre, email, telefono, activo, ultimo_acceso')
+            ->select('id, empresa_id, nombre, email, email_notificaciones, telefono, activo, ultimo_acceso')
             ->where('empresa_id', $companyId)
             ->where('es_superadmin', 0)
             ->where('deleted_at', null)
@@ -249,6 +249,7 @@ final class CodeIgniterTenantAdministration implements TenantAdministrationPort
                 'empresa_id'    => $companyId,
                 'nombre'        => $data['nombre'],
                 'email'         => $data['email'],
+                'email_notificaciones' => $data['email_notificaciones'],
                 'telefono'      => $data['telefono'],
                 'password_hash' => password_hash($data['password'], PASSWORD_DEFAULT),
                 'es_superadmin' => 0,
@@ -277,6 +278,7 @@ final class CodeIgniterTenantAdministration implements TenantAdministrationPort
                 after: [
                     'nombre'     => $data['nombre'],
                     'email'      => $data['email'],
+                    'email_notificaciones' => $data['email_notificaciones'],
                     'telefono'   => $data['telefono'],
                     'roles'      => $roleIds,
                     'sucursales' => $branchIds,
@@ -298,13 +300,18 @@ final class CodeIgniterTenantAdministration implements TenantAdministrationPort
         array $data,
         string $reason,
         int $actorUserId,
-    ): void {
+    ): bool {
         $this->database->transBegin();
 
         try {
             $user = $this->lockedTenantUser($companyId, $userId);
             $this->assertUniqueEmail($data['email'], $userId);
-            $before = ['nombre' => $user['nombre'], 'email' => $user['email'], 'telefono' => $user['telefono'] ?? null, 'activo' => (int) $user['activo']];
+            $before = [
+                'nombre' => $user['nombre'], 'email' => $user['email'],
+                'email_notificaciones' => $user['email_notificaciones'] ?? null,
+                'telefono' => $user['telefono'] ?? null, 'activo' => (int) $user['activo'],
+            ];
+            $loginEmailChanged = mb_strtolower(trim((string) $user['email'])) !== mb_strtolower(trim((string) $data['email']));
             $this->database->table('usuarios')->where('id', $userId)->where('empresa_id', $companyId)->update([
                 ...$data,
                 'updated_at' => date('Y-m-d H:i:s'),
@@ -324,6 +331,8 @@ final class CodeIgniterTenantAdministration implements TenantAdministrationPort
                 reason: $reason,
             ));
             $this->commitOrFail();
+
+            return $loginEmailChanged;
         } catch (Throwable $exception) {
             $this->database->transRollback();
             throw $exception;
@@ -433,7 +442,7 @@ final class CodeIgniterTenantAdministration implements TenantAdministrationPort
     private function lockedTenantUser(int $companyId, int $userId): array
     {
         $user = $this->database->query(
-            'SELECT id, nombre, email, telefono, activo FROM usuarios '
+            'SELECT id, nombre, email, email_notificaciones, telefono, activo FROM usuarios '
             . 'WHERE id = ? AND empresa_id = ? AND es_superadmin = 0 AND deleted_at IS NULL FOR UPDATE',
             [$userId, $companyId],
         )->getRowArray();

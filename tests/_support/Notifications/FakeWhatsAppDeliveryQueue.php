@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Support\Notifications;
 
 use App\Application\Notifications\Port\WhatsAppNotificationDeliveryQueue;
+use App\Domain\Notifications\DriverNotificationEligibility;
 use App\Domain\Notifications\NotifiableEvent;
 
 /**
@@ -18,6 +19,43 @@ final class FakeWhatsAppDeliveryQueue implements WhatsAppNotificationDeliveryQue
 {
     /** @var list<array{companyId:int,deliveryKey:string,phone:string,instanceId:string,message:string,scheduledAt:string}> */
     public array $enqueued = [];
+
+    /** @var array<int,bool> Estado despachable por id; por defecto, sí. */
+    public array $pending = [];
+
+    /** @var array<int,DriverNotificationEligibility> Motivo de bloqueo por entrega. */
+    public array $blockedBeforeSend = [];
+
+    /** @var list<array{deliveryId:int,reasonCode:string,reasonText:string}> */
+    public array $cancelled = [];
+
+    /** @var array<string,int> */
+    public array $cancellationSummary = [];
+
+    public function stillPending(int $deliveryId): bool
+    {
+        return $this->pending[$deliveryId] ?? true;
+    }
+
+    public function lastCancellationSummary(): array
+    {
+        return $this->cancellationSummary;
+    }
+
+    public function revalidateBeforeSend(int $deliveryId): ?DriverNotificationEligibility
+    {
+        return $this->blockedBeforeSend[$deliveryId] ?? null;
+    }
+
+    public function cancelled(int $deliveryId, string $reasonCode, string $reasonText): void
+    {
+        $this->cancelled[] = [
+            'deliveryId' => $deliveryId,
+            'reasonCode' => $reasonCode,
+            'reasonText' => $reasonText,
+        ];
+        $this->pending[$deliveryId] = false;
+    }
 
     public function enqueueManagementReadingReport(
         int $companyId,

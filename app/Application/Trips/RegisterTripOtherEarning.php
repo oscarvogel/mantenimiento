@@ -11,7 +11,6 @@ use App\Application\Trips\Port\TripDirectoryLookup;
 use App\Application\Trips\Port\TripFleetLookup;
 use App\Application\Trips\Port\TripsUnitOfWork;
 use App\Domain\Trips\Trip;
-use App\Domain\Trips\TripMoney;
 use App\Domain\Trips\TripOtherEarning;
 use DomainException;
 
@@ -32,9 +31,6 @@ final class RegisterTripOtherEarning
         $branchIds = $actor->hasAllCompanyBranches() ? null : $actor->branchIds();
         if ($branchIds === []) {
             throw new DomainException('El viaje solicitado no existe o no está autorizado.');
-        }
-        if (! $this->directory->currencyExists($command->currency)) {
-            throw new DomainException('La moneda elegida no está disponible.');
         }
         $driver = $this->fleet->driver($companyId, $command->employeeId);
         if ($driver === null || ! $driver['active']) {
@@ -77,10 +73,18 @@ final class RegisterTripOtherEarning
                 throw new DomainException('El chofer elegido no está asignado al viaje.');
             }
 
+            $money = TripMoneyRules::resolve(
+                $this->directory,
+                $companyId,
+                $amount,
+                $command->currency,
+                $command->exchangeRate,
+                $command->confirmForeignRateOne,
+            );
             $earning = new TripOtherEarning(
                 $command->employeeId,
                 $command->date,
-                new TripMoney($amount, $command->currency, $command->exchangeRate),
+                $money,
                 $conceptName,
                 $command->notes,
                 $concept['id'] ?? null,

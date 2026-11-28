@@ -160,6 +160,25 @@ final class RecordingDeliveryQueue implements WhatsAppNotificationDeliveryQueue
         return [];
     }
 
+    public function stillPending(int $deliveryId): bool
+    {
+        return true;
+    }
+
+    public function lastCancellationSummary(): array
+    {
+        return [];
+    }
+
+    public function revalidateBeforeSend(int $deliveryId): ?\App\Domain\Notifications\DriverNotificationEligibility
+    {
+        return null;
+    }
+
+    public function cancelled(int $deliveryId, string $reasonCode, string $reasonText): void
+    {
+    }
+
     public function awaitingConfirmation(int $limit): array
     {
         return [];
@@ -379,6 +398,7 @@ final class ClaimReadingReminderTest extends TestCase
             $this->queue,
             new FakeSettingsStore($settings + $defaults),
             new FakeNotificationClock(new DateTimeImmutable(self::NOW, new DateTimeZone('UTC'))),
+            new \App\Infrastructure\Notifications\CodeIgniterDriverNotificationEligibilityReader($this->db),
         );
     }
 

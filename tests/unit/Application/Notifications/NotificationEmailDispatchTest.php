@@ -89,7 +89,7 @@ final class Issue144Queue implements NotificationDeliveryQueue
     public array $deliveredIds = [];
     public array $failedIds = [];
 
-    public function schedule(int $notificationId, int $userId, string $eventKey, NotificationSeverity $severity, NotificationPreference $preference): void {}
+    public function schedule(int $notificationId, int $userId, string $eventKey, NotificationSeverity $severity, NotificationPreference $preference, ?string $deliveryEmail = null): void {}
     public function due(string $channel, int $limit): array { return $this->dueByChannel[$channel] ?? []; }
     public function delivered(int $deliveryId): void { $this->deliveredIds[] = $deliveryId; }
     public function skipped(int $deliveryId, string $reason): void {}

@@ -10,6 +10,7 @@ use App\Application\Notifications\Port\NotificationDeliveryQueue;
 use App\Application\Notifications\Port\NotificationClock;
 use App\Application\Notifications\NotificationDeliverySchedule;
 use App\Application\Notifications\NotificationChannelPolicy;
+use App\Application\Notifications\UserNotificationEmailPolicy;
 use App\Domain\Notifications\DeliveryMode;
 use App\Domain\Notifications\NotificationChannel;
 use App\Domain\Notifications\NotifiableEvent;
@@ -32,12 +33,20 @@ final class CodeIgniterNotificationDeliveryQueue implements NotificationDelivery
         'garantia.proxima',
     ];
 
-    public function __construct(private NotificationClock $clock, private NotificationDeliverySchedule $schedule, private NotificationChannelPolicy $policy, private NotificationChannelAvailability $channels, private string $dailyRunTime = '07:00', private ?BaseConnection $db = null)
-    {
+    public function __construct(
+        private NotificationClock $clock,
+        private NotificationDeliverySchedule $schedule,
+        private NotificationChannelPolicy $policy,
+        private NotificationChannelAvailability $channels,
+        private string $dailyRunTime = '07:00',
+        private ?BaseConnection $db = null,
+        private ?UserNotificationEmailPolicy $recipientEmails = null,
+    ) {
         $this->db ??= Database::connect();
+        $this->recipientEmails ??= new UserNotificationEmailPolicy();
     }
 
-    public function schedule(int $notificationId, int $userId, string $eventKey, NotificationSeverity $severity, NotificationPreference $preference): void
+    public function schedule(int $notificationId, int $userId, string $eventKey, NotificationSeverity $severity, NotificationPreference $preference, ?string $deliveryEmail = null): void
     {
         // La disponibilidad del canal es global: una preferencia personal nunca
         // habilita un canal que el administrador dejó apagado. Si el correo está
@@ -46,7 +55,7 @@ final class CodeIgniterNotificationDeliveryQueue implements NotificationDelivery
         $wantsEmail = $this->policy->shouldSchedule($preference->email, $severity);
 
         if ($wantsEmail && $emailAvailable) {
-            $this->enqueue($notificationId, 'EMAIL', "{$eventKey}:usuario:{$userId}:email", $preference->email);
+            $this->enqueue($notificationId, 'EMAIL', "{$eventKey}:usuario:{$userId}:email", $preference->email, $deliveryEmail);
         } elseif ($wantsEmail && ! $emailAvailable) {
             // Queda escrito por qué no se encoló. Sin esta traza, una preferencia
             // de correo activa con el canal apagado sería indistinguible de una
@@ -112,14 +121,35 @@ final class CodeIgniterNotificationDeliveryQueue implements NotificationDelivery
 
     public function due(string $channel, int $limit): array
     {
-        return $this->db->table('notificacion_entregas d')
-            ->select('d.id, d.notificacion_id, n.usuario_id, n.sucursal_id, u.email, d.canal, n.titulo, n.resumen, n.url, n.severidad, d.intentos')
+        $rows = $this->db->table('notificacion_entregas d')
+            ->select('d.id, d.notificacion_id, n.usuario_id, n.sucursal_id, d.destinatario, u.email AS login_email, u.email_notificaciones, d.canal, n.titulo, n.resumen, n.url, n.severidad, d.intentos')
             ->join('notificaciones n', 'n.id = d.notificacion_id', 'inner')
             ->join('usuarios u', 'u.id = n.usuario_id AND u.activo = 1 AND u.deleted_at IS NULL', 'inner')
             ->where('d.canal', strtoupper($channel))
             ->whereIn('d.estado', ['PENDIENTE', 'REINTENTO'])
             ->groupStart()->where('d.proximo_intento', null)->orWhere('d.proximo_intento <=', $this->clock->now()->format('Y-m-d H:i:s'))->groupEnd()
             ->orderBy('d.id')->limit(max(1, min(1000, $limit)))->get()->getResultArray();
+
+        foreach ($rows as $index => $row) {
+            if ($row['destinatario'] !== null) {
+                $rows[$index]['email'] = (string) $row['destinatario'];
+                continue;
+            }
+
+            $rawNotificationEmail = $row['email_notificaciones'] ?? null;
+            $resolved = $this->recipientEmails->resolveWithReason(
+                $rawNotificationEmail === null ? null : (string) $rawNotificationEmail,
+                (string) $row['login_email'],
+            );
+            if ($resolved['usedFallback'] && $rawNotificationEmail !== null && trim((string) $rawNotificationEmail) !== '') {
+                log_message('notice', 'Correo de resumen inválido para el usuario {user}; se usa el correo de ingreso.', [
+                    'user' => (int) $row['usuario_id'],
+                ]);
+            }
+            $rows[$index]['email'] = $resolved['email'];
+        }
+
+        return $rows;
     }
 
     public function dueCompany(int $limit): array
@@ -225,7 +255,7 @@ final class CodeIgniterNotificationDeliveryQueue implements NotificationDelivery
             ]);
     }
 
-    private function enqueue(int $notificationId, string $channel, string $key, DeliveryMode $mode): void
+    private function enqueue(int $notificationId, string $channel, string $key, DeliveryMode $mode, ?string $recipientEmail = null): void
     {
         $now = $this->clock->now();
         $next = $this->schedule->nextAttempt($mode, $now, $this->dailyRunTime)?->format('Y-m-d H:i:s');
@@ -233,6 +263,7 @@ final class CodeIgniterNotificationDeliveryQueue implements NotificationDelivery
             'notificacion_id' => $notificationId,
             'canal' => $channel,
             'clave_entrega' => $key,
+            'destinatario' => $recipientEmail,
             'estado' => 'PENDIENTE',
             'proximo_intento' => $next,
             'created_at' => $now->format('Y-m-d H:i:s'),

@@ -23,7 +23,7 @@ interface TenantAdministrationPort
     public function updateBranch(int $companyId, int $branchId, array $data, int $actorUserId): void;
 
     /**
-     * @param array{nombre: string, email: string, telefono: string|null, password: string} $data
+     * @param array{nombre: string, email: string, email_notificaciones: string|null, telefono: string|null, password: string} $data
      * @param list<int> $roleIds
      * @param list<int> $branchIds
      */
@@ -36,14 +36,17 @@ interface TenantAdministrationPort
         int $actorUserId,
     ): int;
 
-    /** @param array{nombre: string, email: string, telefono: string|null, activo: int} $data */
+    /**
+     * @param array{nombre: string, email: string, email_notificaciones: string|null, telefono: string|null, activo: int} $data
+     * @return bool true cuando cambió el correo de ingreso
+     */
     public function updateUser(
         int $companyId,
         int $userId,
         array $data,
         string $reason,
         int $actorUserId,
-    ): void;
+    ): bool;
 
     /**
      * @param list<int> $roleIds

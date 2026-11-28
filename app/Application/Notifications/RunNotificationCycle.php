@@ -367,7 +367,7 @@ final readonly class RunNotificationCycle
             'missing_driver_phones' => null,
             'management_reports' => null,
             'management_reading_report' => null,
-            'dispatched' => ['email_sent' => 0, 'company_email_sent' => 0, 'push_sent' => 0, 'whatsapp_sent' => 0, 'failed' => 0, 'retry' => 0, 'expired' => 0, 'skipped' => 0, 'already_completed' => 1],
+            'dispatched' => ['email_sent' => 0, 'company_email_sent' => 0, 'push_sent' => 0, 'whatsapp_sent' => 0, 'whatsapp_cancelled' => 0, 'failed' => 0, 'retry' => 0, 'expired' => 0, 'skipped' => 0, 'already_completed' => 1],
         ];
     }
 }

@@ -15,12 +15,14 @@ final readonly class UpdateTripExpenseCommand
         public float $amount,
         public ?int $categoryId,
         public string $currency,
-        public float $exchangeRate,
+        public ?float $exchangeRate,
         public ?int $paymentMethodId,
         public ?int $legId,
         public string $paidBy,
         public ?string $receipt,
         public ?string $notes,
+        public bool $confirmForeignRateOne = false,
+        public ?string $changeReason = null,
     ) {
     }
 }

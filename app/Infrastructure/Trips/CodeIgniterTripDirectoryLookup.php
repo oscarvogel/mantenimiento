@@ -94,4 +94,25 @@ final class CodeIgniterTripDirectoryLookup implements TripDirectoryLookup
             ->where('activo', 1)
             ->countAllResults() > 0;
     }
+
+    public function exchangeRateFor(int $companyId, string $currency): ?float
+    {
+        $currency = strtoupper(trim($currency));
+        if ($currency === 'ARS') {
+            return 1.0;
+        }
+
+        $row = $this->database->table('viajes_cotizaciones')
+            ->select('cotizacion')
+            ->where('empresa_id', $companyId)
+            ->where('moneda', $currency)
+            ->get()->getRowArray();
+        if ($row === null) {
+            return null;
+        }
+
+        $rate = (float) $row['cotizacion'];
+
+        return $rate > 0 ? $rate : null;
+    }
 }

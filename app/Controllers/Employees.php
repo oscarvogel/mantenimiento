@@ -8,6 +8,7 @@ use App\Application\Employees\EmployeeService;
 use App\Application\Identity\ActorContext;
 use App\Infrastructure\Employees\CodeIgniterEmployeeAssignmentRepository;
 use App\Infrastructure\Employees\CodeIgniterEmployeeRepository;
+use App\Infrastructure\Employees\CodeIgniterEmployeeUnitOfWork;
 use App\Infrastructure\Expirations\CodeIgniterExpirationReadModel;
 use App\Infrastructure\Identity\SessionActorContext;
 use CodeIgniter\HTTP\RedirectResponse;
@@ -257,6 +258,7 @@ final class Employees extends BaseController
         return new EmployeeService(
             new CodeIgniterEmployeeRepository($database),
             new CodeIgniterEmployeeAssignmentRepository($database),
+            new CodeIgniterEmployeeUnitOfWork($database),
         );
     }
 

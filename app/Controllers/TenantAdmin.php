@@ -92,6 +92,7 @@ final class TenantAdmin extends BaseController
         if (! $this->validate([
             'nombre'               => 'required|max_length[255]',
             'email'                => 'required|valid_email|max_length[255]',
+            'email_notificaciones' => 'permit_empty|valid_email|max_length[255]',
             'telefono'             => 'permit_empty|max_length[20]',
             'password'             => 'required|min_length[8]|max_length[255]',
             'password_confirmation'=> 'required|matches[password]',
@@ -106,6 +107,7 @@ final class TenantAdmin extends BaseController
                 [
                     'nombre'   => (string) $this->request->getPost('nombre'),
                     'email'    => (string) $this->request->getPost('email'),
+                    'email_notificaciones' => (string) $this->request->getPost('email_notificaciones'),
                     'telefono' => (string) $this->request->getPost('telefono'),
                     'password' => (string) $this->request->getPost('password'),
                 ],
@@ -125,6 +127,7 @@ final class TenantAdmin extends BaseController
         if (! $this->validate([
             'nombre' => 'required|max_length[255]',
             'email'  => 'required|valid_email|max_length[255]',
+            'email_notificaciones' => 'permit_empty|valid_email|max_length[255]',
             'telefono' => 'permit_empty|max_length[20]',
             'activo' => 'required|in_list[0,1]',
             'motivo' => 'required|min_length[5]|max_length[255]',
@@ -136,10 +139,11 @@ final class TenantAdmin extends BaseController
             $data = [
                 'nombre' => (string) $this->request->getPost('nombre'),
                 'email'  => (string) $this->request->getPost('email'),
+                'email_notificaciones' => (string) $this->request->getPost('email_notificaciones'),
                 'telefono' => (string) $this->request->getPost('telefono'),
                 'activo' => (int) $this->request->getPost('activo'),
             ];
-            $this->service()->updateUser(
+            $loginEmailChanged = $this->service()->updateUser(
                 $this->actor(),
                 $userId,
                 $data,
@@ -150,7 +154,11 @@ final class TenantAdmin extends BaseController
                 session()->set('usuario_email', mb_strtolower(trim($data['email'])));
             }
 
-            return redirect()->to('/administracion/usuarios')->with('success', 'Usuario actualizado correctamente. Si cambiaste el email, desde ahora debe ingresar con el nuevo correo.');
+            $message = $loginEmailChanged
+                ? 'Usuario actualizado correctamente. Si cambiaste el email, desde ahora debe ingresar con el nuevo correo.'
+                : 'Usuario actualizado correctamente. El correo de resumen no modifica el usuario de ingreso.';
+
+            return redirect()->to('/administracion/usuarios')->with('success', $message);
         } catch (Throwable $exception) {
             return $this->operationFailure('/administracion/usuarios', $exception);
         }

@@ -14,8 +14,9 @@ final readonly class RegisterTripCashMovementCommand
         public DateTimeImmutable $date,
         public float $amount,
         public string $currency = 'ARS',
-        public float $exchangeRate = 1.0,
+        public ?float $exchangeRate = null,
         public ?string $notes = null,
+        public bool $confirmForeignRateOne = false,
     ) {
     }
 }

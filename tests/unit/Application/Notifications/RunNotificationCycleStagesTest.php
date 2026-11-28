@@ -299,7 +299,7 @@ final class CycleDeliveryQueue implements NotificationDeliveryQueue
 {
     public array $dueCalls = [];
 
-    public function schedule(int $notificationId, int $userId, string $eventKey, NotificationSeverity $severity, NotificationPreference $preference): void
+    public function schedule(int $notificationId, int $userId, string $eventKey, NotificationSeverity $severity, NotificationPreference $preference, ?string $deliveryEmail = null): void
     {
     }
 

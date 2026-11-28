@@ -103,6 +103,7 @@ final class InitialSeeder extends Seeder
             'viajes.maestros.editar' => 'Crear y actualizar los maestros de Viajes',
             'clientes.cc.ver' => 'Consultar la cuenta corriente de clientes y el control de cierre comercial',
             'clientes.cc.formalizar' => 'Formalizar el cobro de tramos, registrar saldos iniciales y anular cargos de clientes',
+            'clientes.cc.cobrar' => 'Registrar, imputar y anular cobranzas de clientes',
             'neumaticos.ver' => 'Consultar el padrón, la ficha y el rendimiento de neumáticos',
             'neumaticos.operar' => 'Dar de alta neumáticos, cambiar su estado y registrar movimientos de depósito',
         ];

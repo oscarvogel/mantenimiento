@@ -57,6 +57,7 @@ final class NotificationChannelAvailabilityTest extends TestCase
             notificacion_id INTEGER NOT NULL,
             canal VARCHAR(16) NOT NULL,
             clave_entrega VARCHAR(220) NOT NULL,
+            destinatario VARCHAR(255) NULL,
             estado VARCHAR(20) NOT NULL DEFAULT \'PENDIENTE\',
             intentos INTEGER NOT NULL DEFAULT 0,
             proximo_intento DATETIME NULL,
@@ -97,6 +98,7 @@ final class NotificationChannelAvailabilityTest extends TestCase
             empresa_id INTEGER NOT NULL,
             nombre VARCHAR(255) NOT NULL,
             email VARCHAR(255) NULL,
+            email_notificaciones VARCHAR(255) NULL,
             activo INTEGER NOT NULL DEFAULT 1,
             deleted_at DATETIME NULL
         )');
@@ -294,6 +296,55 @@ final class NotificationChannelAvailabilityTest extends TestCase
         );
     }
 
+    public function testSchedulePersistsTheDeliveryEmailSnapshotWithoutChangingTheLogicalKey(): void
+    {
+        $queue = $this->queue(true, true);
+        $queue->schedule(10, 7, 'evento:1', NotificationSeverity::WARNING, $this->preference(), 'resumen@example.test');
+        $queue->schedule(10, 7, 'evento:1', NotificationSeverity::WARNING, $this->preference(), 'resumen@example.test');
+
+        $rows = $this->db->table('notificacion_entregas')->where('canal', 'EMAIL')->get()->getResultArray();
+        self::assertCount(1, $rows, 'La idempotencia no cambia con el snapshot.');
+        self::assertSame('evento:1:usuario:7:email', $rows[0]['clave_entrega']);
+        self::assertSame('resumen@example.test', $rows[0]['destinatario']);
+    }
+
+    public function testDispatchUsesTheStoredSnapshotEvenIfTheLoginEmailChanged(): void
+    {
+        $this->seedPendingEmailDelivery(null, 'resumen@example.test');
+        $this->db->table('usuarios')->where('id', 7)->update(['email' => 'nuevo-ingreso@example.test']);
+        $gateway = new ChannelAvailabilityRecordingEmailGateway();
+
+        (new \App\Application\Notifications\RunNotificationDispatch(
+            $this->queue(true, true), $gateway, new ChannelAvailabilityEmptyPushGateway(), new ChannelAvailabilityProcessControl(),
+        ))->execute('2026-11-28-07-00');
+
+        self::assertSame(['resumen@example.test'], $gateway->recipients);
+    }
+
+    public function testDispatchResolvesLiveFromTheNotificationEmailWhenTheSnapshotIsNull(): void
+    {
+        $this->seedPendingEmailDelivery('resumen@example.test', null);
+        $gateway = new ChannelAvailabilityRecordingEmailGateway();
+
+        (new \App\Application\Notifications\RunNotificationDispatch(
+            $this->queue(true, true), $gateway, new ChannelAvailabilityEmptyPushGateway(), new ChannelAvailabilityProcessControl(),
+        ))->execute('2026-11-28-07-00');
+
+        self::assertSame(['resumen@example.test'], $gateway->recipients);
+    }
+
+    public function testLegacyDeliveryWithoutSnapshotOrNotificationEmailUsesTheLoginEmail(): void
+    {
+        $this->seedPendingEmailDelivery(null, null);
+        $gateway = new ChannelAvailabilityRecordingEmailGateway();
+
+        (new \App\Application\Notifications\RunNotificationDispatch(
+            $this->queue(true, true), $gateway, new ChannelAvailabilityEmptyPushGateway(), new ChannelAvailabilityProcessControl(),
+        ))->execute('2026-11-28-07-00');
+
+        self::assertSame(['operador@example.test'], $gateway->recipients);
+    }
+
     /**
      * Deja lista una entrega de correo pendiente de un usuario activo.
      *
@@ -301,11 +352,12 @@ final class NotificationChannelAvailabilityTest extends TestCase
      * `usuarios`, así que la entrega sólo existe para el despachador cuando la
      * notificación y su usuario están presentes.
      */
-    private function seedPendingEmailDelivery(): int
+    private function seedPendingEmailDelivery(?string $notificationEmail = null, ?string $snapshot = null): int
     {
         $this->db->table('usuarios')->insert([
             'id' => 7, 'empresa_id' => 5, 'nombre' => 'Operador de prueba',
-            'email' => 'operador@example.test', 'activo' => 1, 'deleted_at' => null,
+            'email' => 'operador@example.test', 'email_notificaciones' => $notificationEmail,
+            'activo' => 1, 'deleted_at' => null,
         ]);
         $this->db->table('notificaciones')->insert([
             'id' => 10, 'empresa_id' => 5, 'sucursal_id' => null, 'usuario_id' => 7,
@@ -316,7 +368,8 @@ final class NotificationChannelAvailabilityTest extends TestCase
         ]);
         $this->db->table('notificacion_entregas')->insert([
             'notificacion_id' => 10, 'canal' => 'EMAIL', 'clave_entrega' => 'evento:1:usuario:7:email',
-            'estado' => 'PENDIENTE', 'intentos' => 0, 'created_at' => '2026-11-17 07:00:00',
+            'destinatario' => $snapshot, 'estado' => 'PENDIENTE', 'intentos' => 0,
+            'created_at' => '2026-11-17 07:00:00',
         ]);
 
         return (int) $this->db->table('notificacion_entregas')->select('id')->get()->getRowArray()['id'];
@@ -331,6 +384,7 @@ final class NotificationChannelAvailabilityTest extends TestCase
             new ChannelAvailabilityStub($emailAvailable, $pushAvailable),
             '07:00',
             $this->db,
+            new \App\Application\Notifications\UserNotificationEmailPolicy(),
         );
     }
 
@@ -412,8 +466,12 @@ final class ChannelAvailabilityRecordingEmailGateway implements \App\Application
     /** @var list<array<int,array<string,mixed>>> */
     public array $batches = [];
 
+    /** @var list<string> */
+    public array $recipients = [];
+
     public function sendDigest(string $recipient, array $notifications): void
     {
+        $this->recipients[] = $recipient;
         $this->batches[] = $notifications;
     }
 }

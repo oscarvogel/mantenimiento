@@ -45,5 +45,13 @@ jobs:
           # con el source de main. Fallar aqui es intencional; la correccion es
           # reconstruir y commitear los bundles junto al source.
           npm --prefix frontend run verify:build-sync
+      - name: Upload dashboard assets (591 debug)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-assets-591
+          path: assets/dashboard
+          include-hidden-files: true
+          if-no-files-found: error
       - name: Dashboard asset tooling self-test
         run: python scripts/dashboard-assets.py self-test

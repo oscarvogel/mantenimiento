@@ -11,7 +11,6 @@ use App\Application\Trips\Port\TripDirectoryLookup;
 use App\Application\Trips\Port\TripFleetLookup;
 use App\Application\Trips\Port\TripsUnitOfWork;
 use App\Domain\Trips\Trip;
-use App\Domain\Trips\TripMoney;
 use App\Domain\Trips\TripOtherEarning;
 use DomainException;
 
@@ -33,12 +32,7 @@ final class UpdateTripOtherEarning
         if ($branchIds === []) {
             throw new DomainException('El viaje solicitado no existe o no está autorizado.');
         }
-        if (! $this->directory->currencyExists($command->currency)) {
-            throw new DomainException('La moneda elegida no está disponible.');
-        }
-        if ($command->exchangeRate <= 0) {
-            throw new DomainException('La cotización del haber debe ser mayor que cero.');
-        }
+        // currency/rate validated later with TripMoneyRules to preserve historical rate when not changing monetary fields
 
         $driver = $this->fleet->driver($companyId, $command->employeeId);
         if ($driver === null || ! $driver['active']) {
@@ -84,10 +78,29 @@ final class UpdateTripOtherEarning
                 throw new DomainException('Este haber se genera desde el diario de bordo. Corregilo desde esa etapa.');
             }
 
+            $current = $this->costs->findOtherEarning($trip->id() ?? 0, $companyId, $command->movementId);
+            if ($current === null) {
+                throw new DomainException('El haber no existe en este viaje o ya fue quitado.');
+            }
+
+            $resolved = TripMoneyRules::resolveForUpdate(
+                $this->directory,
+                $companyId,
+                $amount,
+                $command->currency,
+                $command->exchangeRate,
+                $command->confirmForeignRateOne,
+                [
+                    'importe' => (float) ($current['importe'] ?? 0),
+                    'moneda' => (string) ($current['moneda'] ?? 'ARS'),
+                    'cotizacion' => (float) ($current['cotizacion'] ?? 1),
+                ],
+            );
+
             $earning = new TripOtherEarning(
                 $command->employeeId,
                 $command->date,
-                new TripMoney($amount, $command->currency, $command->exchangeRate),
+                $resolved['money'],
                 $conceptName,
                 $command->notes,
                 $concept['id'] ?? null,
@@ -95,7 +108,14 @@ final class UpdateTripOtherEarning
                 $unitAmount,
             );
 
-            if (! $this->costs->updateOtherEarning($trip->id() ?? 0, $companyId, $command->movementId, $earning, $actor->userId())) {
+            if ($resolved['changed']) {
+                $reason = trim((string) $command->changeReason);
+                if ($reason === '') {
+                    throw new DomainException('Indicá el motivo del cambio monetario.');
+                }
+            }
+
+            if (! $this->costs->updateOtherEarning($trip->id() ?? 0, $companyId, $command->movementId, $earning, $actor->userId(), null, $command->changeReason)) {
                 throw new DomainException('El haber no existe en este viaje o ya fue quitado.');
             }
         });
